@@ -6,7 +6,46 @@ on:
       - main
 
 jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get next version
+        id: version
+        run: |
+          # Get the latest tag
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $latest_tag"
+          
+          # Extract version number and increment minor
+          version=$(echo $latest_tag | sed 's/v//')
+          major=$(echo $version | cut -d. -f1)
+          minor=$(echo $version | cut -d. -f2)
+          patch=$(echo $version | cut -d. -f3)
+          
+          # Increment minor version
+          new_minor=$((minor + 1))
+          new_version="v${major}.${new_minor}.0"
+          
+          echo "New version: $new_version"
+          echo "version=$new_version" >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag ${{ steps.version.outputs.version }}
+          git push origin ${{ steps.version.outputs.version }}
+
   release:
+    needs: create-release
     strategy:
       matrix:
         include:
@@ -36,6 +75,6 @@ jobs:
         with:
           distribution: goreleaser
           version: latest
-          args: release --snapshot --clean --config=.goreleaser-${{ matrix.goos }}.yml
+          args: release --clean --config=.goreleaser-${{ matrix.goos }}.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
