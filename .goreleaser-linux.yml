@@ -3,22 +3,10 @@ builds:
       - CGO_ENABLED=1
     goos:
       - linux
-      - darwin
-      - windows
     goarch:
       - amd64
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
-    ignore:
-      - goos: linux
-        goarch: amd64
-        goarm: 7
-      - goos: darwin
-        goarch: amd64
-        goarm: 7
-      - goos: windows
-        goarch: amd64
-        goarm: 7
 
 archives:
   - format: tar.gz
