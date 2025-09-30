@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/marianogappa/screpdb/internal/mcp"
@@ -44,8 +45,8 @@ func runMCP(cmd *cobra.Command, args []string) error {
 	server := mcp.NewServer(store)
 
 	// Start the server
-	fmt.Printf("Starting MCP server with database: %s\n", sqliteInput)
-	fmt.Println("Server is running...")
+	log.Printf("Starting MCP server with database: %s\n", sqliteInput)
+	log.Println("Server is running...")
 
 	return server.Start(ctx)
 }
