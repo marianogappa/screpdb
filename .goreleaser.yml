@@ -31,5 +31,5 @@ release:
     owner: marianogappa
     name: screpdb
   draft: false
-  prerelease: false
+  prerelease: true
   mode: replace
