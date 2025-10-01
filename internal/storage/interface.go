@@ -6,6 +6,12 @@ import (
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
+// Storage backend constants
+const (
+	StorageSQLite     = "sqlite"
+	StoragePostgreSQL = "postgresql"
+)
+
 // Storage defines the interface for persisting replay data
 type Storage interface {
 	// Initialize sets up the storage (create tables, etc.)
@@ -19,6 +25,9 @@ type Storage interface {
 
 	// Query executes a SQL query and returns results
 	Query(ctx context.Context, query string, args ...any) ([]map[string]any, error)
+
+	// StorageName returns the name of the storage backend
+	StorageName() string
 
 	// Close closes the storage connection
 	Close() error

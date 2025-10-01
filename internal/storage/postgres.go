@@ -415,6 +415,11 @@ func (s *PostgresStorage) Query(ctx context.Context, query string, args ...any) 
 	return results, rows.Err()
 }
 
+// StorageName returns the storage backend name
+func (s *PostgresStorage) StorageName() string {
+	return StoragePostgreSQL
+}
+
 // Close closes the database connection
 func (s *PostgresStorage) Close() error {
 	return s.db.Close()

@@ -425,6 +425,11 @@ func (s *SQLiteStorage) Query(ctx context.Context, query string, args ...any) ([
 	return results, rows.Err()
 }
 
+// StorageName returns the storage backend name
+func (s *SQLiteStorage) StorageName() string {
+	return StorageSQLite
+}
+
 // Close closes the database connection
 func (s *SQLiteStorage) Close() error {
 	return s.db.Close()

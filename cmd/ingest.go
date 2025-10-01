@@ -100,6 +100,12 @@ func runIngest(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 
+	// Override concurrency to 1 for SQLite to avoid "table locked" errors
+	if store.StorageName() == storage.StorageSQLite && maxConcurrency > 1 {
+		fmt.Printf("SQLite detected: overriding max concurrency from %d to 1 to avoid table locked errors\n", maxConcurrency)
+		maxConcurrency = 1
+	}
+
 	if watch {
 		return runWatchMode(ctx, store)
 	}
