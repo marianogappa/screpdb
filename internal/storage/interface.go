@@ -15,7 +15,8 @@ const (
 // Storage defines the interface for persisting replay data
 type Storage interface {
 	// Initialize sets up the storage (create tables, etc.)
-	Initialize(ctx context.Context) error
+	// If clean is true, drops all existing tables before creating new ones
+	Initialize(ctx context.Context, clean bool) error
 
 	// StoreReplay stores a complete replay data structure
 	StoreReplay(ctx context.Context, data *models.ReplayData) error

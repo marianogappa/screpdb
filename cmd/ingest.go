@@ -48,6 +48,7 @@ var (
 	upToDate           string
 	upToMonths         int
 	maxConcurrency     int
+	clean              bool
 )
 
 func init() {
@@ -59,6 +60,7 @@ func init() {
 	ingestCmd.Flags().StringVarP(&upToDate, "up-to-yyyy-mm-dd", "d", "", "Only process files up to this date (YYYY-MM-DD format)")
 	ingestCmd.Flags().IntVarP(&upToMonths, "up-to-n-months", "m", 0, "Only process files from the last N months (0 = no limit)")
 	ingestCmd.Flags().IntVarP(&maxConcurrency, "max-concurrency", "c", 4, "Maximum number of concurrent goroutines for processing replays")
+	ingestCmd.Flags().BoolVar(&clean, "clean", false, "Drop all tables before ingesting to start over (useful for migrations)")
 }
 
 func runIngest(cmd *cobra.Command, args []string) error {
@@ -96,7 +98,7 @@ func runIngest(cmd *cobra.Command, args []string) error {
 	}
 	defer store.Close()
 
-	if err := store.Initialize(ctx); err != nil {
+	if err := store.Initialize(ctx, clean); err != nil {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 

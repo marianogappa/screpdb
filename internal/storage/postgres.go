@@ -30,7 +30,25 @@ func NewPostgresStorage(connectionString string) (*PostgresStorage, error) {
 }
 
 // Initialize creates the database schema
-func (s *PostgresStorage) Initialize(ctx context.Context) error {
+// If clean is true, drops all existing tables before creating new ones
+func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
+	if clean {
+		// Drop all tables in the correct order to handle foreign key constraints
+		dropTables := `
+			DROP TABLE IF EXISTS placed_units CASCADE;
+			DROP TABLE IF EXISTS start_locations CASCADE;
+			DROP TABLE IF EXISTS resources CASCADE;
+			DROP TABLE IF EXISTS buildings CASCADE;
+			DROP TABLE IF EXISTS units CASCADE;
+			DROP TABLE IF EXISTS commands CASCADE;
+			DROP TABLE IF EXISTS players CASCADE;
+			DROP TABLE IF EXISTS replays CASCADE;
+		`
+		if _, err := s.db.ExecContext(ctx, dropTables); err != nil {
+			return fmt.Errorf("failed to drop tables: %w", err)
+		}
+	}
+
 	schema := `
 	CREATE TABLE IF NOT EXISTS replays (
 		id SERIAL PRIMARY KEY,

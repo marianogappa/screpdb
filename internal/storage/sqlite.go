@@ -25,7 +25,25 @@ func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
 }
 
 // Initialize creates the database schema
-func (s *SQLiteStorage) Initialize(ctx context.Context) error {
+// If clean is true, drops all existing tables before creating new ones
+func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
+	if clean {
+		// Drop all tables in the correct order to handle foreign key constraints
+		dropTables := `
+			DROP TABLE IF EXISTS placed_units;
+			DROP TABLE IF EXISTS start_locations;
+			DROP TABLE IF EXISTS resources;
+			DROP TABLE IF EXISTS buildings;
+			DROP TABLE IF EXISTS units;
+			DROP TABLE IF EXISTS commands;
+			DROP TABLE IF EXISTS players;
+			DROP TABLE IF EXISTS replays;
+		`
+		if _, err := s.db.ExecContext(ctx, dropTables); err != nil {
+			return fmt.Errorf("failed to drop tables: %w", err)
+		}
+	}
+
 	schema := `
 	CREATE TABLE IF NOT EXISTS replays (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
