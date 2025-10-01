@@ -13,19 +13,7 @@ permissions:
 
 jobs:
   release:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            goos: linux
-            goarch: amd64
-          - os: macos-latest
-            goos: darwin
-            goarch: amd64
-          - os: windows-latest
-            goos: windows
-            goarch: amd64
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,6 +30,6 @@ jobs:
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean --config=.goreleaser-${{ matrix.goos }}.yml
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

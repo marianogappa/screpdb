@@ -2,30 +2,18 @@ builds:
   - env:
       - CGO_ENABLED=1
     goos:
-      - linux
-      - darwin
       - windows
     goarch:
       - amd64
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
-    ignore:
-      - goos: linux
-        goarch: amd64
-        goarm: 7
-      - goos: darwin
-        goarch: amd64
-        goarm: 7
-      - goos: windows
-        goarch: amd64
-        goarm: 7
 
 archives:
-  - format: tar.gz
+  - format: zip
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
-  name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_checksums.txt"
+  name_template: "{{ .ProjectName }}_{{ .Version }}_windows_checksums.txt"
 
 snapshot:
   name_template: "{{ .Tag }}-next"
@@ -42,5 +30,5 @@ release:
     owner: marianogappa
     name: screpdb
   draft: false
-  prerelease: true
+  prerelease: false
   mode: replace
