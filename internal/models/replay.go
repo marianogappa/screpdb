@@ -47,6 +47,10 @@ type Player struct {
 	APM      int  `json:"apm"`
 	SPM      int  `json:"spm"` // Supply per minute
 	IsWinner bool `json:"is_winner"`
+
+	// Start location (if available)
+	StartLocationX *int `json:"start_location_x,omitempty"`
+	StartLocationY *int `json:"start_location_y,omitempty"`
 }
 
 // Command represents a player command/action in the game
@@ -72,6 +76,72 @@ type Command struct {
 
 	// Command effectiveness
 	Effective bool `json:"effective"`
+
+	// Common fields (used by multiple command types)
+	Queued    *bool   `json:"queued,omitempty"`
+	UnitTag   *uint16 `json:"unit_tag,omitempty"`
+	OrderID   *byte   `json:"order_id,omitempty"`
+	OrderName *string `json:"order_name,omitempty"`
+
+	// Select command fields
+	SelectUnitTags *string `json:"select_unit_tags,omitempty"` // JSON array of unit tags
+
+	// Build command fields
+	BuildUnitName *string `json:"build_unit_name,omitempty"`
+
+	// Right Click command fields
+	RightClickUnitTag  *uint16 `json:"right_click_unit_tag,omitempty"`
+	RightClickUnitName *string `json:"right_click_unit_name,omitempty"`
+
+	// Targeted Order command fields
+	TargetedOrderUnitTag  *uint16 `json:"targeted_order_unit_tag,omitempty"`
+	TargetedOrderUnitName *string `json:"targeted_order_unit_name,omitempty"`
+
+	// Train command fields
+	TrainUnitName *string `json:"train_unit_name,omitempty"`
+
+	// Cancel Train command fields
+	CancelTrainUnitTag *uint16 `json:"cancel_train_unit_tag,omitempty"`
+
+	// Unload command fields
+	UnloadUnitTag *uint16 `json:"unload_unit_tag,omitempty"`
+
+	// Building Morph command fields
+	BuildingMorphUnitName *string `json:"building_morph_unit_name,omitempty"`
+
+	// Tech command fields
+	TechName *string `json:"tech_name,omitempty"`
+
+	// Upgrade command fields
+	UpgradeName *string `json:"upgrade_name,omitempty"`
+
+	// Hotkey command fields
+	HotkeyType  *string `json:"hotkey_type,omitempty"`
+	HotkeyGroup *byte   `json:"hotkey_group,omitempty"`
+
+	// Game Speed command fields
+	GameSpeed *string `json:"game_speed,omitempty"`
+
+	// Chat command fields
+	ChatSenderSlotID *byte   `json:"chat_sender_slot_id,omitempty"`
+	ChatMessage      *string `json:"chat_message,omitempty"`
+
+	// Vision command fields
+	VisionSlotIDs *string `json:"vision_slot_ids,omitempty"` // JSON array of slot IDs
+
+	// Alliance command fields
+	AllianceSlotIDs *string `json:"alliance_slot_ids,omitempty"` // JSON array of slot IDs
+	AlliedVictory   *bool   `json:"allied_victory,omitempty"`
+
+	// Leave Game command fields
+	LeaveReason *string `json:"leave_reason,omitempty"`
+
+	// Minimap Ping command fields
+	MinimapPingX *int `json:"minimap_ping_x,omitempty"`
+	MinimapPingY *int `json:"minimap_ping_y,omitempty"`
+
+	// General command fields (for unhandled commands)
+	GeneralData *string `json:"general_data,omitempty"` // Hex string of raw data
 }
 
 // Unit represents a unit in the game
@@ -149,6 +219,27 @@ type PlacedUnit struct {
 	MaxEnergy int    `json:"max_energy"`
 }
 
+// ChatMessage represents an in-game chat message
+type ChatMessage struct {
+	ID           int64     `json:"id"`
+	ReplayID     int64     `json:"replay_id"`
+	PlayerID     int64     `json:"player_id"`
+	SenderSlotID byte      `json:"sender_slot_id"`
+	Message      string    `json:"message"`
+	Frame        int32     `json:"frame"`
+	Time         time.Time `json:"time"`
+}
+
+// LeaveGame represents a player leaving the game
+type LeaveGame struct {
+	ID       int64     `json:"id"`
+	ReplayID int64     `json:"replay_id"`
+	PlayerID int64     `json:"player_id"`
+	Reason   string    `json:"reason"`
+	Frame    int32     `json:"frame"`
+	Time     time.Time `json:"time"`
+}
+
 // ReplayData represents the complete parsed replay data
 type ReplayData struct {
 	Replay         *Replay          `json:"replay"`
@@ -159,4 +250,6 @@ type ReplayData struct {
 	Resources      []*Resource      `json:"resources"`
 	StartLocations []*StartLocation `json:"start_locations"`
 	PlacedUnits    []*PlacedUnit    `json:"placed_units"`
+	ChatMessages   []*ChatMessage   `json:"chat_messages"`
+	LeaveGames     []*LeaveGame     `json:"leave_games"`
 }

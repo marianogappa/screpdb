@@ -6,6 +6,7 @@ import (
 
 	"github.com/icza/screp/rep/repcmd"
 	"github.com/marianogappa/screpdb/internal/models"
+	"github.com/marianogappa/screpdb/internal/parser/commands"
 	"github.com/marianogappa/screpdb/internal/screp"
 )
 
@@ -27,6 +28,8 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 		Resources:      []*models.Resource{},
 		StartLocations: []*models.StartLocation{},
 		PlacedUnits:    []*models.PlacedUnit{},
+		ChatMessages:   []*models.ChatMessage{},
+		LeaveGames:     []*models.LeaveGame{},
 	}
 
 	// Parse replay metadata
@@ -46,32 +49,60 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 	data.Replay.AvailSlotsCount = rep.Header.AvailSlotsCount
 
 	// Parse players
-	for _, player := range rep.Header.Players {
+	for i, player := range rep.Header.Players {
 		if player == nil {
 			continue
 		}
 
-		// Calculate APM and SPM (these would need to be computed from commands)
+		// Extract APM and EAPM from computed data
 		apm := 0
-		spm := 0
-		isWinner := false // This would need to be determined from game outcome
+		eapm := 0
+		isWinner := false
+
+		if rep.Computed != nil && i < len(rep.Computed.PlayerDescs) {
+			pd := rep.Computed.PlayerDescs[i]
+			apm = int(pd.APM)
+			eapm = int(pd.EAPM)
+
+			// Check if this player is on the winning team
+			if rep.Computed.WinnerTeam != 0 && player.Team == rep.Computed.WinnerTeam {
+				isWinner = true
+			}
+		}
+
+		// Extract start location if available
+		var startX, startY *int
+		if rep.Computed != nil && i < len(rep.Computed.PlayerDescs) {
+			pd := rep.Computed.PlayerDescs[i]
+			if pd.StartLocation != nil {
+				x := int(pd.StartLocation.X)
+				y := int(pd.StartLocation.Y)
+				startX = &x
+				startY = &y
+			}
+		}
 
 		data.Players = append(data.Players, &models.Player{
-			SlotID:   player.SlotID,
-			PlayerID: player.ID,
-			Name:     player.Name,
-			Race:     player.Race.String(),
-			Type:     player.Type.String(),
-			Color:    player.Color.String(),
-			Team:     player.Team,
-			Observer: player.Observer,
-			APM:      apm,
-			SPM:      spm,
-			IsWinner: isWinner,
+			SlotID:         player.SlotID,
+			PlayerID:       player.ID,
+			Name:           player.Name,
+			Race:           player.Race.String(),
+			Type:           player.Type.String(),
+			Color:          player.Color.String(),
+			Team:           player.Team,
+			Observer:       player.Observer,
+			APM:            apm,
+			SPM:            eapm, // Using EAPM as SPM for now
+			IsWinner:       isWinner,
+			StartLocationX: startX,
+			StartLocationY: startY,
 		})
 	}
 
-	// Parse commands and extract unit/building information
+	// Parse commands using the new command handling system
+	commandRegistry := commands.NewCommandRegistry()
+	startTime := rep.Header.StartTime.Unix()
+
 	if rep.Commands != nil {
 		for _, cmd := range rep.Commands.Cmds {
 			base := cmd.BaseCmd()
@@ -80,148 +111,75 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 				continue
 			}
 
-			command := &models.Command{
-				PlayerID:   playerID,
-				Frame:      int32(base.Frame),
-				Time:       rep.Header.StartTime.Add(base.Frame.Duration()),
-				ActionType: base.Type.String(),
-				ActionID:   byte(base.Type.ID),
-				UnitID:     0,
-				TargetID:   0,
-				X:          0,
-				Y:          0,
-				Data:       cmd.Params(true),
-				Effective:  base.IneffKind.Effective(),
-			}
+			// Process command using the registry
+			command := commandRegistry.ProcessCommand(cmd, data.Replay.ID, startTime)
+			if command != nil {
+				// Extract command effectiveness from screp's computed data
+				baseCmd := cmd.BaseCmd()
+				command.Effective = baseCmd.IneffKind.Effective()
+				// Extract unit/building information for specific command types
+				switch c := cmd.(type) {
+				case *repcmd.BuildCmd:
+					if c.Unit != nil {
+						// Create building entry
+						data.Buildings = append(data.Buildings, &models.Building{
+							ReplayID:   data.Replay.ID,
+							BuildingID: c.Unit.ID,
+							Type:       c.Unit.Name,
+							Name:       c.Unit.Name,
+							Created:    command.Time,
+							X:          command.X,
+							Y:          command.Y,
+							HP:         0, // Would need to track from game state
+							MaxHP:      0,
+							Shield:     0,
+							MaxShield:  0,
+							Energy:     0,
+							MaxEnergy:  0,
+						})
+					}
+				case *repcmd.BuildingMorphCmd:
+					if c.Unit != nil {
+						// Create building morph entry (could be treated as building update)
+						data.Buildings = append(data.Buildings, &models.Building{
+							ReplayID:   data.Replay.ID,
+							BuildingID: c.Unit.ID,
+							Type:       c.Unit.Name,
+							Name:       c.Unit.Name,
+							Created:    command.Time,
+							X:          0, // Position would need to be tracked
+							Y:          0,
+							HP:         0,
+							MaxHP:      0,
+							Shield:     0,
+							MaxShield:  0,
+							Energy:     0,
+							MaxEnergy:  0,
+						})
+					}
+				case *repcmd.TrainCmd:
+					if c.Unit != nil {
+						// Create unit entry
+						data.Units = append(data.Units, &models.Unit{
+							ReplayID:  data.Replay.ID,
+							UnitID:    c.Unit.ID,
+							Type:      c.Unit.Name,
+							Name:      c.Unit.Name,
+							Created:   command.Time,
+							X:         0, // Would need to track from game state
+							Y:         0,
+							HP:        0,
+							MaxHP:     0,
+							Shield:    0,
+							MaxShield: 0,
+							Energy:    0,
+							MaxEnergy: 0,
+						})
+					}
+				}
 
-			// Extract specific command data based on command type
-			switch c := cmd.(type) {
-			case *repcmd.AllianceCmd:
-				// Alliance commands don't have position data
-				command.Data = fmt.Sprintf("AlliedVictory:%t,SlotIDs:%v", c.AlliedVictory, c.SlotIDs)
-			case *repcmd.BuildCmd:
-				command.X = int(c.Pos.X)
-				command.Y = int(c.Pos.Y)
-				if c.Unit != nil {
-					command.UnitID = byte(c.Unit.ID)
-					// Create building entry
-					data.Buildings = append(data.Buildings, &models.Building{
-						ReplayID:   data.Replay.ID,
-						BuildingID: c.Unit.ID,
-						Type:       c.Unit.Name,
-						Name:       c.Unit.Name,
-						Created:    command.Time,
-						X:          command.X,
-						Y:          command.Y,
-						HP:         0, // Would need to track from game state
-						MaxHP:      0,
-						Shield:     0,
-						MaxShield:  0,
-						Energy:     0,
-						MaxEnergy:  0,
-					})
-				}
-			case *repcmd.BuildingMorphCmd:
-				if c.Unit != nil {
-					command.UnitID = byte(c.Unit.ID)
-					// Create building morph entry (could be treated as building update)
-					data.Buildings = append(data.Buildings, &models.Building{
-						ReplayID:   data.Replay.ID,
-						BuildingID: c.Unit.ID,
-						Type:       c.Unit.Name,
-						Name:       c.Unit.Name,
-						Created:    command.Time,
-						X:          0, // Position would need to be tracked
-						Y:          0,
-						HP:         0,
-						MaxHP:      0,
-						Shield:     0,
-						MaxShield:  0,
-						Energy:     0,
-						MaxEnergy:  0,
-					})
-				}
-			case *repcmd.CancelTrainCmd:
-				command.UnitID = byte(c.UnitTag)
-			case *repcmd.ChatCmd:
-				command.Data = fmt.Sprintf("SenderSlotID:%d,Message:%s", c.SenderSlotID, c.Message)
-			case *repcmd.GameSpeedCmd:
-				// Game speed commands don't have position data
-			case *repcmd.GeneralCmd:
-				command.Data = fmt.Sprintf("RawData:%v", c.Data)
-			case *repcmd.HotkeyCmd:
-				if c.HotkeyType != nil {
-					command.Data = fmt.Sprintf("HotkeyType:%s,Group:%d", c.HotkeyType.Name, c.Group)
-				}
-			case *repcmd.LandCmd:
-				command.X = int(c.Pos.X)
-				command.Y = int(c.Pos.Y)
-				if c.Unit != nil {
-					command.UnitID = byte(c.Unit.ID)
-				}
-			case *repcmd.LatencyCmd:
-				// Latency commands don't have position data
-			case *repcmd.LeaveGameCmd:
-				// Leave game commands don't have position data
-			case *repcmd.LiftOffCmd:
-				command.X = int(c.Pos.X)
-				command.Y = int(c.Pos.Y)
-			case *repcmd.MinimapPingCmd:
-				command.X = int(c.Pos.X)
-				command.Y = int(c.Pos.Y)
-			case *repcmd.ParseErrCmd:
-				// Parse error commands don't have position data
-			case *repcmd.QueueableCmd:
-				// QueueableCmd is a base type, not a specific command
-			case *repcmd.RightClickCmd:
-				command.X = int(c.Pos.X)
-				command.Y = int(c.Pos.Y)
-			case *repcmd.SelectCmd:
-				command.Data = fmt.Sprintf("UnitTags:%v", c.UnitTags)
-			case *repcmd.TargetedOrderCmd:
-				command.X = int(c.Pos.X)
-				command.Y = int(c.Pos.Y)
-				if c.Unit != nil {
-					command.TargetID = byte(c.Unit.ID)
-				}
-			case *repcmd.TechCmd:
-				if c.Tech != nil {
-					command.Data = fmt.Sprintf("Tech:%s", c.Tech.Name)
-				}
-			case *repcmd.TrainCmd:
-				if c.Unit != nil {
-					command.UnitID = byte(c.Unit.ID)
-					// Create unit entry
-					data.Units = append(data.Units, &models.Unit{
-						ReplayID:  data.Replay.ID,
-						UnitID:    c.Unit.ID,
-						Type:      c.Unit.Name,
-						Name:      c.Unit.Name,
-						Created:   command.Time,
-						X:         0, // Would need to track from game state
-						Y:         0,
-						HP:        0,
-						MaxHP:     0,
-						Shield:    0,
-						MaxShield: 0,
-						Energy:    0,
-						MaxEnergy: 0,
-					})
-				}
-			case *repcmd.UnloadCmd:
-				command.UnitID = byte(c.UnitTag)
-			case *repcmd.UpgradeCmd:
-				if c.Upgrade != nil {
-					command.Data = fmt.Sprintf("Upgrade:%s", c.Upgrade.Name)
-				}
-			case *repcmd.VisionCmd:
-				command.Data = fmt.Sprintf("SlotIDs:%v", c.SlotIDs)
-			default:
-				// Handle any unknown command types
-				command.Data = fmt.Sprintf("UnknownCommand:%T", cmd)
+				data.Commands = append(data.Commands, command)
 			}
-
-			data.Commands = append(data.Commands, command)
 		}
 	}
 
@@ -251,6 +209,67 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 			data.StartLocations = append(data.StartLocations, &models.StartLocation{
 				X: int(startLoc.X),
 				Y: int(startLoc.Y),
+			})
+		}
+
+		// Parse placed units (units that start on the map)
+		if rep.MapData.MapGraphics != nil {
+			for _, placedUnit := range rep.MapData.MapGraphics.PlacedUnits {
+				// Find the player ID from slot ID
+				playerID := int64(0)
+				for _, player := range rep.Header.Players {
+					if player != nil && player.SlotID == uint16(placedUnit.SlotID) {
+						playerID = int64(player.ID)
+						break
+					}
+				}
+
+				data.PlacedUnits = append(data.PlacedUnits, &models.PlacedUnit{
+					ReplayID:  data.Replay.ID,
+					PlayerID:  playerID,
+					Type:      fmt.Sprintf("UnitID_%d", placedUnit.UnitID), // Use UnitID as type since Name is not available
+					Name:      fmt.Sprintf("UnitID_%d", placedUnit.UnitID),
+					X:         int(placedUnit.X),
+					Y:         int(placedUnit.Y),
+					HP:        0, // Not available in PlacedUnit
+					MaxHP:     0,
+					Shield:    0,
+					MaxShield: 0,
+					Energy:    0,
+					MaxEnergy: 0,
+				})
+			}
+		}
+	}
+
+	// Extract chat messages and leave game commands from computed data
+	if rep.Computed != nil {
+		// Extract chat messages
+		for _, chatCmd := range rep.Computed.ChatCmds {
+			baseCmd := chatCmd.BaseCmd()
+			data.ChatMessages = append(data.ChatMessages, &models.ChatMessage{
+				ReplayID:     data.Replay.ID,
+				PlayerID:     int64(baseCmd.PlayerID),
+				SenderSlotID: chatCmd.SenderSlotID,
+				Message:      chatCmd.Message,
+				Frame:        int32(baseCmd.Frame),
+				Time:         time.Unix(startTime+int64(baseCmd.Frame.Duration().Seconds()), 0),
+			})
+		}
+
+		// Extract leave game commands
+		for _, leaveCmd := range rep.Computed.LeaveGameCmds {
+			baseCmd := leaveCmd.BaseCmd()
+			reason := ""
+			if leaveCmd.Reason != nil {
+				reason = leaveCmd.Reason.String()
+			}
+			data.LeaveGames = append(data.LeaveGames, &models.LeaveGame{
+				ReplayID: data.Replay.ID,
+				PlayerID: int64(baseCmd.PlayerID),
+				Reason:   reason,
+				Frame:    int32(baseCmd.Frame),
+				Time:     time.Unix(startTime+int64(baseCmd.Frame.Duration().Seconds()), 0),
 			})
 		}
 	}

@@ -35,6 +35,8 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 	if clean {
 		// Drop all tables in the correct order to handle foreign key constraints
 		dropTables := `
+			DROP TABLE IF EXISTS chat_messages CASCADE;
+			DROP TABLE IF EXISTS leave_games CASCADE;
 			DROP TABLE IF EXISTS placed_units CASCADE;
 			DROP TABLE IF EXISTS start_locations CASCADE;
 			DROP TABLE IF EXISTS resources CASCADE;
@@ -87,6 +89,8 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 		apm INTEGER NOT NULL,
 		spm INTEGER NOT NULL,
 		is_winner BOOLEAN NOT NULL,
+		start_location_x INTEGER,
+		start_location_y INTEGER,
 		UNIQUE(replay_id, slot_id)
 	);
 
@@ -103,12 +107,79 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 		x INTEGER NOT NULL,
 		y INTEGER NOT NULL,
 		data TEXT,
-		effective BOOLEAN NOT NULL
+		effective BOOLEAN NOT NULL,
+		
+		-- Common fields (used by multiple command types)
+		queued BOOLEAN,
+		unit_tag INTEGER,
+		order_id INTEGER,
+		order_name TEXT,
+		
+		-- Select command fields
+		select_unit_tags TEXT, -- JSON array of unit tags
+		
+		-- Build command fields
+		build_unit_name TEXT,
+		
+		-- Right Click command fields
+		right_click_unit_tag INTEGER,
+		right_click_unit_name TEXT,
+		
+		-- Targeted Order command fields
+		targeted_order_unit_tag INTEGER,
+		targeted_order_unit_name TEXT,
+		
+		-- Train command fields
+		train_unit_name TEXT,
+		
+		-- Cancel Train command fields
+		cancel_train_unit_tag INTEGER,
+		
+		-- Unload command fields
+		unload_unit_tag INTEGER,
+		
+		-- Building Morph command fields
+		building_morph_unit_name TEXT,
+		
+		-- Tech command fields
+		tech_name TEXT,
+		
+		-- Upgrade command fields
+		upgrade_name TEXT,
+		
+		-- Hotkey command fields
+		hotkey_type TEXT,
+		hotkey_group INTEGER,
+		
+		-- Game Speed command fields
+		game_speed TEXT,
+		
+		-- Chat command fields
+		chat_sender_slot_id INTEGER,
+		chat_message TEXT,
+		
+		-- Vision command fields
+		vision_slot_ids TEXT, -- JSON array of slot IDs
+		
+		-- Alliance command fields
+		alliance_slot_ids TEXT, -- JSON array of slot IDs
+		allied_victory BOOLEAN,
+		
+		-- Leave Game command fields
+		leave_reason TEXT,
+		
+		-- Minimap Ping command fields
+		minimap_ping_x INTEGER,
+		minimap_ping_y INTEGER,
+		
+		-- General command fields (for unhandled commands)
+		general_data TEXT -- Hex string of raw data
 	);
 
 	CREATE TABLE IF NOT EXISTS units (
 		id SERIAL PRIMARY KEY,
 		replay_id INTEGER NOT NULL REFERENCES replays(id) ON DELETE CASCADE,
+		player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
 		unit_id INTEGER NOT NULL,
 		type TEXT NOT NULL,
 		name TEXT NOT NULL,
@@ -127,6 +198,7 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 	CREATE TABLE IF NOT EXISTS buildings (
 		id SERIAL PRIMARY KEY,
 		replay_id INTEGER NOT NULL REFERENCES replays(id) ON DELETE CASCADE,
+		player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
 		building_id INTEGER NOT NULL,
 		type TEXT NOT NULL,
 		name TEXT NOT NULL,
@@ -174,6 +246,25 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 		max_energy INTEGER NOT NULL
 	);
 
+	CREATE TABLE IF NOT EXISTS chat_messages (
+		id SERIAL PRIMARY KEY,
+		replay_id INTEGER NOT NULL REFERENCES replays(id) ON DELETE CASCADE,
+		player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+		sender_slot_id INTEGER NOT NULL,
+		message TEXT NOT NULL,
+		frame INTEGER NOT NULL,
+		time TIMESTAMP WITH TIME ZONE NOT NULL
+	);
+
+	CREATE TABLE IF NOT EXISTS leave_games (
+		id SERIAL PRIMARY KEY,
+		replay_id INTEGER NOT NULL REFERENCES replays(id) ON DELETE CASCADE,
+		player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+		reason TEXT,
+		frame INTEGER NOT NULL,
+		time TIMESTAMP WITH TIME ZONE NOT NULL
+	);
+
 	CREATE INDEX IF NOT EXISTS idx_replays_file_path ON replays(file_path);
 	CREATE INDEX IF NOT EXISTS idx_replays_file_checksum ON replays(file_checksum);
 	CREATE INDEX IF NOT EXISTS idx_replays_replay_date ON replays(replay_date);
@@ -187,6 +278,12 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 	CREATE INDEX IF NOT EXISTS idx_start_locations_replay_id ON start_locations(replay_id);
 	CREATE INDEX IF NOT EXISTS idx_placed_units_replay_id ON placed_units(replay_id);
 	CREATE INDEX IF NOT EXISTS idx_placed_units_player_id ON placed_units(player_id);
+	CREATE INDEX IF NOT EXISTS idx_chat_messages_replay_id ON chat_messages(replay_id);
+	CREATE INDEX IF NOT EXISTS idx_chat_messages_player_id ON chat_messages(player_id);
+	CREATE INDEX IF NOT EXISTS idx_chat_messages_frame ON chat_messages(frame);
+	CREATE INDEX IF NOT EXISTS idx_leave_games_replay_id ON leave_games(replay_id);
+	CREATE INDEX IF NOT EXISTS idx_leave_games_player_id ON leave_games(player_id);
+	CREATE INDEX IF NOT EXISTS idx_leave_games_frame ON leave_games(frame);
 	`
 
 	_, err := s.db.ExecContext(ctx, schema)
@@ -228,8 +325,8 @@ func (s *PostgresStorage) StoreReplay(ctx context.Context, data *models.ReplayDa
 	// Insert players
 	playerQuery := `
 		INSERT INTO players (
-			replay_id, slot_id, player_id, name, race, type, color, team, observer, apm, spm, is_winner
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			replay_id, slot_id, player_id, name, race, type, color, team, observer, apm, spm, is_winner, start_location_x, start_location_y
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING id
 	`
 
@@ -240,6 +337,7 @@ func (s *PostgresStorage) StoreReplay(ctx context.Context, data *models.ReplayDa
 		err := tx.QueryRowContext(ctx, playerQuery,
 			player.ReplayID, player.SlotID, player.PlayerID, player.Name, player.Race, player.Type,
 			player.Color, player.Team, player.Observer, player.APM, player.SPM, player.IsWinner,
+			player.StartLocationX, player.StartLocationY,
 		).Scan(&playerID)
 		if err != nil {
 			return fmt.Errorf("failed to insert player: %w", err)
@@ -250,8 +348,14 @@ func (s *PostgresStorage) StoreReplay(ctx context.Context, data *models.ReplayDa
 	// Insert commands
 	commandQuery := `
 		INSERT INTO commands (
-			replay_id, player_id, frame, time, action_type, action_id, unit_id, target_id, x, y, data, effective
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			replay_id, player_id, frame, time, action_type, action_id, unit_id, target_id, x, y, data, effective,
+			queued, unit_tag, order_id, order_name, select_unit_tags, build_unit_name,
+			right_click_unit_tag, right_click_unit_name, targeted_order_unit_tag, targeted_order_unit_name,
+			train_unit_name, cancel_train_unit_tag, unload_unit_tag, building_morph_unit_name,
+			tech_name, upgrade_name, hotkey_type, hotkey_group, game_speed,
+			chat_sender_slot_id, chat_message, vision_slot_ids, alliance_slot_ids, allied_victory,
+			leave_reason, minimap_ping_x, minimap_ping_y, general_data
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40)
 	`
 
 	for _, command := range data.Commands {
@@ -266,6 +370,16 @@ func (s *PostgresStorage) StoreReplay(ctx context.Context, data *models.ReplayDa
 			command.ReplayID, command.PlayerID, command.Frame, command.Time,
 			command.ActionType, command.ActionID, command.UnitID, command.TargetID,
 			command.X, command.Y, command.Data, command.Effective,
+			command.Queued, command.UnitTag, command.OrderID, command.OrderName,
+			command.SelectUnitTags, command.BuildUnitName,
+			command.RightClickUnitTag, command.RightClickUnitName,
+			command.TargetedOrderUnitTag, command.TargetedOrderUnitName,
+			command.TrainUnitName, command.CancelTrainUnitTag, command.UnloadUnitTag,
+			command.BuildingMorphUnitName, command.TechName, command.UpgradeName,
+			command.HotkeyType, command.HotkeyGroup, command.GameSpeed,
+			command.ChatSenderSlotID, command.ChatMessage, command.VisionSlotIDs,
+			command.AllianceSlotIDs, command.AlliedVictory, command.LeaveReason,
+			command.MinimapPingX, command.MinimapPingY, command.GeneralData,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to insert command: %w", err)
@@ -275,16 +389,22 @@ func (s *PostgresStorage) StoreReplay(ctx context.Context, data *models.ReplayDa
 	// Insert units
 	unitQuery := `
 		INSERT INTO units (
-			replay_id, unit_id, type, name, created, destroyed,
+			replay_id, player_id, unit_id, type, name, created, destroyed,
 			x, y, hp, max_hp, shield, max_shield, energy, max_energy
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 	`
 
 	for _, unit := range data.Units {
 		unit.ReplayID = replayID
+		// Find the player ID from the unit's PlayerID
+		playerID, exists := playerIDs[byte(unit.PlayerID)]
+		if !exists {
+			continue // Skip units for players not found
+		}
+		unit.PlayerID = playerID
 
 		_, err := tx.ExecContext(ctx, unitQuery,
-			unit.ReplayID, unit.UnitID, unit.Type, unit.Name,
+			unit.ReplayID, unit.PlayerID, unit.UnitID, unit.Type, unit.Name,
 			unit.Created, unit.Destroyed, unit.X, unit.Y, unit.HP, unit.MaxHP,
 			unit.Shield, unit.MaxShield, unit.Energy, unit.MaxEnergy,
 		)
@@ -296,16 +416,22 @@ func (s *PostgresStorage) StoreReplay(ctx context.Context, data *models.ReplayDa
 	// Insert buildings
 	buildingQuery := `
 		INSERT INTO buildings (
-			replay_id, building_id, type, name, created, destroyed,
+			replay_id, player_id, building_id, type, name, created, destroyed,
 			x, y, hp, max_hp, shield, max_shield, energy, max_energy
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 	`
 
 	for _, building := range data.Buildings {
 		building.ReplayID = replayID
+		// Find the player ID from the building's PlayerID
+		playerID, exists := playerIDs[byte(building.PlayerID)]
+		if !exists {
+			continue // Skip buildings for players not found
+		}
+		building.PlayerID = playerID
 
 		_, err := tx.ExecContext(ctx, buildingQuery,
-			building.ReplayID, building.BuildingID, building.Type,
+			building.ReplayID, building.PlayerID, building.BuildingID, building.Type,
 			building.Name, building.Created, building.Destroyed, building.X, building.Y,
 			building.HP, building.MaxHP, building.Shield, building.MaxShield,
 			building.Energy, building.MaxEnergy,
@@ -373,6 +499,54 @@ func (s *PostgresStorage) StoreReplay(ctx context.Context, data *models.ReplayDa
 		)
 		if err != nil {
 			return fmt.Errorf("failed to insert placed unit: %w", err)
+		}
+	}
+
+	// Insert chat messages
+	chatMessageQuery := `
+		INSERT INTO chat_messages (
+			replay_id, player_id, sender_slot_id, message, frame, time
+		) VALUES ($1, $2, $3, $4, $5, $6)
+	`
+
+	for _, chatMsg := range data.ChatMessages {
+		chatMsg.ReplayID = replayID
+		playerID, exists := playerIDs[byte(chatMsg.PlayerID)]
+		if !exists {
+			continue
+		}
+		chatMsg.PlayerID = playerID
+
+		_, err := tx.ExecContext(ctx, chatMessageQuery,
+			chatMsg.ReplayID, chatMsg.PlayerID, chatMsg.SenderSlotID, chatMsg.Message,
+			chatMsg.Frame, chatMsg.Time,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to insert chat message: %w", err)
+		}
+	}
+
+	// Insert leave games
+	leaveGameQuery := `
+		INSERT INTO leave_games (
+			replay_id, player_id, reason, frame, time
+		) VALUES ($1, $2, $3, $4, $5)
+	`
+
+	for _, leaveGame := range data.LeaveGames {
+		leaveGame.ReplayID = replayID
+		playerID, exists := playerIDs[byte(leaveGame.PlayerID)]
+		if !exists {
+			continue
+		}
+		leaveGame.PlayerID = playerID
+
+		_, err := tx.ExecContext(ctx, leaveGameQuery,
+			leaveGame.ReplayID, leaveGame.PlayerID, leaveGame.Reason,
+			leaveGame.Frame, leaveGame.Time,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to insert leave game: %w", err)
 		}
 	}
 
