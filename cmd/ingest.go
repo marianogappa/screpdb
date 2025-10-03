@@ -6,10 +6,12 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/parser"
 	"github.com/marianogappa/screpdb/internal/storage"
@@ -47,7 +49,6 @@ var (
 	stopAfterN         int
 	upToDate           string
 	upToMonths         int
-	maxConcurrency     int
 	clean              bool
 )
 
@@ -59,7 +60,6 @@ func init() {
 	ingestCmd.Flags().IntVarP(&stopAfterN, "stop-after-n-reps", "n", 0, "Stop after processing N replay files (0 = no limit)")
 	ingestCmd.Flags().StringVarP(&upToDate, "up-to-yyyy-mm-dd", "d", "", "Only process files up to this date (YYYY-MM-DD format)")
 	ingestCmd.Flags().IntVarP(&upToMonths, "up-to-n-months", "m", 0, "Only process files from the last N months (0 = no limit)")
-	ingestCmd.Flags().IntVarP(&maxConcurrency, "max-concurrency", "c", 4, "Maximum number of concurrent goroutines for processing replays")
 	ingestCmd.Flags().BoolVar(&clean, "clean", false, "Drop all tables before ingesting to start over (useful for migrations)")
 }
 
@@ -71,26 +71,18 @@ func runIngest(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot specify both --postgres-connection-string and --sqlite-output-file")
 	}
 
-	// Validate max concurrency
-	if maxConcurrency <= 0 {
-		return fmt.Errorf("max concurrency must be greater than 0")
-	}
-	if maxConcurrency > 100 {
-		return fmt.Errorf("max concurrency should not exceed 100 to avoid overwhelming the system")
-	}
-
 	// Initialize storage
 	var store storage.Storage
 	var err error
 
 	if postgresConnString != "" {
-		fmt.Printf("Using PostgreSQL storage\n")
+		color.Cyan("Using PostgreSQL storage")
 		store, err = storage.NewPostgresStorage(postgresConnString)
 		if err != nil {
 			return fmt.Errorf("failed to create PostgreSQL storage: %w", err)
 		}
 	} else {
-		fmt.Printf("Using SQLite storage: %s\n", sqliteOutput)
+		color.Cyan("Using SQLite storage: %s", sqliteOutput)
 		store, err = storage.NewSQLiteStorage(sqliteOutput)
 		if err != nil {
 			return fmt.Errorf("failed to create SQLite storage: %w", err)
@@ -102,12 +94,6 @@ func runIngest(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 
-	// Override concurrency to 1 for SQLite to avoid "table locked" errors
-	if store.StorageName() == storage.StorageSQLite && maxConcurrency > 1 {
-		fmt.Printf("SQLite detected: overriding max concurrency from %d to 1 to avoid table locked errors\n", maxConcurrency)
-		maxConcurrency = 1
-	}
-
 	if watch {
 		return runWatchMode(ctx, store)
 	}
@@ -116,9 +102,12 @@ func runIngest(cmd *cobra.Command, args []string) error {
 }
 
 func runWatchMode(ctx context.Context, store storage.Storage) error {
-	fmt.Printf("Watching directory: %s\n", inputDir)
-	fmt.Printf("Max concurrency: %d\n", maxConcurrency)
-	fmt.Println("Press Ctrl+C to stop...")
+	color.Cyan("Watching directory: %s", inputDir)
+	color.Cyan("Using %d CPU cores for parsing", runtime.GOMAXPROCS(0))
+	color.Yellow("Press Ctrl+C to stop...")
+
+	// Start the ingestion process
+	dataChan, errChan := store.StartIngestion(ctx)
 
 	watcher, err := fileops.NewFileWatcher(inputDir)
 	if err != nil {
@@ -133,9 +122,6 @@ func runWatchMode(ctx context.Context, store storage.Storage) error {
 	// Create errgroup with context for concurrent processing
 	g, gCtx := errgroup.WithContext(ctx)
 
-	// Create a semaphore to limit concurrency
-	semaphore := make(chan struct{}, maxConcurrency)
-
 	// Handle graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -143,40 +129,41 @@ func runWatchMode(ctx context.Context, store storage.Storage) error {
 	for {
 		select {
 		case fileInfo := <-watcher.Events():
-			fmt.Printf("New file detected: %s\n", fileInfo.Name)
+			color.Green("New file detected: %s", fileInfo.Name)
 
 			// Process file concurrently
 			g.Go(func() error {
-				// Acquire semaphore
-				select {
-				case semaphore <- struct{}{}:
-					defer func() { <-semaphore }()
-				case <-gCtx.Done():
-					return gCtx.Err()
-				}
-
-				if err := processFile(gCtx, store, &fileInfo); err != nil {
+				if err := processFileToChannel(gCtx, dataChan, &fileInfo); err != nil {
 					log.Printf("Error processing file %s: %v", fileInfo.Name, err)
 					return nil // Don't stop processing on errors
 				}
 
-				fmt.Printf("Successfully processed: %s\n", fileInfo.Name)
+				color.Green("Successfully processed: %s", fileInfo.Name)
 				return nil
 			})
 
 		case err := <-watcher.Errors():
-			fmt.Printf("Watcher error: %v\n", err)
+			color.Red("Watcher error: %v", err)
+
+		case err := <-errChan:
+			if err != nil {
+				return fmt.Errorf("storage error: %w", err)
+			}
 
 		case <-sigChan:
-			fmt.Println("\nShutting down...")
+			color.Yellow("\nShutting down...")
+			close(dataChan)
 			return nil
 		}
 	}
 }
 
 func runBatchMode(ctx context.Context, store storage.Storage) error {
-	fmt.Printf("Scanning directory: %s\n", inputDir)
-	fmt.Printf("Max concurrency: %d\n", maxConcurrency)
+	color.Cyan("Scanning directory: %s", inputDir)
+	color.Cyan("Using %d CPU cores for parsing", runtime.GOMAXPROCS(0))
+
+	// Start the ingestion process
+	dataChan, errChan := store.StartIngestion(ctx)
 
 	// Get all replay files
 	files, err := fileops.GetReplayFiles(inputDir)
@@ -184,7 +171,7 @@ func runBatchMode(ctx context.Context, store storage.Storage) error {
 		return fmt.Errorf("failed to get replay files: %w", err)
 	}
 
-	fmt.Printf("Found %d replay files\n", len(files))
+	color.Green("Found %d replay files", len(files))
 
 	// Sort by modification time (newest first)
 	fileops.SortFilesByModTime(files)
@@ -205,85 +192,130 @@ func runBatchMode(ctx context.Context, store storage.Storage) error {
 	}
 
 	filteredFiles := fileops.FilterFilesByDate(files, upToDatePtr, upToMonthsPtr)
-	fmt.Printf("After date filtering: %d files\n", len(filteredFiles))
+	color.Green("After date filtering: %d files", len(filteredFiles))
 
 	// Apply count limit
 	if stopAfterN > 0 {
 		filteredFiles = fileops.LimitFiles(filteredFiles, stopAfterN)
-		fmt.Printf("Limited to %d files\n", len(filteredFiles))
+		color.Green("Limited to %d files", len(filteredFiles))
 	}
 
-	// Process files concurrently
-	var processed, skipped, errors int64
+	// Batch check for existing replays before processing
+	color.Yellow("Checking for existing replays...")
+	existingReplays, err := batchCheckExistingReplays(ctx, store, filteredFiles)
+	if err != nil {
+		return fmt.Errorf("failed to check existing replays: %w", err)
+	}
+
+	// Filter out existing replays
+	var filesToProcess []fileops.FileInfo
+	for _, fileInfo := range filteredFiles {
+		if !existingReplays[fileInfo.Path] {
+			filesToProcess = append(filesToProcess, fileInfo)
+		}
+	}
+
+	skippedCount := len(filteredFiles) - len(filesToProcess)
+	color.Yellow("Skipping %d existing replays", skippedCount)
+	color.Green("Processing %d new replays", len(filesToProcess))
+
+	// Process files in batches of 100
+	const batchSize = 100
+	var processed, errors int64
 	var mu sync.Mutex
 
-	// Create a semaphore to limit concurrency
-	semaphore := make(chan struct{}, maxConcurrency)
+	for i := 0; i < len(filesToProcess); i += batchSize {
+		end := i + batchSize
+		if end > len(filesToProcess) {
+			end = len(filesToProcess)
+		}
 
-	// Create errgroup with context
-	g, gCtx := errgroup.WithContext(ctx)
+		batch := filesToProcess[i:end]
+		color.Cyan("Processing batch %d-%d of %d", i+1, end, len(filesToProcess))
 
-	for i, fileInfo := range filteredFiles {
-		i, fileInfo := i, fileInfo // capture loop variables
+		// Create errgroup with context for this batch
+		g, gCtx := errgroup.WithContext(ctx)
 
-		g.Go(func() error {
-			// Acquire semaphore
-			select {
-			case semaphore <- struct{}{}:
-				defer func() { <-semaphore }()
-			case <-gCtx.Done():
-				return gCtx.Err()
-			}
+		for j, fileInfo := range batch {
+			j, fileInfo := j, fileInfo // capture loop variables
 
-			fmt.Printf("Processing %d/%d: %s\n", i+1, len(filteredFiles), fileInfo.Name)
+			g.Go(func() error {
+				log.Printf("Processing %d/%d: %s", i+j+1, len(filesToProcess), fileInfo.Name)
 
-			exists, err := store.ReplayExists(gCtx, fileInfo.Path, fileInfo.Checksum)
-			if err != nil {
-				log.Printf("Error checking if replay exists for %s: %v", fileInfo.Name, err)
+				if err := processFileToChannel(gCtx, dataChan, &fileInfo); err != nil {
+					log.Printf("Error processing file %s: %v", fileInfo.Name, err)
+					mu.Lock()
+					errors++
+					mu.Unlock()
+					return nil // Don't stop processing on errors
+				}
+
 				mu.Lock()
-				errors++
-				mu.Unlock()
-				return nil // Don't stop processing on errors
-			}
-
-			if exists {
-				fmt.Printf("Skipping (already exists): %s\n", fileInfo.Name)
-				mu.Lock()
-				skipped++
+				processed++
 				mu.Unlock()
 				return nil
-			}
+			})
+		}
 
-			if err := processFile(gCtx, store, &fileInfo); err != nil {
-				log.Printf("Error processing file %s: %v", fileInfo.Name, err)
-				mu.Lock()
-				errors++
-				mu.Unlock()
-				return nil // Don't stop processing on errors
-			}
-
-			fmt.Printf("Successfully processed: %s\n", fileInfo.Name)
-			mu.Lock()
-			processed++
-			mu.Unlock()
-			return nil
-		})
+		// Wait for this batch to complete
+		if err := g.Wait(); err != nil {
+			log.Printf("Error during batch processing: %v", err)
+		}
 	}
 
-	// Wait for all goroutines to complete
-	if err := g.Wait(); err != nil {
-		fmt.Printf("Error during concurrent processing: %v\n", err)
+	// Close the data channel to signal completion
+	close(dataChan)
+
+	// Wait for storage to finish
+	if err := <-errChan; err != nil {
+		return fmt.Errorf("storage error: %w", err)
 	}
 
-	fmt.Printf("\nProcessing complete:\n")
-	fmt.Printf("  Processed: %d\n", processed)
-	fmt.Printf("  Skipped: %d\n", skipped)
-	fmt.Printf("  Errors: %d\n", errors)
+	color.Green("\nProcessing complete:")
+	color.Green("  Processed: %d", processed)
+	color.Yellow("  Skipped: %d", skippedCount)
+	color.Red("  Errors: %d", errors)
 
 	return nil
 }
 
-func processFile(ctx context.Context, store storage.Storage, fileInfo *fileops.FileInfo) error {
+// batchCheckExistingReplays checks for existing replays in batches of 100
+func batchCheckExistingReplays(ctx context.Context, store storage.Storage, files []fileops.FileInfo) (map[string]bool, error) {
+	const batchSize = 100
+	existingReplays := make(map[string]bool)
+
+	for i := 0; i < len(files); i += batchSize {
+		end := i + batchSize
+		if end > len(files) {
+			end = len(files)
+		}
+
+		batch := files[i:end]
+		filePaths := make([]string, len(batch))
+		checksums := make([]string, len(batch))
+
+		for j, fileInfo := range batch {
+			filePaths[j] = fileInfo.Path
+			checksums[j] = fileInfo.Checksum
+		}
+
+		batchExisting, err := store.BatchReplayExists(ctx, filePaths, checksums)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check batch %d-%d: %w", i+1, end, err)
+		}
+
+		// Merge results
+		for filePath, exists := range batchExisting {
+			existingReplays[filePath] = exists
+		}
+
+		log.Printf("Checked batch %d-%d: %d existing replays found", i+1, end, len(batchExisting))
+	}
+
+	return existingReplays, nil
+}
+
+func processFileToChannel(ctx context.Context, dataChan storage.ReplayDataChannel, fileInfo *fileops.FileInfo) error {
 	// Create replay model from file info
 	replay := parser.CreateReplayFromFileInfo(fileInfo.Path, fileInfo.Name, fileInfo.Size, fileInfo.Checksum)
 
@@ -293,10 +325,11 @@ func processFile(ctx context.Context, store storage.Storage, fileInfo *fileops.F
 		return fmt.Errorf("failed to parse replay: %w", err)
 	}
 
-	// Store in database
-	if err := store.StoreReplay(ctx, data); err != nil {
-		return fmt.Errorf("failed to store replay: %w", err)
+	// Send to storage channel
+	select {
+	case dataChan <- data:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
-
-	return nil
 }
