@@ -20,7 +20,7 @@ func (u *UnitsInserter) TableName() string {
 }
 
 var unitsColumnNames = []string{
-	"replay_id", "player_id", "unit_id", "type", "name", "created", "created_frame", "x", "y",
+	"replay_id", "player_id", "type", "created", "created_frame",
 }
 
 // ColumnNames returns the column names for units
@@ -42,13 +42,9 @@ func (u *UnitsInserter) BuildArgs(entity any, args []any, offset int) error {
 
 	args[offset] = unit.ReplayID
 	args[offset+1] = unit.PlayerID
-	args[offset+2] = unit.UnitID
-	args[offset+3] = unit.Type
-	args[offset+4] = unit.Name
-	args[offset+5] = unit.Created
-	args[offset+6] = unit.CreatedFrame
-	args[offset+7] = unit.X
-	args[offset+8] = unit.Y
+	args[offset+2] = unit.Type
+	args[offset+3] = unit.Created
+	args[offset+4] = unit.CreatedFrame
 
 	return nil
 }

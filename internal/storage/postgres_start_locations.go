@@ -16,7 +16,7 @@ func NewStartLocationsInserter() *StartLocationsInserter {
 
 // TableName returns the table name for start locations
 func (s *StartLocationsInserter) TableName() string {
-	return "start_locations"
+	return "available_start_locations"
 }
 
 var startLocationsColumnNames = []string{

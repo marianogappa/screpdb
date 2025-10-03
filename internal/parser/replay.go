@@ -335,11 +335,8 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 							ReplayID:     data.Replay.ID,
 							UnitID:       c.Unit.ID,
 							Type:         c.Unit.Name,
-							Name:         c.Unit.Name,
 							Created:      command.Time,
 							CreatedFrame: command.Frame,
-							X:            0, // Would need to track from game state
-							Y:            0,
 						})
 					}
 				}

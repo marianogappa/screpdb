@@ -153,11 +153,8 @@ type Unit struct {
 	PlayerID     int64     `json:"player_id"`
 	UnitID       uint16    `json:"unit_id"`
 	Type         string    `json:"type"` // Marine, Zealot, Zergling, etc.
-	Name         string    `json:"name"`
 	Created      time.Time `json:"created"`
 	CreatedFrame int32     `json:"created_frame"`
-	X            int       `json:"x"`
-	Y            int       `json:"y"`
 }
 
 // Building represents a building in the game
@@ -232,7 +229,7 @@ type ReplayData struct {
 	Units          []*Unit          `json:"units"`
 	Buildings      []*Building      `json:"buildings"`
 	Resources      []*Resource      `json:"resources"`
-	StartLocations []*StartLocation `json:"start_locations"`
+	StartLocations []*StartLocation `json:"available_start_locations"`
 	PlacedUnits    []*PlacedUnit    `json:"placed_units"`
 	ChatMessages   []*ChatMessage   `json:"chat_messages"`
 	LeaveGames     []*LeaveGame     `json:"leave_games"`

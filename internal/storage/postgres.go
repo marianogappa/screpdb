@@ -132,7 +132,7 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 			DROP TABLE IF EXISTS chat_messages CASCADE;
 			DROP TABLE IF EXISTS leave_games CASCADE;
 			DROP TABLE IF EXISTS placed_units CASCADE;
-			DROP TABLE IF EXISTS start_locations CASCADE;
+			DROP TABLE IF EXISTS available_start_locations CASCADE;
 			DROP TABLE IF EXISTS resources CASCADE;
 			DROP TABLE IF EXISTS buildings CASCADE;
 			DROP TABLE IF EXISTS units CASCADE;
@@ -265,13 +265,9 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 		id SERIAL PRIMARY KEY,
 		replay_id INTEGER NOT NULL,
 		player_id INTEGER NOT NULL,
-		unit_id INTEGER NOT NULL,
 		type TEXT NOT NULL,
-		name TEXT NOT NULL,
 		created TIMESTAMP WITH TIME ZONE NOT NULL,
-		created_frame INTEGER NOT NULL,
-		x INTEGER NOT NULL,
-		y INTEGER NOT NULL
+		created_frame INTEGER NOT NULL
 	);
 
 	CREATE TABLE IF NOT EXISTS buildings (
@@ -296,11 +292,12 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 		amount INTEGER NOT NULL
 	);
 
-	CREATE TABLE IF NOT EXISTS start_locations (
+	CREATE TABLE IF NOT EXISTS available_start_locations (
 		id SERIAL PRIMARY KEY,
 		replay_id INTEGER NOT NULL,
 		x INTEGER NOT NULL,
-		y INTEGER NOT NULL
+		y INTEGER NOT NULL,
+		FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE
 	);
 
 	CREATE TABLE IF NOT EXISTS placed_units (
@@ -342,7 +339,7 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 	CREATE INDEX IF NOT EXISTS idx_units_replay_id ON units(replay_id);
 	CREATE INDEX IF NOT EXISTS idx_buildings_replay_id ON buildings(replay_id);
 	CREATE INDEX IF NOT EXISTS idx_resources_replay_id ON resources(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_start_locations_replay_id ON start_locations(replay_id);
+	CREATE INDEX IF NOT EXISTS idx_available_start_locations_replay_id ON available_start_locations(replay_id);
 	CREATE INDEX IF NOT EXISTS idx_placed_units_replay_id ON placed_units(replay_id);
 	CREATE INDEX IF NOT EXISTS idx_placed_units_player_id ON placed_units(player_id);
 	CREATE INDEX IF NOT EXISTS idx_chat_messages_replay_id ON chat_messages(replay_id);

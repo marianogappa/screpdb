@@ -16,7 +16,7 @@ func NewSQLiteStartLocationsInserter() *SQLiteStartLocationsInserter {
 
 // TableName returns the table name for start locations
 func (s *SQLiteStartLocationsInserter) TableName() string {
-	return "start_locations"
+	return "available_start_locations"
 }
 
 var sqliteStartLocationsColumnNames = []string{
