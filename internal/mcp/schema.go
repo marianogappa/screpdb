@@ -54,7 +54,7 @@ Contains all game actions/events that occurred during the replay.
 - replay_id (INTEGER, FOREIGN KEY): References replays.id
 - player_id (INTEGER, FOREIGN KEY): References players.id
 - frame (INTEGER): Game frame when action occurred
-- time (DATETIME): Calculated time when action occurred
+- run_at (DATETIME): Calculated time when action occurred
 - type (TEXT): Type of action (e.g., "Unit", "Building", "Upgrade")
 - action (TEXT): Specific action (e.g., "Create", "Destroy", "Move", "Attack")
 - unit_type (TEXT): Type of unit involved (if applicable)
@@ -71,7 +71,7 @@ Contains information about all units that existed during the game.
 - unit_id (INTEGER): Unique unit ID within the replay
 - type (TEXT): Unit type (e.g., "Marine", "Zealot", "Zergling")
 - name (TEXT): Unit name
-- created (DATETIME): When the unit was created
+- created_at (DATETIME): When the unit was created
 - destroyed (DATETIME): When the unit was destroyed (NULL if still alive)
 - x (INTEGER): Current X coordinate
 - y (INTEGER): Current Y coordinate
@@ -89,10 +89,8 @@ Contains information about all buildings that existed during the game.
 - id (INTEGER, PRIMARY KEY): Unique identifier for each building record
 - replay_id (INTEGER, FOREIGN KEY): References replays.id
 - player_id (INTEGER, FOREIGN KEY): References players.id
-- building_id (INTEGER): Unique building ID within the replay
 - type (TEXT): Building type (e.g., "Command Center", "Nexus", "Hatchery")
-- name (TEXT): Building name
-- created (DATETIME): When the building was created
+- created_at (DATETIME): When the building was created
 - destroyed (DATETIME): When the building was destroyed (NULL if still standing)
 - x (INTEGER): Current X coordinate
 - y (INTEGER): Current Y coordinate
@@ -131,7 +129,7 @@ SELECT
     COUNT(*) as total_created,
     COUNT(CASE WHEN u.destroyed IS NOT NULL THEN 1 END) as destroyed,
     AVG(CASE WHEN u.destroyed IS NOT NULL 
-        THEN (julianday(u.destroyed) - julianday(u.created)) * 24 * 60 * 60 
+        THEN (julianday(u.destroyed) - julianday(u.created_at)) * 24 * 60 * 60 
         END) as avg_lifetime_seconds
 FROM units u
 GROUP BY u.type

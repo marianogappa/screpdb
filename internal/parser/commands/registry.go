@@ -103,7 +103,7 @@ func (r *CommandRegistry) ProcessCommand(cmd repcmd.Cmd, replayID int64, startTi
 	command := handler.Handle(cmd, base)
 	if command != nil {
 		command.ReplayID = replayID
-		command.Time = time.Unix(startTime+int64(base.Frame.Duration().Seconds()), 0)
+		command.RunAt = time.Unix(startTime+int64(base.Frame.Duration().Seconds()), 0)
 	}
 
 	return command

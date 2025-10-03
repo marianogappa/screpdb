@@ -72,12 +72,9 @@ func NewChatCommandHandler() *ChatCommandHandler {
 }
 
 func (h *ChatCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.Command {
-	chatCmd := cmd.(*repcmd.ChatCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	command.ChatSenderSlotID = bytePtr(chatCmd.SenderSlotID)
-	command.ChatMessage = stringPtr(chatCmd.Message)
-
+	// Chat data is stored in dedicated chat_messages table, not in commands table
 	return command
 }
 
@@ -123,7 +120,7 @@ func (h *AllianceCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *mode
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
 	command.AllianceSlotIDs = slotIDsToIntSlice(allianceCmd.SlotIDs)
-	command.AlliedVictory = boolPtr(allianceCmd.AlliedVictory)
+	command.IsAlliedVictory = boolPtr(allianceCmd.AlliedVictory)
 
 	return command
 }
@@ -143,12 +140,8 @@ func NewLeaveGameCommandHandler() *LeaveGameCommandHandler {
 }
 
 func (h *LeaveGameCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.Command {
-	leaveGameCmd := cmd.(*repcmd.LeaveGameCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	if leaveGameCmd.Reason != nil {
-		command.LeaveReason = stringPtr(leaveGameCmd.Reason.String())
-	}
-
+	// Leave game data is stored in dedicated leave_games table, not in commands table
 	return command
 }

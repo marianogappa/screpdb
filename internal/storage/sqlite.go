@@ -145,7 +145,6 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 		file_path TEXT UNIQUE NOT NULL,
 		file_checksum TEXT UNIQUE NOT NULL,
 		file_name TEXT NOT NULL,
-		file_size INTEGER NOT NULL,
 		created_at DATETIME NOT NULL,
 		replay_date DATETIME NOT NULL,
 		title TEXT,
@@ -153,34 +152,32 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 		map_name TEXT NOT NULL,
 		map_width INTEGER NOT NULL,
 		map_height INTEGER NOT NULL,
-		duration INTEGER NOT NULL,
+		duration_seconds INTEGER NOT NULL,
 		frame_count INTEGER NOT NULL,
-		version TEXT NOT NULL,
+		engine_version TEXT NOT NULL,
 		engine TEXT NOT NULL,
-		speed TEXT NOT NULL,
+		game_speed TEXT NOT NULL,
 		game_type TEXT NOT NULL,
-		sub_type TEXT NOT NULL,
+		home_team_size TEXT NOT NULL,
 		avail_slots_count INTEGER NOT NULL
 	);
 
 	CREATE TABLE IF NOT EXISTS players (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		replay_id INTEGER NOT NULL,
-		slot_id INTEGER NOT NULL,
 		player_id INTEGER NOT NULL,
 		name TEXT NOT NULL,
 		race TEXT NOT NULL,
 		type TEXT NOT NULL,
 		color TEXT NOT NULL,
 		team INTEGER NOT NULL,
-		observer BOOLEAN NOT NULL,
+		is_observer BOOLEAN NOT NULL,
 		apm INTEGER NOT NULL,
-		spm INTEGER NOT NULL,
+		eapm INTEGER NOT NULL, -- effective apm is apm excluding actions deemed ineffective
 		is_winner BOOLEAN NOT NULL,
 		start_location_x INTEGER,
 		start_location_y INTEGER,
-		start_location_oclock INTEGER,
-		UNIQUE(replay_id, slot_id)
+		start_location_oclock INTEGER
 	);
 
 	CREATE TABLE IF NOT EXISTS commands (
@@ -188,17 +185,15 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 		replay_id INTEGER NOT NULL,
 		player_id INTEGER NOT NULL,
 		frame INTEGER NOT NULL,
-		time DATETIME NOT NULL,
+		run_at DATETIME NOT NULL,
 		action_type TEXT NOT NULL,
-		action_id INTEGER NOT NULL,
 		unit_id INTEGER,
-		target_id INTEGER NOT NULL,
 		x INTEGER NOT NULL,
 		y INTEGER NOT NULL,
-		effective BOOLEAN NOT NULL,
+		is_effective BOOLEAN NOT NULL,
 		
 		-- Common fields (used by multiple command types)
-		queued BOOLEAN,
+		is_queued BOOLEAN,
 		order_id INTEGER,
 		order_name TEXT,
 		
@@ -207,10 +202,6 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 		unit_player_id INTEGER, -- Single unit player ID
 		unit_types TEXT, -- JSON array of unit types for multiple units
 		unit_ids TEXT, -- JSON array of unit IDs for multiple units
-		
-		-- Select command fields (legacy)
-		select_unit_tags TEXT, -- JSON array of unit tags
-		select_unit_types TEXT, -- JSON map of unit tag -> unit type
 		
 		-- Build command fields
 		build_unit_name TEXT,
@@ -234,23 +225,14 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 		-- Game Speed command fields
 		game_speed TEXT,
 		
-		-- Chat command fields
-		chat_sender_slot_id INTEGER,
-		chat_message TEXT,
-		
 		-- Vision command fields
 		vision_slot_ids TEXT, -- JSON array of slot IDs
 		
 		-- Alliance command fields
 		alliance_slot_ids TEXT, -- JSON array of slot IDs
-		allied_victory BOOLEAN,
-		
-		-- Leave Game command fields
-		leave_reason TEXT,
+		is_allied_victory BOOLEAN,
 		
 		-- Minimap Ping command fields
-		minimap_ping_x INTEGER,
-		minimap_ping_y INTEGER,
 		
 		-- General command fields (for unhandled commands)
 		general_data TEXT -- Hex string of raw data
@@ -261,7 +243,7 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 		replay_id INTEGER NOT NULL,
 		player_id INTEGER NOT NULL,
 		type TEXT NOT NULL,
-		created DATETIME NOT NULL,
+		created_at DATETIME NOT NULL,
 		created_frame INTEGER NOT NULL
 	);
 
@@ -269,10 +251,8 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		replay_id INTEGER NOT NULL,
 		player_id INTEGER NOT NULL,
-		building_id INTEGER NOT NULL,
 		type TEXT NOT NULL,
-		name TEXT NOT NULL,
-		created DATETIME NOT NULL,
+		created_at DATETIME NOT NULL,
 		created_frame INTEGER NOT NULL,
 		x INTEGER NOT NULL,
 		y INTEGER NOT NULL
@@ -309,7 +289,6 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		replay_id INTEGER NOT NULL,
 		player_id INTEGER NOT NULL,
-		sender_slot_id INTEGER NOT NULL,
 		message TEXT NOT NULL,
 		frame INTEGER NOT NULL,
 		time DATETIME NOT NULL
@@ -480,19 +459,19 @@ func (s *SQLiteStorage) storeReplayWithBatching(ctx context.Context, data *model
 func (s *SQLiteStorage) insertReplaySequential(ctx context.Context, replay *models.Replay) (int64, error) {
 	query := `
 		INSERT INTO replays (
-			file_path, file_checksum, file_name, file_size, created_at, replay_date,
-			title, host, map_name, map_width, map_height, duration,
-			frame_count, version, engine, speed, game_type, sub_type, avail_slots_count
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			file_path, file_checksum, file_name, created_at, replay_date,
+			title, host, map_name, map_width, map_height, duration_seconds,
+			frame_count, engine_version, engine, game_speed, game_type, home_team_size, avail_slots_count
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	result, err := s.db.ExecContext(ctx, query,
 		replay.FilePath, replay.FileChecksum, replay.FileName,
-		replay.FileSize, replay.CreatedAt, replay.ReplayDate,
+		replay.CreatedAt, replay.ReplayDate,
 		replay.Title, replay.Host, replay.MapName,
-		replay.MapWidth, replay.MapHeight, replay.Duration,
-		replay.FrameCount, replay.Version, replay.Engine,
-		replay.Speed, replay.GameType, replay.SubType,
+		replay.MapWidth, replay.MapHeight, replay.DurationSeconds,
+		replay.FrameCount, replay.EngineVersion, replay.Engine,
+		replay.GameSpeed, replay.GameType, replay.HomeTeamSize,
 		replay.AvailSlotsCount,
 	)
 	if err != nil {
@@ -516,31 +495,30 @@ func (s *SQLiteStorage) insertPlayersBatch(ctx context.Context, replayID int64, 
 	// Build the batch insert query
 	query := `
 		INSERT INTO players (
-			replay_id, slot_id, player_id, name, race, type, color, team, observer, apm, spm, is_winner, start_location_x, start_location_y, start_location_oclock
+			replay_id, player_id, name, race, type, color, team, is_observer, apm, eapm, is_winner, start_location_x, start_location_y, start_location_oclock
 		) VALUES `
 
 	// Build placeholders and args
 	placeholders := make([]string, len(players))
-	args := make([]any, len(players)*15)
+	args := make([]any, len(players)*14)
 
 	for i, player := range players {
-		placeholders[i] = "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+		placeholders[i] = "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
-		args[i*15] = replayID
-		args[i*15+1] = player.SlotID
-		args[i*15+2] = player.PlayerID
-		args[i*15+3] = player.Name
-		args[i*15+4] = player.Race
-		args[i*15+5] = player.Type
-		args[i*15+6] = player.Color
-		args[i*15+7] = player.Team
-		args[i*15+8] = player.Observer
-		args[i*15+9] = player.APM
-		args[i*15+10] = player.SPM
-		args[i*15+11] = player.IsWinner
-		args[i*15+12] = player.StartLocationX
-		args[i*15+13] = player.StartLocationY
-		args[i*15+14] = player.StartLocationOclock
+		args[i*14] = replayID
+		args[i*14+1] = player.PlayerID
+		args[i*14+2] = player.Name
+		args[i*14+3] = player.Race
+		args[i*14+4] = player.Type
+		args[i*14+5] = player.Color
+		args[i*14+6] = player.Team
+		args[i*14+7] = player.IsObserver
+		args[i*14+8] = player.APM
+		args[i*14+9] = player.EAPM
+		args[i*14+10] = player.IsWinner
+		args[i*14+11] = player.StartLocationX
+		args[i*14+12] = player.StartLocationY
+		args[i*14+13] = player.StartLocationOclock
 	}
 
 	query += strings.Join(placeholders, ", ")

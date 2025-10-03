@@ -20,7 +20,7 @@ func (c *SQLiteChatMessagesInserter) TableName() string {
 }
 
 var sqliteChatMessagesColumnNames = []string{
-	"replay_id", "player_id", "sender_slot_id", "message", "frame", "time",
+	"replay_id", "player_id", "message", "frame", "time",
 }
 
 // ColumnNames returns the column names for chat messages
@@ -42,10 +42,9 @@ func (c *SQLiteChatMessagesInserter) BuildArgs(entity any, args []any, offset in
 
 	args[offset] = chatMsg.ReplayID
 	args[offset+1] = chatMsg.PlayerID
-	args[offset+2] = chatMsg.SenderSlotID
-	args[offset+3] = chatMsg.Message
-	args[offset+4] = chatMsg.Frame
-	args[offset+5] = chatMsg.Time
+	args[offset+2] = chatMsg.Message
+	args[offset+3] = chatMsg.Frame
+	args[offset+4] = chatMsg.Time
 
 	return nil
 }

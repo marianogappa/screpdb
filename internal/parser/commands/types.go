@@ -112,12 +112,11 @@ func intPtr(i int) *int {
 // Create base command from base command info
 func createBaseCommand(base *repcmd.Base, replayID int64, startTime int64) *models.Command {
 	return &models.Command{
-		ReplayID:   replayID,
-		PlayerID:   int64(base.PlayerID),
-		Frame:      int32(base.Frame),
-		Time:       time.Unix(startTime+int64(base.Frame.Duration().Seconds()), 0),
-		ActionType: base.Type.String(),
-		ActionID:   base.Type.ID,
-		Effective:  base.IneffKind.Effective(),
+		ReplayID:    replayID,
+		PlayerID:    int64(base.PlayerID),
+		Frame:       int32(base.Frame),
+		RunAt:       time.Unix(startTime+int64(base.Frame.Duration().Seconds()), 0),
+		ActionType:  base.Type.String(),
+		IsEffective: base.IneffKind.Effective(),
 	}
 }

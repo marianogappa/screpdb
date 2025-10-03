@@ -41,13 +41,13 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 	data.Replay.MapName = rep.Header.Map
 	data.Replay.MapWidth = rep.Header.MapWidth
 	data.Replay.MapHeight = rep.Header.MapHeight
-	data.Replay.Duration = int(rep.Header.Duration().Seconds())
+	data.Replay.DurationSeconds = int(rep.Header.Duration().Seconds())
 	data.Replay.FrameCount = int32(rep.Header.Frames)
-	data.Replay.Version = rep.Header.Version
+	data.Replay.EngineVersion = rep.Header.Version
 	data.Replay.Engine = rep.Header.Engine.String()
-	data.Replay.Speed = rep.Header.Speed.String()
+	data.Replay.GameSpeed = rep.Header.Speed.String()
 	data.Replay.GameType = rep.Header.Type.String()
-	data.Replay.SubType = rep.Header.SubType
+	data.Replay.HomeTeamSize = rep.Header.SubType
 	data.Replay.AvailSlotsCount = rep.Header.AvailSlotsCount
 
 	// Parse players
@@ -96,9 +96,9 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 			Type:                player.Type.String(),
 			Color:               player.Color.String(),
 			Team:                player.Team,
-			Observer:            player.Observer,
+			IsObserver:          player.Observer,
 			APM:                 apm,
-			SPM:                 eapm, // Using EAPM as SPM for now
+			EAPM:                eapm, // Effective APM (APM excluding actions deemed ineffective)
 			IsWinner:            isWinner,
 			StartLocationX:      startX,
 			StartLocationY:      startY,
@@ -301,8 +301,8 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 				command.ReplayID = data.Replay.ID
 				command.PlayerID = playerID
 				command.Frame = int32(baseCmd.Frame)
-				command.Time = cmdTime
-				command.Effective = baseCmd.IneffKind.Effective()
+				command.RunAt = cmdTime
+				command.IsEffective = baseCmd.IneffKind.Effective()
 
 				// Extract unit/building information for specific command types
 				switch c := cmd.(type) {
@@ -311,10 +311,8 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 						// Create building entry
 						data.Buildings = append(data.Buildings, &models.Building{
 							ReplayID:     data.Replay.ID,
-							BuildingID:   c.Unit.ID,
 							Type:         c.Unit.Name,
-							Name:         c.Unit.Name,
-							Created:      command.Time,
+							CreatedAt:    command.RunAt,
 							CreatedFrame: command.Frame,
 							X:            command.X,
 							Y:            command.Y,
@@ -325,10 +323,8 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 						// Create building morph entry (could be treated as building update)
 						data.Buildings = append(data.Buildings, &models.Building{
 							ReplayID:     data.Replay.ID,
-							BuildingID:   c.Unit.ID,
 							Type:         c.Unit.Name,
-							Name:         c.Unit.Name,
-							Created:      command.Time,
+							CreatedAt:    command.RunAt,
 							CreatedFrame: command.Frame,
 							X:            0, // Position would need to be tracked
 							Y:            0,
@@ -341,7 +337,7 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 							ReplayID:     data.Replay.ID,
 							UnitID:       c.Unit.ID,
 							Type:         c.Unit.Name,
-							Created:      command.Time,
+							CreatedAt:    command.RunAt,
 							CreatedFrame: command.Frame,
 						})
 					}
@@ -416,12 +412,11 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 		for _, chatCmd := range rep.Computed.ChatCmds {
 			baseCmd := chatCmd.BaseCmd()
 			data.ChatMessages = append(data.ChatMessages, &models.ChatMessage{
-				ReplayID:     data.Replay.ID,
-				PlayerID:     int64(baseCmd.PlayerID),
-				SenderSlotID: chatCmd.SenderSlotID,
-				Message:      chatCmd.Message,
-				Frame:        int32(baseCmd.Frame),
-				Time:         time.Unix(startTime+int64(baseCmd.Frame.Duration().Seconds()), 0),
+				ReplayID: data.Replay.ID,
+				PlayerID: int64(baseCmd.PlayerID),
+				Message:  chatCmd.Message,
+				Frame:    int32(baseCmd.Frame),
+				Time:     time.Unix(startTime+int64(baseCmd.Frame.Duration().Seconds()), 0),
 			})
 		}
 
@@ -451,7 +446,6 @@ func CreateReplayFromFileInfo(filePath, fileName string, fileSize int64, checksu
 		FilePath:     filePath,
 		FileChecksum: checksum,
 		FileName:     fileName,
-		FileSize:     fileSize,
 		CreatedAt:    time.Now(),
 	}
 }

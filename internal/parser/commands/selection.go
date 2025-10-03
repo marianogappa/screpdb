@@ -22,18 +22,13 @@ func NewSelectCommandHandler(actionType string, actionID byte) *SelectCommandHan
 }
 
 func (h *SelectCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.Command {
-	selectCmd := cmd.(*repcmd.SelectCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
-
-	// Legacy support - keep the old fields for now
-	command.SelectUnitTags = unitTagsToJSON(selectCmd.UnitTags)
 
 	return command
 }
 
 // HandleWithUnits handles Select commands with resolved unit information
 func (h *SelectCommandHandler) HandleWithUnits(cmd repcmd.Cmd, base *repcmd.Base, units []*models.UnitInfo) *models.Command {
-	selectCmd := cmd.(*repcmd.SelectCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
 	// Populate normalized unit fields
@@ -53,9 +48,6 @@ func (h *SelectCommandHandler) HandleWithUnits(cmd repcmd.Cmd, base *repcmd.Base
 		command.UnitIDs = stringPtr(string(unitIDsJSON))
 		command.UnitPlayerID = &units[0].PlayerID // Use first unit's player ID
 	}
-
-	// Legacy support - keep the old fields for now
-	command.SelectUnitTags = unitTagsToJSON(selectCmd.UnitTags)
 
 	return command
 }

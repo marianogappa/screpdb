@@ -21,11 +21,11 @@ func (c *CommandsInserter) TableName() string {
 }
 
 var commandsColumnNames = []string{
-	"replay_id", "player_id", "frame", "time", "action_type", "action_id", "unit_id", "target_id", "x", "y", "effective",
-	"queued", "order_id", "order_name", "unit_type", "unit_player_id", "unit_types", "unit_ids", "select_unit_tags", "select_unit_types", "build_unit_name",
+	"replay_id", "player_id", "frame", "run_at", "action_type", "unit_id", "x", "y", "is_effective",
+	"is_queued", "order_id", "order_name", "unit_type", "unit_player_id", "unit_types", "unit_ids", "build_unit_name",
 	"train_unit_name", "building_morph_unit_name", "tech_name", "upgrade_name", "hotkey_type", "hotkey_group", "game_speed",
-	"chat_sender_slot_id", "chat_message", "vision_slot_ids", "alliance_slot_ids", "allied_victory",
-	"leave_reason", "minimap_ping_x", "minimap_ping_y", "general_data",
+	"vision_slot_ids", "alliance_slot_ids", "is_allied_victory",
+	"general_data",
 }
 
 // ColumnNames returns the column names for commands
@@ -73,52 +73,34 @@ func (c *CommandsInserter) BuildArgs(entity any, args []any, offset int) error {
 	if err != nil {
 		return fmt.Errorf("failed to serialize unit IDs: %w", err)
 	}
-	selectUnitTagsJSON, err := serializeString(command.SelectUnitTags)
-	if err != nil {
-		return fmt.Errorf("failed to serialize select unit tags: %w", err)
-	}
-	selectUnitTypesJSON, err := serializeString(command.SelectUnitTypes)
-	if err != nil {
-		return fmt.Errorf("failed to serialize select unit types: %w", err)
-	}
-
 	args[offset] = command.ReplayID
 	args[offset+1] = command.PlayerID
 	args[offset+2] = command.Frame
-	args[offset+3] = command.Time
+	args[offset+3] = command.RunAt
 	args[offset+4] = command.ActionType
-	args[offset+5] = command.ActionID
-	args[offset+6] = command.UnitID
-	args[offset+7] = command.TargetID
-	args[offset+8] = command.X
-	args[offset+9] = command.Y
-	args[offset+10] = command.Effective
-	args[offset+11] = command.Queued
-	args[offset+12] = command.OrderID
-	args[offset+13] = command.OrderName
-	args[offset+14] = command.UnitType
-	args[offset+15] = command.UnitPlayerID
-	args[offset+16] = unitTypesJSON
-	args[offset+17] = unitIDsJSON
-	args[offset+18] = selectUnitTagsJSON
-	args[offset+19] = selectUnitTypesJSON
-	args[offset+20] = command.BuildUnitName
-	args[offset+21] = command.TrainUnitName
-	args[offset+22] = command.BuildingMorphUnitName
-	args[offset+23] = command.TechName
-	args[offset+24] = command.UpgradeName
-	args[offset+25] = command.HotkeyType
-	args[offset+26] = command.HotkeyGroup
-	args[offset+27] = command.GameSpeed
-	args[offset+28] = command.ChatSenderSlotID
-	args[offset+29] = command.ChatMessage
-	args[offset+30] = visionSlotIDsJSON
-	args[offset+31] = allianceSlotIDsJSON
-	args[offset+32] = command.AlliedVictory
-	args[offset+33] = command.LeaveReason
-	args[offset+34] = command.MinimapPingX
-	args[offset+35] = command.MinimapPingY
-	args[offset+36] = command.GeneralData
+	args[offset+5] = command.UnitID
+	args[offset+6] = command.X
+	args[offset+7] = command.Y
+	args[offset+8] = command.IsEffective
+	args[offset+9] = command.IsQueued
+	args[offset+10] = command.OrderID
+	args[offset+11] = command.OrderName
+	args[offset+12] = command.UnitType
+	args[offset+13] = command.UnitPlayerID
+	args[offset+14] = unitTypesJSON
+	args[offset+15] = unitIDsJSON
+	args[offset+16] = command.BuildUnitName
+	args[offset+17] = command.TrainUnitName
+	args[offset+18] = command.BuildingMorphUnitName
+	args[offset+19] = command.TechName
+	args[offset+20] = command.UpgradeName
+	args[offset+21] = command.HotkeyType
+	args[offset+22] = command.HotkeyGroup
+	args[offset+23] = command.GameSpeed
+	args[offset+24] = visionSlotIDsJSON
+	args[offset+25] = allianceSlotIDsJSON
+	args[offset+26] = command.IsAlliedVictory
+	args[offset+27] = command.GeneralData
 
 	return nil
 }

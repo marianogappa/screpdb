@@ -24,10 +24,10 @@ func (h *QueueableCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *mod
 
 	// Try to extract queued status from QueueableCmd if it's that type
 	if queueableCmd, ok := cmd.(*repcmd.QueueableCmd); ok {
-		command.Queued = boolPtr(queueableCmd.Queued)
+		command.IsQueued = boolPtr(queueableCmd.Queued)
 	} else {
 		// For other command types, we'll store basic information without queued status
-		command.Queued = nil
+		command.IsQueued = nil
 	}
 
 	return command

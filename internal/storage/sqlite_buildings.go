@@ -20,7 +20,7 @@ func (b *SQLiteBuildingsInserter) TableName() string {
 }
 
 var sqliteBuildingsColumnNames = []string{
-	"replay_id", "player_id", "building_id", "type", "name", "created", "created_frame", "x", "y",
+	"replay_id", "player_id", "type", "created_at", "created_frame", "x", "y",
 }
 
 // ColumnNames returns the column names for buildings
@@ -42,13 +42,11 @@ func (b *SQLiteBuildingsInserter) BuildArgs(entity any, args []any, offset int) 
 
 	args[offset] = building.ReplayID
 	args[offset+1] = building.PlayerID
-	args[offset+2] = building.BuildingID
-	args[offset+3] = building.Type
-	args[offset+4] = building.Name
-	args[offset+5] = building.Created
-	args[offset+6] = building.CreatedFrame
-	args[offset+7] = building.X
-	args[offset+8] = building.Y
+	args[offset+2] = building.Type
+	args[offset+3] = building.CreatedAt
+	args[offset+4] = building.CreatedFrame
+	args[offset+5] = building.X
+	args[offset+6] = building.Y
 
 	return nil
 }

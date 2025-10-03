@@ -26,12 +26,7 @@ func (h *RightClickCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *mo
 	command.X = int(rightClickCmd.Pos.X)
 	command.Y = int(rightClickCmd.Pos.Y)
 
-	// Legacy support - keep the old fields for now
-	if rightClickCmd.Unit != nil && rightClickCmd.Unit.ID != repcmd.UnitIDNone {
-		command.TargetID = byte(rightClickCmd.Unit.ID)
-	}
-
-	command.Queued = boolPtr(rightClickCmd.Queued)
+	command.IsQueued = boolPtr(rightClickCmd.Queued)
 
 	return command
 }
@@ -51,11 +46,7 @@ func (h *RightClickCommandHandler) HandleWithUnit(cmd repcmd.Cmd, base *repcmd.B
 		command.UnitID = bytePtr(byte(unit.UnitID))
 	}
 
-	if rightClickCmd.Unit != nil && rightClickCmd.Unit.ID != repcmd.UnitIDNone {
-		command.TargetID = byte(rightClickCmd.Unit.ID)
-	}
-
-	command.Queued = boolPtr(rightClickCmd.Queued)
+	command.IsQueued = boolPtr(rightClickCmd.Queued)
 
 	return command
 }
@@ -81,17 +72,12 @@ func (h *TargetedOrderCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) 
 	command.X = int(targetedOrderCmd.Pos.X)
 	command.Y = int(targetedOrderCmd.Pos.Y)
 
-	// Legacy support - keep the old fields for now
-	if targetedOrderCmd.Unit != nil && targetedOrderCmd.Unit.ID != repcmd.UnitIDNone {
-		command.TargetID = byte(targetedOrderCmd.Unit.ID)
-	}
-
 	if targetedOrderCmd.Order != nil {
 		command.OrderID = bytePtr(targetedOrderCmd.Order.ID)
 		command.OrderName = stringPtr(targetedOrderCmd.Order.Name)
 	}
 
-	command.Queued = boolPtr(targetedOrderCmd.Queued)
+	command.IsQueued = boolPtr(targetedOrderCmd.Queued)
 
 	return command
 }
@@ -111,16 +97,12 @@ func (h *TargetedOrderCommandHandler) HandleWithUnit(cmd repcmd.Cmd, base *repcm
 		command.UnitID = bytePtr(byte(unit.UnitID))
 	}
 
-	if targetedOrderCmd.Unit != nil && targetedOrderCmd.Unit.ID != repcmd.UnitIDNone {
-		command.TargetID = byte(targetedOrderCmd.Unit.ID)
-	}
-
 	if targetedOrderCmd.Order != nil {
 		command.OrderID = bytePtr(targetedOrderCmd.Order.ID)
 		command.OrderName = stringPtr(targetedOrderCmd.Order.Name)
 	}
 
-	command.Queued = boolPtr(targetedOrderCmd.Queued)
+	command.IsQueued = boolPtr(targetedOrderCmd.Queued)
 
 	return command
 }
@@ -145,8 +127,6 @@ func (h *MinimapPingCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *m
 
 	command.X = int(minimapPingCmd.Pos.X)
 	command.Y = int(minimapPingCmd.Pos.Y)
-	command.MinimapPingX = intPtr(int(minimapPingCmd.Pos.X))
-	command.MinimapPingY = intPtr(int(minimapPingCmd.Pos.Y))
 
 	return command
 }
