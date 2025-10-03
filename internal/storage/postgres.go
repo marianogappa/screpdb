@@ -185,6 +185,7 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 		is_winner BOOLEAN NOT NULL,
 		start_location_x INTEGER,
 		start_location_y INTEGER,
+		start_location_oclock INTEGER,
 		UNIQUE(replay_id, slot_id)
 	);
 
@@ -297,6 +298,7 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 		replay_id INTEGER NOT NULL,
 		x INTEGER NOT NULL,
 		y INTEGER NOT NULL,
+		oclock INTEGER NOT NULL,
 		FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE
 	);
 
@@ -519,31 +521,32 @@ func (s *PostgresStorage) insertPlayersBatch(ctx context.Context, replayID int64
 	// Build the batch insert query
 	query := `
 		INSERT INTO players (
-			replay_id, slot_id, player_id, name, race, type, color, team, observer, apm, spm, is_winner, start_location_x, start_location_y
+			replay_id, slot_id, player_id, name, race, type, color, team, observer, apm, spm, is_winner, start_location_x, start_location_y, start_location_oclock
 		) VALUES `
 
 	// Build placeholders and args
 	placeholders := make([]string, len(players))
-	args := make([]any, len(players)*14)
+	args := make([]any, len(players)*15)
 
 	for i, player := range players {
-		placeholders[i] = fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)",
-			i*14+1, i*14+2, i*14+3, i*14+4, i*14+5, i*14+6, i*14+7, i*14+8, i*14+9, i*14+10, i*14+11, i*14+12, i*14+13, i*14+14)
+		placeholders[i] = fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)",
+			i*15+1, i*15+2, i*15+3, i*15+4, i*15+5, i*15+6, i*15+7, i*15+8, i*15+9, i*15+10, i*15+11, i*15+12, i*15+13, i*15+14, i*15+15)
 
-		args[i*14] = replayID
-		args[i*14+1] = player.SlotID
-		args[i*14+2] = player.PlayerID
-		args[i*14+3] = player.Name
-		args[i*14+4] = player.Race
-		args[i*14+5] = player.Type
-		args[i*14+6] = player.Color
-		args[i*14+7] = player.Team
-		args[i*14+8] = player.Observer
-		args[i*14+9] = player.APM
-		args[i*14+10] = player.SPM
-		args[i*14+11] = player.IsWinner
-		args[i*14+12] = player.StartLocationX
-		args[i*14+13] = player.StartLocationY
+		args[i*15] = replayID
+		args[i*15+1] = player.SlotID
+		args[i*15+2] = player.PlayerID
+		args[i*15+3] = player.Name
+		args[i*15+4] = player.Race
+		args[i*15+5] = player.Type
+		args[i*15+6] = player.Color
+		args[i*15+7] = player.Team
+		args[i*15+8] = player.Observer
+		args[i*15+9] = player.APM
+		args[i*15+10] = player.SPM
+		args[i*15+11] = player.IsWinner
+		args[i*15+12] = player.StartLocationX
+		args[i*15+13] = player.StartLocationY
+		args[i*15+14] = player.StartLocationOclock
 	}
 
 	query += strings.Join(placeholders, ", ") + " RETURNING id, player_id"

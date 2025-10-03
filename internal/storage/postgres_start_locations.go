@@ -20,7 +20,7 @@ func (s *StartLocationsInserter) TableName() string {
 }
 
 var startLocationsColumnNames = []string{
-	"replay_id", "x", "y",
+	"replay_id", "x", "y", "oclock",
 }
 
 // ColumnNames returns the column names for start locations
@@ -43,6 +43,7 @@ func (s *StartLocationsInserter) BuildArgs(entity any, args []any, offset int) e
 	args[offset] = startLoc.ReplayID
 	args[offset+1] = startLoc.X
 	args[offset+2] = startLoc.Y
+	args[offset+3] = startLoc.Oclock
 
 	return nil
 }

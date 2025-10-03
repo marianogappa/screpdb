@@ -49,8 +49,9 @@ type Player struct {
 	IsWinner bool `json:"is_winner"`
 
 	// Start location (if available)
-	StartLocationX *int `json:"start_location_x,omitempty"`
-	StartLocationY *int `json:"start_location_y,omitempty"`
+	StartLocationX      *int `json:"start_location_x,omitempty"`
+	StartLocationY      *int `json:"start_location_y,omitempty"`
+	StartLocationOclock *int `json:"start_location_oclock,omitempty"` // Clock position: 11, 12, 1, 3, 5, 6, 7, 9
 }
 
 // UnitInfo represents information about a unit instance in a command
@@ -187,6 +188,7 @@ type StartLocation struct {
 	ReplayID int64 `json:"replay_id"`
 	X        int   `json:"x"`
 	Y        int   `json:"y"`
+	Oclock   int   `json:"oclock"` // Clock position: 11, 12, 1, 3, 5, 6, 7, 9
 }
 
 // PlacedUnit represents units placed on the map at game start

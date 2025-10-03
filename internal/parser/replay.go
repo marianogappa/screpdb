@@ -9,6 +9,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/parser/commands"
 	"github.com/marianogappa/screpdb/internal/screp"
 	"github.com/marianogappa/screpdb/internal/tracking"
+	"github.com/marianogappa/screpdb/internal/utils"
 )
 
 // ParseReplay parses a StarCraft: Brood War replay file and returns structured data
@@ -72,7 +73,7 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 		}
 
 		// Extract start location if available
-		var startX, startY *int
+		var startX, startY, startOclock *int
 		if rep.Computed != nil && i < len(rep.Computed.PlayerDescs) {
 			pd := rep.Computed.PlayerDescs[i]
 			if pd.StartLocation != nil {
@@ -80,23 +81,28 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 				y := int(pd.StartLocation.Y)
 				startX = &x
 				startY = &y
+
+				// Calculate oclock position
+				oclock := utils.CalculateStartLocationOclock(int(data.Replay.MapWidth), int(data.Replay.MapHeight), x, y)
+				startOclock = &oclock
 			}
 		}
 
 		data.Players = append(data.Players, &models.Player{
-			SlotID:         player.SlotID,
-			PlayerID:       player.ID,
-			Name:           player.Name,
-			Race:           player.Race.String(),
-			Type:           player.Type.String(),
-			Color:          player.Color.String(),
-			Team:           player.Team,
-			Observer:       player.Observer,
-			APM:            apm,
-			SPM:            eapm, // Using EAPM as SPM for now
-			IsWinner:       isWinner,
-			StartLocationX: startX,
-			StartLocationY: startY,
+			SlotID:              player.SlotID,
+			PlayerID:            player.ID,
+			Name:                player.Name,
+			Race:                player.Race.String(),
+			Type:                player.Type.String(),
+			Color:               player.Color.String(),
+			Team:                player.Team,
+			Observer:            player.Observer,
+			APM:                 apm,
+			SPM:                 eapm, // Using EAPM as SPM for now
+			IsWinner:            isWinner,
+			StartLocationX:      startX,
+			StartLocationY:      startY,
+			StartLocationOclock: startOclock,
 		})
 	}
 
@@ -369,9 +375,14 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 
 		// Parse start locations
 		for _, startLoc := range rep.MapData.StartLocations {
+			x := int(startLoc.X)
+			y := int(startLoc.Y)
+			oclock := utils.CalculateStartLocationOclock(int(data.Replay.MapWidth), int(data.Replay.MapHeight), x, y)
+
 			data.StartLocations = append(data.StartLocations, &models.StartLocation{
-				X: int(startLoc.X),
-				Y: int(startLoc.Y),
+				X:      x,
+				Y:      y,
+				Oclock: oclock,
 			})
 		}
 
