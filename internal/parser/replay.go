@@ -8,6 +8,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser/commands"
 	"github.com/marianogappa/screpdb/internal/screp"
+	"github.com/marianogappa/screpdb/internal/tracking"
 )
 
 // ParseReplay parses a StarCraft: Brood War replay file and returns structured data
@@ -99,8 +100,9 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 		})
 	}
 
-	// Parse commands using the new command handling system
+	// Parse commands using the new command handling system with unit tracking
 	commandRegistry := commands.NewCommandRegistry()
+	unitTracker := tracking.NewUnitTracker()
 	startTime := rep.Header.StartTime.Unix()
 
 	if rep.Commands != nil {
@@ -111,69 +113,233 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 				continue
 			}
 
-			// Process command using the registry
-			command := commandRegistry.ProcessCommand(cmd, data.Replay.ID, startTime)
+			// Process command with unit tracker to get resolved units
+			resolvedUnits := unitTracker.ProcessCommand(cmd, playerID, int32(base.Frame), time.Unix(startTime+int64(base.Frame.Duration().Seconds()), 0))
+
+			// Handle different command types with resolved unit information
+			var command *models.Command
+			baseCmd := cmd.BaseCmd()
+			cmdTime := time.Unix(startTime+int64(baseCmd.Frame.Duration().Seconds()), 0)
+
+			switch cmd.(type) {
+			case *repcmd.SelectCmd:
+				// Skip Select commands that don't have any resolved units
+				if len(resolvedUnits) == 0 {
+					continue // Skip this command as it's useless without unit info
+				}
+				// Convert tracking.UnitInfo to models.UnitInfo
+				modelUnits := make([]*models.UnitInfo, len(resolvedUnits))
+				for i, unit := range resolvedUnits {
+					modelUnits[i] = &models.UnitInfo{
+						UnitTag:      unit.UnitTag,
+						UnitType:     unit.UnitType,
+						UnitID:       unit.UnitID,
+						PlayerID:     unit.PlayerID,
+						CreatedAt:    unit.CreatedAt,
+						CreatedFrame: unit.CreatedFrame,
+						X:            unit.X,
+						Y:            unit.Y,
+						IsAlive:      unit.IsAlive,
+					}
+				}
+				selectHandler := commands.NewSelectCommandHandler(baseCmd.Type.String(), baseCmd.Type.ID)
+				command = selectHandler.HandleWithUnits(cmd, baseCmd, modelUnits)
+
+			case *repcmd.RightClickCmd:
+				rightClickHandler := commands.NewRightClickCommandHandler(baseCmd.Type.String(), baseCmd.Type.ID)
+				if len(resolvedUnits) > 0 {
+					unit := resolvedUnits[0]
+					modelUnit := &models.UnitInfo{
+						UnitTag:      unit.UnitTag,
+						UnitType:     unit.UnitType,
+						UnitID:       unit.UnitID,
+						PlayerID:     unit.PlayerID,
+						CreatedAt:    unit.CreatedAt,
+						CreatedFrame: unit.CreatedFrame,
+						X:            unit.X,
+						Y:            unit.Y,
+						IsAlive:      unit.IsAlive,
+					}
+					command = rightClickHandler.HandleWithUnit(cmd, baseCmd, modelUnit)
+				} else {
+					command = rightClickHandler.Handle(cmd, baseCmd)
+				}
+
+			case *repcmd.TargetedOrderCmd:
+				targetedOrderHandler := commands.NewTargetedOrderCommandHandler(baseCmd.Type.String(), baseCmd.Type.ID)
+				if len(resolvedUnits) > 0 {
+					unit := resolvedUnits[0]
+					modelUnit := &models.UnitInfo{
+						UnitTag:      unit.UnitTag,
+						UnitType:     unit.UnitType,
+						UnitID:       unit.UnitID,
+						PlayerID:     unit.PlayerID,
+						CreatedAt:    unit.CreatedAt,
+						CreatedFrame: unit.CreatedFrame,
+						X:            unit.X,
+						Y:            unit.Y,
+						IsAlive:      unit.IsAlive,
+					}
+					command = targetedOrderHandler.HandleWithUnit(cmd, baseCmd, modelUnit)
+				} else {
+					command = targetedOrderHandler.Handle(cmd, baseCmd)
+				}
+
+			case *repcmd.CancelTrainCmd:
+				cancelTrainHandler := commands.NewCancelTrainCommandHandler()
+				if len(resolvedUnits) > 0 {
+					unit := resolvedUnits[0]
+					modelUnit := &models.UnitInfo{
+						UnitTag:      unit.UnitTag,
+						UnitType:     unit.UnitType,
+						UnitID:       unit.UnitID,
+						PlayerID:     unit.PlayerID,
+						CreatedAt:    unit.CreatedAt,
+						CreatedFrame: unit.CreatedFrame,
+						X:            unit.X,
+						Y:            unit.Y,
+						IsAlive:      unit.IsAlive,
+					}
+					command = cancelTrainHandler.HandleWithUnit(cmd, baseCmd, modelUnit)
+				} else {
+					command = cancelTrainHandler.Handle(cmd, baseCmd)
+				}
+
+			case *repcmd.UnloadCmd:
+				unloadHandler := commands.NewUnloadCommandHandler(baseCmd.Type.String(), baseCmd.Type.ID)
+				if len(resolvedUnits) > 0 {
+					unit := resolvedUnits[0]
+					modelUnit := &models.UnitInfo{
+						UnitTag:      unit.UnitTag,
+						UnitType:     unit.UnitType,
+						UnitID:       unit.UnitID,
+						PlayerID:     unit.PlayerID,
+						CreatedAt:    unit.CreatedAt,
+						CreatedFrame: unit.CreatedFrame,
+						X:            unit.X,
+						Y:            unit.Y,
+						IsAlive:      unit.IsAlive,
+					}
+					command = unloadHandler.HandleWithUnit(cmd, baseCmd, modelUnit)
+				} else {
+					command = unloadHandler.Handle(cmd, baseCmd)
+				}
+
+			case *repcmd.TrainCmd:
+				trainHandler := commands.NewTrainCommandHandler()
+				if len(resolvedUnits) > 0 {
+					unit := resolvedUnits[0]
+					modelUnit := &models.UnitInfo{
+						UnitTag:      unit.UnitTag,
+						UnitType:     unit.UnitType,
+						UnitID:       unit.UnitID,
+						PlayerID:     unit.PlayerID,
+						CreatedAt:    unit.CreatedAt,
+						CreatedFrame: unit.CreatedFrame,
+						X:            unit.X,
+						Y:            unit.Y,
+						IsAlive:      unit.IsAlive,
+					}
+					command = trainHandler.HandleWithUnit(cmd, baseCmd, modelUnit)
+				} else {
+					command = trainHandler.Handle(cmd, baseCmd)
+				}
+
+			case *repcmd.BuildCmd:
+				buildHandler := commands.NewBuildCommandHandler()
+				if len(resolvedUnits) > 0 {
+					unit := resolvedUnits[0]
+					modelUnit := &models.UnitInfo{
+						UnitTag:      unit.UnitTag,
+						UnitType:     unit.UnitType,
+						UnitID:       unit.UnitID,
+						PlayerID:     unit.PlayerID,
+						CreatedAt:    unit.CreatedAt,
+						CreatedFrame: unit.CreatedFrame,
+						X:            unit.X,
+						Y:            unit.Y,
+						IsAlive:      unit.IsAlive,
+					}
+					command = buildHandler.HandleWithUnit(cmd, baseCmd, modelUnit)
+				} else {
+					command = buildHandler.Handle(cmd, baseCmd)
+				}
+
+			case *repcmd.BuildingMorphCmd:
+				buildingMorphHandler := commands.NewBuildingMorphCommandHandler()
+				if len(resolvedUnits) > 0 {
+					unit := resolvedUnits[0]
+					modelUnit := &models.UnitInfo{
+						UnitTag:      unit.UnitTag,
+						UnitType:     unit.UnitType,
+						UnitID:       unit.UnitID,
+						PlayerID:     unit.PlayerID,
+						CreatedAt:    unit.CreatedAt,
+						CreatedFrame: unit.CreatedFrame,
+						X:            unit.X,
+						Y:            unit.Y,
+						IsAlive:      unit.IsAlive,
+					}
+					command = buildingMorphHandler.HandleWithUnit(cmd, baseCmd, modelUnit)
+				} else {
+					command = buildingMorphHandler.Handle(cmd, baseCmd)
+				}
+
+			default:
+				// Use the registry for other command types
+				command = commandRegistry.ProcessCommand(cmd, data.Replay.ID, startTime)
+			}
+
 			if command != nil {
-				// Extract command effectiveness from screp's computed data
-				baseCmd := cmd.BaseCmd()
+				// Set common fields
+				command.ReplayID = data.Replay.ID
+				command.PlayerID = playerID
+				command.Frame = int32(baseCmd.Frame)
+				command.Time = cmdTime
 				command.Effective = baseCmd.IneffKind.Effective()
+
 				// Extract unit/building information for specific command types
 				switch c := cmd.(type) {
 				case *repcmd.BuildCmd:
 					if c.Unit != nil {
 						// Create building entry
 						data.Buildings = append(data.Buildings, &models.Building{
-							ReplayID:   data.Replay.ID,
-							BuildingID: c.Unit.ID,
-							Type:       c.Unit.Name,
-							Name:       c.Unit.Name,
-							Created:    command.Time,
-							X:          command.X,
-							Y:          command.Y,
-							HP:         0, // Would need to track from game state
-							MaxHP:      0,
-							Shield:     0,
-							MaxShield:  0,
-							Energy:     0,
-							MaxEnergy:  0,
+							ReplayID:     data.Replay.ID,
+							BuildingID:   c.Unit.ID,
+							Type:         c.Unit.Name,
+							Name:         c.Unit.Name,
+							Created:      command.Time,
+							CreatedFrame: command.Frame,
+							X:            command.X,
+							Y:            command.Y,
 						})
 					}
 				case *repcmd.BuildingMorphCmd:
 					if c.Unit != nil {
 						// Create building morph entry (could be treated as building update)
 						data.Buildings = append(data.Buildings, &models.Building{
-							ReplayID:   data.Replay.ID,
-							BuildingID: c.Unit.ID,
-							Type:       c.Unit.Name,
-							Name:       c.Unit.Name,
-							Created:    command.Time,
-							X:          0, // Position would need to be tracked
-							Y:          0,
-							HP:         0,
-							MaxHP:      0,
-							Shield:     0,
-							MaxShield:  0,
-							Energy:     0,
-							MaxEnergy:  0,
+							ReplayID:     data.Replay.ID,
+							BuildingID:   c.Unit.ID,
+							Type:         c.Unit.Name,
+							Name:         c.Unit.Name,
+							Created:      command.Time,
+							CreatedFrame: command.Frame,
+							X:            0, // Position would need to be tracked
+							Y:            0,
 						})
 					}
 				case *repcmd.TrainCmd:
 					if c.Unit != nil {
 						// Create unit entry
 						data.Units = append(data.Units, &models.Unit{
-							ReplayID:  data.Replay.ID,
-							UnitID:    c.Unit.ID,
-							Type:      c.Unit.Name,
-							Name:      c.Unit.Name,
-							Created:   command.Time,
-							X:         0, // Would need to track from game state
-							Y:         0,
-							HP:        0,
-							MaxHP:     0,
-							Shield:    0,
-							MaxShield: 0,
-							Energy:    0,
-							MaxEnergy: 0,
+							ReplayID:     data.Replay.ID,
+							UnitID:       c.Unit.ID,
+							Type:         c.Unit.Name,
+							Name:         c.Unit.Name,
+							Created:      command.Time,
+							CreatedFrame: command.Frame,
+							X:            0, // Would need to track from game state
+							Y:            0,
 						})
 					}
 				}
@@ -225,18 +391,12 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 				}
 
 				data.PlacedUnits = append(data.PlacedUnits, &models.PlacedUnit{
-					ReplayID:  data.Replay.ID,
-					PlayerID:  playerID,
-					Type:      fmt.Sprintf("UnitID_%d", placedUnit.UnitID), // Use UnitID as type since Name is not available
-					Name:      fmt.Sprintf("UnitID_%d", placedUnit.UnitID),
-					X:         int(placedUnit.X),
-					Y:         int(placedUnit.Y),
-					HP:        0, // Not available in PlacedUnit
-					MaxHP:     0,
-					Shield:    0,
-					MaxShield: 0,
-					Energy:    0,
-					MaxEnergy: 0,
+					ReplayID: data.Replay.ID,
+					PlayerID: playerID,
+					Type:     fmt.Sprintf("UnitID_%d", placedUnit.UnitID), // Use UnitID as type since Name is not available
+					Name:     fmt.Sprintf("UnitID_%d", placedUnit.UnitID),
+					X:        int(placedUnit.X),
+					Y:        int(placedUnit.Y),
 				})
 			}
 		}

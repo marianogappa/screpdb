@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
 	_ "github.com/lib/pq"
@@ -27,6 +28,14 @@ func NewPostgresStorage(connectionString string) (*PostgresStorage, error) {
 	}
 
 	return &PostgresStorage{db: db}, nil
+}
+
+// Helper function to serialize slot IDs to JSON
+func (s *PostgresStorage) serializeSlotIDs(slotIDs *[]int) ([]byte, error) {
+	if slotIDs == nil {
+		return nil, nil
+	}
+	return json.Marshal(*slotIDs)
 }
 
 // Initialize creates the database schema
@@ -102,41 +111,32 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 		time TIMESTAMP WITH TIME ZONE NOT NULL,
 		action_type TEXT NOT NULL,
 		action_id INTEGER NOT NULL,
-		unit_id INTEGER NOT NULL,
+		unit_id INTEGER,
 		target_id INTEGER NOT NULL,
 		x INTEGER NOT NULL,
 		y INTEGER NOT NULL,
-		data TEXT,
 		effective BOOLEAN NOT NULL,
 		
 		-- Common fields (used by multiple command types)
 		queued BOOLEAN,
-		unit_tag INTEGER,
 		order_id INTEGER,
 		order_name TEXT,
 		
-		-- Select command fields
+		-- Unit information (normalized fields)
+		unit_type TEXT, -- Single unit type
+		unit_player_id INTEGER, -- Single unit player ID
+		unit_types TEXT, -- JSON array of unit types for multiple units
+		unit_ids TEXT, -- JSON array of unit IDs for multiple units
+		
+		-- Select command fields (legacy)
 		select_unit_tags TEXT, -- JSON array of unit tags
+		select_unit_types TEXT, -- JSON map of unit tag -> unit type
 		
 		-- Build command fields
 		build_unit_name TEXT,
 		
-		-- Right Click command fields
-		right_click_unit_tag INTEGER,
-		right_click_unit_name TEXT,
-		
-		-- Targeted Order command fields
-		targeted_order_unit_tag INTEGER,
-		targeted_order_unit_name TEXT,
-		
 		-- Train command fields
 		train_unit_name TEXT,
-		
-		-- Cancel Train command fields
-		cancel_train_unit_tag INTEGER,
-		
-		-- Unload command fields
-		unload_unit_tag INTEGER,
 		
 		-- Building Morph command fields
 		building_morph_unit_name TEXT,
@@ -159,10 +159,10 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 		chat_message TEXT,
 		
 		-- Vision command fields
-		vision_slot_ids TEXT, -- JSON array of slot IDs
+		vision_slot_ids JSONB, -- JSON array of slot IDs
 		
 		-- Alliance command fields
-		alliance_slot_ids TEXT, -- JSON array of slot IDs
+		alliance_slot_ids JSONB, -- JSON array of slot IDs
 		allied_victory BOOLEAN,
 		
 		-- Leave Game command fields
@@ -184,15 +184,9 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 		type TEXT NOT NULL,
 		name TEXT NOT NULL,
 		created TIMESTAMP WITH TIME ZONE NOT NULL,
-		destroyed TIMESTAMP WITH TIME ZONE,
+		created_frame INTEGER NOT NULL,
 		x INTEGER NOT NULL,
-		y INTEGER NOT NULL,
-		hp INTEGER NOT NULL,
-		max_hp INTEGER NOT NULL,
-		shield INTEGER NOT NULL,
-		max_shield INTEGER NOT NULL,
-		energy INTEGER NOT NULL,
-		max_energy INTEGER NOT NULL
+		y INTEGER NOT NULL
 	);
 
 	CREATE TABLE IF NOT EXISTS buildings (
@@ -203,15 +197,9 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 		type TEXT NOT NULL,
 		name TEXT NOT NULL,
 		created TIMESTAMP WITH TIME ZONE NOT NULL,
-		destroyed TIMESTAMP WITH TIME ZONE,
+		created_frame INTEGER NOT NULL,
 		x INTEGER NOT NULL,
-		y INTEGER NOT NULL,
-		hp INTEGER NOT NULL,
-		max_hp INTEGER NOT NULL,
-		shield INTEGER NOT NULL,
-		max_shield INTEGER NOT NULL,
-		energy INTEGER NOT NULL,
-		max_energy INTEGER NOT NULL
+		y INTEGER NOT NULL
 	);
 
 	CREATE TABLE IF NOT EXISTS resources (
@@ -237,13 +225,7 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 		type TEXT NOT NULL,
 		name TEXT NOT NULL,
 		x INTEGER NOT NULL,
-		y INTEGER NOT NULL,
-		hp INTEGER NOT NULL,
-		max_hp INTEGER NOT NULL,
-		shield INTEGER NOT NULL,
-		max_shield INTEGER NOT NULL,
-		energy INTEGER NOT NULL,
-		max_energy INTEGER NOT NULL
+		y INTEGER NOT NULL
 	);
 
 	CREATE TABLE IF NOT EXISTS chat_messages (
@@ -348,14 +330,12 @@ func (s *PostgresStorage) StoreReplay(ctx context.Context, data *models.ReplayDa
 	// Insert commands
 	commandQuery := `
 		INSERT INTO commands (
-			replay_id, player_id, frame, time, action_type, action_id, unit_id, target_id, x, y, data, effective,
-			queued, unit_tag, order_id, order_name, select_unit_tags, build_unit_name,
-			right_click_unit_tag, right_click_unit_name, targeted_order_unit_tag, targeted_order_unit_name,
-			train_unit_name, cancel_train_unit_tag, unload_unit_tag, building_morph_unit_name,
-			tech_name, upgrade_name, hotkey_type, hotkey_group, game_speed,
+			replay_id, player_id, frame, time, action_type, action_id, unit_id, target_id, x, y, effective,
+			queued, order_id, order_name, unit_type, unit_player_id, unit_types, unit_ids, select_unit_tags, select_unit_types, build_unit_name,
+			train_unit_name, building_morph_unit_name, tech_name, upgrade_name, hotkey_type, hotkey_group, game_speed,
 			chat_sender_slot_id, chat_message, vision_slot_ids, alliance_slot_ids, allied_victory,
 			leave_reason, minimap_ping_x, minimap_ping_y, general_data
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37)
 	`
 
 	for _, command := range data.Commands {
@@ -366,19 +346,53 @@ func (s *PostgresStorage) StoreReplay(ctx context.Context, data *models.ReplayDa
 		}
 		command.PlayerID = playerID
 
-		_, err := tx.ExecContext(ctx, commandQuery,
+		// Serialize slot IDs to JSON
+		visionSlotIDsBytes, err := s.serializeSlotIDs(command.VisionSlotIDs)
+		if err != nil {
+			return fmt.Errorf("failed to serialize vision slot IDs: %w", err)
+		}
+		allianceSlotIDsBytes, err := s.serializeSlotIDs(command.AllianceSlotIDs)
+		if err != nil {
+			return fmt.Errorf("failed to serialize alliance slot IDs: %w", err)
+		}
+
+		// Convert []byte to string for PostgreSQL
+		var visionSlotIDsJSON, allianceSlotIDsJSON interface{}
+		if visionSlotIDsBytes != nil {
+			visionSlotIDsJSON = string(visionSlotIDsBytes)
+		}
+		if allianceSlotIDsBytes != nil {
+			allianceSlotIDsJSON = string(allianceSlotIDsBytes)
+		}
+
+		// Serialize unit information to JSON
+		unitTypesJSON, err := s.serializeString(command.UnitTypes)
+		if err != nil {
+			return fmt.Errorf("failed to serialize unit types: %w", err)
+		}
+		unitIDsJSON, err := s.serializeString(command.UnitIDs)
+		if err != nil {
+			return fmt.Errorf("failed to serialize unit IDs: %w", err)
+		}
+		selectUnitTagsJSON, err := s.serializeString(command.SelectUnitTags)
+		if err != nil {
+			return fmt.Errorf("failed to serialize select unit tags: %w", err)
+		}
+		selectUnitTypesJSON, err := s.serializeString(command.SelectUnitTypes)
+		if err != nil {
+			return fmt.Errorf("failed to serialize select unit types: %w", err)
+		}
+
+		_, err = tx.ExecContext(ctx, commandQuery,
 			command.ReplayID, command.PlayerID, command.Frame, command.Time,
 			command.ActionType, command.ActionID, command.UnitID, command.TargetID,
-			command.X, command.Y, command.Data, command.Effective,
-			command.Queued, command.UnitTag, command.OrderID, command.OrderName,
-			command.SelectUnitTags, command.BuildUnitName,
-			command.RightClickUnitTag, command.RightClickUnitName,
-			command.TargetedOrderUnitTag, command.TargetedOrderUnitName,
-			command.TrainUnitName, command.CancelTrainUnitTag, command.UnloadUnitTag,
-			command.BuildingMorphUnitName, command.TechName, command.UpgradeName,
+			command.X, command.Y, command.Effective,
+			command.Queued, command.OrderID, command.OrderName,
+			command.UnitType, command.UnitPlayerID, unitTypesJSON, unitIDsJSON, selectUnitTagsJSON, selectUnitTypesJSON, command.BuildUnitName,
+			command.TrainUnitName, command.BuildingMorphUnitName, command.TechName, command.UpgradeName,
 			command.HotkeyType, command.HotkeyGroup, command.GameSpeed,
-			command.ChatSenderSlotID, command.ChatMessage, command.VisionSlotIDs,
-			command.AllianceSlotIDs, command.AlliedVictory, command.LeaveReason,
+			command.ChatSenderSlotID, command.ChatMessage, visionSlotIDsJSON,
+			allianceSlotIDsJSON, command.AlliedVictory, command.LeaveReason,
 			command.MinimapPingX, command.MinimapPingY, command.GeneralData,
 		)
 		if err != nil {
@@ -389,9 +403,8 @@ func (s *PostgresStorage) StoreReplay(ctx context.Context, data *models.ReplayDa
 	// Insert units
 	unitQuery := `
 		INSERT INTO units (
-			replay_id, player_id, unit_id, type, name, created, destroyed,
-			x, y, hp, max_hp, shield, max_shield, energy, max_energy
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+			replay_id, player_id, unit_id, type, name, created, created_frame, x, y
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
 	for _, unit := range data.Units {
@@ -405,8 +418,7 @@ func (s *PostgresStorage) StoreReplay(ctx context.Context, data *models.ReplayDa
 
 		_, err := tx.ExecContext(ctx, unitQuery,
 			unit.ReplayID, unit.PlayerID, unit.UnitID, unit.Type, unit.Name,
-			unit.Created, unit.Destroyed, unit.X, unit.Y, unit.HP, unit.MaxHP,
-			unit.Shield, unit.MaxShield, unit.Energy, unit.MaxEnergy,
+			unit.Created, unit.CreatedFrame, unit.X, unit.Y,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to insert unit: %w", err)
@@ -416,9 +428,8 @@ func (s *PostgresStorage) StoreReplay(ctx context.Context, data *models.ReplayDa
 	// Insert buildings
 	buildingQuery := `
 		INSERT INTO buildings (
-			replay_id, player_id, building_id, type, name, created, destroyed,
-			x, y, hp, max_hp, shield, max_shield, energy, max_energy
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+			replay_id, player_id, building_id, type, name, created, created_frame, x, y
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
 	for _, building := range data.Buildings {
@@ -432,9 +443,7 @@ func (s *PostgresStorage) StoreReplay(ctx context.Context, data *models.ReplayDa
 
 		_, err := tx.ExecContext(ctx, buildingQuery,
 			building.ReplayID, building.PlayerID, building.BuildingID, building.Type,
-			building.Name, building.Created, building.Destroyed, building.X, building.Y,
-			building.HP, building.MaxHP, building.Shield, building.MaxShield,
-			building.Energy, building.MaxEnergy,
+			building.Name, building.Created, building.CreatedFrame, building.X, building.Y,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to insert building: %w", err)
@@ -480,8 +489,8 @@ func (s *PostgresStorage) StoreReplay(ctx context.Context, data *models.ReplayDa
 	// Insert placed units
 	placedUnitQuery := `
 		INSERT INTO placed_units (
-			replay_id, player_id, type, name, x, y, hp, max_hp, shield, max_shield, energy, max_energy
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			replay_id, player_id, type, name, x, y
+		) VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
 	for _, placedUnit := range data.PlacedUnits {
@@ -494,8 +503,7 @@ func (s *PostgresStorage) StoreReplay(ctx context.Context, data *models.ReplayDa
 
 		_, err := tx.ExecContext(ctx, placedUnitQuery,
 			placedUnit.ReplayID, placedUnit.PlayerID, placedUnit.Type, placedUnit.Name,
-			placedUnit.X, placedUnit.Y, placedUnit.HP, placedUnit.MaxHP,
-			placedUnit.Shield, placedUnit.MaxShield, placedUnit.Energy, placedUnit.MaxEnergy,
+			placedUnit.X, placedUnit.Y,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to insert placed unit: %w", err)
@@ -605,6 +613,14 @@ func (s *PostgresStorage) Query(ctx context.Context, query string, args ...any) 
 	}
 
 	return results, rows.Err()
+}
+
+// serializeString serializes a string pointer to JSON, returning NULL for nil pointers
+func (s *PostgresStorage) serializeString(str *string) (interface{}, error) {
+	if str == nil {
+		return nil, nil
+	}
+	return *str, nil
 }
 
 // StorageName returns the storage backend name

@@ -24,7 +24,26 @@ func (h *TrainCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
 	if trainCmd.Unit != nil {
-		command.UnitID = byte(trainCmd.Unit.ID)
+		command.UnitID = bytePtr(byte(trainCmd.Unit.ID))
+		command.TrainUnitName = stringPtr(trainCmd.Unit.Name)
+	}
+
+	return command
+}
+
+// HandleWithUnit handles Train commands with resolved unit information
+func (h *TrainCommandHandler) HandleWithUnit(cmd repcmd.Cmd, base *repcmd.Base, unit *models.UnitInfo) *models.Command {
+	trainCmd := cmd.(*repcmd.TrainCmd)
+	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
+
+	// Set the normalized unit fields
+	if unit != nil {
+		command.UnitType = &unit.UnitType
+		command.UnitPlayerID = &unit.PlayerID
+		command.UnitID = bytePtr(byte(unit.UnitID))
+	}
+
+	if trainCmd.Unit != nil {
 		command.TrainUnitName = stringPtr(trainCmd.Unit.Name)
 	}
 
@@ -51,12 +70,12 @@ func (h *TrainFighterCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *
 	// Try to extract data from TrainCmd if it's that type
 	if trainCmd, ok := cmd.(*repcmd.TrainCmd); ok {
 		if trainCmd.Unit != nil {
-			command.UnitID = byte(trainCmd.Unit.ID)
+			command.UnitID = bytePtr(byte(trainCmd.Unit.ID))
 			command.TrainUnitName = stringPtr(trainCmd.Unit.Name)
 		}
 	} else {
 		// For other command types, we'll store basic information without unit details
-		command.UnitID = 0
+		command.UnitID = nil
 		command.TrainUnitName = nil
 	}
 
@@ -82,7 +101,7 @@ func (h *UnitMorphCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *mod
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
 	if trainCmd.Unit != nil {
-		command.UnitID = byte(trainCmd.Unit.ID)
+		command.UnitID = bytePtr(byte(trainCmd.Unit.ID))
 		command.TrainUnitName = stringPtr(trainCmd.Unit.Name)
 	}
 
@@ -104,11 +123,19 @@ func NewCancelTrainCommandHandler() *CancelTrainCommandHandler {
 }
 
 func (h *CancelTrainCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.Command {
-	cancelTrainCmd := cmd.(*repcmd.CancelTrainCmd)
+	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
+	return command
+}
+
+// HandleWithUnit handles CancelTrain commands with resolved unit information
+func (h *CancelTrainCommandHandler) HandleWithUnit(cmd repcmd.Cmd, base *repcmd.Base, unit *models.UnitInfo) *models.Command {
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	if cancelTrainCmd.UnitTag != 0 {
-		command.CancelTrainUnitTag = uint16Ptr(uint16(cancelTrainCmd.UnitTag))
+	// Set the normalized unit fields
+	if unit != nil {
+		command.UnitType = &unit.UnitType
+		command.UnitPlayerID = &unit.PlayerID
+		command.UnitID = bytePtr(byte(unit.UnitID))
 	}
 
 	return command
@@ -129,11 +156,19 @@ func NewUnloadCommandHandler(actionType string, actionID byte) *UnloadCommandHan
 }
 
 func (h *UnloadCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.Command {
-	unloadCmd := cmd.(*repcmd.UnloadCmd)
+	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
+	return command
+}
+
+// HandleWithUnit handles Unload commands with resolved unit information
+func (h *UnloadCommandHandler) HandleWithUnit(cmd repcmd.Cmd, base *repcmd.Base, unit *models.UnitInfo) *models.Command {
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	if unloadCmd.UnitTag != 0 {
-		command.UnloadUnitTag = uint16Ptr(uint16(unloadCmd.UnitTag))
+	// Set the normalized unit fields
+	if unit != nil {
+		command.UnitType = &unit.UnitType
+		command.UnitPlayerID = &unit.PlayerID
+		command.UnitID = bytePtr(byte(unit.UnitID))
 	}
 
 	return command
@@ -158,7 +193,26 @@ func (h *BuildingMorphCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) 
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
 	if buildingMorphCmd.Unit != nil {
-		command.UnitID = byte(buildingMorphCmd.Unit.ID)
+		command.UnitID = bytePtr(byte(buildingMorphCmd.Unit.ID))
+		command.BuildingMorphUnitName = stringPtr(buildingMorphCmd.Unit.Name)
+	}
+
+	return command
+}
+
+// HandleWithUnit handles BuildingMorph commands with resolved unit information
+func (h *BuildingMorphCommandHandler) HandleWithUnit(cmd repcmd.Cmd, base *repcmd.Base, unit *models.UnitInfo) *models.Command {
+	buildingMorphCmd := cmd.(*repcmd.BuildingMorphCmd)
+	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
+
+	// Set the normalized unit fields
+	if unit != nil {
+		command.UnitType = &unit.UnitType
+		command.UnitPlayerID = &unit.PlayerID
+		command.UnitID = bytePtr(byte(unit.UnitID))
+	}
+
+	if buildingMorphCmd.Unit != nil {
 		command.BuildingMorphUnitName = stringPtr(buildingMorphCmd.Unit.Name)
 	}
 

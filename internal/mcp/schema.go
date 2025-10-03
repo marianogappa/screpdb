@@ -60,7 +60,6 @@ Contains all game actions/events that occurred during the replay.
 - unit_type (TEXT): Type of unit involved (if applicable)
 - x (INTEGER): X coordinate where action occurred
 - y (INTEGER): Y coordinate where action occurred
-- data (TEXT): Additional JSON data about the action
 
 ### 4. units
 Contains information about all units that existed during the game.

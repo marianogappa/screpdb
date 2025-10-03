@@ -50,23 +50,31 @@ func unitTagsToJSON(unitTags []repcmd.UnitTag) *string {
 	return &result
 }
 
-func slotIDsToJSON(slotIDs repcmd.Bytes) *string {
-	if len(slotIDs) == 0 {
+func unitTypesToJSON(unitTypes map[uint16]string) *string {
+	if len(unitTypes) == 0 {
 		return nil
 	}
 
-	ids := make([]byte, len(slotIDs))
-	for i, id := range slotIDs {
-		ids[i] = byte(id)
-	}
-
-	data, err := json.Marshal(ids)
+	data, err := json.Marshal(unitTypes)
 	if err != nil {
 		return nil
 	}
 
 	result := string(data)
 	return &result
+}
+
+func slotIDsToIntSlice(slotIDs repcmd.Bytes) *[]int {
+	if len(slotIDs) == 0 {
+		return nil
+	}
+
+	ids := make([]int, len(slotIDs))
+	for i, id := range slotIDs {
+		ids[i] = int(id)
+	}
+
+	return &ids
 }
 
 func dataToHexString(data []byte) *string {

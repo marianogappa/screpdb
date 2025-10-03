@@ -99,7 +99,7 @@ func (h *VisionCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models
 	visionCmd := cmd.(*repcmd.VisionCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	command.VisionSlotIDs = slotIDsToJSON(visionCmd.SlotIDs)
+	command.VisionSlotIDs = slotIDsToIntSlice(visionCmd.SlotIDs)
 
 	return command
 }
@@ -122,7 +122,7 @@ func (h *AllianceCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *mode
 	allianceCmd := cmd.(*repcmd.AllianceCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	command.AllianceSlotIDs = slotIDsToJSON(allianceCmd.SlotIDs)
+	command.AllianceSlotIDs = slotIDsToIntSlice(allianceCmd.SlotIDs)
 	command.AlliedVictory = boolPtr(allianceCmd.AlliedVictory)
 
 	return command

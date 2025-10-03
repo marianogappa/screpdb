@@ -26,13 +26,33 @@ func (h *RightClickCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *mo
 	command.X = int(rightClickCmd.Pos.X)
 	command.Y = int(rightClickCmd.Pos.Y)
 
-	if rightClickCmd.UnitTag != 0 {
-		command.RightClickUnitTag = uint16Ptr(uint16(rightClickCmd.UnitTag))
+	// Legacy support - keep the old fields for now
+	if rightClickCmd.Unit != nil && rightClickCmd.Unit.ID != repcmd.UnitIDNone {
+		command.TargetID = byte(rightClickCmd.Unit.ID)
+	}
+
+	command.Queued = boolPtr(rightClickCmd.Queued)
+
+	return command
+}
+
+// HandleWithUnit handles RightClick commands with resolved unit information
+func (h *RightClickCommandHandler) HandleWithUnit(cmd repcmd.Cmd, base *repcmd.Base, unit *models.UnitInfo) *models.Command {
+	rightClickCmd := cmd.(*repcmd.RightClickCmd)
+	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
+
+	command.X = int(rightClickCmd.Pos.X)
+	command.Y = int(rightClickCmd.Pos.Y)
+
+	// Set the normalized unit fields
+	if unit != nil {
+		command.UnitType = &unit.UnitType
+		command.UnitPlayerID = &unit.PlayerID
+		command.UnitID = bytePtr(byte(unit.UnitID))
 	}
 
 	if rightClickCmd.Unit != nil && rightClickCmd.Unit.ID != repcmd.UnitIDNone {
 		command.TargetID = byte(rightClickCmd.Unit.ID)
-		command.RightClickUnitName = stringPtr(rightClickCmd.Unit.Name)
 	}
 
 	command.Queued = boolPtr(rightClickCmd.Queued)
@@ -61,13 +81,38 @@ func (h *TargetedOrderCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) 
 	command.X = int(targetedOrderCmd.Pos.X)
 	command.Y = int(targetedOrderCmd.Pos.Y)
 
-	if targetedOrderCmd.UnitTag != 0 {
-		command.TargetedOrderUnitTag = uint16Ptr(uint16(targetedOrderCmd.UnitTag))
+	// Legacy support - keep the old fields for now
+	if targetedOrderCmd.Unit != nil && targetedOrderCmd.Unit.ID != repcmd.UnitIDNone {
+		command.TargetID = byte(targetedOrderCmd.Unit.ID)
+	}
+
+	if targetedOrderCmd.Order != nil {
+		command.OrderID = bytePtr(targetedOrderCmd.Order.ID)
+		command.OrderName = stringPtr(targetedOrderCmd.Order.Name)
+	}
+
+	command.Queued = boolPtr(targetedOrderCmd.Queued)
+
+	return command
+}
+
+// HandleWithUnit handles TargetedOrder commands with resolved unit information
+func (h *TargetedOrderCommandHandler) HandleWithUnit(cmd repcmd.Cmd, base *repcmd.Base, unit *models.UnitInfo) *models.Command {
+	targetedOrderCmd := cmd.(*repcmd.TargetedOrderCmd)
+	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
+
+	command.X = int(targetedOrderCmd.Pos.X)
+	command.Y = int(targetedOrderCmd.Pos.Y)
+
+	// Set the normalized unit fields
+	if unit != nil {
+		command.UnitType = &unit.UnitType
+		command.UnitPlayerID = &unit.PlayerID
+		command.UnitID = bytePtr(byte(unit.UnitID))
 	}
 
 	if targetedOrderCmd.Unit != nil && targetedOrderCmd.Unit.ID != repcmd.UnitIDNone {
 		command.TargetID = byte(targetedOrderCmd.Unit.ID)
-		command.TargetedOrderUnitName = stringPtr(targetedOrderCmd.Unit.Name)
 	}
 
 	if targetedOrderCmd.Order != nil {
