@@ -19,16 +19,18 @@ func (r *ResourcesInserter) TableName() string {
 	return "resources"
 }
 
+var resourcesColumnNames = []string{
+	"replay_id", "type", "x", "y", "amount",
+}
+
 // ColumnNames returns the column names for resources
 func (r *ResourcesInserter) ColumnNames() []string {
-	return []string{
-		"replay_id", "type", "x", "y", "amount",
-	}
+	return resourcesColumnNames
 }
 
 // EntityCount returns the number of columns for resources
 func (r *ResourcesInserter) EntityCount() int {
-	return 5
+	return len(resourcesColumnNames)
 }
 
 // BuildArgs builds the arguments for a resource entity

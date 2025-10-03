@@ -19,16 +19,18 @@ func (p *SQLitePlacedUnitsInserter) TableName() string {
 	return "placed_units"
 }
 
+var sqlitePlacedUnitsColumnNames = []string{
+	"replay_id", "player_id", "type", "name", "x", "y",
+}
+
 // ColumnNames returns the column names for placed units
 func (p *SQLitePlacedUnitsInserter) ColumnNames() []string {
-	return []string{
-		"replay_id", "player_id", "type", "name", "x", "y",
-	}
+	return sqlitePlacedUnitsColumnNames
 }
 
 // EntityCount returns the number of columns for placed units
 func (p *SQLitePlacedUnitsInserter) EntityCount() int {
-	return 6
+	return len(sqlitePlacedUnitsColumnNames)
 }
 
 // BuildArgs builds the arguments for a placed unit entity

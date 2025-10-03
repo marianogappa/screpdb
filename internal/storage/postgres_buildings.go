@@ -19,16 +19,18 @@ func (b *BuildingsInserter) TableName() string {
 	return "buildings"
 }
 
+var buildingsColumnNames = []string{
+	"replay_id", "player_id", "building_id", "type", "name", "created", "created_frame", "x", "y",
+}
+
 // ColumnNames returns the column names for buildings
 func (b *BuildingsInserter) ColumnNames() []string {
-	return []string{
-		"replay_id", "player_id", "building_id", "type", "name", "created", "created_frame", "x", "y",
-	}
+	return buildingsColumnNames
 }
 
 // EntityCount returns the number of columns for buildings
 func (b *BuildingsInserter) EntityCount() int {
-	return 9
+	return len(buildingsColumnNames)
 }
 
 // BuildArgs builds the arguments for a building entity

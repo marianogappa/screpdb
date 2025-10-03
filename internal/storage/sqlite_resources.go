@@ -19,16 +19,18 @@ func (r *SQLiteResourcesInserter) TableName() string {
 	return "resources"
 }
 
+var sqliteResourcesColumnNames = []string{
+	"replay_id", "type", "x", "y", "amount",
+}
+
 // ColumnNames returns the column names for resources
 func (r *SQLiteResourcesInserter) ColumnNames() []string {
-	return []string{
-		"replay_id", "type", "x", "y", "amount",
-	}
+	return sqliteResourcesColumnNames
 }
 
 // EntityCount returns the number of columns for resources
 func (r *SQLiteResourcesInserter) EntityCount() int {
-	return 5
+	return len(sqliteResourcesColumnNames)
 }
 
 // BuildArgs builds the arguments for a resource entity

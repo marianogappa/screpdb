@@ -19,16 +19,18 @@ func (l *SQLiteLeaveGamesInserter) TableName() string {
 	return "leave_games"
 }
 
+var sqliteLeaveGamesColumnNames = []string{
+	"replay_id", "player_id", "reason", "frame", "time",
+}
+
 // ColumnNames returns the column names for leave games
 func (l *SQLiteLeaveGamesInserter) ColumnNames() []string {
-	return []string{
-		"replay_id", "player_id", "reason", "frame", "time",
-	}
+	return sqliteLeaveGamesColumnNames
 }
 
 // EntityCount returns the number of columns for leave games
 func (l *SQLiteLeaveGamesInserter) EntityCount() int {
-	return 5
+	return len(sqliteLeaveGamesColumnNames)
 }
 
 // BuildArgs builds the arguments for a leave game entity

@@ -19,16 +19,18 @@ func (b *SQLiteBuildingsInserter) TableName() string {
 	return "buildings"
 }
 
+var sqliteBuildingsColumnNames = []string{
+	"replay_id", "player_id", "building_id", "type", "name", "created", "created_frame", "x", "y",
+}
+
 // ColumnNames returns the column names for buildings
 func (b *SQLiteBuildingsInserter) ColumnNames() []string {
-	return []string{
-		"replay_id", "player_id", "building_id", "type", "name", "created", "created_frame", "x", "y",
-	}
+	return sqliteBuildingsColumnNames
 }
 
 // EntityCount returns the number of columns for buildings
 func (b *SQLiteBuildingsInserter) EntityCount() int {
-	return 9
+	return len(sqliteBuildingsColumnNames)
 }
 
 // BuildArgs builds the arguments for a building entity

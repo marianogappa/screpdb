@@ -19,16 +19,18 @@ func (u *SQLiteUnitsInserter) TableName() string {
 	return "units"
 }
 
+var sqliteUnitsColumnNames = []string{
+	"replay_id", "player_id", "unit_id", "type", "name", "created", "created_frame", "x", "y",
+}
+
 // ColumnNames returns the column names for units
 func (u *SQLiteUnitsInserter) ColumnNames() []string {
-	return []string{
-		"replay_id", "player_id", "unit_id", "type", "name", "created", "created_frame", "x", "y",
-	}
+	return sqliteUnitsColumnNames
 }
 
 // EntityCount returns the number of columns for units
 func (u *SQLiteUnitsInserter) EntityCount() int {
-	return 9
+	return len(sqliteUnitsColumnNames)
 }
 
 // BuildArgs builds the arguments for a unit entity

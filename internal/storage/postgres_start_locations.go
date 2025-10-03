@@ -19,16 +19,18 @@ func (s *StartLocationsInserter) TableName() string {
 	return "start_locations"
 }
 
+var startLocationsColumnNames = []string{
+	"replay_id", "x", "y",
+}
+
 // ColumnNames returns the column names for start locations
 func (s *StartLocationsInserter) ColumnNames() []string {
-	return []string{
-		"replay_id", "x", "y",
-	}
+	return startLocationsColumnNames
 }
 
 // EntityCount returns the number of columns for start locations
 func (s *StartLocationsInserter) EntityCount() int {
-	return 3
+	return len(startLocationsColumnNames)
 }
 
 // BuildArgs builds the arguments for a start location entity

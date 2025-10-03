@@ -19,16 +19,18 @@ func (p *PlacedUnitsInserter) TableName() string {
 	return "placed_units"
 }
 
+var placedUnitsColumnNames = []string{
+	"replay_id", "player_id", "type", "name", "x", "y",
+}
+
 // ColumnNames returns the column names for placed units
 func (p *PlacedUnitsInserter) ColumnNames() []string {
-	return []string{
-		"replay_id", "player_id", "type", "name", "x", "y",
-	}
+	return placedUnitsColumnNames
 }
 
 // EntityCount returns the number of columns for placed units
 func (p *PlacedUnitsInserter) EntityCount() int {
-	return 6
+	return len(placedUnitsColumnNames)
 }
 
 // BuildArgs builds the arguments for a placed unit entity

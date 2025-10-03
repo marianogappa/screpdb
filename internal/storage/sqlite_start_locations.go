@@ -19,16 +19,18 @@ func (s *SQLiteStartLocationsInserter) TableName() string {
 	return "start_locations"
 }
 
+var sqliteStartLocationsColumnNames = []string{
+	"replay_id", "x", "y",
+}
+
 // ColumnNames returns the column names for start locations
 func (s *SQLiteStartLocationsInserter) ColumnNames() []string {
-	return []string{
-		"replay_id", "x", "y",
-	}
+	return sqliteStartLocationsColumnNames
 }
 
 // EntityCount returns the number of columns for start locations
 func (s *SQLiteStartLocationsInserter) EntityCount() int {
-	return 3
+	return len(sqliteStartLocationsColumnNames)
 }
 
 // BuildArgs builds the arguments for a start location entity

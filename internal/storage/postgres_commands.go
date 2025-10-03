@@ -20,20 +20,22 @@ func (c *CommandsInserter) TableName() string {
 	return "commands"
 }
 
+var commandsColumnNames = []string{
+	"replay_id", "player_id", "frame", "time", "action_type", "action_id", "unit_id", "target_id", "x", "y", "effective",
+	"queued", "order_id", "order_name", "unit_type", "unit_player_id", "unit_types", "unit_ids", "select_unit_tags", "select_unit_types", "build_unit_name",
+	"train_unit_name", "building_morph_unit_name", "tech_name", "upgrade_name", "hotkey_type", "hotkey_group", "game_speed",
+	"chat_sender_slot_id", "chat_message", "vision_slot_ids", "alliance_slot_ids", "allied_victory",
+	"leave_reason", "minimap_ping_x", "minimap_ping_y", "general_data",
+}
+
 // ColumnNames returns the column names for commands
 func (c *CommandsInserter) ColumnNames() []string {
-	return []string{
-		"replay_id", "player_id", "frame", "time", "action_type", "action_id", "unit_id", "target_id", "x", "y", "effective",
-		"queued", "order_id", "order_name", "unit_type", "unit_player_id", "unit_types", "unit_ids", "select_unit_tags", "select_unit_types", "build_unit_name",
-		"train_unit_name", "building_morph_unit_name", "tech_name", "upgrade_name", "hotkey_type", "hotkey_group", "game_speed",
-		"chat_sender_slot_id", "chat_message", "vision_slot_ids", "alliance_slot_ids", "allied_victory",
-		"leave_reason", "minimap_ping_x", "minimap_ping_y", "general_data",
-	}
+	return commandsColumnNames
 }
 
 // EntityCount returns the number of columns for commands
 func (c *CommandsInserter) EntityCount() int {
-	return 37
+	return len(commandsColumnNames)
 }
 
 // BuildArgs builds the arguments for a command entity

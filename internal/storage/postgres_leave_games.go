@@ -19,16 +19,18 @@ func (l *LeaveGamesInserter) TableName() string {
 	return "leave_games"
 }
 
+var leaveGamesColumnNames = []string{
+	"replay_id", "player_id", "reason", "frame", "time",
+}
+
 // ColumnNames returns the column names for leave games
 func (l *LeaveGamesInserter) ColumnNames() []string {
-	return []string{
-		"replay_id", "player_id", "reason", "frame", "time",
-	}
+	return leaveGamesColumnNames
 }
 
 // EntityCount returns the number of columns for leave games
 func (l *LeaveGamesInserter) EntityCount() int {
-	return 5
+	return len(leaveGamesColumnNames)
 }
 
 // BuildArgs builds the arguments for a leave game entity

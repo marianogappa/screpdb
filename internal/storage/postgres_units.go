@@ -19,16 +19,18 @@ func (u *UnitsInserter) TableName() string {
 	return "units"
 }
 
+var unitsColumnNames = []string{
+	"replay_id", "player_id", "unit_id", "type", "name", "created", "created_frame", "x", "y",
+}
+
 // ColumnNames returns the column names for units
 func (u *UnitsInserter) ColumnNames() []string {
-	return []string{
-		"replay_id", "player_id", "unit_id", "type", "name", "created", "created_frame", "x", "y",
-	}
+	return unitsColumnNames
 }
 
 // EntityCount returns the number of columns for units
 func (u *UnitsInserter) EntityCount() int {
-	return 9
+	return len(unitsColumnNames)
 }
 
 // BuildArgs builds the arguments for a unit entity

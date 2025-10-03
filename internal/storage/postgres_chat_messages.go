@@ -19,16 +19,18 @@ func (c *ChatMessagesInserter) TableName() string {
 	return "chat_messages"
 }
 
+var chatMessagesColumnNames = []string{
+	"replay_id", "player_id", "sender_slot_id", "message", "frame", "time",
+}
+
 // ColumnNames returns the column names for chat messages
 func (c *ChatMessagesInserter) ColumnNames() []string {
-	return []string{
-		"replay_id", "player_id", "sender_slot_id", "message", "frame", "time",
-	}
+	return chatMessagesColumnNames
 }
 
 // EntityCount returns the number of columns for chat messages
 func (c *ChatMessagesInserter) EntityCount() int {
-	return 6
+	return len(chatMessagesColumnNames)
 }
 
 // BuildArgs builds the arguments for a chat message entity
