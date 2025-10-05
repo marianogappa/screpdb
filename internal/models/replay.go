@@ -91,18 +91,9 @@ type Command struct {
 	OrderName *string `json:"order_name,omitempty"`
 
 	// Unit information (normalized fields)
-	UnitType     *string `json:"unit_type,omitempty"`      // Single unit type
-	UnitPlayerID *int64  `json:"unit_player_id,omitempty"` // Single unit player ID
-	UnitTypes    *string `json:"unit_types,omitempty"`     // JSON array of unit types for multiple units
-	UnitIDs      *string `json:"unit_ids,omitempty"`       // JSON array of unit IDs for multiple units
-
-	BuildUnitName *string `json:"build_unit_name,omitempty"`
-
-	// Train command fields
-	TrainUnitName *string `json:"train_unit_name,omitempty"`
-
-	// Building Morph command fields
-	BuildingMorphUnitName *string `json:"building_morph_unit_name,omitempty"`
+	UnitType  *string `json:"unit_type,omitempty"`  // Single unit type
+	UnitTypes *string `json:"unit_types,omitempty"` // JSON array of unit types for multiple units
+	UnitIDs   *string `json:"unit_ids,omitempty"`   // JSON array of unit IDs for multiple units
 
 	// Tech command fields
 	TechName *string `json:"tech_name,omitempty"`
@@ -125,91 +116,15 @@ type Command struct {
 
 	// General command fields (for unhandled commands)
 	GeneralData *string `json:"general_data,omitempty"` // Hex string of raw data
-}
 
-// Unit represents a unit in the game
-type Unit struct {
-	ID           int64     `json:"id"`
-	ReplayID     int64     `json:"replay_id"`
-	PlayerID     int64     `json:"player_id"`
-	UnitID       uint16    `json:"unit_id"`
-	Type         string    `json:"type"` // Marine, Zealot, Zergling, etc.
-	CreatedAt    time.Time `json:"created_at"`
-	CreatedFrame int32     `json:"created_frame"`
-}
-
-// Building represents a building in the game
-type Building struct {
-	ID           int64     `json:"id"`
-	ReplayID     int64     `json:"replay_id"`
-	PlayerID     int64     `json:"player_id"`
-	Type         string    `json:"type"` // Command Center, Nexus, Hatchery, etc.
-	CreatedAt    time.Time `json:"created_at"`
-	CreatedFrame int32     `json:"created_frame"`
-	X            int       `json:"x"`
-	Y            int       `json:"y"`
-}
-
-// Resource represents mineral fields and geysers on the map
-type Resource struct {
-	ID       int64  `json:"id"`
-	ReplayID int64  `json:"replay_id"`
-	Type     string `json:"type"` // "mineral" or "geyser"
-	X        int    `json:"x"`
-	Y        int    `json:"y"`
-	Amount   int    `json:"amount"`
-}
-
-// StartLocation represents starting positions on the map
-type StartLocation struct {
-	ID       int64 `json:"id"`
-	ReplayID int64 `json:"replay_id"`
-	X        int   `json:"x"`
-	Y        int   `json:"y"`
-	Oclock   int   `json:"oclock"` // Clock position: 11, 12, 1, 3, 5, 6, 7, 9
-}
-
-// PlacedUnit represents units placed on the map at game start
-type PlacedUnit struct {
-	ID       int64  `json:"id"`
-	ReplayID int64  `json:"replay_id"`
-	PlayerID int64  `json:"player_id"`
-	Type     string `json:"type"`
-	Name     string `json:"name"`
-	X        int    `json:"x"`
-	Y        int    `json:"y"`
-}
-
-// ChatMessage represents an in-game chat message
-type ChatMessage struct {
-	ID       int64     `json:"id"`
-	ReplayID int64     `json:"replay_id"`
-	PlayerID int64     `json:"player_id"`
-	Message  string    `json:"message"`
-	Frame    int32     `json:"frame"`
-	Time     time.Time `json:"time"`
-}
-
-// LeaveGame represents a player leaving the game
-type LeaveGame struct {
-	ID       int64     `json:"id"`
-	ReplayID int64     `json:"replay_id"`
-	PlayerID int64     `json:"player_id"`
-	Reason   string    `json:"reason"`
-	Frame    int32     `json:"frame"`
-	Time     time.Time `json:"time"`
+	// Chat and leave game fields
+	ChatMessage *string `json:"chat_message,omitempty"` // Chat message content
+	LeaveReason *string `json:"leave_reason,omitempty"` // Reason for leaving game
 }
 
 // ReplayData represents the complete parsed replay data
 type ReplayData struct {
-	Replay         *Replay          `json:"replay"`
-	Players        []*Player        `json:"players"`
-	Commands       []*Command       `json:"commands"`
-	Units          []*Unit          `json:"units"`
-	Buildings      []*Building      `json:"buildings"`
-	Resources      []*Resource      `json:"resources"`
-	StartLocations []*StartLocation `json:"available_start_locations"`
-	PlacedUnits    []*PlacedUnit    `json:"placed_units"`
-	ChatMessages   []*ChatMessage   `json:"chat_messages"`
-	LeaveGames     []*LeaveGame     `json:"leave_games"`
+	Replay   *Replay    `json:"replay"`
+	Players  []*Player  `json:"players"`
+	Commands []*Command `json:"commands"`
 }

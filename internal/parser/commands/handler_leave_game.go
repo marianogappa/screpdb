@@ -22,6 +22,14 @@ func NewLeaveGameCommandHandler() *LeaveGameCommandHandler {
 func (h *LeaveGameCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPlayerMap map[uint16]int64) *models.Command {
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	// Leave game data is stored in dedicated leave_games table, not in commands table
+	// Extract leave reason from the command
+	if leaveCmd, ok := cmd.(*repcmd.LeaveGameCmd); ok {
+		reason := ""
+		if leaveCmd.Reason != nil {
+			reason = leaveCmd.Reason.String()
+		}
+		command.LeaveReason = stringPtr(reason)
+	}
+
 	return command
 }

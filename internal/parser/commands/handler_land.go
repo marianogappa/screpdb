@@ -28,7 +28,7 @@ func (h *LandCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPla
 
 	if landCmd.Unit != nil {
 		command.UnitID = bytePtr(byte(landCmd.Unit.ID))
-		command.BuildUnitName = stringPtr(landCmd.Unit.Name)
+		command.UnitType = stringPtr(landCmd.Unit.Name)
 	}
 
 	if landCmd.Order != nil {

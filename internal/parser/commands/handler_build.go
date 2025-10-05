@@ -28,7 +28,7 @@ func (h *BuildCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPl
 
 	if buildCmd.Unit != nil {
 		command.UnitID = bytePtr(byte(buildCmd.Unit.ID))
-		command.BuildUnitName = stringPtr(buildCmd.Unit.Name)
+		command.UnitType = stringPtr(buildCmd.Unit.Name)
 	}
 
 	if buildCmd.Order != nil {

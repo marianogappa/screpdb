@@ -26,12 +26,12 @@ func (h *TrainFighterCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, s
 	if trainCmd, ok := cmd.(*repcmd.TrainCmd); ok {
 		if trainCmd.Unit != nil {
 			command.UnitID = bytePtr(byte(trainCmd.Unit.ID))
-			command.TrainUnitName = stringPtr(trainCmd.Unit.Name)
+			command.UnitType = stringPtr(trainCmd.Unit.Name)
 		}
 	} else {
 		// For other command types, we'll store basic information without unit details
 		command.UnitID = nil
-		command.TrainUnitName = nil
+		command.UnitType = nil
 	}
 
 	return command

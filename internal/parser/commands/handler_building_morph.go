@@ -25,7 +25,7 @@ func (h *BuildingMorphCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, 
 
 	if buildingMorphCmd.Unit != nil {
 		command.UnitID = bytePtr(byte(buildingMorphCmd.Unit.ID))
-		command.BuildingMorphUnitName = stringPtr(buildingMorphCmd.Unit.Name)
+		command.UnitType = stringPtr(buildingMorphCmd.Unit.Name)
 	}
 
 	return command

@@ -22,6 +22,10 @@ func NewChatCommandHandler() *ChatCommandHandler {
 func (h *ChatCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPlayerMap map[uint16]int64) *models.Command {
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	// Chat data is stored in dedicated chat_messages table, not in commands table
+	// Extract chat message from the command
+	if chatCmd, ok := cmd.(*repcmd.ChatCmd); ok {
+		command.ChatMessage = stringPtr(chatCmd.Message)
+	}
+
 	return command
 }

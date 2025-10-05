@@ -3,10 +3,9 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
-	"sync"
-	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/marianogappa/screpdb/internal/models"
@@ -17,95 +16,9 @@ type PostgresStorage struct {
 	db *sql.DB
 }
 
-// BatchInserter defines the interface for entity-specific batch insertion
-type BatchInserter interface {
-	TableName() string
-	ColumnNames() []string
-	BuildArgs(entity any, args []any, offset int) error
-	EntityCount() int
-}
-
-// GenericBatchInserter provides a generic implementation for batch insertion
-type GenericBatchInserter struct {
-	inserter BatchInserter
-	db       *sql.DB
-}
-
-// NewGenericBatchInserter creates a new generic batch inserter
-func NewGenericBatchInserter(inserter BatchInserter, db *sql.DB) *GenericBatchInserter {
-	return &GenericBatchInserter{
-		inserter: inserter,
-		db:       db,
-	}
-}
-
-// InsertBatch performs a batch insert for any entity type
-func (g *GenericBatchInserter) InsertBatch(ctx context.Context, entities []any) error {
-	if len(entities) == 0 {
-		return nil
-	}
-
-	// Build the batch insert query
-	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES ",
-		g.inserter.TableName(),
-		strings.Join(g.inserter.ColumnNames(), ", "))
-
-	// Build placeholders and args
-	placeholders := make([]string, len(entities))
-	columnCount := g.inserter.EntityCount()
-	args := make([]any, len(entities)*columnCount)
-
-	for i, entity := range entities {
-		// Build placeholder for this entity
-		placeholderArgs := make([]string, columnCount)
-		for j := 0; j < columnCount; j++ {
-			placeholderArgs[j] = fmt.Sprintf("$%d", i*columnCount+j+1)
-		}
-		placeholders[i] = fmt.Sprintf("(%s)", strings.Join(placeholderArgs, ", "))
-
-		// Build args for this entity
-		if err := g.inserter.BuildArgs(entity, args, i*columnCount); err != nil {
-			return fmt.Errorf("failed to build args for entity %d: %w", i, err)
-		}
-	}
-
-	query += strings.Join(placeholders, ", ")
-
-	_, err := g.db.ExecContext(ctx, query, args...)
-	if err != nil {
-		return fmt.Errorf("failed to insert %s batch: %w", g.inserter.TableName(), err)
-	}
-
-	return nil
-}
-
-// BatchInsertWorker handles batched inserts for any entity type
-func (g *GenericBatchInserter) BatchInsertWorker(ctx context.Context, entities []any, wg *sync.WaitGroup, errChan chan<- error) {
-	defer wg.Done()
-
-	if len(entities) == 0 {
-		return
-	}
-
-	// Process in batches
-	for i := 0; i < len(entities); i += batchSize {
-		end := i + batchSize
-		if end > len(entities) {
-			end = len(entities)
-		}
-
-		batch := entities[i:end]
-		if err := g.InsertBatch(ctx, batch); err != nil {
-			errChan <- fmt.Errorf("failed to insert %s batch: %w", g.inserter.TableName(), err)
-			return
-		}
-	}
-}
-
 // Batching configuration
 const (
-	batchSize     = 1000            // Number of records per batch
-	flushInterval = 5 * time.Second // Time-based flush interval
+	batchSize = 1000 // Number of records per batch
 )
 
 // NewPostgresStorage creates a new PostgreSQL storage instance
@@ -129,16 +42,19 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 	if clean {
 		// Drop all tables in the correct order to handle foreign key constraints
 		dropTables := `
+			DROP TABLE IF EXISTS commands CASCADE;
+			DROP TABLE IF EXISTS players CASCADE;
+			DROP TABLE IF EXISTS replays CASCADE;
+
+			-- Legacy: these tables are no longer used
 			DROP TABLE IF EXISTS chat_messages CASCADE;
 			DROP TABLE IF EXISTS leave_games CASCADE;
 			DROP TABLE IF EXISTS placed_units CASCADE;
 			DROP TABLE IF EXISTS available_start_locations CASCADE;
+			DROP TABLE IF EXISTS start_locations CASCADE;
 			DROP TABLE IF EXISTS resources CASCADE;
 			DROP TABLE IF EXISTS buildings CASCADE;
 			DROP TABLE IF EXISTS units CASCADE;
-			DROP TABLE IF EXISTS commands CASCADE;
-			DROP TABLE IF EXISTS players CASCADE;
-			DROP TABLE IF EXISTS replays CASCADE;
 		`
 		if _, err := s.db.ExecContext(ctx, dropTables); err != nil {
 			return fmt.Errorf("failed to drop tables: %w", err)
@@ -203,17 +119,7 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 		
 		-- Unit information (normalized fields)
 		unit_type TEXT, -- Single unit type
-		unit_player_id INTEGER, -- Single unit player ID
 		unit_types TEXT, -- JSON array of unit types for multiple units
-		
-		-- Build command fields
-		build_unit_name TEXT,
-		
-		-- Train command fields
-		train_unit_name TEXT,
-		
-		-- Building Morph command fields
-		building_morph_unit_name TEXT,
 		
 		-- Tech command fields
 		tech_name TEXT,
@@ -235,76 +141,12 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 		alliance_player_ids JSONB, -- JSON array of player IDs
 		is_allied_victory BOOLEAN,
 		
-		-- Minimap Ping command fields
-		
 		-- General command fields (for unhandled commands)
-		general_data TEXT -- Hex string of raw data
-	);
-
-	CREATE TABLE IF NOT EXISTS units (
-		id SERIAL PRIMARY KEY,
-		replay_id INTEGER NOT NULL,
-		player_id INTEGER NOT NULL,
-		type TEXT NOT NULL,
-		created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-		created_frame INTEGER NOT NULL
-	);
-
-	CREATE TABLE IF NOT EXISTS buildings (
-		id SERIAL PRIMARY KEY,
-		replay_id INTEGER NOT NULL,
-		player_id INTEGER NOT NULL,
-		type TEXT NOT NULL,
-		created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-		created_frame INTEGER NOT NULL,
-		x INTEGER NOT NULL,
-		y INTEGER NOT NULL
-	);
-
-	CREATE TABLE IF NOT EXISTS resources (
-		id SERIAL PRIMARY KEY,
-		replay_id INTEGER NOT NULL,
-		type TEXT NOT NULL,
-		x INTEGER NOT NULL,
-		y INTEGER NOT NULL,
-		amount INTEGER NOT NULL
-	);
-
-	CREATE TABLE IF NOT EXISTS available_start_locations (
-		id SERIAL PRIMARY KEY,
-		replay_id INTEGER NOT NULL,
-		x INTEGER NOT NULL,
-		y INTEGER NOT NULL,
-		oclock INTEGER NOT NULL,
-		FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE
-	);
-
-	CREATE TABLE IF NOT EXISTS placed_units (
-		id SERIAL PRIMARY KEY,
-		replay_id INTEGER NOT NULL,
-		player_id INTEGER NOT NULL,
-		type TEXT NOT NULL,
-		name TEXT NOT NULL,
-		x INTEGER NOT NULL,
-		y INTEGER NOT NULL
-	);
-
-	CREATE TABLE IF NOT EXISTS chat_messages (
-		id SERIAL PRIMARY KEY,
-		replay_id INTEGER NOT NULL,
-		player_id INTEGER NOT NULL,
-		message TEXT NOT NULL,
-		frame INTEGER NOT NULL,
-		time TIMESTAMP WITH TIME ZONE NOT NULL
-	);
-
-	CREATE TABLE IF NOT EXISTS leave_games (
-		id SERIAL PRIMARY KEY,
-		replay_id INTEGER NOT NULL,
-		player_id INTEGER NOT NULL,
-		reason TEXT,
-		frame INTEGER NOT NULL,
-		time TIMESTAMP WITH TIME ZONE NOT NULL
+		general_data TEXT, -- Hex string of raw data
+		
+		-- Chat and leave game fields
+		chat_message TEXT,
+		leave_reason TEXT
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_replays_file_path ON replays(file_path);
@@ -314,18 +156,6 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 	CREATE INDEX IF NOT EXISTS idx_commands_replay_id ON commands(replay_id);
 	CREATE INDEX IF NOT EXISTS idx_commands_player_id ON commands(player_id);
 	CREATE INDEX IF NOT EXISTS idx_commands_frame ON commands(frame);
-	CREATE INDEX IF NOT EXISTS idx_units_replay_id ON units(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_buildings_replay_id ON buildings(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_resources_replay_id ON resources(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_available_start_locations_replay_id ON available_start_locations(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_placed_units_replay_id ON placed_units(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_placed_units_player_id ON placed_units(player_id);
-	CREATE INDEX IF NOT EXISTS idx_chat_messages_replay_id ON chat_messages(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_chat_messages_player_id ON chat_messages(player_id);
-	CREATE INDEX IF NOT EXISTS idx_chat_messages_frame ON chat_messages(frame);
-	CREATE INDEX IF NOT EXISTS idx_leave_games_replay_id ON leave_games(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_leave_games_player_id ON leave_games(player_id);
-	CREATE INDEX IF NOT EXISTS idx_leave_games_frame ON leave_games(frame);
 	`
 
 	_, err := s.db.ExecContext(ctx, schema)
@@ -367,7 +197,7 @@ func (s *PostgresStorage) StartIngestion(ctx context.Context) (ReplayDataChannel
 	return dataChan, errChan
 }
 
-// storeReplayWithBatching stores a replay data structure using the new batching approach
+// storeReplayWithBatching stores a replay data structure using sequential processing
 func (s *PostgresStorage) storeReplayWithBatching(ctx context.Context, data *models.ReplayData) error {
 	// Step 1: Insert replay sequentially (with RETURNING)
 	replayID, err := s.insertReplaySequential(ctx, data.Replay)
@@ -381,79 +211,13 @@ func (s *PostgresStorage) storeReplayWithBatching(ctx context.Context, data *mod
 		return fmt.Errorf("failed to insert players: %w", err)
 	}
 
-	// Step 3: Insert all other entities concurrently using worker goroutines
-	errChan := make(chan error, 8) // One for each table
-	var wg sync.WaitGroup
-
-	// Update all entities with the correct IDs
+	// Step 3: Update commands with correct IDs and insert them
 	s.updateEntityIDs(data, replayID, playerIDs)
 
-	// Start worker goroutines for each table using generic batch inserters
-	wg.Add(8)
-
-	// Convert slices to []any for generic processing
-	commandsAny := make([]any, len(data.Commands))
-	for i, cmd := range data.Commands {
-		commandsAny[i] = cmd
-	}
-	unitsAny := make([]any, len(data.Units))
-	for i, unit := range data.Units {
-		unitsAny[i] = unit
-	}
-	buildingsAny := make([]any, len(data.Buildings))
-	for i, building := range data.Buildings {
-		buildingsAny[i] = building
-	}
-	resourcesAny := make([]any, len(data.Resources))
-	for i, resource := range data.Resources {
-		resourcesAny[i] = resource
-	}
-	startLocationsAny := make([]any, len(data.StartLocations))
-	for i, startLoc := range data.StartLocations {
-		startLocationsAny[i] = startLoc
-	}
-	placedUnitsAny := make([]any, len(data.PlacedUnits))
-	for i, placedUnit := range data.PlacedUnits {
-		placedUnitsAny[i] = placedUnit
-	}
-	chatMessagesAny := make([]any, len(data.ChatMessages))
-	for i, chatMsg := range data.ChatMessages {
-		chatMessagesAny[i] = chatMsg
-	}
-	leaveGamesAny := make([]any, len(data.LeaveGames))
-	for i, leaveGame := range data.LeaveGames {
-		leaveGamesAny[i] = leaveGame
-	}
-
-	// Create generic batch inserters
-	commandsInserter := NewGenericBatchInserter(NewCommandsInserter(), s.db)
-	unitsInserter := NewGenericBatchInserter(NewUnitsInserter(), s.db)
-	buildingsInserter := NewGenericBatchInserter(NewBuildingsInserter(), s.db)
-	resourcesInserter := NewGenericBatchInserter(NewResourcesInserter(), s.db)
-	startLocationsInserter := NewGenericBatchInserter(NewStartLocationsInserter(), s.db)
-	placedUnitsInserter := NewGenericBatchInserter(NewPlacedUnitsInserter(), s.db)
-	chatMessagesInserter := NewGenericBatchInserter(NewChatMessagesInserter(), s.db)
-	leaveGamesInserter := NewGenericBatchInserter(NewLeaveGamesInserter(), s.db)
-
-	go commandsInserter.BatchInsertWorker(ctx, commandsAny, &wg, errChan)
-	go unitsInserter.BatchInsertWorker(ctx, unitsAny, &wg, errChan)
-	go buildingsInserter.BatchInsertWorker(ctx, buildingsAny, &wg, errChan)
-	go resourcesInserter.BatchInsertWorker(ctx, resourcesAny, &wg, errChan)
-	go startLocationsInserter.BatchInsertWorker(ctx, startLocationsAny, &wg, errChan)
-	go placedUnitsInserter.BatchInsertWorker(ctx, placedUnitsAny, &wg, errChan)
-	go chatMessagesInserter.BatchInsertWorker(ctx, chatMessagesAny, &wg, errChan)
-	go leaveGamesInserter.BatchInsertWorker(ctx, leaveGamesAny, &wg, errChan)
-
-	// Wait for all workers to complete
-	go func() {
-		wg.Wait()
-		close(errChan)
-	}()
-
-	// Check for any errors
-	for err := range errChan {
-		if err != nil {
-			return fmt.Errorf("worker error: %w", err)
+	// Step 4: Insert commands in batch
+	if len(data.Commands) > 0 {
+		if err := s.insertCommandsBatch(ctx, data.Commands); err != nil {
+			return fmt.Errorf("failed to insert commands: %w", err)
 		}
 	}
 
@@ -549,6 +313,116 @@ func (s *PostgresStorage) insertPlayersBatch(ctx context.Context, replayID int64
 	return playerIDs, nil
 }
 
+// insertCommandsBatch inserts all commands for a replay in batches
+func (s *PostgresStorage) insertCommandsBatch(ctx context.Context, commands []*models.Command) error {
+	if len(commands) == 0 {
+		return nil
+	}
+
+	// Process in batches
+	for i := 0; i < len(commands); i += batchSize {
+		end := min(i+batchSize, len(commands))
+		batch := commands[i:end]
+		if err := s.insertCommandsBatchChunk(ctx, batch); err != nil {
+			return fmt.Errorf("failed to insert commands batch: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// insertCommandsBatchChunk inserts a chunk of commands
+func (s *PostgresStorage) insertCommandsBatchChunk(ctx context.Context, commands []*models.Command) error {
+	if len(commands) == 0 {
+		return nil
+	}
+
+	// Build the batch insert query
+	query := `
+		INSERT INTO commands (
+			replay_id, player_id, frame, run_at, action_type, x, y, is_effective,
+			is_queued, order_name, unit_type, unit_types,
+			tech_name, upgrade_name, hotkey_type, hotkey_group, game_speed,
+			vision_player_ids, alliance_player_ids, is_allied_victory,
+			general_data, chat_message, leave_reason
+		) VALUES `
+
+	// Build placeholders and args
+	placeholders := make([]string, len(commands))
+	args := make([]any, len(commands)*23) // 23 columns
+
+	for i, command := range commands {
+		placeholders[i] = fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)",
+			i*23+1, i*23+2, i*23+3, i*23+4, i*23+5, i*23+6, i*23+7, i*23+8, i*23+9, i*23+10, i*23+11, i*23+12, i*23+13, i*23+14, i*23+15, i*23+16, i*23+17, i*23+18, i*23+19, i*23+20, i*23+21, i*23+22, i*23+23)
+
+		// Serialize player IDs to JSON
+		visionPlayerIDsJSON := s.serializePlayerIDs(command.VisionPlayerIDs)
+		alliancePlayerIDsJSON := s.serializePlayerIDs(command.AlliancePlayerIDs)
+
+		// Serialize unit information to JSON
+		unitTypesJSON := s.serializeString(command.UnitTypes)
+
+		args[i*23] = command.ReplayID
+		args[i*23+1] = command.PlayerID
+		args[i*23+2] = command.Frame
+		args[i*23+3] = command.RunAt
+		args[i*23+4] = command.ActionType
+		args[i*23+5] = command.X
+		args[i*23+6] = command.Y
+		args[i*23+7] = command.IsEffective
+		args[i*23+8] = command.IsQueued
+		args[i*23+9] = command.OrderName
+		args[i*23+10] = s.getUnitTypeOrNull(command.UnitType)
+		args[i*23+11] = unitTypesJSON
+		args[i*23+12] = command.TechName
+		args[i*23+13] = command.UpgradeName
+		args[i*23+14] = command.HotkeyType
+		args[i*23+15] = command.HotkeyGroup
+		args[i*23+16] = command.GameSpeed
+		args[i*23+17] = visionPlayerIDsJSON
+		args[i*23+18] = alliancePlayerIDsJSON
+		args[i*23+19] = command.IsAlliedVictory
+		args[i*23+20] = command.GeneralData
+		args[i*23+21] = command.ChatMessage
+		args[i*23+22] = command.LeaveReason
+	}
+
+	query += strings.Join(placeholders, ", ")
+
+	_, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to insert commands batch: %w", err)
+	}
+
+	return nil
+}
+
+// Helper functions for serialization
+func (s *PostgresStorage) serializePlayerIDs(playerIDs *[]int64) interface{} {
+	if playerIDs == nil {
+		return nil
+	}
+	data, err := json.Marshal(*playerIDs)
+	if err != nil {
+		return nil
+	}
+	return string(data)
+}
+
+func (s *PostgresStorage) serializeString(str *string) interface{} {
+	if str == nil {
+		return nil
+	}
+	return *str
+}
+
+func (s *PostgresStorage) getUnitTypeOrNull(unitType *string) interface{} {
+	if unitType == nil || *unitType == "None" {
+		return nil
+	}
+	return *unitType
+}
+
 // updateEntityIDs updates all entities with the correct replay ID and player IDs
 func (s *PostgresStorage) updateEntityIDs(data *models.ReplayData, replayID int64, playerIDs map[byte]int64) {
 	// Update commands
@@ -556,56 +430,6 @@ func (s *PostgresStorage) updateEntityIDs(data *models.ReplayData, replayID int6
 		command.ReplayID = replayID
 		if playerID, exists := playerIDs[byte(command.PlayerID)]; exists {
 			command.PlayerID = playerID
-		}
-	}
-
-	// Update units
-	for _, unit := range data.Units {
-		unit.ReplayID = replayID
-		if playerID, exists := playerIDs[byte(unit.PlayerID)]; exists {
-			unit.PlayerID = playerID
-		}
-	}
-
-	// Update buildings
-	for _, building := range data.Buildings {
-		building.ReplayID = replayID
-		if playerID, exists := playerIDs[byte(building.PlayerID)]; exists {
-			building.PlayerID = playerID
-		}
-	}
-
-	// Update resources
-	for _, resource := range data.Resources {
-		resource.ReplayID = replayID
-	}
-
-	// Update start locations
-	for _, startLoc := range data.StartLocations {
-		startLoc.ReplayID = replayID
-	}
-
-	// Update placed units
-	for _, placedUnit := range data.PlacedUnits {
-		placedUnit.ReplayID = replayID
-		if playerID, exists := playerIDs[byte(placedUnit.PlayerID)]; exists {
-			placedUnit.PlayerID = playerID
-		}
-	}
-
-	// Update chat messages
-	for _, chatMsg := range data.ChatMessages {
-		chatMsg.ReplayID = replayID
-		if playerID, exists := playerIDs[byte(chatMsg.PlayerID)]; exists {
-			chatMsg.PlayerID = playerID
-		}
-	}
-
-	// Update leave games
-	for _, leaveGame := range data.LeaveGames {
-		leaveGame.ReplayID = replayID
-		if playerID, exists := playerIDs[byte(leaveGame.PlayerID)]; exists {
-			leaveGame.PlayerID = playerID
 		}
 	}
 }

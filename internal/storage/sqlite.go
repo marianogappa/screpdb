@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -15,90 +16,6 @@ import (
 // SQLiteStorage implements Storage interface using SQLite
 type SQLiteStorage struct {
 	db *sql.DB
-}
-
-// SQLiteBatchInserter defines the interface for entity-specific batch insertion for SQLite
-type SQLiteBatchInserter interface {
-	TableName() string
-	ColumnNames() []string
-	BuildArgs(entity any, args []any, offset int) error
-	EntityCount() int
-}
-
-// GenericSQLiteBatchInserter provides a generic implementation for batch insertion in SQLite
-type GenericSQLiteBatchInserter struct {
-	inserter SQLiteBatchInserter
-	db       *sql.DB
-}
-
-// NewGenericSQLiteBatchInserter creates a new generic SQLite batch inserter
-func NewGenericSQLiteBatchInserter(inserter SQLiteBatchInserter, db *sql.DB) *GenericSQLiteBatchInserter {
-	return &GenericSQLiteBatchInserter{
-		inserter: inserter,
-		db:       db,
-	}
-}
-
-// InsertBatch performs a batch insert for any entity type in SQLite
-func (g *GenericSQLiteBatchInserter) InsertBatch(ctx context.Context, entities []any) error {
-	if len(entities) == 0 {
-		return nil
-	}
-
-	// Process in batches using SQLite batch size
-	for i := 0; i < len(entities); i += sqliteBatchSize {
-		end := i + sqliteBatchSize
-		if end > len(entities) {
-			end = len(entities)
-		}
-
-		batch := entities[i:end]
-		if err := g.insertBatchChunk(ctx, batch); err != nil {
-			return fmt.Errorf("failed to insert %s batch: %w", g.inserter.TableName(), err)
-		}
-	}
-
-	return nil
-}
-
-// insertBatchChunk inserts a chunk of entities
-func (g *GenericSQLiteBatchInserter) insertBatchChunk(ctx context.Context, entities []any) error {
-	if len(entities) == 0 {
-		return nil
-	}
-
-	// Build the batch insert query
-	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES ",
-		g.inserter.TableName(),
-		strings.Join(g.inserter.ColumnNames(), ", "))
-
-	// Build placeholders and args
-	placeholders := make([]string, len(entities))
-	columnCount := g.inserter.EntityCount()
-	args := make([]any, len(entities)*columnCount)
-
-	for i, entity := range entities {
-		// Build placeholder for this entity (SQLite uses ? placeholders)
-		placeholderArgs := make([]string, columnCount)
-		for j := 0; j < columnCount; j++ {
-			placeholderArgs[j] = "?"
-		}
-		placeholders[i] = fmt.Sprintf("(%s)", strings.Join(placeholderArgs, ", "))
-
-		// Build args for this entity
-		if err := g.inserter.BuildArgs(entity, args, i*columnCount); err != nil {
-			return fmt.Errorf("failed to build args for entity %d: %w", i, err)
-		}
-	}
-
-	query += strings.Join(placeholders, ", ")
-
-	_, err := g.db.ExecContext(ctx, query, args...)
-	if err != nil {
-		return fmt.Errorf("failed to insert %s batch: %w", g.inserter.TableName(), err)
-	}
-
-	return nil
 }
 
 // Batching configuration for SQLite
@@ -123,13 +40,6 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 	if clean {
 		// Drop all tables in the correct order to handle foreign key constraints
 		dropTables := `
-			DROP TABLE IF EXISTS chat_messages;
-			DROP TABLE IF EXISTS leave_games;
-			DROP TABLE IF EXISTS placed_units;
-			DROP TABLE IF EXISTS available_start_locations;
-			DROP TABLE IF EXISTS resources;
-			DROP TABLE IF EXISTS buildings;
-			DROP TABLE IF EXISTS units;
 			DROP TABLE IF EXISTS commands;
 			DROP TABLE IF EXISTS players;
 			DROP TABLE IF EXISTS replays;
@@ -197,17 +107,7 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 		
 		-- Unit information (normalized fields)
 		unit_type TEXT, -- Single unit type
-		unit_player_id INTEGER, -- Single unit player ID
 		unit_types TEXT, -- JSON array of unit types for multiple units
-		
-		-- Build command fields
-		build_unit_name TEXT,
-		
-		-- Train command fields
-		train_unit_name TEXT,
-		
-		-- Building Morph command fields
-		building_morph_unit_name TEXT,
 		
 		-- Tech command fields
 		tech_name TEXT,
@@ -229,75 +129,12 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 		alliance_player_ids TEXT, -- JSON array of player IDs
 		is_allied_victory BOOLEAN,
 		
-		-- Minimap Ping command fields
-		
 		-- General command fields (for unhandled commands)
-		general_data TEXT -- Hex string of raw data
-	);
-
-	CREATE TABLE IF NOT EXISTS units (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		replay_id INTEGER NOT NULL,
-		player_id INTEGER NOT NULL,
-		type TEXT NOT NULL,
-		created_at DATETIME NOT NULL,
-		created_frame INTEGER NOT NULL
-	);
-
-	CREATE TABLE IF NOT EXISTS buildings (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		replay_id INTEGER NOT NULL,
-		player_id INTEGER NOT NULL,
-		type TEXT NOT NULL,
-		created_at DATETIME NOT NULL,
-		created_frame INTEGER NOT NULL,
-		x INTEGER NOT NULL,
-		y INTEGER NOT NULL
-	);
-
-	CREATE TABLE IF NOT EXISTS resources (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		replay_id INTEGER NOT NULL,
-		type TEXT NOT NULL,
-		x INTEGER NOT NULL,
-		y INTEGER NOT NULL,
-		amount INTEGER NOT NULL
-	);
-
-	CREATE TABLE IF NOT EXISTS available_start_locations (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		replay_id INTEGER NOT NULL,
-		x INTEGER NOT NULL,
-		y INTEGER NOT NULL,
-		oclock INTEGER NOT NULL
-	);
-
-	CREATE TABLE IF NOT EXISTS placed_units (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		replay_id INTEGER NOT NULL,
-		player_id INTEGER NOT NULL,
-		type TEXT NOT NULL,
-		name TEXT NOT NULL,
-		x INTEGER NOT NULL,
-		y INTEGER NOT NULL
-	);
-
-	CREATE TABLE IF NOT EXISTS chat_messages (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		replay_id INTEGER NOT NULL,
-		player_id INTEGER NOT NULL,
-		message TEXT NOT NULL,
-		frame INTEGER NOT NULL,
-		time DATETIME NOT NULL
-	);
-
-	CREATE TABLE IF NOT EXISTS leave_games (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		replay_id INTEGER NOT NULL,
-		player_id INTEGER NOT NULL,
-		reason TEXT,
-		frame INTEGER NOT NULL,
-		time DATETIME NOT NULL
+		general_data TEXT, -- Hex string of raw data
+		
+		-- Chat and leave game fields
+		chat_message TEXT,
+		leave_reason TEXT
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_replays_file_path ON replays(file_path);
@@ -307,18 +144,6 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 	CREATE INDEX IF NOT EXISTS idx_commands_replay_id ON commands(replay_id);
 	CREATE INDEX IF NOT EXISTS idx_commands_player_id ON commands(player_id);
 	CREATE INDEX IF NOT EXISTS idx_commands_frame ON commands(frame);
-	CREATE INDEX IF NOT EXISTS idx_units_replay_id ON units(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_buildings_replay_id ON buildings(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_resources_replay_id ON resources(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_available_start_locations_replay_id ON available_start_locations(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_placed_units_replay_id ON placed_units(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_placed_units_player_id ON placed_units(player_id);
-	CREATE INDEX IF NOT EXISTS idx_chat_messages_replay_id ON chat_messages(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_chat_messages_player_id ON chat_messages(player_id);
-	CREATE INDEX IF NOT EXISTS idx_chat_messages_frame ON chat_messages(frame);
-	CREATE INDEX IF NOT EXISTS idx_leave_games_replay_id ON leave_games(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_leave_games_player_id ON leave_games(player_id);
-	CREATE INDEX IF NOT EXISTS idx_leave_games_frame ON leave_games(frame);
 	`
 
 	_, err := s.db.ExecContext(ctx, schema)
@@ -360,7 +185,7 @@ func (s *SQLiteStorage) StartIngestion(ctx context.Context) (ReplayDataChannel, 
 	return dataChan, errChan
 }
 
-// storeReplayWithBatching stores a replay data structure using the new batching approach (sequential for SQLite)
+// storeReplayWithBatching stores a replay data structure using sequential processing
 func (s *SQLiteStorage) storeReplayWithBatching(ctx context.Context, data *models.ReplayData) error {
 	// Step 1: Insert replay sequentially
 	replayID, err := s.insertReplaySequential(ctx, data.Replay)
@@ -374,78 +199,14 @@ func (s *SQLiteStorage) storeReplayWithBatching(ctx context.Context, data *model
 		return fmt.Errorf("failed to insert players: %w", err)
 	}
 
-	// Step 3: Insert all other entities sequentially with batching using generic inserters
-	// Update all entities with the correct IDs
+	// Step 3: Update commands with correct IDs and insert them
 	s.updateEntityIDs(data, replayID, playerIDs)
 
-	// Convert slices to []any for generic processing
-	commandsAny := make([]any, len(data.Commands))
-	for i, cmd := range data.Commands {
-		commandsAny[i] = cmd
-	}
-	unitsAny := make([]any, len(data.Units))
-	for i, unit := range data.Units {
-		unitsAny[i] = unit
-	}
-	buildingsAny := make([]any, len(data.Buildings))
-	for i, building := range data.Buildings {
-		buildingsAny[i] = building
-	}
-	resourcesAny := make([]any, len(data.Resources))
-	for i, resource := range data.Resources {
-		resourcesAny[i] = resource
-	}
-	startLocationsAny := make([]any, len(data.StartLocations))
-	for i, startLoc := range data.StartLocations {
-		startLocationsAny[i] = startLoc
-	}
-	placedUnitsAny := make([]any, len(data.PlacedUnits))
-	for i, placedUnit := range data.PlacedUnits {
-		placedUnitsAny[i] = placedUnit
-	}
-	chatMessagesAny := make([]any, len(data.ChatMessages))
-	for i, chatMsg := range data.ChatMessages {
-		chatMessagesAny[i] = chatMsg
-	}
-	leaveGamesAny := make([]any, len(data.LeaveGames))
-	for i, leaveGame := range data.LeaveGames {
-		leaveGamesAny[i] = leaveGame
-	}
-
-	// Create generic batch inserters
-	commandsInserter := NewGenericSQLiteBatchInserter(NewSQLiteCommandsInserter(), s.db)
-	unitsInserter := NewGenericSQLiteBatchInserter(NewSQLiteUnitsInserter(), s.db)
-	buildingsInserter := NewGenericSQLiteBatchInserter(NewSQLiteBuildingsInserter(), s.db)
-	resourcesInserter := NewGenericSQLiteBatchInserter(NewSQLiteResourcesInserter(), s.db)
-	startLocationsInserter := NewGenericSQLiteBatchInserter(NewSQLiteStartLocationsInserter(), s.db)
-	placedUnitsInserter := NewGenericSQLiteBatchInserter(NewSQLitePlacedUnitsInserter(), s.db)
-	chatMessagesInserter := NewGenericSQLiteBatchInserter(NewSQLiteChatMessagesInserter(), s.db)
-	leaveGamesInserter := NewGenericSQLiteBatchInserter(NewSQLiteLeaveGamesInserter(), s.db)
-
-	// Insert all other entities in batches sequentially
-	if err := commandsInserter.InsertBatch(ctx, commandsAny); err != nil {
-		return fmt.Errorf("failed to insert commands: %w", err)
-	}
-	if err := unitsInserter.InsertBatch(ctx, unitsAny); err != nil {
-		return fmt.Errorf("failed to insert units: %w", err)
-	}
-	if err := buildingsInserter.InsertBatch(ctx, buildingsAny); err != nil {
-		return fmt.Errorf("failed to insert buildings: %w", err)
-	}
-	if err := resourcesInserter.InsertBatch(ctx, resourcesAny); err != nil {
-		return fmt.Errorf("failed to insert resources: %w", err)
-	}
-	if err := startLocationsInserter.InsertBatch(ctx, startLocationsAny); err != nil {
-		return fmt.Errorf("failed to insert start locations: %w", err)
-	}
-	if err := placedUnitsInserter.InsertBatch(ctx, placedUnitsAny); err != nil {
-		return fmt.Errorf("failed to insert placed units: %w", err)
-	}
-	if err := chatMessagesInserter.InsertBatch(ctx, chatMessagesAny); err != nil {
-		return fmt.Errorf("failed to insert chat messages: %w", err)
-	}
-	if err := leaveGamesInserter.InsertBatch(ctx, leaveGamesAny); err != nil {
-		return fmt.Errorf("failed to insert leave games: %w", err)
+	// Step 4: Insert commands in batch
+	if len(data.Commands) > 0 {
+		if err := s.insertCommandsBatch(ctx, data.Commands); err != nil {
+			return fmt.Errorf("failed to insert commands: %w", err)
+		}
 	}
 
 	log.Printf("Successfully stored replay: %s", data.Replay.FileName)
@@ -539,6 +300,115 @@ func (s *SQLiteStorage) insertPlayersBatch(ctx context.Context, replayID int64, 
 	return playerIDs, nil
 }
 
+// insertCommandsBatch inserts all commands for a replay in batches
+func (s *SQLiteStorage) insertCommandsBatch(ctx context.Context, commands []*models.Command) error {
+	if len(commands) == 0 {
+		return nil
+	}
+
+	// Process in batches using SQLite batch size
+	for i := 0; i < len(commands); i += sqliteBatchSize {
+		end := min(i+sqliteBatchSize, len(commands))
+		batch := commands[i:end]
+		if err := s.insertCommandsBatchChunk(ctx, batch); err != nil {
+			return fmt.Errorf("failed to insert commands batch: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// insertCommandsBatchChunk inserts a chunk of commands
+func (s *SQLiteStorage) insertCommandsBatchChunk(ctx context.Context, commands []*models.Command) error {
+	if len(commands) == 0 {
+		return nil
+	}
+
+	// Build the batch insert query
+	query := `
+		INSERT INTO commands (
+			replay_id, player_id, frame, run_at, action_type, x, y, is_effective,
+			is_queued, order_name, unit_type, unit_types,
+			tech_name, upgrade_name, hotkey_type, hotkey_group, game_speed,
+			vision_player_ids, alliance_player_ids, is_allied_victory,
+			general_data, chat_message, leave_reason
+		) VALUES `
+
+	// Build placeholders and args
+	placeholders := make([]string, len(commands))
+	args := make([]any, len(commands)*23) // 23 columns
+
+	for i, command := range commands {
+		placeholders[i] = "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+
+		// Serialize player IDs to JSON
+		visionPlayerIDsJSON := s.serializePlayerIDsForSQLite(command.VisionPlayerIDs)
+		alliancePlayerIDsJSON := s.serializePlayerIDsForSQLite(command.AlliancePlayerIDs)
+
+		// Serialize unit information to JSON
+		unitTypesJSON := s.serializeStringForSQLite(command.UnitTypes)
+
+		args[i*23] = command.ReplayID
+		args[i*23+1] = command.PlayerID
+		args[i*23+2] = command.Frame
+		args[i*23+3] = command.RunAt
+		args[i*23+4] = command.ActionType
+		args[i*23+5] = command.X
+		args[i*23+6] = command.Y
+		args[i*23+7] = command.IsEffective
+		args[i*23+8] = command.IsQueued
+		args[i*23+9] = command.OrderName
+		args[i*23+10] = s.getUnitTypeOrNullForSQLite(command.UnitType)
+		args[i*23+11] = unitTypesJSON
+		args[i*23+12] = command.TechName
+		args[i*23+13] = command.UpgradeName
+		args[i*23+14] = command.HotkeyType
+		args[i*23+15] = command.HotkeyGroup
+		args[i*23+16] = command.GameSpeed
+		args[i*23+17] = visionPlayerIDsJSON
+		args[i*23+18] = alliancePlayerIDsJSON
+		args[i*23+19] = command.IsAlliedVictory
+		args[i*23+20] = command.GeneralData
+		args[i*23+21] = command.ChatMessage
+		args[i*23+22] = command.LeaveReason
+	}
+
+	query += strings.Join(placeholders, ", ")
+
+	_, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to insert commands batch: %w", err)
+	}
+
+	return nil
+}
+
+// Helper functions for SQLite serialization
+func (s *SQLiteStorage) serializePlayerIDsForSQLite(playerIDs *[]int64) string {
+	if playerIDs == nil {
+		return ""
+	}
+	data, err := json.Marshal(*playerIDs)
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
+func (s *SQLiteStorage) serializeStringForSQLite(str *string) interface{} {
+	if str == nil {
+		return nil
+	}
+	return *str
+}
+
+func (s *SQLiteStorage) getUnitTypeOrNullForSQLite(unitType *string) interface{} {
+	if unitType == nil || *unitType == "None" {
+		return nil
+	}
+	return *unitType
+}
+
 // updateEntityIDs updates all entities with the correct replay ID and player IDs
 func (s *SQLiteStorage) updateEntityIDs(data *models.ReplayData, replayID int64, playerIDs map[byte]int64) {
 	// Update commands
@@ -546,56 +416,6 @@ func (s *SQLiteStorage) updateEntityIDs(data *models.ReplayData, replayID int64,
 		command.ReplayID = replayID
 		if playerID, exists := playerIDs[byte(command.PlayerID)]; exists {
 			command.PlayerID = playerID
-		}
-	}
-
-	// Update units
-	for _, unit := range data.Units {
-		unit.ReplayID = replayID
-		if playerID, exists := playerIDs[byte(unit.PlayerID)]; exists {
-			unit.PlayerID = playerID
-		}
-	}
-
-	// Update buildings
-	for _, building := range data.Buildings {
-		building.ReplayID = replayID
-		if playerID, exists := playerIDs[byte(building.PlayerID)]; exists {
-			building.PlayerID = playerID
-		}
-	}
-
-	// Update resources
-	for _, resource := range data.Resources {
-		resource.ReplayID = replayID
-	}
-
-	// Update start locations
-	for _, startLoc := range data.StartLocations {
-		startLoc.ReplayID = replayID
-	}
-
-	// Update placed units
-	for _, placedUnit := range data.PlacedUnits {
-		placedUnit.ReplayID = replayID
-		if playerID, exists := playerIDs[byte(placedUnit.PlayerID)]; exists {
-			placedUnit.PlayerID = playerID
-		}
-	}
-
-	// Update chat messages
-	for _, chatMsg := range data.ChatMessages {
-		chatMsg.ReplayID = replayID
-		if playerID, exists := playerIDs[byte(chatMsg.PlayerID)]; exists {
-			chatMsg.PlayerID = playerID
-		}
-	}
-
-	// Update leave games
-	for _, leaveGame := range data.LeaveGames {
-		leaveGame.ReplayID = replayID
-		if playerID, exists := playerIDs[byte(leaveGame.PlayerID)]; exists {
-			leaveGame.PlayerID = playerID
 		}
 	}
 }

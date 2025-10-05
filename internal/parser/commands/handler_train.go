@@ -25,7 +25,7 @@ func (h *TrainCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPl
 
 	if trainCmd.Unit != nil {
 		command.UnitID = bytePtr(byte(trainCmd.Unit.ID))
-		command.TrainUnitName = stringPtr(trainCmd.Unit.Name)
+		command.UnitType = stringPtr(trainCmd.Unit.Name)
 	}
 
 	return command

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/icza/screp/rep/repcmd"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser/commands"
 	"github.com/marianogappa/screpdb/internal/screp"
@@ -21,16 +20,9 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 
 	// Create the replay data structure
 	data := &models.ReplayData{
-		Replay:         fileInfo,
-		Players:        []*models.Player{},
-		Commands:       []*models.Command{},
-		Units:          []*models.Unit{},
-		Buildings:      []*models.Building{},
-		Resources:      []*models.Resource{},
-		StartLocations: []*models.StartLocation{},
-		PlacedUnits:    []*models.PlacedUnit{},
-		ChatMessages:   []*models.ChatMessage{},
-		LeaveGames:     []*models.LeaveGame{},
+		Replay:   fileInfo,
+		Players:  []*models.Player{},
+		Commands: []*models.Command{},
 	}
 
 	// Parse replay metadata
@@ -132,139 +124,8 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 				command.Frame = int32(base.Frame)
 				command.IsEffective = base.IneffKind.Effective()
 
-				// Extract unit/building information for specific command types
-				switch c := cmd.(type) {
-				case *repcmd.BuildCmd:
-					if c.Unit != nil {
-						// Create building entry
-						data.Buildings = append(data.Buildings, &models.Building{
-							ReplayID:     data.Replay.ID,
-							PlayerID:     playerID,
-							Type:         c.Unit.Name,
-							CreatedAt:    command.RunAt,
-							CreatedFrame: command.Frame,
-							X:            command.X,
-							Y:            command.Y,
-						})
-					}
-				case *repcmd.BuildingMorphCmd:
-					if c.Unit != nil {
-						// Create building morph entry (could be treated as building update)
-						data.Buildings = append(data.Buildings, &models.Building{
-							ReplayID:     data.Replay.ID,
-							PlayerID:     playerID,
-							Type:         c.Unit.Name,
-							CreatedAt:    command.RunAt,
-							CreatedFrame: command.Frame,
-							X:            0, // Position would need to be tracked
-							Y:            0,
-						})
-					}
-				case *repcmd.TrainCmd:
-					if c.Unit != nil {
-						// Create unit entry
-						data.Units = append(data.Units, &models.Unit{
-							ReplayID:     data.Replay.ID,
-							PlayerID:     playerID,
-							UnitID:       c.Unit.ID,
-							Type:         c.Unit.Name,
-							CreatedAt:    command.RunAt,
-							CreatedFrame: command.Frame,
-						})
-					}
-				}
-
 				data.Commands = append(data.Commands, command)
 			}
-		}
-	}
-
-	// Parse map data
-	if rep.MapData != nil {
-		// Parse resources (mineral fields and geysers)
-		for _, mineral := range rep.MapData.MineralFields {
-			data.Resources = append(data.Resources, &models.Resource{
-				Type:   "mineral",
-				X:      int(mineral.X),
-				Y:      int(mineral.Y),
-				Amount: int(mineral.Amount),
-			})
-		}
-
-		for _, geyser := range rep.MapData.Geysers {
-			data.Resources = append(data.Resources, &models.Resource{
-				Type:   "geyser",
-				X:      int(geyser.X),
-				Y:      int(geyser.Y),
-				Amount: int(geyser.Amount),
-			})
-		}
-
-		// Parse start locations
-		for _, startLoc := range rep.MapData.StartLocations {
-			x := int(startLoc.X)
-			y := int(startLoc.Y)
-			oclock := utils.CalculateStartLocationOclock(int(data.Replay.MapWidth), int(data.Replay.MapHeight), x, y)
-
-			data.StartLocations = append(data.StartLocations, &models.StartLocation{
-				X:      x,
-				Y:      y,
-				Oclock: oclock,
-			})
-		}
-
-		// Parse placed units (units that start on the map)
-		if rep.MapData.MapGraphics != nil {
-			for _, placedUnit := range rep.MapData.MapGraphics.PlacedUnits {
-				// Find the player ID from slot ID
-				playerID := int64(0)
-				for _, player := range rep.Header.Players {
-					if player != nil && player.SlotID == uint16(placedUnit.SlotID) {
-						playerID = int64(player.ID)
-						break
-					}
-				}
-
-				data.PlacedUnits = append(data.PlacedUnits, &models.PlacedUnit{
-					ReplayID: data.Replay.ID,
-					PlayerID: playerID,
-					Type:     fmt.Sprintf("UnitID_%d", placedUnit.UnitID), // Use UnitID as type since Name is not available
-					Name:     fmt.Sprintf("UnitID_%d", placedUnit.UnitID),
-					X:        int(placedUnit.X),
-					Y:        int(placedUnit.Y),
-				})
-			}
-		}
-	}
-
-	// Extract chat messages and leave game commands from computed data
-	if rep.Computed != nil {
-		// Extract chat messages
-		for _, chatCmd := range rep.Computed.ChatCmds {
-			baseCmd := chatCmd.BaseCmd()
-			data.ChatMessages = append(data.ChatMessages, &models.ChatMessage{
-				ReplayID: data.Replay.ID,
-				PlayerID: int64(baseCmd.PlayerID),
-				Message:  chatCmd.Message,
-				Frame:    int32(baseCmd.Frame),
-				Time:     time.Unix(startTime+int64(baseCmd.Frame.Duration().Seconds()), 0),
-			})
-		}
-
-		// Extract leave game commands
-		for _, leaveCmd := range rep.Computed.LeaveGameCmds {
-			baseCmd := leaveCmd.BaseCmd()
-			reason := ""
-			if leaveCmd.Reason != nil {
-				reason = leaveCmd.Reason.String()
-			}
-			data.LeaveGames = append(data.LeaveGames, &models.LeaveGame{
-				ReplayID: data.Replay.ID,
-				PlayerID: int64(baseCmd.PlayerID),
-				Reason:   reason,
-				Frame:    int32(baseCmd.Frame),
-				Time:     time.Unix(startTime+int64(baseCmd.Frame.Duration().Seconds()), 0),
-			})
 		}
 	}
 
