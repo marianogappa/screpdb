@@ -1,0 +1,45 @@
+"StarCraft: Remastered" is a real-time strategy game where players choose a race (Terran, Protoss or Zerg), build economies, form armies, sometimes ally other players, and battle for map control until one side destroys all opponent buildings to win.
+
+Game Mechanics
+
+- Economy: workers mine → resources → spend on units/buildings
+- Tech tree: unlocks progressively with buildings
+- Army control: composition, micro, positioning
+- Fog of war: vision-limited
+- Win condition: destroy all opponent buildings
+- Maximum supply count: 200. Workers cost 1. Heavier units cost 2, 4, etc.
+
+Units: combat, workers, spellcasters, transports, detectors
+Resources: minerals, vespene gas, supply (food cap)
+Buildings: tech tree enablers, production, economy, defense
+Worker units: Drone (Zerg), Probe (Protoss), SCV (Terran)
+Main building: Nexus (Protoss), Command Center (Terran), Hatchery/Lair/Hive (Zerg). Resources are gathered to these buildings.
+
+Replay Essentials
+
+- Timeline of actions (build orders, expansions, engagements)
+- APM (actions per minute), supply, resources, spending efficiency
+- Army composition over time
+- Map size is in tiles (128x128, 96x256) but (x, y) is in pixels. 1 tile = 32 pixels.
+- Map control, scouting, expansions
+
+Macro vs Micro
+
+- These commands are macro: Build, Train, BuildInterceptorOrScarab, UnitMorph, Tech, Upgrade
+- These commands are micro: RightClick, TargetedOrder, Hotkey, UnloadAll, HoldPosition, Burrow, Unburrow, Siege, Unsiege, Cloack, Decloack
+
+Report Metrics
+
+- Build order timings (e.g. “2 Hatch Muta,” “1 Gate Expand”)
+- Resource collection & spending efficiency
+- Player performance stats (APM, using hotkeys, macro vs micro balance, time to first building, time to first combat unit, time to expansion)
+- Better players: have higher APMs, use hotkeys, > micro actions, if they have more workers they make more units/buildings.
+
+Meta terms
+
+- "rush": when a player attacks another (e.g. RightClick, TargetedOrder w/ order_name Attack*) within a few minutes of game start
+- "timing push": deliberate attack launched at a specific moment when a build order hits a temporary power spike (e.g. first tanks with siege, zealots become fast, mutalisks get +1 attack).
+- "tech switch": Rapidly shifting production to a different unit tech path to exploit an opponent’s weak counters (e.g. mutalisks → lurkers, marine+medic → tank+goliath).
+- "natural": The first "expansion" (main building) to gather more resources, which is in close proximity to the main starting location.
+- "expa/expansion": Another expansion which is not necessarily the "natural".
+- Main building starting locations are usually conveyed in o'clock positions (like 3, 6, 9, 12).

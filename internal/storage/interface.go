@@ -38,6 +38,9 @@ type Storage interface {
 	// StorageName returns the name of the storage backend
 	StorageName() string
 
+	// GetDatabaseSchema returns the database schema information
+	GetDatabaseSchema(ctx context.Context) (string, error)
+
 	// Close closes the storage connection
 	Close() error
 }

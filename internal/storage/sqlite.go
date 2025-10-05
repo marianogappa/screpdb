@@ -535,6 +535,32 @@ func (s *SQLiteStorage) StorageName() string {
 	return StorageSQLite
 }
 
+// GetDatabaseSchema returns the database schema information
+func (s *SQLiteStorage) GetDatabaseSchema(ctx context.Context) (string, error) {
+	query := `
+		SELECT sql
+		FROM sqlite_master
+		WHERE type = 'table' AND name IN ('commands', 'players', 'replays')
+		ORDER BY name;
+	`
+
+	results, err := s.Query(ctx, query)
+	if err != nil {
+		return "", fmt.Errorf("failed to query schema: %w", err)
+	}
+
+	var schema strings.Builder
+	schema.WriteString("# Database Schema\n\n")
+
+	for _, row := range results {
+		if sql, exists := row["sql"]; exists && sql != nil {
+			schema.WriteString(fmt.Sprintf("```sql\n%v\n```\n\n", sql))
+		}
+	}
+
+	return schema.String(), nil
+}
+
 // Close closes the database connection
 func (s *SQLiteStorage) Close() error {
 	return s.db.Close()

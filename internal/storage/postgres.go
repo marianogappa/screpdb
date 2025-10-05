@@ -549,6 +549,51 @@ func (s *PostgresStorage) StorageName() string {
 	return StoragePostgreSQL
 }
 
+// GetDatabaseSchema returns the database schema information
+func (s *PostgresStorage) GetDatabaseSchema(ctx context.Context) (string, error) {
+	query := `
+		SELECT table_schema, table_name, column_name, data_type, is_nullable
+		FROM information_schema.columns
+		WHERE table_name IN ('commands', 'players', 'replays')
+		ORDER BY table_schema, table_name, ordinal_position;
+	`
+
+	results, err := s.Query(ctx, query)
+	if err != nil {
+		return "", fmt.Errorf("failed to query schema: %w", err)
+	}
+
+	var schema strings.Builder
+	schema.WriteString("# Database Schema\n\n")
+
+	// Group results by table
+	tableSchemas := make(map[string][]map[string]any)
+	for _, row := range results {
+		tableName := fmt.Sprintf("%v", row["table_name"])
+		tableSchemas[tableName] = append(tableSchemas[tableName], row)
+	}
+
+	// Write schema for each table
+	for _, tableName := range []string{"replays", "players", "commands"} {
+		if columns, exists := tableSchemas[tableName]; exists {
+			schema.WriteString(fmt.Sprintf("## %s\n\n", tableName))
+			schema.WriteString("| Column | Type | Nullable |\n")
+			schema.WriteString("|--------|------|----------|\n")
+
+			for _, col := range columns {
+				columnName := fmt.Sprintf("%v", col["column_name"])
+				dataType := fmt.Sprintf("%v", col["data_type"])
+				isNullable := fmt.Sprintf("%v", col["is_nullable"])
+
+				schema.WriteString(fmt.Sprintf("| %s | %s | %s |\n", columnName, dataType, isNullable))
+			}
+			schema.WriteString("\n")
+		}
+	}
+
+	return schema.String(), nil
+}
+
 // Close closes the database connection
 func (s *PostgresStorage) Close() error {
 	return s.db.Close()

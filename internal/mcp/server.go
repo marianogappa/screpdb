@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"strings"
 
@@ -9,6 +10,9 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
+
+//go:embed starcraft_knowledge.txt
+var starcraftKnowledge string
 
 // Server implements the MCP server using mcp-go library
 type Server struct {
@@ -42,11 +46,18 @@ func NewServer(storage storage.Storage) *Server {
 	mcpServer.AddTool(sqlTool, s.handleSQLQuery)
 
 	// Register a schema information tool
-	schemaTool := mcp.NewTool("get_schema",
-		mcp.WithDescription("Get detailed information about the StarCraft replay database schema including table structures, relationships, and example queries."),
+	schemaTool := mcp.NewTool("get_database_schema",
+		mcp.WithDescription("Detailed information about the StarCraft replay database schema including table structures, relationships obtained by querying the database itself."),
 	)
 
 	mcpServer.AddTool(schemaTool, s.handleGetSchema)
+
+	// Register a StarCraft knowledge summary tool
+	knowledgeTool := mcp.NewTool("get_starcraft_knowledge",
+		mcp.WithDescription("Summary of StarCraft knowledge useful for knowing how to answer questions and make reports."),
+	)
+
+	mcpServer.AddTool(knowledgeTool, s.handleGetStarCraftKnowledge)
 
 	return s
 }
@@ -78,8 +89,145 @@ func (s *Server) handleSQLQuery(ctx context.Context, request mcp.CallToolRequest
 
 // handleGetSchema handles schema information requests
 func (s *Server) handleGetSchema(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	schema := GetDatabaseSchema()
-	return mcp.NewToolResultText(schema), nil
+	schema, err := s.storage.GetDatabaseSchema(ctx)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to get database schema: %v", err)), nil
+	}
+
+	// Add some observations about the dataset
+	observations := `
+	Replays have up to 8 players (and up to 4 observers) and a sequential list of commands/actions (like Chess). Command timing is tracked in "frames" since game start and also with a timestamp.
+
+	action_types:
+		- Build
+		- Land
+		- RightClick
+		- TargetedOrder
+		- Train
+		- BuildInterceptorOrScarab
+		- MinimapPing
+		- CancelTrain
+		- UnitMorph
+		- Tech
+		- Upgrade
+		- GameSpeed
+		- Hotkey
+		- Chat
+		- Vision
+		- Alliance
+		- LeaveGame
+		- Stop
+		- CarrierStop
+		- ReaverStop
+		- ReturnCargo
+		- UnloadAll
+		- HoldPosition
+		- Burrow
+		- Unburrow
+		- Siege
+		- Unsiege
+		- Cloack
+		- Decloack
+		- Cheat
+
+	unit_types:
+
+		- Supply Depot
+		- Forge
+		- Hydralisk Den
+		- Siege Tank (Tank Mode)
+		- Barracks
+		- Reaver
+		- Engineering Bay
+		- ComSat
+		- Valkyrie
+		- Corsair
+		- Creep Colony
+		- Extractor
+		- Covert Ops
+		- Gateway
+		- Ultralisk
+		- Academy
+		- Nuclear Missile
+		- Defiler Mound
+		- Guardian
+		- Spore Colony
+		- Templar Archives
+		- Arbiter
+		- Hive
+		- Firebat
+		- Zealot
+		- Arbiter Tribunal
+		- Cybernetics Core
+		- Wraith
+		- Overlord
+		- Evolution Chamber
+		- Stargate
+		- Physics Lab
+		- Spawning Pool
+		- Science Facility
+		- Fleet Beacon
+		- Goliath
+		- Probe
+		- Missile Turret
+		- Sunken Colony
+		- Robotics Support Bay
+		- Vulture
+		- Nuclear Silo
+		- Medic
+		- Observatory
+		- Queen
+		- High Templar
+		- Starport
+		- Ghost
+		- Spire
+		- Armory
+		- Factory
+		- Nexus
+		- Marine
+		- Bunker
+		- Battlecruiser
+		- Shield Battery
+		- Robotics Facility
+		- Mutalisk
+		- Carrier
+		- Hydralisk
+		- Shuttle
+		- Scourge
+		- Observer
+		- Greater Spire
+		- Devourer
+		- Scout
+		- Drone
+		- Machine Shop
+		- Lair
+		- Refinery
+		- Dark Templar
+		- SCV
+		- Nydus Canal
+		- Queens Nest
+		- Dropship
+		- Hatchery
+		- Ultralisk Cavern
+		- Assimilator
+		- Science Vessel
+		- Dragoon
+		- Photon Cannon
+		- Lurker
+		- Defiler
+		- Pylon
+		- Control Tower
+		- Zergling
+		- Citadel of Adun
+		- Command Center
+	`
+
+	return mcp.NewToolResultText(schema + observations), nil
+}
+
+// handleGetStarCraftKnowledge handles StarCraft knowledge summary requests
+func (s *Server) handleGetStarCraftKnowledge(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return mcp.NewToolResultText(starcraftKnowledge), nil
 }
 
 // formatQueryResults formats query results for display
