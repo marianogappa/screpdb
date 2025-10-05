@@ -30,10 +30,12 @@ Macro vs Micro
 
 Report Metrics
 
-- Build order timings (e.g. “2 Hatch Muta,” “1 Gate Expand”)
+- If you're asked to report on players, stick to `players.type = 'Human'` (skip Computer)
+- `players.is_winner` is not too accurate. Players may leave game after winning, replays may be incomplete.
 - Resource collection & spending efficiency
 - Player performance stats (APM, using hotkeys, macro vs micro balance, time to first building, time to first combat unit, time to expansion)
 - Better players: have higher APMs, use hotkeys, > micro actions, if they have more workers they make more units/buildings.
+- Build order timings (e.g. “2 Hatch Muta,” “1 Gate Expand”)
 
 Meta terms
 

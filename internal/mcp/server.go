@@ -96,7 +96,8 @@ func (s *Server) handleGetSchema(ctx context.Context, request mcp.CallToolReques
 
 	// Add some observations about the dataset
 	observations := `
-	Replays have up to 8 players (and up to 4 observers) and a sequential list of commands/actions (like Chess). Command timing is tracked in "frames" since game start and also with a timestamp.
+	- Replays have up to 8 players (and up to 4 observers) and a sequential list of commands/actions (like Chess). Command timing is tracked in "frames" since game start and also with a timestamp.
+	- The commands table has action-type-specific fields, so for a given row many fields are null.
 
 	action_types:
 		- Build

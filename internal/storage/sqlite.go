@@ -75,7 +75,6 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 	CREATE TABLE IF NOT EXISTS players (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		replay_id INTEGER NOT NULL,
-		player_id INTEGER NOT NULL,
 		name TEXT NOT NULL,
 		race TEXT NOT NULL,
 		type TEXT NOT NULL,
@@ -253,30 +252,29 @@ func (s *SQLiteStorage) insertPlayersBatch(ctx context.Context, replayID int64, 
 	// Build the batch insert query
 	query := `
 		INSERT INTO players (
-			replay_id, player_id, name, race, type, color, team, is_observer, apm, eapm, is_winner, start_location_x, start_location_y, start_location_oclock
+			replay_id, name, race, type, color, team, is_observer, apm, eapm, is_winner, start_location_x, start_location_y, start_location_oclock
 		) VALUES `
 
 	// Build placeholders and args
 	placeholders := make([]string, len(players))
-	args := make([]any, len(players)*14)
+	args := make([]any, len(players)*13)
 
 	for i, player := range players {
-		placeholders[i] = "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+		placeholders[i] = "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
-		args[i*14] = replayID
-		args[i*14+1] = player.PlayerID
-		args[i*14+2] = player.Name
-		args[i*14+3] = player.Race
-		args[i*14+4] = player.Type
-		args[i*14+5] = player.Color
-		args[i*14+6] = player.Team
-		args[i*14+7] = player.IsObserver
-		args[i*14+8] = player.APM
-		args[i*14+9] = player.EAPM
-		args[i*14+10] = player.IsWinner
-		args[i*14+11] = player.StartLocationX
-		args[i*14+12] = player.StartLocationY
-		args[i*14+13] = player.StartLocationOclock
+		args[i*13] = replayID
+		args[i*13+1] = player.Name
+		args[i*13+2] = player.Race
+		args[i*13+3] = player.Type
+		args[i*13+4] = player.Color
+		args[i*13+5] = player.Team
+		args[i*13+6] = player.IsObserver
+		args[i*13+7] = player.APM
+		args[i*13+8] = player.EAPM
+		args[i*13+9] = player.IsWinner
+		args[i*13+10] = player.StartLocationX
+		args[i*13+11] = player.StartLocationY
+		args[i*13+12] = player.StartLocationOclock
 	}
 
 	query += strings.Join(placeholders, ", ")

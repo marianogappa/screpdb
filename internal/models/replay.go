@@ -34,7 +34,7 @@ type Player struct {
 	ID         int64  `json:"id"`
 	ReplayID   int64  `json:"replay_id"`
 	SlotID     uint16 `json:"slot_id"`
-	PlayerID   byte   `json:"player_id"` // Computer players all have ID=255
+	PlayerID   byte   `json:"player_id"` // This is the replay's player_id (not the database player id). Computer players all have ID=255
 	Name       string `json:"name"`
 	Race       string `json:"race"`  // Terran, Protoss, Zerg
 	Type       string `json:"type"`  // Human, Computer, Inactive, etc.
