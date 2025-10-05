@@ -311,6 +311,7 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 						// Create building entry
 						data.Buildings = append(data.Buildings, &models.Building{
 							ReplayID:     data.Replay.ID,
+							PlayerID:     playerID,
 							Type:         c.Unit.Name,
 							CreatedAt:    command.RunAt,
 							CreatedFrame: command.Frame,
@@ -323,6 +324,7 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 						// Create building morph entry (could be treated as building update)
 						data.Buildings = append(data.Buildings, &models.Building{
 							ReplayID:     data.Replay.ID,
+							PlayerID:     playerID,
 							Type:         c.Unit.Name,
 							CreatedAt:    command.RunAt,
 							CreatedFrame: command.Frame,
@@ -335,6 +337,7 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 						// Create unit entry
 						data.Units = append(data.Units, &models.Unit{
 							ReplayID:     data.Replay.ID,
+							PlayerID:     playerID,
 							UnitID:       c.Unit.ID,
 							Type:         c.Unit.Name,
 							CreatedAt:    command.RunAt,
