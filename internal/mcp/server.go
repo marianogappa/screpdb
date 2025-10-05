@@ -32,10 +32,10 @@ func NewServer(storage storage.Storage) *Server {
 
 	// Register the SQL query tool
 	sqlTool := mcp.NewTool("query_database",
-		mcp.WithDescription("Execute SQL queries against the StarCraft replay SQLite database. The database contains tables: replays (metadata), players (player info), actions (game events), units (unit data), buildings (building data). Use this tool to analyze replay statistics, player performance, unit usage, and game patterns."),
+		mcp.WithDescription("Execute SQL queries against the StarCraft replay database. The database contains tables: replays (metadata), players (player info), actions (game events), units (unit data), buildings (building data). Use this tool to analyze replay statistics, player performance, unit usage, and game patterns."),
 		mcp.WithString("sql",
 			mcp.Required(),
-			mcp.Description("SQL query to execute against the StarCraft replay SQLite database"),
+			mcp.Description("SQL query to execute against the StarCraft replay database"),
 		),
 	)
 
@@ -43,7 +43,7 @@ func NewServer(storage storage.Storage) *Server {
 
 	// Register a schema information tool
 	schemaTool := mcp.NewTool("get_schema",
-		mcp.WithDescription("Get detailed information about the StarCraft replay SQLite database schema including table structures, relationships, and example queries."),
+		mcp.WithDescription("Get detailed information about the StarCraft replay database schema including table structures, relationships, and example queries."),
 	)
 
 	mcpServer.AddTool(schemaTool, s.handleGetSchema)

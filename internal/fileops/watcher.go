@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -91,7 +92,7 @@ func (fw *FileWatcher) watch() {
 			if event.Op&fsnotify.Create == fsnotify.Create {
 				if strings.HasSuffix(strings.ToLower(event.Name), ".rep") {
 					// Wait a bit for the file to be fully written
-					time.Sleep(100 * time.Millisecond)
+					time.Sleep(5 * time.Second)
 
 					fileInfo, err := fw.getFileInfo(event.Name)
 					if err != nil {
@@ -105,6 +106,7 @@ func (fw *FileWatcher) watch() {
 
 					select {
 					case fw.events <- *fileInfo:
+						color.Green("New file detected: %s", fileInfo.Name)
 					case <-fw.done:
 						return
 					}
