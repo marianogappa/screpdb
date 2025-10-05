@@ -99,6 +99,16 @@ func (s *Server) handleGetSchema(ctx context.Context, request mcp.CallToolReques
 	- Replays have up to 8 players (and up to 4 observers) and a sequential list of commands/actions (like Chess). Command timing is tracked in "frames" since game start and also with a timestamp.
 	- The commands table has action-type-specific fields, so for a given row many fields are null.
 
+	- JOIN patterns:
+		- players.replay_id = replays.id
+		- commands.replay_id = replays.id
+		- commands.player_id = players.id
+
+	- Common WHERE clauses:
+		- players.type = 'Human' (i.e. skip 'Computer' players)
+		- players.is_observer = false (i.e. Observer players are not part of the game)
+		- commands.is_effective = true (e.g. an ineffective Train command didn't result in a unit being trained)
+
 	action_types:
 		- Build
 		- Land
