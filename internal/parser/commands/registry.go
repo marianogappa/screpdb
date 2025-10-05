@@ -24,14 +24,6 @@ func NewCommandRegistry() *CommandRegistry {
 
 // registerHandlers registers all command handlers
 func (r *CommandRegistry) registerHandlers() {
-	// Selection commands (including 121 versions)
-	r.register(repcmd.TypeIDSelect, NewSelectCommandHandler("Select", repcmd.TypeIDSelect))
-	r.register(repcmd.TypeIDSelectAdd, NewSelectCommandHandler("SelectAdd", repcmd.TypeIDSelectAdd))
-	r.register(repcmd.TypeIDSelectRemove, NewSelectCommandHandler("SelectRemove", repcmd.TypeIDSelectRemove))
-	r.register(repcmd.TypeIDSelect121, NewSelectCommandHandler("Select", repcmd.TypeIDSelect121))
-	r.register(repcmd.TypeIDSelectAdd121, NewSelectCommandHandler("SelectAdd", repcmd.TypeIDSelectAdd121))
-	r.register(repcmd.TypeIDSelectRemove121, NewSelectCommandHandler("SelectRemove", repcmd.TypeIDSelectRemove121))
-
 	// Build commands
 	r.register(repcmd.TypeIDBuild, NewBuildCommandHandler())
 	r.register(repcmd.VirtualTypeIDLand, NewLandCommandHandler())
@@ -86,7 +78,7 @@ func (r *CommandRegistry) register(commandType byte, handler CommandHandler) {
 }
 
 // ProcessCommand processes a command using the appropriate handler
-func (r *CommandRegistry) ProcessCommand(cmd repcmd.Cmd, replayID int64, startTime int64) *models.Command {
+func (r *CommandRegistry) ProcessCommand(cmd repcmd.Cmd, replayID int64, startTime int64, slotToPlayerMap map[uint16]int64) *models.Command {
 	base := cmd.BaseCmd()
 
 	// Check if we should ignore this command type
@@ -100,7 +92,7 @@ func (r *CommandRegistry) ProcessCommand(cmd repcmd.Cmd, replayID int64, startTi
 		handler = NewGeneralCommandHandler(base.Type.String(), base.Type.ID)
 	}
 
-	command := handler.Handle(cmd, base)
+	command := handler.Handle(cmd, base, slotToPlayerMap)
 	if command != nil {
 		command.ReplayID = replayID
 		command.RunAt = time.Unix(startTime+int64(base.Frame.Duration().Seconds()), 0)
@@ -136,6 +128,13 @@ func (r *CommandRegistry) shouldIgnoreCommand(commandType byte) bool {
 		repcmd.TypeIDLatency:            true,
 		repcmd.TypeIDReplaySpeed:        true,
 		repcmd.TypeIDMakeGamePublic:     true,
+		// Skip Select commands as they don't provide useful information without unit type resolution
+		repcmd.TypeIDSelect:          true,
+		repcmd.TypeIDSelectAdd:       true,
+		repcmd.TypeIDSelectRemove:    true,
+		repcmd.TypeIDSelect121:       true,
+		repcmd.TypeIDSelectAdd121:    true,
+		repcmd.TypeIDSelectRemove121: true,
 	}
 
 	return ignoredTypes[commandType]

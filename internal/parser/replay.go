@@ -8,7 +8,6 @@ import (
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser/commands"
 	"github.com/marianogappa/screpdb/internal/screp"
-	"github.com/marianogappa/screpdb/internal/tracking"
 	"github.com/marianogappa/screpdb/internal/utils"
 )
 
@@ -106,9 +105,14 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 		})
 	}
 
-	// Parse commands using the new command handling system with unit tracking
+	// Create slot-to-player mapping for alliance and vision commands
+	slotToPlayerMap := make(map[uint16]int64)
+	for _, player := range data.Players {
+		slotToPlayerMap[player.SlotID] = int64(player.PlayerID)
+	}
+
+	// Parse commands using the command handling system
 	commandRegistry := commands.NewCommandRegistry()
-	unitTracker := tracking.NewUnitTracker()
 	startTime := rep.Header.StartTime.Unix()
 
 	if rep.Commands != nil {
@@ -119,190 +123,14 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 				continue
 			}
 
-			// Process command with unit tracker to get resolved units
-			resolvedUnits := unitTracker.ProcessCommand(cmd, playerID, int32(base.Frame), time.Unix(startTime+int64(base.Frame.Duration().Seconds()), 0))
-
-			// Handle different command types with resolved unit information
-			var command *models.Command
-			baseCmd := cmd.BaseCmd()
-			cmdTime := time.Unix(startTime+int64(baseCmd.Frame.Duration().Seconds()), 0)
-
-			switch cmd.(type) {
-			case *repcmd.SelectCmd:
-				// Skip Select commands that don't have any resolved units
-				if len(resolvedUnits) == 0 {
-					continue // Skip this command as it's useless without unit info
-				}
-				// Convert tracking.UnitInfo to models.UnitInfo
-				modelUnits := make([]*models.UnitInfo, len(resolvedUnits))
-				for i, unit := range resolvedUnits {
-					modelUnits[i] = &models.UnitInfo{
-						UnitTag:      unit.UnitTag,
-						UnitType:     unit.UnitType,
-						UnitID:       unit.UnitID,
-						PlayerID:     unit.PlayerID,
-						CreatedAt:    unit.CreatedAt,
-						CreatedFrame: unit.CreatedFrame,
-						X:            unit.X,
-						Y:            unit.Y,
-						IsAlive:      unit.IsAlive,
-					}
-				}
-				selectHandler := commands.NewSelectCommandHandler(baseCmd.Type.String(), baseCmd.Type.ID)
-				command = selectHandler.HandleWithUnits(cmd, baseCmd, modelUnits)
-
-			case *repcmd.RightClickCmd:
-				rightClickHandler := commands.NewRightClickCommandHandler(baseCmd.Type.String(), baseCmd.Type.ID)
-				if len(resolvedUnits) > 0 {
-					unit := resolvedUnits[0]
-					modelUnit := &models.UnitInfo{
-						UnitTag:      unit.UnitTag,
-						UnitType:     unit.UnitType,
-						UnitID:       unit.UnitID,
-						PlayerID:     unit.PlayerID,
-						CreatedAt:    unit.CreatedAt,
-						CreatedFrame: unit.CreatedFrame,
-						X:            unit.X,
-						Y:            unit.Y,
-						IsAlive:      unit.IsAlive,
-					}
-					command = rightClickHandler.HandleWithUnit(cmd, baseCmd, modelUnit)
-				} else {
-					command = rightClickHandler.Handle(cmd, baseCmd)
-				}
-
-			case *repcmd.TargetedOrderCmd:
-				targetedOrderHandler := commands.NewTargetedOrderCommandHandler(baseCmd.Type.String(), baseCmd.Type.ID)
-				if len(resolvedUnits) > 0 {
-					unit := resolvedUnits[0]
-					modelUnit := &models.UnitInfo{
-						UnitTag:      unit.UnitTag,
-						UnitType:     unit.UnitType,
-						UnitID:       unit.UnitID,
-						PlayerID:     unit.PlayerID,
-						CreatedAt:    unit.CreatedAt,
-						CreatedFrame: unit.CreatedFrame,
-						X:            unit.X,
-						Y:            unit.Y,
-						IsAlive:      unit.IsAlive,
-					}
-					command = targetedOrderHandler.HandleWithUnit(cmd, baseCmd, modelUnit)
-				} else {
-					command = targetedOrderHandler.Handle(cmd, baseCmd)
-				}
-
-			case *repcmd.CancelTrainCmd:
-				cancelTrainHandler := commands.NewCancelTrainCommandHandler()
-				if len(resolvedUnits) > 0 {
-					unit := resolvedUnits[0]
-					modelUnit := &models.UnitInfo{
-						UnitTag:      unit.UnitTag,
-						UnitType:     unit.UnitType,
-						UnitID:       unit.UnitID,
-						PlayerID:     unit.PlayerID,
-						CreatedAt:    unit.CreatedAt,
-						CreatedFrame: unit.CreatedFrame,
-						X:            unit.X,
-						Y:            unit.Y,
-						IsAlive:      unit.IsAlive,
-					}
-					command = cancelTrainHandler.HandleWithUnit(cmd, baseCmd, modelUnit)
-				} else {
-					command = cancelTrainHandler.Handle(cmd, baseCmd)
-				}
-
-			case *repcmd.UnloadCmd:
-				unloadHandler := commands.NewUnloadCommandHandler(baseCmd.Type.String(), baseCmd.Type.ID)
-				if len(resolvedUnits) > 0 {
-					unit := resolvedUnits[0]
-					modelUnit := &models.UnitInfo{
-						UnitTag:      unit.UnitTag,
-						UnitType:     unit.UnitType,
-						UnitID:       unit.UnitID,
-						PlayerID:     unit.PlayerID,
-						CreatedAt:    unit.CreatedAt,
-						CreatedFrame: unit.CreatedFrame,
-						X:            unit.X,
-						Y:            unit.Y,
-						IsAlive:      unit.IsAlive,
-					}
-					command = unloadHandler.HandleWithUnit(cmd, baseCmd, modelUnit)
-				} else {
-					command = unloadHandler.Handle(cmd, baseCmd)
-				}
-
-			case *repcmd.TrainCmd:
-				trainHandler := commands.NewTrainCommandHandler()
-				if len(resolvedUnits) > 0 {
-					unit := resolvedUnits[0]
-					modelUnit := &models.UnitInfo{
-						UnitTag:      unit.UnitTag,
-						UnitType:     unit.UnitType,
-						UnitID:       unit.UnitID,
-						PlayerID:     unit.PlayerID,
-						CreatedAt:    unit.CreatedAt,
-						CreatedFrame: unit.CreatedFrame,
-						X:            unit.X,
-						Y:            unit.Y,
-						IsAlive:      unit.IsAlive,
-					}
-					command = trainHandler.HandleWithUnit(cmd, baseCmd, modelUnit)
-				} else {
-					command = trainHandler.Handle(cmd, baseCmd)
-				}
-
-			case *repcmd.BuildCmd:
-				buildHandler := commands.NewBuildCommandHandler()
-				if len(resolvedUnits) > 0 {
-					unit := resolvedUnits[0]
-					modelUnit := &models.UnitInfo{
-						UnitTag:      unit.UnitTag,
-						UnitType:     unit.UnitType,
-						UnitID:       unit.UnitID,
-						PlayerID:     unit.PlayerID,
-						CreatedAt:    unit.CreatedAt,
-						CreatedFrame: unit.CreatedFrame,
-						X:            unit.X,
-						Y:            unit.Y,
-						IsAlive:      unit.IsAlive,
-					}
-					command = buildHandler.HandleWithUnit(cmd, baseCmd, modelUnit)
-				} else {
-					command = buildHandler.Handle(cmd, baseCmd)
-				}
-
-			case *repcmd.BuildingMorphCmd:
-				buildingMorphHandler := commands.NewBuildingMorphCommandHandler()
-				if len(resolvedUnits) > 0 {
-					unit := resolvedUnits[0]
-					modelUnit := &models.UnitInfo{
-						UnitTag:      unit.UnitTag,
-						UnitType:     unit.UnitType,
-						UnitID:       unit.UnitID,
-						PlayerID:     unit.PlayerID,
-						CreatedAt:    unit.CreatedAt,
-						CreatedFrame: unit.CreatedFrame,
-						X:            unit.X,
-						Y:            unit.Y,
-						IsAlive:      unit.IsAlive,
-					}
-					command = buildingMorphHandler.HandleWithUnit(cmd, baseCmd, modelUnit)
-				} else {
-					command = buildingMorphHandler.Handle(cmd, baseCmd)
-				}
-
-			default:
-				// Use the registry for other command types
-				command = commandRegistry.ProcessCommand(cmd, data.Replay.ID, startTime)
-			}
+			// Process command using the registry
+			command := commandRegistry.ProcessCommand(cmd, data.Replay.ID, startTime, slotToPlayerMap)
 
 			if command != nil {
-				// Set common fields
-				command.ReplayID = data.Replay.ID
+				// Set additional fields (registry already sets ReplayID and RunAt)
 				command.PlayerID = playerID
-				command.Frame = int32(baseCmd.Frame)
-				command.RunAt = cmdTime
-				command.IsEffective = baseCmd.IneffKind.Effective()
+				command.Frame = int32(base.Frame)
+				command.IsEffective = base.IneffKind.Effective()
 
 				// Extract unit/building information for specific command types
 				switch c := cmd.(type) {

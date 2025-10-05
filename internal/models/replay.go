@@ -117,11 +117,11 @@ type Command struct {
 	// Game Speed command fields
 	GameSpeed *string `json:"game_speed,omitempty"`
 
-	VisionSlotIDs *[]int `json:"vision_slot_ids,omitempty"` // Array of slot IDs
+	VisionPlayerIDs *[]int64 `json:"vision_player_ids,omitempty"` // Array of player IDs
 
 	// Alliance command fields
-	AllianceSlotIDs *[]int `json:"alliance_slot_ids,omitempty"` // Array of slot IDs
-	IsAlliedVictory *bool  `json:"is_allied_victory,omitempty"`
+	AlliancePlayerIDs *[]int64 `json:"alliance_player_ids,omitempty"` // Array of player IDs
+	IsAlliedVictory   *bool    `json:"is_allied_victory,omitempty"`
 
 	// General command fields (for unhandled commands)
 	GeneralData *string `json:"general_data,omitempty"` // Hex string of raw data

@@ -187,21 +187,18 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 		frame INTEGER NOT NULL,
 		run_at DATETIME NOT NULL,
 		action_type TEXT NOT NULL,
-		unit_id INTEGER,
 		x INTEGER NOT NULL,
 		y INTEGER NOT NULL,
 		is_effective BOOLEAN NOT NULL,
 		
 		-- Common fields (used by multiple command types)
 		is_queued BOOLEAN,
-		order_id INTEGER,
 		order_name TEXT,
 		
 		-- Unit information (normalized fields)
 		unit_type TEXT, -- Single unit type
 		unit_player_id INTEGER, -- Single unit player ID
 		unit_types TEXT, -- JSON array of unit types for multiple units
-		unit_ids TEXT, -- JSON array of unit IDs for multiple units
 		
 		-- Build command fields
 		build_unit_name TEXT,
@@ -226,10 +223,10 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 		game_speed TEXT,
 		
 		-- Vision command fields
-		vision_slot_ids TEXT, -- JSON array of slot IDs
+		vision_player_ids TEXT, -- JSON array of player IDs
 		
 		-- Alliance command fields
-		alliance_slot_ids TEXT, -- JSON array of slot IDs
+		alliance_player_ids TEXT, -- JSON array of player IDs
 		is_allied_victory BOOLEAN,
 		
 		-- Minimap Ping command fields

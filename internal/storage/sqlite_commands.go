@@ -21,10 +21,10 @@ func (c *SQLiteCommandsInserter) TableName() string {
 }
 
 var sqliteCommandsColumnNames = []string{
-	"replay_id", "player_id", "frame", "run_at", "action_type", "unit_id", "x", "y", "is_effective",
-	"is_queued", "order_id", "order_name", "unit_type", "unit_player_id", "unit_types", "unit_ids", "build_unit_name",
+	"replay_id", "player_id", "frame", "run_at", "action_type", "x", "y", "is_effective",
+	"is_queued", "order_name", "unit_type", "unit_player_id", "unit_types", "build_unit_name",
 	"train_unit_name", "building_morph_unit_name", "tech_name", "upgrade_name", "hotkey_type", "hotkey_group", "game_speed",
-	"vision_slot_ids", "alliance_slot_ids", "is_allied_victory",
+	"vision_player_ids", "alliance_player_ids", "is_allied_victory",
 	"general_data",
 }
 
@@ -45,14 +45,14 @@ func (c *SQLiteCommandsInserter) BuildArgs(entity any, args []any, offset int) e
 		return fmt.Errorf("expected *models.Command, got %T", entity)
 	}
 
-	// Serialize slot IDs to JSON
-	visionSlotIDsJSON, err := serializeSlotIDsForSQLite(command.VisionSlotIDs)
+	// Serialize player IDs to JSON
+	visionPlayerIDsJSON, err := serializePlayerIDsForSQLite(command.VisionPlayerIDs)
 	if err != nil {
-		return fmt.Errorf("failed to serialize vision slot IDs: %w", err)
+		return fmt.Errorf("failed to serialize vision player IDs: %w", err)
 	}
-	allianceSlotIDsJSON, err := serializeSlotIDsForSQLite(command.AllianceSlotIDs)
+	alliancePlayerIDsJSON, err := serializePlayerIDsForSQLite(command.AlliancePlayerIDs)
 	if err != nil {
-		return fmt.Errorf("failed to serialize alliance slot IDs: %w", err)
+		return fmt.Errorf("failed to serialize alliance player IDs: %w", err)
 	}
 
 	// Serialize unit information to JSON
@@ -60,48 +60,41 @@ func (c *SQLiteCommandsInserter) BuildArgs(entity any, args []any, offset int) e
 	if err != nil {
 		return fmt.Errorf("failed to serialize unit types: %w", err)
 	}
-	unitIDsJSON, err := serializeStringForSQLite(command.UnitIDs)
-	if err != nil {
-		return fmt.Errorf("failed to serialize unit IDs: %w", err)
-	}
 	args[offset] = command.ReplayID
 	args[offset+1] = command.PlayerID
 	args[offset+2] = command.Frame
 	args[offset+3] = command.RunAt
 	args[offset+4] = command.ActionType
-	args[offset+5] = command.UnitID
-	args[offset+6] = command.X
-	args[offset+7] = command.Y
-	args[offset+8] = command.IsEffective
-	args[offset+9] = command.IsQueued
-	args[offset+10] = command.OrderID
-	args[offset+11] = command.OrderName
-	args[offset+12] = command.UnitType
-	args[offset+13] = command.UnitPlayerID
-	args[offset+14] = unitTypesJSON
-	args[offset+15] = unitIDsJSON
-	args[offset+16] = command.BuildUnitName
-	args[offset+17] = command.TrainUnitName
-	args[offset+18] = command.BuildingMorphUnitName
-	args[offset+19] = command.TechName
-	args[offset+20] = command.UpgradeName
-	args[offset+21] = command.HotkeyType
-	args[offset+22] = command.HotkeyGroup
-	args[offset+23] = command.GameSpeed
-	args[offset+24] = visionSlotIDsJSON
-	args[offset+25] = allianceSlotIDsJSON
-	args[offset+26] = command.IsAlliedVictory
-	args[offset+27] = command.GeneralData
+	args[offset+5] = command.X
+	args[offset+6] = command.Y
+	args[offset+7] = command.IsEffective
+	args[offset+8] = command.IsQueued
+	args[offset+9] = command.OrderName
+	args[offset+10] = getUnitTypeOrNullForSQLite(command.UnitType)
+	args[offset+11] = command.UnitPlayerID
+	args[offset+12] = unitTypesJSON
+	args[offset+13] = command.BuildUnitName
+	args[offset+14] = command.TrainUnitName
+	args[offset+15] = command.BuildingMorphUnitName
+	args[offset+16] = command.TechName
+	args[offset+17] = command.UpgradeName
+	args[offset+18] = command.HotkeyType
+	args[offset+19] = command.HotkeyGroup
+	args[offset+20] = command.GameSpeed
+	args[offset+21] = visionPlayerIDsJSON
+	args[offset+22] = alliancePlayerIDsJSON
+	args[offset+23] = command.IsAlliedVictory
+	args[offset+24] = command.GeneralData
 
 	return nil
 }
 
 // Helper functions for SQLite serialization
-func serializeSlotIDsForSQLite(slotIDs *[]int) (string, error) {
-	if slotIDs == nil {
+func serializePlayerIDsForSQLite(playerIDs *[]int64) (string, error) {
+	if playerIDs == nil {
 		return "", nil
 	}
-	data, err := json.Marshal(*slotIDs)
+	data, err := json.Marshal(*playerIDs)
 	if err != nil {
 		return "", err
 	}
@@ -113,4 +106,11 @@ func serializeStringForSQLite(str *string) (interface{}, error) {
 		return nil, nil
 	}
 	return *str, nil
+}
+
+func getUnitTypeOrNullForSQLite(unitType *string) interface{} {
+	if unitType == nil || *unitType == "None" {
+		return nil
+	}
+	return *unitType
 }

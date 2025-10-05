@@ -31,3 +31,5 @@ require (
 	golang.org/x/text v0.29.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/icza/screp => github.com/marianogappa/screp v0.0.0-20250930085841-44d5f5ad657c

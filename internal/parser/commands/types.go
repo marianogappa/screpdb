@@ -11,7 +11,7 @@ import (
 
 // CommandHandler defines the interface for handling specific command types
 type CommandHandler interface {
-	Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.Command
+	Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPlayerMap map[uint16]int64) *models.Command
 	GetActionType() string
 	GetActionID() byte
 }
@@ -64,17 +64,24 @@ func unitTypesToJSON(unitTypes map[uint16]string) *string {
 	return &result
 }
 
-func slotIDsToIntSlice(slotIDs repcmd.Bytes) *[]int {
+// slotIDsToPlayerIDs converts slot IDs to player IDs using the provided mapping
+func slotIDsToPlayerIDs(slotIDs repcmd.Bytes, slotToPlayerMap map[uint16]int64) *[]int64 {
 	if len(slotIDs) == 0 {
 		return nil
 	}
 
-	ids := make([]int, len(slotIDs))
-	for i, id := range slotIDs {
-		ids[i] = int(id)
+	playerIDs := make([]int64, 0, len(slotIDs))
+	for _, slotID := range slotIDs {
+		if playerID, exists := slotToPlayerMap[uint16(slotID)]; exists {
+			playerIDs = append(playerIDs, playerID)
+		}
 	}
 
-	return &ids
+	if len(playerIDs) == 0 {
+		return nil
+	}
+
+	return &playerIDs
 }
 
 func dataToHexString(data []byte) *string {
