@@ -5,6 +5,7 @@ go 1.24.5
 require (
 	github.com/fatih/color v1.16.0
 	github.com/fsnotify/fsnotify v1.7.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/icza/screp v1.12.17
 	github.com/lib/pq v1.10.9
 	github.com/mark3labs/mcp-go v0.41.1
@@ -25,6 +26,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	golang.org/x/sys v0.14.0 // indirect
