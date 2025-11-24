@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/models"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -432,39 +433,45 @@ func (s *SQLiteStorage) ReplayExists(ctx context.Context, filePath, checksum str
 	return true, nil
 }
 
-// BatchReplayExists checks if multiple replays already exist by file paths and checksums
-func (s *SQLiteStorage) BatchReplayExists(ctx context.Context, filePaths, checksums []string) (map[string]bool, error) {
-	if len(filePaths) != len(checksums) {
-		return nil, fmt.Errorf("filePaths and checksums must have the same length")
+// FilterOutExistingReplays filters out replays that already exist in the database
+func (s *SQLiteStorage) FilterOutExistingReplays(ctx context.Context, files []fileops.FileInfo) ([]fileops.FileInfo, error) {
+	if len(files) == 0 {
+		return []fileops.FileInfo{}, nil
 	}
 
-	if len(filePaths) == 0 {
-		return make(map[string]bool), nil
+	// Extract file paths and checksums
+	filePaths := make([]string, len(files))
+	checksums := make([]string, len(files))
+	for i, file := range files {
+		filePaths[i] = file.Path
+		checksums[i] = file.Checksum
 	}
 
-	// Build the query with placeholders
-	placeholders := make([]string, len(filePaths))
-	args := make([]any, len(filePaths)*2)
-
-	for i := 0; i < len(filePaths); i++ {
-		placeholders[i] = "(?, ?)"
-		args[i*2] = filePaths[i]
-		args[i*2+1] = checksums[i]
+	// Build placeholders for file_paths
+	filePathPlaceholders := make([]string, len(filePaths))
+	for i := range filePaths {
+		filePathPlaceholders[i] = "?"
 	}
 
-	// Join all placeholders with commas
-	placeholderStr := ""
-	for i, placeholder := range placeholders {
-		if i > 0 {
-			placeholderStr += ", "
-		}
-		placeholderStr += placeholder
+	// Build placeholders for checksums
+	checksumPlaceholders := make([]string, len(checksums))
+	for i := range checksums {
+		checksumPlaceholders[i] = "?"
+	}
+
+	// Combine all args: file_paths first, then checksums
+	args := make([]any, 0, len(filePaths)+len(checksums))
+	for _, fp := range filePaths {
+		args = append(args, fp)
+	}
+	for _, cs := range checksums {
+		args = append(args, cs)
 	}
 
 	query := fmt.Sprintf(`
-		SELECT file_path FROM replays 
-		WHERE (file_path, file_checksum) IN (%s)
-	`, placeholderStr)
+		SELECT file_path, file_checksum FROM replays 
+		WHERE file_path IN (%s) OR file_checksum IN (%s)
+	`, strings.Join(filePathPlaceholders, ", "), strings.Join(checksumPlaceholders, ", "))
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -472,20 +479,30 @@ func (s *SQLiteStorage) BatchReplayExists(ctx context.Context, filePaths, checks
 	}
 	defer rows.Close()
 
-	existing := make(map[string]bool)
+	existingPaths := make(map[string]bool)
+	existingChecksums := make(map[string]bool)
 	for rows.Next() {
-		var filePath string
-		if err := rows.Scan(&filePath); err != nil {
-			return nil, fmt.Errorf("failed to scan file path: %w", err)
+		var filePath, fileChecksum string
+		if err := rows.Scan(&filePath, &fileChecksum); err != nil {
+			return nil, fmt.Errorf("failed to scan file path and checksum: %w", err)
 		}
-		existing[filePath] = true
+		existingPaths[filePath] = true
+		existingChecksums[fileChecksum] = true
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating rows: %w", err)
 	}
 
-	return existing, nil
+	// Filter out existing files (by path or checksum)
+	var filtered []fileops.FileInfo
+	for _, file := range files {
+		if !existingPaths[file.Path] && !existingChecksums[file.Checksum] {
+			filtered = append(filtered, file)
+		}
+	}
+
+	return filtered, nil
 }
 
 // Query executes a SQL query and returns results
