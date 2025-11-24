@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 
+	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
@@ -28,9 +29,9 @@ type Storage interface {
 	// ReplayExists checks if a replay already exists by file path or checksum
 	ReplayExists(ctx context.Context, filePath, checksum string) (bool, error)
 
-	// BatchReplayExists checks if multiple replays already exist by file paths and checksums
-	// Returns a map of file paths to boolean indicating existence
-	BatchReplayExists(ctx context.Context, filePaths, checksums []string) (map[string]bool, error)
+	// FilterOutExistingReplays filters out replays that already exist in the database
+	// Returns only the FileInfo objects for replays that don't exist yet
+	FilterOutExistingReplays(ctx context.Context, files []fileops.FileInfo) ([]fileops.FileInfo, error)
 
 	// Query executes a SQL query and returns results
 	Query(ctx context.Context, query string, args ...any) ([]map[string]any, error)

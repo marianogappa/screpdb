@@ -19,21 +19,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "screpdb",
-	Short: "StarCraft Replay Database - CLI tool for ingesting and querying Brood War replays",
-	Long:  `A CLI tool for ingesting StarCraft: Brood War replay files into a database and providing MCP server functionality for querying.`,
-}
-
-func Execute() error {
-	return rootCmd.Execute()
-}
-
-func init() {
-	rootCmd.AddCommand(ingestCmd)
-	rootCmd.AddCommand(mcpCmd)
-}
-
 var ingestCmd = &cobra.Command{
 	Use:   "ingest",
 	Short: "Ingest replay files into the database",
@@ -202,17 +187,9 @@ func runBatchMode(ctx context.Context, store storage.Storage) error {
 
 	// Batch check for existing replays before processing
 	color.Yellow("Checking for existing replays...")
-	existingReplays, err := batchCheckExistingReplays(ctx, store, filteredFiles)
+	filesToProcess, err := batchCheckExistingReplays(ctx, store, filteredFiles)
 	if err != nil {
 		return fmt.Errorf("failed to check existing replays: %w", err)
-	}
-
-	// Filter out existing replays
-	var filesToProcess []fileops.FileInfo
-	for _, fileInfo := range filteredFiles {
-		if !existingReplays[fileInfo.Path] {
-			filesToProcess = append(filesToProcess, fileInfo)
-		}
 	}
 
 	skippedCount := len(filteredFiles) - len(filesToProcess)
@@ -225,10 +202,7 @@ func runBatchMode(ctx context.Context, store storage.Storage) error {
 	var mu sync.Mutex
 
 	for i := 0; i < len(filesToProcess); i += batchSize {
-		end := i + batchSize
-		if end > len(filesToProcess) {
-			end = len(filesToProcess)
-		}
+		end := min(i+batchSize, len(filesToProcess))
 
 		batch := filesToProcess[i:end]
 		color.Cyan("Processing batch %d-%d of %d", i+1, end, len(filesToProcess))
@@ -280,39 +254,28 @@ func runBatchMode(ctx context.Context, store storage.Storage) error {
 }
 
 // batchCheckExistingReplays checks for existing replays in batches of 100
-func batchCheckExistingReplays(ctx context.Context, store storage.Storage, files []fileops.FileInfo) (map[string]bool, error) {
+// Returns only the FileInfo objects for replays that don't exist yet
+func batchCheckExistingReplays(ctx context.Context, store storage.Storage, files []fileops.FileInfo) ([]fileops.FileInfo, error) {
 	const batchSize = 100
-	existingReplays := make(map[string]bool)
+	var allFiltered []fileops.FileInfo
 
 	for i := 0; i < len(files); i += batchSize {
-		end := i + batchSize
-		if end > len(files) {
-			end = len(files)
-		}
+		end := min(i+batchSize, len(files))
 
 		batch := files[i:end]
-		filePaths := make([]string, len(batch))
-		checksums := make([]string, len(batch))
-
-		for j, fileInfo := range batch {
-			filePaths[j] = fileInfo.Path
-			checksums[j] = fileInfo.Checksum
-		}
-
-		batchExisting, err := store.BatchReplayExists(ctx, filePaths, checksums)
+		batchFiltered, err := store.FilterOutExistingReplays(ctx, batch)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check batch %d-%d: %w", i+1, end, err)
 		}
 
-		// Merge results
-		for filePath, exists := range batchExisting {
-			existingReplays[filePath] = exists
-		}
+		// Append filtered results
+		allFiltered = append(allFiltered, batchFiltered...)
 
-		log.Printf("Checked batch %d-%d: %d existing replays found", i+1, end, len(batchExisting))
+		skippedInBatch := len(batch) - len(batchFiltered)
+		log.Printf("Checked batch %d-%d: %d existing replays found", i+1, end, skippedInBatch)
 	}
 
-	return existingReplays, nil
+	return allFiltered, nil
 }
 
 func processFileToChannel(ctx context.Context, dataChan storage.ReplayDataChannel, fileInfo *fileops.FileInfo) error {
