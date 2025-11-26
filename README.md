@@ -13,12 +13,13 @@ A comprehensive CLI tool for ingesting StarCraft: Brood War replay files into a 
 
 ## Installation
 
-### Prerequisites
+### Download Pre-built Binaries
 
-- Go 1.24.5 or later
-- StarCraft: Brood War replay files (.rep)
+Download the latest release from the [Releases page](https://github.com/marianogappa/screpdb/releases).
 
 ### Build from Source
+
+If you prefer to build from source, you'll need Go 1.25.2 or later:
 
 ```bash
 git clone https://github.com/marianogappa/screpdb.git

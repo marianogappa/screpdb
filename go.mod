@@ -1,6 +1,6 @@
 module github.com/marianogappa/screpdb
 
-go 1.24.5
+go 1.25.2
 
 require (
 	github.com/fatih/color v1.16.0
