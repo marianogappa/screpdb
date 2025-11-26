@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.2](https://github.com/marianogappa/screpdb/compare/v0.13.1...v0.13.2) (2025-11-26)
+
+
+### Bug Fixes
+
+* Address all deprecations on GoReleaser job. ([d719810](https://github.com/marianogappa/screpdb/commit/d719810c533eea5e5ba31e3125718ebc5d83ff7c))
+
 ## [0.13.1](https://github.com/marianogappa/screpdb/compare/v0.13.0...v0.13.1) (2025-11-26)
 
 
