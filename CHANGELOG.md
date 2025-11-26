@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.3](https://github.com/marianogappa/screpdb/compare/v0.13.2...v0.13.3) (2025-11-26)
+
+
+### Bug Fixes
+
+* Build binaries for important os/archs. ([295ab3d](https://github.com/marianogappa/screpdb/commit/295ab3d7f6fc23671f54559521242df0e20481c5))
+
 ## [0.13.2](https://github.com/marianogappa/screpdb/compare/v0.13.1...v0.13.2) (2025-11-26)
 
 
