@@ -108,22 +108,15 @@ func stringPtr(s string) *string {
 	return &s
 }
 
-func uint16Ptr(u uint16) *uint16 {
-	return &u
-}
-
-func intPtr(i int) *int {
-	return &i
-}
-
 // Create base command from base command info
 func createBaseCommand(base *repcmd.Base, replayID int64, startTime int64) *models.Command {
 	return &models.Command{
-		ReplayID:    replayID,
-		PlayerID:    int64(base.PlayerID),
-		Frame:       int32(base.Frame),
-		RunAt:       time.Unix(startTime+int64(base.Frame.Duration().Seconds()), 0),
-		ActionType:  base.Type.String(),
-		IsEffective: base.IneffKind.Effective(),
+		ReplayID:             replayID,
+		PlayerID:             int64(base.PlayerID),
+		Frame:                int32(base.Frame),
+		SecondsFromGameStart: int(base.Frame.Seconds()),
+		RunAt:                time.Unix(startTime+int64(base.Frame.Duration().Seconds()), 0),
+		ActionType:           base.Type.String(),
+		IsEffective:          base.IneffKind.Effective(),
 	}
 }

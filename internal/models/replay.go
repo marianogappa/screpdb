@@ -68,11 +68,12 @@ type UnitInfo struct {
 
 // Command represents a player command/action in the game
 type Command struct {
-	ID       int64     `json:"id"`
-	ReplayID int64     `json:"replay_id"`
-	PlayerID int64     `json:"player_id"`
-	Frame    int32     `json:"frame"`
-	RunAt    time.Time `json:"run_at"`
+	ID                   int64     `json:"id"`
+	ReplayID             int64     `json:"replay_id"`
+	PlayerID             int64     `json:"player_id"`
+	Frame                int32     `json:"frame"`
+	RunAt                time.Time `json:"run_at"`
+	SecondsFromGameStart int       `json:"secondsFromGameStart"`
 
 	// Command details
 	ActionType string `json:"action_type"`       // Build, Move, Attack, etc.

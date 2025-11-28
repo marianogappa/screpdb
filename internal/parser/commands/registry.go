@@ -96,6 +96,7 @@ func (r *CommandRegistry) ProcessCommand(cmd repcmd.Cmd, replayID int64, startTi
 	if command != nil {
 		command.ReplayID = replayID
 		command.RunAt = time.Unix(startTime+int64(base.Frame.Duration().Seconds()), 0)
+		command.SecondsFromGameStart = int(base.Frame.Seconds())
 	}
 
 	return command
