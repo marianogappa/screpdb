@@ -96,8 +96,11 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 			StartLocationX:      startX,
 			StartLocationY:      startY,
 			StartLocationOclock: startOclock,
+			Replay:              data.Replay,
 		})
 	}
+
+	data.Replay.Players = data.Players
 
 	// Create slot-to-player mapping for alliance and vision commands
 	slotToPlayerMap := make(map[uint16]int64)
@@ -124,6 +127,8 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 				// Set additional fields (registry already sets ReplayID and RunAt)
 				command.PlayerID = playerID
 				command.Frame = int32(base.Frame)
+				command.Replay = data.Replay
+				command.Player = findPlayerWithPlayerID(base.PlayerID, data.Players)
 
 				data.Commands = append(data.Commands, command)
 			}
@@ -131,6 +136,15 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 	}
 
 	return data, nil
+}
+
+func findPlayerWithPlayerID(playerID byte, players []*models.Player) *models.Player {
+	for _, player := range players {
+		if player.PlayerID == playerID {
+			return player
+		}
+	}
+	return nil
 }
 
 // CreateReplayFromFileInfo creates a Replay model from file information

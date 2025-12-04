@@ -28,6 +28,8 @@ type Replay struct {
 	AvailSlotsCount byte      `json:"avail_slots_count"`
 	// On Melee & Free for all this is always 1, and on Top vs Bottom it's what the game creator set for the home team.
 	HomeTeamSize uint16 `json:"home_team_size"` // Team size
+
+	Players []*Player `json:"-"`
 }
 
 // Player represents a player in the replay
@@ -52,19 +54,8 @@ type Player struct {
 	StartLocationX      *int `json:"start_location_x,omitempty"`
 	StartLocationY      *int `json:"start_location_y,omitempty"`
 	StartLocationOclock *int `json:"start_location_oclock,omitempty"` // Clock position: 11, 12, 1, 3, 5, 6, 7, 9
-}
 
-// UnitInfo represents information about a unit instance in a command
-type UnitInfo struct {
-	UnitTag      uint16    `json:"unit_tag"`
-	UnitType     string    `json:"unit_type"` // "Marine", "Zergling", etc.
-	UnitID       uint16    `json:"unit_id"`   // The unit type ID
-	PlayerID     int64     `json:"player_id"`
-	CreatedAt    time.Time `json:"created_at"`
-	CreatedFrame int32     `json:"created_frame"`
-	X            int       `json:"x"`
-	Y            int       `json:"y"`
-	IsAlive      bool      `json:"is_alive"`
+	Replay *Replay `json:"-"`
 }
 
 // Command represents a player command/action in the game
@@ -119,6 +110,9 @@ type Command struct {
 	// Chat and leave game fields
 	ChatMessage *string `json:"chat_message,omitempty"` // Chat message content
 	LeaveReason *string `json:"leave_reason,omitempty"` // Reason for leaving game
+
+	Replay *Replay `json:"-"`
+	Player *Player `json:"-"`
 }
 
 // ReplayData represents the complete parsed replay data
