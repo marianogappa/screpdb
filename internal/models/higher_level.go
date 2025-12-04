@@ -12,6 +12,8 @@ const (
 	UnitNameHatchery      = "Hatchery"
 	UnitNameNexus         = "Nexus"
 	UnitNameCommandCenter = "Command Center"
+
+	PlayerTypeHuman = "Human"
 )
 
 func (c *Command) IsUnitBuild() bool {
@@ -53,4 +55,12 @@ func (c *Command) IsBaseBuild() bool {
 		c.UnitType != nil && (*c.UnitType == UnitNameHatchery ||
 		*c.UnitType == UnitNameNexus ||
 		*c.UnitType == UnitNameCommandCenter)
+}
+
+func (p *Player) IsHuman() bool {
+	return p.Type == PlayerTypeHuman
+}
+
+func (p *Player) IsNonObserverHuman() bool {
+	return p.IsHuman() && !p.IsObserver
 }
