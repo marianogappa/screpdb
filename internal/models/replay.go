@@ -83,9 +83,6 @@ type Command struct {
 	X *int `json:"x"`
 	Y *int `json:"y"`
 
-	// Command effectiveness
-	IsEffective bool `json:"is_effective"`
-
 	// Common fields (used by multiple command types)
 	IsQueued  *bool   `json:"is_queued,omitempty"`
 	OrderID   *byte   `json:"order_id,omitempty"`

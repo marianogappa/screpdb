@@ -7,6 +7,42 @@ import (
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
+var (
+	ignoredCommandTypes = map[byte]bool{
+		repcmd.TypeIDSaveGame:           true,
+		repcmd.TypeIDLoadGame:           true,
+		repcmd.TypeIDKeepAlive:          true,
+		repcmd.TypeIDRestartGame:        true,
+		repcmd.TypeIDSync:               true,
+		repcmd.TypeIDVoiceEnable:        true,
+		repcmd.TypeIDVoiceDisable:       true,
+		repcmd.TypeIDVoiceSquelch:       true,
+		repcmd.TypeIDVoiceUnsquelch:     true,
+		repcmd.TypeIDStartGame:          true,
+		repcmd.TypeIDDownloadPercentage: true,
+		repcmd.TypeIDChangeGameSlot:     true,
+		repcmd.TypeIDNewNetPlayer:       true,
+		repcmd.TypeIDJoinedGame:         true,
+		repcmd.TypeIDChangeRace:         true,
+		repcmd.TypeIDTeamGameTeam:       true,
+		repcmd.TypeIDUMSTeam:            true,
+		repcmd.TypeIDMeleeTeam:          true,
+		repcmd.TypeIDSwapPlayers:        true,
+		repcmd.TypeIDSavedData:          true,
+		repcmd.TypeIDBriefingStart:      true,
+		repcmd.TypeIDLatency:            true,
+		repcmd.TypeIDReplaySpeed:        true,
+		repcmd.TypeIDMakeGamePublic:     true,
+		// Skip Select commands as they don't provide useful information without unit type resolution
+		repcmd.TypeIDSelect:          true,
+		repcmd.TypeIDSelectAdd:       true,
+		repcmd.TypeIDSelectRemove:    true,
+		repcmd.TypeIDSelect121:       true,
+		repcmd.TypeIDSelectAdd121:    true,
+		repcmd.TypeIDSelectRemove121: true,
+	}
+)
+
 // CommandRegistry manages command handlers and provides a unified interface for command processing
 type CommandRegistry struct {
 	handlers map[byte]CommandHandler
@@ -82,7 +118,7 @@ func (r *CommandRegistry) ProcessCommand(cmd repcmd.Cmd, replayID int64, startTi
 	base := cmd.BaseCmd()
 
 	// Check if we should ignore this command type
-	if r.shouldIgnoreCommand(base.Type.ID) {
+	if r.shouldIgnoreCommand(base) {
 		return nil
 	}
 
@@ -103,49 +139,25 @@ func (r *CommandRegistry) ProcessCommand(cmd repcmd.Cmd, replayID int64, startTi
 }
 
 // shouldIgnoreCommand checks if a command type should be ignored
-func (r *CommandRegistry) shouldIgnoreCommand(commandType byte) bool {
-	ignoredTypes := map[byte]bool{
-		repcmd.TypeIDSaveGame:           true,
-		repcmd.TypeIDLoadGame:           true,
-		repcmd.TypeIDKeepAlive:          true,
-		repcmd.TypeIDRestartGame:        true,
-		repcmd.TypeIDSync:               true,
-		repcmd.TypeIDVoiceEnable:        true,
-		repcmd.TypeIDVoiceDisable:       true,
-		repcmd.TypeIDVoiceSquelch:       true,
-		repcmd.TypeIDVoiceUnsquelch:     true,
-		repcmd.TypeIDStartGame:          true,
-		repcmd.TypeIDDownloadPercentage: true,
-		repcmd.TypeIDChangeGameSlot:     true,
-		repcmd.TypeIDNewNetPlayer:       true,
-		repcmd.TypeIDJoinedGame:         true,
-		repcmd.TypeIDChangeRace:         true,
-		repcmd.TypeIDTeamGameTeam:       true,
-		repcmd.TypeIDUMSTeam:            true,
-		repcmd.TypeIDMeleeTeam:          true,
-		repcmd.TypeIDSwapPlayers:        true,
-		repcmd.TypeIDSavedData:          true,
-		repcmd.TypeIDBriefingStart:      true,
-		repcmd.TypeIDLatency:            true,
-		repcmd.TypeIDReplaySpeed:        true,
-		repcmd.TypeIDMakeGamePublic:     true,
-		// Skip Select commands as they don't provide useful information without unit type resolution
-		repcmd.TypeIDSelect:          true,
-		repcmd.TypeIDSelectAdd:       true,
-		repcmd.TypeIDSelectRemove:    true,
-		repcmd.TypeIDSelect121:       true,
-		repcmd.TypeIDSelectAdd121:    true,
-		repcmd.TypeIDSelectRemove121: true,
+func (r *CommandRegistry) shouldIgnoreCommand(baseCommand *repcmd.Base) bool {
+	// Ineffective commands provide the same amount of value (essentially zero)
+	// as the Select commands that were already removed because they weren't
+	// useful. Since APM and EAPM are already surfaced in the player entity,
+	// there really isn't much value in having extra commands for these, but it
+	// does mean that all usages of the commands table have to remember to
+	// check that the effectiveness flag is true.
+	if !baseCommand.IneffKind.Effective() {
+		return true
 	}
 
-	return ignoredTypes[commandType]
+	return ignoredCommandTypes[baseCommand.Type.ID]
 }
 
 // GetSupportedCommandTypes returns a list of all supported command types
 func (r *CommandRegistry) GetSupportedCommandTypes() []byte {
 	var types []byte
 	for commandType := range r.handlers {
-		if !r.shouldIgnoreCommand(commandType) {
+		if _, isIgnoredCommandType := ignoredCommandTypes[commandType]; !isIgnoredCommandType {
 			types = append(types, commandType)
 		}
 	}

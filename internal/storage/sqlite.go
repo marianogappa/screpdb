@@ -100,7 +100,6 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 		action_type TEXT NOT NULL,
 		x INTEGER,
 		y INTEGER,
-		is_effective BOOLEAN NOT NULL,
 		
 		-- Common fields (used by multiple command types)
 		is_queued BOOLEAN,
@@ -327,7 +326,7 @@ func (s *SQLiteStorage) insertCommandsBatchChunk(ctx context.Context, commands [
 	// Build the batch insert query
 	query := `
 		INSERT INTO commands (
-			replay_id, player_id, frame, seconds_from_game_start, run_at, action_type, x, y, is_effective,
+			replay_id, player_id, frame, seconds_from_game_start, run_at, action_type, x, y,
 			is_queued, order_name, unit_type, unit_types,
 			tech_name, upgrade_name, hotkey_type, hotkey_group, game_speed,
 			vision_player_ids, alliance_player_ids, is_allied_victory,
@@ -336,10 +335,10 @@ func (s *SQLiteStorage) insertCommandsBatchChunk(ctx context.Context, commands [
 
 	// Build placeholders and args
 	placeholders := make([]string, len(commands))
-	args := make([]any, len(commands)*24) // 24 columns
+	args := make([]any, len(commands)*23) // 23 columns
 
 	for i, command := range commands {
-		placeholders[i] = "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+		placeholders[i] = "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 		// Serialize player IDs to JSON
 		visionPlayerIDsJSON := s.serializePlayerIDsForSQLite(command.VisionPlayerIDs)
@@ -348,30 +347,29 @@ func (s *SQLiteStorage) insertCommandsBatchChunk(ctx context.Context, commands [
 		// Serialize unit information to JSON
 		unitTypesJSON := s.serializeStringForSQLite(command.UnitTypes)
 
-		args[i*24] = command.ReplayID
-		args[i*24+1] = command.PlayerID
-		args[i*24+2] = command.Frame
-		args[i*24+3] = command.SecondsFromGameStart
-		args[i*24+4] = command.RunAt
-		args[i*24+5] = command.ActionType
-		args[i*24+6] = command.X
-		args[i*24+7] = command.Y
-		args[i*24+8] = command.IsEffective
-		args[i*24+9] = command.IsQueued
-		args[i*24+10] = command.OrderName
-		args[i*24+11] = s.getUnitTypeOrNullForSQLite(command.UnitType)
-		args[i*24+12] = unitTypesJSON
-		args[i*24+13] = command.TechName
-		args[i*24+14] = command.UpgradeName
-		args[i*24+15] = command.HotkeyType
-		args[i*24+16] = command.HotkeyGroup
-		args[i*24+17] = command.GameSpeed
-		args[i*24+18] = visionPlayerIDsJSON
-		args[i*24+19] = alliancePlayerIDsJSON
-		args[i*24+20] = command.IsAlliedVictory
-		args[i*24+21] = command.GeneralData
-		args[i*24+22] = command.ChatMessage
-		args[i*24+23] = command.LeaveReason
+		args[i*23] = command.ReplayID
+		args[i*23+1] = command.PlayerID
+		args[i*23+2] = command.Frame
+		args[i*23+3] = command.SecondsFromGameStart
+		args[i*23+4] = command.RunAt
+		args[i*23+5] = command.ActionType
+		args[i*23+6] = command.X
+		args[i*23+7] = command.Y
+		args[i*23+8] = command.IsQueued
+		args[i*23+9] = command.OrderName
+		args[i*23+10] = s.getUnitTypeOrNullForSQLite(command.UnitType)
+		args[i*23+11] = unitTypesJSON
+		args[i*23+12] = command.TechName
+		args[i*23+13] = command.UpgradeName
+		args[i*23+14] = command.HotkeyType
+		args[i*23+15] = command.HotkeyGroup
+		args[i*23+16] = command.GameSpeed
+		args[i*23+17] = visionPlayerIDsJSON
+		args[i*23+18] = alliancePlayerIDsJSON
+		args[i*23+19] = command.IsAlliedVictory
+		args[i*23+20] = command.GeneralData
+		args[i*23+21] = command.ChatMessage
+		args[i*23+22] = command.LeaveReason
 	}
 
 	query += strings.Join(placeholders, ", ")

@@ -122,7 +122,6 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 				// Set additional fields (registry already sets ReplayID and RunAt)
 				command.PlayerID = playerID
 				command.Frame = int32(base.Frame)
-				command.IsEffective = base.IneffKind.Effective()
 
 				data.Commands = append(data.Commands, command)
 			}
