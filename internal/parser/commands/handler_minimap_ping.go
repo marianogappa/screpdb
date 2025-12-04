@@ -23,8 +23,8 @@ func (h *MinimapPingCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, sl
 	minimapPingCmd := cmd.(*repcmd.MinimapPingCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	command.X = int(minimapPingCmd.Pos.X)
-	command.Y = int(minimapPingCmd.Pos.Y)
+	command.X = pInt(int(minimapPingCmd.Pos.X))
+	command.Y = pInt(int(minimapPingCmd.Pos.Y))
 
 	return command
 }

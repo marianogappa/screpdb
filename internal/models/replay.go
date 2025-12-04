@@ -80,8 +80,8 @@ type Command struct {
 	UnitID     *byte  `json:"unit_id,omitempty"` // Unit type ID (properly filled)
 
 	// Position data
-	X int `json:"x"`
-	Y int `json:"y"`
+	X *int `json:"x"`
+	Y *int `json:"y"`
 
 	// Command effectiveness
 	IsEffective bool `json:"is_effective"`

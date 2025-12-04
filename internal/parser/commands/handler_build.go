@@ -23,8 +23,8 @@ func (h *BuildCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPl
 	buildCmd := cmd.(*repcmd.BuildCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	command.X = int(buildCmd.Pos.X)
-	command.Y = int(buildCmd.Pos.Y)
+	command.X = pInt(int(buildCmd.Pos.X))
+	command.Y = pInt(int(buildCmd.Pos.Y))
 
 	if buildCmd.Unit != nil {
 		command.UnitID = bytePtr(byte(buildCmd.Unit.ID))
@@ -37,4 +37,8 @@ func (h *BuildCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPl
 	}
 
 	return command
+}
+
+func pInt(i int) *int {
+	return &i
 }

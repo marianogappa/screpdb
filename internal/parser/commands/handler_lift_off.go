@@ -23,8 +23,8 @@ func (h *LiftOffCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotTo
 	liftOffCmd := cmd.(*repcmd.LiftOffCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	command.X = int(liftOffCmd.Pos.X)
-	command.Y = int(liftOffCmd.Pos.Y)
+	command.X = pInt(int(liftOffCmd.Pos.X))
+	command.Y = pInt(int(liftOffCmd.Pos.Y))
 
 	return command
 }

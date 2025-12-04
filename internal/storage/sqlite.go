@@ -98,8 +98,8 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 		seconds_from_game_start INTEGER NOT NULL,
 		run_at DATETIME NOT NULL,
 		action_type TEXT NOT NULL,
-		x INTEGER NOT NULL,
-		y INTEGER NOT NULL,
+		x INTEGER,
+		y INTEGER,
 		is_effective BOOLEAN NOT NULL,
 		
 		-- Common fields (used by multiple command types)
