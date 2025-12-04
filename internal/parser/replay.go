@@ -38,8 +38,10 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 	data.Replay.Engine = rep.Header.Engine.String()
 	data.Replay.GameSpeed = rep.Header.Speed.String()
 	data.Replay.GameType = rep.Header.Type.String()
-	data.Replay.HomeTeamSize = rep.Header.SubType
 	data.Replay.AvailSlotsCount = rep.Header.AvailSlotsCount
+
+	// On Melee & Free for all this is always 1, and on Top vs Bottom it's what the game creator set for the home team.
+	data.Replay.HomeTeamSize = rep.Header.SubType
 
 	// Parse players
 	for i, player := range rep.Header.Players {

@@ -22,11 +22,12 @@ type Replay struct {
 	DurationSeconds int       `json:"duration_seconds"` // in seconds
 	FrameCount      int32     `json:"frame_count"`
 	EngineVersion   string    `json:"engine_version"`
-	Engine          string    `json:"engine"`         // StarCraft or Brood War
-	GameSpeed       string    `json:"game_speed"`     // Slowest, Slower, Slow, Normal, Fast, Faster, Fastest
-	GameType        string    `json:"game_type"`      // Melee, FFA, 1on1, CTF, etc.
-	HomeTeamSize    uint16    `json:"home_team_size"` // Team size
+	Engine          string    `json:"engine"`     // StarCraft or Brood War
+	GameSpeed       string    `json:"game_speed"` // Slowest, Slower, Slow, Normal, Fast, Faster, Fastest
+	GameType        string    `json:"game_type"`  // Melee, FFA, 1on1, CTF, etc.
 	AvailSlotsCount byte      `json:"avail_slots_count"`
+	// On Melee & Free for all this is always 1, and on Top vs Bottom it's what the game creator set for the home team.
+	HomeTeamSize uint16 `json:"home_team_size"` // Team size
 }
 
 // Player represents a player in the replay
