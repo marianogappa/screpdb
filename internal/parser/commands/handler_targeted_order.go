@@ -23,8 +23,8 @@ func (h *TargetedOrderCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, 
 	targetedOrderCmd := cmd.(*repcmd.TargetedOrderCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	command.X = int(targetedOrderCmd.Pos.X)
-	command.Y = int(targetedOrderCmd.Pos.Y)
+	command.X = pInt(int(targetedOrderCmd.Pos.X))
+	command.Y = pInt(int(targetedOrderCmd.Pos.Y))
 
 	if targetedOrderCmd.Order != nil {
 		command.OrderID = bytePtr(targetedOrderCmd.Order.ID)

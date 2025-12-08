@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -28,40 +27,6 @@ func (h *BaseCommandHandler) GetActionType() string {
 
 func (h *BaseCommandHandler) GetActionID() byte {
 	return h.actionID
-}
-
-// Helper functions for common operations
-func unitTagsToJSON(unitTags []repcmd.UnitTag) *string {
-	if len(unitTags) == 0 {
-		return nil
-	}
-
-	tags := make([]uint16, len(unitTags))
-	for i, tag := range unitTags {
-		tags[i] = uint16(tag)
-	}
-
-	data, err := json.Marshal(tags)
-	if err != nil {
-		return nil
-	}
-
-	result := string(data)
-	return &result
-}
-
-func unitTypesToJSON(unitTypes map[uint16]string) *string {
-	if len(unitTypes) == 0 {
-		return nil
-	}
-
-	data, err := json.Marshal(unitTypes)
-	if err != nil {
-		return nil
-	}
-
-	result := string(data)
-	return &result
 }
 
 // slotIDsToPlayerIDs converts slot IDs to player IDs using the provided mapping
@@ -117,6 +82,5 @@ func createBaseCommand(base *repcmd.Base, replayID int64, startTime int64) *mode
 		SecondsFromGameStart: int(base.Frame.Seconds()),
 		RunAt:                time.Unix(startTime+int64(base.Frame.Duration().Seconds()), 0),
 		ActionType:           base.Type.String(),
-		IsEffective:          base.IneffKind.Effective(),
 	}
 }

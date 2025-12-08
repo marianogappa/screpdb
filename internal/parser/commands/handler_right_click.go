@@ -23,8 +23,8 @@ func (h *RightClickCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slo
 	rightClickCmd := cmd.(*repcmd.RightClickCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	command.X = int(rightClickCmd.Pos.X)
-	command.Y = int(rightClickCmd.Pos.Y)
+	command.X = pInt(int(rightClickCmd.Pos.X))
+	command.Y = pInt(int(rightClickCmd.Pos.Y))
 
 	command.IsQueued = boolPtr(rightClickCmd.Queued)
 

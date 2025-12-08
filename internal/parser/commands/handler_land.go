@@ -23,8 +23,8 @@ func (h *LandCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPla
 	landCmd := cmd.(*repcmd.LandCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	command.X = int(landCmd.Pos.X)
-	command.Y = int(landCmd.Pos.Y)
+	command.X = pInt(int(landCmd.Pos.X))
+	command.Y = pInt(int(landCmd.Pos.Y))
 
 	if landCmd.Unit != nil {
 		command.UnitID = bytePtr(byte(landCmd.Unit.ID))
