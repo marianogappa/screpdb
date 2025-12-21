@@ -107,7 +107,6 @@ func (s *Server) handleGetSchema(ctx context.Context, request mcp.CallToolReques
 	- Common WHERE clauses:
 		- players.type = 'Human' (i.e. skip 'Computer' players)
 		- players.is_observer = false (i.e. Observer players are not part of the game)
-		- commands.is_effective = true (e.g. an ineffective Train command didn't result in a unit being trained)
 
 	action_types:
 		- Build

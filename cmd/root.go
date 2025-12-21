@@ -16,4 +16,5 @@ func init() {
 	rootCmd.AddCommand(ingestCmd)
 	rootCmd.AddCommand(mcpCmd)
 	rootCmd.AddCommand(uiCmd)
+	rootCmd.AddCommand(dashboardCmd)
 }
