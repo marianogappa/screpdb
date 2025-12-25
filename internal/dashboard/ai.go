@@ -1,11 +1,13 @@
 package dashboard
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
+	"text/template"
 
 	"github.com/marianogappa/screpdb/internal/storage"
 	"github.com/tmc/langchaingo/llms"
@@ -33,23 +35,35 @@ type Conversation struct {
 	history []llms.MessageContent
 }
 
-func (a *AI) NewConversation() *Conversation {
-	return &Conversation{
-		history: []llms.MessageContent{llms.TextParts(llms.ChatMessageTypeSystem, systemPrompt)},
+func (a *AI) NewConversation(widgetID int) (*Conversation, error) {
+	var sp bytes.Buffer
+	if err := systemPromptTpl.Execute(&sp, struct{ WidgetID int }{widgetID}); err != nil {
+		return nil, err
 	}
+
+	return &Conversation{
+		ai:      a,
+		history: []llms.MessageContent{llms.TextParts(llms.ChatMessageTypeSystem, sp.String())},
+	}, nil
 }
 
 func (c *Conversation) addHumanPrompt(prompt string) {
+	log.Printf("Adding human prompt: %s\n", prompt)
 	c.history = append(c.history, llms.TextParts(llms.ChatMessageTypeHuman, prompt))
 }
 
 func (c *Conversation) addMessageContents(mcs []llms.MessageContent) {
+	for _, mc := range mcs {
+		log.Printf("Adding AI message content: %+v\n", mc)
+	}
 	c.history = append(c.history, mcs...)
 }
 
 func (c *Conversation) addContentChoice(contentChoice *llms.ContentChoice) {
+	log.Printf("Adding AI content: %s\n", contentChoice.Content)
 	assistantResponse := llms.TextParts(llms.ChatMessageTypeAI, contentChoice.Content)
 	for _, tc := range contentChoice.ToolCalls {
+		log.Printf("Adding AI response part: %+v\n", tc)
 		assistantResponse.Parts = append(assistantResponse.Parts, tc)
 	}
 	c.history = append(c.history, assistantResponse)
@@ -57,7 +71,7 @@ func (c *Conversation) addContentChoice(contentChoice *llms.ContentChoice) {
 
 type StructuredResponse struct {
 	HTMLContent string `json:"html_content"`
-	SQL         string `json:"sql"`
+	SQLQuery    string `json:"sql_query"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 }
@@ -70,7 +84,12 @@ func (c *Conversation) Prompt(prompt string) (StructuredResponse, error) {
 	}
 	c.addHumanPrompt(fmt.Sprintf("%s\n%s", prompt, definedParser.GetFormatInstructions()))
 	for {
-		resp, err := c.ai.llm.GenerateContent(c.ai.ctx, c.history, llms.WithTools(availableTools))
+		resp, err := c.ai.llm.GenerateContent(
+			c.ai.ctx,
+			c.history,
+			llms.WithTools(availableTools),
+			llms.WithModel("gpt-4o-2024-08-06"),
+		)
 		if err != nil {
 			return StructuredResponse{}, err
 		}
@@ -472,14 +491,14 @@ Meta terms
 - Main building starting locations are usually conveyed in o'clock positions (like 3, 6, 9, 12).
 
 	`
-	systemPrompt = `You help to create Starcraft: Remastered dashboards. The prompts ask to create dashboard widgets. Each widget is a UI component fed from one SQL query.
+	systemPromptTemplate = `You help to create Starcraft: Remastered dashboards. The prompts ask to create dashboard widgets. Each widget is a UI component fed from one SQL query.
 The responses must be structured JSON which return:
 - widget title
 - widget description
 - widget PostgreSQL query
 - widget HTML content
 
-Assume you have D3.js in scope to draw a chart with the data, and that the data is available as an array of objects (as your query returns) in a variable called sqlRows.
+Assume you have D3.js in scope to draw a chart with the data, and that the data is available as an array of objects (as your query returns) in a variable called sqlRowsForWidget{{.WidgetID}}.
 You have a limited surface (e.g. 500x500) for the widget.
 
 You must first use the available tools to figure out how to construct the query, and then to run it and make sure that the results make sense (and to know how to display it).
@@ -487,7 +506,8 @@ You must first use the available tools to figure out how to construct the query,
 )
 
 var (
-	responseFormat = &openai.ResponseFormat{
+	systemPromptTpl, _ = template.New("").Parse(systemPromptTemplate)
+	responseFormat     = &openai.ResponseFormat{
 		Type: "json_schema",
 		JSONSchema: &openai.ResponseFormatJSONSchema{
 			Name:   "widget_schema",

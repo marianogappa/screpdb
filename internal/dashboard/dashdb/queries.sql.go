@@ -194,7 +194,7 @@ func (q *Queries) GetDashboardWidget(ctx context.Context, id int64) (DashboardWi
 }
 
 const getDashboardWidgetNextWidgetOrder = `-- name: GetDashboardWidgetNextWidgetOrder :one
-SELECT MAX(widget_order)+1 next_widget_order FROM dashboard_widgets
+SELECT COALESCE(MAX(widget_order), 0)+1 next_widget_order FROM dashboard_widgets
 WHERE dashboard_id = $1
 `
 
@@ -222,7 +222,7 @@ func (q *Queries) ListDashboardWidgetPromptHistory(ctx context.Context, arg List
 		return nil, err
 	}
 	defer rows.Close()
-	var items []DashboardWidgetsPromptHistory
+	items := []DashboardWidgetsPromptHistory{}
 	for rows.Next() {
 		var i DashboardWidgetsPromptHistory
 		if err := rows.Scan(
@@ -254,7 +254,7 @@ func (q *Queries) ListDashboardWidgets(ctx context.Context, dashboardID pgtype.I
 		return nil, err
 	}
 	defer rows.Close()
-	var items []DashboardWidget
+	items := []DashboardWidget{}
 	for rows.Next() {
 		var i DashboardWidget
 		if err := rows.Scan(
@@ -289,7 +289,7 @@ func (q *Queries) ListDashboards(ctx context.Context) ([]Dashboard, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Dashboard
+	items := []Dashboard{}
 	for rows.Next() {
 		var i Dashboard
 		if err := rows.Scan(

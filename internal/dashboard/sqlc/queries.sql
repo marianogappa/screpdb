@@ -28,7 +28,7 @@ SELECT * FROM dashboard_widgets
 WHERE id = $1;
 
 -- name: GetDashboardWidgetNextWidgetOrder :one
-SELECT MAX(widget_order)+1 next_widget_order FROM dashboard_widgets
+SELECT COALESCE(MAX(widget_order), 0)+1 next_widget_order FROM dashboard_widgets
 WHERE dashboard_id = $1;
 
 -- name: ListDashboards :many

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -35,6 +36,10 @@ func New(ctx context.Context, store storage.Storage, postgresConnectionString st
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
+	if err := conn.Ping(ctx); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
 	queries := dashdb.New(conn)
 
 	ai, err := NewAI(ctx, openAIAPIKey, store)
@@ -42,8 +47,7 @@ func New(ctx context.Context, store storage.Storage, postgresConnectionString st
 		return nil, fmt.Errorf("failed to create AI client: %w", err)
 	}
 
-	defer conn.Close(ctx)
-	return &Dashboard{ctx: ctx, conn: conn, queries: queries, ai: ai}, nil
+	return &Dashboard{ctx: ctx, conn: conn, queries: queries, ai: ai, conversations: map[int]*Conversation{}}, nil
 }
 
 func (d *Dashboard) Run() error {
@@ -52,14 +56,12 @@ func (d *Dashboard) Run() error {
 	r.HandleFunc("/api/dashboard", d.handlerListDashboards).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/dashboard/{id}", d.handlerGetDashboard).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/dashboard/{id}", d.handlerDeleteDashboard).Methods(http.MethodDelete, http.MethodOptions)
-	r.HandleFunc("/api/dashboard/{id}", d.handlerCreateDashboard).Methods(http.MethodPut, http.MethodOptions)
+	r.HandleFunc("/api/dashboard", d.handlerCreateDashboard).Methods(http.MethodPut, http.MethodOptions)
 	r.HandleFunc("/api/dashboard/{id}", d.handlerUpdateDashboard).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/api/dashboard/{id}/widget", d.handlerListDashboardWidgets).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/dashboard/{id}/widget/{wid}", d.handlerDeleteDashboardWidget).Methods(http.MethodDelete, http.MethodOptions)
-	r.HandleFunc("/api/dashboard/{id}/widget/{wid}", d.handlerCreateDashboardWidget).Methods(http.MethodPut, http.MethodOptions)
+	r.HandleFunc("/api/dashboard/{id}/widget", d.handlerCreateDashboardWidget).Methods(http.MethodPut, http.MethodOptions)
 	r.HandleFunc("/api/dashboard/{id}/widget/{wid}", d.handlerUpdateDashboardWidget).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/api/dashboard/{id}/widget/{wid}/prompts", d.handlerListDashboardWidgetPromptHistory).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/dashboard/{id}/widget/{wid}/prompts", d.handlerDeleteDashboardWidgetPromptHistory).Methods(http.MethodDelete, http.MethodOptions)
 
 	r.HandleFunc("/api/health", d.handlerHealthcheck).Methods(http.MethodGet, http.MethodOptions)
 	http.Handle("/", r)
@@ -71,6 +73,7 @@ func (d *Dashboard) Run() error {
 		ReadTimeout:  15 * time.Second,
 	}
 
+	log.Println("Server listening on localhost:8000...")
 	return srv.ListenAndServe()
 }
 
@@ -85,7 +88,7 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 	}
 
 	dash, err := d.queries.GetDashboard(d.ctx, int64(dashboardID))
-	if err == sql.ErrNoRows {
+	if err == sql.ErrNoRows || err == pgx.ErrNoRows {
 		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprintf(w, "unknown dashboard id")
 		return
@@ -111,7 +114,7 @@ func (d *Dashboard) handlerDeleteDashboard(w http.ResponseWriter, r *http.Reques
 	}
 
 	err = d.queries.DeleteDashboardWidgetPromptHistoriesOfDashboard(d.ctx, pgInt(dashboardID))
-	if err == sql.ErrNoRows {
+	if err == sql.ErrNoRows || err == pgx.ErrNoRows {
 		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprintf(w, "unknown dashboard id")
 		return
@@ -123,7 +126,7 @@ func (d *Dashboard) handlerDeleteDashboard(w http.ResponseWriter, r *http.Reques
 	}
 
 	err = d.queries.DeleteDashboardWidgetsOfDashboard(d.ctx, pgInt(dashboardID))
-	if err == sql.ErrNoRows {
+	if err == sql.ErrNoRows || err == pgx.ErrNoRows {
 		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprintf(w, "unknown dashboard id")
 		return
@@ -135,7 +138,7 @@ func (d *Dashboard) handlerDeleteDashboard(w http.ResponseWriter, r *http.Reques
 	}
 
 	err = d.queries.DeleteDashboard(d.ctx, int64(dashboardID))
-	if err == sql.ErrNoRows {
+	if err == sql.ErrNoRows || err == pgx.ErrNoRows {
 		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprintf(w, "unknown dashboard id")
 		return
@@ -152,7 +155,7 @@ func (d *Dashboard) handlerDeleteDashboard(w http.ResponseWriter, r *http.Reques
 func (d *Dashboard) handlerDeleteDashboardWidget(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	dashboardWidgetID, err := strconv.Atoi(vars["id"])
+	dashboardWidgetID, err := strconv.Atoi(vars["wid"])
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "dashboard widget id missing or should be numeric")
@@ -160,7 +163,7 @@ func (d *Dashboard) handlerDeleteDashboardWidget(w http.ResponseWriter, r *http.
 	}
 
 	err = d.queries.DeleteDashboardWidgetPromptHistory(d.ctx, pgInt(dashboardWidgetID))
-	if err == sql.ErrNoRows {
+	if err == sql.ErrNoRows || err == pgx.ErrNoRows {
 		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprintf(w, "unknown dashboard widget id")
 		return
@@ -172,7 +175,7 @@ func (d *Dashboard) handlerDeleteDashboardWidget(w http.ResponseWriter, r *http.
 	}
 
 	err = d.queries.DeleteDashboardWidget(d.ctx, int64(dashboardWidgetID))
-	if err == sql.ErrNoRows {
+	if err == sql.ErrNoRows || err == pgx.ErrNoRows {
 		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprintf(w, "unknown dashboard widget id")
 		return
@@ -186,30 +189,30 @@ func (d *Dashboard) handlerDeleteDashboardWidget(w http.ResponseWriter, r *http.
 	w.WriteHeader(http.StatusOK)
 }
 
-func (d *Dashboard) handlerDeleteDashboardWidgetPromptHistory(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+// func (d *Dashboard) handlerDeleteDashboardWidgetPromptHistory(w http.ResponseWriter, r *http.Request) {
+// 	vars := mux.Vars(r)
 
-	dashboardWidgetID, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "dashboard widget id missing or should be numeric")
-		return
-	}
+// 	dashboardWidgetID, err := strconv.Atoi(vars["id"])
+// 	if err != nil {
+// 		w.WriteHeader(http.StatusBadRequest)
+// 		fmt.Fprintf(w, "dashboard widget id missing or should be numeric")
+// 		return
+// 	}
 
-	err = d.queries.DeleteDashboardWidgetPromptHistory(d.ctx, pgInt(dashboardWidgetID))
-	if err == sql.ErrNoRows {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "unknown dashboard widget id")
-		return
-	}
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error deleting dashboard widget: %v", err.Error())
-		return
-	}
+// 	err = d.queries.DeleteDashboardWidgetPromptHistory(d.ctx, pgInt(dashboardWidgetID))
+// 	if err == sql.ErrNoRows || err == pgx.ErrNoRows {
+// 		w.WriteHeader(http.StatusNotFound)
+// 		fmt.Fprintf(w, "unknown dashboard widget id")
+// 		return
+// 	}
+// 	if err != nil {
+// 		w.WriteHeader(http.StatusInternalServerError)
+// 		fmt.Fprintf(w, "error deleting dashboard widget: %v", err.Error())
+// 		return
+// 	}
 
-	w.WriteHeader(http.StatusOK)
-}
+// 	w.WriteHeader(http.StatusOK)
+// }
 
 func (d *Dashboard) handlerListDashboards(w http.ResponseWriter, _ *http.Request) {
 	dash, err := d.queries.ListDashboards(d.ctx)
@@ -244,32 +247,32 @@ func (d *Dashboard) handlerListDashboardWidgets(w http.ResponseWriter, r *http.R
 	_ = json.NewEncoder(w).Encode(dash)
 }
 
-func (d *Dashboard) handlerListDashboardWidgetPromptHistory(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+// func (d *Dashboard) handlerListDashboardWidgetPromptHistory(w http.ResponseWriter, r *http.Request) {
+// 	vars := mux.Vars(r)
 
-	dashboardID, err := strconv.Atoi(vars["dashboard_id"])
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "dashboard id missing or should be numeric")
-		return
-	}
-	dashboardWidgetID, err := strconv.Atoi(vars["dashboard_widget_id"])
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "dashboard widget id missing or should be numeric")
-		return
-	}
+// 	dashboardID, err := strconv.Atoi(vars["dashboard_id"])
+// 	if err != nil {
+// 		w.WriteHeader(http.StatusBadRequest)
+// 		fmt.Fprintf(w, "dashboard id missing or should be numeric")
+// 		return
+// 	}
+// 	dashboardWidgetID, err := strconv.Atoi(vars["dashboard_widget_id"])
+// 	if err != nil {
+// 		w.WriteHeader(http.StatusBadRequest)
+// 		fmt.Fprintf(w, "dashboard widget id missing or should be numeric")
+// 		return
+// 	}
 
-	dash, err := d.queries.ListDashboardWidgetPromptHistory(d.ctx, dashdb.ListDashboardWidgetPromptHistoryParams{DashboardID: pgInt(dashboardID), DashboardWidgetID: pgInt(dashboardWidgetID)})
-	if err != nil && err != sql.ErrNoRows {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error listing dashboards from db: %v", err.Error())
-		return
-	}
+// 	dash, err := d.queries.ListDashboardWidgetPromptHistory(d.ctx, dashdb.ListDashboardWidgetPromptHistoryParams{DashboardID: pgInt(dashboardID), DashboardWidgetID: pgInt(dashboardWidgetID)})
+// 	if err != nil && err != sql.ErrNoRows {
+// 		w.WriteHeader(http.StatusInternalServerError)
+// 		fmt.Fprintf(w, "error listing dashboards from db: %v", err.Error())
+// 		return
+// 	}
 
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(dash)
-}
+// 	w.WriteHeader(http.StatusOK)
+// 	_ = json.NewEncoder(w).Encode(dash)
+// }
 
 func (d *Dashboard) handlerUpdateDashboardWidget(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -454,7 +457,12 @@ func (d *Dashboard) handlerCreateDashboardWidget(w http.ResponseWriter, r *http.
 		return
 	}
 
-	conv := d.ai.NewConversation()
+	conv, err := d.ai.NewConversation(int(widget.ID))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "failed to create conversation with AI: %v", err)
+		return
+	}
 	d.conversations[int(widget.ID)] = conv
 
 	resp, err := conv.Prompt(params.Prompt)
@@ -469,7 +477,7 @@ func (d *Dashboard) handlerCreateDashboardWidget(w http.ResponseWriter, r *http.
 		WidgetOrder: pgInt(int(order)),
 		Name:        resp.Title,
 		Description: pgtype.Text{String: resp.Description, Valid: true},
-		Query:       resp.SQL,
+		Query:       resp.SQLQuery,
 		Content:     resp.HTMLContent,
 	}
 	if err := d.queries.UpdateDashboardWidget(d.ctx, updateDashboardWidgetParams); err != nil {
