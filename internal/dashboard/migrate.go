@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -21,24 +22,58 @@ func runMigrations(postgresConnectionString string) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// db, err := sql.Open("postgres", postgresConnectionString)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to connect to Postgres: %w", err)
-	// }
-	// if err := db.Ping(); err != nil {
-	// 	return fmt.Errorf("failed to ping database: %w", err)
-	// }
-	// driver, err := postgres.WithInstance(db, &postgres.Config{})
-	// if err != nil {
-	// 	return fmt.Errorf("failed to create database driver: %w", err)
-	// }
-	temp := "postgres://marianol@localhost/screpdb?sslmode=disable"
-	m, err := migrate.NewWithSourceInstance("iofs", d, temp)
+	m, err := migrate.NewWithSourceInstance("iofs", d, hackToFixPostgresConnectionStringFormat(postgresConnectionString))
 	if err != nil {
 		return fmt.Errorf("failed to create migrator instance: %w", err)
 	}
-	if err := m.Up(); err != nil {
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 	return nil
+}
+
+func hackToFixPostgresConnectionStringFormat(postgresConnectionString string) string {
+	if !strings.Contains(postgresConnectionString, "dbname=") {
+		return postgresConnectionString
+	}
+
+	parts := strings.Fields(postgresConnectionString)
+	kv := map[string]string{
+		"dbname":   "postgres",
+		"host":     "localhost",
+		"port":     "5432",
+		"user":     "postgres",
+		"password": "",
+	}
+	for _, part := range parts {
+		keyValue := strings.Split(part, "=")
+		if len(keyValue) != 2 {
+			continue
+		}
+		kv[keyValue[0]] = keyValue[1]
+	}
+
+	queryString := make([]string, 0, len(kv))
+	for key, value := range kv {
+		if key != "dbname" && key != "host" && key != "port" && key != "user" && key != "password" {
+			queryString = append(queryString, fmt.Sprintf("%s=%s", key, value))
+		}
+	}
+
+	question := "?"
+	serializedQueryString := strings.Join(queryString, "&")
+	if len(queryString) == 0 {
+		question = ""
+		serializedQueryString = ""
+	}
+
+	return fmt.Sprintf(
+		"postgresql://%s:%s@%s/%s%s%s",
+		kv["user"],
+		kv["password"],
+		kv["host"],
+		kv["dbname"],
+		question,
+		serializedQueryString,
+	)
 }

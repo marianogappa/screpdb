@@ -27,7 +27,7 @@ func init() {
 
 func runDashboard(cmd *cobra.Command, args []string) error {
 	// TODO: store is Postgres only
-	store, err := storage.NewPostgresStorage(postgresConnString)
+	store, err := storage.NewPostgresStorage(dashboardPostgresConnString)
 	if err != nil {
 		return fmt.Errorf("failed to create PostgreSQL storage: %w", err)
 	}
