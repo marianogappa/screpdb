@@ -13,22 +13,23 @@ import (
 
 const createDashboard = `-- name: CreateDashboard :one
 INSERT INTO dashboards (
-  name, description
+  url, name, description
 ) VALUES (
-  $1, $2
-) RETURNING id, name, description, created_at
+  $1, $2, $3
+) RETURNING url, name, description, created_at
 `
 
 type CreateDashboardParams struct {
+	Url         string      `json:"url"`
 	Name        string      `json:"name"`
 	Description pgtype.Text `json:"description"`
 }
 
 func (q *Queries) CreateDashboard(ctx context.Context, arg CreateDashboardParams) (Dashboard, error) {
-	row := q.db.QueryRow(ctx, createDashboard, arg.Name, arg.Description)
+	row := q.db.QueryRow(ctx, createDashboard, arg.Url, arg.Name, arg.Description)
 	var i Dashboard
 	err := row.Scan(
-		&i.ID,
+		&i.Url,
 		&i.Name,
 		&i.Description,
 		&i.CreatedAt,
@@ -45,7 +46,7 @@ INSERT INTO dashboard_widgets (
 `
 
 type CreateDashboardWidgetParams struct {
-	DashboardID pgtype.Int8 `json:"dashboard_id"`
+	DashboardID pgtype.Text `json:"dashboard_id"`
 	WidgetOrder pgtype.Int8 `json:"widget_order"`
 	Name        string      `json:"name"`
 	Description pgtype.Text `json:"description"`
@@ -77,45 +78,18 @@ func (q *Queries) CreateDashboardWidget(ctx context.Context, arg CreateDashboard
 	return i, err
 }
 
-const createDashboardWidgetPromptHistory = `-- name: CreateDashboardWidgetPromptHistory :one
-INSERT INTO dashboard_widgets_prompt_history (
-  dashboard_id, dashboard_widget_id, prompt
-) VALUES (
-  $1, $2, $3
-) RETURNING id, dashboard_id, dashboard_widget_id, prompt, created_at
-`
-
-type CreateDashboardWidgetPromptHistoryParams struct {
-	DashboardID       pgtype.Int8 `json:"dashboard_id"`
-	DashboardWidgetID pgtype.Int8 `json:"dashboard_widget_id"`
-	Prompt            string      `json:"prompt"`
-}
-
-func (q *Queries) CreateDashboardWidgetPromptHistory(ctx context.Context, arg CreateDashboardWidgetPromptHistoryParams) (DashboardWidgetsPromptHistory, error) {
-	row := q.db.QueryRow(ctx, createDashboardWidgetPromptHistory, arg.DashboardID, arg.DashboardWidgetID, arg.Prompt)
-	var i DashboardWidgetsPromptHistory
-	err := row.Scan(
-		&i.ID,
-		&i.DashboardID,
-		&i.DashboardWidgetID,
-		&i.Prompt,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const deleteDashboard = `-- name: DeleteDashboard :exec
 DELETE FROM dashboards
-WHERE id = $1
+WHERE url = $1
 `
 
-func (q *Queries) DeleteDashboard(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteDashboard, id)
+func (q *Queries) DeleteDashboard(ctx context.Context, url string) error {
+	_, err := q.db.Exec(ctx, deleteDashboard, url)
 	return err
 }
 
 const deleteDashboardWidget = `-- name: DeleteDashboardWidget :exec
-DELETE FROM dashboards
+DELETE FROM dashboard_widgets
 WHERE id = $1
 `
 
@@ -124,46 +98,26 @@ func (q *Queries) DeleteDashboardWidget(ctx context.Context, id int64) error {
 	return err
 }
 
-const deleteDashboardWidgetPromptHistoriesOfDashboard = `-- name: DeleteDashboardWidgetPromptHistoriesOfDashboard :exec
-DELETE FROM dashboard_widgets_prompt_history
-WHERE dashboard_id = $1
-`
-
-func (q *Queries) DeleteDashboardWidgetPromptHistoriesOfDashboard(ctx context.Context, dashboardID pgtype.Int8) error {
-	_, err := q.db.Exec(ctx, deleteDashboardWidgetPromptHistoriesOfDashboard, dashboardID)
-	return err
-}
-
-const deleteDashboardWidgetPromptHistory = `-- name: DeleteDashboardWidgetPromptHistory :exec
-DELETE FROM dashboard_widgets_prompt_history
-WHERE dashboard_widget_id = $1
-`
-
-func (q *Queries) DeleteDashboardWidgetPromptHistory(ctx context.Context, dashboardWidgetID pgtype.Int8) error {
-	_, err := q.db.Exec(ctx, deleteDashboardWidgetPromptHistory, dashboardWidgetID)
-	return err
-}
-
 const deleteDashboardWidgetsOfDashboard = `-- name: DeleteDashboardWidgetsOfDashboard :exec
 DELETE FROM dashboard_widgets
 WHERE dashboard_id = $1
 `
 
-func (q *Queries) DeleteDashboardWidgetsOfDashboard(ctx context.Context, dashboardID pgtype.Int8) error {
+func (q *Queries) DeleteDashboardWidgetsOfDashboard(ctx context.Context, dashboardID pgtype.Text) error {
 	_, err := q.db.Exec(ctx, deleteDashboardWidgetsOfDashboard, dashboardID)
 	return err
 }
 
 const getDashboard = `-- name: GetDashboard :one
-SELECT id, name, description, created_at FROM dashboards
-WHERE id = $1
+SELECT url, name, description, created_at FROM dashboards
+WHERE url = $1
 `
 
-func (q *Queries) GetDashboard(ctx context.Context, id int64) (Dashboard, error) {
-	row := q.db.QueryRow(ctx, getDashboard, id)
+func (q *Queries) GetDashboard(ctx context.Context, url string) (Dashboard, error) {
+	row := q.db.QueryRow(ctx, getDashboard, url)
 	var i Dashboard
 	err := row.Scan(
-		&i.ID,
+		&i.Url,
 		&i.Name,
 		&i.Description,
 		&i.CreatedAt,
@@ -198,48 +152,11 @@ SELECT COALESCE(MAX(widget_order), 0)+1 next_widget_order FROM dashboard_widgets
 WHERE dashboard_id = $1
 `
 
-func (q *Queries) GetDashboardWidgetNextWidgetOrder(ctx context.Context, dashboardID pgtype.Int8) (int32, error) {
+func (q *Queries) GetDashboardWidgetNextWidgetOrder(ctx context.Context, dashboardID pgtype.Text) (int32, error) {
 	row := q.db.QueryRow(ctx, getDashboardWidgetNextWidgetOrder, dashboardID)
 	var next_widget_order int32
 	err := row.Scan(&next_widget_order)
 	return next_widget_order, err
-}
-
-const listDashboardWidgetPromptHistory = `-- name: ListDashboardWidgetPromptHistory :many
-SELECT id, dashboard_id, dashboard_widget_id, prompt, created_at FROM dashboard_widgets_prompt_history
-WHERE dashboard_id = $1 AND dashboard_widget_id = $2
-ORDER BY id
-`
-
-type ListDashboardWidgetPromptHistoryParams struct {
-	DashboardID       pgtype.Int8 `json:"dashboard_id"`
-	DashboardWidgetID pgtype.Int8 `json:"dashboard_widget_id"`
-}
-
-func (q *Queries) ListDashboardWidgetPromptHistory(ctx context.Context, arg ListDashboardWidgetPromptHistoryParams) ([]DashboardWidgetsPromptHistory, error) {
-	rows, err := q.db.Query(ctx, listDashboardWidgetPromptHistory, arg.DashboardID, arg.DashboardWidgetID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []DashboardWidgetsPromptHistory{}
-	for rows.Next() {
-		var i DashboardWidgetsPromptHistory
-		if err := rows.Scan(
-			&i.ID,
-			&i.DashboardID,
-			&i.DashboardWidgetID,
-			&i.Prompt,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const listDashboardWidgets = `-- name: ListDashboardWidgets :many
@@ -248,7 +165,7 @@ WHERE dashboard_id = $1
 ORDER BY widget_order
 `
 
-func (q *Queries) ListDashboardWidgets(ctx context.Context, dashboardID pgtype.Int8) ([]DashboardWidget, error) {
+func (q *Queries) ListDashboardWidgets(ctx context.Context, dashboardID pgtype.Text) ([]DashboardWidget, error) {
 	rows, err := q.db.Query(ctx, listDashboardWidgets, dashboardID)
 	if err != nil {
 		return nil, err
@@ -279,7 +196,7 @@ func (q *Queries) ListDashboardWidgets(ctx context.Context, dashboardID pgtype.I
 }
 
 const listDashboards = `-- name: ListDashboards :many
-SELECT id, name, description, created_at FROM dashboards
+SELECT url, name, description, created_at FROM dashboards
 ORDER BY name
 `
 
@@ -293,7 +210,7 @@ func (q *Queries) ListDashboards(ctx context.Context) ([]Dashboard, error) {
 	for rows.Next() {
 		var i Dashboard
 		if err := rows.Scan(
-			&i.ID,
+			&i.Url,
 			&i.Name,
 			&i.Description,
 			&i.CreatedAt,
@@ -312,17 +229,17 @@ const updateDashboard = `-- name: UpdateDashboard :exec
 UPDATE dashboards
   set name = $2,
   description = $3
-WHERE id = $1
+WHERE url = $1
 `
 
 type UpdateDashboardParams struct {
-	ID          int64       `json:"id"`
+	Url         string      `json:"url"`
 	Name        string      `json:"name"`
 	Description pgtype.Text `json:"description"`
 }
 
 func (q *Queries) UpdateDashboard(ctx context.Context, arg UpdateDashboardParams) error {
-	_, err := q.db.Exec(ctx, updateDashboard, arg.ID, arg.Name, arg.Description)
+	_, err := q.db.Exec(ctx, updateDashboard, arg.Url, arg.Name, arg.Description)
 	return err
 }
 

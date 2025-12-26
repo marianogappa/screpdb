@@ -9,7 +9,7 @@ import (
 )
 
 type Dashboard struct {
-	ID          int64            `json:"id"`
+	Url         string           `json:"url"`
 	Name        string           `json:"name"`
 	Description pgtype.Text      `json:"description"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
@@ -17,7 +17,7 @@ type Dashboard struct {
 
 type DashboardWidget struct {
 	ID          int64            `json:"id"`
-	DashboardID pgtype.Int8      `json:"dashboard_id"`
+	DashboardID pgtype.Text      `json:"dashboard_id"`
 	WidgetOrder pgtype.Int8      `json:"widget_order"`
 	Name        string           `json:"name"`
 	Description pgtype.Text      `json:"description"`
@@ -25,12 +25,4 @@ type DashboardWidget struct {
 	Query       string           `json:"query"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
 	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
-}
-
-type DashboardWidgetsPromptHistory struct {
-	ID                int64            `json:"id"`
-	DashboardID       pgtype.Int8      `json:"dashboard_id"`
-	DashboardWidgetID pgtype.Int8      `json:"dashboard_widget_id"`
-	Prompt            string           `json:"prompt"`
-	CreatedAt         pgtype.Timestamp `json:"created_at"`
 }

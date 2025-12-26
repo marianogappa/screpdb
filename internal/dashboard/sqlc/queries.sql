@@ -1,8 +1,8 @@
 -- name: CreateDashboard :one
 INSERT INTO dashboards (
-  name, description
+  url, name, description
 ) VALUES (
-  $1, $2
+  $1, $2, $3
 ) RETURNING *;
 
 -- name: CreateDashboardWidget :one
@@ -12,16 +12,9 @@ INSERT INTO dashboard_widgets (
   $1, $2, $3, $4, $5, $6
 ) RETURNING *;
 
--- name: CreateDashboardWidgetPromptHistory :one
-INSERT INTO dashboard_widgets_prompt_history (
-  dashboard_id, dashboard_widget_id, prompt
-) VALUES (
-  $1, $2, $3
-) RETURNING *;
-
 -- name: GetDashboard :one
 SELECT * FROM dashboards
-WHERE id = $1;
+WHERE url = $1;
 
 -- name: GetDashboardWidget :one
 SELECT * FROM dashboard_widgets
@@ -40,16 +33,11 @@ SELECT * FROM dashboard_widgets
 WHERE dashboard_id = $1
 ORDER BY widget_order;
 
--- name: ListDashboardWidgetPromptHistory :many
-SELECT * FROM dashboard_widgets_prompt_history
-WHERE dashboard_id = $1 AND dashboard_widget_id = $2
-ORDER BY id;
-
 -- name: UpdateDashboard :exec
 UPDATE dashboards
   set name = $2,
   description = $3
-WHERE id = $1;
+WHERE url = $1;
 
 -- name: UpdateDashboardWidget :exec
 UPDATE dashboard_widgets
@@ -62,19 +50,11 @@ WHERE id = $1;
 
 -- name: DeleteDashboard :exec
 DELETE FROM dashboards
-WHERE id = $1;
+WHERE url = $1;
 
 -- name: DeleteDashboardWidget :exec
-DELETE FROM dashboards
+DELETE FROM dashboard_widgets
 WHERE id = $1;
-
--- name: DeleteDashboardWidgetPromptHistory :exec
-DELETE FROM dashboard_widgets_prompt_history
-WHERE dashboard_widget_id = $1;
-
--- name: DeleteDashboardWidgetPromptHistoriesOfDashboard :exec
-DELETE FROM dashboard_widgets_prompt_history
-WHERE dashboard_id = $1;
 
 -- name: DeleteDashboardWidgetsOfDashboard :exec
 DELETE FROM dashboard_widgets
