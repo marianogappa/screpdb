@@ -501,6 +501,8 @@ The responses must be structured JSON which return:
 Assume you have D3.js in scope to draw a chart with the data, and that the data is available as an array of objects (as your query returns) in a variable called sqlRowsForWidget{{.WidgetID}}.
 You have a limited surface (e.g. 500x500) for the widget.
 
+IMPORTANT: The dashboard background is black. When generating HTML content, ensure that text colors, chart colors, and other visual elements are chosen to be visible and readable against a black background. Use light colors for text and ensure sufficient contrast for all visual elements.
+
 You must first use the available tools to figure out how to construct the query, and then to run it and make sure that the results make sense (and to know how to display it).
 `
 )
