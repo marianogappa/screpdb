@@ -112,7 +112,7 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 		WidgetOrder pgtype.Int8      `json:"widget_order"`
 		Name        string           `json:"name"`
 		Description pgtype.Text      `json:"description"`
-		Content     string           `json:"content"`
+		Config      WidgetConfig     `json:"config"`
 		Query       string           `json:"query"`
 		Results     []map[string]any `json:"results"`
 		CreatedAt   pgtype.Timestamp `json:"created_at"`
@@ -132,12 +132,19 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 			results = queryResults
 		}
 
+		config, err := bytesToWidgetConfig(widget.Config)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "error parsing config for widget %d: %v", widget.ID, err.Error())
+			return
+		}
+
 		widgetsWithResults = append(widgetsWithResults, WidgetWithResults{
 			ID:          widget.ID,
 			WidgetOrder: widget.WidgetOrder,
 			Name:        widget.Name,
 			Description: widget.Description,
-			Content:     widget.Content,
+			Config:      config,
 			Query:       widget.Query,
 			Results:     results,
 			CreatedAt:   widget.CreatedAt,
@@ -330,30 +337,62 @@ func (d *Dashboard) handlerUpdateDashboardWidget(w http.ResponseWriter, r *http.
 		return
 	}
 
-	params := dashdb.UpdateDashboardWidgetParams{}
-	if err := json.Unmarshal(bs, &params); err != nil {
+	type UpdateWidgetRequest struct {
+		Name        string       `json:"name"`
+		Description pgtype.Text  `json:"description"`
+		Config      WidgetConfig `json:"config"`
+		Query       string       `json:"query"`
+	}
+
+	var req UpdateWidgetRequest
+	if err := json.Unmarshal(bs, &req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "invalid json")
 		return
 	}
 
-	params.ID = int64(dashboardWidgetID)
-	if params.Content == "" {
-		params.Content = widget.Content
+	currentConfig, err := bytesToWidgetConfig(widget.Config)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "error parsing current config: %v", err.Error())
+		return
+	}
+
+	params := dashdb.UpdateDashboardWidgetParams{
+		ID:          int64(dashboardWidgetID),
+		Name:        req.Name,
+		Description: req.Description,
+		Query:       req.Query,
+		WidgetOrder: widget.WidgetOrder,
+	}
+
+	if params.Name == "" {
+		params.Name = widget.Name
 	}
 	if !params.Description.Valid {
 		params.Description = widget.Description
-	}
-	if params.Name == "" {
-		params.Name = widget.Name
 	}
 	if params.Query == "" {
 		params.Query = widget.Query
 	}
 
+	// Use provided config or keep current
+	configToUse := req.Config
+	if configToUse.Type == "" {
+		configToUse = currentConfig
+	}
+
+	configBytes, err := widgetConfigToBytes(configToUse)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "error marshaling config: %v", err.Error())
+		return
+	}
+	params.Config = configBytes
+
 	if err := d.queries.UpdateDashboardWidget(d.ctx, params); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error listing dashboards from db: %v", err.Error())
+		fmt.Fprintf(w, "error updating widget: %v", err.Error())
 		return
 	}
 
@@ -484,9 +523,22 @@ func (d *Dashboard) handlerCreateDashboardWidget(w http.ResponseWriter, r *http.
 		return
 	}
 
+	// Create widget with empty config initially
+	emptyConfig := WidgetConfig{Type: WidgetTypeTable} // Default type
+	configBytes, err := widgetConfigToBytes(emptyConfig)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "failed to marshal default config: %v", err)
+		return
+	}
+
 	createDashboardWidgetParams := dashdb.CreateDashboardWidgetParams{
 		DashboardID: pgText(dashboardURL),
 		WidgetOrder: pgInt(int(order)),
+		Name:        "New Widget",
+		Description: pgtype.Text{String: "", Valid: false},
+		Config:      configBytes,
+		Query:       "",
 	}
 	widget, err := d.queries.CreateDashboardWidget(d.ctx, createDashboardWidgetParams)
 	if err != nil {
@@ -495,7 +547,7 @@ func (d *Dashboard) handlerCreateDashboardWidget(w http.ResponseWriter, r *http.
 		return
 	}
 
-	conv, err := d.ai.NewConversation(int(widget.ID))
+	conv, err := d.ai.NewConversation()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "failed to create conversation with AI: %v", err)
@@ -510,13 +562,20 @@ func (d *Dashboard) handlerCreateDashboardWidget(w http.ResponseWriter, r *http.
 		return
 	}
 
+	configBytes, err = widgetConfigToBytes(resp.Config)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "failed to marshal config: %v", err)
+		return
+	}
+
 	updateDashboardWidgetParams := dashdb.UpdateDashboardWidgetParams{
 		ID:          int64(widget.ID),
 		WidgetOrder: pgInt(int(order)),
 		Name:        resp.Title,
 		Description: pgtype.Text{String: resp.Description, Valid: true},
 		Query:       resp.SQLQuery,
-		Content:     resp.HTMLContent,
+		Config:      configBytes,
 	}
 	if err := d.queries.UpdateDashboardWidget(d.ctx, updateDashboardWidgetParams); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -545,6 +604,21 @@ func pgInt(i int) pgtype.Int8 {
 
 func pgText(s string) pgtype.Text {
 	return pgtype.Text{String: s, Valid: true}
+}
+
+// widgetConfigToBytes converts WidgetConfig to []byte for database storage
+func widgetConfigToBytes(config WidgetConfig) ([]byte, error) {
+	return json.Marshal(config)
+}
+
+// bytesToWidgetConfig converts []byte from database to WidgetConfig
+func bytesToWidgetConfig(data []byte) (WidgetConfig, error) {
+	var config WidgetConfig
+	if len(data) == 0 {
+		return config, nil
+	}
+	err := json.Unmarshal(data, &config)
+	return config, err
 }
 
 func (d *Dashboard) executeQuery(query string) ([]map[string]any, error) {

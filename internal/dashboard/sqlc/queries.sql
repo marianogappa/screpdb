@@ -7,7 +7,7 @@ INSERT INTO dashboards (
 
 -- name: CreateDashboardWidget :one
 INSERT INTO dashboard_widgets (
-  dashboard_id, widget_order, name, description, content, query
+  dashboard_id, widget_order, name, description, config, query
 ) VALUES (
   $1, $2, $3, $4, $5, $6
 ) RETURNING *;
@@ -43,7 +43,7 @@ WHERE url = $1;
 UPDATE dashboard_widgets
   set name = $2,
   description = $3,
-  content = $4,
+  config = $4,
   query = $5,
   widget_order = $6
 WHERE id = $1;
