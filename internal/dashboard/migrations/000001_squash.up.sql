@@ -14,7 +14,7 @@ CREATE TABLE dashboard_widgets (
     widget_order BIGINT,
     name TEXT NOT NULL,
     description TEXT,
-    content TEXT NOT NULL,
+    config JSONB NOT NULL,
     query TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT current_timestamp,
     updated_at TIMESTAMP DEFAULT current_timestamp,
@@ -22,7 +22,7 @@ CREATE TABLE dashboard_widgets (
 );
 
 CREATE UNIQUE INDEX idx_dashboard_widgets_dashboard_id_widget_order ON dashboard_widgets (dashboard_id, widget_order);
-CREATE UNIQUE INDEX idx_dashboard_widgets_dashboard_id_name ON dashboard_widgets (dashboard_id, name);
+CREATE INDEX idx_dashboard_widgets_dashboard_id ON dashboard_widgets (dashboard_id);
 
 INSERT INTO dashboards (url, name, description) VALUES ('default', 'Default Dashboard', 'The default dashboard');
 

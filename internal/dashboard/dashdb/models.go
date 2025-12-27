@@ -21,7 +21,7 @@ type DashboardWidget struct {
 	WidgetOrder pgtype.Int8      `json:"widget_order"`
 	Name        string           `json:"name"`
 	Description pgtype.Text      `json:"description"`
-	Content     string           `json:"content"`
+	Config      []byte           `json:"config"`
 	Query       string           `json:"query"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
 	UpdatedAt   pgtype.Timestamp `json:"updated_at"`

@@ -39,10 +39,10 @@ func (q *Queries) CreateDashboard(ctx context.Context, arg CreateDashboardParams
 
 const createDashboardWidget = `-- name: CreateDashboardWidget :one
 INSERT INTO dashboard_widgets (
-  dashboard_id, widget_order, name, description, content, query
+  dashboard_id, widget_order, name, description, config, query
 ) VALUES (
   $1, $2, $3, $4, $5, $6
-) RETURNING id, dashboard_id, widget_order, name, description, content, query, created_at, updated_at
+) RETURNING id, dashboard_id, widget_order, name, description, config, query, created_at, updated_at
 `
 
 type CreateDashboardWidgetParams struct {
@@ -50,7 +50,7 @@ type CreateDashboardWidgetParams struct {
 	WidgetOrder pgtype.Int8 `json:"widget_order"`
 	Name        string      `json:"name"`
 	Description pgtype.Text `json:"description"`
-	Content     string      `json:"content"`
+	Config      []byte      `json:"config"`
 	Query       string      `json:"query"`
 }
 
@@ -60,7 +60,7 @@ func (q *Queries) CreateDashboardWidget(ctx context.Context, arg CreateDashboard
 		arg.WidgetOrder,
 		arg.Name,
 		arg.Description,
-		arg.Content,
+		arg.Config,
 		arg.Query,
 	)
 	var i DashboardWidget
@@ -70,7 +70,7 @@ func (q *Queries) CreateDashboardWidget(ctx context.Context, arg CreateDashboard
 		&i.WidgetOrder,
 		&i.Name,
 		&i.Description,
-		&i.Content,
+		&i.Config,
 		&i.Query,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -126,7 +126,7 @@ func (q *Queries) GetDashboard(ctx context.Context, url string) (Dashboard, erro
 }
 
 const getDashboardWidget = `-- name: GetDashboardWidget :one
-SELECT id, dashboard_id, widget_order, name, description, content, query, created_at, updated_at FROM dashboard_widgets
+SELECT id, dashboard_id, widget_order, name, description, config, query, created_at, updated_at FROM dashboard_widgets
 WHERE id = $1
 `
 
@@ -139,7 +139,7 @@ func (q *Queries) GetDashboardWidget(ctx context.Context, id int64) (DashboardWi
 		&i.WidgetOrder,
 		&i.Name,
 		&i.Description,
-		&i.Content,
+		&i.Config,
 		&i.Query,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -160,7 +160,7 @@ func (q *Queries) GetDashboardWidgetNextWidgetOrder(ctx context.Context, dashboa
 }
 
 const listDashboardWidgets = `-- name: ListDashboardWidgets :many
-SELECT id, dashboard_id, widget_order, name, description, content, query, created_at, updated_at FROM dashboard_widgets
+SELECT id, dashboard_id, widget_order, name, description, config, query, created_at, updated_at FROM dashboard_widgets
 WHERE dashboard_id = $1
 ORDER BY widget_order
 `
@@ -180,7 +180,7 @@ func (q *Queries) ListDashboardWidgets(ctx context.Context, dashboardID pgtype.T
 			&i.WidgetOrder,
 			&i.Name,
 			&i.Description,
-			&i.Content,
+			&i.Config,
 			&i.Query,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -247,7 +247,7 @@ const updateDashboardWidget = `-- name: UpdateDashboardWidget :exec
 UPDATE dashboard_widgets
   set name = $2,
   description = $3,
-  content = $4,
+  config = $4,
   query = $5,
   widget_order = $6
 WHERE id = $1
@@ -257,7 +257,7 @@ type UpdateDashboardWidgetParams struct {
 	ID          int64       `json:"id"`
 	Name        string      `json:"name"`
 	Description pgtype.Text `json:"description"`
-	Content     string      `json:"content"`
+	Config      []byte      `json:"config"`
 	Query       string      `json:"query"`
 	WidgetOrder pgtype.Int8 `json:"widget_order"`
 }
@@ -267,7 +267,7 @@ func (q *Queries) UpdateDashboardWidget(ctx context.Context, arg UpdateDashboard
 		arg.ID,
 		arg.Name,
 		arg.Description,
-		arg.Content,
+		arg.Config,
 		arg.Query,
 		arg.WidgetOrder,
 	)

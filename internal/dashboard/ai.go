@@ -35,9 +35,9 @@ type Conversation struct {
 	history []llms.MessageContent
 }
 
-func (a *AI) NewConversation(widgetID int) (*Conversation, error) {
+func (a *AI) NewConversation() (*Conversation, error) {
 	var sp bytes.Buffer
-	if err := systemPromptTpl.Execute(&sp, struct{ WidgetID int }{widgetID}); err != nil {
+	if err := systemPromptTpl.Execute(&sp, struct{}{}); err != nil {
 		return nil, err
 	}
 
@@ -70,10 +70,10 @@ func (c *Conversation) addContentChoice(contentChoice *llms.ContentChoice) {
 }
 
 type StructuredResponse struct {
-	HTMLContent string `json:"html_content"`
-	SQLQuery    string `json:"sql_query"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
+	Config      WidgetConfig `json:"config"`
+	SQLQuery    string       `json:"sql_query"`
+	Title       string       `json:"title"`
+	Description string       `json:"description"`
 }
 
 // TODO: don't save history in memory
@@ -492,18 +492,35 @@ Meta terms
 
 	`
 	systemPromptTemplate = `You help to create Starcraft: Remastered dashboards. The prompts ask to create dashboard widgets. Each widget is a UI component fed from one SQL query.
+
+You must choose ONE of the following widget types and provide the appropriate configuration:
+1. gauge - Shows a single numeric value (e.g., total games, average APM)
+2. table - Shows data in rows and columns
+3. pie_chart - Shows proportions as pie slices (label, value columns)
+4. bar_chart - Shows values as bars (label, value columns, optionally horizontal)
+5. line_chart - Shows one or more series over time (x column, y columns, optional x-axis type like "seconds_from_game_start")
+6. scatter_plot - Shows points on X/Y axes (x column, y column, optional size/color columns)
+7. histogram - Shows distribution of values (value column, optional bins count)
+8. heatmap - Shows 2D data as colored cells (x column, y column, value column)
+
 The responses must be structured JSON which return:
 - widget title
 - widget description
 - widget PostgreSQL query
-- widget HTML content
+- widget config (object with type and type-specific fields)
 
-Assume you have D3.js in scope to draw a chart with the data, and that the data is available as an array of objects (as your query returns) in a variable called sqlRowsForWidget{{.WidgetID}}.
-You have a limited surface (e.g. 500x500) for the widget.
+IMPORTANT CONFIGURATION RULES:
+- For gauge: Set "type": "gauge", "gauge_value_column" to the column name with the value, optionally "gauge_min"/"gauge_max"/"gauge_label"
+- For table: Set "type": "table", optionally "table_columns" array (empty = all columns)
+- For pie_chart: Set "type": "pie_chart", "pie_label_column" and "pie_value_column"
+- For bar_chart: Set "type": "bar_chart", "bar_label_column" and "bar_value_column", optionally "bar_horizontal": true
+- For line_chart: Set "type": "line_chart", "line_x_column", "line_y_columns" (array), optionally "line_y_axis_from_zero": true, "line_x_axis_type": "seconds_from_game_start"|"timestamp"|"numeric"
+- For scatter_plot: Set "type": "scatter_plot", "scatter_x_column", "scatter_y_column", optionally "scatter_size_column" and "scatter_color_column"
+- For histogram: Set "type": "histogram", "histogram_value_column", optionally "histogram_bins" (number)
+- For heatmap: Set "type": "heatmap", "heatmap_x_column", "heatmap_y_column", "heatmap_value_column"
+- Optionally set "colors" array for custom color palette (default palettes used if not provided)
 
-IMPORTANT: The dashboard background is black. When generating HTML content, ensure that text colors, chart colors, and other visual elements are chosen to be visible and readable against a black background. Use light colors for text and ensure sufficient contrast for all visual elements.
-
-You must first use the available tools to figure out how to construct the query, and then to run it and make sure that the results make sense (and to know how to display it).
+You must first use the available tools to figure out how to construct the query, and then to run it and make sure that the results make sense. The query must return columns that match the config you specify (e.g., if you set "pie_label_column": "race", the query must return a "race" column).
 `
 )
 
@@ -513,7 +530,7 @@ var (
 		Type: "json_schema",
 		JSONSchema: &openai.ResponseFormatJSONSchema{
 			Name:   "widget_schema",
-			Strict: true,
+			Strict: false,
 			Schema: &openai.ResponseFormatJSONSchemaProperty{
 				Type: "object",
 				Properties: map[string]*openai.ResponseFormatJSONSchemaProperty{
@@ -525,17 +542,75 @@ var (
 						Type:        "string",
 						Description: "Succinct description of the widget's content",
 					},
-					"html_content": {
-						Type:        "string",
-						Description: "HTML content with potentially CSS style tags and JS script tags (It must use the SQL rows returned by running sql_query)",
-					},
 					"sql_query": {
 						Type:        "string",
-						Description: "A valid PostgreSQL query that returns the rows that feed into the widgets D3 chart/content.",
+						Description: "A valid PostgreSQL query that returns the rows that feed into the widget",
+					},
+					"config": {
+						Type:        "object",
+						Description: "Widget configuration specifying type and type-specific fields",
+						Properties: map[string]*openai.ResponseFormatJSONSchemaProperty{
+							"type": {
+								Type:        "string",
+								Description: "Widget type: gauge, table, pie_chart, bar_chart, line_chart, scatter_plot, histogram, or heatmap",
+								Enum:        []any{"gauge", "table", "pie_chart", "bar_chart", "line_chart", "scatter_plot", "histogram", "heatmap"},
+							},
+							"colors": {
+								Type:        "array",
+								Description: "Optional color palette array",
+								Items: &openai.ResponseFormatJSONSchemaProperty{
+									Type: "string",
+								},
+							},
+							"gauge_value_column": {Type: "string", Description: "For gauge: column name for the value"},
+							"gauge_min":          {Type: "number", Description: "For gauge: optional minimum value"},
+							"gauge_max":          {Type: "number", Description: "For gauge: optional maximum value"},
+							"gauge_label":        {Type: "string", Description: "For gauge: optional label"},
+							"table_columns": {
+								Type:        "array",
+								Description: "For table: optional column names to display (empty = all)",
+								Items: &openai.ResponseFormatJSONSchemaProperty{
+									Type: "string",
+								},
+							},
+							"pie_label_column": {Type: "string", Description: "For pie_chart: column name for slice labels"},
+							"pie_value_column": {Type: "string", Description: "For pie_chart: column name for slice values"},
+							"bar_label_column": {Type: "string", Description: "For bar_chart: column name for bar labels"},
+							"bar_value_column": {Type: "string", Description: "For bar_chart: column name for bar values"},
+							"bar_horizontal":   {Type: "boolean", Description: "For bar_chart: horizontal bars (default: false)"},
+							"line_x_column": {
+								Type:        "string",
+								Description: "For line_chart: column name for X axis",
+							},
+							"line_y_columns": {
+								Type:        "array",
+								Description: "For line_chart: column names for Y axis (multiple series)",
+								Items: &openai.ResponseFormatJSONSchemaProperty{
+									Type: "string",
+								},
+							},
+							"line_y_axis_from_zero": {
+								Type:        "boolean",
+								Description: "For line_chart: start Y axis from zero (default: false)",
+							},
+							"line_x_axis_type": {
+								Type:        "string",
+								Description: "For line_chart: x-axis type: seconds_from_game_start, timestamp, or numeric",
+							},
+							"scatter_x_column":       {Type: "string", Description: "For scatter_plot: column name for X axis"},
+							"scatter_y_column":       {Type: "string", Description: "For scatter_plot: column name for Y axis"},
+							"scatter_size_column":    {Type: "string", Description: "For scatter_plot: optional column for point size"},
+							"scatter_color_column":   {Type: "string", Description: "For scatter_plot: optional column for point color"},
+							"histogram_value_column": {Type: "string", Description: "For histogram: column name for values to bin"},
+							"histogram_bins":         {Type: "number", Description: "For histogram: optional number of bins"},
+							"heatmap_x_column":       {Type: "string", Description: "For heatmap: column name for X axis categories"},
+							"heatmap_y_column":       {Type: "string", Description: "For heatmap: column name for Y axis categories"},
+							"heatmap_value_column":   {Type: "string", Description: "For heatmap: column name for cell values"},
+						},
+						Required: []string{"type"},
 					},
 				},
-				AdditionalProperties: false,
-				Required:             []string{"title", "description", "html_content", "sql_query"},
+				Required: []string{"title", "description", "sql_query", "config"},
 			},
 		},
 	}
