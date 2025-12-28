@@ -12,6 +12,7 @@ const WIDGET_TYPES = [
 ];
 
 function EditWidgetModal({ widget, onClose, onSave }) {
+  const [prompt, setPrompt] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [query, setQuery] = useState('');
@@ -22,6 +23,7 @@ function EditWidgetModal({ widget, onClose, onSave }) {
 
   useEffect(() => {
     if (widget) {
+      setPrompt(widget.prompt || '');
       setName(widget.name || '');
       setDescription(widget.description?.valid ? widget.description.string || '' : '');
       setQuery(widget.query || '');
@@ -36,6 +38,7 @@ function EditWidgetModal({ widget, onClose, onSave }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave({
+      prompt,
       name,
       description: description || null,
       query,
@@ -119,6 +122,16 @@ function EditWidgetModal({ widget, onClose, onSave }) {
                 type="text"
                 value={config.pie_value_column || ''}
                 onChange={(e) => updateConfig('pie_value_column', e.target.value)}
+                className="form-input"
+                placeholder="column_name"
+              />
+            </div>
+            <div className="form-group">
+              <label>Refine via AI with Prompt</label>
+              <input
+                type="text"
+                value={prompt || ''}
+                onChange={(e) => setPrompt(e.target.value)}
                 className="form-input"
                 placeholder="column_name"
               />
@@ -323,7 +336,7 @@ function EditWidgetModal({ widget, onClose, onSave }) {
           <h2>Edit Widget</h2>
           <button onClick={onClose} className="btn-close">×</button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="edit-form">
           <div className="form-group">
             <label>Name</label>

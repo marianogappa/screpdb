@@ -85,6 +85,9 @@ function App() {
   };
 
   const handleUpdateWidget = async (widgetId, data) => {
+    if (data.prompt) {
+      data = { prompt: data.prompt }
+    }
     try {
       await api.updateWidget(currentDashboardUrl, widgetId, data);
       await loadDashboard(currentDashboardUrl);
@@ -99,10 +102,10 @@ function App() {
 
   const sortedWidgets = dashboard?.widgets
     ? [...dashboard.widgets].sort((a, b) => {
-        const orderA = a.widget_order?.valid ? a.widget_order.int64 : 0;
-        const orderB = b.widget_order?.valid ? b.widget_order.int64 : 0;
-        return orderA - orderB;
-      })
+      const orderA = a.widget_order?.valid ? a.widget_order.int64 : 0;
+      const orderB = b.widget_order?.valid ? b.widget_order.int64 : 0;
+      return orderA - orderB;
+    })
     : [];
 
   if (loading && !dashboard) {
@@ -116,7 +119,7 @@ function App() {
   return (
     <div className="app">
       <div className="stars-background"></div>
-      
+
       <div className="dashboard-container">
         <div className="dashboard-header">
           <div className="dashboard-title">
@@ -150,7 +153,7 @@ function App() {
               </button>
             </div>
           </div>
-          
+
           <form onSubmit={handleCreateWidget} className="prompt-form">
             <input
               type="text"
