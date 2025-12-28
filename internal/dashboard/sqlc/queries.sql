@@ -20,6 +20,10 @@ WHERE url = $1;
 SELECT * FROM dashboard_widgets
 WHERE id = $1;
 
+-- name: GetDashboardWidgetPromptHistory :one
+SELECT * FROM dashboard_widget_prompt_history
+WHERE id = $1;
+
 -- name: GetDashboardWidgetNextWidgetOrder :one
 SELECT COALESCE(MAX(widget_order), 0)+1 next_widget_order FROM dashboard_widgets
 WHERE dashboard_id = $1;
@@ -59,3 +63,8 @@ WHERE id = $1;
 -- name: DeleteDashboardWidgetsOfDashboard :exec
 DELETE FROM dashboard_widgets
 WHERE dashboard_id = $1;
+
+-- name: UpsertDashboardWidgetPromptHistory :exec
+INSERT INTO dashboard_widget_prompt_history (widget_id, prompt_history, updated_at)
+VALUES ($1, $2, NOW())
+ON CONFLICT (widget_id) DO UPDATE SET prompt_history = $2, updated_at = NOW();

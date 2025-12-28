@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5"
@@ -43,7 +42,7 @@ func New(ctx context.Context, store storage.Storage, postgresConnectionString st
 
 	queries := dashdb.New(pool)
 
-	ai, err := NewAI(ctx, openAIAPIKey, store)
+	ai, err := NewAI(ctx, openAIAPIKey, store, queries, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI client: %w", err)
 	}
@@ -68,10 +67,10 @@ func (d *Dashboard) Run() error {
 	http.Handle("/", r)
 
 	srv := &http.Server{
-		Handler:      r,
-		Addr:         "localhost:8000",
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
+		Handler: r,
+		Addr:    "localhost:8000",
+		// WriteTimeout: 60 * time.Second,
+		// ReadTimeout:  60 * time.Second,
 	}
 
 	log.Println("Server listening on localhost:8000...")
@@ -330,6 +329,12 @@ func (d *Dashboard) handlerUpdateDashboardWidget(w http.ResponseWriter, r *http.
 		return
 	}
 
+	if len(bs) <= 4 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "received update dashboard widget request with empty payload...nothing to update")
+		return
+	}
+
 	widget, err := d.queries.GetDashboardWidget(d.ctx, int64(dashboardWidgetID))
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
@@ -342,12 +347,30 @@ func (d *Dashboard) handlerUpdateDashboardWidget(w http.ResponseWriter, r *http.
 		Description pgtype.Text  `json:"description"`
 		Config      WidgetConfig `json:"config"`
 		Query       string       `json:"query"`
+		Prompt      string       `json:"prompt"` // Note: update request must have either prompt or everything else
 	}
 
 	var req UpdateWidgetRequest
 	if err := json.Unmarshal(bs, &req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "invalid json")
+		return
+	}
+
+	if req.Prompt != "" && (req.Query != "" || req.Name != "" || req.Description.String != "" || req.Config.Type != "") {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "you cannot supply both prompt and manual changes; either supply just prompt or just other fields")
+		return
+	}
+
+	if req.Prompt != "" {
+		log.Printf("Updating widget %v based on prompt [%v]...", widget.ID, req.Prompt)
+		if err := d.updateWidgetViaPrompt(widget, req.Prompt); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "failed to update the widget via prompt: %v", err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 
@@ -547,39 +570,9 @@ func (d *Dashboard) handlerCreateDashboardWidget(w http.ResponseWriter, r *http.
 		return
 	}
 
-	conv, err := d.ai.NewConversation()
-	if err != nil {
+	if err := d.updateWidgetViaPrompt(widget, params.Prompt); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "failed to create conversation with AI: %v", err)
-		return
-	}
-	d.conversations[int(widget.ID)] = conv
-
-	resp, err := conv.Prompt(params.Prompt)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "failed to prompt AI to create widget: %v", err)
-		return
-	}
-
-	configBytes, err = widgetConfigToBytes(resp.Config)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "failed to marshal config: %v", err)
-		return
-	}
-
-	updateDashboardWidgetParams := dashdb.UpdateDashboardWidgetParams{
-		ID:          int64(widget.ID),
-		WidgetOrder: pgInt(int(order)),
-		Name:        resp.Title,
-		Description: pgtype.Text{String: resp.Description, Valid: true},
-		Query:       resp.SQLQuery,
-		Config:      configBytes,
-	}
-	if err := d.queries.UpdateDashboardWidget(d.ctx, updateDashboardWidgetParams); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "failed to update widget: %v", err)
+		fmt.Fprintf(w, "failed to update widget using prompt via AI: %v", err)
 		return
 	}
 
@@ -592,6 +585,37 @@ func (d *Dashboard) handlerCreateDashboardWidget(w http.ResponseWriter, r *http.
 
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(againWidget)
+}
+
+func (d *Dashboard) updateWidgetViaPrompt(widget dashdb.DashboardWidget, prompt string) error {
+	conv, err := d.ai.NewConversation(widget.ID)
+	if err != nil {
+		return fmt.Errorf("failed to create conversation with AI: %v", err)
+	}
+	d.conversations[int(widget.ID)] = conv
+
+	resp, err := conv.Prompt(prompt)
+	if err != nil {
+		return fmt.Errorf("failed to prompt AI to create widget: %v", err)
+	}
+
+	configBytes, err := widgetConfigToBytes(resp.Config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %v", err)
+	}
+
+	updateDashboardWidgetParams := dashdb.UpdateDashboardWidgetParams{
+		ID:          int64(widget.ID),
+		WidgetOrder: pgInt(int(widget.WidgetOrder.Int64)),
+		Name:        resp.Title,
+		Description: pgtype.Text{String: resp.Description, Valid: true},
+		Query:       resp.SQLQuery,
+		Config:      configBytes,
+	}
+	if err := d.queries.UpdateDashboardWidget(d.ctx, updateDashboardWidgetParams); err != nil {
+		return fmt.Errorf("failed to update widget: %v", err)
+	}
+	return nil
 }
 
 func (d *Dashboard) handlerHealthcheck(w http.ResponseWriter, r *http.Request) {

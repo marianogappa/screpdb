@@ -16,7 +16,7 @@ INSERT INTO dashboards (
   url, name, description
 ) VALUES (
   $1, $2, $3
-) RETURNING url, name, description, created_at
+) RETURNING url, name, description, created_at, updated_at
 `
 
 type CreateDashboardParams struct {
@@ -33,6 +33,7 @@ func (q *Queries) CreateDashboard(ctx context.Context, arg CreateDashboardParams
 		&i.Name,
 		&i.Description,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -109,7 +110,7 @@ func (q *Queries) DeleteDashboardWidgetsOfDashboard(ctx context.Context, dashboa
 }
 
 const getDashboard = `-- name: GetDashboard :one
-SELECT url, name, description, created_at FROM dashboards
+SELECT url, name, description, created_at, updated_at FROM dashboards
 WHERE url = $1
 `
 
@@ -121,6 +122,7 @@ func (q *Queries) GetDashboard(ctx context.Context, url string) (Dashboard, erro
 		&i.Name,
 		&i.Description,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -157,6 +159,24 @@ func (q *Queries) GetDashboardWidgetNextWidgetOrder(ctx context.Context, dashboa
 	var next_widget_order int32
 	err := row.Scan(&next_widget_order)
 	return next_widget_order, err
+}
+
+const getDashboardWidgetPromptHistory = `-- name: GetDashboardWidgetPromptHistory :one
+SELECT id, widget_id, prompt_history, created_at, updated_at FROM dashboard_widget_prompt_history
+WHERE id = $1
+`
+
+func (q *Queries) GetDashboardWidgetPromptHistory(ctx context.Context, id int64) (DashboardWidgetPromptHistory, error) {
+	row := q.db.QueryRow(ctx, getDashboardWidgetPromptHistory, id)
+	var i DashboardWidgetPromptHistory
+	err := row.Scan(
+		&i.ID,
+		&i.WidgetID,
+		&i.PromptHistory,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const listDashboardWidgets = `-- name: ListDashboardWidgets :many
@@ -196,7 +216,7 @@ func (q *Queries) ListDashboardWidgets(ctx context.Context, dashboardID pgtype.T
 }
 
 const listDashboards = `-- name: ListDashboards :many
-SELECT url, name, description, created_at FROM dashboards
+SELECT url, name, description, created_at, updated_at FROM dashboards
 ORDER BY name
 `
 
@@ -214,6 +234,7 @@ func (q *Queries) ListDashboards(ctx context.Context) ([]Dashboard, error) {
 			&i.Name,
 			&i.Description,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -271,5 +292,21 @@ func (q *Queries) UpdateDashboardWidget(ctx context.Context, arg UpdateDashboard
 		arg.Query,
 		arg.WidgetOrder,
 	)
+	return err
+}
+
+const upsertDashboardWidgetPromptHistory = `-- name: UpsertDashboardWidgetPromptHistory :exec
+INSERT INTO dashboard_widget_prompt_history (widget_id, prompt_history, updated_at)
+VALUES ($1, $2, NOW())
+ON CONFLICT (widget_id) DO UPDATE SET prompt_history = $2, updated_at = NOW()
+`
+
+type UpsertDashboardWidgetPromptHistoryParams struct {
+	WidgetID      int64  `json:"widget_id"`
+	PromptHistory []byte `json:"prompt_history"`
+}
+
+func (q *Queries) UpsertDashboardWidgetPromptHistory(ctx context.Context, arg UpsertDashboardWidgetPromptHistoryParams) error {
+	_, err := q.db.Exec(ctx, upsertDashboardWidgetPromptHistory, arg.WidgetID, arg.PromptHistory)
 	return err
 }

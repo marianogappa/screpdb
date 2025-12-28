@@ -13,6 +13,7 @@ type Dashboard struct {
 	Name        string           `json:"name"`
 	Description pgtype.Text      `json:"description"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 }
 
 type DashboardWidget struct {
@@ -25,4 +26,12 @@ type DashboardWidget struct {
 	Query       string           `json:"query"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
 	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+type DashboardWidgetPromptHistory struct {
+	ID            int64            `json:"id"`
+	WidgetID      int64            `json:"widget_id"`
+	PromptHistory []byte           `json:"prompt_history"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
 }
