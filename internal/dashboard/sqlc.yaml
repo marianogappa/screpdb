@@ -2,7 +2,7 @@ version: "2"
 sql:
   - engine: "postgresql"
     queries: "sqlc/queries.sql"
-    schema: "migrations"
+    schema: "../../migrations"
     gen:
       go:
         package: "dashdb"

@@ -9,6 +9,7 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/marianogappa/screpdb/internal/fileops"
+	"github.com/marianogappa/screpdb/internal/migrations"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
@@ -16,7 +17,8 @@ import (
 
 // PostgresStorage implements Storage interface using PostgreSQL
 type PostgresStorage struct {
-	db *sql.DB
+	db               *sql.DB
+	connectionString string
 }
 
 // Batching configuration
@@ -36,178 +38,23 @@ func NewPostgresStorage(connectionString string) (*PostgresStorage, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	return &PostgresStorage{db: db}, nil
+	return &PostgresStorage{db: db, connectionString: connectionString}, nil
 }
 
-// Initialize creates the database schema
+// Initialize creates the database schema using migrations
 // If clean is true, drops all existing tables before creating new ones
 func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 	if clean {
-		// Drop all tables in the correct order to handle foreign key constraints
-		dropTables := `
-		DROP TABLE IF EXISTS detected_patterns_replay_player CASCADE;
-		DROP TABLE IF EXISTS detected_patterns_replay_team CASCADE;
-		DROP TABLE IF EXISTS detected_patterns_replay CASCADE;
-		DROP TABLE IF EXISTS commands CASCADE;
-		DROP TABLE IF EXISTS players CASCADE;
-		DROP TABLE IF EXISTS replays CASCADE;
-
-			-- Legacy: these tables are no longer used
-			DROP TABLE IF EXISTS chat_messages CASCADE;
-			DROP TABLE IF EXISTS leave_games CASCADE;
-			DROP TABLE IF EXISTS placed_units CASCADE;
-			DROP TABLE IF EXISTS available_start_locations CASCADE;
-			DROP TABLE IF EXISTS start_locations CASCADE;
-			DROP TABLE IF EXISTS resources CASCADE;
-			DROP TABLE IF EXISTS buildings CASCADE;
-			DROP TABLE IF EXISTS units CASCADE;
-		`
-		if _, err := s.db.ExecContext(ctx, dropTables); err != nil {
-			return fmt.Errorf("failed to drop tables: %w", err)
+		if err := migrations.CleanAndRunMigrations(s.connectionString); err != nil {
+			return fmt.Errorf("failed to clean and run migrations: %w", err)
 		}
+		return nil
 	}
 
-	schema := `
-	CREATE TABLE IF NOT EXISTS replays (
-		id SERIAL PRIMARY KEY,
-		file_path TEXT UNIQUE NOT NULL,
-		file_checksum TEXT UNIQUE NOT NULL,
-		file_name TEXT NOT NULL,
-		created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-		replay_date TIMESTAMP WITH TIME ZONE NOT NULL,
-		title TEXT,
-		host TEXT,
-		map_name TEXT NOT NULL,
-		map_width INTEGER NOT NULL,
-		map_height INTEGER NOT NULL,
-		duration_seconds INTEGER NOT NULL,
-		frame_count INTEGER NOT NULL,
-		engine_version TEXT NOT NULL,
-		engine TEXT NOT NULL,
-		game_speed TEXT NOT NULL,
-		game_type TEXT NOT NULL,
-		home_team_size TEXT NOT NULL,
-		avail_slots_count INTEGER NOT NULL
-	);
-
-	CREATE TABLE IF NOT EXISTS players (
-		id SERIAL PRIMARY KEY,
-		replay_id INTEGER NOT NULL,
-		name TEXT NOT NULL,
-		race TEXT NOT NULL,
-		type TEXT NOT NULL,
-		color TEXT NOT NULL,
-		team INTEGER NOT NULL,
-		is_observer BOOLEAN NOT NULL,
-		apm INTEGER NOT NULL,
-		eapm INTEGER NOT NULL, -- effective apm is apm excluding actions deemed ineffective
-		is_winner BOOLEAN NOT NULL,
-		start_location_x INTEGER,
-		start_location_y INTEGER,
-		start_location_oclock INTEGER
-	);
-
-	CREATE TABLE IF NOT EXISTS commands (
-		id SERIAL PRIMARY KEY,
-		replay_id INTEGER NOT NULL,
-		player_id INTEGER NOT NULL,
-		frame INTEGER NOT NULL,
-		seconds_from_game_start INTEGER NOT NULL,
-		run_at TIMESTAMP WITH TIME ZONE NOT NULL,
-		action_type TEXT NOT NULL,
-		x INTEGER,
-		y INTEGER,
-		
-		-- Common fields (used by multiple command types)
-		is_queued BOOLEAN,
-		order_name TEXT,
-		
-		-- Unit information (normalized fields)
-		unit_type TEXT, -- Single unit type
-		unit_types TEXT, -- JSON array of unit types for multiple units
-		
-		-- Tech command fields
-		tech_name TEXT,
-		
-		-- Upgrade command fields
-		upgrade_name TEXT,
-		
-		-- Hotkey command fields
-		hotkey_type TEXT,
-		hotkey_group INTEGER,
-		
-		-- Game Speed command fields
-		game_speed TEXT,
-		
-		-- Vision command fields
-		vision_player_ids JSONB, -- JSON array of player IDs
-		
-		-- Alliance command fields
-		alliance_player_ids JSONB, -- JSON array of player IDs
-		is_allied_victory BOOLEAN,
-		
-		-- General command fields (for unhandled commands)
-		general_data TEXT, -- Hex string of raw data
-		
-		-- Chat and leave game fields
-		chat_message TEXT,
-		leave_reason TEXT
-	);
-
-	CREATE TABLE IF NOT EXISTS detected_patterns_replay (
-		replay_id INTEGER NOT NULL,
-		algorithm_version INTEGER NOT NULL,
-		file_path TEXT NOT NULL,
-		file_checksum TEXT NOT NULL,
-		pattern_name TEXT NOT NULL,
-		value_bool BOOLEAN,
-		value_int INTEGER,
-		value_string TEXT,
-		value_timestamp BIGINT,
-		PRIMARY KEY (replay_id, pattern_name),
-		FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE
-	);
-
-	CREATE TABLE IF NOT EXISTS detected_patterns_replay_team (
-		replay_id INTEGER NOT NULL,
-		team INTEGER NOT NULL,
-		pattern_name TEXT NOT NULL,
-		value_bool BOOLEAN,
-		value_int INTEGER,
-		value_string TEXT,
-		value_timestamp BIGINT,
-		PRIMARY KEY (replay_id, team, pattern_name),
-		FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE
-	);
-
-	CREATE TABLE IF NOT EXISTS detected_patterns_replay_player (
-		replay_id INTEGER NOT NULL,
-		player_id INTEGER NOT NULL,
-		pattern_name TEXT NOT NULL,
-		value_bool BOOLEAN,
-		value_int INTEGER,
-		value_string TEXT,
-		value_timestamp BIGINT,
-		PRIMARY KEY (replay_id, player_id, pattern_name),
-		FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE,
-		FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_replays_file_path ON replays(file_path);
-	CREATE INDEX IF NOT EXISTS idx_replays_file_checksum ON replays(file_checksum);
-	CREATE INDEX IF NOT EXISTS idx_replays_replay_date ON replays(replay_date);
-	CREATE INDEX IF NOT EXISTS idx_players_replay_id ON players(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_commands_replay_id ON commands(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_commands_player_id ON commands(player_id);
-	CREATE INDEX IF NOT EXISTS idx_commands_frame ON commands(frame);
-	CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_replay_id ON detected_patterns_replay(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_team_replay_id ON detected_patterns_replay_team(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_player_replay_id ON detected_patterns_replay_player(replay_id);
-	CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_player_player_id ON detected_patterns_replay_player(player_id);
-	`
-
-	_, err := s.db.ExecContext(ctx, schema)
-	return err
+	if err := migrations.RunMigrations(s.connectionString); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+	return nil
 }
 
 // StartIngestion starts the ingestion process with batching
