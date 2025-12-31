@@ -10,6 +10,8 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/models"
+	"github.com/marianogappa/screpdb/internal/patterns"
+	"github.com/marianogappa/screpdb/internal/patterns/core"
 )
 
 // PostgresStorage implements Storage interface using PostgreSQL
@@ -43,9 +45,12 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 	if clean {
 		// Drop all tables in the correct order to handle foreign key constraints
 		dropTables := `
-			DROP TABLE IF EXISTS commands CASCADE;
-			DROP TABLE IF EXISTS players CASCADE;
-			DROP TABLE IF EXISTS replays CASCADE;
+		DROP TABLE IF EXISTS detected_patterns_replay_player CASCADE;
+		DROP TABLE IF EXISTS detected_patterns_replay_team CASCADE;
+		DROP TABLE IF EXISTS detected_patterns_replay CASCADE;
+		DROP TABLE IF EXISTS commands CASCADE;
+		DROP TABLE IF EXISTS players CASCADE;
+		DROP TABLE IF EXISTS replays CASCADE;
 
 			-- Legacy: these tables are no longer used
 			DROP TABLE IF EXISTS chat_messages CASCADE;
@@ -149,6 +154,45 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 		leave_reason TEXT
 	);
 
+	CREATE TABLE IF NOT EXISTS detected_patterns_replay (
+		replay_id INTEGER NOT NULL,
+		algorithm_version INTEGER NOT NULL,
+		file_path TEXT NOT NULL,
+		file_checksum TEXT NOT NULL,
+		pattern_name TEXT NOT NULL,
+		value_bool BOOLEAN,
+		value_int INTEGER,
+		value_string TEXT,
+		value_timestamp BIGINT,
+		PRIMARY KEY (replay_id, pattern_name),
+		FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE
+	);
+
+	CREATE TABLE IF NOT EXISTS detected_patterns_replay_team (
+		replay_id INTEGER NOT NULL,
+		team INTEGER NOT NULL,
+		pattern_name TEXT NOT NULL,
+		value_bool BOOLEAN,
+		value_int INTEGER,
+		value_string TEXT,
+		value_timestamp BIGINT,
+		PRIMARY KEY (replay_id, team, pattern_name),
+		FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE
+	);
+
+	CREATE TABLE IF NOT EXISTS detected_patterns_replay_player (
+		replay_id INTEGER NOT NULL,
+		player_id INTEGER NOT NULL,
+		pattern_name TEXT NOT NULL,
+		value_bool BOOLEAN,
+		value_int INTEGER,
+		value_string TEXT,
+		value_timestamp BIGINT,
+		PRIMARY KEY (replay_id, player_id, pattern_name),
+		FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE,
+		FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+	);
+
 	CREATE INDEX IF NOT EXISTS idx_replays_file_path ON replays(file_path);
 	CREATE INDEX IF NOT EXISTS idx_replays_file_checksum ON replays(file_checksum);
 	CREATE INDEX IF NOT EXISTS idx_replays_replay_date ON replays(replay_date);
@@ -156,6 +200,10 @@ func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
 	CREATE INDEX IF NOT EXISTS idx_commands_replay_id ON commands(replay_id);
 	CREATE INDEX IF NOT EXISTS idx_commands_player_id ON commands(player_id);
 	CREATE INDEX IF NOT EXISTS idx_commands_frame ON commands(frame);
+	CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_replay_id ON detected_patterns_replay(replay_id);
+	CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_team_replay_id ON detected_patterns_replay_team(replay_id);
+	CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_player_replay_id ON detected_patterns_replay_player(replay_id);
+	CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_player_player_id ON detected_patterns_replay_player(player_id);
 	`
 
 	_, err := s.db.ExecContext(ctx, schema)
@@ -218,6 +266,42 @@ func (s *PostgresStorage) storeReplayWithBatching(ctx context.Context, data *mod
 	if len(data.Commands) > 0 {
 		if err := s.insertCommandsBatch(ctx, data.Commands); err != nil {
 			return fmt.Errorf("failed to insert commands: %w", err)
+		}
+	}
+
+	// Step 5: Process pattern detection results if orchestrator is present
+	if data.PatternOrchestrator != nil {
+		if err := s.processPatternResults(ctx, data.PatternOrchestrator, replayID, playerIDs); err != nil {
+			return fmt.Errorf("failed to process pattern results: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// processPatternResults processes pattern detection results
+func (s *PostgresStorage) processPatternResults(ctx context.Context, orchestrator any, replayID int64, playerIDMap map[byte]int64) error {
+	// Type assert to *patterns.Orchestrator
+	patternOrch, ok := orchestrator.(*patterns.Orchestrator)
+	if !ok {
+		return nil // Not a pattern orchestrator, skip
+	}
+
+	// Convert replay player IDs to database IDs
+	patternOrch.ConvertResultsToDatabaseIDs(playerIDMap)
+
+	// Get results
+	results := patternOrch.GetResults()
+
+	// Update all results to use the correct database replay ID
+	for _, result := range results {
+		result.ReplayID = replayID
+	}
+
+	// Insert results in batch
+	if len(results) > 0 {
+		if err := s.BatchInsertPatternResults(ctx, results); err != nil {
+			return fmt.Errorf("failed to insert pattern results: %w", err)
 		}
 	}
 
@@ -608,6 +692,370 @@ func (s *PostgresStorage) GetDatabaseSchema(ctx context.Context) (string, error)
 	}
 
 	return schema.String(), nil
+}
+
+// FilterOutExistingPatternDetections filters out replays that already have pattern detection run
+// with the current or higher algorithm version
+func (s *PostgresStorage) FilterOutExistingPatternDetections(ctx context.Context, files []fileops.FileInfo, algorithmVersion int) ([]fileops.FileInfo, error) {
+	if len(files) == 0 {
+		return []fileops.FileInfo{}, nil
+	}
+
+	// Extract file paths and checksums
+	filePaths := make([]string, len(files))
+	checksums := make([]string, len(files))
+	for i, file := range files {
+		filePaths[i] = file.Path
+		checksums[i] = file.Checksum
+	}
+
+	// Build placeholders for file_paths
+	filePathPlaceholders := make([]string, len(filePaths))
+	for i := range filePaths {
+		filePathPlaceholders[i] = fmt.Sprintf("$%d", i+1)
+	}
+
+	// Build placeholders for checksums
+	checksumPlaceholders := make([]string, len(checksums))
+	for i := range checksums {
+		checksumPlaceholders[i] = fmt.Sprintf("$%d", len(filePaths)+i+1)
+	}
+
+	// Combine all args: file_paths first, then checksums, then algorithm_version
+	args := make([]any, 0, len(filePaths)+len(checksums)+1)
+	for _, fp := range filePaths {
+		args = append(args, fp)
+	}
+	for _, cs := range checksums {
+		args = append(args, cs)
+	}
+	args = append(args, algorithmVersion)
+
+	query := fmt.Sprintf(`
+		SELECT DISTINCT file_path, file_checksum 
+		FROM detected_patterns_replay 
+		WHERE (file_path IN (%s) OR file_checksum IN (%s))
+		AND algorithm_version >= $%d
+	`, strings.Join(filePathPlaceholders, ", "), strings.Join(checksumPlaceholders, ", "), len(args))
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query existing pattern detections: %w", err)
+	}
+	defer rows.Close()
+
+	existingPaths := make(map[string]bool)
+	existingChecksums := make(map[string]bool)
+	for rows.Next() {
+		var filePath, fileChecksum string
+		if err := rows.Scan(&filePath, &fileChecksum); err != nil {
+			return nil, fmt.Errorf("failed to scan file path and checksum: %w", err)
+		}
+		existingPaths[filePath] = true
+		existingChecksums[fileChecksum] = true
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	// Filter out existing files (by path or checksum)
+	var filtered []fileops.FileInfo
+	for _, file := range files {
+		if !existingPaths[file.Path] && !existingChecksums[file.Checksum] {
+			filtered = append(filtered, file)
+		}
+	}
+
+	return filtered, nil
+}
+
+// DeletePatternDetectionsForReplay deletes all pattern detection results for a replay
+func (s *PostgresStorage) DeletePatternDetectionsForReplay(ctx context.Context, replayID int64) error {
+	// Delete from all three tables
+	queries := []string{
+		"DELETE FROM detected_patterns_replay WHERE replay_id = $1",
+		"DELETE FROM detected_patterns_replay_team WHERE replay_id = $1",
+		"DELETE FROM detected_patterns_replay_player WHERE replay_id = $1",
+	}
+
+	for _, query := range queries {
+		if _, err := s.db.ExecContext(ctx, query, replayID); err != nil {
+			return fmt.Errorf("failed to delete pattern detections: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// BatchInsertPatternResults inserts pattern detection results in batch
+func (s *PostgresStorage) BatchInsertPatternResults(ctx context.Context, results []*core.PatternResult) error {
+	if len(results) == 0 {
+		return nil
+	}
+
+	// Separate results by level
+	var replayResults []*core.PatternResult
+	var teamResults []*core.PatternResult
+	var playerResults []*core.PatternResult
+
+	for _, result := range results {
+		switch result.Level {
+		case core.LevelReplay:
+			replayResults = append(replayResults, result)
+		case core.LevelTeam:
+			teamResults = append(teamResults, result)
+		case core.LevelPlayer:
+			playerResults = append(playerResults, result)
+		}
+	}
+
+	// Insert replay-level results
+	if len(replayResults) > 0 {
+		if err := s.insertReplayPatternResults(ctx, replayResults); err != nil {
+			return fmt.Errorf("failed to insert replay pattern results: %w", err)
+		}
+	}
+
+	// Insert team-level results
+	if len(teamResults) > 0 {
+		if err := s.insertTeamPatternResults(ctx, teamResults); err != nil {
+			return fmt.Errorf("failed to insert team pattern results: %w", err)
+		}
+	}
+
+	// Insert player-level results
+	if len(playerResults) > 0 {
+		if err := s.insertPlayerPatternResults(ctx, playerResults); err != nil {
+			return fmt.Errorf("failed to insert player pattern results: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// insertReplayPatternResults inserts replay-level pattern results
+func (s *PostgresStorage) insertReplayPatternResults(ctx context.Context, results []*core.PatternResult) error {
+	// First, get file_path and file_checksum for each replay_id
+	replayIDs := make([]int64, 0, len(results))
+	replayIDSet := make(map[int64]bool)
+	for _, result := range results {
+		if !replayIDSet[result.ReplayID] {
+			replayIDs = append(replayIDs, result.ReplayID)
+			replayIDSet[result.ReplayID] = true
+		}
+	}
+
+	// Query for file info
+	placeholders := make([]string, len(replayIDs))
+	args := make([]any, len(replayIDs))
+	for i, id := range replayIDs {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+		SELECT id, file_path, file_checksum FROM replays WHERE id IN (%s)
+	`, strings.Join(placeholders, ", "))
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to query replay file info: %w", err)
+	}
+	defer rows.Close()
+
+	replayFileInfo := make(map[int64]struct {
+		filePath     string
+		fileChecksum string
+	})
+	for rows.Next() {
+		var id int64
+		var filePath, fileChecksum string
+		if err := rows.Scan(&id, &filePath, &fileChecksum); err != nil {
+			return fmt.Errorf("failed to scan replay file info: %w", err)
+		}
+		replayFileInfo[id] = struct {
+			filePath     string
+			fileChecksum string
+		}{filePath, fileChecksum}
+	}
+
+	// Now insert results
+	const batchSize = 100
+	for i := 0; i < len(results); i += batchSize {
+		end := min(i+batchSize, len(results))
+		batch := results[i:end]
+
+		valueStrings := make([]string, 0, len(batch))
+		valueArgs := make([]any, 0, len(batch)*7)
+		argPos := 1
+
+		for _, result := range batch {
+			fileInfo, exists := replayFileInfo[result.ReplayID]
+			if !exists {
+				continue // Skip if we don't have file info
+			}
+
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)",
+				argPos, argPos+1, argPos+2, argPos+3, argPos+4, argPos+5, argPos+6, argPos+7, argPos+8))
+			valueArgs = append(valueArgs, result.ReplayID, core.AlgorithmVersion, fileInfo.filePath, fileInfo.fileChecksum, result.PatternName)
+			argPos += 5
+
+			// Add value fields (only one should be set)
+			if result.ValueBool != nil {
+				valueArgs = append(valueArgs, *result.ValueBool, nil, nil, nil)
+			} else if result.ValueInt != nil {
+				valueArgs = append(valueArgs, nil, *result.ValueInt, nil, nil)
+			} else if result.ValueString != nil {
+				valueArgs = append(valueArgs, nil, nil, *result.ValueString, nil)
+			} else if result.ValueTime != nil {
+				valueArgs = append(valueArgs, nil, nil, nil, *result.ValueTime)
+			} else {
+				valueArgs = append(valueArgs, nil, nil, nil, nil)
+			}
+			argPos += 4
+		}
+
+		if len(valueStrings) == 0 {
+			continue
+		}
+
+		query := fmt.Sprintf(`
+			INSERT INTO detected_patterns_replay 
+			(replay_id, algorithm_version, file_path, file_checksum, pattern_name, value_bool, value_int, value_string, value_timestamp)
+			VALUES %s
+			ON CONFLICT (replay_id, pattern_name) DO UPDATE SET
+				algorithm_version = EXCLUDED.algorithm_version,
+				value_bool = EXCLUDED.value_bool,
+				value_int = EXCLUDED.value_int,
+				value_string = EXCLUDED.value_string,
+				value_timestamp = EXCLUDED.value_timestamp
+		`, strings.Join(valueStrings, ", "))
+
+		if _, err := s.db.ExecContext(ctx, query, valueArgs...); err != nil {
+			return fmt.Errorf("failed to insert replay pattern results: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// insertTeamPatternResults inserts team-level pattern results
+func (s *PostgresStorage) insertTeamPatternResults(ctx context.Context, results []*core.PatternResult) error {
+	const batchSize = 100
+	for i := 0; i < len(results); i += batchSize {
+		end := min(i+batchSize, len(results))
+		batch := results[i:end]
+
+		valueStrings := make([]string, 0, len(batch))
+		valueArgs := make([]any, 0, len(batch)*6)
+		argPos := 1
+
+		for _, result := range batch {
+			if result.Team == nil {
+				continue // Skip if team is nil
+			}
+
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d)",
+				argPos, argPos+1, argPos+2, argPos+3, argPos+4, argPos+5, argPos+6))
+			valueArgs = append(valueArgs, result.ReplayID, *result.Team, result.PatternName)
+			argPos += 3
+
+			// Add value fields (only one should be set)
+			if result.ValueBool != nil {
+				valueArgs = append(valueArgs, *result.ValueBool, nil, nil, nil)
+			} else if result.ValueInt != nil {
+				valueArgs = append(valueArgs, nil, *result.ValueInt, nil, nil)
+			} else if result.ValueString != nil {
+				valueArgs = append(valueArgs, nil, nil, *result.ValueString, nil)
+			} else if result.ValueTime != nil {
+				valueArgs = append(valueArgs, nil, nil, nil, *result.ValueTime)
+			} else {
+				valueArgs = append(valueArgs, nil, nil, nil, nil)
+			}
+			argPos += 4
+		}
+
+		if len(valueStrings) == 0 {
+			continue
+		}
+
+		query := fmt.Sprintf(`
+			INSERT INTO detected_patterns_replay_team 
+			(replay_id, team, pattern_name, value_bool, value_int, value_string, value_timestamp)
+			VALUES %s
+			ON CONFLICT (replay_id, team, pattern_name) DO UPDATE SET
+				value_bool = EXCLUDED.value_bool,
+				value_int = EXCLUDED.value_int,
+				value_string = EXCLUDED.value_string,
+				value_timestamp = EXCLUDED.value_timestamp
+		`, strings.Join(valueStrings, ", "))
+
+		if _, err := s.db.ExecContext(ctx, query, valueArgs...); err != nil {
+			return fmt.Errorf("failed to insert team pattern results: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// insertPlayerPatternResults inserts player-level pattern results
+func (s *PostgresStorage) insertPlayerPatternResults(ctx context.Context, results []*core.PatternResult) error {
+	const batchSize = 100
+	for i := 0; i < len(results); i += batchSize {
+		end := min(i+batchSize, len(results))
+		batch := results[i:end]
+
+		valueStrings := make([]string, 0, len(batch))
+		valueArgs := make([]any, 0, len(batch)*6)
+		argPos := 1
+
+		for _, result := range batch {
+			if result.PlayerID == nil {
+				continue // Skip if player ID is nil
+			}
+
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d)",
+				argPos, argPos+1, argPos+2, argPos+3, argPos+4, argPos+5, argPos+6))
+			valueArgs = append(valueArgs, result.ReplayID, *result.PlayerID, result.PatternName)
+			argPos += 3
+
+			// Add value fields (only one should be set)
+			if result.ValueBool != nil {
+				valueArgs = append(valueArgs, *result.ValueBool, nil, nil, nil)
+			} else if result.ValueInt != nil {
+				valueArgs = append(valueArgs, nil, *result.ValueInt, nil, nil)
+			} else if result.ValueString != nil {
+				valueArgs = append(valueArgs, nil, nil, *result.ValueString, nil)
+			} else if result.ValueTime != nil {
+				valueArgs = append(valueArgs, nil, nil, nil, *result.ValueTime)
+			} else {
+				valueArgs = append(valueArgs, nil, nil, nil, nil)
+			}
+			argPos += 4
+		}
+
+		if len(valueStrings) == 0 {
+			continue
+		}
+
+		query := fmt.Sprintf(`
+			INSERT INTO detected_patterns_replay_player 
+			(replay_id, player_id, pattern_name, value_bool, value_int, value_string, value_timestamp)
+			VALUES %s
+			ON CONFLICT (replay_id, player_id, pattern_name) DO UPDATE SET
+				value_bool = EXCLUDED.value_bool,
+				value_int = EXCLUDED.value_int,
+				value_string = EXCLUDED.value_string,
+				value_timestamp = EXCLUDED.value_timestamp
+		`, strings.Join(valueStrings, ", "))
+
+		if _, err := s.db.ExecContext(ctx, query, valueArgs...); err != nil {
+			return fmt.Errorf("failed to insert player pattern results: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // Close closes the database connection

@@ -117,7 +117,8 @@ type Command struct {
 
 // ReplayData represents the complete parsed replay data
 type ReplayData struct {
-	Replay   *Replay    `json:"replay"`
-	Players  []*Player  `json:"players"`
-	Commands []*Command `json:"commands"`
+	Replay              *Replay    `json:"replay"`
+	Players             []*Player  `json:"players"`
+	Commands            []*Command `json:"commands"`
+	PatternOrchestrator any       `json:"-"` // Pattern orchestrator (type *patterns.Orchestrator), not serialized
 }

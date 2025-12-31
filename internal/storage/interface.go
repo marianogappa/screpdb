@@ -5,11 +5,11 @@ import (
 
 	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/models"
+	"github.com/marianogappa/screpdb/internal/patterns/core"
 )
 
 // Storage backend constants
 const (
-	StorageSQLite     = "sqlite"
 	StoragePostgreSQL = "postgresql"
 )
 
@@ -41,6 +41,18 @@ type Storage interface {
 
 	// GetDatabaseSchema returns the database schema information
 	GetDatabaseSchema(ctx context.Context) (string, error)
+
+	// Pattern detection methods
+	// FilterOutExistingPatternDetections filters out replays that already have pattern detection run
+	// with the current algorithm version. Returns only FileInfo objects for replays that need detection.
+	FilterOutExistingPatternDetections(ctx context.Context, files []fileops.FileInfo, algorithmVersion int) ([]fileops.FileInfo, error)
+
+	// DeletePatternDetectionsForReplay deletes all pattern detection results for a replay
+	// Used when algorithm version is lower than current
+	DeletePatternDetectionsForReplay(ctx context.Context, replayID int64) error
+
+	// BatchInsertPatternResults inserts pattern detection results in batch
+	BatchInsertPatternResults(ctx context.Context, results []*core.PatternResult) error
 
 	// Close closes the storage connection
 	Close() error

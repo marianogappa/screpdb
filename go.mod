@@ -6,11 +6,9 @@ require (
 	github.com/fatih/color v1.16.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/gorilla/mux v1.8.1
-	github.com/gorilla/websocket v1.5.3
 	github.com/icza/screp v1.12.17
 	github.com/lib/pq v1.10.9
 	github.com/mark3labs/mcp-go v0.41.1
-	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/spf13/cobra v1.8.0
 	github.com/tmc/langchaingo v0.1.14
 	golang.org/x/sync v0.18.0
