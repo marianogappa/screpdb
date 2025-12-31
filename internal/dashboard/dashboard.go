@@ -5,23 +5,18 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/marianogappa/screpdb/internal/dashboard/dashdb"
+	_ "github.com/lib/pq"
 	"github.com/marianogappa/screpdb/internal/storage"
 )
 
 type Dashboard struct {
 	ctx           context.Context
-	pool          *pgxpool.Pool
-	queries       *dashdb.Queries
+	db            *sql.DB
 	conversations map[int]*Conversation
 	ai            *AI
 }
@@ -31,12 +26,12 @@ func New(ctx context.Context, store storage.Storage, postgresConnectionString st
 		return nil, fmt.Errorf("failed to run migration routine: %w", err)
 	}
 
-	pool, err := pgxpool.New(ctx, postgresConnectionString)
+	db, err := sql.Open("postgres", postgresConnectionString)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create connection pool: %w", err)
+		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	if err := pool.Ping(ctx); err != nil {
+	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
@@ -47,7 +42,7 @@ func New(ctx context.Context, store storage.Storage, postgresConnectionString st
 		return nil, fmt.Errorf("failed to create AI client: %w", err)
 	}
 
-	return &Dashboard{ctx: ctx, pool: pool, queries: queries, ai: ai, conversations: map[int]*Conversation{}}, nil
+	return &Dashboard{ctx: ctx, db: db, ai: ai, conversations: map[int]*Conversation{}}, nil
 }
 
 func (d *Dashboard) setupRouter() *mux.Router {
@@ -691,62 +686,38 @@ func bytesToWidgetConfig(data []byte) (WidgetConfig, error) {
 }
 
 func (d *Dashboard) executeQuery(query string) ([]map[string]any, error) {
-	rows, err := d.pool.Query(d.ctx, query)
+	rows, err := d.db.QueryContext(d.ctx, query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	columns := rows.FieldDescriptions()
-	columnNames := make([]string, len(columns))
-	for i, col := range columns {
-		columnNames[i] = string(col.Name)
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, err
 	}
 
 	var results []map[string]any
 	for rows.Next() {
-		values, err := rows.Values()
-		if err != nil {
+		values := make([]any, len(columns))
+		valuePtrs := make([]any, len(columns))
+		for i := range values {
+			valuePtrs[i] = &values[i]
+		}
+
+		if err := rows.Scan(valuePtrs...); err != nil {
 			return nil, err
 		}
 
 		row := make(map[string]any)
-		for i, col := range columnNames {
+		for i, col := range columns {
 			val := values[i]
-			// Convert pgtype types to native Go types for JSON serialization
+			// Convert to native Go types for JSON serialization
 			switch v := val.(type) {
-			case pgtype.Text:
-				if v.Valid {
-					row[col] = v.String
-				} else {
-					row[col] = nil
-				}
-			case pgtype.Int8:
-				if v.Valid {
-					row[col] = v.Int64
-				} else {
-					row[col] = nil
-				}
-			case pgtype.Float8:
-				if v.Valid {
-					row[col] = v.Float64
-				} else {
-					row[col] = nil
-				}
-			case pgtype.Bool:
-				if v.Valid {
-					row[col] = v.Bool
-				} else {
-					row[col] = nil
-				}
-			case pgtype.Timestamp:
-				if v.Valid {
-					row[col] = v.Time
-				} else {
-					row[col] = nil
-				}
 			case []byte:
 				row[col] = string(v)
+			case nil:
+				row[col] = nil
 			default:
 				row[col] = val
 			}
