@@ -19,12 +19,48 @@ var (
 	// replayLevelDetectors is the list of replay-level detector factories
 	replayLevelDetectors = []ReplayLevelDetectorFactory{
 		func() core.Detector { return detectors.NewHadCarriersReplayDetector() },
+		func() core.Detector { return detectors.NewSecondsToFirstCarrierBuildTriggeredReplayDetector() },
+		func() core.Detector { return detectors.NewSecondsToFirstZerglingMorphTriggeredReplayDetector() },
+		func() core.Detector { return detectors.NewSecondsToFirstGatewayBuildTriggeredReplayDetector() },
+		func() core.Detector { return detectors.NewSecondsToFirstFactoryBuildTriggeredReplayDetector() },
+		func() core.Detector { return detectors.NewSecondsToFirstSpawningPoolMorphTriggeredReplayDetector() },
+		func() core.Detector { return detectors.NewSecondsToFirstMutaliskMorphTriggeredReplayDetector() },
 	}
 
 	// playerLevelDetectors is the list of player-level detector factories
 	playerLevelDetectors = []PlayerLevelDetectorFactory{
 		func(replayPlayerID byte) core.Detector {
 			detector := detectors.NewDidCarriersPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewSecondsToFirstCarrierBuildTriggeredPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewSecondsToFirstZerglingMorphTriggeredPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewSecondsToFirstGatewayBuildTriggeredPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewSecondsToFirstFactoryBuildTriggeredPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewSecondsToFirstSpawningPoolMorphTriggeredPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewSecondsToFirstMutaliskMorphTriggeredPlayerDetector()
 			detector.SetReplayPlayerID(replayPlayerID)
 			return detector
 		},
