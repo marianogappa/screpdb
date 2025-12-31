@@ -50,7 +50,7 @@ func New(ctx context.Context, store storage.Storage, postgresConnectionString st
 	return &Dashboard{ctx: ctx, pool: pool, queries: queries, ai: ai, conversations: map[int]*Conversation{}}, nil
 }
 
-func (d *Dashboard) Run() error {
+func (d *Dashboard) setupRouter() *mux.Router {
 	r := mux.NewRouter()
 	r.Use(mux.CORSMethodMiddleware(r))
 	r.HandleFunc("/api/dashboard", d.handlerListDashboards).Methods(http.MethodGet, http.MethodOptions)
@@ -65,6 +65,11 @@ func (d *Dashboard) Run() error {
 
 	r.HandleFunc("/api/health", d.handlerHealthcheck).Methods(http.MethodGet, http.MethodOptions)
 	http.Handle("/", r)
+	return r
+}
+
+func (d *Dashboard) Run() error {
+	r := d.setupRouter()
 
 	srv := &http.Server{
 		Handler: r,
@@ -75,6 +80,46 @@ func (d *Dashboard) Run() error {
 
 	log.Println("Server listening on localhost:8000...")
 	return srv.ListenAndServe()
+}
+
+// StartAsync starts the server in a goroutine and returns a channel that will receive an error if the server fails to start,
+// or nil when the server is ready. The server will be accessible at localhost:8000.
+func (d *Dashboard) StartAsync() <-chan error {
+	errChan := make(chan error, 1)
+	r := d.setupRouter()
+
+	srv := &http.Server{
+		Handler:      r,
+		Addr:         "localhost:8000",
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
+
+	go func() {
+		log.Println("Server starting on localhost:8000...")
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errChan <- err
+		}
+	}()
+
+	// Wait for server to be ready
+	go func() {
+		for i := 0; i < 30; i++ {
+			resp, err := http.Get("http://localhost:8000/api/health")
+			if err == nil {
+				resp.Body.Close()
+				if resp.StatusCode == http.StatusOK {
+					log.Println("Backend server is ready")
+					errChan <- nil
+					return
+				}
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		errChan <- fmt.Errorf("server failed to start within 3 seconds")
+	}()
+
+	return errChan
 }
 
 func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) {

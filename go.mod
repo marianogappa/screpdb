@@ -9,6 +9,7 @@ require (
 	github.com/icza/screp v1.12.17
 	github.com/lib/pq v1.10.9
 	github.com/mark3labs/mcp-go v0.41.1
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/spf13/cobra v1.8.0
 	github.com/tmc/langchaingo v0.1.14
 	golang.org/x/sync v0.18.0
