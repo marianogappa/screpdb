@@ -9,19 +9,17 @@ import (
 	"sync"
 	"text/template"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/marianogappa/screpdb/internal/dashboard/dashdb"
 	"github.com/tmc/langchaingo/llms"
 )
 
 type PromptHistoryStorage struct {
-	queries   *dashdb.Queries
+	queries   any // TODO: Replace with go-jet queries
 	histories map[int64][]llms.MessageContent
 	mutex     sync.Mutex
 	debug     bool
 }
 
-func NewPromptHistoryStorage(queries *dashdb.Queries, debug bool) *PromptHistoryStorage {
+func NewPromptHistoryStorage(queries any, debug bool) *PromptHistoryStorage {
 	return &PromptHistoryStorage{
 		queries:   queries,
 		histories: map[int64][]llms.MessageContent{},
@@ -86,22 +84,13 @@ func (s *PromptHistoryStorage) add(ctx context.Context, widgetID int64, history 
 }
 
 func (s *PromptHistoryStorage) setOnDB(ctx context.Context, widgetID int64, history []llms.MessageContent) error {
-	return s.queries.UpsertDashboardWidgetPromptHistory(ctx, dashdb.UpsertDashboardWidgetPromptHistoryParams{WidgetID: widgetID, PromptHistory: historyToBytes(history)})
+	// TODO: Implement with go-jet queries
+	return nil
 }
 
 func (s *PromptHistoryStorage) getFromDB(ctx context.Context, widgetID int64) ([]llms.MessageContent, bool, error) {
-	historyRow, err := s.queries.GetDashboardWidgetPromptHistory(ctx, widgetID)
-	if err == pgx.ErrNoRows {
-		return nil, false, nil
-	}
-	if err != nil {
-		return nil, false, err
-	}
-	history, err := bytesToHistory(historyRow.PromptHistory)
-	if err != nil {
-		return nil, false, fmt.Errorf("failed to unmarshal prompt history bytes: %w", err)
-	}
-	return history, true, nil
+	// TODO: Implement with go-jet queries
+	return nil, false, nil
 }
 
 func historyToBytes(history []llms.MessageContent) []byte {

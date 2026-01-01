@@ -62,7 +62,7 @@ func (d *Dashboard) handlerCreateDashboardWidget(w http.ResponseWriter, r *http.
 		return
 	}
 
-	conv, err := d.ai.NewConversation()
+	conv, err := d.ai.NewConversation(widget.ID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("failed to create conversation with AI: " + err.Error()))
