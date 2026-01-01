@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.1](https://github.com/marianogappa/screpdb/compare/v0.14.0...v0.14.1) (2026-01-01)
+
+
+### Bug Fixes
+
+* Make empty commit to trigger release. ([447d26b](https://github.com/marianogappa/screpdb/commit/447d26bfb6767fdc1c2a66295899736f8c3073cb))
+* Make empty commit to trigger release. ([5c0941f](https://github.com/marianogappa/screpdb/commit/5c0941f9e8b533f06bee23715d1f9c8755fa94a3))
+
 ## [0.14.0](https://github.com/marianogappa/screpdb/compare/v0.13.4...v0.14.0) (2026-01-01)
 
 
