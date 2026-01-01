@@ -2,10 +2,12 @@ package dashboard
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 
+	"github.com/marianogappa/screpdb/internal/dashboard/history"
 	"github.com/marianogappa/screpdb/internal/storage"
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/openai"
@@ -16,67 +18,22 @@ type AI struct {
 	ctx                context.Context
 	llm                *openai.LLM
 	store              storage.Storage
-	promptHistoryStore *PromptHistoryStorage
+	promptHistoryStore *history.PromptHistoryStorage
 	debug              bool
 }
 
-func NewAI(ctx context.Context, openaiAPIKey string, store storage.Storage, queries any, debug bool) (*AI, error) {
+func NewAI(ctx context.Context, openaiAPIKey string, store storage.Storage, db *sql.DB, debug bool) (*AI, error) {
 	llm, err := openai.New(openai.WithToken(openaiAPIKey), openai.WithResponseFormat(responseFormat))
 	if err != nil {
 		return nil, err
 	}
-	// TODO: Implement prompt history storage with go-jet
-	promptHistoryStore := NewPromptHistoryStorage(nil, true)
+	promptHistoryStore := history.NewPromptHistoryStorage(db, true)
 	return &AI{ctx: ctx, llm: llm, store: store, promptHistoryStore: promptHistoryStore, debug: debug}, nil
-}
-
-// PromptHistoryStorage is a placeholder for prompt history functionality
-// TODO: Implement with go-jet queries
-type PromptHistoryStorage struct {
-	debug bool
-}
-
-func NewPromptHistoryStorage(queries any, debug bool) *PromptHistoryStorage {
-	return &PromptHistoryStorage{debug: debug}
-}
-
-func (s *PromptHistoryStorage) ForWidgetID(ctx context.Context, widgetID int64) (*PromptHistoryStorageForWidget, error) {
-	return &PromptHistoryStorageForWidget{
-		phs:      s,
-		ctx:      ctx,
-		widgetID: widgetID,
-	}, nil
-}
-
-type PromptHistoryStorageForWidget struct {
-	phs      *PromptHistoryStorage
-	ctx      context.Context
-	widgetID int64
-}
-
-func (s *PromptHistoryStorageForWidget) Get() ([]llms.MessageContent, error) {
-	// TODO: Implement with go-jet
-	return []llms.MessageContent{}, nil
-}
-
-func (s *PromptHistoryStorageForWidget) AddHumanPrompt(prompt string) error {
-	// TODO: Implement with go-jet
-	return nil
-}
-
-func (s *PromptHistoryStorageForWidget) AddContentChoice(choice llms.ContentChoice) error {
-	// TODO: Implement with go-jet
-	return nil
-}
-
-func (s *PromptHistoryStorageForWidget) AddMessageContents(contents []llms.MessageContent) error {
-	// TODO: Implement with go-jet
-	return nil
 }
 
 type Conversation struct {
 	ai             *AI
-	storeForWidget *PromptHistoryStorageForWidget
+	storeForWidget *history.PromptHistoryStorageForWidget
 }
 
 func (a *AI) NewConversation(widgetID int64) (*Conversation, error) {
@@ -118,7 +75,7 @@ func (c *Conversation) Prompt(prompt string) (StructuredResponse, error) {
 			return StructuredResponse{}, err
 		}
 		respchoice := resp.Choices[0]
-		if err := c.storeForWidget.AddContentChoice(*respchoice); err != nil {
+		if err := c.storeForWidget.AddContentChoice(respchoice); err != nil {
 			return StructuredResponse{}, err
 		}
 		if err := c.storeForWidget.AddMessageContents(c.ai.respondToToolCalls(respchoice.ToolCalls)); err != nil {

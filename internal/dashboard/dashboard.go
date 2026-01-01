@@ -35,7 +35,7 @@ func New(ctx context.Context, store storage.Storage, postgresConnectionString st
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	ai, err := NewAI(ctx, openAIAPIKey, store, nil, true)
+	ai, err := NewAI(ctx, openAIAPIKey, store, db, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI client: %w", err)
 	}

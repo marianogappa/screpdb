@@ -3,25 +3,32 @@ package history
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
 	"text/template"
+	"time"
 
+	"github.com/go-jet/jet/v2/postgres"
+	"github.com/go-jet/jet/v2/qrm"
+	"github.com/jackc/pgx/v5"
+	jetmodel "github.com/marianogappa/screpdb/internal/jet/screpdb/public/model"
+	"github.com/marianogappa/screpdb/internal/jet/screpdb/public/table"
 	"github.com/tmc/langchaingo/llms"
 )
 
 type PromptHistoryStorage struct {
-	queries   any // TODO: Replace with go-jet queries
+	db        *sql.DB
 	histories map[int64][]llms.MessageContent
 	mutex     sync.Mutex
 	debug     bool
 }
 
-func NewPromptHistoryStorage(queries any, debug bool) *PromptHistoryStorage {
+func NewPromptHistoryStorage(db *sql.DB, debug bool) *PromptHistoryStorage {
 	return &PromptHistoryStorage{
-		queries:   queries,
+		db:        db,
 		histories: map[int64][]llms.MessageContent{},
 		mutex:     sync.Mutex{},
 		debug:     debug,
@@ -84,13 +91,41 @@ func (s *PromptHistoryStorage) add(ctx context.Context, widgetID int64, history 
 }
 
 func (s *PromptHistoryStorage) setOnDB(ctx context.Context, widgetID int64, history []llms.MessageContent) error {
-	// TODO: Implement with go-jet queries
-	return nil
+	historyBytes := historyToBytes(history)
+	now := time.Now()
+	
+	// Use raw SQL for UPSERT since go-jet's ON_CONFLICT support may be limited
+	// Cast to JSONB since the column is JSONB type
+	query := `
+		INSERT INTO dashboard_widget_prompt_history (widget_id, prompt_history, updated_at)
+		VALUES ($1, $2::jsonb, $3)
+		ON CONFLICT (widget_id) DO UPDATE SET
+			prompt_history = EXCLUDED.prompt_history,
+			updated_at = EXCLUDED.updated_at
+	`
+	
+	_, err := s.db.ExecContext(ctx, query, widgetID, string(historyBytes), now)
+	return err
 }
 
 func (s *PromptHistoryStorage) getFromDB(ctx context.Context, widgetID int64) ([]llms.MessageContent, bool, error) {
-	// TODO: Implement with go-jet queries
-	return nil, false, nil
+	var historyRow jetmodel.DashboardWidgetPromptHistory
+	stmt := table.DashboardWidgetPromptHistory.SELECT(table.DashboardWidgetPromptHistory.AllColumns).
+		WHERE(table.DashboardWidgetPromptHistory.WidgetID.EQ(postgres.Int64(widgetID)))
+	
+	err := stmt.QueryContext(ctx, s.db, &historyRow)
+	if err == sql.ErrNoRows || err == pgx.ErrNoRows || err == qrm.ErrNoRows {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	
+	history, err := bytesToHistory([]byte(historyRow.PromptHistory))
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to unmarshal prompt history bytes: %w", err)
+	}
+	return history, true, nil
 }
 
 func historyToBytes(history []llms.MessageContent) []byte {
