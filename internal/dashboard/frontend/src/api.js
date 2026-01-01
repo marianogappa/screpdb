@@ -84,5 +84,18 @@ export const api = {
       throw new Error(text || 'Failed to delete widget');
     }
   },
+
+  executeQuery: async (query) => {
+    const response = await fetch(`${API_BASE}/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to execute query');
+    }
+    return response.json();
+  },
 };
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import EditWidgetModal from './EditWidgetModal';
+import EditWidgetFullscreen from './EditWidgetFullscreen';
 import Gauge from './charts/Gauge';
 import Table from './charts/Table';
 import PieChart from './charts/PieChart';
@@ -84,7 +85,7 @@ function Widget({ widget, onDelete, onUpdate }) {
       </div>
 
       {showEditModal && (
-        <EditWidgetModal
+        <EditWidgetFullscreen
           widget={widget}
           onClose={() => setShowEditModal(false)}
           onSave={handleUpdate}
