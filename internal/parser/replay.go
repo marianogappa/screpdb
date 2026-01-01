@@ -6,6 +6,7 @@ import (
 
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser/commands"
+	"github.com/marianogappa/screpdb/internal/patterns"
 	"github.com/marianogappa/screpdb/internal/screp"
 	"github.com/marianogappa/screpdb/internal/utils"
 )
@@ -102,6 +103,10 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 
 	data.Replay.Players = data.Players
 
+	// Initialize pattern detection orchestrator
+	patternOrchestrator := patterns.NewOrchestrator()
+	patternOrchestrator.Initialize(data.Replay, data.Players)
+
 	// Create slot-to-player mapping for alliance and vision commands
 	slotToPlayerMap := make(map[uint16]int64)
 	for _, player := range data.Players {
@@ -131,9 +136,15 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 				command.Player = findPlayerWithPlayerID(base.PlayerID, data.Players)
 
 				data.Commands = append(data.Commands, command)
+
+				// Process command through pattern detection
+				patternOrchestrator.ProcessCommand(command)
 			}
 		}
 	}
+
+	// Store pattern orchestrator in data for later use
+	data.PatternOrchestrator = patternOrchestrator
 
 	return data, nil
 }

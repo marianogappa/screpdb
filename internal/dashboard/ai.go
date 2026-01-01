@@ -2,11 +2,11 @@ package dashboard
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 
-	"github.com/marianogappa/screpdb/internal/dashboard/dashdb"
 	"github.com/marianogappa/screpdb/internal/dashboard/history"
 	"github.com/marianogappa/screpdb/internal/storage"
 	"github.com/tmc/langchaingo/llms"
@@ -22,12 +22,12 @@ type AI struct {
 	debug              bool
 }
 
-func NewAI(ctx context.Context, openaiAPIKey string, store storage.Storage, queries *dashdb.Queries, debug bool) (*AI, error) {
+func NewAI(ctx context.Context, openaiAPIKey string, store storage.Storage, db *sql.DB, debug bool) (*AI, error) {
 	llm, err := openai.New(openai.WithToken(openaiAPIKey), openai.WithResponseFormat(responseFormat))
 	if err != nil {
 		return nil, err
 	}
-	promptHistoryStore := history.NewPromptHistoryStorage(queries, true)
+	promptHistoryStore := history.NewPromptHistoryStorage(db, true)
 	return &AI{ctx: ctx, llm: llm, store: store, promptHistoryStore: promptHistoryStore, debug: debug}, nil
 }
 

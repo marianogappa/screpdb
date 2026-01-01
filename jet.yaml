@@ -1,0 +1,39 @@
+# Jet configuration file
+# This file configures jet code generation from the database schema
+
+# Database connection details
+# Jet will use these to connect to the database and generate models
+# You can override these with environment variables or command line flags
+database:
+  # Connection string format: postgres://user:password@host:port/dbname?sslmode=disable
+  # Or use individual parameters below
+  host: localhost
+  port: 5432
+  user: postgres
+  password: ""
+  dbname: screpdb
+  sslmode: disable
+
+# Output configuration
+output:
+  # Directory where generated code will be placed
+  path: internal/jet
+  
+  # Package name for generated code
+  package: jet
+
+# Schema configuration
+schema:
+  # Schema name (public is default for PostgreSQL)
+  name: public
+  
+  # Tables to include (empty means all tables)
+  # We'll generate models for: replays, players, commands, and pattern detection tables
+  include:
+    - replays
+    - players
+    - commands
+    - detected_patterns_replay
+    - detected_patterns_replay_team
+    - detected_patterns_replay_player
+

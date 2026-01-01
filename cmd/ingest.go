@@ -22,13 +22,12 @@ import (
 var ingestCmd = &cobra.Command{
 	Use:   "ingest",
 	Short: "Ingest replay files into the database",
-	Long:  `Ingest StarCraft: Brood War replay files from a directory into a database (SQLite or PostgreSQL).`,
+	Long:  `Ingest StarCraft: Brood War replay files from a directory into a PostgreSQL database.`,
 	RunE:  runIngest,
 }
 
 var (
 	inputDir           string
-	sqliteOutput       string
 	postgresConnString string
 	watch              bool
 	stopAfterN         int
@@ -39,7 +38,6 @@ var (
 
 func init() {
 	ingestCmd.Flags().StringVarP(&inputDir, "input-dir", "i", fileops.GetDefaultReplayDir(), "Input directory containing replay files")
-	ingestCmd.Flags().StringVarP(&sqliteOutput, "sqlite-output-file", "o", "screp.db", "Output SQLite database file")
 	ingestCmd.Flags().StringVarP(&postgresConnString, "postgres-connection-string", "p", "", "PostgreSQL connection string (e.g., 'host=localhost port=5432 user=marianol dbname=screpdb sslmode=disable')")
 	ingestCmd.Flags().BoolVarP(&watch, "watch", "w", false, "Watch for new files and ingest them as they appear")
 	ingestCmd.Flags().IntVarP(&stopAfterN, "stop-after-n-reps", "n", 0, "Stop after processing N replay files (0 = no limit)")
@@ -51,27 +49,16 @@ func init() {
 func runIngest(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	// Validate that only one storage option is specified
-	if postgresConnString != "" && sqliteOutput != "screp.db" {
-		return fmt.Errorf("cannot specify both --postgres-connection-string and --sqlite-output-file")
+	// Validate that postgres connection string is provided
+	if postgresConnString == "" {
+		return fmt.Errorf("--postgres-connection-string is required")
 	}
 
 	// Initialize storage
-	var store storage.Storage
-	var err error
-
-	if postgresConnString != "" {
-		color.Cyan("Using PostgreSQL storage")
-		store, err = storage.NewPostgresStorage(postgresConnString)
-		if err != nil {
-			return fmt.Errorf("failed to create PostgreSQL storage: %w", err)
-		}
-	} else {
-		color.Cyan("Using SQLite storage: %s", sqliteOutput)
-		store, err = storage.NewSQLiteStorage(sqliteOutput)
-		if err != nil {
-			return fmt.Errorf("failed to create SQLite storage: %w", err)
-		}
+	color.Cyan("Using PostgreSQL storage")
+	store, err := storage.NewPostgresStorage(postgresConnString)
+	if err != nil {
+		return fmt.Errorf("failed to create PostgreSQL storage: %w", err)
 	}
 	defer store.Close()
 

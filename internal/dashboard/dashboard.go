@@ -5,23 +5,18 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
-	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/marianogappa/screpdb/internal/dashboard/dashdb"
+	_ "github.com/lib/pq"
 	"github.com/marianogappa/screpdb/internal/storage"
 )
 
 type Dashboard struct {
 	ctx           context.Context
-	pool          *pgxpool.Pool
-	queries       *dashdb.Queries
+	db            *sql.DB
 	conversations map[int]*Conversation
 	ai            *AI
 }
@@ -31,26 +26,24 @@ func New(ctx context.Context, store storage.Storage, postgresConnectionString st
 		return nil, fmt.Errorf("failed to run migration routine: %w", err)
 	}
 
-	pool, err := pgxpool.New(ctx, postgresConnectionString)
+	db, err := sql.Open("postgres", postgresConnectionString)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create connection pool: %w", err)
+		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	if err := pool.Ping(ctx); err != nil {
+	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	queries := dashdb.New(pool)
-
-	ai, err := NewAI(ctx, openAIAPIKey, store, queries, true)
+	ai, err := NewAI(ctx, openAIAPIKey, store, db, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI client: %w", err)
 	}
 
-	return &Dashboard{ctx: ctx, pool: pool, queries: queries, ai: ai, conversations: map[int]*Conversation{}}, nil
+	return &Dashboard{ctx: ctx, db: db, ai: ai, conversations: map[int]*Conversation{}}, nil
 }
 
-func (d *Dashboard) Run() error {
+func (d *Dashboard) setupRouter() *mux.Router {
 	r := mux.NewRouter()
 	r.Use(mux.CORSMethodMiddleware(r))
 	r.HandleFunc("/api/dashboard", d.handlerListDashboards).Methods(http.MethodGet, http.MethodOptions)
@@ -65,6 +58,11 @@ func (d *Dashboard) Run() error {
 
 	r.HandleFunc("/api/health", d.handlerHealthcheck).Methods(http.MethodGet, http.MethodOptions)
 	http.Handle("/", r)
+	return r
+}
+
+func (d *Dashboard) Run() error {
+	r := d.setupRouter()
 
 	srv := &http.Server{
 		Handler: r,
@@ -77,558 +75,46 @@ func (d *Dashboard) Run() error {
 	return srv.ListenAndServe()
 }
 
-func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+// StartAsync starts the server in a goroutine and returns a channel that will receive an error if the server fails to start,
+// or nil when the server is ready. The server will be accessible at localhost:8000.
+func (d *Dashboard) StartAsync() <-chan error {
+	errChan := make(chan error, 1)
+	r := d.setupRouter()
 
-	dashboardURL := vars["url"]
-	if dashboardURL == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "dashboard url missing")
-		return
+	srv := &http.Server{
+		Handler:      r,
+		Addr:         "localhost:8000",
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
 	}
 
-	dash, err := d.queries.GetDashboard(d.ctx, dashboardURL)
-	if err == sql.ErrNoRows || err == pgx.ErrNoRows {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "unknown dashboard url")
-		return
-	}
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error getting dashboard url from db: %v", err.Error())
-		return
-	}
+	go func() {
+		log.Println("Server starting on localhost:8000...")
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errChan <- err
+		}
+	}()
 
-	widgets, err := d.queries.ListDashboardWidgets(d.ctx, pgText(dashboardURL))
-	if err != nil && err != sql.ErrNoRows {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error listing dashboard widgets: %v", err.Error())
-		return
-	}
-
-	type WidgetWithResults struct {
-		ID          int64            `json:"id"`
-		WidgetOrder pgtype.Int8      `json:"widget_order"`
-		Name        string           `json:"name"`
-		Description pgtype.Text      `json:"description"`
-		Config      WidgetConfig     `json:"config"`
-		Query       string           `json:"query"`
-		Results     []map[string]any `json:"results"`
-		CreatedAt   pgtype.Timestamp `json:"created_at"`
-		UpdatedAt   pgtype.Timestamp `json:"updated_at"`
-	}
-
-	widgetsWithResults := make([]WidgetWithResults, 0, len(widgets))
-	for _, widget := range widgets {
-		var results []map[string]any
-		if widget.Query != "" {
-			queryResults, err := d.executeQuery(widget.Query)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprintf(w, "error executing query for widget %d: %v", widget.ID, err.Error())
-				return
+	// Wait for server to be ready
+	go func() {
+		for i := 0; i < 30; i++ {
+			resp, err := http.Get("http://localhost:8000/api/health")
+			if err == nil {
+				resp.Body.Close()
+				if resp.StatusCode == http.StatusOK {
+					log.Println("Backend server is ready")
+					errChan <- nil
+					return
+				}
 			}
-			results = queryResults
+			time.Sleep(100 * time.Millisecond)
 		}
+		errChan <- fmt.Errorf("server failed to start within 3 seconds")
+	}()
 
-		config, err := bytesToWidgetConfig(widget.Config)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "error parsing config for widget %d: %v", widget.ID, err.Error())
-			return
-		}
-
-		widgetsWithResults = append(widgetsWithResults, WidgetWithResults{
-			ID:          widget.ID,
-			WidgetOrder: widget.WidgetOrder,
-			Name:        widget.Name,
-			Description: widget.Description,
-			Config:      config,
-			Query:       widget.Query,
-			Results:     results,
-			CreatedAt:   widget.CreatedAt,
-			UpdatedAt:   widget.UpdatedAt,
-		})
-	}
-
-	type DashboardResponse struct {
-		dashdb.Dashboard
-		Widgets []WidgetWithResults `json:"widgets"`
-	}
-
-	response := DashboardResponse{
-		Dashboard: dash,
-		Widgets:   widgetsWithResults,
-	}
-
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(response)
+	return errChan
 }
 
-func (d *Dashboard) handlerDeleteDashboard(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	dashboardURL := vars["url"]
-	if dashboardURL == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "dashboard url missing")
-		return
-	}
-
-	err := d.queries.DeleteDashboardWidgetsOfDashboard(d.ctx, pgText(dashboardURL))
-	if err != nil && err != sql.ErrNoRows && err != pgx.ErrNoRows {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error deleting dashboard widgets: %v", err.Error())
-		return
-	}
-
-	err = d.queries.DeleteDashboard(d.ctx, dashboardURL)
-	if err == sql.ErrNoRows || err == pgx.ErrNoRows {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "unknown dashboard url")
-		return
-	}
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error deleting dashboard: %v", err.Error())
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
-func (d *Dashboard) handlerDeleteDashboardWidget(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	dashboardWidgetID, err := strconv.Atoi(vars["wid"])
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "dashboard widget id missing or should be numeric")
-		return
-	}
-
-	err = d.queries.DeleteDashboardWidget(d.ctx, int64(dashboardWidgetID))
-	if err == sql.ErrNoRows || err == pgx.ErrNoRows {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "unknown dashboard widget id")
-		return
-	}
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error deleting dashboard widget: %v", err.Error())
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
-// func (d *Dashboard) handlerDeleteDashboardWidgetPromptHistory(w http.ResponseWriter, r *http.Request) {
-// 	vars := mux.Vars(r)
-
-// 	dashboardWidgetID, err := strconv.Atoi(vars["id"])
-// 	if err != nil {
-// 		w.WriteHeader(http.StatusBadRequest)
-// 		fmt.Fprintf(w, "dashboard widget id missing or should be numeric")
-// 		return
-// 	}
-
-// 	err = d.queries.DeleteDashboardWidgetPromptHistory(d.ctx, pgInt(dashboardWidgetID))
-// 	if err == sql.ErrNoRows || err == pgx.ErrNoRows {
-// 		w.WriteHeader(http.StatusNotFound)
-// 		fmt.Fprintf(w, "unknown dashboard widget id")
-// 		return
-// 	}
-// 	if err != nil {
-// 		w.WriteHeader(http.StatusInternalServerError)
-// 		fmt.Fprintf(w, "error deleting dashboard widget: %v", err.Error())
-// 		return
-// 	}
-
-// 	w.WriteHeader(http.StatusOK)
-// }
-
-func (d *Dashboard) handlerListDashboards(w http.ResponseWriter, _ *http.Request) {
-	dash, err := d.queries.ListDashboards(d.ctx)
-	if err != nil && err != sql.ErrNoRows && err != pgx.ErrNoRows {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error listing dashboards from db: %v", err.Error())
-		return
-	}
-
-	if dash == nil {
-		dash = []dashdb.Dashboard{}
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(dash)
-}
-
-func (d *Dashboard) handlerListDashboardWidgets(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	dashboardURL := vars["url"]
-	if dashboardURL == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "dashboard url missing")
-		return
-	}
-
-	dash, err := d.queries.ListDashboardWidgets(d.ctx, pgText(dashboardURL))
-	if err != nil && err != sql.ErrNoRows {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error listing dashboards from db: %v", err.Error())
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(dash)
-}
-
-// func (d *Dashboard) handlerListDashboardWidgetPromptHistory(w http.ResponseWriter, r *http.Request) {
-// 	vars := mux.Vars(r)
-
-// 	dashboardID, err := strconv.Atoi(vars["dashboard_id"])
-// 	if err != nil {
-// 		w.WriteHeader(http.StatusBadRequest)
-// 		fmt.Fprintf(w, "dashboard id missing or should be numeric")
-// 		return
-// 	}
-// 	dashboardWidgetID, err := strconv.Atoi(vars["dashboard_widget_id"])
-// 	if err != nil {
-// 		w.WriteHeader(http.StatusBadRequest)
-// 		fmt.Fprintf(w, "dashboard widget id missing or should be numeric")
-// 		return
-// 	}
-
-// 	dash, err := d.queries.ListDashboardWidgetPromptHistory(d.ctx, dashdb.ListDashboardWidgetPromptHistoryParams{DashboardID: pgInt(dashboardID), DashboardWidgetID: pgInt(dashboardWidgetID)})
-// 	if err != nil && err != sql.ErrNoRows {
-// 		w.WriteHeader(http.StatusInternalServerError)
-// 		fmt.Fprintf(w, "error listing dashboards from db: %v", err.Error())
-// 		return
-// 	}
-
-// 	w.WriteHeader(http.StatusOK)
-// 	_ = json.NewEncoder(w).Encode(dash)
-// }
-
-func (d *Dashboard) handlerUpdateDashboardWidget(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	dashboardWidgetID, err := strconv.Atoi(vars["wid"])
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "dashboard widget id missing or should be numeric")
-		return
-	}
-
-	bs, err := io.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "error reading request POST payload")
-		return
-	}
-
-	if len(bs) <= 4 {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "received update dashboard widget request with empty payload...nothing to update")
-		return
-	}
-
-	widget, err := d.queries.GetDashboardWidget(d.ctx, int64(dashboardWidgetID))
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "unknown dashboard widget: %v", err.Error())
-		return
-	}
-
-	type UpdateWidgetRequest struct {
-		Name        string       `json:"name"`
-		Description pgtype.Text  `json:"description"`
-		Config      WidgetConfig `json:"config"`
-		Query       string       `json:"query"`
-		Prompt      string       `json:"prompt"` // Note: update request must have either prompt or everything else
-	}
-
-	var req UpdateWidgetRequest
-	if err := json.Unmarshal(bs, &req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "invalid json")
-		return
-	}
-
-	if req.Prompt != "" && (req.Query != "" || req.Name != "" || req.Description.String != "" || req.Config.Type != "") {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "you cannot supply both prompt and manual changes; either supply just prompt or just other fields")
-		return
-	}
-
-	if req.Prompt != "" {
-		log.Printf("Updating widget %v based on prompt [%v]...", widget.ID, req.Prompt)
-		if err := d.updateWidgetViaPrompt(widget, req.Prompt); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "failed to update the widget via prompt: %v", err)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
-	currentConfig, err := bytesToWidgetConfig(widget.Config)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error parsing current config: %v", err.Error())
-		return
-	}
-
-	params := dashdb.UpdateDashboardWidgetParams{
-		ID:          int64(dashboardWidgetID),
-		Name:        req.Name,
-		Description: req.Description,
-		Query:       req.Query,
-		WidgetOrder: widget.WidgetOrder,
-	}
-
-	if params.Name == "" {
-		params.Name = widget.Name
-	}
-	if !params.Description.Valid {
-		params.Description = widget.Description
-	}
-	if params.Query == "" {
-		params.Query = widget.Query
-	}
-
-	// Use provided config or keep current
-	configToUse := req.Config
-	if configToUse.Type == "" {
-		configToUse = currentConfig
-	}
-
-	configBytes, err := widgetConfigToBytes(configToUse)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error marshaling config: %v", err.Error())
-		return
-	}
-	params.Config = configBytes
-
-	if err := d.queries.UpdateDashboardWidget(d.ctx, params); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error updating widget: %v", err.Error())
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
-func (d *Dashboard) handlerUpdateDashboard(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	dashboardURL := vars["url"]
-	if dashboardURL == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "dashboard url missing")
-		return
-	}
-
-	bs, err := io.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "error reading request POST payload")
-		return
-	}
-
-	dash, err := d.queries.GetDashboard(d.ctx, dashboardURL)
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "unknown dashboard: %v", err.Error())
-		return
-	}
-
-	params := dashdb.UpdateDashboardParams{}
-	if err := json.Unmarshal(bs, &params); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "invalid json")
-		return
-	}
-
-	params.Url = dashboardURL
-	if !params.Description.Valid {
-		params.Description = dash.Description
-	}
-	if params.Name == "" {
-		params.Name = dash.Name
-	}
-
-	if err := d.queries.UpdateDashboard(d.ctx, params); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error listing dashboards from db: %v", err.Error())
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
-func (d *Dashboard) handlerCreateDashboard(w http.ResponseWriter, r *http.Request) {
-	bs, err := io.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "error reading request POST payload")
-		return
-	}
-	params := dashdb.CreateDashboardParams{}
-	if err := json.Unmarshal(bs, &params); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "invalid json: %v", err.Error())
-		return
-	}
-
-	if params.Url == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "url cannot be empty")
-		return
-	}
-
-	if params.Name == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "name cannot be empty")
-		return
-	}
-
-	dash, err := d.queries.CreateDashboard(d.ctx, params)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "error creating dashboard: %v", err.Error())
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(dash)
-}
-
-func (d *Dashboard) handlerCreateDashboardWidget(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	dashboardURL := vars["url"]
-	if dashboardURL == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "dashboard url missing")
-		return
-	}
-
-	type reqParams struct {
-		Prompt string
-	}
-
-	bs, err := io.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "error reading request POST payload")
-		return
-	}
-	params := reqParams{}
-	if err := json.Unmarshal(bs, &params); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "invalid json: %v", err.Error())
-		return
-	}
-	if params.Prompt == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "prompt cannot be empty")
-		return
-	}
-
-	order, err := d.queries.GetDashboardWidgetNextWidgetOrder(d.ctx, pgText(dashboardURL))
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "couldn't get next widget order: %v", err)
-		return
-	}
-
-	// Create widget with empty config initially
-	emptyConfig := WidgetConfig{Type: WidgetTypeTable} // Default type
-	configBytes, err := widgetConfigToBytes(emptyConfig)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "failed to marshal default config: %v", err)
-		return
-	}
-
-	createDashboardWidgetParams := dashdb.CreateDashboardWidgetParams{
-		DashboardID: pgText(dashboardURL),
-		WidgetOrder: pgInt(int(order)),
-		Name:        "New Widget",
-		Description: pgtype.Text{String: "", Valid: false},
-		Config:      configBytes,
-		Query:       "",
-	}
-	widget, err := d.queries.CreateDashboardWidget(d.ctx, createDashboardWidgetParams)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "failed to create widget: %v", err)
-		return
-	}
-
-	if err := d.updateWidgetViaPrompt(widget, params.Prompt); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "failed to update widget using prompt via AI: %v", err)
-		return
-	}
-
-	againWidget, err := d.queries.GetDashboardWidget(d.ctx, widget.ID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "failed to get created widget: %v", err)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(againWidget)
-}
-
-func (d *Dashboard) updateWidgetViaPrompt(widget dashdb.DashboardWidget, prompt string) error {
-	conv, err := d.ai.NewConversation(widget.ID)
-	if err != nil {
-		return fmt.Errorf("failed to create conversation with AI: %v", err)
-	}
-	d.conversations[int(widget.ID)] = conv
-
-	resp, err := conv.Prompt(prompt)
-	if err != nil {
-		return fmt.Errorf("failed to prompt AI to create widget: %v", err)
-	}
-
-	configBytes, err := widgetConfigToBytes(resp.Config)
-	if err != nil {
-		return fmt.Errorf("failed to marshal config: %v", err)
-	}
-
-	updateDashboardWidgetParams := dashdb.UpdateDashboardWidgetParams{
-		ID:          int64(widget.ID),
-		WidgetOrder: pgInt(int(widget.WidgetOrder.Int64)),
-		Name:        resp.Title,
-		Description: pgtype.Text{String: resp.Description, Valid: true},
-		Query:       resp.SQLQuery,
-		Config:      configBytes,
-	}
-	if err := d.queries.UpdateDashboardWidget(d.ctx, updateDashboardWidgetParams); err != nil {
-		return fmt.Errorf("failed to update widget: %v", err)
-	}
-	return nil
-}
-
-func (d *Dashboard) handlerHealthcheck(w http.ResponseWriter, r *http.Request) {
-	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
-}
-
-func pgInt(i int) pgtype.Int8 {
-	return pgtype.Int8{Int64: int64(i), Valid: true}
-}
-
-func pgText(s string) pgtype.Text {
-	return pgtype.Text{String: s, Valid: true}
-}
 
 // widgetConfigToBytes converts WidgetConfig to []byte for database storage
 func widgetConfigToBytes(config WidgetConfig) ([]byte, error) {
@@ -646,62 +132,38 @@ func bytesToWidgetConfig(data []byte) (WidgetConfig, error) {
 }
 
 func (d *Dashboard) executeQuery(query string) ([]map[string]any, error) {
-	rows, err := d.pool.Query(d.ctx, query)
+	rows, err := d.db.QueryContext(d.ctx, query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	columns := rows.FieldDescriptions()
-	columnNames := make([]string, len(columns))
-	for i, col := range columns {
-		columnNames[i] = string(col.Name)
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, err
 	}
 
 	var results []map[string]any
 	for rows.Next() {
-		values, err := rows.Values()
-		if err != nil {
+		values := make([]any, len(columns))
+		valuePtrs := make([]any, len(columns))
+		for i := range values {
+			valuePtrs[i] = &values[i]
+		}
+
+		if err := rows.Scan(valuePtrs...); err != nil {
 			return nil, err
 		}
 
 		row := make(map[string]any)
-		for i, col := range columnNames {
+		for i, col := range columns {
 			val := values[i]
-			// Convert pgtype types to native Go types for JSON serialization
+			// Convert to native Go types for JSON serialization
 			switch v := val.(type) {
-			case pgtype.Text:
-				if v.Valid {
-					row[col] = v.String
-				} else {
-					row[col] = nil
-				}
-			case pgtype.Int8:
-				if v.Valid {
-					row[col] = v.Int64
-				} else {
-					row[col] = nil
-				}
-			case pgtype.Float8:
-				if v.Valid {
-					row[col] = v.Float64
-				} else {
-					row[col] = nil
-				}
-			case pgtype.Bool:
-				if v.Valid {
-					row[col] = v.Bool
-				} else {
-					row[col] = nil
-				}
-			case pgtype.Timestamp:
-				if v.Valid {
-					row[col] = v.Time
-				} else {
-					row[col] = nil
-				}
 			case []byte:
 				row[col] = string(v)
+			case nil:
+				row[col] = nil
 			default:
 				row[col] = val
 			}
