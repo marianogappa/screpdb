@@ -40,4 +40,3 @@ func (d *SecondsToFirstFactoryBuildTriggeredReplayDetector) GetResult() *core.Pa
 func (d *SecondsToFirstFactoryBuildTriggeredReplayDetector) ShouldSave() bool {
 	return d.IsFinished() && d.firstOccurrence.IsMatched()
 }
-
