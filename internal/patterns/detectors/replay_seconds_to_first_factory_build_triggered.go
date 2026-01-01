@@ -7,70 +7,37 @@ import (
 
 // SecondsToFirstFactoryBuildTriggeredReplayDetector detects the seconds to first Factory build triggered in the replay
 type SecondsToFirstFactoryBuildTriggeredReplayDetector struct {
-	replay   *models.Replay
-	players  []*models.Player
-	seconds  *int
-	finished bool
+	BaseReplayDetector
+	firstOccurrence FirstOccurrenceDetector
 }
 
 // NewSecondsToFirstFactoryBuildTriggeredReplayDetector creates a new replay-level detector
 func NewSecondsToFirstFactoryBuildTriggeredReplayDetector() *SecondsToFirstFactoryBuildTriggeredReplayDetector {
-	return &SecondsToFirstFactoryBuildTriggeredReplayDetector{
-		finished: false,
-	}
+	return &SecondsToFirstFactoryBuildTriggeredReplayDetector{}
 }
 
 func (d *SecondsToFirstFactoryBuildTriggeredReplayDetector) Name() string {
 	return "Seconds to First Factory Build Triggered"
 }
 
-func (d *SecondsToFirstFactoryBuildTriggeredReplayDetector) Level() core.DetectorLevel {
-	return core.LevelReplay
-}
-
-func (d *SecondsToFirstFactoryBuildTriggeredReplayDetector) Initialize(replay *models.Replay, players []*models.Player) {
-	d.replay = replay
-	d.players = players
-}
-
 func (d *SecondsToFirstFactoryBuildTriggeredReplayDetector) ProcessCommand(command *models.Command) bool {
-	// Process commands from any player
-	if command.Player == nil {
+	if !d.ShouldProcessCommand(command) {
 		return false
 	}
 
-	// Check if this is a Factory build command
-	if command.ActionType == models.ActionTypeBuild &&
-		command.UnitType != nil && *command.UnitType == models.GeneralUnitFactory {
-		seconds := command.SecondsFromGameStart
-		d.seconds = &seconds
-		d.finished = true
+	matcher := MatchActionAndUnit(models.ActionTypeBuild, models.GeneralUnitFactory)
+	if d.firstOccurrence.ProcessFirstOccurrence(command, matcher) {
+		d.SetFinished(true)
 		return true
 	}
-
 	return false
 }
 
-func (d *SecondsToFirstFactoryBuildTriggeredReplayDetector) IsFinished() bool {
-	return d.finished
-}
-
 func (d *SecondsToFirstFactoryBuildTriggeredReplayDetector) GetResult() *core.PatternResult {
-	// Only return a result if we detected the command
-	if !d.finished || d.seconds == nil {
-		return nil
-	}
-
-	return &core.PatternResult{
-		PatternName: d.Name(),
-		Level:       d.Level(),
-		ReplayID:    d.replay.ID,
-		ValueInt:    d.seconds,
-	}
+	return d.BuildReplayResult(d.Name(), nil, d.firstOccurrence.GetSeconds(), nil, nil)
 }
 
 func (d *SecondsToFirstFactoryBuildTriggeredReplayDetector) ShouldSave() bool {
-	// Only save if we detected the command
-	return d.finished && d.seconds != nil
+	return d.IsFinished() && d.firstOccurrence.IsMatched()
 }
 

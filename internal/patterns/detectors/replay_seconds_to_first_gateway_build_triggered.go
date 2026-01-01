@@ -7,70 +7,37 @@ import (
 
 // SecondsToFirstGatewayBuildTriggeredReplayDetector detects the seconds to first Gateway build triggered in the replay
 type SecondsToFirstGatewayBuildTriggeredReplayDetector struct {
-	replay   *models.Replay
-	players  []*models.Player
-	seconds  *int
-	finished bool
+	BaseReplayDetector
+	firstOccurrence FirstOccurrenceDetector
 }
 
 // NewSecondsToFirstGatewayBuildTriggeredReplayDetector creates a new replay-level detector
 func NewSecondsToFirstGatewayBuildTriggeredReplayDetector() *SecondsToFirstGatewayBuildTriggeredReplayDetector {
-	return &SecondsToFirstGatewayBuildTriggeredReplayDetector{
-		finished: false,
-	}
+	return &SecondsToFirstGatewayBuildTriggeredReplayDetector{}
 }
 
 func (d *SecondsToFirstGatewayBuildTriggeredReplayDetector) Name() string {
 	return "Seconds to First Gateway Build Triggered"
 }
 
-func (d *SecondsToFirstGatewayBuildTriggeredReplayDetector) Level() core.DetectorLevel {
-	return core.LevelReplay
-}
-
-func (d *SecondsToFirstGatewayBuildTriggeredReplayDetector) Initialize(replay *models.Replay, players []*models.Player) {
-	d.replay = replay
-	d.players = players
-}
-
 func (d *SecondsToFirstGatewayBuildTriggeredReplayDetector) ProcessCommand(command *models.Command) bool {
-	// Process commands from any player
-	if command.Player == nil {
+	if !d.ShouldProcessCommand(command) {
 		return false
 	}
 
-	// Check if this is a Gateway build command
-	if command.ActionType == models.ActionTypeBuild &&
-		command.UnitType != nil && *command.UnitType == models.GeneralUnitGateway {
-		seconds := command.SecondsFromGameStart
-		d.seconds = &seconds
-		d.finished = true
+	matcher := MatchActionAndUnit(models.ActionTypeBuild, models.GeneralUnitGateway)
+	if d.firstOccurrence.ProcessFirstOccurrence(command, matcher) {
+		d.SetFinished(true)
 		return true
 	}
-
 	return false
 }
 
-func (d *SecondsToFirstGatewayBuildTriggeredReplayDetector) IsFinished() bool {
-	return d.finished
-}
-
 func (d *SecondsToFirstGatewayBuildTriggeredReplayDetector) GetResult() *core.PatternResult {
-	// Only return a result if we detected the command
-	if !d.finished || d.seconds == nil {
-		return nil
-	}
-
-	return &core.PatternResult{
-		PatternName: d.Name(),
-		Level:       d.Level(),
-		ReplayID:    d.replay.ID,
-		ValueInt:    d.seconds,
-	}
+	return d.BuildReplayResult(d.Name(), nil, d.firstOccurrence.GetSeconds(), nil, nil)
 }
 
 func (d *SecondsToFirstGatewayBuildTriggeredReplayDetector) ShouldSave() bool {
-	// Only save if we detected the command
-	return d.finished && d.seconds != nil
+	return d.IsFinished() && d.firstOccurrence.IsMatched()
 }
 

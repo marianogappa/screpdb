@@ -7,70 +7,37 @@ import (
 
 // SecondsToFirstSpawningPoolMorphTriggeredReplayDetector detects the seconds to first Spawning Pool morph triggered in the replay
 type SecondsToFirstSpawningPoolMorphTriggeredReplayDetector struct {
-	replay   *models.Replay
-	players  []*models.Player
-	seconds  *int
-	finished bool
+	BaseReplayDetector
+	firstOccurrence FirstOccurrenceDetector
 }
 
 // NewSecondsToFirstSpawningPoolMorphTriggeredReplayDetector creates a new replay-level detector
 func NewSecondsToFirstSpawningPoolMorphTriggeredReplayDetector() *SecondsToFirstSpawningPoolMorphTriggeredReplayDetector {
-	return &SecondsToFirstSpawningPoolMorphTriggeredReplayDetector{
-		finished: false,
-	}
+	return &SecondsToFirstSpawningPoolMorphTriggeredReplayDetector{}
 }
 
 func (d *SecondsToFirstSpawningPoolMorphTriggeredReplayDetector) Name() string {
 	return "Seconds to First Spawning Pool Morph Triggered"
 }
 
-func (d *SecondsToFirstSpawningPoolMorphTriggeredReplayDetector) Level() core.DetectorLevel {
-	return core.LevelReplay
-}
-
-func (d *SecondsToFirstSpawningPoolMorphTriggeredReplayDetector) Initialize(replay *models.Replay, players []*models.Player) {
-	d.replay = replay
-	d.players = players
-}
-
 func (d *SecondsToFirstSpawningPoolMorphTriggeredReplayDetector) ProcessCommand(command *models.Command) bool {
-	// Process commands from any player
-	if command.Player == nil {
+	if !d.ShouldProcessCommand(command) {
 		return false
 	}
 
-	// Check if this is a Spawning Pool build command (it's built, not morphed)
-	if command.ActionType == models.ActionTypeBuild &&
-		command.UnitType != nil && *command.UnitType == models.GeneralUnitSpawningPool {
-		seconds := command.SecondsFromGameStart
-		d.seconds = &seconds
-		d.finished = true
+	matcher := MatchActionAndUnit(models.ActionTypeBuild, models.GeneralUnitSpawningPool)
+	if d.firstOccurrence.ProcessFirstOccurrence(command, matcher) {
+		d.SetFinished(true)
 		return true
 	}
-
 	return false
 }
 
-func (d *SecondsToFirstSpawningPoolMorphTriggeredReplayDetector) IsFinished() bool {
-	return d.finished
-}
-
 func (d *SecondsToFirstSpawningPoolMorphTriggeredReplayDetector) GetResult() *core.PatternResult {
-	// Only return a result if we detected the command
-	if !d.finished || d.seconds == nil {
-		return nil
-	}
-
-	return &core.PatternResult{
-		PatternName: d.Name(),
-		Level:       d.Level(),
-		ReplayID:    d.replay.ID,
-		ValueInt:    d.seconds,
-	}
+	return d.BuildReplayResult(d.Name(), nil, d.firstOccurrence.GetSeconds(), nil, nil)
 }
 
 func (d *SecondsToFirstSpawningPoolMorphTriggeredReplayDetector) ShouldSave() bool {
-	// Only save if we detected the command
-	return d.finished && d.seconds != nil
+	return d.IsFinished() && d.firstOccurrence.IsMatched()
 }
 
