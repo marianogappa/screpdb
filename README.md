@@ -1,4 +1,4 @@
-# ScrepDB - StarCraft Replay Database
+# ScrepDB - StarCraft Replay Database 
 
 A comprehensive CLI tool for ingesting StarCraft: Brood War replay files into a database and providing MCP (Model Context Protocol) server functionality for querying replay data.
 
