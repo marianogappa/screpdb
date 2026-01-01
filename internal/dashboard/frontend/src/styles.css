@@ -712,10 +712,221 @@ body {
   color: rgba(255, 255, 255, 0.6);
 }
 
+/* Fullscreen Widget Editor */
+.fullscreen-editor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #0a0a0f;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fullscreen-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(20, 20, 30, 0.95);
+  flex-shrink: 0;
+}
+
+.fullscreen-editor-header h2 {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.fullscreen-editor-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.fullscreen-editor-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.fullscreen-editor-left {
+  width: 50%;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  overflow-y: auto;
+  background: rgba(15, 15, 25, 0.8);
+  padding: 24px;
+}
+
+.fullscreen-editor-right {
+  width: 50%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: rgba(20, 20, 30, 0.8);
+}
+
+.fullscreen-editor-section {
+  margin-bottom: 32px;
+}
+
+.fullscreen-editor-section h3 {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fullscreen-editor-preview {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 24px;
+}
+
+.fullscreen-editor-preview h3 {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.fullscreen-editor-preview-content {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sql-editor-wrapper {
+  position: relative;
+  min-height: 400px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.sql-editor-wrapper:focus-within {
+  border-color: rgba(100, 150, 255, 0.6);
+  box-shadow: 0 0 10px rgba(100, 150, 255, 0.2);
+}
+
+.sql-editor-highlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 10px;
+  margin: 0;
+  background: transparent;
+  color: transparent;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow: hidden;
+  pointer-events: none;
+  border: none;
+  tab-size: 2;
+  z-index: 1;
+  box-sizing: border-box;
+}
+
+.sql-editor-highlight .sql-keyword {
+  color: #64a0ff;
+  font-weight: 600;
+}
+
+.sql-editor-highlight .sql-string {
+  color: #98d982;
+}
+
+.sql-editor-highlight .sql-number {
+  color: #f28e2c;
+}
+
+.sql-editor-highlight .sql-comment {
+  color: #888;
+  font-style: italic;
+}
+
+.sql-editor-input {
+  position: relative;
+  width: 100%;
+  min-height: 400px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 10px;
+  margin: 0;
+  background: transparent;
+  border: none;
+  color: #e0e0e0;
+  tab-size: 2;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+  resize: none;
+  z-index: 2;
+  caret-color: #e0e0e0;
+  box-sizing: border-box;
+}
+
+.sql-editor-input:focus {
+  outline: none;
+}
+
+.sql-editor-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+  opacity: 1;
+}
+
+.sql-editor-input::selection {
+  background: rgba(100, 150, 255, 0.3);
+}
+
+.query-status {
+  margin-top: 8px;
+  font-size: 12px;
+  color: rgba(100, 150, 255, 0.8);
+  font-style: italic;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
   .widgets-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .fullscreen-editor-content {
+    flex-direction: column;
+  }
+
+  .fullscreen-editor-left {
+    width: 100%;
+    max-height: 50%;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .fullscreen-editor-right {
+    width: 100%;
+    max-height: 50%;
   }
 }
 
@@ -731,6 +942,14 @@ body {
 
   .prompt-form {
     flex-direction: column;
+  }
+
+  .fullscreen-editor-left {
+    padding: 16px;
+  }
+
+  .fullscreen-editor-preview {
+    padding: 16px;
   }
 }
 

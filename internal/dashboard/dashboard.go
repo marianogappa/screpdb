@@ -55,6 +55,7 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/dashboard/{url}/widget/{wid}", d.handlerDeleteDashboardWidget).Methods(http.MethodDelete, http.MethodOptions)
 	r.HandleFunc("/api/dashboard/{url}/widget", d.handlerCreateDashboardWidget).Methods(http.MethodPut, http.MethodOptions)
 	r.HandleFunc("/api/dashboard/{url}/widget/{wid}", d.handlerUpdateDashboardWidget).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/api/query", d.handlerExecuteQuery).Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/api/health", d.handlerHealthcheck).Methods(http.MethodGet, http.MethodOptions)
 	http.Handle("/", r)
@@ -114,7 +115,6 @@ func (d *Dashboard) StartAsync() <-chan error {
 
 	return errChan
 }
-
 
 // widgetConfigToBytes converts WidgetConfig to []byte for database storage
 func widgetConfigToBytes(config WidgetConfig) ([]byte, error) {
