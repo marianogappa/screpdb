@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.0](https://github.com/marianogappa/screpdb/compare/v0.13.4...v0.14.0) (2026-01-01)
+
+
+### Features
+
+* Add seconds_from_game_start to commands. ([055b1c5](https://github.com/marianogappa/screpdb/commit/055b1c52362b4a16727b987067c545c6fb9e7757))
+* Add seconds_from_game_start to commands. ([4263854](https://github.com/marianogappa/screpdb/commit/4263854fbde6ac1165c6b850be517a94d52e4674))
+
 ## [0.13.4](https://github.com/marianogappa/screpdb/compare/v0.13.3...v0.13.4) (2025-11-26)
 
 
