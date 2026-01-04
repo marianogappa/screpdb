@@ -23,9 +23,13 @@ type AI struct {
 }
 
 func NewAI(ctx context.Context, openaiAPIKey string, store storage.Storage, db *sql.DB, debug bool) (*AI, error) {
-	llm, err := openai.New(openai.WithToken(openaiAPIKey), openai.WithResponseFormat(responseFormat))
-	if err != nil {
-		return nil, err
+	var llm *openai.LLM
+	var err error
+	if openaiAPIKey != "" {
+		llm, err = openai.New(openai.WithToken(openaiAPIKey), openai.WithResponseFormat(responseFormat))
+		if err != nil {
+			return nil, err
+		}
 	}
 	promptHistoryStore := history.NewPromptHistoryStorage(db, true)
 	return &AI{ctx: ctx, llm: llm, store: store, promptHistoryStore: promptHistoryStore, debug: debug}, nil
@@ -55,6 +59,9 @@ type StructuredResponse struct {
 }
 
 func (c *Conversation) Prompt(prompt string) (StructuredResponse, error) {
+	if c.ai.llm == nil {
+		return StructuredResponse{}, fmt.Errorf("OpenAI API key not configured")
+	}
 	definedParser, err := outputparser.NewDefined(StructuredResponse{})
 	if err != nil {
 		return StructuredResponse{}, err
@@ -99,4 +106,8 @@ func (s *AI) logf(message string, args ...any) {
 		return
 	}
 	log.Printf(message, args...)
+}
+
+func (a *AI) IsAvailable() bool {
+	return a.llm != nil
 }

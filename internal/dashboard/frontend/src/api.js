@@ -58,10 +58,11 @@ export const api = {
 
   // Widget endpoints
   createWidget: async (dashboardUrl, prompt) => {
+    const body = prompt ? { Prompt: prompt } : {};
     const response = await fetch(`${API_BASE}/dashboard/${dashboardUrl}/widget`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ Prompt: prompt }),
+      body: JSON.stringify(body),
     });
     if (!response.ok) {
       const text = await response.text();

@@ -118,6 +118,30 @@ function PieChart({ data, config }) {
     // Calculate total for percentages
     const total = d3.sum(data, x => Number(x[config.pie_value_column]) || 0);
 
+    // Add total in the center of the pie chart
+    const centerText = pieGroup.append('g')
+      .attr('text-anchor', 'middle')
+      .attr('pointer-events', 'none');
+
+    centerText.append('text')
+      .attr('y', -8)
+      .attr('fill', '#fff')
+      .attr('font-size', '24px')
+      .attr('font-weight', '600')
+      .text('Total');
+
+    centerText.append('text')
+      .attr('y', 20)
+      .attr('fill', 'rgba(255, 255, 255, 0.9)')
+      .attr('font-size', '20px')
+      .attr('font-weight', '400')
+      .text(() => {
+        // Format number with commas for readability
+        return total.toLocaleString('en-US', { 
+          maximumFractionDigits: 0 
+        });
+      });
+
     // Add legend on the right side
     const legendX = width - legendWidth + 10;
     const legendY = (height - legendHeight) / 2;

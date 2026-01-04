@@ -19,7 +19,7 @@ func (d *Dashboard) handlerCreateDashboardWidget(w http.ResponseWriter, r *http.
 	}
 
 	type reqParams struct {
-		Prompt string
+		Prompt string `json:"Prompt"`
 	}
 
 	bs, err := io.ReadAll(r.Body)
@@ -34,12 +34,91 @@ func (d *Dashboard) handlerCreateDashboardWidget(w http.ResponseWriter, r *http.
 		_, _ = w.Write([]byte("invalid json: " + err.Error()))
 		return
 	}
-	if params.Prompt == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("prompt cannot be empty"))
+
+	// If prompt is provided, use AI to create widget
+	if params.Prompt != "" {
+		if !d.ai.IsAvailable() {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("OpenAI API key not configured. Cannot create widget with prompt."))
+			return
+		}
+	} else {
+		// Create widget without prompt - user will edit it manually
+		order, err := d.getNextWidgetOrder(d.ctx, dashboardURL)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("couldn't get next widget order: " + err.Error()))
+			return
+		}
+
+		emptyConfig := WidgetConfig{Type: WidgetTypeTable}
+		configBytes, err := widgetConfigToBytes(emptyConfig)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("failed to marshal default config: " + err.Error()))
+			return
+		}
+
+		widget, err := d.createDashboardWidget(d.ctx, dashboardURL, order, "New Widget", nil, configBytes, "")
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("failed to create widget: " + err.Error()))
+			return
+		}
+
+		againWidget, err := d.getDashboardWidgetByID(d.ctx, widget.ID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("failed to get created widget: " + err.Error()))
+			return
+		}
+
+		config, err := bytesToWidgetConfig([]byte(againWidget.Config))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("error parsing config: " + err.Error()))
+			return
+		}
+
+		type WidgetResponse struct {
+			ID          int64        `json:"id"`
+			DashboardID *string      `json:"dashboard_id"`
+			WidgetOrder *int64       `json:"widget_order"`
+			Name        string       `json:"name"`
+			Description *string      `json:"description"`
+			Config      WidgetConfig `json:"config"`
+			Query       string       `json:"query"`
+			CreatedAt   *string      `json:"created_at"`
+			UpdatedAt   *string      `json:"updated_at"`
+		}
+		var createdAt *string
+		if againWidget.CreatedAt != nil {
+			ts := againWidget.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
+			createdAt = &ts
+		}
+		var updatedAt *string
+		if againWidget.UpdatedAt != nil {
+			ts := againWidget.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
+			updatedAt = &ts
+		}
+		response := WidgetResponse{
+			ID:          againWidget.ID,
+			DashboardID: againWidget.DashboardID,
+			WidgetOrder: againWidget.WidgetOrder,
+			Name:        againWidget.Name,
+			Description: againWidget.Description,
+			Config:      config,
+			Query:       againWidget.Query,
+			CreatedAt:   createdAt,
+			UpdatedAt:   updatedAt,
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(response)
 		return
 	}
 
+	// Prompt-based widget creation (existing flow)
 	order, err := d.getNextWidgetOrder(d.ctx, dashboardURL)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -103,16 +182,23 @@ func (d *Dashboard) handlerCreateDashboardWidget(w http.ResponseWriter, r *http.
 		return
 	}
 
+	config, err := bytesToWidgetConfig([]byte(againWidget.Config))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte("error parsing config: " + err.Error()))
+		return
+	}
+
 	type WidgetResponse struct {
-		ID          int64   `json:"id"`
-		DashboardID *string `json:"dashboard_id"`
-		WidgetOrder *int64  `json:"widget_order"`
-		Name        string  `json:"name"`
-		Description *string `json:"description"`
-		Config      []byte  `json:"config"`
-		Query       string  `json:"query"`
-		CreatedAt   *string `json:"created_at"`
-		UpdatedAt   *string `json:"updated_at"`
+		ID          int64        `json:"id"`
+		DashboardID *string      `json:"dashboard_id"`
+		WidgetOrder *int64       `json:"widget_order"`
+		Name        string       `json:"name"`
+		Description *string      `json:"description"`
+		Config      WidgetConfig `json:"config"`
+		Query       string       `json:"query"`
+		CreatedAt   *string      `json:"created_at"`
+		UpdatedAt   *string      `json:"updated_at"`
 	}
 	var createdAt *string
 	if againWidget.CreatedAt != nil {
@@ -130,7 +216,7 @@ func (d *Dashboard) handlerCreateDashboardWidget(w http.ResponseWriter, r *http.
 		WidgetOrder: againWidget.WidgetOrder,
 		Name:        againWidget.Name,
 		Description: againWidget.Description,
-		Config:      []byte(againWidget.Config),
+		Config:      config,
 		Query:       againWidget.Query,
 		CreatedAt:   createdAt,
 		UpdatedAt:   updatedAt,
@@ -139,4 +225,3 @@ func (d *Dashboard) handlerCreateDashboardWidget(w http.ResponseWriter, r *http.
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(response)
 }
-

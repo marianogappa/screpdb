@@ -35,7 +35,7 @@ function Histogram({ data, config }) {
   }, []);
 
   useEffect(() => {
-    if (!data || data.length === 0 || !config.histogram_value_column || dimensions.width === 0) {
+    if (!data || data.length === 0 || !config?.histogram_value_column || dimensions.width === 0 || !svgRef.current) {
       return;
     }
 
@@ -43,6 +43,11 @@ function Histogram({ data, config }) {
     const width = dimensions.width - margin.left - margin.right;
     const height = dimensions.height - margin.top - margin.bottom;
 
+    if (width <= 0 || height <= 0) {
+      return;
+    }
+
+    // Clear existing content
     d3.select(svgRef.current).selectAll('*').remove();
 
     const svg = d3.select(svgRef.current)
@@ -52,16 +57,24 @@ function Histogram({ data, config }) {
       .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
     const values = data.map(d => Number(d[config.histogram_value_column]) || 0).filter(v => !isNaN(v));
+    
+    if (values.length === 0) {
+      return;
+    }
+
     const bins = config.histogram_bins || Math.ceil(Math.sqrt(values.length));
 
-    const histogram = d3.histogram()
+    // Use d3.bin() for d3 v4+ (replaces d3.histogram())
+    const binsData = d3.bin()
       .domain(d3.extent(values))
-      .thresholds(bins);
+      .thresholds(bins)(values);
 
-    const binsData = histogram(values);
+    if (binsData.length === 0) {
+      return;
+    }
 
     const xScale = d3.scaleLinear()
-      .domain(d3.extent(values))
+      .domain([binsData[0].x0, binsData[binsData.length - 1].x1])
       .range([0, width]);
 
     const yScale = d3.scaleLinear()
@@ -89,7 +102,7 @@ function Histogram({ data, config }) {
       .attr('class', 'bar')
       .attr('x', d => xScale(d.x0))
       .attr('y', d => yScale(d.length))
-      .attr('width', d => xScale(d.x1) - xScale(d.x0) - 1)
+      .attr('width', d => Math.max(0, xScale(d.x1) - xScale(d.x0) - 1))
       .attr('height', d => height - yScale(d.length))
       .attr('fill', DEFAULT_COLORS[0])
       .attr('opacity', 0.7);
