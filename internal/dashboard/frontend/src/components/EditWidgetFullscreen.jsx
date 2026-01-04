@@ -33,6 +33,8 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
   const [previewError, setPreviewError] = useState(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [lastExecutedQuery, setLastExecutedQuery] = useState('');
+  const [variables, setVariables] = useState({});
+  const [variableValues, setVariableValues] = useState({});
 
   useEffect(() => {
     if (widget) {
@@ -46,7 +48,41 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
     }
   }, [widget]);
 
-  const executeQuery = useCallback(async (sqlQuery) => {
+  // Fetch variables when query changes
+  useEffect(() => {
+    const fetchVariables = async () => {
+      if (!query.trim()) {
+        setVariables({});
+        setVariableValues({});
+        return;
+      }
+
+      try {
+        const response = await api.getQueryVariables(query);
+        const vars = response.variables || {};
+        setVariables(vars);
+        
+        // Initialize variable values with first option if not set
+        setVariableValues(prev => {
+          const newValues = { ...prev };
+          Object.keys(vars).forEach(varName => {
+            if (!newValues[varName] && vars[varName].possible_values?.length > 0) {
+              newValues[varName] = vars[varName].possible_values[0];
+            }
+          });
+          return newValues;
+        });
+      } catch (err) {
+        console.error('Failed to fetch variables:', err);
+        setVariables({});
+      }
+    };
+
+    const timeoutId = setTimeout(fetchVariables, 300);
+    return () => clearTimeout(timeoutId);
+  }, [query]);
+
+  const executeQuery = useCallback(async (sqlQuery, varValues = null) => {
     if (!sqlQuery.trim()) {
       setPreviewData([]);
       setPreviewError(null);
@@ -56,7 +92,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
     setIsExecuting(true);
     setPreviewError(null);
     try {
-      const response = await api.executeQuery(sqlQuery);
+      const response = await api.executeQuery(sqlQuery, varValues || variableValues);
       setPreviewData(response.results || []);
       setLastExecutedQuery(sqlQuery);
     } catch (err) {
@@ -65,7 +101,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
     } finally {
       setIsExecuting(false);
     }
-  }, []);
+  }, [variableValues]);
 
   // Debounced query execution
   useEffect(() => {
@@ -76,7 +112,15 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [query, executeQuery, lastExecutedQuery]);
+  }, [query, executeQuery, lastExecutedQuery, variableValues]);
+
+  const handleVariableChange = (varName, value) => {
+    setVariableValues(prev => ({ ...prev, [varName]: value }));
+    // Re-execute query with new variable value
+    if (query && query.trim()) {
+      executeQuery(query, { ...variableValues, [varName]: value });
+    }
+  };
 
   const updateConfig = (field, value) => {
     setConfig(prev => ({ ...prev, [field]: value }));
@@ -483,6 +527,32 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
 
           <div className="fullscreen-editor-section">
             <h3>SQL Query</h3>
+            {Object.keys(variables).length > 0 && (
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>Variables</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {Object.entries(variables).map(([varName, variable]) => (
+                    <div key={varName} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <label htmlFor={`var-${varName}`} style={{ fontSize: '0.875rem', fontWeight: '500' }}>
+                        {variable.display_name}
+                      </label>
+                      <select
+                        id={`var-${varName}`}
+                        value={variableValues[varName] || ''}
+                        onChange={(e) => handleVariableChange(varName, e.target.value)}
+                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: '#1a1a1a', color: '#fff' }}
+                      >
+                        {variable.possible_values?.map((value, idx) => (
+                          <option key={idx} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="form-group">
               <SqlEditor
                 value={query}

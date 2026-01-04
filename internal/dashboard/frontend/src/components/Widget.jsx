@@ -27,9 +27,19 @@ function Widget({ widget, onDelete, onUpdate }) {
       return <div className="chart-empty">Invalid widget configuration</div>;
     }
 
+    // Ensure config is an object (handle case where it might be a string)
+    let config = widget.config;
+    if (typeof config === 'string') {
+      try {
+        config = JSON.parse(config);
+      } catch (e) {
+        return <div className="chart-empty">Error parsing widget configuration</div>;
+      }
+    }
+
     const chartProps = {
       data: widget.results || [],
-      config: widget.config,
+      config: config,
     };
 
     switch (widget.config.type) {

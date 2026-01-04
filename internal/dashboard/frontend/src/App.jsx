@@ -16,14 +16,36 @@ function App() {
   const [showEditDashboard, setShowEditDashboard] = useState(false);
   const [newWidgetPrompt, setNewWidgetPrompt] = useState('');
   const [creatingWidget, setCreatingWidget] = useState(false);
+  const [variableValues, setVariableValues] = useState({});
 
-  const loadDashboard = async (url) => {
+  const loadDashboard = async (url, varValues = null, skipVarInit = false) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await api.getDashboard(url);
+      const data = await api.getDashboard(url, varValues);
       setDashboard(data);
       setCurrentDashboardUrl(url);
+      // Update variable values state
+      if (varValues) {
+        setVariableValues(varValues);
+      } else if (data.variables && !skipVarInit) {
+        // Initialize variable values with first option if not set
+        const newVarValues = {};
+        let needsReload = false;
+        Object.keys(data.variables).forEach(varName => {
+          if (data.variables[varName].possible_values?.length > 0) {
+            newVarValues[varName] = data.variables[varName].possible_values[0];
+            needsReload = true;
+          }
+        });
+        if (needsReload && Object.keys(newVarValues).length > 0) {
+          setVariableValues(newVarValues);
+          // Reload with initialized values
+          await loadDashboard(url, newVarValues, true);
+          return;
+        }
+        setVariableValues(newVarValues);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -97,7 +119,14 @@ function App() {
   };
 
   const handleSwitchDashboard = (url) => {
+    setVariableValues({});
     loadDashboard(url);
+  };
+
+  const handleVariableChange = async (varName, value) => {
+    const newVarValues = { ...variableValues, [varName]: value };
+    setVariableValues(newVarValues);
+    await loadDashboard(currentDashboardUrl, newVarValues);
   };
 
   const sortedWidgets = dashboard?.widgets
@@ -171,6 +200,30 @@ function App() {
               Create Widget
             </button>
           </form>
+          
+          {dashboard?.variables && Object.keys(dashboard.variables).length > 0 && (
+            <div className="variables-container" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+              {Object.entries(dashboard.variables).map(([varName, variable]) => (
+                <div key={varName} className="variable-select" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <label htmlFor={`var-${varName}`} style={{ fontSize: '0.875rem', fontWeight: '500' }}>
+                    {variable.display_name}
+                  </label>
+                  <select
+                    id={`var-${varName}`}
+                    value={variableValues[varName] || ''}
+                    onChange={(e) => handleVariableChange(varName, e.target.value)}
+                    style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', minWidth: '200px' }}
+                  >
+                    {variable.possible_values?.map((value, idx) => (
+                      <option key={idx} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {error && <div className="error-message">{error}</div>}

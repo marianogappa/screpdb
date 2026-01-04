@@ -12,8 +12,8 @@ function PieChart({ data, config }) {
     const updateDimensions = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
-        // Use minimum to keep it circular
-        const size = Math.min(width, height, 400);
+        // Use minimum to keep it circular, but ensure we have some size
+        const size = Math.max(Math.min(width, height, 400), 200);
         setDimensions(prev => {
           if (Math.abs(prev.width - size) > 1 || Math.abs(prev.height - size) > 1) {
             return { width: size, height: size };
@@ -23,19 +23,30 @@ function PieChart({ data, config }) {
       }
     };
 
+    // Initial update
     updateDimensions();
+    
+    // Also try after a short delay in case container isn't ready yet
+    const timeoutId = setTimeout(updateDimensions, 100);
+    
     const resizeObserver = new ResizeObserver(updateDimensions);
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current);
     }
 
     return () => {
+      clearTimeout(timeoutId);
       resizeObserver.disconnect();
     };
-  }, []);
+  }, [data, config]); // Re-run when data or config changes
 
   useEffect(() => {
-    if (!data || data.length === 0 || !config.pie_label_column || !config.pie_value_column || dimensions.width === 0) {
+    if (!data || data.length === 0 || !config.pie_label_column || !config.pie_value_column) {
+      return;
+    }
+    
+    // Wait for dimensions to be set
+    if (dimensions.width === 0 || dimensions.height === 0) {
       return;
     }
 
@@ -156,9 +167,56 @@ function PieChart({ data, config }) {
     return <div className="chart-empty">No data available</div>;
   }
 
+  if (!config || !config.pie_label_column || !config.pie_value_column) {
+    const missingFields = [];
+    if (!config) {
+      missingFields.push('config');
+    } else {
+      if (!config.pie_label_column) missingFields.push('pie_label_column');
+      if (!config.pie_value_column) missingFields.push('pie_value_column');
+    }
+    return (
+      <div className="chart-empty">
+        Missing configuration: {missingFields.join(', ')} are required.
+        {config && (
+          <div style={{ fontSize: '0.8em', marginTop: '0.5em', opacity: 0.7 }}>
+            Config keys: {Object.keys(config).join(', ')}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
-      <svg ref={svgRef} className="pie-chart" style={{ width: `${dimensions.width}px`, height: `${dimensions.height}px`, maxWidth: '100%', maxHeight: '100%', display: 'block' }} />
+    <div 
+      ref={containerRef} 
+      style={{ 
+        width: '100%', 
+        height: '100%', 
+        minHeight: '300px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        overflow: 'hidden', 
+        position: 'relative',
+        padding: '20px'
+      }}
+    >
+      {dimensions.width > 0 && dimensions.height > 0 ? (
+        <svg 
+          ref={svgRef} 
+          className="pie-chart" 
+          style={{ 
+            width: `${dimensions.width}px`, 
+            height: `${dimensions.height}px`, 
+            maxWidth: '100%', 
+            maxHeight: '100%', 
+            display: 'block' 
+          }} 
+        />
+      ) : (
+        <div className="chart-empty">Calculating dimensions...</div>
+      )}
     </div>
   );
 }

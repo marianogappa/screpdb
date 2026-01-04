@@ -8,8 +8,15 @@ export const api = {
     return response.json();
   },
 
-  getDashboard: async (url) => {
-    const response = await fetch(`${API_BASE}/dashboard/${url}`);
+  getDashboard: async (url, variableValues = null) => {
+    const options = {
+      method: variableValues ? 'POST' : 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    };
+    if (variableValues) {
+      options.body = JSON.stringify({ variable_values: variableValues });
+    }
+    const response = await fetch(`${API_BASE}/dashboard/${url}`, options);
     if (!response.ok) throw new Error('Failed to get dashboard');
     return response.json();
   },
@@ -85,15 +92,31 @@ export const api = {
     }
   },
 
-  executeQuery: async (query) => {
+  executeQuery: async (query, variableValues = null) => {
     const response = await fetch(`${API_BASE}/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query,
+        variable_values: variableValues || {}
+      }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to execute query');
+    }
+    return response.json();
+  },
+
+  getQueryVariables: async (query) => {
+    const response = await fetch(`${API_BASE}/query/variables`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query }),
     });
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to execute query');
+      throw new Error(text || 'Failed to get query variables');
     }
     return response.json();
   },
