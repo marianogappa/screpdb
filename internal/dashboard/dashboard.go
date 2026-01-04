@@ -10,13 +10,17 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/lib/pq"
+	"github.com/marianogappa/screpdb/internal/dashboard/variables"
 	"github.com/marianogappa/screpdb/internal/storage"
 )
 
 type Dashboard struct {
 	ctx           context.Context
 	db            *sql.DB
+	pgxPool       *pgxpool.Pool
 	conversations map[int]*Conversation
 	ai            *AI
 }
@@ -35,19 +39,29 @@ func New(ctx context.Context, store storage.Storage, postgresConnectionString st
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
+	// Create pgx pool for native pgx queries with NamedArgs support
+	pgxPool, err := pgxpool.New(ctx, postgresConnectionString)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pgx pool: %w", err)
+	}
+
+	if err := pgxPool.Ping(ctx); err != nil {
+		return nil, fmt.Errorf("failed to ping pgx pool: %w", err)
+	}
+
 	ai, err := NewAI(ctx, openAIAPIKey, store, db, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI client: %w", err)
 	}
 
-	return &Dashboard{ctx: ctx, db: db, ai: ai, conversations: map[int]*Conversation{}}, nil
+	return &Dashboard{ctx: ctx, db: db, pgxPool: pgxPool, ai: ai, conversations: map[int]*Conversation{}}, nil
 }
 
 func (d *Dashboard) setupRouter() *mux.Router {
 	r := mux.NewRouter()
 	r.Use(mux.CORSMethodMiddleware(r))
 	r.HandleFunc("/api/dashboard", d.handlerListDashboards).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/dashboard/{url}", d.handlerGetDashboard).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/api/dashboard/{url}", d.handlerGetDashboard).Methods(http.MethodGet, http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/api/dashboard/{url}", d.handlerDeleteDashboard).Methods(http.MethodDelete, http.MethodOptions)
 	r.HandleFunc("/api/dashboard", d.handlerCreateDashboard).Methods(http.MethodPut, http.MethodOptions)
 	r.HandleFunc("/api/dashboard/{url}", d.handlerUpdateDashboard).Methods(http.MethodPost, http.MethodOptions)
@@ -56,6 +70,7 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/dashboard/{url}/widget", d.handlerCreateDashboardWidget).Methods(http.MethodPut, http.MethodOptions)
 	r.HandleFunc("/api/dashboard/{url}/widget/{wid}", d.handlerUpdateDashboardWidget).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/api/query", d.handlerExecuteQuery).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/api/query/variables", d.handlerGetQueryVariables).Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/api/health", d.handlerHealthcheck).Methods(http.MethodGet, http.MethodOptions)
 	http.Handle("/", r)
@@ -131,27 +146,33 @@ func bytesToWidgetConfig(data []byte) (WidgetConfig, error) {
 	return config, err
 }
 
-func (d *Dashboard) executeQuery(query string) ([]map[string]any, error) {
-	rows, err := d.db.QueryContext(d.ctx, query)
+func (d *Dashboard) executeQuery(query string, usedVariables map[string]variables.Variable) ([]map[string]any, error) {
+	// Build pgx.NamedArgs from variables
+	// pgx.NamedArgs automatically converts @placeholder to $1, $2, etc.
+	namedArgs := pgx.NamedArgs{}
+	for varName, variable := range usedVariables {
+		namedArgs[varName] = variable.UsedValue
+	}
+
+	// Use pgx's native Query method with NamedArgs
+	// The query should already have @variable_name placeholders - no rewriting needed!
+	rows, err := d.pgxPool.Query(d.ctx, query, namedArgs)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, err
+	// Get field descriptions from pgx rows
+	fieldDescriptions := rows.FieldDescriptions()
+	columns := make([]string, len(fieldDescriptions))
+	for i, fd := range fieldDescriptions {
+		columns[i] = string(fd.Name)
 	}
 
 	var results []map[string]any
 	for rows.Next() {
-		values := make([]any, len(columns))
-		valuePtrs := make([]any, len(columns))
-		for i := range values {
-			valuePtrs[i] = &values[i]
-		}
-
-		if err := rows.Scan(valuePtrs...); err != nil {
+		values, err := rows.Values()
+		if err != nil {
 			return nil, err
 		}
 
@@ -165,7 +186,7 @@ func (d *Dashboard) executeQuery(query string) ([]map[string]any, error) {
 			case nil:
 				row[col] = nil
 			default:
-				row[col] = val
+				row[col] = v
 			}
 		}
 		results = append(results, row)

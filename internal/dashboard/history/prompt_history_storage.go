@@ -14,6 +14,7 @@ import (
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/jackc/pgx/v5"
+	"github.com/marianogappa/screpdb/internal/dashboard/variables"
 	jetmodel "github.com/marianogappa/screpdb/internal/jet/screpdb/public/model"
 	"github.com/marianogappa/screpdb/internal/jet/screpdb/public/table"
 	"github.com/tmc/langchaingo/llms"
@@ -93,7 +94,7 @@ func (s *PromptHistoryStorage) add(ctx context.Context, widgetID int64, history 
 func (s *PromptHistoryStorage) setOnDB(ctx context.Context, widgetID int64, history []llms.MessageContent) error {
 	historyBytes := historyToBytes(history)
 	now := time.Now()
-	
+
 	// Use raw SQL for UPSERT since go-jet's ON_CONFLICT support may be limited
 	// Cast to JSONB since the column is JSONB type
 	query := `
@@ -103,7 +104,7 @@ func (s *PromptHistoryStorage) setOnDB(ctx context.Context, widgetID int64, hist
 			prompt_history = EXCLUDED.prompt_history,
 			updated_at = EXCLUDED.updated_at
 	`
-	
+
 	_, err := s.db.ExecContext(ctx, query, widgetID, string(historyBytes), now)
 	return err
 }
@@ -112,7 +113,7 @@ func (s *PromptHistoryStorage) getFromDB(ctx context.Context, widgetID int64) ([
 	var historyRow jetmodel.DashboardWidgetPromptHistory
 	stmt := table.DashboardWidgetPromptHistory.SELECT(table.DashboardWidgetPromptHistory.AllColumns).
 		WHERE(table.DashboardWidgetPromptHistory.WidgetID.EQ(postgres.Int64(widgetID)))
-	
+
 	err := stmt.QueryContext(ctx, s.db, &historyRow)
 	if err == sql.ErrNoRows || err == pgx.ErrNoRows || err == qrm.ErrNoRows {
 		return nil, false, nil
@@ -120,7 +121,7 @@ func (s *PromptHistoryStorage) getFromDB(ctx context.Context, widgetID int64) ([
 	if err != nil {
 		return nil, false, err
 	}
-	
+
 	history, err := bytesToHistory([]byte(historyRow.PromptHistory))
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to unmarshal prompt history bytes: %w", err)
@@ -141,7 +142,12 @@ func bytesToHistory(byts []byte) ([]llms.MessageContent, error) {
 
 func generateNewHistory() ([]llms.MessageContent, error) {
 	var sp bytes.Buffer
-	if err := systemPromptTpl.Execute(&sp, struct{}{}); err != nil {
+	vars := variables.GetAllVariables()
+	if err := systemPromptTpl.Execute(&sp, struct {
+		Variables map[string]variables.Variable
+	}{
+		Variables: vars,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -194,6 +200,16 @@ IMPORTANT CONFIGURATION RULES:
 - For histogram: Set "type": "histogram", "histogram_value_column", optionally "histogram_bins" (number)
 - For heatmap: Set "type": "heatmap", "heatmap_x_column", "heatmap_y_column", "heatmap_value_column"
 - Optionally set "colors" array for custom color palette (default palettes used if not provided)
+
+VARIABLES:
+You can use variables in your SQL queries to make them dynamic. Variables are specified using the syntax @variable_name. When a variable is used, the frontend will show a dropdown allowing users to select a value for that variable.
+
+Available variables:
+{{range $name, $var := .Variables}}
+- @{{$name}} ({{$var.DisplayName}}): {{$var.Description}}
+{{end}}
+
+Example: If you want to filter by player name, you could use: SELECT * FROM players WHERE name = @all_players_name
 
 You must first use the available tools to figure out how to construct the query, and then to run it and make sure that the results make sense. The query must return columns that match the config you specify (e.g., if you set "pie_label_column": "race", the query must return a "race" column).
 `

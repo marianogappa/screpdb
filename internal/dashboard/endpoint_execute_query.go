@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"unicode"
+
+	"github.com/marianogappa/screpdb/internal/dashboard/variables"
 )
 
 func (d *Dashboard) handlerExecuteQuery(w http.ResponseWriter, r *http.Request) {
@@ -23,13 +25,19 @@ func (d *Dashboard) handlerExecuteQuery(w http.ResponseWriter, r *http.Request) 
 	}
 
 	type QueryRequest struct {
-		Query string `json:"query"`
+		Query          string         `json:"query"`
+		VariableValues map[string]any `json:"variable_values"`
 	}
 
 	var req QueryRequest
 	if err := json.Unmarshal(bs, &req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("invalid json"))
+		return
+	}
+	if err := variables.ValidateReceivedVariableValues(req.VariableValues); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte("invalid variable values supplied: " + err.Error()))
 		return
 	}
 
@@ -48,7 +56,8 @@ func (d *Dashboard) handlerExecuteQuery(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Execute the query
-	results, err := d.executeQuery(query)
+	usedVariables := variables.FindVariables(query, req.VariableValues)
+	results, err := d.executeQuery(query, usedVariables)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("error executing query: " + err.Error()))
