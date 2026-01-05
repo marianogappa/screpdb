@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.2](https://github.com/marianogappa/screpdb/compare/v0.14.1...v0.14.2) (2026-01-04)
+
+
+### Bug Fixes
+
+* Remember chosen variable values. Fix histogram charts. ([5bf0c89](https://github.com/marianogappa/screpdb/commit/5bf0c89bdbc6c2e7475d34a890b89329cca5b768))
+
 ## [0.14.1](https://github.com/marianogappa/screpdb/compare/v0.14.0...v0.14.1) (2026-01-01)
 
 
