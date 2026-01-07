@@ -166,6 +166,177 @@ body {
   box-shadow: 0 0 10px rgba(100, 150, 255, 0.2);
 }
 
+/* Widget Creation Section */
+.widget-creation-section {
+  margin-bottom: 20px;
+}
+
+.widget-creation-form {
+  width: 100%;
+}
+
+.widget-creation-input-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.widget-creation-input {
+  flex: 1;
+  min-width: 300px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.widget-creation-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.widget-creation-input:focus {
+  outline: none;
+  border-color: rgba(100, 150, 255, 0.6);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(100, 150, 255, 0.1);
+}
+
+.widget-creation-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-create-ai {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, rgba(100, 150, 255, 0.4), rgba(100, 150, 255, 0.3));
+  border: 1px solid rgba(100, 150, 255, 0.6);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-create-ai:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(100, 150, 255, 0.5), rgba(100, 150, 255, 0.4));
+  border-color: rgba(100, 150, 255, 0.8);
+  box-shadow: 0 0 12px rgba(100, 150, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-create-ai:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-create-ai:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.widget-creation-divider {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+.btn-create-manual {
+  padding: 10px 18px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-create-manual:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-create-manual:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-create-manual:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-create-manual-primary {
+  padding: 10px 24px;
+  background: rgba(100, 150, 255, 0.3);
+  border: 1px solid rgba(100, 150, 255, 0.5);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-create-manual-primary:hover:not(:disabled) {
+  background: rgba(100, 150, 255, 0.4);
+  border-color: rgba(100, 150, 255, 0.7);
+  box-shadow: 0 0 12px rgba(100, 150, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.btn-create-manual-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-create-manual-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.widget-creation-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+.info-icon {
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.info-text {
+  line-height: 1.4;
+}
+
 .error-message {
   padding: 12px;
   background: rgba(255, 50, 50, 0.2);
@@ -942,6 +1113,25 @@ body {
 
   .prompt-form {
     flex-direction: column;
+  }
+
+  .widget-creation-input-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .widget-creation-input {
+    min-width: 100%;
+  }
+
+  .widget-creation-divider {
+    text-align: center;
+    padding: 4px 0;
+  }
+
+  .widget-creation-info {
+    justify-content: center;
+    text-align: center;
   }
 
   .fullscreen-editor-left {
