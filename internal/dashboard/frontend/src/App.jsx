@@ -266,51 +266,56 @@ function App() {
             </div>
           </div>
 
-          <form onSubmit={handleCreateWidget} className="prompt-form">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-              <input
-                type="text"
-                value={newWidgetPrompt}
-                onChange={(e) => setNewWidgetPrompt(e.target.value)}
-                placeholder={openaiEnabled ? "Ask to add a new graph or chart..." : "OpenAI API key required to use prompts"}
-                className="prompt-input"
-                disabled={creatingWidget || !openaiEnabled}
-                style={{
-                  opacity: openaiEnabled ? 1 : 0.5,
-                  cursor: openaiEnabled ? 'text' : 'not-allowed',
-                }}
-              />
-              {!openaiEnabled && (
-                <label style={{ fontSize: '0.875rem', color: '#999', marginTop: '-0.25rem' }}>
-                  To use AI-powered widget creation, start the dashboard with the --openai-api-key flag
-                </label>
-              )}
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button
-                  type="submit"
-                  disabled={creatingWidget || !newWidgetPrompt.trim() || !openaiEnabled}
-                  className="btn-create"
-                  style={{
-                    opacity: (!openaiEnabled || !newWidgetPrompt.trim()) ? 0.5 : 1,
-                    cursor: (!openaiEnabled || !newWidgetPrompt.trim()) ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  Create Widget with AI
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCreateWidgetWithoutPrompt}
-                  disabled={creatingWidget}
-                  className="btn-create"
-                  style={{
-                    backgroundColor: '#4a5568',
-                  }}
-                >
-                  Create Widget Manually
-                </button>
+          <div className="widget-creation-section">
+            {openaiEnabled ? (
+              <form onSubmit={handleCreateWidget} className="widget-creation-form">
+                <div className="widget-creation-input-group">
+                  <input
+                    type="text"
+                    value={newWidgetPrompt}
+                    onChange={(e) => setNewWidgetPrompt(e.target.value)}
+                    placeholder="Ask to add a new graph or chart..."
+                    className="widget-creation-input"
+                    disabled={creatingWidget}
+                  />
+                  <button
+                    type="submit"
+                    disabled={creatingWidget || !newWidgetPrompt.trim()}
+                    className="btn-create-ai"
+                  >
+                    <span className="btn-icon">✨</span>
+                    Create with AI
+                  </button>
+                  <div className="widget-creation-divider">or</div>
+                  <button
+                    type="button"
+                    onClick={handleCreateWidgetWithoutPrompt}
+                    disabled={creatingWidget}
+                    className="btn-create-manual"
+                  >
+                    Create Manually
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="widget-creation-form">
+                <div className="widget-creation-input-group">
+                  <button
+                    type="button"
+                    onClick={handleCreateWidgetWithoutPrompt}
+                    disabled={creatingWidget}
+                    className="btn-create-manual-primary"
+                  >
+                    Create Widget
+                  </button>
+                  <div className="widget-creation-info">
+                    <span className="info-icon">ℹ️</span>
+                    <span className="info-text">AI-powered creation requires --openai-api-key flag</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </form>
+            )}
+          </div>
           
           {dashboard?.variables && Object.keys(dashboard.variables).length > 0 && (
             <div className="variables-container" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
