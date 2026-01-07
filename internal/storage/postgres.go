@@ -45,15 +45,25 @@ func NewPostgresStorage(connectionString string) (*PostgresStorage, error) {
 }
 
 // Initialize creates the database schema using migrations
-// If clean is true, drops all existing tables before creating new ones
-func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
+// If clean is true, drops all non-dashboard tables before creating new ones
+// If cleanDashboard is true, drops all dashboard tables
+func (s *PostgresStorage) Initialize(ctx context.Context, clean bool, cleanDashboard bool) error {
+	// Handle dashboard cleanup first if requested
+	if cleanDashboard {
+		if err := migrations.DropDashboardTables(s.connectionString); err != nil {
+			return fmt.Errorf("failed to drop dashboard tables: %w", err)
+		}
+	}
+
+	// Handle non-dashboard cleanup if requested
 	if clean {
-		if err := migrations.CleanAndRunMigrations(s.connectionString); err != nil {
+		if err := migrations.CleanNonDashboardAndRunMigrations(s.connectionString); err != nil {
 			return fmt.Errorf("failed to clean and run migrations: %w", err)
 		}
 		return nil
 	}
 
+	// Run migrations normally (they will create tables if they don't exist)
 	if err := migrations.RunMigrations(s.connectionString); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
