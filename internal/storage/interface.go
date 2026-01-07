@@ -19,8 +19,9 @@ type ReplayDataChannel chan *models.ReplayData
 // Storage defines the interface for persisting replay data
 type Storage interface {
 	// Initialize sets up the storage (create tables, etc.)
-	// If clean is true, drops all existing tables before creating new ones
-	Initialize(ctx context.Context, clean bool) error
+	// If clean is true, drops all non-dashboard tables before creating new ones
+	// If cleanDashboard is true, drops all dashboard tables
+	Initialize(ctx context.Context, clean bool, cleanDashboard bool) error
 
 	// StartIngestion starts the ingestion process with batching
 	// Returns a channel for sending replay data and a done channel

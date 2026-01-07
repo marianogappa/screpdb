@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"database/sql"
 	"embed"
 	"fmt"
 	"strings"
@@ -77,6 +78,126 @@ func DropAllMigrations(postgresConnectionString string) error {
 func CleanAndRunMigrations(postgresConnectionString string) error {
 	if err := DropAllMigrations(postgresConnectionString); err != nil {
 		return fmt.Errorf("failed to drop migrations: %w", err)
+	}
+	if err := RunMigrations(postgresConnectionString); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+	return nil
+}
+
+// DropDashboardTables drops only dashboard-related tables
+func DropDashboardTables(postgresConnectionString string) error {
+	db, err := sql.Open("postgres", postgresConnectionString)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	// Start a transaction to match the pattern in down.sql
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Drop indexes first
+	indexes := []string{
+		"idx_dashboard_widgets_dashboard_id",
+		"idx_dashboard_widgets_dashboard_id_widget_order",
+	}
+
+	for _, index := range indexes {
+		if _, err := tx.Exec(fmt.Sprintf("DROP INDEX IF EXISTS %s", index)); err != nil {
+			return fmt.Errorf("failed to drop index %s: %w", index, err)
+		}
+	}
+
+	// Drop tables in reverse order of dependencies
+	// dashboard_widget_prompt_history depends on dashboard_widgets (via widget_id)
+	// dashboard_widgets depends on dashboards (via dashboard_id)
+	tables := []string{
+		"dashboard_widget_prompt_history",
+		"dashboard_widgets",
+		"dashboards",
+	}
+
+	for _, table := range tables {
+		if _, err := tx.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", table)); err != nil {
+			return fmt.Errorf("failed to drop table %s: %w", table, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// DropNonDashboardTables drops all tables except dashboard-related tables
+// Tables are dropped in the same order as in 000001_initial.down.sql
+func DropNonDashboardTables(postgresConnectionString string) error {
+	db, err := sql.Open("postgres", postgresConnectionString)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	// Start a transaction to match the pattern in down.sql
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Drop indexes first (non-dashboard indexes only)
+	indexes := []string{
+		"idx_detected_patterns_replay_player_player_id",
+		"idx_detected_patterns_replay_player_replay_id",
+		"idx_detected_patterns_replay_team_replay_id",
+		"idx_detected_patterns_replay_replay_id",
+		"idx_commands_frame",
+		"idx_commands_player_id",
+		"idx_commands_replay_id",
+		"idx_players_replay_id",
+		"idx_replays_replay_date",
+		"idx_replays_file_checksum",
+		"idx_replays_file_path",
+	}
+
+	for _, index := range indexes {
+		if _, err := tx.Exec(fmt.Sprintf("DROP INDEX IF EXISTS %s", index)); err != nil {
+			return fmt.Errorf("failed to drop index %s: %w", index, err)
+		}
+	}
+
+	// Drop tables in reverse order of dependencies (matching down.sql order)
+	tables := []string{
+		"detected_patterns_replay_player",
+		"detected_patterns_replay_team",
+		"detected_patterns_replay",
+		"commands",
+		"players",
+		"replays",
+	}
+
+	for _, table := range tables {
+		if _, err := tx.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", table)); err != nil {
+			return fmt.Errorf("failed to drop table %s: %w", table, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// CleanNonDashboardAndRunMigrations drops all non-dashboard tables and runs migrations again
+func CleanNonDashboardAndRunMigrations(postgresConnectionString string) error {
+	if err := DropNonDashboardTables(postgresConnectionString); err != nil {
+		return fmt.Errorf("failed to drop non-dashboard tables: %w", err)
 	}
 	if err := RunMigrations(postgresConnectionString); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)

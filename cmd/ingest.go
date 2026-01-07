@@ -34,6 +34,7 @@ var (
 	upToDate           string
 	upToMonths         int
 	clean              bool
+	cleanDashboard     bool
 )
 
 func init() {
@@ -43,7 +44,8 @@ func init() {
 	ingestCmd.Flags().IntVarP(&stopAfterN, "stop-after-n-reps", "n", 0, "Stop after processing N replay files (0 = no limit)")
 	ingestCmd.Flags().StringVarP(&upToDate, "up-to-yyyy-mm-dd", "d", "", "Only process files up to this date (YYYY-MM-DD format)")
 	ingestCmd.Flags().IntVarP(&upToMonths, "up-to-n-months", "m", 0, "Only process files from the last N months (0 = no limit)")
-	ingestCmd.Flags().BoolVar(&clean, "clean", false, "Drop all tables before ingesting to start over (useful for migrations)")
+	ingestCmd.Flags().BoolVar(&clean, "clean", false, "Drop all non-dashboard tables before ingesting to start over (useful for migrations). Dashboard tables are preserved.")
+	ingestCmd.Flags().BoolVar(&cleanDashboard, "clean-dashboard", false, "Drop all dashboard tables (dashboards, dashboard_widgets, dashboard_widget_prompt_history)")
 }
 
 func runIngest(cmd *cobra.Command, args []string) error {
@@ -62,7 +64,7 @@ func runIngest(cmd *cobra.Command, args []string) error {
 	}
 	defer store.Close()
 
-	if err := store.Initialize(ctx, clean); err != nil {
+	if err := store.Initialize(ctx, clean, cleanDashboard); err != nil {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 
