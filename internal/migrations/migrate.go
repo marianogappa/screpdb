@@ -7,37 +7,139 @@ import (
 	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/database/pgx"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-//go:embed *.sql
-var fs embed.FS
+//go:embed replay/*.sql
+var replayFS embed.FS
 
-// RunMigrations runs all pending migrations
+//go:embed dashboard/*.sql
+var dashboardFS embed.FS
+
+// MigrationSet represents which set of migrations to run
+type MigrationSet string
+
+const (
+	MigrationSetReplay    MigrationSet = "replay"
+	MigrationSetDashboard MigrationSet = "dashboard"
+)
+
+// RunMigrations runs all pending migrations for both replay and dashboard sets
 func RunMigrations(postgresConnectionString string) error {
-	d, err := iofs.New(fs, ".")
+	if err := RunMigrationSet(postgresConnectionString, MigrationSetReplay); err != nil {
+		return err
+	}
+	if err := RunMigrationSet(postgresConnectionString, MigrationSetDashboard); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RunMigrationSet runs migrations for a specific set (replay or dashboard)
+func RunMigrationSet(postgresConnectionString string, set MigrationSet) error {
+	var fs embed.FS
+	var subdir string
+	var stateTableName string
+
+	switch set {
+	case MigrationSetReplay:
+		fs = replayFS
+		subdir = "replay"
+		stateTableName = "schema_migrations_replay"
+	case MigrationSetDashboard:
+		fs = dashboardFS
+		subdir = "dashboard"
+		stateTableName = "schema_migrations_dashboard"
+	default:
+		return fmt.Errorf("unknown migration set: %s", set)
+	}
+
+	d, err := iofs.New(fs, subdir)
 	if err != nil {
 		return fmt.Errorf("failed to create migration source: %w", err)
 	}
-	m, err := migrate.NewWithSourceInstance("iofs", d, hackToFixPostgresConnectionStringFormat(postgresConnectionString))
+
+	// Open database connection
+	dbURL := hackToFixPostgresConnectionStringFormat(postgresConnectionString)
+	db, err := sql.Open("pgx", dbURL)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	// Create database instance with custom state table name
+	instance, err := pgx.WithInstance(db, &pgx.Config{
+		MigrationsTable: stateTableName,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create database instance: %w", err)
+	}
+
+	m, err := migrate.NewWithInstance("iofs", d, "pgx", instance)
 	if err != nil {
 		return fmt.Errorf("failed to create migrator instance: %w", err)
 	}
+
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 	return nil
 }
 
-// DropAllMigrations drops all migrations (runs down migrations)
+// DropAllMigrations drops all migrations (runs down migrations for both sets)
 func DropAllMigrations(postgresConnectionString string) error {
-	d, err := iofs.New(fs, ".")
+	if err := DropMigrationSet(postgresConnectionString, MigrationSetReplay); err != nil {
+		return err
+	}
+	if err := DropMigrationSet(postgresConnectionString, MigrationSetDashboard); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DropMigrationSet drops migrations for a specific set
+func DropMigrationSet(postgresConnectionString string, set MigrationSet) error {
+	var fs embed.FS
+	var subdir string
+	var stateTableName string
+
+	switch set {
+	case MigrationSetReplay:
+		fs = replayFS
+		subdir = "replay"
+		stateTableName = "schema_migrations_replay"
+	case MigrationSetDashboard:
+		fs = dashboardFS
+		subdir = "dashboard"
+		stateTableName = "schema_migrations_dashboard"
+	default:
+		return fmt.Errorf("unknown migration set: %s", set)
+	}
+
+	d, err := iofs.New(fs, subdir)
 	if err != nil {
 		return fmt.Errorf("failed to create migration source: %w", err)
 	}
-	m, err := migrate.NewWithSourceInstance("iofs", d, hackToFixPostgresConnectionStringFormat(postgresConnectionString))
+
+	// Open database connection
+	dbURL := hackToFixPostgresConnectionStringFormat(postgresConnectionString)
+	db, err := sql.Open("pgx", dbURL)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	// Create database instance with custom state table name
+	instance, err := pgx.WithInstance(db, &pgx.Config{
+		MigrationsTable: stateTableName,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create database instance: %w", err)
+	}
+
+	m, err := migrate.NewWithInstance("iofs", d, "pgx", instance)
 	if err != nil {
 		return fmt.Errorf("failed to create migrator instance: %w", err)
 	}
@@ -85,121 +187,12 @@ func CleanAndRunMigrations(postgresConnectionString string) error {
 	return nil
 }
 
-// DropDashboardTables drops only dashboard-related tables
-func DropDashboardTables(postgresConnectionString string) error {
-	db, err := sql.Open("postgres", postgresConnectionString)
-	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+// CleanAndRunMigrationSet drops and runs migrations for a specific set
+func CleanAndRunMigrationSet(postgresConnectionString string, set MigrationSet) error {
+	if err := DropMigrationSet(postgresConnectionString, set); err != nil {
+		return fmt.Errorf("failed to drop migrations: %w", err)
 	}
-	defer db.Close()
-
-	// Start a transaction to match the pattern in down.sql
-	tx, err := db.Begin()
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	// Drop indexes first
-	indexes := []string{
-		"idx_dashboard_widgets_dashboard_id",
-		"idx_dashboard_widgets_dashboard_id_widget_order",
-	}
-
-	for _, index := range indexes {
-		if _, err := tx.Exec(fmt.Sprintf("DROP INDEX IF EXISTS %s", index)); err != nil {
-			return fmt.Errorf("failed to drop index %s: %w", index, err)
-		}
-	}
-
-	// Drop tables in reverse order of dependencies
-	// dashboard_widget_prompt_history depends on dashboard_widgets (via widget_id)
-	// dashboard_widgets depends on dashboards (via dashboard_id)
-	tables := []string{
-		"dashboard_widget_prompt_history",
-		"dashboard_widgets",
-		"dashboards",
-	}
-
-	for _, table := range tables {
-		if _, err := tx.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", table)); err != nil {
-			return fmt.Errorf("failed to drop table %s: %w", table, err)
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return nil
-}
-
-// DropNonDashboardTables drops all tables except dashboard-related tables
-// Tables are dropped in the same order as in 000001_initial.down.sql
-func DropNonDashboardTables(postgresConnectionString string) error {
-	db, err := sql.Open("postgres", postgresConnectionString)
-	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
-	}
-	defer db.Close()
-
-	// Start a transaction to match the pattern in down.sql
-	tx, err := db.Begin()
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	// Drop indexes first (non-dashboard indexes only)
-	indexes := []string{
-		"idx_detected_patterns_replay_player_player_id",
-		"idx_detected_patterns_replay_player_replay_id",
-		"idx_detected_patterns_replay_team_replay_id",
-		"idx_detected_patterns_replay_replay_id",
-		"idx_commands_frame",
-		"idx_commands_player_id",
-		"idx_commands_replay_id",
-		"idx_players_replay_id",
-		"idx_replays_replay_date",
-		"idx_replays_file_checksum",
-		"idx_replays_file_path",
-	}
-
-	for _, index := range indexes {
-		if _, err := tx.Exec(fmt.Sprintf("DROP INDEX IF EXISTS %s", index)); err != nil {
-			return fmt.Errorf("failed to drop index %s: %w", index, err)
-		}
-	}
-
-	// Drop tables in reverse order of dependencies (matching down.sql order)
-	tables := []string{
-		"detected_patterns_replay_player",
-		"detected_patterns_replay_team",
-		"detected_patterns_replay",
-		"commands",
-		"players",
-		"replays",
-	}
-
-	for _, table := range tables {
-		if _, err := tx.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", table)); err != nil {
-			return fmt.Errorf("failed to drop table %s: %w", table, err)
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return nil
-}
-
-// CleanNonDashboardAndRunMigrations drops all non-dashboard tables and runs migrations again
-func CleanNonDashboardAndRunMigrations(postgresConnectionString string) error {
-	if err := DropNonDashboardTables(postgresConnectionString); err != nil {
-		return fmt.Errorf("failed to drop non-dashboard tables: %w", err)
-	}
-	if err := RunMigrations(postgresConnectionString); err != nil {
+	if err := RunMigrationSet(postgresConnectionString, set); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 	return nil
