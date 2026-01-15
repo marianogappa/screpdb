@@ -48,29 +48,26 @@ func NewPostgresStorage(connectionString string) (*PostgresStorage, error) {
 // If clean is true, drops all non-dashboard tables before creating new ones
 // If cleanDashboard is true, drops all dashboard tables
 func (s *PostgresStorage) Initialize(ctx context.Context, clean bool, cleanDashboard bool) error {
-	// Handle dashboard cleanup if requested
+	// Drop dashboard migrations if requested
 	if cleanDashboard {
-		if err := migrations.CleanAndRunMigrationSet(s.connectionString, migrations.MigrationSetDashboard); err != nil {
-			return fmt.Errorf("failed to clean and run dashboard migrations: %w", err)
-		}
-	} else {
-		// Run dashboard migrations normally if not cleaning
-		if err := migrations.RunMigrationSet(s.connectionString, migrations.MigrationSetDashboard); err != nil {
-			return fmt.Errorf("failed to run dashboard migrations: %w", err)
+		if err := migrations.DropMigrationSet(s.connectionString, migrations.MigrationSetDashboard); err != nil {
+			return fmt.Errorf("failed to drop dashboard migrations: %w", err)
 		}
 	}
 
-	// Handle non-dashboard cleanup if requested
+	// Drop replay migrations if requested
 	if clean {
-		if err := migrations.CleanAndRunMigrationSet(s.connectionString, migrations.MigrationSetReplay); err != nil {
-			return fmt.Errorf("failed to clean and run replay migrations: %w", err)
+		if err := migrations.DropMigrationSet(s.connectionString, migrations.MigrationSetReplay); err != nil {
+			return fmt.Errorf("failed to drop replay migrations: %w", err)
 		}
-		return nil
 	}
 
-	// Run replay migrations normally (they will create tables if they don't exist)
+	// Always run both migration sets to ensure everything is up to date
 	if err := migrations.RunMigrationSet(s.connectionString, migrations.MigrationSetReplay); err != nil {
 		return fmt.Errorf("failed to run replay migrations: %w", err)
+	}
+	if err := migrations.RunMigrationSet(s.connectionString, migrations.MigrationSetDashboard); err != nil {
+		return fmt.Errorf("failed to run dashboard migrations: %w", err)
 	}
 	return nil
 }
