@@ -45,17 +45,29 @@ func NewPostgresStorage(connectionString string) (*PostgresStorage, error) {
 }
 
 // Initialize creates the database schema using migrations
-// If clean is true, drops all existing tables before creating new ones
-func (s *PostgresStorage) Initialize(ctx context.Context, clean bool) error {
-	if clean {
-		if err := migrations.CleanAndRunMigrations(s.connectionString); err != nil {
-			return fmt.Errorf("failed to clean and run migrations: %w", err)
+// If clean is true, drops all non-dashboard tables before creating new ones
+// If cleanDashboard is true, drops all dashboard tables
+func (s *PostgresStorage) Initialize(ctx context.Context, clean bool, cleanDashboard bool) error {
+	// Drop dashboard migrations if requested
+	if cleanDashboard {
+		if err := migrations.DropMigrationSet(s.connectionString, migrations.MigrationSetDashboard); err != nil {
+			return fmt.Errorf("failed to drop dashboard migrations: %w", err)
 		}
-		return nil
 	}
 
-	if err := migrations.RunMigrations(s.connectionString); err != nil {
-		return fmt.Errorf("failed to run migrations: %w", err)
+	// Drop replay migrations if requested
+	if clean {
+		if err := migrations.DropMigrationSet(s.connectionString, migrations.MigrationSetReplay); err != nil {
+			return fmt.Errorf("failed to drop replay migrations: %w", err)
+		}
+	}
+
+	// Always run both migration sets to ensure everything is up to date
+	if err := migrations.RunMigrationSet(s.connectionString, migrations.MigrationSetReplay); err != nil {
+		return fmt.Errorf("failed to run replay migrations: %w", err)
+	}
+	if err := migrations.RunMigrationSet(s.connectionString, migrations.MigrationSetDashboard); err != nil {
+		return fmt.Errorf("failed to run dashboard migrations: %w", err)
 	}
 	return nil
 }

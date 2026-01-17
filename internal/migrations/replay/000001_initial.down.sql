@@ -1,8 +1,6 @@
 BEGIN;
 
 -- Drop indexes first
-DROP INDEX IF EXISTS idx_dashboard_widgets_dashboard_id;
-DROP INDEX IF EXISTS idx_dashboard_widgets_dashboard_id_widget_order;
 DROP INDEX IF EXISTS idx_detected_patterns_replay_player_player_id;
 DROP INDEX IF EXISTS idx_detected_patterns_replay_player_replay_id;
 DROP INDEX IF EXISTS idx_detected_patterns_replay_team_replay_id;
@@ -16,8 +14,6 @@ DROP INDEX IF EXISTS idx_replays_file_checksum;
 DROP INDEX IF EXISTS idx_replays_file_path;
 
 -- Drop tables in reverse order of dependencies
-DROP TABLE IF EXISTS dashboard_widgets CASCADE;
-DROP TABLE IF EXISTS dashboards CASCADE;
 DROP TABLE IF EXISTS detected_patterns_replay_player CASCADE;
 DROP TABLE IF EXISTS detected_patterns_replay_team CASCADE;
 DROP TABLE IF EXISTS detected_patterns_replay CASCADE;
@@ -26,4 +22,3 @@ DROP TABLE IF EXISTS players CASCADE;
 DROP TABLE IF EXISTS replays CASCADE;
 
 COMMIT;
-
