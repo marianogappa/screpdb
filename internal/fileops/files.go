@@ -106,8 +106,3 @@ func calculateChecksum(filePath string) (string, error) {
 
 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
-
-// GetDefaultReplayDir returns the default replay directory
-func GetDefaultReplayDir() string {
-	return "/Users/marianol/Library/Application Support/Blizzard/StarCraft/Maps/Replays/AutoSave"
-}

@@ -39,7 +39,7 @@ var (
 
 func init() {
 	ingestCmd.Flags().StringVarP(&inputDir, "input-dir", "i", fileops.GetDefaultReplayDir(), "Input directory containing replay files")
-	ingestCmd.Flags().StringVarP(&postgresConnString, "postgres-connection-string", "p", "", "PostgreSQL connection string (e.g., 'host=localhost port=5432 user=marianol dbname=screpdb sslmode=disable')")
+	ingestCmd.Flags().StringVarP(&postgresConnString, "postgres-connection-string", "p", "", "PostgreSQL connection string (e.g., 'host=localhost port=5432 user=postgres dbname=screpdb sslmode=disable')")
 	ingestCmd.Flags().BoolVarP(&watch, "watch", "w", false, "Watch for new files and ingest them as they appear")
 	ingestCmd.Flags().IntVarP(&stopAfterN, "stop-after-n-reps", "n", 0, "Stop after processing N replay files (0 = no limit)")
 	ingestCmd.Flags().StringVarP(&upToDate, "up-to-yyyy-mm-dd", "d", "", "Only process files up to this date (YYYY-MM-DD format)")
