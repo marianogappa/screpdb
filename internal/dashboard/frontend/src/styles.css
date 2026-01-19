@@ -488,6 +488,7 @@ body {
 .table-container {
   width: 100%;
   overflow-x: auto;
+  align-self: flex-start;
 }
 
 .data-table {

@@ -1,20 +1,19 @@
 import React from 'react';
 
-function Table({ data, config }) {
+function Table({ data, config, columns }) {
   if (!data || data.length === 0) {
     return <div className="chart-empty">No data available</div>;
   }
 
-  const columns = config.table_columns && config.table_columns.length > 0
-    ? config.table_columns
-    : Object.keys(data[0]);
+  // Use provided columns to preserve SELECT query order
+  const tableColumns = columns && columns.length > 0 ? columns : Object.keys(data[0]);
 
   return (
     <div className="table-container">
       <table className="data-table">
         <thead>
           <tr>
-            {columns.map((col) => (
+            {tableColumns.map((col) => (
               <th key={col}>{col}</th>
             ))}
           </tr>
@@ -22,7 +21,7 @@ function Table({ data, config }) {
         <tbody>
           {data.map((row, idx) => (
             <tr key={idx}>
-              {columns.map((col) => (
+              {tableColumns.map((col) => (
                 <td key={col}>
                   {row[col] !== null && row[col] !== undefined
                     ? typeof row[col] === 'number'

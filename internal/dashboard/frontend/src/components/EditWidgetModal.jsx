@@ -18,7 +18,6 @@ function EditWidgetModal({ widget, onClose, onSave }) {
   const [query, setQuery] = useState('');
   const [config, setConfig] = useState({
     type: 'table',
-    colors: [],
   });
 
   useEffect(() => {
@@ -27,7 +26,7 @@ function EditWidgetModal({ widget, onClose, onSave }) {
       setName(widget.name || '');
       setDescription(widget.description?.valid ? widget.description.string || '' : '');
       setQuery(widget.query || '');
-      setConfig(widget.config || { type: 'table', colors: [] });
+      setConfig(widget.config || { type: 'table' });
     }
   }, [widget]);
 
@@ -91,18 +90,7 @@ function EditWidgetModal({ widget, onClose, onSave }) {
           </>
         );
       case 'table':
-        return (
-          <div className="form-group">
-            <label>Columns (comma-separated, empty = all)</label>
-            <input
-              type="text"
-              value={config.table_columns?.join(', ') || ''}
-              onChange={(e) => updateConfig('table_columns', e.target.value ? e.target.value.split(',').map(s => s.trim()).filter(s => s) : [])}
-              className="form-input"
-              placeholder="col1, col2, col3"
-            />
-          </div>
-        );
+        return null;
       case 'pie_chart':
         return (
           <>
@@ -365,7 +353,7 @@ function EditWidgetModal({ widget, onClose, onSave }) {
               value={config.type || 'table'}
               onChange={(e) => {
                 const newType = e.target.value;
-                setConfig({ type: newType, colors: config.colors || [] });
+                setConfig({ ...config, type: newType });
               }}
               className="form-input"
             >
@@ -376,17 +364,6 @@ function EditWidgetModal({ widget, onClose, onSave }) {
           </div>
 
           {renderTypeSpecificFields()}
-
-          <div className="form-group">
-            <label>Colors (comma-separated hex codes, optional)</label>
-            <input
-              type="text"
-              value={config.colors?.join(', ') || ''}
-              onChange={(e) => updateConfig('colors', e.target.value ? e.target.value.split(',').map(s => s.trim()).filter(s => s) : [])}
-              className="form-input"
-              placeholder="#4e79a7, #f28e2c, #e15759"
-            />
-          </div>
 
           <div className="form-group">
             <label>SQL Query</label>

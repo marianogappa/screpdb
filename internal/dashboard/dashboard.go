@@ -146,7 +146,7 @@ func bytesToWidgetConfig(data []byte) (WidgetConfig, error) {
 	return config, err
 }
 
-func (d *Dashboard) executeQuery(query string, usedVariables map[string]variables.Variable) ([]map[string]any, error) {
+func (d *Dashboard) executeQuery(query string, usedVariables map[string]variables.Variable) ([]map[string]any, []string, error) {
 	// Build pgx.NamedArgs from variables
 	// pgx.NamedArgs automatically converts @placeholder to $1, $2, etc.
 	namedArgs := pgx.NamedArgs{}
@@ -158,7 +158,7 @@ func (d *Dashboard) executeQuery(query string, usedVariables map[string]variable
 	// The query should already have @variable_name placeholders - no rewriting needed!
 	rows, err := d.pgxPool.Query(d.ctx, query, namedArgs)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 
@@ -173,7 +173,7 @@ func (d *Dashboard) executeQuery(query string, usedVariables map[string]variable
 	for rows.Next() {
 		values, err := rows.Values()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		row := make(map[string]any)
@@ -192,5 +192,5 @@ func (d *Dashboard) executeQuery(query string, usedVariables map[string]variable
 		results = append(results, row)
 	}
 
-	return results, rows.Err()
+	return results, columns, rows.Err()
 }

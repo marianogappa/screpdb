@@ -20,17 +20,11 @@ const (
 type WidgetConfig struct {
 	Type WidgetType `json:"type"`
 
-	// Common fields
-	Colors []string `json:"colors,omitempty"` // Color palette (defaults used if empty)
-
 	// Gauge-specific
 	GaugeValueColumn string  `json:"gauge_value_column,omitempty"` // Column name for the value
 	GaugeMin         *float64 `json:"gauge_min,omitempty"`         // Minimum value (optional)
 	GaugeMax         *float64 `json:"gauge_max,omitempty"`         // Maximum value (optional)
 	GaugeLabel       string  `json:"gauge_label,omitempty"`        // Label to display
-
-	// Table-specific
-	TableColumns []string `json:"table_columns,omitempty"` // Column names to display (empty = all)
 
 	// Pie chart specific
 	PieLabelColumn string `json:"pie_label_column,omitempty"` // Column name for slice labels

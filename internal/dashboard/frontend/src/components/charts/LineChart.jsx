@@ -51,9 +51,7 @@ function LineChart({ data, config }) {
       .append('g')
       .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
-    const colors = config.colors && config.colors.length > 0
-      ? d3.scaleOrdinal(config.colors)
-      : d3.scaleOrdinal(DEFAULT_COLORS);
+    const colors = d3.scaleOrdinal(DEFAULT_COLORS);
 
     // Parse x values based on type
     const parseX = (val) => {

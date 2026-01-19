@@ -192,14 +192,13 @@ The responses must be structured JSON which return:
 
 IMPORTANT CONFIGURATION RULES:
 - For gauge: Set "type": "gauge", "gauge_value_column" to the column name with the value, optionally "gauge_min"/"gauge_max"/"gauge_label"
-- For table: Set "type": "table", optionally "table_columns" array (empty = all columns)
+- For table: Set "type": "table"
 - For pie_chart: Set "type": "pie_chart", "pie_label_column" and "pie_value_column"
 - For bar_chart: Set "type": "bar_chart", "bar_label_column" and "bar_value_column", optionally "bar_horizontal": true
 - For line_chart: Set "type": "line_chart", "line_x_column", "line_y_columns" (array), optionally "line_y_axis_from_zero": true, "line_x_axis_type": "seconds_from_game_start"|"timestamp"|"numeric"
 - For scatter_plot: Set "type": "scatter_plot", "scatter_x_column", "scatter_y_column", optionally "scatter_size_column" and "scatter_color_column"
 - For histogram: Set "type": "histogram", "histogram_value_column", optionally "histogram_bins" (number)
 - For heatmap: Set "type": "heatmap", "heatmap_x_column", "heatmap_y_column", "heatmap_value_column"
-- Optionally set "colors" array for custom color palette (default palettes used if not provided)
 
 VARIABLES:
 You can use variables in your SQL queries to make them dynamic. Variables are specified using the syntax @variable_name. When a variable is used, the frontend will show a dropdown allowing users to select a value for that variable.
