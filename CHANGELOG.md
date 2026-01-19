@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.15.0](https://github.com/marianogappa/screpdb/compare/v0.14.2...v0.15.0) (2026-01-19)
+
+
+### Features
+
+* **clean:** separated --clean from --clean-dashboard, now --clean-dashboard only cleans dashboards and --clean only cleans everything but keeps dashboards ([afe5881](https://github.com/marianogappa/screpdb/commit/afe5881c19264903119de6268bd52e5c1d2ea3ce))
+* Remove color and TableColumns configs. ([30347b0](https://github.com/marianogappa/screpdb/commit/30347b0483b610b283ae692c6c0b30f8ad467bb6))
+* Remove colouring configuration. ([385d9b8](https://github.com/marianogappa/screpdb/commit/385d9b89679bcf1ec43dcb4d1fefe33770c60fa9))
+* separated --clean from --clean-dashboard ([62e636a](https://github.com/marianogappa/screpdb/commit/62e636ac2f60b499c946b5ee676649bba01e2dd6))
+
+
+### Bug Fixes
+
+* Separate concerns and remove unuseful comments ([274421c](https://github.com/marianogappa/screpdb/commit/274421c8ea43f0ac7f83d34d06aa7439641bdac5))
+
 ## [0.14.2](https://github.com/marianogappa/screpdb/compare/v0.14.1...v0.14.2) (2026-01-04)
 
 
