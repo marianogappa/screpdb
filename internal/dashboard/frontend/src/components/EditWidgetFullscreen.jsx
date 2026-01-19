@@ -29,6 +29,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
     type: 'table',
   });
   const [previewData, setPreviewData] = useState([]);
+  const [previewColumns, setPreviewColumns] = useState([]);
   const [previewError, setPreviewError] = useState(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [lastExecutedQuery, setLastExecutedQuery] = useState('');
@@ -43,6 +44,9 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
       setConfig(widget.config || { type: 'table' });
       if (widget.results) {
         setPreviewData(widget.results);
+      }
+      if (widget.columns) {
+        setPreviewColumns(widget.columns);
       }
     }
   }, [widget]);
@@ -84,6 +88,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
   const executeQuery = useCallback(async (sqlQuery, varValues = null) => {
     if (!sqlQuery.trim()) {
       setPreviewData([]);
+      setPreviewColumns([]);
       setPreviewError(null);
       return;
     }
@@ -93,10 +98,12 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
     try {
       const response = await api.executeQuery(sqlQuery, varValues || variableValues);
       setPreviewData(response.results || []);
+      setPreviewColumns(response.columns || []);
       setLastExecutedQuery(sqlQuery);
     } catch (err) {
       setPreviewError(err.message);
       setPreviewData([]);
+      setPreviewColumns([]);
     } finally {
       setIsExecuting(false);
     }
@@ -179,18 +186,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
           </>
         );
       case 'table':
-        return (
-          <div className="form-group">
-            <label>Columns (comma-separated, empty = all)</label>
-            <input
-              type="text"
-              value={config.table_columns?.join(', ') || ''}
-              onChange={(e) => updateConfig('table_columns', e.target.value ? e.target.value.split(',').map(s => s.trim()).filter(s => s) : [])}
-              className="form-input"
-              placeholder="col1, col2, col3"
-            />
-          </div>
-        );
+        return null;
       case 'pie_chart':
         return (
           <>
@@ -437,7 +433,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
       case 'gauge':
         return <Gauge {...chartProps} />;
       case 'table':
-        return <Table {...chartProps} />;
+        return <Table {...chartProps} columns={previewColumns} />;
       case 'pie_chart':
         return <PieChart {...chartProps} />;
       case 'bar_chart':

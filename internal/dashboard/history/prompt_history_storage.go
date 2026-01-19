@@ -192,7 +192,7 @@ The responses must be structured JSON which return:
 
 IMPORTANT CONFIGURATION RULES:
 - For gauge: Set "type": "gauge", "gauge_value_column" to the column name with the value, optionally "gauge_min"/"gauge_max"/"gauge_label"
-- For table: Set "type": "table", optionally "table_columns" array (empty = all columns)
+- For table: Set "type": "table"
 - For pie_chart: Set "type": "pie_chart", "pie_label_column" and "pie_value_column"
 - For bar_chart: Set "type": "bar_chart", "bar_label_column" and "bar_value_column", optionally "bar_horizontal": true
 - For line_chart: Set "type": "line_chart", "line_x_column", "line_y_columns" (array), optionally "line_y_axis_from_zero": true, "line_x_axis_type": "seconds_from_game_start"|"timestamp"|"numeric"

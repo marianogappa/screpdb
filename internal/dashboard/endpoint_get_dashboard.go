@@ -77,6 +77,7 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 		Config      WidgetConfig     `json:"config"`
 		Query       string           `json:"query"`
 		Results     []map[string]any `json:"results"`
+		Columns     []string         `json:"columns,omitempty"`
 		CreatedAt   *string          `json:"created_at"`
 		UpdatedAt   *string          `json:"updated_at"`
 	}
@@ -85,16 +86,18 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 	allUsedVariables := map[string]variables.Variable{}
 	for _, widget := range widgets {
 		var results []map[string]any
+		var columns []string
 		if widget.Query != "" {
 			usedVariables := variables.FindVariables(widget.Query, params.VariableValues)
 			maps.Copy(allUsedVariables, usedVariables)
-			queryResults, err := d.executeQuery(widget.Query, usedVariables)
+			queryResults, queryColumns, err := d.executeQuery(widget.Query, usedVariables)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				_, _ = w.Write([]byte(fmt.Sprintf("error executing query for widget %d: %v", widget.ID, err.Error())))
 				return
 			}
 			results = queryResults
+			columns = queryColumns
 		}
 
 		config, err := bytesToWidgetConfig([]byte(widget.Config))
@@ -123,6 +126,7 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 			Config:      config,
 			Query:       widget.Query,
 			Results:     results,
+			Columns:     columns,
 			CreatedAt:   createdAt,
 			UpdatedAt:   updatedAt,
 		})

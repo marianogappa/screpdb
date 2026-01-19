@@ -46,7 +46,7 @@ function Widget({ widget, onDelete, onUpdate }) {
       case 'gauge':
         return <Gauge {...chartProps} />;
       case 'table':
-        return <Table {...chartProps} />;
+        return <Table {...chartProps} columns={widget.columns} />;
       case 'pie_chart':
         return <PieChart {...chartProps} />;
       case 'bar_chart':

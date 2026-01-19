@@ -90,18 +90,7 @@ function EditWidgetModal({ widget, onClose, onSave }) {
           </>
         );
       case 'table':
-        return (
-          <div className="form-group">
-            <label>Columns (comma-separated, empty = all)</label>
-            <input
-              type="text"
-              value={config.table_columns?.join(', ') || ''}
-              onChange={(e) => updateConfig('table_columns', e.target.value ? e.target.value.split(',').map(s => s.trim()).filter(s => s) : [])}
-              className="form-input"
-              placeholder="col1, col2, col3"
-            />
-          </div>
-        );
+        return null;
       case 'pie_chart':
         return (
           <>

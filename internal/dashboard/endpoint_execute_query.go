@@ -57,7 +57,7 @@ func (d *Dashboard) handlerExecuteQuery(w http.ResponseWriter, r *http.Request) 
 
 	// Execute the query
 	usedVariables := variables.FindVariables(query, req.VariableValues)
-	results, err := d.executeQuery(query, usedVariables)
+	results, columns, err := d.executeQuery(query, usedVariables)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("error executing query: " + err.Error()))
@@ -66,10 +66,12 @@ func (d *Dashboard) handlerExecuteQuery(w http.ResponseWriter, r *http.Request) 
 
 	type QueryResponse struct {
 		Results []map[string]any `json:"results"`
+		Columns []string         `json:"columns,omitempty"`
 	}
 
 	response := QueryResponse{
 		Results: results,
+		Columns: columns,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

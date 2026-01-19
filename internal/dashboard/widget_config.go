@@ -26,9 +26,6 @@ type WidgetConfig struct {
 	GaugeMax         *float64 `json:"gauge_max,omitempty"`         // Maximum value (optional)
 	GaugeLabel       string  `json:"gauge_label,omitempty"`        // Label to display
 
-	// Table-specific
-	TableColumns []string `json:"table_columns,omitempty"` // Column names to display (empty = all)
-
 	// Pie chart specific
 	PieLabelColumn string `json:"pie_label_column,omitempty"` // Column name for slice labels
 	PieValueColumn string `json:"pie_value_column,omitempty"` // Column name for slice values
