@@ -46,7 +46,7 @@ function App() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // If no varValues provided, try to load from localStorage
       if (!varValues) {
         const stored = getStoredVariableValues(url);
@@ -54,11 +54,11 @@ function App() {
           varValues = stored;
         }
       }
-      
+
       const data = await api.getDashboard(url, varValues);
       setDashboard(data);
       setCurrentDashboardUrl(url);
-      
+
       // Update variable values state
       if (varValues) {
         setVariableValues(varValues);
@@ -148,7 +148,7 @@ function App() {
       const widget = await api.createWidget(currentDashboardUrl, '');
       setCreatingWidget(false);
       // Config should already be parsed as an object from the backend
-      const config = widget.config || { type: 'table', colors: [] };
+      const config = widget.config || { type: 'table' };
       // Open the edit widget fullscreen for the newly created widget
       setEditingWidget({
         id: widget.id,
@@ -316,7 +316,7 @@ function App() {
               </div>
             )}
           </div>
-          
+
           {dashboard?.variables && Object.keys(dashboard.variables).length > 0 && (
             <div className="variables-container" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
               {Object.entries(dashboard.variables).map(([varName, variable]) => (

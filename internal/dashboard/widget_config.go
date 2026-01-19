@@ -20,9 +20,6 @@ const (
 type WidgetConfig struct {
 	Type WidgetType `json:"type"`
 
-	// Common fields
-	Colors []string `json:"colors,omitempty"` // Color palette (defaults used if empty)
-
 	// Gauge-specific
 	GaugeValueColumn string  `json:"gauge_value_column,omitempty"` // Column name for the value
 	GaugeMin         *float64 `json:"gauge_min,omitempty"`         // Minimum value (optional)

@@ -34,13 +34,6 @@ var (
 								Description: "Widget type: gauge, table, pie_chart, bar_chart, line_chart, scatter_plot, histogram, or heatmap",
 								Enum:        []any{"gauge", "table", "pie_chart", "bar_chart", "line_chart", "scatter_plot", "histogram", "heatmap"},
 							},
-							"colors": {
-								Type:        "array",
-								Description: "Optional color palette array",
-								Items: &openai.ResponseFormatJSONSchemaProperty{
-									Type: "string",
-								},
-							},
 							"gauge_value_column": {Type: "string", Description: "For gauge: column name for the value"},
 							"gauge_min":          {Type: "number", Description: "For gauge: optional minimum value"},
 							"gauge_max":          {Type: "number", Description: "For gauge: optional maximum value"},

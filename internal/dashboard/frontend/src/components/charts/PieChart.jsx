@@ -78,9 +78,7 @@ function PieChart({ data, config }) {
     const pieGroup = svg.append('g')
       .attr('transform', `translate(${pieCenterX}, ${pieCenterY})`);
 
-    const colors = config.colors && config.colors.length > 0
-      ? d3.scaleOrdinal(config.colors)
-      : d3.scaleOrdinal(DEFAULT_COLORS);
+    const colors = d3.scaleOrdinal(DEFAULT_COLORS);
 
     const pie = d3.pie()
       .value(d => Number(d[config.pie_value_column]) || 0)

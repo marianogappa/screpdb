@@ -27,7 +27,6 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
   const [query, setQuery] = useState('');
   const [config, setConfig] = useState({
     type: 'table',
-    colors: [],
   });
   const [previewData, setPreviewData] = useState([]);
   const [previewError, setPreviewError] = useState(null);
@@ -41,7 +40,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
       setName(widget.name || '');
       setDescription(widget.description?.valid ? widget.description.string || '' : '');
       setQuery(widget.query || '');
-      setConfig(widget.config || { type: 'table', colors: [] });
+      setConfig(widget.config || { type: 'table' });
       if (widget.results) {
         setPreviewData(widget.results);
       }
@@ -501,7 +500,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
                 value={config.type || 'table'}
                 onChange={(e) => {
                   const newType = e.target.value;
-                  setConfig({ type: newType, colors: config.colors || [] });
+                  setConfig({ ...config, type: newType });
                 }}
                 className="form-input"
               >
@@ -512,17 +511,6 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
             </div>
 
             {renderTypeSpecificFields()}
-
-            <div className="form-group">
-              <label>Colors (comma-separated hex codes, optional)</label>
-              <input
-                type="text"
-                value={config.colors?.join(', ') || ''}
-                onChange={(e) => updateConfig('colors', e.target.value ? e.target.value.split(',').map(s => s.trim()).filter(s => s) : [])}
-                className="form-input"
-                placeholder="#4e79a7, #f28e2c, #e15759"
-              />
-            </div>
           </div>
 
           <div className="fullscreen-editor-section">
