@@ -57,7 +57,7 @@ function Histogram({ data, config }) {
       .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
     const values = data.map(d => Number(d[config.histogram_value_column]) || 0).filter(v => !isNaN(v));
-    
+
     if (values.length === 0) {
       return;
     }
@@ -106,6 +106,23 @@ function Histogram({ data, config }) {
       .attr('height', d => height - yScale(d.length))
       .attr('fill', DEFAULT_COLORS[0])
       .attr('opacity', 0.7);
+
+    svg.append("text")
+      .attr("text-anchor", "end")
+      .attr("x", width) // I have no idea how to set these!
+      .attr("y", height + 35) // I have no idea how to set these!
+      .attr('fill', '#fff')
+      .attr('font-size', '12px')
+      .text(config?.histogram_value_column);
+
+    svg.append("text")
+      .attr("text-anchor", "end")
+      .attr("x", 100) // I have no idea how to set these!
+      .attr("y", 50) // I have no idea how to set these!
+      .attr("transform", "rotate(90)")
+      .attr('fill', '#fff')
+      .attr('font-size', '12px')
+      .text('count');
 
   }, [data, config, dimensions]);
 

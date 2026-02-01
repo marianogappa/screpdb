@@ -61,13 +61,13 @@ function ScatterPlot({ data, config }) {
 
     const sizeScale = config.scatter_size_column
       ? d3.scaleSqrt()
-          .domain(d3.extent(data, d => Number(d[config.scatter_size_column]) || 1))
-          .range([3, 15])
+        .domain(d3.extent(data, d => Number(d[config.scatter_size_column]) || 1))
+        .range([3, 15])
       : () => 5;
 
     const colorScale = config.scatter_color_column
       ? d3.scaleOrdinal(DEFAULT_COLORS)
-          .domain([...new Set(data.map(d => String(d[config.scatter_color_column])))])
+        .domain([...new Set(data.map(d => String(d[config.scatter_color_column])))])
       : () => DEFAULT_COLORS[0];
 
     svg.selectAll('.dot')
@@ -80,10 +80,10 @@ function ScatterPlot({ data, config }) {
       .attr('r', d => sizeScale(config.scatter_size_column ? d[config.scatter_size_column] : 1))
       .attr('fill', d => config.scatter_color_column ? colorScale(String(d[config.scatter_color_column])) : DEFAULT_COLORS[0])
       .attr('opacity', 0.6)
-      .on('mouseover', function() {
+      .on('mouseover', function () {
         d3.select(this).attr('opacity', 1).attr('r', d => sizeScale(config.scatter_size_column ? d[config.scatter_size_column] : 1) + 2);
       })
-      .on('mouseout', function() {
+      .on('mouseout', function () {
         d3.select(this).attr('opacity', 0.6).attr('r', d => sizeScale(config.scatter_size_column ? d[config.scatter_size_column] : 1));
       });
 
@@ -97,6 +97,23 @@ function ScatterPlot({ data, config }) {
       .call(d3.axisLeft(yScale))
       .selectAll('text')
       .attr('fill', '#fff');
+
+    svg.append("text")
+      .attr("text-anchor", "end")
+      .attr("x", width) // I have no idea how to set these!
+      .attr("y", height + 35) // I have no idea how to set these!
+      .attr('fill', '#fff')
+      .attr('font-size', '12px')
+      .text(config?.scatter_x_column);
+
+    svg.append("text")
+      .attr("text-anchor", "end")
+      .attr("x", 100) // I have no idea how to set these!
+      .attr("y", 50) // I have no idea how to set these!
+      .attr("transform", "rotate(90)")
+      .attr('fill', '#fff')
+      .attr('font-size', '12px')
+      .text(config?.scatter_y_column);
 
   }, [data, config, dimensions]);
 

@@ -77,7 +77,7 @@ function LineChart({ data, config }) {
     });
 
     const yScale = d3.scaleLinear()
-      .domain(config.line_y_axis_from_zero 
+      .domain(config.line_y_axis_from_zero
         ? [0, d3.max(allYValues)]
         : d3.extent(allYValues))
       .range([height, 0]);
@@ -132,6 +132,15 @@ function LineChart({ data, config }) {
       .call(d3.axisLeft(yScale))
       .selectAll('text')
       .attr('fill', '#fff');
+
+
+    svg.append("text")
+      .attr("text-anchor", "end")
+      .attr("x", width) // I have no idea how to set these!
+      .attr("y", height + 35) // I have no idea how to set these!
+      .attr('fill', '#fff')
+      .attr('font-size', '12px')
+      .text(config?.line_x_column);
 
     // Add legend
     const legend = svg.append('g')
