@@ -2,16 +2,19 @@ package dashboard
 
 import (
 	"context"
+	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
-
-	jetmodel "github.com/marianogappa/screpdb/internal/jet/screpdb/public/model"
+	"time"
 )
 
-// DashboardWithVariables extends the jet model with Variables
+// DashboardWithVariables represents a dashboard and its variables
 type DashboardWithVariables struct {
-	jetmodel.Dashboards
-	Variables DashboardVariables `json:"variables,omitempty"`
+	URL         string             `json:"url"`
+	Name        string             `json:"name"`
+	Description *string            `json:"description,omitempty"`
+	CreatedAt   *time.Time         `json:"created_at,omitempty"`
+	Variables   DashboardVariables `json:"variables,omitempty"`
 }
 
 // DashboardVariables is a type alias for JSONB handling
@@ -56,20 +59,29 @@ func (d *Dashboard) GetDashboardByURL(ctx context.Context, url string) (*Dashboa
 	query := `
 		SELECT url, name, description, variables, created_at
 		FROM dashboards
-		WHERE url = $1
+		WHERE url = ?
 	`
 
 	var dash DashboardWithVariables
+	var description sql.NullString
 	var variablesJSON []byte
+	var createdAt any
 	err := d.db.QueryRowContext(ctx, query, url).Scan(
 		&dash.URL,
 		&dash.Name,
-		&dash.Description,
+		&description,
 		&variablesJSON,
-		&dash.CreatedAt,
+		&createdAt,
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	if description.Valid {
+		dash.Description = &description.String
+	}
+	if parsed, err := nullableTime(createdAt); err == nil {
+		dash.CreatedAt = parsed
 	}
 
 	// Parse variables JSON
@@ -91,11 +103,10 @@ func (d *Dashboard) UpdateDashboardVariables(ctx context.Context, url string, va
 
 	query := `
 		UPDATE dashboards
-		SET variables = $1::jsonb
-		WHERE url = $2
+		SET variables = ?
+		WHERE url = ?
 	`
 
 	_, err = d.db.ExecContext(ctx, query, string(variablesJSON), url)
 	return err
 }
-

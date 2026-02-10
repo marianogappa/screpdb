@@ -23,7 +23,7 @@ var (
 					},
 					"sql_query": {
 						Type:        "string",
-						Description: "A valid PostgreSQL query that returns the rows that feed into the widget",
+						Description: "A valid SQLite query that returns the rows that feed into the widget",
 					},
 					"config": {
 						Type:        "object",
@@ -38,11 +38,11 @@ var (
 							"gauge_min":          {Type: "number", Description: "For gauge: optional minimum value"},
 							"gauge_max":          {Type: "number", Description: "For gauge: optional maximum value"},
 							"gauge_label":        {Type: "string", Description: "For gauge: optional label"},
-							"pie_label_column": {Type: "string", Description: "For pie_chart: column name for slice labels"},
-							"pie_value_column": {Type: "string", Description: "For pie_chart: column name for slice values"},
-							"bar_label_column": {Type: "string", Description: "For bar_chart: column name for bar labels"},
-							"bar_value_column": {Type: "string", Description: "For bar_chart: column name for bar values"},
-							"bar_horizontal":   {Type: "boolean", Description: "For bar_chart: horizontal bars (default: false)"},
+							"pie_label_column":   {Type: "string", Description: "For pie_chart: column name for slice labels"},
+							"pie_value_column":   {Type: "string", Description: "For pie_chart: column name for slice values"},
+							"bar_label_column":   {Type: "string", Description: "For bar_chart: column name for bar labels"},
+							"bar_value_column":   {Type: "string", Description: "For bar_chart: column name for bar values"},
+							"bar_horizontal":     {Type: "boolean", Description: "For bar_chart: horizontal bars (default: false)"},
 							"line_x_column": {
 								Type:        "string",
 								Description: "For line_chart: column name for X axis",

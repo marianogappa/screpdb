@@ -1,13 +1,13 @@
 BEGIN;
 
 -- Main replay tables
-CREATE TABLE replays (
-	id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS replays (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	file_path TEXT UNIQUE NOT NULL,
 	file_checksum TEXT UNIQUE NOT NULL,
 	file_name TEXT NOT NULL,
-	created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-	replay_date TIMESTAMP WITH TIME ZONE NOT NULL,
+	created_at TEXT NOT NULL,
+	replay_date TEXT NOT NULL,
 	title TEXT,
 	host TEXT,
 	map_name TEXT NOT NULL,
@@ -23,8 +23,8 @@ CREATE TABLE replays (
 	avail_slots_count INTEGER NOT NULL
 );
 
-CREATE TABLE players (
-	id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS players (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	replay_id INTEGER NOT NULL,
 	name TEXT NOT NULL,
 	race TEXT NOT NULL,
@@ -41,13 +41,13 @@ CREATE TABLE players (
 	FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE
 );
 
-CREATE TABLE commands (
-	id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS commands (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	replay_id INTEGER NOT NULL,
 	player_id INTEGER NOT NULL,
 	frame INTEGER NOT NULL,
 	seconds_from_game_start INTEGER NOT NULL,
-	run_at TIMESTAMP WITH TIME ZONE NOT NULL,
+	run_at TEXT NOT NULL,
 	action_type TEXT NOT NULL,
 	x INTEGER,
 	y INTEGER,
@@ -74,10 +74,10 @@ CREATE TABLE commands (
 	game_speed TEXT,
 	
 	-- Vision command fields
-	vision_player_ids JSONB, -- JSON array of player IDs
-	
+	vision_player_ids TEXT, -- JSON array of player IDs
+
 	-- Alliance command fields
-	alliance_player_ids JSONB, -- JSON array of player IDs
+	alliance_player_ids TEXT, -- JSON array of player IDs
 	is_allied_victory BOOLEAN,
 	
 	-- General command fields (for unhandled commands)
@@ -90,7 +90,8 @@ CREATE TABLE commands (
 	FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
-CREATE TABLE detected_patterns_replay (
+
+CREATE TABLE IF NOT EXISTS detected_patterns_replay (
 	replay_id INTEGER NOT NULL,
 	algorithm_version INTEGER NOT NULL,
 	file_path TEXT NOT NULL,
@@ -104,7 +105,7 @@ CREATE TABLE detected_patterns_replay (
 	FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE
 );
 
-CREATE TABLE detected_patterns_replay_team (
+CREATE TABLE IF NOT EXISTS detected_patterns_replay_team (
 	replay_id INTEGER NOT NULL,
 	team INTEGER NOT NULL,
 	pattern_name TEXT NOT NULL,
@@ -116,7 +117,7 @@ CREATE TABLE detected_patterns_replay_team (
 	FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE
 );
 
-CREATE TABLE detected_patterns_replay_player (
+CREATE TABLE IF NOT EXISTS detected_patterns_replay_player (
 	replay_id INTEGER NOT NULL,
 	player_id INTEGER NOT NULL,
 	pattern_name TEXT NOT NULL,
@@ -130,16 +131,16 @@ CREATE TABLE detected_patterns_replay_player (
 );
 
 -- Indexes
-CREATE INDEX idx_replays_file_path ON replays(file_path);
-CREATE INDEX idx_replays_file_checksum ON replays(file_checksum);
-CREATE INDEX idx_replays_replay_date ON replays(replay_date);
-CREATE INDEX idx_players_replay_id ON players(replay_id);
-CREATE INDEX idx_commands_replay_id ON commands(replay_id);
-CREATE INDEX idx_commands_player_id ON commands(player_id);
-CREATE INDEX idx_commands_frame ON commands(frame);
-CREATE INDEX idx_detected_patterns_replay_replay_id ON detected_patterns_replay(replay_id);
-CREATE INDEX idx_detected_patterns_replay_team_replay_id ON detected_patterns_replay_team(replay_id);
-CREATE INDEX idx_detected_patterns_replay_player_replay_id ON detected_patterns_replay_player(replay_id);
-CREATE INDEX idx_detected_patterns_replay_player_player_id ON detected_patterns_replay_player(player_id);
+CREATE INDEX IF NOT EXISTS idx_replays_file_path ON replays(file_path);
+CREATE INDEX IF NOT EXISTS idx_replays_file_checksum ON replays(file_checksum);
+CREATE INDEX IF NOT EXISTS idx_replays_replay_date ON replays(replay_date);
+CREATE INDEX IF NOT EXISTS idx_players_replay_id ON players(replay_id);
+CREATE INDEX IF NOT EXISTS idx_commands_replay_id ON commands(replay_id);
+CREATE INDEX IF NOT EXISTS idx_commands_player_id ON commands(player_id);
+CREATE INDEX IF NOT EXISTS idx_commands_frame ON commands(frame);
+CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_replay_id ON detected_patterns_replay(replay_id);
+CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_team_replay_id ON detected_patterns_replay_team(replay_id);
+CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_player_replay_id ON detected_patterns_replay_player(replay_id);
+CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_player_player_id ON detected_patterns_replay_player(player_id);
 
 COMMIT;

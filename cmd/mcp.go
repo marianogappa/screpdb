@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	mcpPostgresConnString string
+	mcpSQLitePath string
 )
 
 var mcpCmd = &cobra.Command{
@@ -22,23 +22,18 @@ var mcpCmd = &cobra.Command{
 }
 
 func init() {
-	mcpCmd.Flags().StringVarP(&mcpPostgresConnString, "postgres-connection-string", "p", "", "PostgreSQL connection string (e.g., 'host=localhost port=5432 user=postgres password=secret dbname=screpdb sslmode=disable')")
+	mcpCmd.Flags().StringVarP(&mcpSQLitePath, "sqlite-path", "s", "screp.db", "SQLite database file path")
 }
 
 func runMCP(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	// Validate that postgres connection string is provided
-	if mcpPostgresConnString == "" {
-		return fmt.Errorf("--postgres-connection-string is required")
-	}
-
-	// Initialize PostgreSQL storage
-	store, err := storage.NewPostgresStorage(mcpPostgresConnString)
+	// Initialize SQLite storage
+	store, err := storage.NewSQLiteStorage(mcpSQLitePath)
 	if err != nil {
-		return fmt.Errorf("failed to create PostgreSQL storage: %w", err)
+		return fmt.Errorf("failed to create SQLite storage: %w", err)
 	}
-	log.Printf("Starting MCP server with PostgreSQL database")
+	log.Printf("Starting MCP server with SQLite database")
 	defer store.Close()
 
 	// Create MCP server

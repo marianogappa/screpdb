@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/jackc/pgx/v5"
 )
 
 // VariableType represents the type of a dashboard variable
@@ -106,9 +104,9 @@ func ValidateQueryVariables(query string, variables []DashboardVariable) error {
 	return nil
 }
 
-// InterpolateVariables interpolates variables into a SQL query using pgx.NamedArgs
-// It returns the query with named args replaced and the arguments map for pgx
-func InterpolateVariables(query string, variableValues []VariableValue) (string, map[string]any, error) {
+// InterpolateVariables interpolates variables into a SQL query using sql.Named args
+// It returns the query with named args and the arguments slice for database/sql
+func InterpolateVariables(query string, variableValues []VariableValue) (string, []any, error) {
 	namedArgs := ExtractNamedArgs(query)
 	if len(namedArgs) == 0 {
 		return query, nil, nil
@@ -130,8 +128,12 @@ func InterpolateVariables(query string, variableValues []VariableValue) (string,
 		args[argName] = value
 	}
 
-	// pgx.NamedArgs will handle the interpolation, so we just return the query and args
-	return query, args, nil
+	// database/sql will bind named args, so we just return the query and args
+	named := make([]any, 0, len(args))
+	for _, argName := range namedArgs {
+		named = append(named, sql.Named(argName, args[argName]))
+	}
+	return query, named, nil
 }
 
 // ExecuteVariableQuery executes a variable's query to get possible values
@@ -145,9 +147,7 @@ func (d *Dashboard) ExecuteVariableQuery(ctx context.Context, variable Dashboard
 
 	var rows *sql.Rows
 	if args != nil && len(args) > 0 {
-		// Use pgx.NamedArgs for named parameter interpolation
-		namedArgs := pgx.NamedArgs(args)
-		rows, err = d.db.QueryContext(ctx, query, namedArgs)
+		rows, err = d.db.QueryContext(ctx, query, args...)
 	} else {
 		rows, err = d.db.QueryContext(ctx, query)
 	}

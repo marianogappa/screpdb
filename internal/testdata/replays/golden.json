@@ -1,0 +1,34 @@
+{
+  "replays": [
+    {
+      "file": "SomaJyJ.rep",
+      "players": 2,
+      "commands": 5206,
+      "patterns": {
+        "replay": 4,
+        "team": 0,
+        "player": 4
+      }
+    },
+    {
+      "file": "SomaTyson.rep",
+      "players": 2,
+      "commands": 9418,
+      "patterns": {
+        "replay": 4,
+        "team": 0,
+        "player": 4
+      }
+    },
+    {
+      "file": "Somavssnow.rep",
+      "players": 2,
+      "commands": 9009,
+      "patterns": {
+        "replay": 3,
+        "team": 0,
+        "player": 3
+      }
+    }
+  ]
+}

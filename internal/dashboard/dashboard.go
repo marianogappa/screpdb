@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	_ "github.com/lib/pq"
+	_ "modernc.org/sqlite"
+
 	"github.com/marianogappa/screpdb/internal/dashboard/variables"
 	"github.com/marianogappa/screpdb/internal/storage"
 )
@@ -20,33 +20,26 @@ import (
 type Dashboard struct {
 	ctx           context.Context
 	db            *sql.DB
-	pgxPool       *pgxpool.Pool
 	conversations map[int]*Conversation
 	ai            *AI
 }
 
-func New(ctx context.Context, store storage.Storage, postgresConnectionString string, openAIAPIKey string) (*Dashboard, error) {
-	if err := runMigrations(postgresConnectionString); err != nil {
+func New(ctx context.Context, store storage.Storage, sqlitePath string, openAIAPIKey string) (*Dashboard, error) {
+	if err := runMigrations(sqlitePath); err != nil {
 		return nil, fmt.Errorf("failed to run migration routine: %w", err)
 	}
 
-	db, err := sql.Open("postgres", postgresConnectionString)
+	db, err := sql.Open("sqlite", sqliteDSN(sqlitePath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
+	if _, err := db.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
+		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
+	}
+
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
-	}
-
-	// Create pgx pool for native pgx queries with NamedArgs support
-	pgxPool, err := pgxpool.New(ctx, postgresConnectionString)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pgx pool: %w", err)
-	}
-
-	if err := pgxPool.Ping(ctx); err != nil {
-		return nil, fmt.Errorf("failed to ping pgx pool: %w", err)
 	}
 
 	ai, err := NewAI(ctx, openAIAPIKey, store, db, true)
@@ -54,7 +47,7 @@ func New(ctx context.Context, store storage.Storage, postgresConnectionString st
 		return nil, fmt.Errorf("failed to create AI client: %w", err)
 	}
 
-	return &Dashboard{ctx: ctx, db: db, pgxPool: pgxPool, ai: ai, conversations: map[int]*Conversation{}}, nil
+	return &Dashboard{ctx: ctx, db: db, ai: ai, conversations: map[int]*Conversation{}}, nil
 }
 
 func (d *Dashboard) setupRouter() *mux.Router {
@@ -147,39 +140,33 @@ func bytesToWidgetConfig(data []byte) (WidgetConfig, error) {
 }
 
 func (d *Dashboard) executeQuery(query string, usedVariables map[string]variables.Variable) ([]map[string]any, []string, error) {
-	// Build pgx.NamedArgs from variables
-	// pgx.NamedArgs automatically converts @placeholder to $1, $2, etc.
-	namedArgs := pgx.NamedArgs{}
-	for varName, variable := range usedVariables {
-		namedArgs[varName] = variable.UsedValue
-	}
-
-	// Use pgx's native Query method with NamedArgs
-	// The query should already have @variable_name placeholders - no rewriting needed!
-	rows, err := d.pgxPool.Query(d.ctx, query, namedArgs)
+	args := buildNamedArgs(usedVariables)
+	rows, err := d.db.QueryContext(d.ctx, query, args...)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer rows.Close()
 
-	// Get field descriptions from pgx rows
-	fieldDescriptions := rows.FieldDescriptions()
-	columns := make([]string, len(fieldDescriptions))
-	for i, fd := range fieldDescriptions {
-		columns[i] = string(fd.Name)
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, nil, err
 	}
 
 	var results []map[string]any
 	for rows.Next() {
-		values, err := rows.Values()
-		if err != nil {
+		values := make([]any, len(columns))
+		valuePtrs := make([]any, len(columns))
+		for i := range values {
+			valuePtrs[i] = &values[i]
+		}
+
+		if err := rows.Scan(valuePtrs...); err != nil {
 			return nil, nil, err
 		}
 
 		row := make(map[string]any)
 		for i, col := range columns {
 			val := values[i]
-			// Convert to native Go types for JSON serialization
 			switch v := val.(type) {
 			case []byte:
 				row[col] = string(v)
@@ -193,4 +180,33 @@ func (d *Dashboard) executeQuery(query string, usedVariables map[string]variable
 	}
 
 	return results, columns, rows.Err()
+}
+
+func buildNamedArgs(usedVariables map[string]variables.Variable) []any {
+	if len(usedVariables) == 0 {
+		return nil
+	}
+	args := make([]any, 0, len(usedVariables))
+	for varName, variable := range usedVariables {
+		args = append(args, sql.Named(varName, variable.UsedValue))
+	}
+	return args
+}
+
+func sqliteDSN(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return "file:screp.db?_pragma=foreign_keys(1)"
+	}
+	if path == ":memory:" || strings.HasPrefix(path, "file:") {
+		if strings.Contains(path, "_pragma=foreign_keys(1)") {
+			return path
+		}
+		sep := "?"
+		if strings.Contains(path, "?") {
+			sep = "&"
+		}
+		return path + sep + "_pragma=foreign_keys(1)"
+	}
+	return fmt.Sprintf("file:%s?_pragma=foreign_keys(1)", path)
 }

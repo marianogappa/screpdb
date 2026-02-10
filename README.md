@@ -4,12 +4,12 @@ A comprehensive CLI tool for ingesting StarCraft: Brood War replay files into a 
 
 ## Features
 
-- **Replay Ingestion**: Parse and store StarCraft: Brood War replay files (.rep) into SQLite or PostgreSQL databases
+- **Replay Ingestion**: Parse and store StarCraft: Brood War replay files (.rep) into a SQLite database
 - **MCP Server**: Provide SQL query capabilities through a Model Context Protocol server
-- **Concurrent Processing**: Efficiently process multiple replay files with configurable concurrency
+- **Concurrent Processing**: Efficiently process multiple replay files concurrently
 - **File Watching**: Monitor directories for new replay files and automatically ingest them
 - **Deduplication**: Prevent duplicate processing using file checksums
-- **Flexible Storage**: Support for both SQLite and PostgreSQL backends
+- **Flexible Storage**: SQLite storage (single-file, no server required)
 
 ## Installation
 
@@ -38,10 +38,7 @@ The `ingest` command processes StarCraft replay files and stores them in a datab
 ./screpdb ingest
 
 # Specify input directory and output database
-./screpdb ingest -i /path/to/replays -o my_replays.db
-
-# Use PostgreSQL instead of SQLite
-./screpdb ingest -p "host=localhost port=5432 user=myuser dbname=screpdb sslmode=disable"
+./screpdb ingest -i /path/to/replays -s my_replays.db
 
 # Watch for new files and process them automatically
 ./screpdb ingest -w
@@ -50,20 +47,16 @@ The `ingest` command processes StarCraft replay files and stores them in a datab
 ./screpdb ingest -m 6  # Last 6 months
 ./screpdb ingest -d 2024-01-01  # Up to specific date
 
-# Control concurrency
-./screpdb ingest -c 8  # Use 8 concurrent workers
 ```
 
 #### Ingest Command Options
 
 - `-i, --input-dir`: Input directory containing replay files (default: system replay directory)
-- `-o, --sqlite-output-file`: Output SQLite database file (default: screp.db)
-- `-p, --postgres-connection-string`: PostgreSQL connection string
+- `-s, --sqlite-path`: SQLite database file path (default: screp.db)
 - `-w, --watch`: Watch for new files and ingest them as they appear
 - `-n, --stop-after-n-reps`: Stop after processing N replay files (0 = no limit)
 - `-d, --up-to-yyyy-mm-dd`: Only process files up to this date (YYYY-MM-DD format)
 - `-m, --up-to-n-months`: Only process files from the last N months (0 = no limit)
-- `-c, --max-concurrency`: Maximum number of concurrent goroutines (default: 4)
 
 ### MCP Server
 
@@ -74,12 +67,12 @@ The `mcp` command starts a Model Context Protocol server that provides SQL query
 ./screpdb mcp
 
 # Specify custom database file
-./screpdb mcp -i /path/to/custom.db
+./screpdb mcp -s /path/to/custom.db
 ```
 
 #### MCP Command Options
 
-- `-i, --sqlite-input-file`: Input SQLite database file (default: screp.db)
+- `-s, --sqlite-path`: SQLite database file path (default: screp.db)
 
 ## MCP Server Implementation
 
@@ -299,7 +292,7 @@ The MCP server is implemented using the `github.com/mark3labs/mcp-go` library, w
 
 ### Key Components
 
-1. **Storage Interface**: Abstracted storage layer supporting both SQLite and PostgreSQL
+1. **Storage Interface**: Abstracted storage layer for SQLite
 2. **Parser**: StarCraft replay file parser using the `github.com/icza/screp` library
 3. **File Operations**: File discovery, watching, and deduplication utilities
 4. **MCP Server**: Model Context Protocol server for querying capabilities
