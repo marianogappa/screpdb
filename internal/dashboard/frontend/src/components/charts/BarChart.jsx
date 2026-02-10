@@ -88,6 +88,14 @@ function BarChart({ data, config }) {
         .attr('height', yScale.bandwidth())
         .attr('width', d => xScale(Number(d[config.bar_value_column]) || 0))
         .attr('fill', (d, i) => colors(i));
+
+      svg.append("text")
+        .attr("text-anchor", "end")
+        .attr("x", width) // I have no idea how to set these!
+        .attr("y", height + 35) // I have no idea how to set these!
+        .attr('fill', '#fff')
+        .attr('font-size', '12px')
+        .text(config?.bar_value_column);
     } else {
       const xScale = d3.scaleBand()
         .domain(data.map(d => String(d[config.bar_label_column])))
@@ -121,6 +129,15 @@ function BarChart({ data, config }) {
         .attr('width', xScale.bandwidth())
         .attr('height', d => height - yScale(Number(d[config.bar_value_column]) || 0))
         .attr('fill', (d, i) => colors(i));
+
+      svg.append("text")
+        .attr("text-anchor", "end")
+        .attr("x", 100) // I have no idea how to set these!
+        .attr("y", 50) // I have no idea how to set these!
+        .attr("transform", "rotate(90)")
+        .attr('fill', '#fff')
+        .attr('font-size', '12px')
+        .text(config.bar_value_column);
     }
 
   }, [data, config, dimensions]);
