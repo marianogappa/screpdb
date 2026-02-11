@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.15.0](https://github.com/marianogappa/screpdb/compare/v0.14.2...v0.15.0) (2026-02-11)
+
+
+### Features
+
+* **clean:** separated --clean from --clean-dashboard, now --clean-dashboard only cleans dashboards and --clean only cleans everything but keeps dashboards ([afe5881](https://github.com/marianogappa/screpdb/commit/afe5881c19264903119de6268bd52e5c1d2ea3ce))
+* Default to dashboard command. Trigger ingest via UI. ([04f9ac6](https://github.com/marianogappa/screpdb/commit/04f9ac669c9153a2bb71ea1a9034fdf26c89a8a2))
+* Default to dashboard command. Trigger ingest via UI. ([629c1cd](https://github.com/marianogappa/screpdb/commit/629c1cdccc15c878c641fd3850a48b3832d80be0))
+* Remove color and TableColumns configs. ([30347b0](https://github.com/marianogappa/screpdb/commit/30347b0483b610b283ae692c6c0b30f8ad467bb6))
+* Remove colouring configuration. ([385d9b8](https://github.com/marianogappa/screpdb/commit/385d9b89679bcf1ec43dcb4d1fefe33770c60fa9))
+* separated --clean from --clean-dashboard ([62e636a](https://github.com/marianogappa/screpdb/commit/62e636ac2f60b499c946b5ee676649bba01e2dd6))
+* Use SQLite as database layer. ([e78a65e](https://github.com/marianogappa/screpdb/commit/e78a65e0aae90c02b70a444e481fbc3d660efa8b))
+* Use SQLite as database layer. ([8446810](https://github.com/marianogappa/screpdb/commit/84468109400ca6d484431612e459d0ebb9f7a5bf))
+
+
+### Bug Fixes
+
+* Add axis labels on charts. ([fee88b2](https://github.com/marianogappa/screpdb/commit/fee88b201c5bb23b4afd46170484a5195c079c53))
+* Add axis labels on chorts. ([a82f760](https://github.com/marianogappa/screpdb/commit/a82f760568fdb2980356a8eca2ef6484c7901176))
+* Separate concerns and remove unuseful comments ([274421c](https://github.com/marianogappa/screpdb/commit/274421c8ea43f0ac7f83d34d06aa7439641bdac5))
+
 ## [0.14.2](https://github.com/marianogappa/screpdb/compare/v0.14.1...v0.14.2) (2026-01-04)
 
 
