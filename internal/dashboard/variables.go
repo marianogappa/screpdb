@@ -146,7 +146,7 @@ func (d *Dashboard) ExecuteVariableQuery(ctx context.Context, variable Dashboard
 	}
 
 	var rows *sql.Rows
-	if args != nil && len(args) > 0 {
+	if len(args) > 0 {
 		rows, err = d.db.QueryContext(ctx, query, args...)
 	} else {
 		rows, err = d.db.QueryContext(ctx, query)
