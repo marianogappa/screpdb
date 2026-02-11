@@ -22,6 +22,7 @@ type Dashboard struct {
 	db            *sql.DB
 	conversations map[int]*Conversation
 	ai            *AI
+	sqlitePath    string
 }
 
 func New(ctx context.Context, store storage.Storage, sqlitePath string, openAIAPIKey string) (*Dashboard, error) {
@@ -47,7 +48,7 @@ func New(ctx context.Context, store storage.Storage, sqlitePath string, openAIAP
 		return nil, fmt.Errorf("failed to create AI client: %w", err)
 	}
 
-	return &Dashboard{ctx: ctx, db: db, ai: ai, conversations: map[int]*Conversation{}}, nil
+	return &Dashboard{ctx: ctx, db: db, ai: ai, conversations: map[int]*Conversation{}, sqlitePath: sqlitePath}, nil
 }
 
 func (d *Dashboard) setupRouter() *mux.Router {
@@ -64,6 +65,7 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/dashboard/{url}/widget/{wid}", d.handlerUpdateDashboardWidget).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/api/query", d.handlerExecuteQuery).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/api/query/variables", d.handlerGetQueryVariables).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/api/ingest", d.handlerIngest).Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/api/health", d.handlerHealthcheck).Methods(http.MethodGet, http.MethodOptions)
 	http.Handle("/", r)

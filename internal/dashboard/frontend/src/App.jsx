@@ -41,6 +41,14 @@ function App() {
   const [variableValues, setVariableValues] = useState({});
   const [openaiEnabled, setOpenaiEnabled] = useState(false);
   const [editingWidget, setEditingWidget] = useState(null);
+  const [replayCount, setReplayCount] = useState(null);
+  const [showIngestPanel, setShowIngestPanel] = useState(false);
+  const [ingestMessage, setIngestMessage] = useState('');
+  const [ingestForm, setIngestForm] = useState({
+    watch: false,
+    stopAfterN: 50,
+    clean: false,
+  });
 
   const loadDashboard = async (url, varValues = null, skipVarInit = false) => {
     try {
@@ -116,6 +124,7 @@ function App() {
       if (response.ok) {
         const data = await response.json();
         setOpenaiEnabled(data.openai_enabled || false);
+        setReplayCount(typeof data.total_replays === 'number' ? data.total_replays : 0);
       }
     } catch (err) {
       console.error('Failed to check OpenAI status:', err);
@@ -199,6 +208,22 @@ function App() {
     }
   };
 
+  const handleIngestSubmit = async (e) => {
+    e.preventDefault();
+    setIngestMessage('');
+    try {
+      await api.startIngest({
+        watch: ingestForm.watch,
+        stop_after_n_reps: ingestForm.stopAfterN || 0,
+        clean: ingestForm.clean,
+      });
+      setIngestMessage('Ingestion started in the background.');
+      setShowIngestPanel(false);
+    } catch (err) {
+      setIngestMessage(err.message || 'Failed to start ingestion.');
+    }
+  };
+
   const handleSwitchDashboard = (url) => {
     setVariableValues({});
     loadDashboard(url);
@@ -263,6 +288,12 @@ function App() {
               >
                 Manage Dashboards
               </button>
+              <button
+                onClick={() => setShowIngestPanel((prev) => !prev)}
+                className="btn-manage"
+              >
+                {showIngestPanel ? 'Close Ingest' : 'Ingest'}
+              </button>
             </div>
           </div>
 
@@ -316,6 +347,48 @@ function App() {
               </div>
             )}
           </div>
+
+          {showIngestPanel && (
+            <div className="ingest-panel">
+              <div className="ingest-header">
+                <div className="ingest-title">Ingest Replays</div>
+                <div className="ingest-subtitle">Ingestion happens in the background.</div>
+              </div>
+              <form onSubmit={handleIngestSubmit} className="ingest-form">
+                <div className="ingest-grid">
+                  <label className="ingest-field">
+                    <span>Ingest last N replays</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={ingestForm.stopAfterN}
+                      onChange={(e) => setIngestForm({ ...ingestForm, stopAfterN: parseInt(e.target.value || '0', 10) })}
+                    />
+                  </label>
+                  <label className="ingest-field ingest-checkbox">
+                    <span>Erase existing data</span>
+                    <input
+                      type="checkbox"
+                      checked={ingestForm.clean}
+                      onChange={(e) => setIngestForm({ ...ingestForm, clean: e.target.checked })}
+                    />
+                  </label>
+                </div>
+                <div className="ingest-actions">
+                  <button type="submit" className="btn-create-ai">
+                    Start Ingestion
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-create-manual"
+                    onClick={() => setShowIngestPanel(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
           {dashboard?.variables && Object.keys(dashboard.variables).length > 0 && (
             <div className="variables-container" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
@@ -388,9 +461,17 @@ function App() {
           onSave={(data) => handleUpdateWidget(editingWidget.id, data)}
         />
       )}
+
+      <div className="app-footer">
+        <div className="footer-left">
+          {replayCount !== null
+            ? `${replayCount.toLocaleString()} replays in database. You can trigger an ingestion using the button above.`
+            : 'Loading replay count...'}
+        </div>
+        {ingestMessage && <div className="footer-right">{ingestMessage}</div>}
+      </div>
     </div>
   );
 }
 
 export default App;
-
