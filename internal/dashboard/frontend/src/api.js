@@ -121,5 +121,17 @@ export const api = {
     }
     return response.json();
   },
-};
 
+  startIngest: async (data) => {
+    const response = await fetch(`${API_BASE}/ingest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data || {}),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to start ingestion');
+    }
+    return response.json();
+  },
+};

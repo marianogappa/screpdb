@@ -28,8 +28,12 @@ var dashboardCmd = &cobra.Command{
 }
 
 func init() {
-	dashboardCmd.Flags().StringVarP(&dashboardSQLitePath, "sqlite-path", "s", "screp.db", "SQLite database file path")
-	dashboardCmd.Flags().StringVarP(&openaiAPIKey, "openai-api-key", "k", "", "An API KEY from OpenAI in order to prompt for widget creation")
+	addDashboardFlags(dashboardCmd)
+}
+
+func addDashboardFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(&dashboardSQLitePath, "sqlite-path", "s", "screp.db", "SQLite database file path")
+	cmd.Flags().StringVarP(&openaiAPIKey, "openai-api-key", "k", "", "An API KEY from OpenAI in order to prompt for widget creation")
 }
 
 func runDashboard(cmd *cobra.Command, args []string) error {
