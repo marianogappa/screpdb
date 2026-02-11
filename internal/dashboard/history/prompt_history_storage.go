@@ -11,12 +11,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/go-jet/jet/v2/postgres"
-	"github.com/go-jet/jet/v2/qrm"
-	"github.com/jackc/pgx/v5"
 	"github.com/marianogappa/screpdb/internal/dashboard/variables"
-	jetmodel "github.com/marianogappa/screpdb/internal/jet/screpdb/public/model"
-	"github.com/marianogappa/screpdb/internal/jet/screpdb/public/table"
 	"github.com/tmc/langchaingo/llms"
 )
 
@@ -95,11 +90,10 @@ func (s *PromptHistoryStorage) setOnDB(ctx context.Context, widgetID int64, hist
 	historyBytes := historyToBytes(history)
 	now := time.Now()
 
-	// Use raw SQL for UPSERT since go-jet's ON_CONFLICT support may be limited
-	// Cast to JSONB since the column is JSONB type
+	// Use raw SQL for UPSERT
 	query := `
 		INSERT INTO dashboard_widget_prompt_history (widget_id, prompt_history, updated_at)
-		VALUES ($1, $2::jsonb, $3)
+		VALUES (?, ?, ?)
 		ON CONFLICT (widget_id) DO UPDATE SET
 			prompt_history = EXCLUDED.prompt_history,
 			updated_at = EXCLUDED.updated_at
@@ -110,19 +104,17 @@ func (s *PromptHistoryStorage) setOnDB(ctx context.Context, widgetID int64, hist
 }
 
 func (s *PromptHistoryStorage) getFromDB(ctx context.Context, widgetID int64) ([]llms.MessageContent, bool, error) {
-	var historyRow jetmodel.DashboardWidgetPromptHistory
-	stmt := table.DashboardWidgetPromptHistory.SELECT(table.DashboardWidgetPromptHistory.AllColumns).
-		WHERE(table.DashboardWidgetPromptHistory.WidgetID.EQ(postgres.Int64(widgetID)))
-
-	err := stmt.QueryContext(ctx, s.db, &historyRow)
-	if err == sql.ErrNoRows || err == pgx.ErrNoRows || err == qrm.ErrNoRows {
+	var promptHistory string
+	err := s.db.QueryRowContext(ctx, `SELECT prompt_history FROM dashboard_widget_prompt_history WHERE widget_id = ?`, widgetID).
+		Scan(&promptHistory)
+	if err == sql.ErrNoRows {
 		return nil, false, nil
 	}
 	if err != nil {
 		return nil, false, err
 	}
 
-	history, err := bytesToHistory([]byte(historyRow.PromptHistory))
+	history, err := bytesToHistory([]byte(promptHistory))
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to unmarshal prompt history bytes: %w", err)
 	}
@@ -187,7 +179,7 @@ You must choose ONE of the following widget types and provide the appropriate co
 The responses must be structured JSON which return:
 - widget title
 - widget description
-- widget PostgreSQL query
+- widget SQLite query
 - widget config (object with type and type-specific fields)
 
 IMPORTANT CONFIGURATION RULES:

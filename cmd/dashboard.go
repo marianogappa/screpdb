@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	dashboardPostgresConnString string
-	openaiAPIKey                string
+	dashboardSQLitePath string
+	openaiAPIKey        string
 )
 
 var dashboardCmd = &cobra.Command{
@@ -28,18 +28,17 @@ var dashboardCmd = &cobra.Command{
 }
 
 func init() {
-	dashboardCmd.Flags().StringVarP(&dashboardPostgresConnString, "postgres-connection-string", "p", "", "PostgreSQL connection string (e.g., 'host=localhost port=5432 user=postgres password=secret dbname=screpdb sslmode=disable')")
+	dashboardCmd.Flags().StringVarP(&dashboardSQLitePath, "sqlite-path", "s", "screp.db", "SQLite database file path")
 	dashboardCmd.Flags().StringVarP(&openaiAPIKey, "openai-api-key", "k", "", "An API KEY from OpenAI in order to prompt for widget creation")
 }
 
 func runDashboard(cmd *cobra.Command, args []string) error {
-	// TODO: store is Postgres only
-	store, err := storage.NewPostgresStorage(dashboardPostgresConnString)
+	store, err := storage.NewSQLiteStorage(dashboardSQLitePath)
 	if err != nil {
-		return fmt.Errorf("failed to create PostgreSQL storage: %w", err)
+		return fmt.Errorf("failed to create SQLite storage: %w", err)
 	}
 
-	dash, err := dashboard.New(cmd.Context(), store, dashboardPostgresConnString, openaiAPIKey)
+	dash, err := dashboard.New(cmd.Context(), store, dashboardSQLitePath, openaiAPIKey)
 	if err != nil {
 		return err
 	}

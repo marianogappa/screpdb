@@ -20,7 +20,7 @@ var availableTools = []llms.Tool{
 				"properties": map[string]any{
 					"sql": map[string]any{
 						"type":        "string",
-						"description": "PostgresSQL query to execute against the StarCraft replay database",
+						"description": "SQLite query to execute against the StarCraft replay database",
 					},
 				},
 				"required": []string{"sql"},

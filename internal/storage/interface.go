@@ -10,7 +10,7 @@ import (
 
 // Storage backend constants
 const (
-	StoragePostgreSQL = "postgresql"
+	StorageSQLite = "sqlite"
 )
 
 // ReplayDataChannel represents a channel for sending replay data to storage

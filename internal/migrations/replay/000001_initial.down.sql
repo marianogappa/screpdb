@@ -14,11 +14,11 @@ DROP INDEX IF EXISTS idx_replays_file_checksum;
 DROP INDEX IF EXISTS idx_replays_file_path;
 
 -- Drop tables in reverse order of dependencies
-DROP TABLE IF EXISTS detected_patterns_replay_player CASCADE;
-DROP TABLE IF EXISTS detected_patterns_replay_team CASCADE;
-DROP TABLE IF EXISTS detected_patterns_replay CASCADE;
-DROP TABLE IF EXISTS commands CASCADE;
-DROP TABLE IF EXISTS players CASCADE;
-DROP TABLE IF EXISTS replays CASCADE;
+DROP TABLE IF EXISTS detected_patterns_replay_player;
+DROP TABLE IF EXISTS detected_patterns_replay_team;
+DROP TABLE IF EXISTS detected_patterns_replay;
+DROP TABLE IF EXISTS commands;
+DROP TABLE IF EXISTS players;
+DROP TABLE IF EXISTS replays;
 
 COMMIT;

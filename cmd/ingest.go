@@ -22,24 +22,24 @@ import (
 var ingestCmd = &cobra.Command{
 	Use:   "ingest",
 	Short: "Ingest replay files into the database",
-	Long:  `Ingest StarCraft: Brood War replay files from a directory into a PostgreSQL database.`,
+	Long:  `Ingest StarCraft: Brood War replay files from a directory into a SQLite database.`,
 	RunE:  runIngest,
 }
 
 var (
-	inputDir           string
-	postgresConnString string
-	watch              bool
-	stopAfterN         int
-	upToDate           string
-	upToMonths         int
-	clean              bool
-	cleanDashboard     bool
+	inputDir       string
+	sqlitePath     string
+	watch          bool
+	stopAfterN     int
+	upToDate       string
+	upToMonths     int
+	clean          bool
+	cleanDashboard bool
 )
 
 func init() {
 	ingestCmd.Flags().StringVarP(&inputDir, "input-dir", "i", fileops.GetDefaultReplayDir(), "Input directory containing replay files")
-	ingestCmd.Flags().StringVarP(&postgresConnString, "postgres-connection-string", "p", "", "PostgreSQL connection string (e.g., 'host=localhost port=5432 user=postgres dbname=screpdb sslmode=disable')")
+	ingestCmd.Flags().StringVarP(&sqlitePath, "sqlite-path", "s", "screp.db", "SQLite database file path")
 	ingestCmd.Flags().BoolVarP(&watch, "watch", "w", false, "Watch for new files and ingest them as they appear")
 	ingestCmd.Flags().IntVarP(&stopAfterN, "stop-after-n-reps", "n", 0, "Stop after processing N replay files (0 = no limit)")
 	ingestCmd.Flags().StringVarP(&upToDate, "up-to-yyyy-mm-dd", "d", "", "Only process files up to this date (YYYY-MM-DD format)")
@@ -51,16 +51,11 @@ func init() {
 func runIngest(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	// Validate that postgres connection string is provided
-	if postgresConnString == "" {
-		return fmt.Errorf("--postgres-connection-string is required")
-	}
-
 	// Initialize storage
-	color.Cyan("Using PostgreSQL storage")
-	store, err := storage.NewPostgresStorage(postgresConnString)
+	color.Cyan("Using SQLite storage at %s", sqlitePath)
+	store, err := storage.NewSQLiteStorage(sqlitePath)
 	if err != nil {
-		return fmt.Errorf("failed to create PostgreSQL storage: %w", err)
+		return fmt.Errorf("failed to create SQLite storage: %w", err)
 	}
 	defer store.Close()
 
