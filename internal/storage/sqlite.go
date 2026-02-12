@@ -22,14 +22,10 @@ type SQLiteStorage struct {
 	dbPath string
 }
 
-// Batching configuration
-const (
-	batchSize = 1000 // Number of records per batch
-)
-
 type dbtx interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
 }
 
 // NewSQLiteStorage creates a new SQLite storage instance
@@ -38,6 +34,22 @@ func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+
+	// SQLite write-path tuning for ingestion-heavy workloads.
+	if _, err := db.Exec(`PRAGMA journal_mode = WAL;`); err != nil {
+		return nil, fmt.Errorf("failed to set journal_mode=WAL: %w", err)
+	}
+	if _, err := db.Exec(`PRAGMA synchronous = NORMAL;`); err != nil {
+		return nil, fmt.Errorf("failed to set synchronous=NORMAL: %w", err)
+	}
+	if _, err := db.Exec(`PRAGMA temp_store = MEMORY;`); err != nil {
+		return nil, fmt.Errorf("failed to set temp_store=MEMORY: %w", err)
+	}
+	if _, err := db.Exec(`PRAGMA busy_timeout = 5000;`); err != nil {
+		return nil, fmt.Errorf("failed to set busy_timeout=5000: %w", err)
 	}
 
 	if _, err := db.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
@@ -337,52 +349,18 @@ func (s *SQLiteStorage) insertCommandsBatchTx(ctx context.Context, db dbtx, comm
 		return nil
 	}
 
-	// Process in batches
-	for i := 0; i < len(commands); i += batchSize {
-		end := min(i+batchSize, len(commands))
-		batch := commands[i:end]
-		if err := s.insertCommandsBatchChunkTx(ctx, db, batch); err != nil {
-			return fmt.Errorf("failed to insert commands batch: %w", err)
-		}
+	stmt, err := db.PrepareContext(ctx, `
+		INSERT INTO commands (
+			replay_id, player_id, frame, seconds_from_game_start, run_at, action_type,
+			x, y, is_queued, order_name, unit_type, unit_types, tech_name, upgrade_name,
+			hotkey_type, hotkey_group, game_speed, vision_player_ids, alliance_player_ids,
+			is_allied_victory, general_data, chat_message, leave_reason
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare command insert statement: %w", err)
 	}
-
-	return nil
-}
-
-// insertCommandsBatchChunkTx inserts a chunk of commands (uses provided connection/transaction)
-func (s *SQLiteStorage) insertCommandsBatchChunkTx(ctx context.Context, db dbtx, commands []*models.Command) error {
-	if len(commands) == 0 {
-		return nil
-	}
-
-	columns := []string{
-		"replay_id",
-		"player_id",
-		"frame",
-		"seconds_from_game_start",
-		"run_at",
-		"action_type",
-		"x",
-		"y",
-		"is_queued",
-		"order_name",
-		"unit_type",
-		"unit_types",
-		"tech_name",
-		"upgrade_name",
-		"hotkey_type",
-		"hotkey_group",
-		"game_speed",
-		"vision_player_ids",
-		"alliance_player_ids",
-		"is_allied_victory",
-		"general_data",
-		"chat_message",
-		"leave_reason",
-	}
-
-	valueStrings := make([]string, 0, len(commands))
-	valueArgs := make([]any, 0, len(commands)*len(columns))
+	defer stmt.Close()
 
 	for _, command := range commands {
 		// Serialize player IDs to JSON string
@@ -426,8 +404,7 @@ func (s *SQLiteStorage) insertCommandsBatchChunkTx(ctx context.Context, db dbtx,
 			hotkeyGroup = &val
 		}
 
-		valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-		valueArgs = append(valueArgs,
+		if _, err := stmt.ExecContext(ctx,
 			int32(command.ReplayID),
 			int32(command.PlayerID),
 			command.Frame,
@@ -451,17 +428,9 @@ func (s *SQLiteStorage) insertCommandsBatchChunkTx(ctx context.Context, db dbtx,
 			command.GeneralData,
 			command.ChatMessage,
 			command.LeaveReason,
-		)
-	}
-
-	query := fmt.Sprintf(
-		"INSERT INTO commands (%s) VALUES %s",
-		strings.Join(columns, ", "),
-		strings.Join(valueStrings, ", "),
-	)
-
-	if _, err := db.ExecContext(ctx, query, valueArgs...); err != nil {
-		return fmt.Errorf("failed to insert commands batch: %w", err)
+		); err != nil {
+			return fmt.Errorf("failed to execute command insert: %w", err)
+		}
 	}
 
 	return nil
