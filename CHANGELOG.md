@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.1](https://github.com/marianogappa/screpdb/compare/v0.15.0...v0.15.1) (2026-02-12)
+
+
+### Bug Fixes
+
+* Implement performance improvements for SQLite ingestion. ([b2235e3](https://github.com/marianogappa/screpdb/commit/b2235e32d196a81a5498b9bdfb21bf334646209c))
+* Implement performance improvements for SQLite ingestion. ([a0e5405](https://github.com/marianogappa/screpdb/commit/a0e5405966a66dfea81d781a2ef1d3a2a5e1fdb9))
+
 ## [0.15.0](https://github.com/marianogappa/screpdb/compare/v0.14.2...v0.15.0) (2026-02-11)
 
 
