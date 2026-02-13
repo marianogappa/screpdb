@@ -1,13 +1,13 @@
 package dashboard
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"maps"
 	"net/http"
-
-	"database/sql"
 
 	"github.com/gorilla/mux"
 	"github.com/marianogappa/screpdb/internal/dashboard/variables"
@@ -52,11 +52,13 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 
 	dash, err := d.getDashboardByURL(d.ctx, dashboardURL)
 	if err == sql.ErrNoRows {
+		log.Printf("dashboard get: unknown url=%s", dashboardURL)
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte("unknown dashboard url"))
 		return
 	}
 	if err != nil {
+		log.Printf("dashboard get: failed to load url=%s err=%v", dashboardURL, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("error getting dashboard url from db: " + err.Error()))
 		return
@@ -64,6 +66,7 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 
 	widgets, err := d.getDashboardWidgets(d.ctx, dashboardURL)
 	if err != nil {
+		log.Printf("dashboard get: failed to load widgets url=%s err=%v", dashboardURL, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("error listing dashboard widgets: " + err.Error()))
 		return
@@ -90,8 +93,9 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 		if widget.Query != "" {
 			usedVariables := variables.FindVariables(widget.Query, params.VariableValues)
 			maps.Copy(allUsedVariables, usedVariables)
-			queryResults, queryColumns, err := d.executeQuery(widget.Query, usedVariables)
+			queryResults, queryColumns, err := d.executeQuery(widget.Query, usedVariables, dash.ReplaysFilterSQL)
 			if err != nil {
+				log.Printf("dashboard get: query error url=%s widget_id=%d err=%v", dashboardURL, widget.ID, err)
 				w.WriteHeader(http.StatusInternalServerError)
 				_, _ = w.Write([]byte(fmt.Sprintf("error executing query for widget %d: %v", widget.ID, err.Error())))
 				return
@@ -102,6 +106,7 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 
 		config, err := bytesToWidgetConfig([]byte(widget.Config))
 		if err != nil {
+			log.Printf("dashboard get: config parse error widget_id=%d err=%v", widget.ID, err)
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = fmt.Fprintf(w, "error parsing config for widget %d: %v", widget.ID, err.Error())
 			return
@@ -132,8 +137,13 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 		})
 	}
 
-	variableOptions, err := variables.RunAllUsedVariableQueries(d.db, allUsedVariables)
-	if err != nil {
+	var variableOptions map[string][]any
+	if err := d.withFilteredConnection(dash.ReplaysFilterSQL, func(db *sql.DB) error {
+		var err error
+		variableOptions, err = variables.RunAllUsedVariableQueries(db, allUsedVariables)
+		return err
+	}); err != nil {
+		log.Printf("dashboard get: variable query error url=%s err=%v", dashboardURL, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = fmt.Fprintf(w, "failed to run all used variable queries: %v", err.Error())
 		return
@@ -157,12 +167,13 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 	}
 
 	type DashboardResponse struct {
-		URL         string                      `json:"url"`
-		Name        string                      `json:"name"`
-		Description *string                     `json:"description"`
-		CreatedAt   *string                     `json:"created_at"`
-		Widgets     []WidgetWithResults         `json:"widgets"`
-		Variables   map[string]VariableResponse `json:"variables"`
+		URL              string                      `json:"url"`
+		Name             string                      `json:"name"`
+		Description      *string                     `json:"description"`
+		ReplaysFilterSQL *string                     `json:"replays_filter_sql"`
+		CreatedAt        *string                     `json:"created_at"`
+		Widgets          []WidgetWithResults         `json:"widgets"`
+		Variables        map[string]VariableResponse `json:"variables"`
 	}
 
 	var dashDescription *string
@@ -176,12 +187,13 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 	}
 
 	response := DashboardResponse{
-		URL:         dash.URL,
-		Name:        dash.Name,
-		Description: dashDescription,
-		CreatedAt:   dashCreatedAt,
-		Widgets:     widgetsWithResults,
-		Variables:   variablesResponse,
+		URL:              dash.URL,
+		Name:             dash.Name,
+		Description:      dashDescription,
+		ReplaysFilterSQL: dash.ReplaysFilterSQL,
+		CreatedAt:        dashCreatedAt,
+		Widgets:          widgetsWithResults,
+		Variables:        variablesResponse,
 	}
 
 	w.WriteHeader(http.StatusOK)

@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import ReplayFilterEditor from './ReplayFilterEditor';
 
 function EditDashboardModal({ dashboard, onClose, onSave }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [replaysFilterSQL, setReplaysFilterSQL] = useState('');
 
   useEffect(() => {
     if (dashboard) {
       setName(dashboard.name || '');
       setDescription(dashboard.description?.valid ? dashboard.description.string || '' : '');
+      setReplaysFilterSQL(dashboard.replays_filter_sql || '');
     }
   }, [dashboard]);
 
@@ -16,6 +19,7 @@ function EditDashboardModal({ dashboard, onClose, onSave }) {
     onSave({
       name,
       description: description || null,
+      replays_filter_sql: replaysFilterSQL,
     });
   };
 
@@ -49,6 +53,8 @@ function EditDashboardModal({ dashboard, onClose, onSave }) {
             />
           </div>
 
+          <ReplayFilterEditor value={replaysFilterSQL} onChange={setReplaysFilterSQL} />
+
           <div className="form-actions">
             <button type="button" onClick={onClose} className="btn-cancel">
               Cancel
@@ -64,4 +70,3 @@ function EditDashboardModal({ dashboard, onClose, onSave }) {
 }
 
 export default EditDashboardModal;
-

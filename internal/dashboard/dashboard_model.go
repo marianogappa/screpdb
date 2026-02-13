@@ -10,11 +10,12 @@ import (
 
 // DashboardWithVariables represents a dashboard and its variables
 type DashboardWithVariables struct {
-	URL         string             `json:"url"`
-	Name        string             `json:"name"`
-	Description *string            `json:"description,omitempty"`
-	CreatedAt   *time.Time         `json:"created_at,omitempty"`
-	Variables   DashboardVariables `json:"variables,omitempty"`
+	URL              string             `json:"url"`
+	Name             string             `json:"name"`
+	Description      *string            `json:"description,omitempty"`
+	ReplaysFilterSQL *string            `json:"replays_filter_sql,omitempty"`
+	CreatedAt        *time.Time         `json:"created_at,omitempty"`
+	Variables        DashboardVariables `json:"variables,omitempty"`
 }
 
 // DashboardVariables is a type alias for JSONB handling
@@ -57,19 +58,21 @@ func (v *DashboardVariables) Scan(value any) error {
 func (d *Dashboard) GetDashboardByURL(ctx context.Context, url string) (*DashboardWithVariables, error) {
 	// Use raw SQL to get the dashboard with variables
 	query := `
-		SELECT url, name, description, variables, created_at
+		SELECT url, name, description, replays_filter_sql, variables, created_at
 		FROM dashboards
 		WHERE url = ?
 	`
 
 	var dash DashboardWithVariables
 	var description sql.NullString
+	var replaysFilterSQL sql.NullString
 	var variablesJSON []byte
 	var createdAt any
 	err := d.db.QueryRowContext(ctx, query, url).Scan(
 		&dash.URL,
 		&dash.Name,
 		&description,
+		&replaysFilterSQL,
 		&variablesJSON,
 		&createdAt,
 	)
@@ -79,6 +82,9 @@ func (d *Dashboard) GetDashboardByURL(ctx context.Context, url string) (*Dashboa
 
 	if description.Valid {
 		dash.Description = &description.String
+	}
+	if replaysFilterSQL.Valid {
+		dash.ReplaysFilterSQL = &replaysFilterSQL.String
 	}
 	if parsed, err := nullableTime(createdAt); err == nil {
 		dash.CreatedAt = parsed

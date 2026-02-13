@@ -36,7 +36,7 @@ export const api = {
 
   updateDashboard: async (url, data) => {
     const response = await fetch(`${API_BASE}/dashboard/${url}`, {
-      method: 'POST',
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
@@ -93,13 +93,14 @@ export const api = {
     }
   },
 
-  executeQuery: async (query, variableValues = null) => {
+  executeQuery: async (query, variableValues = null, dashboardUrl = null) => {
     const response = await fetch(`${API_BASE}/query`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query,
-        variable_values: variableValues || {}
+        variable_values: variableValues || {},
+        dashboard_url: dashboardUrl || '',
       }),
     });
     if (!response.ok) {
@@ -109,11 +110,11 @@ export const api = {
     return response.json();
   },
 
-  getQueryVariables: async (query) => {
+  getQueryVariables: async (query, dashboardUrl = null) => {
     const response = await fetch(`${API_BASE}/query/variables`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ query, dashboard_url: dashboardUrl || '' }),
     });
     if (!response.ok) {
       const text = await response.text();

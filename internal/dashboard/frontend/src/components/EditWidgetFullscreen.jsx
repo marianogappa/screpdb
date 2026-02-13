@@ -21,7 +21,7 @@ const WIDGET_TYPES = [
   { value: 'heatmap', label: 'Heatmap' },
 ];
 
-function EditWidgetFullscreen({ widget, onClose, onSave }) {
+function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [query, setQuery] = useState('');
@@ -61,7 +61,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
       }
 
       try {
-        const response = await api.getQueryVariables(query);
+        const response = await api.getQueryVariables(query, dashboardUrl);
         const vars = response.variables || {};
         setVariables(vars);
         
@@ -83,7 +83,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
 
     const timeoutId = setTimeout(fetchVariables, 300);
     return () => clearTimeout(timeoutId);
-  }, [query]);
+  }, [query, dashboardUrl]);
 
   const executeQuery = useCallback(async (sqlQuery, varValues = null) => {
     if (!sqlQuery.trim()) {
@@ -96,7 +96,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
     setIsExecuting(true);
     setPreviewError(null);
     try {
-      const response = await api.executeQuery(sqlQuery, varValues || variableValues);
+      const response = await api.executeQuery(sqlQuery, varValues || variableValues, dashboardUrl);
       setPreviewData(response.results || []);
       setPreviewColumns(response.columns || []);
       setLastExecutedQuery(sqlQuery);
@@ -107,7 +107,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
     } finally {
       setIsExecuting(false);
     }
-  }, [variableValues]);
+  }, [variableValues, dashboardUrl]);
 
   // Debounced query execution
   useEffect(() => {
@@ -565,4 +565,3 @@ function EditWidgetFullscreen({ widget, onClose, onSave }) {
 }
 
 export default EditWidgetFullscreen;
-

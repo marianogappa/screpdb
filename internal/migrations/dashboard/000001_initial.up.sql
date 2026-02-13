@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS dashboards (
 	url TEXT PRIMARY KEY,
 	name TEXT NOT NULL,
 	description TEXT,
+	replays_filter_sql TEXT,
 	created_at TEXT DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT url_safe_check CHECK (url <> '' AND url NOT GLOB '*[^A-Za-z0-9_-]*')
 );

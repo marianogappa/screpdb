@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
 import { api } from '../api';
+import ReplayFilterEditor, { BUILTIN_FILTERS } from './ReplayFilterEditor';
 
 function DashboardManager({ dashboards, currentUrl, onClose, onRefresh, onSwitch }) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingUrl, setEditingUrl] = useState(null);
-  const [formData, setFormData] = useState({ name: '', url: '', description: '' });
+  const [formData, setFormData] = useState({
+    name: '',
+    url: '',
+    description: '',
+    replaysFilterSQL: BUILTIN_FILTERS[0].sql,
+  });
   const [error, setError] = useState(null);
 
   const handleCreate = async (e) => {
@@ -15,9 +21,10 @@ function DashboardManager({ dashboards, currentUrl, onClose, onRefresh, onSwitch
         name: formData.name,
         url: formData.url,
         description: formData.description || null,
+        replays_filter_sql: formData.replaysFilterSQL,
       });
       setShowCreateForm(false);
-      setFormData({ name: '', url: '', description: '' });
+      setFormData({ name: '', url: '', description: '', replaysFilterSQL: BUILTIN_FILTERS[0].sql });
       onRefresh();
     } catch (err) {
       setError(err.message);
@@ -60,12 +67,13 @@ function DashboardManager({ dashboards, currentUrl, onClose, onRefresh, onSwitch
       name: dashboard.name,
       url: dashboard.url,
       description: dashboard.description?.valid ? dashboard.description.string : '',
+      replaysFilterSQL: dashboard.replays_filter_sql || '',
     });
   };
 
   const cancelEdit = () => {
     setEditingUrl(null);
-    setFormData({ name: '', url: '', description: '' });
+    setFormData({ name: '', url: '', description: '', replaysFilterSQL: BUILTIN_FILTERS[0].sql });
   };
 
   const saveEdit = async (e) => {
@@ -175,13 +183,18 @@ function DashboardManager({ dashboards, currentUrl, onClose, onRefresh, onSwitch
                 className="form-input"
               />
             </div>
+
+            <ReplayFilterEditor
+              value={formData.replaysFilterSQL}
+              onChange={(value) => setFormData({ ...formData, replaysFilterSQL: value })}
+            />
             <div className="form-actions">
               <button type="submit" className="btn-save">Create</button>
               <button
                 type="button"
                 onClick={() => {
                   setShowCreateForm(false);
-                  setFormData({ name: '', url: '', description: '' });
+                  setFormData({ name: '', url: '', description: '', replaysFilterSQL: BUILTIN_FILTERS[0].sql });
                 }}
                 className="btn-cancel"
               >
@@ -203,4 +216,3 @@ function DashboardManager({ dashboards, currentUrl, onClose, onRefresh, onSwitch
 }
 
 export default DashboardManager;
-
