@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -58,7 +59,7 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/dashboard/{url}", d.handlerGetDashboard).Methods(http.MethodGet, http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/api/dashboard/{url}", d.handlerDeleteDashboard).Methods(http.MethodDelete, http.MethodOptions)
 	r.HandleFunc("/api/dashboard", d.handlerCreateDashboard).Methods(http.MethodPut, http.MethodOptions)
-	r.HandleFunc("/api/dashboard/{url}", d.handlerUpdateDashboard).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/api/dashboard/{url}", d.handlerUpdateDashboard).Methods(http.MethodPut, http.MethodOptions)
 	r.HandleFunc("/api/dashboard/{url}/widget", d.handlerListDashboardWidgets).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/dashboard/{url}/widget/{wid}", d.handlerDeleteDashboardWidget).Methods(http.MethodDelete, http.MethodOptions)
 	r.HandleFunc("/api/dashboard/{url}/widget", d.handlerCreateDashboardWidget).Methods(http.MethodPut, http.MethodOptions)
@@ -141,47 +142,56 @@ func bytesToWidgetConfig(data []byte) (WidgetConfig, error) {
 	return config, err
 }
 
-func (d *Dashboard) executeQuery(query string, usedVariables map[string]variables.Variable) ([]map[string]any, []string, error) {
+func (d *Dashboard) executeQuery(query string, usedVariables map[string]variables.Variable, replaysFilterSQL *string) ([]map[string]any, []string, error) {
 	args := buildNamedArgs(usedVariables)
-	rows, err := d.db.QueryContext(d.ctx, query, args...)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer rows.Close()
-
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, nil, err
-	}
-
 	var results []map[string]any
-	for rows.Next() {
-		values := make([]any, len(columns))
-		valuePtrs := make([]any, len(columns))
-		for i := range values {
-			valuePtrs[i] = &values[i]
+	var columns []string
+
+	err := d.withFilteredConnection(replaysFilterSQL, func(db *sql.DB) error {
+		rows, err := db.QueryContext(d.ctx, query, args...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		columns, err = rows.Columns()
+		if err != nil {
+			return err
 		}
 
-		if err := rows.Scan(valuePtrs...); err != nil {
-			return nil, nil, err
-		}
-
-		row := make(map[string]any)
-		for i, col := range columns {
-			val := values[i]
-			switch v := val.(type) {
-			case []byte:
-				row[col] = string(v)
-			case nil:
-				row[col] = nil
-			default:
-				row[col] = v
+		for rows.Next() {
+			values := make([]any, len(columns))
+			valuePtrs := make([]any, len(columns))
+			for i := range values {
+				valuePtrs[i] = &values[i]
 			}
-		}
-		results = append(results, row)
-	}
 
-	return results, columns, rows.Err()
+			if err := rows.Scan(valuePtrs...); err != nil {
+				return err
+			}
+
+			row := make(map[string]any)
+			for i, col := range columns {
+				val := values[i]
+				switch v := val.(type) {
+				case []byte:
+					row[col] = string(v)
+				case nil:
+					row[col] = nil
+				default:
+					row[col] = v
+				}
+			}
+			results = append(results, row)
+		}
+
+		return rows.Err()
+	})
+
+	if err != nil {
+		return nil, nil, err
+	}
+	return results, columns, nil
 }
 
 func buildNamedArgs(usedVariables map[string]variables.Variable) []any {
@@ -211,4 +221,84 @@ func sqliteDSN(path string) string {
 		return path + sep + "_pragma=foreign_keys(1)"
 	}
 	return fmt.Sprintf("file:%s?_pragma=foreign_keys(1)", path)
+}
+
+func (d *Dashboard) withFilteredConnection(replaysFilterSQL *string, fn func(db *sql.DB) error) error {
+	db, err := sql.Open("sqlite", sqliteDSN(d.sqlitePath))
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	if _, err := db.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
+		return fmt.Errorf("failed to enable foreign keys: %w", err)
+	}
+
+	if err := db.Ping(); err != nil {
+		return fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	if replaysFilterSQL != nil {
+		filterSQL := normalizeSQL(*replaysFilterSQL)
+		if filterSQL != "" {
+			if err := applyReplayFilterViews(db, filterSQL); err != nil {
+				return err
+			}
+		}
+	}
+
+	return fn(db)
+}
+
+func applyReplayFilterViews(db *sql.DB, filterSQL string) error {
+	qualified := qualifyReplayFilterSQL(filterSQL)
+	if hasUnqualifiedReplays(qualified) {
+		return fmt.Errorf("replays_filter_sql must reference main.replays when used in a view")
+	}
+	if _, err := db.Exec(`CREATE TEMP VIEW replays AS ` + qualified); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`CREATE TEMP VIEW players AS SELECT * FROM main.players WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`CREATE TEMP VIEW commands AS SELECT * FROM main.commands WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
+		return err
+	}
+	return nil
+}
+
+func normalizeSQL(value string) string {
+	trimmed := strings.TrimSpace(value)
+	for strings.HasSuffix(trimmed, ";") {
+		trimmed = strings.TrimSpace(strings.TrimSuffix(trimmed, ";"))
+	}
+	return trimmed
+}
+
+func normalizeSQLWhitespace(value string) string {
+	trimmed := normalizeSQL(value)
+	re := regexp.MustCompile(`\s+`)
+	return re.ReplaceAllString(trimmed, " ")
+}
+
+func qualifyReplayFilterSQL(filterSQL string) string {
+	normalized := normalizeSQLWhitespace(filterSQL)
+	qualified := normalized
+	tables := []string{"replays", "players", "commands"}
+	for _, table := range tables {
+		re := regexp.MustCompile(`(?i)\b(from|join)\s+(?:main\.)?(?:\"` + table + `\"|` + "`" + table + "`" + `|\[` + table + `\]|` + table + `)\b`)
+		qualified = re.ReplaceAllString(qualified, "${1} main."+table)
+	}
+	return qualified
+}
+
+func hasUnqualifiedReplays(filterSQL string) bool {
+	tables := []string{"replays", "players", "commands"}
+	for _, table := range tables {
+		re := regexp.MustCompile(`(?i)\b(from|join)\s+(?:\"` + table + `\"|` + "`" + table + "`" + `|\[` + table + `\]|` + table + `)\b`)
+		if re.MatchString(filterSQL) {
+			return true
+		}
+	}
+	return false
 }

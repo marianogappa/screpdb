@@ -1,9 +1,12 @@
 package dashboard
 
 import (
+	"database/sql"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/marianogappa/screpdb/internal/dashboard/variables"
 )
@@ -23,11 +26,13 @@ func (d *Dashboard) handlerGetQueryVariables(w http.ResponseWriter, r *http.Requ
 	}
 
 	type QueryVariablesRequest struct {
-		Query string `json:"query"`
+		Query        string `json:"query"`
+		DashboardURL string `json:"dashboard_url"`
 	}
 
 	var req QueryVariablesRequest
 	if err := json.Unmarshal(bs, &req); err != nil {
+		log.Printf("query variables: invalid json err=%v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("invalid json"))
 		return
@@ -37,8 +42,25 @@ func (d *Dashboard) handlerGetQueryVariables(w http.ResponseWriter, r *http.Requ
 	usedVariables := variables.FindVariables(req.Query, nil)
 
 	// Get possible values for all used variables
-	variableOptions, err := variables.RunAllUsedVariableQueries(d.db, usedVariables)
-	if err != nil {
+	var replaysFilterSQL *string
+	if strings.TrimSpace(req.DashboardURL) != "" {
+		dash, err := d.getDashboardByURL(d.ctx, req.DashboardURL)
+		if err != nil {
+			log.Printf("query variables: unknown dashboard url=%s err=%v", req.DashboardURL, err)
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("unknown dashboard url"))
+			return
+		}
+		replaysFilterSQL = dash.ReplaysFilterSQL
+	}
+
+	var variableOptions map[string][]any
+	if err := d.withFilteredConnection(replaysFilterSQL, func(db *sql.DB) error {
+		var err error
+		variableOptions, err = variables.RunAllUsedVariableQueries(db, usedVariables)
+		return err
+	}); err != nil {
+		log.Printf("query variables: variable query error dashboard_url=%s err=%v", req.DashboardURL, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("failed to run variable queries: " + err.Error()))
 		return

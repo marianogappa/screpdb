@@ -14,10 +14,11 @@ func (d *Dashboard) handlerListDashboards(w http.ResponseWriter, _ *http.Request
 	}
 
 	type DashboardResponse struct {
-		URL         string  `json:"url"`
-		Name        string  `json:"name"`
-		Description *string `json:"description"`
-		CreatedAt   *string `json:"created_at"`
+		URL              string  `json:"url"`
+		Name             string  `json:"name"`
+		Description      *string `json:"description"`
+		ReplaysFilterSQL *string `json:"replays_filter_sql"`
+		CreatedAt        *string `json:"created_at"`
 	}
 	response := make([]DashboardResponse, len(dashboards))
 	for i, dash := range dashboards {
@@ -31,10 +32,11 @@ func (d *Dashboard) handlerListDashboards(w http.ResponseWriter, _ *http.Request
 			createdAt = &ts
 		}
 		response[i] = DashboardResponse{
-			URL:         dash.URL,
-			Name:        dash.Name,
-			Description: desc,
-			CreatedAt:   createdAt,
+			URL:              dash.URL,
+			Name:             dash.Name,
+			Description:      desc,
+			ReplaysFilterSQL: dash.ReplaysFilterSQL,
+			CreatedAt:        createdAt,
 		}
 	}
 
@@ -42,4 +44,3 @@ func (d *Dashboard) handlerListDashboards(w http.ResponseWriter, _ *http.Request
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(response)
 }
-

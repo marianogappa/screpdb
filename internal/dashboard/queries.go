@@ -9,10 +9,11 @@ import (
 )
 
 type dashboardRow struct {
-	URL         string
-	Name        string
-	Description *string
-	CreatedAt   *time.Time
+	URL              string
+	Name             string
+	Description      *string
+	ReplaysFilterSQL *string
+	CreatedAt        *time.Time
 }
 
 type dashboardWidgetRow struct {
@@ -33,8 +34,9 @@ func (d *Dashboard) getDashboardByURL(ctx context.Context, url string) (*dashboa
 	var description sql.NullString
 	var createdAt any
 
-	query := `SELECT url, name, description, created_at FROM dashboards WHERE url = ?`
-	err := d.db.QueryRowContext(ctx, query, url).Scan(&dash.URL, &dash.Name, &description, &createdAt)
+	query := `SELECT url, name, description, replays_filter_sql, created_at FROM dashboards WHERE url = ?`
+	var replaysFilterSQL sql.NullString
+	err := d.db.QueryRowContext(ctx, query, url).Scan(&dash.URL, &dash.Name, &description, &replaysFilterSQL, &createdAt)
 	if err == sql.ErrNoRows {
 		return nil, sql.ErrNoRows
 	}
@@ -43,6 +45,7 @@ func (d *Dashboard) getDashboardByURL(ctx context.Context, url string) (*dashboa
 	}
 
 	dash.Description = nullableString(description)
+	dash.ReplaysFilterSQL = nullableString(replaysFilterSQL)
 	var parseErr error
 	dash.CreatedAt, parseErr = nullableTime(createdAt)
 	if parseErr != nil {
@@ -53,7 +56,7 @@ func (d *Dashboard) getDashboardByURL(ctx context.Context, url string) (*dashboa
 
 // listDashboards retrieves all dashboards
 func (d *Dashboard) listDashboards(ctx context.Context) ([]dashboardRow, error) {
-	query := `SELECT url, name, description, created_at FROM dashboards ORDER BY name ASC`
+	query := `SELECT url, name, description, replays_filter_sql, created_at FROM dashboards ORDER BY name ASC`
 	rows, err := d.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -64,11 +67,13 @@ func (d *Dashboard) listDashboards(ctx context.Context) ([]dashboardRow, error) 
 	for rows.Next() {
 		var dash dashboardRow
 		var description sql.NullString
+		var replaysFilterSQL sql.NullString
 		var createdAt any
-		if err := rows.Scan(&dash.URL, &dash.Name, &description, &createdAt); err != nil {
+		if err := rows.Scan(&dash.URL, &dash.Name, &description, &replaysFilterSQL, &createdAt); err != nil {
 			return nil, err
 		}
 		dash.Description = nullableString(description)
+		dash.ReplaysFilterSQL = nullableString(replaysFilterSQL)
 		dash.CreatedAt, err = nullableTime(createdAt)
 		if err != nil {
 			return nil, err
@@ -85,16 +90,16 @@ func (d *Dashboard) listDashboards(ctx context.Context) ([]dashboardRow, error) 
 }
 
 // createDashboard creates a new dashboard
-func (d *Dashboard) createDashboard(ctx context.Context, url, name string, description *string) (*dashboardRow, error) {
-	query := `INSERT INTO dashboards (url, name, description) VALUES (?, ?, ?)`
-	if _, err := d.db.ExecContext(ctx, query, url, name, description); err != nil {
+func (d *Dashboard) createDashboard(ctx context.Context, url, name string, description *string, replaysFilterSQL *string) (*dashboardRow, error) {
+	query := `INSERT INTO dashboards (url, name, description, replays_filter_sql) VALUES (?, ?, ?, ?)`
+	if _, err := d.db.ExecContext(ctx, query, url, name, description, replaysFilterSQL); err != nil {
 		return nil, err
 	}
 	return d.getDashboardByURL(ctx, url)
 }
 
 // updateDashboard updates an existing dashboard
-func (d *Dashboard) updateDashboard(ctx context.Context, url, name string, description *string) error {
+func (d *Dashboard) updateDashboard(ctx context.Context, url, name string, description *string, replaysFilterSQL *string) error {
 	updates := []string{"name = ?"}
 	args := []any{name}
 
@@ -103,6 +108,15 @@ func (d *Dashboard) updateDashboard(ctx context.Context, url, name string, descr
 		args = append(args, *description)
 	} else {
 		updates = append(updates, "description = NULL")
+	}
+
+	if replaysFilterSQL != nil {
+		if strings.TrimSpace(*replaysFilterSQL) == "" {
+			updates = append(updates, "replays_filter_sql = NULL")
+		} else {
+			updates = append(updates, "replays_filter_sql = ?")
+			args = append(args, *replaysFilterSQL)
+		}
 	}
 
 	args = append(args, url)

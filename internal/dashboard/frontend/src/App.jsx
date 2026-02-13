@@ -454,6 +454,7 @@ function App() {
       {editingWidget && (
         <EditWidgetFullscreen
           widget={editingWidget}
+          dashboardUrl={currentDashboardUrl}
           onClose={() => {
             setEditingWidget(null);
             loadDashboard(currentDashboardUrl);

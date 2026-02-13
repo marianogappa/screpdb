@@ -3,6 +3,7 @@ package dashboard
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"unicode"
@@ -27,15 +28,18 @@ func (d *Dashboard) handlerExecuteQuery(w http.ResponseWriter, r *http.Request) 
 	type QueryRequest struct {
 		Query          string         `json:"query"`
 		VariableValues map[string]any `json:"variable_values"`
+		DashboardURL   string         `json:"dashboard_url"`
 	}
 
 	var req QueryRequest
 	if err := json.Unmarshal(bs, &req); err != nil {
+		log.Printf("execute query: invalid json err=%v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("invalid json"))
 		return
 	}
 	if err := variables.ValidateReceivedVariableValues(req.VariableValues); err != nil {
+		log.Printf("execute query: invalid variable values err=%v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("invalid variable values supplied: " + err.Error()))
 		return
@@ -43,6 +47,7 @@ func (d *Dashboard) handlerExecuteQuery(w http.ResponseWriter, r *http.Request) 
 
 	query := strings.TrimSpace(req.Query)
 	if query == "" {
+		log.Printf("execute query: empty query")
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("query is required"))
 		return
@@ -50,15 +55,29 @@ func (d *Dashboard) handlerExecuteQuery(w http.ResponseWriter, r *http.Request) 
 
 	// Validate that the query is a SELECT statement
 	if !isSelectQuery(query) {
+		log.Printf("execute query: non-select query")
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("only SELECT queries are allowed"))
 		return
 	}
 
+	var replaysFilterSQL *string
+	if strings.TrimSpace(req.DashboardURL) != "" {
+		dash, err := d.getDashboardByURL(d.ctx, req.DashboardURL)
+		if err != nil {
+			log.Printf("execute query: unknown dashboard url=%s err=%v", req.DashboardURL, err)
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("unknown dashboard url"))
+			return
+		}
+		replaysFilterSQL = dash.ReplaysFilterSQL
+	}
+
 	// Execute the query
 	usedVariables := variables.FindVariables(query, req.VariableValues)
-	results, columns, err := d.executeQuery(query, usedVariables)
+	results, columns, err := d.executeQuery(query, usedVariables, replaysFilterSQL)
 	if err != nil {
+		log.Printf("execute query: query error dashboard_url=%s err=%v", req.DashboardURL, err)
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("error executing query: " + err.Error()))
 		return

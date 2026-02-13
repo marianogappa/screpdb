@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -142,6 +143,150 @@ func TestDashboardAPI_ExecuteQuery(t *testing.T) {
 	}
 	if !containsString(resp.Columns, "c") {
 		t.Fatalf("expected column c in results")
+	}
+}
+
+func TestDashboardAPI_ReplayFilter(t *testing.T) {
+	dash := newTestDashboard(t)
+
+	filterSQL := "SELECT * FROM replays WHERE file_name = 'SomaTyson.rep'"
+
+	updateBody := map[string]any{
+		"replays_filter_sql": filterSQL,
+	}
+	updateJSON, _ := json.Marshal(updateBody)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, "/api/dashboard/default", bytes.NewReader(updateJSON))
+	req = mux.SetURLVars(req, map[string]string{"url": "default"})
+	dash.handlerUpdateDashboard(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("update dashboard status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// Create widget without prompt
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPut, "/api/dashboard/default/widget", bytes.NewReader([]byte(`{"Prompt": ""}`)))
+	req = mux.SetURLVars(req, map[string]string{"url": "default"})
+	dash.handlerCreateDashboardWidget(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("create widget status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var createResp struct {
+		ID int64 `json:"id"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &createResp); err != nil {
+		t.Fatalf("create widget json: %v", err)
+	}
+	if createResp.ID == 0 {
+		t.Fatalf("expected widget id")
+	}
+
+	updateWidgetBody := map[string]any{
+		"name":        "Replay Count",
+		"description": "Count of replays",
+		"config": map[string]any{
+			"type": "table",
+		},
+		"query": "SELECT COUNT(*) AS c FROM replays",
+	}
+	updateWidgetJSON, _ := json.Marshal(updateWidgetBody)
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPost, "/api/dashboard/default/widget", bytes.NewReader(updateWidgetJSON))
+	req = mux.SetURLVars(req, map[string]string{"url": "default", "wid": fmt.Sprintf("%d", createResp.ID)})
+	dash.handlerUpdateDashboardWidget(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("update widget status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/api/dashboard/default", nil)
+	req = mux.SetURLVars(req, map[string]string{"url": "default"})
+	dash.handlerGetDashboard(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get dashboard status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var getResp struct {
+		Widgets []struct {
+			Results []map[string]any `json:"results"`
+		} `json:"widgets"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &getResp); err != nil {
+		t.Fatalf("get dashboard json: %v", err)
+	}
+	if len(getResp.Widgets) != 1 {
+		t.Fatalf("expected 1 widget, got %d", len(getResp.Widgets))
+	}
+	if len(getResp.Widgets[0].Results) != 1 {
+		t.Fatalf("expected 1 result row, got %d", len(getResp.Widgets[0].Results))
+	}
+	countVal, ok := getResp.Widgets[0].Results[0]["c"]
+	if !ok {
+		t.Fatalf("expected count column c")
+	}
+	var count int64
+	switch v := countVal.(type) {
+	case float64:
+		count = int64(v)
+	case int64:
+		count = v
+	case int:
+		count = int64(v)
+	default:
+		t.Fatalf("unexpected count type: %T", countVal)
+	}
+	if count != 1 {
+		t.Fatalf("expected filtered replay count 1, got %d", count)
+	}
+}
+
+func TestQualifyReplayFilterSQLMultiline(t *testing.T) {
+	input := `SELECT *
+FROM replays r
+WHERE EXISTS (
+  SELECT 1
+  FROM players p
+  WHERE p.replay_id = r.id
+    AND p.type = 'Human'
+  GROUP BY p.replay_id
+  HAVING COUNT(*) = 2
+)`
+
+	qualified := qualifyReplayFilterSQL(input)
+	if !strings.Contains(qualified, "FROM main.replays r") {
+		t.Fatalf("expected main.replays qualification, got: %s", qualified)
+	}
+	if strings.Contains(qualified, "FROM replays r") {
+		t.Fatalf("expected unqualified replays to be rewritten, got: %s", qualified)
+	}
+	if !strings.Contains(qualified, "FROM main.players p") {
+		t.Fatalf("expected main.players qualification, got: %s", qualified)
+	}
+}
+
+func TestValidateReplayFilterSQLStoresQualified(t *testing.T) {
+	dash := newTestDashboard(t)
+	input := `SELECT *
+FROM replays r
+WHERE EXISTS (
+  SELECT 1
+  FROM players p
+  WHERE p.replay_id = r.id
+    AND p.type = 'Human'
+  GROUP BY p.replay_id
+  HAVING COUNT(*) = 2
+)`
+
+	qualified, err := dash.validateReplayFilterSQL(&input)
+	if err != nil {
+		t.Fatalf("validateReplayFilterSQL: %v", err)
+	}
+	if !strings.Contains(qualified, "FROM main.replays r") {
+		t.Fatalf("expected qualified SQL, got: %s", qualified)
+	}
+	if !strings.Contains(qualified, "FROM main.players p") {
+		t.Fatalf("expected qualified SQL, got: %s", qualified)
 	}
 }
 
