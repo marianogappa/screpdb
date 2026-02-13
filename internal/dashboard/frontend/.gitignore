@@ -2,6 +2,7 @@
 node_modules/
 
 # Build output
+build/
 dist/
 dist-ssr/
 *.local
@@ -23,4 +24,3 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
