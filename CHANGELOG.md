@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.16.0](https://github.com/marianogappa/screpdb/compare/v0.15.1...v0.16.0) (2026-02-13)
+
+
+### Features
+
+* Implement built-in frontend. ([a0626f4](https://github.com/marianogappa/screpdb/commit/a0626f4699b9c9b31c7e3ac913466b39953b983b))
+* Implement built-in frontend. ([537bd50](https://github.com/marianogappa/screpdb/commit/537bd50bbe7e50294ac702684d755775d4ab19d5))
+* Implement dashboard replay filtering. ([7dcfb38](https://github.com/marianogappa/screpdb/commit/7dcfb3816d559692a22fe07d167b5d9886f63ed7))
+* Implement dashboard replay filtering. ([7d423bd](https://github.com/marianogappa/screpdb/commit/7d423bd1fa4060301e9ef6cf206c1e1a82112840))
+
 ## [0.15.1](https://github.com/marianogappa/screpdb/compare/v0.15.0...v0.15.1) (2026-02-12)
 
 
