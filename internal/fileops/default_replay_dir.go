@@ -29,6 +29,7 @@ var (
 		strategyMacUser(),
 		strategyWindowsUser(),
 		strategyWindowsUserOld(),
+		strategyOneDriveUser(),
 	}
 )
 
@@ -55,6 +56,19 @@ func strategyWindowsUser() func() (string, bool, error) {
 			return "", false, err
 		}
 		return fmt.Sprintf(`%s\Documents\Starcraft\Maps\Replays`, user.HomeDir), true, nil
+	}
+}
+
+func strategyOneDriveUser() func() (string, bool, error) {
+	return func() (string, bool, error) {
+		if runtime.GOOS != "windows" {
+			return "", false, nil
+		}
+		user, err := user.Current()
+		if err != nil {
+			return "", false, err
+		}
+		return fmt.Sprintf(`%s\OneDrive\Documents\Starcraft\Maps\Replays`, user.HomeDir), true, nil
 	}
 }
 
