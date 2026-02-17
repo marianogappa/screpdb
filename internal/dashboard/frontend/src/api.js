@@ -123,6 +123,24 @@ export const api = {
     return response.json();
   },
 
+  getSchema: async () => {
+    const response = await fetch(`${API_BASE}/schema`);
+    if (!response.ok) throw new Error('Failed to get schema');
+    return response.json();
+  },
+
+  updateWidgetOrder: async (dashboardUrl, widgetId, widgetOrder) => {
+    const response = await fetch(`${API_BASE}/dashboard/${dashboardUrl}/widget/${widgetId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ widget_order: widgetOrder }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to update widget order');
+    }
+  },
+
   startIngest: async (data) => {
     const response = await fetch(`${API_BASE}/ingest`, {
       method: 'POST',

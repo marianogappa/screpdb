@@ -72,6 +72,7 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/query/variables", d.handlerGetQueryVariables).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/api/ingest", d.handlerIngest).Methods(http.MethodPost, http.MethodOptions)
 
+	r.HandleFunc("/api/schema", d.handlerSchema).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/health", d.handlerHealthcheck).Methods(http.MethodGet, http.MethodOptions)
 	r.PathPrefix("/").Handler(d.spaHandler())
 	return r

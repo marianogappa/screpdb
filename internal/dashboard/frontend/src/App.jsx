@@ -1,34 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from './api';
 import Widget from './components/Widget';
 import DashboardManager from './components/DashboardManager';
 import EditDashboardModal from './components/EditDashboardModal';
 import EditWidgetFullscreen from './components/EditWidgetFullscreen';
 import WidgetCreationSpinner from './components/WidgetCreationSpinner';
+import { ToastProvider, useToast } from './components/Toast';
 import './styles.css';
 
-// Helper functions for localStorage
 const getStoredVariableValues = (dashboardUrl) => {
   try {
-    const key = `dashboard_vars_${dashboardUrl}`;
-    const stored = localStorage.getItem(key);
+    const stored = localStorage.getItem(`dashboard_vars_${dashboardUrl}`);
     return stored ? JSON.parse(stored) : null;
-  } catch (e) {
-    console.error('Failed to load variable values from localStorage:', e);
-    return null;
-  }
+  } catch { return null; }
 };
 
 const saveVariableValues = (dashboardUrl, values) => {
   try {
-    const key = `dashboard_vars_${dashboardUrl}`;
-    localStorage.setItem(key, JSON.stringify(values));
-  } catch (e) {
-    console.error('Failed to save variable values to localStorage:', e);
-  }
+    localStorage.setItem(`dashboard_vars_${dashboardUrl}`, JSON.stringify(values));
+  } catch { /* ignore */ }
 };
 
-function App() {
+function AppContent() {
+  const { addToast } = useToast();
   const [currentDashboardUrl, setCurrentDashboardUrl] = useState('default');
   const [dashboard, setDashboard] = useState(null);
   const [dashboards, setDashboards] = useState([]);
@@ -43,37 +37,37 @@ function App() {
   const [editingWidget, setEditingWidget] = useState(null);
   const [replayCount, setReplayCount] = useState(null);
   const [showIngestPanel, setShowIngestPanel] = useState(false);
-  const [ingestMessage, setIngestMessage] = useState('');
-  const [ingestForm, setIngestForm] = useState({
-    watch: false,
-    stopAfterN: 50,
-    clean: false,
-  });
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  const [showVariables, setShowVariables] = useState(true);
+  const [ingestForm, setIngestForm] = useState({ watch: false, stopAfterN: 50, clean: false });
+  const [dragState, setDragState] = useState({ dragging: null, over: null });
+  const actionMenuRef = useRef(null);
 
-  const loadDashboard = async (url, varValues = null, skipVarInit = false) => {
+  useEffect(() => {
+    const handler = (e) => {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(e.target)) {
+        setShowActionMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const loadDashboard = useCallback(async (url, varValues = null, skipVarInit = false) => {
     try {
       setLoading(true);
       setError(null);
-
-      // If no varValues provided, try to load from localStorage
       if (!varValues) {
         const stored = getStoredVariableValues(url);
-        if (stored && Object.keys(stored).length > 0) {
-          varValues = stored;
-        }
+        if (stored && Object.keys(stored).length > 0) varValues = stored;
       }
-
       const data = await api.getDashboard(url, varValues);
       setDashboard(data);
       setCurrentDashboardUrl(url);
-
-      // Update variable values state
       if (varValues) {
         setVariableValues(varValues);
-        // Save to localStorage
         saveVariableValues(url, varValues);
       } else if (data.variables && !skipVarInit) {
-        // Initialize variable values with first option if not set
         const newVarValues = {};
         let needsReload = false;
         Object.keys(data.variables).forEach(varName => {
@@ -84,14 +78,11 @@ function App() {
         });
         if (needsReload && Object.keys(newVarValues).length > 0) {
           setVariableValues(newVarValues);
-          // Save to localStorage
           saveVariableValues(url, newVarValues);
-          // Reload with initialized values
           await loadDashboard(url, newVarValues, true);
           return;
         }
         setVariableValues(newVarValues);
-        // Save to localStorage
         saveVariableValues(url, newVarValues);
       }
     } catch (err) {
@@ -99,19 +90,18 @@ function App() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadDashboards = async () => {
+  const loadDashboards = useCallback(async () => {
     try {
       const data = await api.listDashboards();
       setDashboards(data);
     } catch (err) {
       console.error('Failed to load dashboards:', err);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    // Load dashboard with stored variable values if available
     const stored = getStoredVariableValues('default');
     loadDashboard('default', stored || undefined);
     loadDashboards();
@@ -126,23 +116,21 @@ function App() {
         setOpenaiEnabled(data.openai_enabled || false);
         setReplayCount(typeof data.total_replays === 'number' ? data.total_replays : 0);
       }
-    } catch (err) {
-      console.error('Failed to check OpenAI status:', err);
-    }
+    } catch { /* ignore */ }
   };
 
   const handleCreateWidget = async (e) => {
     e.preventDefault();
     if (!newWidgetPrompt.trim() || creatingWidget) return;
-
     try {
       setCreatingWidget(true);
       setError(null);
       await api.createWidget(currentDashboardUrl, newWidgetPrompt);
       setNewWidgetPrompt('');
+      addToast('Widget created successfully', 'success');
       await loadDashboard(currentDashboardUrl);
     } catch (err) {
-      setError(err.message);
+      addToast(err.message, 'error');
     } finally {
       setCreatingWidget(false);
     }
@@ -150,25 +138,19 @@ function App() {
 
   const handleCreateWidgetWithoutPrompt = async () => {
     if (creatingWidget) return;
-
     try {
       setCreatingWidget(true);
       setError(null);
       const widget = await api.createWidget(currentDashboardUrl, '');
       setCreatingWidget(false);
-      // Config should already be parsed as an object from the backend
       const config = widget.config || { type: 'table' };
-      // Open the edit widget fullscreen for the newly created widget
       setEditingWidget({
-        id: widget.id,
-        name: widget.name,
+        id: widget.id, name: widget.name,
         description: widget.description ? { valid: true, string: widget.description } : null,
-        query: widget.query || '',
-        config: config,
-        results: [],
+        query: widget.query || '', config, results: [],
       });
     } catch (err) {
-      setError(err.message);
+      addToast(err.message, 'error');
       setCreatingWidget(false);
     }
   };
@@ -177,50 +159,48 @@ function App() {
     try {
       await api.updateDashboard(currentDashboardUrl, data);
       setShowEditDashboard(false);
+      addToast('Dashboard updated', 'success');
       await loadDashboard(currentDashboardUrl);
       await loadDashboards();
     } catch (err) {
-      setError(err.message);
+      addToast(err.message, 'error');
     }
   };
 
   const handleDeleteWidget = async (widgetId) => {
-    if (!confirm('Are you sure you want to delete this widget?')) return;
-
+    if (!confirm('Delete this widget?')) return;
     try {
       await api.deleteWidget(currentDashboardUrl, widgetId);
+      addToast('Widget deleted', 'success');
       await loadDashboard(currentDashboardUrl);
     } catch (err) {
-      setError(err.message);
+      addToast(err.message, 'error');
     }
   };
 
   const handleUpdateWidget = async (widgetId, data) => {
-    if (data.prompt) {
-      data = { prompt: data.prompt }
-    }
+    if (data.prompt) data = { prompt: data.prompt };
     try {
       await api.updateWidget(currentDashboardUrl, widgetId, data);
       setEditingWidget(null);
       await loadDashboard(currentDashboardUrl);
     } catch (err) {
-      setError(err.message);
+      addToast(err.message, 'error');
     }
   };
 
   const handleIngestSubmit = async (e) => {
     e.preventDefault();
-    setIngestMessage('');
     try {
       await api.startIngest({
         watch: ingestForm.watch,
         stop_after_n_reps: ingestForm.stopAfterN || 0,
         clean: ingestForm.clean,
       });
-      setIngestMessage('Ingestion started in the background.');
+      addToast('Ingestion started in the background', 'success');
       setShowIngestPanel(false);
     } catch (err) {
-      setIngestMessage(err.message || 'Failed to start ingestion.');
+      addToast(err.message || 'Failed to start ingestion', 'error');
     }
   };
 
@@ -232,7 +212,6 @@ function App() {
   const handleVariableChange = async (varName, value) => {
     const newVarValues = { ...variableValues, [varName]: value };
     setVariableValues(newVarValues);
-    // Save to localStorage
     saveVariableValues(currentDashboardUrl, newVarValues);
     await loadDashboard(currentDashboardUrl, newVarValues);
   };
@@ -245,10 +224,61 @@ function App() {
     })
     : [];
 
+  const handleDragStart = (e, widgetId) => {
+    setDragState({ dragging: widgetId, over: null });
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(widgetId));
+  };
+
+  const handleDragOver = (e, widgetId) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragState.over !== widgetId) {
+      setDragState(prev => ({ ...prev, over: widgetId }));
+    }
+  };
+
+  const handleDrop = async (e, targetId) => {
+    e.preventDefault();
+    const sourceId = dragState.dragging;
+    if (!sourceId || sourceId === targetId) {
+      setDragState({ dragging: null, over: null });
+      return;
+    }
+    const widgets = [...sortedWidgets];
+    const sourceIdx = widgets.findIndex(w => w.id === sourceId);
+    const targetIdx = widgets.findIndex(w => w.id === targetId);
+    if (sourceIdx === -1 || targetIdx === -1) {
+      setDragState({ dragging: null, over: null });
+      return;
+    }
+    const [moved] = widgets.splice(sourceIdx, 1);
+    widgets.splice(targetIdx, 0, moved);
+    setDragState({ dragging: null, over: null });
+    try {
+      await Promise.all(widgets.map((w, i) =>
+        api.updateWidgetOrder(currentDashboardUrl, w.id, i + 1)
+      ));
+      await loadDashboard(currentDashboardUrl);
+    } catch {
+      addToast('Failed to reorder widgets', 'error');
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDragState({ dragging: null, over: null });
+  };
+
+  const variableCount = dashboard?.variables ? Object.keys(dashboard.variables).length : 0;
+  const dashboardDesc = dashboard?.description?.valid ? dashboard.description.string : null;
+
   if (loading && !dashboard) {
     return (
       <div className="app">
-        <div className="loading">Loading dashboard...</div>
+        <div className="loading">
+          <div className="loading-spinner"></div>
+          <span>Loading dashboard...</span>
+        </div>
       </div>
     );
   }
@@ -257,189 +287,236 @@ function App() {
     <div className="app">
       <div className="stars-background"></div>
 
-      <div className="dashboard-container">
-        <div className="dashboard-header">
-          <div className="dashboard-title">
-            <div className="dashboard-title-left">
-              <h1>{dashboard?.name || 'Dashboard'}</h1>
-              <button
-                onClick={() => setShowEditDashboard(true)}
-                className="btn-edit-dashboard"
-                title="Edit dashboard"
-              >
-                ✎
-              </button>
-            </div>
-            <div className="dashboard-actions">
-              <select
-                value={currentDashboardUrl}
-                onChange={(e) => handleSwitchDashboard(e.target.value)}
-                className="dashboard-select"
-              >
-                {dashboards.map((d) => (
-                  <option key={d.url} value={d.url}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-              <button
-                onClick={() => setShowDashboardManager(true)}
-                className="btn-manage"
-              >
-                Manage Dashboards
-              </button>
-              <button
-                onClick={() => setShowIngestPanel((prev) => !prev)}
-                className="btn-manage"
-              >
-                {showIngestPanel ? 'Close Ingest' : 'Ingest'}
-              </button>
-            </div>
+      <header className="app-header">
+        <div className="header-left">
+          <div className="header-brand">
+            <svg className="header-logo" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 3v18h18"/>
+              <path d="M7 16l4-8 4 4 4-12"/>
+            </svg>
+            <select
+              value={currentDashboardUrl}
+              onChange={(e) => handleSwitchDashboard(e.target.value)}
+              className="header-dashboard-select"
+            >
+              {dashboards.map((d) => (
+                <option key={d.url} value={d.url}>{d.name}</option>
+              ))}
+            </select>
           </div>
+          {dashboardDesc && (
+            <span className="header-description">{dashboardDesc}</span>
+          )}
+        </div>
 
-          <div className="widget-creation-section">
-            {openaiEnabled ? (
-              <form onSubmit={handleCreateWidget} className="widget-creation-form">
-                <div className="widget-creation-input-group">
-                  <input
-                    type="text"
-                    value={newWidgetPrompt}
-                    onChange={(e) => setNewWidgetPrompt(e.target.value)}
-                    placeholder="Ask to add a new graph or chart..."
-                    className="widget-creation-input"
-                    disabled={creatingWidget}
-                  />
-                  <button
-                    type="submit"
-                    disabled={creatingWidget || !newWidgetPrompt.trim()}
-                    className="btn-create-ai"
-                  >
-                    <span className="btn-icon">✨</span>
-                    Create with AI
-                  </button>
-                  <div className="widget-creation-divider">or</div>
-                  <button
-                    type="button"
-                    onClick={handleCreateWidgetWithoutPrompt}
-                    disabled={creatingWidget}
-                    className="btn-create-manual"
-                  >
-                    Create Manually
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div className="widget-creation-form">
-                <div className="widget-creation-input-group">
-                  <button
-                    type="button"
-                    onClick={handleCreateWidgetWithoutPrompt}
-                    disabled={creatingWidget}
-                    className="btn-create-manual-primary"
-                  >
-                    Create Widget
-                  </button>
-                  <div className="widget-creation-info">
-                    <span className="info-icon">ℹ️</span>
-                    <span className="info-text">AI-powered creation requires --openai-api-key flag</span>
-                  </div>
-                </div>
+        <div className="header-right">
+          <div className="header-replay-count">
+            {replayCount !== null ? `${replayCount.toLocaleString()} replays` : ''}
+          </div>
+          <div className="action-menu-wrapper" ref={actionMenuRef}>
+            <button
+              className="header-menu-btn"
+              onClick={() => setShowActionMenu(!showActionMenu)}
+              title="Menu"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                <circle cx="10" cy="4" r="2"/>
+                <circle cx="10" cy="10" r="2"/>
+                <circle cx="10" cy="16" r="2"/>
+              </svg>
+            </button>
+            {showActionMenu && (
+              <div className="action-menu">
+                <button onClick={() => { setShowIngestPanel(true); setShowActionMenu(false); }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Import Replays
+                </button>
+                <button onClick={() => { setShowDashboardManager(true); setShowActionMenu(false); }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                  Manage Dashboards
+                </button>
+                <button onClick={() => { setShowEditDashboard(true); setShowActionMenu(false); }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Edit Dashboard
+                </button>
               </div>
             )}
           </div>
+        </div>
+      </header>
 
-          {showIngestPanel && (
-            <div className="ingest-panel">
+      <div className="dashboard-container">
+        {showIngestPanel && (
+          <div className="ingest-panel slide-down">
+            <div className="ingest-panel-inner">
               <div className="ingest-header">
-                <div className="ingest-title">Ingest Replays</div>
-                <div className="ingest-subtitle">Ingestion happens in the background.</div>
+                <div>
+                  <div className="ingest-title">Import Replays</div>
+                  <div className="ingest-subtitle">
+                    {replayCount !== null ? `${replayCount.toLocaleString()} replays in database. ` : ''}
+                    Runs in the background.
+                  </div>
+                </div>
+                <button className="btn-icon-close" onClick={() => setShowIngestPanel(false)}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
               </div>
               <form onSubmit={handleIngestSubmit} className="ingest-form">
                 <div className="ingest-grid">
                   <label className="ingest-field">
-                    <span>Ingest last N replays</span>
+                    <span>How many replays to import</span>
                     <input
-                      type="number"
-                      min="1"
-                      value={ingestForm.stopAfterN}
+                      type="number" min="1" value={ingestForm.stopAfterN}
                       onChange={(e) => setIngestForm({ ...ingestForm, stopAfterN: parseInt(e.target.value || '0', 10) })}
                     />
                   </label>
                   <label className="ingest-field ingest-checkbox">
-                    <span>Erase existing data</span>
-                    <input
-                      type="checkbox"
-                      checked={ingestForm.clean}
+                    <input type="checkbox" checked={ingestForm.clean}
                       onChange={(e) => setIngestForm({ ...ingestForm, clean: e.target.checked })}
                     />
+                    <span>Clear existing data first</span>
                   </label>
                 </div>
                 <div className="ingest-actions">
-                  <button type="submit" className="btn-create-ai">
-                    Start Ingestion
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-create-manual"
-                    onClick={() => setShowIngestPanel(false)}
-                  >
-                    Cancel
-                  </button>
+                  <button type="submit" className="btn-primary">Start Import</button>
+                  <button type="button" className="btn-secondary" onClick={() => setShowIngestPanel(false)}>Cancel</button>
                 </div>
               </form>
             </div>
-          )}
+          </div>
+        )}
 
-          {dashboard?.variables && Object.keys(dashboard.variables).length > 0 && (
-            <div className="variables-container" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-              {Object.entries(dashboard.variables).map(([varName, variable]) => (
-                <div key={varName} className="variable-select" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  <label htmlFor={`var-${varName}`} style={{ fontSize: '0.875rem', fontWeight: '500' }}>
-                    {variable.display_name}
-                  </label>
-                  <select
-                    id={`var-${varName}`}
-                    value={variableValues[varName] || ''}
-                    onChange={(e) => handleVariableChange(varName, e.target.value)}
-                    style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', minWidth: '200px' }}
-                  >
-                    {variable.possible_values?.map((value, idx) => (
-                      <option key={idx} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
+        <div className="widget-creation-section">
+          {openaiEnabled ? (
+            <form onSubmit={handleCreateWidget} className="widget-creation-form">
+              <div className="widget-creation-input-group">
+                <input
+                  type="text" value={newWidgetPrompt}
+                  onChange={(e) => setNewWidgetPrompt(e.target.value)}
+                  placeholder="Describe a chart you want (e.g. 'win rate by race')..."
+                  className="widget-creation-input" disabled={creatingWidget}
+                />
+                <button type="submit" disabled={creatingWidget || !newWidgetPrompt.trim()} className="btn-primary">
+                  Create with AI
+                </button>
+                <div className="widget-creation-divider">or</div>
+                <button type="button" onClick={handleCreateWidgetWithoutPrompt}
+                  disabled={creatingWidget} className="btn-secondary">
+                  Create Manually
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="widget-creation-form">
+              <div className="widget-creation-input-group">
+                <button type="button" onClick={handleCreateWidgetWithoutPrompt}
+                  disabled={creatingWidget} className="btn-primary">
+                  + New Widget
+                </button>
+                <div className="widget-creation-info">
+                  <span className="info-text">AI-powered creation requires --openai-api-key flag</span>
                 </div>
-              ))}
+              </div>
             </div>
           )}
         </div>
 
+        {variableCount > 0 && (
+          <div className="variables-bar">
+            <button className="variables-toggle" onClick={() => setShowVariables(!showVariables)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+              </svg>
+              Filters ({variableCount})
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                style={{ transform: showVariables ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {showVariables && (
+              <div className="variables-content">
+                {Object.entries(dashboard.variables).map(([varName, variable]) => (
+                  <div key={varName} className="variable-item">
+                    <label htmlFor={`var-${varName}`}>{variable.display_name}</label>
+                    <select
+                      id={`var-${varName}`}
+                      value={variableValues[varName] || ''}
+                      onChange={(e) => handleVariableChange(varName, e.target.value)}
+                    >
+                      {variable.possible_values?.map((value, idx) => (
+                        <option key={idx} value={value}>{value}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {error && <div className="error-message">{error}</div>}
 
-        <div className="widgets-grid">
-          {sortedWidgets.map((widget) => (
-            <Widget
-              key={widget.id}
-              widget={widget}
-              onDelete={handleDeleteWidget}
-              onUpdate={handleUpdateWidget}
-            />
-          ))}
-        </div>
+        {sortedWidgets.length === 0 && !loading ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="9" y1="21" x2="9" y2="9"/>
+              </svg>
+            </div>
+            <h2>Your dashboard is empty</h2>
+            <p>Create your first widget to start visualizing your StarCraft replay data.</p>
+            <div className="empty-state-actions">
+              {openaiEnabled && (
+                <button className="btn-primary" onClick={() => document.querySelector('.widget-creation-input')?.focus()}>
+                  Describe a Chart
+                </button>
+              )}
+              <button className="btn-secondary" onClick={handleCreateWidgetWithoutPrompt}>
+                Create Widget Manually
+              </button>
+            </div>
+            {replayCount === 0 && (
+              <div className="empty-state-hint">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                No replays found. Import replays first using the menu above.
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="widgets-grid">
+            {sortedWidgets.map((widget) => (
+              <div
+                key={widget.id}
+                className={`widget-drag-wrapper${dragState.dragging === widget.id ? ' dragging' : ''}${dragState.over === widget.id && dragState.dragging !== widget.id ? ' drag-over' : ''}`}
+                draggable
+                onDragStart={(e) => handleDragStart(e, widget.id)}
+                onDragOver={(e) => handleDragOver(e, widget.id)}
+                onDrop={(e) => handleDrop(e, widget.id)}
+                onDragEnd={handleDragEnd}
+              >
+                <Widget
+                  widget={widget}
+                  onDelete={handleDeleteWidget}
+                  onUpdate={handleUpdateWidget}
+                  showDragHandle
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {creatingWidget && (
-        <WidgetCreationSpinner />
-      )}
+      {creatingWidget && <WidgetCreationSpinner />}
 
       {showDashboardManager && (
         <DashboardManager
-          dashboards={dashboards}
-          currentUrl={currentDashboardUrl}
+          dashboards={dashboards} currentUrl={currentDashboardUrl}
           onClose={() => setShowDashboardManager(false)}
-          onRefresh={loadDashboards}
-          onSwitch={handleSwitchDashboard}
+          onRefresh={loadDashboards} onSwitch={handleSwitchDashboard}
         />
       )}
 
@@ -453,26 +530,19 @@ function App() {
 
       {editingWidget && (
         <EditWidgetFullscreen
-          widget={editingWidget}
-          dashboardUrl={currentDashboardUrl}
-          onClose={() => {
-            setEditingWidget(null);
-            loadDashboard(currentDashboardUrl);
-          }}
+          widget={editingWidget} dashboardUrl={currentDashboardUrl}
+          onClose={() => { setEditingWidget(null); loadDashboard(currentDashboardUrl); }}
           onSave={(data) => handleUpdateWidget(editingWidget.id, data)}
         />
       )}
-
-      <div className="app-footer">
-        <div className="footer-left">
-          {replayCount !== null
-            ? `${replayCount.toLocaleString()} replays in database. You can trigger an ingestion using the button above.`
-            : 'Loading replay count...'}
-        </div>
-        {ingestMessage && <div className="footer-right">{ingestMessage}</div>}
-      </div>
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
+  );
+}

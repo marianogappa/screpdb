@@ -1,87 +1,39 @@
 import React, { useState } from 'react';
-import EditWidgetModal from './EditWidgetModal';
 import EditWidgetFullscreen from './EditWidgetFullscreen';
-import Gauge from './charts/Gauge';
-import Table from './charts/Table';
-import PieChart from './charts/PieChart';
-import BarChart from './charts/BarChart';
-import LineChart from './charts/LineChart';
-import ScatterPlot from './charts/ScatterPlot';
-import Histogram from './charts/Histogram';
-import Heatmap from './charts/Heatmap';
+import { renderChart } from '../utils/chartRenderer';
 
-function Widget({ widget, onDelete, onUpdate }) {
+function Widget({ widget, onDelete, onUpdate, showDragHandle }) {
   const [showEditModal, setShowEditModal] = useState(false);
-
-  const handleDelete = () => {
-    onDelete(widget.id);
-  };
 
   const handleUpdate = (data) => {
     onUpdate(widget.id, data);
     setShowEditModal(false);
   };
 
-  const renderChart = () => {
-    if (!widget.config || !widget.config.type) {
-      return <div className="chart-empty">Invalid widget configuration</div>;
-    }
-
-    // Ensure config is an object (handle case where it might be a string)
-    let config = widget.config;
-    if (typeof config === 'string') {
-      try {
-        config = JSON.parse(config);
-      } catch (e) {
-        return <div className="chart-empty">Error parsing widget configuration</div>;
-      }
-    }
-
-    const chartProps = {
-      data: widget.results || [],
-      config: config,
-    };
-
-    switch (widget.config.type) {
-      case 'gauge':
-        return <Gauge {...chartProps} />;
-      case 'table':
-        return <Table {...chartProps} columns={widget.columns} />;
-      case 'pie_chart':
-        return <PieChart {...chartProps} />;
-      case 'bar_chart':
-        return <BarChart {...chartProps} />;
-      case 'line_chart':
-        return <LineChart {...chartProps} />;
-      case 'scatter_plot':
-        return <ScatterPlot {...chartProps} />;
-      case 'histogram':
-        return <Histogram {...chartProps} />;
-      case 'heatmap':
-        return <Heatmap {...chartProps} />;
-      default:
-        return <div className="chart-empty">Unknown widget type: {widget.config.type}</div>;
-    }
-  };
-
   return (
     <div className="widget">
       <div className="widget-header">
+        {showDragHandle && (
+          <div className="widget-drag-handle" title="Drag to reorder">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+              <circle cx="4" cy="3" r="1.5"/><circle cx="10" cy="3" r="1.5"/>
+              <circle cx="4" cy="7" r="1.5"/><circle cx="10" cy="7" r="1.5"/>
+              <circle cx="4" cy="11" r="1.5"/><circle cx="10" cy="11" r="1.5"/>
+            </svg>
+          </div>
+        )}
         <h3 className="widget-title">{widget.name}</h3>
         <div className="widget-actions">
-          <button
-            onClick={() => setShowEditModal(true)}
-            className="btn-edit"
-            title="Edit widget"
-          >
-            ✎
+          <button onClick={() => setShowEditModal(true)} className="btn-widget-action" title="Edit widget">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
           </button>
-          <button
-            onClick={handleDelete}
-            className="btn-delete"
-            title="Delete widget"
-          >
-            ×
+          <button onClick={() => onDelete(widget.id)} className="btn-widget-action btn-widget-delete" title="Delete widget">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
           </button>
         </div>
       </div>
@@ -91,7 +43,11 @@ function Widget({ widget, onDelete, onUpdate }) {
       )}
 
       <div className="widget-content">
-        {renderChart()}
+        {renderChart({
+          data: widget.results || [],
+          config: widget.config,
+          columns: widget.columns,
+        })}
       </div>
 
       {showEditModal && (
@@ -106,4 +62,3 @@ function Widget({ widget, onDelete, onUpdate }) {
 }
 
 export default Widget;
-
