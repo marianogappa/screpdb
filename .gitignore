@@ -1,3 +1,4 @@
 /screpdb
 *.db
 *.db-journal
+.env
