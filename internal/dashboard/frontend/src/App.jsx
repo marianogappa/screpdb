@@ -42,6 +42,8 @@ function AppContent() {
   const [ingestForm, setIngestForm] = useState({ watch: false, stopAfterN: 50, clean: false });
   const [dragState, setDragState] = useState({ dragging: null, over: null });
   const actionMenuRef = useRef(null);
+  const widgetInputRef = useRef(null);
+  const dragHandleActive = useRef(false);
 
   useEffect(() => {
     const handler = (e) => {
@@ -49,8 +51,15 @@ function AppContent() {
         setShowActionMenu(false);
       }
     };
+    const keyHandler = (e) => {
+      if (e.key === 'Escape') setShowActionMenu(false);
+    };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('keydown', keyHandler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', keyHandler);
+    };
   }, []);
 
   const loadDashboard = useCallback(async (url, varValues = null, skipVarInit = false) => {
@@ -136,23 +145,16 @@ function AppContent() {
     }
   };
 
-  const handleCreateWidgetWithoutPrompt = async () => {
+  const handleCreateWidgetManually = () => {
     if (creatingWidget) return;
-    try {
-      setCreatingWidget(true);
-      setError(null);
-      const widget = await api.createWidget(currentDashboardUrl, '');
-      setCreatingWidget(false);
-      const config = widget.config || { type: 'table' };
-      setEditingWidget({
-        id: widget.id, name: widget.name,
-        description: widget.description ? { valid: true, string: widget.description } : null,
-        query: widget.query || '', config, results: [],
-      });
-    } catch (err) {
-      addToast(err.message, 'error');
-      setCreatingWidget(false);
-    }
+    setEditingWidget({
+      id: null,
+      name: 'New Widget',
+      description: null,
+      query: '',
+      config: { type: 'table' },
+      results: [],
+    });
   };
 
   const handleUpdateDashboard = async (data) => {
@@ -178,10 +180,23 @@ function AppContent() {
     }
   };
 
-  const handleUpdateWidget = async (widgetId, data) => {
-    if (data.prompt) data = { prompt: data.prompt };
+  const handleEditWidget = (widget) => {
+    setEditingWidget(widget);
+  };
+
+  const handleSaveWidget = async (data) => {
     try {
-      await api.updateWidget(currentDashboardUrl, widgetId, data);
+      if (editingWidget.id === null) {
+        await api.createWidget(currentDashboardUrl, '');
+        const refreshed = await api.getDashboard(currentDashboardUrl);
+        const newest = refreshed.widgets?.reduce((a, b) => (a.id > b.id ? a : b), { id: 0 });
+        if (newest?.id) {
+          await api.updateWidget(currentDashboardUrl, newest.id, data);
+        }
+      } else {
+        if (data.prompt) data = { prompt: data.prompt };
+        await api.updateWidget(currentDashboardUrl, editingWidget.id, data);
+      }
       setEditingWidget(null);
       await loadDashboard(currentDashboardUrl);
     } catch (err) {
@@ -225,6 +240,10 @@ function AppContent() {
     : [];
 
   const handleDragStart = (e, widgetId) => {
+    if (!dragHandleActive.current) {
+      e.preventDefault();
+      return;
+    }
     setDragState({ dragging: widgetId, over: null });
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', String(widgetId));
@@ -267,6 +286,11 @@ function AppContent() {
 
   const handleDragEnd = () => {
     setDragState({ dragging: null, over: null });
+    dragHandleActive.current = false;
+  };
+
+  const handleHandleMouseDown = () => {
+    dragHandleActive.current = true;
   };
 
   const variableCount = dashboard?.variables ? Object.keys(dashboard.variables).length : 0;
@@ -285,8 +309,6 @@ function AppContent() {
 
   return (
     <div className="app">
-      <div className="stars-background"></div>
-
       <header className="app-header">
         <div className="header-left">
           <div className="header-brand">
@@ -305,7 +327,7 @@ function AppContent() {
             </select>
           </div>
           {dashboardDesc && (
-            <span className="header-description">{dashboardDesc}</span>
+            <span className="header-description" title={dashboardDesc}>{dashboardDesc}</span>
           )}
         </div>
 
@@ -318,6 +340,8 @@ function AppContent() {
               className="header-menu-btn"
               onClick={() => setShowActionMenu(!showActionMenu)}
               title="Menu"
+              aria-expanded={showActionMenu}
+              aria-haspopup="true"
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
                 <circle cx="10" cy="4" r="2"/>
@@ -326,16 +350,16 @@ function AppContent() {
               </svg>
             </button>
             {showActionMenu && (
-              <div className="action-menu">
-                <button onClick={() => { setShowIngestPanel(true); setShowActionMenu(false); }}>
+              <div className="action-menu" role="menu">
+                <button role="menuitem" onClick={() => { setShowIngestPanel(true); setShowActionMenu(false); }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   Import Replays
                 </button>
-                <button onClick={() => { setShowDashboardManager(true); setShowActionMenu(false); }}>
+                <button role="menuitem" onClick={() => { setShowDashboardManager(true); setShowActionMenu(false); }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
                   Manage Dashboards
                 </button>
-                <button onClick={() => { setShowEditDashboard(true); setShowActionMenu(false); }}>
+                <button role="menuitem" onClick={() => { setShowEditDashboard(true); setShowActionMenu(false); }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   Edit Dashboard
                 </button>
@@ -391,6 +415,7 @@ function AppContent() {
             <form onSubmit={handleCreateWidget} className="widget-creation-form">
               <div className="widget-creation-input-group">
                 <input
+                  ref={widgetInputRef}
                   type="text" value={newWidgetPrompt}
                   onChange={(e) => setNewWidgetPrompt(e.target.value)}
                   placeholder="Describe a chart you want (e.g. 'win rate by race')..."
@@ -400,7 +425,7 @@ function AppContent() {
                   Create with AI
                 </button>
                 <div className="widget-creation-divider">or</div>
-                <button type="button" onClick={handleCreateWidgetWithoutPrompt}
+                <button type="button" onClick={handleCreateWidgetManually}
                   disabled={creatingWidget} className="btn-secondary">
                   Create Manually
                 </button>
@@ -409,7 +434,7 @@ function AppContent() {
           ) : (
             <div className="widget-creation-form">
               <div className="widget-creation-input-group">
-                <button type="button" onClick={handleCreateWidgetWithoutPrompt}
+                <button type="button" onClick={handleCreateWidgetManually}
                   disabled={creatingWidget} className="btn-primary">
                   + New Widget
                 </button>
@@ -469,11 +494,11 @@ function AppContent() {
             <p>Create your first widget to start visualizing your StarCraft replay data.</p>
             <div className="empty-state-actions">
               {openaiEnabled && (
-                <button className="btn-primary" onClick={() => document.querySelector('.widget-creation-input')?.focus()}>
+                <button className="btn-primary" onClick={() => widgetInputRef.current?.focus()}>
                   Describe a Chart
                 </button>
               )}
-              <button className="btn-secondary" onClick={handleCreateWidgetWithoutPrompt}>
+              <button className="btn-secondary" onClick={handleCreateWidgetManually}>
                 Create Widget Manually
               </button>
             </div>
@@ -497,11 +522,16 @@ function AppContent() {
                 onDragOver={(e) => handleDragOver(e, widget.id)}
                 onDrop={(e) => handleDrop(e, widget.id)}
                 onDragEnd={handleDragEnd}
+                onMouseDown={(e) => {
+                  if (e.target.closest('.widget-drag-handle')) {
+                    handleHandleMouseDown();
+                  }
+                }}
               >
                 <Widget
                   widget={widget}
                   onDelete={handleDeleteWidget}
-                  onUpdate={handleUpdateWidget}
+                  onEdit={handleEditWidget}
                   showDragHandle
                 />
               </div>
@@ -532,7 +562,7 @@ function AppContent() {
         <EditWidgetFullscreen
           widget={editingWidget} dashboardUrl={currentDashboardUrl}
           onClose={() => { setEditingWidget(null); loadDashboard(currentDashboardUrl); }}
-          onSave={(data) => handleUpdateWidget(editingWidget.id, data)}
+          onSave={(data) => handleSaveWidget(data)}
         />
       )}
     </div>

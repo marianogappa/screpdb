@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '../api';
 
 let cachedSchema = null;
@@ -24,11 +24,12 @@ export function useSchema() {
     return () => { cancelled = true; };
   }, []);
 
-  const allColumns = [];
-  if (schema?.tables) {
+  const allColumns = useMemo(() => {
+    if (!schema?.tables) return [];
+    const cols = [];
     for (const [tableName, table] of Object.entries(schema.tables)) {
       for (const [colName, colInfo] of Object.entries(table.columns)) {
-        allColumns.push({
+        cols.push({
           table: tableName,
           column: colName,
           type: colInfo.type,
@@ -37,7 +38,8 @@ export function useSchema() {
         });
       }
     }
-  }
+    return cols;
+  }, [schema]);
 
   return { schema, loading, allColumns };
 }
