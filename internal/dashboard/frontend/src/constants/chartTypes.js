@@ -1,3 +1,5 @@
+export const DEFAULT_COLORS = ['#4e79a7', '#f28e2c', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9d9a', '#9c755f', '#bab0ac'];
+
 export const WIDGET_TYPES = [
   { value: 'gauge', label: 'Gauge', icon: 'speed', description: 'Single value with progress bar' },
   { value: 'table', label: 'Table', icon: 'table', description: 'Rows and columns of data' },

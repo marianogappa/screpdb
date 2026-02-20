@@ -4,6 +4,9 @@ import SqlEditor from './SqlEditor';
 import QueryBuilder from './QueryBuilder';
 import { renderChart } from '../utils/chartRenderer';
 import { WIDGET_TYPES, CHART_TYPE_FIELDS } from '../constants/chartTypes';
+import Icon from './ui/Icon';
+import Button from './ui/Button';
+import FormField from './ui/FormField';
 
 function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
   const [name, setName] = useState('');
@@ -131,30 +134,21 @@ function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
     return fields.map(field => {
       if (field.type === 'checkbox') {
         return (
-          <label key={field.key} className="form-checkbox-label">
-            <input
-              type="checkbox"
-              checked={config[field.key] || false}
-              onChange={(e) => updateConfig(field.key, e.target.checked)}
-            />
-            <span>{field.label}</span>
-          </label>
+          <FormField
+            key={field.key} type="checkbox" label={field.label}
+            value={config[field.key] || false}
+            onChange={(v) => updateConfig(field.key, v)}
+          />
         );
       }
       if (field.type === 'select') {
         return (
-          <div key={field.key} className="form-group">
-            <label>{field.label}</label>
-            <select
-              value={config[field.key] || field.options[0]?.value}
-              onChange={(e) => updateConfig(field.key, e.target.value)}
-              className="form-input"
-            >
-              {field.options.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </div>
+          <FormField
+            key={field.key} type="select" label={field.label}
+            value={config[field.key] || field.options[0]?.value}
+            onChange={(v) => updateConfig(field.key, v)}
+            options={field.options}
+          />
         );
       }
       if (field.type === 'column') {
@@ -167,60 +161,46 @@ function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
       }
       if (field.type === 'columns') {
         return (
-          <div key={field.key} className="form-group">
-            <label>{field.label}{field.required && <span className="required-mark">*</span>}</label>
-            <input
-              type="text"
-              value={Array.isArray(config[field.key]) ? config[field.key].join(', ') : (config[field.key] || '')}
-              onChange={(e) => updateConfig(field.key, e.target.value ? e.target.value.split(',').map(s => s.trim()).filter(s => s) : [])}
-              className="form-input"
-              placeholder={previewColumns.length > 0 ? previewColumns.join(', ') : 'col1, col2'}
-            />
-          </div>
+          <FormField
+            key={field.key} label={field.label} required={field.required}
+            value={Array.isArray(config[field.key]) ? config[field.key].join(', ') : (config[field.key] || '')}
+            onChange={(v) => updateConfig(field.key, v ? v.split(',').map(s => s.trim()).filter(s => s) : [])}
+            placeholder={previewColumns.length > 0 ? previewColumns.join(', ') : 'col1, col2'}
+          />
         );
       }
       if (field.type === 'number') {
         return (
-          <div key={field.key} className="form-group">
-            <label>{field.label}</label>
-            <input
-              type="number"
-              value={config[field.key] ?? ''}
-              onChange={(e) => updateConfig(field.key, e.target.value ? parseFloat(e.target.value) : undefined)}
-              className="form-input"
-            />
-          </div>
+          <FormField
+            key={field.key} type="number" label={field.label}
+            value={config[field.key] ?? ''}
+            onChange={(v) => updateConfig(field.key, v)}
+          />
         );
       }
       return (
-        <div key={field.key} className="form-group">
-          <label>{field.label}</label>
-          <input
-            type="text"
-            value={config[field.key] || ''}
-            onChange={(e) => updateConfig(field.key, e.target.value)}
-            className="form-input"
-          />
-        </div>
+        <FormField
+          key={field.key} label={field.label}
+          value={config[field.key] || ''}
+          onChange={(v) => updateConfig(field.key, v)}
+        />
       );
     });
   };
 
   const renderPreview = () => {
-    if (previewError) {
-      return <div className="chart-empty chart-error">Error: {previewError}</div>;
-    }
-    if (isExecuting) {
-      return <div className="chart-empty">Executing query...</div>;
-    }
-    if (previewData.length === 0 && query.trim()) {
-      return <div className="chart-empty">No data returned</div>;
-    }
-    if (previewData.length === 0) {
-      return <div className="chart-empty">Write a SQL query to see a preview</div>;
-    }
+    if (previewError) return <div className="chart-empty chart-error">Error: {previewError}</div>;
+    if (isExecuting) return <div className="chart-empty">Executing query...</div>;
+    if (previewData.length === 0 && query.trim()) return <div className="chart-empty">No data returned</div>;
+    if (previewData.length === 0) return <div className="chart-empty">Write a SQL query to see a preview</div>;
     return renderChart({ data: previewData, config, columns: previewColumns });
   };
+
+  const TABS = [
+    { id: 'query', label: 'Query', icon: 'code' },
+    { id: 'chart', label: 'Chart Type', icon: 'chart' },
+    { id: 'details', label: 'Details', icon: 'info' },
+  ];
 
   return (
     <div className="fullscreen-editor">
@@ -232,39 +212,22 @@ function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
           />
         </div>
         <div className="fullscreen-editor-actions">
-          <button onClick={handleSave} className="btn-primary">Save</button>
-          <button onClick={onClose} className="btn-secondary">Discard</button>
+          <Button variant="primary" onClick={handleSave}>Save</Button>
+          <Button variant="secondary" onClick={onClose}>Discard</Button>
         </div>
       </div>
 
       <div className="editor-tabs">
-        <button
-          className={`editor-tab ${activeTab === 'query' ? 'active' : ''}`}
-          onClick={() => setActiveTab('query')}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-          </svg>
-          Query
-        </button>
-        <button
-          className={`editor-tab ${activeTab === 'chart' ? 'active' : ''}`}
-          onClick={() => setActiveTab('chart')}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 3v18h18"/><path d="M7 16l4-8 4 4 4-12"/>
-          </svg>
-          Chart Type
-        </button>
-        <button
-          className={`editor-tab ${activeTab === 'details' ? 'active' : ''}`}
-          onClick={() => setActiveTab('details')}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-          </svg>
-          Details
-        </button>
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            className={`editor-tab ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            <Icon name={tab.icon} size={14} />
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       <div className="fullscreen-editor-content">
@@ -272,18 +235,8 @@ function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
           {activeTab === 'query' && (
             <div className="fullscreen-editor-section">
               <div className="query-mode-toggle">
-                <button
-                  className={`query-mode-btn ${queryMode === 'sql' ? 'active' : ''}`}
-                  onClick={() => setQueryMode('sql')}
-                >
-                  SQL Editor
-                </button>
-                <button
-                  className={`query-mode-btn ${queryMode === 'builder' ? 'active' : ''}`}
-                  onClick={() => setQueryMode('builder')}
-                >
-                  Visual Builder
-                </button>
+                <button className={`query-mode-btn ${queryMode === 'sql' ? 'active' : ''}`} onClick={() => setQueryMode('sql')}>SQL Editor</button>
+                <button className={`query-mode-btn ${queryMode === 'builder' ? 'active' : ''}`} onClick={() => setQueryMode('builder')}>Visual Builder</button>
               </div>
 
               {queryMode === 'sql' ? (
@@ -309,11 +262,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
                       </div>
                     </div>
                   )}
-                  <SqlEditor
-                    value={query} onChange={setQuery}
-                    placeholder="SELECT * FROM replays..."
-                    className="sql-editor"
-                  />
+                  <SqlEditor value={query} onChange={setQuery} placeholder="SELECT * FROM replays..." className="sql-editor" />
                   {isExecuting && <div className="query-status">Executing...</div>}
                   {previewData.length > 0 && !isExecuting && (
                     <div className="query-status query-status-success">
@@ -323,10 +272,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
                   )}
                 </>
               ) : (
-                <QueryBuilder
-                  onQueryGenerated={handleQueryFromBuilder}
-                  initialMode="visual"
-                />
+                <QueryBuilder onQueryGenerated={handleQueryFromBuilder} initialMode="visual" />
               )}
             </div>
           )}
@@ -345,31 +291,14 @@ function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
                   </button>
                 ))}
               </div>
-
-              <div className="chart-config-section">
-                {renderConfigFields()}
-              </div>
+              <div className="chart-config-section">{renderConfigFields()}</div>
             </div>
           )}
 
           {activeTab === 'details' && (
             <div className="fullscreen-editor-section">
-              <div className="form-group">
-                <label>Widget Name</label>
-                <input
-                  type="text" value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="form-input" required
-                />
-              </div>
-              <div className="form-group">
-                <label>Description</label>
-                <input
-                  type="text" value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="form-input" placeholder="What does this widget show?"
-                />
-              </div>
+              <FormField label="Widget Name" value={name} onChange={setName} required />
+              <FormField label="Description" value={description} onChange={setDescription} placeholder="What does this widget show?" />
             </div>
           )}
         </div>
@@ -378,13 +307,9 @@ function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
           <div className="fullscreen-editor-preview">
             <div className="preview-header">
               <h3>Preview</h3>
-              {previewData.length > 0 && (
-                <span className="preview-badge">{previewData.length} rows</span>
-              )}
+              {previewData.length > 0 && <span className="preview-badge">{previewData.length} rows</span>}
             </div>
-            <div className="fullscreen-editor-preview-content">
-              {renderPreview()}
-            </div>
+            <div className="fullscreen-editor-preview-content">{renderPreview()}</div>
           </div>
         </div>
       </div>

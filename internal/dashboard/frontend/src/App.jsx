@@ -4,9 +4,11 @@ import Widget from './components/Widget';
 import DashboardManager from './components/DashboardManager';
 import EditDashboardModal from './components/EditDashboardModal';
 import EditWidgetFullscreen from './components/EditWidgetFullscreen';
-import WidgetCreationSpinner from './components/WidgetCreationSpinner';
+import { OverlaySpinner, LoadingScreen } from './components/ui/Spinner';
+import EmptyState from './components/ui/EmptyState';
+import Icon from './components/ui/Icon';
+import Button from './components/ui/Button';
 import { ToastProvider, useToast } from './components/Toast';
-import './styles.css';
 
 const getStoredVariableValues = (dashboardUrl) => {
   try {
@@ -299,10 +301,7 @@ function AppContent() {
   if (loading && !dashboard) {
     return (
       <div className="app">
-        <div className="loading">
-          <div className="loading-spinner"></div>
-          <span>Loading dashboard...</span>
-        </div>
+        <LoadingScreen message="Loading dashboard..." />
       </div>
     );
   }
@@ -312,10 +311,7 @@ function AppContent() {
       <header className="app-header">
         <div className="header-left">
           <div className="header-brand">
-            <svg className="header-logo" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 3v18h18"/>
-              <path d="M7 16l4-8 4 4 4-12"/>
-            </svg>
+            <Icon name="chart" size={24} className="header-logo" />
             <select
               value={currentDashboardUrl}
               onChange={(e) => handleSwitchDashboard(e.target.value)}
@@ -343,24 +339,20 @@ function AppContent() {
               aria-expanded={showActionMenu}
               aria-haspopup="true"
             >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                <circle cx="10" cy="4" r="2"/>
-                <circle cx="10" cy="10" r="2"/>
-                <circle cx="10" cy="16" r="2"/>
-              </svg>
+              <Icon name="menu" size={20} />
             </button>
             {showActionMenu && (
               <div className="action-menu" role="menu">
                 <button role="menuitem" onClick={() => { setShowIngestPanel(true); setShowActionMenu(false); }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <Icon name="download" size={16} />
                   Import Replays
                 </button>
                 <button role="menuitem" onClick={() => { setShowDashboardManager(true); setShowActionMenu(false); }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                  <Icon name="grid" size={16} />
                   Manage Dashboards
                 </button>
                 <button role="menuitem" onClick={() => { setShowEditDashboard(true); setShowActionMenu(false); }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  <Icon name="edit" size={16} />
                   Edit Dashboard
                 </button>
               </div>
@@ -382,7 +374,7 @@ function AppContent() {
                   </div>
                 </div>
                 <button className="btn-icon-close" onClick={() => setShowIngestPanel(false)}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  <Icon name="close" size={18} />
                 </button>
               </div>
               <form onSubmit={handleIngestSubmit} className="ingest-form">
@@ -402,8 +394,8 @@ function AppContent() {
                   </label>
                 </div>
                 <div className="ingest-actions">
-                  <button type="submit" className="btn-primary">Start Import</button>
-                  <button type="button" className="btn-secondary" onClick={() => setShowIngestPanel(false)}>Cancel</button>
+                  <Button variant="primary" type="submit">Start Import</Button>
+                  <Button variant="secondary" type="button" onClick={() => setShowIngestPanel(false)}>Cancel</Button>
                 </div>
               </form>
             </div>
@@ -421,23 +413,21 @@ function AppContent() {
                   placeholder="Describe a chart you want (e.g. 'win rate by race')..."
                   className="widget-creation-input" disabled={creatingWidget}
                 />
-                <button type="submit" disabled={creatingWidget || !newWidgetPrompt.trim()} className="btn-primary">
+                <Button variant="primary" type="submit" disabled={creatingWidget || !newWidgetPrompt.trim()}>
                   Create with AI
-                </button>
+                </Button>
                 <div className="widget-creation-divider">or</div>
-                <button type="button" onClick={handleCreateWidgetManually}
-                  disabled={creatingWidget} className="btn-secondary">
+                <Button variant="secondary" type="button" onClick={handleCreateWidgetManually} disabled={creatingWidget}>
                   Create Manually
-                </button>
+                </Button>
               </div>
             </form>
           ) : (
             <div className="widget-creation-form">
               <div className="widget-creation-input-group">
-                <button type="button" onClick={handleCreateWidgetManually}
-                  disabled={creatingWidget} className="btn-primary">
+                <Button variant="primary" type="button" onClick={handleCreateWidgetManually} disabled={creatingWidget}>
                   + New Widget
-                </button>
+                </Button>
                 <div className="widget-creation-info">
                   <span className="info-text">AI-powered creation requires --openai-api-key flag</span>
                 </div>
@@ -449,14 +439,9 @@ function AppContent() {
         {variableCount > 0 && (
           <div className="variables-bar">
             <button className="variables-toggle" onClick={() => setShowVariables(!showVariables)}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-              </svg>
+              <Icon name="filter" size={14} />
               Filters ({variableCount})
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                style={{ transform: showVariables ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <Icon name="chevronDown" size={12} style={{ transform: showVariables ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
             </button>
             {showVariables && (
               <div className="variables-content">
@@ -482,35 +467,24 @@ function AppContent() {
         {error && <div className="error-message">{error}</div>}
 
         {sortedWidgets.length === 0 && !loading ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <line x1="3" y1="9" x2="21" y2="9"/>
-                <line x1="9" y1="21" x2="9" y2="9"/>
-              </svg>
-            </div>
-            <h2>Your dashboard is empty</h2>
-            <p>Create your first widget to start visualizing your StarCraft replay data.</p>
-            <div className="empty-state-actions">
-              {openaiEnabled && (
-                <button className="btn-primary" onClick={() => widgetInputRef.current?.focus()}>
-                  Describe a Chart
-                </button>
-              )}
-              <button className="btn-secondary" onClick={handleCreateWidgetManually}>
-                Create Widget Manually
-              </button>
-            </div>
-            {replayCount === 0 && (
-              <div className="empty-state-hint">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-                </svg>
-                No replays found. Import replays first using the menu above.
-              </div>
-            )}
-          </div>
+          <EmptyState
+            icon="dashboard"
+            title="Your dashboard is empty"
+            description="Create your first widget to start visualizing your StarCraft replay data."
+            actions={
+              <>
+                {openaiEnabled && (
+                  <Button variant="primary" onClick={() => widgetInputRef.current?.focus()}>
+                    Describe a Chart
+                  </Button>
+                )}
+                <Button variant="secondary" onClick={handleCreateWidgetManually}>
+                  Create Widget Manually
+                </Button>
+              </>
+            }
+            hint={replayCount === 0 ? 'No replays found. Import replays first using the menu above.' : undefined}
+          />
         ) : (
           <div className="widgets-grid">
             {sortedWidgets.map((widget) => (
@@ -540,7 +514,7 @@ function AppContent() {
         )}
       </div>
 
-      {creatingWidget && <WidgetCreationSpinner />}
+      {creatingWidget && <OverlaySpinner />}
 
       {showDashboardManager && (
         <DashboardManager
