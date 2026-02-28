@@ -114,7 +114,7 @@ func (r *CommandRegistry) register(commandType byte, handler CommandHandler) {
 }
 
 // ProcessCommand processes a command using the appropriate handler
-func (r *CommandRegistry) ProcessCommand(cmd repcmd.Cmd, replayID int64, startTime int64, slotToPlayerMap map[uint16]int64) *models.Command {
+func (r *CommandRegistry) ProcessCommand(cmd repcmd.Cmd, startTime int64) *models.Command {
 	base := cmd.BaseCmd()
 
 	// Check if we should ignore this command type
@@ -128,9 +128,8 @@ func (r *CommandRegistry) ProcessCommand(cmd repcmd.Cmd, replayID int64, startTi
 		handler = NewGeneralCommandHandler(base.Type.String(), base.Type.ID)
 	}
 
-	command := handler.Handle(cmd, base, slotToPlayerMap)
+	command := handler.Handle(cmd, base)
 	if command != nil {
-		command.ReplayID = replayID
 		command.RunAt = time.Unix(startTime+int64(base.Frame.Duration().Seconds()), 0)
 		command.SecondsFromGameStart = int(base.Frame.Seconds())
 	}

@@ -19,11 +19,19 @@ func NewVisionCommandHandler() *VisionCommandHandler {
 	}
 }
 
-func (h *VisionCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPlayerMap map[uint16]int64) *models.Command {
+func (h *VisionCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.Command {
 	visionCmd := cmd.(*repcmd.VisionCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	command.VisionPlayerIDs = slotIDsToPlayerIDs(visionCmd.SlotIDs, slotToPlayerMap)
+	command.VisionPlayerIDs = bytsToInts(visionCmd.SlotIDs) // TODO these need to be mapped after insertion
 
 	return command
+}
+
+func bytsToInts(bs []byte) *[]int64 {
+	ints := make([]int64, len(bs))
+	for i, b := range bs {
+		ints[i] = int64(b)
+	}
+	return &ints
 }

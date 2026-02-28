@@ -19,7 +19,7 @@ func NewMinimapPingCommandHandler() *MinimapPingCommandHandler {
 	}
 }
 
-func (h *MinimapPingCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPlayerMap map[uint16]int64) *models.Command {
+func (h *MinimapPingCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.Command {
 	minimapPingCmd := cmd.(*repcmd.MinimapPingCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 

@@ -19,7 +19,7 @@ func NewQueueableCommandHandler(actionType string, actionID byte) *QueueableComm
 	}
 }
 
-func (h *QueueableCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPlayerMap map[uint16]int64) *models.Command {
+func (h *QueueableCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.Command {
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
 	// Try to extract queued status from QueueableCmd if it's that type
