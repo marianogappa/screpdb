@@ -19,7 +19,7 @@ func NewTechCommandHandler() *TechCommandHandler {
 	}
 }
 
-func (h *TechCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPlayerMap map[uint16]int64) *models.Command {
+func (h *TechCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.Command {
 	techCmd := cmd.(*repcmd.TechCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 

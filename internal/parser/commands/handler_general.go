@@ -19,7 +19,7 @@ func NewGeneralCommandHandler(actionType string, actionID byte) *GeneralCommandH
 	}
 }
 
-func (h *GeneralCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPlayerMap map[uint16]int64) *models.Command {
+func (h *GeneralCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.Command {
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
 	// Try to extract data from GeneralCmd if it's that type, otherwise use empty data
