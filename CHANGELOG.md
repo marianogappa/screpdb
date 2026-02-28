@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.16.1](https://github.com/marianogappa/screpdb/compare/v0.16.0...v0.16.1) (2026-02-28)
+
+
+### Bug Fixes
+
+* added strategyOneDriveUser() to handle Replays inside OneDrive folder ([62aca55](https://github.com/marianogappa/screpdb/commit/62aca5528e6eccbca96e79df34300c6d18e4d8a9))
+* adding handler path for Users on Windows11 who have their Replays in OneDrive folder ([ec58503](https://github.com/marianogappa/screpdb/commit/ec585031dc79f0e85f536524c6ef2e69b4c9d634))
+* Chat commands misassigned. Better command assignment strategy. ([d52638c](https://github.com/marianogappa/screpdb/commit/d52638cceedb34826f3f743545a365977b5f6edf))
+* Chat commands misassigned. Better command assignment stratgy. ([5b0891d](https://github.com/marianogappa/screpdb/commit/5b0891de5f0e4297ce4fa77e91223f877b369ef1))
+
 ## [0.16.0](https://github.com/marianogappa/screpdb/compare/v0.15.1...v0.16.0) (2026-02-13)
 
 
