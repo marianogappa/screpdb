@@ -438,18 +438,16 @@ func (s *SQLiteStorage) insertCommandsBatchTx(ctx context.Context, db dbtx, comm
 
 // updateEntityIDs updates all entities with the correct replay ID and player IDs
 func (s *SQLiteStorage) updateEntityIDs(data *models.ReplayData, replayID int64, playerIDs map[byte]int64) {
-	// Update commands
-	for _, command := range data.Commands {
-		command.ReplayID = replayID
-		// command.PlayerID at this point is the replay's player ID (byte), not the database ID
-		// We need to look it up in the map
-		originalPlayerID := byte(command.PlayerID)
-		if playerID, exists := playerIDs[originalPlayerID]; exists {
-			command.PlayerID = playerID
-		} else {
-			// This shouldn't happen, but log it if it does
-			fmt.Printf("Warning: player ID %d not found in playerIDs map (map has %d entries)\n", originalPlayerID, len(playerIDs))
-		}
+	data.Replay.ID = replayID
+	for i := range data.Players {
+		data.Players[i].ID = playerIDs[data.Players[i].PlayerID]
+	}
+	for i := range data.Commands {
+		data.Commands[i].ReplayID = replayID
+		data.Commands[i].PlayerID = data.Commands[i].Player.ID
+
+		// TODO Special case: VisionPlayerIDs hold slot ids
+		// TODO Special case: AlliancePlayerIDs
 	}
 }
 

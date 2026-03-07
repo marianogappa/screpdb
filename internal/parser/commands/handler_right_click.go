@@ -19,7 +19,7 @@ func NewRightClickCommandHandler(actionType string, actionID byte) *RightClickCo
 	}
 }
 
-func (h *RightClickCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPlayerMap map[uint16]int64) *models.Command {
+func (h *RightClickCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.Command {
 	rightClickCmd := cmd.(*repcmd.RightClickCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 

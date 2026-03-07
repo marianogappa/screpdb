@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/icza/screp/rep/repcmd"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser/commands"
 	"github.com/marianogappa/screpdb/internal/patterns"
@@ -108,9 +109,11 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 	patternOrchestrator.Initialize(data.Replay, data.Players)
 
 	// Create slot-to-player mapping for alliance and vision commands
-	slotToPlayerMap := make(map[uint16]int64)
+	playerIDToPlayer := make(map[byte]*models.Player)
+	slotIDToPlayer := make(map[byte]*models.Player)
 	for _, player := range data.Players {
-		slotToPlayerMap[player.SlotID] = int64(player.PlayerID)
+		playerIDToPlayer[player.PlayerID] = player
+		slotIDToPlayer[byte(player.SlotID)] = player
 	}
 
 	// Parse commands using the command handling system
@@ -120,20 +123,24 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 	if rep.Commands != nil {
 		for _, cmd := range rep.Commands.Cmds {
 			base := cmd.BaseCmd()
-			playerID := int64(base.PlayerID)
-			if playerID >= int64(len(data.Players)) {
+			if int(base.PlayerID) >= len(data.Players) {
 				continue
 			}
 
 			// Process command using the registry
-			command := commandRegistry.ProcessCommand(cmd, data.Replay.ID, startTime, slotToPlayerMap)
+			command := commandRegistry.ProcessCommand(cmd, startTime)
 
 			if command != nil {
 				// Set additional fields (registry already sets ReplayID and RunAt)
-				command.PlayerID = playerID
 				command.Frame = int32(base.Frame)
 				command.Replay = data.Replay
-				command.Player = findPlayerWithPlayerID(base.PlayerID, data.Players)
+				command.Player = playerIDToPlayer[base.PlayerID]
+
+				// Edge case: ChatCmd doesn't populate PlayerID, but populates SenderSlotID
+				if command.ActionType == "Chat" {
+					chatCommand := cmd.(*repcmd.ChatCmd)
+					command.Player = slotIDToPlayer[chatCommand.SenderSlotID]
+				}
 
 				data.Commands = append(data.Commands, command)
 
@@ -147,15 +154,6 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 	data.PatternOrchestrator = patternOrchestrator
 
 	return data, nil
-}
-
-func findPlayerWithPlayerID(playerID byte, players []*models.Player) *models.Player {
-	for _, player := range players {
-		if player.PlayerID == playerID {
-			return player
-		}
-	}
-	return nil
 }
 
 // CreateReplayFromFileInfo creates a Replay model from file information
