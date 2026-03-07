@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { api } from './api';
 import Widget from './components/Widget';
 import DashboardManager from './components/DashboardManager';
@@ -43,9 +43,11 @@ function AppContent() {
   const [showVariables, setShowVariables] = useState(true);
   const [ingestForm, setIngestForm] = useState({ watch: false, stopAfterN: 50, clean: false });
   const [dragState, setDragState] = useState({ dragging: null, over: null });
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const actionMenuRef = useRef(null);
   const widgetInputRef = useRef(null);
-  const dragHandleActive = useRef(false);
+
+  const AUTO_REFRESH_SECONDS = 30;
 
   useEffect(() => {
     const handler = (e) => {
@@ -64,9 +66,11 @@ function AppContent() {
     };
   }, []);
 
-  const loadDashboard = useCallback(async (url, varValues = null, skipVarInit = false) => {
+  const loadDashboard = useCallback(async (url, varValues = null, skipVarInit = false, options = {}) => {
+    const background = options.background === true;
     try {
-      setLoading(true);
+      if (!background) setLoading(true);
+      else setIsRefreshing(true);
       setError(null);
       if (!varValues) {
         const stored = getStoredVariableValues(url);
@@ -97,9 +101,10 @@ function AppContent() {
         saveVariableValues(url, newVarValues);
       }
     } catch (err) {
-      setError(err.message);
+      if (!background) setError(err.message);
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
+      else setIsRefreshing(false);
     }
   }, []);
 
@@ -112,12 +117,29 @@ function AppContent() {
     }
   }, []);
 
+  const reloadDashboard = useCallback(() => loadDashboard(currentDashboardUrl, variableValues), [currentDashboardUrl, variableValues, loadDashboard]);
+
   useEffect(() => {
     const stored = getStoredVariableValues('default');
     loadDashboard('default', stored || undefined);
     loadDashboards();
     checkOpenAIStatus();
   }, []);
+
+  const handleRefresh = useCallback(() => {
+    if (!currentDashboardUrl || isRefreshing) return;
+    loadDashboard(currentDashboardUrl, variableValues, true, { background: true });
+    checkOpenAIStatus();
+  }, [currentDashboardUrl, variableValues, isRefreshing, loadDashboard]);
+
+  useEffect(() => {
+    if (!dashboard || !currentDashboardUrl) return;
+    const intervalId = setInterval(() => {
+      loadDashboard(currentDashboardUrl, variableValues, true, { background: true });
+      checkOpenAIStatus();
+    }, AUTO_REFRESH_SECONDS * 1000);
+    return () => clearInterval(intervalId);
+  }, [currentDashboardUrl, dashboard, variableValues, loadDashboard]);
 
   const checkOpenAIStatus = async () => {
     try {
@@ -139,7 +161,7 @@ function AppContent() {
       await api.createWidget(currentDashboardUrl, newWidgetPrompt);
       setNewWidgetPrompt('');
       addToast('Widget created successfully', 'success');
-      await loadDashboard(currentDashboardUrl);
+      await loadDashboard(currentDashboardUrl, variableValues);
     } catch (err) {
       addToast(err.message, 'error');
     } finally {
@@ -164,7 +186,7 @@ function AppContent() {
       await api.updateDashboard(currentDashboardUrl, data);
       setShowEditDashboard(false);
       addToast('Dashboard updated', 'success');
-      await loadDashboard(currentDashboardUrl);
+      await reloadDashboard();
       await loadDashboards();
     } catch (err) {
       addToast(err.message, 'error');
@@ -176,7 +198,7 @@ function AppContent() {
     try {
       await api.deleteWidget(currentDashboardUrl, widgetId);
       addToast('Widget deleted', 'success');
-      await loadDashboard(currentDashboardUrl);
+      await reloadDashboard();
     } catch (err) {
       addToast(err.message, 'error');
     }
@@ -190,7 +212,7 @@ function AppContent() {
     try {
       if (editingWidget.id === null) {
         await api.createWidget(currentDashboardUrl, '');
-        const refreshed = await api.getDashboard(currentDashboardUrl);
+        const refreshed = await api.getDashboard(currentDashboardUrl, variableValues);
         const newest = refreshed.widgets?.reduce((a, b) => (a.id > b.id ? a : b), { id: 0 });
         if (newest?.id) {
           await api.updateWidget(currentDashboardUrl, newest.id, data);
@@ -200,7 +222,7 @@ function AppContent() {
         await api.updateWidget(currentDashboardUrl, editingWidget.id, data);
       }
       setEditingWidget(null);
-      await loadDashboard(currentDashboardUrl);
+      await reloadDashboard();
     } catch (err) {
       addToast(err.message, 'error');
     }
@@ -233,19 +255,15 @@ function AppContent() {
     await loadDashboard(currentDashboardUrl, newVarValues);
   };
 
-  const sortedWidgets = dashboard?.widgets
-    ? [...dashboard.widgets].sort((a, b) => {
-      const orderA = a.widget_order?.valid ? a.widget_order.int64 : 0;
-      const orderB = b.widget_order?.valid ? b.widget_order.int64 : 0;
-      return orderA - orderB;
-    })
-    : [];
+  const sortedWidgets = useMemo(() => {
+    if (!dashboard?.widgets) return [];
+    return [...dashboard.widgets].sort((a, b) => (a.widget_order ?? 0) - (b.widget_order ?? 0));
+  }, [dashboard?.widgets]);
+
+  const dragWrapperClass = (widgetId) =>
+    `widget-drag-wrapper${dragState.dragging === widgetId ? ' dragging' : ''}${dragState.over === widgetId && dragState.dragging !== widgetId ? ' drag-over' : ''}`;
 
   const handleDragStart = (e, widgetId) => {
-    if (!dragHandleActive.current) {
-      e.preventDefault();
-      return;
-    }
     setDragState({ dragging: widgetId, over: null });
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', String(widgetId));
@@ -280,7 +298,7 @@ function AppContent() {
       await Promise.all(widgets.map((w, i) =>
         api.updateWidgetOrder(currentDashboardUrl, w.id, i + 1)
       ));
-      await loadDashboard(currentDashboardUrl);
+      await reloadDashboard();
     } catch {
       addToast('Failed to reorder widgets', 'error');
     }
@@ -288,15 +306,10 @@ function AppContent() {
 
   const handleDragEnd = () => {
     setDragState({ dragging: null, over: null });
-    dragHandleActive.current = false;
-  };
-
-  const handleHandleMouseDown = () => {
-    dragHandleActive.current = true;
   };
 
   const variableCount = dashboard?.variables ? Object.keys(dashboard.variables).length : 0;
-  const dashboardDesc = dashboard?.description?.valid ? dashboard.description.string : null;
+  const dashboardDesc = dashboard?.description ?? null;
 
   if (loading && !dashboard) {
     return (
@@ -331,6 +344,16 @@ function AppContent() {
           <div className="header-replay-count">
             {replayCount !== null ? `${replayCount.toLocaleString()} replays` : ''}
           </div>
+          <button
+            className="header-refresh-btn"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            title="Refresh dashboard data"
+            aria-label="Refresh dashboard"
+          >
+            <Icon name="refresh" size={18} style={{ opacity: isRefreshing ? 0.6 : 1 }} />
+            {isRefreshing && <span className="header-refreshing-label">Refreshing...</span>}
+          </button>
           <div className="action-menu-wrapper" ref={actionMenuRef}>
             <button
               className="header-menu-btn"
@@ -490,17 +513,13 @@ function AppContent() {
             {sortedWidgets.map((widget) => (
               <div
                 key={widget.id}
-                className={`widget-drag-wrapper${dragState.dragging === widget.id ? ' dragging' : ''}${dragState.over === widget.id && dragState.dragging !== widget.id ? ' drag-over' : ''}`}
+                className={dragWrapperClass(widget.id)}
                 draggable
+                title="Drag to reorder"
                 onDragStart={(e) => handleDragStart(e, widget.id)}
                 onDragOver={(e) => handleDragOver(e, widget.id)}
                 onDrop={(e) => handleDrop(e, widget.id)}
                 onDragEnd={handleDragEnd}
-                onMouseDown={(e) => {
-                  if (e.target.closest('.widget-drag-handle')) {
-                    handleHandleMouseDown();
-                  }
-                }}
               >
                 <Widget
                   widget={widget}
@@ -535,7 +554,7 @@ function AppContent() {
       {editingWidget && (
         <EditWidgetFullscreen
           widget={editingWidget} dashboardUrl={currentDashboardUrl}
-          onClose={() => { setEditingWidget(null); loadDashboard(currentDashboardUrl); }}
+          onClose={() => { setEditingWidget(null); reloadDashboard(); }}
           onSave={(data) => handleSaveWidget(data)}
         />
       )}

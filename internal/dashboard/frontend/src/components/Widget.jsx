@@ -24,7 +24,7 @@ function Widget({ widget, onDelete, onEdit, showDragHandle }) {
       {widget.description && <div className="widget-description">{widget.description}</div>}
       <div className="widget-content">
         {renderChart({
-          data: widget.data,
+          data: widget.results ?? widget.data,
           config: widget.config,
           columns: widget.columns,
           emptyMessage: 'No data to display',

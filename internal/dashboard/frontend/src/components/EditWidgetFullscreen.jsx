@@ -26,7 +26,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
   useEffect(() => {
     if (widget) {
       setName(widget.name || '');
-      setDescription(widget.description?.valid ? widget.description.string || '' : '');
+      setDescription(widget.description || '');
       setQuery(widget.query || '');
       setConfig(widget.config || { type: 'table' });
       if (widget.results) setPreviewData(widget.results);
@@ -99,10 +99,17 @@ function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
     onSave({ name, description: description || null, query, config });
   };
 
-  const handleQueryFromBuilder = (sql) => {
+  const handleQueryFromBuilder = (sql, options) => {
     setQuery(sql);
     setQueryMode('sql');
     setActiveTab('query');
+    if (options?.chartType || options?.config) {
+      setConfig(prev => ({
+        ...prev,
+        type: options.chartType ?? prev.type,
+        ...(options.config || {}),
+      }));
+    }
   };
 
   const renderColumnSelect = (field, currentValue) => {
@@ -160,12 +167,36 @@ function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
         );
       }
       if (field.type === 'columns') {
+        const currentCols = Array.isArray(config[field.key]) ? config[field.key] : (config[field.key] ? String(config[field.key]).split(',').map(s => s.trim()).filter(Boolean) : []);
+        if (previewColumns.length > 0) {
+          const toggleColumn = (col) => {
+            const next = currentCols.includes(col) ? currentCols.filter(c => c !== col) : [...currentCols, col];
+            updateConfig(field.key, next);
+          };
+          return (
+            <div key={field.key} className="form-group">
+              <label>{field.label}{field.required && <span className="required-mark">*</span>}</label>
+              <div className="chart-config-columns-checkboxes">
+                {previewColumns.map(col => (
+                  <label key={col} className="chart-config-column-check">
+                    <input
+                      type="checkbox"
+                      checked={currentCols.includes(col)}
+                      onChange={() => toggleColumn(col)}
+                    />
+                    <span>{col}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          );
+        }
         return (
           <FormField
             key={field.key} label={field.label} required={field.required}
             value={Array.isArray(config[field.key]) ? config[field.key].join(', ') : (config[field.key] || '')}
             onChange={(v) => updateConfig(field.key, v ? v.split(',').map(s => s.trim()).filter(s => s) : [])}
-            placeholder={previewColumns.length > 0 ? previewColumns.join(', ') : 'col1, col2'}
+            placeholder="col1, col2"
           />
         );
       }
@@ -188,11 +219,22 @@ function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
     });
   };
 
+  const handleTryExampleQuery = () => setQuery('SELECT * FROM replays LIMIT 10');
+
   const renderPreview = () => {
     if (previewError) return <div className="chart-empty chart-error">Error: {previewError}</div>;
     if (isExecuting) return <div className="chart-empty">Executing query...</div>;
     if (previewData.length === 0 && query.trim()) return <div className="chart-empty">No data returned</div>;
-    if (previewData.length === 0) return <div className="chart-empty">Write a SQL query to see a preview</div>;
+    if (previewData.length === 0) {
+      return (
+        <div className="chart-empty chart-empty-hint">
+          <p>Write a query or pick a template in the Visual Builder tab.</p>
+          <button type="button" className="btn-link-example" onClick={handleTryExampleQuery}>
+            Try: SELECT * FROM replays LIMIT 10
+          </button>
+        </div>
+      );
+    }
     return renderChart({ data: previewData, config, columns: previewColumns });
   };
 
@@ -234,9 +276,9 @@ function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
         <div className="fullscreen-editor-left">
           {activeTab === 'query' && (
             <div className="fullscreen-editor-section">
-              <div className="query-mode-toggle">
-                <button className={`query-mode-btn ${queryMode === 'sql' ? 'active' : ''}`} onClick={() => setQueryMode('sql')}>SQL Editor</button>
-                <button className={`query-mode-btn ${queryMode === 'builder' ? 'active' : ''}`} onClick={() => setQueryMode('builder')}>Visual Builder</button>
+              <div className="query-mode-toggle segment-control">
+                <button type="button" className={`segment-control-btn ${queryMode === 'sql' ? 'active' : ''}`} onClick={() => setQueryMode('sql')}>SQL Editor</button>
+                <button type="button" className={`segment-control-btn ${queryMode === 'builder' ? 'active' : ''}`} onClick={() => setQueryMode('builder')}>Visual Builder</button>
               </div>
 
               {queryMode === 'sql' ? (
@@ -262,7 +304,16 @@ function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
                       </div>
                     </div>
                   )}
-                  <SqlEditor value={query} onChange={setQuery} placeholder="SELECT * FROM replays..." className="sql-editor" />
+                  <div className="sql-editor-toolbar">
+                    <Button
+                      variant="primary"
+                      onClick={() => executeQuery(query)}
+                      disabled={!query.trim() || isExecuting}
+                    >
+                      {isExecuting ? 'Running…' : 'Run query'}
+                    </Button>
+                  </div>
+                  <SqlEditor value={query} onChange={setQuery} placeholder="SELECT * FROM replays LIMIT 10" className="sql-editor" />
                   {isExecuting && <div className="query-status">Executing...</div>}
                   {previewData.length > 0 && !isExecuting && (
                     <div className="query-status query-status-success">
@@ -272,7 +323,7 @@ function EditWidgetFullscreen({ widget, onClose, onSave, dashboardUrl }) {
                   )}
                 </>
               ) : (
-                <QueryBuilder onQueryGenerated={handleQueryFromBuilder} initialMode="visual" />
+                <QueryBuilder onQueryGenerated={handleQueryFromBuilder} />
               )}
             </div>
           )}
