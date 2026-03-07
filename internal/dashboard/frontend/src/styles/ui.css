@@ -209,12 +209,13 @@ body {
 .btn-close:hover { background: rgba(255,255,255,0.06); color: var(--color-text-bright); }
 
 /* =================== FORMS =================== */
-.edit-form { padding: var(--space-lg); }
-.form-group { margin-bottom: var(--space-md); }
-.form-group label { display: block; margin-bottom: 6px; color: var(--color-text); font-size: 13px; font-weight: 500; }
-
-.form-input, .form-textarea {
-  width: 100%;
+/* Shared base for all inputs and selects (form-input, qb-select, qb-input, variable-item select) */
+.input-base,
+.form-input,
+.form-textarea,
+.qb-select,
+.qb-input,
+.variable-item select {
   padding: 7px 12px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--color-border);
@@ -224,15 +225,24 @@ body {
   font-family: inherit;
   transition: var(--transition);
 }
-
-.form-textarea { resize: vertical; font-family: 'SF Mono', 'Monaco', 'Menlo', monospace; font-size: 12px; }
-.form-input:focus, .form-textarea:focus {
+.input-base:focus,
+.form-input:focus,
+.form-textarea:focus,
+.qb-select:focus,
+.qb-input:focus,
+.variable-item select:focus {
   outline: none;
   border-color: var(--color-primary-border);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.08);
 }
+.form-input option, .qb-select option { background: #16161e; color: #fff; }
 
-.form-input option { background: #16161e; color: #fff; }
+.edit-form { padding: var(--space-lg); }
+.form-group { margin-bottom: var(--space-md); }
+.form-group label { display: block; margin-bottom: 6px; color: var(--color-text); font-size: 13px; font-weight: 500; }
+
+.form-input, .form-textarea { width: 100%; }
+.form-textarea { resize: vertical; font-family: 'SF Mono', 'Monaco', 'Menlo', monospace; font-size: 12px; }
 .form-actions { display: flex; gap: var(--space-sm); justify-content: flex-end; margin-top: var(--space-lg); }
 .form-hint { margin-top: 6px; font-size: 12px; color: var(--color-text-dim); }
 .form-hint code { font-family: monospace; color: rgba(255,255,255,0.6); }

@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId } from 'react';
 import * as d3 from 'd3';
 import { useChartDimensions } from '../../hooks/useChartDimensions';
 
 function Heatmap({ data, config }) {
+  const gradientId = useId();
   const { containerRef, svgRef, dimensions } = useChartDimensions();
 
   useEffect(() => {
@@ -58,7 +59,7 @@ function Heatmap({ data, config }) {
     legend.append('g').call(d3.axisRight(legendScale).ticks(5)).selectAll('text').attr('fill', '#fff');
 
     const defs = svg.append('defs');
-    const gradient = defs.append('linearGradient').attr('id', 'heatmap-gradient')
+    const gradient = defs.append('linearGradient').attr('id', gradientId)
       .attr('x1', '0%').attr('x2', '0%').attr('y1', '0%').attr('y2', '100%');
 
     const stops = 10;
@@ -67,12 +68,8 @@ function Heatmap({ data, config }) {
       gradient.append('stop').attr('offset', `${(i / stops) * 100}%`).attr('stop-color', colorScale(value));
     }
 
-    legend.append('rect').attr('width', legendWidth).attr('height', legendHeight).style('fill', 'url(#heatmap-gradient)');
-  }, [data, config, dimensions]);
-
-  if (!data || data.length === 0) {
-    return <div className="chart-empty">No data available</div>;
-  }
+    legend.append('rect').attr('width', legendWidth).attr('height', legendHeight).style('fill', `url(#${gradientId})`);
+  }, [data, config, dimensions, gradientId]);
 
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: '300px', overflow: 'hidden', position: 'relative' }}>

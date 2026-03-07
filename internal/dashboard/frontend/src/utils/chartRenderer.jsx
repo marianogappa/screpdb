@@ -8,6 +8,29 @@ import ScatterPlot from '../components/charts/ScatterPlot';
 import Histogram from '../components/charts/Histogram';
 import Heatmap from '../components/charts/Heatmap';
 
+class ChartErrorBoundary extends React.Component {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Chart render error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="chart-empty chart-error">
+          Chart error: {this.state.error?.message || 'Something went wrong'}
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const CHART_COMPONENTS = {
   gauge: Gauge,
   table: Table,
@@ -19,9 +42,11 @@ const CHART_COMPONENTS = {
   heatmap: Heatmap,
 };
 
+const Empty = ({ children }) => <div className="chart-empty">{children}</div>;
+
 export function renderChart({ data, config, columns, emptyMessage }) {
   if (!config || !config.type) {
-    return <div className="chart-empty">{emptyMessage || 'Select a widget type'}</div>;
+    return <Empty>{emptyMessage || 'Select a widget type'}</Empty>;
   }
 
   let parsedConfig = config;
@@ -29,17 +54,17 @@ export function renderChart({ data, config, columns, emptyMessage }) {
     try {
       parsedConfig = JSON.parse(parsedConfig);
     } catch {
-      return <div className="chart-empty">Error parsing widget configuration</div>;
+      return <Empty>Error parsing widget configuration</Empty>;
     }
   }
 
   if (!data || data.length === 0) {
-    return <div className="chart-empty">No data available</div>;
+    return <Empty>No data available</Empty>;
   }
 
   const Component = CHART_COMPONENTS[parsedConfig.type];
   if (!Component) {
-    return <div className="chart-empty">Unknown widget type: {parsedConfig.type}</div>;
+    return <Empty>Unknown widget type: {parsedConfig.type}</Empty>;
   }
 
   const props = { data, config: parsedConfig };
@@ -47,5 +72,9 @@ export function renderChart({ data, config, columns, emptyMessage }) {
     props.columns = columns;
   }
 
-  return <Component {...props} />;
+  return (
+    <ChartErrorBoundary>
+      <Component {...props} />
+    </ChartErrorBoundary>
+  );
 }

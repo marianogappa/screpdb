@@ -61,10 +61,6 @@ function PieChart({ data, config }) {
       .attr('fill', 'rgba(255, 255, 255, 0.75)').attr('font-weight', '400').attr('dx', '4');
   }, [data, config, dimensions]);
 
-  if (!data || data.length === 0) {
-    return <div className="chart-empty">No data available</div>;
-  }
-
   if (!config || !config.pie_label_column || !config.pie_value_column) {
     const missingFields = [];
     if (!config) { missingFields.push('config'); }

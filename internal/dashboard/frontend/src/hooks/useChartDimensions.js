@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
-export function useChartDimensions({ minWidth = 300, minHeight = 300, deps = [] } = {}) {
+const EMPTY_DEPS = [];
+
+export function useChartDimensions({ minWidth = 300, minHeight = 300, deps = EMPTY_DEPS } = {}) {
   const containerRef = useRef(null);
   const svgRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });

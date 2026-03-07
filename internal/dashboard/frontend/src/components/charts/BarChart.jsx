@@ -76,10 +76,6 @@ function BarChart({ data, config }) {
     }
   }, [data, config, dimensions]);
 
-  if (!data || data.length === 0) {
-    return <div className="chart-empty">No data available</div>;
-  }
-
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: '300px', overflow: 'hidden', position: 'relative' }}>
       <svg ref={svgRef} className="bar-chart" style={{ width: '100%', height: '100%', display: 'block' }} />

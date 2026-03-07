@@ -8,6 +8,14 @@
 
 .chart-error { color: var(--color-error); }
 
+.chart-empty-hint { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.chart-empty-hint p { margin: 0; }
+.btn-link-example {
+  background: none; border: none; color: var(--color-primary); font-size: 12px; cursor: pointer;
+  text-decoration: underline; padding: 0;
+}
+.btn-link-example:hover { color: var(--color-primary-hover); }
+
 /* =================== GAUGE =================== */
 .gauge-container { width: 100%; text-align: center; }
 .gauge-label { font-size: 13px; color: var(--color-text-dim); margin-bottom: 8px; }
