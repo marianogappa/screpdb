@@ -19,11 +19,11 @@ func NewAllianceCommandHandler() *AllianceCommandHandler {
 	}
 }
 
-func (h *AllianceCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPlayerMap map[uint16]int64) *models.Command {
+func (h *AllianceCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.Command {
 	allianceCmd := cmd.(*repcmd.AllianceCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	command.AlliancePlayerIDs = slotIDsToPlayerIDs(allianceCmd.SlotIDs, slotToPlayerMap)
+	command.AlliancePlayerIDs = bytsToInts(allianceCmd.SlotIDs) // TODO these need to be mapped after insertion
 	command.IsAlliedVictory = boolPtr(allianceCmd.AlliedVictory)
 
 	return command

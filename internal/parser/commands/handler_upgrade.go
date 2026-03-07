@@ -19,7 +19,7 @@ func NewUpgradeCommandHandler() *UpgradeCommandHandler {
 	}
 }
 
-func (h *UpgradeCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base, slotToPlayerMap map[uint16]int64) *models.Command {
+func (h *UpgradeCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.Command {
 	upgradeCmd := cmd.(*repcmd.UpgradeCmd)
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
