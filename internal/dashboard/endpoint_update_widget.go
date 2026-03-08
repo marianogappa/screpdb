@@ -44,6 +44,7 @@ func (d *Dashboard) handlerUpdateDashboardWidget(w http.ResponseWriter, r *http.
 		Description *string      `json:"description"`
 		Config      WidgetConfig `json:"config"`
 		Query       string       `json:"query"`
+		WidgetOrder *int64       `json:"widget_order"`
 	}
 
 	var req UpdateWidgetRequest
@@ -73,7 +74,9 @@ func (d *Dashboard) handlerUpdateDashboardWidget(w http.ResponseWriter, r *http.
 		query = widget.Query
 	}
 	widgetOrder := widget.WidgetOrder
-	if widgetOrder == nil {
+	if req.WidgetOrder != nil {
+		widgetOrder = req.WidgetOrder
+	} else if widgetOrder == nil {
 		zero := int64(0)
 		widgetOrder = &zero
 	}

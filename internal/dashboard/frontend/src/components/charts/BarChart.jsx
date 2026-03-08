@@ -1,40 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import * as d3 from 'd3';
-
-const DEFAULT_COLORS = ['#4e79a7', '#f28e2c', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9d9a', '#9c755f', '#bab0ac'];
+import { useChartDimensions } from '../../hooks/useChartDimensions';
+import { DEFAULT_COLORS } from '../../constants/chartTypes';
 
 function BarChart({ data, config }) {
-  const svgRef = useRef(null);
-  const containerRef = useRef(null);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-
-  useEffect(() => {
-    const updateDimensions = () => {
-      if (containerRef.current) {
-        const { width, height } = containerRef.current.getBoundingClientRect();
-        // Use actual container size, but ensure minimums for chart rendering
-        const newWidth = Math.max(300, width);
-        const newHeight = Math.max(300, height);
-        // Only update if dimensions changed significantly (avoid feedback loops)
-        setDimensions(prev => {
-          if (Math.abs(prev.width - newWidth) > 1 || Math.abs(prev.height - newHeight) > 1) {
-            return { width: newWidth, height: newHeight };
-          }
-          return prev;
-        });
-      }
-    };
-
-    updateDimensions();
-    const resizeObserver = new ResizeObserver(updateDimensions);
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, []);
+  const { containerRef, svgRef, dimensions } = useChartDimensions();
 
   useEffect(() => {
     if (!data || data.length === 0 || !config.bar_label_column || !config.bar_value_column || dimensions.width === 0) {
@@ -54,7 +24,6 @@ function BarChart({ data, config }) {
       .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
     const colors = d3.scaleOrdinal(DEFAULT_COLORS);
-
     const isHorizontal = config.bar_horizontal || false;
 
     if (isHorizontal) {
@@ -67,21 +36,10 @@ function BarChart({ data, config }) {
         .domain([0, d3.max(data, d => Number(d[config.bar_value_column]) || 0)])
         .range([0, width]);
 
-      svg.append('g')
-        .call(d3.axisLeft(yScale))
-        .selectAll('text')
-        .attr('fill', '#fff');
+      svg.append('g').call(d3.axisLeft(yScale)).selectAll('text').attr('fill', '#fff');
+      svg.append('g').attr('transform', `translate(0, ${height})`).call(d3.axisBottom(xScale)).selectAll('text').attr('fill', '#fff');
 
-      svg.append('g')
-        .attr('transform', `translate(0, ${height})`)
-        .call(d3.axisBottom(xScale))
-        .selectAll('text')
-        .attr('fill', '#fff');
-
-      svg.selectAll('.bar')
-        .data(data)
-        .enter()
-        .append('rect')
+      svg.selectAll('.bar').data(data).enter().append('rect')
         .attr('class', 'bar')
         .attr('y', d => yScale(String(d[config.bar_label_column])))
         .attr('x', 0)
@@ -89,13 +47,8 @@ function BarChart({ data, config }) {
         .attr('width', d => xScale(Number(d[config.bar_value_column]) || 0))
         .attr('fill', (d, i) => colors(i));
 
-      svg.append("text")
-        .attr("text-anchor", "end")
-        .attr("x", width) // I have no idea how to set these!
-        .attr("y", height + 35) // I have no idea how to set these!
-        .attr('fill', '#fff')
-        .attr('font-size', '12px')
-        .text(config?.bar_value_column);
+      svg.append('text').attr('text-anchor', 'end').attr('x', width).attr('y', height + 35)
+        .attr('fill', '#fff').attr('font-size', '12px').text(config?.bar_value_column);
     } else {
       const xScale = d3.scaleBand()
         .domain(data.map(d => String(d[config.bar_label_column])))
@@ -106,23 +59,11 @@ function BarChart({ data, config }) {
         .domain([0, d3.max(data, d => Number(d[config.bar_value_column]) || 0)])
         .range([height, 0]);
 
-      svg.append('g')
-        .attr('transform', `translate(0, ${height})`)
-        .call(d3.axisBottom(xScale))
-        .selectAll('text')
-        .attr('fill', '#fff')
-        .attr('transform', 'rotate(-45)')
-        .style('text-anchor', 'end');
+      svg.append('g').attr('transform', `translate(0, ${height})`).call(d3.axisBottom(xScale))
+        .selectAll('text').attr('fill', '#fff').attr('transform', 'rotate(-45)').style('text-anchor', 'end');
+      svg.append('g').call(d3.axisLeft(yScale)).selectAll('text').attr('fill', '#fff');
 
-      svg.append('g')
-        .call(d3.axisLeft(yScale))
-        .selectAll('text')
-        .attr('fill', '#fff');
-
-      svg.selectAll('.bar')
-        .data(data)
-        .enter()
-        .append('rect')
+      svg.selectAll('.bar').data(data).enter().append('rect')
         .attr('class', 'bar')
         .attr('x', d => xScale(String(d[config.bar_label_column])))
         .attr('y', d => yScale(Number(d[config.bar_value_column]) || 0))
@@ -130,21 +71,10 @@ function BarChart({ data, config }) {
         .attr('height', d => height - yScale(Number(d[config.bar_value_column]) || 0))
         .attr('fill', (d, i) => colors(i));
 
-      svg.append("text")
-        .attr("text-anchor", "end")
-        .attr("x", 100) // I have no idea how to set these!
-        .attr("y", 50) // I have no idea how to set these!
-        .attr("transform", "rotate(90)")
-        .attr('fill', '#fff')
-        .attr('font-size', '12px')
-        .text(config.bar_value_column);
+      svg.append('text').attr('text-anchor', 'end').attr('x', 100).attr('y', 50)
+        .attr('transform', 'rotate(90)').attr('fill', '#fff').attr('font-size', '12px').text(config.bar_value_column);
     }
-
   }, [data, config, dimensions]);
-
-  if (!data || data.length === 0) {
-    return <div className="chart-empty">No data available</div>;
-  }
 
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: '300px', overflow: 'hidden', position: 'relative' }}>
@@ -154,4 +84,3 @@ function BarChart({ data, config }) {
 }
 
 export default BarChart;
-

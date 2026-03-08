@@ -1,3 +1,8 @@
 /screpdb
 *.db
 *.db-journal
+.env
+screpdb.exe
+screp.db
+screp.db*
+*.md

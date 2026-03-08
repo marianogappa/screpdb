@@ -1,41 +1,47 @@
 import React, { useState } from 'react';
 import { api } from '../api';
 import ReplayFilterEditor, { BUILTIN_FILTERS } from './ReplayFilterEditor';
+import Modal from './ui/Modal';
+import FormField from './ui/FormField';
+import Button from './ui/Button';
+import { useToast } from './Toast';
 
 function DashboardManager({ dashboards, currentUrl, onClose, onRefresh, onSwitch }) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingUrl, setEditingUrl] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    url: '',
-    description: '',
-    replaysFilterSQL: BUILTIN_FILTERS[0].sql,
-  });
-  const [error, setError] = useState(null);
+  const [formData, setFormData] = useState({ name: '', url: '', description: '', replaysFilterSQL: '' });
+  const [error, setError] = useState('');
+  const { addToast } = useToast();
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    setError(null);
+    setError('');
     try {
       await api.createDashboard({
         name: formData.name,
-        url: formData.url,
-        description: formData.description || null,
+        url: formData.url || formData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        description: formData.description,
         replays_filter_sql: formData.replaysFilterSQL,
       });
+      setFormData({ name: '', url: '', description: '', replaysFilterSQL: '' });
       setShowCreateForm(false);
-      setFormData({ name: '', url: '', description: '', replaysFilterSQL: BUILTIN_FILTERS[0].sql });
+      addToast('Dashboard created', 'success');
       onRefresh();
     } catch (err) {
       setError(err.message);
     }
   };
 
-  const handleUpdate = async (url, data) => {
-    setError(null);
+  const handleUpdate = async (dashboard) => {
+    setError('');
     try {
-      await api.updateDashboard(url, data);
+      await api.updateDashboard(dashboard.url, {
+        name: formData.name,
+        description: formData.description,
+        replays_filter_sql: formData.replaysFilterSQL,
+      });
       setEditingUrl(null);
+      addToast('Dashboard updated', 'success');
       onRefresh();
     } catch (err) {
       setError(err.message);
@@ -43,18 +49,10 @@ function DashboardManager({ dashboards, currentUrl, onClose, onRefresh, onSwitch
   };
 
   const handleDelete = async (url) => {
-    if (url === 'default') {
-      alert('Cannot delete the default dashboard');
-      return;
-    }
-    if (!confirm(`Are you sure you want to delete "${url}"?`)) return;
-
-    setError(null);
+    if (!confirm(`Delete dashboard "${url}"? All widgets will be lost.`)) return;
     try {
       await api.deleteDashboard(url);
-      if (currentUrl === url) {
-        onSwitch('default');
-      }
+      addToast('Dashboard deleted', 'success');
       onRefresh();
     } catch (err) {
       setError(err.message);
@@ -66,152 +64,64 @@ function DashboardManager({ dashboards, currentUrl, onClose, onRefresh, onSwitch
     setFormData({
       name: dashboard.name,
       url: dashboard.url,
-      description: dashboard.description?.valid ? dashboard.description.string : '',
+      description: dashboard.description || '',
       replaysFilterSQL: dashboard.replays_filter_sql || '',
     });
   };
 
-  const cancelEdit = () => {
-    setEditingUrl(null);
-    setFormData({ name: '', url: '', description: '', replaysFilterSQL: BUILTIN_FILTERS[0].sql });
-  };
-
-  const saveEdit = async (e) => {
-    e.preventDefault();
-    await handleUpdate(editingUrl, {
-      name: formData.name,
-      description: formData.description || null,
-    });
-  };
-
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content dashboard-manager" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Manage Dashboards</h2>
-          <button onClick={onClose} className="btn-close">×</button>
-        </div>
+    <Modal title="Manage Dashboards" onClose={onClose} className="dashboard-manager">
+      {error && <div className="error-message" style={{ margin: '0 24px' }}>{error}</div>}
 
-        {error && <div className="error-message">{error}</div>}
-
-        <div className="dashboard-list">
-          {dashboards.map((dashboard) => (
-            <div key={dashboard.url} className="dashboard-item">
-              {editingUrl === dashboard.url ? (
-                <form onSubmit={saveEdit} className="edit-form-inline">
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                    className="form-input"
-                  />
-                  <input
-                    type="text"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Description (optional)"
-                    className="form-input"
-                  />
-                  <button type="submit" className="btn-save">Save</button>
-                  <button type="button" onClick={cancelEdit} className="btn-cancel">Cancel</button>
-                </form>
-              ) : (
-                <>
-                  <div className="dashboard-item-info">
-                    <div className="dashboard-item-name">{dashboard.name}</div>
-                    <div className="dashboard-item-url">/{dashboard.url}</div>
-                    {dashboard.description?.valid && dashboard.description.string && (
-                      <div className="dashboard-item-desc">{dashboard.description.string}</div>
-                    )}
-                  </div>
-                  <div className="dashboard-item-actions">
-                    {dashboard.url === currentUrl && (
-                      <span className="current-badge">Current</span>
-                    )}
-                    <button onClick={() => onSwitch(dashboard.url)} className="btn-switch">
-                      Switch
-                    </button>
-                    <button onClick={() => startEdit(dashboard)} className="btn-edit">
-                      Edit
-                    </button>
-                    {dashboard.url !== 'default' && (
-                      <button
-                        onClick={() => handleDelete(dashboard.url)}
-                        className="btn-delete"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {showCreateForm ? (
-          <form onSubmit={handleCreate} className="create-form">
-            <h3>Create New Dashboard</h3>
-            <div className="form-group">
-              <label>Name</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-                className="form-input"
-              />
-            </div>
-            <div className="form-group">
-              <label>URL</label>
-              <input
-                type="text"
-                value={formData.url}
-                onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                required
-                className="form-input"
-                placeholder="e.g., my-dashboard"
-              />
-            </div>
-            <div className="form-group">
-              <label>Description</label>
-              <input
-                type="text"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="form-input"
-              />
-            </div>
-
-            <ReplayFilterEditor
-              value={formData.replaysFilterSQL}
-              onChange={(value) => setFormData({ ...formData, replaysFilterSQL: value })}
-            />
-            <div className="form-actions">
-              <button type="submit" className="btn-save">Create</button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCreateForm(false);
-                  setFormData({ name: '', url: '', description: '', replaysFilterSQL: BUILTIN_FILTERS[0].sql });
-                }}
-                className="btn-cancel"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        ) : (
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="btn-create-dashboard"
-          >
-            + Create New Dashboard
-          </button>
-        )}
+      <div className="dashboard-list">
+        {dashboards.map((d) => (
+          <div key={d.url} className="dashboard-item">
+            {editingUrl === d.url ? (
+              <div className="edit-form-inline">
+                <input className="form-input" value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Name" />
+                <input className="form-input" value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} placeholder="Description" />
+                <Button variant="primary" onClick={() => handleUpdate(d)}>Save</Button>
+                <Button variant="secondary" onClick={() => setEditingUrl(null)}>Cancel</Button>
+              </div>
+            ) : (
+              <>
+                <div className="dashboard-item-info">
+                  <div className="dashboard-item-name">{d.name}</div>
+                  <div className="dashboard-item-url">/{d.url}</div>
+                  {d.description && <div className="dashboard-item-desc">{d.description}</div>}
+                </div>
+                <div className="dashboard-item-actions">
+                  {d.url === currentUrl && <span className="current-badge">Current</span>}
+                  <button className="btn-edit" onClick={() => startEdit(d)}>Edit</button>
+                  {d.url !== currentUrl && (
+                    <button className="btn-switch" onClick={() => { onSwitch(d.url); onClose(); }}>Switch</button>
+                  )}
+                  <button className="btn-delete" onClick={() => handleDelete(d.url)}>Delete</button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
       </div>
-    </div>
+
+      {showCreateForm ? (
+        <form className="create-form" onSubmit={handleCreate}>
+          <h3>New Dashboard</h3>
+          <FormField label="Name" required value={formData.name} onChange={(v) => setFormData(prev => ({ ...prev, name: v }))} placeholder="My Dashboard" />
+          <FormField label="URL slug" value={formData.url} onChange={(v) => setFormData(prev => ({ ...prev, url: v }))} placeholder="auto-generated from name" />
+          <FormField label="Description" value={formData.description} onChange={(v) => setFormData(prev => ({ ...prev, description: v }))} placeholder="Optional description" />
+          <ReplayFilterEditor value={formData.replaysFilterSQL} onChange={(v) => setFormData(prev => ({ ...prev, replaysFilterSQL: v }))} />
+          <div className="form-actions">
+            <Button variant="secondary" type="button" onClick={() => setShowCreateForm(false)}>Cancel</Button>
+            <Button variant="primary" type="submit">Create</Button>
+          </div>
+        </form>
+      ) : (
+        <button className="btn-create-dashboard" onClick={() => setShowCreateForm(true)}>
+          + New Dashboard
+        </button>
+      )}
+    </Modal>
   );
 }
 

@@ -2,9 +2,8 @@ import React from 'react';
 
 function Table({ data, config, columns }) {
   if (!data || data.length === 0) {
-    return <div className="chart-empty">No data available</div>;
+    return <div className="chart-empty">No data to display</div>;
   }
-
   // Use provided columns to preserve SELECT query order
   const tableColumns = columns && columns.length > 0 ? columns : Object.keys(data[0]);
 
