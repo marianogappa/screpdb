@@ -17,7 +17,10 @@ export const api = {
       options.body = JSON.stringify({ variable_values: variableValues });
     }
     const response = await fetch(`${API_BASE}/dashboard/${url}`, options);
-    if (!response.ok) throw new Error('Failed to get dashboard');
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get dashboard');
+    }
     return response.json();
   },
 
@@ -94,15 +97,27 @@ export const api = {
   },
 
   executeQuery: async (query, variableValues = null, dashboardUrl = null) => {
-    const response = await fetch(`${API_BASE}/query`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query,
-        variable_values: variableValues || {},
-        dashboard_url: dashboardUrl || '',
-      }),
-    });
+    let response;
+    try {
+      response = await fetch(`${API_BASE}/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          variable_values: variableValues || {},
+          dashboard_url: dashboardUrl || '',
+        }),
+      });
+    } catch (err) {
+      const msg = err?.message || '';
+      if (msg === 'Failed to fetch' || err?.name === 'TypeError') {
+        throw new Error(
+          'Could not reach the server. Ensure the dashboard backend is running. ' +
+          'If using dev mode (npm run dev), start the backend on port 8000 (e.g. screpdb dashboard -p 8000).'
+        );
+      }
+      throw err;
+    }
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to execute query');

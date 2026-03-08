@@ -68,13 +68,17 @@ function AppContent() {
 
   const loadDashboard = useCallback(async (url, varValues = null, skipVarInit = false, options = {}) => {
     const background = options.background === true;
+    let usedStoredVars = false;
     try {
       if (!background) setLoading(true);
       else setIsRefreshing(true);
       setError(null);
       if (!varValues) {
         const stored = getStoredVariableValues(url);
-        if (stored && Object.keys(stored).length > 0) varValues = stored;
+        if (stored && Object.keys(stored).length > 0) {
+          varValues = stored;
+          usedStoredVars = true;
+        }
       }
       const data = await api.getDashboard(url, varValues);
       setDashboard(data);
@@ -101,6 +105,12 @@ function AppContent() {
         saveVariableValues(url, newVarValues);
       }
     } catch (err) {
+      // If we used stored variable values and backend rejected them (e.g. variable removed), retry without vars
+      if (usedStoredVars && varValues && err.message?.toLowerCase().includes('variable')) {
+        saveVariableValues(url, {});
+        setVariableValues({});
+        return loadDashboard(url, null, false, options);
+      }
       if (!background) setError(err.message);
     } finally {
       if (!background) setLoading(false);

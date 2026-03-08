@@ -57,6 +57,23 @@ func New(ctx context.Context, store storage.Storage, sqlitePath string, openAIAP
 	return &Dashboard{ctx: ctx, db: db, ai: ai, conversations: map[int]*Conversation{}, sqlitePath: sqlitePath}, nil
 }
 
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			origin = "*"
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (d *Dashboard) setupRouter() *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/api/dashboard", d.handlerListDashboards).Methods(http.MethodGet, http.MethodOptions)
@@ -111,7 +128,7 @@ func (d *Dashboard) spaHandler() http.Handler {
 }
 
 func (d *Dashboard) Run(port int) error {
-	r := d.setupRouter()
+	r := corsMiddleware(d.setupRouter())
 	addr := fmt.Sprintf("localhost:%d", port)
 
 	srv := &http.Server{
@@ -129,7 +146,7 @@ func (d *Dashboard) Run(port int) error {
 // or nil when the server is ready. The server will be accessible at localhost:<port>.
 func (d *Dashboard) StartAsync(port int) <-chan error {
 	errChan := make(chan error, 2)
-	r := d.setupRouter()
+	r := corsMiddleware(d.setupRouter())
 	addr := fmt.Sprintf("localhost:%d", port)
 
 	srv := &http.Server{
