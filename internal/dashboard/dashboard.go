@@ -23,6 +23,12 @@ import (
 //go:embed frontend/build
 var embeddedFrontendBuild embed.FS
 
+const (
+	AIVendorOpenAI    = "OPENAI"
+	AIVendorAnthropic = "ANTHROPIC"
+	AIVendorGemini    = "GEMINI"
+)
+
 type Dashboard struct {
 	ctx           context.Context
 	db            *sql.DB
@@ -31,7 +37,7 @@ type Dashboard struct {
 	sqlitePath    string
 }
 
-func New(ctx context.Context, store storage.Storage, sqlitePath string, openAIAPIKey string) (*Dashboard, error) {
+func New(ctx context.Context, store storage.Storage, sqlitePath, aiVendor, apiKey, model string) (*Dashboard, error) {
 	if err := runMigrations(sqlitePath); err != nil {
 		return nil, fmt.Errorf("failed to run migration routine: %w", err)
 	}
@@ -49,7 +55,17 @@ func New(ctx context.Context, store storage.Storage, sqlitePath string, openAIAP
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	ai, err := NewAI(ctx, openAIAPIKey, store, db, true)
+	opts := []Option{WithDebug(true)}
+	switch aiVendor {
+	case AIVendorOpenAI:
+		opts = append(opts, WithOpenAI(apiKey, model))
+	case AIVendorAnthropic:
+		opts = append(opts, WithAnthropic(apiKey, model))
+	case AIVendorGemini:
+		opts = append(opts, WithGemini(apiKey, model))
+	}
+
+	ai, err := NewAI(ctx, store, db, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI client: %w", err)
 	}

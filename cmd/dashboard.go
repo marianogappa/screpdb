@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/marianogappa/screpdb/internal/dashboard"
@@ -15,7 +16,9 @@ import (
 
 var (
 	dashboardSQLitePath string
-	openaiAPIKey        string
+	aiAPIKey            string
+	aiModel             string
+	aiVendor            string
 	dashboardPort       int
 )
 
@@ -31,8 +34,10 @@ func init() {
 }
 
 func addDashboardFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&dashboardSQLitePath, "sqlite-path", "s", "screp.db", "SQLite database file path")
-	cmd.Flags().StringVarP(&openaiAPIKey, "openai-api-key", "k", "", "An API KEY from OpenAI in order to prompt for widget creation")
+	cmd.Flags().StringVarP(&dashboardSQLitePath, "sqlite-path", "s", "screp.db", "SQLite database file path.")
+	cmd.Flags().StringVarP(&aiVendor, "ai-vendor", "v", "", "Which AI to use (OPENAI|ANTHROPIC|GEMINI). Defaults to OPENAI.")
+	cmd.Flags().StringVarP(&aiAPIKey, "ai-api-key", "k", "", "An API KEY from the AI vendor in order to prompt for widget creation.")
+	cmd.Flags().StringVarP(&aiModel, "ai-model", "m", "", "The AI model to use.")
 	cmd.Flags().IntVarP(&dashboardPort, "port", "p", 8000, "Dashboard server port")
 }
 
@@ -42,7 +47,21 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create SQLite storage: %w", err)
 	}
 
-	dash, err := dashboard.New(cmd.Context(), store, dashboardSQLitePath, openaiAPIKey)
+	var _aiVendor string
+	if os.Getenv("GEMINI_API_KEY") != "" {
+		_aiVendor = dashboard.AIVendorGemini
+	}
+	if os.Getenv("ANTHROPIC_API_KEY") != "" {
+		_aiVendor = dashboard.AIVendorAnthropic
+	}
+	if os.Getenv("OPENAI_API_KEY") != "" {
+		_aiVendor = dashboard.AIVendorOpenAI
+	}
+	if aiVendor != "" {
+		_aiVendor = strings.ToUpper(aiVendor)
+	}
+
+	dash, err := dashboard.New(cmd.Context(), store, dashboardSQLitePath, _aiVendor, aiAPIKey, aiModel)
 	if err != nil {
 		return err
 	}
