@@ -1,6 +1,8 @@
 package dashboard
 
 import (
+	"encoding/json"
+
 	"github.com/tmc/langchaingo/llms/openai"
 )
 
@@ -79,4 +81,22 @@ var (
 			},
 		},
 	}
+
+	stringResponseFormat string
 )
+
+func init() {
+	var err error
+	stringResponseFormat, err = responseFormatToJSON(responseFormat)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func responseFormatToJSON(rf *openai.ResponseFormat) (string, error) {
+	bs, err := json.Marshal(rf)
+	if err != nil {
+		return "", err
+	}
+	return string(bs), nil
+}
