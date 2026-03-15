@@ -32,7 +32,10 @@ var availableTools = []llms.Tool{
 		Function: &llms.FunctionDefinition{
 			Name:        "get_database_schema",
 			Description: "Detailed information about the StarCraft replay database schema including table structures, relationships obtained by querying the database itself.",
-			Parameters:  map[string]any{},
+			Parameters: map[string]any{
+				"type":       "object",
+				"properties": map[string]any{},
+			},
 		},
 	},
 	{
@@ -40,7 +43,10 @@ var availableTools = []llms.Tool{
 		Function: &llms.FunctionDefinition{
 			Name:        "get_starcraft_knowledge",
 			Description: "Summary of StarCraft knowledge useful for knowing how to answer questions and make reports.",
-			Parameters:  map[string]any{},
+			Parameters: map[string]any{
+				"type":       "object",
+				"properties": map[string]any{},
+			},
 		},
 	},
 }
