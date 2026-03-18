@@ -111,12 +111,16 @@ func (s *SQLiteStorage) StartIngestion(ctx context.Context) (ReplayDataChannel, 
 					return
 				}
 
-				// Process this replay completely before moving to the next
-				if err := s.storeReplayWithBatching(ctx, data); err != nil {
-					fmt.Printf("Error storing replay: %v\n", err)
-					errChan <- err
-					return
+			// Process this replay completely before moving to the next
+			if err := s.storeReplayWithBatching(ctx, data); err != nil {
+				if isDuplicateReplayError(err) {
+					fmt.Printf("Skipping duplicate replay: %v\n", err)
+					continue
 				}
+				fmt.Printf("Error storing replay: %v\n", err)
+				errChan <- err
+				return
+			}
 
 			case <-ctx.Done():
 				errChan <- ctx.Err()
@@ -126,6 +130,10 @@ func (s *SQLiteStorage) StartIngestion(ctx context.Context) (ReplayDataChannel, 
 	}()
 
 	return dataChan, errChan
+}
+
+func isDuplicateReplayError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed: replays.file_checksum")
 }
 
 // storeReplayWithBatching stores a replay data structure using sequential processing
