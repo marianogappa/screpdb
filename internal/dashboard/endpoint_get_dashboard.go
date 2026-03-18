@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+
 	"github.com/marianogappa/screpdb/internal/dashboard/variables"
 )
 
@@ -72,36 +73,23 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	type WidgetWithResults struct {
-		ID          int64            `json:"id"`
-		WidgetOrder *int64           `json:"widget_order"`
-		Name        string           `json:"name"`
-		Description *string          `json:"description"`
-		Config      WidgetConfig     `json:"config"`
-		Query       string           `json:"query"`
-		Results     []map[string]any `json:"results"`
-		Columns     []string         `json:"columns,omitempty"`
-		CreatedAt   *string          `json:"created_at"`
-		UpdatedAt   *string          `json:"updated_at"`
+	type WidgetResponse struct {
+		ID          int64        `json:"id"`
+		WidgetOrder *int64       `json:"widget_order"`
+		Name        string       `json:"name"`
+		Description *string      `json:"description"`
+		Config      WidgetConfig `json:"config"`
+		Query       string       `json:"query"`
+		CreatedAt   *string      `json:"created_at"`
+		UpdatedAt   *string      `json:"updated_at"`
 	}
 
-	widgetsWithResults := make([]WidgetWithResults, 0, len(widgets))
+	widgetResponses := make([]WidgetResponse, 0, len(widgets))
 	allUsedVariables := map[string]variables.Variable{}
 	for _, widget := range widgets {
-		var results []map[string]any
-		var columns []string
 		if widget.Query != "" {
 			usedVariables := variables.FindVariables(widget.Query, params.VariableValues)
 			maps.Copy(allUsedVariables, usedVariables)
-			queryResults, queryColumns, err := d.executeQuery(widget.Query, usedVariables, dash.ReplaysFilterSQL)
-			if err != nil {
-				log.Printf("dashboard get: query error url=%s widget_id=%d err=%v", dashboardURL, widget.ID, err)
-				w.WriteHeader(http.StatusInternalServerError)
-				_, _ = w.Write([]byte(fmt.Sprintf("error executing query for widget %d: %v", widget.ID, err.Error())))
-				return
-			}
-			results = queryResults
-			columns = queryColumns
 		}
 
 		config, err := bytesToWidgetConfig([]byte(widget.Config))
@@ -123,15 +111,13 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 			updatedAt = &ts
 		}
 
-		widgetsWithResults = append(widgetsWithResults, WidgetWithResults{
+		widgetResponses = append(widgetResponses, WidgetResponse{
 			ID:          widget.ID,
 			WidgetOrder: widget.WidgetOrder,
 			Name:        widget.Name,
 			Description: widget.Description,
 			Config:      config,
 			Query:       widget.Query,
-			Results:     results,
-			Columns:     columns,
 			CreatedAt:   createdAt,
 			UpdatedAt:   updatedAt,
 		})
@@ -172,7 +158,7 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 		Description      *string                     `json:"description"`
 		ReplaysFilterSQL *string                     `json:"replays_filter_sql"`
 		CreatedAt        *string                     `json:"created_at"`
-		Widgets          []WidgetWithResults         `json:"widgets"`
+		Widgets          []WidgetResponse            `json:"widgets"`
 		Variables        map[string]VariableResponse `json:"variables"`
 	}
 
@@ -192,7 +178,7 @@ func (d *Dashboard) handlerGetDashboard(w http.ResponseWriter, r *http.Request) 
 		Description:      dashDescription,
 		ReplaysFilterSQL: dash.ReplaysFilterSQL,
 		CreatedAt:        dashCreatedAt,
-		Widgets:          widgetsWithResults,
+		Widgets:          widgetResponses,
 		Variables:        variablesResponse,
 	}
 

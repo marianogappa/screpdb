@@ -422,6 +422,8 @@ function App() {
             <Widget
               key={widget.id}
               widget={widget}
+              dashboardUrl={currentDashboardUrl}
+              variableValues={variableValues}
               onDelete={handleDeleteWidget}
               onUpdate={handleUpdateWidget}
             />

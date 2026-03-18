@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { api } from '../api';
 import EditWidgetModal from './EditWidgetModal';
 import EditWidgetFullscreen from './EditWidgetFullscreen';
 import Gauge from './charts/Gauge';
@@ -10,8 +11,36 @@ import ScatterPlot from './charts/ScatterPlot';
 import Histogram from './charts/Histogram';
 import Heatmap from './charts/Heatmap';
 
-function Widget({ widget, onDelete, onUpdate }) {
+function Widget({ widget, onDelete, onUpdate, dashboardUrl, variableValues }) {
   const [showEditModal, setShowEditModal] = useState(false);
+  const [results, setResults] = useState(widget.results || null);
+  const [columns, setColumns] = useState(widget.columns || null);
+  const [dataLoading, setDataLoading] = useState(!!widget.query && !widget.results);
+  const [dataError, setDataError] = useState(null);
+  const fetchId = useRef(0);
+
+  useEffect(() => {
+    if (!widget.query) return;
+
+    const id = ++fetchId.current;
+    setDataLoading(true);
+    setDataError(null);
+
+    api.executeQuery(widget.query, variableValues || {}, dashboardUrl)
+      .then(data => {
+        if (id !== fetchId.current) return;
+        setResults(data.results);
+        setColumns(data.columns);
+      })
+      .catch(err => {
+        if (id !== fetchId.current) return;
+        setDataError(err.message);
+      })
+      .finally(() => {
+        if (id !== fetchId.current) return;
+        setDataLoading(false);
+      });
+  }, [widget.query, variableValues, dashboardUrl]);
 
   const handleDelete = () => {
     onDelete(widget.id);
@@ -27,7 +56,6 @@ function Widget({ widget, onDelete, onUpdate }) {
       return <div className="chart-empty">Invalid widget configuration</div>;
     }
 
-    // Ensure config is an object (handle case where it might be a string)
     let config = widget.config;
     if (typeof config === 'string') {
       try {
@@ -38,7 +66,7 @@ function Widget({ widget, onDelete, onUpdate }) {
     }
 
     const chartProps = {
-      data: widget.results || [],
+      data: results || [],
       config: config,
     };
 
@@ -46,7 +74,7 @@ function Widget({ widget, onDelete, onUpdate }) {
       case 'gauge':
         return <Gauge {...chartProps} />;
       case 'table':
-        return <Table {...chartProps} columns={widget.columns} />;
+        return <Table {...chartProps} columns={columns} />;
       case 'pie_chart':
         return <PieChart {...chartProps} />;
       case 'bar_chart':
@@ -91,12 +119,20 @@ function Widget({ widget, onDelete, onUpdate }) {
       )}
 
       <div className="widget-content">
-        {renderChart()}
+        {dataLoading ? (
+          <div className="widget-loading">
+            <div className="widget-spinner"></div>
+          </div>
+        ) : dataError ? (
+          <div className="chart-empty">Query error: {dataError}</div>
+        ) : (
+          renderChart()
+        )}
       </div>
 
       {showEditModal && (
         <EditWidgetFullscreen
-          widget={widget}
+          widget={{ ...widget, results, columns }}
           onClose={() => setShowEditModal(false)}
           onSave={handleUpdate}
         />
@@ -106,4 +142,3 @@ function Widget({ widget, onDelete, onUpdate }) {
 }
 
 export default Widget;
-
