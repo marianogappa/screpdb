@@ -432,6 +432,24 @@ body {
   position: relative;
 }
 
+.widget-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+}
+
+.widget-spinner {
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top: 3px solid #64a0ff;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  animation: spin 1s linear infinite;
+}
+
 .chart-empty {
   color: rgba(255, 255, 255, 0.5);
   font-size: 14px;

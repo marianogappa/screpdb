@@ -91,7 +91,7 @@ func TestDashboardAPI_WidgetFlow(t *testing.T) {
 		t.Fatalf("update widget status %d: %s", rec.Code, rec.Body.String())
 	}
 
-	// Get dashboard with results
+	// Get dashboard — should return widget metadata without results
 	rec = httptest.NewRecorder()
 	req = httptest.NewRequest(http.MethodGet, "/api/dashboard/default", nil)
 	req = mux.SetURLVars(req, map[string]string{"url": "default"})
@@ -102,8 +102,7 @@ func TestDashboardAPI_WidgetFlow(t *testing.T) {
 
 	var getResp struct {
 		Widgets []struct {
-			Results []map[string]any `json:"results"`
-			Columns []string         `json:"columns"`
+			Query string `json:"query"`
 		} `json:"widgets"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &getResp); err != nil {
@@ -112,10 +111,30 @@ func TestDashboardAPI_WidgetFlow(t *testing.T) {
 	if len(getResp.Widgets) != 1 {
 		t.Fatalf("expected 1 widget, got %d", len(getResp.Widgets))
 	}
-	if len(getResp.Widgets[0].Results) != 1 {
-		t.Fatalf("expected 1 result row, got %d", len(getResp.Widgets[0].Results))
+	if getResp.Widgets[0].Query != "SELECT COUNT(*) AS c FROM replays" {
+		t.Fatalf("expected widget query, got %q", getResp.Widgets[0].Query)
 	}
-	if !containsString(getResp.Widgets[0].Columns, "c") {
+
+	// Execute widget query via /api/query
+	queryBody := []byte(`{"query": "SELECT COUNT(*) AS c FROM replays", "variable_values": {}}`)
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPost, "/api/query", bytes.NewReader(queryBody))
+	dash.handlerExecuteQuery(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("execute query status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var queryResp struct {
+		Results []map[string]any `json:"results"`
+		Columns []string         `json:"columns"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &queryResp); err != nil {
+		t.Fatalf("execute query json: %v", err)
+	}
+	if len(queryResp.Results) != 1 {
+		t.Fatalf("expected 1 result row, got %d", len(queryResp.Results))
+	}
+	if !containsString(queryResp.Columns, "c") {
 		t.Fatalf("expected column c in results")
 	}
 }
@@ -199,29 +218,25 @@ func TestDashboardAPI_ReplayFilter(t *testing.T) {
 		t.Fatalf("update widget status %d: %s", rec.Code, rec.Body.String())
 	}
 
+	// Execute widget query via /api/query with dashboard_url for replay filter
+	queryBody := []byte(`{"query": "SELECT COUNT(*) AS c FROM replays", "variable_values": {}, "dashboard_url": "default"}`)
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/dashboard/default", nil)
-	req = mux.SetURLVars(req, map[string]string{"url": "default"})
-	dash.handlerGetDashboard(rec, req)
+	req = httptest.NewRequest(http.MethodPost, "/api/query", bytes.NewReader(queryBody))
+	dash.handlerExecuteQuery(rec, req)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("get dashboard status %d: %s", rec.Code, rec.Body.String())
+		t.Fatalf("execute query status %d: %s", rec.Code, rec.Body.String())
 	}
 
-	var getResp struct {
-		Widgets []struct {
-			Results []map[string]any `json:"results"`
-		} `json:"widgets"`
+	var queryResp struct {
+		Results []map[string]any `json:"results"`
 	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &getResp); err != nil {
-		t.Fatalf("get dashboard json: %v", err)
+	if err := json.Unmarshal(rec.Body.Bytes(), &queryResp); err != nil {
+		t.Fatalf("execute query json: %v", err)
 	}
-	if len(getResp.Widgets) != 1 {
-		t.Fatalf("expected 1 widget, got %d", len(getResp.Widgets))
+	if len(queryResp.Results) != 1 {
+		t.Fatalf("expected 1 result row, got %d", len(queryResp.Results))
 	}
-	if len(getResp.Widgets[0].Results) != 1 {
-		t.Fatalf("expected 1 result row, got %d", len(getResp.Widgets[0].Results))
-	}
-	countVal, ok := getResp.Widgets[0].Results[0]["c"]
+	countVal, ok := queryResp.Results[0]["c"]
 	if !ok {
 		t.Fatalf("expected count column c")
 	}

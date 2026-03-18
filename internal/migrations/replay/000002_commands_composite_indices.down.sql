@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS idx_commands_player_id_action_type;
+DROP INDEX IF EXISTS idx_commands_replay_id_player_id_action_type;
