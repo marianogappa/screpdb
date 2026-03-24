@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -35,6 +36,8 @@ type Dashboard struct {
 	conversations map[int]*Conversation
 	ai            *AI
 	sqlitePath    string
+	ingestMu      sync.Mutex
+	ingestRunning bool
 }
 
 func New(ctx context.Context, store storage.Storage, sqlitePath, aiVendor, apiKey, model string) (*Dashboard, error) {
@@ -87,6 +90,12 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/query", d.handlerExecuteQuery).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/api/query/variables", d.handlerGetQueryVariables).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/api/ingest", d.handlerIngest).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/api/workflow/games", d.handlerWorkflowGamesList).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/api/workflow/games/{replayID}", d.handlerWorkflowGameDetail).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/api/workflow/players/{playerKey}", d.handlerWorkflowPlayerDetail).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/api/workflow/player-colors", d.handlerWorkflowPlayerColors).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/api/workflow/games/{replayID}/ask", d.handlerWorkflowAskGame).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/api/workflow/players/{playerKey}/ask", d.handlerWorkflowAskPlayer).Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/api/health", d.handlerHealthcheck).Methods(http.MethodGet, http.MethodOptions)
 	r.PathPrefix("/").Handler(d.spaHandler())

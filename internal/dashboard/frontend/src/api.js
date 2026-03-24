@@ -135,4 +135,66 @@ export const api = {
     }
     return response.json();
   },
+
+  listWorkflowGames: async ({ limit = 20, offset = 0 } = {}) => {
+    const response = await fetch(`${API_BASE}/workflow/games?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to list workflow games');
+    }
+    return response.json();
+  },
+
+  getWorkflowGame: async (replayId) => {
+    const response = await fetch(`${API_BASE}/workflow/games/${encodeURIComponent(replayId)}`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get workflow game');
+    }
+    return response.json();
+  },
+
+  getWorkflowPlayer: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get workflow player');
+    }
+    return response.json();
+  },
+
+  getWorkflowPlayerColors: async () => {
+    const response = await fetch(`${API_BASE}/workflow/player-colors`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get workflow player colors');
+    }
+    return response.json();
+  },
+
+  askWorkflowGame: async (replayId, question) => {
+    const response = await fetch(`${API_BASE}/workflow/games/${encodeURIComponent(replayId)}/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to ask workflow game question');
+    }
+    return response.json();
+  },
+
+  askWorkflowPlayer: async (playerKey, question) => {
+    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to ask workflow player question');
+    }
+    return response.json();
+  },
 };

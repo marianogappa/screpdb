@@ -51,15 +51,42 @@ func (d *Dashboard) handlerIngest(w http.ResponseWriter, r *http.Request) {
 		cfg.SQLitePath = d.sqlitePath
 	}
 
+	if !d.tryStartIngest() {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":          true,
+			"started":     false,
+			"in_progress": true,
+			"sqlitePath":  cfg.SQLitePath,
+		})
+		return
+	}
+
 	go func() {
+		defer d.finishIngest()
 		if err := ingest.Run(d.ctx, cfg); err != nil {
 			log.Printf("ingestion failed: %v", err)
 		}
 	}()
 
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"ok":        true,
-		"started":   true,
+		"ok":         true,
+		"started":    true,
 		"sqlitePath": cfg.SQLitePath,
 	})
+}
+
+func (d *Dashboard) tryStartIngest() bool {
+	d.ingestMu.Lock()
+	defer d.ingestMu.Unlock()
+	if d.ingestRunning {
+		return false
+	}
+	d.ingestRunning = true
+	return true
+}
+
+func (d *Dashboard) finishIngest() {
+	d.ingestMu.Lock()
+	defer d.ingestMu.Unlock()
+	d.ingestRunning = false
 }

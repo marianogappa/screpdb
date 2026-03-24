@@ -64,6 +64,11 @@ var (
 			detector.SetReplayPlayerID(replayPlayerID)
 			return detector
 		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewUsedHotkeyGroupsPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
 	}
 
 	// teamLevelDetectors is the list of team-level detector factories
@@ -153,6 +158,11 @@ func (o *Orchestrator) ProcessCommand(command *models.Command) {
 
 // GetResults returns all pattern results that should be saved
 func (o *Orchestrator) GetResults() []*core.PatternResult {
+	// Give detectors a chance to finish using full replay context.
+	for _, detector := range o.detectors {
+		detector.Finalize()
+	}
+
 	// Collect any remaining results from detectors that finished after command processing
 	for _, detector := range o.detectors {
 		if detector.IsFinished() {
@@ -160,11 +170,18 @@ func (o *Orchestrator) GetResults() []*core.PatternResult {
 				// Check if we already have this result
 				found := false
 				for _, existing := range o.results {
+					sameTeam := (existing.Team == nil && result.Team == nil) || (existing.Team != nil && result.Team != nil && *existing.Team == *result.Team)
+					samePlayer := (existing.PlayerID == nil && result.PlayerID == nil) || (existing.PlayerID != nil && result.PlayerID != nil && *existing.PlayerID == *result.PlayerID)
+					// Before DB IDs are mapped, player-level results are identified by ReplayPlayerID.
+					sameReplayPlayer := (existing.ReplayPlayerID == nil && result.ReplayPlayerID == nil) ||
+						(existing.ReplayPlayerID != nil && result.ReplayPlayerID != nil && *existing.ReplayPlayerID == *result.ReplayPlayerID)
+
 					if existing.PatternName == result.PatternName &&
 						existing.Level == result.Level &&
 						existing.ReplayID == result.ReplayID &&
-						((existing.Team == nil && result.Team == nil) || (existing.Team != nil && result.Team != nil && *existing.Team == *result.Team)) &&
-						((existing.PlayerID == nil && result.PlayerID == nil) || (existing.PlayerID != nil && result.PlayerID != nil && *existing.PlayerID == *result.PlayerID)) {
+						sameTeam &&
+						samePlayer &&
+						sameReplayPlayer {
 						found = true
 						break
 					}
