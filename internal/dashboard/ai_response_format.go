@@ -33,8 +33,8 @@ var (
 						Properties: map[string]*openai.ResponseFormatJSONSchemaProperty{
 							"type": {
 								Type:        "string",
-								Description: "Widget type: gauge, table, pie_chart, bar_chart, line_chart, scatter_plot, histogram, or heatmap",
-								Enum:        []any{"gauge", "table", "pie_chart", "bar_chart", "line_chart", "scatter_plot", "histogram", "heatmap"},
+								Description: "Widget type: gauge, table, text, pie_chart, bar_chart, line_chart, scatter_plot, histogram, or heatmap",
+								Enum:        []any{"gauge", "table", "text", "pie_chart", "bar_chart", "line_chart", "scatter_plot", "histogram", "heatmap"},
 							},
 							"gauge_value_column": {Type: "string", Description: "For gauge: column name for the value"},
 							"gauge_min":          {Type: "number", Description: "For gauge: optional minimum value"},
@@ -75,6 +75,10 @@ var (
 							"heatmap_value_column":   {Type: "string", Description: "For heatmap: column name for cell values"},
 						},
 						Required: []string{"type"},
+					},
+					"text_answer": {
+						Type:        "string",
+						Description: "When config.type is text, provide the plain text response to show to users.",
 					},
 				},
 				Required: []string{"title", "description", "sql_query", "config"},

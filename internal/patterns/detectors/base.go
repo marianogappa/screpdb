@@ -28,6 +28,11 @@ func (d *BaseDetector) SetFinished(finished bool) {
 	d.finished = finished
 }
 
+// Finalize marks the detector as finished at end-of-replay.
+func (d *BaseDetector) Finalize() {
+	d.finished = true
+}
+
 // GetReplay returns the replay
 func (d *BaseDetector) GetReplay() *models.Replay {
 	return d.replay

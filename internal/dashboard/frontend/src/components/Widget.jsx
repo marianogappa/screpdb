@@ -75,6 +75,12 @@ function Widget({ widget, onDelete, onUpdate, dashboardUrl, variableValues }) {
         return <Gauge {...chartProps} />;
       case 'table':
         return <Table {...chartProps} columns={columns} />;
+      case 'text':
+        return (
+          <div className="chart-empty" style={{ textAlign: 'left', whiteSpace: 'pre-wrap' }}>
+            {results && results.length > 0 ? JSON.stringify(results[0], null, 2) : widget.description?.string || 'No text available'}
+          </div>
+        );
       case 'pie_chart':
         return <PieChart {...chartProps} />;
       case 'bar_chart':

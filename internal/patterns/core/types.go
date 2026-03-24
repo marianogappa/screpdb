@@ -6,7 +6,7 @@ import (
 
 // AlgorithmVersion is the current version of the pattern detection algorithm
 // Increment this when the algorithm changes to trigger re-detection
-const AlgorithmVersion = 1
+const AlgorithmVersion = 2
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string
@@ -47,6 +47,10 @@ type Detector interface {
 	// Returns true if the detector is finished and no longer needs commands
 	ProcessCommand(command *models.Command) bool
 
+	// Finalize is called after all commands were processed.
+	// Detectors that require full-replay context can complete here.
+	Finalize()
+
 	// IsFinished returns true if the detector has finished and won't change
 	IsFinished() bool
 
@@ -57,4 +61,3 @@ type Detector interface {
 	// ShouldSave returns true if the result should be saved to the database
 	ShouldSave() bool
 }
-

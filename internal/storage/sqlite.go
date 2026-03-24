@@ -111,16 +111,16 @@ func (s *SQLiteStorage) StartIngestion(ctx context.Context) (ReplayDataChannel, 
 					return
 				}
 
-			// Process this replay completely before moving to the next
-			if err := s.storeReplayWithBatching(ctx, data); err != nil {
-				if isDuplicateReplayError(err) {
-					fmt.Printf("Skipping duplicate replay: %v\n", err)
-					continue
+				// Process this replay completely before moving to the next
+				if err := s.storeReplayWithBatching(ctx, data); err != nil {
+					if isDuplicateReplayError(err) {
+						fmt.Printf("Skipping duplicate replay: %v\n", err)
+						continue
+					}
+					fmt.Printf("Error storing replay: %v\n", err)
+					errChan <- err
+					return
 				}
-				fmt.Printf("Error storing replay: %v\n", err)
-				errChan <- err
-				return
-			}
 
 			case <-ctx.Done():
 				errChan <- ctx.Err()
@@ -194,10 +194,11 @@ func (s *SQLiteStorage) processPatternResultsTx(ctx context.Context, db dbtx, or
 	}
 
 	// Convert replay player IDs to database IDs
-	patternOrch.ConvertResultsToDatabaseIDs(playerIDMap)
-
 	// Get results
 	results := patternOrch.GetResults()
+
+	// Convert replay player IDs to database IDs
+	patternOrch.ConvertResultsToDatabaseIDs(playerIDMap)
 
 	// Update all results to use the correct database replay ID
 	for _, result := range results {

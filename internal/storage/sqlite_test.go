@@ -55,7 +55,7 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		"commands":                        23633,
 		"detected_patterns_replay":        11,
 		"detected_patterns_replay_team":   0,
-		"detected_patterns_replay_player": 11,
+		"detected_patterns_replay_player": 17,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {
@@ -63,6 +63,18 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	}
 	if mismatch := compareCounts(expectedCounts, actualCounts); mismatch != "" {
 		t.Fatalf("count mismatch: %s (actual=%v)", mismatch, actualCounts)
+	}
+
+	hotkeyRows, err := store.Query(ctx, "SELECT COUNT(*) AS c FROM detected_patterns_replay_player WHERE pattern_name = 'Used Hotkey Groups'")
+	if err != nil {
+		t.Fatalf("query hotkey pattern count: %v", err)
+	}
+	hotkeyCount, ok := asInt64(hotkeyRows[0]["c"])
+	if !ok {
+		t.Fatalf("expected numeric hotkey pattern count")
+	}
+	if hotkeyCount == 0 {
+		t.Fatalf("expected Used Hotkey Groups pattern detections to be present")
 	}
 
 	// ReplayExists and FilterOutExistingReplays
