@@ -2,11 +2,12 @@ package core
 
 import (
 	"github.com/marianogappa/screpdb/internal/models"
+	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
 )
 
 // AlgorithmVersion is the current version of the pattern detection algorithm
 // Increment this when the algorithm changes to trigger re-detection
-const AlgorithmVersion = 2
+const AlgorithmVersion = 4
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string
@@ -60,4 +61,9 @@ type Detector interface {
 
 	// ShouldSave returns true if the result should be saved to the database
 	ShouldSave() bool
+}
+
+// WorldStateConsumer can receive orchestrator-owned runtime world state context.
+type WorldStateConsumer interface {
+	SetWorldState(worldState *worldstate.Engine)
 }

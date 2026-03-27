@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,12 +51,12 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 
 	// Golden counts (established from current test replays)
 	expectedCounts := map[string]int64{
-		"replays":                         3,
-		"players":                         6,
-		"commands":                        23633,
-		"detected_patterns_replay":        11,
+		"replays":                         4,
+		"players":                         14,
+		"commands":                        37713,
+		"detected_patterns_replay":        4,
 		"detected_patterns_replay_team":   0,
-		"detected_patterns_replay_player": 17,
+		"detected_patterns_replay_player": 44,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {
@@ -75,6 +76,35 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	}
 	if hotkeyCount == 0 {
 		t.Fatalf("expected Used Hotkey Groups pattern detections to be present")
+	}
+
+	baseStateRows, err := store.Query(ctx, "SELECT value_string FROM detected_patterns_replay WHERE pattern_name = 'Game Events'")
+	if err != nil {
+		t.Fatalf("query game events pattern: %v", err)
+	}
+	if len(baseStateRows) == 0 {
+		t.Fatalf("expected Game Events pattern detections to be present")
+	}
+	for _, row := range baseStateRows {
+		raw, ok := asString(row["value_string"])
+		if !ok || raw == "" {
+			t.Fatalf("expected non-empty value_string for Game Events")
+		}
+		var payload []map[string]any
+		if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+			t.Fatalf("expected valid JSON in Game Events value_string: %v", err)
+		}
+		for _, entry := range payload {
+			if _, ok := entry["type"]; !ok {
+				t.Fatalf("expected game event entry to contain type")
+			}
+			if _, ok := entry["second"]; !ok {
+				t.Fatalf("expected game event entry to contain second")
+			}
+			if _, ok := entry["description"]; !ok {
+				t.Fatalf("expected game event entry to contain description")
+			}
+		}
 	}
 
 	// ReplayExists and FilterOutExistingReplays

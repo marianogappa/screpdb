@@ -5,9 +5,9 @@
       "players": 2,
       "commands": 5206,
       "patterns": {
-        "replay": 4,
+        "replay": 1,
         "team": 0,
-        "player": 6
+        "player": 5
       }
     },
     {
@@ -15,9 +15,9 @@
       "players": 2,
       "commands": 9418,
       "patterns": {
-        "replay": 4,
+        "replay": 1,
         "team": 0,
-        "player": 6
+        "player": 5
       }
     },
     {
@@ -25,9 +25,19 @@
       "players": 2,
       "commands": 9009,
       "patterns": {
-        "replay": 3,
+        "replay": 1,
         "team": 0,
-        "player": 5
+        "player": 6
+      }
+    },
+    {
+      "file": "bgh.rep",
+      "players": 8,
+      "commands": 14080,
+      "patterns": {
+        "replay": 1,
+        "team": 0,
+        "player": 28
       }
     }
   ]
