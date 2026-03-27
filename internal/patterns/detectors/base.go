@@ -3,13 +3,15 @@ package detectors
 import (
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
+	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
 )
 
 // BaseDetector provides common functionality for all detectors
 type BaseDetector struct {
-	replay   *models.Replay
-	players  []*models.Player
-	finished bool
+	replay     *models.Replay
+	players    []*models.Player
+	worldState *worldstate.Engine
+	finished   bool
 }
 
 // Initialize stores the replay and players
@@ -41,6 +43,16 @@ func (d *BaseDetector) GetReplay() *models.Replay {
 // GetPlayers returns the players
 func (d *BaseDetector) GetPlayers() []*models.Player {
 	return d.players
+}
+
+// SetWorldState provides orchestrator-owned runtime world state context.
+func (d *BaseDetector) SetWorldState(worldState *worldstate.Engine) {
+	d.worldState = worldState
+}
+
+// GetWorldState returns runtime world state context if available.
+func (d *BaseDetector) GetWorldState() *worldstate.Engine {
+	return d.worldState
 }
 
 // BasePlayerDetector extends BaseDetector with player-specific functionality

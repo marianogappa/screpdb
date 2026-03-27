@@ -117,8 +117,29 @@ type Command struct {
 
 // ReplayData represents the complete parsed replay data
 type ReplayData struct {
-	Replay              *Replay    `json:"replay"`
-	Players             []*Player  `json:"players"`
-	Commands            []*Command `json:"commands"`
-	PatternOrchestrator any       `json:"-"` // Pattern orchestrator (type *patterns.Orchestrator), not serialized
+	Replay              *Replay           `json:"replay"`
+	Players             []*Player         `json:"players"`
+	Commands            []*Command        `json:"commands"`
+	MapContext          *ReplayMapContext `json:"-"` // Runtime-only map context (not persisted)
+	PatternOrchestrator any               `json:"-"` // Pattern orchestrator (type *patterns.Orchestrator), not serialized
+}
+
+// MapResourcePosition stores a resource position in pixels.
+type MapResourcePosition struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
+// MapStartLocation stores a map start location in pixels and owner slot.
+type MapStartLocation struct {
+	X      int  `json:"x"`
+	Y      int  `json:"y"`
+	SlotID byte `json:"slot_id"`
+}
+
+// ReplayMapContext stores runtime-only map geometry/resource info used by detectors.
+type ReplayMapContext struct {
+	MineralFields  []MapResourcePosition `json:"-"`
+	Geysers        []MapResourcePosition `json:"-"`
+	StartLocations []MapStartLocation    `json:"-"`
 }

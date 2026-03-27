@@ -4,6 +4,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 	"github.com/marianogappa/screpdb/internal/patterns/detectors"
+	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
 )
 
 // ReplayLevelDetectorFactory creates a replay-level detector
@@ -25,6 +26,7 @@ var (
 		func() core.Detector { return detectors.NewSecondsToFirstFactoryBuildTriggeredReplayDetector() },
 		func() core.Detector { return detectors.NewSecondsToFirstSpawningPoolMorphTriggeredReplayDetector() },
 		func() core.Detector { return detectors.NewSecondsToFirstMutaliskMorphTriggeredReplayDetector() },
+		func() core.Detector { return detectors.NewGameEventsReplayDetector() },
 	}
 
 	// playerLevelDetectors is the list of player-level detector factories
@@ -83,10 +85,11 @@ var (
 
 // Orchestrator manages all pattern detectors for a replay
 type Orchestrator struct {
-	detectors []core.Detector
-	results   []*core.PatternResult
-	replay    *models.Replay
-	players   []*models.Player
+	detectors  []core.Detector
+	results    []*core.PatternResult
+	replay     *models.Replay
+	players    []*models.Player
+	worldState *worldstate.Engine
 }
 
 // NewOrchestrator creates a new pattern detection orchestrator
@@ -99,9 +102,10 @@ func NewOrchestrator() *Orchestrator {
 
 // Initialize initializes all detectors with the replay and players
 // This creates detector instances for each player and team as needed
-func (o *Orchestrator) Initialize(replay *models.Replay, players []*models.Player) {
+func (o *Orchestrator) Initialize(replay *models.Replay, players []*models.Player, mapContext *models.ReplayMapContext) {
 	o.replay = replay
 	o.players = players
+	o.worldState = worldstate.NewEngine(replay, players, mapContext)
 
 	// Create replay-level detectors (one per replay)
 	for _, factory := range replayLevelDetectors {
@@ -137,12 +141,19 @@ func (o *Orchestrator) Initialize(replay *models.Replay, players []*models.Playe
 
 	// Initialize all detectors
 	for _, detector := range o.detectors {
+		if consumer, ok := detector.(core.WorldStateConsumer); ok {
+			consumer.SetWorldState(o.worldState)
+		}
 		detector.Initialize(replay, players)
 	}
 }
 
 // ProcessCommand processes a command through all active detectors
 func (o *Orchestrator) ProcessCommand(command *models.Command) {
+	if o.worldState != nil {
+		o.worldState.ProcessCommand(command)
+	}
+
 	for _, detector := range o.detectors {
 		if !detector.IsFinished() {
 			finished := detector.ProcessCommand(command)

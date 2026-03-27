@@ -22,9 +22,10 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 
 	// Create the replay data structure
 	data := &models.ReplayData{
-		Replay:   fileInfo,
-		Players:  []*models.Player{},
-		Commands: []*models.Command{},
+		Replay:     fileInfo,
+		Players:    []*models.Player{},
+		Commands:   []*models.Command{},
+		MapContext: &models.ReplayMapContext{},
 	}
 
 	// Parse replay metadata
@@ -44,6 +45,28 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 
 	// On Melee & Free for all this is always 1, and on Top vs Bottom it's what the game creator set for the home team.
 	data.Replay.HomeTeamSize = rep.Header.SubType
+
+	if rep.MapData != nil {
+		for _, m := range rep.MapData.MineralFields {
+			data.MapContext.MineralFields = append(data.MapContext.MineralFields, models.MapResourcePosition{
+				X: int(m.X),
+				Y: int(m.Y),
+			})
+		}
+		for _, g := range rep.MapData.Geysers {
+			data.MapContext.Geysers = append(data.MapContext.Geysers, models.MapResourcePosition{
+				X: int(g.X),
+				Y: int(g.Y),
+			})
+		}
+		for _, sl := range rep.MapData.StartLocations {
+			data.MapContext.StartLocations = append(data.MapContext.StartLocations, models.MapStartLocation{
+				X:      int(sl.X),
+				Y:      int(sl.Y),
+				SlotID: sl.SlotID,
+			})
+		}
+	}
 
 	// Parse players
 	for i, player := range rep.Header.Players {
@@ -106,7 +129,7 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 
 	// Initialize pattern detection orchestrator
 	patternOrchestrator := patterns.NewOrchestrator()
-	patternOrchestrator.Initialize(data.Replay, data.Players)
+	patternOrchestrator.Initialize(data.Replay, data.Players, data.MapContext)
 
 	// Create slot-to-player mapping for alliance and vision commands
 	playerIDToPlayer := make(map[byte]*models.Player)
