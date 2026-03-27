@@ -19,68 +19,95 @@ type TeamLevelDetectorFactory func(team byte) core.Detector
 var (
 	// replayLevelDetectors is the list of replay-level detector factories
 	replayLevelDetectors = []ReplayLevelDetectorFactory{
-		func() core.Detector { return detectors.NewHadCarriersReplayDetector() },
-		func() core.Detector { return detectors.NewSecondsToFirstCarrierBuildTriggeredReplayDetector() },
-		func() core.Detector { return detectors.NewSecondsToFirstZerglingMorphTriggeredReplayDetector() },
-		func() core.Detector { return detectors.NewSecondsToFirstGatewayBuildTriggeredReplayDetector() },
-		func() core.Detector { return detectors.NewSecondsToFirstFactoryBuildTriggeredReplayDetector() },
-		func() core.Detector { return detectors.NewSecondsToFirstSpawningPoolMorphTriggeredReplayDetector() },
-		func() core.Detector { return detectors.NewSecondsToFirstMutaliskMorphTriggeredReplayDetector() },
 		func() core.Detector { return detectors.NewGameEventsReplayDetector() },
 	}
 
 	// playerLevelDetectors is the list of player-level detector factories
 	playerLevelDetectors = []PlayerLevelDetectorFactory{
 		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewDidCarriersPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewSecondsToFirstCarrierBuildTriggeredPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewSecondsToFirstZerglingMorphTriggeredPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewSecondsToFirstGatewayBuildTriggeredPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewSecondsToFirstFactoryBuildTriggeredPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewSecondsToFirstSpawningPoolMorphTriggeredPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewSecondsToFirstMutaliskMorphTriggeredPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
 			detector := detectors.NewUsedHotkeyGroupsPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewQuickFactoryPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewMechPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewBattlecruisersPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewCarriersPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewMadeDropsPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewMadeRecallsPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewThrewNukesPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewFastExpaPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewGateThenForgePlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewForgeThenGatePlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewNeverUpgradedPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewNeverResearchedPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewHatchBeforePoolPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewExpaBeforeGatePlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewExpaBeforeBarracksPlayerDetector()
 			detector.SetReplayPlayerID(replayPlayerID)
 			return detector
 		},
 	}
 
 	// teamLevelDetectors is the list of team-level detector factories
-	teamLevelDetectors = []TeamLevelDetectorFactory{
-		func(team byte) core.Detector {
-			detector := detectors.NewDidCarriersTeamDetector()
-			detector.SetTeam(team)
-			return detector
-		},
-	}
+	teamLevelDetectors = []TeamLevelDetectorFactory{}
 )
 
 // Orchestrator manages all pattern detectors for a replay

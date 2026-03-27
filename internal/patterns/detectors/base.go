@@ -1,6 +1,8 @@
 package detectors
 
 import (
+	"strings"
+
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
@@ -296,4 +298,78 @@ func (c *CountDetector) HasAnyCountAbove(threshold int) bool {
 		}
 	}
 	return false
+}
+
+func getPlayerByReplayPlayerID(players []*models.Player, replayPlayerID byte) *models.Player {
+	for _, player := range players {
+		if player != nil && player.PlayerID == replayPlayerID {
+			return player
+		}
+	}
+	return nil
+}
+
+func isPlayerRace(players []*models.Player, replayPlayerID byte, race string) bool {
+	player := getPlayerByReplayPlayerID(players, replayPlayerID)
+	if player == nil {
+		return false
+	}
+	return strings.EqualFold(player.Race, race)
+}
+
+func isBuildOf(command *models.Command, unitType string) bool {
+	return command.ActionType == models.ActionTypeBuild &&
+		command.UnitType != nil &&
+		*command.UnitType == unitType
+}
+
+func isUnitProductionOf(command *models.Command, unitType string) bool {
+	return command.IsUnitBuild() &&
+		command.UnitType != nil &&
+		*command.UnitType == unitType
+}
+
+// PlayerUnitCounter counts unit production by unit type for one player.
+type PlayerUnitCounter struct {
+	replayPlayerID byte
+	counts         map[string]int
+}
+
+func NewPlayerUnitCounter(replayPlayerID byte) *PlayerUnitCounter {
+	return &PlayerUnitCounter{
+		replayPlayerID: replayPlayerID,
+		counts:         map[string]int{},
+	}
+}
+
+func (c *PlayerUnitCounter) ProcessCommand(command *models.Command, maxSecondInclusive *int) {
+	if command == nil || command.Player == nil || command.Player.PlayerID != c.replayPlayerID {
+		return
+	}
+	if maxSecondInclusive != nil && command.SecondsFromGameStart > *maxSecondInclusive {
+		return
+	}
+	if !command.IsUnitBuild() || command.UnitType == nil {
+		return
+	}
+	c.counts[*command.UnitType]++
+}
+
+func (c *PlayerUnitCounter) Count(unitType string) int {
+	return c.counts[unitType]
+}
+
+func (c *PlayerUnitCounter) TotalExcluding(unitTypes ...string) int {
+	excluded := map[string]struct{}{}
+	for _, unitType := range unitTypes {
+		excluded[unitType] = struct{}{}
+	}
+	total := 0
+	for unitType, count := range c.counts {
+		if _, isExcluded := excluded[unitType]; isExcluded {
+			continue
+		}
+		total += count
+	}
+	return total
 }

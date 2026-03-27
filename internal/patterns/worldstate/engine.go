@@ -15,6 +15,7 @@ const (
 	ownershipTimeoutSec = 90
 	contestedSwitchSec  = 45
 	rushWindowSec       = 300
+	zerglingRushSec     = 140
 	attackCooldownSec   = 60
 	attackWindowSec     = 60
 	attackMinCount      = 5
@@ -57,6 +58,8 @@ type Engine struct {
 
 	startBaseByPID map[byte]int
 	playerExpanded map[byte]map[int]bool
+	playerBecame   map[byte]bool
+	playerZRush    map[byte]bool
 
 	attackCountsByWindow map[string]int
 	lastAttackEmitted    map[string]int
@@ -72,6 +75,8 @@ func NewEngine(replay *models.Replay, players []*models.Player, mapCtx *models.R
 		left:                 map[byte]bool{},
 		startBaseByPID:       map[byte]int{},
 		playerExpanded:       map[byte]map[int]bool{},
+		playerBecame:         map[byte]bool{},
+		playerZRush:          map[byte]bool{},
 		attackCountsByWindow: map[string]int{},
 		lastAttackEmitted:    map[string]int{},
 		entries:              make([]NarrativeEntry, 0, 256),
@@ -154,8 +159,62 @@ func (e *Engine) Entries() []NarrativeEntry {
 	return out
 }
 
+// FirstEventSecondForPlayer returns the first second where the given event type
+// appears for the provided player in the narrative stream.
+func (e *Engine) FirstEventSecondForPlayer(playerID byte, eventType string) *int {
+	name := e.playerName(playerID)
+	prefix := ""
+	switch eventType {
+	case "drop":
+		prefix = name + " drops on "
+	case "recall":
+		prefix = name + " recalls into "
+	case "nuke":
+		prefix = name + " nukes "
+	default:
+		return nil
+	}
+
+	for _, entry := range e.entries {
+		if entry.Type != eventType {
+			continue
+		}
+		if strings.HasPrefix(entry.Description, prefix) {
+			sec := entry.Second
+			return &sec
+		}
+	}
+	return nil
+}
+
+// FirstExpansionForPlayer returns the first expansion second and location text
+// for a player based on existing narrative expansion entries.
+func (e *Engine) FirstExpansionForPlayer(playerID byte) (*int, *string) {
+	name := e.playerName(playerID)
+	prefixExpands := name + " expands "
+	prefixExpandsTo := name + " expands to "
+
+	for _, entry := range e.entries {
+		if entry.Type != "expansion" {
+			continue
+		}
+		desc := entry.Description
+		if strings.HasPrefix(desc, prefixExpandsTo) {
+			sec := entry.Second
+			where := strings.TrimPrefix(desc, prefixExpandsTo)
+			return &sec, &where
+		}
+		if strings.HasPrefix(desc, prefixExpands) {
+			sec := entry.Second
+			where := strings.TrimPrefix(desc, prefixExpands)
+			return &sec, &where
+		}
+	}
+	return nil, nil
+}
+
 func (e *Engine) ProcessCommand(command *models.Command) {
-	if len(e.bases) == 0 || command == nil {
+	if command == nil {
 		return
 	}
 
@@ -194,6 +253,13 @@ func (e *Engine) ProcessCommand(command *models.Command) {
 		return
 	}
 	if e.left[pid] {
+		return
+	}
+
+	e.processRaceSwitchEvent(command, pid, sec)
+	e.processZerglingRushEvent(command, pid, sec)
+
+	if len(e.bases) == 0 {
 		return
 	}
 
@@ -426,6 +492,54 @@ func normalize(s string) string {
 	x = strings.ReplaceAll(x, " ", "")
 	x = strings.ReplaceAll(x, "_", "")
 	return x
+}
+
+func (e *Engine) processRaceSwitchEvent(command *models.Command, pid byte, sec int) {
+	if e.playerBecame[pid] || !isBuildLike(command.ActionType) || command.UnitType == nil {
+		return
+	}
+	player, ok := e.players[pid]
+	if !ok || !strings.EqualFold(player.Race, "Protoss") {
+		return
+	}
+	race := nonProtossBuildingRace(*command.UnitType)
+	if race == "" {
+		return
+	}
+	e.playerBecame[pid] = true
+	e.emitEvent("race", sec, fmt.Sprintf("%s becomes %s", e.playerName(pid), race))
+}
+
+func (e *Engine) processZerglingRushEvent(command *models.Command, pid byte, sec int) {
+	if e.playerZRush[pid] || sec > zerglingRushSec {
+		return
+	}
+	if !command.IsUnitBuild() || command.UnitType == nil || *command.UnitType != models.GeneralUnitZergling {
+		return
+	}
+	e.playerZRush[pid] = true
+	e.emitEvent("rush", sec, fmt.Sprintf("%s Zergling rushes", e.playerName(pid)))
+}
+
+func nonProtossBuildingRace(unitName string) string {
+	switch normalize(unitName) {
+	case
+		// Terran buildings.
+		"commandcenter", "supplydepot", "barracks", "engineeringbay", "academy",
+		"bunker", "missileturret", "factory", "starport", "armory", "refinery",
+		"sciencefacility", "covertops", "physicslab", "nuclearsilo",
+		"machineshop", "comsat", "controltower":
+		return "Terran"
+	case
+		// Zerg buildings.
+		"hatchery", "lair", "hive", "nyduscanal", "hydraliskden", "defilermound",
+		"greaterspire", "queensnest", "evolutionchamber", "ultraliskcavern",
+		"spire", "spawningpool", "creepcolony", "sporecolony", "sunkencolony",
+		"extractor":
+		return "Zerg"
+	default:
+		return ""
+	}
 }
 
 func pointToEventBase(x float64, y float64, bases []base) int {

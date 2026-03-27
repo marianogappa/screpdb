@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { api } from './api';
 import Widget from './components/Widget';
 import DashboardManager from './components/DashboardManager';
@@ -13,10 +13,26 @@ import LineChart from './components/charts/LineChart';
 import ScatterPlot from './components/charts/ScatterPlot';
 import Histogram from './components/charts/Histogram';
 import Heatmap from './components/charts/Heatmap';
+import TimingScatterRows from './components/charts/TimingScatterRows';
 import probeImg from './assets/units/probe.png';
 import scvImg from './assets/units/scv.png';
 import droneImg from './assets/units/drone.png';
 import carrierImg from './assets/units/carrier.png';
+import battlecruiserImg from './assets/units/battlecruiser.png';
+import marineImg from './assets/units/marine.png';
+import zealotImg from './assets/units/zealot.png';
+import dragoonImg from './assets/units/dragoon.png';
+import zerglingImg from './assets/units/zergling.png';
+import hydraliskImg from './assets/units/hydralisk.png';
+import mutaliskImg from './assets/units/mutalisk.png';
+import ultraliskImg from './assets/units/ultralisk.png';
+import goliathImg from './assets/units/goliath.png';
+import vultureImg from './assets/units/vulture.png';
+import medicImg from './assets/units/medic.png';
+import firebatImg from './assets/units/firebat.png';
+import darktemplarImg from './assets/units/darktemplar.png';
+import hightemplarImg from './assets/units/hightemplar.png';
+import lurkerImg from './assets/units/lurker.png';
 import './styles.css';
 
 // Helper functions for localStorage
@@ -46,7 +62,7 @@ const getStoredAutoIngestSettings = () => {
   try {
     const stored = localStorage.getItem(AUTO_INGEST_SETTINGS_KEY);
     if (!stored) {
-      return { enabled: true, intervalSeconds: 60 };
+      return { enabled: false, intervalSeconds: 60 };
     }
     const parsed = JSON.parse(stored);
     const interval = Number.isFinite(parsed?.intervalSeconds) && parsed.intervalSeconds >= 60
@@ -58,7 +74,7 @@ const getStoredAutoIngestSettings = () => {
     };
   } catch (e) {
     console.error('Failed to load auto-ingest settings from localStorage:', e);
-    return { enabled: true, intervalSeconds: 60 };
+    return { enabled: false, intervalSeconds: 60 };
   }
 };
 
@@ -71,7 +87,7 @@ const saveAutoIngestSettings = (settings) => {
 };
 
 const formatDuration = (seconds) => {
-  const total = Number(seconds) || 0;
+  const total = Math.max(0, Math.floor(Number(seconds) || 0));
   const mins = Math.floor(total / 60);
   const secs = total % 60;
   return `${mins}:${String(secs).padStart(2, '0')}`;
@@ -105,6 +121,185 @@ const getRaceIcon = (race) => {
   if (value === 'terran') return scvImg;
   if (value === 'zerg') return droneImg;
   return null;
+};
+
+const UNIT_ICON_MAP = {
+  probe: probeImg,
+  scv: scvImg,
+  drone: droneImg,
+  carrier: carrierImg,
+  marine: marineImg,
+  zealot: zealotImg,
+  dragoon: dragoonImg,
+  zergling: zerglingImg,
+  hydralisk: hydraliskImg,
+  mutalisk: mutaliskImg,
+  ultralisk: ultraliskImg,
+  goliath: goliathImg,
+  vulture: vultureImg,
+  medic: medicImg,
+  firebat: firebatImg,
+  darktemplar: darktemplarImg,
+  hightemplar: hightemplarImg,
+  lurker: lurkerImg,
+};
+
+const normalizeUnitName = (value) => String(value || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+
+const getUnitIcon = (unitType) => UNIT_ICON_MAP[normalizeUnitName(unitType)] || null;
+
+const formatPercent = (value) => `${((Number(value) || 0) * 100).toFixed(1)}%`;
+
+const DEFAULT_SUMMARY_FILTERS = {
+  search: '',
+  player: '',
+  location: '',
+  nuke: false,
+  drop: false,
+  recall: false,
+  race: false,
+  rush: false,
+};
+
+const SUMMARY_TOPIC_PATTERNS = {
+  nuke: /\bnuke|nuclear\b/i,
+  drop: /\bdrop|dropship|shuttle\b/i,
+  recall: /\brecall\b/i,
+  race: /\bprotoss|terran|zerg\b/i,
+  rush: /\brush|all[\s-]?in|cheese\b/i,
+};
+
+const LOCATION_HINTS = [
+  { key: 'expa', matcher: /\bexpa|expansion|expand\b/i },
+  { key: 'main', matcher: /\bmain\b/i },
+  { key: 'natural', matcher: /\bnatural\b/i },
+  { key: 'third', matcher: /\bthird\b/i },
+  { key: 'fourth', matcher: /\bfourth\b/i },
+  { key: 'center', matcher: /\bcenter|middle\b/i },
+  { key: 'top', matcher: /\btop|north\b/i },
+  { key: 'bottom', matcher: /\bbottom|south\b/i },
+  { key: 'left', matcher: /\bleft|west\b/i },
+  { key: 'right', matcher: /\bright|east\b/i },
+];
+
+const extractEventLocationTags = (description) => {
+  const tags = new Set();
+  const text = String(description || '').toLowerCase();
+  LOCATION_HINTS.forEach((hint) => {
+    if (hint.matcher.test(text)) tags.add(hint.key);
+  });
+  const strictClockMatches = text.matchAll(/\b([1-9]|1[0-2])\s*o'?clock\b/g);
+  for (const match of strictClockMatches) {
+    tags.add(match[1]);
+  }
+  const directionalClockMatches = text.matchAll(/\b(?:at|to|near|towards|from)\s+([1-9]|1[0-2])\b/g);
+  for (const match of directionalClockMatches) {
+    tags.add(match[1]);
+  }
+  return Array.from(tags);
+};
+
+const extractLocationOptions = (events) => {
+  const found = new Set();
+  (events || []).forEach((event) => {
+    extractEventLocationTags(event?.description).forEach((tag) => found.add(tag));
+  });
+  return Array.from(found).sort((a, b) => {
+    const numA = Number(a);
+    const numB = Number(b);
+    if (Number.isFinite(numA) && Number.isFinite(numB)) return numA - numB;
+    if (Number.isFinite(numA)) return -1;
+    if (Number.isFinite(numB)) return 1;
+    return a.localeCompare(b);
+  });
+};
+
+const isPatternTruthy = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  return normalized === 'yes' || normalized === 'true';
+};
+
+const prettyPatternName = (patternName) => {
+  const trimmed = String(patternName || '').trim();
+  if (!trimmed) return '';
+  const splitUppercase = trimmed.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+  return splitUppercase
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+const patternIconForName = (patternName) => {
+  const normalized = normalizeUnitName(patternName);
+  if (normalized.includes('battlecruiser')) return battlecruiserImg;
+  if (normalized.includes('carrier')) return carrierImg;
+  return getUnitIcon(patternName);
+};
+
+const minuteFromValue = (value) => {
+  const trimmed = String(value || '').trim();
+  const clockMatch = trimmed.match(/^(\d+):(\d{2})$/);
+  if (clockMatch) return Number(clockMatch[1]);
+  const asNumber = Number(trimmed);
+  if (Number.isFinite(asNumber)) return Math.floor(asNumber / 60);
+  return null;
+};
+
+const formatPatternPillText = (rawName, rawValue, isTruthy) => {
+  if (isTruthy) return `Did ${rawName}`;
+  const lowerName = rawName.toLowerCase();
+  if (lowerName.includes('used hotkey groups')) {
+    return `${rawName.replace(/\s+at$/i, '')} ${rawValue}`;
+  }
+  if (lowerName.includes('made drops') || lowerName.includes('made recalls')) {
+    const minute = minuteFromValue(rawValue);
+    if (minute !== null) return `${rawName} at min ${minute}`;
+  }
+  return `${rawName} at ${rawValue}`;
+};
+
+const renderPatternPill = (pattern, keyPrefix, team) => {
+  const rawName = prettyPatternName(pattern?.pattern_name);
+  if (!rawName) return null;
+  const rawValue = String(pattern?.value || '').trim();
+  if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
+    return null;
+  }
+  const isTruthy = isPatternTruthy(pattern?.value);
+  const icon = patternIconForName(pattern?.pattern_name);
+  const text = formatPatternPillText(rawName, rawValue, isTruthy);
+  const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.pattern_name}-${pattern?.value}`;
+  return (
+    <span key={key} className={`workflow-pattern-pill${isTruthy ? ' workflow-pattern-pill-strong' : ''}`}>
+      {team !== undefined ? <span className="team-dot" style={{ backgroundColor: getTeamColor(team) }}></span> : null}
+      {icon ? <img src={icon} alt={rawName} className="workflow-pattern-icon" /> : null}
+      <span>{text}</span>
+    </span>
+  );
+};
+
+const formatSigned = (value) => {
+  const n = Number(value) || 0;
+  if (n > 0) return `+${n.toFixed(2)}`;
+  return n.toFixed(2);
+};
+
+const comparativeBadgeLabel = (direction) => {
+  if (direction === 'up') return 'Higher than peers';
+  if (direction === 'down') return 'Lower than peers';
+  return 'Near peers';
+};
+
+const prettyMetricValue = (metric) => {
+  const value = Number(metric?.player_value) || 0;
+  if (String(metric?.metric || '').toLowerCase().includes('%')) {
+    return formatPercent(value);
+  }
+  if (String(metric?.metric || '').toLowerCase().includes('seconds')) {
+    return formatDuration(value);
+  }
+  return value.toFixed(2);
 };
 
 const TEAM_COLORS = ['#60A5FA', '#F472B6', '#34D399', '#FBBF24', '#A78BFA', '#22D3EE', '#FB7185', '#4ADE80'];
@@ -147,11 +342,13 @@ function App() {
   const [selectedReplayId, setSelectedReplayId] = useState(null);
   const [selectedPlayerKey, setSelectedPlayerKey] = useState('');
   const [workflowGame, setWorkflowGame] = useState(null);
+  const [workflowGameTab, setWorkflowGameTab] = useState('summary');
   const [workflowPlayer, setWorkflowPlayer] = useState(null);
   const [workflowQuestion, setWorkflowQuestion] = useState('');
   const [workflowAnswer, setWorkflowAnswer] = useState(null);
   const [askingWorkflow, setAskingWorkflow] = useState(false);
   const [topPlayerColors, setTopPlayerColors] = useState({});
+  const [workflowSummaryFilters, setWorkflowSummaryFilters] = useState(DEFAULT_SUMMARY_FILTERS);
 
   const loadDashboard = async (url, varValues = null, skipVarInit = false) => {
     try {
@@ -244,9 +441,11 @@ function App() {
       setError(null);
       const data = await api.getWorkflowGame(replayId);
       setWorkflowGame(data);
+      setWorkflowGameTab('summary');
       setSelectedReplayId(replayId);
       setWorkflowAnswer(null);
       setWorkflowQuestion('');
+      setWorkflowSummaryFilters(DEFAULT_SUMMARY_FILTERS);
       setActiveView('game');
     } catch (err) {
       setError(err.message);
@@ -314,7 +513,6 @@ function App() {
       }
     };
 
-    runAutoIngest();
     const timer = window.setInterval(runAutoIngest, intervalSeconds * 1000);
     return () => {
       cancelled = true;
@@ -560,6 +758,39 @@ function App() {
     })
     : [];
 
+  const workflowLocationOptions = useMemo(
+    () => extractLocationOptions(workflowGame?.game_events || []),
+    [workflowGame?.game_events],
+  );
+
+  const summaryTextMatches = (text) => {
+    const value = String(text || '').toLowerCase();
+    if (workflowSummaryFilters.search && !value.includes(workflowSummaryFilters.search.toLowerCase())) {
+      return false;
+    }
+    const activeTopics = Object.entries(SUMMARY_TOPIC_PATTERNS)
+      .filter(([key]) => workflowSummaryFilters[key])
+      .map(([, matcher]) => matcher);
+    if (activeTopics.length > 0 && !activeTopics.some((matcher) => matcher.test(value))) {
+      return false;
+    }
+    return true;
+  };
+
+  const filteredReplayPatterns = workflowGame?.replay_patterns || [];
+  const filteredTeamPatterns = workflowGame?.team_patterns || [];
+
+  const filteredGameEvents = (workflowGame?.game_events || []).filter((event) => {
+    if (workflowSummaryFilters.player && !String(event.description || '').toLowerCase().includes(workflowSummaryFilters.player.toLowerCase())) {
+      return false;
+    }
+    if (workflowSummaryFilters.location) {
+      const eventTags = extractEventLocationTags(event.description || '');
+      if (!eventTags.includes(workflowSummaryFilters.location)) return false;
+    }
+    return summaryTextMatches(`${event.type} ${event.description}`);
+  });
+
   if (loading && !dashboard && activeView === 'dashboards') {
     return (
       <div className="app">
@@ -570,8 +801,6 @@ function App() {
 
   return (
     <div className="app">
-      <div className="stars-background"></div>
-
       <div className="dashboard-container">
         <div className="workflow-nav">
           <button className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => setActiveView('games')}>Games</button>
@@ -682,105 +911,206 @@ function App() {
               <div className="loading">Loading game report...</div>
             ) : workflowGame ? (
               <>
-                <div className="workflow-header-row">
+                <div className="workflow-title-row">
+                  <h2>{renderPlayersMatchup(workflowGame.players?.map((p) => p.name).join(' vs '))}</h2>
                   <button className="btn-switch" onClick={() => setActiveView('games')}>Back to games</button>
                 </div>
-                <h2>{renderPlayersMatchup(workflowGame.players?.map((p) => p.name).join(' vs '))}</h2>
                 <div className="workflow-meta">
                   <span>{formatRelativeReplayDate(workflowGame.replay_date)}</span>
                   <span>{workflowGame.map_name}</span>
                   <span>{formatDuration(workflowGame.duration_seconds)}</span>
                 </div>
-                <div className="workflow-cards">
-                  {workflowGame.players?.map((player) => (
-                    <div key={player.player_id} className="workflow-card" style={{ borderLeft: `3px solid ${getTeamColor(player.team)}` }}>
-                      <div className="workflow-card-title">
-                        <button
-                          className="btn-switch"
-                          style={playerAccentColor(player.player_key) ? { color: playerAccentColor(player.player_key), borderColor: playerAccentColor(player.player_key) } : undefined}
-                          onClick={() => openWorkflowPlayer(player.player_key)}
+                <div className="workflow-nav">
+                  <button className={`btn-switch ${workflowGameTab === 'summary' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('summary')}>Summary</button>
+                  <button className={`btn-switch ${workflowGameTab === 'units' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('units')}>Units</button>
+                  <button className={`btn-switch ${workflowGameTab === 'timings' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('timings')}>Timings</button>
+                </div>
+
+                {workflowGameTab === 'summary' && (
+                  <>
+                    <div className="workflow-player-rows">
+                      {(workflowGame.players || []).map((player) => (
+                        <div key={player.player_id} className="workflow-player-row" style={{ borderLeft: `3px solid ${getTeamColor(player.team)}` }}>
+                          <div className="workflow-player-line">
+                            <strong
+                              className="workflow-player-name"
+                              style={playerAccentColor(player.player_key) ? { color: playerAccentColor(player.player_key) } : undefined}
+                            >
+                              {player.name}
+                            </strong>
+                            <span className="workflow-player-apm"><strong>APM</strong> {player.apm}</span>
+                            <button className="workflow-link-btn" onClick={() => openWorkflowPlayer(player.player_key)}>View player</button>
+                            {player.is_winner ? <span className="workflow-pattern-pill workflow-pattern-pill-strong">Winner</span> : null}
+                            {player.detected_patterns?.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {(filteredReplayPatterns.length > 0 || filteredTeamPatterns.length > 0) && (
+                      <div className="workflow-card">
+                        {filteredReplayPatterns.length > 0 && (
+                          <div className="workflow-pattern-pills">
+                            {filteredReplayPatterns.map((pattern, idx) => renderPatternPill(pattern, `replay-${idx}`))}
+                          </div>
+                        )}
+                        {filteredTeamPatterns.length > 0 && (
+                          <div className="workflow-pattern-pills">
+                            {filteredTeamPatterns.map((pattern, idx) => renderPatternPill(pattern, `team-${idx}`, pattern.team))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div className="workflow-card">
+                      <div className="workflow-summary-filter-row">
+                        <input
+                          type="text"
+                          className="workflow-summary-filter-input"
+                          placeholder="Filter events..."
+                          value={workflowSummaryFilters.search}
+                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, search: e.target.value }))}
+                        />
+                        <select
+                          className="workflow-summary-filter-select"
+                          value={workflowSummaryFilters.player}
+                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, player: e.target.value }))}
                         >
-                          {player.name}
-                        </button>
-                        <span className="workflow-inline">
-                          {getRaceIcon(player.race) ? <img src={getRaceIcon(player.race)} alt={player.race} className="unit-icon-inline" /> : null}
-                          <span>Team {player.team}</span>
-                          {player.is_winner ? <strong className="workflow-winner">Winner</strong> : null}
-                        </span>
+                          <option value="">Any player</option>
+                          {(workflowGame.players || []).map((player) => (
+                            <option key={player.player_id} value={player.name}>{player.name}</option>
+                          ))}
+                        </select>
+                        <select
+                          className="workflow-summary-filter-select"
+                          value={workflowSummaryFilters.location}
+                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, location: e.target.value }))}
+                        >
+                          <option value="">Any location</option>
+                          {workflowLocationOptions.map((loc) => (
+                            <option key={loc} value={loc}>{loc}</option>
+                          ))}
+                        </select>
+                        <label className="workflow-summary-filter-check">
+                          <input
+                            type="checkbox"
+                            checked={workflowSummaryFilters.nuke}
+                            onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, nuke: e.target.checked }))}
+                          />
+                          nuke
+                        </label>
+                        <label className="workflow-summary-filter-check">
+                          <input
+                            type="checkbox"
+                            checked={workflowSummaryFilters.drop}
+                            onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, drop: e.target.checked }))}
+                          />
+                          drop
+                        </label>
+                        <label className="workflow-summary-filter-check">
+                          <input
+                            type="checkbox"
+                            checked={workflowSummaryFilters.recall}
+                            onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, recall: e.target.checked }))}
+                          />
+                          recall
+                        </label>
+                        <label className="workflow-summary-filter-check">
+                          <input
+                            type="checkbox"
+                            checked={workflowSummaryFilters.race}
+                            onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, race: e.target.checked }))}
+                          />
+                          race
+                        </label>
+                        <label className="workflow-summary-filter-check">
+                          <input
+                            type="checkbox"
+                            checked={workflowSummaryFilters.rush}
+                            onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, rush: e.target.checked }))}
+                          />
+                          rush
+                        </label>
                       </div>
-                      <div className="workflow-metric-row"><strong>APM</strong><span>{player.apm}</span><strong>EAPM</strong><span>{player.eapm}</span></div>
-                      <div className="workflow-metric-row"><strong>Commands</strong><span>{player.command_count}</span><strong>Hotkeys</strong><span>{player.hotkey_command_count}</span></div>
-                      <div className="workflow-inline">
-                        <img src={carrierImg} alt="Carrier" className="unit-icon-inline" />
-                        <strong>Carrier commands</strong>
-                        <span>{player.carrier_command_count}</span>
-                      </div>
-                      {player.detected_patterns?.length > 0 && (
-                        <div className="workflow-patterns">
-                          <strong>Detected patterns</strong>
-                          {player.detected_patterns.map((pattern, idx) => (
-                            <div key={`${pattern.pattern_name}-${idx}`} className="workflow-pattern-row">
-                              <span>{pattern.pattern_name}</span>
-                              <span>{pattern.value}</span>
+                      <div className="workflow-card-title"><span>Game events</span></div>
+                      {filteredGameEvents.length > 0 ? (
+                        <div className="workflow-events">
+                          {filteredGameEvents.map((event, idx) => (
+                            <div key={`${event.second}-${idx}`} className="workflow-event-row">
+                              <span>{formatDuration(event.second)}</span>
+                              <span>{event.description}</span>
                             </div>
                           ))}
                         </div>
+                      ) : (
+                        <div className="chart-empty">No summary items match current filters.</div>
                       )}
                     </div>
-                  ))}
-                </div>
-                {(workflowGame.replay_patterns?.length > 0 || workflowGame.team_patterns?.length > 0) && (
-                  <div className="workflow-cards">
-                    {workflowGame.replay_patterns?.length > 0 && (
-                      <div className="workflow-card">
-                        <div className="workflow-card-title"><span>Replay detected patterns</span></div>
-                        {workflowGame.replay_patterns.map((pattern, idx) => (
-                          <div key={`${pattern.pattern_name}-${idx}`} className="workflow-pattern-row">
-                            <span>{pattern.pattern_name}</span>
-                            <span>{pattern.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {workflowGame.team_patterns?.length > 0 && (
-                      <div className="workflow-card">
-                        <div className="workflow-card-title"><span>Team detected patterns</span></div>
-                        {workflowGame.team_patterns.map((pattern, idx) => (
-                          <div key={`${pattern.team}-${pattern.pattern_name}-${idx}`} className="workflow-pattern-row">
-                            <span className="workflow-inline">
-                              <span className="team-dot" style={{ backgroundColor: getTeamColor(pattern.team) }}></span>
-                              Team {pattern.team} / {pattern.pattern_name}
-                            </span>
-                            <span>{pattern.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  </>
+                )}
+
+                {workflowGameTab === 'units' && (
+                  <div className="workflow-card">
+                    <div className="workflow-card-title"><span>Units morphed/trained per 5-minute slice</span></div>
+                    <div className="table-container">
+                      <table className="data-table workflow-table">
+                        <thead>
+                          <tr>
+                            <th>Slice</th>
+                            {(workflowGame.players || []).map((player) => <th key={player.player_id}>{player.name}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(workflowGame.units_by_slice || []).map((slice) => (
+                            <tr key={slice.slice_start_second}>
+                              <td>{slice.slice_label}</td>
+                              {(slice.players || []).map((playerSlice) => (
+                                <td key={`${slice.slice_start_second}-${playerSlice.player_id}`}>
+                                  {(playerSlice.units || []).length === 0 ? (
+                                    <span className="chart-empty">-</span>
+                                  ) : (
+                                    <div className="workflow-unit-chips">
+                                      {playerSlice.units.map((unit) => (
+                                        <span key={`${playerSlice.player_id}-${unit.unit_type}`} className="workflow-unit-chip">
+                                          {getUnitIcon(unit.unit_type) ? <img src={getUnitIcon(unit.unit_type)} alt={unit.unit_type} className="workflow-unit-chip-icon" /> : null}
+                                          <span>{unit.unit_type}</span>
+                                          <strong>x{unit.count}</strong>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
-                <div className="workflow-cards">
-                  <div className="workflow-card chart-card">
-                    <div className="workflow-card-title"><span>Commands by player</span></div>
-                    <PieChart
-                      data={(workflowGame.players || []).map((player) => ({ label: player.name, value: player.command_count }))}
-                      config={{ pie_label_column: 'label', pie_value_column: 'value' }}
+
+                {workflowGameTab === 'timings' && (
+                  <div className="workflow-timing-charts">
+                    <TimingScatterRows
+                      title="Gas timings (1st-4th)"
+                      series={workflowGame.timings?.gas || []}
+                      durationSeconds={workflowGame.duration_seconds}
+                    />
+                    <TimingScatterRows
+                      title="Expansion timings (1st-4th)"
+                      series={workflowGame.timings?.expansion || []}
+                      durationSeconds={workflowGame.duration_seconds}
+                    />
+                    <TimingScatterRows
+                      title="Upgrade timings"
+                      series={workflowGame.timings?.upgrades || []}
+                      durationSeconds={workflowGame.duration_seconds}
+                    />
+                    <TimingScatterRows
+                      title="Tech research timings"
+                      series={workflowGame.timings?.tech || []}
+                      durationSeconds={workflowGame.duration_seconds}
                     />
                   </div>
-                  <div className="workflow-card chart-card">
-                    <div className="workflow-card-title"><span>Commands by team</span></div>
-                    <PieChart
-                      data={Object.entries((workflowGame.players || []).reduce((acc, player) => {
-                        const key = `Team ${player.team}`;
-                        acc[key] = (acc[key] || 0) + Number(player.command_count || 0);
-                        return acc;
-                      }, {})).map(([label, value]) => ({ label, value }))}
-                      config={{ pie_label_column: 'label', pie_value_column: 'value' }}
-                    />
-                  </div>
-                </div>
-                <div className="workflow-hints">
-                  {workflowGame.narrative_hints?.map((hint, idx) => <div key={idx}>{hint}</div>)}
-                </div>
+                )}
               </>
             ) : (
               <div className="chart-empty">Select a game from the Games tab.</div>
@@ -808,10 +1138,10 @@ function App() {
               <div className="loading">Loading player report...</div>
             ) : workflowPlayer ? (
               <>
-                <div className="workflow-header-row">
+                <div className="workflow-title-row">
+                  <h2 style={playerAccentColor(workflowPlayer.player_key) ? { color: playerAccentColor(workflowPlayer.player_key) } : undefined}>{workflowPlayer.player_name}</h2>
                   <button className="btn-switch" onClick={() => setActiveView('games')}>Back to games</button>
                 </div>
-                <h2 style={playerAccentColor(workflowPlayer.player_key) ? { color: playerAccentColor(workflowPlayer.player_key) } : undefined}>{workflowPlayer.player_name}</h2>
                 <div className="workflow-meta">
                   <span><strong>Games</strong> {workflowPlayer.games_played}</span>
                   <span><strong>Win rate</strong> {(workflowPlayer.win_rate * 100).toFixed(1)}%</span>
@@ -835,26 +1165,80 @@ function App() {
                     />
                   </div>
                   <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Win / Loss</span></div>
-                    <PieChart
-                      data={[
-                        { label: 'Wins', value: workflowPlayer.wins || 0 },
-                        { label: 'Losses', value: Math.max((workflowPlayer.games_played || 0) - (workflowPlayer.wins || 0), 0) },
-                      ]}
-                      config={{ pie_label_column: 'label', pie_value_column: 'value' }}
-                    />
+                    <div className="workflow-card-title"><span>Targeted order outliers</span></div>
+                    {(workflowPlayer.targeted_order_outliers || []).length === 0 ? <div className="chart-empty">No uncommon targeted orders found.</div> : null}
+                    {(workflowPlayer.targeted_order_outliers || []).map((item) => (
+                      <div key={item.name} className="workflow-pattern-row">
+                        <span>{item.pretty_name}</span>
+                        <span>{item.player_count} uses ({formatPercent(item.population_usage_rate)} pop.)</span>
+                      </div>
+                    ))}
                   </div>
                   <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Recent games</span></div>
+                    <div className="workflow-card-title"><span>Tech outliers</span></div>
+                    {(workflowPlayer.tech_outliers || []).length === 0 ? <div className="chart-empty">No uncommon tech usage found.</div> : null}
+                    {(workflowPlayer.tech_outliers || []).map((item) => (
+                      <div key={item.name} className="workflow-pattern-row">
+                        <span>{item.pretty_name}</span>
+                        <span>{item.player_count} uses ({formatPercent(item.population_usage_rate)} pop.)</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="workflow-card">
+                    <div className="workflow-card-title"><span>Timing comparisons</span></div>
+                    {(workflowPlayer.timing_comparisons || []).map((metric) => (
+                      <div key={metric.metric} className="workflow-metric-compare-row">
+                        <span>{metric.metric}</span>
+                        <span>{prettyMetricValue(metric)}</span>
+                        <span className={`workflow-badge workflow-badge-${metric.direction || 'neutral'}`}>{comparativeBadgeLabel(metric.direction)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="workflow-card">
+                    <div className="workflow-card-title"><span>Hotkey comparisons</span></div>
+                    {(workflowPlayer.hotkey_comparisons || []).map((metric) => (
+                      <div key={metric.metric} className="workflow-metric-compare-row">
+                        <span>{metric.metric}</span>
+                        <span>{prettyMetricValue(metric)}</span>
+                        <span className={`workflow-badge workflow-badge-${metric.direction || 'neutral'}`}>{comparativeBadgeLabel(metric.direction)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="workflow-card">
+                    <div className="workflow-card-title"><span>Rally + diversity</span></div>
+                    <div className="workflow-metric-compare-row">
+                      <span>{workflowPlayer.rally_point_comparison?.metric}</span>
+                      <span>{prettyMetricValue(workflowPlayer.rally_point_comparison)}</span>
+                      <span className={`workflow-badge workflow-badge-${workflowPlayer.rally_point_comparison?.direction || 'neutral'}`}>{comparativeBadgeLabel(workflowPlayer.rally_point_comparison?.direction)}</span>
+                    </div>
+                    <div className="workflow-metric-compare-row">
+                      <span>{workflowPlayer.action_diversity_comparison?.metric}</span>
+                      <span>{prettyMetricValue(workflowPlayer.action_diversity_comparison)}</span>
+                      <span className={`workflow-badge workflow-badge-${workflowPlayer.action_diversity_comparison?.direction || 'neutral'}`}>{comparativeBadgeLabel(workflowPlayer.action_diversity_comparison?.direction)}</span>
+                    </div>
+                  </div>
+                  <div className="workflow-card">
+                    <div className="workflow-card-title"><span>Per-race common orders (first 6)</span></div>
+                    {(workflowPlayer.race_orders || []).map((raceOrder) => (
+                      <div key={raceOrder.race} className="workflow-race-order">
+                        <strong>{raceOrder.race}</strong>
+                        <span>Tech: {(raceOrder.tech_order || []).join(' -> ') || '-'}</span>
+                        <span>Upgrades: {(raceOrder.upgrade_order || []).join(' -> ') || '-'}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="workflow-card">
+                    <div className="workflow-card-title"><span>Go to Recent Games</span></div>
                     {workflowPlayer.recent_games?.slice(0, 6).map((g) => (
                       <div key={g.replay_id}>
-                        <button className="btn-switch" onClick={() => openWorkflowGame(g.replay_id)}>{formatRelativeReplayDate(g.replay_date)} - {g.map_name}</button>
+                        <button className="workflow-link-btn" onClick={() => openWorkflowGame(g.replay_id)}>{formatRelativeReplayDate(g.replay_date)} - {g.map_name}</button>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className="workflow-hints">
-                  {workflowPlayer.narrative_hints?.map((hint, idx) => <div key={idx}>{hint}</div>)}
+                <div className="workflow-meta">
+                  <span><strong>Queued orders</strong> {workflowPlayer.queued_games}/{workflowPlayer.games_played} games ({formatPercent(workflowPlayer.queued_game_rate)})</span>
+                  <span><strong>Carrier tendency</strong> {workflowPlayer.carrier_games}/{workflowPlayer.games_played} games ({formatPercent(workflowPlayer.carrier_game_rate)})</span>
                 </div>
               </>
             ) : (

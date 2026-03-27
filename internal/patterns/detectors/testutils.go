@@ -82,4 +82,19 @@ func stringPtr(s string) *string {
 	return &s
 }
 
+type commandSpec struct {
+	playerID byte
+	action   string
+	unit     string
+	seconds  int
+}
+
+func intPtr(i int) *int {
+	return &i
+}
+
+func boolPtr(v bool) *bool {
+	return &v
+}
+
 
