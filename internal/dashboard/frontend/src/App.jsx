@@ -17,11 +17,21 @@ import TimingScatterRows from './components/charts/TimingScatterRows';
 import probeImg from './assets/units/probe.png';
 import scvImg from './assets/units/scv.png';
 import droneImg from './assets/units/drone.png';
+import arbiterImg from './assets/units/arbiter.png';
+import scoutImg from './assets/units/scout.png';
+import reaverImg from './assets/units/reaver.png';
+import overlordImg from './assets/units/overlord.png';
+import scourgeImg from './assets/units/scourge.png';
+import observerImg from './assets/units/observer.png';
 import carrierImg from './assets/units/carrier.png';
 import battlecruiserImg from './assets/units/battlecruiser.png';
+import dropshipImg from './assets/units/dropship.png';
+import scienceVesselImg from './assets/units/sciencevessel.png';
+import wraithImg from './assets/units/wraith.png';
 import marineImg from './assets/units/marine.png';
 import zealotImg from './assets/units/zealot.png';
 import dragoonImg from './assets/units/dragoon.png';
+import siegetankImg from './assets/units/siegetank.png';
 import zerglingImg from './assets/units/zergling.png';
 import hydraliskImg from './assets/units/hydralisk.png';
 import mutaliskImg from './assets/units/mutalisk.png';
@@ -29,10 +39,61 @@ import ultraliskImg from './assets/units/ultralisk.png';
 import goliathImg from './assets/units/goliath.png';
 import vultureImg from './assets/units/vulture.png';
 import medicImg from './assets/units/medic.png';
+import defilerImg from './assets/units/defiler.png';
 import firebatImg from './assets/units/firebat.png';
 import darktemplarImg from './assets/units/darktemplar.png';
 import hightemplarImg from './assets/units/hightemplar.png';
 import lurkerImg from './assets/units/lurker.png';
+import academyBuildingImg from './assets/buildings/academy.webp';
+import arbiterTribunalBuildingImg from './assets/buildings/arbitertribunal.webp';
+import armoryBuildingImg from './assets/buildings/armory.webp';
+import assimilatorBuildingImg from './assets/buildings/assimilator.webp';
+import barracksBuildingImg from './assets/buildings/barracks.webp';
+import bunkerBuildingImg from './assets/buildings/bunker.webp';
+import citadelOfAdunBuildingImg from './assets/buildings/citadelofadun.webp';
+import comsatBuildingImg from './assets/buildings/comsat.webp';
+import commandCenterBuildingImg from './assets/buildings/commandcenter.webp';
+import controlTowerBuildingImg from './assets/buildings/controltower.webp';
+import covertOpsBuildingImg from './assets/buildings/covertops.webp';
+import creepColonyBuildingImg from './assets/buildings/creepcolony.webp';
+import cyberneticsCoreBuildingImg from './assets/buildings/cyberneticscore.webp';
+import defilerMoundBuildingImg from './assets/buildings/defilermound.webp';
+import engineeringBayBuildingImg from './assets/buildings/engineeringbay.webp';
+import evolutionChamberBuildingImg from './assets/buildings/evolutionchamber.webp';
+import extractorBuildingImg from './assets/buildings/extractor.webp';
+import factoryBuildingImg from './assets/buildings/factory.webp';
+import fleetBeaconBuildingImg from './assets/buildings/fleetbeacon.webp';
+import forgeBuildingImg from './assets/buildings/forge.webp';
+import gatewayBuildingImg from './assets/buildings/gateway.webp';
+import greaterSpireBuildingImg from './assets/buildings/greaterspire.webp';
+import hatcheryBuildingImg from './assets/buildings/hatchery.webp';
+import hiveBuildingImg from './assets/buildings/hive.webp';
+import hydraliskDenBuildingImg from './assets/buildings/hydraliskden.webp';
+import infestedCcBuildingImg from './assets/buildings/infestedcc.webp';
+import lairBuildingImg from './assets/buildings/lair.webp';
+import machineShopBuildingImg from './assets/buildings/machineshop.webp';
+import missileTurretBuildingImg from './assets/buildings/missileturret.webp';
+import nexusBuildingImg from './assets/buildings/nexus.webp';
+import nydusCanalBuildingImg from './assets/buildings/nyduscanal.webp';
+import observatoryBuildingImg from './assets/buildings/observatory.webp';
+import photonCannonBuildingImg from './assets/buildings/photoncannon.webp';
+import physicsLabBuildingImg from './assets/buildings/physicslab.webp';
+import pylonBuildingImg from './assets/buildings/pylon.webp';
+import queensNestBuildingImg from './assets/buildings/queensnest.webp';
+import refineryBuildingImg from './assets/buildings/refinery.webp';
+import roboticsFacilityBuildingImg from './assets/buildings/roboticsfacility.webp';
+import roboticsSupportBayBuildingImg from './assets/buildings/roboticssupportbay.webp';
+import scienceFacilityBuildingImg from './assets/buildings/sciencefacility.webp';
+import shieldBatteryBuildingImg from './assets/buildings/shieldbattery.webp';
+import spawningPoolBuildingImg from './assets/buildings/spawningpool.webp';
+import spireBuildingImg from './assets/buildings/spire.webp';
+import sporeColonyBuildingImg from './assets/buildings/sporecolony.webp';
+import stargateBuildingImg from './assets/buildings/stargate.webp';
+import starportBuildingImg from './assets/buildings/starport.webp';
+import sunkenColonyBuildingImg from './assets/buildings/sunkencolony.webp';
+import supplyDepotBuildingImg from './assets/buildings/supplydepot.webp';
+import templarArchivesBuildingImg from './assets/buildings/templararchives.webp';
+import ultraliskCavernBuildingImg from './assets/buildings/ultraliskcavern.webp';
 import './styles.css';
 
 // Helper functions for localStorage
@@ -123,12 +184,187 @@ const getRaceIcon = (race) => {
   return null;
 };
 
+const raceRank = (race) => {
+  const value = String(race || '').trim().toLowerCase();
+  if (value === 'terran') return 0;
+  if (value === 'zerg') return 1;
+  if (value === 'protoss') return 2;
+  return 3;
+};
+
+const getGasMarkerIconForRace = (race) => {
+  const value = String(race || '').trim().toLowerCase();
+  if (value === 'terran') return refineryBuildingImg;
+  if (value === 'zerg') return extractorBuildingImg;
+  if (value === 'protoss') return assimilatorBuildingImg;
+  return extractorBuildingImg;
+};
+
+const getExpansionMarkerIconForRace = (race) => {
+  const value = String(race || '').trim().toLowerCase();
+  if (value === 'terran') return commandCenterBuildingImg;
+  if (value === 'zerg') return hatcheryBuildingImg;
+  if (value === 'protoss') return nexusBuildingImg;
+  return null;
+};
+
+const normalizeTimingDisplayLabel = (label) => {
+  const text = String(label || '').trim();
+  const match = text.match(/\(([^)]+)\)/);
+  if (match && match[1]) return match[1].trim();
+  return text;
+};
+
+const INLINE_UPGRADE_LABEL_MAP = {
+  'Protoss Air Armor': 'Air Armor',
+  'Protoss Air Weapons': 'Air ⚔️',
+  'Protoss Ground Armor': 'Grnd Armor',
+  'Protoss Ground Weapons': 'Grnd ⚔️',
+  'Protoss Plasma Shields': 'Shields',
+  'Terran Ship Weapons': 'Ship ⚔️',
+  'Terran Vehicle Plating': 'Vehicle 🛡️',
+  'Terran Vehicle Weapons': 'Vehicle ⚔️',
+  'Zerg Carapace': '🛡️',
+  'Zerg Flyer Attacks': '🦋 ⚔️',
+  'Zerg Melee Attacks': 'Melee ⚔️',
+  'Zerg Missile Attacks': 'Missile ⚔️',
+};
+
+const inlineTimingUpgradeLabel = (label, order) => {
+  const base = String(label || '').trim();
+  const abbreviated = INLINE_UPGRADE_LABEL_MAP[base];
+  if (!abbreviated) return normalizeTimingDisplayLabel(base);
+  const level = Math.max(1, Number(order) || 1);
+  return `${abbreviated} +${level}`;
+};
+
+const HP_UPGRADE_NAMES = new Set([
+  'Terran Infantry Armor',
+  'Terran Vehicle Plating',
+  'Terran Ship Plating',
+  'Zerg Carapace',
+  'Zerg Flyer Carapace',
+  'Protoss Ground Armor',
+  'Protoss Air Armor',
+  'Terran Infantry Weapons',
+  'Terran Vehicle Weapons',
+  'Terran Ship Weapons',
+  'Zerg Melee Attacks',
+  'Zerg Missile Attacks',
+  'Zerg Flyer Attacks',
+  'Protoss Ground Weapons',
+  'Protoss Air Weapons',
+  'Protoss Plasma Shields',
+]);
+
+const UNIT_RANGE_UPGRADE_NAMES = new Set([
+  'U-238 Shells (Marine Range)',
+  'Ocular Implants (Ghost Sight)',
+  'Antennae (Overlord Sight)',
+  'Grooved Spines (Hydralisk Range)',
+  'Singularity Charge (Dragoon Range)',
+  'Sensor Array (Observer Sight)',
+  'Charon Boosters (Goliath Range)',
+  'Apial Sensors (Scout Sight)',
+]);
+
+const UNIT_SPEED_UPGRADE_NAMES = new Set([
+  'Ion Thrusters (Vulture Speed)',
+  'Pneumatized Carapace (Overlord Speed)',
+  'Metabolic Boost (Zergling Speed)',
+  'Muscular Augments (Hydralisk Speed)',
+  'Leg Enhancement (Zealot Speed)',
+  'Gravitic Drive (Shuttle Speed)',
+  'Gravitic Booster (Observer Speed)',
+  'Gravitic Thrusters (Scout Speed)',
+  'Anabolic Synthesis (Ultralisk Speed)',
+]);
+
+const ENERGY_UPGRADE_NAMES = new Set([
+  'Titan Reactor (Science Vessel Energy)',
+  'Moebius Reactor (Ghost Energy)',
+  'Apollo Reactor (Wraith Energy)',
+  'Colossus Reactor (Battle Cruiser Energy)',
+  'Gamete Meiosis (Queen Energy)',
+  'Defiler Energy',
+  'Khaydarin Core (Arbiter Energy)',
+  'Argus Jewel (Corsair Energy)',
+  'Khaydarin Amulet (Templar Energy)',
+  'Argus Talisman (Dark Archon Energy)',
+  'Caduceus Reactor (Medic Energy)',
+]);
+
+const CAPACITY_COOLDOWN_DAMAGE_UPGRADE_NAMES = new Set([
+  'Scarab Damage',
+  'Reaver Capacity',
+  'Carrier Capacity',
+  'Chitinous Plating (Ultralisk Armor)',
+  'Adrenal Glands (Zergling Attack)',
+  'Ventral Sacs (Overlord Transport)',
+]);
+
+const upgradeCategoryForName = (upgradeName) => {
+  const value = String(upgradeName || '').trim();
+  if (HP_UPGRADE_NAMES.has(value)) return 'hp_upgrades';
+  if (UNIT_RANGE_UPGRADE_NAMES.has(value)) return 'unit_range';
+  if (UNIT_SPEED_UPGRADE_NAMES.has(value)) return 'unit_speed';
+  if (ENERGY_UPGRADE_NAMES.has(value)) return 'energy';
+  if (CAPACITY_COOLDOWN_DAMAGE_UPGRADE_NAMES.has(value)) return 'capacity_cooldown_damage';
+  return 'capacity_cooldown_damage';
+};
+
+const TIMING_CATEGORY_CONFIG = [
+  { id: 'gas', label: 'Gas', title: 'Gas timings (1st-4th)', source: 'gas', markerMode: 'image', markerLabel: 'Gas structure' },
+  { id: 'expansion', label: 'Expansion', title: 'Expansion timings (1st-4th)', source: 'expansion', markerMode: 'image', markerLabel: 'Expansion' },
+  { id: 'hp_upgrades', label: 'HP Upgrades', title: 'HP upgrades timings', source: 'upgrades' },
+  { id: 'unit_range', label: 'Unit Range', title: 'Unit range upgrades timings', source: 'upgrades' },
+  { id: 'unit_speed', label: 'Unit Speed', title: 'Unit speed upgrades timings', source: 'upgrades' },
+  { id: 'energy', label: 'Energy', title: 'Energy upgrades timings', source: 'upgrades' },
+  { id: 'capacity_cooldown_damage', label: 'Capacity/Cooldown/Damage', title: 'Capacity, cooldown and damage upgrades timings', source: 'upgrades' },
+  { id: 'tech', label: 'Tech', title: 'Tech research timings', source: 'tech' },
+];
+
+const TIMING_RACE_ORDER = ['terran', 'zerg', 'protoss'];
+
+const prettyRaceName = (race) => {
+  const value = String(race || '').trim().toLowerCase();
+  if (value === 'terran') return 'Terran';
+  if (value === 'zerg') return 'Zerg';
+  if (value === 'protoss') return 'Protoss';
+  return race || 'Unknown';
+};
+
 const UNIT_ICON_MAP = {
   probe: probeImg,
   scv: scvImg,
   drone: droneImg,
+  arbiter: arbiterImg,
+  protossarbiter: arbiterImg,
+  scout: scoutImg,
+  protossscout: scoutImg,
+  reaver: reaverImg,
+  protossreaver: reaverImg,
+  overlord: overlordImg,
+  zergoverlord: overlordImg,
+  scourge: scourgeImg,
+  zergscourge: scourgeImg,
+  observer: observerImg,
+  protossobserver: observerImg,
   carrier: carrierImg,
+  battlecruiser: battlecruiserImg,
+  terranbattlecruiser: battlecruiserImg,
+  dropship: dropshipImg,
+  terrandropship: dropshipImg,
+  sciencevessel: scienceVesselImg,
+  terransciencevessel: scienceVesselImg,
+  wraith: wraithImg,
+  terranwraith: wraithImg,
   marine: marineImg,
+  siegetank: siegetankImg,
+  siegetanktankmode: siegetankImg,
+  siegetankturrettankmode: siegetankImg,
+  terransiegetanksiegemode: siegetankImg,
+  siegetankturretsiegemode: siegetankImg,
   zealot: zealotImg,
   dragoon: dragoonImg,
   zergling: zerglingImg,
@@ -138,15 +374,105 @@ const UNIT_ICON_MAP = {
   goliath: goliathImg,
   vulture: vultureImg,
   medic: medicImg,
+  defiler: defilerImg,
+  zergdefiler: defilerImg,
   firebat: firebatImg,
   darktemplar: darktemplarImg,
   hightemplar: hightemplarImg,
   lurker: lurkerImg,
+  academy: academyBuildingImg,
+  arbitertribunal: arbiterTribunalBuildingImg,
+  armory: armoryBuildingImg,
+  assimilator: assimilatorBuildingImg,
+  barracks: barracksBuildingImg,
+  bunker: bunkerBuildingImg,
+  citadelofadun: citadelOfAdunBuildingImg,
+  comsat: comsatBuildingImg,
+  commandcenter: commandCenterBuildingImg,
+  controltower: controlTowerBuildingImg,
+  covertops: covertOpsBuildingImg,
+  creepcolony: creepColonyBuildingImg,
+  cyberneticscore: cyberneticsCoreBuildingImg,
+  defilermound: defilerMoundBuildingImg,
+  engineeringbay: engineeringBayBuildingImg,
+  evolutionchamber: evolutionChamberBuildingImg,
+  extractor: extractorBuildingImg,
+  factory: factoryBuildingImg,
+  fleetbeacon: fleetBeaconBuildingImg,
+  forge: forgeBuildingImg,
+  gateway: gatewayBuildingImg,
+  greaterspire: greaterSpireBuildingImg,
+  hatchery: hatcheryBuildingImg,
+  hive: hiveBuildingImg,
+  hydraliskden: hydraliskDenBuildingImg,
+  infestedcc: infestedCcBuildingImg,
+  lair: lairBuildingImg,
+  machineshop: machineShopBuildingImg,
+  missileturret: missileTurretBuildingImg,
+  nexus: nexusBuildingImg,
+  nyduscanal: nydusCanalBuildingImg,
+  observatory: observatoryBuildingImg,
+  photoncannon: photonCannonBuildingImg,
+  physicslab: physicsLabBuildingImg,
+  pylon: pylonBuildingImg,
+  queensnest: queensNestBuildingImg,
+  refinery: refineryBuildingImg,
+  roboticsfacility: roboticsFacilityBuildingImg,
+  roboticssupportbay: roboticsSupportBayBuildingImg,
+  sciencefacility: scienceFacilityBuildingImg,
+  shieldbattery: shieldBatteryBuildingImg,
+  spawningpool: spawningPoolBuildingImg,
+  spire: spireBuildingImg,
+  sporecolony: sporeColonyBuildingImg,
+  stargate: stargateBuildingImg,
+  starport: starportBuildingImg,
+  sunkencolony: sunkenColonyBuildingImg,
+  supplydepot: supplyDepotBuildingImg,
+  templararchives: templarArchivesBuildingImg,
+  ultraliskcavern: ultraliskCavernBuildingImg,
 };
 
 const normalizeUnitName = (value) => String(value || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
 
 const getUnitIcon = (unitType) => UNIT_ICON_MAP[normalizeUnitName(unitType)] || null;
+
+const BUILDING_TYPE_KEYS = new Set([
+  'academy', 'arbitertribunal', 'armory', 'assimilator', 'barracks', 'bunker', 'citadelofadun', 'comsat', 'commandcenter',
+  'controltower', 'covertops', 'creepcolony', 'cyberneticscore', 'defilermound', 'engineeringbay', 'evolutionchamber',
+  'extractor', 'factory', 'fleetbeacon', 'forge', 'gateway', 'greaterspire', 'hatchery', 'hive', 'hydraliskden', 'infestedcc',
+  'lair', 'machineshop', 'missileturret', 'nexus', 'nyduscanal', 'observatory', 'photoncannon', 'physicslab', 'pylon',
+  'queensnest', 'refinery', 'roboticsfacility', 'roboticssupportbay', 'sciencefacility', 'shieldbattery', 'spawningpool', 'spire',
+  'sporecolony', 'stargate', 'starport', 'sunkencolony', 'supplydepot', 'templararchives', 'ultraliskcavern',
+]);
+
+const WORKER_UNIT_KEYS = new Set(['scv', 'drone', 'probe']);
+const SPELLCASTER_UNIT_KEYS = new Set([
+  'ghost', 'medic', 'sciencevessel', 'queen', 'defiler', 'hightemplar', 'darkarchon', 'arbiter',
+]);
+
+const UNIT_TIER_MAP = {
+  scv: 1, drone: 1, probe: 1, marine: 1, firebat: 1, medic: 1, vulture: 1, goliath: 2, ghost: 2, wraith: 2, valkyrie: 2,
+  siegetank: 2, siegetanktankmode: 2, siegetankturrettankmode: 2, terransiegetanksiegemode: 2, siegetankturretsiegemode: 2,
+  sciencevessel: 2, dropship: 2, battlecruiser: 3,
+  zergling: 1, hydralisk: 1, lurker: 2, mutalisk: 2, scourge: 2, queen: 2, defiler: 2, guardian: 3, devourer: 3, ultralisk: 3,
+  zealot: 1, dragoon: 1, darktemplar: 2, hightemplar: 2, reaver: 2, shuttle: 2, observer: 2, corsair: 2, scout: 2, archon: 3, arbiter: 3, carrier: 3,
+};
+
+const BUILDING_TIER_MAP = {
+  commandcenter: 1, supplydepot: 1, barracks: 1, refinery: 1, engineeringbay: 1, missileturret: 1, bunker: 1, academy: 1,
+  factory: 2, armory: 2, starport: 2, comsat: 2, machineshop: 2, controltower: 2, sciencefacility: 2, physicslab: 3, covertops: 3,
+  nexus: 1, pylon: 1, gateway: 1, assimilator: 1, forge: 1, photoncannon: 1, cyberneticscore: 1, shieldbattery: 1,
+  roboticsfacility: 2, citadelofadun: 2, stargate: 2, observatory: 2, roboticssupportbay: 2, templararchives: 2, fleetbeacon: 3, arbitertribunal: 3,
+  hatchery: 1, spawningpool: 1, extractor: 1, evolutionchamber: 1, creepcolony: 1, hydraliskden: 1, lair: 2, sporecolony: 2, sunkencolony: 2,
+  nyduscanal: 2, queensnest: 2, hive: 3, spire: 2, greaterspire: 3, ultraliskcavern: 3, defilermound: 3, infestedcc: 3,
+};
+const DEFENSIVE_BUILDING_KEYS = new Set([
+  'photoncannon',
+  'sporecolony',
+  'sunkencolony',
+  'creepcolony',
+  'missileturret',
+]);
 
 const formatPercent = (value) => `${((Number(value) || 0) * 100).toFixed(1)}%`;
 
@@ -157,7 +483,7 @@ const DEFAULT_SUMMARY_FILTERS = {
   nuke: false,
   drop: false,
   recall: false,
-  race: false,
+  becameRace: false,
   rush: false,
 };
 
@@ -165,7 +491,7 @@ const SUMMARY_TOPIC_PATTERNS = {
   nuke: /\bnuke|nuclear\b/i,
   drop: /\bdrop|dropship|shuttle\b/i,
   recall: /\brecall\b/i,
-  race: /\bprotoss|terran|zerg\b/i,
+  becameRace: /\b(became|becomes)\s+(terran|zerg)\b|\bbecame_(terran|zerg)\b/i,
   rush: /\brush|all[\s-]?in|cheese\b/i,
 };
 
@@ -247,8 +573,15 @@ const minuteFromValue = (value) => {
 };
 
 const formatPatternPillText = (rawName, rawValue, isTruthy) => {
-  if (isTruthy) return `Did ${rawName}`;
+  if (isTruthy) {
+    if (rawName.toLowerCase() === 'never researched') return 'Never Researched';
+    return `Did ${rawName}`;
+  }
   const lowerName = rawName.toLowerCase();
+  if (lowerName === 'became terran' || lowerName === 'became zerg') {
+    const minute = minuteFromValue(rawValue);
+    if (minute !== null) return `${rawName} at ${minute} mins`;
+  }
   if (lowerName.includes('used hotkey groups')) {
     return `${rawName.replace(/\s+at$/i, '')} ${rawValue}`;
   }
@@ -267,14 +600,66 @@ const renderPatternPill = (pattern, keyPrefix, team) => {
     return null;
   }
   const isTruthy = isPatternTruthy(pattern?.value);
-  const icon = patternIconForName(pattern?.pattern_name);
+  const normalizedPatternName = normalizeUnitName(pattern?.pattern_name);
+  let icon = patternIconForName(pattern?.pattern_name);
   const text = formatPatternPillText(rawName, rawValue, isTruthy);
+  let content = <span>{text}</span>;
+  if (isTruthy) {
+    if (normalizedPatternName === 'quickfactory') {
+      icon = null;
+      content = (
+        <span className="workflow-pattern-pill-inline">
+          <span>Quick</span>
+          {getUnitIcon('factory') ? <img src={getUnitIcon('factory')} alt="Factory" className="workflow-pattern-icon" /> : null}
+        </span>
+      );
+    } else if (normalizedPatternName === 'gatethenforge') {
+      icon = null;
+      content = (
+        <span className="workflow-pattern-pill-inline">
+          {getUnitIcon('gateway') ? <img src={getUnitIcon('gateway')} alt="Gateway" className="workflow-pattern-icon" /> : null}
+          <span className="workflow-pattern-arrow">then</span>
+          {getUnitIcon('forge') ? <img src={getUnitIcon('forge')} alt="Forge" className="workflow-pattern-icon" /> : null}
+        </span>
+      );
+    } else if (normalizedPatternName === 'forgethengate') {
+      icon = null;
+      content = (
+        <span className="workflow-pattern-pill-inline">
+          {getUnitIcon('forge') ? <img src={getUnitIcon('forge')} alt="Forge" className="workflow-pattern-icon" /> : null}
+          <span className="workflow-pattern-arrow">then</span>
+          {getUnitIcon('gateway') ? <img src={getUnitIcon('gateway')} alt="Gateway" className="workflow-pattern-icon" /> : null}
+        </span>
+      );
+    } else if (normalizedPatternName === 'hatchbeforepool') {
+      icon = null;
+      content = (
+        <span className="workflow-pattern-pill-inline">
+          {getUnitIcon('hatchery') ? <img src={getUnitIcon('hatchery')} alt="Hatchery" className="workflow-pattern-icon" /> : null}
+          <span className="workflow-pattern-arrow">then</span>
+          {getUnitIcon('spawningpool') ? <img src={getUnitIcon('spawningpool')} alt="Spawning Pool" className="workflow-pattern-icon" /> : null}
+        </span>
+      );
+    } else if (normalizedPatternName === 'mech') {
+      icon = null;
+      content = (
+        <span className="workflow-pattern-pill-inline">
+          {getUnitIcon('siegetank') ? <img src={getUnitIcon('siegetank')} alt="Tank" className="workflow-pattern-icon" /> : null}
+          <span>Mech</span>
+        </span>
+      );
+    } else if (normalizedPatternName === 'carriers' || normalizedPatternName === 'battlecruisers') {
+      content = <span>x10+</span>;
+    } else if (icon) {
+      content = <span>Did</span>;
+    }
+  }
   const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.pattern_name}-${pattern?.value}`;
   return (
     <span key={key} className={`workflow-pattern-pill${isTruthy ? ' workflow-pattern-pill-strong' : ''}`}>
       {team !== undefined ? <span className="team-dot" style={{ backgroundColor: getTeamColor(team) }}></span> : null}
       {icon ? <img src={icon} alt={rawName} className="workflow-pattern-icon" /> : null}
-      <span>{text}</span>
+      {content}
     </span>
   );
 };
@@ -285,16 +670,49 @@ const formatSigned = (value) => {
   return n.toFixed(2);
 };
 
-const comparativeBadgeLabel = (direction) => {
-  if (direction === 'up') return 'Higher than peers';
-  if (direction === 'down') return 'Lower than peers';
-  return 'Near peers';
+const FINGERPRINT_METRIC_HELP = {
+  'Games using hotkeys (%)': 'Per game, this is 100% when at least one hotkey is used, then averaged across all games. Games with missing command streams may appear as 0%.',
+  'Games with queued orders (%)': 'Share of games where at least one queued command exists. This depends on queued flags in command logs.',
+  'Assigned hotkey / Used Hotkey actions': 'Per game, Assign hotkey actions divided by Select hotkey actions, expressed as a percentage and averaged across games.',
+  'Hotkey commands as % of total': 'Per game, hotkey commands divided by all commands, expressed as a percentage and averaged across games.',
+  'Replays with at least one Rally Point (%)': 'Percentage of this player\'s replays where they issued at least one Rally Point command.',
+  'Rally Points per 10 minutes (rally replays)': 'Average number of Rally Point commands per 10 minutes, computed only over replays where at least one was used.',
+  'Action type diversity': 'Average per-game breadth of action types plus targeted-order variety. It shows variety, not quality or efficiency.',
+};
+
+const metricHelpText = (metricName) => FINGERPRINT_METRIC_HELP[metricName] || 'Computed from this player\'s replay command data. Sparse or noisy command streams can skew values.';
+const PLAYER_OUTLIER_HELP = [
+  'Baselines are computed against human, non-observer players of the same primary race only.',
+  'For Protoss players, non-Protoss techs/upgrades and non-Protoss cast orders are excluded to avoid mind-control leakage.',
+  'Techs/Upgrades use "used at least once in a game" rates. Targeted Orders use share of total order instances (not replay incidence).',
+  'An item appears if it passes either threshold: "Rare signature" (TF-IDF) or "Much more frequent than peers" (ratio vs baseline).',
+].join(' ');
+
+const OUTLIER_CATEGORY_SUBTITLE = {
+  'Tech researched': 'Rate = games with this tech at least once / total same-race games.',
+  'Upgrades researched': 'Rate = games with this upgrade at least once / total same-race games.',
+  'Targeted orders': 'Rate = this order count / all targeted-order counts for that race (raw instances).',
+};
+
+const HelpTooltip = ({ text, label }) => (
+  <span className="workflow-help-wrap" aria-label={label || 'Explanation'}>
+    <span className="workflow-metric-help">ⓘ</span>
+    <span className="workflow-help-bubble">{text}</span>
+  </span>
+);
+
+const outlierQualifierClassName = (qualifier) => {
+  const normalized = String(qualifier || '').toLowerCase();
+  if (normalized.includes('rare signature')) return 'workflow-outlier-pill workflow-outlier-pill-rare';
+  if (normalized.includes('much more frequent than peers')) return 'workflow-outlier-pill workflow-outlier-pill-frequent';
+  return 'workflow-outlier-pill';
 };
 
 const prettyMetricValue = (metric) => {
   const value = Number(metric?.player_value) || 0;
   if (String(metric?.metric || '').toLowerCase().includes('%')) {
-    return formatPercent(value);
+    if (Math.abs(value) <= 1) return formatPercent(value);
+    return `${value.toFixed(1)}%`;
   }
   if (String(metric?.metric || '').toLowerCase().includes('seconds')) {
     return formatDuration(value);
@@ -307,6 +725,40 @@ const TEAM_COLORS = ['#60A5FA', '#F472B6', '#34D399', '#FBBF24', '#A78BFA', '#22
 const getTeamColor = (team) => {
   const n = Number(team) || 0;
   return TEAM_COLORS[Math.abs(n) % TEAM_COLORS.length];
+};
+
+const teamColorRgba = (team, alpha = 0.14) => {
+  const hex = getTeamColor(team).replace('#', '');
+  const expanded = hex.length === 3 ? hex.split('').map((c) => `${c}${c}`).join('') : hex;
+  const r = parseInt(expanded.slice(0, 2), 16);
+  const g = parseInt(expanded.slice(2, 4), 16);
+  const b = parseInt(expanded.slice(4, 6), 16);
+  return `rgba(${Number.isNaN(r) ? 96 : r}, ${Number.isNaN(g) ? 165 : g}, ${Number.isNaN(b) ? 250 : b}, ${alpha})`;
+};
+
+const WORKFLOW_GAMES_PAGE_SIZE = 30;
+
+const toggleFilterValue = (values, value) => {
+  const normalized = String(value || '').trim();
+  if (!normalized) return values;
+  if (values.includes(normalized)) {
+    return values.filter((item) => item !== normalized);
+  }
+  return [...values, normalized];
+};
+
+const teamGroupsFromPlayers = (players) => {
+  const groups = [];
+  const byTeam = new Map();
+  (players || []).forEach((player) => {
+    const team = Number(player?.team || 0);
+    if (!byTeam.has(team)) {
+      byTeam.set(team, []);
+      groups.push(byTeam.get(team));
+    }
+    byTeam.get(team).push(player);
+  });
+  return groups;
 };
 
 function App() {
@@ -335,8 +787,23 @@ function App() {
   });
   const autoIngestInFlight = useRef(false);
   const [activeView, setActiveView] = useState('games');
+  const workflowViewHistoryRef = useRef([]);
   const [workflowGames, setWorkflowGames] = useState([]);
   const [workflowGamesLoading, setWorkflowGamesLoading] = useState(false);
+  const [workflowGamesPage, setWorkflowGamesPage] = useState(1);
+  const [workflowGamesTotal, setWorkflowGamesTotal] = useState(0);
+  const [workflowGamesFilterOptions, setWorkflowGamesFilterOptions] = useState({
+    players: [],
+    maps: [],
+    durations: [],
+    featuring: [],
+  });
+  const [workflowGamesFilters, setWorkflowGamesFilters] = useState({
+    player: [],
+    map: [],
+    duration: [],
+    featuring: [],
+  });
   const [workflowGameDetailLoading, setWorkflowGameDetailLoading] = useState(false);
   const [workflowPlayerLoading, setWorkflowPlayerLoading] = useState(false);
   const [selectedReplayId, setSelectedReplayId] = useState(null);
@@ -344,11 +811,28 @@ function App() {
   const [workflowGame, setWorkflowGame] = useState(null);
   const [workflowGameTab, setWorkflowGameTab] = useState('summary');
   const [workflowPlayer, setWorkflowPlayer] = useState(null);
+  const [workflowPlayerMetrics, setWorkflowPlayerMetrics] = useState(null);
+  const [workflowPlayerMetricsLoading, setWorkflowPlayerMetricsLoading] = useState(false);
+  const [workflowPlayerMetricsError, setWorkflowPlayerMetricsError] = useState('');
+  const [workflowPlayerOutliers, setWorkflowPlayerOutliers] = useState(null);
+  const [workflowPlayerOutliersLoading, setWorkflowPlayerOutliersLoading] = useState(false);
+  const [workflowPlayerOutliersError, setWorkflowPlayerOutliersError] = useState('');
   const [workflowQuestion, setWorkflowQuestion] = useState('');
   const [workflowAnswer, setWorkflowAnswer] = useState(null);
   const [askingWorkflow, setAskingWorkflow] = useState(false);
   const [topPlayerColors, setTopPlayerColors] = useState({});
   const [workflowSummaryFilters, setWorkflowSummaryFilters] = useState(DEFAULT_SUMMARY_FILTERS);
+  const [workflowProductionTab, setWorkflowProductionTab] = useState('units');
+  const [workflowUnitFilterMode, setWorkflowUnitFilterMode] = useState('all');
+  const [workflowUnitNameFilter, setWorkflowUnitNameFilter] = useState('');
+  const [workflowBuildingFilterMode, setWorkflowBuildingFilterMode] = useState('all');
+  const [workflowBuildingNameFilter, setWorkflowBuildingNameFilter] = useState('');
+  const [workflowTimingCategory, setWorkflowTimingCategory] = useState('gas');
+  const [workflowHpUpgradeFilters, setWorkflowHpUpgradeFilters] = useState({
+    terran: '',
+    zerg: '',
+    protoss: '',
+  });
 
   const loadDashboard = async (url, varValues = null, skipVarInit = false) => {
     try {
@@ -410,12 +894,22 @@ function App() {
     }
   };
 
-  const loadWorkflowGames = async () => {
+  const loadWorkflowGames = async ({ page = workflowGamesPage, filters = workflowGamesFilters } = {}) => {
     try {
       setWorkflowGamesLoading(true);
-      const data = await api.listWorkflowGames({ limit: 30, offset: 0 });
+      const safePage = Math.max(1, Number(page) || 1);
+      const offset = (safePage - 1) * WORKFLOW_GAMES_PAGE_SIZE;
+      const data = await api.listWorkflowGames({
+        limit: WORKFLOW_GAMES_PAGE_SIZE,
+        offset,
+        filters,
+      });
       const items = data?.items || [];
       setWorkflowGames(items);
+      setWorkflowGamesTotal(Number(data?.total) || 0);
+      if (data?.filter_options) {
+        setWorkflowGamesFilterOptions(data.filter_options);
+      }
       if (!selectedReplayId && items.length > 0) {
         setSelectedReplayId(items[0].replay_id);
       }
@@ -446,7 +940,14 @@ function App() {
       setWorkflowAnswer(null);
       setWorkflowQuestion('');
       setWorkflowSummaryFilters(DEFAULT_SUMMARY_FILTERS);
-      setActiveView('game');
+      setWorkflowProductionTab('units');
+      setWorkflowUnitFilterMode('all');
+      setWorkflowUnitNameFilter('');
+      setWorkflowBuildingFilterMode('all');
+      setWorkflowBuildingNameFilter('');
+      setWorkflowTimingCategory('gas');
+      setWorkflowHpUpgradeFilters({ terran: '', zerg: '', protoss: '' });
+      navigateWorkflowView('game');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -455,15 +956,52 @@ function App() {
   };
 
   const openWorkflowPlayer = async (playerKey) => {
+    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
+    const loadPlayerMetrics = async () => {
+      if (!normalizedPlayerKey) return;
+      try {
+        setWorkflowPlayerMetricsLoading(true);
+        setWorkflowPlayerMetricsError('');
+        const metricsData = await api.getWorkflowPlayerMetrics(normalizedPlayerKey);
+        setWorkflowPlayerMetrics(metricsData);
+      } catch (err) {
+        setWorkflowPlayerMetricsError(err.message || 'Failed to load metrics');
+        setWorkflowPlayerMetrics(null);
+      } finally {
+        setWorkflowPlayerMetricsLoading(false);
+      }
+    };
+    const loadPlayerOutliers = async () => {
+      if (!normalizedPlayerKey) return;
+      try {
+        setWorkflowPlayerOutliersLoading(true);
+        setWorkflowPlayerOutliersError('');
+        const outlierData = await api.getWorkflowPlayerOutliers(normalizedPlayerKey);
+        setWorkflowPlayerOutliers(outlierData);
+      } catch (err) {
+        setWorkflowPlayerOutliersError(err.message || 'Failed to load outliers');
+        setWorkflowPlayerOutliers(null);
+      } finally {
+        setWorkflowPlayerOutliersLoading(false);
+      }
+    };
     try {
       setWorkflowPlayerLoading(true);
       setError(null);
       const data = await api.getWorkflowPlayer(playerKey);
       setWorkflowPlayer(data);
+      setWorkflowPlayerMetrics(null);
+      setWorkflowPlayerMetricsError('');
+      setWorkflowPlayerMetricsLoading(false);
+      setWorkflowPlayerOutliers(null);
+      setWorkflowPlayerOutliersError('');
+      setWorkflowPlayerOutliersLoading(false);
       setSelectedPlayerKey(playerKey);
       setWorkflowAnswer(null);
       setWorkflowQuestion('');
-      setActiveView('player');
+      navigateWorkflowView('player');
+      loadPlayerMetrics();
+      loadPlayerOutliers();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -476,10 +1014,13 @@ function App() {
     const stored = getStoredVariableValues('default');
     loadDashboard('default', stored || undefined);
     loadDashboards();
-    loadWorkflowGames();
     loadTopPlayerColors();
     checkOpenAIStatus();
   }, []);
+
+  useEffect(() => {
+    loadWorkflowGames({ page: workflowGamesPage, filters: workflowGamesFilters });
+  }, [workflowGamesPage, workflowGamesFilters]);
 
   useEffect(() => {
     saveAutoIngestSettings({
@@ -640,6 +1181,55 @@ function App() {
     await loadDashboard(currentDashboardUrl, newVarValues);
   };
 
+  const setWorkflowGameSingleFilter = (name, nextValue) => {
+    setWorkflowGamesPage(1);
+    setWorkflowGamesFilters((prev) => ({
+      ...prev,
+      [name]: nextValue ? [nextValue] : [],
+    }));
+  };
+
+  const toggleWorkflowGameMultiFilter = (name, value) => {
+    setWorkflowGamesPage(1);
+    setWorkflowGamesFilters((prev) => ({
+      ...prev,
+      [name]: toggleFilterValue(prev[name] || [], value),
+    }));
+  };
+
+  const clearWorkflowGamesFilters = () => {
+    setWorkflowGamesPage(1);
+    setWorkflowGamesFilters({
+      player: [],
+      map: [],
+      duration: [],
+      featuring: [],
+    });
+  };
+
+  const navigateWorkflowView = (nextView) => {
+    setActiveView((currentView) => {
+      if (currentView === nextView) return currentView;
+      workflowViewHistoryRef.current.push(currentView);
+      if (workflowViewHistoryRef.current.length > 30) {
+        workflowViewHistoryRef.current.shift();
+      }
+      return nextView;
+    });
+  };
+
+  const goBackWorkflowView = () => {
+    setActiveView((currentView) => {
+      while (workflowViewHistoryRef.current.length > 0) {
+        const previous = workflowViewHistoryRef.current.pop();
+        if (previous && previous !== currentView) {
+          return previous;
+        }
+      }
+      return 'games';
+    });
+  };
+
   const handleWorkflowAsk = async (e) => {
     e.preventDefault();
     const question = workflowQuestion.trim();
@@ -692,6 +1282,31 @@ function App() {
         {sideIndex < sides.length - 1 ? ' vs ' : ''}
       </span>
     ));
+  };
+
+  const renderWorkflowGameListPlayers = (game) => {
+    const players = Array.isArray(game?.players) ? game.players : [];
+    if (players.length === 0) {
+      return renderPlayersMatchup(game?.players_label || '');
+    }
+    const groups = teamGroupsFromPlayers(players);
+    return groups.map((group, groupIdx) => {
+      const hasTeam = group.length > 1;
+      return (
+        <span key={`team-${groupIdx}`}>
+          {hasTeam ? '(' : ''}
+          {group.map((player, idx) => (
+            <span key={`${player.player_id}-${idx}`}>
+              {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+              {renderPlayerLabel(player.name)}
+              {idx < group.length - 1 ? ' & ' : ''}
+            </span>
+          ))}
+          {hasTeam ? ')' : ''}
+          {groupIdx < groups.length - 1 ? ' vs ' : ''}
+        </span>
+      );
+    });
   };
 
   const renderWorkflowAiResult = () => {
@@ -779,6 +1394,15 @@ function App() {
 
   const filteredReplayPatterns = workflowGame?.replay_patterns || [];
   const filteredTeamPatterns = workflowGame?.team_patterns || [];
+  const workflowPlayerOutlierGroups = useMemo(() => {
+    const grouped = new Map();
+    (workflowPlayerOutliers?.items || []).forEach((item) => {
+      const key = String(item?.category || 'Other');
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(item);
+    });
+    return Array.from(grouped.entries());
+  }, [workflowPlayerOutliers]);
 
   const filteredGameEvents = (workflowGame?.game_events || []).filter((event) => {
     if (workflowSummaryFilters.player && !String(event.description || '').toLowerCase().includes(workflowSummaryFilters.player.toLowerCase())) {
@@ -790,6 +1414,196 @@ function App() {
     }
     return summaryTextMatches(`${event.type} ${event.description}`);
   });
+
+  const workflowPlayers = workflowGame?.players || [];
+  const workflowPlayerNameWidthCh = useMemo(() => {
+    const longestNameLength = workflowPlayers.reduce((longest, player) => {
+      const nameLength = String(player?.name || '').trim().length;
+      return Math.max(longest, nameLength);
+    }, 0);
+    if (!longestNameLength) return 15;
+    return Math.max(12, Math.min(24, longestNameLength + 3));
+  }, [workflowPlayers]);
+  const workflowPlayersById = useMemo(
+    () => new Map(workflowPlayers.map((player) => [player.player_id, player])),
+    [workflowPlayers],
+  );
+  const hasTeamInfo = useMemo(() => {
+    const uniqueTeams = new Set(workflowPlayers.map((player) => player.team));
+    return uniqueTeams.size > 1;
+  }, [workflowPlayers]);
+  const workflowTimingCategoryConfig = useMemo(
+    () => TIMING_CATEGORY_CONFIG.find((cfg) => cfg.id === workflowTimingCategory) || TIMING_CATEGORY_CONFIG[0],
+    [workflowTimingCategory],
+  );
+  const workflowTimingSeries = useMemo(() => {
+    const timings = workflowGame?.timings || {};
+    const sourceSeries = Array.isArray(timings?.[workflowTimingCategoryConfig.source])
+      ? timings[workflowTimingCategoryConfig.source]
+      : [];
+    const sortedSeries = [...sourceSeries].sort((a, b) => {
+      const raceDiff = raceRank(workflowPlayersById.get(a?.player_id)?.race) - raceRank(workflowPlayersById.get(b?.player_id)?.race);
+      if (raceDiff !== 0) return raceDiff;
+      const nameA = String(a?.name || '').toLowerCase();
+      const nameB = String(b?.name || '').toLowerCase();
+      if (nameA !== nameB) return nameA.localeCompare(nameB);
+      return Number(a?.player_id || 0) - Number(b?.player_id || 0);
+    });
+
+    return sortedSeries.map((playerSeries) => {
+      const playerRace = String(workflowPlayersById.get(playerSeries?.player_id)?.race || '').trim();
+      const sourcePoints = Array.isArray(playerSeries?.points) ? playerSeries.points : [];
+      const points = sourcePoints
+        .map((point) => {
+          const second = Number(point?.second);
+          if (!Number.isFinite(second)) return null;
+          const order = Number(point?.order) || 0;
+          const rawLabel = String(point?.label || '').trim();
+          const upgradeCategory = workflowTimingCategoryConfig.source === 'upgrades' ? upgradeCategoryForName(rawLabel) : '';
+          if (workflowTimingCategoryConfig.source === 'upgrades' && upgradeCategory !== workflowTimingCategory) return null;
+          let displayLabel = rawLabel;
+          let categoryLabel = 'Timing';
+          let markerImage = null;
+          let markerLabel = '';
+          let isRepeatable = false;
+          let maxLevel = 1;
+
+          if (workflowTimingCategoryConfig.source === 'upgrades') {
+            displayLabel = inlineTimingUpgradeLabel(rawLabel, order);
+            categoryLabel = workflowTimingCategoryConfig.label;
+            isRepeatable = upgradeCategory === 'hp_upgrades';
+            maxLevel = isRepeatable ? 3 : 1;
+          } else if (workflowTimingCategoryConfig.source === 'tech') {
+            displayLabel = normalizeTimingDisplayLabel(rawLabel);
+            categoryLabel = 'Tech';
+          } else if (workflowTimingCategory === 'gas') {
+            displayLabel = `Gas #${order || 1}`;
+            categoryLabel = 'Gas';
+            markerImage = getGasMarkerIconForRace(playerRace);
+            markerLabel = workflowTimingCategoryConfig.markerLabel || 'Gas';
+          } else if (workflowTimingCategory === 'expansion') {
+            displayLabel = `Expansion #${order || 1}`;
+            categoryLabel = 'Expansion';
+            markerImage = getExpansionMarkerIconForRace(playerRace);
+            markerLabel = workflowTimingCategoryConfig.markerLabel || 'Expansion';
+          }
+
+          return {
+            ...point,
+            second,
+            order,
+            label: rawLabel,
+            display_label: displayLabel,
+            category: upgradeCategory || workflowTimingCategory,
+            category_label: categoryLabel,
+            race: playerRace,
+            marker_image: markerImage,
+            marker_label: markerLabel,
+            is_repeatable: isRepeatable,
+            max_level: maxLevel,
+          };
+        })
+        .filter(Boolean);
+
+      return {
+        ...playerSeries,
+        race: playerRace,
+        race_icon: getRaceIcon(playerRace),
+        points,
+      };
+    });
+  }, [workflowGame?.timings, workflowTimingCategoryConfig, workflowTimingCategory, workflowPlayersById]);
+  const workflowTimingUsesLabelColors = useMemo(
+    () => ['hp_upgrades', 'unit_range', 'unit_speed', 'energy', 'capacity_cooldown_damage', 'tech'].includes(workflowTimingCategory),
+    [workflowTimingCategory],
+  );
+  const workflowTimingAxisMode = useMemo(
+    () => (['hp_upgrades', 'unit_range', 'unit_speed', 'energy', 'capacity_cooldown_damage', 'tech'].includes(workflowTimingCategory) ? 'compressed15' : 'linear'),
+    [workflowTimingCategory],
+  );
+  const workflowTimingInlineLegend = useMemo(
+    () => ['hp_upgrades', 'unit_range', 'unit_speed', 'energy', 'capacity_cooldown_damage', 'tech'].includes(workflowTimingCategory),
+    [workflowTimingCategory],
+  );
+  const workflowTimingAxisTrimMaxSecond = useMemo(() => {
+    if (!['gas', 'expansion'].includes(workflowTimingCategory)) return undefined;
+    const maxPointSecond = workflowTimingSeries.reduce((maxSecond, playerSeries) => {
+      const playerMax = (playerSeries?.points || []).reduce((innerMax, point) => {
+        const second = Number(point?.second);
+        return Number.isFinite(second) ? Math.max(innerMax, second) : innerMax;
+      }, 0);
+      return Math.max(maxSecond, playerMax);
+    }, 0);
+    return maxPointSecond > 0 ? maxPointSecond : undefined;
+  }, [workflowTimingCategory, workflowTimingSeries]);
+  const workflowTimingNotice = useMemo(
+    () => (workflowTimingCategory === 'expansion'
+      ? '⚠️ These are base expansions, not just Nexus/Hatchery/CC buildings.'
+      : ''),
+    [workflowTimingCategory],
+  );
+  const workflowHpTimingByRace = useMemo(() => {
+    if (workflowTimingCategory !== 'hp_upgrades') return [];
+    return TIMING_RACE_ORDER.map((race) => {
+      const raceSeries = workflowTimingSeries.filter((playerSeries) => String(playerSeries?.race || '').trim().toLowerCase() === race);
+      const labelOptions = Array.from(new Set(
+        raceSeries.flatMap((playerSeries) => (playerSeries?.points || []).map((point) => String(point?.label || '').trim()))
+          .filter(Boolean),
+      )).sort((a, b) => a.localeCompare(b));
+      const selectedValue = String(workflowHpUpgradeFilters[race] || '').trim();
+      const selected = labelOptions.includes(selectedValue) ? selectedValue : (labelOptions[0] || '');
+      const filteredSeries = raceSeries.map((playerSeries) => ({
+        ...playerSeries,
+        points: (playerSeries?.points || [])
+          .filter((point) => selected && String(point?.label || '').trim() === selected)
+          .map((point) => ({
+            ...point,
+            display_label: `+${Math.max(1, Number(point?.order) || 1)}`,
+          })),
+      }));
+      return {
+        race,
+        raceLabel: prettyRaceName(race),
+        labelOptions,
+        selected,
+        series: filteredSeries,
+      };
+    }).filter((entry) => entry.series.some((playerSeries) => (playerSeries?.points || []).length > 0));
+  }, [workflowTimingCategory, workflowTimingSeries, workflowHpUpgradeFilters]);
+
+  const filterProductionEntries = (entries, view) => {
+    const mode = view === 'units' ? workflowUnitFilterMode : workflowBuildingFilterMode;
+    const nameNeedle = String(view === 'units' ? workflowUnitNameFilter : workflowBuildingNameFilter).trim().toLowerCase();
+    return (entries || []).filter((entry) => {
+      const unitType = String(entry?.unit_type || '');
+      const key = normalizeUnitName(unitType);
+      const isBuilding = BUILDING_TYPE_KEYS.has(key);
+      if (view === 'units' && isBuilding) return false;
+      if (view === 'buildings' && !isBuilding) return false;
+      if (nameNeedle && !unitType.toLowerCase().includes(nameNeedle)) return false;
+      if (mode === 'all') return true;
+      if (view === 'units') {
+        if (mode === 'workers') return WORKER_UNIT_KEYS.has(key);
+        if (mode === 'non-workers') return !WORKER_UNIT_KEYS.has(key);
+        if (mode === 'spellcasters') return SPELLCASTER_UNIT_KEYS.has(key);
+        if (mode === 'tier-1') return UNIT_TIER_MAP[key] === 1;
+        if (mode === 'tier-2') return UNIT_TIER_MAP[key] === 2;
+        if (mode === 'tier-3') return UNIT_TIER_MAP[key] === 3;
+      } else {
+        if (mode === 'defenses') return DEFENSIVE_BUILDING_KEYS.has(key);
+        if (mode === 'tier-1') return BUILDING_TIER_MAP[key] === 1;
+        if (mode === 'tier-2') return BUILDING_TIER_MAP[key] === 2;
+        if (mode === 'tier-3') return BUILDING_TIER_MAP[key] === 3;
+      }
+      return true;
+    });
+  };
+
+  const workflowGamesTotalPages = Math.max(1, Math.ceil((Number(workflowGamesTotal) || 0) / WORKFLOW_GAMES_PAGE_SIZE));
+  const workflowGamesFrom = workflowGames.length === 0 ? 0 : ((workflowGamesPage - 1) * WORKFLOW_GAMES_PAGE_SIZE) + 1;
+  const workflowGamesTo = workflowGames.length === 0
+    ? 0
+    : Math.min((workflowGamesPage - 1) * WORKFLOW_GAMES_PAGE_SIZE + workflowGames.length, Number(workflowGamesTotal) || 0);
 
   if (loading && !dashboard && activeView === 'dashboards') {
     return (
@@ -803,8 +1617,8 @@ function App() {
     <div className="app">
       <div className="dashboard-container">
         <div className="workflow-nav">
-          <button className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => setActiveView('games')}>Games</button>
-          <button className={`btn-manage ${activeView === 'dashboards' ? 'workflow-nav-active' : ''}`} onClick={() => setActiveView('dashboards')}>Custom Dashboards</button>
+          <button className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateWorkflowView('games')}>Games</button>
+          <button className={`btn-manage ${activeView === 'dashboards' ? 'workflow-nav-active' : ''}`} onClick={() => navigateWorkflowView('dashboards')}>Custom Dashboards</button>
           <button onClick={() => setShowIngestPanel((prev) => !prev)} className="btn-manage">{showIngestPanel ? 'Close Ingest' : 'Ingest'}</button>
         </div>
 
@@ -875,32 +1689,124 @@ function App() {
 
         {activeView === 'games' && (
           <div className="workflow-panel">
-            <h2>Latest Games</h2>
+            <h2>Games</h2>
+            <div className="workflow-summary-filter-row workflow-games-filter-row">
+              <select
+                className="workflow-summary-filter-select"
+                value={workflowGamesFilters.player[0] || ''}
+                onChange={(e) => setWorkflowGameSingleFilter('player', e.target.value)}
+              >
+                <option value="">Any player (5+ games)</option>
+                {(workflowGamesFilterOptions.players || []).map((option) => (
+                  <option key={`wf-player-${option.key}`} value={option.key}>
+                    {option.label} ({option.games})
+                  </option>
+                ))}
+              </select>
+              <select
+                className="workflow-summary-filter-select"
+                value={workflowGamesFilters.map[0] || ''}
+                onChange={(e) => setWorkflowGameSingleFilter('map', e.target.value)}
+              >
+                <option value="">Any map (top 15)</option>
+                {(workflowGamesFilterOptions.maps || []).map((option) => (
+                  <option key={`wf-map-${option.key}`} value={option.key}>
+                    {option.label} ({option.games})
+                  </option>
+                ))}
+              </select>
+              <div className="workflow-pattern-pills workflow-games-filter-pills">
+                {(workflowGamesFilterOptions.durations || []).map((option) => {
+                  const active = (workflowGamesFilters.duration || []).includes(option.key);
+                  return (
+                    <button
+                      key={`wf-duration-${option.key}`}
+                      type="button"
+                      className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
+                      onClick={() => toggleWorkflowGameMultiFilter('duration', option.key)}
+                    >
+                      {option.label} ({option.games})
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="workflow-pattern-pills workflow-games-filter-pills">
+                {(workflowGamesFilterOptions.featuring || []).map((option) => {
+                  const active = (workflowGamesFilters.featuring || []).includes(option.key);
+                  return (
+                    <button
+                      key={`wf-feature-${option.key}`}
+                      type="button"
+                      className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
+                      onClick={() => toggleWorkflowGameMultiFilter('featuring', option.key)}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <button type="button" className="btn-create-manual" onClick={clearWorkflowGamesFilters}>Clear filters</button>
+            </div>
             {workflowGamesLoading ? (
               <div className="loading">Loading games...</div>
             ) : (
-              <table className="data-table workflow-table">
-                <thead>
-                  <tr>
-                    <th>Played</th>
-                    <th>Players</th>
-                    <th>Map</th>
-                    <th>Duration</th>
-                    <th>Winner</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {workflowGames.map((game) => (
-                    <tr key={game.replay_id} className={selectedReplayId === game.replay_id ? 'workflow-selected-row' : ''} onClick={() => openWorkflowGame(game.replay_id)}>
-                      <td>{formatRelativeReplayDate(game.replay_date)}</td>
-                      <td>{renderPlayersMatchup(game.players_label)}</td>
-                      <td>{game.map_name}</td>
-                      <td>{formatDuration(game.duration_seconds)}</td>
-                      <td>{game.winners_label ? renderPlayersMatchup(game.winners_label) : '-'}</td>
+              <>
+                <table className="data-table workflow-table">
+                  <thead>
+                    <tr>
+                      <th>Played</th>
+                      <th>Players</th>
+                      <th>Map</th>
+                      <th>Duration</th>
+                      <th>Featuring</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {workflowGames.map((game) => (
+                      <tr key={game.replay_id} className={selectedReplayId === game.replay_id ? 'workflow-selected-row' : ''} onClick={() => openWorkflowGame(game.replay_id)}>
+                        <td>{formatRelativeReplayDate(game.replay_date)}</td>
+                        <td>{renderWorkflowGameListPlayers(game)}</td>
+                        <td>{game.map_name}</td>
+                        <td>{formatDuration(game.duration_seconds)}</td>
+                        <td>
+                          {(game.featuring || []).length === 0 ? (
+                            <span className="workflow-empty-inline">-</span>
+                          ) : (
+                            <div className="workflow-pattern-pills">
+                              {(game.featuring || []).map((pill) => (
+                                <span key={`${game.replay_id}-${pill}`} className="workflow-pattern-pill workflow-feature-pill">
+                                  <span>{pill}</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="workflow-pagination-row">
+                  <button
+                    type="button"
+                    className="btn-switch"
+                    disabled={workflowGamesPage <= 1 || workflowGamesLoading}
+                    onClick={() => setWorkflowGamesPage((prev) => Math.max(1, prev - 1))}
+                  >
+                    Previous
+                  </button>
+                  <span>
+                    Page {workflowGamesPage} / {workflowGamesTotalPages} - Showing {workflowGamesFrom}-{workflowGamesTo} of {workflowGamesTotal}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-switch"
+                    disabled={workflowGamesPage >= workflowGamesTotalPages || workflowGamesLoading}
+                    onClick={() => setWorkflowGamesPage((prev) => Math.min(workflowGamesTotalPages, prev + 1))}
+                  >
+                    Next
+                  </button>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -913,7 +1819,7 @@ function App() {
               <>
                 <div className="workflow-title-row">
                   <h2>{renderPlayersMatchup(workflowGame.players?.map((p) => p.name).join(' vs '))}</h2>
-                  <button className="btn-switch" onClick={() => setActiveView('games')}>Back to games</button>
+                  <button className="btn-switch" onClick={goBackWorkflowView}>Back</button>
                 </div>
                 <div className="workflow-meta">
                   <span>{formatRelativeReplayDate(workflowGame.replay_date)}</span>
@@ -922,13 +1828,14 @@ function App() {
                 </div>
                 <div className="workflow-nav">
                   <button className={`btn-switch ${workflowGameTab === 'summary' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('summary')}>Summary</button>
+                  <button className={`btn-switch ${workflowGameTab === 'events' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('events')}>Game Events</button>
                   <button className={`btn-switch ${workflowGameTab === 'units' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('units')}>Units</button>
                   <button className={`btn-switch ${workflowGameTab === 'timings' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('timings')}>Timings</button>
                 </div>
 
                 {workflowGameTab === 'summary' && (
                   <>
-                    <div className="workflow-player-rows">
+                    <div className="workflow-player-rows" style={{ '--workflow-player-name-width': `${workflowPlayerNameWidthCh}ch` }}>
                       {(workflowGame.players || []).map((player) => (
                         <div key={player.player_id} className="workflow-player-row" style={{ borderLeft: `3px solid ${getTeamColor(player.team)}` }}>
                           <div className="workflow-player-line">
@@ -936,11 +1843,13 @@ function App() {
                               className="workflow-player-name"
                               style={playerAccentColor(player.player_key) ? { color: playerAccentColor(player.player_key) } : undefined}
                             >
+                              {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
                               {player.name}
                             </strong>
-                            <span className="workflow-player-apm"><strong>APM</strong> {player.apm}</span>
-                            <button className="workflow-link-btn" onClick={() => openWorkflowPlayer(player.player_key)}>View player</button>
-                            {player.is_winner ? <span className="workflow-pattern-pill workflow-pattern-pill-strong">Winner</span> : null}
+                            <div className="workflow-player-actions">
+                              <span className="workflow-player-apm"><strong>APM</strong> {player.apm}</span>
+                              <button className="workflow-link-btn" onClick={() => openWorkflowPlayer(player.player_key)}>View Player Summary</button>
+                            </div>
                             {player.detected_patterns?.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`))}
                           </div>
                         </div>
@@ -960,125 +1869,292 @@ function App() {
                         )}
                       </div>
                     )}
-                    <div className="workflow-card">
-                      <div className="workflow-summary-filter-row">
-                        <input
-                          type="text"
-                          className="workflow-summary-filter-input"
-                          placeholder="Filter events..."
-                          value={workflowSummaryFilters.search}
-                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, search: e.target.value }))}
-                        />
-                        <select
-                          className="workflow-summary-filter-select"
-                          value={workflowSummaryFilters.player}
-                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, player: e.target.value }))}
-                        >
-                          <option value="">Any player</option>
-                          {(workflowGame.players || []).map((player) => (
-                            <option key={player.player_id} value={player.name}>{player.name}</option>
-                          ))}
-                        </select>
-                        <select
-                          className="workflow-summary-filter-select"
-                          value={workflowSummaryFilters.location}
-                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, location: e.target.value }))}
-                        >
-                          <option value="">Any location</option>
-                          {workflowLocationOptions.map((loc) => (
-                            <option key={loc} value={loc}>{loc}</option>
-                          ))}
-                        </select>
-                        <label className="workflow-summary-filter-check">
-                          <input
-                            type="checkbox"
-                            checked={workflowSummaryFilters.nuke}
-                            onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, nuke: e.target.checked }))}
-                          />
-                          nuke
-                        </label>
-                        <label className="workflow-summary-filter-check">
-                          <input
-                            type="checkbox"
-                            checked={workflowSummaryFilters.drop}
-                            onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, drop: e.target.checked }))}
-                          />
-                          drop
-                        </label>
-                        <label className="workflow-summary-filter-check">
-                          <input
-                            type="checkbox"
-                            checked={workflowSummaryFilters.recall}
-                            onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, recall: e.target.checked }))}
-                          />
-                          recall
-                        </label>
-                        <label className="workflow-summary-filter-check">
-                          <input
-                            type="checkbox"
-                            checked={workflowSummaryFilters.race}
-                            onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, race: e.target.checked }))}
-                          />
-                          race
-                        </label>
-                        <label className="workflow-summary-filter-check">
-                          <input
-                            type="checkbox"
-                            checked={workflowSummaryFilters.rush}
-                            onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, rush: e.target.checked }))}
-                          />
-                          rush
-                        </label>
-                      </div>
-                      <div className="workflow-card-title"><span>Game events</span></div>
-                      {filteredGameEvents.length > 0 ? (
-                        <div className="workflow-events">
-                          {filteredGameEvents.map((event, idx) => (
-                            <div key={`${event.second}-${idx}`} className="workflow-event-row">
-                              <span>{formatDuration(event.second)}</span>
-                              <span>{event.description}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="chart-empty">No summary items match current filters.</div>
-                      )}
-                    </div>
                   </>
+                )}
+
+                {workflowGameTab === 'events' && (
+                  <div className="workflow-card">
+                    <div className="workflow-summary-filter-row">
+                      <input
+                        type="text"
+                        className="workflow-summary-filter-input"
+                        placeholder="Filter events..."
+                        value={workflowSummaryFilters.search}
+                        onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, search: e.target.value }))}
+                      />
+                      <select
+                        className="workflow-summary-filter-select"
+                        value={workflowSummaryFilters.player}
+                        onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, player: e.target.value }))}
+                      >
+                        <option value="">Any player</option>
+                        {(workflowGame.players || []).map((player) => (
+                          <option key={player.player_id} value={player.name}>{player.name}</option>
+                        ))}
+                      </select>
+                      <select
+                        className="workflow-summary-filter-select"
+                        value={workflowSummaryFilters.location}
+                        onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, location: e.target.value }))}
+                      >
+                        <option value="">Any location</option>
+                        {workflowLocationOptions.map((loc) => (
+                          <option key={loc} value={loc}>{loc}</option>
+                        ))}
+                      </select>
+                      <label className="workflow-summary-filter-check">
+                        <input
+                          type="checkbox"
+                          checked={workflowSummaryFilters.nuke}
+                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, nuke: e.target.checked }))}
+                        />
+                        nuke
+                      </label>
+                      <label className="workflow-summary-filter-check">
+                        <input
+                          type="checkbox"
+                          checked={workflowSummaryFilters.drop}
+                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, drop: e.target.checked }))}
+                        />
+                        drop
+                      </label>
+                      <label className="workflow-summary-filter-check">
+                        <input
+                          type="checkbox"
+                          checked={workflowSummaryFilters.recall}
+                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, recall: e.target.checked }))}
+                        />
+                        recall
+                      </label>
+                      <label className="workflow-summary-filter-check">
+                        <input
+                          type="checkbox"
+                          checked={workflowSummaryFilters.becameRace}
+                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, becameRace: e.target.checked }))}
+                        />
+                        became race
+                      </label>
+                      <label className="workflow-summary-filter-check">
+                        <input
+                          type="checkbox"
+                          checked={workflowSummaryFilters.rush}
+                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, rush: e.target.checked }))}
+                        />
+                        rush
+                      </label>
+                    </div>
+                    <div className="workflow-card-title"><span>Game events</span></div>
+                    {filteredGameEvents.length > 0 ? (
+                      <div className="workflow-events">
+                        {filteredGameEvents.map((event, idx) => (
+                          <div key={`${event.second}-${idx}`} className="workflow-event-row">
+                            <span>{formatDuration(event.second)}</span>
+                            <span>{event.description}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="chart-empty">No summary items match current filters.</div>
+                    )}
+                  </div>
                 )}
 
                 {workflowGameTab === 'units' && (
                   <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Units morphed/trained per 5-minute slice</span></div>
+                    <div className="workflow-production-top-row">
+                      <div className="workflow-production-tabs" role="tablist" aria-label="Production type tabs">
+                        <button
+                          className={`workflow-production-tab ${workflowProductionTab === 'units' ? 'workflow-production-tab-active' : ''}`}
+                          onClick={() => setWorkflowProductionTab('units')}
+                          role="tab"
+                          aria-selected={workflowProductionTab === 'units'}
+                        >
+                          Units
+                        </button>
+                        <button
+                          className={`workflow-production-tab ${workflowProductionTab === 'buildings' ? 'workflow-production-tab-active' : ''}`}
+                          onClick={() => setWorkflowProductionTab('buildings')}
+                          role="tab"
+                          aria-selected={workflowProductionTab === 'buildings'}
+                        >
+                          Buildings
+                        </button>
+                      </div>
+                      <div className="workflow-units-notice">
+                        ⚠️ Replay command streams capture successful production intent, not guaranteed finished unit/building creation.
+                        Entries cannot be deduplicated reliably, so expect unevenly inflated numbers. This makes build-order detection very hard.
+                      </div>
+                    </div>
+                    <div className="workflow-summary-filter-row">
+                      {workflowProductionTab === 'units' ? (
+                        <>
+                          <div className="workflow-radio-group">
+                            <label className="workflow-radio-option">
+                              <input
+                                type="radio"
+                                name="workflow-units-filter"
+                                value="all"
+                                checked={workflowUnitFilterMode === 'all'}
+                                onChange={(e) => setWorkflowUnitFilterMode(e.target.value)}
+                              />
+                              <span>All units</span>
+                            </label>
+                            <label className="workflow-radio-option">
+                              <input
+                                type="radio"
+                                name="workflow-units-filter"
+                                value="workers"
+                                checked={workflowUnitFilterMode === 'workers'}
+                                onChange={(e) => setWorkflowUnitFilterMode(e.target.value)}
+                              />
+                              <span>Workers only</span>
+                            </label>
+                            <label className="workflow-radio-option">
+                              <input
+                                type="radio"
+                                name="workflow-units-filter"
+                                value="non-workers"
+                                checked={workflowUnitFilterMode === 'non-workers'}
+                                onChange={(e) => setWorkflowUnitFilterMode(e.target.value)}
+                              />
+                              <span>Non-workers only</span>
+                            </label>
+                            <label className="workflow-radio-option">
+                              <input
+                                type="radio"
+                                name="workflow-units-filter"
+                                value="spellcasters"
+                                checked={workflowUnitFilterMode === 'spellcasters'}
+                                onChange={(e) => setWorkflowUnitFilterMode(e.target.value)}
+                              />
+                              <span>Spellcasters only</span>
+                            </label>
+                            <label className="workflow-radio-option">
+                              <input
+                                type="radio"
+                                name="workflow-units-filter"
+                                value="tier-2"
+                                checked={workflowUnitFilterMode === 'tier-2'}
+                                onChange={(e) => setWorkflowUnitFilterMode(e.target.value)}
+                              />
+                              <span>Tier 2 only</span>
+                            </label>
+                            <label className="workflow-radio-option">
+                              <input
+                                type="radio"
+                                name="workflow-units-filter"
+                                value="tier-3"
+                                checked={workflowUnitFilterMode === 'tier-3'}
+                                onChange={(e) => setWorkflowUnitFilterMode(e.target.value)}
+                              />
+                              <span>Tier 3 only</span>
+                            </label>
+                          </div>
+                          <input
+                            type="text"
+                            className="workflow-summary-filter-input"
+                            placeholder="Filter unit name..."
+                            value={workflowUnitNameFilter}
+                            onChange={(e) => setWorkflowUnitNameFilter(e.target.value)}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <div className="workflow-radio-group">
+                            <label className="workflow-radio-option">
+                              <input
+                                type="radio"
+                                name="workflow-buildings-filter"
+                                value="all"
+                                checked={workflowBuildingFilterMode === 'all'}
+                                onChange={(e) => setWorkflowBuildingFilterMode(e.target.value)}
+                              />
+                              <span>All buildings</span>
+                            </label>
+                            <label className="workflow-radio-option">
+                              <input
+                                type="radio"
+                                name="workflow-buildings-filter"
+                                value="defenses"
+                                checked={workflowBuildingFilterMode === 'defenses'}
+                                onChange={(e) => setWorkflowBuildingFilterMode(e.target.value)}
+                              />
+                              <span>Defenses only</span>
+                            </label>
+                            <label className="workflow-radio-option">
+                              <input
+                                type="radio"
+                                name="workflow-buildings-filter"
+                                value="tier-2"
+                                checked={workflowBuildingFilterMode === 'tier-2'}
+                                onChange={(e) => setWorkflowBuildingFilterMode(e.target.value)}
+                              />
+                              <span>Tier 2 only</span>
+                            </label>
+                            <label className="workflow-radio-option">
+                              <input
+                                type="radio"
+                                name="workflow-buildings-filter"
+                                value="tier-3"
+                                checked={workflowBuildingFilterMode === 'tier-3'}
+                                onChange={(e) => setWorkflowBuildingFilterMode(e.target.value)}
+                              />
+                              <span>Tier 3 only</span>
+                            </label>
+                          </div>
+                          <input
+                            type="text"
+                            className="workflow-summary-filter-input"
+                            placeholder="Filter building name..."
+                            value={workflowBuildingNameFilter}
+                            onChange={(e) => setWorkflowBuildingNameFilter(e.target.value)}
+                          />
+                        </>
+                      )}
+                    </div>
                     <div className="table-container">
-                      <table className="data-table workflow-table">
+                      <table className="data-table workflow-table workflow-production-table">
                         <thead>
                           <tr>
                             <th>Slice</th>
-                            {(workflowGame.players || []).map((player) => <th key={player.player_id}>{player.name}</th>)}
+                            {workflowPlayers.map((player) => (
+                              <th
+                                key={player.player_id}
+                                style={hasTeamInfo ? { backgroundColor: teamColorRgba(player.team, 0.2) } : undefined}
+                              >
+                                {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+                                {player.name}
+                              </th>
+                            ))}
                           </tr>
                         </thead>
                         <tbody>
                           {(workflowGame.units_by_slice || []).map((slice) => (
                             <tr key={slice.slice_start_second}>
                               <td>{slice.slice_label}</td>
-                              {(slice.players || []).map((playerSlice) => (
-                                <td key={`${slice.slice_start_second}-${playerSlice.player_id}`}>
-                                  {(playerSlice.units || []).length === 0 ? (
-                                    <span className="chart-empty">-</span>
-                                  ) : (
-                                    <div className="workflow-unit-chips">
-                                      {playerSlice.units.map((unit) => (
-                                        <span key={`${playerSlice.player_id}-${unit.unit_type}`} className="workflow-unit-chip">
-                                          {getUnitIcon(unit.unit_type) ? <img src={getUnitIcon(unit.unit_type)} alt={unit.unit_type} className="workflow-unit-chip-icon" /> : null}
-                                          <span>{unit.unit_type}</span>
-                                          <strong>x{unit.count}</strong>
-                                        </span>
-                                      ))}
-                                    </div>
-                                  )}
-                                </td>
-                              ))}
+                              {workflowPlayers.map((player) => {
+                                const playerSlice = (slice.players || []).find((item) => item.player_id === player.player_id);
+                                const filtered = filterProductionEntries(playerSlice?.units || [], workflowProductionTab);
+                                return (
+                                  <td
+                                    key={`${slice.slice_start_second}-${player.player_id}`}
+                                    style={hasTeamInfo ? { backgroundColor: teamColorRgba(player.team, 0.08) } : undefined}
+                                  >
+                                    {filtered.length === 0 ? (
+                                      <span className="workflow-empty-inline">-</span>
+                                    ) : (
+                                      <div className="workflow-unit-chips">
+                                        {filtered.map((unit) => (
+                                          <span key={`${player.player_id}-${unit.unit_type}`} className="workflow-unit-chip">
+                                            {getUnitIcon(unit.unit_type) ? <img src={getUnitIcon(unit.unit_type)} alt={unit.unit_type} className="workflow-unit-chip-icon" /> : null}
+                                            <strong className="workflow-unit-chip-count">x{unit.count}</strong>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </td>
+                                );
+                              })}
                             </tr>
                           ))}
                         </tbody>
@@ -1089,26 +2165,70 @@ function App() {
 
                 {workflowGameTab === 'timings' && (
                   <div className="workflow-timing-charts">
-                    <TimingScatterRows
-                      title="Gas timings (1st-4th)"
-                      series={workflowGame.timings?.gas || []}
-                      durationSeconds={workflowGame.duration_seconds}
-                    />
-                    <TimingScatterRows
-                      title="Expansion timings (1st-4th)"
-                      series={workflowGame.timings?.expansion || []}
-                      durationSeconds={workflowGame.duration_seconds}
-                    />
-                    <TimingScatterRows
-                      title="Upgrade timings"
-                      series={workflowGame.timings?.upgrades || []}
-                      durationSeconds={workflowGame.duration_seconds}
-                    />
-                    <TimingScatterRows
-                      title="Tech research timings"
-                      series={workflowGame.timings?.tech || []}
-                      durationSeconds={workflowGame.duration_seconds}
-                    />
+                    <div className="workflow-production-tabs workflow-timing-tabs" role="tablist" aria-label="Timing category tabs">
+                      {TIMING_CATEGORY_CONFIG.map((cfg) => (
+                        <button
+                          key={cfg.id}
+                          className={`workflow-production-tab ${workflowTimingCategory === cfg.id ? 'workflow-production-tab-active' : ''}`}
+                          onClick={() => setWorkflowTimingCategory(cfg.id)}
+                          role="tab"
+                          aria-selected={workflowTimingCategory === cfg.id}
+                        >
+                          {cfg.label}
+                        </button>
+                      ))}
+                    </div>
+                    {workflowTimingCategory === 'hp_upgrades' ? (
+                      <>
+                        {workflowHpTimingByRace.map((raceChart) => (
+                          <div key={`hp-${raceChart.race}`} className="workflow-card">
+                            <div className="workflow-card-title"><span>{`${raceChart.raceLabel} HP upgrades timings`}</span></div>
+                            <div className="workflow-radio-group">
+                              {raceChart.labelOptions.map((labelName) => (
+                                <label key={`${raceChart.race}-${labelName}`} className="workflow-radio-option">
+                                  <input
+                                    type="radio"
+                                    name={`workflow-hp-filter-${raceChart.race}`}
+                                    value={labelName}
+                                    checked={raceChart.selected === labelName}
+                                    onChange={(e) => setWorkflowHpUpgradeFilters((prev) => ({ ...prev, [raceChart.race]: e.target.value }))}
+                                  />
+                                  <span>{labelName}</span>
+                                </label>
+                              ))}
+                            </div>
+                            <TimingScatterRows
+                              title=""
+                              series={raceChart.series}
+                              durationSeconds={workflowGame.duration_seconds}
+                              colorByLabel={workflowTimingUsesLabelColors}
+                              showLegend={false}
+                              markerMode={workflowTimingCategoryConfig.markerMode || 'dot'}
+                              axisMode={workflowTimingAxisMode}
+                              maxSecondOverride={workflowTimingAxisTrimMaxSecond}
+                              inlineLegend={true}
+                              rowLabelMode="worker-icon"
+                              rowGroupingMode="none"
+                            />
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      <TimingScatterRows
+                        title={workflowTimingCategoryConfig.title}
+                        series={workflowTimingSeries}
+                        durationSeconds={workflowGame.duration_seconds}
+                        colorByLabel={workflowTimingUsesLabelColors}
+                        showLegend={workflowTimingUsesLabelColors && !workflowTimingInlineLegend}
+                        markerMode={workflowTimingCategoryConfig.markerMode || 'dot'}
+                        axisMode={workflowTimingAxisMode}
+                        maxSecondOverride={workflowTimingAxisTrimMaxSecond}
+                        inlineLegend={workflowTimingInlineLegend}
+                        noticeText={workflowTimingNotice}
+                        rowLabelMode={workflowTimingInlineLegend ? 'worker-icon' : (['gas', 'expansion'].includes(workflowTimingCategory) ? 'name-only' : 'race-suffix')}
+                        rowGroupingMode={workflowTimingInlineLegend ? 'race' : 'none'}
+                      />
+                    )}
                   </div>
                 )}
               </>
@@ -1116,19 +2236,23 @@ function App() {
               <div className="chart-empty">Select a game from the Games tab.</div>
             )}
 
-            <form onSubmit={handleWorkflowAsk} className="workflow-ask-form">
-              <input
-                className="widget-creation-input"
-                value={workflowQuestion}
-                onChange={(e) => setWorkflowQuestion(e.target.value)}
-                placeholder={openaiEnabled ? 'Ask AI about this game...' : 'Enable AI to ask questions'}
-                disabled={!openaiEnabled || askingWorkflow}
-              />
-              <button className="btn-create-ai" type="submit" disabled={!openaiEnabled || askingWorkflow || !workflowQuestion.trim()}>
-                {askingWorkflow ? 'Asking...' : 'Ask AI'}
-              </button>
-            </form>
-            {renderWorkflowAiResult()}
+            {workflowGame && workflowGameTab === 'summary' && (
+              <>
+                <form onSubmit={handleWorkflowAsk} className="workflow-ask-form">
+                  <input
+                    className="widget-creation-input"
+                    value={workflowQuestion}
+                    onChange={(e) => setWorkflowQuestion(e.target.value)}
+                    placeholder={openaiEnabled ? 'Ask AI about this game...' : 'Enable AI to ask questions'}
+                    disabled={!openaiEnabled || askingWorkflow}
+                  />
+                  <button className="btn-create-ai" type="submit" disabled={!openaiEnabled || askingWorkflow || !workflowQuestion.trim()}>
+                    {askingWorkflow ? 'Asking...' : 'Ask AI'}
+                  </button>
+                </form>
+                {renderWorkflowAiResult()}
+              </>
+            )}
           </div>
         )}
 
@@ -1139,8 +2263,13 @@ function App() {
             ) : workflowPlayer ? (
               <>
                 <div className="workflow-title-row">
-                  <h2 style={playerAccentColor(workflowPlayer.player_key) ? { color: playerAccentColor(workflowPlayer.player_key) } : undefined}>{workflowPlayer.player_name}</h2>
-                  <button className="btn-switch" onClick={() => setActiveView('games')}>Back to games</button>
+                  <div className="workflow-player-title-wrap">
+                    <h2 style={playerAccentColor(workflowPlayer.player_key) ? { color: playerAccentColor(workflowPlayer.player_key) } : undefined}>{workflowPlayer.player_name}</h2>
+                    {(Number(workflowPlayer.games_played) || 0) < 5 ? (
+                      <span className="workflow-inline-warning">⚠️ Fewer than 5 replays: we cannot provide reliable player-level insights yet.</span>
+                    ) : null}
+                  </div>
+                  <button className="btn-switch" onClick={goBackWorkflowView}>Back</button>
                 </div>
                 <div className="workflow-meta">
                   <span><strong>Games</strong> {workflowPlayer.games_played}</span>
@@ -1149,81 +2278,79 @@ function App() {
                   <span><strong>EAPM</strong> {workflowPlayer.average_eapm?.toFixed(1)}</span>
                 </div>
                 <div className="workflow-cards">
-                  <div className="workflow-card chart-card">
-                    <div className="workflow-card-title"><span>Race breakdown</span></div>
-                    {workflowPlayer.race_breakdown?.map((r) => (
-                      <div key={r.race} className="workflow-inline">
-                        {getRaceIcon(r.race) ? <img src={getRaceIcon(r.race)} alt={r.race} className="unit-icon-inline" /> : null}
-                        <strong>{r.race}</strong>
-                        <span>{r.game_count} games</span>
-                        <span>{r.wins} wins</span>
-                      </div>
-                    ))}
-                    <PieChart
-                      data={(workflowPlayer.race_breakdown || []).map((r) => ({ label: r.race, value: r.game_count }))}
-                      config={{ pie_label_column: 'label', pie_value_column: 'value' }}
-                    />
-                  </div>
-                  <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Targeted order outliers</span></div>
-                    {(workflowPlayer.targeted_order_outliers || []).length === 0 ? <div className="chart-empty">No uncommon targeted orders found.</div> : null}
-                    {(workflowPlayer.targeted_order_outliers || []).map((item) => (
-                      <div key={item.name} className="workflow-pattern-row">
-                        <span>{item.pretty_name}</span>
-                        <span>{item.player_count} uses ({formatPercent(item.population_usage_rate)} pop.)</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Tech outliers</span></div>
-                    {(workflowPlayer.tech_outliers || []).length === 0 ? <div className="chart-empty">No uncommon tech usage found.</div> : null}
-                    {(workflowPlayer.tech_outliers || []).map((item) => (
-                      <div key={item.name} className="workflow-pattern-row">
-                        <span>{item.pretty_name}</span>
-                        <span>{item.player_count} uses ({formatPercent(item.population_usage_rate)} pop.)</span>
+                  <div className="workflow-card workflow-card-race-behaviours">
+                    {workflowPlayerMetricsLoading ? <div className="chart-empty">Loading metrics...</div> : null}
+                    {!workflowPlayerMetricsLoading && workflowPlayerMetricsError ? <div className="chart-empty">{workflowPlayerMetricsError}</div> : null}
+                    {!workflowPlayerMetricsLoading && !workflowPlayerMetricsError && (workflowPlayerMetrics?.race_behaviour_sections || []).length === 0 ? (
+                      <div className="chart-empty">No race behaviour sections available.</div>
+                    ) : null}
+                    {!workflowPlayerMetricsLoading && !workflowPlayerMetricsError && (workflowPlayerMetrics?.race_behaviour_sections || []).map((section) => (
+                      <div key={section.race} className="workflow-race-behaviour-section">
+                        <div className="workflow-card-subtitle">
+                          {getRaceIcon(section.race) ? <img src={getRaceIcon(section.race)} alt={section.race} className="unit-icon-inline workflow-race-title-icon" /> : null}
+                          <span>{section.race}</span>
+                        </div>
+                        <div className="workflow-subtle-note">
+                          {`${section.game_count} games (${((Number(section.game_rate) || 0) * 100).toFixed(1)}%), ${section.wins} wins, ${((Number(section.win_rate) || 0) * 100).toFixed(1)}% win rate`}
+                        </div>
+                        {(section.common_behaviours || []).length === 0 ? <div className="chart-empty">No common behaviours at 20%+ for this race.</div> : null}
+                        {(section.common_behaviours || []).map((item, idx) => (
+                          <div key={`${section.race}-${item.name}`} className="workflow-pattern-row">
+                            <span>{renderPatternPill({ pattern_name: item.name, value: 'true' }, `player-common-${section.race}-${idx}`)}</span>
+                            <span>{`${((Number(item.game_rate) || 0) * 100).toFixed(1)}% (${item.replay_count}/${section.game_count})`}</span>
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </div>
-                  <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Timing comparisons</span></div>
-                    {(workflowPlayer.timing_comparisons || []).map((metric) => (
-                      <div key={metric.metric} className="workflow-metric-compare-row">
-                        <span>{metric.metric}</span>
+                  <div className="workflow-card workflow-card-fingerprints">
+                    <div className="workflow-card-title"><span>Player fingerprints</span></div>
+                    <div className="workflow-card-subtitle">Core metrics</div>
+                    {workflowPlayerMetricsLoading ? <div className="chart-empty">Loading metrics...</div> : null}
+                    {!workflowPlayerMetricsLoading && workflowPlayerMetricsError ? <div className="chart-empty">{workflowPlayerMetricsError}</div> : null}
+                    {!workflowPlayerMetricsLoading && !workflowPlayerMetricsError && (workflowPlayerMetrics?.fingerprint_metrics || []).map((metric) => (
+                      <div key={metric.metric} className="workflow-metric-compare-row workflow-metric-compare-row-simple">
+                        <span className="workflow-metric-label-with-help">
+                          <span>{metric.metric}</span>
+                          <HelpTooltip text={metricHelpText(metric.metric)} label={`${metric.metric} explanation`} />
+                        </span>
                         <span>{prettyMetricValue(metric)}</span>
-                        <span className={`workflow-badge workflow-badge-${metric.direction || 'neutral'}`}>{comparativeBadgeLabel(metric.direction)}</span>
                       </div>
                     ))}
-                  </div>
-                  <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Hotkey comparisons</span></div>
-                    {(workflowPlayer.hotkey_comparisons || []).map((metric) => (
-                      <div key={metric.metric} className="workflow-metric-compare-row">
-                        <span>{metric.metric}</span>
-                        <span>{prettyMetricValue(metric)}</span>
-                        <span className={`workflow-badge workflow-badge-${metric.direction || 'neutral'}`}>{comparativeBadgeLabel(metric.direction)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Rally + diversity</span></div>
-                    <div className="workflow-metric-compare-row">
-                      <span>{workflowPlayer.rally_point_comparison?.metric}</span>
-                      <span>{prettyMetricValue(workflowPlayer.rally_point_comparison)}</span>
-                      <span className={`workflow-badge workflow-badge-${workflowPlayer.rally_point_comparison?.direction || 'neutral'}`}>{comparativeBadgeLabel(workflowPlayer.rally_point_comparison?.direction)}</span>
+                    <div className="workflow-card-subtitle">
+                      <span>Distinctive outliers</span>
+                      <HelpTooltip text={PLAYER_OUTLIER_HELP} label="Outlier calculation explanation" />
                     </div>
-                    <div className="workflow-metric-compare-row">
-                      <span>{workflowPlayer.action_diversity_comparison?.metric}</span>
-                      <span>{prettyMetricValue(workflowPlayer.action_diversity_comparison)}</span>
-                      <span className={`workflow-badge workflow-badge-${workflowPlayer.action_diversity_comparison?.direction || 'neutral'}`}>{comparativeBadgeLabel(workflowPlayer.action_diversity_comparison?.direction)}</span>
-                    </div>
-                  </div>
-                  <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Per-race common orders (first 6)</span></div>
-                    {(workflowPlayer.race_orders || []).map((raceOrder) => (
-                      <div key={raceOrder.race} className="workflow-race-order">
-                        <strong>{raceOrder.race}</strong>
-                        <span>Tech: {(raceOrder.tech_order || []).join(' -> ') || '-'}</span>
-                        <span>Upgrades: {(raceOrder.upgrade_order || []).join(' -> ') || '-'}</span>
+                    <div className="workflow-subtle-note">Same-race, human-only baselines. Protoss outliers exclude non-Protoss spell leakage. Targeted orders use raw-instance share; tech/upgrades use per-game incidence.</div>
+                    {workflowPlayerOutliersLoading ? <div className="chart-empty">Loading outliers...</div> : null}
+                    {!workflowPlayerOutliersLoading && workflowPlayerOutliersError ? <div className="chart-empty">{workflowPlayerOutliersError}</div> : null}
+                    {!workflowPlayerOutliersLoading && !workflowPlayerOutliersError && workflowPlayerOutlierGroups.length === 0 ? (
+                      <div className="chart-empty">No outliers crossed current thresholds.</div>
+                    ) : null}
+                    {!workflowPlayerOutliersLoading && !workflowPlayerOutliersError && workflowPlayerOutlierGroups.map(([category, items]) => (
+                      <div key={category} className="workflow-outlier-group">
+                        <div className="workflow-card-subtitle">
+                          <span>{category}</span>
+                          <HelpTooltip
+                            text={OUTLIER_CATEGORY_SUBTITLE[category] || 'Compared against same-race human baseline.'}
+                            label={`${category} baseline definition`}
+                          />
+                        </div>
+                        {items.map((item) => (
+                          <div key={`${item.category}-${item.race}-${item.name}`} className="workflow-pattern-row">
+                            <span>{item.pretty_name}</span>
+                            <span className="workflow-outlier-expl">
+                              <span className="workflow-outlier-rate">{`${((Number(item.player_rate) || 0) * 100).toFixed(0)}%`}</span>
+                              <span>you</span>
+                              <span>vs</span>
+                              <span className="workflow-outlier-rate-muted">{`${((Number(item.baseline_rate) || 0) * 100).toFixed(0)}%`}</span>
+                              <span>baseline</span>
+                              {(item.qualified_by || []).map((qualifier) => (
+                                <span key={`${item.name}-${qualifier}`} className={outlierQualifierClassName(qualifier)}>{qualifier}</span>
+                              ))}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </div>
@@ -1235,10 +2362,56 @@ function App() {
                       </div>
                     ))}
                   </div>
-                </div>
-                <div className="workflow-meta">
-                  <span><strong>Queued orders</strong> {workflowPlayer.queued_games}/{workflowPlayer.games_played} games ({formatPercent(workflowPlayer.queued_game_rate)})</span>
-                  <span><strong>Carrier tendency</strong> {workflowPlayer.carrier_games}/{workflowPlayer.games_played} games ({formatPercent(workflowPlayer.carrier_game_rate)})</span>
+                  <div className="workflow-card">
+                    <div className="workflow-card-title"><span>Chat Summary</span></div>
+                    {(Number(workflowPlayer.chat_summary?.total_messages) || 0) === 0 ? (
+                      <div className="chart-empty">No chat messages found for this player in ingested games.</div>
+                    ) : (
+                      <>
+                        <div className="workflow-subtle-note">
+                          {`${workflowPlayer.chat_summary?.total_messages || 0} messages across ${workflowPlayer.chat_summary?.games_with_chat || 0} games, ${workflowPlayer.chat_summary?.distinct_terms || 0} distinct terms after cleanup.`}
+                        </div>
+                        <div className="workflow-card-subtitle"><span>Inferred tone</span></div>
+                        {(workflowPlayer.chat_summary?.tone_hints || []).map((hint, idx) => (
+                          <div key={`player-chat-tone-${idx}`} className="workflow-pattern-row">
+                            <span>{hint}</span>
+                          </div>
+                        ))}
+                        <div className="workflow-card-subtitle"><span>Top terms</span></div>
+                        {(workflowPlayer.chat_summary?.top_terms || []).length === 0 ? (
+                          <div className="chart-empty">Not enough messages to infer common terms.</div>
+                        ) : (
+                          <div className="workflow-pattern-pills">
+                            {(workflowPlayer.chat_summary?.top_terms || []).map((item) => (
+                              <span key={`player-chat-term-${item.term}`} className="workflow-pattern-pill">
+                                <span>{item.term}</span>
+                                <span>{`x${item.count}`}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="workflow-card-subtitle"><span>Common phrases</span></div>
+                        {(workflowPlayer.chat_summary?.top_phrases || []).length === 0 ? (
+                          <div className="chart-empty">Not enough messages to infer common phrases.</div>
+                        ) : (
+                          <div className="workflow-pattern-pills">
+                            {(workflowPlayer.chat_summary?.top_phrases || []).map((item) => (
+                              <span key={`player-chat-phrase-${item.term}`} className="workflow-pattern-pill workflow-feature-pill">
+                                <span>{item.term}</span>
+                                <span>{`x${item.count}`}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="workflow-card-subtitle"><span>Sample messages</span></div>
+                        {(workflowPlayer.chat_summary?.example_messages || []).map((msg, idx) => (
+                          <div key={`player-chat-example-${idx}`} className="workflow-event-row">
+                            <span>{msg}</span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
                 </div>
               </>
             ) : (

@@ -56,10 +56,10 @@ type Engine struct {
 	ownerByBase  []byte
 	lastOwningAt []map[byte]int
 
-	startBaseByPID map[byte]int
-	playerExpanded map[byte]map[int]bool
-	playerBecame   map[byte]bool
-	playerZRush    map[byte]bool
+	startBaseByPID   map[byte]int
+	playerExpanded   map[byte]map[int]bool
+	playerBecameRace map[byte]map[string]bool
+	playerZRush      map[byte]bool
 
 	attackCountsByWindow map[string]int
 	lastAttackEmitted    map[string]int
@@ -75,7 +75,7 @@ func NewEngine(replay *models.Replay, players []*models.Player, mapCtx *models.R
 		left:                 map[byte]bool{},
 		startBaseByPID:       map[byte]int{},
 		playerExpanded:       map[byte]map[int]bool{},
-		playerBecame:         map[byte]bool{},
+		playerBecameRace:     map[byte]map[string]bool{},
 		playerZRush:          map[byte]bool{},
 		attackCountsByWindow: map[string]int{},
 		lastAttackEmitted:    map[string]int{},
@@ -171,6 +171,10 @@ func (e *Engine) FirstEventSecondForPlayer(playerID byte, eventType string) *int
 		prefix = name + " recalls into "
 	case "nuke":
 		prefix = name + " nukes "
+	case "became_terran":
+		prefix = name + " became Terran"
+	case "became_zerg":
+		prefix = name + " became Zerg"
 	default:
 		return nil
 	}
@@ -495,7 +499,7 @@ func normalize(s string) string {
 }
 
 func (e *Engine) processRaceSwitchEvent(command *models.Command, pid byte, sec int) {
-	if e.playerBecame[pid] || !isBuildLike(command.ActionType) || command.UnitType == nil {
+	if !isBuildLike(command.ActionType) || command.UnitType == nil {
 		return
 	}
 	player, ok := e.players[pid]
@@ -506,8 +510,15 @@ func (e *Engine) processRaceSwitchEvent(command *models.Command, pid byte, sec i
 	if race == "" {
 		return
 	}
-	e.playerBecame[pid] = true
-	e.emitEvent("race", sec, fmt.Sprintf("%s becomes %s", e.playerName(pid), race))
+	raceKey := strings.ToLower(race)
+	if e.playerBecameRace[pid] == nil {
+		e.playerBecameRace[pid] = map[string]bool{}
+	}
+	if e.playerBecameRace[pid][raceKey] {
+		return
+	}
+	e.playerBecameRace[pid][raceKey] = true
+	e.emitEvent("became_"+raceKey, sec, fmt.Sprintf("%s became %s", e.playerName(pid), race))
 }
 
 func (e *Engine) processZerglingRushEvent(command *models.Command, pid byte, sec int) {

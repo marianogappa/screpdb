@@ -1316,6 +1316,28 @@ body {
   background: rgba(255, 255, 255, 0.02);
 }
 
+.workflow-games-filter-row {
+  align-items: center;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+}
+
+.workflow-games-filter-row > * {
+  flex: 0 0 auto;
+}
+
+.workflow-games-filter-pills {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: none;
+  min-height: 30px;
+}
+
 .workflow-summary-filter-input,
 .workflow-summary-filter-select {
   height: 28px;
@@ -1379,18 +1401,35 @@ body {
 
 .workflow-player-name {
   font-size: 0.98rem;
+  display: inline-flex;
+  align-items: center;
+  width: var(--workflow-player-name-width, 15ch);
+  min-width: var(--workflow-player-name-width, 15ch);
+  max-width: var(--workflow-player-name-width, 15ch);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .workflow-player-line {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
+}
+
+.workflow-player-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 2px;
 }
 
 .workflow-player-apm {
   color: rgba(255, 255, 255, 0.85);
   font-size: 0.86rem;
+  min-width: 9ch;
+  font-variant-numeric: tabular-nums;
 }
 
 .workflow-link-btn {
@@ -1407,6 +1446,11 @@ body {
   color: #bad5ff;
 }
 
+.workflow-crown {
+  display: inline-flex;
+  margin-right: 4px;
+}
+
 .workflow-card {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1417,11 +1461,48 @@ body {
   gap: 6px;
 }
 
+.workflow-card-race-behaviours {
+  min-height: 360px;
+}
+
+.workflow-race-behaviour-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.workflow-race-behaviour-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.workflow-card-fingerprints {
+  grid-column: span 2;
+}
+
 .workflow-card-title {
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-weight: 600;
+}
+
+.workflow-card-subtitle {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.workflow-subtle-note {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.68);
+  line-height: 1.3;
 }
 
 .workflow-inline {
@@ -1461,6 +1542,11 @@ body {
   height: 20px;
   object-fit: contain;
   vertical-align: middle;
+}
+
+.workflow-race-title-icon {
+  width: 60px;
+  height: 60px;
 }
 
 .chart-card {
@@ -1534,9 +1620,52 @@ body {
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.08);
+  min-height: 48px;
   padding: 4px 10px;
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.9);
+}
+
+.workflow-feature-pill {
+  min-height: 28px;
+  padding: 3px 9px;
+  font-size: 0.76rem;
+}
+
+.workflow-filter-pill {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.workflow-filter-pill-active {
+  border-color: rgba(100, 150, 255, 0.6);
+  background: rgba(100, 150, 255, 0.22);
+  color: #eef4ff;
+}
+
+.workflow-pagination-row {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.workflow-pattern-pill-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.workflow-pattern-arrow {
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 700;
 }
 
 .workflow-pattern-pill-strong {
@@ -1547,8 +1676,8 @@ body {
 }
 
 .workflow-pattern-icon {
-  width: 18px;
-  height: 18px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
   flex: 0 0 auto;
 }
@@ -1563,7 +1692,46 @@ body {
 
 .workflow-pattern-row span:last-child {
   color: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
+}
+
+.workflow-outlier-expl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.workflow-outlier-rate {
+  color: #dbeafe;
+  font-weight: 700;
+}
+
+.workflow-outlier-rate-muted {
+  color: rgba(255, 255, 255, 0.72);
   font-weight: 600;
+}
+
+.workflow-outlier-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.workflow-outlier-pill-rare {
+  background: rgba(56, 189, 248, 0.2);
+  color: #bae6fd;
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+.workflow-outlier-pill-frequent {
+  background: rgba(234, 179, 8, 0.2);
+  color: #fde68a;
+  border-color: rgba(234, 179, 8, 0.45);
 }
 
 .team-dot {
@@ -1577,8 +1745,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 360px;
-  overflow-y: auto;
 }
 
 .workflow-event-row {
@@ -1591,10 +1757,75 @@ body {
   border-radius: 6px;
 }
 
+.workflow-production-top-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.workflow-production-tabs {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  flex: 1 1 auto;
+}
+
+.workflow-production-tab {
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  padding: 7px 14px;
+  margin-right: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.workflow-production-tab-active {
+  background: rgba(100, 150, 255, 0.2);
+  color: #e6efff;
+  border-color: rgba(100, 150, 255, 0.55);
+}
+
+.workflow-units-notice {
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-left: auto;
+  width: 30%;
+  min-width: 260px;
+}
+
+.workflow-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+
+.workflow-radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.workflow-production-table th,
+.workflow-production-table td {
+  vertical-align: top;
+}
+
 .workflow-unit-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 10px;
 }
 
 .workflow-unit-chip {
@@ -1602,16 +1833,36 @@ body {
   align-items: center;
   gap: 6px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
-  padding: 4px 8px;
+  border-radius: 8px;
+  padding: 3px 5px;
   background: rgba(255, 255, 255, 0.06);
-  font-size: 0.85rem;
+  font-size: 1.05rem;
 }
 
 .workflow-unit-chip-icon {
-  width: 20px;
-  height: 20px;
+  width: 80px;
+  height: 80px;
   object-fit: contain;
+}
+
+.workflow-unit-chip-count {
+  min-width: 3ch;
+}
+
+.workflow-empty-inline {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+@media (max-width: 1100px) {
+  .workflow-production-top-row {
+    flex-direction: column;
+  }
+
+  .workflow-units-notice {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+  }
 }
 
 .workflow-timing-row {
@@ -1643,14 +1894,78 @@ body {
   gap: 12px;
 }
 
+.workflow-timing-tabs {
+  flex-wrap: wrap;
+}
+
 .timing-chart-card {
   padding: 10px 12px 12px;
+}
+
+.workflow-timing-chart-wrap {
+  position: relative;
 }
 
 .workflow-timing-scatter {
   width: 100%;
   height: auto;
   display: block;
+}
+
+.workflow-timing-notice {
+  margin: 2px 0 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  background: rgba(251, 191, 36, 0.12);
+  color: rgba(255, 245, 200, 0.95);
+  font-size: 0.78rem;
+}
+
+.workflow-timing-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 0 0 10px;
+}
+
+.workflow-timing-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.workflow-timing-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(10, 10, 15, 0.85);
+}
+
+.workflow-timing-tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 8;
+  min-width: 180px;
+  max-width: 280px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(9, 10, 16, 0.97);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+  font-size: 0.78rem;
+}
+
+.workflow-timing-inline-label {
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(9, 10, 16, 0.95);
+  stroke-width: 2px;
+  font-weight: 500;
 }
 
 .workflow-metric-compare-row {
@@ -1692,9 +2007,81 @@ body {
   margin-bottom: 8px;
 }
 
+.workflow-player-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.workflow-inline-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: #facc15;
+}
+
+.workflow-metric-compare-row-simple {
+  grid-template-columns: 1fr auto;
+}
+
+.workflow-metric-label-with-help {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.workflow-metric-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.7rem;
+  cursor: help;
+  user-select: none;
+}
+
+.workflow-help-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.workflow-help-bubble {
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 220px;
+  max-width: 360px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(9, 10, 16, 0.97);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.74rem;
+  line-height: 1.3;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+  z-index: 20;
+}
+
+.workflow-help-wrap:hover .workflow-help-bubble {
+  opacity: 1;
+}
+
 @media (max-width: 1400px) {
   .workflow-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .workflow-card-fingerprints {
+    grid-column: span 1;
   }
 }
 
