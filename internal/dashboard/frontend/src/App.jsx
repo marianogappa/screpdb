@@ -466,6 +466,13 @@ const BUILDING_TIER_MAP = {
   hatchery: 1, spawningpool: 1, extractor: 1, evolutionchamber: 1, creepcolony: 1, hydraliskden: 1, lair: 2, sporecolony: 2, sunkencolony: 2,
   nyduscanal: 2, queensnest: 2, hive: 3, spire: 2, greaterspire: 3, ultraliskcavern: 3, defilermound: 3, infestedcc: 3,
 };
+const DEFENSIVE_BUILDING_KEYS = new Set([
+  'photoncannon',
+  'sporecolony',
+  'sunkencolony',
+  'creepcolony',
+  'missileturret',
+]);
 
 const formatPercent = (value) => `${((Number(value) || 0) * 100).toFixed(1)}%`;
 
@@ -663,16 +670,49 @@ const formatSigned = (value) => {
   return n.toFixed(2);
 };
 
-const comparativeBadgeLabel = (direction) => {
-  if (direction === 'up') return 'Higher than peers';
-  if (direction === 'down') return 'Lower than peers';
-  return 'Near peers';
+const FINGERPRINT_METRIC_HELP = {
+  'Games using hotkeys (%)': 'Per game, this is 100% when at least one hotkey is used, then averaged across all games. Games with missing command streams may appear as 0%.',
+  'Games with queued orders (%)': 'Share of games where at least one queued command exists. This depends on queued flags in command logs.',
+  'Assigned hotkey / Used Hotkey actions': 'Per game, Assign hotkey actions divided by Select hotkey actions, expressed as a percentage and averaged across games.',
+  'Hotkey commands as % of total': 'Per game, hotkey commands divided by all commands, expressed as a percentage and averaged across games.',
+  'Replays with at least one Rally Point (%)': 'Percentage of this player\'s replays where they issued at least one Rally Point command.',
+  'Rally Points per 10 minutes (rally replays)': 'Average number of Rally Point commands per 10 minutes, computed only over replays where at least one was used.',
+  'Action type diversity': 'Average per-game breadth of action types plus targeted-order variety. It shows variety, not quality or efficiency.',
+};
+
+const metricHelpText = (metricName) => FINGERPRINT_METRIC_HELP[metricName] || 'Computed from this player\'s replay command data. Sparse or noisy command streams can skew values.';
+const PLAYER_OUTLIER_HELP = [
+  'Baselines are computed against human, non-observer players of the same primary race only.',
+  'For Protoss players, non-Protoss techs/upgrades and non-Protoss cast orders are excluded to avoid mind-control leakage.',
+  'Techs/Upgrades use "used at least once in a game" rates. Targeted Orders use share of total order instances (not replay incidence).',
+  'An item appears if it passes either threshold: "Rare signature" (TF-IDF) or "Much more frequent than peers" (ratio vs baseline).',
+].join(' ');
+
+const OUTLIER_CATEGORY_SUBTITLE = {
+  'Tech researched': 'Rate = games with this tech at least once / total same-race games.',
+  'Upgrades researched': 'Rate = games with this upgrade at least once / total same-race games.',
+  'Targeted orders': 'Rate = this order count / all targeted-order counts for that race (raw instances).',
+};
+
+const HelpTooltip = ({ text, label }) => (
+  <span className="workflow-help-wrap" aria-label={label || 'Explanation'}>
+    <span className="workflow-metric-help">ⓘ</span>
+    <span className="workflow-help-bubble">{text}</span>
+  </span>
+);
+
+const outlierQualifierClassName = (qualifier) => {
+  const normalized = String(qualifier || '').toLowerCase();
+  if (normalized.includes('rare signature')) return 'workflow-outlier-pill workflow-outlier-pill-rare';
+  if (normalized.includes('much more frequent than peers')) return 'workflow-outlier-pill workflow-outlier-pill-frequent';
+  return 'workflow-outlier-pill';
 };
 
 const prettyMetricValue = (metric) => {
   const value = Number(metric?.player_value) || 0;
   if (String(metric?.metric || '').toLowerCase().includes('%')) {
-    return formatPercent(value);
+    if (Math.abs(value) <= 1) return formatPercent(value);
+    return `${value.toFixed(1)}%`;
   }
   if (String(metric?.metric || '').toLowerCase().includes('seconds')) {
     return formatDuration(value);
@@ -694,6 +734,31 @@ const teamColorRgba = (team, alpha = 0.14) => {
   const g = parseInt(expanded.slice(2, 4), 16);
   const b = parseInt(expanded.slice(4, 6), 16);
   return `rgba(${Number.isNaN(r) ? 96 : r}, ${Number.isNaN(g) ? 165 : g}, ${Number.isNaN(b) ? 250 : b}, ${alpha})`;
+};
+
+const WORKFLOW_GAMES_PAGE_SIZE = 30;
+
+const toggleFilterValue = (values, value) => {
+  const normalized = String(value || '').trim();
+  if (!normalized) return values;
+  if (values.includes(normalized)) {
+    return values.filter((item) => item !== normalized);
+  }
+  return [...values, normalized];
+};
+
+const teamGroupsFromPlayers = (players) => {
+  const groups = [];
+  const byTeam = new Map();
+  (players || []).forEach((player) => {
+    const team = Number(player?.team || 0);
+    if (!byTeam.has(team)) {
+      byTeam.set(team, []);
+      groups.push(byTeam.get(team));
+    }
+    byTeam.get(team).push(player);
+  });
+  return groups;
 };
 
 function App() {
@@ -722,8 +787,23 @@ function App() {
   });
   const autoIngestInFlight = useRef(false);
   const [activeView, setActiveView] = useState('games');
+  const workflowViewHistoryRef = useRef([]);
   const [workflowGames, setWorkflowGames] = useState([]);
   const [workflowGamesLoading, setWorkflowGamesLoading] = useState(false);
+  const [workflowGamesPage, setWorkflowGamesPage] = useState(1);
+  const [workflowGamesTotal, setWorkflowGamesTotal] = useState(0);
+  const [workflowGamesFilterOptions, setWorkflowGamesFilterOptions] = useState({
+    players: [],
+    maps: [],
+    durations: [],
+    featuring: [],
+  });
+  const [workflowGamesFilters, setWorkflowGamesFilters] = useState({
+    player: [],
+    map: [],
+    duration: [],
+    featuring: [],
+  });
   const [workflowGameDetailLoading, setWorkflowGameDetailLoading] = useState(false);
   const [workflowPlayerLoading, setWorkflowPlayerLoading] = useState(false);
   const [selectedReplayId, setSelectedReplayId] = useState(null);
@@ -731,6 +811,12 @@ function App() {
   const [workflowGame, setWorkflowGame] = useState(null);
   const [workflowGameTab, setWorkflowGameTab] = useState('summary');
   const [workflowPlayer, setWorkflowPlayer] = useState(null);
+  const [workflowPlayerMetrics, setWorkflowPlayerMetrics] = useState(null);
+  const [workflowPlayerMetricsLoading, setWorkflowPlayerMetricsLoading] = useState(false);
+  const [workflowPlayerMetricsError, setWorkflowPlayerMetricsError] = useState('');
+  const [workflowPlayerOutliers, setWorkflowPlayerOutliers] = useState(null);
+  const [workflowPlayerOutliersLoading, setWorkflowPlayerOutliersLoading] = useState(false);
+  const [workflowPlayerOutliersError, setWorkflowPlayerOutliersError] = useState('');
   const [workflowQuestion, setWorkflowQuestion] = useState('');
   const [workflowAnswer, setWorkflowAnswer] = useState(null);
   const [askingWorkflow, setAskingWorkflow] = useState(false);
@@ -743,9 +829,9 @@ function App() {
   const [workflowBuildingNameFilter, setWorkflowBuildingNameFilter] = useState('');
   const [workflowTimingCategory, setWorkflowTimingCategory] = useState('gas');
   const [workflowHpUpgradeFilters, setWorkflowHpUpgradeFilters] = useState({
-    terran: 'all',
-    zerg: 'all',
-    protoss: 'all',
+    terran: '',
+    zerg: '',
+    protoss: '',
   });
 
   const loadDashboard = async (url, varValues = null, skipVarInit = false) => {
@@ -808,12 +894,22 @@ function App() {
     }
   };
 
-  const loadWorkflowGames = async () => {
+  const loadWorkflowGames = async ({ page = workflowGamesPage, filters = workflowGamesFilters } = {}) => {
     try {
       setWorkflowGamesLoading(true);
-      const data = await api.listWorkflowGames({ limit: 30, offset: 0 });
+      const safePage = Math.max(1, Number(page) || 1);
+      const offset = (safePage - 1) * WORKFLOW_GAMES_PAGE_SIZE;
+      const data = await api.listWorkflowGames({
+        limit: WORKFLOW_GAMES_PAGE_SIZE,
+        offset,
+        filters,
+      });
       const items = data?.items || [];
       setWorkflowGames(items);
+      setWorkflowGamesTotal(Number(data?.total) || 0);
+      if (data?.filter_options) {
+        setWorkflowGamesFilterOptions(data.filter_options);
+      }
       if (!selectedReplayId && items.length > 0) {
         setSelectedReplayId(items[0].replay_id);
       }
@@ -850,8 +946,8 @@ function App() {
       setWorkflowBuildingFilterMode('all');
       setWorkflowBuildingNameFilter('');
       setWorkflowTimingCategory('gas');
-      setWorkflowHpUpgradeFilters({ terran: 'all', zerg: 'all', protoss: 'all' });
-      setActiveView('game');
+      setWorkflowHpUpgradeFilters({ terran: '', zerg: '', protoss: '' });
+      navigateWorkflowView('game');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -860,15 +956,52 @@ function App() {
   };
 
   const openWorkflowPlayer = async (playerKey) => {
+    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
+    const loadPlayerMetrics = async () => {
+      if (!normalizedPlayerKey) return;
+      try {
+        setWorkflowPlayerMetricsLoading(true);
+        setWorkflowPlayerMetricsError('');
+        const metricsData = await api.getWorkflowPlayerMetrics(normalizedPlayerKey);
+        setWorkflowPlayerMetrics(metricsData);
+      } catch (err) {
+        setWorkflowPlayerMetricsError(err.message || 'Failed to load metrics');
+        setWorkflowPlayerMetrics(null);
+      } finally {
+        setWorkflowPlayerMetricsLoading(false);
+      }
+    };
+    const loadPlayerOutliers = async () => {
+      if (!normalizedPlayerKey) return;
+      try {
+        setWorkflowPlayerOutliersLoading(true);
+        setWorkflowPlayerOutliersError('');
+        const outlierData = await api.getWorkflowPlayerOutliers(normalizedPlayerKey);
+        setWorkflowPlayerOutliers(outlierData);
+      } catch (err) {
+        setWorkflowPlayerOutliersError(err.message || 'Failed to load outliers');
+        setWorkflowPlayerOutliers(null);
+      } finally {
+        setWorkflowPlayerOutliersLoading(false);
+      }
+    };
     try {
       setWorkflowPlayerLoading(true);
       setError(null);
       const data = await api.getWorkflowPlayer(playerKey);
       setWorkflowPlayer(data);
+      setWorkflowPlayerMetrics(null);
+      setWorkflowPlayerMetricsError('');
+      setWorkflowPlayerMetricsLoading(false);
+      setWorkflowPlayerOutliers(null);
+      setWorkflowPlayerOutliersError('');
+      setWorkflowPlayerOutliersLoading(false);
       setSelectedPlayerKey(playerKey);
       setWorkflowAnswer(null);
       setWorkflowQuestion('');
-      setActiveView('player');
+      navigateWorkflowView('player');
+      loadPlayerMetrics();
+      loadPlayerOutliers();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -881,10 +1014,13 @@ function App() {
     const stored = getStoredVariableValues('default');
     loadDashboard('default', stored || undefined);
     loadDashboards();
-    loadWorkflowGames();
     loadTopPlayerColors();
     checkOpenAIStatus();
   }, []);
+
+  useEffect(() => {
+    loadWorkflowGames({ page: workflowGamesPage, filters: workflowGamesFilters });
+  }, [workflowGamesPage, workflowGamesFilters]);
 
   useEffect(() => {
     saveAutoIngestSettings({
@@ -1045,6 +1181,55 @@ function App() {
     await loadDashboard(currentDashboardUrl, newVarValues);
   };
 
+  const setWorkflowGameSingleFilter = (name, nextValue) => {
+    setWorkflowGamesPage(1);
+    setWorkflowGamesFilters((prev) => ({
+      ...prev,
+      [name]: nextValue ? [nextValue] : [],
+    }));
+  };
+
+  const toggleWorkflowGameMultiFilter = (name, value) => {
+    setWorkflowGamesPage(1);
+    setWorkflowGamesFilters((prev) => ({
+      ...prev,
+      [name]: toggleFilterValue(prev[name] || [], value),
+    }));
+  };
+
+  const clearWorkflowGamesFilters = () => {
+    setWorkflowGamesPage(1);
+    setWorkflowGamesFilters({
+      player: [],
+      map: [],
+      duration: [],
+      featuring: [],
+    });
+  };
+
+  const navigateWorkflowView = (nextView) => {
+    setActiveView((currentView) => {
+      if (currentView === nextView) return currentView;
+      workflowViewHistoryRef.current.push(currentView);
+      if (workflowViewHistoryRef.current.length > 30) {
+        workflowViewHistoryRef.current.shift();
+      }
+      return nextView;
+    });
+  };
+
+  const goBackWorkflowView = () => {
+    setActiveView((currentView) => {
+      while (workflowViewHistoryRef.current.length > 0) {
+        const previous = workflowViewHistoryRef.current.pop();
+        if (previous && previous !== currentView) {
+          return previous;
+        }
+      }
+      return 'games';
+    });
+  };
+
   const handleWorkflowAsk = async (e) => {
     e.preventDefault();
     const question = workflowQuestion.trim();
@@ -1097,6 +1282,31 @@ function App() {
         {sideIndex < sides.length - 1 ? ' vs ' : ''}
       </span>
     ));
+  };
+
+  const renderWorkflowGameListPlayers = (game) => {
+    const players = Array.isArray(game?.players) ? game.players : [];
+    if (players.length === 0) {
+      return renderPlayersMatchup(game?.players_label || '');
+    }
+    const groups = teamGroupsFromPlayers(players);
+    return groups.map((group, groupIdx) => {
+      const hasTeam = group.length > 1;
+      return (
+        <span key={`team-${groupIdx}`}>
+          {hasTeam ? '(' : ''}
+          {group.map((player, idx) => (
+            <span key={`${player.player_id}-${idx}`}>
+              {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+              {renderPlayerLabel(player.name)}
+              {idx < group.length - 1 ? ' & ' : ''}
+            </span>
+          ))}
+          {hasTeam ? ')' : ''}
+          {groupIdx < groups.length - 1 ? ' vs ' : ''}
+        </span>
+      );
+    });
   };
 
   const renderWorkflowAiResult = () => {
@@ -1184,6 +1394,15 @@ function App() {
 
   const filteredReplayPatterns = workflowGame?.replay_patterns || [];
   const filteredTeamPatterns = workflowGame?.team_patterns || [];
+  const workflowPlayerOutlierGroups = useMemo(() => {
+    const grouped = new Map();
+    (workflowPlayerOutliers?.items || []).forEach((item) => {
+      const key = String(item?.category || 'Other');
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(item);
+    });
+    return Array.from(grouped.entries());
+  }, [workflowPlayerOutliers]);
 
   const filteredGameEvents = (workflowGame?.game_events || []).filter((event) => {
     if (workflowSummaryFilters.player && !String(event.description || '').toLowerCase().includes(workflowSummaryFilters.player.toLowerCase())) {
@@ -1331,11 +1550,12 @@ function App() {
         raceSeries.flatMap((playerSeries) => (playerSeries?.points || []).map((point) => String(point?.label || '').trim()))
           .filter(Boolean),
       )).sort((a, b) => a.localeCompare(b));
-      const selected = workflowHpUpgradeFilters[race] || 'all';
+      const selectedValue = String(workflowHpUpgradeFilters[race] || '').trim();
+      const selected = labelOptions.includes(selectedValue) ? selectedValue : (labelOptions[0] || '');
       const filteredSeries = raceSeries.map((playerSeries) => ({
         ...playerSeries,
         points: (playerSeries?.points || [])
-          .filter((point) => selected === 'all' || String(point?.label || '').trim() === selected)
+          .filter((point) => selected && String(point?.label || '').trim() === selected)
           .map((point) => ({
             ...point,
             display_label: `+${Math.max(1, Number(point?.order) || 1)}`,
@@ -1370,6 +1590,7 @@ function App() {
         if (mode === 'tier-2') return UNIT_TIER_MAP[key] === 2;
         if (mode === 'tier-3') return UNIT_TIER_MAP[key] === 3;
       } else {
+        if (mode === 'defenses') return DEFENSIVE_BUILDING_KEYS.has(key);
         if (mode === 'tier-1') return BUILDING_TIER_MAP[key] === 1;
         if (mode === 'tier-2') return BUILDING_TIER_MAP[key] === 2;
         if (mode === 'tier-3') return BUILDING_TIER_MAP[key] === 3;
@@ -1377,6 +1598,12 @@ function App() {
       return true;
     });
   };
+
+  const workflowGamesTotalPages = Math.max(1, Math.ceil((Number(workflowGamesTotal) || 0) / WORKFLOW_GAMES_PAGE_SIZE));
+  const workflowGamesFrom = workflowGames.length === 0 ? 0 : ((workflowGamesPage - 1) * WORKFLOW_GAMES_PAGE_SIZE) + 1;
+  const workflowGamesTo = workflowGames.length === 0
+    ? 0
+    : Math.min((workflowGamesPage - 1) * WORKFLOW_GAMES_PAGE_SIZE + workflowGames.length, Number(workflowGamesTotal) || 0);
 
   if (loading && !dashboard && activeView === 'dashboards') {
     return (
@@ -1390,8 +1617,8 @@ function App() {
     <div className="app">
       <div className="dashboard-container">
         <div className="workflow-nav">
-          <button className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => setActiveView('games')}>Games</button>
-          <button className={`btn-manage ${activeView === 'dashboards' ? 'workflow-nav-active' : ''}`} onClick={() => setActiveView('dashboards')}>Custom Dashboards</button>
+          <button className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateWorkflowView('games')}>Games</button>
+          <button className={`btn-manage ${activeView === 'dashboards' ? 'workflow-nav-active' : ''}`} onClick={() => navigateWorkflowView('dashboards')}>Custom Dashboards</button>
           <button onClick={() => setShowIngestPanel((prev) => !prev)} className="btn-manage">{showIngestPanel ? 'Close Ingest' : 'Ingest'}</button>
         </div>
 
@@ -1462,32 +1689,124 @@ function App() {
 
         {activeView === 'games' && (
           <div className="workflow-panel">
-            <h2>Latest Games</h2>
+            <h2>Games</h2>
+            <div className="workflow-summary-filter-row workflow-games-filter-row">
+              <select
+                className="workflow-summary-filter-select"
+                value={workflowGamesFilters.player[0] || ''}
+                onChange={(e) => setWorkflowGameSingleFilter('player', e.target.value)}
+              >
+                <option value="">Any player (5+ games)</option>
+                {(workflowGamesFilterOptions.players || []).map((option) => (
+                  <option key={`wf-player-${option.key}`} value={option.key}>
+                    {option.label} ({option.games})
+                  </option>
+                ))}
+              </select>
+              <select
+                className="workflow-summary-filter-select"
+                value={workflowGamesFilters.map[0] || ''}
+                onChange={(e) => setWorkflowGameSingleFilter('map', e.target.value)}
+              >
+                <option value="">Any map (top 15)</option>
+                {(workflowGamesFilterOptions.maps || []).map((option) => (
+                  <option key={`wf-map-${option.key}`} value={option.key}>
+                    {option.label} ({option.games})
+                  </option>
+                ))}
+              </select>
+              <div className="workflow-pattern-pills workflow-games-filter-pills">
+                {(workflowGamesFilterOptions.durations || []).map((option) => {
+                  const active = (workflowGamesFilters.duration || []).includes(option.key);
+                  return (
+                    <button
+                      key={`wf-duration-${option.key}`}
+                      type="button"
+                      className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
+                      onClick={() => toggleWorkflowGameMultiFilter('duration', option.key)}
+                    >
+                      {option.label} ({option.games})
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="workflow-pattern-pills workflow-games-filter-pills">
+                {(workflowGamesFilterOptions.featuring || []).map((option) => {
+                  const active = (workflowGamesFilters.featuring || []).includes(option.key);
+                  return (
+                    <button
+                      key={`wf-feature-${option.key}`}
+                      type="button"
+                      className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
+                      onClick={() => toggleWorkflowGameMultiFilter('featuring', option.key)}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <button type="button" className="btn-create-manual" onClick={clearWorkflowGamesFilters}>Clear filters</button>
+            </div>
             {workflowGamesLoading ? (
               <div className="loading">Loading games...</div>
             ) : (
-              <table className="data-table workflow-table">
-                <thead>
-                  <tr>
-                    <th>Played</th>
-                    <th>Players</th>
-                    <th>Map</th>
-                    <th>Duration</th>
-                    <th>Winner</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {workflowGames.map((game) => (
-                    <tr key={game.replay_id} className={selectedReplayId === game.replay_id ? 'workflow-selected-row' : ''} onClick={() => openWorkflowGame(game.replay_id)}>
-                      <td>{formatRelativeReplayDate(game.replay_date)}</td>
-                      <td>{renderPlayersMatchup(game.players_label)}</td>
-                      <td>{game.map_name}</td>
-                      <td>{formatDuration(game.duration_seconds)}</td>
-                      <td>{game.winners_label ? renderPlayersMatchup(game.winners_label) : '-'}</td>
+              <>
+                <table className="data-table workflow-table">
+                  <thead>
+                    <tr>
+                      <th>Played</th>
+                      <th>Players</th>
+                      <th>Map</th>
+                      <th>Duration</th>
+                      <th>Featuring</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {workflowGames.map((game) => (
+                      <tr key={game.replay_id} className={selectedReplayId === game.replay_id ? 'workflow-selected-row' : ''} onClick={() => openWorkflowGame(game.replay_id)}>
+                        <td>{formatRelativeReplayDate(game.replay_date)}</td>
+                        <td>{renderWorkflowGameListPlayers(game)}</td>
+                        <td>{game.map_name}</td>
+                        <td>{formatDuration(game.duration_seconds)}</td>
+                        <td>
+                          {(game.featuring || []).length === 0 ? (
+                            <span className="workflow-empty-inline">-</span>
+                          ) : (
+                            <div className="workflow-pattern-pills">
+                              {(game.featuring || []).map((pill) => (
+                                <span key={`${game.replay_id}-${pill}`} className="workflow-pattern-pill workflow-feature-pill">
+                                  <span>{pill}</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="workflow-pagination-row">
+                  <button
+                    type="button"
+                    className="btn-switch"
+                    disabled={workflowGamesPage <= 1 || workflowGamesLoading}
+                    onClick={() => setWorkflowGamesPage((prev) => Math.max(1, prev - 1))}
+                  >
+                    Previous
+                  </button>
+                  <span>
+                    Page {workflowGamesPage} / {workflowGamesTotalPages} - Showing {workflowGamesFrom}-{workflowGamesTo} of {workflowGamesTotal}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-switch"
+                    disabled={workflowGamesPage >= workflowGamesTotalPages || workflowGamesLoading}
+                    onClick={() => setWorkflowGamesPage((prev) => Math.min(workflowGamesTotalPages, prev + 1))}
+                  >
+                    Next
+                  </button>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -1500,7 +1819,7 @@ function App() {
               <>
                 <div className="workflow-title-row">
                   <h2>{renderPlayersMatchup(workflowGame.players?.map((p) => p.name).join(' vs '))}</h2>
-                  <button className="btn-switch" onClick={() => setActiveView('games')}>Back to games</button>
+                  <button className="btn-switch" onClick={goBackWorkflowView}>Back</button>
                 </div>
                 <div className="workflow-meta">
                   <span>{formatRelativeReplayDate(workflowGame.replay_date)}</span>
@@ -1529,7 +1848,7 @@ function App() {
                             </strong>
                             <div className="workflow-player-actions">
                               <span className="workflow-player-apm"><strong>APM</strong> {player.apm}</span>
-                              <button className="workflow-link-btn" onClick={() => openWorkflowPlayer(player.player_key)}>View player</button>
+                              <button className="workflow-link-btn" onClick={() => openWorkflowPlayer(player.player_key)}>View Player Summary</button>
                             </div>
                             {player.detected_patterns?.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`))}
                           </div>
@@ -1756,6 +2075,16 @@ function App() {
                               <input
                                 type="radio"
                                 name="workflow-buildings-filter"
+                                value="defenses"
+                                checked={workflowBuildingFilterMode === 'defenses'}
+                                onChange={(e) => setWorkflowBuildingFilterMode(e.target.value)}
+                              />
+                              <span>Defenses only</span>
+                            </label>
+                            <label className="workflow-radio-option">
+                              <input
+                                type="radio"
+                                name="workflow-buildings-filter"
                                 value="tier-2"
                                 checked={workflowBuildingFilterMode === 'tier-2'}
                                 onChange={(e) => setWorkflowBuildingFilterMode(e.target.value)}
@@ -1855,16 +2184,6 @@ function App() {
                           <div key={`hp-${raceChart.race}`} className="workflow-card">
                             <div className="workflow-card-title"><span>{`${raceChart.raceLabel} HP upgrades timings`}</span></div>
                             <div className="workflow-radio-group">
-                              <label className="workflow-radio-option">
-                                <input
-                                  type="radio"
-                                  name={`workflow-hp-filter-${raceChart.race}`}
-                                  value="all"
-                                  checked={raceChart.selected === 'all'}
-                                  onChange={(e) => setWorkflowHpUpgradeFilters((prev) => ({ ...prev, [raceChart.race]: e.target.value }))}
-                                />
-                                <span>All upgrades</span>
-                              </label>
                               {raceChart.labelOptions.map((labelName) => (
                                 <label key={`${raceChart.race}-${labelName}`} className="workflow-radio-option">
                                   <input
@@ -1944,8 +2263,13 @@ function App() {
             ) : workflowPlayer ? (
               <>
                 <div className="workflow-title-row">
-                  <h2 style={playerAccentColor(workflowPlayer.player_key) ? { color: playerAccentColor(workflowPlayer.player_key) } : undefined}>{workflowPlayer.player_name}</h2>
-                  <button className="btn-switch" onClick={() => setActiveView('games')}>Back to games</button>
+                  <div className="workflow-player-title-wrap">
+                    <h2 style={playerAccentColor(workflowPlayer.player_key) ? { color: playerAccentColor(workflowPlayer.player_key) } : undefined}>{workflowPlayer.player_name}</h2>
+                    {(Number(workflowPlayer.games_played) || 0) < 5 ? (
+                      <span className="workflow-inline-warning">⚠️ Fewer than 5 replays: we cannot provide reliable player-level insights yet.</span>
+                    ) : null}
+                  </div>
+                  <button className="btn-switch" onClick={goBackWorkflowView}>Back</button>
                 </div>
                 <div className="workflow-meta">
                   <span><strong>Games</strong> {workflowPlayer.games_played}</span>
@@ -1954,81 +2278,79 @@ function App() {
                   <span><strong>EAPM</strong> {workflowPlayer.average_eapm?.toFixed(1)}</span>
                 </div>
                 <div className="workflow-cards">
-                  <div className="workflow-card chart-card">
-                    <div className="workflow-card-title"><span>Race breakdown</span></div>
-                    {workflowPlayer.race_breakdown?.map((r) => (
-                      <div key={r.race} className="workflow-inline">
-                        {getRaceIcon(r.race) ? <img src={getRaceIcon(r.race)} alt={r.race} className="unit-icon-inline" /> : null}
-                        <strong>{r.race}</strong>
-                        <span>{r.game_count} games</span>
-                        <span>{r.wins} wins</span>
-                      </div>
-                    ))}
-                    <PieChart
-                      data={(workflowPlayer.race_breakdown || []).map((r) => ({ label: r.race, value: r.game_count }))}
-                      config={{ pie_label_column: 'label', pie_value_column: 'value' }}
-                    />
-                  </div>
-                  <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Targeted order outliers</span></div>
-                    {(workflowPlayer.targeted_order_outliers || []).length === 0 ? <div className="chart-empty">No uncommon targeted orders found.</div> : null}
-                    {(workflowPlayer.targeted_order_outliers || []).map((item) => (
-                      <div key={item.name} className="workflow-pattern-row">
-                        <span>{item.pretty_name}</span>
-                        <span>{item.player_count} uses ({formatPercent(item.population_usage_rate)} pop.)</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Tech outliers</span></div>
-                    {(workflowPlayer.tech_outliers || []).length === 0 ? <div className="chart-empty">No uncommon tech usage found.</div> : null}
-                    {(workflowPlayer.tech_outliers || []).map((item) => (
-                      <div key={item.name} className="workflow-pattern-row">
-                        <span>{item.pretty_name}</span>
-                        <span>{item.player_count} uses ({formatPercent(item.population_usage_rate)} pop.)</span>
+                  <div className="workflow-card workflow-card-race-behaviours">
+                    {workflowPlayerMetricsLoading ? <div className="chart-empty">Loading metrics...</div> : null}
+                    {!workflowPlayerMetricsLoading && workflowPlayerMetricsError ? <div className="chart-empty">{workflowPlayerMetricsError}</div> : null}
+                    {!workflowPlayerMetricsLoading && !workflowPlayerMetricsError && (workflowPlayerMetrics?.race_behaviour_sections || []).length === 0 ? (
+                      <div className="chart-empty">No race behaviour sections available.</div>
+                    ) : null}
+                    {!workflowPlayerMetricsLoading && !workflowPlayerMetricsError && (workflowPlayerMetrics?.race_behaviour_sections || []).map((section) => (
+                      <div key={section.race} className="workflow-race-behaviour-section">
+                        <div className="workflow-card-subtitle">
+                          {getRaceIcon(section.race) ? <img src={getRaceIcon(section.race)} alt={section.race} className="unit-icon-inline workflow-race-title-icon" /> : null}
+                          <span>{section.race}</span>
+                        </div>
+                        <div className="workflow-subtle-note">
+                          {`${section.game_count} games (${((Number(section.game_rate) || 0) * 100).toFixed(1)}%), ${section.wins} wins, ${((Number(section.win_rate) || 0) * 100).toFixed(1)}% win rate`}
+                        </div>
+                        {(section.common_behaviours || []).length === 0 ? <div className="chart-empty">No common behaviours at 20%+ for this race.</div> : null}
+                        {(section.common_behaviours || []).map((item, idx) => (
+                          <div key={`${section.race}-${item.name}`} className="workflow-pattern-row">
+                            <span>{renderPatternPill({ pattern_name: item.name, value: 'true' }, `player-common-${section.race}-${idx}`)}</span>
+                            <span>{`${((Number(item.game_rate) || 0) * 100).toFixed(1)}% (${item.replay_count}/${section.game_count})`}</span>
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </div>
-                  <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Timing comparisons</span></div>
-                    {(workflowPlayer.timing_comparisons || []).map((metric) => (
-                      <div key={metric.metric} className="workflow-metric-compare-row">
-                        <span>{metric.metric}</span>
+                  <div className="workflow-card workflow-card-fingerprints">
+                    <div className="workflow-card-title"><span>Player fingerprints</span></div>
+                    <div className="workflow-card-subtitle">Core metrics</div>
+                    {workflowPlayerMetricsLoading ? <div className="chart-empty">Loading metrics...</div> : null}
+                    {!workflowPlayerMetricsLoading && workflowPlayerMetricsError ? <div className="chart-empty">{workflowPlayerMetricsError}</div> : null}
+                    {!workflowPlayerMetricsLoading && !workflowPlayerMetricsError && (workflowPlayerMetrics?.fingerprint_metrics || []).map((metric) => (
+                      <div key={metric.metric} className="workflow-metric-compare-row workflow-metric-compare-row-simple">
+                        <span className="workflow-metric-label-with-help">
+                          <span>{metric.metric}</span>
+                          <HelpTooltip text={metricHelpText(metric.metric)} label={`${metric.metric} explanation`} />
+                        </span>
                         <span>{prettyMetricValue(metric)}</span>
-                        <span className={`workflow-badge workflow-badge-${metric.direction || 'neutral'}`}>{comparativeBadgeLabel(metric.direction)}</span>
                       </div>
                     ))}
-                  </div>
-                  <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Hotkey comparisons</span></div>
-                    {(workflowPlayer.hotkey_comparisons || []).map((metric) => (
-                      <div key={metric.metric} className="workflow-metric-compare-row">
-                        <span>{metric.metric}</span>
-                        <span>{prettyMetricValue(metric)}</span>
-                        <span className={`workflow-badge workflow-badge-${metric.direction || 'neutral'}`}>{comparativeBadgeLabel(metric.direction)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Rally + diversity</span></div>
-                    <div className="workflow-metric-compare-row">
-                      <span>{workflowPlayer.rally_point_comparison?.metric}</span>
-                      <span>{prettyMetricValue(workflowPlayer.rally_point_comparison)}</span>
-                      <span className={`workflow-badge workflow-badge-${workflowPlayer.rally_point_comparison?.direction || 'neutral'}`}>{comparativeBadgeLabel(workflowPlayer.rally_point_comparison?.direction)}</span>
+                    <div className="workflow-card-subtitle">
+                      <span>Distinctive outliers</span>
+                      <HelpTooltip text={PLAYER_OUTLIER_HELP} label="Outlier calculation explanation" />
                     </div>
-                    <div className="workflow-metric-compare-row">
-                      <span>{workflowPlayer.action_diversity_comparison?.metric}</span>
-                      <span>{prettyMetricValue(workflowPlayer.action_diversity_comparison)}</span>
-                      <span className={`workflow-badge workflow-badge-${workflowPlayer.action_diversity_comparison?.direction || 'neutral'}`}>{comparativeBadgeLabel(workflowPlayer.action_diversity_comparison?.direction)}</span>
-                    </div>
-                  </div>
-                  <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Per-race common orders (first 6)</span></div>
-                    {(workflowPlayer.race_orders || []).map((raceOrder) => (
-                      <div key={raceOrder.race} className="workflow-race-order">
-                        <strong>{raceOrder.race}</strong>
-                        <span>Tech: {(raceOrder.tech_order || []).join(' -> ') || '-'}</span>
-                        <span>Upgrades: {(raceOrder.upgrade_order || []).join(' -> ') || '-'}</span>
+                    <div className="workflow-subtle-note">Same-race, human-only baselines. Protoss outliers exclude non-Protoss spell leakage. Targeted orders use raw-instance share; tech/upgrades use per-game incidence.</div>
+                    {workflowPlayerOutliersLoading ? <div className="chart-empty">Loading outliers...</div> : null}
+                    {!workflowPlayerOutliersLoading && workflowPlayerOutliersError ? <div className="chart-empty">{workflowPlayerOutliersError}</div> : null}
+                    {!workflowPlayerOutliersLoading && !workflowPlayerOutliersError && workflowPlayerOutlierGroups.length === 0 ? (
+                      <div className="chart-empty">No outliers crossed current thresholds.</div>
+                    ) : null}
+                    {!workflowPlayerOutliersLoading && !workflowPlayerOutliersError && workflowPlayerOutlierGroups.map(([category, items]) => (
+                      <div key={category} className="workflow-outlier-group">
+                        <div className="workflow-card-subtitle">
+                          <span>{category}</span>
+                          <HelpTooltip
+                            text={OUTLIER_CATEGORY_SUBTITLE[category] || 'Compared against same-race human baseline.'}
+                            label={`${category} baseline definition`}
+                          />
+                        </div>
+                        {items.map((item) => (
+                          <div key={`${item.category}-${item.race}-${item.name}`} className="workflow-pattern-row">
+                            <span>{item.pretty_name}</span>
+                            <span className="workflow-outlier-expl">
+                              <span className="workflow-outlier-rate">{`${((Number(item.player_rate) || 0) * 100).toFixed(0)}%`}</span>
+                              <span>you</span>
+                              <span>vs</span>
+                              <span className="workflow-outlier-rate-muted">{`${((Number(item.baseline_rate) || 0) * 100).toFixed(0)}%`}</span>
+                              <span>baseline</span>
+                              {(item.qualified_by || []).map((qualifier) => (
+                                <span key={`${item.name}-${qualifier}`} className={outlierQualifierClassName(qualifier)}>{qualifier}</span>
+                              ))}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </div>
@@ -2040,10 +2362,6 @@ function App() {
                       </div>
                     ))}
                   </div>
-                </div>
-                <div className="workflow-meta">
-                  <span><strong>Queued orders</strong> {workflowPlayer.queued_games}/{workflowPlayer.games_played} games ({formatPercent(workflowPlayer.queued_game_rate)})</span>
-                  <span><strong>Carrier tendency</strong> {workflowPlayer.carrier_games}/{workflowPlayer.games_played} games ({formatPercent(workflowPlayer.carrier_game_rate)})</span>
                 </div>
               </>
             ) : (

@@ -136,8 +136,27 @@ export const api = {
     return response.json();
   },
 
-  listWorkflowGames: async ({ limit = 20, offset = 0 } = {}) => {
-    const response = await fetch(`${API_BASE}/workflow/games?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}`);
+  listWorkflowGames: async ({ limit = 20, offset = 0, filters = {} } = {}) => {
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    params.set('offset', String(offset));
+    const playerFilters = Array.isArray(filters.player) ? filters.player : [];
+    const mapFilters = Array.isArray(filters.map) ? filters.map : [];
+    const durationFilters = Array.isArray(filters.duration) ? filters.duration : [];
+    const featuringFilters = Array.isArray(filters.featuring) ? filters.featuring : [];
+    playerFilters.forEach((value) => {
+      if (String(value || '').trim()) params.append('player', String(value).trim());
+    });
+    mapFilters.forEach((value) => {
+      if (String(value || '').trim()) params.append('map', String(value).trim());
+    });
+    durationFilters.forEach((value) => {
+      if (String(value || '').trim()) params.append('duration', String(value).trim());
+    });
+    featuringFilters.forEach((value) => {
+      if (String(value || '').trim()) params.append('featuring', String(value).trim());
+    });
+    const response = await fetch(`${API_BASE}/workflow/games?${params.toString()}`);
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to list workflow games');
@@ -159,6 +178,24 @@ export const api = {
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get workflow player');
+    }
+    return response.json();
+  },
+
+  getWorkflowPlayerMetrics: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/metrics`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get workflow player metrics');
+    }
+    return response.json();
+  },
+
+  getWorkflowPlayerOutliers: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/outliers`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get workflow player outliers');
     }
     return response.json();
   },

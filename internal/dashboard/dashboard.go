@@ -93,6 +93,8 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/workflow/games", d.handlerWorkflowGamesList).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/workflow/games/{replayID}", d.handlerWorkflowGameDetail).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/workflow/players/{playerKey}", d.handlerWorkflowPlayerDetail).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/api/workflow/players/{playerKey}/metrics", d.handlerWorkflowPlayerMetrics).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/api/workflow/players/{playerKey}/outliers", d.handlerWorkflowPlayerOutliers).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/workflow/player-colors", d.handlerWorkflowPlayerColors).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/workflow/games/{replayID}/ask", d.handlerWorkflowAskGame).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/api/workflow/players/{playerKey}/ask", d.handlerWorkflowAskPlayer).Methods(http.MethodPost, http.MethodOptions)
