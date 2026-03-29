@@ -39,11 +39,10 @@ func TestGameEventsReplayDetector_IncludesRaceAndZerglingRushEvents(t *testing.T
 	}
 
 	raw := *result.ValueString
-	if !strings.Contains(raw, `"type":"race"`) || !strings.Contains(raw, "becomes Zerg") {
+	if !strings.Contains(raw, `"type":"became_zerg"`) || !strings.Contains(raw, "became Zerg") {
 		t.Fatalf("expected race event in payload: %s", raw)
 	}
 	if !strings.Contains(raw, `"type":"rush"`) || !strings.Contains(raw, "Zergling rushes") {
 		t.Fatalf("expected zergling rush event in payload: %s", raw)
 	}
 }
-

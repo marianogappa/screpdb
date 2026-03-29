@@ -249,6 +249,14 @@ func NewThrewNukesPlayerDetector() *playerFirstEventByTypeDetector {
 	return &playerFirstEventByTypeDetector{name: "Threw Nukes", eventType: "nuke"}
 }
 
+func NewBecameTerranPlayerDetector() *playerFirstEventByTypeDetector {
+	return &playerFirstEventByTypeDetector{name: "Became Terran", eventType: "became_terran"}
+}
+
+func NewBecameZergPlayerDetector() *playerFirstEventByTypeDetector {
+	return &playerFirstEventByTypeDetector{name: "Became Zerg", eventType: "became_zerg"}
+}
+
 type FastExpaPlayerDetector struct {
 	BasePlayerDetector
 	second *int
@@ -588,4 +596,3 @@ func (d *ExpaBeforeBarracksPlayerDetector) ShouldSave() bool {
 		d.firstCommandCenter != nil &&
 		(d.firstBarracks == nil || *d.firstCommandCenter < *d.firstBarracks)
 }
-

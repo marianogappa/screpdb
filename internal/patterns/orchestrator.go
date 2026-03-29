@@ -65,6 +65,16 @@ var (
 			return detector
 		},
 		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewBecameTerranPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewBecameZergPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
 			detector := detectors.NewFastExpaPlayerDetector()
 			detector.SetReplayPlayerID(replayPlayerID)
 			return detector

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/marianogappa/screpdb/internal/models"
+	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
 )
 
 func TestQuickFactoryPlayerDetector(t *testing.T) {
@@ -181,3 +182,39 @@ func TestOrderAndBeforeDetectors(t *testing.T) {
 	}
 }
 
+func TestBecameRaceDetectors_FromProtossBuildingForeignStructures(t *testing.T) {
+	builder := NewTestReplayBuilder().
+		WithPlayer(1, "P", "Protoss", 1).
+		WithCommand(1, 210, models.ActionTypeBuild, models.GeneralUnitBarracks).
+		WithCommand(1, 330, models.ActionTypeBuild, models.GeneralUnitHatchery)
+	replay, players := builder.Build()
+
+	ws := worldstate.NewEngine(replay, players, nil)
+	for _, command := range builder.GetCommands() {
+		ws.ProcessCommand(command)
+	}
+
+	becameTerran := NewBecameTerranPlayerDetector()
+	becameTerran.SetReplayPlayerID(1)
+	becameTerran.SetWorldState(ws)
+	becameTerran.Initialize(replay, players)
+	becameTerran.Finalize()
+	if !becameTerran.ShouldSave() {
+		t.Fatalf("expected became terran detection")
+	}
+	if result := becameTerran.GetResult(); result == nil || result.ValueInt == nil || *result.ValueInt != 210 {
+		t.Fatalf("expected became terran at 210s, got %+v", result)
+	}
+
+	becameZerg := NewBecameZergPlayerDetector()
+	becameZerg.SetReplayPlayerID(1)
+	becameZerg.SetWorldState(ws)
+	becameZerg.Initialize(replay, players)
+	becameZerg.Finalize()
+	if !becameZerg.ShouldSave() {
+		t.Fatalf("expected became zerg detection")
+	}
+	if result := becameZerg.GetResult(); result == nil || result.ValueInt == nil || *result.ValueInt != 330 {
+		t.Fatalf("expected became zerg at 330s, got %+v", result)
+	}
+}

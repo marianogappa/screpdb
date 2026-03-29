@@ -827,6 +827,42 @@ func formatClockFromSeconds(second int64) string {
 	return fmt.Sprintf("%d:%02d", minute, sec)
 }
 
+func workflowSliceBoundaries(durationSeconds int64) []int64 {
+	base := []int64{0, 145, 300, 360, 420, 600, 900, 1200, 1500, 1800, 2400, 3000, 3600}
+	boundaries := []int64{0}
+	for _, point := range base {
+		if point <= 0 {
+			continue
+		}
+		if point > durationSeconds {
+			break
+		}
+		boundaries = append(boundaries, point)
+	}
+	for next := int64(4200); next <= durationSeconds; next += 600 {
+		boundaries = append(boundaries, next)
+	}
+	return boundaries
+}
+
+func sliceStartForSecond(second int64, boundaries []int64) int64 {
+	if len(boundaries) == 0 {
+		return 0
+	}
+	idx := sort.Search(len(boundaries), func(i int) bool { return boundaries[i] > second }) - 1
+	if idx < 0 {
+		return boundaries[0]
+	}
+	return boundaries[idx]
+}
+
+func formatWorkflowSliceLabel(start, endExclusive int64) string {
+	if endExclusive <= start {
+		return fmt.Sprintf("%s-%s", formatClockFromSeconds(start), formatClockFromSeconds(start))
+	}
+	return fmt.Sprintf("%s-%s", formatClockFromSeconds(start), formatClockFromSeconds(endExclusive-1))
+}
+
 func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail) error {
 	detail.UnitsBySlice = []workflowUnitSlice{}
 	playerOrder := make([]int64, 0, len(detail.Players))
@@ -840,7 +876,7 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 		SELECT c.player_id, c.seconds_from_game_start, c.unit_type
 		FROM commands c
 		WHERE c.replay_id = ?
-			AND c.action_type IN ('Train', 'Unit Morph', 'Building Morph')
+			AND c.action_type IN ('Train', 'Unit Morph', 'Building Morph', 'Build')
 			AND c.unit_type IS NOT NULL
 			AND c.unit_type <> ''
 		ORDER BY c.seconds_from_game_start ASC, c.player_id ASC
@@ -851,6 +887,7 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 	defer rows.Close()
 
 	perSlice := map[int64]map[int64]map[string]int64{}
+	boundaries := workflowSliceBoundaries(detail.DurationSeconds)
 	for rows.Next() {
 		var playerID int64
 		var second int64
@@ -858,7 +895,10 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 		if err := rows.Scan(&playerID, &second, &unitType); err != nil {
 			return fmt.Errorf("failed to parse unit slices: %w", err)
 		}
-		sliceStart := (second / 300) * 300
+		if second < 0 {
+			second = 0
+		}
+		sliceStart := sliceStartForSecond(second, boundaries)
 		if _, ok := perSlice[sliceStart]; !ok {
 			perSlice[sliceStart] = map[int64]map[string]int64{}
 		}
@@ -871,11 +911,14 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 		return fmt.Errorf("failed iterating unit slices: %w", err)
 	}
 
-	maxSlice := (detail.DurationSeconds / 300) * 300
-	for sliceStart := int64(0); sliceStart <= maxSlice; sliceStart += 300 {
+	for i, sliceStart := range boundaries {
+		endExclusive := detail.DurationSeconds + 1
+		if i+1 < len(boundaries) {
+			endExclusive = boundaries[i+1]
+		}
 		slice := workflowUnitSlice{
 			SliceStartSecond: sliceStart,
-			SliceLabel:       fmt.Sprintf("%s-%s", formatClockFromSeconds(sliceStart), formatClockFromSeconds(sliceStart+299)),
+			SliceLabel:       formatWorkflowSliceLabel(sliceStart, endExclusive),
 			Players:          []workflowUnitSlicePlayer{},
 		}
 		for _, playerID := range playerOrder {
