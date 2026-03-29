@@ -213,7 +213,23 @@ type workflowPlayerOverview struct {
 	QueuedGames         int64                         `json:"queued_games"`
 	QueuedGameRate      float64                       `json:"queued_game_rate"`
 	RecentGames         []workflowGameListItem        `json:"recent_games"`
+	ChatSummary         workflowPlayerChatSummary     `json:"chat_summary"`
 	NarrativeHints      []string                      `json:"narrative_hints"`
+}
+
+type workflowPlayerChatSummary struct {
+	TotalMessages   int64                   `json:"total_messages"`
+	GamesWithChat   int64                   `json:"games_with_chat"`
+	DistinctTerms   int64                   `json:"distinct_terms"`
+	TopTerms        []workflowChatTermCount `json:"top_terms"`
+	TopPhrases      []workflowChatTermCount `json:"top_phrases"`
+	ToneHints       []string                `json:"tone_hints"`
+	ExampleMessages []string                `json:"example_messages"`
+}
+
+type workflowChatTermCount struct {
+	Term  string `json:"term"`
+	Count int64  `json:"count"`
 }
 
 type workflowCommonBehaviour struct {
@@ -1332,6 +1348,13 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 		}
 		result.RecentGames = append(result.RecentGames, g)
 	}
+
+	chatSummary, err := d.buildPlayerChatSummary(playerKey)
+	if err != nil {
+		return result, fmt.Errorf("failed to build player chat summary: %w", err)
+	}
+	result.ChatSummary = chatSummary
+
 	result.NarrativeHints = buildPlayerNarrativeHints(result)
 	return result, nil
 }
@@ -2957,6 +2980,17 @@ func (d *Dashboard) countCarrierGamesForPlayer(playerKey string) (int64, error) 
 }
 
 var uppercaseSplitter = regexp.MustCompile(`([a-z0-9])([A-Z])`)
+var workflowChatWordSplitter = regexp.MustCompile(`[a-z][a-z0-9']+`)
+
+var workflowChatStopWords = map[string]struct{}{
+	"a": {}, "an": {}, "and": {}, "are": {}, "as": {}, "at": {}, "be": {}, "been": {}, "but": {}, "by": {},
+	"for": {}, "from": {}, "had": {}, "has": {}, "have": {}, "he": {}, "her": {}, "hers": {}, "him": {}, "his": {},
+	"i": {}, "if": {}, "in": {}, "is": {}, "it": {}, "its": {}, "just": {}, "me": {}, "my": {}, "not": {}, "of": {},
+	"on": {}, "or": {}, "our": {}, "ours": {}, "she": {}, "so": {}, "that": {}, "the": {}, "their": {}, "theirs": {},
+	"them": {}, "they": {}, "this": {}, "to": {}, "too": {}, "us": {}, "was": {}, "we": {}, "were": {}, "what": {}, "when": {},
+	"where": {}, "who": {}, "why": {}, "with": {}, "you": {}, "your": {}, "yours": {},
+	"gg": {}, "gl": {}, "hf": {}, "wp": {}, "pls": {}, "plz": {}, "ok": {}, "yes": {}, "no": {}, "nah": {}, "lol": {},
+}
 
 func prettySplitUppercase(value string) string {
 	trimmed := strings.TrimSpace(value)
@@ -2980,6 +3014,169 @@ func prettySplitUppercase(value string) string {
 		out = append(out, r)
 	}
 	return strings.TrimSpace(string(out))
+}
+
+func (d *Dashboard) buildPlayerChatSummary(playerKey string) (workflowPlayerChatSummary, error) {
+	summary := workflowPlayerChatSummary{
+		TopTerms:        []workflowChatTermCount{},
+		TopPhrases:      []workflowChatTermCount{},
+		ToneHints:       []string{},
+		ExampleMessages: []string{},
+	}
+
+	rows, err := d.db.QueryContext(d.ctx, `
+		SELECT c.replay_id, c.chat_message
+		FROM commands c
+		JOIN players p ON p.id = c.player_id
+		WHERE lower(trim(p.name)) = ?
+			AND p.is_observer = 0
+			AND c.action_type = 'Chat'
+			AND c.chat_message IS NOT NULL
+			AND trim(c.chat_message) <> ''
+		ORDER BY c.replay_id DESC, c.seconds_from_game_start DESC
+	`, playerKey)
+	if err != nil {
+		return summary, err
+	}
+	defer rows.Close()
+
+	termCounts := map[string]int64{}
+	phraseCounts := map[string]int64{}
+	gamesWithChat := map[int64]struct{}{}
+	rawMessages := []string{}
+
+	sportsmanshipCount := int64(0)
+	coordinationCount := int64(0)
+	tauntCount := int64(0)
+	questionCount := int64(0)
+
+	for rows.Next() {
+		var replayID int64
+		var raw string
+		if err := rows.Scan(&replayID, &raw); err != nil {
+			return summary, err
+		}
+		msg := strings.TrimSpace(raw)
+		if msg == "" {
+			continue
+		}
+		rawMessages = append(rawMessages, msg)
+		gamesWithChat[replayID] = struct{}{}
+
+		lowerMsg := strings.ToLower(msg)
+		if strings.Contains(lowerMsg, "gg") || strings.Contains(lowerMsg, "well played") || strings.Contains(lowerMsg, "gl hf") || strings.Contains(lowerMsg, "good luck") {
+			sportsmanshipCount++
+		}
+		if strings.Contains(lowerMsg, "rush") || strings.Contains(lowerMsg, "defend") || strings.Contains(lowerMsg, "attack") || strings.Contains(lowerMsg, "help") || strings.Contains(lowerMsg, "scout") {
+			coordinationCount++
+		}
+		if strings.Contains(lowerMsg, "noob") || strings.Contains(lowerMsg, "ez") || strings.Contains(lowerMsg, "trash") || strings.Contains(lowerMsg, "owned") {
+			tauntCount++
+		}
+		if strings.Contains(msg, "?") {
+			questionCount++
+		}
+
+		tokens := summarizeChatTokens(msg)
+		for _, token := range tokens {
+			termCounts[token]++
+		}
+		for i := 0; i+1 < len(tokens); i++ {
+			phrase := tokens[i] + " " + tokens[i+1]
+			phraseCounts[phrase]++
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return summary, err
+	}
+
+	summary.TotalMessages = int64(len(rawMessages))
+	summary.GamesWithChat = int64(len(gamesWithChat))
+	summary.DistinctTerms = int64(len(termCounts))
+	summary.TopTerms = summarizeChatCounts(termCounts, 10)
+	summary.TopPhrases = summarizeChatCounts(phraseCounts, 6)
+	summary.ExampleMessages = summarizeChatExamples(rawMessages, 5)
+
+	if summary.TotalMessages > 0 {
+		if sportsmanshipCount*5 >= summary.TotalMessages {
+			summary.ToneHints = append(summary.ToneHints, "Frequent sportsmanship language (GG/GLHF/well-played style phrases).")
+		}
+		if coordinationCount*5 >= summary.TotalMessages {
+			summary.ToneHints = append(summary.ToneHints, "Often uses tactical coordination terms (rush/defend/attack/help/scout).")
+		}
+		if questionCount*4 >= summary.TotalMessages {
+			summary.ToneHints = append(summary.ToneHints, "Asks questions frequently, suggesting active in-game coordination.")
+		}
+		if tauntCount*10 >= summary.TotalMessages {
+			summary.ToneHints = append(summary.ToneHints, "Contains occasional taunting or provocative wording.")
+		}
+	}
+	if len(summary.ToneHints) == 0 {
+		summary.ToneHints = append(summary.ToneHints, "No dominant chat tone was confidently inferred from available messages.")
+	}
+
+	return summary, nil
+}
+
+func summarizeChatTokens(message string) []string {
+	lowered := strings.ToLower(message)
+	rawTokens := workflowChatWordSplitter.FindAllString(lowered, -1)
+	result := make([]string, 0, len(rawTokens))
+	for _, token := range rawTokens {
+		token = strings.Trim(token, "'")
+		if len(token) < 3 {
+			continue
+		}
+		if _, isStopWord := workflowChatStopWords[token]; isStopWord {
+			continue
+		}
+		result = append(result, token)
+	}
+	return result
+}
+
+func summarizeChatCounts(counts map[string]int64, maxItems int) []workflowChatTermCount {
+	items := make([]workflowChatTermCount, 0, len(counts))
+	for term, count := range counts {
+		if count <= 0 {
+			continue
+		}
+		items = append(items, workflowChatTermCount{
+			Term:  term,
+			Count: count,
+		})
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Count == items[j].Count {
+			return items[i].Term < items[j].Term
+		}
+		return items[i].Count > items[j].Count
+	})
+	if len(items) > maxItems {
+		items = items[:maxItems]
+	}
+	return items
+}
+
+func summarizeChatExamples(messages []string, maxItems int) []string {
+	if len(messages) == 0 {
+		return []string{}
+	}
+	result := []string{}
+	for _, msg := range messages {
+		msg = strings.Join(strings.Fields(strings.TrimSpace(msg)), " ")
+		if msg == "" {
+			continue
+		}
+		if len(msg) > 160 {
+			msg = msg[:157] + "..."
+		}
+		result = append(result, msg)
+		if len(result) >= maxItems {
+			break
+		}
+	}
+	return result
 }
 
 func buildGameNarrativeHints(players []workflowGamePlayer) []string {

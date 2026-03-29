@@ -2362,6 +2362,56 @@ function App() {
                       </div>
                     ))}
                   </div>
+                  <div className="workflow-card">
+                    <div className="workflow-card-title"><span>Chat Summary</span></div>
+                    {(Number(workflowPlayer.chat_summary?.total_messages) || 0) === 0 ? (
+                      <div className="chart-empty">No chat messages found for this player in ingested games.</div>
+                    ) : (
+                      <>
+                        <div className="workflow-subtle-note">
+                          {`${workflowPlayer.chat_summary?.total_messages || 0} messages across ${workflowPlayer.chat_summary?.games_with_chat || 0} games, ${workflowPlayer.chat_summary?.distinct_terms || 0} distinct terms after cleanup.`}
+                        </div>
+                        <div className="workflow-card-subtitle"><span>Inferred tone</span></div>
+                        {(workflowPlayer.chat_summary?.tone_hints || []).map((hint, idx) => (
+                          <div key={`player-chat-tone-${idx}`} className="workflow-pattern-row">
+                            <span>{hint}</span>
+                          </div>
+                        ))}
+                        <div className="workflow-card-subtitle"><span>Top terms</span></div>
+                        {(workflowPlayer.chat_summary?.top_terms || []).length === 0 ? (
+                          <div className="chart-empty">Not enough messages to infer common terms.</div>
+                        ) : (
+                          <div className="workflow-pattern-pills">
+                            {(workflowPlayer.chat_summary?.top_terms || []).map((item) => (
+                              <span key={`player-chat-term-${item.term}`} className="workflow-pattern-pill">
+                                <span>{item.term}</span>
+                                <span>{`x${item.count}`}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="workflow-card-subtitle"><span>Common phrases</span></div>
+                        {(workflowPlayer.chat_summary?.top_phrases || []).length === 0 ? (
+                          <div className="chart-empty">Not enough messages to infer common phrases.</div>
+                        ) : (
+                          <div className="workflow-pattern-pills">
+                            {(workflowPlayer.chat_summary?.top_phrases || []).map((item) => (
+                              <span key={`player-chat-phrase-${item.term}`} className="workflow-pattern-pill workflow-feature-pill">
+                                <span>{item.term}</span>
+                                <span>{`x${item.count}`}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="workflow-card-subtitle"><span>Sample messages</span></div>
+                        {(workflowPlayer.chat_summary?.example_messages || []).map((msg, idx) => (
+                          <div key={`player-chat-example-${idx}`} className="workflow-event-row">
+                            <span>{msg}</span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
                 </div>
               </>
             ) : (
