@@ -154,7 +154,7 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 			command := commandRegistry.ProcessCommand(cmd, startTime)
 
 			if command != nil {
-				// Set additional fields (registry already sets ReplayID and RunAt)
+				// Set additional fields (registry already sets ReplayID)
 				command.Frame = int32(base.Frame)
 				command.Replay = data.Replay
 				command.Player = playerIDToPlayer[base.PlayerID]

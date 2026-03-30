@@ -1,13 +1,14 @@
 BEGIN;
 
 -- Drop indexes first
+DROP INDEX IF EXISTS idx_commands_action_type_order_name;
+DROP INDEX IF EXISTS idx_commands_replay_id_action_type_seconds;
+DROP INDEX IF EXISTS idx_commands_replay_id_player_id_action_type;
+DROP INDEX IF EXISTS idx_commands_player_id_action_type;
 DROP INDEX IF EXISTS idx_detected_patterns_replay_player_player_id;
 DROP INDEX IF EXISTS idx_detected_patterns_replay_player_replay_id;
 DROP INDEX IF EXISTS idx_detected_patterns_replay_team_replay_id;
 DROP INDEX IF EXISTS idx_detected_patterns_replay_replay_id;
-DROP INDEX IF EXISTS idx_commands_frame;
-DROP INDEX IF EXISTS idx_commands_player_id;
-DROP INDEX IF EXISTS idx_commands_replay_id;
 DROP INDEX IF EXISTS idx_players_replay_id;
 DROP INDEX IF EXISTS idx_replays_replay_date;
 DROP INDEX IF EXISTS idx_replays_file_checksum;
@@ -17,6 +18,7 @@ DROP INDEX IF EXISTS idx_replays_file_path;
 DROP TABLE IF EXISTS detected_patterns_replay_player;
 DROP TABLE IF EXISTS detected_patterns_replay_team;
 DROP TABLE IF EXISTS detected_patterns_replay;
+DROP TABLE IF EXISTS commands_low_value;
 DROP TABLE IF EXISTS commands;
 DROP TABLE IF EXISTS players;
 DROP TABLE IF EXISTS replays;

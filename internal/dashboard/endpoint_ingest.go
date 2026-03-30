@@ -14,14 +14,16 @@ import (
 )
 
 type ingestRequest struct {
-	InputDir       string `json:"input_dir"`
-	SQLitePath     string `json:"sqlite_path"`
-	Watch          bool   `json:"watch"`
-	StopAfterN     int    `json:"stop_after_n_reps"`
-	UpToDate       string `json:"up_to_yyyy_mm_dd"`
-	UpToMonths     int    `json:"up_to_n_months"`
-	Clean          bool   `json:"clean"`
-	CleanDashboard bool   `json:"clean_dashboard"`
+	InputDir         string `json:"input_dir"`
+	SQLitePath       string `json:"sqlite_path"`
+	Watch            bool   `json:"watch"`
+	StoreRightClicks bool   `json:"store_right_clicks"`
+	SkipHotkeys      bool   `json:"skip_hotkeys"`
+	StopAfterN       int    `json:"stop_after_n_reps"`
+	UpToDate         string `json:"up_to_yyyy_mm_dd"`
+	UpToMonths       int    `json:"up_to_n_months"`
+	Clean            bool   `json:"clean"`
+	CleanDashboard   bool   `json:"clean_dashboard"`
 }
 
 func (d *Dashboard) handlerIngest(w http.ResponseWriter, r *http.Request) {
@@ -32,16 +34,18 @@ func (d *Dashboard) handlerIngest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cfg := ingest.Config{
-		InputDir:       strings.TrimSpace(req.InputDir),
-		SQLitePath:     strings.TrimSpace(req.SQLitePath),
-		Watch:          req.Watch,
-		StopAfterN:     req.StopAfterN,
-		UpToDate:       strings.TrimSpace(req.UpToDate),
-		UpToMonths:     req.UpToMonths,
-		Clean:          req.Clean,
-		CleanDashboard: req.CleanDashboard,
-		HandleSignals:  false,
-		UseColor:       false,
+		InputDir:         strings.TrimSpace(req.InputDir),
+		SQLitePath:       strings.TrimSpace(req.SQLitePath),
+		Watch:            req.Watch,
+		StoreRightClicks: req.StoreRightClicks,
+		SkipHotkeys:      req.SkipHotkeys,
+		StopAfterN:       req.StopAfterN,
+		UpToDate:         strings.TrimSpace(req.UpToDate),
+		UpToMonths:       req.UpToMonths,
+		Clean:            req.Clean,
+		CleanDashboard:   req.CleanDashboard,
+		HandleSignals:    false,
+		UseColor:         false,
 	}
 
 	if cfg.InputDir == "" {

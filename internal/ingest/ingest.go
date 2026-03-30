@@ -19,16 +19,18 @@ import (
 )
 
 type Config struct {
-	InputDir       string
-	SQLitePath     string
-	Watch          bool
-	StopAfterN     int
-	UpToDate       string
-	UpToMonths     int
-	Clean          bool
-	CleanDashboard bool
-	HandleSignals  bool
-	UseColor       bool
+	InputDir         string
+	SQLitePath       string
+	Watch            bool
+	StoreRightClicks bool
+	SkipHotkeys      bool
+	StopAfterN       int
+	UpToDate         string
+	UpToMonths       int
+	Clean            bool
+	CleanDashboard   bool
+	HandleSignals    bool
+	UseColor         bool
 }
 
 func Run(ctx context.Context, cfg Config) error {
@@ -41,6 +43,7 @@ func Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("failed to create SQLite storage: %w", err)
 	}
 	defer store.Close()
+	store.SetCommandStorageOptions(cfg.StoreRightClicks, cfg.SkipHotkeys)
 
 	if err := store.Initialize(ctx, cfg.Clean, cfg.CleanDashboard); err != nil {
 		return fmt.Errorf("failed to initialize storage: %w", err)
