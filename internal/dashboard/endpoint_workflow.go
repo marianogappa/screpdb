@@ -1824,7 +1824,7 @@ func playerExpansionTimingsFromGameEvents(events []workflowGameEvent, players []
 	orderByPlayer := map[int64]int64{}
 	for _, event := range events {
 		typeLower := strings.ToLower(event.Type)
-		if typeLower != "expansion" && typeLower != "takeover" {
+		if typeLower != "expansion" {
 			continue
 		}
 		playerID := matchPlayerIDInEvent(event.Description, playersSorted)
@@ -2793,7 +2793,7 @@ func (d *Dashboard) firstExpansionAverageByPlayer() (map[string]float64, error) 
 		firstByPlayerInReplay := map[string]int64{}
 		for _, event := range events {
 			t := strings.ToLower(strings.TrimSpace(event.Type))
-			if t != "expansion" && t != "takeover" {
+			if t != "expansion" {
 				continue
 			}
 			playerID := matchPlayerIDInEvent(event.Description, sortedPlayers)
