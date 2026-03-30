@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,7 +18,8 @@ import (
 )
 
 const (
-	testDBPath = "file:screpdb_test?mode=memory&cache=shared"
+	testDBPath      = "file:screpdb_test?mode=memory&cache=shared"
+	testDBPathFlags = "file:screpdb_test_flags?mode=memory&cache=shared"
 )
 
 func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
@@ -53,7 +55,6 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	expectedCounts := map[string]int64{
 		"replays":                         4,
 		"players":                         14,
-		"commands":                        37713,
 		"detected_patterns_replay":        4,
 		"detected_patterns_replay_team":   0,
 		"detected_patterns_replay_player": 45,
@@ -64,6 +65,37 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	}
 	if mismatch := compareCounts(expectedCounts, actualCounts); mismatch != "" {
 		t.Fatalf("count mismatch: %s (actual=%v)", mismatch, actualCounts)
+	}
+
+	commandRows, err := countAcrossCommandTables(ctx, store, "")
+	if err != nil {
+		t.Fatalf("countAcrossCommandTables total: %v", err)
+	}
+	if commandRows <= 0 {
+		t.Fatalf("expected command rows to be present after ingestion")
+	}
+
+	highValueCommands, err := countTable(ctx, store, "commands")
+	if err != nil {
+		t.Fatalf("count commands: %v", err)
+	}
+	lowValueCommands, err := countTable(ctx, store, "commands_low_value")
+	if err != nil {
+		t.Fatalf("count commands_low_value: %v", err)
+	}
+	if highValueCommands <= 0 {
+		t.Fatalf("expected high-value commands to be present")
+	}
+	if lowValueCommands <= 0 {
+		t.Fatalf("expected low-value commands to be present")
+	}
+
+	rightClickRows, err := countAcrossCommandTables(ctx, store, "Right Click")
+	if err != nil {
+		t.Fatalf("countAcrossCommandTables right click: %v", err)
+	}
+	if rightClickRows != 0 {
+		t.Fatalf("expected default ingestion to skip Right Click commands, got %d rows", rightClickRows)
 	}
 
 	hotkeyRows, err := store.Query(ctx, "SELECT COUNT(*) AS c FROM detected_patterns_replay_player WHERE pattern_name = 'Used Hotkey Groups'")
@@ -133,6 +165,21 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	assertContains(t, schema, "## replays")
 	assertContains(t, schema, "## players")
 	assertContains(t, schema, "## commands")
+	assertContains(t, schema, "## commands_low_value")
+
+	patternSchemaRows, err := store.Query(ctx, "PRAGMA table_info(detected_patterns_replay)")
+	if err != nil {
+		t.Fatalf("PRAGMA table_info(detected_patterns_replay): %v", err)
+	}
+	for _, row := range patternSchemaRows {
+		colName, ok := asString(row["name"])
+		if !ok {
+			continue
+		}
+		if colName == "file_path" || colName == "file_checksum" {
+			t.Fatalf("unexpected denormalized column in detected_patterns_replay: %s", colName)
+		}
+	}
 
 	// Pattern detection filters and deletes
 	patternFiltered, err := store.FilterOutExistingPatternDetections(ctx, files, core.AlgorithmVersion)
@@ -154,6 +201,52 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	}
 	if !containsFile(afterDeleteFiltered, replayPath, replayChecksum) {
 		t.Fatalf("expected replay %s to require pattern detection after delete", replayPath)
+	}
+}
+
+func TestSQLiteStorage_CommandStorageFlags(t *testing.T) {
+	ctx := context.Background()
+
+	store, err := NewSQLiteStorage(testDBPathFlags)
+	if err != nil {
+		t.Fatalf("NewSQLiteStorage: %v", err)
+	}
+	defer store.Close()
+
+	store.SetCommandStorageOptions(true, true)
+	if err := store.Initialize(ctx, true, true); err != nil {
+		t.Fatalf("Initialize: %v", err)
+	}
+
+	replaysDir, err := resolveReplayDir()
+	if err != nil {
+		t.Fatalf("resolveReplayDir: %v", err)
+	}
+	files, err := fileops.GetReplayFiles(replaysDir)
+	if err != nil {
+		t.Fatalf("GetReplayFiles: %v", err)
+	}
+	if len(files) == 0 {
+		t.Fatalf("no replays found in %s", replaysDir)
+	}
+	if err := ingestFiles(ctx, store, files); err != nil {
+		t.Fatalf("ingestFiles: %v", err)
+	}
+
+	rightClickRows, err := countAcrossCommandTables(ctx, store, "Right Click")
+	if err != nil {
+		t.Fatalf("countAcrossCommandTables right click: %v", err)
+	}
+	if rightClickRows <= 0 {
+		t.Fatalf("expected Right Click commands when store-right-clicks is enabled")
+	}
+
+	hotkeyRows, err := countAcrossCommandTables(ctx, store, "Hotkey")
+	if err != nil {
+		t.Fatalf("countAcrossCommandTables hotkey: %v", err)
+	}
+	if hotkeyRows != 0 {
+		t.Fatalf("expected skip-hotkeys to remove Hotkey commands, got %d rows", hotkeyRows)
 	}
 }
 
@@ -192,6 +285,49 @@ func collectCounts(store *SQLiteStorage, tables []string) (map[string]int64, err
 		counts[table] = got
 	}
 	return counts, nil
+}
+
+func countTable(ctx context.Context, store *SQLiteStorage, table string) (int64, error) {
+	rows, err := store.Query(ctx, "SELECT COUNT(*) AS c FROM "+table)
+	if err != nil {
+		return 0, err
+	}
+	if len(rows) != 1 {
+		return 0, fmt.Errorf("expected 1 row for %s count, got %d", table, len(rows))
+	}
+	got, ok := asInt64(rows[0]["c"])
+	if !ok {
+		return 0, fmt.Errorf("expected numeric count for %s", table)
+	}
+	return got, nil
+}
+
+func countAcrossCommandTables(ctx context.Context, store *SQLiteStorage, actionType string) (int64, error) {
+	baseQuery := `
+		SELECT COUNT(*) AS c
+		FROM (
+			SELECT action_type FROM commands
+			UNION ALL
+			SELECT action_type FROM commands_low_value
+		)
+	`
+	args := []any{}
+	if actionType != "" {
+		baseQuery += " WHERE action_type = ?"
+		args = append(args, actionType)
+	}
+	rows, err := store.Query(ctx, baseQuery, args...)
+	if err != nil {
+		return 0, err
+	}
+	if len(rows) != 1 {
+		return 0, fmt.Errorf("expected 1 row for command table count, got %d", len(rows))
+	}
+	got, ok := asInt64(rows[0]["c"])
+	if !ok {
+		return 0, errors.New("expected numeric command table count")
+	}
+	return got, nil
 }
 
 func compareCounts(expected, actual map[string]int64) string {

@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"time"
-
 	"github.com/icza/screp/rep/repcmd"
 	"github.com/marianogappa/screpdb/internal/models"
 )
@@ -130,7 +128,6 @@ func (r *CommandRegistry) ProcessCommand(cmd repcmd.Cmd, startTime int64) *model
 
 	command := handler.Handle(cmd, base)
 	if command != nil {
-		command.RunAt = time.Unix(startTime+int64(base.Frame.Duration().Seconds()), 0)
 		command.SecondsFromGameStart = int(base.Frame.Seconds())
 	}
 

@@ -782,6 +782,8 @@ function App() {
     watch: false,
     stopAfterN: 50,
     clean: false,
+    storeRightClicks: false,
+    skipHotkeys: false,
     autoIngestEnabled: storedAutoIngest.enabled,
     autoIngestIntervalSeconds: storedAutoIngest.intervalSeconds,
   });
@@ -1045,6 +1047,8 @@ function App() {
           watch: false,
           stop_after_n_reps: 1,
           clean: false,
+          store_right_clicks: false,
+          skip_hotkeys: false,
         });
         await loadWorkflowGames();
       } catch (err) {
@@ -1159,6 +1163,8 @@ function App() {
         watch: ingestForm.watch,
         stop_after_n_reps: ingestForm.stopAfterN || 0,
         clean: ingestForm.clean,
+        store_right_clicks: ingestForm.storeRightClicks,
+        skip_hotkeys: ingestForm.skipHotkeys,
       });
       setIngestMessage('Ingestion started in the background.');
       await loadWorkflowGames();
@@ -1645,6 +1651,22 @@ function App() {
                     type="checkbox"
                     checked={ingestForm.clean}
                     onChange={(e) => setIngestForm({ ...ingestForm, clean: e.target.checked })}
+                  />
+                </label>
+                <label className="ingest-field ingest-checkbox">
+                  <span>Store Right Click commands</span>
+                  <input
+                    type="checkbox"
+                    checked={ingestForm.storeRightClicks}
+                    onChange={(e) => setIngestForm({ ...ingestForm, storeRightClicks: e.target.checked })}
+                  />
+                </label>
+                <label className="ingest-field ingest-checkbox">
+                  <span>Skip Hotkey commands</span>
+                  <input
+                    type="checkbox"
+                    checked={ingestForm.skipHotkeys}
+                    onChange={(e) => setIngestForm({ ...ingestForm, skipHotkeys: e.target.checked })}
                   />
                 </label>
                 <label className="ingest-field ingest-checkbox">

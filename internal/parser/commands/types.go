@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/icza/screp/rep/repcmd"
 	"github.com/marianogappa/screpdb/internal/models"
@@ -54,13 +53,12 @@ func stringPtr(s string) *string {
 }
 
 // Create base command from base command info
-func createBaseCommand(base *repcmd.Base, replayID int64, startTime int64) *models.Command {
+func createBaseCommand(base *repcmd.Base, replayID int64, _ int64) *models.Command {
 	return &models.Command{
 		ReplayID:             replayID,
 		PlayerID:             int64(base.PlayerID),
 		Frame:                int32(base.Frame),
 		SecondsFromGameStart: int(base.Frame.Seconds()),
-		RunAt:                time.Unix(startTime+int64(base.Frame.Duration().Seconds()), 0),
 		ActionType:           base.Type.String(),
 	}
 }

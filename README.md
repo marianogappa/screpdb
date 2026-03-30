@@ -57,6 +57,8 @@ The `ingest` command processes StarCraft replay files and stores them in a datab
 - `-n, --stop-after-n-reps`: Stop after processing N replay files (0 = no limit)
 - `-d, --up-to-yyyy-mm-dd`: Only process files up to this date (YYYY-MM-DD format)
 - `-m, --up-to-n-months`: Only process files from the last N months (0 = no limit)
+- `--store-right-clicks`: Store `Right Click` commands (disabled by default to reduce command-table volume)
+- `--skip-hotkeys`: Skip storing `Hotkey` commands (disabled by default)
 
 ### MCP Server
 
@@ -146,13 +148,27 @@ Contains information about each player in the replay.
 - `replay_id` (INTEGER, FOREIGN KEY): References replays.id
 - `slot` (INTEGER): Player slot number (0-7)
 - `name` (TEXT): Player's name
-- `race` (TEXT): Player's race ("Terran", "Protoss", "Zerg")
-- `type` (TEXT): Player type ("Human", "Computer")
-- `color` (INTEGER): Player's color (0-7)
+- `race` (TEXT): Player's race enum (e.g., "Terran", "Protoss", "Zerg")
+- `type` (TEXT): Player type enum (e.g., "Human", "Computer")
+- `color` (TEXT): Player color enum (e.g., "Red", "Blue", "Teal")
 - `team` (INTEGER): Team number
 - `is_winner` (BOOLEAN): Whether this player won the game
 - `apm` (INTEGER): Actions per minute
 - `spm` (INTEGER): Supply per minute
+
+#### detected_patterns_replay
+Replay-level pattern detector outputs.
+
+**Columns:**
+- `replay_id` (INTEGER, FOREIGN KEY): References replays.id
+- `algorithm_version` (INTEGER): Pattern detector algorithm version
+- `pattern_name` (TEXT): Pattern identifier
+- `value_bool` (BOOLEAN): Optional boolean pattern value
+- `value_int` (INTEGER): Optional integer pattern value
+- `value_string` (TEXT): Optional string/JSON pattern value
+- `value_timestamp` (BIGINT): Optional timestamp pattern value
+
+This table intentionally does not duplicate replay metadata like `file_path` / `file_checksum`; those are read through `replays` via `replay_id`.
 
 #### actions
 Contains all game actions/events that occurred during the replay.
@@ -162,12 +178,19 @@ Contains all game actions/events that occurred during the replay.
 - `replay_id` (INTEGER, FOREIGN KEY): References replays.id
 - `player_id` (INTEGER, FOREIGN KEY): References players.id
 - `frame` (INTEGER): Game frame when action occurred
-- `run_at` (DATETIME): Calculated time when action occurred
+- `seconds_from_game_start` (INTEGER): Seconds elapsed since game start when action occurred
 - `type` (TEXT): Type of action (e.g., "Unit", "Building", "Upgrade")
 - `action` (TEXT): Specific action (e.g., "Create", "Destroy", "Move", "Attack")
 - `unit_type` (TEXT): Type of unit involved (if applicable)
 - `x` (INTEGER): X coordinate where action occurred
 - `y` (INTEGER): Y coordinate where action occurred
+
+#### commands_low_value
+Holds low-value command categories with the same schema as `commands`, but no indexes, to keep primary workflow scans focused.
+
+- Low-value action types routed here: `Right Click`, `Hotkey`, `Minimap Ping`, `Alliance`, `Vision`, `Cheat`, `Game Speed`
+- By default, `Right Click` commands are not stored unless `--store-right-clicks` (or `store_right_clicks` in dashboard ingest payload) is enabled
+- `Hotkey` commands are stored by default; set `--skip-hotkeys` (or `skip_hotkeys` in dashboard ingest payload) to drop them
 
 #### units
 Contains information about all units that existed during the game.

@@ -17,14 +17,16 @@ var ingestCmd = &cobra.Command{
 }
 
 var (
-	inputDir       string
-	sqlitePath     string
-	watch          bool
-	stopAfterN     int
-	upToDate       string
-	upToMonths     int
-	clean          bool
-	cleanDashboard bool
+	inputDir         string
+	sqlitePath       string
+	watch            bool
+	storeRightClicks bool
+	skipHotkeys      bool
+	stopAfterN       int
+	upToDate         string
+	upToMonths       int
+	clean            bool
+	cleanDashboard   bool
 )
 
 func init() {
@@ -34,6 +36,8 @@ func init() {
 	ingestCmd.Flags().IntVarP(&stopAfterN, "stop-after-n-reps", "n", 0, "Stop after processing N replay files (0 = no limit)")
 	ingestCmd.Flags().StringVarP(&upToDate, "up-to-yyyy-mm-dd", "d", "", "Only process files up to this date (YYYY-MM-DD format)")
 	ingestCmd.Flags().IntVarP(&upToMonths, "up-to-n-months", "m", 0, "Only process files from the last N months (0 = no limit)")
+	ingestCmd.Flags().BoolVar(&storeRightClicks, "store-right-clicks", false, "Store Right Click commands (disabled by default to reduce table size)")
+	ingestCmd.Flags().BoolVar(&skipHotkeys, "skip-hotkeys", false, "Skip storing Hotkey commands")
 	ingestCmd.Flags().BoolVar(&clean, "clean", false, "Drop all non-dashboard tables before ingesting to start over (useful for migrations).")
 	ingestCmd.Flags().BoolVar(&cleanDashboard, "clean-dashboard", false, "Drop all dashboard tables")
 }
@@ -42,16 +46,18 @@ func runIngest(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	cfg := ingest.Config{
-		InputDir:       inputDir,
-		SQLitePath:     sqlitePath,
-		Watch:          watch,
-		StopAfterN:     stopAfterN,
-		UpToDate:       upToDate,
-		UpToMonths:     upToMonths,
-		Clean:          clean,
-		CleanDashboard: cleanDashboard,
-		HandleSignals:  true,
-		UseColor:       true,
+		InputDir:         inputDir,
+		SQLitePath:       sqlitePath,
+		Watch:            watch,
+		StoreRightClicks: storeRightClicks,
+		SkipHotkeys:      skipHotkeys,
+		StopAfterN:       stopAfterN,
+		UpToDate:         upToDate,
+		UpToMonths:       upToMonths,
+		Clean:            clean,
+		CleanDashboard:   cleanDashboard,
+		HandleSignals:    true,
+		UseColor:         true,
 	}
 
 	if err := ingest.Run(ctx, cfg); err != nil {

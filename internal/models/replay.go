@@ -64,7 +64,6 @@ type Command struct {
 	ReplayID             int64     `json:"replay_id"`
 	PlayerID             int64     `json:"player_id"`
 	Frame                int32     `json:"frame"`
-	RunAt                time.Time `json:"run_at"`
 	SecondsFromGameStart int       `json:"secondsFromGameStart"`
 
 	// Command details

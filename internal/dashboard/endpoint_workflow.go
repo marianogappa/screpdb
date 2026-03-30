@@ -1088,7 +1088,18 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 			p.apm,
 			p.eapm,
 			COUNT(c.id) AS command_count,
-			SUM(CASE WHEN c.hotkey_type IS NOT NULL THEN 1 ELSE 0 END) AS hotkey_count
+			(
+				SELECT COUNT(*)
+				FROM commands_low_value clv
+				WHERE clv.player_id = p.id
+					AND clv.action_type = 'Hotkey'
+					AND clv.hotkey_type IS NOT NULL
+			) AS hotkey_count,
+			(
+				SELECT COUNT(*)
+				FROM commands_low_value clv
+				WHERE clv.player_id = p.id
+			) AS low_value_command_count
 		FROM players p
 		LEFT JOIN commands c ON c.player_id = p.id
 		WHERE p.replay_id = ? AND p.is_observer = 0
@@ -1102,6 +1113,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 
 	for rows.Next() {
 		var p workflowGamePlayer
+		var lowValueCommandCount int64
 		if err := rows.Scan(
 			&p.PlayerID,
 			&p.Name,
@@ -1112,12 +1124,14 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 			&p.EAPM,
 			&p.CommandCount,
 			&p.HotkeyCommandCount,
+			&lowValueCommandCount,
 		); err != nil {
 			return detail, fmt.Errorf("failed to parse players: %w", err)
 		}
 		p.PlayerKey = normalizePlayerKey(p.Name)
-		if p.CommandCount > 0 {
-			p.HotkeyUsageRate = float64(p.HotkeyCommandCount) / float64(p.CommandCount)
+		totalCommandCount := p.CommandCount + lowValueCommandCount
+		if totalCommandCount > 0 {
+			p.HotkeyUsageRate = float64(p.HotkeyCommandCount) / float64(totalCommandCount)
 		}
 		p.DetectedPatterns = []workflowPatternValue{}
 		detail.Players = append(detail.Players, p)
@@ -1891,9 +1905,9 @@ func (d *Dashboard) populateAdvancedPlayerOverview(playerKey string, result *wor
 		WITH game_level AS (
 			SELECT
 				lower(trim(p.name)) AS player_key,
-				CASE WHEN SUM(CASE WHEN c.hotkey_type IS NOT NULL THEN 1 ELSE 0 END) > 0 THEN 100.0 ELSE 0.0 END AS metric_value
+				CASE WHEN SUM(CASE WHEN c.action_type = 'Hotkey' AND c.hotkey_type IS NOT NULL THEN 1 ELSE 0 END) > 0 THEN 100.0 ELSE 0.0 END AS metric_value
 			FROM players p
-			LEFT JOIN commands c ON c.player_id = p.id
+			LEFT JOIN commands_low_value c ON c.player_id = p.id
 			WHERE p.is_observer = 0
 			GROUP BY p.id
 		)
@@ -1909,14 +1923,14 @@ func (d *Dashboard) populateAdvancedPlayerOverview(playerKey string, result *wor
 			SELECT
 				lower(trim(p.name)) AS player_key,
 				CASE
-					WHEN SUM(CASE WHEN c.hotkey_type = 'Select' THEN 1 ELSE 0 END) > 0 THEN
-						100.0 * CAST(SUM(CASE WHEN c.hotkey_type = 'Assign' THEN 1 ELSE 0 END) AS FLOAT)
+					WHEN SUM(CASE WHEN c.action_type = 'Hotkey' AND c.hotkey_type = 'Select' THEN 1 ELSE 0 END) > 0 THEN
+						100.0 * CAST(SUM(CASE WHEN c.action_type = 'Hotkey' AND c.hotkey_type = 'Assign' THEN 1 ELSE 0 END) AS FLOAT)
 						/
-						CAST(SUM(CASE WHEN c.hotkey_type = 'Select' THEN 1 ELSE 0 END) AS FLOAT)
+						CAST(SUM(CASE WHEN c.action_type = 'Hotkey' AND c.hotkey_type = 'Select' THEN 1 ELSE 0 END) AS FLOAT)
 					ELSE 0.0
 				END AS metric_value
 			FROM players p
-			LEFT JOIN commands c ON c.player_id = p.id
+			LEFT JOIN commands_low_value c ON c.player_id = p.id
 			WHERE p.is_observer = 0
 			GROUP BY p.id
 		)
@@ -1928,17 +1942,36 @@ func (d *Dashboard) populateAdvancedPlayerOverview(playerKey string, result *wor
 		return err
 	}
 	hotkeyCommandsPct, err := d.simpleMetricByPlayer(`
-		WITH game_level AS (
+		WITH high_value_counts AS (
 			SELECT
+				p.id AS player_id,
 				lower(trim(p.name)) AS player_key,
-				CASE
-					WHEN COUNT(c.id) > 0 THEN 100.0 * CAST(SUM(CASE WHEN c.hotkey_type IS NOT NULL THEN 1 ELSE 0 END) AS FLOAT) / CAST(COUNT(c.id) AS FLOAT)
-					ELSE 0.0
-				END AS metric_value
+				COUNT(c.id) AS n
 			FROM players p
 			LEFT JOIN commands c ON c.player_id = p.id
 			WHERE p.is_observer = 0
 			GROUP BY p.id
+		),
+		low_value_counts AS (
+			SELECT
+				p.id AS player_id,
+				COUNT(clv.id) AS total_low_value,
+				SUM(CASE WHEN clv.action_type = 'Hotkey' AND clv.hotkey_type IS NOT NULL THEN 1 ELSE 0 END) AS hotkey_count
+			FROM players p
+			LEFT JOIN commands_low_value clv ON clv.player_id = p.id
+			WHERE p.is_observer = 0
+			GROUP BY p.id
+		),
+		game_level AS (
+			SELECT
+				hvc.player_key,
+				CASE
+					WHEN hvc.n + COALESCE(lvc.total_low_value, 0) > 0 THEN
+						100.0 * CAST(COALESCE(lvc.hotkey_count, 0) AS FLOAT) / CAST((hvc.n + COALESCE(lvc.total_low_value, 0)) AS FLOAT)
+					ELSE 0.0
+				END AS metric_value
+			FROM high_value_counts hvc
+			LEFT JOIN low_value_counts lvc ON lvc.player_id = hvc.player_id
 		)
 		SELECT player_key, AVG(metric_value) AS metric_value
 		FROM game_level

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/icza/screp/rep/repcmd"
+	"github.com/icza/screp/rep/repcore"
 	_ "modernc.org/sqlite"
 
 	"github.com/marianogappa/screpdb/internal/fileops"
@@ -18,8 +20,10 @@ import (
 
 // SQLiteStorage implements Storage interface using SQLite
 type SQLiteStorage struct {
-	db     *sql.DB
-	dbPath string
+	db               *sql.DB
+	dbPath           string
+	storeRightClicks bool
+	skipHotkeys      bool
 }
 
 type dbtx interface {
@@ -27,6 +31,33 @@ type dbtx interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
 }
+
+const unknownEnumValue = "UNKNOWN"
+
+var (
+	allowedCommandActionTypes = enumSetFromNames(typeNamesFromRepcmd())
+	allowedCommandOrders      = enumSetFromNames(orderNamesFromRepcmd())
+	allowedCommandUnits       = enumSetFromNames(unitNamesFromRepcmd())
+	allowedCommandTechs       = enumSetFromNames(techNamesFromRepcmd())
+	allowedCommandUpgrades    = enumSetFromNames(upgradeNamesFromRepcmd())
+	allowedCommandHotkeys     = enumSetFromNames(hotkeyNamesFromRepcmd())
+	allowedLeaveReasons       = enumSetFromNames(leaveReasonNamesFromRepcmd())
+	allowedCommandSpeeds      = enumSetFromNames([]string{
+		"Slowest", "Slower", "Slow", "Normal", "Fast", "Faster", "Fastest", unknownEnumValue,
+	})
+	allowedPlayerRaces  = enumSetFromNames(playerRaceNamesFromRepcore())
+	allowedPlayerTypes  = enumSetFromNames(playerTypeNamesFromRepcore())
+	allowedPlayerColors = enumSetFromNames(playerColorNamesFromRepcore())
+	lowValueActionTypes = enumSetFromNames([]string{
+		"Right Click",
+		"Hotkey",
+		"Minimap Ping",
+		"Alliance",
+		"Vision",
+		"Cheat",
+		"Game Speed",
+	})
+)
 
 // NewSQLiteStorage creates a new SQLite storage instance
 func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
@@ -61,6 +92,12 @@ func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
 	}
 
 	return &SQLiteStorage{db: db, dbPath: dbPath}, nil
+}
+
+// SetCommandStorageOptions controls low-value command persistence behavior.
+func (s *SQLiteStorage) SetCommandStorageOptions(storeRightClicks bool, skipHotkeys bool) {
+	s.storeRightClicks = storeRightClicks
+	s.skipHotkeys = skipHotkeys
 }
 
 // Initialize creates the database schema using migrations
@@ -285,6 +322,10 @@ func (s *SQLiteStorage) insertPlayersBatchTx(ctx context.Context, db dbtx, repla
 	valueArgs := make([]any, 0, len(players)*len(columns))
 
 	for _, player := range players {
+		race := normalizeEnumValue(player.Race, allowedPlayerRaces)
+		playerType := normalizeEnumValue(player.Type, allowedPlayerTypes)
+		color := normalizeEnumValue(player.Color, allowedPlayerColors)
+
 		var startX, startY, startOclock *int32
 		if player.StartLocationX != nil {
 			x := int32(*player.StartLocationX)
@@ -303,9 +344,9 @@ func (s *SQLiteStorage) insertPlayersBatchTx(ctx context.Context, db dbtx, repla
 		valueArgs = append(valueArgs,
 			int32(replayID),
 			player.Name,
-			player.Race,
-			player.Type,
-			player.Color,
+			race,
+			playerType,
+			color,
 			int32(player.Team),
 			player.IsObserver,
 			int32(player.APM),
@@ -358,20 +399,47 @@ func (s *SQLiteStorage) insertCommandsBatchTx(ctx context.Context, db dbtx, comm
 		return nil
 	}
 
-	stmt, err := db.PrepareContext(ctx, `
-		INSERT INTO commands (
-			replay_id, player_id, frame, seconds_from_game_start, run_at, action_type,
+	insertCommandSQL := `
+		INSERT INTO %s (
+			replay_id, player_id, frame, seconds_from_game_start, action_type,
 			x, y, is_queued, order_name, unit_type, unit_types, tech_name, upgrade_name,
 			hotkey_type, hotkey_group, game_speed, vision_player_ids, alliance_player_ids,
 			is_allied_victory, general_data, chat_message, leave_reason
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+	highValueStmt, err := db.PrepareContext(ctx, fmt.Sprintf(insertCommandSQL, "commands"))
 	if err != nil {
 		return fmt.Errorf("failed to prepare command insert statement: %w", err)
 	}
-	defer stmt.Close()
+	defer highValueStmt.Close()
+
+	lowValueStmt, err := db.PrepareContext(ctx, fmt.Sprintf(insertCommandSQL, "commands_low_value"))
+	if err != nil {
+		return fmt.Errorf("failed to prepare low-value command insert statement: %w", err)
+	}
+	defer lowValueStmt.Close()
 
 	for _, command := range commands {
+		actionType := normalizeEnumValue(command.ActionType, allowedCommandActionTypes)
+		if actionType == "Right Click" && !s.storeRightClicks {
+			continue
+		}
+		if actionType == "Hotkey" && s.skipHotkeys {
+			continue
+		}
+
+		targetStmt := highValueStmt
+		if _, ok := lowValueActionTypes[actionType]; ok {
+			targetStmt = lowValueStmt
+		}
+
+		orderName := normalizeNullableEnum(command.OrderName, allowedCommandOrders)
+		techName := normalizeNullableEnum(command.TechName, allowedCommandTechs)
+		upgradeName := normalizeNullableEnum(command.UpgradeName, allowedCommandUpgrades)
+		hotkeyType := normalizeNullableEnum(command.HotkeyType, allowedCommandHotkeys)
+		commandSpeed := normalizeNullableEnum(command.GameSpeed, allowedCommandSpeeds)
+		leaveReason := normalizeNullableEnum(command.LeaveReason, allowedLeaveReasons)
+
 		// Serialize player IDs to JSON string
 		var visionPlayerIdsJSON, alliancePlayerIdsJSON *string
 		if command.VisionPlayerIDs != nil {
@@ -391,8 +459,9 @@ func (s *SQLiteStorage) insertCommandsBatchTx(ctx context.Context, db dbtx, comm
 
 		// Convert unit type (convert "None" to null)
 		var unitType *string
-		if command.UnitType != nil && *command.UnitType != "None" {
-			unitType = command.UnitType
+		normalizedUnitType := normalizeNullableEnum(command.UnitType, allowedCommandUnits)
+		if normalizedUnitType != nil && *normalizedUnitType != "None" {
+			unitType = normalizedUnitType
 		}
 
 		// Convert nullable int fields
@@ -413,30 +482,29 @@ func (s *SQLiteStorage) insertCommandsBatchTx(ctx context.Context, db dbtx, comm
 			hotkeyGroup = &val
 		}
 
-		if _, err := stmt.ExecContext(ctx,
+		if _, err := targetStmt.ExecContext(ctx,
 			int32(command.ReplayID),
 			int32(command.PlayerID),
 			command.Frame,
 			int32(command.SecondsFromGameStart),
-			command.RunAt,
-			command.ActionType,
+			actionType,
 			x,
 			y,
 			command.IsQueued,
-			command.OrderName,
+			orderName,
 			unitType,
 			command.UnitTypes,
-			command.TechName,
-			command.UpgradeName,
-			command.HotkeyType,
+			techName,
+			upgradeName,
+			hotkeyType,
 			hotkeyGroup,
-			command.GameSpeed,
+			commandSpeed,
 			visionPlayerIdsJSON,
 			alliancePlayerIdsJSON,
 			command.IsAlliedVictory,
 			command.GeneralData,
 			command.ChatMessage,
-			command.LeaveReason,
+			leaveReason,
 		); err != nil {
 			return fmt.Errorf("failed to execute command insert: %w", err)
 		}
@@ -593,7 +661,7 @@ func (s *SQLiteStorage) StorageName() string {
 
 // GetDatabaseSchema returns the database schema information
 func (s *SQLiteStorage) GetDatabaseSchema(ctx context.Context) (string, error) {
-	tables := []string{"replays", "players", "commands"}
+	tables := []string{"replays", "players", "commands", "commands_low_value"}
 
 	var schema strings.Builder
 	schema.WriteString("# Database Schema\n\n")
@@ -683,10 +751,11 @@ func (s *SQLiteStorage) FilterOutExistingPatternDetections(ctx context.Context, 
 	args = append(args, algorithmVersion)
 
 	query := fmt.Sprintf(`
-		SELECT DISTINCT file_path, file_checksum
-		FROM detected_patterns_replay
-		WHERE (file_path IN (%s) OR file_checksum IN (%s))
-		AND algorithm_version >= ?
+		SELECT DISTINCT r.file_path, r.file_checksum
+		FROM detected_patterns_replay dpr
+		JOIN replays r ON r.id = dpr.replay_id
+		WHERE (r.file_path IN (%s) OR r.file_checksum IN (%s))
+		AND dpr.algorithm_version >= ?
 	`, strings.Join(filePathPlaceholders, ", "), strings.Join(checksumPlaceholders, ", "))
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
@@ -792,67 +861,17 @@ func (s *SQLiteStorage) BatchInsertPatternResultsTx(ctx context.Context, db dbtx
 
 // insertReplayPatternResultsTx inserts replay-level pattern results (uses provided connection/transaction)
 func (s *SQLiteStorage) insertReplayPatternResultsTx(ctx context.Context, db dbtx, results []*core.PatternResult) error {
-	// First, get file_path and file_checksum for each replay_id
-	replayIDs := make([]int64, 0, len(results))
-	replayIDSet := make(map[int64]bool)
-	for _, result := range results {
-		if !replayIDSet[result.ReplayID] {
-			replayIDs = append(replayIDs, result.ReplayID)
-			replayIDSet[result.ReplayID] = true
-		}
-	}
-
-	// Query for file info
-	placeholders := make([]string, len(replayIDs))
-	args := make([]any, len(replayIDs))
-	for i, id := range replayIDs {
-		placeholders[i] = "?"
-		args[i] = id
-	}
-
-	query := fmt.Sprintf(`
-		SELECT id, file_path, file_checksum FROM replays WHERE id IN (%s)
-	`, strings.Join(placeholders, ", "))
-
-	rows, err := db.QueryContext(ctx, query, args...)
-	if err != nil {
-		return fmt.Errorf("failed to query replay file info: %w", err)
-	}
-	defer rows.Close()
-
-	replayFileInfo := make(map[int64]struct {
-		filePath     string
-		fileChecksum string
-	})
-	for rows.Next() {
-		var id int64
-		var filePath, fileChecksum string
-		if err := rows.Scan(&id, &filePath, &fileChecksum); err != nil {
-			return fmt.Errorf("failed to scan replay file info: %w", err)
-		}
-		replayFileInfo[id] = struct {
-			filePath     string
-			fileChecksum string
-		}{filePath, fileChecksum}
-	}
-
-	// Now insert results
 	const batchSize = 100
 	for i := 0; i < len(results); i += batchSize {
 		end := min(i+batchSize, len(results))
 		batch := results[i:end]
 
 		valueStrings := make([]string, 0, len(batch))
-		valueArgs := make([]any, 0, len(batch)*9)
+		valueArgs := make([]any, 0, len(batch)*7)
 
 		for _, result := range batch {
-			fileInfo, exists := replayFileInfo[result.ReplayID]
-			if !exists {
-				continue // Skip if we don't have file info
-			}
-
-			valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?, ?, ?)")
-			valueArgs = append(valueArgs, result.ReplayID, core.AlgorithmVersion, fileInfo.filePath, fileInfo.fileChecksum, result.PatternName)
+			valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?)")
+			valueArgs = append(valueArgs, result.ReplayID, core.AlgorithmVersion, result.PatternName)
 
 			// Add value fields (only one should be set)
 			if result.ValueBool != nil {
@@ -874,7 +893,7 @@ func (s *SQLiteStorage) insertReplayPatternResultsTx(ctx context.Context, db dbt
 
 		query := fmt.Sprintf(`
 			INSERT INTO detected_patterns_replay
-			(replay_id, algorithm_version, file_path, file_checksum, pattern_name, value_bool, value_int, value_string, value_timestamp)
+			(replay_id, algorithm_version, pattern_name, value_bool, value_int, value_string, value_timestamp)
 			VALUES %s
 			ON CONFLICT (replay_id, pattern_name) DO UPDATE SET
 				algorithm_version = excluded.algorithm_version,
@@ -1023,4 +1042,150 @@ func sqliteDSN(path string) string {
 		return path + sep + "_pragma=foreign_keys(1)"
 	}
 	return fmt.Sprintf("file:%s?_pragma=foreign_keys(1)", path)
+}
+
+func enumSetFromNames(values []string) map[string]struct{} {
+	allowed := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		key := strings.TrimSpace(value)
+		if key == "" {
+			continue
+		}
+		allowed[key] = struct{}{}
+	}
+	allowed[unknownEnumValue] = struct{}{}
+	return allowed
+}
+
+func normalizeNullableEnum(value *string, allowed map[string]struct{}) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+	normalized := normalizeEnumValue(trimmed, allowed)
+	return &normalized
+}
+
+func normalizeEnumValue(value string, allowed map[string]struct{}) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return unknownEnumValue
+	}
+	if _, ok := allowed[trimmed]; ok {
+		return trimmed
+	}
+	return unknownEnumValue
+}
+
+func typeNamesFromRepcmd() []string {
+	values := make([]string, 0, len(repcmd.Types)+1)
+	for _, value := range repcmd.Types {
+		if value == nil {
+			continue
+		}
+		values = append(values, value.Name)
+	}
+	return append(values, unknownEnumValue)
+}
+
+func orderNamesFromRepcmd() []string {
+	values := make([]string, 0, len(repcmd.Orders)+1)
+	for _, value := range repcmd.Orders {
+		if value == nil {
+			continue
+		}
+		values = append(values, value.Name)
+	}
+	return append(values, unknownEnumValue)
+}
+
+func unitNamesFromRepcmd() []string {
+	values := make([]string, 0, len(repcmd.Units)+1)
+	for _, value := range repcmd.Units {
+		if value == nil {
+			continue
+		}
+		values = append(values, value.Name)
+	}
+	return append(values, unknownEnumValue)
+}
+
+func techNamesFromRepcmd() []string {
+	values := make([]string, 0, len(repcmd.Techs)+1)
+	for _, value := range repcmd.Techs {
+		if value == nil {
+			continue
+		}
+		values = append(values, value.Name)
+	}
+	return append(values, unknownEnumValue)
+}
+
+func upgradeNamesFromRepcmd() []string {
+	values := make([]string, 0, len(repcmd.Upgrades)+1)
+	for _, value := range repcmd.Upgrades {
+		if value == nil {
+			continue
+		}
+		values = append(values, value.Name)
+	}
+	return append(values, unknownEnumValue)
+}
+
+func hotkeyNamesFromRepcmd() []string {
+	values := make([]string, 0, len(repcmd.HotkeyTypes)+1)
+	for _, value := range repcmd.HotkeyTypes {
+		if value == nil {
+			continue
+		}
+		values = append(values, value.Name)
+	}
+	return append(values, unknownEnumValue)
+}
+
+func leaveReasonNamesFromRepcmd() []string {
+	values := make([]string, 0, len(repcmd.LeaveReasons)+1)
+	for _, value := range repcmd.LeaveReasons {
+		if value == nil {
+			continue
+		}
+		values = append(values, value.Name)
+	}
+	return append(values, unknownEnumValue)
+}
+
+func playerRaceNamesFromRepcore() []string {
+	values := make([]string, 0, len(repcore.Races)+1)
+	for _, value := range repcore.Races {
+		if value == nil {
+			continue
+		}
+		values = append(values, value.Name)
+	}
+	return append(values, unknownEnumValue)
+}
+
+func playerTypeNamesFromRepcore() []string {
+	values := make([]string, 0, len(repcore.PlayerTypes)+1)
+	for _, value := range repcore.PlayerTypes {
+		if value == nil {
+			continue
+		}
+		values = append(values, value.Name)
+	}
+	return append(values, unknownEnumValue)
+}
+
+func playerColorNamesFromRepcore() []string {
+	values := make([]string, 0, len(repcore.Colors)+1)
+	for _, value := range repcore.Colors {
+		if value == nil {
+			continue
+		}
+		values = append(values, value.Name)
+	}
+	return append(values, unknownEnumValue)
 }
