@@ -37,6 +37,110 @@ var topPlayerPalette = []string{
 	"#A855F7",
 }
 
+const firstUnitEfficiencyMaxGapSeconds int64 = 60
+
+type firstUnitEfficiencyUnitOption struct {
+	DisplayName string
+	MatchKeys   []string
+}
+
+type firstUnitEfficiencyConfig struct {
+	Race                 string
+	BuildingName         string
+	BuildDurationSeconds int64
+	Units                []firstUnitEfficiencyUnitOption
+}
+
+var firstUnitEfficiencyConfigs = []firstUnitEfficiencyConfig{
+	{
+		Race:                 "protoss",
+		BuildingName:         "Forge",
+		BuildDurationSeconds: 25,
+		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Photon Cannon", MatchKeys: []string{"Photon Cannon"}}},
+	},
+	{
+		Race:                 "protoss",
+		BuildingName:         "Gateway",
+		BuildDurationSeconds: 38,
+		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Zealot", MatchKeys: []string{"Zealot"}}},
+	},
+	{
+		Race:                 "protoss",
+		BuildingName:         "Stargate",
+		BuildDurationSeconds: 44,
+		Units: []firstUnitEfficiencyUnitOption{
+			{DisplayName: "Corsair", MatchKeys: []string{"Corsair"}},
+			{DisplayName: "Scout", MatchKeys: []string{"Scout"}},
+		},
+	},
+	{
+		Race:                 "protoss",
+		BuildingName:         "Fleet Beacon",
+		BuildDurationSeconds: 38,
+		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Carrier", MatchKeys: []string{"Carrier"}}},
+	},
+	{
+		Race:                 "protoss",
+		BuildingName:         "Arbiter Tribunal",
+		BuildDurationSeconds: 38,
+		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Arbiter", MatchKeys: []string{"Arbiter"}}},
+	},
+	{
+		Race:                 "terran",
+		BuildingName:         "Barracks",
+		BuildDurationSeconds: 50,
+		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Marine", MatchKeys: []string{"Marine"}}},
+	},
+	{
+		Race:                 "terran",
+		BuildingName:         "Factory",
+		BuildDurationSeconds: 50,
+		Units: []firstUnitEfficiencyUnitOption{
+			{DisplayName: "Vulture", MatchKeys: []string{"Vulture"}},
+			{DisplayName: "Siege Tank", MatchKeys: []string{"Siege Tank", "Siege Tank (Tank Mode)", "Terran Siege Tank (Siege Mode)"}},
+		},
+	},
+	{
+		Race:                 "terran",
+		BuildingName:         "Physics Lab",
+		BuildDurationSeconds: 25,
+		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Battlecruiser", MatchKeys: []string{"Battlecruiser"}}},
+	},
+	{
+		Race:                 "zerg",
+		BuildingName:         "Spawning Pool",
+		BuildDurationSeconds: 50,
+		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Zergling", MatchKeys: []string{"Zergling"}}},
+	},
+	{
+		Race:                 "zerg",
+		BuildingName:         "Hydralisk Den",
+		BuildDurationSeconds: 25,
+		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Hydralisk", MatchKeys: []string{"Hydralisk"}}},
+	},
+	{
+		Race:                 "zerg",
+		BuildingName:         "Spire",
+		BuildDurationSeconds: 75,
+		Units: []firstUnitEfficiencyUnitOption{
+			{DisplayName: "Mutalisk", MatchKeys: []string{"Mutalisk"}},
+			{DisplayName: "Scourge", MatchKeys: []string{"Scourge"}},
+		},
+	},
+	{
+		Race:                 "zerg",
+		BuildingName:         "Ultralisk Cavern",
+		BuildDurationSeconds: 50,
+		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Ultralisk", MatchKeys: []string{"Ultralisk"}}},
+	},
+	{
+		Race:                 "zerg",
+		BuildingName:         "Defiler Mound",
+		BuildDurationSeconds: 38,
+		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Defiler", MatchKeys: []string{"Defiler"}}},
+	},
+}
+
 type workflowGameListItem struct {
 	ReplayID        int64                    `json:"replay_id"`
 	ReplayDate      string                   `json:"replay_date"`
@@ -131,19 +235,20 @@ type workflowTeamPattern struct {
 }
 
 type workflowGameDetail struct {
-	SummaryVersion  string                 `json:"summary_version"`
-	ReplayID        int64                  `json:"replay_id"`
-	ReplayDate      string                 `json:"replay_date"`
-	FileName        string                 `json:"file_name"`
-	MapName         string                 `json:"map_name"`
-	DurationSeconds int64                  `json:"duration_seconds"`
-	GameType        string                 `json:"game_type"`
-	Players         []workflowGamePlayer   `json:"players"`
-	ReplayPatterns  []workflowPatternValue `json:"replay_patterns"`
-	TeamPatterns    []workflowTeamPattern  `json:"team_patterns"`
-	GameEvents      []workflowGameEvent    `json:"game_events"`
-	UnitsBySlice    []workflowUnitSlice    `json:"units_by_slice"`
-	Timings         workflowReplayTimings  `json:"timings"`
+	SummaryVersion      string                              `json:"summary_version"`
+	ReplayID            int64                               `json:"replay_id"`
+	ReplayDate          string                              `json:"replay_date"`
+	FileName            string                              `json:"file_name"`
+	MapName             string                              `json:"map_name"`
+	DurationSeconds     int64                               `json:"duration_seconds"`
+	GameType            string                              `json:"game_type"`
+	Players             []workflowGamePlayer                `json:"players"`
+	ReplayPatterns      []workflowPatternValue              `json:"replay_patterns"`
+	TeamPatterns        []workflowTeamPattern               `json:"team_patterns"`
+	GameEvents          []workflowGameEvent                 `json:"game_events"`
+	UnitsBySlice        []workflowUnitSlice                 `json:"units_by_slice"`
+	Timings             workflowReplayTimings               `json:"timings"`
+	FirstUnitEfficiency []workflowFirstUnitEfficiencyPlayer `json:"first_unit_efficiency"`
 }
 
 type workflowGameEvent struct {
@@ -175,6 +280,24 @@ type workflowReplayTimings struct {
 	Expansion []workflowPlayerTimingSeries `json:"expansion"`
 	Upgrades  []workflowPlayerTimingSeries `json:"upgrades"`
 	Tech      []workflowPlayerTimingSeries `json:"tech"`
+}
+
+type workflowFirstUnitEfficiencyPlayer struct {
+	PlayerID  int64                              `json:"player_id"`
+	PlayerKey string                             `json:"player_key"`
+	Name      string                             `json:"name"`
+	Race      string                             `json:"race"`
+	Entries   []workflowFirstUnitEfficiencyEntry `json:"entries"`
+}
+
+type workflowFirstUnitEfficiencyEntry struct {
+	BuildingName         string `json:"building_name"`
+	UnitName             string `json:"unit_name"`
+	BuildingStartSecond  int64  `json:"building_start_second"`
+	BuildingReadySecond  int64  `json:"building_ready_second"`
+	UnitSecond           int64  `json:"unit_second"`
+	BuildDurationSeconds int64  `json:"build_duration_seconds"`
+	GapAfterReadySeconds int64  `json:"gap_after_ready_seconds"`
 }
 
 type workflowPlayerTimingSeries struct {
@@ -1149,6 +1272,9 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	if err := d.populateTimingsForGameDetail(&detail); err != nil {
 		return detail, err
 	}
+	if err := d.populateFirstUnitEfficiencyForGameDetail(&detail); err != nil {
+		return detail, err
+	}
 
 	return detail, nil
 }
@@ -1755,6 +1881,213 @@ func (d *Dashboard) populateTimingsForGameDetail(detail *workflowGameDetail) err
 	timings.Tech = tech
 	detail.Timings = timings
 	return nil
+}
+
+func (d *Dashboard) populateFirstUnitEfficiencyForGameDetail(detail *workflowGameDetail) error {
+	detail.FirstUnitEfficiency = []workflowFirstUnitEfficiencyPlayer{}
+	if len(detail.Players) == 0 {
+		return nil
+	}
+
+	type playerEfficiencyState struct {
+		buildTimesByUnit map[string][]int64
+		unitTimesByUnit  map[string][]int64
+	}
+
+	stateByPlayer := map[int64]*playerEfficiencyState{}
+	for _, player := range detail.Players {
+		stateByPlayer[player.PlayerID] = &playerEfficiencyState{
+			buildTimesByUnit: map[string][]int64{},
+			unitTimesByUnit:  map[string][]int64{},
+		}
+	}
+
+	rows, err := d.db.QueryContext(d.ctx, `
+		SELECT c.player_id, c.seconds_from_game_start, c.action_type, c.unit_type, c.unit_types
+		FROM commands c
+		WHERE c.replay_id = ?
+			AND c.action_type IN ('Build', 'Train', 'Unit Morph')
+		ORDER BY c.player_id ASC, c.seconds_from_game_start ASC, c.id ASC
+	`, detail.ReplayID)
+	if err != nil {
+		return fmt.Errorf("failed to load first unit efficiency commands: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var playerID int64
+		var second int64
+		var actionType string
+		var unitType sql.NullString
+		var unitTypes sql.NullString
+		if err := rows.Scan(&playerID, &second, &actionType, &unitType, &unitTypes); err != nil {
+			return fmt.Errorf("failed to parse first unit efficiency command row: %w", err)
+		}
+		playerState, ok := stateByPlayer[playerID]
+		if !ok {
+			continue
+		}
+		commandUnits := parseCommandUnitNames(unitType, unitTypes)
+		if len(commandUnits) == 0 {
+			continue
+		}
+		for _, name := range commandUnits {
+			aliases := unitNameAliases(name)
+			if len(aliases) == 0 {
+				continue
+			}
+			if actionType == "Build" {
+				for _, alias := range aliases {
+					playerState.buildTimesByUnit[alias] = append(playerState.buildTimesByUnit[alias], second)
+				}
+				continue
+			}
+			for _, alias := range aliases {
+				playerState.unitTimesByUnit[alias] = append(playerState.unitTimesByUnit[alias], second)
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("failed iterating first unit efficiency commands: %w", err)
+	}
+
+	for _, player := range detail.Players {
+		playerState, ok := stateByPlayer[player.PlayerID]
+		if !ok {
+			continue
+		}
+		playerRace := strings.ToLower(strings.TrimSpace(player.Race))
+		entries := []workflowFirstUnitEfficiencyEntry{}
+		for _, cfg := range firstUnitEfficiencyConfigs {
+			if cfg.Race != playerRace {
+				continue
+			}
+			buildingKey := normalizeUnitName(cfg.BuildingName)
+			buildStarts := playerState.buildTimesByUnit[buildingKey]
+			if len(buildStarts) == 0 {
+				continue
+			}
+			buildingStartSecond := buildStarts[0]
+			buildingReadySecond := buildingStartSecond + cfg.BuildDurationSeconds
+			bestUnitSecond := int64(-1)
+			bestUnitName := ""
+			for _, unitOption := range cfg.Units {
+				for _, matchKeyRaw := range unitOption.MatchKeys {
+					matchKey := normalizeUnitName(matchKeyRaw)
+					timings := playerState.unitTimesByUnit[matchKey]
+					if len(timings) == 0 {
+						continue
+					}
+					idx := sort.Search(len(timings), func(i int) bool {
+						return timings[i] >= buildingReadySecond
+					})
+					if idx >= len(timings) {
+						continue
+					}
+					candidateSecond := timings[idx]
+					if bestUnitSecond < 0 || candidateSecond < bestUnitSecond {
+						bestUnitSecond = candidateSecond
+						bestUnitName = unitOption.DisplayName
+					}
+				}
+			}
+			if bestUnitSecond < 0 {
+				continue
+			}
+			gapAfterReadySeconds := bestUnitSecond - buildingReadySecond
+			if gapAfterReadySeconds < 0 || gapAfterReadySeconds > firstUnitEfficiencyMaxGapSeconds {
+				continue
+			}
+			entries = append(entries, workflowFirstUnitEfficiencyEntry{
+				BuildingName:         cfg.BuildingName,
+				UnitName:             bestUnitName,
+				BuildingStartSecond:  buildingStartSecond,
+				BuildingReadySecond:  buildingReadySecond,
+				UnitSecond:           bestUnitSecond,
+				BuildDurationSeconds: cfg.BuildDurationSeconds,
+				GapAfterReadySeconds: gapAfterReadySeconds,
+			})
+		}
+		if len(entries) == 0 {
+			continue
+		}
+		detail.FirstUnitEfficiency = append(detail.FirstUnitEfficiency, workflowFirstUnitEfficiencyPlayer{
+			PlayerID:  player.PlayerID,
+			PlayerKey: player.PlayerKey,
+			Name:      player.Name,
+			Race:      player.Race,
+			Entries:   entries,
+		})
+	}
+	return nil
+}
+
+func parseCommandUnitNames(unitType sql.NullString, unitTypes sql.NullString) []string {
+	unique := map[string]struct{}{}
+	names := []string{}
+	appendName := func(raw string) {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
+			return
+		}
+		key := normalizeUnitName(trimmed)
+		if key == "" {
+			return
+		}
+		if _, exists := unique[key]; exists {
+			return
+		}
+		unique[key] = struct{}{}
+		names = append(names, trimmed)
+	}
+
+	if unitType.Valid {
+		appendName(unitType.String)
+	}
+	if unitTypes.Valid {
+		list := []string{}
+		if err := json.Unmarshal([]byte(unitTypes.String), &list); err == nil {
+			for _, item := range list {
+				appendName(item)
+			}
+		}
+	}
+	return names
+}
+
+func unitNameAliases(name string) []string {
+	base := normalizeUnitName(name)
+	if base == "" {
+		return nil
+	}
+	aliases := map[string]struct{}{
+		base: {},
+	}
+	for _, prefix := range []string{"terran", "zerg", "protoss"} {
+		if strings.HasPrefix(base, prefix) && len(base) > len(prefix) {
+			aliases[strings.TrimPrefix(base, prefix)] = struct{}{}
+		}
+	}
+	out := make([]string, 0, len(aliases))
+	for key := range aliases {
+		out = append(out, key)
+	}
+	return out
+}
+
+func normalizeUnitName(value string) string {
+	raw := strings.ToLower(strings.TrimSpace(value))
+	if raw == "" {
+		return ""
+	}
+	var b strings.Builder
+	b.Grow(len(raw))
+	for _, r := range raw {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 func (d *Dashboard) playerTimingsFromReplayCommands(replayID int64, players []workflowGamePlayer, query string) ([]workflowPlayerTimingSeries, error) {

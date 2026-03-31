@@ -14,10 +14,12 @@ import ScatterPlot from './components/charts/ScatterPlot';
 import Histogram from './components/charts/Histogram';
 import Heatmap from './components/charts/Heatmap';
 import TimingScatterRows from './components/charts/TimingScatterRows';
+import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
 import probeImg from './assets/units/probe.png';
 import scvImg from './assets/units/scv.png';
 import droneImg from './assets/units/drone.png';
 import arbiterImg from './assets/units/arbiter.png';
+import corsairImg from './assets/units/corsair.png';
 import scoutImg from './assets/units/scout.png';
 import reaverImg from './assets/units/reaver.png';
 import overlordImg from './assets/units/overlord.png';
@@ -257,6 +259,30 @@ const HP_UPGRADE_NAMES = new Set([
   'Protoss Plasma Shields',
 ]);
 
+const DEFAULT_HP_UPGRADE_BY_RACE = {
+  terran: 'Terran Vehicle Weapons',
+  protoss: 'Protoss Ground Weapons',
+  zerg: 'Zerg Carapace',
+};
+
+const racePrefixForUpgrade = (race) => {
+  const value = String(race || '').trim().toLowerCase();
+  if (!value) return '';
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)} `;
+};
+
+const setHasUpgradeLoose = (upgradeSet, upgradeName) => {
+  const value = String(upgradeName || '').trim();
+  if (!value) return false;
+  if (upgradeSet.has(value)) return true;
+  for (const known of upgradeSet) {
+    if (value.startsWith(`${known} `) || value.startsWith(`${known}+`) || value.startsWith(`${known} +`)) {
+      return true;
+    }
+  }
+  return false;
+};
+
 const UNIT_RANGE_UPGRADE_NAMES = new Set([
   'U-238 Shells (Marine Range)',
   'Ocular Implants (Ghost Sight)',
@@ -305,11 +331,11 @@ const CAPACITY_COOLDOWN_DAMAGE_UPGRADE_NAMES = new Set([
 
 const upgradeCategoryForName = (upgradeName) => {
   const value = String(upgradeName || '').trim();
-  if (HP_UPGRADE_NAMES.has(value)) return 'hp_upgrades';
-  if (UNIT_RANGE_UPGRADE_NAMES.has(value)) return 'unit_range';
-  if (UNIT_SPEED_UPGRADE_NAMES.has(value)) return 'unit_speed';
-  if (ENERGY_UPGRADE_NAMES.has(value)) return 'energy';
-  if (CAPACITY_COOLDOWN_DAMAGE_UPGRADE_NAMES.has(value)) return 'capacity_cooldown_damage';
+  if (setHasUpgradeLoose(HP_UPGRADE_NAMES, value)) return 'hp_upgrades';
+  if (setHasUpgradeLoose(UNIT_RANGE_UPGRADE_NAMES, value)) return 'unit_range';
+  if (setHasUpgradeLoose(UNIT_SPEED_UPGRADE_NAMES, value)) return 'unit_speed';
+  if (setHasUpgradeLoose(ENERGY_UPGRADE_NAMES, value)) return 'energy';
+  if (setHasUpgradeLoose(CAPACITY_COOLDOWN_DAMAGE_UPGRADE_NAMES, value)) return 'capacity_cooldown_damage';
   return 'capacity_cooldown_damage';
 };
 
@@ -325,6 +351,21 @@ const TIMING_CATEGORY_CONFIG = [
 ];
 
 const TIMING_RACE_ORDER = ['terran', 'zerg', 'protoss'];
+const FIRST_UNIT_EFFICIENCY_GROUP_CONFIG = [
+  { race: 'protoss', buildingName: 'Forge', unitNames: ['Photon Cannon'] },
+  { race: 'protoss', buildingName: 'Gateway', unitNames: ['Zealot'] },
+  { race: 'protoss', buildingName: 'Stargate', unitNames: ['Corsair', 'Scout'] },
+  { race: 'protoss', buildingName: 'Fleet Beacon', unitNames: ['Carrier'] },
+  { race: 'protoss', buildingName: 'Arbiter Tribunal', unitNames: ['Arbiter'] },
+  { race: 'terran', buildingName: 'Barracks', unitNames: ['Marine'] },
+  { race: 'terran', buildingName: 'Factory', unitNames: ['Vulture', 'Siege Tank'] },
+  { race: 'terran', buildingName: 'Physics Lab', unitNames: ['Battlecruiser'] },
+  { race: 'zerg', buildingName: 'Spawning Pool', unitNames: ['Zergling'] },
+  { race: 'zerg', buildingName: 'Hydralisk Den', unitNames: ['Hydralisk'] },
+  { race: 'zerg', buildingName: 'Spire', unitNames: ['Mutalisk', 'Scourge'] },
+  { race: 'zerg', buildingName: 'Ultralisk Cavern', unitNames: ['Ultralisk'] },
+  { race: 'zerg', buildingName: 'Defiler Mound', unitNames: ['Defiler'] },
+];
 
 const prettyRaceName = (race) => {
   const value = String(race || '').trim().toLowerCase();
@@ -340,6 +381,8 @@ const UNIT_ICON_MAP = {
   drone: droneImg,
   arbiter: arbiterImg,
   protossarbiter: arbiterImg,
+  corsair: corsairImg,
+  protosscorsair: corsairImg,
   scout: scoutImg,
   protossscout: scoutImg,
   reaver: reaverImg,
@@ -589,6 +632,10 @@ const formatPatternPillText = (rawName, rawValue, isTruthy) => {
     const minute = minuteFromValue(rawValue);
     if (minute !== null) return `${rawName} at min ${minute}`;
   }
+  if (lowerName.includes('threw nukes')) {
+    const minute = minuteFromValue(rawValue);
+    if (minute !== null) return `${rawName} at ${minute} mins`;
+  }
   return `${rawName} at ${rawValue}`;
 };
 
@@ -831,9 +878,9 @@ function App() {
   const [workflowBuildingNameFilter, setWorkflowBuildingNameFilter] = useState('');
   const [workflowTimingCategory, setWorkflowTimingCategory] = useState('gas');
   const [workflowHpUpgradeFilters, setWorkflowHpUpgradeFilters] = useState({
-    terran: '',
-    zerg: '',
-    protoss: '',
+    terran: DEFAULT_HP_UPGRADE_BY_RACE.terran,
+    zerg: DEFAULT_HP_UPGRADE_BY_RACE.zerg,
+    protoss: DEFAULT_HP_UPGRADE_BY_RACE.protoss,
   });
 
   const loadDashboard = async (url, varValues = null, skipVarInit = false) => {
@@ -948,7 +995,11 @@ function App() {
       setWorkflowBuildingFilterMode('all');
       setWorkflowBuildingNameFilter('');
       setWorkflowTimingCategory('gas');
-      setWorkflowHpUpgradeFilters({ terran: '', zerg: '', protoss: '' });
+      setWorkflowHpUpgradeFilters({
+        terran: DEFAULT_HP_UPGRADE_BY_RACE.terran,
+        zerg: DEFAULT_HP_UPGRADE_BY_RACE.zerg,
+        protoss: DEFAULT_HP_UPGRADE_BY_RACE.protoss,
+      });
       navigateWorkflowView('game');
     } catch (err) {
       setError(err.message);
@@ -1459,7 +1510,7 @@ function App() {
     return sortedSeries.map((playerSeries) => {
       const playerRace = String(workflowPlayersById.get(playerSeries?.player_id)?.race || '').trim();
       const sourcePoints = Array.isArray(playerSeries?.points) ? playerSeries.points : [];
-      const points = sourcePoints
+      const mappedPoints = sourcePoints
         .map((point) => {
           const second = Number(point?.second);
           if (!Number.isFinite(second)) return null;
@@ -1467,49 +1518,95 @@ function App() {
           const rawLabel = String(point?.label || '').trim();
           const upgradeCategory = workflowTimingCategoryConfig.source === 'upgrades' ? upgradeCategoryForName(rawLabel) : '';
           if (workflowTimingCategoryConfig.source === 'upgrades' && upgradeCategory !== workflowTimingCategory) return null;
-          let displayLabel = rawLabel;
-          let categoryLabel = 'Timing';
-          let markerImage = null;
-          let markerLabel = '';
-          let isRepeatable = false;
-          let maxLevel = 1;
-
-          if (workflowTimingCategoryConfig.source === 'upgrades') {
-            displayLabel = inlineTimingUpgradeLabel(rawLabel, order);
-            categoryLabel = workflowTimingCategoryConfig.label;
-            isRepeatable = upgradeCategory === 'hp_upgrades';
-            maxLevel = isRepeatable ? 3 : 1;
-          } else if (workflowTimingCategoryConfig.source === 'tech') {
-            displayLabel = normalizeTimingDisplayLabel(rawLabel);
-            categoryLabel = 'Tech';
-          } else if (workflowTimingCategory === 'gas') {
-            displayLabel = `Gas #${order || 1}`;
-            categoryLabel = 'Gas';
-            markerImage = getGasMarkerIconForRace(playerRace);
-            markerLabel = workflowTimingCategoryConfig.markerLabel || 'Gas';
-          } else if (workflowTimingCategory === 'expansion') {
-            displayLabel = `Expansion #${order || 1}`;
-            categoryLabel = 'Expansion';
-            markerImage = getExpansionMarkerIconForRace(playerRace);
-            markerLabel = workflowTimingCategoryConfig.markerLabel || 'Expansion';
-          }
-
           return {
             ...point,
             second,
             order,
             label: rawLabel,
-            display_label: displayLabel,
-            category: upgradeCategory || workflowTimingCategory,
-            category_label: categoryLabel,
-            race: playerRace,
-            marker_image: markerImage,
-            marker_label: markerLabel,
-            is_repeatable: isRepeatable,
-            max_level: maxLevel,
+            upgrade_category: upgradeCategory,
           };
         })
         .filter(Boolean);
+
+      // Post-process noisy repeated commands:
+      // - HP upgrades are repeatable up to 3 levels, so keep latest 3 per label.
+      // - Other upgrades and tech are effectively one-off, so keep latest 1 per label.
+      const pointsAfterPostProcess = (() => {
+        const sourceType = workflowTimingCategoryConfig.source;
+        if (sourceType !== 'upgrades' && sourceType !== 'tech') return mappedPoints;
+        const byLabel = new Map();
+        mappedPoints.forEach((point) => {
+          const key = String(point?.label || '').trim();
+          if (!key) return;
+          if (!byLabel.has(key)) byLabel.set(key, []);
+          byLabel.get(key).push(point);
+        });
+        const collapsed = [];
+        byLabel.forEach((items) => {
+          const sortedBySecond = [...items].sort((a, b) => {
+            if (a.second === b.second) return a.order - b.order;
+            return a.second - b.second;
+          });
+          const keepCount = sourceType === 'upgrades' && workflowTimingCategory === 'hp_upgrades' ? 3 : 1;
+          const kept = sortedBySecond.slice(-keepCount);
+          kept.forEach((item, idx) => {
+            collapsed.push({
+              ...item,
+              order: idx + 1,
+            });
+          });
+        });
+        return collapsed.sort((a, b) => {
+          if (a.second === b.second) return String(a.label || '').localeCompare(String(b.label || ''));
+          return a.second - b.second;
+        });
+      })();
+
+      const points = pointsAfterPostProcess.map((point) => {
+        const order = Number(point?.order) || 0;
+        const rawLabel = String(point?.label || '').trim();
+        const upgradeCategory = String(point?.upgrade_category || '').trim();
+        let displayLabel = rawLabel;
+        let categoryLabel = 'Timing';
+        let markerImage = null;
+        let markerLabel = '';
+        let isRepeatable = false;
+        let maxLevel = 1;
+
+        if (workflowTimingCategoryConfig.source === 'upgrades') {
+          displayLabel = inlineTimingUpgradeLabel(rawLabel, order);
+          categoryLabel = workflowTimingCategoryConfig.label;
+          isRepeatable = upgradeCategory === 'hp_upgrades';
+          maxLevel = isRepeatable ? 3 : 1;
+        } else if (workflowTimingCategoryConfig.source === 'tech') {
+          displayLabel = normalizeTimingDisplayLabel(rawLabel);
+          categoryLabel = 'Tech';
+        } else if (workflowTimingCategory === 'gas') {
+          displayLabel = `Gas #${order || 1}`;
+          categoryLabel = 'Gas';
+          markerImage = getGasMarkerIconForRace(playerRace);
+          markerLabel = workflowTimingCategoryConfig.markerLabel || 'Gas';
+        } else if (workflowTimingCategory === 'expansion') {
+          displayLabel = `Expansion #${order || 1}`;
+          categoryLabel = 'Expansion';
+          markerImage = getExpansionMarkerIconForRace(playerRace);
+          markerLabel = workflowTimingCategoryConfig.markerLabel || 'Expansion';
+        }
+
+        return {
+          ...point,
+          order,
+          label: rawLabel,
+          display_label: displayLabel,
+          category: upgradeCategory || workflowTimingCategory,
+          category_label: categoryLabel,
+          race: playerRace,
+          marker_image: markerImage,
+          marker_label: markerLabel,
+          is_repeatable: isRepeatable,
+          max_level: maxLevel,
+        };
+      });
 
       return {
         ...playerSeries,
@@ -1552,12 +1649,20 @@ function App() {
     if (workflowTimingCategory !== 'hp_upgrades') return [];
     return TIMING_RACE_ORDER.map((race) => {
       const raceSeries = workflowTimingSeries.filter((playerSeries) => String(playerSeries?.race || '').trim().toLowerCase() === race);
+      const racePrefix = racePrefixForUpgrade(race);
       const labelOptions = Array.from(new Set(
         raceSeries.flatMap((playerSeries) => (playerSeries?.points || []).map((point) => String(point?.label || '').trim()))
-          .filter(Boolean),
+          .filter((label) => {
+            if (!label) return false;
+            if (!racePrefix) return true;
+            return label.startsWith(racePrefix);
+          }),
       )).sort((a, b) => a.localeCompare(b));
       const selectedValue = String(workflowHpUpgradeFilters[race] || '').trim();
-      const selected = labelOptions.includes(selectedValue) ? selectedValue : (labelOptions[0] || '');
+      const defaultForRace = String(DEFAULT_HP_UPGRADE_BY_RACE[race] || '').trim();
+      const selected = labelOptions.includes(selectedValue)
+        ? selectedValue
+        : (labelOptions.includes(defaultForRace) ? defaultForRace : (labelOptions[0] || ''));
       const filteredSeries = raceSeries.map((playerSeries) => ({
         ...playerSeries,
         points: (playerSeries?.points || [])
@@ -1576,6 +1681,49 @@ function App() {
       };
     }).filter((entry) => entry.series.some((playerSeries) => (playerSeries?.points || []).length > 0));
   }, [workflowTimingCategory, workflowTimingSeries, workflowHpUpgradeFilters]);
+  const workflowFirstUnitEfficiencyGroups = useMemo(() => {
+    const sourcePlayers = Array.isArray(workflowGame?.first_unit_efficiency) ? workflowGame.first_unit_efficiency : [];
+    const normalizedPlayers = sourcePlayers.map((playerEntry) => ({
+      ...playerEntry,
+      race: String(playerEntry?.race || '').trim().toLowerCase(),
+      entries: Array.isArray(playerEntry?.entries) ? playerEntry.entries : [],
+    }));
+    return FIRST_UNIT_EFFICIENCY_GROUP_CONFIG.map((cfg) => {
+      const unitKeySet = new Set(cfg.unitNames.map((name) => normalizeUnitName(name)));
+      const rows = normalizedPlayers
+        .filter((playerEntry) => playerEntry.race === cfg.race)
+        .map((playerEntry) => {
+          const matched = playerEntry.entries.find((entry) => (
+            normalizeUnitName(entry?.building_name) === normalizeUnitName(cfg.buildingName)
+            && unitKeySet.has(normalizeUnitName(entry?.unit_name))
+          ));
+          if (!matched) return null;
+          return {
+            player_id: playerEntry.player_id,
+            player_name: playerEntry.name,
+            player_key: playerEntry.player_key,
+            race: playerEntry.race,
+            ...matched,
+            building_icon: getUnitIcon(matched?.building_name || cfg.buildingName),
+            unit_icon: getUnitIcon(matched?.unit_name),
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => String(a?.player_name || '').localeCompare(String(b?.player_name || '')));
+      if (rows.length === 0) return null;
+      return {
+        id: `${cfg.race}-${normalizeUnitName(cfg.buildingName)}`,
+        race: cfg.race,
+        building_name: cfg.buildingName,
+        building_icon: getUnitIcon(cfg.buildingName),
+        unit_names: cfg.unitNames,
+        unit_icons: cfg.unitNames
+          .map((unitName) => getUnitIcon(unitName))
+          .filter(Boolean),
+        rows,
+      };
+    }).filter(Boolean);
+  }, [workflowGame?.first_unit_efficiency]);
 
   const filterProductionEntries = (entries, view) => {
     const mode = view === 'units' ? workflowUnitFilterMode : workflowBuildingFilterMode;
@@ -1853,6 +2001,7 @@ function App() {
                   <button className={`btn-switch ${workflowGameTab === 'events' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('events')}>Game Events</button>
                   <button className={`btn-switch ${workflowGameTab === 'units' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('units')}>Units</button>
                   <button className={`btn-switch ${workflowGameTab === 'timings' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('timings')}>Timings</button>
+                  <button className={`btn-switch ${workflowGameTab === 'first-unit-efficiency' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('first-unit-efficiency')}>First Unit Efficiency</button>
                 </div>
 
                 {workflowGameTab === 'summary' && (
@@ -2250,6 +2399,25 @@ function App() {
                         rowLabelMode={workflowTimingInlineLegend ? 'worker-icon' : (['gas', 'expansion'].includes(workflowTimingCategory) ? 'name-only' : 'race-suffix')}
                         rowGroupingMode={workflowTimingInlineLegend ? 'race' : 'none'}
                       />
+                    )}
+                  </div>
+                )}
+                {workflowGameTab === 'first-unit-efficiency' && (
+                  <div className="workflow-timing-charts">
+                    <div className="workflow-timing-notice">
+                      Timing caveat: this metric uses command timestamps, so inefficiency can be inflated by worker travel after a build order is issued (e.g. SCV pathing before Barracks placement). Skilled players usually pre-position workers to reduce this delay. Network latency should not affect calculations. Game speed can affect timings, but most games are played on Fastest.
+                    </div>
+                    {workflowFirstUnitEfficiencyGroups.length > 0 ? (
+                      workflowFirstUnitEfficiencyGroups.map((groupEntry) => (
+                        <FirstUnitEfficiencyTimelineRows
+                          key={`first-unit-eff-${groupEntry.id}`}
+                          group={groupEntry}
+                        />
+                      ))
+                    ) : (
+                      <div className="workflow-card">
+                        <div className="chart-empty">No first unit efficiency rows found for this game.</div>
+                      </div>
                     )}
                   </div>
                 )}
