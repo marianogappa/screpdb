@@ -164,6 +164,56 @@ export const api = {
     return response.json();
   },
 
+  listWorkflowPlayers: async ({
+    limit = 20,
+    offset = 0,
+    sortBy = 'games',
+    sortDir = 'desc',
+    filters = {},
+  } = {}) => {
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    params.set('offset', String(offset));
+    params.set('sort_by', String(sortBy || 'games'));
+    params.set('sort_dir', String(sortDir || 'desc'));
+
+    const name = String(filters.name || '').trim();
+    if (name) params.set('name', name);
+
+    const lastPlayedFilters = Array.isArray(filters.lastPlayed) ? filters.lastPlayed : [];
+    lastPlayedFilters.forEach((value) => {
+      const v = String(value || '').trim();
+      if (v) params.append('last_played', v);
+    });
+
+    if (filters.onlyFivePlus) params.set('only_5_plus', '1');
+
+    const response = await fetch(`${API_BASE}/workflow/players?${params.toString()}`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to list workflow players');
+    }
+    return response.json();
+  },
+
+  getWorkflowPlayersApmHistogram: async () => {
+    const response = await fetch(`${API_BASE}/workflow/players/insights/apm-histogram`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get players APM histogram');
+    }
+    return response.json();
+  },
+
+  getWorkflowPlayersFirstUnitDelay: async () => {
+    const response = await fetch(`${API_BASE}/workflow/players/insights/first-unit-delay`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get players first-unit delay');
+    }
+    return response.json();
+  },
+
   getWorkflowGame: async (replayId) => {
     const response = await fetch(`${API_BASE}/workflow/games/${encodeURIComponent(replayId)}`);
     if (!response.ok) {
@@ -196,6 +246,24 @@ export const api = {
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get workflow player outliers');
+    }
+    return response.json();
+  },
+
+  getWorkflowPlayerApmHistogram: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/insights/apm-histogram`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get player APM histogram');
+    }
+    return response.json();
+  },
+
+  getWorkflowPlayerFirstUnitDelay: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/insights/first-unit-delay`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get player first-unit delay');
     }
     return response.json();
   },

@@ -38,6 +38,9 @@ var topPlayerPalette = []string{
 }
 
 const firstUnitEfficiencyMaxGapSeconds int64 = 60
+const workflowPlayerDelayMinSamples int64 = 5
+const workflowPlayerDelayCutoffSeconds int64 = 7 * 60
+const workflowPlayerDelayMaxGapSeconds int64 = 20
 
 type firstUnitEfficiencyUnitOption struct {
 	DisplayName string
@@ -49,6 +52,19 @@ type firstUnitEfficiencyConfig struct {
 	BuildingName         string
 	BuildDurationSeconds int64
 	Units                []firstUnitEfficiencyUnitOption
+}
+
+type workflowFirstUnitEfficiencyState struct {
+	buildTimesByUnit map[string][]int64
+	unitTimesByUnit  map[string][]int64
+}
+
+type workflowPlayerDelaySample struct {
+	PlayerKey            string
+	PlayerName           string
+	BuildingName         string
+	UnitName             string
+	GapAfterReadySeconds int64
 }
 
 var firstUnitEfficiencyConfigs = []firstUnitEfficiencyConfig{
@@ -424,6 +440,126 @@ type workflowRaceOrderSummary struct {
 	UpgradeOrder []string `json:"upgrade_order"`
 }
 
+type workflowPlayersListFilters struct {
+	NameContains      string
+	OnlyFivePlus      bool
+	LastPlayedBuckets []string
+}
+
+type workflowPlayersListSort struct {
+	Column string
+	Desc   bool
+}
+
+type workflowPlayersListItem struct {
+	PlayerKey         string  `json:"player_key"`
+	PlayerName        string  `json:"player_name"`
+	Race              string  `json:"race"`
+	GamesPlayed       int64   `json:"games_played"`
+	AverageAPM        float64 `json:"average_apm"`
+	LastPlayed        string  `json:"last_played"`
+	LastPlayedDaysAgo int64   `json:"last_played_days_ago"`
+}
+
+type workflowPlayersListFilterOption struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Count int64  `json:"count"`
+}
+
+type workflowPlayersListFilterOptions struct {
+	Races      []workflowPlayersListFilterOption `json:"races"`
+	LastPlayed []workflowPlayersListFilterOption `json:"last_played"`
+}
+
+type workflowPlayerApmHistogramBin struct {
+	X0    float64 `json:"x0"`
+	X1    float64 `json:"x1"`
+	Count int64   `json:"count"`
+}
+
+type workflowPlayerApmHistogramPoint struct {
+	PlayerKey   string  `json:"player_key"`
+	PlayerName  string  `json:"player_name"`
+	AverageAPM  float64 `json:"average_apm"`
+	GamesPlayed int64   `json:"games_played"`
+}
+
+type workflowPlayerApmHistogram struct {
+	SummaryVersion   string                            `json:"summary_version"`
+	PlayerKey        string                            `json:"player_key"`
+	MinGames         int64                             `json:"min_games"`
+	PlayersIncluded  int64                             `json:"players_included"`
+	MeanAPM          float64                           `json:"mean_apm"`
+	StddevAPM        float64                           `json:"stddev_apm"`
+	PlayerAverageAPM *float64                          `json:"player_average_apm,omitempty"`
+	PlayerEligible   bool                              `json:"player_eligible"`
+	PlayerPercentile *float64                          `json:"player_percentile,omitempty"`
+	Bins             []workflowPlayerApmHistogramBin   `json:"bins"`
+	Players          []workflowPlayerApmHistogramPoint `json:"players"`
+}
+
+type workflowPlayerDelayHistogramBin struct {
+	X0    float64 `json:"x0"`
+	X1    float64 `json:"x1"`
+	Count int64   `json:"count"`
+}
+
+type workflowPlayerDelayHistogramPoint struct {
+	PlayerKey           string                           `json:"player_key"`
+	PlayerName          string                           `json:"player_name"`
+	AverageDelaySeconds float64                          `json:"average_delay_seconds"`
+	SampleCount         int64                            `json:"sample_count"`
+	CaseAverages        []workflowPlayerDelayCaseAverage `json:"case_averages"`
+}
+
+type workflowPlayerDelayCaseAverage struct {
+	CaseKey             string  `json:"case_key"`
+	BuildingName        string  `json:"building_name"`
+	UnitName            string  `json:"unit_name"`
+	AverageDelaySeconds float64 `json:"average_delay_seconds"`
+	SampleCount         int64   `json:"sample_count"`
+}
+
+type workflowPlayerDelayCaseOption struct {
+	CaseKey      string `json:"case_key"`
+	BuildingName string `json:"building_name"`
+	UnitName     string `json:"unit_name"`
+	SampleCount  int64  `json:"sample_count"`
+	PlayerCount  int64  `json:"player_count"`
+}
+
+type workflowPlayerDelayHistogram struct {
+	SummaryVersion     string                              `json:"summary_version"`
+	MinSamples         int64                               `json:"min_samples"`
+	PlayersIncluded    int64                               `json:"players_included"`
+	MeanDelaySeconds   float64                             `json:"mean_delay_seconds"`
+	StddevDelaySeconds float64                             `json:"stddev_delay_seconds"`
+	Bins               []workflowPlayerDelayHistogramBin   `json:"bins"`
+	Players            []workflowPlayerDelayHistogramPoint `json:"players"`
+	CaseOptions        []workflowPlayerDelayCaseOption     `json:"case_options"`
+}
+
+type workflowPlayerDelayPair struct {
+	BuildingName        string  `json:"building_name"`
+	UnitName            string  `json:"unit_name"`
+	SampleCount         int64   `json:"sample_count"`
+	AverageDelaySeconds float64 `json:"average_delay_seconds"`
+	MinDelaySeconds     int64   `json:"min_delay_seconds"`
+	MaxDelaySeconds     int64   `json:"max_delay_seconds"`
+}
+
+type workflowPlayerDelayInsight struct {
+	SummaryVersion      string                    `json:"summary_version"`
+	PlayerKey           string                    `json:"player_key"`
+	PlayerName          string                    `json:"player_name"`
+	SampleCount         int64                     `json:"sample_count"`
+	AverageDelaySeconds float64                   `json:"average_delay_seconds"`
+	MinDelaySeconds     int64                     `json:"min_delay_seconds"`
+	MaxDelaySeconds     int64                     `json:"max_delay_seconds"`
+	Pairs               []workflowPlayerDelayPair `json:"pairs"`
+}
+
 func (d *Dashboard) handlerWorkflowGamesList(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r, 20, 200)
 	filters := parseWorkflowGamesListFilters(r)
@@ -502,6 +638,257 @@ func (d *Dashboard) handlerWorkflowGamesList(w http.ResponseWriter, r *http.Requ
 		"total":           total,
 		"filter_options":  filterOptions,
 	})
+}
+
+func (d *Dashboard) handlerWorkflowPlayersList(w http.ResponseWriter, r *http.Request) {
+	limit, offset := parsePagination(r, 20, 200)
+	filters := parseWorkflowPlayersListFilters(r)
+	sortSpec := parseWorkflowPlayersListSort(r)
+
+	items, total, filterOptions, err := d.listWorkflowPlayers(limit, offset, filters, sortSpec)
+	if err != nil {
+		http.Error(w, "failed to list players: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"summary_version": workflowSummaryVersion,
+		"items":           items,
+		"limit":           limit,
+		"offset":          offset,
+		"total":           total,
+		"filter_options":  filterOptions,
+	})
+}
+
+func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlayersListFilters, sortSpec workflowPlayersListSort) ([]workflowPlayersListItem, int64, workflowPlayersListFilterOptions, error) {
+	baseSQL, baseArgs := buildWorkflowPlayersListBaseSQL(filters)
+	whereSQL, whereArgs := buildWorkflowPlayersListWhere(filters)
+	allArgs := append(append([]any{}, baseArgs...), whereArgs...)
+
+	countQuery := `WITH player_agg AS (` + baseSQL + `) SELECT COUNT(*) FROM player_agg ` + whereSQL
+	var total int64
+	if err := d.db.QueryRowContext(d.ctx, countQuery, allArgs...).Scan(&total); err != nil {
+		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
+	}
+
+	sortColumn := sortSpec.Column
+	sortDir := "ASC"
+	if sortSpec.Desc {
+		sortDir = "DESC"
+	}
+
+	listArgs := append(append([]any{}, allArgs...), limit, offset)
+	rows, err := d.db.QueryContext(d.ctx, `
+		WITH player_agg AS (`+baseSQL+`)
+		SELECT
+			player_key,
+			player_name,
+			race,
+			games_played,
+			average_apm,
+			last_played,
+			last_played_days_ago
+		FROM player_agg
+	`+whereSQL+`
+		ORDER BY `+sortColumn+` `+sortDir+`, player_name ASC
+		LIMIT ? OFFSET ?
+	`, listArgs...)
+	if err != nil {
+		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
+	}
+	defer rows.Close()
+
+	items := []workflowPlayersListItem{}
+	for rows.Next() {
+		item := workflowPlayersListItem{}
+		if err := rows.Scan(
+			&item.PlayerKey,
+			&item.PlayerName,
+			&item.Race,
+			&item.GamesPlayed,
+			&item.AverageAPM,
+			&item.LastPlayed,
+			&item.LastPlayedDaysAgo,
+		); err != nil {
+			return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
+		}
+		if item.LastPlayedDaysAgo < 0 {
+			item.LastPlayedDaysAgo = 0
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
+	}
+
+	filterOptions, err := d.workflowPlayersListFilterOptions(baseSQL, baseArgs, whereSQL, whereArgs)
+	if err != nil {
+		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
+	}
+	return items, total, filterOptions, nil
+}
+
+func buildWorkflowPlayersListBaseSQL(filters workflowPlayersListFilters) (string, []any) {
+	baseWhere := []string{"p.is_observer = 0", "lower(trim(coalesce(p.type, ''))) = 'human'"}
+	args := []any{}
+	if filters.NameContains != "" {
+		baseWhere = append(baseWhere, "lower(trim(p.name)) LIKE ?")
+		args = append(args, "%"+normalizePlayerKey(filters.NameContains)+"%")
+	}
+	sqlText := `
+		SELECT
+			player_key,
+			player_name,
+			games_played,
+			average_apm,
+			last_played,
+			CASE
+				WHEN games_played <= 0 THEN 'Random'
+				WHEN protoss_games * 1.0 / games_played > 0.67 THEN 'Protoss'
+				WHEN terran_games * 1.0 / games_played > 0.67 THEN 'Terran'
+				WHEN zerg_games * 1.0 / games_played > 0.67 THEN 'Zerg'
+				ELSE 'Random'
+			END AS race,
+			COALESCE(CAST(julianday('now') - julianday(substr(last_played, 1, 19)) AS INTEGER), 0) AS last_played_days_ago
+		FROM (
+			SELECT
+				lower(trim(p.name)) AS player_key,
+				MIN(p.name) AS player_name,
+				COUNT(*) AS games_played,
+				COALESCE(AVG(CASE WHEN p.apm > 0 THEN p.apm END), 0) AS average_apm,
+				MAX(r.replay_date) AS last_played,
+				SUM(CASE WHEN lower(trim(p.race)) = 'protoss' THEN 1 ELSE 0 END) AS protoss_games,
+				SUM(CASE WHEN lower(trim(p.race)) = 'terran' THEN 1 ELSE 0 END) AS terran_games,
+				SUM(CASE WHEN lower(trim(p.race)) = 'zerg' THEN 1 ELSE 0 END) AS zerg_games
+			FROM players p
+			JOIN replays r ON r.id = p.replay_id
+			WHERE ` + strings.Join(baseWhere, " AND ") + `
+			GROUP BY lower(trim(p.name))
+		) grouped
+	`
+	return sqlText, args
+}
+
+func buildWorkflowPlayersListWhere(filters workflowPlayersListFilters) (string, []any) {
+	clauses := []string{}
+	args := []any{}
+	if filters.OnlyFivePlus {
+		clauses = append(clauses, "games_played >= 5")
+	}
+	if len(filters.LastPlayedBuckets) > 0 {
+		bucketClauses := []string{}
+		for _, bucket := range filters.LastPlayedBuckets {
+			switch strings.ToLower(strings.TrimSpace(bucket)) {
+			case "1m", "30d":
+				bucketClauses = append(bucketClauses, "last_played_days_ago <= 30")
+			case "3m", "90d":
+				bucketClauses = append(bucketClauses, "last_played_days_ago <= 90")
+			}
+		}
+		if len(bucketClauses) > 0 {
+			clauses = append(clauses, "("+strings.Join(bucketClauses, " OR ")+")")
+		}
+	}
+	if len(clauses) == 0 {
+		return "", args
+	}
+	return "WHERE " + strings.Join(clauses, " AND "), args
+}
+
+func parseWorkflowPlayersListFilters(r *http.Request) workflowPlayersListFilters {
+	filters := workflowPlayersListFilters{
+		NameContains:      strings.TrimSpace(r.URL.Query().Get("name")),
+		LastPlayedBuckets: parseCSVQueryValues(r.URL.Query()["last_played"], true),
+	}
+	onlyFivePlus := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("only_5_plus")))
+	if onlyFivePlus == "1" || onlyFivePlus == "true" || onlyFivePlus == "on" || onlyFivePlus == "yes" {
+		filters.OnlyFivePlus = true
+	}
+	return filters
+}
+
+func parseWorkflowPlayersListSort(r *http.Request) workflowPlayersListSort {
+	sortBy := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("sort_by")))
+	sortDir := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("sort_dir")))
+	columnBySortBy := map[string]string{
+		"name":        "player_name",
+		"race":        "race",
+		"games":       "games_played",
+		"apm":         "average_apm",
+		"last_played": "last_played_days_ago",
+	}
+	column, ok := columnBySortBy[sortBy]
+	if !ok {
+		column = "games_played"
+	}
+	desc := sortDir != "asc"
+	return workflowPlayersListSort{Column: column, Desc: desc}
+}
+
+func (d *Dashboard) workflowPlayersListFilterOptions(baseSQL string, baseArgs []any, whereSQL string, whereArgs []any) (workflowPlayersListFilterOptions, error) {
+	result := workflowPlayersListFilterOptions{
+		Races: []workflowPlayersListFilterOption{},
+		LastPlayed: []workflowPlayersListFilterOption{
+			{Key: "1m", Label: "Last month"},
+			{Key: "3m", Label: "Last 3 months"},
+		},
+	}
+
+	countRowArgs := append(append([]any{}, baseArgs...), whereArgs...)
+	var count1m, count3m int64
+	if err := d.db.QueryRowContext(d.ctx, `
+		WITH player_agg AS (`+baseSQL+`)
+		SELECT
+			COALESCE(SUM(CASE WHEN last_played_days_ago <= 30 THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN last_played_days_ago <= 90 THEN 1 ELSE 0 END), 0)
+		FROM player_agg
+	`+whereSQL+`
+	`, countRowArgs...).Scan(&count1m, &count3m); err != nil {
+		return result, err
+	}
+	result.LastPlayed = []workflowPlayersListFilterOption{
+		{Key: "1m", Label: "Last month", Count: count1m},
+		{Key: "3m", Label: "Last 3 months", Count: count3m},
+	}
+	return result, nil
+}
+
+func parseOptionalInt64Query(r *http.Request, key string) (int64, bool) {
+	value := strings.TrimSpace(r.URL.Query().Get(key))
+	if value == "" {
+		return 0, false
+	}
+	parsed, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return parsed, true
+}
+
+func parseOptionalFloatQuery(r *http.Request, key string) (float64, bool) {
+	value := strings.TrimSpace(r.URL.Query().Get(key))
+	if value == "" {
+		return 0, false
+	}
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return 0, false
+	}
+	return parsed, true
+}
+
+func prettyWorkflowRaceLabel(value string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "protoss":
+		return "Protoss"
+	case "terran":
+		return "Terran"
+	case "zerg":
+		return "Zerg"
+	default:
+		return "Random"
+	}
 }
 
 func parseWorkflowGamesListFilters(r *http.Request) workflowGamesListFilters {
@@ -1033,6 +1420,56 @@ func (d *Dashboard) handlerWorkflowPlayerMetrics(w http.ResponseWriter, r *http.
 	_ = json.NewEncoder(w).Encode(metrics)
 }
 
+func (d *Dashboard) handlerWorkflowPlayerApmHistogram(w http.ResponseWriter, r *http.Request) {
+	playerKey := normalizePlayerKey(mux.Vars(r)["playerKey"])
+	if playerKey == "" {
+		http.Error(w, "player key missing", http.StatusBadRequest)
+		return
+	}
+	histogram, err := d.buildWorkflowPlayerApmHistogram(playerKey)
+	if err != nil {
+		http.Error(w, "failed to compute histogram: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(histogram)
+}
+
+func (d *Dashboard) handlerWorkflowPlayersApmHistogram(w http.ResponseWriter, _ *http.Request) {
+	histogram, err := d.buildWorkflowPlayerApmHistogram("")
+	if err != nil {
+		http.Error(w, "failed to compute histogram: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(histogram)
+}
+
+func (d *Dashboard) handlerWorkflowPlayersDelayHistogram(w http.ResponseWriter, _ *http.Request) {
+	histogram, err := d.buildWorkflowPlayerDelayHistogram()
+	if err != nil {
+		http.Error(w, "failed to compute delay histogram: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(histogram)
+}
+
+func (d *Dashboard) handlerWorkflowPlayerDelayInsight(w http.ResponseWriter, r *http.Request) {
+	playerKey := normalizePlayerKey(mux.Vars(r)["playerKey"])
+	if playerKey == "" {
+		http.Error(w, "player key missing", http.StatusBadRequest)
+		return
+	}
+	result, err := d.buildWorkflowPlayerDelayInsight(playerKey)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, sql.ErrNoRows) {
+			status = http.StatusNotFound
+		}
+		http.Error(w, err.Error(), status)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(result)
+}
+
 func (d *Dashboard) handlerWorkflowPlayerColors(w http.ResponseWriter, _ *http.Request) {
 	rows, err := d.db.QueryContext(d.ctx, `
 		SELECT lower(trim(name)) AS player_key, COUNT(*) AS games
@@ -1405,7 +1842,7 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 			AVG(p.apm) AS avg_apm,
 			AVG(p.eapm) AS avg_eapm
 		FROM players p
-		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0
+		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
 	`, playerKey).Scan(
 		&result.PlayerName,
 		&result.GamesPlayed,
@@ -1424,7 +1861,7 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 	raceRows, err := d.db.QueryContext(d.ctx, `
 		SELECT p.race, COUNT(*) AS game_count, SUM(CASE WHEN p.is_winner = 1 THEN 1 ELSE 0 END) AS wins
 		FROM players p
-		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0
+		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
 		GROUP BY p.race
 		ORDER BY game_count DESC
 	`, playerKey)
@@ -1453,18 +1890,18 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 				FROM (
 					SELECT p2.name AS name
 					FROM players p2
-					WHERE p2.replay_id = r.id AND p2.is_observer = 0
+					WHERE p2.replay_id = r.id AND p2.is_observer = 0 AND lower(trim(coalesce(p2.type, ''))) = 'human'
 					ORDER BY p2.team ASC, p2.id ASC
 				)
 			), ''),
 			COALESCE((
 				SELECT group_concat(p3.name, ', ')
 				FROM players p3
-				WHERE p3.replay_id = r.id AND p3.is_winner = 1 AND p3.is_observer = 0
+				WHERE p3.replay_id = r.id AND p3.is_winner = 1 AND p3.is_observer = 0 AND lower(trim(coalesce(p3.type, ''))) = 'human'
 			), '')
 		FROM replays r
 		JOIN players p ON p.replay_id = r.id
-		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0
+		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
 		ORDER BY r.replay_date DESC, r.id DESC
 		LIMIT 12
 	`, playerKey)
@@ -1499,12 +1936,609 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 	return result, nil
 }
 
+func (d *Dashboard) buildWorkflowPlayerApmHistogram(playerKey string) (workflowPlayerApmHistogram, error) {
+	const minGames int64 = 5
+	result := workflowPlayerApmHistogram{
+		SummaryVersion: workflowSummaryVersion,
+		PlayerKey:      playerKey,
+		MinGames:       minGames,
+		Bins:           []workflowPlayerApmHistogramBin{},
+		Players:        []workflowPlayerApmHistogramPoint{},
+		PlayerEligible: false,
+	}
+
+	rows, err := d.db.QueryContext(d.ctx, `
+		SELECT player_key, player_name, average_apm, games_played
+		FROM (
+			SELECT
+				lower(trim(p.name)) AS player_key,
+				MIN(p.name) AS player_name,
+				COALESCE(AVG(CASE WHEN p.apm > 0 THEN p.apm END), 0) AS average_apm,
+				COUNT(*) AS games_played
+			FROM players p
+			WHERE p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
+			GROUP BY lower(trim(p.name))
+		) per_player
+		WHERE games_played >= ?
+			AND average_apm > 0
+	`, minGames)
+	if err != nil {
+		return result, err
+	}
+	defer rows.Close()
+
+	values := []float64{}
+	playerValue := 0.0
+	for rows.Next() {
+		var key string
+		var name string
+		var avgAPM float64
+		var gamesPlayed int64
+		if err := rows.Scan(&key, &name, &avgAPM, &gamesPlayed); err != nil {
+			return result, err
+		}
+		if avgAPM <= 0 {
+			continue
+		}
+		values = append(values, avgAPM)
+		result.Players = append(result.Players, workflowPlayerApmHistogramPoint{
+			PlayerKey:   key,
+			PlayerName:  name,
+			AverageAPM:  avgAPM,
+			GamesPlayed: gamesPlayed,
+		})
+		if key == playerKey {
+			playerValue = avgAPM
+			result.PlayerEligible = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return result, err
+	}
+	if len(values) == 0 {
+		return result, nil
+	}
+
+	sort.Float64s(values)
+	result.PlayersIncluded = int64(len(values))
+
+	sum := 0.0
+	for _, value := range values {
+		sum += value
+	}
+	mean := sum / float64(len(values))
+	result.MeanAPM = mean
+
+	varianceSum := 0.0
+	for _, value := range values {
+		diff := value - mean
+		varianceSum += diff * diff
+	}
+	result.StddevAPM = math.Sqrt(varianceSum / float64(len(values)))
+
+	binCount := int(math.Round(math.Sqrt(float64(len(values)))))
+	if binCount < 8 {
+		binCount = 8
+	}
+	if binCount > 24 {
+		binCount = 24
+	}
+	minValue := values[0]
+	maxValue := values[len(values)-1]
+	if maxValue <= minValue {
+		result.Bins = []workflowPlayerApmHistogramBin{{
+			X0:    minValue,
+			X1:    minValue + 1,
+			Count: int64(len(values)),
+		}}
+	} else {
+		width := (maxValue - minValue) / float64(binCount)
+		if width <= 0 {
+			width = 1
+		}
+		bins := make([]workflowPlayerApmHistogramBin, binCount)
+		for i := 0; i < binCount; i++ {
+			start := minValue + float64(i)*width
+			end := minValue + float64(i+1)*width
+			if i == binCount-1 {
+				end = maxValue
+			}
+			bins[i] = workflowPlayerApmHistogramBin{X0: start, X1: end, Count: 0}
+		}
+		for _, value := range values {
+			idx := int(math.Floor((value - minValue) / width))
+			if idx < 0 {
+				idx = 0
+			}
+			if idx >= binCount {
+				idx = binCount - 1
+			}
+			bins[idx].Count++
+		}
+		result.Bins = bins
+	}
+
+	sort.Slice(result.Players, func(i, j int) bool {
+		if result.Players[i].AverageAPM == result.Players[j].AverageAPM {
+			return result.Players[i].PlayerName < result.Players[j].PlayerName
+		}
+		return result.Players[i].AverageAPM < result.Players[j].AverageAPM
+	})
+
+	if result.PlayerEligible {
+		value := playerValue
+		result.PlayerAverageAPM = &value
+		position := sort.SearchFloat64s(values, value)
+		percentile := (float64(position) / float64(len(values))) * 100
+		result.PlayerPercentile = &percentile
+	}
+	return result, nil
+}
+
+func newWorkflowFirstUnitEfficiencyState() *workflowFirstUnitEfficiencyState {
+	return &workflowFirstUnitEfficiencyState{
+		buildTimesByUnit: map[string][]int64{},
+		unitTimesByUnit:  map[string][]int64{},
+	}
+}
+
+func applyCommandToFirstUnitEfficiencyState(state *workflowFirstUnitEfficiencyState, actionType string, second int64, unitType sql.NullString, unitTypes sql.NullString) {
+	commandUnits := parseCommandUnitNames(unitType, unitTypes)
+	if len(commandUnits) == 0 {
+		return
+	}
+	for _, name := range commandUnits {
+		aliases := unitNameAliases(name)
+		if len(aliases) == 0 {
+			continue
+		}
+		if actionType == "Build" {
+			for _, alias := range aliases {
+				state.buildTimesByUnit[alias] = append(state.buildTimesByUnit[alias], second)
+			}
+			continue
+		}
+		for _, alias := range aliases {
+			state.unitTimesByUnit[alias] = append(state.unitTimesByUnit[alias], second)
+		}
+	}
+}
+
+func firstUnitEfficiencyEntriesForRace(playerRace string, state *workflowFirstUnitEfficiencyState, maxGapSeconds int64) []workflowFirstUnitEfficiencyEntry {
+	race := strings.ToLower(strings.TrimSpace(playerRace))
+	entries := []workflowFirstUnitEfficiencyEntry{}
+	for _, cfg := range firstUnitEfficiencyConfigs {
+		if cfg.Race != race {
+			continue
+		}
+		buildingKey := normalizeUnitName(cfg.BuildingName)
+		buildStarts := state.buildTimesByUnit[buildingKey]
+		if len(buildStarts) == 0 {
+			continue
+		}
+		buildingStartSecond := buildStarts[0]
+		buildingReadySecond := buildingStartSecond + cfg.BuildDurationSeconds
+		bestUnitSecond := int64(-1)
+		bestUnitName := ""
+		for _, unitOption := range cfg.Units {
+			for _, matchKeyRaw := range unitOption.MatchKeys {
+				matchKey := normalizeUnitName(matchKeyRaw)
+				timings := state.unitTimesByUnit[matchKey]
+				if len(timings) == 0 {
+					continue
+				}
+				idx := sort.Search(len(timings), func(i int) bool {
+					return timings[i] >= buildingReadySecond
+				})
+				if idx >= len(timings) {
+					continue
+				}
+				candidateSecond := timings[idx]
+				if bestUnitSecond < 0 || candidateSecond < bestUnitSecond {
+					bestUnitSecond = candidateSecond
+					bestUnitName = unitOption.DisplayName
+				}
+			}
+		}
+		if bestUnitSecond < 0 {
+			continue
+		}
+		gapAfterReadySeconds := bestUnitSecond - buildingReadySecond
+		if gapAfterReadySeconds < 0 || gapAfterReadySeconds > maxGapSeconds {
+			continue
+		}
+		entries = append(entries, workflowFirstUnitEfficiencyEntry{
+			BuildingName:         cfg.BuildingName,
+			UnitName:             bestUnitName,
+			BuildingStartSecond:  buildingStartSecond,
+			BuildingReadySecond:  buildingReadySecond,
+			UnitSecond:           bestUnitSecond,
+			BuildDurationSeconds: cfg.BuildDurationSeconds,
+			GapAfterReadySeconds: gapAfterReadySeconds,
+		})
+	}
+	return entries
+}
+
+func (d *Dashboard) collectWorkflowPlayerDelaySamples(onlyPlayerKey string) ([]workflowPlayerDelaySample, error) {
+	args := []any{workflowPlayerDelayCutoffSeconds}
+	filterSQL := ""
+	if onlyPlayerKey != "" {
+		filterSQL = "AND lower(trim(p.name)) = ?"
+		args = append(args, onlyPlayerKey)
+	}
+	rows, err := d.db.QueryContext(d.ctx, `
+		SELECT
+			p.replay_id,
+			p.id,
+			p.name,
+			p.race,
+			c.seconds_from_game_start,
+			c.action_type,
+			c.unit_type,
+			c.unit_types
+		FROM players p
+		JOIN commands c
+			ON c.replay_id = p.replay_id
+			AND c.player_id = p.id
+		WHERE
+			p.is_observer = 0
+			AND lower(trim(coalesce(p.type, ''))) = 'human'
+			AND c.action_type IN ('Build', 'Train', 'Unit Morph')
+			AND c.seconds_from_game_start <= ?
+			`+filterSQL+`
+		ORDER BY p.replay_id ASC, p.id ASC, c.seconds_from_game_start ASC, c.id ASC
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	samples := []workflowPlayerDelaySample{}
+	var currentReplayID int64 = -1
+	var currentPlayerID int64 = -1
+	currentPlayerName := ""
+	currentPlayerRace := ""
+	currentPlayerKey := ""
+	state := newWorkflowFirstUnitEfficiencyState()
+
+	flushCurrent := func() {
+		if currentReplayID < 0 || currentPlayerID < 0 {
+			return
+		}
+		entries := firstUnitEfficiencyEntriesForRace(currentPlayerRace, state, workflowPlayerDelayMaxGapSeconds)
+		for _, entry := range entries {
+			samples = append(samples, workflowPlayerDelaySample{
+				PlayerKey:            currentPlayerKey,
+				PlayerName:           currentPlayerName,
+				BuildingName:         entry.BuildingName,
+				UnitName:             entry.UnitName,
+				GapAfterReadySeconds: entry.GapAfterReadySeconds,
+			})
+		}
+	}
+
+	for rows.Next() {
+		var replayID int64
+		var playerID int64
+		var playerName string
+		var playerRace string
+		var second int64
+		var actionType string
+		var unitType sql.NullString
+		var unitTypes sql.NullString
+		if err := rows.Scan(&replayID, &playerID, &playerName, &playerRace, &second, &actionType, &unitType, &unitTypes); err != nil {
+			return nil, err
+		}
+		if replayID != currentReplayID || playerID != currentPlayerID {
+			flushCurrent()
+			currentReplayID = replayID
+			currentPlayerID = playerID
+			currentPlayerName = playerName
+			currentPlayerRace = playerRace
+			currentPlayerKey = normalizePlayerKey(playerName)
+			state = newWorkflowFirstUnitEfficiencyState()
+		}
+		applyCommandToFirstUnitEfficiencyState(state, actionType, second, unitType, unitTypes)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	flushCurrent()
+	return samples, nil
+}
+
+func (d *Dashboard) buildWorkflowPlayerDelayHistogram() (workflowPlayerDelayHistogram, error) {
+	result := workflowPlayerDelayHistogram{
+		SummaryVersion: workflowSummaryVersion,
+		MinSamples:     workflowPlayerDelayMinSamples,
+		Bins:           []workflowPlayerDelayHistogramBin{},
+		Players:        []workflowPlayerDelayHistogramPoint{},
+		CaseOptions:    []workflowPlayerDelayCaseOption{},
+	}
+	samples, err := d.collectWorkflowPlayerDelaySamples("")
+	if err != nil {
+		return result, err
+	}
+	type caseAgg struct {
+		buildingName string
+		unitName     string
+		sum          float64
+		count        int64
+	}
+	type playerAgg struct {
+		playerName string
+		sum        float64
+		count      int64
+		cases      map[string]*caseAgg
+	}
+	type caseOptionAgg struct {
+		buildingName string
+		unitName     string
+		sampleCount  int64
+		players      map[string]struct{}
+	}
+	aggregates := map[string]*playerAgg{}
+	caseOptions := map[string]*caseOptionAgg{}
+	for _, sample := range samples {
+		caseKey := normalizeUnitName(sample.BuildingName) + "->" + normalizeUnitName(sample.UnitName)
+		entry, ok := aggregates[sample.PlayerKey]
+		if !ok {
+			entry = &playerAgg{
+				playerName: sample.PlayerName,
+				sum:        0,
+				count:      0,
+				cases:      map[string]*caseAgg{},
+			}
+			aggregates[sample.PlayerKey] = entry
+		}
+		entry.sum += float64(sample.GapAfterReadySeconds)
+		entry.count++
+		if strings.TrimSpace(entry.playerName) == "" {
+			entry.playerName = sample.PlayerName
+		}
+		caseEntry, exists := entry.cases[caseKey]
+		if !exists {
+			caseEntry = &caseAgg{
+				buildingName: sample.BuildingName,
+				unitName:     sample.UnitName,
+				sum:          0,
+				count:        0,
+			}
+			entry.cases[caseKey] = caseEntry
+		}
+		caseEntry.sum += float64(sample.GapAfterReadySeconds)
+		caseEntry.count++
+
+		caseOptionEntry, exists := caseOptions[caseKey]
+		if !exists {
+			caseOptionEntry = &caseOptionAgg{
+				buildingName: sample.BuildingName,
+				unitName:     sample.UnitName,
+				sampleCount:  0,
+				players:      map[string]struct{}{},
+			}
+			caseOptions[caseKey] = caseOptionEntry
+		}
+		caseOptionEntry.sampleCount++
+		caseOptionEntry.players[sample.PlayerKey] = struct{}{}
+	}
+
+	values := []float64{}
+	for playerKey, entry := range aggregates {
+		if entry.count < workflowPlayerDelayMinSamples {
+			continue
+		}
+		avg := entry.sum / float64(entry.count)
+		caseAverages := []workflowPlayerDelayCaseAverage{}
+		for caseKey, caseEntry := range entry.cases {
+			if caseEntry.count <= 0 {
+				continue
+			}
+			caseAverages = append(caseAverages, workflowPlayerDelayCaseAverage{
+				CaseKey:             caseKey,
+				BuildingName:        caseEntry.buildingName,
+				UnitName:            caseEntry.unitName,
+				AverageDelaySeconds: caseEntry.sum / float64(caseEntry.count),
+				SampleCount:         caseEntry.count,
+			})
+		}
+		sort.Slice(caseAverages, func(i, j int) bool {
+			if caseAverages[i].SampleCount == caseAverages[j].SampleCount {
+				return caseAverages[i].CaseKey < caseAverages[j].CaseKey
+			}
+			return caseAverages[i].SampleCount > caseAverages[j].SampleCount
+		})
+		result.Players = append(result.Players, workflowPlayerDelayHistogramPoint{
+			PlayerKey:           playerKey,
+			PlayerName:          entry.playerName,
+			AverageDelaySeconds: avg,
+			SampleCount:         entry.count,
+			CaseAverages:        caseAverages,
+		})
+		values = append(values, avg)
+	}
+	for caseKey, option := range caseOptions {
+		result.CaseOptions = append(result.CaseOptions, workflowPlayerDelayCaseOption{
+			CaseKey:      caseKey,
+			BuildingName: option.buildingName,
+			UnitName:     option.unitName,
+			SampleCount:  option.sampleCount,
+			PlayerCount:  int64(len(option.players)),
+		})
+	}
+	sort.Slice(result.CaseOptions, func(i, j int) bool {
+		if result.CaseOptions[i].SampleCount == result.CaseOptions[j].SampleCount {
+			return result.CaseOptions[i].CaseKey < result.CaseOptions[j].CaseKey
+		}
+		return result.CaseOptions[i].SampleCount > result.CaseOptions[j].SampleCount
+	})
+	if len(values) == 0 {
+		return result, nil
+	}
+	sort.Float64s(values)
+	result.PlayersIncluded = int64(len(values))
+
+	sum := 0.0
+	for _, value := range values {
+		sum += value
+	}
+	mean := sum / float64(len(values))
+	result.MeanDelaySeconds = mean
+
+	varianceSum := 0.0
+	for _, value := range values {
+		diff := value - mean
+		varianceSum += diff * diff
+	}
+	result.StddevDelaySeconds = math.Sqrt(varianceSum / float64(len(values)))
+
+	binCount := int(math.Round(math.Sqrt(float64(len(values)))))
+	if binCount < 8 {
+		binCount = 8
+	}
+	if binCount > 24 {
+		binCount = 24
+	}
+	minValue := values[0]
+	maxValue := values[len(values)-1]
+	if maxValue <= minValue {
+		result.Bins = []workflowPlayerDelayHistogramBin{{
+			X0:    minValue,
+			X1:    minValue + 1,
+			Count: int64(len(values)),
+		}}
+	} else {
+		width := (maxValue - minValue) / float64(binCount)
+		if width <= 0 {
+			width = 1
+		}
+		bins := make([]workflowPlayerDelayHistogramBin, binCount)
+		for i := 0; i < binCount; i++ {
+			start := minValue + float64(i)*width
+			end := minValue + float64(i+1)*width
+			if i == binCount-1 {
+				end = maxValue
+			}
+			bins[i] = workflowPlayerDelayHistogramBin{X0: start, X1: end, Count: 0}
+		}
+		for _, value := range values {
+			idx := int(math.Floor((value - minValue) / width))
+			if idx < 0 {
+				idx = 0
+			}
+			if idx >= binCount {
+				idx = binCount - 1
+			}
+			bins[idx].Count++
+		}
+		result.Bins = bins
+	}
+
+	sort.Slice(result.Players, func(i, j int) bool {
+		if result.Players[i].AverageDelaySeconds == result.Players[j].AverageDelaySeconds {
+			return result.Players[i].PlayerName < result.Players[j].PlayerName
+		}
+		return result.Players[i].AverageDelaySeconds < result.Players[j].AverageDelaySeconds
+	})
+	return result, nil
+}
+
+func (d *Dashboard) buildWorkflowPlayerDelayInsight(playerKey string) (workflowPlayerDelayInsight, error) {
+	result := workflowPlayerDelayInsight{
+		SummaryVersion: workflowSummaryVersion,
+		PlayerKey:      playerKey,
+		Pairs:          []workflowPlayerDelayPair{},
+	}
+	if err := d.db.QueryRowContext(d.ctx, `
+		SELECT MIN(name)
+		FROM players
+		WHERE lower(trim(name)) = ? AND is_observer = 0 AND lower(trim(coalesce(type, ''))) = 'human'
+	`, playerKey).Scan(&result.PlayerName); err != nil {
+		return result, err
+	}
+	if strings.TrimSpace(result.PlayerName) == "" {
+		return result, sql.ErrNoRows
+	}
+	samples, err := d.collectWorkflowPlayerDelaySamples(playerKey)
+	if err != nil {
+		return result, err
+	}
+	if len(samples) == 0 {
+		return result, nil
+	}
+	type pairAgg struct {
+		building string
+		unit     string
+		sum      float64
+		count    int64
+		minGap   int64
+		maxGap   int64
+	}
+	pairs := map[string]*pairAgg{}
+	total := 0.0
+	var minDelay int64 = math.MaxInt64
+	var maxDelay int64
+	for _, sample := range samples {
+		delay := sample.GapAfterReadySeconds
+		total += float64(delay)
+		result.SampleCount++
+		if delay < minDelay {
+			minDelay = delay
+		}
+		if delay > maxDelay {
+			maxDelay = delay
+		}
+		pairKey := normalizeUnitName(sample.BuildingName) + "->" + normalizeUnitName(sample.UnitName)
+		entry, ok := pairs[pairKey]
+		if !ok {
+			pairs[pairKey] = &pairAgg{
+				building: sample.BuildingName,
+				unit:     sample.UnitName,
+				sum:      float64(delay),
+				count:    1,
+				minGap:   delay,
+				maxGap:   delay,
+			}
+			continue
+		}
+		entry.sum += float64(delay)
+		entry.count++
+		if delay < entry.minGap {
+			entry.minGap = delay
+		}
+		if delay > entry.maxGap {
+			entry.maxGap = delay
+		}
+	}
+	result.AverageDelaySeconds = total / float64(result.SampleCount)
+	result.MinDelaySeconds = minDelay
+	result.MaxDelaySeconds = maxDelay
+	for _, entry := range pairs {
+		result.Pairs = append(result.Pairs, workflowPlayerDelayPair{
+			BuildingName:        entry.building,
+			UnitName:            entry.unit,
+			SampleCount:         entry.count,
+			AverageDelaySeconds: entry.sum / float64(entry.count),
+			MinDelaySeconds:     entry.minGap,
+			MaxDelaySeconds:     entry.maxGap,
+		})
+	}
+	sort.Slice(result.Pairs, func(i, j int) bool {
+		if result.Pairs[i].SampleCount == result.Pairs[j].SampleCount {
+			return result.Pairs[i].AverageDelaySeconds < result.Pairs[j].AverageDelaySeconds
+		}
+		return result.Pairs[i].SampleCount > result.Pairs[j].SampleCount
+	})
+	return result, nil
+}
+
 func (d *Dashboard) buildWorkflowPlayerMetrics(playerKey string) (workflowPlayerMetrics, error) {
 	var gamesPlayed int64
 	if err := d.db.QueryRowContext(d.ctx, `
 		SELECT COUNT(*)
 		FROM players p
-		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0
+		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
 	`, playerKey).Scan(&gamesPlayed); err != nil {
 		return workflowPlayerMetrics{}, fmt.Errorf("failed to load player games for metrics: %w", err)
 	}
@@ -1535,7 +2569,7 @@ func (d *Dashboard) raceBehaviourSectionsForPlayer(playerKey string, totalGames 
 	raceRows, err := d.db.QueryContext(d.ctx, `
 		SELECT p.race, COUNT(*) AS game_count, SUM(CASE WHEN p.is_winner = 1 THEN 1 ELSE 0 END) AS wins
 		FROM players p
-		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0
+		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
 		GROUP BY p.race
 		ORDER BY game_count DESC, p.race ASC
 	`, playerKey)
@@ -1580,6 +2614,7 @@ func (d *Dashboard) raceBehaviourSectionsForPlayer(playerKey string, totalGames 
 		JOIN players p ON p.id = dp.player_id
 		WHERE lower(trim(p.name)) = ?
 			AND p.is_observer = 0
+			AND lower(trim(coalesce(p.type, ''))) = 'human'
 			AND dp.pattern_name IS NOT NULL
 			AND dp.pattern_name <> ''
 			AND lower(replace(replace(dp.pattern_name, ' ', ''), '_', '')) <> 'usedhotkeygroups'
@@ -2242,6 +3277,7 @@ func (d *Dashboard) populateAdvancedPlayerOverview(playerKey string, result *wor
 			FROM players p
 			LEFT JOIN commands_low_value c ON c.player_id = p.id
 			WHERE p.is_observer = 0
+				AND lower(trim(coalesce(p.type, ''))) = 'human'
 			GROUP BY p.id
 		)
 		SELECT player_key, AVG(metric_value) AS metric_value
@@ -2265,6 +3301,7 @@ func (d *Dashboard) populateAdvancedPlayerOverview(playerKey string, result *wor
 			FROM players p
 			LEFT JOIN commands_low_value c ON c.player_id = p.id
 			WHERE p.is_observer = 0
+				AND lower(trim(coalesce(p.type, ''))) = 'human'
 			GROUP BY p.id
 		)
 		SELECT player_key, AVG(metric_value) AS metric_value
@@ -2283,6 +3320,7 @@ func (d *Dashboard) populateAdvancedPlayerOverview(playerKey string, result *wor
 			FROM players p
 			LEFT JOIN commands c ON c.player_id = p.id
 			WHERE p.is_observer = 0
+				AND lower(trim(coalesce(p.type, ''))) = 'human'
 			GROUP BY p.id
 		),
 		low_value_counts AS (
@@ -2293,6 +3331,7 @@ func (d *Dashboard) populateAdvancedPlayerOverview(playerKey string, result *wor
 			FROM players p
 			LEFT JOIN commands_low_value clv ON clv.player_id = p.id
 			WHERE p.is_observer = 0
+				AND lower(trim(coalesce(p.type, ''))) = 'human'
 			GROUP BY p.id
 		),
 		game_level AS (
@@ -2322,6 +3361,7 @@ func (d *Dashboard) populateAdvancedPlayerOverview(playerKey string, result *wor
 			FROM players p
 			JOIN commands c ON c.player_id = p.id
 			WHERE p.is_observer = 0
+				AND lower(trim(coalesce(p.type, ''))) = 'human'
 		),
 		rally_replays AS (
 			SELECT DISTINCT
@@ -2330,6 +3370,7 @@ func (d *Dashboard) populateAdvancedPlayerOverview(playerKey string, result *wor
 			FROM players p
 			JOIN commands c ON c.player_id = p.id
 			WHERE p.is_observer = 0
+				AND lower(trim(coalesce(p.type, ''))) = 'human'
 				AND c.action_type = 'Targeted Order'
 				AND c.order_name LIKE 'RallyPoint%'
 		)
@@ -2355,6 +3396,7 @@ func (d *Dashboard) populateAdvancedPlayerOverview(playerKey string, result *wor
 			FROM players p
 			JOIN commands c ON c.player_id = p.id
 			WHERE p.is_observer = 0
+				AND lower(trim(coalesce(p.type, ''))) = 'human'
 				AND c.action_type = 'Targeted Order'
 				AND c.order_name LIKE 'RallyPoint%'
 			GROUP BY lower(trim(p.name)), c.replay_id
@@ -2380,6 +3422,7 @@ func (d *Dashboard) populateAdvancedPlayerOverview(playerKey string, result *wor
 			FROM players p
 			LEFT JOIN commands c ON c.player_id = p.id
 			WHERE p.is_observer = 0
+				AND lower(trim(coalesce(p.type, ''))) = 'human'
 			GROUP BY p.id
 		)
 		SELECT

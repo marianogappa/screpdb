@@ -1353,6 +1353,11 @@ body {
   min-width: 170px;
 }
 
+.workflow-number-input {
+  min-width: 100px;
+  max-width: 120px;
+}
+
 .workflow-summary-filter-check {
   display: inline-flex;
   align-items: center;
@@ -1363,6 +1368,11 @@ body {
 
 .workflow-table tbody tr {
   cursor: pointer;
+}
+
+.workflow-sortable {
+  cursor: pointer;
+  user-select: none;
 }
 
 .workflow-selected-row {
@@ -1459,6 +1469,30 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.workflow-compare-card {
+  margin-bottom: 10px;
+}
+
+.workflow-insight-chart {
+  min-height: 280px;
+}
+
+.workflow-insight-chart-tall {
+  min-height: 620px;
+}
+
+.workflow-slider-row {
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+
+.workflow-slider-input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 420px;
 }
 
 .workflow-card-race-behaviours {
