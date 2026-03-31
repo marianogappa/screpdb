@@ -14,10 +14,12 @@ import ScatterPlot from './components/charts/ScatterPlot';
 import Histogram from './components/charts/Histogram';
 import Heatmap from './components/charts/Heatmap';
 import TimingScatterRows from './components/charts/TimingScatterRows';
+import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
 import probeImg from './assets/units/probe.png';
 import scvImg from './assets/units/scv.png';
 import droneImg from './assets/units/drone.png';
 import arbiterImg from './assets/units/arbiter.png';
+import corsairImg from './assets/units/corsair.png';
 import scoutImg from './assets/units/scout.png';
 import reaverImg from './assets/units/reaver.png';
 import overlordImg from './assets/units/overlord.png';
@@ -176,6 +178,80 @@ const formatRelativeReplayDate = (value) => {
   return `${dayLabel} at ${hour12}.${minutes}${ampm}`;
 };
 
+const formatDaysAgoCompact = (value) => {
+  const days = Math.max(0, Number(value) || 0);
+  if (days === 0) return 'Today';
+  if (days === 1) return '1d ago';
+  return `${days}d ago`;
+};
+
+const buildHistogramSummaryFromPlayers = (players) => {
+  const safePlayers = Array.isArray(players)
+    ? players
+      .map((player) => ({
+        player_key: String(player?.player_key || '').trim().toLowerCase(),
+        player_name: String(player?.player_name || '').trim(),
+        average_apm: Number(player?.average_apm || 0),
+        games_played: Number(player?.games_played || 0),
+      }))
+      .filter((player) => player.player_name && Number.isFinite(player.average_apm) && player.average_apm > 0)
+    : [];
+
+  if (safePlayers.length === 0) {
+    return {
+      points: [],
+      bins: [],
+      mean: 0,
+      stddev: 0,
+      playersIncluded: 0,
+      maxGames: 5,
+    };
+  }
+
+  const values = safePlayers.map((player) => player.average_apm).sort((a, b) => a - b);
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const variance = values.reduce((sum, value) => {
+    const diff = value - mean;
+    return sum + (diff * diff);
+  }, 0) / values.length;
+  const stddev = Math.sqrt(variance);
+
+  let binCount = Math.round(Math.sqrt(values.length));
+  if (binCount < 8) binCount = 8;
+  if (binCount > 24) binCount = 24;
+
+  const minValue = values[0];
+  const maxValue = values[values.length - 1];
+  let bins = [];
+  if (maxValue <= minValue) {
+    bins = [{ x0: minValue, x1: minValue + 1, count: values.length }];
+  } else {
+    let width = (maxValue - minValue) / binCount;
+    if (width <= 0) width = 1;
+    bins = Array.from({ length: binCount }, (_, idx) => {
+      const x0 = minValue + (idx * width);
+      const x1 = idx === binCount - 1 ? maxValue : minValue + ((idx + 1) * width);
+      return { x0, x1, count: 0 };
+    });
+    values.forEach((value) => {
+      let idx = Math.floor((value - minValue) / width);
+      if (idx < 0) idx = 0;
+      if (idx >= binCount) idx = binCount - 1;
+      bins[idx].count += 1;
+    });
+  }
+
+  const maxGames = safePlayers.reduce((maxValue, player) => Math.max(maxValue, player.games_played), 5);
+  return {
+    points: safePlayers,
+    bins,
+    mean,
+    stddev,
+    playersIncluded: safePlayers.length,
+    maxGames,
+  };
+};
+
 const getRaceIcon = (race) => {
   const value = String(race || '').toLowerCase();
   if (value === 'protoss') return probeImg;
@@ -257,6 +333,30 @@ const HP_UPGRADE_NAMES = new Set([
   'Protoss Plasma Shields',
 ]);
 
+const DEFAULT_HP_UPGRADE_BY_RACE = {
+  terran: 'Terran Vehicle Weapons',
+  protoss: 'Protoss Ground Weapons',
+  zerg: 'Zerg Carapace',
+};
+
+const racePrefixForUpgrade = (race) => {
+  const value = String(race || '').trim().toLowerCase();
+  if (!value) return '';
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)} `;
+};
+
+const setHasUpgradeLoose = (upgradeSet, upgradeName) => {
+  const value = String(upgradeName || '').trim();
+  if (!value) return false;
+  if (upgradeSet.has(value)) return true;
+  for (const known of upgradeSet) {
+    if (value.startsWith(`${known} `) || value.startsWith(`${known}+`) || value.startsWith(`${known} +`)) {
+      return true;
+    }
+  }
+  return false;
+};
+
 const UNIT_RANGE_UPGRADE_NAMES = new Set([
   'U-238 Shells (Marine Range)',
   'Ocular Implants (Ghost Sight)',
@@ -305,11 +405,11 @@ const CAPACITY_COOLDOWN_DAMAGE_UPGRADE_NAMES = new Set([
 
 const upgradeCategoryForName = (upgradeName) => {
   const value = String(upgradeName || '').trim();
-  if (HP_UPGRADE_NAMES.has(value)) return 'hp_upgrades';
-  if (UNIT_RANGE_UPGRADE_NAMES.has(value)) return 'unit_range';
-  if (UNIT_SPEED_UPGRADE_NAMES.has(value)) return 'unit_speed';
-  if (ENERGY_UPGRADE_NAMES.has(value)) return 'energy';
-  if (CAPACITY_COOLDOWN_DAMAGE_UPGRADE_NAMES.has(value)) return 'capacity_cooldown_damage';
+  if (setHasUpgradeLoose(HP_UPGRADE_NAMES, value)) return 'hp_upgrades';
+  if (setHasUpgradeLoose(UNIT_RANGE_UPGRADE_NAMES, value)) return 'unit_range';
+  if (setHasUpgradeLoose(UNIT_SPEED_UPGRADE_NAMES, value)) return 'unit_speed';
+  if (setHasUpgradeLoose(ENERGY_UPGRADE_NAMES, value)) return 'energy';
+  if (setHasUpgradeLoose(CAPACITY_COOLDOWN_DAMAGE_UPGRADE_NAMES, value)) return 'capacity_cooldown_damage';
   return 'capacity_cooldown_damage';
 };
 
@@ -325,6 +425,21 @@ const TIMING_CATEGORY_CONFIG = [
 ];
 
 const TIMING_RACE_ORDER = ['terran', 'zerg', 'protoss'];
+const FIRST_UNIT_EFFICIENCY_GROUP_CONFIG = [
+  { race: 'protoss', buildingName: 'Forge', unitNames: ['Photon Cannon'] },
+  { race: 'protoss', buildingName: 'Gateway', unitNames: ['Zealot'] },
+  { race: 'protoss', buildingName: 'Stargate', unitNames: ['Corsair', 'Scout'] },
+  { race: 'protoss', buildingName: 'Fleet Beacon', unitNames: ['Carrier'] },
+  { race: 'protoss', buildingName: 'Arbiter Tribunal', unitNames: ['Arbiter'] },
+  { race: 'terran', buildingName: 'Barracks', unitNames: ['Marine'] },
+  { race: 'terran', buildingName: 'Factory', unitNames: ['Vulture', 'Siege Tank'] },
+  { race: 'terran', buildingName: 'Physics Lab', unitNames: ['Battlecruiser'] },
+  { race: 'zerg', buildingName: 'Spawning Pool', unitNames: ['Zergling'] },
+  { race: 'zerg', buildingName: 'Hydralisk Den', unitNames: ['Hydralisk'] },
+  { race: 'zerg', buildingName: 'Spire', unitNames: ['Mutalisk', 'Scourge'] },
+  { race: 'zerg', buildingName: 'Ultralisk Cavern', unitNames: ['Ultralisk'] },
+  { race: 'zerg', buildingName: 'Defiler Mound', unitNames: ['Defiler'] },
+];
 
 const prettyRaceName = (race) => {
   const value = String(race || '').trim().toLowerCase();
@@ -340,6 +455,8 @@ const UNIT_ICON_MAP = {
   drone: droneImg,
   arbiter: arbiterImg,
   protossarbiter: arbiterImg,
+  corsair: corsairImg,
+  protosscorsair: corsairImg,
   scout: scoutImg,
   protossscout: scoutImg,
   reaver: reaverImg,
@@ -589,6 +706,10 @@ const formatPatternPillText = (rawName, rawValue, isTruthy) => {
     const minute = minuteFromValue(rawValue);
     if (minute !== null) return `${rawName} at min ${minute}`;
   }
+  if (lowerName.includes('threw nukes')) {
+    const minute = minuteFromValue(rawValue);
+    if (minute !== null) return `${rawName} at ${minute} mins`;
+  }
   return `${rawName} at ${rawValue}`;
 };
 
@@ -737,6 +858,7 @@ const teamColorRgba = (team, alpha = 0.14) => {
 };
 
 const WORKFLOW_GAMES_PAGE_SIZE = 30;
+const WORKFLOW_PLAYERS_PAGE_SIZE = 30;
 
 const toggleFilterValue = (values, value) => {
   const normalized = String(value || '').trim();
@@ -819,6 +941,34 @@ function App() {
   const [workflowPlayerOutliers, setWorkflowPlayerOutliers] = useState(null);
   const [workflowPlayerOutliersLoading, setWorkflowPlayerOutliersLoading] = useState(false);
   const [workflowPlayerOutliersError, setWorkflowPlayerOutliersError] = useState('');
+  const [workflowPlayers, setWorkflowPlayers] = useState([]);
+  const [workflowPlayersLoading, setWorkflowPlayersLoading] = useState(false);
+  const [workflowPlayersPage, setWorkflowPlayersPage] = useState(1);
+  const [workflowPlayersTotal, setWorkflowPlayersTotal] = useState(0);
+  const [workflowPlayersSortBy, setWorkflowPlayersSortBy] = useState('games');
+  const [workflowPlayersSortDir, setWorkflowPlayersSortDir] = useState('desc');
+  const [workflowPlayersTab, setWorkflowPlayersTab] = useState('summary');
+  const [workflowPlayersFilterOptions, setWorkflowPlayersFilterOptions] = useState({
+    races: [],
+    last_played: [],
+  });
+  const [workflowPlayersFilters, setWorkflowPlayersFilters] = useState({
+    name: '',
+    onlyFivePlus: false,
+    lastPlayed: [],
+  });
+  const [workflowPlayersApmHistogram, setWorkflowPlayersApmHistogram] = useState(null);
+  const [workflowPlayersApmHistogramLoading, setWorkflowPlayersApmHistogramLoading] = useState(false);
+  const [workflowPlayersApmHistogramError, setWorkflowPlayersApmHistogramError] = useState('');
+  const [workflowPlayersApmMinGames, setWorkflowPlayersApmMinGames] = useState(5);
+  const [workflowPlayersDelayHistogram, setWorkflowPlayersDelayHistogram] = useState(null);
+  const [workflowPlayersDelayHistogramLoading, setWorkflowPlayersDelayHistogramLoading] = useState(false);
+  const [workflowPlayersDelayHistogramError, setWorkflowPlayersDelayHistogramError] = useState('');
+  const [workflowPlayersDelayMinSamples, setWorkflowPlayersDelayMinSamples] = useState(5);
+  const [workflowPlayersDelaySelectedCases, setWorkflowPlayersDelaySelectedCases] = useState(['all']);
+  const [workflowPlayerDelayInsight, setWorkflowPlayerDelayInsight] = useState(null);
+  const [workflowPlayerDelayInsightLoading, setWorkflowPlayerDelayInsightLoading] = useState(false);
+  const [workflowPlayerDelayInsightError, setWorkflowPlayerDelayInsightError] = useState('');
   const [workflowQuestion, setWorkflowQuestion] = useState('');
   const [workflowAnswer, setWorkflowAnswer] = useState(null);
   const [askingWorkflow, setAskingWorkflow] = useState(false);
@@ -831,9 +981,9 @@ function App() {
   const [workflowBuildingNameFilter, setWorkflowBuildingNameFilter] = useState('');
   const [workflowTimingCategory, setWorkflowTimingCategory] = useState('gas');
   const [workflowHpUpgradeFilters, setWorkflowHpUpgradeFilters] = useState({
-    terran: '',
-    zerg: '',
-    protoss: '',
+    terran: DEFAULT_HP_UPGRADE_BY_RACE.terran,
+    zerg: DEFAULT_HP_UPGRADE_BY_RACE.zerg,
+    protoss: DEFAULT_HP_UPGRADE_BY_RACE.protoss,
   });
 
   const loadDashboard = async (url, varValues = null, skipVarInit = false) => {
@@ -922,6 +1072,65 @@ function App() {
     }
   };
 
+  const loadWorkflowPlayers = async ({
+    page = workflowPlayersPage,
+    filters = workflowPlayersFilters,
+    sortBy = workflowPlayersSortBy,
+    sortDir = workflowPlayersSortDir,
+  } = {}) => {
+    try {
+      setWorkflowPlayersLoading(true);
+      const safePage = Math.max(1, Number(page) || 1);
+      const offset = (safePage - 1) * WORKFLOW_PLAYERS_PAGE_SIZE;
+      const data = await api.listWorkflowPlayers({
+        limit: WORKFLOW_PLAYERS_PAGE_SIZE,
+        offset,
+        sortBy,
+        sortDir,
+        filters,
+      });
+      setWorkflowPlayers(data?.items || []);
+      setWorkflowPlayersTotal(Number(data?.total) || 0);
+      if (data?.filter_options) {
+        setWorkflowPlayersFilterOptions(data.filter_options);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setWorkflowPlayersLoading(false);
+    }
+  };
+
+  const loadWorkflowPlayersApmHistogram = async () => {
+    try {
+      setWorkflowPlayersApmHistogramLoading(true);
+      setWorkflowPlayersApmHistogramError('');
+      const data = await api.getWorkflowPlayersApmHistogram();
+      setWorkflowPlayersApmHistogram(data);
+    } catch (err) {
+      setWorkflowPlayersApmHistogramError(err.message || 'Failed to load players histogram');
+      setWorkflowPlayersApmHistogram(null);
+    } finally {
+      setWorkflowPlayersApmHistogramLoading(false);
+    }
+  };
+
+  const loadWorkflowPlayersDelayHistogram = async () => {
+    try {
+      setWorkflowPlayersDelayHistogramLoading(true);
+      setWorkflowPlayersDelayHistogramError('');
+      const data = await api.getWorkflowPlayersFirstUnitDelay();
+      setWorkflowPlayersDelayHistogram(data);
+      setWorkflowPlayersDelaySelectedCases(['all']);
+    } catch (err) {
+      setWorkflowPlayersDelayHistogramError(err.message || 'Failed to load players delay');
+      setWorkflowPlayersDelayHistogram(null);
+      setWorkflowPlayersDelaySelectedCases(['all']);
+    } finally {
+      setWorkflowPlayersDelayHistogramLoading(false);
+    }
+  };
+
   const loadTopPlayerColors = async () => {
     try {
       const data = await api.getWorkflowPlayerColors();
@@ -948,7 +1157,11 @@ function App() {
       setWorkflowBuildingFilterMode('all');
       setWorkflowBuildingNameFilter('');
       setWorkflowTimingCategory('gas');
-      setWorkflowHpUpgradeFilters({ terran: '', zerg: '', protoss: '' });
+      setWorkflowHpUpgradeFilters({
+        terran: DEFAULT_HP_UPGRADE_BY_RACE.terran,
+        zerg: DEFAULT_HP_UPGRADE_BY_RACE.zerg,
+        protoss: DEFAULT_HP_UPGRADE_BY_RACE.protoss,
+      });
       navigateWorkflowView('game');
     } catch (err) {
       setError(err.message);
@@ -957,36 +1170,56 @@ function App() {
     }
   };
 
+  const loadWorkflowPlayerMetrics = async (playerKey) => {
+    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
+    if (!normalizedPlayerKey) return;
+    try {
+      setWorkflowPlayerMetricsLoading(true);
+      setWorkflowPlayerMetricsError('');
+      const metricsData = await api.getWorkflowPlayerMetrics(normalizedPlayerKey);
+      setWorkflowPlayerMetrics(metricsData);
+    } catch (err) {
+      setWorkflowPlayerMetricsError(err.message || 'Failed to load metrics');
+      setWorkflowPlayerMetrics(null);
+    } finally {
+      setWorkflowPlayerMetricsLoading(false);
+    }
+  };
+
+  const loadWorkflowPlayerOutliers = async (playerKey) => {
+    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
+    if (!normalizedPlayerKey) return;
+    try {
+      setWorkflowPlayerOutliersLoading(true);
+      setWorkflowPlayerOutliersError('');
+      const outlierData = await api.getWorkflowPlayerOutliers(normalizedPlayerKey);
+      setWorkflowPlayerOutliers(outlierData);
+    } catch (err) {
+      setWorkflowPlayerOutliersError(err.message || 'Failed to load outliers');
+      setWorkflowPlayerOutliers(null);
+    } finally {
+      setWorkflowPlayerOutliersLoading(false);
+    }
+  };
+
+  const loadWorkflowPlayerDelayInsight = async (playerKey) => {
+    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
+    if (!normalizedPlayerKey) return;
+    try {
+      setWorkflowPlayerDelayInsightLoading(true);
+      setWorkflowPlayerDelayInsightError('');
+      const delayData = await api.getWorkflowPlayerFirstUnitDelay(normalizedPlayerKey);
+      setWorkflowPlayerDelayInsight(delayData);
+    } catch (err) {
+      setWorkflowPlayerDelayInsightError(err.message || 'Failed to load delay insight');
+      setWorkflowPlayerDelayInsight(null);
+    } finally {
+      setWorkflowPlayerDelayInsightLoading(false);
+    }
+  };
+
   const openWorkflowPlayer = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
-    const loadPlayerMetrics = async () => {
-      if (!normalizedPlayerKey) return;
-      try {
-        setWorkflowPlayerMetricsLoading(true);
-        setWorkflowPlayerMetricsError('');
-        const metricsData = await api.getWorkflowPlayerMetrics(normalizedPlayerKey);
-        setWorkflowPlayerMetrics(metricsData);
-      } catch (err) {
-        setWorkflowPlayerMetricsError(err.message || 'Failed to load metrics');
-        setWorkflowPlayerMetrics(null);
-      } finally {
-        setWorkflowPlayerMetricsLoading(false);
-      }
-    };
-    const loadPlayerOutliers = async () => {
-      if (!normalizedPlayerKey) return;
-      try {
-        setWorkflowPlayerOutliersLoading(true);
-        setWorkflowPlayerOutliersError('');
-        const outlierData = await api.getWorkflowPlayerOutliers(normalizedPlayerKey);
-        setWorkflowPlayerOutliers(outlierData);
-      } catch (err) {
-        setWorkflowPlayerOutliersError(err.message || 'Failed to load outliers');
-        setWorkflowPlayerOutliers(null);
-      } finally {
-        setWorkflowPlayerOutliersLoading(false);
-      }
-    };
     try {
       setWorkflowPlayerLoading(true);
       setError(null);
@@ -998,12 +1231,16 @@ function App() {
       setWorkflowPlayerOutliers(null);
       setWorkflowPlayerOutliersError('');
       setWorkflowPlayerOutliersLoading(false);
-      setSelectedPlayerKey(playerKey);
+      setWorkflowPlayerDelayInsight(null);
+      setWorkflowPlayerDelayInsightError('');
+      setWorkflowPlayerDelayInsightLoading(false);
+      setSelectedPlayerKey(normalizedPlayerKey);
       setWorkflowAnswer(null);
       setWorkflowQuestion('');
       navigateWorkflowView('player');
-      loadPlayerMetrics();
-      loadPlayerOutliers();
+      loadWorkflowPlayerMetrics(normalizedPlayerKey);
+      loadWorkflowPlayerOutliers(normalizedPlayerKey);
+      loadWorkflowPlayerDelayInsight(normalizedPlayerKey);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1023,6 +1260,41 @@ function App() {
   useEffect(() => {
     loadWorkflowGames({ page: workflowGamesPage, filters: workflowGamesFilters });
   }, [workflowGamesPage, workflowGamesFilters]);
+
+  useEffect(() => {
+    loadWorkflowPlayers({
+      page: workflowPlayersPage,
+      filters: workflowPlayersFilters,
+      sortBy: workflowPlayersSortBy,
+      sortDir: workflowPlayersSortDir,
+    });
+  }, [workflowPlayersPage, workflowPlayersFilters, workflowPlayersSortBy, workflowPlayersSortDir]);
+
+  useEffect(() => {
+    if (activeView !== 'players' || workflowPlayersTab !== 'apm-histogram') return;
+    if (!workflowPlayersApmHistogram && !workflowPlayersApmHistogramLoading && !workflowPlayersApmHistogramError) {
+      loadWorkflowPlayersApmHistogram();
+    }
+  }, [
+    activeView,
+    workflowPlayersTab,
+    workflowPlayersApmHistogram,
+    workflowPlayersApmHistogramLoading,
+    workflowPlayersApmHistogramError,
+  ]);
+
+  useEffect(() => {
+    if (activeView !== 'players' || workflowPlayersTab !== 'first-unit-delay') return;
+    if (!workflowPlayersDelayHistogram && !workflowPlayersDelayHistogramLoading && !workflowPlayersDelayHistogramError) {
+      loadWorkflowPlayersDelayHistogram();
+    }
+  }, [
+    activeView,
+    workflowPlayersTab,
+    workflowPlayersDelayHistogram,
+    workflowPlayersDelayHistogramLoading,
+    workflowPlayersDelayHistogramError,
+  ]);
 
   useEffect(() => {
     saveAutoIngestSettings({
@@ -1210,6 +1482,61 @@ function App() {
       map: [],
       duration: [],
       featuring: [],
+    });
+  };
+
+  const setWorkflowPlayersSingleFilter = (name, nextValue) => {
+    setWorkflowPlayersPage(1);
+    setWorkflowPlayersFilters((prev) => ({
+      ...prev,
+      [name]: nextValue,
+    }));
+  };
+
+  const toggleWorkflowPlayersMultiFilter = (name, value) => {
+    setWorkflowPlayersPage(1);
+    setWorkflowPlayersFilters((prev) => ({
+      ...prev,
+      [name]: toggleFilterValue(prev[name] || [], value),
+    }));
+  };
+
+  const clearWorkflowPlayersFilters = () => {
+    setWorkflowPlayersPage(1);
+    setWorkflowPlayersFilters({
+      name: '',
+      onlyFivePlus: false,
+      lastPlayed: [],
+    });
+    setWorkflowPlayersSortBy('games');
+    setWorkflowPlayersSortDir('desc');
+  };
+
+  const setWorkflowPlayersSort = (sortBy) => {
+    setWorkflowPlayersPage(1);
+    setWorkflowPlayersSortBy((prevSortBy) => {
+      if (prevSortBy === sortBy) {
+        setWorkflowPlayersSortDir((prevDir) => (prevDir === 'asc' ? 'desc' : 'asc'));
+        return prevSortBy;
+      }
+      setWorkflowPlayersSortDir(sortBy === 'games' || sortBy === 'last_played' ? 'desc' : 'asc');
+      return sortBy;
+    });
+  };
+
+  const toggleWorkflowPlayersDelayCase = (caseKey) => {
+    const normalized = String(caseKey || '').trim();
+    if (!normalized) return;
+    setWorkflowPlayersDelaySelectedCases((prev) => {
+      const current = Array.isArray(prev) ? prev : ['all'];
+      if (normalized === 'all') return ['all'];
+      const withoutAll = current.filter((value) => value && value !== 'all');
+      const already = withoutAll.includes(normalized);
+      if (already) {
+        const next = withoutAll.filter((value) => value !== normalized);
+        return next.length === 0 ? ['all'] : next;
+      }
+      return [...withoutAll, normalized];
     });
   };
 
@@ -1421,23 +1748,23 @@ function App() {
     return summaryTextMatches(`${event.type} ${event.description}`);
   });
 
-  const workflowPlayers = workflowGame?.players || [];
+  const workflowGamePlayers = workflowGame?.players || [];
   const workflowPlayerNameWidthCh = useMemo(() => {
-    const longestNameLength = workflowPlayers.reduce((longest, player) => {
+    const longestNameLength = workflowGamePlayers.reduce((longest, player) => {
       const nameLength = String(player?.name || '').trim().length;
       return Math.max(longest, nameLength);
     }, 0);
     if (!longestNameLength) return 15;
     return Math.max(12, Math.min(24, longestNameLength + 3));
-  }, [workflowPlayers]);
+  }, [workflowGamePlayers]);
   const workflowPlayersById = useMemo(
-    () => new Map(workflowPlayers.map((player) => [player.player_id, player])),
-    [workflowPlayers],
+    () => new Map(workflowGamePlayers.map((player) => [player.player_id, player])),
+    [workflowGamePlayers],
   );
   const hasTeamInfo = useMemo(() => {
-    const uniqueTeams = new Set(workflowPlayers.map((player) => player.team));
+    const uniqueTeams = new Set(workflowGamePlayers.map((player) => player.team));
     return uniqueTeams.size > 1;
-  }, [workflowPlayers]);
+  }, [workflowGamePlayers]);
   const workflowTimingCategoryConfig = useMemo(
     () => TIMING_CATEGORY_CONFIG.find((cfg) => cfg.id === workflowTimingCategory) || TIMING_CATEGORY_CONFIG[0],
     [workflowTimingCategory],
@@ -1459,7 +1786,7 @@ function App() {
     return sortedSeries.map((playerSeries) => {
       const playerRace = String(workflowPlayersById.get(playerSeries?.player_id)?.race || '').trim();
       const sourcePoints = Array.isArray(playerSeries?.points) ? playerSeries.points : [];
-      const points = sourcePoints
+      const mappedPoints = sourcePoints
         .map((point) => {
           const second = Number(point?.second);
           if (!Number.isFinite(second)) return null;
@@ -1467,49 +1794,95 @@ function App() {
           const rawLabel = String(point?.label || '').trim();
           const upgradeCategory = workflowTimingCategoryConfig.source === 'upgrades' ? upgradeCategoryForName(rawLabel) : '';
           if (workflowTimingCategoryConfig.source === 'upgrades' && upgradeCategory !== workflowTimingCategory) return null;
-          let displayLabel = rawLabel;
-          let categoryLabel = 'Timing';
-          let markerImage = null;
-          let markerLabel = '';
-          let isRepeatable = false;
-          let maxLevel = 1;
-
-          if (workflowTimingCategoryConfig.source === 'upgrades') {
-            displayLabel = inlineTimingUpgradeLabel(rawLabel, order);
-            categoryLabel = workflowTimingCategoryConfig.label;
-            isRepeatable = upgradeCategory === 'hp_upgrades';
-            maxLevel = isRepeatable ? 3 : 1;
-          } else if (workflowTimingCategoryConfig.source === 'tech') {
-            displayLabel = normalizeTimingDisplayLabel(rawLabel);
-            categoryLabel = 'Tech';
-          } else if (workflowTimingCategory === 'gas') {
-            displayLabel = `Gas #${order || 1}`;
-            categoryLabel = 'Gas';
-            markerImage = getGasMarkerIconForRace(playerRace);
-            markerLabel = workflowTimingCategoryConfig.markerLabel || 'Gas';
-          } else if (workflowTimingCategory === 'expansion') {
-            displayLabel = `Expansion #${order || 1}`;
-            categoryLabel = 'Expansion';
-            markerImage = getExpansionMarkerIconForRace(playerRace);
-            markerLabel = workflowTimingCategoryConfig.markerLabel || 'Expansion';
-          }
-
           return {
             ...point,
             second,
             order,
             label: rawLabel,
-            display_label: displayLabel,
-            category: upgradeCategory || workflowTimingCategory,
-            category_label: categoryLabel,
-            race: playerRace,
-            marker_image: markerImage,
-            marker_label: markerLabel,
-            is_repeatable: isRepeatable,
-            max_level: maxLevel,
+            upgrade_category: upgradeCategory,
           };
         })
         .filter(Boolean);
+
+      // Post-process noisy repeated commands:
+      // - HP upgrades are repeatable up to 3 levels, so keep latest 3 per label.
+      // - Other upgrades and tech are effectively one-off, so keep latest 1 per label.
+      const pointsAfterPostProcess = (() => {
+        const sourceType = workflowTimingCategoryConfig.source;
+        if (sourceType !== 'upgrades' && sourceType !== 'tech') return mappedPoints;
+        const byLabel = new Map();
+        mappedPoints.forEach((point) => {
+          const key = String(point?.label || '').trim();
+          if (!key) return;
+          if (!byLabel.has(key)) byLabel.set(key, []);
+          byLabel.get(key).push(point);
+        });
+        const collapsed = [];
+        byLabel.forEach((items) => {
+          const sortedBySecond = [...items].sort((a, b) => {
+            if (a.second === b.second) return a.order - b.order;
+            return a.second - b.second;
+          });
+          const keepCount = sourceType === 'upgrades' && workflowTimingCategory === 'hp_upgrades' ? 3 : 1;
+          const kept = sortedBySecond.slice(-keepCount);
+          kept.forEach((item, idx) => {
+            collapsed.push({
+              ...item,
+              order: idx + 1,
+            });
+          });
+        });
+        return collapsed.sort((a, b) => {
+          if (a.second === b.second) return String(a.label || '').localeCompare(String(b.label || ''));
+          return a.second - b.second;
+        });
+      })();
+
+      const points = pointsAfterPostProcess.map((point) => {
+        const order = Number(point?.order) || 0;
+        const rawLabel = String(point?.label || '').trim();
+        const upgradeCategory = String(point?.upgrade_category || '').trim();
+        let displayLabel = rawLabel;
+        let categoryLabel = 'Timing';
+        let markerImage = null;
+        let markerLabel = '';
+        let isRepeatable = false;
+        let maxLevel = 1;
+
+        if (workflowTimingCategoryConfig.source === 'upgrades') {
+          displayLabel = inlineTimingUpgradeLabel(rawLabel, order);
+          categoryLabel = workflowTimingCategoryConfig.label;
+          isRepeatable = upgradeCategory === 'hp_upgrades';
+          maxLevel = isRepeatable ? 3 : 1;
+        } else if (workflowTimingCategoryConfig.source === 'tech') {
+          displayLabel = normalizeTimingDisplayLabel(rawLabel);
+          categoryLabel = 'Tech';
+        } else if (workflowTimingCategory === 'gas') {
+          displayLabel = `Gas #${order || 1}`;
+          categoryLabel = 'Gas';
+          markerImage = getGasMarkerIconForRace(playerRace);
+          markerLabel = workflowTimingCategoryConfig.markerLabel || 'Gas';
+        } else if (workflowTimingCategory === 'expansion') {
+          displayLabel = `Expansion #${order || 1}`;
+          categoryLabel = 'Expansion';
+          markerImage = getExpansionMarkerIconForRace(playerRace);
+          markerLabel = workflowTimingCategoryConfig.markerLabel || 'Expansion';
+        }
+
+        return {
+          ...point,
+          order,
+          label: rawLabel,
+          display_label: displayLabel,
+          category: upgradeCategory || workflowTimingCategory,
+          category_label: categoryLabel,
+          race: playerRace,
+          marker_image: markerImage,
+          marker_label: markerLabel,
+          is_repeatable: isRepeatable,
+          max_level: maxLevel,
+        };
+      });
 
       return {
         ...playerSeries,
@@ -1552,12 +1925,20 @@ function App() {
     if (workflowTimingCategory !== 'hp_upgrades') return [];
     return TIMING_RACE_ORDER.map((race) => {
       const raceSeries = workflowTimingSeries.filter((playerSeries) => String(playerSeries?.race || '').trim().toLowerCase() === race);
+      const racePrefix = racePrefixForUpgrade(race);
       const labelOptions = Array.from(new Set(
         raceSeries.flatMap((playerSeries) => (playerSeries?.points || []).map((point) => String(point?.label || '').trim()))
-          .filter(Boolean),
+          .filter((label) => {
+            if (!label) return false;
+            if (!racePrefix) return true;
+            return label.startsWith(racePrefix);
+          }),
       )).sort((a, b) => a.localeCompare(b));
       const selectedValue = String(workflowHpUpgradeFilters[race] || '').trim();
-      const selected = labelOptions.includes(selectedValue) ? selectedValue : (labelOptions[0] || '');
+      const defaultForRace = String(DEFAULT_HP_UPGRADE_BY_RACE[race] || '').trim();
+      const selected = labelOptions.includes(selectedValue)
+        ? selectedValue
+        : (labelOptions.includes(defaultForRace) ? defaultForRace : (labelOptions[0] || ''));
       const filteredSeries = raceSeries.map((playerSeries) => ({
         ...playerSeries,
         points: (playerSeries?.points || [])
@@ -1576,6 +1957,49 @@ function App() {
       };
     }).filter((entry) => entry.series.some((playerSeries) => (playerSeries?.points || []).length > 0));
   }, [workflowTimingCategory, workflowTimingSeries, workflowHpUpgradeFilters]);
+  const workflowFirstUnitEfficiencyGroups = useMemo(() => {
+    const sourcePlayers = Array.isArray(workflowGame?.first_unit_efficiency) ? workflowGame.first_unit_efficiency : [];
+    const normalizedPlayers = sourcePlayers.map((playerEntry) => ({
+      ...playerEntry,
+      race: String(playerEntry?.race || '').trim().toLowerCase(),
+      entries: Array.isArray(playerEntry?.entries) ? playerEntry.entries : [],
+    }));
+    return FIRST_UNIT_EFFICIENCY_GROUP_CONFIG.map((cfg) => {
+      const unitKeySet = new Set(cfg.unitNames.map((name) => normalizeUnitName(name)));
+      const rows = normalizedPlayers
+        .filter((playerEntry) => playerEntry.race === cfg.race)
+        .map((playerEntry) => {
+          const matched = playerEntry.entries.find((entry) => (
+            normalizeUnitName(entry?.building_name) === normalizeUnitName(cfg.buildingName)
+            && unitKeySet.has(normalizeUnitName(entry?.unit_name))
+          ));
+          if (!matched) return null;
+          return {
+            player_id: playerEntry.player_id,
+            player_name: playerEntry.name,
+            player_key: playerEntry.player_key,
+            race: playerEntry.race,
+            ...matched,
+            building_icon: getUnitIcon(matched?.building_name || cfg.buildingName),
+            unit_icon: getUnitIcon(matched?.unit_name),
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => String(a?.player_name || '').localeCompare(String(b?.player_name || '')));
+      if (rows.length === 0) return null;
+      return {
+        id: `${cfg.race}-${normalizeUnitName(cfg.buildingName)}`,
+        race: cfg.race,
+        building_name: cfg.buildingName,
+        building_icon: getUnitIcon(cfg.buildingName),
+        unit_names: cfg.unitNames,
+        unit_icons: cfg.unitNames
+          .map((unitName) => getUnitIcon(unitName))
+          .filter(Boolean),
+        rows,
+      };
+    }).filter(Boolean);
+  }, [workflowGame?.first_unit_efficiency]);
 
   const filterProductionEntries = (entries, view) => {
     const mode = view === 'units' ? workflowUnitFilterMode : workflowBuildingFilterMode;
@@ -1610,6 +2034,87 @@ function App() {
   const workflowGamesTo = workflowGames.length === 0
     ? 0
     : Math.min((workflowGamesPage - 1) * WORKFLOW_GAMES_PAGE_SIZE + workflowGames.length, Number(workflowGamesTotal) || 0);
+  const workflowPlayersTotalPages = Math.max(1, Math.ceil((Number(workflowPlayersTotal) || 0) / WORKFLOW_PLAYERS_PAGE_SIZE));
+  const workflowPlayersFrom = workflowPlayers.length === 0 ? 0 : ((workflowPlayersPage - 1) * WORKFLOW_PLAYERS_PAGE_SIZE) + 1;
+  const workflowPlayersTo = workflowPlayers.length === 0
+    ? 0
+    : Math.min((workflowPlayersPage - 1) * WORKFLOW_PLAYERS_PAGE_SIZE + workflowPlayers.length, Number(workflowPlayersTotal) || 0);
+  const playersApmHistogramPoints = useMemo(() => (
+    (workflowPlayersApmHistogram?.players || [])
+      .map((player) => ({
+        value: Number(player?.average_apm),
+        label: String(player?.player_name || '').trim(),
+        player_key: String(player?.player_key || '').trim(),
+        games_played: Number(player?.games_played || 0),
+      }))
+      .filter((player) => Number.isFinite(player.value) && player.label)
+  ), [workflowPlayersApmHistogram]);
+  const workflowPlayersApmProcessed = useMemo(() => {
+    const minGames = Math.max(5, Number(workflowPlayersApmMinGames) || 5);
+    const filtered = playersApmHistogramPoints
+      .filter((player) => Number(player.games_played || 0) >= minGames)
+      .map((player) => ({
+        player_key: player.player_key,
+        player_name: player.label,
+        average_apm: player.value,
+        games_played: player.games_played,
+      }));
+    return buildHistogramSummaryFromPlayers(filtered);
+  }, [playersApmHistogramPoints, workflowPlayersApmMinGames]);
+  const workflowPlayersDelayCaseOptions = useMemo(() => (
+    (workflowPlayersDelayHistogram?.case_options || [])
+      .map((entry) => ({
+        case_key: String(entry?.case_key || '').trim(),
+        building_name: String(entry?.building_name || '').trim(),
+        unit_name: String(entry?.unit_name || '').trim(),
+        sample_count: Number(entry?.sample_count || 0),
+      }))
+      .filter((entry) => entry.case_key && entry.building_name && entry.unit_name)
+  ), [workflowPlayersDelayHistogram]);
+  const playersDelayHistogramPoints = useMemo(() => {
+    const selected = new Set((workflowPlayersDelaySelectedCases || []).filter((value) => value && value !== 'all'));
+    const useAll = selected.size === 0 || (workflowPlayersDelaySelectedCases || []).includes('all');
+    return (workflowPlayersDelayHistogram?.players || [])
+      .map((player) => {
+        const caseAverages = Array.isArray(player?.case_averages) ? player.case_averages : [];
+        const matched = caseAverages.filter((entry) => {
+          const caseKey = String(entry?.case_key || '').trim();
+          if (!caseKey) return false;
+          if (useAll) return true;
+          return selected.has(caseKey);
+        });
+        if (matched.length === 0) return null;
+        const sampleCount = matched.reduce((sum, entry) => sum + (Number(entry?.sample_count || 0)), 0);
+        if (sampleCount <= 0) return null;
+        const weightedSum = matched.reduce((sum, entry) => (
+          sum + (Number(entry?.average_delay_seconds || 0) * Number(entry?.sample_count || 0))
+        ), 0);
+        const avgDelay = weightedSum / sampleCount;
+        return {
+          value: avgDelay,
+          label: String(player?.player_name || '').trim(),
+          player_key: String(player?.player_key || '').trim(),
+          sample_count: sampleCount,
+        };
+      })
+      .filter((player) => player && Number.isFinite(player.value) && player.label);
+  }, [workflowPlayersDelayHistogram, workflowPlayersDelaySelectedCases]);
+  const workflowPlayersDelayProcessed = useMemo(() => {
+    const minSamples = Math.max(5, Number(workflowPlayersDelayMinSamples) || 5);
+    const filtered = playersDelayHistogramPoints
+      .filter((player) => Number(player.sample_count || 0) >= minSamples)
+      .map((player) => ({
+        player_key: player.player_key,
+        player_name: player.label,
+        average_apm: player.value,
+        games_played: player.sample_count,
+      }));
+    return buildHistogramSummaryFromPlayers(filtered);
+  }, [playersDelayHistogramPoints, workflowPlayersDelayMinSamples]);
+  const workflowPlayersSortIndicator = (sortBy) => {
+    if (workflowPlayersSortBy !== sortBy) return '';
+    return workflowPlayersSortDir === 'asc' ? '↑' : '↓';
+  };
 
   if (loading && !dashboard && activeView === 'dashboards') {
     return (
@@ -1624,6 +2129,7 @@ function App() {
       <div className="dashboard-container">
         <div className="workflow-nav">
           <button className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateWorkflowView('games')}>Games</button>
+          <button className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateWorkflowView('players')}>Players</button>
           <button className={`btn-manage ${activeView === 'dashboards' ? 'workflow-nav-active' : ''}`} onClick={() => navigateWorkflowView('dashboards')}>Custom Dashboards</button>
           <button onClick={() => setShowIngestPanel((prev) => !prev)} className="btn-manage">{showIngestPanel ? 'Close Ingest' : 'Ingest'}</button>
         </div>
@@ -1833,6 +2339,266 @@ function App() {
           </div>
         )}
 
+        {activeView === 'players' && (
+          <div className="workflow-panel">
+            <h2>Players</h2>
+            <div className="workflow-nav">
+              <button className={`btn-switch ${workflowPlayersTab === 'summary' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('summary')}>Summary</button>
+              <button className={`btn-switch ${workflowPlayersTab === 'apm-histogram' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('apm-histogram')}>APM Histogram</button>
+              <button className={`btn-switch ${workflowPlayersTab === 'first-unit-delay' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('first-unit-delay')}>First Unit Delay</button>
+            </div>
+
+            {workflowPlayersTab === 'summary' ? (
+              <>
+                <div className="workflow-summary-filter-row workflow-games-filter-row">
+                  <input
+                    type="text"
+                    className="workflow-summary-filter-input"
+                    placeholder="Filter by player name..."
+                    value={workflowPlayersFilters.name}
+                    onChange={(e) => setWorkflowPlayersSingleFilter('name', e.target.value)}
+                  />
+                  <label className="workflow-summary-filter-check">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(workflowPlayersFilters.onlyFivePlus)}
+                      onChange={(e) => setWorkflowPlayersSingleFilter('onlyFivePlus', e.target.checked)}
+                    />
+                    <span>Only 5+ games</span>
+                  </label>
+                  <div className="workflow-pattern-pills workflow-games-filter-pills">
+                    {(workflowPlayersFilterOptions.last_played || []).map((option) => {
+                      const active = (workflowPlayersFilters.lastPlayed || []).includes(option.key);
+                      return (
+                        <button
+                          key={`wf-player-last-${option.key}`}
+                          type="button"
+                          className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
+                          onClick={() => toggleWorkflowPlayersMultiFilter('lastPlayed', option.key)}
+                        >
+                          {option.label} ({option.count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button type="button" className="btn-create-manual" onClick={clearWorkflowPlayersFilters}>Clear filters</button>
+                </div>
+                {workflowPlayersLoading ? (
+                  <div className="loading">Loading players...</div>
+                ) : (
+                  <>
+                    <table className="data-table workflow-table">
+                      <thead>
+                        <tr>
+                          <th className="workflow-sortable" onClick={() => setWorkflowPlayersSort('name')}>Name {workflowPlayersSortIndicator('name')}</th>
+                          <th className="workflow-sortable" onClick={() => setWorkflowPlayersSort('race')}>Race {workflowPlayersSortIndicator('race')}</th>
+                          <th className="workflow-sortable" onClick={() => setWorkflowPlayersSort('games')}>Games {workflowPlayersSortIndicator('games')}</th>
+                          <th className="workflow-sortable" onClick={() => setWorkflowPlayersSort('apm')}>Avg APM {workflowPlayersSortIndicator('apm')}</th>
+                          <th className="workflow-sortable" onClick={() => setWorkflowPlayersSort('last_played')}>Last played {workflowPlayersSortIndicator('last_played')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {workflowPlayers.map((player) => (
+                          <tr key={player.player_key} className={selectedPlayerKey === player.player_key ? 'workflow-selected-row' : ''} onClick={() => openWorkflowPlayer(player.player_key)}>
+                            <td style={playerAccentColor(player.player_key) ? { color: playerAccentColor(player.player_key), fontWeight: 600 } : undefined}>{player.player_name}</td>
+                            <td>{player.race}</td>
+                            <td>{player.games_played}</td>
+                            <td>{Number(player.average_apm || 0).toFixed(1)}</td>
+                            <td>{formatDaysAgoCompact(player.last_played_days_ago)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div className="workflow-pagination-row">
+                      <button
+                        type="button"
+                        className="btn-switch"
+                        disabled={workflowPlayersPage <= 1 || workflowPlayersLoading}
+                        onClick={() => setWorkflowPlayersPage((prev) => Math.max(1, prev - 1))}
+                      >
+                        Previous
+                      </button>
+                      <span>
+                        Page {workflowPlayersPage} / {workflowPlayersTotalPages} - Showing {workflowPlayersFrom}-{workflowPlayersTo} of {workflowPlayersTotal}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn-switch"
+                        disabled={workflowPlayersPage >= workflowPlayersTotalPages || workflowPlayersLoading}
+                        onClick={() => setWorkflowPlayersPage((prev) => Math.min(workflowPlayersTotalPages, prev + 1))}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </>
+                )}
+              </>
+            ) : workflowPlayersTab === 'apm-histogram' ? (
+              <div className="workflow-card workflow-card-fingerprints">
+                <div className="workflow-card-title"><span>APM distribution</span></div>
+                <div className="workflow-card-subtitle">
+                  <span>How it is calculated</span>
+                  <HelpTooltip text="Each player contributes one point: their average APM across non-observer games. Only players with 5+ games are included." label="APM histogram methodology" />
+                </div>
+                <div className="workflow-subtle-note">
+                  Single-bell view over the eligible player population. Dots and labels can move vertically to reduce overlap, but each dot keeps the exact horizontal APM location.
+                </div>
+                {workflowPlayersApmHistogramLoading ? <div className="chart-empty">Loading APM histogram...</div> : null}
+                {!workflowPlayersApmHistogramLoading && workflowPlayersApmHistogramError ? <div className="chart-empty">{workflowPlayersApmHistogramError}</div> : null}
+                {!workflowPlayersApmHistogramLoading && !workflowPlayersApmHistogramError && workflowPlayersApmProcessed.points.length === 0 ? (
+                  <div className="chart-empty">Not enough player data to render this histogram yet.</div>
+                ) : null}
+                {!workflowPlayersApmHistogramLoading && !workflowPlayersApmHistogramError && workflowPlayersApmProcessed.points.length > 0 ? (
+                  <div className="workflow-insight-chart workflow-insight-chart-tall">
+                    <div className="workflow-summary-filter-row workflow-slider-row">
+                      <label className="workflow-summary-filter-check">
+                        <span>Min games (post-process): {Math.max(5, Number(workflowPlayersApmMinGames) || 5)}</span>
+                      </label>
+                      <input
+                        type="range"
+                        className="workflow-slider-input"
+                        min="5"
+                        max={String(Math.max(5, Number(workflowPlayersApmProcessed.maxGames) || 5))}
+                        step="1"
+                        value={String(Math.max(5, Number(workflowPlayersApmMinGames) || 5))}
+                        onChange={(e) => setWorkflowPlayersApmMinGames(Math.max(5, Number(e.target.value) || 5))}
+                      />
+                    </div>
+                    <div className="workflow-subtle-note">
+                      This slider only filters already-loaded points client-side; it does not re-query the backend.
+                    </div>
+                    <Histogram
+                      data={[]}
+                      config={{
+                        style: 'monobell_relax',
+                        precomputed_bins: workflowPlayersApmProcessed.bins,
+                        x_axis_label: 'Average APM',
+                        y_axis_label: 'Density',
+                        mean: workflowPlayersApmProcessed.mean,
+                        stddev: workflowPlayersApmProcessed.stddev,
+                        chart_height: 620,
+                        overlay_points: workflowPlayersApmProcessed.points.map((player) => ({
+                          value: Number(player.average_apm || 0),
+                          label: String(player.player_name || ''),
+                          player_key: String(player.player_key || ''),
+                          games_played: Number(player.games_played || 0),
+                        })),
+                      }}
+                    />
+                    <div className="workflow-subtle-note">
+                      {`Population shown: ${Number(workflowPlayersApmProcessed.playersIncluded) || 0} players (>=${Math.max(5, Number(workflowPlayersApmMinGames) || 5)} games). Mean ${Number(workflowPlayersApmProcessed.mean || 0).toFixed(1)} APM, stddev ${Number(workflowPlayersApmProcessed.stddev || 0).toFixed(1)}.`}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="workflow-card workflow-card-fingerprints">
+                <div className="workflow-card-title"><span>First-unit delay distribution</span></div>
+                <div className="workflow-card-subtitle">
+                  <span>How it is calculated</span>
+                  <HelpTooltip text="Each player contributes one point: their average (building ready -> first matching unit) delay over all valid observations. Observations are generated from the same race-specific mappings used by game-level First Unit Efficiency, but only for command events up to 7:00 game time. Gaps must be in the 0-20 second range." label="First-unit delay methodology" />
+                </div>
+                <div className="workflow-subtle-note">
+                  Smaller values mean players tend to start the first matching unit sooner after a production building is expected to be ready.
+                </div>
+                <div className="workflow-subtle-note">
+                  This is an imperfect proxy for execution quality. It can be distorted by worker travel, scouting pressure, map geometry, intentional tech pivots, and command-timestamp limitations.
+                </div>
+                <div className="workflow-subtle-note">
+                  Cutoff rules: only build/train/morph commands at or before 7:00 are included, and a matching unit must be created within 20s of building ready time.
+                </div>
+                {!workflowPlayersDelayHistogramLoading && !workflowPlayersDelayHistogramError ? (
+                  <>
+                    <div className="workflow-card-subtitle"><span>Included building to unit cases</span></div>
+                    <div className="workflow-pattern-pills workflow-games-filter-pills">
+                      <button
+                        type="button"
+                        className={`workflow-filter-pill ${(workflowPlayersDelaySelectedCases || []).includes('all') ? 'workflow-filter-pill-active' : ''}`}
+                        onClick={() => toggleWorkflowPlayersDelayCase('all')}
+                      >
+                        All
+                      </button>
+                      {workflowPlayersDelayCaseOptions.map((option) => {
+                        const active = (workflowPlayersDelaySelectedCases || []).includes(option.case_key);
+                        return (
+                          <button
+                            key={`wf-delay-case-${option.case_key}`}
+                            type="button"
+                            className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
+                            onClick={() => toggleWorkflowPlayersDelayCase(option.case_key)}
+                          >
+                            {`${option.building_name} -> ${option.unit_name} (${Number(option.sample_count || 0)})`}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : null}
+                {workflowPlayersDelayHistogramLoading ? <div className="chart-empty">Loading first-unit delay...</div> : null}
+                {!workflowPlayersDelayHistogramLoading && workflowPlayersDelayHistogramError ? <div className="chart-empty">{workflowPlayersDelayHistogramError}</div> : null}
+                {!workflowPlayersDelayHistogramLoading && !workflowPlayersDelayHistogramError && workflowPlayersDelayProcessed.points.length === 0 ? (
+                  <div className="chart-empty">
+                    Not enough player delay samples to render this distribution yet.
+                    {!(workflowPlayersDelaySelectedCases || []).includes('all') ? (
+                      <>
+                        {' '}
+                        <button
+                          type="button"
+                          className="workflow-link-btn"
+                          onClick={() => setWorkflowPlayersDelaySelectedCases(['all'])}
+                        >
+                          Clear case filters
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
+                {!workflowPlayersDelayHistogramLoading && !workflowPlayersDelayHistogramError && workflowPlayersDelayProcessed.points.length > 0 ? (
+                  <div className="workflow-insight-chart workflow-insight-chart-tall">
+                    <div className="workflow-summary-filter-row workflow-slider-row">
+                      <label className="workflow-summary-filter-check">
+                        <span>Min samples (post-process): {Math.max(5, Number(workflowPlayersDelayMinSamples) || 5)}</span>
+                      </label>
+                      <input
+                        type="range"
+                        className="workflow-slider-input"
+                        min="5"
+                        max={String(Math.max(5, Number(workflowPlayersDelayProcessed.maxGames) || 5))}
+                        step="1"
+                        value={String(Math.max(5, Number(workflowPlayersDelayMinSamples) || 5))}
+                        onChange={(e) => setWorkflowPlayersDelayMinSamples(Math.max(5, Number(e.target.value) || 5))}
+                      />
+                    </div>
+                    <Histogram
+                      data={[]}
+                      config={{
+                        style: 'monobell_relax',
+                        precomputed_bins: workflowPlayersDelayProcessed.bins,
+                        x_axis_label: 'Average delay (seconds)',
+                        y_axis_label: 'Density',
+                        overlay_value_label: 's delay',
+                        overlay_count_label: 'samples',
+                        mean: workflowPlayersDelayProcessed.mean,
+                        stddev: workflowPlayersDelayProcessed.stddev,
+                        chart_height: 620,
+                        overlay_points: workflowPlayersDelayProcessed.points.map((player) => ({
+                          value: Number(player.average_apm || 0),
+                          label: String(player.player_name || ''),
+                          player_key: String(player.player_key || ''),
+                          games_played: Number(player.games_played || 0),
+                        })),
+                      }}
+                    />
+                    <div className="workflow-subtle-note">
+                      {`Population shown: ${Number(workflowPlayersDelayProcessed.playersIncluded) || 0} players (>=${Math.max(5, Number(workflowPlayersDelayMinSamples) || 5)} samples). Mean ${Number(workflowPlayersDelayProcessed.mean || 0).toFixed(1)}s, stddev ${Number(workflowPlayersDelayProcessed.stddev || 0).toFixed(1)}s.`}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </div>
+        )}
+
         {activeView === 'game' && (
           <div className="workflow-panel">
             {workflowGameDetailLoading ? (
@@ -1853,6 +2619,7 @@ function App() {
                   <button className={`btn-switch ${workflowGameTab === 'events' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('events')}>Game Events</button>
                   <button className={`btn-switch ${workflowGameTab === 'units' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('units')}>Units</button>
                   <button className={`btn-switch ${workflowGameTab === 'timings' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('timings')}>Timings</button>
+                  <button className={`btn-switch ${workflowGameTab === 'first-unit-efficiency' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('first-unit-efficiency')}>First Unit Efficiency</button>
                 </div>
 
                 {workflowGameTab === 'summary' && (
@@ -2139,7 +2906,7 @@ function App() {
                         <thead>
                           <tr>
                             <th>Slice</th>
-                            {workflowPlayers.map((player) => (
+                            {workflowGamePlayers.map((player) => (
                               <th
                                 key={player.player_id}
                                 style={hasTeamInfo ? { backgroundColor: teamColorRgba(player.team, 0.2) } : undefined}
@@ -2154,7 +2921,7 @@ function App() {
                           {(workflowGame.units_by_slice || []).map((slice) => (
                             <tr key={slice.slice_start_second}>
                               <td>{slice.slice_label}</td>
-                              {workflowPlayers.map((player) => {
+                              {workflowGamePlayers.map((player) => {
                                 const playerSlice = (slice.players || []).find((item) => item.player_id === player.player_id);
                                 const filtered = filterProductionEntries(playerSlice?.units || [], workflowProductionTab);
                                 return (
@@ -2250,6 +3017,25 @@ function App() {
                         rowLabelMode={workflowTimingInlineLegend ? 'worker-icon' : (['gas', 'expansion'].includes(workflowTimingCategory) ? 'name-only' : 'race-suffix')}
                         rowGroupingMode={workflowTimingInlineLegend ? 'race' : 'none'}
                       />
+                    )}
+                  </div>
+                )}
+                {workflowGameTab === 'first-unit-efficiency' && (
+                  <div className="workflow-timing-charts">
+                    <div className="workflow-timing-notice">
+                      Timing caveat: this metric uses command timestamps, so inefficiency can be inflated by worker travel after a build order is issued (e.g. SCV pathing before Barracks placement). Skilled players usually pre-position workers to reduce this delay. Network latency should not affect calculations. Game speed can affect timings, but most games are played on Fastest.
+                    </div>
+                    {workflowFirstUnitEfficiencyGroups.length > 0 ? (
+                      workflowFirstUnitEfficiencyGroups.map((groupEntry) => (
+                        <FirstUnitEfficiencyTimelineRows
+                          key={`first-unit-eff-${groupEntry.id}`}
+                          group={groupEntry}
+                        />
+                      ))
+                    ) : (
+                      <div className="workflow-card">
+                        <div className="chart-empty">No first unit efficiency rows found for this game.</div>
+                      </div>
                     )}
                   </div>
                 )}
@@ -2375,6 +3161,43 @@ function App() {
                         ))}
                       </div>
                     ))}
+                  </div>
+                  <div className="workflow-card">
+                    <div className="workflow-card-title"><span>First-unit delay</span></div>
+                    <div className="workflow-subtle-note">
+                      Derived from building-ready to first matching unit delay across all your games. Lower tends to be better.
+                    </div>
+                    <div className="workflow-subtle-note">
+                      Cutoff rules: only build/train/morph commands at or before 7:00 are included, and matching units must be within 20s of building ready.
+                    </div>
+                    {workflowPlayerDelayInsightLoading ? <div className="chart-empty">Loading first-unit delay...</div> : null}
+                    {!workflowPlayerDelayInsightLoading && workflowPlayerDelayInsightError ? <div className="chart-empty">{workflowPlayerDelayInsightError}</div> : null}
+                    {!workflowPlayerDelayInsightLoading && !workflowPlayerDelayInsightError && (Number(workflowPlayerDelayInsight?.sample_count) || 0) === 0 ? (
+                      <div className="chart-empty">No valid first-unit delay samples for this player yet.</div>
+                    ) : null}
+                    {!workflowPlayerDelayInsightLoading && !workflowPlayerDelayInsightError && (Number(workflowPlayerDelayInsight?.sample_count) || 0) > 0 ? (
+                      <>
+                        <div className="workflow-metric-compare-row workflow-metric-compare-row-simple">
+                          <span>Average delay</span>
+                          <span>{`${Number(workflowPlayerDelayInsight?.average_delay_seconds || 0).toFixed(2)}s`}</span>
+                        </div>
+                        <div className="workflow-metric-compare-row workflow-metric-compare-row-simple">
+                          <span>Samples</span>
+                          <span>{Number(workflowPlayerDelayInsight?.sample_count || 0)}</span>
+                        </div>
+                        <div className="workflow-metric-compare-row workflow-metric-compare-row-simple">
+                          <span>Range</span>
+                          <span>{`${Number(workflowPlayerDelayInsight?.min_delay_seconds || 0)}s - ${Number(workflowPlayerDelayInsight?.max_delay_seconds || 0)}s`}</span>
+                        </div>
+                        <div className="workflow-card-subtitle"><span>Building to unit averages</span></div>
+                        {(workflowPlayerDelayInsight?.pairs || []).map((pair) => (
+                          <div key={`${pair.building_name}-${pair.unit_name}`} className="workflow-pattern-row">
+                            <span>{`${pair.building_name} -> ${pair.unit_name}`}</span>
+                            <span>{`${Number(pair.average_delay_seconds || 0).toFixed(2)}s (${Number(pair.sample_count || 0)} samples)`}</span>
+                          </div>
+                        ))}
+                      </>
+                    ) : null}
                   </div>
                   <div className="workflow-card">
                     <div className="workflow-card-title"><span>Go to Recent Games</span></div>
