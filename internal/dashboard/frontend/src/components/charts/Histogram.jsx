@@ -143,6 +143,9 @@ function Histogram({ data, config }) {
           label: String(point?.label || '').trim(),
           key: String(point?.player_key || point?.label || '').trim(),
           gamesPlayed: Number(point?.games_played || 0),
+          tooltipLines: Array.isArray(point?.tooltip_lines)
+            ? point.tooltip_lines.map((line) => String(line || '').trim()).filter((line) => line)
+            : [],
         }))
         .filter((point) => Number.isFinite(point.value) && point.label)
         .sort((a, b) => a.value - b.value);
@@ -235,11 +238,12 @@ function Histogram({ data, config }) {
         .attr('stroke', 'rgba(255,255,255,0.92)')
         .attr('stroke-width', 1)
         .on('mousemove', (event, point) => {
+          const fallback = `${point.fullLabel} - ${point.value.toFixed(1)} ${overlayValueLabel} (${point.gamesPlayed} ${overlayCountLabel})`;
           setTooltip({
             visible: true,
             x: event.clientX + 10,
             y: event.clientY + 10,
-            text: `${point.fullLabel} - ${point.value.toFixed(1)} ${overlayValueLabel} (${point.gamesPlayed} ${overlayCountLabel})`,
+            text: point.tooltipLines.length > 0 ? point.tooltipLines.join('\n') : fallback,
           });
         })
         .on('mouseleave', () => setTooltip((prev) => ({ ...prev, visible: false })));
@@ -258,11 +262,12 @@ function Histogram({ data, config }) {
         .attr('stroke-width', 4)
         .text((point) => point.label)
         .on('mousemove', (event, point) => {
+          const fallback = `${point.fullLabel} - ${point.value.toFixed(1)} ${overlayValueLabel} (${point.gamesPlayed} ${overlayCountLabel})`;
           setTooltip({
             visible: true,
             x: event.clientX + 10,
             y: event.clientY + 10,
-            text: `${point.fullLabel} - ${point.value.toFixed(1)} ${overlayValueLabel} (${point.gamesPlayed} ${overlayCountLabel})`,
+            text: point.tooltipLines.length > 0 ? point.tooltipLines.join('\n') : fallback,
           });
         })
         .on('mouseleave', () => setTooltip((prev) => ({ ...prev, visible: false })));
@@ -383,7 +388,7 @@ function Histogram({ data, config }) {
             fontSize: '12px',
             pointerEvents: 'none',
             zIndex: 9999,
-            whiteSpace: 'nowrap',
+            whiteSpace: 'pre-line',
           }}
         >
           {tooltip.text}

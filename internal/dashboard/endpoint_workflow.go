@@ -41,6 +41,21 @@ const firstUnitEfficiencyMaxGapSeconds int64 = 60
 const workflowPlayerDelayMinSamples int64 = 5
 const workflowPlayerDelayCutoffSeconds int64 = 7 * 60
 const workflowPlayerDelayMaxGapSeconds int64 = 20
+const workflowUnitCadenceStartSeconds int64 = 7 * 60
+const workflowUnitCadenceEndFraction float64 = 0.8
+const workflowUnitCadenceIdleGapSeconds int64 = 20
+const workflowUnitCadenceMinUnitsPerReplay int64 = 12
+const workflowUnitCadenceMinGapsPerReplay int64 = 8
+const workflowUnitCadenceMinGames int64 = 4
+const workflowUnitCadenceDefaultLimit int64 = 50
+const workflowUnitCadenceMaxLimit int64 = 200
+
+type workflowUnitCadenceFilterMode string
+
+const (
+	workflowUnitCadenceFilterStrict workflowUnitCadenceFilterMode = "strict"
+	workflowUnitCadenceFilterBroad  workflowUnitCadenceFilterMode = "broad"
+)
 
 type firstUnitEfficiencyUnitOption struct {
 	DisplayName string
@@ -265,6 +280,7 @@ type workflowGameDetail struct {
 	UnitsBySlice        []workflowUnitSlice                 `json:"units_by_slice"`
 	Timings             workflowReplayTimings               `json:"timings"`
 	FirstUnitEfficiency []workflowFirstUnitEfficiencyPlayer `json:"first_unit_efficiency"`
+	UnitCadence         []workflowGameUnitCadencePlayer     `json:"unit_production_cadence"`
 }
 
 type workflowGameEvent struct {
@@ -314,6 +330,24 @@ type workflowFirstUnitEfficiencyEntry struct {
 	UnitSecond           int64  `json:"unit_second"`
 	BuildDurationSeconds int64  `json:"build_duration_seconds"`
 	GapAfterReadySeconds int64  `json:"gap_after_ready_seconds"`
+}
+
+type workflowGameUnitCadencePlayer struct {
+	PlayerID         int64   `json:"player_id"`
+	PlayerKey        string  `json:"player_key"`
+	PlayerName       string  `json:"player_name"`
+	Team             int64   `json:"team"`
+	IsWinner         bool    `json:"is_winner"`
+	Eligible         bool    `json:"eligible"`
+	WindowSeconds    int64   `json:"window_seconds"`
+	UnitsProduced    int64   `json:"units_produced"`
+	GapCount         int64   `json:"gap_count"`
+	RatePerMinute    float64 `json:"rate_per_minute"`
+	CVGap            float64 `json:"cv_gap"`
+	Burstiness       float64 `json:"burstiness"`
+	Idle20Ratio      float64 `json:"idle20_ratio"`
+	CadenceScore     float64 `json:"cadence_score"`
+	IneligibleReason string  `json:"ineligible_reason,omitempty"`
 }
 
 type workflowPlayerTimingSeries struct {
@@ -558,6 +592,72 @@ type workflowPlayerDelayInsight struct {
 	MinDelaySeconds     int64                     `json:"min_delay_seconds"`
 	MaxDelaySeconds     int64                     `json:"max_delay_seconds"`
 	Pairs               []workflowPlayerDelayPair `json:"pairs"`
+}
+
+type workflowPlayerUnitCadencePoint struct {
+	PlayerKey         string  `json:"player_key"`
+	PlayerName        string  `json:"player_name"`
+	GamesUsed         int64   `json:"games_used"`
+	AverageRatePerMin float64 `json:"average_rate_per_min"`
+	AverageCVGap      float64 `json:"average_cv_gap"`
+	AverageBurstiness float64 `json:"average_burstiness"`
+	AverageIdle20     float64 `json:"average_idle20_ratio"`
+	AverageCadence    float64 `json:"average_cadence_score"`
+}
+
+type workflowPlayerUnitCadenceHistogramBin struct {
+	X0    float64 `json:"x0"`
+	X1    float64 `json:"x1"`
+	Count int64   `json:"count"`
+}
+
+type workflowPlayerUnitCadenceLeaderboard struct {
+	SummaryVersion    string                                  `json:"summary_version"`
+	FilterMode        workflowUnitCadenceFilterMode           `json:"filter_mode"`
+	StartSecond       int64                                   `json:"start_second"`
+	EndFraction       float64                                 `json:"end_fraction"`
+	IdleGapSeconds    int64                                   `json:"idle_gap_seconds"`
+	MinUnitsPerReplay int64                                   `json:"min_units_per_replay"`
+	MinGapsPerReplay  int64                                   `json:"min_gaps_per_replay"`
+	MinGames          int64                                   `json:"min_games"`
+	PlayersIncluded   int64                                   `json:"players_included"`
+	MeanCadence       float64                                 `json:"mean_cadence_score"`
+	StddevCadence     float64                                 `json:"stddev_cadence_score"`
+	Bins              []workflowPlayerUnitCadenceHistogramBin `json:"bins"`
+	Players           []workflowPlayerUnitCadencePoint        `json:"players"`
+}
+
+type workflowPlayerUnitCadenceReplay struct {
+	ReplayID        int64   `json:"replay_id"`
+	FileName        string  `json:"file_name"`
+	DurationSeconds int64   `json:"duration_seconds"`
+	WindowSeconds   int64   `json:"window_seconds"`
+	UnitsProduced   int64   `json:"units_produced"`
+	GapCount        int64   `json:"gap_count"`
+	RatePerMinute   float64 `json:"rate_per_minute"`
+	CVGap           float64 `json:"cv_gap"`
+	Burstiness      float64 `json:"burstiness"`
+	Idle20Ratio     float64 `json:"idle20_ratio"`
+	CadenceScore    float64 `json:"cadence_score"`
+}
+
+type workflowPlayerUnitCadenceInsight struct {
+	SummaryVersion      string                            `json:"summary_version"`
+	PlayerKey           string                            `json:"player_key"`
+	PlayerName          string                            `json:"player_name"`
+	FilterMode          workflowUnitCadenceFilterMode     `json:"filter_mode"`
+	StartSecond         int64                             `json:"start_second"`
+	EndFraction         float64                           `json:"end_fraction"`
+	IdleGapSeconds      int64                             `json:"idle_gap_seconds"`
+	MinUnitsPerReplay   int64                             `json:"min_units_per_replay"`
+	MinGapsPerReplay    int64                             `json:"min_gaps_per_replay"`
+	GamesUsed           int64                             `json:"games_used"`
+	AverageRatePerMin   float64                           `json:"average_rate_per_min"`
+	AverageCVGap        float64                           `json:"average_cv_gap"`
+	AverageBurstiness   float64                           `json:"average_burstiness"`
+	AverageIdle20       float64                           `json:"average_idle20_ratio"`
+	AverageCadenceScore float64                           `json:"average_cadence_score"`
+	Replays             []workflowPlayerUnitCadenceReplay `json:"replays"`
 }
 
 func (d *Dashboard) handlerWorkflowGamesList(w http.ResponseWriter, r *http.Request) {
@@ -876,6 +976,17 @@ func parseOptionalFloatQuery(r *http.Request, key string) (float64, bool) {
 		return 0, false
 	}
 	return parsed, true
+}
+
+func parseWorkflowUnitCadenceFilterMode(raw string) (workflowUnitCadenceFilterMode, error) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", string(workflowUnitCadenceFilterStrict):
+		return workflowUnitCadenceFilterStrict, nil
+	case string(workflowUnitCadenceFilterBroad):
+		return workflowUnitCadenceFilterBroad, nil
+	default:
+		return "", fmt.Errorf("invalid filter mode: %s", raw)
+	}
 }
 
 func prettyWorkflowRaceLabel(value string) string {
@@ -1470,6 +1581,58 @@ func (d *Dashboard) handlerWorkflowPlayerDelayInsight(w http.ResponseWriter, r *
 	_ = json.NewEncoder(w).Encode(result)
 }
 
+func (d *Dashboard) handlerWorkflowPlayersUnitCadence(w http.ResponseWriter, r *http.Request) {
+	filterMode, err := parseWorkflowUnitCadenceFilterMode(r.URL.Query().Get("filter"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	minGames := workflowUnitCadenceMinGames
+	if parsed, ok := parseOptionalInt64Query(r, "min_games"); ok && parsed > 0 {
+		minGames = parsed
+	}
+	limit := workflowUnitCadenceDefaultLimit
+	if parsed, ok := parseOptionalInt64Query(r, "limit"); ok {
+		if parsed < 0 {
+			http.Error(w, "limit must be >= 0", http.StatusBadRequest)
+			return
+		}
+		limit = parsed
+	}
+	if limit > workflowUnitCadenceMaxLimit {
+		limit = workflowUnitCadenceMaxLimit
+	}
+	result, err := d.buildWorkflowPlayerUnitCadenceLeaderboard(filterMode, minGames, limit)
+	if err != nil {
+		http.Error(w, "failed to compute unit cadence leaderboard: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(result)
+}
+
+func (d *Dashboard) handlerWorkflowPlayerUnitCadence(w http.ResponseWriter, r *http.Request) {
+	playerKey := normalizePlayerKey(mux.Vars(r)["playerKey"])
+	if playerKey == "" {
+		http.Error(w, "player key missing", http.StatusBadRequest)
+		return
+	}
+	filterMode, err := parseWorkflowUnitCadenceFilterMode(r.URL.Query().Get("filter"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	result, err := d.buildWorkflowPlayerUnitCadenceInsight(playerKey, filterMode)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, sql.ErrNoRows) {
+			status = http.StatusNotFound
+		}
+		http.Error(w, err.Error(), status)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(result)
+}
+
 func (d *Dashboard) handlerWorkflowPlayerColors(w http.ResponseWriter, _ *http.Request) {
 	rows, err := d.db.QueryContext(d.ctx, `
 		SELECT lower(trim(name)) AS player_key, COUNT(*) AS games
@@ -1710,6 +1873,9 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		return detail, err
 	}
 	if err := d.populateFirstUnitEfficiencyForGameDetail(&detail); err != nil {
+		return detail, err
+	}
+	if err := d.populateUnitCadenceForGameDetail(&detail); err != nil {
 		return detail, err
 	}
 
@@ -2533,6 +2699,430 @@ func (d *Dashboard) buildWorkflowPlayerDelayInsight(playerKey string) (workflowP
 	return result, nil
 }
 
+type workflowPlayerUnitCadenceReplayMetric struct {
+	ReplayID        int64
+	PlayerKey       string
+	PlayerName      string
+	FileName        string
+	DurationSeconds int64
+	WindowSeconds   int64
+	UnitsProduced   int64
+	GapCount        int64
+	RatePerMinute   float64
+	CVGap           float64
+	Burstiness      float64
+	Idle20Ratio     float64
+	CadenceScore    float64
+}
+
+func workflowUnitCadenceExcludedUnits(filterMode workflowUnitCadenceFilterMode) []string {
+	if filterMode == workflowUnitCadenceFilterBroad {
+		return []string{"SCV", "Probe", "Drone", "Overlord"}
+	}
+	return []string{
+		"SCV",
+		"Probe",
+		"Drone",
+		"Overlord",
+		"Observer",
+		"Shuttle",
+		"Science Vessel",
+		"Medic",
+		"Dropship",
+		"Defiler",
+		"Queen",
+		"Nuclear Missile",
+	}
+}
+
+func (d *Dashboard) queryWorkflowUnitCadenceReplayMetrics(filterMode workflowUnitCadenceFilterMode, onlyPlayerKey string) ([]workflowPlayerUnitCadenceReplayMetric, error) {
+	excludedUnits := workflowUnitCadenceExcludedUnits(filterMode)
+	if len(excludedUnits) == 0 {
+		return nil, errors.New("workflow unit cadence requires at least one excluded unit")
+	}
+	inClause := buildInClausePlaceholders(len(excludedUnits))
+	filterSQL := ""
+	args := []any{}
+	for _, name := range excludedUnits {
+		args = append(args, name)
+	}
+	if onlyPlayerKey != "" {
+		filterSQL = "AND lower(trim(p.name)) = ?"
+		args = append(args, onlyPlayerKey)
+	}
+	rows, err := d.db.QueryContext(d.ctx, `
+		WITH base AS (
+			SELECT
+				c.replay_id,
+				lower(trim(p.name)) AS player_key,
+				MIN(p.name) AS player_name,
+				r.file_name,
+				r.duration_seconds,
+				c.seconds_from_game_start AS t,
+				c.id AS cmd_id
+			FROM commands c
+			JOIN players p
+				ON p.id = c.player_id
+			JOIN replays r
+				ON r.id = c.replay_id
+			WHERE
+				p.is_observer = 0
+				AND lower(trim(coalesce(p.type, ''))) = 'human'
+				AND c.action_type IN ('Train', 'Unit Morph')
+				AND c.unit_type IS NOT NULL
+				AND trim(c.unit_type) <> ''
+				AND c.unit_type NOT IN (`+inClause+`)
+				AND c.seconds_from_game_start >= `+strconv.FormatInt(workflowUnitCadenceStartSeconds, 10)+`
+				AND c.seconds_from_game_start <= CAST(`+strconv.FormatFloat(workflowUnitCadenceEndFraction, 'f', 4, 64)+` * r.duration_seconds AS INTEGER)
+				AND CAST(`+strconv.FormatFloat(workflowUnitCadenceEndFraction, 'f', 4, 64)+` * r.duration_seconds AS INTEGER) > `+strconv.FormatInt(workflowUnitCadenceStartSeconds, 10)+`
+				`+filterSQL+`
+			GROUP BY
+				c.replay_id,
+				player_key,
+				r.file_name,
+				r.duration_seconds,
+				c.seconds_from_game_start,
+				c.id
+		),
+		ordered AS (
+			SELECT
+				replay_id,
+				player_key,
+				player_name,
+				file_name,
+				duration_seconds,
+				t,
+				cmd_id,
+				LAG(t) OVER (PARTITION BY replay_id, player_key ORDER BY t, cmd_id) AS prev_t
+			FROM base
+		),
+		gaps AS (
+			SELECT
+				replay_id,
+				player_key,
+				player_name,
+				file_name,
+				duration_seconds,
+				t,
+				(t - prev_t) AS gap_s
+			FROM ordered
+		),
+		replay_metrics AS (
+			SELECT
+				replay_id,
+				player_key,
+				player_name,
+				file_name,
+				duration_seconds,
+				CAST(`+strconv.FormatFloat(workflowUnitCadenceEndFraction, 'f', 4, 64)+` * duration_seconds AS INTEGER) - `+strconv.FormatInt(workflowUnitCadenceStartSeconds, 10)+` AS window_s,
+				COUNT(*) AS n_units,
+				COUNT(gap_s) AS n_gaps,
+				AVG(gap_s * 1.0) AS mean_gap_s,
+				sqrt(AVG(gap_s * gap_s * 1.0) - AVG(gap_s * 1.0) * AVG(gap_s * 1.0)) AS std_gap_s,
+				SUM(CASE WHEN gap_s >= `+strconv.FormatInt(workflowUnitCadenceIdleGapSeconds, 10)+` THEN 1 ELSE 0 END) * 1.0 / NULLIF(COUNT(gap_s), 0) AS idle20_ratio
+			FROM gaps
+			GROUP BY replay_id, player_key, player_name, file_name, duration_seconds
+			HAVING
+				COUNT(*) >= `+strconv.FormatInt(workflowUnitCadenceMinUnitsPerReplay, 10)+`
+				AND COUNT(gap_s) >= `+strconv.FormatInt(workflowUnitCadenceMinGapsPerReplay, 10)+`
+				AND window_s > 0
+		),
+		scored AS (
+			SELECT
+				replay_id,
+				player_key,
+				player_name,
+				file_name,
+				duration_seconds,
+				window_s,
+				n_units,
+				n_gaps,
+				(n_units * 60.0) / window_s AS rate_per_min,
+				(std_gap_s / NULLIF(mean_gap_s, 0)) AS cv_gap,
+				(((std_gap_s / NULLIF(mean_gap_s, 0)) - 1.0) / ((std_gap_s / NULLIF(mean_gap_s, 0)) + 1.0)) AS burstiness,
+				idle20_ratio,
+				((n_units * 60.0) / window_s) / (1.0 + COALESCE((std_gap_s / NULLIF(mean_gap_s, 0)), 9999.0)) AS cadence_score
+			FROM replay_metrics
+		)
+		SELECT
+			replay_id,
+			player_key,
+			player_name,
+			file_name,
+			duration_seconds,
+			window_s,
+			n_units,
+			n_gaps,
+			rate_per_min,
+			cv_gap,
+			burstiness,
+			idle20_ratio,
+			cadence_score
+		FROM scored
+		ORDER BY player_key ASC, replay_id ASC
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := []workflowPlayerUnitCadenceReplayMetric{}
+	for rows.Next() {
+		var row workflowPlayerUnitCadenceReplayMetric
+		var cvGap sql.NullFloat64
+		var burstiness sql.NullFloat64
+		var idle20 sql.NullFloat64
+		var cadence sql.NullFloat64
+		if err := rows.Scan(
+			&row.ReplayID,
+			&row.PlayerKey,
+			&row.PlayerName,
+			&row.FileName,
+			&row.DurationSeconds,
+			&row.WindowSeconds,
+			&row.UnitsProduced,
+			&row.GapCount,
+			&row.RatePerMinute,
+			&cvGap,
+			&burstiness,
+			&idle20,
+			&cadence,
+		); err != nil {
+			return nil, err
+		}
+		if cvGap.Valid {
+			row.CVGap = cvGap.Float64
+		}
+		if burstiness.Valid {
+			row.Burstiness = burstiness.Float64
+		}
+		if idle20.Valid {
+			row.Idle20Ratio = idle20.Float64
+		}
+		if cadence.Valid {
+			row.CadenceScore = cadence.Float64
+		}
+		result = append(result, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (d *Dashboard) buildWorkflowPlayerUnitCadenceLeaderboard(filterMode workflowUnitCadenceFilterMode, minGames int64, limit int64) (workflowPlayerUnitCadenceLeaderboard, error) {
+	result := workflowPlayerUnitCadenceLeaderboard{
+		SummaryVersion:    workflowSummaryVersion,
+		FilterMode:        filterMode,
+		StartSecond:       workflowUnitCadenceStartSeconds,
+		EndFraction:       workflowUnitCadenceEndFraction,
+		IdleGapSeconds:    workflowUnitCadenceIdleGapSeconds,
+		MinUnitsPerReplay: workflowUnitCadenceMinUnitsPerReplay,
+		MinGapsPerReplay:  workflowUnitCadenceMinGapsPerReplay,
+		MinGames:          minGames,
+		Bins:              []workflowPlayerUnitCadenceHistogramBin{},
+		Players:           []workflowPlayerUnitCadencePoint{},
+	}
+	if minGames <= 0 {
+		return result, errors.New("min games must be > 0")
+	}
+	if limit < 0 {
+		return result, errors.New("limit must be >= 0")
+	}
+	if limit > workflowUnitCadenceMaxLimit {
+		limit = workflowUnitCadenceMaxLimit
+	}
+	replays, err := d.queryWorkflowUnitCadenceReplayMetrics(filterMode, "")
+	if err != nil {
+		return result, err
+	}
+	type agg struct {
+		name       string
+		games      int64
+		sumRate    float64
+		sumCV      float64
+		sumBurst   float64
+		sumIdle    float64
+		sumCadence float64
+	}
+	byPlayer := map[string]*agg{}
+	for _, replay := range replays {
+		entry, ok := byPlayer[replay.PlayerKey]
+		if !ok {
+			entry = &agg{name: replay.PlayerName}
+			byPlayer[replay.PlayerKey] = entry
+		}
+		entry.games++
+		entry.sumRate += replay.RatePerMinute
+		entry.sumCV += replay.CVGap
+		entry.sumBurst += replay.Burstiness
+		entry.sumIdle += replay.Idle20Ratio
+		entry.sumCadence += replay.CadenceScore
+		if strings.TrimSpace(entry.name) == "" {
+			entry.name = replay.PlayerName
+		}
+	}
+	for playerKey, entry := range byPlayer {
+		if entry.games < minGames {
+			continue
+		}
+		denom := float64(entry.games)
+		result.Players = append(result.Players, workflowPlayerUnitCadencePoint{
+			PlayerKey:         playerKey,
+			PlayerName:        entry.name,
+			GamesUsed:         entry.games,
+			AverageRatePerMin: entry.sumRate / denom,
+			AverageCVGap:      entry.sumCV / denom,
+			AverageBurstiness: entry.sumBurst / denom,
+			AverageIdle20:     entry.sumIdle / denom,
+			AverageCadence:    entry.sumCadence / denom,
+		})
+	}
+	sort.Slice(result.Players, func(i, j int) bool {
+		if result.Players[i].AverageCadence == result.Players[j].AverageCadence {
+			if result.Players[i].GamesUsed == result.Players[j].GamesUsed {
+				return result.Players[i].PlayerName < result.Players[j].PlayerName
+			}
+			return result.Players[i].GamesUsed > result.Players[j].GamesUsed
+		}
+		return result.Players[i].AverageCadence > result.Players[j].AverageCadence
+	})
+	if limit > 0 && int64(len(result.Players)) > limit {
+		result.Players = result.Players[:limit]
+	}
+	result.PlayersIncluded = int64(len(result.Players))
+	if len(result.Players) == 0 {
+		return result, nil
+	}
+	values := make([]float64, 0, len(result.Players))
+	for _, player := range result.Players {
+		values = append(values, player.AverageCadence)
+	}
+	sort.Float64s(values)
+	sum := 0.0
+	for _, value := range values {
+		sum += value
+	}
+	mean := sum / float64(len(values))
+	result.MeanCadence = mean
+	varianceSum := 0.0
+	for _, value := range values {
+		diff := value - mean
+		varianceSum += diff * diff
+	}
+	result.StddevCadence = math.Sqrt(varianceSum / float64(len(values)))
+
+	binCount := int(math.Round(math.Sqrt(float64(len(values)))))
+	if binCount < 8 {
+		binCount = 8
+	}
+	if binCount > 24 {
+		binCount = 24
+	}
+	minValue := values[0]
+	maxValue := values[len(values)-1]
+	if maxValue <= minValue {
+		result.Bins = []workflowPlayerUnitCadenceHistogramBin{{
+			X0:    minValue,
+			X1:    minValue + 1,
+			Count: int64(len(values)),
+		}}
+		return result, nil
+	}
+	width := (maxValue - minValue) / float64(binCount)
+	if width <= 0 {
+		width = 1
+	}
+	bins := make([]workflowPlayerUnitCadenceHistogramBin, binCount)
+	for i := 0; i < binCount; i++ {
+		start := minValue + float64(i)*width
+		end := minValue + float64(i+1)*width
+		if i == binCount-1 {
+			end = maxValue
+		}
+		bins[i] = workflowPlayerUnitCadenceHistogramBin{X0: start, X1: end, Count: 0}
+	}
+	for _, value := range values {
+		idx := int(math.Floor((value - minValue) / width))
+		if idx < 0 {
+			idx = 0
+		}
+		if idx >= binCount {
+			idx = binCount - 1
+		}
+		bins[idx].Count++
+	}
+	result.Bins = bins
+	return result, nil
+}
+
+func (d *Dashboard) buildWorkflowPlayerUnitCadenceInsight(playerKey string, filterMode workflowUnitCadenceFilterMode) (workflowPlayerUnitCadenceInsight, error) {
+	result := workflowPlayerUnitCadenceInsight{
+		SummaryVersion:    workflowSummaryVersion,
+		PlayerKey:         playerKey,
+		FilterMode:        filterMode,
+		StartSecond:       workflowUnitCadenceStartSeconds,
+		EndFraction:       workflowUnitCadenceEndFraction,
+		IdleGapSeconds:    workflowUnitCadenceIdleGapSeconds,
+		MinUnitsPerReplay: workflowUnitCadenceMinUnitsPerReplay,
+		MinGapsPerReplay:  workflowUnitCadenceMinGapsPerReplay,
+		Replays:           []workflowPlayerUnitCadenceReplay{},
+	}
+	if err := d.db.QueryRowContext(d.ctx, `
+		SELECT MIN(name)
+		FROM players
+		WHERE lower(trim(name)) = ? AND is_observer = 0 AND lower(trim(coalesce(type, ''))) = 'human'
+	`, playerKey).Scan(&result.PlayerName); err != nil {
+		return result, err
+	}
+	if strings.TrimSpace(result.PlayerName) == "" {
+		return result, sql.ErrNoRows
+	}
+	replays, err := d.queryWorkflowUnitCadenceReplayMetrics(filterMode, playerKey)
+	if err != nil {
+		return result, err
+	}
+	if len(replays) == 0 {
+		return result, nil
+	}
+	for _, replay := range replays {
+		result.Replays = append(result.Replays, workflowPlayerUnitCadenceReplay{
+			ReplayID:        replay.ReplayID,
+			FileName:        replay.FileName,
+			DurationSeconds: replay.DurationSeconds,
+			WindowSeconds:   replay.WindowSeconds,
+			UnitsProduced:   replay.UnitsProduced,
+			GapCount:        replay.GapCount,
+			RatePerMinute:   replay.RatePerMinute,
+			CVGap:           replay.CVGap,
+			Burstiness:      replay.Burstiness,
+			Idle20Ratio:     replay.Idle20Ratio,
+			CadenceScore:    replay.CadenceScore,
+		})
+		result.GamesUsed++
+		result.AverageRatePerMin += replay.RatePerMinute
+		result.AverageCVGap += replay.CVGap
+		result.AverageBurstiness += replay.Burstiness
+		result.AverageIdle20 += replay.Idle20Ratio
+		result.AverageCadenceScore += replay.CadenceScore
+	}
+	if result.GamesUsed > 0 {
+		denom := float64(result.GamesUsed)
+		result.AverageRatePerMin /= denom
+		result.AverageCVGap /= denom
+		result.AverageBurstiness /= denom
+		result.AverageIdle20 /= denom
+		result.AverageCadenceScore /= denom
+	}
+	sort.Slice(result.Replays, func(i, j int) bool {
+		if result.Replays[i].CadenceScore == result.Replays[j].CadenceScore {
+			return result.Replays[i].ReplayID < result.Replays[j].ReplayID
+		}
+		return result.Replays[i].CadenceScore > result.Replays[j].CadenceScore
+	})
+	return result, nil
+}
+
 func (d *Dashboard) buildWorkflowPlayerMetrics(playerKey string) (workflowPlayerMetrics, error) {
 	var gamesPlayed int64
 	if err := d.db.QueryRowContext(d.ctx, `
@@ -3054,6 +3644,201 @@ func (d *Dashboard) populateFirstUnitEfficiencyForGameDetail(detail *workflowGam
 			Entries:   entries,
 		})
 	}
+	return nil
+}
+
+func (d *Dashboard) populateUnitCadenceForGameDetail(detail *workflowGameDetail) error {
+	if detail == nil {
+		return errors.New("nil game detail")
+	}
+	detail.UnitCadence = []workflowGameUnitCadencePlayer{}
+	playerByID := map[int64]workflowGamePlayer{}
+	for _, player := range detail.Players {
+		playerByID[player.PlayerID] = player
+		detail.UnitCadence = append(detail.UnitCadence, workflowGameUnitCadencePlayer{
+			PlayerID:         player.PlayerID,
+			PlayerKey:        player.PlayerKey,
+			PlayerName:       player.Name,
+			Team:             player.Team,
+			IsWinner:         player.IsWinner,
+			Eligible:         false,
+			IneligibleReason: "not enough attacking-unit production samples in analysis window",
+		})
+	}
+	if len(detail.Players) == 0 {
+		return nil
+	}
+	excludedUnits := workflowUnitCadenceExcludedUnits(workflowUnitCadenceFilterStrict)
+	if len(excludedUnits) == 0 {
+		return errors.New("missing excluded units for cadence computation")
+	}
+	placeholders := buildInClausePlaceholders(len(excludedUnits))
+	args := []any{detail.ReplayID}
+	for _, name := range excludedUnits {
+		args = append(args, name)
+	}
+	rows, err := d.db.QueryContext(d.ctx, `
+		WITH base AS (
+			SELECT
+				c.player_id,
+				c.seconds_from_game_start AS t,
+				c.id AS cmd_id
+			FROM commands c
+			JOIN players p
+				ON p.id = c.player_id
+			JOIN replays r
+				ON r.id = c.replay_id
+			WHERE
+				c.replay_id = ?
+				AND p.is_observer = 0
+				AND lower(trim(coalesce(p.type, ''))) = 'human'
+				AND c.action_type IN ('Train', 'Unit Morph')
+				AND c.unit_type IS NOT NULL
+				AND trim(c.unit_type) <> ''
+				AND c.unit_type NOT IN (`+placeholders+`)
+				AND c.seconds_from_game_start >= `+strconv.FormatInt(workflowUnitCadenceStartSeconds, 10)+`
+				AND c.seconds_from_game_start <= CAST(`+strconv.FormatFloat(workflowUnitCadenceEndFraction, 'f', 4, 64)+` * r.duration_seconds AS INTEGER)
+				AND CAST(`+strconv.FormatFloat(workflowUnitCadenceEndFraction, 'f', 4, 64)+` * r.duration_seconds AS INTEGER) > `+strconv.FormatInt(workflowUnitCadenceStartSeconds, 10)+`
+		),
+		ordered AS (
+			SELECT
+				player_id,
+				t,
+				cmd_id,
+				LAG(t) OVER (PARTITION BY player_id ORDER BY t, cmd_id) AS prev_t
+			FROM base
+		),
+		gaps AS (
+			SELECT
+				player_id,
+				t,
+				(t - prev_t) AS gap_s
+			FROM ordered
+		),
+		replay_metrics AS (
+			SELECT
+				player_id,
+				CAST(`+strconv.FormatFloat(workflowUnitCadenceEndFraction, 'f', 4, 64)+` * ? AS INTEGER) - `+strconv.FormatInt(workflowUnitCadenceStartSeconds, 10)+` AS window_s,
+				COUNT(*) AS n_units,
+				COUNT(gap_s) AS n_gaps,
+				AVG(gap_s * 1.0) AS mean_gap_s,
+				sqrt(AVG(gap_s * gap_s * 1.0) - AVG(gap_s * 1.0) * AVG(gap_s * 1.0)) AS std_gap_s,
+				SUM(CASE WHEN gap_s >= `+strconv.FormatInt(workflowUnitCadenceIdleGapSeconds, 10)+` THEN 1 ELSE 0 END) * 1.0 / NULLIF(COUNT(gap_s), 0) AS idle20_ratio
+			FROM gaps
+			GROUP BY player_id
+			HAVING window_s > 0
+		),
+		scored AS (
+			SELECT
+				player_id,
+				window_s,
+				n_units,
+				n_gaps,
+				(n_units * 60.0) / window_s AS rate_per_min,
+				(std_gap_s / NULLIF(mean_gap_s, 0)) AS cv_gap,
+				(((std_gap_s / NULLIF(mean_gap_s, 0)) - 1.0) / ((std_gap_s / NULLIF(mean_gap_s, 0)) + 1.0)) AS burstiness,
+				idle20_ratio,
+				((n_units * 60.0) / window_s) / (1.0 + COALESCE((std_gap_s / NULLIF(mean_gap_s, 0)), 9999.0)) AS cadence_score
+			FROM replay_metrics
+		)
+		SELECT
+			player_id,
+			window_s,
+			n_units,
+			n_gaps,
+			rate_per_min,
+			cv_gap,
+			burstiness,
+			idle20_ratio,
+			cadence_score
+		FROM scored
+	`, append(args, detail.DurationSeconds)...)
+	if err != nil {
+		return fmt.Errorf("failed to query game unit cadence: %w", err)
+	}
+	defer rows.Close()
+
+	scoredByPlayerID := map[int64]workflowGameUnitCadencePlayer{}
+	for rows.Next() {
+		var playerID int64
+		var windowSeconds int64
+		var unitsProduced int64
+		var gapCount int64
+		var ratePerMinute sql.NullFloat64
+		var cvGap sql.NullFloat64
+		var burstiness sql.NullFloat64
+		var idle20Ratio sql.NullFloat64
+		var cadenceScore sql.NullFloat64
+		if err := rows.Scan(
+			&playerID,
+			&windowSeconds,
+			&unitsProduced,
+			&gapCount,
+			&ratePerMinute,
+			&cvGap,
+			&burstiness,
+			&idle20Ratio,
+			&cadenceScore,
+		); err != nil {
+			return fmt.Errorf("failed to parse game unit cadence: %w", err)
+		}
+		player, ok := playerByID[playerID]
+		if !ok {
+			continue
+		}
+		entry := workflowGameUnitCadencePlayer{
+			PlayerID:         player.PlayerID,
+			PlayerKey:        player.PlayerKey,
+			PlayerName:       player.Name,
+			Team:             player.Team,
+			IsWinner:         player.IsWinner,
+			Eligible:         unitsProduced >= workflowUnitCadenceMinUnitsPerReplay && gapCount >= workflowUnitCadenceMinGapsPerReplay,
+			WindowSeconds:    windowSeconds,
+			UnitsProduced:    unitsProduced,
+			GapCount:         gapCount,
+			IneligibleReason: "not enough attacking-unit production samples in analysis window",
+		}
+		if ratePerMinute.Valid {
+			entry.RatePerMinute = ratePerMinute.Float64
+		}
+		if cvGap.Valid {
+			entry.CVGap = cvGap.Float64
+		}
+		if burstiness.Valid {
+			entry.Burstiness = burstiness.Float64
+		}
+		if idle20Ratio.Valid {
+			entry.Idle20Ratio = idle20Ratio.Float64
+		}
+		if cadenceScore.Valid {
+			entry.CadenceScore = cadenceScore.Float64
+		}
+		if entry.Eligible {
+			entry.IneligibleReason = ""
+		}
+		scoredByPlayerID[playerID] = entry
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("failed iterating game unit cadence: %w", err)
+	}
+
+	for i := range detail.UnitCadence {
+		playerID := detail.UnitCadence[i].PlayerID
+		if scored, ok := scoredByPlayerID[playerID]; ok {
+			detail.UnitCadence[i] = scored
+		}
+	}
+	sort.Slice(detail.UnitCadence, func(i, j int) bool {
+		a := detail.UnitCadence[i]
+		b := detail.UnitCadence[j]
+		if a.Eligible != b.Eligible {
+			return a.Eligible
+		}
+		if a.CadenceScore == b.CadenceScore {
+			return a.PlayerName < b.PlayerName
+		}
+		return a.CadenceScore > b.CadenceScore
+	})
 	return nil
 }
 

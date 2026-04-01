@@ -214,6 +214,20 @@ export const api = {
     return response.json();
   },
 
+  getWorkflowPlayersUnitProductionCadence: async ({ filter = 'strict', minGames = 4, limit = 0 } = {}) => {
+    const params = new URLSearchParams();
+    if (String(filter || '').trim()) params.set('filter', String(filter).trim());
+    if (Number.isFinite(Number(minGames)) && Number(minGames) > 0) params.set('min_games', String(Math.floor(Number(minGames))));
+    if (Number.isFinite(Number(limit)) && Number(limit) >= 0) params.set('limit', String(Math.floor(Number(limit))));
+    const query = params.toString();
+    const response = await fetch(`${API_BASE}/workflow/players/insights/unit-production-cadence${query ? `?${query}` : ''}`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get players unit production cadence');
+    }
+    return response.json();
+  },
+
   getWorkflowGame: async (replayId) => {
     const response = await fetch(`${API_BASE}/workflow/games/${encodeURIComponent(replayId)}`);
     if (!response.ok) {
@@ -264,6 +278,18 @@ export const api = {
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get player first-unit delay');
+    }
+    return response.json();
+  },
+
+  getWorkflowPlayerUnitProductionCadence: async (playerKey, { filter = 'strict' } = {}) => {
+    const params = new URLSearchParams();
+    if (String(filter || '').trim()) params.set('filter', String(filter).trim());
+    const query = params.toString();
+    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/insights/unit-production-cadence${query ? `?${query}` : ''}`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get player unit production cadence');
     }
     return response.json();
   },

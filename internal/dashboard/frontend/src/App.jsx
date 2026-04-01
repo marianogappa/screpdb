@@ -189,6 +189,7 @@ const buildHistogramSummaryFromPlayers = (players) => {
   const safePlayers = Array.isArray(players)
     ? players
       .map((player) => ({
+        ...player,
         player_key: String(player?.player_key || '').trim().toLowerCase(),
         player_name: String(player?.player_name || '').trim(),
         average_apm: Number(player?.average_apm || 0),
@@ -966,9 +967,16 @@ function App() {
   const [workflowPlayersDelayHistogramError, setWorkflowPlayersDelayHistogramError] = useState('');
   const [workflowPlayersDelayMinSamples, setWorkflowPlayersDelayMinSamples] = useState(5);
   const [workflowPlayersDelaySelectedCases, setWorkflowPlayersDelaySelectedCases] = useState(['all']);
+  const [workflowPlayersCadenceHistogram, setWorkflowPlayersCadenceHistogram] = useState(null);
+  const [workflowPlayersCadenceHistogramLoading, setWorkflowPlayersCadenceHistogramLoading] = useState(false);
+  const [workflowPlayersCadenceHistogramError, setWorkflowPlayersCadenceHistogramError] = useState('');
+  const [workflowPlayersCadenceMinGames, setWorkflowPlayersCadenceMinGames] = useState(4);
   const [workflowPlayerDelayInsight, setWorkflowPlayerDelayInsight] = useState(null);
   const [workflowPlayerDelayInsightLoading, setWorkflowPlayerDelayInsightLoading] = useState(false);
   const [workflowPlayerDelayInsightError, setWorkflowPlayerDelayInsightError] = useState('');
+  const [workflowPlayerCadenceInsight, setWorkflowPlayerCadenceInsight] = useState(null);
+  const [workflowPlayerCadenceInsightLoading, setWorkflowPlayerCadenceInsightLoading] = useState(false);
+  const [workflowPlayerCadenceInsightError, setWorkflowPlayerCadenceInsightError] = useState('');
   const [workflowQuestion, setWorkflowQuestion] = useState('');
   const [workflowAnswer, setWorkflowAnswer] = useState(null);
   const [askingWorkflow, setAskingWorkflow] = useState(false);
@@ -1131,6 +1139,20 @@ function App() {
     }
   };
 
+  const loadWorkflowPlayersCadenceHistogram = async () => {
+    try {
+      setWorkflowPlayersCadenceHistogramLoading(true);
+      setWorkflowPlayersCadenceHistogramError('');
+      const data = await api.getWorkflowPlayersUnitProductionCadence({ filter: 'strict', minGames: 4, limit: 0 });
+      setWorkflowPlayersCadenceHistogram(data);
+    } catch (err) {
+      setWorkflowPlayersCadenceHistogramError(err.message || 'Failed to load players unit production cadence');
+      setWorkflowPlayersCadenceHistogram(null);
+    } finally {
+      setWorkflowPlayersCadenceHistogramLoading(false);
+    }
+  };
+
   const loadTopPlayerColors = async () => {
     try {
       const data = await api.getWorkflowPlayerColors();
@@ -1218,6 +1240,22 @@ function App() {
     }
   };
 
+  const loadWorkflowPlayerCadenceInsight = async (playerKey) => {
+    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
+    if (!normalizedPlayerKey) return;
+    try {
+      setWorkflowPlayerCadenceInsightLoading(true);
+      setWorkflowPlayerCadenceInsightError('');
+      const cadenceData = await api.getWorkflowPlayerUnitProductionCadence(normalizedPlayerKey, { filter: 'strict' });
+      setWorkflowPlayerCadenceInsight(cadenceData);
+    } catch (err) {
+      setWorkflowPlayerCadenceInsightError(err.message || 'Failed to load cadence insight');
+      setWorkflowPlayerCadenceInsight(null);
+    } finally {
+      setWorkflowPlayerCadenceInsightLoading(false);
+    }
+  };
+
   const openWorkflowPlayer = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     try {
@@ -1234,6 +1272,9 @@ function App() {
       setWorkflowPlayerDelayInsight(null);
       setWorkflowPlayerDelayInsightError('');
       setWorkflowPlayerDelayInsightLoading(false);
+      setWorkflowPlayerCadenceInsight(null);
+      setWorkflowPlayerCadenceInsightError('');
+      setWorkflowPlayerCadenceInsightLoading(false);
       setSelectedPlayerKey(normalizedPlayerKey);
       setWorkflowAnswer(null);
       setWorkflowQuestion('');
@@ -1241,6 +1282,7 @@ function App() {
       loadWorkflowPlayerMetrics(normalizedPlayerKey);
       loadWorkflowPlayerOutliers(normalizedPlayerKey);
       loadWorkflowPlayerDelayInsight(normalizedPlayerKey);
+      loadWorkflowPlayerCadenceInsight(normalizedPlayerKey);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1294,6 +1336,19 @@ function App() {
     workflowPlayersDelayHistogram,
     workflowPlayersDelayHistogramLoading,
     workflowPlayersDelayHistogramError,
+  ]);
+
+  useEffect(() => {
+    if (activeView !== 'players' || workflowPlayersTab !== 'unit-production-cadence') return;
+    if (!workflowPlayersCadenceHistogram && !workflowPlayersCadenceHistogramLoading && !workflowPlayersCadenceHistogramError) {
+      loadWorkflowPlayersCadenceHistogram();
+    }
+  }, [
+    activeView,
+    workflowPlayersTab,
+    workflowPlayersCadenceHistogram,
+    workflowPlayersCadenceHistogramLoading,
+    workflowPlayersCadenceHistogramError,
   ]);
 
   useEffect(() => {
@@ -2111,6 +2166,54 @@ function App() {
       }));
     return buildHistogramSummaryFromPlayers(filtered);
   }, [playersDelayHistogramPoints, workflowPlayersDelayMinSamples]);
+  const playersCadenceHistogramPoints = useMemo(() => (
+    (workflowPlayersCadenceHistogram?.players || [])
+      .map((player) => ({
+        value: Number(player?.average_cadence_score),
+        label: String(player?.player_name || '').trim(),
+        player_key: String(player?.player_key || '').trim(),
+        games_played: Number(player?.games_used || 0),
+        average_rate_per_min: Number(player?.average_rate_per_min || 0),
+        average_cv_gap: Number(player?.average_cv_gap || 0),
+        average_burstiness: Number(player?.average_burstiness || 0),
+        average_idle20_ratio: Number(player?.average_idle20_ratio || 0),
+      }))
+      .filter((player) => Number.isFinite(player.value) && player.label)
+  ), [workflowPlayersCadenceHistogram]);
+  const workflowPlayersCadenceProcessed = useMemo(() => {
+    const minGames = Math.max(4, Number(workflowPlayersCadenceMinGames) || 4);
+    const filtered = playersCadenceHistogramPoints
+      .filter((player) => Number(player.games_played || 0) >= minGames)
+      .map((player) => ({
+        player_key: player.player_key,
+        player_name: player.label,
+        average_apm: player.value,
+        games_played: player.games_played,
+        average_rate_per_min: player.average_rate_per_min,
+        average_cv_gap: player.average_cv_gap,
+        average_burstiness: player.average_burstiness,
+        average_idle20_ratio: player.average_idle20_ratio,
+      }));
+    return buildHistogramSummaryFromPlayers(filtered);
+  }, [playersCadenceHistogramPoints, workflowPlayersCadenceMinGames]);
+  const workflowGameCadenceProcessed = useMemo(() => {
+    const rows = (workflowGame?.unit_production_cadence || [])
+      .filter((player) => Boolean(player?.eligible))
+      .map((player) => ({
+        player_key: String(player?.player_key || '').trim(),
+        player_name: String(player?.player_name || '').trim(),
+        average_apm: Number(player?.cadence_score || 0),
+        games_played: Number(player?.units_produced || 0),
+        average_rate_per_min: Number(player?.rate_per_minute || 0),
+        average_cv_gap: Number(player?.cv_gap || 0),
+        average_burstiness: Number(player?.burstiness || 0),
+        average_idle20_ratio: Number(player?.idle20_ratio || 0),
+        window_seconds: Number(player?.window_seconds || 0),
+        gap_count: Number(player?.gap_count || 0),
+      }))
+      .filter((player) => player.player_name && Number.isFinite(player.average_apm) && player.average_apm > 0);
+    return buildHistogramSummaryFromPlayers(rows);
+  }, [workflowGame]);
   const workflowPlayersSortIndicator = (sortBy) => {
     if (workflowPlayersSortBy !== sortBy) return '';
     return workflowPlayersSortDir === 'asc' ? '↑' : '↓';
@@ -2346,6 +2449,7 @@ function App() {
               <button className={`btn-switch ${workflowPlayersTab === 'summary' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('summary')}>Summary</button>
               <button className={`btn-switch ${workflowPlayersTab === 'apm-histogram' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('apm-histogram')}>APM Histogram</button>
               <button className={`btn-switch ${workflowPlayersTab === 'first-unit-delay' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('first-unit-delay')}>First Unit Delay</button>
+              <button className={`btn-switch ${workflowPlayersTab === 'unit-production-cadence' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('unit-production-cadence')}>Unit Production Cadence</button>
             </div>
 
             {workflowPlayersTab === 'summary' ? (
@@ -2491,7 +2595,7 @@ function App() {
                   </div>
                 ) : null}
               </div>
-            ) : (
+            ) : workflowPlayersTab === 'first-unit-delay' ? (
               <div className="workflow-card workflow-card-fingerprints">
                 <div className="workflow-card-title"><span>First-unit delay distribution</span></div>
                 <div className="workflow-card-subtitle">
@@ -2595,6 +2699,75 @@ function App() {
                   </div>
                 ) : null}
               </div>
+            ) : (
+              <div className="workflow-card workflow-card-fingerprints">
+                <div className="workflow-card-title"><span>Unit production cadence distribution</span></div>
+                <div className="workflow-card-subtitle">
+                  <span>How it is calculated</span>
+                  <HelpTooltip text="For each replay-player we only inspect attacking-unit production command timestamps from 7:00 to 80% game time. We compute interval evenness (cvGap = std(gaps)/mean(gaps)) and production rate (units per minute), then combine them into cadenceScore = ratePerMin / (1 + cvGap). Each player contributes one point: average cadenceScore across eligible games." label="Unit production cadence methodology" />
+                </div>
+                <div className="workflow-subtle-note">
+                  Rationale: stronger macro tends to keep attacking-unit production frequent and less clumped. This score rewards high sustained rate and penalizes bursty long gaps.
+                </div>
+                <div className="workflow-subtle-note">
+                  Strict filter excludes workers/econ and support utility units to focus on combat production rhythm.
+                </div>
+                {workflowPlayersCadenceHistogramLoading ? <div className="chart-empty">Loading unit production cadence...</div> : null}
+                {!workflowPlayersCadenceHistogramLoading && workflowPlayersCadenceHistogramError ? <div className="chart-empty">{workflowPlayersCadenceHistogramError}</div> : null}
+                {!workflowPlayersCadenceHistogramLoading && !workflowPlayersCadenceHistogramError && workflowPlayersCadenceProcessed.points.length === 0 ? (
+                  <div className="chart-empty">Not enough cadence data to render this distribution yet.</div>
+                ) : null}
+                {!workflowPlayersCadenceHistogramLoading && !workflowPlayersCadenceHistogramError && workflowPlayersCadenceProcessed.points.length > 0 ? (
+                  <div className="workflow-insight-chart workflow-insight-chart-tall">
+                    <div className="workflow-summary-filter-row workflow-slider-row">
+                      <label className="workflow-summary-filter-check">
+                        <span>Min games (post-process): {Math.max(4, Number(workflowPlayersCadenceMinGames) || 4)}</span>
+                      </label>
+                      <input
+                        type="range"
+                        className="workflow-slider-input"
+                        min="4"
+                        max={String(Math.max(4, Number(workflowPlayersCadenceProcessed.maxGames) || 4))}
+                        step="1"
+                        value={String(Math.max(4, Number(workflowPlayersCadenceMinGames) || 4))}
+                        onChange={(e) => setWorkflowPlayersCadenceMinGames(Math.max(4, Number(e.target.value) || 4))}
+                      />
+                    </div>
+                    <Histogram
+                      data={[]}
+                      config={{
+                        style: 'monobell_relax',
+                        precomputed_bins: workflowPlayersCadenceProcessed.bins,
+                        x_axis_label: 'Average cadence score',
+                        y_axis_label: 'Density',
+                        overlay_value_label: 'cadence',
+                        overlay_count_label: 'games',
+                        mean: workflowPlayersCadenceProcessed.mean,
+                        stddev: workflowPlayersCadenceProcessed.stddev,
+                        chart_height: 620,
+                        overlay_points: workflowPlayersCadenceProcessed.points.map((player) => ({
+                          value: Number(player.average_apm || 0),
+                          label: String(player.player_name || ''),
+                          player_key: String(player.player_key || ''),
+                          games_played: Number(player.games_played || 0),
+                          tooltip_lines: [
+                            `${String(player.player_name || '')}`,
+                            `Cadence score: ${Number(player.average_apm || 0).toFixed(3)}`,
+                            `Rate per minute: ${Number(player.average_rate_per_min || 0).toFixed(2)}`,
+                            `Gap CV: ${Number(player.average_cv_gap || 0).toFixed(2)}`,
+                            `Burstiness: ${Number(player.average_burstiness || 0).toFixed(2)}`,
+                            `Idle gap ratio (>=20s): ${(Number(player.average_idle20_ratio || 0) * 100).toFixed(1)}%`,
+                            `Games used: ${Number(player.games_played || 0)}`,
+                          ],
+                        })),
+                      }}
+                    />
+                    <div className="workflow-subtle-note">
+                      {`Population shown: ${Number(workflowPlayersCadenceProcessed.playersIncluded) || 0} players (>=${Math.max(4, Number(workflowPlayersCadenceMinGames) || 4)} games). Mean ${Number(workflowPlayersCadenceProcessed.mean || 0).toFixed(3)}, stddev ${Number(workflowPlayersCadenceProcessed.stddev || 0).toFixed(3)}.`}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             )}
           </div>
         )}
@@ -2620,6 +2793,7 @@ function App() {
                   <button className={`btn-switch ${workflowGameTab === 'units' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('units')}>Units</button>
                   <button className={`btn-switch ${workflowGameTab === 'timings' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('timings')}>Timings</button>
                   <button className={`btn-switch ${workflowGameTab === 'first-unit-efficiency' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('first-unit-efficiency')}>First Unit Efficiency</button>
+                  <button className={`btn-switch ${workflowGameTab === 'unit-production-cadence' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('unit-production-cadence')}>Unit Production Cadence</button>
                 </div>
 
                 {workflowGameTab === 'summary' && (
@@ -3039,6 +3213,67 @@ function App() {
                     )}
                   </div>
                 )}
+                {workflowGameTab === 'unit-production-cadence' && (
+                  <div className="workflow-timing-charts">
+                    <div className="workflow-card workflow-card-fingerprints">
+                      <div className="workflow-card-title"><span>Unit production cadence (this game)</span></div>
+                      <div className="workflow-card-subtitle">
+                        <span>How it is calculated</span>
+                        <HelpTooltip text="For each player in this replay: use attacking-unit Train/Unit Morph commands in [7:00, 80% game length], compute ratePerMin and gap evenness (cvGap), then cadenceScore = ratePerMin / (1 + cvGap)." label="Per-game cadence methodology" />
+                      </div>
+                      <div className="workflow-subtle-note">
+                        Rationale: this captures sustained combat-unit production rhythm. Higher score means faster and less bursty production during the mid-game window.
+                      </div>
+                      {workflowGameCadenceProcessed.points.length > 0 ? (
+                        <Histogram
+                          data={[]}
+                          config={{
+                            style: 'monobell_relax',
+                            precomputed_bins: workflowGameCadenceProcessed.bins,
+                            x_axis_label: 'Cadence score',
+                            y_axis_label: 'Density',
+                            overlay_value_label: 'cadence',
+                            overlay_count_label: 'units',
+                            mean: workflowGameCadenceProcessed.mean,
+                            stddev: workflowGameCadenceProcessed.stddev,
+                            chart_height: 560,
+                            overlay_points: workflowGameCadenceProcessed.points.map((player) => ({
+                              value: Number(player.average_apm || 0),
+                              label: String(player.player_name || ''),
+                              player_key: String(player.player_key || ''),
+                              games_played: Number(player.games_played || 0),
+                              tooltip_lines: [
+                                `${String(player.player_name || '')}`,
+                                `Cadence score: ${Number(player.average_apm || 0).toFixed(3)}`,
+                                `Rate per minute: ${Number(player.average_rate_per_min || 0).toFixed(2)}`,
+                                `Gap CV: ${Number(player.average_cv_gap || 0).toFixed(2)}`,
+                                `Burstiness: ${Number(player.average_burstiness || 0).toFixed(2)}`,
+                                `Idle gap ratio (>=20s): ${(Number(player.average_idle20_ratio || 0) * 100).toFixed(1)}%`,
+                                `Units counted in window: ${Number(player.games_played || 0)}`,
+                                `Window length: ${formatDuration(Number(player.window_seconds || 0))}`,
+                              ],
+                            })),
+                          }}
+                        />
+                      ) : (
+                        <div className="chart-empty">No eligible players for this game cadence window yet.</div>
+                      )}
+                      <div className="workflow-card-subtitle"><span>Per-player breakdown</span></div>
+                      {(workflowGame?.unit_production_cadence || []).map((entry) => (
+                        <div key={`game-cadence-${entry.player_id}`} className="workflow-pattern-row">
+                          <span style={playerAccentColor(entry.player_key) ? { color: playerAccentColor(entry.player_key), fontWeight: 600 } : undefined}>
+                            {entry.is_winner ? '👑 ' : ''}{entry.player_name}
+                          </span>
+                          <span title={entry.eligible ? `rate=${Number(entry.rate_per_minute || 0).toFixed(2)}, cv=${Number(entry.cv_gap || 0).toFixed(2)}, burstiness=${Number(entry.burstiness || 0).toFixed(2)}, idle20=${(Number(entry.idle20_ratio || 0) * 100).toFixed(1)}%, units=${Number(entry.units_produced || 0)}, gaps=${Number(entry.gap_count || 0)}` : String(entry.ineligible_reason || '')}>
+                            {entry.eligible
+                              ? `${Number(entry.cadence_score || 0).toFixed(3)} cadence (${Number(entry.units_produced || 0)} units, ${formatDuration(Number(entry.window_seconds || 0))} window)`
+                              : `N/A (${entry.ineligible_reason || 'insufficient data'})`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <div className="chart-empty">Select a game from the Games tab.</div>
@@ -3194,6 +3429,57 @@ function App() {
                           <div key={`${pair.building_name}-${pair.unit_name}`} className="workflow-pattern-row">
                             <span>{`${pair.building_name} -> ${pair.unit_name}`}</span>
                             <span>{`${Number(pair.average_delay_seconds || 0).toFixed(2)}s (${Number(pair.sample_count || 0)} samples)`}</span>
+                          </div>
+                        ))}
+                      </>
+                    ) : null}
+                  </div>
+                  <div className="workflow-card">
+                    <div className="workflow-card-title"><span>Unit production cadence</span></div>
+                    <div className="workflow-subtle-note">
+                      Derived from attacking-unit production rhythm in the 7:00 to 80% game window. Higher tends to mean faster and less clumped production.
+                    </div>
+                    <div className="workflow-subtle-note">
+                      Formula: cadence = ratePerMin / (1 + cvGap), where cvGap is interval burstiness (std/mean of inter-production gaps).
+                    </div>
+                    {workflowPlayerCadenceInsightLoading ? <div className="chart-empty">Loading unit production cadence...</div> : null}
+                    {!workflowPlayerCadenceInsightLoading && workflowPlayerCadenceInsightError ? <div className="chart-empty">{workflowPlayerCadenceInsightError}</div> : null}
+                    {!workflowPlayerCadenceInsightLoading && !workflowPlayerCadenceInsightError && (Number(workflowPlayerCadenceInsight?.games_used) || 0) === 0 ? (
+                      <div className="chart-empty">No valid cadence samples for this player yet.</div>
+                    ) : null}
+                    {!workflowPlayerCadenceInsightLoading && !workflowPlayerCadenceInsightError && (Number(workflowPlayerCadenceInsight?.games_used) || 0) > 0 ? (
+                      <>
+                        <div className="workflow-metric-compare-row workflow-metric-compare-row-simple">
+                          <span>Average cadence</span>
+                          <span>{Number(workflowPlayerCadenceInsight?.average_cadence_score || 0).toFixed(3)}</span>
+                        </div>
+                        <div className="workflow-metric-compare-row workflow-metric-compare-row-simple">
+                          <span>Average rate/min</span>
+                          <span>{Number(workflowPlayerCadenceInsight?.average_rate_per_min || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="workflow-metric-compare-row workflow-metric-compare-row-simple">
+                          <span>Average gap CV</span>
+                          <span>{Number(workflowPlayerCadenceInsight?.average_cv_gap || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="workflow-metric-compare-row workflow-metric-compare-row-simple">
+                          <span>Average burstiness</span>
+                          <span>{Number(workflowPlayerCadenceInsight?.average_burstiness || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="workflow-metric-compare-row workflow-metric-compare-row-simple">
+                          <span>Average idle gap ratio (&gt;= 20s)</span>
+                          <span>{`${(Number(workflowPlayerCadenceInsight?.average_idle20_ratio || 0) * 100).toFixed(1)}%`}</span>
+                        </div>
+                        <div className="workflow-metric-compare-row workflow-metric-compare-row-simple">
+                          <span>Games used</span>
+                          <span>{Number(workflowPlayerCadenceInsight?.games_used || 0)}</span>
+                        </div>
+                        <div className="workflow-card-subtitle"><span>Best game samples</span></div>
+                        {(workflowPlayerCadenceInsight?.replays || []).slice(0, 6).map((replay) => (
+                          <div key={`player-cadence-replay-${replay.replay_id}`} className="workflow-pattern-row">
+                            <span title={String(replay.file_name || '')}>{`#${replay.replay_id}`}</span>
+                            <span title={`rate=${Number(replay.rate_per_minute || 0).toFixed(2)}, cv=${Number(replay.cv_gap || 0).toFixed(2)}, burstiness=${Number(replay.burstiness || 0).toFixed(2)}, idle20=${(Number(replay.idle20_ratio || 0) * 100).toFixed(1)}%, units=${Number(replay.units_produced || 0)}`}>
+                              {`${Number(replay.cadence_score || 0).toFixed(3)} cadence (${Number(replay.units_produced || 0)} units)`}
+                            </span>
                           </div>
                         ))}
                       </>
