@@ -2,6 +2,7 @@ package fileops
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,6 +19,62 @@ type FileInfo struct {
 	Size     int64
 	ModTime  time.Time
 	Checksum string
+}
+
+var errReplayFound = errors.New("replay file found")
+
+func ValidateReplayDir(rootDir string) error {
+	rootDir = strings.TrimSpace(rootDir)
+	if rootDir == "" {
+		return errors.New("replay folder is required")
+	}
+
+	info, err := os.Stat(rootDir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return errors.New("replay folder does not exist")
+		}
+		return fmt.Errorf("stat replay folder: %w", err)
+	}
+	if !info.IsDir() {
+		return errors.New("replay folder is not a directory")
+	}
+
+	hasReplayFiles, err := HasReplayFiles(rootDir)
+	if err != nil {
+		return err
+	}
+	if !hasReplayFiles {
+		return errors.New("replay folder does not contain any .rep files")
+	}
+	return nil
+}
+
+func HasReplayFiles(rootDir string) (bool, error) {
+	rootDir = strings.TrimSpace(rootDir)
+	if rootDir == "" {
+		return false, nil
+	}
+
+	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(strings.ToLower(path), ".rep") {
+			return errReplayFound
+		}
+		return nil
+	})
+	if err == nil {
+		return false, nil
+	}
+	if errors.Is(err, errReplayFound) {
+		return true, nil
+	}
+	return false, fmt.Errorf("walk replay folder: %w", err)
 }
 
 // GetReplayFiles recursively finds all .rep files in the given directory

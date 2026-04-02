@@ -142,12 +142,17 @@ function Histogram({ data, config }) {
           value: Number(point?.value),
           label: String(point?.label || '').trim(),
           key: String(point?.player_key || point?.label || '').trim(),
+          playerKey: String(point?.player_key || '').trim(),
           gamesPlayed: Number(point?.games_played || 0),
+          tooltipLines: Array.isArray(point?.tooltip_lines)
+            ? point.tooltip_lines.map((line) => String(line || '').trim()).filter((line) => line)
+            : [],
         }))
         .filter((point) => Number.isFinite(point.value) && point.label)
         .sort((a, b) => a.value - b.value);
       const overlayValueLabel = String(config?.overlay_value_label || '').trim() || 'APM';
       const overlayCountLabel = String(config?.overlay_count_label || '').trim() || 'games';
+      const onOverlayPointClick = typeof config?.on_overlay_point_click === 'function' ? config.on_overlay_point_click : null;
 
       const palette = ['#60a5fa', '#f472b6', '#34d399', '#f59e0b', '#a78bfa', '#22d3ee', '#f87171', '#10b981', '#fb7185', '#c4b5fd'];
       const placements = overlayPoints.map((point, idx) => {
@@ -234,15 +239,22 @@ function Histogram({ data, config }) {
         .attr('fill', (point) => point.color)
         .attr('stroke', 'rgba(255,255,255,0.92)')
         .attr('stroke-width', 1)
+        .style('cursor', (point) => (onOverlayPointClick && point.playerKey ? 'pointer' : 'default'))
         .on('mousemove', (event, point) => {
+          const fallback = `${point.fullLabel} - ${point.value.toFixed(1)} ${overlayValueLabel} (${point.gamesPlayed} ${overlayCountLabel})`;
           setTooltip({
             visible: true,
             x: event.clientX + 10,
             y: event.clientY + 10,
-            text: `${point.fullLabel} - ${point.value.toFixed(1)} ${overlayValueLabel} (${point.gamesPlayed} ${overlayCountLabel})`,
+            text: point.tooltipLines.length > 0 ? point.tooltipLines.join('\n') : fallback,
           });
         })
-        .on('mouseleave', () => setTooltip((prev) => ({ ...prev, visible: false })));
+        .on('mouseleave', () => setTooltip((prev) => ({ ...prev, visible: false })))
+        .on('click', (_, point) => {
+          if (onOverlayPointClick && point.playerKey) {
+            onOverlayPointClick(point.playerKey);
+          }
+        });
 
       layer.selectAll('text')
         .data(placements)
@@ -256,16 +268,24 @@ function Histogram({ data, config }) {
         .attr('paint-order', 'stroke')
         .attr('stroke', 'rgba(8,11,20,0.98)')
         .attr('stroke-width', 4)
+        .style('cursor', (point) => (onOverlayPointClick && point.playerKey ? 'pointer' : 'default'))
+        .style('text-decoration', (point) => (onOverlayPointClick && point.playerKey ? 'underline' : 'none'))
         .text((point) => point.label)
         .on('mousemove', (event, point) => {
+          const fallback = `${point.fullLabel} - ${point.value.toFixed(1)} ${overlayValueLabel} (${point.gamesPlayed} ${overlayCountLabel})`;
           setTooltip({
             visible: true,
             x: event.clientX + 10,
             y: event.clientY + 10,
-            text: `${point.fullLabel} - ${point.value.toFixed(1)} ${overlayValueLabel} (${point.gamesPlayed} ${overlayCountLabel})`,
+            text: point.tooltipLines.length > 0 ? point.tooltipLines.join('\n') : fallback,
           });
         })
-        .on('mouseleave', () => setTooltip((prev) => ({ ...prev, visible: false })));
+        .on('mouseleave', () => setTooltip((prev) => ({ ...prev, visible: false })))
+        .on('click', (_, point) => {
+          if (onOverlayPointClick && point.playerKey) {
+            onOverlayPointClick(point.playerKey);
+          }
+        });
     } else {
       const yMax = Math.max(1, Number(d3.max(binsData, (d) => d.count) || 0));
       const yScale = d3.scaleLinear()
@@ -383,7 +403,7 @@ function Histogram({ data, config }) {
             fontSize: '12px',
             pointerEvents: 'none',
             zIndex: 9999,
-            whiteSpace: 'nowrap',
+            whiteSpace: 'pre-line',
           }}
         >
           {tooltip.text}

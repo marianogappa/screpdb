@@ -16,6 +16,12 @@ const (
 // ReplayDataChannel represents a channel for sending replay data to storage
 type ReplayDataChannel chan *models.ReplayData
 
+type IngestionHooks struct {
+	OnReplayStored    func()
+	OnDuplicateReplay func(error)
+	OnStoreError      func(error)
+}
+
 // Storage defines the interface for persisting replay data
 type Storage interface {
 	// Initialize sets up the storage (create tables, etc.)
@@ -25,7 +31,7 @@ type Storage interface {
 
 	// StartIngestion starts the ingestion process with batching
 	// Returns a channel for sending replay data and a done channel
-	StartIngestion(ctx context.Context) (ReplayDataChannel, <-chan error)
+	StartIngestion(ctx context.Context, hooks IngestionHooks) (ReplayDataChannel, <-chan error)
 
 	// ReplayExists checks if a replay already exists by file path or checksum
 	ReplayExists(ctx context.Context, filePath, checksum string) (bool, error)

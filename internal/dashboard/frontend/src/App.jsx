@@ -4,6 +4,8 @@ import Widget from './components/Widget';
 import DashboardManager from './components/DashboardManager';
 import EditDashboardModal from './components/EditDashboardModal';
 import EditWidgetFullscreen from './components/EditWidgetFullscreen';
+import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
+import IngestModal from './components/IngestModal';
 import WidgetCreationSpinner from './components/WidgetCreationSpinner';
 import PieChart from './components/charts/PieChart';
 import Gauge from './components/charts/Gauge';
@@ -189,12 +191,13 @@ const buildHistogramSummaryFromPlayers = (players) => {
   const safePlayers = Array.isArray(players)
     ? players
       .map((player) => ({
+        ...player,
         player_key: String(player?.player_key || '').trim().toLowerCase(),
         player_name: String(player?.player_name || '').trim(),
         average_apm: Number(player?.average_apm || 0),
         games_played: Number(player?.games_played || 0),
       }))
-      .filter((player) => player.player_name && Number.isFinite(player.average_apm) && player.average_apm > 0)
+      .filter((player) => player.player_name && Number.isFinite(player.average_apm) && player.average_apm >= 0)
     : [];
 
   if (safePlayers.length === 0) {
@@ -713,6 +716,15 @@ const formatPatternPillText = (rawName, rawValue, isTruthy) => {
   return `${rawName} at ${rawValue}`;
 };
 
+const shouldHidePatternFromSummaryPills = (pattern) => {
+  const normalizedPatternName = normalizeUnitName(pattern?.pattern_name);
+  return normalizedPatternName === 'viewportmultitasking';
+};
+
+const filterSummaryPillPatterns = (patterns) => (
+  (patterns || []).filter((pattern) => !shouldHidePatternFromSummaryPills(pattern))
+);
+
 const renderPatternPill = (pattern, keyPrefix, team) => {
   const rawName = prettyPatternName(pattern?.pattern_name);
   if (!rawName) return null;
@@ -791,29 +803,32 @@ const formatSigned = (value) => {
   return n.toFixed(2);
 };
 
-const FINGERPRINT_METRIC_HELP = {
-  'Games using hotkeys (%)': 'Per game, this is 100% when at least one hotkey is used, then averaged across all games. Games with missing command streams may appear as 0%.',
-  'Games with queued orders (%)': 'Share of games where at least one queued command exists. This depends on queued flags in command logs.',
-  'Assigned hotkey / Used Hotkey actions': 'Per game, Assign hotkey actions divided by Select hotkey actions, expressed as a percentage and averaged across games.',
-  'Hotkey commands as % of total': 'Per game, hotkey commands divided by all commands, expressed as a percentage and averaged across games.',
-  'Replays with at least one Rally Point (%)': 'Percentage of this player\'s replays where they issued at least one Rally Point command.',
-  'Rally Points per 10 minutes (rally replays)': 'Average number of Rally Point commands per 10 minutes, computed only over replays where at least one was used.',
-  'Action type diversity': 'Average per-game breadth of action types plus targeted-order variety. It shows variety, not quality or efficiency.',
-};
-
-const metricHelpText = (metricName) => FINGERPRINT_METRIC_HELP[metricName] || 'Computed from this player\'s replay command data. Sparse or noisy command streams can skew values.';
 const PLAYER_OUTLIER_HELP = [
   'Baselines are computed against human, non-observer players of the same primary race only.',
   'For Protoss players, non-Protoss techs/upgrades and non-Protoss cast orders are excluded to avoid mind-control leakage.',
-  'Techs/Upgrades use "used at least once in a game" rates. Targeted Orders use share of total order instances (not replay incidence).',
+  'Orders use share of total order instances. Build, train, morph, tech, and upgrade items use the share of same-race games where the item appears at least once.',
   'An item appears if it passes either threshold: "Rare signature" (TF-IDF) or "Much more frequent than peers" (ratio vs baseline).',
 ].join(' ');
 
-const OUTLIER_CATEGORY_SUBTITLE = {
-  'Tech researched': 'Rate = games with this tech at least once / total same-race games.',
-  'Upgrades researched': 'Rate = games with this upgrade at least once / total same-race games.',
-  'Targeted orders': 'Rate = this order count / all targeted-order counts for that race (raw instances).',
+const PLAYER_INSIGHT_TYPES = {
+  apm: 'apm',
+  firstUnitDelay: 'first-unit-delay',
+  unitProductionCadence: 'unit-production-cadence',
+  viewportSwitchRate: 'viewport-switch-rate',
 };
+
+const VIEWPORT_SWITCH_RATE_CONFIG = {
+  title: 'Viewport Switch Rate',
+  playerField: 'average_viewport_switch_rate',
+  gameField: 'viewport_switch_rate',
+  axisLabel: 'Average switches per minute',
+  overlayValueLabel: 'switches/min',
+  valueFormatter: (value) => `${Number(value || 0).toFixed(2)} switches/min`,
+  summaryFormatter: (value) => `${Number(value || 0).toFixed(2)}`,
+  interpretation: 'Higher means the player more often jumps outside the prior viewport-sized area during the mid-game window.',
+};
+
+const LOW_USAGE_THRESHOLD = 0.1;
 
 const HelpTooltip = ({ text, label }) => (
   <span className="workflow-help-wrap" aria-label={label || 'Explanation'}>
@@ -827,6 +842,43 @@ const outlierQualifierClassName = (qualifier) => {
   if (normalized.includes('rare signature')) return 'workflow-outlier-pill workflow-outlier-pill-rare';
   if (normalized.includes('much more frequent than peers')) return 'workflow-outlier-pill workflow-outlier-pill-frequent';
   return 'workflow-outlier-pill';
+};
+
+const insightScoreColor = (percentile) => {
+  const clamped = Math.max(0, Math.min(100, Number(percentile) || 0));
+  const hue = (clamped / 100) * 120;
+  return `hsl(${hue}, 78%, 52%)`;
+};
+
+const insightScoreLabel = (percentile) => {
+  const score = Number(percentile) || 0;
+  if (score >= 90) return 'Elite';
+  if (score >= 75) return 'Strong';
+  if (score >= 55) return 'Solid';
+  if (score >= 35) return 'Mixed';
+  return 'Needs work';
+};
+
+const insightSummaryLabel = (percentile) => {
+  const score = Math.max(0, Math.min(100, Number(percentile) || 0));
+  if (score >= 99) return 'Best in sample';
+  if (score >= 80) return `Top ${Math.max(1, Math.round(100 - score))}%`;
+  return `Better than ${Math.round(score)}%`;
+};
+
+const playerInsightDestinationTab = (insightType) => {
+  switch (String(insightType || '').trim()) {
+    case PLAYER_INSIGHT_TYPES.apm:
+      return 'apm-histogram';
+    case PLAYER_INSIGHT_TYPES.firstUnitDelay:
+      return 'first-unit-delay';
+    case PLAYER_INSIGHT_TYPES.unitProductionCadence:
+      return 'unit-production-cadence';
+    case PLAYER_INSIGHT_TYPES.viewportSwitchRate:
+      return 'viewport-multitasking';
+    default:
+      return 'summary';
+  }
 };
 
 const prettyMetricValue = (metric) => {
@@ -883,6 +935,36 @@ const teamGroupsFromPlayers = (players) => {
   return groups;
 };
 
+const mergeIngestLogEntries = (entries, event) => {
+  if (!event || !event.message) {
+    return entries;
+  }
+
+  if (event.append && entries.length > 0 && entries[entries.length - 1].append) {
+    const next = [...entries];
+    const last = next[next.length - 1];
+    next[next.length - 1] = {
+      ...last,
+      level: event.level || last.level,
+      message: `${last.message}${event.message}`,
+      append: true,
+    };
+    return next;
+  }
+
+  return [...entries, {
+    level: event.level || 'info',
+    message: event.message,
+    append: Boolean(event.append),
+  }];
+};
+
+const hydrateIngestLogEntries = (events = []) => (
+  (events || []).reduce((entries, event) => mergeIngestLogEntries(entries, event), [])
+);
+
+const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
 function App() {
   const storedAutoIngest = getStoredAutoIngestSettings();
   const [currentDashboardUrl, setCurrentDashboardUrl] = useState('default');
@@ -892,14 +974,32 @@ function App() {
   const [error, setError] = useState(null);
   const [showDashboardManager, setShowDashboardManager] = useState(false);
   const [showEditDashboard, setShowEditDashboard] = useState(false);
+  const [showGlobalReplayFilter, setShowGlobalReplayFilter] = useState(false);
   const [newWidgetPrompt, setNewWidgetPrompt] = useState('');
   const [creatingWidget, setCreatingWidget] = useState(false);
   const [variableValues, setVariableValues] = useState({});
   const [openaiEnabled, setOpenaiEnabled] = useState(false);
   const [editingWidget, setEditingWidget] = useState(null);
   const [replayCount, setReplayCount] = useState(null);
+  const [globalReplayFilterConfig, setGlobalReplayFilterConfig] = useState(null);
+  const [globalReplayFilterOptions, setGlobalReplayFilterOptions] = useState({
+    top_maps: [],
+    other_maps: [],
+    top_players: [],
+    other_players: [],
+  });
+  const [globalReplayFilterSaving, setGlobalReplayFilterSaving] = useState(false);
+  const [globalReplayFilterError, setGlobalReplayFilterError] = useState('');
   const [showIngestPanel, setShowIngestPanel] = useState(false);
   const [ingestMessage, setIngestMessage] = useState('');
+  const [ingestStatus, setIngestStatus] = useState('idle');
+  const [ingestLogs, setIngestLogs] = useState([]);
+  const [ingestInputDir, setIngestInputDir] = useState('');
+  const [savedIngestInputDir, setSavedIngestInputDir] = useState('');
+  const [ingestSettingsLoading, setIngestSettingsLoading] = useState(false);
+  const [ingestSettingsSaving, setIngestSettingsSaving] = useState(false);
+  const [ingestSocketState, setIngestSocketState] = useState('closed');
+  const [autoIngestNotice, setAutoIngestNotice] = useState('');
   const [ingestForm, setIngestForm] = useState({
     watch: false,
     stopAfterN: 50,
@@ -910,6 +1010,8 @@ function App() {
     autoIngestIntervalSeconds: storedAutoIngest.intervalSeconds,
   });
   const autoIngestInFlight = useRef(false);
+  const ingestSocketRef = useRef(null);
+  const autoIngestNoticeTimerRef = useRef(null);
   const [activeView, setActiveView] = useState('games');
   const workflowViewHistoryRef = useRef([]);
   const [workflowGames, setWorkflowGames] = useState([]);
@@ -935,6 +1037,12 @@ function App() {
   const [workflowGame, setWorkflowGame] = useState(null);
   const [workflowGameTab, setWorkflowGameTab] = useState('summary');
   const [workflowPlayer, setWorkflowPlayer] = useState(null);
+  const [workflowPlayerRecentGames, setWorkflowPlayerRecentGames] = useState([]);
+  const [workflowPlayerRecentGamesLoading, setWorkflowPlayerRecentGamesLoading] = useState(false);
+  const [workflowPlayerRecentGamesError, setWorkflowPlayerRecentGamesError] = useState('');
+  const [workflowPlayerChatSummary, setWorkflowPlayerChatSummary] = useState(null);
+  const [workflowPlayerChatSummaryLoading, setWorkflowPlayerChatSummaryLoading] = useState(false);
+  const [workflowPlayerChatSummaryError, setWorkflowPlayerChatSummaryError] = useState('');
   const [workflowPlayerMetrics, setWorkflowPlayerMetrics] = useState(null);
   const [workflowPlayerMetricsLoading, setWorkflowPlayerMetricsLoading] = useState(false);
   const [workflowPlayerMetricsError, setWorkflowPlayerMetricsError] = useState('');
@@ -966,9 +1074,26 @@ function App() {
   const [workflowPlayersDelayHistogramError, setWorkflowPlayersDelayHistogramError] = useState('');
   const [workflowPlayersDelayMinSamples, setWorkflowPlayersDelayMinSamples] = useState(5);
   const [workflowPlayersDelaySelectedCases, setWorkflowPlayersDelaySelectedCases] = useState(['all']);
+  const [workflowPlayersCadenceHistogram, setWorkflowPlayersCadenceHistogram] = useState(null);
+  const [workflowPlayersCadenceHistogramLoading, setWorkflowPlayersCadenceHistogramLoading] = useState(false);
+  const [workflowPlayersCadenceHistogramError, setWorkflowPlayersCadenceHistogramError] = useState('');
+  const [workflowPlayersCadenceMinGames, setWorkflowPlayersCadenceMinGames] = useState(4);
+  const [workflowPlayersViewportHistogram, setWorkflowPlayersViewportHistogram] = useState(null);
+  const [workflowPlayersViewportHistogramLoading, setWorkflowPlayersViewportHistogramLoading] = useState(false);
+  const [workflowPlayersViewportHistogramError, setWorkflowPlayersViewportHistogramError] = useState('');
+  const [workflowPlayersViewportMinGames, setWorkflowPlayersViewportMinGames] = useState(4);
+  const [workflowPlayerApmInsight, setWorkflowPlayerApmInsight] = useState(null);
+  const [workflowPlayerApmInsightLoading, setWorkflowPlayerApmInsightLoading] = useState(false);
+  const [workflowPlayerApmInsightError, setWorkflowPlayerApmInsightError] = useState('');
   const [workflowPlayerDelayInsight, setWorkflowPlayerDelayInsight] = useState(null);
   const [workflowPlayerDelayInsightLoading, setWorkflowPlayerDelayInsightLoading] = useState(false);
   const [workflowPlayerDelayInsightError, setWorkflowPlayerDelayInsightError] = useState('');
+  const [workflowPlayerCadenceInsight, setWorkflowPlayerCadenceInsight] = useState(null);
+  const [workflowPlayerCadenceInsightLoading, setWorkflowPlayerCadenceInsightLoading] = useState(false);
+  const [workflowPlayerCadenceInsightError, setWorkflowPlayerCadenceInsightError] = useState('');
+  const [workflowPlayerViewportInsight, setWorkflowPlayerViewportInsight] = useState(null);
+  const [workflowPlayerViewportInsightLoading, setWorkflowPlayerViewportInsightLoading] = useState(false);
+  const [workflowPlayerViewportInsightError, setWorkflowPlayerViewportInsightError] = useState('');
   const [workflowQuestion, setWorkflowQuestion] = useState('');
   const [workflowAnswer, setWorkflowAnswer] = useState(null);
   const [askingWorkflow, setAskingWorkflow] = useState(false);
@@ -1044,6 +1169,23 @@ function App() {
     } catch (err) {
       console.error('Failed to load dashboards:', err);
     }
+  };
+
+  const loadGlobalReplayFilterConfig = async () => {
+    const data = await api.getGlobalReplayFilter();
+    setGlobalReplayFilterConfig(data);
+    return data;
+  };
+
+  const loadGlobalReplayFilterOptions = async () => {
+    const data = await api.getGlobalReplayFilterOptions();
+    setGlobalReplayFilterOptions({
+      top_maps: data?.top_maps || [],
+      other_maps: data?.other_maps || [],
+      top_players: data?.top_players || [],
+      other_players: data?.other_players || [],
+    });
+    return data;
   };
 
   const loadWorkflowGames = async ({ page = workflowGamesPage, filters = workflowGamesFilters } = {}) => {
@@ -1131,6 +1273,34 @@ function App() {
     }
   };
 
+  const loadWorkflowPlayersCadenceHistogram = async () => {
+    try {
+      setWorkflowPlayersCadenceHistogramLoading(true);
+      setWorkflowPlayersCadenceHistogramError('');
+      const data = await api.getWorkflowPlayersUnitProductionCadence({ filter: 'strict', minGames: 4, limit: 0 });
+      setWorkflowPlayersCadenceHistogram(data);
+    } catch (err) {
+      setWorkflowPlayersCadenceHistogramError(err.message || 'Failed to load players unit production cadence');
+      setWorkflowPlayersCadenceHistogram(null);
+    } finally {
+      setWorkflowPlayersCadenceHistogramLoading(false);
+    }
+  };
+
+  const loadWorkflowPlayersViewportHistogram = async () => {
+    try {
+      setWorkflowPlayersViewportHistogramLoading(true);
+      setWorkflowPlayersViewportHistogramError('');
+      const data = await api.getWorkflowPlayersViewportMultitasking();
+      setWorkflowPlayersViewportHistogram(data);
+    } catch (err) {
+      setWorkflowPlayersViewportHistogramError(err.message || 'Failed to load players viewport multitasking');
+      setWorkflowPlayersViewportHistogram(null);
+    } finally {
+      setWorkflowPlayersViewportHistogramLoading(false);
+    }
+  };
+
   const loadTopPlayerColors = async () => {
     try {
       const data = await api.getWorkflowPlayerColors();
@@ -1170,6 +1340,38 @@ function App() {
     }
   };
 
+  const loadWorkflowPlayerRecentGames = async (playerKey) => {
+    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
+    if (!normalizedPlayerKey) return;
+    try {
+      setWorkflowPlayerRecentGamesLoading(true);
+      setWorkflowPlayerRecentGamesError('');
+      const data = await api.getWorkflowPlayerRecentGames(normalizedPlayerKey);
+      setWorkflowPlayerRecentGames(data?.recent_games || []);
+    } catch (err) {
+      setWorkflowPlayerRecentGamesError(err.message || 'Failed to load recent games');
+      setWorkflowPlayerRecentGames([]);
+    } finally {
+      setWorkflowPlayerRecentGamesLoading(false);
+    }
+  };
+
+  const loadWorkflowPlayerChatSummary = async (playerKey) => {
+    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
+    if (!normalizedPlayerKey) return;
+    try {
+      setWorkflowPlayerChatSummaryLoading(true);
+      setWorkflowPlayerChatSummaryError('');
+      const data = await api.getWorkflowPlayerChatSummary(normalizedPlayerKey);
+      setWorkflowPlayerChatSummary(data?.chat_summary || null);
+    } catch (err) {
+      setWorkflowPlayerChatSummaryError(err.message || 'Failed to load chat summary');
+      setWorkflowPlayerChatSummary(null);
+    } finally {
+      setWorkflowPlayerChatSummaryLoading(false);
+    }
+  };
+
   const loadWorkflowPlayerMetrics = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     if (!normalizedPlayerKey) return;
@@ -1183,6 +1385,22 @@ function App() {
       setWorkflowPlayerMetrics(null);
     } finally {
       setWorkflowPlayerMetricsLoading(false);
+    }
+  };
+
+  const loadWorkflowPlayerApmInsight = async (playerKey) => {
+    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
+    if (!normalizedPlayerKey) return;
+    try {
+      setWorkflowPlayerApmInsightLoading(true);
+      setWorkflowPlayerApmInsightError('');
+      const insightData = await api.getWorkflowPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.apm);
+      setWorkflowPlayerApmInsight(insightData);
+    } catch (err) {
+      setWorkflowPlayerApmInsightError(err.message || 'Failed to load APM insight');
+      setWorkflowPlayerApmInsight(null);
+    } finally {
+      setWorkflowPlayerApmInsightLoading(false);
     }
   };
 
@@ -1208,13 +1426,45 @@ function App() {
     try {
       setWorkflowPlayerDelayInsightLoading(true);
       setWorkflowPlayerDelayInsightError('');
-      const delayData = await api.getWorkflowPlayerFirstUnitDelay(normalizedPlayerKey);
+      const delayData = await api.getWorkflowPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.firstUnitDelay);
       setWorkflowPlayerDelayInsight(delayData);
     } catch (err) {
       setWorkflowPlayerDelayInsightError(err.message || 'Failed to load delay insight');
       setWorkflowPlayerDelayInsight(null);
     } finally {
       setWorkflowPlayerDelayInsightLoading(false);
+    }
+  };
+
+  const loadWorkflowPlayerCadenceInsight = async (playerKey) => {
+    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
+    if (!normalizedPlayerKey) return;
+    try {
+      setWorkflowPlayerCadenceInsightLoading(true);
+      setWorkflowPlayerCadenceInsightError('');
+      const cadenceData = await api.getWorkflowPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.unitProductionCadence);
+      setWorkflowPlayerCadenceInsight(cadenceData);
+    } catch (err) {
+      setWorkflowPlayerCadenceInsightError(err.message || 'Failed to load cadence insight');
+      setWorkflowPlayerCadenceInsight(null);
+    } finally {
+      setWorkflowPlayerCadenceInsightLoading(false);
+    }
+  };
+
+  const loadWorkflowPlayerViewportInsight = async (playerKey) => {
+    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
+    if (!normalizedPlayerKey) return;
+    try {
+      setWorkflowPlayerViewportInsightLoading(true);
+      setWorkflowPlayerViewportInsightError('');
+      const viewportData = await api.getWorkflowPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.viewportSwitchRate);
+      setWorkflowPlayerViewportInsight(viewportData);
+    } catch (err) {
+      setWorkflowPlayerViewportInsightError(err.message || 'Failed to load viewport insight');
+      setWorkflowPlayerViewportInsight(null);
+    } finally {
+      setWorkflowPlayerViewportInsightLoading(false);
     }
   };
 
@@ -1225,22 +1475,42 @@ function App() {
       setError(null);
       const data = await api.getWorkflowPlayer(playerKey);
       setWorkflowPlayer(data);
+      setWorkflowPlayerRecentGames([]);
+      setWorkflowPlayerRecentGamesError('');
+      setWorkflowPlayerRecentGamesLoading(false);
+      setWorkflowPlayerChatSummary(null);
+      setWorkflowPlayerChatSummaryError('');
+      setWorkflowPlayerChatSummaryLoading(false);
       setWorkflowPlayerMetrics(null);
       setWorkflowPlayerMetricsError('');
       setWorkflowPlayerMetricsLoading(false);
       setWorkflowPlayerOutliers(null);
       setWorkflowPlayerOutliersError('');
       setWorkflowPlayerOutliersLoading(false);
+      setWorkflowPlayerApmInsight(null);
+      setWorkflowPlayerApmInsightError('');
+      setWorkflowPlayerApmInsightLoading(false);
       setWorkflowPlayerDelayInsight(null);
       setWorkflowPlayerDelayInsightError('');
       setWorkflowPlayerDelayInsightLoading(false);
+      setWorkflowPlayerCadenceInsight(null);
+      setWorkflowPlayerCadenceInsightError('');
+      setWorkflowPlayerCadenceInsightLoading(false);
+      setWorkflowPlayerViewportInsight(null);
+      setWorkflowPlayerViewportInsightError('');
+      setWorkflowPlayerViewportInsightLoading(false);
       setSelectedPlayerKey(normalizedPlayerKey);
       setWorkflowAnswer(null);
       setWorkflowQuestion('');
       navigateWorkflowView('player');
+      loadWorkflowPlayerRecentGames(normalizedPlayerKey);
+      loadWorkflowPlayerChatSummary(normalizedPlayerKey);
       loadWorkflowPlayerMetrics(normalizedPlayerKey);
       loadWorkflowPlayerOutliers(normalizedPlayerKey);
+      loadWorkflowPlayerApmInsight(normalizedPlayerKey);
       loadWorkflowPlayerDelayInsight(normalizedPlayerKey);
+      loadWorkflowPlayerCadenceInsight(normalizedPlayerKey);
+      loadWorkflowPlayerViewportInsight(normalizedPlayerKey);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1248,11 +1518,85 @@ function App() {
     }
   };
 
+  const loadIngestSettings = async () => {
+    try {
+      setIngestSettingsLoading(true);
+      const data = await api.getIngestSettings();
+      const nextInputDir = String(data?.input_dir || '');
+      setIngestInputDir(nextInputDir);
+      setSavedIngestInputDir(nextInputDir);
+      return nextInputDir;
+    } catch (err) {
+      setIngestMessage(err.message || 'Failed to load ingest settings.');
+      return '';
+    } finally {
+      setIngestSettingsLoading(false);
+    }
+  };
+
+  const persistIngestInputDir = async (inputDir = ingestInputDir) => {
+    const trimmedInputDir = String(inputDir || '').trim();
+    if (!trimmedInputDir) {
+      throw new Error('Replay folder is required');
+    }
+
+    setIngestSettingsSaving(true);
+    try {
+      const data = await api.updateIngestSettings({ input_dir: trimmedInputDir });
+      const nextInputDir = String(data?.input_dir || trimmedInputDir);
+      setIngestInputDir(nextInputDir);
+      setSavedIngestInputDir(nextInputDir);
+      return nextInputDir;
+    } finally {
+      setIngestSettingsSaving(false);
+    }
+  };
+
+  const showAutoIngestNotice = (message) => {
+    if (autoIngestNoticeTimerRef.current) {
+      window.clearTimeout(autoIngestNoticeTimerRef.current);
+    }
+    setAutoIngestNotice(message);
+    autoIngestNoticeTimerRef.current = window.setTimeout(() => {
+      setAutoIngestNotice('');
+      autoIngestNoticeTimerRef.current = null;
+    }, 3500);
+  };
+
+  const pollForReplayCountIncrease = async (baselineCount, intervalSeconds) => {
+    const maxWaitMs = Math.max(5000, Math.floor(intervalSeconds * 1000 * 0.5));
+    const stepMs = 3000;
+    const attempts = Math.max(1, Math.floor(maxWaitMs / stepMs));
+
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      await sleep(stepMs);
+      try {
+        const health = await api.getHealth();
+        const totalReplays = Number(health?.total_replays || 0);
+        if (totalReplays >= baselineCount + 1) {
+          setReplayCount(totalReplays);
+          setOpenaiEnabled(Boolean(health?.openai_enabled));
+          return true;
+        }
+      } catch (err) {
+        console.error('Failed to poll replay count after auto-ingest:', err);
+      }
+    }
+
+    return false;
+  };
+
   useEffect(() => {
     // Load dashboard with stored variable values if available
     const stored = getStoredVariableValues('default');
     loadDashboard('default', stored || undefined);
     loadDashboards();
+    loadGlobalReplayFilterConfig().catch((err) => {
+      console.error('Failed to load global replay filter config:', err);
+    });
+    loadGlobalReplayFilterOptions().catch((err) => {
+      console.error('Failed to load global replay filter options:', err);
+    });
     loadTopPlayerColors();
     checkOpenAIStatus();
   }, []);
@@ -1297,11 +1641,106 @@ function App() {
   ]);
 
   useEffect(() => {
+    if (activeView !== 'players' || workflowPlayersTab !== 'unit-production-cadence') return;
+    if (!workflowPlayersCadenceHistogram && !workflowPlayersCadenceHistogramLoading && !workflowPlayersCadenceHistogramError) {
+      loadWorkflowPlayersCadenceHistogram();
+    }
+  }, [
+    activeView,
+    workflowPlayersTab,
+    workflowPlayersCadenceHistogram,
+    workflowPlayersCadenceHistogramLoading,
+    workflowPlayersCadenceHistogramError,
+  ]);
+
+  useEffect(() => {
+    if (activeView !== 'players' || workflowPlayersTab !== 'viewport-multitasking') return;
+    if (!workflowPlayersViewportHistogram && !workflowPlayersViewportHistogramLoading && !workflowPlayersViewportHistogramError) {
+      loadWorkflowPlayersViewportHistogram();
+    }
+  }, [
+    activeView,
+    workflowPlayersTab,
+    workflowPlayersViewportHistogram,
+    workflowPlayersViewportHistogramLoading,
+    workflowPlayersViewportHistogramError,
+  ]);
+
+  useEffect(() => {
     saveAutoIngestSettings({
       enabled: ingestForm.autoIngestEnabled,
       intervalSeconds: ingestForm.autoIngestIntervalSeconds,
     });
   }, [ingestForm.autoIngestEnabled, ingestForm.autoIngestIntervalSeconds]);
+
+  useEffect(() => {
+    if (!showIngestPanel) {
+      setIngestSocketState('closed');
+      return undefined;
+    }
+
+    setIngestMessage('');
+    void loadIngestSettings();
+    setIngestSocketState('connecting');
+
+    const socket = api.createIngestLogsSocket();
+    ingestSocketRef.current = socket;
+
+    socket.onopen = () => {
+      setIngestSocketState('open');
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'snapshot') {
+          setIngestStatus(message.status || 'idle');
+          setIngestLogs(hydrateIngestLogEntries(message.logs || []));
+          if (message.error) {
+            setIngestMessage(message.error);
+          }
+          return;
+        }
+
+        if (message.type === 'log' && message.log) {
+          setIngestLogs((current) => mergeIngestLogEntries(current, message.log));
+          return;
+        }
+
+        if (message.type === 'status') {
+          setIngestStatus(message.status || 'idle');
+          if (message.error) {
+            setIngestMessage(message.error);
+          } else if (message.status === 'running') {
+            setIngestMessage('');
+          } else if (message.status === 'completed') {
+            setIngestMessage('Ingestion completed.');
+            void refreshDataAfterGlobalReplayFilterSave();
+          }
+        }
+      } catch (err) {
+        console.error('Failed to parse ingest stream message:', err);
+      }
+    };
+
+    socket.onerror = () => {
+      setIngestSocketState('error');
+    };
+
+    socket.onclose = () => {
+      if (ingestSocketRef.current === socket) {
+        ingestSocketRef.current = null;
+      }
+      setIngestSocketState('closed');
+    };
+
+    return () => {
+      if (ingestSocketRef.current === socket) {
+        ingestSocketRef.current = null;
+      }
+      socket.close();
+    };
+  }, [showIngestPanel]);
 
   useEffect(() => {
     if (!ingestForm.autoIngestEnabled) {
@@ -1315,14 +1754,24 @@ function App() {
       if (cancelled || autoIngestInFlight.current) return;
       autoIngestInFlight.current = true;
       try {
-        await api.startIngest({
+        const health = await api.getHealth();
+        const baselineCount = Number(health?.total_replays || 0);
+        const ingestResponse = await api.startIngest({
           watch: false,
           stop_after_n_reps: 1,
           clean: false,
           store_right_clicks: false,
           skip_hotkeys: false,
         });
-        await loadWorkflowGames();
+        if (!ingestResponse?.started) {
+          return;
+        }
+
+        const didIncrease = await pollForReplayCountIncrease(baselineCount, intervalSeconds);
+        if (didIncrease) {
+          await refreshDataAfterGlobalReplayFilterSave();
+          showAutoIngestNotice('auto-ingested new replays');
+        }
       } catch (err) {
         console.error('Auto-ingest failed:', err);
       } finally {
@@ -1337,16 +1786,21 @@ function App() {
     };
   }, [ingestForm.autoIngestEnabled, ingestForm.autoIngestIntervalSeconds]);
 
+  useEffect(() => () => {
+    if (autoIngestNoticeTimerRef.current) {
+      window.clearTimeout(autoIngestNoticeTimerRef.current);
+    }
+  }, []);
+
   const checkOpenAIStatus = async () => {
     try {
-      const response = await fetch('/api/health');
-      if (response.ok) {
-        const data = await response.json();
-        setOpenaiEnabled(data.openai_enabled || false);
-        setReplayCount(typeof data.total_replays === 'number' ? data.total_replays : 0);
-      }
+      const data = await api.getHealth();
+      setOpenaiEnabled(Boolean(data?.openai_enabled));
+      setReplayCount(typeof data?.total_replays === 'number' ? data.total_replays : 0);
+      return data;
     } catch (err) {
       console.error('Failed to check OpenAI status:', err);
+      return null;
     }
   };
 
@@ -1431,18 +1885,47 @@ function App() {
     e.preventDefault();
     setIngestMessage('');
     try {
-      await api.startIngest({
+      let nextInputDir = String(ingestInputDir || '').trim();
+      if (!nextInputDir) {
+        throw new Error('Replay folder is required');
+      }
+      if (nextInputDir !== String(savedIngestInputDir || '').trim()) {
+        nextInputDir = await persistIngestInputDir(nextInputDir);
+      }
+
+      const response = await api.startIngest({
+        input_dir: nextInputDir,
         watch: ingestForm.watch,
         stop_after_n_reps: ingestForm.stopAfterN || 0,
         clean: ingestForm.clean,
         store_right_clicks: ingestForm.storeRightClicks,
         skip_hotkeys: ingestForm.skipHotkeys,
       });
-      setIngestMessage('Ingestion started in the background.');
-      await loadWorkflowGames();
-      setShowIngestPanel(false);
+
+      if (response?.started) {
+        setIngestStatus('running');
+        setIngestLogs([]);
+        setIngestMessage('');
+        return;
+      }
+
+      if (response?.in_progress) {
+        setIngestStatus('running');
+        setIngestMessage('Ingestion is already in progress.');
+        return;
+      }
     } catch (err) {
       setIngestMessage(err.message || 'Failed to start ingestion.');
+    }
+  };
+
+  const handleSaveIngestInputDir = async () => {
+    setIngestMessage('');
+    try {
+      await persistIngestInputDir(ingestInputDir);
+      setIngestMessage('Replay folder saved.');
+    } catch (err) {
+      setIngestMessage(err.message || 'Failed to save replay folder.');
     }
   };
 
@@ -1457,6 +1940,61 @@ function App() {
     // Save to localStorage
     saveVariableValues(currentDashboardUrl, newVarValues);
     await loadDashboard(currentDashboardUrl, newVarValues);
+  };
+
+  const refreshDataAfterGlobalReplayFilterSave = async () => {
+    await Promise.all([
+      loadWorkflowGames({ page: workflowGamesPage, filters: workflowGamesFilters }),
+      loadWorkflowPlayers({
+        page: workflowPlayersPage,
+        filters: workflowPlayersFilters,
+        sortBy: workflowPlayersSortBy,
+        sortDir: workflowPlayersSortDir,
+      }),
+      loadDashboard(currentDashboardUrl, variableValues, true),
+      loadTopPlayerColors(),
+      checkOpenAIStatus(),
+      loadGlobalReplayFilterOptions(),
+    ]);
+
+    if (activeView === 'game' && selectedReplayId) {
+      try {
+        await openWorkflowGame(selectedReplayId);
+      } catch (err) {
+        console.error('Failed to reload workflow game after global filter save:', err);
+      }
+    }
+    if (activeView === 'player' && selectedPlayerKey) {
+      try {
+        await openWorkflowPlayer(selectedPlayerKey);
+      } catch (err) {
+        console.error('Failed to reload workflow player after global filter save:', err);
+      }
+    }
+    if (workflowPlayersApmHistogram) {
+      loadWorkflowPlayersApmHistogram();
+    }
+    if (workflowPlayersDelayHistogram) {
+      loadWorkflowPlayersDelayHistogram();
+    }
+    if (workflowPlayersCadenceHistogram) {
+      loadWorkflowPlayersCadenceHistogram();
+    }
+  };
+
+  const handleSaveGlobalReplayFilter = async (nextConfig) => {
+    try {
+      setGlobalReplayFilterSaving(true);
+      setGlobalReplayFilterError('');
+      const saved = await api.updateGlobalReplayFilter(nextConfig);
+      setGlobalReplayFilterConfig(saved);
+      await refreshDataAfterGlobalReplayFilterSave();
+      setShowGlobalReplayFilter(false);
+    } catch (err) {
+      setGlobalReplayFilterError(err.message || 'Failed to save main config');
+    } finally {
+      setGlobalReplayFilterSaving(false);
+    }
   };
 
   const setWorkflowGameSingleFilter = (name, nextValue) => {
@@ -1549,6 +2087,12 @@ function App() {
       }
       return nextView;
     });
+  };
+
+  const openWorkflowPlayersSubview = (tab) => {
+    const nextTab = String(tab || 'summary');
+    setWorkflowPlayersTab(nextTab);
+    navigateWorkflowView('players');
   };
 
   const goBackWorkflowView = () => {
@@ -1727,15 +2271,7 @@ function App() {
 
   const filteredReplayPatterns = workflowGame?.replay_patterns || [];
   const filteredTeamPatterns = workflowGame?.team_patterns || [];
-  const workflowPlayerOutlierGroups = useMemo(() => {
-    const grouped = new Map();
-    (workflowPlayerOutliers?.items || []).forEach((item) => {
-      const key = String(item?.category || 'Other');
-      if (!grouped.has(key)) grouped.set(key, []);
-      grouped.get(key).push(item);
-    });
-    return Array.from(grouped.entries());
-  }, [workflowPlayerOutliers]);
+  const workflowPlayerOutlierItems = workflowPlayerOutliers?.items || [];
 
   const filteredGameEvents = (workflowGame?.game_events || []).filter((event) => {
     if (workflowSummaryFilters.player && !String(event.description || '').toLowerCase().includes(workflowSummaryFilters.player.toLowerCase())) {
@@ -1749,6 +2285,39 @@ function App() {
   });
 
   const workflowGamePlayers = workflowGame?.players || [];
+  const workflowPlayerInsights = [
+    workflowPlayerViewportInsight,
+    workflowPlayerApmInsight,
+    workflowPlayerDelayInsight,
+    workflowPlayerCadenceInsight,
+  ].filter(Boolean);
+  const workflowPlayerInsightLoading = workflowPlayerApmInsightLoading || workflowPlayerDelayInsightLoading || workflowPlayerCadenceInsightLoading || workflowPlayerViewportInsightLoading;
+  const workflowPlayerInsightErrors = [
+    workflowPlayerApmInsightError,
+    workflowPlayerDelayInsightError,
+    workflowPlayerCadenceInsightError,
+    workflowPlayerViewportInsightError,
+  ].filter(Boolean);
+  const workflowPlayerUsagePills = useMemo(() => {
+    const pills = [];
+    if ((Number(workflowPlayer?.hotkey_usage_rate) || 0) < LOW_USAGE_THRESHOLD) {
+      pills.push({
+        key: 'no-hotkeys',
+        label: 'Doesn\'t use hotkeys',
+        title: `Detected in ${(Number(workflowPlayer?.hotkey_usage_rate) * 100).toFixed(1)}% of this player's games.`,
+        className: 'workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey',
+      });
+    }
+    if ((Number(workflowPlayer?.queued_game_rate) || 0) < LOW_USAGE_THRESHOLD) {
+      pills.push({
+        key: 'no-queued-orders',
+        label: 'Doesn\'t use queued orders',
+        title: `Detected in ${(Number(workflowPlayer?.queued_game_rate) * 100).toFixed(1)}% of this player's games.`,
+        className: 'workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-queued',
+      });
+    }
+    return pills;
+  }, [workflowPlayer]);
   const workflowPlayerNameWidthCh = useMemo(() => {
     const longestNameLength = workflowGamePlayers.reduce((longest, player) => {
       const nameLength = String(player?.name || '').trim().length;
@@ -2111,6 +2680,81 @@ function App() {
       }));
     return buildHistogramSummaryFromPlayers(filtered);
   }, [playersDelayHistogramPoints, workflowPlayersDelayMinSamples]);
+  const playersCadenceHistogramPoints = useMemo(() => (
+    (workflowPlayersCadenceHistogram?.players || [])
+      .map((player) => ({
+        value: Number(player?.average_cadence_score),
+        label: String(player?.player_name || '').trim(),
+        player_key: String(player?.player_key || '').trim(),
+        games_played: Number(player?.games_used || 0),
+        average_rate_per_min: Number(player?.average_rate_per_min || 0),
+        average_cv_gap: Number(player?.average_cv_gap || 0),
+        average_burstiness: Number(player?.average_burstiness || 0),
+        average_idle20_ratio: Number(player?.average_idle20_ratio || 0),
+      }))
+      .filter((player) => Number.isFinite(player.value) && player.label)
+  ), [workflowPlayersCadenceHistogram]);
+  const workflowPlayersCadenceProcessed = useMemo(() => {
+    const minGames = Math.max(4, Number(workflowPlayersCadenceMinGames) || 4);
+    const filtered = playersCadenceHistogramPoints
+      .filter((player) => Number(player.games_played || 0) >= minGames)
+      .map((player) => ({
+        player_key: player.player_key,
+        player_name: player.label,
+        average_apm: player.value,
+        games_played: player.games_played,
+        average_rate_per_min: player.average_rate_per_min,
+        average_cv_gap: player.average_cv_gap,
+        average_burstiness: player.average_burstiness,
+        average_idle20_ratio: player.average_idle20_ratio,
+      }));
+    return buildHistogramSummaryFromPlayers(filtered);
+  }, [playersCadenceHistogramPoints, workflowPlayersCadenceMinGames]);
+  const workflowPlayersViewportProcessed = useMemo(() => {
+    const minGames = Math.max(4, Number(workflowPlayersViewportMinGames) || 4);
+    const filtered = (workflowPlayersViewportHistogram?.players || [])
+      .filter((player) => Number(player?.games_played || 0) >= minGames)
+      .map((player) => ({
+        player_key: String(player?.player_key || '').trim(),
+        player_name: String(player?.player_name || '').trim(),
+        average_apm: Number(player?.[VIEWPORT_SWITCH_RATE_CONFIG.playerField] || 0),
+        games_played: Number(player?.games_played || 0),
+        average_viewport_switch_rate: Number(player?.average_viewport_switch_rate || 0),
+      }))
+      .filter((player) => player.player_name && Number.isFinite(player.average_apm) && player.average_apm >= 0);
+    return buildHistogramSummaryFromPlayers(filtered);
+  }, [workflowPlayersViewportHistogram, workflowPlayersViewportMinGames]);
+  const workflowGameCadenceProcessed = useMemo(() => {
+    const rows = (workflowGame?.unit_production_cadence || [])
+      .filter((player) => Boolean(player?.eligible))
+      .map((player) => ({
+        player_key: String(player?.player_key || '').trim(),
+        player_name: String(player?.player_name || '').trim(),
+        average_apm: Number(player?.cadence_score || 0),
+        games_played: Number(player?.units_produced || 0),
+        average_rate_per_min: Number(player?.rate_per_minute || 0),
+        average_cv_gap: Number(player?.cv_gap || 0),
+        average_burstiness: Number(player?.burstiness || 0),
+        average_idle20_ratio: Number(player?.idle20_ratio || 0),
+        window_seconds: Number(player?.window_seconds || 0),
+        gap_count: Number(player?.gap_count || 0),
+      }))
+      .filter((player) => player.player_name && Number.isFinite(player.average_apm) && player.average_apm > 0);
+    return buildHistogramSummaryFromPlayers(rows);
+  }, [workflowGame]);
+  const workflowGameViewportProcessed = useMemo(() => {
+    const rows = (workflowGame?.viewport_multitasking || [])
+      .filter((player) => Boolean(player?.eligible))
+      .map((player) => ({
+        player_key: String(player?.player_key || '').trim(),
+        player_name: String(player?.player_name || '').trim(),
+        average_apm: Number(player?.[VIEWPORT_SWITCH_RATE_CONFIG.gameField] || 0),
+        games_played: 1,
+        viewport_switch_rate: Number(player?.viewport_switch_rate || 0),
+      }))
+      .filter((player) => player.player_name && Number.isFinite(player.average_apm) && player.average_apm >= 0);
+    return buildHistogramSummaryFromPlayers(rows);
+  }, [workflowGame]);
   const workflowPlayersSortIndicator = (sortBy) => {
     if (workflowPlayersSortBy !== sortBy) return '';
     return workflowPlayersSortDir === 'asc' ? '↑' : '↓';
@@ -2130,94 +2774,24 @@ function App() {
         <div className="workflow-nav">
           <button className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateWorkflowView('games')}>Games</button>
           <button className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateWorkflowView('players')}>Players</button>
+          <button onClick={() => {
+            setGlobalReplayFilterError('');
+            loadGlobalReplayFilterConfig().catch((err) => {
+              console.error('Failed to refresh global replay filter config:', err);
+            });
+            loadGlobalReplayFilterOptions().catch((err) => {
+              console.error('Failed to refresh global replay filter options:', err);
+            });
+            setShowGlobalReplayFilter(true);
+          }} className="btn-manage">Settings</button>
+          <button onClick={() => setShowIngestPanel(true)} className="btn-manage">Ingest</button>
           <button className={`btn-manage ${activeView === 'dashboards' ? 'workflow-nav-active' : ''}`} onClick={() => navigateWorkflowView('dashboards')}>Custom Dashboards</button>
-          <button onClick={() => setShowIngestPanel((prev) => !prev)} className="btn-manage">{showIngestPanel ? 'Close Ingest' : 'Ingest'}</button>
         </div>
-
-        {showIngestPanel && (
-          <div className="ingest-panel">
-            <div className="ingest-header">
-              <div className="ingest-title">Ingest Replays</div>
-              <div className="ingest-subtitle">Ingestion happens in the background.</div>
-            </div>
-            <form onSubmit={handleIngestSubmit} className="ingest-form">
-              <div className="ingest-grid">
-                <label className="ingest-field">
-                  <span>Ingest last N replays</span>
-                  <input
-                    type="number"
-                    min="1"
-                    value={ingestForm.stopAfterN}
-                    onChange={(e) => setIngestForm({ ...ingestForm, stopAfterN: parseInt(e.target.value || '0', 10) })}
-                  />
-                </label>
-                <label className="ingest-field ingest-checkbox">
-                  <span>Erase existing data</span>
-                  <input
-                    type="checkbox"
-                    checked={ingestForm.clean}
-                    onChange={(e) => setIngestForm({ ...ingestForm, clean: e.target.checked })}
-                  />
-                </label>
-                <label className="ingest-field ingest-checkbox">
-                  <span>Store Right Click commands</span>
-                  <input
-                    type="checkbox"
-                    checked={ingestForm.storeRightClicks}
-                    onChange={(e) => setIngestForm({ ...ingestForm, storeRightClicks: e.target.checked })}
-                  />
-                </label>
-                <label className="ingest-field ingest-checkbox">
-                  <span>Skip Hotkey commands</span>
-                  <input
-                    type="checkbox"
-                    checked={ingestForm.skipHotkeys}
-                    onChange={(e) => setIngestForm({ ...ingestForm, skipHotkeys: e.target.checked })}
-                  />
-                </label>
-                <label className="ingest-field ingest-checkbox">
-                  <span>Auto-ingest latest replay</span>
-                  <input
-                    type="checkbox"
-                    checked={ingestForm.autoIngestEnabled}
-                    onChange={(e) => setIngestForm({ ...ingestForm, autoIngestEnabled: e.target.checked })}
-                  />
-                </label>
-                <label className="ingest-field">
-                  <span>Auto-ingest interval (seconds)</span>
-                  <input
-                    type="number"
-                    min="60"
-                    value={ingestForm.autoIngestIntervalSeconds}
-                    onChange={(e) => setIngestForm({
-                      ...ingestForm,
-                      autoIngestIntervalSeconds: parseInt(e.target.value || '60', 10),
-                    })}
-                    disabled={!ingestForm.autoIngestEnabled}
-                  />
-                </label>
-              </div>
-              <div className="ingest-actions">
-                <button type="submit" className="btn-create-ai">
-                  Start Ingestion
-                </button>
-                <button
-                  type="button"
-                  className="btn-create-manual"
-                  onClick={() => setShowIngestPanel(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
 
         {error && <div className="error-message">{error}</div>}
 
         {activeView === 'games' && (
           <div className="workflow-panel">
-            <h2>Games</h2>
             <div className="workflow-summary-filter-row workflow-games-filter-row">
               <select
                 className="workflow-summary-filter-select"
@@ -2341,11 +2915,12 @@ function App() {
 
         {activeView === 'players' && (
           <div className="workflow-panel">
-            <h2>Players</h2>
             <div className="workflow-nav">
               <button className={`btn-switch ${workflowPlayersTab === 'summary' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('summary')}>Summary</button>
               <button className={`btn-switch ${workflowPlayersTab === 'apm-histogram' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('apm-histogram')}>APM Histogram</button>
               <button className={`btn-switch ${workflowPlayersTab === 'first-unit-delay' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('first-unit-delay')}>First Unit Delay</button>
+              <button className={`btn-switch ${workflowPlayersTab === 'unit-production-cadence' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('unit-production-cadence')}>Unit Production Cadence</button>
+              <button className={`btn-switch ${workflowPlayersTab === 'viewport-multitasking' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('viewport-multitasking')}>Viewport Multitasking</button>
             </div>
 
             {workflowPlayersTab === 'summary' ? (
@@ -2483,6 +3058,7 @@ function App() {
                           player_key: String(player.player_key || ''),
                           games_played: Number(player.games_played || 0),
                         })),
+                        on_overlay_point_click: openWorkflowPlayer,
                       }}
                     />
                     <div className="workflow-subtle-note">
@@ -2491,7 +3067,7 @@ function App() {
                   </div>
                 ) : null}
               </div>
-            ) : (
+            ) : workflowPlayersTab === 'first-unit-delay' ? (
               <div className="workflow-card workflow-card-fingerprints">
                 <div className="workflow-card-title"><span>First-unit delay distribution</span></div>
                 <div className="workflow-card-subtitle">
@@ -2587,6 +3163,7 @@ function App() {
                           player_key: String(player.player_key || ''),
                           games_played: Number(player.games_played || 0),
                         })),
+                        on_overlay_point_click: openWorkflowPlayer,
                       }}
                     />
                     <div className="workflow-subtle-note">
@@ -2595,7 +3172,143 @@ function App() {
                   </div>
                 ) : null}
               </div>
-            )}
+            ) : workflowPlayersTab === 'unit-production-cadence' ? (
+              <div className="workflow-card workflow-card-fingerprints">
+                <div className="workflow-card-title"><span>Unit production cadence distribution</span></div>
+                <div className="workflow-card-subtitle">
+                  <span>How it is calculated</span>
+                  <HelpTooltip text="For each replay-player we only inspect attacking-unit production command timestamps from 7:00 to 80% game time. We compute interval evenness (cvGap = std(gaps)/mean(gaps)) and production rate (units per minute), then combine them into cadenceScore = ratePerMin / (1 + cvGap). Each player contributes one point: average cadenceScore across eligible games." label="Unit production cadence methodology" />
+                </div>
+                <div className="workflow-subtle-note">
+                  Rationale: stronger macro tends to keep attacking-unit production frequent and less clumped. This score rewards high sustained rate and penalizes bursty long gaps.
+                </div>
+                <div className="workflow-subtle-note">
+                  Strict filter excludes workers/econ and support utility units to focus on combat production rhythm.
+                </div>
+                {workflowPlayersCadenceHistogramLoading ? <div className="chart-empty">Loading unit production cadence...</div> : null}
+                {!workflowPlayersCadenceHistogramLoading && workflowPlayersCadenceHistogramError ? <div className="chart-empty">{workflowPlayersCadenceHistogramError}</div> : null}
+                {!workflowPlayersCadenceHistogramLoading && !workflowPlayersCadenceHistogramError && workflowPlayersCadenceProcessed.points.length === 0 ? (
+                  <div className="chart-empty">Not enough cadence data to render this distribution yet.</div>
+                ) : null}
+                {!workflowPlayersCadenceHistogramLoading && !workflowPlayersCadenceHistogramError && workflowPlayersCadenceProcessed.points.length > 0 ? (
+                  <div className="workflow-insight-chart workflow-insight-chart-tall">
+                    <div className="workflow-summary-filter-row workflow-slider-row">
+                      <label className="workflow-summary-filter-check">
+                        <span>Min games (post-process): {Math.max(4, Number(workflowPlayersCadenceMinGames) || 4)}</span>
+                      </label>
+                      <input
+                        type="range"
+                        className="workflow-slider-input"
+                        min="4"
+                        max={String(Math.max(4, Number(workflowPlayersCadenceProcessed.maxGames) || 4))}
+                        step="1"
+                        value={String(Math.max(4, Number(workflowPlayersCadenceMinGames) || 4))}
+                        onChange={(e) => setWorkflowPlayersCadenceMinGames(Math.max(4, Number(e.target.value) || 4))}
+                      />
+                    </div>
+                    <Histogram
+                      data={[]}
+                      config={{
+                        style: 'monobell_relax',
+                        precomputed_bins: workflowPlayersCadenceProcessed.bins,
+                        x_axis_label: 'Average cadence score',
+                        y_axis_label: 'Density',
+                        overlay_value_label: 'cadence',
+                        overlay_count_label: 'games',
+                        mean: workflowPlayersCadenceProcessed.mean,
+                        stddev: workflowPlayersCadenceProcessed.stddev,
+                        chart_height: 620,
+                        overlay_points: workflowPlayersCadenceProcessed.points.map((player) => ({
+                          value: Number(player.average_apm || 0),
+                          label: String(player.player_name || ''),
+                          player_key: String(player.player_key || ''),
+                          games_played: Number(player.games_played || 0),
+                          tooltip_lines: [
+                            `${String(player.player_name || '')}`,
+                            `Cadence score: ${Number(player.average_apm || 0).toFixed(3)}`,
+                            `Rate per minute: ${Number(player.average_rate_per_min || 0).toFixed(2)}`,
+                            `Gap CV: ${Number(player.average_cv_gap || 0).toFixed(2)}`,
+                            `Burstiness: ${Number(player.average_burstiness || 0).toFixed(2)}`,
+                            `Idle gap ratio (>=20s): ${(Number(player.average_idle20_ratio || 0) * 100).toFixed(1)}%`,
+                            `Games used: ${Number(player.games_played || 0)}`,
+                          ],
+                        })),
+                        on_overlay_point_click: openWorkflowPlayer,
+                      }}
+                    />
+                    <div className="workflow-subtle-note">
+                      {`Population shown: ${Number(workflowPlayersCadenceProcessed.playersIncluded) || 0} players (>=${Math.max(4, Number(workflowPlayersCadenceMinGames) || 4)} games). Mean ${Number(workflowPlayersCadenceProcessed.mean || 0).toFixed(3)}, stddev ${Number(workflowPlayersCadenceProcessed.stddev || 0).toFixed(3)}.`}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : workflowPlayersTab === 'viewport-multitasking' ? (
+              <div className="workflow-card workflow-card-fingerprints">
+                <div className="workflow-card-title"><span>Viewport multitasking distribution</span></div>
+                <div className="workflow-card-subtitle">
+                  <span>How it is calculated</span>
+                  <HelpTooltip text="For each replay-player we inspect coordinate-bearing commands from 7:00 until 80% of game length. A switch happens when the next command lands outside the previous viewport-sized box (22x16 tiles, 32 pixels per tile). The detector stores a JSON payload per replay-player with Viewport Switch Rate, SameViewportShare, and SameViewportMedianRun." label="Viewport multitasking methodology" />
+                </div>
+                <div className="workflow-subtle-note">
+                  {VIEWPORT_SWITCH_RATE_CONFIG.interpretation}
+                </div>
+                {workflowPlayersViewportHistogramLoading ? <div className="chart-empty">Loading viewport multitasking...</div> : null}
+                {!workflowPlayersViewportHistogramLoading && workflowPlayersViewportHistogramError ? <div className="chart-empty">{workflowPlayersViewportHistogramError}</div> : null}
+                {!workflowPlayersViewportHistogramLoading && !workflowPlayersViewportHistogramError && workflowPlayersViewportProcessed.points.length === 0 ? (
+                  <div className="chart-empty">Not enough viewport multitasking data to render this distribution yet.</div>
+                ) : null}
+                {!workflowPlayersViewportHistogramLoading && !workflowPlayersViewportHistogramError && workflowPlayersViewportProcessed.points.length > 0 ? (
+                  <div className="workflow-insight-chart workflow-insight-chart-tall">
+                    <div className="workflow-summary-filter-row workflow-slider-row">
+                      <label className="workflow-summary-filter-check">
+                        <span>Min games (post-process): {Math.max(4, Number(workflowPlayersViewportMinGames) || 4)}</span>
+                      </label>
+                      <input
+                        type="range"
+                        className="workflow-slider-input"
+                        min="4"
+                        max={String(Math.max(4, Number(workflowPlayersViewportProcessed.maxGames) || 4))}
+                        step="1"
+                        value={String(Math.max(4, Number(workflowPlayersViewportMinGames) || 4))}
+                        onChange={(e) => setWorkflowPlayersViewportMinGames(Math.max(4, Number(e.target.value) || 4))}
+                      />
+                    </div>
+                    <div className="workflow-subtle-note">
+                      {`Backend gate: at least ${Number(workflowPlayersViewportHistogram?.min_games || 0)} games. The slider only filters the already-loaded population client-side.`}
+                    </div>
+                    <Histogram
+                      data={[]}
+                      config={{
+                        style: 'monobell_relax',
+                        precomputed_bins: workflowPlayersViewportProcessed.bins,
+                        x_axis_label: VIEWPORT_SWITCH_RATE_CONFIG.axisLabel,
+                        y_axis_label: 'Density',
+                        overlay_value_label: VIEWPORT_SWITCH_RATE_CONFIG.overlayValueLabel,
+                        overlay_count_label: 'games',
+                        mean: workflowPlayersViewportProcessed.mean,
+                        stddev: workflowPlayersViewportProcessed.stddev,
+                        chart_height: 620,
+                        overlay_points: workflowPlayersViewportProcessed.points.map((player) => ({
+                          value: Number(player.average_apm || 0),
+                          label: String(player.player_name || ''),
+                          player_key: String(player.player_key || ''),
+                          games_played: Number(player.games_played || 0),
+                          tooltip_lines: [
+                            `${String(player.player_name || '')}`,
+                            `${VIEWPORT_SWITCH_RATE_CONFIG.title}: ${VIEWPORT_SWITCH_RATE_CONFIG.valueFormatter(player.average_apm)}`,
+                            `Games used: ${Number(player.games_played || 0)}`,
+                          ],
+                        })),
+                        on_overlay_point_click: openWorkflowPlayer,
+                      }}
+                    />
+                    <div className="workflow-subtle-note">
+                      {`Population shown: ${Number(workflowPlayersViewportProcessed.playersIncluded) || 0} players (>=${Math.max(4, Number(workflowPlayersViewportMinGames) || 4)} games after post-filter). Mean ${VIEWPORT_SWITCH_RATE_CONFIG.summaryFormatter(workflowPlayersViewportProcessed.mean)}, stddev ${VIEWPORT_SWITCH_RATE_CONFIG.summaryFormatter(workflowPlayersViewportProcessed.stddev)}.`}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -2620,6 +3333,8 @@ function App() {
                   <button className={`btn-switch ${workflowGameTab === 'units' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('units')}>Units</button>
                   <button className={`btn-switch ${workflowGameTab === 'timings' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('timings')}>Timings</button>
                   <button className={`btn-switch ${workflowGameTab === 'first-unit-efficiency' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('first-unit-efficiency')}>First Unit Efficiency</button>
+                  <button className={`btn-switch ${workflowGameTab === 'unit-production-cadence' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('unit-production-cadence')}>Unit Production Cadence</button>
+                  <button className={`btn-switch ${workflowGameTab === 'viewport-multitasking' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('viewport-multitasking')}>Viewport Multitasking</button>
                 </div>
 
                 {workflowGameTab === 'summary' && (
@@ -2639,7 +3354,7 @@ function App() {
                               <span className="workflow-player-apm"><strong>APM</strong> {player.apm}</span>
                               <button className="workflow-link-btn" onClick={() => openWorkflowPlayer(player.player_key)}>View Player Summary</button>
                             </div>
-                            {player.detected_patterns?.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`))}
+                            {filterSummaryPillPatterns(player.detected_patterns).map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`))}
                           </div>
                         </div>
                       ))}
@@ -2662,7 +3377,7 @@ function App() {
                 )}
 
                 {workflowGameTab === 'events' && (
-                  <div className="workflow-card">
+                  <div className="workflow-card workflow-card-recent-games">
                     <div className="workflow-summary-filter-row">
                       <input
                         type="text"
@@ -2749,7 +3464,7 @@ function App() {
                 )}
 
                 {workflowGameTab === 'units' && (
-                  <div className="workflow-card">
+                  <div className="workflow-card workflow-card-chat-summary">
                     <div className="workflow-production-top-row">
                       <div className="workflow-production-tabs" role="tablist" aria-label="Production type tabs">
                         <button
@@ -3039,6 +3754,122 @@ function App() {
                     )}
                   </div>
                 )}
+                {workflowGameTab === 'unit-production-cadence' && (
+                  <div className="workflow-timing-charts">
+                    <div className="workflow-card workflow-card-fingerprints">
+                      <div className="workflow-card-title"><span>Unit production cadence (this game)</span></div>
+                      <div className="workflow-card-subtitle">
+                        <span>How it is calculated</span>
+                        <HelpTooltip text="For each player in this replay: use attacking-unit Train/Unit Morph commands in [7:00, 80% game length], compute ratePerMin and gap evenness (cvGap), then cadenceScore = ratePerMin / (1 + cvGap)." label="Per-game cadence methodology" />
+                      </div>
+                      <div className="workflow-subtle-note">
+                        Rationale: this captures sustained combat-unit production rhythm. Higher score means faster and less bursty production during the mid-game window.
+                      </div>
+                      {workflowGameCadenceProcessed.points.length > 0 ? (
+                        <Histogram
+                          data={[]}
+                          config={{
+                            style: 'monobell_relax',
+                            precomputed_bins: workflowGameCadenceProcessed.bins,
+                            x_axis_label: 'Cadence score',
+                            y_axis_label: 'Density',
+                            overlay_value_label: 'cadence',
+                            overlay_count_label: 'units',
+                            mean: workflowGameCadenceProcessed.mean,
+                            stddev: workflowGameCadenceProcessed.stddev,
+                            chart_height: 560,
+                            overlay_points: workflowGameCadenceProcessed.points.map((player) => ({
+                              value: Number(player.average_apm || 0),
+                              label: String(player.player_name || ''),
+                              player_key: String(player.player_key || ''),
+                              games_played: Number(player.games_played || 0),
+                              tooltip_lines: [
+                                `${String(player.player_name || '')}`,
+                                `Cadence score: ${Number(player.average_apm || 0).toFixed(3)}`,
+                                `Rate per minute: ${Number(player.average_rate_per_min || 0).toFixed(2)}`,
+                                `Gap CV: ${Number(player.average_cv_gap || 0).toFixed(2)}`,
+                                `Burstiness: ${Number(player.average_burstiness || 0).toFixed(2)}`,
+                                `Idle gap ratio (>=20s): ${(Number(player.average_idle20_ratio || 0) * 100).toFixed(1)}%`,
+                                `Units counted in window: ${Number(player.games_played || 0)}`,
+                                `Window length: ${formatDuration(Number(player.window_seconds || 0))}`,
+                              ],
+                            })),
+                          }}
+                        />
+                      ) : (
+                        <div className="chart-empty">No eligible players for this game cadence window yet.</div>
+                      )}
+                      <div className="workflow-card-subtitle"><span>Per-player breakdown</span></div>
+                      {(workflowGame?.unit_production_cadence || []).map((entry) => (
+                        <div key={`game-cadence-${entry.player_id}`} className="workflow-pattern-row">
+                          <span style={playerAccentColor(entry.player_key) ? { color: playerAccentColor(entry.player_key), fontWeight: 600 } : undefined}>
+                            {entry.is_winner ? '👑 ' : ''}{entry.player_name}
+                          </span>
+                          <span title={entry.eligible ? `rate=${Number(entry.rate_per_minute || 0).toFixed(2)}, cv=${Number(entry.cv_gap || 0).toFixed(2)}, burstiness=${Number(entry.burstiness || 0).toFixed(2)}, idle20=${(Number(entry.idle20_ratio || 0) * 100).toFixed(1)}%, units=${Number(entry.units_produced || 0)}, gaps=${Number(entry.gap_count || 0)}` : String(entry.ineligible_reason || '')}>
+                            {entry.eligible
+                              ? `${Number(entry.cadence_score || 0).toFixed(3)} cadence (${Number(entry.units_produced || 0)} units, ${formatDuration(Number(entry.window_seconds || 0))} window)`
+                              : `N/A (${entry.ineligible_reason || 'insufficient data'})`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {workflowGameTab === 'viewport-multitasking' && (
+                  <div className="workflow-timing-charts">
+                    <div className="workflow-card workflow-card-fingerprints">
+                      <div className="workflow-card-title"><span>Viewport multitasking (this game)</span></div>
+                      <div className="workflow-card-subtitle">
+                        <span>How it is calculated</span>
+                        <HelpTooltip text="For each player in this replay: use coordinate-bearing commands in [7:00, 80% game length]. A switch happens when the next command lands outside the previous viewport-sized box. The detector stores only the Viewport Switch Rate as a float per replay-player." label="Per-game viewport multitasking methodology" />
+                      </div>
+                      <div className="workflow-subtle-note">
+                        {VIEWPORT_SWITCH_RATE_CONFIG.interpretation}
+                      </div>
+                      {workflowGameViewportProcessed.points.length > 0 ? (
+                        <Histogram
+                          data={[]}
+                          config={{
+                            style: 'monobell_relax',
+                            precomputed_bins: workflowGameViewportProcessed.bins,
+                            x_axis_label: VIEWPORT_SWITCH_RATE_CONFIG.axisLabel,
+                            y_axis_label: 'Density',
+                            overlay_value_label: VIEWPORT_SWITCH_RATE_CONFIG.overlayValueLabel,
+                            overlay_count_label: 'player',
+                            mean: workflowGameViewportProcessed.mean,
+                            stddev: workflowGameViewportProcessed.stddev,
+                            chart_height: 560,
+                            overlay_points: workflowGameViewportProcessed.points.map((player) => ({
+                              value: Number(player.average_apm || 0),
+                              label: String(player.player_name || ''),
+                              player_key: String(player.player_key || ''),
+                              games_played: Number(player.games_played || 0),
+                              tooltip_lines: [
+                                `${String(player.player_name || '')}`,
+                                `${VIEWPORT_SWITCH_RATE_CONFIG.title}: ${VIEWPORT_SWITCH_RATE_CONFIG.valueFormatter(player.average_apm)}`,
+                              ],
+                            })),
+                          }}
+                        />
+                      ) : (
+                        <div className="chart-empty">No eligible players for this game viewport multitasking window yet.</div>
+                      )}
+                      <div className="workflow-card-subtitle"><span>Per-player breakdown</span></div>
+                      {(workflowGame?.viewport_multitasking || []).map((entry) => (
+                        <div key={`game-viewport-${entry.player_id}`} className="workflow-pattern-row">
+                          <span style={playerAccentColor(entry.player_key) ? { color: playerAccentColor(entry.player_key), fontWeight: 600 } : undefined}>
+                            {entry.is_winner ? '👑 ' : ''}{entry.player_name}
+                          </span>
+                          <span title={entry.eligible ? VIEWPORT_SWITCH_RATE_CONFIG.valueFormatter(entry.viewport_switch_rate) : String(entry.ineligible_reason || '')}>
+                            {entry.eligible
+                              ? VIEWPORT_SWITCH_RATE_CONFIG.valueFormatter(entry.viewport_switch_rate)
+                              : `N/A (${entry.ineligible_reason || 'insufficient data'})`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <div className="chart-empty">Select a game from the Games tab.</div>
@@ -3112,122 +3943,156 @@ function App() {
                     ))}
                   </div>
                   <div className="workflow-card workflow-card-fingerprints">
-                    <div className="workflow-card-title"><span>Player fingerprints</span></div>
-                    <div className="workflow-card-subtitle">Core metrics</div>
-                    {workflowPlayerMetricsLoading ? <div className="chart-empty">Loading metrics...</div> : null}
-                    {!workflowPlayerMetricsLoading && workflowPlayerMetricsError ? <div className="chart-empty">{workflowPlayerMetricsError}</div> : null}
-                    {!workflowPlayerMetricsLoading && !workflowPlayerMetricsError && (workflowPlayerMetrics?.fingerprint_metrics || []).map((metric) => (
-                      <div key={metric.metric} className="workflow-metric-compare-row workflow-metric-compare-row-simple">
-                        <span className="workflow-metric-label-with-help">
-                          <span>{metric.metric}</span>
-                          <HelpTooltip text={metricHelpText(metric.metric)} label={`${metric.metric} explanation`} />
-                        </span>
-                        <span>{prettyMetricValue(metric)}</span>
+                    <div className="workflow-card-title"><span>Population comparison</span></div>
+                    {workflowPlayerInsightLoading ? <div className="chart-empty">Loading population comparisons...</div> : null}
+                    {!workflowPlayerInsightLoading && workflowPlayerInsightErrors.length > 0 ? (
+                      <div className="chart-empty">{workflowPlayerInsightErrors[0]}</div>
+                    ) : null}
+                    {!workflowPlayerInsightLoading && workflowPlayerInsightErrors.length === 0 ? (
+                      <div className="workflow-insight-grid">
+                        {workflowPlayerInsights.map((insight) => {
+                          const percentile = Number(insight.performance_percentile || 0);
+                          const accent = insightScoreColor(percentile);
+                          return (
+                            <button
+                              type="button"
+                              key={insight.insight_type}
+                              className="workflow-insight-card workflow-insight-card-link"
+                              style={insight.eligible ? { borderColor: `${accent}55`, boxShadow: `inset 0 0 0 1px ${accent}22` } : undefined}
+                              onClick={() => openWorkflowPlayersSubview(playerInsightDestinationTab(insight.insight_type))}
+                            >
+                              <div className="workflow-insight-card-header">
+                                <span>{insight.title}</span>
+                              </div>
+                              {insight.eligible ? (
+                                <>
+                                  <div className="workflow-insight-score-row">
+                                    <span className="workflow-insight-score" style={{ color: accent }}>{insightSummaryLabel(percentile)}</span>
+                                    <span className="workflow-insight-grade" style={{ backgroundColor: `${accent}22`, color: accent }}>{insightScoreLabel(percentile)}</span>
+                                  </div>
+                                  <div className="workflow-insight-value">{insight.player_value_label}</div>
+                                  <div className="workflow-subtle-note">{`${insight.population_size} eligible players in population.`}</div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="workflow-insight-unavailable">Not enough data yet</div>
+                                  <div className="workflow-subtle-note">{insight.ineligible_reason || 'This comparison is not available yet.'}</div>
+                                </>
+                              )}
+                              <div className="workflow-insight-footer">
+                                <span className="workflow-insight-link-hint">Open player population view</span>
+                                <span className="workflow-insight-info-icon" aria-hidden="true">ⓘ</span>
+                              </div>
+                              <div className="workflow-insight-details">
+                                <div className="workflow-subtle-note">{insight.description}</div>
+                                <div className="workflow-insight-detail-list">
+                                  {(insight.details || []).map((detail) => (
+                                    <div key={`${insight.insight_type}-${detail.label}`} className="workflow-insight-detail-row">
+                                      <span>{detail.label}</span>
+                                      <span>{detail.value}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
-                    ))}
+                    ) : null}
+                    <div className="workflow-card-subtitle"><span>Usage signals</span></div>
+                    {workflowPlayerUsagePills.length === 0 ? (
+                      <div className="workflow-subtle-note">No low-usage flags were triggered for hotkeys or queued orders.</div>
+                    ) : (
+                      <div className="workflow-pattern-pills">
+                        {workflowPlayerUsagePills.map((pill) => (
+                          <span key={pill.key} className={pill.className} title={pill.title}>{pill.label}</span>
+                        ))}
+                      </div>
+                    )}
                     <div className="workflow-card-subtitle">
                       <span>Distinctive outliers</span>
                       <HelpTooltip text={PLAYER_OUTLIER_HELP} label="Outlier calculation explanation" />
                     </div>
-                    <div className="workflow-subtle-note">Same-race, human-only baselines. Protoss outliers exclude non-Protoss spell leakage. Targeted orders use raw-instance share; tech/upgrades use per-game incidence.</div>
+                    <div className="workflow-subtle-note">Same-race, human-only baselines. Items are shown in one list and prefixed by command family.</div>
                     {workflowPlayerOutliersLoading ? <div className="chart-empty">Loading outliers...</div> : null}
                     {!workflowPlayerOutliersLoading && workflowPlayerOutliersError ? <div className="chart-empty">{workflowPlayerOutliersError}</div> : null}
-                    {!workflowPlayerOutliersLoading && !workflowPlayerOutliersError && workflowPlayerOutlierGroups.length === 0 ? (
+                    {!workflowPlayerOutliersLoading && !workflowPlayerOutliersError && workflowPlayerOutlierItems.length === 0 ? (
                       <div className="chart-empty">No outliers crossed current thresholds.</div>
                     ) : null}
-                    {!workflowPlayerOutliersLoading && !workflowPlayerOutliersError && workflowPlayerOutlierGroups.map(([category, items]) => (
-                      <div key={category} className="workflow-outlier-group">
-                        <div className="workflow-card-subtitle">
-                          <span>{category}</span>
-                          <HelpTooltip
-                            text={OUTLIER_CATEGORY_SUBTITLE[category] || 'Compared against same-race human baseline.'}
-                            label={`${category} baseline definition`}
-                          />
-                        </div>
-                        {items.map((item) => (
-                          <div key={`${item.category}-${item.race}-${item.name}`} className="workflow-pattern-row">
-                            <span>{item.pretty_name}</span>
-                            <span className="workflow-outlier-expl">
-                              <span className="workflow-outlier-rate">{`${((Number(item.player_rate) || 0) * 100).toFixed(0)}%`}</span>
-                              <span>you</span>
-                              <span>vs</span>
-                              <span className="workflow-outlier-rate-muted">{`${((Number(item.baseline_rate) || 0) * 100).toFixed(0)}%`}</span>
-                              <span>baseline</span>
-                              {(item.qualified_by || []).map((qualifier) => (
-                                <span key={`${item.name}-${qualifier}`} className={outlierQualifierClassName(qualifier)}>{qualifier}</span>
-                              ))}
+                    {!workflowPlayerOutliersLoading && !workflowPlayerOutliersError && workflowPlayerOutlierItems.map((item) => (
+                      <div key={`${item.category}-${item.race}-${item.name}`} className="workflow-pattern-row">
+                        <span>{`${item.category}: ${item.pretty_name}`}</span>
+                        <span className="workflow-outlier-expl">
+                          <span className="workflow-outlier-rate">{`${((Number(item.player_rate) || 0) * 100).toFixed(0)}%`}</span>
+                          <span>you</span>
+                          <span>vs</span>
+                          <span className="workflow-outlier-rate-muted">{`${((Number(item.baseline_rate) || 0) * 100).toFixed(0)}%`}</span>
+                          <span>baseline</span>
+                          {(item.qualified_by || []).map((qualifier) => (
+                            <span key={`${item.name}-${qualifier}`} className={outlierQualifierClassName(qualifier)}>{qualifier}</span>
+                          ))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="workflow-card workflow-card-recent-games">
+                    <div className="workflow-card-title"><span>Recent games</span></div>
+                    {workflowPlayerRecentGamesLoading ? <div className="chart-empty">Loading recent games...</div> : null}
+                    {!workflowPlayerRecentGamesLoading && workflowPlayerRecentGamesError ? <div className="chart-empty">{workflowPlayerRecentGamesError}</div> : null}
+                    {!workflowPlayerRecentGamesLoading && !workflowPlayerRecentGamesError && workflowPlayerRecentGames.length === 0 ? (
+                      <div className="chart-empty">No recent games found for this player.</div>
+                    ) : null}
+                    {!workflowPlayerRecentGamesLoading && !workflowPlayerRecentGamesError && workflowPlayerRecentGames.slice(0, 6).map((g) => (
+                      <button key={g.replay_id} className="workflow-recent-game-card" onClick={() => openWorkflowGame(g.replay_id)}>
+                        <div className="workflow-recent-game-header">
+                          <span>{formatRelativeReplayDate(g.replay_date)}</span>
+                          <span>{g.map_name}</span>
+                          {g.current_player?.race ? (
+                            <span className="workflow-recent-game-race">
+                              {getRaceIcon(g.current_player.race) ? (
+                                <img
+                                  src={getRaceIcon(g.current_player.race)}
+                                  alt={g.current_player.race}
+                                  className="unit-icon-inline workflow-recent-game-race-icon"
+                                />
+                              ) : null}
+                              <span>{g.current_player.race}</span>
                             </span>
+                          ) : (
+                            <span className="workflow-empty-inline">-</span>
+                          )}
+                          <span>{formatDuration(g.duration_seconds)}</span>
+                        </div>
+                        <div className="workflow-subtle-note">{renderPlayersMatchup(g.players_label || '')}</div>
+                        <div className="workflow-recent-game-meta">
+                          {g.current_player?.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+                        </div>
+                        {filterSummaryPillPatterns(g.current_player?.detected_patterns).length > 0 ? (
+                          <div className="workflow-pattern-pills workflow-pattern-pills-compact">
+                            {filterSummaryPillPatterns(g.current_player?.detected_patterns).map((pattern, idx) => renderPatternPill(pattern, `recent-${g.replay_id}-${idx}`))}
                           </div>
-                        ))}
-                      </div>
+                        ) : null}
+                      </button>
                     ))}
                   </div>
-                  <div className="workflow-card">
-                    <div className="workflow-card-title"><span>First-unit delay</span></div>
-                    <div className="workflow-subtle-note">
-                      Derived from building-ready to first matching unit delay across all your games. Lower tends to be better.
-                    </div>
-                    <div className="workflow-subtle-note">
-                      Cutoff rules: only build/train/morph commands at or before 7:00 are included, and matching units must be within 20s of building ready.
-                    </div>
-                    {workflowPlayerDelayInsightLoading ? <div className="chart-empty">Loading first-unit delay...</div> : null}
-                    {!workflowPlayerDelayInsightLoading && workflowPlayerDelayInsightError ? <div className="chart-empty">{workflowPlayerDelayInsightError}</div> : null}
-                    {!workflowPlayerDelayInsightLoading && !workflowPlayerDelayInsightError && (Number(workflowPlayerDelayInsight?.sample_count) || 0) === 0 ? (
-                      <div className="chart-empty">No valid first-unit delay samples for this player yet.</div>
-                    ) : null}
-                    {!workflowPlayerDelayInsightLoading && !workflowPlayerDelayInsightError && (Number(workflowPlayerDelayInsight?.sample_count) || 0) > 0 ? (
-                      <>
-                        <div className="workflow-metric-compare-row workflow-metric-compare-row-simple">
-                          <span>Average delay</span>
-                          <span>{`${Number(workflowPlayerDelayInsight?.average_delay_seconds || 0).toFixed(2)}s`}</span>
-                        </div>
-                        <div className="workflow-metric-compare-row workflow-metric-compare-row-simple">
-                          <span>Samples</span>
-                          <span>{Number(workflowPlayerDelayInsight?.sample_count || 0)}</span>
-                        </div>
-                        <div className="workflow-metric-compare-row workflow-metric-compare-row-simple">
-                          <span>Range</span>
-                          <span>{`${Number(workflowPlayerDelayInsight?.min_delay_seconds || 0)}s - ${Number(workflowPlayerDelayInsight?.max_delay_seconds || 0)}s`}</span>
-                        </div>
-                        <div className="workflow-card-subtitle"><span>Building to unit averages</span></div>
-                        {(workflowPlayerDelayInsight?.pairs || []).map((pair) => (
-                          <div key={`${pair.building_name}-${pair.unit_name}`} className="workflow-pattern-row">
-                            <span>{`${pair.building_name} -> ${pair.unit_name}`}</span>
-                            <span>{`${Number(pair.average_delay_seconds || 0).toFixed(2)}s (${Number(pair.sample_count || 0)} samples)`}</span>
-                          </div>
-                        ))}
-                      </>
-                    ) : null}
-                  </div>
-                  <div className="workflow-card">
-                    <div className="workflow-card-title"><span>Go to Recent Games</span></div>
-                    {workflowPlayer.recent_games?.slice(0, 6).map((g) => (
-                      <div key={g.replay_id}>
-                        <button className="workflow-link-btn" onClick={() => openWorkflowGame(g.replay_id)}>{formatRelativeReplayDate(g.replay_date)} - {g.map_name}</button>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="workflow-card">
+                  <div className="workflow-card workflow-card-chat-summary">
                     <div className="workflow-card-title"><span>Chat Summary</span></div>
-                    {(Number(workflowPlayer.chat_summary?.total_messages) || 0) === 0 ? (
+                    {workflowPlayerChatSummaryLoading ? <div className="chart-empty">Loading chat summary...</div> : null}
+                    {!workflowPlayerChatSummaryLoading && workflowPlayerChatSummaryError ? <div className="chart-empty">{workflowPlayerChatSummaryError}</div> : null}
+                    {!workflowPlayerChatSummaryLoading && !workflowPlayerChatSummaryError && (Number(workflowPlayerChatSummary?.total_messages) || 0) === 0 ? (
                       <div className="chart-empty">No chat messages found for this player in ingested games.</div>
                     ) : (
+                      !workflowPlayerChatSummaryLoading && !workflowPlayerChatSummaryError && workflowPlayerChatSummary ? (
                       <>
                         <div className="workflow-subtle-note">
-                          {`${workflowPlayer.chat_summary?.total_messages || 0} messages across ${workflowPlayer.chat_summary?.games_with_chat || 0} games, ${workflowPlayer.chat_summary?.distinct_terms || 0} distinct terms after cleanup.`}
+                          {`${workflowPlayerChatSummary?.total_messages || 0} messages across ${workflowPlayerChatSummary?.games_with_chat || 0} games, ${workflowPlayerChatSummary?.distinct_terms || 0} distinct terms after cleanup.`}
                         </div>
-                        <div className="workflow-card-subtitle"><span>Inferred tone</span></div>
-                        {(workflowPlayer.chat_summary?.tone_hints || []).map((hint, idx) => (
-                          <div key={`player-chat-tone-${idx}`} className="workflow-pattern-row">
-                            <span>{hint}</span>
-                          </div>
-                        ))}
                         <div className="workflow-card-subtitle"><span>Top terms</span></div>
-                        {(workflowPlayer.chat_summary?.top_terms || []).length === 0 ? (
+                        {(workflowPlayerChatSummary?.top_terms || []).length === 0 ? (
                           <div className="chart-empty">Not enough messages to infer common terms.</div>
                         ) : (
                           <div className="workflow-pattern-pills">
-                            {(workflowPlayer.chat_summary?.top_terms || []).map((item) => (
+                            {(workflowPlayerChatSummary?.top_terms || []).map((item) => (
                               <span key={`player-chat-term-${item.term}`} className="workflow-pattern-pill">
                                 <span>{item.term}</span>
                                 <span>{`x${item.count}`}</span>
@@ -3235,26 +4100,14 @@ function App() {
                             ))}
                           </div>
                         )}
-                        <div className="workflow-card-subtitle"><span>Common phrases</span></div>
-                        {(workflowPlayer.chat_summary?.top_phrases || []).length === 0 ? (
-                          <div className="chart-empty">Not enough messages to infer common phrases.</div>
-                        ) : (
-                          <div className="workflow-pattern-pills">
-                            {(workflowPlayer.chat_summary?.top_phrases || []).map((item) => (
-                              <span key={`player-chat-phrase-${item.term}`} className="workflow-pattern-pill workflow-feature-pill">
-                                <span>{item.term}</span>
-                                <span>{`x${item.count}`}</span>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        <div className="workflow-card-subtitle"><span>Sample messages</span></div>
-                        {(workflowPlayer.chat_summary?.example_messages || []).map((msg, idx) => (
+                        <div className="workflow-card-subtitle"><span>Last 5 messages</span></div>
+                        {(workflowPlayerChatSummary?.example_messages || []).map((msg, idx) => (
                           <div key={`player-chat-example-${idx}`} className="workflow-event-row">
                             <span>{msg}</span>
                           </div>
                         ))}
                       </>
+                      ) : null
                     )}
                   </div>
                 </div>
@@ -3427,6 +4280,36 @@ function App() {
         />
       )}
 
+      {showGlobalReplayFilter && (
+        <GlobalReplayFilterModal
+          config={globalReplayFilterConfig}
+          options={globalReplayFilterOptions}
+          saving={globalReplayFilterSaving}
+          error={globalReplayFilterError}
+          onClose={() => setShowGlobalReplayFilter(false)}
+          onSave={handleSaveGlobalReplayFilter}
+        />
+      )}
+
+      {showIngestPanel && (
+        <IngestModal
+          ingestForm={ingestForm}
+          ingestMessage={ingestMessage}
+          ingestStatus={ingestStatus}
+          ingestLogs={ingestLogs}
+          ingestInputDir={ingestInputDir}
+          ingestInputDirDirty={String(ingestInputDir || '').trim() !== String(savedIngestInputDir || '').trim()}
+          ingestSettingsLoading={ingestSettingsLoading}
+          ingestSettingsSaving={ingestSettingsSaving}
+          ingestSocketState={ingestSocketState}
+          onClose={() => setShowIngestPanel(false)}
+          onSubmit={handleIngestSubmit}
+          onChange={setIngestForm}
+          onInputDirChange={setIngestInputDir}
+          onSaveInputDir={handleSaveIngestInputDir}
+        />
+      )}
+
       {editingWidget && (
         <EditWidgetFullscreen
           widget={editingWidget}
@@ -3439,13 +4322,16 @@ function App() {
         />
       )}
 
+      {autoIngestNotice ? (
+        <div className="ingest-toast">{autoIngestNotice}</div>
+      ) : null}
+
       <div className="app-footer">
         <div className="footer-left">
           {replayCount !== null
             ? `${replayCount.toLocaleString()} replays in database. You can trigger an ingestion using the button above.`
             : 'Loading replay count...'}
         </div>
-        {ingestMessage && <div className="footer-right">{ingestMessage}</div>}
       </div>
     </div>
   );

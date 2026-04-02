@@ -30,6 +30,11 @@ var (
 			return detector
 		},
 		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewNeverUsedHotkeysPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
 			detector := detectors.NewQuickFactoryPlayerDetector()
 			detector.SetReplayPlayerID(replayPlayerID)
 			return detector
@@ -111,6 +116,11 @@ var (
 		},
 		func(replayPlayerID byte) core.Detector {
 			detector := detectors.NewExpaBeforeBarracksPlayerDetector()
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		},
+		func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewViewportMultitaskingPlayerDetector()
 			detector.SetReplayPlayerID(replayPlayerID)
 			return detector
 		},

@@ -87,7 +87,9 @@ func TestBattlecruisersAndCarriersDetectors(t *testing.T) {
 }
 
 func TestNeverUpgradedAndNeverResearchedDetectors(t *testing.T) {
-	neverBuilder := NewTestReplayBuilder().WithPlayer(1, "P1", "Protoss", 1)
+	neverBuilder := NewTestReplayBuilder().
+		WithPlayer(1, "P1", "Protoss", 1).
+		WithDurationSeconds(secondsTenMinutes)
 	replay1, players1 := neverBuilder.Build()
 	upgradedNever := NewNeverUpgradedPlayerDetector()
 	upgradedNever.SetReplayPlayerID(1)
@@ -105,8 +107,30 @@ func TestNeverUpgradedAndNeverResearchedDetectors(t *testing.T) {
 		t.Fatalf("expected never researched detection")
 	}
 
+	shortBuilder := NewTestReplayBuilder().
+		WithPlayer(1, "P1", "Protoss", 1).
+		WithDurationSeconds(secondsTenMinutes - 1)
+	shortReplay, shortPlayers := shortBuilder.Build()
+
+	shortUpgradedNever := NewNeverUpgradedPlayerDetector()
+	shortUpgradedNever.SetReplayPlayerID(1)
+	shortUpgradedNever.Initialize(shortReplay, shortPlayers)
+	shortUpgradedNever.Finalize()
+	if shortUpgradedNever.ShouldSave() {
+		t.Fatalf("did not expect never upgraded detection for sub-10-minute replay")
+	}
+
+	shortResearchedNever := NewNeverResearchedPlayerDetector()
+	shortResearchedNever.SetReplayPlayerID(1)
+	shortResearchedNever.Initialize(shortReplay, shortPlayers)
+	shortResearchedNever.Finalize()
+	if shortResearchedNever.ShouldSave() {
+		t.Fatalf("did not expect never researched detection for sub-10-minute replay")
+	}
+
 	usedBuilder := NewTestReplayBuilder().
 		WithPlayer(1, "P1", "Protoss", 1).
+		WithDurationSeconds(secondsTenMinutes).
 		WithCommand(1, 120, "Upgrade", models.GeneralUnitForge).
 		WithCommand(1, 140, "Tech", models.GeneralUnitGateway)
 	replay2, players2 := usedBuilder.Build()

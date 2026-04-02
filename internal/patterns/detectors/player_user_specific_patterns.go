@@ -8,6 +8,8 @@ import (
 const (
 	secondsFourMinutes  = 4 * 60
 	secondsFiveMinutes  = 5 * 60
+	secondsSevenMinutes = 7 * 60
+	secondsTenMinutes   = 10 * 60
 	secondsThirtyMinute = 30 * 60
 )
 
@@ -427,7 +429,9 @@ func (d *NeverUpgradedPlayerDetector) GetResult() *core.PatternResult {
 }
 
 func (d *NeverUpgradedPlayerDetector) ShouldSave() bool {
-	return d.IsFinished() && !d.didUpgrade
+	return d.IsFinished() &&
+		d.HasReplayDurationAtLeast(secondsTenMinutes) &&
+		!d.didUpgrade
 }
 
 type NeverResearchedPlayerDetector struct {
@@ -462,7 +466,9 @@ func (d *NeverResearchedPlayerDetector) GetResult() *core.PatternResult {
 }
 
 func (d *NeverResearchedPlayerDetector) ShouldSave() bool {
-	return d.IsFinished() && !d.didResearch
+	return d.IsFinished() &&
+		d.HasReplayDurationAtLeast(secondsTenMinutes) &&
+		!d.didResearch
 }
 
 type HatchBeforePoolPlayerDetector struct {

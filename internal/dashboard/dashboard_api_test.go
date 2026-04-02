@@ -305,6 +305,125 @@ WHERE EXISTS (
 	}
 }
 
+func TestDashboardAPI_WorkflowPlayerChatSummary(t *testing.T) {
+	dash := newTestDashboard(t)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/workflow/players/soma/chat-summary", nil)
+	req = mux.SetURLVars(req, map[string]string{"playerKey": "soma"})
+	dash.handlerWorkflowPlayerChatSummary(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("workflow player chat summary status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp struct {
+		PlayerKey      string `json:"player_key"`
+		SummaryVersion string `json:"summary_version"`
+		ChatSummary    struct {
+			TotalMessages int64 `json:"total_messages"`
+		} `json:"chat_summary"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("workflow player chat summary json: %v", err)
+	}
+	if resp.PlayerKey != "soma" {
+		t.Fatalf("expected player key soma, got %q", resp.PlayerKey)
+	}
+	if resp.SummaryVersion == "" {
+		t.Fatalf("expected summary version")
+	}
+	if resp.ChatSummary.TotalMessages < 0 {
+		t.Fatalf("expected non-negative total messages, got %d", resp.ChatSummary.TotalMessages)
+	}
+}
+
+func TestDashboardAPI_IngestSettingsUpdateAndGet(t *testing.T) {
+	dash := newTestDashboard(t)
+	replayDir, err := resolveReplayDir()
+	if err != nil {
+		t.Fatalf("resolveReplayDir: %v", err)
+	}
+
+	body := []byte(fmt.Sprintf(`{"input_dir":%q}`, replayDir))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, "/api/ingest/settings", bytes.NewReader(body))
+	dash.handlerUpdateIngestSettings(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("update ingest settings status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/api/ingest/settings", nil)
+	dash.handlerGetIngestSettings(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get ingest settings status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp ingestSettingsResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("get ingest settings json: %v", err)
+	}
+	if resp.InputDir != replayDir {
+		t.Fatalf("expected input dir %q, got %q", replayDir, resp.InputDir)
+	}
+}
+
+func TestDashboardAPI_IngestSettingsRejectsFolderWithoutReplays(t *testing.T) {
+	dash := newTestDashboard(t)
+	emptyDir := t.TempDir()
+
+	body := []byte(fmt.Sprintf(`{"input_dir":%q}`, emptyDir))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, "/api/ingest/settings", bytes.NewReader(body))
+	dash.handlerUpdateIngestSettings(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected bad request, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "does not contain any .rep files") {
+		t.Fatalf("expected missing replay files error, got %q", rec.Body.String())
+	}
+}
+
+func TestDashboardAPI_IngestUsesStoredInputDir(t *testing.T) {
+	dash := newTestDashboard(t)
+	replayDir, err := resolveReplayDir()
+	if err != nil {
+		t.Fatalf("resolveReplayDir: %v", err)
+	}
+	if err := dash.setIngestInputDir(context.Background(), replayDir); err != nil {
+		t.Fatalf("setIngestInputDir: %v", err)
+	}
+
+	dash.ingestMu.Lock()
+	dash.ingestRunning = true
+	dash.ingestMu.Unlock()
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/ingest", bytes.NewReader([]byte(`{}`)))
+	dash.handlerIngest(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("ingest status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp struct {
+		Started    bool   `json:"started"`
+		InProgress bool   `json:"in_progress"`
+		InputDir   string `json:"input_dir"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("ingest json: %v", err)
+	}
+	if resp.Started {
+		t.Fatalf("expected ingest not to start while already running")
+	}
+	if !resp.InProgress {
+		t.Fatalf("expected ingest response to indicate in progress")
+	}
+	if resp.InputDir != replayDir {
+		t.Fatalf("expected stored input dir %q, got %q", replayDir, resp.InputDir)
+	}
+}
+
 func newTestDashboard(t *testing.T) *Dashboard {
 	t.Helper()
 	ctx := context.Background()
@@ -339,12 +458,15 @@ func newTestDashboard(t *testing.T) *Dashboard {
 	}
 	t.Cleanup(func() {
 		_ = dash.db.Close()
+		if dash.replayScopedDB != nil {
+			_ = dash.replayScopedDB.Close()
+		}
 	})
 	return dash
 }
 
 func ingestFiles(ctx context.Context, store *storage.SQLiteStorage, files []fileops.FileInfo) error {
-	dataChan, errChan := store.StartIngestion(ctx)
+	dataChan, errChan := store.StartIngestion(ctx, storage.IngestionHooks{})
 	for i := range files {
 		fi := files[i]
 		replay := parser.CreateReplayFromFileInfo(fi.Path, fi.Name, fi.Size, fi.Checksum)
