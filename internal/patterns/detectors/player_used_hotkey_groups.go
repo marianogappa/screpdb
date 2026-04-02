@@ -56,3 +56,42 @@ func (d *UsedHotkeyGroupsPlayerDetector) GetResult() *core.PatternResult {
 func (d *UsedHotkeyGroupsPlayerDetector) ShouldSave() bool {
 	return d.IsFinished() && len(d.groups) > 0
 }
+
+type NeverUsedHotkeysPlayerDetector struct {
+	BasePlayerDetector
+	usedHotkeys bool
+}
+
+func NewNeverUsedHotkeysPlayerDetector() *NeverUsedHotkeysPlayerDetector {
+	return &NeverUsedHotkeysPlayerDetector{}
+}
+
+func (d *NeverUsedHotkeysPlayerDetector) Name() string {
+	return "Never used hotkeys"
+}
+
+func (d *NeverUsedHotkeysPlayerDetector) ProcessCommand(command *models.Command) bool {
+	if !d.ShouldProcessCommand(command) {
+		return false
+	}
+	if command.HotkeyGroup != nil {
+		d.usedHotkeys = true
+	}
+	return false
+}
+
+func (d *NeverUsedHotkeysPlayerDetector) Finalize() { d.SetFinished(true) }
+
+func (d *NeverUsedHotkeysPlayerDetector) GetResult() *core.PatternResult {
+	if !d.ShouldSave() {
+		return nil
+	}
+	valueBool := true
+	return d.BuildPlayerResult(d.Name(), &valueBool, nil, nil, nil)
+}
+
+func (d *NeverUsedHotkeysPlayerDetector) ShouldSave() bool {
+	return d.IsFinished() &&
+		d.HasReplayDurationAtLeast(secondsSevenMinutes) &&
+		!d.usedHotkeys
+}

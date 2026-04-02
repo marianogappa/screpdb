@@ -131,7 +131,7 @@ func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool, cleanDashboa
 }
 
 // StartIngestion starts the ingestion process with batching
-func (s *SQLiteStorage) StartIngestion(ctx context.Context) (ReplayDataChannel, <-chan error) {
+func (s *SQLiteStorage) StartIngestion(ctx context.Context, hooks IngestionHooks) (ReplayDataChannel, <-chan error) {
 	dataChan := make(ReplayDataChannel, 100) // Buffered channel
 	errChan := make(chan error, 1)
 
@@ -151,12 +151,23 @@ func (s *SQLiteStorage) StartIngestion(ctx context.Context) (ReplayDataChannel, 
 				// Process this replay completely before moving to the next
 				if err := s.storeReplayWithBatching(ctx, data); err != nil {
 					if isDuplicateReplayError(err) {
-						fmt.Printf("Skipping duplicate replay: %v\n", err)
+						if hooks.OnDuplicateReplay != nil {
+							hooks.OnDuplicateReplay(err)
+						} else {
+							fmt.Printf("Skipping duplicate replay: %v\n", err)
+						}
 						continue
 					}
-					fmt.Printf("Error storing replay: %v\n", err)
+					if hooks.OnStoreError != nil {
+						hooks.OnStoreError(err)
+					} else {
+						fmt.Printf("Error storing replay: %v\n", err)
+					}
 					errChan <- err
 					return
+				}
+				if hooks.OnReplayStored != nil {
+					hooks.OnReplayStored()
 				}
 
 			case <-ctx.Done():

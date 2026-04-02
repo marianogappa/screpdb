@@ -9,7 +9,8 @@ import (
 func TestUsedHotkeyGroupsPlayerDetector(t *testing.T) {
 	builder := NewTestReplayBuilder().
 		WithPlayer(1, "Player1", "Terran", 1).
-		WithPlayer(2, "Player2", "Zerg", 2)
+		WithPlayer(2, "Player2", "Zerg", 2).
+		WithDurationSeconds(secondsSevenMinutes)
 	replay, players := builder.Build()
 
 	detector := NewUsedHotkeyGroupsPlayerDetector()
@@ -56,5 +57,61 @@ func TestUsedHotkeyGroupsPlayerDetector(t *testing.T) {
 	}
 	if result.ValueString == nil || *result.ValueString != "1,3" {
 		t.Fatalf("unexpected value string: %v", result.ValueString)
+	}
+}
+
+func TestNeverUsedHotkeysPlayerDetector(t *testing.T) {
+	builder := NewTestReplayBuilder().
+		WithPlayer(1, "Player1", "Terran", 1).
+		WithDurationSeconds(secondsSevenMinutes)
+	replay, players := builder.Build()
+
+	detector := NewNeverUsedHotkeysPlayerDetector()
+	detector.SetReplayPlayerID(1)
+	detector.Initialize(replay, players)
+	detector.Finalize()
+
+	if !detector.ShouldSave() {
+		t.Fatalf("expected never used hotkeys detection")
+	}
+}
+
+func TestNeverUsedHotkeysPlayerDetector_RequiresMinimumDuration(t *testing.T) {
+	builder := NewTestReplayBuilder().
+		WithPlayer(1, "Player1", "Terran", 1).
+		WithDurationSeconds(secondsSevenMinutes - 1)
+	replay, players := builder.Build()
+
+	detector := NewNeverUsedHotkeysPlayerDetector()
+	detector.SetReplayPlayerID(1)
+	detector.Initialize(replay, players)
+	detector.Finalize()
+
+	if detector.ShouldSave() {
+		t.Fatalf("did not expect never used hotkeys detection for sub-7-minute replay")
+	}
+}
+
+func TestNeverUsedHotkeysPlayerDetector_SkipsWhenHotkeysWereUsed(t *testing.T) {
+	builder := NewTestReplayBuilder().
+		WithPlayer(1, "Player1", "Terran", 1).
+		WithDurationSeconds(secondsSevenMinutes).
+		WithCommand(1, 30, "Hotkey", "")
+	replay, players := builder.Build()
+
+	hotkeyCommand := builder.GetCommands()[0]
+	group := byte(4)
+	hotkeyCommand.HotkeyGroup = &group
+
+	detector := NewNeverUsedHotkeysPlayerDetector()
+	detector.SetReplayPlayerID(1)
+	detector.Initialize(replay, players)
+	for _, cmd := range builder.GetCommands() {
+		detector.ProcessCommand(cmd)
+	}
+	detector.Finalize()
+
+	if detector.ShouldSave() {
+		t.Fatalf("did not expect never used hotkeys detection when a hotkey was used")
 	}
 }

@@ -17,7 +17,7 @@ type TestReplayBuilder struct {
 func NewTestReplayBuilder() *TestReplayBuilder {
 	return &TestReplayBuilder{
 		replay: &models.Replay{
-			ID:        1,
+			ID:         1,
 			ReplayDate: time.Now(),
 		},
 		players:  []*models.Player{},
@@ -51,6 +51,11 @@ func (b *TestReplayBuilder) WithCommand(playerID byte, seconds int, actionType, 
 		Player:               b.findPlayer(playerID),
 	}
 	b.commands = append(b.commands, cmd)
+	return b
+}
+
+func (b *TestReplayBuilder) WithDurationSeconds(durationSeconds int) *TestReplayBuilder {
+	b.replay.DurationSeconds = durationSeconds
 	return b
 }
 
@@ -96,5 +101,3 @@ func intPtr(i int) *int {
 func boolPtr(v bool) *bool {
 	return &v
 }
-
-

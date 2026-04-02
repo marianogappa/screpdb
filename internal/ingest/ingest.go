@@ -3,7 +3,6 @@ package ingest
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"runtime"
@@ -11,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/parser"
 	"github.com/marianogappa/screpdb/internal/storage"
@@ -31,13 +29,15 @@ type Config struct {
 	CleanDashboard   bool
 	HandleSignals    bool
 	UseColor         bool
+	Logger           *Logger
 }
 
 func Run(ctx context.Context, cfg Config) error {
 	cfg = withDefaults(cfg)
+	logger := cfg.Logger
 
 	// Initialize storage
-	logInfo(cfg.UseColor, "Using SQLite storage at %s", cfg.SQLitePath)
+	logger.Infof("Using SQLite storage at %s", cfg.SQLitePath)
 	store, err := storage.NewSQLiteStorage(cfg.SQLitePath)
 	if err != nil {
 		return fmt.Errorf("failed to create SQLite storage: %w", err)
@@ -50,10 +50,10 @@ func Run(ctx context.Context, cfg Config) error {
 	}
 
 	if cfg.Watch {
-		return runWatchMode(ctx, store, cfg)
+		return runWatchMode(ctx, store, cfg, logger)
 	}
 
-	return runBatchMode(ctx, store, cfg)
+	return runBatchMode(ctx, store, cfg, logger)
 }
 
 func withDefaults(cfg Config) Config {
@@ -63,17 +63,27 @@ func withDefaults(cfg Config) Config {
 	if cfg.SQLitePath == "" {
 		cfg.SQLitePath = "screp.db"
 	}
-	color.NoColor = !cfg.UseColor
+	if cfg.Logger == nil {
+		cfg.Logger = NewLogger(os.Stderr, cfg.UseColor, nil)
+	}
 	return cfg
 }
 
-func runWatchMode(ctx context.Context, store storage.Storage, cfg Config) error {
-	logInfo(cfg.UseColor, "Watching directory: %s", cfg.InputDir)
-	logInfo(cfg.UseColor, "Using %d CPU cores for parsing", runtime.GOMAXPROCS(0))
-	logWarn(cfg.UseColor, "Press Ctrl+C to stop...")
+func runWatchMode(ctx context.Context, store storage.Storage, cfg Config, logger *Logger) error {
+	logger.Infof("Watching directory: %s", cfg.InputDir)
+	logger.Infof("Using %d CPU cores for parsing", runtime.GOMAXPROCS(0))
+	logger.Warnf("Press Ctrl+C to stop...")
 
 	// Start the ingestion process
-	dataChan, errChan := store.StartIngestion(ctx)
+	dataChan, errChan := store.StartIngestion(ctx, storage.IngestionHooks{
+		OnReplayStored: logger.Progress,
+		OnDuplicateReplay: func(err error) {
+			logger.Warnf("Skipping duplicate replay: %v", err)
+		},
+		OnStoreError: func(err error) {
+			logger.Errorf("Error storing replay: %v", err)
+		},
+	})
 
 	watcher, err := fileops.NewFileWatcher(cfg.InputDir)
 	if err != nil {
@@ -98,21 +108,21 @@ func runWatchMode(ctx context.Context, store storage.Storage, cfg Config) error 
 	for {
 		select {
 		case fileInfo := <-watcher.Events():
-			logSuccess(cfg.UseColor, "New file detected: %s", fileInfo.Name)
+			logger.Successf("New file detected: %s", fileInfo.Name)
 
 			// Process file concurrently
 			g.Go(func() error {
 				if err := processFileToChannel(gCtx, dataChan, &fileInfo); err != nil {
-					log.Printf("Error processing file %s: %v", fileInfo.Name, err)
+					logger.Errorf("Error processing file %s: %v", fileInfo.Name, err)
 					return nil // Don't stop processing on errors
 				}
 
-				logSuccess(cfg.UseColor, "Successfully processed: %s", fileInfo.Name)
+				logger.Successf("Successfully processed: %s", fileInfo.Name)
 				return nil
 			})
 
 		case err := <-watcher.Errors():
-			logError(cfg.UseColor, "Watcher error: %v", err)
+			logger.Errorf("Watcher error: %v", err)
 
 		case err := <-errChan:
 			if err != nil {
@@ -124,19 +134,27 @@ func runWatchMode(ctx context.Context, store storage.Storage, cfg Config) error 
 			return ctx.Err()
 
 		case <-signalChan(sigChan):
-			logWarn(cfg.UseColor, "\nShutting down...")
+			logger.Warnf("Shutting down...")
 			close(dataChan)
 			return nil
 		}
 	}
 }
 
-func runBatchMode(ctx context.Context, store storage.Storage, cfg Config) error {
-	logInfo(cfg.UseColor, "Scanning directory: %s", cfg.InputDir)
-	logInfo(cfg.UseColor, "Using %d CPU cores for parsing", runtime.GOMAXPROCS(0))
+func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger *Logger) error {
+	logger.Infof("Scanning directory: %s", cfg.InputDir)
+	logger.Infof("Using %d CPU cores for parsing", runtime.GOMAXPROCS(0))
 
 	// Start the ingestion process
-	dataChan, errChan := store.StartIngestion(ctx)
+	dataChan, errChan := store.StartIngestion(ctx, storage.IngestionHooks{
+		OnReplayStored: logger.Progress,
+		OnDuplicateReplay: func(err error) {
+			logger.Warnf("Skipping duplicate replay: %v", err)
+		},
+		OnStoreError: func(err error) {
+			logger.Errorf("Error storing replay: %v", err)
+		},
+	})
 
 	// Get all replay files
 	files, err := fileops.GetReplayFiles(cfg.InputDir)
@@ -144,7 +162,7 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config) error 
 		return fmt.Errorf("failed to get replay files: %w", err)
 	}
 
-	logSuccess(cfg.UseColor, "Found %d replay files", len(files))
+	logger.Successf("Found %d replay files", len(files))
 
 	// Sort by modification time (newest first)
 	fileops.SortFilesByModTime(files)
@@ -165,24 +183,24 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config) error 
 	}
 
 	filteredFiles := fileops.FilterFilesByDate(files, upToDatePtr, upToMonthsPtr)
-	logSuccess(cfg.UseColor, "After date filtering: %d files", len(filteredFiles))
+	logger.Successf("After date filtering: %d files", len(filteredFiles))
 
 	// Apply count limit
 	if cfg.StopAfterN > 0 {
 		filteredFiles = fileops.LimitFiles(filteredFiles, cfg.StopAfterN)
-		logSuccess(cfg.UseColor, "Limited to %d files", len(filteredFiles))
+		logger.Successf("Limited to %d files", len(filteredFiles))
 	}
 
 	// Batch check for existing replays before processing
-	logWarn(cfg.UseColor, "Checking for existing replays...")
-	filesToProcess, err := batchCheckExistingReplays(ctx, store, filteredFiles)
+	logger.Warnf("Checking for existing replays...")
+	filesToProcess, err := batchCheckExistingReplays(ctx, store, filteredFiles, logger)
 	if err != nil {
 		return fmt.Errorf("failed to check existing replays: %w", err)
 	}
 
 	skippedCount := len(filteredFiles) - len(filesToProcess)
-	logWarn(cfg.UseColor, "Skipping %d existing replays", skippedCount)
-	logSuccess(cfg.UseColor, "Processing %d new replays", len(filesToProcess))
+	logger.Warnf("Skipping %d existing replays", skippedCount)
+	logger.Successf("Processing %d new replays", len(filesToProcess))
 
 	// Process files in batches of 100
 	const batchSize = 100
@@ -193,19 +211,17 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config) error 
 		end := min(i+batchSize, len(filesToProcess))
 
 		batch := filesToProcess[i:end]
-		logInfo(cfg.UseColor, "Processing batch %d-%d of %d", i+1, end, len(filesToProcess))
+		logger.Infof("Processing batch %d-%d of %d", i+1, end, len(filesToProcess))
 
 		// Create errgroup with context for this batch
 		g, gCtx := errgroup.WithContext(ctx)
 
-		for j, fileInfo := range batch {
-			j, fileInfo := j, fileInfo // capture loop variables
+		for _, fileInfo := range batch {
+			fileInfo := fileInfo // capture loop variable
 
 			g.Go(func() error {
-				log.Printf("Processing %d/%d: %s", i+j+1, len(filesToProcess), fileInfo.Name)
-
 				if err := processFileToChannel(gCtx, dataChan, &fileInfo); err != nil {
-					log.Printf("Error processing file %s: %v", fileInfo.Name, err)
+					logger.Errorf("Error processing file %s: %v", fileInfo.Name, err)
 					mu.Lock()
 					errors++
 					mu.Unlock()
@@ -221,7 +237,7 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config) error 
 
 		// Wait for this batch to complete
 		if err := g.Wait(); err != nil {
-			log.Printf("Error during batch processing: %v", err)
+			logger.Errorf("Error during batch processing: %v", err)
 		}
 	}
 
@@ -233,17 +249,14 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config) error 
 		return fmt.Errorf("storage error: %w", err)
 	}
 
-	logSuccess(cfg.UseColor, "\nProcessing complete:")
-	logSuccess(cfg.UseColor, "  Processed: %d", processed)
-	logWarn(cfg.UseColor, "  Skipped: %d", skippedCount)
-	logError(cfg.UseColor, "  Errors: %d", errors)
+	logger.Successf("Processing complete: processed=%d skipped=%d errors=%d", processed, skippedCount, errors)
 
 	return nil
 }
 
 // batchCheckExistingReplays checks for existing replays in batches of 100
 // Returns only the FileInfo objects for replays that don't exist yet
-func batchCheckExistingReplays(ctx context.Context, store storage.Storage, files []fileops.FileInfo) ([]fileops.FileInfo, error) {
+func batchCheckExistingReplays(ctx context.Context, store storage.Storage, files []fileops.FileInfo, logger *Logger) ([]fileops.FileInfo, error) {
 	const batchSize = 100
 	var allFiltered []fileops.FileInfo
 
@@ -260,7 +273,7 @@ func batchCheckExistingReplays(ctx context.Context, store storage.Storage, files
 		allFiltered = append(allFiltered, batchFiltered...)
 
 		skippedInBatch := len(batch) - len(batchFiltered)
-		log.Printf("Checked batch %d-%d: %d existing replays found", i+1, end, skippedInBatch)
+		logger.Infof("Checked batch %d-%d: %d existing replays found", i+1, end, skippedInBatch)
 	}
 
 	return allFiltered, nil
@@ -283,38 +296,6 @@ func processFileToChannel(ctx context.Context, dataChan storage.ReplayDataChanne
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-}
-
-func logInfo(useColor bool, format string, args ...any) {
-	if useColor {
-		color.Cyan(format, args...)
-		return
-	}
-	log.Printf(format, args...)
-}
-
-func logSuccess(useColor bool, format string, args ...any) {
-	if useColor {
-		color.Green(format, args...)
-		return
-	}
-	log.Printf(format, args...)
-}
-
-func logWarn(useColor bool, format string, args ...any) {
-	if useColor {
-		color.Yellow(format, args...)
-		return
-	}
-	log.Printf(format, args...)
-}
-
-func logError(useColor bool, format string, args ...any) {
-	if useColor {
-		color.Red(format, args...)
-		return
-	}
-	log.Printf(format, args...)
 }
 
 func signalChan(sigChan chan os.Signal) <-chan os.Signal {

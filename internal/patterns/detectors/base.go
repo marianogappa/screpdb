@@ -42,6 +42,13 @@ func (d *BaseDetector) GetReplay() *models.Replay {
 	return d.replay
 }
 
+func (d *BaseDetector) HasReplayDurationAtLeast(minSeconds int) bool {
+	if d.replay == nil {
+		return false
+	}
+	return d.replay.DurationSeconds >= minSeconds
+}
+
 // GetPlayers returns the players
 func (d *BaseDetector) GetPlayers() []*models.Player {
 	return d.players

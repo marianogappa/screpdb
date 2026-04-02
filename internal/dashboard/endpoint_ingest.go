@@ -3,13 +3,10 @@ package dashboard
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
-	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/ingest"
 )
 
@@ -29,12 +26,31 @@ type ingestRequest struct {
 func (d *Dashboard) handlerIngest(w http.ResponseWriter, r *http.Request) {
 	var req ingestRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
-		http.Error(w, fmt.Sprintf("invalid request body: %v", err), http.StatusBadRequest)
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
+	inputDir := strings.TrimSpace(req.InputDir)
+	if inputDir != "" {
+		if err := d.setIngestInputDir(r.Context(), inputDir); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	} else {
+		var err error
+		inputDir, err = d.getIngestInputDir(r.Context())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if inputDir == "" {
+			http.Error(w, "replay folder is not configured", http.StatusBadRequest)
+			return
+		}
+	}
+
 	cfg := ingest.Config{
-		InputDir:         strings.TrimSpace(req.InputDir),
+		InputDir:         inputDir,
 		SQLitePath:       strings.TrimSpace(req.SQLitePath),
 		Watch:            req.Watch,
 		StoreRightClicks: req.StoreRightClicks,
@@ -46,51 +62,35 @@ func (d *Dashboard) handlerIngest(w http.ResponseWriter, r *http.Request) {
 		CleanDashboard:   req.CleanDashboard,
 		HandleSignals:    false,
 		UseColor:         false,
-	}
-
-	if cfg.InputDir == "" {
-		cfg.InputDir = fileops.GetDefaultReplayDir()
+		Logger:           d.newIngestLogger(),
 	}
 	if cfg.SQLitePath == "" {
 		cfg.SQLitePath = d.sqlitePath
 	}
 
-	if !d.tryStartIngest() {
+	if !d.tryStartIngest(cfg.InputDir) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"ok":          true,
 			"started":     false,
 			"in_progress": true,
+			"input_dir":   inputDir,
 			"sqlitePath":  cfg.SQLitePath,
 		})
 		return
 	}
 
 	go func() {
-		defer d.finishIngest()
-		if err := ingest.Run(d.ctx, cfg); err != nil {
-			log.Printf("ingestion failed: %v", err)
+		err := ingest.Run(d.ctx, cfg)
+		if err != nil {
+			cfg.Logger.Errorf("Ingestion failed: %v", err)
 		}
+		d.finishIngest(err)
 	}()
 
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"ok":         true,
 		"started":    true,
+		"input_dir":  cfg.InputDir,
 		"sqlitePath": cfg.SQLitePath,
 	})
-}
-
-func (d *Dashboard) tryStartIngest() bool {
-	d.ingestMu.Lock()
-	defer d.ingestMu.Unlock()
-	if d.ingestRunning {
-		return false
-	}
-	d.ingestRunning = true
-	return true
-}
-
-func (d *Dashboard) finishIngest() {
-	d.ingestMu.Lock()
-	defer d.ingestMu.Unlock()
-	d.ingestRunning = false
 }

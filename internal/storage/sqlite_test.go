@@ -251,7 +251,7 @@ func TestSQLiteStorage_CommandStorageFlags(t *testing.T) {
 }
 
 func ingestFiles(ctx context.Context, store *SQLiteStorage, files []fileops.FileInfo) error {
-	dataChan, errChan := store.StartIngestion(ctx)
+	dataChan, errChan := store.StartIngestion(ctx, IngestionHooks{})
 	for i := range files {
 		fileInfo := files[i]
 		replay := parser.CreateReplayFromFileInfo(fileInfo.Path, fileInfo.Name, fileInfo.Size, fileInfo.Checksum)

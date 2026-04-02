@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -18,6 +19,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/marianogappa/screpdb/internal/dashboard/variables"
+	"github.com/marianogappa/screpdb/internal/ingest"
 	"github.com/marianogappa/screpdb/internal/storage"
 )
 
@@ -31,13 +33,22 @@ const (
 )
 
 type Dashboard struct {
-	ctx           context.Context
-	db            *sql.DB
-	conversations map[int]*Conversation
-	ai            *AI
-	sqlitePath    string
-	ingestMu      sync.Mutex
-	ingestRunning bool
+	ctx                context.Context
+	db                 *sql.DB
+	replayScopedMu     sync.RWMutex
+	replayScopedDB     *sql.DB
+	globalReplayFilter globalReplayFilterConfig
+	conversations      map[int]*Conversation
+	ai                 *AI
+	sqlitePath         string
+	ingestMu           sync.Mutex
+	ingestRunning      bool
+	ingestStatus       string
+	ingestError        string
+	ingestInputDir     string
+	ingestSessionID    int64
+	ingestEvents       []ingest.LogEvent
+	ingestSubscribers  map[chan ingestStreamMessage]struct{}
 }
 
 func New(ctx context.Context, store storage.Storage, sqlitePath, aiVendor, apiKey, model string) (*Dashboard, error) {
@@ -73,7 +84,21 @@ func New(ctx context.Context, store storage.Storage, sqlitePath, aiVendor, apiKe
 		return nil, fmt.Errorf("failed to create AI client: %w", err)
 	}
 
-	return &Dashboard{ctx: ctx, db: db, ai: ai, conversations: map[int]*Conversation{}, sqlitePath: sqlitePath}, nil
+	dashboard := &Dashboard{
+		ctx:           ctx,
+		db:            db,
+		ai:            ai,
+		conversations: map[int]*Conversation{},
+		ingestStatus:  "idle",
+		sqlitePath:    sqlitePath,
+	}
+	if err := dashboard.initializeIngestSettings(ctx); err != nil {
+		return nil, fmt.Errorf("failed to initialize ingest settings: %w", err)
+	}
+	if err := dashboard.refreshReplayScopedDB(); err != nil {
+		return nil, fmt.Errorf("failed to initialize replay scoped db: %w", err)
+	}
+	return dashboard, nil
 }
 
 func (d *Dashboard) setupRouter() *mux.Router {
@@ -90,14 +115,24 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/query", d.handlerExecuteQuery).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/api/query/variables", d.handlerGetQueryVariables).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/api/ingest", d.handlerIngest).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/api/ingest/settings", d.handlerGetIngestSettings).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/api/ingest/settings", d.handlerUpdateIngestSettings).Methods(http.MethodPut, http.MethodOptions)
+	r.HandleFunc("/api/ingest/logs", d.handlerIngestLogs).Methods(http.MethodGet)
+	r.HandleFunc("/api/global-replay-filter", d.handlerGetGlobalReplayFilterConfig).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/api/global-replay-filter", d.handlerUpdateGlobalReplayFilterConfig).Methods(http.MethodPut, http.MethodOptions)
+	r.HandleFunc("/api/global-replay-filter/options", d.handlerGetGlobalReplayFilterOptions).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/workflow/games", d.handlerWorkflowGamesList).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/workflow/games/{replayID}", d.handlerWorkflowGameDetail).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/workflow/players", d.handlerWorkflowPlayersList).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/workflow/players/insights/apm-histogram", d.handlerWorkflowPlayersApmHistogram).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/workflow/players/insights/first-unit-delay", d.handlerWorkflowPlayersDelayHistogram).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/workflow/players/insights/unit-production-cadence", d.handlerWorkflowPlayersUnitCadence).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/api/workflow/players/insights/viewport-multitasking", d.handlerWorkflowPlayersViewportMultitasking).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/workflow/players/{playerKey}", d.handlerWorkflowPlayerDetail).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/api/workflow/players/{playerKey}/recent-games", d.handlerWorkflowPlayerRecentGames).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/api/workflow/players/{playerKey}/chat-summary", d.handlerWorkflowPlayerChatSummary).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/workflow/players/{playerKey}/metrics", d.handlerWorkflowPlayerMetrics).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/api/workflow/players/{playerKey}/insight", d.handlerWorkflowPlayerInsight).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/workflow/players/{playerKey}/outliers", d.handlerWorkflowPlayerOutliers).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/workflow/players/{playerKey}/insights/apm-histogram", d.handlerWorkflowPlayerApmHistogram).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/workflow/players/{playerKey}/insights/first-unit-delay", d.handlerWorkflowPlayerDelayInsight).Methods(http.MethodGet, http.MethodOptions)
@@ -305,29 +340,15 @@ func sqliteDSN(path string) string {
 }
 
 func (d *Dashboard) withFilteredConnection(replaysFilterSQL *string, fn func(db *sql.DB) error) error {
-	db, err := sql.Open("sqlite", sqliteDSN(d.sqlitePath))
+	effectiveFilterSQL := composeReplayFilterSQL(d.currentGlobalReplayFilterSQL(), replaysFilterSQL)
+	if normalizeSQL(nullableStringValue(replaysFilterSQL)) == "" {
+		return d.withReplayScopedDB(fn)
+	}
+	db, err := openReplayScopedDB(d.sqlitePath, effectiveFilterSQL)
 	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+		return err
 	}
 	defer db.Close()
-
-	if _, err := db.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
-		return fmt.Errorf("failed to enable foreign keys: %w", err)
-	}
-
-	if err := db.Ping(); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
-	}
-
-	if replaysFilterSQL != nil {
-		filterSQL := normalizeSQL(*replaysFilterSQL)
-		if filterSQL != "" {
-			if err := applyReplayFilterViews(db, filterSQL); err != nil {
-				return err
-			}
-		}
-	}
-
 	return fn(db)
 }
 
@@ -343,6 +364,22 @@ func applyReplayFilterViews(db *sql.DB, filterSQL string) error {
 		return err
 	}
 	if _, err := db.Exec(`CREATE TEMP VIEW commands AS SELECT * FROM main.commands WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`CREATE TEMP VIEW commands_low_value AS SELECT * FROM main.commands_low_value WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`CREATE TEMP VIEW detected_patterns_replay AS SELECT * FROM main.detected_patterns_replay WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`CREATE TEMP VIEW detected_patterns_replay_team AS SELECT * FROM main.detected_patterns_replay_team WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`CREATE TEMP VIEW detected_patterns_replay_player AS
+		SELECT *
+		FROM main.detected_patterns_replay_player
+		WHERE replay_id IN (SELECT id FROM replays)
+			AND player_id IN (SELECT id FROM players)`); err != nil {
 		return err
 	}
 	return nil
@@ -365,7 +402,15 @@ func normalizeSQLWhitespace(value string) string {
 func qualifyReplayFilterSQL(filterSQL string) string {
 	normalized := normalizeSQLWhitespace(filterSQL)
 	qualified := normalized
-	tables := []string{"replays", "players", "commands"}
+	tables := []string{
+		"replays",
+		"players",
+		"commands",
+		"commands_low_value",
+		"detected_patterns_replay",
+		"detected_patterns_replay_team",
+		"detected_patterns_replay_player",
+	}
 	for _, table := range tables {
 		re := regexp.MustCompile(`(?i)\b(from|join)\s+(?:main\.)?(?:\"` + table + `\"|` + "`" + table + "`" + `|\[` + table + `\]|` + table + `)\b`)
 		qualified = re.ReplaceAllString(qualified, "${1} main."+table)
@@ -374,7 +419,15 @@ func qualifyReplayFilterSQL(filterSQL string) string {
 }
 
 func hasUnqualifiedReplays(filterSQL string) bool {
-	tables := []string{"replays", "players", "commands"}
+	tables := []string{
+		"replays",
+		"players",
+		"commands",
+		"commands_low_value",
+		"detected_patterns_replay",
+		"detected_patterns_replay_team",
+		"detected_patterns_replay_player",
+	}
 	for _, table := range tables {
 		re := regexp.MustCompile(`(?i)\b(from|join)\s+(?:\"` + table + `\"|` + "`" + table + "`" + `|\[` + table + `\]|` + table + `)\b`)
 		if re.MatchString(filterSQL) {
@@ -382,4 +435,90 @@ func hasUnqualifiedReplays(filterSQL string) bool {
 		}
 	}
 	return false
+}
+
+func openReplayScopedDB(sqlitePath string, replaysFilterSQL *string) (*sql.DB, error) {
+	db, err := sql.Open("sqlite", sqliteDSN(sqlitePath))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+
+	if _, err := db.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
+	}
+
+	if err := db.Ping(); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	filterSQL := normalizeSQL(nullableStringValue(replaysFilterSQL))
+	if filterSQL != "" {
+		if err := applyReplayFilterViews(db, filterSQL); err != nil {
+			_ = db.Close()
+			return nil, err
+		}
+	}
+	return db, nil
+}
+
+func (d *Dashboard) currentReplayScopedDB() *sql.DB {
+	d.replayScopedMu.RLock()
+	defer d.replayScopedMu.RUnlock()
+	if d.replayScopedDB != nil {
+		return d.replayScopedDB
+	}
+	return d.db
+}
+
+func (d *Dashboard) withReplayScopedDB(fn func(db *sql.DB) error) error {
+	d.replayScopedMu.RLock()
+	db := d.replayScopedDB
+	d.replayScopedMu.RUnlock()
+	if db == nil {
+		db = d.db
+	}
+	return fn(db)
+}
+
+func (d *Dashboard) currentGlobalReplayFilterSQL() *string {
+	d.replayScopedMu.RLock()
+	defer d.replayScopedMu.RUnlock()
+	if d.globalReplayFilter.CompiledReplaysFilterSQL == nil {
+		return nil
+	}
+	value := *d.globalReplayFilter.CompiledReplaysFilterSQL
+	return &value
+}
+
+func (d *Dashboard) refreshReplayScopedDB() error {
+	config, err := d.getGlobalReplayFilterConfig(d.ctx)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		config = defaultGlobalReplayFilterConfig()
+		if _, updateErr := d.updateGlobalReplayFilterConfig(d.ctx, config); updateErr != nil {
+			return updateErr
+		}
+	}
+
+	db, err := openReplayScopedDB(d.sqlitePath, config.CompiledReplaysFilterSQL)
+	if err != nil {
+		return err
+	}
+
+	d.replayScopedMu.Lock()
+	oldDB := d.replayScopedDB
+	d.replayScopedDB = db
+	d.globalReplayFilter = config
+	d.replayScopedMu.Unlock()
+
+	if oldDB != nil {
+		_ = oldDB.Close()
+	}
+	return nil
 }

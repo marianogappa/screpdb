@@ -1,4 +1,8 @@
 const API_BASE = '/api';
+const buildWebSocketURL = (path) => {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}${path}`;
+};
 
 export const api = {
   // Dashboard endpoints
@@ -136,6 +140,70 @@ export const api = {
     return response.json();
   },
 
+  getIngestSettings: async () => {
+    const response = await fetch(`${API_BASE}/ingest/settings`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to load ingest settings');
+    }
+    return response.json();
+  },
+
+  updateIngestSettings: async (data) => {
+    const response = await fetch(`${API_BASE}/ingest/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to update ingest settings');
+    }
+    return response.json();
+  },
+
+  createIngestLogsSocket: () => new WebSocket(buildWebSocketURL(`${API_BASE}/ingest/logs`)),
+
+  getHealth: async () => {
+    const response = await fetch(`${API_BASE}/health`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to load health status');
+    }
+    return response.json();
+  },
+
+  getGlobalReplayFilter: async () => {
+    const response = await fetch(`${API_BASE}/global-replay-filter`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get global replay filter');
+    }
+    return response.json();
+  },
+
+  updateGlobalReplayFilter: async (data) => {
+    const response = await fetch(`${API_BASE}/global-replay-filter`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to update global replay filter');
+    }
+    return response.json();
+  },
+
+  getGlobalReplayFilterOptions: async () => {
+    const response = await fetch(`${API_BASE}/global-replay-filter/options`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get global replay filter options');
+    }
+    return response.json();
+  },
+
   listWorkflowGames: async ({ limit = 20, offset = 0, filters = {} } = {}) => {
     const params = new URLSearchParams();
     params.set('limit', String(limit));
@@ -228,6 +296,15 @@ export const api = {
     return response.json();
   },
 
+  getWorkflowPlayersViewportMultitasking: async () => {
+    const response = await fetch(`${API_BASE}/workflow/players/insights/viewport-multitasking`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get players viewport multitasking');
+    }
+    return response.json();
+  },
+
   getWorkflowGame: async (replayId) => {
     const response = await fetch(`${API_BASE}/workflow/games/${encodeURIComponent(replayId)}`);
     if (!response.ok) {
@@ -246,11 +323,41 @@ export const api = {
     return response.json();
   },
 
+  getWorkflowPlayerRecentGames: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/recent-games`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get workflow player recent games');
+    }
+    return response.json();
+  },
+
+  getWorkflowPlayerChatSummary: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/chat-summary`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get workflow player chat summary');
+    }
+    return response.json();
+  },
+
   getWorkflowPlayerMetrics: async (playerKey) => {
     const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/metrics`);
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get workflow player metrics');
+    }
+    return response.json();
+  },
+
+  getWorkflowPlayerInsight: async (playerKey, type) => {
+    const params = new URLSearchParams();
+    if (String(type || '').trim()) params.set('type', String(type).trim());
+    const query = params.toString();
+    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/insight${query ? `?${query}` : ''}`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get workflow player insight');
     }
     return response.json();
   },
