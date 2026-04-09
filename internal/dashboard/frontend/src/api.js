@@ -1,4 +1,5 @@
 const API_BASE = '/api';
+const API_CUSTOM = `${API_BASE}/custom`;
 const buildWebSocketURL = (path) => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}${path}`;
@@ -7,7 +8,7 @@ const buildWebSocketURL = (path) => {
 export const api = {
   // Dashboard endpoints
   listDashboards: async () => {
-    const response = await fetch(`${API_BASE}/dashboard`);
+    const response = await fetch(`${API_CUSTOM}/dashboard`);
     if (!response.ok) throw new Error('Failed to list dashboards');
     return response.json();
   },
@@ -20,13 +21,13 @@ export const api = {
     if (variableValues) {
       options.body = JSON.stringify({ variable_values: variableValues });
     }
-    const response = await fetch(`${API_BASE}/dashboard/${url}`, options);
+    const response = await fetch(`${API_CUSTOM}/dashboard/${url}`, options);
     if (!response.ok) throw new Error('Failed to get dashboard');
     return response.json();
   },
 
   createDashboard: async (data) => {
-    const response = await fetch(`${API_BASE}/dashboard`, {
+    const response = await fetch(`${API_CUSTOM}/dashboard`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -39,7 +40,7 @@ export const api = {
   },
 
   updateDashboard: async (url, data) => {
-    const response = await fetch(`${API_BASE}/dashboard/${url}`, {
+    const response = await fetch(`${API_CUSTOM}/dashboard/${url}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -51,7 +52,7 @@ export const api = {
   },
 
   deleteDashboard: async (url) => {
-    const response = await fetch(`${API_BASE}/dashboard/${url}`, {
+    const response = await fetch(`${API_CUSTOM}/dashboard/${url}`, {
       method: 'DELETE',
     });
     if (!response.ok) {
@@ -63,7 +64,7 @@ export const api = {
   // Widget endpoints
   createWidget: async (dashboardUrl, prompt) => {
     const body = prompt ? { Prompt: prompt } : {};
-    const response = await fetch(`${API_BASE}/dashboard/${dashboardUrl}/widget`, {
+    const response = await fetch(`${API_CUSTOM}/dashboard/${dashboardUrl}/widget`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -76,7 +77,7 @@ export const api = {
   },
 
   updateWidget: async (dashboardUrl, widgetId, data) => {
-    const response = await fetch(`${API_BASE}/dashboard/${dashboardUrl}/widget/${widgetId}`, {
+    const response = await fetch(`${API_CUSTOM}/dashboard/${dashboardUrl}/widget/${widgetId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -88,7 +89,7 @@ export const api = {
   },
 
   deleteWidget: async (dashboardUrl, widgetId) => {
-    const response = await fetch(`${API_BASE}/dashboard/${dashboardUrl}/widget/${widgetId}`, {
+    const response = await fetch(`${API_CUSTOM}/dashboard/${dashboardUrl}/widget/${widgetId}`, {
       method: 'DELETE',
     });
     if (!response.ok) {
@@ -98,7 +99,7 @@ export const api = {
   },
 
   executeQuery: async (query, variableValues = null, dashboardUrl = null) => {
-    const response = await fetch(`${API_BASE}/query`, {
+    const response = await fetch(`${API_CUSTOM}/query`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -115,7 +116,7 @@ export const api = {
   },
 
   getQueryVariables: async (query, dashboardUrl = null) => {
-    const response = await fetch(`${API_BASE}/query/variables`, {
+    const response = await fetch(`${API_CUSTOM}/query/variables`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, dashboard_url: dashboardUrl || '' }),
@@ -128,7 +129,7 @@ export const api = {
   },
 
   startIngest: async (data) => {
-    const response = await fetch(`${API_BASE}/ingest`, {
+    const response = await fetch(`${API_CUSTOM}/ingest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data || {}),
@@ -141,7 +142,7 @@ export const api = {
   },
 
   getIngestSettings: async () => {
-    const response = await fetch(`${API_BASE}/ingest/settings`);
+    const response = await fetch(`${API_CUSTOM}/ingest/settings`);
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to load ingest settings');
@@ -150,7 +151,7 @@ export const api = {
   },
 
   updateIngestSettings: async (data) => {
-    const response = await fetch(`${API_BASE}/ingest/settings`, {
+    const response = await fetch(`${API_CUSTOM}/ingest/settings`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -162,7 +163,7 @@ export const api = {
     return response.json();
   },
 
-  createIngestLogsSocket: () => new WebSocket(buildWebSocketURL(`${API_BASE}/ingest/logs`)),
+  createIngestLogsSocket: () => new WebSocket(buildWebSocketURL(`${API_CUSTOM}/ingest/logs`)),
 
   getHealth: async () => {
     const response = await fetch(`${API_BASE}/health`);
@@ -174,7 +175,7 @@ export const api = {
   },
 
   getGlobalReplayFilter: async () => {
-    const response = await fetch(`${API_BASE}/global-replay-filter`);
+    const response = await fetch(`${API_CUSTOM}/global-replay-filter`);
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get global replay filter');
@@ -183,7 +184,7 @@ export const api = {
   },
 
   updateGlobalReplayFilter: async (data) => {
-    const response = await fetch(`${API_BASE}/global-replay-filter`, {
+    const response = await fetch(`${API_CUSTOM}/global-replay-filter`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -196,7 +197,7 @@ export const api = {
   },
 
   getGlobalReplayFilterOptions: async () => {
-    const response = await fetch(`${API_BASE}/global-replay-filter/options`);
+    const response = await fetch(`${API_CUSTOM}/global-replay-filter/options`);
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get global replay filter options');
@@ -204,7 +205,8 @@ export const api = {
     return response.json();
   },
 
-  listWorkflowGames: async ({ limit = 20, offset = 0, filters = {} } = {}) => {
+  // Main view: games & players (not custom SQL dashboards)
+  listGames: async ({ limit = 20, offset = 0, filters = {} } = {}) => {
     const params = new URLSearchParams();
     params.set('limit', String(limit));
     params.set('offset', String(offset));
@@ -224,15 +226,15 @@ export const api = {
     featuringFilters.forEach((value) => {
       if (String(value || '').trim()) params.append('featuring', String(value).trim());
     });
-    const response = await fetch(`${API_BASE}/workflow/games?${params.toString()}`);
+    const response = await fetch(`${API_BASE}/games?${params.toString()}`);
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to list workflow games');
+      throw new Error(text || 'Failed to list games');
     }
     return response.json();
   },
 
-  listWorkflowPlayers: async ({
+  listPlayers: async ({
     limit = 20,
     offset = 0,
     sortBy = 'games',
@@ -256,16 +258,16 @@ export const api = {
 
     if (filters.onlyFivePlus) params.set('only_5_plus', '1');
 
-    const response = await fetch(`${API_BASE}/workflow/players?${params.toString()}`);
+    const response = await fetch(`${API_BASE}/players?${params.toString()}`);
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to list workflow players');
+      throw new Error(text || 'Failed to list players');
     }
     return response.json();
   },
 
-  getWorkflowPlayersApmHistogram: async () => {
-    const response = await fetch(`${API_BASE}/workflow/players/insights/apm-histogram`);
+  getPlayersApmHistogram: async () => {
+    const response = await fetch(`${API_BASE}/players/insights/apm-histogram`);
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get players APM histogram');
@@ -273,8 +275,8 @@ export const api = {
     return response.json();
   },
 
-  getWorkflowPlayersFirstUnitDelay: async () => {
-    const response = await fetch(`${API_BASE}/workflow/players/insights/first-unit-delay`);
+  getPlayersFirstUnitDelay: async () => {
+    const response = await fetch(`${API_BASE}/players/insights/first-unit-delay`);
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get players first-unit delay');
@@ -282,13 +284,13 @@ export const api = {
     return response.json();
   },
 
-  getWorkflowPlayersUnitProductionCadence: async ({ filter = 'strict', minGames = 4, limit = 0 } = {}) => {
+  getPlayersUnitProductionCadence: async ({ filter = 'strict', minGames = 4, limit = 0 } = {}) => {
     const params = new URLSearchParams();
     if (String(filter || '').trim()) params.set('filter', String(filter).trim());
     if (Number.isFinite(Number(minGames)) && Number(minGames) > 0) params.set('min_games', String(Math.floor(Number(minGames))));
     if (Number.isFinite(Number(limit)) && Number(limit) >= 0) params.set('limit', String(Math.floor(Number(limit))));
     const query = params.toString();
-    const response = await fetch(`${API_BASE}/workflow/players/insights/unit-production-cadence${query ? `?${query}` : ''}`);
+    const response = await fetch(`${API_BASE}/players/insights/unit-production-cadence${query ? `?${query}` : ''}`);
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get players unit production cadence');
@@ -296,8 +298,8 @@ export const api = {
     return response.json();
   },
 
-  getWorkflowPlayersViewportMultitasking: async () => {
-    const response = await fetch(`${API_BASE}/workflow/players/insights/viewport-multitasking`);
+  getPlayersViewportMultitasking: async () => {
+    const response = await fetch(`${API_BASE}/players/insights/viewport-multitasking`);
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get players viewport multitasking');
@@ -305,74 +307,74 @@ export const api = {
     return response.json();
   },
 
-  getWorkflowGame: async (replayId) => {
-    const response = await fetch(`${API_BASE}/workflow/games/${encodeURIComponent(replayId)}`);
+  getGame: async (replayId) => {
+    const response = await fetch(`${API_BASE}/games/${encodeURIComponent(replayId)}`);
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to get workflow game');
+      throw new Error(text || 'Failed to get game');
     }
     return response.json();
   },
 
-  getWorkflowPlayer: async (playerKey) => {
-    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}`);
+  getPlayer: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}`);
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to get workflow player');
+      throw new Error(text || 'Failed to get player');
     }
     return response.json();
   },
 
-  getWorkflowPlayerRecentGames: async (playerKey) => {
-    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/recent-games`);
+  getPlayerRecentGames: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/recent-games`);
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to get workflow player recent games');
+      throw new Error(text || 'Failed to get player recent games');
     }
     return response.json();
   },
 
-  getWorkflowPlayerChatSummary: async (playerKey) => {
-    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/chat-summary`);
+  getPlayerChatSummary: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/chat-summary`);
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to get workflow player chat summary');
+      throw new Error(text || 'Failed to get player chat summary');
     }
     return response.json();
   },
 
-  getWorkflowPlayerMetrics: async (playerKey) => {
-    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/metrics`);
+  getPlayerMetrics: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/metrics`);
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to get workflow player metrics');
+      throw new Error(text || 'Failed to get player metrics');
     }
     return response.json();
   },
 
-  getWorkflowPlayerInsight: async (playerKey, type) => {
+  getPlayerInsight: async (playerKey, type) => {
     const params = new URLSearchParams();
     if (String(type || '').trim()) params.set('type', String(type).trim());
     const query = params.toString();
-    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/insight${query ? `?${query}` : ''}`);
+    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/insight${query ? `?${query}` : ''}`);
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to get workflow player insight');
+      throw new Error(text || 'Failed to get player insight');
     }
     return response.json();
   },
 
-  getWorkflowPlayerOutliers: async (playerKey) => {
-    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/outliers`);
+  getPlayerOutliers: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/outliers`);
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to get workflow player outliers');
+      throw new Error(text || 'Failed to get player outliers');
     }
     return response.json();
   },
 
-  getWorkflowPlayerApmHistogram: async (playerKey) => {
-    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/insights/apm-histogram`);
+  getPlayerApmHistogram: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/insights/apm-histogram`);
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get player APM histogram');
@@ -380,8 +382,8 @@ export const api = {
     return response.json();
   },
 
-  getWorkflowPlayerFirstUnitDelay: async (playerKey) => {
-    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/insights/first-unit-delay`);
+  getPlayerFirstUnitDelay: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/insights/first-unit-delay`);
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get player first-unit delay');
@@ -389,11 +391,11 @@ export const api = {
     return response.json();
   },
 
-  getWorkflowPlayerUnitProductionCadence: async (playerKey, { filter = 'strict' } = {}) => {
+  getPlayerUnitProductionCadence: async (playerKey, { filter = 'strict' } = {}) => {
     const params = new URLSearchParams();
     if (String(filter || '').trim()) params.set('filter', String(filter).trim());
     const query = params.toString();
-    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/insights/unit-production-cadence${query ? `?${query}` : ''}`);
+    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/insights/unit-production-cadence${query ? `?${query}` : ''}`);
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get player unit production cadence');
@@ -401,37 +403,37 @@ export const api = {
     return response.json();
   },
 
-  getWorkflowPlayerColors: async () => {
-    const response = await fetch(`${API_BASE}/workflow/player-colors`);
+  getPlayerColors: async () => {
+    const response = await fetch(`${API_BASE}/player-colors`);
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to get workflow player colors');
+      throw new Error(text || 'Failed to get player colors');
     }
     return response.json();
   },
 
-  askWorkflowGame: async (replayId, question) => {
-    const response = await fetch(`${API_BASE}/workflow/games/${encodeURIComponent(replayId)}/ask`, {
+  askGame: async (replayId, question) => {
+    const response = await fetch(`${API_BASE}/games/${encodeURIComponent(replayId)}/ask`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question }),
     });
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to ask workflow game question');
+      throw new Error(text || 'Failed to ask game question');
     }
     return response.json();
   },
 
-  askWorkflowPlayer: async (playerKey, question) => {
-    const response = await fetch(`${API_BASE}/workflow/players/${encodeURIComponent(playerKey)}/ask`, {
+  askPlayer: async (playerKey, question) => {
+    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/ask`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question }),
     });
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to ask workflow player question');
+      throw new Error(text || 'Failed to ask player question');
     }
     return response.json();
   },

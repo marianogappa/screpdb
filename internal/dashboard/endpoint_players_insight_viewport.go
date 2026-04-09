@@ -47,7 +47,7 @@ type workflowViewportMultitaskingAggregate struct {
 	averageViewportSwitchRate float64
 }
 
-func (d *Dashboard) handlerWorkflowPlayersViewportMultitasking(w http.ResponseWriter, _ *http.Request) {
+func (d *Dashboard) handlerPlayersViewportMultitasking(w http.ResponseWriter, _ *http.Request) {
 	result, err := d.buildWorkflowPlayerViewportMultitaskingDistribution()
 	if err != nil {
 		http.Error(w, "failed to compute viewport multitasking distribution: "+err.Error(), http.StatusInternalServerError)

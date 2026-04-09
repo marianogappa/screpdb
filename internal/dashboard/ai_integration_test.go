@@ -61,7 +61,7 @@ func TestGeminiIntegration_CreateWidgetWithPrompt(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]string{"Prompt": "Show me the total number of replays as a gauge"})
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPut, "/api/dashboard/default/widget", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, "/api/custom/dashboard/default/widget", bytes.NewReader(body))
 	req = mux.SetURLVars(req, map[string]string{"url": "default"})
 	dash.handlerCreateDashboardWidget(rec, req)
 
@@ -98,7 +98,7 @@ func TestGeminiIntegration_CreateWidgetWithPrompt(t *testing.T) {
 	// Verify the query actually runs
 	rec = httptest.NewRecorder()
 	queryBody, _ := json.Marshal(map[string]any{"query": resp.Query, "variable_values": map[string]any{}})
-	req = httptest.NewRequest(http.MethodPost, "/api/query", bytes.NewReader(queryBody))
+	req = httptest.NewRequest(http.MethodPost, "/api/custom/query", bytes.NewReader(queryBody))
 	dash.handlerExecuteQuery(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("execute Gemini-generated query: status %d: %s", rec.Code, rec.Body.String())
@@ -143,7 +143,7 @@ func TestGeminiIntegration_ConversationPromptDirect(t *testing.T) {
 
 	// Create a widget first (needed for conversation history)
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPut, "/api/dashboard/default/widget", bytes.NewReader([]byte(`{"Prompt": ""}`)))
+	req := httptest.NewRequest(http.MethodPut, "/api/custom/dashboard/default/widget", bytes.NewReader([]byte(`{"Prompt": ""}`)))
 	req = mux.SetURLVars(req, map[string]string{"url": "default"})
 	dash.handlerCreateDashboardWidget(rec, req)
 	if rec.Code != http.StatusOK {

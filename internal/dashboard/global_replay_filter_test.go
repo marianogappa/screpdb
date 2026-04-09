@@ -55,7 +55,7 @@ func TestDashboardAPI_GlobalReplayFilterGetAndUpdate(t *testing.T) {
 	dash := newTestDashboard(t)
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/global-replay-filter", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/custom/global-replay-filter", nil)
 	dash.handlerGetGlobalReplayFilterConfig(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get config status %d: %s", rec.Code, rec.Body.String())
@@ -80,7 +80,7 @@ func TestDashboardAPI_GlobalReplayFilterGetAndUpdate(t *testing.T) {
 		"player_filter_mode":"only_these"
 	}`)
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPut, "/api/global-replay-filter", bytes.NewReader(updateBody))
+	req = httptest.NewRequest(http.MethodPut, "/api/custom/global-replay-filter", bytes.NewReader(updateBody))
 	dash.handlerUpdateGlobalReplayFilterConfig(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("update config status %d: %s", rec.Code, rec.Body.String())
@@ -135,8 +135,8 @@ func TestDashboardAPI_GlobalReplayFilterAffectsWorkflowGames(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/workflow/games", nil)
-	dash.handlerWorkflowGamesList(rec, req)
+	req := httptest.NewRequest(http.MethodGet, "/api/games", nil)
+	dash.handlerGamesList(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("workflow games status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -178,7 +178,7 @@ func TestDashboardAPI_ReplayFilterAppliesToDetectedPatternViews(t *testing.T) {
 
 	body := []byte(`{"query": "SELECT COUNT(*) AS c FROM detected_patterns_replay WHERE pattern_name = 'test_replay_pattern'", "variable_values": {}, "dashboard_url": "default"}`)
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/query", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/custom/query", bytes.NewReader(body))
 	dash.handlerExecuteQuery(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("execute query status %d: %s", rec.Code, rec.Body.String())
@@ -196,7 +196,7 @@ func TestDashboardAPI_ReplayFilterAppliesToDetectedPatternViews(t *testing.T) {
 
 	playerBody := []byte(`{"query": "SELECT COUNT(*) AS c FROM detected_patterns_replay_player WHERE player_id = ` + int64ToString(playerID) + ` AND pattern_name = 'test_player_pattern'", "variable_values": {}, "dashboard_url": "default"}`)
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPost, "/api/query", bytes.NewReader(playerBody))
+	req = httptest.NewRequest(http.MethodPost, "/api/custom/query", bytes.NewReader(playerBody))
 	dash.handlerExecuteQuery(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("execute player pattern query status %d: %s", rec.Code, rec.Body.String())
@@ -261,7 +261,7 @@ func TestDashboardAPI_GlobalReplayFilterComposesWithDashboardFilter(t *testing.T
 
 	body := []byte(`{"query": "SELECT COUNT(*) AS c FROM replays", "variable_values": {}, "dashboard_url": "default"}`)
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/query", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/custom/query", bytes.NewReader(body))
 	dash.handlerExecuteQuery(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("execute query status %d: %s", rec.Code, rec.Body.String())

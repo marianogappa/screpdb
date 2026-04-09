@@ -17,175 +17,25 @@ import Histogram from './components/charts/Histogram';
 import Heatmap from './components/charts/Heatmap';
 import TimingScatterRows from './components/charts/TimingScatterRows';
 import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
-import probeImg from './assets/units/probe.png';
-import scvImg from './assets/units/scv.png';
-import droneImg from './assets/units/drone.png';
-import arbiterImg from './assets/units/arbiter.png';
-import corsairImg from './assets/units/corsair.png';
-import scoutImg from './assets/units/scout.png';
-import reaverImg from './assets/units/reaver.png';
-import overlordImg from './assets/units/overlord.png';
-import scourgeImg from './assets/units/scourge.png';
-import observerImg from './assets/units/observer.png';
-import carrierImg from './assets/units/carrier.png';
-import battlecruiserImg from './assets/units/battlecruiser.png';
-import dropshipImg from './assets/units/dropship.png';
-import scienceVesselImg from './assets/units/sciencevessel.png';
-import wraithImg from './assets/units/wraith.png';
-import marineImg from './assets/units/marine.png';
-import zealotImg from './assets/units/zealot.png';
-import dragoonImg from './assets/units/dragoon.png';
-import siegetankImg from './assets/units/siegetank.png';
-import zerglingImg from './assets/units/zergling.png';
-import hydraliskImg from './assets/units/hydralisk.png';
-import mutaliskImg from './assets/units/mutalisk.png';
-import ultraliskImg from './assets/units/ultralisk.png';
-import goliathImg from './assets/units/goliath.png';
-import vultureImg from './assets/units/vulture.png';
-import medicImg from './assets/units/medic.png';
-import defilerImg from './assets/units/defiler.png';
-import firebatImg from './assets/units/firebat.png';
-import darktemplarImg from './assets/units/darktemplar.png';
-import hightemplarImg from './assets/units/hightemplar.png';
-import lurkerImg from './assets/units/lurker.png';
-import academyBuildingImg from './assets/buildings/academy.webp';
-import arbiterTribunalBuildingImg from './assets/buildings/arbitertribunal.webp';
-import armoryBuildingImg from './assets/buildings/armory.webp';
-import assimilatorBuildingImg from './assets/buildings/assimilator.webp';
-import barracksBuildingImg from './assets/buildings/barracks.webp';
-import bunkerBuildingImg from './assets/buildings/bunker.webp';
-import citadelOfAdunBuildingImg from './assets/buildings/citadelofadun.webp';
-import comsatBuildingImg from './assets/buildings/comsat.webp';
-import commandCenterBuildingImg from './assets/buildings/commandcenter.webp';
-import controlTowerBuildingImg from './assets/buildings/controltower.webp';
-import covertOpsBuildingImg from './assets/buildings/covertops.webp';
-import creepColonyBuildingImg from './assets/buildings/creepcolony.webp';
-import cyberneticsCoreBuildingImg from './assets/buildings/cyberneticscore.webp';
-import defilerMoundBuildingImg from './assets/buildings/defilermound.webp';
-import engineeringBayBuildingImg from './assets/buildings/engineeringbay.webp';
-import evolutionChamberBuildingImg from './assets/buildings/evolutionchamber.webp';
-import extractorBuildingImg from './assets/buildings/extractor.webp';
-import factoryBuildingImg from './assets/buildings/factory.webp';
-import fleetBeaconBuildingImg from './assets/buildings/fleetbeacon.webp';
-import forgeBuildingImg from './assets/buildings/forge.webp';
-import gatewayBuildingImg from './assets/buildings/gateway.webp';
-import greaterSpireBuildingImg from './assets/buildings/greaterspire.webp';
-import hatcheryBuildingImg from './assets/buildings/hatchery.webp';
-import hiveBuildingImg from './assets/buildings/hive.webp';
-import hydraliskDenBuildingImg from './assets/buildings/hydraliskden.webp';
-import infestedCcBuildingImg from './assets/buildings/infestedcc.webp';
-import lairBuildingImg from './assets/buildings/lair.webp';
-import machineShopBuildingImg from './assets/buildings/machineshop.webp';
-import missileTurretBuildingImg from './assets/buildings/missileturret.webp';
-import nexusBuildingImg from './assets/buildings/nexus.webp';
-import nydusCanalBuildingImg from './assets/buildings/nyduscanal.webp';
-import observatoryBuildingImg from './assets/buildings/observatory.webp';
-import photonCannonBuildingImg from './assets/buildings/photoncannon.webp';
-import physicsLabBuildingImg from './assets/buildings/physicslab.webp';
-import pylonBuildingImg from './assets/buildings/pylon.webp';
-import queensNestBuildingImg from './assets/buildings/queensnest.webp';
-import refineryBuildingImg from './assets/buildings/refinery.webp';
-import roboticsFacilityBuildingImg from './assets/buildings/roboticsfacility.webp';
-import roboticsSupportBayBuildingImg from './assets/buildings/roboticssupportbay.webp';
-import scienceFacilityBuildingImg from './assets/buildings/sciencefacility.webp';
-import shieldBatteryBuildingImg from './assets/buildings/shieldbattery.webp';
-import spawningPoolBuildingImg from './assets/buildings/spawningpool.webp';
-import spireBuildingImg from './assets/buildings/spire.webp';
-import sporeColonyBuildingImg from './assets/buildings/sporecolony.webp';
-import stargateBuildingImg from './assets/buildings/stargate.webp';
-import starportBuildingImg from './assets/buildings/starport.webp';
-import sunkenColonyBuildingImg from './assets/buildings/sunkencolony.webp';
-import supplyDepotBuildingImg from './assets/buildings/supplydepot.webp';
-import templarArchivesBuildingImg from './assets/buildings/templararchives.webp';
-import ultraliskCavernBuildingImg from './assets/buildings/ultraliskcavern.webp';
+import {
+  getUnitIcon,
+  normalizeUnitName,
+  carrierImg,
+  battlecruiserImg,
+} from './lib/gameAssets';
+import {
+  getStoredVariableValues,
+  saveVariableValues,
+  getStoredAutoIngestSettings,
+  saveAutoIngestSettings,
+} from './lib/dashboardStorage';
+import {
+  formatDuration,
+  formatRelativeReplayDate,
+  formatDaysAgoCompact,
+  formatPercent,
+} from './lib/formatters';
 import './styles.css';
-
-// Helper functions for localStorage
-const getStoredVariableValues = (dashboardUrl) => {
-  try {
-    const key = `dashboard_vars_${dashboardUrl}`;
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : null;
-  } catch (e) {
-    console.error('Failed to load variable values from localStorage:', e);
-    return null;
-  }
-};
-
-const saveVariableValues = (dashboardUrl, values) => {
-  try {
-    const key = `dashboard_vars_${dashboardUrl}`;
-    localStorage.setItem(key, JSON.stringify(values));
-  } catch (e) {
-    console.error('Failed to save variable values to localStorage:', e);
-  }
-};
-
-const AUTO_INGEST_SETTINGS_KEY = 'dashboard_auto_ingest_settings';
-
-const getStoredAutoIngestSettings = () => {
-  try {
-    const stored = localStorage.getItem(AUTO_INGEST_SETTINGS_KEY);
-    if (!stored) {
-      return { enabled: false, intervalSeconds: 60 };
-    }
-    const parsed = JSON.parse(stored);
-    const interval = Number.isFinite(parsed?.intervalSeconds) && parsed.intervalSeconds >= 60
-      ? Math.floor(parsed.intervalSeconds)
-      : 60;
-    return {
-      enabled: parsed?.enabled !== false,
-      intervalSeconds: interval,
-    };
-  } catch (e) {
-    console.error('Failed to load auto-ingest settings from localStorage:', e);
-    return { enabled: false, intervalSeconds: 60 };
-  }
-};
-
-const saveAutoIngestSettings = (settings) => {
-  try {
-    localStorage.setItem(AUTO_INGEST_SETTINGS_KEY, JSON.stringify(settings));
-  } catch (e) {
-    console.error('Failed to save auto-ingest settings to localStorage:', e);
-  }
-};
-
-const formatDuration = (seconds) => {
-  const total = Math.max(0, Math.floor(Number(seconds) || 0));
-  const mins = Math.floor(total / 60);
-  const secs = total % 60;
-  return `${mins}:${String(secs).padStart(2, '0')}`;
-};
-
-const formatRelativeReplayDate = (value) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const diffDays = Math.floor((startOfToday.getTime() - startOfDate.getTime()) / 86400000);
-
-  let dayLabel = '';
-  if (diffDays === 0) dayLabel = 'Today';
-  else if (diffDays === 1) dayLabel = 'Yesterday';
-  else if (diffDays > 1) dayLabel = `${diffDays} days ago`;
-  else dayLabel = date.toLocaleDateString();
-
-  const hours = date.getHours();
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const hour12 = hours % 12 || 12;
-  const ampm = hours >= 12 ? 'pm' : 'am';
-  return `${dayLabel} at ${hour12}.${minutes}${ampm}`;
-};
-
-const formatDaysAgoCompact = (value) => {
-  const days = Math.max(0, Number(value) || 0);
-  if (days === 0) return 'Today';
-  if (days === 1) return '1d ago';
-  return `${days}d ago`;
-};
 
 const buildHistogramSummaryFromPlayers = (players) => {
   const safePlayers = Array.isArray(players)
@@ -257,9 +107,9 @@ const buildHistogramSummaryFromPlayers = (players) => {
 
 const getRaceIcon = (race) => {
   const value = String(race || '').toLowerCase();
-  if (value === 'protoss') return probeImg;
-  if (value === 'terran') return scvImg;
-  if (value === 'zerg') return droneImg;
+  if (value === 'protoss') return getUnitIcon('probe');
+  if (value === 'terran') return getUnitIcon('scv');
+  if (value === 'zerg') return getUnitIcon('drone');
   return null;
 };
 
@@ -273,17 +123,17 @@ const raceRank = (race) => {
 
 const getGasMarkerIconForRace = (race) => {
   const value = String(race || '').trim().toLowerCase();
-  if (value === 'terran') return refineryBuildingImg;
-  if (value === 'zerg') return extractorBuildingImg;
-  if (value === 'protoss') return assimilatorBuildingImg;
-  return extractorBuildingImg;
+  if (value === 'terran') return getUnitIcon('refinery');
+  if (value === 'zerg') return getUnitIcon('extractor');
+  if (value === 'protoss') return getUnitIcon('assimilator');
+  return getUnitIcon('extractor');
 };
 
 const getExpansionMarkerIconForRace = (race) => {
   const value = String(race || '').trim().toLowerCase();
-  if (value === 'terran') return commandCenterBuildingImg;
-  if (value === 'zerg') return hatcheryBuildingImg;
-  if (value === 'protoss') return nexusBuildingImg;
+  if (value === 'terran') return getUnitIcon('commandcenter');
+  if (value === 'zerg') return getUnitIcon('hatchery');
+  if (value === 'protoss') return getUnitIcon('nexus');
   return null;
 };
 
@@ -452,110 +302,6 @@ const prettyRaceName = (race) => {
   return race || 'Unknown';
 };
 
-const UNIT_ICON_MAP = {
-  probe: probeImg,
-  scv: scvImg,
-  drone: droneImg,
-  arbiter: arbiterImg,
-  protossarbiter: arbiterImg,
-  corsair: corsairImg,
-  protosscorsair: corsairImg,
-  scout: scoutImg,
-  protossscout: scoutImg,
-  reaver: reaverImg,
-  protossreaver: reaverImg,
-  overlord: overlordImg,
-  zergoverlord: overlordImg,
-  scourge: scourgeImg,
-  zergscourge: scourgeImg,
-  observer: observerImg,
-  protossobserver: observerImg,
-  carrier: carrierImg,
-  battlecruiser: battlecruiserImg,
-  terranbattlecruiser: battlecruiserImg,
-  dropship: dropshipImg,
-  terrandropship: dropshipImg,
-  sciencevessel: scienceVesselImg,
-  terransciencevessel: scienceVesselImg,
-  wraith: wraithImg,
-  terranwraith: wraithImg,
-  marine: marineImg,
-  siegetank: siegetankImg,
-  siegetanktankmode: siegetankImg,
-  siegetankturrettankmode: siegetankImg,
-  terransiegetanksiegemode: siegetankImg,
-  siegetankturretsiegemode: siegetankImg,
-  zealot: zealotImg,
-  dragoon: dragoonImg,
-  zergling: zerglingImg,
-  hydralisk: hydraliskImg,
-  mutalisk: mutaliskImg,
-  ultralisk: ultraliskImg,
-  goliath: goliathImg,
-  vulture: vultureImg,
-  medic: medicImg,
-  defiler: defilerImg,
-  zergdefiler: defilerImg,
-  firebat: firebatImg,
-  darktemplar: darktemplarImg,
-  hightemplar: hightemplarImg,
-  lurker: lurkerImg,
-  academy: academyBuildingImg,
-  arbitertribunal: arbiterTribunalBuildingImg,
-  armory: armoryBuildingImg,
-  assimilator: assimilatorBuildingImg,
-  barracks: barracksBuildingImg,
-  bunker: bunkerBuildingImg,
-  citadelofadun: citadelOfAdunBuildingImg,
-  comsat: comsatBuildingImg,
-  commandcenter: commandCenterBuildingImg,
-  controltower: controlTowerBuildingImg,
-  covertops: covertOpsBuildingImg,
-  creepcolony: creepColonyBuildingImg,
-  cyberneticscore: cyberneticsCoreBuildingImg,
-  defilermound: defilerMoundBuildingImg,
-  engineeringbay: engineeringBayBuildingImg,
-  evolutionchamber: evolutionChamberBuildingImg,
-  extractor: extractorBuildingImg,
-  factory: factoryBuildingImg,
-  fleetbeacon: fleetBeaconBuildingImg,
-  forge: forgeBuildingImg,
-  gateway: gatewayBuildingImg,
-  greaterspire: greaterSpireBuildingImg,
-  hatchery: hatcheryBuildingImg,
-  hive: hiveBuildingImg,
-  hydraliskden: hydraliskDenBuildingImg,
-  infestedcc: infestedCcBuildingImg,
-  lair: lairBuildingImg,
-  machineshop: machineShopBuildingImg,
-  missileturret: missileTurretBuildingImg,
-  nexus: nexusBuildingImg,
-  nyduscanal: nydusCanalBuildingImg,
-  observatory: observatoryBuildingImg,
-  photoncannon: photonCannonBuildingImg,
-  physicslab: physicsLabBuildingImg,
-  pylon: pylonBuildingImg,
-  queensnest: queensNestBuildingImg,
-  refinery: refineryBuildingImg,
-  roboticsfacility: roboticsFacilityBuildingImg,
-  roboticssupportbay: roboticsSupportBayBuildingImg,
-  sciencefacility: scienceFacilityBuildingImg,
-  shieldbattery: shieldBatteryBuildingImg,
-  spawningpool: spawningPoolBuildingImg,
-  spire: spireBuildingImg,
-  sporecolony: sporeColonyBuildingImg,
-  stargate: stargateBuildingImg,
-  starport: starportBuildingImg,
-  sunkencolony: sunkenColonyBuildingImg,
-  supplydepot: supplyDepotBuildingImg,
-  templararchives: templarArchivesBuildingImg,
-  ultraliskcavern: ultraliskCavernBuildingImg,
-};
-
-const normalizeUnitName = (value) => String(value || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
-
-const getUnitIcon = (unitType) => UNIT_ICON_MAP[normalizeUnitName(unitType)] || null;
-
 const BUILDING_TYPE_KEYS = new Set([
   'academy', 'arbitertribunal', 'armory', 'assimilator', 'barracks', 'bunker', 'citadelofadun', 'comsat', 'commandcenter',
   'controltower', 'covertops', 'creepcolony', 'cyberneticscore', 'defilermound', 'engineeringbay', 'evolutionchamber',
@@ -593,8 +339,6 @@ const DEFENSIVE_BUILDING_KEYS = new Set([
   'creepcolony',
   'missileturret',
 ]);
-
-const formatPercent = (value) => `${((Number(value) || 0) * 100).toFixed(1)}%`;
 
 const DEFAULT_SUMMARY_FILTERS = {
   search: '',
@@ -909,8 +653,8 @@ const teamColorRgba = (team, alpha = 0.14) => {
   return `rgba(${Number.isNaN(r) ? 96 : r}, ${Number.isNaN(g) ? 165 : g}, ${Number.isNaN(b) ? 250 : b}, ${alpha})`;
 };
 
-const WORKFLOW_GAMES_PAGE_SIZE = 30;
-const WORKFLOW_PLAYERS_PAGE_SIZE = 30;
+const MAIN_GAMES_PAGE_SIZE = 30;
+const MAIN_PLAYERS_PAGE_SIZE = 30;
 
 const toggleFilterValue = (values, value) => {
   const normalized = String(value || '').trim();
@@ -1013,99 +757,99 @@ function App() {
   const ingestSocketRef = useRef(null);
   const autoIngestNoticeTimerRef = useRef(null);
   const [activeView, setActiveView] = useState('games');
-  const workflowViewHistoryRef = useRef([]);
-  const [workflowGames, setWorkflowGames] = useState([]);
-  const [workflowGamesLoading, setWorkflowGamesLoading] = useState(false);
-  const [workflowGamesPage, setWorkflowGamesPage] = useState(1);
-  const [workflowGamesTotal, setWorkflowGamesTotal] = useState(0);
-  const [workflowGamesFilterOptions, setWorkflowGamesFilterOptions] = useState({
+  const mainViewHistoryRef = useRef([]);
+  const [mainGames, setMainGames] = useState([]);
+  const [mainGamesLoading, setMainGamesLoading] = useState(false);
+  const [mainGamesPage, setMainGamesPage] = useState(1);
+  const [mainGamesTotal, setMainGamesTotal] = useState(0);
+  const [mainGamesFilterOptions, setMainGamesFilterOptions] = useState({
     players: [],
     maps: [],
     durations: [],
     featuring: [],
   });
-  const [workflowGamesFilters, setWorkflowGamesFilters] = useState({
+  const [mainGamesFilters, setMainGamesFilters] = useState({
     player: [],
     map: [],
     duration: [],
     featuring: [],
   });
-  const [workflowGameDetailLoading, setWorkflowGameDetailLoading] = useState(false);
-  const [workflowPlayerLoading, setWorkflowPlayerLoading] = useState(false);
+  const [mainGameDetailLoading, setMainGameDetailLoading] = useState(false);
+  const [mainPlayerLoading, setMainPlayerLoading] = useState(false);
   const [selectedReplayId, setSelectedReplayId] = useState(null);
   const [selectedPlayerKey, setSelectedPlayerKey] = useState('');
-  const [workflowGame, setWorkflowGame] = useState(null);
-  const [workflowGameTab, setWorkflowGameTab] = useState('summary');
-  const [workflowPlayer, setWorkflowPlayer] = useState(null);
-  const [workflowPlayerRecentGames, setWorkflowPlayerRecentGames] = useState([]);
-  const [workflowPlayerRecentGamesLoading, setWorkflowPlayerRecentGamesLoading] = useState(false);
-  const [workflowPlayerRecentGamesError, setWorkflowPlayerRecentGamesError] = useState('');
-  const [workflowPlayerChatSummary, setWorkflowPlayerChatSummary] = useState(null);
-  const [workflowPlayerChatSummaryLoading, setWorkflowPlayerChatSummaryLoading] = useState(false);
-  const [workflowPlayerChatSummaryError, setWorkflowPlayerChatSummaryError] = useState('');
-  const [workflowPlayerMetrics, setWorkflowPlayerMetrics] = useState(null);
-  const [workflowPlayerMetricsLoading, setWorkflowPlayerMetricsLoading] = useState(false);
-  const [workflowPlayerMetricsError, setWorkflowPlayerMetricsError] = useState('');
-  const [workflowPlayerOutliers, setWorkflowPlayerOutliers] = useState(null);
-  const [workflowPlayerOutliersLoading, setWorkflowPlayerOutliersLoading] = useState(false);
-  const [workflowPlayerOutliersError, setWorkflowPlayerOutliersError] = useState('');
-  const [workflowPlayers, setWorkflowPlayers] = useState([]);
-  const [workflowPlayersLoading, setWorkflowPlayersLoading] = useState(false);
-  const [workflowPlayersPage, setWorkflowPlayersPage] = useState(1);
-  const [workflowPlayersTotal, setWorkflowPlayersTotal] = useState(0);
-  const [workflowPlayersSortBy, setWorkflowPlayersSortBy] = useState('games');
-  const [workflowPlayersSortDir, setWorkflowPlayersSortDir] = useState('desc');
-  const [workflowPlayersTab, setWorkflowPlayersTab] = useState('summary');
-  const [workflowPlayersFilterOptions, setWorkflowPlayersFilterOptions] = useState({
+  const [mainGame, setMainGame] = useState(null);
+  const [mainGameTab, setMainGameTab] = useState('summary');
+  const [mainPlayer, setMainPlayer] = useState(null);
+  const [mainPlayerRecentGames, setMainPlayerRecentGames] = useState([]);
+  const [mainPlayerRecentGamesLoading, setMainPlayerRecentGamesLoading] = useState(false);
+  const [mainPlayerRecentGamesError, setMainPlayerRecentGamesError] = useState('');
+  const [mainPlayerChatSummary, setMainPlayerChatSummary] = useState(null);
+  const [mainPlayerChatSummaryLoading, setMainPlayerChatSummaryLoading] = useState(false);
+  const [mainPlayerChatSummaryError, setMainPlayerChatSummaryError] = useState('');
+  const [mainPlayerMetrics, setMainPlayerMetrics] = useState(null);
+  const [mainPlayerMetricsLoading, setMainPlayerMetricsLoading] = useState(false);
+  const [mainPlayerMetricsError, setMainPlayerMetricsError] = useState('');
+  const [mainPlayerOutliers, setMainPlayerOutliers] = useState(null);
+  const [mainPlayerOutliersLoading, setMainPlayerOutliersLoading] = useState(false);
+  const [mainPlayerOutliersError, setMainPlayerOutliersError] = useState('');
+  const [mainPlayers, setMainPlayers] = useState([]);
+  const [mainPlayersLoading, setMainPlayersLoading] = useState(false);
+  const [mainPlayersPage, setMainPlayersPage] = useState(1);
+  const [mainPlayersTotal, setMainPlayersTotal] = useState(0);
+  const [mainPlayersSortBy, setMainPlayersSortBy] = useState('games');
+  const [mainPlayersSortDir, setMainPlayersSortDir] = useState('desc');
+  const [mainPlayersTab, setMainPlayersTab] = useState('summary');
+  const [mainPlayersFilterOptions, setMainPlayersFilterOptions] = useState({
     races: [],
     last_played: [],
   });
-  const [workflowPlayersFilters, setWorkflowPlayersFilters] = useState({
+  const [mainPlayersFilters, setMainPlayersFilters] = useState({
     name: '',
     onlyFivePlus: false,
     lastPlayed: [],
   });
-  const [workflowPlayersApmHistogram, setWorkflowPlayersApmHistogram] = useState(null);
-  const [workflowPlayersApmHistogramLoading, setWorkflowPlayersApmHistogramLoading] = useState(false);
-  const [workflowPlayersApmHistogramError, setWorkflowPlayersApmHistogramError] = useState('');
-  const [workflowPlayersApmMinGames, setWorkflowPlayersApmMinGames] = useState(5);
-  const [workflowPlayersDelayHistogram, setWorkflowPlayersDelayHistogram] = useState(null);
-  const [workflowPlayersDelayHistogramLoading, setWorkflowPlayersDelayHistogramLoading] = useState(false);
-  const [workflowPlayersDelayHistogramError, setWorkflowPlayersDelayHistogramError] = useState('');
-  const [workflowPlayersDelayMinSamples, setWorkflowPlayersDelayMinSamples] = useState(5);
-  const [workflowPlayersDelaySelectedCases, setWorkflowPlayersDelaySelectedCases] = useState(['all']);
-  const [workflowPlayersCadenceHistogram, setWorkflowPlayersCadenceHistogram] = useState(null);
-  const [workflowPlayersCadenceHistogramLoading, setWorkflowPlayersCadenceHistogramLoading] = useState(false);
-  const [workflowPlayersCadenceHistogramError, setWorkflowPlayersCadenceHistogramError] = useState('');
-  const [workflowPlayersCadenceMinGames, setWorkflowPlayersCadenceMinGames] = useState(4);
-  const [workflowPlayersViewportHistogram, setWorkflowPlayersViewportHistogram] = useState(null);
-  const [workflowPlayersViewportHistogramLoading, setWorkflowPlayersViewportHistogramLoading] = useState(false);
-  const [workflowPlayersViewportHistogramError, setWorkflowPlayersViewportHistogramError] = useState('');
-  const [workflowPlayersViewportMinGames, setWorkflowPlayersViewportMinGames] = useState(4);
-  const [workflowPlayerApmInsight, setWorkflowPlayerApmInsight] = useState(null);
-  const [workflowPlayerApmInsightLoading, setWorkflowPlayerApmInsightLoading] = useState(false);
-  const [workflowPlayerApmInsightError, setWorkflowPlayerApmInsightError] = useState('');
-  const [workflowPlayerDelayInsight, setWorkflowPlayerDelayInsight] = useState(null);
-  const [workflowPlayerDelayInsightLoading, setWorkflowPlayerDelayInsightLoading] = useState(false);
-  const [workflowPlayerDelayInsightError, setWorkflowPlayerDelayInsightError] = useState('');
-  const [workflowPlayerCadenceInsight, setWorkflowPlayerCadenceInsight] = useState(null);
-  const [workflowPlayerCadenceInsightLoading, setWorkflowPlayerCadenceInsightLoading] = useState(false);
-  const [workflowPlayerCadenceInsightError, setWorkflowPlayerCadenceInsightError] = useState('');
-  const [workflowPlayerViewportInsight, setWorkflowPlayerViewportInsight] = useState(null);
-  const [workflowPlayerViewportInsightLoading, setWorkflowPlayerViewportInsightLoading] = useState(false);
-  const [workflowPlayerViewportInsightError, setWorkflowPlayerViewportInsightError] = useState('');
-  const [workflowQuestion, setWorkflowQuestion] = useState('');
-  const [workflowAnswer, setWorkflowAnswer] = useState(null);
-  const [askingWorkflow, setAskingWorkflow] = useState(false);
+  const [mainPlayersApmHistogram, setMainPlayersApmHistogram] = useState(null);
+  const [mainPlayersApmHistogramLoading, setMainPlayersApmHistogramLoading] = useState(false);
+  const [mainPlayersApmHistogramError, setMainPlayersApmHistogramError] = useState('');
+  const [mainPlayersApmMinGames, setMainPlayersApmMinGames] = useState(5);
+  const [mainPlayersDelayHistogram, setMainPlayersDelayHistogram] = useState(null);
+  const [mainPlayersDelayHistogramLoading, setMainPlayersDelayHistogramLoading] = useState(false);
+  const [mainPlayersDelayHistogramError, setMainPlayersDelayHistogramError] = useState('');
+  const [mainPlayersDelayMinSamples, setMainPlayersDelayMinSamples] = useState(5);
+  const [mainPlayersDelaySelectedCases, setMainPlayersDelaySelectedCases] = useState(['all']);
+  const [mainPlayersCadenceHistogram, setMainPlayersCadenceHistogram] = useState(null);
+  const [mainPlayersCadenceHistogramLoading, setMainPlayersCadenceHistogramLoading] = useState(false);
+  const [mainPlayersCadenceHistogramError, setMainPlayersCadenceHistogramError] = useState('');
+  const [mainPlayersCadenceMinGames, setMainPlayersCadenceMinGames] = useState(4);
+  const [mainPlayersViewportHistogram, setMainPlayersViewportHistogram] = useState(null);
+  const [mainPlayersViewportHistogramLoading, setMainPlayersViewportHistogramLoading] = useState(false);
+  const [mainPlayersViewportHistogramError, setMainPlayersViewportHistogramError] = useState('');
+  const [mainPlayersViewportMinGames, setMainPlayersViewportMinGames] = useState(4);
+  const [mainPlayerApmInsight, setMainPlayerApmInsight] = useState(null);
+  const [mainPlayerApmInsightLoading, setMainPlayerApmInsightLoading] = useState(false);
+  const [mainPlayerApmInsightError, setMainPlayerApmInsightError] = useState('');
+  const [mainPlayerDelayInsight, setMainPlayerDelayInsight] = useState(null);
+  const [mainPlayerDelayInsightLoading, setMainPlayerDelayInsightLoading] = useState(false);
+  const [mainPlayerDelayInsightError, setMainPlayerDelayInsightError] = useState('');
+  const [mainPlayerCadenceInsight, setMainPlayerCadenceInsight] = useState(null);
+  const [mainPlayerCadenceInsightLoading, setMainPlayerCadenceInsightLoading] = useState(false);
+  const [mainPlayerCadenceInsightError, setMainPlayerCadenceInsightError] = useState('');
+  const [mainPlayerViewportInsight, setMainPlayerViewportInsight] = useState(null);
+  const [mainPlayerViewportInsightLoading, setMainPlayerViewportInsightLoading] = useState(false);
+  const [mainPlayerViewportInsightError, setMainPlayerViewportInsightError] = useState('');
+  const [mainQuestion, setMainQuestion] = useState('');
+  const [mainAnswer, setMainAnswer] = useState(null);
+  const [mainAskLoading, setMainAskLoading] = useState(false);
   const [topPlayerColors, setTopPlayerColors] = useState({});
-  const [workflowSummaryFilters, setWorkflowSummaryFilters] = useState(DEFAULT_SUMMARY_FILTERS);
-  const [workflowProductionTab, setWorkflowProductionTab] = useState('units');
-  const [workflowUnitFilterMode, setWorkflowUnitFilterMode] = useState('all');
-  const [workflowUnitNameFilter, setWorkflowUnitNameFilter] = useState('');
-  const [workflowBuildingFilterMode, setWorkflowBuildingFilterMode] = useState('all');
-  const [workflowBuildingNameFilter, setWorkflowBuildingNameFilter] = useState('');
-  const [workflowTimingCategory, setWorkflowTimingCategory] = useState('gas');
-  const [workflowHpUpgradeFilters, setWorkflowHpUpgradeFilters] = useState({
+  const [mainSummaryFilters, setMainSummaryFilters] = useState(DEFAULT_SUMMARY_FILTERS);
+  const [mainProductionTab, setMainProductionTab] = useState('units');
+  const [mainUnitFilterMode, setMainUnitFilterMode] = useState('all');
+  const [mainUnitNameFilter, setMainUnitNameFilter] = useState('');
+  const [mainBuildingFilterMode, setMainBuildingFilterMode] = useState('all');
+  const [mainBuildingNameFilter, setMainBuildingNameFilter] = useState('');
+  const [mainTimingCategory, setMainTimingCategory] = useState('gas');
+  const [mainHpUpgradeFilters, setMainHpUpgradeFilters] = useState({
     terran: DEFAULT_HP_UPGRADE_BY_RACE.terran,
     zerg: DEFAULT_HP_UPGRADE_BY_RACE.zerg,
     protoss: DEFAULT_HP_UPGRADE_BY_RACE.protoss,
@@ -1188,21 +932,21 @@ function App() {
     return data;
   };
 
-  const loadWorkflowGames = async ({ page = workflowGamesPage, filters = workflowGamesFilters } = {}) => {
+  const loadMainGames = async ({ page = mainGamesPage, filters = mainGamesFilters } = {}) => {
     try {
-      setWorkflowGamesLoading(true);
+      setMainGamesLoading(true);
       const safePage = Math.max(1, Number(page) || 1);
-      const offset = (safePage - 1) * WORKFLOW_GAMES_PAGE_SIZE;
-      const data = await api.listWorkflowGames({
-        limit: WORKFLOW_GAMES_PAGE_SIZE,
+      const offset = (safePage - 1) * MAIN_GAMES_PAGE_SIZE;
+      const data = await api.listGames({
+        limit: MAIN_GAMES_PAGE_SIZE,
         offset,
         filters,
       });
       const items = data?.items || [];
-      setWorkflowGames(items);
-      setWorkflowGamesTotal(Number(data?.total) || 0);
+      setMainGames(items);
+      setMainGamesTotal(Number(data?.total) || 0);
       if (data?.filter_options) {
-        setWorkflowGamesFilterOptions(data.filter_options);
+        setMainGamesFilterOptions(data.filter_options);
       }
       if (!selectedReplayId && items.length > 0) {
         setSelectedReplayId(items[0].replay_id);
@@ -1210,311 +954,311 @@ function App() {
     } catch (err) {
       setError(err.message);
     } finally {
-      setWorkflowGamesLoading(false);
+      setMainGamesLoading(false);
     }
   };
 
-  const loadWorkflowPlayers = async ({
-    page = workflowPlayersPage,
-    filters = workflowPlayersFilters,
-    sortBy = workflowPlayersSortBy,
-    sortDir = workflowPlayersSortDir,
+  const loadMainPlayers = async ({
+    page = mainPlayersPage,
+    filters = mainPlayersFilters,
+    sortBy = mainPlayersSortBy,
+    sortDir = mainPlayersSortDir,
   } = {}) => {
     try {
-      setWorkflowPlayersLoading(true);
+      setMainPlayersLoading(true);
       const safePage = Math.max(1, Number(page) || 1);
-      const offset = (safePage - 1) * WORKFLOW_PLAYERS_PAGE_SIZE;
-      const data = await api.listWorkflowPlayers({
-        limit: WORKFLOW_PLAYERS_PAGE_SIZE,
+      const offset = (safePage - 1) * MAIN_PLAYERS_PAGE_SIZE;
+      const data = await api.listPlayers({
+        limit: MAIN_PLAYERS_PAGE_SIZE,
         offset,
         sortBy,
         sortDir,
         filters,
       });
-      setWorkflowPlayers(data?.items || []);
-      setWorkflowPlayersTotal(Number(data?.total) || 0);
+      setMainPlayers(data?.items || []);
+      setMainPlayersTotal(Number(data?.total) || 0);
       if (data?.filter_options) {
-        setWorkflowPlayersFilterOptions(data.filter_options);
+        setMainPlayersFilterOptions(data.filter_options);
       }
     } catch (err) {
       setError(err.message);
     } finally {
-      setWorkflowPlayersLoading(false);
+      setMainPlayersLoading(false);
     }
   };
 
-  const loadWorkflowPlayersApmHistogram = async () => {
+  const loadMainPlayersApmHistogram = async () => {
     try {
-      setWorkflowPlayersApmHistogramLoading(true);
-      setWorkflowPlayersApmHistogramError('');
-      const data = await api.getWorkflowPlayersApmHistogram();
-      setWorkflowPlayersApmHistogram(data);
+      setMainPlayersApmHistogramLoading(true);
+      setMainPlayersApmHistogramError('');
+      const data = await api.getPlayersApmHistogram();
+      setMainPlayersApmHistogram(data);
     } catch (err) {
-      setWorkflowPlayersApmHistogramError(err.message || 'Failed to load players histogram');
-      setWorkflowPlayersApmHistogram(null);
+      setMainPlayersApmHistogramError(err.message || 'Failed to load players histogram');
+      setMainPlayersApmHistogram(null);
     } finally {
-      setWorkflowPlayersApmHistogramLoading(false);
+      setMainPlayersApmHistogramLoading(false);
     }
   };
 
-  const loadWorkflowPlayersDelayHistogram = async () => {
+  const loadMainPlayersDelayHistogram = async () => {
     try {
-      setWorkflowPlayersDelayHistogramLoading(true);
-      setWorkflowPlayersDelayHistogramError('');
-      const data = await api.getWorkflowPlayersFirstUnitDelay();
-      setWorkflowPlayersDelayHistogram(data);
-      setWorkflowPlayersDelaySelectedCases(['all']);
+      setMainPlayersDelayHistogramLoading(true);
+      setMainPlayersDelayHistogramError('');
+      const data = await api.getPlayersFirstUnitDelay();
+      setMainPlayersDelayHistogram(data);
+      setMainPlayersDelaySelectedCases(['all']);
     } catch (err) {
-      setWorkflowPlayersDelayHistogramError(err.message || 'Failed to load players delay');
-      setWorkflowPlayersDelayHistogram(null);
-      setWorkflowPlayersDelaySelectedCases(['all']);
+      setMainPlayersDelayHistogramError(err.message || 'Failed to load players delay');
+      setMainPlayersDelayHistogram(null);
+      setMainPlayersDelaySelectedCases(['all']);
     } finally {
-      setWorkflowPlayersDelayHistogramLoading(false);
+      setMainPlayersDelayHistogramLoading(false);
     }
   };
 
-  const loadWorkflowPlayersCadenceHistogram = async () => {
+  const loadMainPlayersCadenceHistogram = async () => {
     try {
-      setWorkflowPlayersCadenceHistogramLoading(true);
-      setWorkflowPlayersCadenceHistogramError('');
-      const data = await api.getWorkflowPlayersUnitProductionCadence({ filter: 'strict', minGames: 4, limit: 0 });
-      setWorkflowPlayersCadenceHistogram(data);
+      setMainPlayersCadenceHistogramLoading(true);
+      setMainPlayersCadenceHistogramError('');
+      const data = await api.getPlayersUnitProductionCadence({ filter: 'strict', minGames: 4, limit: 0 });
+      setMainPlayersCadenceHistogram(data);
     } catch (err) {
-      setWorkflowPlayersCadenceHistogramError(err.message || 'Failed to load players unit production cadence');
-      setWorkflowPlayersCadenceHistogram(null);
+      setMainPlayersCadenceHistogramError(err.message || 'Failed to load players unit production cadence');
+      setMainPlayersCadenceHistogram(null);
     } finally {
-      setWorkflowPlayersCadenceHistogramLoading(false);
+      setMainPlayersCadenceHistogramLoading(false);
     }
   };
 
-  const loadWorkflowPlayersViewportHistogram = async () => {
+  const loadMainPlayersViewportHistogram = async () => {
     try {
-      setWorkflowPlayersViewportHistogramLoading(true);
-      setWorkflowPlayersViewportHistogramError('');
-      const data = await api.getWorkflowPlayersViewportMultitasking();
-      setWorkflowPlayersViewportHistogram(data);
+      setMainPlayersViewportHistogramLoading(true);
+      setMainPlayersViewportHistogramError('');
+      const data = await api.getPlayersViewportMultitasking();
+      setMainPlayersViewportHistogram(data);
     } catch (err) {
-      setWorkflowPlayersViewportHistogramError(err.message || 'Failed to load players viewport multitasking');
-      setWorkflowPlayersViewportHistogram(null);
+      setMainPlayersViewportHistogramError(err.message || 'Failed to load players viewport multitasking');
+      setMainPlayersViewportHistogram(null);
     } finally {
-      setWorkflowPlayersViewportHistogramLoading(false);
+      setMainPlayersViewportHistogramLoading(false);
     }
   };
 
   const loadTopPlayerColors = async () => {
     try {
-      const data = await api.getWorkflowPlayerColors();
+      const data = await api.getPlayerColors();
       setTopPlayerColors(data?.player_colors || {});
     } catch (err) {
       console.error('Failed to load top player colors:', err);
     }
   };
 
-  const openWorkflowGame = async (replayId) => {
+  const openMainGame = async (replayId) => {
     try {
-      setWorkflowGameDetailLoading(true);
+      setMainGameDetailLoading(true);
       setError(null);
-      const data = await api.getWorkflowGame(replayId);
-      setWorkflowGame(data);
-      setWorkflowGameTab('summary');
+      const data = await api.getGame(replayId);
+      setMainGame(data);
+      setMainGameTab('summary');
       setSelectedReplayId(replayId);
-      setWorkflowAnswer(null);
-      setWorkflowQuestion('');
-      setWorkflowSummaryFilters(DEFAULT_SUMMARY_FILTERS);
-      setWorkflowProductionTab('units');
-      setWorkflowUnitFilterMode('all');
-      setWorkflowUnitNameFilter('');
-      setWorkflowBuildingFilterMode('all');
-      setWorkflowBuildingNameFilter('');
-      setWorkflowTimingCategory('gas');
-      setWorkflowHpUpgradeFilters({
+      setMainAnswer(null);
+      setMainQuestion('');
+      setMainSummaryFilters(DEFAULT_SUMMARY_FILTERS);
+      setMainProductionTab('units');
+      setMainUnitFilterMode('all');
+      setMainUnitNameFilter('');
+      setMainBuildingFilterMode('all');
+      setMainBuildingNameFilter('');
+      setMainTimingCategory('gas');
+      setMainHpUpgradeFilters({
         terran: DEFAULT_HP_UPGRADE_BY_RACE.terran,
         zerg: DEFAULT_HP_UPGRADE_BY_RACE.zerg,
         protoss: DEFAULT_HP_UPGRADE_BY_RACE.protoss,
       });
-      navigateWorkflowView('game');
+      navigateMainView('game');
     } catch (err) {
       setError(err.message);
     } finally {
-      setWorkflowGameDetailLoading(false);
+      setMainGameDetailLoading(false);
     }
   };
 
-  const loadWorkflowPlayerRecentGames = async (playerKey) => {
+  const loadMainPlayerRecentGames = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     if (!normalizedPlayerKey) return;
     try {
-      setWorkflowPlayerRecentGamesLoading(true);
-      setWorkflowPlayerRecentGamesError('');
-      const data = await api.getWorkflowPlayerRecentGames(normalizedPlayerKey);
-      setWorkflowPlayerRecentGames(data?.recent_games || []);
+      setMainPlayerRecentGamesLoading(true);
+      setMainPlayerRecentGamesError('');
+      const data = await api.getPlayerRecentGames(normalizedPlayerKey);
+      setMainPlayerRecentGames(data?.recent_games || []);
     } catch (err) {
-      setWorkflowPlayerRecentGamesError(err.message || 'Failed to load recent games');
-      setWorkflowPlayerRecentGames([]);
+      setMainPlayerRecentGamesError(err.message || 'Failed to load recent games');
+      setMainPlayerRecentGames([]);
     } finally {
-      setWorkflowPlayerRecentGamesLoading(false);
+      setMainPlayerRecentGamesLoading(false);
     }
   };
 
-  const loadWorkflowPlayerChatSummary = async (playerKey) => {
+  const loadMainPlayerChatSummary = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     if (!normalizedPlayerKey) return;
     try {
-      setWorkflowPlayerChatSummaryLoading(true);
-      setWorkflowPlayerChatSummaryError('');
-      const data = await api.getWorkflowPlayerChatSummary(normalizedPlayerKey);
-      setWorkflowPlayerChatSummary(data?.chat_summary || null);
+      setMainPlayerChatSummaryLoading(true);
+      setMainPlayerChatSummaryError('');
+      const data = await api.getPlayerChatSummary(normalizedPlayerKey);
+      setMainPlayerChatSummary(data?.chat_summary || null);
     } catch (err) {
-      setWorkflowPlayerChatSummaryError(err.message || 'Failed to load chat summary');
-      setWorkflowPlayerChatSummary(null);
+      setMainPlayerChatSummaryError(err.message || 'Failed to load chat summary');
+      setMainPlayerChatSummary(null);
     } finally {
-      setWorkflowPlayerChatSummaryLoading(false);
+      setMainPlayerChatSummaryLoading(false);
     }
   };
 
-  const loadWorkflowPlayerMetrics = async (playerKey) => {
+  const loadMainPlayerMetrics = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     if (!normalizedPlayerKey) return;
     try {
-      setWorkflowPlayerMetricsLoading(true);
-      setWorkflowPlayerMetricsError('');
-      const metricsData = await api.getWorkflowPlayerMetrics(normalizedPlayerKey);
-      setWorkflowPlayerMetrics(metricsData);
+      setMainPlayerMetricsLoading(true);
+      setMainPlayerMetricsError('');
+      const metricsData = await api.getPlayerMetrics(normalizedPlayerKey);
+      setMainPlayerMetrics(metricsData);
     } catch (err) {
-      setWorkflowPlayerMetricsError(err.message || 'Failed to load metrics');
-      setWorkflowPlayerMetrics(null);
+      setMainPlayerMetricsError(err.message || 'Failed to load metrics');
+      setMainPlayerMetrics(null);
     } finally {
-      setWorkflowPlayerMetricsLoading(false);
+      setMainPlayerMetricsLoading(false);
     }
   };
 
-  const loadWorkflowPlayerApmInsight = async (playerKey) => {
+  const loadMainPlayerApmInsight = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     if (!normalizedPlayerKey) return;
     try {
-      setWorkflowPlayerApmInsightLoading(true);
-      setWorkflowPlayerApmInsightError('');
-      const insightData = await api.getWorkflowPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.apm);
-      setWorkflowPlayerApmInsight(insightData);
+      setMainPlayerApmInsightLoading(true);
+      setMainPlayerApmInsightError('');
+      const insightData = await api.getPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.apm);
+      setMainPlayerApmInsight(insightData);
     } catch (err) {
-      setWorkflowPlayerApmInsightError(err.message || 'Failed to load APM insight');
-      setWorkflowPlayerApmInsight(null);
+      setMainPlayerApmInsightError(err.message || 'Failed to load APM insight');
+      setMainPlayerApmInsight(null);
     } finally {
-      setWorkflowPlayerApmInsightLoading(false);
+      setMainPlayerApmInsightLoading(false);
     }
   };
 
-  const loadWorkflowPlayerOutliers = async (playerKey) => {
+  const loadMainPlayerOutliers = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     if (!normalizedPlayerKey) return;
     try {
-      setWorkflowPlayerOutliersLoading(true);
-      setWorkflowPlayerOutliersError('');
-      const outlierData = await api.getWorkflowPlayerOutliers(normalizedPlayerKey);
-      setWorkflowPlayerOutliers(outlierData);
+      setMainPlayerOutliersLoading(true);
+      setMainPlayerOutliersError('');
+      const outlierData = await api.getPlayerOutliers(normalizedPlayerKey);
+      setMainPlayerOutliers(outlierData);
     } catch (err) {
-      setWorkflowPlayerOutliersError(err.message || 'Failed to load outliers');
-      setWorkflowPlayerOutliers(null);
+      setMainPlayerOutliersError(err.message || 'Failed to load outliers');
+      setMainPlayerOutliers(null);
     } finally {
-      setWorkflowPlayerOutliersLoading(false);
+      setMainPlayerOutliersLoading(false);
     }
   };
 
-  const loadWorkflowPlayerDelayInsight = async (playerKey) => {
+  const loadMainPlayerDelayInsight = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     if (!normalizedPlayerKey) return;
     try {
-      setWorkflowPlayerDelayInsightLoading(true);
-      setWorkflowPlayerDelayInsightError('');
-      const delayData = await api.getWorkflowPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.firstUnitDelay);
-      setWorkflowPlayerDelayInsight(delayData);
+      setMainPlayerDelayInsightLoading(true);
+      setMainPlayerDelayInsightError('');
+      const delayData = await api.getPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.firstUnitDelay);
+      setMainPlayerDelayInsight(delayData);
     } catch (err) {
-      setWorkflowPlayerDelayInsightError(err.message || 'Failed to load delay insight');
-      setWorkflowPlayerDelayInsight(null);
+      setMainPlayerDelayInsightError(err.message || 'Failed to load delay insight');
+      setMainPlayerDelayInsight(null);
     } finally {
-      setWorkflowPlayerDelayInsightLoading(false);
+      setMainPlayerDelayInsightLoading(false);
     }
   };
 
-  const loadWorkflowPlayerCadenceInsight = async (playerKey) => {
+  const loadMainPlayerCadenceInsight = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     if (!normalizedPlayerKey) return;
     try {
-      setWorkflowPlayerCadenceInsightLoading(true);
-      setWorkflowPlayerCadenceInsightError('');
-      const cadenceData = await api.getWorkflowPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.unitProductionCadence);
-      setWorkflowPlayerCadenceInsight(cadenceData);
+      setMainPlayerCadenceInsightLoading(true);
+      setMainPlayerCadenceInsightError('');
+      const cadenceData = await api.getPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.unitProductionCadence);
+      setMainPlayerCadenceInsight(cadenceData);
     } catch (err) {
-      setWorkflowPlayerCadenceInsightError(err.message || 'Failed to load cadence insight');
-      setWorkflowPlayerCadenceInsight(null);
+      setMainPlayerCadenceInsightError(err.message || 'Failed to load cadence insight');
+      setMainPlayerCadenceInsight(null);
     } finally {
-      setWorkflowPlayerCadenceInsightLoading(false);
+      setMainPlayerCadenceInsightLoading(false);
     }
   };
 
-  const loadWorkflowPlayerViewportInsight = async (playerKey) => {
+  const loadMainPlayerViewportInsight = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     if (!normalizedPlayerKey) return;
     try {
-      setWorkflowPlayerViewportInsightLoading(true);
-      setWorkflowPlayerViewportInsightError('');
-      const viewportData = await api.getWorkflowPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.viewportSwitchRate);
-      setWorkflowPlayerViewportInsight(viewportData);
+      setMainPlayerViewportInsightLoading(true);
+      setMainPlayerViewportInsightError('');
+      const viewportData = await api.getPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.viewportSwitchRate);
+      setMainPlayerViewportInsight(viewportData);
     } catch (err) {
-      setWorkflowPlayerViewportInsightError(err.message || 'Failed to load viewport insight');
-      setWorkflowPlayerViewportInsight(null);
+      setMainPlayerViewportInsightError(err.message || 'Failed to load viewport insight');
+      setMainPlayerViewportInsight(null);
     } finally {
-      setWorkflowPlayerViewportInsightLoading(false);
+      setMainPlayerViewportInsightLoading(false);
     }
   };
 
-  const openWorkflowPlayer = async (playerKey) => {
+  const openMainPlayer = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     try {
-      setWorkflowPlayerLoading(true);
+      setMainPlayerLoading(true);
       setError(null);
-      const data = await api.getWorkflowPlayer(playerKey);
-      setWorkflowPlayer(data);
-      setWorkflowPlayerRecentGames([]);
-      setWorkflowPlayerRecentGamesError('');
-      setWorkflowPlayerRecentGamesLoading(false);
-      setWorkflowPlayerChatSummary(null);
-      setWorkflowPlayerChatSummaryError('');
-      setWorkflowPlayerChatSummaryLoading(false);
-      setWorkflowPlayerMetrics(null);
-      setWorkflowPlayerMetricsError('');
-      setWorkflowPlayerMetricsLoading(false);
-      setWorkflowPlayerOutliers(null);
-      setWorkflowPlayerOutliersError('');
-      setWorkflowPlayerOutliersLoading(false);
-      setWorkflowPlayerApmInsight(null);
-      setWorkflowPlayerApmInsightError('');
-      setWorkflowPlayerApmInsightLoading(false);
-      setWorkflowPlayerDelayInsight(null);
-      setWorkflowPlayerDelayInsightError('');
-      setWorkflowPlayerDelayInsightLoading(false);
-      setWorkflowPlayerCadenceInsight(null);
-      setWorkflowPlayerCadenceInsightError('');
-      setWorkflowPlayerCadenceInsightLoading(false);
-      setWorkflowPlayerViewportInsight(null);
-      setWorkflowPlayerViewportInsightError('');
-      setWorkflowPlayerViewportInsightLoading(false);
+      const data = await api.getPlayer(playerKey);
+      setMainPlayer(data);
+      setMainPlayerRecentGames([]);
+      setMainPlayerRecentGamesError('');
+      setMainPlayerRecentGamesLoading(false);
+      setMainPlayerChatSummary(null);
+      setMainPlayerChatSummaryError('');
+      setMainPlayerChatSummaryLoading(false);
+      setMainPlayerMetrics(null);
+      setMainPlayerMetricsError('');
+      setMainPlayerMetricsLoading(false);
+      setMainPlayerOutliers(null);
+      setMainPlayerOutliersError('');
+      setMainPlayerOutliersLoading(false);
+      setMainPlayerApmInsight(null);
+      setMainPlayerApmInsightError('');
+      setMainPlayerApmInsightLoading(false);
+      setMainPlayerDelayInsight(null);
+      setMainPlayerDelayInsightError('');
+      setMainPlayerDelayInsightLoading(false);
+      setMainPlayerCadenceInsight(null);
+      setMainPlayerCadenceInsightError('');
+      setMainPlayerCadenceInsightLoading(false);
+      setMainPlayerViewportInsight(null);
+      setMainPlayerViewportInsightError('');
+      setMainPlayerViewportInsightLoading(false);
       setSelectedPlayerKey(normalizedPlayerKey);
-      setWorkflowAnswer(null);
-      setWorkflowQuestion('');
-      navigateWorkflowView('player');
-      loadWorkflowPlayerRecentGames(normalizedPlayerKey);
-      loadWorkflowPlayerChatSummary(normalizedPlayerKey);
-      loadWorkflowPlayerMetrics(normalizedPlayerKey);
-      loadWorkflowPlayerOutliers(normalizedPlayerKey);
-      loadWorkflowPlayerApmInsight(normalizedPlayerKey);
-      loadWorkflowPlayerDelayInsight(normalizedPlayerKey);
-      loadWorkflowPlayerCadenceInsight(normalizedPlayerKey);
-      loadWorkflowPlayerViewportInsight(normalizedPlayerKey);
+      setMainAnswer(null);
+      setMainQuestion('');
+      navigateMainView('player');
+      loadMainPlayerRecentGames(normalizedPlayerKey);
+      loadMainPlayerChatSummary(normalizedPlayerKey);
+      loadMainPlayerMetrics(normalizedPlayerKey);
+      loadMainPlayerOutliers(normalizedPlayerKey);
+      loadMainPlayerApmInsight(normalizedPlayerKey);
+      loadMainPlayerDelayInsight(normalizedPlayerKey);
+      loadMainPlayerCadenceInsight(normalizedPlayerKey);
+      loadMainPlayerViewportInsight(normalizedPlayerKey);
     } catch (err) {
       setError(err.message);
     } finally {
-      setWorkflowPlayerLoading(false);
+      setMainPlayerLoading(false);
     }
   };
 
@@ -1602,68 +1346,68 @@ function App() {
   }, []);
 
   useEffect(() => {
-    loadWorkflowGames({ page: workflowGamesPage, filters: workflowGamesFilters });
-  }, [workflowGamesPage, workflowGamesFilters]);
+    loadMainGames({ page: mainGamesPage, filters: mainGamesFilters });
+  }, [mainGamesPage, mainGamesFilters]);
 
   useEffect(() => {
-    loadWorkflowPlayers({
-      page: workflowPlayersPage,
-      filters: workflowPlayersFilters,
-      sortBy: workflowPlayersSortBy,
-      sortDir: workflowPlayersSortDir,
+    loadMainPlayers({
+      page: mainPlayersPage,
+      filters: mainPlayersFilters,
+      sortBy: mainPlayersSortBy,
+      sortDir: mainPlayersSortDir,
     });
-  }, [workflowPlayersPage, workflowPlayersFilters, workflowPlayersSortBy, workflowPlayersSortDir]);
+  }, [mainPlayersPage, mainPlayersFilters, mainPlayersSortBy, mainPlayersSortDir]);
 
   useEffect(() => {
-    if (activeView !== 'players' || workflowPlayersTab !== 'apm-histogram') return;
-    if (!workflowPlayersApmHistogram && !workflowPlayersApmHistogramLoading && !workflowPlayersApmHistogramError) {
-      loadWorkflowPlayersApmHistogram();
+    if (activeView !== 'players' || mainPlayersTab !== 'apm-histogram') return;
+    if (!mainPlayersApmHistogram && !mainPlayersApmHistogramLoading && !mainPlayersApmHistogramError) {
+      loadMainPlayersApmHistogram();
     }
   }, [
     activeView,
-    workflowPlayersTab,
-    workflowPlayersApmHistogram,
-    workflowPlayersApmHistogramLoading,
-    workflowPlayersApmHistogramError,
+    mainPlayersTab,
+    mainPlayersApmHistogram,
+    mainPlayersApmHistogramLoading,
+    mainPlayersApmHistogramError,
   ]);
 
   useEffect(() => {
-    if (activeView !== 'players' || workflowPlayersTab !== 'first-unit-delay') return;
-    if (!workflowPlayersDelayHistogram && !workflowPlayersDelayHistogramLoading && !workflowPlayersDelayHistogramError) {
-      loadWorkflowPlayersDelayHistogram();
+    if (activeView !== 'players' || mainPlayersTab !== 'first-unit-delay') return;
+    if (!mainPlayersDelayHistogram && !mainPlayersDelayHistogramLoading && !mainPlayersDelayHistogramError) {
+      loadMainPlayersDelayHistogram();
     }
   }, [
     activeView,
-    workflowPlayersTab,
-    workflowPlayersDelayHistogram,
-    workflowPlayersDelayHistogramLoading,
-    workflowPlayersDelayHistogramError,
+    mainPlayersTab,
+    mainPlayersDelayHistogram,
+    mainPlayersDelayHistogramLoading,
+    mainPlayersDelayHistogramError,
   ]);
 
   useEffect(() => {
-    if (activeView !== 'players' || workflowPlayersTab !== 'unit-production-cadence') return;
-    if (!workflowPlayersCadenceHistogram && !workflowPlayersCadenceHistogramLoading && !workflowPlayersCadenceHistogramError) {
-      loadWorkflowPlayersCadenceHistogram();
+    if (activeView !== 'players' || mainPlayersTab !== 'unit-production-cadence') return;
+    if (!mainPlayersCadenceHistogram && !mainPlayersCadenceHistogramLoading && !mainPlayersCadenceHistogramError) {
+      loadMainPlayersCadenceHistogram();
     }
   }, [
     activeView,
-    workflowPlayersTab,
-    workflowPlayersCadenceHistogram,
-    workflowPlayersCadenceHistogramLoading,
-    workflowPlayersCadenceHistogramError,
+    mainPlayersTab,
+    mainPlayersCadenceHistogram,
+    mainPlayersCadenceHistogramLoading,
+    mainPlayersCadenceHistogramError,
   ]);
 
   useEffect(() => {
-    if (activeView !== 'players' || workflowPlayersTab !== 'viewport-multitasking') return;
-    if (!workflowPlayersViewportHistogram && !workflowPlayersViewportHistogramLoading && !workflowPlayersViewportHistogramError) {
-      loadWorkflowPlayersViewportHistogram();
+    if (activeView !== 'players' || mainPlayersTab !== 'viewport-multitasking') return;
+    if (!mainPlayersViewportHistogram && !mainPlayersViewportHistogramLoading && !mainPlayersViewportHistogramError) {
+      loadMainPlayersViewportHistogram();
     }
   }, [
     activeView,
-    workflowPlayersTab,
-    workflowPlayersViewportHistogram,
-    workflowPlayersViewportHistogramLoading,
-    workflowPlayersViewportHistogramError,
+    mainPlayersTab,
+    mainPlayersViewportHistogram,
+    mainPlayersViewportHistogramLoading,
+    mainPlayersViewportHistogramError,
   ]);
 
   useEffect(() => {
@@ -1944,12 +1688,12 @@ function App() {
 
   const refreshDataAfterGlobalReplayFilterSave = async () => {
     await Promise.all([
-      loadWorkflowGames({ page: workflowGamesPage, filters: workflowGamesFilters }),
-      loadWorkflowPlayers({
-        page: workflowPlayersPage,
-        filters: workflowPlayersFilters,
-        sortBy: workflowPlayersSortBy,
-        sortDir: workflowPlayersSortDir,
+      loadMainGames({ page: mainGamesPage, filters: mainGamesFilters }),
+      loadMainPlayers({
+        page: mainPlayersPage,
+        filters: mainPlayersFilters,
+        sortBy: mainPlayersSortBy,
+        sortDir: mainPlayersSortDir,
       }),
       loadDashboard(currentDashboardUrl, variableValues, true),
       loadTopPlayerColors(),
@@ -1959,26 +1703,26 @@ function App() {
 
     if (activeView === 'game' && selectedReplayId) {
       try {
-        await openWorkflowGame(selectedReplayId);
+        await openMainGame(selectedReplayId);
       } catch (err) {
-        console.error('Failed to reload workflow game after global filter save:', err);
+        console.error('Failed to reload main game after global filter save:', err);
       }
     }
     if (activeView === 'player' && selectedPlayerKey) {
       try {
-        await openWorkflowPlayer(selectedPlayerKey);
+        await openMainPlayer(selectedPlayerKey);
       } catch (err) {
-        console.error('Failed to reload workflow player after global filter save:', err);
+        console.error('Failed to reload main player after global filter save:', err);
       }
     }
-    if (workflowPlayersApmHistogram) {
-      loadWorkflowPlayersApmHistogram();
+    if (mainPlayersApmHistogram) {
+      loadMainPlayersApmHistogram();
     }
-    if (workflowPlayersDelayHistogram) {
-      loadWorkflowPlayersDelayHistogram();
+    if (mainPlayersDelayHistogram) {
+      loadMainPlayersDelayHistogram();
     }
-    if (workflowPlayersCadenceHistogram) {
-      loadWorkflowPlayersCadenceHistogram();
+    if (mainPlayersCadenceHistogram) {
+      loadMainPlayersCadenceHistogram();
     }
   };
 
@@ -1997,25 +1741,25 @@ function App() {
     }
   };
 
-  const setWorkflowGameSingleFilter = (name, nextValue) => {
-    setWorkflowGamesPage(1);
-    setWorkflowGamesFilters((prev) => ({
+  const setMainGameSingleFilter = (name, nextValue) => {
+    setMainGamesPage(1);
+    setMainGamesFilters((prev) => ({
       ...prev,
       [name]: nextValue ? [nextValue] : [],
     }));
   };
 
-  const toggleWorkflowGameMultiFilter = (name, value) => {
-    setWorkflowGamesPage(1);
-    setWorkflowGamesFilters((prev) => ({
+  const toggleMainGameMultiFilter = (name, value) => {
+    setMainGamesPage(1);
+    setMainGamesFilters((prev) => ({
       ...prev,
       [name]: toggleFilterValue(prev[name] || [], value),
     }));
   };
 
-  const clearWorkflowGamesFilters = () => {
-    setWorkflowGamesPage(1);
-    setWorkflowGamesFilters({
+  const clearMainGamesFilters = () => {
+    setMainGamesPage(1);
+    setMainGamesFilters({
       player: [],
       map: [],
       duration: [],
@@ -2023,49 +1767,49 @@ function App() {
     });
   };
 
-  const setWorkflowPlayersSingleFilter = (name, nextValue) => {
-    setWorkflowPlayersPage(1);
-    setWorkflowPlayersFilters((prev) => ({
+  const setMainPlayersSingleFilter = (name, nextValue) => {
+    setMainPlayersPage(1);
+    setMainPlayersFilters((prev) => ({
       ...prev,
       [name]: nextValue,
     }));
   };
 
-  const toggleWorkflowPlayersMultiFilter = (name, value) => {
-    setWorkflowPlayersPage(1);
-    setWorkflowPlayersFilters((prev) => ({
+  const toggleMainPlayersMultiFilter = (name, value) => {
+    setMainPlayersPage(1);
+    setMainPlayersFilters((prev) => ({
       ...prev,
       [name]: toggleFilterValue(prev[name] || [], value),
     }));
   };
 
-  const clearWorkflowPlayersFilters = () => {
-    setWorkflowPlayersPage(1);
-    setWorkflowPlayersFilters({
+  const clearMainPlayersFilters = () => {
+    setMainPlayersPage(1);
+    setMainPlayersFilters({
       name: '',
       onlyFivePlus: false,
       lastPlayed: [],
     });
-    setWorkflowPlayersSortBy('games');
-    setWorkflowPlayersSortDir('desc');
+    setMainPlayersSortBy('games');
+    setMainPlayersSortDir('desc');
   };
 
-  const setWorkflowPlayersSort = (sortBy) => {
-    setWorkflowPlayersPage(1);
-    setWorkflowPlayersSortBy((prevSortBy) => {
+  const setMainPlayersSort = (sortBy) => {
+    setMainPlayersPage(1);
+    setMainPlayersSortBy((prevSortBy) => {
       if (prevSortBy === sortBy) {
-        setWorkflowPlayersSortDir((prevDir) => (prevDir === 'asc' ? 'desc' : 'asc'));
+        setMainPlayersSortDir((prevDir) => (prevDir === 'asc' ? 'desc' : 'asc'));
         return prevSortBy;
       }
-      setWorkflowPlayersSortDir(sortBy === 'games' || sortBy === 'last_played' ? 'desc' : 'asc');
+      setMainPlayersSortDir(sortBy === 'games' || sortBy === 'last_played' ? 'desc' : 'asc');
       return sortBy;
     });
   };
 
-  const toggleWorkflowPlayersDelayCase = (caseKey) => {
+  const toggleMainPlayersDelayCase = (caseKey) => {
     const normalized = String(caseKey || '').trim();
     if (!normalized) return;
-    setWorkflowPlayersDelaySelectedCases((prev) => {
+    setMainPlayersDelaySelectedCases((prev) => {
       const current = Array.isArray(prev) ? prev : ['all'];
       if (normalized === 'all') return ['all'];
       const withoutAll = current.filter((value) => value && value !== 'all');
@@ -2078,27 +1822,27 @@ function App() {
     });
   };
 
-  const navigateWorkflowView = (nextView) => {
+  const navigateMainView = (nextView) => {
     setActiveView((currentView) => {
       if (currentView === nextView) return currentView;
-      workflowViewHistoryRef.current.push(currentView);
-      if (workflowViewHistoryRef.current.length > 30) {
-        workflowViewHistoryRef.current.shift();
+      mainViewHistoryRef.current.push(currentView);
+      if (mainViewHistoryRef.current.length > 30) {
+        mainViewHistoryRef.current.shift();
       }
       return nextView;
     });
   };
 
-  const openWorkflowPlayersSubview = (tab) => {
+  const openMainPlayersSubview = (tab) => {
     const nextTab = String(tab || 'summary');
-    setWorkflowPlayersTab(nextTab);
-    navigateWorkflowView('players');
+    setMainPlayersTab(nextTab);
+    navigateMainView('players');
   };
 
-  const goBackWorkflowView = () => {
+  const goBackMainView = () => {
     setActiveView((currentView) => {
-      while (workflowViewHistoryRef.current.length > 0) {
-        const previous = workflowViewHistoryRef.current.pop();
+      while (mainViewHistoryRef.current.length > 0) {
+        const previous = mainViewHistoryRef.current.pop();
         if (previous && previous !== currentView) {
           return previous;
         }
@@ -2107,22 +1851,22 @@ function App() {
     });
   };
 
-  const handleWorkflowAsk = async (e) => {
+  const handleMainAsk = async (e) => {
     e.preventDefault();
-    const question = workflowQuestion.trim();
-    if (!question || askingWorkflow) return;
+    const question = mainQuestion.trim();
+    if (!question || mainAskLoading) return;
     try {
-      setAskingWorkflow(true);
-      setWorkflowAnswer(null);
-      if (activeView === 'game' && workflowGame?.replay_id) {
-        const response = await api.askWorkflowGame(workflowGame.replay_id, question);
-        setWorkflowAnswer(response);
-      } else if (activeView === 'player' && workflowPlayer?.player_key) {
-        const response = await api.askWorkflowPlayer(workflowPlayer.player_key, question);
-        setWorkflowAnswer(response);
+      setMainAskLoading(true);
+      setMainAnswer(null);
+      if (activeView === 'game' && mainGame?.replay_id) {
+        const response = await api.askGame(mainGame.replay_id, question);
+        setMainAnswer(response);
+      } else if (activeView === 'player' && mainPlayer?.player_key) {
+        const response = await api.askPlayer(mainPlayer.player_key, question);
+        setMainAnswer(response);
       }
     } catch (err) {
-      setWorkflowAnswer({
+      setMainAnswer({
         title: 'AI Error',
         description: 'The question could not be answered.',
         config: { type: 'text' },
@@ -2131,7 +1875,7 @@ function App() {
         columns: [],
       });
     } finally {
-      setAskingWorkflow(false);
+      setMainAskLoading(false);
     }
   };
 
@@ -2161,7 +1905,7 @@ function App() {
     ));
   };
 
-  const renderWorkflowGameListPlayers = (game) => {
+  const renderMainGameListPlayers = (game) => {
     const players = Array.isArray(game?.players) ? game.players : [];
     if (players.length === 0) {
       return renderPlayersMatchup(game?.players_label || '');
@@ -2186,18 +1930,18 @@ function App() {
     });
   };
 
-  const renderWorkflowAiResult = () => {
-    if (!workflowAnswer) return null;
-    const config = workflowAnswer.config || { type: 'text' };
-    const data = workflowAnswer.results || [];
-    const columns = workflowAnswer.columns || [];
+  const renderMainAiResult = () => {
+    if (!mainAnswer) return null;
+    const config = mainAnswer.config || { type: 'text' };
+    const data = mainAnswer.results || [];
+    const columns = mainAnswer.columns || [];
     const chartProps = { data, config };
 
     if (config.type === 'text') {
       return (
         <div className="workflow-answer">
-          {workflowAnswer.title ? <div className="workflow-answer-title">{workflowAnswer.title}</div> : null}
-          <div>{workflowAnswer.text_answer || workflowAnswer.description || 'No text answer returned.'}</div>
+          {mainAnswer.title ? <div className="workflow-answer-title">{mainAnswer.title}</div> : null}
+          <div>{mainAnswer.text_answer || mainAnswer.description || 'No text answer returned.'}</div>
         </div>
       );
     }
@@ -2235,8 +1979,8 @@ function App() {
 
     return (
       <div className="workflow-answer-chart">
-        {workflowAnswer.title ? <div className="workflow-answer-title">{workflowAnswer.title}</div> : null}
-        {workflowAnswer.description ? <div className="workflow-answer-description">{workflowAnswer.description}</div> : null}
+        {mainAnswer.title ? <div className="workflow-answer-title">{mainAnswer.title}</div> : null}
+        {mainAnswer.description ? <div className="workflow-answer-description">{mainAnswer.description}</div> : null}
         <div className="workflow-answer-visual">{content}</div>
       </div>
     );
@@ -2250,18 +1994,18 @@ function App() {
     })
     : [];
 
-  const workflowLocationOptions = useMemo(
-    () => extractLocationOptions(workflowGame?.game_events || []),
-    [workflowGame?.game_events],
+  const mainLocationOptions = useMemo(
+    () => extractLocationOptions(mainGame?.game_events || []),
+    [mainGame?.game_events],
   );
 
   const summaryTextMatches = (text) => {
     const value = String(text || '').toLowerCase();
-    if (workflowSummaryFilters.search && !value.includes(workflowSummaryFilters.search.toLowerCase())) {
+    if (mainSummaryFilters.search && !value.includes(mainSummaryFilters.search.toLowerCase())) {
       return false;
     }
     const activeTopics = Object.entries(SUMMARY_TOPIC_PATTERNS)
-      .filter(([key]) => workflowSummaryFilters[key])
+      .filter(([key]) => mainSummaryFilters[key])
       .map(([, matcher]) => matcher);
     if (activeTopics.length > 0 && !activeTopics.some((matcher) => matcher.test(value))) {
       return false;
@@ -2269,82 +2013,82 @@ function App() {
     return true;
   };
 
-  const filteredReplayPatterns = workflowGame?.replay_patterns || [];
-  const filteredTeamPatterns = workflowGame?.team_patterns || [];
-  const workflowPlayerOutlierItems = workflowPlayerOutliers?.items || [];
+  const filteredReplayPatterns = mainGame?.replay_patterns || [];
+  const filteredTeamPatterns = mainGame?.team_patterns || [];
+  const mainPlayerOutlierItems = mainPlayerOutliers?.items || [];
 
-  const filteredGameEvents = (workflowGame?.game_events || []).filter((event) => {
-    if (workflowSummaryFilters.player && !String(event.description || '').toLowerCase().includes(workflowSummaryFilters.player.toLowerCase())) {
+  const filteredGameEvents = (mainGame?.game_events || []).filter((event) => {
+    if (mainSummaryFilters.player && !String(event.description || '').toLowerCase().includes(mainSummaryFilters.player.toLowerCase())) {
       return false;
     }
-    if (workflowSummaryFilters.location) {
+    if (mainSummaryFilters.location) {
       const eventTags = extractEventLocationTags(event.description || '');
-      if (!eventTags.includes(workflowSummaryFilters.location)) return false;
+      if (!eventTags.includes(mainSummaryFilters.location)) return false;
     }
     return summaryTextMatches(`${event.type} ${event.description}`);
   });
 
-  const workflowGamePlayers = workflowGame?.players || [];
-  const workflowPlayerInsights = [
-    workflowPlayerViewportInsight,
-    workflowPlayerApmInsight,
-    workflowPlayerDelayInsight,
-    workflowPlayerCadenceInsight,
+  const mainGamePlayers = mainGame?.players || [];
+  const mainPlayerInsights = [
+    mainPlayerViewportInsight,
+    mainPlayerApmInsight,
+    mainPlayerDelayInsight,
+    mainPlayerCadenceInsight,
   ].filter(Boolean);
-  const workflowPlayerInsightLoading = workflowPlayerApmInsightLoading || workflowPlayerDelayInsightLoading || workflowPlayerCadenceInsightLoading || workflowPlayerViewportInsightLoading;
-  const workflowPlayerInsightErrors = [
-    workflowPlayerApmInsightError,
-    workflowPlayerDelayInsightError,
-    workflowPlayerCadenceInsightError,
-    workflowPlayerViewportInsightError,
+  const mainPlayerInsightLoading = mainPlayerApmInsightLoading || mainPlayerDelayInsightLoading || mainPlayerCadenceInsightLoading || mainPlayerViewportInsightLoading;
+  const mainPlayerInsightErrors = [
+    mainPlayerApmInsightError,
+    mainPlayerDelayInsightError,
+    mainPlayerCadenceInsightError,
+    mainPlayerViewportInsightError,
   ].filter(Boolean);
-  const workflowPlayerUsagePills = useMemo(() => {
+  const mainPlayerUsagePills = useMemo(() => {
     const pills = [];
-    if ((Number(workflowPlayer?.hotkey_usage_rate) || 0) < LOW_USAGE_THRESHOLD) {
+    if ((Number(mainPlayer?.hotkey_usage_rate) || 0) < LOW_USAGE_THRESHOLD) {
       pills.push({
         key: 'no-hotkeys',
         label: 'Doesn\'t use hotkeys',
-        title: `Detected in ${(Number(workflowPlayer?.hotkey_usage_rate) * 100).toFixed(1)}% of this player's games.`,
+        title: `Detected in ${(Number(mainPlayer?.hotkey_usage_rate) * 100).toFixed(1)}% of this player's games.`,
         className: 'workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey',
       });
     }
-    if ((Number(workflowPlayer?.queued_game_rate) || 0) < LOW_USAGE_THRESHOLD) {
+    if ((Number(mainPlayer?.queued_game_rate) || 0) < LOW_USAGE_THRESHOLD) {
       pills.push({
         key: 'no-queued-orders',
         label: 'Doesn\'t use queued orders',
-        title: `Detected in ${(Number(workflowPlayer?.queued_game_rate) * 100).toFixed(1)}% of this player's games.`,
+        title: `Detected in ${(Number(mainPlayer?.queued_game_rate) * 100).toFixed(1)}% of this player's games.`,
         className: 'workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-queued',
       });
     }
     return pills;
-  }, [workflowPlayer]);
-  const workflowPlayerNameWidthCh = useMemo(() => {
-    const longestNameLength = workflowGamePlayers.reduce((longest, player) => {
+  }, [mainPlayer]);
+  const mainPlayerNameWidthCh = useMemo(() => {
+    const longestNameLength = mainGamePlayers.reduce((longest, player) => {
       const nameLength = String(player?.name || '').trim().length;
       return Math.max(longest, nameLength);
     }, 0);
     if (!longestNameLength) return 15;
     return Math.max(12, Math.min(24, longestNameLength + 3));
-  }, [workflowGamePlayers]);
-  const workflowPlayersById = useMemo(
-    () => new Map(workflowGamePlayers.map((player) => [player.player_id, player])),
-    [workflowGamePlayers],
+  }, [mainGamePlayers]);
+  const mainPlayersById = useMemo(
+    () => new Map(mainGamePlayers.map((player) => [player.player_id, player])),
+    [mainGamePlayers],
   );
   const hasTeamInfo = useMemo(() => {
-    const uniqueTeams = new Set(workflowGamePlayers.map((player) => player.team));
+    const uniqueTeams = new Set(mainGamePlayers.map((player) => player.team));
     return uniqueTeams.size > 1;
-  }, [workflowGamePlayers]);
-  const workflowTimingCategoryConfig = useMemo(
-    () => TIMING_CATEGORY_CONFIG.find((cfg) => cfg.id === workflowTimingCategory) || TIMING_CATEGORY_CONFIG[0],
-    [workflowTimingCategory],
+  }, [mainGamePlayers]);
+  const mainTimingCategoryConfig = useMemo(
+    () => TIMING_CATEGORY_CONFIG.find((cfg) => cfg.id === mainTimingCategory) || TIMING_CATEGORY_CONFIG[0],
+    [mainTimingCategory],
   );
-  const workflowTimingSeries = useMemo(() => {
-    const timings = workflowGame?.timings || {};
-    const sourceSeries = Array.isArray(timings?.[workflowTimingCategoryConfig.source])
-      ? timings[workflowTimingCategoryConfig.source]
+  const mainTimingSeries = useMemo(() => {
+    const timings = mainGame?.timings || {};
+    const sourceSeries = Array.isArray(timings?.[mainTimingCategoryConfig.source])
+      ? timings[mainTimingCategoryConfig.source]
       : [];
     const sortedSeries = [...sourceSeries].sort((a, b) => {
-      const raceDiff = raceRank(workflowPlayersById.get(a?.player_id)?.race) - raceRank(workflowPlayersById.get(b?.player_id)?.race);
+      const raceDiff = raceRank(mainPlayersById.get(a?.player_id)?.race) - raceRank(mainPlayersById.get(b?.player_id)?.race);
       if (raceDiff !== 0) return raceDiff;
       const nameA = String(a?.name || '').toLowerCase();
       const nameB = String(b?.name || '').toLowerCase();
@@ -2353,7 +2097,7 @@ function App() {
     });
 
     return sortedSeries.map((playerSeries) => {
-      const playerRace = String(workflowPlayersById.get(playerSeries?.player_id)?.race || '').trim();
+      const playerRace = String(mainPlayersById.get(playerSeries?.player_id)?.race || '').trim();
       const sourcePoints = Array.isArray(playerSeries?.points) ? playerSeries.points : [];
       const mappedPoints = sourcePoints
         .map((point) => {
@@ -2361,8 +2105,8 @@ function App() {
           if (!Number.isFinite(second)) return null;
           const order = Number(point?.order) || 0;
           const rawLabel = String(point?.label || '').trim();
-          const upgradeCategory = workflowTimingCategoryConfig.source === 'upgrades' ? upgradeCategoryForName(rawLabel) : '';
-          if (workflowTimingCategoryConfig.source === 'upgrades' && upgradeCategory !== workflowTimingCategory) return null;
+          const upgradeCategory = mainTimingCategoryConfig.source === 'upgrades' ? upgradeCategoryForName(rawLabel) : '';
+          if (mainTimingCategoryConfig.source === 'upgrades' && upgradeCategory !== mainTimingCategory) return null;
           return {
             ...point,
             second,
@@ -2377,7 +2121,7 @@ function App() {
       // - HP upgrades are repeatable up to 3 levels, so keep latest 3 per label.
       // - Other upgrades and tech are effectively one-off, so keep latest 1 per label.
       const pointsAfterPostProcess = (() => {
-        const sourceType = workflowTimingCategoryConfig.source;
+        const sourceType = mainTimingCategoryConfig.source;
         if (sourceType !== 'upgrades' && sourceType !== 'tech') return mappedPoints;
         const byLabel = new Map();
         mappedPoints.forEach((point) => {
@@ -2392,7 +2136,7 @@ function App() {
             if (a.second === b.second) return a.order - b.order;
             return a.second - b.second;
           });
-          const keepCount = sourceType === 'upgrades' && workflowTimingCategory === 'hp_upgrades' ? 3 : 1;
+          const keepCount = sourceType === 'upgrades' && mainTimingCategory === 'hp_upgrades' ? 3 : 1;
           const kept = sortedBySecond.slice(-keepCount);
           kept.forEach((item, idx) => {
             collapsed.push({
@@ -2418,24 +2162,24 @@ function App() {
         let isRepeatable = false;
         let maxLevel = 1;
 
-        if (workflowTimingCategoryConfig.source === 'upgrades') {
+        if (mainTimingCategoryConfig.source === 'upgrades') {
           displayLabel = inlineTimingUpgradeLabel(rawLabel, order);
-          categoryLabel = workflowTimingCategoryConfig.label;
+          categoryLabel = mainTimingCategoryConfig.label;
           isRepeatable = upgradeCategory === 'hp_upgrades';
           maxLevel = isRepeatable ? 3 : 1;
-        } else if (workflowTimingCategoryConfig.source === 'tech') {
+        } else if (mainTimingCategoryConfig.source === 'tech') {
           displayLabel = normalizeTimingDisplayLabel(rawLabel);
           categoryLabel = 'Tech';
-        } else if (workflowTimingCategory === 'gas') {
+        } else if (mainTimingCategory === 'gas') {
           displayLabel = `Gas #${order || 1}`;
           categoryLabel = 'Gas';
           markerImage = getGasMarkerIconForRace(playerRace);
-          markerLabel = workflowTimingCategoryConfig.markerLabel || 'Gas';
-        } else if (workflowTimingCategory === 'expansion') {
+          markerLabel = mainTimingCategoryConfig.markerLabel || 'Gas';
+        } else if (mainTimingCategory === 'expansion') {
           displayLabel = `Expansion #${order || 1}`;
           categoryLabel = 'Expansion';
           markerImage = getExpansionMarkerIconForRace(playerRace);
-          markerLabel = workflowTimingCategoryConfig.markerLabel || 'Expansion';
+          markerLabel = mainTimingCategoryConfig.markerLabel || 'Expansion';
         }
 
         return {
@@ -2443,7 +2187,7 @@ function App() {
           order,
           label: rawLabel,
           display_label: displayLabel,
-          category: upgradeCategory || workflowTimingCategory,
+          category: upgradeCategory || mainTimingCategory,
           category_label: categoryLabel,
           race: playerRace,
           marker_image: markerImage,
@@ -2460,22 +2204,22 @@ function App() {
         points,
       };
     });
-  }, [workflowGame?.timings, workflowTimingCategoryConfig, workflowTimingCategory, workflowPlayersById]);
-  const workflowTimingUsesLabelColors = useMemo(
-    () => ['hp_upgrades', 'unit_range', 'unit_speed', 'energy', 'capacity_cooldown_damage', 'tech'].includes(workflowTimingCategory),
-    [workflowTimingCategory],
+  }, [mainGame?.timings, mainTimingCategoryConfig, mainTimingCategory, mainPlayersById]);
+  const mainTimingUsesLabelColors = useMemo(
+    () => ['hp_upgrades', 'unit_range', 'unit_speed', 'energy', 'capacity_cooldown_damage', 'tech'].includes(mainTimingCategory),
+    [mainTimingCategory],
   );
-  const workflowTimingAxisMode = useMemo(
-    () => (['hp_upgrades', 'unit_range', 'unit_speed', 'energy', 'capacity_cooldown_damage', 'tech'].includes(workflowTimingCategory) ? 'compressed15' : 'linear'),
-    [workflowTimingCategory],
+  const mainTimingAxisMode = useMemo(
+    () => (['hp_upgrades', 'unit_range', 'unit_speed', 'energy', 'capacity_cooldown_damage', 'tech'].includes(mainTimingCategory) ? 'compressed15' : 'linear'),
+    [mainTimingCategory],
   );
-  const workflowTimingInlineLegend = useMemo(
-    () => ['hp_upgrades', 'unit_range', 'unit_speed', 'energy', 'capacity_cooldown_damage', 'tech'].includes(workflowTimingCategory),
-    [workflowTimingCategory],
+  const mainTimingInlineLegend = useMemo(
+    () => ['hp_upgrades', 'unit_range', 'unit_speed', 'energy', 'capacity_cooldown_damage', 'tech'].includes(mainTimingCategory),
+    [mainTimingCategory],
   );
-  const workflowTimingAxisTrimMaxSecond = useMemo(() => {
-    if (!['gas', 'expansion'].includes(workflowTimingCategory)) return undefined;
-    const maxPointSecond = workflowTimingSeries.reduce((maxSecond, playerSeries) => {
+  const mainTimingAxisTrimMaxSecond = useMemo(() => {
+    if (!['gas', 'expansion'].includes(mainTimingCategory)) return undefined;
+    const maxPointSecond = mainTimingSeries.reduce((maxSecond, playerSeries) => {
       const playerMax = (playerSeries?.points || []).reduce((innerMax, point) => {
         const second = Number(point?.second);
         return Number.isFinite(second) ? Math.max(innerMax, second) : innerMax;
@@ -2483,17 +2227,17 @@ function App() {
       return Math.max(maxSecond, playerMax);
     }, 0);
     return maxPointSecond > 0 ? maxPointSecond : undefined;
-  }, [workflowTimingCategory, workflowTimingSeries]);
-  const workflowTimingNotice = useMemo(
-    () => (workflowTimingCategory === 'expansion'
+  }, [mainTimingCategory, mainTimingSeries]);
+  const mainTimingNotice = useMemo(
+    () => (mainTimingCategory === 'expansion'
       ? '⚠️ These are base expansions, not just Nexus/Hatchery/CC buildings.'
       : ''),
-    [workflowTimingCategory],
+    [mainTimingCategory],
   );
-  const workflowHpTimingByRace = useMemo(() => {
-    if (workflowTimingCategory !== 'hp_upgrades') return [];
+  const mainHpTimingByRace = useMemo(() => {
+    if (mainTimingCategory !== 'hp_upgrades') return [];
     return TIMING_RACE_ORDER.map((race) => {
-      const raceSeries = workflowTimingSeries.filter((playerSeries) => String(playerSeries?.race || '').trim().toLowerCase() === race);
+      const raceSeries = mainTimingSeries.filter((playerSeries) => String(playerSeries?.race || '').trim().toLowerCase() === race);
       const racePrefix = racePrefixForUpgrade(race);
       const labelOptions = Array.from(new Set(
         raceSeries.flatMap((playerSeries) => (playerSeries?.points || []).map((point) => String(point?.label || '').trim()))
@@ -2503,7 +2247,7 @@ function App() {
             return label.startsWith(racePrefix);
           }),
       )).sort((a, b) => a.localeCompare(b));
-      const selectedValue = String(workflowHpUpgradeFilters[race] || '').trim();
+      const selectedValue = String(mainHpUpgradeFilters[race] || '').trim();
       const defaultForRace = String(DEFAULT_HP_UPGRADE_BY_RACE[race] || '').trim();
       const selected = labelOptions.includes(selectedValue)
         ? selectedValue
@@ -2525,9 +2269,9 @@ function App() {
         series: filteredSeries,
       };
     }).filter((entry) => entry.series.some((playerSeries) => (playerSeries?.points || []).length > 0));
-  }, [workflowTimingCategory, workflowTimingSeries, workflowHpUpgradeFilters]);
-  const workflowFirstUnitEfficiencyGroups = useMemo(() => {
-    const sourcePlayers = Array.isArray(workflowGame?.first_unit_efficiency) ? workflowGame.first_unit_efficiency : [];
+  }, [mainTimingCategory, mainTimingSeries, mainHpUpgradeFilters]);
+  const mainFirstUnitEfficiencyGroups = useMemo(() => {
+    const sourcePlayers = Array.isArray(mainGame?.first_unit_efficiency) ? mainGame.first_unit_efficiency : [];
     const normalizedPlayers = sourcePlayers.map((playerEntry) => ({
       ...playerEntry,
       race: String(playerEntry?.race || '').trim().toLowerCase(),
@@ -2568,11 +2312,11 @@ function App() {
         rows,
       };
     }).filter(Boolean);
-  }, [workflowGame?.first_unit_efficiency]);
+  }, [mainGame?.first_unit_efficiency]);
 
   const filterProductionEntries = (entries, view) => {
-    const mode = view === 'units' ? workflowUnitFilterMode : workflowBuildingFilterMode;
-    const nameNeedle = String(view === 'units' ? workflowUnitNameFilter : workflowBuildingNameFilter).trim().toLowerCase();
+    const mode = view === 'units' ? mainUnitFilterMode : mainBuildingFilterMode;
+    const nameNeedle = String(view === 'units' ? mainUnitNameFilter : mainBuildingNameFilter).trim().toLowerCase();
     return (entries || []).filter((entry) => {
       const unitType = String(entry?.unit_type || '');
       const key = normalizeUnitName(unitType);
@@ -2598,18 +2342,18 @@ function App() {
     });
   };
 
-  const workflowGamesTotalPages = Math.max(1, Math.ceil((Number(workflowGamesTotal) || 0) / WORKFLOW_GAMES_PAGE_SIZE));
-  const workflowGamesFrom = workflowGames.length === 0 ? 0 : ((workflowGamesPage - 1) * WORKFLOW_GAMES_PAGE_SIZE) + 1;
-  const workflowGamesTo = workflowGames.length === 0
+  const mainGamesTotalPages = Math.max(1, Math.ceil((Number(mainGamesTotal) || 0) / MAIN_GAMES_PAGE_SIZE));
+  const mainGamesFrom = mainGames.length === 0 ? 0 : ((mainGamesPage - 1) * MAIN_GAMES_PAGE_SIZE) + 1;
+  const mainGamesTo = mainGames.length === 0
     ? 0
-    : Math.min((workflowGamesPage - 1) * WORKFLOW_GAMES_PAGE_SIZE + workflowGames.length, Number(workflowGamesTotal) || 0);
-  const workflowPlayersTotalPages = Math.max(1, Math.ceil((Number(workflowPlayersTotal) || 0) / WORKFLOW_PLAYERS_PAGE_SIZE));
-  const workflowPlayersFrom = workflowPlayers.length === 0 ? 0 : ((workflowPlayersPage - 1) * WORKFLOW_PLAYERS_PAGE_SIZE) + 1;
-  const workflowPlayersTo = workflowPlayers.length === 0
+    : Math.min((mainGamesPage - 1) * MAIN_GAMES_PAGE_SIZE + mainGames.length, Number(mainGamesTotal) || 0);
+  const mainPlayersTotalPages = Math.max(1, Math.ceil((Number(mainPlayersTotal) || 0) / MAIN_PLAYERS_PAGE_SIZE));
+  const mainPlayersFrom = mainPlayers.length === 0 ? 0 : ((mainPlayersPage - 1) * MAIN_PLAYERS_PAGE_SIZE) + 1;
+  const mainPlayersTo = mainPlayers.length === 0
     ? 0
-    : Math.min((workflowPlayersPage - 1) * WORKFLOW_PLAYERS_PAGE_SIZE + workflowPlayers.length, Number(workflowPlayersTotal) || 0);
+    : Math.min((mainPlayersPage - 1) * MAIN_PLAYERS_PAGE_SIZE + mainPlayers.length, Number(mainPlayersTotal) || 0);
   const playersApmHistogramPoints = useMemo(() => (
-    (workflowPlayersApmHistogram?.players || [])
+    (mainPlayersApmHistogram?.players || [])
       .map((player) => ({
         value: Number(player?.average_apm),
         label: String(player?.player_name || '').trim(),
@@ -2617,9 +2361,9 @@ function App() {
         games_played: Number(player?.games_played || 0),
       }))
       .filter((player) => Number.isFinite(player.value) && player.label)
-  ), [workflowPlayersApmHistogram]);
-  const workflowPlayersApmProcessed = useMemo(() => {
-    const minGames = Math.max(5, Number(workflowPlayersApmMinGames) || 5);
+  ), [mainPlayersApmHistogram]);
+  const mainPlayersApmProcessed = useMemo(() => {
+    const minGames = Math.max(5, Number(mainPlayersApmMinGames) || 5);
     const filtered = playersApmHistogramPoints
       .filter((player) => Number(player.games_played || 0) >= minGames)
       .map((player) => ({
@@ -2629,9 +2373,9 @@ function App() {
         games_played: player.games_played,
       }));
     return buildHistogramSummaryFromPlayers(filtered);
-  }, [playersApmHistogramPoints, workflowPlayersApmMinGames]);
-  const workflowPlayersDelayCaseOptions = useMemo(() => (
-    (workflowPlayersDelayHistogram?.case_options || [])
+  }, [playersApmHistogramPoints, mainPlayersApmMinGames]);
+  const mainPlayersDelayCaseOptions = useMemo(() => (
+    (mainPlayersDelayHistogram?.case_options || [])
       .map((entry) => ({
         case_key: String(entry?.case_key || '').trim(),
         building_name: String(entry?.building_name || '').trim(),
@@ -2639,11 +2383,11 @@ function App() {
         sample_count: Number(entry?.sample_count || 0),
       }))
       .filter((entry) => entry.case_key && entry.building_name && entry.unit_name)
-  ), [workflowPlayersDelayHistogram]);
+  ), [mainPlayersDelayHistogram]);
   const playersDelayHistogramPoints = useMemo(() => {
-    const selected = new Set((workflowPlayersDelaySelectedCases || []).filter((value) => value && value !== 'all'));
-    const useAll = selected.size === 0 || (workflowPlayersDelaySelectedCases || []).includes('all');
-    return (workflowPlayersDelayHistogram?.players || [])
+    const selected = new Set((mainPlayersDelaySelectedCases || []).filter((value) => value && value !== 'all'));
+    const useAll = selected.size === 0 || (mainPlayersDelaySelectedCases || []).includes('all');
+    return (mainPlayersDelayHistogram?.players || [])
       .map((player) => {
         const caseAverages = Array.isArray(player?.case_averages) ? player.case_averages : [];
         const matched = caseAverages.filter((entry) => {
@@ -2667,9 +2411,9 @@ function App() {
         };
       })
       .filter((player) => player && Number.isFinite(player.value) && player.label);
-  }, [workflowPlayersDelayHistogram, workflowPlayersDelaySelectedCases]);
-  const workflowPlayersDelayProcessed = useMemo(() => {
-    const minSamples = Math.max(5, Number(workflowPlayersDelayMinSamples) || 5);
+  }, [mainPlayersDelayHistogram, mainPlayersDelaySelectedCases]);
+  const mainPlayersDelayProcessed = useMemo(() => {
+    const minSamples = Math.max(5, Number(mainPlayersDelayMinSamples) || 5);
     const filtered = playersDelayHistogramPoints
       .filter((player) => Number(player.sample_count || 0) >= minSamples)
       .map((player) => ({
@@ -2679,9 +2423,9 @@ function App() {
         games_played: player.sample_count,
       }));
     return buildHistogramSummaryFromPlayers(filtered);
-  }, [playersDelayHistogramPoints, workflowPlayersDelayMinSamples]);
+  }, [playersDelayHistogramPoints, mainPlayersDelayMinSamples]);
   const playersCadenceHistogramPoints = useMemo(() => (
-    (workflowPlayersCadenceHistogram?.players || [])
+    (mainPlayersCadenceHistogram?.players || [])
       .map((player) => ({
         value: Number(player?.average_cadence_score),
         label: String(player?.player_name || '').trim(),
@@ -2693,9 +2437,9 @@ function App() {
         average_idle20_ratio: Number(player?.average_idle20_ratio || 0),
       }))
       .filter((player) => Number.isFinite(player.value) && player.label)
-  ), [workflowPlayersCadenceHistogram]);
-  const workflowPlayersCadenceProcessed = useMemo(() => {
-    const minGames = Math.max(4, Number(workflowPlayersCadenceMinGames) || 4);
+  ), [mainPlayersCadenceHistogram]);
+  const mainPlayersCadenceProcessed = useMemo(() => {
+    const minGames = Math.max(4, Number(mainPlayersCadenceMinGames) || 4);
     const filtered = playersCadenceHistogramPoints
       .filter((player) => Number(player.games_played || 0) >= minGames)
       .map((player) => ({
@@ -2709,10 +2453,10 @@ function App() {
         average_idle20_ratio: player.average_idle20_ratio,
       }));
     return buildHistogramSummaryFromPlayers(filtered);
-  }, [playersCadenceHistogramPoints, workflowPlayersCadenceMinGames]);
-  const workflowPlayersViewportProcessed = useMemo(() => {
-    const minGames = Math.max(4, Number(workflowPlayersViewportMinGames) || 4);
-    const filtered = (workflowPlayersViewportHistogram?.players || [])
+  }, [playersCadenceHistogramPoints, mainPlayersCadenceMinGames]);
+  const mainPlayersViewportProcessed = useMemo(() => {
+    const minGames = Math.max(4, Number(mainPlayersViewportMinGames) || 4);
+    const filtered = (mainPlayersViewportHistogram?.players || [])
       .filter((player) => Number(player?.games_played || 0) >= minGames)
       .map((player) => ({
         player_key: String(player?.player_key || '').trim(),
@@ -2723,9 +2467,9 @@ function App() {
       }))
       .filter((player) => player.player_name && Number.isFinite(player.average_apm) && player.average_apm >= 0);
     return buildHistogramSummaryFromPlayers(filtered);
-  }, [workflowPlayersViewportHistogram, workflowPlayersViewportMinGames]);
-  const workflowGameCadenceProcessed = useMemo(() => {
-    const rows = (workflowGame?.unit_production_cadence || [])
+  }, [mainPlayersViewportHistogram, mainPlayersViewportMinGames]);
+  const mainGameCadenceProcessed = useMemo(() => {
+    const rows = (mainGame?.unit_production_cadence || [])
       .filter((player) => Boolean(player?.eligible))
       .map((player) => ({
         player_key: String(player?.player_key || '').trim(),
@@ -2741,9 +2485,9 @@ function App() {
       }))
       .filter((player) => player.player_name && Number.isFinite(player.average_apm) && player.average_apm > 0);
     return buildHistogramSummaryFromPlayers(rows);
-  }, [workflowGame]);
-  const workflowGameViewportProcessed = useMemo(() => {
-    const rows = (workflowGame?.viewport_multitasking || [])
+  }, [mainGame]);
+  const mainGameViewportProcessed = useMemo(() => {
+    const rows = (mainGame?.viewport_multitasking || [])
       .filter((player) => Boolean(player?.eligible))
       .map((player) => ({
         player_key: String(player?.player_key || '').trim(),
@@ -2754,10 +2498,10 @@ function App() {
       }))
       .filter((player) => player.player_name && Number.isFinite(player.average_apm) && player.average_apm >= 0);
     return buildHistogramSummaryFromPlayers(rows);
-  }, [workflowGame]);
-  const workflowPlayersSortIndicator = (sortBy) => {
-    if (workflowPlayersSortBy !== sortBy) return '';
-    return workflowPlayersSortDir === 'asc' ? '↑' : '↓';
+  }, [mainGame]);
+  const mainPlayersSortIndicator = (sortBy) => {
+    if (mainPlayersSortBy !== sortBy) return '';
+    return mainPlayersSortDir === 'asc' ? '↑' : '↓';
   };
 
   if (loading && !dashboard && activeView === 'dashboards') {
@@ -2772,8 +2516,8 @@ function App() {
     <div className="app">
       <div className="dashboard-container">
         <div className="workflow-nav">
-          <button className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateWorkflowView('games')}>Games</button>
-          <button className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateWorkflowView('players')}>Players</button>
+          <button className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('games')}>Games</button>
+          <button className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('players')}>Players</button>
           <button onClick={() => {
             setGlobalReplayFilterError('');
             loadGlobalReplayFilterConfig().catch((err) => {
@@ -2785,7 +2529,7 @@ function App() {
             setShowGlobalReplayFilter(true);
           }} className="btn-manage">Settings</button>
           <button onClick={() => setShowIngestPanel(true)} className="btn-manage">Ingest</button>
-          <button className={`btn-manage ${activeView === 'dashboards' ? 'workflow-nav-active' : ''}`} onClick={() => navigateWorkflowView('dashboards')}>Custom Dashboards</button>
+          <button className={`btn-manage ${activeView === 'dashboards' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('dashboards')}>Custom Dashboards</button>
         </div>
 
         {error && <div className="error-message">{error}</div>}
@@ -2795,11 +2539,11 @@ function App() {
             <div className="workflow-summary-filter-row workflow-games-filter-row">
               <select
                 className="workflow-summary-filter-select"
-                value={workflowGamesFilters.player[0] || ''}
-                onChange={(e) => setWorkflowGameSingleFilter('player', e.target.value)}
+                value={mainGamesFilters.player[0] || ''}
+                onChange={(e) => setMainGameSingleFilter('player', e.target.value)}
               >
                 <option value="">Any player (5+ games)</option>
-                {(workflowGamesFilterOptions.players || []).map((option) => (
+                {(mainGamesFilterOptions.players || []).map((option) => (
                   <option key={`wf-player-${option.key}`} value={option.key}>
                     {option.label} ({option.games})
                   </option>
@@ -2807,25 +2551,25 @@ function App() {
               </select>
               <select
                 className="workflow-summary-filter-select"
-                value={workflowGamesFilters.map[0] || ''}
-                onChange={(e) => setWorkflowGameSingleFilter('map', e.target.value)}
+                value={mainGamesFilters.map[0] || ''}
+                onChange={(e) => setMainGameSingleFilter('map', e.target.value)}
               >
                 <option value="">Any map (top 15)</option>
-                {(workflowGamesFilterOptions.maps || []).map((option) => (
+                {(mainGamesFilterOptions.maps || []).map((option) => (
                   <option key={`wf-map-${option.key}`} value={option.key}>
                     {option.label} ({option.games})
                   </option>
                 ))}
               </select>
               <div className="workflow-pattern-pills workflow-games-filter-pills">
-                {(workflowGamesFilterOptions.durations || []).map((option) => {
-                  const active = (workflowGamesFilters.duration || []).includes(option.key);
+                {(mainGamesFilterOptions.durations || []).map((option) => {
+                  const active = (mainGamesFilters.duration || []).includes(option.key);
                   return (
                     <button
                       key={`wf-duration-${option.key}`}
                       type="button"
                       className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                      onClick={() => toggleWorkflowGameMultiFilter('duration', option.key)}
+                      onClick={() => toggleMainGameMultiFilter('duration', option.key)}
                     >
                       {option.label} ({option.games})
                     </button>
@@ -2833,23 +2577,23 @@ function App() {
                 })}
               </div>
               <div className="workflow-pattern-pills workflow-games-filter-pills">
-                {(workflowGamesFilterOptions.featuring || []).map((option) => {
-                  const active = (workflowGamesFilters.featuring || []).includes(option.key);
+                {(mainGamesFilterOptions.featuring || []).map((option) => {
+                  const active = (mainGamesFilters.featuring || []).includes(option.key);
                   return (
                     <button
                       key={`wf-feature-${option.key}`}
                       type="button"
                       className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                      onClick={() => toggleWorkflowGameMultiFilter('featuring', option.key)}
+                      onClick={() => toggleMainGameMultiFilter('featuring', option.key)}
                     >
                       {option.label}
                     </button>
                   );
                 })}
               </div>
-              <button type="button" className="btn-create-manual" onClick={clearWorkflowGamesFilters}>Clear filters</button>
+              <button type="button" className="btn-create-manual" onClick={clearMainGamesFilters}>Clear filters</button>
             </div>
-            {workflowGamesLoading ? (
+            {mainGamesLoading ? (
               <div className="loading">Loading games...</div>
             ) : (
               <>
@@ -2864,10 +2608,10 @@ function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {workflowGames.map((game) => (
-                      <tr key={game.replay_id} className={selectedReplayId === game.replay_id ? 'workflow-selected-row' : ''} onClick={() => openWorkflowGame(game.replay_id)}>
+                    {mainGames.map((game) => (
+                      <tr key={game.replay_id} className={selectedReplayId === game.replay_id ? 'workflow-selected-row' : ''} onClick={() => openMainGame(game.replay_id)}>
                         <td>{formatRelativeReplayDate(game.replay_date)}</td>
-                        <td>{renderWorkflowGameListPlayers(game)}</td>
+                        <td>{renderMainGameListPlayers(game)}</td>
                         <td>{game.map_name}</td>
                         <td>{formatDuration(game.duration_seconds)}</td>
                         <td>
@@ -2891,19 +2635,19 @@ function App() {
                   <button
                     type="button"
                     className="btn-switch"
-                    disabled={workflowGamesPage <= 1 || workflowGamesLoading}
-                    onClick={() => setWorkflowGamesPage((prev) => Math.max(1, prev - 1))}
+                    disabled={mainGamesPage <= 1 || mainGamesLoading}
+                    onClick={() => setMainGamesPage((prev) => Math.max(1, prev - 1))}
                   >
                     Previous
                   </button>
                   <span>
-                    Page {workflowGamesPage} / {workflowGamesTotalPages} - Showing {workflowGamesFrom}-{workflowGamesTo} of {workflowGamesTotal}
+                    Page {mainGamesPage} / {mainGamesTotalPages} - Showing {mainGamesFrom}-{mainGamesTo} of {mainGamesTotal}
                   </span>
                   <button
                     type="button"
                     className="btn-switch"
-                    disabled={workflowGamesPage >= workflowGamesTotalPages || workflowGamesLoading}
-                    onClick={() => setWorkflowGamesPage((prev) => Math.min(workflowGamesTotalPages, prev + 1))}
+                    disabled={mainGamesPage >= mainGamesTotalPages || mainGamesLoading}
+                    onClick={() => setMainGamesPage((prev) => Math.min(mainGamesTotalPages, prev + 1))}
                   >
                     Next
                   </button>
@@ -2916,65 +2660,65 @@ function App() {
         {activeView === 'players' && (
           <div className="workflow-panel">
             <div className="workflow-nav">
-              <button className={`btn-switch ${workflowPlayersTab === 'summary' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('summary')}>Summary</button>
-              <button className={`btn-switch ${workflowPlayersTab === 'apm-histogram' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('apm-histogram')}>APM Histogram</button>
-              <button className={`btn-switch ${workflowPlayersTab === 'first-unit-delay' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('first-unit-delay')}>First Unit Delay</button>
-              <button className={`btn-switch ${workflowPlayersTab === 'unit-production-cadence' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('unit-production-cadence')}>Unit Production Cadence</button>
-              <button className={`btn-switch ${workflowPlayersTab === 'viewport-multitasking' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowPlayersTab('viewport-multitasking')}>Viewport Multitasking</button>
+              <button className={`btn-switch ${mainPlayersTab === 'summary' ? 'workflow-nav-active' : ''}`} onClick={() => setMainPlayersTab('summary')}>Summary</button>
+              <button className={`btn-switch ${mainPlayersTab === 'apm-histogram' ? 'workflow-nav-active' : ''}`} onClick={() => setMainPlayersTab('apm-histogram')}>APM Histogram</button>
+              <button className={`btn-switch ${mainPlayersTab === 'first-unit-delay' ? 'workflow-nav-active' : ''}`} onClick={() => setMainPlayersTab('first-unit-delay')}>First Unit Delay</button>
+              <button className={`btn-switch ${mainPlayersTab === 'unit-production-cadence' ? 'workflow-nav-active' : ''}`} onClick={() => setMainPlayersTab('unit-production-cadence')}>Unit Production Cadence</button>
+              <button className={`btn-switch ${mainPlayersTab === 'viewport-multitasking' ? 'workflow-nav-active' : ''}`} onClick={() => setMainPlayersTab('viewport-multitasking')}>Viewport Multitasking</button>
             </div>
 
-            {workflowPlayersTab === 'summary' ? (
+            {mainPlayersTab === 'summary' ? (
               <>
                 <div className="workflow-summary-filter-row workflow-games-filter-row">
                   <input
                     type="text"
                     className="workflow-summary-filter-input"
                     placeholder="Filter by player name..."
-                    value={workflowPlayersFilters.name}
-                    onChange={(e) => setWorkflowPlayersSingleFilter('name', e.target.value)}
+                    value={mainPlayersFilters.name}
+                    onChange={(e) => setMainPlayersSingleFilter('name', e.target.value)}
                   />
                   <label className="workflow-summary-filter-check">
                     <input
                       type="checkbox"
-                      checked={Boolean(workflowPlayersFilters.onlyFivePlus)}
-                      onChange={(e) => setWorkflowPlayersSingleFilter('onlyFivePlus', e.target.checked)}
+                      checked={Boolean(mainPlayersFilters.onlyFivePlus)}
+                      onChange={(e) => setMainPlayersSingleFilter('onlyFivePlus', e.target.checked)}
                     />
                     <span>Only 5+ games</span>
                   </label>
                   <div className="workflow-pattern-pills workflow-games-filter-pills">
-                    {(workflowPlayersFilterOptions.last_played || []).map((option) => {
-                      const active = (workflowPlayersFilters.lastPlayed || []).includes(option.key);
+                    {(mainPlayersFilterOptions.last_played || []).map((option) => {
+                      const active = (mainPlayersFilters.lastPlayed || []).includes(option.key);
                       return (
                         <button
                           key={`wf-player-last-${option.key}`}
                           type="button"
                           className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                          onClick={() => toggleWorkflowPlayersMultiFilter('lastPlayed', option.key)}
+                          onClick={() => toggleMainPlayersMultiFilter('lastPlayed', option.key)}
                         >
                           {option.label} ({option.count})
                         </button>
                       );
                     })}
                   </div>
-                  <button type="button" className="btn-create-manual" onClick={clearWorkflowPlayersFilters}>Clear filters</button>
+                  <button type="button" className="btn-create-manual" onClick={clearMainPlayersFilters}>Clear filters</button>
                 </div>
-                {workflowPlayersLoading ? (
+                {mainPlayersLoading ? (
                   <div className="loading">Loading players...</div>
                 ) : (
                   <>
                     <table className="data-table workflow-table">
                       <thead>
                         <tr>
-                          <th className="workflow-sortable" onClick={() => setWorkflowPlayersSort('name')}>Name {workflowPlayersSortIndicator('name')}</th>
-                          <th className="workflow-sortable" onClick={() => setWorkflowPlayersSort('race')}>Race {workflowPlayersSortIndicator('race')}</th>
-                          <th className="workflow-sortable" onClick={() => setWorkflowPlayersSort('games')}>Games {workflowPlayersSortIndicator('games')}</th>
-                          <th className="workflow-sortable" onClick={() => setWorkflowPlayersSort('apm')}>Avg APM {workflowPlayersSortIndicator('apm')}</th>
-                          <th className="workflow-sortable" onClick={() => setWorkflowPlayersSort('last_played')}>Last played {workflowPlayersSortIndicator('last_played')}</th>
+                          <th className="workflow-sortable" onClick={() => setMainPlayersSort('name')}>Name {mainPlayersSortIndicator('name')}</th>
+                          <th className="workflow-sortable" onClick={() => setMainPlayersSort('race')}>Race {mainPlayersSortIndicator('race')}</th>
+                          <th className="workflow-sortable" onClick={() => setMainPlayersSort('games')}>Games {mainPlayersSortIndicator('games')}</th>
+                          <th className="workflow-sortable" onClick={() => setMainPlayersSort('apm')}>Avg APM {mainPlayersSortIndicator('apm')}</th>
+                          <th className="workflow-sortable" onClick={() => setMainPlayersSort('last_played')}>Last played {mainPlayersSortIndicator('last_played')}</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {workflowPlayers.map((player) => (
-                          <tr key={player.player_key} className={selectedPlayerKey === player.player_key ? 'workflow-selected-row' : ''} onClick={() => openWorkflowPlayer(player.player_key)}>
+                        {mainPlayers.map((player) => (
+                          <tr key={player.player_key} className={selectedPlayerKey === player.player_key ? 'workflow-selected-row' : ''} onClick={() => openMainPlayer(player.player_key)}>
                             <td style={playerAccentColor(player.player_key) ? { color: playerAccentColor(player.player_key), fontWeight: 600 } : undefined}>{player.player_name}</td>
                             <td>{player.race}</td>
                             <td>{player.games_played}</td>
@@ -2988,19 +2732,19 @@ function App() {
                       <button
                         type="button"
                         className="btn-switch"
-                        disabled={workflowPlayersPage <= 1 || workflowPlayersLoading}
-                        onClick={() => setWorkflowPlayersPage((prev) => Math.max(1, prev - 1))}
+                        disabled={mainPlayersPage <= 1 || mainPlayersLoading}
+                        onClick={() => setMainPlayersPage((prev) => Math.max(1, prev - 1))}
                       >
                         Previous
                       </button>
                       <span>
-                        Page {workflowPlayersPage} / {workflowPlayersTotalPages} - Showing {workflowPlayersFrom}-{workflowPlayersTo} of {workflowPlayersTotal}
+                        Page {mainPlayersPage} / {mainPlayersTotalPages} - Showing {mainPlayersFrom}-{mainPlayersTo} of {mainPlayersTotal}
                       </span>
                       <button
                         type="button"
                         className="btn-switch"
-                        disabled={workflowPlayersPage >= workflowPlayersTotalPages || workflowPlayersLoading}
-                        onClick={() => setWorkflowPlayersPage((prev) => Math.min(workflowPlayersTotalPages, prev + 1))}
+                        disabled={mainPlayersPage >= mainPlayersTotalPages || mainPlayersLoading}
+                        onClick={() => setMainPlayersPage((prev) => Math.min(mainPlayersTotalPages, prev + 1))}
                       >
                         Next
                       </button>
@@ -3008,7 +2752,7 @@ function App() {
                   </>
                 )}
               </>
-            ) : workflowPlayersTab === 'apm-histogram' ? (
+            ) : mainPlayersTab === 'apm-histogram' ? (
               <div className="workflow-card workflow-card-fingerprints">
                 <div className="workflow-card-title"><span>APM distribution</span></div>
                 <div className="workflow-card-subtitle">
@@ -3018,25 +2762,25 @@ function App() {
                 <div className="workflow-subtle-note">
                   Single-bell view over the eligible player population. Dots and labels can move vertically to reduce overlap, but each dot keeps the exact horizontal APM location.
                 </div>
-                {workflowPlayersApmHistogramLoading ? <div className="chart-empty">Loading APM histogram...</div> : null}
-                {!workflowPlayersApmHistogramLoading && workflowPlayersApmHistogramError ? <div className="chart-empty">{workflowPlayersApmHistogramError}</div> : null}
-                {!workflowPlayersApmHistogramLoading && !workflowPlayersApmHistogramError && workflowPlayersApmProcessed.points.length === 0 ? (
+                {mainPlayersApmHistogramLoading ? <div className="chart-empty">Loading APM histogram...</div> : null}
+                {!mainPlayersApmHistogramLoading && mainPlayersApmHistogramError ? <div className="chart-empty">{mainPlayersApmHistogramError}</div> : null}
+                {!mainPlayersApmHistogramLoading && !mainPlayersApmHistogramError && mainPlayersApmProcessed.points.length === 0 ? (
                   <div className="chart-empty">Not enough player data to render this histogram yet.</div>
                 ) : null}
-                {!workflowPlayersApmHistogramLoading && !workflowPlayersApmHistogramError && workflowPlayersApmProcessed.points.length > 0 ? (
+                {!mainPlayersApmHistogramLoading && !mainPlayersApmHistogramError && mainPlayersApmProcessed.points.length > 0 ? (
                   <div className="workflow-insight-chart workflow-insight-chart-tall">
                     <div className="workflow-summary-filter-row workflow-slider-row">
                       <label className="workflow-summary-filter-check">
-                        <span>Min games (post-process): {Math.max(5, Number(workflowPlayersApmMinGames) || 5)}</span>
+                        <span>Min games (post-process): {Math.max(5, Number(mainPlayersApmMinGames) || 5)}</span>
                       </label>
                       <input
                         type="range"
                         className="workflow-slider-input"
                         min="5"
-                        max={String(Math.max(5, Number(workflowPlayersApmProcessed.maxGames) || 5))}
+                        max={String(Math.max(5, Number(mainPlayersApmProcessed.maxGames) || 5))}
                         step="1"
-                        value={String(Math.max(5, Number(workflowPlayersApmMinGames) || 5))}
-                        onChange={(e) => setWorkflowPlayersApmMinGames(Math.max(5, Number(e.target.value) || 5))}
+                        value={String(Math.max(5, Number(mainPlayersApmMinGames) || 5))}
+                        onChange={(e) => setMainPlayersApmMinGames(Math.max(5, Number(e.target.value) || 5))}
                       />
                     </div>
                     <div className="workflow-subtle-note">
@@ -3046,28 +2790,28 @@ function App() {
                       data={[]}
                       config={{
                         style: 'monobell_relax',
-                        precomputed_bins: workflowPlayersApmProcessed.bins,
+                        precomputed_bins: mainPlayersApmProcessed.bins,
                         x_axis_label: 'Average APM',
                         y_axis_label: 'Density',
-                        mean: workflowPlayersApmProcessed.mean,
-                        stddev: workflowPlayersApmProcessed.stddev,
+                        mean: mainPlayersApmProcessed.mean,
+                        stddev: mainPlayersApmProcessed.stddev,
                         chart_height: 620,
-                        overlay_points: workflowPlayersApmProcessed.points.map((player) => ({
+                        overlay_points: mainPlayersApmProcessed.points.map((player) => ({
                           value: Number(player.average_apm || 0),
                           label: String(player.player_name || ''),
                           player_key: String(player.player_key || ''),
                           games_played: Number(player.games_played || 0),
                         })),
-                        on_overlay_point_click: openWorkflowPlayer,
+                        on_overlay_point_click: openMainPlayer,
                       }}
                     />
                     <div className="workflow-subtle-note">
-                      {`Population shown: ${Number(workflowPlayersApmProcessed.playersIncluded) || 0} players (>=${Math.max(5, Number(workflowPlayersApmMinGames) || 5)} games). Mean ${Number(workflowPlayersApmProcessed.mean || 0).toFixed(1)} APM, stddev ${Number(workflowPlayersApmProcessed.stddev || 0).toFixed(1)}.`}
+                      {`Population shown: ${Number(mainPlayersApmProcessed.playersIncluded) || 0} players (>=${Math.max(5, Number(mainPlayersApmMinGames) || 5)} games). Mean ${Number(mainPlayersApmProcessed.mean || 0).toFixed(1)} APM, stddev ${Number(mainPlayersApmProcessed.stddev || 0).toFixed(1)}.`}
                     </div>
                   </div>
                 ) : null}
               </div>
-            ) : workflowPlayersTab === 'first-unit-delay' ? (
+            ) : mainPlayersTab === 'first-unit-delay' ? (
               <div className="workflow-card workflow-card-fingerprints">
                 <div className="workflow-card-title"><span>First-unit delay distribution</span></div>
                 <div className="workflow-card-subtitle">
@@ -3083,25 +2827,25 @@ function App() {
                 <div className="workflow-subtle-note">
                   Cutoff rules: only build/train/morph commands at or before 7:00 are included, and a matching unit must be created within 20s of building ready time.
                 </div>
-                {!workflowPlayersDelayHistogramLoading && !workflowPlayersDelayHistogramError ? (
+                {!mainPlayersDelayHistogramLoading && !mainPlayersDelayHistogramError ? (
                   <>
                     <div className="workflow-card-subtitle"><span>Included building to unit cases</span></div>
                     <div className="workflow-pattern-pills workflow-games-filter-pills">
                       <button
                         type="button"
-                        className={`workflow-filter-pill ${(workflowPlayersDelaySelectedCases || []).includes('all') ? 'workflow-filter-pill-active' : ''}`}
-                        onClick={() => toggleWorkflowPlayersDelayCase('all')}
+                        className={`workflow-filter-pill ${(mainPlayersDelaySelectedCases || []).includes('all') ? 'workflow-filter-pill-active' : ''}`}
+                        onClick={() => toggleMainPlayersDelayCase('all')}
                       >
                         All
                       </button>
-                      {workflowPlayersDelayCaseOptions.map((option) => {
-                        const active = (workflowPlayersDelaySelectedCases || []).includes(option.case_key);
+                      {mainPlayersDelayCaseOptions.map((option) => {
+                        const active = (mainPlayersDelaySelectedCases || []).includes(option.case_key);
                         return (
                           <button
                             key={`wf-delay-case-${option.case_key}`}
                             type="button"
                             className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                            onClick={() => toggleWorkflowPlayersDelayCase(option.case_key)}
+                            onClick={() => toggleMainPlayersDelayCase(option.case_key)}
                           >
                             {`${option.building_name} -> ${option.unit_name} (${Number(option.sample_count || 0)})`}
                           </button>
@@ -3110,18 +2854,18 @@ function App() {
                     </div>
                   </>
                 ) : null}
-                {workflowPlayersDelayHistogramLoading ? <div className="chart-empty">Loading first-unit delay...</div> : null}
-                {!workflowPlayersDelayHistogramLoading && workflowPlayersDelayHistogramError ? <div className="chart-empty">{workflowPlayersDelayHistogramError}</div> : null}
-                {!workflowPlayersDelayHistogramLoading && !workflowPlayersDelayHistogramError && workflowPlayersDelayProcessed.points.length === 0 ? (
+                {mainPlayersDelayHistogramLoading ? <div className="chart-empty">Loading first-unit delay...</div> : null}
+                {!mainPlayersDelayHistogramLoading && mainPlayersDelayHistogramError ? <div className="chart-empty">{mainPlayersDelayHistogramError}</div> : null}
+                {!mainPlayersDelayHistogramLoading && !mainPlayersDelayHistogramError && mainPlayersDelayProcessed.points.length === 0 ? (
                   <div className="chart-empty">
                     Not enough player delay samples to render this distribution yet.
-                    {!(workflowPlayersDelaySelectedCases || []).includes('all') ? (
+                    {!(mainPlayersDelaySelectedCases || []).includes('all') ? (
                       <>
                         {' '}
                         <button
                           type="button"
                           className="workflow-link-btn"
-                          onClick={() => setWorkflowPlayersDelaySelectedCases(['all'])}
+                          onClick={() => setMainPlayersDelaySelectedCases(['all'])}
                         >
                           Clear case filters
                         </button>
@@ -3129,50 +2873,50 @@ function App() {
                     ) : null}
                   </div>
                 ) : null}
-                {!workflowPlayersDelayHistogramLoading && !workflowPlayersDelayHistogramError && workflowPlayersDelayProcessed.points.length > 0 ? (
+                {!mainPlayersDelayHistogramLoading && !mainPlayersDelayHistogramError && mainPlayersDelayProcessed.points.length > 0 ? (
                   <div className="workflow-insight-chart workflow-insight-chart-tall">
                     <div className="workflow-summary-filter-row workflow-slider-row">
                       <label className="workflow-summary-filter-check">
-                        <span>Min samples (post-process): {Math.max(5, Number(workflowPlayersDelayMinSamples) || 5)}</span>
+                        <span>Min samples (post-process): {Math.max(5, Number(mainPlayersDelayMinSamples) || 5)}</span>
                       </label>
                       <input
                         type="range"
                         className="workflow-slider-input"
                         min="5"
-                        max={String(Math.max(5, Number(workflowPlayersDelayProcessed.maxGames) || 5))}
+                        max={String(Math.max(5, Number(mainPlayersDelayProcessed.maxGames) || 5))}
                         step="1"
-                        value={String(Math.max(5, Number(workflowPlayersDelayMinSamples) || 5))}
-                        onChange={(e) => setWorkflowPlayersDelayMinSamples(Math.max(5, Number(e.target.value) || 5))}
+                        value={String(Math.max(5, Number(mainPlayersDelayMinSamples) || 5))}
+                        onChange={(e) => setMainPlayersDelayMinSamples(Math.max(5, Number(e.target.value) || 5))}
                       />
                     </div>
                     <Histogram
                       data={[]}
                       config={{
                         style: 'monobell_relax',
-                        precomputed_bins: workflowPlayersDelayProcessed.bins,
+                        precomputed_bins: mainPlayersDelayProcessed.bins,
                         x_axis_label: 'Average delay (seconds)',
                         y_axis_label: 'Density',
                         overlay_value_label: 's delay',
                         overlay_count_label: 'samples',
-                        mean: workflowPlayersDelayProcessed.mean,
-                        stddev: workflowPlayersDelayProcessed.stddev,
+                        mean: mainPlayersDelayProcessed.mean,
+                        stddev: mainPlayersDelayProcessed.stddev,
                         chart_height: 620,
-                        overlay_points: workflowPlayersDelayProcessed.points.map((player) => ({
+                        overlay_points: mainPlayersDelayProcessed.points.map((player) => ({
                           value: Number(player.average_apm || 0),
                           label: String(player.player_name || ''),
                           player_key: String(player.player_key || ''),
                           games_played: Number(player.games_played || 0),
                         })),
-                        on_overlay_point_click: openWorkflowPlayer,
+                        on_overlay_point_click: openMainPlayer,
                       }}
                     />
                     <div className="workflow-subtle-note">
-                      {`Population shown: ${Number(workflowPlayersDelayProcessed.playersIncluded) || 0} players (>=${Math.max(5, Number(workflowPlayersDelayMinSamples) || 5)} samples). Mean ${Number(workflowPlayersDelayProcessed.mean || 0).toFixed(1)}s, stddev ${Number(workflowPlayersDelayProcessed.stddev || 0).toFixed(1)}s.`}
+                      {`Population shown: ${Number(mainPlayersDelayProcessed.playersIncluded) || 0} players (>=${Math.max(5, Number(mainPlayersDelayMinSamples) || 5)} samples). Mean ${Number(mainPlayersDelayProcessed.mean || 0).toFixed(1)}s, stddev ${Number(mainPlayersDelayProcessed.stddev || 0).toFixed(1)}s.`}
                     </div>
                   </div>
                 ) : null}
               </div>
-            ) : workflowPlayersTab === 'unit-production-cadence' ? (
+            ) : mainPlayersTab === 'unit-production-cadence' ? (
               <div className="workflow-card workflow-card-fingerprints">
                 <div className="workflow-card-title"><span>Unit production cadence distribution</span></div>
                 <div className="workflow-card-subtitle">
@@ -3185,40 +2929,40 @@ function App() {
                 <div className="workflow-subtle-note">
                   Strict filter excludes workers/econ and support utility units to focus on combat production rhythm.
                 </div>
-                {workflowPlayersCadenceHistogramLoading ? <div className="chart-empty">Loading unit production cadence...</div> : null}
-                {!workflowPlayersCadenceHistogramLoading && workflowPlayersCadenceHistogramError ? <div className="chart-empty">{workflowPlayersCadenceHistogramError}</div> : null}
-                {!workflowPlayersCadenceHistogramLoading && !workflowPlayersCadenceHistogramError && workflowPlayersCadenceProcessed.points.length === 0 ? (
+                {mainPlayersCadenceHistogramLoading ? <div className="chart-empty">Loading unit production cadence...</div> : null}
+                {!mainPlayersCadenceHistogramLoading && mainPlayersCadenceHistogramError ? <div className="chart-empty">{mainPlayersCadenceHistogramError}</div> : null}
+                {!mainPlayersCadenceHistogramLoading && !mainPlayersCadenceHistogramError && mainPlayersCadenceProcessed.points.length === 0 ? (
                   <div className="chart-empty">Not enough cadence data to render this distribution yet.</div>
                 ) : null}
-                {!workflowPlayersCadenceHistogramLoading && !workflowPlayersCadenceHistogramError && workflowPlayersCadenceProcessed.points.length > 0 ? (
+                {!mainPlayersCadenceHistogramLoading && !mainPlayersCadenceHistogramError && mainPlayersCadenceProcessed.points.length > 0 ? (
                   <div className="workflow-insight-chart workflow-insight-chart-tall">
                     <div className="workflow-summary-filter-row workflow-slider-row">
                       <label className="workflow-summary-filter-check">
-                        <span>Min games (post-process): {Math.max(4, Number(workflowPlayersCadenceMinGames) || 4)}</span>
+                        <span>Min games (post-process): {Math.max(4, Number(mainPlayersCadenceMinGames) || 4)}</span>
                       </label>
                       <input
                         type="range"
                         className="workflow-slider-input"
                         min="4"
-                        max={String(Math.max(4, Number(workflowPlayersCadenceProcessed.maxGames) || 4))}
+                        max={String(Math.max(4, Number(mainPlayersCadenceProcessed.maxGames) || 4))}
                         step="1"
-                        value={String(Math.max(4, Number(workflowPlayersCadenceMinGames) || 4))}
-                        onChange={(e) => setWorkflowPlayersCadenceMinGames(Math.max(4, Number(e.target.value) || 4))}
+                        value={String(Math.max(4, Number(mainPlayersCadenceMinGames) || 4))}
+                        onChange={(e) => setMainPlayersCadenceMinGames(Math.max(4, Number(e.target.value) || 4))}
                       />
                     </div>
                     <Histogram
                       data={[]}
                       config={{
                         style: 'monobell_relax',
-                        precomputed_bins: workflowPlayersCadenceProcessed.bins,
+                        precomputed_bins: mainPlayersCadenceProcessed.bins,
                         x_axis_label: 'Average cadence score',
                         y_axis_label: 'Density',
                         overlay_value_label: 'cadence',
                         overlay_count_label: 'games',
-                        mean: workflowPlayersCadenceProcessed.mean,
-                        stddev: workflowPlayersCadenceProcessed.stddev,
+                        mean: mainPlayersCadenceProcessed.mean,
+                        stddev: mainPlayersCadenceProcessed.stddev,
                         chart_height: 620,
-                        overlay_points: workflowPlayersCadenceProcessed.points.map((player) => ({
+                        overlay_points: mainPlayersCadenceProcessed.points.map((player) => ({
                           value: Number(player.average_apm || 0),
                           label: String(player.player_name || ''),
                           player_key: String(player.player_key || ''),
@@ -3233,16 +2977,16 @@ function App() {
                             `Games used: ${Number(player.games_played || 0)}`,
                           ],
                         })),
-                        on_overlay_point_click: openWorkflowPlayer,
+                        on_overlay_point_click: openMainPlayer,
                       }}
                     />
                     <div className="workflow-subtle-note">
-                      {`Population shown: ${Number(workflowPlayersCadenceProcessed.playersIncluded) || 0} players (>=${Math.max(4, Number(workflowPlayersCadenceMinGames) || 4)} games). Mean ${Number(workflowPlayersCadenceProcessed.mean || 0).toFixed(3)}, stddev ${Number(workflowPlayersCadenceProcessed.stddev || 0).toFixed(3)}.`}
+                      {`Population shown: ${Number(mainPlayersCadenceProcessed.playersIncluded) || 0} players (>=${Math.max(4, Number(mainPlayersCadenceMinGames) || 4)} games). Mean ${Number(mainPlayersCadenceProcessed.mean || 0).toFixed(3)}, stddev ${Number(mainPlayersCadenceProcessed.stddev || 0).toFixed(3)}.`}
                     </div>
                   </div>
                 ) : null}
               </div>
-            ) : workflowPlayersTab === 'viewport-multitasking' ? (
+            ) : mainPlayersTab === 'viewport-multitasking' ? (
               <div className="workflow-card workflow-card-fingerprints">
                 <div className="workflow-card-title"><span>Viewport multitasking distribution</span></div>
                 <div className="workflow-card-subtitle">
@@ -3252,43 +2996,43 @@ function App() {
                 <div className="workflow-subtle-note">
                   {VIEWPORT_SWITCH_RATE_CONFIG.interpretation}
                 </div>
-                {workflowPlayersViewportHistogramLoading ? <div className="chart-empty">Loading viewport multitasking...</div> : null}
-                {!workflowPlayersViewportHistogramLoading && workflowPlayersViewportHistogramError ? <div className="chart-empty">{workflowPlayersViewportHistogramError}</div> : null}
-                {!workflowPlayersViewportHistogramLoading && !workflowPlayersViewportHistogramError && workflowPlayersViewportProcessed.points.length === 0 ? (
+                {mainPlayersViewportHistogramLoading ? <div className="chart-empty">Loading viewport multitasking...</div> : null}
+                {!mainPlayersViewportHistogramLoading && mainPlayersViewportHistogramError ? <div className="chart-empty">{mainPlayersViewportHistogramError}</div> : null}
+                {!mainPlayersViewportHistogramLoading && !mainPlayersViewportHistogramError && mainPlayersViewportProcessed.points.length === 0 ? (
                   <div className="chart-empty">Not enough viewport multitasking data to render this distribution yet.</div>
                 ) : null}
-                {!workflowPlayersViewportHistogramLoading && !workflowPlayersViewportHistogramError && workflowPlayersViewportProcessed.points.length > 0 ? (
+                {!mainPlayersViewportHistogramLoading && !mainPlayersViewportHistogramError && mainPlayersViewportProcessed.points.length > 0 ? (
                   <div className="workflow-insight-chart workflow-insight-chart-tall">
                     <div className="workflow-summary-filter-row workflow-slider-row">
                       <label className="workflow-summary-filter-check">
-                        <span>Min games (post-process): {Math.max(4, Number(workflowPlayersViewportMinGames) || 4)}</span>
+                        <span>Min games (post-process): {Math.max(4, Number(mainPlayersViewportMinGames) || 4)}</span>
                       </label>
                       <input
                         type="range"
                         className="workflow-slider-input"
                         min="4"
-                        max={String(Math.max(4, Number(workflowPlayersViewportProcessed.maxGames) || 4))}
+                        max={String(Math.max(4, Number(mainPlayersViewportProcessed.maxGames) || 4))}
                         step="1"
-                        value={String(Math.max(4, Number(workflowPlayersViewportMinGames) || 4))}
-                        onChange={(e) => setWorkflowPlayersViewportMinGames(Math.max(4, Number(e.target.value) || 4))}
+                        value={String(Math.max(4, Number(mainPlayersViewportMinGames) || 4))}
+                        onChange={(e) => setMainPlayersViewportMinGames(Math.max(4, Number(e.target.value) || 4))}
                       />
                     </div>
                     <div className="workflow-subtle-note">
-                      {`Backend gate: at least ${Number(workflowPlayersViewportHistogram?.min_games || 0)} games. The slider only filters the already-loaded population client-side.`}
+                      {`Backend gate: at least ${Number(mainPlayersViewportHistogram?.min_games || 0)} games. The slider only filters the already-loaded population client-side.`}
                     </div>
                     <Histogram
                       data={[]}
                       config={{
                         style: 'monobell_relax',
-                        precomputed_bins: workflowPlayersViewportProcessed.bins,
+                        precomputed_bins: mainPlayersViewportProcessed.bins,
                         x_axis_label: VIEWPORT_SWITCH_RATE_CONFIG.axisLabel,
                         y_axis_label: 'Density',
                         overlay_value_label: VIEWPORT_SWITCH_RATE_CONFIG.overlayValueLabel,
                         overlay_count_label: 'games',
-                        mean: workflowPlayersViewportProcessed.mean,
-                        stddev: workflowPlayersViewportProcessed.stddev,
+                        mean: mainPlayersViewportProcessed.mean,
+                        stddev: mainPlayersViewportProcessed.stddev,
                         chart_height: 620,
-                        overlay_points: workflowPlayersViewportProcessed.points.map((player) => ({
+                        overlay_points: mainPlayersViewportProcessed.points.map((player) => ({
                           value: Number(player.average_apm || 0),
                           label: String(player.player_name || ''),
                           player_key: String(player.player_key || ''),
@@ -3299,11 +3043,11 @@ function App() {
                             `Games used: ${Number(player.games_played || 0)}`,
                           ],
                         })),
-                        on_overlay_point_click: openWorkflowPlayer,
+                        on_overlay_point_click: openMainPlayer,
                       }}
                     />
                     <div className="workflow-subtle-note">
-                      {`Population shown: ${Number(workflowPlayersViewportProcessed.playersIncluded) || 0} players (>=${Math.max(4, Number(workflowPlayersViewportMinGames) || 4)} games after post-filter). Mean ${VIEWPORT_SWITCH_RATE_CONFIG.summaryFormatter(workflowPlayersViewportProcessed.mean)}, stddev ${VIEWPORT_SWITCH_RATE_CONFIG.summaryFormatter(workflowPlayersViewportProcessed.stddev)}.`}
+                      {`Population shown: ${Number(mainPlayersViewportProcessed.playersIncluded) || 0} players (>=${Math.max(4, Number(mainPlayersViewportMinGames) || 4)} games after post-filter). Mean ${VIEWPORT_SWITCH_RATE_CONFIG.summaryFormatter(mainPlayersViewportProcessed.mean)}, stddev ${VIEWPORT_SWITCH_RATE_CONFIG.summaryFormatter(mainPlayersViewportProcessed.stddev)}.`}
                     </div>
                   </div>
                 ) : null}
@@ -3314,33 +3058,33 @@ function App() {
 
         {activeView === 'game' && (
           <div className="workflow-panel">
-            {workflowGameDetailLoading ? (
+            {mainGameDetailLoading ? (
               <div className="loading">Loading game report...</div>
-            ) : workflowGame ? (
+            ) : mainGame ? (
               <>
                 <div className="workflow-title-row">
-                  <h2>{renderPlayersMatchup(workflowGame.players?.map((p) => p.name).join(' vs '))}</h2>
-                  <button className="btn-switch" onClick={goBackWorkflowView}>Back</button>
+                  <h2>{renderPlayersMatchup(mainGame.players?.map((p) => p.name).join(' vs '))}</h2>
+                  <button className="btn-switch" onClick={goBackMainView}>Back</button>
                 </div>
                 <div className="workflow-meta">
-                  <span>{formatRelativeReplayDate(workflowGame.replay_date)}</span>
-                  <span>{workflowGame.map_name}</span>
-                  <span>{formatDuration(workflowGame.duration_seconds)}</span>
+                  <span>{formatRelativeReplayDate(mainGame.replay_date)}</span>
+                  <span>{mainGame.map_name}</span>
+                  <span>{formatDuration(mainGame.duration_seconds)}</span>
                 </div>
                 <div className="workflow-nav">
-                  <button className={`btn-switch ${workflowGameTab === 'summary' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('summary')}>Summary</button>
-                  <button className={`btn-switch ${workflowGameTab === 'events' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('events')}>Game Events</button>
-                  <button className={`btn-switch ${workflowGameTab === 'units' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('units')}>Units</button>
-                  <button className={`btn-switch ${workflowGameTab === 'timings' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('timings')}>Timings</button>
-                  <button className={`btn-switch ${workflowGameTab === 'first-unit-efficiency' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('first-unit-efficiency')}>First Unit Efficiency</button>
-                  <button className={`btn-switch ${workflowGameTab === 'unit-production-cadence' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('unit-production-cadence')}>Unit Production Cadence</button>
-                  <button className={`btn-switch ${workflowGameTab === 'viewport-multitasking' ? 'workflow-nav-active' : ''}`} onClick={() => setWorkflowGameTab('viewport-multitasking')}>Viewport Multitasking</button>
+                  <button className={`btn-switch ${mainGameTab === 'summary' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('summary')}>Summary</button>
+                  <button className={`btn-switch ${mainGameTab === 'events' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('events')}>Game Events</button>
+                  <button className={`btn-switch ${mainGameTab === 'units' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('units')}>Units</button>
+                  <button className={`btn-switch ${mainGameTab === 'timings' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('timings')}>Timings</button>
+                  <button className={`btn-switch ${mainGameTab === 'first-unit-efficiency' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('first-unit-efficiency')}>First Unit Efficiency</button>
+                  <button className={`btn-switch ${mainGameTab === 'unit-production-cadence' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('unit-production-cadence')}>Unit Production Cadence</button>
+                  <button className={`btn-switch ${mainGameTab === 'viewport-multitasking' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('viewport-multitasking')}>Viewport Multitasking</button>
                 </div>
 
-                {workflowGameTab === 'summary' && (
+                {mainGameTab === 'summary' && (
                   <>
-                    <div className="workflow-player-rows" style={{ '--workflow-player-name-width': `${workflowPlayerNameWidthCh}ch` }}>
-                      {(workflowGame.players || []).map((player) => (
+                    <div className="workflow-player-rows" style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
+                      {(mainGame.players || []).map((player) => (
                         <div key={player.player_id} className="workflow-player-row" style={{ borderLeft: `3px solid ${getTeamColor(player.team)}` }}>
                           <div className="workflow-player-line">
                             <strong
@@ -3352,7 +3096,7 @@ function App() {
                             </strong>
                             <div className="workflow-player-actions">
                               <span className="workflow-player-apm"><strong>APM</strong> {player.apm}</span>
-                              <button className="workflow-link-btn" onClick={() => openWorkflowPlayer(player.player_key)}>View Player Summary</button>
+                              <button className="workflow-link-btn" onClick={() => openMainPlayer(player.player_key)}>View Player Summary</button>
                             </div>
                             {filterSummaryPillPatterns(player.detected_patterns).map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`))}
                           </div>
@@ -3376,73 +3120,73 @@ function App() {
                   </>
                 )}
 
-                {workflowGameTab === 'events' && (
+                {mainGameTab === 'events' && (
                   <div className="workflow-card workflow-card-recent-games">
                     <div className="workflow-summary-filter-row">
                       <input
                         type="text"
                         className="workflow-summary-filter-input"
                         placeholder="Filter events..."
-                        value={workflowSummaryFilters.search}
-                        onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, search: e.target.value }))}
+                        value={mainSummaryFilters.search}
+                        onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, search: e.target.value }))}
                       />
                       <select
                         className="workflow-summary-filter-select"
-                        value={workflowSummaryFilters.player}
-                        onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, player: e.target.value }))}
+                        value={mainSummaryFilters.player}
+                        onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, player: e.target.value }))}
                       >
                         <option value="">Any player</option>
-                        {(workflowGame.players || []).map((player) => (
+                        {(mainGame.players || []).map((player) => (
                           <option key={player.player_id} value={player.name}>{player.name}</option>
                         ))}
                       </select>
                       <select
                         className="workflow-summary-filter-select"
-                        value={workflowSummaryFilters.location}
-                        onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, location: e.target.value }))}
+                        value={mainSummaryFilters.location}
+                        onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, location: e.target.value }))}
                       >
                         <option value="">Any location</option>
-                        {workflowLocationOptions.map((loc) => (
+                        {mainLocationOptions.map((loc) => (
                           <option key={loc} value={loc}>{loc}</option>
                         ))}
                       </select>
                       <label className="workflow-summary-filter-check">
                         <input
                           type="checkbox"
-                          checked={workflowSummaryFilters.nuke}
-                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, nuke: e.target.checked }))}
+                          checked={mainSummaryFilters.nuke}
+                          onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, nuke: e.target.checked }))}
                         />
                         nuke
                       </label>
                       <label className="workflow-summary-filter-check">
                         <input
                           type="checkbox"
-                          checked={workflowSummaryFilters.drop}
-                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, drop: e.target.checked }))}
+                          checked={mainSummaryFilters.drop}
+                          onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, drop: e.target.checked }))}
                         />
                         drop
                       </label>
                       <label className="workflow-summary-filter-check">
                         <input
                           type="checkbox"
-                          checked={workflowSummaryFilters.recall}
-                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, recall: e.target.checked }))}
+                          checked={mainSummaryFilters.recall}
+                          onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, recall: e.target.checked }))}
                         />
                         recall
                       </label>
                       <label className="workflow-summary-filter-check">
                         <input
                           type="checkbox"
-                          checked={workflowSummaryFilters.becameRace}
-                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, becameRace: e.target.checked }))}
+                          checked={mainSummaryFilters.becameRace}
+                          onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, becameRace: e.target.checked }))}
                         />
                         became race
                       </label>
                       <label className="workflow-summary-filter-check">
                         <input
                           type="checkbox"
-                          checked={workflowSummaryFilters.rush}
-                          onChange={(e) => setWorkflowSummaryFilters((prev) => ({ ...prev, rush: e.target.checked }))}
+                          checked={mainSummaryFilters.rush}
+                          onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, rush: e.target.checked }))}
                         />
                         rush
                       </label>
@@ -3463,23 +3207,23 @@ function App() {
                   </div>
                 )}
 
-                {workflowGameTab === 'units' && (
+                {mainGameTab === 'units' && (
                   <div className="workflow-card workflow-card-chat-summary">
                     <div className="workflow-production-top-row">
                       <div className="workflow-production-tabs" role="tablist" aria-label="Production type tabs">
                         <button
-                          className={`workflow-production-tab ${workflowProductionTab === 'units' ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setWorkflowProductionTab('units')}
+                          className={`workflow-production-tab ${mainProductionTab === 'units' ? 'workflow-production-tab-active' : ''}`}
+                          onClick={() => setMainProductionTab('units')}
                           role="tab"
-                          aria-selected={workflowProductionTab === 'units'}
+                          aria-selected={mainProductionTab === 'units'}
                         >
                           Units
                         </button>
                         <button
-                          className={`workflow-production-tab ${workflowProductionTab === 'buildings' ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setWorkflowProductionTab('buildings')}
+                          className={`workflow-production-tab ${mainProductionTab === 'buildings' ? 'workflow-production-tab-active' : ''}`}
+                          onClick={() => setMainProductionTab('buildings')}
                           role="tab"
-                          aria-selected={workflowProductionTab === 'buildings'}
+                          aria-selected={mainProductionTab === 'buildings'}
                         >
                           Buildings
                         </button>
@@ -3490,7 +3234,7 @@ function App() {
                       </div>
                     </div>
                     <div className="workflow-summary-filter-row">
-                      {workflowProductionTab === 'units' ? (
+                      {mainProductionTab === 'units' ? (
                         <>
                           <div className="workflow-radio-group">
                             <label className="workflow-radio-option">
@@ -3498,8 +3242,8 @@ function App() {
                                 type="radio"
                                 name="workflow-units-filter"
                                 value="all"
-                                checked={workflowUnitFilterMode === 'all'}
-                                onChange={(e) => setWorkflowUnitFilterMode(e.target.value)}
+                                checked={mainUnitFilterMode === 'all'}
+                                onChange={(e) => setMainUnitFilterMode(e.target.value)}
                               />
                               <span>All units</span>
                             </label>
@@ -3508,8 +3252,8 @@ function App() {
                                 type="radio"
                                 name="workflow-units-filter"
                                 value="workers"
-                                checked={workflowUnitFilterMode === 'workers'}
-                                onChange={(e) => setWorkflowUnitFilterMode(e.target.value)}
+                                checked={mainUnitFilterMode === 'workers'}
+                                onChange={(e) => setMainUnitFilterMode(e.target.value)}
                               />
                               <span>Workers only</span>
                             </label>
@@ -3518,8 +3262,8 @@ function App() {
                                 type="radio"
                                 name="workflow-units-filter"
                                 value="non-workers"
-                                checked={workflowUnitFilterMode === 'non-workers'}
-                                onChange={(e) => setWorkflowUnitFilterMode(e.target.value)}
+                                checked={mainUnitFilterMode === 'non-workers'}
+                                onChange={(e) => setMainUnitFilterMode(e.target.value)}
                               />
                               <span>Non-workers only</span>
                             </label>
@@ -3528,8 +3272,8 @@ function App() {
                                 type="radio"
                                 name="workflow-units-filter"
                                 value="spellcasters"
-                                checked={workflowUnitFilterMode === 'spellcasters'}
-                                onChange={(e) => setWorkflowUnitFilterMode(e.target.value)}
+                                checked={mainUnitFilterMode === 'spellcasters'}
+                                onChange={(e) => setMainUnitFilterMode(e.target.value)}
                               />
                               <span>Spellcasters only</span>
                             </label>
@@ -3538,8 +3282,8 @@ function App() {
                                 type="radio"
                                 name="workflow-units-filter"
                                 value="tier-2"
-                                checked={workflowUnitFilterMode === 'tier-2'}
-                                onChange={(e) => setWorkflowUnitFilterMode(e.target.value)}
+                                checked={mainUnitFilterMode === 'tier-2'}
+                                onChange={(e) => setMainUnitFilterMode(e.target.value)}
                               />
                               <span>Tier 2 only</span>
                             </label>
@@ -3548,8 +3292,8 @@ function App() {
                                 type="radio"
                                 name="workflow-units-filter"
                                 value="tier-3"
-                                checked={workflowUnitFilterMode === 'tier-3'}
-                                onChange={(e) => setWorkflowUnitFilterMode(e.target.value)}
+                                checked={mainUnitFilterMode === 'tier-3'}
+                                onChange={(e) => setMainUnitFilterMode(e.target.value)}
                               />
                               <span>Tier 3 only</span>
                             </label>
@@ -3558,8 +3302,8 @@ function App() {
                             type="text"
                             className="workflow-summary-filter-input"
                             placeholder="Filter unit name..."
-                            value={workflowUnitNameFilter}
-                            onChange={(e) => setWorkflowUnitNameFilter(e.target.value)}
+                            value={mainUnitNameFilter}
+                            onChange={(e) => setMainUnitNameFilter(e.target.value)}
                           />
                         </>
                       ) : (
@@ -3570,8 +3314,8 @@ function App() {
                                 type="radio"
                                 name="workflow-buildings-filter"
                                 value="all"
-                                checked={workflowBuildingFilterMode === 'all'}
-                                onChange={(e) => setWorkflowBuildingFilterMode(e.target.value)}
+                                checked={mainBuildingFilterMode === 'all'}
+                                onChange={(e) => setMainBuildingFilterMode(e.target.value)}
                               />
                               <span>All buildings</span>
                             </label>
@@ -3580,8 +3324,8 @@ function App() {
                                 type="radio"
                                 name="workflow-buildings-filter"
                                 value="defenses"
-                                checked={workflowBuildingFilterMode === 'defenses'}
-                                onChange={(e) => setWorkflowBuildingFilterMode(e.target.value)}
+                                checked={mainBuildingFilterMode === 'defenses'}
+                                onChange={(e) => setMainBuildingFilterMode(e.target.value)}
                               />
                               <span>Defenses only</span>
                             </label>
@@ -3590,8 +3334,8 @@ function App() {
                                 type="radio"
                                 name="workflow-buildings-filter"
                                 value="tier-2"
-                                checked={workflowBuildingFilterMode === 'tier-2'}
-                                onChange={(e) => setWorkflowBuildingFilterMode(e.target.value)}
+                                checked={mainBuildingFilterMode === 'tier-2'}
+                                onChange={(e) => setMainBuildingFilterMode(e.target.value)}
                               />
                               <span>Tier 2 only</span>
                             </label>
@@ -3600,8 +3344,8 @@ function App() {
                                 type="radio"
                                 name="workflow-buildings-filter"
                                 value="tier-3"
-                                checked={workflowBuildingFilterMode === 'tier-3'}
-                                onChange={(e) => setWorkflowBuildingFilterMode(e.target.value)}
+                                checked={mainBuildingFilterMode === 'tier-3'}
+                                onChange={(e) => setMainBuildingFilterMode(e.target.value)}
                               />
                               <span>Tier 3 only</span>
                             </label>
@@ -3610,8 +3354,8 @@ function App() {
                             type="text"
                             className="workflow-summary-filter-input"
                             placeholder="Filter building name..."
-                            value={workflowBuildingNameFilter}
-                            onChange={(e) => setWorkflowBuildingNameFilter(e.target.value)}
+                            value={mainBuildingNameFilter}
+                            onChange={(e) => setMainBuildingNameFilter(e.target.value)}
                           />
                         </>
                       )}
@@ -3621,7 +3365,7 @@ function App() {
                         <thead>
                           <tr>
                             <th>Slice</th>
-                            {workflowGamePlayers.map((player) => (
+                            {mainGamePlayers.map((player) => (
                               <th
                                 key={player.player_id}
                                 style={hasTeamInfo ? { backgroundColor: teamColorRgba(player.team, 0.2) } : undefined}
@@ -3633,12 +3377,12 @@ function App() {
                           </tr>
                         </thead>
                         <tbody>
-                          {(workflowGame.units_by_slice || []).map((slice) => (
+                          {(mainGame.units_by_slice || []).map((slice) => (
                             <tr key={slice.slice_start_second}>
                               <td>{slice.slice_label}</td>
-                              {workflowGamePlayers.map((player) => {
+                              {mainGamePlayers.map((player) => {
                                 const playerSlice = (slice.players || []).find((item) => item.player_id === player.player_id);
-                                const filtered = filterProductionEntries(playerSlice?.units || [], workflowProductionTab);
+                                const filtered = filterProductionEntries(playerSlice?.units || [], mainProductionTab);
                                 return (
                                   <td
                                     key={`${slice.slice_start_second}-${player.player_id}`}
@@ -3667,24 +3411,24 @@ function App() {
                   </div>
                 )}
 
-                {workflowGameTab === 'timings' && (
+                {mainGameTab === 'timings' && (
                   <div className="workflow-timing-charts">
                     <div className="workflow-production-tabs workflow-timing-tabs" role="tablist" aria-label="Timing category tabs">
                       {TIMING_CATEGORY_CONFIG.map((cfg) => (
                         <button
                           key={cfg.id}
-                          className={`workflow-production-tab ${workflowTimingCategory === cfg.id ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setWorkflowTimingCategory(cfg.id)}
+                          className={`workflow-production-tab ${mainTimingCategory === cfg.id ? 'workflow-production-tab-active' : ''}`}
+                          onClick={() => setMainTimingCategory(cfg.id)}
                           role="tab"
-                          aria-selected={workflowTimingCategory === cfg.id}
+                          aria-selected={mainTimingCategory === cfg.id}
                         >
                           {cfg.label}
                         </button>
                       ))}
                     </div>
-                    {workflowTimingCategory === 'hp_upgrades' ? (
+                    {mainTimingCategory === 'hp_upgrades' ? (
                       <>
-                        {workflowHpTimingByRace.map((raceChart) => (
+                        {mainHpTimingByRace.map((raceChart) => (
                           <div key={`hp-${raceChart.race}`} className="workflow-card">
                             <div className="workflow-card-title"><span>{`${raceChart.raceLabel} HP upgrades timings`}</span></div>
                             <div className="workflow-radio-group">
@@ -3695,7 +3439,7 @@ function App() {
                                     name={`workflow-hp-filter-${raceChart.race}`}
                                     value={labelName}
                                     checked={raceChart.selected === labelName}
-                                    onChange={(e) => setWorkflowHpUpgradeFilters((prev) => ({ ...prev, [raceChart.race]: e.target.value }))}
+                                    onChange={(e) => setMainHpUpgradeFilters((prev) => ({ ...prev, [raceChart.race]: e.target.value }))}
                                   />
                                   <span>{labelName}</span>
                                 </label>
@@ -3704,12 +3448,12 @@ function App() {
                             <TimingScatterRows
                               title=""
                               series={raceChart.series}
-                              durationSeconds={workflowGame.duration_seconds}
-                              colorByLabel={workflowTimingUsesLabelColors}
+                              durationSeconds={mainGame.duration_seconds}
+                              colorByLabel={mainTimingUsesLabelColors}
                               showLegend={false}
-                              markerMode={workflowTimingCategoryConfig.markerMode || 'dot'}
-                              axisMode={workflowTimingAxisMode}
-                              maxSecondOverride={workflowTimingAxisTrimMaxSecond}
+                              markerMode={mainTimingCategoryConfig.markerMode || 'dot'}
+                              axisMode={mainTimingAxisMode}
+                              maxSecondOverride={mainTimingAxisTrimMaxSecond}
                               inlineLegend={true}
                               rowLabelMode="worker-icon"
                               rowGroupingMode="none"
@@ -3719,29 +3463,29 @@ function App() {
                       </>
                     ) : (
                       <TimingScatterRows
-                        title={workflowTimingCategoryConfig.title}
-                        series={workflowTimingSeries}
-                        durationSeconds={workflowGame.duration_seconds}
-                        colorByLabel={workflowTimingUsesLabelColors}
-                        showLegend={workflowTimingUsesLabelColors && !workflowTimingInlineLegend}
-                        markerMode={workflowTimingCategoryConfig.markerMode || 'dot'}
-                        axisMode={workflowTimingAxisMode}
-                        maxSecondOverride={workflowTimingAxisTrimMaxSecond}
-                        inlineLegend={workflowTimingInlineLegend}
-                        noticeText={workflowTimingNotice}
-                        rowLabelMode={workflowTimingInlineLegend ? 'worker-icon' : (['gas', 'expansion'].includes(workflowTimingCategory) ? 'name-only' : 'race-suffix')}
-                        rowGroupingMode={workflowTimingInlineLegend ? 'race' : 'none'}
+                        title={mainTimingCategoryConfig.title}
+                        series={mainTimingSeries}
+                        durationSeconds={mainGame.duration_seconds}
+                        colorByLabel={mainTimingUsesLabelColors}
+                        showLegend={mainTimingUsesLabelColors && !mainTimingInlineLegend}
+                        markerMode={mainTimingCategoryConfig.markerMode || 'dot'}
+                        axisMode={mainTimingAxisMode}
+                        maxSecondOverride={mainTimingAxisTrimMaxSecond}
+                        inlineLegend={mainTimingInlineLegend}
+                        noticeText={mainTimingNotice}
+                        rowLabelMode={mainTimingInlineLegend ? 'worker-icon' : (['gas', 'expansion'].includes(mainTimingCategory) ? 'name-only' : 'race-suffix')}
+                        rowGroupingMode={mainTimingInlineLegend ? 'race' : 'none'}
                       />
                     )}
                   </div>
                 )}
-                {workflowGameTab === 'first-unit-efficiency' && (
+                {mainGameTab === 'first-unit-efficiency' && (
                   <div className="workflow-timing-charts">
                     <div className="workflow-timing-notice">
                       Timing caveat: this metric uses command timestamps, so inefficiency can be inflated by worker travel after a build order is issued (e.g. SCV pathing before Barracks placement). Skilled players usually pre-position workers to reduce this delay. Network latency should not affect calculations. Game speed can affect timings, but most games are played on Fastest.
                     </div>
-                    {workflowFirstUnitEfficiencyGroups.length > 0 ? (
-                      workflowFirstUnitEfficiencyGroups.map((groupEntry) => (
+                    {mainFirstUnitEfficiencyGroups.length > 0 ? (
+                      mainFirstUnitEfficiencyGroups.map((groupEntry) => (
                         <FirstUnitEfficiencyTimelineRows
                           key={`first-unit-eff-${groupEntry.id}`}
                           group={groupEntry}
@@ -3754,7 +3498,7 @@ function App() {
                     )}
                   </div>
                 )}
-                {workflowGameTab === 'unit-production-cadence' && (
+                {mainGameTab === 'unit-production-cadence' && (
                   <div className="workflow-timing-charts">
                     <div className="workflow-card workflow-card-fingerprints">
                       <div className="workflow-card-title"><span>Unit production cadence (this game)</span></div>
@@ -3765,20 +3509,20 @@ function App() {
                       <div className="workflow-subtle-note">
                         Rationale: this captures sustained combat-unit production rhythm. Higher score means faster and less bursty production during the mid-game window.
                       </div>
-                      {workflowGameCadenceProcessed.points.length > 0 ? (
+                      {mainGameCadenceProcessed.points.length > 0 ? (
                         <Histogram
                           data={[]}
                           config={{
                             style: 'monobell_relax',
-                            precomputed_bins: workflowGameCadenceProcessed.bins,
+                            precomputed_bins: mainGameCadenceProcessed.bins,
                             x_axis_label: 'Cadence score',
                             y_axis_label: 'Density',
                             overlay_value_label: 'cadence',
                             overlay_count_label: 'units',
-                            mean: workflowGameCadenceProcessed.mean,
-                            stddev: workflowGameCadenceProcessed.stddev,
+                            mean: mainGameCadenceProcessed.mean,
+                            stddev: mainGameCadenceProcessed.stddev,
                             chart_height: 560,
-                            overlay_points: workflowGameCadenceProcessed.points.map((player) => ({
+                            overlay_points: mainGameCadenceProcessed.points.map((player) => ({
                               value: Number(player.average_apm || 0),
                               label: String(player.player_name || ''),
                               player_key: String(player.player_key || ''),
@@ -3800,7 +3544,7 @@ function App() {
                         <div className="chart-empty">No eligible players for this game cadence window yet.</div>
                       )}
                       <div className="workflow-card-subtitle"><span>Per-player breakdown</span></div>
-                      {(workflowGame?.unit_production_cadence || []).map((entry) => (
+                      {(mainGame?.unit_production_cadence || []).map((entry) => (
                         <div key={`game-cadence-${entry.player_id}`} className="workflow-pattern-row">
                           <span style={playerAccentColor(entry.player_key) ? { color: playerAccentColor(entry.player_key), fontWeight: 600 } : undefined}>
                             {entry.is_winner ? '👑 ' : ''}{entry.player_name}
@@ -3815,7 +3559,7 @@ function App() {
                     </div>
                   </div>
                 )}
-                {workflowGameTab === 'viewport-multitasking' && (
+                {mainGameTab === 'viewport-multitasking' && (
                   <div className="workflow-timing-charts">
                     <div className="workflow-card workflow-card-fingerprints">
                       <div className="workflow-card-title"><span>Viewport multitasking (this game)</span></div>
@@ -3826,20 +3570,20 @@ function App() {
                       <div className="workflow-subtle-note">
                         {VIEWPORT_SWITCH_RATE_CONFIG.interpretation}
                       </div>
-                      {workflowGameViewportProcessed.points.length > 0 ? (
+                      {mainGameViewportProcessed.points.length > 0 ? (
                         <Histogram
                           data={[]}
                           config={{
                             style: 'monobell_relax',
-                            precomputed_bins: workflowGameViewportProcessed.bins,
+                            precomputed_bins: mainGameViewportProcessed.bins,
                             x_axis_label: VIEWPORT_SWITCH_RATE_CONFIG.axisLabel,
                             y_axis_label: 'Density',
                             overlay_value_label: VIEWPORT_SWITCH_RATE_CONFIG.overlayValueLabel,
                             overlay_count_label: 'player',
-                            mean: workflowGameViewportProcessed.mean,
-                            stddev: workflowGameViewportProcessed.stddev,
+                            mean: mainGameViewportProcessed.mean,
+                            stddev: mainGameViewportProcessed.stddev,
                             chart_height: 560,
-                            overlay_points: workflowGameViewportProcessed.points.map((player) => ({
+                            overlay_points: mainGameViewportProcessed.points.map((player) => ({
                               value: Number(player.average_apm || 0),
                               label: String(player.player_name || ''),
                               player_key: String(player.player_key || ''),
@@ -3855,7 +3599,7 @@ function App() {
                         <div className="chart-empty">No eligible players for this game viewport multitasking window yet.</div>
                       )}
                       <div className="workflow-card-subtitle"><span>Per-player breakdown</span></div>
-                      {(workflowGame?.viewport_multitasking || []).map((entry) => (
+                      {(mainGame?.viewport_multitasking || []).map((entry) => (
                         <div key={`game-viewport-${entry.player_id}`} className="workflow-pattern-row">
                           <span style={playerAccentColor(entry.player_key) ? { color: playerAccentColor(entry.player_key), fontWeight: 600 } : undefined}>
                             {entry.is_winner ? '👑 ' : ''}{entry.player_name}
@@ -3875,21 +3619,21 @@ function App() {
               <div className="chart-empty">Select a game from the Games tab.</div>
             )}
 
-            {workflowGame && workflowGameTab === 'summary' && (
+            {mainGame && mainGameTab === 'summary' && (
               <>
-                <form onSubmit={handleWorkflowAsk} className="workflow-ask-form">
+                <form onSubmit={handleMainAsk} className="workflow-ask-form">
                   <input
                     className="widget-creation-input"
-                    value={workflowQuestion}
-                    onChange={(e) => setWorkflowQuestion(e.target.value)}
+                    value={mainQuestion}
+                    onChange={(e) => setMainQuestion(e.target.value)}
                     placeholder={openaiEnabled ? 'Ask AI about this game...' : 'Enable AI to ask questions'}
-                    disabled={!openaiEnabled || askingWorkflow}
+                    disabled={!openaiEnabled || mainAskLoading}
                   />
-                  <button className="btn-create-ai" type="submit" disabled={!openaiEnabled || askingWorkflow || !workflowQuestion.trim()}>
-                    {askingWorkflow ? 'Asking...' : 'Ask AI'}
+                  <button className="btn-create-ai" type="submit" disabled={!openaiEnabled || mainAskLoading || !mainQuestion.trim()}>
+                    {mainAskLoading ? 'Asking...' : 'Ask AI'}
                   </button>
                 </form>
-                {renderWorkflowAiResult()}
+                {renderMainAiResult()}
               </>
             )}
           </div>
@@ -3897,33 +3641,33 @@ function App() {
 
         {activeView === 'player' && (
           <div className="workflow-panel">
-            {workflowPlayerLoading ? (
+            {mainPlayerLoading ? (
               <div className="loading">Loading player report...</div>
-            ) : workflowPlayer ? (
+            ) : mainPlayer ? (
               <>
                 <div className="workflow-title-row">
                   <div className="workflow-player-title-wrap">
-                    <h2 style={playerAccentColor(workflowPlayer.player_key) ? { color: playerAccentColor(workflowPlayer.player_key) } : undefined}>{workflowPlayer.player_name}</h2>
-                    {(Number(workflowPlayer.games_played) || 0) < 5 ? (
+                    <h2 style={playerAccentColor(mainPlayer.player_key) ? { color: playerAccentColor(mainPlayer.player_key) } : undefined}>{mainPlayer.player_name}</h2>
+                    {(Number(mainPlayer.games_played) || 0) < 5 ? (
                       <span className="workflow-inline-warning">⚠️ Fewer than 5 replays: we cannot provide reliable player-level insights yet.</span>
                     ) : null}
                   </div>
-                  <button className="btn-switch" onClick={goBackWorkflowView}>Back</button>
+                  <button className="btn-switch" onClick={goBackMainView}>Back</button>
                 </div>
                 <div className="workflow-meta">
-                  <span><strong>Games</strong> {workflowPlayer.games_played}</span>
-                  <span><strong>Win rate</strong> {(workflowPlayer.win_rate * 100).toFixed(1)}%</span>
-                  <span><strong>APM</strong> {workflowPlayer.average_apm?.toFixed(1)}</span>
-                  <span><strong>EAPM</strong> {workflowPlayer.average_eapm?.toFixed(1)}</span>
+                  <span><strong>Games</strong> {mainPlayer.games_played}</span>
+                  <span><strong>Win rate</strong> {(mainPlayer.win_rate * 100).toFixed(1)}%</span>
+                  <span><strong>APM</strong> {mainPlayer.average_apm?.toFixed(1)}</span>
+                  <span><strong>EAPM</strong> {mainPlayer.average_eapm?.toFixed(1)}</span>
                 </div>
                 <div className="workflow-cards">
                   <div className="workflow-card workflow-card-race-behaviours">
-                    {workflowPlayerMetricsLoading ? <div className="chart-empty">Loading metrics...</div> : null}
-                    {!workflowPlayerMetricsLoading && workflowPlayerMetricsError ? <div className="chart-empty">{workflowPlayerMetricsError}</div> : null}
-                    {!workflowPlayerMetricsLoading && !workflowPlayerMetricsError && (workflowPlayerMetrics?.race_behaviour_sections || []).length === 0 ? (
+                    {mainPlayerMetricsLoading ? <div className="chart-empty">Loading metrics...</div> : null}
+                    {!mainPlayerMetricsLoading && mainPlayerMetricsError ? <div className="chart-empty">{mainPlayerMetricsError}</div> : null}
+                    {!mainPlayerMetricsLoading && !mainPlayerMetricsError && (mainPlayerMetrics?.race_behaviour_sections || []).length === 0 ? (
                       <div className="chart-empty">No race behaviour sections available.</div>
                     ) : null}
-                    {!workflowPlayerMetricsLoading && !workflowPlayerMetricsError && (workflowPlayerMetrics?.race_behaviour_sections || []).map((section) => (
+                    {!mainPlayerMetricsLoading && !mainPlayerMetricsError && (mainPlayerMetrics?.race_behaviour_sections || []).map((section) => (
                       <div key={section.race} className="workflow-race-behaviour-section">
                         <div className="workflow-card-subtitle">
                           {getRaceIcon(section.race) ? <img src={getRaceIcon(section.race)} alt={section.race} className="unit-icon-inline workflow-race-title-icon" /> : null}
@@ -3944,13 +3688,13 @@ function App() {
                   </div>
                   <div className="workflow-card workflow-card-fingerprints">
                     <div className="workflow-card-title"><span>Population comparison</span></div>
-                    {workflowPlayerInsightLoading ? <div className="chart-empty">Loading population comparisons...</div> : null}
-                    {!workflowPlayerInsightLoading && workflowPlayerInsightErrors.length > 0 ? (
-                      <div className="chart-empty">{workflowPlayerInsightErrors[0]}</div>
+                    {mainPlayerInsightLoading ? <div className="chart-empty">Loading population comparisons...</div> : null}
+                    {!mainPlayerInsightLoading && mainPlayerInsightErrors.length > 0 ? (
+                      <div className="chart-empty">{mainPlayerInsightErrors[0]}</div>
                     ) : null}
-                    {!workflowPlayerInsightLoading && workflowPlayerInsightErrors.length === 0 ? (
+                    {!mainPlayerInsightLoading && mainPlayerInsightErrors.length === 0 ? (
                       <div className="workflow-insight-grid">
-                        {workflowPlayerInsights.map((insight) => {
+                        {mainPlayerInsights.map((insight) => {
                           const percentile = Number(insight.performance_percentile || 0);
                           const accent = insightScoreColor(percentile);
                           return (
@@ -3959,7 +3703,7 @@ function App() {
                               key={insight.insight_type}
                               className="workflow-insight-card workflow-insight-card-link"
                               style={insight.eligible ? { borderColor: `${accent}55`, boxShadow: `inset 0 0 0 1px ${accent}22` } : undefined}
-                              onClick={() => openWorkflowPlayersSubview(playerInsightDestinationTab(insight.insight_type))}
+                              onClick={() => openMainPlayersSubview(playerInsightDestinationTab(insight.insight_type))}
                             >
                               <div className="workflow-insight-card-header">
                                 <span>{insight.title}</span>
@@ -4000,11 +3744,11 @@ function App() {
                       </div>
                     ) : null}
                     <div className="workflow-card-subtitle"><span>Usage signals</span></div>
-                    {workflowPlayerUsagePills.length === 0 ? (
+                    {mainPlayerUsagePills.length === 0 ? (
                       <div className="workflow-subtle-note">No low-usage flags were triggered for hotkeys or queued orders.</div>
                     ) : (
                       <div className="workflow-pattern-pills">
-                        {workflowPlayerUsagePills.map((pill) => (
+                        {mainPlayerUsagePills.map((pill) => (
                           <span key={pill.key} className={pill.className} title={pill.title}>{pill.label}</span>
                         ))}
                       </div>
@@ -4014,12 +3758,12 @@ function App() {
                       <HelpTooltip text={PLAYER_OUTLIER_HELP} label="Outlier calculation explanation" />
                     </div>
                     <div className="workflow-subtle-note">Same-race, human-only baselines. Items are shown in one list and prefixed by command family.</div>
-                    {workflowPlayerOutliersLoading ? <div className="chart-empty">Loading outliers...</div> : null}
-                    {!workflowPlayerOutliersLoading && workflowPlayerOutliersError ? <div className="chart-empty">{workflowPlayerOutliersError}</div> : null}
-                    {!workflowPlayerOutliersLoading && !workflowPlayerOutliersError && workflowPlayerOutlierItems.length === 0 ? (
+                    {mainPlayerOutliersLoading ? <div className="chart-empty">Loading outliers...</div> : null}
+                    {!mainPlayerOutliersLoading && mainPlayerOutliersError ? <div className="chart-empty">{mainPlayerOutliersError}</div> : null}
+                    {!mainPlayerOutliersLoading && !mainPlayerOutliersError && mainPlayerOutlierItems.length === 0 ? (
                       <div className="chart-empty">No outliers crossed current thresholds.</div>
                     ) : null}
-                    {!workflowPlayerOutliersLoading && !workflowPlayerOutliersError && workflowPlayerOutlierItems.map((item) => (
+                    {!mainPlayerOutliersLoading && !mainPlayerOutliersError && mainPlayerOutlierItems.map((item) => (
                       <div key={`${item.category}-${item.race}-${item.name}`} className="workflow-pattern-row">
                         <span>{`${item.category}: ${item.pretty_name}`}</span>
                         <span className="workflow-outlier-expl">
@@ -4037,13 +3781,13 @@ function App() {
                   </div>
                   <div className="workflow-card workflow-card-recent-games">
                     <div className="workflow-card-title"><span>Recent games</span></div>
-                    {workflowPlayerRecentGamesLoading ? <div className="chart-empty">Loading recent games...</div> : null}
-                    {!workflowPlayerRecentGamesLoading && workflowPlayerRecentGamesError ? <div className="chart-empty">{workflowPlayerRecentGamesError}</div> : null}
-                    {!workflowPlayerRecentGamesLoading && !workflowPlayerRecentGamesError && workflowPlayerRecentGames.length === 0 ? (
+                    {mainPlayerRecentGamesLoading ? <div className="chart-empty">Loading recent games...</div> : null}
+                    {!mainPlayerRecentGamesLoading && mainPlayerRecentGamesError ? <div className="chart-empty">{mainPlayerRecentGamesError}</div> : null}
+                    {!mainPlayerRecentGamesLoading && !mainPlayerRecentGamesError && mainPlayerRecentGames.length === 0 ? (
                       <div className="chart-empty">No recent games found for this player.</div>
                     ) : null}
-                    {!workflowPlayerRecentGamesLoading && !workflowPlayerRecentGamesError && workflowPlayerRecentGames.slice(0, 6).map((g) => (
-                      <button key={g.replay_id} className="workflow-recent-game-card" onClick={() => openWorkflowGame(g.replay_id)}>
+                    {!mainPlayerRecentGamesLoading && !mainPlayerRecentGamesError && mainPlayerRecentGames.slice(0, 6).map((g) => (
+                      <button key={g.replay_id} className="workflow-recent-game-card" onClick={() => openMainGame(g.replay_id)}>
                         <div className="workflow-recent-game-header">
                           <span>{formatRelativeReplayDate(g.replay_date)}</span>
                           <span>{g.map_name}</span>
@@ -4077,22 +3821,22 @@ function App() {
                   </div>
                   <div className="workflow-card workflow-card-chat-summary">
                     <div className="workflow-card-title"><span>Chat Summary</span></div>
-                    {workflowPlayerChatSummaryLoading ? <div className="chart-empty">Loading chat summary...</div> : null}
-                    {!workflowPlayerChatSummaryLoading && workflowPlayerChatSummaryError ? <div className="chart-empty">{workflowPlayerChatSummaryError}</div> : null}
-                    {!workflowPlayerChatSummaryLoading && !workflowPlayerChatSummaryError && (Number(workflowPlayerChatSummary?.total_messages) || 0) === 0 ? (
+                    {mainPlayerChatSummaryLoading ? <div className="chart-empty">Loading chat summary...</div> : null}
+                    {!mainPlayerChatSummaryLoading && mainPlayerChatSummaryError ? <div className="chart-empty">{mainPlayerChatSummaryError}</div> : null}
+                    {!mainPlayerChatSummaryLoading && !mainPlayerChatSummaryError && (Number(mainPlayerChatSummary?.total_messages) || 0) === 0 ? (
                       <div className="chart-empty">No chat messages found for this player in ingested games.</div>
                     ) : (
-                      !workflowPlayerChatSummaryLoading && !workflowPlayerChatSummaryError && workflowPlayerChatSummary ? (
+                      !mainPlayerChatSummaryLoading && !mainPlayerChatSummaryError && mainPlayerChatSummary ? (
                       <>
                         <div className="workflow-subtle-note">
-                          {`${workflowPlayerChatSummary?.total_messages || 0} messages across ${workflowPlayerChatSummary?.games_with_chat || 0} games, ${workflowPlayerChatSummary?.distinct_terms || 0} distinct terms after cleanup.`}
+                          {`${mainPlayerChatSummary?.total_messages || 0} messages across ${mainPlayerChatSummary?.games_with_chat || 0} games, ${mainPlayerChatSummary?.distinct_terms || 0} distinct terms after cleanup.`}
                         </div>
                         <div className="workflow-card-subtitle"><span>Top terms</span></div>
-                        {(workflowPlayerChatSummary?.top_terms || []).length === 0 ? (
+                        {(mainPlayerChatSummary?.top_terms || []).length === 0 ? (
                           <div className="chart-empty">Not enough messages to infer common terms.</div>
                         ) : (
                           <div className="workflow-pattern-pills">
-                            {(workflowPlayerChatSummary?.top_terms || []).map((item) => (
+                            {(mainPlayerChatSummary?.top_terms || []).map((item) => (
                               <span key={`player-chat-term-${item.term}`} className="workflow-pattern-pill">
                                 <span>{item.term}</span>
                                 <span>{`x${item.count}`}</span>
@@ -4101,7 +3845,7 @@ function App() {
                           </div>
                         )}
                         <div className="workflow-card-subtitle"><span>Last 5 messages</span></div>
-                        {(workflowPlayerChatSummary?.example_messages || []).map((msg, idx) => (
+                        {(mainPlayerChatSummary?.example_messages || []).map((msg, idx) => (
                           <div key={`player-chat-example-${idx}`} className="workflow-event-row">
                             <span>{msg}</span>
                           </div>
@@ -4115,19 +3859,19 @@ function App() {
             ) : (
               <div className="chart-empty">Select a player from a game report.</div>
             )}
-            <form onSubmit={handleWorkflowAsk} className="workflow-ask-form">
+            <form onSubmit={handleMainAsk} className="workflow-ask-form">
               <input
                 className="widget-creation-input"
-                value={workflowQuestion}
-                onChange={(e) => setWorkflowQuestion(e.target.value)}
+                value={mainQuestion}
+                onChange={(e) => setMainQuestion(e.target.value)}
                 placeholder={openaiEnabled ? 'Ask AI about this player...' : 'Enable AI to ask questions'}
-                disabled={!openaiEnabled || askingWorkflow}
+                disabled={!openaiEnabled || mainAskLoading}
               />
-              <button className="btn-create-ai" type="submit" disabled={!openaiEnabled || askingWorkflow || !workflowQuestion.trim()}>
-                {askingWorkflow ? 'Asking...' : 'Ask AI'}
+              <button className="btn-create-ai" type="submit" disabled={!openaiEnabled || mainAskLoading || !mainQuestion.trim()}>
+                {mainAskLoading ? 'Asking...' : 'Ask AI'}
               </button>
             </form>
-            {renderWorkflowAiResult()}
+            {renderMainAiResult()}
           </div>
         )}
 
