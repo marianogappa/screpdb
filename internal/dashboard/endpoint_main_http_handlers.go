@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -108,6 +110,60 @@ func (d *Dashboard) handlerPlayerOutliers(w http.ResponseWriter, r *http.Request
 		return
 	}
 	_ = json.NewEncoder(w).Encode(outliers)
+}
+
+func (d *Dashboard) handlerGameSee(w http.ResponseWriter, r *http.Request) {
+	const SeeReplayFilename = "_watch_me.rep"
+
+	replayID, err := parseReplayID(mux.Vars(r)["replayID"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var sourceFilePath, destinationDirPath string
+	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
+		SELECT file_path
+		FROM replays
+		WHERE id = ?
+	`, replayID).Scan(&sourceFilePath); err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
+		SELECT ingest_input_dir
+		FROM settings
+		WHERE config_key = 'global'
+	`, replayID).Scan(&destinationDirPath); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if destinationDirPath == "" {
+		http.Error(w, "Replay ingestion directory is not set; cannot move replay file", http.StatusInternalServerError)
+		return
+	}
+
+	destinationFilePath := path.Join(destinationDirPath, SeeReplayFilename)
+
+	input, err := os.ReadFile(sourceFilePath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = os.WriteFile(destinationFilePath, input, 0644)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"sourceFilePath":      sourceFilePath,
+		"destinationFilePath": destinationFilePath,
+		"destinationFileName": SeeReplayFilename,
+		"success":             true,
+	})
 }
 
 func (d *Dashboard) handlerPlayerMetrics(w http.ResponseWriter, r *http.Request) {

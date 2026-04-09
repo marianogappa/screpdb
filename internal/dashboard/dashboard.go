@@ -139,6 +139,7 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/players/{playerKey}/insights/unit-production-cadence", d.handlerPlayerUnitCadence).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/player-colors", d.handlerPlayerColors).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/api/games/{replayID}/ask", d.handlerGameAsk).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/api/games/{replayID}/see", d.handlerGameSee).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/api/players/{playerKey}/ask", d.handlerPlayerAsk).Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/api/health", d.handlerHealthcheck).Methods(http.MethodGet, http.MethodOptions)
