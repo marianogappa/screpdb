@@ -7,7 +7,7 @@
       "patterns": {
         "replay": 1,
         "team": 0,
-        "player": 5
+        "player": 7
       }
     },
     {
@@ -17,7 +17,7 @@
       "patterns": {
         "replay": 1,
         "team": 0,
-        "player": 5
+        "player": 7
       }
     },
     {
@@ -27,7 +27,7 @@
       "patterns": {
         "replay": 1,
         "team": 0,
-        "player": 6
+        "player": 8
       }
     },
     {
@@ -37,7 +37,7 @@
       "patterns": {
         "replay": 1,
         "team": 0,
-        "player": 29
+        "player": 39
       }
     }
   ]
