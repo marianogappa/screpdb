@@ -780,6 +780,10 @@ function App() {
   const [selectedPlayerKey, setSelectedPlayerKey] = useState('');
   const [mainGame, setMainGame] = useState(null);
   const [mainGameTab, setMainGameTab] = useState('summary');
+  const [mainGameSeeLoading, setMainGameSeeLoading] = useState(false);
+  const [mainGameSeeNotice, setMainGameSeeNotice] = useState('');
+  const [mainGameSeeNoticeError, setMainGameSeeNoticeError] = useState(false);
+  const mainGameSeeNoticeTimerRef = useRef(null);
   const [mainPlayer, setMainPlayer] = useState(null);
   const [mainPlayerRecentGames, setMainPlayerRecentGames] = useState([]);
   const [mainPlayerRecentGamesLoading, setMainPlayerRecentGamesLoading] = useState(false);
@@ -1058,6 +1062,12 @@ function App() {
     try {
       setMainGameDetailLoading(true);
       setError(null);
+      if (mainGameSeeNoticeTimerRef.current) {
+        window.clearTimeout(mainGameSeeNoticeTimerRef.current);
+        mainGameSeeNoticeTimerRef.current = null;
+      }
+      setMainGameSeeNotice('');
+      setMainGameSeeNoticeError(false);
       const data = await api.getGame(replayId);
       setMainGame(data);
       setMainGameTab('summary');
@@ -1081,6 +1091,31 @@ function App() {
       setError(err.message);
     } finally {
       setMainGameDetailLoading(false);
+    }
+  };
+
+  const copyMainGameToWatchMe = async () => {
+    const replayId = mainGame?.replay_id;
+    if (!replayId || mainGameSeeLoading) return;
+    if (mainGameSeeNoticeTimerRef.current) {
+      window.clearTimeout(mainGameSeeNoticeTimerRef.current);
+      mainGameSeeNoticeTimerRef.current = null;
+    }
+    try {
+      setMainGameSeeLoading(true);
+      setMainGameSeeNotice('');
+      setMainGameSeeNoticeError(false);
+      await api.seeGame(replayId);
+      setMainGameSeeNotice('Copied to _watch_me.rep in your ingest folder.');
+      mainGameSeeNoticeTimerRef.current = window.setTimeout(() => {
+        setMainGameSeeNotice('');
+        mainGameSeeNoticeTimerRef.current = null;
+      }, 5000);
+    } catch (err) {
+      setMainGameSeeNotice(err.message || 'Failed to copy replay');
+      setMainGameSeeNoticeError(true);
+    } finally {
+      setMainGameSeeLoading(false);
     }
   };
 
@@ -1533,6 +1568,12 @@ function App() {
   useEffect(() => () => {
     if (autoIngestNoticeTimerRef.current) {
       window.clearTimeout(autoIngestNoticeTimerRef.current);
+    }
+  }, []);
+
+  useEffect(() => () => {
+    if (mainGameSeeNoticeTimerRef.current) {
+      window.clearTimeout(mainGameSeeNoticeTimerRef.current);
     }
   }, []);
 
@@ -3072,6 +3113,15 @@ function App() {
                   <span>{formatDuration(mainGame.duration_seconds)}</span>
                 </div>
                 <div className="workflow-nav">
+                  <button
+                    type="button"
+                    className="btn-switch btn-switch-see-replay"
+                    disabled={mainGameSeeLoading}
+                    title="Clones this replay into your configured replay ingestion folder as _watch_me.rep so you can easily find it within Starcraft."
+                    onClick={copyMainGameToWatchMe}
+                  >
+                    {mainGameSeeLoading ? 'Copying…' : 'Stage watch replay'}
+                  </button>
                   <button className={`btn-switch ${mainGameTab === 'summary' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('summary')}>Summary</button>
                   <button className={`btn-switch ${mainGameTab === 'events' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('events')}>Game Events</button>
                   <button className={`btn-switch ${mainGameTab === 'units' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('units')}>Units</button>
@@ -3080,6 +3130,9 @@ function App() {
                   <button className={`btn-switch ${mainGameTab === 'unit-production-cadence' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('unit-production-cadence')}>Unit Production Cadence</button>
                   <button className={`btn-switch ${mainGameTab === 'viewport-multitasking' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('viewport-multitasking')}>Viewport Multitasking</button>
                 </div>
+                {mainGameSeeNotice ? (
+                  <div className={`workflow-see-notice ${mainGameSeeNoticeError ? 'workflow-see-notice-error' : ''}`}>{mainGameSeeNotice}</div>
+                ) : null}
 
                 {mainGameTab === 'summary' && (
                   <>
@@ -3827,30 +3880,30 @@ function App() {
                       <div className="chart-empty">No chat messages found for this player in ingested games.</div>
                     ) : (
                       !mainPlayerChatSummaryLoading && !mainPlayerChatSummaryError && mainPlayerChatSummary ? (
-                      <>
-                        <div className="workflow-subtle-note">
-                          {`${mainPlayerChatSummary?.total_messages || 0} messages across ${mainPlayerChatSummary?.games_with_chat || 0} games, ${mainPlayerChatSummary?.distinct_terms || 0} distinct terms after cleanup.`}
-                        </div>
-                        <div className="workflow-card-subtitle"><span>Top terms</span></div>
-                        {(mainPlayerChatSummary?.top_terms || []).length === 0 ? (
-                          <div className="chart-empty">Not enough messages to infer common terms.</div>
-                        ) : (
-                          <div className="workflow-pattern-pills">
-                            {(mainPlayerChatSummary?.top_terms || []).map((item) => (
-                              <span key={`player-chat-term-${item.term}`} className="workflow-pattern-pill">
-                                <span>{item.term}</span>
-                                <span>{`x${item.count}`}</span>
-                              </span>
-                            ))}
+                        <>
+                          <div className="workflow-subtle-note">
+                            {`${mainPlayerChatSummary?.total_messages || 0} messages across ${mainPlayerChatSummary?.games_with_chat || 0} games, ${mainPlayerChatSummary?.distinct_terms || 0} distinct terms after cleanup.`}
                           </div>
-                        )}
-                        <div className="workflow-card-subtitle"><span>Last 5 messages</span></div>
-                        {(mainPlayerChatSummary?.example_messages || []).map((msg, idx) => (
-                          <div key={`player-chat-example-${idx}`} className="workflow-event-row">
-                            <span>{msg}</span>
-                          </div>
-                        ))}
-                      </>
+                          <div className="workflow-card-subtitle"><span>Top terms</span></div>
+                          {(mainPlayerChatSummary?.top_terms || []).length === 0 ? (
+                            <div className="chart-empty">Not enough messages to infer common terms.</div>
+                          ) : (
+                            <div className="workflow-pattern-pills">
+                              {(mainPlayerChatSummary?.top_terms || []).map((item) => (
+                                <span key={`player-chat-term-${item.term}`} className="workflow-pattern-pill">
+                                  <span>{item.term}</span>
+                                  <span>{`x${item.count}`}</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="workflow-card-subtitle"><span>Last 5 messages</span></div>
+                          {(mainPlayerChatSummary?.example_messages || []).map((msg, idx) => (
+                            <div key={`player-chat-example-${idx}`} className="workflow-event-row">
+                              <span>{msg}</span>
+                            </div>
+                          ))}
+                        </>
                       ) : null
                     )}
                   </div>

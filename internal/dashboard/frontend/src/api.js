@@ -316,6 +316,17 @@ export const api = {
     return response.json();
   },
 
+  seeGame: async (replayId) => {
+    const response = await fetch(`${API_BASE}/games/${encodeURIComponent(replayId)}/see`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to stage replay for watch');
+    }
+    return response.json();
+  },
+
   getPlayer: async (playerKey) => {
     const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}`);
     if (!response.ok) {

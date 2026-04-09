@@ -1507,6 +1507,31 @@ body {
   background: rgba(100, 150, 255, 0.6);
 }
 
+.btn-switch-see-replay {
+  background: rgba(50, 160, 90, 0.45);
+  border-color: rgba(90, 210, 130, 0.65);
+}
+
+.btn-switch-see-replay:hover:not(:disabled) {
+  background: rgba(50, 160, 90, 0.65);
+  border-color: rgba(120, 235, 160, 0.85);
+}
+
+.btn-switch-see-replay:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.workflow-see-notice {
+  font-size: 12px;
+  color: rgba(140, 230, 170, 0.95);
+  margin: -8px 0 12px;
+}
+
+.workflow-see-notice-error {
+  color: rgba(255, 140, 140, 0.95);
+}
+
 .workflow-panel {
   background: rgba(20, 20, 30, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.12);
