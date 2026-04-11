@@ -3,6 +3,8 @@ package dashboard
 import (
 	"database/sql"
 	"fmt"
+
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 )
 
 func (d *Dashboard) validateReplayFilterSQL(replaysFilterSQL *string) (string, error) {
@@ -21,12 +23,7 @@ func (d *Dashboard) validateReplayFilterSQL(replaysFilterSQL *string) (string, e
 		return "", fmt.Errorf("replays_filter_sql must reference main.replays when used in a view")
 	}
 	err := d.withFilteredConnection(nil, func(db *sql.DB) error {
-		row := db.QueryRowContext(d.ctx, fmt.Sprintf("SELECT 1 FROM (%s) LIMIT 1", qualified))
-		var tmp int
-		if err := row.Scan(&tmp); err != nil && err != sql.ErrNoRows {
-			return err
-		}
-		return nil
+		return dashboarddb.ValidateSelectOnDB(d.ctx, db, qualified)
 	})
 	if err != nil {
 		return "", err

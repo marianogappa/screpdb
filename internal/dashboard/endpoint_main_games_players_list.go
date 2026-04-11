@@ -7,62 +7,39 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 )
 
 func (d *Dashboard) handlerGamesList(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r, 20, 200)
 	filters := parseWorkflowGamesListFilters(r)
 	whereSQL, whereArgs := buildWorkflowGamesListWhere(filters)
-
-	countQuery := "SELECT COUNT(*) FROM replays r " + whereSQL
-	var total int64
-	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, countQuery, whereArgs...).Scan(&total); err != nil {
+	total, err := d.dbStore.CountGamesWithWhere(d.ctx, whereSQL, whereArgs)
+	if err != nil {
 		http.Error(w, "failed to count games: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	listArgs := append([]any{}, whereArgs...)
-	listArgs = append(listArgs, limit, offset)
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT
-			r.id,
-			r.replay_date,
-			r.file_name,
-			r.map_name,
-			r.duration_seconds,
-			r.game_type
-		FROM replays r
-	`+whereSQL+`
-		ORDER BY r.replay_date DESC, r.id DESC
-		LIMIT ? OFFSET ?
-	`, listArgs...)
+	listRows, err := d.dbStore.ListGamesWithWhere(d.ctx, whereSQL, whereArgs, limit, offset)
 	if err != nil {
 		http.Error(w, "failed to list games: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
 
 	items := []workflowGameListItem{}
-	for rows.Next() {
-		var item workflowGameListItem
-		if err := rows.Scan(
-			&item.ReplayID,
-			&item.ReplayDate,
-			&item.FileName,
-			&item.MapName,
-			&item.DurationSeconds,
-			&item.GameType,
-		); err != nil {
-			http.Error(w, "failed to parse games list: "+err.Error(), http.StatusInternalServerError)
-			return
+	for _, row := range listRows {
+		item := workflowGameListItem{
+			ReplayID:        row.ReplayID,
+			ReplayDate:      row.ReplayDate,
+			FileName:        row.FileName,
+			MapName:         row.MapName,
+			DurationSeconds: row.DurationSeconds,
+			GameType:        row.GameType,
 		}
 		item.Players = []workflowGameListPlayer{}
 		item.Featuring = []string{}
 		items = append(items, item)
-	}
-	if err := rows.Err(); err != nil {
-		http.Error(w, "failed to iterate games list: "+err.Error(), http.StatusInternalServerError)
-		return
 	}
 
 	if err := d.populateWorkflowGameListPlayers(items); err != nil {
@@ -115,9 +92,8 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 	whereSQL, whereArgs := buildWorkflowPlayersListWhere(filters)
 	allArgs := append(append([]any{}, baseArgs...), whereArgs...)
 
-	countQuery := `WITH player_agg AS (` + baseSQL + `) SELECT COUNT(*) FROM player_agg ` + whereSQL
-	var total int64
-	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, countQuery, allArgs...).Scan(&total); err != nil {
+	total, err := d.dbStore.CountWorkflowPlayers(d.ctx, baseSQL, whereSQL, allArgs)
+	if err != nil {
 		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
 	}
 
@@ -127,48 +103,25 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 		sortDir = "DESC"
 	}
 
-	listArgs := append(append([]any{}, allArgs...), limit, offset)
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		WITH player_agg AS (`+baseSQL+`)
-		SELECT
-			player_key,
-			player_name,
-			race,
-			games_played,
-			average_apm,
-			last_played,
-			last_played_days_ago
-		FROM player_agg
-	`+whereSQL+`
-		ORDER BY `+sortColumn+` `+sortDir+`, player_name ASC
-		LIMIT ? OFFSET ?
-	`, listArgs...)
+	listRows, err := d.dbStore.ListWorkflowPlayers(d.ctx, baseSQL, whereSQL, sortColumn, sortDir, allArgs, limit, offset)
 	if err != nil {
 		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
 	}
-	defer rows.Close()
 
 	items := []workflowPlayersListItem{}
-	for rows.Next() {
+	for _, row := range listRows {
 		item := workflowPlayersListItem{}
-		if err := rows.Scan(
-			&item.PlayerKey,
-			&item.PlayerName,
-			&item.Race,
-			&item.GamesPlayed,
-			&item.AverageAPM,
-			&item.LastPlayed,
-			&item.LastPlayedDaysAgo,
-		); err != nil {
-			return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
-		}
+		item.PlayerKey = row.PlayerKey
+		item.PlayerName = row.PlayerName
+		item.Race = row.Race
+		item.GamesPlayed = row.GamesPlayed
+		item.AverageAPM = row.AverageAPM
+		item.LastPlayed = row.LastPlayed
+		item.LastPlayedDaysAgo = row.LastPlayedDaysAgo
 		if item.LastPlayedDaysAgo < 0 {
 			item.LastPlayedDaysAgo = 0
 		}
 		items = append(items, item)
-	}
-	if err := rows.Err(); err != nil {
-		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
 	}
 
 	filterOptions, err := d.workflowPlayersListFilterOptions(baseSQL, baseArgs, whereSQL, whereArgs)
@@ -179,70 +132,11 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 }
 
 func buildWorkflowPlayersListBaseSQL(filters workflowPlayersListFilters) (string, []any) {
-	baseWhere := []string{"p.is_observer = 0", "lower(trim(coalesce(p.type, ''))) = 'human'"}
-	args := []any{}
-	if filters.NameContains != "" {
-		baseWhere = append(baseWhere, "lower(trim(p.name)) LIKE ?")
-		args = append(args, "%"+normalizePlayerKey(filters.NameContains)+"%")
-	}
-	sqlText := `
-		SELECT
-			player_key,
-			player_name,
-			games_played,
-			average_apm,
-			last_played,
-			CASE
-				WHEN games_played <= 0 THEN 'Random'
-				WHEN protoss_games * 1.0 / games_played > 0.67 THEN 'Protoss'
-				WHEN terran_games * 1.0 / games_played > 0.67 THEN 'Terran'
-				WHEN zerg_games * 1.0 / games_played > 0.67 THEN 'Zerg'
-				ELSE 'Random'
-			END AS race,
-			COALESCE(CAST(julianday('now') - julianday(substr(last_played, 1, 19)) AS INTEGER), 0) AS last_played_days_ago
-		FROM (
-			SELECT
-				lower(trim(p.name)) AS player_key,
-				MIN(p.name) AS player_name,
-				COUNT(*) AS games_played,
-				COALESCE(AVG(CASE WHEN p.apm > 0 THEN p.apm END), 0) AS average_apm,
-				MAX(r.replay_date) AS last_played,
-				SUM(CASE WHEN lower(trim(p.race)) = 'protoss' THEN 1 ELSE 0 END) AS protoss_games,
-				SUM(CASE WHEN lower(trim(p.race)) = 'terran' THEN 1 ELSE 0 END) AS terran_games,
-				SUM(CASE WHEN lower(trim(p.race)) = 'zerg' THEN 1 ELSE 0 END) AS zerg_games
-			FROM players p
-			JOIN replays r ON r.id = p.replay_id
-			WHERE ` + strings.Join(baseWhere, " AND ") + `
-			GROUP BY lower(trim(p.name))
-		) grouped
-	`
-	return sqlText, args
+	return dashboarddb.BuildWorkflowPlayersListBaseSQL(normalizePlayerKey(filters.NameContains))
 }
 
 func buildWorkflowPlayersListWhere(filters workflowPlayersListFilters) (string, []any) {
-	clauses := []string{}
-	args := []any{}
-	if filters.OnlyFivePlus {
-		clauses = append(clauses, "games_played >= 5")
-	}
-	if len(filters.LastPlayedBuckets) > 0 {
-		bucketClauses := []string{}
-		for _, bucket := range filters.LastPlayedBuckets {
-			switch strings.ToLower(strings.TrimSpace(bucket)) {
-			case "1m", "30d":
-				bucketClauses = append(bucketClauses, "last_played_days_ago <= 30")
-			case "3m", "90d":
-				bucketClauses = append(bucketClauses, "last_played_days_ago <= 90")
-			}
-		}
-		if len(bucketClauses) > 0 {
-			clauses = append(clauses, "("+strings.Join(bucketClauses, " OR ")+")")
-		}
-	}
-	if len(clauses) == 0 {
-		return "", args
-	}
-	return "WHERE " + strings.Join(clauses, " AND "), args
+	return dashboarddb.BuildWorkflowPlayersListWhere(filters.OnlyFivePlus, filters.LastPlayedBuckets)
 }
 
 func parseWorkflowPlayersListFilters(r *http.Request) workflowPlayersListFilters {
@@ -285,15 +179,8 @@ func (d *Dashboard) workflowPlayersListFilterOptions(baseSQL string, baseArgs []
 	}
 
 	countRowArgs := append(append([]any{}, baseArgs...), whereArgs...)
-	var count1m, count3m int64
-	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
-		WITH player_agg AS (`+baseSQL+`)
-		SELECT
-			COALESCE(SUM(CASE WHEN last_played_days_ago <= 30 THEN 1 ELSE 0 END), 0),
-			COALESCE(SUM(CASE WHEN last_played_days_ago <= 90 THEN 1 ELSE 0 END), 0)
-		FROM player_agg
-	`+whereSQL+`
-	`, countRowArgs...).Scan(&count1m, &count3m); err != nil {
+	count1m, count3m, err := d.dbStore.CountWorkflowLastPlayedBuckets(d.ctx, baseSQL, whereSQL, countRowArgs)
+	if err != nil {
 		return result, err
 	}
 	result.LastPlayed = []workflowPlayersListFilterOption{
@@ -383,121 +270,13 @@ func parseCSVQueryValues(values []string, forceLower bool) []string {
 }
 
 func buildWorkflowGamesListWhere(filters workflowGamesListFilters) (string, []any) {
-	clauses := []string{}
-	args := []any{}
-
-	if len(filters.PlayerKeys) > 0 {
-		playerPlaceholders := buildInClausePlaceholders(len(filters.PlayerKeys))
-		clauses = append(clauses, "EXISTS (SELECT 1 FROM players p WHERE p.replay_id = r.id AND p.is_observer = 0 AND lower(trim(p.name)) IN ("+playerPlaceholders+"))")
-		for _, key := range filters.PlayerKeys {
-			args = append(args, key)
-		}
-	}
-
-	if len(filters.MapNames) > 0 {
-		mapPlaceholders := buildInClausePlaceholders(len(filters.MapNames))
-		clauses = append(clauses, "lower(trim(r.map_name)) IN ("+mapPlaceholders+")")
-		for _, mapName := range filters.MapNames {
-			args = append(args, strings.ToLower(strings.TrimSpace(mapName)))
-		}
-	}
-
-	if len(filters.DurationBuckets) > 0 {
-		durationClauses := []string{}
-		for _, key := range filters.DurationBuckets {
-			for _, bucket := range workflowDurationFilterBuckets {
-				if key == bucket.Key {
-					durationClauses = append(durationClauses, "("+bucket.SQL+")")
-					break
-				}
-			}
-		}
-		if len(durationClauses) > 0 {
-			clauses = append(clauses, "("+strings.Join(durationClauses, " OR ")+")")
-		}
-	}
-
-	if len(filters.FeaturingKeys) > 0 {
-		featureClauses := []string{}
-		for _, featureKey := range filters.FeaturingKeys {
-			existsSQL, ok := workflowFeaturingExistsSQL(featureKey)
-			if !ok {
-				continue
-			}
-			featureClauses = append(featureClauses, existsSQL)
-		}
-		if len(featureClauses) > 0 {
-			clauses = append(clauses, "("+strings.Join(featureClauses, " OR ")+")")
-		}
-	}
-
-	if len(clauses) == 0 {
-		return "", args
-	}
-	return "WHERE " + strings.Join(clauses, " AND "), args
-}
-
-func workflowFeaturingExistsSQL(featureKey string) (string, bool) {
-	switch strings.TrimSpace(strings.ToLower(featureKey)) {
-	case "carriers":
-		return `EXISTS (
-			SELECT 1
-			FROM detected_patterns_replay_player dprp
-			WHERE dprp.replay_id = r.id
-				AND lower(trim(dprp.pattern_name)) = 'carriers'
-				AND dprp.value_bool = 1
-		)`, true
-	case "battlecruisers":
-		return `EXISTS (
-			SELECT 1
-			FROM detected_patterns_replay_player dprp
-			WHERE dprp.replay_id = r.id
-				AND lower(trim(dprp.pattern_name)) = 'battlecruisers'
-				AND dprp.value_bool = 1
-		)`, true
-	case "mind_control":
-		return `EXISTS (
-			SELECT 1
-			FROM detected_patterns_replay_player dprp
-			WHERE dprp.replay_id = r.id
-				AND lower(trim(dprp.pattern_name)) IN ('became terran', 'became zerg')
-				AND (dprp.value_timestamp IS NOT NULL OR dprp.value_int IS NOT NULL OR dprp.value_string IS NOT NULL)
-		)`, true
-	case "nukes":
-		return `EXISTS (
-			SELECT 1
-			FROM detected_patterns_replay_player dprp
-			WHERE dprp.replay_id = r.id
-				AND lower(trim(dprp.pattern_name)) = 'threw nukes'
-				AND (dprp.value_timestamp IS NOT NULL OR dprp.value_int IS NOT NULL OR dprp.value_string IS NOT NULL OR dprp.value_bool = 1)
-		)`, true
-	case "recalls":
-		return `EXISTS (
-			SELECT 1
-			FROM detected_patterns_replay_player dprp
-			WHERE dprp.replay_id = r.id
-				AND lower(trim(dprp.pattern_name)) = 'made recalls'
-				AND (dprp.value_timestamp IS NOT NULL OR dprp.value_int IS NOT NULL OR dprp.value_string IS NOT NULL OR dprp.value_bool = 1)
-		)`, true
-	case "cannon_rush", "bunker_rush":
-		return `EXISTS (
-			SELECT 1
-			FROM detected_patterns_replay dpr
-			WHERE dpr.replay_id = r.id
-				AND lower(trim(dpr.pattern_name)) = 'game events'
-				AND lower(coalesce(dpr.value_string, '')) LIKE '%cannon/bunker rushes%'
-		)`, true
-	case "zergling_rush":
-		return `EXISTS (
-			SELECT 1
-			FROM detected_patterns_replay dpr
-			WHERE dpr.replay_id = r.id
-				AND lower(trim(dpr.pattern_name)) = 'game events'
-				AND lower(coalesce(dpr.value_string, '')) LIKE '%zergling rushes%'
-		)`, true
-	default:
-		return "", false
-	}
+	return dashboarddb.BuildWorkflowGamesListWhere(
+		filters.PlayerKeys,
+		filters.MapNames,
+		filters.DurationBuckets,
+		filters.FeaturingKeys,
+		dashboarddb.WorkflowDurationSQLByKey(),
+	)
 }
 
 func buildInClausePlaceholders(size int) string {
@@ -521,37 +300,23 @@ func (d *Dashboard) populateWorkflowGameListPlayers(items []workflowGameListItem
 	if len(replayIDs) == 0 {
 		return nil
 	}
-	placeholders := buildInClausePlaceholders(len(replayIDs))
-	args := make([]any, 0, len(replayIDs))
-	for _, replayID := range replayIDs {
-		args = append(args, replayID)
-	}
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT replay_id, id, name, team, is_winner
-		FROM players
-		WHERE is_observer = 0
-			AND replay_id IN (`+placeholders+`)
-		ORDER BY replay_id ASC, team ASC, id ASC
-	`, args...)
+	rows, err := d.dbStore.ListReplayPlayers(d.ctx, replayIDs)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var replayID int64
+	for _, row := range rows {
 		var player workflowGameListPlayer
-		if err := rows.Scan(&replayID, &player.PlayerID, &player.Name, &player.Team, &player.IsWinner); err != nil {
-			return err
-		}
+		replayID := row.ReplayID
+		player.PlayerID = row.PlayerID
+		player.Name = row.Name
+		player.Team = row.Team
+		player.IsWinner = row.IsWinner
 		player.PlayerKey = normalizePlayerKey(player.Name)
 		idx, ok := itemIndexByReplayID[replayID]
 		if !ok {
 			continue
 		}
 		items[idx].Players = append(items[idx].Players, player)
-	}
-	if err := rows.Err(); err != nil {
-		return err
 	}
 	for i := range items {
 		items[i].PlayersLabel = formatWorkflowPlayersLabelFromList(items[i].Players)
@@ -571,32 +336,17 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 	if len(replayIDs) == 0 {
 		return nil
 	}
-	placeholders := buildInClausePlaceholders(len(replayIDs))
-	args := make([]any, 0, len(replayIDs))
-	for _, replayID := range replayIDs {
-		args = append(args, replayID)
-	}
-
-	rowsPlayerPatterns, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT replay_id, pattern_name, value_bool, value_int, value_string, value_timestamp
-		FROM detected_patterns_replay_player
-		WHERE replay_id IN (`+placeholders+`)
-			AND lower(trim(pattern_name)) IN ('carriers', 'battlecruisers', 'made recalls', 'threw nukes', 'became terran', 'became zerg')
-	`, args...)
+	rowsPlayerPatterns, err := d.dbStore.ListFeaturingPlayerPatternRows(d.ctx, replayIDs)
 	if err != nil {
 		return err
 	}
-	defer rowsPlayerPatterns.Close()
-	for rowsPlayerPatterns.Next() {
-		var replayID int64
-		var patternName string
-		var valueBool sql.NullBool
-		var valueInt sql.NullInt64
-		var valueString sql.NullString
-		var valueTimestamp sql.NullInt64
-		if err := rowsPlayerPatterns.Scan(&replayID, &patternName, &valueBool, &valueInt, &valueString, &valueTimestamp); err != nil {
-			return err
-		}
+	for _, row := range rowsPlayerPatterns {
+		replayID := row.ReplayID
+		patternName := row.PatternName
+		valueBool := row.ValueBool
+		valueInt := row.ValueInt
+		valueString := row.ValueString
+		valueTimestamp := row.ValueTimestamp
 		if !workflowTruthyPatternValue(valueBool, valueInt, valueString, valueTimestamp) {
 			continue
 		}
@@ -613,26 +363,13 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 			featureSets[replayID]["mind_control"] = struct{}{}
 		}
 	}
-	if err := rowsPlayerPatterns.Err(); err != nil {
-		return err
-	}
-
-	rowsReplayPatterns, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT replay_id, value_string
-		FROM detected_patterns_replay
-		WHERE replay_id IN (`+placeholders+`)
-			AND lower(trim(pattern_name)) = 'game events'
-	`, args...)
+	rowsReplayPatterns, err := d.dbStore.ListFeaturingReplayPatternRows(d.ctx, replayIDs)
 	if err != nil {
 		return err
 	}
-	defer rowsReplayPatterns.Close()
-	for rowsReplayPatterns.Next() {
-		var replayID int64
-		var gameEventsRaw sql.NullString
-		if err := rowsReplayPatterns.Scan(&replayID, &gameEventsRaw); err != nil {
-			return err
-		}
+	for _, row := range rowsReplayPatterns {
+		replayID := row.ReplayID
+		gameEventsRaw := row.GameEventsRaw
 		if !gameEventsRaw.Valid {
 			continue
 		}
@@ -648,10 +385,6 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 			}
 		}
 	}
-	if err := rowsReplayPatterns.Err(); err != nil {
-		return err
-	}
-
 	for replayID, set := range featureSets {
 		idx, ok := itemIndexByReplayID[replayID]
 		if !ok {
@@ -678,32 +411,19 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 	if len(replayIDs) == 0 {
 		return nil
 	}
-	placeholders := buildInClausePlaceholders(len(replayIDs))
-	args := make([]any, 0, len(replayIDs)+1)
-	args = append(args, playerKey)
-	for _, replayID := range replayIDs {
-		args = append(args, replayID)
-	}
-
-	playerRows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT replay_id, id, name, race, is_winner
-		FROM players
-		WHERE lower(trim(name)) = ?
-			AND is_observer = 0
-			AND replay_id IN (`+placeholders+`)
-	`, args...)
+	playerRows, err := d.dbStore.ListCurrentPlayersForReplayIDs(d.ctx, playerKey, replayIDs)
 	if err != nil {
 		return err
 	}
-	defer playerRows.Close()
 	playerIDs := []int64{}
 	currentByPlayerID := map[int64]*workflowRecentGamePlayer{}
-	for playerRows.Next() {
-		var replayID int64
+	for _, row := range playerRows {
+		replayID := row.ReplayID
 		currentPlayer := &workflowRecentGamePlayer{DetectedPatterns: []workflowPatternValue{}}
-		if err := playerRows.Scan(&replayID, &currentPlayer.PlayerID, &currentPlayer.Name, &currentPlayer.Race, &currentPlayer.IsWinner); err != nil {
-			return err
-		}
+		currentPlayer.PlayerID = row.PlayerID
+		currentPlayer.Name = row.Name
+		currentPlayer.Race = row.Race
+		currentPlayer.IsWinner = row.IsWinner
 		currentPlayer.PlayerKey = normalizePlayerKey(currentPlayer.Name)
 		item := itemByReplayID[replayID]
 		if item == nil {
@@ -713,43 +433,16 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 		playerIDs = append(playerIDs, currentPlayer.PlayerID)
 		currentByPlayerID[currentPlayer.PlayerID] = currentPlayer
 	}
-	if err := playerRows.Err(); err != nil {
-		return err
-	}
 	if len(playerIDs) == 0 {
 		return nil
 	}
-
-	patternPlaceholders := buildInClausePlaceholders(len(playerIDs))
-	patternArgs := make([]any, 0, len(playerIDs))
-	for _, playerID := range playerIDs {
-		patternArgs = append(patternArgs, playerID)
-	}
-	patternRows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT
-			player_id,
-			pattern_name,
-			CASE
-				WHEN value_bool IS NOT NULL THEN CASE WHEN value_bool = 1 THEN 'true' ELSE 'false' END
-				WHEN value_int IS NOT NULL THEN CAST(value_int AS TEXT)
-				WHEN value_string IS NOT NULL THEN value_string
-				WHEN value_timestamp IS NOT NULL THEN CAST(value_timestamp AS TEXT)
-				ELSE ''
-			END AS pattern_value
-		FROM detected_patterns_replay_player
-		WHERE player_id IN (`+patternPlaceholders+`)
-		ORDER BY player_id ASC, pattern_name ASC
-	`, patternArgs...)
+	patternRows, err := d.dbStore.ListPatternValuesForPlayerIDs(d.ctx, playerIDs)
 	if err != nil {
 		return err
 	}
-	defer patternRows.Close()
-	for patternRows.Next() {
-		var playerID int64
-		var pattern workflowPatternValue
-		if err := patternRows.Scan(&playerID, &pattern.PatternName, &pattern.Value); err != nil {
-			return err
-		}
+	for _, row := range patternRows {
+		playerID := row.PlayerID
+		pattern := workflowPatternValue{PatternName: row.PatternName, Value: row.PatternValue}
 		pattern.Value = formatPatternValueForUI(pattern.PatternName, pattern.Value)
 		currentPlayer := currentByPlayerID[playerID]
 		if currentPlayer == nil {
@@ -757,7 +450,7 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 		}
 		currentPlayer.DetectedPatterns = append(currentPlayer.DetectedPatterns, pattern)
 	}
-	return patternRows.Err()
+	return nil
 }
 
 func workflowTruthyPatternValue(valueBool sql.NullBool, valueInt sql.NullInt64, valueString sql.NullString, valueTimestamp sql.NullInt64) bool {
@@ -816,64 +509,31 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 		Featuring: []workflowGamesListFilterOption{},
 	}
 
-	rowsPlayers, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT lower(trim(name)) AS player_key, MIN(name) AS player_name, COUNT(*) AS games
-		FROM players
-		WHERE is_observer = 0
-		GROUP BY lower(trim(name))
-		HAVING COUNT(*) >= 5
-		ORDER BY games DESC, player_name ASC
-		LIMIT 200
-	`)
+	rowsPlayers, err := d.dbStore.ListWorkflowFilterPlayers(d.ctx)
 	if err != nil {
 		return result, err
 	}
-	defer rowsPlayers.Close()
-	for rowsPlayers.Next() {
+	for _, row := range rowsPlayers {
 		var option workflowGamesListFilterOption
-		if err := rowsPlayers.Scan(&option.Key, &option.Label, &option.Games); err != nil {
-			return result, err
-		}
+		option.Key = row.Key
+		option.Label = row.Label
+		option.Games = row.Games
 		result.Players = append(result.Players, option)
 	}
-	if err := rowsPlayers.Err(); err != nil {
-		return result, err
-	}
 
-	rowsMaps, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT MIN(map_name) AS map_name, COUNT(*) AS games
-		FROM replays
-		GROUP BY lower(trim(map_name))
-		ORDER BY games DESC, map_name ASC
-		LIMIT 15
-	`)
+	rowsMaps, err := d.dbStore.ListWorkflowFilterMaps(d.ctx)
 	if err != nil {
 		return result, err
 	}
-	defer rowsMaps.Close()
-	for rowsMaps.Next() {
+	for _, row := range rowsMaps {
 		var option workflowGamesListFilterOption
-		if err := rowsMaps.Scan(&option.Label, &option.Games); err != nil {
-			return result, err
-		}
+		option.Label = row.Label
+		option.Games = row.Games
 		option.Key = strings.ToLower(strings.TrimSpace(option.Label))
 		result.Maps = append(result.Maps, option)
 	}
-	if err := rowsMaps.Err(); err != nil {
-		return result, err
-	}
-
-	durationCountQuery := `
-		SELECT
-			COALESCE(SUM(CASE WHEN duration_seconds < 600 THEN 1 ELSE 0 END), 0) AS under_10m,
-			COALESCE(SUM(CASE WHEN duration_seconds >= 600 AND duration_seconds < 1200 THEN 1 ELSE 0 END), 0) AS m10_20,
-			COALESCE(SUM(CASE WHEN duration_seconds >= 1200 AND duration_seconds < 1800 THEN 1 ELSE 0 END), 0) AS m20_30,
-			COALESCE(SUM(CASE WHEN duration_seconds >= 1800 AND duration_seconds < 2700 THEN 1 ELSE 0 END), 0) AS m30_45,
-			COALESCE(SUM(CASE WHEN duration_seconds >= 2700 THEN 1 ELSE 0 END), 0) AS m45_plus
-		FROM replays
-	`
-	var under10m, m10to20, m20to30, m30to45, m45Plus int64
-	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, durationCountQuery).Scan(&under10m, &m10to20, &m20to30, &m30to45, &m45Plus); err != nil {
+	under10m, m10to20, m20to30, m30to45, m45Plus, err := d.dbStore.CountWorkflowDurationBuckets(d.ctx)
+	if err != nil {
 		return result, err
 	}
 	durationCounts := map[string]int64{

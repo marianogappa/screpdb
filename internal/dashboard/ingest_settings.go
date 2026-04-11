@@ -42,16 +42,11 @@ func (d *Dashboard) initializeIngestSettings(ctx context.Context) error {
 }
 
 func (d *Dashboard) getIngestInputDir(ctx context.Context) (string, error) {
-	var inputDir string
-	err := d.db.QueryRowContext(ctx, `
-		SELECT ingest_input_dir
-		FROM settings
-		WHERE config_key = ?
-	`, globalReplayFilterConfigKey).Scan(&inputDir)
+	inputDir, err := d.dbStore.GetIngestInputDir(ctx, globalReplayFilterConfigKey)
 	if err != nil {
 		return "", fmt.Errorf("failed to load ingest replay folder: %w", err)
 	}
-	return strings.TrimSpace(inputDir), nil
+	return inputDir, nil
 }
 
 func (d *Dashboard) setIngestInputDir(ctx context.Context, inputDir string) error {
@@ -60,11 +55,7 @@ func (d *Dashboard) setIngestInputDir(ctx context.Context, inputDir string) erro
 		return err
 	}
 
-	if _, err := d.db.ExecContext(ctx, `
-		UPDATE settings
-		SET ingest_input_dir = ?, updated_at = CURRENT_TIMESTAMP
-		WHERE config_key = ?
-	`, inputDir, globalReplayFilterConfigKey); err != nil {
+	if err := d.dbStore.SetIngestInputDir(ctx, globalReplayFilterConfigKey, inputDir); err != nil {
 		return fmt.Errorf("failed to save ingest replay folder: %w", err)
 	}
 	return nil

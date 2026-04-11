@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	db "github.com/marianogappa/screpdb/internal/dashboard/db"
 )
 
 func parseCommandUnitNames(unitType sql.NullString, unitTypes sql.NullString) []string {
@@ -82,48 +84,28 @@ func normalizeUnitName(value string) string {
 	return b.String()
 }
 
-func (d *Dashboard) playerTimingsFromReplayCommands(replayID int64, players []workflowGamePlayer, query string) ([]workflowPlayerTimingSeries, error) {
+func (d *Dashboard) playerTimingsFromReplayCommands(players []workflowGamePlayer, rows []db.TimingRow) ([]workflowPlayerTimingSeries, error) {
 	seriesByPlayer, playerOrder := initPlayerTimingSeries(players)
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, query, replayID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load replay timings: %w", err)
-	}
-	defer rows.Close()
 	orderByPlayer := map[int64]int64{}
-	for rows.Next() {
-		var playerID int64
-		var second int64
-		var ignoredLabel string
-		if err := rows.Scan(&playerID, &second, &ignoredLabel); err != nil {
-			return nil, fmt.Errorf("failed to parse replay timings: %w", err)
-		}
+	for _, row := range rows {
+		playerID := row.PlayerID
+		second := row.Second
 		current := orderByPlayer[playerID] + 1
 		orderByPlayer[playerID] = current
 		if s, ok := seriesByPlayer[playerID]; ok {
 			s.Points = append(s.Points, workflowTimingPoint{Second: second, Order: current})
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating replay timings: %w", err)
-	}
 	return orderedTimingSeries(seriesByPlayer, playerOrder), nil
 }
 
-func (d *Dashboard) playerLabeledTimingsFromReplayCommands(replayID int64, players []workflowGamePlayer, query string) ([]workflowPlayerTimingSeries, error) {
+func (d *Dashboard) playerLabeledTimingsFromReplayCommands(players []workflowGamePlayer, rows []db.TimingRow) ([]workflowPlayerTimingSeries, error) {
 	seriesByPlayer, playerOrder := initPlayerTimingSeries(players)
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, query, replayID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load labeled replay timings: %w", err)
-	}
-	defer rows.Close()
 	orderByPlayerAndLabel := map[int64]map[string]int64{}
-	for rows.Next() {
-		var playerID int64
-		var second int64
-		var label string
-		if err := rows.Scan(&playerID, &second, &label); err != nil {
-			return nil, fmt.Errorf("failed to parse labeled replay timings: %w", err)
-		}
+	for _, row := range rows {
+		playerID := row.PlayerID
+		second := row.Second
+		label := row.Label
 		if _, ok := orderByPlayerAndLabel[playerID]; !ok {
 			orderByPlayerAndLabel[playerID] = map[string]int64{}
 		}
@@ -132,9 +114,6 @@ func (d *Dashboard) playerLabeledTimingsFromReplayCommands(replayID int64, playe
 		if s, ok := seriesByPlayer[playerID]; ok {
 			s.Points = append(s.Points, workflowTimingPoint{Second: second, Order: current, Label: label})
 		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating labeled replay timings: %w", err)
 	}
 	return orderedTimingSeries(seriesByPlayer, playerOrder), nil
 }
@@ -226,21 +205,7 @@ func (d *Dashboard) populateAdvancedPlayerOverview(playerKey string, result *wor
 	}
 	result.CommonBehaviours = commonBehaviours
 
-	hotkeyGamesRate, err := d.simpleMetricByPlayer(`
-		WITH game_level AS (
-			SELECT
-				lower(trim(p.name)) AS player_key,
-				CASE WHEN SUM(CASE WHEN c.action_type = 'Hotkey' AND c.hotkey_type IS NOT NULL THEN 1 ELSE 0 END) > 0 THEN 100.0 ELSE 0.0 END AS metric_value
-			FROM players p
-			LEFT JOIN commands_low_value c ON c.player_id = p.id
-			WHERE p.is_observer = 0
-				AND lower(trim(coalesce(p.type, ''))) = 'human'
-			GROUP BY p.id
-		)
-		SELECT player_key, AVG(metric_value) AS metric_value
-		FROM game_level
-		GROUP BY player_key
-	`)
+	hotkeyGamesRate, err := d.dbStore.ListHotkeyGamesRateByPlayer(d.ctx)
 	if err != nil {
 		return err
 	}
@@ -262,38 +227,14 @@ func (d *Dashboard) commonBehavioursForPlayer(playerKey string, gamesPlayed int6
 	if gamesPlayed <= 0 {
 		return []workflowCommonBehaviour{}, nil
 	}
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT dp.pattern_name, COUNT(DISTINCT dp.replay_id) AS replay_count
-		FROM detected_patterns_replay_player dp
-		JOIN players p ON p.id = dp.player_id
-		WHERE lower(trim(p.name)) = ?
-			AND p.is_observer = 0
-			AND dp.pattern_name IS NOT NULL
-			AND dp.pattern_name <> ''
-			AND lower(replace(replace(dp.pattern_name, ' ', ''), '_', '')) NOT IN ('usedhotkeygroups', 'viewportmultitasking')
-			AND (
-				dp.value_bool = 1
-				OR dp.value_int IS NOT NULL
-				OR dp.value_timestamp IS NOT NULL
-				OR (
-					dp.value_string IS NOT NULL
-					AND trim(dp.value_string) <> ''
-					AND lower(trim(dp.value_string)) NOT IN ('0', 'false', 'no', '-')
-				)
-			)
-		GROUP BY dp.pattern_name
-	`, playerKey)
+	rows, err := d.dbStore.ListCommonBehaviours(d.ctx, playerKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load common behaviours: %w", err)
 	}
-	defer rows.Close()
 	out := []workflowCommonBehaviour{}
-	for rows.Next() {
-		var patternName string
-		var replayCount int64
-		if err := rows.Scan(&patternName, &replayCount); err != nil {
-			return nil, fmt.Errorf("failed to parse common behaviours: %w", err)
-		}
+	for _, row := range rows {
+		patternName := row.PatternName
+		replayCount := row.ReplayCount
 		gameRate := float64(replayCount) / float64(gamesPlayed)
 		if gameRate < 0.2 {
 			continue
@@ -304,9 +245,6 @@ func (d *Dashboard) commonBehavioursForPlayer(playerKey string, gamesPlayed int6
 			ReplayCount: replayCount,
 			GameRate:    gameRate,
 		})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating common behaviours: %w", err)
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].ReplayCount == out[j].ReplayCount {
@@ -388,19 +326,14 @@ func (d *Dashboard) buildWorkflowPlayerOutliers(playerKey string) (workflowPlaye
 		},
 		Items: []workflowPlayerOutlier{},
 	}
-	var playerName sql.NullString
-	var gamesPlayed int64
-	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
-		SELECT MIN(p.name), COUNT(*)
-		FROM players p
-		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
-	`, playerKey).Scan(&playerName, &gamesPlayed); err != nil {
+	playerSummary, err := d.dbStore.GetOutlierPlayerSummary(d.ctx, playerKey)
+	if err != nil {
 		return result, fmt.Errorf("failed to load player for outliers: %w", err)
 	}
-	if gamesPlayed <= 0 || !playerName.Valid || strings.TrimSpace(playerName.String) == "" {
+	if playerSummary.Count <= 0 || playerSummary.Name == nil || strings.TrimSpace(*playerSummary.Name) == "" {
 		return result, sql.ErrNoRows
 	}
-	result.PlayerName = playerName.String
+	result.PlayerName = *playerSummary.Name
 
 	playerGamesByRace, err := d.playerGamesByRace(playerKey)
 	if err != nil {
@@ -456,83 +389,43 @@ func (d *Dashboard) buildWorkflowPlayerOutliers(playerKey string) (workflowPlaye
 }
 
 func (d *Dashboard) playerGamesByRace(playerKey string) (map[string]int64, error) {
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT p.race, COUNT(*) AS games
-		FROM players p
-		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
-		GROUP BY p.race
-	`, playerKey)
+	rows, err := d.dbStore.ListPlayerGamesByRace(d.ctx, playerKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load player games by race: %w", err)
 	}
-	defer rows.Close()
 	out := map[string]int64{}
-	for rows.Next() {
-		var race string
-		var games int64
-		if err := rows.Scan(&race, &games); err != nil {
-			return nil, fmt.Errorf("failed to parse player games by race: %w", err)
-		}
+	for _, row := range rows {
+		race := row.Race
+		games := row.Count
 		out[strings.TrimSpace(race)] = games
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating player games by race: %w", err)
 	}
 	return out, nil
 }
 
 func (d *Dashboard) populationGamesByRace() (map[string]int64, error) {
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT p.race, COUNT(*) AS games
-		FROM players p
-		WHERE p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
-		GROUP BY p.race
-	`)
+	rows, err := d.dbStore.ListPopulationGamesByRace(d.ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load population games by race: %w", err)
 	}
-	defer rows.Close()
 	out := map[string]int64{}
-	for rows.Next() {
-		var race string
-		var games int64
-		if err := rows.Scan(&race, &games); err != nil {
-			return nil, fmt.Errorf("failed to parse population games by race: %w", err)
-		}
+	for _, row := range rows {
+		race := row.Race
+		games := row.Count
 		out[strings.TrimSpace(race)] = games
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating population games by race: %w", err)
 	}
 	return out, nil
 }
 
 func (d *Dashboard) populationDistinctPlayersByRace() (map[string]float64, error) {
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT p.race, CAST(COUNT(*) AS FLOAT)
-		FROM (
-			SELECT lower(trim(name)) AS player_key, race
-			FROM players
-			WHERE is_observer = 0 AND lower(trim(coalesce(type, ''))) = 'human'
-			GROUP BY lower(trim(name)), race
-		) p
-		GROUP BY p.race
-	`)
+	rows, err := d.dbStore.ListPopulationDistinctPlayersByRace(d.ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load distinct players by race: %w", err)
 	}
-	defer rows.Close()
 	out := map[string]float64{}
-	for rows.Next() {
-		var race string
-		var players float64
-		if err := rows.Scan(&race, &players); err != nil {
-			return nil, fmt.Errorf("failed to parse distinct players by race: %w", err)
-		}
+	for _, row := range rows {
+		race := row.Race
+		players := row.Value
 		out[strings.TrimSpace(race)] = players
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating distinct players by race: %w", err)
 	}
 	return out, nil
 }
@@ -546,98 +439,37 @@ func (d *Dashboard) outliersForCategory(
 	popDistinctPlayersByRace map[string]float64,
 	thresholds workflowOutlierThresholds,
 ) ([]workflowPlayerOutlier, error) {
-	actionTypePlaceholders := buildInClausePlaceholders(len(spec.ActionTypes))
-	actionTypeArgs := make([]any, 0, len(spec.ActionTypes)+1)
-	for _, actionType := range spec.ActionTypes {
-		actionTypeArgs = append(actionTypeArgs, actionType)
-	}
-	playerQuery := fmt.Sprintf(`
-		SELECT ? AS race, c.%s AS item_name,
-			CASE
-				WHEN ? THEN COUNT(c.id)
-				ELSE COUNT(DISTINCT p.id)
-			END AS player_games
-		FROM players p
-		JOIN commands c ON c.player_id = p.id
-		WHERE lower(trim(p.name)) = ?
-			AND p.is_observer = 0
-			AND lower(trim(coalesce(p.type, ''))) = 'human'
-			AND p.race = ?
-			AND c.action_type IN (`+actionTypePlaceholders+`)
-			AND c.%s IS NOT NULL
-			AND c.%s <> ''
-		GROUP BY c.%s
-	`, spec.NameColumn, spec.NameColumn, spec.NameColumn, spec.NameColumn)
-	playerArgs := make([]any, 0, len(actionTypeArgs)+4)
-	playerArgs = append(playerArgs, primaryRace, spec.UseInstanceShare, playerKey, primaryRace)
-	playerArgs = append(playerArgs, actionTypeArgs...)
-	playerRows, err := d.currentReplayScopedDB().QueryContext(d.ctx, playerQuery, playerArgs...)
+	playerRows, err := d.dbStore.ListOutlierPlayerCounts(d.ctx, playerKey, primaryRace, spec.NameColumn, spec.UseInstanceShare, spec.ActionTypes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query player outliers for %s: %w", spec.CategoryLabel, err)
 	}
-	defer playerRows.Close()
 
 	type pair struct {
 		race string
 		name string
 	}
 	playerCounts := map[pair]int64{}
-	for playerRows.Next() {
-		var race string
-		var name string
-		var games int64
-		if err := playerRows.Scan(&race, &name, &games); err != nil {
-			return nil, fmt.Errorf("failed to parse player outliers for %s: %w", spec.CategoryLabel, err)
-		}
+	for _, row := range playerRows {
+		race := row.Race
+		name := row.Name
+		games := row.Count
 		playerCounts[pair{race: strings.TrimSpace(race), name: strings.TrimSpace(name)}] = games
 	}
-	if err := playerRows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating player outliers for %s: %w", spec.CategoryLabel, err)
-	}
 
-	globalQuery := fmt.Sprintf(`
-		SELECT
-			? AS race,
-			c.%s AS item_name,
-			CASE
-				WHEN ? THEN COUNT(c.id)
-				ELSE COUNT(DISTINCT p.id)
-			END AS global_games,
-			COUNT(DISTINCT lower(trim(p.name))) AS global_players
-		FROM players p
-		JOIN commands c ON c.player_id = p.id
-		WHERE p.is_observer = 0
-			AND lower(trim(coalesce(p.type, ''))) = 'human'
-			AND p.race = ?
-			AND c.action_type IN (`+actionTypePlaceholders+`)
-			AND c.%s IS NOT NULL
-			AND c.%s <> ''
-		GROUP BY c.%s
-	`, spec.NameColumn, spec.NameColumn, spec.NameColumn, spec.NameColumn)
-	globalArgs := make([]any, 0, len(actionTypeArgs)+3)
-	globalArgs = append(globalArgs, primaryRace, spec.UseInstanceShare, primaryRace)
-	globalArgs = append(globalArgs, actionTypeArgs...)
-	globalRows, err := d.currentReplayScopedDB().QueryContext(d.ctx, globalQuery, globalArgs...)
+	globalRows, err := d.dbStore.ListOutlierGlobalRows(d.ctx, primaryRace, spec.NameColumn, spec.UseInstanceShare, spec.ActionTypes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query baseline outliers for %s: %w", spec.CategoryLabel, err)
 	}
-	defer globalRows.Close()
 	globalGames := map[pair]int64{}
 	globalPlayers := map[pair]float64{}
-	for globalRows.Next() {
-		var race string
-		var name string
-		var games int64
-		var players float64
-		if err := globalRows.Scan(&race, &name, &games, &players); err != nil {
-			return nil, fmt.Errorf("failed to parse baseline outliers for %s: %w", spec.CategoryLabel, err)
-		}
+	for _, row := range globalRows {
+		race := row.Race
+		name := row.Name
+		games := row.Games
+		players := row.Players
 		key := pair{race: strings.TrimSpace(race), name: strings.TrimSpace(name)}
 		globalGames[key] = games
 		globalPlayers[key] = players
-	}
-	if err := globalRows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating baseline outliers for %s: %w", spec.CategoryLabel, err)
 	}
 
 	// For targeted orders we compare usage share in terms of raw order instances,
@@ -797,33 +629,16 @@ func workflowCanonicalOutlierName(name string) string {
 }
 
 func (d *Dashboard) totalDistinctPlayers() (float64, error) {
-	var total float64
-	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
-		SELECT CAST(COUNT(*) AS FLOAT)
-		FROM (
-			SELECT lower(trim(name)) AS player_key
-			FROM players
-			WHERE is_observer = 0
-			GROUP BY lower(trim(name))
-		)
-	`).Scan(&total); err != nil {
+	total, err := d.dbStore.CountDistinctPlayers(d.ctx)
+	if err != nil {
 		return 0, fmt.Errorf("failed to count distinct players: %w", err)
 	}
 	return total, nil
 }
 
 func (d *Dashboard) totalDistinctPlayersByRace(race string) (float64, error) {
-	var total float64
-	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
-		SELECT CAST(COUNT(*) AS FLOAT)
-		FROM (
-			SELECT lower(trim(name)) AS player_key
-			FROM players
-			WHERE is_observer = 0
-				AND race = ?
-			GROUP BY lower(trim(name))
-		)
-	`, race).Scan(&total); err != nil {
+	total, err := d.dbStore.CountDistinctPlayersByRace(d.ctx, race)
+	if err != nil {
 		return 0, fmt.Errorf("failed to count distinct players by race: %w", err)
 	}
 	return total, nil
@@ -847,7 +662,7 @@ func (d *Dashboard) rareUsageOutliersForPlayerByRace(playerKey, race string, gam
 		return []workflowRareUsage{}, nil
 	}
 
-	playerRows, err := d.currentReplayScopedDB().QueryContext(d.ctx, playerQuery, playerKey, race)
+	playerRows, err := d.dbStore.ReplayQueryContext(d.ctx, playerQuery, playerKey, race)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query player rare usage: %w", err)
 	}
@@ -866,7 +681,7 @@ func (d *Dashboard) rareUsageOutliersForPlayerByRace(playerKey, race string, gam
 		return nil, fmt.Errorf("failed iterating player rare usage: %w", err)
 	}
 
-	popRows, err := d.currentReplayScopedDB().QueryContext(d.ctx, populationQuery, race)
+	popRows, err := d.dbStore.ReplayQueryContext(d.ctx, populationQuery, race)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query population rare usage: %w", err)
 	}
@@ -928,49 +743,20 @@ func primaryRaceFromBreakdown(breakdown []workflowPlayerRaceBreakdown) string {
 	return bestRace
 }
 
-func (d *Dashboard) simpleMetricByPlayer(query string) (map[string]float64, error) {
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query metric by player: %w", err)
-	}
-	defer rows.Close()
-	valuesByPlayer := map[string]float64{}
-	for rows.Next() {
-		var playerKey string
-		var value float64
-		if err := rows.Scan(&playerKey, &value); err != nil {
-			return nil, fmt.Errorf("failed to parse metric by player: %w", err)
-		}
-		valuesByPlayer[playerKey] = value
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating metric by player: %w", err)
-	}
-	return valuesByPlayer, nil
-}
-
 func (d *Dashboard) firstExpansionAverageByPlayer() (map[string]float64, error) {
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT replay_id, value_string
-		FROM detected_patterns_replay
-		WHERE pattern_name = 'Game Events'
-	`)
+	rows, err := d.dbStore.ListGameEventValues(d.ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load game events for expansion averages: %w", err)
 	}
-	defer rows.Close()
 
 	playersByReplay, err := d.playersByReplay()
 	if err != nil {
 		return nil, err
 	}
 	valuesByPlayer := map[string][]int64{}
-	for rows.Next() {
-		var replayID int64
-		var valueString string
-		if err := rows.Scan(&replayID, &valueString); err != nil {
-			return nil, fmt.Errorf("failed to parse game events for expansion averages: %w", err)
-		}
+	for _, row := range rows {
+		replayID := row.ReplayID
+		valueString := row.Value
 		events := parseGameEvents(valueString)
 		players := playersByReplay[replayID]
 		if len(players) == 0 {
@@ -1003,10 +789,6 @@ func (d *Dashboard) firstExpansionAverageByPlayer() (map[string]float64, error) 
 			valuesByPlayer[playerKey] = append(valuesByPlayer[playerKey], second)
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating game events for expansion averages: %w", err)
-	}
-
 	averages := map[string]float64{}
 	for playerKey, values := range valuesByPlayer {
 		if len(values) == 0 {
@@ -1022,31 +804,20 @@ func (d *Dashboard) firstExpansionAverageByPlayer() (map[string]float64, error) 
 }
 
 func (d *Dashboard) playersByReplay() (map[int64][]workflowGamePlayer, error) {
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT replay_id, id, name
-		FROM players
-		WHERE is_observer = 0
-	`)
+	rows, err := d.dbStore.ListPlayersByReplayRows(d.ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load players by replay: %w", err)
 	}
-	defer rows.Close()
 	out := map[int64][]workflowGamePlayer{}
-	for rows.Next() {
-		var replayID int64
-		var playerID int64
-		var name string
-		if err := rows.Scan(&replayID, &playerID, &name); err != nil {
-			return nil, fmt.Errorf("failed parsing players by replay: %w", err)
-		}
+	for _, row := range rows {
+		replayID := row.ReplayID
+		playerID := row.PlayerID
+		name := row.Name
 		out[replayID] = append(out[replayID], workflowGamePlayer{
 			PlayerID:  playerID,
 			PlayerKey: normalizePlayerKey(name),
 			Name:      name,
 		})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating players by replay: %w", err)
 	}
 	return out, nil
 }
@@ -1069,40 +840,21 @@ func buildComparativeMetric(metricName, playerKey string, valuesByPlayer map[str
 }
 
 func (d *Dashboard) playerNameForKey(playerKey string) (string, error) {
-	var playerName string
-	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
-		SELECT MIN(name)
-		FROM players
-		WHERE lower(trim(name)) = ?
-			AND is_observer = 0
-			AND lower(trim(coalesce(type, ''))) = 'human'
-	`, playerKey).Scan(&playerName); err != nil {
+	playerName, err := d.dbStore.GetPlayerNameByKey(d.ctx, playerKey)
+	if err != nil {
 		return "", err
 	}
-	if strings.TrimSpace(playerName) == "" {
+	if playerName == "" {
 		return "", sql.ErrNoRows
 	}
 	return playerName, nil
 }
 
 func (d *Dashboard) loadRaceOrderSummaryForPlayer(playerKey string) ([]workflowRaceOrderSummary, error) {
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT p.id, p.race, c.action_type, c.tech_name, c.upgrade_name, c.seconds_from_game_start
-		FROM players p
-		LEFT JOIN commands c ON c.player_id = p.id
-		WHERE lower(trim(p.name)) = ?
-			AND p.is_observer = 0
-			AND (
-				(c.action_type = 'Tech' AND c.tech_name IS NOT NULL AND c.tech_name <> '')
-				OR
-				(c.action_type = 'Upgrade' AND c.upgrade_name IS NOT NULL AND c.upgrade_name <> '')
-			)
-		ORDER BY p.id ASC, c.seconds_from_game_start ASC
-	`, playerKey)
+	rows, err := d.dbStore.ListRaceOrderRows(d.ctx, playerKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load race order summary: %w", err)
 	}
-	defer rows.Close()
 
 	type gameOrders struct {
 		race     string
@@ -1110,30 +862,20 @@ func (d *Dashboard) loadRaceOrderSummaryForPlayer(playerKey string) ([]workflowR
 		upgrades []string
 	}
 	byGame := map[int64]*gameOrders{}
-	for rows.Next() {
-		var playerID int64
-		var race string
-		var actionType string
-		var techName sql.NullString
-		var upgradeName sql.NullString
-		var second int64
-		if err := rows.Scan(&playerID, &race, &actionType, &techName, &upgradeName, &second); err != nil {
-			return nil, fmt.Errorf("failed to parse race order summary: %w", err)
-		}
-		_ = second
+	for _, row := range rows {
+		playerID := row.PlayerID
+		race := row.Race
+		actionType := row.ActionType
 		if _, ok := byGame[playerID]; !ok {
 			byGame[playerID] = &gameOrders{race: race, techs: []string{}, upgrades: []string{}}
 		}
 		entry := byGame[playerID]
-		if actionType == "Tech" && techName.Valid && len(entry.techs) < 6 {
-			entry.techs = append(entry.techs, techName.String)
+		if actionType == "Tech" && row.TechName != nil && len(entry.techs) < 6 {
+			entry.techs = append(entry.techs, *row.TechName)
 		}
-		if actionType == "Upgrade" && upgradeName.Valid && len(entry.upgrades) < 6 {
-			entry.upgrades = append(entry.upgrades, upgradeName.String)
+		if actionType == "Upgrade" && row.UpgradeName != nil && len(entry.upgrades) < 6 {
+			entry.upgrades = append(entry.upgrades, *row.UpgradeName)
 		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating race order summary: %w", err)
 	}
 
 	techSeqByRace := map[string]map[string]int64{}
@@ -1190,31 +932,16 @@ func splitSequence(seq string) []string {
 }
 
 func (d *Dashboard) countQueuedGamesForPlayer(playerKey string) (int64, error) {
-	var count int64
-	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
-		SELECT COUNT(DISTINCT p.id)
-		FROM players p
-		JOIN commands c ON c.player_id = p.id
-		WHERE lower(trim(p.name)) = ?
-			AND p.is_observer = 0
-			AND c.is_queued = 1
-	`, playerKey).Scan(&count); err != nil {
+	count, err := d.dbStore.CountQueuedGamesByPlayer(d.ctx, playerKey)
+	if err != nil {
 		return 0, fmt.Errorf("failed to count queued games: %w", err)
 	}
 	return count, nil
 }
 
 func (d *Dashboard) countCarrierGamesForPlayer(playerKey string) (int64, error) {
-	var count int64
-	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
-		SELECT COUNT(DISTINCT p.replay_id)
-		FROM detected_patterns_replay_player dp
-		JOIN players p ON p.id = dp.player_id
-		WHERE lower(trim(p.name)) = ?
-			AND p.is_observer = 0
-			AND dp.pattern_name = 'Carriers'
-			AND dp.value_bool = 1
-	`, playerKey).Scan(&count); err != nil {
+	count, err := d.dbStore.CountCarrierGamesByPlayer(d.ctx, playerKey)
+	if err != nil {
 		return 0, fmt.Errorf("failed to count carrier games: %w", err)
 	}
 	return count, nil
@@ -1263,33 +990,18 @@ func (d *Dashboard) buildPlayerChatSummary(playerKey string) (workflowPlayerChat
 		ExampleMessages: []string{},
 	}
 
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT c.replay_id, c.chat_message
-		FROM commands c
-		JOIN players p ON p.id = c.player_id
-		JOIN replays r ON r.id = c.replay_id
-		WHERE lower(trim(p.name)) = ?
-			AND p.is_observer = 0
-			AND c.action_type = 'Chat'
-			AND c.chat_message IS NOT NULL
-			AND trim(c.chat_message) <> ''
-		ORDER BY r.replay_date DESC, c.replay_id DESC, c.seconds_from_game_start DESC
-	`, playerKey)
+	rows, err := d.dbStore.ListPlayerChatRows(d.ctx, playerKey)
 	if err != nil {
 		return summary, err
 	}
-	defer rows.Close()
 
 	termCounts := map[string]int64{}
 	gamesWithChat := map[int64]struct{}{}
 	rawMessages := []string{}
 
-	for rows.Next() {
-		var replayID int64
-		var raw string
-		if err := rows.Scan(&replayID, &raw); err != nil {
-			return summary, err
-		}
+	for _, row := range rows {
+		replayID := row.ReplayID
+		raw := row.Message
 		msg := strings.TrimSpace(raw)
 		if msg == "" {
 			continue
@@ -1302,10 +1014,6 @@ func (d *Dashboard) buildPlayerChatSummary(playerKey string) (workflowPlayerChat
 			termCounts[token]++
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return summary, err
-	}
-
 	summary.TotalMessages = int64(len(rawMessages))
 	summary.GamesWithChat = int64(len(gamesWithChat))
 	summary.DistinctTerms = int64(len(termCounts))

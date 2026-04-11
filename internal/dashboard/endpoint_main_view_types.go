@@ -223,13 +223,12 @@ var workflowFeaturingFilters = []struct {
 var workflowDurationFilterBuckets = []struct {
 	Key   string
 	Label string
-	SQL   string
 }{
-	{Key: "under_10m", Label: "Under 10m", SQL: "r.duration_seconds < 600"},
-	{Key: "10_20m", Label: "10m - 20m", SQL: "r.duration_seconds >= 600 AND r.duration_seconds < 1200"},
-	{Key: "20_30m", Label: "20m - 30m", SQL: "r.duration_seconds >= 1200 AND r.duration_seconds < 1800"},
-	{Key: "30_45m", Label: "30m - 45m", SQL: "r.duration_seconds >= 1800 AND r.duration_seconds < 2700"},
-	{Key: "45m_plus", Label: "45m+", SQL: "r.duration_seconds >= 2700"},
+	{Key: "under_10m", Label: "Under 10m"},
+	{Key: "10_20m", Label: "10m - 20m"},
+	{Key: "20_30m", Label: "20m - 30m"},
+	{Key: "30_45m", Label: "30m - 45m"},
+	{Key: "45m_plus", Label: "45m+"},
 }
 
 type workflowGamePlayer struct {

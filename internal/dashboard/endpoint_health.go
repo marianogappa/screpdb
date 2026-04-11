@@ -7,8 +7,8 @@ import (
 )
 
 func (d *Dashboard) handlerHealthcheck(w http.ResponseWriter, _ *http.Request) {
-	var totalReplays int64
-	if err := d.db.QueryRow("SELECT COUNT(*) FROM replays").Scan(&totalReplays); err != nil {
+	totalReplays, err := d.dbStore.CountReplays(d.ctx)
+	if err != nil {
 		log.Printf("healthcheck replay count failed: %v", err)
 		totalReplays = 0
 	}

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/dashboard/variables"
 )
 
@@ -121,20 +122,14 @@ func (d *Dashboard) handlerGameSee(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var sourceFilePath, destinationDirPath string
-	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
-		SELECT file_path
-		FROM replays
-		WHERE id = ?
-	`, replayID).Scan(&sourceFilePath); err != nil {
+	sourceFilePath, err = d.dbStore.GetReplayFilePathByID(d.ctx, replayID)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
-		SELECT ingest_input_dir
-		FROM settings
-		WHERE config_key = 'global'
-	`, replayID).Scan(&destinationDirPath); err != nil {
+	destinationDirPath, err = d.dbStore.GetIngestInputDir(d.ctx, globalReplayFilterConfigKey)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -309,37 +304,20 @@ func (d *Dashboard) handlerPlayerUnitCadence(w http.ResponseWriter, r *http.Requ
 }
 
 func (d *Dashboard) handlerPlayerColors(w http.ResponseWriter, _ *http.Request) {
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT lower(trim(name)) AS player_key, COUNT(*) AS games
-		FROM players
-		WHERE is_observer = 0
-		GROUP BY lower(trim(name))
-		ORDER BY games DESC, player_key ASC
-		LIMIT 15
-	`)
+	rows, err := d.dbStore.ListTopPlayerColorRows(d.ctx)
 	if err != nil {
 		http.Error(w, "failed to compute player colors: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
 	playerColors := map[string]string{}
 	i := 0
-	for rows.Next() {
+	for _, row := range rows {
 		if i >= len(topPlayerPalette) {
 			break
 		}
-		var key string
-		var games int64
-		if err := rows.Scan(&key, &games); err != nil {
-			http.Error(w, "failed to parse player colors: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
+		key := row.PlayerKey
 		playerColors[key] = topPlayerPalette[i]
 		i++
-	}
-	if err := rows.Err(); err != nil {
-		http.Error(w, "failed to iterate player colors: "+err.Error(), http.StatusInternalServerError)
-		return
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"player_colors": playerColors,
@@ -380,7 +358,7 @@ func (d *Dashboard) handlerGameAsk(w http.ResponseWriter, r *http.Request) {
 	results := []map[string]any{}
 	columns := []string{}
 	if answer.Config.Type != WidgetTypeText && strings.TrimSpace(answer.SQLQuery) != "" {
-		filter := fmt.Sprintf("SELECT * FROM replays WHERE id = %d", replayID)
+		filter := dashboarddb.ReplayIDFilterSQL(replayID)
 		qResults, qColumns, err := d.executeQuery(answer.SQLQuery, map[string]variables.Variable{}, &filter)
 		if err != nil {
 			answer.Config.Type = WidgetTypeText

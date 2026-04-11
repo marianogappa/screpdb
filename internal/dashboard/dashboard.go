@@ -18,6 +18,7 @@ import (
 	"github.com/gorilla/mux"
 	_ "modernc.org/sqlite"
 
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/dashboard/variables"
 	"github.com/marianogappa/screpdb/internal/ingest"
 	"github.com/marianogappa/screpdb/internal/storage"
@@ -35,6 +36,7 @@ const (
 type Dashboard struct {
 	ctx                context.Context
 	db                 *sql.DB
+	dbStore            *dashboarddb.Store
 	replayScopedMu     sync.RWMutex
 	replayScopedDB     *sql.DB
 	globalReplayFilter globalReplayFilterConfig
@@ -61,7 +63,7 @@ func New(ctx context.Context, store storage.Storage, sqlitePath, aiVendor, apiKe
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	if _, err := db.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
+	if err := dashboarddb.EnableForeignKeys(db); err != nil {
 		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
 
@@ -92,6 +94,7 @@ func New(ctx context.Context, store storage.Storage, sqlitePath, aiVendor, apiKe
 		ingestStatus:  "idle",
 		sqlitePath:    sqlitePath,
 	}
+	dashboard.dbStore = dashboarddb.NewStore(dashboard.db, dashboard.currentReplayScopedDB, dashboard.withFilteredConnection)
 	if err := dashboard.initializeIngestSettings(ctx); err != nil {
 		return nil, fmt.Errorf("failed to initialize ingest settings: %w", err)
 	}
@@ -261,48 +264,24 @@ func bytesToWidgetConfig(data []byte) (WidgetConfig, error) {
 
 func (d *Dashboard) executeQuery(query string, usedVariables map[string]variables.Variable, replaysFilterSQL *string) ([]map[string]any, []string, error) {
 	args := buildNamedArgs(usedVariables)
-	var results []map[string]any
-	var columns []string
 
-	err := d.withFilteredConnection(replaysFilterSQL, func(db *sql.DB) error {
-		rows, err := db.QueryContext(d.ctx, query, args...)
+	var (
+		results []map[string]any
+		columns []string
+	)
+	err := d.dbStore.WithFilteredConnection(replaysFilterSQL, func(db *sql.DB) error {
+		rows, err := dashboarddb.QueryContextOnDB(d.ctx, db, query, args...)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
-
-		columns, err = rows.Columns()
-		if err != nil {
-			return err
+		scannedRows, scannedColumns, scanErr := dashboarddb.ScanDynamicRows(rows)
+		if scanErr != nil {
+			return scanErr
 		}
-
-		for rows.Next() {
-			values := make([]any, len(columns))
-			valuePtrs := make([]any, len(columns))
-			for i := range values {
-				valuePtrs[i] = &values[i]
-			}
-
-			if err := rows.Scan(valuePtrs...); err != nil {
-				return err
-			}
-
-			row := make(map[string]any)
-			for i, col := range columns {
-				val := values[i]
-				switch v := val.(type) {
-				case []byte:
-					row[col] = string(v)
-				case nil:
-					row[col] = nil
-				default:
-					row[col] = v
-				}
-			}
-			results = append(results, row)
-		}
-
-		return rows.Err()
+		results = scannedRows
+		columns = scannedColumns
+		return nil
 	})
 
 	if err != nil {
@@ -358,32 +337,7 @@ func applyReplayFilterViews(db *sql.DB, filterSQL string) error {
 	if hasUnqualifiedReplays(qualified) {
 		return fmt.Errorf("replays_filter_sql must reference main.replays when used in a view")
 	}
-	if _, err := db.Exec(`CREATE TEMP VIEW replays AS ` + qualified); err != nil {
-		return err
-	}
-	if _, err := db.Exec(`CREATE TEMP VIEW players AS SELECT * FROM main.players WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
-		return err
-	}
-	if _, err := db.Exec(`CREATE TEMP VIEW commands AS SELECT * FROM main.commands WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
-		return err
-	}
-	if _, err := db.Exec(`CREATE TEMP VIEW commands_low_value AS SELECT * FROM main.commands_low_value WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
-		return err
-	}
-	if _, err := db.Exec(`CREATE TEMP VIEW detected_patterns_replay AS SELECT * FROM main.detected_patterns_replay WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
-		return err
-	}
-	if _, err := db.Exec(`CREATE TEMP VIEW detected_patterns_replay_team AS SELECT * FROM main.detected_patterns_replay_team WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
-		return err
-	}
-	if _, err := db.Exec(`CREATE TEMP VIEW detected_patterns_replay_player AS
-		SELECT *
-		FROM main.detected_patterns_replay_player
-		WHERE replay_id IN (SELECT id FROM replays)
-			AND player_id IN (SELECT id FROM players)`); err != nil {
-		return err
-	}
-	return nil
+	return dashboarddb.ApplyReplayTempViews(db, qualified)
 }
 
 func normalizeSQL(value string) string {
@@ -446,7 +400,7 @@ func openReplayScopedDB(sqlitePath string, replaysFilterSQL *string) (*sql.DB, e
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 
-	if _, err := db.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
+	if err := dashboarddb.EnableForeignKeys(db); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}

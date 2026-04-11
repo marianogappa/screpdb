@@ -11,6 +11,7 @@ import (
 	"text/template"
 	"time"
 
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/dashboard/variables"
 	"github.com/tmc/langchaingo/llms"
 )
@@ -89,24 +90,11 @@ func (s *PromptHistoryStorage) add(ctx context.Context, widgetID int64, history 
 func (s *PromptHistoryStorage) setOnDB(ctx context.Context, widgetID int64, history []llms.MessageContent) error {
 	historyBytes := historyToBytes(history)
 	now := time.Now()
-
-	// Use raw SQL for UPSERT
-	query := `
-		INSERT INTO dashboard_widget_prompt_history (widget_id, prompt_history, updated_at)
-		VALUES (?, ?, ?)
-		ON CONFLICT (widget_id) DO UPDATE SET
-			prompt_history = EXCLUDED.prompt_history,
-			updated_at = EXCLUDED.updated_at
-	`
-
-	_, err := s.db.ExecContext(ctx, query, widgetID, string(historyBytes), now)
-	return err
+	return dashboarddb.UpsertPromptHistory(ctx, s.db, widgetID, string(historyBytes), now)
 }
 
 func (s *PromptHistoryStorage) getFromDB(ctx context.Context, widgetID int64) ([]llms.MessageContent, bool, error) {
-	var promptHistory string
-	err := s.db.QueryRowContext(ctx, `SELECT prompt_history FROM dashboard_widget_prompt_history WHERE widget_id = ?`, widgetID).
-		Scan(&promptHistory)
+	promptHistory, err := dashboarddb.GetPromptHistory(ctx, s.db, widgetID)
 	if err == sql.ErrNoRows {
 		return nil, false, nil
 	}
