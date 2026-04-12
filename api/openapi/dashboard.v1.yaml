@@ -1,0 +1,809 @@
+openapi: 3.0.3
+info:
+  title: screpdb Dashboard API
+  version: 1.0.0
+paths:
+  /api/custom/dashboard:
+    get:
+      operationId: listDashboards
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+    put:
+      operationId: createDashboard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDashboardRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/dashboard/{url}:
+    parameters:
+      - $ref: "#/components/parameters/url"
+    get:
+      operationId: getDashboard
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+    post:
+      operationId: getDashboardPost
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DashboardVariableValuesRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+    put:
+      operationId: updateDashboard
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDashboardRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+    delete:
+      operationId: deleteDashboard
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/dashboard/{url}/widget:
+    parameters:
+      - $ref: "#/components/parameters/url"
+    get:
+      operationId: listDashboardWidgets
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+    put:
+      operationId: createDashboardWidget
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDashboardWidgetRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/dashboard/{url}/widget/{wid}:
+    parameters:
+      - $ref: "#/components/parameters/url"
+      - $ref: "#/components/parameters/wid"
+    post:
+      operationId: updateDashboardWidget
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDashboardWidgetRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+    delete:
+      operationId: deleteDashboardWidget
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/query:
+    post:
+      operationId: executeQuery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecuteQueryRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/query/variables:
+    post:
+      operationId: getQueryVariables
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GetQueryVariablesRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/ingest:
+    post:
+      operationId: ingest
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngestRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/ingest/settings:
+    get:
+      operationId: getIngestSettings
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+    put:
+      operationId: updateIngestSettings
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateIngestSettingsRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/ingest/logs:
+    get:
+      operationId: ingestLogs
+      responses:
+        "101":
+          description: Switching protocols for websocket upgrade
+  /api/custom/global-replay-filter:
+    get:
+      operationId: getGlobalReplayFilterConfig
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+    put:
+      operationId: updateGlobalReplayFilterConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateGlobalReplayFilterConfigRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/global-replay-filter/options:
+    get:
+      operationId: getGlobalReplayFilterOptions
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/games:
+    get:
+      operationId: gamesList
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: player
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: map
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: duration
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: featuring
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/games/{replayID}:
+    parameters:
+      - $ref: "#/components/parameters/replayID"
+    get:
+      operationId: gameDetail
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/games/{replayID}/ask:
+    parameters:
+      - $ref: "#/components/parameters/replayID"
+    post:
+      operationId: gameAsk
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AskRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/games/{replayID}/see:
+    parameters:
+      - $ref: "#/components/parameters/replayID"
+    post:
+      operationId: gameSee
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players:
+    get:
+      operationId: playersList
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: only_5_plus
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [name, race, games, apm, last_played]
+        - name: sort_dir
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: last_played
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/insights/apm-histogram:
+    get:
+      operationId: playersApmHistogram
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/insights/first-unit-delay:
+    get:
+      operationId: playersDelayHistogram
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/insights/unit-production-cadence:
+    get:
+      operationId: playersUnitCadence
+      parameters:
+        - name: filter
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: min_games
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/insights/viewport-multitasking:
+    get:
+      operationId: playersViewportMultitasking
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/{playerKey}:
+    parameters:
+      - $ref: "#/components/parameters/playerKey"
+    get:
+      operationId: playerDetail
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/{playerKey}/recent-games:
+    parameters:
+      - $ref: "#/components/parameters/playerKey"
+    get:
+      operationId: playerRecentGames
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/{playerKey}/chat-summary:
+    parameters:
+      - $ref: "#/components/parameters/playerKey"
+    get:
+      operationId: playerChatSummary
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/{playerKey}/metrics:
+    parameters:
+      - $ref: "#/components/parameters/playerKey"
+    get:
+      operationId: playerMetrics
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/{playerKey}/insight:
+    parameters:
+      - $ref: "#/components/parameters/playerKey"
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: string
+    get:
+      operationId: playerInsight
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/{playerKey}/outliers:
+    parameters:
+      - $ref: "#/components/parameters/playerKey"
+    get:
+      operationId: playerOutliers
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/{playerKey}/insights/apm-histogram:
+    parameters:
+      - $ref: "#/components/parameters/playerKey"
+    get:
+      operationId: playerApmHistogram
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/{playerKey}/insights/first-unit-delay:
+    parameters:
+      - $ref: "#/components/parameters/playerKey"
+    get:
+      operationId: playerDelayInsight
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/{playerKey}/insights/unit-production-cadence:
+    parameters:
+      - $ref: "#/components/parameters/playerKey"
+      - name: filter
+        in: query
+        required: false
+        schema:
+          type: string
+    get:
+      operationId: playerUnitCadence
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/{playerKey}/ask:
+    parameters:
+      - $ref: "#/components/parameters/playerKey"
+    post:
+      operationId: playerAsk
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AskRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/player-colors:
+    get:
+      operationId: playerColors
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/health:
+    get:
+      operationId: healthcheck
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+components:
+  parameters:
+    replayID:
+      name: replayID
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    playerKey:
+      name: playerKey
+      in: path
+      required: true
+      schema:
+        type: string
+    url:
+      name: url
+      in: path
+      required: true
+      schema:
+        type: string
+    wid:
+      name: wid
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+  schemas:
+    CreateDashboardRequest:
+      type: object
+      additionalProperties: false
+      required: [url, name]
+      properties:
+        url:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        replays_filter_sql:
+          type: string
+          nullable: true
+    DashboardVariableValuesRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        variable_values:
+          type: object
+          additionalProperties: true
+    UpdateDashboardRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        replays_filter_sql:
+          type: string
+          nullable: true
+    CreateDashboardWidgetRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        Prompt:
+          type: string
+    UpdateDashboardWidgetRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        config:
+          $ref: "#/components/schemas/GenericObject"
+        query:
+          type: string
+    ExecuteQueryRequest:
+      type: object
+      additionalProperties: false
+      required: [query]
+      properties:
+        query:
+          type: string
+        variable_values:
+          type: object
+          additionalProperties: true
+        dashboard_url:
+          type: string
+    GetQueryVariablesRequest:
+      type: object
+      additionalProperties: false
+      required: [query]
+      properties:
+        query:
+          type: string
+        dashboard_url:
+          type: string
+    IngestRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        input_dir:
+          type: string
+        sqlite_path:
+          type: string
+        watch:
+          type: boolean
+        store_right_clicks:
+          type: boolean
+        skip_hotkeys:
+          type: boolean
+        stop_after_n_reps:
+          type: integer
+        up_to_yyyy_mm_dd:
+          type: string
+        up_to_n_months:
+          type: integer
+        clean:
+          type: boolean
+        clean_dashboard:
+          type: boolean
+    UpdateIngestSettingsRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        input_dir:
+          type: string
+    UpdateGlobalReplayFilterConfigRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - game_types
+        - game_types_mode
+        - exclude_short_games
+        - exclude_computers
+        - maps
+        - map_filter_mode
+        - players
+        - player_filter_mode
+      properties:
+        game_types:
+          type: array
+          items:
+            type: string
+            enum: [top_vs_bottom, melee, one_on_one, ums, free_for_all]
+        game_types_mode:
+          type: string
+          enum: [only_these, all_except_these]
+        exclude_short_games:
+          type: boolean
+        exclude_computers:
+          type: boolean
+        maps:
+          type: array
+          items:
+            type: string
+        map_filter_mode:
+          type: string
+          enum: [only_these, all_except_these]
+        players:
+          type: array
+          items:
+            type: string
+        player_filter_mode:
+          type: string
+          enum: [only_these, all_except_these]
+        compiled_replays_filter_sql:
+          type: string
+          nullable: true
+    AskRequest:
+      type: object
+      additionalProperties: false
+      required: [question]
+      properties:
+        question:
+          type: string
+    GenericObject:
+      type: object
+      additionalProperties: true
+    GenericValue:
+      oneOf:
+        - $ref: "#/components/schemas/GenericObject"
+        - type: array
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/GenericObject"
+              - type: string
+              - type: number
+              - type: integer
+              - type: boolean
+        - type: string
+        - type: number
+        - type: integer
+        - type: boolean

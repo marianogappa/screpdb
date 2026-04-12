@@ -1,10 +1,8 @@
 package dashboard
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
-	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -45,15 +43,6 @@ type workflowViewportMultitaskingAggregate struct {
 	PlayerName                string
 	GamesPlayed               int64
 	averageViewportSwitchRate float64
-}
-
-func (d *Dashboard) handlerPlayersViewportMultitasking(w http.ResponseWriter, _ *http.Request) {
-	result, err := d.buildWorkflowPlayerViewportMultitaskingDistribution()
-	if err != nil {
-		http.Error(w, "failed to compute viewport multitasking distribution: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	_ = json.NewEncoder(w).Encode(result)
 }
 
 func (d *Dashboard) buildWorkflowPlayerViewportMultitaskingDistribution() (workflowPlayerViewportMultitaskingDistribution, error) {

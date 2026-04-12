@@ -15,10 +15,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/getkin/kin-openapi/openapi3filter"
+	"github.com/getkin/kin-openapi/routers"
+	"github.com/getkin/kin-openapi/routers/gorillamux"
 	"github.com/gorilla/mux"
 	_ "modernc.org/sqlite"
 
+	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
+	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
 	"github.com/marianogappa/screpdb/internal/dashboard/variables"
 	"github.com/marianogappa/screpdb/internal/ingest"
 	"github.com/marianogappa/screpdb/internal/storage"
@@ -106,46 +111,68 @@ func New(ctx context.Context, store storage.Storage, sqlitePath, aiVendor, apiKe
 
 func (d *Dashboard) setupRouter() *mux.Router {
 	r := mux.NewRouter()
-	r.HandleFunc("/api/custom/dashboard", d.handlerListDashboards).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard/{url}", d.handlerGetDashboard).Methods(http.MethodGet, http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard/{url}", d.handlerDeleteDashboard).Methods(http.MethodDelete, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard", d.handlerCreateDashboard).Methods(http.MethodPut, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard/{url}", d.handlerUpdateDashboard).Methods(http.MethodPut, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard/{url}/widget", d.handlerListDashboardWidgets).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard/{url}/widget/{wid}", d.handlerDeleteDashboardWidget).Methods(http.MethodDelete, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard/{url}/widget", d.handlerCreateDashboardWidget).Methods(http.MethodPut, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard/{url}/widget/{wid}", d.handlerUpdateDashboardWidget).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/api/custom/query", d.handlerExecuteQuery).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/api/custom/query/variables", d.handlerGetQueryVariables).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/api/custom/ingest", d.handlerIngest).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/api/custom/ingest/settings", d.handlerGetIngestSettings).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/custom/ingest/settings", d.handlerUpdateIngestSettings).Methods(http.MethodPut, http.MethodOptions)
-	r.HandleFunc("/api/custom/ingest/logs", d.handlerIngestLogs).Methods(http.MethodGet)
-	r.HandleFunc("/api/custom/global-replay-filter", d.handlerGetGlobalReplayFilterConfig).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/custom/global-replay-filter", d.handlerUpdateGlobalReplayFilterConfig).Methods(http.MethodPut, http.MethodOptions)
-	r.HandleFunc("/api/custom/global-replay-filter/options", d.handlerGetGlobalReplayFilterOptions).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/games", d.handlerGamesList).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/games/{replayID}", d.handlerGameDetail).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players", d.handlerPlayersList).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/insights/apm-histogram", d.handlerPlayersApmHistogram).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/insights/first-unit-delay", d.handlerPlayersDelayHistogram).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/insights/unit-production-cadence", d.handlerPlayersUnitCadence).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/insights/viewport-multitasking", d.handlerPlayersViewportMultitasking).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}", d.handlerPlayerDetail).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/recent-games", d.handlerPlayerRecentGames).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/chat-summary", d.handlerPlayerChatSummary).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/metrics", d.handlerPlayerMetrics).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/insight", d.handlerPlayerInsight).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/outliers", d.handlerPlayerOutliers).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/insights/apm-histogram", d.handlerPlayerApmHistogram).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/insights/first-unit-delay", d.handlerPlayerDelayInsight).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/insights/unit-production-cadence", d.handlerPlayerUnitCadence).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/player-colors", d.handlerPlayerColors).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/games/{replayID}/ask", d.handlerGameAsk).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/api/games/{replayID}/see", d.handlerGameSee).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/ask", d.handlerPlayerAsk).Methods(http.MethodPost, http.MethodOptions)
+	swagger, err := apigen.GetSwagger()
+	if err != nil {
+		panic(fmt.Errorf("failed to load embedded OpenAPI spec: %w", err))
+	}
+	swagger.Servers = nil
+	openapiRouter, err := gorillamux.NewRouter(swagger)
+	if err != nil {
+		panic(fmt.Errorf("failed to create OpenAPI validator router: %w", err))
+	}
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !strings.HasPrefix(r.URL.Path, "/api/") || r.Method == http.MethodOptions {
+				next.ServeHTTP(w, r)
+				return
+			}
 
-	r.HandleFunc("/api/health", d.handlerHealthcheck).Methods(http.MethodGet, http.MethodOptions)
+			route, pathParams, findErr := openapiRouter.FindRoute(r)
+			if findErr != nil {
+				if errors.Is(findErr, routers.ErrMethodNotAllowed) {
+					http.Error(w, findErr.Error(), http.StatusMethodNotAllowed)
+					return
+				}
+				// Unknown API paths should continue to SPA fallback behavior.
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			requestValidationInput := &openapi3filter.RequestValidationInput{
+				Request:    r,
+				PathParams: pathParams,
+				Route:      route,
+			}
+			if validationErr := openapi3filter.ValidateRequest(r.Context(), requestValidationInput); validationErr != nil {
+				status := http.StatusBadRequest
+				if _, ok := validationErr.(*openapi3filter.SecurityRequirementsError); ok {
+					status = http.StatusUnauthorized
+				}
+				http.Error(w, validationErr.Error(), status)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	})
+	strictHandler := apigen.NewStrictHandlerWithOptions(
+		newOpenAPIStrictAdapter(d),
+		nil,
+		apigen.StrictHTTPServerOptions{
+			RequestErrorHandlerFunc: func(w http.ResponseWriter, _ *http.Request, err error) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			},
+			ResponseErrorHandlerFunc: func(w http.ResponseWriter, _ *http.Request, err error) {
+				http.Error(w, err.Error(), dashboardservice.StatusCode(err))
+			},
+		},
+	)
+	// websocket endpoint remains a manual route to preserve Upgrade semantics
+	r.HandleFunc("/api/custom/ingest/logs", d.handlerIngestLogs).Methods(http.MethodGet)
+	apigen.HandlerFromMux(strictHandler, r)
+	r.PathPrefix("/api/").Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
 	r.PathPrefix("/").Handler(d.spaHandler())
 	return r
 }

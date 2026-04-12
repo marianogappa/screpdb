@@ -157,6 +157,32 @@ func TestSetupRouter_LegacyCustomPathsWithoutPrefixAreSPA(t *testing.T) {
 	}
 }
 
+func TestSetupRouter_StrictInputValidation(t *testing.T) {
+	d := newTestDashboard(t)
+	r := d.setupRouter()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/custom/query", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusBadRequest, rec.Code, rec.Body.String())
+	}
+}
+
+func TestSetupRouter_StatusWrappedServiceError(t *testing.T) {
+	d := newTestDashboard(t)
+	r := d.setupRouter()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/games/999999999999", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusNotFound, rec.Code, rec.Body.String())
+	}
+}
+
 func truncateForLog(b []byte, max int) string {
 	s := string(b)
 	if len(s) <= max {

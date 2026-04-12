@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -10,82 +9,6 @@ import (
 
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 )
-
-func (d *Dashboard) handlerGamesList(w http.ResponseWriter, r *http.Request) {
-	limit, offset := parsePagination(r, 20, 200)
-	filters := parseWorkflowGamesListFilters(r)
-	whereSQL, whereArgs := buildWorkflowGamesListWhere(filters)
-	total, err := d.dbStore.CountGamesWithWhere(d.ctx, whereSQL, whereArgs)
-	if err != nil {
-		http.Error(w, "failed to count games: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	listRows, err := d.dbStore.ListGamesWithWhere(d.ctx, whereSQL, whereArgs, limit, offset)
-	if err != nil {
-		http.Error(w, "failed to list games: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	items := []workflowGameListItem{}
-	for _, row := range listRows {
-		item := workflowGameListItem{
-			ReplayID:        row.ReplayID,
-			ReplayDate:      row.ReplayDate,
-			FileName:        row.FileName,
-			MapName:         row.MapName,
-			DurationSeconds: row.DurationSeconds,
-			GameType:        row.GameType,
-		}
-		item.Players = []workflowGameListPlayer{}
-		item.Featuring = []string{}
-		items = append(items, item)
-	}
-
-	if err := d.populateWorkflowGameListPlayers(items); err != nil {
-		http.Error(w, "failed to enrich games list players: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if err := d.populateWorkflowGameListFeaturing(items); err != nil {
-		http.Error(w, "failed to enrich games list featuring: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	filterOptions, err := d.workflowGamesListFilterOptions()
-	if err != nil {
-		http.Error(w, "failed to build games list filters: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"summary_version": workflowSummaryVersion,
-		"items":           items,
-		"limit":           limit,
-		"offset":          offset,
-		"total":           total,
-		"filter_options":  filterOptions,
-	})
-}
-
-func (d *Dashboard) handlerPlayersList(w http.ResponseWriter, r *http.Request) {
-	limit, offset := parsePagination(r, 20, 200)
-	filters := parseWorkflowPlayersListFilters(r)
-	sortSpec := parseWorkflowPlayersListSort(r)
-
-	items, total, filterOptions, err := d.listWorkflowPlayers(limit, offset, filters, sortSpec)
-	if err != nil {
-		http.Error(w, "failed to list players: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"summary_version": workflowSummaryVersion,
-		"items":           items,
-		"limit":           limit,
-		"offset":          offset,
-		"total":           total,
-		"filter_options":  filterOptions,
-	})
-}
 
 func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlayersListFilters, sortSpec workflowPlayersListSort) ([]workflowPlayersListItem, int64, workflowPlayersListFilterOptions, error) {
 	baseSQL, baseArgs := buildWorkflowPlayersListBaseSQL(filters)

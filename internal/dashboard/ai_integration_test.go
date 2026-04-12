@@ -1,16 +1,13 @@
 package dashboard
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
 
-	"github.com/gorilla/mux"
 	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/storage"
 )
@@ -58,12 +55,10 @@ func TestGeminiIntegration_CreateWidgetWithPrompt(t *testing.T) {
 	}
 
 	dash := newTestDashboardWithAI(t, AIVendorGemini, apiKey, "")
+	router := dash.setupRouter()
 
 	body, _ := json.Marshal(map[string]string{"Prompt": "Show me the total number of replays as a gauge"})
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPut, "/api/custom/dashboard/default/widget", bytes.NewReader(body))
-	req = mux.SetURLVars(req, map[string]string{"url": "default"})
-	dash.handlerCreateDashboardWidget(rec, req)
+	rec := performDashboardRequest(router, http.MethodPut, "/api/custom/dashboard/default/widget", body)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("create widget with Gemini prompt: status %d: %s", rec.Code, rec.Body.String())
@@ -96,10 +91,8 @@ func TestGeminiIntegration_CreateWidgetWithPrompt(t *testing.T) {
 	t.Logf("Gemini created widget: id=%d name=%q type=%q query=%q", resp.ID, resp.Name, resp.Config.Type, resp.Query)
 
 	// Verify the query actually runs
-	rec = httptest.NewRecorder()
 	queryBody, _ := json.Marshal(map[string]any{"query": resp.Query, "variable_values": map[string]any{}})
-	req = httptest.NewRequest(http.MethodPost, "/api/custom/query", bytes.NewReader(queryBody))
-	dash.handlerExecuteQuery(rec, req)
+	rec = performDashboardRequest(router, http.MethodPost, "/api/custom/query", queryBody)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("execute Gemini-generated query: status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -140,12 +133,10 @@ func TestGeminiIntegration_ConversationPromptDirect(t *testing.T) {
 		t.Fatalf("New dashboard: %v", err)
 	}
 	t.Cleanup(func() { _ = dash.db.Close() })
+	router := dash.setupRouter()
 
 	// Create a widget first (needed for conversation history)
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPut, "/api/custom/dashboard/default/widget", bytes.NewReader([]byte(`{"Prompt": ""}`)))
-	req = mux.SetURLVars(req, map[string]string{"url": "default"})
-	dash.handlerCreateDashboardWidget(rec, req)
+	rec := performDashboardRequest(router, http.MethodPut, "/api/custom/dashboard/default/widget", []byte(`{"Prompt": ""}`))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("create empty widget: status %d: %s", rec.Code, rec.Body.String())
 	}

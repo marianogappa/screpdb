@@ -14,7 +14,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gorilla/mux"
 	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/parser"
 	"github.com/marianogappa/screpdb/internal/storage"
@@ -24,10 +23,9 @@ const dashboardTestDB = "file:dashboard_test?mode=memory&cache=shared"
 
 func TestDashboardAPI_ListAndGet(t *testing.T) {
 	dash := newTestDashboard(t)
+	router := dash.setupRouter()
 
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/custom/dashboard", nil)
-	dash.handlerListDashboards(rec, req)
+	rec := performDashboardRequest(router, http.MethodGet, "/api/custom/dashboard", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("list dashboards status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -42,10 +40,7 @@ func TestDashboardAPI_ListAndGet(t *testing.T) {
 		t.Fatalf("expected default dashboard in list")
 	}
 
-	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/custom/dashboard/default", nil)
-	req = mux.SetURLVars(req, map[string]string{"url": "default"})
-	dash.handlerGetDashboard(rec, req)
+	rec = performDashboardRequest(router, http.MethodGet, "/api/custom/dashboard/default", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get dashboard status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -53,12 +48,10 @@ func TestDashboardAPI_ListAndGet(t *testing.T) {
 
 func TestDashboardAPI_WidgetFlow(t *testing.T) {
 	dash := newTestDashboard(t)
+	router := dash.setupRouter()
 
 	// Create widget without prompt
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPut, "/api/custom/dashboard/default/widget", bytes.NewReader([]byte(`{"Prompt": ""}`)))
-	req = mux.SetURLVars(req, map[string]string{"url": "default"})
-	dash.handlerCreateDashboardWidget(rec, req)
+	rec := performDashboardRequest(router, http.MethodPut, "/api/custom/dashboard/default/widget", []byte(`{"Prompt": ""}`))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("create widget status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -83,19 +76,13 @@ func TestDashboardAPI_WidgetFlow(t *testing.T) {
 		"query": "SELECT COUNT(*) AS c FROM replays",
 	}
 	updateJSON, _ := json.Marshal(updateBody)
-	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPost, "/api/custom/dashboard/default/widget", bytes.NewReader(updateJSON))
-	req = mux.SetURLVars(req, map[string]string{"url": "default", "wid": fmt.Sprintf("%d", createResp.ID)})
-	dash.handlerUpdateDashboardWidget(rec, req)
+	rec = performDashboardRequest(router, http.MethodPost, "/api/custom/dashboard/default/widget/"+fmt.Sprintf("%d", createResp.ID), updateJSON)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("update widget status %d: %s", rec.Code, rec.Body.String())
 	}
 
 	// Get dashboard — should return widget metadata without results
-	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/custom/dashboard/default", nil)
-	req = mux.SetURLVars(req, map[string]string{"url": "default"})
-	dash.handlerGetDashboard(rec, req)
+	rec = performDashboardRequest(router, http.MethodGet, "/api/custom/dashboard/default", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get dashboard status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -117,9 +104,7 @@ func TestDashboardAPI_WidgetFlow(t *testing.T) {
 
 	// Execute widget query via /api/custom/query
 	queryBody := []byte(`{"query": "SELECT COUNT(*) AS c FROM replays", "variable_values": {}}`)
-	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPost, "/api/custom/query", bytes.NewReader(queryBody))
-	dash.handlerExecuteQuery(rec, req)
+	rec = performDashboardRequest(router, http.MethodPost, "/api/custom/query", queryBody)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("execute query status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -141,11 +126,10 @@ func TestDashboardAPI_WidgetFlow(t *testing.T) {
 
 func TestDashboardAPI_ExecuteQuery(t *testing.T) {
 	dash := newTestDashboard(t)
+	router := dash.setupRouter()
 
 	body := []byte(`{"query": "SELECT COUNT(*) AS c FROM replays", "variable_values": {}}`)
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/custom/query", bytes.NewReader(body))
-	dash.handlerExecuteQuery(rec, req)
+	rec := performDashboardRequest(router, http.MethodPost, "/api/custom/query", body)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("execute query status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -167,6 +151,7 @@ func TestDashboardAPI_ExecuteQuery(t *testing.T) {
 
 func TestDashboardAPI_ReplayFilter(t *testing.T) {
 	dash := newTestDashboard(t)
+	router := dash.setupRouter()
 
 	filterSQL := "SELECT * FROM replays WHERE file_name = 'SomaTyson.rep'"
 
@@ -174,19 +159,13 @@ func TestDashboardAPI_ReplayFilter(t *testing.T) {
 		"replays_filter_sql": filterSQL,
 	}
 	updateJSON, _ := json.Marshal(updateBody)
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPut, "/api/custom/dashboard/default", bytes.NewReader(updateJSON))
-	req = mux.SetURLVars(req, map[string]string{"url": "default"})
-	dash.handlerUpdateDashboard(rec, req)
+	rec := performDashboardRequest(router, http.MethodPut, "/api/custom/dashboard/default", updateJSON)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("update dashboard status %d: %s", rec.Code, rec.Body.String())
 	}
 
 	// Create widget without prompt
-	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPut, "/api/custom/dashboard/default/widget", bytes.NewReader([]byte(`{"Prompt": ""}`)))
-	req = mux.SetURLVars(req, map[string]string{"url": "default"})
-	dash.handlerCreateDashboardWidget(rec, req)
+	rec = performDashboardRequest(router, http.MethodPut, "/api/custom/dashboard/default/widget", []byte(`{"Prompt": ""}`))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("create widget status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -210,19 +189,14 @@ func TestDashboardAPI_ReplayFilter(t *testing.T) {
 		"query": "SELECT COUNT(*) AS c FROM replays",
 	}
 	updateWidgetJSON, _ := json.Marshal(updateWidgetBody)
-	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPost, "/api/custom/dashboard/default/widget", bytes.NewReader(updateWidgetJSON))
-	req = mux.SetURLVars(req, map[string]string{"url": "default", "wid": fmt.Sprintf("%d", createResp.ID)})
-	dash.handlerUpdateDashboardWidget(rec, req)
+	rec = performDashboardRequest(router, http.MethodPost, "/api/custom/dashboard/default/widget/"+fmt.Sprintf("%d", createResp.ID), updateWidgetJSON)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("update widget status %d: %s", rec.Code, rec.Body.String())
 	}
 
 	// Execute widget query via /api/custom/query with dashboard_url for replay filter
 	queryBody := []byte(`{"query": "SELECT COUNT(*) AS c FROM replays", "variable_values": {}, "dashboard_url": "default"}`)
-	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPost, "/api/custom/query", bytes.NewReader(queryBody))
-	dash.handlerExecuteQuery(rec, req)
+	rec = performDashboardRequest(router, http.MethodPost, "/api/custom/query", queryBody)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("execute query status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -307,11 +281,9 @@ WHERE EXISTS (
 
 func TestDashboardAPI_WorkflowPlayerChatSummary(t *testing.T) {
 	dash := newTestDashboard(t)
+	router := dash.setupRouter()
 
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/players/soma/chat-summary", nil)
-	req = mux.SetURLVars(req, map[string]string{"playerKey": "soma"})
-	dash.handlerPlayerChatSummary(rec, req)
+	rec := performDashboardRequest(router, http.MethodGet, "/api/players/soma/chat-summary", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("workflow player chat summary status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -339,22 +311,19 @@ func TestDashboardAPI_WorkflowPlayerChatSummary(t *testing.T) {
 
 func TestDashboardAPI_IngestSettingsUpdateAndGet(t *testing.T) {
 	dash := newTestDashboard(t)
+	router := dash.setupRouter()
 	replayDir, err := resolveReplayDir()
 	if err != nil {
 		t.Fatalf("resolveReplayDir: %v", err)
 	}
 
 	body := []byte(fmt.Sprintf(`{"input_dir":%q}`, replayDir))
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPut, "/api/custom/ingest/settings", bytes.NewReader(body))
-	dash.handlerUpdateIngestSettings(rec, req)
+	rec := performDashboardRequest(router, http.MethodPut, "/api/custom/ingest/settings", body)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("update ingest settings status %d: %s", rec.Code, rec.Body.String())
 	}
 
-	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/custom/ingest/settings", nil)
-	dash.handlerGetIngestSettings(rec, req)
+	rec = performDashboardRequest(router, http.MethodGet, "/api/custom/ingest/settings", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get ingest settings status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -370,12 +339,11 @@ func TestDashboardAPI_IngestSettingsUpdateAndGet(t *testing.T) {
 
 func TestDashboardAPI_IngestSettingsRejectsFolderWithoutReplays(t *testing.T) {
 	dash := newTestDashboard(t)
+	router := dash.setupRouter()
 	emptyDir := t.TempDir()
 
 	body := []byte(fmt.Sprintf(`{"input_dir":%q}`, emptyDir))
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPut, "/api/custom/ingest/settings", bytes.NewReader(body))
-	dash.handlerUpdateIngestSettings(rec, req)
+	rec := performDashboardRequest(router, http.MethodPut, "/api/custom/ingest/settings", body)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected bad request, got %d: %s", rec.Code, rec.Body.String())
 	}
@@ -386,6 +354,7 @@ func TestDashboardAPI_IngestSettingsRejectsFolderWithoutReplays(t *testing.T) {
 
 func TestDashboardAPI_IngestUsesStoredInputDir(t *testing.T) {
 	dash := newTestDashboard(t)
+	router := dash.setupRouter()
 	replayDir, err := resolveReplayDir()
 	if err != nil {
 		t.Fatalf("resolveReplayDir: %v", err)
@@ -398,9 +367,7 @@ func TestDashboardAPI_IngestUsesStoredInputDir(t *testing.T) {
 	dash.ingestRunning = true
 	dash.ingestMu.Unlock()
 
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/custom/ingest", bytes.NewReader([]byte(`{}`)))
-	dash.handlerIngest(rec, req)
+	rec := performDashboardRequest(router, http.MethodPost, "/api/custom/ingest", []byte(`{}`))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("ingest status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -500,4 +467,20 @@ func resolveReplayDir() (string, error) {
 
 func containsString(list []string, value string) bool {
 	return slices.Contains(list, value)
+}
+
+func performDashboardRequest(router http.Handler, method, path string, body []byte) *httptest.ResponseRecorder {
+	var reader *bytes.Reader
+	if body == nil {
+		reader = bytes.NewReader([]byte{})
+	} else {
+		reader = bytes.NewReader(body)
+	}
+	req := httptest.NewRequest(method, path, reader)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	return rec
 }
