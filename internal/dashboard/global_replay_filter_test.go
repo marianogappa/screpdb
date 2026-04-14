@@ -1,10 +1,8 @@
 package dashboard
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"strconv"
 	"strings"
 	"testing"
@@ -53,10 +51,9 @@ func TestCompileGlobalReplayFilterSQLWithOptions(t *testing.T) {
 
 func TestDashboardAPI_GlobalReplayFilterGetAndUpdate(t *testing.T) {
 	dash := newTestDashboard(t)
+	router := dash.setupRouter()
 
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/custom/global-replay-filter", nil)
-	dash.handlerGetGlobalReplayFilterConfig(rec, req)
+	rec := performDashboardRequest(router, http.MethodGet, "/api/custom/global-replay-filter", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get config status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -79,9 +76,7 @@ func TestDashboardAPI_GlobalReplayFilterGetAndUpdate(t *testing.T) {
 		"players":["soma"],
 		"player_filter_mode":"only_these"
 	}`)
-	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPut, "/api/custom/global-replay-filter", bytes.NewReader(updateBody))
-	dash.handlerUpdateGlobalReplayFilterConfig(rec, req)
+	rec = performDashboardRequest(router, http.MethodPut, "/api/custom/global-replay-filter", updateBody)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("update config status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -100,6 +95,7 @@ func TestDashboardAPI_GlobalReplayFilterGetAndUpdate(t *testing.T) {
 
 func TestDashboardAPI_GlobalReplayFilterAffectsWorkflowGames(t *testing.T) {
 	dash := newTestDashboard(t)
+	router := dash.setupRouter()
 
 	var mapName string
 	if err := dash.db.QueryRowContext(dash.ctx, `
@@ -134,9 +130,7 @@ func TestDashboardAPI_GlobalReplayFilterAffectsWorkflowGames(t *testing.T) {
 		t.Fatalf("count compiled SQL: %v", err)
 	}
 
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/games", nil)
-	dash.handlerGamesList(rec, req)
+	rec := performDashboardRequest(router, http.MethodGet, "/api/games", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("workflow games status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -154,6 +148,7 @@ func TestDashboardAPI_GlobalReplayFilterAffectsWorkflowGames(t *testing.T) {
 
 func TestDashboardAPI_ReplayFilterAppliesToDetectedPatternViews(t *testing.T) {
 	dash := newTestDashboard(t)
+	router := dash.setupRouter()
 	replayID, playerID := insertTestReplayPatternRows(t, dash)
 	if _, err := dash.updateGlobalReplayFilterConfig(dash.ctx, globalReplayFilterConfig{
 		GameTypes:         []string{},
@@ -177,9 +172,7 @@ func TestDashboardAPI_ReplayFilterAppliesToDetectedPatternViews(t *testing.T) {
 	}
 
 	body := []byte(`{"query": "SELECT COUNT(*) AS c FROM detected_patterns_replay WHERE pattern_name = 'test_replay_pattern'", "variable_values": {}, "dashboard_url": "default"}`)
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/custom/query", bytes.NewReader(body))
-	dash.handlerExecuteQuery(rec, req)
+	rec := performDashboardRequest(router, http.MethodPost, "/api/custom/query", body)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("execute query status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -195,9 +188,7 @@ func TestDashboardAPI_ReplayFilterAppliesToDetectedPatternViews(t *testing.T) {
 	}
 
 	playerBody := []byte(`{"query": "SELECT COUNT(*) AS c FROM detected_patterns_replay_player WHERE player_id = ` + int64ToString(playerID) + ` AND pattern_name = 'test_player_pattern'", "variable_values": {}, "dashboard_url": "default"}`)
-	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPost, "/api/custom/query", bytes.NewReader(playerBody))
-	dash.handlerExecuteQuery(rec, req)
+	rec = performDashboardRequest(router, http.MethodPost, "/api/custom/query", playerBody)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("execute player pattern query status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -215,6 +206,7 @@ func TestDashboardAPI_ReplayFilterAppliesToDetectedPatternViews(t *testing.T) {
 
 func TestDashboardAPI_GlobalReplayFilterComposesWithDashboardFilter(t *testing.T) {
 	dash := newTestDashboard(t)
+	router := dash.setupRouter()
 
 	var replayOneID int64
 	var replayOneMap string
@@ -260,9 +252,7 @@ func TestDashboardAPI_GlobalReplayFilterComposesWithDashboardFilter(t *testing.T
 	}
 
 	body := []byte(`{"query": "SELECT COUNT(*) AS c FROM replays", "variable_values": {}, "dashboard_url": "default"}`)
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/custom/query", bytes.NewReader(body))
-	dash.handlerExecuteQuery(rec, req)
+	rec := performDashboardRequest(router, http.MethodPost, "/api/custom/query", body)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("execute query status %d: %s", rec.Code, rec.Body.String())
 	}

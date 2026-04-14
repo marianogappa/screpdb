@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"context"
-	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"time"
@@ -56,43 +55,20 @@ func (v *DashboardVariables) Scan(value any) error {
 
 // GetDashboardByURL retrieves a dashboard by URL with variables
 func (d *Dashboard) GetDashboardByURL(ctx context.Context, url string) (*DashboardWithVariables, error) {
-	// Use raw SQL to get the dashboard with variables
-	query := `
-		SELECT url, name, description, replays_filter_sql, variables, created_at
-		FROM dashboards
-		WHERE url = ?
-	`
-
 	var dash DashboardWithVariables
-	var description sql.NullString
-	var replaysFilterSQL sql.NullString
-	var variablesJSON []byte
-	var createdAt any
-	err := d.db.QueryRowContext(ctx, query, url).Scan(
-		&dash.URL,
-		&dash.Name,
-		&description,
-		&replaysFilterSQL,
-		&variablesJSON,
-		&createdAt,
-	)
+	row, err := d.dbStore.GetDashboardWithVariablesByURL(ctx, url)
 	if err != nil {
 		return nil, err
 	}
-
-	if description.Valid {
-		dash.Description = &description.String
-	}
-	if replaysFilterSQL.Valid {
-		dash.ReplaysFilterSQL = &replaysFilterSQL.String
-	}
-	if parsed, err := nullableTime(createdAt); err == nil {
-		dash.CreatedAt = parsed
-	}
+	dash.URL = row.URL
+	dash.Name = row.Name
+	dash.Description = row.Description
+	dash.ReplaysFilterSQL = row.ReplaysFilterSQL
+	dash.CreatedAt = row.CreatedAt
 
 	// Parse variables JSON
-	if len(variablesJSON) > 0 {
-		if err := json.Unmarshal(variablesJSON, &dash.Variables); err != nil {
+	if len(row.VariablesJSON) > 0 {
+		if err := json.Unmarshal(row.VariablesJSON, &dash.Variables); err != nil {
 			return nil, err
 		}
 	}
@@ -106,13 +82,5 @@ func (d *Dashboard) UpdateDashboardVariables(ctx context.Context, url string, va
 	if err != nil {
 		return err
 	}
-
-	query := `
-		UPDATE dashboards
-		SET variables = ?
-		WHERE url = ?
-	`
-
-	_, err = d.db.ExecContext(ctx, query, string(variablesJSON), url)
-	return err
+	return d.dbStore.UpdateDashboardVariables(ctx, url, string(variablesJSON))
 }

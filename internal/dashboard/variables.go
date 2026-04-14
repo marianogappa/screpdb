@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 )
 
 // VariableType represents the type of a dashboard variable
@@ -145,18 +147,17 @@ func (d *Dashboard) ExecuteVariableQuery(ctx context.Context, variable Dashboard
 		return nil, fmt.Errorf("failed to interpolate variable query: %w", err)
 	}
 
-	var rows *sql.Rows
+	var rows *dashboarddb.Rows
 	if len(args) > 0 {
-		rows, err = d.db.QueryContext(ctx, query, args...)
+		rows, err = d.dbStore.DefaultQueryContext(ctx, query, args...)
 	} else {
-		rows, err = d.db.QueryContext(ctx, query)
+		rows, err = d.dbStore.DefaultQueryContext(ctx, query)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute variable query: %w", err)
 	}
 	defer rows.Close()
 
-	var results []any
 	columns, err := rows.Columns()
 	if err != nil {
 		return nil, err
@@ -167,18 +168,10 @@ func (d *Dashboard) ExecuteVariableQuery(ctx context.Context, variable Dashboard
 	}
 
 	// Get the first column's values
-	for rows.Next() {
-		var value any
-		if err := rows.Scan(&value); err != nil {
-			return nil, err
-		}
-		results = append(results, value)
-	}
-
-	if err := rows.Err(); err != nil {
+	results, err := dashboarddb.ScanFirstColumn(rows)
+	if err != nil {
 		return nil, err
 	}
-
 	return results, nil
 }
 

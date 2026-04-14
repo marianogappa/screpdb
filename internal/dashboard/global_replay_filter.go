@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 )
 
 const (
@@ -122,30 +124,17 @@ func compileGlobalReplayFilterSQL(config globalReplayFilterConfig) (string, erro
 	if err != nil {
 		return "", err
 	}
-
-	clauses := []string{}
-	if normalized.ExcludeShortGames {
-		clauses = append(clauses, fmt.Sprintf("r.duration_seconds >= %d", globalReplayFilterShortGameSeconds))
-	}
-	if normalized.ExcludeComputers {
-		clauses = append(clauses, `NOT EXISTS (
-			SELECT 1
-			FROM players p
-			WHERE p.replay_id = r.id
-				AND p.is_observer = 0
-				AND lower(trim(coalesce(p.type, ''))) IN ('computer', 'computer controlled')
-		)`)
-	}
-
-	appendModeClause(&clauses, normalized.GameTypesMode, gameTypePredicateSQL(normalized.GameTypes))
-	appendModeClause(&clauses, normalized.MapFilterMode, mapPredicateSQL(normalized.Maps))
-	appendModeClause(&clauses, normalized.PlayerFilterMode, playerPredicateSQL(normalized.Players))
-
-	query := "SELECT r.* FROM replays r"
-	if len(clauses) == 0 {
-		return query, nil
-	}
-	return query + " WHERE " + strings.Join(clauses, " AND "), nil
+	return dashboarddb.BuildGlobalReplayFilterSQL(
+		normalized.ExcludeShortGames,
+		globalReplayFilterShortGameSeconds,
+		normalized.ExcludeComputers,
+		normalized.GameTypesMode,
+		normalized.GameTypes,
+		normalized.MapFilterMode,
+		normalized.Maps,
+		normalized.PlayerFilterMode,
+		normalized.Players,
+	), nil
 }
 
 func normalizeGlobalReplayFilterConfigWithoutSQL(config globalReplayFilterConfig) (globalReplayFilterConfig, error) {
@@ -167,15 +156,6 @@ func normalizeGlobalReplayFilterConfigWithoutSQL(config globalReplayFilterConfig
 	config.Maps = normalizeGlobalReplayFilterValues(config.Maps, true)
 	config.Players = normalizeGlobalReplayFilterValues(config.Players, true)
 	return config, nil
-}
-
-func joinQuotedSQLStrings(values []string) string {
-	quoted := make([]string, 0, len(values))
-	for _, value := range values {
-		escaped := strings.ReplaceAll(value, "'", "''")
-		quoted = append(quoted, "'"+escaped+"'")
-	}
-	return strings.Join(quoted, ", ")
 }
 
 func marshalStringSlice(values []string) (string, error) {
@@ -228,87 +208,11 @@ func normalizeGlobalReplayFilterMode(value string) string {
 	}
 }
 
-func appendModeClause(clauses *[]string, mode string, predicate string) {
-	predicate = normalizeSQLWhitespace(strings.TrimSpace(predicate))
-	if predicate == "" {
-		return
-	}
-	switch mode {
-	case globalReplayFilterModeAllExceptThese:
-		*clauses = append(*clauses, "NOT ("+predicate+")")
-	default:
-		*clauses = append(*clauses, "("+predicate+")")
-	}
-}
-
-func gameTypePredicateSQL(values []string) string {
-	predicates := make([]string, 0, len(values))
-	for _, value := range values {
-		switch value {
-		case globalReplayFilterGameTypeTopVsBottom:
-			predicates = append(predicates, "lower(trim(coalesce(r.game_type, ''))) = 'top vs bottom'")
-		case globalReplayFilterGameTypeMelee:
-			predicates = append(predicates, "lower(trim(coalesce(r.game_type, ''))) = 'melee'")
-		case globalReplayFilterGameTypeOneOnOne:
-			predicates = append(predicates, `(2 = (
-				SELECT COUNT(*)
-				FROM players p
-				WHERE p.replay_id = r.id
-					AND p.is_observer = 0
-			) AND 2 = (
-				SELECT COUNT(DISTINCT p.team)
-				FROM players p
-				WHERE p.replay_id = r.id
-					AND p.is_observer = 0
-			))`)
-		case globalReplayFilterGameTypeUseMapSetting:
-			predicates = append(predicates, "lower(trim(coalesce(r.game_type, ''))) IN ('use map settings', 'ums')")
-		case globalReplayFilterGameTypeFreeForAll:
-			predicates = append(predicates, "lower(trim(coalesce(r.game_type, ''))) = 'free for all'")
-		}
-	}
-	if len(predicates) == 0 {
-		return ""
-	}
-	return strings.Join(predicates, " OR ")
-}
-
-func mapPredicateSQL(values []string) string {
-	if len(values) == 0 {
-		return ""
-	}
-	return "lower(trim(coalesce(r.map_name, ''))) IN (" + joinQuotedSQLStrings(values) + ")"
-}
-
-func playerPredicateSQL(values []string) string {
-	if len(values) == 0 {
-		return ""
-	}
-	return `EXISTS (
-		SELECT 1
-		FROM players p
-		WHERE p.replay_id = r.id
-			AND p.is_observer = 0
-			AND lower(trim(coalesce(p.name, ''))) IN (` + joinQuotedSQLStrings(values) + `)
-	)`
-}
-
 func composeReplayFilterSQL(globalFilterSQL *string, localFilterSQL *string) *string {
-	globalNormalized := normalizeSQL(nullableStringValue(globalFilterSQL))
-	localNormalized := normalizeSQL(nullableStringValue(localFilterSQL))
-	switch {
-	case globalNormalized == "" && localNormalized == "":
+	composed := dashboarddb.ComposeReplayFilterSQL(nullableStringValue(globalFilterSQL), nullableStringValue(localFilterSQL))
+	if composed == "" {
 		return nil
-	case globalNormalized == "":
-		return &localNormalized
-	case localNormalized == "":
-		return &globalNormalized
 	}
-	composed := normalizeSQLWhitespace(fmt.Sprintf(
-		"SELECT * FROM (%s) AS global_replays WHERE id IN (SELECT id FROM (%s) AS local_replays)",
-		globalNormalized,
-		localNormalized,
-	))
 	return &composed
 }
 

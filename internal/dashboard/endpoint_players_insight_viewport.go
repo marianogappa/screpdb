@@ -1,10 +1,8 @@
 package dashboard
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
-	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -45,15 +43,6 @@ type workflowViewportMultitaskingAggregate struct {
 	PlayerName                string
 	GamesPlayed               int64
 	averageViewportSwitchRate float64
-}
-
-func (d *Dashboard) handlerPlayersViewportMultitasking(w http.ResponseWriter, _ *http.Request) {
-	result, err := d.buildWorkflowPlayerViewportMultitaskingDistribution()
-	if err != nil {
-		http.Error(w, "failed to compute viewport multitasking distribution: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	_ = json.NewEncoder(w).Encode(result)
 }
 
 func (d *Dashboard) buildWorkflowPlayerViewportMultitaskingDistribution() (workflowPlayerViewportMultitaskingDistribution, error) {
@@ -134,35 +123,16 @@ func (d *Dashboard) buildWorkflowPlayerViewportAsyncInsight(playerKey string) (w
 }
 
 func (d *Dashboard) loadWorkflowViewportMultitaskingAggregates() ([]workflowViewportMultitaskingAggregate, error) {
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT
-			lower(trim(p.name)) AS player_key,
-			MIN(p.name) AS player_name,
-			dp.value_string
-		FROM detected_patterns_replay_player dp
-		JOIN players p
-			ON p.id = dp.player_id
-		WHERE dp.pattern_name = ?
-			AND p.is_observer = 0
-			AND lower(trim(coalesce(p.type, ''))) = 'human'
-			AND dp.value_string IS NOT NULL
-			AND trim(dp.value_string) <> ''
-		GROUP BY player_key, dp.replay_id, dp.player_id, dp.value_string
-		ORDER BY player_key ASC, player_name ASC
-	`, models.PatternNameViewportMultitasking)
+	rows, err := d.dbStore.ListViewportAggregateRows(d.ctx, models.PatternNameViewportMultitasking)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load viewport multitasking patterns: %w", err)
 	}
-	defer rows.Close()
 
 	aggregates := map[string]*workflowViewportMultitaskingAggregate{}
-	for rows.Next() {
-		var playerKey string
-		var playerName string
-		var rawValue string
-		if err := rows.Scan(&playerKey, &playerName, &rawValue); err != nil {
-			return nil, fmt.Errorf("failed to parse viewport multitasking aggregate: %w", err)
-		}
+	for _, row := range rows {
+		playerKey := row.PlayerKey
+		playerName := row.PlayerName
+		rawValue := row.RawValue
 		rate, ok := parseViewportSwitchRate(rawValue)
 		if !ok {
 			continue
@@ -178,10 +148,6 @@ func (d *Dashboard) loadWorkflowViewportMultitaskingAggregates() ([]workflowView
 		aggregate.GamesPlayed++
 		aggregate.averageViewportSwitchRate += rate
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating viewport multitasking patterns: %w", err)
-	}
-
 	out := make([]workflowViewportMultitaskingAggregate, 0, len(aggregates))
 	for _, aggregate := range aggregates {
 		if aggregate.GamesPlayed > 0 {
@@ -285,26 +251,15 @@ func (d *Dashboard) populateViewportMultitaskingForGameDetail(detail *workflowGa
 		return nil
 	}
 
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT player_id, value_string
-		FROM detected_patterns_replay_player
-		WHERE replay_id = ?
-			AND pattern_name = ?
-			AND value_string IS NOT NULL
-			AND trim(value_string) <> ''
-	`, detail.ReplayID, models.PatternNameViewportMultitasking)
+	rows, err := d.dbStore.ListViewportGameRows(d.ctx, detail.ReplayID, models.PatternNameViewportMultitasking)
 	if err != nil {
 		return fmt.Errorf("failed to load game viewport multitasking patterns: %w", err)
 	}
-	defer rows.Close()
 
 	entriesByPlayerID := map[int64]workflowGameViewportMultitaskingPlayer{}
-	for rows.Next() {
-		var playerID int64
-		var rawValue string
-		if err := rows.Scan(&playerID, &rawValue); err != nil {
-			return fmt.Errorf("failed to parse game viewport multitasking row: %w", err)
-		}
+	for _, row := range rows {
+		playerID := row.PlayerID
+		rawValue := row.RawValue
 		rate, ok := parseViewportSwitchRate(rawValue)
 		if !ok {
 			continue
@@ -323,10 +278,6 @@ func (d *Dashboard) populateViewportMultitaskingForGameDetail(detail *workflowGa
 			ViewportSwitchRate: rate,
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("failed iterating game viewport multitasking rows: %w", err)
-	}
-
 	for i := range detail.ViewportMultitasking {
 		playerID := detail.ViewportMultitasking[i].PlayerID
 		if entry, ok := entriesByPlayerID[playerID]; ok {

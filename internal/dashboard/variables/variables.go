@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 )
 
 type Variable struct {
@@ -31,7 +33,7 @@ var (
 			Description:  "All players in the database (the player name)",
 			variableType: "string",
 			defaultValue: "",
-			SQL:          "SELECT DISTINCT name FROM players ORDER BY name",
+			SQL:          dashboarddb.VariableQueryAllPlayersName,
 		},
 		"last_replay_players_name": {
 			Name:         "last_replay_players_name",
@@ -39,7 +41,7 @@ var (
 			Description:  "All players in the last replay (the player name)",
 			variableType: "string",
 			defaultValue: "",
-			SQL:          "SELECT name FROM players p JOIN replays r ON p.replay_id = r.id WHERE r.replay_date = (SELECT MAX(replay_date) FROM replays) ORDER BY name",
+			SQL:          dashboarddb.VariableQueryLastReplayPlayersName,
 		},
 		"last_50_players_name": {
 			Name:         "last_50_players_name",
@@ -47,7 +49,7 @@ var (
 			Description:  "All players in the last 50 replays (the player name)",
 			variableType: "string",
 			defaultValue: "",
-			SQL:          "SELECT DISTINCT name FROM ( SELECT p.name, r.replay_date FROM players p JOIN replays r ON p.replay_id = r.id ORDER BY r.replay_date DESC ) t LIMIT 50",
+			SQL:          dashboarddb.VariableQueryLast50PlayersName,
 		},
 		"races": {
 			Name:         "races",
@@ -55,7 +57,7 @@ var (
 			Description:  "The three races in the game (Protoss, Terran, Zerg)",
 			variableType: "string",
 			defaultValue: "",
-			SQL:          "SELECT race FROM (SELECT 'Protoss' race UNION ALL SELECT 'Terran' race UNION ALL SELECT 'Zerg' race) t",
+			SQL:          dashboarddb.VariableQueryRaces,
 		},
 	}
 
@@ -113,26 +115,13 @@ func RunAllUsedVariableQueries(db *sql.DB, allUsedVariables map[string]Variable)
 	result := make(map[string][]any)
 
 	for varName, variable := range allUsedVariables {
-		rows, err := db.Query(variable.SQL)
+		rows, err := dashboarddb.QueryOnDB(db, variable.SQL)
 		if err != nil {
 			return nil, fmt.Errorf("failed to run query for variable %s: %w", varName, err)
 		}
 		defer rows.Close()
-
-		var values []any
-		for rows.Next() {
-			var value any
-			if err := rows.Scan(&value); err != nil {
-				rows.Close()
-				return nil, fmt.Errorf("failed to scan result for variable %s: %w", varName, err)
-			}
-			// Convert []byte to string for JSON serialization
-			if b, ok := value.([]byte); ok {
-				value = string(b)
-			}
-			values = append(values, value)
-		}
-		if err := rows.Err(); err != nil {
+		values, err := dashboarddb.ScanFirstColumn(rows)
+		if err != nil {
 			return nil, fmt.Errorf("error iterating results for variable %s: %w", varName, err)
 		}
 

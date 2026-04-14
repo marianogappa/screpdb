@@ -86,7 +86,7 @@ func TestSetupRouter_CustomQueryExecute(t *testing.T) {
 func TestSetupRouter_PlayerChatSummaryThroughRouter(t *testing.T) {
 	d := newTestDashboard(t)
 	var playerKey string
-	err := d.db.QueryRow(`SELECT lower(trim(name)) FROM players WHERE is_observer = 0 LIMIT 1`).Scan(&playerKey)
+	err := d.dbStore.DefaultQueryRow(`SELECT lower(trim(name)) FROM players WHERE is_observer = 0 LIMIT 1`).Scan(&playerKey)
 	if err != nil {
 		t.Skip("no players in test DB")
 	}
@@ -106,7 +106,7 @@ func TestSetupRouter_PlayerChatSummaryThroughRouter(t *testing.T) {
 func TestSetupRouter_GameDetailThroughRouter(t *testing.T) {
 	d := newTestDashboard(t)
 	var replayID int64
-	if err := d.db.QueryRow(`SELECT id FROM replays ORDER BY id LIMIT 1`).Scan(&replayID); err != nil {
+	if err := d.dbStore.DefaultQueryRow(`SELECT id FROM replays ORDER BY id LIMIT 1`).Scan(&replayID); err != nil {
 		t.Skip("no replays in test DB")
 	}
 	r := d.setupRouter()
@@ -154,6 +154,32 @@ func TestSetupRouter_LegacyCustomPathsWithoutPrefixAreSPA(t *testing.T) {
 				t.Fatalf("expected SPA for %s, got content-type %q", path, ct)
 			}
 		})
+	}
+}
+
+func TestSetupRouter_StrictInputValidation(t *testing.T) {
+	d := newTestDashboard(t)
+	r := d.setupRouter()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/custom/query", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusBadRequest, rec.Code, rec.Body.String())
+	}
+}
+
+func TestSetupRouter_StatusWrappedServiceError(t *testing.T) {
+	d := newTestDashboard(t)
+	r := d.setupRouter()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/games/999999999999", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusNotFound, rec.Code, rec.Body.String())
 	}
 }
 

@@ -15,84 +15,43 @@ import (
 
 func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail, error) {
 	detail := workflowGameDetail{SummaryVersion: workflowSummaryVersion}
-	err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
-		SELECT id, replay_date, file_name, map_name, duration_seconds, game_type
-		FROM replays WHERE id = ?
-	`, replayID).Scan(
-		&detail.ReplayID,
-		&detail.ReplayDate,
-		&detail.FileName,
-		&detail.MapName,
-		&detail.DurationSeconds,
-		&detail.GameType,
-	)
+	summary, err := d.dbStore.GetReplaySummary(d.ctx, replayID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return detail, sql.ErrNoRows
 		}
 		return detail, fmt.Errorf("failed to load replay: %w", err)
 	}
+	detail.ReplayID = summary.ReplayID
+	detail.ReplayDate = summary.ReplayDate
+	detail.FileName = summary.FileName
+	detail.MapName = summary.MapName
+	detail.DurationSeconds = summary.DurationSeconds
+	detail.GameType = summary.GameType
 
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT
-			p.id,
-			p.name,
-			p.race,
-			p.team,
-			p.is_winner,
-			p.apm,
-			p.eapm,
-			COUNT(c.id) AS command_count,
-			(
-				SELECT COUNT(*)
-				FROM commands_low_value clv
-				WHERE clv.player_id = p.id
-					AND clv.action_type = 'Hotkey'
-					AND clv.hotkey_type IS NOT NULL
-			) AS hotkey_count,
-			(
-				SELECT COUNT(*)
-				FROM commands_low_value clv
-				WHERE clv.player_id = p.id
-			) AS low_value_command_count
-		FROM players p
-		LEFT JOIN commands c ON c.player_id = p.id
-		WHERE p.replay_id = ? AND p.is_observer = 0
-		GROUP BY p.id, p.name, p.race, p.team, p.is_winner, p.apm, p.eapm
-		ORDER BY p.team ASC, p.id ASC
-	`, replayID)
+	rows, err := d.dbStore.ListReplayPlayersForDetail(d.ctx, replayID)
 	if err != nil {
 		return detail, fmt.Errorf("failed to load players: %w", err)
 	}
-	defer rows.Close()
 
-	for rows.Next() {
+	for _, row := range rows {
 		var p workflowGamePlayer
-		var lowValueCommandCount int64
-		if err := rows.Scan(
-			&p.PlayerID,
-			&p.Name,
-			&p.Race,
-			&p.Team,
-			&p.IsWinner,
-			&p.APM,
-			&p.EAPM,
-			&p.CommandCount,
-			&p.HotkeyCommandCount,
-			&lowValueCommandCount,
-		); err != nil {
-			return detail, fmt.Errorf("failed to parse players: %w", err)
-		}
+		p.PlayerID = row.PlayerID
+		p.Name = row.Name
+		p.Race = row.Race
+		p.Team = row.Team
+		p.IsWinner = row.IsWinner
+		p.APM = row.APM
+		p.EAPM = row.EAPM
+		p.CommandCount = row.CommandCount
+		p.HotkeyCommandCount = row.HotkeyCommandCount
 		p.PlayerKey = normalizePlayerKey(p.Name)
-		totalCommandCount := p.CommandCount + lowValueCommandCount
+		totalCommandCount := p.CommandCount + row.LowValueCommandCount
 		if totalCommandCount > 0 {
 			p.HotkeyUsageRate = float64(p.HotkeyCommandCount) / float64(totalCommandCount)
 		}
 		p.DetectedPatterns = []workflowPatternValue{}
 		detail.Players = append(detail.Players, p)
-	}
-	if err := rows.Err(); err != nil {
-		return detail, fmt.Errorf("failed to iterate players: %w", err)
 	}
 
 	if err := d.populateDetectedPatternsForGameDetail(&detail); err != nil {
@@ -122,29 +81,12 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 	detail.TeamPatterns = []workflowTeamPattern{}
 	detail.GameEvents = []workflowGameEvent{}
 
-	rowsReplay, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT
-			pattern_name,
-			CASE
-				WHEN value_bool IS NOT NULL THEN CASE WHEN value_bool = 1 THEN 'true' ELSE 'false' END
-				WHEN value_int IS NOT NULL THEN CAST(value_int AS TEXT)
-				WHEN value_string IS NOT NULL THEN value_string
-				WHEN value_timestamp IS NOT NULL THEN CAST(value_timestamp AS TEXT)
-				ELSE ''
-			END AS pattern_value
-		FROM detected_patterns_replay
-		WHERE replay_id = ?
-		ORDER BY pattern_name ASC
-	`, detail.ReplayID)
+	rowsReplay, err := d.dbStore.ListReplayPatterns(d.ctx, detail.ReplayID)
 	if err != nil {
 		return fmt.Errorf("failed to query replay patterns: %w", err)
 	}
-	defer rowsReplay.Close()
-	for rowsReplay.Next() {
-		var pattern workflowPatternValue
-		if err := rowsReplay.Scan(&pattern.PatternName, &pattern.Value); err != nil {
-			return fmt.Errorf("failed to parse replay patterns: %w", err)
-		}
+	for _, row := range rowsReplay {
+		pattern := workflowPatternValue{PatternName: row.PatternName, Value: row.Value}
 		if strings.EqualFold(pattern.PatternName, "Game Events") {
 			detail.GameEvents = parseGameEvents(pattern.Value)
 			continue
@@ -152,39 +94,14 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 		pattern.Value = formatPatternValueForUI(pattern.PatternName, pattern.Value)
 		detail.ReplayPatterns = append(detail.ReplayPatterns, pattern)
 	}
-	if err := rowsReplay.Err(); err != nil {
-		return fmt.Errorf("failed iterating replay patterns: %w", err)
-	}
-
-	rowsTeam, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT
-			team,
-			pattern_name,
-			CASE
-				WHEN value_bool IS NOT NULL THEN CASE WHEN value_bool = 1 THEN 'true' ELSE 'false' END
-				WHEN value_int IS NOT NULL THEN CAST(value_int AS TEXT)
-				WHEN value_string IS NOT NULL THEN value_string
-				WHEN value_timestamp IS NOT NULL THEN CAST(value_timestamp AS TEXT)
-				ELSE ''
-			END AS pattern_value
-		FROM detected_patterns_replay_team
-		WHERE replay_id = ?
-		ORDER BY team ASC, pattern_name ASC
-	`, detail.ReplayID)
+	rowsTeam, err := d.dbStore.ListTeamPatterns(d.ctx, detail.ReplayID)
 	if err != nil {
 		return fmt.Errorf("failed to query team patterns: %w", err)
 	}
-	defer rowsTeam.Close()
-	for rowsTeam.Next() {
-		var pattern workflowTeamPattern
-		if err := rowsTeam.Scan(&pattern.Team, &pattern.PatternName, &pattern.Value); err != nil {
-			return fmt.Errorf("failed to parse team patterns: %w", err)
-		}
+	for _, row := range rowsTeam {
+		pattern := workflowTeamPattern{Team: row.Team, PatternName: row.PatternName, Value: row.Value}
 		pattern.Value = formatPatternValueForUI(pattern.PatternName, pattern.Value)
 		detail.TeamPatterns = append(detail.TeamPatterns, pattern)
-	}
-	if err := rowsTeam.Err(); err != nil {
-		return fmt.Errorf("failed iterating team patterns: %w", err)
 	}
 
 	playerByID := map[int64]*workflowGamePlayer{}
@@ -193,38 +110,17 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 		playerByID[player.PlayerID] = player
 	}
 
-	rowsPlayer, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT
-			player_id,
-			pattern_name,
-			CASE
-				WHEN value_bool IS NOT NULL THEN CASE WHEN value_bool = 1 THEN 'true' ELSE 'false' END
-				WHEN value_int IS NOT NULL THEN CAST(value_int AS TEXT)
-				WHEN value_string IS NOT NULL THEN value_string
-				WHEN value_timestamp IS NOT NULL THEN CAST(value_timestamp AS TEXT)
-				ELSE ''
-			END AS pattern_value
-		FROM detected_patterns_replay_player
-		WHERE replay_id = ?
-		ORDER BY player_id ASC, pattern_name ASC
-	`, detail.ReplayID)
+	rowsPlayer, err := d.dbStore.ListPlayerPatterns(d.ctx, detail.ReplayID)
 	if err != nil {
 		return fmt.Errorf("failed to query player patterns: %w", err)
 	}
-	defer rowsPlayer.Close()
-	for rowsPlayer.Next() {
-		var playerID int64
-		var pattern workflowPatternValue
-		if err := rowsPlayer.Scan(&playerID, &pattern.PatternName, &pattern.Value); err != nil {
-			return fmt.Errorf("failed to parse player patterns: %w", err)
-		}
+	for _, row := range rowsPlayer {
+		playerID := row.PlayerID
+		pattern := workflowPatternValue{PatternName: row.PatternName, Value: row.Value}
 		pattern.Value = formatPatternValueForUI(pattern.PatternName, pattern.Value)
 		if player, ok := playerByID[playerID]; ok {
 			player.DetectedPatterns = append(player.DetectedPatterns, pattern)
 		}
-	}
-	if err := rowsPlayer.Err(); err != nil {
-		return fmt.Errorf("failed iterating player patterns: %w", err)
 	}
 	return nil
 }
@@ -235,25 +131,15 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 		PlayerKey:      playerKey,
 	}
 
-	err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
-		SELECT
-			MIN(p.name) AS player_name,
-			COUNT(*) AS games_played,
-			SUM(CASE WHEN p.is_winner = 1 THEN 1 ELSE 0 END) AS wins,
-			AVG(p.apm) AS avg_apm,
-			AVG(p.eapm) AS avg_eapm
-		FROM players p
-		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
-	`, playerKey).Scan(
-		&result.PlayerName,
-		&result.GamesPlayed,
-		&result.Wins,
-		&result.AverageAPM,
-		&result.AverageEAPM,
-	)
+	summary, err := d.dbStore.GetPlayerOverviewSummary(d.ctx, playerKey)
 	if err != nil {
 		return result, fmt.Errorf("failed to load player summary: %w", err)
 	}
+	result.PlayerName = summary.PlayerName
+	result.GamesPlayed = summary.GamesPlayed
+	result.Wins = summary.Wins
+	result.AverageAPM = summary.AverageAPM
+	result.AverageEAPM = summary.AverageEAPM
 	if result.GamesPlayed == 0 {
 		return result, sql.ErrNoRows
 	}
@@ -271,57 +157,23 @@ func (d *Dashboard) buildWorkflowPlayerRecentGames(playerKey string) ([]workflow
 	if err != nil {
 		return nil, err
 	}
-	recentRows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT
-			r.id,
-			r.replay_date,
-			r.file_name,
-			r.map_name,
-			r.duration_seconds,
-			r.game_type,
-			COALESCE((
-				SELECT group_concat(name, ' vs ')
-				FROM (
-					SELECT p2.name AS name
-					FROM players p2
-					WHERE p2.replay_id = r.id AND p2.is_observer = 0 AND lower(trim(coalesce(p2.type, ''))) = 'human'
-					ORDER BY p2.team ASC, p2.id ASC
-				)
-			), ''),
-			COALESCE((
-				SELECT group_concat(p3.name, ', ')
-				FROM players p3
-				WHERE p3.replay_id = r.id AND p3.is_winner = 1 AND p3.is_observer = 0 AND lower(trim(coalesce(p3.type, ''))) = 'human'
-			), '')
-		FROM replays r
-		JOIN players p ON p.replay_id = r.id
-		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
-		ORDER BY r.replay_date DESC, r.id DESC
-		LIMIT 12
-	`, playerKey)
+	recentRows, err := d.dbStore.ListPlayerRecentGames(d.ctx, playerKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load recent games for %s: %w", playerName, err)
 	}
-	defer recentRows.Close()
 	result := []workflowGameListItem{}
-	for recentRows.Next() {
-		var g workflowGameListItem
-		if err := recentRows.Scan(
-			&g.ReplayID,
-			&g.ReplayDate,
-			&g.FileName,
-			&g.MapName,
-			&g.DurationSeconds,
-			&g.GameType,
-			&g.PlayersLabel,
-			&g.WinnersLabel,
-		); err != nil {
-			return nil, fmt.Errorf("failed to parse recent games for %s: %w", playerName, err)
+	for _, row := range recentRows {
+		g := workflowGameListItem{
+			ReplayID:        row.ReplayID,
+			ReplayDate:      row.ReplayDate,
+			FileName:        row.FileName,
+			MapName:         row.MapName,
+			DurationSeconds: row.DurationSeconds,
+			GameType:        row.GameType,
+			PlayersLabel:    row.PlayersLabel,
+			WinnersLabel:    row.WinnersLabel,
 		}
 		result = append(result, g)
-	}
-	if err := recentRows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating recent games for %s: %w", playerName, err)
 	}
 	if err := d.populateWorkflowRecentGamesCurrentPlayer(playerKey, result); err != nil {
 		return nil, fmt.Errorf("failed to populate recent game context for %s: %w", playerName, err)
@@ -340,36 +192,18 @@ func (d *Dashboard) buildWorkflowPlayerApmHistogram(playerKey string) (workflowP
 		PlayerEligible: false,
 	}
 
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT player_key, player_name, average_apm, games_played
-		FROM (
-			SELECT
-				lower(trim(p.name)) AS player_key,
-				MIN(p.name) AS player_name,
-				COALESCE(AVG(CASE WHEN p.apm > 0 THEN p.apm END), 0) AS average_apm,
-				COUNT(*) AS games_played
-			FROM players p
-			WHERE p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
-			GROUP BY lower(trim(p.name))
-		) per_player
-		WHERE games_played >= ?
-			AND average_apm > 0
-	`, minGames)
+	rows, err := d.dbStore.ListPlayerApmAggregates(d.ctx, minGames)
 	if err != nil {
 		return result, err
 	}
-	defer rows.Close()
 
 	values := []float64{}
 	playerValue := 0.0
-	for rows.Next() {
-		var key string
-		var name string
-		var avgAPM float64
-		var gamesPlayed int64
-		if err := rows.Scan(&key, &name, &avgAPM, &gamesPlayed); err != nil {
-			return result, err
-		}
+	for _, row := range rows {
+		key := row.PlayerKey
+		name := row.PlayerName
+		avgAPM := row.AverageAPM
+		gamesPlayed := row.GamesPlayed
 		if avgAPM <= 0 {
 			continue
 		}
@@ -384,9 +218,6 @@ func (d *Dashboard) buildWorkflowPlayerApmHistogram(playerKey string) (workflowP
 			playerValue = avgAPM
 			result.PlayerEligible = true
 		}
-	}
-	if err := rows.Err(); err != nil {
-		return result, err
 	}
 	if len(values) == 0 {
 		return result, nil
@@ -554,38 +385,10 @@ func firstUnitEfficiencyEntriesForRace(playerRace string, state *workflowFirstUn
 }
 
 func (d *Dashboard) collectWorkflowPlayerDelaySamples(onlyPlayerKey string) ([]workflowPlayerDelaySample, error) {
-	args := []any{workflowPlayerDelayCutoffSeconds}
-	filterSQL := ""
-	if onlyPlayerKey != "" {
-		filterSQL = "AND lower(trim(p.name)) = ?"
-		args = append(args, onlyPlayerKey)
-	}
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT
-			p.replay_id,
-			p.id,
-			p.name,
-			p.race,
-			c.seconds_from_game_start,
-			c.action_type,
-			c.unit_type,
-			c.unit_types
-		FROM players p
-		JOIN commands c
-			ON c.replay_id = p.replay_id
-			AND c.player_id = p.id
-		WHERE
-			p.is_observer = 0
-			AND lower(trim(coalesce(p.type, ''))) = 'human'
-			AND c.action_type IN ('Build', 'Train', 'Unit Morph')
-			AND c.seconds_from_game_start <= ?
-			`+filterSQL+`
-		ORDER BY p.replay_id ASC, p.id ASC, c.seconds_from_game_start ASC, c.id ASC
-	`, args...)
+	rows, err := d.dbStore.ListDelayCommandRows(d.ctx, workflowPlayerDelayCutoffSeconds, onlyPlayerKey)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	samples := []workflowPlayerDelaySample{}
 	var currentReplayID int64 = -1
@@ -611,18 +414,15 @@ func (d *Dashboard) collectWorkflowPlayerDelaySamples(onlyPlayerKey string) ([]w
 		}
 	}
 
-	for rows.Next() {
-		var replayID int64
-		var playerID int64
-		var playerName string
-		var playerRace string
-		var second int64
-		var actionType string
-		var unitType sql.NullString
-		var unitTypes sql.NullString
-		if err := rows.Scan(&replayID, &playerID, &playerName, &playerRace, &second, &actionType, &unitType, &unitTypes); err != nil {
-			return nil, err
-		}
+	for _, row := range rows {
+		replayID := row.ReplayID
+		playerID := row.PlayerID
+		playerName := row.PlayerName
+		playerRace := row.PlayerRace
+		second := row.Second
+		actionType := row.ActionType
+		unitType := row.UnitType
+		unitTypes := row.UnitTypes
 		if replayID != currentReplayID || playerID != currentPlayerID {
 			flushCurrent()
 			currentReplayID = replayID
@@ -633,9 +433,6 @@ func (d *Dashboard) collectWorkflowPlayerDelaySamples(onlyPlayerKey string) ([]w
 			state = newWorkflowFirstUnitEfficiencyState()
 		}
 		applyCommandToFirstUnitEfficiencyState(state, actionType, second, unitType, unitTypes)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 	flushCurrent()
 	return samples, nil
@@ -843,14 +640,12 @@ func (d *Dashboard) buildWorkflowPlayerDelayInsight(playerKey string) (workflowP
 		PlayerKey:      playerKey,
 		Pairs:          []workflowPlayerDelayPair{},
 	}
-	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
-		SELECT MIN(name)
-		FROM players
-		WHERE lower(trim(name)) = ? AND is_observer = 0 AND lower(trim(coalesce(type, ''))) = 'human'
-	`, playerKey).Scan(&result.PlayerName); err != nil {
+	playerName, err := d.dbStore.GetPlayerNameByKey(d.ctx, playerKey)
+	if err != nil {
 		return result, err
 	}
-	if strings.TrimSpace(result.PlayerName) == "" {
+	result.PlayerName = playerName
+	if result.PlayerName == "" {
 		return result, sql.ErrNoRows
 	}
 	samples, err := d.collectWorkflowPlayerDelaySamples(playerKey)
@@ -967,172 +762,36 @@ func (d *Dashboard) queryWorkflowUnitCadenceReplayMetrics(filterMode workflowUni
 	if len(excludedUnits) == 0 {
 		return nil, errors.New("workflow unit cadence requires at least one excluded unit")
 	}
-	inClause := buildInClausePlaceholders(len(excludedUnits))
-	filterSQL := ""
-	args := []any{}
-	for _, name := range excludedUnits {
-		args = append(args, name)
-	}
-	if onlyPlayerKey != "" {
-		filterSQL = "AND lower(trim(p.name)) = ?"
-		args = append(args, onlyPlayerKey)
-	}
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		WITH base AS (
-			SELECT
-				c.replay_id,
-				lower(trim(p.name)) AS player_key,
-				MIN(p.name) AS player_name,
-				r.file_name,
-				r.duration_seconds,
-				c.seconds_from_game_start AS t,
-				c.id AS cmd_id
-			FROM commands c
-			JOIN players p
-				ON p.id = c.player_id
-			JOIN replays r
-				ON r.id = c.replay_id
-			WHERE
-				p.is_observer = 0
-				AND lower(trim(coalesce(p.type, ''))) = 'human'
-				AND c.action_type IN ('Train', 'Unit Morph')
-				AND c.unit_type IS NOT NULL
-				AND trim(c.unit_type) <> ''
-				AND c.unit_type NOT IN (`+inClause+`)
-				AND c.seconds_from_game_start >= `+strconv.FormatInt(workflowUnitCadenceStartSeconds, 10)+`
-				AND c.seconds_from_game_start <= CAST(`+strconv.FormatFloat(workflowUnitCadenceEndFraction, 'f', 4, 64)+` * r.duration_seconds AS INTEGER)
-				AND CAST(`+strconv.FormatFloat(workflowUnitCadenceEndFraction, 'f', 4, 64)+` * r.duration_seconds AS INTEGER) > `+strconv.FormatInt(workflowUnitCadenceStartSeconds, 10)+`
-				`+filterSQL+`
-			GROUP BY
-				c.replay_id,
-				player_key,
-				r.file_name,
-				r.duration_seconds,
-				c.seconds_from_game_start,
-				c.id
-		),
-		ordered AS (
-			SELECT
-				replay_id,
-				player_key,
-				player_name,
-				file_name,
-				duration_seconds,
-				t,
-				cmd_id,
-				LAG(t) OVER (PARTITION BY replay_id, player_key ORDER BY t, cmd_id) AS prev_t
-			FROM base
-		),
-		gaps AS (
-			SELECT
-				replay_id,
-				player_key,
-				player_name,
-				file_name,
-				duration_seconds,
-				t,
-				(t - prev_t) AS gap_s
-			FROM ordered
-		),
-		replay_metrics AS (
-			SELECT
-				replay_id,
-				player_key,
-				player_name,
-				file_name,
-				duration_seconds,
-				CAST(`+strconv.FormatFloat(workflowUnitCadenceEndFraction, 'f', 4, 64)+` * duration_seconds AS INTEGER) - `+strconv.FormatInt(workflowUnitCadenceStartSeconds, 10)+` AS window_s,
-				COUNT(*) AS n_units,
-				COUNT(gap_s) AS n_gaps,
-				AVG(gap_s * 1.0) AS mean_gap_s,
-				sqrt(AVG(gap_s * gap_s * 1.0) - AVG(gap_s * 1.0) * AVG(gap_s * 1.0)) AS std_gap_s,
-				SUM(CASE WHEN gap_s >= `+strconv.FormatInt(workflowUnitCadenceIdleGapSeconds, 10)+` THEN 1 ELSE 0 END) * 1.0 / NULLIF(COUNT(gap_s), 0) AS idle20_ratio
-			FROM gaps
-			GROUP BY replay_id, player_key, player_name, file_name, duration_seconds
-			HAVING
-				COUNT(*) >= `+strconv.FormatInt(workflowUnitCadenceMinUnitsPerReplay, 10)+`
-				AND COUNT(gap_s) >= `+strconv.FormatInt(workflowUnitCadenceMinGapsPerReplay, 10)+`
-				AND window_s > 0
-		),
-		scored AS (
-			SELECT
-				replay_id,
-				player_key,
-				player_name,
-				file_name,
-				duration_seconds,
-				window_s,
-				n_units,
-				n_gaps,
-				(n_units * 60.0) / window_s AS rate_per_min,
-				(std_gap_s / NULLIF(mean_gap_s, 0)) AS cv_gap,
-				(((std_gap_s / NULLIF(mean_gap_s, 0)) - 1.0) / ((std_gap_s / NULLIF(mean_gap_s, 0)) + 1.0)) AS burstiness,
-				idle20_ratio,
-				((n_units * 60.0) / window_s) / (1.0 + COALESCE((std_gap_s / NULLIF(mean_gap_s, 0)), 9999.0)) AS cadence_score
-			FROM replay_metrics
-		)
-		SELECT
-			replay_id,
-			player_key,
-			player_name,
-			file_name,
-			duration_seconds,
-			window_s,
-			n_units,
-			n_gaps,
-			rate_per_min,
-			cv_gap,
-			burstiness,
-			idle20_ratio,
-			cadence_score
-		FROM scored
-		ORDER BY player_key ASC, replay_id ASC
-	`, args...)
+	rows, err := d.dbStore.ListUnitCadenceReplayMetrics(
+		d.ctx,
+		excludedUnits,
+		onlyPlayerKey,
+		workflowUnitCadenceStartSeconds,
+		workflowUnitCadenceEndFraction,
+		workflowUnitCadenceIdleGapSeconds,
+		workflowUnitCadenceMinUnitsPerReplay,
+		workflowUnitCadenceMinGapsPerReplay,
+	)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
 	result := []workflowPlayerUnitCadenceReplayMetric{}
-	for rows.Next() {
-		var row workflowPlayerUnitCadenceReplayMetric
-		var cvGap sql.NullFloat64
-		var burstiness sql.NullFloat64
-		var idle20 sql.NullFloat64
-		var cadence sql.NullFloat64
-		if err := rows.Scan(
-			&row.ReplayID,
-			&row.PlayerKey,
-			&row.PlayerName,
-			&row.FileName,
-			&row.DurationSeconds,
-			&row.WindowSeconds,
-			&row.UnitsProduced,
-			&row.GapCount,
-			&row.RatePerMinute,
-			&cvGap,
-			&burstiness,
-			&idle20,
-			&cadence,
-		); err != nil {
-			return nil, err
-		}
-		if cvGap.Valid {
-			row.CVGap = cvGap.Float64
-		}
-		if burstiness.Valid {
-			row.Burstiness = burstiness.Float64
-		}
-		if idle20.Valid {
-			row.Idle20Ratio = idle20.Float64
-		}
-		if cadence.Valid {
-			row.CadenceScore = cadence.Float64
-		}
-		result = append(result, row)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
+	for _, row := range rows {
+		result = append(result, workflowPlayerUnitCadenceReplayMetric{
+			ReplayID:        row.ReplayID,
+			PlayerKey:       row.PlayerKey,
+			PlayerName:      row.PlayerName,
+			FileName:        row.FileName,
+			DurationSeconds: row.DurationSeconds,
+			WindowSeconds:   row.WindowSeconds,
+			UnitsProduced:   row.UnitsProduced,
+			GapCount:        row.GapCount,
+			RatePerMinute:   row.RatePerMinute,
+			CVGap:           row.CVGap,
+			Burstiness:      row.Burstiness,
+			Idle20Ratio:     row.Idle20Ratio,
+			CadenceScore:    row.CadenceScore,
+		})
 	}
 	return result, nil
 }
@@ -1295,14 +954,12 @@ func (d *Dashboard) buildWorkflowPlayerUnitCadenceInsight(playerKey string, filt
 		MinGapsPerReplay:  workflowUnitCadenceMinGapsPerReplay,
 		Replays:           []workflowPlayerUnitCadenceReplay{},
 	}
-	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
-		SELECT MIN(name)
-		FROM players
-		WHERE lower(trim(name)) = ? AND is_observer = 0 AND lower(trim(coalesce(type, ''))) = 'human'
-	`, playerKey).Scan(&result.PlayerName); err != nil {
+	playerName, err := d.dbStore.GetPlayerNameByKey(d.ctx, playerKey)
+	if err != nil {
 		return result, err
 	}
-	if strings.TrimSpace(result.PlayerName) == "" {
+	result.PlayerName = playerName
+	if result.PlayerName == "" {
 		return result, sql.ErrNoRows
 	}
 	replays, err := d.queryWorkflowUnitCadenceReplayMetrics(filterMode, playerKey)
@@ -1581,12 +1238,8 @@ func minInt(a, b int) int {
 }
 
 func (d *Dashboard) buildWorkflowPlayerMetrics(playerKey string) (workflowPlayerMetrics, error) {
-	var gamesPlayed int64
-	if err := d.currentReplayScopedDB().QueryRowContext(d.ctx, `
-		SELECT COUNT(*)
-		FROM players p
-		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
-	`, playerKey).Scan(&gamesPlayed); err != nil {
+	gamesPlayed, err := d.dbStore.CountPlayerGames(d.ctx, playerKey)
+	if err != nil {
 		return workflowPlayerMetrics{}, fmt.Errorf("failed to load player games for metrics: %w", err)
 	}
 	if gamesPlayed <= 0 {
@@ -1613,27 +1266,17 @@ func (d *Dashboard) buildWorkflowPlayerMetrics(playerKey string) (workflowPlayer
 }
 
 func (d *Dashboard) raceBehaviourSectionsForPlayer(playerKey string, totalGames int64) ([]workflowRaceBehaviourSection, error) {
-	raceRows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT p.race, COUNT(*) AS game_count, SUM(CASE WHEN p.is_winner = 1 THEN 1 ELSE 0 END) AS wins
-		FROM players p
-		WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
-		GROUP BY p.race
-		ORDER BY game_count DESC, p.race ASC
-	`, playerKey)
+	raceRows, err := d.dbStore.ListRaceSections(d.ctx, playerKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load race behaviour sections: %w", err)
 	}
-	defer raceRows.Close()
 
 	sections := []workflowRaceBehaviourSection{}
 	byRace := map[string]*workflowRaceBehaviourSection{}
-	for raceRows.Next() {
-		var race string
-		var gameCount int64
-		var wins int64
-		if err := raceRows.Scan(&race, &gameCount, &wins); err != nil {
-			return nil, fmt.Errorf("failed to parse race behaviour sections: %w", err)
-		}
+	for _, row := range raceRows {
+		race := row.Race
+		gameCount := row.GameCount
+		wins := row.Wins
 		section := workflowRaceBehaviourSection{
 			Race:             strings.TrimSpace(race),
 			GameCount:        gameCount,
@@ -1651,43 +1294,14 @@ func (d *Dashboard) raceBehaviourSectionsForPlayer(playerKey string, totalGames 
 		sections = append(sections, section)
 		byRace[section.Race] = &sections[len(sections)-1]
 	}
-	if err := raceRows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating race behaviour sections: %w", err)
-	}
-
-	patternRows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT p.race, dp.pattern_name, COUNT(DISTINCT dp.replay_id) AS replay_count
-		FROM detected_patterns_replay_player dp
-		JOIN players p ON p.id = dp.player_id
-		WHERE lower(trim(p.name)) = ?
-			AND p.is_observer = 0
-			AND lower(trim(coalesce(p.type, ''))) = 'human'
-			AND dp.pattern_name IS NOT NULL
-			AND dp.pattern_name <> ''
-			AND lower(replace(replace(dp.pattern_name, ' ', ''), '_', '')) NOT IN ('usedhotkeygroups', 'viewportmultitasking')
-			AND (
-				dp.value_bool = 1
-				OR dp.value_int IS NOT NULL
-				OR dp.value_timestamp IS NOT NULL
-				OR (
-					dp.value_string IS NOT NULL
-					AND trim(dp.value_string) <> ''
-					AND lower(trim(dp.value_string)) NOT IN ('0', 'false', 'no', '-')
-				)
-			)
-		GROUP BY p.race, dp.pattern_name
-	`, playerKey)
+	patternRows, err := d.dbStore.ListRacePatterns(d.ctx, playerKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load race common behaviours: %w", err)
 	}
-	defer patternRows.Close()
-	for patternRows.Next() {
-		var race string
-		var patternName string
-		var replayCount int64
-		if err := patternRows.Scan(&race, &patternName, &replayCount); err != nil {
-			return nil, fmt.Errorf("failed to parse race common behaviours: %w", err)
-		}
+	for _, row := range patternRows {
+		race := row.Race
+		patternName := row.PatternName
+		replayCount := row.ReplayCount
 		raceKey := strings.TrimSpace(race)
 		section, ok := byRace[raceKey]
 		if !ok || section.GameCount <= 0 {
@@ -1704,10 +1318,6 @@ func (d *Dashboard) raceBehaviourSectionsForPlayer(playerKey string, totalGames 
 			GameRate:    gameRate,
 		})
 	}
-	if err := patternRows.Err(); err != nil {
-		return nil, fmt.Errorf("failed iterating race common behaviours: %w", err)
-	}
-
 	for i := range sections {
 		sort.Slice(sections[i].CommonBehaviours, func(a, b int) bool {
 			if sections[i].CommonBehaviours[a].ReplayCount == sections[i].CommonBehaviours[b].ReplayCount {
@@ -1723,28 +1333,7 @@ func (d *Dashboard) raceBehaviourSectionsForPlayer(playerKey string, totalGames 
 }
 
 func (d *Dashboard) topActionTypesForPlayer(playerID int64, limit int) ([]string, error) {
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT c.action_type, COUNT(*) AS n
-		FROM commands c
-		WHERE c.player_id = ?
-		GROUP BY c.action_type
-		ORDER BY n DESC
-		LIMIT ?
-	`, playerID, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var actionType string
-		var n int64
-		if err := rows.Scan(&actionType, &n); err != nil {
-			return nil, err
-		}
-		out = append(out, actionType)
-	}
-	return out, rows.Err()
+	return d.dbStore.ListTopActionTypes(d.ctx, playerID, limit)
 }
 
 func parseGameEvents(raw string) []workflowGameEvent {
@@ -1845,29 +1434,17 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 		playerByID[player.PlayerID] = player
 	}
 
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT c.player_id, c.seconds_from_game_start, c.unit_type
-		FROM commands c
-		WHERE c.replay_id = ?
-			AND c.action_type IN ('Train', 'Unit Morph', 'Building Morph', 'Build')
-			AND c.unit_type IS NOT NULL
-			AND c.unit_type <> ''
-		ORDER BY c.seconds_from_game_start ASC, c.player_id ASC
-	`, detail.ReplayID)
+	rows, err := d.dbStore.ListUnitSliceCommandRows(d.ctx, detail.ReplayID)
 	if err != nil {
 		return fmt.Errorf("failed to load unit slices: %w", err)
 	}
-	defer rows.Close()
 
 	perSlice := map[int64]map[int64]map[string]int64{}
 	boundaries := workflowSliceBoundaries(detail.DurationSeconds)
-	for rows.Next() {
-		var playerID int64
-		var second int64
-		var unitType string
-		if err := rows.Scan(&playerID, &second, &unitType); err != nil {
-			return fmt.Errorf("failed to parse unit slices: %w", err)
-		}
+	for _, row := range rows {
+		playerID := row.PlayerID
+		second := row.Second
+		unitType := row.UnitType
 		if second < 0 {
 			second = 0
 		}
@@ -1880,10 +1457,6 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 		}
 		perSlice[sliceStart][playerID][unitType]++
 	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("failed iterating unit slices: %w", err)
-	}
-
 	for i, sliceStart := range boundaries {
 		endExclusive := detail.DurationSeconds + 1
 		if i+1 < len(boundaries) {
@@ -1922,14 +1495,11 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 
 func (d *Dashboard) populateTimingsForGameDetail(detail *workflowGameDetail) error {
 	timings := workflowReplayTimings{}
-	gas, err := d.playerTimingsFromReplayCommands(detail.ReplayID, detail.Players, `
-		SELECT c.player_id, c.seconds_from_game_start, c.unit_type
-		FROM commands c
-		WHERE c.replay_id = ?
-			AND c.action_type = 'Build'
-			AND c.unit_type IN ('Assimilator', 'Extractor', 'Refinery')
-		ORDER BY c.player_id ASC, c.seconds_from_game_start ASC
-	`)
+	gasRows, err := d.dbStore.ListGasTimingRows(d.ctx, detail.ReplayID)
+	if err != nil {
+		return err
+	}
+	gas, err := d.playerTimingsFromReplayCommands(detail.Players, gasRows)
 	if err != nil {
 		return err
 	}
@@ -1941,29 +1511,21 @@ func (d *Dashboard) populateTimingsForGameDetail(detail *workflowGameDetail) err
 	timings.Gas = gas
 	timings.Expansion = playerExpansionTimingsFromGameEvents(detail.GameEvents, detail.Players)
 
-	upgrades, err := d.playerLabeledTimingsFromReplayCommands(detail.ReplayID, detail.Players, `
-		SELECT c.player_id, c.seconds_from_game_start, c.upgrade_name
-		FROM commands c
-		WHERE c.replay_id = ?
-			AND c.action_type = 'Upgrade'
-			AND c.upgrade_name IS NOT NULL
-			AND c.upgrade_name <> ''
-		ORDER BY c.player_id ASC, c.seconds_from_game_start ASC
-	`)
+	upgradeRows, err := d.dbStore.ListUpgradeTimingRows(d.ctx, detail.ReplayID)
+	if err != nil {
+		return err
+	}
+	upgrades, err := d.playerLabeledTimingsFromReplayCommands(detail.Players, upgradeRows)
 	if err != nil {
 		return err
 	}
 	timings.Upgrades = upgrades
 
-	tech, err := d.playerLabeledTimingsFromReplayCommands(detail.ReplayID, detail.Players, `
-		SELECT c.player_id, c.seconds_from_game_start, c.tech_name
-		FROM commands c
-		WHERE c.replay_id = ?
-			AND c.action_type = 'Tech'
-			AND c.tech_name IS NOT NULL
-			AND c.tech_name <> ''
-		ORDER BY c.player_id ASC, c.seconds_from_game_start ASC
-	`)
+	techRows, err := d.dbStore.ListTechTimingRows(d.ctx, detail.ReplayID)
+	if err != nil {
+		return err
+	}
+	tech, err := d.playerLabeledTimingsFromReplayCommands(detail.Players, techRows)
 	if err != nil {
 		return err
 	}
@@ -1991,27 +1553,17 @@ func (d *Dashboard) populateFirstUnitEfficiencyForGameDetail(detail *workflowGam
 		}
 	}
 
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		SELECT c.player_id, c.seconds_from_game_start, c.action_type, c.unit_type, c.unit_types
-		FROM commands c
-		WHERE c.replay_id = ?
-			AND c.action_type IN ('Build', 'Train', 'Unit Morph')
-		ORDER BY c.player_id ASC, c.seconds_from_game_start ASC, c.id ASC
-	`, detail.ReplayID)
+	rows, err := d.dbStore.ListFirstUnitCommandRows(d.ctx, detail.ReplayID)
 	if err != nil {
 		return fmt.Errorf("failed to load first unit efficiency commands: %w", err)
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var playerID int64
-		var second int64
-		var actionType string
-		var unitType sql.NullString
-		var unitTypes sql.NullString
-		if err := rows.Scan(&playerID, &second, &actionType, &unitType, &unitTypes); err != nil {
-			return fmt.Errorf("failed to parse first unit efficiency command row: %w", err)
-		}
+	for _, row := range rows {
+		playerID := row.PlayerID
+		second := row.Second
+		actionType := row.ActionType
+		unitType := row.UnitType
+		unitTypes := row.UnitTypes
 		playerState, ok := stateByPlayer[playerID]
 		if !ok {
 			continue
@@ -2036,10 +1588,6 @@ func (d *Dashboard) populateFirstUnitEfficiencyForGameDetail(detail *workflowGam
 			}
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("failed iterating first unit efficiency commands: %w", err)
-	}
-
 	for _, player := range detail.Players {
 		playerState, ok := stateByPlayer[player.PlayerID]
 		if !ok {
@@ -2136,116 +1684,30 @@ func (d *Dashboard) populateUnitCadenceForGameDetail(detail *workflowGameDetail)
 	if len(excludedUnits) == 0 {
 		return errors.New("missing excluded units for cadence computation")
 	}
-	placeholders := buildInClausePlaceholders(len(excludedUnits))
-	args := []any{detail.ReplayID}
-	for _, name := range excludedUnits {
-		args = append(args, name)
-	}
-	rows, err := d.currentReplayScopedDB().QueryContext(d.ctx, `
-		WITH base AS (
-			SELECT
-				c.player_id,
-				c.seconds_from_game_start AS t,
-				c.id AS cmd_id
-			FROM commands c
-			JOIN players p
-				ON p.id = c.player_id
-			JOIN replays r
-				ON r.id = c.replay_id
-			WHERE
-				c.replay_id = ?
-				AND p.is_observer = 0
-				AND lower(trim(coalesce(p.type, ''))) = 'human'
-				AND c.action_type IN ('Train', 'Unit Morph')
-				AND c.unit_type IS NOT NULL
-				AND trim(c.unit_type) <> ''
-				AND c.unit_type NOT IN (`+placeholders+`)
-				AND c.seconds_from_game_start >= `+strconv.FormatInt(workflowUnitCadenceStartSeconds, 10)+`
-				AND c.seconds_from_game_start <= CAST(`+strconv.FormatFloat(workflowUnitCadenceEndFraction, 'f', 4, 64)+` * r.duration_seconds AS INTEGER)
-				AND CAST(`+strconv.FormatFloat(workflowUnitCadenceEndFraction, 'f', 4, 64)+` * r.duration_seconds AS INTEGER) > `+strconv.FormatInt(workflowUnitCadenceStartSeconds, 10)+`
-		),
-		ordered AS (
-			SELECT
-				player_id,
-				t,
-				cmd_id,
-				LAG(t) OVER (PARTITION BY player_id ORDER BY t, cmd_id) AS prev_t
-			FROM base
-		),
-		gaps AS (
-			SELECT
-				player_id,
-				t,
-				(t - prev_t) AS gap_s
-			FROM ordered
-		),
-		replay_metrics AS (
-			SELECT
-				player_id,
-				CAST(`+strconv.FormatFloat(workflowUnitCadenceEndFraction, 'f', 4, 64)+` * ? AS INTEGER) - `+strconv.FormatInt(workflowUnitCadenceStartSeconds, 10)+` AS window_s,
-				COUNT(*) AS n_units,
-				COUNT(gap_s) AS n_gaps,
-				AVG(gap_s * 1.0) AS mean_gap_s,
-				sqrt(AVG(gap_s * gap_s * 1.0) - AVG(gap_s * 1.0) * AVG(gap_s * 1.0)) AS std_gap_s,
-				SUM(CASE WHEN gap_s >= `+strconv.FormatInt(workflowUnitCadenceIdleGapSeconds, 10)+` THEN 1 ELSE 0 END) * 1.0 / NULLIF(COUNT(gap_s), 0) AS idle20_ratio
-			FROM gaps
-			GROUP BY player_id
-			HAVING window_s > 0
-		),
-		scored AS (
-			SELECT
-				player_id,
-				window_s,
-				n_units,
-				n_gaps,
-				(n_units * 60.0) / window_s AS rate_per_min,
-				(std_gap_s / NULLIF(mean_gap_s, 0)) AS cv_gap,
-				(((std_gap_s / NULLIF(mean_gap_s, 0)) - 1.0) / ((std_gap_s / NULLIF(mean_gap_s, 0)) + 1.0)) AS burstiness,
-				idle20_ratio,
-				((n_units * 60.0) / window_s) / (1.0 + COALESCE((std_gap_s / NULLIF(mean_gap_s, 0)), 9999.0)) AS cadence_score
-			FROM replay_metrics
-		)
-		SELECT
-			player_id,
-			window_s,
-			n_units,
-			n_gaps,
-			rate_per_min,
-			cv_gap,
-			burstiness,
-			idle20_ratio,
-			cadence_score
-		FROM scored
-	`, append(args, detail.DurationSeconds)...)
+	rows, err := d.dbStore.ListGameUnitCadenceRows(
+		d.ctx,
+		detail.ReplayID,
+		detail.DurationSeconds,
+		excludedUnits,
+		workflowUnitCadenceStartSeconds,
+		workflowUnitCadenceEndFraction,
+		workflowUnitCadenceIdleGapSeconds,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to query game unit cadence: %w", err)
 	}
-	defer rows.Close()
 
 	scoredByPlayerID := map[int64]workflowGameUnitCadencePlayer{}
-	for rows.Next() {
-		var playerID int64
-		var windowSeconds int64
-		var unitsProduced int64
-		var gapCount int64
-		var ratePerMinute sql.NullFloat64
-		var cvGap sql.NullFloat64
-		var burstiness sql.NullFloat64
-		var idle20Ratio sql.NullFloat64
-		var cadenceScore sql.NullFloat64
-		if err := rows.Scan(
-			&playerID,
-			&windowSeconds,
-			&unitsProduced,
-			&gapCount,
-			&ratePerMinute,
-			&cvGap,
-			&burstiness,
-			&idle20Ratio,
-			&cadenceScore,
-		); err != nil {
-			return fmt.Errorf("failed to parse game unit cadence: %w", err)
-		}
+	for _, row := range rows {
+		playerID := row.PlayerID
+		windowSeconds := row.WindowSeconds
+		unitsProduced := row.UnitsProduced
+		gapCount := row.GapCount
+		ratePerMinute := row.RatePerMinute
+		cvGap := row.CVGap
+		burstiness := row.Burstiness
+		idle20Ratio := row.Idle20Ratio
+		cadenceScore := row.CadenceScore
 		player, ok := playerByID[playerID]
 		if !ok {
 			continue
@@ -2281,9 +1743,6 @@ func (d *Dashboard) populateUnitCadenceForGameDetail(detail *workflowGameDetail)
 			entry.IneligibleReason = ""
 		}
 		scoredByPlayerID[playerID] = entry
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("failed iterating game unit cadence: %w", err)
 	}
 
 	for i := range detail.UnitCadence {

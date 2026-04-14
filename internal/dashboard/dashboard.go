@@ -15,9 +15,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/getkin/kin-openapi/openapi3filter"
+	"github.com/getkin/kin-openapi/routers"
+	"github.com/getkin/kin-openapi/routers/gorillamux"
 	"github.com/gorilla/mux"
 	_ "modernc.org/sqlite"
 
+	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
+	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
 	"github.com/marianogappa/screpdb/internal/dashboard/variables"
 	"github.com/marianogappa/screpdb/internal/ingest"
 	"github.com/marianogappa/screpdb/internal/storage"
@@ -35,6 +41,7 @@ const (
 type Dashboard struct {
 	ctx                context.Context
 	db                 *sql.DB
+	dbStore            *dashboarddb.Store
 	replayScopedMu     sync.RWMutex
 	replayScopedDB     *sql.DB
 	globalReplayFilter globalReplayFilterConfig
@@ -61,7 +68,7 @@ func New(ctx context.Context, store storage.Storage, sqlitePath, aiVendor, apiKe
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	if _, err := db.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
+	if err := dashboarddb.EnableForeignKeys(db); err != nil {
 		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
 
@@ -92,6 +99,7 @@ func New(ctx context.Context, store storage.Storage, sqlitePath, aiVendor, apiKe
 		ingestStatus:  "idle",
 		sqlitePath:    sqlitePath,
 	}
+	dashboard.dbStore = dashboarddb.NewStore(dashboard.db, dashboard.currentReplayScopedDB, dashboard.withFilteredConnection)
 	if err := dashboard.initializeIngestSettings(ctx); err != nil {
 		return nil, fmt.Errorf("failed to initialize ingest settings: %w", err)
 	}
@@ -103,46 +111,68 @@ func New(ctx context.Context, store storage.Storage, sqlitePath, aiVendor, apiKe
 
 func (d *Dashboard) setupRouter() *mux.Router {
 	r := mux.NewRouter()
-	r.HandleFunc("/api/custom/dashboard", d.handlerListDashboards).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard/{url}", d.handlerGetDashboard).Methods(http.MethodGet, http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard/{url}", d.handlerDeleteDashboard).Methods(http.MethodDelete, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard", d.handlerCreateDashboard).Methods(http.MethodPut, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard/{url}", d.handlerUpdateDashboard).Methods(http.MethodPut, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard/{url}/widget", d.handlerListDashboardWidgets).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard/{url}/widget/{wid}", d.handlerDeleteDashboardWidget).Methods(http.MethodDelete, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard/{url}/widget", d.handlerCreateDashboardWidget).Methods(http.MethodPut, http.MethodOptions)
-	r.HandleFunc("/api/custom/dashboard/{url}/widget/{wid}", d.handlerUpdateDashboardWidget).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/api/custom/query", d.handlerExecuteQuery).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/api/custom/query/variables", d.handlerGetQueryVariables).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/api/custom/ingest", d.handlerIngest).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/api/custom/ingest/settings", d.handlerGetIngestSettings).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/custom/ingest/settings", d.handlerUpdateIngestSettings).Methods(http.MethodPut, http.MethodOptions)
-	r.HandleFunc("/api/custom/ingest/logs", d.handlerIngestLogs).Methods(http.MethodGet)
-	r.HandleFunc("/api/custom/global-replay-filter", d.handlerGetGlobalReplayFilterConfig).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/custom/global-replay-filter", d.handlerUpdateGlobalReplayFilterConfig).Methods(http.MethodPut, http.MethodOptions)
-	r.HandleFunc("/api/custom/global-replay-filter/options", d.handlerGetGlobalReplayFilterOptions).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/games", d.handlerGamesList).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/games/{replayID}", d.handlerGameDetail).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players", d.handlerPlayersList).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/insights/apm-histogram", d.handlerPlayersApmHistogram).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/insights/first-unit-delay", d.handlerPlayersDelayHistogram).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/insights/unit-production-cadence", d.handlerPlayersUnitCadence).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/insights/viewport-multitasking", d.handlerPlayersViewportMultitasking).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}", d.handlerPlayerDetail).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/recent-games", d.handlerPlayerRecentGames).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/chat-summary", d.handlerPlayerChatSummary).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/metrics", d.handlerPlayerMetrics).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/insight", d.handlerPlayerInsight).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/outliers", d.handlerPlayerOutliers).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/insights/apm-histogram", d.handlerPlayerApmHistogram).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/insights/first-unit-delay", d.handlerPlayerDelayInsight).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/insights/unit-production-cadence", d.handlerPlayerUnitCadence).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/player-colors", d.handlerPlayerColors).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/api/games/{replayID}/ask", d.handlerGameAsk).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/api/games/{replayID}/see", d.handlerGameSee).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/api/players/{playerKey}/ask", d.handlerPlayerAsk).Methods(http.MethodPost, http.MethodOptions)
+	swagger, err := apigen.GetSwagger()
+	if err != nil {
+		panic(fmt.Errorf("failed to load embedded OpenAPI spec: %w", err))
+	}
+	swagger.Servers = nil
+	openapiRouter, err := gorillamux.NewRouter(swagger)
+	if err != nil {
+		panic(fmt.Errorf("failed to create OpenAPI validator router: %w", err))
+	}
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !strings.HasPrefix(r.URL.Path, "/api/") || r.Method == http.MethodOptions {
+				next.ServeHTTP(w, r)
+				return
+			}
 
-	r.HandleFunc("/api/health", d.handlerHealthcheck).Methods(http.MethodGet, http.MethodOptions)
+			route, pathParams, findErr := openapiRouter.FindRoute(r)
+			if findErr != nil {
+				if errors.Is(findErr, routers.ErrMethodNotAllowed) {
+					http.Error(w, findErr.Error(), http.StatusMethodNotAllowed)
+					return
+				}
+				// Unknown API paths should continue to SPA fallback behavior.
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			requestValidationInput := &openapi3filter.RequestValidationInput{
+				Request:    r,
+				PathParams: pathParams,
+				Route:      route,
+			}
+			if validationErr := openapi3filter.ValidateRequest(r.Context(), requestValidationInput); validationErr != nil {
+				status := http.StatusBadRequest
+				if _, ok := validationErr.(*openapi3filter.SecurityRequirementsError); ok {
+					status = http.StatusUnauthorized
+				}
+				http.Error(w, validationErr.Error(), status)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	})
+	strictHandler := apigen.NewStrictHandlerWithOptions(
+		newOpenAPIStrictAdapter(d),
+		nil,
+		apigen.StrictHTTPServerOptions{
+			RequestErrorHandlerFunc: func(w http.ResponseWriter, _ *http.Request, err error) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			},
+			ResponseErrorHandlerFunc: func(w http.ResponseWriter, _ *http.Request, err error) {
+				http.Error(w, err.Error(), dashboardservice.StatusCode(err))
+			},
+		},
+	)
+	// websocket endpoint remains a manual route to preserve Upgrade semantics
+	r.HandleFunc("/api/custom/ingest/logs", d.handlerIngestLogs).Methods(http.MethodGet)
+	apigen.HandlerFromMux(strictHandler, r)
+	r.PathPrefix("/api/").Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
 	r.PathPrefix("/").Handler(d.spaHandler())
 	return r
 }
@@ -261,48 +291,24 @@ func bytesToWidgetConfig(data []byte) (WidgetConfig, error) {
 
 func (d *Dashboard) executeQuery(query string, usedVariables map[string]variables.Variable, replaysFilterSQL *string) ([]map[string]any, []string, error) {
 	args := buildNamedArgs(usedVariables)
-	var results []map[string]any
-	var columns []string
 
-	err := d.withFilteredConnection(replaysFilterSQL, func(db *sql.DB) error {
-		rows, err := db.QueryContext(d.ctx, query, args...)
+	var (
+		results []map[string]any
+		columns []string
+	)
+	err := d.dbStore.WithFilteredConnection(replaysFilterSQL, func(db *sql.DB) error {
+		rows, err := dashboarddb.QueryContextOnDB(d.ctx, db, query, args...)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
-
-		columns, err = rows.Columns()
-		if err != nil {
-			return err
+		scannedRows, scannedColumns, scanErr := dashboarddb.ScanDynamicRows(rows)
+		if scanErr != nil {
+			return scanErr
 		}
-
-		for rows.Next() {
-			values := make([]any, len(columns))
-			valuePtrs := make([]any, len(columns))
-			for i := range values {
-				valuePtrs[i] = &values[i]
-			}
-
-			if err := rows.Scan(valuePtrs...); err != nil {
-				return err
-			}
-
-			row := make(map[string]any)
-			for i, col := range columns {
-				val := values[i]
-				switch v := val.(type) {
-				case []byte:
-					row[col] = string(v)
-				case nil:
-					row[col] = nil
-				default:
-					row[col] = v
-				}
-			}
-			results = append(results, row)
-		}
-
-		return rows.Err()
+		results = scannedRows
+		columns = scannedColumns
+		return nil
 	})
 
 	if err != nil {
@@ -358,32 +364,7 @@ func applyReplayFilterViews(db *sql.DB, filterSQL string) error {
 	if hasUnqualifiedReplays(qualified) {
 		return fmt.Errorf("replays_filter_sql must reference main.replays when used in a view")
 	}
-	if _, err := db.Exec(`CREATE TEMP VIEW replays AS ` + qualified); err != nil {
-		return err
-	}
-	if _, err := db.Exec(`CREATE TEMP VIEW players AS SELECT * FROM main.players WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
-		return err
-	}
-	if _, err := db.Exec(`CREATE TEMP VIEW commands AS SELECT * FROM main.commands WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
-		return err
-	}
-	if _, err := db.Exec(`CREATE TEMP VIEW commands_low_value AS SELECT * FROM main.commands_low_value WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
-		return err
-	}
-	if _, err := db.Exec(`CREATE TEMP VIEW detected_patterns_replay AS SELECT * FROM main.detected_patterns_replay WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
-		return err
-	}
-	if _, err := db.Exec(`CREATE TEMP VIEW detected_patterns_replay_team AS SELECT * FROM main.detected_patterns_replay_team WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
-		return err
-	}
-	if _, err := db.Exec(`CREATE TEMP VIEW detected_patterns_replay_player AS
-		SELECT *
-		FROM main.detected_patterns_replay_player
-		WHERE replay_id IN (SELECT id FROM replays)
-			AND player_id IN (SELECT id FROM players)`); err != nil {
-		return err
-	}
-	return nil
+	return dashboarddb.ApplyReplayTempViews(db, qualified)
 }
 
 func normalizeSQL(value string) string {
@@ -446,7 +427,7 @@ func openReplayScopedDB(sqlitePath string, replaysFilterSQL *string) (*sql.DB, e
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 
-	if _, err := db.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
+	if err := dashboarddb.EnableForeignKeys(db); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}

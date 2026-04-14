@@ -1,0 +1,27 @@
+version: "2"
+sql:
+  - engine: sqlite
+    schema:
+      - internal/dashboard/db/sqlc/schema.sql
+    queries:
+      - internal/dashboard/db/sqlc/queries/settings.sql
+      - internal/dashboard/db/sqlc/queries/dashboard.sql
+      - internal/dashboard/db/sqlc/queries/dashboard_model.sql
+      - internal/dashboard/db/sqlc/queries/global_replay_filter.sql
+      - internal/dashboard/db/sqlc/queries/viewport.sql
+      - internal/dashboard/db/sqlc/queries/player_insight_static.sql
+      - internal/dashboard/db/sqlc/queries/player_insight_aux.sql
+      - internal/dashboard/db/sqlc/queries/game_detail.sql
+      - internal/dashboard/db/sqlc/queries/game_detail_more.sql
+      - internal/dashboard/db/sqlc/queries/unit_cadence_static.sql
+      - internal/dashboard/db/sqlc/queries/workflow_static.sql
+    gen:
+      go:
+        package: sqlcgen
+        out: internal/dashboard/db/sqlcgen
+        emit_json_tags: false
+        emit_interface: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+        emit_exported_queries: true
+        emit_pointers_for_null_types: true
