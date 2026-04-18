@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	db "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
@@ -26,6 +27,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	detail.ReplayDate = summary.ReplayDate
 	detail.FileName = summary.FileName
 	detail.MapName = summary.MapName
+	detail.MapVisual = d.resolveWorkflowMapVisual(summary.MapName)
 	detail.DurationSeconds = summary.DurationSeconds
 	detail.GameType = summary.GameType
 
@@ -34,10 +36,12 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		return detail, fmt.Errorf("failed to load players: %w", err)
 	}
 
+	startClockByPlayerID := map[int64]int{}
 	for _, row := range rows {
 		var p workflowGamePlayer
 		p.PlayerID = row.PlayerID
 		p.Name = row.Name
+		p.Color = row.Color
 		p.Race = row.Race
 		p.Team = row.Team
 		p.IsWinner = row.IsWinner
@@ -52,9 +56,20 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		}
 		p.DetectedPatterns = []workflowPatternValue{}
 		detail.Players = append(detail.Players, p)
+		if row.StartLocationOclock != nil && *row.StartLocationOclock >= 1 && *row.StartLocationOclock <= 12 {
+			startClockByPlayerID[row.PlayerID] = int(*row.StartLocationOclock)
+		}
 	}
 
-	if err := d.populateDetectedPatternsForGameDetail(&detail); err != nil {
+	var mapLayout *models.MapContextLayout
+	if strings.TrimSpace(summary.FilePath) != "" {
+		layout, layoutErr := buildDashboardMapContextLayoutFromReplay(summary.FilePath, summary.MapName)
+		if layoutErr == nil {
+			mapLayout = layout
+		}
+	}
+
+	if err := d.populateDetectedPatternsForGameDetail(&detail, mapLayout, startClockByPlayerID); err != nil {
 		return detail, err
 	}
 	if err := d.populateUnitsBySliceForGameDetail(&detail); err != nil {
@@ -76,9 +91,8 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	return detail, nil
 }
 
-func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDetail) error {
+func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDetail, mapLayout *models.MapContextLayout, startClockByPlayerID map[int64]int) error {
 	detail.ReplayPatterns = []workflowPatternValue{}
-	detail.TeamPatterns = []workflowTeamPattern{}
 	detail.GameEvents = []workflowGameEvent{}
 
 	rowsReplay, err := d.dbStore.ListReplayPatterns(d.ctx, detail.ReplayID)
@@ -87,22 +101,14 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 	}
 	for _, row := range rowsReplay {
 		pattern := workflowPatternValue{PatternName: row.PatternName, Value: row.Value}
-		if strings.EqualFold(pattern.PatternName, "Game Events") {
-			detail.GameEvents = parseGameEvents(pattern.Value)
-			continue
-		}
 		pattern.Value = formatPatternValueForUI(pattern.PatternName, pattern.Value)
 		detail.ReplayPatterns = append(detail.ReplayPatterns, pattern)
 	}
-	rowsTeam, err := d.dbStore.ListTeamPatterns(d.ctx, detail.ReplayID)
+	eventRows, err := d.dbStore.ListReplayEvents(d.ctx, detail.ReplayID)
 	if err != nil {
-		return fmt.Errorf("failed to query team patterns: %w", err)
+		return fmt.Errorf("failed to query replay events: %w", err)
 	}
-	for _, row := range rowsTeam {
-		pattern := workflowTeamPattern{Team: row.Team, PatternName: row.PatternName, Value: row.Value}
-		pattern.Value = formatPatternValueForUI(pattern.PatternName, pattern.Value)
-		detail.TeamPatterns = append(detail.TeamPatterns, pattern)
-	}
+	detail.GameEvents = replayEventsFromRows(eventRows, mapLayout, startClockByPlayerID)
 
 	playerByID := map[int64]*workflowGamePlayer{}
 	for i := range detail.Players {
@@ -1336,21 +1342,307 @@ func (d *Dashboard) topActionTypesForPlayer(playerID int64, limit int) ([]string
 	return d.dbStore.ListTopActionTypes(d.ctx, playerID, limit)
 }
 
-func parseGameEvents(raw string) []workflowGameEvent {
-	events := []workflowGameEvent{}
-	if strings.TrimSpace(raw) == "" {
-		return events
-	}
-	if err := json.Unmarshal([]byte(raw), &events); err != nil {
-		return events
-	}
-	sort.Slice(events, func(i, j int) bool {
-		if events[i].Second == events[j].Second {
-			return events[i].Description < events[j].Description
+type overlayBaseMeta struct {
+	Base       workflowGameEventBase
+	IsStarting bool
+}
+
+func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContextLayout, startClockByPlayerID map[int64]int) []workflowGameEvent {
+	baseMetas := overlayBaseMetasFromLayout(mapLayout)
+	baseByKey := map[string]workflowGameEventBase{}
+	ownershipByBaseKey := map[string]*workflowGameEventPlayer{}
+	events := make([]workflowGameEvent, 0, len(rows))
+	for _, row := range rows {
+		event := workflowGameEvent{
+			Type:            row.EventType,
+			Second:          row.Second,
+			Ownership:       []workflowGameOwnership{},
+			AttackUnitTypes: parseAttackUnitTypes(row.AttackUnitTypes),
 		}
-		return events[i].Second < events[j].Second
-	})
+		if row.SourcePlayerID != nil {
+			event.Actor = &workflowGameEventPlayer{
+				PlayerID: *row.SourcePlayerID,
+				Name:     row.SourcePlayerName,
+				Color:    row.SourcePlayerColor,
+			}
+		}
+		if row.TargetPlayerID != nil {
+			event.Target = &workflowGameEventPlayer{
+				PlayerID: *row.TargetPlayerID,
+				Name:     row.TargetPlayerName,
+				Color:    row.TargetPlayerColor,
+			}
+		}
+		if row.LocationBaseType != nil || row.LocationBaseOclock != nil {
+			if matchedBase, ok := lookupOverlayBase(baseMetas, row.LocationBaseType, row.LocationBaseOclock); ok {
+				baseCopy := matchedBase
+				if label := baseLabel(row.LocationBaseType, row.LocationBaseOclock, row.LocationNaturalOfClock); strings.TrimSpace(label) != "" {
+					baseCopy.Name = label
+				}
+				event.Base = &baseCopy
+				baseByKey[baseKeyForEvent(&event)] = matchedBase
+			}
+		}
+		if event.Base == nil && (row.LocationBaseType != nil || row.LocationBaseOclock != nil) {
+			base := workflowGameEventBase{
+				Name: baseLabel(row.LocationBaseType, row.LocationBaseOclock, row.LocationNaturalOfClock),
+				Center: workflowGameEventPoint{
+					X: 0,
+					Y: 0,
+				},
+			}
+			if row.LocationBaseType != nil {
+				base.Kind = *row.LocationBaseType
+			}
+			if row.LocationBaseOclock != nil {
+				base.Clock = *row.LocationBaseOclock
+			}
+			event.Base = &base
+			baseByKey[baseKeyForEvent(&event)] = base
+		}
+		if event.Actor != nil {
+			if startClock, ok := startClockByPlayerID[event.Actor.PlayerID]; ok {
+				if startBase, startBaseOK := lookupOverlayBaseByClock(baseMetas, int64(startClock)); startBaseOK {
+					startCenter := startBase.Center
+					event.ActorOrigin = &startCenter
+				}
+			}
+		}
+		applyOwnershipTransition(&event, ownershipByBaseKey)
+		event.Ownership = ownershipSnapshot(ownershipByBaseKey, baseByKey)
+		if event.ActorOrigin == nil && event.Actor != nil {
+			if fallbackBase, ok := fallbackActorOriginFromOwnership(event.Actor.PlayerID, ownershipByBaseKey, baseByKey); ok {
+				center := fallbackBase.Center
+				event.ActorOrigin = &center
+			}
+		}
+		events = append(events, event)
+	}
 	return events
+}
+
+func overlayBaseMetasFromLayout(layout *models.MapContextLayout) []overlayBaseMeta {
+	if layout == nil || len(layout.Bases) == 0 {
+		return nil
+	}
+	out := make([]overlayBaseMeta, 0, len(layout.Bases))
+	for _, base := range layout.Bases {
+		polygon := make([]workflowGameEventPoint, 0, len(base.Polygon))
+		for _, vertex := range base.Polygon {
+			polygon = append(polygon, workflowGameEventPoint{X: float64(vertex.X), Y: float64(vertex.Y)})
+		}
+		kind := strings.TrimSpace(base.Kind)
+		prettyName := strings.TrimSpace(base.Name)
+		if prettyName == "" && base.Clock >= 1 && base.Clock <= 12 {
+			prettyName = fmt.Sprintf("at %d", base.Clock)
+		}
+		out = append(out, overlayBaseMeta{
+			Base: workflowGameEventBase{
+				Name:    prettyName,
+				Kind:    kind,
+				Clock:   int64(base.Clock),
+				Center:  workflowGameEventPoint{X: float64(base.Center.X), Y: float64(base.Center.Y)},
+				Polygon: polygon,
+			},
+			IsStarting: strings.EqualFold(kind, "start") || strings.EqualFold(kind, "starting"),
+		})
+	}
+	return out
+}
+
+func lookupOverlayBase(baseMetas []overlayBaseMeta, baseType *string, baseOclock *int64) (workflowGameEventBase, bool) {
+	if baseOclock == nil {
+		return workflowGameEventBase{}, false
+	}
+	targetClock := *baseOclock
+	targetType := strings.ToLower(strings.TrimSpace(nullableString(baseType)))
+	for _, candidate := range baseMetas {
+		if candidate.Base.Clock != targetClock {
+			continue
+		}
+		if targetType == "starting" && !candidate.IsStarting {
+			continue
+		}
+		if targetType != "starting" && candidate.IsStarting {
+			continue
+		}
+		return candidate.Base, true
+	}
+	for _, candidate := range baseMetas {
+		if candidate.Base.Clock == targetClock {
+			return candidate.Base, true
+		}
+	}
+	return workflowGameEventBase{}, false
+}
+
+func lookupOverlayBaseByClock(baseMetas []overlayBaseMeta, clock int64) (workflowGameEventBase, bool) {
+	for _, candidate := range baseMetas {
+		if candidate.Base.Clock == clock && candidate.IsStarting {
+			return candidate.Base, true
+		}
+	}
+	for _, candidate := range baseMetas {
+		if candidate.Base.Clock == clock {
+			return candidate.Base, true
+		}
+	}
+	return workflowGameEventBase{}, false
+}
+
+func baseKeyForEvent(event *workflowGameEvent) string {
+	if event == nil || event.Base == nil {
+		return ""
+	}
+	kind := strings.ToLower(strings.TrimSpace(event.Base.Kind))
+	if event.Base.Clock > 0 {
+		return fmt.Sprintf("%s|%d", kind, event.Base.Clock)
+	}
+	return fmt.Sprintf("%s|%s", kind, strings.ToLower(strings.TrimSpace(event.Base.Name)))
+}
+
+func applyOwnershipTransition(event *workflowGameEvent, ownership map[string]*workflowGameEventPlayer) {
+	if event == nil {
+		return
+	}
+	eventType := strings.ToLower(strings.TrimSpace(event.Type))
+	switch eventType {
+	case "player_start", "expansion", "takeover":
+		baseKey := baseKeyForEvent(event)
+		if baseKey != "" && event.Actor != nil {
+			ownerCopy := *event.Actor
+			ownership[baseKey] = &ownerCopy
+		}
+	case "location_inactive":
+		baseKey := baseKeyForEvent(event)
+		if baseKey != "" {
+			delete(ownership, baseKey)
+		}
+	case "leave_game":
+		if event.Actor == nil {
+			return
+		}
+		for key, owner := range ownership {
+			if owner != nil && owner.PlayerID == event.Actor.PlayerID {
+				delete(ownership, key)
+			}
+		}
+	}
+}
+
+func ownershipSnapshot(ownership map[string]*workflowGameEventPlayer, baseByKey map[string]workflowGameEventBase) []workflowGameOwnership {
+	if len(ownership) == 0 {
+		return []workflowGameOwnership{}
+	}
+	keys := make([]string, 0, len(ownership))
+	for key := range ownership {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	out := make([]workflowGameOwnership, 0, len(keys))
+	for _, key := range keys {
+		owner := ownership[key]
+		base, ok := baseByKey[key]
+		if !ok {
+			continue
+		}
+		var ownerCopy *workflowGameEventPlayer
+		if owner != nil {
+			value := *owner
+			ownerCopy = &value
+		}
+		out = append(out, workflowGameOwnership{Base: base, Owner: ownerCopy})
+	}
+	return out
+}
+
+func fallbackActorOriginFromOwnership(playerID int64, ownership map[string]*workflowGameEventPlayer, baseByKey map[string]workflowGameEventBase) (workflowGameEventBase, bool) {
+	for key, owner := range ownership {
+		if owner == nil || owner.PlayerID != playerID {
+			continue
+		}
+		base, ok := baseByKey[key]
+		if !ok {
+			continue
+		}
+		if strings.EqualFold(base.Kind, "start") || strings.EqualFold(base.Kind, "starting") {
+			return base, true
+		}
+	}
+	for key, owner := range ownership {
+		if owner == nil || owner.PlayerID != playerID {
+			continue
+		}
+		base, ok := baseByKey[key]
+		if ok {
+			return base, true
+		}
+	}
+	return workflowGameEventBase{}, false
+}
+
+func nullableString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func baseLabel(baseType *string, baseOclock *int64, naturalOf *int64) string {
+	if baseType == nil {
+		return ""
+	}
+	switch strings.ToLower(strings.TrimSpace(*baseType)) {
+	case "starting":
+		if baseOclock != nil {
+			return fmt.Sprintf("at %d", *baseOclock)
+		}
+		return "starting base"
+	case "natural":
+		if baseOclock != nil {
+			if naturalOf != nil {
+				return fmt.Sprintf("an expa near %d (natural expansion of at %d)", *baseOclock, *naturalOf)
+			}
+			return fmt.Sprintf("an expa near %d (their natural expansion)", *baseOclock)
+		}
+		return "natural expansion"
+	default:
+		if baseOclock != nil {
+			return fmt.Sprintf("an expa near %d", *baseOclock)
+		}
+		return "expansion"
+	}
+}
+
+func parseAttackUnitTypes(raw *string) []string {
+	if raw == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*raw)
+	if trimmed == "" {
+		return nil
+	}
+	var unitTypes []string
+	if err := json.Unmarshal([]byte(trimmed), &unitTypes); err != nil {
+		return nil
+	}
+	filtered := make([]string, 0, len(unitTypes))
+	seen := map[string]struct{}{}
+	for _, unitType := range unitTypes {
+		name := strings.TrimSpace(unitType)
+		if name == "" {
+			continue
+		}
+		if _, exists := seen[name]; exists {
+			continue
+		}
+		seen[name] = struct{}{}
+		filtered = append(filtered, name)
+	}
+	if len(filtered) == 0 {
+		return nil
+	}
+	return filtered
 }
 
 func formatPatternValueForUI(patternName, value string) string {

@@ -13,14 +13,9 @@ type ReplayLevelDetectorFactory func() core.Detector
 // PlayerLevelDetectorFactory creates a player-level detector for a specific player
 type PlayerLevelDetectorFactory func(replayPlayerID byte) core.Detector
 
-// TeamLevelDetectorFactory creates a team-level detector for a specific team
-type TeamLevelDetectorFactory func(team byte) core.Detector
-
 var (
 	// replayLevelDetectors is the list of replay-level detector factories
-	replayLevelDetectors = []ReplayLevelDetectorFactory{
-		func() core.Detector { return detectors.NewGameEventsReplayDetector() },
-	}
+	replayLevelDetectors = []ReplayLevelDetectorFactory{}
 
 	// playerLevelDetectors is the list of player-level detector factories
 	playerLevelDetectors = []PlayerLevelDetectorFactory{
@@ -125,9 +120,6 @@ var (
 			return detector
 		},
 	}
-
-	// teamLevelDetectors is the list of team-level detector factories
-	teamLevelDetectors = []TeamLevelDetectorFactory{}
 )
 
 // Orchestrator manages all pattern detectors for a replay
@@ -166,23 +158,6 @@ func (o *Orchestrator) Initialize(replay *models.Replay, players []*models.Playe
 		}
 		for _, factory := range playerLevelDetectors {
 			o.detectors = append(o.detectors, factory(player.PlayerID))
-		}
-	}
-
-	// Create team-level detectors (one per team, but only if teams are detected)
-	teamMap := make(map[byte]bool)
-	for _, player := range players {
-		if player.IsObserver {
-			continue
-		}
-		if player.Team != 0 {
-			teamMap[player.Team] = true
-		}
-	}
-
-	for team := range teamMap {
-		for _, factory := range teamLevelDetectors {
-			o.detectors = append(o.detectors, factory(team))
 		}
 	}
 
@@ -228,7 +203,6 @@ func (o *Orchestrator) GetResults() []*core.PatternResult {
 				// Check if we already have this result
 				found := false
 				for _, existing := range o.results {
-					sameTeam := (existing.Team == nil && result.Team == nil) || (existing.Team != nil && result.Team != nil && *existing.Team == *result.Team)
 					samePlayer := (existing.PlayerID == nil && result.PlayerID == nil) || (existing.PlayerID != nil && result.PlayerID != nil && *existing.PlayerID == *result.PlayerID)
 					// Before DB IDs are mapped, player-level results are identified by ReplayPlayerID.
 					sameReplayPlayer := (existing.ReplayPlayerID == nil && result.ReplayPlayerID == nil) ||
@@ -237,7 +211,6 @@ func (o *Orchestrator) GetResults() []*core.PatternResult {
 					if existing.PatternName == result.PatternName &&
 						existing.Level == result.Level &&
 						existing.ReplayID == result.ReplayID &&
-						sameTeam &&
 						samePlayer &&
 						sameReplayPlayer {
 						found = true
@@ -251,6 +224,13 @@ func (o *Orchestrator) GetResults() []*core.PatternResult {
 		}
 	}
 	return o.results
+}
+
+func (o *Orchestrator) ReplayEvents() []worldstate.ReplayEvent {
+	if o.worldState == nil {
+		return nil
+	}
+	return o.worldState.ReplayEvents()
 }
 
 // ConvertResultsToDatabaseIDs converts pattern results from replay player IDs to database player IDs

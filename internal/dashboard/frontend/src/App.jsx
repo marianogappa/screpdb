@@ -113,6 +113,249 @@ const getRaceIcon = (race) => {
   return null;
 };
 
+const normalizeEventType = (eventType) => String(eventType || '').trim().toLowerCase();
+
+const isStructuralGameEventType = (eventType) => ['player_start', 'location_inactive'].includes(normalizeEventType(eventType));
+
+const gameEventLocationLabel = (event) => {
+  const baseName = String(event?.base?.name || '').trim();
+  if (baseName) return baseName;
+  return '';
+};
+
+const gameEventDescription = (event) => {
+  const eventType = normalizeEventType(event?.type);
+  const actor = String(event?.actor?.name || '').trim();
+  const target = String(event?.target?.name || '').trim();
+  const location = gameEventLocationLabel(event);
+
+  if (eventType === 'player_start') {
+    if (actor && location) return `${actor} starts at ${location}`;
+    if (actor) return `${actor} starts`;
+    return 'Player start';
+  }
+  if (eventType === 'leave_game') return actor ? `${actor} leaves the game` : 'Player leaves the game';
+  if (eventType === 'location_inactive') return location ? `Location inactive: ${location}` : 'Location inactive';
+  if (eventType === 'expansion') return actor && location ? `${actor} expands to ${location}` : 'Expansion';
+  if (eventType === 'attack') return actor && target && location ? `${actor} attacks ${target} at ${location}` : 'Attack';
+  if (eventType === 'scout') return actor && target && location ? `${actor} scouts ${target} at ${location}` : 'Scout';
+  if (eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
+    return actor && target && location ? `${actor} drops on ${target} at ${location}` : 'Drop';
+  }
+  if (eventType === 'recall') return actor && target && location ? `${actor} recalls into ${target} at ${location}` : 'Recall';
+  if (eventType === 'nuke') return actor && target && location ? `${actor} nukes ${target} at ${location}` : 'Nuke';
+  if (eventType === 'cannon_rush' || eventType === 'bunker_rush' || eventType === 'zergling_rush') {
+    if (actor && location) return `${actor} rushes at ${location}`;
+    if (actor) return `${actor} rushes`;
+    return 'Rush';
+  }
+  if (eventType === 'takeover') return actor && location ? `${actor} takes over ${location}` : 'Takeover';
+  if (eventType === 'proxy_gate' || eventType === 'proxy_rax' || eventType === 'proxy_factory') {
+    return actor && location ? `${actor} proxies at ${location}` : 'Proxy';
+  }
+  if (eventType === 'became_terran') return actor ? `${actor} became Terran` : 'Became Terran';
+  if (eventType === 'became_zerg') return actor ? `${actor} became Zerg` : 'Became Zerg';
+  return prettyPatternName(event?.type || 'event');
+};
+
+const gameEventSearchText = (event) => {
+  const parts = [
+    gameEventDescription(event),
+    event?.type,
+    event?.actor?.name,
+    event?.target?.name,
+    gameEventLocationLabel(event),
+  ];
+  return parts.filter(Boolean).join(' ');
+};
+
+const gameEventRowKey = (event, idx) => `${Number(event?.second || 0)}-${String(event?.type || '')}-${gameEventDescription(event)}-${idx}`;
+
+const SC_PLAYER_COLOR_MAP = {
+  red: '#ef4444',
+  blue: '#3b82f6',
+  teal: '#14b8a6',
+  purple: '#8b5cf6',
+  orange: '#f97316',
+  brown: '#92400e',
+  white: '#e5e7eb',
+  yellow: '#facc15',
+  green: '#22c55e',
+  paleyellow: '#fde68a',
+  tan: '#d6b18b',
+  aqua: '#22d3ee',
+};
+
+const playerColorToCss = (colorValue) => {
+  const value = String(colorValue || '').trim();
+  if (!value) return '#9ca3af';
+  if (value.startsWith('#')) return value;
+  const key = value.toLowerCase().replace(/\s+/g, '');
+  return SC_PLAYER_COLOR_MAP[key] || value.toLowerCase();
+};
+
+const legendTextStyle = (rawColorValue, foregroundColor) => {
+  const color = playerColorToCss(foregroundColor);
+  const key = String(rawColorValue || '').toLowerCase().replace(/\s+/g, '');
+  const needsShadow = key === 'black' || key === 'navy' || key === 'darkblue';
+  if (!needsShadow) {
+    return { color };
+  }
+  return {
+    color,
+    textShadow: '0 1px 2px rgba(255, 255, 255, 0.8)',
+  };
+};
+
+const mapBoundsFromGameEvents = (events) => {
+  const points = [];
+  (Array.isArray(events) ? events : []).forEach((event) => {
+    const center = event?.base?.center;
+    if (Number.isFinite(center?.x) && Number.isFinite(center?.y)) {
+      points.push({ x: Number(center.x), y: Number(center.y) });
+    }
+    const polygon = Array.isArray(event?.base?.polygon) ? event.base.polygon : [];
+    polygon.forEach((point) => {
+      if (Number.isFinite(point?.x) && Number.isFinite(point?.y)) {
+        points.push({ x: Number(point.x), y: Number(point.y) });
+      }
+    });
+    const ownership = Array.isArray(event?.ownership) ? event.ownership : [];
+    ownership.forEach((entry) => {
+      const baseCenter = entry?.base?.center;
+      if (Number.isFinite(baseCenter?.x) && Number.isFinite(baseCenter?.y)) {
+        points.push({ x: Number(baseCenter.x), y: Number(baseCenter.y) });
+      }
+      const basePolygon = Array.isArray(entry?.base?.polygon) ? entry.base.polygon : [];
+      basePolygon.forEach((point) => {
+        if (Number.isFinite(point?.x) && Number.isFinite(point?.y)) {
+          points.push({ x: Number(point.x), y: Number(point.y) });
+        }
+      });
+    });
+  });
+  if (points.length === 0) return null;
+  let minX = points[0].x;
+  let minY = points[0].y;
+  let maxX = points[0].x;
+  let maxY = points[0].y;
+  points.forEach((point) => {
+    minX = Math.min(minX, point.x);
+    minY = Math.min(minY, point.y);
+    maxX = Math.max(maxX, point.x);
+    maxY = Math.max(maxY, point.y);
+  });
+  const pad = 32;
+  minX -= pad;
+  minY -= pad;
+  maxX += pad;
+  maxY += pad;
+  if (maxX - minX < 1) maxX = minX + 1;
+  if (maxY - minY < 1) maxY = minY + 1;
+  return { minX, minY, maxX, maxY };
+};
+
+const mapPointToPercent = (point, bounds) => {
+  if (!point || !bounds) return null;
+  const x = Number(point?.x);
+  const y = Number(point?.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const width = bounds.maxX - bounds.minX;
+  const height = bounds.maxY - bounds.minY;
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+  const px = ((x - bounds.minX) / width) * 100;
+  const py = ((y - bounds.minY) / height) * 100;
+  const clamp = (value) => Math.max(0, Math.min(100, value));
+  return { x: clamp(px), y: clamp(py) };
+};
+
+const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'reaver_drop', 'dt_drop', 'recall', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush'].includes(String(eventType || '').toLowerCase());
+
+const gameEventActorKey = (event) => {
+  const actorID = Number(event?.actor?.player_id);
+  if (Number.isFinite(actorID) && actorID > 0) return `id:${actorID}`;
+  return `name:${String(event?.actor?.name || '').trim().toLowerCase()}`;
+};
+
+const gameEventBaseKey = (event) => {
+  const base = event?.base || {};
+  const kind = String(base?.kind || '').trim().toLowerCase();
+  const clock = Number(base?.clock);
+  const name = String(base?.name || '').trim().toLowerCase();
+  const centerX = Number(base?.center?.x);
+  const centerY = Number(base?.center?.y);
+  return [
+    kind,
+    Number.isFinite(clock) ? clock : '',
+    name,
+    Number.isFinite(centerX) ? centerX.toFixed(1) : '',
+    Number.isFinite(centerY) ? centerY.toFixed(1) : '',
+  ].join('|');
+};
+
+const gameEventSuppressionKey = (event) => `${Number(event?.second || 0)}|${gameEventActorKey(event)}|${gameEventBaseKey(event)}`;
+
+const fallbackOverlayUnitNamesForEvent = (eventType) => {
+  const normalized = normalizeEventType(eventType);
+  if (normalized === 'zergling_rush') return ['zergling'];
+  if (normalized === 'cannon_rush') return ['photoncannon'];
+  if (normalized === 'bunker_rush') return ['bunker'];
+  if (normalized === 'reaver_drop') return ['reaver'];
+  if (normalized === 'dt_drop') return ['darktemplar'];
+  if (normalized === 'drop') return ['dropship'];
+  if (normalized === 'nuke') return ['ghost'];
+  return [];
+};
+
+const eventBaseClock = (event) => {
+  const rawClock = Number(event?.base?.clock);
+  if (Number.isFinite(rawClock) && rawClock >= 1 && rawClock <= 12) return rawClock;
+  const name = String(event?.base?.name || '');
+  const match = name.match(/\b([1-9]|1[0-2])\b/);
+  if (!match) return null;
+  const parsed = Number(match[1]);
+  if (!Number.isFinite(parsed) || parsed < 1 || parsed > 12) return null;
+  return parsed;
+};
+
+const syntheticPointForClock = (clock) => {
+  const safeClock = Number(clock);
+  if (!Number.isFinite(safeClock) || safeClock < 1 || safeClock > 12) return null;
+  const angle = ((safeClock % 12) / 12) * (Math.PI * 2) - (Math.PI / 2);
+  const radius = 34;
+  return {
+    x: 50 + (Math.cos(angle) * radius),
+    y: 50 + (Math.sin(angle) * radius),
+  };
+};
+
+const syntheticPolygonForCenter = (center, radius = 6) => {
+  if (!center) return [];
+  const out = [];
+  for (let idx = 0; idx < 6; idx += 1) {
+    const angle = (idx / 6) * (Math.PI * 2);
+    out.push({
+      x: center.x + (Math.cos(angle) * radius),
+      y: center.y + (Math.sin(angle) * radius),
+    });
+  }
+  return out;
+};
+
+const eventBaseKey = (event) => {
+  const kind = String(event?.base?.kind || '').trim().toLowerCase();
+  const clock = eventBaseClock(event);
+  if (clock) return `${kind || 'base'}:${clock}`;
+  const name = String(event?.base?.name || '').trim().toLowerCase();
+  if (name) return `${kind || 'base'}:${name}`;
+  return '';
+};
+
+const eventActorID = (event) => {
+  const id = Number(event?.actor?.player_id);
+  return Number.isFinite(id) && id > 0 ? id : null;
+};
+
 const raceRank = (race) => {
   const value = String(race || '').trim().toLowerCase();
   if (value === 'terran') return 0;
@@ -372,9 +615,10 @@ const LOCATION_HINTS = [
   { key: 'right', matcher: /\bright|east\b/i },
 ];
 
-const extractEventLocationTags = (description) => {
+const extractEventLocationTags = (event) => {
   const tags = new Set();
-  const text = String(description || '').toLowerCase();
+  const location = gameEventLocationLabel(event);
+  const text = String(location || '').toLowerCase();
   LOCATION_HINTS.forEach((hint) => {
     if (hint.matcher.test(text)) tags.add(hint.key);
   });
@@ -392,7 +636,7 @@ const extractEventLocationTags = (description) => {
 const extractLocationOptions = (events) => {
   const found = new Set();
   (events || []).forEach((event) => {
-    extractEventLocationTags(event?.description).forEach((tag) => found.add(tag));
+    extractEventLocationTags(event).forEach((tag) => found.add(tag));
   });
   return Array.from(found).sort((a, b) => {
     const numA = Number(a);
@@ -780,6 +1024,8 @@ function App() {
   const [selectedPlayerKey, setSelectedPlayerKey] = useState('');
   const [mainGame, setMainGame] = useState(null);
   const [mainGameTab, setMainGameTab] = useState('summary');
+  const [mainMapModalOpen, setMainMapModalOpen] = useState(false);
+  const [mainSelectedGameEventKey, setMainSelectedGameEventKey] = useState('');
   const [mainGameSeeLoading, setMainGameSeeLoading] = useState(false);
   const [mainGameSeeNotice, setMainGameSeeNotice] = useState('');
   const [mainGameSeeNoticeError, setMainGameSeeNoticeError] = useState(false);
@@ -1071,6 +1317,8 @@ function App() {
       const data = await api.getGame(replayId);
       setMainGame(data);
       setMainGameTab('summary');
+      setMainMapModalOpen(false);
+      setMainSelectedGameEventKey('');
       setSelectedReplayId(replayId);
       setMainAnswer(null);
       setMainQuestion('');
@@ -1450,7 +1698,7 @@ function App() {
       enabled: ingestForm.autoIngestEnabled,
       intervalSeconds: ingestForm.autoIngestIntervalSeconds,
     });
-  }, [ingestForm.autoIngestEnabled, ingestForm.autoIngestIntervalSeconds]);
+  }, [ingestForm.autoIngestEnabled, ingestForm.autoIngestIntervalSeconds, showIngestPanel]);
 
   useEffect(() => {
     if (!showIngestPanel) {
@@ -1530,7 +1778,7 @@ function App() {
     let cancelled = false;
 
     const runAutoIngest = async () => {
-      if (cancelled || autoIngestInFlight.current) return;
+      if (cancelled || autoIngestInFlight.current || showIngestPanel || ingestStatus === 'running') return;
       autoIngestInFlight.current = true;
       try {
         const health = await api.getHealth();
@@ -1563,7 +1811,7 @@ function App() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [ingestForm.autoIngestEnabled, ingestForm.autoIngestIntervalSeconds]);
+  }, [ingestForm.autoIngestEnabled, ingestForm.autoIngestIntervalSeconds, showIngestPanel, ingestStatus]);
 
   useEffect(() => () => {
     if (autoIngestNoticeTimerRef.current) {
@@ -1581,7 +1829,7 @@ function App() {
     try {
       const data = await api.getHealth();
       setOpenaiEnabled(Boolean(data?.openai_enabled));
-      setReplayCount(typeof data?.total_replays === 'number' ? data.total_replays : 0);
+      setReplayCount(Number(data?.total_replays || 0));
       return data;
     } catch (err) {
       console.error('Failed to check OpenAI status:', err);
@@ -2055,21 +2303,244 @@ function App() {
   };
 
   const filteredReplayPatterns = mainGame?.replay_patterns || [];
-  const filteredTeamPatterns = mainGame?.team_patterns || [];
   const mainPlayerOutlierItems = mainPlayerOutliers?.items || [];
 
-  const filteredGameEvents = (mainGame?.game_events || []).filter((event) => {
-    if (mainSummaryFilters.player && !String(event.description || '').toLowerCase().includes(mainSummaryFilters.player.toLowerCase())) {
-      return false;
+  const filteredGameEvents = useMemo(() => {
+    const allEvents = Array.isArray(mainGame?.game_events) ? mainGame.game_events : [];
+    const expansionsByKey = new Set(
+      allEvents
+        .filter((event) => normalizeEventType(event?.type) === 'expansion')
+        .map((event) => gameEventSuppressionKey(event)),
+    );
+    const visibleEvents = allEvents.filter((event) => {
+      if (isStructuralGameEventType(event?.type)) {
+        return false;
+      }
+      if (
+        normalizeEventType(event?.type) === 'takeover'
+        && expansionsByKey.has(gameEventSuppressionKey(event))
+      ) {
+        return false;
+      }
+      const description = gameEventDescription(event);
+      if (mainSummaryFilters.player && !String(description || '').toLowerCase().includes(mainSummaryFilters.player.toLowerCase())) {
+        return false;
+      }
+      if (mainSummaryFilters.location) {
+        const eventTags = extractEventLocationTags(event);
+        if (!eventTags.includes(mainSummaryFilters.location)) return false;
+      }
+      return summaryTextMatches(gameEventSearchText(event));
+    });
+    const deduped = [];
+    for (let idx = 0; idx < visibleEvents.length; idx += 1) {
+      const event = visibleEvents[idx];
+      const prev = deduped.length > 0 ? deduped[deduped.length - 1] : null;
+      if (prev && gameEventDescription(prev) === gameEventDescription(event)) {
+        continue;
+      }
+      deduped.push(event);
     }
-    if (mainSummaryFilters.location) {
-      const eventTags = extractEventLocationTags(event.description || '');
-      if (!eventTags.includes(mainSummaryFilters.location)) return false;
-    }
-    return summaryTextMatches(`${event.type} ${event.description}`);
-  });
-
+    return deduped;
+  }, [mainGame?.game_events, mainSummaryFilters, mainSummaryFilters.location, mainSummaryFilters.player]);
+  const mainMapVisual = mainGame?.map_visual || {};
+  const mainMapVisualURL = String(mainMapVisual?.url || '').trim();
+  const mainMapVisualThumbURL = String(mainMapVisual?.thumbnail_url || mainMapVisualURL).trim();
+  const mainMapVisualAvailable = Boolean(mainMapVisual?.available && mainMapVisualURL);
+  const mainEventMapBounds = useMemo(
+    () => mapBoundsFromGameEvents(mainGame?.game_events || []),
+    [mainGame?.game_events],
+  );
+  const selectedMainGameEvent = useMemo(() => {
+    if (!filteredGameEvents.length) return null;
+    const fromKey = filteredGameEvents.find((event, idx) => gameEventRowKey(event, idx) === mainSelectedGameEventKey);
+    return fromKey || filteredGameEvents[0];
+  }, [filteredGameEvents, mainSelectedGameEventKey]);
   const mainGamePlayers = mainGame?.players || [];
+  const selectedMainGameEventKeyResolved = useMemo(() => {
+    if (!selectedMainGameEvent) return '';
+    const idx = filteredGameEvents.indexOf(selectedMainGameEvent);
+    if (idx < 0) return '';
+    return gameEventRowKey(selectedMainGameEvent, idx);
+  }, [filteredGameEvents, selectedMainGameEvent]);
+  useEffect(() => {
+    if (filteredGameEvents.length === 0) {
+      if (mainSelectedGameEventKey) setMainSelectedGameEventKey('');
+      return;
+    }
+    const hasSelected = filteredGameEvents.some((event, idx) => gameEventRowKey(event, idx) === mainSelectedGameEventKey);
+    if (!hasSelected) {
+      setMainSelectedGameEventKey(gameEventRowKey(filteredGameEvents[0], 0));
+    }
+  }, [filteredGameEvents, mainSelectedGameEventKey]);
+  const selectedMainGameOwnershipPolygons = useMemo(() => {
+    const ownership = Array.isArray(selectedMainGameEvent?.ownership) ? selectedMainGameEvent.ownership : [];
+    return ownership
+      .map((entry, idx) => {
+        const polygon = Array.isArray(entry?.base?.polygon) ? entry.base.polygon : [];
+        if (polygon.length < 3 || !entry?.owner || !mainEventMapBounds) return null;
+        const points = polygon
+          .map((point) => mapPointToPercent(point, mainEventMapBounds))
+          .filter(Boolean)
+          .map((point) => `${point.x},${point.y}`)
+          .join(' ');
+        if (!points) return null;
+        const ownerColor = playerColorToCss(entry.owner.color);
+        return {
+          key: `ownership-${idx}-${entry.base?.name || 'base'}`,
+          points,
+          ownerName: entry.owner.name,
+          ownerColor,
+        };
+      })
+      .filter(Boolean);
+  }, [selectedMainGameEvent, mainEventMapBounds]);
+  const selectedMainGameLegend = useMemo(() => {
+    return (Array.isArray(mainGamePlayers) ? mainGamePlayers : [])
+      .map((player) => ({
+        name: player?.name || '',
+        rawColor: player?.color || '',
+        color: playerColorToCss(player?.color),
+      }))
+      .filter((player) => player.name);
+  }, [mainGamePlayers]);
+  const selectedMainGameArrow = useMemo(() => {
+    if (!selectedMainGameEvent || !isArrowEventType(selectedMainGameEvent.type)) return null;
+    const from = mapPointToPercent(selectedMainGameEvent?.actor_origin, mainEventMapBounds);
+    const to = mapPointToPercent(selectedMainGameEvent?.base?.center, mainEventMapBounds);
+    if (!from || !to) return null;
+    return {
+      from,
+      to,
+      color: playerColorToCss(selectedMainGameEvent?.actor?.color),
+    };
+  }, [selectedMainGameEvent, mainEventMapBounds]);
+  const selectedMainGameSyntheticOverlay = useMemo(() => {
+    if (!selectedMainGameEvent) {
+      return { ownershipPolygons: [], arrow: null, leaveFlagPoint: null };
+    }
+    const allEvents = Array.isArray(mainGame?.game_events) ? mainGame.game_events : [];
+    if (allEvents.length === 0) {
+      return { ownershipPolygons: [], arrow: null, leaveFlagPoint: null };
+    }
+    const selectedEventSecond = Number(selectedMainGameEvent?.second || 0);
+    const ownershipByBase = new Map();
+    const startPointByPlayerID = new Map();
+
+    allEvents.forEach((event) => {
+      const second = Number(event?.second || 0);
+      if (second > selectedEventSecond) return;
+      const type = normalizeEventType(event?.type);
+      const baseKey = eventBaseKey(event);
+      const baseClock = eventBaseClock(event);
+      const baseCenter = syntheticPointForClock(baseClock);
+      const actorID = eventActorID(event);
+      const actor = event?.actor || null;
+      if (type === 'player_start' && actorID && baseCenter) {
+        startPointByPlayerID.set(actorID, baseCenter);
+      }
+      if (!baseKey || !baseCenter) {
+        if (type === 'leave_game' && actorID) {
+          Array.from(ownershipByBase.entries()).forEach(([key, value]) => {
+            if (Number(value?.owner?.player_id) === actorID) ownershipByBase.delete(key);
+          });
+        }
+        return;
+      }
+      if ((type === 'player_start' || type === 'expansion' || type === 'takeover') && actorID && actor) {
+        ownershipByBase.set(baseKey, {
+          baseKey,
+          baseKind: String(event?.base?.kind || ''),
+          center: baseCenter,
+          owner: actor,
+        });
+      } else if (type === 'location_inactive') {
+        ownershipByBase.delete(baseKey);
+      } else if (type === 'leave_game' && actorID) {
+        Array.from(ownershipByBase.entries()).forEach(([key, value]) => {
+          if (Number(value?.owner?.player_id) === actorID) ownershipByBase.delete(key);
+        });
+      }
+    });
+
+    const ownershipPolygons = Array.from(ownershipByBase.values()).map((entry, idx) => ({
+      key: `synthetic-ownership-${idx}-${entry.baseKey}`,
+      points: syntheticPolygonForCenter(entry.center).map((pt) => `${pt.x},${pt.y}`).join(' '),
+      ownerName: String(entry?.owner?.name || ''),
+      ownerColor: playerColorToCss(entry?.owner?.color),
+    })).filter((entry) => entry.points);
+
+    let arrow = null;
+    if (isArrowEventType(selectedMainGameEvent?.type)) {
+      const target = syntheticPointForClock(eventBaseClock(selectedMainGameEvent));
+      const actorID = eventActorID(selectedMainGameEvent);
+      const from = actorID ? startPointByPlayerID.get(actorID) : null;
+      if (from && target) {
+        arrow = {
+          from,
+          to: target,
+          color: playerColorToCss(selectedMainGameEvent?.actor?.color),
+        };
+      }
+    }
+
+    let leaveFlagPoint = null;
+    if (normalizeEventType(selectedMainGameEvent?.type) === 'leave_game') {
+      const actorID = eventActorID(selectedMainGameEvent);
+      if (actorID) {
+        const ownedEntries = Array.from(ownershipByBase.values()).filter((entry) => Number(entry?.owner?.player_id) === actorID);
+        const preferred = ownedEntries.find((entry) => String(entry?.baseKind || '').toLowerCase() === 'starting') || ownedEntries[0];
+        if (preferred?.center) leaveFlagPoint = preferred.center;
+      }
+    }
+
+    return { ownershipPolygons, arrow, leaveFlagPoint };
+  }, [selectedMainGameEvent, mainGame?.game_events]);
+  const effectiveMainGameOwnershipPolygons = useMemo(
+    () => (selectedMainGameOwnershipPolygons.length > 0 ? selectedMainGameOwnershipPolygons : selectedMainGameSyntheticOverlay.ownershipPolygons),
+    [selectedMainGameOwnershipPolygons, selectedMainGameSyntheticOverlay],
+  );
+  const effectiveMainGameArrow = useMemo(
+    () => selectedMainGameArrow || selectedMainGameSyntheticOverlay.arrow,
+    [selectedMainGameArrow, selectedMainGameSyntheticOverlay],
+  );
+  const selectedMainGameArrowUnits = useMemo(() => {
+    if (!effectiveMainGameArrow || !selectedMainGameEvent) return [];
+    const unitNames = Array.isArray(selectedMainGameEvent.attack_unit_types) && selectedMainGameEvent.attack_unit_types.length > 0
+      ? selectedMainGameEvent.attack_unit_types
+      : fallbackOverlayUnitNamesForEvent(selectedMainGameEvent.type);
+    return unitNames
+      .map((name) => ({ name, icon: getUnitIcon(name) }))
+      .filter((item) => item.icon)
+      .slice(0, 4);
+  }, [effectiveMainGameArrow, selectedMainGameEvent]);
+  const selectedMainGameLeaveFlag = useMemo(() => {
+    if (normalizeEventType(selectedMainGameEvent?.type) !== 'leave_game' || !mainEventMapBounds) return null;
+    const actorID = Number(selectedMainGameEvent?.actor?.player_id || 0);
+    if (!Number.isFinite(actorID) || actorID <= 0) return null;
+    const ownership = Array.isArray(selectedMainGameEvent?.ownership) ? selectedMainGameEvent.ownership : [];
+    const ownedBases = ownership.filter((entry) => Number(entry?.owner?.player_id || 0) === actorID && entry?.base?.center);
+    if (ownedBases.length === 0) return null;
+    const preferredBase = ownedBases.find((entry) => String(entry?.base?.kind || '').toLowerCase() === 'starting') || ownedBases[0];
+    return mapPointToPercent(preferredBase?.base?.center, mainEventMapBounds);
+  }, [selectedMainGameEvent, mainEventMapBounds]);
+  const effectiveMainGameLeaveFlag = useMemo(
+    () => selectedMainGameLeaveFlag || selectedMainGameSyntheticOverlay.leaveFlagPoint,
+    [selectedMainGameLeaveFlag, selectedMainGameSyntheticOverlay],
+  );
+  const selectedMainGameExpansionOverlay = useMemo(() => {
+    if (normalizeEventType(selectedMainGameEvent?.type) !== 'expansion') return null;
+    const baseCenter = selectedMainGameEvent?.base?.center;
+    if (!baseCenter) return null;
+    const playerID = Number(selectedMainGameEvent?.actor?.player_id || 0);
+    const actorRow = mainGamePlayers.find((player) => Number(player?.player_id || 0) === playerID);
+    const icon = getExpansionMarkerIconForRace(actorRow?.race);
+    if (!icon) return null;
+    const point = mapPointToPercent(baseCenter, mainEventMapBounds);
+    if (!point) return null;
+    return { icon, point };
+  }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds]);
+
   const mainPlayerInsights = [
     mainPlayerViewportInsight,
     mainPlayerApmInsight,
@@ -3136,38 +3607,52 @@ function App() {
 
                 {mainGameTab === 'summary' && (
                   <>
-                    <div className="workflow-player-rows" style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
-                      {(mainGame.players || []).map((player) => (
-                        <div key={player.player_id} className="workflow-player-row" style={{ borderLeft: `3px solid ${getTeamColor(player.team)}` }}>
-                          <div className="workflow-player-line">
-                            <strong
-                              className="workflow-player-name"
-                              style={playerAccentColor(player.player_key) ? { color: playerAccentColor(player.player_key) } : undefined}
-                            >
-                              {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-                              {player.name}
-                            </strong>
-                            <div className="workflow-player-actions">
-                              <span className="workflow-player-apm"><strong>APM</strong> {player.apm}</span>
-                              <button className="workflow-link-btn" onClick={() => openMainPlayer(player.player_key)}>View Player Summary</button>
-                            </div>
-                            {filterSummaryPillPatterns(player.detected_patterns).map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`))}
-                          </div>
+                    <div className="workflow-map-summary">
+                      {mainMapVisualAvailable ? (
+                        <button
+                          type="button"
+                          className="workflow-map-thumb-btn"
+                          onClick={() => setMainMapModalOpen(true)}
+                          title="Click to enlarge map"
+                        >
+                          <img src={mainMapVisualThumbURL} alt={`${mainGame.map_name} map`} className="workflow-map-thumb-image" />
+                        </button>
+                      ) : (
+                        <div className="workflow-map-summary-fallback">
+                          Map image unavailable for this replay map.
+                          {mainMapVisual?.resolution_note ? ` (${mainMapVisual.resolution_note})` : ''}
                         </div>
-                      ))}
+                      )}
                     </div>
-                    {(filteredReplayPatterns.length > 0 || filteredTeamPatterns.length > 0) && (
+                    <div className="workflow-player-rows" style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
+                      {(mainGame.players || []).map((player) => {
+                        const raceIcon = getRaceIcon(player.race);
+                        return (
+                          <div key={player.player_id} className="workflow-player-row" style={{ borderLeft: `3px solid ${getTeamColor(player.team)}` }}>
+                            <div className="workflow-player-line">
+                              <strong
+                                className="workflow-player-name"
+                                style={playerAccentColor(player.player_key) ? { color: playerAccentColor(player.player_key) } : undefined}
+                              >
+                                {raceIcon ? <img src={raceIcon} alt={player.race || 'race'} className="unit-icon-inline workflow-summary-race-icon" /> : null}
+                                {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+                                {player.name}
+                              </strong>
+                              <div className="workflow-player-actions">
+                                <span className="workflow-player-apm"><strong>APM</strong> {player.apm}</span>
+                                <button className="workflow-link-btn" onClick={() => openMainPlayer(player.player_key)}>View Player Summary</button>
+                              </div>
+                              {filterSummaryPillPatterns(player.detected_patterns).map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {filteredReplayPatterns.length > 0 && (
                       <div className="workflow-card">
-                        {filteredReplayPatterns.length > 0 && (
-                          <div className="workflow-pattern-pills">
-                            {filteredReplayPatterns.map((pattern, idx) => renderPatternPill(pattern, `replay-${idx}`))}
-                          </div>
-                        )}
-                        {filteredTeamPatterns.length > 0 && (
-                          <div className="workflow-pattern-pills">
-                            {filteredTeamPatterns.map((pattern, idx) => renderPatternPill(pattern, `team-${idx}`, pattern.team))}
-                          </div>
-                        )}
+                        <div className="workflow-pattern-pills">
+                          {filteredReplayPatterns.map((pattern, idx) => renderPatternPill(pattern, `replay-${idx}`))}
+                        </div>
                       </div>
                     )}
                   </>
@@ -3246,13 +3731,130 @@ function App() {
                     </div>
                     <div className="workflow-card-title"><span>Game events</span></div>
                     {filteredGameEvents.length > 0 ? (
-                      <div className="workflow-events">
-                        {filteredGameEvents.map((event, idx) => (
-                          <div key={`${event.second}-${idx}`} className="workflow-event-row">
-                            <span>{formatDuration(event.second)}</span>
-                            <span>{event.description}</span>
-                          </div>
-                        ))}
+                      <div className="workflow-events-layout">
+                        <div className="workflow-event-map-panel">
+                          {mainMapVisualAvailable ? (
+                            <>
+                              {selectedMainGameLegend.length > 0 ? (
+                                <div className="workflow-event-map-legend">
+                                  {selectedMainGameLegend.map((item) => (
+                                    <span key={`legend-${item.name}`} className="workflow-event-map-legend-item" style={legendTextStyle(item.rawColor, item.color)}>
+                                      {item.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : null}
+                              <div className="workflow-event-map-frame">
+                                <img src={mainMapVisualURL} alt={`${mainGame.map_name} event overlay`} className="workflow-event-map-image" />
+                                {selectedMainGameEvent ? (
+                                  <svg className="workflow-event-map-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                                    <defs>
+                                      <marker
+                                        id="workflow-event-arrowhead"
+                                        markerWidth="5"
+                                        markerHeight="5"
+                                        refX="4.5"
+                                        refY="2.5"
+                                        orient="auto"
+                                      >
+                                        <polygon points="0 0, 5 2.5, 0 5" fill={selectedMainGameArrow?.color || 'currentColor'} />
+                                      </marker>
+                                    </defs>
+                                    {effectiveMainGameOwnershipPolygons.map((overlay) => (
+                                      <polygon
+                                        key={overlay.key}
+                                        points={overlay.points}
+                                        className="workflow-event-map-base-polygon"
+                                        style={{ fill: `${overlay.ownerColor}66`, stroke: overlay.ownerColor }}
+                                      />
+                                    ))}
+                                    {effectiveMainGameArrow ? (
+                                      <>
+                                        <line
+                                          x1={effectiveMainGameArrow.from.x}
+                                          y1={effectiveMainGameArrow.from.y}
+                                          x2={effectiveMainGameArrow.to.x}
+                                          y2={effectiveMainGameArrow.to.y}
+                                          className="workflow-event-map-attack-line"
+                                          style={{ color: effectiveMainGameArrow.color, stroke: effectiveMainGameArrow.color }}
+                                          markerEnd="url(#workflow-event-arrowhead)"
+                                        />
+                                      </>
+                                    ) : null}
+                                  </svg>
+                                ) : null}
+                                {effectiveMainGameArrow && selectedMainGameArrowUnits.length > 0 ? (
+                                  <div
+                                    className={`workflow-event-map-unit-overlay ${selectedMainGameArrowUnits.length > 2 ? 'workflow-event-map-unit-overlay--grid' : ''}`}
+                                    style={{
+                                      left: `${(effectiveMainGameArrow.from.x + effectiveMainGameArrow.to.x) / 2}%`,
+                                      top: `${(effectiveMainGameArrow.from.y + effectiveMainGameArrow.to.y) / 2}%`,
+                                    }}
+                                  >
+                                    {selectedMainGameArrowUnits.map((unit, unitIdx) => (
+                                      <img
+                                        key={`${selectedMainGameEventKeyResolved}-${unit.name}-${unitIdx}`}
+                                        src={unit.icon}
+                                        alt={unit.name}
+                                        title={unit.name}
+                                        className="workflow-event-map-unit-icon"
+                                      />
+                                    ))}
+                                  </div>
+                                ) : null}
+                                {effectiveMainGameLeaveFlag ? (
+                                  <div
+                                    className="workflow-event-map-flag-overlay"
+                                    style={{
+                                      left: `${effectiveMainGameLeaveFlag.x}%`,
+                                      top: `${effectiveMainGameLeaveFlag.y}%`,
+                                    }}
+                                    title="Player left the game"
+                                  >
+                                    <span role="img" aria-label="Player left">
+                                      🏳️
+                                    </span>
+                                  </div>
+                                ) : null}
+                                {selectedMainGameExpansionOverlay ? (
+                                  <img
+                                    src={selectedMainGameExpansionOverlay.icon}
+                                    alt="Expansion building"
+                                    className="workflow-event-map-expansion-overlay"
+                                    style={{
+                                      left: `${selectedMainGameExpansionOverlay.point.x}%`,
+                                      top: `${selectedMainGameExpansionOverlay.point.y}%`,
+                                    }}
+                                  />
+                                ) : null}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="workflow-map-summary-fallback">
+                              Map image unavailable for event overlays.
+                              {mainMapVisual?.resolution_note ? ` (${mainMapVisual.resolution_note})` : ''}
+                            </div>
+                          )}
+                        </div>
+                        <div className="workflow-events">
+                          {filteredGameEvents.map((event, idx) => {
+                            const eventKey = gameEventRowKey(event, idx);
+                            const selected = eventKey === selectedMainGameEventKeyResolved;
+                            return (
+                              <button
+                                key={eventKey}
+                                type="button"
+                                className={`workflow-event-row ${selected ? 'workflow-event-row-selected' : ''}`}
+                                onClick={() => setMainSelectedGameEventKey(eventKey)}
+                              >
+                                <span>{formatDuration(event.second)}</span>
+                                <span className="workflow-event-row-body">
+                                  <span>{gameEventDescription(event)}</span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     ) : (
                       <div className="chart-empty">No summary items match current filters.</div>
@@ -3667,6 +4269,19 @@ function App() {
                     </div>
                   </div>
                 )}
+                {mainMapModalOpen && mainMapVisualAvailable ? (
+                  <div className="modal-overlay" onClick={() => setMainMapModalOpen(false)}>
+                    <div className="modal-content workflow-map-modal" onClick={(e) => e.stopPropagation()}>
+                      <div className="modal-header">
+                        <h2>{mainGame.map_name}</h2>
+                        <button className="btn-close" onClick={() => setMainMapModalOpen(false)}>×</button>
+                      </div>
+                      <div className="workflow-map-modal-body">
+                        <img src={mainMapVisualURL} alt={`${mainGame.map_name} map`} className="workflow-map-modal-image" />
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </>
             ) : (
               <div className="chart-empty">Select a game from the Games tab.</div>

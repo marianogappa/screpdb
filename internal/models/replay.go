@@ -60,11 +60,11 @@ type Player struct {
 
 // Command represents a player command/action in the game
 type Command struct {
-	ID                   int64     `json:"id"`
-	ReplayID             int64     `json:"replay_id"`
-	PlayerID             int64     `json:"player_id"`
-	Frame                int32     `json:"frame"`
-	SecondsFromGameStart int       `json:"secondsFromGameStart"`
+	ID                   int64 `json:"id"`
+	ReplayID             int64 `json:"replay_id"`
+	PlayerID             int64 `json:"player_id"`
+	Frame                int32 `json:"frame"`
+	SecondsFromGameStart int   `json:"secondsFromGameStart"`
 
 	// Command details
 	ActionType string `json:"action_type"`       // Build, Move, Attack, etc.
@@ -136,9 +136,31 @@ type MapStartLocation struct {
 	SlotID byte `json:"slot_id"`
 }
 
+// MapPolygonPoint stores a polygon vertex in pixels.
+type MapPolygonPoint struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
+// MapContextBase stores one base area and metadata from map analysis.
+type MapContextBase struct {
+	Name             string              `json:"-"`
+	Kind             string              `json:"-"`
+	Clock            int                 `json:"-"`
+	Center           MapResourcePosition `json:"-"`
+	Polygon          []MapPolygonPoint   `json:"-"`
+	NaturalExpansion string              `json:"-"`
+}
+
+// MapContextLayout stores high-level map geometry from external analyzers.
+type MapContextLayout struct {
+	Bases []MapContextBase `json:"-"`
+}
+
 // ReplayMapContext stores runtime-only map geometry/resource info used by detectors.
 type ReplayMapContext struct {
 	MineralFields  []MapResourcePosition `json:"-"`
 	Geysers        []MapResourcePosition `json:"-"`
 	StartLocations []MapStartLocation    `json:"-"`
+	Layout         *MapContextLayout     `json:"-"`
 }

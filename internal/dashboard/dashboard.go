@@ -390,8 +390,8 @@ func qualifyReplayFilterSQL(filterSQL string) string {
 		"commands",
 		"commands_low_value",
 		"detected_patterns_replay",
-		"detected_patterns_replay_team",
 		"detected_patterns_replay_player",
+		"replay_events",
 	}
 	for _, table := range tables {
 		re := regexp.MustCompile(`(?i)\b(from|join)\s+(?:main\.)?(?:\"` + table + `\"|` + "`" + table + "`" + `|\[` + table + `\]|` + table + `)\b`)
@@ -407,8 +407,8 @@ func hasUnqualifiedReplays(filterSQL string) bool {
 		"commands",
 		"commands_low_value",
 		"detected_patterns_replay",
-		"detected_patterns_replay_team",
 		"detected_patterns_replay_player",
+		"replay_events",
 	}
 	for _, table := range tables {
 		re := regexp.MustCompile(`(?i)\b(from|join)\s+(?:\"` + table + `\"|` + "`" + table + "`" + `|\[` + table + `\]|` + table + `)\b`)

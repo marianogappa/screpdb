@@ -22,7 +22,6 @@ type replayGolden struct {
 
 type patternCounts struct {
 	Replay int `json:"replay"`
-	Team   int `json:"team"`
 	Player int `json:"player"`
 }
 
@@ -80,8 +79,6 @@ func buildGoldenFromDir(replayDir string) (*goldenFile, error) {
 				switch res.Level {
 				case core.LevelReplay:
 					counts.Replay++
-				case core.LevelTeam:
-					counts.Team++
 				case core.LevelPlayer:
 					counts.Player++
 				}

@@ -7,14 +7,13 @@ import (
 
 // AlgorithmVersion is the current version of the pattern detection algorithm
 // Increment this when the algorithm changes to trigger re-detection
-const AlgorithmVersion = 7
+const AlgorithmVersion = 8
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string
 
 const (
 	LevelReplay DetectorLevel = "replay"
-	LevelTeam   DetectorLevel = "team"
 	LevelPlayer DetectorLevel = "player"
 )
 
@@ -23,8 +22,7 @@ type PatternResult struct {
 	PatternName    string
 	Level          DetectorLevel
 	ReplayID       int64
-	Team           *byte  // nil for replay and player level
-	PlayerID       *int64 // nil for replay and team level (database ID)
+	PlayerID       *int64 // nil for replay-level patterns (database ID)
 	ReplayPlayerID *byte  // Temporary: replay player ID (byte) for player-level results, converted to PlayerID later
 	ValueBool      *bool
 	ValueInt       *int

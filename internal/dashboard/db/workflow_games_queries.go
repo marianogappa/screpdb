@@ -26,25 +26,25 @@ type WorkflowGamePlayerRow struct {
 }
 
 type WorkflowPlayerPatternRow struct {
-	ReplayID        int64
-	PatternName     string
-	ValueBool       sql.NullBool
-	ValueInt        sql.NullInt64
-	ValueString     sql.NullString
-	ValueTimestamp  sql.NullInt64
+	ReplayID       int64
+	PatternName    string
+	ValueBool      sql.NullBool
+	ValueInt       sql.NullInt64
+	ValueString    sql.NullString
+	ValueTimestamp sql.NullInt64
 }
 
-type WorkflowReplayPatternRow struct {
-	ReplayID      int64
-	GameEventsRaw sql.NullString
+type WorkflowReplayEventRow struct {
+	ReplayID  int64
+	EventType string
 }
 
 type WorkflowCurrentPlayerRow struct {
-	ReplayID  int64
-	PlayerID  int64
-	Name      string
-	Race      string
-	IsWinner  bool
+	ReplayID int64
+	PlayerID int64
+	Name     string
+	Race     string
+	IsWinner bool
 }
 
 type WorkflowCurrentPlayerPatternRow struct {
@@ -254,9 +254,9 @@ func (s *Store) ListFeaturingPlayerPatternRows(ctx context.Context, replayIDs []
 	return result, nil
 }
 
-func (s *Store) ListFeaturingReplayPatternRows(ctx context.Context, replayIDs []int64) ([]WorkflowReplayPatternRow, error) {
+func (s *Store) ListFeaturingReplayEventRows(ctx context.Context, replayIDs []int64) ([]WorkflowReplayEventRow, error) {
 	if len(replayIDs) == 0 {
-		return []WorkflowReplayPatternRow{}, nil
+		return []WorkflowReplayEventRow{}, nil
 	}
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(replayIDs)), ",")
 	args := make([]any, 0, len(replayIDs))
@@ -264,19 +264,19 @@ func (s *Store) ListFeaturingReplayPatternRows(ctx context.Context, replayIDs []
 		args = append(args, replayID)
 	}
 	rows, err := s.ReplayQueryContext(ctx, `
-		SELECT replay_id, value_string
-		FROM detected_patterns_replay
+		SELECT replay_id, event_type
+		FROM replay_events
 		WHERE replay_id IN (`+placeholders+`)
-			AND lower(trim(pattern_name)) = 'game events'
+			AND event_type IN ('zergling_rush', 'cannon_rush', 'bunker_rush')
 	`, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	result := []WorkflowReplayPatternRow{}
+	result := []WorkflowReplayEventRow{}
 	for rows.Next() {
-		var row WorkflowReplayPatternRow
-		if err := rows.Scan(&row.ReplayID, &row.GameEventsRaw); err != nil {
+		var row WorkflowReplayEventRow
+		if err := rows.Scan(&row.ReplayID, &row.EventType); err != nil {
 			return nil, err
 		}
 		result = append(result, row)

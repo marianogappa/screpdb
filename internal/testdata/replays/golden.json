@@ -5,8 +5,7 @@
       "players": 2,
       "commands": 5206,
       "patterns": {
-        "replay": 1,
-        "team": 0,
+        "replay": 0,
         "player": 7
       }
     },
@@ -15,8 +14,7 @@
       "players": 2,
       "commands": 9418,
       "patterns": {
-        "replay": 1,
-        "team": 0,
+        "replay": 0,
         "player": 7
       }
     },
@@ -25,8 +23,7 @@
       "players": 2,
       "commands": 9009,
       "patterns": {
-        "replay": 1,
-        "team": 0,
+        "replay": 0,
         "player": 8
       }
     },
@@ -35,8 +32,7 @@
       "players": 8,
       "commands": 14080,
       "patterns": {
-        "replay": 1,
-        "team": 0,
+        "replay": 0,
         "player": 39
       }
     }

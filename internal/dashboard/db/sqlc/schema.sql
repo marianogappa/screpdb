@@ -32,13 +32,15 @@ CREATE TABLE players (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   replay_id INTEGER NOT NULL,
   name TEXT NOT NULL,
+  color TEXT NOT NULL,
   race TEXT NOT NULL,
   type TEXT NOT NULL,
   team INTEGER NOT NULL,
   is_observer BOOLEAN NOT NULL,
   apm INTEGER NOT NULL,
   eapm INTEGER NOT NULL,
-  is_winner BOOLEAN NOT NULL
+  is_winner BOOLEAN NOT NULL,
+  start_location_oclock INTEGER
 );
 
 CREATE TABLE dashboards (
@@ -73,6 +75,7 @@ CREATE TABLE detected_patterns_replay_player (
 );
 
 CREATE TABLE detected_patterns_replay (
+  algorithm_version INTEGER NOT NULL,
   replay_id INTEGER NOT NULL,
   pattern_name TEXT NOT NULL,
   value_bool BOOLEAN,
@@ -81,14 +84,17 @@ CREATE TABLE detected_patterns_replay (
   value_timestamp BIGINT
 );
 
-CREATE TABLE detected_patterns_replay_team (
+CREATE TABLE replay_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   replay_id INTEGER NOT NULL,
-  team INTEGER NOT NULL,
-  pattern_name TEXT NOT NULL,
-  value_bool BOOLEAN,
-  value_int INTEGER,
-  value_string TEXT,
-  value_timestamp BIGINT
+  seconds_from_game_start INTEGER NOT NULL,
+  event_type TEXT NOT NULL,
+  location_base_type TEXT,
+  location_base_oclock INTEGER,
+  location_natural_of_oclock INTEGER,
+  source_player_id INTEGER,
+  target_player_id INTEGER,
+  attack_unit_types TEXT
 );
 
 CREATE TABLE commands (

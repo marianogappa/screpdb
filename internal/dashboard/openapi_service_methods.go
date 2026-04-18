@@ -729,8 +729,16 @@ func (d *Dashboard) GameSee(ctx context.Context, request apigen.GameSeeRequestOb
 	}, nil
 }
 
-func (d *Dashboard) Healthcheck(_ context.Context, _ apigen.HealthcheckRequestObject) (any, error) {
-	return map[string]any{"ok": true}, nil
+func (d *Dashboard) Healthcheck(ctx context.Context, _ apigen.HealthcheckRequestObject) (any, error) {
+	totalReplays, err := d.dbStore.CountReplays(ctx)
+	if err != nil {
+		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
+	}
+	return map[string]any{
+		"ok":             true,
+		"total_replays":  totalReplays,
+		"openai_enabled": d.ai != nil && d.ai.llm != nil,
+	}, nil
 }
 
 func (d *Dashboard) PlayerColors(ctx context.Context, _ apigen.PlayerColorsRequestObject) (any, error) {

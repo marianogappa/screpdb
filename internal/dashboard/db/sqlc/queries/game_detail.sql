@@ -1,5 +1,5 @@
 -- name: GetReplaySummary :one
-SELECT id, replay_date, file_name, map_name, duration_seconds, game_type
+SELECT id, replay_date, file_name, file_path, map_name, duration_seconds, game_type
 FROM replays
 WHERE id = ?;
 
@@ -7,9 +7,11 @@ WHERE id = ?;
 SELECT
   p.id,
   p.name,
+  COALESCE(p.color, '') AS color,
   p.race,
   p.team,
   p.is_winner,
+  p.start_location_oclock,
   p.apm,
   p.eapm,
   COUNT(c.id) AS command_count,
@@ -28,7 +30,7 @@ SELECT
 FROM players p
 LEFT JOIN commands c ON c.player_id = p.id
 WHERE p.replay_id = ? AND p.is_observer = 0
-GROUP BY p.id, p.name, p.race, p.team, p.is_winner, p.apm, p.eapm
+GROUP BY p.id, p.name, p.color, p.race, p.team, p.is_winner, p.start_location_oclock, p.apm, p.eapm
 ORDER BY p.team ASC, p.id ASC;
 
 -- name: ListReplayPatterns :many
@@ -45,21 +47,6 @@ FROM detected_patterns_replay
 WHERE replay_id = ?
 ORDER BY pattern_name ASC;
 
--- name: ListTeamPatterns :many
-SELECT
-  team,
-  pattern_name,
-  CASE
-    WHEN value_bool IS NOT NULL THEN CASE WHEN value_bool = 1 THEN 'true' ELSE 'false' END
-    WHEN value_int IS NOT NULL THEN CAST(value_int AS TEXT)
-    WHEN value_string IS NOT NULL THEN value_string
-    WHEN value_timestamp IS NOT NULL THEN CAST(value_timestamp AS TEXT)
-    ELSE ''
-  END AS pattern_value
-FROM detected_patterns_replay_team
-WHERE replay_id = ?
-ORDER BY team ASC, pattern_name ASC;
-
 -- name: ListPlayerPatterns :many
 SELECT
   player_id,
@@ -74,6 +61,26 @@ SELECT
 FROM detected_patterns_replay_player
 WHERE replay_id = ?
 ORDER BY player_id ASC, pattern_name ASC;
+
+-- name: ListReplayEvents :many
+SELECT
+  re.event_type,
+  re.seconds_from_game_start,
+  re.source_player_id,
+  COALESCE(sp.name, '') AS source_player_name,
+  COALESCE(sp.color, '') AS source_player_color,
+  re.target_player_id,
+  COALESCE(tp.name, '') AS target_player_name,
+  COALESCE(tp.color, '') AS target_player_color,
+  re.location_base_type,
+  re.location_base_oclock,
+  re.location_natural_of_oclock,
+  re.attack_unit_types
+FROM replay_events re
+LEFT JOIN players sp ON sp.id = re.source_player_id
+LEFT JOIN players tp ON tp.id = re.target_player_id
+WHERE re.replay_id = ?
+ORDER BY re.seconds_from_game_start ASC, re.event_type ASC, re.id ASC;
 
 -- name: GetPlayerOverviewSummary :one
 SELECT

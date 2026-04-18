@@ -17,10 +17,11 @@ FROM (
   GROUP BY lower(trim(name))
 );
 
--- name: ListGameEventValues :many
-SELECT replay_id, COALESCE(value_string, '') AS value
-FROM detected_patterns_replay
-WHERE pattern_name = 'Game Events';
+-- name: ListExpansionEvents :many
+SELECT replay_id, source_player_id, seconds_from_game_start
+FROM replay_events
+WHERE event_type = 'expansion'
+  AND source_player_id IS NOT NULL;
 
 -- name: ListPlayersByReplayRows :many
 SELECT replay_id, id AS player_id, name

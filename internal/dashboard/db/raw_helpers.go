@@ -27,7 +27,7 @@ func ApplyReplayTempViews(db *sql.DB, qualifiedFilterSQL string) error {
 	if _, err := db.Exec(`CREATE TEMP VIEW detected_patterns_replay AS SELECT * FROM main.detected_patterns_replay WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
 		return err
 	}
-	if _, err := db.Exec(`CREATE TEMP VIEW detected_patterns_replay_team AS SELECT * FROM main.detected_patterns_replay_team WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
+	if _, err := db.Exec(`CREATE TEMP VIEW replay_events AS SELECT * FROM main.replay_events WHERE replay_id IN (SELECT id FROM replays)`); err != nil {
 		return err
 	}
 	if _, err := db.Exec(`CREATE TEMP VIEW detected_patterns_replay_player AS

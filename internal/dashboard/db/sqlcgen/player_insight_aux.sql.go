@@ -92,27 +92,29 @@ func (q *Queries) GetPlayerNameByKey(ctx context.Context, name string) (string, 
 	return player_name, err
 }
 
-const ListGameEventValues = `-- name: ListGameEventValues :many
-SELECT replay_id, COALESCE(value_string, '') AS value
-FROM detected_patterns_replay
-WHERE pattern_name = 'Game Events'
+const ListExpansionEvents = `-- name: ListExpansionEvents :many
+SELECT replay_id, source_player_id, seconds_from_game_start
+FROM replay_events
+WHERE event_type = 'expansion'
+  AND source_player_id IS NOT NULL
 `
 
-type ListGameEventValuesRow struct {
-	ReplayID int64
-	Value    string
+type ListExpansionEventsRow struct {
+	ReplayID             int64
+	SourcePlayerID       *int64
+	SecondsFromGameStart int64
 }
 
-func (q *Queries) ListGameEventValues(ctx context.Context) ([]ListGameEventValuesRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListGameEventValues)
+func (q *Queries) ListExpansionEvents(ctx context.Context) ([]ListExpansionEventsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListExpansionEvents)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListGameEventValuesRow{}
+	items := []ListExpansionEventsRow{}
 	for rows.Next() {
-		var i ListGameEventValuesRow
-		if err := rows.Scan(&i.ReplayID, &i.Value); err != nil {
+		var i ListExpansionEventsRow
+		if err := rows.Scan(&i.ReplayID, &i.SourcePlayerID, &i.SecondsFromGameStart); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
