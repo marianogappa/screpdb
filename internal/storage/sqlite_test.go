@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -55,9 +54,9 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	expectedCounts := map[string]int64{
 		"replays":                         4,
 		"players":                         14,
-		"detected_patterns_replay":        4,
-		"detected_patterns_replay_team":   0,
+		"detected_patterns_replay":        0,
 		"detected_patterns_replay_player": 61,
+		"replay_events":                   428,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {
@@ -110,33 +109,25 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		t.Fatalf("expected Used Hotkey Groups pattern detections to be present")
 	}
 
-	baseStateRows, err := store.Query(ctx, "SELECT value_string FROM detected_patterns_replay WHERE pattern_name = 'Game Events'")
+	baseStateRows, err := store.Query(ctx, "SELECT event_type, seconds_from_game_start, source_player_id FROM replay_events ORDER BY id ASC")
 	if err != nil {
-		t.Fatalf("query game events pattern: %v", err)
+		t.Fatalf("query replay events: %v", err)
 	}
 	if len(baseStateRows) == 0 {
-		t.Fatalf("expected Game Events pattern detections to be present")
+		t.Fatalf("expected replay events to be present")
 	}
+	hasPlayerStart := false
 	for _, row := range baseStateRows {
-		raw, ok := asString(row["value_string"])
-		if !ok || raw == "" {
-			t.Fatalf("expected non-empty value_string for Game Events")
+		eventType, ok := asString(row["event_type"])
+		if !ok || strings.TrimSpace(eventType) == "" {
+			t.Fatalf("expected replay event_type to be present")
 		}
-		var payload []map[string]any
-		if err := json.Unmarshal([]byte(raw), &payload); err != nil {
-			t.Fatalf("expected valid JSON in Game Events value_string: %v", err)
+		if strings.EqualFold(eventType, "player_start") {
+			hasPlayerStart = true
 		}
-		for _, entry := range payload {
-			if _, ok := entry["type"]; !ok {
-				t.Fatalf("expected game event entry to contain type")
-			}
-			if _, ok := entry["second"]; !ok {
-				t.Fatalf("expected game event entry to contain second")
-			}
-			if _, ok := entry["description"]; !ok {
-				t.Fatalf("expected game event entry to contain description")
-			}
-		}
+	}
+	if !hasPlayerStart {
+		t.Fatalf("expected player_start replay events to be present")
 	}
 
 	// ReplayExists and FilterOutExistingReplays

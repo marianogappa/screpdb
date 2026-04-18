@@ -184,4 +184,29 @@ export const UNIT_ICON_MAP = {
 
 export const normalizeUnitName = (value) => String(value || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
 
-export const getUnitIcon = (unitType) => UNIT_ICON_MAP[normalizeUnitName(unitType)] || null;
+const stripRacePrefix = (normalized) => {
+  const prefixes = ['terran', 'protoss', 'zerg'];
+  for (const prefix of prefixes) {
+    if (normalized.startsWith(prefix) && normalized.length > prefix.length) {
+      return normalized.slice(prefix.length);
+    }
+  }
+  return normalized;
+};
+
+export const getUnitIcon = (unitType) => {
+  const normalized = normalizeUnitName(unitType);
+  if (!normalized) return null;
+  if (UNIT_ICON_MAP[normalized]) return UNIT_ICON_MAP[normalized];
+
+  const withoutRace = stripRacePrefix(normalized);
+  if (UNIT_ICON_MAP[withoutRace]) return UNIT_ICON_MAP[withoutRace];
+
+  const withoutModeSuffix = withoutRace
+    .replace(/siegemode$/, '')
+    .replace(/tankmode$/, '')
+    .replace(/turret$/, '');
+  if (UNIT_ICON_MAP[withoutModeSuffix]) return UNIT_ICON_MAP[withoutModeSuffix];
+
+  return null;
+};

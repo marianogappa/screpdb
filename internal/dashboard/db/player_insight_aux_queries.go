@@ -15,21 +15,23 @@ func (s *Store) CountDistinctPlayersByRace(ctx context.Context, race string) (fl
 	return sqlcgen.New(s.replayScoped()).CountDistinctPlayersByRace(ctx, race)
 }
 
-type ReplayEventValueRow struct {
+type ReplayExpansionEventRow struct {
 	ReplayID int64
-	Value    string
+	PlayerID *int64
+	Second   int64
 }
 
-func (s *Store) ListGameEventValues(ctx context.Context) ([]ReplayEventValueRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListGameEventValues(ctx)
+func (s *Store) ListExpansionEvents(ctx context.Context) ([]ReplayExpansionEventRow, error) {
+	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListExpansionEvents(ctx)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]ReplayEventValueRow, 0, len(sqlcRows))
+	out := make([]ReplayExpansionEventRow, 0, len(sqlcRows))
 	for _, row := range sqlcRows {
-		out = append(out, ReplayEventValueRow{
+		out = append(out, ReplayExpansionEventRow{
 			ReplayID: row.ReplayID,
-			Value:    row.Value,
+			PlayerID: row.SourcePlayerID,
+			Second:   row.SecondsFromGameStart,
 		})
 	}
 	return out, nil

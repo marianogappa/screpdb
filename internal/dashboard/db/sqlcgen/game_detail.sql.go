@@ -42,7 +42,7 @@ func (q *Queries) GetPlayerOverviewSummary(ctx context.Context, name string) (Ge
 }
 
 const GetReplaySummary = `-- name: GetReplaySummary :one
-SELECT id, replay_date, file_name, map_name, duration_seconds, game_type
+SELECT id, replay_date, file_name, file_path, map_name, duration_seconds, game_type
 FROM replays
 WHERE id = ?
 `
@@ -51,6 +51,7 @@ type GetReplaySummaryRow struct {
 	ID              int64
 	ReplayDate      string
 	FileName        string
+	FilePath        string
 	MapName         string
 	DurationSeconds int64
 	GameType        string
@@ -63,6 +64,7 @@ func (q *Queries) GetReplaySummary(ctx context.Context, id int64) (GetReplaySumm
 		&i.ID,
 		&i.ReplayDate,
 		&i.FileName,
+		&i.FilePath,
 		&i.MapName,
 		&i.DurationSeconds,
 		&i.GameType,
@@ -235,6 +237,78 @@ func (q *Queries) ListPlayerRecentGames(ctx context.Context, name string) ([]Lis
 	return items, nil
 }
 
+const ListReplayEvents = `-- name: ListReplayEvents :many
+SELECT
+  re.event_type,
+  re.seconds_from_game_start,
+  re.source_player_id,
+  COALESCE(sp.name, '') AS source_player_name,
+  COALESCE(sp.color, '') AS source_player_color,
+  re.target_player_id,
+  COALESCE(tp.name, '') AS target_player_name,
+  COALESCE(tp.color, '') AS target_player_color,
+  re.location_base_type,
+  re.location_base_oclock,
+  re.location_natural_of_oclock,
+  re.attack_unit_types
+FROM replay_events re
+LEFT JOIN players sp ON sp.id = re.source_player_id
+LEFT JOIN players tp ON tp.id = re.target_player_id
+WHERE re.replay_id = ?
+ORDER BY re.seconds_from_game_start ASC, re.event_type ASC, re.id ASC
+`
+
+type ListReplayEventsRow struct {
+	EventType               string
+	SecondsFromGameStart    int64
+	SourcePlayerID          *int64
+	SourcePlayerName        string
+	SourcePlayerColor       string
+	TargetPlayerID          *int64
+	TargetPlayerName        string
+	TargetPlayerColor       string
+	LocationBaseType        *string
+	LocationBaseOclock      *int64
+	LocationNaturalOfOclock *int64
+	AttackUnitTypes         *string
+}
+
+func (q *Queries) ListReplayEvents(ctx context.Context, replayID int64) ([]ListReplayEventsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListReplayEvents, replayID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListReplayEventsRow{}
+	for rows.Next() {
+		var i ListReplayEventsRow
+		if err := rows.Scan(
+			&i.EventType,
+			&i.SecondsFromGameStart,
+			&i.SourcePlayerID,
+			&i.SourcePlayerName,
+			&i.SourcePlayerColor,
+			&i.TargetPlayerID,
+			&i.TargetPlayerName,
+			&i.TargetPlayerColor,
+			&i.LocationBaseType,
+			&i.LocationBaseOclock,
+			&i.LocationNaturalOfOclock,
+			&i.AttackUnitTypes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListReplayPatterns = `-- name: ListReplayPatterns :many
 SELECT
   pattern_name,
@@ -282,9 +356,11 @@ const ListReplayPlayersForDetail = `-- name: ListReplayPlayersForDetail :many
 SELECT
   p.id,
   p.name,
+  COALESCE(p.color, '') AS color,
   p.race,
   p.team,
   p.is_winner,
+  p.start_location_oclock,
   p.apm,
   p.eapm,
   COUNT(c.id) AS command_count,
@@ -303,16 +379,18 @@ SELECT
 FROM players p
 LEFT JOIN commands c ON c.player_id = p.id
 WHERE p.replay_id = ? AND p.is_observer = 0
-GROUP BY p.id, p.name, p.race, p.team, p.is_winner, p.apm, p.eapm
+GROUP BY p.id, p.name, p.color, p.race, p.team, p.is_winner, p.start_location_oclock, p.apm, p.eapm
 ORDER BY p.team ASC, p.id ASC
 `
 
 type ListReplayPlayersForDetailRow struct {
 	ID                   int64
 	Name                 string
+	Color                string
 	Race                 string
 	Team                 int64
 	IsWinner             bool
+	StartLocationOclock  *int64
 	Apm                  int64
 	Eapm                 int64
 	CommandCount         int64
@@ -332,60 +410,17 @@ func (q *Queries) ListReplayPlayersForDetail(ctx context.Context, replayID int64
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
+			&i.Color,
 			&i.Race,
 			&i.Team,
 			&i.IsWinner,
+			&i.StartLocationOclock,
 			&i.Apm,
 			&i.Eapm,
 			&i.CommandCount,
 			&i.HotkeyCount,
 			&i.LowValueCommandCount,
 		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const ListTeamPatterns = `-- name: ListTeamPatterns :many
-SELECT
-  team,
-  pattern_name,
-  CASE
-    WHEN value_bool IS NOT NULL THEN CASE WHEN value_bool = 1 THEN 'true' ELSE 'false' END
-    WHEN value_int IS NOT NULL THEN CAST(value_int AS TEXT)
-    WHEN value_string IS NOT NULL THEN value_string
-    WHEN value_timestamp IS NOT NULL THEN CAST(value_timestamp AS TEXT)
-    ELSE ''
-  END AS pattern_value
-FROM detected_patterns_replay_team
-WHERE replay_id = ?
-ORDER BY team ASC, pattern_name ASC
-`
-
-type ListTeamPatternsRow struct {
-	Team         int64
-	PatternName  string
-	PatternValue string
-}
-
-func (q *Queries) ListTeamPatterns(ctx context.Context, replayID int64) ([]ListTeamPatternsRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListTeamPatterns, replayID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListTeamPatternsRow{}
-	for rows.Next() {
-		var i ListTeamPatternsRow
-		if err := rows.Scan(&i.Team, &i.PatternName, &i.PatternValue); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

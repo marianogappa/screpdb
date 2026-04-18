@@ -47,12 +47,13 @@ type DashboardWidget struct {
 }
 
 type DetectedPatternsReplay struct {
-	ReplayID       int64
-	PatternName    string
-	ValueBool      *bool
-	ValueInt       *int64
-	ValueString    *string
-	ValueTimestamp *int64
+	AlgorithmVersion int64
+	ReplayID         int64
+	PatternName      string
+	ValueBool        *bool
+	ValueInt         *int64
+	ValueString      *string
+	ValueTimestamp   *int64
 }
 
 type DetectedPatternsReplayPlayer struct {
@@ -65,27 +66,19 @@ type DetectedPatternsReplayPlayer struct {
 	ValueTimestamp *int64
 }
 
-type DetectedPatternsReplayTeam struct {
-	ReplayID       int64
-	Team           int64
-	PatternName    string
-	ValueBool      *bool
-	ValueInt       *int64
-	ValueString    *string
-	ValueTimestamp *int64
-}
-
 type Player struct {
-	ID         int64
-	ReplayID   int64
-	Name       string
-	Race       string
-	Type       string
-	Team       int64
-	IsObserver bool
-	Apm        int64
-	Eapm       int64
-	IsWinner   bool
+	ID                  int64
+	ReplayID            int64
+	Name                string
+	Color               string
+	Race                string
+	Type                string
+	Team                int64
+	IsObserver          bool
+	Apm                 int64
+	Eapm                int64
+	IsWinner            bool
+	StartLocationOclock *int64
 }
 
 type Replay struct {
@@ -96,6 +89,19 @@ type Replay struct {
 	MapName         string
 	DurationSeconds int64
 	GameType        string
+}
+
+type ReplayEvent struct {
+	ID                      int64
+	ReplayID                int64
+	SecondsFromGameStart    int64
+	EventType               string
+	LocationBaseType        *string
+	LocationBaseOclock      *int64
+	LocationNaturalOfOclock *int64
+	SourcePlayerID          *int64
+	TargetPlayerID          *int64
+	AttackUnitTypes         *string
 }
 
 type Setting struct {

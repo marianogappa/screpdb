@@ -120,18 +120,16 @@ func (d *Dashboard) playerLabeledTimingsFromReplayCommands(players []workflowGam
 
 func playerExpansionTimingsFromGameEvents(events []workflowGameEvent, players []workflowGamePlayer) []workflowPlayerTimingSeries {
 	seriesByPlayer, playerOrder := initPlayerTimingSeries(players)
-	playersSorted := make([]workflowGamePlayer, len(players))
-	copy(playersSorted, players)
-	sort.Slice(playersSorted, func(i, j int) bool {
-		return len(playersSorted[i].Name) > len(playersSorted[j].Name)
-	})
 	orderByPlayer := map[int64]int64{}
 	for _, event := range events {
 		typeLower := strings.ToLower(event.Type)
 		if typeLower != "expansion" {
 			continue
 		}
-		playerID := matchPlayerIDInEvent(event.Description, playersSorted)
+		playerID := int64(0)
+		if event.Actor != nil {
+			playerID = event.Actor.PlayerID
+		}
 		if playerID == 0 {
 			continue
 		}
@@ -145,23 +143,6 @@ func playerExpansionTimingsFromGameEvents(events []workflowGameEvent, players []
 		}
 	}
 	return orderedTimingSeries(seriesByPlayer, playerOrder)
-}
-
-func matchPlayerIDInEvent(description string, players []workflowGamePlayer) int64 {
-	desc := strings.ToLower(strings.TrimSpace(description))
-	if desc == "" {
-		return 0
-	}
-	for _, player := range players {
-		nameLower := strings.ToLower(strings.TrimSpace(player.Name))
-		if nameLower == "" {
-			continue
-		}
-		if strings.HasPrefix(desc, nameLower+" ") || strings.HasPrefix(desc, nameLower) {
-			return player.PlayerID
-		}
-	}
-	return 0
 }
 
 func initPlayerTimingSeries(players []workflowGamePlayer) (map[int64]*workflowPlayerTimingSeries, []int64) {
@@ -744,48 +725,43 @@ func primaryRaceFromBreakdown(breakdown []workflowPlayerRaceBreakdown) string {
 }
 
 func (d *Dashboard) firstExpansionAverageByPlayer() (map[string]float64, error) {
-	rows, err := d.dbStore.ListGameEventValues(d.ctx)
+	rows, err := d.dbStore.ListExpansionEvents(d.ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load game events for expansion averages: %w", err)
 	}
-
 	playersByReplay, err := d.playersByReplay()
 	if err != nil {
 		return nil, err
 	}
 	valuesByPlayer := map[string][]int64{}
+	firstByReplayAndPlayer := map[int64]map[int64]int64{}
 	for _, row := range rows {
 		replayID := row.ReplayID
-		valueString := row.Value
-		events := parseGameEvents(valueString)
+		if row.PlayerID == nil {
+			continue
+		}
+		playerID := *row.PlayerID
+		if playerID == 0 {
+			continue
+		}
+		if _, ok := firstByReplayAndPlayer[replayID]; !ok {
+			firstByReplayAndPlayer[replayID] = map[int64]int64{}
+		}
+		current, exists := firstByReplayAndPlayer[replayID][playerID]
+		if !exists || row.Second < current {
+			firstByReplayAndPlayer[replayID][playerID] = row.Second
+		}
+	}
+	for replayID, firstByPlayer := range firstByReplayAndPlayer {
 		players := playersByReplay[replayID]
 		if len(players) == 0 {
 			continue
 		}
-		sortedPlayers := make([]workflowGamePlayer, len(players))
-		copy(sortedPlayers, players)
-		sort.Slice(sortedPlayers, func(i, j int) bool {
-			return len(sortedPlayers[i].Name) > len(sortedPlayers[j].Name)
-		})
-		firstByPlayerInReplay := map[string]int64{}
-		for _, event := range events {
-			t := strings.ToLower(strings.TrimSpace(event.Type))
-			if t != "expansion" {
-				continue
-			}
-			playerID := matchPlayerIDInEvent(event.Description, sortedPlayers)
-			if playerID == 0 {
-				continue
-			}
+		for playerID, second := range firstByPlayer {
 			playerKey := normalizePlayerKey(playerNameByID(playerID, players))
 			if playerKey == "" {
 				continue
 			}
-			if _, exists := firstByPlayerInReplay[playerKey]; !exists {
-				firstByPlayerInReplay[playerKey] = event.Second
-			}
-		}
-		for playerKey, second := range firstByPlayerInReplay {
 			valuesByPlayer[playerKey] = append(valuesByPlayer[playerKey], second)
 		}
 	}

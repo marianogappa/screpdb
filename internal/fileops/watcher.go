@@ -91,6 +91,9 @@ func (fw *FileWatcher) watch() {
 
 			if event.Op&fsnotify.Create == fsnotify.Create {
 				if strings.HasSuffix(strings.ToLower(event.Name), ".rep") {
+					if shouldIgnoreReplayFilePath(event.Name) {
+						continue
+					}
 					// Wait a bit for the file to be fully written
 					time.Sleep(5 * time.Second)
 

@@ -109,50 +109,6 @@ func (d *BasePlayerDetector) BuildPlayerResult(patternName string, valueBool *bo
 	}
 }
 
-// BaseTeamDetector extends BaseDetector with team-specific functionality
-type BaseTeamDetector struct {
-	BaseDetector
-	team byte
-}
-
-// SetTeam sets the team this detector is monitoring
-func (d *BaseTeamDetector) SetTeam(team byte) {
-	d.team = team
-}
-
-// GetTeam returns the team this detector is monitoring
-func (d *BaseTeamDetector) GetTeam() byte {
-	return d.team
-}
-
-// Level returns LevelTeam
-func (d *BaseTeamDetector) Level() core.DetectorLevel {
-	return core.LevelTeam
-}
-
-// ShouldProcessCommand checks if the command is from a player on this team
-func (d *BaseTeamDetector) ShouldProcessCommand(command *models.Command) bool {
-	return command.Player != nil && command.Player.Team == d.team
-}
-
-// BuildTeamResult creates a PatternResult for a team-level detector
-func (d *BaseTeamDetector) BuildTeamResult(patternName string, valueBool *bool, valueInt *int, valueString *string, valueTime *int64) *core.PatternResult {
-	if !d.finished {
-		return nil
-	}
-	team := d.team
-	return &core.PatternResult{
-		PatternName: patternName,
-		Level:       core.LevelTeam,
-		ReplayID:    d.replay.ID,
-		Team:        &team,
-		ValueBool:   valueBool,
-		ValueInt:    valueInt,
-		ValueString: valueString,
-		ValueTime:   valueTime,
-	}
-}
-
 // BaseReplayDetector extends BaseDetector with replay-specific functionality
 type BaseReplayDetector struct {
 	BaseDetector

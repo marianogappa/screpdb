@@ -177,18 +177,16 @@ func workflowFeaturingExistsSQL(featureKey string) (string, bool) {
 	case "cannon_rush", "bunker_rush":
 		return `EXISTS (
 			SELECT 1
-			FROM detected_patterns_replay dpr
-			WHERE dpr.replay_id = r.id
-				AND lower(trim(dpr.pattern_name)) = 'game events'
-				AND lower(coalesce(dpr.value_string, '')) LIKE '%cannon/bunker rushes%'
+			FROM replay_events re
+			WHERE re.replay_id = r.id
+				AND re.event_type = '` + strings.TrimSpace(strings.ToLower(featureKey)) + `'
 		)`, true
 	case "zergling_rush":
 		return `EXISTS (
 			SELECT 1
-			FROM detected_patterns_replay dpr
-			WHERE dpr.replay_id = r.id
-				AND lower(trim(dpr.pattern_name)) = 'game events'
-				AND lower(coalesce(dpr.value_string, '')) LIKE '%zergling rushes%'
+			FROM replay_events re
+			WHERE re.replay_id = r.id
+				AND re.event_type = 'zergling_rush'
 		)`, true
 	default:
 		return "", false

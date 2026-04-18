@@ -16,6 +16,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
+	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
 )
 
 // SQLiteStorage implements Storage interface using SQLite
@@ -45,9 +46,36 @@ var (
 	allowedCommandSpeeds      = enumSetFromNames([]string{
 		"Slowest", "Slower", "Slow", "Normal", "Fast", "Faster", "Fastest", unknownEnumValue,
 	})
-	allowedPlayerRaces  = enumSetFromNames(playerRaceNamesFromRepcore())
-	allowedPlayerTypes  = enumSetFromNames(playerTypeNamesFromRepcore())
-	allowedPlayerColors = enumSetFromNames(playerColorNamesFromRepcore())
+	allowedPlayerRaces      = enumSetFromNames(playerRaceNamesFromRepcore())
+	allowedPlayerTypes      = enumSetFromNames(playerTypeNamesFromRepcore())
+	allowedPlayerColors     = enumSetFromNames(playerColorNamesFromRepcore())
+	allowedReplayEventTypes = enumSetFromNames([]string{
+		"player_start",
+		"leave_game",
+		"expansion",
+		"attack",
+		"scout",
+		"drop",
+		"reaver_drop",
+		"dt_drop",
+		"recall",
+		"nuke",
+		"cannon_rush",
+		"bunker_rush",
+		"zergling_rush",
+		"proxy_gate",
+		"proxy_rax",
+		"proxy_factory",
+		"location_inactive",
+		"takeover",
+		"became_terran",
+		"became_zerg",
+	})
+	allowedReplayEventLocationTypes = enumSetFromNames([]string{
+		"starting",
+		"natural",
+		"expansion",
+	})
 	lowValueActionTypes = enumSetFromNames([]string{
 		"Right Click",
 		"Hotkey",
@@ -244,6 +272,13 @@ func (s *SQLiteStorage) processPatternResultsTx(ctx context.Context, db dbtx, or
 	// Convert replay player IDs to database IDs
 	// Get results
 	results := patternOrch.GetResults()
+	replayEvents := patternOrch.ReplayEvents()
+
+	if len(replayEvents) > 0 {
+		if err := s.insertReplayEventsTx(ctx, db, replayID, replayEvents, playerIDMap); err != nil {
+			return fmt.Errorf("failed to insert replay events: %w", err)
+		}
+	}
 
 	// Convert replay player IDs to database IDs
 	patternOrch.ConvertResultsToDatabaseIDs(playerIDMap)
@@ -730,6 +765,7 @@ func (s *SQLiteStorage) FilterOutExistingPatternDetections(ctx context.Context, 
 	if len(files) == 0 {
 		return []fileops.FileInfo{}, nil
 	}
+	_ = algorithmVersion
 
 	// Extract file paths and checksums
 	filePaths := make([]string, len(files))
@@ -751,22 +787,20 @@ func (s *SQLiteStorage) FilterOutExistingPatternDetections(ctx context.Context, 
 		checksumPlaceholders[i] = "?"
 	}
 
-	// Combine all args: file_paths first, then checksums, then algorithm_version
-	args := make([]any, 0, len(filePaths)+len(checksums)+1)
+	// Combine all args: file_paths first, then checksums.
+	args := make([]any, 0, len(filePaths)+len(checksums))
 	for _, fp := range filePaths {
 		args = append(args, fp)
 	}
 	for _, cs := range checksums {
 		args = append(args, cs)
 	}
-	args = append(args, algorithmVersion)
 
 	query := fmt.Sprintf(`
 		SELECT DISTINCT r.file_path, r.file_checksum
-		FROM detected_patterns_replay dpr
-		JOIN replays r ON r.id = dpr.replay_id
+		FROM replay_events re
+		JOIN replays r ON r.id = re.replay_id
 		WHERE (r.file_path IN (%s) OR r.file_checksum IN (%s))
-		AND dpr.algorithm_version >= ?
 	`, strings.Join(filePathPlaceholders, ", "), strings.Join(checksumPlaceholders, ", "))
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
@@ -803,10 +837,10 @@ func (s *SQLiteStorage) FilterOutExistingPatternDetections(ctx context.Context, 
 
 // DeletePatternDetectionsForReplay deletes all pattern detection results for a replay
 func (s *SQLiteStorage) DeletePatternDetectionsForReplay(ctx context.Context, replayID int64) error {
-	// Delete from all three tables
+	// Delete from all pattern/event tables.
 	queries := []string{
+		"DELETE FROM replay_events WHERE replay_id = ?",
 		"DELETE FROM detected_patterns_replay WHERE replay_id = ?",
-		"DELETE FROM detected_patterns_replay_team WHERE replay_id = ?",
 		"DELETE FROM detected_patterns_replay_player WHERE replay_id = ?",
 	}
 
@@ -832,15 +866,12 @@ func (s *SQLiteStorage) BatchInsertPatternResultsTx(ctx context.Context, db dbtx
 
 	// Separate results by level
 	var replayResults []*core.PatternResult
-	var teamResults []*core.PatternResult
 	var playerResults []*core.PatternResult
 
 	for _, result := range results {
 		switch result.Level {
 		case core.LevelReplay:
 			replayResults = append(replayResults, result)
-		case core.LevelTeam:
-			teamResults = append(teamResults, result)
 		case core.LevelPlayer:
 			playerResults = append(playerResults, result)
 		}
@@ -850,13 +881,6 @@ func (s *SQLiteStorage) BatchInsertPatternResultsTx(ctx context.Context, db dbtx
 	if len(replayResults) > 0 {
 		if err := s.insertReplayPatternResultsTx(ctx, db, replayResults); err != nil {
 			return fmt.Errorf("failed to insert replay pattern results: %w", err)
-		}
-	}
-
-	// Insert team-level results
-	if len(teamResults) > 0 {
-		if err := s.insertTeamPatternResultsTx(ctx, db, teamResults); err != nil {
-			return fmt.Errorf("failed to insert team pattern results: %w", err)
 		}
 	}
 
@@ -922,36 +946,74 @@ func (s *SQLiteStorage) insertReplayPatternResultsTx(ctx context.Context, db dbt
 	return nil
 }
 
-// insertTeamPatternResultsTx inserts team-level pattern results (uses provided connection/transaction)
-func (s *SQLiteStorage) insertTeamPatternResultsTx(ctx context.Context, db dbtx, results []*core.PatternResult) error {
-	const batchSize = 100
-	for i := 0; i < len(results); i += batchSize {
-		end := min(i+batchSize, len(results))
-		batch := results[i:end]
+func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, replayID int64, events []worldstate.ReplayEvent, playerIDMap map[byte]int64) error {
+	const batchSize = 200
+	for i := 0; i < len(events); i += batchSize {
+		end := min(i+batchSize, len(events))
+		batch := events[i:end]
 
 		valueStrings := make([]string, 0, len(batch))
-		valueArgs := make([]any, 0, len(batch)*7)
+		valueArgs := make([]any, 0, len(batch)*9)
 
-		for _, result := range batch {
-			if result.Team == nil {
-				continue // Skip if team is nil
+		for _, event := range batch {
+			eventType := normalizeEnumValue(event.EventType, allowedReplayEventTypes)
+			var locationType *string
+			if event.LocationBaseType != nil {
+				trimmed := strings.TrimSpace(*event.LocationBaseType)
+				if trimmed != "" {
+					if _, ok := allowedReplayEventLocationTypes[trimmed]; ok {
+						value := trimmed
+						locationType = &value
+					}
+				}
 			}
 
-			valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?)")
-			valueArgs = append(valueArgs, result.ReplayID, *result.Team, result.PatternName)
-
-			// Add value fields (only one should be set)
-			if result.ValueBool != nil {
-				valueArgs = append(valueArgs, *result.ValueBool, nil, nil, nil)
-			} else if result.ValueInt != nil {
-				valueArgs = append(valueArgs, nil, *result.ValueInt, nil, nil)
-			} else if result.ValueString != nil {
-				valueArgs = append(valueArgs, nil, nil, *result.ValueString, nil)
-			} else if result.ValueTime != nil {
-				valueArgs = append(valueArgs, nil, nil, nil, *result.ValueTime)
-			} else {
-				valueArgs = append(valueArgs, nil, nil, nil, nil)
+			var sourcePlayerID *int64
+			if event.SourceReplayPlayerID != nil {
+				if dbPlayerID, ok := playerIDMap[*event.SourceReplayPlayerID]; ok {
+					sourcePlayerID = &dbPlayerID
+				}
 			}
+
+			var targetPlayerID *int64
+			if event.TargetReplayPlayerID != nil {
+				if dbPlayerID, ok := playerIDMap[*event.TargetReplayPlayerID]; ok {
+					targetPlayerID = &dbPlayerID
+				}
+			}
+
+			var attackUnitTypes *string
+			if len(event.AttackUnitTypes) > 0 {
+				filtered := make([]string, 0, len(event.AttackUnitTypes))
+				for _, unitType := range event.AttackUnitTypes {
+					normalized := normalizeEnumValue(unitType, allowedCommandUnits)
+					if normalized == unknownEnumValue {
+						continue
+					}
+					filtered = append(filtered, normalized)
+				}
+				if len(filtered) > 0 {
+					payload, err := json.Marshal(filtered)
+					if err != nil {
+						return fmt.Errorf("failed to marshal replay event unit types: %w", err)
+					}
+					text := string(payload)
+					attackUnitTypes = &text
+				}
+			}
+
+			valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?, ?, ?)")
+			valueArgs = append(valueArgs,
+				replayID,
+				event.Second,
+				eventType,
+				locationType,
+				event.LocationBaseOclock,
+				event.LocationNaturalOfClock,
+				sourcePlayerID,
+				targetPlayerID,
+				attackUnitTypes,
+			)
 		}
 
 		if len(valueStrings) == 0 {
@@ -959,21 +1021,24 @@ func (s *SQLiteStorage) insertTeamPatternResultsTx(ctx context.Context, db dbtx,
 		}
 
 		query := fmt.Sprintf(`
-			INSERT INTO detected_patterns_replay_team
-			(replay_id, team, pattern_name, value_bool, value_int, value_string, value_timestamp)
+			INSERT INTO replay_events (
+				replay_id,
+				seconds_from_game_start,
+				event_type,
+				location_base_type,
+				location_base_oclock,
+				location_natural_of_oclock,
+				source_player_id,
+				target_player_id,
+				attack_unit_types
+			)
 			VALUES %s
-			ON CONFLICT (replay_id, team, pattern_name) DO UPDATE SET
-				value_bool = excluded.value_bool,
-				value_int = excluded.value_int,
-				value_string = excluded.value_string,
-				value_timestamp = excluded.value_timestamp
 		`, strings.Join(valueStrings, ", "))
 
 		if _, err := db.ExecContext(ctx, query, valueArgs...); err != nil {
-			return fmt.Errorf("failed to insert team pattern results: %w", err)
+			return fmt.Errorf("failed to insert replay events: %w", err)
 		}
 	}
-
 	return nil
 }
 

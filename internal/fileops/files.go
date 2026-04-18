@@ -23,6 +23,11 @@ type FileInfo struct {
 
 var errReplayFound = errors.New("replay file found")
 
+func shouldIgnoreReplayFilePath(path string) bool {
+	name := strings.TrimSpace(filepath.Base(path))
+	return strings.EqualFold(name, "LastReplay.rep")
+}
+
 func ValidateReplayDir(rootDir string) error {
 	rootDir = strings.TrimSpace(rootDir)
 	if rootDir == "" {
@@ -63,7 +68,7 @@ func HasReplayFiles(rootDir string) (bool, error) {
 		if info.IsDir() {
 			return nil
 		}
-		if strings.HasSuffix(strings.ToLower(path), ".rep") {
+		if strings.HasSuffix(strings.ToLower(path), ".rep") && !shouldIgnoreReplayFilePath(path) {
 			return errReplayFound
 		}
 		return nil
@@ -87,6 +92,9 @@ func GetReplayFiles(rootDir string) ([]FileInfo, error) {
 		}
 
 		if !info.IsDir() && strings.HasSuffix(strings.ToLower(path), ".rep") {
+			if shouldIgnoreReplayFilePath(path) {
+				return nil
+			}
 			checksum, err := calculateChecksum(path)
 			if err != nil {
 				return fmt.Errorf("failed to calculate checksum for %s: %w", path, err)

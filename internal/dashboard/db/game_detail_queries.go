@@ -10,6 +10,7 @@ type ReplaySummaryRow struct {
 	ReplayID        int64
 	ReplayDate      string
 	FileName        string
+	FilePath        string
 	MapName         string
 	DurationSeconds int64
 	GameType        string
@@ -18,9 +19,11 @@ type ReplaySummaryRow struct {
 type ReplayPlayerDetailRow struct {
 	PlayerID             int64
 	Name                 string
+	Color                string
 	Race                 string
 	Team                 int64
 	IsWinner             bool
+	StartLocationOclock  *int64
 	APM                  int64
 	EAPM                 int64
 	CommandCount         int64
@@ -33,16 +36,25 @@ type PatternValueRow struct {
 	Value       string
 }
 
-type TeamPatternValueRow struct {
-	Team        int64
-	PatternName string
-	Value       string
-}
-
 type PlayerPatternValueRow struct {
 	PlayerID    int64
 	PatternName string
 	Value       string
+}
+
+type ReplayEventRow struct {
+	EventType              string
+	Second                 int64
+	SourcePlayerID         *int64
+	SourcePlayerName       string
+	SourcePlayerColor      string
+	TargetPlayerID         *int64
+	TargetPlayerName       string
+	TargetPlayerColor      string
+	LocationBaseType       *string
+	LocationBaseOclock     *int64
+	LocationNaturalOfClock *int64
+	AttackUnitTypes        *string
 }
 
 type PlayerOverviewSummaryRow struct {
@@ -80,6 +92,7 @@ func (s *Store) GetReplaySummary(ctx context.Context, replayID int64) (*ReplaySu
 		ReplayID:        sqlcRow.ID,
 		ReplayDate:      sqlcRow.ReplayDate,
 		FileName:        sqlcRow.FileName,
+		FilePath:        sqlcRow.FilePath,
 		MapName:         sqlcRow.MapName,
 		DurationSeconds: sqlcRow.DurationSeconds,
 		GameType:        sqlcRow.GameType,
@@ -96,9 +109,11 @@ func (s *Store) ListReplayPlayersForDetail(ctx context.Context, replayID int64) 
 		out = append(out, ReplayPlayerDetailRow{
 			PlayerID:             row.ID,
 			Name:                 row.Name,
+			Color:                row.Color,
 			Race:                 row.Race,
 			Team:                 row.Team,
 			IsWinner:             row.IsWinner,
+			StartLocationOclock:  row.StartLocationOclock,
 			APM:                  row.Apm,
 			EAPM:                 row.Eapm,
 			CommandCount:         row.CommandCount,
@@ -124,22 +139,6 @@ func (s *Store) ListReplayPatterns(ctx context.Context, replayID int64) ([]Patte
 	return out, nil
 }
 
-func (s *Store) ListTeamPatterns(ctx context.Context, replayID int64) ([]TeamPatternValueRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListTeamPatterns(ctx, replayID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]TeamPatternValueRow, 0, len(sqlcRows))
-	for _, row := range sqlcRows {
-		out = append(out, TeamPatternValueRow{
-			Team:        row.Team,
-			PatternName: row.PatternName,
-			Value:       row.PatternValue,
-		})
-	}
-	return out, nil
-}
-
 func (s *Store) ListPlayerPatterns(ctx context.Context, replayID int64) ([]PlayerPatternValueRow, error) {
 	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListPlayerPatterns(ctx, replayID)
 	if err != nil {
@@ -151,6 +150,31 @@ func (s *Store) ListPlayerPatterns(ctx context.Context, replayID int64) ([]Playe
 			PlayerID:    row.PlayerID,
 			PatternName: row.PatternName,
 			Value:       row.PatternValue,
+		})
+	}
+	return out, nil
+}
+
+func (s *Store) ListReplayEvents(ctx context.Context, replayID int64) ([]ReplayEventRow, error) {
+	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListReplayEvents(ctx, replayID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ReplayEventRow, 0, len(sqlcRows))
+	for _, row := range sqlcRows {
+		out = append(out, ReplayEventRow{
+			EventType:              row.EventType,
+			Second:                 row.SecondsFromGameStart,
+			SourcePlayerID:         row.SourcePlayerID,
+			SourcePlayerName:       row.SourcePlayerName,
+			SourcePlayerColor:      row.SourcePlayerColor,
+			TargetPlayerID:         row.TargetPlayerID,
+			TargetPlayerName:       row.TargetPlayerName,
+			TargetPlayerColor:      row.TargetPlayerColor,
+			LocationBaseType:       row.LocationBaseType,
+			LocationBaseOclock:     row.LocationBaseOclock,
+			LocationNaturalOfClock: row.LocationNaturalOfOclock,
+			AttackUnitTypes:        row.AttackUnitTypes,
 		})
 	}
 	return out, nil
@@ -199,9 +223,9 @@ func (s *Store) ListPlayerApmAggregates(ctx context.Context, minGames int64) ([]
 	out := make([]PlayerApmAggregateRow, 0, len(sqlcRows))
 	for _, row := range sqlcRows {
 		out = append(out, PlayerApmAggregateRow{
-			PlayerKey:  row.PlayerKey,
-			PlayerName: row.PlayerName,
-			AverageAPM: row.AverageApm,
+			PlayerKey:   row.PlayerKey,
+			PlayerName:  row.PlayerName,
+			AverageAPM:  row.AverageApm,
 			GamesPlayed: row.GamesPlayed,
 		})
 	}

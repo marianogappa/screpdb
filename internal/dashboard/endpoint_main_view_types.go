@@ -235,6 +235,7 @@ type workflowGamePlayer struct {
 	PlayerID           int64                  `json:"player_id"`
 	PlayerKey          string                 `json:"player_key"`
 	Name               string                 `json:"name"`
+	Color              string                 `json:"color,omitempty"`
 	Race               string                 `json:"race"`
 	Team               int64                  `json:"team"`
 	IsWinner           bool                   `json:"is_winner"`
@@ -251,23 +252,17 @@ type workflowPatternValue struct {
 	Value       string `json:"value"`
 }
 
-type workflowTeamPattern struct {
-	Team        int64  `json:"team"`
-	PatternName string `json:"pattern_name"`
-	Value       string `json:"value"`
-}
-
 type workflowGameDetail struct {
 	SummaryVersion       string                                   `json:"summary_version"`
 	ReplayID             int64                                    `json:"replay_id"`
 	ReplayDate           string                                   `json:"replay_date"`
 	FileName             string                                   `json:"file_name"`
 	MapName              string                                   `json:"map_name"`
+	MapVisual            workflowMapVisual                        `json:"map_visual"`
 	DurationSeconds      int64                                    `json:"duration_seconds"`
 	GameType             string                                   `json:"game_type"`
 	Players              []workflowGamePlayer                     `json:"players"`
 	ReplayPatterns       []workflowPatternValue                   `json:"replay_patterns"`
-	TeamPatterns         []workflowTeamPattern                    `json:"team_patterns"`
 	GameEvents           []workflowGameEvent                      `json:"game_events"`
 	UnitsBySlice         []workflowUnitSlice                      `json:"units_by_slice"`
 	Timings              workflowReplayTimings                    `json:"timings"`
@@ -276,10 +271,49 @@ type workflowGameDetail struct {
 	ViewportMultitasking []workflowGameViewportMultitaskingPlayer `json:"viewport_multitasking"`
 }
 
+type workflowMapVisual struct {
+	Available      bool    `json:"available"`
+	URL            string  `json:"url,omitempty"`
+	ThumbnailURL   string  `json:"thumbnail_url,omitempty"`
+	MatchedImage   string  `json:"matched_image,omitempty"`
+	MatchedScore   float64 `json:"matched_score,omitempty"`
+	RequestedMap   string  `json:"requested_map,omitempty"`
+	ResolutionNote string  `json:"resolution_note,omitempty"`
+}
+
 type workflowGameEvent struct {
-	Type        string `json:"type"`
-	Second      int64  `json:"second"`
-	Description string `json:"description"`
+	Type            string                   `json:"type"`
+	Second          int64                    `json:"second"`
+	Actor           *workflowGameEventPlayer `json:"actor,omitempty"`
+	Target          *workflowGameEventPlayer `json:"target,omitempty"`
+	Base            *workflowGameEventBase   `json:"base,omitempty"`
+	ActorOrigin     *workflowGameEventPoint  `json:"actor_origin,omitempty"`
+	Ownership       []workflowGameOwnership  `json:"ownership,omitempty"`
+	AttackUnitTypes []string                 `json:"attack_unit_types,omitempty"`
+}
+
+type workflowGameEventPlayer struct {
+	PlayerID int64  `json:"player_id"`
+	Name     string `json:"name"`
+	Color    string `json:"color,omitempty"`
+}
+
+type workflowGameEventPoint struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
+type workflowGameEventBase struct {
+	Name    string                   `json:"name"`
+	Kind    string                   `json:"kind,omitempty"`
+	Clock   int64                    `json:"clock,omitempty"`
+	Center  workflowGameEventPoint   `json:"center"`
+	Polygon []workflowGameEventPoint `json:"polygon,omitempty"`
+}
+
+type workflowGameOwnership struct {
+	Base  workflowGameEventBase    `json:"base"`
+	Owner *workflowGameEventPlayer `json:"owner,omitempty"`
 }
 
 type workflowUnitSlice struct {

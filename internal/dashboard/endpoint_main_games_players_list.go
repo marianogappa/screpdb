@@ -286,26 +286,19 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 			featureSets[replayID]["mind_control"] = struct{}{}
 		}
 	}
-	rowsReplayPatterns, err := d.dbStore.ListFeaturingReplayPatternRows(d.ctx, replayIDs)
+	rowsReplayEvents, err := d.dbStore.ListFeaturingReplayEventRows(d.ctx, replayIDs)
 	if err != nil {
 		return err
 	}
-	for _, row := range rowsReplayPatterns {
+	for _, row := range rowsReplayEvents {
 		replayID := row.ReplayID
-		gameEventsRaw := row.GameEventsRaw
-		if !gameEventsRaw.Valid {
-			continue
-		}
-		events := parseGameEvents(gameEventsRaw.String)
-		for _, event := range events {
-			description := strings.ToLower(strings.TrimSpace(event.Description))
-			if strings.Contains(description, "zergling rushes") {
-				featureSets[replayID]["zergling_rush"] = struct{}{}
-			}
-			if strings.Contains(description, "cannon/bunker rushes") {
-				featureSets[replayID]["cannon_rush"] = struct{}{}
-				featureSets[replayID]["bunker_rush"] = struct{}{}
-			}
+		switch strings.ToLower(strings.TrimSpace(row.EventType)) {
+		case "zergling_rush":
+			featureSets[replayID]["zergling_rush"] = struct{}{}
+		case "cannon_rush":
+			featureSets[replayID]["cannon_rush"] = struct{}{}
+		case "bunker_rush":
+			featureSets[replayID]["bunker_rush"] = struct{}{}
 		}
 	}
 	for replayID, set := range featureSets {
