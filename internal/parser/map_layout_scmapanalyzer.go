@@ -54,6 +54,7 @@ func toContextBase(base replaymap.BasePolygon) models.MapContextBase {
 			Y: tileToPixelInt(base.CenterTile.Y),
 		},
 		Polygon:          polygon,
+		MineralOnly:      base.MineralOnly,
 		NaturalExpansion: base.NaturalExpansion,
 	}
 }

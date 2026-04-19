@@ -10,6 +10,7 @@ import (
 	"github.com/icza/screp/rep/repcmd"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/utils"
+	"github.com/samber/lo"
 )
 
 const (
@@ -54,11 +55,12 @@ type NarrativePlayerRef struct {
 }
 
 type NarrativeBaseRef struct {
-	Name    string           `json:"name"`
-	Kind    string           `json:"kind,omitempty"`
-	Clock   int              `json:"clock,omitempty"`
-	Center  NarrativePoint   `json:"center"`
-	Polygon []NarrativePoint `json:"polygon,omitempty"`
+	Name        string           `json:"name"`
+	Kind        string           `json:"kind,omitempty"`
+	Clock       int              `json:"clock,omitempty"`
+	MineralOnly *bool            `json:"mineral_only,omitempty"`
+	Center      NarrativePoint   `json:"center"`
+	Polygon     []NarrativePoint `json:"polygon,omitempty"`
 }
 
 type NarrativeOwnership struct {
@@ -74,6 +76,7 @@ type ReplayEvent struct {
 	LocationBaseType       *string
 	LocationBaseOclock     *int
 	LocationNaturalOfClock *int
+	LocationMineralOnly    *bool
 	AttackUnitTypes        []string
 }
 
@@ -99,6 +102,7 @@ type base struct {
 	GeoRadius     float64
 	StartCount    int
 	IsStarting    bool
+	MineralOnly   bool
 	Name          string
 	Kind          string
 	Clock         int
@@ -546,7 +550,7 @@ func (e *Engine) emitPlayerStartEvents() {
 }
 
 func (e *Engine) toReplayEvent(eventType string, second int, actor *NarrativePlayerRef, target *NarrativePlayerRef, baseIdx int, attackUnitTypes []string) ReplayEvent {
-	baseType, baseOclock, naturalOfClock := e.locationForBase(baseIdx)
+	baseType, baseOclock, naturalOfClock, mineralOnly := e.locationForBase(baseIdx)
 	var sourceReplayPlayerID *byte
 	if actor != nil {
 		pid := byte(actor.PlayerID)
@@ -576,6 +580,7 @@ func (e *Engine) toReplayEvent(eventType string, second int, actor *NarrativePla
 		LocationBaseType:       baseType,
 		LocationBaseOclock:     baseOclock,
 		LocationNaturalOfClock: naturalOfClock,
+		LocationMineralOnly:    mineralOnly,
 		AttackUnitTypes:        unitTypes,
 	}
 }
@@ -665,9 +670,9 @@ func normalizeUnitTypes(unitTypes []string) []string {
 	return normalized
 }
 
-func (e *Engine) locationForBase(baseIdx int) (*string, *int, *int) {
+func (e *Engine) locationForBase(baseIdx int) (*string, *int, *int, *bool) {
 	if baseIdx < 0 || baseIdx >= len(e.bases) {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 	base := e.bases[baseIdx]
 	baseTypeValue := "expansion"
@@ -691,7 +696,12 @@ func (e *Engine) locationForBase(baseIdx int) (*string, *int, *int) {
 			}
 		}
 	}
-	return baseType, baseOclock, naturalOfClock
+	var mineralOnly *bool
+	if base.MineralOnly {
+		value := true
+		mineralOnly = &value
+	}
+	return baseType, baseOclock, naturalOfClock, mineralOnly
 }
 
 func unitTypesFromCommand(command *models.Command) []string {
@@ -1151,11 +1161,12 @@ func (e *Engine) baseRef(baseIdx int) *NarrativeBaseRef {
 		polygon = append(polygon, NarrativePoint{X: vertex.X, Y: vertex.Y})
 	}
 	return &NarrativeBaseRef{
-		Name:    base.DisplayName,
-		Kind:    base.Kind,
-		Clock:   base.Clock,
-		Center:  NarrativePoint{X: base.CenterX, Y: base.CenterY},
-		Polygon: polygon,
+		Name:        base.DisplayName,
+		Kind:        base.Kind,
+		Clock:       base.Clock,
+		MineralOnly: lo.Ternary(base.MineralOnly, lo.ToPtr(true), nil),
+		Center:      NarrativePoint{X: base.CenterX, Y: base.CenterY},
+		Polygon:     polygon,
 	}
 }
 
@@ -1209,6 +1220,7 @@ func basesFromLayout(mapCtx *models.ReplayMapContext) []base {
 			CenterX:       centerX,
 			CenterY:       centerY,
 			NaturalRadius: maxRadius,
+			MineralOnly:   src.MineralOnly,
 			Name:          src.Name,
 			Kind:          src.Kind,
 			Clock:         src.Clock,

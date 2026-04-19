@@ -149,6 +149,7 @@ type MapContextBase struct {
 	Clock            int                 `json:"-"`
 	Center           MapResourcePosition `json:"-"`
 	Polygon          []MapPolygonPoint   `json:"-"`
+	MineralOnly      bool                `json:"-"`
 	NaturalExpansion string              `json:"-"`
 }
 

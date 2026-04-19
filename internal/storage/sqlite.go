@@ -953,7 +953,7 @@ func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, repla
 		batch := events[i:end]
 
 		valueStrings := make([]string, 0, len(batch))
-		valueArgs := make([]any, 0, len(batch)*9)
+		valueArgs := make([]any, 0, len(batch)*10)
 
 		for _, event := range batch {
 			eventType := normalizeEnumValue(event.EventType, allowedReplayEventTypes)
@@ -1002,7 +1002,12 @@ func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, repla
 				}
 			}
 
-			valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?, ?, ?)")
+			var locationMineralOnly *bool
+			if event.LocationMineralOnly != nil && *event.LocationMineralOnly {
+				locationMineralOnly = event.LocationMineralOnly
+			}
+
+			valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 			valueArgs = append(valueArgs,
 				replayID,
 				event.Second,
@@ -1010,6 +1015,7 @@ func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, repla
 				locationType,
 				event.LocationBaseOclock,
 				event.LocationNaturalOfClock,
+				locationMineralOnly,
 				sourcePlayerID,
 				targetPlayerID,
 				attackUnitTypes,
@@ -1028,6 +1034,7 @@ func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, repla
 				location_base_type,
 				location_base_oclock,
 				location_natural_of_oclock,
+				location_mineral_only,
 				source_player_id,
 				target_player_id,
 				attack_unit_types

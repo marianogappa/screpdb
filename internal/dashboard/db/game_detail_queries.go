@@ -54,6 +54,7 @@ type ReplayEventRow struct {
 	LocationBaseType       *string
 	LocationBaseOclock     *int64
 	LocationNaturalOfClock *int64
+	LocationMineralOnly    *bool
 	AttackUnitTypes        *string
 }
 
@@ -174,6 +175,7 @@ func (s *Store) ListReplayEvents(ctx context.Context, replayID int64) ([]ReplayE
 			LocationBaseType:       row.LocationBaseType,
 			LocationBaseOclock:     row.LocationBaseOclock,
 			LocationNaturalOfClock: row.LocationNaturalOfOclock,
+			LocationMineralOnly:    row.LocationMineralOnly,
 			AttackUnitTypes:        row.AttackUnitTypes,
 		})
 	}

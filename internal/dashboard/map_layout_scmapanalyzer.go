@@ -54,6 +54,7 @@ func dashboardContextBaseFromAnalyzer(base replaymap.BasePolygon) models.MapCont
 			Y: tileToPixelDashboard(base.CenterTile.Y),
 		},
 		Polygon:          polygon,
+		MineralOnly:      base.MineralOnly,
 		NaturalExpansion: base.NaturalExpansion,
 	}
 }

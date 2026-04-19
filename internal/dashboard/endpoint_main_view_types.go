@@ -304,11 +304,12 @@ type workflowGameEventPoint struct {
 }
 
 type workflowGameEventBase struct {
-	Name    string                   `json:"name"`
-	Kind    string                   `json:"kind,omitempty"`
-	Clock   int64                    `json:"clock,omitempty"`
-	Center  workflowGameEventPoint   `json:"center"`
-	Polygon []workflowGameEventPoint `json:"polygon,omitempty"`
+	Name        string                   `json:"name"`
+	Kind        string                   `json:"kind,omitempty"`
+	Clock       int64                    `json:"clock,omitempty"`
+	MineralOnly *bool                    `json:"mineral_only,omitempty"`
+	Center      workflowGameEventPoint   `json:"center"`
+	Polygon     []workflowGameEventPoint `json:"polygon,omitempty"`
 }
 
 type workflowGameOwnership struct {

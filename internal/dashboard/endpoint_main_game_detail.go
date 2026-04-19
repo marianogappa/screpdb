@@ -12,6 +12,7 @@ import (
 
 	db "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/models"
+	"github.com/samber/lo"
 )
 
 func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail, error) {
@@ -1379,8 +1380,11 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 				if label := baseLabel(row.LocationBaseType, row.LocationBaseOclock, row.LocationNaturalOfClock); strings.TrimSpace(label) != "" {
 					baseCopy.Name = label
 				}
+				if row.LocationMineralOnly != nil && *row.LocationMineralOnly {
+					baseCopy.MineralOnly = row.LocationMineralOnly
+				}
 				event.Base = &baseCopy
-				baseByKey[baseKeyForEvent(&event)] = matchedBase
+				baseByKey[baseKeyForEvent(&event)] = baseCopy
 			}
 		}
 		if event.Base == nil && (row.LocationBaseType != nil || row.LocationBaseOclock != nil) {
@@ -1396,6 +1400,9 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 			}
 			if row.LocationBaseOclock != nil {
 				base.Clock = *row.LocationBaseOclock
+			}
+			if row.LocationMineralOnly != nil && *row.LocationMineralOnly {
+				base.MineralOnly = row.LocationMineralOnly
 			}
 			event.Base = &base
 			baseByKey[baseKeyForEvent(&event)] = base
@@ -1438,11 +1445,12 @@ func overlayBaseMetasFromLayout(layout *models.MapContextLayout) []overlayBaseMe
 		}
 		out = append(out, overlayBaseMeta{
 			Base: workflowGameEventBase{
-				Name:    prettyName,
-				Kind:    kind,
-				Clock:   int64(base.Clock),
-				Center:  workflowGameEventPoint{X: float64(base.Center.X), Y: float64(base.Center.Y)},
-				Polygon: polygon,
+				Name:        prettyName,
+				Kind:        kind,
+				Clock:       int64(base.Clock),
+				MineralOnly: lo.Ternary(base.MineralOnly, lo.ToPtr(true), nil),
+				Center:      workflowGameEventPoint{X: float64(base.Center.X), Y: float64(base.Center.Y)},
+				Polygon:     polygon,
 			},
 			IsStarting: strings.EqualFold(kind, "start") || strings.EqualFold(kind, "starting"),
 		})

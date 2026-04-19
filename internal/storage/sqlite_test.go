@@ -56,7 +56,7 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		"players":                         14,
 		"detected_patterns_replay":        0,
 		"detected_patterns_replay_player": 61,
-		"replay_events":                   428,
+		"replay_events":                   436,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {

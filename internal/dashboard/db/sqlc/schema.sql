@@ -92,6 +92,7 @@ CREATE TABLE replay_events (
   location_base_type TEXT,
   location_base_oclock INTEGER,
   location_natural_of_oclock INTEGER,
+  location_mineral_only BOOLEAN,
   source_player_id INTEGER,
   target_player_id INTEGER,
   attack_unit_types TEXT
@@ -113,7 +114,16 @@ CREATE TABLE commands (
 );
 
 CREATE TABLE commands_low_value (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  replay_id INTEGER NOT NULL,
   player_id INTEGER NOT NULL,
+  seconds_from_game_start INTEGER NOT NULL,
   action_type TEXT NOT NULL,
-  hotkey_type TEXT
+  is_queued BOOLEAN,
+  unit_type TEXT,
+  unit_types TEXT,
+  tech_name TEXT,
+  upgrade_name TEXT,
+  hotkey_type TEXT,
+  chat_message TEXT
 );

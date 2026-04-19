@@ -75,6 +75,7 @@ SELECT
   re.location_base_type,
   re.location_base_oclock,
   re.location_natural_of_oclock,
+  re.location_mineral_only,
   re.attack_unit_types
 FROM replay_events re
 LEFT JOIN players sp ON sp.id = re.source_player_id

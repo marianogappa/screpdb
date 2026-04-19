@@ -119,7 +119,13 @@ const isStructuralGameEventType = (eventType) => ['player_start', 'location_inac
 
 const gameEventLocationLabel = (event) => {
   const baseName = String(event?.base?.name || '').trim();
-  if (baseName) return baseName;
+  if (baseName) {
+    const isMineralOnly = event?.base?.mineral_only === true;
+    if (isMineralOnly && !baseName.toLowerCase().includes('mineral only')) {
+      return `${baseName} (mineral only)`;
+    }
+    return baseName;
+  }
   return '';
 };
 

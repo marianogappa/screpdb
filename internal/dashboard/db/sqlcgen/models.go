@@ -20,9 +20,18 @@ type Command struct {
 }
 
 type CommandsLowValue struct {
-	PlayerID   int64
-	ActionType string
-	HotkeyType *string
+	ID                   int64
+	ReplayID             int64
+	PlayerID             int64
+	SecondsFromGameStart int64
+	ActionType           string
+	IsQueued             *bool
+	UnitType             *string
+	UnitTypes            *string
+	TechName             *string
+	UpgradeName          *string
+	HotkeyType           *string
+	ChatMessage          *string
 }
 
 type Dashboard struct {
@@ -99,6 +108,7 @@ type ReplayEvent struct {
 	LocationBaseType        *string
 	LocationBaseOclock      *int64
 	LocationNaturalOfOclock *int64
+	LocationMineralOnly     *bool
 	SourcePlayerID          *int64
 	TargetPlayerID          *int64
 	AttackUnitTypes         *string

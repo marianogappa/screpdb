@@ -250,6 +250,7 @@ SELECT
   re.location_base_type,
   re.location_base_oclock,
   re.location_natural_of_oclock,
+  re.location_mineral_only,
   re.attack_unit_types
 FROM replay_events re
 LEFT JOIN players sp ON sp.id = re.source_player_id
@@ -270,6 +271,7 @@ type ListReplayEventsRow struct {
 	LocationBaseType        *string
 	LocationBaseOclock      *int64
 	LocationNaturalOfOclock *int64
+	LocationMineralOnly     *bool
 	AttackUnitTypes         *string
 }
 
@@ -294,6 +296,7 @@ func (q *Queries) ListReplayEvents(ctx context.Context, replayID int64) ([]ListR
 			&i.LocationBaseType,
 			&i.LocationBaseOclock,
 			&i.LocationNaturalOfOclock,
+			&i.LocationMineralOnly,
 			&i.AttackUnitTypes,
 		); err != nil {
 			return nil, err
