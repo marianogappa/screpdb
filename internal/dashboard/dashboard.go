@@ -169,6 +169,9 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	)
 	// websocket endpoint remains a manual route to preserve Upgrade semantics
 	r.HandleFunc("/api/custom/ingest/logs", d.handlerIngestLogs).Methods(http.MethodGet)
+	r.HandleFunc("/api/custom/game-assets/unit", d.handlerGameAssetUnit).Methods(http.MethodGet)
+	r.HandleFunc("/api/custom/game-assets/building", d.handlerGameAssetBuilding).Methods(http.MethodGet)
+	r.HandleFunc("/api/custom/game-assets/map", d.handlerGameAssetMap).Methods(http.MethodGet)
 	apigen.HandlerFromMux(strictHandler, r)
 	r.PathPrefix("/api/").Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)

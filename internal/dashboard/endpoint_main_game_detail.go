@@ -28,7 +28,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	detail.ReplayDate = summary.ReplayDate
 	detail.FileName = summary.FileName
 	detail.MapName = summary.MapName
-	detail.MapVisual = d.resolveWorkflowMapVisual(summary.MapName)
+	detail.MapVisual = d.resolveWorkflowMapVisual(detail.ReplayID, summary.MapName, summary.FilePath)
 	detail.DurationSeconds = summary.DurationSeconds
 	detail.GameType = summary.GameType
 

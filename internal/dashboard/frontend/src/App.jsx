@@ -17,12 +17,7 @@ import Histogram from './components/charts/Histogram';
 import Heatmap from './components/charts/Heatmap';
 import TimingScatterRows from './components/charts/TimingScatterRows';
 import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
-import {
-  getUnitIcon,
-  normalizeUnitName,
-  carrierImg,
-  battlecruiserImg,
-} from './lib/gameAssets';
+import { getUnitIcon, normalizeUnitName } from './lib/gameAssets';
 import {
   getStoredVariableValues,
   saveVariableValues,
@@ -672,8 +667,8 @@ const prettyPatternName = (patternName) => {
 
 const patternIconForName = (patternName) => {
   const normalized = normalizeUnitName(patternName);
-  if (normalized.includes('battlecruiser')) return battlecruiserImg;
-  if (normalized.includes('carrier')) return carrierImg;
+  if (normalized.includes('battlecruiser')) return getUnitIcon('battlecruiser');
+  if (normalized.includes('carrier')) return getUnitIcon('carrier');
   return getUnitIcon(patternName);
 };
 

@@ -122,6 +122,45 @@ func TestSetupRouter_GameDetailThroughRouter(t *testing.T) {
 	}
 }
 
+func TestSetupRouter_GameAssetIconReturnsPNG(t *testing.T) {
+	d := newTestDashboard(t)
+	r := d.setupRouter()
+	req := httptest.NewRequest(http.MethodGet, "/api/custom/game-assets/unit?name=marine", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.Bytes()
+	if len(body) < 24 || string(body[1:4]) != "PNG" {
+		t.Fatalf("expected PNG bytes, got len=%d prefix=%q", len(body), truncateForLog(body, 16))
+	}
+	ct := rec.Header().Get("Content-Type")
+	if !strings.Contains(ct, "image/png") {
+		t.Fatalf("expected image/png content-type, got %q", ct)
+	}
+}
+
+func TestSetupRouter_GameAssetMapReturnsPNG(t *testing.T) {
+	d := newTestDashboard(t)
+	var replayID int64
+	if err := d.dbStore.DefaultQueryRow(`SELECT id FROM replays WHERE trim(coalesce(file_path,'')) != '' ORDER BY id LIMIT 1`).Scan(&replayID); err != nil {
+		t.Skip("no replay with file_path in test DB")
+	}
+	r := d.setupRouter()
+	path := "/api/custom/game-assets/map?replay_id=" + strconv.FormatInt(replayID, 10)
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.Bytes()
+	if len(body) < 24 || string(body[1:4]) != "PNG" {
+		t.Fatalf("expected PNG bytes, got len=%d prefix=%q", len(body), truncateForLog(body, 16))
+	}
+}
+
 // TestSetupRouter_LegacyWorkflowPrefixIsSPA proves old /api/workflow/* URLs are no longer API routes.
 func TestSetupRouter_LegacyWorkflowPrefixIsSPA(t *testing.T) {
 	d := newTestDashboard(t)
