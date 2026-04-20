@@ -210,8 +210,8 @@ var workflowFeaturingFilters = []struct {
 	Key   string
 	Label string
 }{
-	{Key: "carriers", Label: "10+ Carriers"},
-	{Key: "battlecruisers", Label: "10+ Battlecruisers"},
+	{Key: "carriers", Label: "Carrier"},
+	{Key: "battlecruisers", Label: "Battlecruiser"},
 	{Key: "cannon_rush", Label: "Cannon Rush"},
 	{Key: "bunker_rush", Label: "Bunker Rush"},
 	{Key: "zergling_rush", Label: "Zergling Rush"},

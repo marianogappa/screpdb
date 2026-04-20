@@ -141,6 +141,36 @@ func TestProcessCommand_ZerglingRushDelayedTargetInference(t *testing.T) {
 	}
 }
 
+func TestProcessCommand_ZerglingRushDoesNotCountAttacksOnTeammateBase(t *testing.T) {
+	replay := &models.Replay{DurationSeconds: 400, MapWidth: 128, MapHeight: 128}
+	z1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "Z1", Race: "Zerg", Team: 1, Type: models.PlayerTypeHuman}
+	t2 := &models.Player{PlayerID: 2, SlotID: 2, Name: "T2", Race: "Terran", Team: 1, Type: models.PlayerTypeHuman}
+	engine := NewEngine(replay, []*models.Player{z1, t2}, rushProxyTestMapContext())
+
+	engine.ProcessCommand(&models.Command{
+		Player:               z1,
+		ActionType:           models.ActionTypeUnitMorph,
+		UnitType:             stringPtr(models.GeneralUnitZergling),
+		SecondsFromGameStart: 100,
+	})
+	for i := 0; i < 10; i++ {
+		engine.ProcessCommand(&models.Command{
+			Player:               z1,
+			ActionType:           "Targeted Order",
+			OrderName:            stringPtr("Attack Move"),
+			X:                    intPtr(tilePixel(40)),
+			Y:                    intPtr(tilePixel(40)),
+			SecondsFromGameStart: 120 + i,
+		})
+	}
+
+	for _, ev := range engine.ReplayEvents() {
+		if ev.EventType == "zergling_rush" {
+			t.Fatalf("expected no zergling_rush when early zergling pressure targets only a teammate's base (same team)")
+		}
+	}
+}
+
 func TestProcessCommand_BunkerRushRequiresMarineAndEnemyPolygon(t *testing.T) {
 	replay := &models.Replay{DurationSeconds: 300, MapWidth: 128, MapHeight: 128}
 	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "Terran", Race: "Terran", Team: 1, Type: models.PlayerTypeHuman}
@@ -180,6 +210,103 @@ func TestProcessCommand_BunkerRushRequiresMarineAndEnemyPolygon(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("expected bunker_rush event with marine prerequisite")
+	}
+}
+
+func TestProcessCommand_CannonRushOneVsOneAmbiguousTeams(t *testing.T) {
+	replay := &models.Replay{DurationSeconds: 300, MapWidth: 128, MapHeight: 128}
+	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "P1", Race: "Protoss", Team: 0, Type: models.PlayerTypeHuman}
+	p2 := &models.Player{PlayerID: 2, SlotID: 2, Name: "P2", Race: "Protoss", Team: 0, Type: models.PlayerTypeHuman}
+	engine := NewEngine(replay, []*models.Player{p1, p2}, rushProxyTestMapContext())
+
+	engine.ProcessCommand(&models.Command{
+		Player:               p1,
+		ActionType:           models.ActionTypeBuild,
+		UnitType:             stringPtr(models.GeneralUnitPhotonCannon),
+		X:                    intPtr(40),
+		Y:                    intPtr(40),
+		SecondsFromGameStart: 60,
+	})
+
+	for _, event := range engine.ReplayEvents() {
+		if event.EventType == "cannon_rush" {
+			return
+		}
+	}
+	t.Fatalf("expected cannon_rush when replay teams are 0 in a 1v1")
+}
+
+func TestProcessCommand_CannonRushOutsideEnemyPolygonSnapsToBaseCenter(t *testing.T) {
+	replay := &models.Replay{DurationSeconds: 300, MapWidth: 128, MapHeight: 128}
+	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "P1", Race: "Protoss", Team: 1, Type: models.PlayerTypeHuman}
+	p2 := &models.Player{PlayerID: 2, SlotID: 2, Name: "P2", Race: "Protoss", Team: 2, Type: models.PlayerTypeHuman}
+	engine := NewEngine(replay, []*models.Player{p1, p2}, rushProxyTestMapContext())
+
+	engine.ProcessCommand(&models.Command{
+		Player:               p1,
+		ActionType:           models.ActionTypeBuild,
+		UnitType:             stringPtr(models.GeneralUnitPhotonCannon),
+		X:                    intPtr(43),
+		Y:                    intPtr(43),
+		SecondsFromGameStart: 60,
+	})
+
+	for _, event := range engine.ReplayEvents() {
+		if event.EventType == "cannon_rush" {
+			return
+		}
+	}
+	t.Fatalf("expected cannon_rush when cannon is just outside the enemy base polygon but near its center")
+}
+
+func TestProcessCommand_SinglePylonOnEnemyMainDoesNotTakeOver(t *testing.T) {
+	replay := &models.Replay{DurationSeconds: 400, MapWidth: 128, MapHeight: 128}
+	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "P1", Race: "Protoss", Team: 1, Type: models.PlayerTypeHuman}
+	p2 := &models.Player{PlayerID: 2, SlotID: 2, Name: "P2", Race: "Protoss", Team: 2, Type: models.PlayerTypeHuman}
+	engine := NewEngine(replay, []*models.Player{p1, p2}, rushProxyTestMapContext())
+
+	engine.ProcessCommand(&models.Command{
+		Player:               p1,
+		ActionType:           models.ActionTypeBuild,
+		UnitType:             stringPtr(models.GeneralUnitPylon),
+		X:                    intPtr(40),
+		Y:                    intPtr(40),
+		SecondsFromGameStart: 100,
+	})
+
+	for _, ent := range engine.Entries() {
+		if ent.Type == "takeover" {
+			t.Fatalf("did not expect takeover from a single build on enemy main, got %q", ent.Description)
+		}
+	}
+}
+
+func TestProcessCommand_ThreeBuildsOnEnemyMainTakeOverWhenDefenderIdle(t *testing.T) {
+	replay := &models.Replay{DurationSeconds: 400, MapWidth: 128, MapHeight: 128}
+	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "P1", Race: "Protoss", Team: 1, Type: models.PlayerTypeHuman}
+	p2 := &models.Player{PlayerID: 2, SlotID: 2, Name: "P2", Race: "Protoss", Team: 2, Type: models.PlayerTypeHuman}
+	engine := NewEngine(replay, []*models.Player{p1, p2}, rushProxyTestMapContext())
+
+	for _, sec := range []int{100, 101, 102} {
+		engine.ProcessCommand(&models.Command{
+			Player:               p1,
+			ActionType:           models.ActionTypeBuild,
+			UnitType:             stringPtr(models.GeneralUnitPylon),
+			X:                    intPtr(40),
+			Y:                    intPtr(40),
+			SecondsFromGameStart: sec,
+		})
+	}
+
+	found := false
+	for _, ent := range engine.Entries() {
+		if ent.Type == "takeover" && strings.Contains(ent.Description, "P1 takes over") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected takeover after multiple builds on enemy starting base when defender is idle")
 	}
 }
 
@@ -247,6 +374,45 @@ func TestProcessCommand_WorkerPressureBeforeFiveMinutesIsScout(t *testing.T) {
 		return
 	}
 	t.Fatalf("expected scout event after early worker pressure")
+}
+
+func TestProcessCommand_OverlordEarlyScoutUsesOverlordPayload(t *testing.T) {
+	replay := &models.Replay{DurationSeconds: 400, MapWidth: 128, MapHeight: 128}
+	z1 := &models.Player{PlayerID: 1, SlotID: 2, Name: "Z1", Race: "Zerg", Team: 1, Type: models.PlayerTypeHuman}
+	t2 := &models.Player{PlayerID: 2, SlotID: 1, Name: "T2", Race: "Terran", Team: 2, Type: models.PlayerTypeHuman}
+	engine := NewEngine(replay, []*models.Player{z1, t2}, rushProxyTestMapContext())
+
+	engine.ProcessCommand(&models.Command{
+		Player:               t2,
+		ActionType:           models.ActionTypeBuild,
+		UnitType:             stringPtr(models.GeneralUnitBarracks),
+		X:                    intPtr(8),
+		Y:                    intPtr(8),
+		SecondsFromGameStart: 50,
+	})
+	for i := 0; i < 5; i++ {
+		engine.ProcessCommand(&models.Command{
+			Player:               z1,
+			ActionType:           "Targeted Order",
+			OrderName:            stringPtr("Attack Move"),
+			UnitType:             stringPtr(models.GeneralUnitOverlord),
+			X:                    intPtr(tilePixel(8)),
+			Y:                    intPtr(tilePixel(8)),
+			SecondsFromGameStart: 120 + i,
+		})
+	}
+
+	events := engine.ReplayEvents()
+	for _, event := range events {
+		if event.EventType != "scout" {
+			continue
+		}
+		if len(event.AttackUnitTypes) != 1 || event.AttackUnitTypes[0] != models.GeneralUnitOverlord {
+			t.Fatalf("expected scout payload [Overlord], got %v", event.AttackUnitTypes)
+		}
+		return
+	}
+	t.Fatalf("expected scout event after early overlord pressure")
 }
 
 func rushProxyTestMapContext() *models.ReplayMapContext {

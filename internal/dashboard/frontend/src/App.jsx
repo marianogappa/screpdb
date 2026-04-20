@@ -110,6 +110,85 @@ const getRaceIcon = (race) => {
 
 const normalizeEventType = (eventType) => String(eventType || '').trim().toLowerCase();
 
+/** Aligns with NeverUsedHotkeysPlayerDetector (7+ minute replays). */
+const GAME_SUMMARY_NEGATION_MIN_SECONDS = 7 * 60;
+
+const DROP_ACTOR_EVENT_TYPES = ['drop', 'reaver_drop', 'dt_drop'];
+
+const playerIsActorForGameEventTypes = (events, playerID, wantedTypes) => {
+  const pid = Number(playerID);
+  const wanted = new Set((wantedTypes || []).map((t) => normalizeEventType(t)));
+  return (events || []).some((ev) => {
+    if (!wanted.has(normalizeEventType(ev?.type))) return false;
+    const aid = ev?.actor?.player_id;
+    return aid != null && Number(aid) === pid;
+  });
+};
+
+const dropTransportIconForRace = (race) => {
+  const r = String(race || '').toLowerCase();
+  if (r === 'terran') return getUnitIcon('dropship');
+  if (r === 'protoss') return getUnitIcon('shuttle');
+  if (r === 'zerg') return getUnitIcon('overlord');
+  return getUnitIcon('dropship');
+};
+
+const playerGameSummarySignalParts = (player, gameEvents, durationSeconds) => {
+  const positive = [];
+  const pid = player?.player_id;
+  if (pid == null) return { positive: [], noScout: null };
+  const events = gameEvents || [];
+  const dur = Number(durationSeconds || 0);
+  const hasGameEvents = Array.isArray(gameEvents) && gameEvents.length > 0;
+  if (!hasGameEvents) {
+    return { positive: [], noScout: null };
+  }
+
+  if (playerIsActorForGameEventTypes(events, pid, DROP_ACTOR_EVENT_TYPES)) {
+    positive.push({
+      key: `ge-drop-${pid}`,
+      icon: dropTransportIconForRace(player?.race),
+      label: 'Dropped',
+      className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+    });
+  }
+  if (playerIsActorForGameEventTypes(events, pid, ['cannon_rush'])) {
+    positive.push({
+      key: `ge-cannon-${pid}`,
+      icon: getUnitIcon('photoncannon'),
+      label: 'Cannon rush',
+      className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+    });
+  }
+  if (playerIsActorForGameEventTypes(events, pid, ['bunker_rush'])) {
+    positive.push({
+      key: `ge-bunker-${pid}`,
+      icon: getUnitIcon('bunker'),
+      label: 'Bunker rush',
+      className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+    });
+  }
+
+  let noScout = null;
+  if (dur >= GAME_SUMMARY_NEGATION_MIN_SECONDS && !playerIsActorForGameEventTypes(events, pid, ['scout'])) {
+    noScout = {
+      key: `ge-no-scout-${pid}`,
+      icon: null,
+      label: '🚫 scout',
+      title: 'No scout event for this player in this replay (narrative uses early worker pressure on an enemy base).',
+      className: 'workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey',
+    };
+  }
+  return { positive, noScout };
+};
+
+const renderGameSummarySignalPill = (pill) => (
+  <span key={pill.key} className={pill.className} title={pill.title}>
+    {pill.icon ? <img src={pill.icon} alt="" className="workflow-pattern-icon" /> : null}
+    <span>{pill.label}</span>
+  </span>
+);
+
 const isStructuralGameEventType = (eventType) => ['player_start', 'location_inactive'].includes(normalizeEventType(eventType));
 
 const gameEventLocationLabel = (event) => {
@@ -206,6 +285,105 @@ const legendTextStyle = (rawColorValue, foregroundColor) => {
     color,
     textShadow: '0 1px 2px rgba(255, 255, 255, 0.8)',
   };
+};
+
+/** In-game summary UI, use the replay player colour (not DB replay-count heat). */
+const gamePlayerNameStyle = (player) => ({
+  ...legendTextStyle(String(player?.color || '').trim(), playerColorToCss(player?.color)),
+  fontWeight: 600,
+});
+
+const renderSummaryMapStack = ({
+  legendItems,
+  showLegend = true,
+  imageUrl,
+  mapAlt,
+  bounds,
+  startPolygons,
+}) => (
+  <>
+    {showLegend && (legendItems || []).length > 0 ? (
+      <div className="workflow-event-map-legend workflow-summary-map-legend">
+        {(legendItems || []).map((item) => (
+          <span
+            key={`sum-leg-${item.name}`}
+            className="workflow-event-map-legend-item"
+            style={legendTextStyle(item.rawColor, item.color)}
+          >
+            {item.name}
+          </span>
+        ))}
+      </div>
+    ) : null}
+    <div className="workflow-event-map-frame workflow-summary-map-frame">
+      <img src={imageUrl} alt={mapAlt} className="workflow-event-map-image" />
+      {bounds && (startPolygons || []).length > 0 ? (
+        <svg className="workflow-event-map-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          {(startPolygons || []).map((overlay) => (
+            <polygon
+              key={overlay.key}
+              points={overlay.points}
+              className="workflow-event-map-base-polygon"
+              style={{ fill: `${overlay.ownerColor}66`, stroke: overlay.ownerColor }}
+            >
+              <title>{overlay.ownerName}</title>
+            </polygon>
+          ))}
+        </svg>
+      ) : null}
+    </div>
+  </>
+);
+
+const MAIN_GAME_FEATURING_ORDER = [
+  { key: 'carriers', label: 'Carrier', iconKey: 'carrier' },
+  { key: 'battlecruisers', label: 'Battlecruiser', iconKey: 'battlecruiser' },
+  { key: 'cannon_rush', label: 'Cannon rush', iconKey: 'photoncannon' },
+  { key: 'bunker_rush', label: 'Bunker rush', iconKey: 'bunker' },
+  { key: 'zergling_rush', label: 'Zergling rush', iconKey: 'zergling' },
+  { key: 'mind_control', label: 'Mind control', iconKey: 'darkarchon' },
+  { key: 'nukes', label: 'Nukes', iconKey: 'ghost' },
+  { key: 'recalls', label: 'Recalls', iconKey: 'arbiter' },
+];
+
+const collectFeaturingKeysFromMainGame = (mainGame) => {
+  const found = new Set();
+  const events = mainGame?.game_events || [];
+  events.forEach((ev) => {
+    const t = normalizeEventType(ev?.type);
+    if (t === 'zergling_rush') found.add('zergling_rush');
+    if (t === 'cannon_rush') found.add('cannon_rush');
+    if (t === 'bunker_rush') found.add('bunker_rush');
+  });
+  const considerPattern = (pat) => {
+    const n = normalizeUnitName(pat?.pattern_name);
+    if (!isPatternTruthy(pat?.value)) return;
+    if (n === 'carriers') found.add('carriers');
+    if (n === 'battlecruisers') found.add('battlecruisers');
+    if (n === 'maderecalls') found.add('recalls');
+    if (n === 'threwnukes') found.add('nukes');
+    if (n === 'becameterran' || n === 'becamezerg') found.add('mind_control');
+  };
+  (mainGame?.players || []).forEach((p) => {
+    (p.detected_patterns || []).forEach(considerPattern);
+  });
+  return found;
+};
+
+const buildMainGameFeaturingPills = (mainGame) => {
+  if (!mainGame) return [];
+  const keys = collectFeaturingKeysFromMainGame(mainGame);
+  return MAIN_GAME_FEATURING_ORDER.filter((entry) => keys.has(entry.key));
+};
+
+const renderFeaturingPill = (pill, keyPrefix) => {
+  const icon = pill.iconKey ? getUnitIcon(pill.iconKey) : null;
+  return (
+    <span key={`${keyPrefix}-${pill.key}`} className="workflow-pattern-pill workflow-pattern-pill-strong workflow-summary-feature-pill">
+      {icon ? <img src={icon} alt="" className="workflow-pattern-icon" /> : null}
+      <span>{pill.label}</span>
+    </span>
+  );
 };
 
 const mapBoundsFromGameEvents = (events) => {
@@ -657,6 +835,7 @@ const isPatternTruthy = (value) => {
 const prettyPatternName = (patternName) => {
   const trimmed = String(patternName || '').trim();
   if (!trimmed) return '';
+  if (/used\s+hotkey\s+groups/i.test(trimmed)) return 'Hotkeys';
   const splitUppercase = trimmed.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
   return splitUppercase
     .replace(/_/g, ' ')
@@ -687,12 +866,8 @@ const formatPatternPillText = (rawName, rawValue, isTruthy) => {
     return `Did ${rawName}`;
   }
   const lowerName = rawName.toLowerCase();
-  if (lowerName === 'became terran' || lowerName === 'became zerg') {
-    const minute = minuteFromValue(rawValue);
-    if (minute !== null) return `${rawName} at ${minute} mins`;
-  }
-  if (lowerName.includes('used hotkey groups')) {
-    return `${rawName.replace(/\s+at$/i, '')} ${rawValue}`;
+  if (lowerName === 'hotkeys' || lowerName.includes('used hotkey groups')) {
+    return rawValue ? `Hotkeys ${rawValue}` : 'Hotkeys';
   }
   if (lowerName.includes('made drops') || lowerName.includes('made recalls')) {
     const minute = minuteFromValue(rawValue);
@@ -705,24 +880,90 @@ const formatPatternPillText = (rawName, rawValue, isTruthy) => {
   return `${rawName} at ${rawValue}`;
 };
 
-const shouldHidePatternFromSummaryPills = (pattern) => {
+const shouldHidePatternFromSummaryPills = (pattern, trustGameEventsForDrops) => {
   const normalizedPatternName = normalizeUnitName(pattern?.pattern_name);
-  return normalizedPatternName === 'viewportmultitasking';
+  if (normalizedPatternName === 'viewportmultitasking') return true;
+  if (trustGameEventsForDrops && normalizedPatternName === 'madedrops') return true;
+  return false;
 };
 
-const filterSummaryPillPatterns = (patterns) => (
-  (patterns || []).filter((pattern) => !shouldHidePatternFromSummaryPills(pattern))
+const filterSummaryPillPatterns = (patterns, trustGameEventsForDrops = false) => (
+  (patterns || []).filter((pattern) => !shouldHidePatternFromSummaryPills(pattern, trustGameEventsForDrops))
 );
 
 const renderPatternPill = (pattern, keyPrefix, team) => {
   const rawName = prettyPatternName(pattern?.pattern_name);
   if (!rawName) return null;
+  const normalizedPatternName = normalizeUnitName(pattern?.pattern_name);
+  if (normalizedPatternName === 'neverresearched') {
+    const rawValue = String(pattern?.value || '').trim();
+    if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
+      return null;
+    }
+    const key = `${keyPrefix}-never-researched`;
+    return (
+      <span
+        key={key}
+        className="workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey"
+        title="No Tech commands in this replay for this player (10+ minute games)."
+      >
+        <span>🚫 researches</span>
+      </span>
+    );
+  }
+  if (normalizedPatternName === 'neverupgraded') {
+    const rawValue = String(pattern?.value || '').trim();
+    if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
+      return null;
+    }
+    const key = `${keyPrefix}-never-upgraded`;
+    return (
+      <span
+        key={key}
+        className="workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey"
+        title="No Upgrade commands in this replay for this player (10+ minute games)."
+      >
+        <span>🚫 upgrades</span>
+      </span>
+    );
+  }
+  if (normalizedPatternName === 'neverusedhotkeys') {
+    const rawValue = String(pattern?.value || '').trim();
+    if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
+      return null;
+    }
+    const key = `${keyPrefix}-never-hotkeys`;
+    return (
+      <span
+        key={key}
+        className="workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey"
+        title="No hotkey-group commands in this replay (same 7+ minute gate as the detector)."
+      >
+        <span>🚫 hotkeys</span>
+      </span>
+    );
+  }
   const rawValue = String(pattern?.value || '').trim();
+  if (normalizedPatternName === 'becameterran' || normalizedPatternName === 'becamezerg') {
+    if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
+      return null;
+    }
+    const minute = minuteFromValue(rawValue);
+    const raceWord = normalizedPatternName === 'becameterran' ? 'Terran' : 'Zerg';
+    const da = getUnitIcon('darkarchon');
+    const key = `${keyPrefix}-became-${normalizedPatternName}-${pattern?.value}`;
+    const label = minute !== null ? `${raceWord} at ${minute} mins` : raceWord;
+    return (
+      <span key={key} className="workflow-pattern-pill workflow-pattern-pill-strong" title={String(pattern?.pattern_name || '').trim()}>
+        {da ? <img src={da} alt="" className="workflow-pattern-icon" /> : null}
+        <span>{label}</span>
+      </span>
+    );
+  }
   if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
     return null;
   }
   const isTruthy = isPatternTruthy(pattern?.value);
-  const normalizedPatternName = normalizeUnitName(pattern?.pattern_name);
   let icon = patternIconForName(pattern?.pattern_name);
   const text = formatPatternPillText(rawName, rawValue, isTruthy);
   let content = <span>{text}</span>;
@@ -771,7 +1012,7 @@ const renderPatternPill = (pattern, keyPrefix, team) => {
         </span>
       );
     } else if (normalizedPatternName === 'carriers' || normalizedPatternName === 'battlecruisers') {
-      content = <span>x10+</span>;
+      content = null;
     } else if (icon) {
       content = <span>Did</span>;
     }
@@ -2303,7 +2544,6 @@ function App() {
     return true;
   };
 
-  const filteredReplayPatterns = mainGame?.replay_patterns || [];
   const mainPlayerOutlierItems = mainPlayerOutliers?.items || [];
 
   const filteredGameEvents = useMemo(() => {
@@ -2405,6 +2645,33 @@ function App() {
       }))
       .filter((player) => player.name);
   }, [mainGamePlayers]);
+  const summaryMapStartPolygons = useMemo(() => {
+    const bounds = mainEventMapBounds;
+    if (!bounds) return [];
+    const events = Array.isArray(mainGame?.game_events) ? mainGame.game_events : [];
+    const acc = [];
+    events.forEach((ev, idx) => {
+      if (normalizeEventType(ev?.type) !== 'player_start') return;
+      if (!ev?.actor) return;
+      const polygon = Array.isArray(ev?.base?.polygon) ? ev.base.polygon : [];
+      if (polygon.length < 3) return;
+      const points = polygon
+        .map((point) => mapPointToPercent(point, bounds))
+        .filter(Boolean)
+        .map((point) => `${point.x},${point.y}`)
+        .join(' ');
+      if (!points) return;
+      const pid = eventActorID(ev);
+      acc.push({
+        key: `sum-start-poly-${pid != null ? pid : idx}`,
+        points,
+        ownerName: String(ev.actor.name || '').trim() || 'Player',
+        ownerColor: playerColorToCss(ev.actor.color),
+      });
+    });
+    return acc;
+  }, [mainGame?.game_events, mainEventMapBounds]);
+  const mainGameFeaturingPillsList = useMemo(() => buildMainGameFeaturingPills(mainGame), [mainGame]);
   const selectedMainGameArrow = useMemo(() => {
     if (!selectedMainGameEvent || !isArrowEventType(selectedMainGameEvent.type)) return null;
     const from = mapPointToPercent(selectedMainGameEvent?.actor_origin, mainEventMapBounds);
@@ -2560,7 +2827,7 @@ function App() {
     if ((Number(mainPlayer?.hotkey_usage_rate) || 0) < LOW_USAGE_THRESHOLD) {
       pills.push({
         key: 'no-hotkeys',
-        label: 'Doesn\'t use hotkeys',
+        label: '🚫 hotkeys',
         title: `Detected in ${(Number(mainPlayer?.hotkey_usage_rate) * 100).toFixed(1)}% of this player's games.`,
         className: 'workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey',
       });
@@ -3608,54 +3875,78 @@ function App() {
 
                 {mainGameTab === 'summary' && (
                   <>
-                    <div className="workflow-map-summary">
-                      {mainMapVisualAvailable ? (
-                        <button
-                          type="button"
-                          className="workflow-map-thumb-btn"
-                          onClick={() => setMainMapModalOpen(true)}
-                          title="Click to enlarge map"
-                        >
-                          <img src={mainMapVisualThumbURL} alt={`${mainGame.map_name} map`} className="workflow-map-thumb-image" />
-                        </button>
-                      ) : (
-                        <div className="workflow-map-summary-fallback">
-                          Map image unavailable for this replay map.
-                          {mainMapVisual?.resolution_note ? ` (${mainMapVisual.resolution_note})` : ''}
-                        </div>
-                      )}
+                    <div className="workflow-summary-map-row">
+                      <div className="workflow-summary-map-col">
+                        {mainMapVisualAvailable ? (
+                          <button
+                            type="button"
+                            className="workflow-map-thumb-btn"
+                            onClick={() => setMainMapModalOpen(true)}
+                            title="Click to enlarge map"
+                          >
+                            {renderSummaryMapStack({
+                              legendItems: selectedMainGameLegend,
+                              showLegend: false,
+                              imageUrl: mainMapVisualThumbURL,
+                              mapAlt: `${mainGame.map_name} map`,
+                              bounds: mainEventMapBounds,
+                              startPolygons: summaryMapStartPolygons,
+                            })}
+                          </button>
+                        ) : (
+                          <div className="workflow-map-summary-fallback">
+                            Map image unavailable for this replay map.
+                            {mainMapVisual?.resolution_note ? ` (${mainMapVisual.resolution_note})` : ''}
+                          </div>
+                        )}
+                      </div>
+                      <div className="workflow-summary-features-col">
+                        {mainGameFeaturingPillsList.length > 0 ? (
+                          <>
+                            <div className="workflow-summary-features-title">This game</div>
+                            <div className="workflow-pattern-pills">
+                              {mainGameFeaturingPillsList.map((pill) => renderFeaturingPill(pill, 'summary-game'))}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="workflow-subtle-note">No featured highlights for this replay.</div>
+                        )}
+                      </div>
                     </div>
                     <div className="workflow-player-rows" style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
                       {(mainGame.players || []).map((player) => {
                         const raceIcon = getRaceIcon(player.race);
+                        const gameSummaryParts = playerGameSummarySignalParts(player, mainGame?.game_events, mainGame?.duration_seconds);
+                        const trustGameEventsForDrops = Array.isArray(mainGame?.game_events) && mainGame.game_events.length > 0;
                         return (
                           <div key={player.player_id} className="workflow-player-row" style={{ borderLeft: `3px solid ${getTeamColor(player.team)}` }}>
                             <div className="workflow-player-line">
-                              <strong
-                                className="workflow-player-name"
-                                style={playerAccentColor(player.player_key) ? { color: playerAccentColor(player.player_key) } : undefined}
-                              >
+                              <div className="workflow-player-name workflow-player-name-block">
                                 {raceIcon ? <img src={raceIcon} alt={player.race || 'race'} className="unit-icon-inline workflow-summary-race-icon" /> : null}
                                 {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-                                {player.name}
-                              </strong>
+                                <button
+                                  type="button"
+                                  className="workflow-player-name-link"
+                                  title="Analyze player"
+                                  style={gamePlayerNameStyle(player)}
+                                  onClick={() => openMainPlayer(player.player_key)}
+                                >
+                                  {player.name}
+                                </button>
+                              </div>
                               <div className="workflow-player-actions">
                                 <span className="workflow-player-apm"><strong>APM</strong> {player.apm}</span>
-                                <button className="workflow-link-btn" onClick={() => openMainPlayer(player.player_key)}>View Player Summary</button>
                               </div>
-                              {filterSummaryPillPatterns(player.detected_patterns).map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`))}
+                              <div className="workflow-pattern-pills">
+                                {gameSummaryParts.positive.map(renderGameSummarySignalPill)}
+                                {filterSummaryPillPatterns(player.detected_patterns, trustGameEventsForDrops).map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`))}
+                                {gameSummaryParts.noScout ? renderGameSummarySignalPill(gameSummaryParts.noScout) : null}
+                              </div>
                             </div>
                           </div>
                         );
                       })}
                     </div>
-                    {filteredReplayPatterns.length > 0 && (
-                      <div className="workflow-card">
-                        <div className="workflow-pattern-pills">
-                          {filteredReplayPatterns.map((pattern, idx) => renderPatternPill(pattern, `replay-${idx}`))}
-                        </div>
-                      </div>
-                    )}
                   </>
                 )}
 
@@ -4272,13 +4563,20 @@ function App() {
                 )}
                 {mainMapModalOpen && mainMapVisualAvailable ? (
                   <div className="modal-overlay" onClick={() => setMainMapModalOpen(false)}>
-                    <div className="modal-content workflow-map-modal" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-content workflow-map-modal workflow-map-modal--enriched" onClick={(e) => e.stopPropagation()}>
                       <div className="modal-header">
                         <h2>{mainGame.map_name}</h2>
                         <button className="btn-close" onClick={() => setMainMapModalOpen(false)}>×</button>
                       </div>
-                      <div className="workflow-map-modal-body">
-                        <img src={mainMapVisualURL} alt={`${mainGame.map_name} map`} className="workflow-map-modal-image" />
+                      <div className="workflow-map-modal-body workflow-map-modal-body--map-only">
+                        {renderSummaryMapStack({
+                          legendItems: selectedMainGameLegend,
+                          showLegend: true,
+                          imageUrl: mainMapVisualURL,
+                          mapAlt: `${mainGame.map_name} map`,
+                          bounds: mainEventMapBounds,
+                          startPolygons: summaryMapStartPolygons,
+                        })}
                       </div>
                     </div>
                   </div>

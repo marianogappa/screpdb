@@ -1639,11 +1639,98 @@ body {
   color: rgba(255, 255, 255, 0.8);
 }
 
-.workflow-map-summary {
-  margin-bottom: 12px;
+.workflow-summary-map-row {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.workflow-summary-map-col {
+  flex: 0 0 auto;
+  max-width: min(520px, 100%);
+}
+
+.workflow-summary-map-col .workflow-map-thumb-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: auto;
+  max-width: 100%;
+}
+
+.workflow-summary-map-legend {
+  margin-bottom: 6px;
+}
+
+/* Stack image + SVG so the frame shrink-wraps the map; overlay matches the image box (avoids stretched polygons in the modal). */
+.workflow-summary-map-frame {
+  display: inline-grid;
+  grid-template: 1fr / 1fr;
+  width: fit-content;
+  max-width: 100%;
+  vertical-align: top;
+  position: relative;
+}
+
+.workflow-summary-map-frame .workflow-event-map-image {
+  grid-area: 1 / 1;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 240px;
+  object-fit: contain;
+  display: block;
+}
+
+.workflow-summary-map-frame .workflow-event-map-overlay {
+  grid-area: 1 / 1;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.workflow-summary-features-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(280px, 100%);
+}
+
+.workflow-summary-features-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.78);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.workflow-summary-feature-pill .workflow-pattern-icon {
+  width: 34px;
+  height: 34px;
+}
+
+.workflow-map-modal.workflow-map-modal--enriched,
+.modal-content.workflow-map-modal.workflow-map-modal--enriched {
+  width: fit-content;
+  max-width: min(96vw, 1500px);
+  overflow-y: visible;
+}
+
+.workflow-map-modal-body--map-only {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.workflow-map-modal--enriched .workflow-summary-map-frame .workflow-event-map-image {
+  max-height: min(85vh, 960px);
+  max-width: min(96vw, 1400px);
 }
 
 .workflow-map-thumb-btn {
@@ -1700,6 +1787,39 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.workflow-player-name-block {
+  flex: 0 1 auto;
+}
+
+.workflow-player-name-link {
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px 6px;
+  margin: -3px -2px;
+  border-radius: 8px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.workflow-player-name-link:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.workflow-player-name-link:active {
+  transform: translateY(0);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .workflow-summary-race-icon {

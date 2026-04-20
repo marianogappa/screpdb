@@ -14,12 +14,16 @@ import (
 )
 
 const (
-	ownershipTimeoutSec   = 90
+	ownershipTimeoutSec   = 3 * 60
 	contestedSwitchSec    = 45
+	// On a starting base, require this many enemy build-like signals before contested takeover (one pylon should not flip main ownership).
+	minContestedBuildSignalsOnStart = 3
 	rushWindowSec         = 300
 	zerglingRushSec       = 140
 	zergRushObserveSec    = 120
 	rushBuildWindowSec    = 4 * 60
+	// Max distance from a rush build command to an enemy base center when the point is outside the base polygon (map polygons often miss ramp cannons).
+	rushBuildSnapToEnemyBaseCenterPx = 10 * 32
 	proxyFactoryWindowSec = 5 * 60
 	attackUnitsWindowSec  = 180
 	eventDedupWindowSec   = 60
@@ -135,6 +139,9 @@ type Engine struct {
 	marineTrainCountByPID map[byte]int
 	humanPlayerIDs        []byte
 
+	// contestedInvadeBuilds counts invader build-like commands on an enemy starting base (key "baseIdx|invaderPID").
+	contestedInvadeBuilds map[string]int
+
 	entries      []NarrativeEntry
 	replayEvents []ReplayEvent
 }
@@ -158,6 +165,7 @@ func NewEngine(replay *models.Replay, players []*models.Player, mapCtx *models.R
 		zergRushEmitted:       map[byte]bool{},
 		marineTrainCountByPID: map[byte]int{},
 		humanPlayerIDs:        []byte{},
+		contestedInvadeBuilds: map[string]int{},
 		entries:               make([]NarrativeEntry, 0, 256),
 		replayEvents:          make([]ReplayEvent, 0, 256),
 	}
@@ -412,15 +420,33 @@ func (e *Engine) ProcessCommand(command *models.Command) {
 		owningSignal = true
 	}
 	if owningSignal {
+		if owner == pid {
+			e.resetContestedInvadesForBase(biOwnership)
+		}
 		e.lastOwningAt[biOwnership][pid] = sec
+	}
+
+	// Rush detection must run before contested ownership transfer; otherwise a cannon on the
+	// opponent's main reassigns the base to the rusher and no enemy-owned polygon remains.
+	if isBuild {
+		e.tryEmitRushBuildEvents(command, pid, sec, x, y)
 	}
 
 	if owningSignal {
 		if owner == neutralPID {
 			e.transitionOwnership(sec, biOwnership, pid, "ownership claim")
 		} else if owner != pid {
+			invKey := contestedInvadeKey(biOwnership, pid)
+			if isBuild && biOwnership >= 0 && biOwnership < len(e.bases) && e.bases[biOwnership].IsStarting {
+				e.contestedInvadeBuilds[invKey]++
+			}
 			ownerLast := e.lastOwningAt[biOwnership][owner]
-			if sec-ownerLast > contestedSwitchSec {
+			need := 1
+			if biOwnership >= 0 && biOwnership < len(e.bases) && e.bases[biOwnership].IsStarting {
+				need = minContestedBuildSignalsOnStart
+			}
+			invadeOK := need == 1 || e.contestedInvadeBuilds[invKey] >= need
+			if sec-ownerLast > contestedSwitchSec && invadeOK {
 				e.transitionOwnership(sec, biOwnership, pid, "ownership transfer")
 			}
 		}
@@ -441,7 +467,6 @@ func (e *Engine) ProcessCommand(command *models.Command) {
 
 	owner = e.ownerByBase[biOwnership]
 	if isBuild {
-		e.tryEmitRushBuildEvents(command, pid, sec, x, y)
 		e.tryEmitProxyBuildEvents(command, pid, sec, x, y, biEvent)
 	}
 	if isAttackLike {
@@ -461,9 +486,11 @@ func (e *Engine) ProcessCommand(command *models.Command) {
 				e.lastAttackEmitted[k] = sec
 				attackUnitTypes := e.recentAttackUnitTypes(pid, sec)
 				if sec <= rushWindowSec && len(attackUnitTypes) == 0 {
-					workerUnit := e.workerUnitForPlayer(pid)
-					if workerUnit != "" {
-						e.emitEvent("scout", sec, fmt.Sprintf("%s scouts %s %s", e.playerName(pid), e.playerName(owner), e.bases[biEvent].DisplayName), e.playerRef(pid), e.playerRef(owner), biEvent, []string{workerUnit})
+					scoutUnits := e.scoutPayloadUnitsFromCommand(pid, unitType)
+					// biEvent (scout location) can differ from biOwnership (used in the ally guard above).
+					eventBaseOwner := e.ownerByBase[biEvent]
+					if len(scoutUnits) > 0 && !e.sameTeam(pid, eventBaseOwner) {
+						e.emitEvent("scout", sec, fmt.Sprintf("%s scouts %s %s", e.playerName(pid), e.playerName(owner), e.bases[biEvent].DisplayName), e.playerRef(pid), e.playerRef(owner), biEvent, scoutUnits)
 					}
 				} else {
 					e.emitEvent("attack", sec, fmt.Sprintf("%s attacks %s %s", e.playerName(pid), e.playerName(owner), e.bases[biEvent].DisplayName), e.playerRef(pid), e.playerRef(owner), biEvent, attackUnitTypes)
@@ -489,12 +516,29 @@ func (e *Engine) ProcessCommand(command *models.Command) {
 	}
 }
 
+func contestedInvadeKey(baseIdx int, invader byte) string {
+	return fmt.Sprintf("%d|%d", baseIdx, invader)
+}
+
+func (e *Engine) resetContestedInvadesForBase(baseIdx int) {
+	if e.contestedInvadeBuilds == nil {
+		return
+	}
+	prefix := fmt.Sprintf("%d|", baseIdx)
+	for k := range e.contestedInvadeBuilds {
+		if strings.HasPrefix(k, prefix) {
+			delete(e.contestedInvadeBuilds, k)
+		}
+	}
+}
+
 func (e *Engine) transitionOwnership(sec int, baseIdx int, to byte, reason string) {
 	from := e.ownerByBase[baseIdx]
 	if from == to {
 		return
 	}
 	e.ownerByBase[baseIdx] = to
+	e.resetContestedInvadesForBase(baseIdx)
 	if to == neutralPID {
 		var losingPlayer *NarrativePlayerRef
 		if from != neutralPID {
@@ -817,6 +861,22 @@ func (e *Engine) workerUnitForPlayer(pid byte) string {
 	}
 }
 
+// scoutPayloadUnitsFromCommand picks replay-event unit payload for early "scout" classification.
+// Zerg Overlords can satisfy the same early-pressure heuristic as workers.
+func (e *Engine) scoutPayloadUnitsFromCommand(pid byte, commandUnitType string) []string {
+	u := strings.TrimSpace(commandUnitType)
+	if u != "" {
+		n := normalize(u)
+		if strings.Contains(n, "overlord") {
+			return []string{models.GeneralUnitOverlord}
+		}
+	}
+	if w := e.workerUnitForPlayer(pid); w != "" {
+		return []string{w}
+	}
+	return nil
+}
+
 func (e *Engine) sameTeam(a byte, b byte) bool {
 	ta, oka := e.teams[a]
 	tb, okb := e.teams[b]
@@ -946,10 +1006,14 @@ func (e *Engine) recordMarineTraining(pid byte, sec int, command *models.Command
 
 func (e *Engine) recordZergRushAttack(pid byte, sec int, baseIdx int) {
 	candidate := e.zergRushCandidates[pid]
-	if candidate == nil || baseIdx < 0 {
+	if candidate == nil || baseIdx < 0 || baseIdx >= len(e.ownerByBase) {
 		return
 	}
 	if sec < candidate.DetectedSecond || sec > candidate.DetectedSecond+zergRushObserveSec {
+		return
+	}
+	owner := e.ownerByBase[baseIdx]
+	if owner == neutralPID || owner == pid || e.left[owner] || e.sameTeam(pid, owner) {
 		return
 	}
 	candidate.AttackCountsByBase[baseIdx]++
@@ -1014,11 +1078,14 @@ func (e *Engine) tryEmitRushBuildEvents(command *models.Command, pid byte, sec i
 		return
 	}
 	enemyBaseIdx := e.enemyBaseIdxAtPoint(pid, x, y)
+	if enemyBaseIdx < 0 && strings.Contains(unitNorm, "photoncannon") {
+		enemyBaseIdx = e.nearestEnemyBaseIdxForRush(pid, x, y, rushBuildSnapToEnemyBaseCenterPx)
+	}
 	if enemyBaseIdx < 0 {
 		return
 	}
 	enemyPID := e.ownerByBase[enemyBaseIdx]
-	if !e.hasKnownEnemyTeam(pid, enemyPID) {
+	if !e.isRushTargetEnemy(pid, enemyPID) {
 		return
 	}
 	payload := []string{unitType}
@@ -1079,17 +1146,63 @@ func (e *Engine) hasKnownEnemyTeam(a byte, b byte) bool {
 	return oka && okb && ta != 0 && tb != 0 && ta != tb
 }
 
+// isRushTargetEnemy is like hasKnownEnemyTeam but treats two humans in a 1v1 as opponents when replay teams are missing or zero (common in some replays).
+func (e *Engine) isRushTargetEnemy(pid, owner byte) bool {
+	if owner == neutralPID || owner == pid {
+		return false
+	}
+	if e.hasKnownEnemyTeam(pid, owner) {
+		return true
+	}
+	return e.rushOpponentWhenTeamsAmbiguous(pid, owner)
+}
+
+func (e *Engine) rushOpponentWhenTeamsAmbiguous(pid, owner byte) bool {
+	if len(e.humanPlayerIDs) != 2 {
+		return false
+	}
+	a := e.humanPlayerIDs[0]
+	b := e.humanPlayerIDs[1]
+	if !((pid == a && owner == b) || (pid == b && owner == a)) {
+		return false
+	}
+	if e.sameTeam(pid, owner) {
+		return false
+	}
+	return true
+}
+
 func (e *Engine) enemyBaseIdxAtPoint(pid byte, x float64, y float64) int {
 	bestIdx := -1
 	bestDist := math.MaxFloat64
 	for baseIdx, owner := range e.ownerByBase {
-		if owner == neutralPID || owner == pid || !e.hasKnownEnemyTeam(pid, owner) {
+		if owner == neutralPID || owner == pid || !e.isRushTargetEnemy(pid, owner) {
 			continue
 		}
 		if !pointInBasePolygon(x, y, e.bases[baseIdx]) {
 			continue
 		}
 		d := dist(x, y, e.bases[baseIdx].CenterX, e.bases[baseIdx].CenterY)
+		if d < bestDist {
+			bestDist = d
+			bestIdx = baseIdx
+		}
+	}
+	return bestIdx
+}
+
+func (e *Engine) nearestEnemyBaseIdxForRush(pid byte, x, y, maxCenterDist float64) int {
+	bestIdx := -1
+	bestDist := math.MaxFloat64
+	for baseIdx, owner := range e.ownerByBase {
+		if owner == neutralPID || owner == pid || !e.isRushTargetEnemy(pid, owner) {
+			continue
+		}
+		b := e.bases[baseIdx]
+		d := dist(x, y, b.CenterX, b.CenterY)
+		if d > maxCenterDist {
+			continue
+		}
 		if d < bestDist {
 			bestDist = d
 			bestIdx = baseIdx

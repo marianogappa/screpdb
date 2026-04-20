@@ -148,11 +148,8 @@ func (d *BattlecruisersPlayerDetector) ProcessCommand(command *models.Command) b
 		return false
 	}
 	d.count++
-	if d.count >= 10 {
-		d.SetFinished(true)
-		return true
-	}
-	return false
+	d.SetFinished(true)
+	return true
 }
 
 func (d *BattlecruisersPlayerDetector) GetResult() *core.PatternResult {
@@ -164,7 +161,7 @@ func (d *BattlecruisersPlayerDetector) GetResult() *core.PatternResult {
 }
 
 func (d *BattlecruisersPlayerDetector) ShouldSave() bool {
-	return d.IsFinished() && d.count >= 10 && isPlayerRace(d.GetPlayers(), d.GetReplayPlayerID(), "Terran")
+	return d.IsFinished() && d.count >= 1 && isPlayerRace(d.GetPlayers(), d.GetReplayPlayerID(), "Terran")
 }
 
 type CarriersPlayerDetector struct {
@@ -186,11 +183,8 @@ func (d *CarriersPlayerDetector) ProcessCommand(command *models.Command) bool {
 		return false
 	}
 	d.count++
-	if d.count >= 10 {
-		d.SetFinished(true)
-		return true
-	}
-	return false
+	d.SetFinished(true)
+	return true
 }
 
 func (d *CarriersPlayerDetector) GetResult() *core.PatternResult {
@@ -202,7 +196,7 @@ func (d *CarriersPlayerDetector) GetResult() *core.PatternResult {
 }
 
 func (d *CarriersPlayerDetector) ShouldSave() bool {
-	return d.IsFinished() && d.count >= 10 && isPlayerRace(d.GetPlayers(), d.GetReplayPlayerID(), "Protoss")
+	return d.IsFinished() && d.count >= 1 && isPlayerRace(d.GetPlayers(), d.GetReplayPlayerID(), "Protoss")
 }
 
 type playerFirstEventByTypeDetector struct {

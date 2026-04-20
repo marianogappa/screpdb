@@ -56,9 +56,7 @@ func TestMechPlayerDetector_UsesThirtyMinuteWindowForComposition(t *testing.T) {
 
 func TestBattlecruisersAndCarriersDetectors(t *testing.T) {
 	terranBuilder := NewTestReplayBuilder().WithPlayer(1, "T", "Terran", 1)
-	for i := 0; i < 10; i++ {
-		terranBuilder.WithCommand(1, 100+i, models.ActionTypeTrain, models.GeneralUnitBattlecruiser)
-	}
+	terranBuilder.WithCommand(1, 100, models.ActionTypeTrain, models.GeneralUnitBattlecruiser)
 	replayT, playersT := terranBuilder.Build()
 	bcDetector := NewBattlecruisersPlayerDetector()
 	bcDetector.SetReplayPlayerID(1)
@@ -71,9 +69,7 @@ func TestBattlecruisersAndCarriersDetectors(t *testing.T) {
 	}
 
 	protossBuilder := NewTestReplayBuilder().WithPlayer(1, "P", "Protoss", 1)
-	for i := 0; i < 10; i++ {
-		protossBuilder.WithCommand(1, 100+i, models.ActionTypeTrain, models.GeneralUnitCarrier)
-	}
+	protossBuilder.WithCommand(1, 100, models.ActionTypeTrain, models.GeneralUnitCarrier)
 	replayP, playersP := protossBuilder.Build()
 	carrierDetector := NewCarriersPlayerDetector()
 	carrierDetector.SetReplayPlayerID(1)
