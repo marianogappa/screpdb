@@ -30,12 +30,23 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 	if err != nil {
 		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
 	}
+	playerNames := make([]string, 0, len(listRows))
+	for _, row := range listRows {
+		playerNames = append(playerNames, row.PlayerName)
+	}
+	displayByName, err := d.aliasDisplayNames(playerNames)
+	if err != nil {
+		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
+	}
 
 	items := []workflowPlayersListItem{}
 	for _, row := range listRows {
 		item := workflowPlayersListItem{}
 		item.PlayerKey = row.PlayerKey
 		item.PlayerName = row.PlayerName
+		if displayName, ok := displayByName[row.PlayerName]; ok {
+			item.PlayerName = displayName
+		}
 		item.Race = row.Race
 		item.GamesPlayed = row.GamesPlayed
 		item.AverageAPM = row.AverageAPM
@@ -227,14 +238,25 @@ func (d *Dashboard) populateWorkflowGameListPlayers(items []workflowGameListItem
 	if err != nil {
 		return err
 	}
+	playerNames := make([]string, 0, len(rows))
+	for _, row := range rows {
+		playerNames = append(playerNames, row.Name)
+	}
+	displayByName, err := d.aliasDisplayNames(playerNames)
+	if err != nil {
+		return err
+	}
 	for _, row := range rows {
 		var player workflowGameListPlayer
 		replayID := row.ReplayID
 		player.PlayerID = row.PlayerID
 		player.Name = row.Name
+		if displayName, ok := displayByName[row.Name]; ok {
+			player.Name = displayName
+		}
 		player.Team = row.Team
 		player.IsWinner = row.IsWinner
-		player.PlayerKey = normalizePlayerKey(player.Name)
+		player.PlayerKey = normalizePlayerKey(row.Name)
 		idx, ok := itemIndexByReplayID[replayID]
 		if !ok {
 			continue
@@ -331,6 +353,14 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 	if err != nil {
 		return err
 	}
+	playerNames := make([]string, 0, len(playerRows))
+	for _, row := range playerRows {
+		playerNames = append(playerNames, row.Name)
+	}
+	displayByName, err := d.aliasDisplayNames(playerNames)
+	if err != nil {
+		return err
+	}
 	playerIDs := []int64{}
 	currentByPlayerID := map[int64]*workflowRecentGamePlayer{}
 	for _, row := range playerRows {
@@ -338,9 +368,12 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 		currentPlayer := &workflowRecentGamePlayer{DetectedPatterns: []workflowPatternValue{}}
 		currentPlayer.PlayerID = row.PlayerID
 		currentPlayer.Name = row.Name
+		if displayName, ok := displayByName[row.Name]; ok {
+			currentPlayer.Name = displayName
+		}
 		currentPlayer.Race = row.Race
 		currentPlayer.IsWinner = row.IsWinner
-		currentPlayer.PlayerKey = normalizePlayerKey(currentPlayer.Name)
+		currentPlayer.PlayerKey = normalizePlayerKey(row.Name)
 		item := itemByReplayID[replayID]
 		if item == nil {
 			continue
@@ -429,10 +462,21 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 	if err != nil {
 		return result, err
 	}
+	playerNames := make([]string, 0, len(rowsPlayers))
+	for _, row := range rowsPlayers {
+		playerNames = append(playerNames, row.Label)
+	}
+	displayByName, err := d.aliasDisplayNames(playerNames)
+	if err != nil {
+		return result, err
+	}
 	for _, row := range rowsPlayers {
 		var option workflowGamesListFilterOption
 		option.Key = row.Key
 		option.Label = row.Label
+		if displayName, ok := displayByName[row.Label]; ok {
+			option.Label = displayName
+		}
 		option.Games = row.Games
 		result.Players = append(result.Players, option)
 	}

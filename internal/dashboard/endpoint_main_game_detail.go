@@ -36,12 +36,23 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	if err != nil {
 		return detail, fmt.Errorf("failed to load players: %w", err)
 	}
+	playerNames := make([]string, 0, len(rows))
+	for _, row := range rows {
+		playerNames = append(playerNames, row.Name)
+	}
+	displayByName, err := d.aliasDisplayNames(playerNames)
+	if err != nil {
+		return detail, fmt.Errorf("failed to resolve player aliases: %w", err)
+	}
 
 	startClockByPlayerID := map[int64]int{}
 	for _, row := range rows {
 		var p workflowGamePlayer
 		p.PlayerID = row.PlayerID
 		p.Name = row.Name
+		if displayName, ok := displayByName[row.Name]; ok {
+			p.Name = displayName
+		}
 		p.Color = row.Color
 		p.Race = row.Race
 		p.Team = row.Team
@@ -50,7 +61,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		p.EAPM = row.EAPM
 		p.CommandCount = row.CommandCount
 		p.HotkeyCommandCount = row.HotkeyCommandCount
-		p.PlayerKey = normalizePlayerKey(p.Name)
+		p.PlayerKey = normalizePlayerKey(row.Name)
 		totalCommandCount := p.CommandCount + row.LowValueCommandCount
 		if totalCommandCount > 0 {
 			p.HotkeyUsageRate = float64(p.HotkeyCommandCount) / float64(totalCommandCount)
@@ -70,7 +81,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		}
 	}
 
-	if err := d.populateDetectedPatternsForGameDetail(&detail, mapLayout, startClockByPlayerID); err != nil {
+	if err := d.populateDetectedPatternsForGameDetail(&detail, mapLayout, startClockByPlayerID, displayByName); err != nil {
 		return detail, err
 	}
 	if err := d.populateUnitsBySliceForGameDetail(&detail); err != nil {
@@ -92,7 +103,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	return detail, nil
 }
 
-func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDetail, mapLayout *models.MapContextLayout, startClockByPlayerID map[int64]int) error {
+func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDetail, mapLayout *models.MapContextLayout, startClockByPlayerID map[int64]int, displayByName map[string]string) error {
 	detail.ReplayPatterns = []workflowPatternValue{}
 	detail.GameEvents = []workflowGameEvent{}
 
@@ -110,6 +121,19 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 		return fmt.Errorf("failed to query replay events: %w", err)
 	}
 	detail.GameEvents = replayEventsFromRows(eventRows, mapLayout, startClockByPlayerID)
+	for i := range detail.GameEvents {
+		event := &detail.GameEvents[i]
+		if event.Actor != nil {
+			if displayName, ok := displayByName[event.Actor.Name]; ok {
+				event.Actor.Name = displayName
+			}
+		}
+		if event.Target != nil {
+			if displayName, ok := displayByName[event.Target.Name]; ok {
+				event.Target.Name = displayName
+			}
+		}
+	}
 
 	playerByID := map[int64]*workflowGamePlayer{}
 	for i := range detail.Players {
@@ -143,6 +167,13 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 		return result, fmt.Errorf("failed to load player summary: %w", err)
 	}
 	result.PlayerName = summary.PlayerName
+	displayByName, err := d.aliasDisplayNames([]string{summary.PlayerName})
+	if err != nil {
+		return result, fmt.Errorf("failed to resolve player aliases: %w", err)
+	}
+	if displayName, ok := displayByName[summary.PlayerName]; ok {
+		result.PlayerName = displayName
+	}
 	result.GamesPlayed = summary.GamesPlayed
 	result.Wins = summary.Wins
 	result.AverageAPM = summary.AverageAPM
@@ -203,6 +234,14 @@ func (d *Dashboard) buildWorkflowPlayerApmHistogram(playerKey string) (workflowP
 	if err != nil {
 		return result, err
 	}
+	playerNames := make([]string, 0, len(rows))
+	for _, row := range rows {
+		playerNames = append(playerNames, row.PlayerName)
+	}
+	displayByName, err := d.aliasDisplayNames(playerNames)
+	if err != nil {
+		return result, err
+	}
 
 	values := []float64{}
 	playerValue := 0.0
@@ -217,7 +256,7 @@ func (d *Dashboard) buildWorkflowPlayerApmHistogram(playerKey string) (workflowP
 		values = append(values, avgAPM)
 		result.Players = append(result.Players, workflowPlayerApmHistogramPoint{
 			PlayerKey:   key,
-			PlayerName:  name,
+			PlayerName:  lo.Ternary(displayByName[name] != "", displayByName[name], name),
 			AverageAPM:  avgAPM,
 			GamesPlayed: gamesPlayed,
 		})

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import AliasesSettingsPanel from './AliasesSettingsPanel';
 
 const DEFAULT_CONFIG = {
   game_types: [],
@@ -125,8 +126,33 @@ function FilterDimension({ heading, mode, onModeChange, values, onToggle, topOpt
   );
 }
 
-function GlobalReplayFilterModal({ config, options, saving, error, onClose, onSave }) {
+function GlobalReplayFilterModal({
+  config,
+  options,
+  saving,
+  error,
+  onClose,
+  onSave,
+  savedIngestInputDir,
+  aliases,
+  aliasesLoading,
+  aliasesMessage,
+  aliasesMessageIsError,
+  aliasForm,
+  aliasSaving,
+  aliasSourceFilter,
+  aliasEditOriginal,
+  onAliasFormChange,
+  onAliasSave,
+  onAliasDelete,
+  onAliasImportFile,
+  onAliasSourceFilterChange,
+  onAliasEdit,
+  onAliasCancelEdit,
+  onAliasExport,
+}) {
   const [formState, setFormState] = useState(DEFAULT_CONFIG);
+  const [settingsTab, setSettingsTab] = useState('scope');
 
   useEffect(() => {
     setFormState(normalizeConfig(config || DEFAULT_CONFIG));
@@ -155,72 +181,112 @@ function GlobalReplayFilterModal({ config, options, saving, error, onClose, onSa
       <div className="modal-content global-filter-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Settings</h2>
-          <button onClick={onClose} className="btn-close">×</button>
+          <button type="button" onClick={onClose} className="btn-close">×</button>
         </div>
-        <form onSubmit={handleSubmit} className="edit-form">
-          {error ? <div className="error-message">{error}</div> : null}
-          <div className="global-filter-warning">
-            These settings apply to the Games and Players dashboards. Custom Dashboards are configured separately.
+        <div className="settings-modal-tab-row workflow-nav">
+          <button
+            type="button"
+            className={`btn-switch ${settingsTab === 'scope' ? 'workflow-nav-active' : ''}`}
+            onClick={() => setSettingsTab('scope')}
+          >
+            Replay scope
+          </button>
+          <button
+            type="button"
+            className={`btn-switch ${settingsTab === 'aliases' ? 'workflow-nav-active' : ''}`}
+            onClick={() => setSettingsTab('aliases')}
+          >
+            Aliases
+          </button>
+        </div>
+        {settingsTab === 'scope' ? (
+          <form onSubmit={handleSubmit} className="edit-form">
+            {error ? <div className="error-message">{error}</div> : null}
+            <div className="global-filter-warning">
+              These settings apply to the Games and Players dashboards. Custom Dashboards are configured separately.
+            </div>
+
+            <div className="global-filter-toggle-grid">
+              <label className="global-filter-toggle">
+                <input
+                  type="checkbox"
+                  checked={formState.exclude_short_games}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, exclude_short_games: e.target.checked }))}
+                />
+                <span>Exclude games that last less than 2 minutes</span>
+              </label>
+              <label className="global-filter-toggle">
+                <input
+                  type="checkbox"
+                  checked={formState.exclude_computers}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, exclude_computers: e.target.checked }))}
+                />
+                <span>Exclude games with Computers</span>
+              </label>
+            </div>
+
+            <FilterDimension
+              heading="Game Type"
+              mode={formState.game_types_mode}
+              onModeChange={(value) => setFormState((prev) => ({ ...prev, game_types_mode: value }))}
+              values={formState.game_types}
+              onToggle={(value) => toggleArrayValue('game_types', value)}
+              topOptions={GAME_TYPE_OPTIONS}
+              otherOptions={[]}
+            />
+
+            <FilterDimension
+              heading="Maps"
+              mode={formState.map_filter_mode}
+              onModeChange={(value) => setFormState((prev) => ({ ...prev, map_filter_mode: value }))}
+              values={formState.maps}
+              onToggle={(value) => toggleArrayValue('maps', value)}
+              topOptions={options?.top_maps || []}
+              otherOptions={options?.other_maps || []}
+            />
+
+            <FilterDimension
+              heading="Players"
+              mode={formState.player_filter_mode}
+              onModeChange={(value) => setFormState((prev) => ({ ...prev, player_filter_mode: value }))}
+              values={formState.players}
+              onToggle={(value) => toggleArrayValue('players', value)}
+              topOptions={options?.top_players || []}
+              otherOptions={options?.other_players || []}
+            />
+
+            <div className="form-actions">
+              <button type="button" onClick={onClose} className="btn-cancel">
+                Cancel
+              </button>
+              <button type="submit" className="btn-save" disabled={saving}>
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="edit-form ingest-form">
+            <AliasesSettingsPanel
+              savedIngestInputDir={savedIngestInputDir}
+              aliases={aliases}
+              aliasesLoading={aliasesLoading}
+              aliasesMessage={aliasesMessage}
+              aliasesMessageIsError={aliasesMessageIsError}
+              aliasForm={aliasForm}
+              aliasSaving={aliasSaving}
+              aliasSourceFilter={aliasSourceFilter}
+              aliasEditOriginal={aliasEditOriginal}
+              onAliasFormChange={onAliasFormChange}
+              onAliasSave={onAliasSave}
+              onAliasDelete={onAliasDelete}
+              onAliasImportFile={onAliasImportFile}
+              onAliasSourceFilterChange={onAliasSourceFilterChange}
+              onAliasEdit={onAliasEdit}
+              onAliasCancelEdit={onAliasCancelEdit}
+              onAliasExport={onAliasExport}
+            />
           </div>
-
-          <div className="global-filter-toggle-grid">
-            <label className="global-filter-toggle">
-              <input
-                type="checkbox"
-                checked={formState.exclude_short_games}
-                onChange={(e) => setFormState((prev) => ({ ...prev, exclude_short_games: e.target.checked }))}
-              />
-              <span>Exclude games that last less than 2 minutes</span>
-            </label>
-            <label className="global-filter-toggle">
-              <input
-                type="checkbox"
-                checked={formState.exclude_computers}
-                onChange={(e) => setFormState((prev) => ({ ...prev, exclude_computers: e.target.checked }))}
-              />
-              <span>Exclude games with Computers</span>
-            </label>
-          </div>
-
-          <FilterDimension
-            heading="Game Type"
-            mode={formState.game_types_mode}
-            onModeChange={(value) => setFormState((prev) => ({ ...prev, game_types_mode: value }))}
-            values={formState.game_types}
-            onToggle={(value) => toggleArrayValue('game_types', value)}
-            topOptions={GAME_TYPE_OPTIONS}
-            otherOptions={[]}
-          />
-
-          <FilterDimension
-            heading="Maps"
-            mode={formState.map_filter_mode}
-            onModeChange={(value) => setFormState((prev) => ({ ...prev, map_filter_mode: value }))}
-            values={formState.maps}
-            onToggle={(value) => toggleArrayValue('maps', value)}
-            topOptions={options?.top_maps || []}
-            otherOptions={options?.other_maps || []}
-          />
-
-          <FilterDimension
-            heading="Players"
-            mode={formState.player_filter_mode}
-            onModeChange={(value) => setFormState((prev) => ({ ...prev, player_filter_mode: value }))}
-            values={formState.players}
-            onToggle={(value) => toggleArrayValue('players', value)}
-            topOptions={options?.top_players || []}
-            otherOptions={options?.other_players || []}
-          />
-
-          <div className="form-actions">
-            <button type="button" onClick={onClose} className="btn-cancel">
-              Cancel
-            </button>
-            <button type="submit" className="btn-save" disabled={saving}>
-              {saving ? 'Saving...' : 'Save'}
-            </button>
-          </div>
-        </form>
+        )}
       </div>
     </div>
   );

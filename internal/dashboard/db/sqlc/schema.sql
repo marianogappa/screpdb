@@ -44,6 +44,16 @@ CREATE TABLE players (
   start_location_oclock INTEGER
 );
 
+CREATE TABLE player_aliases (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  canonical_alias TEXT NOT NULL,
+  battle_tag_normalized TEXT NOT NULL,
+  battle_tag_raw TEXT NOT NULL,
+  aurora_id INTEGER,
+  source TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE dashboards (
   url TEXT PRIMARY KEY,
   name TEXT NOT NULL,

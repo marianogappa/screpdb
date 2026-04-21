@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -20,7 +21,10 @@ func runMigrations(sqlitePath string) error {
 	if err := ensureDashboardVariablesColumn(sqlitePath); err != nil {
 		return err
 	}
-	return ensureGlobalReplayFilterConfigColumns(sqlitePath)
+	if err := ensureGlobalReplayFilterConfigColumns(sqlitePath); err != nil {
+		return err
+	}
+	return ensureImportedAliasesSeed(sqlitePath)
 }
 
 func ensureDashboardReplayFilterColumn(sqlitePath string) error {
@@ -212,4 +216,21 @@ func tableExists(db *sql.DB, tableName string) (bool, error) {
 		return false, fmt.Errorf("failed checking for table %s: %w", tableName, err)
 	}
 	return count > 0, nil
+}
+
+func ensureImportedAliasesSeed(sqlitePath string) error {
+	db, err := sql.Open("sqlite", sqliteDSN(sqlitePath))
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	records, err := parseAliasImportJSON(aliasesSeedData, aliasSourceImported)
+	if err != nil {
+		return fmt.Errorf("failed to parse embedded alias seed: %w", err)
+	}
+	if err := upsertPlayerAliases(context.Background(), db, records); err != nil {
+		return fmt.Errorf("failed to upsert embedded alias seed: %w", err)
+	}
+	return nil
 }
