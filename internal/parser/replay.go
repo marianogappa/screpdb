@@ -67,7 +67,7 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 			})
 		}
 	}
-	if layout, err := buildMapContextLayoutFromReplay(filePath, data.Replay.MapName); err == nil && layout != nil {
+	if layout, err := buildMapContextLayoutFromReplay(filePath); err == nil && layout != nil {
 		data.MapContext.Layout = layout
 	}
 

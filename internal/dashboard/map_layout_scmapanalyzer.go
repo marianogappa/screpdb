@@ -1,25 +1,18 @@
 package dashboard
 
 import (
-	"strings"
-
 	"github.com/marianogappa/scmapanalyzer/lib/scmapanalyzer"
 	"github.com/marianogappa/scmapanalyzer/replaymap"
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
-func buildDashboardMapContextLayoutFromReplay(replayPath string, mapName string) (*models.MapContextLayout, error) {
+func buildDashboardMapContextLayoutFromReplay(replayPath string) (*models.MapContextLayout, error) {
 	client, err := scmapanalyzer.NewClient()
 	if err != nil {
 		return nil, err
 	}
 
-	opts := []scmapanalyzer.Option{}
-	if strings.TrimSpace(mapName) != "" {
-		opts = append(opts, scmapanalyzer.WithMapName(mapName))
-	}
-
-	result, err := client.Analyze(replayPath, opts...)
+	result, err := client.Analyze(replayPath)
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +52,7 @@ func dashboardContextBaseFromAnalyzer(base replaymap.BasePolygon) models.MapCont
 	}
 }
 
+// scmapanalyzer replaymap.TilePoint values are in minitiles (8x8 px cells).
 func tileToPixelDashboard(tileValue int) int {
-	return tileValue*32 + 16
+	return tileValue*8 + 4
 }

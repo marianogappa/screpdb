@@ -1,6 +1,7 @@
 package worldstate
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -153,7 +154,7 @@ func TestProcessCommand_ZerglingRushDoesNotCountAttacksOnTeammateBase(t *testing
 		UnitType:             stringPtr(models.GeneralUnitZergling),
 		SecondsFromGameStart: 100,
 	})
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 15; i++ {
 		engine.ProcessCommand(&models.Command{
 			Player:               z1,
 			ActionType:           "Targeted Order",
@@ -308,6 +309,15 @@ func TestProcessCommand_ThreeBuildsOnEnemyMainTakeOverWhenDefenderIdle(t *testin
 	if !found {
 		t.Fatalf("expected takeover after multiple builds on enemy starting base when defender is idle")
 	}
+	for _, ev := range engine.ReplayEvents() {
+		if ev.EventType != "takeover" {
+			continue
+		}
+		if ev.Second != 100 {
+			t.Fatalf("expected takeover replay event at first build in window (100), got %d", ev.Second)
+		}
+		break
+	}
 }
 
 func TestProcessCommand_ProxyGateRequiresTwoHumanAndMidPlacement(t *testing.T) {
@@ -338,6 +348,109 @@ func TestProcessCommand_ProxyGateRequiresTwoHumanAndMidPlacement(t *testing.T) {
 	}
 }
 
+func TestProcessCommand_RightClickRefreshesOwnBaseOwnershipActivity(t *testing.T) {
+	replay := &models.Replay{DurationSeconds: 600, MapWidth: 128, MapHeight: 128}
+	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "P1", Race: "Terran", Team: 1, Type: models.PlayerTypeHuman}
+	p2 := &models.Player{PlayerID: 2, SlotID: 2, Name: "P2", Race: "Protoss", Team: 2, Type: models.PlayerTypeHuman}
+	engine := NewEngine(replay, []*models.Player{p1, p2}, rushProxyTestMapContext())
+
+	for _, sec := range []int{10, 100, 200} {
+		engine.ProcessCommand(&models.Command{
+			Player:               p2,
+			ActionType:           "Right Click",
+			X:                    intPtr(tilePixel(40)),
+			Y:                    intPtr(tilePixel(40)),
+			SecondsFromGameStart: sec,
+		})
+	}
+	engine.ProcessCommand(&models.Command{
+		Player:               p1,
+		ActionType:           models.ActionTypeBuild,
+		UnitType:             stringPtr(models.GeneralUnitSupplyDepot),
+		X:                    intPtr(8),
+		Y:                    intPtr(8),
+		SecondsFromGameStart: 350,
+	})
+
+	for _, ent := range engine.Entries() {
+		if ent.Type == "location_inactive" && strings.Contains(ent.Description, "P2") {
+			t.Fatalf("right-clicks on own main should refresh ownership activity, got %q", ent.Description)
+		}
+	}
+}
+
+func TestProcessCommand_AttackRangeEmitsSingleScoutPerWave(t *testing.T) {
+	replay := &models.Replay{DurationSeconds: 900, MapWidth: 128, MapHeight: 128}
+	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "T1", Race: "Terran", Team: 1, Type: models.PlayerTypeHuman}
+	p2 := &models.Player{PlayerID: 2, SlotID: 2, Name: "Z2", Race: "Zerg", Team: 2, Type: models.PlayerTypeHuman}
+	engine := NewEngine(replay, []*models.Player{p1, p2}, rushProxyTestMapContext())
+
+	engine.ProcessCommand(&models.Command{
+		Player:               p2,
+		ActionType:           models.ActionTypeBuild,
+		UnitType:             stringPtr(models.GeneralUnitSpawningPool),
+		X:                    intPtr(40),
+		Y:                    intPtr(40),
+		SecondsFromGameStart: 50,
+	})
+	for i := 0; i < 15; i++ {
+		engine.ProcessCommand(&models.Command{
+			Player:               p1,
+			ActionType:           "Targeted Order",
+			OrderName:            stringPtr("Attack Move"),
+			X:                    intPtr(tilePixel(40)),
+			Y:                    intPtr(tilePixel(40)),
+			SecondsFromGameStart: 120 + i,
+		})
+	}
+	for i := 0; i < 10; i++ {
+		engine.ProcessCommand(&models.Command{
+			Player:               p1,
+			ActionType:           "Targeted Order",
+			OrderName:            stringPtr("Attack Move"),
+			X:                    intPtr(tilePixel(40)),
+			Y:                    intPtr(tilePixel(40)),
+			SecondsFromGameStart: 136 + i,
+		})
+	}
+	// Defender activity so the main is not dropped to neutral before the second wave.
+	engine.ProcessCommand(&models.Command{
+		Player:               p2,
+		ActionType:           "Right Click",
+		X:                    intPtr(tilePixel(40)),
+		Y:                    intPtr(tilePixel(40)),
+		SecondsFromGameStart: 200,
+	})
+
+	lastSustainSec := 136 + 9
+	base := lastSustainSec + attackRangeEndIdleSec + 2
+	if base <= lastSustainSec+attackRangeEndIdleSec {
+		t.Fatalf("test setup: wave2 must start after idle window")
+	}
+	for i := 0; i < 15; i++ {
+		engine.ProcessCommand(&models.Command{
+			Player:               p1,
+			ActionType:           "Targeted Order",
+			OrderName:            stringPtr("Attack Move"),
+			X:                    intPtr(tilePixel(40)),
+			Y:                    intPtr(tilePixel(40)),
+			SecondsFromGameStart: base + i,
+		})
+	}
+
+	scouts := 0
+	var log []string
+	for _, event := range engine.ReplayEvents() {
+		log = append(log, fmt.Sprintf("%s@%d", event.EventType, event.Second))
+		if event.EventType == "scout" {
+			scouts++
+		}
+	}
+	if scouts != 2 {
+		t.Fatalf("expected exactly 2 scout events (one per wave after idle), got %d; replay_events=%v", scouts, log)
+	}
+}
+
 func TestProcessCommand_WorkerPressureBeforeFiveMinutesIsScout(t *testing.T) {
 	replay := &models.Replay{DurationSeconds: 400, MapWidth: 128, MapHeight: 128}
 	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "T1", Race: "Terran", Team: 1, Type: models.PlayerTypeHuman}
@@ -352,7 +465,7 @@ func TestProcessCommand_WorkerPressureBeforeFiveMinutesIsScout(t *testing.T) {
 		Y:                    intPtr(40),
 		SecondsFromGameStart: 50,
 	})
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 15; i++ {
 		engine.ProcessCommand(&models.Command{
 			Player:               p1,
 			ActionType:           "Targeted Order",
@@ -390,7 +503,7 @@ func TestProcessCommand_OverlordEarlyScoutUsesOverlordPayload(t *testing.T) {
 		Y:                    intPtr(8),
 		SecondsFromGameStart: 50,
 	})
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 15; i++ {
 		engine.ProcessCommand(&models.Command{
 			Player:               z1,
 			ActionType:           "Targeted Order",

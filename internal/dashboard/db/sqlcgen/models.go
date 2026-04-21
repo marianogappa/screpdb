@@ -93,6 +93,7 @@ type Player struct {
 type Replay struct {
 	ID              int64
 	FilePath        string
+	FileChecksum    string
 	FileName        string
 	ReplayDate      string
 	MapName         string

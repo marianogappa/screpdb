@@ -28,7 +28,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	detail.ReplayDate = summary.ReplayDate
 	detail.FileName = summary.FileName
 	detail.MapName = summary.MapName
-	detail.MapVisual = d.resolveWorkflowMapVisual(detail.ReplayID, summary.MapName, summary.FilePath)
+	detail.MapVisual = d.resolveWorkflowMapVisual(detail.ReplayID, summary.MapName, summary.FilePath, summary.FileChecksum)
 	detail.DurationSeconds = summary.DurationSeconds
 	detail.GameType = summary.GameType
 
@@ -64,7 +64,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 
 	var mapLayout *models.MapContextLayout
 	if strings.TrimSpace(summary.FilePath) != "" {
-		layout, layoutErr := buildDashboardMapContextLayoutFromReplay(summary.FilePath, summary.MapName)
+		layout, layoutErr := buildDashboardMapContextLayoutFromReplay(summary.FilePath)
 		if layoutErr == nil {
 			mapLayout = layout
 		}
@@ -1380,6 +1380,7 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 				if label := baseLabel(row.LocationBaseType, row.LocationBaseOclock, row.LocationNaturalOfClock); strings.TrimSpace(label) != "" {
 					baseCopy.Name = label
 				}
+				baseCopy.NaturalOfClock = row.LocationNaturalOfClock
 				if row.LocationMineralOnly != nil && *row.LocationMineralOnly {
 					baseCopy.MineralOnly = row.LocationMineralOnly
 				}
@@ -1389,7 +1390,8 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 		}
 		if event.Base == nil && (row.LocationBaseType != nil || row.LocationBaseOclock != nil) {
 			base := workflowGameEventBase{
-				Name: baseLabel(row.LocationBaseType, row.LocationBaseOclock, row.LocationNaturalOfClock),
+				Name:           baseLabel(row.LocationBaseType, row.LocationBaseOclock, row.LocationNaturalOfClock),
+				NaturalOfClock: row.LocationNaturalOfClock,
 				Center: workflowGameEventPoint{
 					X: 0,
 					Y: 0,
@@ -1409,6 +1411,7 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 		}
 		if event.Actor != nil {
 			if startClock, ok := startClockByPlayerID[event.Actor.PlayerID]; ok {
+				event.ActorStartClock = lo.ToPtr(int64(startClock))
 				if startBase, startBaseOK := lookupOverlayBaseByClock(baseMetas, int64(startClock)); startBaseOK {
 					startCenter := startBase.Center
 					event.ActorOrigin = &startCenter
@@ -1607,11 +1610,14 @@ func baseLabel(baseType *string, baseOclock *int64, naturalOf *int64) string {
 		}
 		return "starting base"
 	case "natural":
-		if baseOclock != nil {
-			if naturalOf != nil {
-				return fmt.Sprintf("an expa near %d (natural expansion of at %d)", *baseOclock, *naturalOf)
+		if naturalOf != nil {
+			if baseOclock != nil && *baseOclock != *naturalOf {
+				return fmt.Sprintf("%d's natural near %d", *naturalOf, *baseOclock)
 			}
-			return fmt.Sprintf("an expa near %d (their natural expansion)", *baseOclock)
+			return fmt.Sprintf("%d's natural", *naturalOf)
+		}
+		if baseOclock != nil {
+			return fmt.Sprintf("%d's natural", *baseOclock)
 		}
 		return "natural expansion"
 	default:

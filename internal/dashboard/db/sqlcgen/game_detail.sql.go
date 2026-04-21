@@ -42,7 +42,7 @@ func (q *Queries) GetPlayerOverviewSummary(ctx context.Context, name string) (Ge
 }
 
 const GetReplaySummary = `-- name: GetReplaySummary :one
-SELECT id, replay_date, file_name, file_path, map_name, duration_seconds, game_type
+SELECT id, replay_date, file_name, file_path, file_checksum, map_name, duration_seconds, game_type
 FROM replays
 WHERE id = ?
 `
@@ -52,6 +52,7 @@ type GetReplaySummaryRow struct {
 	ReplayDate      string
 	FileName        string
 	FilePath        string
+	FileChecksum    string
 	MapName         string
 	DurationSeconds int64
 	GameType        string
@@ -65,6 +66,7 @@ func (q *Queries) GetReplaySummary(ctx context.Context, id int64) (GetReplaySumm
 		&i.ReplayDate,
 		&i.FileName,
 		&i.FilePath,
+		&i.FileChecksum,
 		&i.MapName,
 		&i.DurationSeconds,
 		&i.GameType,

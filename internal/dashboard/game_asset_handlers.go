@@ -3,7 +3,6 @@ package dashboard
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -124,16 +123,23 @@ func (d *Dashboard) handlerGameAssetMap(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "cache unavailable", http.StatusInternalServerError)
 		return
 	}
-	cachePath := filepath.Join(cacheRoot, "maps", fmt.Sprintf("%d.png", replayID))
+	cacheKey := scmapanalyzer.NormalizeMapKey(summary.MapName)
+	if cacheKey == "" {
+		cacheKey = "unknown-map"
+	}
+	cachePath := filepath.Join(cacheRoot, "maps", cacheKey+".png")
 
 	if data, readErr := os.ReadFile(cachePath); readErr == nil && len(data) > 0 {
 		w.Header().Set("Content-Type", "image/png")
-		w.Header().Set("Cache-Control", "private, max-age=86400")
+		// Do not let browsers disk-cache: replay_id URL is stable while map bytes can change (reingest, file swap).
+		w.Header().Set("Cache-Control", "no-store, no-cache, max-age=0, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
 		_, _ = w.Write(data)
 		return
 	}
 
-	v, err, _ := gameAssetFlight.Do("map:"+rawID, func() (any, error) {
+	v, err, _ := gameAssetFlight.Do("map:"+cacheKey, func() (any, error) {
 		if data, readErr := os.ReadFile(cachePath); readErr == nil && len(data) > 0 {
 			return data, nil
 		}
@@ -153,6 +159,8 @@ func (d *Dashboard) handlerGameAssetMap(w http.ResponseWriter, r *http.Request) 
 	}
 	pngBytes := v.([]byte)
 	w.Header().Set("Content-Type", "image/png")
-	w.Header().Set("Cache-Control", "private, max-age=86400")
+	w.Header().Set("Cache-Control", "no-store, no-cache, max-age=0, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
 	_, _ = w.Write(pngBytes)
 }

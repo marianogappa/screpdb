@@ -288,6 +288,7 @@ type workflowGameEvent struct {
 	Target          *workflowGameEventPlayer `json:"target,omitempty"`
 	Base            *workflowGameEventBase   `json:"base,omitempty"`
 	ActorOrigin     *workflowGameEventPoint  `json:"actor_origin,omitempty"`
+	ActorStartClock *int64                   `json:"actor_start_clock,omitempty"`
 	Ownership       []workflowGameOwnership  `json:"ownership,omitempty"`
 	AttackUnitTypes []string                 `json:"attack_unit_types,omitempty"`
 }
@@ -304,12 +305,13 @@ type workflowGameEventPoint struct {
 }
 
 type workflowGameEventBase struct {
-	Name        string                   `json:"name"`
-	Kind        string                   `json:"kind,omitempty"`
-	Clock       int64                    `json:"clock,omitempty"`
-	MineralOnly *bool                    `json:"mineral_only,omitempty"`
-	Center      workflowGameEventPoint   `json:"center"`
-	Polygon     []workflowGameEventPoint `json:"polygon,omitempty"`
+	Name           string                   `json:"name"`
+	Kind           string                   `json:"kind,omitempty"`
+	Clock          int64                    `json:"clock,omitempty"`
+	NaturalOfClock *int64                   `json:"natural_of_clock,omitempty"`
+	MineralOnly    *bool                    `json:"mineral_only,omitempty"`
+	Center         workflowGameEventPoint   `json:"center"`
+	Polygon        []workflowGameEventPoint `json:"polygon,omitempty"`
 }
 
 type workflowGameOwnership struct {

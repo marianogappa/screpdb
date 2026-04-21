@@ -21,6 +21,7 @@ CREATE TABLE settings (
 CREATE TABLE replays (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   file_path TEXT UNIQUE NOT NULL,
+  file_checksum TEXT NOT NULL,
   file_name TEXT NOT NULL,
   replay_date TEXT NOT NULL,
   map_name TEXT NOT NULL,

@@ -1,25 +1,18 @@
 package parser
 
 import (
-	"strings"
-
 	"github.com/marianogappa/scmapanalyzer/lib/scmapanalyzer"
 	"github.com/marianogappa/scmapanalyzer/replaymap"
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
-func buildMapContextLayoutFromReplay(replayPath string, mapName string) (*models.MapContextLayout, error) {
+func buildMapContextLayoutFromReplay(replayPath string) (*models.MapContextLayout, error) {
 	client, err := scmapanalyzer.NewClient()
 	if err != nil {
 		return nil, err
 	}
 
-	opts := []scmapanalyzer.Option{}
-	if strings.TrimSpace(mapName) != "" {
-		opts = append(opts, scmapanalyzer.WithMapName(mapName))
-	}
-
-	result, err := client.Analyze(replayPath, opts...)
+	result, err := client.Analyze(replayPath)
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +52,7 @@ func toContextBase(base replaymap.BasePolygon) models.MapContextBase {
 	}
 }
 
+// scmapanalyzer replaymap.TilePoint values are in minitiles (8x8 px cells).
 func tileToPixelInt(tileValue int) int {
-	return tileValue*32 + 16
+	return tileValue*8 + 4
 }

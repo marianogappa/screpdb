@@ -191,6 +191,20 @@ const renderGameSummarySignalPill = (pill) => (
 
 const isStructuralGameEventType = (eventType) => ['player_start', 'location_inactive'].includes(normalizeEventType(eventType));
 
+const isActorAtOwnNaturalBase = (event) => {
+  const kind = String(event?.base?.kind || '').toLowerCase();
+  if (kind === 'starting') {
+    return false;
+  }
+  const actorStart = Number(event?.actor_start_clock);
+  const naturalOf = event?.base?.natural_of_clock;
+  if (naturalOf == null || !Number.isFinite(actorStart)) {
+    return false;
+  }
+  const naturalOfNum = Number(naturalOf);
+  return Number.isFinite(naturalOfNum) && actorStart === naturalOfNum;
+};
+
 const gameEventLocationLabel = (event) => {
   const baseName = String(event?.base?.name || '').trim();
   if (baseName) {
@@ -216,7 +230,10 @@ const gameEventDescription = (event) => {
   }
   if (eventType === 'leave_game') return actor ? `${actor} leaves the game` : 'Player leaves the game';
   if (eventType === 'location_inactive') return location ? `Location inactive: ${location}` : 'Location inactive';
-  if (eventType === 'expansion') return actor && location ? `${actor} expands to ${location}` : 'Expansion';
+  if (eventType === 'expansion') {
+    if (actor && isActorAtOwnNaturalBase(event)) return `${actor} expands to their natural`;
+    return actor && location ? `${actor} expands to ${location}` : 'Expansion';
+  }
   if (eventType === 'attack') return actor && target && location ? `${actor} attacks ${target} at ${location}` : 'Attack';
   if (eventType === 'scout') return actor && target && location ? `${actor} scouts ${target} at ${location}` : 'Scout';
   if (eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
@@ -225,11 +242,16 @@ const gameEventDescription = (event) => {
   if (eventType === 'recall') return actor && target && location ? `${actor} recalls into ${target} at ${location}` : 'Recall';
   if (eventType === 'nuke') return actor && target && location ? `${actor} nukes ${target} at ${location}` : 'Nuke';
   if (eventType === 'cannon_rush' || eventType === 'bunker_rush' || eventType === 'zergling_rush') {
-    if (actor && location) return `${actor} rushes at ${location}`;
-    if (actor) return `${actor} rushes`;
+    const rushKind = eventType === 'cannon_rush' ? 'cannon' : eventType === 'bunker_rush' ? 'bunker' : 'zergling';
+    if (actor && target) return `${actor} ${rushKind} rushes ${target}`;
+    if (actor && location) return `${actor} ${rushKind} rushes at ${location}`;
+    if (actor) return `${actor} ${rushKind} rushes`;
     return 'Rush';
   }
-  if (eventType === 'takeover') return actor && location ? `${actor} takes over ${location}` : 'Takeover';
+  if (eventType === 'takeover') {
+    if (actor && isActorAtOwnNaturalBase(event)) return `${actor} takes over their natural`;
+    return actor && location ? `${actor} takes over ${location}` : 'Takeover';
+  }
   if (eventType === 'proxy_gate' || eventType === 'proxy_rax' || eventType === 'proxy_factory') {
     return actor && location ? `${actor} proxies at ${location}` : 'Proxy';
   }
@@ -245,6 +267,8 @@ const gameEventSearchText = (event) => {
     event?.actor?.name,
     event?.target?.name,
     gameEventLocationLabel(event),
+    event?.actor_start_clock != null ? String(event.actor_start_clock) : '',
+    event?.base?.natural_of_clock != null ? String(event.base.natural_of_clock) : '',
   ];
   return parts.filter(Boolean).join(' ');
 };
@@ -808,6 +832,18 @@ const extractEventLocationTags = (event) => {
   const directionalClockMatches = text.matchAll(/\b(?:at|to|near|towards|from)\s+([1-9]|1[0-2])\b/g);
   for (const match of directionalClockMatches) {
     tags.add(match[1]);
+  }
+  const possessiveNaturalMatches = text.matchAll(/\b([1-9]|1[0-2])'s natural\b/g);
+  for (const match of possessiveNaturalMatches) {
+    tags.add(match[1]);
+  }
+  const clockFromBase = Number(event?.base?.clock);
+  if (Number.isFinite(clockFromBase) && clockFromBase >= 1 && clockFromBase <= 12) {
+    tags.add(String(clockFromBase));
+  }
+  const naturalOfClock = Number(event?.base?.natural_of_clock);
+  if (Number.isFinite(naturalOfClock) && naturalOfClock >= 1 && naturalOfClock <= 12) {
+    tags.add(String(naturalOfClock));
   }
   return Array.from(tags);
 };

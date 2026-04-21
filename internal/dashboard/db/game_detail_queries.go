@@ -11,6 +11,7 @@ type ReplaySummaryRow struct {
 	ReplayDate      string
 	FileName        string
 	FilePath        string
+	FileChecksum    string
 	MapName         string
 	DurationSeconds int64
 	GameType        string
@@ -94,6 +95,7 @@ func (s *Store) GetReplaySummary(ctx context.Context, replayID int64) (*ReplaySu
 		ReplayDate:      sqlcRow.ReplayDate,
 		FileName:        sqlcRow.FileName,
 		FilePath:        sqlcRow.FilePath,
+		FileChecksum:    sqlcRow.FileChecksum,
 		MapName:         sqlcRow.MapName,
 		DurationSeconds: sqlcRow.DurationSeconds,
 		GameType:        sqlcRow.GameType,
