@@ -90,6 +90,16 @@ type Player struct {
 	StartLocationOclock *int64
 }
 
+type PlayerAlias struct {
+	ID                  int64
+	CanonicalAlias      string
+	BattleTagNormalized string
+	BattleTagRaw        string
+	AuroraID            *int64
+	Source              string
+	UpdatedAt           string
+}
+
 type Replay struct {
 	ID              int64
 	FilePath        string

@@ -165,6 +165,52 @@ export const api = {
 
   createIngestLogsSocket: () => new WebSocket(buildWebSocketURL(`${API_CUSTOM}/ingest/logs`)),
 
+  listAliases: async () => {
+    const response = await fetch(`${API_CUSTOM}/aliases`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to list aliases');
+    }
+    return response.json();
+  },
+
+  importAliases: async (aliasesPayload) => {
+    const response = await fetch(`${API_CUSTOM}/aliases`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aliases: aliasesPayload }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to import aliases');
+    }
+    return response.json();
+  },
+
+  upsertAliasEntry: async (entry) => {
+    const response = await fetch(`${API_CUSTOM}/aliases/entry`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to upsert alias entry');
+    }
+    return response.json();
+  },
+
+  deleteAliasEntry: async (id) => {
+    const response = await fetch(`${API_CUSTOM}/aliases/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to delete alias entry');
+    }
+    return response.json();
+  },
+
   getHealth: async () => {
     const response = await fetch(`${API_BASE}/health`);
     if (!response.ok) {

@@ -5,6 +5,7 @@ sql:
       - internal/dashboard/db/sqlc/schema.sql
     queries:
       - internal/dashboard/db/sqlc/queries/settings.sql
+      - internal/dashboard/db/sqlc/queries/aliases.sql
       - internal/dashboard/db/sqlc/queries/dashboard.sql
       - internal/dashboard/db/sqlc/queries/dashboard_model.sql
       - internal/dashboard/db/sqlc/queries/global_replay_filter.sql

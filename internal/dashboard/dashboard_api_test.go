@@ -230,6 +230,54 @@ func TestDashboardAPI_ReplayFilter(t *testing.T) {
 	}
 }
 
+func TestDashboardAPI_AliasCRUDAndImport(t *testing.T) {
+	dash := newTestDashboard(t)
+	router := dash.setupRouter()
+
+	upsertBody := []byte(`{"canonical_alias":"ManualAlias","battle_tag":"ManualTag","source":"manual"}`)
+	rec := performDashboardRequest(router, http.MethodPut, "/api/custom/aliases/entry", upsertBody)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("upsert alias status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec = performDashboardRequest(router, http.MethodGet, "/api/custom/aliases", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list aliases status %d: %s", rec.Code, rec.Body.String())
+	}
+	var listResp struct {
+		Aliases []struct {
+			ID             int64  `json:"id"`
+			CanonicalAlias string `json:"canonical_alias"`
+			BattleTagRaw   string `json:"battle_tag_raw"`
+			Source         string `json:"source"`
+		} `json:"aliases"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &listResp); err != nil {
+		t.Fatalf("list aliases json: %v", err)
+	}
+	var createdID int64
+	for _, row := range listResp.Aliases {
+		if row.CanonicalAlias == "ManualAlias" && row.BattleTagRaw == "ManualTag" && row.Source == "manual" {
+			createdID = row.ID
+			break
+		}
+	}
+	if createdID == 0 {
+		t.Fatalf("expected to find inserted manual alias")
+	}
+
+	rec = performDashboardRequest(router, http.MethodDelete, fmt.Sprintf("/api/custom/aliases/%d", createdID), nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("delete alias status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	importBody := []byte(`{"aliases":{"ImportedAlias":[{"battle_tag":"ImportedTag","aurora_id":42}]}}`)
+	rec = performDashboardRequest(router, http.MethodPut, "/api/custom/aliases", importBody)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("import aliases status %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestQualifyReplayFilterSQLMultiline(t *testing.T) {
 	input := `SELECT *
 FROM replays r

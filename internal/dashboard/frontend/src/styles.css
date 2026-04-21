@@ -766,6 +766,17 @@ body {
   max-width: 1100px;
 }
 
+.settings-modal-tab-row.workflow-nav {
+  padding: 0 20px;
+  margin-top: 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.settings-modal-tab-row .btn-switch {
+  margin-bottom: 12px;
+}
+
 .global-filter-toggle-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -1471,6 +1482,146 @@ body {
 
 .ingest-log-progress {
   color: #7ec8ff;
+}
+
+.aliases-you-hint {
+  margin: 0 0 12px;
+}
+
+.aliases-you-hint-path {
+  color: rgba(200, 220, 255, 0.95);
+  word-break: break-all;
+}
+
+.aliases-editing-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(80, 120, 200, 0.18);
+  border: 1px solid rgba(120, 170, 255, 0.35);
+  font-size: 0.9rem;
+}
+
+.aliases-editing-cancel {
+  flex-shrink: 0;
+}
+
+.aliases-form-actions {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.aliases-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 8px;
+  flex-wrap: wrap;
+}
+
+.aliases-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+}
+
+.aliases-filter select {
+  min-width: 160px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(5, 10, 20, 0.85);
+  color: #e8f0ff;
+}
+
+.aliases-count {
+  margin: 0;
+}
+
+.aliases-table-wrap {
+  max-height: 320px;
+  overflow: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(5, 10, 20, 0.55);
+}
+
+.aliases-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.aliases-table th,
+.aliases-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: middle;
+}
+
+.aliases-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(12, 18, 32, 0.98);
+  font-weight: 600;
+  color: rgba(220, 230, 255, 0.9);
+}
+
+.aliases-table-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.aliases-row-btn {
+  margin-left: 6px;
+  font-size: 0.78rem;
+  padding: 4px 8px;
+}
+
+.aliases-row-active {
+  background: rgba(80, 120, 200, 0.12);
+}
+
+.aliases-cell-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  word-break: break-all;
+}
+
+.aliases-cell-muted {
+  color: rgba(200, 210, 230, 0.55);
+  white-space: nowrap;
+}
+
+.aliases-source-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: lowercase;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.aliases-source-you {
+  background: rgba(120, 200, 255, 0.15);
+  border-color: rgba(120, 200, 255, 0.35);
+}
+
+.aliases-source-manual {
+  background: rgba(180, 140, 255, 0.12);
+  border-color: rgba(180, 140, 255, 0.3);
+}
+
+.aliases-source-imported {
+  background: rgba(140, 220, 160, 0.12);
+  border-color: rgba(140, 220, 160, 0.28);
 }
 
 .ingest-toast {

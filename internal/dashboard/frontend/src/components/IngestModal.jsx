@@ -31,7 +31,7 @@ function IngestModal({
       <div className="modal-content global-filter-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Ingest</h2>
-          <button onClick={onClose} className="btn-close">×</button>
+          <button type="button" onClick={onClose} className="btn-close">×</button>
         </div>
         <div className="edit-form ingest-form">
           {ingestMessage ? <div className={messageClassName}>{ingestMessage}</div> : null}
@@ -110,9 +110,7 @@ function IngestModal({
               </label>
             </div>
             <div className="form-actions">
-              <button type="button" onClick={onClose} className="btn-cancel">
-                Cancel
-              </button>
+              <button type="button" onClick={onClose} className="btn-cancel">Cancel</button>
               <button type="submit" className="btn-save" disabled={ingestSettingsLoading || ingestSettingsSaving}>
                 {ingestStatus === 'running' ? 'Ingest Running...' : 'Start Ingest'}
               </button>

@@ -8,6 +8,10 @@ import (
 
 // DashboardService is generated from apigen.StrictServerInterface.
 type DashboardService interface {
+	ListAliases(ctx context.Context, request apigen.ListAliasesRequestObject) (HandlerResult, error)
+	ImportAliases(ctx context.Context, request apigen.ImportAliasesRequestObject) (HandlerResult, error)
+	UpsertAliasEntry(ctx context.Context, request apigen.UpsertAliasEntryRequestObject) (HandlerResult, error)
+	DeleteAliasEntry(ctx context.Context, request apigen.DeleteAliasEntryRequestObject) (HandlerResult, error)
 	ListDashboards(ctx context.Context, request apigen.ListDashboardsRequestObject) (HandlerResult, error)
 	CreateDashboard(ctx context.Context, request apigen.CreateDashboardRequestObject) (HandlerResult, error)
 	DeleteDashboard(ctx context.Context, request apigen.DeleteDashboardRequestObject) (HandlerResult, error)

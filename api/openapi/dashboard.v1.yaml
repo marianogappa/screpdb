@@ -213,6 +213,64 @@ paths:
       responses:
         "101":
           description: Switching protocols for websocket upgrade
+  /api/custom/aliases:
+    get:
+      operationId: listAliases
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+    put:
+      operationId: importAliases
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportAliasesRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/aliases/entry:
+    put:
+      operationId: upsertAliasEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertAliasEntryRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/aliases/{id}:
+    delete:
+      operationId: deleteAliasEntry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
   /api/custom/global-replay-filter:
     get:
       operationId: getGlobalReplayFilterConfig
@@ -740,6 +798,42 @@ components:
       properties:
         input_dir:
           type: string
+    AliasImportEntry:
+      type: object
+      additionalProperties: false
+      required: [battle_tag]
+      properties:
+        aurora_id:
+          type: integer
+          format: int64
+        battle_tag:
+          type: string
+    ImportAliasesRequest:
+      type: object
+      additionalProperties: false
+      required: [aliases]
+      properties:
+        aliases:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              $ref: "#/components/schemas/AliasImportEntry"
+    UpsertAliasEntryRequest:
+      type: object
+      additionalProperties: false
+      required: [canonical_alias, battle_tag]
+      properties:
+        canonical_alias:
+          type: string
+        battle_tag:
+          type: string
+        aurora_id:
+          type: integer
+          format: int64
+        source:
+          type: string
+          enum: [manual, imported, you]
     UpdateGlobalReplayFilterConfigRequest:
       type: object
       additionalProperties: false

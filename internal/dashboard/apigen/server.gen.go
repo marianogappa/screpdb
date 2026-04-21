@@ -104,6 +104,27 @@ func (e UpdateGlobalReplayFilterConfigRequestPlayerFilterMode) Valid() bool {
 	}
 }
 
+// Defines values for UpsertAliasEntryRequestSource.
+const (
+	Imported UpsertAliasEntryRequestSource = "imported"
+	Manual   UpsertAliasEntryRequestSource = "manual"
+	You      UpsertAliasEntryRequestSource = "you"
+)
+
+// Valid indicates whether the value is a known member of the UpsertAliasEntryRequestSource enum.
+func (e UpsertAliasEntryRequestSource) Valid() bool {
+	switch e {
+	case Imported:
+		return true
+	case Manual:
+		return true
+	case You:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PlayersListParamsSortBy.
 const (
 	Apm        PlayersListParamsSortBy = "apm"
@@ -147,6 +168,12 @@ func (e PlayersListParamsSortDir) Valid() bool {
 	default:
 		return false
 	}
+}
+
+// AliasImportEntry defines model for AliasImportEntry.
+type AliasImportEntry struct {
+	AuroraId  *int64 `json:"aurora_id,omitempty"`
+	BattleTag string `json:"battle_tag"`
 }
 
 // AskRequest defines model for AskRequest.
@@ -225,6 +252,11 @@ type GetQueryVariablesRequest struct {
 	Query        string  `json:"query"`
 }
 
+// ImportAliasesRequest defines model for ImportAliasesRequest.
+type ImportAliasesRequest struct {
+	Aliases map[string][]AliasImportEntry `json:"aliases"`
+}
+
 // IngestRequest defines model for IngestRequest.
 type IngestRequest struct {
 	Clean            *bool   `json:"clean,omitempty"`
@@ -284,6 +316,17 @@ type UpdateIngestSettingsRequest struct {
 	InputDir *string `json:"input_dir,omitempty"`
 }
 
+// UpsertAliasEntryRequest defines model for UpsertAliasEntryRequest.
+type UpsertAliasEntryRequest struct {
+	AuroraId       *int64                         `json:"aurora_id,omitempty"`
+	BattleTag      string                         `json:"battle_tag"`
+	CanonicalAlias string                         `json:"canonical_alias"`
+	Source         *UpsertAliasEntryRequestSource `json:"source,omitempty"`
+}
+
+// UpsertAliasEntryRequestSource defines model for UpsertAliasEntryRequest.Source.
+type UpsertAliasEntryRequestSource string
+
 // PlayerKey defines model for playerKey.
 type PlayerKey = string
 
@@ -339,6 +382,12 @@ type PlayerInsightParams struct {
 type PlayerUnitCadenceParams struct {
 	Filter *string `form:"filter,omitempty" json:"filter,omitempty"`
 }
+
+// ImportAliasesJSONRequestBody defines body for ImportAliases for application/json ContentType.
+type ImportAliasesJSONRequestBody = ImportAliasesRequest
+
+// UpsertAliasEntryJSONRequestBody defines body for UpsertAliasEntry for application/json ContentType.
+type UpsertAliasEntryJSONRequestBody = UpsertAliasEntryRequest
 
 // CreateDashboardJSONRequestBody defines body for CreateDashboard for application/json ContentType.
 type CreateDashboardJSONRequestBody = CreateDashboardRequest
@@ -685,6 +734,18 @@ func (t *GenericValue_1_Item) UnmarshalJSON(b []byte) error {
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
+	// (GET /api/custom/aliases)
+	ListAliases(w http.ResponseWriter, r *http.Request)
+
+	// (PUT /api/custom/aliases)
+	ImportAliases(w http.ResponseWriter, r *http.Request)
+
+	// (PUT /api/custom/aliases/entry)
+	UpsertAliasEntry(w http.ResponseWriter, r *http.Request)
+
+	// (DELETE /api/custom/aliases/{id})
+	DeleteAliasEntry(w http.ResponseWriter, r *http.Request, id int64)
+
 	// (GET /api/custom/dashboard)
 	ListDashboards(w http.ResponseWriter, r *http.Request)
 
@@ -814,6 +875,73 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListAliases operation middleware
+func (siw *ServerInterfaceWrapper) ListAliases(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAliases(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ImportAliases operation middleware
+func (siw *ServerInterfaceWrapper) ImportAliases(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ImportAliases(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpsertAliasEntry operation middleware
+func (siw *ServerInterfaceWrapper) UpsertAliasEntry(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpsertAliasEntry(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteAliasEntry operation middleware
+func (siw *ServerInterfaceWrapper) DeleteAliasEntry(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", mux.Vars(r)["id"], &id, runtime.BindStyledParameterOptions{Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteAliasEntry(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ListDashboards operation middleware
 func (siw *ServerInterfaceWrapper) ListDashboards(w http.ResponseWriter, r *http.Request) {
@@ -1902,6 +2030,14 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	r.HandleFunc(options.BaseURL+"/api/custom/aliases", wrapper.ListAliases).Methods("GET")
+
+	r.HandleFunc(options.BaseURL+"/api/custom/aliases", wrapper.ImportAliases).Methods("PUT")
+
+	r.HandleFunc(options.BaseURL+"/api/custom/aliases/entry", wrapper.UpsertAliasEntry).Methods("PUT")
+
+	r.HandleFunc(options.BaseURL+"/api/custom/aliases/{id}", wrapper.DeleteAliasEntry).Methods("DELETE")
+
 	r.HandleFunc(options.BaseURL+"/api/custom/dashboard", wrapper.ListDashboards).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/api/custom/dashboard", wrapper.CreateDashboard).Methods("PUT")
@@ -1983,6 +2119,73 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/recent-games", wrapper.PlayerRecentGames).Methods("GET")
 
 	return r
+}
+
+type ListAliasesRequestObject struct {
+}
+
+type ListAliasesResponseObject interface {
+	VisitListAliasesResponse(w http.ResponseWriter) error
+}
+
+type ListAliases200JSONResponse GenericValue
+
+func (response ListAliases200JSONResponse) VisitListAliasesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ImportAliasesRequestObject struct {
+	Body *ImportAliasesJSONRequestBody
+}
+
+type ImportAliasesResponseObject interface {
+	VisitImportAliasesResponse(w http.ResponseWriter) error
+}
+
+type ImportAliases200JSONResponse GenericValue
+
+func (response ImportAliases200JSONResponse) VisitImportAliasesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpsertAliasEntryRequestObject struct {
+	Body *UpsertAliasEntryJSONRequestBody
+}
+
+type UpsertAliasEntryResponseObject interface {
+	VisitUpsertAliasEntryResponse(w http.ResponseWriter) error
+}
+
+type UpsertAliasEntry200JSONResponse GenericValue
+
+func (response UpsertAliasEntry200JSONResponse) VisitUpsertAliasEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteAliasEntryRequestObject struct {
+	Id int64 `json:"id"`
+}
+
+type DeleteAliasEntryResponseObject interface {
+	VisitDeleteAliasEntryResponse(w http.ResponseWriter) error
+}
+
+type DeleteAliasEntry200JSONResponse GenericValue
+
+func (response DeleteAliasEntry200JSONResponse) VisitDeleteAliasEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type ListDashboardsRequestObject struct {
@@ -2667,6 +2870,18 @@ func (response PlayerRecentGames200JSONResponse) VisitPlayerRecentGamesResponse(
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
+	// (GET /api/custom/aliases)
+	ListAliases(ctx context.Context, request ListAliasesRequestObject) (ListAliasesResponseObject, error)
+
+	// (PUT /api/custom/aliases)
+	ImportAliases(ctx context.Context, request ImportAliasesRequestObject) (ImportAliasesResponseObject, error)
+
+	// (PUT /api/custom/aliases/entry)
+	UpsertAliasEntry(ctx context.Context, request UpsertAliasEntryRequestObject) (UpsertAliasEntryResponseObject, error)
+
+	// (DELETE /api/custom/aliases/{id})
+	DeleteAliasEntry(ctx context.Context, request DeleteAliasEntryRequestObject) (DeleteAliasEntryResponseObject, error)
+
 	// (GET /api/custom/dashboard)
 	ListDashboards(ctx context.Context, request ListDashboardsRequestObject) (ListDashboardsResponseObject, error)
 
@@ -2815,6 +3030,118 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ListAliases operation middleware
+func (sh *strictHandler) ListAliases(w http.ResponseWriter, r *http.Request) {
+	var request ListAliasesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListAliases(ctx, request.(ListAliasesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListAliases")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListAliasesResponseObject); ok {
+		if err := validResponse.VisitListAliasesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ImportAliases operation middleware
+func (sh *strictHandler) ImportAliases(w http.ResponseWriter, r *http.Request) {
+	var request ImportAliasesRequestObject
+
+	var body ImportAliasesJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ImportAliases(ctx, request.(ImportAliasesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ImportAliases")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ImportAliasesResponseObject); ok {
+		if err := validResponse.VisitImportAliasesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpsertAliasEntry operation middleware
+func (sh *strictHandler) UpsertAliasEntry(w http.ResponseWriter, r *http.Request) {
+	var request UpsertAliasEntryRequestObject
+
+	var body UpsertAliasEntryJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpsertAliasEntry(ctx, request.(UpsertAliasEntryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpsertAliasEntry")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpsertAliasEntryResponseObject); ok {
+		if err := validResponse.VisitUpsertAliasEntryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteAliasEntry operation middleware
+func (sh *strictHandler) DeleteAliasEntry(w http.ResponseWriter, r *http.Request, id int64) {
+	var request DeleteAliasEntryRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteAliasEntry(ctx, request.(DeleteAliasEntryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteAliasEntry")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteAliasEntryResponseObject); ok {
+		if err := validResponse.VisitDeleteAliasEntryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // ListDashboards operation middleware
@@ -3934,36 +4261,39 @@ func (sh *strictHandler) PlayerRecentGames(w http.ResponseWriter, r *http.Reques
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
