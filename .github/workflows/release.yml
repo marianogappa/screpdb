@@ -38,4 +38,11 @@ jobs:
       - name: Upload release artifacts
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          files: |
+            dist/screpdb-windows-amd64.exe
+            dist/screpdb-dashboard-windows-amd64.exe
+            dist/screpdb-linux-amd64
+            dist/screpdb-linux-arm64
+            dist/screpdb-darwin-amd64
+            dist/screpdb-darwin-arm64
+          fail_on_unmatched_files: true
