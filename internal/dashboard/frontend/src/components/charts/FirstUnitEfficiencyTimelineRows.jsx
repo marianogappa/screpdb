@@ -241,10 +241,10 @@ function FirstUnitEfficiencyTimelineRows({ group }) {
                 >
                   <image
                     href={entry.unit_icon}
-                    x={xAt(entry.unit_second) - 27}
-                    y={yAt(idx) - 27}
-                    width="54"
-                    height="54"
+                    x={xAt(entry.unit_second) - 13.5}
+                    y={yAt(idx) - 13.5}
+                    width="27"
+                    height="27"
                     preserveAspectRatio="xMidYMid meet"
                   />
                 </g>

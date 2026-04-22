@@ -110,11 +110,11 @@ function TimingScatterRows({
   const chartWidth = 980;
   const rowHeight = 36;
   const rowGroupGap = rowGroupingMode === 'race' ? 12 : 0;
-  const raceIconSize = rowLabelMode === 'worker-icon' ? 60 : 0;
+  const raceIconSize = rowLabelMode === 'worker-icon' ? 30 : 0;
   const raceIconGap = rowLabelMode === 'worker-icon' ? 10 : 0;
   const topPadding = 20;
   const bottomPadding = 42;
-  const leftPadding = rowLabelMode === 'worker-icon' ? 320 : 190;
+  const leftPadding = rowLabelMode === 'worker-icon' ? 290 : 190;
   const rightPadding = 24;
   const rowOffsets = [];
   let accumulatedGroupGap = 0;

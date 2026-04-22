@@ -176,7 +176,7 @@ SELECT
   r.duration_seconds,
   r.game_type,
   CAST(COALESCE((
-    SELECT group_concat(name, ' vs ')
+    SELECT group_concat(name, ', ')
     FROM (
       SELECT p2.name AS name
       FROM players p2

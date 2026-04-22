@@ -17,14 +17,14 @@ export const formatRelativeReplayDate = (value) => {
   let dayLabel = '';
   if (diffDays === 0) dayLabel = 'Today';
   else if (diffDays === 1) dayLabel = 'Yesterday';
-  else if (diffDays > 1) dayLabel = `${diffDays} days ago`;
+  else if (diffDays > 1) dayLabel = `${diffDays}d ago`;
   else dayLabel = date.toLocaleDateString();
 
   const hours = date.getHours();
   const minutes = String(date.getMinutes()).padStart(2, '0');
   const hour12 = hours % 12 || 12;
   const ampm = hours >= 12 ? 'pm' : 'am';
-  return `${dayLabel} at ${hour12}.${minutes}${ampm}`;
+  return `${dayLabel} @ ${hour12}.${minutes}${ampm}`;
 };
 
 export const formatDaysAgoCompact = (value) => {
