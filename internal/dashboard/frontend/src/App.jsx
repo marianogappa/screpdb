@@ -30,6 +30,13 @@ import {
   formatDaysAgoCompact,
   formatPercent,
 } from './lib/formatters';
+import {
+  parseMainRouteSearch,
+  buildMainRouteSearch,
+  mainRouteHref,
+  mainRouteSnapshotEqual,
+  MAIN_GAME_TABS,
+} from './lib/mainRoute';
 import './styles.css';
 
 const buildHistogramSummaryFromPlayers = (players) => {
@@ -112,6 +119,14 @@ const normalizeEventType = (eventType) => String(eventType || '').trim().toLower
 
 /** Aligns with NeverUsedHotkeysPlayerDetector (7+ minute replays). */
 const GAME_SUMMARY_NEGATION_MIN_SECONDS = 7 * 60;
+
+const MAIN_GAME_SKILL_PROXY_TABS = ['first-unit-efficiency', 'unit-production-cadence', 'viewport-multitasking'];
+
+const isMainGameSkillProxyTab = (tab) => MAIN_GAME_SKILL_PROXY_TABS.includes(tab);
+
+const SKILL_PROXY_CADENCE_INFO_TEXT = 'ℹ️ How smoothly you keep adding army from the mid game on—not just how much, but how evenly you queue it. Formula: units/min ÷ (1 + gap CV).';
+
+const SKILL_PROXY_VIEWPORT_INFO_TEXT = 'ℹ️ How many times a player switches between places on average per minute.';
 
 const DROP_ACTOR_EVENT_TYPES = ['drop', 'reaver_drop', 'dt_drop'];
 
@@ -273,7 +288,14 @@ const gameEventSearchText = (event) => {
   return parts.filter(Boolean).join(' ');
 };
 
-const gameEventRowKey = (event, idx) => `${Number(event?.second || 0)}-${String(event?.type || '')}-${gameEventDescription(event)}-${idx}`;
+const gameEventTopicKey = (topicIndex) => `game-event-${topicIndex}`;
+
+const parseGameEventTopicKey = (key) => {
+  const m = /^game-event-(\d+)$/.exec(String(key || ''));
+  if (!m) return null;
+  const idx = Number(m[1]);
+  return Number.isFinite(idx) ? idx : null;
+};
 
 const SC_PLAYER_COLOR_MAP = {
   red: '#ef4444',
@@ -473,30 +495,6 @@ const mapPointToPercent = (point, bounds) => {
 };
 
 const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'reaver_drop', 'dt_drop', 'recall', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush'].includes(String(eventType || '').toLowerCase());
-
-const gameEventActorKey = (event) => {
-  const actorID = Number(event?.actor?.player_id);
-  if (Number.isFinite(actorID) && actorID > 0) return `id:${actorID}`;
-  return `name:${String(event?.actor?.name || '').trim().toLowerCase()}`;
-};
-
-const gameEventBaseKey = (event) => {
-  const base = event?.base || {};
-  const kind = String(base?.kind || '').trim().toLowerCase();
-  const clock = Number(base?.clock);
-  const name = String(base?.name || '').trim().toLowerCase();
-  const centerX = Number(base?.center?.x);
-  const centerY = Number(base?.center?.y);
-  return [
-    kind,
-    Number.isFinite(clock) ? clock : '',
-    name,
-    Number.isFinite(centerX) ? centerX.toFixed(1) : '',
-    Number.isFinite(centerY) ? centerY.toFixed(1) : '',
-  ].join('|');
-};
-
-const gameEventSuppressionKey = (event) => `${Number(event?.second || 0)}|${gameEventActorKey(event)}|${gameEventBaseKey(event)}`;
 
 const fallbackOverlayUnitNamesForEvent = (eventType) => {
   const normalized = normalizeEventType(eventType);
@@ -713,8 +711,8 @@ const upgradeCategoryForName = (upgradeName) => {
 };
 
 const TIMING_CATEGORY_CONFIG = [
-  { id: 'gas', label: 'Gas', title: 'Gas timings (1st-4th)', source: 'gas', markerMode: 'image', markerLabel: 'Gas structure' },
   { id: 'expansion', label: 'Expansion', title: 'Expansion timings (1st-4th)', source: 'expansion', markerMode: 'image', markerLabel: 'Expansion' },
+  { id: 'gas', label: 'Gas', title: 'Gas timings (1st-4th)', source: 'gas', markerMode: 'image', markerLabel: 'Gas structure' },
   { id: 'hp_upgrades', label: 'HP Upgrades', title: 'HP upgrades timings', source: 'upgrades' },
   { id: 'unit_range', label: 'Unit Range', title: 'Unit range upgrades timings', source: 'upgrades' },
   { id: 'unit_speed', label: 'Unit Speed', title: 'Unit speed upgrades timings', source: 'upgrades' },
@@ -787,14 +785,12 @@ const DEFENSIVE_BUILDING_KEYS = new Set([
 ]);
 
 const DEFAULT_SUMMARY_FILTERS = {
-  search: '',
-  player: '',
-  location: '',
   nuke: false,
   drop: false,
   recall: false,
   becameRace: false,
   rush: false,
+  scout: false,
 };
 
 const SUMMARY_TOPIC_PATTERNS = {
@@ -803,64 +799,7 @@ const SUMMARY_TOPIC_PATTERNS = {
   recall: /\brecall\b/i,
   becameRace: /\b(became|becomes)\s+(terran|zerg)\b|\bbecame_(terran|zerg)\b/i,
   rush: /\brush|all[\s-]?in|cheese\b/i,
-};
-
-const LOCATION_HINTS = [
-  { key: 'expa', matcher: /\bexpa|expansion|expand\b/i },
-  { key: 'main', matcher: /\bmain\b/i },
-  { key: 'natural', matcher: /\bnatural\b/i },
-  { key: 'third', matcher: /\bthird\b/i },
-  { key: 'fourth', matcher: /\bfourth\b/i },
-  { key: 'center', matcher: /\bcenter|middle\b/i },
-  { key: 'top', matcher: /\btop|north\b/i },
-  { key: 'bottom', matcher: /\bbottom|south\b/i },
-  { key: 'left', matcher: /\bleft|west\b/i },
-  { key: 'right', matcher: /\bright|east\b/i },
-];
-
-const extractEventLocationTags = (event) => {
-  const tags = new Set();
-  const location = gameEventLocationLabel(event);
-  const text = String(location || '').toLowerCase();
-  LOCATION_HINTS.forEach((hint) => {
-    if (hint.matcher.test(text)) tags.add(hint.key);
-  });
-  const strictClockMatches = text.matchAll(/\b([1-9]|1[0-2])\s*o'?clock\b/g);
-  for (const match of strictClockMatches) {
-    tags.add(match[1]);
-  }
-  const directionalClockMatches = text.matchAll(/\b(?:at|to|near|towards|from)\s+([1-9]|1[0-2])\b/g);
-  for (const match of directionalClockMatches) {
-    tags.add(match[1]);
-  }
-  const possessiveNaturalMatches = text.matchAll(/\b([1-9]|1[0-2])'s natural\b/g);
-  for (const match of possessiveNaturalMatches) {
-    tags.add(match[1]);
-  }
-  const clockFromBase = Number(event?.base?.clock);
-  if (Number.isFinite(clockFromBase) && clockFromBase >= 1 && clockFromBase <= 12) {
-    tags.add(String(clockFromBase));
-  }
-  const naturalOfClock = Number(event?.base?.natural_of_clock);
-  if (Number.isFinite(naturalOfClock) && naturalOfClock >= 1 && naturalOfClock <= 12) {
-    tags.add(String(naturalOfClock));
-  }
-  return Array.from(tags);
-};
-
-const extractLocationOptions = (events) => {
-  const found = new Set();
-  (events || []).forEach((event) => {
-    extractEventLocationTags(event).forEach((tag) => found.add(tag));
-  });
-  return Array.from(found).sort((a, b) => {
-    const numA = Number(a);
-    const numB = Number(b);
-    if (Number.isFinite(numA) && Number.isFinite(numB)) return numA - numB;
-    if (Number.isFinite(numA)) return -1;
-    if (Number.isFinite(numB)) return 1;
-    return a.localeCompare(b);
-  });
+  scout: /\bscouts?\b|\bscout\b/i,
 };
 
 const isPatternTruthy = (value) => {
@@ -1201,6 +1140,8 @@ const teamGroupsFromPlayers = (players) => {
   return groups;
 };
 
+const playersHaveDistinctTeams = (players) => new Set((players || []).map((p) => Number(p?.team || 0))).size > 1;
+
 const mergeIngestLogEntries = (entries, event) => {
   if (!event || !event.message) {
     return entries;
@@ -1233,7 +1174,13 @@ const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 function App() {
   const storedAutoIngest = getStoredAutoIngestSettings();
-  const [currentDashboardUrl, setCurrentDashboardUrl] = useState('default');
+  const initialMainRoute = useMemo(
+    () => parseMainRouteSearch(typeof window !== 'undefined' ? window.location.search : ''),
+    [],
+  );
+  const [currentDashboardUrl, setCurrentDashboardUrl] = useState(() => (
+    initialMainRoute.view === 'dashboards' && initialMainRoute.dash ? initialMainRoute.dash : 'default'
+  ));
   const [dashboard, setDashboard] = useState(null);
   const [dashboards, setDashboards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1270,7 +1217,7 @@ function App() {
   const [aliasesMessage, setAliasesMessage] = useState('');
   const [aliasesMessageIsError, setAliasesMessageIsError] = useState(false);
   const [aliasSaving, setAliasSaving] = useState(false);
-  const [aliasSourceFilter, setAliasSourceFilter] = useState('all');
+  const [aliasSources, setAliasSources] = useState(['you', 'manual', 'imported']);
   const [aliasEditOriginal, setAliasEditOriginal] = useState(null);
   const [aliasForm, setAliasForm] = useState({
     canonical_alias: '',
@@ -1282,16 +1229,12 @@ function App() {
     watch: false,
     stopAfterN: 50,
     clean: false,
-    storeRightClicks: false,
-    skipHotkeys: false,
     autoIngestEnabled: storedAutoIngest.enabled,
-    autoIngestIntervalSeconds: storedAutoIngest.intervalSeconds,
   });
   const autoIngestInFlight = useRef(false);
   const ingestSocketRef = useRef(null);
   const autoIngestNoticeTimerRef = useRef(null);
-  const [activeView, setActiveView] = useState('games');
-  const mainViewHistoryRef = useRef([]);
+  const [activeView, setActiveView] = useState(() => initialMainRoute.view);
   const [mainGames, setMainGames] = useState([]);
   const [mainGamesLoading, setMainGamesLoading] = useState(false);
   const [mainGamesPage, setMainGamesPage] = useState(1);
@@ -1310,16 +1253,20 @@ function App() {
   });
   const [mainGameDetailLoading, setMainGameDetailLoading] = useState(false);
   const [mainPlayerLoading, setMainPlayerLoading] = useState(false);
-  const [selectedReplayId, setSelectedReplayId] = useState(null);
-  const [selectedPlayerKey, setSelectedPlayerKey] = useState('');
+  const [selectedReplayId, setSelectedReplayId] = useState(() => initialMainRoute.replayId);
+  const [selectedPlayerKey, setSelectedPlayerKey] = useState(() => initialMainRoute.playerKey || '');
   const [mainGame, setMainGame] = useState(null);
-  const [mainGameTab, setMainGameTab] = useState('summary');
-  const [mainMapModalOpen, setMainMapModalOpen] = useState(false);
+  const [mainGameTab, setMainGameTab] = useState(() => initialMainRoute.gameTab);
+  const [mainEventsPlayerEnabledById, setMainEventsPlayerEnabledById] = useState({});
   const [mainSelectedGameEventKey, setMainSelectedGameEventKey] = useState('');
   const [mainGameSeeLoading, setMainGameSeeLoading] = useState(false);
   const [mainGameSeeNotice, setMainGameSeeNotice] = useState('');
   const [mainGameSeeNoticeError, setMainGameSeeNoticeError] = useState(false);
   const mainGameSeeNoticeTimerRef = useRef(null);
+  const suppressUrlSyncRef = useRef(false);
+  const openMainGameRef = useRef(null);
+  const openMainPlayerRef = useRef(null);
+  const loadDashboardRef = useRef(null);
   const [mainPlayer, setMainPlayer] = useState(null);
   const [mainPlayerRecentGames, setMainPlayerRecentGames] = useState([]);
   const [mainPlayerRecentGamesLoading, setMainPlayerRecentGamesLoading] = useState(false);
@@ -1339,7 +1286,7 @@ function App() {
   const [mainPlayersTotal, setMainPlayersTotal] = useState(0);
   const [mainPlayersSortBy, setMainPlayersSortBy] = useState('games');
   const [mainPlayersSortDir, setMainPlayersSortDir] = useState('desc');
-  const [mainPlayersTab, setMainPlayersTab] = useState('summary');
+  const [mainPlayersTab, setMainPlayersTab] = useState(() => initialMainRoute.playersTab);
   const [mainPlayersFilterOptions, setMainPlayersFilterOptions] = useState({
     races: [],
     last_played: [],
@@ -1388,7 +1335,7 @@ function App() {
   const [mainUnitNameFilter, setMainUnitNameFilter] = useState('');
   const [mainBuildingFilterMode, setMainBuildingFilterMode] = useState('all');
   const [mainBuildingNameFilter, setMainBuildingNameFilter] = useState('');
-  const [mainTimingCategory, setMainTimingCategory] = useState('gas');
+  const [mainTimingCategory, setMainTimingCategory] = useState('expansion');
   const [mainHpUpgradeFilters, setMainHpUpgradeFilters] = useState({
     terran: DEFAULT_HP_UPGRADE_BY_RACE.terran,
     zerg: DEFAULT_HP_UPGRADE_BY_RACE.zerg,
@@ -1594,7 +1541,7 @@ function App() {
     }
   };
 
-  const openMainGame = async (replayId) => {
+  const openMainGame = async (replayId, options = {}) => {
     try {
       setMainGameDetailLoading(true);
       setError(null);
@@ -1606,8 +1553,14 @@ function App() {
       setMainGameSeeNoticeError(false);
       const data = await api.getGame(replayId);
       setMainGame(data);
-      setMainGameTab('summary');
-      setMainMapModalOpen(false);
+      const wantTab = options.initialGameTab;
+      const nextTab = wantTab && MAIN_GAME_TABS.includes(String(wantTab).trim().toLowerCase())
+        ? String(wantTab).trim().toLowerCase()
+        : 'summary';
+      setMainGameTab(nextTab);
+      setMainEventsPlayerEnabledById(
+        Object.fromEntries((data.players || []).map((p) => [String(p.player_id), true])),
+      );
       setMainSelectedGameEventKey('');
       setSelectedReplayId(replayId);
       setMainAnswer(null);
@@ -1618,7 +1571,7 @@ function App() {
       setMainUnitNameFilter('');
       setMainBuildingFilterMode('all');
       setMainBuildingNameFilter('');
-      setMainTimingCategory('gas');
+      setMainTimingCategory('expansion');
       setMainHpUpgradeFilters({
         terran: DEFAULT_HP_UPGRADE_BY_RACE.terran,
         zerg: DEFAULT_HP_UPGRADE_BY_RACE.zerg,
@@ -1888,12 +1841,12 @@ function App() {
     const canonicalAlias = String(aliasForm.canonical_alias || '').trim();
     const battleTag = String(aliasForm.battle_tag || '').trim();
     if (!canonicalAlias || !battleTag) {
-      setAliasesMessage('Canonical alias and battle tag are required.');
+      setAliasesMessage('Alias and name in replay are required.');
       setAliasesMessageIsError(true);
       return;
     }
     if (canonicalAlias.trim().toLowerCase() === battleTag.trim().toLowerCase()) {
-      setAliasesMessage('Canonical alias must differ from battle tag.');
+      setAliasesMessage('Alias must differ from name in replay.');
       setAliasesMessageIsError(true);
       return;
     }
@@ -1961,6 +1914,15 @@ function App() {
     setAliasForm({ canonical_alias: '', battle_tag: '', aurora_id: '' });
     setAliasesMessage('');
     setAliasesMessageIsError(false);
+  };
+
+  const handleAliasSourceToggle = (value) => {
+    setAliasSources((prev) => {
+      if (prev.includes(value)) {
+        return prev.filter((v) => v !== value);
+      }
+      return [...prev, value].sort((a, b) => a.localeCompare(b));
+    });
   };
 
   const handleAliasExport = () => {
@@ -2060,10 +2022,15 @@ function App() {
     return false;
   };
 
+  openMainGameRef.current = openMainGame;
+  openMainPlayerRef.current = openMainPlayer;
+  loadDashboardRef.current = loadDashboard;
+
   useEffect(() => {
-    // Load dashboard with stored variable values if available
-    const stored = getStoredVariableValues('default');
-    loadDashboard('default', stored || undefined);
+    // Load dashboard with stored variable values if available (initial URL only; switches use loadDashboard directly).
+    const url = currentDashboardUrl;
+    const stored = getStoredVariableValues(url);
+    loadDashboard(url, stored || undefined);
     loadDashboards();
     loadGlobalReplayFilterConfig().catch((err) => {
       console.error('Failed to load global replay filter config:', err);
@@ -2073,6 +2040,77 @@ function App() {
     });
     loadTopPlayerColors();
     checkOpenAIStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only; deep links set currentDashboardUrl before first paint.
+  }, []);
+
+  useEffect(() => {
+    if (initialMainRoute.view === 'game' && initialMainRoute.replayId != null) {
+      void openMainGame(initialMainRoute.replayId, { initialGameTab: initialMainRoute.gameTab });
+    } else if (initialMainRoute.view === 'player' && initialMainRoute.playerKey) {
+      void openMainPlayer(initialMainRoute.playerKey);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time hydration from initial URL.
+  }, []);
+
+  useEffect(() => {
+    if (suppressUrlSyncRef.current) return;
+    const next = buildMainRouteSearch({
+      activeView,
+      selectedReplayId,
+      selectedPlayerKey,
+      mainGameTab,
+      mainPlayersTab,
+      currentDashboardUrl,
+    });
+    if (typeof window !== 'undefined' && mainRouteSnapshotEqual(window.location.search, next && next.length ? `?${next}` : '')) {
+      return;
+    }
+    if (typeof window === 'undefined') return;
+    window.history.pushState({ __spa: 1 }, '', mainRouteHref(next));
+  }, [activeView, selectedReplayId, selectedPlayerKey, mainGameTab, mainPlayersTab, currentDashboardUrl]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      suppressUrlSyncRef.current = true;
+      const r = parseMainRouteSearch(window.location.search);
+      setActiveView(r.view);
+      setSelectedReplayId(r.replayId);
+      setSelectedPlayerKey(r.playerKey || '');
+      setMainGameTab(r.gameTab);
+      setMainPlayersTab(r.playersTab);
+      setCurrentDashboardUrl(r.view === 'dashboards' && r.dash ? r.dash : 'default');
+      const finish = () => {
+        suppressUrlSyncRef.current = false;
+      };
+      if (r.view === 'game' && r.replayId != null) {
+        const p = openMainGameRef.current?.(r.replayId, { initialGameTab: r.gameTab });
+        if (p && typeof p.finally === 'function') {
+          p.finally(finish);
+        } else {
+          finish();
+        }
+      } else if (r.view === 'player' && r.playerKey) {
+        const p = openMainPlayerRef.current?.(r.playerKey);
+        if (p && typeof p.finally === 'function') {
+          p.finally(finish);
+        } else {
+          finish();
+        }
+      } else if (r.view === 'dashboards') {
+        const dashUrl = r.dash || 'default';
+        const stored = getStoredVariableValues(dashUrl);
+        const p = loadDashboardRef.current?.(dashUrl, stored || undefined);
+        if (p && typeof p.finally === 'function') {
+          p.finally(finish);
+        } else {
+          finish();
+        }
+      } else {
+        finish();
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
   useEffect(() => {
@@ -2143,9 +2181,8 @@ function App() {
   useEffect(() => {
     saveAutoIngestSettings({
       enabled: ingestForm.autoIngestEnabled,
-      intervalSeconds: ingestForm.autoIngestIntervalSeconds,
     });
-  }, [ingestForm.autoIngestEnabled, ingestForm.autoIngestIntervalSeconds, showIngestPanel]);
+  }, [ingestForm.autoIngestEnabled]);
 
   useEffect(() => {
     if (!showIngestPanel) {
@@ -2224,7 +2261,7 @@ function App() {
     setAliasesMessageIsError(false);
     setAliasEditOriginal(null);
     setAliasForm({ canonical_alias: '', battle_tag: '', aurora_id: '' });
-    setAliasSourceFilter('all');
+    setAliasSources(['you', 'manual', 'imported']);
     void loadIngestSettings();
     void loadAliases();
     return undefined;
@@ -2235,11 +2272,11 @@ function App() {
       return undefined;
     }
 
-    const intervalSeconds = Math.max(60, Number(ingestForm.autoIngestIntervalSeconds) || 60);
+    const intervalSeconds = 60;
     let cancelled = false;
 
     const runAutoIngest = async () => {
-      if (cancelled || autoIngestInFlight.current || showIngestPanel || ingestStatus === 'running') return;
+      if (cancelled || autoIngestInFlight.current || showIngestPanel) return;
       autoIngestInFlight.current = true;
       try {
         const health = await api.getHealth();
@@ -2272,7 +2309,7 @@ function App() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [ingestForm.autoIngestEnabled, ingestForm.autoIngestIntervalSeconds, showIngestPanel, ingestStatus]);
+  }, [ingestForm.autoIngestEnabled, showIngestPanel]);
 
   useEffect(() => () => {
     if (autoIngestNoticeTimerRef.current) {
@@ -2392,8 +2429,8 @@ function App() {
         watch: ingestForm.watch,
         stop_after_n_reps: ingestForm.stopAfterN || 0,
         clean: ingestForm.clean,
-        store_right_clicks: ingestForm.storeRightClicks,
-        skip_hotkeys: ingestForm.skipHotkeys,
+        store_right_clicks: false,
+        skip_hotkeys: false,
       });
 
       if (response?.started) {
@@ -2576,30 +2613,18 @@ function App() {
   const navigateMainView = (nextView) => {
     setActiveView((currentView) => {
       if (currentView === nextView) return currentView;
-      mainViewHistoryRef.current.push(currentView);
-      if (mainViewHistoryRef.current.length > 30) {
-        mainViewHistoryRef.current.shift();
-      }
       return nextView;
     });
+  };
+
+  const goBackMainView = () => {
+    setActiveView((currentView) => (currentView === 'player' ? 'players' : currentView));
   };
 
   const openMainPlayersSubview = (tab) => {
     const nextTab = String(tab || 'summary');
     setMainPlayersTab(nextTab);
     navigateMainView('players');
-  };
-
-  const goBackMainView = () => {
-    setActiveView((currentView) => {
-      while (mainViewHistoryRef.current.length > 0) {
-        const previous = mainViewHistoryRef.current.pop();
-        if (previous && previous !== currentView) {
-          return previous;
-        }
-      }
-      return 'games';
-    });
   };
 
   const handleMainAsk = async (e) => {
@@ -2654,17 +2679,24 @@ function App() {
 
   const renderPlayersMatchup = (label) => {
     const sides = String(label || '').split(' vs ');
-    return sides.map((side, sideIndex) => (
-      <span key={`${side}-${sideIndex}`}>
-        {side.split(', ').map((name, idx) => (
-          <span key={`${name}-${idx}`}>
-            {renderPlayerLabel(name)}
-            {idx < side.split(', ').length - 1 ? ', ' : ''}
-          </span>
-        ))}
-        {sideIndex < sides.length - 1 ? ' vs ' : ''}
-      </span>
-    ));
+    return sides.map((side, sideIndex) => {
+      const names = String(side || '')
+        .trim()
+        .split(', ')
+        .map((n) => n.trim())
+        .filter(Boolean);
+      return (
+        <span key={`${side}-${sideIndex}`}>
+          {names.map((name, idx) => (
+            <span key={`${name}-${idx}`}>
+              {renderPlayerLabel(name)}
+              {idx < names.length - 1 ? ', ' : ''}
+            </span>
+          ))}
+          {sideIndex < sides.length - 1 ? ' vs ' : ''}
+        </span>
+      );
+    });
   };
 
   const renderMainGameListPlayers = (game) => {
@@ -2672,24 +2704,41 @@ function App() {
     if (players.length === 0) {
       return renderPlayersMatchup(game?.players_label || '');
     }
-    const groups = teamGroupsFromPlayers(players);
-    return groups.map((group, groupIdx) => {
-      const hasTeam = group.length > 1;
+    if (!playersHaveDistinctTeams(players)) {
       return (
-        <span key={`team-${groupIdx}`}>
-          {hasTeam ? '(' : ''}
-          {group.map((player, idx) => (
+        <span>
+          {players.map((player, idx) => (
             <span key={`${player.player_id}-${idx}`}>
               {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
               {renderPlayerLabel(player.name, player.player_key)}
-              {idx < group.length - 1 ? ' & ' : ''}
+              {idx < players.length - 1 ? ', ' : ''}
             </span>
           ))}
-          {hasTeam ? ')' : ''}
-          {groupIdx < groups.length - 1 ? ' vs ' : ''}
         </span>
       );
-    });
+    }
+    const groups = teamGroupsFromPlayers(players);
+    return (
+      <span className="workflow-team-matchup">
+        {groups.map((group, groupIdx) => (
+          <React.Fragment key={`team-${groupIdx}`}>
+            {groupIdx > 0 ? <span className="workflow-team-vs">vs</span> : null}
+            <span className="workflow-team-side">
+              {group.map((player) => (
+                <span
+                  key={player.player_id}
+                  className="workflow-team-player-pill"
+                  style={{ backgroundColor: teamColorRgba(player.team, 0.24) }}
+                >
+                  {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+                  {renderPlayerLabel(player.name, player.player_key)}
+                </span>
+              ))}
+            </span>
+          </React.Fragment>
+        ))}
+      </span>
+    );
   };
 
   const renderMainAiResult = () => {
@@ -2756,16 +2805,8 @@ function App() {
     })
     : [];
 
-  const mainLocationOptions = useMemo(
-    () => extractLocationOptions(mainGame?.game_events || []),
-    [mainGame?.game_events],
-  );
-
   const summaryTextMatches = (text) => {
     const value = String(text || '').toLowerCase();
-    if (mainSummaryFilters.search && !value.includes(mainSummaryFilters.search.toLowerCase())) {
-      return false;
-    }
     const activeTopics = Object.entries(SUMMARY_TOPIC_PATTERNS)
       .filter(([key]) => mainSummaryFilters[key])
       .map(([, matcher]) => matcher);
@@ -2777,30 +2818,14 @@ function App() {
 
   const mainPlayerOutlierItems = mainPlayerOutliers?.items || [];
 
-  const filteredGameEvents = useMemo(() => {
+  const topicFilteredGameEvents = useMemo(() => {
     const allEvents = Array.isArray(mainGame?.game_events) ? mainGame.game_events : [];
-    const expansionsByKey = new Set(
-      allEvents
-        .filter((event) => normalizeEventType(event?.type) === 'expansion')
-        .map((event) => gameEventSuppressionKey(event)),
-    );
     const visibleEvents = allEvents.filter((event) => {
       if (isStructuralGameEventType(event?.type)) {
         return false;
       }
-      if (
-        normalizeEventType(event?.type) === 'takeover'
-        && expansionsByKey.has(gameEventSuppressionKey(event))
-      ) {
+      if (normalizeEventType(event?.type) === 'takeover') {
         return false;
-      }
-      const description = gameEventDescription(event);
-      if (mainSummaryFilters.player && !String(description || '').toLowerCase().includes(mainSummaryFilters.player.toLowerCase())) {
-        return false;
-      }
-      if (mainSummaryFilters.location) {
-        const eventTags = extractEventLocationTags(event);
-        if (!eventTags.includes(mainSummaryFilters.location)) return false;
       }
       return summaryTextMatches(gameEventSearchText(event));
     });
@@ -2814,7 +2839,41 @@ function App() {
       deduped.push(event);
     }
     return deduped;
-  }, [mainGame?.game_events, mainSummaryFilters, mainSummaryFilters.location, mainSummaryFilters.player]);
+  }, [mainGame?.game_events, mainSummaryFilters]);
+
+  const filteredGameEvents = useMemo(() => (
+    topicFilteredGameEvents.filter((event) => {
+      const actorId = eventActorID(event);
+      if (actorId != null && mainEventsPlayerEnabledById[String(actorId)] === false) {
+        return false;
+      }
+      return true;
+    })
+  ), [topicFilteredGameEvents, mainEventsPlayerEnabledById]);
+  const gameEventTopicAvailability = useMemo(() => {
+    const base = {
+      nuke: false,
+      drop: false,
+      recall: false,
+      scout: false,
+      becameRace: false,
+      rush: false,
+    };
+    const allEvents = Array.isArray(mainGame?.game_events) ? mainGame.game_events : [];
+    for (const event of allEvents) {
+      if (isStructuralGameEventType(event?.type)) continue;
+      const nt = normalizeEventType(event?.type);
+      if (nt === 'takeover') continue;
+      const text = gameEventSearchText(event);
+      if (SUMMARY_TOPIC_PATTERNS.nuke.test(text)) base.nuke = true;
+      if (SUMMARY_TOPIC_PATTERNS.drop.test(text)) base.drop = true;
+      if (SUMMARY_TOPIC_PATTERNS.recall.test(text)) base.recall = true;
+      if (nt === 'scout' || SUMMARY_TOPIC_PATTERNS.scout.test(text)) base.scout = true;
+      if (SUMMARY_TOPIC_PATTERNS.becameRace.test(text) || nt === 'became_terran' || nt === 'became_zerg') base.becameRace = true;
+      if (SUMMARY_TOPIC_PATTERNS.rush.test(text)) base.rush = true;
+    }
+    return base;
+  }, [mainGame?.game_events]);
   const mainMapVisual = mainGame?.map_visual || {};
   const mainMapVisualURL = String(mainMapVisual?.url || '').trim();
   const mainMapVisualThumbURL = String(mainMapVisual?.thumbnail_url || mainMapVisualURL).trim();
@@ -2824,27 +2883,36 @@ function App() {
     [mainGame?.game_events],
   );
   const selectedMainGameEvent = useMemo(() => {
-    if (!filteredGameEvents.length) return null;
-    const fromKey = filteredGameEvents.find((event, idx) => gameEventRowKey(event, idx) === mainSelectedGameEventKey);
-    return fromKey || filteredGameEvents[0];
-  }, [filteredGameEvents, mainSelectedGameEventKey]);
+    if (!topicFilteredGameEvents.length) return null;
+    const topicIdx = parseGameEventTopicKey(mainSelectedGameEventKey);
+    if (topicIdx != null && topicIdx >= 0 && topicIdx < topicFilteredGameEvents.length) {
+      return topicFilteredGameEvents[topicIdx];
+    }
+    return topicFilteredGameEvents[0];
+  }, [topicFilteredGameEvents, mainSelectedGameEventKey]);
   const mainGamePlayers = mainGame?.players || [];
   const selectedMainGameEventKeyResolved = useMemo(() => {
     if (!selectedMainGameEvent) return '';
-    const idx = filteredGameEvents.indexOf(selectedMainGameEvent);
+    const idx = topicFilteredGameEvents.indexOf(selectedMainGameEvent);
     if (idx < 0) return '';
-    return gameEventRowKey(selectedMainGameEvent, idx);
-  }, [filteredGameEvents, selectedMainGameEvent]);
+    return gameEventTopicKey(idx);
+  }, [topicFilteredGameEvents, selectedMainGameEvent]);
   useEffect(() => {
-    if (filteredGameEvents.length === 0) {
+    if (topicFilteredGameEvents.length === 0) {
       if (mainSelectedGameEventKey) setMainSelectedGameEventKey('');
       return;
     }
-    const hasSelected = filteredGameEvents.some((event, idx) => gameEventRowKey(event, idx) === mainSelectedGameEventKey);
-    if (!hasSelected) {
-      setMainSelectedGameEventKey(gameEventRowKey(filteredGameEvents[0], 0));
+    const topicIdx = parseGameEventTopicKey(mainSelectedGameEventKey);
+    if (topicIdx != null && topicIdx >= 0 && topicIdx < topicFilteredGameEvents.length) {
+      return;
     }
-  }, [filteredGameEvents, mainSelectedGameEventKey]);
+    const firstRowVisibleIdx = topicFilteredGameEvents.findIndex((event) => {
+      const actorId = eventActorID(event);
+      return actorId == null || mainEventsPlayerEnabledById[String(actorId)] !== false;
+    });
+    const preferredIdx = firstRowVisibleIdx >= 0 ? firstRowVisibleIdx : 0;
+    setMainSelectedGameEventKey(gameEventTopicKey(preferredIdx));
+  }, [topicFilteredGameEvents, mainEventsPlayerEnabledById, mainSelectedGameEventKey]);
   const selectedMainGameOwnershipPolygons = useMemo(() => {
     const ownership = Array.isArray(selectedMainGameEvent?.ownership) ? selectedMainGameEvent.ownership : [];
     return ownership
@@ -3526,21 +3594,35 @@ function App() {
   return (
     <div className="app">
       <div className="dashboard-container">
-        <div className="workflow-nav">
-          <button className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('games')}>Games</button>
-          <button className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('players')}>Players</button>
-          <button onClick={() => {
-            setGlobalReplayFilterError('');
-            loadGlobalReplayFilterConfig().catch((err) => {
-              console.error('Failed to refresh global replay filter config:', err);
-            });
-            loadGlobalReplayFilterOptions().catch((err) => {
-              console.error('Failed to refresh global replay filter options:', err);
-            });
-            setShowGlobalReplayFilter(true);
-          }} className="btn-manage">Settings</button>
-          <button onClick={() => setShowIngestPanel(true)} className="btn-manage">Ingest</button>
-          <button className={`btn-manage ${activeView === 'dashboards' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('dashboards')}>Custom Dashboards</button>
+        <div className="workflow-nav workflow-nav-app">
+          <div className="workflow-nav-group">
+            <button type="button" className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('games')}>Games</button>
+            <button type="button" className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('players')}>Players</button>
+          </div>
+          <div className="workflow-nav-group">
+            <button
+              type="button"
+              onClick={() => {
+                setGlobalReplayFilterError('');
+                loadGlobalReplayFilterConfig().catch((err) => {
+                  console.error('Failed to refresh global replay filter config:', err);
+                });
+                loadGlobalReplayFilterOptions().catch((err) => {
+                  console.error('Failed to refresh global replay filter options:', err);
+                });
+                setShowGlobalReplayFilter(true);
+              }}
+              className="workflow-nav-text-action"
+            >
+              ⚙️ Settings
+            </button>
+            <button type="button" onClick={() => setShowIngestPanel(true)} className="workflow-nav-text-action">
+              📥 Ingest
+            </button>
+          </div>
+          <div className="workflow-nav-group">
+            <button type="button" className={`btn-manage ${activeView === 'dashboards' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('dashboards')}>Custom Dashboards</button>
+          </div>
         </div>
 
         {error && <div className="error-message">{error}</div>}
@@ -3670,12 +3752,64 @@ function App() {
 
         {activeView === 'players' && (
           <div className="workflow-panel">
-            <div className="workflow-nav">
-              <button className={`btn-switch ${mainPlayersTab === 'summary' ? 'workflow-nav-active' : ''}`} onClick={() => setMainPlayersTab('summary')}>Summary</button>
-              <button className={`btn-switch ${mainPlayersTab === 'apm-histogram' ? 'workflow-nav-active' : ''}`} onClick={() => setMainPlayersTab('apm-histogram')}>APM Histogram</button>
-              <button className={`btn-switch ${mainPlayersTab === 'first-unit-delay' ? 'workflow-nav-active' : ''}`} onClick={() => setMainPlayersTab('first-unit-delay')}>First Unit Delay</button>
-              <button className={`btn-switch ${mainPlayersTab === 'unit-production-cadence' ? 'workflow-nav-active' : ''}`} onClick={() => setMainPlayersTab('unit-production-cadence')}>Unit Production Cadence</button>
-              <button className={`btn-switch ${mainPlayersTab === 'viewport-multitasking' ? 'workflow-nav-active' : ''}`} onClick={() => setMainPlayersTab('viewport-multitasking')}>Viewport Multitasking</button>
+            <div className="workflow-players-tab-stack">
+              <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label="Players sections">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mainPlayersTab === 'summary'}
+                  className={`workflow-production-tab ${mainPlayersTab === 'summary' ? 'workflow-production-tab-active' : ''}`}
+                  onClick={() => setMainPlayersTab('summary')}
+                >
+                  Summary
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mainPlayersTab === 'apm-histogram'}
+                  className={`workflow-production-tab ${mainPlayersTab === 'apm-histogram' ? 'workflow-production-tab-active' : ''}`}
+                  onClick={() => setMainPlayersTab('apm-histogram')}
+                >
+                  APM Histogram
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mainPlayersTab === 'first-unit-delay'}
+                  className={`workflow-production-tab ${mainPlayersTab === 'first-unit-delay' ? 'workflow-production-tab-active' : ''}`}
+                  onClick={() => setMainPlayersTab('first-unit-delay')}
+                >
+                  First Unit Delay
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mainPlayersTab === 'unit-production-cadence'}
+                  className={`workflow-production-tab ${mainPlayersTab === 'unit-production-cadence' ? 'workflow-production-tab-active' : ''}`}
+                  onClick={() => setMainPlayersTab('unit-production-cadence')}
+                >
+                  Unit Production Cadence
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mainPlayersTab === 'viewport-multitasking'}
+                  className={`workflow-production-tab ${mainPlayersTab === 'viewport-multitasking' ? 'workflow-production-tab-active' : ''}`}
+                  onClick={() => setMainPlayersTab('viewport-multitasking')}
+                >
+                  Viewport Multitasking
+                </button>
+              </div>
+              {mainPlayersTab === 'unit-production-cadence' ? (
+                <div className="workflow-section-info workflow-skill-proxy-tab-info" role="note">
+                  {SKILL_PROXY_CADENCE_INFO_TEXT}
+                </div>
+              ) : null}
+              {mainPlayersTab === 'viewport-multitasking' ? (
+                <div className="workflow-section-info workflow-skill-proxy-tab-info" role="note">
+                  {SKILL_PROXY_VIEWPORT_INFO_TEXT}
+                </div>
+              ) : null}
             </div>
 
             {mainPlayersTab === 'summary' ? (
@@ -3765,14 +3899,6 @@ function App() {
               </>
             ) : mainPlayersTab === 'apm-histogram' ? (
               <div className="workflow-card workflow-card-fingerprints">
-                <div className="workflow-card-title"><span>APM distribution</span></div>
-                <div className="workflow-card-subtitle">
-                  <span>How it is calculated</span>
-                  <HelpTooltip text="Each player contributes one point: their average APM across non-observer games. Only players with 5+ games are included." label="APM histogram methodology" />
-                </div>
-                <div className="workflow-subtle-note">
-                  Single-bell view over the eligible player population. Dots and labels can move vertically to reduce overlap, but each dot keeps the exact horizontal APM location.
-                </div>
                 {mainPlayersApmHistogramLoading ? <div className="chart-empty">Loading APM histogram...</div> : null}
                 {!mainPlayersApmHistogramLoading && mainPlayersApmHistogramError ? <div className="chart-empty">{mainPlayersApmHistogramError}</div> : null}
                 {!mainPlayersApmHistogramLoading && !mainPlayersApmHistogramError && mainPlayersApmProcessed.points.length === 0 ? (
@@ -3793,9 +3919,6 @@ function App() {
                         value={String(Math.max(5, Number(mainPlayersApmMinGames) || 5))}
                         onChange={(e) => setMainPlayersApmMinGames(Math.max(5, Number(e.target.value) || 5))}
                       />
-                    </div>
-                    <div className="workflow-subtle-note">
-                      This slider only filters already-loaded points client-side; it does not re-query the backend.
                     </div>
                     <Histogram
                       data={[]}
@@ -3824,20 +3947,6 @@ function App() {
               </div>
             ) : mainPlayersTab === 'first-unit-delay' ? (
               <div className="workflow-card workflow-card-fingerprints">
-                <div className="workflow-card-title"><span>First-unit delay distribution</span></div>
-                <div className="workflow-card-subtitle">
-                  <span>How it is calculated</span>
-                  <HelpTooltip text="Each player contributes one point: their average (building ready -> first matching unit) delay over all valid observations. Observations are generated from the same race-specific mappings used by game-level First Unit Efficiency, but only for command events up to 7:00 game time. Gaps must be in the 0-20 second range." label="First-unit delay methodology" />
-                </div>
-                <div className="workflow-subtle-note">
-                  Smaller values mean players tend to start the first matching unit sooner after a production building is expected to be ready.
-                </div>
-                <div className="workflow-subtle-note">
-                  This is an imperfect proxy for execution quality. It can be distorted by worker travel, scouting pressure, map geometry, intentional tech pivots, and command-timestamp limitations.
-                </div>
-                <div className="workflow-subtle-note">
-                  Cutoff rules: only build/train/morph commands at or before 7:00 are included, and a matching unit must be created within 20s of building ready time.
-                </div>
                 {!mainPlayersDelayHistogramLoading && !mainPlayersDelayHistogramError ? (
                   <>
                     <div className="workflow-card-subtitle"><span>Included building to unit cases</span></div>
@@ -3929,17 +4038,6 @@ function App() {
               </div>
             ) : mainPlayersTab === 'unit-production-cadence' ? (
               <div className="workflow-card workflow-card-fingerprints">
-                <div className="workflow-card-title"><span>Unit production cadence distribution</span></div>
-                <div className="workflow-card-subtitle">
-                  <span>How it is calculated</span>
-                  <HelpTooltip text="For each replay-player we only inspect attacking-unit production command timestamps from 7:00 to 80% game time. We compute interval evenness (cvGap = std(gaps)/mean(gaps)) and production rate (units per minute), then combine them into cadenceScore = ratePerMin / (1 + cvGap). Each player contributes one point: average cadenceScore across eligible games." label="Unit production cadence methodology" />
-                </div>
-                <div className="workflow-subtle-note">
-                  Rationale: stronger macro tends to keep attacking-unit production frequent and less clumped. This score rewards high sustained rate and penalizes bursty long gaps.
-                </div>
-                <div className="workflow-subtle-note">
-                  Strict filter excludes workers/econ and support utility units to focus on combat production rhythm.
-                </div>
                 {mainPlayersCadenceHistogramLoading ? <div className="chart-empty">Loading unit production cadence...</div> : null}
                 {!mainPlayersCadenceHistogramLoading && mainPlayersCadenceHistogramError ? <div className="chart-empty">{mainPlayersCadenceHistogramError}</div> : null}
                 {!mainPlayersCadenceHistogramLoading && !mainPlayersCadenceHistogramError && mainPlayersCadenceProcessed.points.length === 0 ? (
@@ -3999,14 +4097,6 @@ function App() {
               </div>
             ) : mainPlayersTab === 'viewport-multitasking' ? (
               <div className="workflow-card workflow-card-fingerprints">
-                <div className="workflow-card-title"><span>Viewport multitasking distribution</span></div>
-                <div className="workflow-card-subtitle">
-                  <span>How it is calculated</span>
-                  <HelpTooltip text="For each replay-player we inspect coordinate-bearing commands from 7:00 until 80% of game length. A switch happens when the next command lands outside the previous viewport-sized box (22x16 tiles, 32 pixels per tile). The detector stores a JSON payload per replay-player with Viewport Switch Rate, SameViewportShare, and SameViewportMedianRun." label="Viewport multitasking methodology" />
-                </div>
-                <div className="workflow-subtle-note">
-                  {VIEWPORT_SWITCH_RATE_CONFIG.interpretation}
-                </div>
                 {mainPlayersViewportHistogramLoading ? <div className="chart-empty">Loading viewport multitasking...</div> : null}
                 {!mainPlayersViewportHistogramLoading && mainPlayersViewportHistogramError ? <div className="chart-empty">{mainPlayersViewportHistogramError}</div> : null}
                 {!mainPlayersViewportHistogramLoading && !mainPlayersViewportHistogramError && mainPlayersViewportProcessed.points.length === 0 ? (
@@ -4027,9 +4117,6 @@ function App() {
                         value={String(Math.max(4, Number(mainPlayersViewportMinGames) || 4))}
                         onChange={(e) => setMainPlayersViewportMinGames(Math.max(4, Number(e.target.value) || 4))}
                       />
-                    </div>
-                    <div className="workflow-subtle-note">
-                      {`Backend gate: at least ${Number(mainPlayersViewportHistogram?.min_games || 0)} games. The slider only filters the already-loaded population client-side.`}
                     </div>
                     <Histogram
                       data={[]}
@@ -4073,32 +4160,117 @@ function App() {
               <div className="loading">Loading game report...</div>
             ) : mainGame ? (
               <>
-                <div className="workflow-title-row">
-                  <h2>{renderPlayersMatchup(mainGame.players?.map((p) => p.name).join(' vs '))}</h2>
-                  <button className="btn-switch" onClick={goBackMainView}>Back</button>
+                <div className="workflow-title-row workflow-title-row--solo">
+                  <h2 className="workflow-game-players-heading">{renderMainGameListPlayers(mainGame)}</h2>
                 </div>
-                <div className="workflow-meta">
+                <div className="workflow-meta workflow-meta--game-header">
                   <span>{formatRelativeReplayDate(mainGame.replay_date)}</span>
                   <span>{mainGame.map_name}</span>
                   <span>{formatDuration(mainGame.duration_seconds)}</span>
-                </div>
-                <div className="workflow-nav">
                   <button
                     type="button"
-                    className="btn-switch btn-switch-see-replay"
+                    className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
                     disabled={mainGameSeeLoading}
                     title="Clones this replay into your configured replay ingestion folder as _watch_me.rep so you can easily find it within Starcraft."
                     onClick={copyMainGameToWatchMe}
                   >
                     {mainGameSeeLoading ? 'Copying…' : 'Stage watch replay'}
                   </button>
-                  <button className={`btn-switch ${mainGameTab === 'summary' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('summary')}>Summary</button>
-                  <button className={`btn-switch ${mainGameTab === 'events' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('events')}>Game Events</button>
-                  <button className={`btn-switch ${mainGameTab === 'units' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('units')}>Units</button>
-                  <button className={`btn-switch ${mainGameTab === 'timings' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('timings')}>Timings</button>
-                  <button className={`btn-switch ${mainGameTab === 'first-unit-efficiency' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('first-unit-efficiency')}>First Unit Efficiency</button>
-                  <button className={`btn-switch ${mainGameTab === 'unit-production-cadence' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('unit-production-cadence')}>Unit Production Cadence</button>
-                  <button className={`btn-switch ${mainGameTab === 'viewport-multitasking' ? 'workflow-nav-active' : ''}`} onClick={() => setMainGameTab('viewport-multitasking')}>Viewport Multitasking</button>
+                </div>
+                <div className="workflow-game-tab-stack">
+                  <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label="Game report sections">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={mainGameTab === 'summary'}
+                      className={`workflow-production-tab ${mainGameTab === 'summary' ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => setMainGameTab('summary')}
+                    >
+                      Summary
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={mainGameTab === 'events'}
+                      className={`workflow-production-tab ${mainGameTab === 'events' ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => setMainGameTab('events')}
+                    >
+                      Game Events
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={mainGameTab === 'units'}
+                      className={`workflow-production-tab ${mainGameTab === 'units' ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => setMainGameTab('units')}
+                    >
+                      Units
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={mainGameTab === 'timings'}
+                      className={`workflow-production-tab ${mainGameTab === 'timings' ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => setMainGameTab('timings')}
+                    >
+                      Timings
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={isMainGameSkillProxyTab(mainGameTab)}
+                      className={`workflow-production-tab ${isMainGameSkillProxyTab(mainGameTab) ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => {
+                        if (isMainGameSkillProxyTab(mainGameTab)) return;
+                        setMainGameTab('first-unit-efficiency');
+                      }}
+                    >
+                      Skill proxies
+                    </button>
+                  </div>
+                  {isMainGameSkillProxyTab(mainGameTab) ? (
+                    <div className="workflow-skill-proxy-subnav">
+                      <div className="workflow-production-tabs workflow-skill-proxy-tabs" role="tablist" aria-label="Skill proxy views">
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={mainGameTab === 'first-unit-efficiency'}
+                          className={`workflow-production-tab ${mainGameTab === 'first-unit-efficiency' ? 'workflow-production-tab-active' : ''}`}
+                          onClick={() => setMainGameTab('first-unit-efficiency')}
+                        >
+                          First unit efficiency
+                        </button>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={mainGameTab === 'unit-production-cadence'}
+                          className={`workflow-production-tab ${mainGameTab === 'unit-production-cadence' ? 'workflow-production-tab-active' : ''}`}
+                          onClick={() => setMainGameTab('unit-production-cadence')}
+                        >
+                          Unit production cadence
+                        </button>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={mainGameTab === 'viewport-multitasking'}
+                          className={`workflow-production-tab ${mainGameTab === 'viewport-multitasking' ? 'workflow-production-tab-active' : ''}`}
+                          onClick={() => setMainGameTab('viewport-multitasking')}
+                        >
+                          Viewport multitasking
+                        </button>
+                      </div>
+                      {mainGameTab === 'unit-production-cadence' ? (
+                        <div className="workflow-section-info workflow-skill-proxy-tab-info" role="note">
+                          {SKILL_PROXY_CADENCE_INFO_TEXT}
+                        </div>
+                      ) : null}
+                      {mainGameTab === 'viewport-multitasking' ? (
+                        <div className="workflow-section-info workflow-skill-proxy-tab-info" role="note">
+                          {SKILL_PROXY_VIEWPORT_INFO_TEXT}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
                 {mainGameSeeNotice ? (
                   <div className={`workflow-see-notice ${mainGameSeeNoticeError ? 'workflow-see-notice-error' : ''}`}>{mainGameSeeNotice}</div>
@@ -4111,18 +4283,21 @@ function App() {
                         {mainMapVisualAvailable ? (
                           <button
                             type="button"
-                            className="workflow-map-thumb-btn"
-                            onClick={() => setMainMapModalOpen(true)}
-                            title="Click to enlarge map"
+                            className="workflow-map-thumb-btn workflow-map-thumb-btn--events-link"
+                            onClick={() => setMainGameTab('events')}
+                            title="Open Game Events"
                           >
-                            {renderSummaryMapStack({
-                              legendItems: selectedMainGameLegend,
-                              showLegend: false,
-                              imageUrl: mainMapVisualThumbURL,
-                              mapAlt: `${mainGame.map_name} map`,
-                              bounds: mainEventMapBounds,
-                              startPolygons: summaryMapStartPolygons,
-                            })}
+                            <div className="workflow-map-thumb-btn-inner">
+                              {renderSummaryMapStack({
+                                legendItems: selectedMainGameLegend,
+                                showLegend: false,
+                                imageUrl: mainMapVisualThumbURL,
+                                mapAlt: `${mainGame.map_name} map`,
+                                bounds: mainEventMapBounds,
+                                startPolygons: summaryMapStartPolygons,
+                              })}
+                              <span className="workflow-map-thumb-btn-hover-label" aria-hidden="true">Game Events</span>
+                            </div>
                           </button>
                         ) : (
                           <div className="workflow-map-summary-fallback">
@@ -4183,88 +4358,108 @@ function App() {
 
                 {mainGameTab === 'events' && (
                   <div className="workflow-card workflow-card-recent-games">
-                    <div className="workflow-summary-filter-row">
-                      <input
-                        type="text"
-                        className="workflow-summary-filter-input"
-                        placeholder="Filter events..."
-                        value={mainSummaryFilters.search}
-                        onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, search: e.target.value }))}
-                      />
-                      <select
-                        className="workflow-summary-filter-select"
-                        value={mainSummaryFilters.player}
-                        onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, player: e.target.value }))}
-                      >
-                        <option value="">Any player</option>
-                        {(mainGame.players || []).map((player) => (
-                          <option key={player.player_id} value={player.name}>{player.name}</option>
-                        ))}
-                      </select>
-                      <select
-                        className="workflow-summary-filter-select"
-                        value={mainSummaryFilters.location}
-                        onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, location: e.target.value }))}
-                      >
-                        <option value="">Any location</option>
-                        {mainLocationOptions.map((loc) => (
-                          <option key={loc} value={loc}>{loc}</option>
-                        ))}
-                      </select>
-                      <label className="workflow-summary-filter-check">
-                        <input
-                          type="checkbox"
-                          checked={mainSummaryFilters.nuke}
-                          onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, nuke: e.target.checked }))}
-                        />
-                        nuke
-                      </label>
-                      <label className="workflow-summary-filter-check">
-                        <input
-                          type="checkbox"
-                          checked={mainSummaryFilters.drop}
-                          onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, drop: e.target.checked }))}
-                        />
-                        drop
-                      </label>
-                      <label className="workflow-summary-filter-check">
-                        <input
-                          type="checkbox"
-                          checked={mainSummaryFilters.recall}
-                          onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, recall: e.target.checked }))}
-                        />
-                        recall
-                      </label>
-                      <label className="workflow-summary-filter-check">
-                        <input
-                          type="checkbox"
-                          checked={mainSummaryFilters.becameRace}
-                          onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, becameRace: e.target.checked }))}
-                        />
-                        became race
-                      </label>
-                      <label className="workflow-summary-filter-check">
-                        <input
-                          type="checkbox"
-                          checked={mainSummaryFilters.rush}
-                          onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, rush: e.target.checked }))}
-                        />
-                        rush
-                      </label>
+                    <div className="workflow-section-top-row">
+                      <div className="workflow-events-filter-cluster workflow-events-topic-filters">
+                        <label className={`workflow-summary-filter-check${!gameEventTopicAvailability.nuke ? ' workflow-summary-filter-check--disabled' : ''}`}>
+                          <input
+                            type="checkbox"
+                            disabled={!gameEventTopicAvailability.nuke}
+                            checked={mainSummaryFilters.nuke}
+                            onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, nuke: e.target.checked }))}
+                          />
+                          nuke
+                        </label>
+                        <label className={`workflow-summary-filter-check${!gameEventTopicAvailability.drop ? ' workflow-summary-filter-check--disabled' : ''}`}>
+                          <input
+                            type="checkbox"
+                            disabled={!gameEventTopicAvailability.drop}
+                            checked={mainSummaryFilters.drop}
+                            onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, drop: e.target.checked }))}
+                          />
+                          drop
+                        </label>
+                        <label className={`workflow-summary-filter-check${!gameEventTopicAvailability.recall ? ' workflow-summary-filter-check--disabled' : ''}`}>
+                          <input
+                            type="checkbox"
+                            disabled={!gameEventTopicAvailability.recall}
+                            checked={mainSummaryFilters.recall}
+                            onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, recall: e.target.checked }))}
+                          />
+                          recall
+                        </label>
+                        <label className={`workflow-summary-filter-check${!gameEventTopicAvailability.scout ? ' workflow-summary-filter-check--disabled' : ''}`}>
+                          <input
+                            type="checkbox"
+                            disabled={!gameEventTopicAvailability.scout}
+                            checked={mainSummaryFilters.scout}
+                            onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, scout: e.target.checked }))}
+                          />
+                          scout
+                        </label>
+                        <label className={`workflow-summary-filter-check${!gameEventTopicAvailability.becameRace ? ' workflow-summary-filter-check--disabled' : ''}`}>
+                          <input
+                            type="checkbox"
+                            disabled={!gameEventTopicAvailability.becameRace}
+                            checked={mainSummaryFilters.becameRace}
+                            onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, becameRace: e.target.checked }))}
+                          />
+                          became race
+                        </label>
+                        <label className={`workflow-summary-filter-check${!gameEventTopicAvailability.rush ? ' workflow-summary-filter-check--disabled' : ''}`}>
+                          <input
+                            type="checkbox"
+                            disabled={!gameEventTopicAvailability.rush}
+                            checked={mainSummaryFilters.rush}
+                            onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, rush: e.target.checked }))}
+                          />
+                          rush
+                        </label>
+                      </div>
+                      <div className="workflow-section-warning">
+                        ⚠️ Event narratives are derived from imperfect replay signals: expect some errors.
+                      </div>
                     </div>
-                    <div className="workflow-card-title"><span>Game events</span></div>
-                    {filteredGameEvents.length > 0 ? (
-                      <div className="workflow-events-layout">
+                    <div className="workflow-events-layout">
                         <div className="workflow-event-map-panel">
                           {mainMapVisualAvailable ? (
                             <>
-                              {selectedMainGameLegend.length > 0 ? (
-                                <div className="workflow-event-map-legend">
-                                  {selectedMainGameLegend.map((item) => (
-                                    <span key={`legend-${item.name}`} className="workflow-event-map-legend-item" style={legendTextStyle(item.rawColor, item.color)}>
-                                      {item.name}
-                                    </span>
+                              {mainGamePlayers.length > 0 ? (
+                                <div className="workflow-event-map-legend workflow-event-map-legend--filters" role="group" aria-label="Filter events by player">
+                                  {mainGamePlayers.map((player) => (
+                                    <label
+                                      key={`event-filter-${player.player_id}`}
+                                      className="workflow-event-legend-filter-item"
+                                      style={legendTextStyle(player.color, playerColorToCss(player.color))}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={mainEventsPlayerEnabledById[String(player.player_id)] !== false}
+                                        onChange={(e) => setMainEventsPlayerEnabledById((prev) => ({
+                                          ...prev,
+                                          [String(player.player_id)]: e.target.checked,
+                                        }))}
+                                      />
+                                      <span>{player.name}</span>
+                                    </label>
                                   ))}
+                                  <button
+                                    type="button"
+                                    className="workflow-legend-bulk-btn"
+                                    onClick={() => setMainEventsPlayerEnabledById(
+                                      Object.fromEntries(mainGamePlayers.map((p) => [String(p.player_id), false])),
+                                    )}
+                                  >
+                                    None
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="workflow-legend-bulk-btn"
+                                    onClick={() => setMainEventsPlayerEnabledById(
+                                      Object.fromEntries(mainGamePlayers.map((p) => [String(p.player_id), true])),
+                                    )}
+                                  >
+                                    All
+                                  </button>
                                 </div>
                               ) : null}
                               <div className="workflow-event-map-frame">
@@ -4360,28 +4555,30 @@ function App() {
                           )}
                         </div>
                         <div className="workflow-events">
-                          {filteredGameEvents.map((event, idx) => {
-                            const eventKey = gameEventRowKey(event, idx);
-                            const selected = eventKey === selectedMainGameEventKeyResolved;
-                            return (
-                              <button
-                                key={eventKey}
-                                type="button"
-                                className={`workflow-event-row ${selected ? 'workflow-event-row-selected' : ''}`}
-                                onClick={() => setMainSelectedGameEventKey(eventKey)}
-                              >
-                                <span>{formatDuration(event.second)}</span>
-                                <span className="workflow-event-row-body">
-                                  <span>{gameEventDescription(event)}</span>
-                                </span>
-                              </button>
-                            );
-                          })}
+                          {filteredGameEvents.length > 0 ? (
+                            filteredGameEvents.map((event) => {
+                              const topicIndex = topicFilteredGameEvents.indexOf(event);
+                              const eventKey = gameEventTopicKey(topicIndex);
+                              const selected = eventKey === selectedMainGameEventKeyResolved;
+                              return (
+                                <button
+                                  key={eventKey}
+                                  type="button"
+                                  className={`workflow-event-row ${selected ? 'workflow-event-row-selected' : ''}`}
+                                  onClick={() => setMainSelectedGameEventKey(eventKey)}
+                                >
+                                  <span>{formatDuration(event.second)}</span>
+                                  <span className="workflow-event-row-body">
+                                    <span>{gameEventDescription(event)}</span>
+                                  </span>
+                                </button>
+                              );
+                            })
+                          ) : (
+                            <div className="chart-empty">No events match the current filters. Use All to show players again.</div>
+                          )}
                         </div>
                       </div>
-                    ) : (
-                      <div className="chart-empty">No summary items match current filters.</div>
-                    )}
                   </div>
                 )}
 
@@ -4406,9 +4603,8 @@ function App() {
                           Buildings
                         </button>
                       </div>
-                      <div className="workflow-units-notice">
-                        ⚠️ Replay command streams capture successful production intent, not guaranteed finished unit/building creation.
-                        Entries cannot be deduplicated reliably, so expect unevenly inflated numbers. This makes build-order detection very hard.
+                      <div className="workflow-section-warning">
+                        ⚠️ Replay commands contain significant false positives. Expect inflated numbers.
                       </div>
                     </div>
                     <div className="workflow-summary-filter-row">
@@ -4591,18 +4787,23 @@ function App() {
 
                 {mainGameTab === 'timings' && (
                   <div className="workflow-timing-charts">
-                    <div className="workflow-production-tabs workflow-timing-tabs" role="tablist" aria-label="Timing category tabs">
-                      {TIMING_CATEGORY_CONFIG.map((cfg) => (
-                        <button
-                          key={cfg.id}
-                          className={`workflow-production-tab ${mainTimingCategory === cfg.id ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setMainTimingCategory(cfg.id)}
-                          role="tab"
-                          aria-selected={mainTimingCategory === cfg.id}
-                        >
-                          {cfg.label}
-                        </button>
-                      ))}
+                    <div className="workflow-section-top-row">
+                      <div className="workflow-production-tabs workflow-timing-tabs" role="tablist" aria-label="Timing category tabs">
+                        {TIMING_CATEGORY_CONFIG.map((cfg) => (
+                          <button
+                            key={cfg.id}
+                            className={`workflow-production-tab ${mainTimingCategory === cfg.id ? 'workflow-production-tab-active' : ''}`}
+                            onClick={() => setMainTimingCategory(cfg.id)}
+                            role="tab"
+                            aria-selected={mainTimingCategory === cfg.id}
+                          >
+                            {cfg.label}
+                          </button>
+                        ))}
+                      </div>
+                      {mainTimingNotice ? (
+                        <div className="workflow-section-warning">{mainTimingNotice}</div>
+                      ) : null}
                     </div>
                     {mainTimingCategory === 'hp_upgrades' ? (
                       <>
@@ -4641,7 +4842,7 @@ function App() {
                       </>
                     ) : (
                       <TimingScatterRows
-                        title={mainTimingCategoryConfig.title}
+                        title=""
                         series={mainTimingSeries}
                         durationSeconds={mainGame.duration_seconds}
                         colorByLabel={mainTimingUsesLabelColors}
@@ -4650,7 +4851,7 @@ function App() {
                         axisMode={mainTimingAxisMode}
                         maxSecondOverride={mainTimingAxisTrimMaxSecond}
                         inlineLegend={mainTimingInlineLegend}
-                        noticeText={mainTimingNotice}
+                        noticeText=""
                         rowLabelMode={mainTimingInlineLegend ? 'worker-icon' : (['gas', 'expansion'].includes(mainTimingCategory) ? 'name-only' : 'race-suffix')}
                         rowGroupingMode={mainTimingInlineLegend ? 'race' : 'none'}
                       />
@@ -4659,8 +4860,11 @@ function App() {
                 )}
                 {mainGameTab === 'first-unit-efficiency' && (
                   <div className="workflow-timing-charts">
-                    <div className="workflow-timing-notice">
-                      Timing caveat: this metric uses command timestamps, so inefficiency can be inflated by worker travel after a build order is issued (e.g. SCV pathing before Barracks placement). Skilled players usually pre-position workers to reduce this delay. Network latency should not affect calculations. Game speed can affect timings, but most games are played on Fastest.
+                    <div className="workflow-section-top-row">
+                      <span className="workflow-section-top-spacer" aria-hidden="true" />
+                      <div className="workflow-section-warning">
+                        ⚠️ Worker travel starting build inflates these numbers.
+                      </div>
                     </div>
                     {mainFirstUnitEfficiencyGroups.length > 0 ? (
                       mainFirstUnitEfficiencyGroups.map((groupEntry) => (
@@ -4679,14 +4883,6 @@ function App() {
                 {mainGameTab === 'unit-production-cadence' && (
                   <div className="workflow-timing-charts">
                     <div className="workflow-card workflow-card-fingerprints">
-                      <div className="workflow-card-title"><span>Unit production cadence (this game)</span></div>
-                      <div className="workflow-card-subtitle">
-                        <span>How it is calculated</span>
-                        <HelpTooltip text="For each player in this replay: use attacking-unit Train/Unit Morph commands in [7:00, 80% game length], compute ratePerMin and gap evenness (cvGap), then cadenceScore = ratePerMin / (1 + cvGap)." label="Per-game cadence methodology" />
-                      </div>
-                      <div className="workflow-subtle-note">
-                        Rationale: this captures sustained combat-unit production rhythm. Higher score means faster and less bursty production during the mid-game window.
-                      </div>
                       {mainGameCadenceProcessed.points.length > 0 ? (
                         <Histogram
                           data={[]}
@@ -4740,14 +4936,6 @@ function App() {
                 {mainGameTab === 'viewport-multitasking' && (
                   <div className="workflow-timing-charts">
                     <div className="workflow-card workflow-card-fingerprints">
-                      <div className="workflow-card-title"><span>Viewport multitasking (this game)</span></div>
-                      <div className="workflow-card-subtitle">
-                        <span>How it is calculated</span>
-                        <HelpTooltip text="For each player in this replay: use coordinate-bearing commands in [7:00, 80% game length]. A switch happens when the next command lands outside the previous viewport-sized box. The detector stores only the Viewport Switch Rate as a float per replay-player." label="Per-game viewport multitasking methodology" />
-                      </div>
-                      <div className="workflow-subtle-note">
-                        {VIEWPORT_SWITCH_RATE_CONFIG.interpretation}
-                      </div>
                       {mainGameViewportProcessed.points.length > 0 ? (
                         <Histogram
                           data={[]}
@@ -4792,26 +4980,6 @@ function App() {
                     </div>
                   </div>
                 )}
-                {mainMapModalOpen && mainMapVisualAvailable ? (
-                  <div className="modal-overlay" onClick={() => setMainMapModalOpen(false)}>
-                    <div className="modal-content workflow-map-modal workflow-map-modal--enriched" onClick={(e) => e.stopPropagation()}>
-                      <div className="modal-header">
-                        <h2>{mainGame.map_name}</h2>
-                        <button className="btn-close" onClick={() => setMainMapModalOpen(false)}>×</button>
-                      </div>
-                      <div className="workflow-map-modal-body workflow-map-modal-body--map-only">
-                        {renderSummaryMapStack({
-                          legendItems: selectedMainGameLegend,
-                          showLegend: true,
-                          imageUrl: mainMapVisualURL,
-                          mapAlt: `${mainGame.map_name} map`,
-                          bounds: mainEventMapBounds,
-                          startPolygons: summaryMapStartPolygons,
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
               </>
             ) : (
               <div className="chart-empty">Select a game from the Games tab.</div>
@@ -4850,7 +5018,7 @@ function App() {
                       <span className="workflow-inline-warning">⚠️ Fewer than 5 replays: we cannot provide reliable player-level insights yet.</span>
                     ) : null}
                   </div>
-                  <button className="btn-switch" onClick={goBackMainView}>Back</button>
+                  <button type="button" className="btn-switch" onClick={goBackMainView}>Back</button>
                 </div>
                 <div className="workflow-meta">
                   <span><strong>Games</strong> {mainPlayer.games_played}</span>
@@ -5230,20 +5398,19 @@ function App() {
           error={globalReplayFilterError}
           onClose={() => setShowGlobalReplayFilter(false)}
           onSave={handleSaveGlobalReplayFilter}
-          savedIngestInputDir={savedIngestInputDir}
           aliases={aliases}
           aliasesLoading={aliasesLoading}
           aliasesMessage={aliasesMessage}
           aliasesMessageIsError={aliasesMessageIsError}
           aliasForm={aliasForm}
           aliasSaving={aliasSaving}
-          aliasSourceFilter={aliasSourceFilter}
+          aliasSources={aliasSources}
           aliasEditOriginal={aliasEditOriginal}
           onAliasFormChange={setAliasForm}
           onAliasSave={handleAliasSave}
           onAliasDelete={handleAliasDelete}
           onAliasImportFile={handleAliasImportFile}
-          onAliasSourceFilterChange={setAliasSourceFilter}
+          onAliasSourcesToggle={handleAliasSourceToggle}
           onAliasEdit={handleAliasEdit}
           onAliasCancelEdit={handleAliasCancelEdit}
           onAliasExport={handleAliasExport}
@@ -5261,7 +5428,10 @@ function App() {
           ingestSettingsLoading={ingestSettingsLoading}
           ingestSettingsSaving={ingestSettingsSaving}
           ingestSocketState={ingestSocketState}
-          onClose={() => setShowIngestPanel(false)}
+          onClose={() => {
+            setShowIngestPanel(false);
+            setIngestStatus('idle');
+          }}
           onSubmit={handleIngestSubmit}
           onChange={setIngestForm}
           onInputDirChange={setIngestInputDir}

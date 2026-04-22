@@ -431,21 +431,24 @@ func formatWorkflowPlayersLabelFromList(players []workflowGameListPlayer) string
 		}
 		playersByTeam[player.Team] = append(playersByTeam[player.Team], player.Name)
 	}
-	usesTeams := false
-	for _, team := range teamOrder {
-		if len(playersByTeam[team]) > 1 {
-			usesTeams = true
-			break
+	if len(teamOrder) <= 1 {
+		names := make([]string, 0, len(players))
+		for _, p := range players {
+			names = append(names, p.Name)
 		}
+		return strings.Join(names, ", ")
 	}
 	sides := make([]string, 0, len(teamOrder))
 	for _, team := range teamOrder {
 		teamPlayers := playersByTeam[team]
-		if usesTeams && len(teamPlayers) > 1 {
-			sides = append(sides, "("+strings.Join(teamPlayers, " & ")+")")
+		switch len(teamPlayers) {
+		case 0:
 			continue
+		case 1:
+			sides = append(sides, teamPlayers[0])
+		default:
+			sides = append(sides, strings.Join(teamPlayers, ", "))
 		}
-		sides = append(sides, strings.Join(teamPlayers, ", "))
 	}
 	return strings.Join(sides, " vs ")
 }

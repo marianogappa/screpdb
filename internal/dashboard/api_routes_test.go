@@ -126,7 +126,7 @@ func TestSetupRouter_GameDetailThroughRouter(t *testing.T) {
 func TestSetupRouter_GameAssetIconReturnsPNG(t *testing.T) {
 	d := newTestDashboard(t)
 	r := d.setupRouter()
-	req := httptest.NewRequest(http.MethodGet, "/api/custom/game-assets/unit?name=marine", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/custom/game-assets/unit?name=marine&v="+gameAssetIconRenderVersion, nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
