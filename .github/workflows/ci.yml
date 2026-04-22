@@ -26,8 +26,16 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Build embedded UI and Go binary
-        run: make build
+      - name: Build embedded UI and windows binaries
+        run: make windows-binaries
+
+      - name: Upload windows binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-binaries
+          path: |
+            dist/cli.exe
+            dist/dashboard.exe
 
       - name: Run tests
         run: go test ./...
