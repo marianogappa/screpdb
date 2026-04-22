@@ -1,26 +1,21 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/marianogappa/screpdb/internal/dashboard"
+	"github.com/marianogappa/screpdb/internal/dashboardrun"
 	"github.com/marianogappa/screpdb/internal/storage"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
 
-var (
-	dashboardSQLitePath string
-	aiAPIKey            string
-	aiModel             string
-	aiVendor            string
-	dashboardPort       int
-)
+var dashboardOpts dashboardrun.Options
 
 var dashboardCmd = &cobra.Command{
 	Use:   "dashboard",
@@ -34,42 +29,30 @@ func init() {
 }
 
 func addDashboardFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&dashboardSQLitePath, "sqlite-path", "s", "screp.db", "SQLite database file path.")
-	cmd.Flags().StringVarP(&aiVendor, "ai-vendor", "v", "", "Which AI to use (OPENAI|ANTHROPIC|GEMINI). Defaults to OPENAI.")
-	cmd.Flags().StringVarP(&aiAPIKey, "ai-api-key", "k", "", "An API KEY from the AI vendor in order to prompt for widget creation.")
-	cmd.Flags().StringVarP(&aiModel, "ai-model", "m", "", "The AI model to use.")
-	cmd.Flags().IntVarP(&dashboardPort, "port", "p", 8000, "Dashboard server port")
+	dashboardrun.RegisterFlags(cmd.Flags(), &dashboardOpts)
 }
 
-func runDashboard(cmd *cobra.Command, args []string) error {
-	store, err := storage.NewSQLiteStorage(dashboardSQLitePath)
+func defaultDashboardOptions() dashboardrun.Options {
+	o := dashboardOpts
+	o.NormalizeAfterParse()
+	return o
+}
+
+func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) error {
+	store, err := storage.NewSQLiteStorage(opts.SQLitePath)
 	if err != nil {
 		return fmt.Errorf("failed to create SQLite storage: %w", err)
 	}
 
-	var _aiVendor string
-	if os.Getenv("GEMINI_API_KEY") != "" {
-		_aiVendor = dashboard.AIVendorGemini
-	}
-	if os.Getenv("ANTHROPIC_API_KEY") != "" {
-		_aiVendor = dashboard.AIVendorAnthropic
-	}
-	if os.Getenv("OPENAI_API_KEY") != "" {
-		_aiVendor = dashboard.AIVendorOpenAI
-	}
-	if aiVendor != "" {
-		_aiVendor = strings.ToUpper(aiVendor)
-	}
-
-	dash, err := dashboard.New(cmd.Context(), store, dashboardSQLitePath, _aiVendor, aiAPIKey, aiModel)
+	dash, err := dashboard.New(ctx, store, opts.SQLitePath, opts.AIVendor, opts.AIAPIKey, opts.AIModel)
 	if err != nil {
 		return err
 	}
 
 	// Start backend server asynchronously
-	serverURL := fmt.Sprintf("http://localhost:%d", dashboardPort)
+	serverURL := fmt.Sprintf("http://localhost:%d", opts.Port)
 	log.Printf("Starting dashboard server on %s...", serverURL)
-	backendReady := dash.StartAsync(dashboardPort)
+	backendReady := dash.StartAsync(opts.Port)
 	if err := <-backendReady; err != nil {
 		return fmt.Errorf("dashboard server failed to start: %w", err)
 	}
@@ -80,9 +63,12 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 		log.Printf("Warning: failed to open browser: %v", err)
 	}
 
-	// Keep process running while the server is active.
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-	<-sigCh
+	<-ctx.Done()
 	return nil
+}
+
+func runDashboard(cmd *cobra.Command, args []string) error {
+	signalCtx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	return RunDashboardWithContext(signalCtx, defaultDashboardOptions())
 }
