@@ -133,20 +133,19 @@ function GlobalReplayFilterModal({
   error,
   onClose,
   onSave,
-  savedIngestInputDir,
   aliases,
   aliasesLoading,
   aliasesMessage,
   aliasesMessageIsError,
   aliasForm,
   aliasSaving,
-  aliasSourceFilter,
+  aliasSources,
   aliasEditOriginal,
   onAliasFormChange,
   onAliasSave,
   onAliasDelete,
   onAliasImportFile,
-  onAliasSourceFilterChange,
+  onAliasSourcesToggle,
   onAliasEdit,
   onAliasCancelEdit,
   onAliasExport,
@@ -178,32 +177,38 @@ function GlobalReplayFilterModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content global-filter-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Settings</h2>
-          <button type="button" onClick={onClose} className="btn-close">×</button>
-        </div>
-        <div className="settings-modal-tab-row workflow-nav">
-          <button
-            type="button"
-            className={`btn-switch ${settingsTab === 'scope' ? 'workflow-nav-active' : ''}`}
-            onClick={() => setSettingsTab('scope')}
-          >
-            Replay scope
-          </button>
-          <button
-            type="button"
-            className={`btn-switch ${settingsTab === 'aliases' ? 'workflow-nav-active' : ''}`}
-            onClick={() => setSettingsTab('aliases')}
-          >
-            Aliases
-          </button>
+      <div className="modal-content global-filter-modal settings-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header settings-modal-header">
+          <div className="settings-modal-header-row">
+            <h2>Settings</h2>
+            <button type="button" onClick={onClose} className="btn-close">×</button>
+          </div>
+          <div className="workflow-production-tabs settings-modal-main-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={settingsTab === 'scope'}
+              className={`workflow-production-tab${settingsTab === 'scope' ? ' workflow-production-tab-active' : ''}`}
+              onClick={() => setSettingsTab('scope')}
+            >
+              Replay Filtering
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={settingsTab === 'aliases'}
+              className={`workflow-production-tab${settingsTab === 'aliases' ? ' workflow-production-tab-active' : ''}`}
+              onClick={() => setSettingsTab('aliases')}
+            >
+              Aliases
+            </button>
+          </div>
         </div>
         {settingsTab === 'scope' ? (
-          <form onSubmit={handleSubmit} className="edit-form">
+          <form onSubmit={handleSubmit} className="edit-form settings-modal-tab-panel">
             {error ? <div className="error-message">{error}</div> : null}
-            <div className="global-filter-warning">
-              These settings apply to the Games and Players dashboards. Custom Dashboards are configured separately.
+            <div className="global-filter-note">
+              Custom Dashboards are configured separately.
             </div>
 
             <div className="global-filter-toggle-grid">
@@ -265,22 +270,21 @@ function GlobalReplayFilterModal({
             </div>
           </form>
         ) : (
-          <div className="edit-form ingest-form">
+          <div className="edit-form ingest-form settings-modal-tab-panel">
             <AliasesSettingsPanel
-              savedIngestInputDir={savedIngestInputDir}
               aliases={aliases}
               aliasesLoading={aliasesLoading}
               aliasesMessage={aliasesMessage}
               aliasesMessageIsError={aliasesMessageIsError}
               aliasForm={aliasForm}
               aliasSaving={aliasSaving}
-              aliasSourceFilter={aliasSourceFilter}
+              aliasSources={aliasSources}
               aliasEditOriginal={aliasEditOriginal}
               onAliasFormChange={onAliasFormChange}
               onAliasSave={onAliasSave}
               onAliasDelete={onAliasDelete}
               onAliasImportFile={onAliasImportFile}
-              onAliasSourceFilterChange={onAliasSourceFilterChange}
+              onAliasSourcesToggle={onAliasSourcesToggle}
               onAliasEdit={onAliasEdit}
               onAliasCancelEdit={onAliasCancelEdit}
               onAliasExport={onAliasExport}

@@ -1217,7 +1217,7 @@ function App() {
   const [aliasesMessage, setAliasesMessage] = useState('');
   const [aliasesMessageIsError, setAliasesMessageIsError] = useState(false);
   const [aliasSaving, setAliasSaving] = useState(false);
-  const [aliasSourceFilter, setAliasSourceFilter] = useState('all');
+  const [aliasSources, setAliasSources] = useState(['you', 'manual', 'imported']);
   const [aliasEditOriginal, setAliasEditOriginal] = useState(null);
   const [aliasForm, setAliasForm] = useState({
     canonical_alias: '',
@@ -1229,10 +1229,7 @@ function App() {
     watch: false,
     stopAfterN: 50,
     clean: false,
-    storeRightClicks: false,
-    skipHotkeys: false,
     autoIngestEnabled: storedAutoIngest.enabled,
-    autoIngestIntervalSeconds: storedAutoIngest.intervalSeconds,
   });
   const autoIngestInFlight = useRef(false);
   const ingestSocketRef = useRef(null);
@@ -1844,12 +1841,12 @@ function App() {
     const canonicalAlias = String(aliasForm.canonical_alias || '').trim();
     const battleTag = String(aliasForm.battle_tag || '').trim();
     if (!canonicalAlias || !battleTag) {
-      setAliasesMessage('Canonical alias and battle tag are required.');
+      setAliasesMessage('Alias and name in replay are required.');
       setAliasesMessageIsError(true);
       return;
     }
     if (canonicalAlias.trim().toLowerCase() === battleTag.trim().toLowerCase()) {
-      setAliasesMessage('Canonical alias must differ from battle tag.');
+      setAliasesMessage('Alias must differ from name in replay.');
       setAliasesMessageIsError(true);
       return;
     }
@@ -1917,6 +1914,15 @@ function App() {
     setAliasForm({ canonical_alias: '', battle_tag: '', aurora_id: '' });
     setAliasesMessage('');
     setAliasesMessageIsError(false);
+  };
+
+  const handleAliasSourceToggle = (value) => {
+    setAliasSources((prev) => {
+      if (prev.includes(value)) {
+        return prev.filter((v) => v !== value);
+      }
+      return [...prev, value].sort((a, b) => a.localeCompare(b));
+    });
   };
 
   const handleAliasExport = () => {
@@ -2175,9 +2181,8 @@ function App() {
   useEffect(() => {
     saveAutoIngestSettings({
       enabled: ingestForm.autoIngestEnabled,
-      intervalSeconds: ingestForm.autoIngestIntervalSeconds,
     });
-  }, [ingestForm.autoIngestEnabled, ingestForm.autoIngestIntervalSeconds, showIngestPanel]);
+  }, [ingestForm.autoIngestEnabled]);
 
   useEffect(() => {
     if (!showIngestPanel) {
@@ -2256,7 +2261,7 @@ function App() {
     setAliasesMessageIsError(false);
     setAliasEditOriginal(null);
     setAliasForm({ canonical_alias: '', battle_tag: '', aurora_id: '' });
-    setAliasSourceFilter('all');
+    setAliasSources(['you', 'manual', 'imported']);
     void loadIngestSettings();
     void loadAliases();
     return undefined;
@@ -2267,11 +2272,11 @@ function App() {
       return undefined;
     }
 
-    const intervalSeconds = Math.max(60, Number(ingestForm.autoIngestIntervalSeconds) || 60);
+    const intervalSeconds = 60;
     let cancelled = false;
 
     const runAutoIngest = async () => {
-      if (cancelled || autoIngestInFlight.current || showIngestPanel || ingestStatus === 'running') return;
+      if (cancelled || autoIngestInFlight.current || showIngestPanel) return;
       autoIngestInFlight.current = true;
       try {
         const health = await api.getHealth();
@@ -2304,7 +2309,7 @@ function App() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [ingestForm.autoIngestEnabled, ingestForm.autoIngestIntervalSeconds, showIngestPanel, ingestStatus]);
+  }, [ingestForm.autoIngestEnabled, showIngestPanel]);
 
   useEffect(() => () => {
     if (autoIngestNoticeTimerRef.current) {
@@ -2424,8 +2429,8 @@ function App() {
         watch: ingestForm.watch,
         stop_after_n_reps: ingestForm.stopAfterN || 0,
         clean: ingestForm.clean,
-        store_right_clicks: ingestForm.storeRightClicks,
-        skip_hotkeys: ingestForm.skipHotkeys,
+        store_right_clicks: false,
+        skip_hotkeys: false,
       });
 
       if (response?.started) {
@@ -5393,20 +5398,19 @@ function App() {
           error={globalReplayFilterError}
           onClose={() => setShowGlobalReplayFilter(false)}
           onSave={handleSaveGlobalReplayFilter}
-          savedIngestInputDir={savedIngestInputDir}
           aliases={aliases}
           aliasesLoading={aliasesLoading}
           aliasesMessage={aliasesMessage}
           aliasesMessageIsError={aliasesMessageIsError}
           aliasForm={aliasForm}
           aliasSaving={aliasSaving}
-          aliasSourceFilter={aliasSourceFilter}
+          aliasSources={aliasSources}
           aliasEditOriginal={aliasEditOriginal}
           onAliasFormChange={setAliasForm}
           onAliasSave={handleAliasSave}
           onAliasDelete={handleAliasDelete}
           onAliasImportFile={handleAliasImportFile}
-          onAliasSourceFilterChange={setAliasSourceFilter}
+          onAliasSourcesToggle={handleAliasSourceToggle}
           onAliasEdit={handleAliasEdit}
           onAliasCancelEdit={handleAliasCancelEdit}
           onAliasExport={handleAliasExport}
@@ -5424,7 +5428,10 @@ function App() {
           ingestSettingsLoading={ingestSettingsLoading}
           ingestSettingsSaving={ingestSettingsSaving}
           ingestSocketState={ingestSocketState}
-          onClose={() => setShowIngestPanel(false)}
+          onClose={() => {
+            setShowIngestPanel(false);
+            setIngestStatus('idle');
+          }}
           onSubmit={handleIngestSubmit}
           onChange={setIngestForm}
           onInputDirChange={setIngestInputDir}
