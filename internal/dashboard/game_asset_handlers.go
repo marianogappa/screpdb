@@ -16,6 +16,11 @@ import (
 
 var gameAssetFlight singleflight.Group
 
+// gameAssetIconRenderVersion segments on-disk icon cache and must match the `v` query param
+// the dashboard frontend appends to unit/building icon URLs. Bump when scmapanalyzer (or our
+// icon mapping) changes so browsers and disk cache pick up new PNGs.
+const gameAssetIconRenderVersion = "2"
+
 func (d *Dashboard) gameAssetsCacheDir() (string, error) {
 	base, err := os.UserCacheDir()
 	if err != nil {
@@ -60,7 +65,7 @@ func (d *Dashboard) serveGameAssetIcon(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "cache unavailable", http.StatusInternalServerError)
 		return
 	}
-	cachePath := filepath.Join(cacheRoot, "icons", cacheKey+".png")
+	cachePath := filepath.Join(cacheRoot, "icons", gameAssetIconRenderVersion, cacheKey+".png")
 
 	if data, readErr := os.ReadFile(cachePath); readErr == nil && len(data) > 0 {
 		w.Header().Set("Content-Type", "image/png")
@@ -69,7 +74,7 @@ func (d *Dashboard) serveGameAssetIcon(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v, err, _ := gameAssetFlight.Do("icon:"+cacheKey, func() (any, error) {
+	v, err, _ := gameAssetFlight.Do("icon:"+gameAssetIconRenderVersion+":"+cacheKey, func() (any, error) {
 		if data, readErr := os.ReadFile(cachePath); readErr == nil && len(data) > 0 {
 			return data, nil
 		}

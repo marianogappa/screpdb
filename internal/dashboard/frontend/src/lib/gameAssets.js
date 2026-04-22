@@ -1,6 +1,13 @@
-const unitIconURL = (mapKey) => `/api/custom/game-assets/unit?name=${encodeURIComponent(mapKey)}`;
+// Bump together with gameAssetIconRenderVersion in internal/dashboard/game_asset_handlers.go
+// when icon renderer output changes (scmapanalyzer assets, mapping, etc.).
+const GAME_ASSET_ICON_RENDER_VERSION = '2';
 
-const buildingIconURL = (mapKey) => `/api/custom/game-assets/building?name=${encodeURIComponent(mapKey)}`;
+const iconQuery = (mapKey) =>
+  `name=${encodeURIComponent(mapKey)}&v=${encodeURIComponent(GAME_ASSET_ICON_RENDER_VERSION)}`;
+
+const unitIconURL = (mapKey) => `/api/custom/game-assets/unit?${iconQuery(mapKey)}`;
+
+const buildingIconURL = (mapKey) => `/api/custom/game-assets/building?${iconQuery(mapKey)}`;
 
 export const normalizeUnitName = (value) =>
   String(value || '')
