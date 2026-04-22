@@ -30,6 +30,13 @@ import {
   formatDaysAgoCompact,
   formatPercent,
 } from './lib/formatters';
+import {
+  parseMainRouteSearch,
+  buildMainRouteSearch,
+  mainRouteHref,
+  mainRouteSnapshotEqual,
+  MAIN_GAME_TABS,
+} from './lib/mainRoute';
 import './styles.css';
 
 const buildHistogramSummaryFromPlayers = (players) => {
@@ -1167,7 +1174,13 @@ const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 function App() {
   const storedAutoIngest = getStoredAutoIngestSettings();
-  const [currentDashboardUrl, setCurrentDashboardUrl] = useState('default');
+  const initialMainRoute = useMemo(
+    () => parseMainRouteSearch(typeof window !== 'undefined' ? window.location.search : ''),
+    [],
+  );
+  const [currentDashboardUrl, setCurrentDashboardUrl] = useState(() => (
+    initialMainRoute.view === 'dashboards' && initialMainRoute.dash ? initialMainRoute.dash : 'default'
+  ));
   const [dashboard, setDashboard] = useState(null);
   const [dashboards, setDashboards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1224,7 +1237,7 @@ function App() {
   const autoIngestInFlight = useRef(false);
   const ingestSocketRef = useRef(null);
   const autoIngestNoticeTimerRef = useRef(null);
-  const [activeView, setActiveView] = useState('games');
+  const [activeView, setActiveView] = useState(() => initialMainRoute.view);
   const [mainGames, setMainGames] = useState([]);
   const [mainGamesLoading, setMainGamesLoading] = useState(false);
   const [mainGamesPage, setMainGamesPage] = useState(1);
@@ -1243,16 +1256,20 @@ function App() {
   });
   const [mainGameDetailLoading, setMainGameDetailLoading] = useState(false);
   const [mainPlayerLoading, setMainPlayerLoading] = useState(false);
-  const [selectedReplayId, setSelectedReplayId] = useState(null);
-  const [selectedPlayerKey, setSelectedPlayerKey] = useState('');
+  const [selectedReplayId, setSelectedReplayId] = useState(() => initialMainRoute.replayId);
+  const [selectedPlayerKey, setSelectedPlayerKey] = useState(() => initialMainRoute.playerKey || '');
   const [mainGame, setMainGame] = useState(null);
-  const [mainGameTab, setMainGameTab] = useState('summary');
+  const [mainGameTab, setMainGameTab] = useState(() => initialMainRoute.gameTab);
   const [mainEventsPlayerEnabledById, setMainEventsPlayerEnabledById] = useState({});
   const [mainSelectedGameEventKey, setMainSelectedGameEventKey] = useState('');
   const [mainGameSeeLoading, setMainGameSeeLoading] = useState(false);
   const [mainGameSeeNotice, setMainGameSeeNotice] = useState('');
   const [mainGameSeeNoticeError, setMainGameSeeNoticeError] = useState(false);
   const mainGameSeeNoticeTimerRef = useRef(null);
+  const suppressUrlSyncRef = useRef(false);
+  const openMainGameRef = useRef(null);
+  const openMainPlayerRef = useRef(null);
+  const loadDashboardRef = useRef(null);
   const [mainPlayer, setMainPlayer] = useState(null);
   const [mainPlayerRecentGames, setMainPlayerRecentGames] = useState([]);
   const [mainPlayerRecentGamesLoading, setMainPlayerRecentGamesLoading] = useState(false);
@@ -1272,7 +1289,7 @@ function App() {
   const [mainPlayersTotal, setMainPlayersTotal] = useState(0);
   const [mainPlayersSortBy, setMainPlayersSortBy] = useState('games');
   const [mainPlayersSortDir, setMainPlayersSortDir] = useState('desc');
-  const [mainPlayersTab, setMainPlayersTab] = useState('summary');
+  const [mainPlayersTab, setMainPlayersTab] = useState(() => initialMainRoute.playersTab);
   const [mainPlayersFilterOptions, setMainPlayersFilterOptions] = useState({
     races: [],
     last_played: [],
@@ -1527,7 +1544,7 @@ function App() {
     }
   };
 
-  const openMainGame = async (replayId) => {
+  const openMainGame = async (replayId, options = {}) => {
     try {
       setMainGameDetailLoading(true);
       setError(null);
@@ -1539,7 +1556,11 @@ function App() {
       setMainGameSeeNoticeError(false);
       const data = await api.getGame(replayId);
       setMainGame(data);
-      setMainGameTab('summary');
+      const wantTab = options.initialGameTab;
+      const nextTab = wantTab && MAIN_GAME_TABS.includes(String(wantTab).trim().toLowerCase())
+        ? String(wantTab).trim().toLowerCase()
+        : 'summary';
+      setMainGameTab(nextTab);
       setMainEventsPlayerEnabledById(
         Object.fromEntries((data.players || []).map((p) => [String(p.player_id), true])),
       );
@@ -1995,10 +2016,15 @@ function App() {
     return false;
   };
 
+  openMainGameRef.current = openMainGame;
+  openMainPlayerRef.current = openMainPlayer;
+  loadDashboardRef.current = loadDashboard;
+
   useEffect(() => {
-    // Load dashboard with stored variable values if available
-    const stored = getStoredVariableValues('default');
-    loadDashboard('default', stored || undefined);
+    // Load dashboard with stored variable values if available (initial URL only; switches use loadDashboard directly).
+    const url = currentDashboardUrl;
+    const stored = getStoredVariableValues(url);
+    loadDashboard(url, stored || undefined);
     loadDashboards();
     loadGlobalReplayFilterConfig().catch((err) => {
       console.error('Failed to load global replay filter config:', err);
@@ -2008,6 +2034,77 @@ function App() {
     });
     loadTopPlayerColors();
     checkOpenAIStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only; deep links set currentDashboardUrl before first paint.
+  }, []);
+
+  useEffect(() => {
+    if (initialMainRoute.view === 'game' && initialMainRoute.replayId != null) {
+      void openMainGame(initialMainRoute.replayId, { initialGameTab: initialMainRoute.gameTab });
+    } else if (initialMainRoute.view === 'player' && initialMainRoute.playerKey) {
+      void openMainPlayer(initialMainRoute.playerKey);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time hydration from initial URL.
+  }, []);
+
+  useEffect(() => {
+    if (suppressUrlSyncRef.current) return;
+    const next = buildMainRouteSearch({
+      activeView,
+      selectedReplayId,
+      selectedPlayerKey,
+      mainGameTab,
+      mainPlayersTab,
+      currentDashboardUrl,
+    });
+    if (typeof window !== 'undefined' && mainRouteSnapshotEqual(window.location.search, next && next.length ? `?${next}` : '')) {
+      return;
+    }
+    if (typeof window === 'undefined') return;
+    window.history.pushState({ __spa: 1 }, '', mainRouteHref(next));
+  }, [activeView, selectedReplayId, selectedPlayerKey, mainGameTab, mainPlayersTab, currentDashboardUrl]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      suppressUrlSyncRef.current = true;
+      const r = parseMainRouteSearch(window.location.search);
+      setActiveView(r.view);
+      setSelectedReplayId(r.replayId);
+      setSelectedPlayerKey(r.playerKey || '');
+      setMainGameTab(r.gameTab);
+      setMainPlayersTab(r.playersTab);
+      setCurrentDashboardUrl(r.view === 'dashboards' && r.dash ? r.dash : 'default');
+      const finish = () => {
+        suppressUrlSyncRef.current = false;
+      };
+      if (r.view === 'game' && r.replayId != null) {
+        const p = openMainGameRef.current?.(r.replayId, { initialGameTab: r.gameTab });
+        if (p && typeof p.finally === 'function') {
+          p.finally(finish);
+        } else {
+          finish();
+        }
+      } else if (r.view === 'player' && r.playerKey) {
+        const p = openMainPlayerRef.current?.(r.playerKey);
+        if (p && typeof p.finally === 'function') {
+          p.finally(finish);
+        } else {
+          finish();
+        }
+      } else if (r.view === 'dashboards') {
+        const dashUrl = r.dash || 'default';
+        const stored = getStoredVariableValues(dashUrl);
+        const p = loadDashboardRef.current?.(dashUrl, stored || undefined);
+        if (p && typeof p.finally === 'function') {
+          p.finally(finish);
+        } else {
+          finish();
+        }
+      } else {
+        finish();
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
   useEffect(() => {
