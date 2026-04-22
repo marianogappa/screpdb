@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.17.0](https://github.com/marianogappa/screpdb/compare/v0.16.0...v0.17.0) (2026-04-22)
+
+
+### Features
+
+* Implement aliases feature. ([b192b9c](https://github.com/marianogappa/screpdb/commit/b192b9c1ad2d8b2bbc5bc3a38bbafdc90e3922eb))
+* Implement aliases feature. ([c65f0ad](https://github.com/marianogappa/screpdb/commit/c65f0ad2c29f70bfcf27ba12aff77475c5dd44e3))
+* Implement dashboard revamp. ([3989567](https://github.com/marianogappa/screpdb/commit/39895675674b8777c1527dc96abc7618f018e80e))
+* Implement dashboard revamp. ([a59938b](https://github.com/marianogappa/screpdb/commit/a59938b96d8be6313099f5a1b3784c0d8407ad34))
+* Implement See Replay backend endpoint. ([69d96a5](https://github.com/marianogappa/screpdb/commit/69d96a5cef469e73c4e456b9aee67488c198713b))
+* Implement See Replay backend endpoint. ([fc7a07a](https://github.com/marianogappa/screpdb/commit/fc7a07ad333c85a9c38846266782fb40241d0f49))
+* Implement significant dashboard improvements. ([d2465a1](https://github.com/marianogappa/screpdb/commit/d2465a107db1d295364239f91a111a02fba907ce))
+* Implement significant Game Event improvements. ([9851881](https://github.com/marianogappa/screpdb/commit/98518819011dc3e7ca23e8403c76d9582e6f9b9f))
+* Implements pattern orchestrator game events logic. ([594f191](https://github.com/marianogappa/screpdb/commit/594f191c2b27137c543c95fbbc181360e9038906))
+* Implements pattern orchestrator game events logic. ([79230d2](https://github.com/marianogappa/screpdb/commit/79230d28111c15e60034fcd3edd77caf086a49fd))
+* Player report improvements. ([2a726dc](https://github.com/marianogappa/screpdb/commit/2a726dcbd16ba8db544ec3898447f959678c327e))
+* Significantly improve Game Events report. ([c2cdd00](https://github.com/marianogappa/screpdb/commit/c2cdd0085397b13225f84bdce66bdd832ec84c51))
+* Support OpenAI, Gemini & Anthropic as LLM vendors. ([3506bf4](https://github.com/marianogappa/screpdb/commit/3506bf48c193acd7a2b7d02cd32ea4b3a24fb927))
+* Support OpenAI, Gemini & Anthropic as LLM vendors. ([7e5a89b](https://github.com/marianogappa/screpdb/commit/7e5a89beee06ee167fe7250c9cb664623f056e41))
+* UI improvements ([b6707f5](https://github.com/marianogappa/screpdb/commit/b6707f50803527c733f6b4f7a0a2d5a0c8d3a0c5))
+* Upgrade map analysis. Fix schema issue. ([84b98b5](https://github.com/marianogappa/screpdb/commit/84b98b50b543b78b7bcfe5c588e76cc0d17a798f))
+* Various improvements to game reports. ([1f22998](https://github.com/marianogappa/screpdb/commit/1f22998460c31ad4ea6d1e5b897d6ab1c3edcbf9))
+
+
+### Bug Fixes
+
+* added strategyOneDriveUser() to handle Replays inside OneDrive folder ([62aca55](https://github.com/marianogappa/screpdb/commit/62aca5528e6eccbca96e79df34300c6d18e4d8a9))
+* adding handler path for Users on Windows11 who have their Replays in OneDrive folder ([ec58503](https://github.com/marianogappa/screpdb/commit/ec585031dc79f0e85f536524c6ef2e69b4c9d634))
+* Chat commands misassigned. Better command assignment strategy. ([d52638c](https://github.com/marianogappa/screpdb/commit/d52638cceedb34826f3f743545a365977b5f6edf))
+* Chat commands misassigned. Better command assignment stratgy. ([5b0891d](https://github.com/marianogappa/screpdb/commit/5b0891de5f0e4297ce4fa77e91223f877b369ef1))
+* Fix dashboard slowness, post-load widgets in parallel. ([25c9eb7](https://github.com/marianogappa/screpdb/commit/25c9eb7bdc5993ebca08cb8853f666259db1c19f))
+* Fix dashboard slowness, post-load widgets in parallel. ([8e03873](https://github.com/marianogappa/screpdb/commit/8e038734cf0878ad709aa09f01acbbffccc6f66f))
+* Fix Gemini requests. ([81aef9b](https://github.com/marianogappa/screpdb/commit/81aef9b110d9483ca939ae99d7593332421f740f))
+* Fix Gemini requests. ([0194fc3](https://github.com/marianogappa/screpdb/commit/0194fc3006f096439492dc6f1ddbd195aad7e845))
+* make map image sync resilient in CI. ([b2e8075](https://github.com/marianogappa/screpdb/commit/b2e8075e3b97bcda3f904fa4fce689ff86411481))
+
 ## [0.16.0](https://github.com/marianogappa/screpdb/compare/v0.15.1...v0.16.0) (2026-02-13)
 
 
