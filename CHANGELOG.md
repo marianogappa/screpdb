@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.1](https://github.com/marianogappa/screpdb/compare/v0.17.0...v0.17.1) (2026-04-22)
+
+
+### Bug Fixes
+
+* harden release artifact upload checks ([662db86](https://github.com/marianogappa/screpdb/commit/662db860c47bdf336d06330c8cf8bb819f92b715))
+* harden release artifact upload checks ([817a871](https://github.com/marianogappa/screpdb/commit/817a87196fc1c2136838eb80c6fe6147d71fea2c))
+
 ## [0.17.0](https://github.com/marianogappa/screpdb/compare/v0.16.0...v0.17.0) (2026-04-22)
 
 
