@@ -1,4 +1,6 @@
-.PHONY: openapi-generate ui-build build release windows-binaries
+.PHONY: openapi-generate ui-build build release cross-binaries
+
+REL_LDFLAGS := -s -w
 
 openapi-generate:
 	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest -config api/openapi/oapi-codegen.yaml api/openapi/dashboard.v1.yaml
@@ -13,7 +15,12 @@ build: ui-build
 release: ui-build
 	go build -trimpath -ldflags "-s -w" -o screpdb .
 
-windows-binaries: ui-build
+# Release-style cross-compiles for GitHub Releases: Windows CLI + dashboard; Linux/Darwin root CLI only (linux amd64 name unchanged).
+cross-binaries: ui-build
 	mkdir -p dist
-	GOOS=windows GOARCH=amd64 go build -o dist/cli.exe .
-	GOOS=windows GOARCH=amd64 go build -ldflags "-H=windowsgui" -o dist/dashboard.exe ./cmd/windows-dashboard
+	env GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$(REL_LDFLAGS)" -o dist/screpdb-windows-amd64.exe .
+	env GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$(REL_LDFLAGS) -H=windowsgui" -o dist/screpdb-dashboard-windows-amd64.exe ./cmd/windows-dashboard
+	env GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$(REL_LDFLAGS)" -o dist/screpdb-linux-amd64 .
+	env GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$(REL_LDFLAGS)" -o dist/screpdb-linux-arm64 .
+	env GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "$(REL_LDFLAGS)" -o dist/screpdb-darwin-amd64 .
+	env GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "$(REL_LDFLAGS)" -o dist/screpdb-darwin-arm64 .

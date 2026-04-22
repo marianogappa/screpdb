@@ -26,16 +26,14 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Build embedded UI and windows binaries
-        run: make windows-binaries
+      - name: Build embedded UI and cross-platform binaries
+        run: make cross-binaries
 
-      - name: Upload windows binaries
+      - name: Upload cross-platform binaries
         uses: actions/upload-artifact@v4
         with:
-          name: windows-binaries
-          path: |
-            dist/cli.exe
-            dist/dashboard.exe
+          name: cross-binaries
+          path: dist/*
 
       - name: Run tests
         run: go test ./...
