@@ -378,87 +378,56 @@ const renderSummaryMapStack = ({
   </>
 );
 
-const MAIN_GAME_FEATURING_ORDER = [
-  { key: 'carriers', label: 'Carrier', iconKey: 'carrier' },
-  { key: 'battlecruisers', label: 'Battlecruiser', iconKey: 'battlecruiser' },
-  { key: 'cannon_rush', label: 'Cannon rush', iconKey: 'photoncannon' },
-  { key: 'bunker_rush', label: 'Bunker rush', iconKey: 'bunker' },
-  { key: 'zergling_rush', label: 'Zergling rush', iconKey: 'zergling' },
-  { key: 'mind_control', label: 'Mind control', iconKey: 'darkarchon' },
-  { key: 'nukes', label: 'Nukes', iconKey: 'ghost' },
-  { key: 'recalls', label: 'Recalls', iconKey: 'arbiter' },
-  // Build order pills — keys mirror internal/patterns/markers FeatureKey.
-  { key: 'bo_4_pool', label: '4 Pool', iconKey: 'spawningpool' },
-  { key: 'bo_9_pool', label: '9 Pool', iconKey: 'spawningpool' },
-  { key: 'bo_9_pool_hatch', label: '9 Pool → Hatch', iconKey: 'hatchery' },
-  { key: 'bo_9_hatch', label: '9 Hatch', iconKey: 'hatchery' },
-  { key: 'bo_12_hatch', label: '12 Hatch', iconKey: 'hatchery' },
-  { key: 'bo_nexus_first', label: 'Nexus First', iconKey: 'nexus' },
-  { key: 'bo_forge_expa', label: 'Forge Expand', iconKey: 'forge' },
-  { key: 'bo_2_gate', label: '2 Gate', iconKey: 'gateway' },
-];
-
-// Maps a stored BO pattern_name (e.g. "Build Order: 9 Pool") to its featuring
-// key (e.g. "bo_9_pool"). Keys are normalizeUnitName()'d so punctuation and
-// spaces are already stripped — kept in sync with internal/patterns/markers/definitions.go.
-const BUILD_ORDER_PATTERN_TO_FEATURE_KEY = {
-  buildorder4pool: 'bo_4_pool',
-  buildorder9pool: 'bo_9_pool',
-  buildorder9poolintohatchery: 'bo_9_pool_hatch',
-  buildorder9hatch: 'bo_9_hatch',
-  buildorder12hatch: 'bo_12_hatch',
-  buildordernexusfirst: 'bo_nexus_first',
-  buildorderforgeexpand: 'bo_forge_expa',
-  buildorder2gate: 'bo_2_gate',
-};
-
+// collectFeaturingKeysFromMainGame gathers the featuring chip keys present in
+// the replay: narrative game_events (cannon_rush / bunker_rush / zergling_rush)
+// by event_type; marker detections by event_type with a couple of aliases for
+// composite chips ("mind_control" from became_terran/became_zerg, and the UI's
+// short "recalls"/"nukes" labels).
 const collectFeaturingKeysFromMainGame = (mainGame) => {
   const found = new Set();
-  const events = mainGame?.game_events || [];
-  events.forEach((ev) => {
+
+  (mainGame?.game_events || []).forEach((ev) => {
     const t = normalizeEventType(ev?.type);
     if (t === 'zergling_rush') found.add('zergling_rush');
-    if (t === 'cannon_rush') found.add('cannon_rush');
-    if (t === 'bunker_rush') found.add('bunker_rush');
+    if (t === 'cannon_rush')   found.add('cannon_rush');
+    if (t === 'bunker_rush')   found.add('bunker_rush');
   });
-  const considerPattern = (pat) => {
-    const n = normalizeUnitName(pat?.pattern_name);
-    if (!isPatternTruthy(pat?.value)) return;
-    if (n === 'carriers') found.add('carriers');
-    if (n === 'battlecruisers') found.add('battlecruisers');
-    if (n === 'maderecalls') found.add('recalls');
-    if (n === 'threwnukes') found.add('nukes');
-    if (n === 'becameterran' || n === 'becamezerg') found.add('mind_control');
-    const boFeatureKey = BUILD_ORDER_PATTERN_TO_FEATURE_KEY[n];
-    if (boFeatureKey) found.add(boFeatureKey);
-  };
+
   (mainGame?.players || []).forEach((p) => {
-    (p.detected_patterns || []).forEach(considerPattern);
+    (p.detected_patterns || []).forEach((pat) => {
+      const key = pat?.event_type;
+      if (!key) return;
+      found.add(key);
+      if (key === 'became_terran' || key === 'became_zerg') found.add('mind_control');
+    });
   });
+
   return found;
 };
 
-const buildMainGameFeaturingPills = (mainGame, registry) => {
+// buildMainGameFeaturingPills produces the ordered pill list for the featuring
+// strip. Ordering + game-event-only metadata (cannon_rush, bunker_rush,
+// zergling_rush, mind_control) come from the backend-provided featuring_order
+// and game_event_features lists. Marker pills come from the marker registry's
+// games_list field; markers without one surface via a minimal fallback.
+const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
   if (!mainGame) return [];
   const keys = collectFeaturingKeysFromMainGame(mainGame);
+  const registry = markerDefs?.markers || {};
+  const order = Array.isArray(markerDefs?.featuring_order) ? markerDefs.featuring_order : [];
+  const gameEventFeaturesByKey = {};
+  (markerDefs?.game_event_features || []).forEach((f) => { gameEventFeaturesByKey[f.key] = f; });
 
-  // Registry-driven path: whenever the backend registry has a GamesList pill
-  // entry for a featuring key, prefer the registry's label + icon over the
-  // hardcoded MAIN_GAME_FEATURING_ORDER table. This keeps ordering + the
-  // game-event-only entries (cannon_rush etc.) driven by the hardcoded list
-  // while allowing new markers to ship without FE edits.
-  return MAIN_GAME_FEATURING_ORDER
-    .filter((entry) => keys.has(entry.key))
-    .map((entry) => {
-      const def = registry ? registry[entry.key] : null;
-      if (def && def.games_list) {
-        return {
-          key: entry.key,
-          label: def.games_list.label || entry.label,
-          iconKey: def.games_list.icon_key || entry.iconKey,
-        };
+  return order
+    .filter((key) => keys.has(key))
+    .map((key) => {
+      const def = registry[key];
+      if (def?.games_list) {
+        return { key, label: def.games_list.label || def.name, iconKey: def.games_list.icon_key || '' };
       }
-      return entry;
+      const ge = gameEventFeaturesByKey[key];
+      if (ge) return { key, label: ge.label, iconKey: ge.icon_key };
+      return { key, label: def?.name || key, iconKey: '' };
     });
 };
 
@@ -864,15 +833,12 @@ const SUMMARY_TOPIC_PATTERNS = {
   scout: /\bscouts?\b|\bscout\b/i,
 };
 
-const isPatternTruthy = (value) => {
-  const normalized = String(value || '').trim().toLowerCase();
-  return normalized === 'yes' || normalized === 'true';
-};
-
+// prettyPatternName formats an event-type string (e.g. "zergling_rush") as a
+// human-readable title ("Zergling Rush"). Used by the Game Events timeline to
+// label entries whose event_type doesn't have a dedicated phrase.
 const prettyPatternName = (patternName) => {
   const trimmed = String(patternName || '').trim();
   if (!trimmed) return '';
-  if (/used\s+hotkey\s+groups/i.test(trimmed)) return 'Hotkeys';
   const splitUppercase = trimmed.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
   return splitUppercase
     .replace(/_/g, ' ')
@@ -881,67 +847,16 @@ const prettyPatternName = (patternName) => {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
-const patternIconForName = (patternName) => {
-  const normalized = normalizeUnitName(patternName);
-  if (normalized.includes('battlecruiser')) return getUnitIcon('battlecruiser');
-  if (normalized.includes('carrier')) return getUnitIcon('carrier');
-  // Build-order patterns: reuse the featuring-order icon registry.
-  // normalizeUnitName strips punctuation, so the normalized prefix is
-  // "buildorder" without a colon.
-  if (normalized.startsWith('buildorder')) {
-    const featureKey = BUILD_ORDER_PATTERN_TO_FEATURE_KEY[normalized];
-    if (featureKey) {
-      const entry = MAIN_GAME_FEATURING_ORDER.find((item) => item.key === featureKey);
-      if (entry && entry.iconKey) return getUnitIcon(entry.iconKey);
-    }
-  }
-  return getUnitIcon(patternName);
-};
-
-const minuteFromValue = (value) => {
-  const trimmed = String(value || '').trim();
-  const clockMatch = trimmed.match(/^(\d+):(\d{2})$/);
-  if (clockMatch) return Number(clockMatch[1]);
-  const asNumber = Number(trimmed);
-  if (Number.isFinite(asNumber)) return Math.floor(asNumber / 60);
-  return null;
-};
-
-const formatPatternPillText = (rawName, rawValue, isTruthy) => {
-  if (isTruthy) {
-    if (rawName.toLowerCase() === 'never researched') return 'Never Researched';
-    // Build-order patterns: render the BO label cleanly ("9 pool") instead of
-    // "Did Build Order: 9 Pool".
-    if (rawName.toLowerCase().startsWith('build order:')) {
-      return rawName.slice('Build Order:'.length).trim();
-    }
-    return `Did ${rawName}`;
-  }
-  const lowerName = rawName.toLowerCase();
-  if (lowerName === 'hotkeys' || lowerName.includes('used hotkey groups')) {
-    return rawValue ? `Hotkeys ${rawValue}` : 'Hotkeys';
-  }
-  if (lowerName.includes('made drops') || lowerName.includes('made recalls')) {
-    const minute = minuteFromValue(rawValue);
-    if (minute !== null) return `${rawName} at min ${minute}`;
-  }
-  if (lowerName.includes('threw nukes')) {
-    const minute = minuteFromValue(rawValue);
-    if (minute !== null) return `${rawName} at ${minute} mins`;
-  }
-  return `${rawName} at ${rawValue}`;
-};
-
+// shouldHidePatternFromSummaryPills suppresses markers the Summary row shouldn't
+// render as pills even though the backend stored them. viewport_multitasking
+// drives its own widget elsewhere; made_drops de-dupes against the narrative
+// drop/reaver_drop/dt_drop game_events when the caller sets
+// trustGameEventsForDrops (those drop-family events are already rendered as
+// game-event pills and re-rendering the marker would double up the strip).
 const shouldHidePatternFromSummaryPills = (pattern, trustGameEventsForDrops) => {
-  const normalizedPatternName = normalizeUnitName(pattern?.pattern_name);
-  if (normalizedPatternName === 'viewportmultitasking') return true;
-  if (trustGameEventsForDrops && normalizedPatternName === 'madedrops') return true;
-  // Retired pattern pills — detectors are unregistered but pre-existing rows
-  // may still be in the DB; keep the UI clean.
-  if (normalizedPatternName === 'fastexpa') return true;
-  if (normalizedPatternName === 'gatethenforge') return true;
-  if (normalizedPatternName === 'forgethengate') return true;
-  if (normalizedPatternName === 'hatchbeforepool') return true;
+  const featureKey = pattern?.event_type;
+  if (featureKey === 'viewport_multitasking') return true;
+  if (trustGameEventsForDrops && featureKey === 'made_drops') return true;
   return false;
 };
 
@@ -949,129 +864,22 @@ const filterSummaryPillPatterns = (patterns, trustGameEventsForDrops = false) =>
   (patterns || []).filter((pattern) => !shouldHidePatternFromSummaryPills(pattern, trustGameEventsForDrops))
 );
 
-// renderPatternPillFromRegistry tries the backend-driven pill registry first.
-// Returns a JSX element when the marker has a SummaryPlayer pill registered,
-// null otherwise — caller falls back to the hardcoded renderer below.
-const renderPatternPillFromRegistry = (pattern, keyPrefix, team, registry) => {
+// renderPatternPill resolves a detected_patterns[] entry through the backend
+// marker registry and builds a pill from the registered SummaryPlayer metadata.
+// Returns null when the registry has no match or no SummaryPlayer pill.
+const renderPatternPill = (pattern, keyPrefix, team, registry) => {
   if (!registry) return null;
   const def = lookupDefinitionForPattern(registry, pattern);
   if (!def) return null;
   const rendered = renderPillText(def, PILL_SURFACES.summaryPlayer, pattern);
   if (!rendered) return null;
   const className = pillClassName(rendered.style);
-  const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.event_type || pattern?.pattern_name}-${pattern?.detected_second ?? ''}`;
+  const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.event_type || ''}-${pattern?.detected_second ?? ''}`;
   return (
     <span key={key} className={className} title={rendered.title || undefined}>
       {team !== undefined ? <span className="team-dot" style={{ backgroundColor: getTeamColor(team) }}></span> : null}
       {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
       {rendered.label ? <span>{rendered.label}</span> : null}
-    </span>
-  );
-};
-
-const renderPatternPill = (pattern, keyPrefix, team, registry) => {
-  const fromRegistry = renderPatternPillFromRegistry(pattern, keyPrefix, team, registry);
-  if (fromRegistry) return fromRegistry;
-
-  const rawName = prettyPatternName(pattern?.pattern_name);
-  if (!rawName) return null;
-  const normalizedPatternName = normalizeUnitName(pattern?.pattern_name);
-  if (normalizedPatternName === 'neverresearched') {
-    const rawValue = String(pattern?.value || '').trim();
-    if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
-      return null;
-    }
-    const key = `${keyPrefix}-never-researched`;
-    return (
-      <span
-        key={key}
-        className="workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey"
-        title="No Tech commands in this replay for this player (10+ minute games)."
-      >
-        <span>🚫 researches</span>
-      </span>
-    );
-  }
-  if (normalizedPatternName === 'neverupgraded') {
-    const rawValue = String(pattern?.value || '').trim();
-    if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
-      return null;
-    }
-    const key = `${keyPrefix}-never-upgraded`;
-    return (
-      <span
-        key={key}
-        className="workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey"
-        title="No Upgrade commands in this replay for this player (10+ minute games)."
-      >
-        <span>🚫 upgrades</span>
-      </span>
-    );
-  }
-  if (normalizedPatternName === 'neverusedhotkeys') {
-    const rawValue = String(pattern?.value || '').trim();
-    if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
-      return null;
-    }
-    const key = `${keyPrefix}-never-hotkeys`;
-    return (
-      <span
-        key={key}
-        className="workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey"
-        title="No hotkey-group commands in this replay (same 7+ minute gate as the detector)."
-      >
-        <span>🚫 hotkeys</span>
-      </span>
-    );
-  }
-  const rawValue = String(pattern?.value || '').trim();
-  if (normalizedPatternName === 'becameterran' || normalizedPatternName === 'becamezerg') {
-    if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
-      return null;
-    }
-    const minute = minuteFromValue(rawValue);
-    const raceWord = normalizedPatternName === 'becameterran' ? 'Terran' : 'Zerg';
-    const da = getUnitIcon('darkarchon');
-    const key = `${keyPrefix}-became-${normalizedPatternName}-${pattern?.value}`;
-    const label = minute !== null ? `${raceWord} at ${minute} mins` : raceWord;
-    return (
-      <span key={key} className="workflow-pattern-pill workflow-pattern-pill-strong" title={String(pattern?.pattern_name || '').trim()}>
-        {da ? <img src={da} alt="" className="workflow-pattern-icon" /> : null}
-        <span>{label}</span>
-      </span>
-    );
-  }
-  if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
-    return null;
-  }
-  const isTruthy = isPatternTruthy(pattern?.value);
-  let icon = patternIconForName(pattern?.pattern_name);
-  const text = formatPatternPillText(rawName, rawValue, isTruthy);
-  let content = <span>{text}</span>;
-  if (isTruthy) {
-    if (normalizedPatternName === 'quickfactory') {
-      icon = null;
-      content = (
-        <span className="workflow-pattern-pill-inline">
-          <span>Quick</span>
-          {getUnitIcon('factory') ? <img src={getUnitIcon('factory')} alt="Factory" className="workflow-pattern-icon" /> : null}
-        </span>
-      );
-    } else if (normalizedPatternName === 'carriers' || normalizedPatternName === 'battlecruisers') {
-      content = null;
-    } else if (normalizedPatternName.startsWith('buildorder')) {
-      // BO pills: icon + short name ("9 Pool"); text already stripped of the
-      // "Build Order:" prefix by formatPatternPillText.
-    } else if (icon) {
-      content = <span>Did</span>;
-    }
-  }
-  const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.pattern_name}-${pattern?.value}`;
-  return (
-    <span key={key} className={`workflow-pattern-pill${isTruthy ? ' workflow-pattern-pill-strong' : ''}`}>
-      {team !== undefined ? <span className="team-dot" style={{ backgroundColor: getTeamColor(team) }}></span> : null}
-      {icon ? <img src={icon} alt={rawName} className="workflow-pattern-icon" /> : null}
-      {content}
     </span>
   );
 };
@@ -1254,6 +1062,7 @@ function App() {
   );
   const markerRegistryState = useMarkerRegistry();
   const markerRegistry = markerRegistryState.markers;
+  const markerDefinitions = markerRegistryState;
   const [currentDashboardUrl, setCurrentDashboardUrl] = useState(() => (
     initialMainRoute.view === 'dashboards' && initialMainRoute.dash ? initialMainRoute.dash : 'default'
   ));
@@ -3055,8 +2864,8 @@ function App() {
     return acc;
   }, [mainGame?.game_events, mainEventMapBounds]);
   const mainGameFeaturingPillsList = useMemo(
-    () => buildMainGameFeaturingPills(mainGame, markerRegistry),
-    [mainGame, markerRegistry],
+    () => buildMainGameFeaturingPills(mainGame, markerDefinitions),
+    [mainGame, markerDefinitions],
   );
   const selectedMainGameArrow = useMemo(() => {
     if (!selectedMainGameEvent || !isArrowEventType(selectedMainGameEvent.type)) return null;

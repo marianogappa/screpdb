@@ -49,9 +49,11 @@ type WorkflowCurrentPlayerRow struct {
 }
 
 type WorkflowCurrentPlayerPatternRow struct {
-	PlayerID     int64
-	PatternName  string
-	PatternValue string
+	PlayerID       int64
+	PatternName    string
+	PatternValue   string
+	DetectedSecond int64
+	Payload        string
 }
 
 type WorkflowFilterOptionRow struct {
@@ -346,13 +348,15 @@ func (s *Store) ListPatternValuesForPlayerIDs(ctx context.Context, playerIDs []i
 		args = append(args, playerID)
 	}
 	// Per-player marker presence. Post-migration, presence of the row is the
-	// match — there are no value columns, so we synthesize "true" / payload string
-	// for downstream code that still expects a value field.
+	// match — detected_second + payload are the authoritative per-row data;
+	// pattern_value stays as a transitional alias for now.
 	rows, err := s.ReplayQueryContext(ctx, `
 		SELECT
 			source_player_id AS player_id,
 			event_type AS pattern_name,
-			COALESCE(payload, 'true') AS pattern_value
+			COALESCE(payload, 'true') AS pattern_value,
+			seconds_from_game_start AS detected_second,
+			COALESCE(payload, '') AS payload
 		FROM replay_events
 		WHERE source_player_id IN (`+placeholders+`)
 			AND event_kind = 'marker'
@@ -365,7 +369,7 @@ func (s *Store) ListPatternValuesForPlayerIDs(ctx context.Context, playerIDs []i
 	result := []WorkflowCurrentPlayerPatternRow{}
 	for rows.Next() {
 		var row WorkflowCurrentPlayerPatternRow
-		if err := rows.Scan(&row.PlayerID, &row.PatternName, &row.PatternValue); err != nil {
+		if err := rows.Scan(&row.PlayerID, &row.PatternName, &row.PatternValue, &row.DetectedSecond, &row.Payload); err != nil {
 			return nil, err
 		}
 		result = append(result, row)

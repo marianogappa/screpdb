@@ -95,12 +95,15 @@ export const pillClassName = (style) => {
 };
 
 // useMarkerRegistry fetches /api/custom/markers/definitions once on mount and
-// exposes { markers, algorithmVersion, loading, error } to consumers. The
-// registry is keyed by FeatureKey and is expected to be stable across a session
-// (bumped only when AlgorithmVersion changes on the backend).
+// exposes the full payload to consumers: markers keyed by FeatureKey, plus the
+// ordered featuring key list and the game-event-only feature metadata used by
+// the featuring-chip strip. Stable across a session (bumped only when
+// AlgorithmVersion changes on the backend).
 export const useMarkerRegistry = () => {
   const [state, setState] = useState({
     markers: {},
+    featuring_order: [],
+    game_event_features: [],
     algorithmVersion: 0,
     loading: true,
     error: null,
@@ -113,6 +116,8 @@ export const useMarkerRegistry = () => {
         if (cancelled) return;
         setState({
           markers: resp?.markers || {},
+          featuring_order: Array.isArray(resp?.featuring_order) ? resp.featuring_order : [],
+          game_event_features: Array.isArray(resp?.game_event_features) ? resp.game_event_features : [],
           algorithmVersion: Number(resp?.algorithm_version) || 0,
           loading: false,
           error: null,

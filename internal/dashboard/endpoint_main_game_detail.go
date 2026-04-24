@@ -164,13 +164,9 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 }
 
 // buildWorkflowPatternValue constructs the detected_patterns[] entry the frontend
-// consumes. It resolves the marker registry to produce legacy PatternName / Value
-// (used by the current FE pill code) alongside the new event_type / detected_second /
-// payload fields introduced in Stage 2. Legacy Value synthesis:
-//   - Rule-only markers: "Yes" (truthy presence signal)
-//   - First-event custom markers (nukes/recalls/drops/became_*): stringified seconds
-//   - Payload-carrying markers (hotkeys, viewport): legacy string extracted from JSON
-func buildWorkflowPatternValue(featureKey string, rawValue string, detectedSecond int64, rawPayload string) workflowPatternValue {
+// consumes. Shape is registry-driven: event_type (FeatureKey), detected_second,
+// and an optional JSON payload for markers carrying extras.
+func buildWorkflowPatternValue(featureKey string, _ string, detectedSecond int64, rawPayload string) workflowPatternValue {
 	pv := workflowPatternValue{
 		EventType:      featureKey,
 		DetectedSecond: int(detectedSecond),
@@ -178,58 +174,7 @@ func buildWorkflowPatternValue(featureKey string, rawValue string, detectedSecon
 	if rawPayload != "" && rawPayload != "true" {
 		pv.Payload = json.RawMessage(rawPayload)
 	}
-
-	// Resolve FeatureKey back to the legacy PatternName so the existing frontend
-	// pill-rendering path (string-matching on pattern_name) keeps working.
-	marker := markers.ByFeatureKey(featureKey)
-	if marker != nil {
-		pv.PatternName = marker.PatternName
-	} else {
-		pv.PatternName = featureKey
-	}
-
-	legacyValue := synthesizeLegacyPatternValue(featureKey, rawValue, detectedSecond, rawPayload)
-	pv.Value = formatPatternValueForUI(pv.PatternName, legacyValue)
 	return pv
-}
-
-// synthesizeLegacyPatternValue returns the transitional "value" field the frontend
-// still reads. Priority: payload-carrying markers extract their classic string
-// (hotkey groups "1,3,5", viewport "2.345678") from JSON; first-event markers emit
-// the detected second as decimal string; rule markers emit "true".
-func synthesizeLegacyPatternValue(featureKey, rawValue string, detectedSecond int64, rawPayload string) string {
-	switch featureKey {
-	case "used_hotkey_groups":
-		if raw := rawPayload; raw != "" {
-			var p struct {
-				Groups []int `json:"groups"`
-			}
-			if err := json.Unmarshal([]byte(raw), &p); err == nil && len(p.Groups) > 0 {
-				parts := make([]string, len(p.Groups))
-				for i, g := range p.Groups {
-					parts[i] = strconv.Itoa(g)
-				}
-				return strings.Join(parts, ",")
-			}
-		}
-	case "viewport_multitasking":
-		if raw := rawPayload; raw != "" {
-			var p struct {
-				SwitchesPerMinute float64 `json:"switches_per_minute"`
-			}
-			if err := json.Unmarshal([]byte(raw), &p); err == nil {
-				return fmt.Sprintf("%.6f", p.SwitchesPerMinute)
-			}
-		}
-	case "made_drops", "made_recalls", "threw_nukes", "became_terran", "became_zerg":
-		return strconv.FormatInt(detectedSecond, 10)
-	}
-	// Fallback: the sqlc alias (COALESCE(payload, 'true')) — already "true" for
-	// pure presence markers and the payload blob otherwise.
-	if rawValue == "" {
-		return "true"
-	}
-	return rawValue
 }
 
 func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlayerOverview, error) {
@@ -1875,33 +1820,6 @@ func parseAttackUnitTypes(raw *string) []string {
 		return nil
 	}
 	return filtered
-}
-
-func formatPatternValueForUI(patternName, value string) string {
-	v := strings.TrimSpace(value)
-	if v == "" {
-		return "-"
-	}
-	if strings.EqualFold(v, "true") {
-		return "Yes"
-	}
-	if strings.EqualFold(v, "false") {
-		return "No"
-	}
-	lowerName := strings.ToLower(strings.TrimSpace(patternName))
-	if lowerName == strings.ToLower(models.PatternNameViewportMultitasking) {
-		switchRate, ok := parseViewportSwitchRate(v)
-		if !ok {
-			return "-"
-		}
-		return fmt.Sprintf("%.2f switches/min", switchRate)
-	}
-	if strings.Contains(lowerName, "second") || strings.Contains(lowerName, "fast expa") || strings.Contains(lowerName, "quick factory") {
-		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
-			return formatClockFromSeconds(n)
-		}
-	}
-	return v
 }
 
 func formatClockFromSeconds(second int64) string {

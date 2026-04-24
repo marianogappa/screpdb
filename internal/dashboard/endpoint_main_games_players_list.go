@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -393,10 +392,7 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 	}
 	for _, row := range patternRows {
 		playerID := row.PlayerID
-		// "Recent games" strip uses the reduced row shape (no DetectedSecond / Payload
-		// cols). Feed zero values so the legacy Value synthesis falls through to the
-		// rawValue path; registry-driven FE fields stay empty-but-present.
-		pattern := buildWorkflowPatternValue(row.PatternName, row.PatternValue, 0, "")
+		pattern := buildWorkflowPatternValue(row.PatternName, row.PatternValue, row.DetectedSecond, row.Payload)
 		currentPlayer := currentByPlayerID[playerID]
 		if currentPlayer == nil {
 			continue
@@ -404,23 +400,6 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 		currentPlayer.DetectedPatterns = append(currentPlayer.DetectedPatterns, pattern)
 	}
 	return nil
-}
-
-func workflowTruthyPatternValue(valueBool sql.NullBool, valueInt sql.NullInt64, valueString sql.NullString, valueTimestamp sql.NullInt64) bool {
-	if valueBool.Valid {
-		return valueBool.Bool
-	}
-	if valueInt.Valid {
-		return valueInt.Int64 > 0
-	}
-	if valueTimestamp.Valid {
-		return valueTimestamp.Int64 > 0
-	}
-	if valueString.Valid {
-		v := strings.TrimSpace(strings.ToLower(valueString.String))
-		return v != "" && v != "false" && v != "no" && v != "-"
-	}
-	return false
 }
 
 func formatWorkflowPlayersLabelFromList(players []workflowGameListPlayer) string {
