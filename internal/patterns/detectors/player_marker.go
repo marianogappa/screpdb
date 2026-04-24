@@ -34,12 +34,11 @@ type MarkerPlayerDetector struct {
 	// Custom path state:
 	custom markers.CustomEvaluator
 	// customResult is the result from CustomEvaluator.Finalize, cached so GetResult has access
-	// to DetectedAtSecond + Payload (not just the legacy Value fields).
+	// to DetectedAtSecond + Payload.
 	customResult markers.CustomResult
 
 	matched          bool
 	detectedAtSecond int
-	result           markers.MarkerValue
 }
 
 // NewMarkerPlayerDetector creates a detector for the given marker.
@@ -207,7 +206,6 @@ func (d *MarkerPlayerDetector) finalizeCustomAtDeadline() {
 	d.matched = res.Matched
 	d.detectedAtSecond = res.DetectedAtSecond
 	d.customResult = res
-	d.result = res.Value
 }
 
 // Finalize handles end-of-replay for detectors that never tripped their
@@ -234,25 +232,16 @@ func (d *MarkerPlayerDetector) commitRejected() {
 }
 
 // GetResult returns a PatternResult when the marker matched AND any duration
-// gate is satisfied. Uses the Custom evaluator's value when present; falls
-// back to ValueBool:true for pure Rule markers.
+// gate is satisfied. Rule markers emit presence-only (no payload); Custom markers
+// emit whatever payload their evaluator returned.
 func (d *MarkerPlayerDetector) GetResult() *core.PatternResult {
 	if !d.ShouldSave() {
 		return nil
 	}
 	if d.state != nil {
-		valueBool := true
-		return d.BuildPlayerResult(d.marker.PatternName, d.detectedAtSecond, nil, &valueBool, nil, nil, nil)
+		return d.BuildPlayerResult(d.marker.PatternName, d.detectedAtSecond, nil)
 	}
-	return d.BuildPlayerResult(
-		d.marker.PatternName,
-		d.detectedAtSecond,
-		d.customResult.Payload,
-		d.result.Bool,
-		d.result.Int,
-		d.result.String,
-		d.result.Time,
-	)
+	return d.BuildPlayerResult(d.marker.PatternName, d.detectedAtSecond, d.customResult.Payload)
 }
 
 // ShouldSave is true iff the marker matched AND any duration gate is met.

@@ -92,7 +92,7 @@ func (d *BasePlayerDetector) ShouldProcessCommand(command *models.Command) bool 
 }
 
 // BuildPlayerResult creates a PatternResult for a player-level detector
-func (d *BasePlayerDetector) BuildPlayerResult(patternName string, detectedAtSecond int, payload json.RawMessage, valueBool *bool, valueInt *int, valueString *string, valueTime *int64) *core.PatternResult {
+func (d *BasePlayerDetector) BuildPlayerResult(patternName string, detectedAtSecond int, payload json.RawMessage) *core.PatternResult {
 	if !d.finished {
 		return nil
 	}
@@ -105,10 +105,6 @@ func (d *BasePlayerDetector) BuildPlayerResult(patternName string, detectedAtSec
 		ReplayPlayerID:   &replayPlayerID,
 		DetectedAtSecond: detectedAtSecond,
 		Payload:          payload,
-		ValueBool:        valueBool,
-		ValueInt:         valueInt,
-		ValueString:      valueString,
-		ValueTime:        valueTime,
 	}
 }
 
@@ -128,7 +124,7 @@ func (d *BaseReplayDetector) ShouldProcessCommand(command *models.Command) bool 
 }
 
 // BuildReplayResult creates a PatternResult for a replay-level detector
-func (d *BaseReplayDetector) BuildReplayResult(patternName string, detectedAtSecond int, payload json.RawMessage, valueBool *bool, valueInt *int, valueString *string, valueTime *int64) *core.PatternResult {
+func (d *BaseReplayDetector) BuildReplayResult(patternName string, detectedAtSecond int, payload json.RawMessage) *core.PatternResult {
 	if !d.finished {
 		return nil
 	}
@@ -138,10 +134,6 @@ func (d *BaseReplayDetector) BuildReplayResult(patternName string, detectedAtSec
 		ReplayID:         d.replay.ID,
 		DetectedAtSecond: detectedAtSecond,
 		Payload:          payload,
-		ValueBool:        valueBool,
-		ValueInt:         valueInt,
-		ValueString:      valueString,
-		ValueTime:        valueTime,
 	}
 }
 

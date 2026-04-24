@@ -39,13 +39,6 @@ type PatternResult struct {
 	// Empty for presence-only markers. Populated only by markers that carry extra data
 	// beyond presence (currently: used_hotkey_groups, viewport_multitasking).
 	Payload json.RawMessage
-
-	// Legacy value fields. Populated during the transition window; removed in a follow-up PR
-	// once all read paths switch to DetectedAtSecond + Payload.
-	ValueBool   *bool
-	ValueInt    *int
-	ValueString *string
-	ValueTime   *int64 // Unix timestamp
 }
 
 // Detector is the interface that all pattern detectors must implement

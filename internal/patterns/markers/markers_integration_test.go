@@ -147,22 +147,13 @@ func collectPlayerDetections(results []*core.PatternResult) []playerDetection {
 }
 
 func formatPatternValue(r *core.PatternResult) string {
-	if r.ValueBool != nil {
-		if *r.ValueBool {
-			return "true"
-		}
-		return "false"
+	// Post-cleanup: PatternResult carries only DetectedAtSecond + Payload. Golden
+	// files still compare a single "value" string per detection — synthesize it
+	// to match the old shape: JSON payload when present, else stringified second.
+	if len(r.Payload) > 0 {
+		return string(r.Payload)
 	}
-	if r.ValueInt != nil {
-		return intToString(*r.ValueInt)
-	}
-	if r.ValueString != nil {
-		return *r.ValueString
-	}
-	if r.ValueTime != nil {
-		return intToString(int(*r.ValueTime))
-	}
-	return ""
+	return intToString(r.DetectedAtSecond)
 }
 
 func intToString(v int) string {

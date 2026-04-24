@@ -116,17 +116,8 @@ func (p Predicate) Eval(facts []cmdenrich.EnrichedCommand) bool {
 // "matched" signal — no value columns needed for the majority of markers. Evaluators
 // that carry auxiliary data (hotkey groups, viewport switches-per-minute) populate
 // Payload with a JSON blob stored in replay_events.payload.
-//
-// The Bool / Int / String / Time fields are legacy — kept during the transition so
-// old storage code still compiles. They are scheduled for removal once all read paths
-// stop reading them.
 type MarkerValue struct {
 	Payload json.RawMessage
-
-	Bool   *bool
-	Int    *int
-	String *string
-	Time   *int64
 }
 
 // CustomEvalContext carries the replay-scoped state a Custom evaluator may
@@ -138,19 +129,18 @@ type CustomEvalContext struct {
 	WorldState     *worldstate.Engine
 }
 
-// CustomResult is the verdict + optional value a Custom evaluator returns
+// CustomResult is the verdict + optional extras a Custom evaluator returns
 // at Finalize.
 //
 // DetectedAtSecond is the replay second persisted as replay_events.seconds_from_game_start.
 // Absence markers (those that commit at end-of-replay) and hotkey/viewport windows each
 // document their own source of this value.
 //
-// Payload mirrors MarkerValue.Payload and is written to replay_events.payload.
+// Payload is written to replay_events.payload. Empty for presence-only markers.
 type CustomResult struct {
 	Matched          bool
 	DetectedAtSecond int
 	Payload          json.RawMessage
-	Value            MarkerValue
 }
 
 // CustomEvaluator is the streaming evaluator for a Custom marker.

@@ -2,10 +2,8 @@ package markers
 
 import (
 	"encoding/json"
-	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
 	"github.com/marianogappa/screpdb/internal/models"
@@ -39,7 +37,6 @@ func (e *worldstateFirstEventEvaluator) Finalize(ctx CustomEvalContext) CustomRe
 	return CustomResult{
 		Matched:          true,
 		DetectedAtSecond: *sec,
-		Value:            MarkerValue{Int: sec},
 	}
 }
 
@@ -116,7 +113,6 @@ func (v *viewportMultitaskingEvaluator) Finalize(ctx CustomEvalContext) CustomRe
 		return CustomResult{}
 	}
 	rate := float64(v.viewportSwitches) / (float64(windowSeconds) / 60.0)
-	formatted := fmt.Sprintf("%.6f", rate)
 	payload, err := json.Marshal(map[string]float64{"switches_per_minute": rate})
 	if err != nil {
 		return CustomResult{}
@@ -125,7 +121,6 @@ func (v *viewportMultitaskingEvaluator) Finalize(ctx CustomEvalContext) CustomRe
 		Matched:          true,
 		DetectedAtSecond: windowEndSec,
 		Payload:          payload,
-		Value:            MarkerValue{String: &formatted},
 	}
 }
 
@@ -176,11 +171,6 @@ func (e *usedHotkeyGroupsEvaluator) Finalize(ctx CustomEvalContext) CustomResult
 		keys = append(keys, g)
 	}
 	sort.Ints(keys)
-	parts := make([]string, 0, len(keys))
-	for _, g := range keys {
-		parts = append(parts, strconv.Itoa(g))
-	}
-	value := strings.Join(parts, ",")
 	payload, err := json.Marshal(map[string][]int{"groups": keys})
 	if err != nil {
 		return CustomResult{}
@@ -194,6 +184,5 @@ func (e *usedHotkeyGroupsEvaluator) Finalize(ctx CustomEvalContext) CustomResult
 		Matched:          true,
 		DetectedAtSecond: detectedAtSecond,
 		Payload:          payload,
-		Value:            MarkerValue{String: &value},
 	}
 }

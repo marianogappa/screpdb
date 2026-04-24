@@ -4,22 +4,22 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: 12 Hatch",
-        "value": "true"
+        "value": "102"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
-        "value": "1,2,3,4,5,6,7,8"
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "9.140271"
+        "value": "{\"switches_per_minute\":9.14027149321267}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Battlecruisers",
-        "value": "true"
+        "value": "1116"
       },
       {
         "replay_player_id": 1,
@@ -29,12 +29,12 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
-        "value": "0,1,2,3,4,5,9"
+        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "13.303167"
+        "value": "{\"switches_per_minute\":13.303167420814479}"
       }
     ]
   },
@@ -43,32 +43,32 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: 12 Hatch",
-        "value": "true"
+        "value": "102"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
-        "value": "1,2,5,6,7"
+        "value": "{\"groups\":[1,2,5,6,7]}"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "16.315789"
+        "value": "{\"switches_per_minute\":16.315789473684212}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Quick factory",
-        "value": "true"
+        "value": "228"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
-        "value": "0,1,2,3,4,5,6,7,8,9"
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "15.526316"
+        "value": "{\"switches_per_minute\":15.526315789473685}"
       }
     ]
   },
@@ -77,42 +77,42 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Quick factory",
-        "value": "true"
+        "value": "153"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
-        "value": "0,1,2,3,4,5,6,7,8,9"
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "21.666667"
+        "value": "{\"switches_per_minute\":21.666666666666668}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 2 Gate",
-        "value": "true"
+        "value": "167"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Carriers",
-        "value": "true"
+        "value": "715"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Never researched",
-        "value": "true"
+        "value": "1110"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
-        "value": "0,1,2,3,4,5,8,9"
+        "value": "{\"groups\":[0,1,2,3,4,5,8,9]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "11.794872"
+        "value": "{\"switches_per_minute\":11.794871794871796}"
       }
     ]
   },
@@ -121,17 +121,17 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: 4 Pool",
-        "value": "true"
+        "value": "37"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
-        "value": "0,1,2,3,4,5,6"
+        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
-        "value": "1,2,3,4"
+        "value": "{\"groups\":[1,2,3,4]}"
       }
     ]
   },
@@ -140,17 +140,17 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
-        "value": "1,2,3,4,5,6"
+        "value": "{\"groups\":[1,2,3,4,5,6]}"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "8.544304"
+        "value": "{\"switches_per_minute\":8.544303797468354}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 9 Hatch",
-        "value": "true"
+        "value": "77"
       },
       {
         "replay_player_id": 1,
@@ -160,12 +160,12 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
-        "value": "0,1,2,3,4,5,6,7,8,9"
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "15.189873"
+        "value": "{\"switches_per_minute\":15.18987341772152}"
       }
     ]
   },
@@ -174,17 +174,17 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: Forge Expand",
-        "value": "true"
+        "value": "133"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
-        "value": "1,2,3,4,5,6,7"
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "16.544118"
+        "value": "{\"switches_per_minute\":16.544117647058822}"
       },
       {
         "replay_player_id": 1,
@@ -194,12 +194,12 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
-        "value": "0,1,2,3,4,5,6,7,8,9"
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "15.441176"
+        "value": "{\"switches_per_minute\":15.441176470588236}"
       }
     ]
   },
@@ -208,22 +208,22 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Quick factory",
-        "value": "true"
+        "value": "217"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
-        "value": "1,2,3,4"
+        "value": "{\"groups\":[1,2,3,4]}"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "14.355828"
+        "value": "{\"switches_per_minute\":14.355828220858895}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Carriers",
-        "value": "true"
+        "value": "1703"
       },
       {
         "replay_player_id": 1,
@@ -238,12 +238,12 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
-        "value": "0,1,2,3,4,5,7,8,9"
+        "value": "{\"groups\":[0,1,2,3,4,5,7,8,9]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "12.423313"
+        "value": "{\"switches_per_minute\":12.423312883435582}"
       }
     ]
   },
@@ -255,32 +255,32 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Never researched",
-        "value": "true"
+        "value": "831"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Never upgraded",
-        "value": "true"
+        "value": "831"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Never used hotkeys",
-        "value": "true"
+        "value": "831"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 12 Hatch",
-        "value": "true"
+        "value": "101"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
-        "value": "0,1,2,3,4,5,6,7,8,9"
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "33.442623"
+        "value": "{\"switches_per_minute\":33.442622950819676}"
       }
     ]
   },
@@ -294,7 +294,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Quick factory",
-        "value": "true"
+        "value": "150"
       },
       {
         "replay_player_id": 0,
@@ -304,17 +304,17 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
-        "value": "0,1,2,3,4,5,6,7,8"
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8]}"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "20.166667"
+        "value": "{\"switches_per_minute\":20.166666666666668}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Nexus First",
-        "value": "true"
+        "value": "105"
       },
       {
         "replay_player_id": 1,
@@ -324,17 +324,17 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Never researched",
-        "value": "true"
+        "value": "976"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
-        "value": "0,1,2,3,4,5,6,7,9"
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,9]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "19.666667"
+        "value": "{\"switches_per_minute\":19.666666666666668}"
       }
     ]
   }
