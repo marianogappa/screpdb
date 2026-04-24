@@ -268,6 +268,8 @@ type workflowGameDetail struct {
 	FileName             string                                   `json:"file_name"`
 	MapName              string                                   `json:"map_name"`
 	MapVisual            workflowMapVisual                        `json:"map_visual"`
+	MapWidthPixels       int64                                    `json:"map_width_pixels,omitempty"`
+	MapHeightPixels      int64                                    `json:"map_height_pixels,omitempty"`
 	DurationSeconds      int64                                    `json:"duration_seconds"`
 	GameType             string                                   `json:"game_type"`
 	Players              []workflowGamePlayer                     `json:"players"`

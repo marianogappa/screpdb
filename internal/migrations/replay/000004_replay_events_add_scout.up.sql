@@ -27,8 +27,11 @@ CREATE TABLE replay_events_v3 (
 		'became_zerg'
 	)),
 	location_base_type TEXT CHECK (location_base_type IN ('starting', 'natural', 'expansion')),
-	location_base_oclock INTEGER CHECK (location_base_oclock IS NULL OR (location_base_oclock >= 1 AND location_base_oclock <= 12)),
-	location_natural_of_oclock INTEGER CHECK (location_natural_of_oclock IS NULL OR (location_natural_of_oclock >= 1 AND location_natural_of_oclock <= 12)),
+	-- Allow 0 for "center base" (scmapanalyzer's middle-of-map rich expansion).
+	-- This migration rebuilds replay_events on every startup (no version
+	-- tracking), so the CHECK must match current data, not just prior state.
+	location_base_oclock INTEGER CHECK (location_base_oclock IS NULL OR (location_base_oclock >= 0 AND location_base_oclock <= 12)),
+	location_natural_of_oclock INTEGER CHECK (location_natural_of_oclock IS NULL OR (location_natural_of_oclock >= 0 AND location_natural_of_oclock <= 12)),
 	source_player_id INTEGER,
 	target_player_id INTEGER,
 	attack_unit_types TEXT,

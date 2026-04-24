@@ -718,6 +718,76 @@ func tilePixel(tile int) int {
 	return tile*32 + 16
 }
 
+// TestAssignDisplayNames_CenterBase covers scmapanalyzer's Clock=0 ("center
+// base") convention. Pre-fix the engine labeled it "at 0" / "an expa near 0"
+// because the templated text assumed a 1..12 dial position. The UI needs a
+// readable literal so event sentences like "P1 expands to center base" read
+// correctly.
+func TestAssignDisplayNames_CenterBase(t *testing.T) {
+	replay := &models.Replay{MapWidth: 128, MapHeight: 128}
+	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "P1", Race: "Protoss", Team: 1}
+	ctx := &models.ReplayMapContext{
+		StartLocations: []models.MapStartLocation{{X: tilePixel(8), Y: tilePixel(8), SlotID: 1}},
+		Layout: &models.MapContextLayout{
+			Bases: []models.MapContextBase{
+				{
+					Name:   "start-a",
+					Kind:   "start",
+					Clock:  11,
+					Center: models.MapResourcePosition{X: tilePixel(8), Y: tilePixel(8)},
+					Polygon: []models.MapPolygonPoint{
+						{X: tilePixel(6), Y: tilePixel(6)},
+						{X: tilePixel(10), Y: tilePixel(6)},
+						{X: tilePixel(10), Y: tilePixel(10)},
+						{X: tilePixel(6), Y: tilePixel(10)},
+					},
+				},
+				{
+					Name:   "center expa",
+					Kind:   "expa",
+					Clock:  0, // center base
+					Center: models.MapResourcePosition{X: tilePixel(64), Y: tilePixel(64)},
+					Polygon: []models.MapPolygonPoint{
+						{X: tilePixel(62), Y: tilePixel(62)},
+						{X: tilePixel(66), Y: tilePixel(62)},
+						{X: tilePixel(66), Y: tilePixel(66)},
+						{X: tilePixel(62), Y: tilePixel(66)},
+					},
+				},
+			},
+		},
+	}
+	engine := NewEngine(replay, []*models.Player{p1}, ctx)
+
+	if len(engine.bases) < 2 {
+		t.Fatalf("expected at least 2 bases, got %d", len(engine.bases))
+	}
+	var centerIdx = -1
+	for i, b := range engine.bases {
+		if b.Clock == 0 {
+			centerIdx = i
+			break
+		}
+	}
+	if centerIdx < 0 {
+		t.Fatalf("no base with Clock=0 found")
+	}
+	if got := engine.bases[centerIdx].DisplayName; got != "center base" {
+		t.Fatalf("expected center base DisplayName \"center base\", got %q", got)
+	}
+
+	baseType, baseOclock, _, _ := engine.locationForBase(centerIdx)
+	if baseType == nil {
+		t.Fatalf("expected non-nil baseType for center base")
+	}
+	if baseOclock == nil {
+		t.Fatalf("expected non-nil baseOclock for center base (Clock=0 must round-trip)")
+	}
+	if *baseOclock != 0 {
+		t.Fatalf("expected baseOclock=0 for center base, got %d", *baseOclock)
+	}
+}
+
 func intPtr(value int) *int {
 	return &value
 }

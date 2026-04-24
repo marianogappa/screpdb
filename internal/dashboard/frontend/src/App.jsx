@@ -447,6 +447,19 @@ const renderFeaturingPill = (pill, keyPrefix) => {
   );
 };
 
+// Prefer fixed map-dimension bounds when the API provides them. Polygon coords
+// from scmapanalyzer are in pixels on a map sized MapWidth*32 x MapHeight*32
+// (1 map-tile = 32 px = 4 minitiles, minitile is scmapanalyzer's TilePoint
+// unit). Previously we fit bounds to the extent of polygon points which
+// stretched overlays away from their real positions when bases didn't span
+// the whole map.
+const mapBoundsFromDimensions = (widthPixels, heightPixels) => {
+  const w = Number(widthPixels);
+  const h = Number(heightPixels);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
+  return { minX: 0, minY: 0, maxX: w, maxY: h };
+};
+
 const mapBoundsFromGameEvents = (events) => {
   const points = [];
   (Array.isArray(events) ? events : []).forEach((event) => {
@@ -523,10 +536,14 @@ const fallbackOverlayUnitNamesForEvent = (eventType) => {
   return [];
 };
 
+// Return clock as a number in [0, 12]. 0 represents scmapanalyzer's "center
+// base" (rich middle expansion). 1..12 are regular dial positions. Null
+// means unknown — fall back to other lookups.
 const eventBaseClock = (event) => {
   const rawClock = Number(event?.base?.clock);
-  if (Number.isFinite(rawClock) && rawClock >= 1 && rawClock <= 12) return rawClock;
+  if (Number.isFinite(rawClock) && rawClock >= 0 && rawClock <= 12) return rawClock;
   const name = String(event?.base?.name || '');
+  if (/\bcenter base\b/i.test(name)) return 0;
   const match = name.match(/\b([1-9]|1[0-2])\b/);
   if (!match) return null;
   const parsed = Number(match[1]);
@@ -536,7 +553,10 @@ const eventBaseClock = (event) => {
 
 const syntheticPointForClock = (clock) => {
   const safeClock = Number(clock);
-  if (!Number.isFinite(safeClock) || safeClock < 1 || safeClock > 12) return null;
+  if (!Number.isFinite(safeClock) || safeClock < 0 || safeClock > 12) return null;
+  // clock==0 is the center base — place it literally at the map center
+  // rather than projecting onto the 12-hour dial circle.
+  if (safeClock === 0) return { x: 50, y: 50 };
   const angle = ((safeClock % 12) / 12) * (Math.PI * 2) - (Math.PI / 2);
   const radius = 34;
   return {
@@ -561,7 +581,9 @@ const syntheticPolygonForCenter = (center, radius = 6) => {
 const eventBaseKey = (event) => {
   const kind = String(event?.base?.kind || '').trim().toLowerCase();
   const clock = eventBaseClock(event);
-  if (clock) return `${kind || 'base'}:${clock}`;
+  // clock can legitimately be 0 (center base). Check for null/undefined,
+  // not truthiness, or we collapse center bases into name-based keys.
+  if (clock !== null && clock !== undefined) return `${kind || 'base'}:${clock}`;
   const name = String(event?.base?.name || '').trim().toLowerCase();
   if (name) return `${kind || 'base'}:${name}`;
   return '';
@@ -2889,8 +2911,10 @@ function App() {
   const mainMapVisualThumbURL = String(mainMapVisual?.thumbnail_url || mainMapVisualURL).trim();
   const mainMapVisualAvailable = Boolean(mainMapVisual?.available && mainMapVisualURL);
   const mainEventMapBounds = useMemo(
-    () => mapBoundsFromGameEvents(mainGame?.game_events || []),
-    [mainGame?.game_events],
+    () =>
+      mapBoundsFromDimensions(mainGame?.map_width_pixels, mainGame?.map_height_pixels) ||
+      mapBoundsFromGameEvents(mainGame?.game_events || []),
+    [mainGame?.game_events, mainGame?.map_width_pixels, mainGame?.map_height_pixels],
   );
   const selectedMainGameEvent = useMemo(() => {
     if (!topicFilteredGameEvents.length) return null;

@@ -251,6 +251,55 @@ func (e *Engine) ReplayEvents() []ReplayEvent {
 	return out
 }
 
+// DebugBase mirrors the internal `base` struct for read-only external
+// inspection (e.g. the /api/debug/map-layout endpoint). Kept separate so
+// internal fields stay unexported.
+type DebugBase struct {
+	Index       int     `json:"index"`
+	Name        string  `json:"name"`
+	Kind        string  `json:"kind"`
+	Clock       int     `json:"clock"`
+	CenterX     float64 `json:"center_x"`
+	CenterY     float64 `json:"center_y"`
+	IsStarting  bool    `json:"is_starting"`
+	MineralOnly bool    `json:"mineral_only"`
+	DisplayName string  `json:"display_name"`
+}
+
+// DebugSnapshot exposes the resolved world-state base layout for diagnostics.
+// Used by the /api/debug/map-layout endpoint to compare engine-resolved
+// structure (start/natural ownership, display names) against the raw
+// scmapanalyzer data — critical for debugging location misclassifications.
+func (e *Engine) DebugSnapshot() (bases []DebugBase, startBaseByPID map[byte]int, naturalBaseByPID map[byte]int, naturalOwnerByBase map[int]byte) {
+	bases = make([]DebugBase, 0, len(e.bases))
+	for i, b := range e.bases {
+		bases = append(bases, DebugBase{
+			Index:       i,
+			Name:        b.Name,
+			Kind:        b.Kind,
+			Clock:       b.Clock,
+			CenterX:     b.CenterX,
+			CenterY:     b.CenterY,
+			IsStarting:  b.IsStarting,
+			MineralOnly: b.MineralOnly,
+			DisplayName: b.DisplayName,
+		})
+	}
+	startBaseByPID = make(map[byte]int, len(e.startBaseByPID))
+	for k, v := range e.startBaseByPID {
+		startBaseByPID[k] = v
+	}
+	naturalBaseByPID = make(map[byte]int, len(e.naturalBaseByPID))
+	for k, v := range e.naturalBaseByPID {
+		naturalBaseByPID[k] = v
+	}
+	naturalOwnerByBase = make(map[int]byte, len(e.naturalOwnerByBase))
+	for k, v := range e.naturalOwnerByBase {
+		naturalOwnerByBase[k] = v
+	}
+	return bases, startBaseByPID, naturalBaseByPID, naturalOwnerByBase
+}
+
 // NaturalExpansionForPlayer returns the player's natural expansion display name.
 func (e *Engine) NaturalExpansionForPlayer(playerID byte) (string, bool) {
 	baseIdx, ok := e.naturalBaseByPID[playerID]
@@ -742,7 +791,10 @@ func (e *Engine) locationForBase(baseIdx int) (*string, *int, *int, *bool) {
 	}
 	baseType := &baseTypeValue
 	var baseOclock *int
-	if base.Clock >= 1 && base.Clock <= 12 {
+	// Clock==0 is scmapanalyzer's "center base" marker (only used on maps
+	// with a rich middle expansion). 1..12 is the usual dial position.
+	// Negative values indicate "unknown"; filter those out.
+	if base.Clock >= 0 && base.Clock <= 12 {
 		clock := base.Clock
 		baseOclock = &clock
 	}
@@ -750,7 +802,7 @@ func (e *Engine) locationForBase(baseIdx int) (*string, *int, *int, *bool) {
 	if ownerPID, ok := e.naturalOwnerByBase[baseIdx]; ok {
 		if ownerBaseIdx, hasStart := e.startBaseByPID[ownerPID]; hasStart && ownerBaseIdx >= 0 && ownerBaseIdx < len(e.bases) {
 			ownerClock := e.bases[ownerBaseIdx].Clock
-			if ownerClock >= 1 && ownerClock <= 12 {
+			if ownerClock >= 0 && ownerClock <= 12 {
 				naturalOfClock = &ownerClock
 			}
 		}
@@ -1394,13 +1446,25 @@ func (e *Engine) assignNaturalBasesFromLayoutByName(layout *models.MapContextLay
 func (e *Engine) assignDisplayNames() {
 	for i := range e.bases {
 		oc := e.bases[i].Clock
-		if oc <= 0 {
+		// Clock==0 is scmapanalyzer's "center base" marker. Label it
+		// explicitly so sentences like "P1 expands to center base" read
+		// correctly — the existing "at N" / "an expa near N" templates
+		// don't accommodate the center concept.
+		if oc == 0 {
+			e.bases[i].DisplayName = "center base"
+			continue
+		}
+		if oc < 0 {
 			oc = utils.CalculateStartLocationOclock(
 				int(e.replay.MapWidth),
 				int(e.replay.MapHeight),
 				int(math.Round(e.bases[i].CenterX)),
 				int(math.Round(e.bases[i].CenterY)),
 			)
+			if oc == 0 {
+				e.bases[i].DisplayName = "center base"
+				continue
+			}
 		}
 		if e.bases[i].IsStarting {
 			e.bases[i].DisplayName = fmt.Sprintf("at %d", oc)

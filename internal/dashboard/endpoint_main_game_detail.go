@@ -82,6 +82,10 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 			mapLayout = layout
 		}
 	}
+	if mapLayout != nil && mapLayout.WidthTiles > 0 && mapLayout.HeightTiles > 0 {
+		detail.MapWidthPixels = int64(mapLayout.WidthTiles) * 32
+		detail.MapHeightPixels = int64(mapLayout.HeightTiles) * 32
+	}
 
 	if err := d.populateDetectedPatternsForGameDetail(&detail, mapLayout, startClockByPlayerID, displayByName); err != nil {
 		return detail, err
@@ -1419,7 +1423,7 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 			}
 		}
 		if row.LocationBaseType != nil || row.LocationBaseOclock != nil {
-			if matchedBase, ok := lookupOverlayBase(baseMetas, row.LocationBaseType, row.LocationBaseOclock); ok {
+			if matchedBase, ok := lookupOverlayBase(baseMetas, row.LocationBaseType, row.LocationBaseOclock, row.LocationNaturalOfClock); ok {
 				baseCopy := matchedBase
 				if label := baseLabel(row.LocationBaseType, row.LocationBaseOclock, row.LocationNaturalOfClock); strings.TrimSpace(label) != "" {
 					baseCopy.Name = label
@@ -1479,6 +1483,23 @@ func overlayBaseMetasFromLayout(layout *models.MapContextLayout) []overlayBaseMe
 	if layout == nil || len(layout.Bases) == 0 {
 		return nil
 	}
+	// scmapanalyzer annotates each start base with the Name of its natural.
+	// Build: natural_base_name -> start_clock, so we can stamp NaturalOfClock
+	// onto the natural base's overlay metadata. This lets the render-time
+	// lookup distinguish a natural from an unrelated expa that happens to
+	// share the same o'clock position (previously they collapsed to the
+	// same (kind, clock) key and painted the wrong polygon).
+	startClockByNaturalName := map[string]int64{}
+	for _, base := range layout.Bases {
+		if !strings.EqualFold(strings.TrimSpace(base.Kind), "start") {
+			continue
+		}
+		naturalName := strings.TrimSpace(base.NaturalExpansion)
+		if naturalName == "" {
+			continue
+		}
+		startClockByNaturalName[naturalName] = int64(base.Clock)
+	}
 	out := make([]overlayBaseMeta, 0, len(layout.Bases))
 	for _, base := range layout.Bases {
 		polygon := make([]workflowGameEventPoint, 0, len(base.Polygon))
@@ -1487,30 +1508,78 @@ func overlayBaseMetasFromLayout(layout *models.MapContextLayout) []overlayBaseMe
 		}
 		kind := strings.TrimSpace(base.Kind)
 		prettyName := strings.TrimSpace(base.Name)
-		if prettyName == "" && base.Clock >= 1 && base.Clock <= 12 {
-			prettyName = fmt.Sprintf("at %d", base.Clock)
+		if prettyName == "" {
+			if base.Clock == 0 {
+				prettyName = "center base"
+			} else if base.Clock >= 1 && base.Clock <= 12 {
+				prettyName = fmt.Sprintf("at %d", base.Clock)
+			}
+		}
+		isStarting := strings.EqualFold(kind, "start") || strings.EqualFold(kind, "starting")
+		var naturalOfClock *int64
+		if !isStarting {
+			if clock, ok := startClockByNaturalName[strings.TrimSpace(base.Name)]; ok {
+				clockCopy := clock
+				naturalOfClock = &clockCopy
+			}
 		}
 		out = append(out, overlayBaseMeta{
 			Base: workflowGameEventBase{
-				Name:        prettyName,
-				Kind:        kind,
-				Clock:       int64(base.Clock),
-				MineralOnly: lo.Ternary(base.MineralOnly, lo.ToPtr(true), nil),
-				Center:      workflowGameEventPoint{X: float64(base.Center.X), Y: float64(base.Center.Y)},
-				Polygon:     polygon,
+				Name:           prettyName,
+				Kind:           kind,
+				Clock:          int64(base.Clock),
+				NaturalOfClock: naturalOfClock,
+				MineralOnly:    lo.Ternary(base.MineralOnly, lo.ToPtr(true), nil),
+				Center:         workflowGameEventPoint{X: float64(base.Center.X), Y: float64(base.Center.Y)},
+				Polygon:        polygon,
 			},
-			IsStarting: strings.EqualFold(kind, "start") || strings.EqualFold(kind, "starting"),
+			IsStarting: isStarting,
 		})
 	}
 	return out
 }
 
-func lookupOverlayBase(baseMetas []overlayBaseMeta, baseType *string, baseOclock *int64) (workflowGameEventBase, bool) {
+func lookupOverlayBase(baseMetas []overlayBaseMeta, baseType *string, baseOclock *int64, naturalOfOclock *int64) (workflowGameEventBase, bool) {
 	if baseOclock == nil {
 		return workflowGameEventBase{}, false
 	}
 	targetClock := *baseOclock
 	targetType := strings.ToLower(strings.TrimSpace(nullableString(baseType)))
+	// Primary pass: match by (kind, clock[, natural_of_clock]). The
+	// natural_of_clock component is what disambiguates a natural from a
+	// coincident expa at the same clock.
+	for _, candidate := range baseMetas {
+		if candidate.Base.Clock != targetClock {
+			continue
+		}
+		switch targetType {
+		case "starting":
+			if !candidate.IsStarting {
+				continue
+			}
+		case "natural":
+			if candidate.IsStarting {
+				continue
+			}
+			if candidate.Base.NaturalOfClock == nil {
+				continue
+			}
+			if naturalOfOclock == nil || *candidate.Base.NaturalOfClock != *naturalOfOclock {
+				continue
+			}
+		default: // "expansion" and anything else
+			if candidate.IsStarting {
+				continue
+			}
+			if candidate.Base.NaturalOfClock != nil {
+				continue
+			}
+		}
+		return candidate.Base, true
+	}
+	// Secondary fallback: kind-agnostic clock match, preserving prior behavior
+	// when the primary pass fails (e.g. layout missing or natural-of-clock
+	// unmapped). Keeps rendering best-effort rather than dropping the polygon.
 	for _, candidate := range baseMetas {
 		if candidate.Base.Clock != targetClock {
 			continue
@@ -1550,10 +1619,29 @@ func baseKeyForEvent(event *workflowGameEvent) string {
 		return ""
 	}
 	kind := strings.ToLower(strings.TrimSpace(event.Base.Kind))
-	if event.Base.Clock > 0 {
+	// Disambiguate naturals by the clock of the start they belong to — two
+	// different players' naturals can sit at the same clock, and an expa
+	// can share a clock with a natural. Without natural_of_clock in the
+	// key, ownership bookkeeping collapses them.
+	if kind == "natural" && event.Base.NaturalOfClock != nil {
+		return fmt.Sprintf("natural|%d|%d", *event.Base.NaturalOfClock, event.Base.Clock)
+	}
+	if event.Base.Clock >= 0 && (event.Base.Clock > 0 || hasValidCenterBaseKind(kind)) {
 		return fmt.Sprintf("%s|%d", kind, event.Base.Clock)
 	}
 	return fmt.Sprintf("%s|%s", kind, strings.ToLower(strings.TrimSpace(event.Base.Name)))
+}
+
+// hasValidCenterBaseKind returns true for event base kinds that can legitimately
+// carry clock=0 (the "center base" emitted by scmapanalyzer for maps with a
+// rich expansion in the middle). Without this, center bases would silently
+// fall through to name-based keying.
+func hasValidCenterBaseKind(kind string) bool {
+	switch kind {
+	case "start", "starting", "natural", "expansion", "expa":
+		return true
+	}
+	return false
 }
 
 func applyOwnershipTransition(event *workflowGameEvent, ownership map[string]*workflowGameEventPlayer) {
@@ -1647,13 +1735,29 @@ func baseLabel(baseType *string, baseOclock *int64, naturalOf *int64) string {
 	if baseType == nil {
 		return ""
 	}
+	// oclock==0 means scmapanalyzer's "center base". None of the templated
+	// labels ("at 9", "12's natural near 6", "an expa near 3") read right
+	// when inserted with 0, so short-circuit to a clear literal.
+	isCenter := func(v *int64) bool { return v != nil && *v == 0 }
 	switch strings.ToLower(strings.TrimSpace(*baseType)) {
 	case "starting":
+		if isCenter(baseOclock) {
+			return "center base"
+		}
 		if baseOclock != nil {
 			return fmt.Sprintf("at %d", *baseOclock)
 		}
 		return "starting base"
 	case "natural":
+		if isCenter(baseOclock) {
+			if isCenter(naturalOf) {
+				return "center base"
+			}
+			if naturalOf != nil {
+				return fmt.Sprintf("%d's natural (center base)", *naturalOf)
+			}
+			return "center base"
+		}
 		if naturalOf != nil {
 			if baseOclock != nil && *baseOclock != *naturalOf {
 				return fmt.Sprintf("%d's natural near %d", *naturalOf, *baseOclock)
@@ -1665,6 +1769,9 @@ func baseLabel(baseType *string, baseOclock *int64, naturalOf *int64) string {
 		}
 		return "natural expansion"
 	default:
+		if isCenter(baseOclock) {
+			return "center base"
+		}
 		if baseOclock != nil {
 			return fmt.Sprintf("an expa near %d", *baseOclock)
 		}
