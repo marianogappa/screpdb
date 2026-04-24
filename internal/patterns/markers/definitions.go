@@ -96,6 +96,8 @@ func allMarkers() []Marker {
 					Tolerance:    Sym(3),
 				},
 			},
+			SummaryPlayer: &Pill{Label: "4 Pool", IconKey: "spawningpool"},
+			GamesList:     &Pill{Label: "4 Pool", IconKey: "spawningpool"},
 		},
 		{
 			Name:        "9 Pool",
@@ -135,6 +137,8 @@ func allMarkers() []Marker {
 					Tolerance:    Sym(3),
 				},
 			},
+			SummaryPlayer: &Pill{Label: "9 Pool", IconKey: "spawningpool"},
+			GamesList:     &Pill{Label: "9 Pool", IconKey: "spawningpool"},
 		},
 		{
 			Name:        "9 Pool into Hatchery",
@@ -172,6 +176,8 @@ func allMarkers() []Marker {
 					Tolerance:    Sym(3),
 				},
 			},
+			SummaryPlayer: &Pill{Label: "9 Pool → Hatch", IconKey: "hatchery"},
+			GamesList:     &Pill{Label: "9 Pool → Hatch", IconKey: "hatchery"},
 		},
 		{
 			Name:        "9 Hatch",
@@ -201,6 +207,8 @@ func allMarkers() []Marker {
 					Tolerance:    Asym(6, 10),
 				},
 			},
+			SummaryPlayer: &Pill{Label: "9 Hatch", IconKey: "hatchery"},
+			GamesList:     &Pill{Label: "9 Hatch", IconKey: "hatchery"},
 		},
 		{
 			Name:        "12 Hatch",
@@ -233,6 +241,8 @@ func allMarkers() []Marker {
 					Tolerance:    Asym(3, 10),
 				},
 			},
+			SummaryPlayer: &Pill{Label: "12 Hatch", IconKey: "hatchery"},
+			GamesList:     &Pill{Label: "12 Hatch", IconKey: "hatchery"},
 		},
 		{
 			Name:        "Nexus First",
@@ -263,6 +273,8 @@ func allMarkers() []Marker {
 					Tolerance:    Sym(8),
 				},
 			},
+			SummaryPlayer: &Pill{Label: "Nexus First", IconKey: "nexus"},
+			GamesList:     &Pill{Label: "Nexus First", IconKey: "nexus"},
 		},
 		{
 			Name:        "Forge Expand",
@@ -294,6 +306,8 @@ func allMarkers() []Marker {
 					Tolerance:    Sym(8),
 				},
 			},
+			SummaryPlayer: &Pill{Label: "Forge Expand", IconKey: "forge"},
+			GamesList:     &Pill{Label: "Forge Expand", IconKey: "forge"},
 		},
 		{
 			Name:        "2 Gate",
@@ -330,6 +344,8 @@ func allMarkers() []Marker {
 					Tolerance:    Sym(3),
 				},
 			},
+			SummaryPlayer: &Pill{Label: "2 Gate", IconKey: "gateway"},
+			GamesList:     &Pill{Label: "2 Gate", IconKey: "gateway"},
 		},
 
 		// -------------------------------------------------------------------
@@ -340,60 +356,81 @@ func allMarkers() []Marker {
 		// -------------------------------------------------------------------
 
 		{
-			Name:          "Quick factory",
-			PatternName:   "Quick factory",
-			FeatureKey:    "quick_factory",
-			Kind:          KindMarker,
-			Race:          RaceTerran,
+			Name:         "Quick factory",
+			PatternName:  "Quick factory",
+			FeatureKey:   "quick_factory",
+			Kind:         KindMarker,
+			Race:         RaceTerran,
 			Rule:         FirstBuildBefore(subjFactory, 4*60),
 			RuleDeadline: 4 * 60,
+			// Inline pill: frontend renders "Quick <factory-icon>" — the unit icon
+			// embeds as a sub-element rather than a plain text {subject}.
+			SummaryPlayer: &Pill{Label: "Quick", IconKey: "factory", Style: PillStyleInline},
 		},
 		{
-			Name:          "Carriers",
-			PatternName:   "Carriers",
-			FeatureKey:    "carriers",
-			Kind:          KindMarker,
-			Race:          RaceProtoss,
+			Name:         "Carriers",
+			PatternName:  "Carriers",
+			FeatureKey:   "carriers",
+			Kind:         KindMarker,
+			Race:         RaceProtoss,
 			Rule:         FirstProduceExists(subjCarrier),
 			RuleDeadline: endOfReplaySentinel,
+			SummaryPlayer: &Pill{IconKey: "carrier", Style: PillStyleStrong, Title: "Carriers"},
+			GamesList:     &Pill{Label: "Carrier", IconKey: "carrier"},
 		},
 		{
-			Name:          "Battlecruisers",
-			PatternName:   "Battlecruisers",
-			FeatureKey:    "battlecruisers",
-			Kind:          KindMarker,
-			Race:          RaceTerran,
+			Name:         "Battlecruisers",
+			PatternName:  "Battlecruisers",
+			FeatureKey:   "battlecruisers",
+			Kind:         KindMarker,
+			Race:         RaceTerran,
 			Rule:         FirstProduceExists(subjBattlecruiser),
 			RuleDeadline: endOfReplaySentinel,
+			SummaryPlayer: &Pill{IconKey: "battlecruiser", Style: PillStyleStrong, Title: "Battlecruisers"},
+			GamesList:     &Pill{Label: "Battlecruiser", IconKey: "battlecruiser"},
 		},
 		{
 			Name:             "Never upgraded",
 			PatternName:      "Never upgraded",
 			FeatureKey:       "never_upgraded",
 			Kind:             KindMarker,
-			Rule:            Not(UpgradeExists()),
-			RuleDeadline:    endOfReplaySentinel,
+			Rule:             Not(UpgradeExists()),
+			RuleDeadline:     endOfReplaySentinel,
 			MinReplaySeconds: 10 * 60,
+			SummaryPlayer: &Pill{
+				Label: "🚫 upgrades",
+				Style: PillStyleNegative,
+				Title: "No Upgrade commands in this replay for this player (10+ minute games).",
+			},
 		},
 		{
 			Name:             "Never researched",
 			PatternName:      "Never researched",
 			FeatureKey:       "never_researched",
 			Kind:             KindMarker,
-			Rule:            Not(TechExists()),
-			RuleDeadline:    endOfReplaySentinel,
+			Rule:             Not(TechExists()),
+			RuleDeadline:     endOfReplaySentinel,
 			MinReplaySeconds: 10 * 60,
+			SummaryPlayer: &Pill{
+				Label: "🚫 researches",
+				Style: PillStyleNegative,
+				Title: "No Tech commands in this replay for this player (10+ minute games).",
+			},
 		},
 
 		// Custom evaluator markers — worldstate-sourced events + spatial stat.
 
 		{
-			Name:          "Made drops",
-			PatternName:   "Made drops",
-			FeatureKey:    "made_drops",
-			Kind:          KindMarker,
-			Custom:        func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "drop"} },
+			Name:         "Made drops",
+			PatternName:  "Made drops",
+			FeatureKey:   "made_drops",
+			Kind:         KindMarker,
+			Custom:       func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "drop"} },
 			RuleDeadline: endOfReplaySentinel,
+			// Suppressed on the summary player row when the backend already emits a
+			// drop game_event (the frontend de-dupes via trustGameEventsForDrops);
+			// we still expose the pill for the Events-list / raw consumers.
+			SummaryPlayer: &Pill{Label: "Made drops at min {minute}"},
 		},
 		{
 			Name:          "Made recalls",
@@ -402,7 +439,9 @@ func allMarkers() []Marker {
 			Kind:          KindMarker,
 			Race:          RaceProtoss,
 			Custom:        func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "recall"} },
-			RuleDeadline: endOfReplaySentinel,
+			RuleDeadline:  endOfReplaySentinel,
+			SummaryPlayer: &Pill{Label: "Made recalls at min {minute}"},
+			GamesList:     &Pill{Label: "Recalls", IconKey: "arbiter"},
 		},
 		{
 			Name:          "Threw Nukes",
@@ -411,23 +450,37 @@ func allMarkers() []Marker {
 			Kind:          KindMarker,
 			Race:          RaceTerran,
 			Custom:        func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "nuke"} },
-			RuleDeadline: endOfReplaySentinel,
+			RuleDeadline:  endOfReplaySentinel,
+			SummaryPlayer: &Pill{Label: "Threw Nukes at {minute} mins"},
+			GamesList:     &Pill{Label: "Nukes", IconKey: "ghost"},
 		},
 		{
-			Name:          "Became Terran",
-			PatternName:   "Became Terran",
-			FeatureKey:    "became_terran",
-			Kind:          KindMarker,
-			Custom:        func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "became_terran"} },
+			Name:         "Became Terran",
+			PatternName:  "Became Terran",
+			FeatureKey:   "became_terran",
+			Kind:         KindMarker,
+			Custom:       func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "became_terran"} },
 			RuleDeadline: endOfReplaySentinel,
+			SummaryPlayer: &Pill{
+				Label:   "Terran at {minute} mins",
+				IconKey: "darkarchon",
+				Style:   PillStyleStrong,
+				Title:   "Became Terran",
+			},
 		},
 		{
-			Name:          "Became Zerg",
-			PatternName:   "Became Zerg",
-			FeatureKey:    "became_zerg",
-			Kind:          KindMarker,
-			Custom:        func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "became_zerg"} },
+			Name:         "Became Zerg",
+			PatternName:  "Became Zerg",
+			FeatureKey:   "became_zerg",
+			Kind:         KindMarker,
+			Custom:       func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "became_zerg"} },
 			RuleDeadline: endOfReplaySentinel,
+			SummaryPlayer: &Pill{
+				Label:   "Zerg at {minute} mins",
+				IconKey: "darkarchon",
+				Style:   PillStyleStrong,
+				Title:   "Became Zerg",
+			},
 		},
 		{
 			Name:             "Viewport Multitasking",
@@ -437,6 +490,8 @@ func allMarkers() []Marker {
 			Custom:           newViewportMultitaskingEvaluator,
 			RuleDeadline:     endOfReplaySentinel,
 			MinReplaySeconds: models.ViewportMultitaskingWindowStartSecond, // 7m
+			// Deliberately no pill surfaces: this marker feeds the dedicated
+			// viewport-multitasking widget, not the summary pill row.
 		},
 
 		// Hotkey markers. Migrated from the imperative detectors; same
@@ -450,6 +505,11 @@ func allMarkers() []Marker {
 			Rule:             Not(HotkeyExists()),
 			RuleDeadline:     endOfReplaySentinel,
 			MinReplaySeconds: 7 * 60,
+			SummaryPlayer: &Pill{
+				Label: "🚫 hotkeys",
+				Style: PillStyleNegative,
+				Title: "No hotkey-group commands in this replay (same 7+ minute gate as the detector).",
+			},
 		},
 		{
 			Name:         "Used Hotkey Groups",
@@ -458,6 +518,10 @@ func allMarkers() []Marker {
 			Kind:         KindMarker,
 			Custom:       newUsedHotkeyGroupsEvaluator,
 			RuleDeadline: endOfReplaySentinel,
+			SummaryPlayer: &Pill{
+				Label:   "Hotkeys {subject}",
+				Subject: PayloadFieldSubject("groups"),
+			},
 		},
 	}
 }

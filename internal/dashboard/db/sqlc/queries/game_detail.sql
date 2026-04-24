@@ -35,11 +35,13 @@ ORDER BY p.team ASC, p.id ASC;
 
 -- name: ListReplayPatterns :many
 -- Replay-level markers (source_player_id IS NULL). event_type is the marker's FeatureKey.
--- payload is the JSON blob for markers that carry extras; pattern_value surfaces it as text
--- so downstream code can display the payload as the "value" field during the transition window.
+-- detected_second + payload carry the post-migration per-row data; pattern_value
+-- is kept as a transitional alias for frontend code that hasn't moved yet.
 SELECT
   event_type AS pattern_name,
-  COALESCE(payload, 'true') AS pattern_value
+  COALESCE(payload, 'true') AS pattern_value,
+  seconds_from_game_start AS detected_second,
+  COALESCE(payload, '') AS payload
 FROM replay_events
 WHERE replay_id = ?
   AND event_kind = 'marker'
@@ -50,7 +52,9 @@ ORDER BY event_type ASC;
 SELECT
   source_player_id AS player_id,
   event_type AS pattern_name,
-  COALESCE(payload, 'true') AS pattern_value
+  COALESCE(payload, 'true') AS pattern_value,
+  seconds_from_game_start AS detected_second,
+  COALESCE(payload, '') AS payload
 FROM replay_events
 WHERE replay_id = ?
   AND event_kind = 'marker'

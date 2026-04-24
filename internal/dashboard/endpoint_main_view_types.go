@@ -1,5 +1,7 @@
 package dashboard
 
+import "encoding/json"
+
 const workflowSummaryVersion = "v1"
 
 var topPlayerPalette = []string{
@@ -256,9 +258,25 @@ type workflowGamePlayer struct {
 	DetectedPatterns   []workflowPatternValue `json:"detected_patterns"`
 }
 
+// workflowPatternValue is the per-pattern entry shipped to the frontend inside
+// detected_patterns[] on the game-summary response. Post markers-migration,
+// EventType (= marker FeatureKey) + DetectedSecond + Payload are the
+// registry-driven shape; PatternName + Value are kept alongside as transitional
+// fields so the existing hardcoded FE pill logic keeps working until the Stage 3
+// frontend rewrite replaces it with the marker registry.
 type workflowPatternValue struct {
+	// Legacy fields — derived from the marker registry's PatternName/FeatureKey so
+	// old FE code paths (string-matching on pattern_name) continue to work.
 	PatternName string `json:"pattern_name"`
 	Value       string `json:"value"`
+
+	// New fields. EventType is the FeatureKey (e.g. "carriers", "bo_9_pool") and is
+	// the stable identifier going forward. DetectedSecond is the replay second the
+	// marker committed at; it's what the FE uses to render "{minute}" interpolations.
+	// Payload is the raw JSON blob for markers that carry extras; nil otherwise.
+	EventType       string          `json:"event_type"`
+	DetectedSecond  int             `json:"detected_second"`
+	Payload         json.RawMessage `json:"payload,omitempty"`
 }
 
 type workflowGameDetail struct {

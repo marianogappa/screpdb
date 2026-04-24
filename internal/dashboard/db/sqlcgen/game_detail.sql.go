@@ -126,7 +126,9 @@ const ListPlayerPatterns = `-- name: ListPlayerPatterns :many
 SELECT
   source_player_id AS player_id,
   event_type AS pattern_name,
-  COALESCE(payload, 'true') AS pattern_value
+  COALESCE(payload, 'true') AS pattern_value,
+  seconds_from_game_start AS detected_second,
+  COALESCE(payload, '') AS payload
 FROM replay_events
 WHERE replay_id = ?
   AND event_kind = 'marker'
@@ -135,9 +137,11 @@ ORDER BY source_player_id ASC, event_type ASC
 `
 
 type ListPlayerPatternsRow struct {
-	PlayerID     int64
-	PatternName  string
-	PatternValue string
+	PlayerID       int64
+	PatternName    string
+	PatternValue   string
+	DetectedSecond int64
+	Payload        string
 }
 
 func (q *Queries) ListPlayerPatterns(ctx context.Context, replayID int64) ([]ListPlayerPatternsRow, error) {
@@ -149,7 +153,7 @@ func (q *Queries) ListPlayerPatterns(ctx context.Context, replayID int64) ([]Lis
 	items := []ListPlayerPatternsRow{}
 	for rows.Next() {
 		var i ListPlayerPatternsRow
-		if err := rows.Scan(&i.PlayerID, &i.PatternName, &i.PatternValue); err != nil {
+		if err := rows.Scan(&i.PlayerID, &i.PatternName, &i.PatternValue, &i.DetectedSecond, &i.Payload); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -314,7 +318,9 @@ func (q *Queries) ListReplayEvents(ctx context.Context, replayID int64) ([]ListR
 const ListReplayPatterns = `-- name: ListReplayPatterns :many
 SELECT
   event_type AS pattern_name,
-  COALESCE(payload, 'true') AS pattern_value
+  COALESCE(payload, 'true') AS pattern_value,
+  seconds_from_game_start AS detected_second,
+  COALESCE(payload, '') AS payload
 FROM replay_events
 WHERE replay_id = ?
   AND event_kind = 'marker'
@@ -323,8 +329,10 @@ ORDER BY event_type ASC
 `
 
 type ListReplayPatternsRow struct {
-	PatternName  string
-	PatternValue string
+	PatternName    string
+	PatternValue   string
+	DetectedSecond int64
+	Payload        string
 }
 
 func (q *Queries) ListReplayPatterns(ctx context.Context, replayID int64) ([]ListReplayPatternsRow, error) {
@@ -336,7 +344,7 @@ func (q *Queries) ListReplayPatterns(ctx context.Context, replayID int64) ([]Lis
 	items := []ListReplayPatternsRow{}
 	for rows.Next() {
 		var i ListReplayPatternsRow
-		if err := rows.Scan(&i.PatternName, &i.PatternValue); err != nil {
+		if err := rows.Scan(&i.PatternName, &i.PatternValue, &i.DetectedSecond, &i.Payload); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

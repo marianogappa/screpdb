@@ -50,3 +50,14 @@ func ByFeatureKey(key string) *Marker {
 func IsInitialBuildOrderPatternName(name string) bool {
 	return strings.HasPrefix(strings.TrimSpace(name), InitialBuildOrderPatternNamePrefix)
 }
+
+// AllFeatureKeys returns the canonical list of FeatureKeys across every registered
+// marker. Caller may treat this as the authoritative allowlist for event_type
+// strings written to replay_events under event_kind='marker'.
+func AllFeatureKeys() []string {
+	keys := make([]string, 0, len(markerList))
+	for i := range markerList {
+		keys = append(keys, markerList[i].FeatureKey)
+	}
+	return keys
+}

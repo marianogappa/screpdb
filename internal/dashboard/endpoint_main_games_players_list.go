@@ -393,8 +393,10 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 	}
 	for _, row := range patternRows {
 		playerID := row.PlayerID
-		pattern := workflowPatternValue{PatternName: row.PatternName, Value: row.PatternValue}
-		pattern.Value = formatPatternValueForUI(pattern.PatternName, pattern.Value)
+		// "Recent games" strip uses the reduced row shape (no DetectedSecond / Payload
+		// cols). Feed zero values so the legacy Value synthesis falls through to the
+		// rawValue path; registry-driven FE fields stay empty-but-present.
+		pattern := buildWorkflowPatternValue(row.PatternName, row.PatternValue, 0, "")
 		currentPlayer := currentByPlayerID[playerID]
 		if currentPlayer == nil {
 			continue

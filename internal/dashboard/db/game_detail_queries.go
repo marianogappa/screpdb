@@ -33,14 +33,18 @@ type ReplayPlayerDetailRow struct {
 }
 
 type PatternValueRow struct {
-	PatternName string
-	Value       string
+	PatternName    string
+	Value          string
+	DetectedSecond int64
+	Payload        string
 }
 
 type PlayerPatternValueRow struct {
-	PlayerID    int64
-	PatternName string
-	Value       string
+	PlayerID       int64
+	PatternName    string
+	Value          string
+	DetectedSecond int64
+	Payload        string
 }
 
 type ReplayEventRow struct {
@@ -135,8 +139,10 @@ func (s *Store) ListReplayPatterns(ctx context.Context, replayID int64) ([]Patte
 	out := make([]PatternValueRow, 0, len(sqlcRows))
 	for _, row := range sqlcRows {
 		out = append(out, PatternValueRow{
-			PatternName: row.PatternName,
-			Value:       row.PatternValue,
+			PatternName:    row.PatternName,
+			Value:          row.PatternValue,
+			DetectedSecond: row.DetectedSecond,
+			Payload:        row.Payload,
 		})
 	}
 	return out, nil
@@ -150,9 +156,11 @@ func (s *Store) ListPlayerPatterns(ctx context.Context, replayID int64) ([]Playe
 	out := make([]PlayerPatternValueRow, 0, len(sqlcRows))
 	for _, row := range sqlcRows {
 		out = append(out, PlayerPatternValueRow{
-			PlayerID:    row.PlayerID,
-			PatternName: row.PatternName,
-			Value:       row.PatternValue,
+			PlayerID:       row.PlayerID,
+			PatternName:    row.PatternName,
+			Value:          row.PatternValue,
+			DetectedSecond: row.DetectedSecond,
+			Payload:        row.Payload,
 		})
 	}
 	return out, nil

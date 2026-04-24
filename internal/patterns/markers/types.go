@@ -234,6 +234,74 @@ func (m FactMatcher) Resolve(facts []cmdenrich.EnrichedCommand) (int, bool) {
 	return 0, false
 }
 
+// PillStyle selects the visual variant the frontend should use when rendering
+// a marker pill. Empty / PillStyleDefault = normal; Strong = truthy signature
+// pills (Carriers, Battlecruisers); Negative = absence pills (🚫 upgrades,
+// 🚫 hotkeys); Inline = pills that embed a sub-icon (Quick {subject}).
+type PillStyle string
+
+const (
+	PillStyleDefault  PillStyle = ""
+	PillStyleStrong   PillStyle = "strong"
+	PillStyleNegative PillStyle = "negative"
+	PillStyleInline   PillStyle = "inline"
+)
+
+// SubjectKind picks where {subject} interpolation reads its value from when the
+// pill's Label / IconKey contains a {subject} placeholder.
+//
+//   - SubjectStatic: fixed string (SubjectValue).
+//   - SubjectPayloadField: reads payload JSON and stringifies the named field.
+//
+// Openers and signatures mostly use SubjectStatic (or omit Subject). Hotkey-groups
+// uses SubjectPayloadField("groups") to render "Hotkeys 1,3,5" from the JSON blob.
+type SubjectKind string
+
+const (
+	SubjectKindStatic       SubjectKind = "static"
+	SubjectKindPayloadField SubjectKind = "payload_field"
+)
+
+// Subject describes how the frontend should resolve a {subject} placeholder
+// embedded in a Pill's Label or IconKey. All fields are optional.
+type Subject struct {
+	Kind  SubjectKind `json:"kind"`
+	Value string      `json:"value,omitempty"`
+	Field string      `json:"field,omitempty"`
+}
+
+// StaticSubject constructs a fixed-text Subject.
+func StaticSubject(value string) *Subject {
+	return &Subject{Kind: SubjectKindStatic, Value: value}
+}
+
+// PayloadFieldSubject constructs a Subject that reads payload JSON.
+func PayloadFieldSubject(field string) *Subject {
+	return &Subject{Kind: SubjectKindPayloadField, Field: field}
+}
+
+// Pill describes how a marker renders on one UI surface. Non-nil pointer on the
+// Marker means "show this marker here"; nil means "hide". Label + IconKey support
+// two placeholders: {subject} (resolved via Subject) and {minute} (derived from
+// replay_events.seconds_from_game_start / 60 at render time).
+//
+// Label examples:
+//
+//   "Carriers"                     — static truthy signature
+//   "Quick {subject}"              — "Quick Factory" (SubjectStatic "Factory")
+//   "Hotkeys {subject}"            — "Hotkeys 1,3,5" (SubjectPayloadField "groups")
+//   "Drops at min {minute}"        — "Drops at min 7"
+//
+// IconKey names a unit-icon sprite the frontend resolves via getUnitIcon(); empty
+// IconKey = no icon.
+type Pill struct {
+	Label   string   `json:"label,omitempty"`
+	IconKey string   `json:"icon_key,omitempty"`
+	Subject *Subject `json:"subject,omitempty"`
+	Style   PillStyle `json:"style,omitempty"`
+	Title   string   `json:"title,omitempty"` // optional tooltip
+}
+
 // Kind categorizes a marker so that mutually-exclusive families (openers)
 // can coexist in the registry alongside overlap-permitted ones (signatures,
 // absences, worldstate-sourced events).
@@ -299,4 +367,20 @@ type Marker struct {
 	// UI tab to compare actual vs. gold-standard. Only populated for
 	// KindInitialBuildOrder markers.
 	Expert []ExpertEvent
+
+	// SummaryPlayer is the pill shown on the per-player row in Game Summary.
+	// Non-nil = show on this surface; nil = hide.
+	SummaryPlayer *Pill
+
+	// SummaryReplay is the pill shown at the replay level in Game Summary
+	// (used for markers that characterise the whole game, e.g. "Threw Nukes").
+	SummaryReplay *Pill
+
+	// GamesList is the pill shown in the games-list "Featuring" column. Doubles
+	// as the featuring-filter entry.
+	GamesList *Pill
+
+	// EventsList is the pill shown in the Game Events timeline tab when the marker
+	// should appear alongside raw narrative events.
+	EventsList *Pill
 }
