@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/marianogappa/screpdb/internal/patterns/markers"
+	"github.com/marianogappa/screpdb/internal/cmdenrich"
 	db "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/samber/lo"
@@ -97,6 +99,9 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		return detail, err
 	}
 	if err := d.populateViewportMultitaskingForGameDetail(&detail); err != nil {
+		return detail, err
+	}
+	if err := d.populateMarkersForGameDetail(&detail); err != nil {
 		return detail, err
 	}
 
@@ -2000,6 +2005,113 @@ func (d *Dashboard) populateFirstUnitEfficiencyForGameDetail(detail *workflowGam
 			Race:      player.Race,
 			Entries:   entries,
 		})
+	}
+	return nil
+}
+
+// populateMarkersForGameDetail walks each player's detected build-order
+// patterns, extracts their actual milestone timings from early-game commands,
+// and attaches one expert-vs-actual comparison entry per (player × detected
+// BO) to the detail's Markers field.
+//
+// BO broad definitions overlap on purpose (e.g. a "9 pool into hatchery" game
+// also matches "9 pool"), so multiple entries can surface for the same player.
+// Registry ordering in internal/patterns/markers drives the display order.
+func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) error {
+	detail.Markers = []workflowMarkerPlayer{}
+	if len(detail.Players) == 0 {
+		return nil
+	}
+
+	// Reuse the same player-scoped build/produce timeline the First-Unit
+	// Efficiency tab uses. We only need events inside the BO detection
+	// window, so walk once and keep a small index.
+	commandRows, err := d.dbStore.ListFirstUnitCommandRows(d.ctx, detail.ReplayID)
+	if err != nil {
+		return fmt.Errorf("failed to load build-order commands: %w", err)
+	}
+
+	factsByPlayer := map[int64][]cmdenrich.EnrichedCommand{}
+	for _, row := range commandRows {
+		names := parseCommandUnitNames(row.UnitType, row.UnitTypes)
+		if len(names) == 0 {
+			continue
+		}
+		for _, name := range names {
+			fact, ok := cmdenrich.FromAction(row.ActionType, name, int(row.Second), row.PlayerID)
+			if !ok || !markers.IsSubjectOfInterest(fact.Subject) {
+				continue
+			}
+			factsByPlayer[row.PlayerID] = append(factsByPlayer[row.PlayerID], fact)
+		}
+	}
+
+	// Which BO was detected per player? Read back our own pattern results.
+	patternRows, err := d.dbStore.ListPlayerPatterns(d.ctx, detail.ReplayID)
+	if err != nil {
+		return fmt.Errorf("failed to load player patterns for build orders: %w", err)
+	}
+	detectedByPlayer := map[int64]map[string]bool{}
+	for _, row := range patternRows {
+		name := strings.TrimSpace(row.PatternName)
+		if !markers.IsInitialBuildOrderPatternName(name) {
+			continue
+		}
+		// ListPlayerPatterns encodes value_bool=true as literal "true".
+		if !strings.EqualFold(strings.TrimSpace(row.Value), "true") {
+			continue
+		}
+		if detectedByPlayer[row.PlayerID] == nil {
+			detectedByPlayer[row.PlayerID] = map[string]bool{}
+		}
+		detectedByPlayer[row.PlayerID][strings.ToLower(name)] = true
+	}
+
+	// One chart per (player × detected BO). Broad definitions overlap on
+	// purpose (e.g. "9 pool" and "9 pool into hatchery" can both match the
+	// same game) — render every match so the user can interpret them.
+	// Registry order drives display order so specific variants sit next to
+	// their general cousins.
+	allMarkers := markers.Markers()
+	for _, player := range detail.Players {
+		detected := detectedByPlayer[player.PlayerID]
+		if len(detected) == 0 {
+			continue
+		}
+		facts := factsByPlayer[player.PlayerID]
+		for i := range allMarkers {
+			bo := &allMarkers[i]
+			if bo.Kind != markers.KindInitialBuildOrder {
+				continue
+			}
+			if !detected[strings.ToLower(bo.PatternName)] {
+				continue
+			}
+			resolutions := bo.ResolveExpert(facts)
+			events := make([]workflowMarkerEvent, 0, len(resolutions))
+			for _, r := range resolutions {
+				events = append(events, workflowMarkerEvent{
+					Key:                   r.Key,
+					Subject:               r.Subject,
+					TargetSecond:          int64(r.TargetSecond),
+					ToleranceEarlySeconds: int64(r.Tolerance.EarlySeconds),
+					ToleranceLateSeconds:  int64(r.Tolerance.LateSeconds),
+					ActualSecond:          int64(r.ActualSecond),
+					Found:                 r.Found,
+					DeltaSeconds:          int64(r.DeltaSeconds),
+					WithinTolerance:       r.WithinTolerance,
+				})
+			}
+			detail.Markers = append(detail.Markers, workflowMarkerPlayer{
+				PlayerID:   player.PlayerID,
+				PlayerKey:  player.PlayerKey,
+				Name:       player.Name,
+				Race:       player.Race,
+				Marker: bo.Name,
+				FeatureKey: bo.FeatureKey,
+				Events:     events,
+			})
+		}
 	}
 	return nil
 }

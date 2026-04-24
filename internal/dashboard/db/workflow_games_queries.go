@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"strings"
 
+	"github.com/marianogappa/screpdb/internal/patterns/markers"
 	"github.com/marianogappa/screpdb/internal/dashboard/db/sqlcgen"
 )
 
@@ -230,11 +231,21 @@ func (s *Store) ListFeaturingPlayerPatternRows(ctx context.Context, replayIDs []
 	for _, replayID := range replayIDs {
 		args = append(args, replayID)
 	}
+	// Pattern names of interest: legacy fixed set + every registered build order.
+	// We assemble the list dynamically so adding a BO needs no SQL changes here.
+	patternNames := []string{"carriers", "battlecruisers", "made recalls", "threw nukes", "became terran", "became zerg"}
+	for _, bo := range markers.Markers() {
+		patternNames = append(patternNames, strings.ToLower(strings.TrimSpace(bo.PatternName)))
+	}
+	quoted := make([]string, 0, len(patternNames))
+	for _, name := range patternNames {
+		quoted = append(quoted, "'"+strings.ReplaceAll(name, "'", "''")+"'")
+	}
 	rows, err := s.ReplayQueryContext(ctx, `
 		SELECT replay_id, pattern_name, value_bool, value_int, value_string, value_timestamp
 		FROM detected_patterns_replay_player
 		WHERE replay_id IN (`+placeholders+`)
-			AND lower(trim(pattern_name)) IN ('carriers', 'battlecruisers', 'made recalls', 'threw nukes', 'became terran', 'became zerg')
+			AND lower(trim(pattern_name)) IN (`+strings.Join(quoted, ", ")+`)
 	`, args...)
 	if err != nil {
 		return nil, err

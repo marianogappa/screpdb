@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
+
+	"github.com/marianogappa/screpdb/internal/patterns/markers"
 )
 
 func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlayersListFilters, sortSpec workflowPlayersListSort) ([]workflowPlayersListItem, int64, workflowPlayersListFilterOptions, error) {
@@ -295,7 +297,8 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 		if !workflowTruthyPatternValue(valueBool, valueInt, valueString, valueTimestamp) {
 			continue
 		}
-		switch strings.ToLower(strings.TrimSpace(patternName)) {
+		trimmedName := strings.TrimSpace(patternName)
+		switch strings.ToLower(trimmedName) {
 		case "carriers":
 			featureSets[replayID]["carriers"] = struct{}{}
 		case "battlecruisers":
@@ -306,6 +309,12 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 			featureSets[replayID]["nukes"] = struct{}{}
 		case "became terran", "became zerg":
 			featureSets[replayID]["mind_control"] = struct{}{}
+		default:
+			// Build-order patterns share a common prefix so we can route them
+			// to their featuring key via the registry rather than a big switch.
+			if bo := markers.ByPatternName(trimmedName); bo != nil {
+				featureSets[replayID][bo.FeatureKey] = struct{}{}
+			}
 		}
 	}
 	rowsReplayEvents, err := d.dbStore.ListFeaturingReplayEventRows(d.ctx, replayIDs)

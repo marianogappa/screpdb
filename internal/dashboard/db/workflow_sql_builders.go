@@ -1,6 +1,10 @@
 package db
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/marianogappa/screpdb/internal/patterns/markers"
+)
 
 var workflowDurationSQLByKey = map[string]string{
 	"under_10m": "r.duration_seconds < 600",
@@ -189,6 +193,22 @@ func workflowFeaturingExistsSQL(featureKey string) (string, bool) {
 				AND re.event_type = 'zergling_rush'
 		)`, true
 	default:
+		// Build-order filter keys (bo_4_pool, bo_9_pool, ...) are resolved via
+		// the markers registry so adding a new marker only needs a single edit
+		// in internal/patterns/markers/definitions.go.
+		if bo := markers.ByFeatureKey(featureKey); bo != nil {
+			// Pattern names are controlled by our own package so no dynamic
+			// user input reaches the SQL; still, escape any single quotes
+			// defensively.
+			escaped := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(bo.PatternName)), "'", "''")
+			return `EXISTS (
+				SELECT 1
+				FROM detected_patterns_replay_player dprp
+				WHERE dprp.replay_id = r.id
+					AND lower(trim(dprp.pattern_name)) = '` + escaped + `'
+					AND dprp.value_bool = 1
+			)`, true
+		}
 		return "", false
 	}
 }

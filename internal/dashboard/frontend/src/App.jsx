@@ -17,6 +17,7 @@ import Histogram from './components/charts/Histogram';
 import Heatmap from './components/charts/Heatmap';
 import TimingScatterRows from './components/charts/TimingScatterRows';
 import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
+import BuildOrderTimelineRows from './components/charts/BuildOrderTimelineRows';
 import { getUnitIcon, normalizeUnitName } from './lib/gameAssets';
 import {
   getStoredVariableValues,
@@ -148,12 +149,11 @@ const dropTransportIconForRace = (race) => {
   return getUnitIcon('dropship');
 };
 
-const playerGameSummarySignalParts = (player, gameEvents, durationSeconds) => {
+const playerGameSummarySignalParts = (player, gameEvents) => {
   const positive = [];
   const pid = player?.player_id;
   if (pid == null) return { positive: [], noScout: null };
   const events = gameEvents || [];
-  const dur = Number(durationSeconds || 0);
   const hasGameEvents = Array.isArray(gameEvents) && gameEvents.length > 0;
   if (!hasGameEvents) {
     return { positive: [], noScout: null };
@@ -184,17 +184,7 @@ const playerGameSummarySignalParts = (player, gameEvents, durationSeconds) => {
     });
   }
 
-  let noScout = null;
-  if (dur >= GAME_SUMMARY_NEGATION_MIN_SECONDS && !playerIsActorForGameEventTypes(events, pid, ['scout'])) {
-    noScout = {
-      key: `ge-no-scout-${pid}`,
-      icon: null,
-      label: '🚫 scout',
-      title: 'No scout event for this player in this replay (narrative uses early worker pressure on an enemy base).',
-      className: 'workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey',
-    };
-  }
-  return { positive, noScout };
+  return { positive, noScout: null };
 };
 
 const renderGameSummarySignalPill = (pill) => (
@@ -390,7 +380,30 @@ const MAIN_GAME_FEATURING_ORDER = [
   { key: 'mind_control', label: 'Mind control', iconKey: 'darkarchon' },
   { key: 'nukes', label: 'Nukes', iconKey: 'ghost' },
   { key: 'recalls', label: 'Recalls', iconKey: 'arbiter' },
+  // Build order pills — keys mirror internal/patterns/markers FeatureKey.
+  { key: 'bo_4_pool', label: '4 Pool', iconKey: 'spawningpool' },
+  { key: 'bo_9_pool', label: '9 Pool', iconKey: 'spawningpool' },
+  { key: 'bo_9_pool_hatch', label: '9 Pool → Hatch', iconKey: 'hatchery' },
+  { key: 'bo_9_hatch', label: '9 Hatch', iconKey: 'hatchery' },
+  { key: 'bo_12_hatch', label: '12 Hatch', iconKey: 'hatchery' },
+  { key: 'bo_nexus_first', label: 'Nexus First', iconKey: 'nexus' },
+  { key: 'bo_forge_expa', label: 'Forge Expand', iconKey: 'forge' },
+  { key: 'bo_2_gate', label: '2 Gate', iconKey: 'gateway' },
 ];
+
+// Maps a stored BO pattern_name (e.g. "Build Order: 9 Pool") to its featuring
+// key (e.g. "bo_9_pool"). Keys are normalizeUnitName()'d so punctuation and
+// spaces are already stripped — kept in sync with internal/patterns/markers/definitions.go.
+const BUILD_ORDER_PATTERN_TO_FEATURE_KEY = {
+  buildorder4pool: 'bo_4_pool',
+  buildorder9pool: 'bo_9_pool',
+  buildorder9poolintohatchery: 'bo_9_pool_hatch',
+  buildorder9hatch: 'bo_9_hatch',
+  buildorder12hatch: 'bo_12_hatch',
+  buildordernexusfirst: 'bo_nexus_first',
+  buildorderforgeexpand: 'bo_forge_expa',
+  buildorder2gate: 'bo_2_gate',
+};
 
 const collectFeaturingKeysFromMainGame = (mainGame) => {
   const found = new Set();
@@ -409,6 +422,8 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
     if (n === 'maderecalls') found.add('recalls');
     if (n === 'threwnukes') found.add('nukes');
     if (n === 'becameterran' || n === 'becamezerg') found.add('mind_control');
+    const boFeatureKey = BUILD_ORDER_PATTERN_TO_FEATURE_KEY[n];
+    if (boFeatureKey) found.add(boFeatureKey);
   };
   (mainGame?.players || []).forEach((p) => {
     (p.detected_patterns || []).forEach(considerPattern);
@@ -823,6 +838,16 @@ const patternIconForName = (patternName) => {
   const normalized = normalizeUnitName(patternName);
   if (normalized.includes('battlecruiser')) return getUnitIcon('battlecruiser');
   if (normalized.includes('carrier')) return getUnitIcon('carrier');
+  // Build-order patterns: reuse the featuring-order icon registry.
+  // normalizeUnitName strips punctuation, so the normalized prefix is
+  // "buildorder" without a colon.
+  if (normalized.startsWith('buildorder')) {
+    const featureKey = BUILD_ORDER_PATTERN_TO_FEATURE_KEY[normalized];
+    if (featureKey) {
+      const entry = MAIN_GAME_FEATURING_ORDER.find((item) => item.key === featureKey);
+      if (entry && entry.iconKey) return getUnitIcon(entry.iconKey);
+    }
+  }
   return getUnitIcon(patternName);
 };
 
@@ -838,6 +863,11 @@ const minuteFromValue = (value) => {
 const formatPatternPillText = (rawName, rawValue, isTruthy) => {
   if (isTruthy) {
     if (rawName.toLowerCase() === 'never researched') return 'Never Researched';
+    // Build-order patterns: render the BO label cleanly ("9 pool") instead of
+    // "Did Build Order: 9 Pool".
+    if (rawName.toLowerCase().startsWith('build order:')) {
+      return rawName.slice('Build Order:'.length).trim();
+    }
     return `Did ${rawName}`;
   }
   const lowerName = rawName.toLowerCase();
@@ -859,6 +889,12 @@ const shouldHidePatternFromSummaryPills = (pattern, trustGameEventsForDrops) => 
   const normalizedPatternName = normalizeUnitName(pattern?.pattern_name);
   if (normalizedPatternName === 'viewportmultitasking') return true;
   if (trustGameEventsForDrops && normalizedPatternName === 'madedrops') return true;
+  // Retired pattern pills — detectors are unregistered but pre-existing rows
+  // may still be in the DB; keep the UI clean.
+  if (normalizedPatternName === 'fastexpa') return true;
+  if (normalizedPatternName === 'gatethenforge') return true;
+  if (normalizedPatternName === 'forgethengate') return true;
+  if (normalizedPatternName === 'hatchbeforepool') return true;
   return false;
 };
 
@@ -951,43 +987,11 @@ const renderPatternPill = (pattern, keyPrefix, team) => {
           {getUnitIcon('factory') ? <img src={getUnitIcon('factory')} alt="Factory" className="workflow-pattern-icon" /> : null}
         </span>
       );
-    } else if (normalizedPatternName === 'gatethenforge') {
-      icon = null;
-      content = (
-        <span className="workflow-pattern-pill-inline">
-          {getUnitIcon('gateway') ? <img src={getUnitIcon('gateway')} alt="Gateway" className="workflow-pattern-icon" /> : null}
-          <span className="workflow-pattern-arrow">then</span>
-          {getUnitIcon('forge') ? <img src={getUnitIcon('forge')} alt="Forge" className="workflow-pattern-icon" /> : null}
-        </span>
-      );
-    } else if (normalizedPatternName === 'forgethengate') {
-      icon = null;
-      content = (
-        <span className="workflow-pattern-pill-inline">
-          {getUnitIcon('forge') ? <img src={getUnitIcon('forge')} alt="Forge" className="workflow-pattern-icon" /> : null}
-          <span className="workflow-pattern-arrow">then</span>
-          {getUnitIcon('gateway') ? <img src={getUnitIcon('gateway')} alt="Gateway" className="workflow-pattern-icon" /> : null}
-        </span>
-      );
-    } else if (normalizedPatternName === 'hatchbeforepool') {
-      icon = null;
-      content = (
-        <span className="workflow-pattern-pill-inline">
-          {getUnitIcon('hatchery') ? <img src={getUnitIcon('hatchery')} alt="Hatchery" className="workflow-pattern-icon" /> : null}
-          <span className="workflow-pattern-arrow">then</span>
-          {getUnitIcon('spawningpool') ? <img src={getUnitIcon('spawningpool')} alt="Spawning Pool" className="workflow-pattern-icon" /> : null}
-        </span>
-      );
-    } else if (normalizedPatternName === 'mech') {
-      icon = null;
-      content = (
-        <span className="workflow-pattern-pill-inline">
-          {getUnitIcon('siegetank') ? <img src={getUnitIcon('siegetank')} alt="Tank" className="workflow-pattern-icon" /> : null}
-          <span>Mech</span>
-        </span>
-      );
     } else if (normalizedPatternName === 'carriers' || normalizedPatternName === 'battlecruisers') {
       content = null;
+    } else if (normalizedPatternName.startsWith('buildorder')) {
+      // BO pills: icon + short name ("9 Pool"); text already stripped of the
+      // "Build Order:" prefix by formatPatternPillText.
     } else if (icon) {
       content = <span>Did</span>;
     }
@@ -1554,9 +1558,15 @@ function App() {
       const data = await api.getGame(replayId);
       setMainGame(data);
       const wantTab = options.initialGameTab;
-      const nextTab = wantTab && MAIN_GAME_TABS.includes(String(wantTab).trim().toLowerCase())
+      let nextTab = wantTab && MAIN_GAME_TABS.includes(String(wantTab).trim().toLowerCase())
         ? String(wantTab).trim().toLowerCase()
         : 'summary';
+      // Build Orders tab is hidden when no BOs were detected; don't leave the
+      // user stranded on an invisible tab.
+      const hasBuildOrders = Array.isArray(data?.build_orders) && data.build_orders.length > 0;
+      if (nextTab === 'build-orders' && !hasBuildOrders) {
+        nextTab = 'summary';
+      }
       setMainGameTab(nextTab);
       setMainEventsPlayerEnabledById(
         Object.fromEntries((data.players || []).map((p) => [String(p.player_id), true])),
@@ -4197,6 +4207,17 @@ function App() {
                     >
                       Game Events
                     </button>
+                    {Array.isArray(mainGame?.build_orders) && mainGame.build_orders.length > 0 ? (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={mainGameTab === 'build-orders'}
+                        className={`workflow-production-tab ${mainGameTab === 'build-orders' ? 'workflow-production-tab-active' : ''}`}
+                        onClick={() => setMainGameTab('build-orders')}
+                      >
+                        Build Orders
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       role="tab"
@@ -4322,7 +4343,7 @@ function App() {
                     <div className="workflow-player-rows" style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
                       {(mainGame.players || []).map((player) => {
                         const raceIcon = getRaceIcon(player.race);
-                        const gameSummaryParts = playerGameSummarySignalParts(player, mainGame?.game_events, mainGame?.duration_seconds);
+                        const gameSummaryParts = playerGameSummarySignalParts(player, mainGame?.game_events);
                         const trustGameEventsForDrops = Array.isArray(mainGame?.game_events) && mainGame.game_events.length > 0;
                         return (
                           <div key={player.player_id} className="workflow-player-row" style={{ borderLeft: `3px solid ${getTeamColor(player.team)}` }}>
@@ -4346,7 +4367,6 @@ function App() {
                               <div className="workflow-pattern-pills">
                                 {gameSummaryParts.positive.map(renderGameSummarySignalPill)}
                                 {filterSummaryPillPatterns(player.detected_patterns, trustGameEventsForDrops).map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`))}
-                                {gameSummaryParts.noScout ? renderGameSummarySignalPill(gameSummaryParts.noScout) : null}
                               </div>
                             </div>
                           </div>
@@ -4855,6 +4875,22 @@ function App() {
                         rowLabelMode={mainTimingInlineLegend ? 'worker-icon' : (['gas', 'expansion'].includes(mainTimingCategory) ? 'name-only' : 'race-suffix')}
                         rowGroupingMode={mainTimingInlineLegend ? 'race' : 'none'}
                       />
+                    )}
+                  </div>
+                )}
+                {mainGameTab === 'build-orders' && (
+                  <div className="workflow-timing-charts">
+                    {Array.isArray(mainGame?.build_orders) && mainGame.build_orders.length > 0 ? (
+                      mainGame.build_orders.map((bo) => (
+                        <BuildOrderTimelineRows
+                          key={`build-order-${bo.player_id}-${bo.feature_key}`}
+                          group={bo}
+                        />
+                      ))
+                    ) : (
+                      <div className="workflow-card">
+                        <div className="chart-empty">No recognized build orders for this game.</div>
+                      </div>
                     )}
                   </div>
                 )}
