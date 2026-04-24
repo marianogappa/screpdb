@@ -1,5 +1,7 @@
 package dashboard
 
+import "encoding/json"
+
 const workflowSummaryVersion = "v1"
 
 var topPlayerPalette = []string{
@@ -218,6 +220,15 @@ var workflowFeaturingFilters = []struct {
 	{Key: "mind_control", Label: "Mind Control"},
 	{Key: "nukes", Label: "Nukes"},
 	{Key: "recalls", Label: "Recalls"},
+	// Build order pills — keys & labels kept in sync with internal/markers.
+	{Key: "bo_4_pool", Label: "4 Pool"},
+	{Key: "bo_9_pool", Label: "9 Pool"},
+	{Key: "bo_9_pool_hatch", Label: "9 Pool into Hatchery"},
+	{Key: "bo_9_hatch", Label: "9 Hatch"},
+	{Key: "bo_12_hatch", Label: "12 Hatch"},
+	{Key: "bo_nexus_first", Label: "Nexus First"},
+	{Key: "bo_forge_expa", Label: "Forge Expand"},
+	{Key: "bo_2_gate", Label: "2 Gate"},
 }
 
 var workflowDurationFilterBuckets = []struct {
@@ -247,9 +258,17 @@ type workflowGamePlayer struct {
 	DetectedPatterns   []workflowPatternValue `json:"detected_patterns"`
 }
 
+// workflowPatternValue is the per-pattern entry shipped to the frontend inside
+// detected_patterns[] on the game-summary response. EventType is the marker
+// FeatureKey (e.g. "carriers", "bo_9_pool") and is the stable identifier.
+// DetectedSecond is the replay second the marker committed at; the FE uses it
+// to render "{minute}" interpolations on pill labels. Payload carries optional
+// JSON extras for markers that store structured data (hotkey groups, viewport
+// switches-per-minute).
 type workflowPatternValue struct {
-	PatternName string `json:"pattern_name"`
-	Value       string `json:"value"`
+	EventType      string          `json:"event_type"`
+	DetectedSecond int             `json:"detected_second"`
+	Payload        json.RawMessage `json:"payload,omitempty"`
 }
 
 type workflowGameDetail struct {
@@ -259,6 +278,8 @@ type workflowGameDetail struct {
 	FileName             string                                   `json:"file_name"`
 	MapName              string                                   `json:"map_name"`
 	MapVisual            workflowMapVisual                        `json:"map_visual"`
+	MapWidthPixels       int64                                    `json:"map_width_pixels,omitempty"`
+	MapHeightPixels      int64                                    `json:"map_height_pixels,omitempty"`
 	DurationSeconds      int64                                    `json:"duration_seconds"`
 	GameType             string                                   `json:"game_type"`
 	Players              []workflowGamePlayer                     `json:"players"`
@@ -269,6 +290,32 @@ type workflowGameDetail struct {
 	FirstUnitEfficiency  []workflowFirstUnitEfficiencyPlayer      `json:"first_unit_efficiency"`
 	UnitCadence          []workflowGameUnitCadencePlayer          `json:"unit_production_cadence"`
 	ViewportMultitasking []workflowGameViewportMultitaskingPlayer `json:"viewport_multitasking"`
+	Markers          []workflowMarkerPlayer               `json:"build_orders"`
+}
+
+// workflowMarkerPlayer carries per-player Build Orders tab data:
+// the detected BO name plus expert-vs-actual timing for each milestone.
+// Populated by populateMarkersForGameDetail in endpoint_main_game_detail.go.
+type workflowMarkerPlayer struct {
+	PlayerID     int64                     `json:"player_id"`
+	PlayerKey    string                    `json:"player_key"`
+	Name         string                    `json:"name"`
+	Race         string                    `json:"race"`
+	Marker   string                    `json:"build_order"`        // e.g. "9 pool"
+	FeatureKey   string                    `json:"feature_key"`        // e.g. "bo_9_pool"
+	Events       []workflowMarkerEvent `json:"events"`
+}
+
+type workflowMarkerEvent struct {
+	Key                   string `json:"key"`                     // e.g. "Spawning Pool"
+	Subject               string `json:"subject"`                 // canonical unit/building name for icon lookup (e.g. "Zergling")
+	TargetSecond          int64  `json:"target_second"`
+	ToleranceEarlySeconds int64  `json:"tolerance_early_seconds"`
+	ToleranceLateSeconds  int64  `json:"tolerance_late_seconds"`
+	ActualSecond          int64  `json:"actual_second"` // valid only when Found
+	Found                 bool   `json:"found"`
+	DeltaSeconds          int64  `json:"delta_seconds"` // actual - target; + late, - early
+	WithinTolerance       bool   `json:"within_tolerance"`
 }
 
 type workflowMapVisual struct {

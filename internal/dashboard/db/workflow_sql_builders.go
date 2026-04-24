@@ -1,6 +1,10 @@
 package db
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/marianogappa/screpdb/internal/patterns/markers"
+)
 
 var workflowDurationSQLByKey = map[string]string{
 	"under_10m": "r.duration_seconds < 600",
@@ -132,63 +136,52 @@ func BuildWorkflowGamesListWhere(playerKeys, mapNames, durationBuckets, featurin
 	return "WHERE " + strings.Join(clauses, " AND "), args
 }
 
+// uiFeatureKeyToMarkerFeatureKey bridges the frontend filter keys (short aliases
+// like "nukes" / "recalls") to the canonical marker FeatureKeys. Callers pass
+// either form; this map normalises to the registry's FeatureKey.
+var uiFeatureKeyToMarkerFeatureKey = map[string]string{
+	"nukes":   "threw_nukes",
+	"recalls": "made_recalls",
+}
+
 func workflowFeaturingExistsSQL(featureKey string) (string, bool) {
-	switch strings.TrimSpace(strings.ToLower(featureKey)) {
-	case "carriers":
+	normalized := strings.TrimSpace(strings.ToLower(featureKey))
+	switch normalized {
+	case "cannon_rush", "bunker_rush", "zergling_rush":
+		// These are narrative game-events, not markers — they live in replay_events
+		// with event_kind='game_event'.
 		return `EXISTS (
 			SELECT 1
-			FROM detected_patterns_replay_player dprp
-			WHERE dprp.replay_id = r.id
-				AND lower(trim(dprp.pattern_name)) = 'carriers'
-				AND dprp.value_bool = 1
-		)`, true
-	case "battlecruisers":
-		return `EXISTS (
-			SELECT 1
-			FROM detected_patterns_replay_player dprp
-			WHERE dprp.replay_id = r.id
-				AND lower(trim(dprp.pattern_name)) = 'battlecruisers'
-				AND dprp.value_bool = 1
+			FROM replay_events re
+			WHERE re.replay_id = r.id
+				AND re.event_kind = 'game_event'
+				AND re.event_type = '` + normalized + `'
 		)`, true
 	case "mind_control":
-		return `EXISTS (
-			SELECT 1
-			FROM detected_patterns_replay_player dprp
-			WHERE dprp.replay_id = r.id
-				AND lower(trim(dprp.pattern_name)) IN ('became terran', 'became zerg')
-				AND (dprp.value_timestamp IS NOT NULL OR dprp.value_int IS NOT NULL OR dprp.value_string IS NOT NULL)
-		)`, true
-	case "nukes":
-		return `EXISTS (
-			SELECT 1
-			FROM detected_patterns_replay_player dprp
-			WHERE dprp.replay_id = r.id
-				AND lower(trim(dprp.pattern_name)) = 'threw nukes'
-				AND (dprp.value_timestamp IS NOT NULL OR dprp.value_int IS NOT NULL OR dprp.value_string IS NOT NULL OR dprp.value_bool = 1)
-		)`, true
-	case "recalls":
-		return `EXISTS (
-			SELECT 1
-			FROM detected_patterns_replay_player dprp
-			WHERE dprp.replay_id = r.id
-				AND lower(trim(dprp.pattern_name)) = 'made recalls'
-				AND (dprp.value_timestamp IS NOT NULL OR dprp.value_int IS NOT NULL OR dprp.value_string IS NOT NULL OR dprp.value_bool = 1)
-		)`, true
-	case "cannon_rush", "bunker_rush":
+		// Composite: either became_terran OR became_zerg marker on any player.
 		return `EXISTS (
 			SELECT 1
 			FROM replay_events re
 			WHERE re.replay_id = r.id
-				AND re.event_type = '` + strings.TrimSpace(strings.ToLower(featureKey)) + `'
+				AND re.event_kind = 'marker'
+				AND re.event_type IN ('became_terran', 'became_zerg')
 		)`, true
-	case "zergling_rush":
-		return `EXISTS (
-			SELECT 1
-			FROM replay_events re
-			WHERE re.replay_id = r.id
-				AND re.event_type = 'zergling_rush'
-		)`, true
-	default:
-		return "", false
 	}
+	lookup := normalized
+	if alias, ok := uiFeatureKeyToMarkerFeatureKey[normalized]; ok {
+		lookup = alias
+	}
+	// Everything else is a marker keyed by its FeatureKey. The markers registry is the
+	// source of truth — if a feature-key isn't registered, the filter is a no-op.
+	if marker := markers.ByFeatureKey(lookup); marker != nil {
+		escaped := strings.ReplaceAll(marker.FeatureKey, "'", "''")
+		return `EXISTS (
+			SELECT 1
+			FROM replay_events re
+			WHERE re.replay_id = r.id
+				AND re.event_kind = 'marker'
+				AND re.event_type = '` + escaped + `'
+		)`, true
+	}
+	return "", false
 }

@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/marianogappa/screpdb/internal/patterns/markers"
+	"github.com/marianogappa/screpdb/internal/cmdenrich"
 	db "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/samber/lo"
@@ -80,6 +82,10 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 			mapLayout = layout
 		}
 	}
+	if mapLayout != nil && mapLayout.WidthTiles > 0 && mapLayout.HeightTiles > 0 {
+		detail.MapWidthPixels = int64(mapLayout.WidthTiles) * 32
+		detail.MapHeightPixels = int64(mapLayout.HeightTiles) * 32
+	}
 
 	if err := d.populateDetectedPatternsForGameDetail(&detail, mapLayout, startClockByPlayerID, displayByName); err != nil {
 		return detail, err
@@ -99,6 +105,9 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	if err := d.populateViewportMultitaskingForGameDetail(&detail); err != nil {
 		return detail, err
 	}
+	if err := d.populateMarkersForGameDetail(&detail); err != nil {
+		return detail, err
+	}
 
 	return detail, nil
 }
@@ -112,8 +121,7 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 		return fmt.Errorf("failed to query replay patterns: %w", err)
 	}
 	for _, row := range rowsReplay {
-		pattern := workflowPatternValue{PatternName: row.PatternName, Value: row.Value}
-		pattern.Value = formatPatternValueForUI(pattern.PatternName, pattern.Value)
+		pattern := buildWorkflowPatternValue(row.PatternName, row.Value, row.DetectedSecond, row.Payload)
 		detail.ReplayPatterns = append(detail.ReplayPatterns, pattern)
 	}
 	eventRows, err := d.dbStore.ListReplayEvents(d.ctx, detail.ReplayID)
@@ -147,13 +155,26 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 	}
 	for _, row := range rowsPlayer {
 		playerID := row.PlayerID
-		pattern := workflowPatternValue{PatternName: row.PatternName, Value: row.Value}
-		pattern.Value = formatPatternValueForUI(pattern.PatternName, pattern.Value)
+		pattern := buildWorkflowPatternValue(row.PatternName, row.Value, row.DetectedSecond, row.Payload)
 		if player, ok := playerByID[playerID]; ok {
 			player.DetectedPatterns = append(player.DetectedPatterns, pattern)
 		}
 	}
 	return nil
+}
+
+// buildWorkflowPatternValue constructs the detected_patterns[] entry the frontend
+// consumes. Shape is registry-driven: event_type (FeatureKey), detected_second,
+// and an optional JSON payload for markers carrying extras.
+func buildWorkflowPatternValue(featureKey string, _ string, detectedSecond int64, rawPayload string) workflowPatternValue {
+	pv := workflowPatternValue{
+		EventType:      featureKey,
+		DetectedSecond: int(detectedSecond),
+	}
+	if rawPayload != "" && rawPayload != "true" {
+		pv.Payload = json.RawMessage(rawPayload)
+	}
+	return pv
 }
 
 func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlayerOverview, error) {
@@ -1414,7 +1435,7 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 			}
 		}
 		if row.LocationBaseType != nil || row.LocationBaseOclock != nil {
-			if matchedBase, ok := lookupOverlayBase(baseMetas, row.LocationBaseType, row.LocationBaseOclock); ok {
+			if matchedBase, ok := lookupOverlayBase(baseMetas, row.LocationBaseType, row.LocationBaseOclock, row.LocationNaturalOfClock); ok {
 				baseCopy := matchedBase
 				if label := baseLabel(row.LocationBaseType, row.LocationBaseOclock, row.LocationNaturalOfClock); strings.TrimSpace(label) != "" {
 					baseCopy.Name = label
@@ -1474,6 +1495,23 @@ func overlayBaseMetasFromLayout(layout *models.MapContextLayout) []overlayBaseMe
 	if layout == nil || len(layout.Bases) == 0 {
 		return nil
 	}
+	// scmapanalyzer annotates each start base with the Name of its natural.
+	// Build: natural_base_name -> start_clock, so we can stamp NaturalOfClock
+	// onto the natural base's overlay metadata. This lets the render-time
+	// lookup distinguish a natural from an unrelated expa that happens to
+	// share the same o'clock position (previously they collapsed to the
+	// same (kind, clock) key and painted the wrong polygon).
+	startClockByNaturalName := map[string]int64{}
+	for _, base := range layout.Bases {
+		if !strings.EqualFold(strings.TrimSpace(base.Kind), "start") {
+			continue
+		}
+		naturalName := strings.TrimSpace(base.NaturalExpansion)
+		if naturalName == "" {
+			continue
+		}
+		startClockByNaturalName[naturalName] = int64(base.Clock)
+	}
 	out := make([]overlayBaseMeta, 0, len(layout.Bases))
 	for _, base := range layout.Bases {
 		polygon := make([]workflowGameEventPoint, 0, len(base.Polygon))
@@ -1482,30 +1520,78 @@ func overlayBaseMetasFromLayout(layout *models.MapContextLayout) []overlayBaseMe
 		}
 		kind := strings.TrimSpace(base.Kind)
 		prettyName := strings.TrimSpace(base.Name)
-		if prettyName == "" && base.Clock >= 1 && base.Clock <= 12 {
-			prettyName = fmt.Sprintf("at %d", base.Clock)
+		if prettyName == "" {
+			if base.Clock == 0 {
+				prettyName = "center base"
+			} else if base.Clock >= 1 && base.Clock <= 12 {
+				prettyName = fmt.Sprintf("at %d", base.Clock)
+			}
+		}
+		isStarting := strings.EqualFold(kind, "start") || strings.EqualFold(kind, "starting")
+		var naturalOfClock *int64
+		if !isStarting {
+			if clock, ok := startClockByNaturalName[strings.TrimSpace(base.Name)]; ok {
+				clockCopy := clock
+				naturalOfClock = &clockCopy
+			}
 		}
 		out = append(out, overlayBaseMeta{
 			Base: workflowGameEventBase{
-				Name:        prettyName,
-				Kind:        kind,
-				Clock:       int64(base.Clock),
-				MineralOnly: lo.Ternary(base.MineralOnly, lo.ToPtr(true), nil),
-				Center:      workflowGameEventPoint{X: float64(base.Center.X), Y: float64(base.Center.Y)},
-				Polygon:     polygon,
+				Name:           prettyName,
+				Kind:           kind,
+				Clock:          int64(base.Clock),
+				NaturalOfClock: naturalOfClock,
+				MineralOnly:    lo.Ternary(base.MineralOnly, lo.ToPtr(true), nil),
+				Center:         workflowGameEventPoint{X: float64(base.Center.X), Y: float64(base.Center.Y)},
+				Polygon:        polygon,
 			},
-			IsStarting: strings.EqualFold(kind, "start") || strings.EqualFold(kind, "starting"),
+			IsStarting: isStarting,
 		})
 	}
 	return out
 }
 
-func lookupOverlayBase(baseMetas []overlayBaseMeta, baseType *string, baseOclock *int64) (workflowGameEventBase, bool) {
+func lookupOverlayBase(baseMetas []overlayBaseMeta, baseType *string, baseOclock *int64, naturalOfOclock *int64) (workflowGameEventBase, bool) {
 	if baseOclock == nil {
 		return workflowGameEventBase{}, false
 	}
 	targetClock := *baseOclock
 	targetType := strings.ToLower(strings.TrimSpace(nullableString(baseType)))
+	// Primary pass: match by (kind, clock[, natural_of_clock]). The
+	// natural_of_clock component is what disambiguates a natural from a
+	// coincident expa at the same clock.
+	for _, candidate := range baseMetas {
+		if candidate.Base.Clock != targetClock {
+			continue
+		}
+		switch targetType {
+		case "starting":
+			if !candidate.IsStarting {
+				continue
+			}
+		case "natural":
+			if candidate.IsStarting {
+				continue
+			}
+			if candidate.Base.NaturalOfClock == nil {
+				continue
+			}
+			if naturalOfOclock == nil || *candidate.Base.NaturalOfClock != *naturalOfOclock {
+				continue
+			}
+		default: // "expansion" and anything else
+			if candidate.IsStarting {
+				continue
+			}
+			if candidate.Base.NaturalOfClock != nil {
+				continue
+			}
+		}
+		return candidate.Base, true
+	}
+	// Secondary fallback: kind-agnostic clock match, preserving prior behavior
+	// when the primary pass fails (e.g. layout missing or natural-of-clock
+	// unmapped). Keeps rendering best-effort rather than dropping the polygon.
 	for _, candidate := range baseMetas {
 		if candidate.Base.Clock != targetClock {
 			continue
@@ -1545,10 +1631,29 @@ func baseKeyForEvent(event *workflowGameEvent) string {
 		return ""
 	}
 	kind := strings.ToLower(strings.TrimSpace(event.Base.Kind))
-	if event.Base.Clock > 0 {
+	// Disambiguate naturals by the clock of the start they belong to — two
+	// different players' naturals can sit at the same clock, and an expa
+	// can share a clock with a natural. Without natural_of_clock in the
+	// key, ownership bookkeeping collapses them.
+	if kind == "natural" && event.Base.NaturalOfClock != nil {
+		return fmt.Sprintf("natural|%d|%d", *event.Base.NaturalOfClock, event.Base.Clock)
+	}
+	if event.Base.Clock >= 0 && (event.Base.Clock > 0 || hasValidCenterBaseKind(kind)) {
 		return fmt.Sprintf("%s|%d", kind, event.Base.Clock)
 	}
 	return fmt.Sprintf("%s|%s", kind, strings.ToLower(strings.TrimSpace(event.Base.Name)))
+}
+
+// hasValidCenterBaseKind returns true for event base kinds that can legitimately
+// carry clock=0 (the "center base" emitted by scmapanalyzer for maps with a
+// rich expansion in the middle). Without this, center bases would silently
+// fall through to name-based keying.
+func hasValidCenterBaseKind(kind string) bool {
+	switch kind {
+	case "start", "starting", "natural", "expansion", "expa":
+		return true
+	}
+	return false
 }
 
 func applyOwnershipTransition(event *workflowGameEvent, ownership map[string]*workflowGameEventPlayer) {
@@ -1642,13 +1747,29 @@ func baseLabel(baseType *string, baseOclock *int64, naturalOf *int64) string {
 	if baseType == nil {
 		return ""
 	}
+	// oclock==0 means scmapanalyzer's "center base". None of the templated
+	// labels ("at 9", "12's natural near 6", "an expa near 3") read right
+	// when inserted with 0, so short-circuit to a clear literal.
+	isCenter := func(v *int64) bool { return v != nil && *v == 0 }
 	switch strings.ToLower(strings.TrimSpace(*baseType)) {
 	case "starting":
+		if isCenter(baseOclock) {
+			return "center base"
+		}
 		if baseOclock != nil {
 			return fmt.Sprintf("at %d", *baseOclock)
 		}
 		return "starting base"
 	case "natural":
+		if isCenter(baseOclock) {
+			if isCenter(naturalOf) {
+				return "center base"
+			}
+			if naturalOf != nil {
+				return fmt.Sprintf("%d's natural (center base)", *naturalOf)
+			}
+			return "center base"
+		}
 		if naturalOf != nil {
 			if baseOclock != nil && *baseOclock != *naturalOf {
 				return fmt.Sprintf("%d's natural near %d", *naturalOf, *baseOclock)
@@ -1660,6 +1781,9 @@ func baseLabel(baseType *string, baseOclock *int64, naturalOf *int64) string {
 		}
 		return "natural expansion"
 	default:
+		if isCenter(baseOclock) {
+			return "center base"
+		}
 		if baseOclock != nil {
 			return fmt.Sprintf("an expa near %d", *baseOclock)
 		}
@@ -1696,33 +1820,6 @@ func parseAttackUnitTypes(raw *string) []string {
 		return nil
 	}
 	return filtered
-}
-
-func formatPatternValueForUI(patternName, value string) string {
-	v := strings.TrimSpace(value)
-	if v == "" {
-		return "-"
-	}
-	if strings.EqualFold(v, "true") {
-		return "Yes"
-	}
-	if strings.EqualFold(v, "false") {
-		return "No"
-	}
-	lowerName := strings.ToLower(strings.TrimSpace(patternName))
-	if lowerName == strings.ToLower(models.PatternNameViewportMultitasking) {
-		switchRate, ok := parseViewportSwitchRate(v)
-		if !ok {
-			return "-"
-		}
-		return fmt.Sprintf("%.2f switches/min", switchRate)
-	}
-	if strings.Contains(lowerName, "second") || strings.Contains(lowerName, "fast expa") || strings.Contains(lowerName, "quick factory") {
-		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
-			return formatClockFromSeconds(n)
-		}
-	}
-	return v
 }
 
 func formatClockFromSeconds(second int64) string {
@@ -2000,6 +2097,113 @@ func (d *Dashboard) populateFirstUnitEfficiencyForGameDetail(detail *workflowGam
 			Race:      player.Race,
 			Entries:   entries,
 		})
+	}
+	return nil
+}
+
+// populateMarkersForGameDetail walks each player's detected build-order
+// patterns, extracts their actual milestone timings from early-game commands,
+// and attaches one expert-vs-actual comparison entry per (player × detected
+// BO) to the detail's Markers field.
+//
+// BO broad definitions overlap on purpose (e.g. a "9 pool into hatchery" game
+// also matches "9 pool"), so multiple entries can surface for the same player.
+// Registry ordering in internal/patterns/markers drives the display order.
+func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) error {
+	detail.Markers = []workflowMarkerPlayer{}
+	if len(detail.Players) == 0 {
+		return nil
+	}
+
+	// Reuse the same player-scoped build/produce timeline the First-Unit
+	// Efficiency tab uses. We only need events inside the BO detection
+	// window, so walk once and keep a small index.
+	commandRows, err := d.dbStore.ListFirstUnitCommandRows(d.ctx, detail.ReplayID)
+	if err != nil {
+		return fmt.Errorf("failed to load build-order commands: %w", err)
+	}
+
+	factsByPlayer := map[int64][]cmdenrich.EnrichedCommand{}
+	for _, row := range commandRows {
+		names := parseCommandUnitNames(row.UnitType, row.UnitTypes)
+		if len(names) == 0 {
+			continue
+		}
+		for _, name := range names {
+			fact, ok := cmdenrich.FromAction(row.ActionType, name, int(row.Second), row.PlayerID)
+			if !ok || !markers.IsSubjectOfInterest(fact.Subject) {
+				continue
+			}
+			factsByPlayer[row.PlayerID] = append(factsByPlayer[row.PlayerID], fact)
+		}
+	}
+
+	// Which BO was detected per player? Read back our own pattern results.
+	// Post markers-migration ListPlayerPatterns returns the marker FeatureKey
+	// as pattern_name (e.g. "bo_9_pool") — resolve through the registry rather
+	// than matching the legacy "Build Order: <Name>" prefix.
+	patternRows, err := d.dbStore.ListPlayerPatterns(d.ctx, detail.ReplayID)
+	if err != nil {
+		return fmt.Errorf("failed to load player patterns for build orders: %w", err)
+	}
+	detectedByPlayer := map[int64]map[string]bool{}
+	for _, row := range patternRows {
+		featureKey := strings.TrimSpace(row.PatternName)
+		marker := markers.ByFeatureKey(featureKey)
+		if marker == nil || marker.Kind != markers.KindInitialBuildOrder {
+			continue
+		}
+		if detectedByPlayer[row.PlayerID] == nil {
+			detectedByPlayer[row.PlayerID] = map[string]bool{}
+		}
+		detectedByPlayer[row.PlayerID][strings.ToLower(marker.FeatureKey)] = true
+	}
+
+	// One chart per (player × detected BO). Broad definitions overlap on
+	// purpose (e.g. "9 pool" and "9 pool into hatchery" can both match the
+	// same game) — render every match so the user can interpret them.
+	// Registry order drives display order so specific variants sit next to
+	// their general cousins.
+	allMarkers := markers.Markers()
+	for _, player := range detail.Players {
+		detected := detectedByPlayer[player.PlayerID]
+		if len(detected) == 0 {
+			continue
+		}
+		facts := factsByPlayer[player.PlayerID]
+		for i := range allMarkers {
+			bo := &allMarkers[i]
+			if bo.Kind != markers.KindInitialBuildOrder {
+				continue
+			}
+			if !detected[strings.ToLower(bo.FeatureKey)] {
+				continue
+			}
+			resolutions := bo.ResolveExpert(facts)
+			events := make([]workflowMarkerEvent, 0, len(resolutions))
+			for _, r := range resolutions {
+				events = append(events, workflowMarkerEvent{
+					Key:                   r.Key,
+					Subject:               r.Subject,
+					TargetSecond:          int64(r.TargetSecond),
+					ToleranceEarlySeconds: int64(r.Tolerance.EarlySeconds),
+					ToleranceLateSeconds:  int64(r.Tolerance.LateSeconds),
+					ActualSecond:          int64(r.ActualSecond),
+					Found:                 r.Found,
+					DeltaSeconds:          int64(r.DeltaSeconds),
+					WithinTolerance:       r.WithinTolerance,
+				})
+			}
+			detail.Markers = append(detail.Markers, workflowMarkerPlayer{
+				PlayerID:   player.PlayerID,
+				PlayerKey:  player.PlayerKey,
+				Name:       player.Name,
+				Race:       player.Race,
+				Marker: bo.Name,
+				FeatureKey: bo.FeatureKey,
+				Events:     events,
+			})
+		}
 	}
 	return nil
 }

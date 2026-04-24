@@ -17,7 +17,15 @@ import Histogram from './components/charts/Histogram';
 import Heatmap from './components/charts/Heatmap';
 import TimingScatterRows from './components/charts/TimingScatterRows';
 import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
+import BuildOrderTimelineRows from './components/charts/BuildOrderTimelineRows';
 import { getUnitIcon, normalizeUnitName } from './lib/gameAssets';
+import {
+  PILL_SURFACES,
+  useMarkerRegistry,
+  renderPillText,
+  pillClassName,
+  lookupDefinitionForPattern,
+} from './lib/markerRegistry';
 import {
   getStoredVariableValues,
   saveVariableValues,
@@ -148,12 +156,11 @@ const dropTransportIconForRace = (race) => {
   return getUnitIcon('dropship');
 };
 
-const playerGameSummarySignalParts = (player, gameEvents, durationSeconds) => {
+const playerGameSummarySignalParts = (player, gameEvents) => {
   const positive = [];
   const pid = player?.player_id;
   if (pid == null) return { positive: [], noScout: null };
   const events = gameEvents || [];
-  const dur = Number(durationSeconds || 0);
   const hasGameEvents = Array.isArray(gameEvents) && gameEvents.length > 0;
   if (!hasGameEvents) {
     return { positive: [], noScout: null };
@@ -184,17 +191,7 @@ const playerGameSummarySignalParts = (player, gameEvents, durationSeconds) => {
     });
   }
 
-  let noScout = null;
-  if (dur >= GAME_SUMMARY_NEGATION_MIN_SECONDS && !playerIsActorForGameEventTypes(events, pid, ['scout'])) {
-    noScout = {
-      key: `ge-no-scout-${pid}`,
-      icon: null,
-      label: '🚫 scout',
-      title: 'No scout event for this player in this replay (narrative uses early worker pressure on an enemy base).',
-      className: 'workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey',
-    };
-  }
-  return { positive, noScout };
+  return { positive, noScout: null };
 };
 
 const renderGameSummarySignalPill = (pill) => (
@@ -381,45 +378,57 @@ const renderSummaryMapStack = ({
   </>
 );
 
-const MAIN_GAME_FEATURING_ORDER = [
-  { key: 'carriers', label: 'Carrier', iconKey: 'carrier' },
-  { key: 'battlecruisers', label: 'Battlecruiser', iconKey: 'battlecruiser' },
-  { key: 'cannon_rush', label: 'Cannon rush', iconKey: 'photoncannon' },
-  { key: 'bunker_rush', label: 'Bunker rush', iconKey: 'bunker' },
-  { key: 'zergling_rush', label: 'Zergling rush', iconKey: 'zergling' },
-  { key: 'mind_control', label: 'Mind control', iconKey: 'darkarchon' },
-  { key: 'nukes', label: 'Nukes', iconKey: 'ghost' },
-  { key: 'recalls', label: 'Recalls', iconKey: 'arbiter' },
-];
-
+// collectFeaturingKeysFromMainGame gathers the featuring chip keys present in
+// the replay: narrative game_events (cannon_rush / bunker_rush / zergling_rush)
+// by event_type; marker detections by event_type with a couple of aliases for
+// composite chips ("mind_control" from became_terran/became_zerg, and the UI's
+// short "recalls"/"nukes" labels).
 const collectFeaturingKeysFromMainGame = (mainGame) => {
   const found = new Set();
-  const events = mainGame?.game_events || [];
-  events.forEach((ev) => {
+
+  (mainGame?.game_events || []).forEach((ev) => {
     const t = normalizeEventType(ev?.type);
     if (t === 'zergling_rush') found.add('zergling_rush');
-    if (t === 'cannon_rush') found.add('cannon_rush');
-    if (t === 'bunker_rush') found.add('bunker_rush');
+    if (t === 'cannon_rush')   found.add('cannon_rush');
+    if (t === 'bunker_rush')   found.add('bunker_rush');
   });
-  const considerPattern = (pat) => {
-    const n = normalizeUnitName(pat?.pattern_name);
-    if (!isPatternTruthy(pat?.value)) return;
-    if (n === 'carriers') found.add('carriers');
-    if (n === 'battlecruisers') found.add('battlecruisers');
-    if (n === 'maderecalls') found.add('recalls');
-    if (n === 'threwnukes') found.add('nukes');
-    if (n === 'becameterran' || n === 'becamezerg') found.add('mind_control');
-  };
+
   (mainGame?.players || []).forEach((p) => {
-    (p.detected_patterns || []).forEach(considerPattern);
+    (p.detected_patterns || []).forEach((pat) => {
+      const key = pat?.event_type;
+      if (!key) return;
+      found.add(key);
+      if (key === 'became_terran' || key === 'became_zerg') found.add('mind_control');
+    });
   });
+
   return found;
 };
 
-const buildMainGameFeaturingPills = (mainGame) => {
+// buildMainGameFeaturingPills produces the ordered pill list for the featuring
+// strip. Ordering + game-event-only metadata (cannon_rush, bunker_rush,
+// zergling_rush, mind_control) come from the backend-provided featuring_order
+// and game_event_features lists. Marker pills come from the marker registry's
+// games_list field; markers without one surface via a minimal fallback.
+const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
   if (!mainGame) return [];
   const keys = collectFeaturingKeysFromMainGame(mainGame);
-  return MAIN_GAME_FEATURING_ORDER.filter((entry) => keys.has(entry.key));
+  const registry = markerDefs?.markers || {};
+  const order = Array.isArray(markerDefs?.featuring_order) ? markerDefs.featuring_order : [];
+  const gameEventFeaturesByKey = {};
+  (markerDefs?.game_event_features || []).forEach((f) => { gameEventFeaturesByKey[f.key] = f; });
+
+  return order
+    .filter((key) => keys.has(key))
+    .map((key) => {
+      const def = registry[key];
+      if (def?.games_list) {
+        return { key, label: def.games_list.label || def.name, iconKey: def.games_list.icon_key || '' };
+      }
+      const ge = gameEventFeaturesByKey[key];
+      if (ge) return { key, label: ge.label, iconKey: ge.icon_key };
+      return { key, label: def?.name || key, iconKey: '' };
+    });
 };
 
 const renderFeaturingPill = (pill, keyPrefix) => {
@@ -430,6 +439,19 @@ const renderFeaturingPill = (pill, keyPrefix) => {
       <span>{pill.label}</span>
     </span>
   );
+};
+
+// Prefer fixed map-dimension bounds when the API provides them. Polygon coords
+// from scmapanalyzer are in pixels on a map sized MapWidth*32 x MapHeight*32
+// (1 map-tile = 32 px = 4 minitiles, minitile is scmapanalyzer's TilePoint
+// unit). Previously we fit bounds to the extent of polygon points which
+// stretched overlays away from their real positions when bases didn't span
+// the whole map.
+const mapBoundsFromDimensions = (widthPixels, heightPixels) => {
+  const w = Number(widthPixels);
+  const h = Number(heightPixels);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
+  return { minX: 0, minY: 0, maxX: w, maxY: h };
 };
 
 const mapBoundsFromGameEvents = (events) => {
@@ -508,10 +530,14 @@ const fallbackOverlayUnitNamesForEvent = (eventType) => {
   return [];
 };
 
+// Return clock as a number in [0, 12]. 0 represents scmapanalyzer's "center
+// base" (rich middle expansion). 1..12 are regular dial positions. Null
+// means unknown — fall back to other lookups.
 const eventBaseClock = (event) => {
   const rawClock = Number(event?.base?.clock);
-  if (Number.isFinite(rawClock) && rawClock >= 1 && rawClock <= 12) return rawClock;
+  if (Number.isFinite(rawClock) && rawClock >= 0 && rawClock <= 12) return rawClock;
   const name = String(event?.base?.name || '');
+  if (/\bcenter base\b/i.test(name)) return 0;
   const match = name.match(/\b([1-9]|1[0-2])\b/);
   if (!match) return null;
   const parsed = Number(match[1]);
@@ -521,7 +547,10 @@ const eventBaseClock = (event) => {
 
 const syntheticPointForClock = (clock) => {
   const safeClock = Number(clock);
-  if (!Number.isFinite(safeClock) || safeClock < 1 || safeClock > 12) return null;
+  if (!Number.isFinite(safeClock) || safeClock < 0 || safeClock > 12) return null;
+  // clock==0 is the center base — place it literally at the map center
+  // rather than projecting onto the 12-hour dial circle.
+  if (safeClock === 0) return { x: 50, y: 50 };
   const angle = ((safeClock % 12) / 12) * (Math.PI * 2) - (Math.PI / 2);
   const radius = 34;
   return {
@@ -546,7 +575,9 @@ const syntheticPolygonForCenter = (center, radius = 6) => {
 const eventBaseKey = (event) => {
   const kind = String(event?.base?.kind || '').trim().toLowerCase();
   const clock = eventBaseClock(event);
-  if (clock) return `${kind || 'base'}:${clock}`;
+  // clock can legitimately be 0 (center base). Check for null/undefined,
+  // not truthiness, or we collapse center bases into name-based keys.
+  if (clock !== null && clock !== undefined) return `${kind || 'base'}:${clock}`;
   const name = String(event?.base?.name || '').trim().toLowerCase();
   if (name) return `${kind || 'base'}:${name}`;
   return '';
@@ -802,15 +833,12 @@ const SUMMARY_TOPIC_PATTERNS = {
   scout: /\bscouts?\b|\bscout\b/i,
 };
 
-const isPatternTruthy = (value) => {
-  const normalized = String(value || '').trim().toLowerCase();
-  return normalized === 'yes' || normalized === 'true';
-};
-
+// prettyPatternName formats an event-type string (e.g. "zergling_rush") as a
+// human-readable title ("Zergling Rush"). Used by the Game Events timeline to
+// label entries whose event_type doesn't have a dedicated phrase.
 const prettyPatternName = (patternName) => {
   const trimmed = String(patternName || '').trim();
   if (!trimmed) return '';
-  if (/used\s+hotkey\s+groups/i.test(trimmed)) return 'Hotkeys';
   const splitUppercase = trimmed.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
   return splitUppercase
     .replace(/_/g, ' ')
@@ -819,46 +847,16 @@ const prettyPatternName = (patternName) => {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
-const patternIconForName = (patternName) => {
-  const normalized = normalizeUnitName(patternName);
-  if (normalized.includes('battlecruiser')) return getUnitIcon('battlecruiser');
-  if (normalized.includes('carrier')) return getUnitIcon('carrier');
-  return getUnitIcon(patternName);
-};
-
-const minuteFromValue = (value) => {
-  const trimmed = String(value || '').trim();
-  const clockMatch = trimmed.match(/^(\d+):(\d{2})$/);
-  if (clockMatch) return Number(clockMatch[1]);
-  const asNumber = Number(trimmed);
-  if (Number.isFinite(asNumber)) return Math.floor(asNumber / 60);
-  return null;
-};
-
-const formatPatternPillText = (rawName, rawValue, isTruthy) => {
-  if (isTruthy) {
-    if (rawName.toLowerCase() === 'never researched') return 'Never Researched';
-    return `Did ${rawName}`;
-  }
-  const lowerName = rawName.toLowerCase();
-  if (lowerName === 'hotkeys' || lowerName.includes('used hotkey groups')) {
-    return rawValue ? `Hotkeys ${rawValue}` : 'Hotkeys';
-  }
-  if (lowerName.includes('made drops') || lowerName.includes('made recalls')) {
-    const minute = minuteFromValue(rawValue);
-    if (minute !== null) return `${rawName} at min ${minute}`;
-  }
-  if (lowerName.includes('threw nukes')) {
-    const minute = minuteFromValue(rawValue);
-    if (minute !== null) return `${rawName} at ${minute} mins`;
-  }
-  return `${rawName} at ${rawValue}`;
-};
-
+// shouldHidePatternFromSummaryPills suppresses markers the Summary row shouldn't
+// render as pills even though the backend stored them. viewport_multitasking
+// drives its own widget elsewhere; made_drops de-dupes against the narrative
+// drop/reaver_drop/dt_drop game_events when the caller sets
+// trustGameEventsForDrops (those drop-family events are already rendered as
+// game-event pills and re-rendering the marker would double up the strip).
 const shouldHidePatternFromSummaryPills = (pattern, trustGameEventsForDrops) => {
-  const normalizedPatternName = normalizeUnitName(pattern?.pattern_name);
-  if (normalizedPatternName === 'viewportmultitasking') return true;
-  if (trustGameEventsForDrops && normalizedPatternName === 'madedrops') return true;
+  const featureKey = pattern?.event_type;
+  if (featureKey === 'viewport_multitasking') return true;
+  if (trustGameEventsForDrops && featureKey === 'made_drops') return true;
   return false;
 };
 
@@ -866,138 +864,22 @@ const filterSummaryPillPatterns = (patterns, trustGameEventsForDrops = false) =>
   (patterns || []).filter((pattern) => !shouldHidePatternFromSummaryPills(pattern, trustGameEventsForDrops))
 );
 
-const renderPatternPill = (pattern, keyPrefix, team) => {
-  const rawName = prettyPatternName(pattern?.pattern_name);
-  if (!rawName) return null;
-  const normalizedPatternName = normalizeUnitName(pattern?.pattern_name);
-  if (normalizedPatternName === 'neverresearched') {
-    const rawValue = String(pattern?.value || '').trim();
-    if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
-      return null;
-    }
-    const key = `${keyPrefix}-never-researched`;
-    return (
-      <span
-        key={key}
-        className="workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey"
-        title="No Tech commands in this replay for this player (10+ minute games)."
-      >
-        <span>🚫 researches</span>
-      </span>
-    );
-  }
-  if (normalizedPatternName === 'neverupgraded') {
-    const rawValue = String(pattern?.value || '').trim();
-    if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
-      return null;
-    }
-    const key = `${keyPrefix}-never-upgraded`;
-    return (
-      <span
-        key={key}
-        className="workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey"
-        title="No Upgrade commands in this replay for this player (10+ minute games)."
-      >
-        <span>🚫 upgrades</span>
-      </span>
-    );
-  }
-  if (normalizedPatternName === 'neverusedhotkeys') {
-    const rawValue = String(pattern?.value || '').trim();
-    if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
-      return null;
-    }
-    const key = `${keyPrefix}-never-hotkeys`;
-    return (
-      <span
-        key={key}
-        className="workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey"
-        title="No hotkey-group commands in this replay (same 7+ minute gate as the detector)."
-      >
-        <span>🚫 hotkeys</span>
-      </span>
-    );
-  }
-  const rawValue = String(pattern?.value || '').trim();
-  if (normalizedPatternName === 'becameterran' || normalizedPatternName === 'becamezerg') {
-    if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
-      return null;
-    }
-    const minute = minuteFromValue(rawValue);
-    const raceWord = normalizedPatternName === 'becameterran' ? 'Terran' : 'Zerg';
-    const da = getUnitIcon('darkarchon');
-    const key = `${keyPrefix}-became-${normalizedPatternName}-${pattern?.value}`;
-    const label = minute !== null ? `${raceWord} at ${minute} mins` : raceWord;
-    return (
-      <span key={key} className="workflow-pattern-pill workflow-pattern-pill-strong" title={String(pattern?.pattern_name || '').trim()}>
-        {da ? <img src={da} alt="" className="workflow-pattern-icon" /> : null}
-        <span>{label}</span>
-      </span>
-    );
-  }
-  if (!rawValue || rawValue === '-' || rawValue.toLowerCase() === 'no' || rawValue.toLowerCase() === 'false') {
-    return null;
-  }
-  const isTruthy = isPatternTruthy(pattern?.value);
-  let icon = patternIconForName(pattern?.pattern_name);
-  const text = formatPatternPillText(rawName, rawValue, isTruthy);
-  let content = <span>{text}</span>;
-  if (isTruthy) {
-    if (normalizedPatternName === 'quickfactory') {
-      icon = null;
-      content = (
-        <span className="workflow-pattern-pill-inline">
-          <span>Quick</span>
-          {getUnitIcon('factory') ? <img src={getUnitIcon('factory')} alt="Factory" className="workflow-pattern-icon" /> : null}
-        </span>
-      );
-    } else if (normalizedPatternName === 'gatethenforge') {
-      icon = null;
-      content = (
-        <span className="workflow-pattern-pill-inline">
-          {getUnitIcon('gateway') ? <img src={getUnitIcon('gateway')} alt="Gateway" className="workflow-pattern-icon" /> : null}
-          <span className="workflow-pattern-arrow">then</span>
-          {getUnitIcon('forge') ? <img src={getUnitIcon('forge')} alt="Forge" className="workflow-pattern-icon" /> : null}
-        </span>
-      );
-    } else if (normalizedPatternName === 'forgethengate') {
-      icon = null;
-      content = (
-        <span className="workflow-pattern-pill-inline">
-          {getUnitIcon('forge') ? <img src={getUnitIcon('forge')} alt="Forge" className="workflow-pattern-icon" /> : null}
-          <span className="workflow-pattern-arrow">then</span>
-          {getUnitIcon('gateway') ? <img src={getUnitIcon('gateway')} alt="Gateway" className="workflow-pattern-icon" /> : null}
-        </span>
-      );
-    } else if (normalizedPatternName === 'hatchbeforepool') {
-      icon = null;
-      content = (
-        <span className="workflow-pattern-pill-inline">
-          {getUnitIcon('hatchery') ? <img src={getUnitIcon('hatchery')} alt="Hatchery" className="workflow-pattern-icon" /> : null}
-          <span className="workflow-pattern-arrow">then</span>
-          {getUnitIcon('spawningpool') ? <img src={getUnitIcon('spawningpool')} alt="Spawning Pool" className="workflow-pattern-icon" /> : null}
-        </span>
-      );
-    } else if (normalizedPatternName === 'mech') {
-      icon = null;
-      content = (
-        <span className="workflow-pattern-pill-inline">
-          {getUnitIcon('siegetank') ? <img src={getUnitIcon('siegetank')} alt="Tank" className="workflow-pattern-icon" /> : null}
-          <span>Mech</span>
-        </span>
-      );
-    } else if (normalizedPatternName === 'carriers' || normalizedPatternName === 'battlecruisers') {
-      content = null;
-    } else if (icon) {
-      content = <span>Did</span>;
-    }
-  }
-  const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.pattern_name}-${pattern?.value}`;
+// renderPatternPill resolves a detected_patterns[] entry through the backend
+// marker registry and builds a pill from the registered SummaryPlayer metadata.
+// Returns null when the registry has no match or no SummaryPlayer pill.
+const renderPatternPill = (pattern, keyPrefix, team, registry) => {
+  if (!registry) return null;
+  const def = lookupDefinitionForPattern(registry, pattern);
+  if (!def) return null;
+  const rendered = renderPillText(def, PILL_SURFACES.summaryPlayer, pattern);
+  if (!rendered) return null;
+  const className = pillClassName(rendered.style);
+  const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.event_type || ''}-${pattern?.detected_second ?? ''}`;
   return (
-    <span key={key} className={`workflow-pattern-pill${isTruthy ? ' workflow-pattern-pill-strong' : ''}`}>
+    <span key={key} className={className} title={rendered.title || undefined}>
       {team !== undefined ? <span className="team-dot" style={{ backgroundColor: getTeamColor(team) }}></span> : null}
-      {icon ? <img src={icon} alt={rawName} className="workflow-pattern-icon" /> : null}
-      {content}
+      {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
+      {rendered.label ? <span>{rendered.label}</span> : null}
     </span>
   );
 };
@@ -1178,6 +1060,9 @@ function App() {
     () => parseMainRouteSearch(typeof window !== 'undefined' ? window.location.search : ''),
     [],
   );
+  const markerRegistryState = useMarkerRegistry();
+  const markerRegistry = markerRegistryState.markers;
+  const markerDefinitions = markerRegistryState;
   const [currentDashboardUrl, setCurrentDashboardUrl] = useState(() => (
     initialMainRoute.view === 'dashboards' && initialMainRoute.dash ? initialMainRoute.dash : 'default'
   ));
@@ -1554,9 +1439,15 @@ function App() {
       const data = await api.getGame(replayId);
       setMainGame(data);
       const wantTab = options.initialGameTab;
-      const nextTab = wantTab && MAIN_GAME_TABS.includes(String(wantTab).trim().toLowerCase())
+      let nextTab = wantTab && MAIN_GAME_TABS.includes(String(wantTab).trim().toLowerCase())
         ? String(wantTab).trim().toLowerCase()
         : 'summary';
+      // Build Orders tab is hidden when no BOs were detected; don't leave the
+      // user stranded on an invisible tab.
+      const hasBuildOrders = Array.isArray(data?.build_orders) && data.build_orders.length > 0;
+      if (nextTab === 'build-orders' && !hasBuildOrders) {
+        nextTab = 'summary';
+      }
       setMainGameTab(nextTab);
       setMainEventsPlayerEnabledById(
         Object.fromEntries((data.players || []).map((p) => [String(p.player_id), true])),
@@ -2879,8 +2770,10 @@ function App() {
   const mainMapVisualThumbURL = String(mainMapVisual?.thumbnail_url || mainMapVisualURL).trim();
   const mainMapVisualAvailable = Boolean(mainMapVisual?.available && mainMapVisualURL);
   const mainEventMapBounds = useMemo(
-    () => mapBoundsFromGameEvents(mainGame?.game_events || []),
-    [mainGame?.game_events],
+    () =>
+      mapBoundsFromDimensions(mainGame?.map_width_pixels, mainGame?.map_height_pixels) ||
+      mapBoundsFromGameEvents(mainGame?.game_events || []),
+    [mainGame?.game_events, mainGame?.map_width_pixels, mainGame?.map_height_pixels],
   );
   const selectedMainGameEvent = useMemo(() => {
     if (!topicFilteredGameEvents.length) return null;
@@ -2970,7 +2863,10 @@ function App() {
     });
     return acc;
   }, [mainGame?.game_events, mainEventMapBounds]);
-  const mainGameFeaturingPillsList = useMemo(() => buildMainGameFeaturingPills(mainGame), [mainGame]);
+  const mainGameFeaturingPillsList = useMemo(
+    () => buildMainGameFeaturingPills(mainGame, markerDefinitions),
+    [mainGame, markerDefinitions],
+  );
   const selectedMainGameArrow = useMemo(() => {
     if (!selectedMainGameEvent || !isArrowEventType(selectedMainGameEvent.type)) return null;
     const from = mapPointToPercent(selectedMainGameEvent?.actor_origin, mainEventMapBounds);
@@ -4197,6 +4093,17 @@ function App() {
                     >
                       Game Events
                     </button>
+                    {Array.isArray(mainGame?.build_orders) && mainGame.build_orders.length > 0 ? (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={mainGameTab === 'build-orders'}
+                        className={`workflow-production-tab ${mainGameTab === 'build-orders' ? 'workflow-production-tab-active' : ''}`}
+                        onClick={() => setMainGameTab('build-orders')}
+                      >
+                        Build Orders
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       role="tab"
@@ -4322,7 +4229,7 @@ function App() {
                     <div className="workflow-player-rows" style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
                       {(mainGame.players || []).map((player) => {
                         const raceIcon = getRaceIcon(player.race);
-                        const gameSummaryParts = playerGameSummarySignalParts(player, mainGame?.game_events, mainGame?.duration_seconds);
+                        const gameSummaryParts = playerGameSummarySignalParts(player, mainGame?.game_events);
                         const trustGameEventsForDrops = Array.isArray(mainGame?.game_events) && mainGame.game_events.length > 0;
                         return (
                           <div key={player.player_id} className="workflow-player-row" style={{ borderLeft: `3px solid ${getTeamColor(player.team)}` }}>
@@ -4345,8 +4252,7 @@ function App() {
                               </div>
                               <div className="workflow-pattern-pills">
                                 {gameSummaryParts.positive.map(renderGameSummarySignalPill)}
-                                {filterSummaryPillPatterns(player.detected_patterns, trustGameEventsForDrops).map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`))}
-                                {gameSummaryParts.noScout ? renderGameSummarySignalPill(gameSummaryParts.noScout) : null}
+                                {filterSummaryPillPatterns(player.detected_patterns, trustGameEventsForDrops).map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`, undefined, markerRegistry))}
                               </div>
                             </div>
                           </div>
@@ -4858,6 +4764,22 @@ function App() {
                     )}
                   </div>
                 )}
+                {mainGameTab === 'build-orders' && (
+                  <div className="workflow-timing-charts">
+                    {Array.isArray(mainGame?.build_orders) && mainGame.build_orders.length > 0 ? (
+                      mainGame.build_orders.map((bo) => (
+                        <BuildOrderTimelineRows
+                          key={`build-order-${bo.player_id}-${bo.feature_key}`}
+                          group={bo}
+                        />
+                      ))
+                    ) : (
+                      <div className="workflow-card">
+                        <div className="chart-empty">No recognized build orders for this game.</div>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {mainGameTab === 'first-unit-efficiency' && (
                   <div className="workflow-timing-charts">
                     <div className="workflow-section-top-row">
@@ -5045,7 +4967,7 @@ function App() {
                         {(section.common_behaviours || []).length === 0 ? <div className="chart-empty">No common behaviours at 20%+ for this race.</div> : null}
                         {(section.common_behaviours || []).map((item, idx) => (
                           <div key={`${section.race}-${item.name}`} className="workflow-pattern-row">
-                            <span>{renderPatternPill({ pattern_name: item.name, value: 'true' }, `player-common-${section.race}-${idx}`)}</span>
+                            <span>{renderPatternPill({ pattern_name: item.name, value: 'true' }, `player-common-${section.race}-${idx}`, undefined, markerRegistry)}</span>
                             <span>{`${((Number(item.game_rate) || 0) * 100).toFixed(1)}% (${item.replay_count}/${section.game_count})`}</span>
                           </div>
                         ))}
@@ -5179,7 +5101,7 @@ function App() {
                         </div>
                         {filterSummaryPillPatterns(g.current_player?.detected_patterns).length > 0 ? (
                           <div className="workflow-pattern-pills workflow-pattern-pills-compact">
-                            {filterSummaryPillPatterns(g.current_player?.detected_patterns).map((pattern, idx) => renderPatternPill(pattern, `recent-${g.replay_id}-${idx}`))}
+                            {filterSummaryPillPatterns(g.current_player?.detected_patterns).map((pattern, idx) => renderPatternPill(pattern, `recent-${g.replay_id}-${idx}`, undefined, markerRegistry))}
                           </div>
                         ) : null}
                       </button>

@@ -159,26 +159,15 @@ func (q *Queries) ListDelayCommandRowsForPlayer(ctx context.Context, arg ListDel
 }
 
 const ListRacePatterns = `-- name: ListRacePatterns :many
-SELECT p.race, dp.pattern_name, COUNT(DISTINCT dp.replay_id) AS replay_count
-FROM detected_patterns_replay_player dp
-JOIN players p ON p.id = dp.player_id
+SELECT p.race, re.event_type AS pattern_name, COUNT(DISTINCT re.replay_id) AS replay_count
+FROM replay_events re
+JOIN players p ON p.id = re.source_player_id
 WHERE lower(trim(p.name)) = ?
   AND p.is_observer = 0
   AND lower(trim(coalesce(p.type, ''))) = 'human'
-  AND dp.pattern_name IS NOT NULL
-  AND dp.pattern_name <> ''
-  AND lower(replace(replace(dp.pattern_name, ' ', ''), '_', '')) NOT IN ('usedhotkeygroups', 'viewportmultitasking')
-  AND (
-    dp.value_bool = 1
-    OR dp.value_int IS NOT NULL
-    OR dp.value_timestamp IS NOT NULL
-    OR (
-      dp.value_string IS NOT NULL
-      AND trim(dp.value_string) <> ''
-      AND lower(trim(dp.value_string)) NOT IN ('0', 'false', 'no', '-')
-    )
-  )
-GROUP BY p.race, dp.pattern_name
+  AND re.event_kind = 'marker'
+  AND re.event_type NOT IN ('used_hotkey_groups', 'viewport_multitasking')
+GROUP BY p.race, re.event_type
 `
 
 type ListRacePatternsRow struct {

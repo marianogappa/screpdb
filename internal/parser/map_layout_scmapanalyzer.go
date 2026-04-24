@@ -4,6 +4,7 @@ import (
 	"github.com/marianogappa/scmapanalyzer/lib/scmapanalyzer"
 	"github.com/marianogappa/scmapanalyzer/replaymap"
 	"github.com/marianogappa/screpdb/internal/models"
+	"github.com/marianogappa/screpdb/internal/screp"
 )
 
 func buildMapContextLayoutFromReplay(replayPath string) (*models.MapContextLayout, error) {
@@ -27,7 +28,12 @@ func buildMapContextLayoutFromReplay(replayPath string) (*models.MapContextLayou
 	if len(bases) == 0 {
 		return nil, nil
 	}
-	return &models.MapContextLayout{Bases: bases}, nil
+	layout := &models.MapContextLayout{Bases: bases}
+	if rep, repErr := screp.ParseFile(replayPath); repErr == nil && rep != nil {
+		layout.WidthTiles = int(rep.Header.MapWidth)
+		layout.HeightTiles = int(rep.Header.MapHeight)
+	}
+	return layout, nil
 }
 
 func toContextBase(base replaymap.BasePolygon) models.MapContextBase {

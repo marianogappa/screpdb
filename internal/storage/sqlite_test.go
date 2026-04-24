@@ -50,13 +50,14 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		t.Fatalf("ingestFiles: %v", err)
 	}
 
-	// Golden counts (established from current test replays)
+	// Golden counts (established from current test replays). Post markers-migration,
+	// all marker detections live in replay_events with event_kind='marker' alongside
+	// narrative game_events — the single count here is their sum.
 	expectedCounts := map[string]int64{
-		"replays":                         4,
-		"players":                         14,
-		"detected_patterns_replay":        0,
-		"detected_patterns_replay_player": 63,
-		"replay_events":                   173,
+		"replays":                4,
+		"players":                14,
+		"replay_events":          217,
+		"marker_algorithm_state": 4,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {
@@ -97,7 +98,7 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		t.Fatalf("expected default ingestion to skip Right Click commands, got %d rows", rightClickRows)
 	}
 
-	hotkeyRows, err := store.Query(ctx, "SELECT COUNT(*) AS c FROM detected_patterns_replay_player WHERE pattern_name = 'Used Hotkey Groups'")
+	hotkeyRows, err := store.Query(ctx, "SELECT COUNT(*) AS c FROM replay_events WHERE event_kind = 'marker' AND event_type = 'used_hotkey_groups'")
 	if err != nil {
 		t.Fatalf("query hotkey pattern count: %v", err)
 	}
@@ -106,7 +107,7 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		t.Fatalf("expected numeric hotkey pattern count")
 	}
 	if hotkeyCount == 0 {
-		t.Fatalf("expected Used Hotkey Groups pattern detections to be present")
+		t.Fatalf("expected used_hotkey_groups marker detections to be present")
 	}
 
 	baseStateRows, err := store.Query(ctx, "SELECT event_type, seconds_from_game_start, source_player_id FROM replay_events ORDER BY id ASC")
@@ -158,18 +159,32 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	assertContains(t, schema, "## commands")
 	assertContains(t, schema, "## commands_low_value")
 
-	patternSchemaRows, err := store.Query(ctx, "PRAGMA table_info(detected_patterns_replay)")
+	// Legacy detected_patterns_replay table is dropped post markers-migration.
+	// Assert replay_events (the unified home for markers + game events) carries
+	// event_kind + payload columns introduced by migration 000008.
+	patternSchemaRows, err := store.Query(ctx, "PRAGMA table_info(replay_events)")
 	if err != nil {
-		t.Fatalf("PRAGMA table_info(detected_patterns_replay): %v", err)
+		t.Fatalf("PRAGMA table_info(replay_events): %v", err)
 	}
+	hasEventKind := false
+	hasPayload := false
 	for _, row := range patternSchemaRows {
 		colName, ok := asString(row["name"])
 		if !ok {
 			continue
 		}
-		if colName == "file_path" || colName == "file_checksum" {
-			t.Fatalf("unexpected denormalized column in detected_patterns_replay: %s", colName)
+		if colName == "event_kind" {
+			hasEventKind = true
 		}
+		if colName == "payload" {
+			hasPayload = true
+		}
+	}
+	if !hasEventKind {
+		t.Fatalf("expected replay_events.event_kind column after markers migration")
+	}
+	if !hasPayload {
+		t.Fatalf("expected replay_events.payload column after markers migration")
 	}
 
 	// Pattern detection filters and deletes

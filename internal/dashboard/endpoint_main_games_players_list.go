@@ -1,13 +1,14 @@
 package dashboard
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
+
+	"github.com/marianogappa/screpdb/internal/patterns/markers"
 )
 
 func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlayersListFilters, sortSpec workflowPlayersListSort) ([]workflowPlayersListItem, int64, workflowPlayersListFilterOptions, error) {
@@ -287,25 +288,25 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 	}
 	for _, row := range rowsPlayerPatterns {
 		replayID := row.ReplayID
-		patternName := row.PatternName
-		valueBool := row.ValueBool
-		valueInt := row.ValueInt
-		valueString := row.ValueString
-		valueTimestamp := row.ValueTimestamp
-		if !workflowTruthyPatternValue(valueBool, valueInt, valueString, valueTimestamp) {
-			continue
-		}
-		switch strings.ToLower(strings.TrimSpace(patternName)) {
+		// Post-markers-migration: row.PatternName carries the marker FeatureKey
+		// (row presence alone = match; no value-column truthiness check needed).
+		featureKey := strings.TrimSpace(strings.ToLower(row.PatternName))
+		switch featureKey {
 		case "carriers":
 			featureSets[replayID]["carriers"] = struct{}{}
 		case "battlecruisers":
 			featureSets[replayID]["battlecruisers"] = struct{}{}
-		case "made recalls":
+		case "made_recalls":
 			featureSets[replayID]["recalls"] = struct{}{}
-		case "threw nukes":
+		case "threw_nukes":
 			featureSets[replayID]["nukes"] = struct{}{}
-		case "became terran", "became zerg":
+		case "became_terran", "became_zerg":
 			featureSets[replayID]["mind_control"] = struct{}{}
+		default:
+			// Build-order markers route directly to their featuring key.
+			if bo := markers.ByFeatureKey(featureKey); bo != nil {
+				featureSets[replayID][bo.FeatureKey] = struct{}{}
+			}
 		}
 	}
 	rowsReplayEvents, err := d.dbStore.ListFeaturingReplayEventRows(d.ctx, replayIDs)
@@ -391,8 +392,7 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 	}
 	for _, row := range patternRows {
 		playerID := row.PlayerID
-		pattern := workflowPatternValue{PatternName: row.PatternName, Value: row.PatternValue}
-		pattern.Value = formatPatternValueForUI(pattern.PatternName, pattern.Value)
+		pattern := buildWorkflowPatternValue(row.PatternName, row.PatternValue, row.DetectedSecond, row.Payload)
 		currentPlayer := currentByPlayerID[playerID]
 		if currentPlayer == nil {
 			continue
@@ -400,23 +400,6 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 		currentPlayer.DetectedPatterns = append(currentPlayer.DetectedPatterns, pattern)
 	}
 	return nil
-}
-
-func workflowTruthyPatternValue(valueBool sql.NullBool, valueInt sql.NullInt64, valueString sql.NullString, valueTimestamp sql.NullInt64) bool {
-	if valueBool.Valid {
-		return valueBool.Bool
-	}
-	if valueInt.Valid {
-		return valueInt.Int64 > 0
-	}
-	if valueTimestamp.Valid {
-		return valueTimestamp.Int64 > 0
-	}
-	if valueString.Valid {
-		v := strings.TrimSpace(strings.ToLower(valueString.String))
-		return v != "" && v != "false" && v != "no" && v != "-"
-	}
-	return false
 }
 
 func formatWorkflowPlayersLabelFromList(players []workflowGameListPlayer) string {

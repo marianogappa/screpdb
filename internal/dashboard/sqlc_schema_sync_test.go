@@ -53,9 +53,8 @@ func TestSQLCSchemaMatchesRuntimeSchemaForDeclaredColumns(t *testing.T) {
 		"player_aliases",
 		"dashboards",
 		"dashboard_widgets",
-		"detected_patterns_replay_player",
-		"detected_patterns_replay",
 		"replay_events",
+		"marker_algorithm_state",
 		"commands",
 		"commands_low_value",
 	}

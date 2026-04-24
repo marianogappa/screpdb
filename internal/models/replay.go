@@ -155,7 +155,9 @@ type MapContextBase struct {
 
 // MapContextLayout stores high-level map geometry from external analyzers.
 type MapContextLayout struct {
-	Bases []MapContextBase `json:"-"`
+	Bases       []MapContextBase `json:"-"`
+	WidthTiles  int              `json:"-"` // Map width in map-tiles (1 tile = 32 px = 4 minitiles)
+	HeightTiles int              `json:"-"` // Map height in map-tiles
 }
 
 // ReplayMapContext stores runtime-only map geometry/resource info used by detectors.

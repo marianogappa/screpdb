@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"strings"
 
+	"github.com/marianogappa/screpdb/internal/patterns/markers"
 	"github.com/marianogappa/screpdb/internal/dashboard/db/sqlcgen"
 )
 
@@ -48,9 +49,11 @@ type WorkflowCurrentPlayerRow struct {
 }
 
 type WorkflowCurrentPlayerPatternRow struct {
-	PlayerID     int64
-	PatternName  string
-	PatternValue string
+	PlayerID       int64
+	PatternName    string
+	PatternValue   string
+	DetectedSecond int64
+	Payload        string
 }
 
 type WorkflowFilterOptionRow struct {
@@ -230,11 +233,23 @@ func (s *Store) ListFeaturingPlayerPatternRows(ctx context.Context, replayIDs []
 	for _, replayID := range replayIDs {
 		args = append(args, replayID)
 	}
+	// Feature-keys of interest: fixed set of "featuring"-capable markers + every
+	// registered build order. Assembled dynamically so adding a BO needs no SQL
+	// edit. Post-markers-migration each row's pattern_name is the marker FeatureKey.
+	featureKeys := []string{"carriers", "battlecruisers", "made_recalls", "threw_nukes", "became_terran", "became_zerg"}
+	for _, m := range markers.Markers() {
+		featureKeys = append(featureKeys, m.FeatureKey)
+	}
+	quoted := make([]string, 0, len(featureKeys))
+	for _, key := range featureKeys {
+		quoted = append(quoted, "'"+strings.ReplaceAll(key, "'", "''")+"'")
+	}
 	rows, err := s.ReplayQueryContext(ctx, `
-		SELECT replay_id, pattern_name, value_bool, value_int, value_string, value_timestamp
-		FROM detected_patterns_replay_player
+		SELECT replay_id, event_type, 1, NULL, payload, NULL
+		FROM replay_events
 		WHERE replay_id IN (`+placeholders+`)
-			AND lower(trim(pattern_name)) IN ('carriers', 'battlecruisers', 'made recalls', 'threw nukes', 'became terran', 'became zerg')
+			AND event_kind = 'marker'
+			AND event_type IN (`+strings.Join(quoted, ", ")+`)
 	`, args...)
 	if err != nil {
 		return nil, err
@@ -267,6 +282,7 @@ func (s *Store) ListFeaturingReplayEventRows(ctx context.Context, replayIDs []in
 		SELECT replay_id, event_type
 		FROM replay_events
 		WHERE replay_id IN (`+placeholders+`)
+			AND event_kind = 'game_event'
 			AND event_type IN ('zergling_rush', 'cannon_rush', 'bunker_rush')
 	`, args...)
 	if err != nil {
@@ -331,20 +347,20 @@ func (s *Store) ListPatternValuesForPlayerIDs(ctx context.Context, playerIDs []i
 	for _, playerID := range playerIDs {
 		args = append(args, playerID)
 	}
+	// Per-player marker presence. Post-migration, presence of the row is the
+	// match — detected_second + payload are the authoritative per-row data;
+	// pattern_value stays as a transitional alias for now.
 	rows, err := s.ReplayQueryContext(ctx, `
 		SELECT
-			player_id,
-			pattern_name,
-			CASE
-				WHEN value_bool IS NOT NULL THEN CASE WHEN value_bool = 1 THEN 'true' ELSE 'false' END
-				WHEN value_int IS NOT NULL THEN CAST(value_int AS TEXT)
-				WHEN value_string IS NOT NULL THEN value_string
-				WHEN value_timestamp IS NOT NULL THEN CAST(value_timestamp AS TEXT)
-				ELSE ''
-			END AS pattern_value
-		FROM detected_patterns_replay_player
-		WHERE player_id IN (`+placeholders+`)
-		ORDER BY player_id ASC, pattern_name ASC
+			source_player_id AS player_id,
+			event_type AS pattern_name,
+			COALESCE(payload, 'true') AS pattern_value,
+			seconds_from_game_start AS detected_second,
+			COALESCE(payload, '') AS payload
+		FROM replay_events
+		WHERE source_player_id IN (`+placeholders+`)
+			AND event_kind = 'marker'
+		ORDER BY source_player_id ASC, event_type ASC
 	`, args...)
 	if err != nil {
 		return nil, err
@@ -353,7 +369,7 @@ func (s *Store) ListPatternValuesForPlayerIDs(ctx context.Context, playerIDs []i
 	result := []WorkflowCurrentPlayerPatternRow{}
 	for rows.Next() {
 		var row WorkflowCurrentPlayerPatternRow
-		if err := rows.Scan(&row.PlayerID, &row.PatternName, &row.PatternValue); err != nil {
+		if err := rows.Scan(&row.PlayerID, &row.PatternName, &row.PatternValue, &row.DetectedSecond, &row.Payload); err != nil {
 			return nil, err
 		}
 		result = append(result, row)

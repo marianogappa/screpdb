@@ -1,13 +1,15 @@
 package core
 
 import (
+	"encoding/json"
+
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
 )
 
 // AlgorithmVersion is the current version of the pattern detection algorithm
 // Increment this when the algorithm changes to trigger re-detection
-const AlgorithmVersion = 8
+const AlgorithmVersion = 10
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string
@@ -24,10 +26,19 @@ type PatternResult struct {
 	ReplayID       int64
 	PlayerID       *int64 // nil for replay-level patterns (database ID)
 	ReplayPlayerID *byte  // Temporary: replay player ID (byte) for player-level results, converted to PlayerID later
-	ValueBool      *bool
-	ValueInt       *int
-	ValueString    *string
-	ValueTime      *int64 // Unix timestamp
+
+	// DetectedAtSecond is the replay second at which the marker fired.
+	// Stored in replay_events.seconds_from_game_start. Source depends on marker family:
+	//   Rule markers       → second of the fact that flipped Decision→Matched
+	//   First-event markers → second of the first qualifying narrative event
+	//   Absence markers     → replay duration (marker commits at end-of-replay)
+	//   Viewport/Hotkeys    → documented per-evaluator
+	DetectedAtSecond int
+
+	// Payload is the optional JSON blob persisted to replay_events.payload.
+	// Empty for presence-only markers. Populated only by markers that carry extra data
+	// beyond presence (currently: used_hotkey_groups, viewport_multitasking).
+	Payload json.RawMessage
 }
 
 // Detector is the interface that all pattern detectors must implement

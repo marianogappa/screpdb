@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"github.com/marianogappa/screpdb/internal/patterns/markers"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 	"github.com/marianogappa/screpdb/internal/patterns/detectors"
@@ -17,110 +18,26 @@ var (
 	// replayLevelDetectors is the list of replay-level detector factories
 	replayLevelDetectors = []ReplayLevelDetectorFactory{}
 
-	// playerLevelDetectors is the list of player-level detector factories
-	playerLevelDetectors = []PlayerLevelDetectorFactory{
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewUsedHotkeyGroupsPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewNeverUsedHotkeysPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewQuickFactoryPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewMechPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewBattlecruisersPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewCarriersPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewMadeDropsPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewMadeRecallsPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewThrewNukesPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewBecameTerranPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewBecameZergPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewFastExpaPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewGateThenForgePlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewForgeThenGatePlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewNeverUpgradedPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewNeverResearchedPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewHatchBeforePoolPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewExpaBeforeGatePlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewExpaBeforeBarracksPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-		func(replayPlayerID byte) core.Detector {
-			detector := detectors.NewViewportMultitaskingPlayerDetector()
-			detector.SetReplayPlayerID(replayPlayerID)
-			return detector
-		},
-	}
+	// playerLevelDetectors is seeded empty. The markers-loop in init()
+	// appends one MarkerPlayerDetector factory per registered marker —
+	// that's every player-level detector the orchestrator runs.
+	playerLevelDetectors = []PlayerLevelDetectorFactory{}
 )
+
+// init registers one MarkerPlayerDetector factory per registered marker.
+// Covers both KindInitialBuildOrder (openers) and KindMarker (signatures /
+// worldstate-sourced events) in a single loop. Marker definitions live in
+// internal/patterns/markers/definitions.go.
+func init() {
+	for _, m := range markers.Markers() {
+		m := m // capture for closure
+		playerLevelDetectors = append(playerLevelDetectors, func(replayPlayerID byte) core.Detector {
+			detector := detectors.NewMarkerPlayerDetector(m)
+			detector.SetReplayPlayerID(replayPlayerID)
+			return detector
+		})
+	}
+}
 
 // Orchestrator manages all pattern detectors for a replay
 type Orchestrator struct {

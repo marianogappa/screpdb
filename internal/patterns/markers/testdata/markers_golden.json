@@ -1,0 +1,341 @@
+{
+  "battlecruisers.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 12 Hatch",
+        "value": "102"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":9.14027149321267}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Battlecruisers",
+        "value": "1116"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Threw Nukes",
+        "value": "1214"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":13.303167420814479}"
+      }
+    ]
+  },
+  "bo_12_hatch.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 12 Hatch",
+        "value": "102"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,5,6,7]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":16.315789473684212}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Quick factory",
+        "value": "228"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":15.526315789473685}"
+      }
+    ]
+  },
+  "bo_2_gate_carriers.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Quick factory",
+        "value": "153"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":21.666666666666668}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2 Gate",
+        "value": "167"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Carriers",
+        "value": "715"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "1110"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":11.794871794871796}"
+      }
+    ]
+  },
+  "bo_4_pool.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 4 Pool",
+        "value": "37"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      }
+    ]
+  },
+  "bo_9_hatch.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":8.544303797468354}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 9 Hatch",
+        "value": "77"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "691"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":15.18987341772152}"
+      }
+    ]
+  },
+  "bo_forge_expand.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Forge Expand",
+        "value": "133"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":16.544117647058822}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "691"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":15.441176470588236}"
+      }
+    ]
+  },
+  "carriers_recalls.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Quick factory",
+        "value": "217"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":14.355828220858895}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Carriers",
+        "value": "1703"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "482"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made recalls",
+        "value": "1481"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":12.423312883435582}"
+      }
+    ]
+  },
+  "empty_short.rep": {
+    "detections": []
+  },
+  "never_upgraded.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "831"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "831"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never used hotkeys",
+        "value": "831"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 12 Hatch",
+        "value": "101"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":33.442622950819676}"
+      }
+    ]
+  },
+  "threw_nukes.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "703"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Quick factory",
+        "value": "150"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Threw Nukes",
+        "value": "711"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":20.166666666666668}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "105"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "620"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "976"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":19.666666666666668}"
+      }
+    ]
+  }
+}

@@ -172,6 +172,8 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/custom/game-assets/unit", d.handlerGameAssetUnit).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/game-assets/building", d.handlerGameAssetBuilding).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/game-assets/map", d.handlerGameAssetMap).Methods(http.MethodGet)
+	r.HandleFunc("/api/custom/debug/map-layout/{replayID}", d.handlerDebugMapLayout).Methods(http.MethodGet)
+	r.HandleFunc("/api/custom/markers/definitions", d.handlerMarkersDefinitions).Methods(http.MethodGet)
 	apigen.HandlerFromMux(strictHandler, r)
 	r.PathPrefix("/api/").Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
@@ -392,8 +394,6 @@ func qualifyReplayFilterSQL(filterSQL string) string {
 		"players",
 		"commands",
 		"commands_low_value",
-		"detected_patterns_replay",
-		"detected_patterns_replay_player",
 		"replay_events",
 	}
 	for _, table := range tables {
@@ -409,8 +409,6 @@ func hasUnqualifiedReplays(filterSQL string) bool {
 		"players",
 		"commands",
 		"commands_low_value",
-		"detected_patterns_replay",
-		"detected_patterns_replay_player",
 		"replay_events",
 	}
 	for _, table := range tables {
