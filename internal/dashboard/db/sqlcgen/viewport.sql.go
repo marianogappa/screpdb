@@ -13,16 +13,17 @@ const ListViewportAggregateRows = `-- name: ListViewportAggregateRows :many
 SELECT
   lower(trim(p.name)) AS player_key,
   CAST(MIN(p.name) AS TEXT) AS player_name,
-  COALESCE(dp.value_string, '') AS raw_value
-FROM detected_patterns_replay_player dp
+  COALESCE(re.payload, '') AS raw_value
+FROM replay_events re
 JOIN players p
-  ON p.id = dp.player_id
-WHERE dp.pattern_name = ?
+  ON p.id = re.source_player_id
+WHERE re.event_kind = 'marker'
+  AND re.event_type = ?
   AND p.is_observer = 0
   AND lower(trim(coalesce(p.type, ''))) = 'human'
-  AND dp.value_string IS NOT NULL
-  AND trim(dp.value_string) <> ''
-GROUP BY player_key, dp.replay_id, dp.player_id, dp.value_string
+  AND re.payload IS NOT NULL
+  AND trim(re.payload) <> ''
+GROUP BY player_key, re.replay_id, re.source_player_id, re.payload
 ORDER BY player_key ASC, player_name ASC
 `
 
@@ -56,12 +57,14 @@ func (q *Queries) ListViewportAggregateRows(ctx context.Context, patternName str
 }
 
 const ListViewportGameRows = `-- name: ListViewportGameRows :many
-SELECT player_id, COALESCE(value_string, '') AS raw_value
-FROM detected_patterns_replay_player
+SELECT source_player_id AS player_id, COALESCE(payload, '') AS raw_value
+FROM replay_events
 WHERE replay_id = ?
-  AND pattern_name = ?
-  AND value_string IS NOT NULL
-  AND trim(value_string) <> ''
+  AND event_kind = 'marker'
+  AND event_type = ?
+  AND source_player_id IS NOT NULL
+  AND payload IS NOT NULL
+  AND trim(payload) <> ''
 `
 
 type ListViewportGameRowsParams struct {

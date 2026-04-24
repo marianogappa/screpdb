@@ -1,6 +1,7 @@
 package detectors
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/marianogappa/screpdb/internal/models"
@@ -91,21 +92,23 @@ func (d *BasePlayerDetector) ShouldProcessCommand(command *models.Command) bool 
 }
 
 // BuildPlayerResult creates a PatternResult for a player-level detector
-func (d *BasePlayerDetector) BuildPlayerResult(patternName string, valueBool *bool, valueInt *int, valueString *string, valueTime *int64) *core.PatternResult {
+func (d *BasePlayerDetector) BuildPlayerResult(patternName string, detectedAtSecond int, payload json.RawMessage, valueBool *bool, valueInt *int, valueString *string, valueTime *int64) *core.PatternResult {
 	if !d.finished {
 		return nil
 	}
 	replayPlayerID := d.replayPlayerID
 	return &core.PatternResult{
-		PatternName:    patternName,
-		Level:          core.LevelPlayer,
-		ReplayID:       d.replay.ID,
-		PlayerID:       nil, // Will be set when converting to database IDs
-		ReplayPlayerID: &replayPlayerID,
-		ValueBool:      valueBool,
-		ValueInt:       valueInt,
-		ValueString:    valueString,
-		ValueTime:      valueTime,
+		PatternName:      patternName,
+		Level:            core.LevelPlayer,
+		ReplayID:         d.replay.ID,
+		PlayerID:         nil, // Will be set when converting to database IDs
+		ReplayPlayerID:   &replayPlayerID,
+		DetectedAtSecond: detectedAtSecond,
+		Payload:          payload,
+		ValueBool:        valueBool,
+		ValueInt:         valueInt,
+		ValueString:      valueString,
+		ValueTime:        valueTime,
 	}
 }
 
@@ -125,18 +128,20 @@ func (d *BaseReplayDetector) ShouldProcessCommand(command *models.Command) bool 
 }
 
 // BuildReplayResult creates a PatternResult for a replay-level detector
-func (d *BaseReplayDetector) BuildReplayResult(patternName string, valueBool *bool, valueInt *int, valueString *string, valueTime *int64) *core.PatternResult {
+func (d *BaseReplayDetector) BuildReplayResult(patternName string, detectedAtSecond int, payload json.RawMessage, valueBool *bool, valueInt *int, valueString *string, valueTime *int64) *core.PatternResult {
 	if !d.finished {
 		return nil
 	}
 	return &core.PatternResult{
-		PatternName: patternName,
-		Level:       core.LevelReplay,
-		ReplayID:    d.replay.ID,
-		ValueBool:   valueBool,
-		ValueInt:    valueInt,
-		ValueString: valueString,
-		ValueTime:   valueTime,
+		PatternName:      patternName,
+		Level:            core.LevelReplay,
+		ReplayID:         d.replay.ID,
+		DetectedAtSecond: detectedAtSecond,
+		Payload:          payload,
+		ValueBool:        valueBool,
+		ValueInt:         valueInt,
+		ValueString:      valueString,
+		ValueTime:        valueTime,
 	}
 }
 

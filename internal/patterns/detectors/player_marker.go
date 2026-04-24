@@ -26,12 +26,20 @@ type MarkerPlayerDetector struct {
 	// Rule path state:
 	state   markers.PredicateState
 	pending map[string]cmdenrich.EnrichedCommand // dedup tail for KindMakeBuilding facts
+	// lastObservedSecond tracks the replay second of the most recent fact fed into state.
+	// On a Matched commit during streaming, this is the second that flipped the decision —
+	// used as the marker's DetectedAtSecond.
+	lastObservedSecond int
 
 	// Custom path state:
 	custom markers.CustomEvaluator
+	// customResult is the result from CustomEvaluator.Finalize, cached so GetResult has access
+	// to DetectedAtSecond + Payload (not just the legacy Value fields).
+	customResult markers.CustomResult
 
-	matched bool
-	result  markers.MarkerValue
+	matched          bool
+	detectedAtSecond int
+	result           markers.MarkerValue
 }
 
 // NewMarkerPlayerDetector creates a detector for the given marker.
@@ -94,15 +102,22 @@ func (d *MarkerPlayerDetector) processRule(command *models.Command, now int) boo
 		}
 	case cmdenrich.KindMakeUnit:
 		if markers.IsSubjectOfInterest(fact.Subject) {
-			d.state.Observe(fact)
+			d.observeRuleFact(fact)
 		}
 	case cmdenrich.KindUpgrade, cmdenrich.KindTech, cmdenrich.KindHotkey:
 		// Upgrade/Tech/Hotkey facts bypass the subject gate — their
 		// subjects are upgrade/tech names or hotkey groups, not
 		// units/buildings, and their predicates don't filter by subject.
-		d.state.Observe(fact)
+		d.observeRuleFact(fact)
 	}
 	return d.checkRuleDecision(now)
+}
+
+// observeRuleFact funnels a fact into the predicate state and records its second
+// so a subsequent Matched commit can report the flipping fact's timestamp.
+func (d *MarkerPlayerDetector) observeRuleFact(f cmdenrich.EnrichedCommand) {
+	d.lastObservedSecond = f.Second
+	d.state.Observe(f)
 }
 
 func (d *MarkerPlayerDetector) enqueueDedup(f cmdenrich.EnrichedCommand) {
@@ -111,7 +126,7 @@ func (d *MarkerPlayerDetector) enqueueDedup(f cmdenrich.EnrichedCommand) {
 			d.pending[f.Subject] = f
 			return
 		}
-		d.state.Observe(prior)
+		d.observeRuleFact(prior)
 	}
 	d.pending[f.Subject] = f
 }
@@ -119,7 +134,7 @@ func (d *MarkerPlayerDetector) enqueueDedup(f cmdenrich.EnrichedCommand) {
 func (d *MarkerPlayerDetector) flushDedupBefore(now int) {
 	for subj, f := range d.pending {
 		if now-f.Second >= markers.BuildDedupGapSeconds {
-			d.state.Observe(f)
+			d.observeRuleFact(f)
 			delete(d.pending, subj)
 		}
 	}
@@ -127,7 +142,7 @@ func (d *MarkerPlayerDetector) flushDedupBefore(now int) {
 
 func (d *MarkerPlayerDetector) flushAllPending() {
 	for subj, f := range d.pending {
-		d.state.Observe(f)
+		d.observeRuleFact(f)
 		delete(d.pending, subj)
 	}
 }
@@ -136,6 +151,7 @@ func (d *MarkerPlayerDetector) checkRuleDecision(now int) bool {
 	switch d.state.Decision(now) {
 	case markers.Matched:
 		d.matched = true
+		d.detectedAtSecond = d.lastObservedSecond
 		d.SetFinished(true)
 		d.pending = nil
 		return true
@@ -150,6 +166,14 @@ func (d *MarkerPlayerDetector) finalizeRuleAtDeadline() {
 	d.SetFinished(true)
 	d.flushAllPending()
 	d.matched = d.state.Finalize() == markers.Matched
+	if d.matched {
+		// Absence markers and deadline-finalized rules commit at end-of-replay.
+		if replay := d.GetReplay(); replay != nil {
+			d.detectedAtSecond = replay.DurationSeconds
+		} else {
+			d.detectedAtSecond = d.marker.RuleDeadline
+		}
+	}
 	d.pending = nil
 }
 
@@ -181,6 +205,8 @@ func (d *MarkerPlayerDetector) finalizeCustomAtDeadline() {
 		WorldState:     d.GetWorldState(),
 	})
 	d.matched = res.Matched
+	d.detectedAtSecond = res.DetectedAtSecond
+	d.customResult = res
 	d.result = res.Value
 }
 
@@ -216,10 +242,12 @@ func (d *MarkerPlayerDetector) GetResult() *core.PatternResult {
 	}
 	if d.state != nil {
 		valueBool := true
-		return d.BuildPlayerResult(d.marker.PatternName, &valueBool, nil, nil, nil)
+		return d.BuildPlayerResult(d.marker.PatternName, d.detectedAtSecond, nil, &valueBool, nil, nil, nil)
 	}
 	return d.BuildPlayerResult(
 		d.marker.PatternName,
+		d.detectedAtSecond,
+		d.customResult.Payload,
 		d.result.Bool,
 		d.result.Int,
 		d.result.String,

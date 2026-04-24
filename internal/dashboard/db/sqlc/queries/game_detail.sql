@@ -34,33 +34,28 @@ GROUP BY p.id, p.name, p.color, p.race, p.team, p.is_winner, p.start_location_oc
 ORDER BY p.team ASC, p.id ASC;
 
 -- name: ListReplayPatterns :many
+-- Replay-level markers (source_player_id IS NULL). event_type is the marker's FeatureKey.
+-- payload is the JSON blob for markers that carry extras; pattern_value surfaces it as text
+-- so downstream code can display the payload as the "value" field during the transition window.
 SELECT
-  pattern_name,
-  CASE
-    WHEN value_bool IS NOT NULL THEN CASE WHEN value_bool = 1 THEN 'true' ELSE 'false' END
-    WHEN value_int IS NOT NULL THEN CAST(value_int AS TEXT)
-    WHEN value_string IS NOT NULL THEN value_string
-    WHEN value_timestamp IS NOT NULL THEN CAST(value_timestamp AS TEXT)
-    ELSE ''
-  END AS pattern_value
-FROM detected_patterns_replay
+  event_type AS pattern_name,
+  COALESCE(payload, 'true') AS pattern_value
+FROM replay_events
 WHERE replay_id = ?
-ORDER BY pattern_name ASC;
+  AND event_kind = 'marker'
+  AND source_player_id IS NULL
+ORDER BY event_type ASC;
 
 -- name: ListPlayerPatterns :many
 SELECT
-  player_id,
-  pattern_name,
-  CASE
-    WHEN value_bool IS NOT NULL THEN CASE WHEN value_bool = 1 THEN 'true' ELSE 'false' END
-    WHEN value_int IS NOT NULL THEN CAST(value_int AS TEXT)
-    WHEN value_string IS NOT NULL THEN value_string
-    WHEN value_timestamp IS NOT NULL THEN CAST(value_timestamp AS TEXT)
-    ELSE ''
-  END AS pattern_value
-FROM detected_patterns_replay_player
+  source_player_id AS player_id,
+  event_type AS pattern_name,
+  COALESCE(payload, 'true') AS pattern_value
+FROM replay_events
 WHERE replay_id = ?
-ORDER BY player_id ASC, pattern_name ASC;
+  AND event_kind = 'marker'
+  AND source_player_id IS NOT NULL
+ORDER BY source_player_id ASC, event_type ASC;
 
 -- name: ListReplayEvents :many
 SELECT
@@ -81,6 +76,7 @@ FROM replay_events re
 LEFT JOIN players sp ON sp.id = re.source_player_id
 LEFT JOIN players tp ON tp.id = re.target_player_id
 WHERE re.replay_id = ?
+  AND re.event_kind = 'game_event'
 ORDER BY re.seconds_from_game_start ASC, re.event_type ASC, re.id ASC;
 
 -- name: GetPlayerOverviewSummary :one

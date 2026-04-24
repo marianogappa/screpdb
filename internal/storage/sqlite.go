@@ -16,6 +16,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
+	"github.com/marianogappa/screpdb/internal/patterns/markers"
 	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
 )
 
@@ -835,21 +836,21 @@ func (s *SQLiteStorage) FilterOutExistingPatternDetections(ctx context.Context, 
 	return filtered, nil
 }
 
-// DeletePatternDetectionsForReplay deletes all pattern detection results for a replay
+// DeletePatternDetectionsForReplay clears prior marker rows and the narrative-events
+// companion rows so a fresh detection pass starts from a clean slate. Both kinds live
+// in replay_events post-migration (distinguished by event_kind); one DELETE covers them.
+// The marker_algorithm_state row is also cleared so the caller's next detection run
+// re-populates it under the current AlgorithmVersion.
 func (s *SQLiteStorage) DeletePatternDetectionsForReplay(ctx context.Context, replayID int64) error {
-	// Delete from all pattern/event tables.
 	queries := []string{
 		"DELETE FROM replay_events WHERE replay_id = ?",
-		"DELETE FROM detected_patterns_replay WHERE replay_id = ?",
-		"DELETE FROM detected_patterns_replay_player WHERE replay_id = ?",
+		"DELETE FROM marker_algorithm_state WHERE replay_id = ?",
 	}
-
 	for _, query := range queries {
 		if _, err := s.db.ExecContext(ctx, query, replayID); err != nil {
 			return fmt.Errorf("failed to delete pattern detections: %w", err)
 		}
 	}
-
 	return nil
 }
 
@@ -858,68 +859,78 @@ func (s *SQLiteStorage) BatchInsertPatternResults(ctx context.Context, results [
 	return s.BatchInsertPatternResultsTx(ctx, s.db, results)
 }
 
-// BatchInsertPatternResultsTx inserts pattern detection results in batch (uses provided connection/transaction)
+// BatchInsertPatternResultsTx writes marker detection results as replay_events rows
+// (event_kind='marker') and stamps marker_algorithm_state with the current AlgorithmVersion.
+// Replay-level markers are accepted too: source_player_id is left NULL for those.
+// Orphan results (PatternName not registered in the markers package) are skipped with a
+// warn-grade diagnostic via the returned error from insertMarkerEventsTx.
 func (s *SQLiteStorage) BatchInsertPatternResultsTx(ctx context.Context, db dbtx, results []*core.PatternResult) error {
 	if len(results) == 0 {
 		return nil
 	}
 
-	// Separate results by level
-	var replayResults []*core.PatternResult
-	var playerResults []*core.PatternResult
+	if err := s.insertMarkerEventsTx(ctx, db, results); err != nil {
+		return fmt.Errorf("failed to insert marker events: %w", err)
+	}
 
+	replayIDs := make(map[int64]struct{}, len(results))
 	for _, result := range results {
-		switch result.Level {
-		case core.LevelReplay:
-			replayResults = append(replayResults, result)
-		case core.LevelPlayer:
-			playerResults = append(playerResults, result)
+		if result.ReplayID != 0 {
+			replayIDs[result.ReplayID] = struct{}{}
 		}
 	}
-
-	// Insert replay-level results
-	if len(replayResults) > 0 {
-		if err := s.insertReplayPatternResultsTx(ctx, db, replayResults); err != nil {
-			return fmt.Errorf("failed to insert replay pattern results: %w", err)
-		}
-	}
-
-	// Insert player-level results
-	if len(playerResults) > 0 {
-		if err := s.insertPlayerPatternResultsTx(ctx, db, playerResults); err != nil {
-			return fmt.Errorf("failed to insert player pattern results: %w", err)
+	for replayID := range replayIDs {
+		if err := s.upsertMarkerAlgorithmStateTx(ctx, db, replayID, core.AlgorithmVersion); err != nil {
+			return fmt.Errorf("failed to upsert marker_algorithm_state: %w", err)
 		}
 	}
 
 	return nil
 }
 
-// insertReplayPatternResultsTx inserts replay-level pattern results (uses provided connection/transaction)
-func (s *SQLiteStorage) insertReplayPatternResultsTx(ctx context.Context, db dbtx, results []*core.PatternResult) error {
+// insertMarkerEventsTx unified insert path for marker detection results.
+// Each result maps to one replay_events row with event_kind='marker', event_type=marker.FeatureKey.
+// Uses ON CONFLICT (partial unique index on (replay_id, COALESCE(source_player_id,0), event_type) WHERE event_kind='marker')
+// to make re-detection idempotent — a second pass for the same replay updates in place.
+func (s *SQLiteStorage) insertMarkerEventsTx(ctx context.Context, db dbtx, results []*core.PatternResult) error {
 	const batchSize = 100
 	for i := 0; i < len(results); i += batchSize {
 		end := min(i+batchSize, len(results))
 		batch := results[i:end]
 
 		valueStrings := make([]string, 0, len(batch))
-		valueArgs := make([]any, 0, len(batch)*7)
+		valueArgs := make([]any, 0, len(batch)*6)
 
 		for _, result := range batch {
-			valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?)")
-			valueArgs = append(valueArgs, result.ReplayID, core.AlgorithmVersion, result.PatternName)
-
-			// Add value fields (only one should be set)
-			if result.ValueBool != nil {
-				valueArgs = append(valueArgs, *result.ValueBool, nil, nil, nil)
-			} else if result.ValueInt != nil {
-				valueArgs = append(valueArgs, nil, *result.ValueInt, nil, nil)
-			} else if result.ValueString != nil {
-				valueArgs = append(valueArgs, nil, nil, *result.ValueString, nil)
-			} else if result.ValueTime != nil {
-				valueArgs = append(valueArgs, nil, nil, nil, *result.ValueTime)
-			} else {
-				valueArgs = append(valueArgs, nil, nil, nil, nil)
+			marker := markers.ByPatternName(result.PatternName)
+			if marker == nil {
+				// Unknown pattern — shouldn't happen, but skip rather than insert orphan rows.
+				continue
 			}
+
+			var sourcePlayerID any
+			if result.PlayerID != nil {
+				sourcePlayerID = *result.PlayerID
+			} else {
+				sourcePlayerID = nil
+			}
+
+			var payload any
+			if len(result.Payload) > 0 {
+				payload = string(result.Payload)
+			} else {
+				payload = nil
+			}
+
+			valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?)")
+			valueArgs = append(valueArgs,
+				result.ReplayID,
+				result.DetectedAtSecond,
+				"marker",
+				marker.FeatureKey,
+				sourcePlayerID,
+				payload,
+			)
 		}
 
 		if len(valueStrings) == 0 {
@@ -927,23 +938,39 @@ func (s *SQLiteStorage) insertReplayPatternResultsTx(ctx context.Context, db dbt
 		}
 
 		query := fmt.Sprintf(`
-			INSERT INTO detected_patterns_replay
-			(replay_id, algorithm_version, pattern_name, value_bool, value_int, value_string, value_timestamp)
+			INSERT INTO replay_events (
+				replay_id,
+				seconds_from_game_start,
+				event_kind,
+				event_type,
+				source_player_id,
+				payload
+			)
 			VALUES %s
-			ON CONFLICT (replay_id, pattern_name) DO UPDATE SET
-				algorithm_version = excluded.algorithm_version,
-				value_bool = excluded.value_bool,
-				value_int = excluded.value_int,
-				value_string = excluded.value_string,
-				value_timestamp = excluded.value_timestamp
+			ON CONFLICT (replay_id, COALESCE(source_player_id, 0), event_type) WHERE event_kind = 'marker'
+			DO UPDATE SET
+				seconds_from_game_start = excluded.seconds_from_game_start,
+				payload = excluded.payload
 		`, strings.Join(valueStrings, ", "))
 
 		if _, err := db.ExecContext(ctx, query, valueArgs...); err != nil {
-			return fmt.Errorf("failed to insert replay pattern results: %w", err)
+			return fmt.Errorf("failed to insert marker events: %w", err)
 		}
 	}
 
 	return nil
+}
+
+func (s *SQLiteStorage) upsertMarkerAlgorithmStateTx(ctx context.Context, db dbtx, replayID int64, algorithmVersion int) error {
+	const query = `
+		INSERT INTO marker_algorithm_state (replay_id, algorithm_version, detected_at)
+		VALUES (?, ?, datetime('now'))
+		ON CONFLICT (replay_id) DO UPDATE SET
+			algorithm_version = excluded.algorithm_version,
+			detected_at       = excluded.detected_at
+	`
+	_, err := db.ExecContext(ctx, query, replayID, algorithmVersion)
+	return err
 }
 
 func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, replayID int64, events []worldstate.ReplayEvent, playerIDMap map[byte]int64) error {
@@ -1007,7 +1034,7 @@ func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, repla
 				locationMineralOnly = event.LocationMineralOnly
 			}
 
-			valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+			valueStrings = append(valueStrings, "(?, ?, 'game_event', ?, ?, ?, ?, ?, ?, ?, ?)")
 			valueArgs = append(valueArgs,
 				replayID,
 				event.Second,
@@ -1030,6 +1057,7 @@ func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, repla
 			INSERT INTO replay_events (
 				replay_id,
 				seconds_from_game_start,
+				event_kind,
 				event_type,
 				location_base_type,
 				location_base_oclock,
@@ -1046,61 +1074,6 @@ func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, repla
 			return fmt.Errorf("failed to insert replay events: %w", err)
 		}
 	}
-	return nil
-}
-
-// insertPlayerPatternResultsTx inserts player-level pattern results (uses provided connection/transaction)
-func (s *SQLiteStorage) insertPlayerPatternResultsTx(ctx context.Context, db dbtx, results []*core.PatternResult) error {
-	const batchSize = 100
-	for i := 0; i < len(results); i += batchSize {
-		end := min(i+batchSize, len(results))
-		batch := results[i:end]
-
-		valueStrings := make([]string, 0, len(batch))
-		valueArgs := make([]any, 0, len(batch)*7)
-
-		for _, result := range batch {
-			if result.PlayerID == nil {
-				continue // Skip if player ID is nil
-			}
-
-			valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?)")
-			valueArgs = append(valueArgs, result.ReplayID, *result.PlayerID, result.PatternName)
-
-			// Add value fields (only one should be set)
-			if result.ValueBool != nil {
-				valueArgs = append(valueArgs, *result.ValueBool, nil, nil, nil)
-			} else if result.ValueInt != nil {
-				valueArgs = append(valueArgs, nil, *result.ValueInt, nil, nil)
-			} else if result.ValueString != nil {
-				valueArgs = append(valueArgs, nil, nil, *result.ValueString, nil)
-			} else if result.ValueTime != nil {
-				valueArgs = append(valueArgs, nil, nil, nil, *result.ValueTime)
-			} else {
-				valueArgs = append(valueArgs, nil, nil, nil, nil)
-			}
-		}
-
-		if len(valueStrings) == 0 {
-			continue
-		}
-
-		query := fmt.Sprintf(`
-			INSERT INTO detected_patterns_replay_player
-			(replay_id, player_id, pattern_name, value_bool, value_int, value_string, value_timestamp)
-			VALUES %s
-			ON CONFLICT (replay_id, player_id, pattern_name) DO UPDATE SET
-				value_bool = excluded.value_bool,
-				value_int = excluded.value_int,
-				value_string = excluded.value_string,
-				value_timestamp = excluded.value_timestamp
-		`, strings.Join(valueStrings, ", "))
-
-		if _, err := db.ExecContext(ctx, query, valueArgs...); err != nil {
-			return fmt.Errorf("failed to insert player pattern results: %w", err)
-		}
-	}
-
 	return nil
 }
 

@@ -393,8 +393,6 @@ func qualifyReplayFilterSQL(filterSQL string) string {
 		"players",
 		"commands",
 		"commands_low_value",
-		"detected_patterns_replay",
-		"detected_patterns_replay_player",
 		"replay_events",
 	}
 	for _, table := range tables {
@@ -410,8 +408,6 @@ func hasUnqualifiedReplays(filterSQL string) bool {
 		"players",
 		"commands",
 		"commands_low_value",
-		"detected_patterns_replay",
-		"detected_patterns_replay_player",
 		"replay_events",
 	}
 	for _, table := range tables {

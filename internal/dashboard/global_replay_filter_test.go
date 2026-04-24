@@ -171,7 +171,7 @@ func TestDashboardAPI_ReplayFilterAppliesToDetectedPatternViews(t *testing.T) {
 		t.Fatalf("updateDashboard: %v", err)
 	}
 
-	body := []byte(`{"query": "SELECT COUNT(*) AS c FROM detected_patterns_replay WHERE pattern_name = 'test_replay_pattern'", "variable_values": {}, "dashboard_url": "default"}`)
+	body := []byte(`{"query": "SELECT COUNT(*) AS c FROM replay_events WHERE event_kind = 'marker' AND event_type = 'test_replay_pattern' AND source_player_id IS NULL", "variable_values": {}, "dashboard_url": "default"}`)
 	rec := performDashboardRequest(router, http.MethodPost, "/api/custom/query", body)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("execute query status %d: %s", rec.Code, rec.Body.String())
@@ -187,7 +187,7 @@ func TestDashboardAPI_ReplayFilterAppliesToDetectedPatternViews(t *testing.T) {
 		t.Fatalf("expected replay pattern count 1, got %d", got)
 	}
 
-	playerBody := []byte(`{"query": "SELECT COUNT(*) AS c FROM detected_patterns_replay_player WHERE player_id = ` + int64ToString(playerID) + ` AND pattern_name = 'test_player_pattern'", "variable_values": {}, "dashboard_url": "default"}`)
+	playerBody := []byte(`{"query": "SELECT COUNT(*) AS c FROM replay_events WHERE event_kind = 'marker' AND source_player_id = ` + int64ToString(playerID) + ` AND event_type = 'test_player_pattern'", "variable_values": {}, "dashboard_url": "default"}`)
 	rec = performDashboardRequest(router, http.MethodPost, "/api/custom/query", playerBody)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("execute player pattern query status %d: %s", rec.Code, rec.Body.String())
@@ -388,17 +388,24 @@ func insertTestReplayPatternRows(t *testing.T, dash *Dashboard) (int64, int64) {
 		t.Fatalf("query replay/player ids: %v", err)
 	}
 
+	// Post markers-migration: markers live in replay_events with event_kind='marker'.
+	// Test fixtures inject directly into replay_events using the partial unique index
+	// (replay_id, COALESCE(source_player_id,0), event_type) WHERE event_kind='marker'.
 	if _, err := dash.db.ExecContext(dash.ctx, `
-		INSERT OR REPLACE INTO detected_patterns_replay (replay_id, algorithm_version, pattern_name, value_bool)
-		VALUES (?, 1, 'test_replay_pattern', 1)
+		INSERT INTO replay_events (replay_id, seconds_from_game_start, event_kind, event_type, source_player_id)
+		VALUES (?, 0, 'marker', 'test_replay_pattern', NULL)
+		ON CONFLICT (replay_id, COALESCE(source_player_id, 0), event_type) WHERE event_kind = 'marker'
+		DO NOTHING
 	`, replayID); err != nil {
-		t.Fatalf("insert detected_patterns_replay: %v", err)
+		t.Fatalf("insert replay-level marker row: %v", err)
 	}
 	if _, err := dash.db.ExecContext(dash.ctx, `
-		INSERT OR REPLACE INTO detected_patterns_replay_player (replay_id, player_id, pattern_name, value_bool)
-		VALUES (?, ?, 'test_player_pattern', 1)
+		INSERT INTO replay_events (replay_id, seconds_from_game_start, event_kind, event_type, source_player_id)
+		VALUES (?, 0, 'marker', 'test_player_pattern', ?)
+		ON CONFLICT (replay_id, COALESCE(source_player_id, 0), event_type) WHERE event_kind = 'marker'
+		DO NOTHING
 	`, replayID, playerID); err != nil {
-		t.Fatalf("insert detected_patterns_replay_player: %v", err)
+		t.Fatalf("insert player-level marker row: %v", err)
 	}
 	return replayID, playerID
 }

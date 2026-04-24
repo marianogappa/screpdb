@@ -22,6 +22,8 @@
 package markers
 
 import (
+	"encoding/json"
+
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
@@ -108,11 +110,19 @@ func (p Predicate) Eval(facts []cmdenrich.EnrichedCommand) bool {
 // every classified command in order and emits a MarkerResult at Finalize.
 // -----------------------------------------------------------------------------
 
-// MarkerValue is the value a Custom evaluator emits on match. Mirrors the
-// value columns on detected_patterns_replay_player. Exactly one of the
-// pointer fields is expected to be set (or none if the marker is pure
-// bool-by-match).
+// MarkerValue carries optional extras for a Custom evaluator's verdict.
+//
+// Post-migration, presence of a replay_events row for (replay, player, marker) is the
+// "matched" signal — no value columns needed for the majority of markers. Evaluators
+// that carry auxiliary data (hotkey groups, viewport switches-per-minute) populate
+// Payload with a JSON blob stored in replay_events.payload.
+//
+// The Bool / Int / String / Time fields are legacy — kept during the transition so
+// old storage code still compiles. They are scheduled for removal once all read paths
+// stop reading them.
 type MarkerValue struct {
+	Payload json.RawMessage
+
 	Bool   *bool
 	Int    *int
 	String *string
@@ -130,9 +140,17 @@ type CustomEvalContext struct {
 
 // CustomResult is the verdict + optional value a Custom evaluator returns
 // at Finalize.
+//
+// DetectedAtSecond is the replay second persisted as replay_events.seconds_from_game_start.
+// Absence markers (those that commit at end-of-replay) and hotkey/viewport windows each
+// document their own source of this value.
+//
+// Payload mirrors MarkerValue.Payload and is written to replay_events.payload.
 type CustomResult struct {
-	Matched bool
-	Value   MarkerValue
+	Matched          bool
+	DetectedAtSecond int
+	Payload          json.RawMessage
+	Value            MarkerValue
 }
 
 // CustomEvaluator is the streaming evaluator for a Custom marker.

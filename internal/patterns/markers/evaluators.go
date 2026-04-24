@@ -1,6 +1,7 @@
 package markers
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -35,7 +36,11 @@ func (e *worldstateFirstEventEvaluator) Finalize(ctx CustomEvalContext) CustomRe
 	if sec == nil {
 		return CustomResult{}
 	}
-	return CustomResult{Matched: true, Value: MarkerValue{Int: sec}}
+	return CustomResult{
+		Matched:          true,
+		DetectedAtSecond: *sec,
+		Value:            MarkerValue{Int: sec},
+	}
 }
 
 // -----------------------------------------------------------------------------
@@ -112,7 +117,16 @@ func (v *viewportMultitaskingEvaluator) Finalize(ctx CustomEvalContext) CustomRe
 	}
 	rate := float64(v.viewportSwitches) / (float64(windowSeconds) / 60.0)
 	formatted := fmt.Sprintf("%.6f", rate)
-	return CustomResult{Matched: true, Value: MarkerValue{String: &formatted}}
+	payload, err := json.Marshal(map[string]float64{"switches_per_minute": rate})
+	if err != nil {
+		return CustomResult{}
+	}
+	return CustomResult{
+		Matched:          true,
+		DetectedAtSecond: windowEndSec,
+		Payload:          payload,
+		Value:            MarkerValue{String: &formatted},
+	}
 }
 
 func isViewportSwitch(prevX, prevY, currentX, currentY int) bool {
@@ -153,7 +167,7 @@ func (e *usedHotkeyGroupsEvaluator) Observe(f cmdenrich.EnrichedCommand) {
 	e.groups[g] = struct{}{}
 }
 
-func (e *usedHotkeyGroupsEvaluator) Finalize(CustomEvalContext) CustomResult {
+func (e *usedHotkeyGroupsEvaluator) Finalize(ctx CustomEvalContext) CustomResult {
 	if len(e.groups) == 0 {
 		return CustomResult{}
 	}
@@ -167,5 +181,19 @@ func (e *usedHotkeyGroupsEvaluator) Finalize(CustomEvalContext) CustomResult {
 		parts = append(parts, strconv.Itoa(g))
 	}
 	value := strings.Join(parts, ",")
-	return CustomResult{Matched: true, Value: MarkerValue{String: &value}}
+	payload, err := json.Marshal(map[string][]int{"groups": keys})
+	if err != nil {
+		return CustomResult{}
+	}
+	// Commit at end-of-replay — user-confirmed convention for this marker.
+	detectedAtSecond := 0
+	if ctx.Replay != nil {
+		detectedAtSecond = ctx.Replay.DurationSeconds
+	}
+	return CustomResult{
+		Matched:          true,
+		DetectedAtSecond: detectedAtSecond,
+		Payload:          payload,
+		Value:            MarkerValue{String: &value},
+	}
 }

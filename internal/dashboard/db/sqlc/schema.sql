@@ -75,30 +75,11 @@ CREATE TABLE dashboard_widgets (
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE detected_patterns_replay_player (
-  replay_id INTEGER NOT NULL,
-  player_id INTEGER NOT NULL,
-  pattern_name TEXT NOT NULL,
-  value_bool BOOLEAN,
-  value_int INTEGER,
-  value_string TEXT,
-  value_timestamp BIGINT
-);
-
-CREATE TABLE detected_patterns_replay (
-  algorithm_version INTEGER NOT NULL,
-  replay_id INTEGER NOT NULL,
-  pattern_name TEXT NOT NULL,
-  value_bool BOOLEAN,
-  value_int INTEGER,
-  value_string TEXT,
-  value_timestamp BIGINT
-);
-
 CREATE TABLE replay_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   replay_id INTEGER NOT NULL,
   seconds_from_game_start INTEGER NOT NULL,
+  event_kind TEXT NOT NULL,
   event_type TEXT NOT NULL,
   location_base_type TEXT,
   location_base_oclock INTEGER,
@@ -106,7 +87,14 @@ CREATE TABLE replay_events (
   location_mineral_only BOOLEAN,
   source_player_id INTEGER,
   target_player_id INTEGER,
-  attack_unit_types TEXT
+  attack_unit_types TEXT,
+  payload TEXT
+);
+
+CREATE TABLE marker_algorithm_state (
+  replay_id INTEGER PRIMARY KEY,
+  algorithm_version INTEGER NOT NULL,
+  detected_at TEXT NOT NULL
 );
 
 CREATE TABLE commands (

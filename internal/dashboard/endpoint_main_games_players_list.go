@@ -289,30 +289,23 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 	}
 	for _, row := range rowsPlayerPatterns {
 		replayID := row.ReplayID
-		patternName := row.PatternName
-		valueBool := row.ValueBool
-		valueInt := row.ValueInt
-		valueString := row.ValueString
-		valueTimestamp := row.ValueTimestamp
-		if !workflowTruthyPatternValue(valueBool, valueInt, valueString, valueTimestamp) {
-			continue
-		}
-		trimmedName := strings.TrimSpace(patternName)
-		switch strings.ToLower(trimmedName) {
+		// Post-markers-migration: row.PatternName carries the marker FeatureKey
+		// (row presence alone = match; no value-column truthiness check needed).
+		featureKey := strings.TrimSpace(strings.ToLower(row.PatternName))
+		switch featureKey {
 		case "carriers":
 			featureSets[replayID]["carriers"] = struct{}{}
 		case "battlecruisers":
 			featureSets[replayID]["battlecruisers"] = struct{}{}
-		case "made recalls":
+		case "made_recalls":
 			featureSets[replayID]["recalls"] = struct{}{}
-		case "threw nukes":
+		case "threw_nukes":
 			featureSets[replayID]["nukes"] = struct{}{}
-		case "became terran", "became zerg":
+		case "became_terran", "became_zerg":
 			featureSets[replayID]["mind_control"] = struct{}{}
 		default:
-			// Build-order patterns share a common prefix so we can route them
-			// to their featuring key via the registry rather than a big switch.
-			if bo := markers.ByPatternName(trimmedName); bo != nil {
+			// Build-order markers route directly to their featuring key.
+			if bo := markers.ByFeatureKey(featureKey); bo != nil {
 				featureSets[replayID][bo.FeatureKey] = struct{}{}
 			}
 		}

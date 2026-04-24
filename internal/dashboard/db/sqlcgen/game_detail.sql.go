@@ -124,18 +124,14 @@ func (q *Queries) ListPlayerApmAggregates(ctx context.Context, dollar_1 interfac
 
 const ListPlayerPatterns = `-- name: ListPlayerPatterns :many
 SELECT
-  player_id,
-  pattern_name,
-  CASE
-    WHEN value_bool IS NOT NULL THEN CASE WHEN value_bool = 1 THEN 'true' ELSE 'false' END
-    WHEN value_int IS NOT NULL THEN CAST(value_int AS TEXT)
-    WHEN value_string IS NOT NULL THEN value_string
-    WHEN value_timestamp IS NOT NULL THEN CAST(value_timestamp AS TEXT)
-    ELSE ''
-  END AS pattern_value
-FROM detected_patterns_replay_player
+  source_player_id AS player_id,
+  event_type AS pattern_name,
+  COALESCE(payload, 'true') AS pattern_value
+FROM replay_events
 WHERE replay_id = ?
-ORDER BY player_id ASC, pattern_name ASC
+  AND event_kind = 'marker'
+  AND source_player_id IS NOT NULL
+ORDER BY source_player_id ASC, event_type ASC
 `
 
 type ListPlayerPatternsRow struct {
@@ -258,6 +254,7 @@ FROM replay_events re
 LEFT JOIN players sp ON sp.id = re.source_player_id
 LEFT JOIN players tp ON tp.id = re.target_player_id
 WHERE re.replay_id = ?
+  AND re.event_kind = 'game_event'
 ORDER BY re.seconds_from_game_start ASC, re.event_type ASC, re.id ASC
 `
 
@@ -316,17 +313,13 @@ func (q *Queries) ListReplayEvents(ctx context.Context, replayID int64) ([]ListR
 
 const ListReplayPatterns = `-- name: ListReplayPatterns :many
 SELECT
-  pattern_name,
-  CASE
-    WHEN value_bool IS NOT NULL THEN CASE WHEN value_bool = 1 THEN 'true' ELSE 'false' END
-    WHEN value_int IS NOT NULL THEN CAST(value_int AS TEXT)
-    WHEN value_string IS NOT NULL THEN value_string
-    WHEN value_timestamp IS NOT NULL THEN CAST(value_timestamp AS TEXT)
-    ELSE ''
-  END AS pattern_value
-FROM detected_patterns_replay
+  event_type AS pattern_name,
+  COALESCE(payload, 'true') AS pattern_value
+FROM replay_events
 WHERE replay_id = ?
-ORDER BY pattern_name ASC
+  AND event_kind = 'marker'
+  AND source_player_id IS NULL
+ORDER BY event_type ASC
 `
 
 type ListReplayPatternsRow struct {

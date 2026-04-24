@@ -11,12 +11,15 @@ import (
 
 const CountCarrierGamesByPlayer = `-- name: CountCarrierGamesByPlayer :one
 SELECT COUNT(DISTINCT p.replay_id) AS count
-FROM detected_patterns_replay_player dp
-JOIN players p ON p.id = dp.player_id
+FROM players p
 WHERE lower(trim(p.name)) = ?
   AND p.is_observer = 0
-  AND dp.pattern_name = 'Carriers'
-  AND dp.value_bool = 1
+  AND EXISTS (
+    SELECT 1 FROM replay_events re
+    WHERE re.source_player_id = p.id
+      AND re.event_kind = 'marker'
+      AND re.event_type = 'carriers'
+  )
 `
 
 func (q *Queries) CountCarrierGamesByPlayer(ctx context.Context, name string) (int64, error) {
@@ -95,7 +98,8 @@ func (q *Queries) GetPlayerNameByKey(ctx context.Context, name string) (string, 
 const ListExpansionEvents = `-- name: ListExpansionEvents :many
 SELECT replay_id, source_player_id, seconds_from_game_start
 FROM replay_events
-WHERE event_type = 'expansion'
+WHERE event_kind = 'game_event'
+  AND event_type = 'expansion'
   AND source_player_id IS NOT NULL
 `
 
