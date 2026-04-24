@@ -494,4 +494,13 @@ export const api = {
     }
     return response.json();
   },
+
+  getMarkerDefinitions: async () => {
+    const response = await fetch(`${API_CUSTOM}/markers/definitions`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get marker definitions');
+    }
+    return response.json();
+  },
 };

@@ -20,6 +20,13 @@ import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEffici
 import BuildOrderTimelineRows from './components/charts/BuildOrderTimelineRows';
 import { getUnitIcon, normalizeUnitName } from './lib/gameAssets';
 import {
+  PILL_SURFACES,
+  useMarkerRegistry,
+  renderPillText,
+  pillClassName,
+  lookupDefinitionForPattern,
+} from './lib/markerRegistry';
+import {
   getStoredVariableValues,
   saveVariableValues,
   getStoredAutoIngestSettings,
@@ -431,10 +438,28 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
   return found;
 };
 
-const buildMainGameFeaturingPills = (mainGame) => {
+const buildMainGameFeaturingPills = (mainGame, registry) => {
   if (!mainGame) return [];
   const keys = collectFeaturingKeysFromMainGame(mainGame);
-  return MAIN_GAME_FEATURING_ORDER.filter((entry) => keys.has(entry.key));
+
+  // Registry-driven path: whenever the backend registry has a GamesList pill
+  // entry for a featuring key, prefer the registry's label + icon over the
+  // hardcoded MAIN_GAME_FEATURING_ORDER table. This keeps ordering + the
+  // game-event-only entries (cannon_rush etc.) driven by the hardcoded list
+  // while allowing new markers to ship without FE edits.
+  return MAIN_GAME_FEATURING_ORDER
+    .filter((entry) => keys.has(entry.key))
+    .map((entry) => {
+      const def = registry ? registry[entry.key] : null;
+      if (def && def.games_list) {
+        return {
+          key: entry.key,
+          label: def.games_list.label || entry.label,
+          iconKey: def.games_list.icon_key || entry.iconKey,
+        };
+      }
+      return entry;
+    });
 };
 
 const renderFeaturingPill = (pill, keyPrefix) => {
@@ -924,7 +949,30 @@ const filterSummaryPillPatterns = (patterns, trustGameEventsForDrops = false) =>
   (patterns || []).filter((pattern) => !shouldHidePatternFromSummaryPills(pattern, trustGameEventsForDrops))
 );
 
-const renderPatternPill = (pattern, keyPrefix, team) => {
+// renderPatternPillFromRegistry tries the backend-driven pill registry first.
+// Returns a JSX element when the marker has a SummaryPlayer pill registered,
+// null otherwise — caller falls back to the hardcoded renderer below.
+const renderPatternPillFromRegistry = (pattern, keyPrefix, team, registry) => {
+  if (!registry) return null;
+  const def = lookupDefinitionForPattern(registry, pattern);
+  if (!def) return null;
+  const rendered = renderPillText(def, PILL_SURFACES.summaryPlayer, pattern);
+  if (!rendered) return null;
+  const className = pillClassName(rendered.style);
+  const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.event_type || pattern?.pattern_name}-${pattern?.detected_second ?? ''}`;
+  return (
+    <span key={key} className={className} title={rendered.title || undefined}>
+      {team !== undefined ? <span className="team-dot" style={{ backgroundColor: getTeamColor(team) }}></span> : null}
+      {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
+      {rendered.label ? <span>{rendered.label}</span> : null}
+    </span>
+  );
+};
+
+const renderPatternPill = (pattern, keyPrefix, team, registry) => {
+  const fromRegistry = renderPatternPillFromRegistry(pattern, keyPrefix, team, registry);
+  if (fromRegistry) return fromRegistry;
+
   const rawName = prettyPatternName(pattern?.pattern_name);
   if (!rawName) return null;
   const normalizedPatternName = normalizeUnitName(pattern?.pattern_name);
@@ -1204,6 +1252,8 @@ function App() {
     () => parseMainRouteSearch(typeof window !== 'undefined' ? window.location.search : ''),
     [],
   );
+  const markerRegistryState = useMarkerRegistry();
+  const markerRegistry = markerRegistryState.markers;
   const [currentDashboardUrl, setCurrentDashboardUrl] = useState(() => (
     initialMainRoute.view === 'dashboards' && initialMainRoute.dash ? initialMainRoute.dash : 'default'
   ));
@@ -3004,7 +3054,10 @@ function App() {
     });
     return acc;
   }, [mainGame?.game_events, mainEventMapBounds]);
-  const mainGameFeaturingPillsList = useMemo(() => buildMainGameFeaturingPills(mainGame), [mainGame]);
+  const mainGameFeaturingPillsList = useMemo(
+    () => buildMainGameFeaturingPills(mainGame, markerRegistry),
+    [mainGame, markerRegistry],
+  );
   const selectedMainGameArrow = useMemo(() => {
     if (!selectedMainGameEvent || !isArrowEventType(selectedMainGameEvent.type)) return null;
     const from = mapPointToPercent(selectedMainGameEvent?.actor_origin, mainEventMapBounds);
@@ -4390,7 +4443,7 @@ function App() {
                               </div>
                               <div className="workflow-pattern-pills">
                                 {gameSummaryParts.positive.map(renderGameSummarySignalPill)}
-                                {filterSummaryPillPatterns(player.detected_patterns, trustGameEventsForDrops).map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`))}
+                                {filterSummaryPillPatterns(player.detected_patterns, trustGameEventsForDrops).map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`, undefined, markerRegistry))}
                               </div>
                             </div>
                           </div>
@@ -5105,7 +5158,7 @@ function App() {
                         {(section.common_behaviours || []).length === 0 ? <div className="chart-empty">No common behaviours at 20%+ for this race.</div> : null}
                         {(section.common_behaviours || []).map((item, idx) => (
                           <div key={`${section.race}-${item.name}`} className="workflow-pattern-row">
-                            <span>{renderPatternPill({ pattern_name: item.name, value: 'true' }, `player-common-${section.race}-${idx}`)}</span>
+                            <span>{renderPatternPill({ pattern_name: item.name, value: 'true' }, `player-common-${section.race}-${idx}`, undefined, markerRegistry)}</span>
                             <span>{`${((Number(item.game_rate) || 0) * 100).toFixed(1)}% (${item.replay_count}/${section.game_count})`}</span>
                           </div>
                         ))}
@@ -5239,7 +5292,7 @@ function App() {
                         </div>
                         {filterSummaryPillPatterns(g.current_player?.detected_patterns).length > 0 ? (
                           <div className="workflow-pattern-pills workflow-pattern-pills-compact">
-                            {filterSummaryPillPatterns(g.current_player?.detected_patterns).map((pattern, idx) => renderPatternPill(pattern, `recent-${g.replay_id}-${idx}`))}
+                            {filterSummaryPillPatterns(g.current_player?.detected_patterns).map((pattern, idx) => renderPatternPill(pattern, `recent-${g.replay_id}-${idx}`, undefined, markerRegistry))}
                           </div>
                         ) : null}
                       </button>
