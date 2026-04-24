@@ -2221,24 +2221,24 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 	}
 
 	// Which BO was detected per player? Read back our own pattern results.
+	// Post markers-migration ListPlayerPatterns returns the marker FeatureKey
+	// as pattern_name (e.g. "bo_9_pool") — resolve through the registry rather
+	// than matching the legacy "Build Order: <Name>" prefix.
 	patternRows, err := d.dbStore.ListPlayerPatterns(d.ctx, detail.ReplayID)
 	if err != nil {
 		return fmt.Errorf("failed to load player patterns for build orders: %w", err)
 	}
 	detectedByPlayer := map[int64]map[string]bool{}
 	for _, row := range patternRows {
-		name := strings.TrimSpace(row.PatternName)
-		if !markers.IsInitialBuildOrderPatternName(name) {
-			continue
-		}
-		// ListPlayerPatterns encodes value_bool=true as literal "true".
-		if !strings.EqualFold(strings.TrimSpace(row.Value), "true") {
+		featureKey := strings.TrimSpace(row.PatternName)
+		marker := markers.ByFeatureKey(featureKey)
+		if marker == nil || marker.Kind != markers.KindInitialBuildOrder {
 			continue
 		}
 		if detectedByPlayer[row.PlayerID] == nil {
 			detectedByPlayer[row.PlayerID] = map[string]bool{}
 		}
-		detectedByPlayer[row.PlayerID][strings.ToLower(name)] = true
+		detectedByPlayer[row.PlayerID][strings.ToLower(marker.FeatureKey)] = true
 	}
 
 	// One chart per (player × detected BO). Broad definitions overlap on
@@ -2258,7 +2258,7 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 			if bo.Kind != markers.KindInitialBuildOrder {
 				continue
 			}
-			if !detected[strings.ToLower(bo.PatternName)] {
+			if !detected[strings.ToLower(bo.FeatureKey)] {
 				continue
 			}
 			resolutions := bo.ResolveExpert(facts)
