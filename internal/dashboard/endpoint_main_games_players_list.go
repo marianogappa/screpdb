@@ -179,6 +179,7 @@ func parseWorkflowGamesListFilters(r *http.Request) workflowGamesListFilters {
 		MapNames:        parseCSVQueryValues(r.URL.Query()["map"], false),
 		DurationBuckets: parseCSVQueryValues(r.URL.Query()["duration"], true),
 		FeaturingKeys:   parseCSVQueryValues(r.URL.Query()["featuring"], true),
+		MatchupKeys:     parseCSVQueryValues(r.URL.Query()["matchup"], true),
 	}
 }
 
@@ -210,6 +211,7 @@ func buildWorkflowGamesListWhere(filters workflowGamesListFilters) (string, []an
 		filters.MapNames,
 		filters.DurationBuckets,
 		filters.FeaturingKeys,
+		filters.MatchupKeys,
 		dashboarddb.WorkflowDurationSQLByKey(),
 	)
 }
@@ -255,6 +257,7 @@ func (d *Dashboard) populateWorkflowGameListPlayers(items []workflowGameListItem
 		if displayName, ok := displayByName[row.Name]; ok {
 			player.Name = displayName
 		}
+		player.Race = row.Race
 		player.Team = row.Team
 		player.IsWinner = row.IsWinner
 		player.PlayerKey = normalizePlayerKey(row.Name)
@@ -266,8 +269,41 @@ func (d *Dashboard) populateWorkflowGameListPlayers(items []workflowGameListItem
 	}
 	for i := range items {
 		items[i].PlayersLabel = formatWorkflowPlayersLabelFromList(items[i].Players)
+		items[i].Matchup = matchupKeyFromPlayers(items[i].Players)
 	}
 	return nil
+}
+
+// matchupKeyFromPlayers reduces a player list to a canonical matchup key like
+// "tvz" (always alphabetically sorted race initials). Returns "" when the
+// matchup isn't a 1v1 of two known-race players. TvZ/ZvT and PvZ/ZvP both
+// normalize to the same key by construction.
+func matchupKeyFromPlayers(players []workflowGameListPlayer) string {
+	if len(players) != 2 {
+		return ""
+	}
+	a := raceInitial(players[0].Race)
+	b := raceInitial(players[1].Race)
+	if a == "" || b == "" {
+		return ""
+	}
+	if a > b {
+		a, b = b, a
+	}
+	return strings.ToLower(a + "v" + b)
+}
+
+func raceInitial(race string) string {
+	switch strings.ToLower(strings.TrimSpace(race)) {
+	case "protoss":
+		return "P"
+	case "terran":
+		return "T"
+	case "zerg":
+		return "Z"
+	default:
+		return ""
+	}
 }
 
 func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListItem) error {
@@ -442,6 +478,7 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 		Maps:      []workflowGamesListFilterOption{},
 		Durations: []workflowGamesListFilterOption{},
 		Featuring: []workflowGamesListFilterOption{},
+		Matchups:  []workflowGamesListFilterOption{},
 	}
 
 	rowsPlayers, err := d.dbStore.ListWorkflowFilterPlayers(d.ctx)
@@ -501,6 +538,12 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 		result.Featuring = append(result.Featuring, workflowGamesListFilterOption{
 			Key:   feature.Key,
 			Label: feature.Label,
+		})
+	}
+	for _, matchup := range workflowMatchupFilters {
+		result.Matchups = append(result.Matchups, workflowGamesListFilterOption{
+			Key:   matchup.Key,
+			Label: matchup.Label,
 		})
 	}
 	return result, nil

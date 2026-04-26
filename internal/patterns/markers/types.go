@@ -44,6 +44,13 @@ const (
 // this many seconds apart are treated as a single event (later wins).
 const BuildDedupGapSeconds = 3
 
+// BuildDedupMaxSecond is the replay-second past which dedup stops firing.
+// Beyond the first 4 minutes, rapid-repeat Build commands of the same subject
+// are indistinguishable from legit batched placement vs. misclick spam, so we
+// stop assuming anti-spam intent and observe every fact as-is. All current
+// opening-build-order markers finalize well before this cap.
+const BuildDedupMaxSecond = 4 * 60
+
 // TriState is the monotone decision a PredicateState reports.
 //
 // Once a state commits to Matched or Rejected it must stay there — Observe

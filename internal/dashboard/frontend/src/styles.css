@@ -2523,6 +2523,24 @@ body {
   color: #eef4ff;
 }
 
+.workflow-filter-pill-clear {
+  border-style: dashed;
+  opacity: 0.7;
+}
+
+.workflow-filter-pill-clear:hover {
+  opacity: 1;
+}
+
+.workflow-race-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  vertical-align: text-bottom;
+  margin: 0 3px 0 0;
+  object-fit: contain;
+}
+
 .workflow-pagination-row {
   margin-top: 10px;
   display: flex;

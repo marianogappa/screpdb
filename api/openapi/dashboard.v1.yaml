@@ -350,6 +350,13 @@ paths:
             type: array
             items:
               type: string
+        - name: matchup
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
       responses:
         "200":
           description: OK

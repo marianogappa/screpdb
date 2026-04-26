@@ -22,6 +22,7 @@ type WorkflowGamePlayerRow struct {
 	ReplayID int64
 	PlayerID int64
 	Name     string
+	Race     string
 	Team     int64
 	IsWinner bool
 }
@@ -200,7 +201,7 @@ func (s *Store) ListReplayPlayers(ctx context.Context, replayIDs []int64) ([]Wor
 		args = append(args, replayID)
 	}
 	rows, err := s.ReplayQueryContext(ctx, `
-		SELECT replay_id, id, name, team, is_winner
+		SELECT replay_id, id, name, COALESCE(race, ''), team, is_winner
 		FROM players
 		WHERE is_observer = 0
 			AND replay_id IN (`+placeholders+`)
@@ -213,7 +214,7 @@ func (s *Store) ListReplayPlayers(ctx context.Context, replayIDs []int64) ([]Wor
 	result := []WorkflowGamePlayerRow{}
 	for rows.Next() {
 		var row WorkflowGamePlayerRow
-		if err := rows.Scan(&row.ReplayID, &row.PlayerID, &row.Name, &row.Team, &row.IsWinner); err != nil {
+		if err := rows.Scan(&row.ReplayID, &row.PlayerID, &row.Name, &row.Race, &row.Team, &row.IsWinner); err != nil {
 			return nil, err
 		}
 		result = append(result, row)
@@ -381,7 +382,7 @@ func (s *Store) ListPatternValuesForPlayerIDs(ctx context.Context, playerIDs []i
 }
 
 func (s *Store) ListWorkflowFilterPlayers(ctx context.Context) ([]WorkflowFilterOptionRow, error) {
-	rows, err := sqlcgen.New(s.replayScoped()).ListWorkflowFilterPlayers(ctx)
+	rows, err := sqlcgen.New(Trace(s.replayScoped())).ListWorkflowFilterPlayers(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -397,7 +398,7 @@ func (s *Store) ListWorkflowFilterPlayers(ctx context.Context) ([]WorkflowFilter
 }
 
 func (s *Store) ListWorkflowFilterMaps(ctx context.Context) ([]WorkflowFilterOptionRow, error) {
-	rows, err := sqlcgen.New(s.replayScoped()).ListWorkflowFilterMaps(ctx)
+	rows, err := sqlcgen.New(Trace(s.replayScoped())).ListWorkflowFilterMaps(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -412,7 +413,7 @@ func (s *Store) ListWorkflowFilterMaps(ctx context.Context) ([]WorkflowFilterOpt
 }
 
 func (s *Store) CountWorkflowDurationBuckets(ctx context.Context) (int64, int64, int64, int64, int64, error) {
-	row, err := sqlcgen.New(s.replayScoped()).CountWorkflowDurationBuckets(ctx)
+	row, err := sqlcgen.New(Trace(s.replayScoped())).CountWorkflowDurationBuckets(ctx)
 	if err != nil {
 		return 0, 0, 0, 0, 0, err
 	}

@@ -4,7 +4,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: 12 Hatch",
-        "value": "102"
+        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"found\":false}]}"
       },
       {
         "replay_player_id": 0,
@@ -43,7 +43,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: 12 Hatch",
-        "value": "102"
+        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"found\":false}]}"
       },
       {
         "replay_player_id": 0,
@@ -92,7 +92,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 2 Gate",
-        "value": "167"
+        "value": "{\"expert_actuals\":[{\"second\":78,\"found\":true},{\"second\":167,\"found\":true},{\"found\":false}]}"
       },
       {
         "replay_player_id": 1,
@@ -121,7 +121,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: 4 Pool",
-        "value": "37"
+        "value": "{\"expert_actuals\":[{\"second\":34,\"found\":true},{\"found\":false}]}"
       },
       {
         "replay_player_id": 0,
@@ -150,7 +150,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 9 Hatch",
-        "value": "77"
+        "value": "{\"expert_actuals\":[{\"second\":74,\"found\":true},{\"found\":false}]}"
       },
       {
         "replay_player_id": 1,
@@ -174,7 +174,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: Forge Expand",
-        "value": "133"
+        "value": "{\"expert_actuals\":[{\"second\":84,\"found\":true},{\"second\":130,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -270,7 +270,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 12 Hatch",
-        "value": "101"
+        "value": "{\"expert_actuals\":[{\"second\":98,\"found\":true},{\"found\":false}]}"
       },
       {
         "replay_player_id": 1,
@@ -314,7 +314,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Nexus First",
-        "value": "105"
+        "value": "{\"expert_actuals\":[{\"second\":105,\"found\":true},{\"found\":false}]}"
       },
       {
         "replay_player_id": 1,

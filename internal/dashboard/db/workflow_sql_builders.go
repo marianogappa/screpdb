@@ -89,7 +89,7 @@ func BuildWorkflowPlayersListWhere(onlyFivePlus bool, lastPlayedBuckets []string
 	return "WHERE " + strings.Join(clauses, " AND "), args
 }
 
-func BuildWorkflowGamesListWhere(playerKeys, mapNames, durationBuckets, featuringKeys []string, durationSQLByKey map[string]string) (string, []any) {
+func BuildWorkflowGamesListWhere(playerKeys, mapNames, durationBuckets, featuringKeys, matchupKeys []string, durationSQLByKey map[string]string) (string, []any) {
 	clauses := []string{}
 	args := []any{}
 	if len(playerKeys) > 0 {
@@ -130,10 +130,62 @@ func BuildWorkflowGamesListWhere(playerKeys, mapNames, durationBuckets, featurin
 			clauses = append(clauses, "("+strings.Join(featureClauses, " OR ")+")")
 		}
 	}
+	if matchupClause, matchupArgs := buildMatchupClause(matchupKeys); matchupClause != "" {
+		clauses = append(clauses, matchupClause)
+		args = append(args, matchupArgs...)
+	}
 	if len(clauses) == 0 {
 		return "", args
 	}
 	return "WHERE " + strings.Join(clauses, " AND "), args
+}
+
+// buildMatchupClause emits an EXISTS-based predicate that matches replays
+// whose two non-observer humans' races form one of the requested matchup keys.
+// The key is race initials sorted alphabetically ("tvz", "pvz"), so TvZ==ZvT
+// collapses naturally and the SQL doesn't need to enumerate both orders.
+func buildMatchupClause(matchupKeys []string) (string, []any) {
+	if len(matchupKeys) == 0 {
+		return "", nil
+	}
+	validKeys := map[string]struct {
+		a, b string
+	}{
+		"pvp": {"protoss", "protoss"},
+		"tvt": {"terran", "terran"},
+		"zvz": {"zerg", "zerg"},
+		"pvt": {"protoss", "terran"},
+		"pvz": {"protoss", "zerg"},
+		"tvz": {"terran", "zerg"},
+	}
+	alts := []string{}
+	args := []any{}
+	for _, key := range matchupKeys {
+		pair, ok := validKeys[strings.ToLower(strings.TrimSpace(key))]
+		if !ok {
+			continue
+		}
+		// Players p1 and p2 must exist, be distinct, non-observers, and
+		// together carry exactly the requested (unordered) race pair.
+		alts = append(alts, `EXISTS (
+			SELECT 1 FROM players p1, players p2
+			WHERE p1.replay_id = r.id AND p2.replay_id = r.id
+				AND p1.id < p2.id
+				AND p1.is_observer = 0 AND p2.is_observer = 0
+				AND ((lower(trim(p1.race)) = ? AND lower(trim(p2.race)) = ?)
+					OR (lower(trim(p1.race)) = ? AND lower(trim(p2.race)) = ?))
+				AND NOT EXISTS (
+					SELECT 1 FROM players p3
+					WHERE p3.replay_id = r.id AND p3.is_observer = 0
+						AND p3.id NOT IN (p1.id, p2.id)
+				)
+		)`)
+		args = append(args, pair.a, pair.b, pair.b, pair.a)
+	}
+	if len(alts) == 0 {
+		return "", nil
+	}
+	return "(" + strings.Join(alts, " OR ") + ")", args
 }
 
 // uiFeatureKeyToMarkerFeatureKey bridges the frontend filter keys (short aliases

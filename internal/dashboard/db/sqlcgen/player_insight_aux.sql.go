@@ -171,15 +171,25 @@ func (q *Queries) ListGasTimingRows(ctx context.Context, replayID int64) ([]List
 }
 
 const ListHotkeyGamesRateByPlayer = `-- name: ListHotkeyGamesRateByPlayer :many
+-- Hotkey usage as a per-player rate of "games where any hotkey-group command
+-- fired." Sourced from the used_hotkey_groups marker (computed at ingestion;
+-- one replay_events row per (replay × player) when groups exist), so this
+-- avoids scanning commands_low_value at query time. EXISTS guard handles
+-- duplicate marker rows defensively even though the streaming detector
+-- emits at most one per (replay × player).
 WITH game_level AS (
   SELECT
     lower(trim(p.name)) AS player_key,
-    CASE WHEN SUM(CASE WHEN c.action_type = 'Hotkey' AND c.hotkey_type IS NOT NULL THEN 1 ELSE 0 END) > 0 THEN 100.0 ELSE 0.0 END AS metric_value
+    CASE WHEN EXISTS (
+      SELECT 1 FROM replay_events re
+      WHERE re.replay_id = p.replay_id
+        AND re.source_player_id = p.id
+        AND re.event_kind = 'marker'
+        AND re.event_type = 'used_hotkey_groups'
+    ) THEN 100.0 ELSE 0.0 END AS metric_value
   FROM players p
-  LEFT JOIN commands_low_value c ON c.player_id = p.id
   WHERE p.is_observer = 0
     AND lower(trim(coalesce(p.type, ''))) = 'human'
-  GROUP BY p.id
 )
 SELECT player_key, AVG(metric_value) AS metric_value
 FROM game_level

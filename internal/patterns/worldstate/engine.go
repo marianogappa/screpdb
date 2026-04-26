@@ -790,14 +790,13 @@ func (e *Engine) locationForBase(baseIdx int) (*string, *int, *int, *bool) {
 		baseTypeValue = "natural"
 	}
 	baseType := &baseTypeValue
-	var baseOclock *int
-	// Clock==0 is scmapanalyzer's "center base" marker (only used on maps
-	// with a rich middle expansion). 1..12 is the usual dial position.
-	// Negative values indicate "unknown"; filter those out.
-	if base.Clock >= 0 && base.Clock <= 12 {
-		clock := base.Clock
-		baseOclock = &clock
-	}
+	// Always emit the base's clock so the dashboard's overlay lookup can
+	// match by (kind, clock) even for bases scmapanalyzer flagged with an
+	// out-of-range / unknown clock (negative values or >12). The same clock
+	// value lands in overlayBaseMetasFromLayout, so equal-on-both-sides is
+	// enough — no need to semantically enforce the 0..12 dial range here.
+	clock := base.Clock
+	baseOclock := &clock
 	var naturalOfClock *int
 	if ownerPID, ok := e.naturalOwnerByBase[baseIdx]; ok {
 		if ownerBaseIdx, hasStart := e.startBaseByPID[ownerPID]; hasStart && ownerBaseIdx >= 0 && ownerBaseIdx < len(e.bases) {

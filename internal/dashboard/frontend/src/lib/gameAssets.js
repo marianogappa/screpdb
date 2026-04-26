@@ -108,6 +108,7 @@ const gameAssetIconURLKeys = new Set([
   'barracks',
   'bunker',
   'citadelofadun',
+  'commandcenter',
   'comsat',
   'controltower',
   'covertops',
@@ -160,6 +161,7 @@ const buildingKeys = new Set([
   'barracks',
   'bunker',
   'citadelofadun',
+  'commandcenter',
   'comsat',
   'controltower',
   'covertops',
@@ -211,4 +213,16 @@ export const getUnitIcon = (unitType) => {
     return buildingIconURL(key);
   }
   return unitIconURL(key);
+};
+
+// getWorkerIconForRace maps a race string ("Protoss"/"Terran"/"Zerg") to its
+// worker icon. Used by the game list to prefix player names with the player's
+// race-of-choice at a glance.
+export const getWorkerIconForRace = (race) => {
+  switch (String(race || '').toLowerCase()) {
+    case 'protoss': return getUnitIcon('probe');
+    case 'terran':  return getUnitIcon('scv');
+    case 'zerg':    return getUnitIcon('drone');
+    default:        return null;
+  }
 };

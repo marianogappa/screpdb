@@ -1,6 +1,8 @@
 package detectors
 
 import (
+	"encoding/json"
+
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
@@ -26,6 +28,10 @@ type MarkerPlayerDetector struct {
 	// Rule path state:
 	state   markers.PredicateState
 	pending map[string]cmdenrich.EnrichedCommand // dedup tail for KindMakeBuilding facts
+	// observed records every fact past dedup, in stream order. Used to resolve
+	// Expert milestones once at save time so the dashboard doesn't re-resolve on
+	// every page load. Only populated for markers with non-empty Expert.
+	observed []cmdenrich.EnrichedCommand
 	// lastObservedSecond tracks the replay second of the most recent fact fed into state.
 	// On a Matched commit during streaming, this is the second that flipped the decision —
 	// used as the marker's DetectedAtSecond.
@@ -114,12 +120,27 @@ func (d *MarkerPlayerDetector) processRule(command *models.Command, now int) boo
 
 // observeRuleFact funnels a fact into the predicate state and records its second
 // so a subsequent Matched commit can report the flipping fact's timestamp.
+// Also captures the fact into d.observed when the marker has Expert events,
+// so GetResult can ResolveExpert against the same dedup'd stream the detector saw.
 func (d *MarkerPlayerDetector) observeRuleFact(f cmdenrich.EnrichedCommand) {
 	d.lastObservedSecond = f.Second
 	d.state.Observe(f)
+	if len(d.marker.Expert) > 0 {
+		d.observed = append(d.observed, f)
+	}
 }
 
 func (d *MarkerPlayerDetector) enqueueDedup(f cmdenrich.EnrichedCommand) {
+	// After BuildDedupMaxSecond, skip dedup: flush any prior pending for this
+	// subject as a real observation, then observe the current fact too.
+	if f.Second >= markers.BuildDedupMaxSecond {
+		if prior, ok := d.pending[f.Subject]; ok {
+			d.observeRuleFact(prior)
+			delete(d.pending, f.Subject)
+		}
+		d.observeRuleFact(f)
+		return
+	}
 	if prior, ok := d.pending[f.Subject]; ok {
 		if f.Second-prior.Second < markers.BuildDedupGapSeconds {
 			d.pending[f.Subject] = f
@@ -232,14 +253,23 @@ func (d *MarkerPlayerDetector) commitRejected() {
 }
 
 // GetResult returns a PatternResult when the marker matched AND any duration
-// gate is satisfied. Rule markers emit presence-only (no payload); Custom markers
-// emit whatever payload their evaluator returned.
+// gate is satisfied. Rule markers with Expert milestones emit a payload of
+// position-aligned actual seconds (so the dashboard doesn't re-resolve on
+// every read); other rule markers emit nil payload; Custom markers emit
+// whatever their evaluator returned.
 func (d *MarkerPlayerDetector) GetResult() *core.PatternResult {
 	if !d.ShouldSave() {
 		return nil
 	}
 	if d.state != nil {
-		return d.BuildPlayerResult(d.marker.PatternName, d.detectedAtSecond, nil)
+		var payload json.RawMessage
+		if len(d.marker.Expert) > 0 {
+			resolutions := d.marker.ResolveExpert(d.observed)
+			if encoded, err := markers.EncodeExpertActuals(resolutions); err == nil {
+				payload = encoded
+			}
+		}
+		return d.BuildPlayerResult(d.marker.PatternName, d.detectedAtSecond, payload)
 	}
 	return d.BuildPlayerResult(d.marker.PatternName, d.detectedAtSecond, d.customResult.Payload)
 }

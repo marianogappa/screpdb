@@ -8,11 +8,11 @@ import (
 )
 
 func (s *Store) CountDistinctPlayers(ctx context.Context) (float64, error) {
-	return sqlcgen.New(s.replayScoped()).CountDistinctPlayers(ctx)
+	return sqlcgen.New(Trace(s.replayScoped())).CountDistinctPlayers(ctx)
 }
 
 func (s *Store) CountDistinctPlayersByRace(ctx context.Context, race string) (float64, error) {
-	return sqlcgen.New(s.replayScoped()).CountDistinctPlayersByRace(ctx, race)
+	return sqlcgen.New(Trace(s.replayScoped())).CountDistinctPlayersByRace(ctx, race)
 }
 
 type ReplayExpansionEventRow struct {
@@ -22,7 +22,7 @@ type ReplayExpansionEventRow struct {
 }
 
 func (s *Store) ListExpansionEvents(ctx context.Context) ([]ReplayExpansionEventRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListExpansionEvents(ctx)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListExpansionEvents(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ type ReplayPlayerNameRow struct {
 }
 
 func (s *Store) ListPlayersByReplayRows(ctx context.Context) ([]ReplayPlayerNameRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListPlayersByReplayRows(ctx)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListPlayersByReplayRows(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (s *Store) ListPlayersByReplayRows(ctx context.Context) ([]ReplayPlayerName
 }
 
 func (s *Store) GetPlayerNameByKey(ctx context.Context, playerKey string) (string, error) {
-	playerName, err := sqlcgen.New(s.replayScoped()).GetPlayerNameByKey(ctx, playerKey)
+	playerName, err := sqlcgen.New(Trace(s.replayScoped())).GetPlayerNameByKey(ctx, playerKey)
 	if err != nil {
 		return "", err
 	}
@@ -77,7 +77,7 @@ type RaceOrderRow struct {
 }
 
 func (s *Store) ListRaceOrderRows(ctx context.Context, playerKey string) ([]RaceOrderRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListRaceOrderRows(ctx, playerKey)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListRaceOrderRows(ctx, playerKey)
 	if err != nil {
 		return nil, err
 	}
@@ -96,11 +96,11 @@ func (s *Store) ListRaceOrderRows(ctx context.Context, playerKey string) ([]Race
 }
 
 func (s *Store) CountQueuedGamesByPlayer(ctx context.Context, playerKey string) (int64, error) {
-	return sqlcgen.New(s.replayScoped()).CountQueuedGamesByPlayer(ctx, playerKey)
+	return sqlcgen.New(Trace(s.replayScoped())).CountQueuedGamesByPlayer(ctx, playerKey)
 }
 
 func (s *Store) CountCarrierGamesByPlayer(ctx context.Context, playerKey string) (int64, error) {
-	return sqlcgen.New(s.replayScoped()).CountCarrierGamesByPlayer(ctx, playerKey)
+	return sqlcgen.New(Trace(s.replayScoped())).CountCarrierGamesByPlayer(ctx, playerKey)
 }
 
 type PlayerChatRow struct {
@@ -109,7 +109,7 @@ type PlayerChatRow struct {
 }
 
 func (s *Store) ListPlayerChatRows(ctx context.Context, playerKey string) ([]PlayerChatRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListPlayerChatRows(ctx, playerKey)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListPlayerChatRows(ctx, playerKey)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ type TimingRow struct {
 }
 
 func (s *Store) ListGasTimingRows(ctx context.Context, replayID int64) ([]TimingRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListGasTimingRows(ctx, replayID)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListGasTimingRows(ctx, replayID)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func (s *Store) ListGasTimingRows(ctx context.Context, replayID int64) ([]Timing
 }
 
 func (s *Store) ListUpgradeTimingRows(ctx context.Context, replayID int64) ([]TimingRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListUpgradeTimingRows(ctx, replayID)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListUpgradeTimingRows(ctx, replayID)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func (s *Store) ListUpgradeTimingRows(ctx context.Context, replayID int64) ([]Ti
 }
 
 func (s *Store) ListTechTimingRows(ctx context.Context, replayID int64) ([]TimingRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListTechTimingRows(ctx, replayID)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListTechTimingRows(ctx, replayID)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func (s *Store) ListTechTimingRows(ctx context.Context, replayID int64) ([]Timin
 }
 
 func (s *Store) ListHotkeyGamesRateByPlayer(ctx context.Context) (map[string]float64, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListHotkeyGamesRateByPlayer(ctx)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListHotkeyGamesRateByPlayer(ctx)
 	if err != nil {
 		return nil, err
 	}

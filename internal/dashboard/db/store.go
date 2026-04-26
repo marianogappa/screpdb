@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 )
 
 type Store struct {
@@ -71,11 +72,16 @@ func (r *Rows) Columns() ([]string, error) {
 }
 
 func (s *Store) DefaultExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	return s.defaultDB.ExecContext(ctx, query, args...)
+	start := time.Now()
+	res, err := s.defaultDB.ExecContext(ctx, query, args...)
+	logIfNoteworthy("EXEC", query, time.Since(start), 0, err)
+	return res, err
 }
 
 func (s *Store) DefaultQueryContext(ctx context.Context, query string, args ...any) (*Rows, error) {
+	start := time.Now()
 	rows, err := s.defaultDB.QueryContext(ctx, query, args...)
+	logIfNoteworthy("QUERY", query, time.Since(start), 0, err)
 	if err != nil {
 		return nil, err
 	}
@@ -83,16 +89,24 @@ func (s *Store) DefaultQueryContext(ctx context.Context, query string, args ...a
 }
 
 func (s *Store) DefaultQueryRowContext(ctx context.Context, query string, args ...any) *Row {
-	return &Row{row: s.defaultDB.QueryRowContext(ctx, query, args...)}
+	start := time.Now()
+	row := s.defaultDB.QueryRowContext(ctx, query, args...)
+	logIfNoteworthy("QUERYROW", query, time.Since(start), 0, nil)
+	return &Row{row: row}
 }
 
 func (s *Store) DefaultQueryRow(query string, args ...any) *Row {
-	return &Row{row: s.defaultDB.QueryRow(query, args...)}
+	start := time.Now()
+	row := s.defaultDB.QueryRow(query, args...)
+	logIfNoteworthy("QUERYROW", query, time.Since(start), 0, nil)
+	return &Row{row: row}
 }
 
 func (s *Store) ReplayQueryContext(ctx context.Context, query string, args ...any) (*Rows, error) {
 	db := s.replayScoped()
+	start := time.Now()
 	rows, err := db.QueryContext(ctx, query, args...)
+	logIfNoteworthy("QUERY", query, time.Since(start), 0, err)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +114,10 @@ func (s *Store) ReplayQueryContext(ctx context.Context, query string, args ...an
 }
 
 func (s *Store) ReplayQueryRowContext(ctx context.Context, query string, args ...any) *Row {
-	return &Row{row: s.replayScoped().QueryRowContext(ctx, query, args...)}
+	start := time.Now()
+	row := s.replayScoped().QueryRowContext(ctx, query, args...)
+	logIfNoteworthy("QUERYROW", query, time.Since(start), 0, nil)
+	return &Row{row: row}
 }
 
 func (s *Store) WithFilteredConnection(replaysFilterSQL *string, fn func(*sql.DB) error) error {

@@ -71,6 +71,7 @@ var gameAssetIconScmapQueries = map[string]string{
 	"barracks":                 "Terran Barracks",
 	"bunker":                   "Terran Bunker",
 	"citadelofadun":            "Protoss Citadel of Adun",
+	"commandcenter":            "Terran Command Center",
 	"comsat":                   "Terran Comsat Station",
 	"controltower":             "Terran Control Tower",
 	"covertops":                "Terran Covert Ops",

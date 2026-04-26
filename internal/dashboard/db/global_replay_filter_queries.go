@@ -32,7 +32,7 @@ type GlobalReplayFilterOptionRow struct {
 }
 
 func (s *Store) GetGlobalReplayFilterConfigRaw(ctx context.Context, configKey string) (GlobalReplayFilterConfigRaw, error) {
-	sqlcRow, err := sqlcgen.New(s.defaultDB).GetGlobalReplayFilterConfigRaw(ctx, configKey)
+	sqlcRow, err := sqlcgen.New(Trace(s.defaultDB)).GetGlobalReplayFilterConfigRaw(ctx, configKey)
 	var result GlobalReplayFilterConfigRaw
 	if err != nil {
 		return result, err
@@ -70,7 +70,7 @@ func (s *Store) UpdateGlobalReplayFilterConfigRaw(
 	playersJSON string,
 	compiledReplaysFilterSQL string,
 ) error {
-	return sqlcgen.New(s.defaultDB).UpdateGlobalReplayFilterConfigRaw(ctx, sqlcgen.UpdateGlobalReplayFilterConfigRawParams{
+	return sqlcgen.New(Trace(s.defaultDB)).UpdateGlobalReplayFilterConfigRaw(ctx, sqlcgen.UpdateGlobalReplayFilterConfigRawParams{
 		GameType:                 legacyGameType,
 		GameTypesMode:            gameTypesMode,
 		GameTypes:                gameTypesJSON,
@@ -86,7 +86,7 @@ func (s *Store) UpdateGlobalReplayFilterConfigRaw(
 }
 
 func (s *Store) ListGlobalReplayFilterMapOptions(ctx context.Context) ([]GlobalReplayFilterOptionRow, error) {
-	sqlcRows, err := sqlcgen.New(s.defaultDB).ListGlobalReplayFilterMapOptions(ctx)
+	sqlcRows, err := sqlcgen.New(Trace(s.defaultDB)).ListGlobalReplayFilterMapOptions(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (s *Store) ListGlobalReplayFilterMapOptions(ctx context.Context) ([]GlobalR
 }
 
 func (s *Store) ListGlobalReplayFilterPlayerOptions(ctx context.Context) ([]GlobalReplayFilterOptionRow, error) {
-	sqlcRows, err := sqlcgen.New(s.defaultDB).ListGlobalReplayFilterPlayerOptions(ctx)
+	sqlcRows, err := sqlcgen.New(Trace(s.defaultDB)).ListGlobalReplayFilterPlayerOptions(ctx)
 	if err != nil {
 		return nil, err
 	}

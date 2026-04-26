@@ -13,7 +13,7 @@ type ViewportAggregateRow struct {
 }
 
 func (s *Store) ListViewportAggregateRows(ctx context.Context, patternName string) ([]ViewportAggregateRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListViewportAggregateRows(ctx, patternName)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListViewportAggregateRows(ctx, patternName)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ type ViewportGameRow struct {
 }
 
 func (s *Store) ListViewportGameRows(ctx context.Context, replayID int64, patternName string) ([]ViewportGameRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListViewportGameRows(ctx, sqlcgen.ListViewportGameRowsParams{
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListViewportGameRows(ctx, sqlcgen.ListViewportGameRowsParams{
 		ReplayID:    replayID,
 		PatternName: patternName,
 	})

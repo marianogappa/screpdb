@@ -18,18 +18,15 @@ type ReplaySummaryRow struct {
 }
 
 type ReplayPlayerDetailRow struct {
-	PlayerID             int64
-	Name                 string
-	Color                string
-	Race                 string
-	Team                 int64
-	IsWinner             bool
-	StartLocationOclock  *int64
-	APM                  int64
-	EAPM                 int64
-	CommandCount         int64
-	HotkeyCommandCount   int64
-	LowValueCommandCount int64
+	PlayerID            int64
+	Name                string
+	Color               string
+	Race                string
+	Team                int64
+	IsWinner            bool
+	StartLocationOclock *int64
+	APM                 int64
+	EAPM                int64
 }
 
 type PatternValueRow struct {
@@ -90,7 +87,7 @@ type PlayerApmAggregateRow struct {
 }
 
 func (s *Store) GetReplaySummary(ctx context.Context, replayID int64) (*ReplaySummaryRow, error) {
-	sqlcRow, err := sqlcgen.New(s.replayScoped()).GetReplaySummary(ctx, replayID)
+	sqlcRow, err := sqlcgen.New(Trace(s.replayScoped())).GetReplaySummary(ctx, replayID)
 	if err != nil {
 		return nil, err
 	}
@@ -107,32 +104,29 @@ func (s *Store) GetReplaySummary(ctx context.Context, replayID int64) (*ReplaySu
 }
 
 func (s *Store) ListReplayPlayersForDetail(ctx context.Context, replayID int64) ([]ReplayPlayerDetailRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListReplayPlayersForDetail(ctx, replayID)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListReplayPlayersForDetail(ctx, replayID)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]ReplayPlayerDetailRow, 0, len(sqlcRows))
 	for _, row := range sqlcRows {
 		out = append(out, ReplayPlayerDetailRow{
-			PlayerID:             row.ID,
-			Name:                 row.Name,
-			Color:                row.Color,
-			Race:                 row.Race,
-			Team:                 row.Team,
-			IsWinner:             row.IsWinner,
-			StartLocationOclock:  row.StartLocationOclock,
-			APM:                  row.Apm,
-			EAPM:                 row.Eapm,
-			CommandCount:         row.CommandCount,
-			HotkeyCommandCount:   row.HotkeyCount,
-			LowValueCommandCount: row.LowValueCommandCount,
+			PlayerID:            row.ID,
+			Name:                row.Name,
+			Color:               row.Color,
+			Race:                row.Race,
+			Team:                row.Team,
+			IsWinner:            row.IsWinner,
+			StartLocationOclock: row.StartLocationOclock,
+			APM:                 row.Apm,
+			EAPM:                row.Eapm,
 		})
 	}
 	return out, nil
 }
 
 func (s *Store) ListReplayPatterns(ctx context.Context, replayID int64) ([]PatternValueRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListReplayPatterns(ctx, replayID)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListReplayPatterns(ctx, replayID)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +143,7 @@ func (s *Store) ListReplayPatterns(ctx context.Context, replayID int64) ([]Patte
 }
 
 func (s *Store) ListPlayerPatterns(ctx context.Context, replayID int64) ([]PlayerPatternValueRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListPlayerPatterns(ctx, replayID)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListPlayerPatterns(ctx, replayID)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +161,7 @@ func (s *Store) ListPlayerPatterns(ctx context.Context, replayID int64) ([]Playe
 }
 
 func (s *Store) ListReplayEvents(ctx context.Context, replayID int64) ([]ReplayEventRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListReplayEvents(ctx, replayID)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListReplayEvents(ctx, replayID)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +187,7 @@ func (s *Store) ListReplayEvents(ctx context.Context, replayID int64) ([]ReplayE
 }
 
 func (s *Store) GetPlayerOverviewSummary(ctx context.Context, playerKey string) (*PlayerOverviewSummaryRow, error) {
-	row, err := sqlcgen.New(s.replayScoped()).GetPlayerOverviewSummary(ctx, playerKey)
+	row, err := sqlcgen.New(Trace(s.replayScoped())).GetPlayerOverviewSummary(ctx, playerKey)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +201,7 @@ func (s *Store) GetPlayerOverviewSummary(ctx context.Context, playerKey string) 
 }
 
 func (s *Store) ListPlayerRecentGames(ctx context.Context, playerKey string) ([]PlayerRecentGameRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListPlayerRecentGames(ctx, playerKey)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListPlayerRecentGames(ctx, playerKey)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +222,7 @@ func (s *Store) ListPlayerRecentGames(ctx context.Context, playerKey string) ([]
 }
 
 func (s *Store) ListPlayerApmAggregates(ctx context.Context, minGames int64) ([]PlayerApmAggregateRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListPlayerApmAggregates(ctx, minGames)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListPlayerApmAggregates(ctx, minGames)
 	if err != nil {
 		return nil, err
 	}

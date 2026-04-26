@@ -18,7 +18,7 @@ import Heatmap from './components/charts/Heatmap';
 import TimingScatterRows from './components/charts/TimingScatterRows';
 import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
 import BuildOrderTimelineRows from './components/charts/BuildOrderTimelineRows';
-import { getUnitIcon, normalizeUnitName } from './lib/gameAssets';
+import { getUnitIcon, getWorkerIconForRace, normalizeUnitName } from './lib/gameAssets';
 import {
   PILL_SURFACES,
   useMarkerRegistry,
@@ -452,6 +452,28 @@ const mapBoundsFromDimensions = (widthPixels, heightPixels) => {
   const h = Number(heightPixels);
   if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
   return { minX: 0, minY: 0, maxX: w, maxY: h };
+};
+
+// polygonCenter returns the vertex-average center of a base polygon, which
+// is visually closer to "the middle of the painted area" than the
+// scmapanalyzer-provided base.center (biased toward mineral mass). Used for
+// positioning the townhall overlay icon on expansion events.
+const polygonCenter = (polygon) => {
+  if (!Array.isArray(polygon) || polygon.length < 3) return null;
+  let sumX = 0;
+  let sumY = 0;
+  let count = 0;
+  polygon.forEach((p) => {
+    const x = Number(p?.x);
+    const y = Number(p?.y);
+    if (Number.isFinite(x) && Number.isFinite(y)) {
+      sumX += x;
+      sumY += y;
+      count += 1;
+    }
+  });
+  if (count === 0) return null;
+  return { x: sumX / count, y: sumY / count };
 };
 
 const mapBoundsFromGameEvents = (events) => {
@@ -1077,6 +1099,7 @@ function App() {
   const [creatingWidget, setCreatingWidget] = useState(false);
   const [variableValues, setVariableValues] = useState({});
   const [openaiEnabled, setOpenaiEnabled] = useState(false);
+  const [customDashboardsEnabled, setCustomDashboardsEnabled] = useState(false);
   const [editingWidget, setEditingWidget] = useState(null);
   const [replayCount, setReplayCount] = useState(null);
   const [globalReplayFilterConfig, setGlobalReplayFilterConfig] = useState(null);
@@ -1129,12 +1152,14 @@ function App() {
     maps: [],
     durations: [],
     featuring: [],
+    matchups: [],
   });
   const [mainGamesFilters, setMainGamesFilters] = useState({
     player: [],
     map: [],
     duration: [],
     featuring: [],
+    matchup: [],
   });
   const [mainGameDetailLoading, setMainGameDetailLoading] = useState(false);
   const [mainPlayerLoading, setMainPlayerLoading] = useState(false);
@@ -1903,6 +1928,7 @@ function App() {
         if (totalReplays >= baselineCount + 1) {
           setReplayCount(totalReplays);
           setOpenaiEnabled(Boolean(health?.openai_enabled));
+          setCustomDashboardsEnabled(Boolean(health?.custom_dashboards_enabled));
           return true;
         }
       } catch (err) {
@@ -2218,6 +2244,7 @@ function App() {
     try {
       const data = await api.getHealth();
       setOpenaiEnabled(Boolean(data?.openai_enabled));
+      setCustomDashboardsEnabled(Boolean(data?.custom_dashboards_enabled));
       setReplayCount(Number(data?.total_replays || 0));
       return data;
     } catch (err) {
@@ -2443,6 +2470,7 @@ function App() {
       map: [],
       duration: [],
       featuring: [],
+      matchup: [],
     });
   };
 
@@ -2590,6 +2618,12 @@ function App() {
     });
   };
 
+  const renderWorkerIcon = (race) => {
+    const url = getWorkerIconForRace(race);
+    if (!url) return null;
+    return <img src={url} alt={race || ''} title={race || ''} className="workflow-race-icon" />;
+  };
+
   const renderMainGameListPlayers = (game) => {
     const players = Array.isArray(game?.players) ? game.players : [];
     if (players.length === 0) {
@@ -2601,6 +2635,7 @@ function App() {
           {players.map((player, idx) => (
             <span key={`${player.player_id}-${idx}`}>
               {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+              {renderWorkerIcon(player.race)}
               {renderPlayerLabel(player.name, player.player_key)}
               {idx < players.length - 1 ? ', ' : ''}
             </span>
@@ -2622,6 +2657,7 @@ function App() {
                   style={{ backgroundColor: teamColorRgba(player.team, 0.24) }}
                 >
                   {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+                  {renderWorkerIcon(player.race)}
                   {renderPlayerLabel(player.name, player.player_key)}
                 </span>
               ))}
@@ -2993,13 +3029,18 @@ function App() {
   );
   const selectedMainGameExpansionOverlay = useMemo(() => {
     if (normalizeEventType(selectedMainGameEvent?.type) !== 'expansion') return null;
-    const baseCenter = selectedMainGameEvent?.base?.center;
-    if (!baseCenter) return null;
+    // Prefer the polygon's geometric center over scmapanalyzer's base.center —
+    // the latter is pulled toward mineral-cluster mass and lands visibly
+    // off-center on asymmetric bases. Fall back to base.center when polygon
+    // data is missing.
+    const anchor = polygonCenter(selectedMainGameEvent?.base?.polygon)
+      || selectedMainGameEvent?.base?.center;
+    if (!anchor) return null;
     const playerID = Number(selectedMainGameEvent?.actor?.player_id || 0);
     const actorRow = mainGamePlayers.find((player) => Number(player?.player_id || 0) === playerID);
     const icon = getExpansionMarkerIconForRace(actorRow?.race);
     if (!icon) return null;
-    const point = mapPointToPercent(baseCenter, mainEventMapBounds);
+    const point = mapPointToPercent(anchor, mainEventMapBounds);
     if (!point) return null;
     return { icon, point };
   }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds]);
@@ -3516,9 +3557,11 @@ function App() {
               📥 Ingest
             </button>
           </div>
-          <div className="workflow-nav-group">
-            <button type="button" className={`btn-manage ${activeView === 'dashboards' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('dashboards')}>Custom Dashboards</button>
-          </div>
+          {customDashboardsEnabled && (
+            <div className="workflow-nav-group">
+              <button type="button" className={`btn-manage ${activeView === 'dashboards' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('dashboards')}>Custom Dashboards</button>
+            </div>
+          )}
         </div>
 
         {error && <div className="error-message">{error}</div>}
@@ -3580,7 +3623,24 @@ function App() {
                   );
                 })}
               </div>
-              <button type="button" className="btn-create-manual" onClick={clearMainGamesFilters}>Clear filters</button>
+            </div>
+            <div className="workflow-summary-filter-row workflow-games-filter-row">
+              <div className="workflow-pattern-pills workflow-games-filter-pills">
+                {(mainGamesFilterOptions.matchups || []).map((option) => {
+                  const active = (mainGamesFilters.matchup || []).includes(option.key);
+                  return (
+                    <button
+                      key={`wf-matchup-${option.key}`}
+                      type="button"
+                      className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
+                      onClick={() => toggleMainGameMultiFilter('matchup', option.key)}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <button type="button" className="workflow-filter-pill workflow-filter-pill-clear" onClick={clearMainGamesFilters}>Clear filters</button>
             </div>
             {mainGamesLoading ? (
               <div className="loading">Loading games...</div>
@@ -5163,7 +5223,7 @@ function App() {
           </div>
         )}
 
-        {activeView === 'dashboards' && (
+        {activeView === 'dashboards' && customDashboardsEnabled && (
           <>
             <div className="dashboard-header">
               <div className="dashboard-title">
@@ -5294,7 +5354,7 @@ function App() {
         <WidgetCreationSpinner />
       )}
 
-      {showDashboardManager && (
+      {showDashboardManager && customDashboardsEnabled && (
         <DashboardManager
           dashboards={dashboards}
           currentUrl={currentDashboardUrl}
