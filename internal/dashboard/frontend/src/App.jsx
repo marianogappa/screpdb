@@ -44,6 +44,8 @@ import {
   mainRouteHref,
   mainRouteSnapshotEqual,
   MAIN_GAME_TABS,
+  MAIN_PLAYER_TABS,
+  MAIN_PLAYER_SKILL_PROXY_SUBTABS,
 } from './lib/mainRoute';
 import './styles.css';
 
@@ -135,6 +137,17 @@ const isMainGameSkillProxyTab = (tab) => MAIN_GAME_SKILL_PROXY_TABS.includes(tab
 const SKILL_PROXY_CADENCE_INFO_TEXT = 'ℹ️ How smoothly you keep adding army from the mid game on—not just how much, but how evenly you queue it. Formula: units/min ÷ (1 + gap CV).';
 
 const SKILL_PROXY_VIEWPORT_INFO_TEXT = 'ℹ️ How many times a player switches between places on average per minute.';
+
+const SKILL_PROXY_DELAY_INFO_TEXT = 'Average seconds from a production building becoming ready until the first matching unit command. Lower is better.';
+
+// Per-insight short descriptions for the player Skill proxies > Summary cards.
+// APM omitted intentionally (number is self-explanatory in that view).
+const PLAYER_INSIGHT_DESCRIPTION_OVERRIDES = {
+  apm: '',
+  'first-unit-delay': SKILL_PROXY_DELAY_INFO_TEXT,
+  'unit-production-cadence': 'How smoothly you keep adding army from the mid game on—not just how much, but how evenly you queue it. Formula: units/min ÷ (1 + gap CV).',
+  'viewport-switch-rate': 'How many times a player switches between places on average per minute.',
+};
 
 const DROP_ACTOR_EVENT_TYPES = ['drop', 'reaver_drop', 'dt_drop'];
 
@@ -1197,6 +1210,8 @@ function App() {
   const [mainPlayersSortBy, setMainPlayersSortBy] = useState('games');
   const [mainPlayersSortDir, setMainPlayersSortDir] = useState('desc');
   const [mainPlayersTab, setMainPlayersTab] = useState(() => initialMainRoute.playersTab);
+  const [mainPlayerTab, setMainPlayerTab] = useState(() => initialMainRoute.playerTab);
+  const [mainPlayerSubtab, setMainPlayerSubtab] = useState(() => initialMainRoute.playerSubtab || '');
   const [mainPlayersFilterOptions, setMainPlayersFilterOptions] = useState({
     races: [],
     last_played: [],
@@ -1654,7 +1669,7 @@ function App() {
     }
   };
 
-  const openMainPlayer = async (playerKey) => {
+  const openMainPlayer = async (playerKey, options = {}) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     try {
       setMainPlayerLoading(true);
@@ -1688,15 +1703,21 @@ function App() {
       setSelectedPlayerKey(normalizedPlayerKey);
       setMainAnswer(null);
       setMainQuestion('');
+      const wantTab = options.initialPlayerTab;
+      const nextTab = wantTab && MAIN_PLAYER_TABS.includes(String(wantTab).trim().toLowerCase())
+        ? String(wantTab).trim().toLowerCase()
+        : 'summary';
+      setMainPlayerTab(nextTab);
+      const wantSubtab = String(options.initialPlayerSubtab || '').trim().toLowerCase();
+      if (nextTab === 'skill-proxies') {
+        setMainPlayerSubtab(MAIN_PLAYER_SKILL_PROXY_SUBTABS.includes(wantSubtab) ? wantSubtab : 'summary');
+      } else if (nextTab === 'summary') {
+        // Race subtab is dynamic; persist if provided, else resolved at render from race_breakdown.
+        setMainPlayerSubtab(wantSubtab);
+      } else {
+        setMainPlayerSubtab('');
+      }
       navigateMainView('player');
-      loadMainPlayerRecentGames(normalizedPlayerKey);
-      loadMainPlayerChatSummary(normalizedPlayerKey);
-      loadMainPlayerMetrics(normalizedPlayerKey);
-      loadMainPlayerOutliers(normalizedPlayerKey);
-      loadMainPlayerApmInsight(normalizedPlayerKey);
-      loadMainPlayerDelayInsight(normalizedPlayerKey);
-      loadMainPlayerCadenceInsight(normalizedPlayerKey);
-      loadMainPlayerViewportInsight(normalizedPlayerKey);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1964,7 +1985,10 @@ function App() {
     if (initialMainRoute.view === 'game' && initialMainRoute.replayId != null) {
       void openMainGame(initialMainRoute.replayId, { initialGameTab: initialMainRoute.gameTab });
     } else if (initialMainRoute.view === 'player' && initialMainRoute.playerKey) {
-      void openMainPlayer(initialMainRoute.playerKey);
+      void openMainPlayer(initialMainRoute.playerKey, {
+        initialPlayerTab: initialMainRoute.playerTab,
+        initialPlayerSubtab: initialMainRoute.playerSubtab,
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time hydration from initial URL.
   }, []);
@@ -1977,6 +2001,8 @@ function App() {
       selectedPlayerKey,
       mainGameTab,
       mainPlayersTab,
+      mainPlayerTab,
+      mainPlayerSubtab,
       currentDashboardUrl,
     });
     if (typeof window !== 'undefined' && mainRouteSnapshotEqual(window.location.search, next && next.length ? `?${next}` : '')) {
@@ -1984,7 +2010,7 @@ function App() {
     }
     if (typeof window === 'undefined') return;
     window.history.pushState({ __spa: 1 }, '', mainRouteHref(next));
-  }, [activeView, selectedReplayId, selectedPlayerKey, mainGameTab, mainPlayersTab, currentDashboardUrl]);
+  }, [activeView, selectedReplayId, selectedPlayerKey, mainGameTab, mainPlayersTab, mainPlayerTab, mainPlayerSubtab, currentDashboardUrl]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -1995,6 +2021,8 @@ function App() {
       setSelectedPlayerKey(r.playerKey || '');
       setMainGameTab(r.gameTab);
       setMainPlayersTab(r.playersTab);
+      setMainPlayerTab(r.playerTab);
+      setMainPlayerSubtab(r.playerSubtab || '');
       setCurrentDashboardUrl(r.view === 'dashboards' && r.dash ? r.dash : 'default');
       const finish = () => {
         suppressUrlSyncRef.current = false;
@@ -2007,7 +2035,10 @@ function App() {
           finish();
         }
       } else if (r.view === 'player' && r.playerKey) {
-        const p = openMainPlayerRef.current?.(r.playerKey);
+        const p = openMainPlayerRef.current?.(r.playerKey, {
+          initialPlayerTab: r.playerTab,
+          initialPlayerSubtab: r.playerSubtab,
+        });
         if (p && typeof p.finally === 'function') {
           p.finally(finish);
         } else {
@@ -2029,6 +2060,61 @@ function App() {
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
+
+  useEffect(() => {
+    if (activeView !== 'player' || !selectedPlayerKey) return;
+    if (mainPlayerTab !== 'summary') return;
+    if (!mainPlayerMetrics && !mainPlayerMetricsLoading && !mainPlayerMetricsError) {
+      loadMainPlayerMetrics(selectedPlayerKey);
+    }
+  }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerMetrics, mainPlayerMetricsLoading, mainPlayerMetricsError]);
+
+  useEffect(() => {
+    if (activeView !== 'player' || !selectedPlayerKey) return;
+    if (mainPlayerTab !== 'skill-proxies' || mainPlayerSubtab !== 'summary') return;
+    if (!mainPlayerApmInsight && !mainPlayerApmInsightLoading && !mainPlayerApmInsightError) {
+      loadMainPlayerApmInsight(selectedPlayerKey);
+    }
+    if (!mainPlayerDelayInsight && !mainPlayerDelayInsightLoading && !mainPlayerDelayInsightError) {
+      loadMainPlayerDelayInsight(selectedPlayerKey);
+    }
+    if (!mainPlayerCadenceInsight && !mainPlayerCadenceInsightLoading && !mainPlayerCadenceInsightError) {
+      loadMainPlayerCadenceInsight(selectedPlayerKey);
+    }
+    if (!mainPlayerViewportInsight && !mainPlayerViewportInsightLoading && !mainPlayerViewportInsightError) {
+      loadMainPlayerViewportInsight(selectedPlayerKey);
+    }
+  }, [
+    activeView, selectedPlayerKey, mainPlayerTab, mainPlayerSubtab,
+    mainPlayerApmInsight, mainPlayerApmInsightLoading, mainPlayerApmInsightError,
+    mainPlayerDelayInsight, mainPlayerDelayInsightLoading, mainPlayerDelayInsightError,
+    mainPlayerCadenceInsight, mainPlayerCadenceInsightLoading, mainPlayerCadenceInsightError,
+    mainPlayerViewportInsight, mainPlayerViewportInsightLoading, mainPlayerViewportInsightError,
+  ]);
+
+  useEffect(() => {
+    if (activeView !== 'player' || !selectedPlayerKey) return;
+    if (mainPlayerTab !== 'skill-proxies' || mainPlayerSubtab !== 'usage-signals') return;
+    if (!mainPlayerOutliers && !mainPlayerOutliersLoading && !mainPlayerOutliersError) {
+      loadMainPlayerOutliers(selectedPlayerKey);
+    }
+  }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerSubtab, mainPlayerOutliers, mainPlayerOutliersLoading, mainPlayerOutliersError]);
+
+  useEffect(() => {
+    if (activeView !== 'player' || !selectedPlayerKey) return;
+    if (mainPlayerTab !== 'recent-games') return;
+    if (!mainPlayerRecentGames.length && !mainPlayerRecentGamesLoading && !mainPlayerRecentGamesError) {
+      loadMainPlayerRecentGames(selectedPlayerKey);
+    }
+  }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerRecentGames, mainPlayerRecentGamesLoading, mainPlayerRecentGamesError]);
+
+  useEffect(() => {
+    if (activeView !== 'player' || !selectedPlayerKey) return;
+    if (mainPlayerTab !== 'chat-summary') return;
+    if (!mainPlayerChatSummary && !mainPlayerChatSummaryLoading && !mainPlayerChatSummaryError) {
+      loadMainPlayerChatSummary(selectedPlayerKey);
+    }
+  }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerChatSummary, mainPlayerChatSummaryLoading, mainPlayerChatSummaryError]);
 
   useEffect(() => {
     loadMainGames({ page: mainGamesPage, filters: mainGamesFilters });
@@ -2596,6 +2682,23 @@ function App() {
     return <span style={{ color, fontWeight: 600 }}>{name}</span>;
   };
 
+  const renderPlayerLinkLabel = (name, playerKey) => {
+    const color = playerAccentColor(playerKey || name);
+    const style = color ? { color, fontWeight: 600 } : undefined;
+    if (!playerKey) return <span style={style}>{name}</span>;
+    return (
+      <button
+        type="button"
+        className="workflow-player-name-link"
+        title="Analyze player"
+        style={style}
+        onClick={(e) => { e.stopPropagation(); openMainPlayer(playerKey); }}
+      >
+        {name}
+      </button>
+    );
+  };
+
   const renderPlayersMatchup = (label) => {
     const sides = String(label || '').split(' vs ');
     return sides.map((side, sideIndex) => {
@@ -2636,7 +2739,7 @@ function App() {
             <span key={`${player.player_id}-${idx}`}>
               {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
               {renderWorkerIcon(player.race)}
-              {renderPlayerLabel(player.name, player.player_key)}
+              {renderPlayerLinkLabel(player.name, player.player_key)}
               {idx < players.length - 1 ? ', ' : ''}
             </span>
           ))}
@@ -2658,7 +2761,7 @@ function App() {
                 >
                   {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
                   {renderWorkerIcon(player.race)}
-                  {renderPlayerLabel(player.name, player.player_key)}
+                  {renderPlayerLinkLabel(player.name, player.player_key)}
                 </span>
               ))}
             </span>
@@ -3046,8 +3149,8 @@ function App() {
   }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds]);
 
   const mainPlayerInsights = [
-    mainPlayerViewportInsight,
     mainPlayerApmInsight,
+    mainPlayerViewportInsight,
     mainPlayerDelayInsight,
     mainPlayerCadenceInsight,
   ].filter(Boolean);
@@ -4987,8 +5090,30 @@ function App() {
           </div>
         )}
 
-        {activeView === 'player' && (
-          <div className="workflow-panel">
+        {activeView === 'player' && (() => {
+          const raceBreakdownRaw = Array.isArray(mainPlayer?.race_breakdown) ? mainPlayer.race_breakdown : [];
+          const playerRaceTabs = raceBreakdownRaw
+            .filter((r) => r && r.race && (Number(r.game_count) || 0) > 0)
+            .slice()
+            .sort((a, b) => (Number(b.game_count) || 0) - (Number(a.game_count) || 0));
+          const raceTabKeys = playerRaceTabs.map((r) => String(r.race).toLowerCase());
+          const requestedRace = String(mainPlayerSubtab || '').toLowerCase();
+          const effectiveRaceSubtab = raceTabKeys.includes(requestedRace)
+            ? requestedRace
+            : (raceTabKeys[0] || '');
+          const sectionByRace = new Map(
+            (mainPlayerMetrics?.race_behaviour_sections || []).map((s) => [String(s.race).toLowerCase(), s]),
+          );
+          const activeRaceSection = effectiveRaceSubtab ? sectionByRace.get(effectiveRaceSubtab) : null;
+          const activeRaceBreakdown = effectiveRaceSubtab
+            ? playerRaceTabs.find((r) => String(r.race).toLowerCase() === effectiveRaceSubtab)
+            : null;
+          const isSkillProxiesTab = mainPlayerTab === 'skill-proxies';
+          const skillProxySubtab = isSkillProxiesTab
+            ? (MAIN_PLAYER_SKILL_PROXY_SUBTABS.includes(mainPlayerSubtab) ? mainPlayerSubtab : 'summary')
+            : 'summary';
+          return (
+          <div className="workflow-panel workflow-panel--player">
             {mainPlayerLoading ? (
               <div className="loading">Loading player report...</div>
             ) : mainPlayer ? (
@@ -5008,220 +5133,335 @@ function App() {
                   <span><strong>APM</strong> {mainPlayer.average_apm?.toFixed(1)}</span>
                   <span><strong>EAPM</strong> {mainPlayer.average_eapm?.toFixed(1)}</span>
                 </div>
-                <div className="workflow-cards">
-                  <div className="workflow-card workflow-card-race-behaviours">
-                    {mainPlayerMetricsLoading ? <div className="chart-empty">Loading metrics...</div> : null}
-                    {!mainPlayerMetricsLoading && mainPlayerMetricsError ? <div className="chart-empty">{mainPlayerMetricsError}</div> : null}
-                    {!mainPlayerMetricsLoading && !mainPlayerMetricsError && (mainPlayerMetrics?.race_behaviour_sections || []).length === 0 ? (
-                      <div className="chart-empty">No race behaviour sections available.</div>
-                    ) : null}
-                    {!mainPlayerMetricsLoading && !mainPlayerMetricsError && (mainPlayerMetrics?.race_behaviour_sections || []).map((section) => (
-                      <div key={section.race} className="workflow-race-behaviour-section">
-                        <div className="workflow-card-subtitle">
-                          {getRaceIcon(section.race) ? <img src={getRaceIcon(section.race)} alt={section.race} className="unit-icon-inline workflow-race-title-icon" /> : null}
-                          <span>{section.race}</span>
-                        </div>
-                        <div className="workflow-subtle-note">
-                          {`${section.game_count} games (${((Number(section.game_rate) || 0) * 100).toFixed(1)}%), ${section.wins} wins, ${((Number(section.win_rate) || 0) * 100).toFixed(1)}% win rate`}
-                        </div>
-                        {(section.common_behaviours || []).length === 0 ? <div className="chart-empty">No common behaviours at 20%+ for this race.</div> : null}
-                        {(section.common_behaviours || []).map((item, idx) => (
-                          <div key={`${section.race}-${item.name}`} className="workflow-pattern-row">
-                            <span>{renderPatternPill({ pattern_name: item.name, value: 'true' }, `player-common-${section.race}-${idx}`, undefined, markerRegistry)}</span>
-                            <span>{`${((Number(item.game_rate) || 0) * 100).toFixed(1)}% (${item.replay_count}/${section.game_count})`}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
+                <div className="workflow-game-tab-stack">
+                  <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label="Player report sections">
+                    <button type="button" role="tab" aria-selected={mainPlayerTab === 'summary'}
+                      className={`workflow-production-tab ${mainPlayerTab === 'summary' ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => { setMainPlayerTab('summary'); setMainPlayerSubtab(''); }}>
+                      Summary
+                    </button>
+                    <button type="button" role="tab" aria-selected={isSkillProxiesTab}
+                      className={`workflow-production-tab ${isSkillProxiesTab ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => {
+                        if (isSkillProxiesTab) return;
+                        setMainPlayerTab('skill-proxies');
+                        setMainPlayerSubtab('summary');
+                      }}>
+                      Skill proxies
+                    </button>
+                    <button type="button" role="tab" aria-selected={mainPlayerTab === 'recent-games'}
+                      className={`workflow-production-tab ${mainPlayerTab === 'recent-games' ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => { setMainPlayerTab('recent-games'); setMainPlayerSubtab(''); }}>
+                      Recent games
+                    </button>
+                    <button type="button" role="tab" aria-selected={mainPlayerTab === 'chat-summary'}
+                      className={`workflow-production-tab ${mainPlayerTab === 'chat-summary' ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => { setMainPlayerTab('chat-summary'); setMainPlayerSubtab(''); }}>
+                      Chat summary
+                    </button>
                   </div>
-                  <div className="workflow-card workflow-card-fingerprints">
-                    <div className="workflow-card-title"><span>Population comparison</span></div>
-                    {mainPlayerInsightLoading ? <div className="chart-empty">Loading population comparisons...</div> : null}
-                    {!mainPlayerInsightLoading && mainPlayerInsightErrors.length > 0 ? (
-                      <div className="chart-empty">{mainPlayerInsightErrors[0]}</div>
-                    ) : null}
-                    {!mainPlayerInsightLoading && mainPlayerInsightErrors.length === 0 ? (
-                      <div className="workflow-insight-grid">
-                        {mainPlayerInsights.map((insight) => {
-                          const percentile = Number(insight.performance_percentile || 0);
-                          const accent = insightScoreColor(percentile);
+
+                  {mainPlayerTab === 'summary' && playerRaceTabs.length > 0 ? (
+                    <div className="workflow-skill-proxy-subnav">
+                      <div className="workflow-production-tabs workflow-skill-proxy-tabs" role="tablist" aria-label="Race breakdown">
+                        {playerRaceTabs.map((r) => {
+                          const key = String(r.race).toLowerCase();
+                          const active = key === effectiveRaceSubtab;
                           return (
                             <button
                               type="button"
-                              key={insight.insight_type}
-                              className="workflow-insight-card workflow-insight-card-link"
-                              style={insight.eligible ? { borderColor: `${accent}55`, boxShadow: `inset 0 0 0 1px ${accent}22` } : undefined}
-                              onClick={() => openMainPlayersSubview(playerInsightDestinationTab(insight.insight_type))}
+                              role="tab"
+                              key={key}
+                              aria-selected={active}
+                              className={`workflow-production-tab ${active ? 'workflow-production-tab-active' : ''}`}
+                              onClick={() => setMainPlayerSubtab(key)}
                             >
-                              <div className="workflow-insight-card-header">
-                                <span>{insight.title}</span>
-                              </div>
-                              {insight.eligible ? (
-                                <>
-                                  <div className="workflow-insight-score-row">
-                                    <span className="workflow-insight-score" style={{ color: accent }}>{insightSummaryLabel(percentile)}</span>
-                                    <span className="workflow-insight-grade" style={{ backgroundColor: `${accent}22`, color: accent }}>{insightScoreLabel(percentile)}</span>
-                                  </div>
-                                  <div className="workflow-insight-value">{insight.player_value_label}</div>
-                                  <div className="workflow-subtle-note">{`${insight.population_size} eligible players in population.`}</div>
-                                </>
-                              ) : (
-                                <>
-                                  <div className="workflow-insight-unavailable">Not enough data yet</div>
-                                  <div className="workflow-subtle-note">{insight.ineligible_reason || 'This comparison is not available yet.'}</div>
-                                </>
-                              )}
-                              <div className="workflow-insight-footer">
-                                <span className="workflow-insight-link-hint">Open player population view</span>
-                                <span className="workflow-insight-info-icon" aria-hidden="true">ⓘ</span>
-                              </div>
-                              <div className="workflow-insight-details">
-                                <div className="workflow-subtle-note">{insight.description}</div>
-                                <div className="workflow-insight-detail-list">
-                                  {(insight.details || []).map((detail) => (
-                                    <div key={`${insight.insight_type}-${detail.label}`} className="workflow-insight-detail-row">
-                                      <span>{detail.label}</span>
-                                      <span>{detail.value}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
+                              {getRaceIcon(r.race) ? (
+                                <img src={getRaceIcon(r.race)} alt={r.race} className="unit-icon-inline workflow-race-tab-icon" />
+                              ) : null}
+                              <span>{r.race}</span>
+                              <span className="workflow-subtle-note">{` (${r.game_count})`}</span>
                             </button>
                           );
                         })}
                       </div>
-                    ) : null}
-                    <div className="workflow-card-subtitle"><span>Usage signals</span></div>
-                    {mainPlayerUsagePills.length === 0 ? (
-                      <div className="workflow-subtle-note">No low-usage flags were triggered for hotkeys or queued orders.</div>
-                    ) : (
-                      <div className="workflow-pattern-pills">
-                        {mainPlayerUsagePills.map((pill) => (
-                          <span key={pill.key} className={pill.className} title={pill.title}>{pill.label}</span>
-                        ))}
-                      </div>
-                    )}
-                    <div className="workflow-card-subtitle">
-                      <span>Distinctive outliers</span>
-                      <HelpTooltip text={PLAYER_OUTLIER_HELP} label="Outlier calculation explanation" />
                     </div>
-                    <div className="workflow-subtle-note">Same-race, human-only baselines. Items are shown in one list and prefixed by command family.</div>
-                    {mainPlayerOutliersLoading ? <div className="chart-empty">Loading outliers...</div> : null}
-                    {!mainPlayerOutliersLoading && mainPlayerOutliersError ? <div className="chart-empty">{mainPlayerOutliersError}</div> : null}
-                    {!mainPlayerOutliersLoading && !mainPlayerOutliersError && mainPlayerOutlierItems.length === 0 ? (
-                      <div className="chart-empty">No outliers crossed current thresholds.</div>
-                    ) : null}
-                    {!mainPlayerOutliersLoading && !mainPlayerOutliersError && mainPlayerOutlierItems.map((item) => (
-                      <div key={`${item.category}-${item.race}-${item.name}`} className="workflow-pattern-row">
-                        <span>{`${item.category}: ${item.pretty_name}`}</span>
-                        <span className="workflow-outlier-expl">
-                          <span className="workflow-outlier-rate">{`${((Number(item.player_rate) || 0) * 100).toFixed(0)}%`}</span>
-                          <span>you</span>
-                          <span>vs</span>
-                          <span className="workflow-outlier-rate-muted">{`${((Number(item.baseline_rate) || 0) * 100).toFixed(0)}%`}</span>
-                          <span>baseline</span>
-                          {(item.qualified_by || []).map((qualifier) => (
-                            <span key={`${item.name}-${qualifier}`} className={outlierQualifierClassName(qualifier)}>{qualifier}</span>
-                          ))}
-                        </span>
+                  ) : null}
+
+                  {isSkillProxiesTab ? (
+                    <div className="workflow-skill-proxy-subnav">
+                      <div className="workflow-production-tabs workflow-skill-proxy-tabs" role="tablist" aria-label="Skill proxy subsections">
+                        <button type="button" role="tab" aria-selected={skillProxySubtab === 'summary'}
+                          className={`workflow-production-tab ${skillProxySubtab === 'summary' ? 'workflow-production-tab-active' : ''}`}
+                          onClick={() => setMainPlayerSubtab('summary')}>
+                          Summary
+                        </button>
+                        <button type="button" role="tab" aria-selected={skillProxySubtab === 'usage-signals'}
+                          className={`workflow-production-tab ${skillProxySubtab === 'usage-signals' ? 'workflow-production-tab-active' : ''}`}
+                          onClick={() => setMainPlayerSubtab('usage-signals')}>
+                          Usage signals & distinctive outliers
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                  <div className="workflow-card workflow-card-recent-games">
-                    <div className="workflow-card-title"><span>Recent games</span></div>
-                    {mainPlayerRecentGamesLoading ? <div className="chart-empty">Loading recent games...</div> : null}
-                    {!mainPlayerRecentGamesLoading && mainPlayerRecentGamesError ? <div className="chart-empty">{mainPlayerRecentGamesError}</div> : null}
-                    {!mainPlayerRecentGamesLoading && !mainPlayerRecentGamesError && mainPlayerRecentGames.length === 0 ? (
-                      <div className="chart-empty">No recent games found for this player.</div>
-                    ) : null}
-                    {!mainPlayerRecentGamesLoading && !mainPlayerRecentGamesError && mainPlayerRecentGames.slice(0, 6).map((g) => (
-                      <button key={g.replay_id} className="workflow-recent-game-card" onClick={() => openMainGame(g.replay_id)}>
-                        <div className="workflow-recent-game-header">
-                          <span>{formatRelativeReplayDate(g.replay_date)}</span>
-                          <span>{g.map_name}</span>
-                          {g.current_player?.race ? (
-                            <span className="workflow-recent-game-race">
-                              {getRaceIcon(g.current_player.race) ? (
-                                <img
-                                  src={getRaceIcon(g.current_player.race)}
-                                  alt={g.current_player.race}
-                                  className="unit-icon-inline workflow-recent-game-race-icon"
-                                />
-                              ) : null}
-                              <span>{g.current_player.race}</span>
-                            </span>
-                          ) : (
-                            <span className="workflow-empty-inline">-</span>
-                          )}
-                          <span>{formatDuration(g.duration_seconds)}</span>
-                        </div>
-                        <div className="workflow-subtle-note">{renderPlayersMatchup(g.players_label || '')}</div>
-                        <div className="workflow-recent-game-meta">
-                          {g.current_player?.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-                        </div>
-                        {filterSummaryPillPatterns(g.current_player?.detected_patterns).length > 0 ? (
-                          <div className="workflow-pattern-pills workflow-pattern-pills-compact">
-                            {filterSummaryPillPatterns(g.current_player?.detected_patterns).map((pattern, idx) => renderPatternPill(pattern, `recent-${g.replay_id}-${idx}`, undefined, markerRegistry))}
-                          </div>
-                        ) : null}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="workflow-card workflow-card-chat-summary">
-                    <div className="workflow-card-title"><span>Chat Summary</span></div>
-                    {mainPlayerChatSummaryLoading ? <div className="chart-empty">Loading chat summary...</div> : null}
-                    {!mainPlayerChatSummaryLoading && mainPlayerChatSummaryError ? <div className="chart-empty">{mainPlayerChatSummaryError}</div> : null}
-                    {!mainPlayerChatSummaryLoading && !mainPlayerChatSummaryError && (Number(mainPlayerChatSummary?.total_messages) || 0) === 0 ? (
-                      <div className="chart-empty">No chat messages found for this player in ingested games.</div>
-                    ) : (
-                      !mainPlayerChatSummaryLoading && !mainPlayerChatSummaryError && mainPlayerChatSummary ? (
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="workflow-cards">
+                  {mainPlayerTab === 'summary' && (
+                    <div className="workflow-card workflow-card-race-behaviours">
+                      {playerRaceTabs.length === 0 ? (
+                        <div className="chart-empty">No race data yet for this player.</div>
+                      ) : (
                         <>
-                          <div className="workflow-subtle-note">
-                            {`${mainPlayerChatSummary?.total_messages || 0} messages across ${mainPlayerChatSummary?.games_with_chat || 0} games, ${mainPlayerChatSummary?.distinct_terms || 0} distinct terms after cleanup.`}
-                          </div>
-                          <div className="workflow-card-subtitle"><span>Top terms</span></div>
-                          {(mainPlayerChatSummary?.top_terms || []).length === 0 ? (
-                            <div className="chart-empty">Not enough messages to infer common terms.</div>
-                          ) : (
-                            <div className="workflow-pattern-pills">
-                              {(mainPlayerChatSummary?.top_terms || []).map((item) => (
-                                <span key={`player-chat-term-${item.term}`} className="workflow-pattern-pill">
-                                  <span>{item.term}</span>
-                                  <span>{`x${item.count}`}</span>
-                                </span>
+                          {mainPlayerMetricsLoading ? <div className="chart-empty">Loading metrics...</div> : null}
+                          {!mainPlayerMetricsLoading && mainPlayerMetricsError ? <div className="chart-empty">{mainPlayerMetricsError}</div> : null}
+                          {!mainPlayerMetricsLoading && !mainPlayerMetricsError && activeRaceSection ? (
+                            <div key={activeRaceSection.race} className="workflow-race-behaviour-section">
+                              <div className="workflow-subtle-note">
+                                {`${activeRaceSection.game_count} games (${((Number(activeRaceSection.game_rate) || 0) * 100).toFixed(1)}%), ${activeRaceSection.wins} wins, ${((Number(activeRaceSection.win_rate) || 0) * 100).toFixed(1)}% win rate`}
+                              </div>
+                              {(activeRaceSection.common_behaviours || []).length === 0 ? <div className="chart-empty">No common behaviours at 20%+ for this race.</div> : null}
+                              {(activeRaceSection.common_behaviours || []).map((item, idx) => (
+                                <div key={`${activeRaceSection.race}-${item.name}`} className="workflow-pattern-row">
+                                  <span>{renderPatternPill({ pattern_name: item.name, value: 'true' }, `player-common-${activeRaceSection.race}-${idx}`, undefined, markerRegistry)}</span>
+                                  <span>{`${((Number(item.game_rate) || 0) * 100).toFixed(1)}% (${item.replay_count}/${activeRaceSection.game_count})`}</span>
+                                </div>
                               ))}
                             </div>
-                          )}
-                          <div className="workflow-card-subtitle"><span>Last 5 messages</span></div>
-                          {(mainPlayerChatSummary?.example_messages || []).map((msg, idx) => (
-                            <div key={`player-chat-example-${idx}`} className="workflow-event-row">
-                              <span>{msg}</span>
+                          ) : null}
+                          {!mainPlayerMetricsLoading && !mainPlayerMetricsError && !activeRaceSection && activeRaceBreakdown ? (
+                            <div className="workflow-race-behaviour-section">
+                              <div className="workflow-subtle-note">
+                                {`${activeRaceBreakdown.game_count} games, ${activeRaceBreakdown.wins} wins`}
+                              </div>
+                              <div className="chart-empty">No behaviour breakdown available for this race.</div>
                             </div>
-                          ))}
+                          ) : null}
                         </>
-                      ) : null
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
+
+                  {isSkillProxiesTab && skillProxySubtab === 'summary' && (
+                    <div className="workflow-card workflow-card-fingerprints">
+                      <div className="workflow-card-title"><span>Population comparison</span></div>
+                      {mainPlayerInsightLoading ? <div className="chart-empty">Loading population comparisons...</div> : null}
+                      {!mainPlayerInsightLoading && mainPlayerInsightErrors.length > 0 ? (
+                        <div className="chart-empty">{mainPlayerInsightErrors[0]}</div>
+                      ) : null}
+                      {!mainPlayerInsightLoading && mainPlayerInsightErrors.length === 0 ? (
+                        <div className="workflow-insight-grid">
+                          {mainPlayerInsights.map((insight) => {
+                            const percentile = Number(insight.performance_percentile || 0);
+                            const accent = insightScoreColor(percentile);
+                            const overrideDesc = PLAYER_INSIGHT_DESCRIPTION_OVERRIDES[insight.insight_type];
+                            const description = overrideDesc !== undefined ? overrideDesc : insight.description;
+                            const popTab = playerInsightDestinationTab(insight.insight_type);
+                            return (
+                              <div
+                                key={insight.insight_type}
+                                className="workflow-insight-card workflow-insight-card-static"
+                                style={insight.eligible ? { borderColor: `${accent}55`, boxShadow: `inset 0 0 0 1px ${accent}22` } : undefined}
+                              >
+                                <div className="workflow-insight-card-header">
+                                  <span>{insight.title}</span>
+                                </div>
+                                {insight.eligible ? (
+                                  <>
+                                    <div className="workflow-insight-score-row">
+                                      <span className="workflow-insight-score" style={{ color: accent }}>{insightSummaryLabel(percentile)}</span>
+                                    </div>
+                                    <div className="workflow-insight-value">{insight.player_value_label}</div>
+                                    <div className="workflow-subtle-note">{`${insight.population_size} eligible players in population.`}</div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="workflow-insight-unavailable">Not enough data yet</div>
+                                    <div className="workflow-subtle-note">{insight.ineligible_reason || 'This comparison is not available yet.'}</div>
+                                  </>
+                                )}
+                                {description ? (
+                                  <div className="workflow-subtle-note workflow-insight-description">{description}</div>
+                                ) : null}
+                                {popTab ? (
+                                  <div className="workflow-insight-card-footer">
+                                    <button
+                                      type="button"
+                                      className="workflow-link-btn"
+                                      onClick={() => openMainPlayersSubview(popTab)}
+                                    >
+                                      See all players comparison →
+                                    </button>
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {isSkillProxiesTab && skillProxySubtab === 'usage-signals' && (
+                    <div className="workflow-card workflow-card-fingerprints">
+                      <div className="workflow-card-title"><span>Usage signals</span></div>
+                      {mainPlayerUsagePills.length === 0 ? (
+                        <div className="workflow-subtle-note">No low-usage flags were triggered for hotkeys or queued orders.</div>
+                      ) : (
+                        <div className="workflow-pattern-pills">
+                          {mainPlayerUsagePills.map((pill) => (
+                            <span key={pill.key} className={pill.className} title={pill.title}>{pill.label}</span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="workflow-card-subtitle">
+                        <span>Distinctive outliers</span>
+                        <HelpTooltip text={PLAYER_OUTLIER_HELP} label="Outlier calculation explanation" />
+                      </div>
+                      <div className="workflow-subtle-note">Same-race, human-only baselines. Items are shown in one list and prefixed by command family.</div>
+                      {mainPlayerOutliersLoading ? <div className="chart-empty">Loading outliers...</div> : null}
+                      {!mainPlayerOutliersLoading && mainPlayerOutliersError ? <div className="chart-empty">{mainPlayerOutliersError}</div> : null}
+                      {!mainPlayerOutliersLoading && !mainPlayerOutliersError && mainPlayerOutlierItems.length === 0 ? (
+                        <div className="chart-empty">No outliers crossed current thresholds.</div>
+                      ) : null}
+                      {!mainPlayerOutliersLoading && !mainPlayerOutliersError && mainPlayerOutlierItems.map((item) => (
+                        <div key={`${item.category}-${item.race}-${item.name}`} className="workflow-pattern-row">
+                          <span>{`${item.category}: ${item.pretty_name}`}</span>
+                          <span className="workflow-outlier-expl">
+                            <span className="workflow-outlier-rate">{`${((Number(item.player_rate) || 0) * 100).toFixed(0)}%`}</span>
+                            <span>you</span>
+                            <span>vs</span>
+                            <span className="workflow-outlier-rate-muted">{`${((Number(item.baseline_rate) || 0) * 100).toFixed(0)}%`}</span>
+                            <span>baseline</span>
+                            {(item.qualified_by || []).map((qualifier) => (
+                              <span key={`${item.name}-${qualifier}`} className={outlierQualifierClassName(qualifier)}>{qualifier}</span>
+                            ))}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {mainPlayerTab === 'recent-games' && (
+                    <div className="workflow-card workflow-card-recent-games">
+                      <div className="workflow-card-title"><span>Recent games</span></div>
+                      {mainPlayerRecentGamesLoading ? <div className="chart-empty">Loading recent games...</div> : null}
+                      {!mainPlayerRecentGamesLoading && mainPlayerRecentGamesError ? <div className="chart-empty">{mainPlayerRecentGamesError}</div> : null}
+                      {!mainPlayerRecentGamesLoading && !mainPlayerRecentGamesError && mainPlayerRecentGames.length === 0 ? (
+                        <div className="chart-empty">No recent games found for this player.</div>
+                      ) : null}
+                      {!mainPlayerRecentGamesLoading && !mainPlayerRecentGamesError && mainPlayerRecentGames.slice(0, 6).map((g) => {
+                        const isWinner = !!g.current_player?.is_winner;
+                        const hasResult = g.current_player !== undefined && g.current_player !== null;
+                        const resultClass = hasResult ? (isWinner ? 'workflow-recent-game-card--win' : 'workflow-recent-game-card--loss') : '';
+                        const playersList = Array.isArray(g.players) ? g.players : [];
+                        const is1v1 = playersList.length === 2;
+                        let matchupNode = null;
+                        if (is1v1) {
+                          const myKey = String(g.current_player?.player_key || '').toLowerCase();
+                          const me = playersList.find((p) => String(p.player_key || '').toLowerCase() === myKey) || playersList[0];
+                          const opp = playersList.find((p) => p !== me) || playersList[1];
+                          const myIcon = getWorkerIconForRace(me?.race);
+                          const oppIcon = getWorkerIconForRace(opp?.race);
+                          matchupNode = (
+                            <span className="workflow-recent-game-matchup">
+                              {myIcon ? <img src={myIcon} alt={me?.race || ''} title={me?.race || ''} className="workflow-recent-game-worker-icon" /> : <span>{me?.race || '-'}</span>}
+                              <span className="workflow-recent-game-vs">vs</span>
+                              {oppIcon ? <img src={oppIcon} alt={opp?.race || ''} title={opp?.race || ''} className="workflow-recent-game-worker-icon" /> : <span>{opp?.race || '-'}</span>}
+                            </span>
+                          );
+                        } else if (g.current_player?.race) {
+                          const icon = getWorkerIconForRace(g.current_player.race);
+                          matchupNode = (
+                            <span className="workflow-recent-game-matchup">
+                              {icon ? <img src={icon} alt={g.current_player.race} title={g.current_player.race} className="workflow-recent-game-worker-icon" /> : null}
+                              <span>{g.current_player.race}</span>
+                            </span>
+                          );
+                        }
+                        return (
+                          <button key={g.replay_id} className={`workflow-recent-game-card ${resultClass}`} onClick={() => openMainGame(g.replay_id)}>
+                            <div className="workflow-recent-game-header workflow-recent-game-header--left">
+                              {isWinner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+                              <span>{formatRelativeReplayDate(g.replay_date)}</span>
+                              <span>{formatDuration(g.duration_seconds)}</span>
+                              <span>{g.map_name}</span>
+                              {matchupNode}
+                            </div>
+                            <div className="workflow-subtle-note">{renderPlayersMatchup(g.players_label || '')}</div>
+                            {filterSummaryPillPatterns(g.current_player?.detected_patterns).length > 0 ? (
+                              <div className="workflow-pattern-pills workflow-pattern-pills-compact">
+                                {filterSummaryPillPatterns(g.current_player?.detected_patterns).map((pattern, idx) => renderPatternPill(pattern, `recent-${g.replay_id}-${idx}`, undefined, markerRegistry))}
+                              </div>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {mainPlayerTab === 'chat-summary' && (
+                    <div className="workflow-card workflow-card-chat-summary">
+                      <div className="workflow-card-title"><span>Chat Summary</span></div>
+                      {mainPlayerChatSummaryLoading ? <div className="chart-empty">Loading chat summary...</div> : null}
+                      {!mainPlayerChatSummaryLoading && mainPlayerChatSummaryError ? <div className="chart-empty">{mainPlayerChatSummaryError}</div> : null}
+                      {!mainPlayerChatSummaryLoading && !mainPlayerChatSummaryError && (Number(mainPlayerChatSummary?.total_messages) || 0) === 0 ? (
+                        <div className="chart-empty">No chat messages found for this player in ingested games.</div>
+                      ) : (
+                        !mainPlayerChatSummaryLoading && !mainPlayerChatSummaryError && mainPlayerChatSummary ? (
+                          <>
+                            <div className="workflow-subtle-note">
+                              {`${mainPlayerChatSummary?.total_messages || 0} messages across ${mainPlayerChatSummary?.games_with_chat || 0} games, ${mainPlayerChatSummary?.distinct_terms || 0} distinct terms after cleanup.`}
+                            </div>
+                            <div className="workflow-card-subtitle"><span>Top terms</span></div>
+                            {(mainPlayerChatSummary?.top_terms || []).length === 0 ? (
+                              <div className="chart-empty">Not enough messages to infer common terms.</div>
+                            ) : (
+                              <div className="workflow-pattern-pills">
+                                {(mainPlayerChatSummary?.top_terms || []).map((item) => (
+                                  <span key={`player-chat-term-${item.term}`} className="workflow-pattern-pill">
+                                    <span>{item.term}</span>
+                                    <span>{`x${item.count}`}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            <div className="workflow-card-subtitle"><span>Last 15 messages</span></div>
+                            {(mainPlayerChatSummary?.example_messages || []).map((msg, idx) => (
+                              <div key={`player-chat-example-${idx}`} className="workflow-event-row">
+                                <span>{msg}</span>
+                              </div>
+                            ))}
+                          </>
+                        ) : null
+                      )}
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
               <div className="chart-empty">Select a player from a game report.</div>
             )}
-            <form onSubmit={handleMainAsk} className="workflow-ask-form">
-              <input
-                className="widget-creation-input"
-                value={mainQuestion}
-                onChange={(e) => setMainQuestion(e.target.value)}
-                placeholder={openaiEnabled ? 'Ask AI about this player...' : 'Enable AI to ask questions'}
-                disabled={!openaiEnabled || mainAskLoading}
-              />
-              <button className="btn-create-ai" type="submit" disabled={!openaiEnabled || mainAskLoading || !mainQuestion.trim()}>
-                {mainAskLoading ? 'Asking...' : 'Ask AI'}
-              </button>
-            </form>
-            {renderMainAiResult()}
+            {mainPlayer && mainPlayerTab === 'summary' ? (
+              <>
+                <form onSubmit={handleMainAsk} className="workflow-ask-form">
+                  <input
+                    className="widget-creation-input"
+                    value={mainQuestion}
+                    onChange={(e) => setMainQuestion(e.target.value)}
+                    placeholder={openaiEnabled ? 'Ask AI about this player...' : 'Enable AI to ask questions'}
+                    disabled={!openaiEnabled || mainAskLoading}
+                  />
+                  <button className="btn-create-ai" type="submit" disabled={!openaiEnabled || mainAskLoading || !mainQuestion.trim()}>
+                    {mainAskLoading ? 'Asking...' : 'Ask AI'}
+                  </button>
+                </form>
+                {renderMainAiResult()}
+              </>
+            ) : null}
           </div>
-        )}
+          );
+        })()}
 
         {activeView === 'dashboards' && customDashboardsEnabled && (
           <>

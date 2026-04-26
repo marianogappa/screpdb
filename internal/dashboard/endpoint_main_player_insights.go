@@ -201,6 +201,20 @@ func (d *Dashboard) populateAdvancedPlayerOverview(playerKey string, result *wor
 	}
 	result.FingerprintMetrics = []workflowComparativeMetric{}
 
+	raceRows, err := d.dbStore.ListRaceSections(d.ctx, playerKey)
+	if err != nil {
+		return fmt.Errorf("failed to load race breakdown: %w", err)
+	}
+	breakdown := make([]workflowPlayerRaceBreakdown, 0, len(raceRows))
+	for _, row := range raceRows {
+		breakdown = append(breakdown, workflowPlayerRaceBreakdown{
+			Race:      row.Race,
+			GameCount: row.GameCount,
+			Wins:      row.Wins,
+		})
+	}
+	result.RaceBreakdown = breakdown
+
 	return nil
 }
 
@@ -994,7 +1008,7 @@ func (d *Dashboard) buildPlayerChatSummary(playerKey string) (workflowPlayerChat
 	summary.GamesWithChat = int64(len(gamesWithChat))
 	summary.DistinctTerms = int64(len(termCounts))
 	summary.TopTerms = summarizeChatCounts(termCounts, 10)
-	summary.ExampleMessages = summarizeChatExamples(rawMessages, 5)
+	summary.ExampleMessages = summarizeChatExamples(rawMessages, 15)
 
 	return summary, nil
 }

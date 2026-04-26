@@ -1363,6 +1363,12 @@ body {
   gap: 10px;
 }
 
+.ingest-manual-block {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
 .ingest-plain-heading {
   display: flex;
   justify-content: space-between;
@@ -1880,6 +1886,21 @@ body {
   align-self: flex-start;
   text-align: left;
   max-width: 100%;
+}
+
+/* Player report: single-column full-width cards (one visible per tab). */
+.workflow-panel--player .workflow-cards {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.workflow-panel--player .workflow-meta {
+  margin-bottom: 14px;
+}
+
+.workflow-panel--player .workflow-ask-form {
+  margin-top: 18px;
 }
 
 .workflow-meta--game-header {
@@ -2424,6 +2445,12 @@ body {
   height: 60px;
 }
 
+.workflow-race-tab-icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+}
+
 .chart-card {
   min-height: 360px;
 }
@@ -2715,6 +2742,22 @@ body {
   gap: 6px;
 }
 
+/* Static card (player Skill proxies > Summary): no hover/click affordance. */
+.workflow-insight-card-static {
+  cursor: default;
+}
+
+.workflow-insight-description {
+  margin-top: 6px;
+}
+
+.workflow-insight-card-footer {
+  margin-top: auto;
+  padding-top: 8px;
+  display: flex;
+  justify-content: flex-start;
+}
+
 .workflow-insight-detail-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2792,6 +2835,49 @@ body {
   align-items: center;
   gap: 6px;
   color: rgba(255, 255, 255, 0.86);
+}
+
+.workflow-recent-game-header--left {
+  justify-content: flex-start;
+  gap: 14px;
+}
+
+.workflow-recent-game-matchup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.workflow-recent-game-vs {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.workflow-recent-game-worker-icon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+.workflow-recent-game-card--win {
+  background: rgba(40, 160, 80, 0.12);
+  border-color: rgba(80, 200, 120, 0.32);
+}
+
+.workflow-recent-game-card--win:hover {
+  background: rgba(40, 160, 80, 0.20);
+  border-color: rgba(120, 220, 150, 0.5);
+}
+
+.workflow-recent-game-card--loss {
+  background: rgba(200, 60, 60, 0.10);
+  border-color: rgba(220, 100, 100, 0.32);
+}
+
+.workflow-recent-game-card--loss:hover {
+  background: rgba(200, 60, 60, 0.18);
+  border-color: rgba(240, 130, 130, 0.5);
 }
 
 .workflow-outlier-expl {

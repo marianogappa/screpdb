@@ -75,7 +75,7 @@ function IngestModal({
             </label>
           </div>
 
-          <form onSubmit={onSubmit} className="ingest-plain-block">
+          <form onSubmit={onSubmit} className="ingest-plain-block ingest-manual-block">
             <div className="ingest-title">Manual ingest</div>
             <div className="ingest-manual-stack">
               <div className="ingest-manual-row">

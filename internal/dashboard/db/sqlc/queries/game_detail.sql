@@ -79,8 +79,8 @@ SELECT
   CAST(COALESCE(MIN(p.name), '') AS TEXT) AS player_name,
   COUNT(*) AS games_played,
   CAST(COALESCE(SUM(CASE WHEN p.is_winner = 1 THEN 1 ELSE 0 END), 0) AS INTEGER) AS wins,
-  CAST(COALESCE(AVG(p.apm), 0) AS FLOAT) AS avg_apm,
-  CAST(COALESCE(AVG(p.eapm), 0) AS FLOAT) AS avg_eapm
+  CAST(COALESCE(AVG(CASE WHEN p.apm > 0 THEN p.apm END), 0) AS FLOAT) AS avg_apm,
+  CAST(COALESCE(AVG(CASE WHEN p.eapm > 0 THEN p.eapm END), 0) AS FLOAT) AS avg_eapm
 FROM players p
 WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human';
 

@@ -21,6 +21,15 @@ export const MAIN_PLAYERS_TABS = [
   'viewport-multitasking',
 ];
 
+export const MAIN_PLAYER_TABS = [
+  'summary',
+  'skill-proxies',
+  'recent-games',
+  'chat-summary',
+];
+
+export const MAIN_PLAYER_SKILL_PROXY_SUBTABS = ['summary', 'usage-signals'];
+
 const normalizeSearch = (search) => {
   if (!search || search === '?') return '';
   return String(search).startsWith('?') ? search.slice(1) : search;
@@ -50,6 +59,8 @@ const pickEnum = (value, allowed, fallback) => {
  *   playerKey: string,
  *   gameTab: string,
  *   playersTab: string,
+ *   playerTab: string,
+ *   playerSubtab: string,
  *   dash: string|null,
  * }}
  */
@@ -61,12 +72,20 @@ export function parseMainRouteSearch(search) {
   const playerRaw = params.get('player');
   const gameTabRaw = params.get('gameTab');
   const playersTabRaw = params.get('playersTab');
+  const playerTabRaw = params.get('playerTab');
+  const playerSubtabRaw = params.get('playerSubtab');
   const dashRaw = params.get('dash');
 
   let replayId = view === 'game' ? parseReplayIdParam(replayRaw) : null;
   let playerKey = view === 'player' ? normalizePlayerKeyParam(playerRaw) : '';
   let gameTab = pickEnum(gameTabRaw, MAIN_GAME_TABS, 'summary');
   let playersTab = pickEnum(playersTabRaw, MAIN_PLAYERS_TABS, 'summary');
+  let playerTab = pickEnum(playerTabRaw, MAIN_PLAYER_TABS, 'summary');
+  // playerSubtab is contextual: only validated for skill-proxies; race subtabs are dynamic.
+  let playerSubtab = String(playerSubtabRaw || '').trim().toLowerCase();
+  if (playerTab === 'skill-proxies') {
+    playerSubtab = MAIN_PLAYER_SKILL_PROXY_SUBTABS.includes(playerSubtab) ? playerSubtab : 'summary';
+  }
   let dash = dashRaw != null && String(dashRaw).trim() !== '' ? String(dashRaw).trim() : null;
 
   if (view === 'game' && replayId == null) {
@@ -88,6 +107,8 @@ export function parseMainRouteSearch(search) {
     playerKey,
     gameTab,
     playersTab,
+    playerTab,
+    playerSubtab,
     dash: view === 'dashboards' ? dash || 'default' : null,
   };
 }
@@ -99,6 +120,8 @@ export function parseMainRouteSearch(search) {
  *   selectedPlayerKey: string,
  *   mainGameTab: string,
  *   mainPlayersTab: string,
+ *   mainPlayerTab: string,
+ *   mainPlayerSubtab: string,
  *   currentDashboardUrl: string,
  * }} s
  * @returns {string} query string without leading `?` (empty = default games home)
@@ -123,6 +146,20 @@ export function buildMainRouteSearch(s) {
 
   if (view === 'player' && s.selectedPlayerKey) {
     params.set('player', s.selectedPlayerKey);
+    const tab = pickEnum(s.mainPlayerTab, MAIN_PLAYER_TABS, 'summary');
+    if (tab !== 'summary') {
+      params.set('playerTab', tab);
+    }
+    const sub = String(s.mainPlayerSubtab || '').trim().toLowerCase();
+    if (tab === 'skill-proxies') {
+      const validated = MAIN_PLAYER_SKILL_PROXY_SUBTABS.includes(sub) ? sub : 'summary';
+      if (validated !== 'summary') {
+        params.set('playerSubtab', validated);
+      }
+    } else if (tab === 'summary' && sub) {
+      // Race subtab — opaque; persist only when set.
+      params.set('playerSubtab', sub);
+    }
   }
 
   if (view === 'players') {
@@ -173,5 +210,7 @@ export function mainRouteSnapshotEqual(searchA, searchB) {
     && ra.playerKey === rb.playerKey
     && ra.gameTab === rb.gameTab
     && ra.playersTab === rb.playersTab
+    && ra.playerTab === rb.playerTab
+    && ra.playerSubtab === rb.playerSubtab
     && dashA === dashB;
 }
