@@ -359,6 +359,12 @@ func (q *Queries) ListReplayPatterns(ctx context.Context, replayID int64) ([]Lis
 }
 
 const ListReplayPlayersForDetail = `-- name: ListReplayPlayersForDetail :many
+-- Trimmed in Apr 2026: previously joined commands and ran two correlated
+-- subqueries against commands_low_value (Hotkey count + total low-value)
+-- per player to power a game-level hotkey-usage ratio. That ratio is no
+-- longer surfaced — hotkey signal lives in the used_hotkey_groups /
+-- never_used_hotkeys markers (computed at ingestion, read from
+-- replay_events). Page-level metrics now only need player metadata + APM.
 SELECT
   p.id,
   p.name,
@@ -368,40 +374,22 @@ SELECT
   p.is_winner,
   p.start_location_oclock,
   p.apm,
-  p.eapm,
-  COUNT(c.id) AS command_count,
-  (
-    SELECT COUNT(*)
-    FROM commands_low_value clv
-    WHERE clv.player_id = p.id
-      AND clv.action_type = 'Hotkey'
-      AND clv.hotkey_type IS NOT NULL
-  ) AS hotkey_count,
-  (
-    SELECT COUNT(*)
-    FROM commands_low_value clv
-    WHERE clv.player_id = p.id
-  ) AS low_value_command_count
+  p.eapm
 FROM players p
-LEFT JOIN commands c ON c.player_id = p.id
 WHERE p.replay_id = ? AND p.is_observer = 0
-GROUP BY p.id, p.name, p.color, p.race, p.team, p.is_winner, p.start_location_oclock, p.apm, p.eapm
 ORDER BY p.team ASC, p.id ASC
 `
 
 type ListReplayPlayersForDetailRow struct {
-	ID                   int64
-	Name                 string
-	Color                string
-	Race                 string
-	Team                 int64
-	IsWinner             bool
-	StartLocationOclock  *int64
-	Apm                  int64
-	Eapm                 int64
-	CommandCount         int64
-	HotkeyCount          int64
-	LowValueCommandCount int64
+	ID                  int64
+	Name                string
+	Color               string
+	Race                string
+	Team                int64
+	IsWinner            bool
+	StartLocationOclock *int64
+	Apm                 int64
+	Eapm                int64
 }
 
 func (q *Queries) ListReplayPlayersForDetail(ctx context.Context, replayID int64) ([]ListReplayPlayersForDetailRow, error) {
@@ -423,9 +411,6 @@ func (q *Queries) ListReplayPlayersForDetail(ctx context.Context, replayID int64
 			&i.StartLocationOclock,
 			&i.Apm,
 			&i.Eapm,
-			&i.CommandCount,
-			&i.HotkeyCount,
-			&i.LowValueCommandCount,
 		); err != nil {
 			return nil, err
 		}

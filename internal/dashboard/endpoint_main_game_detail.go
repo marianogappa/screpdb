@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/marianogappa/screpdb/internal/patterns/markers"
-	"github.com/marianogappa/screpdb/internal/cmdenrich"
 	db "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/samber/lo"
@@ -61,13 +60,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		p.IsWinner = row.IsWinner
 		p.APM = row.APM
 		p.EAPM = row.EAPM
-		p.CommandCount = row.CommandCount
-		p.HotkeyCommandCount = row.HotkeyCommandCount
 		p.PlayerKey = normalizePlayerKey(row.Name)
-		totalCommandCount := p.CommandCount + row.LowValueCommandCount
-		if totalCommandCount > 0 {
-			p.HotkeyUsageRate = float64(p.HotkeyCommandCount) / float64(totalCommandCount)
-		}
 		p.DetectedPatterns = []workflowPatternValue{}
 		detail.Players = append(detail.Players, p)
 		if row.StartLocationOclock != nil && *row.StartLocationOclock >= 1 && *row.StartLocationOclock <= 12 {
@@ -2102,9 +2095,10 @@ func (d *Dashboard) populateFirstUnitEfficiencyForGameDetail(detail *workflowGam
 }
 
 // populateMarkersForGameDetail walks each player's detected build-order
-// patterns, extracts their actual milestone timings from early-game commands,
-// and attaches one expert-vs-actual comparison entry per (player × detected
-// BO) to the detail's Markers field.
+// patterns and attaches one expert-vs-actual comparison entry per (player ×
+// detected BO) to the detail's Markers field. Actual milestone timings are
+// read from each marker's persisted payload (resolved once at detection
+// time), so this path doesn't re-parse or re-resolve commands.
 //
 // BO broad definitions overlap on purpose (e.g. a "9 pool into hatchery" game
 // also matches "9 pool"), so multiple entries can surface for the same player.
@@ -2115,38 +2109,20 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 		return nil
 	}
 
-	// Reuse the same player-scoped build/produce timeline the First-Unit
-	// Efficiency tab uses. We only need events inside the BO detection
-	// window, so walk once and keep a small index.
-	commandRows, err := d.dbStore.ListFirstUnitCommandRows(d.ctx, detail.ReplayID)
-	if err != nil {
-		return fmt.Errorf("failed to load build-order commands: %w", err)
-	}
-
-	factsByPlayer := map[int64][]cmdenrich.EnrichedCommand{}
-	for _, row := range commandRows {
-		names := parseCommandUnitNames(row.UnitType, row.UnitTypes)
-		if len(names) == 0 {
-			continue
-		}
-		for _, name := range names {
-			fact, ok := cmdenrich.FromAction(row.ActionType, name, int(row.Second), row.PlayerID)
-			if !ok || !markers.IsSubjectOfInterest(fact.Subject) {
-				continue
-			}
-			factsByPlayer[row.PlayerID] = append(factsByPlayer[row.PlayerID], fact)
-		}
-	}
-
-	// Which BO was detected per player? Read back our own pattern results.
-	// Post markers-migration ListPlayerPatterns returns the marker FeatureKey
-	// as pattern_name (e.g. "bo_9_pool") — resolve through the registry rather
-	// than matching the legacy "Build Order: <Name>" prefix.
+	// Read pattern rows including their payload — payload carries the
+	// resolved Expert milestone seconds (set at detection time). Post
+	// markers-migration row.PatternName is the marker FeatureKey (e.g.
+	// "bo_9_pool"); resolve through the registry rather than matching
+	// "Build Order: <Name>" prefixes.
 	patternRows, err := d.dbStore.ListPlayerPatterns(d.ctx, detail.ReplayID)
 	if err != nil {
 		return fmt.Errorf("failed to load player patterns for build orders: %w", err)
 	}
-	detectedByPlayer := map[int64]map[string]bool{}
+	type detectedBO struct {
+		FeatureKey string
+		Payload    string
+	}
+	detectedByPlayer := map[int64]map[string]detectedBO{}
 	for _, row := range patternRows {
 		featureKey := strings.TrimSpace(row.PatternName)
 		marker := markers.ByFeatureKey(featureKey)
@@ -2154,9 +2130,12 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 			continue
 		}
 		if detectedByPlayer[row.PlayerID] == nil {
-			detectedByPlayer[row.PlayerID] = map[string]bool{}
+			detectedByPlayer[row.PlayerID] = map[string]detectedBO{}
 		}
-		detectedByPlayer[row.PlayerID][strings.ToLower(marker.FeatureKey)] = true
+		detectedByPlayer[row.PlayerID][strings.ToLower(marker.FeatureKey)] = detectedBO{
+			FeatureKey: marker.FeatureKey,
+			Payload:    row.Payload,
+		}
 	}
 
 	// One chart per (player × detected BO). Broad definitions overlap on
@@ -2170,36 +2149,40 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 		if len(detected) == 0 {
 			continue
 		}
-		facts := factsByPlayer[player.PlayerID]
 		for i := range allMarkers {
 			bo := &allMarkers[i]
 			if bo.Kind != markers.KindInitialBuildOrder {
 				continue
 			}
-			if !detected[strings.ToLower(bo.FeatureKey)] {
+			row, ok := detected[strings.ToLower(bo.FeatureKey)]
+			if !ok {
 				continue
 			}
-			resolutions := bo.ResolveExpert(facts)
-			events := make([]workflowMarkerEvent, 0, len(resolutions))
-			for _, r := range resolutions {
-				events = append(events, workflowMarkerEvent{
-					Key:                   r.Key,
-					Subject:               r.Subject,
-					TargetSecond:          int64(r.TargetSecond),
-					ToleranceEarlySeconds: int64(r.Tolerance.EarlySeconds),
-					ToleranceLateSeconds:  int64(r.Tolerance.LateSeconds),
-					ActualSecond:          int64(r.ActualSecond),
-					Found:                 r.Found,
-					DeltaSeconds:          int64(r.DeltaSeconds),
-					WithinTolerance:       r.WithinTolerance,
-				})
+			actuals := markers.DecodeExpertActuals([]byte(row.Payload))
+			events := make([]workflowMarkerEvent, 0, len(bo.Expert))
+			for idx, expert := range bo.Expert {
+				event := workflowMarkerEvent{
+					Key:                   expert.Key,
+					Subject:               expert.Match.Subject,
+					TargetSecond:          int64(expert.TargetSecond),
+					ToleranceEarlySeconds: int64(expert.Tolerance.EarlySeconds),
+					ToleranceLateSeconds:  int64(expert.Tolerance.LateSeconds),
+				}
+				if idx < len(actuals) && actuals[idx].Found {
+					event.Found = true
+					event.ActualSecond = int64(actuals[idx].Second)
+					event.DeltaSeconds = event.ActualSecond - event.TargetSecond
+					event.WithinTolerance = (event.DeltaSeconds >= -event.ToleranceEarlySeconds) &&
+						(event.DeltaSeconds <= event.ToleranceLateSeconds)
+				}
+				events = append(events, event)
 			}
 			detail.Markers = append(detail.Markers, workflowMarkerPlayer{
 				PlayerID:   player.PlayerID,
 				PlayerKey:  player.PlayerKey,
 				Name:       player.Name,
 				Race:       player.Race,
-				Marker: bo.Name,
+				Marker:     bo.Name,
 				FeatureKey: bo.FeatureKey,
 				Events:     events,
 			})

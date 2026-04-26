@@ -607,6 +607,9 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 	if request.Params.Featuring != nil {
 		filters.FeaturingKeys = parseCSVQueryValues(*request.Params.Featuring, true)
 	}
+	if request.Params.Matchup != nil {
+		filters.MatchupKeys = parseCSVQueryValues(*request.Params.Matchup, true)
+	}
 	whereSQL, whereArgs := buildWorkflowGamesListWhere(filters)
 	total, err := d.dbStore.CountGamesWithWhere(ctx, whereSQL, whereArgs)
 	if err != nil {
@@ -735,10 +738,20 @@ func (d *Dashboard) Healthcheck(ctx context.Context, _ apigen.HealthcheckRequest
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
 	return map[string]any{
-		"ok":             true,
-		"total_replays":  totalReplays,
-		"openai_enabled": d.ai != nil && d.ai.llm != nil,
+		"ok":                        true,
+		"total_replays":             totalReplays,
+		"openai_enabled":            d.ai != nil && d.ai.llm != nil,
+		"custom_dashboards_enabled": customDashboardsEnabled(),
 	}, nil
+}
+
+// customDashboardsEnabled is the poor-man's feature flag for the Custom
+// Dashboards UI. Off by default; opt-in via env. Backend API endpoints stay
+// reachable so existing bookmarked dashboards keep working when the flag is
+// flipped on later — this only controls UI discoverability.
+func customDashboardsEnabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("SCREPDB_ENABLE_CUSTOM_DASHBOARDS")))
+	return v == "1" || v == "true" || v == "yes" || v == "on"
 }
 
 func (d *Dashboard) PlayerColors(ctx context.Context, _ apigen.PlayerColorsRequestObject) (any, error) {

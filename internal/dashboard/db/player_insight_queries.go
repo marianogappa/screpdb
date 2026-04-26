@@ -42,7 +42,7 @@ type OutlierGlobalRow struct {
 }
 
 func (s *Store) ListCommonBehaviours(ctx context.Context, playerKey string) ([]CommonBehaviourRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListCommonBehaviours(ctx, playerKey)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListCommonBehaviours(ctx, playerKey)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (s *Store) ListCommonBehaviours(ctx context.Context, playerKey string) ([]C
 }
 
 func (s *Store) GetOutlierPlayerSummary(ctx context.Context, playerKey string) (*NullableStringInt64Row, error) {
-	row, err := sqlcgen.New(s.replayScoped()).GetOutlierPlayerSummary(ctx, playerKey)
+	row, err := sqlcgen.New(Trace(s.replayScoped())).GetOutlierPlayerSummary(ctx, playerKey)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (s *Store) GetOutlierPlayerSummary(ctx context.Context, playerKey string) (
 }
 
 func (s *Store) ListPlayerGamesByRace(ctx context.Context, playerKey string) ([]RaceCountRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListPlayerGamesByRace(ctx, playerKey)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListPlayerGamesByRace(ctx, playerKey)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (s *Store) ListPlayerGamesByRace(ctx context.Context, playerKey string) ([]
 }
 
 func (s *Store) ListPopulationGamesByRace(ctx context.Context) ([]RaceCountRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListPopulationGamesByRace(ctx)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListPopulationGamesByRace(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (s *Store) ListPopulationGamesByRace(ctx context.Context) ([]RaceCountRow, 
 }
 
 func (s *Store) ListPopulationDistinctPlayersByRace(ctx context.Context) ([]RaceFloatRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListPopulationDistinctPlayersByRace(ctx)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListPopulationDistinctPlayersByRace(ctx)
 	if err != nil {
 		return nil, err
 	}

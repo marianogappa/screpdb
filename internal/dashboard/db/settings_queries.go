@@ -8,7 +8,7 @@ import (
 )
 
 func (s *Store) GetIngestInputDir(ctx context.Context, configKey string) (string, error) {
-	inputDir, err := sqlcgen.New(s.defaultDB).GetIngestInputDir(ctx, configKey)
+	inputDir, err := sqlcgen.New(Trace(s.defaultDB)).GetIngestInputDir(ctx, configKey)
 	if err != nil {
 		return "", err
 	}
@@ -16,18 +16,18 @@ func (s *Store) GetIngestInputDir(ctx context.Context, configKey string) (string
 }
 
 func (s *Store) SetIngestInputDir(ctx context.Context, configKey, inputDir string) error {
-	return sqlcgen.New(s.defaultDB).SetIngestInputDir(ctx, sqlcgen.SetIngestInputDirParams{
+	return sqlcgen.New(Trace(s.defaultDB)).SetIngestInputDir(ctx, sqlcgen.SetIngestInputDirParams{
 		IngestInputDir: strings.TrimSpace(inputDir),
 		ConfigKey:      configKey,
 	})
 }
 
 func (s *Store) CountReplays(ctx context.Context) (int64, error) {
-	return sqlcgen.New(s.defaultDB).CountReplays(ctx)
+	return sqlcgen.New(Trace(s.defaultDB)).CountReplays(ctx)
 }
 
 func (s *Store) GetReplayFilePathByID(ctx context.Context, replayID int64) (string, error) {
-	return sqlcgen.New(s.replayScoped()).GetReplayFilePathByID(ctx, replayID)
+	return sqlcgen.New(Trace(s.replayScoped())).GetReplayFilePathByID(ctx, replayID)
 }
 
 type PlayerColorRow struct {
@@ -36,7 +36,7 @@ type PlayerColorRow struct {
 }
 
 func (s *Store) ListTopPlayerColorRows(ctx context.Context) ([]PlayerColorRow, error) {
-	sqlcRows, err := sqlcgen.New(s.replayScoped()).ListTopPlayerColorRows(ctx)
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListTopPlayerColorRows(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -166,6 +166,7 @@ type workflowGameListItem struct {
 	GameType        string                    `json:"game_type"`
 	PlayersLabel    string                    `json:"players_label"`
 	WinnersLabel    string                    `json:"winners_label"`
+	Matchup         string                    `json:"matchup"`
 	Players         []workflowGameListPlayer  `json:"players"`
 	Featuring       []string                  `json:"featuring"`
 	CurrentPlayer   *workflowRecentGamePlayer `json:"current_player,omitempty"`
@@ -175,6 +176,7 @@ type workflowGameListPlayer struct {
 	PlayerID  int64  `json:"player_id"`
 	PlayerKey string `json:"player_key"`
 	Name      string `json:"name"`
+	Race      string `json:"race"`
 	Team      int64  `json:"team"`
 	IsWinner  bool   `json:"is_winner"`
 }
@@ -193,6 +195,7 @@ type workflowGamesListFilters struct {
 	MapNames        []string
 	DurationBuckets []string
 	FeaturingKeys   []string
+	MatchupKeys     []string
 }
 
 type workflowGamesListFilterOption struct {
@@ -206,6 +209,21 @@ type workflowGamesListFilterOptions struct {
 	Maps      []workflowGamesListFilterOption `json:"maps"`
 	Durations []workflowGamesListFilterOption `json:"durations"`
 	Featuring []workflowGamesListFilterOption `json:"featuring"`
+	Matchups  []workflowGamesListFilterOption `json:"matchups"`
+}
+
+// workflowMatchupFilters lists the canonical matchup keys. TvZ==ZvT and
+// PvZ==ZvP, so the key is always the alphabetically-sorted race-pair form.
+var workflowMatchupFilters = []struct {
+	Key   string
+	Label string
+}{
+	{Key: "pvp", Label: "PvP"},
+	{Key: "pvt", Label: "PvT"},
+	{Key: "pvz", Label: "PvZ"},
+	{Key: "tvt", Label: "TvT"},
+	{Key: "tvz", Label: "TvZ"},
+	{Key: "zvz", Label: "ZvZ"},
 }
 
 var workflowFeaturingFilters = []struct {
@@ -244,18 +262,15 @@ var workflowDurationFilterBuckets = []struct {
 
 type workflowGamePlayer struct {
 	PlayerID           int64                  `json:"player_id"`
-	PlayerKey          string                 `json:"player_key"`
-	Name               string                 `json:"name"`
-	Color              string                 `json:"color,omitempty"`
-	Race               string                 `json:"race"`
-	Team               int64                  `json:"team"`
-	IsWinner           bool                   `json:"is_winner"`
-	APM                int64                  `json:"apm"`
-	EAPM               int64                  `json:"eapm"`
-	CommandCount       int64                  `json:"command_count"`
-	HotkeyCommandCount int64                  `json:"hotkey_command_count"`
-	HotkeyUsageRate    float64                `json:"hotkey_usage_rate"`
-	DetectedPatterns   []workflowPatternValue `json:"detected_patterns"`
+	PlayerKey        string                 `json:"player_key"`
+	Name             string                 `json:"name"`
+	Color            string                 `json:"color,omitempty"`
+	Race             string                 `json:"race"`
+	Team             int64                  `json:"team"`
+	IsWinner         bool                   `json:"is_winner"`
+	APM              int64                  `json:"apm"`
+	EAPM             int64                  `json:"eapm"`
+	DetectedPatterns []workflowPatternValue `json:"detected_patterns"`
 }
 
 // workflowPatternValue is the per-pattern entry shipped to the frontend inside

@@ -79,7 +79,7 @@ func parseTimeString(value string) (*time.Time, error) {
 }
 
 func (s *Store) GetDashboardByURL(ctx context.Context, url string) (*DashboardRow, error) {
-	sqlcRow, err := sqlcgen.New(s.defaultDB).GetDashboardByURL(ctx, url)
+	sqlcRow, err := sqlcgen.New(Trace(s.defaultDB)).GetDashboardByURL(ctx, url)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (s *Store) GetDashboardByURL(ctx context.Context, url string) (*DashboardRo
 }
 
 func (s *Store) ListDashboards(ctx context.Context) ([]DashboardRow, error) {
-	sqlcRows, err := sqlcgen.New(s.defaultDB).ListDashboards(ctx)
+	sqlcRows, err := sqlcgen.New(Trace(s.defaultDB)).ListDashboards(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func (s *Store) ListDashboards(ctx context.Context) ([]DashboardRow, error) {
 }
 
 func (s *Store) CreateDashboard(ctx context.Context, url, name string, description *string, replaysFilterSQL *string) error {
-	return sqlcgen.New(s.defaultDB).CreateDashboard(ctx, sqlcgen.CreateDashboardParams{
+	return sqlcgen.New(Trace(s.defaultDB)).CreateDashboard(ctx, sqlcgen.CreateDashboardParams{
 		Url:              url,
 		Name:             name,
 		Description:      description,
@@ -152,10 +152,10 @@ func (s *Store) UpdateDashboard(ctx context.Context, url, name string, descripti
 }
 
 func (s *Store) DeleteDashboard(ctx context.Context, url string) error {
-	if err := sqlcgen.New(s.defaultDB).DeleteDashboardWidgetsByDashboardID(ctx, lo.ToPtr(url)); err != nil {
+	if err := sqlcgen.New(Trace(s.defaultDB)).DeleteDashboardWidgetsByDashboardID(ctx, lo.ToPtr(url)); err != nil {
 		return err
 	}
-	return sqlcgen.New(s.defaultDB).DeleteDashboardByURL(ctx, url)
+	return sqlcgen.New(Trace(s.defaultDB)).DeleteDashboardByURL(ctx, url)
 }
 
 func scanDashboardWidget(sqlcWidget sqlcgen.DashboardWidget) (*DashboardWidgetRow, error) {
@@ -182,7 +182,7 @@ func scanDashboardWidget(sqlcWidget sqlcgen.DashboardWidget) (*DashboardWidgetRo
 }
 
 func (s *Store) GetDashboardWidgets(ctx context.Context, dashboardURL string) ([]DashboardWidgetRow, error) {
-	sqlcWidgets, err := sqlcgen.New(s.defaultDB).GetDashboardWidgets(ctx, lo.ToPtr(dashboardURL))
+	sqlcWidgets, err := sqlcgen.New(Trace(s.defaultDB)).GetDashboardWidgets(ctx, lo.ToPtr(dashboardURL))
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +198,7 @@ func (s *Store) GetDashboardWidgets(ctx context.Context, dashboardURL string) ([
 }
 
 func (s *Store) GetDashboardWidgetByID(ctx context.Context, widgetID int64) (*DashboardWidgetRow, error) {
-	sqlcWidget, err := sqlcgen.New(s.defaultDB).GetDashboardWidgetByID(ctx, widgetID)
+	sqlcWidget, err := sqlcgen.New(Trace(s.defaultDB)).GetDashboardWidgetByID(ctx, widgetID)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +206,7 @@ func (s *Store) GetDashboardWidgetByID(ctx context.Context, widgetID int64) (*Da
 }
 
 func (s *Store) CreateDashboardWidget(ctx context.Context, dashboardURL string, widgetOrder int64, name string, description *string, config []byte, query string) (int64, error) {
-	res, err := sqlcgen.New(s.defaultDB).CreateDashboardWidget(ctx, sqlcgen.CreateDashboardWidgetParams{
+	res, err := sqlcgen.New(Trace(s.defaultDB)).CreateDashboardWidget(ctx, sqlcgen.CreateDashboardWidgetParams{
 		DashboardID: lo.ToPtr(dashboardURL),
 		WidgetOrder: lo.ToPtr(widgetOrder),
 		Name:        name,
@@ -244,11 +244,11 @@ func (s *Store) UpdateDashboardWidget(ctx context.Context, widgetID int64, name 
 }
 
 func (s *Store) DeleteDashboardWidget(ctx context.Context, widgetID int64) error {
-	return sqlcgen.New(s.defaultDB).DeleteDashboardWidget(ctx, widgetID)
+	return sqlcgen.New(Trace(s.defaultDB)).DeleteDashboardWidget(ctx, widgetID)
 }
 
 func (s *Store) GetNextWidgetOrder(ctx context.Context, dashboardURL string) (int64, error) {
-	order, err := sqlcgen.New(s.defaultDB).GetNextWidgetOrder(ctx, lo.ToPtr(dashboardURL))
+	order, err := sqlcgen.New(Trace(s.defaultDB)).GetNextWidgetOrder(ctx, lo.ToPtr(dashboardURL))
 	if err != nil && err != sql.ErrNoRows {
 		return 1, err
 	}

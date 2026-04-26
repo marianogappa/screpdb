@@ -20,7 +20,7 @@ type DelayCommandRow struct {
 }
 
 func (s *Store) ListDelayCommandRows(ctx context.Context, cutoffSeconds int64, onlyPlayerKey string) ([]DelayCommandRow, error) {
-	q := sqlcgen.New(s.replayScoped())
+	q := sqlcgen.New(Trace(s.replayScoped()))
 	out := []DelayCommandRow{}
 	if onlyPlayerKey != "" {
 		rows, err := q.ListDelayCommandRowsForPlayer(ctx, sqlcgen.ListDelayCommandRowsForPlayerParams{
@@ -66,7 +66,7 @@ func (s *Store) ListDelayCommandRows(ctx context.Context, cutoffSeconds int64, o
 }
 
 func (s *Store) CountPlayerGames(ctx context.Context, playerKey string) (int64, error) {
-	return sqlcgen.New(s.replayScoped()).CountPlayerGames(ctx, playerKey)
+	return sqlcgen.New(Trace(s.replayScoped())).CountPlayerGames(ctx, playerKey)
 }
 
 type RaceSectionRow struct {
@@ -76,7 +76,7 @@ type RaceSectionRow struct {
 }
 
 func (s *Store) ListRaceSections(ctx context.Context, playerKey string) ([]RaceSectionRow, error) {
-	rows, err := sqlcgen.New(s.replayScoped()).ListRaceSections(ctx, playerKey)
+	rows, err := sqlcgen.New(Trace(s.replayScoped())).ListRaceSections(ctx, playerKey)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ type RacePatternRow struct {
 }
 
 func (s *Store) ListRacePatterns(ctx context.Context, playerKey string) ([]RacePatternRow, error) {
-	rows, err := sqlcgen.New(s.replayScoped()).ListRacePatterns(ctx, playerKey)
+	rows, err := sqlcgen.New(Trace(s.replayScoped())).ListRacePatterns(ctx, playerKey)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (s *Store) ListRacePatterns(ctx context.Context, playerKey string) ([]RaceP
 }
 
 func (s *Store) ListTopActionTypes(ctx context.Context, playerID int64, limit int) ([]string, error) {
-	rows, err := sqlcgen.New(s.replayScoped()).ListTopActionTypes(ctx, sqlcgen.ListTopActionTypesParams{
+	rows, err := sqlcgen.New(Trace(s.replayScoped())).ListTopActionTypes(ctx, sqlcgen.ListTopActionTypesParams{
 		PlayerID: playerID,
 		Limit:    int64(limit),
 	})

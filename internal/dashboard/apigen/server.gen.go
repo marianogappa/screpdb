@@ -347,6 +347,7 @@ type GamesListParams struct {
 	Map       *[]string `form:"map,omitempty" json:"map,omitempty"`
 	Duration  *[]string `form:"duration,omitempty" json:"duration,omitempty"`
 	Featuring *[]string `form:"featuring,omitempty" json:"featuring,omitempty"`
+	Matchup   *[]string `form:"matchup,omitempty" json:"matchup,omitempty"`
 }
 
 // PlayersListParams defines parameters for PlayersList.
@@ -1368,6 +1369,14 @@ func (siw *ServerInterfaceWrapper) GamesList(w http.ResponseWriter, r *http.Requ
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "featuring", r.URL.Query(), &params.Featuring, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "featuring", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "matchup" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "matchup", r.URL.Query(), &params.Matchup, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "matchup", Err: err})
 		return
 	}
 
@@ -4285,15 +4294,15 @@ var swaggerSpec = []string{
 	"YoI3KKYerdnoFrBtgkj6XYG2in0qN+iatp5DRxryj1j5JXY/P7kvF/VNQ+5neP44H0wfxYzvVLOQxlew",
 	"PiaIAp5YqEm7vQstfnMka+J/vPy48RmIfH7lmEy5nFxoo1AlStiLsTIXrzCyKnkCvMj1xLAU2sWx5ch1",
 	"mws2h7M9T1ABYU+VlsJD6z76Xv2BKxyZqxdFToRY6C7KOaRtj1xc3WWx7Rhu3Iw4EZCtNzB6jWb9sTGc",
-	"Y9xbd0JrmUs+l45ZDiYFz7gj3et2ZJiVGo8tHIlX8cGrwWv3z3RhlhnTR+WX5gXqR2U6Boa5X3IQ18d+",
-	"OWk8r+7jLrb66w0g4+L8ToL1bWN/nyuod8zs0/rt6L0Yt475WAZX9ulEmXHlOm7/c+Eq3BbgZHB/9jcz",
-	"eqL5FJgobnoFw+oX/zqZQvLUH5mLrD5IlFCmvYI9eKrrgqhnsndJff6V1//Z+v8MLTJIMaP/oFrk9pDl",
-	"Vhmko1ljaXUjoxTJsATKqzZuC6YzEhHBLFJvmzR4Q2PLbik3we2YTUjhC3twXJXjzEt36ekxl5ZPpmhj",
-	"prPBlFtUE8OyrgC40tkvNW1/dRpzY3GQS46DFASbdal144jOQTGvkjYqzRO3YJCwFGRxw2mbfn9Ijtcl",
-	"6U7pq5zKHhDqGZf1fbgjJKxD8miPg+2Fw6tWBgdZLpAjs08OzA7rfSkX/b66pnc6zut/+lt0KHSuB4Ll",
-	"fzUuTwQB7Q87FKwyb2tTC/j+fy4IgZ5MGQ5snmXMdKX76ynDzyXlu3XCMuV0QHFXUp0zDC2Vw5eFbQVs",
-	"F/j2a4/61R2d2LP27rJ8k/UeHG43dA5r1Zqd2rsLyh36yq3oZoCGJ13n9N9LqnfrZCpHwbvnFfcV2bsF",
-	"wkACEgfbP5oUYHzypLfl0eSc8Vgs/hcAAP//K9NFRJ5DAAA=",
+	"Y9xbd0JrmUs+l45ZDiYFz7gj3et2ZJiVGo8tHIlX8cGrwWv3z3RhlhnTR+WX5gXqR2U6Boa5X3Jc1TGZ",
+	"5geq/9gvx4/n1R3fxdYYuAFkXJzf6bK+wezviAX1jpl9Wr9xvRfj1tEhy+DKPp0o265c8e1/fl2F2wKc",
+	"DO7P/rZHTzSfAhPF7bFgWP3iXydTSJ76I3NRKQaJEsq0V8UHT3VdEPVM9i6pz7+a+z9b/0eiRQYpZvQf",
+	"VIvcHrLcKoN0NGssrW55lCIZlkB5fcdtwXRGIiKYReptkwZvfWzZLeUmuB2zCSl8YQ+Oq3KceekuPT3m",
+	"0vLJFG3MdDaYcotqYljWFQBXOvulpu2vTmNuLA5yyXGQgmCzLrVuHNE5KOZV0kaleeIWDBKWgixuTW3T",
+	"7w/J8bok3Sl9lZPeA0I947K+Y3eEhHVIHu1xsL1weNXK4CDLBXJk9smB2WG9L+Wi31fX9E7Hef2PhIsO",
+	"hc71QLD8T8nliSCg/WGHglXmbW1qAd//zwUh0JMpw4HNs4yZrnR/PWX4uaR8t05YppwOKO5KqnOGoaVy",
+	"+LKwrYDtAt9+7VG/uqMTe9beXZZvst6Dw+2GzmGtWrNTe3dBuUNfuRXdDNDwpOuc/ntJ9W6dTOUoePe8",
+	"4r4ie7dAGEhA4mD7h5gCjE+e9LY8mpwzHovF/wIAAP//QoxoN/JDAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

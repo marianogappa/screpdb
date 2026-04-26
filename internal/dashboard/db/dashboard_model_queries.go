@@ -19,7 +19,7 @@ type DashboardWithVariablesRow struct {
 }
 
 func (s *Store) GetDashboardWithVariablesByURL(ctx context.Context, url string) (*DashboardWithVariablesRow, error) {
-	sqlcRow, err := sqlcgen.New(s.defaultDB).GetDashboardWithVariablesByURL(ctx, url)
+	sqlcRow, err := sqlcgen.New(Trace(s.defaultDB)).GetDashboardWithVariablesByURL(ctx, url)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (s *Store) GetDashboardWithVariablesByURL(ctx context.Context, url string) 
 }
 
 func (s *Store) UpdateDashboardVariables(ctx context.Context, url string, variablesJSON string) error {
-	return sqlcgen.New(s.defaultDB).UpdateDashboardVariables(ctx, sqlcgen.UpdateDashboardVariablesParams{
+	return sqlcgen.New(Trace(s.defaultDB)).UpdateDashboardVariables(ctx, sqlcgen.UpdateDashboardVariablesParams{
 		Variables: lo.ToPtr(variablesJSON),
 		Url:       url,
 	})

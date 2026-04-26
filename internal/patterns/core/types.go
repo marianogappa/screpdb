@@ -9,7 +9,7 @@ import (
 
 // AlgorithmVersion is the current version of the pattern detection algorithm
 // Increment this when the algorithm changes to trigger re-detection
-const AlgorithmVersion = 10
+const AlgorithmVersion = 11
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

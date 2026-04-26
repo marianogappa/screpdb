@@ -18,7 +18,7 @@ type PlayerAliasRow struct {
 }
 
 func (s *Store) ListPlayerAliases(ctx context.Context) ([]PlayerAliasRow, error) {
-	sqlcRows, err := sqlcgen.New(s.defaultDB).ListPlayerAliases(ctx)
+	sqlcRows, err := sqlcgen.New(Trace(s.defaultDB)).ListPlayerAliases(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (s *Store) ListPlayerAliases(ctx context.Context) ([]PlayerAliasRow, error)
 }
 
 func (s *Store) UpsertPlayerAlias(ctx context.Context, canonicalAlias, battleTagRaw, battleTagNormalized string, auroraID *int64, source string) error {
-	return sqlcgen.New(s.defaultDB).UpsertPlayerAlias(ctx, sqlcgen.UpsertPlayerAliasParams{
+	return sqlcgen.New(Trace(s.defaultDB)).UpsertPlayerAlias(ctx, sqlcgen.UpsertPlayerAliasParams{
 		CanonicalAlias:      strings.TrimSpace(canonicalAlias),
 		BattleTagNormalized: strings.TrimSpace(battleTagNormalized),
 		BattleTagRaw:        strings.TrimSpace(battleTagRaw),
@@ -48,5 +48,5 @@ func (s *Store) UpsertPlayerAlias(ctx context.Context, canonicalAlias, battleTag
 }
 
 func (s *Store) DeletePlayerAliasByID(ctx context.Context, id int64) error {
-	return sqlcgen.New(s.defaultDB).DeletePlayerAliasByID(ctx, id)
+	return sqlcgen.New(Trace(s.defaultDB)).DeletePlayerAliasByID(ctx, id)
 }

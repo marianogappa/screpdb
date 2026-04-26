@@ -260,6 +260,7 @@ export const api = {
     const mapFilters = Array.isArray(filters.map) ? filters.map : [];
     const durationFilters = Array.isArray(filters.duration) ? filters.duration : [];
     const featuringFilters = Array.isArray(filters.featuring) ? filters.featuring : [];
+    const matchupFilters = Array.isArray(filters.matchup) ? filters.matchup : [];
     playerFilters.forEach((value) => {
       if (String(value || '').trim()) params.append('player', String(value).trim());
     });
@@ -271,6 +272,9 @@ export const api = {
     });
     featuringFilters.forEach((value) => {
       if (String(value || '').trim()) params.append('featuring', String(value).trim());
+    });
+    matchupFilters.forEach((value) => {
+      if (String(value || '').trim()) params.append('matchup', String(value).trim());
     });
     const response = await fetch(`${API_BASE}/games?${params.toString()}`);
     if (!response.ok) {

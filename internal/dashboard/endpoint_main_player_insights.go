@@ -1064,19 +1064,6 @@ func summarizeChatExamples(messages []string, maxItems int) []string {
 	return result
 }
 
-func buildGameNarrativeHints(players []workflowGamePlayer) []string {
-	hints := []string{}
-	for _, p := range players {
-		if p.CommandCount > 0 && p.HotkeyUsageRate >= 0.15 {
-			hints = append(hints, fmt.Sprintf("%s uses hotkeys frequently (%.1f%% of commands).", p.Name, p.HotkeyUsageRate*100))
-		}
-	}
-	if len(hints) == 0 {
-		hints = append(hints, "No strong command-pattern outliers were detected in this match.")
-	}
-	return hints
-}
-
 func buildPlayerNarrativeHints(player workflowPlayerOverview) []string {
 	hints := []string{
 		fmt.Sprintf("%s appears in %d games with a %.1f%% win rate.", player.PlayerName, player.GamesPlayed, player.WinRate*100),

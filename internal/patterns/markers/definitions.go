@@ -376,7 +376,7 @@ func allMarkers() []Marker {
 			Rule:         FirstProduceExists(subjCarrier),
 			RuleDeadline: endOfReplaySentinel,
 			SummaryPlayer: &Pill{IconKey: "carrier", Style: PillStyleStrong, Title: "Carriers"},
-			GamesList:     &Pill{Label: "Carrier", IconKey: "carrier"},
+			GamesList:     &Pill{IconKey: "carrier", Style: PillStyleStrong, Title: "Carriers"},
 		},
 		{
 			Name:         "Battlecruisers",
@@ -387,7 +387,7 @@ func allMarkers() []Marker {
 			Rule:         FirstProduceExists(subjBattlecruiser),
 			RuleDeadline: endOfReplaySentinel,
 			SummaryPlayer: &Pill{IconKey: "battlecruiser", Style: PillStyleStrong, Title: "Battlecruisers"},
-			GamesList:     &Pill{Label: "Battlecruiser", IconKey: "battlecruiser"},
+			GamesList:     &Pill{IconKey: "battlecruiser", Style: PillStyleStrong, Title: "Battlecruisers"},
 		},
 		{
 			Name:             "Never upgraded",

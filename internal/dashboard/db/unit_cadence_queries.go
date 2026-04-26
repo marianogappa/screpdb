@@ -198,7 +198,7 @@ type UnitSliceCommandRow struct {
 }
 
 func (s *Store) ListUnitSliceCommandRows(ctx context.Context, replayID int64) ([]UnitSliceCommandRow, error) {
-	rows, err := sqlcgen.New(s.replayScoped()).ListUnitSliceCommandRows(ctx, replayID)
+	rows, err := sqlcgen.New(Trace(s.replayScoped())).ListUnitSliceCommandRows(ctx, replayID)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +226,7 @@ type FirstUnitCommandRow struct {
 }
 
 func (s *Store) ListFirstUnitCommandRows(ctx context.Context, replayID int64) ([]FirstUnitCommandRow, error) {
-	rows, err := sqlcgen.New(s.replayScoped()).ListFirstUnitCommandRows(ctx, replayID)
+	rows, err := sqlcgen.New(Trace(s.replayScoped())).ListFirstUnitCommandRows(ctx, replayID)
 	if err != nil {
 		return nil, err
 	}
