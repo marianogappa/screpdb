@@ -227,6 +227,9 @@ func (d *Dashboard) buildWorkflowPlayerRecentGames(playerKey string) ([]workflow
 		}
 		result = append(result, g)
 	}
+	if err := d.populateWorkflowGameListPlayers(result); err != nil {
+		return nil, fmt.Errorf("failed to populate players for %s: %w", playerName, err)
+	}
 	if err := d.populateWorkflowRecentGamesCurrentPlayer(playerKey, result); err != nil {
 		return nil, fmt.Errorf("failed to populate recent game context for %s: %w", playerName, err)
 	}
