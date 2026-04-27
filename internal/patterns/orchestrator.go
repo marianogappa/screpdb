@@ -108,6 +108,11 @@ func (o *Orchestrator) ProcessCommand(command *models.Command) {
 
 // GetResults returns all pattern results that should be saved
 func (o *Orchestrator) GetResults() []*core.PatternResult {
+	// Run worldstate's batch pipeline before detector Finalize — markers'
+	// worldstateFirstEventEvaluator reads worldstate at Finalize time.
+	if o.worldState != nil {
+		o.worldState.Finalize()
+	}
 	// Give detectors a chance to finish using full replay context.
 	for _, detector := range o.detectors {
 		detector.Finalize()
@@ -148,6 +153,13 @@ func (o *Orchestrator) ReplayEvents() []worldstate.ReplayEvent {
 		return nil
 	}
 	return o.worldState.ReplayEvents()
+}
+
+// WorldStateEngine returns the worldstate engine for diagnostic callers
+// (e.g. attack-importance-filter reports). Production code should use
+// ReplayEvents/Entries instead.
+func (o *Orchestrator) WorldStateEngine() *worldstate.Engine {
+	return o.worldState
 }
 
 // ConvertResultsToDatabaseIDs converts pattern results from replay player IDs to database player IDs

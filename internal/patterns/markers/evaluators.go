@@ -78,8 +78,6 @@ func (v *viewportMultitaskingEvaluator) Observe(f cmdenrich.EnrichedCommand) {
 	if f.Second < v.windowStartSec {
 		return
 	}
-	// Buffer coordinates; actual window end depends on replay duration known
-	// only at Finalize.
 	v.observed = append(v.observed, viewportSample{second: f.Second, x: *f.X, y: *f.Y})
 }
 

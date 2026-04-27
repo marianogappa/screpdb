@@ -34,7 +34,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":13.303167420814479}"
+        "value": "{\"switches_per_minute\":14.117647058823529}"
       }
     ]
   },
@@ -68,7 +68,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":15.526315789473685}"
+        "value": "{\"switches_per_minute\":16.315789473684212}"
       }
     ]
   },
@@ -87,7 +87,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":21.666666666666668}"
+        "value": "{\"switches_per_minute\":22.05128205128205}"
       },
       {
         "replay_player_id": 1,
@@ -218,7 +218,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":14.355828220858895}"
+        "value": "{\"switches_per_minute\":14.585889570552146}"
       },
       {
         "replay_player_id": 1,
@@ -233,7 +233,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Made recalls",
-        "value": "1481"
+        "value": "1616"
       },
       {
         "replay_player_id": 1,
@@ -243,7 +243,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":12.423312883435582}"
+        "value": "{\"switches_per_minute\":12.607361963190183}"
       }
     ]
   },
@@ -309,7 +309,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":20.166666666666668}"
+        "value": "{\"switches_per_minute\":20.666666666666668}"
       },
       {
         "replay_player_id": 1,
@@ -319,7 +319,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Made drops",
-        "value": "620"
+        "value": "676"
       },
       {
         "replay_player_id": 1,
@@ -334,7 +334,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":19.666666666666668}"
+        "value": "{\"switches_per_minute\":19.833333333333332}"
       }
     ]
   }

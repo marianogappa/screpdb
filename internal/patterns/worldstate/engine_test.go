@@ -446,8 +446,11 @@ func TestProcessCommand_AttackRangeEmitsSingleScoutPerWave(t *testing.T) {
 			scouts++
 		}
 	}
-	if scouts != 2 {
-		t.Fatalf("expected exactly 2 scout events (one per wave after idle), got %d; replay_events=%v", scouts, log)
+	// Per the per-player scout dedupe rule (at most one scout per attacker,
+	// earliest wins), even multiple post-idle waves fold into a single
+	// scout event for this player.
+	if scouts != 1 {
+		t.Fatalf("expected exactly 1 scout event per player, got %d; replay_events=%v", scouts, log)
 	}
 }
 

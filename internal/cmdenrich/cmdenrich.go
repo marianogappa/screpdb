@@ -60,6 +60,21 @@ const (
 	// KindHotkey: hotkey-group assign / select / add. Subject is the group
 	// number as a string ("0".."9"); callers that care parse it.
 	KindHotkey
+	// KindCast: a targeted spell cast (CastPsionicStorm, CastIrradiate, …).
+	// Subject is the canonical spell name with "Cast" prefix stripped when
+	// present, or the raw OrderName when no prefix (e.g. "NuclearStrike").
+	// Used by the worldstate attack/recall/nuke detector.
+	KindCast
+	// KindUnloadAll: drop signal (UnloadAll queueable). No spatial coords.
+	// Used by the worldstate drop detector via engagement-layer position
+	// backfill.
+	KindUnloadAll
+	// KindBurrow / KindUnburrow: zerg burrow toggles (queueable).
+	KindBurrow
+	KindUnburrow
+	// KindSiege / KindUnsiege: terran siege toggles (queueable).
+	KindSiege
+	KindUnsiege
 )
 
 // Aggression tri-state. Populated by Classify based on Kind; tune the mapping
@@ -87,6 +102,7 @@ const (
 type EnrichedCommand struct {
 	Kind     Kind
 	Subject  string // canonical unit/building name, post-normalization
+	Frame    int32
 	Second   int
 	PlayerID int64
 
@@ -96,23 +112,35 @@ type EnrichedCommand struct {
 
 	// Queued is true if the player shift-queued this order.
 	Queued bool
+
+	// OrderName preserves the raw OrderName for KindCast (and any
+	// KindRightClick that carried an explicit order). Empty otherwise.
+	// Lets worldstate classify casts (PsionicStorm vs Recall vs Restoration)
+	// without re-walking the raw command stream.
+	OrderName string
 }
 
 // aggressionByKind is the tunable mapping from Kind to Aggression default.
 // Tweak here; every caller picks up the change.
 var aggressionByKind = map[Kind]Aggression{
-	KindMakeBuilding:       NonAggressive,
+	KindMakeBuilding: NonAggressive,
 	KindMakeUnit:     NonAggressive,
-	KindTech:        NonAggressive,
-	KindUpgrade:     NonAggressive,
-	KindStop:        NonAggressive,
-	KindHold:        NonAggressive,
-	KindHotkey:      NonAggressive,
-	KindPatrol:      Ambiguous,
-	KindMove:        Ambiguous,
-	KindRightClick:  Ambiguous,
-	KindAttackMove:  Aggressive,
-	KindAttackUnit:  Aggressive,
+	KindTech:         NonAggressive,
+	KindUpgrade:      NonAggressive,
+	KindStop:         NonAggressive,
+	KindHold:         NonAggressive,
+	KindHotkey:       NonAggressive,
+	KindBurrow:       NonAggressive,
+	KindUnburrow:     NonAggressive,
+	KindUnsiege:      NonAggressive,
+	KindSiege:        Ambiguous,
+	KindPatrol:       Ambiguous,
+	KindMove:         Ambiguous,
+	KindRightClick:   Ambiguous,
+	KindAttackMove:   Aggressive,
+	KindAttackUnit:   Aggressive,
+	KindCast:         Aggressive,
+	KindUnloadAll:    Aggressive,
 }
 
 // Classify returns the EnrichedCommand for a raw command. The second return
@@ -135,15 +163,33 @@ func Classify(cmd *models.Command) (EnrichedCommand, bool) {
 		}
 		subject = strconv.Itoa(int(*cmd.HotkeyGroup))
 	}
+	// Cast commands carry the spell name in OrderName ("CastPsionicStorm",
+	// "NuclearStrike", "Recall"). Strip the "Cast" prefix so Subject reads
+	// as the canonical spell name; nuke variants without the prefix pass
+	// through unchanged.
+	if kind == KindCast {
+		on := stringPtr(cmd.OrderName)
+		subject = strings.TrimPrefix(on, "Cast")
+	}
+	orderName := stringPtr(cmd.OrderName)
+	// Player resolution: prefer the Player pointer when set (test fixtures
+	// and some parser paths populate Player but leave PlayerID at zero).
+	// Mirror of engine.playerIDFromCommand.
+	playerID := cmd.PlayerID
+	if cmd.Player != nil {
+		playerID = int64(cmd.Player.PlayerID)
+	}
 	fact := EnrichedCommand{
 		Kind:       kind,
 		Subject:    subject,
+		Frame:      cmd.Frame,
 		Second:     cmd.SecondsFromGameStart,
-		PlayerID:   cmd.PlayerID,
+		PlayerID:   playerID,
 		X:          cmd.X,
 		Y:          cmd.Y,
 		Aggression: aggressionByKind[kind],
 		Queued:     boolPtr(cmd.IsQueued),
+		OrderName:  orderName,
 	}
 	return fact, true
 }
@@ -175,9 +221,11 @@ func classifyKind(cmd *models.Command) Kind {
 	if k := kindFromActionType(cmd.ActionType); k != KindUnknown {
 		return k
 	}
-	// Right Click commands carry the real semantic in OrderName (Move,
-	// AttackMove, Patrol, …) — flatten that into a Kind rather than
-	// leaving callers to re-parse.
+	// Right Click and Targeted Order commands carry the real semantic in
+	// OrderName (Move, AttackMove, Patrol, Cast*, …) — flatten that into a
+	// Kind rather than leaving callers to re-parse. Match on a
+	// space-stripped lowercase form so test fixtures using "Attack Move"
+	// resolve identically to the parser-emitted "AttackMove".
 	if cmd.OrderName != nil {
 		switch *cmd.OrderName {
 		case models.UnitOrderAttackMove:
@@ -193,6 +241,39 @@ func classifyKind(cmd *models.Command) Kind {
 			return KindHold
 		case models.UnitOrderStop:
 			return KindStop
+		}
+		on := *cmd.OrderName
+		onNorm := strings.ToLower(strings.ReplaceAll(on, " ", ""))
+		switch onNorm {
+		case "attackmove":
+			return KindAttackMove
+		case "attackunit", "attack1", "attack2", "attacktile", "attackfixedrange", "attack":
+			return KindAttackUnit
+		case "move":
+			return KindMove
+		case "patrol":
+			return KindPatrol
+		case "holdposition", "hold":
+			return KindHold
+		case "stop":
+			return KindStop
+		}
+		// Spell casts: TargetedOrder with OrderName starting "Cast"
+		// (CastPsionicStorm, CastIrradiate, CastRecall, …) and the
+		// nuke family (NukeLaunch, NukePaint, NuclearStrike, NukeUnit,
+		// NukeTrack) which the engine treats as casts for routing.
+		if strings.HasPrefix(on, "Cast") ||
+			strings.HasPrefix(on, "Nuke") ||
+			on == "NuclearStrike" {
+			return KindCast
+		}
+		// Unload variants on TargetedOrder ("Unload", "UnloadAll",
+		// "MoveUnload" etc.) — needed for spatial drop detection in
+		// the v2 worldstate engine. The QueueableCmd UnloadAll path
+		// also classifies as KindUnloadAll via the ActionType match
+		// but carries no X/Y, so it is filtered out downstream.
+		if strings.Contains(strings.ToLower(on), "unload") {
+			return KindUnloadAll
 		}
 	}
 	if strings.EqualFold(cmd.ActionType, "Right Click") {
@@ -227,6 +308,16 @@ func kindFromActionType(actionType string) Kind {
 		return KindRightClick
 	case "Hotkey":
 		return KindHotkey
+	case "Unload All":
+		return KindUnloadAll
+	case "Burrow":
+		return KindBurrow
+	case "Unburrow":
+		return KindUnburrow
+	case "Siege":
+		return KindSiege
+	case "Unsiege":
+		return KindUnsiege
 	}
 	return KindUnknown
 }
