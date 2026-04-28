@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.18.0](https://github.com/marianogappa/screpdb/compare/v0.17.1...v0.18.0) (2026-04-28)
+
+
+### Features
+
+* batch of UX, correctness, and performance improvements ([#101](https://github.com/marianogappa/screpdb/issues/101)) ([d445d24](https://github.com/marianogappa/screpdb/commit/d445d244755e7b3fa3651be5d14ae75fb927d9e4))
+* early-game spam filter + simplified Zerg build orders ([#103](https://github.com/marianogappa/screpdb/issues/103)) ([0fa0196](https://github.com/marianogappa/screpdb/commit/0fa0196ffc1444289db574f696103085ad9e97ab))
+* migrate markers into replay_events (registry-driven pills) ([#99](https://github.com/marianogappa/screpdb/issues/99)) ([ba4de8a](https://github.com/marianogappa/screpdb/commit/ba4de8a7c588891a24e78f97a20c8d803d45d794))
+* refactor player report into tabs with lazy loading ([#102](https://github.com/marianogappa/screpdb/issues/102)) ([a9677b7](https://github.com/marianogappa/screpdb/commit/a9677b71d486f96b8b4a619b63ac90ba5230ccf1))
+
 ## [0.17.1](https://github.com/marianogappa/screpdb/compare/v0.17.0...v0.17.1) (2026-04-22)
 
 
