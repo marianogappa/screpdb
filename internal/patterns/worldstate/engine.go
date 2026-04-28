@@ -21,11 +21,25 @@ const (
 	// Max distance from a rush build command to an enemy base center when the point is outside the base polygon (map polygons often miss ramp cannons).
 	rushBuildSnapToEnemyBaseCenterPx = 10 * 32
 	proxyFactoryWindowSec            = 5 * 60
-	attackUnitsWindowSec             = 180
-	eventDedupWindowSec              = 60
-	neutralPID                       = byte(255)
-	commandRadiusMul                 = 1.25
-	radiusSafety                     = 0.98
+	// Build/train evidence for an attack at second S is collected from
+	// the window centered at S - attackUnitsEpicenterOffsetSec, expanded
+	// attackUnitsPastSec into the past and attackUnitsFutureSec into the
+	// future. The epicenter ~45s before the attack matches the typical
+	// "units are already on their way" delay; the past arm reaches deep
+	// enough to cover an army that was massed and then sent out, while
+	// the short future arm catches reinforcements.
+	attackUnitsEpicenterOffsetSec = 45
+	attackUnitsPastSec            = 120
+	attackUnitsFutureSec          = 30
+	// castSamplesRetentionSec bounds memory for the per-attacker cast
+	// sample buffer. Casts older than this many seconds before the
+	// current stream second are dropped — well outside any plausible
+	// attack pressure window.
+	castSamplesRetentionSec = 600
+	eventDedupWindowSec     = 60
+	neutralPID              = byte(255)
+	commandRadiusMul        = 1.25
+	radiusSafety            = 0.98
 )
 
 type NarrativeEntry struct {
@@ -74,11 +88,24 @@ type ReplayEvent struct {
 	LocationNaturalOfClock *int
 	LocationMineralOnly    *bool
 	AttackUnitTypes        []string
+	// AttackCastCounts is a per-cast-name tally of every aggressive cast
+	// that landed inside the attack pressure window for "attack" events.
+	// Keyed by the canonical cast subject (e.g. "PsionicStorm", "Plague",
+	// "Recall"). Empty / nil for non-attack events.
+	AttackCastCounts map[string]int
 }
 
 type attackUnitSample struct {
 	Second   int
 	UnitType string
+}
+
+// castSample records a single aggressive cast issued by a given attacker
+// at a given stream second. Used to derive ground-truth caster-unit
+// presence (and per-cast cardinalities) for attack events.
+type castSample struct {
+	Second    int
+	OrderName string
 }
 
 type zergRushCandidate struct {
@@ -121,6 +148,7 @@ type Engine struct {
 	playerBecameRace   map[byte]map[string]bool
 
 	attackUnitsByPID      map[byte][]attackUnitSample
+	castsByPID            map[byte][]castSample
 	lastEventByKey        map[string]int
 	zergRushCandidates    map[byte]*zergRushCandidate
 	zergRushEmitted       map[byte]bool
@@ -151,6 +179,7 @@ func NewEngine(replay *models.Replay, players []*models.Player, mapCtx *models.R
 		naturalOwnerByBase:    map[int]byte{},
 		playerBecameRace:      map[byte]map[string]bool{},
 		attackUnitsByPID:      map[byte][]attackUnitSample{},
+		castsByPID:            map[byte][]castSample{},
 		lastEventByKey:        map[string]int{},
 		zergRushCandidates:    map[byte]*zergRushCandidate{},
 		zergRushEmitted:       map[byte]bool{},
@@ -558,39 +587,127 @@ func (e *Engine) recordRecentAttackUnit(pid byte, second int, command *models.Co
 	if unitType == "" {
 		return
 	}
-	samples := append(e.attackUnitsByPID[pid], attackUnitSample{Second: second, UnitType: unitType})
-	e.attackUnitsByPID[pid] = trimAttackSamples(samples, second)
+	e.attackUnitsByPID[pid] = append(e.attackUnitsByPID[pid], attackUnitSample{Second: second, UnitType: unitType})
 }
 
-func (e *Engine) recentAttackUnitTypes(pid byte, second int) []string {
-	samples := trimAttackSamples(e.attackUnitsByPID[pid], second)
-	e.attackUnitsByPID[pid] = samples
-	if len(samples) == 0 {
-		return nil
+// recordRecentCast appends an aggressive cast to the per-attacker cast
+// sample buffer. Non-aggressive utility casts (Restoration, Hallucination,
+// ScannerSweep, DefensiveMatrix) are skipped — they don't represent
+// combat presence.
+func (e *Engine) recordRecentCast(pid byte, second int, ec cmdenrich.EnrichedCommand) {
+	if ec.Kind != cmdenrich.KindCast {
+		return
 	}
-	unique := map[string]struct{}{}
-	unitTypes := make([]string, 0, len(samples))
-	for _, sample := range samples {
-		if _, ok := unique[sample.UnitType]; ok {
+	if !castIsAggressive(ec.OrderName) {
+		return
+	}
+	samples := e.castsByPID[pid]
+	cutoff := second - castSamplesRetentionSec
+	// Drop samples too old to ever be useful for any future attack-window
+	// query (the longest reach is the build/train epicenter past arm).
+	for len(samples) > 0 && samples[0].Second < cutoff {
+		samples = samples[1:]
+	}
+	samples = append(samples, castSample{Second: second, OrderName: ec.OrderName})
+	e.castsByPID[pid] = samples
+}
+
+// buildUnitsInEpicenterWindow returns distinct attacking-unit-build names
+// the given attacker issued inside the epicenter window for an attack at
+// `attackSec`. Window: [attackSec - epicOffset - past, attackSec - epicOffset + future].
+func (e *Engine) buildUnitsInEpicenterWindow(pid byte, attackSec int) []string {
+	epicenter := attackSec - attackUnitsEpicenterOffsetSec
+	lo := epicenter - attackUnitsPastSec
+	hi := epicenter + attackUnitsFutureSec
+	seen := map[string]struct{}{}
+	out := []string{}
+	for _, s := range e.attackUnitsByPID[pid] {
+		if s.Second < lo || s.Second > hi {
 			continue
 		}
-		unique[sample.UnitType] = struct{}{}
-		unitTypes = append(unitTypes, sample.UnitType)
+		if _, ok := seen[s.UnitType]; ok {
+			continue
+		}
+		seen[s.UnitType] = struct{}{}
+		out = append(out, s.UnitType)
 	}
-	sort.Strings(unitTypes)
-	return unitTypes
+	return out
 }
 
-func trimAttackSamples(samples []attackUnitSample, second int) []attackUnitSample {
-	if len(samples) == 0 {
+// attackUnitsCombined builds the attack event's unit_types list. Cast
+// evidence comes first (ground-truth: a Storm cast proves a High Templar
+// existed at that moment) — looked up over the full attack pressure
+// window. Build/train history fills in the rest from the epicenter
+// window. Result is sorted for stable downstream comparison.
+func (e *Engine) attackUnitsCombined(c CandidateAttack) []string {
+	seen := map[string]struct{}{}
+	out := []string{}
+	lo, hi := c.OpenSec, c.CloseSec
+	if hi < lo {
+		hi = lo
+	}
+	for _, cs := range e.castsByPID[c.Attacker] {
+		if cs.Second < lo || cs.Second > hi {
+			continue
+		}
+		unit, ok := casterUnitForCast(cs.OrderName)
+		if !ok || unit == "" {
+			continue
+		}
+		if _, exists := seen[unit]; exists {
+			continue
+		}
+		seen[unit] = struct{}{}
+		out = append(out, unit)
+	}
+	for _, u := range e.buildUnitsInEpicenterWindow(c.Attacker, c.Second) {
+		if _, exists := seen[u]; exists {
+			continue
+		}
+		seen[u] = struct{}{}
+		out = append(out, u)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// attackCastCounts tallies aggressive casts by the attacker inside the
+// attack pressure window. Keys are the canonical cast subject (Cast
+// prefix stripped, normalized name) — same shape used by the importance
+// filter's spell-novelty check.
+func (e *Engine) attackCastCounts(c CandidateAttack) map[string]int {
+	lo, hi := c.OpenSec, c.CloseSec
+	if hi < lo {
+		hi = lo
+	}
+	counts := map[string]int{}
+	for _, cs := range e.castsByPID[c.Attacker] {
+		if cs.Second < lo || cs.Second > hi {
+			continue
+		}
+		key := castSubjectFromOrderName(cs.OrderName)
+		if key == "" {
+			continue
+		}
+		counts[key]++
+	}
+	if len(counts) == 0 {
 		return nil
 	}
-	cutoff := second - attackUnitsWindowSec
-	trimmed := make([]attackUnitSample, 0, len(samples))
-	for _, sample := range samples {
-		if sample.Second >= cutoff {
-			trimmed = append(trimmed, sample)
-		}
+	return counts
+}
+
+// castSubjectFromOrderName strips the "Cast" prefix from raw OrderName
+// values so storage keys match the canonical Subject form used elsewhere
+// (e.g. "CastPsionicStorm" → "PsionicStorm", "CastRecall" → "Recall",
+// "NukeLaunch" → "NukeLaunch").
+func castSubjectFromOrderName(orderName string) string {
+	trimmed := strings.TrimSpace(orderName)
+	if trimmed == "" {
+		return ""
+	}
+	if strings.HasPrefix(trimmed, "Cast") && len(trimmed) > len("Cast") {
+		return trimmed[len("Cast"):]
 	}
 	return trimmed
 }

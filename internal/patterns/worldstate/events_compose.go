@@ -58,6 +58,7 @@ func (e *Engine) runRushPass(ownership []PolyOwnership) {
 
 		sec := ec.Second
 		e.recordRecentAttackUnit(pid, sec, cmd)
+		e.recordRecentCast(pid, sec, ec)
 		e.recordMarineTraining(pid, sec, cmd)
 		e.processRaceSwitchEvent(cmd, pid, sec)
 		e.processZerglingRushEvent(cmd, pid, sec)
@@ -204,8 +205,6 @@ func (e *Engine) emitAttackCandidates(candidates []CandidateAttack) {
 			}
 			scoutEmitted[c.Attacker] = true
 			e.emitScoutCandidate(c, cmdByFrame[c.Frame])
-		case "recall":
-			e.emitRecallCandidate(c, cmdByFrame[c.Frame])
 		case "nuke":
 			e.emitNukeCandidate(c, cmdByFrame[c.Frame])
 		case "drop":
@@ -227,18 +226,6 @@ func (e *Engine) emitScoutCandidate(c CandidateAttack, cmd *models.Command) {
 			e.playerName(c.Attacker), e.playerName(c.Defender),
 			e.bases[c.PolyID].DisplayName),
 		e.playerRef(c.Attacker), e.playerRef(c.Defender), c.PolyID, scoutUnits)
-}
-
-func (e *Engine) emitRecallCandidate(c CandidateAttack, cmd *models.Command) {
-	if c.Defender == neutralPID {
-		return
-	}
-	e.emitEvent("recall", c.Second,
-		fmt.Sprintf("%s recalls into %s %s",
-			e.playerName(c.Attacker), e.playerName(c.Defender),
-			e.bases[c.PolyID].DisplayName),
-		e.playerRef(c.Attacker), e.playerRef(c.Defender), c.PolyID,
-		unitTypesFromCommand(cmd))
 }
 
 func (e *Engine) emitNukeCandidate(c CandidateAttack, cmd *models.Command) {
@@ -302,7 +289,7 @@ func (e *Engine) emitAttackIfImportant(c CandidateAttack, cmd *models.Command,
 	if c.Defender == neutralPID {
 		return
 	}
-	attackUnits := e.recentAttackUnitTypes(c.Attacker, c.Second)
+	attackUnits := e.attackUnitsCombined(c)
 	keep := false
 
 	if !attackedAlready[c.Attacker] {
@@ -364,11 +351,19 @@ func (e *Engine) emitAttackIfImportant(c CandidateAttack, cmd *models.Command,
 	}
 	attackedAlready[c.Attacker] = true
 
+	prevLen := len(e.replayEvents)
 	e.emitEvent("attack", c.Second,
 		fmt.Sprintf("%s attacks %s %s",
 			e.playerName(c.Attacker), e.playerName(c.Defender),
 			e.bases[c.PolyID].DisplayName),
 		e.playerRef(c.Attacker), e.playerRef(c.Defender), c.PolyID, attackUnits)
+	// emitEvent may suppress via dedup; only attach cast counts if a new
+	// row was actually appended.
+	if len(e.replayEvents) > prevLen {
+		if counts := e.attackCastCounts(c); len(counts) > 0 {
+			e.replayEvents[len(e.replayEvents)-1].AttackCastCounts = counts
+		}
+	}
 }
 
 // attackerHasRushEvent reports whether a rush_proxy-pass event for this

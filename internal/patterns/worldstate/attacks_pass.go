@@ -8,13 +8,18 @@ import (
 )
 
 // CandidateAttack is a pre-taste-filter detection of an attack-class event
-// produced by the rolling pressure tracker plus drop/recall/nuke point
-// detection. Type is one of: "attack" | "scout" | "drop" | "recall" | "nuke".
+// produced by the rolling pressure tracker plus drop/nuke point detection.
+// Type is one of: "attack" | "scout" | "drop" | "nuke".
 //
 // Attacker / Defender are raw replay byte PlayerIDs. Defender is neutralPID
 // (255) when the polygon was unowned at detection time (rare for
-// drop/recall/nuke; possible for attack-pressure that opens against an
-// abandoned base).
+// drop/nuke; possible for attack-pressure that opens against an abandoned
+// base).
+//
+// OpenSec / CloseSec bound the attack pressure window for "attack" type
+// candidates: OpenSec is the second the range opened (= Second), CloseSec
+// is the last sustain-class command seen before the range went idle. For
+// point events (scout/drop/nuke) both equal Second.
 //
 // CarriedUnits holds the dropped unit-type names (from UnloadAll source
 // units) so the events_compose layer can route generic "drop" to
@@ -23,6 +28,8 @@ type CandidateAttack struct {
 	Type         string
 	Frame        int32
 	Second       int
+	OpenSec      int
+	CloseSec     int
 	Attacker     byte
 	Defender     byte
 	PolyID       int
@@ -39,12 +46,28 @@ const (
 )
 
 // BuildAttacks walks the enriched stream once, driving the rolling
-// attack-pressure tracker plus drop/recall/nuke point detection. Owners
-// are looked up against the supplied ownership timelines (per polygon).
+// attack-pressure tracker plus drop/nuke point detection. Owners are
+// looked up against the supplied ownership timelines (per polygon).
+//
+// Each "attack" candidate's CloseSec is patched retroactively when its
+// pressure range goes idle (or at end-of-stream) so callers can scan the
+// full [OpenSec, CloseSec] window for cast / unit-type evidence. Recall
+// casts are no longer special-cased — they flow through the normal
+// aggressive-cast pressure path like Storm/Plague/etc.
 func BuildAttacks(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, ownership []PolyOwnership) []CandidateAttack {
 	tracker := newAttackRangeTracker()
 	out := []CandidateAttack{}
 	lastTickSec := -1
+	openIdxByKey := map[string]int{}
+
+	patchClosed := func(closed []closedRange) {
+		for _, cr := range closed {
+			if idx, ok := openIdxByKey[cr.key]; ok {
+				out[idx].CloseSec = cr.closeSec
+				delete(openIdxByKey, cr.key)
+			}
+		}
+	}
 
 	timelineByPoly := make(map[int][]OwnEvent, len(ownership))
 	for _, t := range ownership {
@@ -76,6 +99,7 @@ func BuildAttacks(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, owner
 		scoutedPair[key] = true
 		out = append(out, CandidateAttack{
 			Type: "scout", Frame: frame, Second: sec,
+			OpenSec: sec, CloseSec: sec,
 			Attacker: attacker, Defender: defender,
 			PolyID: polyID, X: x, Y: y,
 		})
@@ -84,7 +108,7 @@ func BuildAttacks(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, owner
 	for _, ec := range stream {
 		sec := ec.Second
 		if sec != lastTickSec {
-			tracker.tickIdle(sec)
+			patchClosed(tracker.tickIdle(sec))
 			lastTickSec = sec
 		}
 		if ec.X == nil || ec.Y == nil {
@@ -102,9 +126,9 @@ func BuildAttacks(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, owner
 		// Spatial commands outside any polygon fall back to the
 		// globally nearest base. Mirrors legacy pointToOwnershipBase
 		// semantics: every spatial command gets attributed to *some*
-		// base so pressure tracking, drop/recall/nuke spotting, and
-		// scout pre-pass all see the activity. Only ownership claims
-		// (in BuildOwnership) stay strict polygon-only.
+		// base so pressure tracking, drop/nuke spotting, and scout
+		// pre-pass all see the activity. Only ownership claims (in
+		// BuildOwnership) stay strict polygon-only.
 		if pi < 0 {
 			pi = nearestPolyGeom(polys, x, y)
 		}
@@ -129,23 +153,17 @@ func BuildAttacks(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, owner
 		case cmdenrich.KindUnloadAll:
 			out = append(out, CandidateAttack{
 				Type: "drop", Frame: ec.Frame, Second: sec,
+				OpenSec: sec, CloseSec: sec,
 				Attacker: attacker, Defender: defender,
 				PolyID: pi, X: x, Y: y,
 			})
 			continue
 		case cmdenrich.KindCast:
 			subjLower := strings.ToLower(ec.Subject)
-			if strings.Contains(subjLower, "recall") {
-				out = append(out, CandidateAttack{
-					Type: "recall", Frame: ec.Frame, Second: sec,
-					Attacker: attacker, Defender: defender,
-					PolyID: pi, X: x, Y: y,
-				})
-				continue
-			}
 			if strings.Contains(subjLower, "nuke") || strings.Contains(subjLower, "nuclear") {
 				out = append(out, CandidateAttack{
 					Type: "nuke", Frame: ec.Frame, Second: sec,
+					OpenSec: sec, CloseSec: sec,
 					Attacker: attacker, Defender: defender,
 					PolyID: pi, X: x, Y: y,
 				})
@@ -169,10 +187,15 @@ func BuildAttacks(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, owner
 		}
 		out = append(out, CandidateAttack{
 			Type: eventType, Frame: ec.Frame, Second: sec,
+			OpenSec: sec, CloseSec: sec,
 			Attacker: attacker, Defender: defender,
 			PolyID: pi, X: x, Y: y,
 		})
+		if eventType == "attack" {
+			openIdxByKey[key] = len(out) - 1
+		}
 	}
+	patchClosed(tracker.flush())
 	return out
 }
 
@@ -196,6 +219,14 @@ type attackRangeTracker struct {
 	byKey map[string]*attackPressureRange
 }
 
+// closedRange reports a pressure range that just transitioned from open
+// to closed, so the BuildAttacks loop can patch the matching emitted
+// CandidateAttack's CloseSec field.
+type closedRange struct {
+	key      string
+	closeSec int
+}
+
 func newAttackRangeTracker() *attackRangeTracker {
 	return &attackRangeTracker{byKey: make(map[string]*attackPressureRange)}
 }
@@ -204,16 +235,35 @@ func attackRangeKey(attackerPID, defenderPID byte, polyID int) string {
 	return fmt.Sprintf("%d|%d|%d", attackerPID, defenderPID, polyID)
 }
 
-func (t *attackRangeTracker) tickIdle(sec int) {
-	for _, r := range t.byKey {
+func (t *attackRangeTracker) tickIdle(sec int) []closedRange {
+	var closed []closedRange
+	for k, r := range t.byKey {
 		if !r.open {
 			continue
 		}
 		if sec-r.lastSustainSec > attackRangeEndIdleSec {
 			r.open = false
+			closed = append(closed, closedRange{key: k, closeSec: r.lastSustainSec})
 			r.pendingOpeningTimes = r.pendingOpeningTimes[:0]
 		}
 	}
+	return closed
+}
+
+// flush returns close events for any still-open ranges, used at end of
+// stream so each emitted CandidateAttack ends up with a finalized
+// CloseSec equal to its last sustain second.
+func (t *attackRangeTracker) flush() []closedRange {
+	var closed []closedRange
+	for k, r := range t.byKey {
+		if !r.open {
+			continue
+		}
+		r.open = false
+		closed = append(closed, closedRange{key: k, closeSec: r.lastSustainSec})
+		r.pendingOpeningTimes = r.pendingOpeningTimes[:0]
+	}
+	return closed
 }
 
 func (t *attackRangeTracker) recordEnemyBaseCommand(key string, sec int, openingPressure, sustainAfterOpen bool) bool {

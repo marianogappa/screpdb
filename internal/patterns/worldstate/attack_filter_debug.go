@@ -70,11 +70,10 @@ func (e *Engine) ReportAttackFilter() AttackFilterReport {
 			continue
 		}
 
-		// recentAttackUnitTypes is mutated as a side effect of being
-		// called; clone the per-attacker buffer so the diagnostic
-		// doesn't poison the next call. In the real pipeline this is
-		// fine because emitAttackIfImportant is the only consumer.
-		attackUnits := e.recentAttackUnitTypes(c.Attacker, c.Second)
+		// Mirrors emitAttackIfImportant: cast evidence first, then
+		// build/train fill from the epicenter window. attackUnitsCombined
+		// is read-only over the per-attacker sample buffers.
+		attackUnits := e.attackUnitsCombined(c)
 
 		reasons := []string{}
 		if !attackedAlready[c.Attacker] {

@@ -438,7 +438,7 @@ func allMarkers() []Marker {
 			FeatureKey:    "made_recalls",
 			Kind:          KindMarker,
 			Race:          RaceProtoss,
-			Custom:        func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "recall"} },
+			Custom:        func() CustomEvaluator { return &firstCastEvaluator{subject: "Recall"} },
 			RuleDeadline:  endOfReplaySentinel,
 			SummaryPlayer: &Pill{Label: "Made recalls at min {minute}"},
 			GamesList:     &Pill{Label: "Recalls", IconKey: "arbiter"},

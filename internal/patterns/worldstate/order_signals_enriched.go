@@ -41,9 +41,9 @@ func AttackSustainAfterOpen(ec cmdenrich.EnrichedCommand) bool {
 }
 
 // castIsAggressive mirrors the donor's classifyCastByName. Returns false
-// for utility casts (Restoration, Hallucination, Recall, ScannerSweep,
-// DefensiveMatrix). Returns true for the standard offensive casts and
-// for the nuke-launch family.
+// for utility casts (Restoration, Hallucination, ScannerSweep,
+// DefensiveMatrix). Returns true for the standard offensive casts, the
+// nuke-launch family, and Recall (Arbiter-driven aggressive translocation).
 func castIsAggressive(orderName string) bool {
 	o := normalizeCastKey(orderName)
 	if o == "" {
@@ -52,8 +52,7 @@ func castIsAggressive(orderName string) bool {
 	if strings.Contains(o, "scanner") ||
 		strings.Contains(o, "defensivematrix") ||
 		strings.Contains(o, "restoration") ||
-		strings.Contains(o, "hallucination") ||
-		strings.Contains(o, "recall") {
+		strings.Contains(o, "hallucination") {
 		return false
 	}
 	if strings.HasPrefix(o, "cast") {

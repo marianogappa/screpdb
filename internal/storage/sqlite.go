@@ -983,7 +983,7 @@ func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, repla
 		batch := events[i:end]
 
 		valueStrings := make([]string, 0, len(batch))
-		valueArgs := make([]any, 0, len(batch)*10)
+		valueArgs := make([]any, 0, len(batch)*11)
 
 		for _, event := range batch {
 			eventType := normalizeEnumValue(event.EventType, allowedReplayEventTypes)
@@ -1032,12 +1032,22 @@ func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, repla
 				}
 			}
 
+			var attackCastCounts *string
+			if len(event.AttackCastCounts) > 0 {
+				payload, err := json.Marshal(event.AttackCastCounts)
+				if err != nil {
+					return fmt.Errorf("failed to marshal replay event cast counts: %w", err)
+				}
+				text := string(payload)
+				attackCastCounts = &text
+			}
+
 			var locationMineralOnly *bool
 			if event.LocationMineralOnly != nil && *event.LocationMineralOnly {
 				locationMineralOnly = event.LocationMineralOnly
 			}
 
-			valueStrings = append(valueStrings, "(?, ?, 'game_event', ?, ?, ?, ?, ?, ?, ?, ?)")
+			valueStrings = append(valueStrings, "(?, ?, 'game_event', ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 			valueArgs = append(valueArgs,
 				replayID,
 				event.Second,
@@ -1049,6 +1059,7 @@ func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, repla
 				sourcePlayerID,
 				targetPlayerID,
 				attackUnitTypes,
+				attackCastCounts,
 			)
 		}
 
@@ -1068,7 +1079,8 @@ func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, repla
 				location_mineral_only,
 				source_player_id,
 				target_player_id,
-				attack_unit_types
+				attack_unit_types,
+				attack_cast_counts
 			)
 			VALUES %s
 		`, strings.Join(valueStrings, ", "))
