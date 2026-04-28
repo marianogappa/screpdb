@@ -7,30 +7,39 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/marianogappa/screpdb/internal/cmdenrich"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/utils"
 	"github.com/samber/lo"
 )
 
 const (
-	ownershipTimeoutSec = 3 * 60
-	contestedSwitchSec  = 45
-	// On a starting base, require this many enemy builds within contestedInvadeBuildWindowSec before contested takeover.
-	minContestedBuildSignalsOnStart = 3
-	contestedInvadeBuildWindowSec   = 180
-	rushWindowSec                   = 300
-	zerglingRushSec                 = 140
-	zergRushObserveSec              = 120
-	rushBuildWindowSec              = 4 * 60
+	rushWindowSec      = 300
+	zerglingRushSec    = 140
+	zergRushObserveSec = 120
+	rushBuildWindowSec = 4 * 60
 	// Max distance from a rush build command to an enemy base center when the point is outside the base polygon (map polygons often miss ramp cannons).
 	rushBuildSnapToEnemyBaseCenterPx = 10 * 32
 	proxyFactoryWindowSec            = 5 * 60
-	attackUnitsWindowSec             = 180
-	eventDedupWindowSec              = 60
-	attackCutoffSec                  = 20 * 60
-	neutralPID                       = byte(255)
-	commandRadiusMul                 = 1.25
-	radiusSafety                     = 0.98
+	// Build/train evidence for an attack at second S is collected from
+	// the window centered at S - attackUnitsEpicenterOffsetSec, expanded
+	// attackUnitsPastSec into the past and attackUnitsFutureSec into the
+	// future. The epicenter ~45s before the attack matches the typical
+	// "units are already on their way" delay; the past arm reaches deep
+	// enough to cover an army that was massed and then sent out, while
+	// the short future arm catches reinforcements.
+	attackUnitsEpicenterOffsetSec = 45
+	attackUnitsPastSec            = 120
+	attackUnitsFutureSec          = 30
+	// castSamplesRetentionSec bounds memory for the per-attacker cast
+	// sample buffer. Casts older than this many seconds before the
+	// current stream second are dropped — well outside any plausible
+	// attack pressure window.
+	castSamplesRetentionSec = 600
+	eventDedupWindowSec     = 60
+	neutralPID              = byte(255)
+	commandRadiusMul        = 1.25
+	radiusSafety            = 0.98
 )
 
 type NarrativeEntry struct {
@@ -79,11 +88,24 @@ type ReplayEvent struct {
 	LocationNaturalOfClock *int
 	LocationMineralOnly    *bool
 	AttackUnitTypes        []string
+	// AttackCastCounts is a per-cast-name tally of every aggressive cast
+	// that landed inside the attack pressure window for "attack" events.
+	// Keyed by the canonical cast subject (e.g. "PsionicStorm", "Plague",
+	// "Recall"). Empty / nil for non-attack events.
+	AttackCastCounts map[string]int
 }
 
 type attackUnitSample struct {
 	Second   int
 	UnitType string
+}
+
+// castSample records a single aggressive cast issued by a given attacker
+// at a given stream second. Used to derive ground-truth caster-unit
+// presence (and per-cast cardinalities) for attack events.
+type castSample struct {
+	Second    int
+	OrderName string
 }
 
 type zergRushCandidate struct {
@@ -117,52 +139,55 @@ type Engine struct {
 	teams   map[byte]byte
 	left    map[byte]bool
 
-	bases        []base
-	ownerByBase  []byte
-	lastOwningAt []map[byte]int
+	bases       []base
+	ownerByBase []byte
 
 	startBaseByPID     map[byte]int
 	naturalBaseByPID   map[byte]int
 	naturalOwnerByBase map[int]byte
-	playerExpanded     map[byte]map[int]bool
 	playerBecameRace   map[byte]map[string]bool
 
-	attackRanges          *attackRangeTracker
 	attackUnitsByPID      map[byte][]attackUnitSample
+	castsByPID            map[byte][]castSample
 	lastEventByKey        map[string]int
 	zergRushCandidates    map[byte]*zergRushCandidate
 	zergRushEmitted       map[byte]bool
 	marineTrainCountByPID map[byte]int
 	humanPlayerIDs        []byte
 
-	// contestedInvadeBuildSeconds lists invader build seconds on an enemy starting base (key "baseIdx|invaderPID") within contestedInvadeBuildWindowSec.
-	contestedInvadeBuildTimes map[string][]int
-
 	entries      []NarrativeEntry
 	replayEvents []ReplayEvent
+
+	// Batch pipeline state. ProcessCommand appends to stream /
+	// streamCommands; Finalize runs the ownership / attacks / rush passes
+	// and populates entries / replayEvents.
+	stream         []cmdenrich.EnrichedCommand
+	streamCommands []*models.Command
+	polygonGeoms   []PolygonGeom
+	leaveSec       map[byte]int
+	finalized      bool
 }
 
 func NewEngine(replay *models.Replay, players []*models.Player, mapCtx *models.ReplayMapContext) *Engine {
 	e := &Engine{
-		replay:                    replay,
-		players:                   map[byte]*models.Player{},
-		teams:                     map[byte]byte{},
-		left:                      map[byte]bool{},
-		startBaseByPID:            map[byte]int{},
-		naturalBaseByPID:          map[byte]int{},
-		naturalOwnerByBase:        map[int]byte{},
-		playerExpanded:            map[byte]map[int]bool{},
-		playerBecameRace:          map[byte]map[string]bool{},
-		attackRanges:              newAttackRangeTracker(),
-		attackUnitsByPID:          map[byte][]attackUnitSample{},
-		lastEventByKey:            map[string]int{},
-		zergRushCandidates:        map[byte]*zergRushCandidate{},
-		zergRushEmitted:           map[byte]bool{},
-		marineTrainCountByPID:     map[byte]int{},
-		humanPlayerIDs:            []byte{},
-		contestedInvadeBuildTimes: map[string][]int{},
-		entries:                   make([]NarrativeEntry, 0, 256),
-		replayEvents:              make([]ReplayEvent, 0, 256),
+		replay:                replay,
+		players:               map[byte]*models.Player{},
+		teams:                 map[byte]byte{},
+		left:                  map[byte]bool{},
+		startBaseByPID:        map[byte]int{},
+		naturalBaseByPID:      map[byte]int{},
+		naturalOwnerByBase:    map[int]byte{},
+		playerBecameRace:      map[byte]map[string]bool{},
+		attackUnitsByPID:      map[byte][]attackUnitSample{},
+		castsByPID:            map[byte][]castSample{},
+		lastEventByKey:        map[string]int{},
+		zergRushCandidates:    map[byte]*zergRushCandidate{},
+		zergRushEmitted:       map[byte]bool{},
+		marineTrainCountByPID: map[byte]int{},
+		humanPlayerIDs:        []byte{},
+		entries:               make([]NarrativeEntry, 0, 256),
+		replayEvents:          make([]ReplayEvent, 0, 256),
+		leaveSec:              map[byte]int{},
 	}
 	for _, p := range players {
 		e.players[p.PlayerID] = p
@@ -219,35 +244,100 @@ func NewEngine(replay *models.Replay, players []*models.Player, mapCtx *models.R
 	enlargeStartBaseRadii(e.bases, radiusSafety)
 
 	e.ownerByBase = make([]byte, len(e.bases))
-	e.lastOwningAt = make([]map[byte]int, len(e.bases))
 	for i := range e.bases {
 		e.ownerByBase[i] = neutralPID
-		e.lastOwningAt[i] = map[byte]int{}
 	}
 	for pid, bi := range e.startBaseByPID {
 		e.ownerByBase[bi] = pid
-		e.lastOwningAt[bi][pid] = 0
 	}
 
 	e.assignDisplayNames()
-	e.emitPlayerStartEvents()
 	return e
 }
 
 func (e *Engine) Entries() []NarrativeEntry {
+	e.Finalize()
 	out := make([]NarrativeEntry, len(e.entries))
 	copy(out, e.entries)
 	return out
 }
 
 func (e *Engine) ReplayEvents() []ReplayEvent {
-	endSecond := 0
-	if e.replay != nil {
-		endSecond = e.replay.DurationSeconds
-	}
-	e.finalizeZergRushCandidates(endSecond, true)
+	e.Finalize()
 	out := make([]ReplayEvent, len(e.replayEvents))
 	copy(out, e.replayEvents)
+	return out
+}
+
+// Finalize runs the v2 batch pipeline: ownership pass, attacks pass,
+// rush/proxy/race-change pass over the buffered stream, then composes
+// final entries / replayEvents with the attack-importance filter.
+//
+// Idempotent — safe to call from multiple lazy-finalize entry points.
+// No-op if invoked before any commands were buffered AND there are no
+// bases (the legacy path returned empty in that case anyway).
+func (e *Engine) Finalize() {
+	if e.finalized {
+		return
+	}
+	e.finalized = true
+
+	var ownership []PolyOwnership
+	var candidates []CandidateAttack
+
+	if len(e.bases) > 0 {
+		e.polygonGeoms = polygonGeomFromBases(e.bases)
+		starts := e.buildPlayerStarts()
+
+		durationSec := 0
+		if e.replay != nil {
+			durationSec = e.replay.DurationSeconds
+		}
+
+		ownership = BuildOwnership(e.stream, e.polygonGeoms, starts, durationSec)
+		candidates = BuildAttacks(e.stream, e.polygonGeoms, ownership)
+
+		e.emitPlayerStartEvents()
+	}
+
+	// runRushPass walks the buffered stream. Race-switch detection works
+	// without bases; the rush/proxy emits inside guard on base lookups
+	// returning -1, so the pass is safe to run even with empty bases.
+	e.runRushPass(ownership)
+
+	if len(e.bases) > 0 {
+		e.emitOwnershipTransitions(ownership)
+	}
+	e.emitLeaveGameEvents()
+	e.emitAttackCandidates(candidates)
+
+	endSec := 0
+	if e.replay != nil {
+		endSec = e.replay.DurationSeconds
+	}
+	e.finalizeZergRushCandidates(endSec, true)
+
+	sort.SliceStable(e.entries, func(i, j int) bool {
+		return e.entries[i].Second < e.entries[j].Second
+	})
+	sort.SliceStable(e.replayEvents, func(i, j int) bool {
+		return e.replayEvents[i].Second < e.replayEvents[j].Second
+	})
+}
+
+func (e *Engine) buildPlayerStarts() []PlayerStart {
+	out := make([]PlayerStart, 0, len(e.startBaseByPID))
+	for pid, idx := range e.startBaseByPID {
+		if idx < 0 || idx >= len(e.bases) {
+			continue
+		}
+		b := e.bases[idx]
+		out = append(out, PlayerStart{
+			PlayerID: pid,
+			X:        int(b.CenterX),
+			Y:        int(b.CenterY),
+		})
+	}
 	return out
 }
 
@@ -309,34 +399,34 @@ func (e *Engine) NaturalExpansionForPlayer(playerID byte) (string, bool) {
 	return e.bases[baseIdx].DisplayName, true
 }
 
-// FirstEventSecondForPlayer returns the first second where the given event type
-// appears for the provided player in the narrative stream.
+// FirstEventSecondForPlayer returns the first second where the given event
+// type appears for the provided player in the replay-events stream.
+//
+// Matches by (EventType, SourceReplayPlayerID) for the typed event_type
+// values markers consume; the legacy description-prefix variants are
+// folded through the same path. Calls Finalize lazily.
 func (e *Engine) FirstEventSecondForPlayer(playerID byte, eventType string) *int {
-	name := e.playerName(playerID)
-	prefix := ""
+	e.Finalize()
 	switch eventType {
-	case "drop":
-		prefix = name + " drops on "
-	case "recall":
-		prefix = name + " recalls into "
-	case "nuke":
-		prefix = name + " nukes "
-	case "became_terran":
-		prefix = name + " became Terran"
-	case "became_zerg":
-		prefix = name + " became Zerg"
+	case "drop", "recall", "nuke", "became_terran", "became_zerg",
+		"reaver_drop", "dt_drop", "scout", "attack",
+		"cannon_rush", "bunker_rush", "zergling_rush",
+		"proxy_gate", "proxy_rax", "proxy_factory",
+		"expansion", "takeover", "location_inactive",
+		"player_start", "leave_game":
 	default:
 		return nil
 	}
 
-	for _, entry := range e.entries {
-		if entry.Type != eventType {
+	for _, ev := range e.replayEvents {
+		if ev.EventType != eventType {
 			continue
 		}
-		if strings.HasPrefix(entry.Description, prefix) {
-			sec := entry.Second
-			return &sec
+		if ev.SourceReplayPlayerID == nil || *ev.SourceReplayPlayerID != playerID {
+			continue
 		}
+		sec := ev.Second
+		return &sec
 	}
 	return nil
 }
@@ -344,6 +434,7 @@ func (e *Engine) FirstEventSecondForPlayer(playerID byte, eventType string) *int
 // FirstExpansionForPlayer returns the first expansion second and location text
 // for a player based on existing narrative expansion entries.
 func (e *Engine) FirstExpansionForPlayer(playerID byte) (*int, *string) {
+	e.Finalize()
 	name := e.playerName(playerID)
 	prefixExpands := name + " expands "
 	prefixExpandsTo := name + " expands to "
@@ -367,257 +458,33 @@ func (e *Engine) FirstExpansionForPlayer(playerID byte) (*int, *string) {
 	return nil, nil
 }
 
+// ProcessCommand buffers commands for the v2 batch pipeline. Real work
+// happens in Finalize. Keeps lifecycle bookkeeping (left / leaveSec) here
+// because rush detection later in the pass needs them for opponent-aware
+// gating.
 func (e *Engine) ProcessCommand(command *models.Command) {
 	if command == nil {
 		return
 	}
-
 	sec := command.SecondsFromGameStart
 	if sec < 0 {
 		sec = 0
 	}
-	e.finalizeZergRushCandidates(sec, false)
-
-	// Drop ownership on timeout/leave before applying command effects.
-	for bi := range e.ownerByBase {
-		owner := e.ownerByBase[bi]
-		if owner == neutralPID {
-			continue
+	if isLeaveAction(command.ActionType) {
+		if pid, ok := e.playerIDFromCommand(command); ok {
+			e.left[pid] = true
+			if _, exists := e.leaveSec[pid]; !exists {
+				e.leaveSec[pid] = sec
+			}
 		}
-		if e.left[owner] {
-			e.transitionOwnership(sec, bi, neutralPID, "left the game")
-			continue
-		}
-		if sec-e.lastOwningAt[bi][owner] > ownershipTimeoutSec {
-			e.transitionOwnership(sec, bi, neutralPID, "stopped owning actions")
-		}
+		return
 	}
-
-	pid, ok := e.playerIDFromCommand(command)
+	ec, ok := cmdenrich.Classify(command)
 	if !ok {
 		return
 	}
-	if isLeaveAction(command.ActionType) {
-		e.left[pid] = true
-		e.emitEvent("leave_game", sec, fmt.Sprintf("%s leaves the game", e.playerName(pid)), e.playerRef(pid), nil, -1, nil)
-		for bi, owner := range e.ownerByBase {
-			if owner == pid {
-				e.transitionOwnership(sec, bi, neutralPID, "left the game")
-			}
-		}
-		return
-	}
-	if e.left[pid] {
-		return
-	}
-	e.recordRecentAttackUnit(pid, sec, command)
-	e.recordMarineTraining(pid, sec, command)
-
-	e.processRaceSwitchEvent(command, pid, sec)
-	e.processZerglingRushEvent(command, pid, sec)
-
-	if len(e.bases) == 0 {
-		return
-	}
-
-	e.attackRanges.tickIdle(sec)
-
-	x, y, hasCoords := commandCoords(command)
-	if !hasCoords {
-		return
-	}
-
-	// Build/Land command positions are tile coordinates.
-	if isBuildLike(command.ActionType) {
-		x = tileToPixel(x)
-		y = tileToPixel(y)
-	}
-
-	biOwnership := pointToOwnershipBase(x, y, e.bases)
-	if biOwnership < 0 {
-		return
-	}
-	biEvent := pointToEventBase(x, y, e.bases)
-	if biEvent < 0 {
-		biEvent = biOwnership
-	}
-
-	owner := e.ownerByBase[biOwnership]
-	orderName := ""
-	if command.OrderName != nil {
-		orderName = *command.OrderName
-	}
-	unitType := ""
-	if command.UnitType != nil {
-		unitType = *command.UnitType
-	}
-
-	openingPressure := attackOpeningPressure(command.ActionType, command.OrderID, orderName)
-	sustainAttackRange := attackSustainAfterOpen(command.ActionType, command.OrderID, orderName)
-	zergPressure := enemyBasePressureForZergRush(command.ActionType, command.OrderID, orderName)
-	isBuild := isBuildLike(command.ActionType)
-	isTownHall := isTownHallUnit(unitType)
-	isDrop := isDropOrder(orderName)
-	isRecall := isRecallOrder(orderName)
-	isNuke := isNukeOrder(orderName)
-
-	owningSignal := false
-	if isBuild {
-		owningSignal = true
-	} else if owner == pid {
-		owningSignal = true
-	}
-	if owningSignal {
-		if owner == pid {
-			e.resetContestedInvadesForBase(biOwnership)
-		}
-		e.lastOwningAt[biOwnership][pid] = sec
-	}
-
-	// Rush detection must run before contested ownership transfer; otherwise a cannon on the
-	// opponent's main reassigns the base to the rusher and no enemy-owned polygon remains.
-	if isBuild {
-		e.tryEmitRushBuildEvents(command, pid, sec, x, y)
-	}
-
-	if owningSignal {
-		if owner == neutralPID {
-			e.transitionOwnership(sec, biOwnership, pid, "ownership claim")
-		} else if owner != pid {
-			invKey := contestedInvadeKey(biOwnership, pid)
-			if isBuild && biOwnership >= 0 && biOwnership < len(e.bases) && e.bases[biOwnership].IsStarting {
-				times := append(e.contestedInvadeBuildTimes[invKey], sec)
-				cutoff := sec - contestedInvadeBuildWindowSec
-				trimmed := trimIntsNotBefore(times, cutoff)
-				e.contestedInvadeBuildTimes[invKey] = trimmed
-			}
-			ownerLast := e.lastOwningAt[biOwnership][owner]
-			need := 1
-			if biOwnership >= 0 && biOwnership < len(e.bases) && e.bases[biOwnership].IsStarting {
-				need = minContestedBuildSignalsOnStart
-			}
-			invadeCount := 1
-			if need > 1 {
-				invadeCount = len(e.contestedInvadeBuildTimes[invKey])
-			}
-			invadeOK := need == 1 || invadeCount >= need
-			if sec-ownerLast > contestedSwitchSec && invadeOK {
-				takeoverSec := sec
-				if need > 1 && len(e.contestedInvadeBuildTimes[invKey]) >= need {
-					takeoverSec = e.contestedInvadeBuildTimes[invKey][0]
-				}
-				e.transitionOwnership(takeoverSec, biOwnership, pid, "ownership transfer")
-			}
-		}
-	}
-
-	if isTownHall {
-		if e.playerExpanded[pid] == nil {
-			e.playerExpanded[pid] = map[int]bool{}
-		}
-		if !e.playerExpanded[pid][biOwnership] {
-			if !e.bases[biOwnership].IsStarting {
-				where := e.decorateBaseDescriptionForPlayer(pid, biOwnership, e.bases[biOwnership].DisplayName)
-				e.emitEvent("expansion", sec, fmt.Sprintf("%s expands to %s", e.playerName(pid), where), e.playerRef(pid), nil, biOwnership, nil)
-			}
-			e.playerExpanded[pid][biOwnership] = true
-		}
-	}
-
-	owner = e.ownerByBase[biOwnership]
-	if isBuild {
-		e.tryEmitProxyBuildEvents(command, pid, sec, x, y, biEvent)
-	}
-	if zergPressure {
-		e.recordZergRushAttack(pid, sec, biEvent)
-	}
-	if owner == neutralPID || owner == pid || e.left[owner] || e.sameTeam(pid, owner) {
-		return
-	}
-	if sec <= attackCutoffSec {
-		key := attackRangeMapKey(pid, owner, biEvent)
-		if e.attackRanges.recordEnemyBaseCommand(key, sec, openingPressure, sustainAttackRange) {
-			attackUnitTypes := e.recentAttackUnitTypes(pid, sec)
-			if sec <= rushWindowSec && len(attackUnitTypes) == 0 {
-				scoutUnits := e.scoutPayloadUnitsFromCommand(pid, unitType)
-				eventBaseOwner := e.ownerByBase[biEvent]
-				if len(scoutUnits) > 0 && !e.sameTeam(pid, eventBaseOwner) {
-					e.emitEvent("scout", sec, fmt.Sprintf("%s scouts %s %s", e.playerName(pid), e.playerName(owner), e.bases[biEvent].DisplayName), e.playerRef(pid), e.playerRef(owner), biEvent, scoutUnits)
-				}
-			} else {
-				e.emitEvent("attack", sec, fmt.Sprintf("%s attacks %s %s", e.playerName(pid), e.playerName(owner), e.bases[biEvent].DisplayName), e.playerRef(pid), e.playerRef(owner), biEvent, attackUnitTypes)
-			}
-		}
-	}
-	if isDrop {
-		dropType := "drop"
-		dropUnitTypes := unitTypesFromCommand(command)
-		if hasUnitType(dropUnitTypes, models.GeneralUnitReaver) {
-			dropType = "reaver_drop"
-		} else if hasUnitType(dropUnitTypes, models.GeneralUnitDarkTemplar) {
-			dropType = "dt_drop"
-		}
-		e.emitEvent(dropType, sec, fmt.Sprintf("%s drops on %s %s", e.playerName(pid), e.playerName(owner), e.bases[biEvent].DisplayName), e.playerRef(pid), e.playerRef(owner), biEvent, dropUnitTypes)
-	}
-	if isRecall {
-		e.emitEvent("recall", sec, fmt.Sprintf("%s recalls into %s %s", e.playerName(pid), e.playerName(owner), e.bases[biEvent].DisplayName), e.playerRef(pid), e.playerRef(owner), biEvent, unitTypesFromCommand(command))
-	}
-	if isNuke {
-		e.emitEvent("nuke", sec, fmt.Sprintf("%s nukes %s %s", e.playerName(pid), e.playerName(owner), e.bases[biEvent].DisplayName), e.playerRef(pid), e.playerRef(owner), biEvent, unitTypesFromCommand(command))
-	}
-}
-
-func contestedInvadeKey(baseIdx int, invader byte) string {
-	return fmt.Sprintf("%d|%d", baseIdx, invader)
-}
-
-func trimIntsNotBefore(values []int, minSec int) []int {
-	i := 0
-	for i < len(values) && values[i] < minSec {
-		i++
-	}
-	if i == 0 {
-		return values
-	}
-	out := make([]int, 0, len(values)-i)
-	out = append(out, values[i:]...)
-	return out
-}
-
-func (e *Engine) resetContestedInvadesForBase(baseIdx int) {
-	if e.contestedInvadeBuildTimes == nil {
-		return
-	}
-	prefix := fmt.Sprintf("%d|", baseIdx)
-	for k := range e.contestedInvadeBuildTimes {
-		if strings.HasPrefix(k, prefix) {
-			delete(e.contestedInvadeBuildTimes, k)
-		}
-	}
-}
-
-func (e *Engine) transitionOwnership(sec int, baseIdx int, to byte, reason string) {
-	from := e.ownerByBase[baseIdx]
-	if from == to {
-		return
-	}
-	e.ownerByBase[baseIdx] = to
-	e.resetContestedInvadesForBase(baseIdx)
-	if to == neutralPID {
-		var losingPlayer *NarrativePlayerRef
-		if from != neutralPID {
-			losingPlayer = e.playerRef(from)
-		}
-		e.emitEvent("location_inactive", sec, fmt.Sprintf("%s loses %s", e.playerName(from), e.bases[baseIdx].DisplayName), losingPlayer, nil, baseIdx, nil)
-		return
-	}
-	_ = reason
-	where := e.decorateBaseDescriptionForPlayer(to, baseIdx, e.bases[baseIdx].DisplayName)
-	var target *NarrativePlayerRef
-	if from != neutralPID {
-		target = e.playerRef(from)
-	}
-	e.emitEvent("takeover", sec, fmt.Sprintf("%s takes over %s", e.playerName(to), where), e.playerRef(to), target, baseIdx, nil)
+	e.stream = append(e.stream, ec)
+	e.streamCommands = append(e.streamCommands, command)
 }
 
 func (e *Engine) emitEvent(eventType string, second int, description string, actor *NarrativePlayerRef, target *NarrativePlayerRef, baseIdx int, attackUnitTypes []string) {
@@ -720,39 +587,127 @@ func (e *Engine) recordRecentAttackUnit(pid byte, second int, command *models.Co
 	if unitType == "" {
 		return
 	}
-	samples := append(e.attackUnitsByPID[pid], attackUnitSample{Second: second, UnitType: unitType})
-	e.attackUnitsByPID[pid] = trimAttackSamples(samples, second)
+	e.attackUnitsByPID[pid] = append(e.attackUnitsByPID[pid], attackUnitSample{Second: second, UnitType: unitType})
 }
 
-func (e *Engine) recentAttackUnitTypes(pid byte, second int) []string {
-	samples := trimAttackSamples(e.attackUnitsByPID[pid], second)
-	e.attackUnitsByPID[pid] = samples
-	if len(samples) == 0 {
-		return nil
+// recordRecentCast appends an aggressive cast to the per-attacker cast
+// sample buffer. Non-aggressive utility casts (Restoration, Hallucination,
+// ScannerSweep, DefensiveMatrix) are skipped — they don't represent
+// combat presence.
+func (e *Engine) recordRecentCast(pid byte, second int, ec cmdenrich.EnrichedCommand) {
+	if ec.Kind != cmdenrich.KindCast {
+		return
 	}
-	unique := map[string]struct{}{}
-	unitTypes := make([]string, 0, len(samples))
-	for _, sample := range samples {
-		if _, ok := unique[sample.UnitType]; ok {
+	if !castIsAggressive(ec.OrderName) {
+		return
+	}
+	samples := e.castsByPID[pid]
+	cutoff := second - castSamplesRetentionSec
+	// Drop samples too old to ever be useful for any future attack-window
+	// query (the longest reach is the build/train epicenter past arm).
+	for len(samples) > 0 && samples[0].Second < cutoff {
+		samples = samples[1:]
+	}
+	samples = append(samples, castSample{Second: second, OrderName: ec.OrderName})
+	e.castsByPID[pid] = samples
+}
+
+// buildUnitsInEpicenterWindow returns distinct attacking-unit-build names
+// the given attacker issued inside the epicenter window for an attack at
+// `attackSec`. Window: [attackSec - epicOffset - past, attackSec - epicOffset + future].
+func (e *Engine) buildUnitsInEpicenterWindow(pid byte, attackSec int) []string {
+	epicenter := attackSec - attackUnitsEpicenterOffsetSec
+	lo := epicenter - attackUnitsPastSec
+	hi := epicenter + attackUnitsFutureSec
+	seen := map[string]struct{}{}
+	out := []string{}
+	for _, s := range e.attackUnitsByPID[pid] {
+		if s.Second < lo || s.Second > hi {
 			continue
 		}
-		unique[sample.UnitType] = struct{}{}
-		unitTypes = append(unitTypes, sample.UnitType)
+		if _, ok := seen[s.UnitType]; ok {
+			continue
+		}
+		seen[s.UnitType] = struct{}{}
+		out = append(out, s.UnitType)
 	}
-	sort.Strings(unitTypes)
-	return unitTypes
+	return out
 }
 
-func trimAttackSamples(samples []attackUnitSample, second int) []attackUnitSample {
-	if len(samples) == 0 {
+// attackUnitsCombined builds the attack event's unit_types list. Cast
+// evidence comes first (ground-truth: a Storm cast proves a High Templar
+// existed at that moment) — looked up over the full attack pressure
+// window. Build/train history fills in the rest from the epicenter
+// window. Result is sorted for stable downstream comparison.
+func (e *Engine) attackUnitsCombined(c CandidateAttack) []string {
+	seen := map[string]struct{}{}
+	out := []string{}
+	lo, hi := c.OpenSec, c.CloseSec
+	if hi < lo {
+		hi = lo
+	}
+	for _, cs := range e.castsByPID[c.Attacker] {
+		if cs.Second < lo || cs.Second > hi {
+			continue
+		}
+		unit, ok := casterUnitForCast(cs.OrderName)
+		if !ok || unit == "" {
+			continue
+		}
+		if _, exists := seen[unit]; exists {
+			continue
+		}
+		seen[unit] = struct{}{}
+		out = append(out, unit)
+	}
+	for _, u := range e.buildUnitsInEpicenterWindow(c.Attacker, c.Second) {
+		if _, exists := seen[u]; exists {
+			continue
+		}
+		seen[u] = struct{}{}
+		out = append(out, u)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// attackCastCounts tallies aggressive casts by the attacker inside the
+// attack pressure window. Keys are the canonical cast subject (Cast
+// prefix stripped, normalized name) — same shape used by the importance
+// filter's spell-novelty check.
+func (e *Engine) attackCastCounts(c CandidateAttack) map[string]int {
+	lo, hi := c.OpenSec, c.CloseSec
+	if hi < lo {
+		hi = lo
+	}
+	counts := map[string]int{}
+	for _, cs := range e.castsByPID[c.Attacker] {
+		if cs.Second < lo || cs.Second > hi {
+			continue
+		}
+		key := castSubjectFromOrderName(cs.OrderName)
+		if key == "" {
+			continue
+		}
+		counts[key]++
+	}
+	if len(counts) == 0 {
 		return nil
 	}
-	cutoff := second - attackUnitsWindowSec
-	trimmed := make([]attackUnitSample, 0, len(samples))
-	for _, sample := range samples {
-		if sample.Second >= cutoff {
-			trimmed = append(trimmed, sample)
-		}
+	return counts
+}
+
+// castSubjectFromOrderName strips the "Cast" prefix from raw OrderName
+// values so storage keys match the canonical Subject form used elsewhere
+// (e.g. "CastPsionicStorm" → "PsionicStorm", "CastRecall" → "Recall",
+// "NukeLaunch" → "NukeLaunch").
+func castSubjectFromOrderName(orderName string) string {
+	trimmed := strings.TrimSpace(orderName)
+	if trimmed == "" {
+		return ""
+	}
+	if strings.HasPrefix(trimmed, "Cast") && len(trimmed) > len("Cast") {
+		return trimmed[len("Cast"):]
 	}
 	return trimmed
 }

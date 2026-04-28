@@ -28,6 +28,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	detail.ReplayID = summary.ReplayID
 	detail.ReplayDate = summary.ReplayDate
 	detail.FileName = summary.FileName
+	detail.FilePath = summary.FilePath
 	detail.MapName = summary.MapName
 	detail.MapVisual = d.resolveWorkflowMapVisual(detail.ReplayID, summary.MapName, summary.FilePath, summary.FileChecksum)
 	detail.DurationSeconds = summary.DurationSeconds
@@ -222,6 +223,7 @@ func (d *Dashboard) buildWorkflowPlayerRecentGames(playerKey string) ([]workflow
 			MapName:         row.MapName,
 			DurationSeconds: row.DurationSeconds,
 			GameType:        row.GameType,
+			Matchup:         row.Matchup,
 			PlayersLabel:    row.PlayersLabel,
 			WinnersLabel:    row.WinnersLabel,
 		}
@@ -1893,7 +1895,14 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 		if _, ok := perSlice[sliceStart][playerID]; !ok {
 			perSlice[sliceStart][playerID] = map[string]int64{}
 		}
-		perSlice[sliceStart][playerID][unitType]++
+		// One Zergling Unit Morph command produces a pair of Zerglings
+		// from a single larva. Source rows have Count=1 per command, so
+		// double the increment for Zerglings.
+		inc := int64(1)
+		if unitType == models.GeneralUnitZergling {
+			inc = 2
+		}
+		perSlice[sliceStart][playerID][unitType] += inc
 	}
 	for i, sliceStart := range boundaries {
 		endExclusive := detail.DurationSeconds + 1
@@ -2097,6 +2106,123 @@ func (d *Dashboard) populateFirstUnitEfficiencyForGameDetail(detail *workflowGam
 	return nil
 }
 
+// zergBOEventSchema describes the per-BO event list shown in the Build
+// Orders detail tab for the simplified count-based Zerg BOs. Drones is
+// the ordered drone-morph count to render (1st, 2nd, ..., Nth Drone);
+// the boolean fields control whether to emit a Pool / Overlord / Hatchery
+// row. Pool/Overlord/Hatch ticks come from each player's command stream
+// at game-detail time (not persisted per detection).
+type zergBOEventSchema struct {
+	Drones      int
+	HasOverlord bool
+	HasPool     bool
+	HasHatchery bool
+}
+
+// buildZergBOEvents builds the per-event timeline rows for one of the
+// simplified Zerg BOs. Drone events are numbered (1st, 2nd, ..., Nth)
+// from the player's command stream; the optional Overlord / Pool /
+// Hatchery rows append the first observed time. Expert (golden) ranges
+// from the marker definition are attached when available, else NoExpert
+// is set so the frontend renders the actual tick alone.
+func buildZergBOEvents(schema zergBOEventSchema, bo *markers.Marker, t db.EarlyZergTimingsRow) []workflowMarkerEvent {
+	expertBySubject := map[string]*markers.ExpertEvent{}
+	for i := range bo.Expert {
+		e := &bo.Expert[i]
+		expertBySubject[e.Match.Subject] = e
+	}
+	events := make([]workflowMarkerEvent, 0, schema.Drones+3)
+
+	for i := 1; i <= schema.Drones; i++ {
+		ev := workflowMarkerEvent{
+			Key:      fmt.Sprintf("%d%s Drone", i, ordinalSuffix(i)),
+			Subject:  models.GeneralUnitDrone,
+			NoExpert: true,
+		}
+		if i-1 < len(t.DroneMorphSecs) {
+			ev.Found = true
+			ev.ActualSecond = int64(t.DroneMorphSecs[i-1])
+		}
+		events = append(events, ev)
+	}
+	if schema.HasOverlord {
+		ev := workflowMarkerEvent{Key: "Overlord", Subject: models.GeneralUnitOverlord, NoExpert: true}
+		if t.FirstOverlordSec != nil {
+			ev.Found = true
+			ev.ActualSecond = int64(*t.FirstOverlordSec)
+		}
+		events = append(events, ev)
+	}
+	if schema.HasPool {
+		ev := workflowMarkerEvent{Key: "Spawning Pool", Subject: models.GeneralUnitSpawningPool}
+		if t.FirstPoolSec != nil {
+			ev.Found = true
+			ev.ActualSecond = int64(*t.FirstPoolSec)
+		}
+		if exp, ok := expertBySubject[models.GeneralUnitSpawningPool]; ok {
+			ev.TargetSecond = int64(exp.TargetSecond)
+			ev.ToleranceEarlySeconds = int64(exp.Tolerance.EarlySeconds)
+			ev.ToleranceLateSeconds = int64(exp.Tolerance.LateSeconds)
+			if ev.Found {
+				ev.DeltaSeconds = ev.ActualSecond - ev.TargetSecond
+				ev.WithinTolerance = (ev.DeltaSeconds >= -ev.ToleranceEarlySeconds) &&
+					(ev.DeltaSeconds <= ev.ToleranceLateSeconds)
+			}
+		} else {
+			ev.NoExpert = true
+		}
+		events = append(events, ev)
+	}
+	if schema.HasHatchery {
+		ev := workflowMarkerEvent{Key: "Hatchery", Subject: models.GeneralUnitHatchery}
+		if t.FirstHatcherySec != nil {
+			ev.Found = true
+			ev.ActualSecond = int64(*t.FirstHatcherySec)
+		}
+		if exp, ok := expertBySubject[models.GeneralUnitHatchery]; ok {
+			ev.TargetSecond = int64(exp.TargetSecond)
+			ev.ToleranceEarlySeconds = int64(exp.Tolerance.EarlySeconds)
+			ev.ToleranceLateSeconds = int64(exp.Tolerance.LateSeconds)
+			if ev.Found {
+				ev.DeltaSeconds = ev.ActualSecond - ev.TargetSecond
+				ev.WithinTolerance = (ev.DeltaSeconds >= -ev.ToleranceEarlySeconds) &&
+					(ev.DeltaSeconds <= ev.ToleranceLateSeconds)
+			}
+		} else {
+			ev.NoExpert = true
+		}
+		events = append(events, ev)
+	}
+	return events
+}
+
+var zergBOEventSchemas = map[string]zergBOEventSchema{
+	"bo_4_pool":     {Drones: 0, HasPool: true},
+	"bo_9_pool":     {Drones: 5, HasPool: true},
+	"bo_9_overpool": {Drones: 5, HasOverlord: true, HasPool: true},
+	"bo_12_pool":    {Drones: 8, HasOverlord: true, HasPool: true},
+	"bo_9_hatch":    {Drones: 5, HasHatchery: true},
+	"bo_10_hatch":   {Drones: 6, HasOverlord: true, HasHatchery: true},
+	"bo_11_hatch":   {Drones: 7, HasOverlord: true, HasHatchery: true},
+	"bo_12_hatch":   {Drones: 8, HasOverlord: true, HasHatchery: true},
+}
+
+// ordinalSuffix returns the English ordinal suffix for an integer.
+func ordinalSuffix(n int) string {
+	if n%100 >= 11 && n%100 <= 13 {
+		return "th"
+	}
+	switch n % 10 {
+	case 1:
+		return "st"
+	case 2:
+		return "nd"
+	case 3:
+		return "rd"
+	}
+	return "th"
+}
+
 // populateMarkersForGameDetail walks each player's detected build-order
 // patterns and attaches one expert-vs-actual comparison entry per (player ×
 // detected BO) to the detail's Markers field. Actual milestone timings are
@@ -2110,6 +2236,16 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 	detail.Markers = []workflowMarkerPlayer{}
 	if len(detail.Players) == 0 {
 		return nil
+	}
+
+	// Per-player Zerg morph / build timings (queried once for the replay).
+	// Used to render simplified-Zerg BO events (drone-numbered ticks +
+	// pool / overlord / hatchery) without re-parsing the replay.
+	zergTimings := map[int64]db.EarlyZergTimingsRow{}
+	if rows, err := d.dbStore.LoadEarlyZergTimings(d.ctx, detail.ReplayID); err == nil {
+		for _, r := range rows {
+			zergTimings[r.PlayerID] = r
+		}
 	}
 
 	// Read pattern rows including their payload — payload carries the
@@ -2161,24 +2297,29 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 			if !ok {
 				continue
 			}
-			actuals := markers.DecodeExpertActuals([]byte(row.Payload))
-			events := make([]workflowMarkerEvent, 0, len(bo.Expert))
-			for idx, expert := range bo.Expert {
-				event := workflowMarkerEvent{
-					Key:                   expert.Key,
-					Subject:               expert.Match.Subject,
-					TargetSecond:          int64(expert.TargetSecond),
-					ToleranceEarlySeconds: int64(expert.Tolerance.EarlySeconds),
-					ToleranceLateSeconds:  int64(expert.Tolerance.LateSeconds),
+			var events []workflowMarkerEvent
+			if schema, isSimplifiedZerg := zergBOEventSchemas[bo.FeatureKey]; isSimplifiedZerg {
+				events = buildZergBOEvents(schema, bo, zergTimings[player.PlayerID])
+			} else {
+				actuals := markers.DecodeExpertActuals([]byte(row.Payload))
+				events = make([]workflowMarkerEvent, 0, len(bo.Expert))
+				for idx, expert := range bo.Expert {
+					event := workflowMarkerEvent{
+						Key:                   expert.Key,
+						Subject:               expert.Match.Subject,
+						TargetSecond:          int64(expert.TargetSecond),
+						ToleranceEarlySeconds: int64(expert.Tolerance.EarlySeconds),
+						ToleranceLateSeconds:  int64(expert.Tolerance.LateSeconds),
+					}
+					if idx < len(actuals) && actuals[idx].Found {
+						event.Found = true
+						event.ActualSecond = int64(actuals[idx].Second)
+						event.DeltaSeconds = event.ActualSecond - event.TargetSecond
+						event.WithinTolerance = (event.DeltaSeconds >= -event.ToleranceEarlySeconds) &&
+							(event.DeltaSeconds <= event.ToleranceLateSeconds)
+					}
+					events = append(events, event)
 				}
-				if idx < len(actuals) && actuals[idx].Found {
-					event.Found = true
-					event.ActualSecond = int64(actuals[idx].Second)
-					event.DeltaSeconds = event.ActualSecond - event.TargetSecond
-					event.WithinTolerance = (event.DeltaSeconds >= -event.ToleranceEarlySeconds) &&
-						(event.DeltaSeconds <= event.ToleranceLateSeconds)
-				}
-				events = append(events, event)
 			}
 			detail.Markers = append(detail.Markers, workflowMarkerPlayer{
 				PlayerID:   player.PlayerID,

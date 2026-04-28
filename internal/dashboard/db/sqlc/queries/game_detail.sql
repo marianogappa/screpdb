@@ -92,6 +92,7 @@ SELECT
   r.map_name,
   r.duration_seconds,
   r.game_type,
+  r.matchup,
   CAST(COALESCE((
     SELECT group_concat(name, ', ')
     FROM (

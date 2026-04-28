@@ -1912,6 +1912,31 @@ body {
   flex-shrink: 0;
 }
 
+.workflow-meta--filepath {
+  align-items: center;
+  gap: 8px;
+  margin-top: -4px;
+  font-size: 0.85em;
+  opacity: 0.78;
+}
+
+.workflow-meta-filepath-text {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.workflow-meta-filepath-copy {
+  flex-shrink: 0;
+  font-size: 0.85em;
+  padding: 2px 8px;
+}
+
 .btn-switch-see-replay {
   background: rgba(50, 160, 90, 0.45);
   border-color: rgba(90, 210, 130, 0.65);

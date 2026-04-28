@@ -18,61 +18,126 @@ func findBO(t *testing.T, name string) Marker {
 
 func TestBO_4Pool(t *testing.T) {
 	bo := findBO(t, "4 Pool")
-	// Positive: only pool, built at 33s, before any drone/overlord.
+	// Positive: only pool, no drone/overlord morphs. Timing irrelevant —
+	// the rule keys off exact morph counts, the Expert events compare
+	// against golden timings separately.
 	pos := factsBuilder().B(subjSpawningPool, 33).P(subjZergling, 85).list()
 	if !bo.Matches(pos) {
 		t.Fatalf("4 pool positive should match")
 	}
-	// Negative: drone before pool disqualifies 4 pool.
+	// Negative: drone before pool means count != 0.
 	neg := factsBuilder().P(subjDrone, 10).B(subjSpawningPool, 33).list()
 	if bo.Matches(neg) {
-		t.Fatalf("4 pool should fail if drone produced before pool")
-	}
-	// Negative: pool built too late (>= 60s).
-	late := factsBuilder().B(subjSpawningPool, 65).list()
-	if bo.Matches(late) {
-		t.Fatalf("4 pool should fail if pool built at/after 60s")
+		t.Fatalf("4 pool should fail with any drone before pool")
 	}
 }
 
 func TestBO_9Pool(t *testing.T) {
 	bo := findBO(t, "9 Pool")
-	// Positive: 9 drones then pool at 73.
+	// Positive: exactly 5 drone morphs before pool (4 starting + 5 = 9
+	// supply at Pool placement), no Overlord morph yet.
 	b := factsBuilder()
-	for i := 0; i < 9; i++ {
-		b.P(subjDrone, 5+i*3) // last drone around 29s, well before pool@73
+	for i := 0; i < 5; i++ {
+		b.P(subjDrone, 5+i*3)
 	}
 	pos := b.B(subjSpawningPool, 73).list()
 	if !bo.Matches(pos) {
-		t.Fatalf("9 pool should match drones-then-pool@73")
+		t.Fatalf("9 pool should match exactly 5 drones then pool")
 	}
-	// Negative: an overlord was produced before pool.
-	neg := factsBuilder().P(subjDrone, 10).P(subjOverlord, 30).B(subjSpawningPool, 73).list()
-	if bo.Matches(neg) {
-		t.Fatalf("9 pool should fail with overlord before pool")
+	// Negative: 5 drones + Overlord + Pool is the "9 Overpool" BO, not
+	// plain 9 Pool. See TestBO_9Overpool.
+	b = factsBuilder()
+	for i := 0; i < 5; i++ {
+		b.P(subjDrone, 5+i*3)
 	}
-	// Negative: no drones produced at all before pool.
+	withOvi := b.P(subjOverlord, 30).B(subjSpawningPool, 73).list()
+	if bo.Matches(withOvi) {
+		t.Fatalf("9 pool should NOT match when an Overlord precedes the Pool (that's 9 Overpool)")
+	}
+	// Negative: zero drones before pool.
 	neg2 := factsBuilder().B(subjSpawningPool, 73).list()
 	if bo.Matches(neg2) {
 		t.Fatalf("9 pool should fail without drones before pool")
 	}
-	// Negative: Hatch built before Pool — that's a hatch-first BO, not 9 Pool.
+	// Negative: 6 drones (would be 10 supply, not 9).
 	b2 := factsBuilder()
-	for i := 0; i < 9; i++ {
+	for i := 0; i < 6; i++ {
 		b2.P(subjDrone, 5+i*3)
 	}
-	neg3 := b2.B(subjHatchery, 70).B(subjSpawningPool, 95).list()
+	negCount := b2.B(subjSpawningPool, 73).list()
+	if bo.Matches(negCount) {
+		t.Fatalf("9 pool should fail with 6 drones (= 10 supply) before pool")
+	}
+	// Negative: Hatch built before Pool — that's a hatch-first BO.
+	b3 := factsBuilder()
+	for i := 0; i < 5; i++ {
+		b3.P(subjDrone, 5+i*3)
+	}
+	neg3 := b3.B(subjHatchery, 70).B(subjSpawningPool, 95).list()
 	if bo.Matches(neg3) {
 		t.Fatalf("9 pool should fail when Hatchery precedes Pool")
 	}
 	// Negative: Evolution Chamber before Pool.
-	b3 := factsBuilder()
-	for i := 0; i < 9; i++ {
-		b3.P(subjDrone, 5+i*3)
+	b4 := factsBuilder()
+	for i := 0; i < 5; i++ {
+		b4.P(subjDrone, 5+i*3)
 	}
-	neg4 := b3.B(subjEvolutionChamber, 60).B(subjSpawningPool, 95).list()
+	neg4 := b4.B(subjEvolutionChamber, 60).B(subjSpawningPool, 95).list()
 	if bo.Matches(neg4) {
 		t.Fatalf("9 pool should fail when Evolution Chamber precedes Pool")
+	}
+}
+
+func TestBO_9Overpool(t *testing.T) {
+	bo := findBO(t, "9 Overpool")
+	// Positive: 5 drone morphs + 1 Overlord (the "over"), then Pool.
+	b := factsBuilder()
+	for i := 0; i < 5; i++ {
+		b.P(subjDrone, 5+i*3)
+	}
+	pos := b.P(subjOverlord, 30).B(subjSpawningPool, 80).list()
+	if !bo.Matches(pos) {
+		t.Fatalf("9 overpool should match 5 drones + 1 overlord then pool")
+	}
+	// Negative: no Overlord — that's plain 9 Pool.
+	b2 := factsBuilder()
+	for i := 0; i < 5; i++ {
+		b2.P(subjDrone, 5+i*3)
+	}
+	neg := b2.B(subjSpawningPool, 73).list()
+	if bo.Matches(neg) {
+		t.Fatalf("9 overpool should NOT match without an Overlord (that's 9 Pool)")
+	}
+}
+
+func TestBO_12Pool(t *testing.T) {
+	bo := findBO(t, "12 Pool")
+	// Positive: 8 drone morphs + 1 Overlord before Pool.
+	b := factsBuilder()
+	for i := 0; i < 8; i++ {
+		b.P(subjDrone, 5+i*3)
+	}
+	pos := b.P(subjOverlord, 35).B(subjSpawningPool, 104).list()
+	if !bo.Matches(pos) {
+		t.Fatalf("12 pool should match 8 drones + 1 overlord then pool")
+	}
+	// Negative: 7 drones (= 11 supply, not 12).
+	b3 := factsBuilder()
+	for i := 0; i < 7; i++ {
+		b3.P(subjDrone, 5+i*3)
+	}
+	neg2 := b3.P(subjOverlord, 35).B(subjSpawningPool, 104).list()
+	if bo.Matches(neg2) {
+		t.Fatalf("12 pool should fail with 7 drones (= 11 supply)")
+	}
+	// Negative: missing Overlord (cap-blocked at 9, can't reach 12).
+	b4 := factsBuilder()
+	for i := 0; i < 8; i++ {
+		b4.P(subjDrone, 5+i*3)
+	}
+	neg3 := b4.B(subjSpawningPool, 104).list()
+	if bo.Matches(neg3) {
+		t.Fatalf("12 pool should fail without an Overlord before pool")
 	}
 }
 
@@ -98,22 +163,69 @@ func TestBO_9PoolIntoHatchery(t *testing.T) {
 	}
 }
 
+func TestBO_10Hatch(t *testing.T) {
+	bo := findBO(t, "10 Hatch")
+	// Positive: 6 drone morphs + 1 Overlord, then Hatch (no Pool yet).
+	b := factsBuilder()
+	for i := 0; i < 6; i++ {
+		b.P(subjDrone, 5+i*3)
+	}
+	pos := b.P(subjOverlord, 30).B(subjHatchery, 80).list()
+	if !bo.Matches(pos) {
+		t.Fatalf("10 hatch should match 6 drones + 1 overlord then hatch")
+	}
+	// Negative: Pool first.
+	b2 := factsBuilder()
+	for i := 0; i < 6; i++ {
+		b2.P(subjDrone, 5+i*3)
+	}
+	neg := b2.P(subjOverlord, 30).B(subjSpawningPool, 60).B(subjHatchery, 80).list()
+	if bo.Matches(neg) {
+		t.Fatalf("10 hatch should fail when Pool precedes Hatch")
+	}
+}
+
+func TestBO_11Hatch(t *testing.T) {
+	bo := findBO(t, "11 Hatch")
+	// Positive: 7 drone morphs + 1 Overlord, then Hatch.
+	b := factsBuilder()
+	for i := 0; i < 7; i++ {
+		b.P(subjDrone, 5+i*3)
+	}
+	pos := b.P(subjOverlord, 30).B(subjHatchery, 94).list()
+	if !bo.Matches(pos) {
+		t.Fatalf("11 hatch should match 7 drones + 1 overlord then hatch")
+	}
+	// Negative: 8 drones (= 12 supply, would be 12 Hatch).
+	b2 := factsBuilder()
+	for i := 0; i < 8; i++ {
+		b2.P(subjDrone, 5+i*3)
+	}
+	neg := b2.P(subjOverlord, 30).B(subjHatchery, 98).list()
+	if bo.Matches(neg) {
+		t.Fatalf("11 hatch should fail with 8 drones (= 12 supply)")
+	}
+}
+
 func TestBO_12Hatch(t *testing.T) {
 	bo := findBO(t, "12 Hatch")
-	// Positive: hatch at 98, pool at 116.
-	pos := factsBuilder().B(subjHatchery, 98).B(subjSpawningPool, 116).list()
+	// Positive: 8 drone morphs + 1 Overlord, then Hatch.
+	b := factsBuilder()
+	for i := 0; i < 8; i++ {
+		b.P(subjDrone, 5+i*3)
+	}
+	pos := b.P(subjOverlord, 35).B(subjHatchery, 98).list()
 	if !bo.Matches(pos) {
-		t.Fatalf("12 hatch should match hatch-before-pool")
+		t.Fatalf("12 hatch should match 8 drones + 1 overlord then hatch")
 	}
 	// Negative: pool first.
-	neg := factsBuilder().B(subjSpawningPool, 73).B(subjHatchery, 118).list()
+	b2 := factsBuilder()
+	for i := 0; i < 8; i++ {
+		b2.P(subjDrone, 5+i*3)
+	}
+	neg := b2.P(subjOverlord, 35).B(subjSpawningPool, 73).B(subjHatchery, 118).list()
 	if bo.Matches(neg) {
 		t.Fatalf("12 hatch should fail when pool precedes hatch")
-	}
-	// Negative: hatch too late.
-	neg2 := factsBuilder().B(subjHatchery, 160).list()
-	if bo.Matches(neg2) {
-		t.Fatalf("12 hatch should fail when hatch after 2m30s")
 	}
 }
 
@@ -170,7 +282,7 @@ func TestResolveExpert_ComputesDeltasAndTolerance(t *testing.T) {
 	// Pool actual 78s (target 73, late by 5; within tol=4? No → out).
 	// First Zergling at 120 (target 123, early by 3; within tol=3 → in).
 	b := factsBuilder()
-	for i := 0; i < 9; i++ {
+	for i := 0; i < 5; i++ {
 		b.P(subjDrone, 5+i*3)
 	}
 	s := b.B(subjSpawningPool, 78).P(subjZergling, 120).list()

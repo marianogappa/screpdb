@@ -41,6 +41,44 @@ func (e *worldstateFirstEventEvaluator) Finalize(ctx CustomEvalContext) CustomRe
 }
 
 // -----------------------------------------------------------------------------
+// firstCastEvaluator: matches the first second the player issues a cast
+// whose canonical Subject equals the configured value. Used by "Made
+// recalls" — recall casts no longer surface as standalone game events
+// (folded into the attack-pressure path), so the marker reads the
+// command stream directly.
+// -----------------------------------------------------------------------------
+
+type firstCastEvaluator struct {
+	subject  string
+	firstSec int
+	matched  bool
+}
+
+func (e *firstCastEvaluator) Observe(f cmdenrich.EnrichedCommand) {
+	if e.matched {
+		return
+	}
+	if f.Kind != cmdenrich.KindCast {
+		return
+	}
+	if f.Subject != e.subject {
+		return
+	}
+	e.firstSec = f.Second
+	e.matched = true
+}
+
+func (e *firstCastEvaluator) Finalize(_ CustomEvalContext) CustomResult {
+	if !e.matched {
+		return CustomResult{}
+	}
+	return CustomResult{
+		Matched:          true,
+		DetectedAtSecond: e.firstSec,
+	}
+}
+
+// -----------------------------------------------------------------------------
 // viewportMultitaskingEvaluator: migrates ViewportMultitaskingPlayerDetector.
 // Tracks viewport-level coordinate jumps in the middle window of the replay.
 // Emits a formatted switches-per-minute string (ValueString), matching the
@@ -78,8 +116,6 @@ func (v *viewportMultitaskingEvaluator) Observe(f cmdenrich.EnrichedCommand) {
 	if f.Second < v.windowStartSec {
 		return
 	}
-	// Buffer coordinates; actual window end depends on replay duration known
-	// only at Finalize.
 	v.observed = append(v.observed, viewportSample{second: f.Second, x: *f.X, y: *f.Y})
 }
 

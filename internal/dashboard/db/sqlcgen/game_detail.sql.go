@@ -175,6 +175,7 @@ SELECT
   r.map_name,
   r.duration_seconds,
   r.game_type,
+  r.matchup,
   CAST(COALESCE((
     SELECT group_concat(name, ', ')
     FROM (
@@ -203,6 +204,7 @@ type ListPlayerRecentGamesRow struct {
 	MapName         string
 	DurationSeconds int64
 	GameType        string
+	Matchup         string
 	PlayersLabel    string
 	WinnersLabel    string
 }
@@ -223,6 +225,7 @@ func (q *Queries) ListPlayerRecentGames(ctx context.Context, name string) ([]Lis
 			&i.MapName,
 			&i.DurationSeconds,
 			&i.GameType,
+			&i.Matchup,
 			&i.PlayersLabel,
 			&i.WinnersLabel,
 		); err != nil {

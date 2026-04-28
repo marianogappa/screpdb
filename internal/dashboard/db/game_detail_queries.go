@@ -75,6 +75,7 @@ type PlayerRecentGameRow struct {
 	MapName         string
 	DurationSeconds int64
 	GameType        string
+	Matchup         string
 	PlayersLabel    string
 	WinnersLabel    string
 }
@@ -214,6 +215,7 @@ func (s *Store) ListPlayerRecentGames(ctx context.Context, playerKey string) ([]
 			MapName:         row.MapName,
 			DurationSeconds: row.DurationSeconds,
 			GameType:        row.GameType,
+			Matchup:         row.Matchup,
 			PlayersLabel:    row.PlayersLabel,
 			WinnersLabel:    row.WinnersLabel,
 		})

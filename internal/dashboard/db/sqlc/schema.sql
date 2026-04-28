@@ -26,7 +26,8 @@ CREATE TABLE replays (
   replay_date TEXT NOT NULL,
   map_name TEXT NOT NULL,
   duration_seconds INTEGER NOT NULL,
-  game_type TEXT NOT NULL
+  game_type TEXT NOT NULL,
+  matchup TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE players (

@@ -628,6 +628,7 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 			MapName:         row.MapName,
 			DurationSeconds: row.DurationSeconds,
 			GameType:        row.GameType,
+			Matchup:         row.Matchup,
 			Players:         []workflowGameListPlayer{},
 			Featuring:       []string{},
 		})

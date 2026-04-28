@@ -34,8 +34,9 @@ func findBOForTest(t *testing.T, name string) markers.Marker {
 
 func TestMarkerDetector_9Pool_Positive(t *testing.T) {
 	builder := NewTestReplayBuilder().WithPlayer(1, "Z", "Zerg", 1)
-	// 9 drones before pool, no overlord, pool at 73.
-	for i := 0; i < 9; i++ {
+	// 9 Pool BO: 5 drone morphs (4 starting + 5 = 9 supply), no Overlord
+	// before Pool, Pool placed at second 73.
+	for i := 0; i < 5; i++ {
 		builder.WithCommand(1, 5+i*3, models.ActionTypeUnitMorph, models.GeneralUnitDrone)
 	}
 	builder.WithCommand(1, 73, models.ActionTypeBuild, models.GeneralUnitSpawningPool)

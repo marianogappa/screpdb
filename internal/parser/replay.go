@@ -2,9 +2,13 @@ package parser
 
 import (
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/icza/screp/rep/repcmd"
+	"github.com/marianogappa/screpdb/internal/earlyfilter"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser/commands"
 	"github.com/marianogappa/screpdb/internal/patterns"
@@ -12,8 +16,26 @@ import (
 	"github.com/marianogappa/screpdb/internal/utils"
 )
 
-// ParseReplay parses a StarCraft: Brood War replay file and returns structured data
+// Options controls optional behaviour of ParseReplayWithOptions. The
+// zero-value runs the early-game spam filter without writing any debug
+// trace.
+type Options struct {
+	// EarlyFilterDebugDir, when non-empty, makes the early-game spam
+	// filter dump a per-replay JSON trace into this directory. See
+	// internal/earlyfilter for the trace format.
+	EarlyFilterDebugDir string
+}
+
+// ParseReplay parses a StarCraft: Brood War replay file and returns
+// structured data. Equivalent to ParseReplayWithOptions with default Options.
 func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, error) {
+	return ParseReplayWithOptions(filePath, fileInfo, Options{})
+}
+
+// ParseReplayWithOptions is the configurable entry point. The early-game
+// spam filter always runs; opts.EarlyFilterDebugDir controls only the
+// optional JSON debug trace.
+func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Options) (*models.ReplayData, error) {
 	// Parse the replay file using the real screp library
 	rep, err := screp.ParseFile(filePath)
 	if err != nil {
@@ -66,6 +88,15 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 				SlotID: sl.SlotID,
 			})
 		}
+	}
+
+	switch {
+	case data.Replay.GameType == "Use map settings":
+		data.Replay.MapKind = "UseMapSettings"
+	case rep.MapData != nil && len(rep.MapData.MineralFields) > 0 && rep.MapData.MineralFields[0].Amount > 10000:
+		data.Replay.MapKind = "Money"
+	default:
+		data.Replay.MapKind = "Regular"
 	}
 	if layout, err := buildMapContextLayoutFromReplay(filePath); err == nil && layout != nil {
 		data.MapContext.Layout = layout
@@ -129,6 +160,7 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 	}
 
 	data.Replay.Players = data.Players
+	data.Replay.TeamFormat, data.Replay.Matchup = computeTeamFormatAndMatchup(data.Players)
 
 	// Initialize pattern detection orchestrator
 	patternOrchestrator := patterns.NewOrchestrator()
@@ -169,17 +201,72 @@ func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, 
 				}
 
 				data.Commands = append(data.Commands, command)
-
-				// Process command through pattern detection
-				patternOrchestrator.ProcessCommand(command)
 			}
 		}
+	}
+
+	// Run the early-game spam filter before pattern detection so the
+	// orchestrator only sees commands the filter believes were real.
+	filterResult := earlyfilter.Apply(data.Replay, data.Players, data.MapContext, data.Commands, earlyfilter.Options{
+		DebugDir: opts.EarlyFilterDebugDir,
+	})
+	data.Commands = filterResult.Commands
+
+	// Feed the filtered command stream through pattern detection.
+	for _, command := range data.Commands {
+		patternOrchestrator.ProcessCommand(command)
 	}
 
 	// Store pattern orchestrator in data for later use
 	data.PatternOrchestrator = patternOrchestrator
 
 	return data, nil
+}
+
+// computeTeamFormatAndMatchup derives team_format (e.g. "1v1", "2v2", "2v2v2") and
+// matchup (e.g. "PvT", "PTvZZ") from player race+team. Observers are excluded.
+// Within each team, race initials are sorted lex; teams are then sorted lex.
+// Team sizes in team_format are sorted descending.
+func computeTeamFormatAndMatchup(players []*models.Player) (string, string) {
+	teams := map[byte][]string{}
+	for _, p := range players {
+		if p.IsObserver {
+			continue
+		}
+		teams[p.Team] = append(teams[p.Team], p.Race)
+	}
+	if len(teams) == 0 {
+		return "", ""
+	}
+
+	sizes := make([]int, 0, len(teams))
+	teamRaces := make([]string, 0, len(teams))
+	for _, races := range teams {
+		sizes = append(sizes, len(races))
+		initials := make([]byte, 0, len(races))
+		for _, r := range races {
+			initials = append(initials, raceInitial(r))
+		}
+		sort.Slice(initials, func(i, j int) bool { return initials[i] < initials[j] })
+		teamRaces = append(teamRaces, string(initials))
+	}
+	sort.Sort(sort.Reverse(sort.IntSlice(sizes)))
+	sort.Strings(teamRaces)
+
+	parts := make([]string, len(sizes))
+	for i, s := range sizes {
+		parts[i] = strconv.Itoa(s)
+	}
+	return strings.Join(parts, "v"), strings.Join(teamRaces, "v")
+}
+
+// raceInitial returns the first letter of the race name (P/T/Z/R/U). Falls back
+// to '?' for empty input.
+func raceInitial(race string) byte {
+	if race == "" {
+		return '?'
+	}
+	return race[0]
 }
 
 // CreateReplayFromFileInfo creates a Replay model from file information

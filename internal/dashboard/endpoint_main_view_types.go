@@ -241,8 +241,12 @@ var workflowFeaturingFilters = []struct {
 	// Build order pills — keys & labels kept in sync with internal/markers.
 	{Key: "bo_4_pool", Label: "4 Pool"},
 	{Key: "bo_9_pool", Label: "9 Pool"},
+	{Key: "bo_9_overpool", Label: "9 Overpool"},
+	{Key: "bo_12_pool", Label: "12 Pool"},
 	{Key: "bo_9_pool_hatch", Label: "9 Pool into Hatchery"},
 	{Key: "bo_9_hatch", Label: "9 Hatch"},
+	{Key: "bo_10_hatch", Label: "10 Hatch"},
+	{Key: "bo_11_hatch", Label: "11 Hatch"},
 	{Key: "bo_12_hatch", Label: "12 Hatch"},
 	{Key: "bo_nexus_first", Label: "Nexus First"},
 	{Key: "bo_forge_expa", Label: "Forge Expand"},
@@ -291,6 +295,7 @@ type workflowGameDetail struct {
 	ReplayID             int64                                    `json:"replay_id"`
 	ReplayDate           string                                   `json:"replay_date"`
 	FileName             string                                   `json:"file_name"`
+	FilePath             string                                   `json:"file_path"`
 	MapName              string                                   `json:"map_name"`
 	MapVisual            workflowMapVisual                        `json:"map_visual"`
 	MapWidthPixels       int64                                    `json:"map_width_pixels,omitempty"`
@@ -321,6 +326,11 @@ type workflowMarkerPlayer struct {
 	Events       []workflowMarkerEvent `json:"events"`
 }
 
+// workflowMarkerEvent is one row in the Build Orders timeline chart.
+// NoExpert=true rows are sourced from the player's command stream (drone
+// morph counts + pool/overlord/hatch first occurrences) rather than the
+// marker definition's Expert template — render them without the golden
+// tolerance band.
 type workflowMarkerEvent struct {
 	Key                   string `json:"key"`                     // e.g. "Spawning Pool"
 	Subject               string `json:"subject"`                 // canonical unit/building name for icon lookup (e.g. "Zergling")
@@ -331,6 +341,7 @@ type workflowMarkerEvent struct {
 	Found                 bool   `json:"found"`
 	DeltaSeconds          int64  `json:"delta_seconds"` // actual - target; + late, - early
 	WithinTolerance       bool   `json:"within_tolerance"`
+	NoExpert              bool   `json:"no_expert,omitempty"` // true = no golden range; render actual only
 }
 
 type workflowMapVisual struct {
