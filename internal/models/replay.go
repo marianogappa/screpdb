@@ -24,7 +24,10 @@ type Replay struct {
 	EngineVersion   string    `json:"engine_version"`
 	Engine          string    `json:"engine"`     // StarCraft or Brood War
 	GameSpeed       string    `json:"game_speed"` // Slowest, Slower, Slow, Normal, Fast, Faster, Fastest
-	GameType        string    `json:"game_type"`  // Melee, FFA, 1on1, CTF, etc.
+	GameType        string    `json:"game_type"`   // Melee, FFA, 1on1, CTF, etc.
+	MapKind         string    `json:"map_kind"`    // Regular, Money, UseMapSettings
+	TeamFormat      string    `json:"team_format"` // 1v1, 2v2, 3v3, 2v2v2, 2v2v2v2, etc.
+	Matchup         string    `json:"matchup"`     // PvT, PvZ, PTvZZ, etc. Race initials sorted within team, teams sorted lex.
 	AvailSlotsCount byte      `json:"avail_slots_count"`
 	// On Melee & Free for all this is always 1, and on Top vs Bottom it's what the game creator set for the home team.
 	HomeTeamSize uint16 `json:"home_team_size"` // Team size

@@ -109,6 +109,7 @@ type Replay struct {
 	MapName         string
 	DurationSeconds int64
 	GameType        string
+	Matchup         string
 }
 
 type ReplayEvent struct {

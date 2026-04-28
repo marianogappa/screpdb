@@ -222,6 +222,7 @@ func (d *Dashboard) buildWorkflowPlayerRecentGames(playerKey string) ([]workflow
 			MapName:         row.MapName,
 			DurationSeconds: row.DurationSeconds,
 			GameType:        row.GameType,
+			Matchup:         row.Matchup,
 			PlayersLabel:    row.PlayersLabel,
 			WinnersLabel:    row.WinnersLabel,
 		}

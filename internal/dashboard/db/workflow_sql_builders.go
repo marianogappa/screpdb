@@ -140,52 +140,31 @@ func BuildWorkflowGamesListWhere(playerKeys, mapNames, durationBuckets, featurin
 	return "WHERE " + strings.Join(clauses, " AND "), args
 }
 
-// buildMatchupClause emits an EXISTS-based predicate that matches replays
-// whose two non-observer humans' races form one of the requested matchup keys.
-// The key is race initials sorted alphabetically ("tvz", "pvz"), so TvZ==ZvT
-// collapses naturally and the SQL doesn't need to enumerate both orders.
+// buildMatchupClause filters replays by the canonical matchup string stored on
+// `replays.matchup` (e.g. "PvT", "PvZ"). The frontend submits lowercase keys
+// like "pvz", so the comparison lower-cases the column. The DB column already
+// canonicalizes per-team and across-team race ordering (TvZ==ZvT collapse).
 func buildMatchupClause(matchupKeys []string) (string, []any) {
 	if len(matchupKeys) == 0 {
 		return "", nil
 	}
-	validKeys := map[string]struct {
-		a, b string
-	}{
-		"pvp": {"protoss", "protoss"},
-		"tvt": {"terran", "terran"},
-		"zvz": {"zerg", "zerg"},
-		"pvt": {"protoss", "terran"},
-		"pvz": {"protoss", "zerg"},
-		"tvz": {"terran", "zerg"},
+	validKeys := map[string]struct{}{
+		"pvp": {}, "tvt": {}, "zvz": {},
+		"pvt": {}, "pvz": {}, "tvz": {},
 	}
-	alts := []string{}
 	args := []any{}
 	for _, key := range matchupKeys {
-		pair, ok := validKeys[strings.ToLower(strings.TrimSpace(key))]
-		if !ok {
+		normalized := strings.ToLower(strings.TrimSpace(key))
+		if _, ok := validKeys[normalized]; !ok {
 			continue
 		}
-		// Players p1 and p2 must exist, be distinct, non-observers, and
-		// together carry exactly the requested (unordered) race pair.
-		alts = append(alts, `EXISTS (
-			SELECT 1 FROM players p1, players p2
-			WHERE p1.replay_id = r.id AND p2.replay_id = r.id
-				AND p1.id < p2.id
-				AND p1.is_observer = 0 AND p2.is_observer = 0
-				AND ((lower(trim(p1.race)) = ? AND lower(trim(p2.race)) = ?)
-					OR (lower(trim(p1.race)) = ? AND lower(trim(p2.race)) = ?))
-				AND NOT EXISTS (
-					SELECT 1 FROM players p3
-					WHERE p3.replay_id = r.id AND p3.is_observer = 0
-						AND p3.id NOT IN (p1.id, p2.id)
-				)
-		)`)
-		args = append(args, pair.a, pair.b, pair.b, pair.a)
+		args = append(args, normalized)
 	}
-	if len(alts) == 0 {
+	if len(args) == 0 {
 		return "", nil
 	}
-	return "(" + strings.Join(alts, " OR ") + ")", args
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(args)), ",")
+	return "lower(r.matchup) IN (" + placeholders + ")", args
 }
 
 // uiFeatureKeyToMarkerFeatureKey bridges the frontend filter keys (short aliases

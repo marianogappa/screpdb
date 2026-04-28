@@ -16,6 +16,7 @@ type WorkflowGameListRow struct {
 	MapName         string
 	DurationSeconds int64
 	GameType        string
+	Matchup         string
 }
 
 type WorkflowGamePlayerRow struct {
@@ -82,7 +83,8 @@ func (s *Store) ListGamesWithWhere(ctx context.Context, whereSQL string, whereAr
 			r.file_name,
 			r.map_name,
 			r.duration_seconds,
-			r.game_type
+			r.game_type,
+			r.matchup
 		FROM replays r
 	`+whereSQL+`
 		ORDER BY r.replay_date DESC, r.id DESC
@@ -103,6 +105,7 @@ func (s *Store) ListGamesWithWhere(ctx context.Context, whereSQL string, whereAr
 			&item.MapName,
 			&item.DurationSeconds,
 			&item.GameType,
+			&item.Matchup,
 		); err != nil {
 			return nil, err
 		}

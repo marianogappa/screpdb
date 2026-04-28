@@ -304,8 +304,8 @@ func (s *SQLiteStorage) insertReplaySequentialTx(ctx context.Context, db dbtx, r
 	query := `
 		INSERT INTO replays (
 			file_path, file_checksum, file_name, created_at, replay_date, title, host, map_name, map_width, map_height,
-			duration_seconds, frame_count, engine_version, engine, game_speed, game_type, home_team_size, avail_slots_count
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			duration_seconds, frame_count, engine_version, engine, game_speed, game_type, map_kind, team_format, matchup, home_team_size, avail_slots_count
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	res, err := db.ExecContext(ctx, query,
@@ -325,6 +325,9 @@ func (s *SQLiteStorage) insertReplaySequentialTx(ctx context.Context, db dbtx, r
 		replay.Engine,
 		replay.GameSpeed,
 		replay.GameType,
+		replay.MapKind,
+		replay.TeamFormat,
+		replay.Matchup,
 		fmt.Sprintf("%d", replay.HomeTeamSize),
 		int32(replay.AvailSlotsCount),
 	)
