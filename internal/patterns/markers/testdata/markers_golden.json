@@ -3,7 +3,7 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 12 Hatch",
+        "pattern_name": "Build Order: 11 Hatch",
         "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"found\":false}]}"
       },
       {
@@ -42,7 +42,7 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 12 Hatch",
+        "pattern_name": "Build Order: 11 Hatch",
         "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"found\":false}]}"
       },
       {
@@ -149,11 +149,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 9 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":74,\"found\":true},{\"found\":false}]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Made drops",
         "value": "691"
       },
@@ -185,6 +180,11 @@
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":16.544117647058822}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"found\":false}]}"
       },
       {
         "replay_player_id": 1,
@@ -269,7 +269,7 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 12 Hatch",
+        "pattern_name": "Build Order: 11 Hatch",
         "value": "{\"expert_actuals\":[{\"second\":98,\"found\":true},{\"found\":false}]}"
       },
       {

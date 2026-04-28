@@ -30,6 +30,12 @@ type Config struct {
 	HandleSignals    bool
 	UseColor         bool
 	Logger           *Logger
+
+	// EarlyFilterDebugDir, when non-empty, makes the early-game spam
+	// filter dump a per-replay JSON trace into this directory. Sourced
+	// from the SCREPDB_EARLY_FILTER_DEBUG_DIR env var by cmd/ingest.go;
+	// not user-facing.
+	EarlyFilterDebugDir string
 }
 
 func Run(ctx context.Context, cfg Config) error {
@@ -54,6 +60,11 @@ func Run(ctx context.Context, cfg Config) error {
 	}
 
 	return runBatchMode(ctx, store, cfg, logger)
+}
+
+// parserOptions translates ingest.Config into parser.Options.
+func parserOptions(cfg Config) parser.Options {
+	return parser.Options{EarlyFilterDebugDir: cfg.EarlyFilterDebugDir}
 }
 
 func withDefaults(cfg Config) Config {
@@ -112,7 +123,7 @@ func runWatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 
 			// Process file concurrently
 			g.Go(func() error {
-				if err := processFileToChannel(gCtx, dataChan, &fileInfo); err != nil {
+				if err := processFileToChannel(gCtx, dataChan, &fileInfo, parserOptions(cfg)); err != nil {
 					logger.Errorf("Error processing file %s: %v", fileInfo.Name, err)
 					return nil // Don't stop processing on errors
 				}
@@ -220,7 +231,7 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 			fileInfo := fileInfo // capture loop variable
 
 			g.Go(func() error {
-				if err := processFileToChannel(gCtx, dataChan, &fileInfo); err != nil {
+				if err := processFileToChannel(gCtx, dataChan, &fileInfo, parserOptions(cfg)); err != nil {
 					logger.Errorf("Error processing file %s: %v", fileInfo.Name, err)
 					mu.Lock()
 					errors++
@@ -279,12 +290,12 @@ func batchCheckExistingReplays(ctx context.Context, store storage.Storage, files
 	return allFiltered, nil
 }
 
-func processFileToChannel(ctx context.Context, dataChan storage.ReplayDataChannel, fileInfo *fileops.FileInfo) error {
+func processFileToChannel(ctx context.Context, dataChan storage.ReplayDataChannel, fileInfo *fileops.FileInfo, opts parser.Options) error {
 	// Create replay model from file info
 	replay := parser.CreateReplayFromFileInfo(fileInfo.Path, fileInfo.Name, fileInfo.Size, fileInfo.Checksum)
 
 	// Parse the replay
-	data, err := parser.ParseReplay(fileInfo.Path, replay)
+	data, err := parser.ParseReplayWithOptions(fileInfo.Path, replay, opts)
 	if err != nil {
 		return fmt.Errorf("failed to parse replay: %w", err)
 	}

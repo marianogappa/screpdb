@@ -73,3 +73,20 @@ WHERE c.player_id = ?
 GROUP BY c.action_type
 ORDER BY n DESC
 LIMIT ?;
+
+-- name: ListEarlyZergMorphsForBOTimings :many
+SELECT
+  c.player_id,
+  c.action_type,
+  c.unit_type,
+  c.seconds_from_game_start,
+  c.frame
+FROM commands c
+JOIN players p ON p.id = c.player_id
+WHERE c.replay_id = ?
+  AND p.race = 'Zerg'
+  AND p.is_observer = 0
+  AND c.seconds_from_game_start < 600
+  AND c.action_type IN ('Unit Morph', 'Build')
+  AND c.unit_type IN ('Drone', 'Overlord', 'Spawning Pool', 'Hatchery')
+ORDER BY c.player_id, c.frame;

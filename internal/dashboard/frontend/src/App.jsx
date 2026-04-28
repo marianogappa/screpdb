@@ -4236,6 +4236,23 @@ function App() {
                     {mainGameSeeLoading ? 'Copying…' : 'Stage watch replay'}
                   </button>
                 </div>
+                {mainGame.file_path ? (
+                  <div className="workflow-meta workflow-meta--filepath">
+                    <code className="workflow-meta-filepath-text" title={mainGame.file_path}>{mainGame.file_path}</code>
+                    <button
+                      type="button"
+                      className="btn-switch workflow-meta-filepath-copy"
+                      title="Copy replay file path to clipboard"
+                      onClick={() => {
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                          navigator.clipboard.writeText(mainGame.file_path);
+                        }
+                      }}
+                    >
+                      Copy path
+                    </button>
+                  </div>
+                ) : null}
                 <div className="workflow-game-tab-stack">
                   <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label="Game report sections">
                     <button

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/ingest"
@@ -46,18 +47,19 @@ func runIngest(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	cfg := ingest.Config{
-		InputDir:         inputDir,
-		SQLitePath:       sqlitePath,
-		Watch:            watch,
-		StoreRightClicks: storeRightClicks,
-		SkipHotkeys:      skipHotkeys,
-		StopAfterN:       stopAfterN,
-		UpToDate:         upToDate,
-		UpToMonths:       upToMonths,
-		Clean:            clean,
-		CleanDashboard:   cleanDashboard,
-		HandleSignals:    true,
-		UseColor:         true,
+		InputDir:            inputDir,
+		SQLitePath:          sqlitePath,
+		Watch:               watch,
+		StoreRightClicks:    storeRightClicks,
+		SkipHotkeys:         skipHotkeys,
+		StopAfterN:          stopAfterN,
+		UpToDate:            upToDate,
+		UpToMonths:          upToMonths,
+		Clean:               clean,
+		CleanDashboard:      cleanDashboard,
+		HandleSignals:       true,
+		UseColor:            true,
+		EarlyFilterDebugDir: os.Getenv("SCREPDB_EARLY_FILTER_DEBUG_DIR"),
 	}
 
 	if err := ingest.Run(ctx, cfg); err != nil {

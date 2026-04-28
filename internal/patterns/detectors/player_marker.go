@@ -67,6 +67,12 @@ func (d *MarkerPlayerDetector) ProcessCommand(command *models.Command) bool {
 	if !d.ShouldProcessCommand(command) {
 		return false
 	}
+	if d.IsFinished() {
+		// Rule already committed Matched/Rejected (or marker finalized at
+		// deadline). Trailing commands must be ignored; in particular the
+		// dedup map is nil after commit and would panic on insert.
+		return true
+	}
 	if d.marker.Race != "" && !isPlayerRace(d.GetPlayers(), d.GetReplayPlayerID(), string(d.marker.Race)) {
 		d.commitRejected()
 		return true

@@ -34,11 +34,15 @@ function BuildOrderTimelineRows({ group }) {
     let minSecond = Infinity;
     let maxSecond = -Infinity;
     events.forEach((e) => {
-      const target = Number(e.target_second) || 0;
-      const early = Number(e.tolerance_early_seconds) || 0;
-      const late = Number(e.tolerance_late_seconds) || 0;
-      minSecond = Math.min(minSecond, target - early);
-      maxSecond = Math.max(maxSecond, target + late);
+      // Expert-backed rows contribute target ± tolerance to the bounds;
+      // count-only rows (no_expert) only have an actual timing.
+      if (!e.no_expert) {
+        const target = Number(e.target_second) || 0;
+        const early = Number(e.tolerance_early_seconds) || 0;
+        const late = Number(e.tolerance_late_seconds) || 0;
+        minSecond = Math.min(minSecond, target - early);
+        maxSecond = Math.max(maxSecond, target + late);
+      }
       if (e.found) {
         const actual = Number(e.actual_second) || 0;
         minSecond = Math.min(minSecond, actual);
@@ -59,7 +63,7 @@ function BuildOrderTimelineRows({ group }) {
   if (prepared.events.length === 0) return null;
 
   const chartWidth = 980;
-  const leftPadding = 120;
+  const leftPadding = 150;
   const rightPadding = 40;
   const topPadding = 34;
   const bottomPadding = 42;
@@ -106,15 +110,18 @@ function BuildOrderTimelineRows({ group }) {
       <div ref={wrapperRef} className="workflow-timing-chart-wrap">
         <svg className="workflow-timing-scatter" viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="xMinYMin meet">
           {prepared.events.map((entry, idx) => {
+            const noExpert = Boolean(entry.no_expert);
             const target = Number(entry.target_second) || 0;
             const early = Number(entry.tolerance_early_seconds) || 0;
             const late = Number(entry.tolerance_late_seconds) || 0;
             const actual = Number(entry.actual_second) || 0;
             const withinTolerance = Boolean(entry.within_tolerance);
             const found = Boolean(entry.found);
-            const actualColor = found
-              ? (withinTolerance ? 'rgba(34, 197, 94, 0.95)' : 'rgba(239, 68, 68, 0.95)')
-              : 'rgba(148, 163, 184, 0.6)';
+            const actualColor = noExpert
+              ? 'rgba(148, 197, 230, 0.95)' // neutral blue — no golden range to compare against
+              : (found
+                ? (withinTolerance ? 'rgba(34, 197, 94, 0.95)' : 'rgba(239, 68, 68, 0.95)')
+                : 'rgba(148, 163, 184, 0.6)');
             const iconURL = getUnitIcon(entry.subject || entry.key);
             const rowY = yAt(idx);
             return (
@@ -128,18 +135,31 @@ function BuildOrderTimelineRows({ group }) {
                   stroke="rgba(255,255,255,0.1)"
                   strokeWidth="1"
                 />
-                {/* Row label: icon */}
+                {/* Row label: icon + key text. Both are shown so ordinal
+                    drone rows ("1st Drone", "5th Drone", ...) are
+                    legible alongside the unit icon. */}
                 {iconURL ? (
-                  <image
-                    href={iconURL}
-                    xlinkHref={iconURL}
-                    x={leftPadding - iconSize - 12}
-                    y={rowY - iconSize / 2}
-                    width={iconSize}
-                    height={iconSize}
-                  >
-                    <title>{entry.key}</title>
-                  </image>
+                  <>
+                    <image
+                      href={iconURL}
+                      xlinkHref={iconURL}
+                      x={leftPadding - iconSize - 6}
+                      y={rowY - iconSize / 2}
+                      width={iconSize}
+                      height={iconSize}
+                    >
+                      <title>{entry.key}</title>
+                    </image>
+                    <text
+                      x={leftPadding - iconSize - 12}
+                      y={rowY + 4}
+                      textAnchor="end"
+                      fill="rgba(255,255,255,0.85)"
+                      fontSize="11"
+                    >
+                      {entry.key}
+                    </text>
+                  </>
                 ) : (
                   <text
                     x={leftPadding - 10}
@@ -151,41 +171,46 @@ function BuildOrderTimelineRows({ group }) {
                     {entry.key}
                   </text>
                 )}
-                {/* Tolerance band (expert target ± tol) */}
-                <line
-                  x1={xAt(target - early)}
-                  y1={rowY}
-                  x2={xAt(target + late)}
-                  y2={rowY}
-                  stroke="rgba(251, 191, 36, 0.35)"
-                  strokeWidth="14"
-                  strokeLinecap="round"
-                />
-                {/* Expert target marker */}
-                <g
-                  onMouseEnter={(e) => updateHover(e, {
-                    pointKind: 'Expert target',
-                    eventKey: entry.key,
-                    time: target,
-                    tol: `±${early === late ? early : `${early}/${late}`}s`,
-                  })}
-                  onMouseMove={(e) => updateHover(e, {
-                    pointKind: 'Expert target',
-                    eventKey: entry.key,
-                    time: target,
-                    tol: `±${early === late ? early : `${early}/${late}`}s`,
-                  })}
-                  onMouseLeave={() => setHover(null)}
-                >
-                  <line
-                    x1={xAt(target)}
-                    y1={rowY - 9}
-                    x2={xAt(target)}
-                    y2={rowY + 9}
-                    stroke="rgba(251, 191, 36, 1)"
-                    strokeWidth="2"
-                  />
-                </g>
+                {/* Tolerance band + expert target marker — only for rows
+                    with a golden Expert target (NoExpert rows render only
+                    the actual tick). */}
+                {!noExpert ? (
+                  <>
+                    <line
+                      x1={xAt(target - early)}
+                      y1={rowY}
+                      x2={xAt(target + late)}
+                      y2={rowY}
+                      stroke="rgba(251, 191, 36, 0.35)"
+                      strokeWidth="14"
+                      strokeLinecap="round"
+                    />
+                    <g
+                      onMouseEnter={(e) => updateHover(e, {
+                        pointKind: 'Expert target',
+                        eventKey: entry.key,
+                        time: target,
+                        tol: `±${early === late ? early : `${early}/${late}`}s`,
+                      })}
+                      onMouseMove={(e) => updateHover(e, {
+                        pointKind: 'Expert target',
+                        eventKey: entry.key,
+                        time: target,
+                        tol: `±${early === late ? early : `${early}/${late}`}s`,
+                      })}
+                      onMouseLeave={() => setHover(null)}
+                    >
+                      <line
+                        x1={xAt(target)}
+                        y1={rowY - 9}
+                        x2={xAt(target)}
+                        y2={rowY + 9}
+                        stroke="rgba(251, 191, 36, 1)"
+                        strokeWidth="2"
+                      />
+                    </g>
+                  </>
+                ) : null}
                 {/* Actual marker: dotted vertical guide + icon + time label */}
                 {found ? (
                   <>

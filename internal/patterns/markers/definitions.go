@@ -64,6 +64,13 @@ var defaultTol = Sym(5)
 // order doesn't trip on cross-file references.
 func allMarkers() []Marker {
 	return []Marker{
+		// Pool-first BOs are keyed off exact pre-Pool Drone-morph and
+		// Overlord-morph counts. The early-game spam filter (internal/
+		// earlyfilter) strips engine-impossible morphs so the surviving
+		// stream is a faithful supply count: 4 starting drones + N kept
+		// Drone morphs. Hatchery / Evolution Chamber must not precede
+		// the Pool, else it's a hatch-first BO. Timings live in the
+		// Expert events (UI golden compare) only.
 		{
 			Name:        "4 Pool",
 			PatternName: "Build Order: 4 Pool",
@@ -71,14 +78,11 @@ func allMarkers() []Marker {
 			Race:        RaceZerg,
 			Kind:        KindInitialBuildOrder,
 			Rule: All(
-				// "no drones nor overlords before Spawning Pool"
-				NoProduceBeforeBuild(subjDrone, subjSpawningPool),
-				NoProduceBeforeBuild(subjOverlord, subjSpawningPool),
-				// Pool-tech openings: no Hatch / Evo Chamber may precede the Pool.
+				// 4 Pool = supply 4 at Pool placement: 0 drones, 0 overlords.
+				ProduceCountBeforeBuild(subjDrone, subjSpawningPool, 0),
+				ProduceCountBeforeBuild(subjOverlord, subjSpawningPool, 0),
 				Not(BuildBefore(subjHatchery, subjSpawningPool)),
 				Not(BuildBefore(subjEvolutionChamber, subjSpawningPool)),
-				// "Spawning Pool built before 1 minute"
-				FirstBuildBefore(subjSpawningPool, 60),
 			),
 			RuleDeadline: 60,
 			Expert: []ExpertEvent{
@@ -106,23 +110,19 @@ func allMarkers() []Marker {
 			Race:        RaceZerg,
 			Kind:        KindInitialBuildOrder,
 			Rule: All(
-				// "player makes drones but no overlords before Spawning Pool"
-				ProduceBeforeBuild(subjDrone, subjSpawningPool),
-				NoProduceBeforeBuild(subjOverlord, subjSpawningPool),
-				// Pool-tech opening: no Hatch / Evo Chamber before the Pool.
-				// (Otherwise the replay is a hatch-first BO, not 9 Pool.)
+				// 9 Pool = supply 9 at Pool placement: 5 drone morphs and
+				// no Overlord yet (Overlord follows the Pool). The 9-
+				// Overpool variant — same drone count but with the
+				// Overlord already morphed — is its own BO.
+				ProduceCountBeforeBuild(subjDrone, subjSpawningPool, 5),
+				ProduceCountBeforeBuild(subjOverlord, subjSpawningPool, 0),
 				Not(BuildBefore(subjHatchery, subjSpawningPool)),
 				Not(BuildBefore(subjEvolutionChamber, subjSpawningPool)),
-				// No fast Hatchery follow-up — that's "9 Pool into Hatchery",
-				// kept mutually exclusive from plain 9 Pool.
+				// Mutex with "9 Pool into Hatchery" — fast follow-up Hatch
+				// belongs to that BO, not plain 9 Pool.
 				Not(BuildAfterWithin(subjHatchery, subjSpawningPool, 60)),
-				// Pool must be between the fast end of the expert range (73-3=70)
-				// and 2 minutes. The lower bound prevents 4-Pool-ish timings
-				// from being classified as 9 Pool.
-				FirstBuildAtOrAfter(subjSpawningPool, 70),
-				FirstBuildBefore(subjSpawningPool, 120),
 			),
-			RuleDeadline: 180, // covers Hatch follow-up check up to Pool+60s.
+			RuleDeadline: 180,
 			Expert: []ExpertEvent{
 				{
 					Key:          "Spawning Pool",
@@ -139,6 +139,72 @@ func allMarkers() []Marker {
 			},
 			SummaryPlayer: &Pill{Label: "9 Pool", IconKey: "spawningpool"},
 			GamesList:     &Pill{Label: "9 Pool", IconKey: "spawningpool"},
+		},
+		{
+			Name:        "9 Overpool",
+			PatternName: "Build Order: 9 Overpool",
+			FeatureKey:  "bo_9_overpool",
+			Race:        RaceZerg,
+			Kind:        KindInitialBuildOrder,
+			Rule: All(
+				// 9 Overpool = supply 9 at Pool placement, but the
+				// Overlord was morphed before the Pool (vs plain 9 Pool
+				// where Pool comes first). Same 5 Drone morphs.
+				ProduceCountBeforeBuild(subjDrone, subjSpawningPool, 5),
+				ProduceCountBeforeBuild(subjOverlord, subjSpawningPool, 1),
+				Not(BuildBefore(subjHatchery, subjSpawningPool)),
+				Not(BuildBefore(subjEvolutionChamber, subjSpawningPool)),
+			),
+			RuleDeadline: 180,
+			Expert: []ExpertEvent{
+				{
+					Key:          "Spawning Pool",
+					Match:        MatchBuild(subjSpawningPool),
+					TargetSecond: 80,
+					Tolerance:    Sym(5),
+				},
+				{
+					Key:          "First Zerglings",
+					Match:        MatchFirstProduce(subjZergling),
+					TargetSecond: secAfter(80, models.BuildTimeSpawningPool),
+					Tolerance:    Sym(4),
+				},
+			},
+			SummaryPlayer: &Pill{Label: "9 Overpool", IconKey: "spawningpool"},
+			GamesList:     &Pill{Label: "9 Overpool", IconKey: "spawningpool"},
+		},
+		{
+			Name:        "12 Pool",
+			PatternName: "Build Order: 12 Pool",
+			FeatureKey:  "bo_12_pool",
+			Race:        RaceZerg,
+			Kind:        KindInitialBuildOrder,
+			Rule: All(
+				// 12 Pool = supply 12 at Pool: 4 starting + 8 drone
+				// morphs + 1 Overlord (Overlord required to lift the
+				// supply cap past 9 to reach 12).
+				ProduceCountBeforeBuild(subjDrone, subjSpawningPool, 8),
+				ProduceCountBeforeBuild(subjOverlord, subjSpawningPool, 1),
+				Not(BuildBefore(subjHatchery, subjSpawningPool)),
+				Not(BuildBefore(subjEvolutionChamber, subjSpawningPool)),
+			),
+			RuleDeadline: 180,
+			Expert: []ExpertEvent{
+				{
+					Key:          "Spawning Pool",
+					Match:        MatchBuild(subjSpawningPool),
+					TargetSecond: 104,
+					Tolerance:    Sym(5),
+				},
+				{
+					Key:          "First Zerglings",
+					Match:        MatchFirstProduce(subjZergling),
+					TargetSecond: secAfter(104, models.BuildTimeSpawningPool),
+					Tolerance:    Sym(4),
+				},
+			},
+			SummaryPlayer: &Pill{Label: "12 Pool", IconKey: "spawningpool"},
+			GamesList:     &Pill{Label: "12 Pool", IconKey: "spawningpool"},
 		},
 		{
 			Name:        "9 Pool into Hatchery",
@@ -186,11 +252,13 @@ func allMarkers() []Marker {
 			Race:        RaceZerg,
 			Kind:        KindInitialBuildOrder,
 			Rule: All(
-				// Hatch before Pool, within the hatch-first window.
-				BuildBefore(subjHatchery, subjSpawningPool),
-				// Upper bound = 12 Hatch's earliest acceptable Hatchery timing
-				// (98 - 5 = 93). Keeps 9 Hatch and 12 Hatch mutually exclusive.
-				FirstBuildBefore(subjHatchery, 93),
+				// 9 Hatch first = supply 9 at Hatch placement: 5 drone
+				// morphs, no Overlord yet (supply cap 9 blocks further
+				// morphs anyway). Pool / Evo Chamber must not precede.
+				ProduceCountBeforeBuild(subjDrone, subjHatchery, 5),
+				ProduceCountBeforeBuild(subjOverlord, subjHatchery, 0),
+				Not(BuildBefore(subjSpawningPool, subjHatchery)),
+				Not(BuildBefore(subjEvolutionChamber, subjHatchery)),
 			),
 			RuleDeadline: 150,
 			Expert: []ExpertEvent{
@@ -210,6 +278,71 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{Label: "9 Hatch", IconKey: "hatchery"},
 			GamesList:     &Pill{Label: "9 Hatch", IconKey: "hatchery"},
 		},
+		// Hatch-first BOs are keyed off exact pre-Hatch drone / overlord
+		// counts. Spawning Pool / Evolution Chamber must not precede the
+		// expansion Hatchery (else it'd be a Pool-tech opening). All
+		// three of 10 / 11 / 12 Hatch require an Overlord first because
+		// reaching supply >9 demands cap expansion.
+		{
+			Name:        "10 Hatch",
+			PatternName: "Build Order: 10 Hatch",
+			FeatureKey:  "bo_10_hatch",
+			Race:        RaceZerg,
+			Kind:        KindInitialBuildOrder,
+			Rule: All(
+				ProduceCountBeforeBuild(subjDrone, subjHatchery, 6),
+				ProduceCountBeforeBuild(subjOverlord, subjHatchery, 1),
+				Not(BuildBefore(subjSpawningPool, subjHatchery)),
+				Not(BuildBefore(subjEvolutionChamber, subjHatchery)),
+			),
+			RuleDeadline: 180,
+			Expert: []ExpertEvent{
+				{
+					Key:          "Hatchery",
+					Match:        MatchBuild(subjHatchery),
+					TargetSecond: 80,
+					Tolerance:    defaultTol,
+				},
+				{
+					Key:          "Spawning Pool",
+					Match:        MatchBuild(subjSpawningPool),
+					TargetSecond: 110,
+					Tolerance:    Asym(3, 10),
+				},
+			},
+			SummaryPlayer: &Pill{Label: "10 Hatch", IconKey: "hatchery"},
+			GamesList:     &Pill{Label: "10 Hatch", IconKey: "hatchery"},
+		},
+		{
+			Name:        "11 Hatch",
+			PatternName: "Build Order: 11 Hatch",
+			FeatureKey:  "bo_11_hatch",
+			Race:        RaceZerg,
+			Kind:        KindInitialBuildOrder,
+			Rule: All(
+				ProduceCountBeforeBuild(subjDrone, subjHatchery, 7),
+				ProduceCountBeforeBuild(subjOverlord, subjHatchery, 1),
+				Not(BuildBefore(subjSpawningPool, subjHatchery)),
+				Not(BuildBefore(subjEvolutionChamber, subjHatchery)),
+			),
+			RuleDeadline: 180,
+			Expert: []ExpertEvent{
+				{
+					Key:          "Hatchery",
+					Match:        MatchBuild(subjHatchery),
+					TargetSecond: 94,
+					Tolerance:    defaultTol,
+				},
+				{
+					Key:          "Spawning Pool",
+					Match:        MatchBuild(subjSpawningPool),
+					TargetSecond: 116,
+					Tolerance:    Asym(3, 10),
+				},
+			},
+			SummaryPlayer: &Pill{Label: "11 Hatch", IconKey: "hatchery"},
+			GamesList:     &Pill{Label: "11 Hatch", IconKey: "hatchery"},
+		},
 		{
 			Name:        "12 Hatch",
 			PatternName: "Build Order: 12 Hatch",
@@ -217,27 +350,23 @@ func allMarkers() []Marker {
 			Race:        RaceZerg,
 			Kind:        KindInitialBuildOrder,
 			Rule: All(
-				// "hatchery is built before pool" — permissive: Pool may not exist yet,
-				// but if it does, Hatch must precede it.
-				BuildBefore(subjHatchery, subjSpawningPool),
-				// Lower bound = 12 Hatch's earliest acceptable Hatchery timing
-				// (98 - 5 = 93). Keeps 9 Hatch and 12 Hatch mutually exclusive.
-				FirstBuildAtOrAfter(subjHatchery, 93),
-				// "hatchery built within 2m30s"
-				FirstBuildBefore(subjHatchery, 150),
+				ProduceCountBeforeBuild(subjDrone, subjHatchery, 8),
+				ProduceCountBeforeBuild(subjOverlord, subjHatchery, 1),
+				Not(BuildBefore(subjSpawningPool, subjHatchery)),
+				Not(BuildBefore(subjEvolutionChamber, subjHatchery)),
 			),
-			RuleDeadline: 150,
+			RuleDeadline: 180,
 			Expert: []ExpertEvent{
 				{
 					Key:          "Hatchery",
 					Match:        MatchBuild(subjHatchery),
-					TargetSecond: 98, // 1m38
+					TargetSecond: 98,
 					Tolerance:    defaultTol,
 				},
 				{
 					Key:          "Spawning Pool",
 					Match:        MatchBuild(subjSpawningPool),
-					TargetSecond: 116, // 1m56
+					TargetSecond: 116,
 					Tolerance:    Asym(3, 10),
 				},
 			},

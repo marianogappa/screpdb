@@ -492,6 +492,53 @@ func (s *produceBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *produceBeforeBuildState) Decision(int) TriState { return s.done }
 func (s *produceBeforeBuildState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
+// ProduceCountBeforeBuild matches if EXACTLY n Produce(unit) facts arrive
+// strictly before the first Build(refSubject). The early-game spam filter
+// (internal/earlyfilter) drops engine-impossible morphs so the surviving
+// stream is a faithful count: this predicate keys Zerg build orders off
+// that count alone — no timing windows, no race-against-clock heuristics.
+//
+// Rejects on observing the (n+1)-th Produce(unit) before refSubject, and
+// on observing refSubject with a count != n.
+func ProduceCountBeforeBuild(unit, refSubject string, n int) Predicate {
+	return func() PredicateState {
+		return &produceCountBeforeBuildState{unit: unit, ref: refSubject, want: n}
+	}
+}
+
+type produceCountBeforeBuildState struct {
+	commitState
+	unit, ref string
+	want      int
+	count     int
+}
+
+func (s *produceCountBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
+	if s.done != Pending {
+		return
+	}
+	switch f.Kind {
+	case cmdenrich.KindMakeUnit:
+		if f.Subject == s.unit {
+			s.count++
+			if s.count > s.want {
+				s.done = Rejected
+			}
+		}
+	case cmdenrich.KindMakeBuilding:
+		if f.Subject == s.ref {
+			if s.count == s.want {
+				s.done = Matched
+			} else {
+				s.done = Rejected
+			}
+		}
+	}
+}
+
+func (s *produceCountBeforeBuildState) Decision(int) TriState { return s.done }
+func (s *produceCountBeforeBuildState) Finalize() TriState    { return s.finalizeDefaultRejected() }
+
 // CountBuildsBefore matches if at least n Build(subject) facts happen with
 // second strictly less than maxSecond.
 func CountBuildsBefore(subject string, n, maxSecond int) Predicate {
