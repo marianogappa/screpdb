@@ -2154,7 +2154,10 @@ body {
   gap: 8px;
   flex: 0 1 auto;
   min-width: 0;
-  max-width: min(280px, 100%);
+  /* 3x the previous 280px cap so the per-replay pill grid keeps pills on
+     fewer rows on standard desktop widths (cwal users routinely surface
+     5-8 chips per replay; the old 280px max wrapped after 2-3). */
+  max-width: min(840px, 100%);
 }
 
 .workflow-summary-features-title {

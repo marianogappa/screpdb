@@ -34,6 +34,7 @@ import {
 } from './lib/dashboardStorage';
 import {
   formatDuration,
+  formatMapNameWithKind,
   formatRelativeReplayDate,
   formatDaysAgoCompact,
   formatPercent,
@@ -203,6 +204,30 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
   }
+  if (playerIsActorForGameEventTypes(events, pid, ['proxy_gate'])) {
+    positive.push({
+      key: `ge-proxy-gate-${pid}`,
+      icon: getUnitIcon('gateway'),
+      label: 'Proxy gateway',
+      className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+    });
+  }
+  if (playerIsActorForGameEventTypes(events, pid, ['proxy_rax'])) {
+    positive.push({
+      key: `ge-proxy-rax-${pid}`,
+      icon: getUnitIcon('barracks'),
+      label: 'Proxy barracks',
+      className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+    });
+  }
+  if (playerIsActorForGameEventTypes(events, pid, ['proxy_factory'])) {
+    positive.push({
+      key: `ge-proxy-factory-${pid}`,
+      icon: getUnitIcon('factory'),
+      label: 'Proxy factory',
+      className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+    });
+  }
 
   return { positive, noScout: null };
 };
@@ -278,7 +303,12 @@ const gameEventDescription = (event) => {
     return actor && location ? `${actor} takes over ${location}` : 'Takeover';
   }
   if (eventType === 'proxy_gate' || eventType === 'proxy_rax' || eventType === 'proxy_factory') {
-    return actor && location ? `${actor} proxies at ${location}` : 'Proxy';
+    const proxyKind = eventType === 'proxy_gate' ? 'gateway'
+      : eventType === 'proxy_rax' ? 'barracks' : 'factory';
+    if (actor && location) return `${actor} proxies ${proxyKind} at ${location}`;
+    if (actor)             return `${actor} proxies ${proxyKind}`;
+    if (location)          return `Proxy ${proxyKind} at ${location}`;
+    return `Proxy ${proxyKind}`;
   }
   if (eventType === 'became_terran') return actor ? `${actor} became Terran` : 'Became Terran';
   if (eventType === 'became_zerg') return actor ? `${actor} became Zerg` : 'Became Zerg';
@@ -398,18 +428,28 @@ const renderSummaryMapStack = ({
 // short "recalls"/"nukes" labels).
 const collectFeaturingKeysFromMainGame = (mainGame) => {
   const found = new Set();
+  const isMoney = String(mainGame?.map_kind || '') === 'Money';
 
   (mainGame?.game_events || []).forEach((ev) => {
     const t = normalizeEventType(ev?.type);
-    if (t === 'zergling_rush') found.add('zergling_rush');
-    if (t === 'cannon_rush')   found.add('cannon_rush');
-    if (t === 'bunker_rush')   found.add('bunker_rush');
+    if (t === 'zergling_rush')  found.add('zergling_rush');
+    if (t === 'cannon_rush')    found.add('cannon_rush');
+    if (t === 'bunker_rush')    found.add('bunker_rush');
+    if (t === 'proxy_gate')     found.add('proxy_gate');
+    if (t === 'proxy_rax')      found.add('proxy_rax');
+    if (t === 'proxy_factory')  found.add('proxy_factory');
   });
 
   (mainGame?.players || []).forEach((p) => {
     (p.detected_patterns || []).forEach((pat) => {
       const key = pat?.event_type;
       if (!key) return;
+      // Money maps suppress build-order chips on the replay-summary
+      // featuring strip — opener timings on Big Game Hunters / Fastest
+      // are uninformative. Per-player BO summary pills + the BO tab are
+      // populated separately (player.detected_patterns + build_orders),
+      // so they keep showing.
+      if (isMoney && typeof key === 'string' && key.startsWith('bo_')) return;
       found.add(key);
       if (key === 'became_terran' || key === 'became_zerg') found.add('mind_control');
     });
@@ -551,13 +591,16 @@ const mapPointToPercent = (point, bounds) => {
   return { x: clamp(px), y: clamp(py) };
 };
 
-const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'reaver_drop', 'dt_drop', 'recall', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush'].includes(String(eventType || '').toLowerCase());
+const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'reaver_drop', 'dt_drop', 'recall', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory'].includes(String(eventType || '').toLowerCase());
 
 const fallbackOverlayUnitNamesForEvent = (eventType) => {
   const normalized = normalizeEventType(eventType);
   if (normalized === 'zergling_rush') return ['zergling'];
   if (normalized === 'cannon_rush') return ['photoncannon'];
   if (normalized === 'bunker_rush') return ['bunker'];
+  if (normalized === 'proxy_gate') return ['gateway'];
+  if (normalized === 'proxy_rax') return ['barracks'];
+  if (normalized === 'proxy_factory') return ['factory'];
   if (normalized === 'reaver_drop') return ['reaver'];
   if (normalized === 'dt_drop') return ['darktemplar'];
   if (normalized === 'drop') return ['dropship'];
@@ -3764,7 +3807,7 @@ function App() {
                       <tr key={game.replay_id} className={selectedReplayId === game.replay_id ? 'workflow-selected-row' : ''} onClick={() => openMainGame(game.replay_id)}>
                         <td>{formatRelativeReplayDate(game.replay_date)}</td>
                         <td>{renderMainGameListPlayers(game)}</td>
-                        <td>{game.map_name}</td>
+                        <td>{formatMapNameWithKind(game.map_name, game.map_kind)}</td>
                         <td>{formatDuration(game.duration_seconds)}</td>
                         <td>
                           {(game.featuring || []).length === 0 ? (
@@ -4224,7 +4267,7 @@ function App() {
                 </div>
                 <div className="workflow-meta workflow-meta--game-header">
                   <span>{formatRelativeReplayDate(mainGame.replay_date)}</span>
-                  <span>{mainGame.map_name}</span>
+                  <span>{formatMapNameWithKind(mainGame.map_name, mainGame.map_kind)}</span>
                   <span>{formatDuration(mainGame.duration_seconds)}</span>
                   <button
                     type="button"
@@ -5402,7 +5445,7 @@ function App() {
                               {isWinner ? <span className="workflow-crown" title="Winner">👑</span> : null}
                               <span>{formatRelativeReplayDate(g.replay_date)}</span>
                               <span>{formatDuration(g.duration_seconds)}</span>
-                              <span>{g.map_name}</span>
+                              <span>{formatMapNameWithKind(g.map_name, g.map_kind)}</span>
                               {matchupNode}
                             </div>
                             <div className="workflow-subtle-note">{renderPlayersMatchup(g.players_label || '')}</div>

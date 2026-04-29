@@ -110,8 +110,15 @@ type castSample struct {
 
 type zergRushCandidate struct {
 	DetectedSecond     int
+	ZerglingCount      int
 	AttackCountsByBase map[int]int
 }
+
+// minZerglingsForRush is the minimum count of Zerglings ordered for a
+// Zergling rush emission to fire. Below this threshold the early-zergling
+// pressure is not strong enough to call a "rush" — a single pair of
+// scouting Zerglings shouldn't trip the chip / pill.
+const minZerglingsForRush = 3
 
 type point struct {
 	X float64
@@ -989,16 +996,25 @@ func (e *Engine) processRaceSwitchEvent(command *models.Command, pid byte, sec i
 }
 
 func (e *Engine) processZerglingRushEvent(command *models.Command, pid byte, sec int) {
-	if e.zergRushEmitted[pid] || e.zergRushCandidates[pid] != nil || sec > zerglingRushSec {
+	if e.zergRushEmitted[pid] || sec > zerglingRushSec {
 		return
 	}
 	if !command.IsUnitBuild() || command.UnitType == nil || *command.UnitType != models.GeneralUnitZergling {
 		return
 	}
-	e.zergRushCandidates[pid] = &zergRushCandidate{
-		DetectedSecond:     sec,
-		AttackCountsByBase: map[int]int{},
+	candidate := e.zergRushCandidates[pid]
+	if candidate == nil {
+		candidate = &zergRushCandidate{
+			DetectedSecond:     sec,
+			AttackCountsByBase: map[int]int{},
+		}
+		e.zergRushCandidates[pid] = candidate
 	}
+	// One Zergling-morph command can spawn two Zerglings (Zerg morphs
+	// pair-wise). The exact count isn't critical here — we just need a
+	// monotone tally that crosses the minZerglingsForRush threshold to
+	// distinguish a real rush from a 2-zergling scout.
+	candidate.ZerglingCount += 2
 }
 
 func (e *Engine) recordMarineTraining(pid byte, sec int, command *models.Command) {
@@ -1042,7 +1058,10 @@ func (e *Engine) finalizeZergRushCandidates(currentSec int, force bool) {
 				maxCount = count
 			}
 		}
-		if targetBaseIdx >= 0 && maxCount > 0 {
+		// Triple gate: ≥3 Zerglings ordered, attack on a confirmed enemy
+		// base, and the early-timing window already enforced by
+		// processZerglingRushEvent (sec ≤ zerglingRushSec).
+		if targetBaseIdx >= 0 && maxCount > 0 && candidate.ZerglingCount >= minZerglingsForRush {
 			var target *NarrativePlayerRef
 			if targetBaseIdx < len(e.ownerByBase) {
 				owner := e.ownerByBase[targetBaseIdx]

@@ -229,33 +229,86 @@ func TestBO_12Hatch(t *testing.T) {
 	}
 }
 
+func TestBO_1GateCore(t *testing.T) {
+	bo := findBO(t, "1 Gate Core")
+	// Positive: 1 Gate, Cyber, no 2nd Gate or Nexus before Cyber.
+	pos := factsBuilder().B(subjGateway, 86).B(subjAssimilator, 116).B(subjCyberneticsCore, 138).list()
+	if !bo.Matches(pos) {
+		t.Fatalf("1 Gate Core should match Gate@86, Assim@116, Cyber@138")
+	}
+	// Negative: 2nd Gate before Cyber → that's 2 Gate.
+	neg := factsBuilder().B(subjGateway, 70).B(subjGateway, 90).B(subjCyberneticsCore, 138).list()
+	if bo.Matches(neg) {
+		t.Fatalf("1 Gate Core should fail when 2nd Gateway precedes Cyber Core")
+	}
+	// Negative: Nexus before Cyber → that's Nexus First.
+	neg2 := factsBuilder().B(subjGateway, 86).B(subjNexus, 120).B(subjCyberneticsCore, 138).list()
+	if bo.Matches(neg2) {
+		t.Fatalf("1 Gate Core should fail when Nexus precedes Cyber Core")
+	}
+	// Negative: Cyber too late.
+	neg3 := factsBuilder().B(subjGateway, 86).B(subjCyberneticsCore, 200).list()
+	if bo.Matches(neg3) {
+		t.Fatalf("1 Gate Core should fail when Cyber Core is built after 180s")
+	}
+}
+
 func TestBO_NexusFirst(t *testing.T) {
 	bo := findBO(t, "Nexus First")
-	pos := factsBuilder().B(subjNexus, 106).B(subjGateway, 126).list()
+	pos := factsBuilder().B(subjNexus, 145).B(subjGateway, 175).list()
 	if !bo.Matches(pos) {
 		t.Fatalf("Nexus first should match")
 	}
-	neg := factsBuilder().B(subjGateway, 80).B(subjNexus, 130).list()
+	neg := factsBuilder().B(subjGateway, 80).B(subjNexus, 145).list()
 	if bo.Matches(neg) {
 		t.Fatalf("Nexus first should fail when Gateway precedes Nexus")
 	}
 	// Negative: Forge precedes Nexus — that's Forge Expand, not Nexus First.
-	neg2 := factsBuilder().B(subjForge, 88).B(subjNexus, 130).list()
+	neg2 := factsBuilder().B(subjForge, 88).B(subjNexus, 145).list()
 	if bo.Matches(neg2) {
 		t.Fatalf("Nexus first should fail when Forge precedes Nexus")
+	}
+	// Negative: Nexus too late (>200s).
+	neg3 := factsBuilder().B(subjNexus, 220).B(subjGateway, 240).list()
+	if bo.Matches(neg3) {
+		t.Fatalf("Nexus first should fail when Nexus is built after 200s")
+	}
+}
+
+func TestBO_GateExpand(t *testing.T) {
+	bo := findBO(t, "Gate Expand")
+	// Positive: Gate before Forge & Nexus, Nexus by 200s, no 2nd Gate before Nexus.
+	pos := factsBuilder().B(subjGateway, 88).B(subjNexus, 165).list()
+	if !bo.Matches(pos) {
+		t.Fatalf("Gate Expand should match Gate@88, Nexus@165")
+	}
+	// Negative: Forge before Gate — that's Forge Expand.
+	neg := factsBuilder().B(subjForge, 86).B(subjGateway, 120).B(subjNexus, 152).list()
+	if bo.Matches(neg) {
+		t.Fatalf("Gate Expand should fail when Forge precedes Gateway")
+	}
+	// Negative: 2 Gates before Nexus — that's 2 Gate.
+	neg2 := factsBuilder().B(subjGateway, 70).B(subjGateway, 86).B(subjNexus, 165).list()
+	if bo.Matches(neg2) {
+		t.Fatalf("Gate Expand should fail when 2nd Gateway precedes Nexus")
 	}
 }
 
 func TestBO_ForgeExpa(t *testing.T) {
 	bo := findBO(t, "Forge Expand")
-	pos := factsBuilder().B(subjForge, 88).B(subjNexus, 130).B(subjGateway, 170).list()
+	pos := factsBuilder().B(subjForge, 86).B(subjNexus, 152).B(subjGateway, 200).list()
 	if !bo.Matches(pos) {
-		t.Fatalf("Forge expa should match Forge@88, Nexus@130, Gate@170")
+		t.Fatalf("Forge expa should match Forge@86, Nexus@152, Gate@200")
 	}
 	// Negative: Gate before Nexus.
 	neg := factsBuilder().B(subjForge, 88).B(subjGateway, 120).B(subjNexus, 150).list()
 	if bo.Matches(neg) {
 		t.Fatalf("Forge expa should fail when Gate precedes Nexus")
+	}
+	// Negative: Forge after Gate.
+	neg2 := factsBuilder().B(subjGateway, 80).B(subjForge, 100).B(subjNexus, 150).list()
+	if bo.Matches(neg2) {
+		t.Fatalf("Forge expa should fail when Gateway precedes Forge")
 	}
 }
 
@@ -270,10 +323,167 @@ func TestBO_2Gate(t *testing.T) {
 	if bo.Matches(neg) {
 		t.Fatalf("2 gate should fail if Nexus precedes the 2nd gate")
 	}
-	// Negative: only one gate.
-	neg2 := factsBuilder().B(subjGateway, 70).list()
+	// Negative: 2nd gate after Cyber.
+	neg2 := factsBuilder().B(subjGateway, 70).B(subjCyberneticsCore, 100).B(subjGateway, 110).list()
 	if bo.Matches(neg2) {
+		t.Fatalf("2 gate should fail if Cyber Core precedes the 2nd gate")
+	}
+	// Negative: 2nd gate after Forge.
+	neg3 := factsBuilder().B(subjGateway, 70).B(subjForge, 100).B(subjGateway, 110).list()
+	if bo.Matches(neg3) {
+		t.Fatalf("2 gate should fail if Forge precedes the 2nd gate")
+	}
+	// Negative: only one gate.
+	neg4 := factsBuilder().B(subjGateway, 70).list()
+	if bo.Matches(neg4) {
 		t.Fatalf("2 gate should fail with a single Gateway")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Terran openers
+// ---------------------------------------------------------------------------
+
+func TestBO_1Rax1Fac(t *testing.T) {
+	bo := findBO(t, "1 Rax 1 Fac")
+	// Positive: Depot, Rax, Refinery, Factory; no early CC.
+	pos := factsBuilder().
+		B(subjSupplyDepot, 60).
+		B(subjBarracks, 88).
+		B(subjRefinery, 115).
+		B(subjFactory, 165).
+		list()
+	if !bo.Matches(pos) {
+		t.Fatalf("1 Rax 1 Fac should match standard sequence")
+	}
+	// Negative: Refinery after Factory.
+	neg := factsBuilder().
+		B(subjSupplyDepot, 60).B(subjBarracks, 88).
+		B(subjFactory, 165).B(subjRefinery, 175).list()
+	if bo.Matches(neg) {
+		t.Fatalf("1 Rax 1 Fac should fail when Refinery follows Factory")
+	}
+	// Negative: CC before Factory (that's Rax-CC).
+	neg2 := factsBuilder().
+		B(subjSupplyDepot, 60).B(subjBarracks, 88).
+		B(subjCommandCenter, 150).B(subjRefinery, 170).B(subjFactory, 200).list()
+	if bo.Matches(neg2) {
+		t.Fatalf("1 Rax 1 Fac should fail when CC precedes Factory")
+	}
+	// Negative: 2 Rax before Factory.
+	neg3 := factsBuilder().
+		B(subjSupplyDepot, 60).B(subjBarracks, 88).B(subjBarracks, 110).
+		B(subjRefinery, 130).B(subjFactory, 180).list()
+	if bo.Matches(neg3) {
+		t.Fatalf("1 Rax 1 Fac should fail with 2 Barracks before Factory")
+	}
+	// Negative: CC before Barracks (CC First).
+	neg4 := factsBuilder().
+		B(subjSupplyDepot, 60).B(subjCommandCenter, 145).
+		B(subjBarracks, 165).B(subjRefinery, 200).B(subjFactory, 230).list()
+	if bo.Matches(neg4) {
+		t.Fatalf("1 Rax 1 Fac should fail when CC precedes Barracks")
+	}
+}
+
+func TestBO_CCFirst(t *testing.T) {
+	bo := findBO(t, "CC First")
+	pos := factsBuilder().
+		B(subjSupplyDepot, 62).B(subjCommandCenter, 145).B(subjBarracks, 165).list()
+	if !bo.Matches(pos) {
+		t.Fatalf("CC First should match Depot, CC, Rax sequence")
+	}
+	// Negative: Rax before CC.
+	neg := factsBuilder().
+		B(subjSupplyDepot, 62).B(subjBarracks, 88).B(subjCommandCenter, 180).list()
+	if bo.Matches(neg) {
+		t.Fatalf("CC First should fail when Barracks precedes CC")
+	}
+	// Negative: CC built too late (>200s).
+	neg2 := factsBuilder().B(subjSupplyDepot, 62).B(subjCommandCenter, 220).list()
+	if bo.Matches(neg2) {
+		t.Fatalf("CC First should fail when CC is built after 200s")
+	}
+}
+
+func TestBO_RaxCC(t *testing.T) {
+	bo := findBO(t, "Rax-CC")
+	// Positive: Depot, Rax, CC, Refinery (CC before gas + Factory).
+	pos := factsBuilder().
+		B(subjSupplyDepot, 60).B(subjBarracks, 88).
+		B(subjCommandCenter, 180).B(subjRefinery, 195).list()
+	if !bo.Matches(pos) {
+		t.Fatalf("Rax-CC should match Rax → CC → Refinery sequence")
+	}
+	// Negative: Refinery before CC.
+	neg := factsBuilder().
+		B(subjSupplyDepot, 60).B(subjBarracks, 88).
+		B(subjRefinery, 115).B(subjCommandCenter, 180).list()
+	if bo.Matches(neg) {
+		t.Fatalf("Rax-CC should fail when Refinery precedes CC")
+	}
+	// Negative: 2 Rax before CC.
+	neg2 := factsBuilder().
+		B(subjSupplyDepot, 60).B(subjBarracks, 88).B(subjBarracks, 130).
+		B(subjCommandCenter, 180).list()
+	if bo.Matches(neg2) {
+		t.Fatalf("Rax-CC should fail with 2 Barracks before CC")
+	}
+	// Negative: CC before Barracks (CC First).
+	neg3 := factsBuilder().
+		B(subjSupplyDepot, 60).B(subjCommandCenter, 145).B(subjBarracks, 165).list()
+	if bo.Matches(neg3) {
+		t.Fatalf("Rax-CC should fail when CC precedes Barracks")
+	}
+}
+
+func TestBO_BBS(t *testing.T) {
+	bo := findBO(t, "BBS")
+	// Positive: 2 Barracks before any Depot (e.g. SST_JumJaJungJi).
+	pos := factsBuilder().B(subjBarracks, 58).B(subjBarracks, 79).B(subjSupplyDepot, 100).list()
+	if !bo.Matches(pos) {
+		t.Fatalf("BBS should match 2 Barracks before Depot")
+	}
+	// Negative: Depot before 2nd Barracks.
+	neg := factsBuilder().B(subjBarracks, 60).B(subjSupplyDepot, 80).B(subjBarracks, 100).list()
+	if bo.Matches(neg) {
+		t.Fatalf("BBS should fail when Depot precedes 2nd Barracks")
+	}
+	// Negative: 1st Barracks too late.
+	neg2 := factsBuilder().B(subjBarracks, 110).B(subjBarracks, 130).list()
+	if bo.Matches(neg2) {
+		t.Fatalf("BBS should fail when 1st Barracks built after 100s")
+	}
+	// Negative: only one Barracks.
+	neg3 := factsBuilder().B(subjBarracks, 60).list()
+	if bo.Matches(neg3) {
+		t.Fatalf("BBS should fail with a single Barracks")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 10+ Scouts (Money-map signature)
+// ---------------------------------------------------------------------------
+
+func TestMarker_TenPlusScouts_PositiveAtTenth(t *testing.T) {
+	m := findBO(t, "10+ Scouts")
+	b := factsBuilder()
+	for i := 0; i < 10; i++ {
+		b.P("Scout", 600+i*5)
+	}
+	if !m.Matches(b.list()) {
+		t.Fatalf("10+ Scouts should match exactly 10 scouts produced")
+	}
+}
+
+func TestMarker_TenPlusScouts_NegativeAtNine(t *testing.T) {
+	m := findBO(t, "10+ Scouts")
+	b := factsBuilder()
+	for i := 0; i < 9; i++ {
+		b.P("Scout", 600+i*5)
+	}
+	if m.Matches(b.list()) {
+		t.Fatalf("10+ Scouts should NOT match with only 9 scouts")
 	}
 }
 

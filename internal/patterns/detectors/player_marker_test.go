@@ -64,6 +64,79 @@ func TestMarkerDetector_9Pool_Positive(t *testing.T) {
 	}
 }
 
+func TestMarkerDetector_TenPlusScouts_FiresOnMoneyMapOnly(t *testing.T) {
+	mk := findBOForTest(t, "10+ Scouts")
+
+	// Positive: Money map + 10 Scouts produced.
+	builder := NewTestReplayBuilder().
+		WithPlayer(1, "P", "Protoss", 1).
+		WithDurationSeconds(1200)
+	for i := 0; i < 10; i++ {
+		builder.WithCommand(1, 600+i*5, models.ActionTypeTrain, "Scout")
+	}
+	replay, players := builder.Build()
+	replay.MapKind = "Money"
+
+	detector := NewMarkerPlayerDetector(mk)
+	detector.SetReplayPlayerID(1)
+	detector.Initialize(replay, players)
+	for _, cmd := range builder.GetCommands() {
+		detector.ProcessCommand(cmd)
+	}
+	detector.Finalize()
+	if !detector.ShouldSave() {
+		t.Fatalf("expected 10+ Scouts to fire on Money map with 10 Scouts")
+	}
+
+	// Negative: same stream, but on a Regular map — MapKind gate rejects.
+	builder2 := NewTestReplayBuilder().
+		WithPlayer(1, "P", "Protoss", 1).
+		WithDurationSeconds(1200)
+	for i := 0; i < 10; i++ {
+		builder2.WithCommand(1, 600+i*5, models.ActionTypeTrain, "Scout")
+	}
+	replay2, players2 := builder2.Build()
+	replay2.MapKind = "Regular"
+
+	detector2 := NewMarkerPlayerDetector(mk)
+	detector2.SetReplayPlayerID(1)
+	detector2.Initialize(replay2, players2)
+	for _, cmd := range builder2.GetCommands() {
+		detector2.ProcessCommand(cmd)
+	}
+	detector2.Finalize()
+	if detector2.ShouldSave() {
+		t.Fatalf("expected 10+ Scouts to be gated off on Regular map")
+	}
+}
+
+func TestMarkerDetector_InitialBOStillFiresOnMoneyMap(t *testing.T) {
+	// Money maps must not block detection — the per-player Build Orders
+	// tab and per-player summary pills should still surface BOs. The
+	// render layer (game-list & replay-summary "Featuring" strips) is
+	// where Money-map suppression happens; the detector stays neutral.
+	builder := NewTestReplayBuilder().WithPlayer(1, "Z", "Zerg", 1)
+	for i := 0; i < 5; i++ {
+		builder.WithCommand(1, 5+i*3, models.ActionTypeUnitMorph, models.GeneralUnitDrone)
+	}
+	builder.WithCommand(1, 73, models.ActionTypeBuild, models.GeneralUnitSpawningPool)
+	replay, players := builder.Build()
+	replay.MapKind = "Money"
+
+	bo := findBOForTest(t, "9 Pool")
+	detector := NewMarkerPlayerDetector(bo)
+	detector.SetReplayPlayerID(1)
+	detector.Initialize(replay, players)
+	for _, cmd := range builder.GetCommands() {
+		detector.ProcessCommand(cmd)
+	}
+	detector.Finalize()
+
+	if !detector.ShouldSave() {
+		t.Fatalf("expected 9 pool detection to fire on Money map (suppression is render-layer only)")
+	}
+}
+
 func TestMarkerDetector_9Pool_NegativeWhenOverlordBeforePool(t *testing.T) {
 	builder := NewTestReplayBuilder().WithPlayer(1, "Z", "Zerg", 1)
 	builder.WithCommand(1, 10, models.ActionTypeUnitMorph, models.GeneralUnitDrone)
@@ -166,7 +239,7 @@ func buildFact(subject string, second int) cmdenrich.EnrichedCommand {
 }
 
 func TestMarkerDetector_2Gate_Positive(t *testing.T) {
-	builder := NewTestReplayBuilder().WithPlayer(1, "P", "Protoss", 1)
+	builder := NewTestReplayBuilder().WithPlayer(1, "P", "Protoss", 1).WithMatchup("PvP")
 	builder.WithCommand(1, 70, models.ActionTypeBuild, models.GeneralUnitGateway)
 	builder.WithCommand(1, 86, models.ActionTypeBuild, models.GeneralUnitGateway)
 	builder.WithCommand(1, 130, models.ActionTypeTrain, "Zealot")
@@ -190,7 +263,7 @@ func TestMarkerDetector_2Gate_Positive(t *testing.T) {
 // position-aligned order with bo.Expert. The dashboard now reads this
 // payload directly instead of re-resolving on every page load.
 func TestMarkerDetector_2Gate_PayloadHasExpertActuals(t *testing.T) {
-	builder := NewTestReplayBuilder().WithPlayer(1, "P", "Protoss", 1)
+	builder := NewTestReplayBuilder().WithPlayer(1, "P", "Protoss", 1).WithMatchup("PvP")
 	// Anti-spam double-click on the 1st Gateway: two Build commands within
 	// BuildDedupGapSeconds. The detector should dedup → keep the later one,
 	// then a real 2nd Gateway, then a Zealot. Payload should reflect the
@@ -221,14 +294,18 @@ func TestMarkerDetector_2Gate_PayloadHasExpertActuals(t *testing.T) {
 	if len(actuals) != len(bo.Expert) {
 		t.Fatalf("expected %d expert actuals (one per bo.Expert), got %d", len(bo.Expert), len(actuals))
 	}
-	// bo.Expert order: 1st Gateway, 2nd Gateway, First Zealot.
-	if !actuals[0].Found || actuals[0].Second != 71 {
-		t.Fatalf("1st Gateway actual wrong (expected found@71): %+v", actuals[0])
+	// bo.Expert order: Pylon, 1st Gateway, 2nd Gateway, First Zealot.
+	// No Pylon command emitted in this test → actuals[0].Found==false.
+	if actuals[0].Found {
+		t.Fatalf("Pylon actual expected not-found (no Pylon emitted): %+v", actuals[0])
 	}
-	if !actuals[1].Found || actuals[1].Second != 86 {
-		t.Fatalf("2nd Gateway actual wrong (expected found@86): %+v", actuals[1])
+	if !actuals[1].Found || actuals[1].Second != 71 {
+		t.Fatalf("1st Gateway actual wrong (expected found@71): %+v", actuals[1])
 	}
-	if !actuals[2].Found || actuals[2].Second != 130 {
-		t.Fatalf("First Zealot actual wrong (expected found@130): %+v", actuals[2])
+	if !actuals[2].Found || actuals[2].Second != 86 {
+		t.Fatalf("2nd Gateway actual wrong (expected found@86): %+v", actuals[2])
+	}
+	if !actuals[3].Found || actuals[3].Second != 130 {
+		t.Fatalf("First Zealot actual wrong (expected found@130): %+v", actuals[3])
 	}
 }

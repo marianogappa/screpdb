@@ -100,11 +100,19 @@ func TestProcessCommand_ZerglingRushDelayedTargetInference(t *testing.T) {
 	p2 := &models.Player{PlayerID: 2, SlotID: 2, Name: "T", Race: "Terran", Team: 2, Type: models.PlayerTypeHuman}
 	engine := NewEngine(replay, []*models.Player{p1, p2}, rushProxyTestMapContext())
 
+	// Two Zergling-morph commands → 4 Zerglings ordered, clearing the
+	// minZerglingsForRush=3 gate.
 	engine.ProcessCommand(&models.Command{
 		Player:               p1,
 		ActionType:           models.ActionTypeUnitMorph,
 		UnitType:             stringPtr(models.GeneralUnitZergling),
 		SecondsFromGameStart: 100,
+	})
+	engine.ProcessCommand(&models.Command{
+		Player:               p1,
+		ActionType:           models.ActionTypeUnitMorph,
+		UnitType:             stringPtr(models.GeneralUnitZergling),
+		SecondsFromGameStart: 105,
 	})
 	engine.ProcessCommand(&models.Command{
 		Player:               p2,
@@ -139,6 +147,45 @@ func TestProcessCommand_ZerglingRushDelayedTargetInference(t *testing.T) {
 	}
 	if zRush.LocationBaseOclock == nil || *zRush.LocationBaseOclock != 5 {
 		t.Fatalf("expected inferred target at 5 o'clock base, got %+v", zRush.LocationBaseOclock)
+	}
+}
+
+func TestProcessCommand_ZerglingRushRequiresAtLeastThreeZerglings(t *testing.T) {
+	// One Zergling-morph command spawns 2 Zerglings — below the 3-Zergling
+	// threshold. Even when the player attack-moves into a confirmed enemy
+	// base in the early window, the rush should NOT fire.
+	replay := &models.Replay{DurationSeconds: 300, MapWidth: 128, MapHeight: 128}
+	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "Z", Race: "Zerg", Team: 1, Type: models.PlayerTypeHuman}
+	p2 := &models.Player{PlayerID: 2, SlotID: 2, Name: "T", Race: "Terran", Team: 2, Type: models.PlayerTypeHuman}
+	engine := NewEngine(replay, []*models.Player{p1, p2}, rushProxyTestMapContext())
+
+	engine.ProcessCommand(&models.Command{
+		Player:               p1,
+		ActionType:           models.ActionTypeUnitMorph,
+		UnitType:             stringPtr(models.GeneralUnitZergling),
+		SecondsFromGameStart: 100,
+	})
+	engine.ProcessCommand(&models.Command{
+		Player:               p2,
+		ActionType:           models.ActionTypeBuild,
+		UnitType:             stringPtr(models.GeneralUnitSupplyDepot),
+		X:                    intPtr(40),
+		Y:                    intPtr(40),
+		SecondsFromGameStart: 110,
+	})
+	engine.ProcessCommand(&models.Command{
+		Player:               p1,
+		ActionType:           "Targeted Order",
+		OrderName:            stringPtr("Attack Move"),
+		X:                    intPtr(tilePixel(40)),
+		Y:                    intPtr(tilePixel(40)),
+		SecondsFromGameStart: 130,
+	})
+
+	for _, ev := range engine.ReplayEvents() {
+		if ev.EventType == "zergling_rush" {
+			t.Fatalf("expected no zergling_rush with only 2 Zerglings ordered (one morph command)")
+		}
 	}
 }
 

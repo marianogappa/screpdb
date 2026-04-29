@@ -173,6 +173,74 @@ func absInt(v int) int {
 }
 
 // -----------------------------------------------------------------------------
+// mechTransitionEvaluator: detects a TvZ player going bio first then
+// committing to mech.
+//
+// Trigger:
+//
+//   1. A Medic is produced before mechTransitionBioWindowSec (5:30) — the
+//      "bio start" signal (Medics imply Academy + Marines in bio comp).
+//   2. After (1), at least 2 Factories are built (cumulative).
+//   3. After the 2nd Factory, the player produces a mech unit (Vulture,
+//      Siege Tank, or Goliath).
+//
+// DetectedAtSecond is the second of the first qualifying mech-unit
+// production after the 2nd Factory. The marker is committed only when
+// all three conditions fire in order.
+// -----------------------------------------------------------------------------
+
+const (
+	mechTransitionBioWindowSec = 330 // 5:30 — Medic must arrive before this.
+)
+
+type mechTransitionEvaluator struct {
+	medicProduced     bool
+	medicSecond       int
+	factoryCount      int
+	secondFactorySec  int
+	transitionSecond  int
+	matched           bool
+}
+
+func (e *mechTransitionEvaluator) Observe(f cmdenrich.EnrichedCommand) {
+	if e.matched {
+		return
+	}
+	switch f.Kind {
+	case cmdenrich.KindMakeUnit:
+		switch f.Subject {
+		case models.GeneralUnitMedic:
+			if !e.medicProduced && f.Second < mechTransitionBioWindowSec {
+				e.medicProduced = true
+				e.medicSecond = f.Second
+			}
+		case models.GeneralUnitVulture, models.GeneralUnitSiegeTankTankMode, models.GeneralUnitGoliath:
+			if e.medicProduced && e.factoryCount >= 2 && f.Second >= e.secondFactorySec {
+				e.transitionSecond = f.Second
+				e.matched = true
+			}
+		}
+	case cmdenrich.KindMakeBuilding:
+		if f.Subject == models.GeneralUnitFactory {
+			e.factoryCount++
+			if e.factoryCount == 2 {
+				e.secondFactorySec = f.Second
+			}
+		}
+	}
+}
+
+func (e *mechTransitionEvaluator) Finalize(_ CustomEvalContext) CustomResult {
+	if !e.matched {
+		return CustomResult{}
+	}
+	return CustomResult{
+		Matched:          true,
+		DetectedAtSecond: e.transitionSecond,
+	}
+}
+
+// -----------------------------------------------------------------------------
 // usedHotkeyGroupsEvaluator: migrates UsedHotkeyGroupsPlayerDetector.
 // Accumulates the set of hotkey groups the player used. Finalize emits a
 // sorted comma-separated string (e.g. "1,3,5") as ValueString so the existing

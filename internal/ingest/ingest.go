@@ -89,7 +89,12 @@ func runWatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 	dataChan, errChan := store.StartIngestion(ctx, storage.IngestionHooks{
 		OnReplayStored: logger.Progress,
 		OnDuplicateReplay: func(err error) {
-			logger.Warnf("Skipping duplicate replay: %v", err)
+			// Silently swallow duplicate-replay errors. The pre-check at
+			// batchCheckExistingReplays already filters known duplicates;
+			// a race-condition straggler reaching the storage layer is
+			// expected (e.g. watch-mode re-add) and shouldn't pollute
+			// the log. Aggregate "skipped" counter still surfaces them.
+			_ = err
 		},
 		OnStoreError: func(err error) {
 			logger.Errorf("Error storing replay: %v", err)
@@ -160,7 +165,12 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 	dataChan, errChan := store.StartIngestion(ctx, storage.IngestionHooks{
 		OnReplayStored: logger.Progress,
 		OnDuplicateReplay: func(err error) {
-			logger.Warnf("Skipping duplicate replay: %v", err)
+			// Silently swallow duplicate-replay errors. The pre-check at
+			// batchCheckExistingReplays already filters known duplicates;
+			// a race-condition straggler reaching the storage layer is
+			// expected (e.g. watch-mode re-add) and shouldn't pollute
+			// the log. Aggregate "skipped" counter still surfaces them.
+			_ = err
 		},
 		OnStoreError: func(err error) {
 			logger.Errorf("Error storing replay: %v", err)

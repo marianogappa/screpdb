@@ -14,6 +14,7 @@ type WorkflowGameListRow struct {
 	ReplayDate      string
 	FileName        string
 	MapName         string
+	MapKind         string
 	DurationSeconds int64
 	GameType        string
 	Matchup         string
@@ -82,6 +83,7 @@ func (s *Store) ListGamesWithWhere(ctx context.Context, whereSQL string, whereAr
 			r.replay_date,
 			r.file_name,
 			r.map_name,
+			r.map_kind,
 			r.duration_seconds,
 			r.game_type,
 			r.matchup
@@ -103,6 +105,7 @@ func (s *Store) ListGamesWithWhere(ctx context.Context, whereSQL string, whereAr
 			&item.ReplayDate,
 			&item.FileName,
 			&item.MapName,
+			&item.MapKind,
 			&item.DurationSeconds,
 			&item.GameType,
 			&item.Matchup,
@@ -287,7 +290,7 @@ func (s *Store) ListFeaturingReplayEventRows(ctx context.Context, replayIDs []in
 		FROM replay_events
 		WHERE replay_id IN (`+placeholders+`)
 			AND event_kind = 'game_event'
-			AND event_type IN ('zergling_rush', 'cannon_rush', 'bunker_rush')
+			AND event_type IN ('zergling_rush', 'cannon_rush', 'bunker_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory')
 	`, args...)
 	if err != nil {
 		return nil, err

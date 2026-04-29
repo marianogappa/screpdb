@@ -10,9 +10,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/marianogappa/screpdb/internal/patterns/markers"
+	"github.com/marianogappa/screpdb/internal/cmdenrich"
 	db "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/models"
+	"github.com/marianogappa/screpdb/internal/patterns/markers"
 	"github.com/samber/lo"
 )
 
@@ -30,6 +31,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	detail.FileName = summary.FileName
 	detail.FilePath = summary.FilePath
 	detail.MapName = summary.MapName
+	detail.MapKind = summary.MapKind
 	detail.MapVisual = d.resolveWorkflowMapVisual(detail.ReplayID, summary.MapName, summary.FilePath, summary.FileChecksum)
 	detail.DurationSeconds = summary.DurationSeconds
 	detail.GameType = summary.GameType
@@ -221,6 +223,7 @@ func (d *Dashboard) buildWorkflowPlayerRecentGames(playerKey string) ([]workflow
 			ReplayDate:      row.ReplayDate,
 			FileName:        row.FileName,
 			MapName:         row.MapName,
+			MapKind:         row.MapKind,
 			DurationSeconds: row.DurationSeconds,
 			GameType:        row.GameType,
 			Matchup:         row.Matchup,
@@ -2330,9 +2333,64 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 				FeatureKey: bo.FeatureKey,
 				Events:     events,
 			})
+
+			// Surface the BO on the Game Events timeline at the first
+			// building's actual second (per user spec — units don't
+			// count). Skip if no building event was resolved (e.g. a
+			// stream that only matched the rule via produce facts).
+			if firstSec, ok := firstBuildingActualSecond(bo, events); ok {
+				detail.GameEvents = append(detail.GameEvents, workflowGameEvent{
+					Type:   bo.FeatureKey,
+					Second: int64(firstSec),
+					Actor: &workflowGameEventPlayer{
+						PlayerID: player.PlayerID,
+						Name:     player.Name,
+						Color:    player.Color,
+					},
+				})
+			}
 		}
 	}
+	// detail.GameEvents was already populated by populateDetectedPatterns
+	// in time-sorted order — re-sort after appending BO entries so the
+	// timeline stays monotonic.
+	sort.SliceStable(detail.GameEvents, func(i, j int) bool {
+		return detail.GameEvents[i].Second < detail.GameEvents[j].Second
+	})
 	return nil
+}
+
+// firstBuildingActualSecond returns the actual_second of the first building
+// milestone observed for a BO. For non-Zerg openers the events array is
+// position-aligned with bo.Expert, so we walk Expert entries and pick the
+// first KindMakeBuilding match. For simplified-Zerg BOs the events array is
+// reshaped (drone-numbered ticks + pool/hatch); we scan it for the first
+// known building Subject (Spawning Pool / Hatchery).
+func firstBuildingActualSecond(bo *markers.Marker, events []workflowMarkerEvent) (int, bool) {
+	if bo == nil {
+		return 0, false
+	}
+	if _, isSimplifiedZerg := zergBOEventSchemas[bo.FeatureKey]; isSimplifiedZerg {
+		for _, ev := range events {
+			if !ev.Found {
+				continue
+			}
+			if ev.Subject == models.GeneralUnitSpawningPool || ev.Subject == models.GeneralUnitHatchery {
+				return int(ev.ActualSecond), true
+			}
+		}
+		return 0, false
+	}
+	for idx, expert := range bo.Expert {
+		if expert.Match.Kind != cmdenrich.KindMakeBuilding {
+			continue
+		}
+		if idx >= len(events) || !events[idx].Found {
+			continue
+		}
+		return int(events[idx].ActualSecond), true
+	}
+	return 0, false
 }
 
 func (d *Dashboard) populateUnitCadenceForGameDetail(detail *workflowGameDetail) error {

@@ -339,6 +339,21 @@ type Marker struct {
 	// Race is the race this marker applies to. Empty string means "any race".
 	Race Race
 
+	// Matchup, if non-empty, restricts this marker to replays whose
+	// replays.matchup column equals one of the listed values (e.g.
+	// {"TvP", "TvZ"}). Empty = any matchup. Combined with Race, this gates
+	// per-(race, matchup) tuple — same opener can be a different rule /
+	// timings under PvP vs PvZ. Mutual exclusion among initial-build-order
+	// markers is enforced per (race, matchup) tuple by the fuzz test.
+	Matchup []string
+
+	// MapKind, if non-empty, restricts this marker to replays whose
+	// replays.map_kind column equals one of the listed values (e.g.
+	// {"Money"}). Empty = any map kind. Used for markers that only make
+	// sense on specific economies — e.g. "10+ Scouts" only fires on
+	// Money maps where Scout-massing is a recognised pattern.
+	MapKind []string
+
 	// MinReplaySeconds gates this marker on replay duration. 0 = no gate.
 	// Used by "never X" markers that would otherwise trip on short games.
 	MinReplaySeconds int

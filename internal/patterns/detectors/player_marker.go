@@ -2,6 +2,7 @@ package detectors
 
 import (
 	"encoding/json"
+	"slices"
 
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
 	"github.com/marianogappa/screpdb/internal/models"
@@ -77,6 +78,29 @@ func (d *MarkerPlayerDetector) ProcessCommand(command *models.Command) bool {
 		d.commitRejected()
 		return true
 	}
+	if len(d.marker.Matchup) > 0 {
+		replay := d.GetReplay()
+		if replay == nil || !slices.Contains(d.marker.Matchup, replay.Matchup) {
+			d.commitRejected()
+			return true
+		}
+	}
+	if len(d.marker.MapKind) > 0 {
+		replay := d.GetReplay()
+		if replay == nil || !slices.Contains(d.marker.MapKind, replay.MapKind) {
+			d.commitRejected()
+			return true
+		}
+	}
+	// NOTE: Money maps are NOT filtered at detection time for build
+	// orders. BOs still detect so the per-player Build Orders tab +
+	// per-player summary pills can show on Money games. The render layer
+	// (games-list "Featuring" column and game-detail summary featuring
+	// strip) is responsible for suppressing BO chips on Money maps — see
+	// internal/dashboard/endpoint_main_games_players_list.go and the
+	// frontend buildMainGameFeaturingPills helper. Markers that should
+	// ONLY fire on a specific MapKind set the field above explicitly
+	// (e.g. "10+ Scouts" on Money maps only).
 	now := command.SecondsFromGameStart
 
 	if d.state != nil {
@@ -176,11 +200,19 @@ func (d *MarkerPlayerDetector) flushAllPending() {
 func (d *MarkerPlayerDetector) checkRuleDecision(now int) bool {
 	switch d.state.Decision(now) {
 	case markers.Matched:
-		d.matched = true
-		d.detectedAtSecond = d.lastObservedSecond
-		d.SetFinished(true)
-		d.pending = nil
-		return true
+		// First-time match: stamp the second the rule flipped. Subsequent
+		// calls (post-match) keep the original second so DetectedAtSecond
+		// reflects the build-decision moment, not later observations.
+		if !d.matched {
+			d.matched = true
+			d.detectedAtSecond = d.lastObservedSecond
+		}
+		// Don't SetFinished yet: the marker may have Expert milestones
+		// further out (e.g. "First Zealot" at ~108s for 2 Gate, after the
+		// 2nd-Gateway commit at ~86s). Stay alive until RuleDeadline so
+		// observeRuleFact keeps appending to d.observed and ResolveExpert
+		// can resolve them at GetResult-time.
+		return false
 	case markers.Rejected:
 		d.commitRejected()
 		return true
@@ -191,6 +223,17 @@ func (d *MarkerPlayerDetector) checkRuleDecision(now int) bool {
 func (d *MarkerPlayerDetector) finalizeRuleAtDeadline() {
 	d.SetFinished(true)
 	d.flushAllPending()
+	// If the rule already committed Matched during streaming, keep that
+	// verdict + DetectedAtSecond from the original commit. Re-running
+	// Finalize on a Matched state would be a no-op anyway (Matched is
+	// terminal), but we deliberately bypass overwriting DetectedAtSecond
+	// with replay-end / RuleDeadline. That overwrite is only correct for
+	// late-finalized rules that resolved at the deadline (absence
+	// markers, etc.), not for rules that committed early.
+	if d.matched {
+		d.pending = nil
+		return
+	}
 	d.matched = d.state.Finalize() == markers.Matched
 	if d.matched {
 		// Absence markers and deadline-finalized rules commit at end-of-replay.

@@ -42,7 +42,7 @@ func (q *Queries) GetPlayerOverviewSummary(ctx context.Context, name string) (Ge
 }
 
 const GetReplaySummary = `-- name: GetReplaySummary :one
-SELECT id, replay_date, file_name, file_path, file_checksum, map_name, duration_seconds, game_type
+SELECT id, replay_date, file_name, file_path, file_checksum, map_name, map_kind, duration_seconds, game_type
 FROM replays
 WHERE id = ?
 `
@@ -54,6 +54,7 @@ type GetReplaySummaryRow struct {
 	FilePath        string
 	FileChecksum    string
 	MapName         string
+	MapKind         string
 	DurationSeconds int64
 	GameType        string
 }
@@ -68,6 +69,7 @@ func (q *Queries) GetReplaySummary(ctx context.Context, id int64) (GetReplaySumm
 		&i.FilePath,
 		&i.FileChecksum,
 		&i.MapName,
+		&i.MapKind,
 		&i.DurationSeconds,
 		&i.GameType,
 	)
@@ -173,6 +175,7 @@ SELECT
   r.replay_date,
   r.file_name,
   r.map_name,
+  r.map_kind,
   r.duration_seconds,
   r.game_type,
   r.matchup,
@@ -202,6 +205,7 @@ type ListPlayerRecentGamesRow struct {
 	ReplayDate      string
 	FileName        string
 	MapName         string
+	MapKind         string
 	DurationSeconds int64
 	GameType        string
 	Matchup         string
@@ -223,6 +227,7 @@ func (q *Queries) ListPlayerRecentGames(ctx context.Context, name string) ([]Lis
 			&i.ReplayDate,
 			&i.FileName,
 			&i.MapName,
+			&i.MapKind,
 			&i.DurationSeconds,
 			&i.GameType,
 			&i.Matchup,

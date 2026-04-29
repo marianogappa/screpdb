@@ -35,3 +35,27 @@ export const formatDaysAgoCompact = (value) => {
 };
 
 export const formatPercent = (value) => `${((Number(value) || 0) * 100).toFixed(1)}%`;
+
+// mapKindEmoji returns a single-character prefix used in the games list
+// "Map" column so a player can scan-skim Money / UMS games at a glance.
+//   - Money         → 💰
+//   - UseMapSettings→ ⚙️ (matches the Settings nav button)
+//   - Regular / "" → no emoji (returns empty string)
+export const mapKindEmoji = (mapKind) => {
+  switch (String(mapKind || '')) {
+    case 'Money':
+      return '💰';
+    case 'UseMapSettings':
+      return '⚙️';
+    default:
+      return '';
+  }
+};
+
+// formatMapNameWithKind prefixes the map name with the kind emoji + a space
+// when relevant. Regular maps render unchanged.
+export const formatMapNameWithKind = (mapName, mapKind) => {
+  const emoji = mapKindEmoji(mapKind);
+  const name = String(mapName || '');
+  return emoji ? `${emoji} ${name}` : name;
+};

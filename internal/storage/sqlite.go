@@ -182,9 +182,11 @@ func (s *SQLiteStorage) StartIngestion(ctx context.Context, hooks IngestionHooks
 					if isDuplicateReplayError(err) {
 						if hooks.OnDuplicateReplay != nil {
 							hooks.OnDuplicateReplay(err)
-						} else {
-							fmt.Printf("Skipping duplicate replay: %v\n", err)
 						}
+						// No fmt.Printf fallback: duplicate-replay errors
+						// are expected (watch-mode re-add, race with the
+						// pre-check) and the caller's hook decides how
+						// to surface them. Silent default.
 						continue
 					}
 					if hooks.OnStoreError != nil {

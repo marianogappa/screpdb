@@ -162,6 +162,7 @@ type workflowGameListItem struct {
 	ReplayDate      string                    `json:"replay_date"`
 	FileName        string                    `json:"file_name"`
 	MapName         string                    `json:"map_name"`
+	MapKind         string                    `json:"map_kind,omitempty"`
 	DurationSeconds int64                     `json:"duration_seconds"`
 	GameType        string                    `json:"game_type"`
 	PlayersLabel    string                    `json:"players_label"`
@@ -232,13 +233,23 @@ var workflowFeaturingFilters = []struct {
 }{
 	{Key: "carriers", Label: "Carrier"},
 	{Key: "battlecruisers", Label: "Battlecruiser"},
+	{Key: "ten_plus_scouts", Label: "10+ Scouts"},
+	{Key: "mech", Label: "Mech"},
+	{Key: "sk_terran", Label: "SK Terran"},
+	{Key: "one_one_one", Label: "1-1-1"},
+	{Key: "mech_transition", Label: "Mech Transition"},
 	{Key: "cannon_rush", Label: "Cannon Rush"},
 	{Key: "bunker_rush", Label: "Bunker Rush"},
 	{Key: "zergling_rush", Label: "Zergling Rush"},
+	{Key: "proxy_gate", Label: "Proxy Gateway"},
+	{Key: "proxy_rax", Label: "Proxy Barracks"},
+	{Key: "proxy_factory", Label: "Proxy Factory"},
 	{Key: "mind_control", Label: "Mind Control"},
 	{Key: "nukes", Label: "Nukes"},
 	{Key: "recalls", Label: "Recalls"},
 	// Build order pills — keys & labels kept in sync with internal/markers.
+	// Suppressed in render for Money maps (game-list + replay-summary
+	// featuring strips); BO tab and per-player summary pills still show.
 	{Key: "bo_4_pool", Label: "4 Pool"},
 	{Key: "bo_9_pool", Label: "9 Pool"},
 	{Key: "bo_9_overpool", Label: "9 Overpool"},
@@ -248,9 +259,15 @@ var workflowFeaturingFilters = []struct {
 	{Key: "bo_10_hatch", Label: "10 Hatch"},
 	{Key: "bo_11_hatch", Label: "11 Hatch"},
 	{Key: "bo_12_hatch", Label: "12 Hatch"},
-	{Key: "bo_nexus_first", Label: "Nexus First"},
-	{Key: "bo_forge_expa", Label: "Forge Expand"},
+	{Key: "bo_1_gate_core", Label: "1 Gate Core"},
 	{Key: "bo_2_gate", Label: "2 Gate"},
+	{Key: "bo_nexus_first", Label: "Nexus First"},
+	{Key: "bo_gate_expand", Label: "Gate Expand"},
+	{Key: "bo_forge_expa", Label: "Forge Expand"},
+	{Key: "bo_1_rax_1_fac", Label: "1 Rax 1 Fac"},
+	{Key: "bo_rax_cc", Label: "Rax-CC"},
+	{Key: "bo_cc_first", Label: "CC First"},
+	{Key: "bo_bbs", Label: "BBS"},
 }
 
 var workflowDurationFilterBuckets = []struct {
@@ -297,6 +314,7 @@ type workflowGameDetail struct {
 	FileName             string                                   `json:"file_name"`
 	FilePath             string                                   `json:"file_path"`
 	MapName              string                                   `json:"map_name"`
+	MapKind              string                                   `json:"map_kind,omitempty"`
 	MapVisual            workflowMapVisual                        `json:"map_visual"`
 	MapWidthPixels       int64                                    `json:"map_width_pixels,omitempty"`
 	MapHeightPixels      int64                                    `json:"map_height_pixels,omitempty"`

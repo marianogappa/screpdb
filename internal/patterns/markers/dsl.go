@@ -204,6 +204,37 @@ func (s *firstProduceExistsState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *firstProduceExistsState) Decision(int) TriState { return s.done }
 func (s *firstProduceExistsState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
+// ProduceCountAtLeast matches once the player has produced at least n units
+// of `subject`. Time-agnostic: anchored only to the running tally, not to a
+// build / second. Backs unit-mass signatures like "10+ Scouts".
+func ProduceCountAtLeast(subject string, n int) Predicate {
+	return func() PredicateState {
+		return &produceCountAtLeastState{subject: subject, want: n}
+	}
+}
+
+type produceCountAtLeastState struct {
+	commitState
+	subject string
+	want    int
+	count   int
+}
+
+func (s *produceCountAtLeastState) Observe(f cmdenrich.EnrichedCommand) {
+	if s.done != Pending {
+		return
+	}
+	if f.Kind == cmdenrich.KindMakeUnit && f.Subject == s.subject {
+		s.count++
+		if s.count >= s.want {
+			s.done = Matched
+		}
+	}
+}
+
+func (s *produceCountAtLeastState) Decision(int) TriState { return s.done }
+func (s *produceCountAtLeastState) Finalize() TriState    { return s.finalizeDefaultRejected() }
+
 // UpgradeExists matches as soon as any KindUpgrade fact arrives, regardless
 // of subject. Used via Not(...) for the Never-Upgraded marker.
 func UpgradeExists() Predicate {

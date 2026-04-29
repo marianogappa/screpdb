@@ -4,7 +4,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: 11 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"found\":false}]}"
+        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":117,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -20,6 +20,16 @@
         "replay_player_id": 1,
         "pattern_name": "Battlecruisers",
         "value": "1116"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Rax-CC",
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":85,\"found\":true},{\"second\":161,\"found\":true},{\"second\":174,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "SK Terran",
+        "value": "319"
       },
       {
         "replay_player_id": 1,
@@ -43,7 +53,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: 11 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"found\":false}]}"
+        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":117,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -57,8 +67,18 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Quick factory",
-        "value": "228"
+        "pattern_name": "1-1-1",
+        "value": "277"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Rax-CC",
+        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":87,\"found\":true},{\"second\":171,\"found\":true},{\"second\":174,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "SK Terran",
+        "value": "400"
       },
       {
         "replay_player_id": 1,
@@ -76,8 +96,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Quick factory",
-        "value": "153"
+        "pattern_name": "Build Order: 1 Rax 1 Fac",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":83,\"found\":true},{\"second\":98,\"found\":true},{\"second\":150,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -91,8 +111,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 2 Gate",
-        "value": "{\"expert_actuals\":[{\"second\":78,\"found\":true},{\"second\":167,\"found\":true},{\"found\":false}]}"
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":51,\"found\":true},{\"second\":78,\"found\":true},{\"second\":93,\"found\":true},{\"second\":132,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -139,6 +159,11 @@
     "detections": [
       {
         "replay_player_id": 0,
+        "pattern_name": "Build Order: Gate Expand",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":72,\"found\":true},{\"second\":158,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2,3,4,5,6]}"
       },
@@ -169,7 +194,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: Forge Expand",
-        "value": "{\"expert_actuals\":[{\"second\":84,\"found\":true},{\"second\":130,\"found\":true}]}"
+        "value": "{\"expert_actuals\":[{\"second\":52,\"found\":true},{\"second\":84,\"found\":true},{\"second\":142,\"found\":true},{\"second\":130,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -184,7 +209,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 9 Overpool",
-        "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"found\":false}]}"
+        "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":125,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -207,8 +232,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Quick factory",
-        "value": "217"
+        "pattern_name": "Build Order: CC First",
+        "value": "{\"expert_actuals\":[{\"second\":153,\"found\":true},{\"second\":117,\"found\":true},{\"second\":136,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -219,6 +244,11 @@
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":14.585889570552146}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":69,\"found\":true},{\"second\":82,\"found\":true},{\"second\":111,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -270,7 +300,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 11 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":98,\"found\":true},{\"found\":false}]}"
+        "value": "{\"expert_actuals\":[{\"second\":98,\"found\":true},{\"second\":115,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -288,13 +318,18 @@
     "detections": [
       {
         "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Rax 1 Fac",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":89,\"found\":true},{\"second\":100,\"found\":true},{\"second\":150,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Made drops",
         "value": "703"
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Quick factory",
-        "value": "150"
+        "pattern_name": "Mech",
+        "value": "976"
       },
       {
         "replay_player_id": 0,
@@ -314,7 +349,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Nexus First",
-        "value": "{\"expert_actuals\":[{\"second\":105,\"found\":true},{\"found\":false}]}"
+        "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":105,\"found\":true},{\"second\":125,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,

@@ -59,6 +59,13 @@ func (b *TestReplayBuilder) WithDurationSeconds(durationSeconds int) *TestReplay
 	return b
 }
 
+// WithMatchup sets the replay matchup string (e.g. "PvT") used by the
+// matchup gate on Marker.
+func (b *TestReplayBuilder) WithMatchup(matchup string) *TestReplayBuilder {
+	b.replay.Matchup = matchup
+	return b
+}
+
 // Build returns the replay and players
 func (b *TestReplayBuilder) Build() (*models.Replay, []*models.Player) {
 	// Link players to replay

@@ -13,6 +13,7 @@ type ReplaySummaryRow struct {
 	FilePath        string
 	FileChecksum    string
 	MapName         string
+	MapKind         string
 	DurationSeconds int64
 	GameType        string
 }
@@ -73,6 +74,7 @@ type PlayerRecentGameRow struct {
 	ReplayDate      string
 	FileName        string
 	MapName         string
+	MapKind         string
 	DurationSeconds int64
 	GameType        string
 	Matchup         string
@@ -99,6 +101,7 @@ func (s *Store) GetReplaySummary(ctx context.Context, replayID int64) (*ReplaySu
 		FilePath:        sqlcRow.FilePath,
 		FileChecksum:    sqlcRow.FileChecksum,
 		MapName:         sqlcRow.MapName,
+		MapKind:         sqlcRow.MapKind,
 		DurationSeconds: sqlcRow.DurationSeconds,
 		GameType:        sqlcRow.GameType,
 	}, nil
@@ -213,6 +216,7 @@ func (s *Store) ListPlayerRecentGames(ctx context.Context, playerKey string) ([]
 			ReplayDate:      row.ReplayDate,
 			FileName:        row.FileName,
 			MapName:         row.MapName,
+			MapKind:         row.MapKind,
 			DurationSeconds: row.DurationSeconds,
 			GameType:        row.GameType,
 			Matchup:         row.Matchup,

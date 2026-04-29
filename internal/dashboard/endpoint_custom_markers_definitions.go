@@ -11,14 +11,16 @@ import (
 // markerDefinition is the JSON shape the frontend consumes. Mirrors markers.Marker
 // minus the Rule/Custom/Expert fields which are backend-only behaviour.
 type markerDefinition struct {
-	FeatureKey    string           `json:"feature_key"`
-	Name          string           `json:"name"`
-	Kind          string           `json:"kind"`
-	Race          string           `json:"race,omitempty"`
-	SummaryPlayer *markers.Pill    `json:"summary_player,omitempty"`
-	SummaryReplay *markers.Pill    `json:"summary_replay,omitempty"`
-	GamesList     *markers.Pill    `json:"games_list,omitempty"`
-	EventsList    *markers.Pill    `json:"events_list,omitempty"`
+	FeatureKey    string        `json:"feature_key"`
+	Name          string        `json:"name"`
+	Kind          string        `json:"kind"`
+	Race          string        `json:"race,omitempty"`
+	Matchup       []string      `json:"matchup,omitempty"`
+	MapKind       []string      `json:"map_kind,omitempty"`
+	SummaryPlayer *markers.Pill `json:"summary_player,omitempty"`
+	SummaryReplay *markers.Pill `json:"summary_replay,omitempty"`
+	GamesList     *markers.Pill `json:"games_list,omitempty"`
+	EventsList    *markers.Pill `json:"events_list,omitempty"`
 }
 
 // gameEventFeature covers the game-event-only featuring chips (cannon_rush,
@@ -45,6 +47,9 @@ var staticGameEventFeatures = []gameEventFeature{
 	{Key: "cannon_rush", Label: "Cannon rush", IconKey: "photoncannon"},
 	{Key: "bunker_rush", Label: "Bunker rush", IconKey: "bunker"},
 	{Key: "zergling_rush", Label: "Zergling rush", IconKey: "zergling"},
+	{Key: "proxy_gate", Label: "Proxy gateway", IconKey: "gateway"},
+	{Key: "proxy_rax", Label: "Proxy barracks", IconKey: "barracks"},
+	{Key: "proxy_factory", Label: "Proxy factory", IconKey: "factory"},
 	{Key: "mind_control", Label: "Mind control", IconKey: "darkarchon"},
 }
 
@@ -52,14 +57,27 @@ var staticGameEventFeatures = []gameEventFeature{
 // event-only keys with marker FeatureKeys so the FE can render a single
 // ordered strip without a parallel lookup table.
 var staticFeaturingOrder = []string{
+	// signature markers (KindMarker, persistent presence)
 	"carriers",
 	"battlecruisers",
+	"ten_plus_scouts",
+	"mech",
+	// game-event-only chips (sourced from worldstate, not markers)
 	"cannon_rush",
 	"bunker_rush",
 	"zergling_rush",
+	"proxy_gate",
+	"proxy_rax",
+	"proxy_factory",
 	"mind_control",
+	// late-game custom-evaluator markers
 	"threw_nukes",
 	"made_recalls",
+	"mech_transition",
+	// transition markers (KindMarker)
+	"one_one_one",
+	"sk_terran",
+	// initial build orders, ordered by race + ascending supply / aggression
 	"bo_4_pool",
 	"bo_9_pool",
 	"bo_9_overpool",
@@ -69,9 +87,15 @@ var staticFeaturingOrder = []string{
 	"bo_10_hatch",
 	"bo_11_hatch",
 	"bo_12_hatch",
-	"bo_nexus_first",
-	"bo_forge_expa",
 	"bo_2_gate",
+	"bo_1_gate_core",
+	"bo_nexus_first",
+	"bo_gate_expand",
+	"bo_forge_expa",
+	"bo_bbs",
+	"bo_1_rax_1_fac",
+	"bo_rax_cc",
+	"bo_cc_first",
 }
 
 // handlerMarkersDefinitions serves the per-marker Pill metadata plus ordering
@@ -87,6 +111,8 @@ func (d *Dashboard) handlerMarkersDefinitions(w http.ResponseWriter, _ *http.Req
 			Name:          m.Name,
 			Kind:          string(m.Kind),
 			Race:          string(m.Race),
+			Matchup:       m.Matchup,
+			MapKind:       m.MapKind,
 			SummaryPlayer: m.SummaryPlayer,
 			SummaryReplay: m.SummaryReplay,
 			GamesList:     m.GamesList,

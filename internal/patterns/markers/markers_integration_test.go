@@ -27,24 +27,10 @@ import (
 // detections (player index + pattern name + string-serialized value) so a
 // diff pinpoints which specific marker regressed.
 //
-// Coverage of the 10 replays (markers observed when the golden was last
-// refreshed — do not rely on this for new assertions, trust the golden):
-//
-//	threw_nukes.rep       — Nexus First + Made drops + Never researched +
-//	                        Quick factory + Threw Nukes + UsedHotkeys + Viewport
-//	carriers_recalls.rep  — Carriers + Made drops + Made recalls + Quick
-//	                        factory + UsedHotkeys + Viewport
-//	never_upgraded.rep    — 12 Hatch + Never researched + Never upgraded +
-//	                        Never used hotkeys + UsedHotkeys + Viewport
-//	battlecruisers.rep    — Battlecruisers + 12 Hatch + Threw Nukes +
-//	                        UsedHotkeys + Viewport
-//	bo_4_pool.rep         — 4 Pool + UsedHotkeys
-//	bo_9_hatch.rep        — 9 Hatch + Made drops + UsedHotkeys + Viewport
-//	bo_forge_expand.rep   — Forge Expand + Made drops + UsedHotkeys + Viewport
-//	bo_2_gate_carriers.rep — 2 Gate + Carriers + Never researched + Quick
-//	                         factory + UsedHotkeys + Viewport
-//	bo_12_hatch.rep       — 12 Hatch + Quick factory + UsedHotkeys + Viewport
-//	empty_short.rep       — no markers (null case).
+// The 10 hand-picked replays collectively exercise every marker we know
+// how to detect. Trust the golden JSON for the exact set per replay; the
+// list is large and changes whenever marker definitions are tweaked.
+// Refresh with UPDATE_GOLDEN=1 (see above).
 
 const (
 	goldenRelativePath = "testdata/markers_golden.json"

@@ -9,12 +9,13 @@ import (
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
 )
 
-// Initial build orders are mutually exclusive: at most one KindInitialBuildOrder BO may
-// match per player per replay. These tests enforce that invariant.
+// Initial build orders are mutually exclusive PER (race, matchup) TUPLE: at most
+// one KindInitialBuildOrder BO may match per player per replay, given the
+// matchup gate. These tests enforce that invariant.
 //
 // When a new overlap is discovered, do NOT suppress the failing test. Instead,
-// tighten the broad rules in orders.go so the conflicting BOs no longer both
-// match the offending stream.
+// tighten the broad rules in definitions.go so the conflicting BOs no longer
+// both match the offending stream.
 
 type subjectKind struct {
 	subject string
@@ -32,17 +33,66 @@ var zergFuzzSubjects = []subjectKind{
 
 var protossFuzzSubjects = []subjectKind{
 	{subjNexus, cmdenrich.KindMakeBuilding},
+	{subjPylon, cmdenrich.KindMakeBuilding},
 	{subjGateway, cmdenrich.KindMakeBuilding},
+	{subjAssimilator, cmdenrich.KindMakeBuilding},
+	{subjCyberneticsCore, cmdenrich.KindMakeBuilding},
 	{subjForge, cmdenrich.KindMakeBuilding},
+	{subjPhotonCannon, cmdenrich.KindMakeBuilding},
 	{subjZealot, cmdenrich.KindMakeUnit},
 }
 
+var terranFuzzSubjects = []subjectKind{
+	{subjCommandCenter, cmdenrich.KindMakeBuilding},
+	{subjSupplyDepot, cmdenrich.KindMakeBuilding},
+	{subjBarracks, cmdenrich.KindMakeBuilding},
+	{subjRefinery, cmdenrich.KindMakeBuilding},
+	{subjFactory, cmdenrich.KindMakeBuilding},
+	{subjStarport, cmdenrich.KindMakeBuilding},
+	{subjAcademy, cmdenrich.KindMakeBuilding},
+	{subjEngineeringBay, cmdenrich.KindMakeBuilding},
+	{subjBunker, cmdenrich.KindMakeBuilding},
+}
+
+// matchupsForRace returns the canonical 1v1 matchups in which a player of the
+// given race can appear (matchup strings are alphabetised on the replay side,
+// e.g. PvT covers both Protoss-vs-Terran and Terran-vs-Protoss).
+func matchupsForRace(race Race) []string {
+	switch race {
+	case RaceZerg:
+		return []string{"ZvZ", "PvZ", "TvZ"}
+	case RaceProtoss:
+		return []string{"PvP", "PvT", "PvZ"}
+	case RaceTerran:
+		return []string{"TvT", "PvT", "TvZ"}
+	}
+	return nil
+}
+
+// matchupApplies reports whether a marker's Matchup gate admits the given
+// matchup. Empty Matchup = any.
+func matchupApplies(bo Marker, matchup string) bool {
+	if len(bo.Matchup) == 0 {
+		return true
+	}
+	for _, m := range bo.Matchup {
+		if m == matchup {
+			return true
+		}
+	}
+	return false
+}
+
 // collectInitialMatches returns the names of every KindInitialBuildOrder BO that matches
-// the given facts for the supplied race.
-func collectInitialMatches(race Race, facts []cmdenrich.EnrichedCommand) []string {
+// the given facts for the supplied (race, matchup) tuple. BOs whose Matchup
+// gate excludes the tuple are skipped — mutex is enforced per-tuple.
+func collectInitialMatches(race Race, matchup string, facts []cmdenrich.EnrichedCommand) []string {
 	var names []string
 	for _, bo := range Markers() {
 		if bo.Kind != KindInitialBuildOrder || bo.Race != race {
+			continue
+		}
+		if !matchupApplies(bo, matchup) {
 			continue
 		}
 		if bo.Matches(facts) {
@@ -69,19 +119,28 @@ func formatFactsForError(facts []cmdenrich.EnrichedCommand) string {
 }
 
 // FuzzInitialBOsMutualExclusion randomly walks fact streams and asserts no
-// two KindInitialBuildOrder BOs match the same stream for the same race.
+// two KindInitialBuildOrder BOs match the same stream for the same
+// (race, matchup) tuple. The fuzz exercises every (race, matchup) tuple
+// at every input — a single fact stream is mutex-checked across all 9
+// possible matchups so a single corpus seed exercises all of them.
 //
 // When the fuzzer finds a failing input, do NOT add it to a skip list —
-// tighten the broad rules in orders.go so the matching BOs become mutually
-// exclusive for that stream.
+// tighten the broad rules in definitions.go so the matching BOs become
+// mutually exclusive for that (race, matchup) tuple.
+//
+// Byte schema: first byte selects race (mod 3 → Zerg/Protoss/Terran);
+// remaining bytes form 3-byte triples (subjectIdx, second_lo, second_hi).
 func FuzzInitialBOsMutualExclusion(f *testing.F) {
-	// Seed corpus: a mix of typical pool-first / hatch-first / protoss
-	// timings. bytes encode: first byte = race (even=Zerg, odd=Protoss);
-	// then 3-byte triples (subjectIdx, second_lo, second_hi) for facts.
-	f.Add([]byte{0, 0, 10, 0, 1, 85, 0, 0, 110, 0})
-	f.Add([]byte{0, 3, 5, 0, 3, 15, 0, 3, 27, 0, 0, 73, 0, 5, 123, 0})
-	f.Add([]byte{1, 0, 106, 0, 1, 126, 0})
-	f.Add([]byte{1, 1, 70, 0, 1, 86, 0, 3, 130, 0})
+	// Seed corpus: a mix of typical pool-first / hatch-first / protoss /
+	// terran timings.
+	f.Add([]byte{0, 0, 10, 0, 1, 85, 0, 0, 110, 0})                  // Zerg early Pool
+	f.Add([]byte{0, 3, 5, 0, 3, 15, 0, 3, 27, 0, 0, 73, 0, 5, 123, 0}) // Zerg 9 Pool
+	f.Add([]byte{1, 0, 48, 0, 2, 86, 0, 3, 116, 0, 4, 138, 0})       // Protoss 1 Gate Core
+	f.Add([]byte{1, 0, 48, 0, 0, 130, 0, 2, 175, 0})                 // Protoss Nexus First
+	f.Add([]byte{1, 1, 48, 0, 5, 86, 0, 6, 130, 0, 0, 152, 0})       // Protoss FFE
+	f.Add([]byte{2, 1, 60, 0, 2, 88, 0, 3, 115, 0, 4, 165, 0})       // Terran 1 Rax 1 Fac
+	f.Add([]byte{2, 1, 62, 0, 0, 145, 0, 2, 165, 0})                 // Terran CC First
+	f.Add([]byte{2, 2, 60, 0, 2, 80, 0, 1, 100, 0})                  // Terran BBS
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		if len(data) < 1 {
@@ -89,12 +148,16 @@ func FuzzInitialBOsMutualExclusion(f *testing.F) {
 		}
 		var subs []subjectKind
 		var race Race
-		if data[0]%2 == 0 {
+		switch data[0] % 3 {
+		case 0:
 			subs = zergFuzzSubjects
 			race = RaceZerg
-		} else {
+		case 1:
 			subs = protossFuzzSubjects
 			race = RaceProtoss
+		default:
+			subs = terranFuzzSubjects
+			race = RaceTerran
 		}
 		facts := make([]cmdenrich.EnrichedCommand, 0, (len(data)-1)/3)
 		for i := 1; i+2 < len(data); i += 3 {
@@ -106,10 +169,12 @@ func FuzzInitialBOsMutualExclusion(f *testing.F) {
 		// Sort facts ascending by Second so the streaming monotonicity
 		// invariants hold.
 		sort.SliceStable(facts, func(i, j int) bool { return facts[i].Second < facts[j].Second })
-		matches := collectInitialMatches(race, facts)
-		if len(matches) > 1 {
-			t.Fatalf("multiple %s initial BOs matched: %v — tighten broad rules so they're mutually exclusive. Facts: %s",
-				race, matches, formatFactsForError(facts))
+		for _, matchup := range matchupsForRace(race) {
+			matches := collectInitialMatches(race, matchup, facts)
+			if len(matches) > 1 {
+				t.Fatalf("multiple %s initial BOs matched in %s: %v — tighten broad rules so they're mutually exclusive. Facts: %s",
+					race, matchup, matches, formatFactsForError(facts))
+			}
 		}
 	})
 }

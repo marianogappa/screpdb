@@ -277,10 +277,12 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 	replayIDs := make([]int64, 0, len(items))
 	itemIndexByReplayID := map[int64]int{}
 	featureSets := map[int64]map[string]struct{}{}
+	mapKindByReplayID := map[int64]string{}
 	for i, item := range items {
 		replayIDs = append(replayIDs, item.ReplayID)
 		itemIndexByReplayID[item.ReplayID] = i
 		featureSets[item.ReplayID] = map[string]struct{}{}
+		mapKindByReplayID[item.ReplayID] = item.MapKind
 	}
 	if len(replayIDs) == 0 {
 		return nil
@@ -295,10 +297,8 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 		// (row presence alone = match; no value-column truthiness check needed).
 		featureKey := strings.TrimSpace(strings.ToLower(row.PatternName))
 		switch featureKey {
-		case "carriers":
-			featureSets[replayID]["carriers"] = struct{}{}
-		case "battlecruisers":
-			featureSets[replayID]["battlecruisers"] = struct{}{}
+		case "carriers", "battlecruisers", "ten_plus_scouts", "mech", "sk_terran", "one_one_one", "mech_transition":
+			featureSets[replayID][featureKey] = struct{}{}
 		case "made_recalls":
 			featureSets[replayID]["recalls"] = struct{}{}
 		case "threw_nukes":
@@ -306,8 +306,15 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 		case "became_terran", "became_zerg":
 			featureSets[replayID]["mind_control"] = struct{}{}
 		default:
-			// Build-order markers route directly to their featuring key.
+			// Build-order markers route directly to their featuring key,
+			// but Money maps suppress them: the BO chip column gets too
+			// noisy on Big Game Hunters / Fastest-style games where opener
+			// timings are uninformative. The BO tab + per-player summary
+			// pill still surface the BO inside the game detail page.
 			if bo := markers.ByFeatureKey(featureKey); bo != nil {
+				if bo.Kind == markers.KindInitialBuildOrder && mapKindByReplayID[replayID] == "Money" {
+					continue
+				}
 				featureSets[replayID][bo.FeatureKey] = struct{}{}
 			}
 		}
@@ -319,12 +326,9 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 	for _, row := range rowsReplayEvents {
 		replayID := row.ReplayID
 		switch strings.ToLower(strings.TrimSpace(row.EventType)) {
-		case "zergling_rush":
-			featureSets[replayID]["zergling_rush"] = struct{}{}
-		case "cannon_rush":
-			featureSets[replayID]["cannon_rush"] = struct{}{}
-		case "bunker_rush":
-			featureSets[replayID]["bunker_rush"] = struct{}{}
+		case "zergling_rush", "cannon_rush", "bunker_rush",
+			"proxy_gate", "proxy_rax", "proxy_factory":
+			featureSets[replayID][strings.ToLower(strings.TrimSpace(row.EventType))] = struct{}{}
 		}
 	}
 	for replayID, set := range featureSets {

@@ -626,6 +626,7 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 			ReplayDate:      row.ReplayDate,
 			FileName:        row.FileName,
 			MapName:         row.MapName,
+			MapKind:         row.MapKind,
 			DurationSeconds: row.DurationSeconds,
 			GameType:        row.GameType,
 			Matchup:         row.Matchup,
