@@ -2588,6 +2588,26 @@ body {
   opacity: 1;
 }
 
+.workflow-filter-pill-icon {
+  padding: 3px 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.workflow-filter-pill-icon-img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  display: block;
+}
+
+.workflow-filter-pill-disclosure {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 .workflow-race-icon {
   display: inline-block;
   width: 14px;

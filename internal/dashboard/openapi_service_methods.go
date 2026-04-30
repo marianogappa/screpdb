@@ -611,6 +611,9 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 	if request.Params.Matchup != nil {
 		filters.MatchupKeys = parseCSVQueryValues(*request.Params.Matchup, true)
 	}
+	if request.Params.MapKind != nil {
+		filters.MapKindKeys = parseCSVQueryValues(*request.Params.MapKind, true)
+	}
 	whereSQL, whereArgs := buildWorkflowGamesListWhere(filters)
 	total, err := d.dbStore.CountGamesWithWhere(ctx, whereSQL, whereArgs)
 	if err != nil {

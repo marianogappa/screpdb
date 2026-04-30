@@ -197,12 +197,15 @@ type workflowGamesListFilters struct {
 	DurationBuckets []string
 	FeaturingKeys   []string
 	MatchupKeys     []string
+	MapKindKeys     []string
 }
 
 type workflowGamesListFilterOption struct {
-	Key   string `json:"key"`
-	Label string `json:"label"`
-	Games int64  `json:"games"`
+	Key     string `json:"key"`
+	Label   string `json:"label"`
+	Games   int64  `json:"games"`
+	IconKey string `json:"icon_key,omitempty"`
+	Group   string `json:"group,omitempty"`
 }
 
 type workflowGamesListFilterOptions struct {
@@ -211,6 +214,7 @@ type workflowGamesListFilterOptions struct {
 	Durations []workflowGamesListFilterOption `json:"durations"`
 	Featuring []workflowGamesListFilterOption `json:"featuring"`
 	Matchups  []workflowGamesListFilterOption `json:"matchups"`
+	MapKinds  []workflowGamesListFilterOption `json:"map_kinds"`
 }
 
 // workflowMatchupFilters lists the canonical matchup keys. TvZ==ZvT and
@@ -227,47 +231,58 @@ var workflowMatchupFilters = []struct {
 	{Key: "zvz", Label: "ZvZ"},
 }
 
+// workflowFeaturingFilters lists the chips on the games-list filter bar.
+//
+// Group splits the row visually on the frontend:
+//   - "marker" → narrative/late-game/rush markers (always visible)
+//   - "bo"     → opener build orders (collapsed under a disclosure by default)
+//
+// IconKey, when set, tells the frontend to render the chip as an image-only
+// pill (with the Label as a tooltip). Use it for markers where a single
+// unit/building cleanly conveys the meaning; leave empty for text-label chips.
 var workflowFeaturingFilters = []struct {
-	Key   string
-	Label string
+	Key     string
+	Label   string
+	Group   string
+	IconKey string
 }{
-	{Key: "carriers", Label: "Carrier"},
-	{Key: "battlecruisers", Label: "Battlecruiser"},
-	{Key: "ten_plus_scouts", Label: "10+ Scouts"},
-	{Key: "mech", Label: "Mech"},
-	{Key: "sk_terran", Label: "SK Terran"},
-	{Key: "one_one_one", Label: "1-1-1"},
-	{Key: "mech_transition", Label: "Mech Transition"},
-	{Key: "cannon_rush", Label: "Cannon Rush"},
-	{Key: "bunker_rush", Label: "Bunker Rush"},
-	{Key: "zergling_rush", Label: "Zergling Rush"},
-	{Key: "proxy_gate", Label: "Proxy Gateway"},
-	{Key: "proxy_rax", Label: "Proxy Barracks"},
-	{Key: "proxy_factory", Label: "Proxy Factory"},
-	{Key: "mind_control", Label: "Mind Control"},
-	{Key: "nukes", Label: "Nukes"},
-	{Key: "recalls", Label: "Recalls"},
+	{Key: "carriers", Label: "Carrier", Group: "marker", IconKey: "carrier"},
+	{Key: "battlecruisers", Label: "Battlecruiser", Group: "marker", IconKey: "battlecruiser"},
+	{Key: "ten_plus_scouts", Label: "10+ Scouts", Group: "marker", IconKey: "scout"},
+	{Key: "mech", Label: "Mech", Group: "marker"},
+	{Key: "sk_terran", Label: "SK Terran", Group: "marker"},
+	{Key: "one_one_one", Label: "1-1-1", Group: "marker"},
+	{Key: "mech_transition", Label: "Mech Transition", Group: "marker"},
+	{Key: "cannon_rush", Label: "Cannon Rush", Group: "marker", IconKey: "photoncannon"},
+	{Key: "bunker_rush", Label: "Bunker Rush", Group: "marker", IconKey: "bunker"},
+	{Key: "zergling_rush", Label: "Zergling Rush", Group: "marker", IconKey: "zergling"},
+	{Key: "proxy_gate", Label: "Proxy Gateway", Group: "marker", IconKey: "gateway"},
+	{Key: "proxy_rax", Label: "Proxy Barracks", Group: "marker", IconKey: "barracks"},
+	{Key: "proxy_factory", Label: "Proxy Factory", Group: "marker", IconKey: "factory"},
+	{Key: "mind_control", Label: "Mind Control", Group: "marker"},
+	{Key: "nukes", Label: "Nukes", Group: "marker"},
+	{Key: "recalls", Label: "Recalls", Group: "marker"},
 	// Build order pills — keys & labels kept in sync with internal/markers.
 	// Suppressed in render for Money maps (game-list + replay-summary
 	// featuring strips); BO tab and per-player summary pills still show.
-	{Key: "bo_4_pool", Label: "4 Pool"},
-	{Key: "bo_9_pool", Label: "9 Pool"},
-	{Key: "bo_9_overpool", Label: "9 Overpool"},
-	{Key: "bo_12_pool", Label: "12 Pool"},
-	{Key: "bo_9_pool_hatch", Label: "9 Pool into Hatchery"},
-	{Key: "bo_9_hatch", Label: "9 Hatch"},
-	{Key: "bo_10_hatch", Label: "10 Hatch"},
-	{Key: "bo_11_hatch", Label: "11 Hatch"},
-	{Key: "bo_12_hatch", Label: "12 Hatch"},
-	{Key: "bo_1_gate_core", Label: "1 Gate Core"},
-	{Key: "bo_2_gate", Label: "2 Gate"},
-	{Key: "bo_nexus_first", Label: "Nexus First"},
-	{Key: "bo_gate_expand", Label: "Gate Expand"},
-	{Key: "bo_forge_expa", Label: "Forge Expand"},
-	{Key: "bo_1_rax_1_fac", Label: "1 Rax 1 Fac"},
-	{Key: "bo_rax_cc", Label: "Rax-CC"},
-	{Key: "bo_cc_first", Label: "CC First"},
-	{Key: "bo_bbs", Label: "BBS"},
+	{Key: "bo_4_pool", Label: "4 Pool", Group: "bo"},
+	{Key: "bo_9_pool", Label: "9 Pool", Group: "bo"},
+	{Key: "bo_9_overpool", Label: "9 Overpool", Group: "bo"},
+	{Key: "bo_12_pool", Label: "12 Pool", Group: "bo"},
+	{Key: "bo_9_pool_hatch", Label: "9 Pool into Hatchery", Group: "bo"},
+	{Key: "bo_9_hatch", Label: "9 Hatch", Group: "bo"},
+	{Key: "bo_10_hatch", Label: "10 Hatch", Group: "bo"},
+	{Key: "bo_11_hatch", Label: "11 Hatch", Group: "bo"},
+	{Key: "bo_12_hatch", Label: "12 Hatch", Group: "bo"},
+	{Key: "bo_1_gate_core", Label: "1 Gate Core", Group: "bo"},
+	{Key: "bo_2_gate", Label: "2 Gate", Group: "bo"},
+	{Key: "bo_nexus_first", Label: "Nexus First", Group: "bo"},
+	{Key: "bo_gate_expand", Label: "Gate Expand", Group: "bo"},
+	{Key: "bo_forge_expa", Label: "Forge Expand", Group: "bo"},
+	{Key: "bo_1_rax_1_fac", Label: "1 Rax 1 Fac", Group: "bo"},
+	{Key: "bo_rax_cc", Label: "Rax-CC", Group: "bo"},
+	{Key: "bo_cc_first", Label: "CC First", Group: "bo"},
+	{Key: "bo_bbs", Label: "BBS", Group: "bo"},
 }
 
 var workflowDurationFilterBuckets = []struct {
@@ -275,10 +290,15 @@ var workflowDurationFilterBuckets = []struct {
 	Label string
 }{
 	{Key: "under_10m", Label: "Under 10m"},
-	{Key: "10_20m", Label: "10m - 20m"},
-	{Key: "20_30m", Label: "20m - 30m"},
-	{Key: "30_45m", Label: "30m - 45m"},
-	{Key: "45m_plus", Label: "45m+"},
+	{Key: "10m_plus", Label: "10m+"},
+}
+
+var workflowMapKindFilters = []struct {
+	Key   string
+	Label string
+}{
+	{Key: "money", Label: "Money maps"},
+	{Key: "regular", Label: "Regular maps"},
 }
 
 type workflowGamePlayer struct {

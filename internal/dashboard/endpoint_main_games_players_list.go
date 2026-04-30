@@ -180,6 +180,7 @@ func parseWorkflowGamesListFilters(r *http.Request) workflowGamesListFilters {
 		DurationBuckets: parseCSVQueryValues(r.URL.Query()["duration"], true),
 		FeaturingKeys:   parseCSVQueryValues(r.URL.Query()["featuring"], true),
 		MatchupKeys:     parseCSVQueryValues(r.URL.Query()["matchup"], true),
+		MapKindKeys:     parseCSVQueryValues(r.URL.Query()["map_kind"], true),
 	}
 }
 
@@ -212,6 +213,7 @@ func buildWorkflowGamesListWhere(filters workflowGamesListFilters) (string, []an
 		filters.DurationBuckets,
 		filters.FeaturingKeys,
 		filters.MatchupKeys,
+		filters.MapKindKeys,
 		dashboarddb.WorkflowDurationSQLByKey(),
 	)
 }
@@ -450,6 +452,7 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 		Durations: []workflowGamesListFilterOption{},
 		Featuring: []workflowGamesListFilterOption{},
 		Matchups:  []workflowGamesListFilterOption{},
+		MapKinds:  []workflowGamesListFilterOption{},
 	}
 
 	rowsPlayers, err := d.dbStore.ListWorkflowFilterPlayers(d.ctx)
@@ -490,12 +493,11 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 	if err != nil {
 		return result, err
 	}
+	// Two-bucket UI: <10m and ≥10m. The underlying SQL count query still
+	// returns the legacy 5-bucket split; sum the four ≥10m buckets here.
 	durationCounts := map[string]int64{
 		"under_10m": under10m,
-		"10_20m":    m10to20,
-		"20_30m":    m20to30,
-		"30_45m":    m30to45,
-		"45m_plus":  m45Plus,
+		"10m_plus":  m10to20 + m20to30 + m30to45 + m45Plus,
 	}
 	for _, bucket := range workflowDurationFilterBuckets {
 		result.Durations = append(result.Durations, workflowGamesListFilterOption{
@@ -507,14 +509,22 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 
 	for _, feature := range workflowFeaturingFilters {
 		result.Featuring = append(result.Featuring, workflowGamesListFilterOption{
-			Key:   feature.Key,
-			Label: feature.Label,
+			Key:     feature.Key,
+			Label:   feature.Label,
+			Group:   feature.Group,
+			IconKey: feature.IconKey,
 		})
 	}
 	for _, matchup := range workflowMatchupFilters {
 		result.Matchups = append(result.Matchups, workflowGamesListFilterOption{
 			Key:   matchup.Key,
 			Label: matchup.Label,
+		})
+	}
+	for _, mapKind := range workflowMapKindFilters {
+		result.MapKinds = append(result.MapKinds, workflowGamesListFilterOption{
+			Key:   mapKind.Key,
+			Label: mapKind.Label,
 		})
 	}
 	return result, nil

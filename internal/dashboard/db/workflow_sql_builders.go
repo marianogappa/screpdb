@@ -8,10 +8,7 @@ import (
 
 var workflowDurationSQLByKey = map[string]string{
 	"under_10m": "r.duration_seconds < 600",
-	"10_20m":    "r.duration_seconds >= 600 AND r.duration_seconds < 1200",
-	"20_30m":    "r.duration_seconds >= 1200 AND r.duration_seconds < 1800",
-	"30_45m":    "r.duration_seconds >= 1800 AND r.duration_seconds < 2700",
-	"45m_plus":  "r.duration_seconds >= 2700",
+	"10m_plus":  "r.duration_seconds >= 600",
 }
 
 func WorkflowDurationSQLByKey() map[string]string {
@@ -89,7 +86,7 @@ func BuildWorkflowPlayersListWhere(onlyFivePlus bool, lastPlayedBuckets []string
 	return "WHERE " + strings.Join(clauses, " AND "), args
 }
 
-func BuildWorkflowGamesListWhere(playerKeys, mapNames, durationBuckets, featuringKeys, matchupKeys []string, durationSQLByKey map[string]string) (string, []any) {
+func BuildWorkflowGamesListWhere(playerKeys, mapNames, durationBuckets, featuringKeys, matchupKeys, mapKindKeys []string, durationSQLByKey map[string]string) (string, []any) {
 	clauses := []string{}
 	args := []any{}
 	if len(playerKeys) > 0 {
@@ -134,10 +131,38 @@ func BuildWorkflowGamesListWhere(playerKeys, mapNames, durationBuckets, featurin
 		clauses = append(clauses, matchupClause)
 		args = append(args, matchupArgs...)
 	}
+	if mapKindClause := buildMapKindClause(mapKindKeys); mapKindClause != "" {
+		clauses = append(clauses, mapKindClause)
+	}
 	if len(clauses) == 0 {
 		return "", args
 	}
 	return "WHERE " + strings.Join(clauses, " AND "), args
+}
+
+// buildMapKindClause filters by replays.map_kind. The frontend submits
+// "money" / "regular" lowercase keys; "regular" matches both "Regular" and
+// "UseMapSettings" (the latter is the StarCraft "Use Map Settings" lobby
+// option, which we treat as standard for filtering purposes — only "Money"
+// triggers the dedicated economy-game gating elsewhere). Selecting both keys
+// (or neither) is equivalent to no filter.
+func buildMapKindClause(mapKindKeys []string) string {
+	wantMoney, wantRegular := false, false
+	for _, key := range mapKindKeys {
+		switch strings.ToLower(strings.TrimSpace(key)) {
+		case "money":
+			wantMoney = true
+		case "regular":
+			wantRegular = true
+		}
+	}
+	if wantMoney && !wantRegular {
+		return "r.map_kind = 'Money'"
+	}
+	if wantRegular && !wantMoney {
+		return "r.map_kind IN ('Regular', 'UseMapSettings')"
+	}
+	return ""
 }
 
 // buildMatchupClause filters replays by the canonical matchup string stored on

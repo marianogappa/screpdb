@@ -729,11 +729,16 @@ func allMarkers() []Marker {
 			// dataset, so we extend the deadline to 6 minutes to capture
 			// stragglers. Independent of opener — fires on top of
 			// "1 Rax 1 Fac", "Rax-CC", etc.
+			//
+			// MapKind gate: on Money games every Terran builds Rax+Fac+Starport
+			// because resources are free, so the marker carries no strategic
+			// signal. Restrict to non-Money maps.
 			Name:        "1-1-1",
 			PatternName: "1-1-1",
 			FeatureKey:  "one_one_one",
 			Kind:        KindMarker,
 			Race:        RaceTerran,
+			MapKind:     []string{"Regular", "UseMapSettings"},
 			Rule: All(
 				FirstBuildExists(subjBarracks),
 				FirstBuildExists(subjFactory),

@@ -1320,6 +1320,7 @@ function App() {
     durations: [],
     featuring: [],
     matchups: [],
+    map_kinds: [],
   });
   const [mainGamesFilters, setMainGamesFilters] = useState({
     player: [],
@@ -1327,7 +1328,9 @@ function App() {
     duration: [],
     featuring: [],
     matchup: [],
+    mapKind: [],
   });
+  const [mainGamesShowBOFilters, setMainGamesShowBOFilters] = useState(false);
   const [mainGameDetailLoading, setMainGameDetailLoading] = useState(false);
   const [mainPlayerLoading, setMainPlayerLoading] = useState(false);
   const [selectedReplayId, setSelectedReplayId] = useState(() => initialMainRoute.replayId);
@@ -2762,6 +2765,7 @@ function App() {
       duration: [],
       featuring: [],
       matchup: [],
+      mapKind: [],
     });
   };
 
@@ -3811,25 +3815,19 @@ function App() {
                     </button>
                   );
                 })}
-              </div>
-              <div className="workflow-pattern-pills workflow-games-filter-pills">
-                {(mainGamesFilterOptions.featuring || []).map((option) => {
-                  const active = (mainGamesFilters.featuring || []).includes(option.key);
+                {(mainGamesFilterOptions.map_kinds || []).map((option) => {
+                  const active = (mainGamesFilters.mapKind || []).includes(option.key);
                   return (
                     <button
-                      key={`wf-feature-${option.key}`}
+                      key={`wf-mapkind-${option.key}`}
                       type="button"
                       className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                      onClick={() => toggleMainGameMultiFilter('featuring', option.key)}
+                      onClick={() => toggleMainGameMultiFilter('mapKind', option.key)}
                     >
                       {option.label}
                     </button>
                   );
                 })}
-              </div>
-            </div>
-            <div className="workflow-summary-filter-row workflow-games-filter-row">
-              <div className="workflow-pattern-pills workflow-games-filter-pills">
                 {(mainGamesFilterOptions.matchups || []).map((option) => {
                   const active = (mainGamesFilters.matchup || []).includes(option.key);
                   return (
@@ -3844,6 +3842,59 @@ function App() {
                   );
                 })}
               </div>
+              <div className="workflow-pattern-pills workflow-games-filter-pills">
+                {(mainGamesFilterOptions.featuring || [])
+                  .filter((option) => (option.group || 'marker') !== 'bo')
+                  .map((option) => {
+                    const active = (mainGamesFilters.featuring || []).includes(option.key);
+                    const iconUrl = option.icon_key ? getUnitIcon(option.icon_key) : null;
+                    return (
+                      <button
+                        key={`wf-feature-${option.key}`}
+                        type="button"
+                        className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''} ${iconUrl ? 'workflow-filter-pill-icon' : ''}`}
+                        onClick={() => toggleMainGameMultiFilter('featuring', option.key)}
+                        title={option.label}
+                        aria-label={option.label}
+                      >
+                        {iconUrl ? (
+                          <img src={iconUrl} alt={option.label} className="workflow-filter-pill-icon-img" />
+                        ) : (
+                          option.label
+                        )}
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+            <div className="workflow-summary-filter-row workflow-games-filter-row">
+              <button
+                type="button"
+                className={`workflow-filter-pill workflow-filter-pill-disclosure ${mainGamesShowBOFilters ? 'workflow-filter-pill-active' : ''}`}
+                onClick={() => setMainGamesShowBOFilters((prev) => !prev)}
+                aria-expanded={mainGamesShowBOFilters}
+              >
+                Build orders {mainGamesShowBOFilters ? '▾' : '▸'}
+              </button>
+              {mainGamesShowBOFilters && (
+                <div className="workflow-pattern-pills workflow-games-filter-pills">
+                  {(mainGamesFilterOptions.featuring || [])
+                    .filter((option) => (option.group || '') === 'bo')
+                    .map((option) => {
+                      const active = (mainGamesFilters.featuring || []).includes(option.key);
+                      return (
+                        <button
+                          key={`wf-feature-bo-${option.key}`}
+                          type="button"
+                          className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
+                          onClick={() => toggleMainGameMultiFilter('featuring', option.key)}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                </div>
+              )}
               <button type="button" className="workflow-filter-pill workflow-filter-pill-clear" onClick={clearMainGamesFilters}>Clear filters</button>
             </div>
             {mainGamesLoading ? (
