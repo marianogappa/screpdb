@@ -2357,6 +2357,22 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 	sort.SliceStable(detail.GameEvents, func(i, j int) bool {
 		return detail.GameEvents[i].Second < detail.GameEvents[j].Second
 	})
+	// Propagate ownership snapshots forward to BO events. replayEventsFromRows
+	// computed Ownership for every replay_events row by walking transitions in
+	// time order, but synthesized BO events are appended here without that
+	// data. BOs don't change ownership themselves, so each one inherits the
+	// snapshot from the most recent prior event — which gives the FE the
+	// same set of base polygons it would draw if a real game_event fired at
+	// the BO's second.
+	var prevOwnership []workflowGameOwnership
+	for i := range detail.GameEvents {
+		ev := &detail.GameEvents[i]
+		if strings.HasPrefix(ev.Type, "bo_") {
+			ev.Ownership = prevOwnership
+			continue
+		}
+		prevOwnership = ev.Ownership
+	}
 	return nil
 }
 

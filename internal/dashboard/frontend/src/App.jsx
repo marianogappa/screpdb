@@ -267,11 +267,17 @@ const gameEventLocationLabel = (event) => {
   return '';
 };
 
-const gameEventDescription = (event) => {
+const gameEventDescription = (event, registry) => {
   const eventType = normalizeEventType(event?.type);
   const actor = String(event?.actor?.name || '').trim();
   const target = String(event?.target?.name || '').trim();
   const location = gameEventLocationLabel(event);
+
+  if (typeof eventType === 'string' && eventType.startsWith('bo_')) {
+    const def = registry?.[eventType];
+    const boName = def?.name || prettyPatternName(eventType.replace(/^bo_/, ''));
+    return actor ? `${actor} opens with ${boName}` : `Opens with ${boName}`;
+  }
 
   if (eventType === 'player_start') {
     if (actor && location) return `${actor} starts at ${location}`;
@@ -315,9 +321,9 @@ const gameEventDescription = (event) => {
   return prettyPatternName(event?.type || 'event');
 };
 
-const gameEventSearchText = (event) => {
+const gameEventSearchText = (event, registry) => {
   const parts = [
-    gameEventDescription(event),
+    gameEventDescription(event, registry),
     event?.type,
     event?.actor?.name,
     event?.target?.name,
@@ -606,59 +612,6 @@ const fallbackOverlayUnitNamesForEvent = (eventType) => {
   if (normalized === 'drop') return ['dropship'];
   if (normalized === 'nuke') return ['ghost'];
   return [];
-};
-
-// Return clock as a number in [0, 12]. 0 represents scmapanalyzer's "center
-// base" (rich middle expansion). 1..12 are regular dial positions. Null
-// means unknown — fall back to other lookups.
-const eventBaseClock = (event) => {
-  const rawClock = Number(event?.base?.clock);
-  if (Number.isFinite(rawClock) && rawClock >= 0 && rawClock <= 12) return rawClock;
-  const name = String(event?.base?.name || '');
-  if (/\bcenter base\b/i.test(name)) return 0;
-  const match = name.match(/\b([1-9]|1[0-2])\b/);
-  if (!match) return null;
-  const parsed = Number(match[1]);
-  if (!Number.isFinite(parsed) || parsed < 1 || parsed > 12) return null;
-  return parsed;
-};
-
-const syntheticPointForClock = (clock) => {
-  const safeClock = Number(clock);
-  if (!Number.isFinite(safeClock) || safeClock < 0 || safeClock > 12) return null;
-  // clock==0 is the center base — place it literally at the map center
-  // rather than projecting onto the 12-hour dial circle.
-  if (safeClock === 0) return { x: 50, y: 50 };
-  const angle = ((safeClock % 12) / 12) * (Math.PI * 2) - (Math.PI / 2);
-  const radius = 34;
-  return {
-    x: 50 + (Math.cos(angle) * radius),
-    y: 50 + (Math.sin(angle) * radius),
-  };
-};
-
-const syntheticPolygonForCenter = (center, radius = 6) => {
-  if (!center) return [];
-  const out = [];
-  for (let idx = 0; idx < 6; idx += 1) {
-    const angle = (idx / 6) * (Math.PI * 2);
-    out.push({
-      x: center.x + (Math.cos(angle) * radius),
-      y: center.y + (Math.sin(angle) * radius),
-    });
-  }
-  return out;
-};
-
-const eventBaseKey = (event) => {
-  const kind = String(event?.base?.kind || '').trim().toLowerCase();
-  const clock = eventBaseClock(event);
-  // clock can legitimately be 0 (center base). Check for null/undefined,
-  // not truthiness, or we collapse center bases into name-based keys.
-  if (clock !== null && clock !== undefined) return `${kind || 'base'}:${clock}`;
-  const name = String(event?.base?.name || '').trim().toLowerCase();
-  if (name) return `${kind || 'base'}:${name}`;
-  return '';
 };
 
 const eventActorID = (event) => {
@@ -2900,19 +2853,19 @@ function App() {
       if (normalizeEventType(event?.type) === 'takeover') {
         return false;
       }
-      return summaryTextMatches(gameEventSearchText(event));
+      return summaryTextMatches(gameEventSearchText(event, markerRegistry));
     });
     const deduped = [];
     for (let idx = 0; idx < visibleEvents.length; idx += 1) {
       const event = visibleEvents[idx];
       const prev = deduped.length > 0 ? deduped[deduped.length - 1] : null;
-      if (prev && gameEventDescription(prev) === gameEventDescription(event)) {
+      if (prev && gameEventDescription(prev, markerRegistry) === gameEventDescription(event, markerRegistry)) {
         continue;
       }
       deduped.push(event);
     }
     return deduped;
-  }, [mainGame?.game_events, mainSummaryFilters]);
+  }, [mainGame?.game_events, mainSummaryFilters, markerRegistry]);
 
   const filteredGameEvents = useMemo(() => (
     topicFilteredGameEvents.filter((event) => {
@@ -2937,7 +2890,7 @@ function App() {
       if (isStructuralGameEventType(event?.type)) continue;
       const nt = normalizeEventType(event?.type);
       if (nt === 'takeover') continue;
-      const text = gameEventSearchText(event);
+      const text = gameEventSearchText(event, markerRegistry);
       if (SUMMARY_TOPIC_PATTERNS.nuke.test(text)) base.nuke = true;
       if (SUMMARY_TOPIC_PATTERNS.drop.test(text)) base.drop = true;
       if (SUMMARY_TOPIC_PATTERNS.recall.test(text)) base.recall = true;
@@ -2946,7 +2899,7 @@ function App() {
       if (SUMMARY_TOPIC_PATTERNS.rush.test(text)) base.rush = true;
     }
     return base;
-  }, [mainGame?.game_events]);
+  }, [mainGame?.game_events, markerRegistry]);
   const mainMapVisual = mainGame?.map_visual || {};
   const mainMapVisualURL = String(mainMapVisual?.url || '').trim();
   const mainMapVisualThumbURL = String(mainMapVisual?.thumbnail_url || mainMapVisualURL).trim();
@@ -3060,97 +3013,8 @@ function App() {
       color: playerColorToCss(selectedMainGameEvent?.actor?.color),
     };
   }, [selectedMainGameEvent, mainEventMapBounds]);
-  const selectedMainGameSyntheticOverlay = useMemo(() => {
-    if (!selectedMainGameEvent) {
-      return { ownershipPolygons: [], arrow: null, leaveFlagPoint: null };
-    }
-    const allEvents = Array.isArray(mainGame?.game_events) ? mainGame.game_events : [];
-    if (allEvents.length === 0) {
-      return { ownershipPolygons: [], arrow: null, leaveFlagPoint: null };
-    }
-    const selectedEventSecond = Number(selectedMainGameEvent?.second || 0);
-    const ownershipByBase = new Map();
-    const startPointByPlayerID = new Map();
-
-    allEvents.forEach((event) => {
-      const second = Number(event?.second || 0);
-      if (second > selectedEventSecond) return;
-      const type = normalizeEventType(event?.type);
-      const baseKey = eventBaseKey(event);
-      const baseClock = eventBaseClock(event);
-      const baseCenter = syntheticPointForClock(baseClock);
-      const actorID = eventActorID(event);
-      const actor = event?.actor || null;
-      if (type === 'player_start' && actorID && baseCenter) {
-        startPointByPlayerID.set(actorID, baseCenter);
-      }
-      if (!baseKey || !baseCenter) {
-        if (type === 'leave_game' && actorID) {
-          Array.from(ownershipByBase.entries()).forEach(([key, value]) => {
-            if (Number(value?.owner?.player_id) === actorID) ownershipByBase.delete(key);
-          });
-        }
-        return;
-      }
-      if ((type === 'player_start' || type === 'expansion' || type === 'takeover') && actorID && actor) {
-        ownershipByBase.set(baseKey, {
-          baseKey,
-          baseKind: String(event?.base?.kind || ''),
-          center: baseCenter,
-          owner: actor,
-        });
-      } else if (type === 'location_inactive') {
-        ownershipByBase.delete(baseKey);
-      } else if (type === 'leave_game' && actorID) {
-        Array.from(ownershipByBase.entries()).forEach(([key, value]) => {
-          if (Number(value?.owner?.player_id) === actorID) ownershipByBase.delete(key);
-        });
-      }
-    });
-
-    const ownershipPolygons = Array.from(ownershipByBase.values()).map((entry, idx) => ({
-      key: `synthetic-ownership-${idx}-${entry.baseKey}`,
-      points: syntheticPolygonForCenter(entry.center).map((pt) => `${pt.x},${pt.y}`).join(' '),
-      ownerName: String(entry?.owner?.name || ''),
-      ownerColor: playerColorToCss(entry?.owner?.color),
-    })).filter((entry) => entry.points);
-
-    let arrow = null;
-    if (isArrowEventType(selectedMainGameEvent?.type)) {
-      const target = syntheticPointForClock(eventBaseClock(selectedMainGameEvent));
-      const actorID = eventActorID(selectedMainGameEvent);
-      const from = actorID ? startPointByPlayerID.get(actorID) : null;
-      if (from && target) {
-        arrow = {
-          from,
-          to: target,
-          color: playerColorToCss(selectedMainGameEvent?.actor?.color),
-        };
-      }
-    }
-
-    let leaveFlagPoint = null;
-    if (normalizeEventType(selectedMainGameEvent?.type) === 'leave_game') {
-      const actorID = eventActorID(selectedMainGameEvent);
-      if (actorID) {
-        const ownedEntries = Array.from(ownershipByBase.values()).filter((entry) => Number(entry?.owner?.player_id) === actorID);
-        const preferred = ownedEntries.find((entry) => String(entry?.baseKind || '').toLowerCase() === 'starting') || ownedEntries[0];
-        if (preferred?.center) leaveFlagPoint = preferred.center;
-      }
-    }
-
-    return { ownershipPolygons, arrow, leaveFlagPoint };
-  }, [selectedMainGameEvent, mainGame?.game_events]);
-  const effectiveMainGameOwnershipPolygons = useMemo(
-    () => (selectedMainGameOwnershipPolygons.length > 0 ? selectedMainGameOwnershipPolygons : selectedMainGameSyntheticOverlay.ownershipPolygons),
-    [selectedMainGameOwnershipPolygons, selectedMainGameSyntheticOverlay],
-  );
-  const effectiveMainGameArrow = useMemo(
-    () => selectedMainGameArrow || selectedMainGameSyntheticOverlay.arrow,
-    [selectedMainGameArrow, selectedMainGameSyntheticOverlay],
-  );
   const selectedMainGameArrowUnits = useMemo(() => {
-    if (!effectiveMainGameArrow || !selectedMainGameEvent) return [];
+    if (!selectedMainGameArrow || !selectedMainGameEvent) return [];
     const unitNames = Array.isArray(selectedMainGameEvent.attack_unit_types) && selectedMainGameEvent.attack_unit_types.length > 0
       ? selectedMainGameEvent.attack_unit_types
       : fallbackOverlayUnitNamesForEvent(selectedMainGameEvent.type);
@@ -3158,7 +3022,7 @@ function App() {
       .map((name) => ({ name, icon: getUnitIcon(name) }))
       .filter((item) => item.icon)
       .slice(0, 4);
-  }, [effectiveMainGameArrow, selectedMainGameEvent]);
+  }, [selectedMainGameArrow, selectedMainGameEvent]);
   const selectedMainGameLeaveFlag = useMemo(() => {
     if (normalizeEventType(selectedMainGameEvent?.type) !== 'leave_game' || !mainEventMapBounds) return null;
     const actorID = Number(selectedMainGameEvent?.actor?.player_id || 0);
@@ -3169,10 +3033,6 @@ function App() {
     const preferredBase = ownedBases.find((entry) => String(entry?.base?.kind || '').toLowerCase() === 'starting') || ownedBases[0];
     return mapPointToPercent(preferredBase?.base?.center, mainEventMapBounds);
   }, [selectedMainGameEvent, mainEventMapBounds]);
-  const effectiveMainGameLeaveFlag = useMemo(
-    () => selectedMainGameLeaveFlag || selectedMainGameSyntheticOverlay.leaveFlagPoint,
-    [selectedMainGameLeaveFlag, selectedMainGameSyntheticOverlay],
-  );
   const selectedMainGameExpansionOverlay = useMemo(() => {
     if (normalizeEventType(selectedMainGameEvent?.type) !== 'expansion') return null;
     // Prefer the polygon's geometric center over scmapanalyzer's base.center —
@@ -4607,7 +4467,7 @@ function App() {
                                         <polygon points="0 0, 5 2.5, 0 5" fill={selectedMainGameArrow?.color || 'currentColor'} />
                                       </marker>
                                     </defs>
-                                    {effectiveMainGameOwnershipPolygons.map((overlay) => (
+                                    {selectedMainGameOwnershipPolygons.map((overlay) => (
                                       <polygon
                                         key={overlay.key}
                                         points={overlay.points}
@@ -4615,27 +4475,27 @@ function App() {
                                         style={{ fill: `${overlay.ownerColor}66`, stroke: overlay.ownerColor }}
                                       />
                                     ))}
-                                    {effectiveMainGameArrow ? (
+                                    {selectedMainGameArrow ? (
                                       <>
                                         <line
-                                          x1={effectiveMainGameArrow.from.x}
-                                          y1={effectiveMainGameArrow.from.y}
-                                          x2={effectiveMainGameArrow.to.x}
-                                          y2={effectiveMainGameArrow.to.y}
+                                          x1={selectedMainGameArrow.from.x}
+                                          y1={selectedMainGameArrow.from.y}
+                                          x2={selectedMainGameArrow.to.x}
+                                          y2={selectedMainGameArrow.to.y}
                                           className="workflow-event-map-attack-line"
-                                          style={{ color: effectiveMainGameArrow.color, stroke: effectiveMainGameArrow.color }}
+                                          style={{ color: selectedMainGameArrow.color, stroke: selectedMainGameArrow.color }}
                                           markerEnd="url(#workflow-event-arrowhead)"
                                         />
                                       </>
                                     ) : null}
                                   </svg>
                                 ) : null}
-                                {effectiveMainGameArrow && selectedMainGameArrowUnits.length > 0 ? (
+                                {selectedMainGameArrow && selectedMainGameArrowUnits.length > 0 ? (
                                   <div
                                     className={`workflow-event-map-unit-overlay ${selectedMainGameArrowUnits.length > 2 ? 'workflow-event-map-unit-overlay--grid' : ''}`}
                                     style={{
-                                      left: `${(effectiveMainGameArrow.from.x + effectiveMainGameArrow.to.x) / 2}%`,
-                                      top: `${(effectiveMainGameArrow.from.y + effectiveMainGameArrow.to.y) / 2}%`,
+                                      left: `${(selectedMainGameArrow.from.x + selectedMainGameArrow.to.x) / 2}%`,
+                                      top: `${(selectedMainGameArrow.from.y + selectedMainGameArrow.to.y) / 2}%`,
                                     }}
                                   >
                                     {selectedMainGameArrowUnits.map((unit, unitIdx) => (
@@ -4649,12 +4509,12 @@ function App() {
                                     ))}
                                   </div>
                                 ) : null}
-                                {effectiveMainGameLeaveFlag ? (
+                                {selectedMainGameLeaveFlag ? (
                                   <div
                                     className="workflow-event-map-flag-overlay"
                                     style={{
-                                      left: `${effectiveMainGameLeaveFlag.x}%`,
-                                      top: `${effectiveMainGameLeaveFlag.y}%`,
+                                      left: `${selectedMainGameLeaveFlag.x}%`,
+                                      top: `${selectedMainGameLeaveFlag.y}%`,
                                     }}
                                     title="Player left the game"
                                   >
@@ -4698,7 +4558,7 @@ function App() {
                                 >
                                   <span>{formatDuration(event.second)}</span>
                                   <span className="workflow-event-row-body">
-                                    <span>{gameEventDescription(event)}</span>
+                                    <span>{gameEventDescription(event, markerRegistry)}</span>
                                   </span>
                                 </button>
                               );
