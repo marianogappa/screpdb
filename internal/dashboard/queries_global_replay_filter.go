@@ -16,28 +16,20 @@ func (d *Dashboard) getGlobalReplayFilterConfig(ctx context.Context) (globalRepl
 	config.GameTypesMode = raw.GameTypesMode
 	config.ExcludeShortGames = raw.ExcludeShortGames
 	config.ExcludeComputers = raw.ExcludeComputers
-	config.MapFilterMode = raw.MapFilterMode
+	config.MapKindFilterMode = raw.MapKindFilterMode
 	config.PlayerFilterMode = raw.PlayerFilterMode
 
 	config.GameTypes, err = unmarshalStringSlice(raw.GameTypesJSON)
 	if err != nil {
 		return config, fmt.Errorf("failed to parse game types: %w", err)
 	}
-	config.Maps, err = unmarshalStringSlice(raw.MapsJSON)
+	config.MapKinds, err = unmarshalStringSlice(raw.MapKindsJSON)
 	if err != nil {
-		return config, fmt.Errorf("failed to parse maps: %w", err)
+		return config, fmt.Errorf("failed to parse map kinds: %w", err)
 	}
 	config.Players, err = unmarshalStringSlice(raw.PlayersJSON)
 	if err != nil {
 		return config, fmt.Errorf("failed to parse players: %w", err)
-	}
-	legacyIncludedMaps, err := unmarshalStringSlice(raw.LegacyIncludedMapsJSON)
-	if err != nil {
-		return config, fmt.Errorf("failed to parse legacy included maps: %w", err)
-	}
-	legacyExcludedMaps, err := unmarshalStringSlice(raw.LegacyExcludedMapsJSON)
-	if err != nil {
-		return config, fmt.Errorf("failed to parse legacy excluded maps: %w", err)
 	}
 	legacyIncludedPlayers, err := unmarshalStringSlice(raw.LegacyIncludedPlayersJSON)
 	if err != nil {
@@ -49,18 +41,9 @@ func (d *Dashboard) getGlobalReplayFilterConfig(ctx context.Context) (globalRepl
 	}
 	if len(config.GameTypes) == 0 {
 		legacyGameType := strings.TrimSpace(strings.ToLower(raw.LegacyGameType))
-		if legacyGameType != "" && legacyGameType != "all" {
+		// 'ums' is no longer a valid game-type filter — drop it during legacy migration.
+		if legacyGameType != "" && legacyGameType != "all" && legacyGameType != "ums" {
 			config.GameTypes = []string{legacyGameType}
-		}
-	}
-	if len(config.Maps) == 0 {
-		switch {
-		case len(legacyIncludedMaps) > 0:
-			config.MapFilterMode = globalReplayFilterModeOnlyThese
-			config.Maps = legacyIncludedMaps
-		case len(legacyExcludedMaps) > 0:
-			config.MapFilterMode = globalReplayFilterModeAllExceptThese
-			config.Maps = legacyExcludedMaps
 		}
 	}
 	if len(config.Players) == 0 {
@@ -89,7 +72,7 @@ func (d *Dashboard) updateGlobalReplayFilterConfig(ctx context.Context, config g
 	if err != nil {
 		return normalized, err
 	}
-	mapsJSON, err := marshalStringSlice(normalized.Maps)
+	mapKindsJSON, err := marshalStringSlice(normalized.MapKinds)
 	if err != nil {
 		return normalized, err
 	}
@@ -106,8 +89,8 @@ func (d *Dashboard) updateGlobalReplayFilterConfig(ctx context.Context, config g
 		gameTypesJSON,
 		normalized.ExcludeShortGames,
 		normalized.ExcludeComputers,
-		normalized.MapFilterMode,
-		mapsJSON,
+		normalized.MapKindFilterMode,
+		mapKindsJSON,
 		normalized.PlayerFilterMode,
 		playersJSON,
 		nullableStringValue(normalized.CompiledReplaysFilterSQL),
@@ -127,25 +110,9 @@ func legacyGlobalReplayFilterGameTypeValue(config globalReplayFilterConfig) stri
 
 func (d *Dashboard) listGlobalReplayFilterOptions(ctx context.Context) (globalReplayFilterOptionsResponse, error) {
 	result := globalReplayFilterOptionsResponse{
-		TopMaps:      []globalReplayFilterOption{},
-		OtherMaps:    []globalReplayFilterOption{},
 		TopPlayers:   []globalReplayFilterOption{},
 		OtherPlayers: []globalReplayFilterOption{},
 	}
-
-	mapRows, err := d.dbStore.ListGlobalReplayFilterMapOptions(ctx)
-	if err != nil {
-		return result, err
-	}
-	allMaps := []globalReplayFilterOption{}
-	for _, row := range mapRows {
-		var option globalReplayFilterOption
-		option.Label = row.Label
-		option.Count = row.Count
-		option.Value = strings.ToLower(strings.TrimSpace(option.Label))
-		allMaps = append(allMaps, option)
-	}
-	result.TopMaps, result.OtherMaps = splitTopOptions(allMaps, globalReplayFilterTopOptionLimit)
 
 	playerRows, err := d.dbStore.ListGlobalReplayFilterPlayerOptions(ctx)
 	if err != nil {

@@ -16,12 +16,17 @@ func BuildGlobalReplayFilterSQL(
 	excludeComputers bool,
 	gameTypesMode string,
 	gameTypes []string,
-	mapFilterMode string,
-	maps []string,
+	mapKindFilterMode string,
+	mapKinds []string,
 	playerFilterMode string,
 	players []string,
 ) string {
 	clauses := []string{}
+	// UMS replays are unsupported globally — auto-discarded at ingest, and
+	// any pre-existing rows from older databases are excluded here so the
+	// rest of the app never sees them. Hardcoded so it survives any user
+	// filter combination.
+	clauses = append(clauses, "r.map_kind != 'UseMapSettings'")
 	if excludeShortGames {
 		clauses = append(clauses, fmt.Sprintf("r.duration_seconds >= %d", shortGameSeconds))
 	}
@@ -36,7 +41,7 @@ func BuildGlobalReplayFilterSQL(
 	}
 
 	appendModeClause(&clauses, gameTypesMode, gameTypePredicateSQL(gameTypes))
-	appendModeClause(&clauses, mapFilterMode, mapPredicateSQL(maps))
+	appendModeClause(&clauses, mapKindFilterMode, mapKindPredicateSQL(mapKinds))
 	appendModeClause(&clauses, playerFilterMode, playerPredicateSQL(players))
 
 	query := "SELECT r.* FROM replays r"
@@ -110,8 +115,6 @@ func gameTypePredicateSQL(values []string) string {
 				WHERE p.replay_id = r.id
 					AND p.is_observer = 0
 			))`)
-		case "ums":
-			predicates = append(predicates, "lower(trim(coalesce(r.game_type, ''))) IN ('use map settings', 'ums')")
 		case "free_for_all":
 			predicates = append(predicates, "lower(trim(coalesce(r.game_type, ''))) = 'free for all'")
 		}
@@ -122,11 +125,24 @@ func gameTypePredicateSQL(values []string) string {
 	return strings.Join(predicates, " OR ")
 }
 
-func mapPredicateSQL(values []string) string {
-	if len(values) == 0 {
+// mapKindPredicateSQL builds a predicate over the replays.map_kind column.
+// Inputs are the lowercase API enum values ('regular', 'money'); they're
+// translated here to the storage-side casing ('Regular', 'Money'). UMS is
+// not a valid input — it's excluded globally upstream.
+func mapKindPredicateSQL(values []string) string {
+	predicates := make([]string, 0, len(values))
+	for _, value := range values {
+		switch value {
+		case "regular":
+			predicates = append(predicates, "r.map_kind = 'Regular'")
+		case "money":
+			predicates = append(predicates, "r.map_kind = 'Money'")
+		}
+	}
+	if len(predicates) == 0 {
 		return ""
 	}
-	return "lower(trim(coalesce(r.map_name, ''))) IN (" + joinQuotedSQLStrings(values) + ")"
+	return strings.Join(predicates, " OR ")
 }
 
 func playerPredicateSQL(values []string) string {

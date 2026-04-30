@@ -7,6 +7,7 @@ import (
 
 	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/ingest"
+	"github.com/marianogappa/screpdb/internal/profile"
 	"github.com/spf13/cobra"
 )
 
@@ -60,6 +61,7 @@ func runIngest(cmd *cobra.Command, args []string) error {
 		HandleSignals:       true,
 		UseColor:            true,
 		EarlyFilterDebugDir: os.Getenv("SCREPDB_EARLY_FILTER_DEBUG_DIR"),
+		ProfileMode:         profile.ModeFromEnv(os.Getenv("SCREPDB_INGEST_PROFILE")),
 	}
 
 	if err := ingest.Run(ctx, cfg); err != nil {

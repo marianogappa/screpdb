@@ -158,6 +158,180 @@ func (q *Queries) ListDelayCommandRowsForPlayer(ctx context.Context, arg ListDel
 	return items, nil
 }
 
+const ListEarlyZergMorphsForBOTimings = `-- name: ListEarlyZergMorphsForBOTimings :many
+SELECT
+  c.player_id,
+  c.action_type,
+  c.unit_type,
+  c.seconds_from_game_start,
+  c.frame
+FROM commands c
+JOIN players p ON p.id = c.player_id
+WHERE c.replay_id = ?
+  AND p.race = 'Zerg'
+  AND p.is_observer = 0
+  AND c.seconds_from_game_start < 600
+  AND c.action_type IN ('Unit Morph', 'Build')
+  AND c.unit_type IN ('Drone', 'Overlord', 'Spawning Pool', 'Hatchery')
+ORDER BY c.player_id, c.frame
+`
+
+type ListEarlyZergMorphsForBOTimingsRow struct {
+	PlayerID             int64
+	ActionType           string
+	UnitType             *string
+	SecondsFromGameStart int64
+	Frame                int64
+}
+
+func (q *Queries) ListEarlyZergMorphsForBOTimings(ctx context.Context, replayID int64) ([]ListEarlyZergMorphsForBOTimingsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListEarlyZergMorphsForBOTimings, replayID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListEarlyZergMorphsForBOTimingsRow{}
+	for rows.Next() {
+		var i ListEarlyZergMorphsForBOTimingsRow
+		if err := rows.Scan(
+			&i.PlayerID,
+			&i.ActionType,
+			&i.UnitType,
+			&i.SecondsFromGameStart,
+			&i.Frame,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListPlayerFirstExpansionTimings = `-- name: ListPlayerFirstExpansionTimings :many
+SELECT
+  p.race AS race,
+  r.map_kind AS map_kind,
+  re.replay_id AS replay_id,
+  CAST(MIN(re.seconds_from_game_start) AS INTEGER) AS first_expansion_second
+FROM replay_events re
+JOIN players p ON p.id = re.source_player_id
+JOIN replays r ON r.id = re.replay_id
+WHERE re.event_kind = 'game_event'
+  AND re.event_type = 'expansion'
+  AND lower(trim(p.name)) = ?
+  AND p.is_observer = 0
+  AND lower(trim(coalesce(p.type, ''))) = 'human'
+  AND r.map_kind != 'UseMapSettings'
+GROUP BY p.race, r.map_kind, re.replay_id
+ORDER BY p.race, r.map_kind, first_expansion_second
+`
+
+type ListPlayerFirstExpansionTimingsRow struct {
+	Race                 string
+	MapKind              string
+	ReplayID             int64
+	FirstExpansionSecond int64
+}
+
+// One row per (race, map_kind, replay) for a single player giving the
+// earliest expansion event time. Backs the early-game timing summary that
+// compares Regular vs Money maps. Note: relies on game_event 'expansion'
+// already being stored at ingest by the worldstate detector.
+func (q *Queries) ListPlayerFirstExpansionTimings(ctx context.Context, name string) ([]ListPlayerFirstExpansionTimingsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListPlayerFirstExpansionTimings, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPlayerFirstExpansionTimingsRow{}
+	for rows.Next() {
+		var i ListPlayerFirstExpansionTimingsRow
+		if err := rows.Scan(
+			&i.Race,
+			&i.MapKind,
+			&i.ReplayID,
+			&i.FirstExpansionSecond,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListPlayerMatchups = `-- name: ListPlayerMatchups :many
+SELECT
+  self.race AS own_race,
+  opp.race AS opp_race,
+  COUNT(DISTINCT self.replay_id) AS games,
+  CAST(SUM(CASE WHEN self.is_winner = 1 THEN 1 ELSE 0 END) AS INTEGER) AS wins
+FROM players self
+JOIN players opp ON opp.replay_id = self.replay_id AND opp.id != self.id
+WHERE lower(trim(self.name)) = ?
+  AND self.is_observer = 0
+  AND lower(trim(coalesce(self.type, ''))) = 'human'
+  AND opp.is_observer = 0
+  AND lower(trim(coalesce(opp.type, ''))) = 'human'
+  AND 2 = (
+    SELECT COUNT(*) FROM players p
+    WHERE p.replay_id = self.replay_id
+      AND p.is_observer = 0
+      AND lower(trim(coalesce(p.type, ''))) = 'human'
+  )
+GROUP BY self.race, opp.race
+ORDER BY games DESC, own_race, opp_race
+`
+
+type ListPlayerMatchupsRow struct {
+	OwnRace string
+	OppRace string
+	Games   int64
+	Wins    int64
+}
+
+// Per-matchup breakdown for a single player. 1v1 only - multi-player games
+// have ambiguous opponent race so we exclude them. Returns one row per
+// (own_race, opp_race) pair with sample size and win count.
+func (q *Queries) ListPlayerMatchups(ctx context.Context, name string) ([]ListPlayerMatchupsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListPlayerMatchups, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPlayerMatchupsRow{}
+	for rows.Next() {
+		var i ListPlayerMatchupsRow
+		if err := rows.Scan(
+			&i.OwnRace,
+			&i.OppRace,
+			&i.Games,
+			&i.Wins,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListRacePatterns = `-- name: ListRacePatterns :many
 SELECT p.race, re.event_type AS pattern_name, COUNT(DISTINCT re.replay_id) AS replay_count
 FROM replay_events re
@@ -176,6 +350,8 @@ type ListRacePatternsRow struct {
 	ReplayCount int64
 }
 
+// Post-markers-migration: presence of a replay_events row (event_kind='marker') *is* the match.
+// Filter out used_hotkey_groups/viewport_multitasking (meta markers that aren't race-characterising).
 func (q *Queries) ListRacePatterns(ctx context.Context, name string) ([]ListRacePatternsRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListRacePatterns, name)
 	if err != nil {

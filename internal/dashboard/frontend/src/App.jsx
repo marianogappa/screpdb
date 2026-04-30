@@ -1271,8 +1271,6 @@ function App() {
   const emptyDbAutoOpenRef = useRef(false);
   const [globalReplayFilterConfig, setGlobalReplayFilterConfig] = useState(null);
   const [globalReplayFilterOptions, setGlobalReplayFilterOptions] = useState({
-    top_maps: [],
-    other_maps: [],
     top_players: [],
     other_players: [],
   });
@@ -1491,8 +1489,6 @@ function App() {
   const loadGlobalReplayFilterOptions = async () => {
     const data = await api.getGlobalReplayFilterOptions();
     setGlobalReplayFilterOptions({
-      top_maps: data?.top_maps || [],
-      other_maps: data?.other_maps || [],
       top_players: data?.top_players || [],
       other_players: data?.other_players || [],
     });
@@ -3801,7 +3797,7 @@ function App() {
                   </option>
                 ))}
               </select>
-              <div className="workflow-pattern-pills workflow-games-filter-pills">
+              <div className="workflow-filter-group">
                 {(mainGamesFilterOptions.durations || []).map((option) => {
                   const active = (mainGamesFilters.duration || []).includes(option.key);
                   return (
@@ -3815,6 +3811,8 @@ function App() {
                     </button>
                   );
                 })}
+              </div>
+              <div className="workflow-filter-group">
                 {(mainGamesFilterOptions.map_kinds || []).map((option) => {
                   const active = (mainGamesFilters.mapKind || []).includes(option.key);
                   return (
@@ -3828,6 +3826,8 @@ function App() {
                     </button>
                   );
                 })}
+              </div>
+              <div className="workflow-filter-group">
                 {(mainGamesFilterOptions.matchups || []).map((option) => {
                   const active = (mainGamesFilters.matchup || []).includes(option.key);
                   return (
@@ -3842,23 +3842,61 @@ function App() {
                   );
                 })}
               </div>
-              <div className="workflow-pattern-pills workflow-games-filter-pills">
+            </div>
+            <div className="workflow-summary-filter-row workflow-games-filter-row">
+              <div className="workflow-filter-group">
+                <button
+                  type="button"
+                  className={`workflow-filter-pill workflow-filter-pill-disclosure ${mainGamesShowBOFilters ? 'workflow-filter-pill-active' : ''}`}
+                  onClick={() => setMainGamesShowBOFilters((prev) => !prev)}
+                  aria-expanded={mainGamesShowBOFilters}
+                >
+                  Build orders {mainGamesShowBOFilters ? '▾' : '▸'}
+                </button>
+                {mainGamesShowBOFilters && (mainGamesFilterOptions.featuring || [])
+                  .filter((option) => (option.group || '') === 'bo')
+                  .map((option) => {
+                    const active = (mainGamesFilters.featuring || []).includes(option.key);
+                    return (
+                      <button
+                        key={`wf-feature-bo-${option.key}`}
+                        type="button"
+                        className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
+                        onClick={() => toggleMainGameMultiFilter('featuring', option.key)}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+              </div>
+              <div className="workflow-filter-group">
                 {(mainGamesFilterOptions.featuring || [])
                   .filter((option) => (option.group || 'marker') !== 'bo')
                   .map((option) => {
                     const active = (mainGamesFilters.featuring || []).includes(option.key);
-                    const iconUrl = option.icon_key ? getUnitIcon(option.icon_key) : null;
+                    const iconKeys = (Array.isArray(option.icon_keys) && option.icon_keys.length)
+                      ? option.icon_keys
+                      : (option.icon_key ? [option.icon_key] : []);
+                    const iconUrls = iconKeys.map((k) => getUnitIcon(k)).filter(Boolean);
+                    const hasIcons = iconUrls.length > 0;
                     return (
                       <button
                         key={`wf-feature-${option.key}`}
                         type="button"
-                        className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''} ${iconUrl ? 'workflow-filter-pill-icon' : ''}`}
+                        className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''} ${hasIcons ? 'workflow-filter-pill-icon' : ''}`}
                         onClick={() => toggleMainGameMultiFilter('featuring', option.key)}
                         title={option.label}
                         aria-label={option.label}
                       >
-                        {iconUrl ? (
-                          <img src={iconUrl} alt={option.label} className="workflow-filter-pill-icon-img" />
+                        {hasIcons ? (
+                          <>
+                            {iconUrls.map((url, i) => (
+                              <img key={`${option.key}-i${i}`} src={url} alt="" className="workflow-filter-pill-icon-img" />
+                            ))}
+                            {option.icon_label && (
+                              <span className="workflow-filter-pill-icon-label">{option.icon_label}</span>
+                            )}
+                          </>
                         ) : (
                           option.label
                         )}
@@ -3866,35 +3904,6 @@ function App() {
                     );
                   })}
               </div>
-            </div>
-            <div className="workflow-summary-filter-row workflow-games-filter-row">
-              <button
-                type="button"
-                className={`workflow-filter-pill workflow-filter-pill-disclosure ${mainGamesShowBOFilters ? 'workflow-filter-pill-active' : ''}`}
-                onClick={() => setMainGamesShowBOFilters((prev) => !prev)}
-                aria-expanded={mainGamesShowBOFilters}
-              >
-                Build orders {mainGamesShowBOFilters ? '▾' : '▸'}
-              </button>
-              {mainGamesShowBOFilters && (
-                <div className="workflow-pattern-pills workflow-games-filter-pills">
-                  {(mainGamesFilterOptions.featuring || [])
-                    .filter((option) => (option.group || '') === 'bo')
-                    .map((option) => {
-                      const active = (mainGamesFilters.featuring || []).includes(option.key);
-                      return (
-                        <button
-                          key={`wf-feature-bo-${option.key}`}
-                          type="button"
-                          className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                          onClick={() => toggleMainGameMultiFilter('featuring', option.key)}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                </div>
-              )}
               <button type="button" className="workflow-filter-pill workflow-filter-pill-clear" onClick={clearMainGamesFilters}>Clear filters</button>
             </div>
             {mainGamesLoading ? (
@@ -5381,6 +5390,78 @@ function App() {
                 </div>
 
                 <div className="workflow-cards">
+                  {mainPlayerTab === 'summary' && Array.isArray(mainPlayer?.matchups) && mainPlayer.matchups.length > 0 && (
+                    <div className="workflow-card workflow-card-matchup-table">
+                      <div className="workflow-card-title"><span>Matchups (1v1)</span></div>
+                      {(() => {
+                        const races = ['Zerg', 'Terran', 'Protoss'];
+                        const cellByPair = new Map();
+                        mainPlayer.matchups.forEach((cell) => {
+                          if (!cell || !cell.own_race || !cell.opp_race) return;
+                          cellByPair.set(`${cell.own_race}|${cell.opp_race}`, cell);
+                        });
+                        return (
+                          <table className="workflow-matchup-table">
+                            <thead>
+                              <tr>
+                                <th></th>
+                                <th colSpan={races.length} className="workflow-matchup-table-header">vs</th>
+                              </tr>
+                              <tr>
+                                <th></th>
+                                {races.map((opp) => (
+                                  <th key={`mh-${opp}`}>
+                                    {getRaceIcon(opp) ? (
+                                      <img src={getRaceIcon(opp)} alt={opp} className="unit-icon-inline workflow-race-tab-icon" />
+                                    ) : null}
+                                    <span>{opp[0]}</span>
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {races.map((own) => (
+                                <tr key={`mr-${own}`}>
+                                  <th>
+                                    {getRaceIcon(own) ? (
+                                      <img src={getRaceIcon(own)} alt={own} className="unit-icon-inline workflow-race-tab-icon" />
+                                    ) : null}
+                                    <span>{own[0]}</span>
+                                  </th>
+                                  {races.map((opp) => {
+                                    const cell = cellByPair.get(`${own}|${opp}`);
+                                    if (!cell || !cell.games) {
+                                      return (
+                                        <td key={`mc-${own}-${opp}`} className="workflow-matchup-cell workflow-matchup-cell-empty">
+                                          <span className="workflow-subtle-note">—</span>
+                                        </td>
+                                      );
+                                    }
+                                    const conf = cell.confidence || 'low';
+                                    const pct = ((Number(cell.win_rate) || 0) * 100).toFixed(0);
+                                    return (
+                                      <td
+                                        key={`mc-${own}-${opp}`}
+                                        className={`workflow-matchup-cell workflow-matchup-cell-${conf}`}
+                                        title={`${cell.wins}/${cell.games} wins · confidence: ${conf}`}
+                                      >
+                                        <div className="workflow-matchup-cell-rate">{`${pct}%`}</div>
+                                        <div className="workflow-subtle-note">{`${cell.wins}/${cell.games}`}</div>
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        );
+                      })()}
+                      <div className="workflow-subtle-note workflow-matchup-table-footnote">
+                        Cells with fewer than 5 games are dimmed for low confidence.
+                      </div>
+                    </div>
+                  )}
+
                   {mainPlayerTab === 'summary' && (
                     <div className="workflow-card workflow-card-race-behaviours">
                       {playerRaceTabs.length === 0 ? (
@@ -5394,13 +5475,152 @@ function App() {
                               <div className="workflow-subtle-note">
                                 {`${activeRaceSection.game_count} games (${((Number(activeRaceSection.game_rate) || 0) * 100).toFixed(1)}%), ${activeRaceSection.wins} wins, ${((Number(activeRaceSection.win_rate) || 0) * 100).toFixed(1)}% win rate`}
                               </div>
-                              {(activeRaceSection.common_behaviours || []).length === 0 ? <div className="chart-empty">No common behaviours at 20%+ for this race.</div> : null}
-                              {(activeRaceSection.common_behaviours || []).map((item, idx) => (
-                                <div key={`${activeRaceSection.race}-${item.name}`} className="workflow-pattern-row">
-                                  <span>{renderPatternPill({ pattern_name: item.name, value: 'true' }, `player-common-${activeRaceSection.race}-${idx}`, undefined, markerRegistry)}</span>
-                                  <span>{`${((Number(item.game_rate) || 0) * 100).toFixed(1)}% (${item.replay_count}/${activeRaceSection.game_count})`}</span>
-                                </div>
-                              ))}
+                              {(() => {
+                                // Split common behaviours into starting build orders (kind=initial_build_order)
+                                // and signature markers (kind=marker). BOs only fire on non-money maps —
+                                // a money-only player will have an empty openings list with a friendly note.
+                                const allBehaviours = activeRaceSection.common_behaviours || [];
+                                const markerDefs = markerRegistry?.markers || {};
+                                const openings = [];
+                                const signatures = [];
+                                allBehaviours.forEach((item) => {
+                                  const def = markerDefs[item.name];
+                                  if (def && def.kind === 'initial_build_order') {
+                                    openings.push(item);
+                                  } else {
+                                    signatures.push(item);
+                                  }
+                                });
+                                const renderRow = (item, label, idx) => (
+                                  <div key={`${label}-${activeRaceSection.race}-${item.name}`} className="workflow-pattern-row">
+                                    <span>{renderPatternPill({ pattern_name: item.name, value: 'true' }, `player-${label}-${activeRaceSection.race}-${idx}`, undefined, markerRegistry)}</span>
+                                    <span>{`${((Number(item.game_rate) || 0) * 100).toFixed(1)}% (${item.replay_count}/${activeRaceSection.game_count})`}</span>
+                                  </div>
+                                );
+                                if (allBehaviours.length === 0) {
+                                  return <div className="chart-empty">No common behaviours at 20%+ for this race.</div>;
+                                }
+                                return (
+                                  <>
+                                    <div className="workflow-card-title workflow-card-title-inline"><span>Starting build orders</span></div>
+                                    {openings.length === 0 ? (
+                                      <div className="workflow-subtle-note">No starting build orders detected — likely a money-map-only player for this race (BO detection is gated to non-money maps).</div>
+                                    ) : (
+                                      openings.map((item, idx) => renderRow(item, 'opening', idx))
+                                    )}
+                                    <div className="workflow-card-title workflow-card-title-inline workflow-section-spacer"><span>Signatures</span></div>
+                                    {signatures.length === 0 ? (
+                                      <div className="workflow-subtle-note">No signature markers at 20%+ for this race.</div>
+                                    ) : (
+                                      signatures.map((item, idx) => renderRow(item, 'signature', idx))
+                                    )}
+                                  </>
+                                );
+                              })()}
+                              {(() => {
+                                // First-expansion median split by Regular / Money. Hidden when
+                                // either bucket lacks 3+ games (server-side filter).
+                                const timings = (mainPlayer?.early_timings || []).filter(
+                                  (t) => String(t.race || '').toLowerCase() === effectiveRaceSubtab && t.milestone === 'first_expansion',
+                                );
+                                if (timings.length === 0) return null;
+                                const fmtMmSs = (sec) => {
+                                  const total = Math.max(0, Math.round(Number(sec) || 0));
+                                  const m = Math.floor(total / 60);
+                                  const s = total % 60;
+                                  return `${m}:${String(s).padStart(2, '0')}`;
+                                };
+                                const byKind = {};
+                                timings.forEach((t) => { byKind[String(t.map_kind)] = t; });
+                                return (
+                                  <div className="workflow-race-early-timings">
+                                    <div className="workflow-card-title workflow-card-title-inline workflow-section-spacer">
+                                      <span>First-expansion timing</span>
+                                    </div>
+                                    <div className="workflow-pattern-row">
+                                      {byKind.Regular ? (
+                                        <span className="workflow-tech-step">
+                                          <span className="workflow-subtle-note">Regular</span>{' '}
+                                          {`${fmtMmSs(byKind.Regular.median_seconds)} median (${byKind.Regular.games} games)`}
+                                        </span>
+                                      ) : null}
+                                      {byKind.Regular && byKind.Money ? <span className="workflow-subtle-note"> · </span> : null}
+                                      {byKind.Money ? (
+                                        <span className="workflow-tech-step">
+                                          <span className="workflow-subtle-note">Money</span>{' '}
+                                          {`${fmtMmSs(byKind.Money.median_seconds)} median (${byKind.Money.games} games)`}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                              {(() => {
+                                // Per-matchup tech / upgrade signature. We prefer matchup_orders
+                                // (3.5 extension: own_race x opp_race rows from 1v1 games);
+                                // fall back to the per-race race_orders summary when no matchup
+                                // bucket has enough games yet.
+                                const matchups = (mainPlayer?.matchup_orders || []).filter(
+                                  (m) => String(m.own_race || '').toLowerCase() === effectiveRaceSubtab,
+                                );
+                                const races = ['Zerg', 'Terran', 'Protoss'];
+                                const renderSeq = (label, seq, key) => {
+                                  if (!Array.isArray(seq) || seq.length === 0) return null;
+                                  return (
+                                    <div className="workflow-pattern-row">
+                                      <span className="workflow-subtle-note">{label}</span>
+                                      <span>{seq.map((s, i) => (
+                                        <span key={`${key}-${i}`} className="workflow-tech-step">{s}{i < seq.length - 1 ? ' -> ' : ''}</span>
+                                      ))}</span>
+                                    </div>
+                                  );
+                                };
+                                if (matchups.length > 0) {
+                                  const byOpp = new Map(matchups.map((m) => [m.opp_race, m]));
+                                  return (
+                                    <div className="workflow-race-tech-orders">
+                                      <div className="workflow-card-title workflow-card-title-inline">
+                                        <span>Tech / upgrade signature by matchup</span>
+                                      </div>
+                                      {races.map((opp) => {
+                                        const m = byOpp.get(opp);
+                                        if (!m) return null;
+                                        const tech = Array.isArray(m.tech_order) ? m.tech_order : [];
+                                        const upgrade = Array.isArray(m.upgrade_order) ? m.upgrade_order : [];
+                                        if (tech.length === 0 && upgrade.length === 0) return null;
+                                        const lowConf = (m.games || 0) < 5;
+                                        return (
+                                          <div key={`mo-${opp}`} className={`workflow-race-tech-matchup${lowConf ? ' workflow-race-tech-matchup-lowconf' : ''}`}>
+                                            <div className="workflow-card-title-inline workflow-section-spacer">
+                                              <span>vs {opp}</span>
+                                              <span className="workflow-subtle-note">{` (${m.games} games)`}</span>
+                                            </div>
+                                            {renderSeq('Tech', tech, `t-${opp}`)}
+                                            {renderSeq('Upgrades', upgrade, `u-${opp}`)}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  );
+                                }
+                                const orders = (mainPlayer?.race_orders || []).find(
+                                  (o) => String(o.race || '').toLowerCase() === effectiveRaceSubtab,
+                                );
+                                if (!orders) return null;
+                                const tech = Array.isArray(orders.tech_order) ? orders.tech_order : [];
+                                const upgrade = Array.isArray(orders.upgrade_order) ? orders.upgrade_order : [];
+                                if (tech.length === 0 && upgrade.length === 0) return null;
+                                return (
+                                  <div className="workflow-race-tech-orders">
+                                    <div className="workflow-card-title workflow-card-title-inline">
+                                      <span>Typical tech / upgrade signature</span>
+                                      <span className="workflow-subtle-note"> (across all matchups)</span>
+                                    </div>
+                                    {renderSeq('Tech', tech, 't-overall')}
+                                    {renderSeq('Upgrades', upgrade, 'u-overall')}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           ) : null}
                           {!mainPlayerMetricsLoading && !mainPlayerMetricsError && !activeRaceSection && activeRaceBreakdown ? (

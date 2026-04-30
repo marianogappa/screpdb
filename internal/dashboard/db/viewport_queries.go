@@ -33,18 +33,22 @@ type ViewportGameRow struct {
 	RawValue string
 }
 
-func (s *Store) ListViewportGameRows(ctx context.Context, replayID int64, patternName string) ([]ViewportGameRow, error) {
+func (s *Store) ListViewportGameRows(ctx context.Context, replayID int64, eventType string) ([]ViewportGameRow, error) {
 	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListViewportGameRows(ctx, sqlcgen.ListViewportGameRowsParams{
-		ReplayID:    replayID,
-		PatternName: patternName,
+		ReplayID:  replayID,
+		EventType: eventType,
 	})
 	if err != nil {
 		return nil, err
 	}
 	out := make([]ViewportGameRow, 0, len(sqlcRows))
 	for _, row := range sqlcRows {
+		var playerID int64
+		if row.PlayerID != nil {
+			playerID = *row.PlayerID
+		}
 		out = append(out, ViewportGameRow{
-			PlayerID: row.PlayerID,
+			PlayerID: playerID,
 			RawValue: row.RawValue,
 		})
 	}

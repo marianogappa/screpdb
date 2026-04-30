@@ -139,7 +139,7 @@ ORDER BY source_player_id ASC, event_type ASC
 `
 
 type ListPlayerPatternsRow struct {
-	PlayerID       int64
+	PlayerID       *int64
 	PatternName    string
 	PatternValue   string
 	DetectedSecond int64
@@ -155,7 +155,13 @@ func (q *Queries) ListPlayerPatterns(ctx context.Context, replayID int64) ([]Lis
 	items := []ListPlayerPatternsRow{}
 	for rows.Next() {
 		var i ListPlayerPatternsRow
-		if err := rows.Scan(&i.PlayerID, &i.PatternName, &i.PatternValue, &i.DetectedSecond, &i.Payload); err != nil {
+		if err := rows.Scan(
+			&i.PlayerID,
+			&i.PatternName,
+			&i.PatternValue,
+			&i.DetectedSecond,
+			&i.Payload,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -346,6 +352,9 @@ type ListReplayPatternsRow struct {
 	Payload        string
 }
 
+// Replay-level markers (source_player_id IS NULL). event_type is the marker's FeatureKey.
+// detected_second + payload carry the post-migration per-row data; pattern_value
+// is kept as a transitional alias for frontend code that hasn't moved yet.
 func (q *Queries) ListReplayPatterns(ctx context.Context, replayID int64) ([]ListReplayPatternsRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListReplayPatterns, replayID)
 	if err != nil {
@@ -355,7 +364,12 @@ func (q *Queries) ListReplayPatterns(ctx context.Context, replayID int64) ([]Lis
 	items := []ListReplayPatternsRow{}
 	for rows.Next() {
 		var i ListReplayPatternsRow
-		if err := rows.Scan(&i.PatternName, &i.PatternValue, &i.DetectedSecond, &i.Payload); err != nil {
+		if err := rows.Scan(
+			&i.PatternName,
+			&i.PatternValue,
+			&i.DetectedSecond,
+			&i.Payload,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -370,12 +384,6 @@ func (q *Queries) ListReplayPatterns(ctx context.Context, replayID int64) ([]Lis
 }
 
 const ListReplayPlayersForDetail = `-- name: ListReplayPlayersForDetail :many
--- Trimmed in Apr 2026: previously joined commands and ran two correlated
--- subqueries against commands_low_value (Hotkey count + total low-value)
--- per player to power a game-level hotkey-usage ratio. That ratio is no
--- longer surfaced — hotkey signal lives in the used_hotkey_groups /
--- never_used_hotkeys markers (computed at ingestion, read from
--- replay_events). Page-level metrics now only need player metadata + APM.
 SELECT
   p.id,
   p.name,
@@ -403,6 +411,12 @@ type ListReplayPlayersForDetailRow struct {
 	Eapm                int64
 }
 
+// Trimmed in Apr 2026: previously joined commands and ran two correlated
+// subqueries against commands_low_value (Hotkey count + total low-value)
+// per player to power a game-level hotkey-usage ratio. That ratio is no
+// longer surfaced; hotkey signal lives in the used_hotkey_groups /
+// never_used_hotkeys markers (computed at ingestion, read from
+// replay_events). Page-level metrics now only need player metadata + APM.
 func (q *Queries) ListReplayPlayersForDetail(ctx context.Context, replayID int64) ([]ListReplayPlayersForDetailRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListReplayPlayersForDetail, replayID)
 	if err != nil {

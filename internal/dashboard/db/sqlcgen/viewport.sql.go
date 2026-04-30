@@ -33,8 +33,10 @@ type ListViewportAggregateRowsRow struct {
 	RawValue   string
 }
 
-func (q *Queries) ListViewportAggregateRows(ctx context.Context, patternName string) ([]ListViewportAggregateRowsRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListViewportAggregateRows, patternName)
+// Post-migration, the viewport_multitasking marker stores switches-per-minute in
+// replay_events.payload as JSON. Callers pass the marker FeatureKey as the bind.
+func (q *Queries) ListViewportAggregateRows(ctx context.Context, eventType string) ([]ListViewportAggregateRowsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListViewportAggregateRows, eventType)
 	if err != nil {
 		return nil, err
 	}
@@ -62,23 +64,22 @@ FROM replay_events
 WHERE replay_id = ?
   AND event_kind = 'marker'
   AND event_type = ?
-  AND source_player_id IS NOT NULL
   AND payload IS NOT NULL
   AND trim(payload) <> ''
 `
 
 type ListViewportGameRowsParams struct {
-	ReplayID    int64
-	PatternName string
+	ReplayID  int64
+	EventType string
 }
 
 type ListViewportGameRowsRow struct {
-	PlayerID int64
+	PlayerID *int64
 	RawValue string
 }
 
 func (q *Queries) ListViewportGameRows(ctx context.Context, arg ListViewportGameRowsParams) ([]ListViewportGameRowsRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListViewportGameRows, arg.ReplayID, arg.PatternName)
+	rows, err := q.db.QueryContext(ctx, ListViewportGameRows, arg.ReplayID, arg.EventType)
 	if err != nil {
 		return nil, err
 	}

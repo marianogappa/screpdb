@@ -49,6 +49,46 @@ WHERE lower(trim(p.name)) = ?
   )
 ORDER BY p.id ASC, c.seconds_from_game_start ASC;
 
+-- name: ListMatchupOrderRows :many
+-- Per-matchup tech/upgrade rows for a single player. 1v1 only - the opponent
+-- race is well-defined only when there's exactly one opposing human; multi-
+-- player games are excluded so the sequences aren't averaged across mismatched
+-- opponents. Each row carries (own_race, opp_race, replay_id, action_type,
+-- tech_name, upgrade_name, seconds) so the consumer can stitch sequences
+-- per (player, replay) and bucket them per matchup.
+SELECT
+  self.id AS player_id,
+  self.race AS own_race,
+  opp.race AS opp_race,
+  self.replay_id AS replay_id,
+  c.action_type AS action_type,
+  c.tech_name AS tech_name,
+  c.upgrade_name AS upgrade_name,
+  c.seconds_from_game_start AS seconds_from_game_start
+FROM players self
+JOIN players opp
+  ON opp.replay_id = self.replay_id
+  AND opp.id != self.id
+  AND opp.is_observer = 0
+  AND lower(trim(coalesce(opp.type, ''))) = 'human'
+JOIN commands c
+  ON c.player_id = self.id
+WHERE lower(trim(self.name)) = ?
+  AND self.is_observer = 0
+  AND lower(trim(coalesce(self.type, ''))) = 'human'
+  AND (
+    (c.action_type = 'Tech' AND c.tech_name IS NOT NULL AND c.tech_name <> '')
+    OR
+    (c.action_type = 'Upgrade' AND c.upgrade_name IS NOT NULL AND c.upgrade_name <> '')
+  )
+  AND 2 = (
+    SELECT COUNT(*) FROM players p2
+    WHERE p2.replay_id = self.replay_id
+      AND p2.is_observer = 0
+      AND lower(trim(coalesce(p2.type, ''))) = 'human'
+  )
+ORDER BY self.id, c.seconds_from_game_start;
+
 -- name: CountQueuedGamesByPlayer :one
 SELECT COUNT(DISTINCT p.id) AS count
 FROM players p
@@ -110,10 +150,10 @@ ORDER BY c.player_id ASC, c.seconds_from_game_start ASC;
 -- name: ListHotkeyGamesRateByPlayer :many
 -- Hotkey usage as a per-player rate of "games where any hotkey-group command
 -- fired." Sourced from the used_hotkey_groups marker (computed at ingestion;
--- one replay_events row per (replay × player) when groups exist), so this
+-- one replay_events row per (replay x player) when groups exist), so this
 -- avoids scanning commands_low_value at query time. EXISTS guard handles
 -- duplicate marker rows defensively even though the streaming detector
--- emits at most one per (replay × player).
+-- emits at most one per (replay x player).
 WITH game_level AS (
   SELECT
     lower(trim(p.name)) AS player_key,

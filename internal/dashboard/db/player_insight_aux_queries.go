@@ -95,6 +95,38 @@ func (s *Store) ListRaceOrderRows(ctx context.Context, playerKey string) ([]Race
 	return out, nil
 }
 
+type MatchupOrderRow struct {
+	PlayerID    int64
+	OwnRace     string
+	OppRace     string
+	ReplayID    int64
+	ActionType  string
+	TechName    *string
+	UpgradeName *string
+	Second      int64
+}
+
+func (s *Store) ListMatchupOrderRows(ctx context.Context, playerKey string) ([]MatchupOrderRow, error) {
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListMatchupOrderRows(ctx, playerKey)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]MatchupOrderRow, 0, len(sqlcRows))
+	for _, row := range sqlcRows {
+		out = append(out, MatchupOrderRow{
+			PlayerID:    row.PlayerID,
+			OwnRace:     strings.TrimSpace(row.OwnRace),
+			OppRace:     strings.TrimSpace(row.OppRace),
+			ReplayID:    row.ReplayID,
+			ActionType:  row.ActionType,
+			TechName:    row.TechName,
+			UpgradeName: row.UpgradeName,
+			Second:      row.SecondsFromGameStart,
+		})
+	}
+	return out, nil
+}
+
 func (s *Store) CountQueuedGamesByPlayer(ctx context.Context, playerKey string) (int64, error) {
 	return sqlcgen.New(Trace(s.replayScoped())).CountQueuedGamesByPlayer(ctx, playerKey)
 }

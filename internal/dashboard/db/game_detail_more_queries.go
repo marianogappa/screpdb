@@ -91,6 +91,54 @@ func (s *Store) ListRaceSections(ctx context.Context, playerKey string) ([]RaceS
 	return out, nil
 }
 
+type PlayerFirstExpansionTimingRow struct {
+	Race                 string
+	MapKind              string
+	ReplayID             int64
+	FirstExpansionSecond int64
+}
+
+func (s *Store) ListPlayerFirstExpansionTimings(ctx context.Context, playerKey string) ([]PlayerFirstExpansionTimingRow, error) {
+	rows, err := sqlcgen.New(Trace(s.replayScoped())).ListPlayerFirstExpansionTimings(ctx, playerKey)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]PlayerFirstExpansionTimingRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, PlayerFirstExpansionTimingRow{
+			Race:                 strings.TrimSpace(row.Race),
+			MapKind:              strings.TrimSpace(row.MapKind),
+			ReplayID:             row.ReplayID,
+			FirstExpansionSecond: row.FirstExpansionSecond,
+		})
+	}
+	return out, nil
+}
+
+type PlayerMatchupRow struct {
+	OwnRace string
+	OppRace string
+	Games   int64
+	Wins    int64
+}
+
+func (s *Store) ListPlayerMatchups(ctx context.Context, playerKey string) ([]PlayerMatchupRow, error) {
+	rows, err := sqlcgen.New(Trace(s.replayScoped())).ListPlayerMatchups(ctx, playerKey)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]PlayerMatchupRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, PlayerMatchupRow{
+			OwnRace: strings.TrimSpace(row.OwnRace),
+			OppRace: strings.TrimSpace(row.OppRace),
+			Games:   row.Games,
+			Wins:    row.Wins,
+		})
+	}
+	return out, nil
+}
+
 type RacePatternRow struct {
 	Race        string
 	PatternName string

@@ -856,8 +856,8 @@ components:
         - game_types_mode
         - exclude_short_games
         - exclude_computers
-        - maps
-        - map_filter_mode
+        - map_kinds
+        - map_kind_filter_mode
         - players
         - player_filter_mode
       properties:
@@ -865,7 +865,7 @@ components:
           type: array
           items:
             type: string
-            enum: [top_vs_bottom, melee, one_on_one, ums, free_for_all]
+            enum: [top_vs_bottom, melee, one_on_one, free_for_all]
         game_types_mode:
           type: string
           enum: [only_these, all_except_these]
@@ -873,11 +873,16 @@ components:
           type: boolean
         exclude_computers:
           type: boolean
-        maps:
+        map_kinds:
           type: array
+          description: |
+            Map types to include/exclude. UMS replays are always excluded
+            globally (auto-discarded at ingest), so 'ums' is not a valid
+            value here.
           items:
             type: string
-        map_filter_mode:
+            enum: [regular, money]
+        map_kind_filter_mode:
           type: string
           enum: [only_these, all_except_these]
         players:

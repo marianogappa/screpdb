@@ -28,8 +28,8 @@ func TestCompileGlobalReplayFilterSQLWithOptions(t *testing.T) {
 		GameTypesMode:     globalReplayFilterModeOnlyThese,
 		ExcludeShortGames: false,
 		ExcludeComputers:  false,
-		Maps:              []string{"Fighting Spirit"},
-		MapFilterMode:     globalReplayFilterModeAllExceptThese,
+		MapKinds:          []string{globalReplayFilterMapKindMoney},
+		MapKindFilterMode: globalReplayFilterModeAllExceptThese,
 		Players:           []string{"Soma"},
 		PlayerFilterMode:  globalReplayFilterModeOnlyThese,
 	}
@@ -40,7 +40,8 @@ func TestCompileGlobalReplayFilterSQLWithOptions(t *testing.T) {
 	for _, fragment := range []string{
 		"COUNT(DISTINCT p.team)",
 		"lower(trim(coalesce(r.game_type, ''))) = 'free for all'",
-		"NOT (lower(trim(coalesce(r.map_name, ''))) IN ('fighting spirit'))",
+		"NOT (r.map_kind = 'Money')",
+		"r.map_kind != 'UseMapSettings'",
 		"lower(trim(coalesce(p.name, ''))) IN ('soma')",
 	} {
 		if !strings.Contains(compiled, fragment) {
@@ -71,8 +72,8 @@ func TestDashboardAPI_GlobalReplayFilterGetAndUpdate(t *testing.T) {
 		"game_types_mode":"only_these",
 		"exclude_short_games":false,
 		"exclude_computers":false,
-		"maps":["fighting spirit"],
-		"map_filter_mode":"all_except_these",
+		"map_kinds":["money"],
+		"map_kind_filter_mode":"all_except_these",
 		"players":["soma"],
 		"player_filter_mode":"only_these"
 	}`)
@@ -88,8 +89,8 @@ func TestDashboardAPI_GlobalReplayFilterGetAndUpdate(t *testing.T) {
 	if len(updated.GameTypes) != 2 || updated.GameTypes[0] != globalReplayFilterGameTypeFreeForAll || updated.GameTypes[1] != globalReplayFilterGameTypeMelee {
 		t.Fatalf("expected melee game type, got %+v", updated)
 	}
-	if updated.CompiledReplaysFilterSQL == nil || !strings.Contains(*updated.CompiledReplaysFilterSQL, "fighting spirit") {
-		t.Fatalf("expected compiled SQL with map filter, got %+v", updated)
+	if updated.CompiledReplaysFilterSQL == nil || !strings.Contains(*updated.CompiledReplaysFilterSQL, "Money") {
+		t.Fatalf("expected compiled SQL with map kind filter, got %+v", updated)
 	}
 }
 
@@ -97,23 +98,15 @@ func TestDashboardAPI_GlobalReplayFilterAffectsWorkflowGames(t *testing.T) {
 	dash := newTestDashboard(t)
 	router := dash.setupRouter()
 
-	var mapName string
-	if err := dash.db.QueryRowContext(dash.ctx, `
-		SELECT lower(trim(map_name))
-		FROM replays
-		ORDER BY id ASC
-		LIMIT 1
-	`).Scan(&mapName); err != nil {
-		t.Fatalf("query first map: %v", err)
-	}
-
+	// Filter by map_kind = Regular and assert the workflow-games endpoint
+	// returns the same total as the compiled global filter SQL.
 	updated, err := dash.updateGlobalReplayFilterConfig(dash.ctx, globalReplayFilterConfig{
 		GameTypes:         []string{},
 		GameTypesMode:     globalReplayFilterModeOnlyThese,
 		ExcludeShortGames: false,
 		ExcludeComputers:  false,
-		Maps:              []string{mapName},
-		MapFilterMode:     globalReplayFilterModeOnlyThese,
+		MapKinds:          []string{globalReplayFilterMapKindRegular},
+		MapKindFilterMode: globalReplayFilterModeOnlyThese,
 		Players:           []string{},
 		PlayerFilterMode:  globalReplayFilterModeOnlyThese,
 	})
@@ -155,8 +148,8 @@ func TestDashboardAPI_ReplayFilterAppliesToDetectedPatternViews(t *testing.T) {
 		GameTypesMode:     globalReplayFilterModeOnlyThese,
 		ExcludeShortGames: false,
 		ExcludeComputers:  false,
-		Maps:              []string{},
-		MapFilterMode:     globalReplayFilterModeOnlyThese,
+		MapKinds:          []string{},
+		MapKindFilterMode: globalReplayFilterModeOnlyThese,
 		Players:           []string{},
 		PlayerFilterMode:  globalReplayFilterModeOnlyThese,
 	}); err != nil {
@@ -208,15 +201,21 @@ func TestDashboardAPI_GlobalReplayFilterComposesWithDashboardFilter(t *testing.T
 	dash := newTestDashboard(t)
 	router := dash.setupRouter()
 
+	// Two replays needed; the global filter is restricted to a player that
+	// only plays in replayOne, while a local dashboard filter narrows to
+	// replayTwo. The composed result must therefore be empty.
 	var replayOneID int64
-	var replayOneMap string
+	var replayOnePlayer string
 	if err := dash.db.QueryRowContext(dash.ctx, `
-		SELECT id, lower(trim(map_name))
-		FROM replays
-		ORDER BY id ASC
+		SELECT r.id, lower(trim(p.name))
+		FROM replays r
+		JOIN players p ON p.replay_id = r.id
+		WHERE p.is_observer = 0
+			AND lower(trim(coalesce(p.type, ''))) = 'human'
+		ORDER BY r.id ASC, p.id ASC
 		LIMIT 1
-	`).Scan(&replayOneID, &replayOneMap); err != nil {
-		t.Fatalf("query first replay: %v", err)
+	`).Scan(&replayOneID, &replayOnePlayer); err != nil {
+		t.Fatalf("query first replay/player: %v", err)
 	}
 
 	var replayTwoID int64
@@ -224,10 +223,15 @@ func TestDashboardAPI_GlobalReplayFilterComposesWithDashboardFilter(t *testing.T
 		SELECT id
 		FROM replays
 		WHERE id <> ?
+			AND NOT EXISTS (
+				SELECT 1 FROM players p
+				WHERE p.replay_id = replays.id
+					AND lower(trim(p.name)) = ?
+			)
 		ORDER BY id ASC
 		LIMIT 1
-	`, replayOneID).Scan(&replayTwoID); err != nil {
-		t.Fatalf("query second replay: %v", err)
+	`, replayOneID, replayOnePlayer).Scan(&replayTwoID); err != nil {
+		t.Fatalf("query second replay (without player %s): %v", replayOnePlayer, err)
 	}
 
 	if _, err := dash.updateGlobalReplayFilterConfig(dash.ctx, globalReplayFilterConfig{
@@ -235,9 +239,9 @@ func TestDashboardAPI_GlobalReplayFilterComposesWithDashboardFilter(t *testing.T
 		GameTypesMode:     globalReplayFilterModeOnlyThese,
 		ExcludeShortGames: false,
 		ExcludeComputers:  false,
-		Maps:              []string{replayOneMap},
-		MapFilterMode:     globalReplayFilterModeOnlyThese,
-		Players:           []string{},
+		MapKinds:          []string{},
+		MapKindFilterMode: globalReplayFilterModeOnlyThese,
+		Players:           []string{replayOnePlayer},
 		PlayerFilterMode:  globalReplayFilterModeOnlyThese,
 	}); err != nil {
 		t.Fatalf("updateGlobalReplayFilterConfig: %v", err)
@@ -274,8 +278,8 @@ func TestCompileGlobalReplayFilterSQLPlayerModes(t *testing.T) {
 		GameTypesMode:     globalReplayFilterModeOnlyThese,
 		ExcludeShortGames: false,
 		ExcludeComputers:  false,
-		Maps:              []string{},
-		MapFilterMode:     globalReplayFilterModeOnlyThese,
+		MapKinds:          []string{},
+		MapKindFilterMode: globalReplayFilterModeOnlyThese,
 		Players:           []string{"soma"},
 		PlayerFilterMode:  globalReplayFilterModeOnlyThese,
 	})
@@ -291,8 +295,8 @@ func TestCompileGlobalReplayFilterSQLPlayerModes(t *testing.T) {
 		GameTypesMode:     globalReplayFilterModeOnlyThese,
 		ExcludeShortGames: false,
 		ExcludeComputers:  false,
-		Maps:              []string{},
-		MapFilterMode:     globalReplayFilterModeOnlyThese,
+		MapKinds:          []string{},
+		MapKindFilterMode: globalReplayFilterModeOnlyThese,
 		Players:           []string{"soma"},
 		PlayerFilterMode:  globalReplayFilterModeAllExceptThese,
 	})
@@ -316,8 +320,8 @@ func TestDashboardAPI_GlobalReplayFilterPlayerOnlyTheseMatchesByPresence(t *test
 		GameTypesMode:     globalReplayFilterModeOnlyThese,
 		ExcludeShortGames: false,
 		ExcludeComputers:  false,
-		Maps:              []string{},
-		MapFilterMode:     globalReplayFilterModeOnlyThese,
+		MapKinds:          []string{},
+		MapKindFilterMode: globalReplayFilterModeOnlyThese,
 		Players:           []string{allowedPlayer},
 		PlayerFilterMode:  globalReplayFilterModeOnlyThese,
 	})
@@ -350,8 +354,8 @@ func TestDashboardAPI_GlobalReplayFilterPlayerAllExceptExcludesAnyMatchingReplay
 		GameTypesMode:     globalReplayFilterModeOnlyThese,
 		ExcludeShortGames: false,
 		ExcludeComputers:  false,
-		Maps:              []string{},
-		MapFilterMode:     globalReplayFilterModeOnlyThese,
+		MapKinds:          []string{},
+		MapKindFilterMode: globalReplayFilterModeOnlyThese,
 		Players:           []string{blockedPlayer},
 		PlayerFilterMode:  globalReplayFilterModeAllExceptThese,
 	})

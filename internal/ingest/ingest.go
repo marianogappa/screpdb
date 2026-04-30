@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -12,9 +13,15 @@ import (
 
 	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/parser"
+	"github.com/marianogappa/screpdb/internal/profile"
 	"github.com/marianogappa/screpdb/internal/storage"
 	"golang.org/x/sync/errgroup"
 )
+
+// errSkippedUMS is returned by processFileToChannel when a replay parses
+// successfully but is excluded by the global UMS auto-discard policy. Callers
+// use errors.Is to count these as skips, not errors.
+var errSkippedUMS = errors.New("replay skipped: UMS not supported")
 
 type Config struct {
 	InputDir         string
@@ -36,6 +43,11 @@ type Config struct {
 	// from the SCREPDB_EARLY_FILTER_DEBUG_DIR env var by cmd/ingest.go;
 	// not user-facing.
 	EarlyFilterDebugDir string
+
+	// ProfileMode controls the SCREPDB_INGEST_PROFILE behavior. When
+	// non-Off, per-replay phase timings are emitted to stderr and an
+	// aggregate p50/p95 is printed at end of run.
+	ProfileMode profile.Mode
 }
 
 func Run(ctx context.Context, cfg Config) error {
@@ -55,11 +67,14 @@ func Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 
+	sink := profile.NewSink(cfg.ProfileMode)
+	defer sink.Aggregate()
+
 	if cfg.Watch {
-		return runWatchMode(ctx, store, cfg, logger)
+		return runWatchMode(ctx, store, cfg, logger, sink)
 	}
 
-	return runBatchMode(ctx, store, cfg, logger)
+	return runBatchMode(ctx, store, cfg, logger, sink)
 }
 
 // parserOptions translates ingest.Config into parser.Options.
@@ -80,7 +95,7 @@ func withDefaults(cfg Config) Config {
 	return cfg
 }
 
-func runWatchMode(ctx context.Context, store storage.Storage, cfg Config, logger *Logger) error {
+func runWatchMode(ctx context.Context, store storage.Storage, cfg Config, logger *Logger, sink *profile.Sink) error {
 	logger.Infof("Watching directory: %s", cfg.InputDir)
 	logger.Infof("Using %d CPU cores for parsing", runtime.GOMAXPROCS(0))
 	logger.Warnf("Press Ctrl+C to stop...")
@@ -128,7 +143,11 @@ func runWatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 
 			// Process file concurrently
 			g.Go(func() error {
-				if err := processFileToChannel(gCtx, dataChan, &fileInfo, parserOptions(cfg)); err != nil {
+				if err := processFileToChannel(gCtx, dataChan, &fileInfo, parserOptions(cfg), sink); err != nil {
+					if errors.Is(err, errSkippedUMS) {
+						logger.Warnf("Skipping UMS replay: %s", fileInfo.Name)
+						return nil
+					}
 					logger.Errorf("Error processing file %s: %v", fileInfo.Name, err)
 					return nil // Don't stop processing on errors
 				}
@@ -157,7 +176,7 @@ func runWatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 	}
 }
 
-func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger *Logger) error {
+func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger *Logger, sink *profile.Sink) error {
 	logger.Infof("Scanning directory: %s", cfg.InputDir)
 	logger.Infof("Using %d CPU cores for parsing", runtime.GOMAXPROCS(0))
 
@@ -225,7 +244,7 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 
 	// Process files in batches of 100
 	const batchSize = 100
-	var processed, errors int64
+	var processed, errCount, skippedUMS int64
 	var mu sync.Mutex
 
 	for i := 0; i < len(filesToProcess); i += batchSize {
@@ -241,10 +260,17 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 			fileInfo := fileInfo // capture loop variable
 
 			g.Go(func() error {
-				if err := processFileToChannel(gCtx, dataChan, &fileInfo, parserOptions(cfg)); err != nil {
+				if err := processFileToChannel(gCtx, dataChan, &fileInfo, parserOptions(cfg), sink); err != nil {
+					if errors.Is(err, errSkippedUMS) {
+						mu.Lock()
+						skippedUMS++
+						mu.Unlock()
+						logger.Warnf("Skipping UMS replay: %s", fileInfo.Name)
+						return nil
+					}
 					logger.Errorf("Error processing file %s: %v", fileInfo.Name, err)
 					mu.Lock()
-					errors++
+					errCount++
 					mu.Unlock()
 					return nil // Don't stop processing on errors
 				}
@@ -270,7 +296,7 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 		return fmt.Errorf("storage error: %w", err)
 	}
 
-	logger.Successf("Processing complete: processed=%d skipped=%d errors=%d", processed, skippedCount, errors)
+	logger.Successf("Processing complete: processed=%d skipped_existing=%d skipped_ums=%d errors=%d", processed, skippedCount, skippedUMS, errCount)
 
 	return nil
 }
@@ -300,15 +326,29 @@ func batchCheckExistingReplays(ctx context.Context, store storage.Storage, files
 	return allFiltered, nil
 }
 
-func processFileToChannel(ctx context.Context, dataChan storage.ReplayDataChannel, fileInfo *fileops.FileInfo, opts parser.Options) error {
+func processFileToChannel(ctx context.Context, dataChan storage.ReplayDataChannel, fileInfo *fileops.FileInfo, opts parser.Options, sink *profile.Sink) error {
 	// Create replay model from file info
 	replay := parser.CreateReplayFromFileInfo(fileInfo.Path, fileInfo.Name, fileInfo.Size, fileInfo.Checksum)
 
+	// Begin per-replay profile run; nil-safe when sink is disabled.
+	run := sink.Replay(fileInfo.Name)
+
 	// Parse the replay
+	stop := run.Phase("parse")
 	data, err := parser.ParseReplayWithOptions(fileInfo.Path, replay, opts)
+	stop()
 	if err != nil {
 		return fmt.Errorf("failed to parse replay: %w", err)
 	}
+
+	// UMS replays are unsupported — drop them before they reach storage.
+	// Existing UMS rows in older DBs are filtered out at query time
+	// (see global filter compiler); this prevents new ones from landing.
+	if data.Replay != nil && data.Replay.MapKind == "UseMapSettings" {
+		return errSkippedUMS
+	}
+
+	data.Profile = run
 
 	// Send to storage channel
 	select {

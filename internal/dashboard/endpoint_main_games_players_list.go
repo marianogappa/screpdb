@@ -509,10 +509,12 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 
 	for _, feature := range workflowFeaturingFilters {
 		result.Featuring = append(result.Featuring, workflowGamesListFilterOption{
-			Key:     feature.Key,
-			Label:   feature.Label,
-			Group:   feature.Group,
-			IconKey: feature.IconKey,
+			Key:       feature.Key,
+			Label:     feature.Label,
+			Group:     feature.Group,
+			IconKey:   feature.IconKey,
+			IconKeys:  feature.IconKeys,
+			IconLabel: feature.IconLabel,
 		})
 	}
 	for _, matchup := range workflowMatchupFilters {

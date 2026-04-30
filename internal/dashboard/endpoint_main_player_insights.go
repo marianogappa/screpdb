@@ -215,7 +215,113 @@ func (d *Dashboard) populateAdvancedPlayerOverview(playerKey string, result *wor
 	}
 	result.RaceBreakdown = breakdown
 
+	matchups, err := d.matchupCellsForPlayer(playerKey)
+	if err != nil {
+		return err
+	}
+	result.Matchups = matchups
+
+	raceOrders, err := d.loadRaceOrderSummaryForPlayer(playerKey)
+	if err != nil {
+		return fmt.Errorf("failed to load race tech/upgrade order summary: %w", err)
+	}
+	result.RaceOrders = raceOrders
+
+	matchupOrders, err := d.loadMatchupOrderSummaryForPlayer(playerKey)
+	if err != nil {
+		return fmt.Errorf("failed to load matchup tech/upgrade order summary: %w", err)
+	}
+	result.MatchupOrders = matchupOrders
+
+	earlyTimings, err := d.earlyTimingsForPlayer(playerKey)
+	if err != nil {
+		return err
+	}
+	result.EarlyTimings = earlyTimings
+
 	return nil
+}
+
+// earlyTimingsForPlayer aggregates first-expansion times per (race, map_kind)
+// into median + sample size. We only emit cells with games >= 3 — fewer than
+// that is too noisy to draw conclusions from.
+func (d *Dashboard) earlyTimingsForPlayer(playerKey string) ([]workflowPlayerEarlyTiming, error) {
+	rows, err := d.dbStore.ListPlayerFirstExpansionTimings(d.ctx, playerKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load first-expansion timings: %w", err)
+	}
+	type bucketKey struct {
+		race    string
+		mapKind string
+	}
+	buckets := map[bucketKey][]float64{}
+	for _, row := range rows {
+		key := bucketKey{race: row.Race, mapKind: row.MapKind}
+		buckets[key] = append(buckets[key], float64(row.FirstExpansionSecond))
+	}
+	out := make([]workflowPlayerEarlyTiming, 0, len(buckets))
+	for key, values := range buckets {
+		if len(values) < 3 {
+			continue
+		}
+		sort.Float64s(values)
+		median := values[len(values)/2]
+		if len(values)%2 == 0 && len(values) >= 2 {
+			median = (values[len(values)/2-1] + values[len(values)/2]) / 2.0
+		}
+		out = append(out, workflowPlayerEarlyTiming{
+			Race:          key.race,
+			MapKind:       key.mapKind,
+			Milestone:     "first_expansion",
+			Games:         int64(len(values)),
+			MedianSeconds: median,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Race == out[j].Race {
+			return out[i].MapKind < out[j].MapKind
+		}
+		return out[i].Race < out[j].Race
+	})
+	return out, nil
+}
+
+// matchupCellsForPlayer builds the per-(own_race, opp_race) matchup table
+// for a single player. Restricted to 1v1 games at the SQL layer; multi-
+// player games have ambiguous opposing race so we exclude them rather than
+// showing misleading averages.
+func (d *Dashboard) matchupCellsForPlayer(playerKey string) ([]workflowPlayerMatchupCell, error) {
+	rows, err := d.dbStore.ListPlayerMatchups(d.ctx, playerKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load matchup table: %w", err)
+	}
+	out := make([]workflowPlayerMatchupCell, 0, len(rows))
+	for _, row := range rows {
+		var winRate float64
+		if row.Games > 0 {
+			winRate = float64(row.Wins) / float64(row.Games)
+		}
+		out = append(out, workflowPlayerMatchupCell{
+			OwnRace:    row.OwnRace,
+			OppRace:    row.OppRace,
+			Games:      row.Games,
+			Wins:       row.Wins,
+			WinRate:    winRate,
+			Confidence: matchupConfidenceForGames(row.Games),
+		})
+	}
+	return out, nil
+}
+
+func matchupConfidenceForGames(games int64) string {
+	switch {
+	case games >= 15:
+		return "high"
+	case games >= 5:
+		return "medium"
+	default:
+		return "low"
+	}
 }
 
 func (d *Dashboard) commonBehavioursForPlayer(playerKey string, gamesPlayed int64) ([]workflowCommonBehaviour, error) {
@@ -892,6 +998,86 @@ func (d *Dashboard) loadRaceOrderSummaryForPlayer(playerKey string) ([]workflowR
 			Race:         race,
 			TechOrder:    splitSequence(bestSequence(techSeqByRace[race])),
 			UpgradeOrder: splitSequence(bestSequence(upgradeSeqByRace[race])),
+		})
+	}
+	return out, nil
+}
+
+// loadMatchupOrderSummaryForPlayer mirrors loadRaceOrderSummaryForPlayer but
+// buckets sequences by (own_race, opp_race) instead of just own_race. 1v1
+// only at the SQL layer. Drops matchups with fewer than 2 sample games to
+// avoid surfacing a single-game's sequence as the player's "typical" play.
+func (d *Dashboard) loadMatchupOrderSummaryForPlayer(playerKey string) ([]workflowMatchupOrderSummary, error) {
+	rows, err := d.dbStore.ListMatchupOrderRows(d.ctx, playerKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load matchup order rows: %w", err)
+	}
+
+	type matchupKey struct {
+		own string
+		opp string
+	}
+	type gameOrders struct {
+		matchup  matchupKey
+		techs    []string
+		upgrades []string
+	}
+	// Each game's commands are uniquely keyed by (player_id, replay_id) since
+	// the same player_id never appears in two replays. Group by player_id.
+	byGame := map[int64]*gameOrders{}
+	for _, row := range rows {
+		entry, ok := byGame[row.PlayerID]
+		if !ok {
+			entry = &gameOrders{
+				matchup: matchupKey{own: row.OwnRace, opp: row.OppRace},
+			}
+			byGame[row.PlayerID] = entry
+		}
+		if row.ActionType == "Tech" && row.TechName != nil && len(entry.techs) < 6 {
+			entry.techs = append(entry.techs, *row.TechName)
+		}
+		if row.ActionType == "Upgrade" && row.UpgradeName != nil && len(entry.upgrades) < 6 {
+			entry.upgrades = append(entry.upgrades, *row.UpgradeName)
+		}
+	}
+
+	techSeqByMatchup := map[matchupKey]map[string]int64{}
+	upgradeSeqByMatchup := map[matchupKey]map[string]int64{}
+	gamesByMatchup := map[matchupKey]int64{}
+	for _, entry := range byGame {
+		gamesByMatchup[entry.matchup]++
+		if _, ok := techSeqByMatchup[entry.matchup]; !ok {
+			techSeqByMatchup[entry.matchup] = map[string]int64{}
+		}
+		if _, ok := upgradeSeqByMatchup[entry.matchup]; !ok {
+			upgradeSeqByMatchup[entry.matchup] = map[string]int64{}
+		}
+		techSeqByMatchup[entry.matchup][strings.Join(entry.techs, " -> ")]++
+		upgradeSeqByMatchup[entry.matchup][strings.Join(entry.upgrades, " -> ")]++
+	}
+
+	keys := make([]matchupKey, 0, len(gamesByMatchup))
+	for key := range gamesByMatchup {
+		if gamesByMatchup[key] < 2 {
+			continue
+		}
+		keys = append(keys, key)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i].own == keys[j].own {
+			return keys[i].opp < keys[j].opp
+		}
+		return keys[i].own < keys[j].own
+	})
+
+	out := make([]workflowMatchupOrderSummary, 0, len(keys))
+	for _, key := range keys {
+		out = append(out, workflowMatchupOrderSummary{
+			OwnRace:      key.own,
+			OppRace:      key.opp,
+			Games:        gamesByMatchup[key],
+			TechOrder:    splitSequence(bestSequence(techSeqByMatchup[key])),
+			UpgradeOrder: splitSequence(bestSequence(upgradeSeqByMatchup[key])),
 		})
 	}
 	return out, nil

@@ -171,12 +171,6 @@ func (q *Queries) ListGasTimingRows(ctx context.Context, replayID int64) ([]List
 }
 
 const ListHotkeyGamesRateByPlayer = `-- name: ListHotkeyGamesRateByPlayer :many
--- Hotkey usage as a per-player rate of "games where any hotkey-group command
--- fired." Sourced from the used_hotkey_groups marker (computed at ingestion;
--- one replay_events row per (replay × player) when groups exist), so this
--- avoids scanning commands_low_value at query time. EXISTS guard handles
--- duplicate marker rows defensively even though the streaming detector
--- emits at most one per (replay × player).
 WITH game_level AS (
   SELECT
     lower(trim(p.name)) AS player_key,
@@ -201,6 +195,12 @@ type ListHotkeyGamesRateByPlayerRow struct {
 	MetricValue *float64
 }
 
+// Hotkey usage as a per-player rate of "games where any hotkey-group command
+// fired." Sourced from the used_hotkey_groups marker (computed at ingestion;
+// one replay_events row per (replay x player) when groups exist), so this
+// avoids scanning commands_low_value at query time. EXISTS guard handles
+// duplicate marker rows defensively even though the streaming detector
+// emits at most one per (replay x player).
 func (q *Queries) ListHotkeyGamesRateByPlayer(ctx context.Context) ([]ListHotkeyGamesRateByPlayerRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListHotkeyGamesRateByPlayer)
 	if err != nil {
@@ -211,6 +211,90 @@ func (q *Queries) ListHotkeyGamesRateByPlayer(ctx context.Context) ([]ListHotkey
 	for rows.Next() {
 		var i ListHotkeyGamesRateByPlayerRow
 		if err := rows.Scan(&i.PlayerKey, &i.MetricValue); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListMatchupOrderRows = `-- name: ListMatchupOrderRows :many
+SELECT
+  self.id AS player_id,
+  self.race AS own_race,
+  opp.race AS opp_race,
+  self.replay_id AS replay_id,
+  c.action_type AS action_type,
+  c.tech_name AS tech_name,
+  c.upgrade_name AS upgrade_name,
+  c.seconds_from_game_start AS seconds_from_game_start
+FROM players self
+JOIN players opp
+  ON opp.replay_id = self.replay_id
+  AND opp.id != self.id
+  AND opp.is_observer = 0
+  AND lower(trim(coalesce(opp.type, ''))) = 'human'
+JOIN commands c
+  ON c.player_id = self.id
+WHERE lower(trim(self.name)) = ?
+  AND self.is_observer = 0
+  AND lower(trim(coalesce(self.type, ''))) = 'human'
+  AND (
+    (c.action_type = 'Tech' AND c.tech_name IS NOT NULL AND c.tech_name <> '')
+    OR
+    (c.action_type = 'Upgrade' AND c.upgrade_name IS NOT NULL AND c.upgrade_name <> '')
+  )
+  AND 2 = (
+    SELECT COUNT(*) FROM players p2
+    WHERE p2.replay_id = self.replay_id
+      AND p2.is_observer = 0
+      AND lower(trim(coalesce(p2.type, ''))) = 'human'
+  )
+ORDER BY self.id, c.seconds_from_game_start
+`
+
+type ListMatchupOrderRowsRow struct {
+	PlayerID             int64
+	OwnRace              string
+	OppRace              string
+	ReplayID             int64
+	ActionType           string
+	TechName             *string
+	UpgradeName          *string
+	SecondsFromGameStart int64
+}
+
+// Per-matchup tech/upgrade rows for a single player. 1v1 only - the opponent
+// race is well-defined only when there's exactly one opposing human; multi-
+// player games are excluded so the sequences aren't averaged across mismatched
+// opponents. Each row carries (own_race, opp_race, replay_id, action_type,
+// tech_name, upgrade_name, seconds) so the consumer can stitch sequences
+// per (player, replay) and bucket them per matchup.
+func (q *Queries) ListMatchupOrderRows(ctx context.Context, name string) ([]ListMatchupOrderRowsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListMatchupOrderRows, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListMatchupOrderRowsRow{}
+	for rows.Next() {
+		var i ListMatchupOrderRowsRow
+		if err := rows.Scan(
+			&i.PlayerID,
+			&i.OwnRace,
+			&i.OppRace,
+			&i.ReplayID,
+			&i.ActionType,
+			&i.TechName,
+			&i.UpgradeName,
+			&i.SecondsFromGameStart,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

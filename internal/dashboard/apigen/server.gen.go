@@ -29,7 +29,6 @@ const (
 	Melee       UpdateGlobalReplayFilterConfigRequestGameTypes = "melee"
 	OneOnOne    UpdateGlobalReplayFilterConfigRequestGameTypes = "one_on_one"
 	TopVsBottom UpdateGlobalReplayFilterConfigRequestGameTypes = "top_vs_bottom"
-	Ums         UpdateGlobalReplayFilterConfigRequestGameTypes = "ums"
 )
 
 // Valid indicates whether the value is a known member of the UpdateGlobalReplayFilterConfigRequestGameTypes enum.
@@ -42,8 +41,6 @@ func (e UpdateGlobalReplayFilterConfigRequestGameTypes) Valid() bool {
 	case OneOnOne:
 		return true
 	case TopVsBottom:
-		return true
-	case Ums:
 		return true
 	default:
 		return false
@@ -68,18 +65,36 @@ func (e UpdateGlobalReplayFilterConfigRequestGameTypesMode) Valid() bool {
 	}
 }
 
-// Defines values for UpdateGlobalReplayFilterConfigRequestMapFilterMode.
+// Defines values for UpdateGlobalReplayFilterConfigRequestMapKindFilterMode.
 const (
-	UpdateGlobalReplayFilterConfigRequestMapFilterModeAllExceptThese UpdateGlobalReplayFilterConfigRequestMapFilterMode = "all_except_these"
-	UpdateGlobalReplayFilterConfigRequestMapFilterModeOnlyThese      UpdateGlobalReplayFilterConfigRequestMapFilterMode = "only_these"
+	UpdateGlobalReplayFilterConfigRequestMapKindFilterModeAllExceptThese UpdateGlobalReplayFilterConfigRequestMapKindFilterMode = "all_except_these"
+	UpdateGlobalReplayFilterConfigRequestMapKindFilterModeOnlyThese      UpdateGlobalReplayFilterConfigRequestMapKindFilterMode = "only_these"
 )
 
-// Valid indicates whether the value is a known member of the UpdateGlobalReplayFilterConfigRequestMapFilterMode enum.
-func (e UpdateGlobalReplayFilterConfigRequestMapFilterMode) Valid() bool {
+// Valid indicates whether the value is a known member of the UpdateGlobalReplayFilterConfigRequestMapKindFilterMode enum.
+func (e UpdateGlobalReplayFilterConfigRequestMapKindFilterMode) Valid() bool {
 	switch e {
-	case UpdateGlobalReplayFilterConfigRequestMapFilterModeAllExceptThese:
+	case UpdateGlobalReplayFilterConfigRequestMapKindFilterModeAllExceptThese:
 		return true
-	case UpdateGlobalReplayFilterConfigRequestMapFilterModeOnlyThese:
+	case UpdateGlobalReplayFilterConfigRequestMapKindFilterModeOnlyThese:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGlobalReplayFilterConfigRequestMapKinds.
+const (
+	Money   UpdateGlobalReplayFilterConfigRequestMapKinds = "money"
+	Regular UpdateGlobalReplayFilterConfigRequestMapKinds = "regular"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGlobalReplayFilterConfigRequestMapKinds enum.
+func (e UpdateGlobalReplayFilterConfigRequestMapKinds) Valid() bool {
+	switch e {
+	case Money:
+		return true
+	case Regular:
 		return true
 	default:
 		return false
@@ -288,15 +303,19 @@ type UpdateDashboardWidgetRequest struct {
 
 // UpdateGlobalReplayFilterConfigRequest defines model for UpdateGlobalReplayFilterConfigRequest.
 type UpdateGlobalReplayFilterConfigRequest struct {
-	CompiledReplaysFilterSql *string                                               `json:"compiled_replays_filter_sql,omitempty"`
-	ExcludeComputers         bool                                                  `json:"exclude_computers"`
-	ExcludeShortGames        bool                                                  `json:"exclude_short_games"`
-	GameTypes                []UpdateGlobalReplayFilterConfigRequestGameTypes      `json:"game_types"`
-	GameTypesMode            UpdateGlobalReplayFilterConfigRequestGameTypesMode    `json:"game_types_mode"`
-	MapFilterMode            UpdateGlobalReplayFilterConfigRequestMapFilterMode    `json:"map_filter_mode"`
-	Maps                     []string                                              `json:"maps"`
-	PlayerFilterMode         UpdateGlobalReplayFilterConfigRequestPlayerFilterMode `json:"player_filter_mode"`
-	Players                  []string                                              `json:"players"`
+	CompiledReplaysFilterSql *string                                                `json:"compiled_replays_filter_sql,omitempty"`
+	ExcludeComputers         bool                                                   `json:"exclude_computers"`
+	ExcludeShortGames        bool                                                   `json:"exclude_short_games"`
+	GameTypes                []UpdateGlobalReplayFilterConfigRequestGameTypes       `json:"game_types"`
+	GameTypesMode            UpdateGlobalReplayFilterConfigRequestGameTypesMode     `json:"game_types_mode"`
+	MapKindFilterMode        UpdateGlobalReplayFilterConfigRequestMapKindFilterMode `json:"map_kind_filter_mode"`
+
+	// MapKinds Map types to include/exclude. UMS replays are always excluded
+	// globally (auto-discarded at ingest), so 'ums' is not a valid
+	// value here.
+	MapKinds         []UpdateGlobalReplayFilterConfigRequestMapKinds       `json:"map_kinds"`
+	PlayerFilterMode UpdateGlobalReplayFilterConfigRequestPlayerFilterMode `json:"player_filter_mode"`
+	Players          []string                                              `json:"players"`
 }
 
 // UpdateGlobalReplayFilterConfigRequestGameTypes defines model for UpdateGlobalReplayFilterConfigRequest.GameTypes.
@@ -305,8 +324,11 @@ type UpdateGlobalReplayFilterConfigRequestGameTypes string
 // UpdateGlobalReplayFilterConfigRequestGameTypesMode defines model for UpdateGlobalReplayFilterConfigRequest.GameTypesMode.
 type UpdateGlobalReplayFilterConfigRequestGameTypesMode string
 
-// UpdateGlobalReplayFilterConfigRequestMapFilterMode defines model for UpdateGlobalReplayFilterConfigRequest.MapFilterMode.
-type UpdateGlobalReplayFilterConfigRequestMapFilterMode string
+// UpdateGlobalReplayFilterConfigRequestMapKindFilterMode defines model for UpdateGlobalReplayFilterConfigRequest.MapKindFilterMode.
+type UpdateGlobalReplayFilterConfigRequestMapKindFilterMode string
+
+// UpdateGlobalReplayFilterConfigRequestMapKinds defines model for UpdateGlobalReplayFilterConfigRequest.MapKinds.
+type UpdateGlobalReplayFilterConfigRequestMapKinds string
 
 // UpdateGlobalReplayFilterConfigRequestPlayerFilterMode defines model for UpdateGlobalReplayFilterConfigRequest.PlayerFilterMode.
 type UpdateGlobalReplayFilterConfigRequestPlayerFilterMode string
@@ -4279,39 +4301,41 @@ func (sh *strictHandler) PlayerRecentGames(w http.ResponseWriter, r *http.Reques
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

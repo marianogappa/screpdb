@@ -74,6 +74,53 @@ GROUP BY c.action_type
 ORDER BY n DESC
 LIMIT ?;
 
+-- name: ListPlayerFirstExpansionTimings :many
+-- One row per (race, map_kind, replay) for a single player giving the
+-- earliest expansion event time. Backs the early-game timing summary that
+-- compares Regular vs Money maps. Note: relies on game_event 'expansion'
+-- already being stored at ingest by the worldstate detector.
+SELECT
+  p.race AS race,
+  r.map_kind AS map_kind,
+  re.replay_id AS replay_id,
+  CAST(MIN(re.seconds_from_game_start) AS INTEGER) AS first_expansion_second
+FROM replay_events re
+JOIN players p ON p.id = re.source_player_id
+JOIN replays r ON r.id = re.replay_id
+WHERE re.event_kind = 'game_event'
+  AND re.event_type = 'expansion'
+  AND lower(trim(p.name)) = ?
+  AND p.is_observer = 0
+  AND lower(trim(coalesce(p.type, ''))) = 'human'
+  AND r.map_kind != 'UseMapSettings'
+GROUP BY p.race, r.map_kind, re.replay_id
+ORDER BY p.race, r.map_kind, first_expansion_second;
+
+-- name: ListPlayerMatchups :many
+-- Per-matchup breakdown for a single player. 1v1 only - multi-player games
+-- have ambiguous opponent race so we exclude them. Returns one row per
+-- (own_race, opp_race) pair with sample size and win count.
+SELECT
+  self.race AS own_race,
+  opp.race AS opp_race,
+  COUNT(DISTINCT self.replay_id) AS games,
+  CAST(SUM(CASE WHEN self.is_winner = 1 THEN 1 ELSE 0 END) AS INTEGER) AS wins
+FROM players self
+JOIN players opp ON opp.replay_id = self.replay_id AND opp.id != self.id
+WHERE lower(trim(self.name)) = ?
+  AND self.is_observer = 0
+  AND lower(trim(coalesce(self.type, ''))) = 'human'
+  AND opp.is_observer = 0
+  AND lower(trim(coalesce(opp.type, ''))) = 'human'
+  AND 2 = (
+    SELECT COUNT(*) FROM players p
+    WHERE p.replay_id = self.replay_id
+      AND p.is_observer = 0
+      AND lower(trim(coalesce(p.type, ''))) = 'human'
+  )
+GROUP BY self.race, opp.race
+ORDER BY games DESC, own_race, opp_race;
+
 -- name: ListEarlyZergMorphsForBOTimings :many
 SELECT
   c.player_id,

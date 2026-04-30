@@ -201,11 +201,13 @@ type workflowGamesListFilters struct {
 }
 
 type workflowGamesListFilterOption struct {
-	Key     string `json:"key"`
-	Label   string `json:"label"`
-	Games   int64  `json:"games"`
-	IconKey string `json:"icon_key,omitempty"`
-	Group   string `json:"group,omitempty"`
+	Key       string   `json:"key"`
+	Label     string   `json:"label"`
+	Games     int64    `json:"games"`
+	IconKey   string   `json:"icon_key,omitempty"`
+	IconKeys  []string `json:"icon_keys,omitempty"`
+	IconLabel string   `json:"icon_label,omitempty"`
+	Group     string   `json:"group,omitempty"`
 }
 
 type workflowGamesListFilterOptions struct {
@@ -237,31 +239,34 @@ var workflowMatchupFilters = []struct {
 //   - "marker" → narrative/late-game/rush markers (always visible)
 //   - "bo"     → opener build orders (collapsed under a disclosure by default)
 //
-// IconKey, when set, tells the frontend to render the chip as an image-only
-// pill (with the Label as a tooltip). Use it for markers where a single
-// unit/building cleanly conveys the meaning; leave empty for text-label chips.
+// IconKey / IconKeys, when set, render the chip with one or more unit/building
+// icons (Label remains the tooltip). IconKeys (multi-icon) wins over IconKey
+// when both are present. IconLabel, when set, renders short text (e.g. "Rush",
+// "Proxy") next to the icon(s) for disambiguation.
 var workflowFeaturingFilters = []struct {
-	Key     string
-	Label   string
-	Group   string
-	IconKey string
+	Key       string
+	Label     string
+	Group     string
+	IconKey   string
+	IconKeys  []string
+	IconLabel string
 }{
 	{Key: "carriers", Label: "Carrier", Group: "marker", IconKey: "carrier"},
 	{Key: "battlecruisers", Label: "Battlecruiser", Group: "marker", IconKey: "battlecruiser"},
 	{Key: "ten_plus_scouts", Label: "10+ Scouts", Group: "marker", IconKey: "scout"},
-	{Key: "mech", Label: "Mech", Group: "marker"},
-	{Key: "sk_terran", Label: "SK Terran", Group: "marker"},
+	{Key: "mech", Label: "Mech", Group: "marker", IconKeys: []string{"siegetank", "goliath"}},
+	{Key: "sk_terran", Label: "SK Terran", Group: "marker", IconKeys: []string{"marine", "medic"}},
 	{Key: "one_one_one", Label: "1-1-1", Group: "marker"},
 	{Key: "mech_transition", Label: "Mech Transition", Group: "marker"},
-	{Key: "cannon_rush", Label: "Cannon Rush", Group: "marker", IconKey: "photoncannon"},
-	{Key: "bunker_rush", Label: "Bunker Rush", Group: "marker", IconKey: "bunker"},
-	{Key: "zergling_rush", Label: "Zergling Rush", Group: "marker", IconKey: "zergling"},
-	{Key: "proxy_gate", Label: "Proxy Gateway", Group: "marker", IconKey: "gateway"},
-	{Key: "proxy_rax", Label: "Proxy Barracks", Group: "marker", IconKey: "barracks"},
-	{Key: "proxy_factory", Label: "Proxy Factory", Group: "marker", IconKey: "factory"},
-	{Key: "mind_control", Label: "Mind Control", Group: "marker"},
-	{Key: "nukes", Label: "Nukes", Group: "marker"},
-	{Key: "recalls", Label: "Recalls", Group: "marker"},
+	{Key: "cannon_rush", Label: "Cannon Rush", Group: "marker", IconKey: "photoncannon", IconLabel: "Rush"},
+	{Key: "bunker_rush", Label: "Bunker Rush", Group: "marker", IconKey: "bunker", IconLabel: "Rush"},
+	{Key: "zergling_rush", Label: "Zergling Rush", Group: "marker", IconKey: "zergling", IconLabel: "Rush"},
+	{Key: "proxy_gate", Label: "Proxy Gateway", Group: "marker", IconKey: "gateway", IconLabel: "Proxy"},
+	{Key: "proxy_rax", Label: "Proxy Barracks", Group: "marker", IconKey: "barracks", IconLabel: "Proxy"},
+	{Key: "proxy_factory", Label: "Proxy Factory", Group: "marker", IconKey: "factory", IconLabel: "Proxy"},
+	{Key: "mind_control", Label: "Mind Control", Group: "marker", IconKey: "darkarchon"},
+	{Key: "nukes", Label: "Nukes", Group: "marker", IconKey: "ghost"},
+	{Key: "recalls", Label: "Recalls", Group: "marker", IconKey: "arbiter"},
 	// Build order pills — keys & labels kept in sync with internal/markers.
 	// Suppressed in render for Money maps (game-list + replay-summary
 	// featuring strips); BO tab and per-player summary pills still show.
@@ -543,6 +548,31 @@ type workflowPlayerRaceBreakdown struct {
 	Wins      int64  `json:"wins"`
 }
 
+// workflowPlayerMatchupCell is one (own_race, opp_race) cell of the matchup
+// table. Confidence buckets the sample size: low (<5), medium (5–14),
+// high (15+) — used by the UI to dim cells that don't have enough games
+// to be informative.
+type workflowPlayerMatchupCell struct {
+	OwnRace    string  `json:"own_race"`
+	OppRace    string  `json:"opp_race"`
+	Games      int64   `json:"games"`
+	Wins       int64   `json:"wins"`
+	WinRate    float64 `json:"win_rate"`
+	Confidence string  `json:"confidence"`
+}
+
+// workflowPlayerEarlyTiming is a per-(race, map_kind) summary of an early-game
+// milestone. We surface median + sample size to compare a player's pacing on
+// Regular vs Money maps without committing to a full histogram (the
+// distributions are usually too sparse per-player to warrant one).
+type workflowPlayerEarlyTiming struct {
+	Race          string  `json:"race"`
+	MapKind       string  `json:"map_kind"`
+	Milestone     string  `json:"milestone"`
+	Games         int64   `json:"games"`
+	MedianSeconds float64 `json:"median_seconds"`
+}
+
 type workflowPlayerOverview struct {
 	SummaryVersion      string                        `json:"summary_version"`
 	PlayerKey           string                        `json:"player_key"`
@@ -562,6 +592,10 @@ type workflowPlayerOverview struct {
 	RecentGames         []workflowGameListItem        `json:"recent_games"`
 	ChatSummary         workflowPlayerChatSummary     `json:"chat_summary"`
 	NarrativeHints      []string                      `json:"narrative_hints"`
+	Matchups            []workflowPlayerMatchupCell   `json:"matchups"`
+	RaceOrders          []workflowRaceOrderSummary    `json:"race_orders"`
+	MatchupOrders       []workflowMatchupOrderSummary `json:"matchup_orders"`
+	EarlyTimings        []workflowPlayerEarlyTiming   `json:"early_timings"`
 }
 
 type workflowPlayerChatSummary struct {
@@ -673,6 +707,17 @@ type workflowPlayerAsyncInsight struct {
 
 type workflowRaceOrderSummary struct {
 	Race         string   `json:"race"`
+	TechOrder    []string `json:"tech_order"`
+	UpgradeOrder []string `json:"upgrade_order"`
+}
+
+// workflowMatchupOrderSummary is the most-common tech and upgrade sequence for
+// a single (own_race, opp_race) matchup. Games is the sample size used to pick
+// the top sequence; the UI dims rows with Games < 5 to flag low confidence.
+type workflowMatchupOrderSummary struct {
+	OwnRace      string   `json:"own_race"`
+	OppRace      string   `json:"opp_race"`
+	Games        int64    `json:"games"`
 	TechOrder    []string `json:"tech_order"`
 	UpgradeOrder []string `json:"upgrade_order"`
 }

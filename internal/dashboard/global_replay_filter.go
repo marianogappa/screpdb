@@ -10,28 +10,29 @@ import (
 )
 
 const (
-	globalReplayFilterConfigKey                  = "global"
-	globalReplayFilterModeOnlyThese             = "only_these"
-	globalReplayFilterModeAllExceptThese        = "all_except_these"
-	globalReplayFilterGameTypeTopVsBottom       = "top_vs_bottom"
-	globalReplayFilterGameTypeMelee             = "melee"
-	globalReplayFilterGameTypeOneOnOne          = "one_on_one"
-	globalReplayFilterGameTypeUseMapSetting     = "ums"
-	globalReplayFilterGameTypeFreeForAll        = "free_for_all"
-	globalReplayFilterShortGameSeconds          = 120
-	globalReplayFilterTopOptionLimit            = 10
+	globalReplayFilterConfigKey          = "global"
+	globalReplayFilterModeOnlyThese      = "only_these"
+	globalReplayFilterModeAllExceptThese = "all_except_these"
+	globalReplayFilterGameTypeTopVsBottom = "top_vs_bottom"
+	globalReplayFilterGameTypeMelee       = "melee"
+	globalReplayFilterGameTypeOneOnOne    = "one_on_one"
+	globalReplayFilterGameTypeFreeForAll  = "free_for_all"
+	globalReplayFilterMapKindRegular      = "regular"
+	globalReplayFilterMapKindMoney        = "money"
+	globalReplayFilterShortGameSeconds    = 120
+	globalReplayFilterTopOptionLimit      = 10
 )
 
 type globalReplayFilterConfig struct {
-	GameTypes               []string `json:"game_types"`
-	GameTypesMode           string   `json:"game_types_mode"`
-	ExcludeShortGames       bool     `json:"exclude_short_games"`
-	ExcludeComputers        bool     `json:"exclude_computers"`
-	Maps                    []string `json:"maps"`
-	MapFilterMode           string   `json:"map_filter_mode"`
-	Players                 []string `json:"players"`
-	PlayerFilterMode        string   `json:"player_filter_mode"`
-	CompiledReplaysFilterSQL *string `json:"compiled_replays_filter_sql,omitempty"`
+	GameTypes                []string `json:"game_types"`
+	GameTypesMode            string   `json:"game_types_mode"`
+	ExcludeShortGames        bool     `json:"exclude_short_games"`
+	ExcludeComputers         bool     `json:"exclude_computers"`
+	MapKinds                 []string `json:"map_kinds"`
+	MapKindFilterMode        string   `json:"map_kind_filter_mode"`
+	Players                  []string `json:"players"`
+	PlayerFilterMode         string   `json:"player_filter_mode"`
+	CompiledReplaysFilterSQL *string  `json:"compiled_replays_filter_sql,omitempty"`
 }
 
 type globalReplayFilterOption struct {
@@ -41,8 +42,6 @@ type globalReplayFilterOption struct {
 }
 
 type globalReplayFilterOptionsResponse struct {
-	TopMaps      []globalReplayFilterOption `json:"top_maps"`
-	OtherMaps    []globalReplayFilterOption `json:"other_maps"`
 	TopPlayers   []globalReplayFilterOption `json:"top_players"`
 	OtherPlayers []globalReplayFilterOption `json:"other_players"`
 }
@@ -53,8 +52,10 @@ func defaultGlobalReplayFilterConfig() globalReplayFilterConfig {
 		GameTypesMode:     globalReplayFilterModeOnlyThese,
 		ExcludeShortGames: true,
 		ExcludeComputers:  true,
-		Maps:              []string{},
-		MapFilterMode:     globalReplayFilterModeOnlyThese,
+		// Default to including both supported map types. UMS is unsupported
+		// and never appears as an option here.
+		MapKinds:          []string{globalReplayFilterMapKindRegular, globalReplayFilterMapKindMoney},
+		MapKindFilterMode: globalReplayFilterModeOnlyThese,
 		Players:           []string{},
 		PlayerFilterMode:  globalReplayFilterModeOnlyThese,
 	}
@@ -72,22 +73,28 @@ func mustCompileGlobalReplayFilterSQL(config globalReplayFilterConfig) string {
 
 func normalizeGlobalReplayFilterConfig(config globalReplayFilterConfig) (globalReplayFilterConfig, error) {
 	config.GameTypesMode = normalizeGlobalReplayFilterMode(config.GameTypesMode)
-	config.MapFilterMode = normalizeGlobalReplayFilterMode(config.MapFilterMode)
+	config.MapKindFilterMode = normalizeGlobalReplayFilterMode(config.MapKindFilterMode)
 	config.PlayerFilterMode = normalizeGlobalReplayFilterMode(config.PlayerFilterMode)
 
 	config.GameTypes = normalizeGlobalReplayFilterValues(config.GameTypes, true)
 	for _, value := range config.GameTypes {
 		switch value {
 		case globalReplayFilterGameTypeTopVsBottom,
-		globalReplayFilterGameTypeMelee,
-		globalReplayFilterGameTypeOneOnOne,
-			globalReplayFilterGameTypeUseMapSetting,
+			globalReplayFilterGameTypeMelee,
+			globalReplayFilterGameTypeOneOnOne,
 			globalReplayFilterGameTypeFreeForAll:
 		default:
 			return config, fmt.Errorf("invalid global replay filter game type: %s", value)
 		}
 	}
-	config.Maps = normalizeGlobalReplayFilterValues(config.Maps, true)
+	config.MapKinds = normalizeGlobalReplayFilterValues(config.MapKinds, true)
+	for _, value := range config.MapKinds {
+		switch value {
+		case globalReplayFilterMapKindRegular, globalReplayFilterMapKindMoney:
+		default:
+			return config, fmt.Errorf("invalid global replay filter map kind: %s", value)
+		}
+	}
 	config.Players = normalizeGlobalReplayFilterValues(config.Players, true)
 
 	compiled, err := compileGlobalReplayFilterSQL(config)
@@ -130,8 +137,8 @@ func compileGlobalReplayFilterSQL(config globalReplayFilterConfig) (string, erro
 		normalized.ExcludeComputers,
 		normalized.GameTypesMode,
 		normalized.GameTypes,
-		normalized.MapFilterMode,
-		normalized.Maps,
+		normalized.MapKindFilterMode,
+		normalized.MapKinds,
 		normalized.PlayerFilterMode,
 		normalized.Players,
 	), nil
@@ -139,7 +146,7 @@ func compileGlobalReplayFilterSQL(config globalReplayFilterConfig) (string, erro
 
 func normalizeGlobalReplayFilterConfigWithoutSQL(config globalReplayFilterConfig) (globalReplayFilterConfig, error) {
 	config.GameTypesMode = normalizeGlobalReplayFilterMode(config.GameTypesMode)
-	config.MapFilterMode = normalizeGlobalReplayFilterMode(config.MapFilterMode)
+	config.MapKindFilterMode = normalizeGlobalReplayFilterMode(config.MapKindFilterMode)
 	config.PlayerFilterMode = normalizeGlobalReplayFilterMode(config.PlayerFilterMode)
 	config.GameTypes = normalizeGlobalReplayFilterValues(config.GameTypes, true)
 	for _, value := range config.GameTypes {
@@ -147,13 +154,19 @@ func normalizeGlobalReplayFilterConfigWithoutSQL(config globalReplayFilterConfig
 		case globalReplayFilterGameTypeTopVsBottom,
 			globalReplayFilterGameTypeMelee,
 			globalReplayFilterGameTypeOneOnOne,
-			globalReplayFilterGameTypeUseMapSetting,
 			globalReplayFilterGameTypeFreeForAll:
 		default:
 			return config, fmt.Errorf("invalid global replay filter game type: %s", value)
 		}
 	}
-	config.Maps = normalizeGlobalReplayFilterValues(config.Maps, true)
+	config.MapKinds = normalizeGlobalReplayFilterValues(config.MapKinds, true)
+	for _, value := range config.MapKinds {
+		switch value {
+		case globalReplayFilterMapKindRegular, globalReplayFilterMapKindMoney:
+		default:
+			return config, fmt.Errorf("invalid global replay filter map kind: %s", value)
+		}
+	}
 	config.Players = normalizeGlobalReplayFilterValues(config.Players, true)
 	return config, nil
 }

@@ -197,8 +197,15 @@ func ensureGlobalReplayFilterConfigColumns(sqlitePath string) error {
 		{name: "player_filter_mode", sql: `ALTER TABLE settings ADD COLUMN player_filter_mode TEXT NOT NULL DEFAULT 'only_these';`},
 		{name: "players", sql: `ALTER TABLE settings ADD COLUMN players TEXT NOT NULL DEFAULT '[]';`},
 		{name: "ingest_input_dir", sql: `ALTER TABLE settings ADD COLUMN ingest_input_dir TEXT NOT NULL DEFAULT '';`},
+		// New columns: map-type filter replaces the older map-name filter (which
+		// remains in the table for legacy reads but is no longer written).
+		// Default to including both supported kinds; UMS is auto-discarded
+		// globally and never present here.
+		{name: "map_kind_filter_mode", sql: `ALTER TABLE settings ADD COLUMN map_kind_filter_mode TEXT NOT NULL DEFAULT 'only_these';`},
+		{name: "map_kinds", sql: `ALTER TABLE settings ADD COLUMN map_kinds TEXT NOT NULL DEFAULT '["regular","money"]';`},
 	}
 
+	newlyAddedMapKinds := false
 	for _, column := range requiredColumns {
 		if _, ok := existingColumns[column.name]; ok {
 			continue
@@ -206,7 +213,27 @@ func ensureGlobalReplayFilterConfigColumns(sqlitePath string) error {
 		if _, err := db.Exec(column.sql); err != nil {
 			return fmt.Errorf("failed to add settings.%s: %w", column.name, err)
 		}
+		if column.name == "map_kinds" {
+			newlyAddedMapKinds = true
+		}
 	}
+
+	// One-time UMS cleanup: when map_kinds was just added, also strip any 'ums'
+	// entries from the existing game_types JSON array so existing user setups
+	// don't keep filtering on a now-impossible value. Wrapped in the
+	// newly-added guard so we don't run it on every startup.
+	if newlyAddedMapKinds {
+		if _, err := db.Exec(`UPDATE settings
+			SET game_types = COALESCE(
+				(SELECT json_group_array(value) FROM json_each(game_types) WHERE value != 'ums'),
+				'[]'
+			)
+			WHERE config_key = 'global'
+				AND EXISTS (SELECT 1 FROM json_each(game_types) WHERE value = 'ums');`); err != nil {
+			return fmt.Errorf("failed to strip ums from game_types: %w", err)
+		}
+	}
+
 	return nil
 }
 

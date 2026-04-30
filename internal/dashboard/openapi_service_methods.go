@@ -404,13 +404,16 @@ func (d *Dashboard) UpdateGlobalReplayFilterConfig(ctx context.Context, request 
 		GameTypesMode:     string(body.GameTypesMode),
 		ExcludeShortGames: body.ExcludeShortGames,
 		ExcludeComputers:  body.ExcludeComputers,
-		Maps:              body.Maps,
-		MapFilterMode:     string(body.MapFilterMode),
+		MapKinds:          make([]string, 0, len(body.MapKinds)),
+		MapKindFilterMode: string(body.MapKindFilterMode),
 		Players:           body.Players,
 		PlayerFilterMode:  string(body.PlayerFilterMode),
 	}
 	for _, gameType := range body.GameTypes {
 		config.GameTypes = append(config.GameTypes, string(gameType))
+	}
+	for _, mapKind := range body.MapKinds {
+		config.MapKinds = append(config.MapKinds, string(mapKind))
 	}
 	config.CompiledReplaysFilterSQL = body.CompiledReplaysFilterSql
 	updated, err := d.updateGlobalReplayFilterConfig(ctx, config)

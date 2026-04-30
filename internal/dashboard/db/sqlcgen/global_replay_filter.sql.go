@@ -12,16 +12,14 @@ import (
 const GetGlobalReplayFilterConfigRaw = `-- name: GetGlobalReplayFilterConfigRaw :one
 SELECT
   game_type,
-  included_maps,
-  excluded_maps,
   included_players,
   excluded_players,
   game_types_mode,
   game_types,
   exclude_short_games,
   exclude_computers,
-  map_filter_mode,
-  maps,
+  map_kind_filter_mode,
+  map_kinds,
   player_filter_mode,
   players,
   compiled_replays_filter_sql
@@ -31,16 +29,14 @@ WHERE config_key = ?
 
 type GetGlobalReplayFilterConfigRawRow struct {
 	GameType                 string
-	IncludedMaps             string
-	ExcludedMaps             string
 	IncludedPlayers          string
 	ExcludedPlayers          string
 	GameTypesMode            string
 	GameTypes                string
 	ExcludeShortGames        bool
 	ExcludeComputers         bool
-	MapFilterMode            string
-	Maps                     string
+	MapKindFilterMode        string
+	MapKinds                 string
 	PlayerFilterMode         string
 	Players                  string
 	CompiledReplaysFilterSql *string
@@ -51,56 +47,19 @@ func (q *Queries) GetGlobalReplayFilterConfigRaw(ctx context.Context, configKey 
 	var i GetGlobalReplayFilterConfigRawRow
 	err := row.Scan(
 		&i.GameType,
-		&i.IncludedMaps,
-		&i.ExcludedMaps,
 		&i.IncludedPlayers,
 		&i.ExcludedPlayers,
 		&i.GameTypesMode,
 		&i.GameTypes,
 		&i.ExcludeShortGames,
 		&i.ExcludeComputers,
-		&i.MapFilterMode,
-		&i.Maps,
+		&i.MapKindFilterMode,
+		&i.MapKinds,
 		&i.PlayerFilterMode,
 		&i.Players,
 		&i.CompiledReplaysFilterSql,
 	)
 	return i, err
-}
-
-const ListGlobalReplayFilterMapOptions = `-- name: ListGlobalReplayFilterMapOptions :many
-SELECT CAST(MIN(map_name) AS TEXT) AS label, COUNT(*) AS games
-FROM replays
-GROUP BY lower(trim(map_name))
-ORDER BY games DESC, label ASC
-`
-
-type ListGlobalReplayFilterMapOptionsRow struct {
-	Label string
-	Games int64
-}
-
-func (q *Queries) ListGlobalReplayFilterMapOptions(ctx context.Context) ([]ListGlobalReplayFilterMapOptionsRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListGlobalReplayFilterMapOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListGlobalReplayFilterMapOptionsRow{}
-	for rows.Next() {
-		var i ListGlobalReplayFilterMapOptionsRow
-		if err := rows.Scan(&i.Label, &i.Games); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const ListGlobalReplayFilterPlayerOptions = `-- name: ListGlobalReplayFilterPlayerOptions :many
@@ -151,8 +110,8 @@ SET
   game_types = ?,
   exclude_short_games = ?,
   exclude_computers = ?,
-  map_filter_mode = ?,
-  maps = ?,
+  map_kind_filter_mode = ?,
+  map_kinds = ?,
   player_filter_mode = ?,
   players = ?,
   compiled_replays_filter_sql = ?,
@@ -166,8 +125,8 @@ type UpdateGlobalReplayFilterConfigRawParams struct {
 	GameTypes                string
 	ExcludeShortGames        bool
 	ExcludeComputers         bool
-	MapFilterMode            string
-	Maps                     string
+	MapKindFilterMode        string
+	MapKinds                 string
 	PlayerFilterMode         string
 	Players                  string
 	CompiledReplaysFilterSql *string
@@ -181,8 +140,8 @@ func (q *Queries) UpdateGlobalReplayFilterConfigRaw(ctx context.Context, arg Upd
 		arg.GameTypes,
 		arg.ExcludeShortGames,
 		arg.ExcludeComputers,
-		arg.MapFilterMode,
-		arg.Maps,
+		arg.MapKindFilterMode,
+		arg.MapKinds,
 		arg.PlayerFilterMode,
 		arg.Players,
 		arg.CompiledReplaysFilterSql,

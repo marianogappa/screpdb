@@ -8,6 +8,7 @@ type Command struct {
 	ID                   int64
 	ReplayID             int64
 	PlayerID             int64
+	Frame                int64
 	SecondsFromGameStart int64
 	ActionType           string
 	IsQueued             *bool
@@ -55,24 +56,10 @@ type DashboardWidget struct {
 	UpdatedAt   *string
 }
 
-type DetectedPatternsReplay struct {
-	AlgorithmVersion int64
+type MarkerAlgorithmState struct {
 	ReplayID         int64
-	PatternName      string
-	ValueBool        *bool
-	ValueInt         *int64
-	ValueString      *string
-	ValueTimestamp   *int64
-}
-
-type DetectedPatternsReplayPlayer struct {
-	ReplayID       int64
-	PlayerID       int64
-	PatternName    string
-	ValueBool      *bool
-	ValueInt       *int64
-	ValueString    *string
-	ValueTimestamp *int64
+	AlgorithmVersion int64
+	DetectedAt       string
 }
 
 type Player struct {
@@ -107,6 +94,7 @@ type Replay struct {
 	FileName        string
 	ReplayDate      string
 	MapName         string
+	MapKind         string
 	DurationSeconds int64
 	GameType        string
 	Matchup         string
@@ -116,6 +104,7 @@ type ReplayEvent struct {
 	ID                      int64
 	ReplayID                int64
 	SecondsFromGameStart    int64
+	EventKind               string
 	EventType               string
 	LocationBaseType        *string
 	LocationBaseOclock      *int64
@@ -124,6 +113,8 @@ type ReplayEvent struct {
 	SourcePlayerID          *int64
 	TargetPlayerID          *int64
 	AttackUnitTypes         *string
+	AttackCastCounts        *string
+	Payload                 *string
 }
 
 type Setting struct {
@@ -140,6 +131,8 @@ type Setting struct {
 	GameTypes                string
 	MapFilterMode            string
 	Maps                     string
+	MapKindFilterMode        string
+	MapKinds                 string
 	PlayerFilterMode         string
 	Players                  string
 	CompiledReplaysFilterSql *string

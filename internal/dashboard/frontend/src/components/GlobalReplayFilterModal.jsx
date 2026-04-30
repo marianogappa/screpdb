@@ -6,8 +6,10 @@ const DEFAULT_CONFIG = {
   game_types_mode: 'only_these',
   exclude_short_games: true,
   exclude_computers: true,
-  maps: [],
-  map_filter_mode: 'only_these',
+  // Map type replaces the previous map-name filter. UMS is auto-discarded
+  // globally; never appears here as a filterable value.
+  map_kinds: ['regular', 'money'],
+  map_kind_filter_mode: 'only_these',
   players: [],
   player_filter_mode: 'only_these',
 };
@@ -17,7 +19,18 @@ const GAME_TYPE_OPTIONS = [
   { value: 'melee', label: 'Melee' },
   { value: 'one_on_one', label: 'One on One' },
   { value: 'free_for_all', label: 'Free For All' },
-  { value: 'ums', label: 'Use Map Settings' },
+];
+
+const MAP_KIND_OPTIONS = [
+  { value: 'regular', label: 'Regular' },
+  { value: 'money', label: 'Money' },
+  {
+    value: 'ums',
+    label: 'Use Map Settings',
+    disabled: true,
+    tooltip:
+      'UMS replays are not supported because key features (build orders, signature markers, race-aware analysis) cannot be reliably extracted from custom-scenario games. They are auto-discarded at ingest.',
+  },
 ];
 
 const FILTER_MODE_OPTIONS = [
@@ -41,8 +54,8 @@ const normalizeConfig = (config) => ({
   game_types_mode: String(config?.game_types_mode || DEFAULT_CONFIG.game_types_mode).trim().toLowerCase() || DEFAULT_CONFIG.game_types_mode,
   exclude_short_games: config?.exclude_short_games !== false,
   exclude_computers: config?.exclude_computers !== false,
-  maps: normalizeStringList(config?.maps),
-  map_filter_mode: String(config?.map_filter_mode || DEFAULT_CONFIG.map_filter_mode).trim().toLowerCase() || DEFAULT_CONFIG.map_filter_mode,
+  map_kinds: normalizeStringList(config?.map_kinds),
+  map_kind_filter_mode: String(config?.map_kind_filter_mode || DEFAULT_CONFIG.map_kind_filter_mode).trim().toLowerCase() || DEFAULT_CONFIG.map_kind_filter_mode,
   players: normalizeStringList(config?.players),
   player_filter_mode: String(config?.player_filter_mode || DEFAULT_CONFIG.player_filter_mode).trim().toLowerCase() || DEFAULT_CONFIG.player_filter_mode,
 });
@@ -51,6 +64,26 @@ function OptionGroup({ title, mode, onModeChange, selectedValues, onToggle, topO
   const [showMore, setShowMore] = useState(false);
   const allOptions = useMemo(() => [...(topOptions || []), ...(otherOptions || [])], [topOptions, otherOptions]);
   const selected = Array.isArray(selectedValues) ? selectedValues : [];
+
+  const renderOption = (option, keyPrefix) => {
+    const isSelected = selected.includes(option.value);
+    const isDisabled = option.disabled === true;
+    const className = `workflow-filter-pill${isSelected ? ' workflow-filter-pill-active' : ''}${isDisabled ? ' workflow-filter-pill-disabled' : ''}`;
+    return (
+      <button
+        key={`${keyPrefix}-${option.value}`}
+        type="button"
+        className={className}
+        onClick={isDisabled ? undefined : () => onToggle(option.value)}
+        disabled={isDisabled}
+        title={option.tooltip || undefined}
+        aria-disabled={isDisabled || undefined}
+      >
+        {option.label}
+        {Number.isFinite(option.count) ? ` (${option.count})` : ''}
+      </button>
+    );
+  };
 
   return (
     <div className="global-filter-option-group">
@@ -71,17 +104,7 @@ function OptionGroup({ title, mode, onModeChange, selectedValues, onToggle, topO
         {allOptions.length === 0 && (
           <div className="global-filter-empty">No options available yet.</div>
         )}
-        {(topOptions || []).map((option) => (
-          <button
-            key={`${title}-${option.value}`}
-            type="button"
-            className={`workflow-filter-pill${selected.includes(option.value) ? ' workflow-filter-pill-active' : ''}`}
-            onClick={() => onToggle(option.value)}
-          >
-            {option.label}
-            {Number.isFinite(option.count) ? ` (${option.count})` : ''}
-          </button>
-        ))}
+        {(topOptions || []).map((option) => renderOption(option, title))}
       </div>
       {(otherOptions || []).length > 0 && (
         <div className="global-filter-more">
@@ -90,17 +113,7 @@ function OptionGroup({ title, mode, onModeChange, selectedValues, onToggle, topO
           </button>
           {showMore && (
             <div className="global-filter-option-list global-filter-option-list-expanded">
-              {otherOptions.map((option) => (
-                <button
-                  key={`${title}-more-${option.value}`}
-                  type="button"
-                  className={`workflow-filter-pill${selected.includes(option.value) ? ' workflow-filter-pill-active' : ''}`}
-                  onClick={() => onToggle(option.value)}
-                >
-                  {option.label}
-                  {Number.isFinite(option.count) ? ` (${option.count})` : ''}
-                </button>
-              ))}
+              {otherOptions.map((option) => renderOption(option, `${title}-more`))}
             </div>
           )}
         </div>
@@ -241,13 +254,13 @@ function GlobalReplayFilterModal({
             />
 
             <FilterDimension
-              heading="Maps"
-              mode={formState.map_filter_mode}
-              onModeChange={(value) => setFormState((prev) => ({ ...prev, map_filter_mode: value }))}
-              values={formState.maps}
-              onToggle={(value) => toggleArrayValue('maps', value)}
-              topOptions={options?.top_maps || []}
-              otherOptions={options?.other_maps || []}
+              heading="Map Type"
+              mode={formState.map_kind_filter_mode}
+              onModeChange={(value) => setFormState((prev) => ({ ...prev, map_kind_filter_mode: value }))}
+              values={formState.map_kinds}
+              onToggle={(value) => toggleArrayValue('map_kinds', value)}
+              topOptions={MAP_KIND_OPTIONS}
+              otherOptions={[]}
             />
 
             <FilterDimension

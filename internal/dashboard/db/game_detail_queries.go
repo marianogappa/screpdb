@@ -154,8 +154,12 @@ func (s *Store) ListPlayerPatterns(ctx context.Context, replayID int64) ([]Playe
 	}
 	out := make([]PlayerPatternValueRow, 0, len(sqlcRows))
 	for _, row := range sqlcRows {
+		var playerID int64
+		if row.PlayerID != nil {
+			playerID = *row.PlayerID
+		}
 		out = append(out, PlayerPatternValueRow{
-			PlayerID:       row.PlayerID,
+			PlayerID:       playerID,
 			PatternName:    row.PatternName,
 			Value:          row.PatternValue,
 			DetectedSecond: row.DetectedSecond,

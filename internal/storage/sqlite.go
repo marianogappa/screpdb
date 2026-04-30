@@ -18,6 +18,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 	"github.com/marianogappa/screpdb/internal/patterns/markers"
 	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
+	"github.com/marianogappa/screpdb/internal/profile"
 )
 
 // SQLiteStorage implements Storage interface using SQLite
@@ -217,6 +218,11 @@ func isDuplicateReplayError(err error) bool {
 
 // storeReplayWithBatching stores a replay data structure using sequential processing
 func (s *SQLiteStorage) storeReplayWithBatching(ctx context.Context, data *models.ReplayData) error {
+	// Optional profile run, attached upstream when SCREPDB_INGEST_PROFILE is set.
+	// nil-safe: every Phase()/Done() call below is a no-op when run is nil.
+	run, _ := data.Profile.(*profile.Run)
+	defer run.Done()
+
 	// Use a transaction to ensure all inserts are atomic and foreign key constraints work
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -225,7 +231,9 @@ func (s *SQLiteStorage) storeReplayWithBatching(ctx context.Context, data *model
 	defer tx.Rollback()
 
 	// Step 1: Insert replay sequentially
+	stop := run.Phase("replay_ins")
 	replayID, err := s.insertReplaySequentialTx(ctx, tx, data.Replay)
+	stop()
 	if err != nil {
 		return fmt.Errorf("failed to insert replay: %w", err)
 	}
@@ -234,7 +242,9 @@ func (s *SQLiteStorage) storeReplayWithBatching(ctx context.Context, data *model
 	}
 
 	// Step 2: Insert players and map IDs
+	stop = run.Phase("players")
 	playerIDs, err := s.insertPlayersBatchTx(ctx, tx, replayID, data.Players)
+	stop()
 	if err != nil {
 		return fmt.Errorf("failed to insert players: %w", err)
 	}
@@ -244,20 +254,26 @@ func (s *SQLiteStorage) storeReplayWithBatching(ctx context.Context, data *model
 
 	// Step 4: Insert commands in batch
 	if len(data.Commands) > 0 {
-		if err := s.insertCommandsBatchTx(ctx, tx, data.Commands); err != nil {
+		stop = run.Phase("cmds")
+		err := s.insertCommandsBatchTx(ctx, tx, data.Commands)
+		stop()
+		if err != nil {
 			return fmt.Errorf("failed to insert commands: %w", err)
 		}
 	}
 
 	// Step 5: Process pattern detection results if orchestrator is present
 	if data.PatternOrchestrator != nil {
-		if err := s.processPatternResultsTx(ctx, tx, data.PatternOrchestrator, replayID, playerIDs); err != nil {
+		if err := s.processPatternResultsTx(ctx, tx, data.PatternOrchestrator, replayID, playerIDs, run); err != nil {
 			return fmt.Errorf("failed to process pattern results: %w", err)
 		}
 	}
 
 	// Commit the transaction
-	if err := tx.Commit(); err != nil {
+	stop = run.Phase("commit")
+	err = tx.Commit()
+	stop()
+	if err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
@@ -265,7 +281,7 @@ func (s *SQLiteStorage) storeReplayWithBatching(ctx context.Context, data *model
 }
 
 // processPatternResultsTx processes pattern detection results (uses provided connection/transaction)
-func (s *SQLiteStorage) processPatternResultsTx(ctx context.Context, db dbtx, orchestrator any, replayID int64, playerIDMap map[byte]int64) error {
+func (s *SQLiteStorage) processPatternResultsTx(ctx context.Context, db dbtx, orchestrator any, replayID int64, playerIDMap map[byte]int64, run *profile.Run) error {
 	// Type assert to *patterns.Orchestrator
 	patternOrch, ok := orchestrator.(*patterns.Orchestrator)
 	if !ok {
@@ -278,7 +294,10 @@ func (s *SQLiteStorage) processPatternResultsTx(ctx context.Context, db dbtx, or
 	replayEvents := patternOrch.ReplayEvents()
 
 	if len(replayEvents) > 0 {
-		if err := s.insertReplayEventsTx(ctx, db, replayID, replayEvents, playerIDMap); err != nil {
+		stop := run.Phase("events")
+		err := s.insertReplayEventsTx(ctx, db, replayID, replayEvents, playerIDMap)
+		stop()
+		if err != nil {
 			return fmt.Errorf("failed to insert replay events: %w", err)
 		}
 	}
@@ -293,7 +312,10 @@ func (s *SQLiteStorage) processPatternResultsTx(ctx context.Context, db dbtx, or
 
 	// Insert results in batch
 	if len(results) > 0 {
-		if err := s.BatchInsertPatternResultsTx(ctx, db, results); err != nil {
+		stop := run.Phase("patterns")
+		err := s.BatchInsertPatternResultsTx(ctx, db, results)
+		stop()
+		if err != nil {
 			return fmt.Errorf("failed to insert pattern results: %w", err)
 		}
 	}
@@ -445,7 +467,14 @@ func (s *SQLiteStorage) insertPlayersBatchTx(ctx context.Context, db dbtx, repla
 	return playerIDMap, nil
 }
 
-// insertCommandsBatchTx inserts all commands for a replay in batches (uses provided connection/transaction)
+// insertCommandsBatchTx inserts all commands for a replay via per-row
+// prepared-statement Exec. We tried converting this to multi-row VALUES
+// batched INSERTs (10 / 50 / 500 rows per statement); on the modernc.org/sqlite
+// driver the multi-row form is consistently slower (8-200%) because
+// prepared-statement Exec on the driver is already a tight bind+step loop with
+// no marshaling overhead, and bigger statements just add SQL parse and
+// per-row evaluation cost without removing any round-trips (everything is
+// in-process). See git history for the experiment.
 func (s *SQLiteStorage) insertCommandsBatchTx(ctx context.Context, db dbtx, commands []*models.Command) error {
 	if len(commands) == 0 {
 		return nil

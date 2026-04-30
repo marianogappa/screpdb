@@ -2579,6 +2579,91 @@ body {
   color: #eef4ff;
 }
 
+.workflow-filter-pill-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
+.workflow-filter-pill-disabled:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.workflow-matchup-table {
+  border-collapse: collapse;
+  margin-top: 6px;
+}
+
+.workflow-matchup-table th,
+.workflow-matchup-table td {
+  padding: 6px 10px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  min-width: 64px;
+}
+
+.workflow-matchup-table-header {
+  font-weight: 500;
+  opacity: 0.7;
+  text-align: center;
+}
+
+.workflow-matchup-cell-rate {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.workflow-matchup-cell-low {
+  opacity: 0.45;
+}
+
+.workflow-matchup-cell-medium {
+  opacity: 0.85;
+}
+
+.workflow-matchup-cell-empty {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.workflow-matchup-table-footnote {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+
+.workflow-race-tech-orders {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.workflow-card-title-inline {
+  margin-bottom: 6px;
+}
+
+.workflow-section-spacer {
+  margin-top: 12px;
+}
+
+.workflow-race-early-timings {
+  padding-top: 4px;
+}
+
+.workflow-tech-step {
+  display: inline;
+  font-size: 0.85rem;
+}
+
+.workflow-race-tech-matchup {
+  margin-top: 8px;
+  padding-left: 8px;
+  border-left: 2px solid rgba(255, 255, 255, 0.08);
+}
+
+.workflow-race-tech-matchup-lowconf {
+  opacity: 0.55;
+}
+
 .workflow-filter-pill-clear {
   border-style: dashed;
   opacity: 0.7;
@@ -2593,6 +2678,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   line-height: 0;
 }
 
@@ -2603,9 +2689,28 @@ body {
   display: block;
 }
 
+.workflow-filter-pill-icon-label {
+  font-size: 0.74rem;
+  line-height: 1;
+  padding-right: 2px;
+}
+
 .workflow-filter-pill-disclosure {
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+.workflow-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.workflow-filter-group + .workflow-filter-group {
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  padding-left: 10px;
+  margin-left: 4px;
 }
 
 .workflow-race-icon {
