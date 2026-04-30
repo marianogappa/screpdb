@@ -707,7 +707,7 @@ func (d *Dashboard) GameAsk(_ context.Context, request apigen.GameAskRequestObje
 }
 
 func (d *Dashboard) GameSee(ctx context.Context, request apigen.GameSeeRequestObject) (any, error) {
-	const seeReplayFilename = "_watch_me.rep"
+	const seeReplayFilename = "000_watch_me.rep"
 	sourceFilePath, err := d.dbStore.GetReplayFilePathByID(ctx, request.ReplayID)
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusNotFound, err)

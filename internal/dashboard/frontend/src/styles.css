@@ -1921,14 +1921,6 @@ body {
   flex-shrink: 0;
 }
 
-.workflow-meta--filepath {
-  align-items: center;
-  gap: 8px;
-  margin-top: -4px;
-  font-size: 0.85em;
-  opacity: 0.78;
-}
-
 .workflow-meta-filepath-text {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   white-space: nowrap;
@@ -3170,8 +3162,10 @@ body {
 
 .workflow-event-row-body {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
 }
 
 .workflow-event-row-units {

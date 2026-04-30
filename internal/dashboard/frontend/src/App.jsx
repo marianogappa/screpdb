@@ -721,12 +721,24 @@ const fallbackOverlayUnitNamesForEvent = (eventType) => {
 // row carries the same visual signal (bunker-on-bunker-rush, arbiter-on-recall,
 // race-correct townhall on expansions, etc.). The leave-game flag is returned
 // as an emoji entry; everything else is a unit/building icon URL.
-const gameEventRowIconEntries = (event, playerRaceByID) => {
+const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
   if (!event) return [];
   const normalized = normalizeEventType(event?.type);
   const actorPid = Number(event?.actor?.player_id || 0);
   const actorRace = playerRaceByID && actorPid > 0 ? playerRaceByID.get(actorPid) : '';
 
+  if (normalized.startsWith('bo_')) {
+    const def = registry?.[normalized];
+    const iconKey = def?.events_list?.icon_key
+      || def?.games_list?.icon_key
+      || def?.summary_player?.icon_key
+      || '';
+    if (!iconKey) return [];
+    const icon = getUnitIcon(iconKey);
+    if (!icon) return [];
+    const label = def?.name || prettyPatternName(normalized.replace(/^bo_/, ''));
+    return [{ src: icon, alt: label, title: label }];
+  }
   if (normalized === 'leave_game') {
     return [{ emoji: '🏳️', alt: 'left the game', title: 'Player left the game' }];
   }
@@ -1666,7 +1678,7 @@ function App() {
       setMainGameSeeNotice('');
       setMainGameSeeNoticeError(false);
       await api.seeGame(replayId);
-      setMainGameSeeNotice('Copied to _watch_me.rep in your ingest folder.');
+      setMainGameSeeNotice('Copied to 000_watch_me.rep in your ingest folder.');
       mainGameSeeNoticeTimerRef.current = window.setTimeout(() => {
         setMainGameSeeNotice('');
         mainGameSeeNoticeTimerRef.current = null;
@@ -4297,33 +4309,35 @@ function App() {
                   <span>{formatRelativeReplayDate(mainGame.replay_date)}</span>
                   <span>{formatMapNameWithKind(mainGame.map_name, mainGame.map_kind)}</span>
                   <span>{formatDuration(mainGame.duration_seconds)}</span>
-                  <button
-                    type="button"
-                    className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
-                    disabled={mainGameSeeLoading}
-                    title="Clones this replay into your configured replay ingestion folder as _watch_me.rep so you can easily find it within Starcraft."
-                    onClick={copyMainGameToWatchMe}
-                  >
-                    {mainGameSeeLoading ? 'Copying…' : 'Stage watch replay'}
-                  </button>
-                </div>
-                {mainGame.file_path ? (
-                  <div className="workflow-meta workflow-meta--filepath">
-                    <code className="workflow-meta-filepath-text" title={mainGame.file_path}>{mainGame.file_path}</code>
+                  {mainGame.file_path ? (
+                    <code className="workflow-meta-filepath-text" title={mainGame.file_path}>
+                      {mainGame.file_path.replace(/\\/g, '/').split('/').pop()}
+                    </code>
+                  ) : null}
+                  {mainGame.file_path ? (
                     <button
                       type="button"
                       className="btn-switch workflow-meta-filepath-copy"
-                      title="Copy replay file path to clipboard"
+                      title="Copy full replay file path to clipboard"
                       onClick={() => {
                         if (navigator.clipboard && navigator.clipboard.writeText) {
                           navigator.clipboard.writeText(mainGame.file_path);
                         }
                       }}
                     >
-                      Copy path
+                      Copy full path
                     </button>
-                  </div>
-                ) : null}
+                  ) : null}
+                  <button
+                    type="button"
+                    className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
+                    disabled={mainGameSeeLoading}
+                    title="Clones this replay into your configured replay ingestion folder as 000_watch_me.rep so you can easily find it within Starcraft."
+                    onClick={copyMainGameToWatchMe}
+                  >
+                    {mainGameSeeLoading ? 'Copying…' : 'Stage watch replay'}
+                  </button>
+                </div>
                 <div className="workflow-game-tab-stack">
                   <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label="Game report sections">
                     <button
@@ -4623,7 +4637,6 @@ function App() {
                                 <img src={mainMapVisualURL} alt={`${mainGame.map_name} event overlay`} className="workflow-event-map-image" />
                                 {selectedMainGameEvent ? (
                                   <svg
-                                    key={`overlay-${selectedMainGameEventKeyResolved}`}
                                     className="workflow-event-map-overlay"
                                     viewBox="0 0 100 100"
                                     preserveAspectRatio="none"
@@ -4650,17 +4663,16 @@ function App() {
                                       />
                                     ))}
                                     {selectedMainGameArrow ? (
-                                      <>
-                                        <line
-                                          x1={selectedMainGameArrow.from.x}
-                                          y1={selectedMainGameArrow.from.y}
-                                          x2={selectedMainGameArrow.to.x}
-                                          y2={selectedMainGameArrow.to.y}
-                                          className="workflow-event-map-attack-line"
-                                          style={{ color: selectedMainGameArrow.color, stroke: selectedMainGameArrow.color }}
-                                          markerEnd="url(#workflow-event-arrowhead)"
-                                        />
-                                      </>
+                                      <line
+                                        key={`arrow-${selectedMainGameEventKeyResolved}`}
+                                        x1={selectedMainGameArrow.from.x}
+                                        y1={selectedMainGameArrow.from.y}
+                                        x2={selectedMainGameArrow.to.x}
+                                        y2={selectedMainGameArrow.to.y}
+                                        className="workflow-event-map-attack-line"
+                                        style={{ color: selectedMainGameArrow.color, stroke: selectedMainGameArrow.color }}
+                                        markerEnd="url(#workflow-event-arrowhead)"
+                                      />
                                     ) : null}
                                   </svg>
                                 ) : null}
@@ -4737,12 +4749,13 @@ function App() {
                                 const topicIndex = topicFilteredGameEvents.indexOf(event);
                                 const eventKey = gameEventTopicKey(topicIndex);
                                 const selected = eventKey === selectedMainGameEventKeyResolved;
-                                const iconEntries = gameEventRowIconEntries(event, mainEventRaceByPlayerID);
+                                const iconEntries = gameEventRowIconEntries(event, mainEventRaceByPlayerID, markerRegistry);
                                 const castEntries = event?.attack_cast_counts && typeof event.attack_cast_counts === 'object'
                                   ? Object.entries(event.attack_cast_counts)
                                   : [];
                                 const phase = phaseFor(Number(event?.second) || 0);
-                                if (phase !== lastPhase && (earlyEnd > 0 || midEnd > 0)) {
+                                const isLeaveGame = normalizeEventType(event?.type) === 'leave_game';
+                                if (!isLeaveGame && phase !== lastPhase && (earlyEnd > 0 || midEnd > 0)) {
                                   nodes.push(
                                     <div key={`hdr-${phase}`} className={`workflow-events-section-header workflow-events-section-header--${phase}`}>
                                       {phaseLabel[phase]}

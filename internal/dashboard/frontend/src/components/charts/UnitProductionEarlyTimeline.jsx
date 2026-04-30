@@ -19,7 +19,7 @@ const COLUMN_WIDTH = 220;
 const HEADER_HEIGHT = 36;
 const TOP_PADDING = 16;
 const BOTTOM_PADDING = 24;
-const PLOT_HEIGHT = 720;
+const PLOT_HEIGHT = 2160;
 const ICON_SIZE = 22;
 const LANE_OFFSETS = [-46, 0, 46]; // x offsets within a player column
 
