@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/icza/screp/rep/repcmd"
+	"github.com/marianogappa/screpdb/internal/cmddedup"
 	"github.com/marianogappa/screpdb/internal/earlyfilter"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser/commands"
@@ -211,6 +212,12 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		DebugDir: opts.EarlyFilterDebugDir,
 	})
 	data.Commands = filterResult.Commands
+
+	// Collapse duplicate research/upgrade commands using game knowledge from
+	// internal/models. Operates over the entire game (not just the early
+	// window) — Forge-rebuilt-mid-Ground-Weapons-1 spam, double-clicked Lurker
+	// Aspect, etc.
+	data.Commands = cmddedup.Dedup(data.Commands)
 
 	// Feed the filtered command stream through pattern detection.
 	for _, command := range data.Commands {

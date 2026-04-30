@@ -3139,41 +3139,7 @@ function App() {
         })
         .filter(Boolean);
 
-      // Post-process noisy repeated commands:
-      // - HP upgrades are repeatable up to 3 levels, so keep latest 3 per label.
-      // - Other upgrades and tech are effectively one-off, so keep latest 1 per label.
-      const pointsAfterPostProcess = (() => {
-        const sourceType = mainTimingCategoryConfig.source;
-        if (sourceType !== 'upgrades' && sourceType !== 'tech') return mappedPoints;
-        const byLabel = new Map();
-        mappedPoints.forEach((point) => {
-          const key = String(point?.label || '').trim();
-          if (!key) return;
-          if (!byLabel.has(key)) byLabel.set(key, []);
-          byLabel.get(key).push(point);
-        });
-        const collapsed = [];
-        byLabel.forEach((items) => {
-          const sortedBySecond = [...items].sort((a, b) => {
-            if (a.second === b.second) return a.order - b.order;
-            return a.second - b.second;
-          });
-          const keepCount = sourceType === 'upgrades' && mainTimingCategory === 'hp_upgrades' ? 3 : 1;
-          const kept = sortedBySecond.slice(-keepCount);
-          kept.forEach((item, idx) => {
-            collapsed.push({
-              ...item,
-              order: idx + 1,
-            });
-          });
-        });
-        return collapsed.sort((a, b) => {
-          if (a.second === b.second) return String(a.label || '').localeCompare(String(b.label || ''));
-          return a.second - b.second;
-        });
-      })();
-
-      const points = pointsAfterPostProcess.map((point) => {
+      const points = mappedPoints.map((point) => {
         const order = Number(point?.order) || 0;
         const rawLabel = String(point?.label || '').trim();
         const upgradeCategory = String(point?.upgrade_category || '').trim();

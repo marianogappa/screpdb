@@ -3,7 +3,7 @@
     {
       "file": "SomaJyJ.rep",
       "players": 2,
-      "commands": 5177,
+      "commands": 5175,
       "patterns": {
         "replay": 0,
         "player": 7
@@ -12,7 +12,7 @@
     {
       "file": "SomaTyson.rep",
       "players": 2,
-      "commands": 9404,
+      "commands": 9399,
       "patterns": {
         "replay": 0,
         "player": 6
@@ -21,7 +21,7 @@
     {
       "file": "Somavssnow.rep",
       "players": 2,
-      "commands": 8977,
+      "commands": 8973,
       "patterns": {
         "replay": 0,
         "player": 7
@@ -30,7 +30,7 @@
     {
       "file": "bgh.rep",
       "players": 8,
-      "commands": 13991,
+      "commands": 13965,
       "patterns": {
         "replay": 0,
         "player": 32
