@@ -501,6 +501,51 @@ func TestProcessCommand_AttackRangeEmitsSingleScoutPerWave(t *testing.T) {
 	}
 }
 
+func TestBuildAttacks_DoesNotEmitAttackOnTeammatePolygon(t *testing.T) {
+	replay := &models.Replay{DurationSeconds: 900, MapWidth: 128, MapHeight: 128}
+	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "T1", Race: "Terran", Team: 1, Type: models.PlayerTypeHuman}
+	p2 := &models.Player{PlayerID: 2, SlotID: 2, Name: "T2", Race: "Terran", Team: 1, Type: models.PlayerTypeHuman}
+	engine := NewEngine(replay, []*models.Player{p1, p2}, rushProxyTestMapContext())
+
+	for i := 0; i < 15; i++ {
+		engine.ProcessCommand(&models.Command{
+			Player:               p1,
+			ActionType:           "Targeted Order",
+			OrderName:            stringPtr("Attack Move"),
+			X:                    intPtr(tilePixel(40)),
+			Y:                    intPtr(tilePixel(40)),
+			SecondsFromGameStart: 360 + i,
+		})
+	}
+
+	for _, ev := range engine.ReplayEvents() {
+		if ev.EventType == "attack" || ev.EventType == "scout" {
+			t.Fatalf("expected no %s event when attack-move pressure targets a teammate's polygon, got %+v", ev.EventType, ev)
+		}
+	}
+}
+
+func TestBuildAttacks_DoesNotEmitDropOnTeammatePolygon(t *testing.T) {
+	replay := &models.Replay{DurationSeconds: 900, MapWidth: 128, MapHeight: 128}
+	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "T1", Race: "Terran", Team: 1, Type: models.PlayerTypeHuman}
+	p2 := &models.Player{PlayerID: 2, SlotID: 2, Name: "T2", Race: "Terran", Team: 1, Type: models.PlayerTypeHuman}
+	engine := NewEngine(replay, []*models.Player{p1, p2}, rushProxyTestMapContext())
+
+	engine.ProcessCommand(&models.Command{
+		Player:               p1,
+		ActionType:           "Unload All",
+		X:                    intPtr(tilePixel(40)),
+		Y:                    intPtr(tilePixel(40)),
+		SecondsFromGameStart: 400,
+	})
+
+	for _, ev := range engine.ReplayEvents() {
+		if ev.EventType == "drop" || ev.EventType == "reaver_drop" || ev.EventType == "dt_drop" {
+			t.Fatalf("expected no drop event when unload lands in a teammate's polygon, got %+v", ev)
+		}
+	}
+}
+
 func TestProcessCommand_WorkerPressureBeforeFiveMinutesIsScout(t *testing.T) {
 	replay := &models.Replay{DurationSeconds: 400, MapWidth: 128, MapHeight: 128}
 	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "T1", Race: "Terran", Team: 1, Type: models.PlayerTypeHuman}

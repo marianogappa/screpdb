@@ -54,7 +54,7 @@ const (
 // full [OpenSec, CloseSec] window for cast / unit-type evidence. Recall
 // casts are no longer special-cased — they flow through the normal
 // aggressive-cast pressure path like Storm/Plague/etc.
-func BuildAttacks(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, ownership []PolyOwnership) []CandidateAttack {
+func BuildAttacks(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, ownership []PolyOwnership, teams map[byte]byte) []CandidateAttack {
 	tracker := newAttackRangeTracker()
 	out := []CandidateAttack{}
 	lastTickSec := -1
@@ -137,6 +137,9 @@ func BuildAttacks(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, owner
 		}
 		defender := ownerAtSec(pi, sec)
 		if defender == attacker {
+			continue
+		}
+		if sameTeamByMap(teams, attacker, defender) {
 			continue
 		}
 
@@ -233,6 +236,15 @@ func newAttackRangeTracker() *attackRangeTracker {
 
 func attackRangeKey(attackerPID, defenderPID byte, polyID int) string {
 	return fmt.Sprintf("%d|%d|%d", attackerPID, defenderPID, polyID)
+}
+
+// sameTeamByMap is the package-level twin of Engine.sameTeam. Team 0 is
+// treated as "unknown" so 1v1 / FFA replays where teams default to zero are
+// not over-filtered.
+func sameTeamByMap(teams map[byte]byte, a, b byte) bool {
+	ta, oka := teams[a]
+	tb, okb := teams[b]
+	return oka && okb && ta != 0 && ta == tb
 }
 
 func (t *attackRangeTracker) tickIdle(sec int) []closedRange {

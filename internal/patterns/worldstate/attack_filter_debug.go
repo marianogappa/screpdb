@@ -39,7 +39,7 @@ func (e *Engine) ReportAttackFilter() AttackFilterReport {
 		durationSec = e.replay.DurationSeconds
 	}
 	ownership := BuildOwnership(e.stream, e.polygonGeoms, starts, durationSec)
-	candidates := BuildAttacks(e.stream, e.polygonGeoms, ownership)
+	candidates := BuildAttacks(e.stream, e.polygonGeoms, ownership, e.teams)
 
 	sort.SliceStable(candidates, func(i, j int) bool {
 		return candidates[i].Second < candidates[j].Second

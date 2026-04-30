@@ -302,7 +302,7 @@ func (e *Engine) Finalize() {
 		}
 
 		ownership = BuildOwnership(e.stream, e.polygonGeoms, starts, durationSec)
-		candidates = BuildAttacks(e.stream, e.polygonGeoms, ownership)
+		candidates = BuildAttacks(e.stream, e.polygonGeoms, ownership, e.teams)
 
 		e.emitPlayerStartEvents()
 	}
@@ -906,9 +906,7 @@ func (e *Engine) scoutPayloadUnitsFromCommand(pid byte, commandUnitType string) 
 }
 
 func (e *Engine) sameTeam(a byte, b byte) bool {
-	ta, oka := e.teams[a]
-	tb, okb := e.teams[b]
-	return oka && okb && ta != 0 && ta == tb
+	return sameTeamByMap(e.teams, a, b)
 }
 
 func (e *Engine) playerIDFromCommand(command *models.Command) (byte, bool) {

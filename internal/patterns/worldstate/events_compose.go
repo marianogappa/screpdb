@@ -198,6 +198,9 @@ func (e *Engine) emitAttackCandidates(candidates []CandidateAttack) {
 	scoutEmitted := map[byte]bool{}
 
 	for _, c := range candidates {
+		if e.sameTeam(c.Attacker, c.Defender) {
+			continue
+		}
 		switch c.Type {
 		case "scout":
 			if scoutEmitted[c.Attacker] {
