@@ -206,6 +206,51 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		}
 	}
 
+	// Alliance analysis for multi-player melee. Runs on the full unfiltered
+	// command stream because earlyfilter / dedup don't touch Alliance commands,
+	// but consuming them here keeps the analyzer independent of those passes.
+	if data.Replay.GameType == "Melee" && countActiveMeleePlayers(data.Players) > 2 {
+		ar := AnalyzeAlliances(data.Players, data.Commands, data.Replay.DurationSeconds)
+		data.Replay.TeamStacking = ar.TeamStackingFlag
+
+		// Hybrid team strategy: trust screp when it resolved teams; only fall
+		// back to our derivation if screp left every active player at team=0.
+		fellBack := false
+		if allActiveTeamsZero(data.Players) && ar.AnyMutualResolved {
+			for _, p := range data.Players {
+				if p.IsObserver || p.Type == "Computer" {
+					continue
+				}
+				if t, ok := ar.ResolvedTeams[p.PlayerID]; ok {
+					p.Team = t
+				}
+			}
+			data.Replay.TeamFormat, data.Replay.Matchup = computeTeamFormatAndMatchup(data.Players)
+			fellBack = true
+		}
+
+		if !allActivePlayersHaveTeam(data.Players) {
+			data.Replay.TeamInfoIncomplete = true
+			// screp's WinnerTeam was computed against the original (all-zero)
+			// team values; suppress winner claims when our derivation also
+			// couldn't fully resolve teams.
+			for _, p := range data.Players {
+				p.IsWinner = false
+			}
+		} else if fellBack {
+			// Our derivation produced a usable team partition. screp skipped
+			// winner detection (its `len(teamSizes) < 2` early-exit fires when
+			// every non-obs player is on team 0), so re-run the same algorithm
+			// against our teams.
+			var repSaverPID *byte
+			if rep.Computed != nil && rep.Computed.RepSaverPlayerID != nil {
+				v := *rep.Computed.RepSaverPlayerID
+				repSaverPID = &v
+			}
+			DeriveWinnersFromLeaves(data.Players, data.Commands, repSaverPID)
+		}
+	}
+
 	// Run the early-game spam filter before pattern detection so the
 	// orchestrator only sees commands the filter believes were real.
 	filterResult := earlyfilter.Apply(data.Replay, data.Players, data.MapContext, data.Commands, earlyfilter.Options{
@@ -265,6 +310,47 @@ func computeTeamFormatAndMatchup(players []*models.Player) (string, string) {
 		parts[i] = strconv.Itoa(s)
 	}
 	return strings.Join(parts, "v"), strings.Join(teamRaces, "v")
+}
+
+// countActiveMeleePlayers returns the count of non-observer, non-computer
+// players — the population that participates in alliance topology.
+func countActiveMeleePlayers(players []*models.Player) int {
+	n := 0
+	for _, p := range players {
+		if p == nil || p.IsObserver || p.Type == "Computer" {
+			continue
+		}
+		n++
+	}
+	return n
+}
+
+// allActiveTeamsZero reports whether every non-observer non-computer player
+// has Team==0 — the signal that screp gave up on team derivation.
+func allActiveTeamsZero(players []*models.Player) bool {
+	for _, p := range players {
+		if p == nil || p.IsObserver || p.Type == "Computer" {
+			continue
+		}
+		if p.Team != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// allActivePlayersHaveTeam returns true once every active player has a non-zero
+// team. Drives the team_info_incomplete flag.
+func allActivePlayersHaveTeam(players []*models.Player) bool {
+	for _, p := range players {
+		if p == nil || p.IsObserver || p.Type == "Computer" {
+			continue
+		}
+		if p.Team == 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // raceInitial returns the first letter of the race name (P/T/Z/R/U). Falls back

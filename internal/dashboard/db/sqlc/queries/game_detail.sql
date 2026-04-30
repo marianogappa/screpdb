@@ -1,5 +1,5 @@
 -- name: GetReplaySummary :one
-SELECT id, replay_date, file_name, file_path, file_checksum, map_name, map_kind, duration_seconds, game_type
+SELECT id, replay_date, file_name, file_path, file_checksum, map_name, map_kind, duration_seconds, game_type, team_stacking, team_info_incomplete
 FROM replays
 WHERE id = ?;
 
@@ -23,6 +23,31 @@ SELECT
 FROM players p
 WHERE p.replay_id = ? AND p.is_observer = 0
 ORDER BY p.team ASC, p.id ASC;
+
+-- name: ListReplayPlayersForAlliance :many
+-- Players + slot_id + type, used to reconstruct the alliance topology at
+-- query time. Includes computers and non-human types because the analyzer
+-- skips them itself (mirrors screp's filter).
+SELECT
+  p.id,
+  p.name,
+  p.race,
+  p.type,
+  p.team,
+  p.is_observer,
+  p.slot_id
+FROM players p
+WHERE p.replay_id = ?
+ORDER BY p.id ASC;
+
+-- name: ListReplayAllianceCommands :many
+SELECT
+  c.player_id,
+  c.seconds_from_game_start,
+  COALESCE(c.alliance_player_ids, '') AS alliance_player_ids
+FROM commands_low_value c
+WHERE c.replay_id = ? AND c.action_type = 'Alliance'
+ORDER BY c.seconds_from_game_start ASC, c.id ASC;
 
 -- name: ListReplayPatterns :many
 -- Replay-level markers (source_player_id IS NULL). event_type is the marker's FeatureKey.
@@ -95,6 +120,8 @@ SELECT
   r.duration_seconds,
   r.game_type,
   r.matchup,
+  r.team_stacking,
+  r.team_info_incomplete,
   CAST(COALESCE((
     SELECT group_concat(name, ', ')
     FROM (

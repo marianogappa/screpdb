@@ -42,21 +42,23 @@ func (q *Queries) GetPlayerOverviewSummary(ctx context.Context, name string) (Ge
 }
 
 const GetReplaySummary = `-- name: GetReplaySummary :one
-SELECT id, replay_date, file_name, file_path, file_checksum, map_name, map_kind, duration_seconds, game_type
+SELECT id, replay_date, file_name, file_path, file_checksum, map_name, map_kind, duration_seconds, game_type, team_stacking, team_info_incomplete
 FROM replays
 WHERE id = ?
 `
 
 type GetReplaySummaryRow struct {
-	ID              int64
-	ReplayDate      string
-	FileName        string
-	FilePath        string
-	FileChecksum    string
-	MapName         string
-	MapKind         string
-	DurationSeconds int64
-	GameType        string
+	ID                 int64
+	ReplayDate         string
+	FileName           string
+	FilePath           string
+	FileChecksum       string
+	MapName            string
+	MapKind            string
+	DurationSeconds    int64
+	GameType           string
+	TeamStacking       bool
+	TeamInfoIncomplete bool
 }
 
 func (q *Queries) GetReplaySummary(ctx context.Context, id int64) (GetReplaySummaryRow, error) {
@@ -72,6 +74,8 @@ func (q *Queries) GetReplaySummary(ctx context.Context, id int64) (GetReplaySumm
 		&i.MapKind,
 		&i.DurationSeconds,
 		&i.GameType,
+		&i.TeamStacking,
+		&i.TeamInfoIncomplete,
 	)
 	return i, err
 }
@@ -185,6 +189,8 @@ SELECT
   r.duration_seconds,
   r.game_type,
   r.matchup,
+  r.team_stacking,
+  r.team_info_incomplete,
   CAST(COALESCE((
     SELECT group_concat(name, ', ')
     FROM (
@@ -207,16 +213,18 @@ LIMIT 12
 `
 
 type ListPlayerRecentGamesRow struct {
-	ID              int64
-	ReplayDate      string
-	FileName        string
-	MapName         string
-	MapKind         string
-	DurationSeconds int64
-	GameType        string
-	Matchup         string
-	PlayersLabel    string
-	WinnersLabel    string
+	ID                 int64
+	ReplayDate         string
+	FileName           string
+	MapName            string
+	MapKind            string
+	DurationSeconds    int64
+	GameType           string
+	Matchup            string
+	TeamStacking       bool
+	TeamInfoIncomplete bool
+	PlayersLabel       string
+	WinnersLabel       string
 }
 
 func (q *Queries) ListPlayerRecentGames(ctx context.Context, name string) ([]ListPlayerRecentGamesRow, error) {
@@ -237,9 +245,50 @@ func (q *Queries) ListPlayerRecentGames(ctx context.Context, name string) ([]Lis
 			&i.DurationSeconds,
 			&i.GameType,
 			&i.Matchup,
+			&i.TeamStacking,
+			&i.TeamInfoIncomplete,
 			&i.PlayersLabel,
 			&i.WinnersLabel,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListReplayAllianceCommands = `-- name: ListReplayAllianceCommands :many
+SELECT
+  c.player_id,
+  c.seconds_from_game_start,
+  COALESCE(c.alliance_player_ids, '') AS alliance_player_ids
+FROM commands_low_value c
+WHERE c.replay_id = ? AND c.action_type = 'Alliance'
+ORDER BY c.seconds_from_game_start ASC, c.id ASC
+`
+
+type ListReplayAllianceCommandsRow struct {
+	PlayerID             int64
+	SecondsFromGameStart int64
+	AlliancePlayerIds    string
+}
+
+func (q *Queries) ListReplayAllianceCommands(ctx context.Context, replayID int64) ([]ListReplayAllianceCommandsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListReplayAllianceCommands, replayID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListReplayAllianceCommandsRow{}
+	for rows.Next() {
+		var i ListReplayAllianceCommandsRow
+		if err := rows.Scan(&i.PlayerID, &i.SecondsFromGameStart, &i.AlliancePlayerIds); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -369,6 +418,64 @@ func (q *Queries) ListReplayPatterns(ctx context.Context, replayID int64) ([]Lis
 			&i.PatternValue,
 			&i.DetectedSecond,
 			&i.Payload,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListReplayPlayersForAlliance = `-- name: ListReplayPlayersForAlliance :many
+SELECT
+  p.id,
+  p.name,
+  p.race,
+  p.type,
+  p.team,
+  p.is_observer,
+  p.slot_id
+FROM players p
+WHERE p.replay_id = ?
+ORDER BY p.id ASC
+`
+
+type ListReplayPlayersForAllianceRow struct {
+	ID         int64
+	Name       string
+	Race       string
+	Type       string
+	Team       int64
+	IsObserver bool
+	SlotID     int64
+}
+
+// Players + slot_id + type, used to reconstruct the alliance topology at
+// query time. Includes computers and non-human types because the analyzer
+// skips them itself (mirrors screp's filter).
+func (q *Queries) ListReplayPlayersForAlliance(ctx context.Context, replayID int64) ([]ListReplayPlayersForAllianceRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListReplayPlayersForAlliance, replayID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListReplayPlayersForAllianceRow{}
+	for rows.Next() {
+		var i ListReplayPlayersForAllianceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Race,
+			&i.Type,
+			&i.Team,
+			&i.IsObserver,
+			&i.SlotID,
 		); err != nil {
 			return nil, err
 		}

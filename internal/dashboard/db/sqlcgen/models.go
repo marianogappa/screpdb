@@ -33,6 +33,7 @@ type CommandsLowValue struct {
 	UpgradeName          *string
 	HotkeyType           *string
 	ChatMessage          *string
+	AlliancePlayerIds    *string
 }
 
 type Dashboard struct {
@@ -75,6 +76,7 @@ type Player struct {
 	Eapm                int64
 	IsWinner            bool
 	StartLocationOclock *int64
+	SlotID              int64
 }
 
 type PlayerAlias struct {
@@ -88,16 +90,18 @@ type PlayerAlias struct {
 }
 
 type Replay struct {
-	ID              int64
-	FilePath        string
-	FileChecksum    string
-	FileName        string
-	ReplayDate      string
-	MapName         string
-	MapKind         string
-	DurationSeconds int64
-	GameType        string
-	Matchup         string
+	ID                 int64
+	FilePath           string
+	FileChecksum       string
+	FileName           string
+	ReplayDate         string
+	MapName            string
+	MapKind            string
+	DurationSeconds    int64
+	GameType           string
+	Matchup            string
+	TeamStacking       bool
+	TeamInfoIncomplete bool
 }
 
 type ReplayEvent struct {

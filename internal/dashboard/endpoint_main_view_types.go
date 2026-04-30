@@ -158,19 +158,21 @@ var firstUnitEfficiencyConfigs = []firstUnitEfficiencyConfig{
 }
 
 type workflowGameListItem struct {
-	ReplayID        int64                     `json:"replay_id"`
-	ReplayDate      string                    `json:"replay_date"`
-	FileName        string                    `json:"file_name"`
-	MapName         string                    `json:"map_name"`
-	MapKind         string                    `json:"map_kind,omitempty"`
-	DurationSeconds int64                     `json:"duration_seconds"`
-	GameType        string                    `json:"game_type"`
-	PlayersLabel    string                    `json:"players_label"`
-	WinnersLabel    string                    `json:"winners_label"`
-	Matchup         string                    `json:"matchup"`
-	Players         []workflowGameListPlayer  `json:"players"`
-	Featuring       []string                  `json:"featuring"`
-	CurrentPlayer   *workflowRecentGamePlayer `json:"current_player,omitempty"`
+	ReplayID           int64                     `json:"replay_id"`
+	ReplayDate         string                    `json:"replay_date"`
+	FileName           string                    `json:"file_name"`
+	MapName            string                    `json:"map_name"`
+	MapKind            string                    `json:"map_kind,omitempty"`
+	DurationSeconds    int64                     `json:"duration_seconds"`
+	GameType           string                    `json:"game_type"`
+	PlayersLabel       string                    `json:"players_label"`
+	WinnersLabel       string                    `json:"winners_label"`
+	Matchup            string                    `json:"matchup"`
+	TeamStacking       bool                      `json:"team_stacking"`
+	TeamInfoIncomplete bool                      `json:"team_info_incomplete"`
+	Players            []workflowGameListPlayer  `json:"players"`
+	Featuring          []string                  `json:"featuring"`
+	CurrentPlayer      *workflowRecentGamePlayer `json:"current_player,omitempty"`
 }
 
 type workflowGameListPlayer struct {
@@ -345,6 +347,8 @@ type workflowGameDetail struct {
 	MapHeightPixels      int64                                    `json:"map_height_pixels,omitempty"`
 	DurationSeconds      int64                                    `json:"duration_seconds"`
 	GameType             string                                   `json:"game_type"`
+	TeamStacking         bool                                     `json:"team_stacking"`
+	TeamInfoIncomplete   bool                                     `json:"team_info_incomplete"`
 	Players              []workflowGamePlayer                     `json:"players"`
 	ReplayPatterns       []workflowPatternValue                   `json:"replay_patterns"`
 	GameEvents           []workflowGameEvent                      `json:"game_events"`
@@ -354,7 +358,9 @@ type workflowGameDetail struct {
 	FirstUnitEfficiency  []workflowFirstUnitEfficiencyPlayer      `json:"first_unit_efficiency"`
 	UnitCadence          []workflowGameUnitCadencePlayer          `json:"unit_production_cadence"`
 	ViewportMultitasking []workflowGameViewportMultitaskingPlayer `json:"viewport_multitasking"`
-	Markers          []workflowMarkerPlayer               `json:"build_orders"`
+	Markers              []workflowMarkerPlayer                   `json:"build_orders"`
+	AllianceTimeline     []workflowAllianceSnapshot               `json:"alliance_timeline,omitempty"`
+	AllianceStackingThresholdSeconds int64                        `json:"alliance_stacking_threshold_seconds,omitempty"`
 
 	// EarlyGameEndsAtSecond / MidGameEndsAtSecond split the game-events list
 	// into Early/Mid/Late sections. Computed from unit-completion + research
@@ -362,6 +368,16 @@ type workflowGameDetail struct {
 	// detected — the frontend collapses the empty section header.
 	EarlyGameEndsAtSecond int64 `json:"early_game_ends_at_second,omitempty"`
 	MidGameEndsAtSecond   int64 `json:"mid_game_ends_at_second,omitempty"`
+}
+
+// workflowAllianceSnapshot is one observed team topology in the Alliances tab.
+// Valid from Sec until the next snapshot's Sec (or duration_seconds for the
+// last snapshot). Teams is a list of teams; each team is a sorted list of
+// player_ids (the DB row id, not the screp player_id).
+type workflowAllianceSnapshot struct {
+	Sec      int64     `json:"sec"`
+	Teams    [][]int64 `json:"teams"`
+	Stacking bool      `json:"stacking"`
 }
 
 // workflowMarkerPlayer carries per-player Build Orders tab data:

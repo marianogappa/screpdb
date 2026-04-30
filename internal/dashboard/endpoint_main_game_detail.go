@@ -35,6 +35,8 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	detail.MapVisual = d.resolveWorkflowMapVisual(detail.ReplayID, summary.MapName, summary.FilePath, summary.FileChecksum)
 	detail.DurationSeconds = summary.DurationSeconds
 	detail.GameType = summary.GameType
+	detail.TeamStacking = summary.TeamStacking
+	detail.TeamInfoIncomplete = summary.TeamInfoIncomplete
 
 	rows, err := d.dbStore.ListReplayPlayersForDetail(d.ctx, replayID)
 	if err != nil {
@@ -105,6 +107,9 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		return detail, err
 	}
 	if err := d.populatePhaseMarkersForGameDetail(&detail); err != nil {
+		return detail, err
+	}
+	if err := d.populateAllianceTimelineForGameDetail(&detail); err != nil {
 		return detail, err
 	}
 
@@ -222,16 +227,18 @@ func (d *Dashboard) buildWorkflowPlayerRecentGames(playerKey string) ([]workflow
 	result := []workflowGameListItem{}
 	for _, row := range recentRows {
 		g := workflowGameListItem{
-			ReplayID:        row.ReplayID,
-			ReplayDate:      row.ReplayDate,
-			FileName:        row.FileName,
-			MapName:         row.MapName,
-			MapKind:         row.MapKind,
-			DurationSeconds: row.DurationSeconds,
-			GameType:        row.GameType,
-			Matchup:         row.Matchup,
-			PlayersLabel:    row.PlayersLabel,
-			WinnersLabel:    row.WinnersLabel,
+			ReplayID:           row.ReplayID,
+			ReplayDate:         row.ReplayDate,
+			FileName:           row.FileName,
+			MapName:            row.MapName,
+			MapKind:            row.MapKind,
+			DurationSeconds:    row.DurationSeconds,
+			GameType:           row.GameType,
+			Matchup:            row.Matchup,
+			TeamStacking:       row.TeamStacking,
+			TeamInfoIncomplete: row.TeamInfoIncomplete,
+			PlayersLabel:       row.PlayersLabel,
+			WinnersLabel:       row.WinnersLabel,
 		}
 		result = append(result, g)
 	}

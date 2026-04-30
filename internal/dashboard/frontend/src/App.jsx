@@ -19,6 +19,7 @@ import TimingScatterRows from './components/charts/TimingScatterRows';
 import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
 import BuildOrderTimelineRows from './components/charts/BuildOrderTimelineRows';
 import UnitProductionEarlyTimeline from './components/charts/UnitProductionEarlyTimeline';
+import AllianceTimeline from './components/charts/AllianceTimeline';
 import { getUnitIcon, getWorkerIconForRace, normalizeUnitName } from './lib/gameAssets';
 import {
   PILL_SURFACES,
@@ -2962,7 +2963,19 @@ function App() {
     if (players.length === 0) {
       return renderPlayersMatchup(game?.players_label || '');
     }
+    const stackingMarker = game?.team_stacking ? (
+      <span
+        className="workflow-team-stacking-marker"
+        title="Team stacking — uneven non-solo team sizes for over 5 minutes"
+        style={{ marginLeft: 6 }}
+      >
+        😈
+      </span>
+    ) : null;
     if (!playersHaveDistinctTeams(players)) {
+      const warningText = game?.team_info_incomplete
+        ? 'Team information is incomplete'
+        : 'This replay has no team information';
       return (
         <span>
           {players.map((player, idx) => (
@@ -2973,7 +2986,8 @@ function App() {
               {idx < players.length - 1 ? ', ' : ''}
             </span>
           ))}
-          <span className="workflow-no-team-warning" title="This replay has no team information">⚠️</span>
+          <span className="workflow-no-team-warning" title={warningText}>⚠️</span>
+          {stackingMarker}
         </span>
       );
     }
@@ -2998,6 +3012,7 @@ function App() {
             </span>
           </React.Fragment>
         ))}
+        {stackingMarker}
       </span>
     );
   };
@@ -4493,6 +4508,17 @@ function App() {
                     >
                       Timings
                     </button>
+                    {Array.isArray(mainGame?.alliance_timeline) && mainGame.alliance_timeline.length > 0 ? (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={mainGameTab === 'alliances'}
+                        className={`workflow-production-tab ${mainGameTab === 'alliances' ? 'workflow-production-tab-active' : ''}`}
+                        onClick={() => setMainGameTab('alliances')}
+                      >
+                        Alliances{mainGame?.team_stacking ? ' 😈' : ''}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       role="tab"
@@ -4694,7 +4720,7 @@ function App() {
                       </div>
                       {!hasTeamInfo ? (
                         <div className="workflow-section-warning">
-                          ⚠️ This replay has no team information. Expect issues like attack events firing between teammates.
+                          ⚠️ {mainGame?.team_info_incomplete ? 'Team information is incomplete' : 'This replay has no team information'}. Expect issues like attack events firing between teammates.
                         </div>
                       ) : null}
                       <div className="workflow-section-warning">
@@ -5152,6 +5178,22 @@ function App() {
                         <div className="chart-empty">No recognized build orders for this game.</div>
                       </div>
                     )}
+                  </div>
+                )}
+                {mainGameTab === 'alliances' && (
+                  <div className="workflow-timing-charts">
+                    {mainGame?.team_stacking ? (
+                      <div className="workflow-section-warning">
+                        😈 Team stacking detected — uneven non-solo team sizes lasted over {Math.round((mainGame.alliance_stacking_threshold_seconds || 300) / 60)} minutes.
+                      </div>
+                    ) : null}
+                    <AllianceTimeline
+                      players={Array.isArray(mainGame?.players) ? mainGame.players : []}
+                      timeline={Array.isArray(mainGame?.alliance_timeline) ? mainGame.alliance_timeline : []}
+                      durationSeconds={mainGame?.duration_seconds || 0}
+                      stackingThresholdSeconds={mainGame?.alliance_stacking_threshold_seconds || 300}
+                      getRaceIcon={getWorkerIconForRace}
+                    />
                   </div>
                 )}
                 {mainGameTab === 'first-unit-efficiency' && (

@@ -30,7 +30,9 @@ CREATE TABLE replays (
   map_kind TEXT NOT NULL DEFAULT 'Regular',
   duration_seconds INTEGER NOT NULL,
   game_type TEXT NOT NULL,
-  matchup TEXT NOT NULL DEFAULT ''
+  matchup TEXT NOT NULL DEFAULT '',
+  team_stacking BOOLEAN NOT NULL DEFAULT 0,
+  team_info_incomplete BOOLEAN NOT NULL DEFAULT 0
 );
 
 CREATE TABLE players (
@@ -45,7 +47,8 @@ CREATE TABLE players (
   apm INTEGER NOT NULL,
   eapm INTEGER NOT NULL,
   is_winner BOOLEAN NOT NULL,
-  start_location_oclock INTEGER
+  start_location_oclock INTEGER,
+  slot_id INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE player_aliases (
@@ -130,5 +133,6 @@ CREATE TABLE commands_low_value (
   tech_name TEXT,
   upgrade_name TEXT,
   hotkey_type TEXT,
-  chat_message TEXT
+  chat_message TEXT,
+  alliance_player_ids TEXT
 );

@@ -328,8 +328,9 @@ func (s *SQLiteStorage) insertReplaySequentialTx(ctx context.Context, db dbtx, r
 	query := `
 		INSERT INTO replays (
 			file_path, file_checksum, file_name, created_at, replay_date, title, host, map_name, map_width, map_height,
-			duration_seconds, frame_count, engine_version, engine, game_speed, game_type, map_kind, team_format, matchup, home_team_size, avail_slots_count
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			duration_seconds, frame_count, engine_version, engine, game_speed, game_type, map_kind, team_format, matchup, home_team_size, avail_slots_count,
+			team_stacking, team_info_incomplete
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	res, err := db.ExecContext(ctx, query,
@@ -354,6 +355,8 @@ func (s *SQLiteStorage) insertReplaySequentialTx(ctx context.Context, db dbtx, r
 		replay.Matchup,
 		fmt.Sprintf("%d", replay.HomeTeamSize),
 		int32(replay.AvailSlotsCount),
+		replay.TeamStacking,
+		replay.TeamInfoIncomplete,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert replay: %w", err)
@@ -390,6 +393,7 @@ func (s *SQLiteStorage) insertPlayersBatchTx(ctx context.Context, db dbtx, repla
 		"start_location_x",
 		"start_location_y",
 		"start_location_oclock",
+		"slot_id",
 	}
 
 	valueStrings := make([]string, 0, len(players))
@@ -414,7 +418,7 @@ func (s *SQLiteStorage) insertPlayersBatchTx(ctx context.Context, db dbtx, repla
 			startOclock = &o
 		}
 
-		valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		valueArgs = append(valueArgs,
 			int32(replayID),
 			player.Name,
@@ -429,6 +433,7 @@ func (s *SQLiteStorage) insertPlayersBatchTx(ctx context.Context, db dbtx, repla
 			startX,
 			startY,
 			startOclock,
+			int32(player.SlotID),
 		)
 	}
 

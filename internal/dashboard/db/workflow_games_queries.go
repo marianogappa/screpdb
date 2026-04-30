@@ -10,14 +10,16 @@ import (
 )
 
 type WorkflowGameListRow struct {
-	ReplayID        int64
-	ReplayDate      string
-	FileName        string
-	MapName         string
-	MapKind         string
-	DurationSeconds int64
-	GameType        string
-	Matchup         string
+	ReplayID           int64
+	ReplayDate         string
+	FileName           string
+	MapName            string
+	MapKind            string
+	DurationSeconds    int64
+	GameType           string
+	Matchup            string
+	TeamStacking       bool
+	TeamInfoIncomplete bool
 }
 
 type WorkflowGamePlayerRow struct {
@@ -86,7 +88,9 @@ func (s *Store) ListGamesWithWhere(ctx context.Context, whereSQL string, whereAr
 			r.map_kind,
 			r.duration_seconds,
 			r.game_type,
-			r.matchup
+			r.matchup,
+			COALESCE(r.team_stacking, 0),
+			COALESCE(r.team_info_incomplete, 0)
 		FROM replays r
 	`+whereSQL+`
 		ORDER BY r.replay_date DESC, r.id DESC
@@ -109,6 +113,8 @@ func (s *Store) ListGamesWithWhere(ctx context.Context, whereSQL string, whereAr
 			&item.DurationSeconds,
 			&item.GameType,
 			&item.Matchup,
+			&item.TeamStacking,
+			&item.TeamInfoIncomplete,
 		); err != nil {
 			return nil, err
 		}

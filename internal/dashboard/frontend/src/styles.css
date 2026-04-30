@@ -3916,3 +3916,36 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+.workflow-alliance-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workflow-alliance-graph-wrap {
+  background: rgba(15, 23, 42, 0.45);
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.workflow-alliance-strip-meta {
+  font-size: 0.85rem;
+  color: rgba(226, 232, 240, 0.92);
+}
+
+.workflow-alliance-strip {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.45);
+  border-radius: 6px;
+}
+
+.workflow-alliance-legend {
+  font-size: 0.72rem;
+  color: rgba(148, 163, 184, 0.85);
+  text-align: center;
+}
+
+.workflow-team-stacking-marker {
+  cursor: help;
+}

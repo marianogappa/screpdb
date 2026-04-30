@@ -629,16 +629,18 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 	items := []workflowGameListItem{}
 	for _, row := range listRows {
 		items = append(items, workflowGameListItem{
-			ReplayID:        row.ReplayID,
-			ReplayDate:      row.ReplayDate,
-			FileName:        row.FileName,
-			MapName:         row.MapName,
-			MapKind:         row.MapKind,
-			DurationSeconds: row.DurationSeconds,
-			GameType:        row.GameType,
-			Matchup:         row.Matchup,
-			Players:         []workflowGameListPlayer{},
-			Featuring:       []string{},
+			ReplayID:           row.ReplayID,
+			ReplayDate:         row.ReplayDate,
+			FileName:           row.FileName,
+			MapName:            row.MapName,
+			MapKind:            row.MapKind,
+			DurationSeconds:    row.DurationSeconds,
+			GameType:           row.GameType,
+			Matchup:            row.Matchup,
+			TeamStacking:       row.TeamStacking,
+			TeamInfoIncomplete: row.TeamInfoIncomplete,
+			Players:            []workflowGameListPlayer{},
+			Featuring:          []string{},
 		})
 	}
 	if err := d.populateWorkflowGameListPlayers(items); err != nil {

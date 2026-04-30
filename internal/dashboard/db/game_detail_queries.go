@@ -7,15 +7,17 @@ import (
 )
 
 type ReplaySummaryRow struct {
-	ReplayID        int64
-	ReplayDate      string
-	FileName        string
-	FilePath        string
-	FileChecksum    string
-	MapName         string
-	MapKind         string
-	DurationSeconds int64
-	GameType        string
+	ReplayID           int64
+	ReplayDate         string
+	FileName           string
+	FilePath           string
+	FileChecksum       string
+	MapName            string
+	MapKind            string
+	DurationSeconds    int64
+	GameType           string
+	TeamStacking       bool
+	TeamInfoIncomplete bool
 }
 
 type ReplayPlayerDetailRow struct {
@@ -71,16 +73,18 @@ type PlayerOverviewSummaryRow struct {
 }
 
 type PlayerRecentGameRow struct {
-	ReplayID        int64
-	ReplayDate      string
-	FileName        string
-	MapName         string
-	MapKind         string
-	DurationSeconds int64
-	GameType        string
-	Matchup         string
-	PlayersLabel    string
-	WinnersLabel    string
+	ReplayID           int64
+	ReplayDate         string
+	FileName           string
+	MapName            string
+	MapKind            string
+	DurationSeconds    int64
+	GameType           string
+	Matchup            string
+	TeamStacking       bool
+	TeamInfoIncomplete bool
+	PlayersLabel       string
+	WinnersLabel       string
 }
 
 type PlayerApmAggregateRow struct {
@@ -96,16 +100,70 @@ func (s *Store) GetReplaySummary(ctx context.Context, replayID int64) (*ReplaySu
 		return nil, err
 	}
 	return &ReplaySummaryRow{
-		ReplayID:        sqlcRow.ID,
-		ReplayDate:      sqlcRow.ReplayDate,
-		FileName:        sqlcRow.FileName,
-		FilePath:        sqlcRow.FilePath,
-		FileChecksum:    sqlcRow.FileChecksum,
-		MapName:         sqlcRow.MapName,
-		MapKind:         sqlcRow.MapKind,
-		DurationSeconds: sqlcRow.DurationSeconds,
-		GameType:        sqlcRow.GameType,
+		ReplayID:           sqlcRow.ID,
+		ReplayDate:         sqlcRow.ReplayDate,
+		FileName:           sqlcRow.FileName,
+		FilePath:           sqlcRow.FilePath,
+		FileChecksum:       sqlcRow.FileChecksum,
+		MapName:            sqlcRow.MapName,
+		MapKind:            sqlcRow.MapKind,
+		DurationSeconds:    sqlcRow.DurationSeconds,
+		GameType:           sqlcRow.GameType,
+		TeamStacking:       sqlcRow.TeamStacking,
+		TeamInfoIncomplete: sqlcRow.TeamInfoIncomplete,
 	}, nil
+}
+
+type ReplayPlayerForAllianceRow struct {
+	PlayerID   int64
+	Name       string
+	Race       string
+	Type       string
+	Team       int64
+	IsObserver bool
+	SlotID     int64
+}
+
+type ReplayAllianceCommandRow struct {
+	PlayerID             int64
+	SecondsFromGameStart int64
+	AlliancePlayerIDs    string // JSON array of slot IDs
+}
+
+func (s *Store) ListReplayPlayersForAlliance(ctx context.Context, replayID int64) ([]ReplayPlayerForAllianceRow, error) {
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListReplayPlayersForAlliance(ctx, replayID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ReplayPlayerForAllianceRow, 0, len(sqlcRows))
+	for _, row := range sqlcRows {
+		out = append(out, ReplayPlayerForAllianceRow{
+			PlayerID:   row.ID,
+			Name:       row.Name,
+			Race:       row.Race,
+			Type:       row.Type,
+			Team:       row.Team,
+			IsObserver: row.IsObserver,
+			SlotID:     row.SlotID,
+		})
+	}
+	return out, nil
+}
+
+func (s *Store) ListReplayAllianceCommands(ctx context.Context, replayID int64) ([]ReplayAllianceCommandRow, error) {
+	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListReplayAllianceCommands(ctx, replayID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ReplayAllianceCommandRow, 0, len(sqlcRows))
+	for _, row := range sqlcRows {
+		out = append(out, ReplayAllianceCommandRow{
+			PlayerID:             row.PlayerID,
+			SecondsFromGameStart: row.SecondsFromGameStart,
+			AlliancePlayerIDs:    row.AlliancePlayerIds,
+		})
+	}
+	return out, nil
 }
 
 func (s *Store) ListReplayPlayersForDetail(ctx context.Context, replayID int64) ([]ReplayPlayerDetailRow, error) {
@@ -218,16 +276,18 @@ func (s *Store) ListPlayerRecentGames(ctx context.Context, playerKey string) ([]
 	out := make([]PlayerRecentGameRow, 0, len(sqlcRows))
 	for _, row := range sqlcRows {
 		out = append(out, PlayerRecentGameRow{
-			ReplayID:        row.ID,
-			ReplayDate:      row.ReplayDate,
-			FileName:        row.FileName,
-			MapName:         row.MapName,
-			MapKind:         row.MapKind,
-			DurationSeconds: row.DurationSeconds,
-			GameType:        row.GameType,
-			Matchup:         row.Matchup,
-			PlayersLabel:    row.PlayersLabel,
-			WinnersLabel:    row.WinnersLabel,
+			ReplayID:           row.ID,
+			ReplayDate:         row.ReplayDate,
+			FileName:           row.FileName,
+			MapName:            row.MapName,
+			MapKind:            row.MapKind,
+			DurationSeconds:    row.DurationSeconds,
+			GameType:           row.GameType,
+			Matchup:            row.Matchup,
+			TeamStacking:       row.TeamStacking,
+			TeamInfoIncomplete: row.TeamInfoIncomplete,
+			PlayersLabel:       row.PlayersLabel,
+			WinnersLabel:       row.WinnersLabel,
 		})
 	}
 	return out, nil

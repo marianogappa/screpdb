@@ -8,6 +8,7 @@ export const MAIN_GAME_TABS = [
   'units',
   'timings',
   'build-orders',
+  'alliances',
   'first-unit-efficiency',
   'unit-production-cadence',
   'viewport-multitasking',

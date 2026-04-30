@@ -32,6 +32,10 @@ type Replay struct {
 	// On Melee & Free for all this is always 1, and on Top vs Bottom it's what the game creator set for the home team.
 	HomeTeamSize uint16 `json:"home_team_size"` // Team size
 
+	// Alliance-derived flags (Melee with >2 active players only).
+	TeamStacking       bool `json:"team_stacking"`        // a stacking band (uneven non-solo team sizes) lasted >5min
+	TeamInfoIncomplete bool `json:"team_info_incomplete"` // some players still unaffiliated after our derivation
+
 	Players []*Player `json:"-"`
 }
 
