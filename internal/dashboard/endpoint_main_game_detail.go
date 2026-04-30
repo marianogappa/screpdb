@@ -104,6 +104,9 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	if err := d.populateMarkersForGameDetail(&detail); err != nil {
 		return detail, err
 	}
+	if err := d.populatePhaseMarkersForGameDetail(&detail); err != nil {
+		return detail, err
+	}
 
 	return detail, nil
 }
@@ -1416,10 +1419,11 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 	events := make([]workflowGameEvent, 0, len(rows))
 	for _, row := range rows {
 		event := workflowGameEvent{
-			Type:            row.EventType,
-			Second:          row.Second,
-			Ownership:       []workflowGameOwnership{},
-			AttackUnitTypes: parseAttackUnitTypes(row.AttackUnitTypes),
+			Type:             row.EventType,
+			Second:           row.Second,
+			Ownership:        []workflowGameOwnership{},
+			AttackUnitTypes:  parseAttackUnitTypes(row.AttackUnitTypes),
+			AttackCastCounts: parseAttackCastCounts(row.AttackCastCounts),
 		}
 		if row.SourcePlayerID != nil {
 			event.Actor = &workflowGameEventPlayer{
@@ -1525,7 +1529,7 @@ func overlayBaseMetasFromLayout(layout *models.MapContextLayout) []overlayBaseMe
 			if base.Clock == 0 {
 				prettyName = "center base"
 			} else if base.Clock >= 1 && base.Clock <= 12 {
-				prettyName = fmt.Sprintf("at %d", base.Clock)
+				prettyName = fmt.Sprintf("%d", base.Clock)
 			}
 		}
 		isStarting := strings.EqualFold(kind, "start") || strings.EqualFold(kind, "starting")
@@ -1749,7 +1753,7 @@ func baseLabel(baseType *string, baseOclock *int64, naturalOf *int64) string {
 		return ""
 	}
 	// oclock==0 means scmapanalyzer's "center base". None of the templated
-	// labels ("at 9", "12's natural near 6", "an expa near 3") read right
+	// labels ("9", "12's natural near 6", "an expansion near 3") read right
 	// when inserted with 0, so short-circuit to a clear literal.
 	isCenter := func(v *int64) bool { return v != nil && *v == 0 }
 	switch strings.ToLower(strings.TrimSpace(*baseType)) {
@@ -1758,7 +1762,7 @@ func baseLabel(baseType *string, baseOclock *int64, naturalOf *int64) string {
 			return "center base"
 		}
 		if baseOclock != nil {
-			return fmt.Sprintf("at %d", *baseOclock)
+			return fmt.Sprintf("%d", *baseOclock)
 		}
 		return "starting base"
 	case "natural":
@@ -1786,7 +1790,7 @@ func baseLabel(baseType *string, baseOclock *int64, naturalOf *int64) string {
 			return "center base"
 		}
 		if baseOclock != nil {
-			return fmt.Sprintf("an expa near %d", *baseOclock)
+			return fmt.Sprintf("an expansion near %d", *baseOclock)
 		}
 		return "expansion"
 	}
@@ -1821,6 +1825,24 @@ func parseAttackUnitTypes(raw *string) []string {
 		return nil
 	}
 	return filtered
+}
+
+func parseAttackCastCounts(raw *string) map[string]int64 {
+	if raw == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*raw)
+	if trimmed == "" {
+		return nil
+	}
+	var counts map[string]int64
+	if err := json.Unmarshal([]byte(trimmed), &counts); err != nil {
+		return nil
+	}
+	if len(counts) == 0 {
+		return nil
+	}
+	return counts
 }
 
 func formatClockFromSeconds(second int64) string {
@@ -2151,6 +2173,176 @@ func (d *Dashboard) populateFirstUnitEfficiencyForGameDetail(detail *workflowGam
 		})
 	}
 	return nil
+}
+
+// populatePhaseMarkersForGameDetail computes Early/Mid game-end seconds used
+// by the frontend to split the Game Events list into three sections.
+//
+// Early-game ends at the EARLIEST of, across all players:
+//   - first Mutalisk completion
+//   - first Lurker completion
+//   - first Wraith completion
+//   - first Siege Tank completion AND Tank Siege Mode tech researched (max of the two)
+//   - first Dragoon completion AND Singularity Charge upgrade researched (max of the two)
+//
+// Mid-game ends at the EARLIEST mid-game candidate that is also >= the early-game
+// end second:
+//   - first Defiler/Arbiter/Carrier/Battlecruiser/Ultralisk completion
+//   - any Terran ground/armor weapons +2 (Infantry Weapons, Vehicle Weapons,
+//     Infantry Armor, Vehicle Plating reaching level 2)
+//
+// Returns 0 in either field when no matching event is found — frontend
+// collapses empty sections.
+func (d *Dashboard) populatePhaseMarkersForGameDetail(detail *workflowGameDetail) error {
+	rows, err := d.dbStore.ListFirstUnitCommandRows(d.ctx, detail.ReplayID)
+	if err != nil {
+		return fmt.Errorf("failed to load phase-marker commands: %w", err)
+	}
+
+	// First completion second per normalized unit key (across all players).
+	firstUnit := map[string]int64{}
+	rememberFirst := func(key string, second int64) {
+		if existing, ok := firstUnit[key]; !ok || second < existing {
+			firstUnit[key] = second
+		}
+	}
+	for _, row := range rows {
+		if row.ActionType != "Train" && row.ActionType != "Morph" {
+			continue
+		}
+		commandUnits := parseCommandUnitNames(row.UnitType, row.UnitTypes)
+		for _, name := range commandUnits {
+			for _, alias := range unitNameAliases(name) {
+				rememberFirst(alias, row.Second)
+			}
+		}
+	}
+
+	// Tank Siege Mode tech (single-occurrence).
+	siegeModeSec := int64(-1)
+	techRows, err := d.dbStore.ListTechTimingRows(d.ctx, detail.ReplayID)
+	if err != nil {
+		return fmt.Errorf("failed to load phase-marker tech rows: %w", err)
+	}
+	for _, row := range techRows {
+		if !strings.EqualFold(strings.TrimSpace(row.Label), "Tank Siege Mode") {
+			continue
+		}
+		if siegeModeSec < 0 || row.Second < siegeModeSec {
+			siegeModeSec = row.Second
+		}
+	}
+
+	// Singularity Charge upgrade + Terran +2 ground/armor.
+	upgradeRows, err := d.dbStore.ListUpgradeTimingRows(d.ctx, detail.ReplayID)
+	if err != nil {
+		return fmt.Errorf("failed to load phase-marker upgrade rows: %w", err)
+	}
+	terran2Names := map[string]bool{
+		"terran infantry weapons": true,
+		"terran vehicle weapons":  true,
+		"terran infantry armor":   true,
+		"terran vehicle plating":  true,
+	}
+	dragoonRangeSec := int64(-1)
+	terranPlus2Sec := int64(-1)
+	// upgradeRows aren't pre-sorted by second, and per-player level == nth occurrence;
+	// gather per-(player,label) sorted seconds, then use the 2nd entry for +2.
+	type pl struct {
+		player int64
+		label  string
+	}
+	upgradeOccurrences := map[pl][]int64{}
+	for _, row := range upgradeRows {
+		labelLower := strings.ToLower(strings.TrimSpace(row.Label))
+		if strings.Contains(labelLower, "singularity charge") {
+			if dragoonRangeSec < 0 || row.Second < dragoonRangeSec {
+				dragoonRangeSec = row.Second
+			}
+		}
+		if terran2Names[labelLower] {
+			key := pl{player: row.PlayerID, label: labelLower}
+			upgradeOccurrences[key] = append(upgradeOccurrences[key], row.Second)
+		}
+	}
+	for _, secs := range upgradeOccurrences {
+		sort.Slice(secs, func(i, j int) bool { return secs[i] < secs[j] })
+		if len(secs) < 2 {
+			continue
+		}
+		// secs[1] = level 2 finish second.
+		if terranPlus2Sec < 0 || secs[1] < terranPlus2Sec {
+			terranPlus2Sec = secs[1]
+		}
+	}
+
+	// Build candidate lists.
+	earliest := func(seconds ...int64) int64 {
+		best := int64(-1)
+		for _, s := range seconds {
+			if s < 0 {
+				continue
+			}
+			if best < 0 || s < best {
+				best = s
+			}
+		}
+		return best
+	}
+	maxOf := func(a, b int64) int64 {
+		if a < 0 || b < 0 {
+			return -1
+		}
+		if a > b {
+			return a
+		}
+		return b
+	}
+
+	mutaSec := lookupFirstUnit(firstUnit, "mutalisk")
+	lurkerSec := lookupFirstUnit(firstUnit, "lurker")
+	wraithSec := lookupFirstUnit(firstUnit, "wraith")
+	siegeTankSec := lookupFirstUnit(firstUnit, "siegetank", "siegetanktankmode", "siegetanksiegemode")
+	dragoonSec := lookupFirstUnit(firstUnit, "dragoon")
+
+	siegeArmedSec := maxOf(siegeTankSec, siegeModeSec)
+	dragoonArmedSec := maxOf(dragoonSec, dragoonRangeSec)
+
+	earlyEnd := earliest(mutaSec, lurkerSec, wraithSec, siegeArmedSec, dragoonArmedSec)
+
+	defilerSec := lookupFirstUnit(firstUnit, "defiler")
+	arbiterSec := lookupFirstUnit(firstUnit, "arbiter")
+	carrierSec := lookupFirstUnit(firstUnit, "carrier")
+	bcSec := lookupFirstUnit(firstUnit, "battlecruiser")
+	ultraSec := lookupFirstUnit(firstUnit, "ultralisk")
+
+	midCandidate := earliest(defilerSec, arbiterSec, carrierSec, bcSec, ultraSec, terranPlus2Sec)
+	midEnd := midCandidate
+	if midEnd >= 0 && earlyEnd >= 0 && midEnd < earlyEnd {
+		midEnd = earlyEnd
+	}
+
+	if earlyEnd > 0 {
+		detail.EarlyGameEndsAtSecond = earlyEnd
+	}
+	if midEnd > 0 {
+		detail.MidGameEndsAtSecond = midEnd
+	}
+	return nil
+}
+
+// lookupFirstUnit returns the earliest second across the given normalized unit
+// keys, or -1 when none is present.
+func lookupFirstUnit(firstUnit map[string]int64, keys ...string) int64 {
+	best := int64(-1)
+	for _, key := range keys {
+		if sec, ok := firstUnit[key]; ok {
+			if best < 0 || sec < best {
+				best = sec
+			}
+		}
+	}
+	return best
 }
 
 // zergBOEventSchema describes the per-BO event list shown in the Build

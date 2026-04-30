@@ -3169,11 +3169,73 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  align-items: center;
+}
+
+.workflow-event-row-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.workflow-event-row-emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.workflow-event-row-cast-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(180, 140, 255, 0.55);
+  background: rgba(180, 140, 255, 0.18);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+
+.workflow-event-row-player {
+  font-weight: 600;
 }
 
 .workflow-event-row-selected {
   border-color: rgba(100, 150, 255, 0.55);
   background: rgba(100, 150, 255, 0.16);
+}
+
+.workflow-events-section-header {
+  margin: 8px 0 2px;
+  padding: 2px 6px;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.7);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.workflow-events-section-header:first-child {
+  margin-top: 0;
+}
+
+@keyframes workflow-event-overlay-appear {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes workflow-event-polygon-appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.workflow-event-map-overlay .workflow-event-map-base-polygon,
+.workflow-event-map-overlay .workflow-event-map-attack-line {
+  animation: workflow-event-polygon-appear 240ms ease-out both;
+}
+
+.workflow-event-map-unit-overlay,
+.workflow-event-map-flag-overlay,
+.workflow-event-map-expansion-overlay {
+  animation: workflow-event-overlay-appear 240ms ease-out both;
 }
 
 .workflow-section-top-row,

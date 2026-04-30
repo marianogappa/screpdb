@@ -107,7 +107,7 @@ func TestBaseKeyForEvent_NaturalIncludesOwnerClock(t *testing.T) {
 }
 
 // TestBaseLabel_CenterBase covers the label rendering for scmapanalyzer's
-// Clock=0 marker. The templated "at 0" / "an expa near 0" strings read
+// Clock=0 marker. The templated "0" / "an expansion near 0" strings read
 // wrong; the UI expects the literal "center base".
 func TestBaseLabel_CenterBase(t *testing.T) {
 	starting := "starting"

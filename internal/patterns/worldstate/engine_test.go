@@ -753,10 +753,10 @@ func TestProcessCommand_ExpansionAndTakeoverAnnotateNaturalExpansions(t *testing
 	for _, entry := range entries {
 		joined += entry.Description + "\n"
 	}
-	if !strings.Contains(joined, "P1 expands to an expa near 9 (their natural expansion)") {
+	if !strings.Contains(joined, "P1 expands to an expansion near 9 (their natural expansion)") {
 		t.Fatalf("expected own natural expansion annotation, got entries: %s", joined)
 	}
-	if !strings.Contains(joined, "P1 takes over an expa near 7 (natural expansion of at 5)") {
+	if !strings.Contains(joined, "P1 takes over an expansion near 7 (natural expansion of at 5)") {
 		t.Fatalf("expected other-player natural takeover annotation, got entries: %s", joined)
 	}
 	if strings.Contains(joined, "(not a natural expansion)") {

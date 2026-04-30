@@ -322,6 +322,98 @@ const gameEventDescription = (event, registry) => {
   return prettyPatternName(event?.type || 'event');
 };
 
+const gamePlayerNameSpan = (player, key) => {
+  const name = String(player?.name || '').trim();
+  if (!name) return null;
+  return (
+    <span
+      key={key}
+      className="workflow-event-row-player"
+      style={legendTextStyle(String(player?.color || ''), playerColorToCss(player?.color))}
+    >
+      {name}
+    </span>
+  );
+};
+
+// renderGameEventDescription returns the same sentence as gameEventDescription
+// but with the actor and target wrapped in colored <span>s. Used for rendering
+// the event-row body. The string variant remains for search + dedup keys.
+const renderGameEventDescription = (event, registry) => {
+  const eventType = normalizeEventType(event?.type);
+  const actorName = String(event?.actor?.name || '').trim();
+  const targetName = String(event?.target?.name || '').trim();
+  const location = gameEventLocationLabel(event);
+  const actorSpan = gamePlayerNameSpan(event?.actor, 'a');
+  const targetSpan = gamePlayerNameSpan(event?.target, 't');
+
+  if (typeof eventType === 'string' && eventType.startsWith('bo_')) {
+    const def = registry?.[eventType];
+    const boName = def?.name || prettyPatternName(eventType.replace(/^bo_/, ''));
+    if (!actorName) return `Opens with ${boName}`;
+    return <>{actorSpan} opens with {boName}</>;
+  }
+
+  if (eventType === 'player_start') {
+    if (actorName && location) return <>{actorSpan} starts at {location}</>;
+    if (actorName) return <>{actorSpan} starts</>;
+    return 'Player start';
+  }
+  if (eventType === 'leave_game') return actorName ? <>{actorSpan} leaves the game</> : 'Player leaves the game';
+  if (eventType === 'location_inactive') return location ? `Location inactive: ${location}` : 'Location inactive';
+  if (eventType === 'expansion') {
+    if (actorName && isActorAtOwnNaturalBase(event)) return <>{actorSpan} expands to their natural</>;
+    return actorName && location ? <>{actorSpan} expands to {location}</> : 'Expansion';
+  }
+  if (eventType === 'attack') {
+    return actorName && targetName && location
+      ? <>{actorSpan} attacks {targetSpan} at {location}</>
+      : 'Attack';
+  }
+  if (eventType === 'scout') {
+    return actorName && targetName && location
+      ? <>{actorSpan} scouts {targetSpan} at {location}</>
+      : 'Scout';
+  }
+  if (eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
+    return actorName && targetName && location
+      ? <>{actorSpan} drops on {targetSpan} at {location}</>
+      : 'Drop';
+  }
+  if (eventType === 'recall') {
+    return actorName && targetName && location
+      ? <>{actorSpan} recalls into {targetSpan} at {location}</>
+      : 'Recall';
+  }
+  if (eventType === 'nuke') {
+    return actorName && targetName && location
+      ? <>{actorSpan} nukes {targetSpan} at {location}</>
+      : 'Nuke';
+  }
+  if (eventType === 'cannon_rush' || eventType === 'bunker_rush' || eventType === 'zergling_rush') {
+    const rushKind = eventType === 'cannon_rush' ? 'cannon' : eventType === 'bunker_rush' ? 'bunker' : 'zergling';
+    if (actorName && targetName) return <>{actorSpan} {rushKind} rushes {targetSpan}</>;
+    if (actorName && location) return <>{actorSpan} {rushKind} rushes at {location}</>;
+    if (actorName) return <>{actorSpan} {rushKind} rushes</>;
+    return 'Rush';
+  }
+  if (eventType === 'takeover') {
+    if (actorName && isActorAtOwnNaturalBase(event)) return <>{actorSpan} takes over their natural</>;
+    return actorName && location ? <>{actorSpan} takes over {location}</> : 'Takeover';
+  }
+  if (eventType === 'proxy_gate' || eventType === 'proxy_rax' || eventType === 'proxy_factory') {
+    const proxyKind = eventType === 'proxy_gate' ? 'gateway'
+      : eventType === 'proxy_rax' ? 'barracks' : 'factory';
+    if (actorName && location) return <>{actorSpan} proxies {proxyKind} at {location}</>;
+    if (actorName)              return <>{actorSpan} proxies {proxyKind}</>;
+    if (location)               return `Proxy ${proxyKind} at ${location}`;
+    return `Proxy ${proxyKind}`;
+  }
+  if (eventType === 'became_terran') return actorName ? <>{actorSpan} became Terran</> : 'Became Terran';
+  if (eventType === 'became_zerg') return actorName ? <>{actorSpan} became Zerg</> : 'Became Zerg';
+  return prettyPatternName(event?.type || 'event');
+};
+
 const gameEventSearchText = (event, registry) => {
   const parts = [
     gameEventDescription(event, registry),
@@ -612,7 +704,49 @@ const fallbackOverlayUnitNamesForEvent = (eventType) => {
   if (normalized === 'dt_drop') return ['darktemplar'];
   if (normalized === 'drop') return ['dropship'];
   if (normalized === 'nuke') return ['ghost'];
+  if (normalized === 'recall') return ['arbiter'];
+  if (normalized === 'became_terran' || normalized === 'became_zerg') return ['darkarchon'];
   return [];
+};
+
+// gameEventRowIconEntries returns a list of inline icons to render alongside an
+// event-row description. Mirrors the units rendered on the map overlay so the
+// row carries the same visual signal (bunker-on-bunker-rush, arbiter-on-recall,
+// race-correct townhall on expansions, etc.). The leave-game flag is returned
+// as an emoji entry; everything else is a unit/building icon URL.
+const gameEventRowIconEntries = (event, playerRaceByID) => {
+  if (!event) return [];
+  const normalized = normalizeEventType(event?.type);
+  const actorPid = Number(event?.actor?.player_id || 0);
+  const actorRace = playerRaceByID && actorPid > 0 ? playerRaceByID.get(actorPid) : '';
+
+  if (normalized === 'leave_game') {
+    return [{ emoji: '🏳️', alt: 'left the game', title: 'Player left the game' }];
+  }
+  if (normalized === 'expansion' || normalized === 'takeover') {
+    const icon = getExpansionMarkerIconForRace(actorRace);
+    if (!icon) return [];
+    return [{ src: icon, alt: 'townhall', title: 'Expansion' }];
+  }
+  if (normalized === 'drop') {
+    const icon = dropTransportIconForRace(actorRace);
+    return icon ? [{ src: icon, alt: 'transport', title: 'Drop' }] : [];
+  }
+
+  const unitNames = Array.isArray(event?.attack_unit_types) && event.attack_unit_types.length > 0
+    ? event.attack_unit_types
+    : fallbackOverlayUnitNamesForEvent(event?.type);
+  const seen = new Set();
+  const entries = [];
+  for (const name of unitNames) {
+    const icon = getUnitIcon(name);
+    if (!icon) continue;
+    if (seen.has(icon)) continue;
+    seen.add(icon);
+    entries.push({ src: icon, alt: name, title: name });
+    if (entries.length >= 4) break;
+  }
+  return entries;
 };
 
 const eventActorID = (event) => {
@@ -3093,6 +3227,10 @@ function App() {
     () => new Map(mainGamePlayers.map((player) => [player.player_id, player])),
     [mainGamePlayers],
   );
+  const mainEventRaceByPlayerID = useMemo(
+    () => new Map(mainGamePlayers.map((player) => [Number(player?.player_id || 0), String(player?.race || '').trim()])),
+    [mainGamePlayers],
+  );
   const hasTeamInfo = useMemo(() => {
     const uniqueTeams = new Set(mainGamePlayers.map((player) => player.team));
     return uniqueTeams.size > 1;
@@ -4418,7 +4556,13 @@ function App() {
                               <div className="workflow-event-map-frame">
                                 <img src={mainMapVisualURL} alt={`${mainGame.map_name} event overlay`} className="workflow-event-map-image" />
                                 {selectedMainGameEvent ? (
-                                  <svg className="workflow-event-map-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                                  <svg
+                                    key={`overlay-${selectedMainGameEventKeyResolved}`}
+                                    className="workflow-event-map-overlay"
+                                    viewBox="0 0 100 100"
+                                    preserveAspectRatio="none"
+                                    aria-hidden="true"
+                                  >
                                     <defs>
                                       <marker
                                         id="workflow-event-arrowhead"
@@ -4456,6 +4600,7 @@ function App() {
                                 ) : null}
                                 {selectedMainGameArrow && selectedMainGameArrowUnits.length > 0 ? (
                                   <div
+                                    key={`unit-overlay-${selectedMainGameEventKeyResolved}`}
                                     className={`workflow-event-map-unit-overlay ${selectedMainGameArrowUnits.length > 2 ? 'workflow-event-map-unit-overlay--grid' : ''}`}
                                     style={{
                                       left: `${(selectedMainGameArrow.from.x + selectedMainGameArrow.to.x) / 2}%`,
@@ -4475,6 +4620,7 @@ function App() {
                                 ) : null}
                                 {selectedMainGameLeaveFlag ? (
                                   <div
+                                    key={`leave-flag-${selectedMainGameEventKeyResolved}`}
                                     className="workflow-event-map-flag-overlay"
                                     style={{
                                       left: `${selectedMainGameLeaveFlag.x}%`,
@@ -4489,6 +4635,7 @@ function App() {
                                 ) : null}
                                 {selectedMainGameExpansionOverlay ? (
                                   <img
+                                    key={`expansion-${selectedMainGameEventKeyResolved}`}
                                     src={selectedMainGameExpansionOverlay.icon}
                                     alt="Expansion building"
                                     className="workflow-event-map-expansion-overlay"
@@ -4509,24 +4656,74 @@ function App() {
                         </div>
                         <div className="workflow-events">
                           {filteredGameEvents.length > 0 ? (
-                            filteredGameEvents.map((event) => {
-                              const topicIndex = topicFilteredGameEvents.indexOf(event);
-                              const eventKey = gameEventTopicKey(topicIndex);
-                              const selected = eventKey === selectedMainGameEventKeyResolved;
-                              return (
-                                <button
-                                  key={eventKey}
-                                  type="button"
-                                  className={`workflow-event-row ${selected ? 'workflow-event-row-selected' : ''}`}
-                                  onClick={() => setMainSelectedGameEventKey(eventKey)}
-                                >
-                                  <span>{formatDuration(event.second)}</span>
-                                  <span className="workflow-event-row-body">
-                                    <span>{gameEventDescription(event, markerRegistry)}</span>
-                                  </span>
-                                </button>
-                              );
-                            })
+                            (() => {
+                              const earlyEnd = Number(mainGame?.early_game_ends_at_second) || 0;
+                              const midEnd = Number(mainGame?.mid_game_ends_at_second) || 0;
+                              const phaseFor = (sec) => {
+                                if (earlyEnd > 0 && sec < earlyEnd) return 'early';
+                                if (midEnd > 0 && sec < midEnd) return 'mid';
+                                return 'late';
+                              };
+                              const phaseLabel = { early: 'Early game', mid: 'Mid game', late: 'Late game' };
+                              const nodes = [];
+                              let lastPhase = null;
+                              filteredGameEvents.forEach((event) => {
+                                const topicIndex = topicFilteredGameEvents.indexOf(event);
+                                const eventKey = gameEventTopicKey(topicIndex);
+                                const selected = eventKey === selectedMainGameEventKeyResolved;
+                                const iconEntries = gameEventRowIconEntries(event, mainEventRaceByPlayerID);
+                                const castEntries = event?.attack_cast_counts && typeof event.attack_cast_counts === 'object'
+                                  ? Object.entries(event.attack_cast_counts)
+                                  : [];
+                                const phase = phaseFor(Number(event?.second) || 0);
+                                if (phase !== lastPhase && (earlyEnd > 0 || midEnd > 0)) {
+                                  nodes.push(
+                                    <div key={`hdr-${phase}`} className={`workflow-events-section-header workflow-events-section-header--${phase}`}>
+                                      {phaseLabel[phase]}
+                                    </div>,
+                                  );
+                                  lastPhase = phase;
+                                }
+                                nodes.push(
+                                  <button
+                                    key={eventKey}
+                                    type="button"
+                                    className={`workflow-event-row ${selected ? 'workflow-event-row-selected' : ''}`}
+                                    onClick={() => setMainSelectedGameEventKey(eventKey)}
+                                  >
+                                    <span>{formatDuration(event.second)}</span>
+                                    <span className="workflow-event-row-body">
+                                      <span>{renderGameEventDescription(event, markerRegistry)}</span>
+                                      {(iconEntries.length > 0 || castEntries.length > 0) ? (
+                                        <span className="workflow-event-row-units">
+                                          {iconEntries.map((entry, idx) => (
+                                            entry.emoji ? (
+                                              <span key={`emoji-${idx}`} className="workflow-event-row-emoji" role="img" aria-label={entry.alt} title={entry.title}>
+                                                {entry.emoji}
+                                              </span>
+                                            ) : (
+                                              <img
+                                                key={`icon-${idx}`}
+                                                src={entry.src}
+                                                alt={entry.alt}
+                                                title={entry.title}
+                                                className="workflow-event-row-icon"
+                                              />
+                                            )
+                                          ))}
+                                          {castEntries.map(([spell, count]) => (
+                                            <span key={`cast-${spell}`} className="workflow-event-row-cast-pill" title={`${spell} cast ${count}× near this attack`}>
+                                              {Number(count) > 1 ? `${count}× ` : ''}{spell}
+                                            </span>
+                                          ))}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                  </button>,
+                                );
+                              });
+                              return nodes;
+                            })()
                           ) : (
                             <div className="chart-empty">No events match the current filters. Use All to show players again.</div>
                           )}

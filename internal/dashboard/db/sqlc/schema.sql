@@ -89,6 +89,7 @@ CREATE TABLE replay_events (
   source_player_id INTEGER,
   target_player_id INTEGER,
   attack_unit_types TEXT,
+  attack_cast_counts TEXT,
   payload TEXT
 );
 

@@ -1443,7 +1443,7 @@ func (e *Engine) assignDisplayNames() {
 			e.bases[i].DisplayName = fmt.Sprintf("at %d", oc)
 			continue
 		}
-		e.bases[i].DisplayName = fmt.Sprintf("an expa near %d", oc)
+		e.bases[i].DisplayName = fmt.Sprintf("an expansion near %d", oc)
 	}
 }
 

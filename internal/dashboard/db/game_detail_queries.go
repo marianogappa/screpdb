@@ -59,6 +59,7 @@ type ReplayEventRow struct {
 	LocationNaturalOfClock *int64
 	LocationMineralOnly    *bool
 	AttackUnitTypes        *string
+	AttackCastCounts       *string
 }
 
 type PlayerOverviewSummaryRow struct {
@@ -185,6 +186,7 @@ func (s *Store) ListReplayEvents(ctx context.Context, replayID int64) ([]ReplayE
 			LocationNaturalOfClock: row.LocationNaturalOfOclock,
 			LocationMineralOnly:    row.LocationMineralOnly,
 			AttackUnitTypes:        row.AttackUnitTypes,
+			AttackCastCounts:       row.AttackCastCounts,
 		})
 	}
 	return out, nil

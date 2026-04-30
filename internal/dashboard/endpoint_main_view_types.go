@@ -330,6 +330,13 @@ type workflowGameDetail struct {
 	UnitCadence          []workflowGameUnitCadencePlayer          `json:"unit_production_cadence"`
 	ViewportMultitasking []workflowGameViewportMultitaskingPlayer `json:"viewport_multitasking"`
 	Markers          []workflowMarkerPlayer               `json:"build_orders"`
+
+	// EarlyGameEndsAtSecond / MidGameEndsAtSecond split the game-events list
+	// into Early/Mid/Late sections. Computed from unit-completion + research
+	// timings (see populatePhaseMarkersForGameDetail). Zero = no boundary
+	// detected — the frontend collapses the empty section header.
+	EarlyGameEndsAtSecond int64 `json:"early_game_ends_at_second,omitempty"`
+	MidGameEndsAtSecond   int64 `json:"mid_game_ends_at_second,omitempty"`
 }
 
 // workflowMarkerPlayer carries per-player Build Orders tab data:
@@ -374,15 +381,16 @@ type workflowMapVisual struct {
 }
 
 type workflowGameEvent struct {
-	Type            string                   `json:"type"`
-	Second          int64                    `json:"second"`
-	Actor           *workflowGameEventPlayer `json:"actor,omitempty"`
-	Target          *workflowGameEventPlayer `json:"target,omitempty"`
-	Base            *workflowGameEventBase   `json:"base,omitempty"`
-	ActorOrigin     *workflowGameEventPoint  `json:"actor_origin,omitempty"`
-	ActorStartClock *int64                   `json:"actor_start_clock,omitempty"`
-	Ownership       []workflowGameOwnership  `json:"ownership,omitempty"`
-	AttackUnitTypes []string                 `json:"attack_unit_types,omitempty"`
+	Type             string                   `json:"type"`
+	Second           int64                    `json:"second"`
+	Actor            *workflowGameEventPlayer `json:"actor,omitempty"`
+	Target           *workflowGameEventPlayer `json:"target,omitempty"`
+	Base             *workflowGameEventBase   `json:"base,omitempty"`
+	ActorOrigin      *workflowGameEventPoint  `json:"actor_origin,omitempty"`
+	ActorStartClock  *int64                   `json:"actor_start_clock,omitempty"`
+	Ownership        []workflowGameOwnership  `json:"ownership,omitempty"`
+	AttackUnitTypes  []string                 `json:"attack_unit_types,omitempty"`
+	AttackCastCounts map[string]int64         `json:"attack_cast_counts,omitempty"`
 }
 
 type workflowGameEventPlayer struct {
