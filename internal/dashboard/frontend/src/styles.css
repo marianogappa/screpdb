@@ -1807,6 +1807,15 @@ body {
   color: rgba(100, 150, 255, 0.9);
 }
 
+.app-footer a {
+  color: rgba(140, 180, 255, 0.95);
+  text-decoration: none;
+}
+
+.app-footer a:hover {
+  text-decoration: underline;
+}
+
 .workflow-nav {
   display: flex;
   gap: 10px;

@@ -11,6 +11,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/marianogappa/screpdb/internal/buildinfo"
 	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
@@ -744,6 +745,7 @@ func (d *Dashboard) Healthcheck(ctx context.Context, _ apigen.HealthcheckRequest
 		"total_replays":             totalReplays,
 		"openai_enabled":            d.ai != nil && d.ai.llm != nil,
 		"custom_dashboards_enabled": customDashboardsEnabled(),
+		"version":                   buildinfo.Version,
 	}, nil
 }
 

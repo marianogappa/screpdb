@@ -1,6 +1,7 @@
 .PHONY: openapi-generate ui-build build release cross-binaries
 
-REL_LDFLAGS := -s -w
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+REL_LDFLAGS := -s -w -X github.com/marianogappa/screpdb/internal/buildinfo.Version=$(VERSION)
 
 openapi-generate:
 	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest -config api/openapi/oapi-codegen.yaml api/openapi/dashboard.v1.yaml
@@ -10,10 +11,10 @@ ui-build:
 	cd internal/dashboard/frontend && npm ci && npm run build
 
 build: ui-build
-	go build -o screpdb .
+	go build -ldflags "$(REL_LDFLAGS)" -o screpdb .
 
 release: ui-build
-	go build -trimpath -ldflags "-s -w" -o screpdb .
+	go build -trimpath -ldflags "$(REL_LDFLAGS)" -o screpdb .
 
 # Release-style cross-compiles for GitHub Releases: Windows CLI + dashboard; Linux/Darwin root CLI only (linux amd64 name unchanged).
 cross-binaries: ui-build

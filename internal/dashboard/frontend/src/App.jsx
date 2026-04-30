@@ -127,6 +127,13 @@ const getRaceIcon = (race) => {
   return null;
 };
 
+const cmpSemver = (a, b) => {
+  const parse = (v) => String(v || '').replace(/^v/, '').split(/[.+-]/).slice(0, 3).map((n) => parseInt(n, 10) || 0);
+  const [aMaj, aMin, aPat] = parse(a);
+  const [bMaj, bMin, bPat] = parse(b);
+  return (aMaj - bMaj) || (aMin - bMin) || (aPat - bPat);
+};
+
 const normalizeEventType = (eventType) => String(eventType || '').trim().toLowerCase();
 
 /** Aligns with NeverUsedHotkeysPlayerDetector (7+ minute replays). */
@@ -1246,6 +1253,10 @@ function App() {
   const [customDashboardsEnabled, setCustomDashboardsEnabled] = useState(false);
   const [editingWidget, setEditingWidget] = useState(null);
   const [replayCount, setReplayCount] = useState(null);
+  const [currentVersion, setCurrentVersion] = useState('');
+  const [latestVersion, setLatestVersion] = useState('');
+  const [latestVersionUrl, setLatestVersionUrl] = useState('');
+  const emptyDbAutoOpenRef = useRef(false);
   const [globalReplayFilterConfig, setGlobalReplayFilterConfig] = useState(null);
   const [globalReplayFilterOptions, setGlobalReplayFilterOptions] = useState({
     top_maps: [],
@@ -2121,6 +2132,53 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!currentVersion || currentVersion === 'dev') return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch('https://api.github.com/repos/marianogappa/screpdb/releases/latest');
+        if (!response.ok) return;
+        const release = await response.json();
+        if (cancelled) return;
+        const tag = String(release?.tag_name || '');
+        if (!tag) return;
+        if (cmpSemver(tag, currentVersion) > 0) {
+          setLatestVersion(tag);
+          setLatestVersionUrl(String(release?.html_url || ''));
+        }
+      } catch (_err) {
+        // Silently ignore — offline, rate-limited, etc. Banner just stays hidden.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentVersion]);
+
+  useEffect(() => {
+    if (ingestStatus !== 'running') return undefined;
+    let cancelled = false;
+    let lastCount = replayCount ?? 0;
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        const data = await api.getHealth();
+        const next = Number(data?.total_replays || 0);
+        if (next !== lastCount) {
+          lastCount = next;
+          setReplayCount(next);
+          if (activeView === 'games') {
+            await loadMainGames({ page: mainGamesPage, filters: mainGamesFilters });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to poll during ingest:', err);
+      }
+    };
+    const timer = window.setInterval(tick, 5000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally re-runs only on status/view change; reads latest filters/page via closure each tick is fine for a 5s loop.
+  }, [ingestStatus, activeView]);
+
+  useEffect(() => {
     if (suppressUrlSyncRef.current) return;
     const next = buildMainRouteSearch({
       activeView,
@@ -2458,7 +2516,15 @@ function App() {
       const data = await api.getHealth();
       setOpenaiEnabled(Boolean(data?.openai_enabled));
       setCustomDashboardsEnabled(Boolean(data?.custom_dashboards_enabled));
-      setReplayCount(Number(data?.total_replays || 0));
+      const totalReplays = Number(data?.total_replays || 0);
+      setReplayCount(totalReplays);
+      if (data?.version) {
+        setCurrentVersion(String(data.version));
+      }
+      if (totalReplays === 0 && !emptyDbAutoOpenRef.current) {
+        emptyDbAutoOpenRef.current = true;
+        setShowIngestPanel(true);
+      }
       return data;
     } catch (err) {
       console.error('Failed to check OpenAI status:', err);
@@ -5690,9 +5756,26 @@ function App() {
 
       <div className="app-footer">
         <div className="footer-left">
-          {replayCount !== null
-            ? `${replayCount.toLocaleString()} replays in database. You can trigger an ingestion using the button above.`
-            : 'Loading replay count...'}
+          {replayCount !== null ? (
+            <>
+              {replayCount.toLocaleString()} replays in database.{' '}
+              <a href="https://github.com/marianogappa/screpdb" target="_blank" rel="noopener noreferrer">screpdb</a>
+              {' by '}
+              <a href="https://marianogappa.github.io" target="_blank" rel="noopener noreferrer">Mariano Gappa</a>
+              {'. '}
+              <a href="https://github.com/marianogappa/screpdb/issues" target="_blank" rel="noopener noreferrer">🐞 Report an issue</a>
+              {latestVersion ? (
+                <>
+                  {'. '}
+                  <a href={latestVersionUrl || 'https://github.com/marianogappa/screpdb/releases/latest'} target="_blank" rel="noopener noreferrer">
+                    🆕 Update available (current version {currentVersion})
+                  </a>
+                </>
+              ) : null}
+            </>
+          ) : (
+            'Loading replay count...'
+          )}
         </div>
       </div>
     </div>
