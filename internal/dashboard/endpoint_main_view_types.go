@@ -2,7 +2,7 @@ package dashboard
 
 import "encoding/json"
 
-const workflowSummaryVersion = "v1"
+const workflowSummaryVersion = "v2"
 
 var topPlayerPalette = []string{
 	"#3B82F6",
@@ -324,6 +324,7 @@ type workflowGameDetail struct {
 	ReplayPatterns       []workflowPatternValue                   `json:"replay_patterns"`
 	GameEvents           []workflowGameEvent                      `json:"game_events"`
 	UnitsBySlice         []workflowUnitSlice                      `json:"units_by_slice"`
+	UnitsEarlyEvents     []workflowUnitEarlyEventPlayer           `json:"units_early_events"`
 	Timings              workflowReplayTimings                    `json:"timings"`
 	FirstUnitEfficiency  []workflowFirstUnitEfficiencyPlayer      `json:"first_unit_efficiency"`
 	UnitCadence          []workflowGameUnitCadencePlayer          `json:"unit_production_cadence"`
@@ -426,6 +427,30 @@ type workflowUnitSlicePlayer struct {
 type workflowUnitCount struct {
 	UnitType string `json:"unit_type"`
 	Count    int64  `json:"count"`
+}
+
+// workflowUnitEarlyEventPlayer carries one player's individual unit/building
+// production events for the first 4 minutes of the game. The frontend renders
+// these as a vertical time-scaled chart (one icon per event with exact-second
+// labels) so users can compare production efficiency between same-race builds.
+type workflowUnitEarlyEventPlayer struct {
+	PlayerID  int64                    `json:"player_id"`
+	PlayerKey string                   `json:"player_key"`
+	Name      string                   `json:"name"`
+	Events    []workflowUnitEarlyEvent `json:"events"`
+}
+
+// workflowUnitEarlyEvent is a single Train/Morph command surfaced as an
+// individual event (not aggregated into a slice count). Label is pre-formatted
+// as "5th SCV"/"3rd Drone" for workers; empty for non-workers. Count is 2 for
+// a Zergling Morph (one larva → two zerglings) and 1 for everything else, so
+// the frontend can render an "x2" badge without re-implementing the rule.
+type workflowUnitEarlyEvent struct {
+	Second     int64  `json:"second"`
+	UnitType   string `json:"unit_type"`
+	IsBuilding bool   `json:"is_building"`
+	Label      string `json:"label,omitempty"`
+	Count      int64  `json:"count"`
 }
 
 type workflowReplayTimings struct {

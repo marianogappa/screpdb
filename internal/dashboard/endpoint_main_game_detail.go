@@ -1832,13 +1832,13 @@ func formatClockFromSeconds(second int64) string {
 	return fmt.Sprintf("%d:%02d", minute, sec)
 }
 
+// workflowSliceBoundaries returns the start-second of each post-4-minute slice
+// row for the production table. The first 4 minutes (0-239s) are rendered
+// separately as a time-scaled vertical chart (UnitsEarlyEvents), not bucketed.
 func workflowSliceBoundaries(durationSeconds int64) []int64 {
-	base := []int64{0, 145, 300, 360, 420, 600, 900, 1200, 1500, 1800, 2400, 3000, 3600}
-	boundaries := []int64{0}
+	base := []int64{240, 300, 360, 420, 600, 900, 1200, 1500, 1800, 2400, 3000, 3600}
+	boundaries := []int64{}
 	for _, point := range base {
-		if point <= 0 {
-			continue
-		}
 		if point > durationSeconds {
 			break
 		}
@@ -1870,6 +1870,7 @@ func formatWorkflowSliceLabel(start, endExclusive int64) string {
 
 func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail) error {
 	detail.UnitsBySlice = []workflowUnitSlice{}
+	detail.UnitsEarlyEvents = []workflowUnitEarlyEventPlayer{}
 	playerOrder := make([]int64, 0, len(detail.Players))
 	playerByID := map[int64]workflowGamePlayer{}
 	for _, player := range detail.Players {
@@ -1882,21 +1883,21 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 		return fmt.Errorf("failed to load unit slices: %w", err)
 	}
 
+	buildingSet := make(map[string]struct{}, len(models.Buildings))
+	for _, b := range models.Buildings {
+		buildingSet[b] = struct{}{}
+	}
+
 	perSlice := map[int64]map[int64]map[string]int64{}
 	boundaries := workflowSliceBoundaries(detail.DurationSeconds)
+	earlyEventsByPlayer := map[int64][]workflowUnitEarlyEvent{}
+	workerOrdinalByPlayer := map[int64]map[string]int64{}
 	for _, row := range rows {
 		playerID := row.PlayerID
 		second := row.Second
 		unitType := row.UnitType
 		if second < 0 {
 			second = 0
-		}
-		sliceStart := sliceStartForSecond(second, boundaries)
-		if _, ok := perSlice[sliceStart]; !ok {
-			perSlice[sliceStart] = map[int64]map[string]int64{}
-		}
-		if _, ok := perSlice[sliceStart][playerID]; !ok {
-			perSlice[sliceStart][playerID] = map[string]int64{}
 		}
 		// One Zergling Unit Morph command produces a pair of Zerglings
 		// from a single larva. Source rows have Count=1 per command, so
@@ -1905,7 +1906,50 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 		if unitType == models.GeneralUnitZergling {
 			inc = 2
 		}
+
+		if second < 240 {
+			_, isBuilding := buildingSet[unitType]
+			label := ""
+			if unitType == models.GeneralUnitSCV || unitType == models.GeneralUnitDrone || unitType == models.GeneralUnitProbe {
+				if _, ok := workerOrdinalByPlayer[playerID]; !ok {
+					workerOrdinalByPlayer[playerID] = map[string]int64{}
+				}
+				workerOrdinalByPlayer[playerID][unitType]++
+				n := workerOrdinalByPlayer[playerID][unitType]
+				label = fmt.Sprintf("%d%s %s", n, ordinalSuffix(int(n)), unitType)
+			}
+			earlyEventsByPlayer[playerID] = append(earlyEventsByPlayer[playerID], workflowUnitEarlyEvent{
+				Second:     second,
+				UnitType:   unitType,
+				IsBuilding: isBuilding,
+				Label:      label,
+				Count:      inc,
+			})
+			continue
+		}
+
+		sliceStart := sliceStartForSecond(second, boundaries)
+		if _, ok := perSlice[sliceStart]; !ok {
+			perSlice[sliceStart] = map[int64]map[string]int64{}
+		}
+		if _, ok := perSlice[sliceStart][playerID]; !ok {
+			perSlice[sliceStart][playerID] = map[string]int64{}
+		}
 		perSlice[sliceStart][playerID][unitType] += inc
+	}
+	for _, playerID := range playerOrder {
+		player := playerByID[playerID]
+		events := earlyEventsByPlayer[playerID]
+		if events == nil {
+			events = []workflowUnitEarlyEvent{}
+		}
+		sort.SliceStable(events, func(i, j int) bool { return events[i].Second < events[j].Second })
+		detail.UnitsEarlyEvents = append(detail.UnitsEarlyEvents, workflowUnitEarlyEventPlayer{
+			PlayerID:  player.PlayerID,
+			PlayerKey: player.PlayerKey,
+			Name:      player.Name,
+			Events:    events,
+		})
 	}
 	for i, sliceStart := range boundaries {
 		endExclusive := detail.DurationSeconds + 1

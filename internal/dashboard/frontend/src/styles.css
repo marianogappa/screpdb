@@ -3366,6 +3366,20 @@ body {
   display: block;
 }
 
+.workflow-early-timeline-wrap {
+  position: relative;
+  margin: 8px 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.workflow-early-timeline {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
 .workflow-timing-notice {
   margin: 2px 0 8px;
   padding: 5px 8px;

@@ -18,6 +18,7 @@ import Heatmap from './components/charts/Heatmap';
 import TimingScatterRows from './components/charts/TimingScatterRows';
 import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
 import BuildOrderTimelineRows from './components/charts/BuildOrderTimelineRows';
+import UnitProductionEarlyTimeline from './components/charts/UnitProductionEarlyTimeline';
 import { getUnitIcon, getWorkerIconForRace, normalizeUnitName } from './lib/gameAssets';
 import {
   PILL_SURFACES,
@@ -1251,11 +1252,9 @@ function App() {
   const [mainAskLoading, setMainAskLoading] = useState(false);
   const [topPlayerColors, setTopPlayerColors] = useState({});
   const [mainSummaryFilters, setMainSummaryFilters] = useState(DEFAULT_SUMMARY_FILTERS);
-  const [mainProductionTab, setMainProductionTab] = useState('units');
-  const [mainUnitFilterMode, setMainUnitFilterMode] = useState('all');
-  const [mainUnitNameFilter, setMainUnitNameFilter] = useState('');
-  const [mainBuildingFilterMode, setMainBuildingFilterMode] = useState('all');
-  const [mainBuildingNameFilter, setMainBuildingNameFilter] = useState('');
+  const [productionView, setProductionView] = useState('all');
+  const [productionSubFilter, setProductionSubFilter] = useState('all');
+  const [productionNameFilter, setProductionNameFilter] = useState('');
   const [mainTimingCategory, setMainTimingCategory] = useState('expansion');
   const [mainHpUpgradeFilters, setMainHpUpgradeFilters] = useState({
     terran: DEFAULT_HP_UPGRADE_BY_RACE.terran,
@@ -1493,11 +1492,9 @@ function App() {
       setMainAnswer(null);
       setMainQuestion('');
       setMainSummaryFilters(DEFAULT_SUMMARY_FILTERS);
-      setMainProductionTab('units');
-      setMainUnitFilterMode('all');
-      setMainUnitNameFilter('');
-      setMainBuildingFilterMode('all');
-      setMainBuildingNameFilter('');
+      setProductionView('all');
+      setProductionSubFilter('all');
+      setProductionNameFilter('');
       setMainTimingCategory('expansion');
       setMainHpUpgradeFilters({
         terran: DEFAULT_HP_UPGRADE_BY_RACE.terran,
@@ -3302,30 +3299,31 @@ function App() {
     }).filter(Boolean);
   }, [mainGame?.first_unit_efficiency]);
 
+  // filterProductionEntries applies the unified production-view filter to a
+  // list of {unit_type, ...} entries. `view` selects whether the universe is
+  // 'all' / 'units' / 'buildings'; `productionSubFilter` then narrows further.
+  // Under 'all', tier filters target the union of UNIT_TIER_MAP and
+  // BUILDING_TIER_MAP; 'defenses' is building-only so it filters out units.
   const filterProductionEntries = (entries, view) => {
-    const mode = view === 'units' ? mainUnitFilterMode : mainBuildingFilterMode;
-    const nameNeedle = String(view === 'units' ? mainUnitNameFilter : mainBuildingNameFilter).trim().toLowerCase();
+    const mode = productionSubFilter;
+    const nameNeedle = String(productionNameFilter).trim().toLowerCase();
     return (entries || []).filter((entry) => {
       const unitType = String(entry?.unit_type || '');
       const key = normalizeUnitName(unitType);
-      const isBuilding = BUILDING_TYPE_KEYS.has(key);
+      const isBuilding = (typeof entry?.is_building === 'boolean')
+        ? entry.is_building
+        : BUILDING_TYPE_KEYS.has(key);
       if (view === 'units' && isBuilding) return false;
       if (view === 'buildings' && !isBuilding) return false;
       if (nameNeedle && !unitType.toLowerCase().includes(nameNeedle)) return false;
       if (mode === 'all') return true;
-      if (view === 'units') {
-        if (mode === 'workers') return WORKER_UNIT_KEYS.has(key);
-        if (mode === 'non-workers') return !WORKER_UNIT_KEYS.has(key);
-        if (mode === 'spellcasters') return SPELLCASTER_UNIT_KEYS.has(key);
-        if (mode === 'tier-1') return UNIT_TIER_MAP[key] === 1;
-        if (mode === 'tier-2') return UNIT_TIER_MAP[key] === 2;
-        if (mode === 'tier-3') return UNIT_TIER_MAP[key] === 3;
-      } else {
-        if (mode === 'defenses') return DEFENSIVE_BUILDING_KEYS.has(key);
-        if (mode === 'tier-1') return BUILDING_TIER_MAP[key] === 1;
-        if (mode === 'tier-2') return BUILDING_TIER_MAP[key] === 2;
-        if (mode === 'tier-3') return BUILDING_TIER_MAP[key] === 3;
-      }
+      if (mode === 'workers') return !isBuilding && WORKER_UNIT_KEYS.has(key);
+      if (mode === 'non-workers') return !isBuilding && !WORKER_UNIT_KEYS.has(key);
+      if (mode === 'spellcasters') return !isBuilding && SPELLCASTER_UNIT_KEYS.has(key);
+      if (mode === 'defenses') return isBuilding && DEFENSIVE_BUILDING_KEYS.has(key);
+      if (mode === 'tier-1') return isBuilding ? BUILDING_TIER_MAP[key] === 1 : UNIT_TIER_MAP[key] === 1;
+      if (mode === 'tier-2') return isBuilding ? BUILDING_TIER_MAP[key] === 2 : UNIT_TIER_MAP[key] === 2;
+      if (mode === 'tier-3') return isBuilding ? BUILDING_TIER_MAP[key] === 3 : UNIT_TIER_MAP[key] === 3;
       return true;
     });
   };
@@ -4540,155 +4538,85 @@ function App() {
                 {mainGameTab === 'units' && (
                   <div className="workflow-card workflow-card-chat-summary">
                     <div className="workflow-production-top-row">
-                      <div className="workflow-production-tabs" role="tablist" aria-label="Production type tabs">
-                        <button
-                          className={`workflow-production-tab ${mainProductionTab === 'units' ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setMainProductionTab('units')}
-                          role="tab"
-                          aria-selected={mainProductionTab === 'units'}
-                        >
-                          Units
-                        </button>
-                        <button
-                          className={`workflow-production-tab ${mainProductionTab === 'buildings' ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setMainProductionTab('buildings')}
-                          role="tab"
-                          aria-selected={mainProductionTab === 'buildings'}
-                        >
-                          Buildings
-                        </button>
+                      <div className="workflow-radio-group" role="radiogroup" aria-label="Production view">
+                        {[
+                          { value: 'all', label: 'All' },
+                          { value: 'units', label: 'Units' },
+                          { value: 'buildings', label: 'Buildings' },
+                        ].map((opt) => (
+                          <label key={opt.value} className="workflow-radio-option">
+                            <input
+                              type="radio"
+                              name="workflow-production-view"
+                              value={opt.value}
+                              checked={productionView === opt.value}
+                              onChange={(e) => {
+                                setProductionView(e.target.value);
+                                setProductionSubFilter('all');
+                              }}
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                        ))}
                       </div>
                       <div className="workflow-section-warning">
                         ⚠️ Replay commands contain significant false positives. Expect inflated numbers.
                       </div>
                     </div>
                     <div className="workflow-summary-filter-row">
-                      {mainProductionTab === 'units' ? (
-                        <>
-                          <div className="workflow-radio-group">
-                            <label className="workflow-radio-option">
-                              <input
-                                type="radio"
-                                name="workflow-units-filter"
-                                value="all"
-                                checked={mainUnitFilterMode === 'all'}
-                                onChange={(e) => setMainUnitFilterMode(e.target.value)}
-                              />
-                              <span>All units</span>
-                            </label>
-                            <label className="workflow-radio-option">
-                              <input
-                                type="radio"
-                                name="workflow-units-filter"
-                                value="workers"
-                                checked={mainUnitFilterMode === 'workers'}
-                                onChange={(e) => setMainUnitFilterMode(e.target.value)}
-                              />
-                              <span>Workers only</span>
-                            </label>
-                            <label className="workflow-radio-option">
-                              <input
-                                type="radio"
-                                name="workflow-units-filter"
-                                value="non-workers"
-                                checked={mainUnitFilterMode === 'non-workers'}
-                                onChange={(e) => setMainUnitFilterMode(e.target.value)}
-                              />
-                              <span>Non-workers only</span>
-                            </label>
-                            <label className="workflow-radio-option">
-                              <input
-                                type="radio"
-                                name="workflow-units-filter"
-                                value="spellcasters"
-                                checked={mainUnitFilterMode === 'spellcasters'}
-                                onChange={(e) => setMainUnitFilterMode(e.target.value)}
-                              />
-                              <span>Spellcasters only</span>
-                            </label>
-                            <label className="workflow-radio-option">
-                              <input
-                                type="radio"
-                                name="workflow-units-filter"
-                                value="tier-2"
-                                checked={mainUnitFilterMode === 'tier-2'}
-                                onChange={(e) => setMainUnitFilterMode(e.target.value)}
-                              />
-                              <span>Tier 2 only</span>
-                            </label>
-                            <label className="workflow-radio-option">
-                              <input
-                                type="radio"
-                                name="workflow-units-filter"
-                                value="tier-3"
-                                checked={mainUnitFilterMode === 'tier-3'}
-                                onChange={(e) => setMainUnitFilterMode(e.target.value)}
-                              />
-                              <span>Tier 3 only</span>
-                            </label>
-                          </div>
-                          <input
-                            type="text"
-                            className="workflow-summary-filter-input"
-                            placeholder="Filter unit name..."
-                            value={mainUnitNameFilter}
-                            onChange={(e) => setMainUnitNameFilter(e.target.value)}
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <div className="workflow-radio-group">
-                            <label className="workflow-radio-option">
-                              <input
-                                type="radio"
-                                name="workflow-buildings-filter"
-                                value="all"
-                                checked={mainBuildingFilterMode === 'all'}
-                                onChange={(e) => setMainBuildingFilterMode(e.target.value)}
-                              />
-                              <span>All buildings</span>
-                            </label>
-                            <label className="workflow-radio-option">
-                              <input
-                                type="radio"
-                                name="workflow-buildings-filter"
-                                value="defenses"
-                                checked={mainBuildingFilterMode === 'defenses'}
-                                onChange={(e) => setMainBuildingFilterMode(e.target.value)}
-                              />
-                              <span>Defenses only</span>
-                            </label>
-                            <label className="workflow-radio-option">
-                              <input
-                                type="radio"
-                                name="workflow-buildings-filter"
-                                value="tier-2"
-                                checked={mainBuildingFilterMode === 'tier-2'}
-                                onChange={(e) => setMainBuildingFilterMode(e.target.value)}
-                              />
-                              <span>Tier 2 only</span>
-                            </label>
-                            <label className="workflow-radio-option">
-                              <input
-                                type="radio"
-                                name="workflow-buildings-filter"
-                                value="tier-3"
-                                checked={mainBuildingFilterMode === 'tier-3'}
-                                onChange={(e) => setMainBuildingFilterMode(e.target.value)}
-                              />
-                              <span>Tier 3 only</span>
-                            </label>
-                          </div>
-                          <input
-                            type="text"
-                            className="workflow-summary-filter-input"
-                            placeholder="Filter building name..."
-                            value={mainBuildingNameFilter}
-                            onChange={(e) => setMainBuildingNameFilter(e.target.value)}
-                          />
-                        </>
-                      )}
+                      <div className="workflow-radio-group">
+                        {(productionView === 'units'
+                          ? [
+                              { value: 'all', label: 'All units' },
+                              { value: 'workers', label: 'Workers only' },
+                              { value: 'non-workers', label: 'Non-workers only' },
+                              { value: 'spellcasters', label: 'Spellcasters only' },
+                              { value: 'tier-1', label: 'Tier 1 only' },
+                              { value: 'tier-2', label: 'Tier 2 only' },
+                              { value: 'tier-3', label: 'Tier 3 only' },
+                            ]
+                          : productionView === 'buildings'
+                            ? [
+                                { value: 'all', label: 'All buildings' },
+                                { value: 'defenses', label: 'Defenses only' },
+                                { value: 'tier-1', label: 'Tier 1 only' },
+                                { value: 'tier-2', label: 'Tier 2 only' },
+                                { value: 'tier-3', label: 'Tier 3 only' },
+                              ]
+                            : [
+                                { value: 'all', label: 'All' },
+                                { value: 'tier-2', label: 'Tier 2 only' },
+                                { value: 'tier-3', label: 'Tier 3 only' },
+                                { value: 'defenses', label: 'Defenses only' },
+                              ]
+                        ).map((opt) => (
+                          <label key={opt.value} className="workflow-radio-option">
+                            <input
+                              type="radio"
+                              name="workflow-production-subfilter"
+                              value={opt.value}
+                              checked={productionSubFilter === opt.value}
+                              onChange={(e) => setProductionSubFilter(e.target.value)}
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <input
+                        type="text"
+                        className="workflow-summary-filter-input"
+                        placeholder={productionView === 'buildings' ? 'Filter building name...' : 'Filter unit name...'}
+                        value={productionNameFilter}
+                        onChange={(e) => setProductionNameFilter(e.target.value)}
+                      />
                     </div>
+                    <UnitProductionEarlyTimeline
+                      players={mainGamePlayers}
+                      earlyEvents={mainGame.units_early_events || []}
+                      filterEvents={(events) => filterProductionEntries(events, productionView)}
+                      hasTeamInfo={hasTeamInfo}
+                      teamColorRgba={teamColorRgba}
+                    />
                     <div className="table-container">
                       <table className="data-table workflow-table workflow-production-table">
                         <thead>
@@ -4711,7 +4639,7 @@ function App() {
                               <td>{slice.slice_label}</td>
                               {mainGamePlayers.map((player) => {
                                 const playerSlice = (slice.players || []).find((item) => item.player_id === player.player_id);
-                                const filtered = filterProductionEntries(playerSlice?.units || [], mainProductionTab);
+                                const filtered = filterProductionEntries(playerSlice?.units || [], productionView);
                                 return (
                                   <td
                                     key={`${slice.slice_start_second}-${player.player_id}`}
