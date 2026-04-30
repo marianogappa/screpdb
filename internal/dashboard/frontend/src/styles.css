@@ -2959,9 +2959,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: calc(100vh - 280px);
   overflow-y: auto;
-  padding-right: 4px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .workflow-events-layout {
@@ -3270,6 +3272,11 @@ body {
   padding: 7px 10px;
 }
 
+.workflow-no-team-warning {
+  margin-left: 6px;
+  cursor: help;
+}
+
 .workflow-section-info {
   flex: 0 1 auto;
   margin-right: auto;
@@ -3436,12 +3443,11 @@ body {
   margin: 8px 0 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .workflow-early-timeline {
-  width: 100%;
-  height: auto;
   display: block;
 }
 

@@ -1937,7 +1937,9 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 					workerOrdinalByPlayer[playerID] = map[string]int64{}
 				}
 				workerOrdinalByPlayer[playerID][unitType]++
-				n := workerOrdinalByPlayer[playerID][unitType]
+				// Players begin every game with 4 starting workers, so the
+				// first worker we observe being trained is the 5th overall.
+				n := workerOrdinalByPlayer[playerID][unitType] + 4
 				label = fmt.Sprintf("%d%s %s", n, ordinalSuffix(int(n)), unitType)
 			}
 			earlyEventsByPlayer[playerID] = append(earlyEventsByPlayer[playerID], workflowUnitEarlyEvent{

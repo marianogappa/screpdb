@@ -21,11 +21,47 @@ const TOP_PADDING = 16;
 const BOTTOM_PADDING = 24;
 const PLOT_HEIGHT = 2160;
 const ICON_SIZE = 22;
-const LANE_OFFSETS = [-46, 0, 46]; // x offsets within a player column
+const ICON_SPACING = 1;
+const TEXT_GAP = 4;
+// Events that fall within this many seconds of the previous one share a row
+// (icons stacked horizontally) instead of getting indented vertically — the
+// vertical resolution of the chart is ~9px/sec, so anything tighter than this
+// would visually overlap anyway.
+const CLUSTER_WINDOW_SECONDS = 2;
 
 const formatTime = (seconds) => {
   const value = Math.max(0, Math.floor(Number(seconds) || 0));
   return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}`;
+};
+
+const ordinalPrefix = (label) => {
+  if (!label) return '';
+  const m = String(label).match(/^(\d+(?:st|nd|rd|th))\b/i);
+  return m ? m[1] : '';
+};
+
+const buildClusters = (events) => {
+  const sorted = [...(events || [])].sort(
+    (a, b) => (Number(a?.second) || 0) - (Number(b?.second) || 0),
+  );
+  const clusters = [];
+  let current = [];
+  for (const ev of sorted) {
+    const sec = Number(ev?.second) || 0;
+    if (current.length === 0) {
+      current = [ev];
+      continue;
+    }
+    const lastSec = Number(current[current.length - 1]?.second) || 0;
+    if (sec - lastSec <= CLUSTER_WINDOW_SECONDS) {
+      current.push(ev);
+    } else {
+      clusters.push(current);
+      current = [ev];
+    }
+  }
+  if (current.length) clusters.push(current);
+  return clusters;
 };
 
 function UnitProductionEarlyTimeline({
@@ -84,6 +120,8 @@ function UnitProductionEarlyTimeline({
     >
       <svg
         className="workflow-early-timeline"
+        width={chartWidth}
+        height={chartHeight}
         viewBox={`0 0 ${chartWidth} ${chartHeight}`}
         preserveAspectRatio="xMinYMin meet"
       >
@@ -92,10 +130,14 @@ function UnitProductionEarlyTimeline({
           const x0 = colIdx * COLUMN_WIDTH;
           const headerFill = hasTeamInfo ? teamColorRgba(player.team, 0.2) : 'rgba(255,255,255,0.06)';
           const bodyFill = hasTeamInfo ? teamColorRgba(player.team, 0.05) : 'rgba(255,255,255,0.02)';
+          // Stronger column outline when team colours are absent — without it the
+          // per-player slots blur together.
+          const borderColor = hasTeamInfo ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.18)';
           return (
             <g key={`hdr-${player.player_id}`}>
               <rect x={x0} y={0} width={COLUMN_WIDTH} height={HEADER_HEIGHT} fill={headerFill} />
               <rect x={x0} y={HEADER_HEIGHT} width={COLUMN_WIDTH} height={chartHeight - HEADER_HEIGHT} fill={bodyFill} />
+              <rect x={x0 + 0.5} y={0.5} width={COLUMN_WIDTH - 1} height={chartHeight - 1} fill="none" stroke={borderColor} strokeWidth="1" />
               <text
                 x={x0 + COLUMN_WIDTH / 2}
                 y={HEADER_HEIGHT / 2 + 5}
@@ -148,67 +190,82 @@ function UnitProductionEarlyTimeline({
               </text>
             );
           }
-          return events.map((ev, evIdx) => {
-            const second = Number(ev.second) || 0;
-            const y = yAt(second);
-            const laneX = colCenter + LANE_OFFSETS[evIdx % LANE_OFFSETS.length];
-            const iconURL = getUnitIcon(ev.unit_type);
-            const count = Number(ev.count) || 1;
-            const labelText = ev.label
-              ? `${ev.label} @ ${formatTime(second)}`
-              : formatTime(second);
-            const onHoverEnter = (e) => updateHover(e, {
-              unitType: ev.unit_type,
-              second,
-              ordinalLabel: ev.label || '',
-              isBuilding: Boolean(ev.is_building),
-              count,
-            });
-            return (
-              <g
-                key={`ev-${player.player_id}-${evIdx}`}
-                onMouseEnter={onHoverEnter}
-                onMouseMove={onHoverEnter}
-                onMouseLeave={clearHover}
-              >
-                {iconURL ? (
-                  <image
-                    href={iconURL}
-                    xlinkHref={iconURL}
-                    x={laneX - ICON_SIZE / 2}
-                    y={y - ICON_SIZE / 2}
-                    width={ICON_SIZE}
-                    height={ICON_SIZE}
-                  />
-                ) : (
-                  <circle
-                    cx={laneX}
-                    cy={y}
-                    r={ICON_SIZE / 2}
-                    fill="rgba(148,163,184,0.6)"
-                  />
-                )}
-                {count > 1 ? (
-                  <text
-                    x={laneX + ICON_SIZE / 2 + 1}
-                    y={y - ICON_SIZE / 2 + 4}
-                    fill="rgba(251,191,36,0.95)"
-                    fontSize="10"
-                    fontWeight="700"
-                  >
-                    x{count}
-                  </text>
-                ) : null}
-                <text
-                  x={laneX + ICON_SIZE / 2 + 4}
-                  y={y + 4}
-                  fill="rgba(255,255,255,0.85)"
-                  fontSize="10"
+          const clusters = buildClusters(events);
+          return clusters.flatMap((cluster, clusterIdx) => {
+            const n = cluster.length;
+            const firstSec = Number(cluster[0]?.second) || 0;
+            const y = yAt(firstSec);
+            const totalIconsWidth = n * ICON_SIZE + Math.max(0, n - 1) * ICON_SPACING;
+            const startX = colCenter - totalIconsWidth / 2;
+            const renderIcon = (ev, idx) => {
+              const iconURL = getUnitIcon(ev.unit_type);
+              const iconLeft = startX + idx * (ICON_SIZE + ICON_SPACING);
+              const count = Number(ev.count) || 1;
+              const onHoverEnter = (e) => updateHover(e, {
+                unitType: ev.unit_type,
+                second: Number(ev.second) || 0,
+                ordinalLabel: ev.label || '',
+                isBuilding: Boolean(ev.is_building),
+                count,
+              });
+              return (
+                <g
+                  key={`ev-${player.player_id}-${clusterIdx}-${idx}`}
+                  onMouseEnter={onHoverEnter}
+                  onMouseMove={onHoverEnter}
+                  onMouseLeave={clearHover}
                 >
-                  {labelText}
-                </text>
-              </g>
+                  {iconURL ? (
+                    <image
+                      href={iconURL}
+                      xlinkHref={iconURL}
+                      x={iconLeft}
+                      y={y - ICON_SIZE / 2}
+                      width={ICON_SIZE}
+                      height={ICON_SIZE}
+                    />
+                  ) : (
+                    <circle
+                      cx={iconLeft + ICON_SIZE / 2}
+                      cy={y}
+                      r={ICON_SIZE / 2}
+                      fill="rgba(148,163,184,0.6)"
+                    />
+                  )}
+                  {n === 1 && count > 1 ? (
+                    <text
+                      x={iconLeft + ICON_SIZE + 1}
+                      y={y - ICON_SIZE / 2 + 4}
+                      fill="rgba(251,191,36,0.95)"
+                      fontSize="10"
+                      fontWeight="700"
+                    >
+                      x{count}
+                    </text>
+                  ) : null}
+                </g>
+              );
+            };
+            const nodes = cluster.map(renderIcon);
+            // Single text label after the icon row. For solo events keep the
+            // ordinal prefix ("5th") if present; the unit name is implicit
+            // in the icon, so we drop it. For clusters, just the time.
+            const soloOrdinal = n === 1 ? ordinalPrefix(cluster[0]?.label) : '';
+            const labelText = soloOrdinal
+              ? `${soloOrdinal} @ ${formatTime(firstSec)}`
+              : `@ ${formatTime(firstSec)}`;
+            nodes.push(
+              <text
+                key={`lbl-${player.player_id}-${clusterIdx}`}
+                x={startX + totalIconsWidth + TEXT_GAP}
+                y={y + 4}
+                fill="rgba(255,255,255,0.85)"
+                fontSize="10"
+              >
+                {labelText}
+              </text>,
             );
+            return nodes;
           });
         })}
       </svg>

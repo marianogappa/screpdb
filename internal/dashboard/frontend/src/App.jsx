@@ -2948,6 +2948,7 @@ function App() {
               {idx < players.length - 1 ? ', ' : ''}
             </span>
           ))}
+          <span className="workflow-no-team-warning" title="This replay has no team information">⚠️</span>
         </span>
       );
     }
@@ -3313,6 +3314,23 @@ function App() {
     const uniqueTeams = new Set(mainGamePlayers.map((player) => player.team));
     return uniqueTeams.size > 1;
   }, [mainGamePlayers]);
+  // Track the rendered height of the Game Events map panel so the events list
+  // beside it can be sized to match.
+  const [mainEventMapPanelEl, setMainEventMapPanelEl] = useState(null);
+  const [mainEventMapPanelHeight, setMainEventMapPanelHeight] = useState(null);
+  useEffect(() => {
+    if (!mainEventMapPanelEl) {
+      setMainEventMapPanelHeight(null);
+      return undefined;
+    }
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setMainEventMapPanelHeight(entry.contentRect.height);
+      }
+    });
+    ro.observe(mainEventMapPanelEl);
+    return () => ro.disconnect();
+  }, [mainEventMapPanelEl]);
   const mainTimingCategoryConfig = useMemo(
     () => TIMING_CATEGORY_CONFIG.find((cfg) => cfg.id === mainTimingCategory) || TIMING_CATEGORY_CONFIG[0],
     [mainTimingCategory],
@@ -4586,12 +4604,17 @@ function App() {
                           rush
                         </label>
                       </div>
+                      {!hasTeamInfo ? (
+                        <div className="workflow-section-warning">
+                          ⚠️ This replay has no team information. Expect issues like attack events firing between teammates.
+                        </div>
+                      ) : null}
                       <div className="workflow-section-warning">
                         ⚠️ Event narratives are derived from imperfect replay signals: expect some errors.
                       </div>
                     </div>
                     <div className="workflow-events-layout">
-                        <div className="workflow-event-map-panel">
+                        <div className="workflow-event-map-panel" ref={setMainEventMapPanelEl}>
                           {mainMapVisualAvailable ? (
                             <>
                               {mainGamePlayers.length > 0 ? (
@@ -4732,7 +4755,10 @@ function App() {
                             </div>
                           )}
                         </div>
-                        <div className="workflow-events">
+                        <div
+                          className="workflow-events"
+                          style={mainEventMapPanelHeight ? { height: `${mainEventMapPanelHeight}px`, maxHeight: `${mainEventMapPanelHeight}px` } : undefined}
+                        >
                           {filteredGameEvents.length > 0 ? (
                             (() => {
                               const earlyEnd = Number(mainGame?.early_game_ends_at_second) || 0;
@@ -4742,7 +4768,6 @@ function App() {
                                 if (midEnd > 0 && sec < midEnd) return 'mid';
                                 return 'late';
                               };
-                              const phaseLabel = { early: 'Early game', mid: 'Mid game', late: 'Late game' };
                               const nodes = [];
                               let lastPhase = null;
                               filteredGameEvents.forEach((event) => {
@@ -4755,12 +4780,20 @@ function App() {
                                   : [];
                                 const phase = phaseFor(Number(event?.second) || 0);
                                 const isLeaveGame = normalizeEventType(event?.type) === 'leave_game';
-                                if (!isLeaveGame && phase !== lastPhase && (earlyEnd > 0 || midEnd > 0)) {
-                                  nodes.push(
-                                    <div key={`hdr-${phase}`} className={`workflow-events-section-header workflow-events-section-header--${phase}`}>
-                                      {phaseLabel[phase]}
-                                    </div>,
-                                  );
+                                if (!isLeaveGame && phase !== lastPhase) {
+                                  // Only show "Mid game" / "Late game" when mid game actually
+                                  // ended; otherwise the game never reached those phases.
+                                  let label = null;
+                                  if (phase === 'early' && earlyEnd > 0) label = 'Early game';
+                                  else if (phase === 'mid' && midEnd > 0) label = 'Mid game';
+                                  else if (phase === 'late' && midEnd > 0) label = 'Late game';
+                                  if (label) {
+                                    nodes.push(
+                                      <div key={`hdr-${phase}`} className={`workflow-events-section-header workflow-events-section-header--${phase}`}>
+                                        {label}
+                                      </div>,
+                                    );
+                                  }
                                   lastPhase = phase;
                                 }
                                 nodes.push(
