@@ -1792,6 +1792,23 @@ body {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
+.ingest-running-badge {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(40, 140, 80, 0.32);
+  border: 1px solid rgba(120, 220, 160, 0.5);
+  color: #d6ffe4;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  animation: ingest-running-badge-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes ingest-running-badge-pulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
 /* Footer */
 .app-footer {
   margin-top: 24px;

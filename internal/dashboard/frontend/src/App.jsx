@@ -2384,72 +2384,97 @@ function App() {
   }, [ingestForm.autoIngestEnabled]);
 
   useEffect(() => {
-    if (!showIngestPanel) {
-      setIngestSocketState('closed');
-      return undefined;
-    }
+    let unmounted = false;
+    let reconnectTimer = null;
+    let reconnectAttempt = 0;
+    let socket = null;
 
-    setIngestMessage('');
-    void loadIngestSettings();
-    setIngestSocketState('connecting');
+    const connect = () => {
+      if (unmounted) return;
+      setIngestSocketState('connecting');
+      socket = api.createIngestLogsSocket();
+      ingestSocketRef.current = socket;
 
-    const socket = api.createIngestLogsSocket();
-    ingestSocketRef.current = socket;
+      socket.onopen = () => {
+        reconnectAttempt = 0;
+        setIngestSocketState('open');
+      };
 
-    socket.onopen = () => {
-      setIngestSocketState('open');
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        if (message.type === 'snapshot') {
-          setIngestStatus(message.status || 'idle');
-          setIngestLogs(hydrateIngestLogEntries(message.logs || []));
-          if (message.error) {
-            setIngestMessage(message.error);
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type === 'snapshot') {
+            setIngestStatus(message.status || 'idle');
+            setIngestLogs(hydrateIngestLogEntries(message.logs || []));
+            if (message.error) {
+              setIngestMessage(message.error);
+            }
+            return;
           }
-          return;
-        }
 
-        if (message.type === 'log' && message.log) {
-          setIngestLogs((current) => mergeIngestLogEntries(current, message.log));
-          return;
-        }
-
-        if (message.type === 'status') {
-          setIngestStatus(message.status || 'idle');
-          if (message.error) {
-            setIngestMessage(message.error);
-          } else if (message.status === 'running') {
-            setIngestMessage('');
-          } else if (message.status === 'completed') {
-            setIngestMessage('Ingestion completed.');
-            void refreshDataAfterGlobalReplayFilterSave();
+          if (message.type === 'log' && message.log) {
+            setIngestLogs((current) => mergeIngestLogEntries(current, message.log));
+            return;
           }
+
+          if (message.type === 'status') {
+            setIngestStatus(message.status || 'idle');
+            if (message.error) {
+              setIngestMessage(message.error);
+            } else if (message.status === 'running') {
+              setIngestMessage('');
+            } else if (message.status === 'completed') {
+              setIngestMessage('Ingestion completed.');
+              void refreshDataAfterGlobalReplayFilterSave();
+            }
+          }
+        } catch (err) {
+          console.error('Failed to parse ingest stream message:', err);
         }
-      } catch (err) {
-        console.error('Failed to parse ingest stream message:', err);
-      }
+      };
+
+      socket.onerror = () => {
+        setIngestSocketState('error');
+      };
+
+      socket.onclose = () => {
+        if (ingestSocketRef.current === socket) {
+          ingestSocketRef.current = null;
+        }
+        setIngestSocketState('closed');
+        if (unmounted) return;
+        // Reconnect with backoff: 2s, 5s, 10s, then 30s thereafter.
+        const delays = [2000, 5000, 10000, 30000];
+        const delay = delays[Math.min(reconnectAttempt, delays.length - 1)];
+        reconnectAttempt += 1;
+        reconnectTimer = window.setTimeout(connect, delay);
+      };
     };
 
-    socket.onerror = () => {
-      setIngestSocketState('error');
-    };
-
-    socket.onclose = () => {
-      if (ingestSocketRef.current === socket) {
-        ingestSocketRef.current = null;
-      }
-      setIngestSocketState('closed');
-    };
+    connect();
 
     return () => {
+      unmounted = true;
+      if (reconnectTimer) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
       if (ingestSocketRef.current === socket) {
         ingestSocketRef.current = null;
       }
-      socket.close();
+      if (socket) {
+        socket.close();
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-once: WS lives for the whole app session, independent of modal visibility.
+  }, []);
+
+  useEffect(() => {
+    if (!showIngestPanel) return undefined;
+    setIngestMessage('');
+    void loadIngestSettings();
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only refresh settings + clear message when modal opens.
   }, [showIngestPanel]);
 
   useEffect(() => {
@@ -3759,6 +3784,9 @@ function App() {
             </button>
             <button type="button" onClick={() => setShowIngestPanel(true)} className="workflow-nav-text-action">
               📥 Ingest
+              {!showIngestPanel && ingestStatus === 'running' ? (
+                <span className="ingest-running-badge" title="Ingestion in progress — click to view logs">Ingesting…</span>
+              ) : null}
             </button>
           </div>
           {customDashboardsEnabled && (
@@ -6046,7 +6074,6 @@ function App() {
           ingestSocketState={ingestSocketState}
           onClose={() => {
             setShowIngestPanel(false);
-            setIngestStatus('idle');
           }}
           onSubmit={handleIngestSubmit}
           onChange={setIngestForm}
