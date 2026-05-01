@@ -171,3 +171,24 @@ func calculateChecksum(filePath string) (string, error) {
 
 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
+
+// NewFileInfoFromPath stats the path and computes its checksum, returning a FileInfo
+// shaped like one produced by GetReplayFiles. Used by paths that already know which
+// .rep file to ingest (e.g. bulk re-analyze) and don't want to walk a directory.
+func NewFileInfoFromPath(filePath string) (*FileInfo, error) {
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return nil, err
+	}
+	checksum, err := calculateChecksum(filePath)
+	if err != nil {
+		return nil, err
+	}
+	return &FileInfo{
+		Path:     filePath,
+		Name:     info.Name(),
+		Size:     info.Size(),
+		ModTime:  info.ModTime(),
+		Checksum: checksum,
+	}, nil
+}

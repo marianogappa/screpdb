@@ -827,6 +827,12 @@ type ServerInterface interface {
 	// (POST /api/custom/query/variables)
 	GetQueryVariables(w http.ResponseWriter, r *http.Request)
 
+	// (POST /api/custom/replays/reanalyze-stale)
+	ReanalyzeStaleReplays(w http.ResponseWriter, r *http.Request)
+
+	// (GET /api/custom/replays/stale-count)
+	GetStaleReplaysCount(w http.ResponseWriter, r *http.Request)
+
 	// (GET /api/games)
 	GamesList(w http.ResponseWriter, r *http.Request, params GamesListParams)
 
@@ -1330,6 +1336,34 @@ func (siw *ServerInterfaceWrapper) GetQueryVariables(w http.ResponseWriter, r *h
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetQueryVariables(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReanalyzeStaleReplays operation middleware
+func (siw *ServerInterfaceWrapper) ReanalyzeStaleReplays(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReanalyzeStaleReplays(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetStaleReplaysCount operation middleware
+func (siw *ServerInterfaceWrapper) GetStaleReplaysCount(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetStaleReplaysCount(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2116,6 +2150,10 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/api/custom/query/variables", wrapper.GetQueryVariables).Methods("POST")
 
+	r.HandleFunc(options.BaseURL+"/api/custom/replays/reanalyze-stale", wrapper.ReanalyzeStaleReplays).Methods("POST")
+
+	r.HandleFunc(options.BaseURL+"/api/custom/replays/stale-count", wrapper.GetStaleReplaysCount).Methods("GET")
+
 	r.HandleFunc(options.BaseURL+"/api/games", wrapper.GamesList).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/api/games/{replayID}", wrapper.GameDetail).Methods("GET")
@@ -2551,6 +2589,38 @@ func (response GetQueryVariables200JSONResponse) VisitGetQueryVariablesResponse(
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ReanalyzeStaleReplaysRequestObject struct {
+}
+
+type ReanalyzeStaleReplaysResponseObject interface {
+	VisitReanalyzeStaleReplaysResponse(w http.ResponseWriter) error
+}
+
+type ReanalyzeStaleReplays200JSONResponse GenericValue
+
+func (response ReanalyzeStaleReplays200JSONResponse) VisitReanalyzeStaleReplaysResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetStaleReplaysCountRequestObject struct {
+}
+
+type GetStaleReplaysCountResponseObject interface {
+	VisitGetStaleReplaysCountResponse(w http.ResponseWriter) error
+}
+
+type GetStaleReplaysCount200JSONResponse GenericValue
+
+func (response GetStaleReplaysCount200JSONResponse) VisitGetStaleReplaysCountResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GamesListRequestObject struct {
 	Params GamesListParams
 }
@@ -2978,6 +3048,12 @@ type StrictServerInterface interface {
 
 	// (POST /api/custom/query/variables)
 	GetQueryVariables(ctx context.Context, request GetQueryVariablesRequestObject) (GetQueryVariablesResponseObject, error)
+
+	// (POST /api/custom/replays/reanalyze-stale)
+	ReanalyzeStaleReplays(ctx context.Context, request ReanalyzeStaleReplaysRequestObject) (ReanalyzeStaleReplaysResponseObject, error)
+
+	// (GET /api/custom/replays/stale-count)
+	GetStaleReplaysCount(ctx context.Context, request GetStaleReplaysCountRequestObject) (GetStaleReplaysCountResponseObject, error)
 
 	// (GET /api/games)
 	GamesList(ctx context.Context, request GamesListRequestObject) (GamesListResponseObject, error)
@@ -3746,6 +3822,54 @@ func (sh *strictHandler) GetQueryVariables(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// ReanalyzeStaleReplays operation middleware
+func (sh *strictHandler) ReanalyzeStaleReplays(w http.ResponseWriter, r *http.Request) {
+	var request ReanalyzeStaleReplaysRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReanalyzeStaleReplays(ctx, request.(ReanalyzeStaleReplaysRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReanalyzeStaleReplays")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReanalyzeStaleReplaysResponseObject); ok {
+		if err := validResponse.VisitReanalyzeStaleReplaysResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetStaleReplaysCount operation middleware
+func (sh *strictHandler) GetStaleReplaysCount(w http.ResponseWriter, r *http.Request) {
+	var request GetStaleReplaysCountRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetStaleReplaysCount(ctx, request.(GetStaleReplaysCountRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetStaleReplaysCount")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetStaleReplaysCountResponseObject); ok {
+		if err := validResponse.VisitGetStaleReplaysCountResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GamesList operation middleware
 func (sh *strictHandler) GamesList(w http.ResponseWriter, r *http.Request, params GamesListParams) {
 	var request GamesListRequestObject
@@ -4301,41 +4425,42 @@ func (sh *strictHandler) PlayerRecentGames(w http.ResponseWriter, r *http.Reques
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"Yzb7fwAAAP//pw78DbNGAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

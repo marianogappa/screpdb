@@ -57,12 +57,6 @@ type DashboardWidget struct {
 	UpdatedAt   *string
 }
 
-type MarkerAlgorithmState struct {
-	ReplayID         int64
-	AlgorithmVersion int64
-	DetectedAt       string
-}
-
 type Player struct {
 	ID                  int64
 	ReplayID            int64
@@ -90,18 +84,19 @@ type PlayerAlias struct {
 }
 
 type Replay struct {
-	ID                 int64
-	FilePath           string
-	FileChecksum       string
-	FileName           string
-	ReplayDate         string
-	MapName            string
-	MapKind            string
-	DurationSeconds    int64
-	GameType           string
-	Matchup            string
-	TeamStacking       bool
-	TeamInfoIncomplete bool
+	ID                       int64
+	FilePath                 string
+	FileChecksum             string
+	FileName                 string
+	ReplayDate               string
+	MapName                  string
+	MapKind                  string
+	DurationSeconds          int64
+	GameType                 string
+	Matchup                  string
+	TeamStacking             bool
+	TeamInfoIncomplete       bool
+	AnalyzerAlgorithmVersion int64
 }
 
 type ReplayEvent struct {

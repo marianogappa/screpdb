@@ -36,6 +36,7 @@ func TestSetupRouter_JSONEndpoints(t *testing.T) {
 		{"global replay filter get", http.MethodGet, "/api/custom/global-replay-filter", nil},
 		{"global replay filter options", http.MethodGet, "/api/custom/global-replay-filter/options", nil},
 		{"ingest settings get", http.MethodGet, "/api/custom/ingest/settings", nil},
+		{"stale replays count", http.MethodGet, "/api/custom/replays/stale-count", nil},
 		{"aliases list", http.MethodGet, "/api/custom/aliases", nil},
 	}
 

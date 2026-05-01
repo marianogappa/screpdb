@@ -54,10 +54,9 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	// all marker detections live in replay_events with event_kind='marker' alongside
 	// narrative game_events — the single count here is their sum.
 	expectedCounts := map[string]int64{
-		"replays":                4,
-		"players":                14,
-		"replay_events":          164,
-		"marker_algorithm_state": 4,
+		"replays":       4,
+		"players":       14,
+		"replay_events": 164,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {

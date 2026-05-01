@@ -376,6 +376,40 @@ func (a *openAPIStrictAdapter) GetQueryVariables(ctx context.Context, request ap
 	})
 }
 
+type ReanalyzeStaleReplaysJSONResponse struct {
+	Payload any
+}
+
+func (response ReanalyzeStaleReplaysJSONResponse) VisitReanalyzeStaleReplaysResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return json.NewEncoder(w).Encode(response.Payload)
+}
+
+func (a *openAPIStrictAdapter) ReanalyzeStaleReplays(ctx context.Context, request apigen.ReanalyzeStaleReplaysRequestObject) (apigen.ReanalyzeStaleReplaysResponseObject, error) {
+	return responseFromPayload(ctx, request, a.service.ReanalyzeStaleReplays, func(value any) apigen.ReanalyzeStaleReplaysResponseObject {
+		return ReanalyzeStaleReplaysJSONResponse{Payload: value}
+	})
+}
+
+type GetStaleReplaysCountJSONResponse struct {
+	Payload any
+}
+
+func (response GetStaleReplaysCountJSONResponse) VisitGetStaleReplaysCountResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return json.NewEncoder(w).Encode(response.Payload)
+}
+
+func (a *openAPIStrictAdapter) GetStaleReplaysCount(ctx context.Context, request apigen.GetStaleReplaysCountRequestObject) (apigen.GetStaleReplaysCountResponseObject, error) {
+	return responseFromPayload(ctx, request, a.service.GetStaleReplaysCount, func(value any) apigen.GetStaleReplaysCountResponseObject {
+		return GetStaleReplaysCountJSONResponse{Payload: value}
+	})
+}
+
 type GamesListJSONResponse struct {
 	Payload any
 }

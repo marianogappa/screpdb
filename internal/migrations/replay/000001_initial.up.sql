@@ -1,6 +1,10 @@
 BEGIN;
 
--- Main replay tables
+-- Replay metadata: one row per ingested .rep file.
+-- analyzer_algorithm_version tracks which version of core.AlgorithmVersion the
+-- per-replay marker/build-order analysis was computed under. Default 0 means
+-- "never analyzed yet"; the bulk re-analyze flow refreshes rows where this
+-- value is below the current core.AlgorithmVersion.
 CREATE TABLE IF NOT EXISTS replays (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	file_path TEXT UNIQUE NOT NULL,
@@ -20,7 +24,13 @@ CREATE TABLE IF NOT EXISTS replays (
 	game_speed TEXT NOT NULL,
 	game_type TEXT NOT NULL,
 	home_team_size TEXT NOT NULL,
-	avail_slots_count INTEGER NOT NULL
+	avail_slots_count INTEGER NOT NULL,
+	map_kind TEXT NOT NULL DEFAULT 'Regular' CHECK (map_kind IN ('Regular', 'Money', 'UseMapSettings')),
+	team_format TEXT NOT NULL DEFAULT '',
+	matchup TEXT NOT NULL DEFAULT '',
+	team_stacking BOOLEAN NOT NULL DEFAULT 0,
+	team_info_incomplete BOOLEAN NOT NULL DEFAULT 0,
+	analyzer_algorithm_version INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS players (
@@ -38,6 +48,7 @@ CREATE TABLE IF NOT EXISTS players (
 	start_location_x INTEGER,
 	start_location_y INTEGER,
 	start_location_oclock INTEGER,
+	slot_id INTEGER NOT NULL DEFAULT 0,
 	FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE
 );
 
@@ -138,55 +149,73 @@ CREATE TABLE IF NOT EXISTS commands_low_value (
 	FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS detected_patterns_replay (
+-- replay_events stores both narrative game events (event_kind='game_event') and
+-- per-replay marker rows (event_kind='marker'). The event_type CHECK was intentionally
+-- dropped: the Go-side allowlist plus the marker registry is the source of truth, so
+-- adding/renaming an event or marker doesn't force a schema migration.
+-- payload stores optional JSON for markers carrying extra data beyond presence.
+-- attack_cast_counts is a JSON object tallying aggressive casts inside attack pressure
+-- windows; populated only on event_type='attack' rows.
+CREATE TABLE IF NOT EXISTS replay_events (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	replay_id INTEGER NOT NULL,
-	algorithm_version INTEGER NOT NULL,
-	pattern_name TEXT NOT NULL,
-	value_bool BOOLEAN,
-	value_int INTEGER,
-	value_string TEXT,
-	value_timestamp BIGINT,
-	PRIMARY KEY (replay_id, pattern_name),
-	FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS detected_patterns_replay_team (
-	replay_id INTEGER NOT NULL,
-	team INTEGER NOT NULL,
-	pattern_name TEXT NOT NULL,
-	value_bool BOOLEAN,
-	value_int INTEGER,
-	value_string TEXT,
-	value_timestamp BIGINT,
-	PRIMARY KEY (replay_id, team, pattern_name),
-	FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS detected_patterns_replay_player (
-	replay_id INTEGER NOT NULL,
-	player_id INTEGER NOT NULL,
-	pattern_name TEXT NOT NULL,
-	value_bool BOOLEAN,
-	value_int INTEGER,
-	value_string TEXT,
-	value_timestamp BIGINT,
-	PRIMARY KEY (replay_id, player_id, pattern_name),
+	seconds_from_game_start INTEGER NOT NULL,
+	event_kind TEXT NOT NULL CHECK (event_kind IN ('game_event', 'marker')),
+	event_type TEXT NOT NULL,
+	location_base_type TEXT CHECK (location_base_type IN ('starting', 'natural', 'expansion')),
+	location_base_oclock INTEGER CHECK (location_base_oclock IS NULL OR (location_base_oclock >= 0 AND location_base_oclock <= 12)),
+	location_natural_of_oclock INTEGER CHECK (location_natural_of_oclock IS NULL OR (location_natural_of_oclock >= 0 AND location_natural_of_oclock <= 12)),
+	location_mineral_only BOOLEAN,
+	source_player_id INTEGER,
+	target_player_id INTEGER,
+	attack_unit_types TEXT,
+	payload TEXT,
+	attack_cast_counts TEXT,
 	FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE,
-	FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+	FOREIGN KEY (source_player_id) REFERENCES players(id) ON DELETE CASCADE,
+	FOREIGN KEY (target_player_id) REFERENCES players(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS player_aliases (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	canonical_alias TEXT NOT NULL,
+	battle_tag_normalized TEXT NOT NULL,
+	battle_tag_raw TEXT NOT NULL,
+	aurora_id INTEGER,
+	source TEXT NOT NULL CHECK (source IN ('imported', 'manual', 'you')),
+	updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_replays_file_path ON replays(file_path);
 CREATE INDEX IF NOT EXISTS idx_replays_file_checksum ON replays(file_checksum);
 CREATE INDEX IF NOT EXISTS idx_replays_replay_date ON replays(replay_date);
+CREATE INDEX IF NOT EXISTS idx_replays_analyzer_algorithm_version ON replays(analyzer_algorithm_version);
 CREATE INDEX IF NOT EXISTS idx_players_replay_id ON players(replay_id);
 CREATE INDEX IF NOT EXISTS idx_commands_player_id_action_type ON commands(player_id, action_type);
 CREATE INDEX IF NOT EXISTS idx_commands_replay_id_player_id_action_type ON commands(replay_id, player_id, action_type);
 CREATE INDEX IF NOT EXISTS idx_commands_replay_id_action_type_seconds ON commands(replay_id, action_type, seconds_from_game_start);
 CREATE INDEX IF NOT EXISTS idx_commands_action_type_order_name ON commands(action_type, order_name);
-CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_replay_id ON detected_patterns_replay(replay_id);
-CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_team_replay_id ON detected_patterns_replay_team(replay_id);
-CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_player_replay_id ON detected_patterns_replay_player(replay_id);
-CREATE INDEX IF NOT EXISTS idx_detected_patterns_replay_player_player_id ON detected_patterns_replay_player(player_id);
+CREATE INDEX IF NOT EXISTS idx_replay_events_replay_second ON replay_events(replay_id, seconds_from_game_start);
+CREATE INDEX IF NOT EXISTS idx_replay_events_event_type_second ON replay_events(event_type, seconds_from_game_start);
+CREATE INDEX IF NOT EXISTS idx_replay_events_event_location ON replay_events(event_type, location_base_type, location_base_oclock);
+CREATE INDEX IF NOT EXISTS idx_replay_events_source_type ON replay_events(source_player_id, event_type);
+CREATE INDEX IF NOT EXISTS idx_replay_events_target_type ON replay_events(target_player_id, event_type);
+CREATE INDEX IF NOT EXISTS idx_replay_events_kind ON replay_events(event_kind);
+
+-- Partial unique index enforces one marker row per (replay, player_or_NULL, event_type).
+-- COALESCE(source_player_id, 0) is safe: players.id AUTOINCREMENT starts at 1 so 0 cannot collide.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_replay_events_marker_unique
+	ON replay_events(replay_id, COALESCE(source_player_id, 0), event_type)
+	WHERE event_kind = 'marker';
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_player_aliases_unique_source_tag_alias
+	ON player_aliases(source, battle_tag_normalized, canonical_alias);
+
+CREATE INDEX IF NOT EXISTS idx_player_aliases_tag
+	ON player_aliases(battle_tag_normalized);
+
+CREATE INDEX IF NOT EXISTS idx_player_aliases_tag_source_updated
+	ON player_aliases(battle_tag_normalized, source, updated_at DESC);
 
 COMMIT;

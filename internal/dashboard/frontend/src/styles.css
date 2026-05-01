@@ -1809,6 +1809,24 @@ body {
   50% { opacity: 1; }
 }
 
+.stale-replays-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 8px 0 16px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  background: rgba(220, 160, 60, 0.18);
+  border: 1px solid rgba(240, 180, 80, 0.5);
+  color: #f8e0b0;
+  font-size: 14px;
+}
+
+.stale-replays-banner button {
+  flex-shrink: 0;
+}
+
 /* Footer */
 .app-footer {
   margin-top: 24px;

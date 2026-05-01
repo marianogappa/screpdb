@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { api } from './api';
 import Widget from './components/Widget';
 import DashboardManager from './components/DashboardManager';
@@ -1286,6 +1286,8 @@ function App() {
   const [ingestSettingsLoading, setIngestSettingsLoading] = useState(false);
   const [ingestSettingsSaving, setIngestSettingsSaving] = useState(false);
   const [ingestSocketState, setIngestSocketState] = useState('closed');
+  const [staleReplaysCount, setStaleReplaysCount] = useState(0);
+  const [reanalyzingStale, setReanalyzingStale] = useState(false);
   const [aliases, setAliases] = useState([]);
   const [aliasesLoading, setAliasesLoading] = useState(false);
   const [aliasesMessage, setAliasesMessage] = useState('');
@@ -2164,6 +2166,45 @@ function App() {
     })();
     return () => { cancelled = true; };
   }, [currentVersion]);
+
+  const refreshStaleReplaysCount = useCallback(async () => {
+    try {
+      const data = await api.getStaleReplaysCount();
+      const next = Number(data?.count || 0);
+      setStaleReplaysCount(next);
+    } catch (err) {
+      // Surface nothing to the user — banner just stays hidden if the lookup fails.
+      console.error('Failed to load stale replays count:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshStaleReplaysCount();
+  }, [refreshStaleReplaysCount]);
+
+  useEffect(() => {
+    if (ingestStatus === 'completed' || ingestStatus === 'failed' || ingestStatus === 'idle') {
+      void refreshStaleReplaysCount();
+    }
+  }, [ingestStatus, refreshStaleReplaysCount]);
+
+  const handleReanalyzeStale = useCallback(async () => {
+    if (reanalyzingStale) return;
+    setReanalyzingStale(true);
+    try {
+      const response = await api.reanalyzeStaleReplays();
+      if (response?.started || response?.in_progress) {
+        setShowIngestPanel(true);
+      } else {
+        // Nothing to do — refresh the count so the banner clears.
+        void refreshStaleReplaysCount();
+      }
+    } catch (err) {
+      console.error('Failed to start re-analyze:', err);
+    } finally {
+      setReanalyzingStale(false);
+    }
+  }, [reanalyzingStale, refreshStaleReplaysCount]);
 
   useEffect(() => {
     if (ingestStatus !== 'running') return undefined;
@@ -3812,6 +3853,23 @@ function App() {
         </div>
 
         {error && <div className="error-message">{error}</div>}
+
+        {staleReplaysCount > 0 && ingestStatus !== 'running' ? (
+          <div className="stale-replays-banner">
+            <span>
+              {staleReplaysCount.toLocaleString()} {staleReplaysCount === 1 ? 'replay was' : 'replays were'} analyzed
+              with an older algorithm. Re-analyze to refresh markers and build orders.
+            </span>
+            <button
+              type="button"
+              className="btn-save"
+              onClick={handleReanalyzeStale}
+              disabled={reanalyzingStale}
+            >
+              {reanalyzingStale ? 'Starting…' : 'Re-analyze stale replays'}
+            </button>
+          </div>
+        ) : null}
 
         {activeView === 'games' && (
           <div className="workflow-panel">

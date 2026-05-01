@@ -32,7 +32,8 @@ CREATE TABLE replays (
   game_type TEXT NOT NULL,
   matchup TEXT NOT NULL DEFAULT '',
   team_stacking BOOLEAN NOT NULL DEFAULT 0,
-  team_info_incomplete BOOLEAN NOT NULL DEFAULT 0
+  team_info_incomplete BOOLEAN NOT NULL DEFAULT 0,
+  analyzer_algorithm_version INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE players (
@@ -97,12 +98,6 @@ CREATE TABLE replay_events (
   attack_unit_types TEXT,
   attack_cast_counts TEXT,
   payload TEXT
-);
-
-CREATE TABLE marker_algorithm_state (
-  replay_id INTEGER PRIMARY KEY,
-  algorithm_version INTEGER NOT NULL,
-  detected_at TEXT NOT NULL
 );
 
 CREATE TABLE commands (

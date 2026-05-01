@@ -326,6 +326,91 @@ func batchCheckExistingReplays(ctx context.Context, store storage.Storage, files
 	return allFiltered, nil
 }
 
+// RunForFiles drives the standard ingest pipeline for an explicit list of files,
+// skipping the directory walk and date/count filters used by Run. Callers that already
+// know which .rep files to ingest (e.g. the bulk re-analyze flow) use this entry point
+// so they don't pay for re-scanning the entire replay folder. The shared
+// StartIngestion machinery handles dedup, batching, and pattern detection identically
+// to a full ingest run.
+func RunForFiles(ctx context.Context, cfg Config, files []fileops.FileInfo) error {
+	cfg = withDefaults(cfg)
+	logger := cfg.Logger
+
+	if len(files) == 0 {
+		return nil
+	}
+
+	store, err := storage.NewSQLiteStorage(cfg.SQLitePath)
+	if err != nil {
+		return fmt.Errorf("failed to create SQLite storage: %w", err)
+	}
+	defer store.Close()
+	store.SetCommandStorageOptions(cfg.StoreRightClicks, cfg.SkipHotkeys)
+
+	if err := store.Initialize(ctx, false, false); err != nil {
+		return fmt.Errorf("failed to initialize storage: %w", err)
+	}
+
+	sink := profile.NewSink(cfg.ProfileMode)
+	defer sink.Aggregate()
+
+	dataChan, errChan := store.StartIngestion(ctx, storage.IngestionHooks{
+		OnReplayStored: logger.Progress,
+		OnDuplicateReplay: func(err error) {
+			_ = err
+		},
+		OnStoreError: func(err error) {
+			logger.Errorf("Error storing replay: %v", err)
+		},
+	})
+
+	const batchSize = 100
+	var processed, errCount, skippedUMS int64
+	var mu sync.Mutex
+
+	for i := 0; i < len(files); i += batchSize {
+		end := min(i+batchSize, len(files))
+		batch := files[i:end]
+		logger.Infof("Re-analyzing batch %d-%d of %d", i+1, end, len(files))
+
+		g, gCtx := errgroup.WithContext(ctx)
+		for _, fileInfo := range batch {
+			fileInfo := fileInfo
+			g.Go(func() error {
+				if err := processFileToChannel(gCtx, dataChan, &fileInfo, parserOptions(cfg), sink); err != nil {
+					if errors.Is(err, errSkippedUMS) {
+						mu.Lock()
+						skippedUMS++
+						mu.Unlock()
+						logger.Warnf("Skipping UMS replay: %s", fileInfo.Name)
+						return nil
+					}
+					logger.Errorf("Error re-analyzing file %s: %v", fileInfo.Name, err)
+					mu.Lock()
+					errCount++
+					mu.Unlock()
+					return nil
+				}
+				mu.Lock()
+				processed++
+				mu.Unlock()
+				return nil
+			})
+		}
+		if err := g.Wait(); err != nil {
+			logger.Errorf("Error during re-analyze batch: %v", err)
+		}
+	}
+
+	close(dataChan)
+	if err := <-errChan; err != nil {
+		return fmt.Errorf("storage error: %w", err)
+	}
+
+	logger.Successf("Re-analyze complete: processed=%d skipped_ums=%d errors=%d", processed, skippedUMS, errCount)
+	return nil
+}
+
 func processFileToChannel(ctx context.Context, dataChan storage.ReplayDataChannel, fileInfo *fileops.FileInfo, opts parser.Options, sink *profile.Sink) error {
 	// Create replay model from file info
 	replay := parser.CreateReplayFromFileInfo(fileInfo.Path, fileInfo.Name, fileInfo.Size, fileInfo.Checksum)
