@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -167,7 +168,27 @@ func DropAllMigrations(sqlitePath string) error {
 	return nil
 }
 
-// DropMigrationSet drops migrations for a specific set
+// createTableRegexp matches `CREATE TABLE [IF NOT EXISTS] "?name"?` in a SQL file.
+// Used by DropMigrationSet to rebuild the drop list when an up-only migration
+// directory has no .down.sql counterparts.
+var createTableRegexp = regexp.MustCompile(`(?i)CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?` + "`?\"?" + `(\w+)` + "`?\"?")
+
+// DropMigrationSet drops every table created by a specific migration set, then
+// clears that set's migrations-applied ledger. RunMigrationSet can re-apply the
+// migrations from scratch afterwards.
+//
+// Two paths:
+//
+//  1. If the migration directory contains .down.sql files, run them in reverse
+//     filename order (the canonical down-migration flow).
+//
+//  2. If the directory is up-only (the .down.sql siblings were dropped during
+//     a schema-consolidation), fall back to parsing every CREATE TABLE statement
+//     out of the .up.sql files and DROP TABLE-ing them in reverse order. This is
+//     the only correct behaviour for the "erase data" UI checkbox + the CLI
+//     --clean flag now that the project has consolidated to a single up-only
+//     migration per set; the previous .down.sql-only path silently dropped only
+//     the migrations ledger and left the data tables intact.
 func DropMigrationSet(sqlitePath string, set MigrationSet) error {
 	var fs embed.FS
 	var subdir string
@@ -198,25 +219,57 @@ func DropMigrationSet(sqlitePath string, set MigrationSet) error {
 		return fmt.Errorf("failed to read migrations directory: %w", err)
 	}
 
-	files := make([]string, 0, len(entries))
+	var downFiles, upFiles []string
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
 		}
-		if strings.HasSuffix(entry.Name(), ".down.sql") {
-			files = append(files, entry.Name())
+		switch {
+		case strings.HasSuffix(entry.Name(), ".down.sql"):
+			downFiles = append(downFiles, entry.Name())
+		case strings.HasSuffix(entry.Name(), ".up.sql"):
+			upFiles = append(upFiles, entry.Name())
 		}
 	}
-	sort.Sort(sort.Reverse(sort.StringSlice(files)))
 
-	for _, name := range files {
-		migrationPath := path.Join(subdir, name)
-		body, err := fs.ReadFile(migrationPath)
-		if err != nil {
-			return fmt.Errorf("failed to read migration %s: %w", name, err)
+	if len(downFiles) > 0 {
+		sort.Sort(sort.Reverse(sort.StringSlice(downFiles)))
+		for _, name := range downFiles {
+			migrationPath := path.Join(subdir, name)
+			body, err := fs.ReadFile(migrationPath)
+			if err != nil {
+				return fmt.Errorf("failed to read migration %s: %w", name, err)
+			}
+			if _, err := db.Exec(string(body)); err != nil {
+				return fmt.Errorf("failed to execute migration %s: %w", name, err)
+			}
 		}
-		if _, err := db.Exec(string(body)); err != nil {
-			return fmt.Errorf("failed to execute migration %s: %w", name, err)
+	} else {
+		// Up-only fallback: extract table names from every .up.sql, DROP TABLE
+		// them in reverse declaration order so dependents go first. Indexes
+		// die with their tables.
+		var tables []string
+		seen := map[string]struct{}{}
+		sort.Strings(upFiles)
+		for _, name := range upFiles {
+			migrationPath := path.Join(subdir, name)
+			body, err := fs.ReadFile(migrationPath)
+			if err != nil {
+				return fmt.Errorf("failed to read migration %s: %w", name, err)
+			}
+			for _, m := range createTableRegexp.FindAllStringSubmatch(string(body), -1) {
+				name := m[1]
+				if _, dup := seen[name]; dup {
+					continue
+				}
+				seen[name] = struct{}{}
+				tables = append(tables, name)
+			}
+		}
+		for i := len(tables) - 1; i >= 0; i-- {
+			if _, err := db.Exec(`DROP TABLE IF EXISTS ` + tables[i]); err != nil {
+				return fmt.Errorf("failed to drop table %s: %w", tables[i], err)
+			}
 		}
 	}
 
