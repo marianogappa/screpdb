@@ -1,5 +1,9 @@
 # screpdb
 
+[![Release](https://img.shields.io/github/v/release/marianogappa/screpdb)](https://github.com/marianogappa/screpdb/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/marianogappa/screpdb)](go.mod)
+
 screpdb is an advanced Starcraft replay reporting tool.
 
 ## Features
@@ -12,7 +16,7 @@ screpdb is an advanced Starcraft replay reporting tool.
 
 ## Installation
 
-Download the latest release from the [Releases page](https://github.com/marianogappa/screpdb/releases).
+Download the latest release from the [Releases page](https://github.com/marianogappa/screpdb/releases). See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 
 If you prefer to build from source, you'll need Go 1.25.2 or later:
@@ -37,6 +41,7 @@ go build .
 - `-m, --up-to-n-months`: Only process files from the last N months (0 = no limit)
 - `--store-right-clicks`: Store `Right Click` commands (disabled by default to reduce command-table volume)
 - `--skip-hotkeys`: Skip storing `Hotkey` commands (disabled by default)
+- `--clean`: Drop all non-dashboard tables before ingesting to start over (useful for migrations)
 ```
 
 - MCP server: ask AI anything about any game/player.
@@ -50,9 +55,11 @@ go build .
 
 - All UI functionality exposed as API: [OpenAPI schema available](api/openapi/dashboard.v1.yaml)
 
+> ⚠️ **Warning:** screpdb is currently distributed as a binary with full filesystem read/write access and unrestricted Internet access. Treat it as high-risk software and think twice before executing it. Safety guardrails are being investigated.
+
 ## License
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
@@ -60,5 +67,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Acknowledgments
 
-- Built using the `github.com/icza/screp` library for StarCraft replay parsing
-- MCP server implementation powered by `github.com/mark3labs/mcp-go`
+- Built using the [github.com/icza/screp](https://github.com/icza/screp) library for StarCraft replay parsing
