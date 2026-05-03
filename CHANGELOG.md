@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.18.0](https://github.com/marianogappa/screpdb/compare/v0.17.1...v0.18.0) (2026-05-03)
+
+
+### Features
+
+* 1v1 TvZ Mutalisk-Turret timing marker + tab; quiet stale-replays nag ([0ebff06](https://github.com/marianogappa/screpdb/commit/0ebff06fd5aacc99ee8f81a9401f05847722a2ff))
+* alliance topology tracking, fallback team derivation, team-stacking flag ([f882eeb](https://github.com/marianogappa/screpdb/commit/f882eeb7eb1a26cf055f8088e0714dbbdc9539bb))
+* batch of UX, correctness, and performance improvements ([#101](https://github.com/marianogappa/screpdb/issues/101)) ([d445d24](https://github.com/marianogappa/screpdb/commit/d445d244755e7b3fa3651be5d14ae75fb927d9e4))
+* BGH cliff-drop marker, settings migration stream, replay-filter simplification ([fbcdb54](https://github.com/marianogappa/screpdb/commit/fbcdb542d77e9369e5e7333ae8821cc3349bc2c6))
+* dedup research/upgrade commands using Liquipedia game knowledge ([b08f47c](https://github.com/marianogappa/screpdb/commit/b08f47c947c1639c736846bb3e5d993aa880e6bb))
+* discovered T/P build orders, Money-map UX, proxy chips, rush tightening ([b149ad8](https://github.com/marianogappa/screpdb/commit/b149ad8ee7653cbebef4f3c9af12a0c3c2e7b602))
+* early-game spam filter + simplified Zerg build orders ([#103](https://github.com/marianogappa/screpdb/issues/103)) ([0fa0196](https://github.com/marianogappa/screpdb/commit/0fa0196ffc1444289db574f696103085ad9e97ab))
+* empty-state ingest auto-open, footer credits, live ingest list, version awareness ([be5deb2](https://github.com/marianogappa/screpdb/commit/be5deb218a0d4b86acb6a619a5f57e66cd62b3fa))
+* gate 1-1-1 on Money maps; compact game-list filters ([659e896](https://github.com/marianogappa/screpdb/commit/659e896a410e5f5b411e20d42b01d1618d139941))
+* ingest profiler, UMS auto-discard + map-type filter, player report additions ([785e233](https://github.com/marianogappa/screpdb/commit/785e2334c89a1b8b7374681538b56babad724535))
+* migrate markers into replay_events (registry-driven pills) ([#99](https://github.com/marianogappa/screpdb/issues/99)) ([ba4de8a](https://github.com/marianogappa/screpdb/commit/ba4de8a7c588891a24e78f97a20c8d803d45d794))
+* per-replay analyzer version + bulk re-analyze stale replays ([4fe5294](https://github.com/marianogappa/screpdb/commit/4fe52940e192df7e9ce8f5209f85c378c9411ba4))
+* phased Game Events list with colored names, inline icons, animated overlays ([a3abce1](https://github.com/marianogappa/screpdb/commit/a3abce1b9ea8e016e25a62f357fdef1e08be1866))
+* refactor player report into tabs with lazy loading ([#102](https://github.com/marianogappa/screpdb/issues/102)) ([a9677b7](https://github.com/marianogappa/screpdb/commit/a9677b71d486f96b8b4a619b63ac90ba5230ccf1))
+* unified Units tab with 0-4min scaled timeline ([007c392](https://github.com/marianogappa/screpdb/commit/007c3927d5ecf123f5635a47cedeaa7b6410db9b))
+
+
+### Bug Fixes
+
+* BO events now show 'X opens with Y' and use real ownership polygons ([fa49e00](https://github.com/marianogappa/screpdb/commit/fa49e008ca217a4dc134d049327dd02d56449e30))
+* erase-data / --clean now actually drops tables ([f41a5c3](https://github.com/marianogappa/screpdb/commit/f41a5c380b847fa2b662348241a3304b3547ef3f))
+* faster stale-replays hint tooltip + inline Dismiss button ([7962517](https://github.com/marianogappa/screpdb/commit/7962517bfca7e20e1fff338fbeecda03547d1e5d))
+* filter same-team players from drop/attack/scout/nuke events ([8dc02f0](https://github.com/marianogappa/screpdb/commit/8dc02f0c175b2e918a2c7886e96f784a3b94bf5b))
+* game-report polish — taller Units timeline, BO icons, scoped overlay redraw, summary-row reshape ([c907fdd](https://github.com/marianogappa/screpdb/commit/c907fdd5c464583ba95b616bffc808b7eb259b50))
+* keep ingest WS alive while modal is closed so games-list polling works ([ef685e5](https://github.com/marianogappa/screpdb/commit/ef685e5632e069b0cd08c36dfee5895ecb8ee638))
+* stamp analyzer_algorithm_version on every replay; tooltip stays put ([b51226b](https://github.com/marianogappa/screpdb/commit/b51226b542d0fcca90a0f7a68fb6be1680994c2b))
+* tighten game-report phases, Units timeline sizing, no-team warnings ([6b97bf8](https://github.com/marianogappa/screpdb/commit/6b97bf89665a0b5a80e82348f7ca58d6425a234c))
+
 ## [0.17.1](https://github.com/marianogappa/screpdb/compare/v0.17.0...v0.17.1) (2026-04-22)
 
 
