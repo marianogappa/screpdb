@@ -18,6 +18,7 @@ import Heatmap from './components/charts/Heatmap';
 import TimingScatterRows from './components/charts/TimingScatterRows';
 import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
 import BuildOrderTimelineRows from './components/charts/BuildOrderTimelineRows';
+import MutaliskTimingChart from './components/charts/MutaliskTimingChart';
 import UnitProductionEarlyTimeline from './components/charts/UnitProductionEarlyTimeline';
 import AllianceTimeline from './components/charts/AllianceTimeline';
 import { getUnitIcon, getWorkerIconForRace, normalizeUnitName } from './lib/gameAssets';
@@ -534,17 +535,21 @@ const renderSummaryMapStack = ({
 // composite chips ("mind_control" from became_terran/became_zerg, and the UI's
 // short "recalls"/"nukes" labels).
 const collectFeaturingKeysFromMainGame = (mainGame) => {
-  const found = new Set();
+  // Returns { keys: Set<string>, rowByKey: Record<key, pattern row> }.
+  // The row carries detected_second + payload so pill labels with
+  // {minute}/{timestamp}/{subject} placeholders can interpolate properly.
+  const keys = new Set();
+  const rowByKey = {};
   const isMoney = String(mainGame?.map_kind || '') === 'Money';
 
   (mainGame?.game_events || []).forEach((ev) => {
     const t = normalizeEventType(ev?.type);
-    if (t === 'zergling_rush')  found.add('zergling_rush');
-    if (t === 'cannon_rush')    found.add('cannon_rush');
-    if (t === 'bunker_rush')    found.add('bunker_rush');
-    if (t === 'proxy_gate')     found.add('proxy_gate');
-    if (t === 'proxy_rax')      found.add('proxy_rax');
-    if (t === 'proxy_factory')  found.add('proxy_factory');
+    if (t === 'zergling_rush')  keys.add('zergling_rush');
+    if (t === 'cannon_rush')    keys.add('cannon_rush');
+    if (t === 'bunker_rush')    keys.add('bunker_rush');
+    if (t === 'proxy_gate')     keys.add('proxy_gate');
+    if (t === 'proxy_rax')      keys.add('proxy_rax');
+    if (t === 'proxy_factory')  keys.add('proxy_factory');
   });
 
   (mainGame?.players || []).forEach((p) => {
@@ -557,12 +562,13 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
       // populated separately (player.detected_patterns + build_orders),
       // so they keep showing.
       if (isMoney && typeof key === 'string' && key.startsWith('bo_')) return;
-      found.add(key);
-      if (key === 'became_terran' || key === 'became_zerg') found.add('mind_control');
+      keys.add(key);
+      if (!rowByKey[key]) rowByKey[key] = pat;
+      if (key === 'became_terran' || key === 'became_zerg') keys.add('mind_control');
     });
   });
 
-  return found;
+  return { keys, rowByKey };
 };
 
 // buildMainGameFeaturingPills produces the ordered pill list for the featuring
@@ -572,7 +578,7 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
 // games_list field; markers without one surface via a minimal fallback.
 const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
   if (!mainGame) return [];
-  const keys = collectFeaturingKeysFromMainGame(mainGame);
+  const { keys, rowByKey } = collectFeaturingKeysFromMainGame(mainGame);
   const registry = markerDefs?.markers || {};
   const order = Array.isArray(markerDefs?.featuring_order) ? markerDefs.featuring_order : [];
   const gameEventFeaturesByKey = {};
@@ -583,6 +589,13 @@ const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
     .map((key) => {
       const def = registry[key];
       if (def?.games_list) {
+        // Resolve via renderPillText so {minute}/{timestamp}/{subject}
+        // tokens in the games_list label/icon_key get interpolated against
+        // the matching detected-pattern row (when one exists).
+        const rendered = renderPillText(def, PILL_SURFACES.gamesList, rowByKey[key]);
+        if (rendered) {
+          return { key, label: rendered.label || def.name, iconKey: rendered.iconKey || '' };
+        }
         return { key, label: def.games_list.label || def.name, iconKey: def.games_list.icon_key || '' };
       }
       const ge = gameEventFeaturesByKey[key];
@@ -1287,7 +1300,20 @@ function App() {
   const [ingestSettingsSaving, setIngestSettingsSaving] = useState(false);
   const [ingestSocketState, setIngestSocketState] = useState('closed');
   const [staleReplaysCount, setStaleReplaysCount] = useState(0);
-  const [reanalyzingStale, setReanalyzingStale] = useState(false);
+  // Session-only dismissal of the stale-replays hint icon. Stored as the
+  // count at the moment the user dismissed it; the icon reappears when a
+  // larger stale count is detected (e.g. after a fresh ingest left some
+  // older replays behind). sessionStorage = clears with the tab.
+  const [dismissedStaleCount, setDismissedStaleCount] = useState(() => {
+    try {
+      const v = window.sessionStorage.getItem('dismissedStaleReplaysCount');
+      return v == null ? 0 : Number(v) || 0;
+    } catch (_) { return 0; }
+  });
+  const dismissStaleHint = useCallback(() => {
+    try { window.sessionStorage.setItem('dismissedStaleReplaysCount', String(staleReplaysCount)); } catch (_) {}
+    setDismissedStaleCount(staleReplaysCount);
+  }, [staleReplaysCount]);
   const [aliases, setAliases] = useState([]);
   const [aliasesLoading, setAliasesLoading] = useState(false);
   const [aliasesMessage, setAliasesMessage] = useState('');
@@ -1636,10 +1662,14 @@ function App() {
       let nextTab = wantTab && MAIN_GAME_TABS.includes(String(wantTab).trim().toLowerCase())
         ? String(wantTab).trim().toLowerCase()
         : 'summary';
-      // Build Orders tab is hidden when no BOs were detected; don't leave the
-      // user stranded on an invisible tab.
+      // Build Orders / Mutalisk Timing tabs are hidden when no data was
+      // detected; don't leave the user stranded on an invisible tab.
       const hasBuildOrders = Array.isArray(data?.build_orders) && data.build_orders.length > 0;
       if (nextTab === 'build-orders' && !hasBuildOrders) {
+        nextTab = 'summary';
+      }
+      const hasMutaliskTiming = Array.isArray(data?.mutalisk_timing_chart) && data.mutalisk_timing_chart.length > 0;
+      if (nextTab === 'mutalisk-timing' && !hasMutaliskTiming) {
         nextTab = 'summary';
       }
       setMainGameTab(nextTab);
@@ -2188,23 +2218,6 @@ function App() {
     }
   }, [ingestStatus, refreshStaleReplaysCount]);
 
-  const handleReanalyzeStale = useCallback(async () => {
-    if (reanalyzingStale) return;
-    setReanalyzingStale(true);
-    try {
-      const response = await api.reanalyzeStaleReplays();
-      if (response?.started || response?.in_progress) {
-        setShowIngestPanel(true);
-      } else {
-        // Nothing to do — refresh the count so the banner clears.
-        void refreshStaleReplaysCount();
-      }
-    } catch (err) {
-      console.error('Failed to start re-analyze:', err);
-    } finally {
-      setReanalyzingStale(false);
-    }
-  }, [reanalyzingStale, refreshStaleReplaysCount]);
 
   useEffect(() => {
     if (ingestStatus !== 'running') return undefined;
@@ -3844,6 +3857,18 @@ function App() {
                 <span className="ingest-running-badge" title="Ingestion in progress — click to view logs">Ingesting…</span>
               ) : null}
             </button>
+            {staleReplaysCount > 0 && staleReplaysCount > dismissedStaleCount && ingestStatus !== 'running' ? (
+              <span
+                className="stale-replays-hint"
+                title={`${staleReplaysCount.toLocaleString()} ${staleReplaysCount === 1 ? 'replay was' : 'replays were'} analyzed with an older algorithm. Re-ingest to refresh markers and build orders — open the Ingest panel and tick the "erase data" checkbox so the existing rows are dropped first. Click this icon to dismiss until next session.`}
+                onClick={(ev) => { ev.stopPropagation(); dismissStaleHint(); }}
+                style={{ marginLeft: '6px', cursor: 'pointer', fontSize: '14px' }}
+                role="button"
+                aria-label="Stale-replays hint — click to dismiss"
+              >
+                ⚠️
+              </span>
+            ) : null}
           </div>
           {customDashboardsEnabled && (
             <div className="workflow-nav-group">
@@ -3853,23 +3878,6 @@ function App() {
         </div>
 
         {error && <div className="error-message">{error}</div>}
-
-        {staleReplaysCount > 0 && ingestStatus !== 'running' ? (
-          <div className="stale-replays-banner">
-            <span>
-              {staleReplaysCount.toLocaleString()} {staleReplaysCount === 1 ? 'replay was' : 'replays were'} analyzed
-              with an older algorithm. Re-analyze to refresh markers and build orders.
-            </span>
-            <button
-              type="button"
-              className="btn-save"
-              onClick={handleReanalyzeStale}
-              disabled={reanalyzingStale}
-            >
-              {reanalyzingStale ? 'Starting…' : 'Re-analyze stale replays'}
-            </button>
-          </div>
-        ) : null}
 
         {activeView === 'games' && (
           <div className="workflow-panel">
@@ -4546,6 +4554,17 @@ function App() {
                         onClick={() => setMainGameTab('build-orders')}
                       >
                         Build Orders
+                      </button>
+                    ) : null}
+                    {Array.isArray(mainGame?.mutalisk_timing_chart) && mainGame.mutalisk_timing_chart.length > 0 ? (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={mainGameTab === 'mutalisk-timing'}
+                        className={`workflow-production-tab ${mainGameTab === 'mutalisk-timing' ? 'workflow-production-tab-active' : ''}`}
+                        onClick={() => setMainGameTab('mutalisk-timing')}
+                      >
+                        Mutalisk Timing
                       </button>
                     ) : null}
                     <button
@@ -5234,6 +5253,21 @@ function App() {
                     ) : (
                       <div className="workflow-card">
                         <div className="chart-empty">No recognized build orders for this game.</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {mainGameTab === 'mutalisk-timing' && (
+                  <div className="workflow-timing-charts">
+                    {Array.isArray(mainGame?.mutalisk_timing_chart) && mainGame.mutalisk_timing_chart.length > 0 ? (
+                      <MutaliskTimingChart
+                        zSide={mainGame.mutalisk_timing_chart.find((s) => (s.feature_key || '').includes('mutalisk'))}
+                        tSide={mainGame.mutalisk_timing_chart.find((s) => (s.feature_key || '').includes('turret'))}
+                        summary={mainGame.mutalisk_timing_summary}
+                      />
+                    ) : (
+                      <div className="workflow-card">
+                        <div className="chart-empty">Mutalisk-Turret timing not detected for this game.</div>
                       </div>
                     )}
                   </div>

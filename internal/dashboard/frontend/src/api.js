@@ -174,18 +174,6 @@ export const api = {
     return response.json();
   },
 
-  reanalyzeStaleReplays: async () => {
-    const response = await fetch(`${API_CUSTOM}/replays/reanalyze-stale`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to start re-analyze');
-    }
-    return response.json();
-  },
-
   listAliases: async () => {
     const response = await fetch(`${API_CUSTOM}/aliases`);
     if (!response.ok) {

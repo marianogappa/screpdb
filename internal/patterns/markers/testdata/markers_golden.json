@@ -8,6 +8,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":326,\"muta_burst_count\":5,\"mutalisk_finished\":351,\"spire_cmd\":247}"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
       },
@@ -38,6 +43,11 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":187,\"first_turret_cmd\":333,\"turret_burst_count\":10,\"turret_finished\":352}"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       },
@@ -54,6 +64,11 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 11 Hatch",
         "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":117,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":322,\"muta_burst_count\":4,\"mutalisk_finished\":347,\"spire_cmd\":240}"
       },
       {
         "replay_player_id": 0,
@@ -79,6 +94,11 @@
         "replay_player_id": 1,
         "pattern_name": "SK Terran",
         "value": "400"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":266,\"first_turret_cmd\":330,\"turret_burst_count\":10,\"turret_finished\":349}"
       },
       {
         "replay_player_id": 1,

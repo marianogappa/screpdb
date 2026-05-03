@@ -17,10 +17,11 @@ export const PILL_SURFACES = Object.freeze({
   eventsList:    'events_list',
 });
 
-// interpolatePlaceholders resolves {subject} and {minute} in a template string.
+// interpolatePlaceholders resolves {subject}, {minute}, and {timestamp} in a template string.
 // {subject} reads the marker's payload (JSON blob) via the definition's Subject;
-// {minute} comes from detected_second divided by 60 (integer).
-const interpolatePlaceholders = (template, { subject, minute }) => {
+// {minute} comes from detected_second divided by 60 (integer);
+// {timestamp} formats detected_second as M:SS.
+const interpolatePlaceholders = (template, { subject, minute, timestamp }) => {
   if (!template) return '';
   let out = template;
   if (out.includes('{subject}')) {
@@ -28,6 +29,9 @@ const interpolatePlaceholders = (template, { subject, minute }) => {
   }
   if (out.includes('{minute}')) {
     out = out.split('{minute}').join(minute == null ? '' : String(minute));
+  }
+  if (out.includes('{timestamp}')) {
+    out = out.split('{timestamp}').join(timestamp == null ? '' : String(timestamp));
   }
   return out;
 };
@@ -57,6 +61,14 @@ const minuteFromSecond = (second) => {
   return Math.floor(Number(second) / 60);
 };
 
+const timestampFromSecond = (second) => {
+  if (!Number.isFinite(Number(second))) return null;
+  const total = Math.max(0, Math.floor(Number(second)));
+  const m = Math.floor(total / 60);
+  const s = String(total % 60).padStart(2, '0');
+  return `${m}:${s}`;
+};
+
 // renderPillText computes the final displayed label + icon-key for a (marker,
 // surface, row) triple. Returns null when the surface has no pill declared.
 export const renderPillText = (definition, surface, row) => {
@@ -64,11 +76,12 @@ export const renderPillText = (definition, surface, row) => {
   const pill = definition[surface];
   if (!pill) return null;
 
-  const subject = resolveSubject(pill.subject, row?.payload);
-  const minute  = minuteFromSecond(row?.detected_second);
+  const subject   = resolveSubject(pill.subject, row?.payload);
+  const minute    = minuteFromSecond(row?.detected_second);
+  const timestamp = timestampFromSecond(row?.detected_second);
 
-  const label   = interpolatePlaceholders(pill.label, { subject, minute });
-  const iconKey = interpolatePlaceholders(pill.icon_key, { subject, minute });
+  const label   = interpolatePlaceholders(pill.label, { subject, minute, timestamp });
+  const iconKey = interpolatePlaceholders(pill.icon_key, { subject, minute, timestamp });
 
   return {
     label,

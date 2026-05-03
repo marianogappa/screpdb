@@ -16,7 +16,6 @@ import (
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
 	"github.com/marianogappa/screpdb/internal/dashboard/variables"
-	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/ingest"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 	"github.com/marianogappa/screpdb/internal/storage"
@@ -523,110 +522,6 @@ func (d *Dashboard) GetStaleReplaysCount(ctx context.Context, _ apigen.GetStaleR
 	}, nil
 }
 
-// ReanalyzeStaleReplays re-runs pattern detection on every replay whose stored
-// analyzer_algorithm_version is below the current core.AlgorithmVersion. Replays whose
-// original .rep file is no longer on disk are silently deleted (cascade). The actual
-// work runs in the background and progress streams via the existing ingest-logs
-// WebSocket; this endpoint just kicks it off and reports whether it started.
-func (d *Dashboard) ReanalyzeStaleReplays(_ context.Context, _ apigen.ReanalyzeStaleReplaysRequestObject) (any, error) {
-	store, err := storage.NewSQLiteStorage(d.sqlitePath)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	stale, err := store.ListStaleReplays(d.ctx, core.AlgorithmVersion)
-	if err != nil {
-		store.Close()
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	store.Close()
-
-	if len(stale) == 0 {
-		return map[string]any{
-			"ok":              true,
-			"started":         false,
-			"refreshed":       0,
-			"deleted_missing": 0,
-		}, nil
-	}
-
-	// Reuse the ingest singleton so this and a regular ingest can't run concurrently
-	// (they share storage state and the WebSocket log stream).
-	if !d.tryStartIngest("re-analyze stale replays") {
-		return map[string]any{
-			"ok":          true,
-			"started":     false,
-			"in_progress": true,
-		}, nil
-	}
-
-	logger := d.newIngestLogger()
-	go func() {
-		runErr := d.runReanalyzeStale(d.ctx, stale, logger)
-		d.finishIngest(runErr)
-	}()
-
-	return map[string]any{
-		"ok":      true,
-		"started": true,
-		"total":   len(stale),
-	}, nil
-}
-
-// runReanalyzeStale walks the stale-replay list once: missing-file rows are deleted
-// (cascade), surviving ones get their stored data wiped and are re-fed through the
-// standard ingest pipeline so fresh world-state, markers, and build-orders land under
-// the current AlgorithmVersion. Returns nil even if individual replays fail; per-replay
-// errors are logged via the ingest logger.
-func (d *Dashboard) runReanalyzeStale(ctx context.Context, stale []storage.StaleReplay, logger *ingest.Logger) error {
-	store, err := storage.NewSQLiteStorage(d.sqlitePath)
-	if err != nil {
-		return fmt.Errorf("failed to open storage: %w", err)
-	}
-	defer store.Close()
-
-	logger.Infof("Re-analyzing %d stale replay(s)", len(stale))
-
-	var refreshFiles []fileops.FileInfo
-	var deletedMissing int
-	for _, sr := range stale {
-		if _, statErr := os.Stat(sr.FilePath); statErr != nil {
-			if os.IsNotExist(statErr) {
-				if delErr := store.DeleteReplay(ctx, sr.ID); delErr != nil {
-					logger.Errorf("Failed to delete missing replay id=%d: %v", sr.ID, delErr)
-					continue
-				}
-				deletedMissing++
-				continue
-			}
-			logger.Errorf("Stat failed for replay id=%d path=%s: %v", sr.ID, sr.FilePath, statErr)
-			continue
-		}
-		fileInfo, err := fileops.NewFileInfoFromPath(sr.FilePath)
-		if err != nil {
-			logger.Errorf("Failed to read replay file id=%d path=%s: %v", sr.ID, sr.FilePath, err)
-			continue
-		}
-		// Drop the existing row before re-ingest so the dedup check passes and FK
-		// cascades clear stale child rows in one shot.
-		if delErr := store.DeleteReplay(ctx, sr.ID); delErr != nil {
-			logger.Errorf("Failed to delete replay id=%d before refresh: %v", sr.ID, delErr)
-			continue
-		}
-		refreshFiles = append(refreshFiles, *fileInfo)
-	}
-
-	logger.Infof("Deleted %d replay(s) with missing .rep files; refreshing %d", deletedMissing, len(refreshFiles))
-
-	if len(refreshFiles) == 0 {
-		return nil
-	}
-
-	cfg := ingest.Config{
-		SQLitePath: d.sqlitePath,
-		Logger:     logger,
-	}
-	return ingest.RunForFiles(ctx, cfg, refreshFiles)
-}
 
 func (d *Dashboard) GetIngestSettings(ctx context.Context, _ apigen.GetIngestSettingsRequestObject) (any, error) {
 	inputDir, err := d.getIngestInputDir(ctx)

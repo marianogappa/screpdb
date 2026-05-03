@@ -36,17 +36,20 @@ function BuildOrderTimelineRows({ group }) {
     events.forEach((e) => {
       // Expert-backed rows contribute target ± tolerance to the bounds;
       // count-only rows (no_expert) only have an actual timing.
+      const buildTime = Number(e.build_time_seconds) || 0;
       if (!e.no_expert) {
         const target = Number(e.target_second) || 0;
         const early = Number(e.tolerance_early_seconds) || 0;
         const late = Number(e.tolerance_late_seconds) || 0;
         minSecond = Math.min(minSecond, target - early);
-        maxSecond = Math.max(maxSecond, target + late);
+        // Build-time span extends the right edge to target+late+build_time
+        // so the completion marker stays in view.
+        maxSecond = Math.max(maxSecond, target + late + buildTime);
       }
       if (e.found) {
         const actual = Number(e.actual_second) || 0;
         minSecond = Math.min(minSecond, actual);
-        maxSecond = Math.max(maxSecond, actual);
+        maxSecond = Math.max(maxSecond, actual + buildTime);
       }
     });
     if (!Number.isFinite(minSecond)) minSecond = 0;
@@ -115,6 +118,7 @@ function BuildOrderTimelineRows({ group }) {
             const early = Number(entry.tolerance_early_seconds) || 0;
             const late = Number(entry.tolerance_late_seconds) || 0;
             const actual = Number(entry.actual_second) || 0;
+            const buildTime = Number(entry.build_time_seconds) || 0;
             const withinTolerance = Boolean(entry.within_tolerance);
             const found = Boolean(entry.found);
             const actualColor = noExpert
@@ -185,6 +189,54 @@ function BuildOrderTimelineRows({ group }) {
                       strokeWidth="14"
                       strokeLinecap="round"
                     />
+                    {/* Expert build-time span: from target → target+build_time.
+                        Visualises that the tick is "build started" while the
+                        unit/building is only available at the right edge. */}
+                    {buildTime > 0 ? (
+                      <g
+                        onMouseEnter={(e) => updateHover(e, {
+                          pointKind: 'Expert build span',
+                          eventKey: entry.key,
+                          time: target,
+                          tol: `${buildTime}s build → ${formatTime(target + buildTime)}`,
+                        })}
+                        onMouseMove={(e) => updateHover(e, {
+                          pointKind: 'Expert build span',
+                          eventKey: entry.key,
+                          time: target,
+                          tol: `${buildTime}s build → ${formatTime(target + buildTime)}`,
+                        })}
+                        onMouseLeave={() => setHover(null)}
+                      >
+                        <line
+                          x1={xAt(target)}
+                          y1={rowY - 4}
+                          x2={xAt(target + buildTime)}
+                          y2={rowY - 4}
+                          stroke="rgba(251, 191, 36, 0.55)"
+                          strokeWidth="2"
+                          strokeDasharray="2,3"
+                        />
+                        {/* Completion cap — small vertical tick at start+build_time */}
+                        <line
+                          x1={xAt(target + buildTime)}
+                          y1={rowY - 8}
+                          x2={xAt(target + buildTime)}
+                          y2={rowY}
+                          stroke="rgba(251, 191, 36, 0.85)"
+                          strokeWidth="2"
+                        />
+                        <text
+                          x={xAt(target + buildTime)}
+                          y={rowY - 11}
+                          textAnchor="middle"
+                          fill="rgba(251, 191, 36, 0.9)"
+                          fontSize="9"
+                        >
+                          {formatTime(target + buildTime)}
+                        </text>
+                      </g>
+                    ) : null}
                     <g
                       onMouseEnter={(e) => updateHover(e, {
                         pointKind: 'Expert target',
@@ -224,6 +276,54 @@ function BuildOrderTimelineRows({ group }) {
                       strokeDasharray="3,3"
                       opacity="0.55"
                     />
+                    {/* Actual build-time span: from actual → actual+build_time.
+                        Same colour as the actual marker so it visually pairs.
+                        Vertical guide also extended to the completion second. */}
+                    {buildTime > 0 ? (
+                      <g
+                        onMouseEnter={(e) => updateHover(e, {
+                          pointKind: 'Player build span',
+                          eventKey: entry.key,
+                          time: actual,
+                          tol: `${buildTime}s build → ${formatTime(actual + buildTime)}`,
+                        })}
+                        onMouseMove={(e) => updateHover(e, {
+                          pointKind: 'Player build span',
+                          eventKey: entry.key,
+                          time: actual,
+                          tol: `${buildTime}s build → ${formatTime(actual + buildTime)}`,
+                        })}
+                        onMouseLeave={() => setHover(null)}
+                      >
+                        <line
+                          x1={xAt(actual)}
+                          y1={rowY + 4}
+                          x2={xAt(actual + buildTime)}
+                          y2={rowY + 4}
+                          stroke={actualColor}
+                          strokeWidth="2"
+                          strokeDasharray="2,3"
+                          opacity="0.85"
+                        />
+                        <line
+                          x1={xAt(actual + buildTime)}
+                          y1={rowY}
+                          x2={xAt(actual + buildTime)}
+                          y2={rowY + 8}
+                          stroke={actualColor}
+                          strokeWidth="2"
+                        />
+                        <text
+                          x={xAt(actual + buildTime)}
+                          y={rowY + 18}
+                          textAnchor="middle"
+                          fill={actualColor}
+                          fontSize="9"
+                        >
+                          {formatTime(actual + buildTime)}
+                        </text>
+                      </g>
+                    ) : null}
                     <text
                       x={xAt(actual)}
                       y={topPadding - 8}

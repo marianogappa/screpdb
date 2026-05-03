@@ -262,6 +262,17 @@ func NewEngine(replay *models.Replay, players []*models.Player, mapCtx *models.R
 	return e
 }
 
+// EnrichedStream returns a copy of the full per-replay enriched-command
+// stream (all players, in time order). Used by markers that need cross-player
+// visibility at Finalize time — the per-(player × marker) detector framework
+// only feeds Observe with the current player's commands, so callers that gate
+// on opponent activity walk this stream.
+func (e *Engine) EnrichedStream() []cmdenrich.EnrichedCommand {
+	out := make([]cmdenrich.EnrichedCommand, len(e.stream))
+	copy(out, e.stream)
+	return out
+}
+
 func (e *Engine) Entries() []NarrativeEntry {
 	e.Finalize()
 	out := make([]NarrativeEntry, len(e.entries))

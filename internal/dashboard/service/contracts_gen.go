@@ -31,7 +31,6 @@ type DashboardService interface {
 	UpdateIngestSettings(ctx context.Context, request apigen.UpdateIngestSettingsRequestObject) (HandlerResult, error)
 	ExecuteQuery(ctx context.Context, request apigen.ExecuteQueryRequestObject) (HandlerResult, error)
 	GetQueryVariables(ctx context.Context, request apigen.GetQueryVariablesRequestObject) (HandlerResult, error)
-	ReanalyzeStaleReplays(ctx context.Context, request apigen.ReanalyzeStaleReplaysRequestObject) (HandlerResult, error)
 	GetStaleReplaysCount(ctx context.Context, request apigen.GetStaleReplaysCountRequestObject) (HandlerResult, error)
 	GamesList(ctx context.Context, request apigen.GamesListRequestObject) (HandlerResult, error)
 	GameDetail(ctx context.Context, request apigen.GameDetailRequestObject) (HandlerResult, error)

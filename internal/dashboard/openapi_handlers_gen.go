@@ -376,23 +376,6 @@ func (a *openAPIStrictAdapter) GetQueryVariables(ctx context.Context, request ap
 	})
 }
 
-type ReanalyzeStaleReplaysJSONResponse struct {
-	Payload any
-}
-
-func (response ReanalyzeStaleReplaysJSONResponse) VisitReanalyzeStaleReplaysResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) ReanalyzeStaleReplays(ctx context.Context, request apigen.ReanalyzeStaleReplaysRequestObject) (apigen.ReanalyzeStaleReplaysResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.ReanalyzeStaleReplays, func(value any) apigen.ReanalyzeStaleReplaysResponseObject {
-		return ReanalyzeStaleReplaysJSONResponse{Payload: value}
-	})
-}
-
 type GetStaleReplaysCountJSONResponse struct {
 	Payload any
 }

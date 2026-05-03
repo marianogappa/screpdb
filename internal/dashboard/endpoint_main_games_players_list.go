@@ -279,11 +279,16 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 	replayIDs := make([]int64, 0, len(items))
 	itemIndexByReplayID := map[int64]int{}
 	featureSets := map[int64]map[string]struct{}{}
+	// secondsByKey caches detected_second per (replayID, featureKey) for
+	// pills whose label includes a {timestamp} placeholder (mutalisk_timing /
+	// turret_timing). Empty for keys whose label is static.
+	secondsByKey := map[int64]map[string]int64{}
 	mapKindByReplayID := map[int64]string{}
 	for i, item := range items {
 		replayIDs = append(replayIDs, item.ReplayID)
 		itemIndexByReplayID[item.ReplayID] = i
 		featureSets[item.ReplayID] = map[string]struct{}{}
+		secondsByKey[item.ReplayID] = map[string]int64{}
 		mapKindByReplayID[item.ReplayID] = item.MapKind
 	}
 	if len(replayIDs) == 0 {
@@ -299,8 +304,12 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 		// (row presence alone = match; no value-column truthiness check needed).
 		featureKey := strings.TrimSpace(strings.ToLower(row.PatternName))
 		switch featureKey {
-		case "carriers", "battlecruisers", "ten_plus_scouts", "mech", "sk_terran", "one_one_one", "mech_transition":
+		case "carriers", "battlecruisers", "ten_plus_scouts", "mech", "sk_terran", "one_one_one", "mech_transition",
+			"mutalisk_timing", "turret_timing":
 			featureSets[replayID][featureKey] = struct{}{}
+			if featureKey == "mutalisk_timing" || featureKey == "turret_timing" {
+				secondsByKey[replayID][featureKey] = row.DetectedSecond
+			}
 		case "made_recalls":
 			featureSets[replayID]["recalls"] = struct{}{}
 		case "threw_nukes":
@@ -340,9 +349,14 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 		}
 		labels := make([]string, 0, len(set))
 		for _, cfg := range workflowFeaturingFilters {
-			if _, has := set[cfg.Key]; has {
-				labels = append(labels, cfg.Label)
+			if _, has := set[cfg.Key]; !has {
+				continue
 			}
+			label := cfg.Label
+			if sec, ok := secondsByKey[replayID][cfg.Key]; ok && sec > 0 {
+				label = fmt.Sprintf("%s %d:%02d", cfg.Label, sec/60, sec%60)
+			}
+			labels = append(labels, label)
 		}
 		items[idx].Featuring = labels
 	}

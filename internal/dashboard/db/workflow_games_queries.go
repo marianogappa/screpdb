@@ -38,6 +38,7 @@ type WorkflowPlayerPatternRow struct {
 	ValueInt       sql.NullInt64
 	ValueString    sql.NullString
 	ValueTimestamp sql.NullInt64
+	DetectedSecond int64
 }
 
 type WorkflowReplayEventRow struct {
@@ -258,7 +259,7 @@ func (s *Store) ListFeaturingPlayerPatternRows(ctx context.Context, replayIDs []
 		quoted = append(quoted, "'"+strings.ReplaceAll(key, "'", "''")+"'")
 	}
 	rows, err := s.ReplayQueryContext(ctx, `
-		SELECT replay_id, event_type, 1, NULL, payload, NULL
+		SELECT replay_id, event_type, 1, NULL, payload, NULL, seconds_from_game_start
 		FROM replay_events
 		WHERE replay_id IN (`+placeholders+`)
 			AND event_kind = 'marker'
@@ -271,7 +272,7 @@ func (s *Store) ListFeaturingPlayerPatternRows(ctx context.Context, replayIDs []
 	result := []WorkflowPlayerPatternRow{}
 	for rows.Next() {
 		var row WorkflowPlayerPatternRow
-		if err := rows.Scan(&row.ReplayID, &row.PatternName, &row.ValueBool, &row.ValueInt, &row.ValueString, &row.ValueTimestamp); err != nil {
+		if err := rows.Scan(&row.ReplayID, &row.PatternName, &row.ValueBool, &row.ValueInt, &row.ValueString, &row.ValueTimestamp, &row.DetectedSecond); err != nil {
 			return nil, err
 		}
 		result = append(result, row)

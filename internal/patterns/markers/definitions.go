@@ -41,6 +41,8 @@ const (
 	subjDrone            = models.GeneralUnitDrone
 	subjOverlord         = models.GeneralUnitOverlord
 	subjZergling         = models.GeneralUnitZergling
+	subjSpire            = models.GeneralUnitSpire
+	subjMutalisk         = models.GeneralUnitMutalisk
 
 	// Protoss
 	subjNexus           = models.GeneralUnitNexus
@@ -63,6 +65,7 @@ const (
 	subjFactory        = models.GeneralUnitFactory
 	subjStarport       = models.GeneralUnitStarport
 	subjEngineeringBay = models.GeneralUnitEngineeringBay
+	subjMissileTurret  = models.GeneralUnitMissileTurret
 	subjBunker         = models.GeneralUnitBunker
 	subjMedic          = models.GeneralUnitMedic
 	subjVulture        = models.GeneralUnitVulture
@@ -784,6 +787,43 @@ func allMarkers() []Marker {
 			RuleDeadline:  endOfReplaySentinel,
 			SummaryPlayer: &Pill{Label: "Mech transition at min {minute}", IconKey: "siegetank"},
 			GamesList:     &Pill{Label: "Mech transition", IconKey: "siegetank"},
+		},
+		{
+			// Mutalisk timing (Z side) — fires iff opponent (T) also
+			// matches the turret-timing burst. Coupled with the
+			// turret_timing marker below via a shared cross-player gate
+			// in mutalisk_turret_timing.go that walks the worldstate
+			// engine's full enriched stream at Finalize.
+			//
+			// No per-event Expert tolerance bands: the only progamer
+			// reference baked into this marker is the muta-vs-turret
+			// completion gap (median + p25/p75 from the cwal-dl 1v1 TvZ
+			// corpus), surfaced on the Mutalisk Timing tab — see
+			// populateMutaliskTimingForGameDetail.
+			Name:         "Mutalisk timing",
+			PatternName:  "Mutalisk timing",
+			FeatureKey:   "mutalisk_timing",
+			Kind:         KindMarker,
+			Race:         RaceZerg,
+			Matchup:      []string{"TvZ"},
+			Custom:       func() CustomEvaluator { return &mutaTimingEvaluator{} },
+			RuleDeadline: endOfReplaySentinel,
+			SummaryPlayer: &Pill{Label: "Mutalisk timing {timestamp}", IconKey: "mutalisk"},
+			SummaryReplay: &Pill{Label: "Mutalisk timing {timestamp}", IconKey: "mutalisk"},
+			GamesList:     &Pill{Label: "Mutalisk timing {timestamp}", IconKey: "mutalisk"},
+		},
+		{
+			Name:         "Turret timing",
+			PatternName:  "Turret timing",
+			FeatureKey:   "turret_timing",
+			Kind:         KindMarker,
+			Race:         RaceTerran,
+			Matchup:      []string{"TvZ"},
+			Custom:       func() CustomEvaluator { return &turretTimingEvaluator{} },
+			RuleDeadline: endOfReplaySentinel,
+			SummaryPlayer: &Pill{Label: "Turret timing {timestamp}", IconKey: "missileturret"},
+			SummaryReplay: &Pill{Label: "Turret timing {timestamp}", IconKey: "missileturret"},
+			GamesList:     &Pill{Label: "Turret timing {timestamp}", IconKey: "missileturret"},
 		},
 		{
 			Name:         "Carriers",

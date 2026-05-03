@@ -260,6 +260,8 @@ var workflowFeaturingFilters = []struct {
 	{Key: "sk_terran", Label: "SK Terran", Group: "marker", IconKeys: []string{"marine", "medic"}},
 	{Key: "one_one_one", Label: "1-1-1", Group: "marker"},
 	{Key: "mech_transition", Label: "Mech Transition", Group: "marker"},
+	{Key: "mutalisk_timing", Label: "Mutalisk timing", Group: "marker", IconKey: "mutalisk"},
+	{Key: "turret_timing", Label: "Turret timing", Group: "marker", IconKey: "missileturret"},
 	{Key: "cannon_rush", Label: "Cannon Rush", Group: "marker", IconKey: "photoncannon", IconLabel: "Rush"},
 	{Key: "bunker_rush", Label: "Bunker Rush", Group: "marker", IconKey: "bunker", IconLabel: "Rush"},
 	{Key: "zergling_rush", Label: "Zergling Rush", Group: "marker", IconKey: "zergling", IconLabel: "Rush"},
@@ -358,7 +360,9 @@ type workflowGameDetail struct {
 	FirstUnitEfficiency  []workflowFirstUnitEfficiencyPlayer      `json:"first_unit_efficiency"`
 	UnitCadence          []workflowGameUnitCadencePlayer          `json:"unit_production_cadence"`
 	ViewportMultitasking []workflowGameViewportMultitaskingPlayer `json:"viewport_multitasking"`
-	Markers              []workflowMarkerPlayer                   `json:"build_orders"`
+	Markers               []workflowMarkerPlayer         `json:"build_orders"`
+	MutaliskTiming        []workflowMarkerPlayer         `json:"mutalisk_timing_chart,omitempty"`
+	MutaliskTimingSummary *workflowMutaliskTimingSummary `json:"mutalisk_timing_summary,omitempty"`
 	AllianceTimeline     []workflowAllianceSnapshot               `json:"alliance_timeline,omitempty"`
 	AllianceStackingThresholdSeconds int64                        `json:"alliance_stacking_threshold_seconds,omitempty"`
 
@@ -409,6 +413,41 @@ type workflowMarkerEvent struct {
 	DeltaSeconds          int64  `json:"delta_seconds"` // actual - target; + late, - early
 	WithinTolerance       bool   `json:"within_tolerance"`
 	NoExpert              bool   `json:"no_expert,omitempty"` // true = no golden range; render actual only
+	// BuildTimeSeconds is the in-game build duration of the unit/building this
+	// row represents. When >0 the chart renders a horizontal span from the
+	// start tick to start+BuildTime, ending at the completion second — making
+	// it visually obvious that the chart's tick is "build started" while the
+	// unit/building is only available from start+BuildTime onward. 0 = render
+	// without a span bar (caller didn't supply a build time).
+	BuildTimeSeconds int64 `json:"build_time_seconds,omitempty"`
+	// ActualBuiltSecond / TargetBuiltSecond, when > 0, override the naive
+	// "Actual + BuildTime" / "Target + BuildTime" finish-time calculation. Used
+	// by markers whose subject has prerequisites (e.g. a Mutalisk morph cmd
+	// queued before its Spire finishes — the morph effectively starts when the
+	// Spire pops, not when the click was registered). The frontend renders the
+	// "built" marker at *BuiltSecond when supplied; otherwise it falls back to
+	// start + BuildTimeSeconds.
+	ActualBuiltSecond int64 `json:"actual_built_second,omitempty"`
+	TargetBuiltSecond int64 `json:"target_built_second,omitempty"`
+}
+
+// workflowMutaliskTimingSummary is the per-game Mutalisk-Turret gap
+// comparison rendered alongside the timeline. The "gap" is
+// (turret_finished - mutalisk_finished) — i.e. how much later the first
+// Missile Turret completes relative to the first Mutalisk hatching.
+//
+// Sweet spot: progamers aim to finish turrets just-in-time for muta arrival,
+// so the median gap is small (a few seconds) — turrets land at roughly the
+// same time mutas hatch, with mutas eating their travel time across the map.
+// ActualGapSeconds < ExpertGapMinSeconds → turrets done too early (wasted
+// economy). ActualGapSeconds > ExpertGapMaxSeconds → turrets late, Z mutas
+// threaten the Terran main.
+type workflowMutaliskTimingSummary struct {
+	ExpertGapSeconds    int64 `json:"expert_gap_seconds"`     // median (sweet spot center)
+	ExpertGapMinSeconds int64 `json:"expert_gap_min_seconds"` // p25 of corpus distribution
+	ExpertGapMaxSeconds int64 `json:"expert_gap_max_seconds"` // p75 of corpus distribution
+	ActualGapSeconds    int64 `json:"actual_gap_seconds"`     // turret_done - muta_done in this game
+	HasActual           bool  `json:"has_actual"`             // false when one side missing
 }
 
 type workflowMapVisual struct {

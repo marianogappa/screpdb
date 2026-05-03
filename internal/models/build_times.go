@@ -7,13 +7,17 @@ package models
 // Values are float64 because some are fractional (e.g. Zealot 25.2s). Round
 // to int at the call site when combining with integer game seconds.
 const (
-	BuildTimeSpawningPool float64 = 50
-	BuildTimeGateway      float64 = 38
-	BuildTimeZealot       float64 = 25.2
-	BuildTimeHatchery     float64 = 75
-	BuildTimeNexus        float64 = 75
-	BuildTimeForge        float64 = 25
-	BuildTimeOverlord     float64 = 25
-	BuildTimeDrone        float64 = 12.6
-	BuildTimeZergling     float64 = 18
+	BuildTimeSpawningPool   float64 = 50
+	BuildTimeGateway        float64 = 38
+	BuildTimeZealot         float64 = 25.2
+	BuildTimeHatchery       float64 = 75
+	BuildTimeNexus          float64 = 75
+	BuildTimeForge          float64 = 25
+	BuildTimeOverlord       float64 = 25
+	BuildTimeDrone          float64 = 12.6
+	BuildTimeZergling       float64 = 18
+	BuildTimeSpire          float64 = 75
+	BuildTimeMutalisk       float64 = 25
+	BuildTimeMissileTurret  float64 = 18.9
+	BuildTimeEngineeringBay float64 = 38
 )

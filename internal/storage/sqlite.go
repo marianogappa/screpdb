@@ -916,44 +916,6 @@ func (s *SQLiteStorage) CountStaleReplays(ctx context.Context, currentVersion in
 	return count, nil
 }
 
-// StaleReplay is a minimal projection of replays(id, file_path) used by the bulk
-// re-analyze flow.
-type StaleReplay struct {
-	ID       int64
-	FilePath string
-}
-
-// ListStaleReplays returns id+file_path for every replay whose analyzer_algorithm_version
-// is below currentVersion. Caller iterates and either re-parses the .rep or deletes the
-// replay if the file is gone from disk.
-func (s *SQLiteStorage) ListStaleReplays(ctx context.Context, currentVersion int) ([]StaleReplay, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, file_path FROM replays WHERE analyzer_algorithm_version < ? ORDER BY id", currentVersion)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list stale replays: %w", err)
-	}
-	defer rows.Close()
-
-	var out []StaleReplay
-	for rows.Next() {
-		var sr StaleReplay
-		if err := rows.Scan(&sr.ID, &sr.FilePath); err != nil {
-			return nil, fmt.Errorf("failed to scan stale replay: %w", err)
-		}
-		out = append(out, sr)
-	}
-	return out, rows.Err()
-}
-
-// DeleteReplay drops a replay row by id. FK ON DELETE CASCADE handles every dependent
-// table (players, commands, replay_events, etc.). Used by the bulk re-analyze flow
-// when the original .rep file is no longer on disk.
-func (s *SQLiteStorage) DeleteReplay(ctx context.Context, replayID int64) error {
-	if _, err := s.db.ExecContext(ctx, "DELETE FROM replays WHERE id = ?", replayID); err != nil {
-		return fmt.Errorf("failed to delete replay: %w", err)
-	}
-	return nil
-}
-
 // BatchInsertPatternResults inserts pattern detection results in batch (uses default connection)
 func (s *SQLiteStorage) BatchInsertPatternResults(ctx context.Context, results []*core.PatternResult) error {
 	return s.BatchInsertPatternResultsTx(ctx, s.db, results)

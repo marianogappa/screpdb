@@ -223,16 +223,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
-  /api/custom/replays/reanalyze-stale:
-    post:
-      operationId: reanalyzeStaleReplays
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
   /api/custom/aliases:
     get:
       operationId: listAliases

@@ -106,6 +106,9 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	if err := d.populateMarkersForGameDetail(&detail); err != nil {
 		return detail, err
 	}
+	if err := d.populateMutaliskTimingForGameDetail(&detail); err != nil {
+		return detail, err
+	}
 	if err := d.populatePhaseMarkersForGameDetail(&detail); err != nil {
 		return detail, err
 	}
@@ -2618,6 +2621,192 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 		}
 		prevOwnership = ev.Ownership
 	}
+	return nil
+}
+
+// populateMutaliskTimingForGameDetail emits the chart payload for the
+// "Mutalisk Timing" tab — one entry per side (Z + T) when both the
+// mutalisk_timing and turret_timing markers fired. The payload schema mirrors
+// workflowMarkerPlayer so the existing BuildOrderTimelineRows component
+// renders it unchanged. Actual timings are read from each marker's persisted
+// payload (set by the Custom evaluator at detection time); Expert ranges come
+// from the marker definition.
+func (d *Dashboard) populateMutaliskTimingForGameDetail(detail *workflowGameDetail) error {
+	if detail == nil {
+		return errors.New("nil game detail")
+	}
+	detail.MutaliskTiming = []workflowMarkerPlayer{}
+	if len(detail.Players) == 0 {
+		return nil
+	}
+
+	patternRows, err := d.dbStore.ListPlayerPatterns(d.ctx, detail.ReplayID)
+	if err != nil {
+		return fmt.Errorf("failed to load player patterns for mutalisk timing: %w", err)
+	}
+
+	type sidePayload struct {
+		spireCmd       int
+		firstMutaCmd   int
+		ebayCmd        int
+		firstTurretCmd int
+		hasZ           bool
+		hasT           bool
+	}
+	byPlayer := map[int64]*sidePayload{}
+	zergPlayerID, terranPlayerID := int64(-1), int64(-1)
+	for _, row := range patternRows {
+		key := strings.TrimSpace(row.PatternName)
+		if key != "mutalisk_timing" && key != "turret_timing" {
+			continue
+		}
+		var raw map[string]any
+		if err := json.Unmarshal([]byte(row.Payload), &raw); err != nil {
+			continue
+		}
+		payload, ok := byPlayer[row.PlayerID]
+		if !ok {
+			payload = &sidePayload{}
+			byPlayer[row.PlayerID] = payload
+		}
+		switch key {
+		case "mutalisk_timing":
+			payload.hasZ = true
+			zergPlayerID = row.PlayerID
+			if v, ok := raw["spire_cmd"].(float64); ok {
+				payload.spireCmd = int(v)
+			}
+			if v, ok := raw["first_muta_cmd"].(float64); ok {
+				payload.firstMutaCmd = int(v)
+			}
+		case "turret_timing":
+			payload.hasT = true
+			terranPlayerID = row.PlayerID
+			if v, ok := raw["ebay_cmd"].(float64); ok {
+				payload.ebayCmd = int(v)
+			}
+			if v, ok := raw["first_turret_cmd"].(float64); ok {
+				payload.firstTurretCmd = int(v)
+			}
+		}
+	}
+
+	if zergPlayerID < 0 || terranPlayerID < 0 {
+		return nil
+	}
+	zMarker := markers.ByFeatureKey("mutalisk_timing")
+	tMarker := markers.ByFeatureKey("turret_timing")
+	if zMarker == nil || tMarker == nil {
+		return nil
+	}
+
+	// Each side has 2 events: the prerequisite building, then the unit/turret
+	// it gates. The chart renders trigger time + dotted build span + "built"
+	// time per event. The "built" second clamps to max(prereq_built, trigger)
+	// + build_time so queued commands don't fictitiously land before their
+	// prerequisite. No Expert tolerance bands — the only progamer reference
+	// is the muta-vs-turret completion gap (see summary below).
+	type sideEventSpec struct {
+		key       string
+		subject   string
+		buildTime int64
+		actual    int
+	}
+	makeEvents := func(specs []sideEventSpec) []workflowMarkerEvent {
+		events := make([]workflowMarkerEvent, 0, len(specs))
+		// Track the previous (= prerequisite) event's actual built second so
+		// the next event's built time clamps against it.
+		var prevActualBuilt int64 = 0
+		for _, sp := range specs {
+			ev := workflowMarkerEvent{
+				Key:              sp.key,
+				Subject:          sp.subject,
+				BuildTimeSeconds: sp.buildTime,
+			}
+			if sp.actual > 0 {
+				ev.Found = true
+				ev.ActualSecond = int64(sp.actual)
+				effStart := ev.ActualSecond
+				if prevActualBuilt > effStart {
+					effStart = prevActualBuilt
+				}
+				ev.ActualBuiltSecond = effStart + sp.buildTime
+				prevActualBuilt = ev.ActualBuiltSecond
+			}
+			events = append(events, ev)
+		}
+		return events
+	}
+
+	for _, player := range detail.Players {
+		payload, ok := byPlayer[player.PlayerID]
+		if !ok || payload == nil {
+			continue
+		}
+		switch {
+		case payload.hasZ:
+			detail.MutaliskTiming = append(detail.MutaliskTiming, workflowMarkerPlayer{
+				PlayerID:   player.PlayerID,
+				PlayerKey:  player.PlayerKey,
+				Name:       player.Name,
+				Race:       player.Race,
+				Marker:     zMarker.Name,
+				FeatureKey: zMarker.FeatureKey,
+				Events: makeEvents([]sideEventSpec{
+					{key: "Spire", subject: models.GeneralUnitSpire, buildTime: int64(models.BuildTimeSpire), actual: payload.spireCmd},
+					{key: "First Mutalisk", subject: models.GeneralUnitMutalisk, buildTime: int64(models.BuildTimeMutalisk), actual: payload.firstMutaCmd},
+				}),
+			})
+		case payload.hasT:
+			detail.MutaliskTiming = append(detail.MutaliskTiming, workflowMarkerPlayer{
+				PlayerID:   player.PlayerID,
+				PlayerKey:  player.PlayerKey,
+				Name:       player.Name,
+				Race:       player.Race,
+				Marker:     tMarker.Name,
+				FeatureKey: tMarker.FeatureKey,
+				Events: makeEvents([]sideEventSpec{
+					{key: "Engineering Bay", subject: models.GeneralUnitEngineeringBay, buildTime: int64(math.Round(models.BuildTimeEngineeringBay)), actual: payload.ebayCmd},
+					{key: "First Missile Turret", subject: models.GeneralUnitMissileTurret, buildTime: int64(math.Round(models.BuildTimeMissileTurret)), actual: payload.firstTurretCmd},
+				}),
+			})
+		}
+	}
+
+	// Populate the gap summary. ExpertGap* values are corpus-derived from the
+	// 240-game cwal-dl 1v1 TvZ match set with prerequisite-clamped finish
+	// times: Mutalisk hatch = max(spire_built, morph_cmd) + 25,
+	// Missile Turret finish = max(ebay_built, build_cmd) + 19.
+	// Median gap (turret_finish - muta_finish) = +8s, p25 = -5, p75 = +19.
+	// Positive median = turret completes shortly after muta hatches — mutas
+	// then eat ~10-20s of travel time across the map, so turrets land
+	// just-in-time for muta arrival.
+	summary := &workflowMutaliskTimingSummary{
+		ExpertGapSeconds:    8,
+		ExpertGapMinSeconds: -5,
+		ExpertGapMaxSeconds: 19,
+	}
+	zPayload, tPayload := byPlayer[zergPlayerID], byPlayer[terranPlayerID]
+	if zPayload != nil && tPayload != nil &&
+		zPayload.firstMutaCmd > 0 && tPayload.firstTurretCmd > 0 {
+		spireFinish := zPayload.spireCmd + int(models.BuildTimeSpire)
+		mutaStart := zPayload.firstMutaCmd
+		if zPayload.spireCmd > 0 && mutaStart < spireFinish {
+			mutaStart = spireFinish
+		}
+		mutaFinish := mutaStart + int(models.BuildTimeMutalisk)
+
+		ebayFinish := tPayload.ebayCmd + int(models.BuildTimeEngineeringBay)
+		turretStart := tPayload.firstTurretCmd
+		if tPayload.ebayCmd > 0 && turretStart < ebayFinish {
+			turretStart = ebayFinish
+		}
+		turretFinish := turretStart + int(math.Round(models.BuildTimeMissileTurret))
+
+		summary.ActualGapSeconds = int64(turretFinish - mutaFinish)
+		summary.HasActual = true
+	}
+	detail.MutaliskTimingSummary = summary
 	return nil
 }
 
