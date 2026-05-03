@@ -7,12 +7,13 @@
 screpdb is an advanced Starcraft replay reporting tool.
 
 ## Features
-- Filtering/finding replays by high-level semantic features & staging them for watching on the game client
-- Rich game events browser with map overlays
-- Build Order detection with charts and for comparing with progamer timings
-- Skill proxies measurements: Viewport Multitasking, Unit Production Cadence, First Unit Efficiency
-- Alias list support for progamer replays (built-in, editable, importable/exportable), and automatic aliasing for local user's player names
-- Alliance timeline and team stacking detection on multiplayer melee games
+- Filtering/finding replays by high-level semantic features & staging them for watching on the game client.
+- Rich game events browser with map overlays.
+- Build Order detection with charts and for comparing with progamer timings.
+- Skill proxies measurements: Viewport Multitasking, Unit Production Cadence, First Unit Efficiency.
+- Alias list support for progamer replays (built-in, editable, importable/exportable), and automatic aliasing for local user's player names.
+- Sophisticated command de-duping on the early game to facilitate precise build order detection and timing comparisons.
+- Alliance timeline and team stacking detection on multiplayer melee games.
 
 ## Installation
 
