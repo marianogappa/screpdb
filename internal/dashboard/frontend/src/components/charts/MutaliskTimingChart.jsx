@@ -35,6 +35,7 @@ const formatSigned = (n) => {
 // Within either zone = "within expert range" (green). Outside both = red.
 const PERFECT_HALF_WIDTH = 4;     // 8s-wide invisible perfect rect
 const GOLDEN_WIDTH       = 5.5;   // 5.5s golden rect on each flank
+const EARLY_WASTE_THRESHOLD = 8;  // turret done < 8s after muta hatch (or before): minerals burned too early
 
 const expertBoundaries = (median) => ({
   innerL: median - PERFECT_HALF_WIDTH,
@@ -45,11 +46,11 @@ const expertBoundaries = (median) => ({
 
 const verdictForGap = (actual, median) => {
   if (!Number.isFinite(actual)) return null;
+  if (actual < EARLY_WASTE_THRESHOLD) return 'Waste of early minerals';
   const { innerL, innerR, outerL, outerR } = expertBoundaries(median);
   if (actual >= innerL && actual <= innerR) return 'Perfect timing';
   if (actual >= outerL && actual <= outerR) return 'Within expert range';
-  if (actual < outerL) return 'Turrets too early — wasting resources';
-  return 'Turrets too late — at risk';
+  return 'Terran base at risk';
 };
 
 const pickLane = (group) => {
@@ -313,11 +314,11 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
     const turretBuilt = builtSecond(tEvents[1]);
     const actualGap = turretBuilt - mutaBuilt;
     const expertMedian = Number(summary?.expert_gap_seconds) || 0;
-    const { innerL, innerR, outerL, outerR } = expertBoundaries(expertMedian);
+    const { outerR } = expertBoundaries(expertMedian);
     const verdict = verdictForGap(actualGap, expertMedian);
-    const inRange = actualGap >= outerL && actualGap <= outerR;
-    const connectorColor = inRange ? GREEN : RED;
-    const verdictColor = inRange ? GREEN : RED;
+    const safe = actualGap >= EARLY_WASTE_THRESHOLD && actualGap <= outerR;
+    const connectorColor = safe ? GREEN : RED;
+    const verdictColor = safe ? GREEN : RED;
     const yTop = zLaneTop + laneMid;
     const yBot = tLaneTop + laneMid;
     const yMid = (yTop + yBot) / 2;
@@ -333,7 +334,7 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
     const midSecond = (mutaBuilt + turretBuilt) / 2;
     const halfPerfect = PERFECT_HALF_WIDTH;
     const halfOuter = PERFECT_HALF_WIDTH + GOLDEN_WIDTH;
-    const showOverlays = actualGap >= 0;
+    const showOverlays = actualGap >= EARLY_WASTE_THRESHOLD;
     const xOuterL = xAt(midSecond - halfOuter);
     const xInnerL = xAt(midSecond - halfPerfect);
     const xInnerR = xAt(midSecond + halfPerfect);
@@ -342,10 +343,10 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
       <g>
         {showOverlays ? (
           <>
-            {/* Left golden rect (outerL → innerL) */}
+            {/* Left golden rect (outerL → innerL) — sits behind the connector */}
             <rect
               x={Math.min(xOuterL, xInnerL)}
-              y={yMid + 4}
+              y={yMid - 6}
               width={Math.abs(xInnerL - xOuterL)}
               height={12}
               fill={GOLDEN_BG}
@@ -353,10 +354,10 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
               strokeWidth="1"
               rx="2"
             />
-            {/* Right golden rect (innerR → outerR) */}
+            {/* Right golden rect (innerR → outerR) — sits behind the connector */}
             <rect
               x={Math.min(xInnerR, xOuterR)}
-              y={yMid + 4}
+              y={yMid - 6}
               width={Math.abs(xOuterR - xInnerR)}
               height={12}
               fill={GOLDEN_BG}
@@ -377,9 +378,9 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
         <text x={(xMuta + xTurret) / 2} y={yMid - 10} textAnchor="middle" fill={connectorColor} fontSize="11">
           gap {formatSigned(actualGap)}
         </text>
-        {/* Verdict line under the boundary labels */}
+        {/* Verdict line just under the gap overlays */}
         {verdict ? (
-          <text x={(xMuta + xTurret) / 2} y={yMid + 44} textAnchor="middle" fill={verdictColor} fontSize="10">
+          <text x={(xMuta + xTurret) / 2} y={yMid + 18} textAnchor="middle" fill={verdictColor} fontSize="10">
             {verdict}
           </text>
         ) : null}

@@ -3256,7 +3256,7 @@ body {
 }
 
 .workflow-event-map-attack-line {
-  stroke-width: 0.9;
+  stroke-width: 0.45;
 }
 
 .workflow-event-map-swords {
@@ -3279,18 +3279,18 @@ body {
 
 .workflow-event-map-unit-overlay--grid {
   display: grid;
-  grid-template-columns: repeat(2, 55px);
-  grid-template-rows: repeat(2, 55px);
+  grid-template-columns: repeat(2, 28px);
+  grid-template-rows: repeat(2, 28px);
   justify-items: center;
   align-items: center;
 }
 
 .workflow-event-map-unit-icon {
-  width: 55px;
-  height: 55px;
+  width: 28px;
+  height: 28px;
   margin: 0px;
   object-fit: contain;
-  filter: drop-shadow(0 11px 4px rgba(0, 0, 0, 0.75));
+  filter: drop-shadow(0 5px 2px rgba(0, 0, 0, 0.75));
 }
 
 .workflow-event-map-expansion-overlay {
@@ -3416,8 +3416,8 @@ body {
 }
 
 @keyframes workflow-event-overlay-appear {
-  from { opacity: 0; transform: scale(0.9); }
-  to   { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
 @keyframes workflow-event-polygon-appear {

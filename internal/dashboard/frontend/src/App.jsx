@@ -3271,7 +3271,19 @@ function App() {
   );
   const selectedMainGameArrow = useMemo(() => {
     if (!selectedMainGameEvent || !isArrowEventType(selectedMainGameEvent.type)) return null;
-    const from = mapPointToPercent(selectedMainGameEvent?.actor_origin, mainEventMapBounds);
+    // actor_origin is the source player's starting location. If inactivity
+    // rules have stripped ownership of that starting base, anchor the arrow
+    // at any base the actor still owns at event time so the visual matches
+    // the player's actual map presence.
+    const actorID = Number(selectedMainGameEvent?.actor?.player_id || 0);
+    const ownership = Array.isArray(selectedMainGameEvent?.ownership) ? selectedMainGameEvent.ownership : [];
+    const ownedByActor = ownership.filter((entry) => Number(entry?.owner?.player_id || 0) === actorID && entry?.base?.center);
+    const startingOwned = ownedByActor.some((entry) => String(entry?.base?.kind || '').toLowerCase() === 'starting');
+    let originPoint = selectedMainGameEvent?.actor_origin;
+    if (!startingOwned && ownedByActor.length > 0) {
+      originPoint = ownedByActor[0]?.base?.center;
+    }
+    const from = mapPointToPercent(originPoint, mainEventMapBounds);
     const to = mapPointToPercent(selectedMainGameEvent?.base?.center, mainEventMapBounds);
     if (!from || !to) return null;
     return {
@@ -4822,13 +4834,13 @@ function App() {
                                     <defs>
                                       <marker
                                         id="workflow-event-arrowhead"
-                                        markerWidth="5"
-                                        markerHeight="5"
-                                        refX="4.5"
-                                        refY="2.5"
+                                        markerWidth="2.5"
+                                        markerHeight="2.5"
+                                        refX="2.25"
+                                        refY="1.25"
                                         orient="auto"
                                       >
-                                        <polygon points="0 0, 5 2.5, 0 5" fill={selectedMainGameArrow?.color || 'currentColor'} />
+                                        <polygon points="0 0, 2.5 1.25, 0 2.5" fill={selectedMainGameArrow?.color || 'currentColor'} />
                                       </marker>
                                     </defs>
                                     {selectedMainGameOwnershipPolygons.map((overlay) => (
