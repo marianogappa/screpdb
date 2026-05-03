@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -15,6 +16,34 @@ import (
 	"github.com/marianogappa/screpdb/internal/parser"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 )
+
+func TestEncodeInt64ArrayJSON_MatchesEncodingJSON(t *testing.T) {
+	cases := [][]int64{
+		nil,
+		{},
+		{0},
+		{1, 2, 3},
+		{-1, 0, 1},
+		{9223372036854775807, -9223372036854775808},
+		{42, 42, 42, 42, 42, 42, 42, 42},
+	}
+	for _, ids := range cases {
+		got := encodeInt64ArrayJSON(ids)
+		var want string
+		if ids == nil {
+			want = "null"
+		} else {
+			b, err := json.Marshal(ids)
+			if err != nil {
+				t.Fatalf("json.Marshal(%v): %v", ids, err)
+			}
+			want = string(b)
+		}
+		if got != want {
+			t.Fatalf("encodeInt64ArrayJSON(%v) = %q, want %q", ids, got, want)
+		}
+	}
+}
 
 const (
 	testDBPath      = "file:screpdb_test?mode=memory&cache=shared"
@@ -146,6 +175,39 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	}
 	if len(filtered) != 0 {
 		t.Fatalf("expected 0 filtered files after ingestion, got %d", len(filtered))
+	}
+
+	// Path-only dedup must agree with checksum-aware dedup when paths match.
+	pathFiltered, err := store.FilterOutExistingReplaysByPath(ctx, files)
+	if err != nil {
+		t.Fatalf("FilterOutExistingReplaysByPath: %v", err)
+	}
+	if len(pathFiltered) != 0 {
+		t.Fatalf("expected 0 path-filtered files after ingestion, got %d", len(pathFiltered))
+	}
+
+	// And it must NOT need Checksum to be set — that's the whole point.
+	withoutChecksums := make([]fileops.FileInfo, len(files))
+	for i, f := range files {
+		f.Checksum = ""
+		withoutChecksums[i] = f
+	}
+	pathFilteredNoSum, err := store.FilterOutExistingReplaysByPath(ctx, withoutChecksums)
+	if err != nil {
+		t.Fatalf("FilterOutExistingReplaysByPath without checksums: %v", err)
+	}
+	if len(pathFilteredNoSum) != 0 {
+		t.Fatalf("expected 0 path-filtered files (no-checksum input), got %d", len(pathFilteredNoSum))
+	}
+
+	// A path that's not in the DB must survive.
+	novel := []fileops.FileInfo{{Path: "/path/that/does/not/exist.rep", Name: "does-not-exist.rep"}}
+	survivors, err := store.FilterOutExistingReplaysByPath(ctx, novel)
+	if err != nil {
+		t.Fatalf("FilterOutExistingReplaysByPath novel: %v", err)
+	}
+	if len(survivors) != 1 {
+		t.Fatalf("expected novel path to survive, got %d", len(survivors))
 	}
 
 	// Schema should mention key tables

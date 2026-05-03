@@ -62,6 +62,7 @@ func runIngest(cmd *cobra.Command, args []string) error {
 		UseColor:            true,
 		EarlyFilterDebugDir: os.Getenv("SCREPDB_EARLY_FILTER_DEBUG_DIR"),
 		ProfileMode:         profile.ModeFromEnv(os.Getenv("SCREPDB_INGEST_PROFILE")),
+		CPUProfilePath:      os.Getenv("SCREPDB_INGEST_PPROF"),
 	}
 
 	if err := ingest.Run(ctx, cfg); err != nil {

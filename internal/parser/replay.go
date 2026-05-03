@@ -99,7 +99,7 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	default:
 		data.Replay.MapKind = "Regular"
 	}
-	if layout, err := buildMapContextLayoutFromReplay(filePath); err == nil && layout != nil {
+	if layout, err := buildMapContextLayoutFromReplay(filePath, data.Replay.MapName, int(rep.Header.MapWidth), int(rep.Header.MapHeight)); err == nil && layout != nil {
 		data.MapContext.Layout = layout
 	}
 

@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
+	"runtime/pprof"
 	"testing"
 	"time"
 
@@ -22,9 +24,26 @@ import (
 // totals so results stay comparable as the corpus grows.
 func BenchmarkSQLiteIngestionCorpus(b *testing.B) {
 	ctx := context.Background()
-	replaysDir, err := resolveReplayDir()
-	if err != nil {
-		b.Fatalf("resolveReplayDir: %v", err)
+	replaysDir := os.Getenv("SCREPDB_BENCH_CORPUS")
+	if replaysDir == "" {
+		var err error
+		replaysDir, err = resolveReplayDir()
+		if err != nil {
+			b.Fatalf("resolveReplayDir: %v", err)
+		}
+	}
+	if path := os.Getenv("SCREPDB_BENCH_CPUPROFILE"); path != "" {
+		f, err := os.Create(path)
+		if err != nil {
+			b.Fatalf("create cpuprofile: %v", err)
+		}
+		if err := pprof.StartCPUProfile(f); err != nil {
+			b.Fatalf("start cpuprofile: %v", err)
+		}
+		b.Cleanup(func() {
+			pprof.StopCPUProfile()
+			f.Close()
+		})
 	}
 	files, err := fileops.GetReplayFiles(replaysDir)
 	if err != nil {
@@ -34,6 +53,12 @@ func BenchmarkSQLiteIngestionCorpus(b *testing.B) {
 		b.Fatalf("no replays in %s", replaysDir)
 	}
 	fileops.SortFilesByModTime(files)
+	if capStr := os.Getenv("SCREPDB_BENCH_CORPUS_CAP"); capStr != "" {
+		var capN int
+		if _, err := fmt.Sscanf(capStr, "%d", &capN); err == nil && capN > 0 && capN < len(files) {
+			files = files[:capN]
+		}
+	}
 	corpusSize := len(files)
 
 	b.ResetTimer()

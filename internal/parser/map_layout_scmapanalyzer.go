@@ -1,19 +1,42 @@
 package parser
 
 import (
+	"sync"
+
 	"github.com/marianogappa/scmapanalyzer/lib/scmapanalyzer"
 	"github.com/marianogappa/scmapanalyzer/replaymap"
 	"github.com/marianogappa/screpdb/internal/models"
-	"github.com/marianogappa/screpdb/internal/screp"
 )
 
-func buildMapContextLayoutFromReplay(replayPath string) (*models.MapContextLayout, error) {
-	client, err := scmapanalyzer.NewClient()
+// mapAnalyzerClient is a process-wide singleton scmapanalyzer.Client. NewClient
+// JSON-unmarshals every embedded ladder map on each call (~17 ms per replay on
+// a real corpus), so we pay that cost once and reuse the client. Client itself
+// is documented safe for concurrent use.
+var (
+	mapAnalyzerClientOnce sync.Once
+	mapAnalyzerClient     *scmapanalyzer.Client
+	mapAnalyzerClientErr  error
+)
+
+func getMapAnalyzerClient() (*scmapanalyzer.Client, error) {
+	mapAnalyzerClientOnce.Do(func() {
+		mapAnalyzerClient, mapAnalyzerClientErr = scmapanalyzer.NewClient()
+	})
+	return mapAnalyzerClient, mapAnalyzerClientErr
+}
+
+// buildMapContextLayoutFromReplay returns the polygon layout for a replay's
+// map. mapName lets scmapanalyzer.Analyze short-circuit the replay parse when
+// the map is in the embedded ladder cache (the common case). widthTiles and
+// heightTiles come from the already-parsed *rep.Replay so we do not re-parse
+// the file just to read header dimensions.
+func buildMapContextLayoutFromReplay(replayPath string, mapName string, widthTiles, heightTiles int) (*models.MapContextLayout, error) {
+	client, err := getMapAnalyzerClient()
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := client.Analyze(replayPath)
+	result, err := client.Analyze(replayPath, scmapanalyzer.WithMapName(mapName))
 	if err != nil {
 		return nil, err
 	}
@@ -28,12 +51,11 @@ func buildMapContextLayoutFromReplay(replayPath string) (*models.MapContextLayou
 	if len(bases) == 0 {
 		return nil, nil
 	}
-	layout := &models.MapContextLayout{Bases: bases}
-	if rep, repErr := screp.ParseFile(replayPath); repErr == nil && rep != nil {
-		layout.WidthTiles = int(rep.Header.MapWidth)
-		layout.HeightTiles = int(rep.Header.MapHeight)
-	}
-	return layout, nil
+	return &models.MapContextLayout{
+		Bases:       bases,
+		WidthTiles:  widthTiles,
+		HeightTiles: heightTiles,
+	}, nil
 }
 
 func toContextBase(base replaymap.BasePolygon) models.MapContextBase {

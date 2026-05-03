@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"runtime/pprof"
 	"sync"
 	"syscall"
 	"time"
@@ -48,11 +49,25 @@ type Config struct {
 	// non-Off, per-replay phase timings are emitted to stderr and an
 	// aggregate p50/p95 is printed at end of run.
 	ProfileMode profile.Mode
+
+	// CPUProfilePath, when non-empty, enables a runtime/pprof CPU profile
+	// for the duration of Run. Sourced from SCREPDB_INGEST_PPROF by
+	// cmd/ingest.go. Inspect with `go tool pprof <path>`.
+	CPUProfilePath string
 }
 
 func Run(ctx context.Context, cfg Config) error {
 	cfg = withDefaults(cfg)
 	logger := cfg.Logger
+
+	if cfg.CPUProfilePath != "" {
+		stop, err := startCPUProfile(cfg.CPUProfilePath)
+		if err != nil {
+			return fmt.Errorf("failed to start CPU profile: %w", err)
+		}
+		logger.Infof("CPU profile writing to %s", cfg.CPUProfilePath)
+		defer stop()
+	}
 
 	// Initialize storage
 	logger.Infof("Using SQLite storage at %s", cfg.SQLitePath)
@@ -196,8 +211,9 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 		},
 	})
 
-	// Get all replay files
-	files, err := fileops.GetReplayFiles(cfg.InputDir)
+	// Walk the directory without hashing yet — checksums get computed lazily
+	// only for files that survive the cheap path-based dedup pass below.
+	files, err := fileops.WalkReplayFiles(cfg.InputDir)
 	if err != nil {
 		return fmt.Errorf("failed to get replay files: %w", err)
 	}
@@ -231,9 +247,27 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 		logger.Successf("Limited to %d files", len(filteredFiles))
 	}
 
-	// Batch check for existing replays before processing
-	logger.Warnf("Checking for existing replays...")
-	filesToProcess, err := batchCheckExistingReplays(ctx, store, filteredFiles, logger)
+	// Phase 1: cheap path-based dedup. Cuts I/O dramatically on incremental
+	// re-scans of the same replay folder by skipping the SHA256 read of
+	// every file that's already in the DB by file_path.
+	logger.Warnf("Checking existing replays by path...")
+	pathSurvivors, err := batchCheckExistingReplaysByPath(ctx, store, filteredFiles, logger)
+	if err != nil {
+		return fmt.Errorf("failed to check existing replays by path: %w", err)
+	}
+	pathSkipped := len(filteredFiles) - len(pathSurvivors)
+	logger.Warnf("Skipped %d files already known by path", pathSkipped)
+
+	// Phase 2: hash the survivors in parallel, then run checksum-based dedup
+	// to catch the rename/move case (same content, new path).
+	logger.Warnf("Hashing %d candidate files...", len(pathSurvivors))
+	hashed, err := fileops.HashFiles(ctx, pathSurvivors)
+	if err != nil {
+		return fmt.Errorf("failed to hash candidate files: %w", err)
+	}
+
+	logger.Warnf("Checking existing replays by checksum...")
+	filesToProcess, err := batchCheckExistingReplays(ctx, store, hashed, logger)
 	if err != nil {
 		return fmt.Errorf("failed to check existing replays: %w", err)
 	}
@@ -321,6 +355,31 @@ func batchCheckExistingReplays(ctx context.Context, store storage.Storage, files
 
 		skippedInBatch := len(batch) - len(batchFiltered)
 		logger.Infof("Checked batch %d-%d: %d existing replays found", i+1, end, skippedInBatch)
+	}
+
+	return allFiltered, nil
+}
+
+// batchCheckExistingReplaysByPath runs the cheap path-only dedup pass against the
+// DB. Same batching shape as batchCheckExistingReplays but does not require
+// Checksum to be populated, so it can run before the SHA256 hashing step.
+func batchCheckExistingReplaysByPath(ctx context.Context, store storage.Storage, files []fileops.FileInfo, logger *Logger) ([]fileops.FileInfo, error) {
+	const batchSize = 100
+	var allFiltered []fileops.FileInfo
+
+	for i := 0; i < len(files); i += batchSize {
+		end := min(i+batchSize, len(files))
+
+		batch := files[i:end]
+		batchFiltered, err := store.FilterOutExistingReplaysByPath(ctx, batch)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check batch %d-%d: %w", i+1, end, err)
+		}
+
+		allFiltered = append(allFiltered, batchFiltered...)
+
+		skippedInBatch := len(batch) - len(batchFiltered)
+		logger.Infof("Path-checked batch %d-%d: %d existing paths found", i+1, end, skippedInBatch)
 	}
 
 	return allFiltered, nil
@@ -449,4 +508,22 @@ func signalChan(sigChan chan os.Signal) <-chan os.Signal {
 		return nil
 	}
 	return sigChan
+}
+
+// startCPUProfile opens path for writing and begins a runtime/pprof CPU profile.
+// The returned stop function ends the profile and closes the file. Caller must
+// invoke stop (e.g. via defer) so the profile is flushed.
+func startCPUProfile(path string) (func(), error) {
+	f, err := os.Create(path)
+	if err != nil {
+		return nil, fmt.Errorf("create profile file: %w", err)
+	}
+	if err := pprof.StartCPUProfile(f); err != nil {
+		f.Close()
+		return nil, fmt.Errorf("start CPU profile: %w", err)
+	}
+	return func() {
+		pprof.StopCPUProfile()
+		f.Close()
+	}, nil
 }

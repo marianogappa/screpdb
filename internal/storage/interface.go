@@ -40,6 +40,13 @@ type Storage interface {
 	// Returns only the FileInfo objects for replays that don't exist yet
 	FilterOutExistingReplays(ctx context.Context, files []fileops.FileInfo) ([]fileops.FileInfo, error)
 
+	// FilterOutExistingReplaysByPath filters out replays whose file_path is already
+	// known to the database. Cheaper than FilterOutExistingReplays because it does
+	// not require Checksum to be populated, so callers can run it before hashing.
+	// Survivors still need a checksum-aware second pass to catch the file-moved /
+	// file-renamed case where the same content lives at a new path.
+	FilterOutExistingReplaysByPath(ctx context.Context, files []fileops.FileInfo) ([]fileops.FileInfo, error)
+
 	// Query executes a SQL query and returns results
 	Query(ctx context.Context, query string, args ...any) ([]map[string]any, error)
 
