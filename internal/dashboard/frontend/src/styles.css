@@ -1809,22 +1809,80 @@ body {
   50% { opacity: 1; }
 }
 
-.stale-replays-banner {
-  display: flex;
+/* Stale-replays hint — small icon next to Ingest with a custom CSS tooltip
+   that pops in fast (no native title-attribute delay) and stays visible
+   while the cursor is over the tooltip itself, so the embedded Dismiss
+   button is clickable. */
+.stale-replays-hint-wrap {
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 8px 0 16px;
-  padding: 10px 16px;
-  border-radius: 6px;
-  background: rgba(220, 160, 60, 0.18);
-  border: 1px solid rgba(240, 180, 80, 0.5);
-  color: #f8e0b0;
-  font-size: 14px;
+  margin-left: 6px;
 }
 
-.stale-replays-banner button {
-  flex-shrink: 0;
+.stale-replays-hint-icon {
+  cursor: default;
+  font-size: 14px;
+  line-height: 1;
+  animation: stale-replays-hint-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes stale-replays-hint-pulse {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1; }
+}
+
+.stale-replays-hint-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  min-width: 240px;
+  max-width: 320px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(20, 22, 30, 0.96);
+  border: 1px solid rgba(240, 180, 80, 0.55);
+  color: #f8e0b0;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease, visibility 0s linear 120ms;
+}
+
+.stale-replays-hint-wrap:hover .stale-replays-hint-tooltip,
+.stale-replays-hint-tooltip:hover {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.stale-replays-hint-tooltip-actions {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.stale-replays-hint-dismiss {
+  background: transparent;
+  border: 1px solid rgba(240, 180, 80, 0.5);
+  color: #f8e0b0;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.stale-replays-hint-dismiss:hover {
+  background: rgba(240, 180, 80, 0.18);
 }
 
 /* Footer */

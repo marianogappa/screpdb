@@ -3858,15 +3858,20 @@ function App() {
               ) : null}
             </button>
             {staleReplaysCount > 0 && staleReplaysCount > dismissedStaleCount && ingestStatus !== 'running' ? (
-              <span
-                className="stale-replays-hint"
-                title={`${staleReplaysCount.toLocaleString()} ${staleReplaysCount === 1 ? 'replay was' : 'replays were'} analyzed with an older algorithm. Re-ingest to refresh markers and build orders — open the Ingest panel and tick the "erase data" checkbox so the existing rows are dropped first. Click this icon to dismiss until next session.`}
-                onClick={(ev) => { ev.stopPropagation(); dismissStaleHint(); }}
-                style={{ marginLeft: '6px', cursor: 'pointer', fontSize: '14px' }}
-                role="button"
-                aria-label="Stale-replays hint — click to dismiss"
-              >
-                ⚠️
+              <span className="stale-replays-hint-wrap">
+                <span className="stale-replays-hint-icon" aria-label="Replay analysis update available">⚠️</span>
+                <span className="stale-replays-hint-tooltip" role="tooltip">
+                  Replay analysis just got smarter! Please re-ingest (tick &quot;Erase data&quot;).
+                  <div className="stale-replays-hint-tooltip-actions">
+                    <button
+                      type="button"
+                      className="stale-replays-hint-dismiss"
+                      onClick={(ev) => { ev.stopPropagation(); dismissStaleHint(); }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </span>
               </span>
             ) : null}
           </div>
