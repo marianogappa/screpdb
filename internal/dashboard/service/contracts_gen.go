@@ -50,7 +50,6 @@ type DashboardService interface {
 	PlayerApmHistogram(ctx context.Context, request apigen.PlayerApmHistogramRequestObject) (HandlerResult, error)
 	PlayerDelayInsight(ctx context.Context, request apigen.PlayerDelayInsightRequestObject) (HandlerResult, error)
 	PlayerUnitCadence(ctx context.Context, request apigen.PlayerUnitCadenceRequestObject) (HandlerResult, error)
-	PlayerMetrics(ctx context.Context, request apigen.PlayerMetricsRequestObject) (HandlerResult, error)
 	PlayerOutliers(ctx context.Context, request apigen.PlayerOutliersRequestObject) (HandlerResult, error)
 	PlayerRecentGames(ctx context.Context, request apigen.PlayerRecentGamesRequestObject) (HandlerResult, error)
 }

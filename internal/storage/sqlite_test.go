@@ -56,7 +56,7 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	expectedCounts := map[string]int64{
 		"replays":       4,
 		"players":       14,
-		"replay_events": 166,
+		"replay_events": 168,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {

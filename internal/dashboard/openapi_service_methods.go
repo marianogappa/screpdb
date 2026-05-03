@@ -403,13 +403,9 @@ func (d *Dashboard) UpdateGlobalReplayFilterConfig(ctx context.Context, request 
 	body := request.Body
 	config := globalReplayFilterConfig{
 		GameTypes:         make([]string, 0, len(body.GameTypes)),
-		GameTypesMode:     string(body.GameTypesMode),
 		ExcludeShortGames: body.ExcludeShortGames,
 		ExcludeComputers:  body.ExcludeComputers,
 		MapKinds:          make([]string, 0, len(body.MapKinds)),
-		MapKindFilterMode: string(body.MapKindFilterMode),
-		Players:           body.Players,
-		PlayerFilterMode:  string(body.PlayerFilterMode),
 	}
 	for _, gameType := range body.GameTypes {
 		config.GameTypes = append(config.GameTypes, string(gameType))
@@ -428,12 +424,14 @@ func (d *Dashboard) UpdateGlobalReplayFilterConfig(ctx context.Context, request 
 	return updated, nil
 }
 
-func (d *Dashboard) GetGlobalReplayFilterOptions(ctx context.Context, _ apigen.GetGlobalReplayFilterOptionsRequestObject) (any, error) {
-	options, err := d.listGlobalReplayFilterOptions(ctx)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return options, nil
+func (d *Dashboard) GetGlobalReplayFilterOptions(_ context.Context, _ apigen.GetGlobalReplayFilterOptionsRequestObject) (any, error) {
+	// Player options + mode toggles were removed; the endpoint still
+	// exists in the OpenAPI spec for backward compatibility but returns
+	// an empty payload. Frontend no longer calls it.
+	return map[string]any{
+		"top_players":   []any{},
+		"other_players": []any{},
+	}, nil
 }
 
 func (d *Dashboard) Ingest(ctx context.Context, request apigen.IngestRequestObject) (any, error) {
@@ -1047,21 +1045,6 @@ func (d *Dashboard) PlayerUnitCadence(_ context.Context, request apigen.PlayerUn
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
 	return result, nil
-}
-
-func (d *Dashboard) PlayerMetrics(_ context.Context, request apigen.PlayerMetricsRequestObject) (any, error) {
-	playerKey := normalizePlayerKey(request.PlayerKey)
-	if playerKey == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("player key missing"))
-	}
-	metrics, err := d.buildWorkflowPlayerMetrics(playerKey)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
-		}
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return metrics, nil
 }
 
 func (d *Dashboard) PlayerOutliers(_ context.Context, request apigen.PlayerOutliersRequestObject) (any, error) {

@@ -174,69 +174,112 @@ func absInt(v int) int {
 
 // -----------------------------------------------------------------------------
 // mechTransitionEvaluator: detects a TvZ player going bio first then
-// committing to mech.
+// committing fully to mech.
 //
-// Trigger:
+// Trigger (all must hold by end-of-replay):
 //
-//   1. A Medic is produced before mechTransitionBioWindowSec (5:30) — the
-//      "bio start" signal (Medics imply Academy + Marines in bio comp).
-//   2. After (1), at least 2 Factories are built (cumulative).
-//   3. After the 2nd Factory, the player produces a mech unit (Vulture,
-//      Siege Tank, or Goliath).
+//   1. Bio start — a Medic is produced before mechTransitionBioWindowSec
+//      (5:30). Medics imply Academy + Marines (bio comp).
+//   2. Mech-tech commitment — Machine Shop AND Armory both built (these
+//      gate Tank Siege Mode / Goliath upgrades; pure-Vulture builds
+//      don't normally erect an Armory, so requiring it filters out
+//      brief vulture harass into bio).
+//   3. Production scale — ≥ 4 Factories built. Two factories are common
+//      bio-with-vultures, three is borderline; four is the threshold
+//      where the user expects the marker to fire.
+//   4. Composition — among attacking-unit productions emitted from the
+//      moment the 4th Factory finishes, mech units (Vulture / Siege
+//      Tank / Goliath) account for ≥ 70% of the count. Bio + air units
+//      are the 30% complement.
+//   5. Coverage — the 4th-Factory milestone landed in the first 80% of
+//      the replay duration. A 4th factory placed at 95% game time
+//      isn't a "transition", it's a cleanup builder.
 //
-// DetectedAtSecond is the second of the first qualifying mech-unit
-// production after the 2nd Factory. The marker is committed only when
-// all three conditions fire in order.
+// DetectedAtSecond is the second the 4th Factory completes — the moment
+// commitment is provable.
 // -----------------------------------------------------------------------------
 
 const (
-	mechTransitionBioWindowSec = 330 // 5:30 — Medic must arrive before this.
+	mechTransitionBioWindowSec       = 330 // 5:30 — Medic must arrive before this.
+	mechTransitionFactoryThreshold   = 4
+	mechTransitionMechShareNumerator = 70  // 70% of attacking-unit productions must be mech.
+	mechTransitionMechShareDenom     = 100
+	mechTransitionCoverageNumerator  = 80  // 4th-factory must land in first 80% of replay.
+	mechTransitionCoverageDenom      = 100
 )
 
 type mechTransitionEvaluator struct {
-	medicProduced     bool
-	medicSecond       int
-	factoryCount      int
-	secondFactorySec  int
-	transitionSecond  int
-	matched           bool
+	medicProduced      bool
+	factoryCount       int
+	fourthFactorySec   int
+	machineShopBuilt   bool
+	armoryBuilt        bool
+	mechAttackCount    int
+	nonMechAttackCount int
 }
 
 func (e *mechTransitionEvaluator) Observe(f cmdenrich.EnrichedCommand) {
-	if e.matched {
-		return
-	}
 	switch f.Kind {
 	case cmdenrich.KindMakeUnit:
 		switch f.Subject {
 		case models.GeneralUnitMedic:
 			if !e.medicProduced && f.Second < mechTransitionBioWindowSec {
 				e.medicProduced = true
-				e.medicSecond = f.Second
 			}
 		case models.GeneralUnitVulture, models.GeneralUnitSiegeTankTankMode, models.GeneralUnitGoliath:
-			if e.medicProduced && e.factoryCount >= 2 && f.Second >= e.secondFactorySec {
-				e.transitionSecond = f.Second
-				e.matched = true
+			if e.factoryCount >= mechTransitionFactoryThreshold && f.Second >= e.fourthFactorySec {
+				e.mechAttackCount++
+			}
+		case models.GeneralUnitMarine, models.GeneralUnitFirebat, models.GeneralUnitGhost,
+			models.GeneralUnitWraith, models.GeneralUnitScienceVessel,
+			models.GeneralUnitValkyrie, models.GeneralUnitBattlecruiser:
+			if e.factoryCount >= mechTransitionFactoryThreshold && f.Second >= e.fourthFactorySec {
+				e.nonMechAttackCount++
 			}
 		}
 	case cmdenrich.KindMakeBuilding:
-		if f.Subject == models.GeneralUnitFactory {
+		switch f.Subject {
+		case models.GeneralUnitFactory:
 			e.factoryCount++
-			if e.factoryCount == 2 {
-				e.secondFactorySec = f.Second
+			if e.factoryCount == mechTransitionFactoryThreshold {
+				e.fourthFactorySec = f.Second
 			}
+		case models.GeneralUnitMachineShop:
+			e.machineShopBuilt = true
+		case models.GeneralUnitArmory:
+			e.armoryBuilt = true
 		}
 	}
 }
 
-func (e *mechTransitionEvaluator) Finalize(_ CustomEvalContext) CustomResult {
-	if !e.matched {
+func (e *mechTransitionEvaluator) Finalize(ctx CustomEvalContext) CustomResult {
+	if !e.medicProduced {
 		return CustomResult{}
+	}
+	if e.factoryCount < mechTransitionFactoryThreshold {
+		return CustomResult{}
+	}
+	if !e.machineShopBuilt || !e.armoryBuilt {
+		return CustomResult{}
+	}
+	totalAttacks := e.mechAttackCount + e.nonMechAttackCount
+	if totalAttacks == 0 {
+		return CustomResult{}
+	}
+	if e.mechAttackCount*mechTransitionMechShareDenom <
+		mechTransitionMechShareNumerator*totalAttacks {
+		return CustomResult{}
+	}
+	if ctx.Replay != nil && ctx.Replay.DurationSeconds > 0 {
+		coverageLimit := (ctx.Replay.DurationSeconds * mechTransitionCoverageNumerator) /
+			mechTransitionCoverageDenom
+		if e.fourthFactorySec > coverageLimit {
+			return CustomResult{}
+		}
 	}
 	return CustomResult{
 		Matched:          true,
-		DetectedAtSecond: e.transitionSecond,
+		DetectedAtSecond: e.fourthFactorySec,
 	}
 }
 

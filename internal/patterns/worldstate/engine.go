@@ -427,7 +427,7 @@ func (e *Engine) FirstEventSecondForPlayer(playerID byte, eventType string) *int
 	e.Finalize()
 	switch eventType {
 	case "drop", "recall", "nuke", "became_terran", "became_zerg",
-		"reaver_drop", "dt_drop", "scout", "attack",
+		"reaver_drop", "dt_drop", "cliff_drop", "scout", "attack",
 		"cannon_rush", "bunker_rush", "zergling_rush",
 		"proxy_gate", "proxy_rax", "proxy_factory",
 		"expansion", "takeover", "location_inactive",

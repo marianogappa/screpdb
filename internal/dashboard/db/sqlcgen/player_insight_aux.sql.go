@@ -64,22 +64,6 @@ func (q *Queries) CountDistinctPlayersByRace(ctx context.Context, race string) (
 	return total, err
 }
 
-const CountQueuedGamesByPlayer = `-- name: CountQueuedGamesByPlayer :one
-SELECT COUNT(DISTINCT p.id) AS count
-FROM players p
-JOIN commands c ON c.player_id = p.id
-WHERE lower(trim(p.name)) = ?
-  AND p.is_observer = 0
-  AND c.is_queued = 1
-`
-
-func (q *Queries) CountQueuedGamesByPlayer(ctx context.Context, name string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, CountQueuedGamesByPlayer, name)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const GetPlayerNameByKey = `-- name: GetPlayerNameByKey :one
 SELECT CAST(COALESCE(MIN(name), '') AS TEXT) AS player_name
 FROM players

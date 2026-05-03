@@ -305,7 +305,7 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 		featureKey := strings.TrimSpace(strings.ToLower(row.PatternName))
 		switch featureKey {
 		case "carriers", "battlecruisers", "ten_plus_scouts", "mech", "sk_terran", "one_one_one", "mech_transition",
-			"mutalisk_timing", "turret_timing":
+			"mutalisk_timing", "turret_timing", "cliff_drop":
 			featureSets[replayID][featureKey] = struct{}{}
 			if featureKey == "mutalisk_timing" || featureKey == "turret_timing" {
 				secondsByKey[replayID][featureKey] = row.DetectedSecond
@@ -529,6 +529,7 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 			IconKey:   feature.IconKey,
 			IconKeys:  feature.IconKeys,
 			IconLabel: feature.IconLabel,
+			Emoji:     feature.Emoji,
 		})
 	}
 	for _, matchup := range workflowMatchupFilters {

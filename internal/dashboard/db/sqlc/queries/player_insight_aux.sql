@@ -89,13 +89,6 @@ WHERE lower(trim(self.name)) = ?
   )
 ORDER BY self.id, c.seconds_from_game_start;
 
--- name: CountQueuedGamesByPlayer :one
-SELECT COUNT(DISTINCT p.id) AS count
-FROM players p
-JOIN commands c ON c.player_id = p.id
-WHERE lower(trim(p.name)) = ?
-  AND p.is_observer = 0
-  AND c.is_queued = 1;
 
 -- name: CountCarrierGamesByPlayer :one
 SELECT COUNT(DISTINCT p.replay_id) AS count

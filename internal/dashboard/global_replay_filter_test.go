@@ -25,13 +25,9 @@ func TestCompileGlobalReplayFilterSQLDefaults(t *testing.T) {
 func TestCompileGlobalReplayFilterSQLWithOptions(t *testing.T) {
 	config := globalReplayFilterConfig{
 		GameTypes:         []string{globalReplayFilterGameTypeOneOnOne, globalReplayFilterGameTypeFreeForAll},
-		GameTypesMode:     globalReplayFilterModeOnlyThese,
 		ExcludeShortGames: false,
 		ExcludeComputers:  false,
 		MapKinds:          []string{globalReplayFilterMapKindMoney},
-		MapKindFilterMode: globalReplayFilterModeAllExceptThese,
-		Players:           []string{"Soma"},
-		PlayerFilterMode:  globalReplayFilterModeOnlyThese,
 	}
 	compiled, err := compileGlobalReplayFilterSQL(config)
 	if err != nil {
@@ -40,9 +36,8 @@ func TestCompileGlobalReplayFilterSQLWithOptions(t *testing.T) {
 	for _, fragment := range []string{
 		"COUNT(DISTINCT p.team)",
 		"lower(trim(coalesce(r.game_type, ''))) = 'free for all'",
-		"NOT (r.map_kind = 'Money')",
+		"r.map_kind = 'Money'",
 		"r.map_kind != 'UseMapSettings'",
-		"lower(trim(coalesce(p.name, ''))) IN ('soma')",
 	} {
 		if !strings.Contains(compiled, fragment) {
 			t.Fatalf("expected fragment %q in compiled SQL: %s", fragment, compiled)
@@ -69,13 +64,9 @@ func TestDashboardAPI_GlobalReplayFilterGetAndUpdate(t *testing.T) {
 
 	updateBody := []byte(`{
 		"game_types":["melee","free_for_all"],
-		"game_types_mode":"only_these",
 		"exclude_short_games":false,
 		"exclude_computers":false,
-		"map_kinds":["money"],
-		"map_kind_filter_mode":"all_except_these",
-		"players":["soma"],
-		"player_filter_mode":"only_these"
+		"map_kinds":["money"]
 	}`)
 	rec = performDashboardRequest(router, http.MethodPut, "/api/custom/global-replay-filter", updateBody)
 	if rec.Code != http.StatusOK {
@@ -87,7 +78,7 @@ func TestDashboardAPI_GlobalReplayFilterGetAndUpdate(t *testing.T) {
 		t.Fatalf("unmarshal updated config: %v", err)
 	}
 	if len(updated.GameTypes) != 2 || updated.GameTypes[0] != globalReplayFilterGameTypeFreeForAll || updated.GameTypes[1] != globalReplayFilterGameTypeMelee {
-		t.Fatalf("expected melee game type, got %+v", updated)
+		t.Fatalf("expected melee + free_for_all game types, got %+v", updated)
 	}
 	if updated.CompiledReplaysFilterSQL == nil || !strings.Contains(*updated.CompiledReplaysFilterSQL, "Money") {
 		t.Fatalf("expected compiled SQL with map kind filter, got %+v", updated)
@@ -102,13 +93,9 @@ func TestDashboardAPI_GlobalReplayFilterAffectsWorkflowGames(t *testing.T) {
 	// returns the same total as the compiled global filter SQL.
 	updated, err := dash.updateGlobalReplayFilterConfig(dash.ctx, globalReplayFilterConfig{
 		GameTypes:         []string{},
-		GameTypesMode:     globalReplayFilterModeOnlyThese,
 		ExcludeShortGames: false,
 		ExcludeComputers:  false,
 		MapKinds:          []string{globalReplayFilterMapKindRegular},
-		MapKindFilterMode: globalReplayFilterModeOnlyThese,
-		Players:           []string{},
-		PlayerFilterMode:  globalReplayFilterModeOnlyThese,
 	})
 	if err != nil {
 		t.Fatalf("updateGlobalReplayFilterConfig: %v", err)
@@ -145,13 +132,9 @@ func TestDashboardAPI_ReplayFilterAppliesToDetectedPatternViews(t *testing.T) {
 	replayID, playerID := insertTestReplayPatternRows(t, dash)
 	if _, err := dash.updateGlobalReplayFilterConfig(dash.ctx, globalReplayFilterConfig{
 		GameTypes:         []string{},
-		GameTypesMode:     globalReplayFilterModeOnlyThese,
 		ExcludeShortGames: false,
 		ExcludeComputers:  false,
 		MapKinds:          []string{},
-		MapKindFilterMode: globalReplayFilterModeOnlyThese,
-		Players:           []string{},
-		PlayerFilterMode:  globalReplayFilterModeOnlyThese,
 	}); err != nil {
 		t.Fatalf("updateGlobalReplayFilterConfig: %v", err)
 	}
@@ -194,185 +177,6 @@ func TestDashboardAPI_ReplayFilterAppliesToDetectedPatternViews(t *testing.T) {
 	}
 	if got := resultCountValue(t, playerResp.Results); got != 1 {
 		t.Fatalf("expected player pattern count 1, got %d", got)
-	}
-}
-
-func TestDashboardAPI_GlobalReplayFilterComposesWithDashboardFilter(t *testing.T) {
-	dash := newTestDashboard(t)
-	router := dash.setupRouter()
-
-	// Two replays needed; the global filter is restricted to a player that
-	// only plays in replayOne, while a local dashboard filter narrows to
-	// replayTwo. The composed result must therefore be empty.
-	var replayOneID int64
-	var replayOnePlayer string
-	if err := dash.db.QueryRowContext(dash.ctx, `
-		SELECT r.id, lower(trim(p.name))
-		FROM replays r
-		JOIN players p ON p.replay_id = r.id
-		WHERE p.is_observer = 0
-			AND lower(trim(coalesce(p.type, ''))) = 'human'
-		ORDER BY r.id ASC, p.id ASC
-		LIMIT 1
-	`).Scan(&replayOneID, &replayOnePlayer); err != nil {
-		t.Fatalf("query first replay/player: %v", err)
-	}
-
-	var replayTwoID int64
-	if err := dash.db.QueryRowContext(dash.ctx, `
-		SELECT id
-		FROM replays
-		WHERE id <> ?
-			AND NOT EXISTS (
-				SELECT 1 FROM players p
-				WHERE p.replay_id = replays.id
-					AND lower(trim(p.name)) = ?
-			)
-		ORDER BY id ASC
-		LIMIT 1
-	`, replayOneID, replayOnePlayer).Scan(&replayTwoID); err != nil {
-		t.Fatalf("query second replay (without player %s): %v", replayOnePlayer, err)
-	}
-
-	if _, err := dash.updateGlobalReplayFilterConfig(dash.ctx, globalReplayFilterConfig{
-		GameTypes:         []string{},
-		GameTypesMode:     globalReplayFilterModeOnlyThese,
-		ExcludeShortGames: false,
-		ExcludeComputers:  false,
-		MapKinds:          []string{},
-		MapKindFilterMode: globalReplayFilterModeOnlyThese,
-		Players:           []string{replayOnePlayer},
-		PlayerFilterMode:  globalReplayFilterModeOnlyThese,
-	}); err != nil {
-		t.Fatalf("updateGlobalReplayFilterConfig: %v", err)
-	}
-	if err := dash.refreshReplayScopedDB(); err != nil {
-		t.Fatalf("refreshReplayScopedDB: %v", err)
-	}
-
-	filterSQL := "SELECT * FROM replays WHERE id = " + int64ToString(replayTwoID)
-	if err := dash.updateDashboard(dash.ctx, "default", "Default Dashboard", ptrToString("The default dashboard"), &filterSQL); err != nil {
-		t.Fatalf("updateDashboard: %v", err)
-	}
-
-	body := []byte(`{"query": "SELECT COUNT(*) AS c FROM replays", "variable_values": {}, "dashboard_url": "default"}`)
-	rec := performDashboardRequest(router, http.MethodPost, "/api/custom/query", body)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("execute query status %d: %s", rec.Code, rec.Body.String())
-	}
-
-	var resp struct {
-		Results []map[string]any `json:"results"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("unmarshal query: %v", err)
-	}
-	if got := resultCountValue(t, resp.Results); got != 0 {
-		t.Fatalf("expected composed filter to return 0 rows, got %d", got)
-	}
-}
-
-func TestCompileGlobalReplayFilterSQLPlayerModes(t *testing.T) {
-	allowCompiled, err := compileGlobalReplayFilterSQL(globalReplayFilterConfig{
-		GameTypes:         []string{},
-		GameTypesMode:     globalReplayFilterModeOnlyThese,
-		ExcludeShortGames: false,
-		ExcludeComputers:  false,
-		MapKinds:          []string{},
-		MapKindFilterMode: globalReplayFilterModeOnlyThese,
-		Players:           []string{"soma"},
-		PlayerFilterMode:  globalReplayFilterModeOnlyThese,
-	})
-	if err != nil {
-		t.Fatalf("compile allowlist: %v", err)
-	}
-	if !strings.Contains(allowCompiled, "EXISTS (") {
-		t.Fatalf("expected allowlist EXISTS predicate, got: %s", allowCompiled)
-	}
-
-	blockCompiled, err := compileGlobalReplayFilterSQL(globalReplayFilterConfig{
-		GameTypes:         []string{},
-		GameTypesMode:     globalReplayFilterModeOnlyThese,
-		ExcludeShortGames: false,
-		ExcludeComputers:  false,
-		MapKinds:          []string{},
-		MapKindFilterMode: globalReplayFilterModeOnlyThese,
-		Players:           []string{"soma"},
-		PlayerFilterMode:  globalReplayFilterModeAllExceptThese,
-	})
-	if err != nil {
-		t.Fatalf("compile blocklist: %v", err)
-	}
-	if !strings.Contains(blockCompiled, "NOT (EXISTS (") {
-		t.Fatalf("expected blocklist NOT EXISTS predicate, got: %s", blockCompiled)
-	}
-}
-
-func TestDashboardAPI_GlobalReplayFilterPlayerOnlyTheseMatchesByPresence(t *testing.T) {
-	dash := newTestDashboard(t)
-	replayID, allowedPlayer, _, err := replayPlayersForPresenceTest(dash)
-	if err != nil {
-		t.Fatalf("replayPlayersForPresenceTest: %v", err)
-	}
-
-	updated, err := dash.updateGlobalReplayFilterConfig(dash.ctx, globalReplayFilterConfig{
-		GameTypes:         []string{},
-		GameTypesMode:     globalReplayFilterModeOnlyThese,
-		ExcludeShortGames: false,
-		ExcludeComputers:  false,
-		MapKinds:          []string{},
-		MapKindFilterMode: globalReplayFilterModeOnlyThese,
-		Players:           []string{allowedPlayer},
-		PlayerFilterMode:  globalReplayFilterModeOnlyThese,
-	})
-	if err != nil {
-		t.Fatalf("updateGlobalReplayFilterConfig: %v", err)
-	}
-	if err := dash.refreshReplayScopedDB(); err != nil {
-		t.Fatalf("refreshReplayScopedDB: %v", err)
-	}
-
-	var count int64
-	query := "SELECT COUNT(*) FROM (" + *updated.CompiledReplaysFilterSQL + ") WHERE id = " + int64ToString(replayID)
-	if err := dash.db.QueryRowContext(dash.ctx, query).Scan(&count); err != nil {
-		t.Fatalf("count allowlisted replay: %v", err)
-	}
-	if count != 1 {
-		t.Fatalf("expected replay %d to remain visible for allowlisted player presence, got %d", replayID, count)
-	}
-}
-
-func TestDashboardAPI_GlobalReplayFilterPlayerAllExceptExcludesAnyMatchingReplay(t *testing.T) {
-	dash := newTestDashboard(t)
-	replayID, blockedPlayer, _, err := replayPlayersForPresenceTest(dash)
-	if err != nil {
-		t.Fatalf("replayPlayersForPresenceTest: %v", err)
-	}
-
-	updated, err := dash.updateGlobalReplayFilterConfig(dash.ctx, globalReplayFilterConfig{
-		GameTypes:         []string{},
-		GameTypesMode:     globalReplayFilterModeOnlyThese,
-		ExcludeShortGames: false,
-		ExcludeComputers:  false,
-		MapKinds:          []string{},
-		MapKindFilterMode: globalReplayFilterModeOnlyThese,
-		Players:           []string{blockedPlayer},
-		PlayerFilterMode:  globalReplayFilterModeAllExceptThese,
-	})
-	if err != nil {
-		t.Fatalf("updateGlobalReplayFilterConfig: %v", err)
-	}
-	if err := dash.refreshReplayScopedDB(); err != nil {
-		t.Fatalf("refreshReplayScopedDB: %v", err)
-	}
-
-	var count int64
-	query := "SELECT COUNT(*) FROM (" + *updated.CompiledReplaysFilterSQL + ") WHERE id = " + int64ToString(replayID)
-	if err := dash.db.QueryRowContext(dash.ctx, query).Scan(&count); err != nil {
-		t.Fatalf("count blocked replay: %v", err)
-	}
-	if count != 0 {
-		t.Fatalf("expected replay %d to be excluded for blocklisted player, got %d", replayID, count)
 	}
 }
 
@@ -438,24 +242,4 @@ func resultCountValue(t *testing.T, results []map[string]any) int64 {
 
 func int64ToString(value int64) string {
 	return strconv.FormatInt(value, 10)
-}
-
-func replayPlayersForPresenceTest(dash *Dashboard) (int64, string, string, error) {
-	var replayID int64
-	var playerOne string
-	var playerTwo string
-	err := dash.db.QueryRowContext(dash.ctx, `
-		SELECT replay_id, MIN(player_name), MAX(player_name)
-		FROM (
-			SELECT p.replay_id AS replay_id, lower(trim(p.name)) AS player_name
-			FROM players p
-			WHERE p.is_observer = 0
-				AND lower(trim(coalesce(p.type, ''))) = 'human'
-		)
-		GROUP BY replay_id
-		HAVING COUNT(*) >= 2 AND MIN(player_name) <> MAX(player_name)
-		ORDER BY replay_id ASC
-		LIMIT 1
-	`).Scan(&replayID, &playerOne, &playerTwo)
-	return replayID, playerOne, playerTwo, err
 }

@@ -251,15 +251,6 @@ export const api = {
     return response.json();
   },
 
-  getGlobalReplayFilterOptions: async () => {
-    const response = await fetch(`${API_CUSTOM}/global-replay-filter/options`);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to get global replay filter options');
-    }
-    return response.json();
-  },
-
   // Main view: games & players (not custom SQL dashboards)
   listGames: async ({ limit = 20, offset = 0, filters = {} } = {}) => {
     const params = new URLSearchParams();
@@ -413,15 +404,6 @@ export const api = {
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get player chat summary');
-    }
-    return response.json();
-  },
-
-  getPlayerMetrics: async (playerKey) => {
-    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/metrics`);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to get player metrics');
     }
     return response.json();
   },

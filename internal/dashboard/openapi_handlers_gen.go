@@ -679,21 +679,6 @@ func (a *openAPIStrictAdapter) PlayerUnitCadence(ctx context.Context, request ap
 	})
 }
 
-type PlayerMetricsJSONResponse struct {
-	Payload any
-}
-
-func (response PlayerMetricsJSONResponse) VisitPlayerMetricsResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) PlayerMetrics(ctx context.Context, request apigen.PlayerMetricsRequestObject) (apigen.PlayerMetricsResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.PlayerMetrics, func(value any) apigen.PlayerMetricsResponseObject { return PlayerMetricsJSONResponse{Payload: value} })
-}
-
 type PlayerOutliersJSONResponse struct {
 	Payload any
 }

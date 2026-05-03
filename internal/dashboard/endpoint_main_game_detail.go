@@ -1318,101 +1318,6 @@ func minInt(a, b int) int {
 	return b
 }
 
-func (d *Dashboard) buildWorkflowPlayerMetrics(playerKey string) (workflowPlayerMetrics, error) {
-	gamesPlayed, err := d.dbStore.CountPlayerGames(d.ctx, playerKey)
-	if err != nil {
-		return workflowPlayerMetrics{}, fmt.Errorf("failed to load player games for metrics: %w", err)
-	}
-	if gamesPlayed <= 0 {
-		return workflowPlayerMetrics{}, sql.ErrNoRows
-	}
-	raceSections, err := d.raceBehaviourSectionsForPlayer(playerKey, gamesPlayed)
-	if err != nil {
-		return workflowPlayerMetrics{}, err
-	}
-
-	tmp := workflowPlayerOverview{
-		PlayerKey:   playerKey,
-		GamesPlayed: gamesPlayed,
-	}
-	if err := d.populateAdvancedPlayerOverview(playerKey, &tmp); err != nil {
-		return workflowPlayerMetrics{}, err
-	}
-	return workflowPlayerMetrics{
-		SummaryVersion:        workflowSummaryVersion,
-		PlayerKey:             playerKey,
-		RaceBehaviourSections: raceSections,
-		FingerprintMetrics:    tmp.FingerprintMetrics,
-	}, nil
-}
-
-func (d *Dashboard) raceBehaviourSectionsForPlayer(playerKey string, totalGames int64) ([]workflowRaceBehaviourSection, error) {
-	raceRows, err := d.dbStore.ListRaceSections(d.ctx, playerKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load race behaviour sections: %w", err)
-	}
-
-	sections := []workflowRaceBehaviourSection{}
-	byRace := map[string]*workflowRaceBehaviourSection{}
-	for _, row := range raceRows {
-		race := row.Race
-		gameCount := row.GameCount
-		wins := row.Wins
-		section := workflowRaceBehaviourSection{
-			Race:             strings.TrimSpace(race),
-			GameCount:        gameCount,
-			GameRate:         0,
-			Wins:             wins,
-			WinRate:          0,
-			CommonBehaviours: []workflowCommonBehaviour{},
-		}
-		if totalGames > 0 {
-			section.GameRate = float64(gameCount) / float64(totalGames)
-		}
-		if gameCount > 0 {
-			section.WinRate = float64(wins) / float64(gameCount)
-		}
-		sections = append(sections, section)
-		byRace[section.Race] = &sections[len(sections)-1]
-	}
-	patternRows, err := d.dbStore.ListRacePatterns(d.ctx, playerKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load race common behaviours: %w", err)
-	}
-	for _, row := range patternRows {
-		race := row.Race
-		patternName := row.PatternName
-		replayCount := row.ReplayCount
-		raceKey := strings.TrimSpace(race)
-		section, ok := byRace[raceKey]
-		if !ok || section.GameCount <= 0 {
-			continue
-		}
-		gameRate := float64(replayCount) / float64(section.GameCount)
-		if gameRate < 0.2 {
-			continue
-		}
-		section.CommonBehaviours = append(section.CommonBehaviours, workflowCommonBehaviour{
-			Name:        patternName,
-			PrettyName:  prettySplitUppercase(patternName),
-			ReplayCount: replayCount,
-			GameRate:    gameRate,
-		})
-	}
-	for i := range sections {
-		sort.Slice(sections[i].CommonBehaviours, func(a, b int) bool {
-			if sections[i].CommonBehaviours[a].ReplayCount == sections[i].CommonBehaviours[b].ReplayCount {
-				return sections[i].CommonBehaviours[a].Name < sections[i].CommonBehaviours[b].Name
-			}
-			return sections[i].CommonBehaviours[a].ReplayCount > sections[i].CommonBehaviours[b].ReplayCount
-		})
-		if len(sections[i].CommonBehaviours) > 12 {
-			sections[i].CommonBehaviours = sections[i].CommonBehaviours[:12]
-		}
-	}
-	return sections, nil
-}
-
 func (d *Dashboard) topActionTypesForPlayer(playerID int64, limit int) ([]string, error) {
 	return d.dbStore.ListTopActionTypes(d.ctx, playerID, limit)
 }
@@ -2384,15 +2289,19 @@ func buildZergBOEvents(schema zergBOEventSchema, bo *markers.Marker, t db.EarlyZ
 	}
 	events := make([]workflowMarkerEvent, 0, schema.Drones+3)
 
-	for i := 1; i <= schema.Drones; i++ {
+	// Labels start at "5th" — the player begins with 4 starting drones, so
+	// the first morphed drone is the 5th overall.
+	const startingDrones = 4
+	for i := 0; i < schema.Drones; i++ {
+		ordinal := i + 1 + startingDrones
 		ev := workflowMarkerEvent{
-			Key:      fmt.Sprintf("%d%s Drone", i, ordinalSuffix(i)),
+			Key:      fmt.Sprintf("%d%s Drone", ordinal, ordinalSuffix(ordinal)),
 			Subject:  models.GeneralUnitDrone,
 			NoExpert: true,
 		}
-		if i-1 < len(t.DroneMorphSecs) {
+		if i < len(t.DroneMorphSecs) {
 			ev.Found = true
-			ev.ActualSecond = int64(t.DroneMorphSecs[i-1])
+			ev.ActualSecond = int64(t.DroneMorphSecs[i])
 		}
 		events = append(events, ev)
 	}

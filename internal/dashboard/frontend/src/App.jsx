@@ -160,7 +160,7 @@ const PLAYER_INSIGHT_DESCRIPTION_OVERRIDES = {
   'viewport-switch-rate': 'How many times a player switches between places on average per minute.',
 };
 
-const DROP_ACTOR_EVENT_TYPES = ['drop', 'reaver_drop', 'dt_drop'];
+const DROP_ACTOR_EVENT_TYPES = ['drop', 'reaver_drop', 'dt_drop', 'cliff_drop'];
 
 const playerIsActorForGameEventTypes = (events, playerID, wantedTypes) => {
   const pid = Number(playerID);
@@ -302,6 +302,9 @@ const gameEventDescription = (event, registry) => {
   }
   if (eventType === 'attack') return actor && target && location ? `${actor} attacks ${target} at ${location}` : 'Attack';
   if (eventType === 'scout') return actor && target && location ? `${actor} scouts ${target} at ${location}` : 'Scout';
+  if (eventType === 'cliff_drop') {
+    return actor && target && location ? `${actor} cliff drops ${target} at ${location}` : 'Cliff drop';
+  }
   if (eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
     return actor && target && location ? `${actor} drops on ${target} at ${location}` : 'Drop';
   }
@@ -383,6 +386,11 @@ const renderGameEventDescription = (event, registry) => {
     return actorName && targetName && location
       ? <>{actorSpan} scouts {targetSpan} at {location}</>
       : 'Scout';
+  }
+  if (eventType === 'cliff_drop') {
+    return actorName && targetName && location
+      ? <>{actorSpan} cliff drops {targetSpan} at {location}</>
+      : 'Cliff drop';
   }
   if (eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
     return actorName && targetName && location
@@ -711,7 +719,7 @@ const mapPointToPercent = (point, bounds) => {
   return { x: clamp(px), y: clamp(py) };
 };
 
-const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'reaver_drop', 'dt_drop', 'recall', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory'].includes(String(eventType || '').toLowerCase());
+const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'reaver_drop', 'dt_drop', 'cliff_drop', 'recall', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory'].includes(String(eventType || '').toLowerCase());
 
 const fallbackOverlayUnitNamesForEvent = (eventType) => {
   const normalized = normalizeEventType(eventType);
@@ -723,6 +731,7 @@ const fallbackOverlayUnitNamesForEvent = (eventType) => {
   if (normalized === 'proxy_factory') return ['factory'];
   if (normalized === 'reaver_drop') return ['reaver'];
   if (normalized === 'dt_drop') return ['darktemplar'];
+  if (normalized === 'cliff_drop') return ['dropship'];
   if (normalized === 'drop') return ['dropship'];
   if (normalized === 'nuke') return ['ghost'];
   if (normalized === 'recall') return ['arbiter'];
@@ -1195,7 +1204,7 @@ const teamColorRgba = (team, alpha = 0.14) => {
   return `rgba(${Number.isNaN(r) ? 96 : r}, ${Number.isNaN(g) ? 165 : g}, ${Number.isNaN(b) ? 250 : b}, ${alpha})`;
 };
 
-const MAIN_GAMES_PAGE_SIZE = 30;
+const MAIN_GAMES_PAGE_SIZE = 100;
 const MAIN_PLAYERS_PAGE_SIZE = 30;
 
 const toggleFilterValue = (values, value) => {
@@ -1284,10 +1293,6 @@ function App() {
   const [latestVersionUrl, setLatestVersionUrl] = useState('');
   const emptyDbAutoOpenRef = useRef(false);
   const [globalReplayFilterConfig, setGlobalReplayFilterConfig] = useState(null);
-  const [globalReplayFilterOptions, setGlobalReplayFilterOptions] = useState({
-    top_players: [],
-    other_players: [],
-  });
   const [globalReplayFilterSaving, setGlobalReplayFilterSaving] = useState(false);
   const [globalReplayFilterError, setGlobalReplayFilterError] = useState('');
   const [showIngestPanel, setShowIngestPanel] = useState(false);
@@ -1381,9 +1386,6 @@ function App() {
   const [mainPlayerChatSummary, setMainPlayerChatSummary] = useState(null);
   const [mainPlayerChatSummaryLoading, setMainPlayerChatSummaryLoading] = useState(false);
   const [mainPlayerChatSummaryError, setMainPlayerChatSummaryError] = useState('');
-  const [mainPlayerMetrics, setMainPlayerMetrics] = useState(null);
-  const [mainPlayerMetricsLoading, setMainPlayerMetricsLoading] = useState(false);
-  const [mainPlayerMetricsError, setMainPlayerMetricsError] = useState('');
   const [mainPlayerOutliers, setMainPlayerOutliers] = useState(null);
   const [mainPlayerOutliersLoading, setMainPlayerOutliersLoading] = useState(false);
   const [mainPlayerOutliersError, setMainPlayerOutliersError] = useState('');
@@ -1512,15 +1514,6 @@ function App() {
   const loadGlobalReplayFilterConfig = async () => {
     const data = await api.getGlobalReplayFilter();
     setGlobalReplayFilterConfig(data);
-    return data;
-  };
-
-  const loadGlobalReplayFilterOptions = async () => {
-    const data = await api.getGlobalReplayFilterOptions();
-    setGlobalReplayFilterOptions({
-      top_players: data?.top_players || [],
-      other_players: data?.other_players || [],
-    });
     return data;
   };
 
@@ -1755,21 +1748,6 @@ function App() {
     }
   };
 
-  const loadMainPlayerMetrics = async (playerKey) => {
-    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
-    if (!normalizedPlayerKey) return;
-    try {
-      setMainPlayerMetricsLoading(true);
-      setMainPlayerMetricsError('');
-      const metricsData = await api.getPlayerMetrics(normalizedPlayerKey);
-      setMainPlayerMetrics(metricsData);
-    } catch (err) {
-      setMainPlayerMetricsError(err.message || 'Failed to load metrics');
-      setMainPlayerMetrics(null);
-    } finally {
-      setMainPlayerMetricsLoading(false);
-    }
-  };
 
   const loadMainPlayerApmInsight = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
@@ -1864,9 +1842,6 @@ function App() {
       setMainPlayerChatSummary(null);
       setMainPlayerChatSummaryError('');
       setMainPlayerChatSummaryLoading(false);
-      setMainPlayerMetrics(null);
-      setMainPlayerMetricsError('');
-      setMainPlayerMetricsLoading(false);
       setMainPlayerOutliers(null);
       setMainPlayerOutliersError('');
       setMainPlayerOutliersLoading(false);
@@ -2155,9 +2130,6 @@ function App() {
     loadGlobalReplayFilterConfig().catch((err) => {
       console.error('Failed to load global replay filter config:', err);
     });
-    loadGlobalReplayFilterOptions().catch((err) => {
-      console.error('Failed to load global replay filter options:', err);
-    });
     loadTopPlayerColors();
     checkOpenAIStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only; deep links set currentDashboardUrl before first paint.
@@ -2311,14 +2283,6 @@ function App() {
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
-
-  useEffect(() => {
-    if (activeView !== 'player' || !selectedPlayerKey) return;
-    if (mainPlayerTab !== 'summary') return;
-    if (!mainPlayerMetrics && !mainPlayerMetricsLoading && !mainPlayerMetricsError) {
-      loadMainPlayerMetrics(selectedPlayerKey);
-    }
-  }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerMetrics, mainPlayerMetricsLoading, mainPlayerMetricsError]);
 
   useEffect(() => {
     if (activeView !== 'player' || !selectedPlayerKey) return;
@@ -2774,7 +2738,6 @@ function App() {
       loadDashboard(currentDashboardUrl, variableValues, true),
       loadTopPlayerColors(),
       checkOpenAIStatus(),
-      loadGlobalReplayFilterOptions(),
     ]);
 
     if (activeView === 'game' && selectedReplayId) {
@@ -3378,14 +3341,6 @@ function App() {
         className: 'workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey',
       });
     }
-    if ((Number(mainPlayer?.queued_game_rate) || 0) < LOW_USAGE_THRESHOLD) {
-      pills.push({
-        key: 'no-queued-orders',
-        label: 'Doesn\'t use queued orders',
-        title: `Detected in ${(Number(mainPlayer?.queued_game_rate) * 100).toFixed(1)}% of this player's games.`,
-        className: 'workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-queued',
-      });
-    }
     return pills;
   }, [mainPlayer]);
   const mainPlayerNameWidthCh = useMemo(() => {
@@ -3842,9 +3797,6 @@ function App() {
                 loadGlobalReplayFilterConfig().catch((err) => {
                   console.error('Failed to refresh global replay filter config:', err);
                 });
-                loadGlobalReplayFilterOptions().catch((err) => {
-                  console.error('Failed to refresh global replay filter options:', err);
-                });
                 setShowGlobalReplayFilter(true);
               }}
               className="workflow-nav-text-action"
@@ -3921,7 +3873,7 @@ function App() {
                       className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
                       onClick={() => toggleMainGameMultiFilter('duration', option.key)}
                     >
-                      {option.label} ({option.games})
+                      {option.label}
                     </button>
                   );
                 })}
@@ -3956,8 +3908,6 @@ function App() {
                   );
                 })}
               </div>
-            </div>
-            <div className="workflow-summary-filter-row workflow-games-filter-row">
               <div className="workflow-filter-group">
                 <button
                   type="button"
@@ -3983,6 +3933,8 @@ function App() {
                     );
                   })}
               </div>
+            </div>
+            <div className="workflow-summary-filter-row workflow-games-filter-row">
               <div className="workflow-filter-group">
                 {(mainGamesFilterOptions.featuring || [])
                   .filter((option) => (option.group || 'marker') !== 'bo')
@@ -3993,6 +3945,7 @@ function App() {
                       : (option.icon_key ? [option.icon_key] : []);
                     const iconUrls = iconKeys.map((k) => getUnitIcon(k)).filter(Boolean);
                     const hasIcons = iconUrls.length > 0;
+                    const hasEmoji = !hasIcons && Boolean(option.emoji);
                     return (
                       <button
                         key={`wf-feature-${option.key}`}
@@ -4010,6 +3963,11 @@ function App() {
                             {option.icon_label && (
                               <span className="workflow-filter-pill-icon-label">{option.icon_label}</span>
                             )}
+                          </>
+                        ) : hasEmoji ? (
+                          <>
+                            <span className="workflow-filter-pill-emoji">{option.emoji}</span>
+                            <span className="workflow-filter-pill-icon-label">{option.label}</span>
                           </>
                         ) : (
                           option.label
@@ -4058,25 +4016,25 @@ function App() {
                     ))}
                   </tbody>
                 </table>
-                <div className="workflow-pagination-row">
+                <div className="workflow-pagination-row workflow-pagination-row-centered">
                   <button
                     type="button"
                     className="btn-switch"
                     disabled={mainGamesPage <= 1 || mainGamesLoading}
                     onClick={() => setMainGamesPage((prev) => Math.max(1, prev - 1))}
+                    aria-label="Previous page"
                   >
-                    Previous
+                    {'<'}
                   </button>
-                  <span>
-                    Page {mainGamesPage} / {mainGamesTotalPages} - Showing {mainGamesFrom}-{mainGamesTo} of {mainGamesTotal}
-                  </span>
+                  <span>{mainGamesFrom}-{mainGamesTo} of {mainGamesTotal}</span>
                   <button
                     type="button"
                     className="btn-switch"
                     disabled={mainGamesPage >= mainGamesTotalPages || mainGamesLoading}
                     onClick={() => setMainGamesPage((prev) => Math.min(mainGamesTotalPages, prev + 1))}
+                    aria-label="Next page"
                   >
-                    Next
+                    {'>'}
                   </button>
                 </div>
               </>
@@ -5420,17 +5378,17 @@ function App() {
               <div className="chart-empty">Select a game from the Games tab.</div>
             )}
 
-            {mainGame && mainGameTab === 'summary' && (
+            {mainGame && mainGameTab === 'summary' && openaiEnabled && (
               <>
                 <form onSubmit={handleMainAsk} className="workflow-ask-form">
                   <input
                     className="widget-creation-input"
                     value={mainQuestion}
                     onChange={(e) => setMainQuestion(e.target.value)}
-                    placeholder={openaiEnabled ? 'Ask AI about this game...' : 'Enable AI to ask questions'}
-                    disabled={!openaiEnabled || mainAskLoading}
+                    placeholder="Ask AI about this game..."
+                    disabled={mainAskLoading}
                   />
-                  <button className="btn-create-ai" type="submit" disabled={!openaiEnabled || mainAskLoading || !mainQuestion.trim()}>
+                  <button className="btn-create-ai" type="submit" disabled={mainAskLoading || !mainQuestion.trim()}>
                     {mainAskLoading ? 'Asking...' : 'Ask AI'}
                   </button>
                 </form>
@@ -5441,23 +5399,6 @@ function App() {
         )}
 
         {activeView === 'player' && (() => {
-          const raceBreakdownRaw = Array.isArray(mainPlayer?.race_breakdown) ? mainPlayer.race_breakdown : [];
-          const playerRaceTabs = raceBreakdownRaw
-            .filter((r) => r && r.race && (Number(r.game_count) || 0) > 0)
-            .slice()
-            .sort((a, b) => (Number(b.game_count) || 0) - (Number(a.game_count) || 0));
-          const raceTabKeys = playerRaceTabs.map((r) => String(r.race).toLowerCase());
-          const requestedRace = String(mainPlayerSubtab || '').toLowerCase();
-          const effectiveRaceSubtab = raceTabKeys.includes(requestedRace)
-            ? requestedRace
-            : (raceTabKeys[0] || '');
-          const sectionByRace = new Map(
-            (mainPlayerMetrics?.race_behaviour_sections || []).map((s) => [String(s.race).toLowerCase(), s]),
-          );
-          const activeRaceSection = effectiveRaceSubtab ? sectionByRace.get(effectiveRaceSubtab) : null;
-          const activeRaceBreakdown = effectiveRaceSubtab
-            ? playerRaceTabs.find((r) => String(r.race).toLowerCase() === effectiveRaceSubtab)
-            : null;
           const isSkillProxiesTab = mainPlayerTab === 'skill-proxies';
           const skillProxySubtab = isSkillProxiesTab
             ? (MAIN_PLAYER_SKILL_PROXY_SUBTABS.includes(mainPlayerSubtab) ? mainPlayerSubtab : 'summary')
@@ -5511,33 +5452,6 @@ function App() {
                     </button>
                   </div>
 
-                  {mainPlayerTab === 'summary' && playerRaceTabs.length > 0 ? (
-                    <div className="workflow-skill-proxy-subnav">
-                      <div className="workflow-production-tabs workflow-skill-proxy-tabs" role="tablist" aria-label="Race breakdown">
-                        {playerRaceTabs.map((r) => {
-                          const key = String(r.race).toLowerCase();
-                          const active = key === effectiveRaceSubtab;
-                          return (
-                            <button
-                              type="button"
-                              role="tab"
-                              key={key}
-                              aria-selected={active}
-                              className={`workflow-production-tab ${active ? 'workflow-production-tab-active' : ''}`}
-                              onClick={() => setMainPlayerSubtab(key)}
-                            >
-                              {getRaceIcon(r.race) ? (
-                                <img src={getRaceIcon(r.race)} alt={r.race} className="unit-icon-inline workflow-race-tab-icon" />
-                              ) : null}
-                              <span>{r.race}</span>
-                              <span className="workflow-subtle-note">{` (${r.game_count})`}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
-
                   {isSkillProxiesTab ? (
                     <div className="workflow-skill-proxy-subnav">
                       <div className="workflow-production-tabs workflow-skill-proxy-tabs" role="tablist" aria-label="Skill proxy subsections">
@@ -5557,249 +5471,12 @@ function App() {
                 </div>
 
                 <div className="workflow-cards">
-                  {mainPlayerTab === 'summary' && Array.isArray(mainPlayer?.matchups) && mainPlayer.matchups.length > 0 && (
-                    <div className="workflow-card workflow-card-matchup-table">
-                      <div className="workflow-card-title"><span>Matchups (1v1)</span></div>
-                      {(() => {
-                        const races = ['Zerg', 'Terran', 'Protoss'];
-                        const cellByPair = new Map();
-                        mainPlayer.matchups.forEach((cell) => {
-                          if (!cell || !cell.own_race || !cell.opp_race) return;
-                          cellByPair.set(`${cell.own_race}|${cell.opp_race}`, cell);
-                        });
-                        return (
-                          <table className="workflow-matchup-table">
-                            <thead>
-                              <tr>
-                                <th></th>
-                                <th colSpan={races.length} className="workflow-matchup-table-header">vs</th>
-                              </tr>
-                              <tr>
-                                <th></th>
-                                {races.map((opp) => (
-                                  <th key={`mh-${opp}`}>
-                                    {getRaceIcon(opp) ? (
-                                      <img src={getRaceIcon(opp)} alt={opp} className="unit-icon-inline workflow-race-tab-icon" />
-                                    ) : null}
-                                    <span>{opp[0]}</span>
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {races.map((own) => (
-                                <tr key={`mr-${own}`}>
-                                  <th>
-                                    {getRaceIcon(own) ? (
-                                      <img src={getRaceIcon(own)} alt={own} className="unit-icon-inline workflow-race-tab-icon" />
-                                    ) : null}
-                                    <span>{own[0]}</span>
-                                  </th>
-                                  {races.map((opp) => {
-                                    const cell = cellByPair.get(`${own}|${opp}`);
-                                    if (!cell || !cell.games) {
-                                      return (
-                                        <td key={`mc-${own}-${opp}`} className="workflow-matchup-cell workflow-matchup-cell-empty">
-                                          <span className="workflow-subtle-note">—</span>
-                                        </td>
-                                      );
-                                    }
-                                    const conf = cell.confidence || 'low';
-                                    const pct = ((Number(cell.win_rate) || 0) * 100).toFixed(0);
-                                    return (
-                                      <td
-                                        key={`mc-${own}-${opp}`}
-                                        className={`workflow-matchup-cell workflow-matchup-cell-${conf}`}
-                                        title={`${cell.wins}/${cell.games} wins · confidence: ${conf}`}
-                                      >
-                                        <div className="workflow-matchup-cell-rate">{`${pct}%`}</div>
-                                        <div className="workflow-subtle-note">{`${cell.wins}/${cell.games}`}</div>
-                                      </td>
-                                    );
-                                  })}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        );
-                      })()}
-                      <div className="workflow-subtle-note workflow-matchup-table-footnote">
-                        Cells with fewer than 5 games are dimmed for low confidence.
-                      </div>
-                    </div>
-                  )}
-
                   {mainPlayerTab === 'summary' && (
-                    <div className="workflow-card workflow-card-race-behaviours">
-                      {playerRaceTabs.length === 0 ? (
-                        <div className="chart-empty">No race data yet for this player.</div>
-                      ) : (
-                        <>
-                          {mainPlayerMetricsLoading ? <div className="chart-empty">Loading metrics...</div> : null}
-                          {!mainPlayerMetricsLoading && mainPlayerMetricsError ? <div className="chart-empty">{mainPlayerMetricsError}</div> : null}
-                          {!mainPlayerMetricsLoading && !mainPlayerMetricsError && activeRaceSection ? (
-                            <div key={activeRaceSection.race} className="workflow-race-behaviour-section">
-                              <div className="workflow-subtle-note">
-                                {`${activeRaceSection.game_count} games (${((Number(activeRaceSection.game_rate) || 0) * 100).toFixed(1)}%), ${activeRaceSection.wins} wins, ${((Number(activeRaceSection.win_rate) || 0) * 100).toFixed(1)}% win rate`}
-                              </div>
-                              {(() => {
-                                // Split common behaviours into starting build orders (kind=initial_build_order)
-                                // and signature markers (kind=marker). BOs only fire on non-money maps —
-                                // a money-only player will have an empty openings list with a friendly note.
-                                const allBehaviours = activeRaceSection.common_behaviours || [];
-                                const markerDefs = markerRegistry?.markers || {};
-                                const openings = [];
-                                const signatures = [];
-                                allBehaviours.forEach((item) => {
-                                  const def = markerDefs[item.name];
-                                  if (def && def.kind === 'initial_build_order') {
-                                    openings.push(item);
-                                  } else {
-                                    signatures.push(item);
-                                  }
-                                });
-                                const renderRow = (item, label, idx) => (
-                                  <div key={`${label}-${activeRaceSection.race}-${item.name}`} className="workflow-pattern-row">
-                                    <span>{renderPatternPill({ pattern_name: item.name, value: 'true' }, `player-${label}-${activeRaceSection.race}-${idx}`, undefined, markerRegistry)}</span>
-                                    <span>{`${((Number(item.game_rate) || 0) * 100).toFixed(1)}% (${item.replay_count}/${activeRaceSection.game_count})`}</span>
-                                  </div>
-                                );
-                                if (allBehaviours.length === 0) {
-                                  return <div className="chart-empty">No common behaviours at 20%+ for this race.</div>;
-                                }
-                                return (
-                                  <>
-                                    <div className="workflow-card-title workflow-card-title-inline"><span>Starting build orders</span></div>
-                                    {openings.length === 0 ? (
-                                      <div className="workflow-subtle-note">No starting build orders detected — likely a money-map-only player for this race (BO detection is gated to non-money maps).</div>
-                                    ) : (
-                                      openings.map((item, idx) => renderRow(item, 'opening', idx))
-                                    )}
-                                    <div className="workflow-card-title workflow-card-title-inline workflow-section-spacer"><span>Signatures</span></div>
-                                    {signatures.length === 0 ? (
-                                      <div className="workflow-subtle-note">No signature markers at 20%+ for this race.</div>
-                                    ) : (
-                                      signatures.map((item, idx) => renderRow(item, 'signature', idx))
-                                    )}
-                                  </>
-                                );
-                              })()}
-                              {(() => {
-                                // First-expansion median split by Regular / Money. Hidden when
-                                // either bucket lacks 3+ games (server-side filter).
-                                const timings = (mainPlayer?.early_timings || []).filter(
-                                  (t) => String(t.race || '').toLowerCase() === effectiveRaceSubtab && t.milestone === 'first_expansion',
-                                );
-                                if (timings.length === 0) return null;
-                                const fmtMmSs = (sec) => {
-                                  const total = Math.max(0, Math.round(Number(sec) || 0));
-                                  const m = Math.floor(total / 60);
-                                  const s = total % 60;
-                                  return `${m}:${String(s).padStart(2, '0')}`;
-                                };
-                                const byKind = {};
-                                timings.forEach((t) => { byKind[String(t.map_kind)] = t; });
-                                return (
-                                  <div className="workflow-race-early-timings">
-                                    <div className="workflow-card-title workflow-card-title-inline workflow-section-spacer">
-                                      <span>First-expansion timing</span>
-                                    </div>
-                                    <div className="workflow-pattern-row">
-                                      {byKind.Regular ? (
-                                        <span className="workflow-tech-step">
-                                          <span className="workflow-subtle-note">Regular</span>{' '}
-                                          {`${fmtMmSs(byKind.Regular.median_seconds)} median (${byKind.Regular.games} games)`}
-                                        </span>
-                                      ) : null}
-                                      {byKind.Regular && byKind.Money ? <span className="workflow-subtle-note"> · </span> : null}
-                                      {byKind.Money ? (
-                                        <span className="workflow-tech-step">
-                                          <span className="workflow-subtle-note">Money</span>{' '}
-                                          {`${fmtMmSs(byKind.Money.median_seconds)} median (${byKind.Money.games} games)`}
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-                              {(() => {
-                                // Per-matchup tech / upgrade signature. We prefer matchup_orders
-                                // (3.5 extension: own_race x opp_race rows from 1v1 games);
-                                // fall back to the per-race race_orders summary when no matchup
-                                // bucket has enough games yet.
-                                const matchups = (mainPlayer?.matchup_orders || []).filter(
-                                  (m) => String(m.own_race || '').toLowerCase() === effectiveRaceSubtab,
-                                );
-                                const races = ['Zerg', 'Terran', 'Protoss'];
-                                const renderSeq = (label, seq, key) => {
-                                  if (!Array.isArray(seq) || seq.length === 0) return null;
-                                  return (
-                                    <div className="workflow-pattern-row">
-                                      <span className="workflow-subtle-note">{label}</span>
-                                      <span>{seq.map((s, i) => (
-                                        <span key={`${key}-${i}`} className="workflow-tech-step">{s}{i < seq.length - 1 ? ' -> ' : ''}</span>
-                                      ))}</span>
-                                    </div>
-                                  );
-                                };
-                                if (matchups.length > 0) {
-                                  const byOpp = new Map(matchups.map((m) => [m.opp_race, m]));
-                                  return (
-                                    <div className="workflow-race-tech-orders">
-                                      <div className="workflow-card-title workflow-card-title-inline">
-                                        <span>Tech / upgrade signature by matchup</span>
-                                      </div>
-                                      {races.map((opp) => {
-                                        const m = byOpp.get(opp);
-                                        if (!m) return null;
-                                        const tech = Array.isArray(m.tech_order) ? m.tech_order : [];
-                                        const upgrade = Array.isArray(m.upgrade_order) ? m.upgrade_order : [];
-                                        if (tech.length === 0 && upgrade.length === 0) return null;
-                                        const lowConf = (m.games || 0) < 5;
-                                        return (
-                                          <div key={`mo-${opp}`} className={`workflow-race-tech-matchup${lowConf ? ' workflow-race-tech-matchup-lowconf' : ''}`}>
-                                            <div className="workflow-card-title-inline workflow-section-spacer">
-                                              <span>vs {opp}</span>
-                                              <span className="workflow-subtle-note">{` (${m.games} games)`}</span>
-                                            </div>
-                                            {renderSeq('Tech', tech, `t-${opp}`)}
-                                            {renderSeq('Upgrades', upgrade, `u-${opp}`)}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  );
-                                }
-                                const orders = (mainPlayer?.race_orders || []).find(
-                                  (o) => String(o.race || '').toLowerCase() === effectiveRaceSubtab,
-                                );
-                                if (!orders) return null;
-                                const tech = Array.isArray(orders.tech_order) ? orders.tech_order : [];
-                                const upgrade = Array.isArray(orders.upgrade_order) ? orders.upgrade_order : [];
-                                if (tech.length === 0 && upgrade.length === 0) return null;
-                                return (
-                                  <div className="workflow-race-tech-orders">
-                                    <div className="workflow-card-title workflow-card-title-inline">
-                                      <span>Typical tech / upgrade signature</span>
-                                      <span className="workflow-subtle-note"> (across all matchups)</span>
-                                    </div>
-                                    {renderSeq('Tech', tech, 't-overall')}
-                                    {renderSeq('Upgrades', upgrade, 'u-overall')}
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                          ) : null}
-                          {!mainPlayerMetricsLoading && !mainPlayerMetricsError && !activeRaceSection && activeRaceBreakdown ? (
-                            <div className="workflow-race-behaviour-section">
-                              <div className="workflow-subtle-note">
-                                {`${activeRaceBreakdown.game_count} games, ${activeRaceBreakdown.wins} wins`}
-                              </div>
-                              <div className="chart-empty">No behaviour breakdown available for this race.</div>
-                            </div>
-                          ) : null}
-                        </>
-                      )}
+                    <div className="workflow-card workflow-player-summary-todo">
+                      {/* TODO: Coming soon. Per-player summary content was removed
+                          pending a redesign. Keep this tab present so the route
+                          and tab nav stay stable. */}
+                      <div className="chart-empty">Coming soon</div>
                     </div>
                   )}
 
@@ -6003,23 +5680,6 @@ function App() {
             ) : (
               <div className="chart-empty">Select a player from a game report.</div>
             )}
-            {mainPlayer && mainPlayerTab === 'summary' ? (
-              <>
-                <form onSubmit={handleMainAsk} className="workflow-ask-form">
-                  <input
-                    className="widget-creation-input"
-                    value={mainQuestion}
-                    onChange={(e) => setMainQuestion(e.target.value)}
-                    placeholder={openaiEnabled ? 'Ask AI about this player...' : 'Enable AI to ask questions'}
-                    disabled={!openaiEnabled || mainAskLoading}
-                  />
-                  <button className="btn-create-ai" type="submit" disabled={!openaiEnabled || mainAskLoading || !mainQuestion.trim()}>
-                    {mainAskLoading ? 'Asking...' : 'Ask AI'}
-                  </button>
-                </form>
-                {renderMainAiResult()}
-              </>
-            ) : null}
           </div>
           );
         })()}
@@ -6176,7 +5836,6 @@ function App() {
       {showGlobalReplayFilter && (
         <GlobalReplayFilterModal
           config={globalReplayFilterConfig}
-          options={globalReplayFilterOptions}
           saving={globalReplayFilterSaving}
           error={globalReplayFilterError}
           onClose={() => setShowGlobalReplayFilter(false)}
@@ -6197,6 +5856,7 @@ function App() {
           onAliasEdit={handleAliasEdit}
           onAliasCancelEdit={handleAliasCancelEdit}
           onAliasExport={handleAliasExport}
+          customDashboardsEnabled={customDashboardsEnabled}
         />
       )}
 

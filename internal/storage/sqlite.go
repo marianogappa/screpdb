@@ -60,6 +60,7 @@ var (
 		"drop",
 		"reaver_drop",
 		"dt_drop",
+		"cliff_drop",
 		"recall",
 		"nuke",
 		"cannon_rush",

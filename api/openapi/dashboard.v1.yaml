@@ -569,18 +569,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
-  /api/players/{playerKey}/metrics:
-    parameters:
-      - $ref: "#/components/parameters/playerKey"
-    get:
-      operationId: playerMetrics
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
   /api/players/{playerKey}/insight:
     parameters:
       - $ref: "#/components/parameters/playerKey"
@@ -863,22 +851,15 @@ components:
       additionalProperties: false
       required:
         - game_types
-        - game_types_mode
         - exclude_short_games
         - exclude_computers
         - map_kinds
-        - map_kind_filter_mode
-        - players
-        - player_filter_mode
       properties:
         game_types:
           type: array
           items:
             type: string
             enum: [top_vs_bottom, melee, one_on_one, free_for_all]
-        game_types_mode:
-          type: string
-          enum: [only_these, all_except_these]
         exclude_short_games:
           type: boolean
         exclude_computers:
@@ -886,22 +867,11 @@ components:
         map_kinds:
           type: array
           description: |
-            Map types to include/exclude. UMS replays are always excluded
-            globally (auto-discarded at ingest), so 'ums' is not a valid
-            value here.
+            Map types to include. UMS replays are always excluded globally
+            (auto-discarded at ingest), so 'ums' is not a valid value here.
           items:
             type: string
             enum: [regular, money]
-        map_kind_filter_mode:
-          type: string
-          enum: [only_these, all_except_these]
-        players:
-          type: array
-          items:
-            type: string
-        player_filter_mode:
-          type: string
-          enum: [only_these, all_except_these]
         compiled_replays_filter_sql:
           type: string
           nullable: true

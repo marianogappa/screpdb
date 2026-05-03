@@ -7,6 +7,7 @@ import (
 
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
 	"github.com/marianogappa/screpdb/internal/models"
+	"github.com/marianogappa/screpdb/internal/utils"
 )
 
 // indexOwnershipByPoly returns a map of polyID → timeline (sorted by frame).
@@ -190,6 +191,12 @@ func (e *Engine) emitAttackCandidates(candidates []CandidateAttack) {
 	// Used to detect "attack involves a spell cast new for this attacker."
 	spellsByAttacker := buildSpellHistoryByAttacker(e.stream)
 
+	// Pre-compute the second each player produced their first Siege Tank.
+	// Used by the cliff-drop classifier in emitDropCandidate so we can
+	// re-route a generic drop to "cliff_drop" when (BGH map + Terran +
+	// tank-by-now + corner position) lines up.
+	firstTankSecByPlayer := buildFirstTankSecByPlayer(e.stream)
+
 	// Per-attacker filter state.
 	attackedAlready := map[byte]bool{}
 	knownUnitsByAttacker := map[byte]map[string]bool{}
@@ -211,7 +218,7 @@ func (e *Engine) emitAttackCandidates(candidates []CandidateAttack) {
 		case "nuke":
 			e.emitNukeCandidate(c, cmdByFrame[c.Frame])
 		case "drop":
-			e.emitDropCandidate(c, cmdByFrame[c.Frame], reaverDropEmitted)
+			e.emitDropCandidate(c, cmdByFrame[c.Frame], reaverDropEmitted, firstTankSecByPlayer)
 		case "attack":
 			e.emitAttackIfImportant(c, cmdByFrame[c.Frame], spellsByAttacker,
 				attackedAlready, knownUnitsByAttacker, knownSpellsByAttacker)
@@ -243,7 +250,7 @@ func (e *Engine) emitNukeCandidate(c CandidateAttack, cmd *models.Command) {
 		unitTypesFromCommand(cmd))
 }
 
-func (e *Engine) emitDropCandidate(c CandidateAttack, cmd *models.Command, reaverDropEmitted map[byte]bool) {
+func (e *Engine) emitDropCandidate(c CandidateAttack, cmd *models.Command, reaverDropEmitted map[byte]bool, firstTankSecByPlayer map[byte]int) {
 	if c.Defender == neutralPID {
 		return
 	}
@@ -255,6 +262,8 @@ func (e *Engine) emitDropCandidate(c CandidateAttack, cmd *models.Command, reave
 		dropType = "reaver_drop"
 	} else if hasDT {
 		dropType = "dt_drop"
+	} else if e.isCliffDrop(c, firstTankSecByPlayer) {
+		dropType = "cliff_drop"
 	}
 	// Importance: DT drops always emit; first reaver drop per attacker
 	// emits, subsequent reavers are dropped; generic drops always emit
@@ -265,11 +274,64 @@ func (e *Engine) emitDropCandidate(c CandidateAttack, cmd *models.Command, reave
 		}
 		reaverDropEmitted[c.Attacker] = true
 	}
+	dropPhrase := "drops on"
+	if dropType == "cliff_drop" {
+		dropPhrase = "cliff drops"
+	}
 	e.emitEvent(dropType, c.Second,
-		fmt.Sprintf("%s drops on %s %s",
-			e.playerName(c.Attacker), e.playerName(c.Defender),
+		fmt.Sprintf("%s %s %s %s",
+			e.playerName(c.Attacker), dropPhrase, e.playerName(c.Defender),
 			e.bases[c.PolyID].DisplayName),
 		e.playerRef(c.Attacker), e.playerRef(c.Defender), c.PolyID, dropUnitTypes)
+}
+
+// isCliffDrop reports whether a generic drop candidate qualifies as a
+// "cliff drop" — Terran attacker on a Big Game Hunters map who has
+// produced a Siege Tank by drop time, dropping into the top-left or
+// bottom-right corner of the map. Mirrors the marker-side gate in
+// internal/patterns/markers/cliff_drop.go.
+func (e *Engine) isCliffDrop(c CandidateAttack, firstTankSecByPlayer map[byte]int) bool {
+	if e.replay == nil {
+		return false
+	}
+	if !utils.IsBigGameHuntersMap(e.replay.MapName) {
+		return false
+	}
+	player, ok := e.players[c.Attacker]
+	if !ok || player == nil {
+		return false
+	}
+	if !strings.EqualFold(strings.TrimSpace(player.Race), "terran") {
+		return false
+	}
+	tankSec, hasTank := firstTankSecByPlayer[c.Attacker]
+	if !hasTank || c.Second < tankSec {
+		return false
+	}
+	mapWidthPx := int(e.replay.MapWidth) * 32
+	mapHeightPx := int(e.replay.MapHeight) * 32
+	return utils.IsCliffDropPosition(c.X, c.Y, mapWidthPx, mapHeightPx)
+}
+
+// buildFirstTankSecByPlayer scans the enriched stream once and returns,
+// per player, the second their first Siege Tank was produced. Empty
+// when no player ever produced one.
+func buildFirstTankSecByPlayer(stream []cmdenrich.EnrichedCommand) map[byte]int {
+	out := map[byte]int{}
+	for _, ec := range stream {
+		if ec.Kind != cmdenrich.KindMakeUnit {
+			continue
+		}
+		if ec.Subject != models.GeneralUnitSiegeTankTankMode {
+			continue
+		}
+		pid := byte(ec.PlayerID)
+		if _, seen := out[pid]; seen {
+			continue
+		}
+		out[pid] = ec.Second
+	}
+	return out
 }
 
 // emitAttackIfImportant applies the user-defined importance filter:

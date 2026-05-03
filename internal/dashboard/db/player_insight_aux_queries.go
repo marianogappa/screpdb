@@ -127,10 +127,6 @@ func (s *Store) ListMatchupOrderRows(ctx context.Context, playerKey string) ([]M
 	return out, nil
 }
 
-func (s *Store) CountQueuedGamesByPlayer(ctx context.Context, playerKey string) (int64, error) {
-	return sqlcgen.New(Trace(s.replayScoped())).CountQueuedGamesByPlayer(ctx, playerKey)
-}
-
 func (s *Store) CountCarrierGamesByPlayer(ctx context.Context, playerKey string) (int64, error) {
 	return sqlcgen.New(Trace(s.replayScoped())).CountCarrierGamesByPlayer(ctx, playerKey)
 }

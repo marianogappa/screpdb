@@ -180,25 +180,11 @@ func orderedTimingSeries(seriesByPlayer map[int64]*workflowPlayerTimingSeries, p
 }
 
 func (d *Dashboard) populateAdvancedPlayerOverview(playerKey string, result *workflowPlayerOverview) error {
-	commonBehaviours, err := d.commonBehavioursForPlayer(playerKey, result.GamesPlayed)
-	if err != nil {
-		return err
-	}
-	result.CommonBehaviours = commonBehaviours
-
 	hotkeyGamesRate, err := d.dbStore.ListHotkeyGamesRateByPlayer(d.ctx)
 	if err != nil {
 		return err
 	}
-	queuedGames, err := d.countQueuedGamesForPlayer(playerKey)
-	if err != nil {
-		return err
-	}
 	result.HotkeyUsageRate = hotkeyGamesRate[playerKey] / 100.0
-	result.QueuedGames = queuedGames
-	if result.GamesPlayed > 0 {
-		result.QueuedGameRate = float64(queuedGames) / float64(result.GamesPlayed)
-	}
 	result.FingerprintMetrics = []workflowComparativeMetric{}
 
 	raceRows, err := d.dbStore.ListRaceSections(d.ctx, playerKey)
@@ -322,41 +308,6 @@ func matchupConfidenceForGames(games int64) string {
 	default:
 		return "low"
 	}
-}
-
-func (d *Dashboard) commonBehavioursForPlayer(playerKey string, gamesPlayed int64) ([]workflowCommonBehaviour, error) {
-	if gamesPlayed <= 0 {
-		return []workflowCommonBehaviour{}, nil
-	}
-	rows, err := d.dbStore.ListCommonBehaviours(d.ctx, playerKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load common behaviours: %w", err)
-	}
-	out := []workflowCommonBehaviour{}
-	for _, row := range rows {
-		patternName := row.PatternName
-		replayCount := row.ReplayCount
-		gameRate := float64(replayCount) / float64(gamesPlayed)
-		if gameRate < 0.2 {
-			continue
-		}
-		out = append(out, workflowCommonBehaviour{
-			Name:        patternName,
-			PrettyName:  prettySplitUppercase(patternName),
-			ReplayCount: replayCount,
-			GameRate:    gameRate,
-		})
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].ReplayCount == out[j].ReplayCount {
-			return out[i].Name < out[j].Name
-		}
-		return out[i].ReplayCount > out[j].ReplayCount
-	})
-	if len(out) > 24 {
-		out = out[:24]
-	}
-	return out, nil
 }
 
 const (
@@ -1107,14 +1058,6 @@ func splitSequence(seq string) []string {
 	return strings.Split(trimmed, " -> ")
 }
 
-func (d *Dashboard) countQueuedGamesForPlayer(playerKey string) (int64, error) {
-	count, err := d.dbStore.CountQueuedGamesByPlayer(d.ctx, playerKey)
-	if err != nil {
-		return 0, fmt.Errorf("failed to count queued games: %w", err)
-	}
-	return count, nil
-}
-
 func (d *Dashboard) countCarrierGamesForPlayer(playerKey string) (int64, error) {
 	count, err := d.dbStore.CountCarrierGamesByPlayer(d.ctx, playerKey)
 	if err != nil {
@@ -1273,9 +1216,6 @@ func buildPlayerNarrativeHints(player workflowPlayerOverview) []string {
 	}
 	if player.CarrierCommandCount > 0 {
 		hints = append(hints, fmt.Sprintf("Carrier-related commands detected: %d.", player.CarrierCommandCount))
-	}
-	if player.QueuedGameRate >= 0.25 {
-		hints = append(hints, fmt.Sprintf("Queued orders appear in %.1f%% of this player's games.", player.QueuedGameRate*100))
 	}
 	return hints
 }

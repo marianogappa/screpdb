@@ -5,21 +5,12 @@ import (
 	"strings"
 )
 
-const (
-	globalReplayFilterModeOnlyThese      = "only_these"
-	globalReplayFilterModeAllExceptThese = "all_except_these"
-)
-
 func BuildGlobalReplayFilterSQL(
 	excludeShortGames bool,
 	shortGameSeconds int,
 	excludeComputers bool,
-	gameTypesMode string,
 	gameTypes []string,
-	mapKindFilterMode string,
 	mapKinds []string,
-	playerFilterMode string,
-	players []string,
 ) string {
 	clauses := []string{}
 	// UMS replays are unsupported globally — auto-discarded at ingest, and
@@ -40,9 +31,12 @@ func BuildGlobalReplayFilterSQL(
 		)`)
 	}
 
-	appendModeClause(&clauses, gameTypesMode, gameTypePredicateSQL(gameTypes))
-	appendModeClause(&clauses, mapKindFilterMode, mapKindPredicateSQL(mapKinds))
-	appendModeClause(&clauses, playerFilterMode, playerPredicateSQL(players))
+	if pred := normalizeSQLWhitespace(strings.TrimSpace(gameTypePredicateSQL(gameTypes))); pred != "" {
+		clauses = append(clauses, "("+pred+")")
+	}
+	if pred := normalizeSQLWhitespace(strings.TrimSpace(mapKindPredicateSQL(mapKinds))); pred != "" {
+		clauses = append(clauses, "("+pred+")")
+	}
 
 	query := "SELECT r.* FROM replays r"
 	if len(clauses) == 0 {
@@ -80,19 +74,6 @@ func normalizeSQL(value string) string {
 func normalizeSQLWhitespace(value string) string {
 	fields := strings.Fields(normalizeSQL(value))
 	return strings.Join(fields, " ")
-}
-
-func appendModeClause(clauses *[]string, mode string, predicate string) {
-	predicate = normalizeSQLWhitespace(strings.TrimSpace(predicate))
-	if predicate == "" {
-		return
-	}
-	switch mode {
-	case globalReplayFilterModeAllExceptThese:
-		*clauses = append(*clauses, "NOT ("+predicate+")")
-	default:
-		*clauses = append(*clauses, "("+predicate+")")
-	}
 }
 
 func gameTypePredicateSQL(values []string) string {
@@ -145,24 +126,3 @@ func mapKindPredicateSQL(values []string) string {
 	return strings.Join(predicates, " OR ")
 }
 
-func playerPredicateSQL(values []string) string {
-	if len(values) == 0 {
-		return ""
-	}
-	return `EXISTS (
-		SELECT 1
-		FROM players p
-		WHERE p.replay_id = r.id
-			AND p.is_observer = 0
-			AND lower(trim(coalesce(p.name, ''))) IN (` + joinQuotedSQLStrings(values) + `)
-	)`
-}
-
-func joinQuotedSQLStrings(values []string) string {
-	quoted := make([]string, 0, len(values))
-	for _, value := range values {
-		escaped := strings.ReplaceAll(value, "'", "''")
-		quoted = append(quoted, "'"+escaped+"'")
-	}
-	return strings.Join(quoted, ", ")
-}

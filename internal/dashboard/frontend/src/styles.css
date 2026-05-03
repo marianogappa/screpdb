@@ -808,10 +808,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
+  padding: 6px 0;
   color: #e0e0e0;
 }
 
@@ -820,58 +817,18 @@ body {
 }
 
 .global-filter-dimension {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .global-filter-dimension h3 {
   color: #fff;
-  margin-bottom: 12px;
-}
-
-.global-filter-dimension-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 16px;
-}
-
-.global-filter-option-group {
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-}
-
-.global-filter-option-title {
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 14px;
-  font-weight: 600;
   margin-bottom: 10px;
-}
-
-.global-filter-mode-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
 }
 
 .global-filter-option-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.global-filter-option-list-expanded {
-  margin-top: 12px;
-}
-
-.global-filter-more {
-  margin-top: 12px;
-}
-
-.global-filter-empty {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 13px;
 }
 
 .dashboard-list {
@@ -2802,6 +2759,12 @@ body {
   padding-right: 2px;
 }
 
+.workflow-filter-pill-emoji {
+  font-size: 0.95rem;
+  line-height: 1;
+  margin-right: 4px;
+}
+
 .workflow-filter-pill-disclosure {
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -2836,6 +2799,10 @@ body {
   justify-content: space-between;
   gap: 10px;
   color: rgba(255, 255, 255, 0.86);
+}
+
+.workflow-pagination-row-centered {
+  justify-content: center;
 }
 
 .workflow-pattern-pill-inline {
@@ -3040,12 +3007,6 @@ body {
   border-color: rgba(239, 68, 68, 0.35);
   background: rgba(239, 68, 68, 0.18);
   color: #fecaca;
-}
-
-.workflow-low-usage-pill-queued {
-  border-color: rgba(245, 158, 11, 0.35);
-  background: rgba(245, 158, 11, 0.18);
-  color: #fde68a;
 }
 
 .workflow-recent-game-card {

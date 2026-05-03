@@ -46,42 +46,6 @@ func (e UpdateGlobalReplayFilterConfigRequestGameTypes) Valid() bool {
 	}
 }
 
-// Defines values for UpdateGlobalReplayFilterConfigRequestGameTypesMode.
-const (
-	UpdateGlobalReplayFilterConfigRequestGameTypesModeAllExceptThese UpdateGlobalReplayFilterConfigRequestGameTypesMode = "all_except_these"
-	UpdateGlobalReplayFilterConfigRequestGameTypesModeOnlyThese      UpdateGlobalReplayFilterConfigRequestGameTypesMode = "only_these"
-)
-
-// Valid indicates whether the value is a known member of the UpdateGlobalReplayFilterConfigRequestGameTypesMode enum.
-func (e UpdateGlobalReplayFilterConfigRequestGameTypesMode) Valid() bool {
-	switch e {
-	case UpdateGlobalReplayFilterConfigRequestGameTypesModeAllExceptThese:
-		return true
-	case UpdateGlobalReplayFilterConfigRequestGameTypesModeOnlyThese:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateGlobalReplayFilterConfigRequestMapKindFilterMode.
-const (
-	UpdateGlobalReplayFilterConfigRequestMapKindFilterModeAllExceptThese UpdateGlobalReplayFilterConfigRequestMapKindFilterMode = "all_except_these"
-	UpdateGlobalReplayFilterConfigRequestMapKindFilterModeOnlyThese      UpdateGlobalReplayFilterConfigRequestMapKindFilterMode = "only_these"
-)
-
-// Valid indicates whether the value is a known member of the UpdateGlobalReplayFilterConfigRequestMapKindFilterMode enum.
-func (e UpdateGlobalReplayFilterConfigRequestMapKindFilterMode) Valid() bool {
-	switch e {
-	case UpdateGlobalReplayFilterConfigRequestMapKindFilterModeAllExceptThese:
-		return true
-	case UpdateGlobalReplayFilterConfigRequestMapKindFilterModeOnlyThese:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for UpdateGlobalReplayFilterConfigRequestMapKinds.
 const (
 	Money   UpdateGlobalReplayFilterConfigRequestMapKinds = "money"
@@ -94,24 +58,6 @@ func (e UpdateGlobalReplayFilterConfigRequestMapKinds) Valid() bool {
 	case Money:
 		return true
 	case Regular:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateGlobalReplayFilterConfigRequestPlayerFilterMode.
-const (
-	AllExceptThese UpdateGlobalReplayFilterConfigRequestPlayerFilterMode = "all_except_these"
-	OnlyThese      UpdateGlobalReplayFilterConfigRequestPlayerFilterMode = "only_these"
-)
-
-// Valid indicates whether the value is a known member of the UpdateGlobalReplayFilterConfigRequestPlayerFilterMode enum.
-func (e UpdateGlobalReplayFilterConfigRequestPlayerFilterMode) Valid() bool {
-	switch e {
-	case AllExceptThese:
-		return true
-	case OnlyThese:
 		return true
 	default:
 		return false
@@ -302,35 +248,21 @@ type UpdateDashboardWidgetRequest struct {
 
 // UpdateGlobalReplayFilterConfigRequest defines model for UpdateGlobalReplayFilterConfigRequest.
 type UpdateGlobalReplayFilterConfigRequest struct {
-	CompiledReplaysFilterSql *string                                                `json:"compiled_replays_filter_sql,omitempty"`
-	ExcludeComputers         bool                                                   `json:"exclude_computers"`
-	ExcludeShortGames        bool                                                   `json:"exclude_short_games"`
-	GameTypes                []UpdateGlobalReplayFilterConfigRequestGameTypes       `json:"game_types"`
-	GameTypesMode            UpdateGlobalReplayFilterConfigRequestGameTypesMode     `json:"game_types_mode"`
-	MapKindFilterMode        UpdateGlobalReplayFilterConfigRequestMapKindFilterMode `json:"map_kind_filter_mode"`
+	CompiledReplaysFilterSql *string                                          `json:"compiled_replays_filter_sql,omitempty"`
+	ExcludeComputers         bool                                             `json:"exclude_computers"`
+	ExcludeShortGames        bool                                             `json:"exclude_short_games"`
+	GameTypes                []UpdateGlobalReplayFilterConfigRequestGameTypes `json:"game_types"`
 
-	// MapKinds Map types to include/exclude. UMS replays are always excluded
-	// globally (auto-discarded at ingest), so 'ums' is not a valid
-	// value here.
-	MapKinds         []UpdateGlobalReplayFilterConfigRequestMapKinds       `json:"map_kinds"`
-	PlayerFilterMode UpdateGlobalReplayFilterConfigRequestPlayerFilterMode `json:"player_filter_mode"`
-	Players          []string                                              `json:"players"`
+	// MapKinds Map types to include. UMS replays are always excluded globally
+	// (auto-discarded at ingest), so 'ums' is not a valid value here.
+	MapKinds []UpdateGlobalReplayFilterConfigRequestMapKinds `json:"map_kinds"`
 }
 
 // UpdateGlobalReplayFilterConfigRequestGameTypes defines model for UpdateGlobalReplayFilterConfigRequest.GameTypes.
 type UpdateGlobalReplayFilterConfigRequestGameTypes string
 
-// UpdateGlobalReplayFilterConfigRequestGameTypesMode defines model for UpdateGlobalReplayFilterConfigRequest.GameTypesMode.
-type UpdateGlobalReplayFilterConfigRequestGameTypesMode string
-
-// UpdateGlobalReplayFilterConfigRequestMapKindFilterMode defines model for UpdateGlobalReplayFilterConfigRequest.MapKindFilterMode.
-type UpdateGlobalReplayFilterConfigRequestMapKindFilterMode string
-
 // UpdateGlobalReplayFilterConfigRequestMapKinds defines model for UpdateGlobalReplayFilterConfigRequest.MapKinds.
 type UpdateGlobalReplayFilterConfigRequestMapKinds string
-
-// UpdateGlobalReplayFilterConfigRequestPlayerFilterMode defines model for UpdateGlobalReplayFilterConfigRequest.PlayerFilterMode.
-type UpdateGlobalReplayFilterConfigRequestPlayerFilterMode string
 
 // UpdateIngestSettingsRequest defines model for UpdateIngestSettingsRequest.
 type UpdateIngestSettingsRequest struct {
@@ -882,9 +814,6 @@ type ServerInterface interface {
 
 	// (GET /api/players/{playerKey}/insights/unit-production-cadence)
 	PlayerUnitCadence(w http.ResponseWriter, r *http.Request, playerKey PlayerKey, params PlayerUnitCadenceParams)
-
-	// (GET /api/players/{playerKey}/metrics)
-	PlayerMetrics(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
 
 	// (GET /api/players/{playerKey}/outliers)
 	PlayerOutliers(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
@@ -2020,32 +1949,6 @@ func (siw *ServerInterfaceWrapper) PlayerUnitCadence(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
-// PlayerMetrics operation middleware
-func (siw *ServerInterfaceWrapper) PlayerMetrics(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "playerKey" -------------
-	var playerKey PlayerKey
-
-	err = runtime.BindStyledParameterWithOptions("simple", "playerKey", mux.Vars(r)["playerKey"], &playerKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playerKey", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PlayerMetrics(w, r, playerKey)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
 // PlayerOutliers operation middleware
 func (siw *ServerInterfaceWrapper) PlayerOutliers(w http.ResponseWriter, r *http.Request) {
 
@@ -2294,8 +2197,6 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/insights/first-unit-delay", wrapper.PlayerDelayInsight).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/insights/unit-production-cadence", wrapper.PlayerUnitCadence).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/metrics", wrapper.PlayerMetrics).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/outliers", wrapper.PlayerOutliers).Methods(http.MethodGet)
 
@@ -3548,36 +3449,6 @@ func (response PlayerUnitCadence200JSONResponse) VisitPlayerUnitCadenceResponse(
 	return err
 }
 
-type PlayerMetricsRequestObject struct {
-	PlayerKey PlayerKey `json:"playerKey"`
-}
-
-type PlayerMetricsResponseObject interface {
-	VisitPlayerMetricsResponse(w http.ResponseWriter) error
-}
-
-type PlayerMetrics200JSONResponse GenericValue
-
-func (t PlayerMetrics200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *PlayerMetrics200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response PlayerMetrics200JSONResponse) VisitPlayerMetricsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type PlayerOutliersRequestObject struct {
 	PlayerKey PlayerKey `json:"playerKey"`
 }
@@ -3766,9 +3637,6 @@ type StrictServerInterface interface {
 
 	// (GET /api/players/{playerKey}/insights/unit-production-cadence)
 	PlayerUnitCadence(ctx context.Context, request PlayerUnitCadenceRequestObject) (PlayerUnitCadenceResponseObject, error)
-
-	// (GET /api/players/{playerKey}/metrics)
-	PlayerMetrics(ctx context.Context, request PlayerMetricsRequestObject) (PlayerMetricsResponseObject, error)
 
 	// (GET /api/players/{playerKey}/outliers)
 	PlayerOutliers(ctx context.Context, request PlayerOutliersRequestObject) (PlayerOutliersResponseObject, error)
@@ -4978,32 +4846,6 @@ func (sh *strictHandler) PlayerUnitCadence(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// PlayerMetrics operation middleware
-func (sh *strictHandler) PlayerMetrics(w http.ResponseWriter, r *http.Request, playerKey PlayerKey) {
-	var request PlayerMetricsRequestObject
-
-	request.PlayerKey = playerKey
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PlayerMetrics(ctx, request.(PlayerMetricsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PlayerMetrics")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PlayerMetricsResponseObject); ok {
-		if err := validResponse.VisitPlayerMetricsResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // PlayerOutliers operation middleware
 func (sh *strictHandler) PlayerOutliers(w http.ResponseWriter, r *http.Request, playerKey PlayerKey) {
 	var request PlayerOutliersRequestObject
@@ -5061,41 +4903,40 @@ func (sh *strictHandler) PlayerRecentGames(w http.ResponseWriter, r *http.Reques
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"ZhoyENjb/FnDg/HRkd5We/JzxmM+/18AAAD//w==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

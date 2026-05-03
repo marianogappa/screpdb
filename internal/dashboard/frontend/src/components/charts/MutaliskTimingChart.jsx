@@ -324,42 +324,48 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
     const xMuta = xAt(mutaBuilt);
     const xTurret = xAt(turretBuilt);
     // Expert range — TWO golden rectangles flanking an invisible "perfect"
-    // zone centered on the corpus median. Inside golden OR perfect = within
-    // expert safety zone (green); outside both = red.
-    //
-    //   gap < outerL              [GOLDEN]   [invisible perfect]   [GOLDEN]              gap > outerR
-    //   "earlier than range"      width      8s wide               width                 "later than range"
-    //                             5.5s       centred on median      5.5s
-    const xOuterL = xAt(mutaBuilt + outerL);
-    const xInnerL = xAt(mutaBuilt + innerL);
-    const xInnerR = xAt(mutaBuilt + innerR);
-    const xOuterR = xAt(mutaBuilt + outerR);
+    // zone. Centered at the midpoint between the two marks so the band
+    // reads as a visual reference for "this is the expected gap width";
+    // the actual connector line either fits inside it (good) or extrudes
+    // beyond it (bad). When actualGap is negative (turret first), the
+    // band has no meaningful center, so we skip the overlays entirely
+    // and let the connector + verdict speak for themselves.
+    const midSecond = (mutaBuilt + turretBuilt) / 2;
+    const halfPerfect = PERFECT_HALF_WIDTH;
+    const halfOuter = PERFECT_HALF_WIDTH + GOLDEN_WIDTH;
+    const showOverlays = actualGap >= 0;
+    const xOuterL = xAt(midSecond - halfOuter);
+    const xInnerL = xAt(midSecond - halfPerfect);
+    const xInnerR = xAt(midSecond + halfPerfect);
+    const xOuterR = xAt(midSecond + halfOuter);
     gapNode = (
       <g>
-        {/* Left golden rect (outerL → innerL) */}
-        <rect
-          x={Math.min(xOuterL, xInnerL)}
-          y={yMid + 4}
-          width={Math.abs(xInnerL - xOuterL)}
-          height={12}
-          fill={GOLDEN_BG}
-          stroke={GOLDEN}
-          strokeWidth="1"
-          rx="2"
-        />
-        {/* Right golden rect (innerR → outerR) */}
-        <rect
-          x={Math.min(xInnerR, xOuterR)}
-          y={yMid + 4}
-          width={Math.abs(xOuterR - xInnerR)}
-          height={12}
-          fill={GOLDEN_BG}
-          stroke={GOLDEN}
-          strokeWidth="1"
-          rx="2"
-        />
-        {/* Boundary value labels intentionally omitted — chart stays vague
-            and lets the verdict line below describe the outcome. */}
+        {showOverlays ? (
+          <>
+            {/* Left golden rect (outerL → innerL) */}
+            <rect
+              x={Math.min(xOuterL, xInnerL)}
+              y={yMid + 4}
+              width={Math.abs(xInnerL - xOuterL)}
+              height={12}
+              fill={GOLDEN_BG}
+              stroke={GOLDEN}
+              strokeWidth="1"
+              rx="2"
+            />
+            {/* Right golden rect (innerR → outerR) */}
+            <rect
+              x={Math.min(xInnerR, xOuterR)}
+              y={yMid + 4}
+              width={Math.abs(xOuterR - xInnerR)}
+              height={12}
+              fill={GOLDEN_BG}
+              stroke={GOLDEN}
+              strokeWidth="1"
+              rx="2"
+            />
+          </>
+        ) : null}
         {/* Vertical guides from each lane's "built" tick to the gap mid */}
         <line x1={xMuta} y1={yTop + 9} x2={xMuta} y2={yMid} stroke={connectorColor} strokeWidth="1" strokeDasharray="2,3" opacity="0.7" />
         <line x1={xTurret} y1={yMid} x2={xTurret} y2={yBot - 9} stroke={connectorColor} strokeWidth="1" strokeDasharray="2,3" opacity="0.7" />

@@ -209,6 +209,7 @@ type workflowGamesListFilterOption struct {
 	IconKey   string   `json:"icon_key,omitempty"`
 	IconKeys  []string `json:"icon_keys,omitempty"`
 	IconLabel string   `json:"icon_label,omitempty"`
+	Emoji     string   `json:"emoji,omitempty"`
 	Group     string   `json:"group,omitempty"`
 }
 
@@ -252,25 +253,28 @@ var workflowFeaturingFilters = []struct {
 	IconKey   string
 	IconKeys  []string
 	IconLabel string
+	Emoji     string
 }{
+	{Key: "team_stacking", Label: "Team stacking", Group: "marker", Emoji: "😈"},
 	{Key: "carriers", Label: "Carrier", Group: "marker", IconKey: "carrier"},
 	{Key: "battlecruisers", Label: "Battlecruiser", Group: "marker", IconKey: "battlecruiser"},
-	{Key: "ten_plus_scouts", Label: "10+ Scouts", Group: "marker", IconKey: "scout"},
-	{Key: "mech", Label: "Mech", Group: "marker", IconKeys: []string{"siegetank", "goliath"}},
-	{Key: "sk_terran", Label: "SK Terran", Group: "marker", IconKeys: []string{"marine", "medic"}},
+	{Key: "ten_plus_scouts", Label: "10+ Scouts", Group: "marker", IconKey: "scout", IconLabel: "10+"},
+	{Key: "mech", Label: "Mech", Group: "marker", IconKeys: []string{"siegetank", "goliath"}, IconLabel: "Mech"},
+	{Key: "sk_terran", Label: "SK Terran", Group: "marker", IconKeys: []string{"marine", "medic"}, IconLabel: "SK Terran"},
 	{Key: "one_one_one", Label: "1-1-1", Group: "marker"},
-	{Key: "mech_transition", Label: "Mech Transition", Group: "marker"},
-	{Key: "mutalisk_timing", Label: "Mutalisk timing", Group: "marker", IconKey: "mutalisk"},
-	{Key: "turret_timing", Label: "Turret timing", Group: "marker", IconKey: "missileturret"},
+	{Key: "mech_transition", Label: "Mech Transition", Group: "marker", IconKeys: []string{"siegetank", "goliath"}},
+	{Key: "mutalisk_timing", Label: "Mutalisk timing", Group: "marker", IconKey: "mutalisk", IconLabel: "timing"},
+	{Key: "turret_timing", Label: "Turret timing", Group: "marker", IconKey: "missileturret", IconLabel: "Timing"},
+	{Key: "cliff_drop", Label: "Cliff drop", Group: "marker", IconKey: "dropship", IconLabel: "Cliff drop"},
 	{Key: "cannon_rush", Label: "Cannon Rush", Group: "marker", IconKey: "photoncannon", IconLabel: "Rush"},
 	{Key: "bunker_rush", Label: "Bunker Rush", Group: "marker", IconKey: "bunker", IconLabel: "Rush"},
 	{Key: "zergling_rush", Label: "Zergling Rush", Group: "marker", IconKey: "zergling", IconLabel: "Rush"},
 	{Key: "proxy_gate", Label: "Proxy Gateway", Group: "marker", IconKey: "gateway", IconLabel: "Proxy"},
 	{Key: "proxy_rax", Label: "Proxy Barracks", Group: "marker", IconKey: "barracks", IconLabel: "Proxy"},
 	{Key: "proxy_factory", Label: "Proxy Factory", Group: "marker", IconKey: "factory", IconLabel: "Proxy"},
-	{Key: "mind_control", Label: "Mind Control", Group: "marker", IconKey: "darkarchon"},
-	{Key: "nukes", Label: "Nukes", Group: "marker", IconKey: "ghost"},
-	{Key: "recalls", Label: "Recalls", Group: "marker", IconKey: "arbiter"},
+	{Key: "mind_control", Label: "Mind Control", Group: "marker", IconKey: "darkarchon", IconLabel: "Mind Control"},
+	{Key: "nukes", Label: "Nukes", Group: "marker", IconKey: "ghost", IconLabel: "Nuke"},
+	{Key: "recalls", Label: "Recalls", Group: "marker", IconKey: "arbiter", IconLabel: "Recall"},
 	// Build order pills — keys & labels kept in sync with internal/markers.
 	// Suppressed in render for Money maps (game-list + replay-summary
 	// featuring strips); BO tab and per-player summary pills still show.
@@ -298,7 +302,7 @@ var workflowDurationFilterBuckets = []struct {
 	Key   string
 	Label string
 }{
-	{Key: "under_10m", Label: "Under 10m"},
+	{Key: "under_10m", Label: "<10m"},
 	{Key: "10m_plus", Label: "10m+"},
 }
 
@@ -640,10 +644,7 @@ type workflowPlayerOverview struct {
 	HotkeyUsageRate     float64                       `json:"hotkey_usage_rate"`
 	CarrierCommandCount int64                         `json:"carrier_command_count"`
 	RaceBreakdown       []workflowPlayerRaceBreakdown `json:"race_breakdown"`
-	CommonBehaviours    []workflowCommonBehaviour     `json:"common_behaviours"`
 	FingerprintMetrics  []workflowComparativeMetric   `json:"fingerprint_metrics"`
-	QueuedGames         int64                         `json:"queued_games"`
-	QueuedGameRate      float64                       `json:"queued_game_rate"`
 	RecentGames         []workflowGameListItem        `json:"recent_games"`
 	ChatSummary         workflowPlayerChatSummary     `json:"chat_summary"`
 	NarrativeHints      []string                      `json:"narrative_hints"`
@@ -666,35 +667,12 @@ type workflowChatTermCount struct {
 	Count int64  `json:"count"`
 }
 
-type workflowCommonBehaviour struct {
-	Name        string  `json:"name"`
-	PrettyName  string  `json:"pretty_name"`
-	ReplayCount int64   `json:"replay_count"`
-	GameRate    float64 `json:"game_rate"`
-}
-
 type workflowPlayerOutliers struct {
 	SummaryVersion string                    `json:"summary_version"`
 	PlayerKey      string                    `json:"player_key"`
 	PlayerName     string                    `json:"player_name"`
 	Thresholds     workflowOutlierThresholds `json:"thresholds"`
 	Items          []workflowPlayerOutlier   `json:"items"`
-}
-
-type workflowPlayerMetrics struct {
-	SummaryVersion        string                         `json:"summary_version"`
-	PlayerKey             string                         `json:"player_key"`
-	RaceBehaviourSections []workflowRaceBehaviourSection `json:"race_behaviour_sections"`
-	FingerprintMetrics    []workflowComparativeMetric    `json:"fingerprint_metrics"`
-}
-
-type workflowRaceBehaviourSection struct {
-	Race             string                    `json:"race"`
-	GameCount        int64                     `json:"game_count"`
-	GameRate         float64                   `json:"game_rate"`
-	Wins             int64                     `json:"wins"`
-	WinRate          float64                   `json:"win_rate"`
-	CommonBehaviours []workflowCommonBehaviour `json:"common_behaviours"`
 }
 
 type workflowOutlierThresholds struct {

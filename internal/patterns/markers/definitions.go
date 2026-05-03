@@ -826,6 +826,22 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Turret timing {timestamp}", IconKey: "missileturret"},
 		},
 		{
+			// Cliff drop (Big Game Hunters only): Terran player produces a
+			// Siege Tank, then UnloadAll fires within the 256×128px corner
+			// box at top-left or bottom-right. Map gating happens inside
+			// the evaluator's Finalize via IsBigGameHuntersMap.
+			Name:          "Cliff drop",
+			PatternName:   "Cliff drop",
+			FeatureKey:    "cliff_drop",
+			Kind:          KindMarker,
+			Race:          RaceTerran,
+			Custom:        func() CustomEvaluator { return &cliffDropEvaluator{} },
+			RuleDeadline:  endOfReplaySentinel,
+			SummaryPlayer: &Pill{Label: "Cliff drop at min {minute}", IconKey: "dropship"},
+			SummaryReplay: &Pill{Label: "Cliff drop at min {minute}", IconKey: "dropship"},
+			GamesList:     &Pill{Label: "Cliff drop", IconKey: "dropship"},
+		},
+		{
 			Name:         "Carriers",
 			PatternName:  "Carriers",
 			FeatureKey:   "carriers",
