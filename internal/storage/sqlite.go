@@ -320,6 +320,17 @@ func (s *SQLiteStorage) processPatternResultsTx(ctx context.Context, db dbtx, or
 		}
 	}
 
+	// Stamp analyzer_algorithm_version on the replay row regardless of
+	// whether the orchestrator emitted any pattern results — a "no detected
+	// markers" replay is still a freshly-analyzed replay under the current
+	// algorithm. Without this the BatchInsert path would be skipped for
+	// such replays and analyzer_algorithm_version would stay at its DEFAULT
+	// 0, leaving the stale-replays count permanently > 0 even after a full
+	// re-ingest.
+	if err := s.updateAnalyzerAlgorithmVersionTx(ctx, db, replayID, core.AlgorithmVersion); err != nil {
+		return fmt.Errorf("failed to stamp analyzer_algorithm_version: %w", err)
+	}
+
 	return nil
 }
 

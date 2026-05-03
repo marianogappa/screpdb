@@ -1834,7 +1834,7 @@ body {
 
 .stale-replays-hint-tooltip {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%) translateY(-4px);
   min-width: 240px;
@@ -1853,7 +1853,20 @@ body {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 120ms ease, transform 120ms ease, visibility 0s linear 120ms;
+  /* Hide-delay 350ms after the cursor leaves so user has time to glide
+     onto the tooltip body and click Dismiss. */
+  transition: opacity 120ms ease 200ms, transform 120ms ease 200ms, visibility 0s linear 350ms;
+}
+
+/* Invisible bridge above the tooltip so the cursor can travel from the
+   icon into the tooltip without crossing a non-hover gap. */
+.stale-replays-hint-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 0;
+  right: 0;
+  height: 10px;
 }
 
 .stale-replays-hint-wrap:hover .stale-replays-hint-tooltip,
@@ -1862,6 +1875,7 @@ body {
   visibility: visible;
   pointer-events: auto;
   transform: translateX(-50%) translateY(0);
+  /* No delay on appear */
   transition: opacity 120ms ease, transform 120ms ease;
 }
 
