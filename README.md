@@ -1,55 +1,33 @@
-# ScrepDB - StarCraft Replay Database
+# screpdb
 
-A comprehensive CLI tool for ingesting StarCraft: Brood War replay files into a database and providing MCP (Model Context Protocol) server functionality for querying replay data.
+screpdb is an advanced Starcraft replay reporting tool.
 
 ## Features
-
-- **Replay Ingestion**: Parse and store StarCraft: Brood War replay files (.rep) into a SQLite database
-- **MCP Server**: Provide SQL query capabilities through a Model Context Protocol server
-- **Concurrent Processing**: Efficiently process multiple replay files concurrently
-- **File Watching**: Monitor directories for new replay files and automatically ingest them
-- **Deduplication**: Prevent duplicate processing using file checksums
-- **Flexible Storage**: SQLite storage (single-file, no server required)
+- Filtering/finding replays by high-level semantic features & staging them for watching on the game client
+- Rich game events browser with map overlays
+- Build Order detection with charts and for comparing with progamer timings
+- Skill proxies measurements: Viewport Multitasking, Unit Production Cadence, First Unit Efficiency
+- Alias list support for progamer replays (built-in, editable, importable/exportable), and automatic aliasing for local user's player names
+- Alliance timeline and team stacking detection on multiplayer melee games
 
 ## Installation
 
-### Download Pre-built Binaries
-
 Download the latest release from the [Releases page](https://github.com/marianogappa/screpdb/releases).
 
-### Build from Source
 
 If you prefer to build from source, you'll need Go 1.25.2 or later:
 
 ```bash
 git clone https://github.com/marianogappa/screpdb.git
 cd screpdb
-go build -o screpdb
+go build .
 ```
 
-## Usage
-
-### Ingesting Replay Files
-
-The `ingest` command processes StarCraft replay files and stores them in a database:
+## Developer features
+- CLI for ingestion onto SQLite database. No need to use UI: just ingest and query the database.
 
 ```bash
-# Basic usage - process all .rep files in default directory
 ./screpdb ingest
-
-# Specify input directory and output database
-./screpdb ingest -i /path/to/replays -s my_replays.db
-
-# Watch for new files and process them automatically
-./screpdb ingest -w
-
-# Limit processing to recent files
-./screpdb ingest -m 6  # Last 6 months
-./screpdb ingest -d 2024-01-01  # Up to specific date
-
-```
-
-#### Ingest Command Options
 
 - `-i, --input-dir`: Input directory containing replay files (default: system replay directory)
 - `-s, --sqlite-path`: SQLite database file path (default: screp.db)
@@ -59,299 +37,18 @@ The `ingest` command processes StarCraft replay files and stores them in a datab
 - `-m, --up-to-n-months`: Only process files from the last N months (0 = no limit)
 - `--store-right-clicks`: Store `Right Click` commands (disabled by default to reduce command-table volume)
 - `--skip-hotkeys`: Skip storing `Hotkey` commands (disabled by default)
+```
 
-### MCP Server
-
-The `mcp` command starts a Model Context Protocol server that provides SQL query capabilities for the SQLite database:
+- MCP server: ask AI anything about any game/player.
 
 ```bash
-# Start MCP server with default SQLite database
 ./screpdb mcp
 
 # Specify custom database file
 ./screpdb mcp -s /path/to/custom.db
 ```
 
-#### MCP Command Options
-
-- `-s, --sqlite-path`: SQLite database file path (default: screp.db)
-
-## MCP Server Implementation
-
-The MCP server is built using the `github.com/mark3labs/mcp-go` library and provides the following capabilities:
-
-### Available Tools
-
-#### query_database
-
-Execute SQL queries against the StarCraft replay SQLite database. The database contains tables: replays (metadata), players (player info), actions (game events), units (unit data), buildings (building data). Use this tool to analyze replay statistics, player performance, unit usage, and game patterns.
-
-**Parameters:**
-- `sql` (string, required): SQL query to execute against the StarCraft replay SQLite database
-
-**Example Usage:**
-```json
-{
-  "name": "query_database",
-  "arguments": {
-    "sql": "SELECT COUNT(*) FROM replays WHERE is_multiplayer = 1"
-  }
-}
-```
-
-#### get_schema
-
-Get detailed information about the StarCraft replay SQLite database schema including table structures, relationships, and example queries.
-
-**Parameters:**
-- None
-
-**Example Usage:**
-```json
-{
-  "name": "get_schema",
-  "arguments": {}
-}
-```
-
-### SQLite Database Schema
-
-The SQLite database contains comprehensive information about StarCraft replays organized into the following tables:
-
-#### replays
-Main table containing replay metadata and file information.
-
-**Columns:**
-- `id` (INTEGER, PRIMARY KEY): Unique identifier for each replay
-- `file_path` (TEXT, UNIQUE): Full path to the replay file
-- `file_checksum` (TEXT, UNIQUE): SHA256 checksum of the file for deduplication
-- `file_name` (TEXT): Name of the replay file
-- `file_size` (INTEGER): Size of the file in bytes
-- `created_at` (DATETIME): When this record was created in the database
-- `replay_date` (DATETIME): When the original game was played
-- `game_speed` (INTEGER): Game speed setting (1-6)
-- `game_type` (TEXT): Type of game (e.g., "Melee", "Use Map Settings")
-- `map_name` (TEXT): Name of the map played
-- `map_width` (INTEGER): Map width in pixels
-- `map_height` (INTEGER): Map height in pixels
-- `duration` (INTEGER): Game duration in seconds
-- `frame_count` (INTEGER): Total number of game frames
-- `version` (TEXT): StarCraft version (e.g., "1.16.1")
-- `build` (INTEGER): Build number
-- `is_multiplayer` (BOOLEAN): Whether this was a multiplayer game
-
-#### players
-Contains information about each player in the replay.
-
-**Columns:**
-- `id` (INTEGER, PRIMARY KEY): Unique identifier for each player record
-- `replay_id` (INTEGER, FOREIGN KEY): References replays.id
-- `slot` (INTEGER): Player slot number (0-7)
-- `name` (TEXT): Player's name
-- `race` (TEXT): Player's race enum (e.g., "Terran", "Protoss", "Zerg")
-- `type` (TEXT): Player type enum (e.g., "Human", "Computer")
-- `color` (TEXT): Player color enum (e.g., "Red", "Blue", "Teal")
-- `team` (INTEGER): Team number
-- `is_winner` (BOOLEAN): Whether this player won the game
-- `apm` (INTEGER): Actions per minute
-- `spm` (INTEGER): Supply per minute
-
-#### detected_patterns_replay
-Replay-level pattern detector outputs.
-
-**Columns:**
-- `replay_id` (INTEGER, FOREIGN KEY): References replays.id
-- `algorithm_version` (INTEGER): Pattern detector algorithm version
-- `pattern_name` (TEXT): Pattern identifier
-- `value_bool` (BOOLEAN): Optional boolean pattern value
-- `value_int` (INTEGER): Optional integer pattern value
-- `value_string` (TEXT): Optional string/JSON pattern value
-- `value_timestamp` (BIGINT): Optional timestamp pattern value
-
-This table intentionally does not duplicate replay metadata like `file_path` / `file_checksum`; those are read through `replays` via `replay_id`.
-
-#### actions
-Contains all game actions/events that occurred during the replay.
-
-**Columns:**
-- `id` (INTEGER, PRIMARY KEY): Unique identifier for each action
-- `replay_id` (INTEGER, FOREIGN KEY): References replays.id
-- `player_id` (INTEGER, FOREIGN KEY): References players.id
-- `frame` (INTEGER): Game frame when action occurred
-- `seconds_from_game_start` (INTEGER): Seconds elapsed since game start when action occurred
-- `type` (TEXT): Type of action (e.g., "Unit", "Building", "Upgrade")
-- `action` (TEXT): Specific action (e.g., "Create", "Destroy", "Move", "Attack")
-- `unit_type` (TEXT): Type of unit involved (if applicable)
-- `x` (INTEGER): X coordinate where action occurred
-- `y` (INTEGER): Y coordinate where action occurred
-
-#### commands_low_value
-Holds low-value command categories with the same schema as `commands`, but no indexes, to keep primary workflow scans focused.
-
-- Low-value action types routed here: `Right Click`, `Hotkey`, `Minimap Ping`, `Alliance`, `Vision`, `Cheat`, `Game Speed`
-- By default, `Right Click` commands are not stored unless `--store-right-clicks` (or `store_right_clicks` in dashboard ingest payload) is enabled
-- `Hotkey` commands are stored by default; set `--skip-hotkeys` (or `skip_hotkeys` in dashboard ingest payload) to drop them
-
-#### units
-Contains information about all units that existed during the game.
-
-**Columns:**
-- `id` (INTEGER, PRIMARY KEY): Unique identifier for each unit record
-- `replay_id` (INTEGER, FOREIGN KEY): References replays.id
-- `player_id` (INTEGER, FOREIGN KEY): References players.id
-- `unit_id` (INTEGER): Unique unit ID within the replay
-- `type` (TEXT): Unit type (e.g., "Marine", "Zealot", "Zergling")
-- `name` (TEXT): Unit name
-- `created_at` (DATETIME): When the unit was created
-- `destroyed` (DATETIME): When the unit was destroyed (NULL if still alive)
-- `x` (INTEGER): Current X coordinate
-- `y` (INTEGER): Current Y coordinate
-- `hp` (INTEGER): Current hit points
-- `max_hp` (INTEGER): Maximum hit points
-- `shield` (INTEGER): Current shield points
-- `max_shield` (INTEGER): Maximum shield points
-- `energy` (INTEGER): Current energy
-- `max_energy` (INTEGER): Maximum energy
-
-#### buildings
-Contains information about all buildings that existed during the game.
-
-**Columns:**
-- `id` (INTEGER, PRIMARY KEY): Unique identifier for each building record
-- `replay_id` (INTEGER, FOREIGN KEY): References replays.id
-- `player_id` (INTEGER, FOREIGN KEY): References players.id
-- `building_id` (INTEGER): Unique building ID within the replay
-- `type` (TEXT): Building type (e.g., "Command Center", "Nexus", "Hatchery")
-- `name` (TEXT): Building name
-- `created_at` (DATETIME): When the building was created
-- `destroyed` (DATETIME): When the building was destroyed (NULL if still standing)
-- `x` (INTEGER): Current X coordinate
-- `y` (INTEGER): Current Y coordinate
-- `hp` (INTEGER): Current hit points
-- `max_hp` (INTEGER): Maximum hit points
-- `shield` (INTEGER): Current shield points
-- `max_shield` (INTEGER): Maximum shield points
-- `energy` (INTEGER): Current energy
-- `max_energy` (INTEGER): Maximum energy
-
-### Common Query Examples
-
-#### Get all replays with player count
-```sql
-SELECT r.*, COUNT(p.id) as player_count 
-FROM replays r 
-LEFT JOIN players p ON r.id = p.replay_id 
-GROUP BY r.id 
-ORDER BY r.replay_date DESC;
-```
-
-#### Get player statistics
-```sql
-SELECT 
-    p.name,
-    p.race,
-    COUNT(DISTINCT r.id) as games_played,
-    SUM(CASE WHEN p.is_winner THEN 1 ELSE 0 END) as wins,
-    AVG(p.apm) as avg_apm,
-    AVG(p.spm) as avg_spm
-FROM players p
-JOIN replays r ON p.replay_id = r.id
-GROUP BY p.name, p.race
-ORDER BY games_played DESC;
-```
-
-#### Get unit creation statistics
-```sql
-SELECT 
-    u.type,
-    COUNT(*) as total_created,
-    COUNT(CASE WHEN u.destroyed IS NOT NULL THEN 1 END) as destroyed,
-    AVG(CASE WHEN u.destroyed IS NOT NULL 
-        THEN (julianday(u.destroyed) - julianday(u.created_at)) * 24 * 60 * 60 
-        END) as avg_lifetime_seconds
-FROM units u
-GROUP BY u.type
-ORDER BY total_created DESC;
-```
-
-#### Get action frequency by type
-```sql
-SELECT 
-    a.type,
-    a.action,
-    COUNT(*) as frequency,
-    COUNT(DISTINCT a.replay_id) as replays_with_action
-FROM actions a
-GROUP BY a.type, a.action
-ORDER BY frequency DESC;
-```
-
-#### Get recent games by race matchup
-```sql
-SELECT 
-    r.replay_date,
-    r.map_name,
-    GROUP_CONCAT(p.name || ' (' || p.race || ')') as players,
-    r.duration,
-    r.is_multiplayer
-FROM replays r
-JOIN players p ON r.id = p.replay_id
-WHERE r.replay_date >= datetime('now', '-30 days')
-GROUP BY r.id
-ORDER BY r.replay_date DESC
-LIMIT 20;
-```
-
-## Architecture
-
-### MCP Implementation
-
-The MCP server is implemented using the `github.com/mark3labs/mcp-go` library, which provides:
-
-- **Standardized Protocol**: Full compliance with the Model Context Protocol specification
-- **Tool Registration**: Easy registration of SQL query tools with proper schema validation
-- **Error Handling**: Comprehensive error handling and reporting
-- **Transport Layer**: Built-in stdio transport for seamless integration with MCP clients
-
-### Key Components
-
-1. **Storage Interface**: Abstracted storage layer for SQLite
-2. **Parser**: StarCraft replay file parser using the `github.com/icza/screp` library
-3. **File Operations**: File discovery, watching, and deduplication utilities
-4. **MCP Server**: Model Context Protocol server for querying capabilities
-
-## Development
-
-### Project Structure
-
-```
-screpdb/
-├── cmd/                    # CLI commands
-│   ├── ingest.go         # Replay ingestion command
-│   └── mcp.go            # MCP server command
-├── internal/
-│   ├── fileops/          # File operations and watching
-│   ├── mcp/              # MCP server implementation
-│   ├── models/           # Data models
-│   ├── parser/           # Replay parsing logic
-│   ├── screp/            # StarCraft replay utilities
-│   └── storage/          # Database storage implementations
-├── main.go               # Application entry point
-└── go.mod               # Go module definition
-```
-
-### Building
-
-```bash
-# Build the application
-go build -o screpdb
-
-# Run tests
-go test ./...
-
-# Format code
-go fmt ./...
-```
+- All UI functionality exposed as API: [OpenAPI schema available](api/openapi/dashboard.v1.yaml)
 
 ## License
 
@@ -365,4 +62,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 - Built using the `github.com/icza/screp` library for StarCraft replay parsing
 - MCP server implementation powered by `github.com/mark3labs/mcp-go`
-- Database schema designed for comprehensive replay analysis
