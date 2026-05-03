@@ -1,15 +1,20 @@
 package fileops
 
 import (
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // FileInfo represents a replay file with metadata
@@ -82,8 +87,11 @@ func HasReplayFiles(rootDir string) (bool, error) {
 	return false, fmt.Errorf("walk replay folder: %w", err)
 }
 
-// GetReplayFiles recursively finds all .rep files in the given directory
-func GetReplayFiles(rootDir string) ([]FileInfo, error) {
+// WalkReplayFiles recursively finds all .rep files in the given directory and
+// returns FileInfo entries with Path/Name/Size/ModTime populated. Checksum is
+// left empty — callers that need it should use HashFiles to populate it for
+// the subset that survives a cheaper dedup step (e.g. path-based prefilter).
+func WalkReplayFiles(rootDir string) ([]FileInfo, error) {
 	var files []FileInfo
 
 	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
@@ -95,17 +103,11 @@ func GetReplayFiles(rootDir string) ([]FileInfo, error) {
 			if shouldIgnoreReplayFilePath(path) {
 				return nil
 			}
-			checksum, err := calculateChecksum(path)
-			if err != nil {
-				return fmt.Errorf("failed to calculate checksum for %s: %w", path, err)
-			}
-
 			files = append(files, FileInfo{
-				Path:     path,
-				Name:     info.Name(),
-				Size:     info.Size(),
-				ModTime:  info.ModTime(),
-				Checksum: checksum,
+				Path:    path,
+				Name:    info.Name(),
+				Size:    info.Size(),
+				ModTime: info.ModTime(),
 			})
 		}
 
@@ -113,6 +115,90 @@ func GetReplayFiles(rootDir string) ([]FileInfo, error) {
 	})
 
 	return files, err
+}
+
+// HashFiles computes SHA256 for every entry whose Checksum is empty, fanning
+// the work out across runtime.GOMAXPROCS goroutines. Already-hashed entries
+// are passed through untouched. Cancellation via ctx aborts in-flight workers.
+func HashFiles(ctx context.Context, files []FileInfo) ([]FileInfo, error) {
+	if len(files) == 0 {
+		return files, nil
+	}
+
+	out := make([]FileInfo, len(files))
+	copy(out, files)
+
+	workers := runtime.GOMAXPROCS(0)
+	if workers > len(out) {
+		workers = len(out)
+	}
+	if workers < 1 {
+		workers = 1
+	}
+
+	g, gCtx := errgroup.WithContext(ctx)
+	jobs := make(chan int)
+
+	var mu sync.Mutex
+	var firstErr error
+
+	for w := 0; w < workers; w++ {
+		g.Go(func() error {
+			for i := range jobs {
+				if out[i].Checksum != "" {
+					continue
+				}
+				sum, err := calculateChecksum(out[i].Path)
+				if err != nil {
+					mu.Lock()
+					if firstErr == nil {
+						firstErr = fmt.Errorf("failed to calculate checksum for %s: %w", out[i].Path, err)
+					}
+					mu.Unlock()
+					return err
+				}
+				out[i].Checksum = sum
+			}
+			return nil
+		})
+	}
+
+	g.Go(func() error {
+		defer close(jobs)
+		for i := range out {
+			select {
+			case jobs <- i:
+			case <-gCtx.Done():
+				return gCtx.Err()
+			}
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		mu.Lock()
+		fe := firstErr
+		mu.Unlock()
+		if fe != nil {
+			return nil, fe
+		}
+		return nil, err
+	}
+
+	return out, nil
+}
+
+// GetReplayFiles recursively finds all .rep files and computes SHA256 for each.
+// Equivalent to WalkReplayFiles followed by HashFiles. Kept for callers that
+// need both results in one shot (tests, benchmarks). Hot ingest paths should
+// prefer the split form so checksum work can be skipped for files already
+// known to the database.
+func GetReplayFiles(rootDir string) ([]FileInfo, error) {
+	files, err := WalkReplayFiles(rootDir)
+	if err != nil {
+		return files, err
+	}
+	return HashFiles(context.Background(), files)
 }
 
 // SortFilesByModTime sorts files by modification time (newest first)

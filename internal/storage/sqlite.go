@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/icza/screp/rep/repcmd"
@@ -538,21 +539,18 @@ func (s *SQLiteStorage) insertCommandsBatchTx(ctx context.Context, db dbtx, comm
 		commandSpeed := normalizeNullableEnum(command.GameSpeed, allowedCommandSpeeds)
 		leaveReason := normalizeNullableEnum(command.LeaveReason, allowedLeaveReasons)
 
-		// Serialize player IDs to JSON string
+		// Serialize player IDs to JSON. encodeInt64ArrayJSON is a hand-rolled
+		// encoder for []int64 — a tight strconv-based loop avoids the
+		// reflection / scratch buffer / interface allocations of
+		// encoding/json.Marshal in this hot per-command path.
 		var visionPlayerIdsJSON, alliancePlayerIdsJSON *string
 		if command.VisionPlayerIDs != nil {
-			data, err := json.Marshal(*command.VisionPlayerIDs)
-			if err == nil {
-				s := string(data)
-				visionPlayerIdsJSON = &s
-			}
+			s := encodeInt64ArrayJSON(*command.VisionPlayerIDs)
+			visionPlayerIdsJSON = &s
 		}
 		if command.AlliancePlayerIDs != nil {
-			data, err := json.Marshal(*command.AlliancePlayerIDs)
-			if err == nil {
-				s := string(data)
-				alliancePlayerIdsJSON = &s
-			}
+			s := encodeInt64ArrayJSON(*command.AlliancePlayerIDs)
+			alliancePlayerIdsJSON = &s
 		}
 
 		// Convert unit type (convert "None" to null)
@@ -638,6 +636,52 @@ func (s *SQLiteStorage) ReplayExists(ctx context.Context, filePath, checksum str
 		return false, err
 	}
 	return true, nil
+}
+
+// FilterOutExistingReplaysByPath filters out replays whose file_path is already
+// known to the database. Does not require Checksum to be set, so callers can
+// invoke it before hashing the surviving files. The post-hash
+// FilterOutExistingReplays still needs to run afterwards to catch
+// content-already-known-at-different-path duplicates.
+func (s *SQLiteStorage) FilterOutExistingReplaysByPath(ctx context.Context, files []fileops.FileInfo) ([]fileops.FileInfo, error) {
+	if len(files) == 0 {
+		return []fileops.FileInfo{}, nil
+	}
+
+	placeholders := make([]string, len(files))
+	args := make([]any, len(files))
+	for i, file := range files {
+		placeholders[i] = "?"
+		args[i] = file.Path
+	}
+
+	query := fmt.Sprintf(`SELECT file_path FROM replays WHERE file_path IN (%s)`, strings.Join(placeholders, ", "))
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query existing replay paths: %w", err)
+	}
+	defer rows.Close()
+
+	existing := make(map[string]struct{}, len(files))
+	for rows.Next() {
+		var path string
+		if err := rows.Scan(&path); err != nil {
+			return nil, fmt.Errorf("failed to scan file path: %w", err)
+		}
+		existing[path] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	filtered := make([]fileops.FileInfo, 0, len(files))
+	for _, file := range files {
+		if _, ok := existing[file.Path]; !ok {
+			filtered = append(filtered, file)
+		}
+	}
+	return filtered, nil
 }
 
 // FilterOutExistingReplays filters out replays that already exist in the database
@@ -1323,4 +1367,29 @@ func playerColorNamesFromRepcore() []string {
 		values = append(values, value.Name)
 	}
 	return append(values, unknownEnumValue)
+}
+
+// encodeInt64ArrayJSON serializes ids as a compact JSON array. Equivalent
+// output to json.Marshal([]int64) for any input — `null` for nil, `[]` for
+// empty, `[a,b,c]` otherwise — without the reflection / scratch-buffer path.
+// On the per-command insert hot path, hit thousands of times per replay for
+// Vision/Alliance commands.
+func encodeInt64ArrayJSON(ids []int64) string {
+	if ids == nil {
+		return "null"
+	}
+	if len(ids) == 0 {
+		return "[]"
+	}
+	var b strings.Builder
+	b.Grow(2 + len(ids)*8)
+	b.WriteByte('[')
+	for i, v := range ids {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		b.WriteString(strconv.FormatInt(v, 10))
+	}
+	b.WriteByte(']')
+	return b.String()
 }
