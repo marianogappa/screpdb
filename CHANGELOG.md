@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.1](https://github.com/marianogappa/screpdb/compare/v0.19.0...v0.19.1) (2026-05-04)
+
+
+### Bug Fixes
+
+* **dashboard:** show cliff drop pill on replay summary featuring strip ([#107](https://github.com/marianogappa/screpdb/issues/107)) ([a100c47](https://github.com/marianogappa/screpdb/commit/a100c4703fa6bea6ac0e7c3d120859740cefc4b2))
+
 ## [0.19.0](https://github.com/marianogappa/screpdb/compare/v0.18.0...v0.19.0) (2026-05-03)
 
 
