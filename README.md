@@ -7,18 +7,35 @@
 screpdb is an advanced Starcraft replay reporting tool.
 
 ## Features
-- Filtering/finding replays by high-level semantic features & staging them for watching on the game client.
-- Rich game events browser with map overlays.
-- Build Order detection with charts and for comparing with progamer timings.
-- Skill proxies measurements: Viewport Multitasking, Unit Production Cadence, First Unit Efficiency.
-- Alias list support for progamer replays (built-in, editable, importable/exportable), and automatic aliasing for local user's player names.
-- Sophisticated command de-duping on the early game to facilitate precise build order detection and timing comparisons.
-- Alliance timeline and team stacking detection on multiplayer melee games.
+### Filtering/finding replays by high-level semantic features & staging them for watching on the game client
+<img width="1671" height="854" alt="Screenshot 2026-05-04 at 23 36 24" src="https://github.com/user-attachments/assets/33b28969-10fd-4226-96b2-1507f99f829c" />
+
+### Rich game events browser with map overlays
+<img width="1656" height="873" alt="Screenshot 2026-05-04 at 23 41 24" src="https://github.com/user-attachments/assets/9e31dc50-55fd-459b-9628-d3ce847af67b" />
+
+###  Build Order detection with charts and for comparing with progamer timings
+<img width="1657" height="860" alt="Screenshot 2026-05-04 at 23 42 20" src="https://github.com/user-attachments/assets/b3d909fd-17c6-410c-9bc9-fcba1cbf2313" />
+
+###  Skill proxies measurements: Viewport Multitasking, Unit Production Cadence, First Unit Efficiency
+<img width="1665" height="841" alt="Screenshot 2026-05-04 at 23 43 39" src="https://github.com/user-attachments/assets/aa2db88d-0e12-430c-ba08-97474d462a0c" />
+
+###  Alias list support for progamer replays (built-in, editable, importable/exportable), and automatic aliasing for local user's player names
+<img width="1133" height="629" alt="Screenshot 2026-05-04 at 23 44 27" src="https://github.com/user-attachments/assets/592e773a-5691-4841-9d0e-5c53d8f22db4" />
+
+### Sophisticated command de-duping on the early game to facilitate precise build order detection and timing comparisons
+<img width="1665" height="877" alt="Screenshot 2026-05-04 at 23 46 48" src="https://github.com/user-attachments/assets/fcf5c796-89a8-4536-8d41-2ab4d868676c" />
+
+### Alliance timeline and team stacking detection on multiplayer melee games
+<img width="1666" height="641" alt="Screenshot 2026-05-04 at 23 47 28" src="https://github.com/user-attachments/assets/8c9dad2b-45d1-4280-be8d-a1147e01c688" />
+
 
 ## Installation
 
 Download the latest release from the [Releases page](https://github.com/marianogappa/screpdb/releases). See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
+As a convenience for non-technical Windows users, a special Windows GUI binary is included in releases (look for screpdb-dashboard).
+
+> ⚠️ **Warning:** screpdb is currently distributed as a binary with full filesystem read/write access and unrestricted Internet access. Treat it as high-risk software and think twice before executing it. Safety guardrails are being investigated.
 
 If you prefer to build from source, you'll need Go 1.25.2 or later:
 
@@ -56,8 +73,6 @@ go build .
 
 - All UI functionality exposed as API: [OpenAPI schema available](api/openapi/dashboard.v1.yaml)
 
-> ⚠️ **Warning:** screpdb is currently distributed as a binary with full filesystem read/write access and unrestricted Internet access. Treat it as high-risk software and think twice before executing it. Safety guardrails are being investigated.
-
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
@@ -68,4 +83,4 @@ Contributions welcome. Open a [Pull Request](https://github.com/marianogappa/scr
 
 ## Acknowledgments
 
-- Built using the [github.com/icza/screp](https://github.com/icza/screp) library for StarCraft replay parsing
+- Built using the [github.com/icza/screp](https://github.com/icza/screp) library for StarCraft replay parsing. This project would have been impossible without [András Belicza](https://github.com/icza)'s work.
