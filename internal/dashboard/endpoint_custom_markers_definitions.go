@@ -73,6 +73,7 @@ var staticFeaturingOrder = []string{
 	// late-game custom-evaluator markers
 	"threw_nukes",
 	"made_recalls",
+	"cliff_drop",
 	"mech_transition",
 	// transition markers (KindMarker)
 	"one_one_one",
