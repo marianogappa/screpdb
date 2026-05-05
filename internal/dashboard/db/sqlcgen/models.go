@@ -18,6 +18,7 @@ type Command struct {
 	UpgradeName          *string
 	HotkeyType           *string
 	ChatMessage          *string
+	OrderName            *string
 }
 
 type CommandsLowValue struct {

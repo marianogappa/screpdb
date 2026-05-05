@@ -112,11 +112,33 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	if err := d.populatePhaseMarkersForGameDetail(&detail); err != nil {
 		return detail, err
 	}
+	if err := d.populateUnitCompositionMarkersForGameDetail(&detail); err != nil {
+		return detail, err
+	}
 	if err := d.populateAllianceTimelineForGameDetail(&detail); err != nil {
 		return detail, err
 	}
 
 	return detail, nil
+}
+
+// populateUnitCompositionMarkersForGameDetail computes attacker-composition
+// pills at request time from the persisted phase boundaries
+// (mid_game_starts / late_game_starts replay-level markers) and the
+// Train / Unit Morph / Cast command stream for the replay. The result
+// is one row per (player, phase) where the player produced ≥1
+// non-excluded attacking unit. See dashboard/unit_composition.go.
+func (d *Dashboard) populateUnitCompositionMarkersForGameDetail(detail *workflowGameDetail) error {
+	boundaries, err := d.dbStore.GetPhaseBoundariesForReplay(d.ctx, detail.ReplayID)
+	if err != nil {
+		return fmt.Errorf("failed to load phase boundaries: %w", err)
+	}
+	rows, err := d.dbStore.ListGameUnitProductionAndCasts(d.ctx, detail.ReplayID)
+	if err != nil {
+		return fmt.Errorf("failed to load production/casts: %w", err)
+	}
+	detail.UnitCompositionMarkers = computeCompositionForReplay(rows, boundaries)
+	return nil
 }
 
 func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDetail, mapLayout *models.MapContextLayout, startClockByPlayerID map[int64]int, displayByName map[string]string) error {

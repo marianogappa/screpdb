@@ -92,7 +92,8 @@ CREATE TABLE commands (
   tech_name TEXT,
   upgrade_name TEXT,
   hotkey_type TEXT,
-  chat_message TEXT
+  chat_message TEXT,
+  order_name TEXT
 );
 
 CREATE TABLE commands_low_value (

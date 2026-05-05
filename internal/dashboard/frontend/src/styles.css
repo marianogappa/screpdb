@@ -2217,12 +2217,14 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex: 0 1 auto;
+  /* Fill remaining row space (after the map thumb on the left) instead
+     of capping at a fixed width. Pills inside still left-align via
+     flex-direction:column + their own inline-flex layout. The old
+     max-width: min(840px, 100%) artificially clipped the row even on
+     wide displays — relevant now that the new "Unit composition" pills
+     run wider than the Featuring chips. */
+  flex: 1 1 auto;
   min-width: 0;
-  /* 3x the previous 280px cap so the per-replay pill grid keeps pills on
-     fewer rows on standard desktop widths (cwal users routinely surface
-     5-8 chips per replay; the old 280px max wrapped after 2-3). */
-  max-width: min(840px, 100%);
 }
 
 .workflow-summary-features-title {
@@ -2847,6 +2849,75 @@ body {
   min-height: 32px;
   padding: 3px 8px;
   font-size: 0.74rem;
+}
+
+/* CompositionPill — per-game attacker-composition family.
+   Backed by internal/dashboard/frontend/src/lib/compositionPill.jsx.
+   Layout: phase label | 10-slot unit-icon strip | separator | caster
+   icons. No percentages — proportional fill comes from how many slots
+   each unit gets via largest-remainder distribution. */
+.workflow-composition-pill-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.workflow-composition-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+}
+.workflow-composition-pill-phase {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  flex: 0 0 auto;
+}
+.workflow-composition-pill-units {
+  display: inline-flex;
+  align-items: center;
+}
+/* -5px left margin on EVERY chip (including the first) so the icons
+   bunch tightly together — gives a deliberate "stacked army" feel
+   rather than a spaced row. The first chip's overhang into the parent
+   is intentional and reads as part of the pill's left padding. Applies
+   to both the units strip and the casters strip per spec. */
+.workflow-composition-pill-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -5px;
+}
+.workflow-composition-pill-icon {
+  /* 20% smaller than the previous 36px (36 * 0.8 = 28.8 → 29). Keep
+     in sync between unit slots and caster chips so the two strips
+     read as the same scale. */
+  width: 29px;
+  height: 29px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+.workflow-composition-pill-casters {
+  display: inline-flex;
+  align-items: center;
+  padding-left: 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  margin-left: 2px;
+}
+.workflow-composition-pill-caster {
+  display: inline-flex;
+  align-items: center;
+  margin-left: -5px;
+}
+/* Bottom margin under the "GAME PHASE" header so the pills row sits
+   slightly clear of the section title. Only the composition variant
+   uses this — the "This game" header above keeps its existing tight
+   spacing. */
+.workflow-summary-composition-title {
+  margin-bottom: 6px;
 }
 
 .workflow-insight-grid {

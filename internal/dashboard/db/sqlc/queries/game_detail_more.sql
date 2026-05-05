@@ -74,6 +74,52 @@ GROUP BY c.action_type
 ORDER BY n DESC
 LIMIT ?;
 
+-- name: GetPhaseBoundariesForReplay :many
+-- Returns the replay-level phase-boundary markers (mid_game_starts,
+-- late_game_starts) persisted at ingest by
+-- internal/patterns/detectors/phase_boundary_detector.go. Each row is a
+-- single (event_type, second) pair; either or both may be absent when
+-- the replay never reached the corresponding boundary. Caller treats
+-- absent rows as "phase split not detected" -- the same semantics used
+-- by the per-game events list (collapsed empty section).
+SELECT
+  re.event_type,
+  re.seconds_from_game_start
+FROM replay_events re
+WHERE re.replay_id = ?
+  AND re.event_kind = 'marker'
+  AND re.event_type IN ('mid_game_starts', 'late_game_starts')
+  AND re.source_player_id IS NULL;
+
+-- name: ListGameUnitProductionAndCasts :many
+-- Returns Train / Unit Morph / spell-cast commands for a single replay,
+-- needed by the per-game endpoint to compute attacker composition pills
+-- at request time (no ingest-time persistence -- see plan: composition is
+-- computed on the fly so it stays in sync with edits to caster sets,
+-- excluded units, and presentation rules without re-ingest).
+--
+-- Rows pre-joined to players so the caller has player_id without a
+-- second roundtrip. Right-clicks/hotkeys etc. live in commands_low_value
+-- and are intentionally excluded -- per the project memory rule the
+-- dashboard never queries that table.
+SELECT
+  c.player_id,
+  c.action_type,
+  c.unit_type,
+  c.unit_types,
+  c.order_name,
+  c.seconds_from_game_start
+FROM commands c
+JOIN players p ON p.id = c.player_id
+WHERE c.replay_id = ?
+  AND p.is_observer = 0
+  AND lower(trim(coalesce(p.type, ''))) = 'human'
+  AND (
+    c.action_type IN ('Train', 'Unit Morph')
+    OR (c.order_name IS NOT NULL AND (c.order_name LIKE 'Cast%' OR c.order_name LIKE 'Nuke%' OR c.order_name = 'NuclearStrike'))
+  )
+ORDER BY c.player_id, c.seconds_from_game_start, c.id;
+
 -- name: ListPlayerFirstExpansionTimings :many
 -- One row per (race, map_kind, replay) for a single player giving the
 -- earliest expansion event time. Backs the early-game timing summary that

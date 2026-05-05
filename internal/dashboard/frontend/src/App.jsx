@@ -25,6 +25,10 @@ import {
   lookupDefinitionForPattern,
 } from './lib/markerRegistry';
 import {
+  CompositionPhasesRow,
+  computeReplayAggregatePhases,
+} from './lib/compositionPill';
+import {
   getStoredAutoIngestSettings,
   saveAutoIngestSettings,
 } from './lib/dashboardStorage';
@@ -1381,6 +1385,21 @@ function App() {
   // exclude these to avoid effect churn, so we mirror them into refs that are
   // re-assigned on every render.
   const refreshAfterIngestRef = useRef(null);
+  // Auto-ingest fires every 60s; when it actually adds replays we only
+  // want the game list to refresh — never the active game/player view,
+  // never the player histograms, never the player overview. Earlier
+  // wiring routed auto-ingest through refreshDataAfterGlobalReplayFilterSave
+  // which reloads everything; that was correct for filter-save (filter
+  // scope changed everywhere) but caused a full-UI blink every minute
+  // for auto-ingest. Split the two paths.
+  const refreshGamesAfterAutoIngestRef = useRef(null);
+  // The ingest WebSocket handler emits a 'completed' status for EVERY
+  // ingest run — manual button-press AND background auto-ingest tick.
+  // We want the broad refresh only on manual: the auto-ingest poller
+  // already does its own scoped refresh (game list only). This flag is
+  // set by handleIngestSubmit before calling api.startIngest, and the
+  // WebSocket 'completed' handler reads + clears it.
+  const manualIngestInFlight = useRef(false);
   const mainGamesFiltersRef = useRef(null);
   const mainGamesPageRef = useRef(null);
   const [mainPlayer, setMainPlayer] = useState(null);
@@ -2386,15 +2405,24 @@ function App() {
             setIngestStatus(message.status || 'idle');
             if (message.error) {
               setIngestMessage(message.error);
+              manualIngestInFlight.current = false;
             } else if (message.status === 'running') {
               setIngestMessage('');
             } else if (message.status === 'completed') {
               setIngestMessage('Ingestion completed.');
-              // Call via ref so we always invoke the *current* render's
-              // refresh function. The WebSocket handler is mount-once
-              // (deps `[]`), so a direct call would close over the
-              // initial-render version and refresh with empty filters.
-              void refreshAfterIngestRef.current?.();
+              // Auto-ingest fires the same 'completed' status every 60s
+              // and was the source of the whole-UI blink. Only run the
+              // broad refresh when this run was user-initiated (button
+              // press); auto-ingest's own poller does a game-list-only
+              // refresh that's already wired separately. Call via ref
+              // so we always invoke the *current* render's refresh
+              // function — the WebSocket handler is mount-once (deps
+              // `[]`), so a direct call would close over the initial-
+              // render version and refresh with empty filters.
+              if (manualIngestInFlight.current) {
+                manualIngestInFlight.current = false;
+                void refreshAfterIngestRef.current?.();
+              }
             }
           }
         } catch (err) {
@@ -2487,11 +2515,13 @@ function App() {
 
         const didIncrease = await pollForReplayCountIncrease(baselineCount, intervalSeconds);
         if (didIncrease) {
-          // Call via ref to avoid the stale-closure trap: this effect's deps
-          // are `[autoIngestEnabled, showIngestPanel]`, so without the ref the
-          // refresh would run with whatever filter state existed when
+          // Game-list-only refresh: no other screen should ever blink in
+          // response to a background ingestion. If auto-ingest was a
+          // no-op (didIncrease=false) nothing reloads at all. Routing
+          // via a ref so the latest filter/page state is read at fire
+          // time rather than the closure-captured value from when
           // auto-ingest was first enabled.
-          await refreshAfterIngestRef.current?.();
+          await refreshGamesAfterAutoIngestRef.current?.();
           showAutoIngestNotice('auto-ingested new replays');
         }
       } catch (err) {
@@ -2552,6 +2582,11 @@ function App() {
         nextInputDir = await persistIngestInputDir(nextInputDir);
       }
 
+      // Mark this as a user-initiated ingest: the WebSocket 'completed'
+      // handler should fire the broad refresh for THIS run only. Reset
+      // when the handler observes 'completed' (or 'error', via the
+      // status branch that doesn't refresh).
+      manualIngestInFlight.current = true;
       const response = await api.startIngest({
         input_dir: nextInputDir,
         watch: ingestForm.watch,
@@ -2575,6 +2610,10 @@ function App() {
       }
     } catch (err) {
       setIngestMessage(err.message || 'Failed to start ingestion.');
+      // Clear the flag — no 'completed' WebSocket message will follow
+      // a failed startIngest, so without this the next ingest run
+      // (manual or auto) would inherit a stale "manual" verdict.
+      manualIngestInFlight.current = false;
     }
   };
 
@@ -2627,11 +2666,23 @@ function App() {
     }
   };
 
+  // Lightweight game-list-only refresh used by the auto-ingest path.
+  // No active-view re-fetch, no histogram reloads — just the game list,
+  // which is the only screen that newly-ingested replays affect.
+  const refreshGameListOnly = async () => {
+    try {
+      await loadMainGames({ page: mainGamesPage, filters: mainGamesFilters });
+    } catch (err) {
+      console.error('Failed to refresh game list after auto-ingest:', err);
+    }
+  };
+
   // Keep the latest-ref pattern wiring up to date. Assigning during render
   // (rather than in an effect) is the standard React pattern and is safe
   // because we only *read* these refs from event/timer callbacks, never
   // during the render itself.
   refreshAfterIngestRef.current = refreshDataAfterGlobalReplayFilterSave;
+  refreshGamesAfterAutoIngestRef.current = refreshGameListOnly;
   mainGamesFiltersRef.current = mainGamesFilters;
   mainGamesPageRef.current = mainGamesPage;
 
@@ -4514,7 +4565,7 @@ function App() {
                       <div className="workflow-summary-features-col">
                         {mainGameFeaturingPillsList.length > 0 ? (
                           <>
-                            <div className="workflow-summary-features-title">This game</div>
+                            <div className="workflow-summary-features-title">Featuring</div>
                             <div className="workflow-pattern-pills">
                               {mainGameFeaturingPillsList.map((pill) => renderFeaturingPill(pill, 'summary-game'))}
                             </div>
@@ -4522,6 +4573,25 @@ function App() {
                         ) : (
                           <div className="workflow-subtle-note">No featured highlights for this replay.</div>
                         )}
+                        {/* Replay-aggregate attacker-composition pills (early/mid/late).
+                            Computed at display time by summing per-player counts in
+                            mainGame.unit_composition_markers (Decision 6 in plan
+                            ~/.claude/plans/i-want-to-explore-snoopy-hippo.md). */}
+                        {Array.isArray(mainGame?.unit_composition_markers) && mainGame.unit_composition_markers.length > 0 ? (
+                          <div className="workflow-summary-composition">
+                            <div className="workflow-summary-features-title workflow-summary-composition-title">Unit composition</div>
+                            {/* Aggregate pills: slotCount=10 (vs 6 default for
+                                per-player) since this row sits alone with room
+                                to spare. maxCasters intentionally unset so the
+                                full cross-player notable list is visible on the
+                                summary surface. Per-player pills below keep the
+                                compact 6-slot, 4-caster layout. */}
+                            <CompositionPhasesRow
+                              phases={computeReplayAggregatePhases(mainGame.unit_composition_markers)}
+                              slotCount={10}
+                            />
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                     <div className="workflow-player-rows" style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
@@ -4552,6 +4622,17 @@ function App() {
                                 {gameSummaryParts.positive.map(renderGameSummarySignalPill)}
                                 {filterSummaryPillPatterns(player.detected_patterns, trustGameEventsForDrops).map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`, undefined, markerRegistry))}
                               </div>
+                              {/* Per-player attacker-composition phase pills.
+                                  Source: mainGame.unit_composition_markers filtered to this player. */}
+                              {Array.isArray(mainGame?.unit_composition_markers) ? (() => {
+                                const playerPhases = mainGame.unit_composition_markers.filter((m) => m.player_id === player.player_id);
+                                if (playerPhases.length === 0) return null;
+                                return (
+                                  <div className="workflow-pattern-pills">
+                                    <CompositionPhasesRow phases={playerPhases} maxCasters={4} />
+                                  </div>
+                                );
+                              })() : null}
                             </div>
                           </div>
                         );

@@ -376,6 +376,13 @@ type workflowGameDetail struct {
 	// detected — the frontend collapses the empty section header.
 	EarlyGameEndsAtSecond int64 `json:"early_game_ends_at_second,omitempty"`
 	MidGameEndsAtSecond   int64 `json:"mid_game_ends_at_second,omitempty"`
+
+	// UnitCompositionMarkers is a flat list of (player, phase) attacker-
+	// composition rows for this replay. The frontend aggregates them into
+	// three replay-level pills at display time (per-game summary surface)
+	// and renders per-player rows on individual player strips. Source rows
+	// are replay_events with event_type LIKE 'unit_composition_%'.
+	UnitCompositionMarkers []workflowGameUnitComposition `json:"unit_composition_markers,omitempty"`
 }
 
 // workflowAllianceSnapshot is one observed team topology in the Alliances tab.
@@ -647,11 +654,40 @@ type workflowPlayerOverview struct {
 	FingerprintMetrics  []workflowComparativeMetric   `json:"fingerprint_metrics"`
 	RecentGames         []workflowGameListItem        `json:"recent_games"`
 	ChatSummary         workflowPlayerChatSummary     `json:"chat_summary"`
-	NarrativeHints      []string                      `json:"narrative_hints"`
-	Matchups            []workflowPlayerMatchupCell   `json:"matchups"`
-	RaceOrders          []workflowRaceOrderSummary    `json:"race_orders"`
-	MatchupOrders       []workflowMatchupOrderSummary `json:"matchup_orders"`
-	EarlyTimings        []workflowPlayerEarlyTiming   `json:"early_timings"`
+	NarrativeHints []string                      `json:"narrative_hints"`
+	Matchups       []workflowPlayerMatchupCell   `json:"matchups"`
+	RaceOrders     []workflowRaceOrderSummary    `json:"race_orders"`
+	MatchupOrders  []workflowMatchupOrderSummary `json:"matchup_orders"`
+	EarlyTimings   []workflowPlayerEarlyTiming   `json:"early_timings"`
+}
+
+// workflowUnitCompositionUnit is one entry in the (player, phase)
+// composition histogram. Counts are raw — the frontend renders by
+// proportional fill across a fixed-size slot strip rather than as
+// percentages.
+type workflowUnitCompositionUnit struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+
+// workflowGameUnitComposition is a per-(player, phase) row attached to
+// the per-game endpoint response. Computed at request time from the
+// persisted phase boundaries (mid_game_starts / late_game_starts
+// markers) plus the Train / Unit Morph / Cast command stream — see
+// internal/dashboard/unit_composition.go. Frontend renders per-player
+// rows on individual player strips and aggregates client-side into
+// three replay-level pills for the per-game summary surface.
+//
+// Casters covers two distinct populations merged into one strip:
+//   - spell-caster units that actually cast a spell in this phase
+//   - signature non-spellcaster units that the player BUILT
+//     (Carrier/Reaver/BC/DT/Dropship/Nuke/Guardian/Devourer)
+// Both are deduped: each unit appears at most once per phase.
+type workflowGameUnitComposition struct {
+	PlayerID int64                         `json:"player_id"`
+	Phase    string                        `json:"phase"`
+	Units    []workflowUnitCompositionUnit `json:"units"`
+	Casters  []string                      `json:"casters,omitempty"`
 }
 
 type workflowPlayerChatSummary struct {
