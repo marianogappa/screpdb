@@ -35,7 +35,29 @@ jobs:
       - name: Build cross-platform release binaries
         run: make cross-binaries
 
-      - name: Upload release artifacts
+      - name: Generate SHA256SUMS
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS
+
+      - name: Sign SHA256SUMS with minisign
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MINISIGN_SECRET_KEY:-}" ]; then
+            echo "::warning::MINISIGN_SECRET_KEY secret not set; skipping minisign signature."
+            echo "::warning::See README 'Verifying downloads on Windows' for one-time setup."
+            exit 0
+          fi
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq minisign
+          KEYFILE="$(mktemp)"
+          trap 'rm -f "$KEYFILE"' EXIT
+          printf '%s\n' "$MINISIGN_SECRET_KEY" > "$KEYFILE"
+          cd dist
+          minisign -S -s "$KEYFILE" -m SHA256SUMS
+
+      - name: Upload release binaries and checksums
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -45,4 +67,12 @@ jobs:
             dist/screpdb-linux-arm64
             dist/screpdb-darwin-amd64
             dist/screpdb-darwin-arm64
+            dist/SHA256SUMS
+          fail_on_unmatched_files: true
+
+      - name: Upload minisign signature (when present)
+        if: hashFiles('dist/SHA256SUMS.minisig') != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/SHA256SUMS.minisig
           fail_on_unmatched_files: true

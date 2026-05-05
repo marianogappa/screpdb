@@ -3,7 +3,6 @@ package dashboard
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,382 +10,17 @@ import (
 	"path"
 	"strings"
 
+	"github.com/icza/screp/rep/repcore"
 	"github.com/marianogappa/screpdb/internal/buildinfo"
 	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
-	"github.com/marianogappa/screpdb/internal/dashboard/variables"
 	"github.com/marianogappa/screpdb/internal/ingest"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 	"github.com/marianogappa/screpdb/internal/storage"
 )
 
 var _ dashboardservice.DashboardService = (*Dashboard)(nil)
-
-func (d *Dashboard) ListDashboards(ctx context.Context, _ apigen.ListDashboardsRequestObject) (any, error) {
-	dashboards, err := d.listDashboards(ctx)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	type dashboardResponse struct {
-		URL              string  `json:"url"`
-		Name             string  `json:"name"`
-		Description      *string `json:"description"`
-		ReplaysFilterSQL *string `json:"replays_filter_sql"`
-		CreatedAt        *string `json:"created_at"`
-	}
-	response := make([]dashboardResponse, len(dashboards))
-	for i, dash := range dashboards {
-		var createdAt *string
-		if dash.CreatedAt != nil {
-			ts := dash.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
-			createdAt = &ts
-		}
-		response[i] = dashboardResponse{
-			URL:              dash.URL,
-			Name:             dash.Name,
-			Description:      dash.Description,
-			ReplaysFilterSQL: dash.ReplaysFilterSQL,
-			CreatedAt:        createdAt,
-		}
-	}
-	return response, nil
-}
-
-func (d *Dashboard) CreateDashboard(ctx context.Context, request apigen.CreateDashboardRequestObject) (any, error) {
-	if request.Body == nil {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("request body is required"))
-	}
-	req := request.Body
-	if strings.TrimSpace(req.Url) == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("url cannot be empty"))
-	}
-	if strings.TrimSpace(req.Name) == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("name cannot be empty"))
-	}
-	var replaysFilterSQL *string
-	if req.ReplaysFilterSql != nil {
-		normalized, err := d.validateReplayFilterSQL(req.ReplaysFilterSql)
-		if err != nil {
-			return nil, dashboardservice.WithStatus(http.StatusBadRequest, fmt.Errorf("invalid replays_filter_sql: %w", err))
-		}
-		if normalized != "" {
-			replaysFilterSQL = &normalized
-		}
-	}
-	dash, err := d.createDashboard(ctx, req.Url, req.Name, req.Description, replaysFilterSQL)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
-	}
-	response := map[string]any{
-		"url":                dash.URL,
-		"name":               dash.Name,
-		"description":        dash.Description,
-		"replays_filter_sql": dash.ReplaysFilterSQL,
-	}
-	if dash.CreatedAt != nil {
-		response["created_at"] = dash.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
-	}
-	return response, nil
-}
-
-func (d *Dashboard) DeleteDashboard(ctx context.Context, request apigen.DeleteDashboardRequestObject) (any, error) {
-	if strings.TrimSpace(request.Url) == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("dashboard url missing"))
-	}
-	if err := d.deleteDashboard(ctx, request.Url); err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return map[string]any{"ok": true}, nil
-}
-
-func (d *Dashboard) GetDashboard(ctx context.Context, request apigen.GetDashboardRequestObject) (any, error) {
-	return d.getDashboardPayload(ctx, request.Url, nil)
-}
-
-func (d *Dashboard) GetDashboardPost(ctx context.Context, request apigen.GetDashboardPostRequestObject) (any, error) {
-	var values map[string]any
-	if request.Body != nil && request.Body.VariableValues != nil {
-		values = *request.Body.VariableValues
-	}
-	return d.getDashboardPayload(ctx, request.Url, values)
-}
-
-func (d *Dashboard) getDashboardPayload(ctx context.Context, dashboardURL string, variableValues map[string]any) (any, error) {
-	if strings.TrimSpace(dashboardURL) == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("dashboard url missing"))
-	}
-	if err := variables.ValidateReceivedVariableValues(variableValues); err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, fmt.Errorf("invalid variable values supplied: %w", err))
-	}
-	dash, err := d.getDashboardByURL(ctx, dashboardURL)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, errors.New("unknown dashboard url"))
-		}
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	widgets, err := d.getDashboardWidgets(ctx, dashboardURL)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	allUsedVariables := map[string]variables.Variable{}
-	widgetResponses := make([]map[string]any, 0, len(widgets))
-	for _, widget := range widgets {
-		if widget.Query != "" {
-			for key, variable := range variables.FindVariables(widget.Query, variableValues) {
-				allUsedVariables[key] = variable
-			}
-		}
-		config, err := bytesToWidgetConfig([]byte(widget.Config))
-		if err != nil {
-			return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-		}
-		row := map[string]any{
-			"id":           widget.ID,
-			"widget_order": widget.WidgetOrder,
-			"name":         widget.Name,
-			"description":  widget.Description,
-			"config":       config,
-			"query":        widget.Query,
-		}
-		if widget.CreatedAt != nil {
-			row["created_at"] = widget.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
-		}
-		if widget.UpdatedAt != nil {
-			row["updated_at"] = widget.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
-		}
-		widgetResponses = append(widgetResponses, row)
-	}
-	var variableOptions map[string][]any
-	if err := d.withFilteredConnection(dash.ReplaysFilterSQL, func(db *sql.DB) error {
-		var runErr error
-		variableOptions, runErr = variables.RunAllUsedVariableQueries(db, allUsedVariables)
-		return runErr
-	}); err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	variablesResponse := map[string]any{}
-	for varName, variable := range allUsedVariables {
-		variablesResponse[varName] = map[string]any{
-			"name":            variable.Name,
-			"display_name":    variable.DisplayName,
-			"description":     variable.Description,
-			"possible_values": variableOptions[varName],
-		}
-	}
-	response := map[string]any{
-		"url":                dash.URL,
-		"name":               dash.Name,
-		"description":        dash.Description,
-		"replays_filter_sql": dash.ReplaysFilterSQL,
-		"widgets":            widgetResponses,
-		"variables":          variablesResponse,
-	}
-	if dash.CreatedAt != nil {
-		response["created_at"] = dash.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
-	}
-	return response, nil
-}
-
-func (d *Dashboard) UpdateDashboard(ctx context.Context, request apigen.UpdateDashboardRequestObject) (any, error) {
-	if strings.TrimSpace(request.Url) == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("dashboard url missing"))
-	}
-	dash, err := d.getDashboardByURL(ctx, request.Url)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, errors.New("unknown dashboard"))
-		}
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	var req apigen.UpdateDashboardRequest
-	if request.Body != nil {
-		req = *request.Body
-	}
-	name := dash.Name
-	if req.Name != nil && strings.TrimSpace(*req.Name) != "" {
-		name = *req.Name
-	}
-	description := dash.Description
-	if req.Description != nil {
-		description = req.Description
-	}
-	var replaysFilterSQL *string
-	if req.ReplaysFilterSql != nil {
-		normalized, err := d.validateReplayFilterSQL(req.ReplaysFilterSql)
-		if err != nil {
-			return nil, dashboardservice.WithStatus(http.StatusBadRequest, fmt.Errorf("invalid replays_filter_sql: %w", err))
-		}
-		replaysFilterSQL = &normalized
-	}
-	if err := d.updateDashboard(ctx, request.Url, name, description, replaysFilterSQL); err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return map[string]any{"ok": true}, nil
-}
-
-func (d *Dashboard) ListDashboardWidgets(ctx context.Context, request apigen.ListDashboardWidgetsRequestObject) (any, error) {
-	if strings.TrimSpace(request.Url) == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("dashboard url missing"))
-	}
-	widgets, err := d.getDashboardWidgets(ctx, request.Url)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	response := make([]map[string]any, 0, len(widgets))
-	for _, widget := range widgets {
-		row := map[string]any{
-			"id":           widget.ID,
-			"dashboard_id": widget.DashboardID,
-			"widget_order": widget.WidgetOrder,
-			"name":         widget.Name,
-			"description":  widget.Description,
-			"config":       []byte(widget.Config),
-			"query":        widget.Query,
-		}
-		if widget.CreatedAt != nil {
-			row["created_at"] = widget.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
-		}
-		if widget.UpdatedAt != nil {
-			row["updated_at"] = widget.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
-		}
-		response = append(response, row)
-	}
-	return response, nil
-}
-
-func (d *Dashboard) CreateDashboardWidget(ctx context.Context, request apigen.CreateDashboardWidgetRequestObject) (any, error) {
-	if strings.TrimSpace(request.Url) == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("dashboard url missing"))
-	}
-	var prompt string
-	if request.Body != nil && request.Body.Prompt != nil {
-		prompt = strings.TrimSpace(*request.Body.Prompt)
-	}
-	order, err := d.getNextWidgetOrder(ctx, request.Url)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	emptyConfig := WidgetConfig{Type: WidgetTypeTable}
-	configBytes, err := widgetConfigToBytes(emptyConfig)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	widget, err := d.createDashboardWidget(ctx, request.Url, order, "New Widget", nil, configBytes, "")
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	if prompt != "" {
-		if !d.ai.IsAvailable() {
-			return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("OpenAI API key not configured. Cannot create widget with prompt."))
-		}
-		conv, err := d.ai.NewConversation(widget.ID)
-		if err != nil {
-			return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-		}
-		d.conversations[int(widget.ID)] = conv
-		resp, err := conv.Prompt(prompt)
-		if err != nil {
-			return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-		}
-		configBytes, err = widgetConfigToBytes(resp.Config)
-		if err != nil {
-			return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-		}
-		var description *string
-		if resp.Description != "" {
-			description = &resp.Description
-		}
-		if err := d.updateDashboardWidget(ctx, widget.ID, resp.Title, description, configBytes, resp.SQLQuery, &order); err != nil {
-			return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-		}
-	}
-	againWidget, err := d.getDashboardWidgetByID(ctx, widget.ID)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	config, err := bytesToWidgetConfig([]byte(againWidget.Config))
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	response := map[string]any{
-		"id":           againWidget.ID,
-		"dashboard_id": againWidget.DashboardID,
-		"widget_order": againWidget.WidgetOrder,
-		"name":         againWidget.Name,
-		"description":  againWidget.Description,
-		"config":       config,
-		"query":        againWidget.Query,
-	}
-	if againWidget.CreatedAt != nil {
-		response["created_at"] = againWidget.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
-	}
-	if againWidget.UpdatedAt != nil {
-		response["updated_at"] = againWidget.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
-	}
-	return response, nil
-}
-
-func (d *Dashboard) DeleteDashboardWidget(ctx context.Context, request apigen.DeleteDashboardWidgetRequestObject) (any, error) {
-	if err := d.deleteDashboardWidget(ctx, int64(request.Wid)); err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return map[string]any{"ok": true}, nil
-}
-
-func (d *Dashboard) UpdateDashboardWidget(ctx context.Context, request apigen.UpdateDashboardWidgetRequestObject) (any, error) {
-	widget, err := d.getDashboardWidgetByID(ctx, int64(request.Wid))
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, errors.New("unknown dashboard widget"))
-		}
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	var req apigen.UpdateDashboardWidgetRequest
-	if request.Body != nil {
-		req = *request.Body
-	}
-	name := widget.Name
-	if req.Name != nil && strings.TrimSpace(*req.Name) != "" {
-		name = *req.Name
-	}
-	description := widget.Description
-	if req.Description != nil {
-		description = req.Description
-	}
-	query := widget.Query
-	if req.Query != nil {
-		query = *req.Query
-	}
-	currentConfig, err := bytesToWidgetConfig([]byte(widget.Config))
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	configToUse := currentConfig
-	if req.Config != nil {
-		configBytes, err := json.Marshal(req.Config)
-		if err != nil {
-			return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
-		}
-		if err := json.Unmarshal(configBytes, &configToUse); err != nil {
-			return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
-		}
-	}
-	configBytes, err := widgetConfigToBytes(configToUse)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	widgetOrder := widget.WidgetOrder
-	if widgetOrder == nil {
-		zero := int64(0)
-		widgetOrder = &zero
-	}
-	if err := d.updateDashboardWidget(ctx, int64(request.Wid), name, description, configBytes, query, widgetOrder); err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return map[string]any{"ok": true}, nil
-}
 
 func (d *Dashboard) GetGlobalReplayFilterConfig(ctx context.Context, _ apigen.GetGlobalReplayFilterConfigRequestObject) (any, error) {
 	config, err := d.getGlobalReplayFilterConfig(ctx)
@@ -540,74 +174,6 @@ func (d *Dashboard) UpdateIngestSettings(ctx context.Context, request apigen.Upd
 	return ingestSettingsResponse{InputDir: strings.TrimSpace(inputDir)}, nil
 }
 
-func (d *Dashboard) ExecuteQuery(ctx context.Context, request apigen.ExecuteQueryRequestObject) (any, error) {
-	if request.Body == nil {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("request body is required"))
-	}
-	req := *request.Body
-	query := strings.TrimSpace(req.Query)
-	if query == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("query is required"))
-	}
-	if !isSelectQuery(query) {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("only SELECT queries are allowed"))
-	}
-	var variableValues map[string]any
-	if req.VariableValues != nil {
-		variableValues = *req.VariableValues
-	}
-	if err := variables.ValidateReceivedVariableValues(variableValues); err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, fmt.Errorf("invalid variable values supplied: %w", err))
-	}
-	var replaysFilterSQL *string
-	if req.DashboardUrl != nil && strings.TrimSpace(*req.DashboardUrl) != "" {
-		dash, err := d.getDashboardByURL(ctx, *req.DashboardUrl)
-		if err != nil {
-			return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("unknown dashboard url"))
-		}
-		replaysFilterSQL = dash.ReplaysFilterSQL
-	}
-	results, columns, err := d.executeQuery(query, variables.FindVariables(query, variableValues), replaysFilterSQL)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
-	}
-	return map[string]any{"results": results, "columns": columns}, nil
-}
-
-func (d *Dashboard) GetQueryVariables(ctx context.Context, request apigen.GetQueryVariablesRequestObject) (any, error) {
-	if request.Body == nil {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("request body is required"))
-	}
-	req := *request.Body
-	usedVariables := variables.FindVariables(req.Query, nil)
-	var replaysFilterSQL *string
-	if req.DashboardUrl != nil && strings.TrimSpace(*req.DashboardUrl) != "" {
-		dash, err := d.getDashboardByURL(ctx, *req.DashboardUrl)
-		if err != nil {
-			return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("unknown dashboard url"))
-		}
-		replaysFilterSQL = dash.ReplaysFilterSQL
-	}
-	var variableOptions map[string][]any
-	if err := d.withFilteredConnection(replaysFilterSQL, func(db *sql.DB) error {
-		var runErr error
-		variableOptions, runErr = variables.RunAllUsedVariableQueries(db, usedVariables)
-		return runErr
-	}); err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	response := map[string]any{}
-	for varName, variable := range usedVariables {
-		response[varName] = map[string]any{
-			"name":            variable.Name,
-			"display_name":    variable.DisplayName,
-			"description":     variable.Description,
-			"possible_values": variableOptions[varName],
-		}
-	}
-	return map[string]any{"variables": response}, nil
-}
-
 func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListRequestObject) (any, error) {
 	limit, offset := 20, 0
 	if request.Params.Limit != nil && *request.Params.Limit > 0 {
@@ -718,7 +284,7 @@ func (d *Dashboard) GameAsk(_ context.Context, request apigen.GameAskRequestObje
 	columns := []string{}
 	if answer.Config.Type != WidgetTypeText && strings.TrimSpace(answer.SQLQuery) != "" {
 		filter := dashboarddb.ReplayIDFilterSQL(request.ReplayID)
-		qResults, qColumns, queryErr := d.executeQuery(answer.SQLQuery, map[string]variables.Variable{}, &filter)
+		qResults, qColumns, queryErr := d.executeQuery(answer.SQLQuery, &filter)
 		if queryErr == nil {
 			results = qResults
 			columns = qColumns
@@ -770,21 +336,11 @@ func (d *Dashboard) Healthcheck(ctx context.Context, _ apigen.HealthcheckRequest
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
 	return map[string]any{
-		"ok":                        true,
-		"total_replays":             totalReplays,
-		"openai_enabled":            d.ai != nil && d.ai.llm != nil,
-		"custom_dashboards_enabled": customDashboardsEnabled(),
-		"version":                   buildinfo.Version,
+		"ok":             true,
+		"total_replays":  totalReplays,
+		"openai_enabled": d.ai != nil && d.ai.llm != nil,
+		"version":        buildinfo.Version,
 	}, nil
-}
-
-// customDashboardsEnabled is the poor-man's feature flag for the Custom
-// Dashboards UI. Off by default; opt-in via env. Backend API endpoints stay
-// reachable so existing bookmarked dashboards keep working when the flag is
-// flipped on later — this only controls UI discoverability.
-func customDashboardsEnabled() bool {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("SCREPDB_ENABLE_CUSTOM_DASHBOARDS")))
-	return v == "1" || v == "true" || v == "yes" || v == "on"
 }
 
 func (d *Dashboard) PlayerColors(ctx context.Context, _ apigen.PlayerColorsRequestObject) (any, error) {
@@ -800,6 +356,19 @@ func (d *Dashboard) PlayerColors(ctx context.Context, _ apigen.PlayerColorsReque
 		playerColors[row.PlayerKey] = topPlayerPalette[i]
 	}
 	return map[string]any{"player_colors": playerColors, "palette": topPlayerPalette}, nil
+}
+
+// ScrepColors returns the canonical screp player-color palette: a map from
+// normalized name (lowercased, spaces stripped — matches the frontend's lookup
+// key) to the engine RGB as a #rrggbb string. Sourced from repcore.Colors so
+// the values track whatever screp version the binary links against.
+func (d *Dashboard) ScrepColors(_ context.Context, _ apigen.ScrepColorsRequestObject) (any, error) {
+	out := make(map[string]string, len(repcore.Colors))
+	for _, c := range repcore.Colors {
+		key := strings.ReplaceAll(strings.ToLower(c.Name), " ", "")
+		out[key] = fmt.Sprintf("#%06x", c.RGB)
+	}
+	return out, nil
 }
 
 func (d *Dashboard) PlayersList(_ context.Context, request apigen.PlayersListRequestObject) (any, error) {
@@ -946,7 +515,7 @@ func (d *Dashboard) PlayerAsk(_ context.Context, request apigen.PlayerAskRequest
 	results := []map[string]any{}
 	columns := []string{}
 	if answer.Config.Type != WidgetTypeText && strings.TrimSpace(answer.SQLQuery) != "" {
-		qResults, qColumns, queryErr := d.executeQuery(answer.SQLQuery, map[string]variables.Variable{}, nil)
+		qResults, qColumns, queryErr := d.executeQuery(answer.SQLQuery, nil)
 		if queryErr == nil {
 			results = qResults
 			columns = qColumns

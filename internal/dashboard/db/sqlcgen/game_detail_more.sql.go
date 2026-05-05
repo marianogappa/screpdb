@@ -22,6 +22,52 @@ func (q *Queries) CountPlayerGames(ctx context.Context, name string) (int64, err
 	return games_played, err
 }
 
+const GetPhaseBoundariesForReplay = `-- name: GetPhaseBoundariesForReplay :many
+SELECT
+  re.event_type,
+  re.seconds_from_game_start
+FROM replay_events re
+WHERE re.replay_id = ?
+  AND re.event_kind = 'marker'
+  AND re.event_type IN ('mid_game_starts', 'late_game_starts')
+  AND re.source_player_id IS NULL
+`
+
+type GetPhaseBoundariesForReplayRow struct {
+	EventType            string
+	SecondsFromGameStart int64
+}
+
+// Returns the replay-level phase-boundary markers (mid_game_starts,
+// late_game_starts) persisted at ingest by
+// internal/patterns/detectors/phase_boundary_detector.go. Each row is a
+// single (event_type, second) pair; either or both may be absent when
+// the replay never reached the corresponding boundary. Caller treats
+// absent rows as "phase split not detected" -- the same semantics used
+// by the per-game events list (collapsed empty section).
+func (q *Queries) GetPhaseBoundariesForReplay(ctx context.Context, replayID int64) ([]GetPhaseBoundariesForReplayRow, error) {
+	rows, err := q.db.QueryContext(ctx, GetPhaseBoundariesForReplay, replayID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetPhaseBoundariesForReplayRow{}
+	for rows.Next() {
+		var i GetPhaseBoundariesForReplayRow
+		if err := rows.Scan(&i.EventType, &i.SecondsFromGameStart); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListDelayCommandRows = `-- name: ListDelayCommandRows :many
 SELECT
   p.replay_id,
@@ -199,6 +245,75 @@ func (q *Queries) ListEarlyZergMorphsForBOTimings(ctx context.Context, replayID 
 			&i.UnitType,
 			&i.SecondsFromGameStart,
 			&i.Frame,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListGameUnitProductionAndCasts = `-- name: ListGameUnitProductionAndCasts :many
+SELECT
+  c.player_id,
+  c.action_type,
+  c.unit_type,
+  c.unit_types,
+  c.order_name,
+  c.seconds_from_game_start
+FROM commands c
+JOIN players p ON p.id = c.player_id
+WHERE c.replay_id = ?
+  AND p.is_observer = 0
+  AND lower(trim(coalesce(p.type, ''))) = 'human'
+  AND (
+    c.action_type IN ('Train', 'Unit Morph')
+    OR (c.order_name IS NOT NULL AND (c.order_name LIKE 'Cast%' OR c.order_name LIKE 'Nuke%' OR c.order_name = 'NuclearStrike'))
+  )
+ORDER BY c.player_id, c.seconds_from_game_start, c.id
+`
+
+type ListGameUnitProductionAndCastsRow struct {
+	PlayerID             int64
+	ActionType           string
+	UnitType             *string
+	UnitTypes            *string
+	OrderName            *string
+	SecondsFromGameStart int64
+}
+
+// Returns Train / Unit Morph / spell-cast commands for a single replay,
+// needed by the per-game endpoint to compute attacker composition pills
+// at request time (no ingest-time persistence -- see plan: composition is
+// computed on the fly so it stays in sync with edits to caster sets,
+// excluded units, and presentation rules without re-ingest).
+//
+// Rows pre-joined to players so the caller has player_id without a
+// second roundtrip. Right-clicks/hotkeys etc. live in commands_low_value
+// and are intentionally excluded -- per the project memory rule the
+// dashboard never queries that table.
+func (q *Queries) ListGameUnitProductionAndCasts(ctx context.Context, replayID int64) ([]ListGameUnitProductionAndCastsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListGameUnitProductionAndCasts, replayID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListGameUnitProductionAndCastsRow{}
+	for rows.Next() {
+		var i ListGameUnitProductionAndCastsRow
+		if err := rows.Scan(
+			&i.PlayerID,
+			&i.ActionType,
+			&i.UnitType,
+			&i.UnitTypes,
+			&i.OrderName,
+			&i.SecondsFromGameStart,
 		); err != nil {
 			return nil, err
 		}

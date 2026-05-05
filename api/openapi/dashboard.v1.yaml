@@ -3,169 +3,6 @@ info:
   title: screpdb Dashboard API
   version: 1.0.0
 paths:
-  /api/custom/dashboard:
-    get:
-      operationId: listDashboards
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-    put:
-      operationId: createDashboard
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateDashboardRequest"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/custom/dashboard/{url}:
-    parameters:
-      - $ref: "#/components/parameters/url"
-    get:
-      operationId: getDashboard
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-    post:
-      operationId: getDashboardPost
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DashboardVariableValuesRequest"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-    put:
-      operationId: updateDashboard
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateDashboardRequest"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-    delete:
-      operationId: deleteDashboard
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/custom/dashboard/{url}/widget:
-    parameters:
-      - $ref: "#/components/parameters/url"
-    get:
-      operationId: listDashboardWidgets
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-    put:
-      operationId: createDashboardWidget
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateDashboardWidgetRequest"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/custom/dashboard/{url}/widget/{wid}:
-    parameters:
-      - $ref: "#/components/parameters/url"
-      - $ref: "#/components/parameters/wid"
-    post:
-      operationId: updateDashboardWidget
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateDashboardWidgetRequest"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-    delete:
-      operationId: deleteDashboardWidget
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/custom/query:
-    post:
-      operationId: executeQuery
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ExecuteQueryRequest"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/custom/query/variables:
-    post:
-      operationId: getQueryVariables
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/GetQueryVariablesRequest"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
   /api/custom/ingest:
     post:
       operationId: ingest
@@ -667,6 +504,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
+  /api/screp-colors:
+    get:
+      operationId: screpColors
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
   /api/health:
     get:
       operationId: healthcheck
@@ -692,94 +539,7 @@ components:
       required: true
       schema:
         type: string
-    url:
-      name: url
-      in: path
-      required: true
-      schema:
-        type: string
-    wid:
-      name: wid
-      in: path
-      required: true
-      schema:
-        type: integer
-        format: int64
   schemas:
-    CreateDashboardRequest:
-      type: object
-      additionalProperties: false
-      required: [url, name]
-      properties:
-        url:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-          nullable: true
-        replays_filter_sql:
-          type: string
-          nullable: true
-    DashboardVariableValuesRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        variable_values:
-          type: object
-          additionalProperties: true
-    UpdateDashboardRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        name:
-          type: string
-        description:
-          type: string
-          nullable: true
-        replays_filter_sql:
-          type: string
-          nullable: true
-    CreateDashboardWidgetRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        Prompt:
-          type: string
-    UpdateDashboardWidgetRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        name:
-          type: string
-        description:
-          type: string
-          nullable: true
-        config:
-          $ref: "#/components/schemas/GenericObject"
-        query:
-          type: string
-    ExecuteQueryRequest:
-      type: object
-      additionalProperties: false
-      required: [query]
-      properties:
-        query:
-          type: string
-        variable_values:
-          type: object
-          additionalProperties: true
-        dashboard_url:
-          type: string
-    GetQueryVariablesRequest:
-      type: object
-      additionalProperties: false
-      required: [query]
-      properties:
-        query:
-          type: string
-        dashboard_url:
-          type: string
     IngestRequest:
       type: object
       additionalProperties: false

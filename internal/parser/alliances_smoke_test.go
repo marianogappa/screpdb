@@ -31,7 +31,8 @@ func TestAnalyzeAlliances_RealReplay(t *testing.T) {
 		data.Replay.GameType, data.Replay.TeamFormat, data.Replay.DurationSeconds,
 		data.Replay.TeamStacking, data.Replay.TeamInfoIncomplete)
 
-	res := AnalyzeAlliances(data.Players, data.Commands, data.Replay.DurationSeconds)
+	activity := ComputeActivity(data.Players, data.Commands, data.Replay.DurationSeconds)
+	res := AnalyzeAlliances(data.Players, data.Commands, data.Replay.DurationSeconds, activity)
 	if len(res.Snapshots) == 0 {
 		t.Fatalf("expected at least one snapshot")
 	}

@@ -723,8 +723,8 @@ func allMarkers() []Marker {
 				Not(FirstBuildExists(subjAcademy)),
 			),
 			RuleDeadline:  390,
-			SummaryPlayer: &Pill{IconKey: "siegetank", Style: PillStyleStrong, Title: "Mech"},
-			GamesList:     &Pill{IconKey: "siegetank", Style: PillStyleStrong, Title: "Mech"},
+			SummaryPlayer: &Pill{Label: "Mech", IconKey: "siegetank", Style: PillStyleStrong, Title: "Mech"},
+			GamesList:     &Pill{Label: "Mech", IconKey: "siegetank", Style: PillStyleStrong, Title: "Mech"},
 		},
 		{
 			// 1-1-1: Barracks → Factory → Starport transition. Starport is
@@ -1013,6 +1013,30 @@ func allMarkers() []Marker {
 				Label:   "Hotkeys {subject}",
 				Subject: PayloadFieldSubject("groups"),
 			},
+		},
+		// Phase-boundary markers: registry-only stubs so the storage layer's
+		// markers.ByPatternName() lookup resolves their FeatureKey on insert.
+		// They have NO Rule and NO Custom — the orchestrator's auto-registered
+		// MarkerPlayerDetector becomes a no-op for them. The actual data is
+		// produced by the replay-level detectors in
+		// internal/patterns/detectors/phase_boundary_detector.go which emit
+		// PatternResults that share these PatternNames. Pills are
+		// intentionally absent on every surface: these markers exist only
+		// to be queried server-side by feature code that needs the
+		// early/mid/late split, never rendered as a chip.
+		{
+			Name:         "Mid game starts",
+			PatternName:  "mid_game_starts",
+			FeatureKey:   "mid_game_starts",
+			Kind:         KindMarker,
+			RuleDeadline: endOfReplaySentinel,
+		},
+		{
+			Name:         "Late game starts",
+			PatternName:  "late_game_starts",
+			FeatureKey:   "late_game_starts",
+			Kind:         KindMarker,
+			RuleDeadline: endOfReplaySentinel,
 		},
 	}
 }

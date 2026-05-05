@@ -1,6 +1,6 @@
 /** Main workflow SPA route (query string). */
 
-export const MAIN_VIEWS = ['games', 'players', 'game', 'player', 'dashboards'];
+export const MAIN_VIEWS = ['games', 'players', 'game', 'player'];
 
 export const MAIN_GAME_TABS = [
   'summary',
@@ -63,7 +63,6 @@ const pickEnum = (value, allowed, fallback) => {
  *   playersTab: string,
  *   playerTab: string,
  *   playerSubtab: string,
- *   dash: string|null,
  * }}
  */
 export function parseMainRouteSearch(search) {
@@ -76,7 +75,6 @@ export function parseMainRouteSearch(search) {
   const playersTabRaw = params.get('playersTab');
   const playerTabRaw = params.get('playerTab');
   const playerSubtabRaw = params.get('playerSubtab');
-  const dashRaw = params.get('dash');
 
   let replayId = view === 'game' ? parseReplayIdParam(replayRaw) : null;
   let playerKey = view === 'player' ? normalizePlayerKeyParam(playerRaw) : '';
@@ -88,7 +86,6 @@ export function parseMainRouteSearch(search) {
   if (playerTab === 'skill-proxies') {
     playerSubtab = MAIN_PLAYER_SKILL_PROXY_SUBTABS.includes(playerSubtab) ? playerSubtab : 'summary';
   }
-  let dash = dashRaw != null && String(dashRaw).trim() !== '' ? String(dashRaw).trim() : null;
 
   if (view === 'game' && replayId == null) {
     view = 'games';
@@ -99,9 +96,6 @@ export function parseMainRouteSearch(search) {
     view = 'games';
     playerKey = '';
   }
-  if (view === 'dashboards' && !dash) {
-    dash = 'default';
-  }
 
   return {
     view,
@@ -111,7 +105,6 @@ export function parseMainRouteSearch(search) {
     playersTab,
     playerTab,
     playerSubtab,
-    dash: view === 'dashboards' ? dash || 'default' : null,
   };
 }
 
@@ -124,7 +117,6 @@ export function parseMainRouteSearch(search) {
  *   mainPlayersTab: string,
  *   mainPlayerTab: string,
  *   mainPlayerSubtab: string,
- *   currentDashboardUrl: string,
  * }} s
  * @returns {string} query string without leading `?` (empty = default games home)
  */
@@ -171,13 +163,6 @@ export function buildMainRouteSearch(s) {
     }
   }
 
-  if (view === 'dashboards') {
-    const dash = String(s.currentDashboardUrl || 'default').trim() || 'default';
-    if (dash !== 'default') {
-      params.set('dash', dash);
-    }
-  }
-
   return params.toString();
 }
 
@@ -205,14 +190,11 @@ export function mainRouteSearchEquivalent(a, b) {
 export function mainRouteSnapshotEqual(searchA, searchB) {
   const ra = parseMainRouteSearch(searchA);
   const rb = parseMainRouteSearch(searchB);
-  const dashA = ra.view === 'dashboards' ? ra.dash || 'default' : null;
-  const dashB = rb.view === 'dashboards' ? rb.dash || 'default' : null;
   return ra.view === rb.view
     && String(ra.replayId ?? '') === String(rb.replayId ?? '')
     && ra.playerKey === rb.playerKey
     && ra.gameTab === rb.gameTab
     && ra.playersTab === rb.playersTab
     && ra.playerTab === rb.playerTab
-    && ra.playerSubtab === rb.playerSubtab
-    && dashA === dashB;
+    && ra.playerSubtab === rb.playerSubtab;
 }

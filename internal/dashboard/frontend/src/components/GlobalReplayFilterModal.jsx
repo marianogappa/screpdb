@@ -88,7 +88,6 @@ function GlobalReplayFilterModal({
   onAliasEdit,
   onAliasCancelEdit,
   onAliasExport,
-  customDashboardsEnabled = false,
 }) {
   const [formState, setFormState] = useState(DEFAULT_CONFIG);
   const [settingsTab, setSettingsTab] = useState('scope');
@@ -147,11 +146,6 @@ function GlobalReplayFilterModal({
         {settingsTab === 'scope' ? (
           <form onSubmit={handleSubmit} className="edit-form settings-modal-tab-panel">
             {error ? <div className="error-message">{error}</div> : null}
-            {customDashboardsEnabled ? (
-              <div className="global-filter-note">
-                Custom Dashboards are configured separately.
-              </div>
-            ) : null}
 
             <div className="global-filter-toggle-grid">
               <label className="global-filter-toggle">

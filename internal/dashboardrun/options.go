@@ -21,7 +21,7 @@ type Options struct {
 func RegisterFlags(fs *pflag.FlagSet, o *Options) {
 	fs.StringVarP(&o.SQLitePath, "sqlite-path", "s", "screp.db", "SQLite database file path.")
 	fs.StringVarP(&o.AIVendor, "ai-vendor", "v", "", "Which AI to use (OPENAI|ANTHROPIC|GEMINI). Defaults to OPENAI.")
-	fs.StringVarP(&o.AIAPIKey, "ai-api-key", "k", "", "An API KEY from the AI vendor in order to prompt for widget creation.")
+	fs.StringVarP(&o.AIAPIKey, "ai-api-key", "k", "", "An API KEY from the AI vendor that powers the in-app Ask features.")
 	fs.StringVarP(&o.AIModel, "ai-model", "m", "", "The AI model to use.")
 	fs.IntVarP(&o.Port, "port", "p", 8000, "Dashboard server port")
 }

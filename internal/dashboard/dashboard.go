@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"embed"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -24,7 +23,6 @@ import (
 	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
-	"github.com/marianogappa/screpdb/internal/dashboard/variables"
 	"github.com/marianogappa/screpdb/internal/ingest"
 	"github.com/marianogappa/screpdb/internal/storage"
 )
@@ -45,7 +43,6 @@ type Dashboard struct {
 	replayScopedMu     sync.RWMutex
 	replayScopedDB     *sql.DB
 	globalReplayFilter globalReplayFilterConfig
-	conversations      map[int]*Conversation
 	ai                 *AI
 	sqlitePath         string
 	ingestMu           sync.Mutex
@@ -92,12 +89,11 @@ func New(ctx context.Context, store storage.Storage, sqlitePath, aiVendor, apiKe
 	}
 
 	dashboard := &Dashboard{
-		ctx:           ctx,
-		db:            db,
-		ai:            ai,
-		conversations: map[int]*Conversation{},
-		ingestStatus:  "idle",
-		sqlitePath:    sqlitePath,
+		ctx:          ctx,
+		db:           db,
+		ai:           ai,
+		ingestStatus: "idle",
+		sqlitePath:   sqlitePath,
 	}
 	dashboard.dbStore = dashboarddb.NewStore(dashboard.db, dashboard.currentReplayScopedDB, dashboard.withFilteredConnection)
 	if err := dashboard.initializeIngestSettings(ctx); err != nil {
@@ -279,30 +275,13 @@ func (d *Dashboard) StartAsync(port int) <-chan error {
 	return errChan
 }
 
-// widgetConfigToBytes converts WidgetConfig to []byte for database storage
-func widgetConfigToBytes(config WidgetConfig) ([]byte, error) {
-	return json.Marshal(config)
-}
-
-// bytesToWidgetConfig converts []byte from database to WidgetConfig
-func bytesToWidgetConfig(data []byte) (WidgetConfig, error) {
-	var config WidgetConfig
-	if len(data) == 0 {
-		return config, nil
-	}
-	err := json.Unmarshal(data, &config)
-	return config, err
-}
-
-func (d *Dashboard) executeQuery(query string, usedVariables map[string]variables.Variable, replaysFilterSQL *string) ([]map[string]any, []string, error) {
-	args := buildNamedArgs(usedVariables)
-
+func (d *Dashboard) executeQuery(query string, replaysFilterSQL *string) ([]map[string]any, []string, error) {
 	var (
 		results []map[string]any
 		columns []string
 	)
 	err := d.dbStore.WithFilteredConnection(replaysFilterSQL, func(db *sql.DB) error {
-		rows, err := dashboarddb.QueryContextOnDB(d.ctx, db, query, args...)
+		rows, err := dashboarddb.QueryContextOnDB(d.ctx, db, query)
 		if err != nil {
 			return err
 		}
@@ -320,17 +299,6 @@ func (d *Dashboard) executeQuery(query string, usedVariables map[string]variable
 		return nil, nil, err
 	}
 	return results, columns, nil
-}
-
-func buildNamedArgs(usedVariables map[string]variables.Variable) []any {
-	if len(usedVariables) == 0 {
-		return nil
-	}
-	args := make([]any, 0, len(usedVariables))
-	for varName, variable := range usedVariables {
-		args = append(args, sql.Named(varName, variable.UsedValue))
-	}
-	return args
 }
 
 func sqliteDSN(path string) string {

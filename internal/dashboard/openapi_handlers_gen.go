@@ -74,172 +74,6 @@ func (a *openAPIStrictAdapter) DeleteAliasEntry(ctx context.Context, request api
 	})
 }
 
-type ListDashboardsJSONResponse struct {
-	Payload any
-}
-
-func (response ListDashboardsJSONResponse) VisitListDashboardsResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) ListDashboards(ctx context.Context, request apigen.ListDashboardsRequestObject) (apigen.ListDashboardsResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.ListDashboards, func(value any) apigen.ListDashboardsResponseObject { return ListDashboardsJSONResponse{Payload: value} })
-}
-
-type CreateDashboardJSONResponse struct {
-	Payload any
-}
-
-func (response CreateDashboardJSONResponse) VisitCreateDashboardResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) CreateDashboard(ctx context.Context, request apigen.CreateDashboardRequestObject) (apigen.CreateDashboardResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.CreateDashboard, func(value any) apigen.CreateDashboardResponseObject {
-		return CreateDashboardJSONResponse{Payload: value}
-	})
-}
-
-type DeleteDashboardJSONResponse struct {
-	Payload any
-}
-
-func (response DeleteDashboardJSONResponse) VisitDeleteDashboardResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) DeleteDashboard(ctx context.Context, request apigen.DeleteDashboardRequestObject) (apigen.DeleteDashboardResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.DeleteDashboard, func(value any) apigen.DeleteDashboardResponseObject {
-		return DeleteDashboardJSONResponse{Payload: value}
-	})
-}
-
-type GetDashboardJSONResponse struct {
-	Payload any
-}
-
-func (response GetDashboardJSONResponse) VisitGetDashboardResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) GetDashboard(ctx context.Context, request apigen.GetDashboardRequestObject) (apigen.GetDashboardResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.GetDashboard, func(value any) apigen.GetDashboardResponseObject { return GetDashboardJSONResponse{Payload: value} })
-}
-
-type GetDashboardPostJSONResponse struct {
-	Payload any
-}
-
-func (response GetDashboardPostJSONResponse) VisitGetDashboardPostResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) GetDashboardPost(ctx context.Context, request apigen.GetDashboardPostRequestObject) (apigen.GetDashboardPostResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.GetDashboardPost, func(value any) apigen.GetDashboardPostResponseObject {
-		return GetDashboardPostJSONResponse{Payload: value}
-	})
-}
-
-type UpdateDashboardJSONResponse struct {
-	Payload any
-}
-
-func (response UpdateDashboardJSONResponse) VisitUpdateDashboardResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) UpdateDashboard(ctx context.Context, request apigen.UpdateDashboardRequestObject) (apigen.UpdateDashboardResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.UpdateDashboard, func(value any) apigen.UpdateDashboardResponseObject {
-		return UpdateDashboardJSONResponse{Payload: value}
-	})
-}
-
-type ListDashboardWidgetsJSONResponse struct {
-	Payload any
-}
-
-func (response ListDashboardWidgetsJSONResponse) VisitListDashboardWidgetsResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) ListDashboardWidgets(ctx context.Context, request apigen.ListDashboardWidgetsRequestObject) (apigen.ListDashboardWidgetsResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.ListDashboardWidgets, func(value any) apigen.ListDashboardWidgetsResponseObject {
-		return ListDashboardWidgetsJSONResponse{Payload: value}
-	})
-}
-
-type CreateDashboardWidgetJSONResponse struct {
-	Payload any
-}
-
-func (response CreateDashboardWidgetJSONResponse) VisitCreateDashboardWidgetResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) CreateDashboardWidget(ctx context.Context, request apigen.CreateDashboardWidgetRequestObject) (apigen.CreateDashboardWidgetResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.CreateDashboardWidget, func(value any) apigen.CreateDashboardWidgetResponseObject {
-		return CreateDashboardWidgetJSONResponse{Payload: value}
-	})
-}
-
-type DeleteDashboardWidgetJSONResponse struct {
-	Payload any
-}
-
-func (response DeleteDashboardWidgetJSONResponse) VisitDeleteDashboardWidgetResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) DeleteDashboardWidget(ctx context.Context, request apigen.DeleteDashboardWidgetRequestObject) (apigen.DeleteDashboardWidgetResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.DeleteDashboardWidget, func(value any) apigen.DeleteDashboardWidgetResponseObject {
-		return DeleteDashboardWidgetJSONResponse{Payload: value}
-	})
-}
-
-type UpdateDashboardWidgetJSONResponse struct {
-	Payload any
-}
-
-func (response UpdateDashboardWidgetJSONResponse) VisitUpdateDashboardWidgetResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) UpdateDashboardWidget(ctx context.Context, request apigen.UpdateDashboardWidgetRequestObject) (apigen.UpdateDashboardWidgetResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.UpdateDashboardWidget, func(value any) apigen.UpdateDashboardWidgetResponseObject {
-		return UpdateDashboardWidgetJSONResponse{Payload: value}
-	})
-}
-
 type GetGlobalReplayFilterConfigJSONResponse struct {
 	Payload any
 }
@@ -341,38 +175,6 @@ func (response UpdateIngestSettingsJSONResponse) VisitUpdateIngestSettingsRespon
 func (a *openAPIStrictAdapter) UpdateIngestSettings(ctx context.Context, request apigen.UpdateIngestSettingsRequestObject) (apigen.UpdateIngestSettingsResponseObject, error) {
 	return responseFromPayload(ctx, request, a.service.UpdateIngestSettings, func(value any) apigen.UpdateIngestSettingsResponseObject {
 		return UpdateIngestSettingsJSONResponse{Payload: value}
-	})
-}
-
-type ExecuteQueryJSONResponse struct {
-	Payload any
-}
-
-func (response ExecuteQueryJSONResponse) VisitExecuteQueryResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) ExecuteQuery(ctx context.Context, request apigen.ExecuteQueryRequestObject) (apigen.ExecuteQueryResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.ExecuteQuery, func(value any) apigen.ExecuteQueryResponseObject { return ExecuteQueryJSONResponse{Payload: value} })
-}
-
-type GetQueryVariablesJSONResponse struct {
-	Payload any
-}
-
-func (response GetQueryVariablesJSONResponse) VisitGetQueryVariablesResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) GetQueryVariables(ctx context.Context, request apigen.GetQueryVariablesRequestObject) (apigen.GetQueryVariablesResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.GetQueryVariables, func(value any) apigen.GetQueryVariablesResponseObject {
-		return GetQueryVariablesJSONResponse{Payload: value}
 	})
 }
 
@@ -709,4 +511,19 @@ func (a *openAPIStrictAdapter) PlayerRecentGames(ctx context.Context, request ap
 	return responseFromPayload(ctx, request, a.service.PlayerRecentGames, func(value any) apigen.PlayerRecentGamesResponseObject {
 		return PlayerRecentGamesJSONResponse{Payload: value}
 	})
+}
+
+type ScrepColorsJSONResponse struct {
+	Payload any
+}
+
+func (response ScrepColorsJSONResponse) VisitScrepColorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return json.NewEncoder(w).Encode(response.Payload)
+}
+
+func (a *openAPIStrictAdapter) ScrepColors(ctx context.Context, request apigen.ScrepColorsRequestObject) (apigen.ScrepColorsResponseObject, error) {
+	return responseFromPayload(ctx, request, a.service.ScrepColors, func(value any) apigen.ScrepColorsResponseObject { return ScrepColorsJSONResponse{Payload: value} })
 }

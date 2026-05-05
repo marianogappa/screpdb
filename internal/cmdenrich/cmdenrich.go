@@ -171,6 +171,19 @@ func Classify(cmd *models.Command) (EnrichedCommand, bool) {
 		on := stringPtr(cmd.OrderName)
 		subject = strings.TrimPrefix(on, "Cast")
 	}
+	// Tech / Upgrade commands carry the canonical name in TechName /
+	// UpgradeName, not UnitType. Surface that as Subject so consumers
+	// can match on the tech/upgrade name (e.g. "Tank Siege Mode",
+	// "Singularity Charge (Dragoon Range)"). Pre-fix this was empty, so
+	// any phase/composition/timing logic that read Subject for these
+	// kinds silently misclassified them. Existing predicates
+	// (UpgradeExists / TechExists) only key on Kind and are unaffected.
+	if kind == KindTech {
+		subject = strings.TrimSpace(stringPtr(cmd.TechName))
+	}
+	if kind == KindUpgrade {
+		subject = strings.TrimSpace(stringPtr(cmd.UpgradeName))
+	}
 	orderName := stringPtr(cmd.OrderName)
 	// Player resolution: prefer the Player pointer when set (test fixtures
 	// and some parser paths populate Player but leave PlayerID at zero).

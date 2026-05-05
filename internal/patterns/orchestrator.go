@@ -15,8 +15,14 @@ type ReplayLevelDetectorFactory func() core.Detector
 type PlayerLevelDetectorFactory func(replayPlayerID byte) core.Detector
 
 var (
-	// replayLevelDetectors is the list of replay-level detector factories
-	replayLevelDetectors = []ReplayLevelDetectorFactory{}
+	// replayLevelDetectors is the list of replay-level detector factories.
+	// Phase-boundary detectors emit hidden markers (no per-surface Pill)
+	// that downstream feature code reads at request time — see
+	// internal/patterns/detectors/phase_boundary_detector.go.
+	replayLevelDetectors = []ReplayLevelDetectorFactory{
+		detectors.NewMidGameStartsDetector,
+		detectors.NewLateGameStartsDetector,
+	}
 
 	// playerLevelDetectors is seeded empty. The markers-loop in init()
 	// appends one MarkerPlayerDetector factory per registered marker —
@@ -153,6 +159,15 @@ func (o *Orchestrator) ReplayEvents() []worldstate.ReplayEvent {
 		return nil
 	}
 	return o.worldState.ReplayEvents()
+}
+
+// AppendReplayEvents pushes externally-produced events into the worldstate
+// engine's event list (e.g. alliance-derived events emitted by the parser).
+func (o *Orchestrator) AppendReplayEvents(events []worldstate.ReplayEvent) {
+	if o.worldState == nil {
+		return
+	}
+	o.worldState.AppendReplayEvents(events)
 }
 
 // WorldStateEngine returns the worldstate engine for diagnostic callers

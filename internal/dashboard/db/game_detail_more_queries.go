@@ -115,6 +115,74 @@ func (s *Store) ListPlayerFirstExpansionTimings(ctx context.Context, playerKey s
 	return out, nil
 }
 
+// PhaseBoundaries carries the early/mid game-end seconds persisted as
+// replay-level markers at ingest. Either or both may be 0 when the
+// replay never reached the corresponding boundary (the game ended
+// inside Early, or inside Mid). Same "0 = not detected" convention used
+// elsewhere in the codebase.
+type PhaseBoundaries struct {
+	EarlyEndsAtSecond int64 // = mid_game_starts marker's second
+	MidEndsAtSecond   int64 // = late_game_starts marker's second
+}
+
+// GetPhaseBoundariesForReplay returns the early/mid boundary seconds
+// for one replay. Source: persisted replay-level markers
+// (mid_game_starts, late_game_starts) emitted at ingest by
+// internal/patterns/detectors/phase_boundary_detector.go.
+func (s *Store) GetPhaseBoundariesForReplay(ctx context.Context, replayID int64) (PhaseBoundaries, error) {
+	rows, err := sqlcgen.New(Trace(s.replayScoped())).GetPhaseBoundariesForReplay(ctx, replayID)
+	if err != nil {
+		return PhaseBoundaries{}, err
+	}
+	out := PhaseBoundaries{}
+	for _, row := range rows {
+		switch row.EventType {
+		case "mid_game_starts":
+			out.EarlyEndsAtSecond = row.SecondsFromGameStart
+		case "late_game_starts":
+			out.MidEndsAtSecond = row.SecondsFromGameStart
+		}
+	}
+	return out, nil
+}
+
+// UnitProductionOrCastRow is one Train / Unit Morph / spell-cast
+// command for the per-game composition computation. Caster rows have
+// ActionType empty and OrderName populated; production rows have
+// ActionType in (Train, Unit Morph) and a non-nil UnitType.
+type UnitProductionOrCastRow struct {
+	PlayerID             int64
+	ActionType           string
+	UnitType             *string
+	UnitTypes            *string
+	OrderName            *string
+	SecondsFromGameStart int64
+}
+
+// ListGameUnitProductionAndCasts returns the rows the per-game endpoint
+// uses to compute attacker composition pills at request time. The
+// composition itself is NOT persisted — see plan: derived from these
+// rows + the persisted phase boundaries on every render so it stays in
+// sync with edits to caster sets / excluded units / presentation rules.
+func (s *Store) ListGameUnitProductionAndCasts(ctx context.Context, replayID int64) ([]UnitProductionOrCastRow, error) {
+	rows, err := sqlcgen.New(Trace(s.replayScoped())).ListGameUnitProductionAndCasts(ctx, replayID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]UnitProductionOrCastRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, UnitProductionOrCastRow{
+			PlayerID:             row.PlayerID,
+			ActionType:           row.ActionType,
+			UnitType:             row.UnitType,
+			UnitTypes:            row.UnitTypes,
+			OrderName:            row.OrderName,
+			SecondsFromGameStart: row.SecondsFromGameStart,
+		})
+	}
+	return out, nil
+}
+
 type PlayerMatchupRow struct {
 	OwnRace string
 	OppRace string

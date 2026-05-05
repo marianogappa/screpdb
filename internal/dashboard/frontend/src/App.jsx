@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { api } from './api';
-import Widget from './components/Widget';
-import DashboardManager from './components/DashboardManager';
-import EditDashboardModal from './components/EditDashboardModal';
-import EditWidgetFullscreen from './components/EditWidgetFullscreen';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import IngestModal from './components/IngestModal';
-import WidgetCreationSpinner from './components/WidgetCreationSpinner';
 import PieChart from './components/charts/PieChart';
 import Gauge from './components/charts/Gauge';
 import Table from './components/charts/Table';
@@ -30,8 +25,10 @@ import {
   lookupDefinitionForPattern,
 } from './lib/markerRegistry';
 import {
-  getStoredVariableValues,
-  saveVariableValues,
+  CompositionPhasesRow,
+  computeReplayAggregatePhases,
+} from './lib/compositionPill';
+import {
   getStoredAutoIngestSettings,
   saveAutoIngestSettings,
 } from './lib/dashboardStorage';
@@ -295,6 +292,12 @@ const gameEventDescription = (event, registry) => {
     return 'Player start';
   }
   if (eventType === 'leave_game') return actor ? `${actor} leaves the game` : 'Player leaves the game';
+  if (eventType === 'player_stopped_playing') return actor ? `${actor} stops playing` : 'Player stops playing';
+  if (eventType === 'late_alliance') {
+    if (actor && target) return `${actor} allies with ${target}`;
+    return actor ? `${actor} forms an alliance` : 'Alliance';
+  }
+  if (eventType === 'team_stacking_detected') return 'Team stacking detected';
   if (eventType === 'location_inactive') return location ? `Location inactive: ${location}` : 'Location inactive';
   if (eventType === 'expansion') {
     if (actor && isActorAtOwnNaturalBase(event)) return `${actor} expands to their natural`;
@@ -308,7 +311,15 @@ const gameEventDescription = (event, registry) => {
   if (eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
     return actor && target && location ? `${actor} drops on ${target} at ${location}` : 'Drop';
   }
-  if (eventType === 'recall') return actor && target && location ? `${actor} recalls into ${target} at ${location}` : 'Recall';
+  if (eventType === 'recall') {
+    // CastRecall's X/Y is the *source* of the teleport (units pulled from
+    // there to the Arbiter's location); the Arbiter's position — the actual
+    // destination — isn't in the command stream. Be explicit so the reader
+    // doesn't assume "at L" is where the units arrived.
+    if (actor && location) return `${actor} recalls units from ${location} (destination unknown)`;
+    if (actor) return `${actor} recalls units (destination unknown)`;
+    return 'Recall';
+  }
   if (eventType === 'nuke') return actor && target && location ? `${actor} nukes ${target} at ${location}` : 'Nuke';
   if (eventType === 'cannon_rush' || eventType === 'bunker_rush' || eventType === 'zergling_rush') {
     const rushKind = eventType === 'cannon_rush' ? 'cannon' : eventType === 'bunker_rush' ? 'bunker' : 'zergling';
@@ -372,6 +383,12 @@ const renderGameEventDescription = (event, registry) => {
     return 'Player start';
   }
   if (eventType === 'leave_game') return actorName ? <>{actorSpan} leaves the game</> : 'Player leaves the game';
+  if (eventType === 'player_stopped_playing') return actorName ? <>{actorSpan} stops playing</> : 'Player stops playing';
+  if (eventType === 'late_alliance') {
+    if (actorName && targetName) return <>{actorSpan} allies with {targetSpan}</>;
+    return actorName ? <>{actorSpan} forms an alliance</> : 'Alliance';
+  }
+  if (eventType === 'team_stacking_detected') return 'Team stacking detected';
   if (eventType === 'location_inactive') return location ? `Location inactive: ${location}` : 'Location inactive';
   if (eventType === 'expansion') {
     if (actorName && isActorAtOwnNaturalBase(event)) return <>{actorSpan} expands to their natural</>;
@@ -398,9 +415,9 @@ const renderGameEventDescription = (event, registry) => {
       : 'Drop';
   }
   if (eventType === 'recall') {
-    return actorName && targetName && location
-      ? <>{actorSpan} recalls into {targetSpan} at {location}</>
-      : 'Recall';
+    if (actorName && location) return <>{actorSpan} recalls units from {location} (destination unknown)</>;
+    if (actorName) return <>{actorSpan} recalls units (destination unknown)</>;
+    return 'Recall';
   }
   if (eventType === 'nuke') {
     return actorName && targetName && location
@@ -453,19 +470,14 @@ const parseGameEventTopicKey = (key) => {
   return Number.isFinite(idx) ? idx : null;
 };
 
-const SC_PLAYER_COLOR_MAP = {
-  red: '#ef4444',
-  blue: '#3b82f6',
-  teal: '#14b8a6',
-  purple: '#8b5cf6',
-  orange: '#f97316',
-  brown: '#92400e',
-  white: '#e5e7eb',
-  yellow: '#facc15',
-  green: '#22c55e',
-  paleyellow: '#fde68a',
-  tan: '#d6b18b',
-  aqua: '#22d3ee',
+// scPlayerColorMap is loaded once at app boot from /api/screp-colors and holds
+// the engine's canonical name->#rrggbb mapping (keys normalized: lowercase,
+// spaces stripped). Module-level because the helpers below are called from
+// both module scope and component scope; React state (in the component) is
+// what triggers re-render after this is populated.
+let scPlayerColorMap = {};
+const setScPlayerColorMapModule = (m) => {
+  scPlayerColorMap = m && typeof m === 'object' ? m : {};
 };
 
 const playerColorToCss = (colorValue) => {
@@ -473,7 +485,7 @@ const playerColorToCss = (colorValue) => {
   if (!value) return '#9ca3af';
   if (value.startsWith('#')) return value;
   const key = value.toLowerCase().replace(/\s+/g, '');
-  return SC_PLAYER_COLOR_MAP[key] || value.toLowerCase();
+  return scPlayerColorMap[key] || value.toLowerCase();
 };
 
 const legendTextStyle = (rawColorValue, foregroundColor) => {
@@ -719,9 +731,13 @@ const mapPointToPercent = (point, bounds) => {
   return { x: clamp(px), y: clamp(py) };
 };
 
-const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'reaver_drop', 'dt_drop', 'cliff_drop', 'recall', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory'].includes(String(eventType || '').toLowerCase());
+// Recall is intentionally absent: the cast's X/Y is the source area, not the
+// Arbiter (destination), so a from→to arrow would draw a misleading vector.
+// The Arbiter icon is rendered as a single-point overlay instead (see
+// selectedMainGameRecallOverlay).
+const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'reaver_drop', 'dt_drop', 'cliff_drop', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory'].includes(String(eventType || '').toLowerCase());
 
-const fallbackOverlayUnitNamesForEvent = (eventType) => {
+const fallbackOverlayUnitNamesForEvent = (eventType, actorRace) => {
   const normalized = normalizeEventType(eventType);
   if (normalized === 'zergling_rush') return ['zergling'];
   if (normalized === 'cannon_rush') return ['photoncannon'];
@@ -731,8 +747,14 @@ const fallbackOverlayUnitNamesForEvent = (eventType) => {
   if (normalized === 'proxy_factory') return ['factory'];
   if (normalized === 'reaver_drop') return ['reaver'];
   if (normalized === 'dt_drop') return ['darktemplar'];
+  // cliff_drop is a Terran-only marker classification, dropship is always correct.
   if (normalized === 'cliff_drop') return ['dropship'];
-  if (normalized === 'drop') return ['dropship'];
+  if (normalized === 'drop') {
+    const r = String(actorRace || '').toLowerCase();
+    if (r === 'protoss') return ['shuttle'];
+    if (r === 'zerg') return ['overlord'];
+    return ['dropship'];
+  }
   if (normalized === 'nuke') return ['ghost'];
   if (normalized === 'recall') return ['arbiter'];
   if (normalized === 'became_terran' || normalized === 'became_zerg') return ['darkarchon'];
@@ -765,6 +787,15 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
   if (normalized === 'leave_game') {
     return [{ emoji: '🏳️', alt: 'left the game', title: 'Player left the game' }];
   }
+  if (normalized === 'player_stopped_playing') {
+    return [{ emoji: '💤', alt: 'stopped playing', title: 'Player stopped playing (no Leave Game)' }];
+  }
+  if (normalized === 'late_alliance') {
+    return [{ emoji: '🤝', alt: 'late alliance', title: 'Alliance formed after 10:00' }];
+  }
+  if (normalized === 'team_stacking_detected') {
+    return [{ emoji: '😈', alt: 'team stacking', title: 'Stacking topology held >5 min' }];
+  }
   if (normalized === 'expansion' || normalized === 'takeover') {
     const icon = getExpansionMarkerIconForRace(actorRace);
     if (!icon) return [];
@@ -777,7 +808,7 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
 
   const unitNames = Array.isArray(event?.attack_unit_types) && event.attack_unit_types.length > 0
     ? event.attack_unit_types
-    : fallbackOverlayUnitNamesForEvent(event?.type);
+    : fallbackOverlayUnitNamesForEvent(event?.type, actorRace);
   const seen = new Set();
   const entries = [];
   for (const name of unitNames) {
@@ -1271,22 +1302,10 @@ function App() {
   const markerRegistryState = useMarkerRegistry();
   const markerRegistry = markerRegistryState.markers;
   const markerDefinitions = markerRegistryState;
-  const [currentDashboardUrl, setCurrentDashboardUrl] = useState(() => (
-    initialMainRoute.view === 'dashboards' && initialMainRoute.dash ? initialMainRoute.dash : 'default'
-  ));
-  const [dashboard, setDashboard] = useState(null);
-  const [dashboards, setDashboards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showDashboardManager, setShowDashboardManager] = useState(false);
-  const [showEditDashboard, setShowEditDashboard] = useState(false);
   const [showGlobalReplayFilter, setShowGlobalReplayFilter] = useState(false);
-  const [newWidgetPrompt, setNewWidgetPrompt] = useState('');
-  const [creatingWidget, setCreatingWidget] = useState(false);
-  const [variableValues, setVariableValues] = useState({});
   const [openaiEnabled, setOpenaiEnabled] = useState(false);
-  const [customDashboardsEnabled, setCustomDashboardsEnabled] = useState(false);
-  const [editingWidget, setEditingWidget] = useState(null);
   const [replayCount, setReplayCount] = useState(null);
   const [currentVersion, setCurrentVersion] = useState('');
   const [latestVersion, setLatestVersion] = useState('');
@@ -1378,7 +1397,29 @@ function App() {
   const suppressUrlSyncRef = useRef(false);
   const openMainGameRef = useRef(null);
   const openMainPlayerRef = useRef(null);
-  const loadDashboardRef = useRef(null);
+  // "Latest-ref" pattern: stable effects (WebSocket handler, auto-ingest interval,
+  // ingest-poll tick) need to read the *current* games-list filter/page state and
+  // call the *current* refresh function. Their dependency arrays intentionally
+  // exclude these to avoid effect churn, so we mirror them into refs that are
+  // re-assigned on every render.
+  const refreshAfterIngestRef = useRef(null);
+  // Auto-ingest fires every 60s; when it actually adds replays we only
+  // want the game list to refresh — never the active game/player view,
+  // never the player histograms, never the player overview. Earlier
+  // wiring routed auto-ingest through refreshDataAfterGlobalReplayFilterSave
+  // which reloads everything; that was correct for filter-save (filter
+  // scope changed everywhere) but caused a full-UI blink every minute
+  // for auto-ingest. Split the two paths.
+  const refreshGamesAfterAutoIngestRef = useRef(null);
+  // The ingest WebSocket handler emits a 'completed' status for EVERY
+  // ingest run — manual button-press AND background auto-ingest tick.
+  // We want the broad refresh only on manual: the auto-ingest poller
+  // already does its own scoped refresh (game list only). This flag is
+  // set by handleIngestSubmit before calling api.startIngest, and the
+  // WebSocket 'completed' handler reads + clears it.
+  const manualIngestInFlight = useRef(false);
+  const mainGamesFiltersRef = useRef(null);
+  const mainGamesPageRef = useRef(null);
   const [mainPlayer, setMainPlayer] = useState(null);
   const [mainPlayerRecentGames, setMainPlayerRecentGames] = useState([]);
   const [mainPlayerRecentGamesLoading, setMainPlayerRecentGamesLoading] = useState(false);
@@ -1440,6 +1481,10 @@ function App() {
   const [mainAnswer, setMainAnswer] = useState(null);
   const [mainAskLoading, setMainAskLoading] = useState(false);
   const [topPlayerColors, setTopPlayerColors] = useState({});
+  // Used purely as a re-render trigger after the screp engine color map loads;
+  // the actual map lives at module scope (see scPlayerColorMap above) so the
+  // module-level helpers (playerColorToCss, legendTextStyle) can consume it.
+  const [, setScColorMapLoaded] = useState(false);
   const [mainSummaryFilters, setMainSummaryFilters] = useState(DEFAULT_SUMMARY_FILTERS);
   const [productionView, setProductionView] = useState('all');
   const [productionSubFilter, setProductionSubFilter] = useState('all');
@@ -1450,66 +1495,6 @@ function App() {
     zerg: DEFAULT_HP_UPGRADE_BY_RACE.zerg,
     protoss: DEFAULT_HP_UPGRADE_BY_RACE.protoss,
   });
-
-  const loadDashboard = async (url, varValues = null, skipVarInit = false) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // If no varValues provided, try to load from localStorage
-      if (!varValues) {
-        const stored = getStoredVariableValues(url);
-        if (stored && Object.keys(stored).length > 0) {
-          varValues = stored;
-        }
-      }
-
-      const data = await api.getDashboard(url, varValues);
-      setDashboard(data);
-      setCurrentDashboardUrl(url);
-
-      // Update variable values state
-      if (varValues) {
-        setVariableValues(varValues);
-        // Save to localStorage
-        saveVariableValues(url, varValues);
-      } else if (data.variables && !skipVarInit) {
-        // Initialize variable values with first option if not set
-        const newVarValues = {};
-        let needsReload = false;
-        Object.keys(data.variables).forEach(varName => {
-          if (data.variables[varName].possible_values?.length > 0) {
-            newVarValues[varName] = data.variables[varName].possible_values[0];
-            needsReload = true;
-          }
-        });
-        if (needsReload && Object.keys(newVarValues).length > 0) {
-          setVariableValues(newVarValues);
-          // Save to localStorage
-          saveVariableValues(url, newVarValues);
-          // Reload with initialized values
-          await loadDashboard(url, newVarValues, true);
-          return;
-        }
-        setVariableValues(newVarValues);
-        // Save to localStorage
-        saveVariableValues(url, newVarValues);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadDashboards = async () => {
-    try {
-      const data = await api.listDashboards();
-      setDashboards(data);
-    } catch (err) {
-      console.error('Failed to load dashboards:', err);
-    }
-  };
 
   const loadGlobalReplayFilterConfig = async () => {
     const data = await api.getGlobalReplayFilter();
@@ -1636,6 +1621,16 @@ function App() {
       setTopPlayerColors(data?.player_colors || {});
     } catch (err) {
       console.error('Failed to load top player colors:', err);
+    }
+  };
+
+  const loadScrepColors = async () => {
+    try {
+      const data = await api.getScrepColors();
+      setScPlayerColorMapModule(data);
+      setScColorMapLoaded(true);
+    } catch (err) {
+      console.error('Failed to load screp colors:', err);
     }
   };
 
@@ -2106,7 +2101,6 @@ function App() {
         if (totalReplays >= baselineCount + 1) {
           setReplayCount(totalReplays);
           setOpenaiEnabled(Boolean(health?.openai_enabled));
-          setCustomDashboardsEnabled(Boolean(health?.custom_dashboards_enabled));
           return true;
         }
       } catch (err) {
@@ -2119,20 +2113,16 @@ function App() {
 
   openMainGameRef.current = openMainGame;
   openMainPlayerRef.current = openMainPlayer;
-  loadDashboardRef.current = loadDashboard;
 
   useEffect(() => {
-    // Load dashboard with stored variable values if available (initial URL only; switches use loadDashboard directly).
-    const url = currentDashboardUrl;
-    const stored = getStoredVariableValues(url);
-    loadDashboard(url, stored || undefined);
-    loadDashboards();
+    setLoading(false);
     loadGlobalReplayFilterConfig().catch((err) => {
       console.error('Failed to load global replay filter config:', err);
     });
     loadTopPlayerColors();
+    loadScrepColors();
     checkOpenAIStatus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only; deep links set currentDashboardUrl before first paint.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only.
   }, []);
 
   useEffect(() => {
@@ -2204,7 +2194,11 @@ function App() {
           lastCount = next;
           setReplayCount(next);
           if (activeView === 'games') {
-            await loadMainGames({ page: mainGamesPage, filters: mainGamesFilters });
+            // Read current filters/page via refs — closure-captured state would
+            // be stale (the effect doesn't re-run when filters change), and
+            // calling loadMainGames with stale filters silently reverts the
+            // visible list to "no filters" while the filter pills stay active.
+            await loadMainGames({ page: mainGamesPageRef.current, filters: mainGamesFiltersRef.current });
           }
         }
       } catch (err) {
@@ -2213,7 +2207,7 @@ function App() {
     };
     const timer = window.setInterval(tick, 5000);
     return () => { cancelled = true; window.clearInterval(timer); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally re-runs only on status/view change; reads latest filters/page via closure each tick is fine for a 5s loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally re-runs only on status/view change; latest filters/page are read via refs (mainGamesFiltersRef, mainGamesPageRef) inside the tick.
   }, [ingestStatus, activeView]);
 
   useEffect(() => {
@@ -2226,14 +2220,13 @@ function App() {
       mainPlayersTab,
       mainPlayerTab,
       mainPlayerSubtab,
-      currentDashboardUrl,
     });
     if (typeof window !== 'undefined' && mainRouteSnapshotEqual(window.location.search, next && next.length ? `?${next}` : '')) {
       return;
     }
     if (typeof window === 'undefined') return;
     window.history.pushState({ __spa: 1 }, '', mainRouteHref(next));
-  }, [activeView, selectedReplayId, selectedPlayerKey, mainGameTab, mainPlayersTab, mainPlayerTab, mainPlayerSubtab, currentDashboardUrl]);
+  }, [activeView, selectedReplayId, selectedPlayerKey, mainGameTab, mainPlayersTab, mainPlayerTab, mainPlayerSubtab]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -2246,7 +2239,6 @@ function App() {
       setMainPlayersTab(r.playersTab);
       setMainPlayerTab(r.playerTab);
       setMainPlayerSubtab(r.playerSubtab || '');
-      setCurrentDashboardUrl(r.view === 'dashboards' && r.dash ? r.dash : 'default');
       const finish = () => {
         suppressUrlSyncRef.current = false;
       };
@@ -2262,15 +2254,6 @@ function App() {
           initialPlayerTab: r.playerTab,
           initialPlayerSubtab: r.playerSubtab,
         });
-        if (p && typeof p.finally === 'function') {
-          p.finally(finish);
-        } else {
-          finish();
-        }
-      } else if (r.view === 'dashboards') {
-        const dashUrl = r.dash || 'default';
-        const stored = getStoredVariableValues(dashUrl);
-        const p = loadDashboardRef.current?.(dashUrl, stored || undefined);
         if (p && typeof p.finally === 'function') {
           p.finally(finish);
         } else {
@@ -2440,11 +2423,24 @@ function App() {
             setIngestStatus(message.status || 'idle');
             if (message.error) {
               setIngestMessage(message.error);
+              manualIngestInFlight.current = false;
             } else if (message.status === 'running') {
               setIngestMessage('');
             } else if (message.status === 'completed') {
               setIngestMessage('Ingestion completed.');
-              void refreshDataAfterGlobalReplayFilterSave();
+              // Auto-ingest fires the same 'completed' status every 60s
+              // and was the source of the whole-UI blink. Only run the
+              // broad refresh when this run was user-initiated (button
+              // press); auto-ingest's own poller does a game-list-only
+              // refresh that's already wired separately. Call via ref
+              // so we always invoke the *current* render's refresh
+              // function — the WebSocket handler is mount-once (deps
+              // `[]`), so a direct call would close over the initial-
+              // render version and refresh with empty filters.
+              if (manualIngestInFlight.current) {
+                manualIngestInFlight.current = false;
+                void refreshAfterIngestRef.current?.();
+              }
             }
           }
         } catch (err) {
@@ -2537,7 +2533,13 @@ function App() {
 
         const didIncrease = await pollForReplayCountIncrease(baselineCount, intervalSeconds);
         if (didIncrease) {
-          await refreshDataAfterGlobalReplayFilterSave();
+          // Game-list-only refresh: no other screen should ever blink in
+          // response to a background ingestion. If auto-ingest was a
+          // no-op (didIncrease=false) nothing reloads at all. Routing
+          // via a ref so the latest filter/page state is read at fire
+          // time rather than the closure-captured value from when
+          // auto-ingest was first enabled.
+          await refreshGamesAfterAutoIngestRef.current?.();
           showAutoIngestNotice('auto-ingested new replays');
         }
       } catch (err) {
@@ -2570,7 +2572,6 @@ function App() {
     try {
       const data = await api.getHealth();
       setOpenaiEnabled(Boolean(data?.openai_enabled));
-      setCustomDashboardsEnabled(Boolean(data?.custom_dashboards_enabled));
       const totalReplays = Number(data?.total_replays || 0);
       setReplayCount(totalReplays);
       if (data?.version) {
@@ -2587,83 +2588,6 @@ function App() {
     }
   };
 
-  const handleCreateWidget = async (e) => {
-    e.preventDefault();
-    if (!newWidgetPrompt.trim() || creatingWidget) return;
-
-    try {
-      setCreatingWidget(true);
-      setError(null);
-      await api.createWidget(currentDashboardUrl, newWidgetPrompt);
-      setNewWidgetPrompt('');
-      await loadDashboard(currentDashboardUrl);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setCreatingWidget(false);
-    }
-  };
-
-  const handleCreateWidgetWithoutPrompt = async () => {
-    if (creatingWidget) return;
-
-    try {
-      setCreatingWidget(true);
-      setError(null);
-      const widget = await api.createWidget(currentDashboardUrl, '');
-      setCreatingWidget(false);
-      // Config should already be parsed as an object from the backend
-      const config = widget.config || { type: 'table' };
-      // Open the edit widget fullscreen for the newly created widget
-      setEditingWidget({
-        id: widget.id,
-        name: widget.name,
-        description: widget.description ? { valid: true, string: widget.description } : null,
-        query: widget.query || '',
-        config: config,
-        results: [],
-      });
-    } catch (err) {
-      setError(err.message);
-      setCreatingWidget(false);
-    }
-  };
-
-  const handleUpdateDashboard = async (data) => {
-    try {
-      await api.updateDashboard(currentDashboardUrl, data);
-      setShowEditDashboard(false);
-      await loadDashboard(currentDashboardUrl);
-      await loadDashboards();
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const handleDeleteWidget = async (widgetId) => {
-    if (!confirm('Are you sure you want to delete this widget?')) return;
-
-    try {
-      await api.deleteWidget(currentDashboardUrl, widgetId);
-      await loadDashboard(currentDashboardUrl);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const handleUpdateWidget = async (widgetId, data) => {
-    if (data.prompt) {
-      data = { prompt: data.prompt }
-    }
-    try {
-      await api.updateWidget(currentDashboardUrl, widgetId, data);
-      setEditingWidget(null);
-      await loadDashboard(currentDashboardUrl);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
   const handleIngestSubmit = async (e) => {
     e.preventDefault();
     setIngestMessage('');
@@ -2676,6 +2600,11 @@ function App() {
         nextInputDir = await persistIngestInputDir(nextInputDir);
       }
 
+      // Mark this as a user-initiated ingest: the WebSocket 'completed'
+      // handler should fire the broad refresh for THIS run only. Reset
+      // when the handler observes 'completed' (or 'error', via the
+      // status branch that doesn't refresh).
+      manualIngestInFlight.current = true;
       const response = await api.startIngest({
         input_dir: nextInputDir,
         watch: ingestForm.watch,
@@ -2699,6 +2628,10 @@ function App() {
       }
     } catch (err) {
       setIngestMessage(err.message || 'Failed to start ingestion.');
+      // Clear the flag — no 'completed' WebSocket message will follow
+      // a failed startIngest, so without this the next ingest run
+      // (manual or auto) would inherit a stale "manual" verdict.
+      manualIngestInFlight.current = false;
     }
   };
 
@@ -2713,19 +2646,6 @@ function App() {
     }
   };
 
-  const handleSwitchDashboard = (url) => {
-    setVariableValues({});
-    loadDashboard(url);
-  };
-
-  const handleVariableChange = async (varName, value) => {
-    const newVarValues = { ...variableValues, [varName]: value };
-    setVariableValues(newVarValues);
-    // Save to localStorage
-    saveVariableValues(currentDashboardUrl, newVarValues);
-    await loadDashboard(currentDashboardUrl, newVarValues);
-  };
-
   const refreshDataAfterGlobalReplayFilterSave = async () => {
     await Promise.all([
       loadMainGames({ page: mainGamesPage, filters: mainGamesFilters }),
@@ -2735,7 +2655,6 @@ function App() {
         sortBy: mainPlayersSortBy,
         sortDir: mainPlayersSortDir,
       }),
-      loadDashboard(currentDashboardUrl, variableValues, true),
       loadTopPlayerColors(),
       checkOpenAIStatus(),
     ]);
@@ -2764,6 +2683,26 @@ function App() {
       loadMainPlayersCadenceHistogram();
     }
   };
+
+  // Lightweight game-list-only refresh used by the auto-ingest path.
+  // No active-view re-fetch, no histogram reloads — just the game list,
+  // which is the only screen that newly-ingested replays affect.
+  const refreshGameListOnly = async () => {
+    try {
+      await loadMainGames({ page: mainGamesPage, filters: mainGamesFilters });
+    } catch (err) {
+      console.error('Failed to refresh game list after auto-ingest:', err);
+    }
+  };
+
+  // Keep the latest-ref pattern wiring up to date. Assigning during render
+  // (rather than in an effect) is the standard React pattern and is safe
+  // because we only *read* these refs from event/timer callbacks, never
+  // during the render itself.
+  refreshAfterIngestRef.current = refreshDataAfterGlobalReplayFilterSave;
+  refreshGamesAfterAutoIngestRef.current = refreshGameListOnly;
+  mainGamesFiltersRef.current = mainGamesFilters;
+  mainGamesPageRef.current = mainGamesPage;
 
   const handleSaveGlobalReplayFilter = async (nextConfig) => {
     try {
@@ -3090,14 +3029,6 @@ function App() {
     );
   };
 
-  const sortedWidgets = dashboard?.widgets
-    ? [...dashboard.widgets].sort((a, b) => {
-      const orderA = a.widget_order?.valid ? a.widget_order.int64 : 0;
-      const orderB = b.widget_order?.valid ? b.widget_order.int64 : 0;
-      return orderA - orderB;
-    })
-    : [];
-
   const summaryTextMatches = (text) => {
     const value = String(text || '').toLowerCase();
     const activeTopics = Object.entries(SUMMARY_TOPIC_PATTERNS)
@@ -3126,7 +3057,11 @@ function App() {
     for (let idx = 0; idx < visibleEvents.length; idx += 1) {
       const event = visibleEvents[idx];
       const prev = deduped.length > 0 ? deduped[deduped.length - 1] : null;
-      if (prev && gameEventDescription(prev, markerRegistry) === gameEventDescription(event, markerRegistry)) {
+      // Recall events are intentionally per-cast — a recall combo (multiple
+      // recalls within seconds of each other) is exactly the kind of detail
+      // users want to see, so skip the description-equality collapse here.
+      const isRecall = normalizeEventType(event?.type) === 'recall';
+      if (!isRecall && prev && gameEventDescription(prev, markerRegistry) === gameEventDescription(event, markerRegistry)) {
         continue;
       }
       deduped.push(event);
@@ -3294,14 +3229,16 @@ function App() {
   }, [selectedMainGameEvent, mainEventMapBounds]);
   const selectedMainGameArrowUnits = useMemo(() => {
     if (!selectedMainGameArrow || !selectedMainGameEvent) return [];
+    const actorPid = Number(selectedMainGameEvent?.actor?.player_id || 0);
+    const actorRow = mainGamePlayers.find((player) => Number(player?.player_id || 0) === actorPid);
     const unitNames = Array.isArray(selectedMainGameEvent.attack_unit_types) && selectedMainGameEvent.attack_unit_types.length > 0
       ? selectedMainGameEvent.attack_unit_types
-      : fallbackOverlayUnitNamesForEvent(selectedMainGameEvent.type);
+      : fallbackOverlayUnitNamesForEvent(selectedMainGameEvent.type, actorRow?.race);
     return unitNames
       .map((name) => ({ name, icon: getUnitIcon(name) }))
       .filter((item) => item.icon)
       .slice(0, 4);
-  }, [selectedMainGameArrow, selectedMainGameEvent]);
+  }, [selectedMainGameArrow, selectedMainGameEvent, mainGamePlayers]);
   const selectedMainGameLeaveFlag = useMemo(() => {
     if (normalizeEventType(selectedMainGameEvent?.type) !== 'leave_game' || !mainEventMapBounds) return null;
     const actorID = Number(selectedMainGameEvent?.actor?.player_id || 0);
@@ -3329,6 +3266,21 @@ function App() {
     if (!point) return null;
     return { icon, point };
   }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds]);
+  // Recall has no meaningful from→to vector — the cast point is the source
+  // (where units are pulled from), but the destination is the Arbiter's
+  // position which isn't in the command stream. Render a single Arbiter icon
+  // at the cast point instead of an arrow.
+  const selectedMainGameRecallOverlay = useMemo(() => {
+    if (normalizeEventType(selectedMainGameEvent?.type) !== 'recall') return null;
+    const anchor = polygonCenter(selectedMainGameEvent?.base?.polygon)
+      || selectedMainGameEvent?.base?.center;
+    if (!anchor) return null;
+    const icon = getUnitIcon('arbiter');
+    if (!icon) return null;
+    const point = mapPointToPercent(anchor, mainEventMapBounds);
+    if (!point) return null;
+    return { icon, point };
+  }, [selectedMainGameEvent, mainEventMapBounds]);
 
   const mainPlayerInsights = [
     mainPlayerApmInsight,
@@ -3785,14 +3737,6 @@ function App() {
     return mainPlayersSortDir === 'asc' ? '↑' : '↓';
   };
 
-  if (loading && !dashboard && activeView === 'dashboards') {
-    return (
-      <div className="app">
-        <div className="loading">Loading dashboard...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="app">
       <div className="dashboard-container">
@@ -3839,11 +3783,6 @@ function App() {
               </span>
             ) : null}
           </div>
-          {customDashboardsEnabled && (
-            <div className="workflow-nav-group">
-              <button type="button" className={`btn-manage ${activeView === 'dashboards' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('dashboards')}>Custom Dashboards</button>
-            </div>
-          )}
         </div>
 
         {error && <div className="error-message">{error}</div>}
@@ -4665,7 +4604,7 @@ function App() {
                       <div className="workflow-summary-features-col">
                         {mainGameFeaturingPillsList.length > 0 ? (
                           <>
-                            <div className="workflow-summary-features-title">This game</div>
+                            <div className="workflow-summary-features-title">Featuring</div>
                             <div className="workflow-pattern-pills">
                               {mainGameFeaturingPillsList.map((pill) => renderFeaturingPill(pill, 'summary-game'))}
                             </div>
@@ -4673,6 +4612,25 @@ function App() {
                         ) : (
                           <div className="workflow-subtle-note">No featured highlights for this replay.</div>
                         )}
+                        {/* Replay-aggregate attacker-composition pills (early/mid/late).
+                            Computed at display time by summing per-player counts in
+                            mainGame.unit_composition_markers (Decision 6 in plan
+                            ~/.claude/plans/i-want-to-explore-snoopy-hippo.md). */}
+                        {Array.isArray(mainGame?.unit_composition_markers) && mainGame.unit_composition_markers.length > 0 ? (
+                          <div className="workflow-summary-composition">
+                            <div className="workflow-summary-features-title workflow-summary-composition-title">Unit composition</div>
+                            {/* Aggregate pills: slotCount=10 (vs 6 default for
+                                per-player) since this row sits alone with room
+                                to spare. maxCasters intentionally unset so the
+                                full cross-player notable list is visible on the
+                                summary surface. Per-player pills below keep the
+                                compact 6-slot, 4-caster layout. */}
+                            <CompositionPhasesRow
+                              phases={computeReplayAggregatePhases(mainGame.unit_composition_markers)}
+                              slotCount={10}
+                            />
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                     <div className="workflow-player-rows" style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
@@ -4703,6 +4661,17 @@ function App() {
                                 {gameSummaryParts.positive.map(renderGameSummarySignalPill)}
                                 {filterSummaryPillPatterns(player.detected_patterns, trustGameEventsForDrops).map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`, undefined, markerRegistry))}
                               </div>
+                              {/* Per-player attacker-composition phase pills.
+                                  Source: mainGame.unit_composition_markers filtered to this player. */}
+                              {Array.isArray(mainGame?.unit_composition_markers) ? (() => {
+                                const playerPhases = mainGame.unit_composition_markers.filter((m) => m.player_id === player.player_id);
+                                if (playerPhases.length === 0) return null;
+                                return (
+                                  <div className="workflow-pattern-pills">
+                                    <CompositionPhasesRow phases={playerPhases} maxCasters={4} />
+                                  </div>
+                                );
+                              })() : null}
                             </div>
                           </div>
                         );
@@ -4909,6 +4878,19 @@ function App() {
                                     style={{
                                       left: `${selectedMainGameExpansionOverlay.point.x}%`,
                                       top: `${selectedMainGameExpansionOverlay.point.y}%`,
+                                    }}
+                                  />
+                                ) : null}
+                                {selectedMainGameRecallOverlay ? (
+                                  <img
+                                    key={`recall-${selectedMainGameEventKeyResolved}`}
+                                    src={selectedMainGameRecallOverlay.icon}
+                                    alt="Recall cast point"
+                                    title="Recall cast point — destination is the Arbiter (not in command stream)"
+                                    className="workflow-event-map-expansion-overlay"
+                                    style={{
+                                      left: `${selectedMainGameRecallOverlay.point.x}%`,
+                                      top: `${selectedMainGameRecallOverlay.point.y}%`,
                                     }}
                                   />
                                 ) : null}
@@ -5696,154 +5678,7 @@ function App() {
           );
         })()}
 
-        {activeView === 'dashboards' && customDashboardsEnabled && (
-          <>
-            <div className="dashboard-header">
-              <div className="dashboard-title">
-                <div className="dashboard-title-left">
-                  <h1>{dashboard?.name || 'Dashboard'}</h1>
-                  <button
-                    onClick={() => setShowEditDashboard(true)}
-                    className="btn-edit-dashboard"
-                    title="Edit dashboard"
-                  >
-                    ✎
-                  </button>
-                </div>
-                <div className="dashboard-actions">
-                  <select
-                    value={currentDashboardUrl}
-                    onChange={(e) => handleSwitchDashboard(e.target.value)}
-                    className="dashboard-select"
-                  >
-                    {dashboards.map((d) => (
-                      <option key={d.url} value={d.url}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => setShowDashboardManager(true)}
-                    className="btn-manage"
-                  >
-                    Manage Dashboards
-                  </button>
-                </div>
-              </div>
-
-              <div className="widget-creation-section">
-                {openaiEnabled ? (
-                  <form onSubmit={handleCreateWidget} className="widget-creation-form">
-                    <div className="widget-creation-input-group">
-                      <input
-                        type="text"
-                        value={newWidgetPrompt}
-                        onChange={(e) => setNewWidgetPrompt(e.target.value)}
-                        placeholder="Ask to add a new graph or chart..."
-                        className="widget-creation-input"
-                        disabled={creatingWidget}
-                      />
-                      <button
-                        type="submit"
-                        disabled={creatingWidget || !newWidgetPrompt.trim()}
-                        className="btn-create-ai"
-                      >
-                        <span className="btn-icon">✨</span>
-                        Create with AI
-                      </button>
-                      <div className="widget-creation-divider">or</div>
-                      <button
-                        type="button"
-                        onClick={handleCreateWidgetWithoutPrompt}
-                        disabled={creatingWidget}
-                        className="btn-create-manual"
-                      >
-                        Create Manually
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <div className="widget-creation-form">
-                    <div className="widget-creation-input-group">
-                      <button
-                        type="button"
-                        onClick={handleCreateWidgetWithoutPrompt}
-                        disabled={creatingWidget}
-                        className="btn-create-manual-primary"
-                      >
-                        Create Widget
-                      </button>
-                      <div className="widget-creation-info">
-                        <span className="info-icon">ℹ️</span>
-                        <span className="info-text">AI-powered creation requires --openai-api-key flag</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {dashboard?.variables && Object.keys(dashboard.variables).length > 0 && (
-                <div className="variables-container" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-                  {Object.entries(dashboard.variables).map(([varName, variable]) => (
-                    <div key={varName} className="variable-select" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                      <label htmlFor={`var-${varName}`} style={{ fontSize: '0.875rem', fontWeight: '500' }}>
-                        {variable.display_name}
-                      </label>
-                      <select
-                        id={`var-${varName}`}
-                        value={variableValues[varName] || ''}
-                        onChange={(e) => handleVariableChange(varName, e.target.value)}
-                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', minWidth: '200px' }}
-                      >
-                        {variable.possible_values?.map((value, idx) => (
-                          <option key={idx} value={value}>
-                            {value}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="widgets-grid">
-              {sortedWidgets.map((widget) => (
-                <Widget
-                  key={widget.id}
-                  widget={widget}
-                  dashboardUrl={currentDashboardUrl}
-                  variableValues={variableValues}
-                  onDelete={handleDeleteWidget}
-                  onUpdate={handleUpdateWidget}
-                />
-              ))}
-            </div>
-          </>
-        )}
       </div>
-
-      {creatingWidget && (
-        <WidgetCreationSpinner />
-      )}
-
-      {showDashboardManager && customDashboardsEnabled && (
-        <DashboardManager
-          dashboards={dashboards}
-          currentUrl={currentDashboardUrl}
-          onClose={() => setShowDashboardManager(false)}
-          onRefresh={loadDashboards}
-          onSwitch={handleSwitchDashboard}
-        />
-      )}
-
-      {showEditDashboard && dashboard && (
-        <EditDashboardModal
-          dashboard={dashboard}
-          onClose={() => setShowEditDashboard(false)}
-          onSave={handleUpdateDashboard}
-        />
-      )}
 
       {showGlobalReplayFilter && (
         <GlobalReplayFilterModal
@@ -5868,7 +5703,6 @@ function App() {
           onAliasEdit={handleAliasEdit}
           onAliasCancelEdit={handleAliasCancelEdit}
           onAliasExport={handleAliasExport}
-          customDashboardsEnabled={customDashboardsEnabled}
         />
       )}
 
@@ -5890,18 +5724,6 @@ function App() {
           onChange={setIngestForm}
           onInputDirChange={setIngestInputDir}
           onSaveInputDir={handleSaveIngestInputDir}
-        />
-      )}
-
-      {editingWidget && (
-        <EditWidgetFullscreen
-          widget={editingWidget}
-          dashboardUrl={currentDashboardUrl}
-          onClose={() => {
-            setEditingWidget(null);
-            loadDashboard(currentDashboardUrl);
-          }}
-          onSave={(data) => handleUpdateWidget(editingWidget.id, data)}
         />
       )}
 

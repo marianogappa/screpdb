@@ -6,128 +6,6 @@ const buildWebSocketURL = (path) => {
 };
 
 export const api = {
-  // Dashboard endpoints
-  listDashboards: async () => {
-    const response = await fetch(`${API_CUSTOM}/dashboard`);
-    if (!response.ok) throw new Error('Failed to list dashboards');
-    return response.json();
-  },
-
-  getDashboard: async (url, variableValues = null) => {
-    const options = {
-      method: variableValues ? 'POST' : 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    };
-    if (variableValues) {
-      options.body = JSON.stringify({ variable_values: variableValues });
-    }
-    const response = await fetch(`${API_CUSTOM}/dashboard/${url}`, options);
-    if (!response.ok) throw new Error('Failed to get dashboard');
-    return response.json();
-  },
-
-  createDashboard: async (data) => {
-    const response = await fetch(`${API_CUSTOM}/dashboard`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to create dashboard');
-    }
-    return response.json();
-  },
-
-  updateDashboard: async (url, data) => {
-    const response = await fetch(`${API_CUSTOM}/dashboard/${url}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to update dashboard');
-    }
-  },
-
-  deleteDashboard: async (url) => {
-    const response = await fetch(`${API_CUSTOM}/dashboard/${url}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to delete dashboard');
-    }
-  },
-
-  // Widget endpoints
-  createWidget: async (dashboardUrl, prompt) => {
-    const body = prompt ? { Prompt: prompt } : {};
-    const response = await fetch(`${API_CUSTOM}/dashboard/${dashboardUrl}/widget`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to create widget');
-    }
-    return response.json();
-  },
-
-  updateWidget: async (dashboardUrl, widgetId, data) => {
-    const response = await fetch(`${API_CUSTOM}/dashboard/${dashboardUrl}/widget/${widgetId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to update widget');
-    }
-  },
-
-  deleteWidget: async (dashboardUrl, widgetId) => {
-    const response = await fetch(`${API_CUSTOM}/dashboard/${dashboardUrl}/widget/${widgetId}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to delete widget');
-    }
-  },
-
-  executeQuery: async (query, variableValues = null, dashboardUrl = null) => {
-    const response = await fetch(`${API_CUSTOM}/query`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query,
-        variable_values: variableValues || {},
-        dashboard_url: dashboardUrl || '',
-      }),
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to execute query');
-    }
-    return response.json();
-  },
-
-  getQueryVariables: async (query, dashboardUrl = null) => {
-    const response = await fetch(`${API_CUSTOM}/query/variables`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, dashboard_url: dashboardUrl || '' }),
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to get query variables');
-    }
-    return response.json();
-  },
-
   startIngest: async (data) => {
     const response = await fetch(`${API_CUSTOM}/ingest`, {
       method: 'POST',
@@ -251,7 +129,6 @@ export const api = {
     return response.json();
   },
 
-  // Main view: games & players (not custom SQL dashboards)
   listGames: async ({ limit = 20, offset = 0, filters = {} } = {}) => {
     const params = new URLSearchParams();
     params.set('limit', String(limit));
@@ -464,6 +341,15 @@ export const api = {
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get player colors');
+    }
+    return response.json();
+  },
+
+  getScrepColors: async () => {
+    const response = await fetch(`${API_BASE}/screp-colors`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get screp colors');
     }
     return response.json();
   },

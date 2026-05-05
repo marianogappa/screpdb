@@ -74,6 +74,9 @@ var (
 		"takeover",
 		"became_terran",
 		"became_zerg",
+		"player_stopped_playing",
+		"late_alliance",
+		"team_stacking_detected",
 	})
 	allowedReplayEventLocationTypes = enumSetFromNames([]string{
 		"starting",
@@ -1155,7 +1158,7 @@ func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, repla
 				locationMineralOnly = event.LocationMineralOnly
 			}
 
-			valueStrings = append(valueStrings, "(?, ?, 'game_event', ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+			valueStrings = append(valueStrings, "(?, ?, 'game_event', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 			valueArgs = append(valueArgs,
 				replayID,
 				event.Second,
@@ -1168,6 +1171,7 @@ func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, repla
 				targetPlayerID,
 				attackUnitTypes,
 				attackCastCounts,
+				event.Payload,
 			)
 		}
 
@@ -1188,7 +1192,8 @@ func (s *SQLiteStorage) insertReplayEventsTx(ctx context.Context, db dbtx, repla
 				source_player_id,
 				target_player_id,
 				attack_unit_types,
-				attack_cast_counts
+				attack_cast_counts,
+				payload
 			)
 			VALUES %s
 		`, strings.Join(valueStrings, ", "))

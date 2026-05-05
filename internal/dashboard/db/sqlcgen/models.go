@@ -18,6 +18,7 @@ type Command struct {
 	UpgradeName          *string
 	HotkeyType           *string
 	ChatMessage          *string
+	OrderName            *string
 }
 
 type CommandsLowValue struct {
@@ -34,27 +35,6 @@ type CommandsLowValue struct {
 	HotkeyType           *string
 	ChatMessage          *string
 	AlliancePlayerIds    *string
-}
-
-type Dashboard struct {
-	Url              string
-	Name             string
-	Description      *string
-	ReplaysFilterSql *string
-	Variables        *string
-	CreatedAt        *string
-}
-
-type DashboardWidget struct {
-	ID          int64
-	DashboardID *string
-	WidgetOrder *int64
-	Name        string
-	Description *string
-	Config      string
-	Query       string
-	CreatedAt   *string
-	UpdatedAt   *string
 }
 
 type Player struct {
