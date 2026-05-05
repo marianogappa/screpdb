@@ -209,8 +209,11 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	// Alliance analysis for multi-player melee. Runs on the full unfiltered
 	// command stream because earlyfilter / dedup don't touch Alliance commands,
 	// but consuming them here keeps the analyzer independent of those passes.
+	var allianceResult *AllianceResult
 	if data.Replay.GameType == "Melee" && countActiveMeleePlayers(data.Players) > 2 {
-		ar := AnalyzeAlliances(data.Players, data.Commands, data.Replay.DurationSeconds)
+		activity := ComputeActivity(data.Players, data.Commands, data.Replay.DurationSeconds)
+		ar := AnalyzeAlliances(data.Players, data.Commands, data.Replay.DurationSeconds, activity)
+		allianceResult = &ar
 		data.Replay.TeamStacking = ar.TeamStackingFlag
 
 		// Hybrid team strategy: trust screp when it resolved teams; only fall
@@ -267,6 +270,14 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	// Feed the filtered command stream through pattern detection.
 	for _, command := range data.Commands {
 		patternOrchestrator.ProcessCommand(command)
+	}
+
+	// Push alliance-derived events into the orchestrator's event channel so
+	// they land in replay_events alongside leave_game / attacks / etc. The
+	// orchestrator's Finalize will sort the merged list by second.
+	if allianceResult != nil {
+		extraEvents := BuildAllianceDerivedEvents(data.Players, *allianceResult)
+		patternOrchestrator.AppendReplayEvents(extraEvents)
 	}
 
 	// Store pattern orchestrator in data for later use

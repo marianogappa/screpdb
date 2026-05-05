@@ -28,6 +28,13 @@ func (d *Dashboard) populateAllianceTimelineForGameDetail(detail *workflowGameDe
 	if err != nil {
 		return fmt.Errorf("failed to list alliance commands: %w", err)
 	}
+	// Activity is sourced from replay_events (leave_game + player_stopped_playing)
+	// rather than rescanning commands — the per-game inactivity calculation
+	// happens once at ingest and is persisted there.
+	eventRows, err := d.dbStore.ListReplayEvents(d.ctx, detail.ReplayID)
+	if err != nil {
+		return fmt.Errorf("failed to list replay events: %w", err)
+	}
 
 	// Active player set: non-observer, non-computer (mirrors screp).
 	activeCount := 0
@@ -106,7 +113,33 @@ func (d *Dashboard) populateAllianceTimelineForGameDetail(detail *workflowGameDe
 		commands = append(commands, cmd)
 	}
 
-	res := parser.AnalyzeAlliances(players, commands, int(detail.DurationSeconds))
+	// Build the activity maps (leave + stop) from replay_events for the
+	// effective-team filter inside the analyzer.
+	activity := parser.Activity{
+		StoppedSecByPID: map[byte]int{},
+		LeaveSecByPID:   map[byte]int{},
+	}
+	for _, ev := range eventRows {
+		if ev.SourcePlayerID == nil {
+			continue
+		}
+		bytePID, ok := playerByteByDBID[*ev.SourcePlayerID]
+		if !ok {
+			continue
+		}
+		switch ev.EventType {
+		case "leave_game":
+			if existing, exists := activity.LeaveSecByPID[bytePID]; !exists || int(ev.Second) < existing {
+				activity.LeaveSecByPID[bytePID] = int(ev.Second)
+			}
+		case "player_stopped_playing":
+			if existing, exists := activity.StoppedSecByPID[bytePID]; !exists || int(ev.Second) < existing {
+				activity.StoppedSecByPID[bytePID] = int(ev.Second)
+			}
+		}
+	}
+
+	res := parser.AnalyzeAlliances(players, commands, int(detail.DurationSeconds), activity)
 
 	// Translate snapshots from synthetic byte IDs back to DB int64 IDs.
 	out := make([]workflowAllianceSnapshot, 0, len(res.Snapshots))

@@ -295,6 +295,12 @@ const gameEventDescription = (event, registry) => {
     return 'Player start';
   }
   if (eventType === 'leave_game') return actor ? `${actor} leaves the game` : 'Player leaves the game';
+  if (eventType === 'player_stopped_playing') return actor ? `${actor} stops playing` : 'Player stops playing';
+  if (eventType === 'late_alliance') {
+    if (actor && target) return `${actor} allies with ${target}`;
+    return actor ? `${actor} forms an alliance` : 'Alliance';
+  }
+  if (eventType === 'team_stacking_detected') return 'Team stacking detected';
   if (eventType === 'location_inactive') return location ? `Location inactive: ${location}` : 'Location inactive';
   if (eventType === 'expansion') {
     if (actor && isActorAtOwnNaturalBase(event)) return `${actor} expands to their natural`;
@@ -372,6 +378,12 @@ const renderGameEventDescription = (event, registry) => {
     return 'Player start';
   }
   if (eventType === 'leave_game') return actorName ? <>{actorSpan} leaves the game</> : 'Player leaves the game';
+  if (eventType === 'player_stopped_playing') return actorName ? <>{actorSpan} stops playing</> : 'Player stops playing';
+  if (eventType === 'late_alliance') {
+    if (actorName && targetName) return <>{actorSpan} allies with {targetSpan}</>;
+    return actorName ? <>{actorSpan} forms an alliance</> : 'Alliance';
+  }
+  if (eventType === 'team_stacking_detected') return 'Team stacking detected';
   if (eventType === 'location_inactive') return location ? `Location inactive: ${location}` : 'Location inactive';
   if (eventType === 'expansion') {
     if (actorName && isActorAtOwnNaturalBase(event)) return <>{actorSpan} expands to their natural</>;
@@ -759,6 +771,15 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
   }
   if (normalized === 'leave_game') {
     return [{ emoji: '🏳️', alt: 'left the game', title: 'Player left the game' }];
+  }
+  if (normalized === 'player_stopped_playing') {
+    return [{ emoji: '💤', alt: 'stopped playing', title: 'Player stopped playing (no Leave Game)' }];
+  }
+  if (normalized === 'late_alliance') {
+    return [{ emoji: '🤝', alt: 'late alliance', title: 'Alliance formed after 10:00' }];
+  }
+  if (normalized === 'team_stacking_detected') {
+    return [{ emoji: '😈', alt: 'team stacking', title: 'Stacking topology held >5 min' }];
   }
   if (normalized === 'expansion' || normalized === 'takeover') {
     const icon = getExpansionMarkerIconForRace(actorRace);

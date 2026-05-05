@@ -155,6 +155,15 @@ func (o *Orchestrator) ReplayEvents() []worldstate.ReplayEvent {
 	return o.worldState.ReplayEvents()
 }
 
+// AppendReplayEvents pushes externally-produced events into the worldstate
+// engine's event list (e.g. alliance-derived events emitted by the parser).
+func (o *Orchestrator) AppendReplayEvents(events []worldstate.ReplayEvent) {
+	if o.worldState == nil {
+		return
+	}
+	o.worldState.AppendReplayEvents(events)
+}
+
 // WorldStateEngine returns the worldstate engine for diagnostic callers
 // (e.g. attack-importance-filter reports). Production code should use
 // ReplayEvents/Entries instead.

@@ -93,6 +93,11 @@ type ReplayEvent struct {
 	// Keyed by the canonical cast subject (e.g. "PsionicStorm", "Plague",
 	// "Recall"). Empty / nil for non-attack events.
 	AttackCastCounts map[string]int
+	// Payload is an opaque JSON-encoded string carrying event-specific
+	// detail not covered by the structured columns. Used by alliance-derived
+	// events to ship the team-sizes-summary and ally-name lists for the
+	// frontend to render. Nil for events that have no extra payload.
+	Payload *string
 }
 
 type attackUnitSample struct {
@@ -285,6 +290,15 @@ func (e *Engine) ReplayEvents() []ReplayEvent {
 	out := make([]ReplayEvent, len(e.replayEvents))
 	copy(out, e.replayEvents)
 	return out
+}
+
+// AppendReplayEvents appends externally-produced replay events to the
+// engine's event list. Used by the parser to push alliance-derived events
+// (player_stopped_playing, late_alliance, team_stacking_detected) into the
+// same channel the storage layer drains. The engine's Finalize will sort
+// the combined list by Second.
+func (e *Engine) AppendReplayEvents(events []ReplayEvent) {
+	e.replayEvents = append(e.replayEvents, events...)
 }
 
 // Finalize runs the v2 batch pipeline: ownership pass, attacks pass,
