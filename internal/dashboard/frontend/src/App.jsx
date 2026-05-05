@@ -1395,6 +1395,14 @@ function App() {
   const openMainGameRef = useRef(null);
   const openMainPlayerRef = useRef(null);
   const loadDashboardRef = useRef(null);
+  // "Latest-ref" pattern: stable effects (WebSocket handler, auto-ingest interval,
+  // ingest-poll tick) need to read the *current* games-list filter/page state and
+  // call the *current* refresh function. Their dependency arrays intentionally
+  // exclude these to avoid effect churn, so we mirror them into refs that are
+  // re-assigned on every render.
+  const refreshAfterIngestRef = useRef(null);
+  const mainGamesFiltersRef = useRef(null);
+  const mainGamesPageRef = useRef(null);
   const [mainPlayer, setMainPlayer] = useState(null);
   const [mainPlayerRecentGames, setMainPlayerRecentGames] = useState([]);
   const [mainPlayerRecentGamesLoading, setMainPlayerRecentGamesLoading] = useState(false);
@@ -2235,7 +2243,11 @@ function App() {
           lastCount = next;
           setReplayCount(next);
           if (activeView === 'games') {
-            await loadMainGames({ page: mainGamesPage, filters: mainGamesFilters });
+            // Read current filters/page via refs — closure-captured state would
+            // be stale (the effect doesn't re-run when filters change), and
+            // calling loadMainGames with stale filters silently reverts the
+            // visible list to "no filters" while the filter pills stay active.
+            await loadMainGames({ page: mainGamesPageRef.current, filters: mainGamesFiltersRef.current });
           }
         }
       } catch (err) {
@@ -2244,7 +2256,7 @@ function App() {
     };
     const timer = window.setInterval(tick, 5000);
     return () => { cancelled = true; window.clearInterval(timer); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally re-runs only on status/view change; reads latest filters/page via closure each tick is fine for a 5s loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally re-runs only on status/view change; latest filters/page are read via refs (mainGamesFiltersRef, mainGamesPageRef) inside the tick.
   }, [ingestStatus, activeView]);
 
   useEffect(() => {
@@ -2475,7 +2487,11 @@ function App() {
               setIngestMessage('');
             } else if (message.status === 'completed') {
               setIngestMessage('Ingestion completed.');
-              void refreshDataAfterGlobalReplayFilterSave();
+              // Call via ref so we always invoke the *current* render's
+              // refresh function. The WebSocket handler is mount-once
+              // (deps `[]`), so a direct call would close over the
+              // initial-render version and refresh with empty filters.
+              void refreshAfterIngestRef.current?.();
             }
           }
         } catch (err) {
@@ -2568,7 +2584,11 @@ function App() {
 
         const didIncrease = await pollForReplayCountIncrease(baselineCount, intervalSeconds);
         if (didIncrease) {
-          await refreshDataAfterGlobalReplayFilterSave();
+          // Call via ref to avoid the stale-closure trap: this effect's deps
+          // are `[autoIngestEnabled, showIngestPanel]`, so without the ref the
+          // refresh would run with whatever filter state existed when
+          // auto-ingest was first enabled.
+          await refreshAfterIngestRef.current?.();
           showAutoIngestNotice('auto-ingested new replays');
         }
       } catch (err) {
@@ -2795,6 +2815,14 @@ function App() {
       loadMainPlayersCadenceHistogram();
     }
   };
+
+  // Keep the latest-ref pattern wiring up to date. Assigning during render
+  // (rather than in an effect) is the standard React pattern and is safe
+  // because we only *read* these refs from event/timer callbacks, never
+  // during the render itself.
+  refreshAfterIngestRef.current = refreshDataAfterGlobalReplayFilterSave;
+  mainGamesFiltersRef.current = mainGamesFilters;
+  mainGamesPageRef.current = mainGamesPage;
 
   const handleSaveGlobalReplayFilter = async (nextConfig) => {
     try {
