@@ -1698,7 +1698,7 @@ function App() {
       setMainGameSeeNotice('');
       setMainGameSeeNoticeError(false);
       await api.seeGame(replayId);
-      setMainGameSeeNotice('Copied to 000_watch_me.rep in your ingest folder.');
+      setMainGameSeeNotice('Copied to 000_screpdb_watch_me/watch_me.rep in your ingest folder.');
       mainGameSeeNoticeTimerRef.current = window.setTimeout(() => {
         setMainGameSeeNotice('');
         mainGameSeeNoticeTimerRef.current = null;
@@ -4433,7 +4433,7 @@ function App() {
                     type="button"
                     className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
                     disabled={mainGameSeeLoading}
-                    title="Clones this replay into your configured replay ingestion folder as 000_watch_me.rep so you can easily find it within Starcraft."
+                    title="Clones this replay into your configured replay ingestion folder as 000_screpdb_watch_me/watch_me.rep so you can easily find it within Starcraft."
                     onClick={copyMainGameToWatchMe}
                   >
                     {mainGameSeeLoading ? 'Copying…' : 'Stage watch replay'}
