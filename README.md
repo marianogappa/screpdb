@@ -73,6 +73,41 @@ go build .
 
 - All UI functionality exposed as API: [OpenAPI schema available](api/openapi/dashboard.v1.yaml)
 
+## Running on Windows
+
+The Windows binaries are **not code-signed**. On first launch you will see one or more of the following — none of them mean the binary is malicious:
+
+- **SmartScreen "Windows protected your PC"** dialog. Click **More info → Run anyway**.
+- **Microsoft Defender or third-party antivirus** may flag the binary as suspicious or silently quarantine it. Unsigned Go binaries that read files and make network requests are a known false-positive pattern. If the binary disappears from your Downloads folder, check Defender's Protection History and restore it (or add an exclusion).
+- **Enterprise machines** running AppLocker or Windows Defender Application Control may block execution outright. There is no workaround without code signing.
+
+The dashboard binary (`screpdb-dashboard-windows-amd64.exe`) is a GUI app — if you dismiss the SmartScreen dialog, it simply won't start and won't print any error.
+
+You can always [build from source](#installation) to bypass these warnings.
+
+### Verifying downloads
+
+Each release publishes a `SHA256SUMS` file and a `SHA256SUMS.minisig` minisign signature alongside the binaries.
+
+**Verify the checksum** (Linux/macOS):
+
+```bash
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+**Verify the checksum** (Windows PowerShell):
+
+```powershell
+Get-FileHash screpdb-windows-amd64.exe -Algorithm SHA256
+# Compare the printed hash against the line in SHA256SUMS
+```
+
+**Verify the signature** (requires [minisign](https://jedisct1.github.io/minisign/)):
+
+```bash
+minisign -Vm SHA256SUMS -P 'RWS9gPPOydPD/tR8JBOelXKhif526NoAKY18dau7QHR4dqg84QMhJ5L/'
+```
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
