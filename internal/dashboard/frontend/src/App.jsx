@@ -311,7 +311,15 @@ const gameEventDescription = (event, registry) => {
   if (eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
     return actor && target && location ? `${actor} drops on ${target} at ${location}` : 'Drop';
   }
-  if (eventType === 'recall') return actor && target && location ? `${actor} recalls into ${target} at ${location}` : 'Recall';
+  if (eventType === 'recall') {
+    // CastRecall's X/Y is the *source* of the teleport (units pulled from
+    // there to the Arbiter's location); the Arbiter's position — the actual
+    // destination — isn't in the command stream. Be explicit so the reader
+    // doesn't assume "at L" is where the units arrived.
+    if (actor && location) return `${actor} recalls units from ${location} (destination unknown)`;
+    if (actor) return `${actor} recalls units (destination unknown)`;
+    return 'Recall';
+  }
   if (eventType === 'nuke') return actor && target && location ? `${actor} nukes ${target} at ${location}` : 'Nuke';
   if (eventType === 'cannon_rush' || eventType === 'bunker_rush' || eventType === 'zergling_rush') {
     const rushKind = eventType === 'cannon_rush' ? 'cannon' : eventType === 'bunker_rush' ? 'bunker' : 'zergling';
@@ -407,9 +415,9 @@ const renderGameEventDescription = (event, registry) => {
       : 'Drop';
   }
   if (eventType === 'recall') {
-    return actorName && targetName && location
-      ? <>{actorSpan} recalls into {targetSpan} at {location}</>
-      : 'Recall';
+    if (actorName && location) return <>{actorSpan} recalls units from {location} (destination unknown)</>;
+    if (actorName) return <>{actorSpan} recalls units (destination unknown)</>;
+    return 'Recall';
   }
   if (eventType === 'nuke') {
     return actorName && targetName && location
@@ -723,9 +731,13 @@ const mapPointToPercent = (point, bounds) => {
   return { x: clamp(px), y: clamp(py) };
 };
 
-const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'reaver_drop', 'dt_drop', 'cliff_drop', 'recall', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory'].includes(String(eventType || '').toLowerCase());
+// Recall is intentionally absent: the cast's X/Y is the source area, not the
+// Arbiter (destination), so a from→to arrow would draw a misleading vector.
+// The Arbiter icon is rendered as a single-point overlay instead (see
+// selectedMainGameRecallOverlay).
+const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'reaver_drop', 'dt_drop', 'cliff_drop', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory'].includes(String(eventType || '').toLowerCase());
 
-const fallbackOverlayUnitNamesForEvent = (eventType) => {
+const fallbackOverlayUnitNamesForEvent = (eventType, actorRace) => {
   const normalized = normalizeEventType(eventType);
   if (normalized === 'zergling_rush') return ['zergling'];
   if (normalized === 'cannon_rush') return ['photoncannon'];
@@ -735,8 +747,14 @@ const fallbackOverlayUnitNamesForEvent = (eventType) => {
   if (normalized === 'proxy_factory') return ['factory'];
   if (normalized === 'reaver_drop') return ['reaver'];
   if (normalized === 'dt_drop') return ['darktemplar'];
+  // cliff_drop is a Terran-only marker classification, dropship is always correct.
   if (normalized === 'cliff_drop') return ['dropship'];
-  if (normalized === 'drop') return ['dropship'];
+  if (normalized === 'drop') {
+    const r = String(actorRace || '').toLowerCase();
+    if (r === 'protoss') return ['shuttle'];
+    if (r === 'zerg') return ['overlord'];
+    return ['dropship'];
+  }
   if (normalized === 'nuke') return ['ghost'];
   if (normalized === 'recall') return ['arbiter'];
   if (normalized === 'became_terran' || normalized === 'became_zerg') return ['darkarchon'];
@@ -790,7 +808,7 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
 
   const unitNames = Array.isArray(event?.attack_unit_types) && event.attack_unit_types.length > 0
     ? event.attack_unit_types
-    : fallbackOverlayUnitNamesForEvent(event?.type);
+    : fallbackOverlayUnitNamesForEvent(event?.type, actorRace);
   const seen = new Set();
   const entries = [];
   for (const name of unitNames) {
@@ -3039,7 +3057,11 @@ function App() {
     for (let idx = 0; idx < visibleEvents.length; idx += 1) {
       const event = visibleEvents[idx];
       const prev = deduped.length > 0 ? deduped[deduped.length - 1] : null;
-      if (prev && gameEventDescription(prev, markerRegistry) === gameEventDescription(event, markerRegistry)) {
+      // Recall events are intentionally per-cast — a recall combo (multiple
+      // recalls within seconds of each other) is exactly the kind of detail
+      // users want to see, so skip the description-equality collapse here.
+      const isRecall = normalizeEventType(event?.type) === 'recall';
+      if (!isRecall && prev && gameEventDescription(prev, markerRegistry) === gameEventDescription(event, markerRegistry)) {
         continue;
       }
       deduped.push(event);
@@ -3207,14 +3229,16 @@ function App() {
   }, [selectedMainGameEvent, mainEventMapBounds]);
   const selectedMainGameArrowUnits = useMemo(() => {
     if (!selectedMainGameArrow || !selectedMainGameEvent) return [];
+    const actorPid = Number(selectedMainGameEvent?.actor?.player_id || 0);
+    const actorRow = mainGamePlayers.find((player) => Number(player?.player_id || 0) === actorPid);
     const unitNames = Array.isArray(selectedMainGameEvent.attack_unit_types) && selectedMainGameEvent.attack_unit_types.length > 0
       ? selectedMainGameEvent.attack_unit_types
-      : fallbackOverlayUnitNamesForEvent(selectedMainGameEvent.type);
+      : fallbackOverlayUnitNamesForEvent(selectedMainGameEvent.type, actorRow?.race);
     return unitNames
       .map((name) => ({ name, icon: getUnitIcon(name) }))
       .filter((item) => item.icon)
       .slice(0, 4);
-  }, [selectedMainGameArrow, selectedMainGameEvent]);
+  }, [selectedMainGameArrow, selectedMainGameEvent, mainGamePlayers]);
   const selectedMainGameLeaveFlag = useMemo(() => {
     if (normalizeEventType(selectedMainGameEvent?.type) !== 'leave_game' || !mainEventMapBounds) return null;
     const actorID = Number(selectedMainGameEvent?.actor?.player_id || 0);
@@ -3242,6 +3266,21 @@ function App() {
     if (!point) return null;
     return { icon, point };
   }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds]);
+  // Recall has no meaningful from→to vector — the cast point is the source
+  // (where units are pulled from), but the destination is the Arbiter's
+  // position which isn't in the command stream. Render a single Arbiter icon
+  // at the cast point instead of an arrow.
+  const selectedMainGameRecallOverlay = useMemo(() => {
+    if (normalizeEventType(selectedMainGameEvent?.type) !== 'recall') return null;
+    const anchor = polygonCenter(selectedMainGameEvent?.base?.polygon)
+      || selectedMainGameEvent?.base?.center;
+    if (!anchor) return null;
+    const icon = getUnitIcon('arbiter');
+    if (!icon) return null;
+    const point = mapPointToPercent(anchor, mainEventMapBounds);
+    if (!point) return null;
+    return { icon, point };
+  }, [selectedMainGameEvent, mainEventMapBounds]);
 
   const mainPlayerInsights = [
     mainPlayerApmInsight,
@@ -4839,6 +4878,19 @@ function App() {
                                     style={{
                                       left: `${selectedMainGameExpansionOverlay.point.x}%`,
                                       top: `${selectedMainGameExpansionOverlay.point.y}%`,
+                                    }}
+                                  />
+                                ) : null}
+                                {selectedMainGameRecallOverlay ? (
+                                  <img
+                                    key={`recall-${selectedMainGameEventKeyResolved}`}
+                                    src={selectedMainGameRecallOverlay.icon}
+                                    alt="Recall cast point"
+                                    title="Recall cast point — destination is the Arbiter (not in command stream)"
+                                    className="workflow-event-map-expansion-overlay"
+                                    style={{
+                                      left: `${selectedMainGameRecallOverlay.point.x}%`,
+                                      top: `${selectedMainGameRecallOverlay.point.y}%`,
                                     }}
                                   />
                                 ) : null}
