@@ -667,6 +667,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
+  /api/screp-colors:
+    get:
+      operationId: screpColors
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
   /api/health:
     get:
       operationId: healthcheck

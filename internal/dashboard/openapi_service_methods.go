@@ -11,6 +11,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/icza/screp/rep/repcore"
 	"github.com/marianogappa/screpdb/internal/buildinfo"
 	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
@@ -800,6 +801,19 @@ func (d *Dashboard) PlayerColors(ctx context.Context, _ apigen.PlayerColorsReque
 		playerColors[row.PlayerKey] = topPlayerPalette[i]
 	}
 	return map[string]any{"player_colors": playerColors, "palette": topPlayerPalette}, nil
+}
+
+// ScrepColors returns the canonical screp player-color palette: a map from
+// normalized name (lowercased, spaces stripped — matches the frontend's lookup
+// key) to the engine RGB as a #rrggbb string. Sourced from repcore.Colors so
+// the values track whatever screp version the binary links against.
+func (d *Dashboard) ScrepColors(_ context.Context, _ apigen.ScrepColorsRequestObject) (any, error) {
+	out := make(map[string]string, len(repcore.Colors))
+	for _, c := range repcore.Colors {
+		key := strings.ReplaceAll(strings.ToLower(c.Name), " ", "")
+		out[key] = fmt.Sprintf("#%06x", c.RGB)
+	}
+	return out, nil
 }
 
 func (d *Dashboard) PlayersList(_ context.Context, request apigen.PlayersListRequestObject) (any, error) {

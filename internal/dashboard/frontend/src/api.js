@@ -468,6 +468,15 @@ export const api = {
     return response.json();
   },
 
+  getScrepColors: async () => {
+    const response = await fetch(`${API_BASE}/screp-colors`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get screp colors');
+    }
+    return response.json();
+  },
+
   askGame: async (replayId, question) => {
     const response = await fetch(`${API_BASE}/games/${encodeURIComponent(replayId)}/ask`, {
       method: 'POST',

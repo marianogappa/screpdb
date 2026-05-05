@@ -453,19 +453,14 @@ const parseGameEventTopicKey = (key) => {
   return Number.isFinite(idx) ? idx : null;
 };
 
-const SC_PLAYER_COLOR_MAP = {
-  red: '#ef4444',
-  blue: '#3b82f6',
-  teal: '#14b8a6',
-  purple: '#8b5cf6',
-  orange: '#f97316',
-  brown: '#92400e',
-  white: '#e5e7eb',
-  yellow: '#facc15',
-  green: '#22c55e',
-  paleyellow: '#fde68a',
-  tan: '#d6b18b',
-  aqua: '#22d3ee',
+// scPlayerColorMap is loaded once at app boot from /api/screp-colors and holds
+// the engine's canonical name->#rrggbb mapping (keys normalized: lowercase,
+// spaces stripped). Module-level because the helpers below are called from
+// both module scope and component scope; React state (in the component) is
+// what triggers re-render after this is populated.
+let scPlayerColorMap = {};
+const setScPlayerColorMapModule = (m) => {
+  scPlayerColorMap = m && typeof m === 'object' ? m : {};
 };
 
 const playerColorToCss = (colorValue) => {
@@ -473,7 +468,7 @@ const playerColorToCss = (colorValue) => {
   if (!value) return '#9ca3af';
   if (value.startsWith('#')) return value;
   const key = value.toLowerCase().replace(/\s+/g, '');
-  return SC_PLAYER_COLOR_MAP[key] || value.toLowerCase();
+  return scPlayerColorMap[key] || value.toLowerCase();
 };
 
 const legendTextStyle = (rawColorValue, foregroundColor) => {
@@ -1440,6 +1435,10 @@ function App() {
   const [mainAnswer, setMainAnswer] = useState(null);
   const [mainAskLoading, setMainAskLoading] = useState(false);
   const [topPlayerColors, setTopPlayerColors] = useState({});
+  // Used purely as a re-render trigger after the screp engine color map loads;
+  // the actual map lives at module scope (see scPlayerColorMap above) so the
+  // module-level helpers (playerColorToCss, legendTextStyle) can consume it.
+  const [, setScColorMapLoaded] = useState(false);
   const [mainSummaryFilters, setMainSummaryFilters] = useState(DEFAULT_SUMMARY_FILTERS);
   const [productionView, setProductionView] = useState('all');
   const [productionSubFilter, setProductionSubFilter] = useState('all');
@@ -1636,6 +1635,16 @@ function App() {
       setTopPlayerColors(data?.player_colors || {});
     } catch (err) {
       console.error('Failed to load top player colors:', err);
+    }
+  };
+
+  const loadScrepColors = async () => {
+    try {
+      const data = await api.getScrepColors();
+      setScPlayerColorMapModule(data);
+      setScColorMapLoaded(true);
+    } catch (err) {
+      console.error('Failed to load screp colors:', err);
     }
   };
 
@@ -2131,6 +2140,7 @@ function App() {
       console.error('Failed to load global replay filter config:', err);
     });
     loadTopPlayerColors();
+    loadScrepColors();
     checkOpenAIStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only; deep links set currentDashboardUrl before first paint.
   }, []);

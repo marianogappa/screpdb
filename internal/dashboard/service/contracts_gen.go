@@ -52,4 +52,5 @@ type DashboardService interface {
 	PlayerUnitCadence(ctx context.Context, request apigen.PlayerUnitCadenceRequestObject) (HandlerResult, error)
 	PlayerOutliers(ctx context.Context, request apigen.PlayerOutliersRequestObject) (HandlerResult, error)
 	PlayerRecentGames(ctx context.Context, request apigen.PlayerRecentGamesRequestObject) (HandlerResult, error)
+	ScrepColors(ctx context.Context, request apigen.ScrepColorsRequestObject) (HandlerResult, error)
 }

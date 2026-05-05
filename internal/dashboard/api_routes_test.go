@@ -29,6 +29,7 @@ func TestSetupRouter_JSONEndpoints(t *testing.T) {
 		{"games list", http.MethodGet, "/api/games", nil},
 		{"players list", http.MethodGet, "/api/players", nil},
 		{"player colors", http.MethodGet, "/api/player-colors", nil},
+		{"screp colors", http.MethodGet, "/api/screp-colors", nil},
 		{"players apm histogram", http.MethodGet, "/api/players/insights/apm-histogram", nil},
 		{"players delay histogram", http.MethodGet, "/api/players/insights/first-unit-delay", nil},
 		{"players cadence", http.MethodGet, "/api/players/insights/unit-production-cadence", nil},

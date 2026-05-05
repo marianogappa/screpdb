@@ -710,3 +710,18 @@ func (a *openAPIStrictAdapter) PlayerRecentGames(ctx context.Context, request ap
 		return PlayerRecentGamesJSONResponse{Payload: value}
 	})
 }
+
+type ScrepColorsJSONResponse struct {
+	Payload any
+}
+
+func (response ScrepColorsJSONResponse) VisitScrepColorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return json.NewEncoder(w).Encode(response.Payload)
+}
+
+func (a *openAPIStrictAdapter) ScrepColors(ctx context.Context, request apigen.ScrepColorsRequestObject) (apigen.ScrepColorsResponseObject, error) {
+	return responseFromPayload(ctx, request, a.service.ScrepColors, func(value any) apigen.ScrepColorsResponseObject { return ScrepColorsJSONResponse{Payload: value} })
+}

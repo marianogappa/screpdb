@@ -820,6 +820,9 @@ type ServerInterface interface {
 
 	// (GET /api/players/{playerKey}/recent-games)
 	PlayerRecentGames(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
+
+	// (GET /api/screp-colors)
+	ScrepColors(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -2001,6 +2004,20 @@ func (siw *ServerInterfaceWrapper) PlayerRecentGames(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
+// ScrepColors operation middleware
+func (siw *ServerInterfaceWrapper) ScrepColors(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ScrepColors(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -2201,6 +2218,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/outliers", wrapper.PlayerOutliers).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/recent-games", wrapper.PlayerRecentGames).Methods(http.MethodGet)
+
+	r.HandleFunc(options.BaseURL+"/api/screp-colors", wrapper.ScrepColors).Methods(http.MethodGet)
 
 	return r
 }
@@ -3509,6 +3528,35 @@ func (response PlayerRecentGames200JSONResponse) VisitPlayerRecentGamesResponse(
 	return err
 }
 
+type ScrepColorsRequestObject struct {
+}
+
+type ScrepColorsResponseObject interface {
+	VisitScrepColorsResponse(w http.ResponseWriter) error
+}
+
+type ScrepColors200JSONResponse GenericValue
+
+func (t ScrepColors200JSONResponse) MarshalJSON() ([]byte, error) {
+	return GenericValue(t).MarshalJSON()
+}
+
+func (t *ScrepColors200JSONResponse) UnmarshalJSON(b []byte) error {
+	return (*GenericValue)(t).UnmarshalJSON(b)
+}
+
+func (response ScrepColors200JSONResponse) VisitScrepColorsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
@@ -3643,6 +3691,9 @@ type StrictServerInterface interface {
 
 	// (GET /api/players/{playerKey}/recent-games)
 	PlayerRecentGames(ctx context.Context, request PlayerRecentGamesRequestObject) (PlayerRecentGamesResponseObject, error)
+
+	// (GET /api/screp-colors)
+	ScrepColors(ctx context.Context, request ScrepColorsRequestObject) (ScrepColorsResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -4898,45 +4949,69 @@ func (sh *strictHandler) PlayerRecentGames(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// ScrepColors operation middleware
+func (sh *strictHandler) ScrepColors(w http.ResponseWriter, r *http.Request) {
+	var request ScrepColorsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ScrepColors(ctx, request.(ScrepColorsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ScrepColors")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ScrepColorsResponseObject); ok {
+		if err := validResponse.VisitScrepColorsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"ZhoyENjb/FnDg/HRkd5We/JzxmM+/18AAAD//w==",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,
