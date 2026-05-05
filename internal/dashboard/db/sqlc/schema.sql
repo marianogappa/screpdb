@@ -62,27 +62,6 @@ CREATE TABLE player_aliases (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE dashboards (
-  url TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  replays_filter_sql TEXT,
-  variables TEXT,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE dashboard_widgets (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  dashboard_id TEXT,
-  widget_order BIGINT,
-  name TEXT NOT NULL,
-  description TEXT,
-  config TEXT NOT NULL,
-  query TEXT NOT NULL,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE replay_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   replay_id INTEGER NOT NULL,

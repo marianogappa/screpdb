@@ -24,8 +24,6 @@ func TestSetupRouter_JSONEndpoints(t *testing.T) {
 		body   []byte
 	}{
 		{"health", http.MethodGet, "/api/health", nil},
-		{"custom list dashboards", http.MethodGet, "/api/custom/dashboard", nil},
-		{"custom get default dashboard", http.MethodGet, "/api/custom/dashboard/default", nil},
 		{"games list", http.MethodGet, "/api/games", nil},
 		{"players list", http.MethodGet, "/api/players", nil},
 		{"player colors", http.MethodGet, "/api/player-colors", nil},
@@ -67,22 +65,6 @@ func TestSetupRouter_JSONEndpoints(t *testing.T) {
 				t.Fatalf("invalid JSON: %s", truncateForLog(respBytes, 200))
 			}
 		})
-	}
-}
-
-func TestSetupRouter_CustomQueryExecute(t *testing.T) {
-	d := newTestDashboard(t)
-	r := d.setupRouter()
-	body := []byte(`{"query": "SELECT 1 AS n", "variable_values": {}}`)
-	req := httptest.NewRequest(http.MethodPost, "/api/custom/query", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
-	}
-	if !json.Valid(rec.Body.Bytes()) {
-		t.Fatalf("invalid JSON: %s", rec.Body.String())
 	}
 }
 
@@ -180,30 +162,11 @@ func TestSetupRouter_LegacyWorkflowPrefixIsSPA(t *testing.T) {
 	}
 }
 
-func TestSetupRouter_LegacyCustomPathsWithoutPrefixAreSPA(t *testing.T) {
-	d := newTestDashboard(t)
-	r := d.setupRouter()
-	for _, path := range []string{"/api/dashboard", "/api/query"} {
-		t.Run(path, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, path, nil)
-			rec := httptest.NewRecorder()
-			r.ServeHTTP(rec, req)
-			if rec.Code != http.StatusOK {
-				t.Fatalf("status %d", rec.Code)
-			}
-			ct := rec.Header().Get("Content-Type")
-			if !strings.Contains(ct, "text/html") {
-				t.Fatalf("expected SPA for %s, got content-type %q", path, ct)
-			}
-		})
-	}
-}
-
 func TestSetupRouter_StrictInputValidation(t *testing.T) {
 	d := newTestDashboard(t)
 	r := d.setupRouter()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/custom/query", nil)
+	req := httptest.NewRequest(http.MethodPut, "/api/custom/aliases/entry", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 

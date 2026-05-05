@@ -36,27 +36,6 @@ type CommandsLowValue struct {
 	AlliancePlayerIds    *string
 }
 
-type Dashboard struct {
-	Url              string
-	Name             string
-	Description      *string
-	ReplaysFilterSql *string
-	Variables        *string
-	CreatedAt        *string
-}
-
-type DashboardWidget struct {
-	ID          int64
-	DashboardID *string
-	WidgetOrder *int64
-	Name        string
-	Description *string
-	Config      string
-	Query       string
-	CreatedAt   *string
-	UpdatedAt   *string
-}
-
 type Player struct {
 	ID                  int64
 	ReplayID            int64

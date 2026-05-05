@@ -28,7 +28,7 @@ func TestDashboardSPA_NonexistentPathFallsBackToIndexHTML(t *testing.T) {
 	router := dash.setupRouter()
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/dashboards/default/widgets/999", nil)
+	req := httptest.NewRequest(http.MethodGet, "/games/999/some-deep-link", nil)
 	router.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {

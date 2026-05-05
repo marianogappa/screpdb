@@ -141,31 +141,6 @@ type AskRequest struct {
 	Question string `json:"question"`
 }
 
-// CreateDashboardRequest defines model for CreateDashboardRequest.
-type CreateDashboardRequest struct {
-	Description      *string `json:"description,omitempty"`
-	Name             string  `json:"name"`
-	ReplaysFilterSql *string `json:"replays_filter_sql,omitempty"`
-	Url              string  `json:"url"`
-}
-
-// CreateDashboardWidgetRequest defines model for CreateDashboardWidgetRequest.
-type CreateDashboardWidgetRequest struct {
-	Prompt *string `json:"Prompt,omitempty"`
-}
-
-// DashboardVariableValuesRequest defines model for DashboardVariableValuesRequest.
-type DashboardVariableValuesRequest struct {
-	VariableValues *map[string]interface{} `json:"variable_values,omitempty"`
-}
-
-// ExecuteQueryRequest defines model for ExecuteQueryRequest.
-type ExecuteQueryRequest struct {
-	DashboardUrl   *string                 `json:"dashboard_url,omitempty"`
-	Query          string                  `json:"query"`
-	VariableValues *map[string]interface{} `json:"variable_values,omitempty"`
-}
-
 // GenericObject defines model for GenericObject.
 type GenericObject map[string]interface{}
 
@@ -206,12 +181,6 @@ type GenericValue4 = int
 // GenericValue5 defines model for .
 type GenericValue5 = bool
 
-// GetQueryVariablesRequest defines model for GetQueryVariablesRequest.
-type GetQueryVariablesRequest struct {
-	DashboardUrl *string `json:"dashboard_url,omitempty"`
-	Query        string  `json:"query"`
-}
-
 // ImportAliasesRequest defines model for ImportAliasesRequest.
 type ImportAliasesRequest struct {
 	Aliases map[string][]AliasImportEntry `json:"aliases"`
@@ -229,21 +198,6 @@ type IngestRequest struct {
 	UpToNMonths      *int    `json:"up_to_n_months,omitempty"`
 	UpToYyyyMmDd     *string `json:"up_to_yyyy_mm_dd,omitempty"`
 	Watch            *bool   `json:"watch,omitempty"`
-}
-
-// UpdateDashboardRequest defines model for UpdateDashboardRequest.
-type UpdateDashboardRequest struct {
-	Description      *string `json:"description,omitempty"`
-	Name             *string `json:"name,omitempty"`
-	ReplaysFilterSql *string `json:"replays_filter_sql,omitempty"`
-}
-
-// UpdateDashboardWidgetRequest defines model for UpdateDashboardWidgetRequest.
-type UpdateDashboardWidgetRequest struct {
-	Config      *GenericObject `json:"config,omitempty"`
-	Description *string        `json:"description,omitempty"`
-	Name        *string        `json:"name,omitempty"`
-	Query       *string        `json:"query,omitempty"`
 }
 
 // UpdateGlobalReplayFilterConfigRequest defines model for UpdateGlobalReplayFilterConfigRequest.
@@ -285,12 +239,6 @@ type PlayerKey = string
 
 // ReplayID defines model for replayID.
 type ReplayID = int64
-
-// Url defines model for url.
-type Url = string
-
-// Wid defines model for wid.
-type Wid = int64
 
 // GamesListParams defines parameters for GamesList.
 type GamesListParams struct {
@@ -344,21 +292,6 @@ type ImportAliasesJSONRequestBody = ImportAliasesRequest
 // UpsertAliasEntryJSONRequestBody defines body for UpsertAliasEntry for application/json ContentType.
 type UpsertAliasEntryJSONRequestBody = UpsertAliasEntryRequest
 
-// CreateDashboardJSONRequestBody defines body for CreateDashboard for application/json ContentType.
-type CreateDashboardJSONRequestBody = CreateDashboardRequest
-
-// GetDashboardPostJSONRequestBody defines body for GetDashboardPost for application/json ContentType.
-type GetDashboardPostJSONRequestBody = DashboardVariableValuesRequest
-
-// UpdateDashboardJSONRequestBody defines body for UpdateDashboard for application/json ContentType.
-type UpdateDashboardJSONRequestBody = UpdateDashboardRequest
-
-// CreateDashboardWidgetJSONRequestBody defines body for CreateDashboardWidget for application/json ContentType.
-type CreateDashboardWidgetJSONRequestBody = CreateDashboardWidgetRequest
-
-// UpdateDashboardWidgetJSONRequestBody defines body for UpdateDashboardWidget for application/json ContentType.
-type UpdateDashboardWidgetJSONRequestBody = UpdateDashboardWidgetRequest
-
 // UpdateGlobalReplayFilterConfigJSONRequestBody defines body for UpdateGlobalReplayFilterConfig for application/json ContentType.
 type UpdateGlobalReplayFilterConfigJSONRequestBody = UpdateGlobalReplayFilterConfigRequest
 
@@ -367,12 +300,6 @@ type IngestJSONRequestBody = IngestRequest
 
 // UpdateIngestSettingsJSONRequestBody defines body for UpdateIngestSettings for application/json ContentType.
 type UpdateIngestSettingsJSONRequestBody = UpdateIngestSettingsRequest
-
-// ExecuteQueryJSONRequestBody defines body for ExecuteQuery for application/json ContentType.
-type ExecuteQueryJSONRequestBody = ExecuteQueryRequest
-
-// GetQueryVariablesJSONRequestBody defines body for GetQueryVariables for application/json ContentType.
-type GetQueryVariablesJSONRequestBody = GetQueryVariablesRequest
 
 // GameAskJSONRequestBody defines body for GameAsk for application/json ContentType.
 type GameAskJSONRequestBody = AskRequest
@@ -701,36 +628,6 @@ type ServerInterface interface {
 	// (DELETE /api/custom/aliases/{id})
 	DeleteAliasEntry(w http.ResponseWriter, r *http.Request, id int64)
 
-	// (GET /api/custom/dashboard)
-	ListDashboards(w http.ResponseWriter, r *http.Request)
-
-	// (PUT /api/custom/dashboard)
-	CreateDashboard(w http.ResponseWriter, r *http.Request)
-
-	// (DELETE /api/custom/dashboard/{url})
-	DeleteDashboard(w http.ResponseWriter, r *http.Request, url Url)
-
-	// (GET /api/custom/dashboard/{url})
-	GetDashboard(w http.ResponseWriter, r *http.Request, url Url)
-
-	// (POST /api/custom/dashboard/{url})
-	GetDashboardPost(w http.ResponseWriter, r *http.Request, url Url)
-
-	// (PUT /api/custom/dashboard/{url})
-	UpdateDashboard(w http.ResponseWriter, r *http.Request, url Url)
-
-	// (GET /api/custom/dashboard/{url}/widget)
-	ListDashboardWidgets(w http.ResponseWriter, r *http.Request, url Url)
-
-	// (PUT /api/custom/dashboard/{url}/widget)
-	CreateDashboardWidget(w http.ResponseWriter, r *http.Request, url Url)
-
-	// (DELETE /api/custom/dashboard/{url}/widget/{wid})
-	DeleteDashboardWidget(w http.ResponseWriter, r *http.Request, url Url, wid Wid)
-
-	// (POST /api/custom/dashboard/{url}/widget/{wid})
-	UpdateDashboardWidget(w http.ResponseWriter, r *http.Request, url Url, wid Wid)
-
 	// (GET /api/custom/global-replay-filter)
 	GetGlobalReplayFilterConfig(w http.ResponseWriter, r *http.Request)
 
@@ -751,12 +648,6 @@ type ServerInterface interface {
 
 	// (PUT /api/custom/ingest/settings)
 	UpdateIngestSettings(w http.ResponseWriter, r *http.Request)
-
-	// (POST /api/custom/query)
-	ExecuteQuery(w http.ResponseWriter, r *http.Request)
-
-	// (POST /api/custom/query/variables)
-	GetQueryVariables(w http.ResponseWriter, r *http.Request)
 
 	// (GET /api/custom/replays/stale-count)
 	GetStaleReplaysCount(w http.ResponseWriter, r *http.Request)
@@ -902,260 +793,6 @@ func (siw *ServerInterfaceWrapper) DeleteAliasEntry(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
-// ListDashboards operation middleware
-func (siw *ServerInterfaceWrapper) ListDashboards(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListDashboards(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// CreateDashboard operation middleware
-func (siw *ServerInterfaceWrapper) CreateDashboard(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateDashboard(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// DeleteDashboard operation middleware
-func (siw *ServerInterfaceWrapper) DeleteDashboard(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "url" -------------
-	var url Url
-
-	err = runtime.BindStyledParameterWithOptions("simple", "url", mux.Vars(r)["url"], &url, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "url", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteDashboard(w, r, url)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetDashboard operation middleware
-func (siw *ServerInterfaceWrapper) GetDashboard(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "url" -------------
-	var url Url
-
-	err = runtime.BindStyledParameterWithOptions("simple", "url", mux.Vars(r)["url"], &url, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "url", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetDashboard(w, r, url)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetDashboardPost operation middleware
-func (siw *ServerInterfaceWrapper) GetDashboardPost(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "url" -------------
-	var url Url
-
-	err = runtime.BindStyledParameterWithOptions("simple", "url", mux.Vars(r)["url"], &url, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "url", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetDashboardPost(w, r, url)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// UpdateDashboard operation middleware
-func (siw *ServerInterfaceWrapper) UpdateDashboard(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "url" -------------
-	var url Url
-
-	err = runtime.BindStyledParameterWithOptions("simple", "url", mux.Vars(r)["url"], &url, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "url", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateDashboard(w, r, url)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// ListDashboardWidgets operation middleware
-func (siw *ServerInterfaceWrapper) ListDashboardWidgets(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "url" -------------
-	var url Url
-
-	err = runtime.BindStyledParameterWithOptions("simple", "url", mux.Vars(r)["url"], &url, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "url", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListDashboardWidgets(w, r, url)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// CreateDashboardWidget operation middleware
-func (siw *ServerInterfaceWrapper) CreateDashboardWidget(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "url" -------------
-	var url Url
-
-	err = runtime.BindStyledParameterWithOptions("simple", "url", mux.Vars(r)["url"], &url, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "url", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateDashboardWidget(w, r, url)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// DeleteDashboardWidget operation middleware
-func (siw *ServerInterfaceWrapper) DeleteDashboardWidget(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "url" -------------
-	var url Url
-
-	err = runtime.BindStyledParameterWithOptions("simple", "url", mux.Vars(r)["url"], &url, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "url", Err: err})
-		return
-	}
-
-	// ------------- Path parameter "wid" -------------
-	var wid Wid
-
-	err = runtime.BindStyledParameterWithOptions("simple", "wid", mux.Vars(r)["wid"], &wid, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "wid", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteDashboardWidget(w, r, url, wid)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// UpdateDashboardWidget operation middleware
-func (siw *ServerInterfaceWrapper) UpdateDashboardWidget(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "url" -------------
-	var url Url
-
-	err = runtime.BindStyledParameterWithOptions("simple", "url", mux.Vars(r)["url"], &url, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "url", Err: err})
-		return
-	}
-
-	// ------------- Path parameter "wid" -------------
-	var wid Wid
-
-	err = runtime.BindStyledParameterWithOptions("simple", "wid", mux.Vars(r)["wid"], &wid, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "wid", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateDashboardWidget(w, r, url, wid)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
 // GetGlobalReplayFilterConfig operation middleware
 func (siw *ServerInterfaceWrapper) GetGlobalReplayFilterConfig(w http.ResponseWriter, r *http.Request) {
 
@@ -1245,34 +882,6 @@ func (siw *ServerInterfaceWrapper) UpdateIngestSettings(w http.ResponseWriter, r
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateIngestSettings(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// ExecuteQuery operation middleware
-func (siw *ServerInterfaceWrapper) ExecuteQuery(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ExecuteQuery(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetQueryVariables operation middleware
-func (siw *ServerInterfaceWrapper) GetQueryVariables(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetQueryVariables(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2139,26 +1748,6 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/api/custom/aliases/{id}", wrapper.DeleteAliasEntry).Methods(http.MethodDelete)
 
-	r.HandleFunc(options.BaseURL+"/api/custom/dashboard", wrapper.ListDashboards).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/custom/dashboard", wrapper.CreateDashboard).Methods(http.MethodPut)
-
-	r.HandleFunc(options.BaseURL+"/api/custom/dashboard/{url}", wrapper.DeleteDashboard).Methods(http.MethodDelete)
-
-	r.HandleFunc(options.BaseURL+"/api/custom/dashboard/{url}", wrapper.GetDashboard).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/custom/dashboard/{url}", wrapper.GetDashboardPost).Methods(http.MethodPost)
-
-	r.HandleFunc(options.BaseURL+"/api/custom/dashboard/{url}", wrapper.UpdateDashboard).Methods(http.MethodPut)
-
-	r.HandleFunc(options.BaseURL+"/api/custom/dashboard/{url}/widget", wrapper.ListDashboardWidgets).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/custom/dashboard/{url}/widget", wrapper.CreateDashboardWidget).Methods(http.MethodPut)
-
-	r.HandleFunc(options.BaseURL+"/api/custom/dashboard/{url}/widget/{wid}", wrapper.DeleteDashboardWidget).Methods(http.MethodDelete)
-
-	r.HandleFunc(options.BaseURL+"/api/custom/dashboard/{url}/widget/{wid}", wrapper.UpdateDashboardWidget).Methods(http.MethodPost)
-
 	r.HandleFunc(options.BaseURL+"/api/custom/global-replay-filter", wrapper.GetGlobalReplayFilterConfig).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/custom/global-replay-filter", wrapper.UpdateGlobalReplayFilterConfig).Methods(http.MethodPut)
@@ -2172,10 +1761,6 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/api/custom/ingest/settings", wrapper.GetIngestSettings).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/custom/ingest/settings", wrapper.UpdateIngestSettings).Methods(http.MethodPut)
-
-	r.HandleFunc(options.BaseURL+"/api/custom/query", wrapper.ExecuteQuery).Methods(http.MethodPost)
-
-	r.HandleFunc(options.BaseURL+"/api/custom/query/variables", wrapper.GetQueryVariables).Methods(http.MethodPost)
 
 	r.HandleFunc(options.BaseURL+"/api/custom/replays/stale-count", wrapper.GetStaleReplaysCount).Methods(http.MethodGet)
 
@@ -2332,311 +1917,6 @@ func (t *DeleteAliasEntry200JSONResponse) UnmarshalJSON(b []byte) error {
 }
 
 func (response DeleteAliasEntry200JSONResponse) VisitDeleteAliasEntryResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListDashboardsRequestObject struct {
-}
-
-type ListDashboardsResponseObject interface {
-	VisitListDashboardsResponse(w http.ResponseWriter) error
-}
-
-type ListDashboards200JSONResponse GenericValue
-
-func (t ListDashboards200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *ListDashboards200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response ListDashboards200JSONResponse) VisitListDashboardsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateDashboardRequestObject struct {
-	Body *CreateDashboardJSONRequestBody
-}
-
-type CreateDashboardResponseObject interface {
-	VisitCreateDashboardResponse(w http.ResponseWriter) error
-}
-
-type CreateDashboard200JSONResponse GenericValue
-
-func (t CreateDashboard200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *CreateDashboard200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response CreateDashboard200JSONResponse) VisitCreateDashboardResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type DeleteDashboardRequestObject struct {
-	Url Url `json:"url"`
-}
-
-type DeleteDashboardResponseObject interface {
-	VisitDeleteDashboardResponse(w http.ResponseWriter) error
-}
-
-type DeleteDashboard200JSONResponse GenericValue
-
-func (t DeleteDashboard200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *DeleteDashboard200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response DeleteDashboard200JSONResponse) VisitDeleteDashboardResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetDashboardRequestObject struct {
-	Url Url `json:"url"`
-}
-
-type GetDashboardResponseObject interface {
-	VisitGetDashboardResponse(w http.ResponseWriter) error
-}
-
-type GetDashboard200JSONResponse GenericValue
-
-func (t GetDashboard200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *GetDashboard200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response GetDashboard200JSONResponse) VisitGetDashboardResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetDashboardPostRequestObject struct {
-	Url  Url `json:"url"`
-	Body *GetDashboardPostJSONRequestBody
-}
-
-type GetDashboardPostResponseObject interface {
-	VisitGetDashboardPostResponse(w http.ResponseWriter) error
-}
-
-type GetDashboardPost200JSONResponse GenericValue
-
-func (t GetDashboardPost200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *GetDashboardPost200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response GetDashboardPost200JSONResponse) VisitGetDashboardPostResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type UpdateDashboardRequestObject struct {
-	Url  Url `json:"url"`
-	Body *UpdateDashboardJSONRequestBody
-}
-
-type UpdateDashboardResponseObject interface {
-	VisitUpdateDashboardResponse(w http.ResponseWriter) error
-}
-
-type UpdateDashboard200JSONResponse GenericValue
-
-func (t UpdateDashboard200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *UpdateDashboard200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response UpdateDashboard200JSONResponse) VisitUpdateDashboardResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListDashboardWidgetsRequestObject struct {
-	Url Url `json:"url"`
-}
-
-type ListDashboardWidgetsResponseObject interface {
-	VisitListDashboardWidgetsResponse(w http.ResponseWriter) error
-}
-
-type ListDashboardWidgets200JSONResponse GenericValue
-
-func (t ListDashboardWidgets200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *ListDashboardWidgets200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response ListDashboardWidgets200JSONResponse) VisitListDashboardWidgetsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateDashboardWidgetRequestObject struct {
-	Url  Url `json:"url"`
-	Body *CreateDashboardWidgetJSONRequestBody
-}
-
-type CreateDashboardWidgetResponseObject interface {
-	VisitCreateDashboardWidgetResponse(w http.ResponseWriter) error
-}
-
-type CreateDashboardWidget200JSONResponse GenericValue
-
-func (t CreateDashboardWidget200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *CreateDashboardWidget200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response CreateDashboardWidget200JSONResponse) VisitCreateDashboardWidgetResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type DeleteDashboardWidgetRequestObject struct {
-	Url Url `json:"url"`
-	Wid Wid `json:"wid"`
-}
-
-type DeleteDashboardWidgetResponseObject interface {
-	VisitDeleteDashboardWidgetResponse(w http.ResponseWriter) error
-}
-
-type DeleteDashboardWidget200JSONResponse GenericValue
-
-func (t DeleteDashboardWidget200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *DeleteDashboardWidget200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response DeleteDashboardWidget200JSONResponse) VisitDeleteDashboardWidgetResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type UpdateDashboardWidgetRequestObject struct {
-	Url  Url `json:"url"`
-	Wid  Wid `json:"wid"`
-	Body *UpdateDashboardWidgetJSONRequestBody
-}
-
-type UpdateDashboardWidgetResponseObject interface {
-	VisitUpdateDashboardWidgetResponse(w http.ResponseWriter) error
-}
-
-type UpdateDashboardWidget200JSONResponse GenericValue
-
-func (t UpdateDashboardWidget200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *UpdateDashboardWidget200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response UpdateDashboardWidget200JSONResponse) VisitUpdateDashboardWidgetResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -2829,66 +2109,6 @@ func (t *UpdateIngestSettings200JSONResponse) UnmarshalJSON(b []byte) error {
 }
 
 func (response UpdateIngestSettings200JSONResponse) VisitUpdateIngestSettingsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ExecuteQueryRequestObject struct {
-	Body *ExecuteQueryJSONRequestBody
-}
-
-type ExecuteQueryResponseObject interface {
-	VisitExecuteQueryResponse(w http.ResponseWriter) error
-}
-
-type ExecuteQuery200JSONResponse GenericValue
-
-func (t ExecuteQuery200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *ExecuteQuery200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response ExecuteQuery200JSONResponse) VisitExecuteQueryResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetQueryVariablesRequestObject struct {
-	Body *GetQueryVariablesJSONRequestBody
-}
-
-type GetQueryVariablesResponseObject interface {
-	VisitGetQueryVariablesResponse(w http.ResponseWriter) error
-}
-
-type GetQueryVariables200JSONResponse GenericValue
-
-func (t GetQueryVariables200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *GetQueryVariables200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response GetQueryVariables200JSONResponse) VisitGetQueryVariablesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3572,36 +2792,6 @@ type StrictServerInterface interface {
 	// (DELETE /api/custom/aliases/{id})
 	DeleteAliasEntry(ctx context.Context, request DeleteAliasEntryRequestObject) (DeleteAliasEntryResponseObject, error)
 
-	// (GET /api/custom/dashboard)
-	ListDashboards(ctx context.Context, request ListDashboardsRequestObject) (ListDashboardsResponseObject, error)
-
-	// (PUT /api/custom/dashboard)
-	CreateDashboard(ctx context.Context, request CreateDashboardRequestObject) (CreateDashboardResponseObject, error)
-
-	// (DELETE /api/custom/dashboard/{url})
-	DeleteDashboard(ctx context.Context, request DeleteDashboardRequestObject) (DeleteDashboardResponseObject, error)
-
-	// (GET /api/custom/dashboard/{url})
-	GetDashboard(ctx context.Context, request GetDashboardRequestObject) (GetDashboardResponseObject, error)
-
-	// (POST /api/custom/dashboard/{url})
-	GetDashboardPost(ctx context.Context, request GetDashboardPostRequestObject) (GetDashboardPostResponseObject, error)
-
-	// (PUT /api/custom/dashboard/{url})
-	UpdateDashboard(ctx context.Context, request UpdateDashboardRequestObject) (UpdateDashboardResponseObject, error)
-
-	// (GET /api/custom/dashboard/{url}/widget)
-	ListDashboardWidgets(ctx context.Context, request ListDashboardWidgetsRequestObject) (ListDashboardWidgetsResponseObject, error)
-
-	// (PUT /api/custom/dashboard/{url}/widget)
-	CreateDashboardWidget(ctx context.Context, request CreateDashboardWidgetRequestObject) (CreateDashboardWidgetResponseObject, error)
-
-	// (DELETE /api/custom/dashboard/{url}/widget/{wid})
-	DeleteDashboardWidget(ctx context.Context, request DeleteDashboardWidgetRequestObject) (DeleteDashboardWidgetResponseObject, error)
-
-	// (POST /api/custom/dashboard/{url}/widget/{wid})
-	UpdateDashboardWidget(ctx context.Context, request UpdateDashboardWidgetRequestObject) (UpdateDashboardWidgetResponseObject, error)
-
 	// (GET /api/custom/global-replay-filter)
 	GetGlobalReplayFilterConfig(ctx context.Context, request GetGlobalReplayFilterConfigRequestObject) (GetGlobalReplayFilterConfigResponseObject, error)
 
@@ -3622,12 +2812,6 @@ type StrictServerInterface interface {
 
 	// (PUT /api/custom/ingest/settings)
 	UpdateIngestSettings(ctx context.Context, request UpdateIngestSettingsRequestObject) (UpdateIngestSettingsResponseObject, error)
-
-	// (POST /api/custom/query)
-	ExecuteQuery(ctx context.Context, request ExecuteQueryRequestObject) (ExecuteQueryResponseObject, error)
-
-	// (POST /api/custom/query/variables)
-	GetQueryVariables(ctx context.Context, request GetQueryVariablesRequestObject) (GetQueryVariablesResponseObject, error)
 
 	// (GET /api/custom/replays/stale-count)
 	GetStaleReplaysCount(ctx context.Context, request GetStaleReplaysCountRequestObject) (GetStaleReplaysCountResponseObject, error)
@@ -3837,311 +3021,6 @@ func (sh *strictHandler) DeleteAliasEntry(w http.ResponseWriter, r *http.Request
 	}
 }
 
-// ListDashboards operation middleware
-func (sh *strictHandler) ListDashboards(w http.ResponseWriter, r *http.Request) {
-	var request ListDashboardsRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ListDashboards(ctx, request.(ListDashboardsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListDashboards")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ListDashboardsResponseObject); ok {
-		if err := validResponse.VisitListDashboardsResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// CreateDashboard operation middleware
-func (sh *strictHandler) CreateDashboard(w http.ResponseWriter, r *http.Request) {
-	var request CreateDashboardRequestObject
-
-	var body CreateDashboardJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.CreateDashboard(ctx, request.(CreateDashboardRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "CreateDashboard")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(CreateDashboardResponseObject); ok {
-		if err := validResponse.VisitCreateDashboardResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// DeleteDashboard operation middleware
-func (sh *strictHandler) DeleteDashboard(w http.ResponseWriter, r *http.Request, url Url) {
-	var request DeleteDashboardRequestObject
-
-	request.Url = url
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.DeleteDashboard(ctx, request.(DeleteDashboardRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "DeleteDashboard")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(DeleteDashboardResponseObject); ok {
-		if err := validResponse.VisitDeleteDashboardResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetDashboard operation middleware
-func (sh *strictHandler) GetDashboard(w http.ResponseWriter, r *http.Request, url Url) {
-	var request GetDashboardRequestObject
-
-	request.Url = url
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetDashboard(ctx, request.(GetDashboardRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetDashboard")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetDashboardResponseObject); ok {
-		if err := validResponse.VisitGetDashboardResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetDashboardPost operation middleware
-func (sh *strictHandler) GetDashboardPost(w http.ResponseWriter, r *http.Request, url Url) {
-	var request GetDashboardPostRequestObject
-
-	request.Url = url
-
-	var body GetDashboardPostJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		if !errors.Is(err, io.EOF) {
-			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-			return
-		}
-	} else {
-		request.Body = &body
-	}
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetDashboardPost(ctx, request.(GetDashboardPostRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetDashboardPost")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetDashboardPostResponseObject); ok {
-		if err := validResponse.VisitGetDashboardPostResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// UpdateDashboard operation middleware
-func (sh *strictHandler) UpdateDashboard(w http.ResponseWriter, r *http.Request, url Url) {
-	var request UpdateDashboardRequestObject
-
-	request.Url = url
-
-	var body UpdateDashboardJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		if !errors.Is(err, io.EOF) {
-			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-			return
-		}
-	} else {
-		request.Body = &body
-	}
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.UpdateDashboard(ctx, request.(UpdateDashboardRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "UpdateDashboard")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(UpdateDashboardResponseObject); ok {
-		if err := validResponse.VisitUpdateDashboardResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ListDashboardWidgets operation middleware
-func (sh *strictHandler) ListDashboardWidgets(w http.ResponseWriter, r *http.Request, url Url) {
-	var request ListDashboardWidgetsRequestObject
-
-	request.Url = url
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ListDashboardWidgets(ctx, request.(ListDashboardWidgetsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListDashboardWidgets")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ListDashboardWidgetsResponseObject); ok {
-		if err := validResponse.VisitListDashboardWidgetsResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// CreateDashboardWidget operation middleware
-func (sh *strictHandler) CreateDashboardWidget(w http.ResponseWriter, r *http.Request, url Url) {
-	var request CreateDashboardWidgetRequestObject
-
-	request.Url = url
-
-	var body CreateDashboardWidgetJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		if !errors.Is(err, io.EOF) {
-			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-			return
-		}
-	} else {
-		request.Body = &body
-	}
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.CreateDashboardWidget(ctx, request.(CreateDashboardWidgetRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "CreateDashboardWidget")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(CreateDashboardWidgetResponseObject); ok {
-		if err := validResponse.VisitCreateDashboardWidgetResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// DeleteDashboardWidget operation middleware
-func (sh *strictHandler) DeleteDashboardWidget(w http.ResponseWriter, r *http.Request, url Url, wid Wid) {
-	var request DeleteDashboardWidgetRequestObject
-
-	request.Url = url
-	request.Wid = wid
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.DeleteDashboardWidget(ctx, request.(DeleteDashboardWidgetRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "DeleteDashboardWidget")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(DeleteDashboardWidgetResponseObject); ok {
-		if err := validResponse.VisitDeleteDashboardWidgetResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// UpdateDashboardWidget operation middleware
-func (sh *strictHandler) UpdateDashboardWidget(w http.ResponseWriter, r *http.Request, url Url, wid Wid) {
-	var request UpdateDashboardWidgetRequestObject
-
-	request.Url = url
-	request.Wid = wid
-
-	var body UpdateDashboardWidgetJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		if !errors.Is(err, io.EOF) {
-			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-			return
-		}
-	} else {
-		request.Body = &body
-	}
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.UpdateDashboardWidget(ctx, request.(UpdateDashboardWidgetRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "UpdateDashboardWidget")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(UpdateDashboardWidgetResponseObject); ok {
-		if err := validResponse.VisitUpdateDashboardWidgetResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // GetGlobalReplayFilterConfig operation middleware
 func (sh *strictHandler) GetGlobalReplayFilterConfig(w http.ResponseWriter, r *http.Request) {
 	var request GetGlobalReplayFilterConfigRequestObject
@@ -4330,68 +3209,6 @@ func (sh *strictHandler) UpdateIngestSettings(w http.ResponseWriter, r *http.Req
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateIngestSettingsResponseObject); ok {
 		if err := validResponse.VisitUpdateIngestSettingsResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ExecuteQuery operation middleware
-func (sh *strictHandler) ExecuteQuery(w http.ResponseWriter, r *http.Request) {
-	var request ExecuteQueryRequestObject
-
-	var body ExecuteQueryJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ExecuteQuery(ctx, request.(ExecuteQueryRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ExecuteQuery")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ExecuteQueryResponseObject); ok {
-		if err := validResponse.VisitExecuteQueryResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetQueryVariables operation middleware
-func (sh *strictHandler) GetQueryVariables(w http.ResponseWriter, r *http.Request) {
-	var request GetQueryVariablesRequestObject
-
-	var body GetQueryVariablesJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetQueryVariables(ctx, request.(GetQueryVariablesRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetQueryVariables")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetQueryVariablesResponseObject); ok {
-		if err := validResponse.VisitGetQueryVariablesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -4978,40 +3795,35 @@ func (sh *strictHandler) ScrepColors(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"Wy/Um2OmpvlfAAAA//8=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

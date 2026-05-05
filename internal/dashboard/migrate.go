@@ -15,98 +15,29 @@ func runMigrations(sqlitePath string) error {
 	if err := migrations.RunMigrations(sqlitePath); err != nil {
 		return err
 	}
-	if err := ensureDashboardReplayFilterColumn(sqlitePath); err != nil {
-		return err
-	}
-	if err := ensureDashboardVariablesColumn(sqlitePath); err != nil {
-		return err
-	}
 	if err := ensureGlobalReplayFilterConfigColumns(sqlitePath); err != nil {
+		return err
+	}
+	if err := dropLegacyCustomDashboardTables(sqlitePath); err != nil {
 		return err
 	}
 	return ensureImportedAliasesSeed(sqlitePath)
 }
 
-func ensureDashboardReplayFilterColumn(sqlitePath string) error {
+// dropLegacyCustomDashboardTables removes the dashboards / dashboard_widgets /
+// dashboard_widget_prompt_history tables from databases created before the
+// Custom Dashboards feature was removed. DROP TABLE IF EXISTS is a no-op on
+// fresh DBs.
+func dropLegacyCustomDashboardTables(sqlitePath string) error {
 	db, err := sql.Open("sqlite", sqliteDSN(sqlitePath))
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 	defer db.Close()
-
-	rows, err := db.Query(`PRAGMA table_info(dashboards);`)
-	if err != nil {
-		return fmt.Errorf("failed to query dashboards table info: %w", err)
-	}
-	defer rows.Close()
-
-	var found bool
-	for rows.Next() {
-		var cid int
-		var name string
-		var colType string
-		var notNull int
-		var defaultValue any
-		var pk int
-		if err := rows.Scan(&cid, &name, &colType, &notNull, &defaultValue, &pk); err != nil {
-			return fmt.Errorf("failed to scan table info: %w", err)
+	for _, table := range []string{"dashboard_widget_prompt_history", "dashboard_widgets", "dashboards"} {
+		if _, err := db.Exec(`DROP TABLE IF EXISTS ` + table); err != nil {
+			return fmt.Errorf("failed to drop legacy table %s: %w", table, err)
 		}
-		if name == "replays_filter_sql" {
-			found = true
-			break
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("failed to read table info: %w", err)
-	}
-	if found {
-		return nil
-	}
-
-	if _, err := db.Exec(`ALTER TABLE dashboards ADD COLUMN replays_filter_sql TEXT;`); err != nil {
-		return fmt.Errorf("failed to add dashboards.replays_filter_sql: %w", err)
-	}
-	return nil
-}
-
-func ensureDashboardVariablesColumn(sqlitePath string) error {
-	db, err := sql.Open("sqlite", sqliteDSN(sqlitePath))
-	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
-	}
-	defer db.Close()
-
-	rows, err := db.Query(`PRAGMA table_info(dashboards);`)
-	if err != nil {
-		return fmt.Errorf("failed to query dashboards table info: %w", err)
-	}
-	defer rows.Close()
-
-	var found bool
-	for rows.Next() {
-		var cid int
-		var name string
-		var colType string
-		var notNull int
-		var defaultValue any
-		var pk int
-		if err := rows.Scan(&cid, &name, &colType, &notNull, &defaultValue, &pk); err != nil {
-			return fmt.Errorf("failed to scan table info: %w", err)
-		}
-		if name == "variables" {
-			found = true
-			break
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("failed to read table info: %w", err)
-	}
-	if found {
-		return nil
-	}
-
-	if _, err := db.Exec(`ALTER TABLE dashboards ADD COLUMN variables TEXT;`); err != nil {
-		return fmt.Errorf("failed to add dashboards.variables: %w", err)
 	}
 	return nil
 }

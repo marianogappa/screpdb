@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { api } from './api';
-import Widget from './components/Widget';
-import DashboardManager from './components/DashboardManager';
-import EditDashboardModal from './components/EditDashboardModal';
-import EditWidgetFullscreen from './components/EditWidgetFullscreen';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import IngestModal from './components/IngestModal';
-import WidgetCreationSpinner from './components/WidgetCreationSpinner';
 import PieChart from './components/charts/PieChart';
 import Gauge from './components/charts/Gauge';
 import Table from './components/charts/Table';
@@ -30,8 +25,6 @@ import {
   lookupDefinitionForPattern,
 } from './lib/markerRegistry';
 import {
-  getStoredVariableValues,
-  saveVariableValues,
   getStoredAutoIngestSettings,
   saveAutoIngestSettings,
 } from './lib/dashboardStorage';
@@ -1287,22 +1280,10 @@ function App() {
   const markerRegistryState = useMarkerRegistry();
   const markerRegistry = markerRegistryState.markers;
   const markerDefinitions = markerRegistryState;
-  const [currentDashboardUrl, setCurrentDashboardUrl] = useState(() => (
-    initialMainRoute.view === 'dashboards' && initialMainRoute.dash ? initialMainRoute.dash : 'default'
-  ));
-  const [dashboard, setDashboard] = useState(null);
-  const [dashboards, setDashboards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showDashboardManager, setShowDashboardManager] = useState(false);
-  const [showEditDashboard, setShowEditDashboard] = useState(false);
   const [showGlobalReplayFilter, setShowGlobalReplayFilter] = useState(false);
-  const [newWidgetPrompt, setNewWidgetPrompt] = useState('');
-  const [creatingWidget, setCreatingWidget] = useState(false);
-  const [variableValues, setVariableValues] = useState({});
   const [openaiEnabled, setOpenaiEnabled] = useState(false);
-  const [customDashboardsEnabled, setCustomDashboardsEnabled] = useState(false);
-  const [editingWidget, setEditingWidget] = useState(null);
   const [replayCount, setReplayCount] = useState(null);
   const [currentVersion, setCurrentVersion] = useState('');
   const [latestVersion, setLatestVersion] = useState('');
@@ -1394,7 +1375,6 @@ function App() {
   const suppressUrlSyncRef = useRef(false);
   const openMainGameRef = useRef(null);
   const openMainPlayerRef = useRef(null);
-  const loadDashboardRef = useRef(null);
   // "Latest-ref" pattern: stable effects (WebSocket handler, auto-ingest interval,
   // ingest-poll tick) need to read the *current* games-list filter/page state and
   // call the *current* refresh function. Their dependency arrays intentionally
@@ -1478,66 +1458,6 @@ function App() {
     zerg: DEFAULT_HP_UPGRADE_BY_RACE.zerg,
     protoss: DEFAULT_HP_UPGRADE_BY_RACE.protoss,
   });
-
-  const loadDashboard = async (url, varValues = null, skipVarInit = false) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // If no varValues provided, try to load from localStorage
-      if (!varValues) {
-        const stored = getStoredVariableValues(url);
-        if (stored && Object.keys(stored).length > 0) {
-          varValues = stored;
-        }
-      }
-
-      const data = await api.getDashboard(url, varValues);
-      setDashboard(data);
-      setCurrentDashboardUrl(url);
-
-      // Update variable values state
-      if (varValues) {
-        setVariableValues(varValues);
-        // Save to localStorage
-        saveVariableValues(url, varValues);
-      } else if (data.variables && !skipVarInit) {
-        // Initialize variable values with first option if not set
-        const newVarValues = {};
-        let needsReload = false;
-        Object.keys(data.variables).forEach(varName => {
-          if (data.variables[varName].possible_values?.length > 0) {
-            newVarValues[varName] = data.variables[varName].possible_values[0];
-            needsReload = true;
-          }
-        });
-        if (needsReload && Object.keys(newVarValues).length > 0) {
-          setVariableValues(newVarValues);
-          // Save to localStorage
-          saveVariableValues(url, newVarValues);
-          // Reload with initialized values
-          await loadDashboard(url, newVarValues, true);
-          return;
-        }
-        setVariableValues(newVarValues);
-        // Save to localStorage
-        saveVariableValues(url, newVarValues);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadDashboards = async () => {
-    try {
-      const data = await api.listDashboards();
-      setDashboards(data);
-    } catch (err) {
-      console.error('Failed to load dashboards:', err);
-    }
-  };
 
   const loadGlobalReplayFilterConfig = async () => {
     const data = await api.getGlobalReplayFilter();
@@ -2144,7 +2064,6 @@ function App() {
         if (totalReplays >= baselineCount + 1) {
           setReplayCount(totalReplays);
           setOpenaiEnabled(Boolean(health?.openai_enabled));
-          setCustomDashboardsEnabled(Boolean(health?.custom_dashboards_enabled));
           return true;
         }
       } catch (err) {
@@ -2157,21 +2076,16 @@ function App() {
 
   openMainGameRef.current = openMainGame;
   openMainPlayerRef.current = openMainPlayer;
-  loadDashboardRef.current = loadDashboard;
 
   useEffect(() => {
-    // Load dashboard with stored variable values if available (initial URL only; switches use loadDashboard directly).
-    const url = currentDashboardUrl;
-    const stored = getStoredVariableValues(url);
-    loadDashboard(url, stored || undefined);
-    loadDashboards();
+    setLoading(false);
     loadGlobalReplayFilterConfig().catch((err) => {
       console.error('Failed to load global replay filter config:', err);
     });
     loadTopPlayerColors();
     loadScrepColors();
     checkOpenAIStatus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only; deep links set currentDashboardUrl before first paint.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only.
   }, []);
 
   useEffect(() => {
@@ -2269,14 +2183,13 @@ function App() {
       mainPlayersTab,
       mainPlayerTab,
       mainPlayerSubtab,
-      currentDashboardUrl,
     });
     if (typeof window !== 'undefined' && mainRouteSnapshotEqual(window.location.search, next && next.length ? `?${next}` : '')) {
       return;
     }
     if (typeof window === 'undefined') return;
     window.history.pushState({ __spa: 1 }, '', mainRouteHref(next));
-  }, [activeView, selectedReplayId, selectedPlayerKey, mainGameTab, mainPlayersTab, mainPlayerTab, mainPlayerSubtab, currentDashboardUrl]);
+  }, [activeView, selectedReplayId, selectedPlayerKey, mainGameTab, mainPlayersTab, mainPlayerTab, mainPlayerSubtab]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -2289,7 +2202,6 @@ function App() {
       setMainPlayersTab(r.playersTab);
       setMainPlayerTab(r.playerTab);
       setMainPlayerSubtab(r.playerSubtab || '');
-      setCurrentDashboardUrl(r.view === 'dashboards' && r.dash ? r.dash : 'default');
       const finish = () => {
         suppressUrlSyncRef.current = false;
       };
@@ -2305,15 +2217,6 @@ function App() {
           initialPlayerTab: r.playerTab,
           initialPlayerSubtab: r.playerSubtab,
         });
-        if (p && typeof p.finally === 'function') {
-          p.finally(finish);
-        } else {
-          finish();
-        }
-      } else if (r.view === 'dashboards') {
-        const dashUrl = r.dash || 'default';
-        const stored = getStoredVariableValues(dashUrl);
-        const p = loadDashboardRef.current?.(dashUrl, stored || undefined);
         if (p && typeof p.finally === 'function') {
           p.finally(finish);
         } else {
@@ -2621,7 +2524,6 @@ function App() {
     try {
       const data = await api.getHealth();
       setOpenaiEnabled(Boolean(data?.openai_enabled));
-      setCustomDashboardsEnabled(Boolean(data?.custom_dashboards_enabled));
       const totalReplays = Number(data?.total_replays || 0);
       setReplayCount(totalReplays);
       if (data?.version) {
@@ -2635,83 +2537,6 @@ function App() {
     } catch (err) {
       console.error('Failed to check OpenAI status:', err);
       return null;
-    }
-  };
-
-  const handleCreateWidget = async (e) => {
-    e.preventDefault();
-    if (!newWidgetPrompt.trim() || creatingWidget) return;
-
-    try {
-      setCreatingWidget(true);
-      setError(null);
-      await api.createWidget(currentDashboardUrl, newWidgetPrompt);
-      setNewWidgetPrompt('');
-      await loadDashboard(currentDashboardUrl);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setCreatingWidget(false);
-    }
-  };
-
-  const handleCreateWidgetWithoutPrompt = async () => {
-    if (creatingWidget) return;
-
-    try {
-      setCreatingWidget(true);
-      setError(null);
-      const widget = await api.createWidget(currentDashboardUrl, '');
-      setCreatingWidget(false);
-      // Config should already be parsed as an object from the backend
-      const config = widget.config || { type: 'table' };
-      // Open the edit widget fullscreen for the newly created widget
-      setEditingWidget({
-        id: widget.id,
-        name: widget.name,
-        description: widget.description ? { valid: true, string: widget.description } : null,
-        query: widget.query || '',
-        config: config,
-        results: [],
-      });
-    } catch (err) {
-      setError(err.message);
-      setCreatingWidget(false);
-    }
-  };
-
-  const handleUpdateDashboard = async (data) => {
-    try {
-      await api.updateDashboard(currentDashboardUrl, data);
-      setShowEditDashboard(false);
-      await loadDashboard(currentDashboardUrl);
-      await loadDashboards();
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const handleDeleteWidget = async (widgetId) => {
-    if (!confirm('Are you sure you want to delete this widget?')) return;
-
-    try {
-      await api.deleteWidget(currentDashboardUrl, widgetId);
-      await loadDashboard(currentDashboardUrl);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const handleUpdateWidget = async (widgetId, data) => {
-    if (data.prompt) {
-      data = { prompt: data.prompt }
-    }
-    try {
-      await api.updateWidget(currentDashboardUrl, widgetId, data);
-      setEditingWidget(null);
-      await loadDashboard(currentDashboardUrl);
-    } catch (err) {
-      setError(err.message);
     }
   };
 
@@ -2764,19 +2589,6 @@ function App() {
     }
   };
 
-  const handleSwitchDashboard = (url) => {
-    setVariableValues({});
-    loadDashboard(url);
-  };
-
-  const handleVariableChange = async (varName, value) => {
-    const newVarValues = { ...variableValues, [varName]: value };
-    setVariableValues(newVarValues);
-    // Save to localStorage
-    saveVariableValues(currentDashboardUrl, newVarValues);
-    await loadDashboard(currentDashboardUrl, newVarValues);
-  };
-
   const refreshDataAfterGlobalReplayFilterSave = async () => {
     await Promise.all([
       loadMainGames({ page: mainGamesPage, filters: mainGamesFilters }),
@@ -2786,7 +2598,6 @@ function App() {
         sortBy: mainPlayersSortBy,
         sortDir: mainPlayersSortDir,
       }),
-      loadDashboard(currentDashboardUrl, variableValues, true),
       loadTopPlayerColors(),
       checkOpenAIStatus(),
     ]);
@@ -3148,14 +2959,6 @@ function App() {
       </div>
     );
   };
-
-  const sortedWidgets = dashboard?.widgets
-    ? [...dashboard.widgets].sort((a, b) => {
-      const orderA = a.widget_order?.valid ? a.widget_order.int64 : 0;
-      const orderB = b.widget_order?.valid ? b.widget_order.int64 : 0;
-      return orderA - orderB;
-    })
-    : [];
 
   const summaryTextMatches = (text) => {
     const value = String(text || '').toLowerCase();
@@ -3844,14 +3647,6 @@ function App() {
     return mainPlayersSortDir === 'asc' ? '↑' : '↓';
   };
 
-  if (loading && !dashboard && activeView === 'dashboards') {
-    return (
-      <div className="app">
-        <div className="loading">Loading dashboard...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="app">
       <div className="dashboard-container">
@@ -3898,11 +3693,6 @@ function App() {
               </span>
             ) : null}
           </div>
-          {customDashboardsEnabled && (
-            <div className="workflow-nav-group">
-              <button type="button" className={`btn-manage ${activeView === 'dashboards' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('dashboards')}>Custom Dashboards</button>
-            </div>
-          )}
         </div>
 
         {error && <div className="error-message">{error}</div>}
@@ -5755,154 +5545,7 @@ function App() {
           );
         })()}
 
-        {activeView === 'dashboards' && customDashboardsEnabled && (
-          <>
-            <div className="dashboard-header">
-              <div className="dashboard-title">
-                <div className="dashboard-title-left">
-                  <h1>{dashboard?.name || 'Dashboard'}</h1>
-                  <button
-                    onClick={() => setShowEditDashboard(true)}
-                    className="btn-edit-dashboard"
-                    title="Edit dashboard"
-                  >
-                    ✎
-                  </button>
-                </div>
-                <div className="dashboard-actions">
-                  <select
-                    value={currentDashboardUrl}
-                    onChange={(e) => handleSwitchDashboard(e.target.value)}
-                    className="dashboard-select"
-                  >
-                    {dashboards.map((d) => (
-                      <option key={d.url} value={d.url}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => setShowDashboardManager(true)}
-                    className="btn-manage"
-                  >
-                    Manage Dashboards
-                  </button>
-                </div>
-              </div>
-
-              <div className="widget-creation-section">
-                {openaiEnabled ? (
-                  <form onSubmit={handleCreateWidget} className="widget-creation-form">
-                    <div className="widget-creation-input-group">
-                      <input
-                        type="text"
-                        value={newWidgetPrompt}
-                        onChange={(e) => setNewWidgetPrompt(e.target.value)}
-                        placeholder="Ask to add a new graph or chart..."
-                        className="widget-creation-input"
-                        disabled={creatingWidget}
-                      />
-                      <button
-                        type="submit"
-                        disabled={creatingWidget || !newWidgetPrompt.trim()}
-                        className="btn-create-ai"
-                      >
-                        <span className="btn-icon">✨</span>
-                        Create with AI
-                      </button>
-                      <div className="widget-creation-divider">or</div>
-                      <button
-                        type="button"
-                        onClick={handleCreateWidgetWithoutPrompt}
-                        disabled={creatingWidget}
-                        className="btn-create-manual"
-                      >
-                        Create Manually
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <div className="widget-creation-form">
-                    <div className="widget-creation-input-group">
-                      <button
-                        type="button"
-                        onClick={handleCreateWidgetWithoutPrompt}
-                        disabled={creatingWidget}
-                        className="btn-create-manual-primary"
-                      >
-                        Create Widget
-                      </button>
-                      <div className="widget-creation-info">
-                        <span className="info-icon">ℹ️</span>
-                        <span className="info-text">AI-powered creation requires --openai-api-key flag</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {dashboard?.variables && Object.keys(dashboard.variables).length > 0 && (
-                <div className="variables-container" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-                  {Object.entries(dashboard.variables).map(([varName, variable]) => (
-                    <div key={varName} className="variable-select" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                      <label htmlFor={`var-${varName}`} style={{ fontSize: '0.875rem', fontWeight: '500' }}>
-                        {variable.display_name}
-                      </label>
-                      <select
-                        id={`var-${varName}`}
-                        value={variableValues[varName] || ''}
-                        onChange={(e) => handleVariableChange(varName, e.target.value)}
-                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', minWidth: '200px' }}
-                      >
-                        {variable.possible_values?.map((value, idx) => (
-                          <option key={idx} value={value}>
-                            {value}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="widgets-grid">
-              {sortedWidgets.map((widget) => (
-                <Widget
-                  key={widget.id}
-                  widget={widget}
-                  dashboardUrl={currentDashboardUrl}
-                  variableValues={variableValues}
-                  onDelete={handleDeleteWidget}
-                  onUpdate={handleUpdateWidget}
-                />
-              ))}
-            </div>
-          </>
-        )}
       </div>
-
-      {creatingWidget && (
-        <WidgetCreationSpinner />
-      )}
-
-      {showDashboardManager && customDashboardsEnabled && (
-        <DashboardManager
-          dashboards={dashboards}
-          currentUrl={currentDashboardUrl}
-          onClose={() => setShowDashboardManager(false)}
-          onRefresh={loadDashboards}
-          onSwitch={handleSwitchDashboard}
-        />
-      )}
-
-      {showEditDashboard && dashboard && (
-        <EditDashboardModal
-          dashboard={dashboard}
-          onClose={() => setShowEditDashboard(false)}
-          onSave={handleUpdateDashboard}
-        />
-      )}
 
       {showGlobalReplayFilter && (
         <GlobalReplayFilterModal
@@ -5927,7 +5570,6 @@ function App() {
           onAliasEdit={handleAliasEdit}
           onAliasCancelEdit={handleAliasCancelEdit}
           onAliasExport={handleAliasExport}
-          customDashboardsEnabled={customDashboardsEnabled}
         />
       )}
 
@@ -5949,18 +5591,6 @@ function App() {
           onChange={setIngestForm}
           onInputDirChange={setIngestInputDir}
           onSaveInputDir={handleSaveIngestInputDir}
-        />
-      )}
-
-      {editingWidget && (
-        <EditWidgetFullscreen
-          widget={editingWidget}
-          dashboardUrl={currentDashboardUrl}
-          onClose={() => {
-            setEditingWidget(null);
-            loadDashboard(currentDashboardUrl);
-          }}
-          onSave={(data) => handleUpdateWidget(editingWidget.id, data)}
         />
       )}
 
