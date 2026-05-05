@@ -157,6 +157,59 @@ func (e *Engine) emitOwnershipTransitions(ownership []PolyOwnership) {
 	}
 }
 
+// emitRecallEvents emits one "recall" game_event per Arbiter Recall cast.
+// The "Made recalls" marker (firstCastEvaluator) still surfaces only the
+// first cast per player; this layer is the per-cast counterpart for the
+// game-events list, so observers can see every recall location/time.
+func (e *Engine) emitRecallEvents(ownership []PolyOwnership) {
+	timelineByPoly := make(map[int][]OwnEvent, len(ownership))
+	for _, t := range ownership {
+		timelineByPoly[t.PolyID] = t.Events
+	}
+	ownerAtSec := func(polyID int, sec int) byte {
+		evs := timelineByPoly[polyID]
+		owner := neutralPID
+		for _, ev := range evs {
+			if ev.Sec > sec {
+				break
+			}
+			owner = ev.Owner
+		}
+		return owner
+	}
+
+	for _, ec := range e.stream {
+		if ec.Kind != cmdenrich.KindCast || ec.Subject != "Recall" {
+			continue
+		}
+		pid := byte(ec.PlayerID)
+		if leaveSec, left := e.leaveSec[pid]; left && ec.Second > leaveSec {
+			continue
+		}
+		baseIdx := -1
+		var target *NarrativePlayerRef
+		if ec.X != nil && ec.Y != nil {
+			baseIdx = pointToEventBase(float64(*ec.X), float64(*ec.Y), e.bases)
+		}
+		if baseIdx >= 0 && baseIdx < len(e.bases) {
+			owner := ownerAtSec(baseIdx, ec.Second)
+			if owner != neutralPID && owner != pid && !e.sameTeam(pid, owner) {
+				target = e.playerRef(owner)
+			}
+		}
+		desc := fmt.Sprintf("%s recalls", e.playerName(pid))
+		if baseIdx >= 0 && baseIdx < len(e.bases) {
+			where := e.bases[baseIdx].DisplayName
+			if target != nil {
+				desc = fmt.Sprintf("%s recalls onto %s %s", e.playerName(pid), e.playerName(byte(target.PlayerID)), where)
+			} else {
+				desc = fmt.Sprintf("%s recalls to %s", e.playerName(pid), where)
+			}
+		}
+		e.emitEvent("recall", ec.Second, desc, e.playerRef(pid), target, baseIdx, []string{"Arbiter"})
+	}
+}
+
 func (e *Engine) emitLeaveGameEvents() {
 	pids := make([]byte, 0, len(e.leaveSec))
 	for pid := range e.leaveSec {

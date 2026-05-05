@@ -339,6 +339,7 @@ func (e *Engine) Finalize() {
 
 	if len(e.bases) > 0 {
 		e.emitOwnershipTransitions(ownership)
+		e.emitRecallEvents(ownership)
 	}
 	e.emitLeaveGameEvents()
 	e.emitAttackCandidates(candidates)
@@ -593,6 +594,12 @@ func (e *Engine) toReplayEvent(eventType string, second int, actor *NarrativePla
 }
 
 func (e *Engine) shouldSuppressEvent(eventType string, second int, actor *NarrativePlayerRef, target *NarrativePlayerRef, baseIdx int, attackUnitTypes []string) bool {
+	// Recall events are explicit per-cast — multiple recalls in quick
+	// succession (a recall combo onto an enemy main) are the whole point of
+	// surfacing them, so the 60s dedup window must not collapse them.
+	if eventType == "recall" {
+		return false
+	}
 	sourceID := int64(0)
 	if actor != nil {
 		sourceID = actor.PlayerID
@@ -1019,7 +1026,7 @@ func (e *Engine) processRaceSwitchEvent(command *models.Command, pid byte, sec i
 }
 
 func (e *Engine) processZerglingRushEvent(command *models.Command, pid byte, sec int) {
-	if e.zergRushEmitted[pid] || sec > zerglingRushSec {
+	if e.zergRushEmitted[pid] {
 		return
 	}
 	if !command.IsUnitBuild() || command.UnitType == nil || *command.UnitType != models.GeneralUnitZergling {
@@ -1027,11 +1034,20 @@ func (e *Engine) processZerglingRushEvent(command *models.Command, pid byte, sec
 	}
 	candidate := e.zergRushCandidates[pid]
 	if candidate == nil {
+		// Only the *first* morph is timing-gated — once a candidate is open,
+		// later morphs continue to count as long as they fall inside the
+		// observation window. This avoids losing real 9-pool rushes whose
+		// 2nd/3rd morphs land just past the early cutoff.
+		if sec > zerglingRushSec {
+			return
+		}
 		candidate = &zergRushCandidate{
 			DetectedSecond:     sec,
 			AttackCountsByBase: map[int]int{},
 		}
 		e.zergRushCandidates[pid] = candidate
+	} else if sec > candidate.DetectedSecond+zergRushObserveSec {
+		return
 	}
 	// One Zergling-morph command can spawn two Zerglings (Zerg morphs
 	// pair-wise). The exact count isn't critical here — we just need a
@@ -1058,7 +1074,13 @@ func (e *Engine) recordZergRushAttack(pid byte, sec int, baseIdx int) {
 		return
 	}
 	owner := e.ownerByBase[baseIdx]
-	if owner == neutralPID || owner == pid || e.left[owner] || e.sameTeam(pid, owner) {
+	if owner == neutralPID || owner == pid || e.sameTeam(pid, owner) {
+		return
+	}
+	// Attacks before the target leaves the game still count — a successful
+	// rush often forces the target to leave, and rejecting evidence of
+	// that exact pattern would lose the strongest rush signal.
+	if leaveSec, left := e.leaveSec[owner]; left && sec > leaveSec {
 		return
 	}
 	candidate.AttackCountsByBase[baseIdx]++

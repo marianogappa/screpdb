@@ -111,6 +111,21 @@ func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, pla
 	}
 	playerExpanded := map[byte]map[int]bool{}
 	startPolyByPlayer := map[byte]int{}
+	// hasBuiltResource[poly][player] tracks whether a player has ever
+	// *explicitly* placed a town hall in the polygon. The game's spawned
+	// starting town hall does NOT count: when an opponent later plants a
+	// town hall in a polygon whose nominal owner only has the spawn-seeded
+	// base (and never replaced/expanded it themselves), the spawn must be
+	// gone — otherwise the opponent couldn't have built there. That makes
+	// the opponent's plant a clean expansion, not a takeover from a real
+	// active base.
+	hasBuiltResource := map[int]map[byte]bool{}
+	markBuiltResource := func(pi int, p byte) {
+		if hasBuiltResource[pi] == nil {
+			hasBuiltResource[pi] = map[byte]bool{}
+		}
+		hasBuiltResource[pi][p] = true
+	}
 
 	for _, ps := range players {
 		pi := pointInPolyGeom(polys, ps.X, ps.Y)
@@ -168,13 +183,16 @@ func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, pla
 
 		if cur == p {
 			lastOwningSec[pi][p] = ec.Second
-			if isResource && pi != startPolyByPlayer[p] {
-				if playerExpanded[p] == nil {
-					playerExpanded[p] = map[int]bool{}
-				}
-				if !playerExpanded[p][pi] {
-					playerExpanded[p][pi] = true
-					timelines[pi] = append(timelines[pi], OwnEvent{Sec: ec.Second, Owner: p, Reason: "expansion"})
+			if isResource {
+				markBuiltResource(pi, p)
+				if pi != startPolyByPlayer[p] {
+					if playerExpanded[p] == nil {
+						playerExpanded[p] = map[int]bool{}
+					}
+					if !playerExpanded[p][pi] {
+						playerExpanded[p][pi] = true
+						timelines[pi] = append(timelines[pi], OwnEvent{Sec: ec.Second, Owner: p, Reason: "expansion"})
+					}
 				}
 			}
 			continue
@@ -188,7 +206,34 @@ func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, pla
 			owner[pi] = p
 			lastOwningSec[pi][p] = ec.Second
 			reason := "claim"
-			if isResource && pi != startPolyByPlayer[p] {
+			if isResource {
+				markBuiltResource(pi, p)
+				if pi != startPolyByPlayer[p] {
+					if playerExpanded[p] == nil {
+						playerExpanded[p] = map[int]bool{}
+					}
+					if !playerExpanded[p][pi] {
+						playerExpanded[p][pi] = true
+						reason = "expansion"
+					}
+				}
+			}
+			timelines[pi] = append(timelines[pi], OwnEvent{Sec: ec.Second, Owner: p, Reason: reason})
+			continue
+		}
+
+		// Opponent's resource building in a polygon whose nominal owner
+		// never built a town hall there themselves: the spawn-seeded base
+		// must be gone (otherwise the opponent couldn't physically build),
+		// so this is a fresh expansion rather than a takeover of a real
+		// active base. Nullify the old owner's claim immediately.
+		if isResource && !hasBuiltResource[pi][cur] {
+			owner[pi] = p
+			lastOwningSec[pi][p] = ec.Second
+			markBuiltResource(pi, p)
+			delete(invadeSecs, invaderKey{Poly: pi, Player: p})
+			reason := "claim"
+			if pi != startPolyByPlayer[p] {
 				if playerExpanded[p] == nil {
 					playerExpanded[p] = map[int]bool{}
 				}
@@ -229,6 +274,13 @@ func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, pla
 			if playerExpanded[p] == nil {
 				playerExpanded[p] = map[int]bool{}
 			}
+			// A takeover already conveys "this player now controls the
+			// polygon"; mark it as expanded so a subsequent town-hall plant
+			// by the same player doesn't double-emit as expansion.
+			playerExpanded[p][pi] = true
+			if isResource {
+				markBuiltResource(pi, p)
+			}
 			timelines[pi] = append(timelines[pi], OwnEvent{Sec: takeoverSec, Owner: p, Reason: "takeover"})
 		}
 	}
@@ -238,13 +290,19 @@ func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, pla
 	// at end-of-game; only mid-game inactivity emits location_inactive.
 	_ = durationSec
 
+	// Collapse adjacent same-owner entries so the timeline only keeps
+	// real transitions — EXCEPT for "expansion": a player who already
+	// owns the polygon (via an earlier non-resource "claim" or via their
+	// initial start seed) and then plants a town hall is meaningfully
+	// expanding. Dropping it would silently lose the player's
+	// commitment-to-resources signal.
 	out := make([]PolyOwnership, 0, len(polys))
 	for i, evs := range timelines {
 		c := evs[:0]
 		var lastOwner byte = 254
 		first := true
 		for _, e := range evs {
-			if !first && e.Owner == lastOwner {
+			if !first && e.Owner == lastOwner && e.Reason != "expansion" {
 				continue
 			}
 			c = append(c, e)
