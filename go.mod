@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/icza/screp v1.12.17
-	github.com/marianogappa/scmapanalyzer v0.0.0-20260507144430-892c2bf8eefb
+	github.com/marianogappa/scmapanalyzer v0.0.0-20260507145022-a2a0fa5de1f5
 	github.com/mark3labs/mcp-go v0.41.1
 	github.com/oapi-codegen/runtime v1.4.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
@@ -18,7 +18,7 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/tmc/langchaingo v0.1.14
-	golang.org/x/sync v0.19.0
+	golang.org/x/sync v0.20.0
 	modernc.org/sqlite v1.45.0
 )
 
@@ -86,7 +86,7 @@ require (
 	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
-	golang.org/x/text v0.32.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/api v0.218.0 // indirect
 	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697 // indirect
