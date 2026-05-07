@@ -1,6 +1,6 @@
 // Bump together with gameAssetIconRenderVersion in internal/dashboard/game_asset_handlers.go
 // when icon renderer output changes (scmapanalyzer assets, mapping, etc.).
-const GAME_ASSET_ICON_RENDER_VERSION = '2';
+const GAME_ASSET_ICON_RENDER_VERSION = '3';
 
 const iconQuery = (mapKey) =>
   `name=${encodeURIComponent(mapKey)}&v=${encodeURIComponent(GAME_ASSET_ICON_RENDER_VERSION)}`;

@@ -90,6 +90,21 @@ func (fw *FileWatcher) watch() {
 			}
 
 			if event.Op&fsnotify.Create == fsnotify.Create {
+				// fsnotify does not recurse — a freshly-created subdirectory must be
+				// added to the watcher explicitly, otherwise files written into it
+				// (e.g. the "stage watch replay" flow that drops watch_me.rep into
+				// 000_screpdb_watch_me/) are silently dropped.
+				if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
+					if err := fw.watcher.Add(event.Name); err != nil {
+						select {
+						case fw.errors <- err:
+						case <-fw.done:
+							return
+						}
+					}
+					continue
+				}
+
 				if strings.HasSuffix(strings.ToLower(event.Name), ".rep") {
 					if shouldIgnoreReplayFilePath(event.Name) {
 						continue

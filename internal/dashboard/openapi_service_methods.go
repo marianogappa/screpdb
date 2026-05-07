@@ -302,17 +302,26 @@ func (d *Dashboard) GameAsk(_ context.Context, request apigen.GameAskRequestObje
 }
 
 func (d *Dashboard) GameSee(ctx context.Context, request apigen.GameSeeRequestObject) (any, error) {
-	const seeReplayFilename = "000_watch_me.rep"
+	// The folder name starts with "000_" so it sorts above other folders, and folders
+	// sort above files in StarCraft's replay browser — making the staged replay easy
+	// to find. The file inside is just "watch_me.rep" since the folder already carries
+	// the screpdb prefix.
+	const seeReplayFolderName = "000_screpdb_watch_me"
+	const seeReplayFilename = "watch_me.rep"
 	sourceFilePath, err := d.dbStore.GetReplayFilePathByID(ctx, request.ReplayID)
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 	}
-	destinationDirPath, err := d.dbStore.GetIngestInputDir(ctx, globalReplayFilterConfigKey)
+	ingestDirPath, err := d.dbStore.GetIngestInputDir(ctx, globalReplayFilterConfigKey)
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
-	if destinationDirPath == "" {
+	if ingestDirPath == "" {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, errors.New("Replay ingestion directory is not set; cannot move replay file"))
+	}
+	destinationDirPath := path.Join(ingestDirPath, seeReplayFolderName)
+	if err := os.MkdirAll(destinationDirPath, 0755); err != nil {
+		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
 	destinationFilePath := path.Join(destinationDirPath, seeReplayFilename)
 	input, err := os.ReadFile(sourceFilePath)
@@ -326,6 +335,7 @@ func (d *Dashboard) GameSee(ctx context.Context, request apigen.GameSeeRequestOb
 		"sourceFilePath":      sourceFilePath,
 		"destinationFilePath": destinationFilePath,
 		"destinationFileName": seeReplayFilename,
+		"destinationFolder":   seeReplayFolderName,
 		"success":             true,
 	}, nil
 }
