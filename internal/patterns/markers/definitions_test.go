@@ -407,33 +407,33 @@ func TestBO_CCFirst(t *testing.T) {
 }
 
 func TestBO_RaxCC(t *testing.T) {
-	bo := findBO(t, "Rax-CC")
+	bo := findBO(t, "1 Rax FE")
 	// Positive: Depot, Rax, CC, Refinery (CC before gas + Factory).
 	pos := factsBuilder().
 		B(subjSupplyDepot, 60).B(subjBarracks, 88).
 		B(subjCommandCenter, 180).B(subjRefinery, 195).list()
 	if !bo.Matches(pos) {
-		t.Fatalf("Rax-CC should match Rax → CC → Refinery sequence")
+		t.Fatalf("1 Rax FE should match Rax → CC → Refinery sequence")
 	}
 	// Negative: Refinery before CC.
 	neg := factsBuilder().
 		B(subjSupplyDepot, 60).B(subjBarracks, 88).
 		B(subjRefinery, 115).B(subjCommandCenter, 180).list()
 	if bo.Matches(neg) {
-		t.Fatalf("Rax-CC should fail when Refinery precedes CC")
+		t.Fatalf("1 Rax FE should fail when Refinery precedes CC")
 	}
 	// Negative: 2 Rax before CC.
 	neg2 := factsBuilder().
 		B(subjSupplyDepot, 60).B(subjBarracks, 88).B(subjBarracks, 130).
 		B(subjCommandCenter, 180).list()
 	if bo.Matches(neg2) {
-		t.Fatalf("Rax-CC should fail with 2 Barracks before CC")
+		t.Fatalf("1 Rax FE should fail with 2 Barracks before CC")
 	}
 	// Negative: CC before Barracks (CC First).
 	neg3 := factsBuilder().
 		B(subjSupplyDepot, 60).B(subjCommandCenter, 145).B(subjBarracks, 165).list()
 	if bo.Matches(neg3) {
-		t.Fatalf("Rax-CC should fail when CC precedes Barracks")
+		t.Fatalf("1 Rax FE should fail when CC precedes Barracks")
 	}
 }
 

@@ -257,6 +257,13 @@ func (e *Engine) emitAttackCandidates(candidates []CandidateAttack) {
 	reaverDropEmitted := map[byte]bool{}
 	scoutEmitted := map[byte]bool{}
 
+	// Mid-map attack fallback: hold the earliest neutral-defender attack
+	// candidate so we can promote it post-loop when the replay would
+	// otherwise have zero attack events. Picks up 1v1 mid-map fights where
+	// pressure opens on an unowned polygon and emitAttackIfImportant would
+	// reject every candidate as defender=neutral.
+	var earliestNeutralAttack *CandidateAttack
+
 	for _, c := range candidates {
 		if e.sameTeam(c.Attacker, c.Defender) {
 			continue
@@ -273,10 +280,48 @@ func (e *Engine) emitAttackCandidates(candidates []CandidateAttack) {
 		case "drop":
 			e.emitDropCandidate(c, cmdByFrame[c.Frame], reaverDropEmitted, firstTankSecByPlayer)
 		case "attack":
+			if c.Defender == neutralPID {
+				if earliestNeutralAttack == nil || c.Second < earliestNeutralAttack.Second {
+					cc := c
+					earliestNeutralAttack = &cc
+				}
+				continue
+			}
 			e.emitAttackIfImportant(c, cmdByFrame[c.Frame], spellsByAttacker,
 				attackedAlready, knownUnitsByAttacker, knownSpellsByAttacker)
 		}
 	}
+
+	if len(attackedAlready) == 0 && earliestNeutralAttack != nil {
+		if opp, ok := e.singleOpponentHuman(earliestNeutralAttack.Attacker); ok {
+			c := *earliestNeutralAttack
+			c.Defender = opp
+			e.emitAttackIfImportant(c, cmdByFrame[c.Frame], spellsByAttacker,
+				attackedAlready, knownUnitsByAttacker, knownSpellsByAttacker)
+		}
+	}
+}
+
+// singleOpponentHuman returns the single opposing human player when there's
+// exactly one — i.e. 1v1 melee. Used by the mid-map attack fallback to
+// attribute defender for a neutral-polygon attack candidate.
+func (e *Engine) singleOpponentHuman(attacker byte) (byte, bool) {
+	var opp byte = neutralPID
+	count := 0
+	for _, pid := range e.humanPlayerIDs {
+		if pid == attacker {
+			continue
+		}
+		if e.sameTeam(pid, attacker) {
+			continue
+		}
+		opp = pid
+		count++
+	}
+	if count == 1 {
+		return opp, true
+	}
+	return neutralPID, false
 }
 
 func (e *Engine) emitScoutCandidate(c CandidateAttack, cmd *models.Command) {

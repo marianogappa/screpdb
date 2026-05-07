@@ -255,14 +255,13 @@ var workflowFeaturingFilters = []struct {
 	IconLabel string
 	Emoji     string
 }{
-	{Key: "team_stacking", Label: "Team stacking", Group: "marker", Emoji: "😈"},
 	{Key: "carriers", Label: "Carrier", Group: "marker", IconKey: "carrier"},
 	{Key: "battlecruisers", Label: "Battlecruiser", Group: "marker", IconKey: "battlecruiser"},
 	{Key: "ten_plus_scouts", Label: "10+ Scouts", Group: "marker", IconKey: "scout", IconLabel: "10+"},
 	{Key: "mech", Label: "Mech", Group: "marker", IconKeys: []string{"siegetank", "goliath"}, IconLabel: "Mech"},
 	{Key: "sk_terran", Label: "SK Terran", Group: "marker", IconKeys: []string{"marine", "medic"}, IconLabel: "SK Terran"},
 	{Key: "one_one_one", Label: "1-1-1", Group: "marker"},
-	{Key: "mech_transition", Label: "Mech Transition", Group: "marker", IconKeys: []string{"siegetank", "goliath"}},
+	{Key: "mech_transition", Label: "Mech Transition", Group: "marker", IconKeys: []string{"siegetank", "goliath"}, IconLabel: "Mech transition"},
 	{Key: "mutalisk_timing", Label: "Mutalisk timing", Group: "marker", IconKey: "mutalisk", IconLabel: "timing"},
 	{Key: "turret_timing", Label: "Turret timing", Group: "marker", IconKey: "missileturret", IconLabel: "Timing"},
 	{Key: "cliff_drop", Label: "Cliff drop", Group: "marker", IconKey: "dropship", IconLabel: "Cliff drop"},
@@ -275,6 +274,7 @@ var workflowFeaturingFilters = []struct {
 	{Key: "mind_control", Label: "Mind Control", Group: "marker", IconKey: "darkarchon", IconLabel: "Mind Control"},
 	{Key: "nukes", Label: "Nukes", Group: "marker", IconKey: "ghost", IconLabel: "Nuke"},
 	{Key: "recalls", Label: "Recalls", Group: "marker", IconKey: "arbiter", IconLabel: "Recall"},
+	{Key: "team_stacking", Label: "Team stacking", Group: "marker", Emoji: "😈"},
 	// Build order pills — keys & labels kept in sync with internal/markers.
 	// Suppressed in render for Money maps (game-list + replay-summary
 	// featuring strips); BO tab and per-player summary pills still show.
@@ -293,7 +293,7 @@ var workflowFeaturingFilters = []struct {
 	{Key: "bo_gate_expand", Label: "Gate Expand", Group: "bo"},
 	{Key: "bo_forge_expa", Label: "Forge Expand", Group: "bo"},
 	{Key: "bo_1_rax_1_fac", Label: "1 Rax 1 Fac", Group: "bo"},
-	{Key: "bo_rax_cc", Label: "Rax-CC", Group: "bo"},
+	{Key: "bo_rax_cc", Label: "1 Rax FE", Group: "bo"},
 	{Key: "bo_cc_first", Label: "CC First", Group: "bo"},
 	{Key: "bo_bbs", Label: "BBS", Group: "bo"},
 }
