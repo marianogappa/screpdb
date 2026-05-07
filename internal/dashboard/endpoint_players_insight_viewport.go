@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"sort"
@@ -11,6 +12,12 @@ import (
 )
 
 const workflowViewportMultitaskingMinGames int64 = 4
+
+// viewportMultitaskingFeatureKey is the marker registry FeatureKey for the
+// viewport-multitasking marker. Stored in replay_events.event_type — the
+// queries below filter against that. PatternNameViewportMultitasking is the
+// human-readable pattern label, kept separately for the response payload.
+const viewportMultitaskingFeatureKey = "viewport_multitasking"
 
 type workflowPlayerViewportMultitaskingPoint struct {
 	PlayerKey                 string  `json:"player_key"`
@@ -123,7 +130,7 @@ func (d *Dashboard) buildWorkflowPlayerViewportAsyncInsight(playerKey string) (w
 }
 
 func (d *Dashboard) loadWorkflowViewportMultitaskingAggregates() ([]workflowViewportMultitaskingAggregate, error) {
-	rows, err := d.dbStore.ListViewportAggregateRows(d.ctx, models.PatternNameViewportMultitasking)
+	rows, err := d.dbStore.ListViewportAggregateRows(d.ctx, viewportMultitaskingFeatureKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load viewport multitasking patterns: %w", err)
 	}
@@ -222,7 +229,20 @@ func stddevFloatSlice(values []float64, mean float64) float64 {
 }
 
 func parseViewportSwitchRate(raw string) (float64, bool) {
-	value, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return 0, false
+	}
+	// Markers store viewport switches-per-minute as JSON
+	// {"switches_per_minute": <float>} in replay_events.payload.
+	var payload struct {
+		SwitchesPerMinute float64 `json:"switches_per_minute"`
+	}
+	if err := json.Unmarshal([]byte(trimmed), &payload); err == nil {
+		return payload.SwitchesPerMinute, true
+	}
+	// Fallback: legacy rows persisted the rate as a plain float string.
+	value, err := strconv.ParseFloat(trimmed, 64)
 	if err != nil {
 		return 0, false
 	}
@@ -251,7 +271,7 @@ func (d *Dashboard) populateViewportMultitaskingForGameDetail(detail *workflowGa
 		return nil
 	}
 
-	rows, err := d.dbStore.ListViewportGameRows(d.ctx, detail.ReplayID, models.PatternNameViewportMultitasking)
+	rows, err := d.dbStore.ListViewportGameRows(d.ctx, detail.ReplayID, viewportMultitaskingFeatureKey)
 	if err != nil {
 		return fmt.Errorf("failed to load game viewport multitasking patterns: %w", err)
 	}

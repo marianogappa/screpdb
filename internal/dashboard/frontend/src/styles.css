@@ -2084,6 +2084,12 @@ body {
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.workflow-games-filter-row::-webkit-scrollbar {
+  display: none;
 }
 
 .workflow-games-filter-row>* {
@@ -2096,6 +2102,12 @@ body {
   overflow-y: hidden;
   max-width: none;
   min-height: 30px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.workflow-games-filter-pills::-webkit-scrollbar {
+  display: none;
 }
 
 .workflow-summary-filter-input,
@@ -2608,6 +2620,15 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+/* When a player line overflows, keep the pill container on the same row as
+   name+actions (filling remaining width) so pills wrap inside the container
+   and the second row starts at the first pill's column rather than under the
+   player name. */
+.workflow-player-line > .workflow-pattern-pills {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .workflow-pattern-pill {
@@ -3944,12 +3965,21 @@ body {
   gap: 0.2em;
   padding: 0.08em 0.45em 0.1em;
   border-radius: 999px;
-  font-size: 0.92em;
-  line-height: 1.25;
+  font-size: 1.01em;
+  line-height: 1.8;
   border: 1px solid rgba(255, 255, 255, 0.1);
   max-width: 100%;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+}
+
+.workflow-team-player-pill .workflow-race-icon {
+  width: 25px;
+  height: 25px;
+}
+
+.workflow-team-player-pill .workflow-crown {
+  font-size: 1.0em;
 }
 
 .workflow-inline-warning {

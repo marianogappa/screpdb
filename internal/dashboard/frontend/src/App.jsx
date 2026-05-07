@@ -342,6 +342,7 @@ const gameEventDescription = (event, registry) => {
   }
   if (eventType === 'became_terran') return actor ? `${actor} became Terran` : 'Became Terran';
   if (eventType === 'became_zerg') return actor ? `${actor} became Zerg` : 'Became Zerg';
+  if (eventType === 'mech_transition') return actor ? `${actor} transitions to Mech` : 'Mech transition';
   return prettyPatternName(event?.type || 'event');
 };
 
@@ -445,6 +446,7 @@ const renderGameEventDescription = (event, registry) => {
   }
   if (eventType === 'became_terran') return actorName ? <>{actorSpan} became Terran</> : 'Became Terran';
   if (eventType === 'became_zerg') return actorName ? <>{actorSpan} became Zerg</> : 'Became Zerg';
+  if (eventType === 'mech_transition') return actorName ? <>{actorSpan} transitions to Mech</> : 'Mech transition';
   return prettyPatternName(event?.type || 'event');
 };
 
@@ -1099,9 +1101,22 @@ const shouldHidePatternFromSummaryPills = (pattern, trustGameEventsForDrops) => 
   return false;
 };
 
-const filterSummaryPillPatterns = (patterns, trustGameEventsForDrops = false) => (
-  (patterns || []).filter((pattern) => !shouldHidePatternFromSummaryPills(pattern, trustGameEventsForDrops))
-);
+const filterSummaryPillPatterns = (patterns, trustGameEventsForDrops = false) => {
+  const filtered = (patterns || []).filter((pattern) => !shouldHidePatternFromSummaryPills(pattern, trustGameEventsForDrops));
+  // Stable-sort by detected_second so pills read chronologically (BO first,
+  // then mid-game markers like SK Terran / Mech Transition). Patterns
+  // without a detected_second (e.g. unit-composition rollups) sort to the
+  // end. Hotkey markers carry an end-of-replay second already, so they
+  // naturally land after timed markers.
+  const indexed = filtered.map((pattern, idx) => ({ pattern, idx }));
+  indexed.sort((a, b) => {
+    const ta = Number.isFinite(a.pattern?.detected_second) ? a.pattern.detected_second : Number.POSITIVE_INFINITY;
+    const tb = Number.isFinite(b.pattern?.detected_second) ? b.pattern.detected_second : Number.POSITIVE_INFINITY;
+    if (ta !== tb) return ta - tb;
+    return a.idx - b.idx;
+  });
+  return indexed.map((entry) => entry.pattern);
+};
 
 // renderPatternPill resolves a detected_patterns[] entry through the backend
 // marker registry and builds a pill from the registered SummaryPlayer metadata.
@@ -2914,11 +2929,14 @@ function App() {
     return <img src={url} alt={race || ''} title={race || ''} className="workflow-race-icon" />;
   };
 
-  const renderMainGameListPlayers = (game) => {
+  const renderMainGameListPlayers = (game, linkPlayerNames = true) => {
     const players = Array.isArray(game?.players) ? game.players : [];
     if (players.length === 0) {
       return renderPlayersMatchup(game?.players_label || '');
     }
+    const renderName = (player) => (linkPlayerNames
+      ? renderPlayerLinkLabel(player.name, player.player_key)
+      : renderPlayerLabel(player.name, player.player_key));
     const stackingMarker = game?.team_stacking ? (
       <span
         className="workflow-team-stacking-marker"
@@ -2938,7 +2956,7 @@ function App() {
             <span key={`${player.player_id}-${idx}`}>
               {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
               {renderWorkerIcon(player.race)}
-              {renderPlayerLinkLabel(player.name, player.player_key)}
+              {renderName(player)}
               {idx < players.length - 1 ? ', ' : ''}
             </span>
           ))}
@@ -2962,7 +2980,7 @@ function App() {
                 >
                   {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
                   {renderWorkerIcon(player.race)}
-                  {renderPlayerLinkLabel(player.name, player.player_key)}
+                  {renderName(player)}
                 </span>
               ))}
             </span>
@@ -3947,7 +3965,7 @@ function App() {
                     {mainGames.map((game) => (
                       <tr key={game.replay_id} className={selectedReplayId === game.replay_id ? 'workflow-selected-row' : ''} onClick={() => openMainGame(game.replay_id)}>
                         <td>{formatRelativeReplayDate(game.replay_date)}</td>
-                        <td>{renderMainGameListPlayers(game)}</td>
+                        <td>{renderMainGameListPlayers(game, false)}</td>
                         <td>{formatMapNameWithKind(game.map_name, game.map_kind)}</td>
                         <td>{formatDuration(game.duration_seconds)}</td>
                         <td>

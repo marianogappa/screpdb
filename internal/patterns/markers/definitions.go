@@ -637,8 +637,8 @@ func allMarkers() []Marker {
 			// Factory. The 2nd Rax — when present — typically arrives
 			// AFTER the CC (e.g. D-B-D-C-B), which is why a separate
 			// "2-Rax CC" BO would over-fragment the data.
-			Name:        "Rax-CC",
-			PatternName: "Build Order: Rax-CC",
+			Name:        "1 Rax FE",
+			PatternName: "Build Order: 1 Rax FE",
 			FeatureKey:  "bo_rax_cc",
 			Race:        RaceTerran,
 			Matchup:     []string{"TvT", "PvT", "TvZ"},
@@ -659,8 +659,8 @@ func allMarkers() []Marker {
 				{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 180, Tolerance: Sym(18)},
 				{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 195, Tolerance: Sym(18)},
 			},
-			SummaryPlayer: &Pill{Label: "Rax-CC", IconKey: "commandcenter"},
-			GamesList:     &Pill{Label: "Rax-CC", IconKey: "commandcenter"},
+			SummaryPlayer: &Pill{Label: "1 Rax FE", IconKey: "commandcenter"},
+			GamesList:     &Pill{Label: "1 Rax FE", IconKey: "commandcenter"},
 		},
 		{
 			// BBS: confirmed in the dataset (e.g. SST_JumJaJungJi opens
@@ -768,8 +768,8 @@ func allMarkers() []Marker {
 				FirstProduceExists(subjMedic),
 			),
 			RuleDeadline:  480,
-			SummaryPlayer: &Pill{IconKey: "medic", Style: PillStyleStrong, Title: "SK Terran"},
-			GamesList:     &Pill{IconKey: "medic", Style: PillStyleStrong, Title: "SK Terran"},
+			SummaryPlayer: &Pill{Label: "SK Terran", IconKey: "marine", Style: PillStyleStrong, Title: "SK Terran"},
+			GamesList:     &Pill{Label: "SK Terran", IconKey: "marine", Style: PillStyleStrong, Title: "SK Terran"},
 		},
 		{
 			// Mech transition (TvZ only): bio start (Medic produced ≤330s)
@@ -785,7 +785,7 @@ func allMarkers() []Marker {
 			Matchup:       []string{"TvZ"},
 			Custom:        func() CustomEvaluator { return &mechTransitionEvaluator{} },
 			RuleDeadline:  endOfReplaySentinel,
-			SummaryPlayer: &Pill{Label: "Mech transition at min {minute}", IconKey: "siegetank"},
+			SummaryPlayer: &Pill{Label: "Mech Transition", IconKey: "siegetank"},
 			GamesList:     &Pill{Label: "Mech transition", IconKey: "siegetank"},
 		},
 		{

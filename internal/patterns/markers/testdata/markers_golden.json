@@ -28,7 +28,7 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Rax-CC",
+        "pattern_name": "Build Order: 1 Rax FE",
         "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":85,\"found\":true},{\"second\":161,\"found\":true},{\"second\":174,\"found\":true}]}"
       },
       {
@@ -87,7 +87,7 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Rax-CC",
+        "pattern_name": "Build Order: 1 Rax FE",
         "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":87,\"found\":true},{\"second\":171,\"found\":true},{\"second\":174,\"found\":true}]}"
       },
       {
