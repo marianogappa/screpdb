@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/marianogappa/screpdb/compare/v0.19.1...v0.20.0) (2026-05-07)
+
+
+### Features
+
+* UI polish, mid-map attack fallback, viewport-rate fix, phase boundary fix ([#112](https://github.com/marianogappa/screpdb/issues/112)) ([908ae00](https://github.com/marianogappa/screpdb/commit/908ae00c5310011dff48a98855c10f597b3f0e98))
+
 ## [0.19.1](https://github.com/marianogappa/screpdb/compare/v0.19.0...v0.19.1) (2026-05-04)
 
 
