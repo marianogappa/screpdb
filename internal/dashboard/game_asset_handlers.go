@@ -19,7 +19,7 @@ var gameAssetFlight singleflight.Group
 // gameAssetIconRenderVersion segments on-disk icon cache and must match the `v` query param
 // the dashboard frontend appends to unit/building icon URLs. Bump when scmapanalyzer (or our
 // icon mapping) changes so browsers and disk cache pick up new PNGs.
-const gameAssetIconRenderVersion = "2"
+const gameAssetIconRenderVersion = "3"
 
 func (d *Dashboard) gameAssetsCacheDir() (string, error) {
 	base, err := os.UserCacheDir()
