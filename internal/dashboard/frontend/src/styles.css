@@ -4101,3 +4101,123 @@ body {
 .workflow-team-stacking-marker {
   cursor: help;
 }
+
+/* Player Summary tab: per-matchup grid + outlier pill enhancements. */
+.workflow-card-player-special {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workflow-card-player-matchups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.workflow-player-matchup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 12px;
+}
+
+.workflow-player-matchup-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.45);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workflow-player-matchup-card--low {
+  opacity: 0.55;
+}
+
+.workflow-player-matchup-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.workflow-player-matchup-card-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.02rem;
+}
+
+.workflow-player-matchup-card-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: rgba(226, 232, 240, 0.92);
+}
+
+.workflow-player-matchup-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.workflow-player-matchup-section-title {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.workflow-pattern-with-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.workflow-pattern-count {
+  font-size: 0.72rem;
+  color: rgba(148, 163, 184, 0.95);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Outlier pill: icon left + (label / qualifier) stacked right. The label
+   is the unit/upgrade name (with optional money-bag suffix); the qualifier
+   is a small "more than peers" hint so the pill explains itself without
+   needing the user to hover for the title. */
+.workflow-summary-outlier-pill {
+  align-items: center;
+  padding: 4px 10px 4px 6px;
+}
+
+.workflow-summary-outlier-pill-stack {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.1;
+  gap: 2px;
+}
+
+.workflow-summary-outlier-pill-label {
+  font-size: 0.85rem;
+}
+
+.workflow-summary-outlier-pill-qualifier {
+  font-size: 0.7rem;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.workflow-summary-low-confidence-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 0.82rem;
+  color: rgba(148, 163, 184, 0.95);
+  cursor: pointer;
+}
+
+.workflow-summary-low-confidence-toggle input {
+  accent-color: rgba(100, 150, 255, 0.6);
+}

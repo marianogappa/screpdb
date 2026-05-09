@@ -513,6 +513,57 @@ func (a *openAPIStrictAdapter) PlayerRecentGames(ctx context.Context, request ap
 	})
 }
 
+type PlayerSummaryOutliersJSONResponse struct {
+	Payload any
+}
+
+func (response PlayerSummaryOutliersJSONResponse) VisitPlayerSummaryOutliersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return json.NewEncoder(w).Encode(response.Payload)
+}
+
+func (a *openAPIStrictAdapter) PlayerSummaryOutliers(ctx context.Context, request apigen.PlayerSummaryOutliersRequestObject) (apigen.PlayerSummaryOutliersResponseObject, error) {
+	return responseFromPayload(ctx, request, a.service.PlayerSummaryOutliers, func(value any) apigen.PlayerSummaryOutliersResponseObject {
+		return PlayerSummaryOutliersJSONResponse{Payload: value}
+	})
+}
+
+type PlayerSummaryPerMatchupJSONResponse struct {
+	Payload any
+}
+
+func (response PlayerSummaryPerMatchupJSONResponse) VisitPlayerSummaryPerMatchupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return json.NewEncoder(w).Encode(response.Payload)
+}
+
+func (a *openAPIStrictAdapter) PlayerSummaryPerMatchup(ctx context.Context, request apigen.PlayerSummaryPerMatchupRequestObject) (apigen.PlayerSummaryPerMatchupResponseObject, error) {
+	return responseFromPayload(ctx, request, a.service.PlayerSummaryPerMatchup, func(value any) apigen.PlayerSummaryPerMatchupResponseObject {
+		return PlayerSummaryPerMatchupJSONResponse{Payload: value}
+	})
+}
+
+type PlayerSummarySpecialJSONResponse struct {
+	Payload any
+}
+
+func (response PlayerSummarySpecialJSONResponse) VisitPlayerSummarySpecialResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return json.NewEncoder(w).Encode(response.Payload)
+}
+
+func (a *openAPIStrictAdapter) PlayerSummarySpecial(ctx context.Context, request apigen.PlayerSummarySpecialRequestObject) (apigen.PlayerSummarySpecialResponseObject, error) {
+	return responseFromPayload(ctx, request, a.service.PlayerSummarySpecial, func(value any) apigen.PlayerSummarySpecialResponseObject {
+		return PlayerSummarySpecialJSONResponse{Payload: value}
+	})
+}
+
 type ScrepColorsJSONResponse struct {
 	Payload any
 }

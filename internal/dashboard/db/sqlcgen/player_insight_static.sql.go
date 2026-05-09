@@ -101,6 +101,47 @@ func (q *Queries) ListPlayerGamesByRace(ctx context.Context, name string) ([]Lis
 	return items, nil
 }
 
+const ListPlayerGamesByRaceMapKind = `-- name: ListPlayerGamesByRaceMapKind :many
+SELECT p.race AS race, r.map_kind AS map_kind, COUNT(*) AS games
+FROM players p
+JOIN replays r ON r.id = p.replay_id
+WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
+GROUP BY p.race, r.map_kind
+`
+
+type ListPlayerGamesByRaceMapKindRow struct {
+	Race    string
+	MapKind string
+	Games   int64
+}
+
+// Per-(race, map_kind) game count for a single player. Used as the
+// denominator when computing player rates for the segmented outlier pills.
+// map_kind=='UseMapSettings' is excluded from analytics elsewhere; we still
+// emit it here so downstream code has full visibility and can decide.
+func (q *Queries) ListPlayerGamesByRaceMapKind(ctx context.Context, name string) ([]ListPlayerGamesByRaceMapKindRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListPlayerGamesByRaceMapKind, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPlayerGamesByRaceMapKindRow{}
+	for rows.Next() {
+		var i ListPlayerGamesByRaceMapKindRow
+		if err := rows.Scan(&i.Race, &i.MapKind, &i.Games); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListPopulationDistinctPlayersByRace = `-- name: ListPopulationDistinctPlayersByRace :many
 SELECT p.race, CAST(COUNT(*) AS FLOAT) AS value
 FROM (
@@ -140,6 +181,47 @@ func (q *Queries) ListPopulationDistinctPlayersByRace(ctx context.Context) ([]Li
 	return items, nil
 }
 
+const ListPopulationDistinctPlayersByRaceMapKind = `-- name: ListPopulationDistinctPlayersByRaceMapKind :many
+SELECT t.race AS race, t.map_kind AS map_kind, CAST(COUNT(*) AS FLOAT) AS value
+FROM (
+  SELECT lower(trim(p.name)) AS player_key, p.race AS race, r.map_kind AS map_kind
+  FROM players p
+  JOIN replays r ON r.id = p.replay_id
+  WHERE p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
+  GROUP BY lower(trim(p.name)), p.race, r.map_kind
+) t
+GROUP BY t.race, t.map_kind
+`
+
+type ListPopulationDistinctPlayersByRaceMapKindRow struct {
+	Race    string
+	MapKind string
+	Value   float64
+}
+
+func (q *Queries) ListPopulationDistinctPlayersByRaceMapKind(ctx context.Context) ([]ListPopulationDistinctPlayersByRaceMapKindRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListPopulationDistinctPlayersByRaceMapKind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPopulationDistinctPlayersByRaceMapKindRow{}
+	for rows.Next() {
+		var i ListPopulationDistinctPlayersByRaceMapKindRow
+		if err := rows.Scan(&i.Race, &i.MapKind, &i.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListPopulationGamesByRace = `-- name: ListPopulationGamesByRace :many
 SELECT p.race, COUNT(*) AS games
 FROM players p
@@ -162,6 +244,43 @@ func (q *Queries) ListPopulationGamesByRace(ctx context.Context) ([]ListPopulati
 	for rows.Next() {
 		var i ListPopulationGamesByRaceRow
 		if err := rows.Scan(&i.Race, &i.Games); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListPopulationGamesByRaceMapKind = `-- name: ListPopulationGamesByRaceMapKind :many
+SELECT p.race AS race, r.map_kind AS map_kind, COUNT(*) AS games
+FROM players p
+JOIN replays r ON r.id = p.replay_id
+WHERE p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
+GROUP BY p.race, r.map_kind
+`
+
+type ListPopulationGamesByRaceMapKindRow struct {
+	Race    string
+	MapKind string
+	Games   int64
+}
+
+func (q *Queries) ListPopulationGamesByRaceMapKind(ctx context.Context) ([]ListPopulationGamesByRaceMapKindRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListPopulationGamesByRaceMapKind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPopulationGamesByRaceMapKindRow{}
+	for rows.Next() {
+		var i ListPopulationGamesByRaceMapKindRow
+		if err := rows.Scan(&i.Race, &i.MapKind, &i.Games); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

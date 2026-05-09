@@ -12,6 +12,7 @@ sql:
       - internal/dashboard/db/sqlc/queries/player_insight_aux.sql
       - internal/dashboard/db/sqlc/queries/game_detail.sql
       - internal/dashboard/db/sqlc/queries/game_detail_more.sql
+      - internal/dashboard/db/sqlc/queries/player_summary.sql
       - internal/dashboard/db/sqlc/queries/unit_cadence_static.sql
       - internal/dashboard/db/sqlc/queries/workflow_static.sql
     gen:

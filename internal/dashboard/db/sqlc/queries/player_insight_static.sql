@@ -34,3 +34,32 @@ FROM (
   GROUP BY lower(trim(name)), race
 ) p
 GROUP BY p.race;
+
+-- name: ListPlayerGamesByRaceMapKind :many
+-- Per-(race, map_kind) game count for a single player. Used as the
+-- denominator when computing player rates for the segmented outlier pills.
+-- map_kind=='UseMapSettings' is excluded from analytics elsewhere; we still
+-- emit it here so downstream code has full visibility and can decide.
+SELECT p.race AS race, r.map_kind AS map_kind, COUNT(*) AS games
+FROM players p
+JOIN replays r ON r.id = p.replay_id
+WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
+GROUP BY p.race, r.map_kind;
+
+-- name: ListPopulationGamesByRaceMapKind :many
+SELECT p.race AS race, r.map_kind AS map_kind, COUNT(*) AS games
+FROM players p
+JOIN replays r ON r.id = p.replay_id
+WHERE p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
+GROUP BY p.race, r.map_kind;
+
+-- name: ListPopulationDistinctPlayersByRaceMapKind :many
+SELECT t.race AS race, t.map_kind AS map_kind, CAST(COUNT(*) AS FLOAT) AS value
+FROM (
+  SELECT lower(trim(p.name)) AS player_key, p.race AS race, r.map_kind AS map_kind
+  FROM players p
+  JOIN replays r ON r.id = p.replay_id
+  WHERE p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
+  GROUP BY lower(trim(p.name)), p.race, r.map_kind
+) t
+GROUP BY t.race, t.map_kind;

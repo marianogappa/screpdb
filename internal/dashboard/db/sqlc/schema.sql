@@ -31,6 +31,7 @@ CREATE TABLE replays (
   duration_seconds INTEGER NOT NULL,
   game_type TEXT NOT NULL,
   matchup TEXT NOT NULL DEFAULT '',
+  team_format TEXT NOT NULL DEFAULT '',
   team_stacking BOOLEAN NOT NULL DEFAULT 0,
   team_info_incomplete BOOLEAN NOT NULL DEFAULT 0,
   analyzer_algorithm_version INTEGER NOT NULL DEFAULT 0
