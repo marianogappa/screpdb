@@ -729,6 +729,108 @@ type workflowPlayerOutlier struct {
 	QualifiedBy     []string `json:"qualified_by"`
 }
 
+// workflowPlayerSummaryPerMatchup is the payload of
+// GET /api/players/{playerKey}/summary/per-matchup. Rows are 1v1 matchups
+// the player has data for; the UI lays them out as a card grid sorted by
+// game count.
+// workflowPlayerSummaryPerMatchup is the payload of GET /summary/per-matchup.
+// Cards is a unified list of "1v1 matchup" cards and "team-format ×
+// own-race" cards, sorted by games descending so the player's most-played
+// context surfaces first (a Money-multi-team Random player sees their
+// per-race team-format cards before any sparse 1v1 cards).
+type workflowPlayerSummaryPerMatchup struct {
+	SummaryVersion string                          `json:"summary_version"`
+	PlayerKey      string                          `json:"player_key"`
+	PlayerName     string                          `json:"player_name"`
+	Cards          []workflowPlayerSummaryCard     `json:"cards"`
+}
+
+// workflowPlayerSummaryCard is one entry in the unified Summary grid. Kind
+// disambiguates the two card families:
+//   - "matchup": 1v1 with OwnRace + OppRace populated.
+//   - "format":  team-format × map-kind × own-race with FormatClass +
+//                MapKind + OwnRace populated; OppRace is "".
+//
+// Games/Wins/WinRate/Confidence/AvgAPM/AvgEAPM are uniform across both.
+// TopBuildOrders/TopMarkers are race-scoped — a Random player gets
+// distinct cards (and so distinct BO/marker top-Ns) for each race they
+// play in a given format, fixing the "Zerg patterns dominate every card"
+// bug for Random players.
+type workflowPlayerSummaryCard struct {
+	Kind           string                              `json:"kind"`
+	Key            string                              `json:"key"`
+	OwnRace        string                              `json:"own_race"`
+	OppRace        string                              `json:"opp_race,omitempty"`
+	FormatClass    string                              `json:"format_class,omitempty"`
+	MapKind        string                              `json:"map_kind,omitempty"`
+	Games          int64                               `json:"games"`
+	Wins           int64                               `json:"wins"`
+	WinRate        float64                             `json:"win_rate"`
+	Confidence     string                              `json:"confidence"`
+	AvgAPM         float64                             `json:"avg_apm"`
+	AvgEAPM        float64                             `json:"avg_eapm"`
+	TopBuildOrders []workflowPlayerMatchupPatternCount `json:"top_build_orders"`
+	TopMarkers     []workflowPlayerMatchupPatternCount `json:"top_markers"`
+}
+
+type workflowPlayerMatchupPatternCount struct {
+	PatternName string `json:"pattern_name"`
+	Count       int64  `json:"count"`
+}
+
+// workflowPlayerSummaryOutliers is the payload of
+// GET /api/players/{playerKey}/summary/outliers?category=<cat>. One
+// category per request lets the FE fan out the slow per-spec corpus
+// queries and render pills incrementally as each finishes.
+type workflowPlayerSummaryOutliers struct {
+	SummaryVersion string                              `json:"summary_version"`
+	PlayerKey      string                              `json:"player_key"`
+	Category       string                              `json:"category"`
+	Pills          []workflowPlayerSummaryOutlierPill  `json:"pills"`
+}
+
+// workflowPlayerSummarySpecial is the payload of
+// GET /api/players/{playerKey}/summary/special. It mirrors the
+// "what's special about this player" pills row.
+type workflowPlayerSummarySpecial struct {
+	SummaryVersion       string                            `json:"summary_version"`
+	PlayerKey            string                            `json:"player_key"`
+	PlayerName           string                            `json:"player_name"`
+	NeverAlliedMultiTeam workflowPlayerSpecialEligibleStat `json:"never_allied_multi_team"`
+	NeverHotkeys         workflowPlayerSpecialEligibleStat `json:"never_hotkeys"`
+	OutlierPills         []workflowPlayerSummaryOutlierPill `json:"outlier_pills"`
+}
+
+type workflowPlayerSpecialEligibleStat struct {
+	Eligible bool  `json:"eligible"`
+	Games    int64 `json:"games"`
+}
+
+// workflowPlayerSummaryOutlierPill is a single distinctive-outlier pill on
+// the Summary tab. MapKind is "" when the pill was computed against the
+// all-maps corpus; "Regular" or "Money" indicates a segment-specific pill.
+// IconKey resolves to a unit/building icon via the standard
+// /api/custom/game-assets/* path on the frontend (see getUnitIcon in
+// gameAssets.js); empty when no icon is known for the outlier item.
+// PrettyLabel is the user-facing label minus the segment suffix — the
+// frontend appends a money-bag emoji for Money-segment pills instead of
+// the verbose "· Money" qualifier.
+type workflowPlayerSummaryOutlierPill struct {
+	Category        string   `json:"category"`
+	Name            string   `json:"name"`
+	PrettyName      string   `json:"pretty_name"`
+	PrettyLabel     string   `json:"pretty_label"`
+	IconKey         string   `json:"icon_key"`
+	Race            string   `json:"race"`
+	MapKind         string   `json:"map_kind"`
+	PlayerGames     int64    `json:"player_games"`
+	PlayerRate      float64  `json:"player_rate"`
+	BaselineRate    float64  `json:"baseline_rate"`
+	RatioToBaseline float64  `json:"ratio_to_baseline"`
+	TFIDF           float64  `json:"tfidf"`
+	QualifiedBy     []string `json:"qualified_by"`
+}
+
 type workflowRareUsage struct {
 	Name                string  `json:"name"`
 	PrettyName          string  `json:"pretty_name"`

@@ -74,6 +74,7 @@ type Replay struct {
 	DurationSeconds          int64
 	GameType                 string
 	Matchup                  string
+	TeamFormat               string
 	TeamStacking             bool
 	TeamInfoIncomplete       bool
 	AnalyzerAlgorithmVersion int64

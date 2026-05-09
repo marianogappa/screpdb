@@ -423,6 +423,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
+  /api/players/{playerKey}/summary/per-matchup:
+    parameters:
+      - $ref: "#/components/parameters/playerKey"
+    get:
+      operationId: playerSummaryPerMatchup
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/{playerKey}/summary/special:
+    parameters:
+      - $ref: "#/components/parameters/playerKey"
+    get:
+      operationId: playerSummarySpecial
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/{playerKey}/summary/outliers:
+    parameters:
+      - $ref: "#/components/parameters/playerKey"
+      - name: category
+        in: query
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: playerSummaryOutliers
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
   /api/players/{playerKey}/outliers:
     parameters:
       - $ref: "#/components/parameters/playerKey"

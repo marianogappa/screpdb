@@ -286,6 +286,11 @@ type PlayerUnitCadenceParams struct {
 	Filter *string `form:"filter,omitempty" json:"filter,omitempty"`
 }
 
+// PlayerSummaryOutliersParams defines parameters for PlayerSummaryOutliers.
+type PlayerSummaryOutliersParams struct {
+	Category string `form:"category" json:"category"`
+}
+
 // ImportAliasesJSONRequestBody defines body for ImportAliases for application/json ContentType.
 type ImportAliasesJSONRequestBody = ImportAliasesRequest
 
@@ -711,6 +716,15 @@ type ServerInterface interface {
 
 	// (GET /api/players/{playerKey}/recent-games)
 	PlayerRecentGames(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
+
+	// (GET /api/players/{playerKey}/summary/outliers)
+	PlayerSummaryOutliers(w http.ResponseWriter, r *http.Request, playerKey PlayerKey, params PlayerSummaryOutliersParams)
+
+	// (GET /api/players/{playerKey}/summary/per-matchup)
+	PlayerSummaryPerMatchup(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
+
+	// (GET /api/players/{playerKey}/summary/special)
+	PlayerSummarySpecial(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
 
 	// (GET /api/screp-colors)
 	ScrepColors(w http.ResponseWriter, r *http.Request)
@@ -1613,6 +1627,100 @@ func (siw *ServerInterfaceWrapper) PlayerRecentGames(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
+// PlayerSummaryOutliers operation middleware
+func (siw *ServerInterfaceWrapper) PlayerSummaryOutliers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "playerKey" -------------
+	var playerKey PlayerKey
+
+	err = runtime.BindStyledParameterWithOptions("simple", "playerKey", mux.Vars(r)["playerKey"], &playerKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playerKey", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PlayerSummaryOutliersParams
+
+	// ------------- Required query parameter "category" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "category", r.URL.Query(), &params.Category, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "category"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "category", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PlayerSummaryOutliers(w, r, playerKey, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PlayerSummaryPerMatchup operation middleware
+func (siw *ServerInterfaceWrapper) PlayerSummaryPerMatchup(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "playerKey" -------------
+	var playerKey PlayerKey
+
+	err = runtime.BindStyledParameterWithOptions("simple", "playerKey", mux.Vars(r)["playerKey"], &playerKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playerKey", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PlayerSummaryPerMatchup(w, r, playerKey)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PlayerSummarySpecial operation middleware
+func (siw *ServerInterfaceWrapper) PlayerSummarySpecial(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "playerKey" -------------
+	var playerKey PlayerKey
+
+	err = runtime.BindStyledParameterWithOptions("simple", "playerKey", mux.Vars(r)["playerKey"], &playerKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playerKey", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PlayerSummarySpecial(w, r, playerKey)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ScrepColors operation middleware
 func (siw *ServerInterfaceWrapper) ScrepColors(w http.ResponseWriter, r *http.Request) {
 
@@ -1803,6 +1911,12 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/outliers", wrapper.PlayerOutliers).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/recent-games", wrapper.PlayerRecentGames).Methods(http.MethodGet)
+
+	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/summary/outliers", wrapper.PlayerSummaryOutliers).Methods(http.MethodGet)
+
+	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/summary/per-matchup", wrapper.PlayerSummaryPerMatchup).Methods(http.MethodGet)
+
+	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/summary/special", wrapper.PlayerSummarySpecial).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/screp-colors", wrapper.ScrepColors).Methods(http.MethodGet)
 
@@ -2748,6 +2862,97 @@ func (response PlayerRecentGames200JSONResponse) VisitPlayerRecentGamesResponse(
 	return err
 }
 
+type PlayerSummaryOutliersRequestObject struct {
+	PlayerKey PlayerKey `json:"playerKey"`
+	Params    PlayerSummaryOutliersParams
+}
+
+type PlayerSummaryOutliersResponseObject interface {
+	VisitPlayerSummaryOutliersResponse(w http.ResponseWriter) error
+}
+
+type PlayerSummaryOutliers200JSONResponse GenericValue
+
+func (t PlayerSummaryOutliers200JSONResponse) MarshalJSON() ([]byte, error) {
+	return GenericValue(t).MarshalJSON()
+}
+
+func (t *PlayerSummaryOutliers200JSONResponse) UnmarshalJSON(b []byte) error {
+	return (*GenericValue)(t).UnmarshalJSON(b)
+}
+
+func (response PlayerSummaryOutliers200JSONResponse) VisitPlayerSummaryOutliersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PlayerSummaryPerMatchupRequestObject struct {
+	PlayerKey PlayerKey `json:"playerKey"`
+}
+
+type PlayerSummaryPerMatchupResponseObject interface {
+	VisitPlayerSummaryPerMatchupResponse(w http.ResponseWriter) error
+}
+
+type PlayerSummaryPerMatchup200JSONResponse GenericValue
+
+func (t PlayerSummaryPerMatchup200JSONResponse) MarshalJSON() ([]byte, error) {
+	return GenericValue(t).MarshalJSON()
+}
+
+func (t *PlayerSummaryPerMatchup200JSONResponse) UnmarshalJSON(b []byte) error {
+	return (*GenericValue)(t).UnmarshalJSON(b)
+}
+
+func (response PlayerSummaryPerMatchup200JSONResponse) VisitPlayerSummaryPerMatchupResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PlayerSummarySpecialRequestObject struct {
+	PlayerKey PlayerKey `json:"playerKey"`
+}
+
+type PlayerSummarySpecialResponseObject interface {
+	VisitPlayerSummarySpecialResponse(w http.ResponseWriter) error
+}
+
+type PlayerSummarySpecial200JSONResponse GenericValue
+
+func (t PlayerSummarySpecial200JSONResponse) MarshalJSON() ([]byte, error) {
+	return GenericValue(t).MarshalJSON()
+}
+
+func (t *PlayerSummarySpecial200JSONResponse) UnmarshalJSON(b []byte) error {
+	return (*GenericValue)(t).UnmarshalJSON(b)
+}
+
+func (response PlayerSummarySpecial200JSONResponse) VisitPlayerSummarySpecialResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ScrepColorsRequestObject struct {
 }
 
@@ -2875,6 +3080,15 @@ type StrictServerInterface interface {
 
 	// (GET /api/players/{playerKey}/recent-games)
 	PlayerRecentGames(ctx context.Context, request PlayerRecentGamesRequestObject) (PlayerRecentGamesResponseObject, error)
+
+	// (GET /api/players/{playerKey}/summary/outliers)
+	PlayerSummaryOutliers(ctx context.Context, request PlayerSummaryOutliersRequestObject) (PlayerSummaryOutliersResponseObject, error)
+
+	// (GET /api/players/{playerKey}/summary/per-matchup)
+	PlayerSummaryPerMatchup(ctx context.Context, request PlayerSummaryPerMatchupRequestObject) (PlayerSummaryPerMatchupResponseObject, error)
+
+	// (GET /api/players/{playerKey}/summary/special)
+	PlayerSummarySpecial(ctx context.Context, request PlayerSummarySpecialRequestObject) (PlayerSummarySpecialResponseObject, error)
 
 	// (GET /api/screp-colors)
 	ScrepColors(ctx context.Context, request ScrepColorsRequestObject) (ScrepColorsResponseObject, error)
@@ -3766,6 +3980,85 @@ func (sh *strictHandler) PlayerRecentGames(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// PlayerSummaryOutliers operation middleware
+func (sh *strictHandler) PlayerSummaryOutliers(w http.ResponseWriter, r *http.Request, playerKey PlayerKey, params PlayerSummaryOutliersParams) {
+	var request PlayerSummaryOutliersRequestObject
+
+	request.PlayerKey = playerKey
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PlayerSummaryOutliers(ctx, request.(PlayerSummaryOutliersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PlayerSummaryOutliers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PlayerSummaryOutliersResponseObject); ok {
+		if err := validResponse.VisitPlayerSummaryOutliersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PlayerSummaryPerMatchup operation middleware
+func (sh *strictHandler) PlayerSummaryPerMatchup(w http.ResponseWriter, r *http.Request, playerKey PlayerKey) {
+	var request PlayerSummaryPerMatchupRequestObject
+
+	request.PlayerKey = playerKey
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PlayerSummaryPerMatchup(ctx, request.(PlayerSummaryPerMatchupRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PlayerSummaryPerMatchup")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PlayerSummaryPerMatchupResponseObject); ok {
+		if err := validResponse.VisitPlayerSummaryPerMatchupResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PlayerSummarySpecial operation middleware
+func (sh *strictHandler) PlayerSummarySpecial(w http.ResponseWriter, r *http.Request, playerKey PlayerKey) {
+	var request PlayerSummarySpecialRequestObject
+
+	request.PlayerKey = playerKey
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PlayerSummarySpecial(ctx, request.(PlayerSummarySpecialRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PlayerSummarySpecial")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PlayerSummarySpecialResponseObject); ok {
+		if err := validResponse.VisitPlayerSummarySpecialResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ScrepColors operation middleware
 func (sh *strictHandler) ScrepColors(w http.ResponseWriter, r *http.Request) {
 	var request ScrepColorsRequestObject
@@ -3795,35 +4088,36 @@ func (sh *strictHandler) ScrepColors(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"Wy/Um2OmpvlfAAAA//8=",
+	"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",
+	"t67/FwAA//8=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

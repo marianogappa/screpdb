@@ -233,10 +233,16 @@ func (d *Dashboard) StartAsync(port int) <-chan error {
 	addr := fmt.Sprintf("localhost:%d", port)
 
 	srv := &http.Server{
-		Handler:      r,
-		Addr:         addr,
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
+		Handler: r,
+		Addr:    addr,
+		// Aggregate dashboard queries (player summary outliers, per-race
+		// segmented pills) can run for over a minute on large corpora —
+		// SQLite is single-connection-serialized and Random players need
+		// 3x the per-race work. 240s caps zombie connections while
+		// letting honest queries complete. ReadHeaderTimeout stays short
+		// to limit slow-loris.
+		WriteTimeout:      240 * time.Second,
+		ReadHeaderTimeout: 15 * time.Second,
 	}
 
 	go func() {

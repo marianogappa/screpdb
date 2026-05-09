@@ -23,6 +23,7 @@ import {
   renderPillText,
   pillClassName,
   lookupDefinitionForPattern,
+  renderAggregatePillText,
 } from './lib/markerRegistry';
 import {
   CompositionPhasesRow,
@@ -1121,6 +1122,47 @@ const filterSummaryPillPatterns = (patterns, trustGameEventsForDrops = false) =>
 // renderPatternPill resolves a detected_patterns[] entry through the backend
 // marker registry and builds a pill from the registered SummaryPlayer metadata.
 // Returns null when the registry has no match or no SummaryPlayer pill.
+// renderMatchupPatternSection renders a "Top build orders" / "Top markers"
+// strip on a matchup or by-format card. Each entry uses the aggregate
+// pill renderer (gamesList label preferred, else summaryPlayer with
+// temporal placeholders stripped) so the labels read as static prose
+// ("Recalls", "Threw Nukes", "Became Zerg") instead of the per-replay
+// "Recalls at min N" / "Threw Nukes at N mins" form.
+const renderAggregatePatternEntry = (entry, key, registry) => {
+  const pattern = { event_type: entry.pattern_name };
+  const def = lookupDefinitionForPattern(registry, pattern);
+  const rendered = def ? renderAggregatePillText(def) : null;
+  if (!rendered) {
+    return (
+      <span key={`${key}-fallback`} className="workflow-pattern-pill" title={entry.pattern_name}>
+        {entry.pattern_name} <span className="workflow-pattern-count">×{entry.count}</span>
+      </span>
+    );
+  }
+  return (
+    <span key={`${key}-wrap`} className="workflow-pattern-with-count">
+      <span className={pillClassName(rendered.style)} title={rendered.title || undefined}>
+        {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
+        {rendered.label ? <span>{rendered.label}</span> : null}
+      </span>
+      <span className="workflow-pattern-count">×{entry.count}</span>
+    </span>
+  );
+};
+
+const renderMatchupPatternSection = (title, entries, keyPrefix, registry) => {
+  const list = Array.isArray(entries) ? entries : [];
+  if (list.length === 0) return null;
+  return (
+    <div className="workflow-player-matchup-section">
+      <div className="workflow-player-matchup-section-title">{title}</div>
+      <div className="workflow-pattern-pills workflow-pattern-pills-compact">
+        {list.map((entry, idx) => renderAggregatePatternEntry(entry, `${keyPrefix}-${idx}`, registry))}
+      </div>
+    </div>
+  );
+};
+
 const renderPatternPill = (pattern, keyPrefix, team, registry) => {
   if (!registry) return null;
   const def = lookupDefinitionForPattern(registry, pattern);
@@ -1144,19 +1186,24 @@ const formatSigned = (value) => {
   return n.toFixed(2);
 };
 
-const PLAYER_OUTLIER_HELP = [
-  'Baselines are computed against human, non-observer players of the same primary race only.',
-  'For Protoss players, non-Protoss techs/upgrades and non-Protoss cast orders are excluded to avoid mind-control leakage.',
-  'Orders use share of total order instances. Build, train, morph, tech, and upgrade items use the share of same-race games where the item appears at least once.',
-  'An item appears if it passes either threshold: "Rare signature" (TF-IDF) or "Much more frequent than peers" (ratio vs baseline).',
-].join(' ');
-
 const PLAYER_INSIGHT_TYPES = {
   apm: 'apm',
   firstUnitDelay: 'first-unit-delay',
   unitProductionCadence: 'unit-production-cadence',
   viewportSwitchRate: 'viewport-switch-rate',
 };
+
+// PLAYER_SUMMARY_OUTLIER_CATEGORIES is the canonical list the FE iterates
+// to fan out one HTTP request per category to /summary/outliers. Order
+// here is just the request-firing order; render-time sort is by TF-IDF
+// across all categories combined.
+const PLAYER_SUMMARY_OUTLIER_CATEGORIES = ['Order', 'Build', 'Train', 'Morph', 'Tech', 'Upgrade'];
+
+// PLAYER_SUMMARY_OUTLIER_PILL_CAP is how many pills the Summary tab will
+// surface across all categories combined. Mirrors the cap the old
+// monolithic backend computed; we apply it FE-side now since pills
+// arrive incrementally.
+const PLAYER_SUMMARY_OUTLIER_PILL_CAP = 12;
 
 const VIEWPORT_SWITCH_RATE_CONFIG = {
   title: 'Viewport Switch Rate',
@@ -1169,21 +1216,12 @@ const VIEWPORT_SWITCH_RATE_CONFIG = {
   interpretation: 'Higher means the player more often jumps outside the prior viewport-sized area during the mid-game window.',
 };
 
-const LOW_USAGE_THRESHOLD = 0.1;
-
 const HelpTooltip = ({ text, label }) => (
   <span className="workflow-help-wrap" aria-label={label || 'Explanation'}>
     <span className="workflow-metric-help">ⓘ</span>
     <span className="workflow-help-bubble">{text}</span>
   </span>
 );
-
-const outlierQualifierClassName = (qualifier) => {
-  const normalized = String(qualifier || '').toLowerCase();
-  if (normalized.includes('rare signature')) return 'workflow-outlier-pill workflow-outlier-pill-rare';
-  if (normalized.includes('much more frequent than peers')) return 'workflow-outlier-pill workflow-outlier-pill-frequent';
-  return 'workflow-outlier-pill';
-};
 
 const insightScoreColor = (percentile) => {
   const clamped = Math.max(0, Math.min(100, Number(percentile) || 0));
@@ -1442,9 +1480,18 @@ function App() {
   const [mainPlayerChatSummary, setMainPlayerChatSummary] = useState(null);
   const [mainPlayerChatSummaryLoading, setMainPlayerChatSummaryLoading] = useState(false);
   const [mainPlayerChatSummaryError, setMainPlayerChatSummaryError] = useState('');
-  const [mainPlayerOutliers, setMainPlayerOutliers] = useState(null);
-  const [mainPlayerOutliersLoading, setMainPlayerOutliersLoading] = useState(false);
-  const [mainPlayerOutliersError, setMainPlayerOutliersError] = useState('');
+  const [mainPlayerShowLowConfidence, setMainPlayerShowLowConfidence] = useState(false);
+  const [mainPlayerPerMatchup, setMainPlayerPerMatchup] = useState(null);
+  const [mainPlayerPerMatchupLoading, setMainPlayerPerMatchupLoading] = useState(false);
+  const [mainPlayerPerMatchupError, setMainPlayerPerMatchupError] = useState('');
+  const [mainPlayerSpecial, setMainPlayerSpecial] = useState(null);
+  const [mainPlayerSpecialLoading, setMainPlayerSpecialLoading] = useState(false);
+  const [mainPlayerSpecialError, setMainPlayerSpecialError] = useState('');
+  // Per-outlier-category state. Each category fires its own request so
+  // pills stream into the UI as each finishes (instead of all-or-nothing
+  // on a 60-90s monolithic /summary/special). Keyed by lowercase
+  // category label ("order", "build", ...).
+  const [mainPlayerSpecialOutliers, setMainPlayerSpecialOutliers] = useState({});
   const [mainPlayers, setMainPlayers] = useState([]);
   const [mainPlayersLoading, setMainPlayersLoading] = useState(false);
   const [mainPlayersPage, setMainPlayersPage] = useState(1);
@@ -1775,20 +1822,60 @@ function App() {
     }
   };
 
-  const loadMainPlayerOutliers = async (playerKey) => {
+  const loadMainPlayerPerMatchup = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     if (!normalizedPlayerKey) return;
     try {
-      setMainPlayerOutliersLoading(true);
-      setMainPlayerOutliersError('');
-      const outlierData = await api.getPlayerOutliers(normalizedPlayerKey);
-      setMainPlayerOutliers(outlierData);
+      setMainPlayerPerMatchupLoading(true);
+      setMainPlayerPerMatchupError('');
+      const data = await api.getPlayerSummaryPerMatchup(normalizedPlayerKey);
+      setMainPlayerPerMatchup(data);
     } catch (err) {
-      setMainPlayerOutliersError(err.message || 'Failed to load outliers');
-      setMainPlayerOutliers(null);
+      setMainPlayerPerMatchupError(err.message || 'Failed to load per-matchup summary');
+      setMainPlayerPerMatchup(null);
     } finally {
-      setMainPlayerOutliersLoading(false);
+      setMainPlayerPerMatchupLoading(false);
     }
+  };
+
+  const loadMainPlayerSpecial = async (playerKey) => {
+    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
+    if (!normalizedPlayerKey) return;
+    try {
+      setMainPlayerSpecialLoading(true);
+      setMainPlayerSpecialError('');
+      const data = await api.getPlayerSummarySpecial(normalizedPlayerKey);
+      setMainPlayerSpecial(data);
+    } catch (err) {
+      setMainPlayerSpecialError(err.message || 'Failed to load player highlights');
+      setMainPlayerSpecial(null);
+    } finally {
+      setMainPlayerSpecialLoading(false);
+    }
+    // Fan out per-category outlier fetches in parallel. Each settles
+    // independently so the FE can render its pills as soon as that
+    // category's queries return — much better UX than waiting 60-90s
+    // for the previous monolithic endpoint.
+    PLAYER_SUMMARY_OUTLIER_CATEGORIES.forEach((category) => {
+      const key = category.toLowerCase();
+      setMainPlayerSpecialOutliers((prev) => ({
+        ...prev,
+        [key]: { loading: true, error: '', pills: [] },
+      }));
+      api.getPlayerSummaryOutliers(normalizedPlayerKey, category)
+        .then((data) => {
+          setMainPlayerSpecialOutliers((prev) => ({
+            ...prev,
+            [key]: { loading: false, error: '', pills: Array.isArray(data?.pills) ? data.pills : [] },
+          }));
+        })
+        .catch((err) => {
+          setMainPlayerSpecialOutliers((prev) => ({
+            ...prev,
+            [key]: { loading: false, error: err.message || 'Failed to load outliers', pills: [] },
+          }));
+        });
+    });
   };
 
   const loadMainPlayerDelayInsight = async (playerKey) => {
@@ -1841,55 +1928,65 @@ function App() {
 
   const openMainPlayer = async (playerKey, options = {}) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
-    try {
-      setMainPlayerLoading(true);
-      setError(null);
-      const data = await api.getPlayer(playerKey);
-      setMainPlayer(data);
-      setMainPlayerRecentGames([]);
-      setMainPlayerRecentGamesError('');
-      setMainPlayerRecentGamesLoading(false);
-      setMainPlayerChatSummary(null);
-      setMainPlayerChatSummaryError('');
-      setMainPlayerChatSummaryLoading(false);
-      setMainPlayerOutliers(null);
-      setMainPlayerOutliersError('');
-      setMainPlayerOutliersLoading(false);
-      setMainPlayerApmInsight(null);
-      setMainPlayerApmInsightError('');
-      setMainPlayerApmInsightLoading(false);
-      setMainPlayerDelayInsight(null);
-      setMainPlayerDelayInsightError('');
-      setMainPlayerDelayInsightLoading(false);
-      setMainPlayerCadenceInsight(null);
-      setMainPlayerCadenceInsightError('');
-      setMainPlayerCadenceInsightLoading(false);
-      setMainPlayerViewportInsight(null);
-      setMainPlayerViewportInsightError('');
-      setMainPlayerViewportInsightLoading(false);
-      setSelectedPlayerKey(normalizedPlayerKey);
-      setMainAnswer(null);
-      setMainQuestion('');
-      const wantTab = options.initialPlayerTab;
-      const nextTab = wantTab && MAIN_PLAYER_TABS.includes(String(wantTab).trim().toLowerCase())
-        ? String(wantTab).trim().toLowerCase()
-        : 'summary';
-      setMainPlayerTab(nextTab);
-      const wantSubtab = String(options.initialPlayerSubtab || '').trim().toLowerCase();
-      if (nextTab === 'skill-proxies') {
-        setMainPlayerSubtab(MAIN_PLAYER_SKILL_PROXY_SUBTABS.includes(wantSubtab) ? wantSubtab : 'summary');
-      } else if (nextTab === 'summary') {
-        // Race subtab is dynamic; persist if provided, else resolved at render from race_breakdown.
-        setMainPlayerSubtab(wantSubtab);
-      } else {
-        setMainPlayerSubtab('');
-      }
-      navigateMainView('player');
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setMainPlayerLoading(false);
+    // Navigate first, fetch second. Previously the player overview fetch
+    // (~10s on large corpora) blocked navigation, so clicking a player
+    // produced a long blank gap before the page rendered. Now we set
+    // state and route immediately — the page renders its skeleton
+    // (matchups & format card grid via /summary/per-matchup, special
+    // pills via /summary/special) while the overview backfills in
+    // parallel. Each section has its own loading state already.
+    setError(null);
+    setMainPlayer(null);
+    setMainPlayerLoading(true);
+    setMainPlayerRecentGames([]);
+    setMainPlayerRecentGamesError('');
+    setMainPlayerRecentGamesLoading(false);
+    setMainPlayerChatSummary(null);
+    setMainPlayerChatSummaryError('');
+    setMainPlayerChatSummaryLoading(false);
+    setMainPlayerPerMatchup(null);
+    setMainPlayerPerMatchupError('');
+    setMainPlayerPerMatchupLoading(false);
+    setMainPlayerShowLowConfidence(false);
+    setMainPlayerSpecial(null);
+    setMainPlayerSpecialError('');
+    setMainPlayerSpecialLoading(false);
+    setMainPlayerSpecialOutliers({});
+    setMainPlayerApmInsight(null);
+    setMainPlayerApmInsightError('');
+    setMainPlayerApmInsightLoading(false);
+    setMainPlayerDelayInsight(null);
+    setMainPlayerDelayInsightError('');
+    setMainPlayerDelayInsightLoading(false);
+    setMainPlayerCadenceInsight(null);
+    setMainPlayerCadenceInsightError('');
+    setMainPlayerCadenceInsightLoading(false);
+    setMainPlayerViewportInsight(null);
+    setMainPlayerViewportInsightError('');
+    setMainPlayerViewportInsightLoading(false);
+    setSelectedPlayerKey(normalizedPlayerKey);
+    setMainAnswer(null);
+    setMainQuestion('');
+    const wantTab = options.initialPlayerTab;
+    const nextTab = wantTab && MAIN_PLAYER_TABS.includes(String(wantTab).trim().toLowerCase())
+      ? String(wantTab).trim().toLowerCase()
+      : 'summary';
+    setMainPlayerTab(nextTab);
+    const wantSubtab = String(options.initialPlayerSubtab || '').trim().toLowerCase();
+    if (nextTab === 'skill-proxies') {
+      setMainPlayerSubtab(MAIN_PLAYER_SKILL_PROXY_SUBTABS.includes(wantSubtab) ? wantSubtab : 'summary');
+    } else if (nextTab === 'summary') {
+      // Race subtab is dynamic; persist if provided, else resolved at render from race_breakdown.
+      setMainPlayerSubtab(wantSubtab);
+    } else {
+      setMainPlayerSubtab('');
     }
+    navigateMainView('player');
+    // Background-fetch the overview without blocking navigation.
+    api.getPlayer(playerKey)
+      .then((data) => setMainPlayer(data))
+      .catch((err) => setError(err.message))
+      .finally(() => setMainPlayerLoading(false));
   };
 
   const loadIngestSettings = async () => {
@@ -2307,19 +2404,46 @@ function App() {
 
   useEffect(() => {
     if (activeView !== 'player' || !selectedPlayerKey) return;
-    if (mainPlayerTab !== 'skill-proxies' || mainPlayerSubtab !== 'usage-signals') return;
-    if (!mainPlayerOutliers && !mainPlayerOutliersLoading && !mainPlayerOutliersError) {
-      loadMainPlayerOutliers(selectedPlayerKey);
-    }
-  }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerSubtab, mainPlayerOutliers, mainPlayerOutliersLoading, mainPlayerOutliersError]);
-
-  useEffect(() => {
-    if (activeView !== 'player' || !selectedPlayerKey) return;
     if (mainPlayerTab !== 'recent-games') return;
     if (!mainPlayerRecentGames.length && !mainPlayerRecentGamesLoading && !mainPlayerRecentGamesError) {
       loadMainPlayerRecentGames(selectedPlayerKey);
     }
   }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerRecentGames, mainPlayerRecentGamesLoading, mainPlayerRecentGamesError]);
+
+  // Summary tab: fire the cheap per-matchup fetch first; only fire the
+  // (expensive) /special pills endpoint after per-matchup resolves so the
+  // two heavy aggregate queries don't contend on the single SQLite read
+  // connection. Sequential firing keeps the per-card cards visible
+  // quickly while the slower outlier-pill computation finishes in the
+  // background.
+  useEffect(() => {
+    if (activeView !== 'player' || !selectedPlayerKey) return;
+    if (mainPlayerTab !== 'summary') return;
+    if (!mainPlayerPerMatchup && !mainPlayerPerMatchupLoading && !mainPlayerPerMatchupError) {
+      loadMainPlayerPerMatchup(selectedPlayerKey);
+    }
+  }, [
+    activeView, selectedPlayerKey, mainPlayerTab,
+    mainPlayerPerMatchup, mainPlayerPerMatchupLoading, mainPlayerPerMatchupError,
+  ]);
+
+  useEffect(() => {
+    if (activeView !== 'player' || !selectedPlayerKey) return;
+    if (mainPlayerTab !== 'summary') return;
+    // Wait for per-matchup to resolve (success or error) before firing the
+    // slower /special endpoint. Both surfaces use the same single-conn
+    // SQLite reader; running them sequentially halves total wall time on
+    // large corpora.
+    if (mainPlayerPerMatchupLoading) return;
+    if (!mainPlayerPerMatchup && !mainPlayerPerMatchupError) return;
+    if (!mainPlayerSpecial && !mainPlayerSpecialLoading && !mainPlayerSpecialError) {
+      loadMainPlayerSpecial(selectedPlayerKey);
+    }
+  }, [
+    activeView, selectedPlayerKey, mainPlayerTab,
+    mainPlayerPerMatchup, mainPlayerPerMatchupLoading, mainPlayerPerMatchupError,
+    mainPlayerSpecial, mainPlayerSpecialLoading, mainPlayerSpecialError,
+  ]);
 
   useEffect(() => {
     if (activeView !== 'player' || !selectedPlayerKey) return;
@@ -3058,8 +3182,6 @@ function App() {
     return true;
   };
 
-  const mainPlayerOutlierItems = mainPlayerOutliers?.items || [];
-
   const topicFilteredGameEvents = useMemo(() => {
     const allEvents = Array.isArray(mainGame?.game_events) ? mainGame.game_events : [];
     const visibleEvents = allEvents.filter((event) => {
@@ -3313,18 +3435,6 @@ function App() {
     mainPlayerCadenceInsightError,
     mainPlayerViewportInsightError,
   ].filter(Boolean);
-  const mainPlayerUsagePills = useMemo(() => {
-    const pills = [];
-    if ((Number(mainPlayer?.hotkey_usage_rate) || 0) < LOW_USAGE_THRESHOLD) {
-      pills.push({
-        key: 'no-hotkeys',
-        label: '🚫 hotkeys',
-        title: `Detected in ${(Number(mainPlayer?.hotkey_usage_rate) * 100).toFixed(1)}% of this player's games.`,
-        className: 'workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey',
-      });
-    }
-    return pills;
-  }, [mainPlayer]);
   const mainPlayerNameWidthCh = useMemo(() => {
     const longestNameLength = mainGamePlayers.reduce((longest, player) => {
       const nameLength = String(player?.name || '').trim().length;
@@ -5412,29 +5522,27 @@ function App() {
 
         {activeView === 'player' && (() => {
           const isSkillProxiesTab = mainPlayerTab === 'skill-proxies';
-          const skillProxySubtab = isSkillProxiesTab
-            ? (MAIN_PLAYER_SKILL_PROXY_SUBTABS.includes(mainPlayerSubtab) ? mainPlayerSubtab : 'summary')
-            : 'summary';
           return (
           <div className="workflow-panel workflow-panel--player">
-            {mainPlayerLoading ? (
-              <div className="loading">Loading player report...</div>
-            ) : mainPlayer ? (
+            {selectedPlayerKey ? (
               <>
                 <div className="workflow-title-row">
                   <div className="workflow-player-title-wrap">
-                    <h2 style={playerAccentColor(mainPlayer.player_key) ? { color: playerAccentColor(mainPlayer.player_key) } : undefined}>{mainPlayer.player_name}</h2>
-                    {(Number(mainPlayer.games_played) || 0) < 5 ? (
+                    <h2 style={playerAccentColor(mainPlayer?.player_key || selectedPlayerKey) ? { color: playerAccentColor(mainPlayer?.player_key || selectedPlayerKey) } : undefined}>
+                      {mainPlayer?.player_name || selectedPlayerKey}
+                    </h2>
+                    {mainPlayer && (Number(mainPlayer.games_played) || 0) < 5 ? (
                       <span className="workflow-inline-warning">⚠️ Fewer than 5 replays: we cannot provide reliable player-level insights yet.</span>
                     ) : null}
                   </div>
                   <button type="button" className="btn-switch" onClick={goBackMainView}>Back</button>
                 </div>
                 <div className="workflow-meta">
-                  <span><strong>Games</strong> {mainPlayer.games_played}</span>
-                  <span><strong>Win rate</strong> {(mainPlayer.win_rate * 100).toFixed(1)}%</span>
-                  <span><strong>APM</strong> {mainPlayer.average_apm?.toFixed(1)}</span>
-                  <span><strong>EAPM</strong> {mainPlayer.average_eapm?.toFixed(1)}</span>
+                  <span><strong>Games</strong> {mainPlayer ? mainPlayer.games_played : '—'}</span>
+                  <span><strong>Win rate</strong> {mainPlayer ? `${(mainPlayer.win_rate * 100).toFixed(1)}%` : '—'}</span>
+                  <span><strong>APM</strong> {mainPlayer ? mainPlayer.average_apm?.toFixed(1) : '—'}</span>
+                  <span><strong>EAPM</strong> {mainPlayer ? mainPlayer.average_eapm?.toFixed(1) : '—'}</span>
+                  {mainPlayerLoading ? <span className="workflow-subtle-note">loading overview…</span> : null}
                 </div>
                 <div className="workflow-game-tab-stack">
                   <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label="Player report sections">
@@ -5448,7 +5556,7 @@ function App() {
                       onClick={() => {
                         if (isSkillProxiesTab) return;
                         setMainPlayerTab('skill-proxies');
-                        setMainPlayerSubtab('summary');
+                        setMainPlayerSubtab('');
                       }}>
                       Skill proxies
                     </button>
@@ -5464,35 +5572,172 @@ function App() {
                     </button>
                   </div>
 
-                  {isSkillProxiesTab ? (
-                    <div className="workflow-skill-proxy-subnav">
-                      <div className="workflow-production-tabs workflow-skill-proxy-tabs" role="tablist" aria-label="Skill proxy subsections">
-                        <button type="button" role="tab" aria-selected={skillProxySubtab === 'summary'}
-                          className={`workflow-production-tab ${skillProxySubtab === 'summary' ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setMainPlayerSubtab('summary')}>
-                          Summary
-                        </button>
-                        <button type="button" role="tab" aria-selected={skillProxySubtab === 'usage-signals'}
-                          className={`workflow-production-tab ${skillProxySubtab === 'usage-signals' ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setMainPlayerSubtab('usage-signals')}>
-                          Usage signals & distinctive outliers
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
                 </div>
 
                 <div className="workflow-cards">
                   {mainPlayerTab === 'summary' && (
-                    <div className="workflow-card workflow-player-summary-todo">
-                      {/* TODO: Coming soon. Per-player summary content was removed
-                          pending a redesign. Keep this tab present so the route
-                          and tab nav stay stable. */}
-                      <div className="chart-empty">Coming soon</div>
-                    </div>
+                    <>
+                      <div className="workflow-card workflow-card-player-special">
+                        <div className="workflow-card-title"><span>What's special about this player</span></div>
+                        {mainPlayerSpecialLoading ? <div className="chart-empty">Loading highlights...</div> : null}
+                        {!mainPlayerSpecialLoading && mainPlayerSpecialError ? <div className="chart-empty">{mainPlayerSpecialError}</div> : null}
+                        {!mainPlayerSpecialLoading && !mainPlayerSpecialError ? (() => {
+                          const eligible = [];
+                          if (mainPlayerSpecial?.never_allied_multi_team?.eligible) {
+                            const games = Number(mainPlayerSpecial.never_allied_multi_team.games || 0);
+                            eligible.push({
+                              key: 'never-allied',
+                              label: '🚫 alliances',
+                              title: `Never issued an alliance command across ${games} multi-team melee game${games === 1 ? '' : 's'}.`,
+                              className: 'workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey',
+                            });
+                          }
+                          if (mainPlayerSpecial?.never_hotkeys?.eligible) {
+                            const games = Number(mainPlayerSpecial.never_hotkeys.games || 0);
+                            eligible.push({
+                              key: 'never-hotkeys',
+                              label: '🚫 hotkeys',
+                              title: `No hotkey-group commands across ${games} eligible game${games === 1 ? '' : 's'} (7+ minute gate).`,
+                              className: 'workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey',
+                            });
+                          }
+                          // Merge per-category outlier streams into one
+                          // pill list, sort by TFIDF desc, then cap. Pills
+                          // accumulate as each category's request resolves.
+                          const allPills = [];
+                          const categoryStates = PLAYER_SUMMARY_OUTLIER_CATEGORIES.map((cat) => {
+                            const state = mainPlayerSpecialOutliers[cat.toLowerCase()] || { loading: false, pills: [] };
+                            allPills.push(...(state.pills || []));
+                            return state;
+                          });
+                          allPills.sort((a, b) => {
+                            const ta = Number(a.tfidf) || 0;
+                            const tb = Number(b.tfidf) || 0;
+                            if (ta !== tb) return tb - ta;
+                            return (Number(b.ratio_to_baseline) || 0) - (Number(a.ratio_to_baseline) || 0);
+                          });
+                          const outliers = allPills.slice(0, PLAYER_SUMMARY_OUTLIER_PILL_CAP);
+                          const stillLoading = categoryStates.some((s) => s.loading);
+                          if (eligible.length === 0 && outliers.length === 0 && !stillLoading) {
+                            return <div className="workflow-subtle-note">Nothing distinctive flagged yet for this player.</div>;
+                          }
+                          return (
+                            <>
+                              <div className="workflow-pattern-pills">
+                                {eligible.map((p) => (
+                                  <span key={p.key} className={p.className} title={p.title}>{p.label}</span>
+                                ))}
+                                {outliers.map((it, idx) => {
+                                  const label = it.pretty_label || it.pretty_name || it.name;
+                                  const playerPct = ((Number(it.player_rate) || 0) * 100).toFixed(0);
+                                  const baselinePct = ((Number(it.baseline_rate) || 0) * 100).toFixed(0);
+                                  const ratio = (Number(it.ratio_to_baseline) || 0).toFixed(1);
+                                  const qualified = (it.qualified_by || []).join(' / ');
+                                  const segmentDesc = it.map_kind === 'Money'
+                                    ? ' on Money maps'
+                                    : it.map_kind === 'Regular'
+                                      ? ' on Regular maps'
+                                      : '';
+                                  const title = `${it.category}: ${playerPct}% of ${it.race} games${segmentDesc} you vs ${baselinePct}% baseline (${ratio}× peers).${qualified ? ' ' + qualified + '.' : ''}`;
+                                  const icon = it.icon_key ? getUnitIcon(it.icon_key) : null;
+                                  return (
+                                    <span
+                                      key={`outlier-${idx}-${it.category}-${it.name}-${it.map_kind || 'all'}`}
+                                      className="workflow-pattern-pill workflow-pattern-pill-strong workflow-summary-outlier-pill"
+                                      title={title}
+                                    >
+                                      {icon ? <img src={icon} alt="" className="workflow-pattern-icon" /> : null}
+                                      <span className="workflow-summary-outlier-pill-stack">
+                                        <span className="workflow-summary-outlier-pill-label">{label}</span>
+                                        <span className="workflow-summary-outlier-pill-qualifier">more than peers</span>
+                                      </span>
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                              {stillLoading ? (
+                                <div className="workflow-subtle-note">{`Loading more pills (${categoryStates.filter((s) => s.loading).length}/${PLAYER_SUMMARY_OUTLIER_CATEGORIES.length} categories pending)…`}</div>
+                              ) : null}
+                            </>
+                          );
+                        })() : null}
+                      </div>
+
+                      {mainPlayerPerMatchupLoading ? (
+                        <div className="workflow-card"><div className="chart-empty">Loading matchup summary...</div></div>
+                      ) : null}
+                      {!mainPlayerPerMatchupLoading && mainPlayerPerMatchupError ? (
+                        <div className="workflow-card"><div className="chart-empty">{mainPlayerPerMatchupError}</div></div>
+                      ) : null}
+                      {!mainPlayerPerMatchupLoading && !mainPlayerPerMatchupError && mainPlayerPerMatchup && (mainPlayerPerMatchup.cards || []).length > 0 ? (() => {
+                        const cards = mainPlayerPerMatchup.cards || [];
+                        const hasNonLow = cards.some((c) => c.confidence !== 'low');
+                        const visibleCards = (hasNonLow && !mainPlayerShowLowConfidence)
+                          ? cards.filter((c) => c.confidence !== 'low')
+                          : cards;
+                        const hiddenCount = cards.length - visibleCards.length;
+                        return (
+                          <div className="workflow-card workflow-card-player-matchups">
+                            <div className="workflow-card-title"><span>Matchups & team formats</span></div>
+                            <div className="workflow-player-matchup-grid">
+                              {visibleCards.map((card) => {
+                                const winPct = (Number(card.win_rate) || 0) * 100;
+                                const dimmed = card.confidence === 'low' ? 'workflow-player-matchup-card--low' : '';
+                                const ownIcon = getWorkerIconForRace(card.own_race);
+                                const oppIcon = card.kind === 'matchup' ? getWorkerIconForRace(card.opp_race) : null;
+                                let label;
+                                if (card.kind === 'matchup') {
+                                  const own = String(card.own_race || '').charAt(0).toUpperCase() || '?';
+                                  const opp = String(card.opp_race || '').charAt(0).toUpperCase() || '?';
+                                  label = `${own}v${opp}`;
+                                } else {
+                                  const formatLabel = card.format_class === 'multi-team' ? 'Multi-team' : card.format_class;
+                                  const moneyTag = card.map_kind === 'Money' ? ' 💰' : '';
+                                  label = `${formatLabel}${moneyTag}`;
+                                }
+                                // For format cards, add the player's race so a Random
+                                // player can tell three same-format cards apart.
+                                const formatRaceIcon = card.kind === 'format' ? ownIcon : null;
+                                return (
+                                  <div key={card.key} className={`workflow-player-matchup-card ${dimmed}`}>
+                                    <div className="workflow-player-matchup-card-header">
+                                      <span className="workflow-player-matchup-card-label">
+                                        {formatRaceIcon ? <img src={formatRaceIcon} alt={card.own_race} title={card.own_race} className="workflow-recent-game-worker-icon" /> : null}
+                                        {card.kind === 'matchup' && ownIcon ? <img src={ownIcon} alt={card.own_race} title={card.own_race} className="workflow-recent-game-worker-icon" /> : null}
+                                        {oppIcon ? <span>v</span> : null}
+                                        {oppIcon ? <img src={oppIcon} alt={card.opp_race} title={card.opp_race} className="workflow-recent-game-worker-icon" /> : null}
+                                        <strong>{label}</strong>
+                                      </span>
+                                      <span className="workflow-player-matchup-card-meta">
+                                        <span><strong>{card.games}</strong> games</span>
+                                        <span><strong>{winPct.toFixed(0)}%</strong> wins</span>
+                                        <span><strong>{(Number(card.avg_apm) || 0).toFixed(0)}</strong> APM</span>
+                                        <span><strong>{(Number(card.avg_eapm) || 0).toFixed(0)}</strong> EAPM</span>
+                                      </span>
+                                    </div>
+                                    {renderMatchupPatternSection('Top build orders', card.top_build_orders, `bo-${card.key}`, markerRegistry)}
+                                    {renderMatchupPatternSection('Top markers', card.top_markers, `mk-${card.key}`, markerRegistry)}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {hasNonLow && hiddenCount > 0 ? (
+                              <label className="workflow-summary-low-confidence-toggle">
+                                <input
+                                  type="checkbox"
+                                  checked={mainPlayerShowLowConfidence}
+                                  onChange={(e) => setMainPlayerShowLowConfidence(e.target.checked)}
+                                />
+                                <span>Show {hiddenCount} low-confidence card{hiddenCount === 1 ? '' : 's'} (&lt; 5 games)</span>
+                              </label>
+                            ) : null}
+                          </div>
+                        );
+                      })() : null}
+                    </>
                   )}
 
-                  {isSkillProxiesTab && skillProxySubtab === 'summary' && (
+                  {isSkillProxiesTab && (
                     <div className="workflow-card workflow-card-fingerprints">
                       <div className="workflow-card-title"><span>Population comparison</span></div>
                       {mainPlayerInsightLoading ? <div className="chart-empty">Loading population comparisons...</div> : null}
@@ -5549,46 +5794,6 @@ function App() {
                           })}
                         </div>
                       ) : null}
-                    </div>
-                  )}
-
-                  {isSkillProxiesTab && skillProxySubtab === 'usage-signals' && (
-                    <div className="workflow-card workflow-card-fingerprints">
-                      <div className="workflow-card-title"><span>Usage signals</span></div>
-                      {mainPlayerUsagePills.length === 0 ? (
-                        <div className="workflow-subtle-note">No low-usage flags were triggered for hotkeys or queued orders.</div>
-                      ) : (
-                        <div className="workflow-pattern-pills">
-                          {mainPlayerUsagePills.map((pill) => (
-                            <span key={pill.key} className={pill.className} title={pill.title}>{pill.label}</span>
-                          ))}
-                        </div>
-                      )}
-                      <div className="workflow-card-subtitle">
-                        <span>Distinctive outliers</span>
-                        <HelpTooltip text={PLAYER_OUTLIER_HELP} label="Outlier calculation explanation" />
-                      </div>
-                      <div className="workflow-subtle-note">Same-race, human-only baselines. Items are shown in one list and prefixed by command family.</div>
-                      {mainPlayerOutliersLoading ? <div className="chart-empty">Loading outliers...</div> : null}
-                      {!mainPlayerOutliersLoading && mainPlayerOutliersError ? <div className="chart-empty">{mainPlayerOutliersError}</div> : null}
-                      {!mainPlayerOutliersLoading && !mainPlayerOutliersError && mainPlayerOutlierItems.length === 0 ? (
-                        <div className="chart-empty">No outliers crossed current thresholds.</div>
-                      ) : null}
-                      {!mainPlayerOutliersLoading && !mainPlayerOutliersError && mainPlayerOutlierItems.map((item) => (
-                        <div key={`${item.category}-${item.race}-${item.name}`} className="workflow-pattern-row">
-                          <span>{`${item.category}: ${item.pretty_name}`}</span>
-                          <span className="workflow-outlier-expl">
-                            <span className="workflow-outlier-rate">{`${((Number(item.player_rate) || 0) * 100).toFixed(0)}%`}</span>
-                            <span>you</span>
-                            <span>vs</span>
-                            <span className="workflow-outlier-rate-muted">{`${((Number(item.baseline_rate) || 0) * 100).toFixed(0)}%`}</span>
-                            <span>baseline</span>
-                            {(item.qualified_by || []).map((qualifier) => (
-                              <span key={`${item.name}-${qualifier}`} className={outlierQualifierClassName(qualifier)}>{qualifier}</span>
-                            ))}
-                          </span>
-                        </div>
-                      ))}
                     </div>
                   )}
 

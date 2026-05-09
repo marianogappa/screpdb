@@ -17,6 +17,20 @@ export const PILL_SURFACES = Object.freeze({
   eventsList:    'events_list',
 });
 
+// stripTemporalPlaceholders removes the "{minute}" / "{timestamp}" tokens
+// and the surrounding " at min", " at  mins", " min" stems from a label.
+// Used by the aggregate surface where there's no single timestamp to
+// interpolate (the marker fired across many games at varying times).
+const stripTemporalPlaceholders = (template) => {
+  if (!template) return '';
+  let out = template;
+  // " at min {minute}" / " at min {timestamp}" / " at {minute} mins" etc.
+  out = out.replace(/\s+at\s+min(?:ute)?s?\s*\{(?:minute|timestamp)\}/gi, '');
+  out = out.replace(/\s+at\s+\{(?:minute|timestamp)\}\s*min(?:ute)?s?/gi, '');
+  out = out.replace(/\s*\{(?:minute|timestamp)\}\s*/g, ' ');
+  return out.trim();
+};
+
 // interpolatePlaceholders resolves {subject}, {minute}, and {timestamp} in a template string.
 // {subject} reads the marker's payload (JSON blob) via the definition's Subject;
 // {minute} comes from detected_second divided by 60 (integer);
@@ -90,6 +104,56 @@ export const renderPillText = (definition, surface, row) => {
     style: pill.style || '',
     title: pill.title || '',
   };
+};
+
+// renderAggregatePillText computes the label/icon for a marker on the
+// aggregate Summary-tab cards (per-matchup, per-format) where there's no
+// single replay context. Priority:
+//   1. games_list pill — its labels are already temporal-free and the
+//      shortest user-facing form ("Recalls", "Nukes").
+//   2. definition.name — backend-friendly noun phrase ("Made drops",
+//      "Became Terran"). Used when there's no games_list and the
+//      summary_player label only contains placeholders/race tokens that
+//      strip down to something less descriptive than the Name.
+//   3. summary_player with temporal placeholders stripped — final fallback
+//      for markers without a games_list / Name that fits.
+//
+// Style/title come from the chosen surface; icon resolves via the chosen
+// surface's icon_key (or stays null when none was set).
+export const renderAggregatePillText = (definition) => {
+  if (!definition) return null;
+  const gl = definition.games_list;
+  if (gl && gl.label) {
+    const iconKey = stripTemporalPlaceholders(gl.icon_key || '');
+    return {
+      label: stripTemporalPlaceholders(gl.label),
+      iconKey,
+      icon: iconKey ? getUnitIcon(iconKey) : null,
+      style: gl.style || '',
+      title: gl.title || '',
+    };
+  }
+  const sp = definition.summary_player;
+  const spIcon = sp ? stripTemporalPlaceholders(sp.icon_key || '') : '';
+  if (definition.name) {
+    return {
+      label: definition.name,
+      iconKey: spIcon,
+      icon: spIcon ? getUnitIcon(spIcon) : null,
+      style: sp?.style || '',
+      title: sp?.title || '',
+    };
+  }
+  if (sp && sp.label) {
+    return {
+      label: stripTemporalPlaceholders(sp.label),
+      iconKey: spIcon,
+      icon: spIcon ? getUnitIcon(spIcon) : null,
+      style: sp.style || '',
+      title: sp.title || '',
+    };
+  }
+  return null;
 };
 
 // pillClassName maps a backend PillStyle to the existing CSS classes. Keeps the

@@ -306,6 +306,34 @@ export const api = {
     return response.json();
   },
 
+  getPlayerSummaryPerMatchup: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/summary/per-matchup`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get player matchup summary');
+    }
+    return response.json();
+  },
+
+  getPlayerSummarySpecial: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/summary/special`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get player special summary');
+    }
+    return response.json();
+  },
+
+  getPlayerSummaryOutliers: async (playerKey, category) => {
+    const params = new URLSearchParams({ category });
+    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/summary/outliers?${params.toString()}`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get player summary outliers');
+    }
+    return response.json();
+  },
+
   getPlayerApmHistogram: async (playerKey) => {
     const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/insights/apm-histogram`);
     if (!response.ok) {
