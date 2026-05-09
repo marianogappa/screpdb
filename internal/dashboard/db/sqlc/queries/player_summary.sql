@@ -63,7 +63,7 @@ GROUP BY self.race, opp.race, re.event_type;
 -- name: ListPlayerByFormatAggregates :many
 -- Per-(own_race, team_format, map_kind) APM/EAPM/games/wins for a single
 -- player. The own_race split is what makes the Summary tab work for
--- Random players — without it a Random player's 2v2 multi-team card
+-- Random players: without it a Random player's 2v2 multi-team card
 -- aggregates BOs/markers across three races and the most-played race's
 -- patterns dominate the top-N. The Go layer collapses team_format into
 -- buckets (2v2, 3v3, multi-team); a CASE expression here triggers a sqlc

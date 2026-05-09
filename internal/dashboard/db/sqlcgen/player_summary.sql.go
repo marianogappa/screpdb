@@ -10,8 +10,6 @@ import (
 )
 
 const CountPlayerAllianceCommandsInMultiTeamMelee = `-- name: CountPlayerAllianceCommandsInMultiTeamMelee :one
-);
-
 SELECT COUNT(*) AS alliance_commands
 FROM commands_low_value c
 JOIN players p ON p.id = c.player_id
@@ -22,7 +20,7 @@ WHERE lower(trim(p.name)) = ?
   AND c.action_type = 'Alliance'
   AND r.team_format LIKE '%v%v%'
   AND r.map_kind != 'UseMapSettings'
-  AND r.game_type IN ('Melee', 'Free For All
+  AND r.game_type IN ('Melee', 'Free For All')
 `
 
 // Counts Alliance commands the player issued across all multi-team melee
@@ -39,8 +37,6 @@ func (q *Queries) CountPlayerAllianceCommandsInMultiTeamMelee(ctx context.Contex
 }
 
 const CountPlayerMultiTeamMeleeGames = `-- name: CountPlayerMultiTeamMeleeGames :one
-e;
-
 SELECT COUNT(DISTINCT r.id) AS games
 FROM replays r
 JOIN players p ON p.replay_id = r.id
@@ -49,7 +45,7 @@ WHERE lower(trim(p.name)) = ?
   AND lower(trim(coalesce(p.type, ''))) = 'human'
   AND r.team_format LIKE '%v%v%'
   AND r.map_kind != 'UseMapSettings'
-  AND r.game_type IN ('Melee', 'Free For All
+  AND r.game_type IN ('Melee', 'Free For All')
 `
 
 // Replays in which the player participated that are eligible for the
@@ -80,7 +76,7 @@ WHERE lower(trim(p.name)) = ?
   AND r.map_kind IN ('Regular', 'Money')
   AND r.team_format LIKE '%v%'
   AND r.team_format != '1v1'
-GROUP BY p.race, r.team_format, r.map_ki
+GROUP BY p.race, r.team_format, r.map_kind
 `
 
 type ListPlayerByFormatAggregatesRow struct {
@@ -95,7 +91,7 @@ type ListPlayerByFormatAggregatesRow struct {
 
 // Per-(own_race, team_format, map_kind) APM/EAPM/games/wins for a single
 // player. The own_race split is what makes the Summary tab work for
-// Random players — without it a Random player's 2v2 multi-team card
+// Random players: without it a Random player's 2v2 multi-team card
 // aggregates BOs/markers across three races and the most-played race's
 // patterns dominate the top-N. The Go layer collapses team_format into
 // buckets (2v2, 3v3, multi-team); a CASE expression here triggers a sqlc
@@ -132,8 +128,6 @@ func (q *Queries) ListPlayerByFormatAggregates(ctx context.Context, name string)
 }
 
 const ListPlayerByFormatMarkerCounts = `-- name: ListPlayerByFormatMarkerCounts :many
-d;
-
 SELECT
   p.race AS own_race,
   r.team_format AS team_format,
@@ -157,7 +151,7 @@ WHERE lower(trim(p.name)) = ?
     'late_game_starts',
     'never_used_hotkeys'
   )
-GROUP BY p.race, r.team_format, r.map_kind, re.event_ty
+GROUP BY p.race, r.team_format, r.map_kind, re.event_type
 `
 
 type ListPlayerByFormatMarkerCountsRow struct {
