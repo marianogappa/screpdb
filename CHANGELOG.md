@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/marianogappa/screpdb/compare/v0.20.0...v0.21.0) (2026-05-09)
+
+
+### Features
+
+* player Summary tab with matchup/format cards and outlier pills ([#116](https://github.com/marianogappa/screpdb/issues/116)) ([83ea2b7](https://github.com/marianogappa/screpdb/commit/83ea2b77052e49cd6d43346da38329bdd871e3fb))
+
 ## [0.20.0](https://github.com/marianogappa/screpdb/compare/v0.19.1...v0.20.0) (2026-05-07)
 
 
