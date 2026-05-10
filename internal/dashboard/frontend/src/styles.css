@@ -2154,6 +2154,75 @@ body {
   cursor: pointer;
 }
 
+/* Games list compactness: trim padding/font/icon sizes so an 8-player matchup
+   row fits on one visual line at 14''. The Featuring column wraps first when
+   space runs out (its pill container already flex-wraps), the Players column
+   stays nowrap so the row doesn't grow vertically just to break the matchup
+   over two lines. */
+.workflow-games-list-table td,
+.workflow-games-list-table th {
+  padding: 5px 8px;
+}
+
+.workflow-games-list-table td.workflow-games-list-played,
+.workflow-games-list-table td.workflow-games-list-map,
+.workflow-games-list-table td.workflow-games-list-duration {
+  font-size: 0.8em;
+  white-space: nowrap;
+}
+
+.workflow-games-list-table td.workflow-games-list-players .workflow-team-matchup,
+.workflow-games-list-table td.workflow-games-list-players .workflow-team-side {
+  flex-wrap: nowrap;
+}
+
+.workflow-games-list-table .workflow-team-player-pill {
+  padding: 0.02em 0.3em 0.04em;
+  font-size: 0.82em;
+  line-height: 1.5;
+  gap: 0.12em;
+}
+
+.workflow-games-list-table .workflow-team-player-pill .workflow-race-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.workflow-games-list-table .workflow-team-player-pill .workflow-crown {
+  font-size: 0.8em;
+}
+
+/* Keep each player name on a single line inside its pill — long names with
+   hyphens (e.g. "fire-n-blood") would otherwise break inside the pill and
+   pull the row to multiple visual lines. */
+.workflow-games-list-table .workflow-team-player-pill,
+.workflow-games-list-table .workflow-team-player-pill * {
+  white-space: nowrap;
+}
+
+.workflow-games-list-table .workflow-team-matchup {
+  column-gap: 0.18rem;
+  row-gap: 0.18rem;
+}
+
+.workflow-games-list-table .workflow-team-side {
+  gap: 0.12rem;
+}
+
+.workflow-games-list-table .workflow-team-vs {
+  font-size: 0.78em;
+}
+
+.workflow-games-list-table .workflow-feature-pill {
+  padding: 1px 6px;
+  font-size: 0.66rem;
+  min-height: 20px;
+}
+
+.workflow-games-list-table .workflow-pattern-pills {
+  gap: 3px;
+}
+
 .workflow-sortable {
   cursor: pointer;
   user-select: none;
@@ -3964,8 +4033,31 @@ body {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.2rem 0.35rem;
-  line-height: 1.35;
+  line-height: 1.3;
   min-width: 0;
+  font-size: 1.1rem;
+}
+
+/* Game-detail title pills: lighter than the default workflow-team-player-pill
+   so an 8-player matchup heading fits on one row at 16''. */
+.workflow-game-players-heading .workflow-team-player-pill {
+  padding: 0.04em 0.4em 0.06em;
+  font-size: 0.95em;
+  line-height: 1.5;
+}
+
+.workflow-game-players-heading .workflow-team-player-pill .workflow-race-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.workflow-game-players-heading .workflow-team-matchup {
+  column-gap: 0.25rem;
+  row-gap: 0.2rem;
+}
+
+.workflow-game-players-heading .workflow-team-side {
+  gap: 0.2rem;
 }
 
 .workflow-team-matchup {

@@ -14,10 +14,12 @@ export const formatRelativeReplayDate = (value) => {
   const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const diffDays = Math.floor((startOfToday.getTime() - startOfDate.getTime()) / 86400000);
 
+  // Compact day label: drop the trailing "ago" and collapse "Yesterday" to
+  // "1d" so the games-list "Played" column doesn't burn horizontal space we
+  // need for the 8-player matchup pills (see workflow-games-list-table CSS).
   let dayLabel = '';
   if (diffDays === 0) dayLabel = 'Today';
-  else if (diffDays === 1) dayLabel = 'Yesterday';
-  else if (diffDays > 1) dayLabel = `${diffDays}d ago`;
+  else if (diffDays >= 1) dayLabel = `${diffDays}d`;
   else dayLabel = date.toLocaleDateString();
 
   const hours = date.getHours();

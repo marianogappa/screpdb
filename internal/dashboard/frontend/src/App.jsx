@@ -4160,7 +4160,7 @@ function App() {
               <div className="loading">Loading games...</div>
             ) : (
               <>
-                <table className="data-table workflow-table">
+                <table className="data-table workflow-table workflow-games-list-table">
                   <thead>
                     <tr>
                       <th>Played</th>
@@ -4173,11 +4173,11 @@ function App() {
                   <tbody>
                     {mainGames.map((game) => (
                       <tr key={game.replay_id} className={selectedReplayId === game.replay_id ? 'workflow-selected-row' : ''} onClick={() => openMainGame(game.replay_id)}>
-                        <td>{formatRelativeReplayDate(game.replay_date)}</td>
-                        <td>{renderMainGameListPlayers(game, false)}</td>
-                        <td>{formatMapNameWithKind(game.map_name, game.map_kind)}</td>
-                        <td>{formatDuration(game.duration_seconds)}</td>
-                        <td>
+                        <td className="workflow-games-list-played">{formatRelativeReplayDate(game.replay_date)}</td>
+                        <td className="workflow-games-list-players">{renderMainGameListPlayers(game, false)}</td>
+                        <td className="workflow-games-list-map">{formatMapNameWithKind(game.map_name, game.map_kind)}</td>
+                        <td className="workflow-games-list-duration">{formatDuration(game.duration_seconds)}</td>
+                        <td className="workflow-games-list-featuring">
                           {(game.featuring || []).length === 0 ? (
                             <span className="workflow-empty-inline">-</span>
                           ) : (
