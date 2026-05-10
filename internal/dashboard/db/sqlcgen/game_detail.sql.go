@@ -317,7 +317,8 @@ SELECT
   re.location_natural_of_oclock,
   re.location_mineral_only,
   re.attack_unit_types,
-  re.attack_cast_counts
+  re.attack_cast_counts,
+  re.payload
 FROM replay_events re
 LEFT JOIN players sp ON sp.id = re.source_player_id
 LEFT JOIN players tp ON tp.id = re.target_player_id
@@ -341,6 +342,7 @@ type ListReplayEventsRow struct {
 	LocationMineralOnly     *bool
 	AttackUnitTypes         *string
 	AttackCastCounts        *string
+	Payload                 *string
 }
 
 func (q *Queries) ListReplayEvents(ctx context.Context, replayID int64) ([]ListReplayEventsRow, error) {
@@ -367,6 +369,7 @@ func (q *Queries) ListReplayEvents(ctx context.Context, replayID int64) ([]ListR
 			&i.LocationMineralOnly,
 			&i.AttackUnitTypes,
 			&i.AttackCastCounts,
+			&i.Payload,
 		); err != nil {
 			return nil, err
 		}

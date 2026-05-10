@@ -62,6 +62,7 @@ type ReplayEventRow struct {
 	LocationMineralOnly    *bool
 	AttackUnitTypes        *string
 	AttackCastCounts       *string
+	Payload                *string
 }
 
 type PlayerOverviewSummaryRow struct {
@@ -249,6 +250,7 @@ func (s *Store) ListReplayEvents(ctx context.Context, replayID int64) ([]ReplayE
 			LocationMineralOnly:    row.LocationMineralOnly,
 			AttackUnitTypes:        row.AttackUnitTypes,
 			AttackCastCounts:       row.AttackCastCounts,
+			Payload:                row.Payload,
 		})
 	}
 	return out, nil

@@ -158,6 +158,7 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 		return fmt.Errorf("failed to query replay events: %w", err)
 	}
 	detail.GameEvents = replayEventsFromRows(eventRows, mapLayout, startClockByPlayerID)
+	detail.GameEvents = resolveRecallTargetOwners(detail.GameEvents, detail.Players)
 	for i := range detail.GameEvents {
 		event := &detail.GameEvents[i]
 		if event.Actor != nil {
@@ -168,6 +169,11 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 		if event.Target != nil {
 			if displayName, ok := displayByName[event.Target.Name]; ok {
 				event.Target.Name = displayName
+			}
+		}
+		if event.TargetOwner != nil {
+			if displayName, ok := displayByName[event.TargetOwner.Name]; ok {
+				event.TargetOwner.Name = displayName
 			}
 		}
 	}
@@ -1443,7 +1449,112 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 				event.ActorOrigin = &center
 			}
 		}
+		if event.Type == "recall" && row.Payload != nil && *row.Payload != "" {
+			applyRecallPayload(&event, *row.Payload, baseMetas)
+		}
 		events = append(events, event)
+	}
+	return events
+}
+
+// recallEventPayload mirrors the on-disk JSON shape produced by
+// worldstate.emitRecallEvents. Short keys keep storage cost down — the
+// canonical mapping is documented at the worldstate side.
+type recallEventPayload struct {
+	N  int                       `json:"n,omitempty"`
+	LE int                       `json:"le,omitempty"`
+	S  []int                     `json:"s,omitempty"`
+	T  []int                     `json:"t,omitempty"`
+	TB *recallEventTargetBaseRef `json:"tb,omitempty"`
+	TP int64                     `json:"tp,omitempty"`
+	TV string                    `json:"tv,omitempty"`
+}
+
+type recallEventTargetBaseRef struct {
+	K  string `json:"k,omitempty"`
+	O  int64  `json:"o,omitempty"`
+	NO *int64 `json:"no,omitempty"`
+	MO *bool  `json:"mo,omitempty"`
+}
+
+// applyRecallPayload decodes the recall event's Payload JSON and populates
+// the recall-specific fields on workflowGameEvent (source/target points,
+// target base, count, last-second). The target_owner field — which needs
+// the per-replay player list to resolve PID → name/color — is handled in a
+// second pass after replayEventsFromRows returns.
+func applyRecallPayload(event *workflowGameEvent, raw string, baseMetas []overlayBaseMeta) {
+	var pl recallEventPayload
+	if err := json.Unmarshal([]byte(raw), &pl); err != nil {
+		return
+	}
+	if len(pl.S) == 2 {
+		event.SourcePoint = &workflowGameEventPoint{X: float64(pl.S[0]), Y: float64(pl.S[1])}
+	}
+	if len(pl.T) == 2 {
+		event.TargetPoint = &workflowGameEventPoint{X: float64(pl.T[0]), Y: float64(pl.T[1])}
+	}
+	if pl.N > 1 {
+		event.RecallCount = int64(pl.N)
+	}
+	if pl.LE > 0 {
+		event.RecallLastSecond = int64(pl.LE)
+	}
+	event.RecallTargetVia = pl.TV
+	if pl.TB != nil {
+		var baseTypePtr *string
+		if pl.TB.K != "" {
+			k := pl.TB.K
+			baseTypePtr = &k
+		}
+		oclockCopy := pl.TB.O
+		var oclockPtr *int64
+		if pl.TB.K != "" || oclockCopy != 0 {
+			oclockPtr = &oclockCopy
+		}
+		if matched, ok := lookupOverlayBase(baseMetas, baseTypePtr, oclockPtr, pl.TB.NO); ok {
+			baseCopy := matched
+			if label := baseLabel(baseTypePtr, oclockPtr, pl.TB.NO); strings.TrimSpace(label) != "" {
+				baseCopy.Name = label
+			}
+			baseCopy.NaturalOfClock = pl.TB.NO
+			if pl.TB.MO != nil && *pl.TB.MO {
+				baseCopy.MineralOnly = pl.TB.MO
+			}
+			event.TargetBase = &baseCopy
+		}
+	}
+}
+
+// resolveRecallTargetOwners is the post-pass that fills in event.TargetOwner
+// for recall events using the supplied PID → workflowGameEventPlayer lookup.
+// Split from applyRecallPayload because replayEventsFromRows has no access
+// to the per-replay players list — that's owned by populateDetectedPatternsForGameDetail.
+func resolveRecallTargetOwners(events []workflowGameEvent, players []workflowGamePlayer) []workflowGameEvent {
+	if len(events) == 0 || len(players) == 0 {
+		return events
+	}
+	playerByID := make(map[int64]workflowGamePlayer, len(players))
+	for _, p := range players {
+		playerByID[p.PlayerID] = p
+	}
+	for i := range events {
+		if events[i].Type != "recall" || events[i].TargetBase == nil {
+			continue
+		}
+		// The recall payload is no longer present at this layer (events came
+		// out of replayEventsFromRows). We re-derive target_owner via the
+		// existing event.Target field — populated upstream from the row's
+		// target_player_id when worldstate set it. For recall, worldstate
+		// also writes Target when the destination's owner is hostile, so
+		// Target ⇔ TargetOwner here.
+		if events[i].Target != nil {
+			cp := *events[i].Target
+			if p, ok := playerByID[cp.PlayerID]; ok {
+				cp.Name = p.Name
+				cp.Color = p.Color
+			}
+			events[i].TargetOwner = &cp
+		}
 	}
 	return events
 }

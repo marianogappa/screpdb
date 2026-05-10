@@ -482,6 +482,16 @@ type workflowGameEvent struct {
 	Ownership        []workflowGameOwnership  `json:"ownership,omitempty"`
 	AttackUnitTypes  []string                 `json:"attack_unit_types,omitempty"`
 	AttackCastCounts map[string]int64         `json:"attack_cast_counts,omitempty"`
+	// Recall-specific overlay/description fields. Populated only when
+	// event.Type == "recall"; the source-of-truth for these is the recall
+	// event's payload JSON written by worldstate.emitRecallEvents.
+	SourcePoint      *workflowGameEventPoint  `json:"source_point,omitempty"`
+	TargetPoint      *workflowGameEventPoint  `json:"target_point,omitempty"`
+	TargetBase       *workflowGameEventBase   `json:"target_base,omitempty"`
+	TargetOwner      *workflowGameEventPlayer `json:"target_owner,omitempty"`
+	RecallTargetVia  string                   `json:"recall_target_via,omitempty"`  // "a" | "p" | "t"
+	RecallCount      int64                    `json:"recall_count,omitempty"`        // omitted when 1
+	RecallLastSecond int64                    `json:"recall_last_second,omitempty"`  // omitted when equal to Second
 }
 
 type workflowGameEventPlayer struct {

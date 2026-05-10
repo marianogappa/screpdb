@@ -339,7 +339,7 @@ func (e *Engine) Finalize() {
 
 	if len(e.bases) > 0 {
 		e.emitOwnershipTransitions(ownership)
-		e.emitRecallEvents(ownership)
+		e.emitRecallEvents(ownership, candidates)
 	}
 	e.emitLeaveGameEvents()
 	e.emitAttackCandidates(candidates)

@@ -207,7 +207,8 @@ func workflowFeaturingExistsSQL(featureKey string) (string, bool) {
 		// Direct column predicate on replays — team_stacking is a flag on
 		// the replay row, not an event-derived marker.
 		return "(COALESCE(r.team_stacking, 0) = 1)", true
-	case "cannon_rush", "bunker_rush", "zergling_rush":
+	case "cannon_rush", "bunker_rush", "zergling_rush",
+		"proxy_gate", "proxy_rax", "proxy_factory":
 		// These are narrative game-events, not markers — they live in replay_events
 		// with event_kind='game_event'.
 		return `EXISTS (

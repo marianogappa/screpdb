@@ -1,6 +1,7 @@
 package worldstate
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -9,6 +10,73 @@ import (
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/utils"
 )
+
+// recallClusterGapSec collapses consecutive recalls cast from the same source
+// base by the same player into a single event when the gap to the previous
+// cast in the cluster is ≤ this many seconds. The resulting cluster keeps
+// first-second as its primary timestamp and carries last-second + count in
+// the payload. Clustering both reduces noise in sustained-attack replays and
+// widens the time range that attack-coincidence inference can match against.
+const recallClusterGapSec = 20
+
+// recallAttackPreSec / recallAttackPostSec extend the cluster's time range
+// when looking for a coincident attack/drop/nuke candidate.
+const (
+	recallAttackPreSec  = 15
+	recallAttackPostSec = 30
+)
+
+// recallActivityWindowPostSec / recallActivityMinCommands govern the
+// "post-recall activity" target proxy. After units arrive at the Arbiter,
+// they will move / right-click / attack from there — those commands carry
+// X/Y near the destination polygon. We count per-poly hits in
+// [lastSec, lastSec + recallActivityWindowPostSec] and pick the dominant
+// polygon (≥ recallActivityMinCommands, excluding the source poly). This
+// catches aggressive recalls whose pressure threshold (10 cmds / 60s) is
+// never reached — e.g. when the recall is followed by a brief skirmish or
+// the player relies on auto-attack rather than explicit attack-moves.
+const (
+	recallActivityWindowPreSec  = 5
+	recallActivityWindowPostSec = 60
+	recallActivityMinCommands   = 3
+)
+
+// recallTargetPayload is the JSON shape persisted in ReplayEvent.Payload for
+// recall events. Keys are intentionally short to keep on-disk cost low —
+// recall is the only event type with target-side metadata, and a typical
+// game can produce dozens of casts. See the plan for the canonical mapping
+// of every key.
+type recallTargetPayload struct {
+	N  int                  `json:"n,omitempty"`  // cluster size, omit when 1
+	LE int                  `json:"le,omitempty"` // last second, omit when equal to Second
+	S  []int                `json:"s,omitempty"`  // source point [x, y]
+	T  []int                `json:"t,omitempty"`  // target point [x, y], omit when target unknown
+	TB *recallTargetBaseRef `json:"tb,omitempty"` // target base, omit when target unknown
+	TP byte                 `json:"tp,omitempty"` // target owner replay_player_id, omit when no owner
+	TV string               `json:"tv,omitempty"` // target via: "a" attack-coincidence (units harvested), "p" post-recall activity, "t" unit-tag-backtrack
+}
+
+type recallTargetBaseRef struct {
+	K  string `json:"k,omitempty"`  // base.kind ("starting"|"natural"|"expansion"|"")
+	O  int    `json:"o,omitempty"`  // base.clock
+	NO *int   `json:"no,omitempty"` // natural_of_oclock when applicable
+	MO *bool  `json:"mo,omitempty"` // mineral_only when true
+}
+
+// recallCluster collapses a run of recalls cast by the same player from the
+// same source base into a single emission. firstSec / lastSec define the
+// time range used by attack-coincidence inference; sourceBaseIdx is shared
+// across the cluster (== -1 when the source point fell outside any base, in
+// which case the cluster is per-cast, size 1).
+type recallCluster struct {
+	pid           byte
+	sourceBaseIdx int
+	firstSec      int
+	lastSec       int
+	sourceX       int
+	sourceY       int
+	count         int
+}
 
 // indexOwnershipByPoly returns a map of polyID → timeline (sorted by frame).
 // Used by the rush-pass owner-sync helper.
@@ -157,11 +225,18 @@ func (e *Engine) emitOwnershipTransitions(ownership []PolyOwnership) {
 	}
 }
 
-// emitRecallEvents emits one "recall" game_event per Arbiter Recall cast.
+// emitRecallEvents emits one "recall" game_event per cluster of Arbiter Recall
+// casts (same player, same source base, ≤ 20s gap between consecutive casts).
+// The cluster's first second is the primary timestamp; count and last second
+// are persisted in the payload. Each cluster runs through inferRecallTarget
+// against the supplied attack/drop/nuke candidates to estimate the Arbiter's
+// position (the destination of the recall is the Arbiter's location, which
+// the cast command itself doesn't carry).
+//
 // The "Made recalls" marker (firstCastEvaluator) still surfaces only the
-// first cast per player; this layer is the per-cast counterpart for the
-// game-events list, so observers can see every recall location/time.
-func (e *Engine) emitRecallEvents(ownership []PolyOwnership) {
+// first cast per player; this layer is the cluster-level counterpart for the
+// game-events list, so observers can see every recall destination/time.
+func (e *Engine) emitRecallEvents(ownership []PolyOwnership, candidates []CandidateAttack) {
 	timelineByPoly := make(map[int][]OwnEvent, len(ownership))
 	for _, t := range ownership {
 		timelineByPoly[t.PolyID] = t.Events
@@ -178,6 +253,99 @@ func (e *Engine) emitRecallEvents(ownership []PolyOwnership) {
 		return owner
 	}
 
+	clusters := e.buildRecallClusters()
+	for _, cl := range clusters {
+		// Try attack-coincidence first — gives location AND units to harvest.
+		targetIdx, attackCand, foundByAttack := e.inferRecallTargetByAttack(cl, candidates, ownerAtSec)
+		// Fall back to post-recall activity proxy — gives location only.
+		var foundByActivity bool
+		if !foundByAttack {
+			if t, ok := e.inferRecallTargetByPostActivity(cl); ok {
+				targetIdx = t
+				foundByActivity = true
+			}
+		}
+
+		desc, payload, attackUnits, target := e.composeRecallEvent(cl, ownerAtSec, targetIdx, attackCand, foundByAttack, foundByActivity)
+		e.emitRecallEvent(cl, desc, target, attackUnits, payload)
+	}
+}
+
+// inferRecallTargetByPostActivity counts the player's spatial commands per
+// polygon in [lastSec - 5, lastSec + 60] and returns the polygon with the
+// most hits above a minimum, excluding the source polygon. Mirrors the
+// same out-of-polygon → nearest-base fallback used by BuildAttacks so we
+// don't lose commands fired just past a polygon edge.
+func (e *Engine) inferRecallTargetByPostActivity(cl recallCluster) (int, bool) {
+	if len(e.bases) == 0 {
+		return -1, false
+	}
+	lo := cl.lastSec - recallActivityWindowPreSec
+	hi := cl.lastSec + recallActivityWindowPostSec
+	counts := map[int]int{}
+	for _, ec := range e.stream {
+		if ec.Second < lo {
+			continue
+		}
+		if ec.Second > hi {
+			break // stream is in chronological order
+		}
+		if byte(ec.PlayerID) != cl.pid {
+			continue
+		}
+		if ec.X == nil || ec.Y == nil {
+			continue
+		}
+		// Recall casts themselves are counted by their click (source)
+		// position; skip — we already know the source.
+		if ec.Kind == cmdenrich.KindCast && ec.Subject == "Recall" {
+			continue
+		}
+		x, y := *ec.X, *ec.Y
+		// Build positions are in tile-space; convert to pixels (mirror
+		// BuildAttacks).
+		if ec.Kind == cmdenrich.KindMakeBuilding {
+			x = x*32 + 16
+			y = y*32 + 16
+		}
+		bi := pointToEventBase(float64(x), float64(y), e.bases)
+		if bi < 0 {
+			continue
+		}
+		if bi == cl.sourceBaseIdx {
+			continue
+		}
+		counts[bi]++
+	}
+	bestIdx := -1
+	bestCount := 0
+	for idx, c := range counts {
+		if c < recallActivityMinCommands {
+			continue
+		}
+		if c > bestCount {
+			bestCount = c
+			bestIdx = idx
+		}
+	}
+	if bestIdx == -1 {
+		return -1, false
+	}
+	return bestIdx, true
+}
+
+// buildRecallClusters walks the enriched stream picking out CastRecall
+// commands and groups them into clusters by (pid, sourceBaseIdx) using a
+// 20s sliding gap. Casts whose source falls outside any base
+// (sourceBaseIdx == -1) form per-cast clusters of size 1 — there's no
+// stable cluster key for them.
+func (e *Engine) buildRecallClusters() []recallCluster {
+	type clusterKey struct {
+		pid           byte
+		sourceBaseIdx int
+	}
+	openByKey := map[clusterKey]int{} // key → index into out
+	out := []recallCluster{}
 	for _, ec := range e.stream {
 		if ec.Kind != cmdenrich.KindCast || ec.Subject != "Recall" {
 			continue
@@ -186,28 +354,273 @@ func (e *Engine) emitRecallEvents(ownership []PolyOwnership) {
 		if leaveSec, left := e.leaveSec[pid]; left && ec.Second > leaveSec {
 			continue
 		}
-		baseIdx := -1
-		var target *NarrativePlayerRef
+		sourceBaseIdx := -1
+		x, y := 0, 0
 		if ec.X != nil && ec.Y != nil {
-			baseIdx = pointToEventBase(float64(*ec.X), float64(*ec.Y), e.bases)
+			x, y = *ec.X, *ec.Y
+			sourceBaseIdx = pointToEventBase(float64(x), float64(y), e.bases)
 		}
-		if baseIdx >= 0 && baseIdx < len(e.bases) {
-			owner := ownerAtSec(baseIdx, ec.Second)
-			if owner != neutralPID && owner != pid && !e.sameTeam(pid, owner) {
-				target = e.playerRef(owner)
-			}
+		if sourceBaseIdx < 0 {
+			out = append(out, recallCluster{
+				pid:           pid,
+				sourceBaseIdx: -1,
+				firstSec:      ec.Second,
+				lastSec:       ec.Second,
+				sourceX:       x,
+				sourceY:       y,
+				count:         1,
+			})
+			continue
 		}
-		desc := fmt.Sprintf("%s recalls", e.playerName(pid))
-		if baseIdx >= 0 && baseIdx < len(e.bases) {
-			where := e.bases[baseIdx].DisplayName
-			if target != nil {
-				desc = fmt.Sprintf("%s recalls onto %s %s", e.playerName(pid), e.playerName(byte(target.PlayerID)), where)
-			} else {
-				desc = fmt.Sprintf("%s recalls to %s", e.playerName(pid), where)
-			}
+		key := clusterKey{pid: pid, sourceBaseIdx: sourceBaseIdx}
+		if idx, ok := openByKey[key]; ok && ec.Second-out[idx].lastSec <= recallClusterGapSec {
+			out[idx].lastSec = ec.Second
+			out[idx].count++
+			continue
 		}
-		e.emitEvent("recall", ec.Second, desc, e.playerRef(pid), target, baseIdx, []string{"Arbiter"})
+		openByKey[key] = len(out)
+		out = append(out, recallCluster{
+			pid:           pid,
+			sourceBaseIdx: sourceBaseIdx,
+			firstSec:      ec.Second,
+			lastSec:       ec.Second,
+			sourceX:       x,
+			sourceY:       y,
+			count:         1,
+		})
 	}
+	return out
+}
+
+// inferRecallTargetByAttack picks the attack/drop/nuke candidate that best
+// explains the cluster's destination. Returns (target_base_idx, candidate,
+// true) when matched; (-1, _, false) when no qualifying candidate exists.
+//
+// Filter:
+//   - same attacker as the recall's caster
+//   - type ∈ {"attack", "drop", "nuke"} (scout is too weak a signal)
+//   - defender != neutral (we want a real target base)
+//   - excludes candidates targeting the recall's own source base (a recall to
+//     its own source is meaningless — likely a mid-map attack at the same
+//     place; safer to leave as unknown than mis-label)
+//   - "attack" candidates: any overlap between
+//     [firstSec - 15, lastSec + 30] and [OpenSec, CloseSec]
+//   - "drop"/"nuke": Second ∈ [firstSec - 15, lastSec + 30]
+//
+// When multiple qualify, the one with smallest |Second - clusterMid| wins.
+func (e *Engine) inferRecallTargetByAttack(cl recallCluster, candidates []CandidateAttack, _ func(int, int) byte) (int, CandidateAttack, bool) {
+	if len(candidates) == 0 {
+		return -1, CandidateAttack{}, false
+	}
+	lo := cl.firstSec - recallAttackPreSec
+	hi := cl.lastSec + recallAttackPostSec
+	mid := (cl.firstSec + cl.lastSec) / 2
+	bestIdx := -1
+	bestDist := -1
+	for i := range candidates {
+		c := candidates[i]
+		if c.Attacker != cl.pid {
+			continue
+		}
+		if c.Defender == neutralPID {
+			continue
+		}
+		if c.Type != "attack" && c.Type != "drop" && c.Type != "nuke" {
+			continue
+		}
+		if cl.sourceBaseIdx >= 0 && c.PolyID == cl.sourceBaseIdx {
+			continue
+		}
+		switch c.Type {
+		case "attack":
+			cLo, cHi := c.OpenSec, c.CloseSec
+			if cHi < cLo {
+				cHi = cLo
+			}
+			if cHi < lo || cLo > hi {
+				continue
+			}
+		default: // drop, nuke
+			if c.Second < lo || c.Second > hi {
+				continue
+			}
+		}
+		d := c.Second - mid
+		if d < 0 {
+			d = -d
+		}
+		if bestIdx == -1 || d < bestDist {
+			bestIdx = i
+			bestDist = d
+		}
+	}
+	if bestIdx == -1 {
+		return -1, CandidateAttack{}, false
+	}
+	return candidates[bestIdx].PolyID, candidates[bestIdx], true
+}
+
+// composeRecallEvent builds the description, payload, attack-units list,
+// and target player ref for a recall cluster. It expresses the four
+// matrix cells from the plan:
+//
+//	target known   + count = 1 → "<actor> recalls from <source> to <owner> <target>"
+//	target known   + count > 1 → "<actor> recalls (×N) from <source> to <owner> <target>"
+//	target unknown + count = 1 → "<actor> recalls from <source> (destination unknown)"
+//	target unknown + count > 1 → "<actor> recalls (×N) from <source> (destination unknown)"
+func (e *Engine) composeRecallEvent(cl recallCluster, ownerAtSec func(int, int) byte, targetBaseIdx int, attackCand CandidateAttack, foundByAttack bool, foundByActivity bool) (string, *string, []string, *NarrativePlayerRef) {
+	actorName := e.playerName(cl.pid)
+	sourceLabel := ""
+	if cl.sourceBaseIdx >= 0 && cl.sourceBaseIdx < len(e.bases) {
+		sourceLabel = e.bases[cl.sourceBaseIdx].DisplayName
+	}
+	countSuffix := ""
+	if cl.count > 1 {
+		countSuffix = fmt.Sprintf(" (×%d)", cl.count)
+	}
+
+	pl := recallTargetPayload{
+		S: []int{cl.sourceX, cl.sourceY},
+	}
+	if cl.count > 1 {
+		pl.N = cl.count
+	}
+	if cl.lastSec != cl.firstSec {
+		pl.LE = cl.lastSec
+	}
+
+	var target *NarrativePlayerRef
+	attackUnits := []string{"Arbiter"}
+
+	if targetBaseIdx >= 0 && targetBaseIdx < len(e.bases) {
+		// Target known.
+		tBase := e.bases[targetBaseIdx]
+		targetLabel := tBase.DisplayName
+		owner := ownerAtSec(targetBaseIdx, cl.firstSec)
+		ownerLabel := ""
+		if owner != neutralPID && owner != cl.pid && !e.sameTeam(cl.pid, owner) {
+			target = e.playerRef(owner)
+			ownerLabel = e.playerName(owner)
+		}
+		// Apply natural-of-X decoration (and self-natural decoration) so the
+		// description carries the same context attack/scout events do.
+		decoratedTarget := e.decorateBaseDescriptionForPlayer(cl.pid, targetBaseIdx, targetLabel)
+
+		baseType, baseOclock, naturalOf, mineralOnly := e.locationForBase(targetBaseIdx)
+		tb := recallTargetBaseRef{}
+		if baseType != nil {
+			tb.K = *baseType
+		}
+		if baseOclock != nil {
+			tb.O = *baseOclock
+		}
+		if naturalOf != nil {
+			no := *naturalOf
+			tb.NO = &no
+		}
+		if mineralOnly != nil && *mineralOnly {
+			mo := true
+			tb.MO = &mo
+		}
+		pl.TB = &tb
+		pl.T = []int{int(tBase.CenterX), int(tBase.CenterY)}
+		if target != nil {
+			pl.TP = byte(target.PlayerID)
+		}
+		switch {
+		case foundByAttack:
+			pl.TV = "a" // attack-coincidence (source for harvested units)
+		case foundByActivity:
+			pl.TV = "p" // post-recall activity heuristic
+		default:
+			pl.TV = "t" // unit-tag-backtrack (Phase 2)
+		}
+
+		// Source clause.
+		var sourceClause string
+		if sourceLabel != "" {
+			sourceClause = " from " + sourceLabel
+		}
+		// Target clause.
+		var targetClause string
+		if ownerLabel != "" {
+			targetClause = fmt.Sprintf(" to %s %s", ownerLabel, decoratedTarget)
+		} else {
+			targetClause = " to " + decoratedTarget
+		}
+		desc := fmt.Sprintf("%s recalls%s%s%s", actorName, countSuffix, sourceClause, targetClause)
+
+		// Harvest the player's army composition so the overlay can render
+		// the recalled units at the source. Two paths:
+		//  - Attack-coincidence: pull casts + builds from the matched
+		//    candidate's pressure window (richer signal — includes spell
+		//    evidence like Storm/Recall).
+		//  - Activity proxy: no candidate to anchor on, so fall back to the
+		//    epicenter-window helper anchored at the cluster's first cast.
+		//    This walks attackUnitsByPID to give us the army the player has
+		//    been training in the run-up to the recall — close enough for
+		//    the overlay's "what got recalled" question.
+		var harvested []string
+		switch {
+		case foundByAttack && attackCand.Type == "attack":
+			harvested = e.attackUnitsCombined(attackCand)
+		case foundByAttack: // drop, nuke
+			harvested = e.buildUnitsInEpicenterWindow(attackCand.Attacker, attackCand.Second)
+		default:
+			harvested = e.buildUnitsInEpicenterWindow(cl.pid, cl.firstSec)
+		}
+		if len(harvested) > 0 {
+			seen := map[string]struct{}{"Arbiter": {}}
+			for _, u := range harvested {
+				if _, ok := seen[u]; ok {
+					continue
+				}
+				seen[u] = struct{}{}
+				attackUnits = append(attackUnits, u)
+			}
+		}
+
+		raw, _ := json.Marshal(pl)
+		s := string(raw)
+		return desc, &s, attackUnits, target
+	}
+
+	// Target unknown.
+	var sourceClause string
+	if sourceLabel != "" {
+		sourceClause = " from " + sourceLabel
+	}
+	desc := fmt.Sprintf("%s recalls%s%s (destination unknown)", actorName, countSuffix, sourceClause)
+	raw, _ := json.Marshal(pl)
+	s := string(raw)
+	return desc, &s, attackUnits, nil
+}
+
+// emitRecallEvent appends the cluster's NarrativeEntry and ReplayEvent. We
+// don't go through emitEvent because (1) we need to carry a Payload string
+// on the ReplayEvent and (2) the existing same-second/same-description
+// dedup at the entry layer would collapse identical adjacent recalls
+// (same source/target labels) — but clustering is explicit here, so each
+// emit corresponds to a distinct cluster and must be kept.
+func (e *Engine) emitRecallEvent(cl recallCluster, description string, target *NarrativePlayerRef, attackUnits []string, payload *string) {
+	if description == "" {
+		return
+	}
+	actor := e.playerRef(cl.pid)
+	base := e.baseRef(cl.sourceBaseIdx)
+	e.entries = append(e.entries, NarrativeEntry{
+		Type:        "recall",
+		Second:      cl.firstSec,
+		Description: description,
+		Actor:       actor,
+		Target:      target,
+		Base:        base,
+		ActorOrigin: e.actorOrigin(actor, base),
+		Ownership:   e.ownershipSnapshot(),
+	})
+	rev := e.toReplayEvent("recall", cl.firstSec, actor, target, cl.sourceBaseIdx, attackUnits)
+	rev.Payload = payload
+	e.replayEvents = append(e.replayEvents, rev)
 }
 
 func (e *Engine) emitLeaveGameEvents() {
