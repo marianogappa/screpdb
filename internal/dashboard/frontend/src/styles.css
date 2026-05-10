@@ -3395,6 +3395,37 @@ body {
   pointer-events: none;
 }
 
+/* Recall overlay sizes: Arbiter is rendered at 60% of the standard
+   expansion-overlay size, and the recalled-unit icons get a 30% bump so they
+   read at the source while the larger Arbiter sits at the destination. The
+   modifier rules sit AFTER the base rule so they win on specificity-tied
+   cascading order. */
+.workflow-event-map-expansion-overlay.workflow-event-map-expansion-overlay--recall-arbiter {
+  width: 47px;
+  height: 47px;
+}
+
+.workflow-event-map-unit-overlay--recall .workflow-event-map-unit-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.workflow-event-map-unit-overlay--recall.workflow-event-map-unit-overlay--grid {
+  grid-template-columns: repeat(2, 36px);
+  grid-template-rows: repeat(2, 36px);
+}
+
+/* Inline Arbiter rendered in the recall event-row description (right after
+   the verb "recalls"), so the row's trailing icons can stay focused on the
+   units that were recalled. */
+.workflow-event-row-recall-arbiter {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  vertical-align: middle;
+  margin: 0 2px;
+}
+
 .workflow-event-map-flag-overlay {
   position: absolute;
   transform: translate(-50%, -50%);
