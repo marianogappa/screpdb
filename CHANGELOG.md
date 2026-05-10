@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/marianogappa/screpdb/compare/v0.21.0...v0.22.0) (2026-05-10)
+
+
+### Features
+
+* estimate recall destination + games-list polish ([#118](https://github.com/marianogappa/screpdb/issues/118)) ([610427d](https://github.com/marianogappa/screpdb/commit/610427d43973f5b2f16c38b52dee65c2e68b51b2))
+
 ## [0.21.0](https://github.com/marianogappa/screpdb/compare/v0.20.0...v0.21.0) (2026-05-09)
 
 
