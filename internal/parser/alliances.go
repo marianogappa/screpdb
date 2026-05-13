@@ -392,33 +392,188 @@ func injectActivitySnapshots(snapshots []AllianceSnapshot, activity Activity) []
 // effectiveTeamsAt returns the teams with players who have left or stopped
 // playing by sec dropped out. Empty teams are dropped from the slice. The
 // original teams slice is not mutated.
+//
+// Cliques can overlap (a player may belong to several maximal cliques), so a
+// pass-through of departure filtering would emit duplicate singletons —
+// every clique a departed player's lone partner survived in shrinks to {p}.
+// We dedupe: when a player is still part of a surviving size-≥2 clique, we
+// drop any singleton entry for them. When they're a singleton in multiple
+// shrunk cliques, only one survives.
 func effectiveTeamsAt(teams [][]byte, sec int, activity Activity) [][]byte {
-	out := make([][]byte, 0, len(teams))
+	departed := func(pid byte) bool {
+		if leaveAt, ok := activity.LeaveSecByPID[pid]; ok && leaveAt <= sec {
+			return true
+		}
+		if stoppedAt, ok := activity.StoppedSecByPID[pid]; ok && stoppedAt <= sec {
+			return true
+		}
+		return false
+	}
+	survived := make([][]byte, 0, len(teams))
 	for _, team := range teams {
 		filtered := make([]byte, 0, len(team))
 		for _, pid := range team {
-			if leaveAt, ok := activity.LeaveSecByPID[pid]; ok && leaveAt <= sec {
-				continue
-			}
-			if stoppedAt, ok := activity.StoppedSecByPID[pid]; ok && stoppedAt <= sec {
+			if departed(pid) {
 				continue
 			}
 			filtered = append(filtered, pid)
 		}
 		if len(filtered) > 0 {
-			out = append(out, filtered)
+			survived = append(survived, filtered)
 		}
+	}
+	inLarger := map[byte]bool{}
+	for _, team := range survived {
+		if len(team) >= 2 {
+			for _, pid := range team {
+				inLarger[pid] = true
+			}
+		}
+	}
+	out := make([][]byte, 0, len(survived))
+	seenSolo := map[byte]bool{}
+	for _, team := range survived {
+		if len(team) == 1 {
+			pid := team[0]
+			if inLarger[pid] || seenSolo[pid] {
+				continue
+			}
+			seenSolo[pid] = true
+		}
+		out = append(out, team)
 	}
 	return out
 }
 
-// mutualAllianceTeams computes connected components of the mutual-alliance
+// mutualAllianceTeams enumerates the maximal cliques of the mutual-alliance
 // graph (edge a↔b iff a∈allies[b] AND b∈allies[a], excluding self-loops).
-// Returns teams sorted by min(pid) within team, and teams ordered by their
-// min(pid) for stable rendering across snapshots.
+//
+// A "team" in Brood War semantics is a clique: every member must mutually
+// ally every other member. Connected components — the previous model — over-
+// reports teams: a chain A↔B↔C↔D (with no other edges) is NOT a 4-stack, it
+// is three overlapping pair-stacks {A,B}, {B,C}, {C,D}. Without this fix the
+// stacking detector flags a chain of pair-alliances as e.g. "4v2 stacked"
+// even though none of the four chain members all-mutually ally each other.
+// A player can legitimately appear in more than one returned clique — that
+// is the honest answer when the alliance graph is not transitive.
+//
+// Singletons (active players not in any mutual edge) are appended as solo
+// teams so every player has at least one entry to render against. Cliques
+// are sorted by size (larger first) then by min(pid) for stable output.
 func mutualAllianceTeams(allies map[byte]map[byte]bool, activePIDs []byte) [][]byte {
+	sortedPIDs := append([]byte(nil), activePIDs...)
+	sort.Slice(sortedPIDs, func(i, j int) bool { return sortedPIDs[i] < sortedPIDs[j] })
+
+	isActive := map[byte]bool{}
+	for _, pid := range sortedPIDs {
+		isActive[pid] = true
+	}
+
+	mutual := func(a, b byte) bool {
+		if a == b {
+			return false
+		}
+		aSet, ok := allies[a]
+		if !ok || !aSet[b] {
+			return false
+		}
+		bSet, ok := allies[b]
+		if !ok || !bSet[a] {
+			return false
+		}
+		return true
+	}
+
+	n := len(sortedPIDs)
+	// Brute-force subset enumeration is fine for melee (n≤8 → ≤256 subsets).
+	// If n grows past 16 we'd want Bron-Kerbosch; guard so we don't OOM if
+	// the assumption ever breaks.
+	if n > 16 {
+		// Fall back to a non-overlapping component grouping — same shape as
+		// the old algorithm — so the analyzer still produces *some* answer
+		// rather than spinning over 65k subsets.
+		return mutualAllianceTeamsComponents(allies, sortedPIDs, mutual)
+	}
+
+	type subset struct {
+		members []byte
+		mask    uint32
+	}
+	cliques := make([]subset, 0)
+	for mask := uint32(1); mask < (uint32(1) << uint(n)); mask++ {
+		members := make([]byte, 0, n)
+		for i := 0; i < n; i++ {
+			if mask&(uint32(1)<<uint(i)) != 0 {
+				members = append(members, sortedPIDs[i])
+			}
+		}
+		if len(members) < 2 {
+			continue
+		}
+		isClique := true
+		for i := 0; i < len(members) && isClique; i++ {
+			for j := i + 1; j < len(members); j++ {
+				if !mutual(members[i], members[j]) {
+					isClique = false
+					break
+				}
+			}
+		}
+		if !isClique {
+			continue
+		}
+		cliques = append(cliques, subset{members: members, mask: mask})
+	}
+
+	// Keep only maximal cliques.
+	maximal := make([]subset, 0, len(cliques))
+	for i, c := range cliques {
+		dominated := false
+		for j, d := range cliques {
+			if i == j {
+				continue
+			}
+			if c.mask != d.mask && (c.mask&d.mask) == c.mask {
+				dominated = true
+				break
+			}
+		}
+		if !dominated {
+			maximal = append(maximal, c)
+		}
+	}
+
+	out := make([][]byte, 0, len(maximal)+n)
+	inAClique := map[byte]bool{}
+	for _, c := range maximal {
+		team := append([]byte(nil), c.members...)
+		out = append(out, team)
+		for _, pid := range team {
+			inAClique[pid] = true
+		}
+	}
+	for _, pid := range sortedPIDs {
+		if !inAClique[pid] {
+			out = append(out, []byte{pid})
+		}
+	}
+
+	sort.SliceStable(out, func(i, j int) bool {
+		if len(out[i]) != len(out[j]) {
+			return len(out[i]) > len(out[j])
+		}
+		return out[i][0] < out[j][0]
+	})
+	return out
+}
+
+// mutualAllianceTeamsComponents is the connected-component fallback used
+// only when player count exceeds the brute-force clique enumeration ceiling
+// (n>16). Melee never hits this path; included so the analyzer stays safe
+// if future replay formats grow the slot count.
+func mutualAllianceTeamsComponents(allies map[byte]map[byte]bool, sortedPIDs []byte, mutual func(a, b byte) bool) [][]byte {
 	parent := map[byte]byte{}
-	for _, pid := range activePIDs {
+	for _, pid := range sortedPIDs {
 		parent[pid] = pid
 	}
 	var find func(byte) byte
@@ -440,30 +595,18 @@ func mutualAllianceTeams(allies map[byte]map[byte]bool, activePIDs []byte) [][]b
 			parent[ra] = rb
 		}
 	}
-
-	for a, aSet := range allies {
-		for b := range aSet {
-			if a == b {
-				continue
-			}
-			if _, ok := parent[a]; !ok {
-				continue
-			}
-			if _, ok := parent[b]; !ok {
-				continue
-			}
-			if bSet, ok := allies[b]; ok && bSet[a] {
+	for i, a := range sortedPIDs {
+		for _, b := range sortedPIDs[i+1:] {
+			if mutual(a, b) {
 				union(a, b)
 			}
 		}
 	}
-
 	groups := map[byte][]byte{}
-	for _, pid := range activePIDs {
+	for _, pid := range sortedPIDs {
 		root := find(pid)
 		groups[root] = append(groups[root], pid)
 	}
-
 	teams := make([][]byte, 0, len(groups))
 	for _, g := range groups {
 		sort.Slice(g, func(i, j int) bool { return g[i] < g[j] })

@@ -325,6 +325,14 @@ type workflowGamePlayer struct {
 	APM              int64                  `json:"apm"`
 	EAPM             int64                  `json:"eapm"`
 	DetectedPatterns []workflowPatternValue `json:"detected_patterns"`
+	// LeftSecond is the earliest second the player became inactive — either an
+	// explicit Leave Game command or the inactivity-derived
+	// player_stopped_playing event. Nil when the player played to the end.
+	LeftSecond *int64 `json:"left_second,omitempty"`
+	// LeaveReason mirrors the LeaveGameCmd reason ("Quit", "Defeat", "Dropped",
+	// "Finished", "Draw", "Victory", "UNKNOWN") when LeftSecond is set by a
+	// leave_game event, or "Stopped" when set by player_stopped_playing.
+	LeaveReason string `json:"leave_reason,omitempty"`
 }
 
 // workflowPatternValue is the per-pattern entry shipped to the frontend inside
@@ -369,6 +377,10 @@ type workflowGameDetail struct {
 	MutaliskTimingSummary *workflowMutaliskTimingSummary `json:"mutalisk_timing_summary,omitempty"`
 	AllianceTimeline     []workflowAllianceSnapshot               `json:"alliance_timeline,omitempty"`
 	AllianceStackingThresholdSeconds int64                        `json:"alliance_stacking_threshold_seconds,omitempty"`
+	// AllianceTabChat is the full per-replay chat stream surfaced exclusively
+	// for the Alliances tab's context panel. Each entry is one chat command
+	// keyed to the player who sent it. Empty for non-melee or ≤2-player games.
+	AllianceTabChat []workflowAllianceChat `json:"alliance_tab_chat,omitempty"`
 
 	// EarlyGameEndsAtSecond / MidGameEndsAtSecond split the game-events list
 	// into Early/Mid/Late sections. Computed from unit-completion + research
@@ -393,6 +405,15 @@ type workflowAllianceSnapshot struct {
 	Sec      int64     `json:"sec"`
 	Teams    [][]int64 `json:"teams"`
 	Stacking bool      `json:"stacking"`
+}
+
+// workflowAllianceChat is one chat message attached to the Alliances tab.
+// Player_id matches the players[].player_id (DB row id). Message is the raw
+// text the player sent; the frontend handles any escaping for display.
+type workflowAllianceChat struct {
+	Second   int64  `json:"second"`
+	PlayerID int64  `json:"player_id"`
+	Message  string `json:"message"`
 }
 
 // workflowMarkerPlayer carries per-player Build Orders tab data:

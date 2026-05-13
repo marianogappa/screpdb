@@ -5482,9 +5482,14 @@ function App() {
                     <AllianceTimeline
                       players={Array.isArray(mainGame?.players) ? mainGame.players : []}
                       timeline={Array.isArray(mainGame?.alliance_timeline) ? mainGame.alliance_timeline : []}
+                      chat={Array.isArray(mainGame?.alliance_tab_chat) ? mainGame.alliance_tab_chat : []}
+                      gameEvents={Array.isArray(mainGame?.game_events) ? mainGame.game_events : []}
                       durationSeconds={mainGame?.duration_seconds || 0}
+                      earlyEndsAt={mainGame?.early_game_ends_at_second || 0}
+                      midEndsAt={mainGame?.mid_game_ends_at_second || 0}
                       stackingThresholdSeconds={mainGame?.alliance_stacking_threshold_seconds || 300}
                       getRaceIcon={getWorkerIconForRace}
+                      getPlayerColor={(p) => playerColorToCss(p?.color)}
                     />
                   </div>
                 )}
