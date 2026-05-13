@@ -26,7 +26,8 @@ screpdb is an advanced Starcraft replay reporting tool.
 <img width="1665" height="877" alt="Screenshot 2026-05-04 at 23 46 48" src="https://github.com/user-attachments/assets/fcf5c796-89a8-4536-8d41-2ab4d868676c" />
 
 ### Alliance timeline and team stacking detection on multiplayer melee games
-<img width="1666" height="641" alt="Screenshot 2026-05-04 at 23 47 28" src="https://github.com/user-attachments/assets/8c9dad2b-45d1-4280-be8d-a1147e01c688" />
+<img width="1557" height="872" alt="Screenshot 2026-05-13 at 22 59 15" src="https://github.com/user-attachments/assets/ce38f46a-89c8-4a9a-b9f9-6489afd9c05b" />
+
 
 
 ## Installation
