@@ -154,6 +154,42 @@ func TestAnalyzeAlliances_OneWayAlliance_NoMutual(t *testing.T) {
 	expectTeams(t, last.Teams, [][]byte{{1}, {2}, {3}})
 }
 
+// TestAnalyzeAlliances_ChainIsNotAClique exercises the case from replay 500
+// (003714,(8)Big Game Hunters.rep): pairwise mutual alliances A↔B, B↔C, C↔D
+// form a *chain* in the mutual-alliance graph. The old connected-component
+// algorithm rolled the chain up into a single 4-stack and flagged stacking
+// against a 2-stack opponent; cliques expose the chain as three pair-teams
+// (one of which the "central" players appear in twice) — no clique is bigger
+// than 2, so the stacking flag does not fire.
+func TestAnalyzeAlliances_ChainIsNotAClique(t *testing.T) {
+	a, b, c, d := p(1, 1), p(2, 2), p(3, 3), p(4, 4)
+	e, f := p(5, 5), p(6, 6)
+	players := []*models.Player{a, b, c, d, e, f}
+	cmds := []*models.Command{
+		// A↔B mutual.
+		allianceCmd(10, a, 1, 2),
+		allianceCmd(10, b, 1, 2),
+		// B also reciprocates C.
+		allianceCmd(20, b, 1, 2, 3),
+		allianceCmd(20, c, 2, 3),
+		// C also reciprocates D.
+		allianceCmd(30, c, 2, 3, 4),
+		allianceCmd(30, d, 3, 4),
+		// Disjoint 2-stack E↔F.
+		allianceCmd(40, e, 5, 6),
+		allianceCmd(40, f, 5, 6),
+	}
+	res := AnalyzeAlliances(players, cmds, 900, emptyActivity())
+
+	if res.TeamStackingFlag {
+		t.Fatalf("chain A-B-C-D vs 2-stack E-F must not flag stacking — chain has no clique larger than 2")
+	}
+	last := res.Snapshots[len(res.Snapshots)-1]
+	// Expected maximal cliques (size desc, then min pid):
+	// {1,2}, {2,3}, {3,4}, {5,6}.
+	expectTeams(t, last.Teams, [][]byte{{1, 2}, {2, 3}, {3, 4}, {5, 6}})
+}
+
 func TestAnalyzeAlliances_StackingBand_ExceedsThreshold(t *testing.T) {
 	a, b, c, d, e := p(1, 1), p(2, 2), p(3, 3), p(4, 4), p(5, 5)
 	players := []*models.Player{a, b, c, d, e}

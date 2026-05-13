@@ -118,6 +118,12 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	if err := d.populateAllianceTimelineForGameDetail(&detail); err != nil {
 		return detail, err
 	}
+	if err := d.populatePlayerDepartureForGameDetail(&detail); err != nil {
+		return detail, err
+	}
+	if err := d.populateAllianceTabChatForGameDetail(&detail); err != nil {
+		return detail, err
+	}
 
 	return detail, nil
 }
