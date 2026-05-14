@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.23.0](https://github.com/marianogappa/screpdb/compare/v0.22.0...v0.23.0) (2026-05-14)
+
+
+### Features
+
+* **dashboard:** games-list polish + per-player gate fix ([#129](https://github.com/marianogappa/screpdb/issues/129)) ([b25df42](https://github.com/marianogappa/screpdb/commit/b25df42488233a092726b5a9608b805451b8c531))
+* **markers:** per-matchup gate for never_researched / never_upgraded in 1v1 ([#128](https://github.com/marianogappa/screpdb/issues/128)) ([2ee369b](https://github.com/marianogappa/screpdb/commit/2ee369bf21e476743658eb38be5e068547baee12))
+* redesign Alliances tab with mutual-clique detection and contextual timeline ([#124](https://github.com/marianogappa/screpdb/issues/124)) ([f723f71](https://github.com/marianogappa/screpdb/commit/f723f71d42e3240563b23a1f88a05df2a1f1c2ce))
+
 ## [0.22.0](https://github.com/marianogappa/screpdb/compare/v0.21.0...v0.22.0) (2026-05-10)
 
 
