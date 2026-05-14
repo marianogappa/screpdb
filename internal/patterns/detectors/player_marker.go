@@ -328,11 +328,61 @@ func (d *MarkerPlayerDetector) ShouldSave() bool {
 	if !d.IsFinished() || !d.matched {
 		return false
 	}
-	if d.marker.MinReplaySeconds > 0 {
+	gate := d.resolveMinReplaySeconds()
+	if gate > 0 {
 		replay := d.GetReplay()
-		if replay == nil || replay.DurationSeconds < d.marker.MinReplaySeconds {
+		if replay == nil || replay.DurationSeconds < gate {
 			return false
 		}
 	}
 	return true
+}
+
+// matchupGateMinSeconds is a hard lower bound applied on top of any
+// per-(own_race, opp_race) gate from Marker.MinReplaySecondsByMatchup.
+// Several Upgrade matchups have a progamer p5 of first-Upgrade around
+// 2:00-3:00 (e.g. ZvZ Speed, PvT Singularity Charge). Used alone, those
+// gates would flag "never upgraded" on successful 4-pool / Bunker rush /
+// Proxy gate finishes — exactly the rush-suppression case the matchup
+// gate was meant to preserve. 4 min is above the typical successful-rush
+// game-end time, so short rushes stay suppressed; longer games still get
+// the matchup-aware gate raised above this floor when applicable
+// (e.g. PvT first-Tech p5 = 8:16).
+const matchupGateMinSeconds = 4 * 60
+
+// resolveMinReplaySeconds picks the effective duration gate for this marker.
+// For 1v1 replays we prefer a per-(own_race, opp_race) entry from
+// MinReplaySecondsByMatchup so "never X" markers respect matchup-typical
+// first-research / first-upgrade timings, lifted to at least
+// matchupGateMinSeconds to keep short rushes suppressed. For non-1v1 or
+// a missing bucket we fall back to the flat MinReplaySeconds.
+func (d *MarkerPlayerDetector) resolveMinReplaySeconds() int {
+	if len(d.marker.MinReplaySecondsByMatchup) == 0 {
+		return d.marker.MinReplaySeconds
+	}
+	replay := d.GetReplay()
+	if replay == nil || replay.TeamFormat != "1v1" {
+		return d.marker.MinReplaySeconds
+	}
+	players := d.GetPlayers()
+	own := getPlayerByReplayPlayerID(players, d.GetReplayPlayerID())
+	if own == nil {
+		return d.marker.MinReplaySeconds
+	}
+	opp := getOpponentInOneVOne(players, own)
+	if opp == nil {
+		return d.marker.MinReplaySeconds
+	}
+	byOpp, ok := d.marker.MinReplaySecondsByMatchup[markers.Race(own.Race)]
+	if !ok {
+		return d.marker.MinReplaySeconds
+	}
+	v, ok := byOpp[markers.Race(opp.Race)]
+	if !ok {
+		return d.marker.MinReplaySeconds
+	}
+	if v < matchupGateMinSeconds {
+		return matchupGateMinSeconds
+	}
+	return v
 }

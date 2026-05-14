@@ -887,11 +887,31 @@ func allMarkers() []Marker {
 			Kind:             KindMarker,
 			Rule:             Not(UpgradeExists()),
 			RuleDeadline:     endOfReplaySentinel,
-			MinReplaySeconds: 10 * 60,
+			MinReplaySeconds: 10 * 60, // fallback for non-1v1
+			// 1v1 floor per (own_race, opp_race): p5 of first-Upgrade time
+			// across 5708 progamer 1v1 player-games. Buckets with <20 samples
+			// are omitted and fall through to MinReplaySeconds.
+			MinReplaySecondsByMatchup: map[Race]map[Race]int{
+				RaceTerran: {
+					RaceTerran:  264, // n=118, p5=4:24
+					RaceProtoss: 293, // n=315, p5=4:53
+					RaceZerg:    233, // n=358, p5=3:53
+				},
+				RaceProtoss: {
+					RaceTerran:  163, // n=366, p5=2:43
+					RaceProtoss: 169, // n=235, p5=2:49
+					RaceZerg:    237, // n=536, p5=3:57
+				},
+				RaceZerg: {
+					RaceTerran:  175, // n=407, p5=2:55
+					RaceProtoss: 128, // n=592, p5=2:08
+					RaceZerg:    125, // n=444, p5=2:05
+				},
+			},
 			SummaryPlayer: &Pill{
 				Label: "🚫 upgrades",
 				Style: PillStyleNegative,
-				Title: "No Upgrade commands in this replay for this player (10+ minute games).",
+				Title: "No Upgrade commands in this replay for this player (suppressed on games shorter than matchup-typical first upgrade).",
 			},
 		},
 		{
@@ -901,11 +921,30 @@ func allMarkers() []Marker {
 			Kind:             KindMarker,
 			Rule:             Not(TechExists()),
 			RuleDeadline:     endOfReplaySentinel,
-			MinReplaySeconds: 10 * 60,
+			MinReplaySeconds: 10 * 60, // fallback for non-1v1 (and ZvZ in 1v1, omitted below for n<20)
+			// 1v1 floor per (own_race, opp_race): p5 of first-Tech time
+			// across 5708 progamer 1v1 player-games. Buckets with <20 samples
+			// are omitted (ZvZ has n=17 → falls through to MinReplaySeconds).
+			MinReplaySecondsByMatchup: map[Race]map[Race]int{
+				RaceTerran: {
+					RaceTerran:  245, // n=141, p5=4:05
+					RaceProtoss: 238, // n=341, p5=3:58
+					RaceZerg:    252, // n=368, p5=4:12
+				},
+				RaceProtoss: {
+					RaceTerran:  496, // n=176, p5=8:16
+					RaceProtoss: 332, // n=74,  p5=5:32
+					RaceZerg:    396, // n=407, p5=6:36
+				},
+				RaceZerg: {
+					RaceTerran:  243, // n=264, p5=4:03
+					RaceProtoss: 339, // n=372, p5=5:39
+				},
+			},
 			SummaryPlayer: &Pill{
 				Label: "🚫 researches",
 				Style: PillStyleNegative,
-				Title: "No Tech commands in this replay for this player (10+ minute games).",
+				Title: "No Tech commands in this replay for this player (suppressed on games shorter than matchup-typical first research).",
 			},
 		},
 
