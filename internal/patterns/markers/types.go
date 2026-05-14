@@ -358,6 +358,16 @@ type Marker struct {
 	// Used by "never X" markers that would otherwise trip on short games.
 	MinReplaySeconds int
 
+	// MinReplaySecondsByMatchup gates this marker on replay duration using a
+	// per-(own_race, opp_race) threshold. Outer key is the player's race,
+	// inner key is the opponent's race. Consulted ONLY for 1v1 replays; for
+	// non-1v1 (team games, FFA) MinReplaySeconds is used instead. Used by
+	// "never X" markers whose "valid game" length depends on the matchup —
+	// e.g. ZvZ first research is much earlier than PvP first research, so a
+	// flat 10-min floor over-fires on short PvP games. Missing entries fall
+	// back to MinReplaySeconds.
+	MinReplaySecondsByMatchup map[Race]map[Race]int
+
 	// Rule is the predicate-DSL path — tree of PredicateState factories.
 	// If non-nil, the marker emits ValueBool:true on match.
 	Rule Predicate

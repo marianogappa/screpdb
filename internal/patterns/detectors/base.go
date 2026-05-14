@@ -269,6 +269,26 @@ func getPlayerByReplayPlayerID(players []*models.Player, replayPlayerID byte) *m
 	return nil
 }
 
+// getOpponentInOneVOne returns the single non-observer opponent on a different
+// team than own. Returns nil if zero or more than one such player is found —
+// callers should use this only after confirming TeamFormat == "1v1".
+func getOpponentInOneVOne(players []*models.Player, own *models.Player) *models.Player {
+	var found *models.Player
+	for _, p := range players {
+		if p == nil || p == own || p.IsObserver {
+			continue
+		}
+		if p.Team == own.Team {
+			continue
+		}
+		if found != nil {
+			return nil
+		}
+		found = p
+	}
+	return found
+}
+
 func isPlayerRace(players []*models.Player, replayPlayerID byte, race string) bool {
 	player := getPlayerByReplayPlayerID(players, replayPlayerID)
 	if player == nil {

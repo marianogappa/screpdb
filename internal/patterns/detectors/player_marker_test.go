@@ -221,6 +221,98 @@ func TestBuildDedup_PendingFromBeforeCapFlushesAtCap(t *testing.T) {
 	}
 }
 
+// newGateTestMarker builds a never_researched-style marker with a
+// per-(own_race, opp_race) gate of 7:00 for (P, Z) only, on top of a flat
+// 10-minute MinReplaySeconds fallback. Used by the matchup-gate tests.
+func newGateTestMarker() markers.Marker {
+	return markers.Marker{
+		Name:             "Test Never Researched",
+		PatternName:      "Test Never Researched",
+		FeatureKey:       "test_never_researched",
+		Kind:             markers.KindMarker,
+		Rule:             markers.Not(markers.TechExists()),
+		RuleDeadline:     10 * 60 * 60,
+		MinReplaySeconds: 10 * 60,
+		MinReplaySecondsByMatchup: map[markers.Race]map[markers.Race]int{
+			markers.RaceProtoss: {markers.RaceZerg: 7 * 60},
+		},
+	}
+}
+
+// runGateTest builds a no-Tech 1v1 replay with the given duration / team-format
+// and reports whether the detector saved the marker.
+func runGateTest(t *testing.T, mk markers.Marker, ownRace, oppRace string, teamFormat string, durationSeconds int) bool {
+	t.Helper()
+	builder := NewTestReplayBuilder().
+		WithPlayer(1, "own", ownRace, 1).
+		WithPlayer(2, "opp", oppRace, 2).
+		WithDurationSeconds(durationSeconds)
+	replay, players := builder.Build()
+	replay.TeamFormat = teamFormat
+
+	d := NewMarkerPlayerDetector(mk)
+	d.SetReplayPlayerID(1)
+	d.Initialize(replay, players)
+	for _, cmd := range builder.GetCommands() {
+		d.ProcessCommand(cmd)
+	}
+	d.Finalize()
+	return d.ShouldSave()
+}
+
+// 1v1 PvZ at 5:00. Per-matchup gate (P vs Z) is 7:00, so the marker is
+// suppressed — even though the flat 10:00 fallback would also have suppressed
+// it. (Sanity case.)
+func TestMarkerDetector_MatchupGate_OneVOne_BelowMatchupThreshold(t *testing.T) {
+	if runGateTest(t, newGateTestMarker(), "Protoss", "Zerg", "1v1", 5*60) {
+		t.Fatalf("expected suppression at 5:00 in 1v1 PvZ (below P-vs-Z 7:00 floor)")
+	}
+}
+
+// 1v1 PvZ at 8:00. Per-matchup gate is 7:00 → fire. Flat fallback would have
+// suppressed at 8:00 (< 10:00); this proves the matchup gate REPLACES the
+// flat floor for 1v1, not stacks above it.
+func TestMarkerDetector_MatchupGate_OneVOne_AboveMatchupBelowFlat(t *testing.T) {
+	if !runGateTest(t, newGateTestMarker(), "Protoss", "Zerg", "1v1", 8*60) {
+		t.Fatalf("expected fire at 8:00 in 1v1 PvZ (above P-vs-Z 7:00 floor, despite < 10:00 flat fallback)")
+	}
+}
+
+// 1v1 ZvP at 8:00. No entry for (Z, P) in the map → fall back to flat 10:00
+// MinReplaySeconds → suppress.
+func TestMarkerDetector_MatchupGate_OneVOne_MissingBucketFallsBack(t *testing.T) {
+	if runGateTest(t, newGateTestMarker(), "Zerg", "Protoss", "1v1", 8*60) {
+		t.Fatalf("expected suppression at 8:00 in 1v1 ZvP (no per-matchup entry → flat 10:00 fallback)")
+	}
+}
+
+// 2v2 PvZ stand-in at 8:00: TeamFormat != "1v1" → matchup map is ignored even
+// though (P, Z) is populated. Flat 10:00 fallback applies → suppress.
+func TestMarkerDetector_MatchupGate_NonOneVOne_UsesFlatFallback(t *testing.T) {
+	if runGateTest(t, newGateTestMarker(), "Protoss", "Zerg", "2v2", 8*60) {
+		t.Fatalf("expected suppression at 8:00 in 2v2 (non-1v1 → flat 10:00 fallback even with matchup map populated)")
+	}
+}
+
+// A matchup entry below matchupGateMinSeconds is lifted to that floor so
+// successful rushes stay suppressed even when progamer p5 is very early
+// (e.g. ZvZ first-Upgrade ≈ 2:05 would otherwise fire on a 2:30 4-pool win).
+func TestMarkerDetector_MatchupGate_HardFloorLiftsLowMatchupValue(t *testing.T) {
+	mk := newGateTestMarker()
+	// Override the (P, Z) entry with a value well below the hard floor.
+	mk.MinReplaySecondsByMatchup = map[markers.Race]map[markers.Race]int{
+		markers.RaceProtoss: {markers.RaceZerg: 100}, // 1:40, below 4:00
+	}
+	// Game at 3:00 — above matchup value (100) but below hard floor (240) → suppress.
+	if runGateTest(t, mk, "Protoss", "Zerg", "1v1", 3*60) {
+		t.Fatalf("expected suppression at 3:00 with matchup value 1:40 (lifted to 4:00 hard floor)")
+	}
+	// Game at 5:00 — above hard floor → fire.
+	if !runGateTest(t, mk, "Protoss", "Zerg", "1v1", 5*60) {
+		t.Fatalf("expected fire at 5:00 with matchup value 1:40 (above lifted 4:00 floor)")
+	}
+}
+
 func newRecordingBuildDetector() (*MarkerPlayerDetector, *recordingState) {
 	rec := &recordingState{}
 	d := &MarkerPlayerDetector{
