@@ -58,9 +58,6 @@ var staticGameEventFeatures = []gameEventFeature{
 // ordered strip without a parallel lookup table.
 var staticFeaturingOrder = []string{
 	// signature markers (KindMarker, persistent presence)
-	"carriers",
-	"battlecruisers",
-	"ten_plus_scouts",
 	"mech",
 	// game-event-only chips (sourced from worldstate, not markers)
 	"cannon_rush",
@@ -73,7 +70,6 @@ var staticFeaturingOrder = []string{
 	// late-game custom-evaluator markers
 	"threw_nukes",
 	"made_recalls",
-	"cliff_drop",
 	"mech_transition",
 	// transition markers (KindMarker)
 	"one_one_one",
@@ -97,6 +93,12 @@ var staticFeaturingOrder = []string{
 	"bo_1_rax_1_fac",
 	"bo_rax_cc",
 	"bo_cc_first",
+	// money-map markers — rendered last so regular markers take priority on
+	// mixed/regular game listings; on Money games they trail Mind Control etc.
+	"carriers",
+	"battlecruisers",
+	"ten_plus_scouts",
+	"cliff_drop",
 }
 
 // handlerMarkersDefinitions serves the per-marker Pill metadata plus ordering

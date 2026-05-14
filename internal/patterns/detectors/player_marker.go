@@ -331,7 +331,24 @@ func (d *MarkerPlayerDetector) ShouldSave() bool {
 	gate := d.resolveMinReplaySeconds()
 	if gate > 0 {
 		replay := d.GetReplay()
-		if replay == nil || replay.DurationSeconds < gate {
+		if replay == nil {
+			return false
+		}
+		// Compare against the player's effective time-in-game, not the
+		// whole replay's duration. In non-1v1 games a player can leave
+		// or stop playing long before the replay ends — using the
+		// replay duration would wrongly flag e.g. "never upgraded" on
+		// a player who quit at 5min in a 30min FFA, even though they
+		// never had a chance to research/upgrade past the 10-min floor.
+		// Last command second is more robust than leaveSec — some replays
+		// record a spurious early leave_game for players who keep playing.
+		playerTime := replay.DurationSeconds
+		if ws := d.GetWorldState(); ws != nil {
+			if lastSec, ok := ws.LastCommandSecond(d.GetReplayPlayerID()); ok && lastSec < playerTime {
+				playerTime = lastSec
+			}
+		}
+		if playerTime < gate {
 			return false
 		}
 	}

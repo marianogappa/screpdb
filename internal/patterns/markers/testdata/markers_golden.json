@@ -303,21 +303,6 @@
   "never_upgraded.rep": {
     "detections": [
       {
-        "replay_player_id": 0,
-        "pattern_name": "Never researched",
-        "value": "831"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Never upgraded",
-        "value": "831"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Never used hotkeys",
-        "value": "831"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 11 Hatch",
         "value": "{\"expert_actuals\":[{\"second\":98,\"found\":true},{\"second\":115,\"found\":true}]}"

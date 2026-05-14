@@ -4,8 +4,9 @@ import (
 	"testing"
 
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
-	"github.com/marianogappa/screpdb/internal/patterns/markers"
 	"github.com/marianogappa/screpdb/internal/models"
+	"github.com/marianogappa/screpdb/internal/patterns/markers"
+	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
 )
 
 // recordingState is a test PredicateState that captures every observed fact.
@@ -291,6 +292,61 @@ func TestMarkerDetector_MatchupGate_OneVOne_MissingBucketFallsBack(t *testing.T)
 func TestMarkerDetector_MatchupGate_NonOneVOne_UsesFlatFallback(t *testing.T) {
 	if runGateTest(t, newGateTestMarker(), "Protoss", "Zerg", "2v2", 8*60) {
 		t.Fatalf("expected suppression at 8:00 in 2v2 (non-1v1 → flat 10:00 fallback even with matchup map populated)")
+	}
+}
+
+// runGateTestWithLastCommand builds a no-Tech replay where the target player's
+// last command is at lastCmdSec, the replay runs to durationSec, and the
+// detector receives a worldstate that tracks per-player last command times.
+// Used to lock in the per-player time-in-game gate: a player who left or
+// stopped playing before the gate threshold must NOT trigger "never X"
+// markers even if the replay kept running long enough overall.
+func runGateTestWithLastCommand(t *testing.T, mk markers.Marker, teamFormat string, durationSec, lastCmdSec int) bool {
+	t.Helper()
+	builder := NewTestReplayBuilder().
+		WithPlayer(1, "own", "Protoss", 1).
+		WithPlayer(2, "opp", "Zerg", 2).
+		WithPlayer(3, "ally", "Protoss", 1).
+		WithPlayer(4, "ally2", "Zerg", 2).
+		WithDurationSeconds(durationSec).
+		WithCommand(1, lastCmdSec, models.ActionTypeBuild, models.GeneralUnitGateway)
+	replay, players := builder.Build()
+	replay.TeamFormat = teamFormat
+
+	ws := worldstate.NewEngine(replay, players, &models.ReplayMapContext{})
+	for _, cmd := range builder.GetCommands() {
+		ws.ProcessCommand(cmd)
+	}
+	ws.Finalize()
+
+	d := NewMarkerPlayerDetector(mk)
+	d.SetReplayPlayerID(1)
+	d.SetWorldState(ws)
+	d.Initialize(replay, players)
+	for _, cmd := range builder.GetCommands() {
+		d.ProcessCommand(cmd)
+	}
+	d.Finalize()
+	return d.ShouldSave()
+}
+
+// Non-1v1 (2v2), replay 20:00, target player's last command at 5:00. Flat
+// 10:00 floor applies (TeamFormat != "1v1"). Pre-fix, replay duration alone
+// gated this in → marker wrongly fired for a player who quit at 5:00 in a
+// 20:00 game. Post-fix, the player's last-command second is the effective
+// time-in-game and the marker is suppressed.
+func TestMarkerDetector_NonOneVOne_PlayerLeftBeforeFlatGate_Suppressed(t *testing.T) {
+	if runGateTestWithLastCommand(t, newGateTestMarker(), "2v2", 20*60, 5*60) {
+		t.Fatalf("expected suppression: 2v2 player whose last command was at 5:00 must not get a never_X marker on a 20:00 replay (10:00 floor)")
+	}
+}
+
+// Same 2v2 / 20:00 game, but the target player kept issuing commands past
+// the 10:00 floor (last command at 12:00). Marker should fire normally —
+// the per-player gate is satisfied.
+func TestMarkerDetector_NonOneVOne_PlayerStayedPastFlatGate_Fires(t *testing.T) {
+	if !runGateTestWithLastCommand(t, newGateTestMarker(), "2v2", 20*60, 12*60) {
+		t.Fatalf("expected fire: 2v2 player active until 12:00 must get the never_X marker on a 20:00 replay (10:00 floor)")
 	}
 }
 

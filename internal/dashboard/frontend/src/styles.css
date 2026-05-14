@@ -330,12 +330,38 @@ body {
 }
 
 .error-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   padding: 12px;
   background: rgba(255, 50, 50, 0.2);
   border: 1px solid rgba(255, 50, 50, 0.5);
   border-radius: 4px;
   color: #ff6666;
   margin-bottom: 20px;
+}
+
+.error-message-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.error-message-dismiss {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 20px;
+  line-height: 1;
+  padding: 0 6px;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s ease;
+}
+
+.error-message-dismiss:hover {
+  opacity: 1;
 }
 
 .success-message {
@@ -1910,6 +1936,24 @@ body {
   transition: color 0.15s ease, background 0.15s ease;
 }
 
+.workflow-nav-update-available {
+  padding: 8px 12px;
+  border-radius: 4px;
+  color: rgba(140, 220, 160, 0.98);
+  background: rgba(80, 160, 100, 0.14);
+  border: 1px solid rgba(120, 200, 140, 0.35);
+  font-size: 14px;
+  text-decoration: none;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.workflow-nav-update-available:hover {
+  color: #c9f5d4;
+  background: rgba(80, 160, 100, 0.22);
+  border-color: rgba(140, 220, 160, 0.55);
+  text-decoration: none;
+}
+
 .workflow-nav-text-action:hover {
   color: #fff;
   background: rgba(255, 255, 255, 0.06);
@@ -2238,6 +2282,16 @@ body {
   flex-wrap: wrap;
   margin-bottom: 12px;
   color: rgba(255, 255, 255, 0.8);
+}
+
+.workflow-meta--game-header {
+  gap: 8px;
+  align-items: center;
+}
+
+.workflow-meta-sep {
+  color: rgba(255, 255, 255, 0.35);
+  user-select: none;
 }
 
 .workflow-summary-map-row {
@@ -2889,12 +2943,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   color: rgba(255, 255, 255, 0.86);
+  font-size: 12px;
 }
 
 .workflow-pagination-row-centered {
   justify-content: center;
+}
+
+.workflow-pagination-row .btn-switch {
+  padding: 3px 8px;
+  font-size: 11px;
 }
 
 .workflow-pattern-pill-inline {

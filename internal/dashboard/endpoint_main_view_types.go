@@ -255,16 +255,12 @@ var workflowFeaturingFilters = []struct {
 	IconLabel string
 	Emoji     string
 }{
-	{Key: "carriers", Label: "Carrier", Group: "marker", IconKey: "carrier"},
-	{Key: "battlecruisers", Label: "Battlecruiser", Group: "marker", IconKey: "battlecruiser"},
-	{Key: "ten_plus_scouts", Label: "10+ Scouts", Group: "marker", IconKey: "scout", IconLabel: "10+"},
 	{Key: "mech", Label: "Mech", Group: "marker", IconKeys: []string{"siegetank", "goliath"}, IconLabel: "Mech"},
 	{Key: "sk_terran", Label: "SK Terran", Group: "marker", IconKeys: []string{"marine", "medic"}, IconLabel: "SK Terran"},
 	{Key: "one_one_one", Label: "1-1-1", Group: "marker"},
 	{Key: "mech_transition", Label: "Mech Transition", Group: "marker", IconKeys: []string{"siegetank", "goliath"}, IconLabel: "Mech transition"},
 	{Key: "mutalisk_timing", Label: "Mutalisk timing", Group: "marker", IconKey: "mutalisk", IconLabel: "timing"},
 	{Key: "turret_timing", Label: "Turret timing", Group: "marker", IconKey: "missileturret", IconLabel: "Timing"},
-	{Key: "cliff_drop", Label: "Cliff drop", Group: "marker", IconKey: "dropship", IconLabel: "Cliff drop"},
 	{Key: "cannon_rush", Label: "Cannon Rush", Group: "marker", IconKey: "photoncannon", IconLabel: "Rush"},
 	{Key: "bunker_rush", Label: "Bunker Rush", Group: "marker", IconKey: "bunker", IconLabel: "Rush"},
 	{Key: "zergling_rush", Label: "Zergling Rush", Group: "marker", IconKey: "zergling", IconLabel: "Rush"},
@@ -275,6 +271,11 @@ var workflowFeaturingFilters = []struct {
 	{Key: "nukes", Label: "Nukes", Group: "marker", IconKey: "ghost", IconLabel: "Nuke"},
 	{Key: "recalls", Label: "Recalls", Group: "marker", IconKey: "arbiter", IconLabel: "Recall"},
 	{Key: "team_stacking", Label: "Team stacking", Group: "marker", Emoji: "😈"},
+	// Money-map markers — rendered last so regular markers take priority.
+	{Key: "carriers", Label: "Carrier", Group: "marker", IconKey: "carrier"},
+	{Key: "battlecruisers", Label: "Battlecruiser", Group: "marker", IconKey: "battlecruiser"},
+	{Key: "ten_plus_scouts", Label: "10+ Scouts", Group: "marker", IconKey: "scout", IconLabel: "10+"},
+	{Key: "cliff_drop", Label: "Cliff drop", Group: "marker", IconKey: "dropship", IconLabel: "Cliff drop"},
 	// Build order pills — keys & labels kept in sync with internal/markers.
 	// Suppressed in render for Money maps (game-list + replay-summary
 	// featuring strips); BO tab and per-player summary pills still show.

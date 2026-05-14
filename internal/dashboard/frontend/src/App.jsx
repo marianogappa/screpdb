@@ -3973,6 +3973,17 @@ function App() {
             <button type="button" className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('players')}>Players</button>
           </div>
           <div className="workflow-nav-group">
+            {latestVersion ? (
+              <a
+                href={latestVersionUrl || 'https://github.com/marianogappa/screpdb/releases/latest'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="workflow-nav-update-available"
+                title={`Update available — current version ${currentVersion}`}
+              >
+                🆕 Update available
+              </a>
+            ) : null}
             <button
               type="button"
               onClick={() => {
@@ -4012,7 +4023,20 @@ function App() {
           </div>
         </div>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && (
+          <div className="error-message" role="alert">
+            <span className="error-message-text">{error}</span>
+            <button
+              type="button"
+              className="error-message-dismiss"
+              aria-label="Dismiss error"
+              title="Dismiss"
+              onClick={() => setError(null)}
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {activeView === 'games' && (
           <div className="workflow-panel">
@@ -4635,12 +4659,17 @@ function App() {
                 </div>
                 <div className="workflow-meta workflow-meta--game-header">
                   <span>{formatRelativeReplayDate(mainGame.replay_date)}</span>
+                  <span className="workflow-meta-sep" aria-hidden="true">·</span>
                   <span>{formatMapNameWithKind(mainGame.map_name, mainGame.map_kind)}</span>
+                  <span className="workflow-meta-sep" aria-hidden="true">·</span>
                   <span>{formatDuration(mainGame.duration_seconds)}</span>
                   {mainGame.file_path ? (
-                    <code className="workflow-meta-filepath-text" title={mainGame.file_path}>
-                      {mainGame.file_path.replace(/\\/g, '/').split('/').pop()}
-                    </code>
+                    <>
+                      <span className="workflow-meta-sep" aria-hidden="true">·</span>
+                      <code className="workflow-meta-filepath-text" title={mainGame.file_path}>
+                        {mainGame.file_path.replace(/\\/g, '/').split('/').pop()}
+                      </code>
+                    </>
                   ) : null}
                   {mainGame.file_path ? (
                     <button
@@ -6078,20 +6107,13 @@ function App() {
         <div className="footer-left">
           {replayCount !== null ? (
             <>
-              {replayCount.toLocaleString()} replays in database.{' '}
+              {replayCount.toLocaleString()} replays in database
+              <span className="workflow-meta-sep" aria-hidden="true"> · </span>
               <a href="https://github.com/marianogappa/screpdb" target="_blank" rel="noopener noreferrer">screpdb</a>
               {' by '}
               <a href="https://marianogappa.github.io" target="_blank" rel="noopener noreferrer">Mariano Gappa</a>
-              {'. '}
+              <span className="workflow-meta-sep" aria-hidden="true"> · </span>
               <a href="https://github.com/marianogappa/screpdb/issues" target="_blank" rel="noopener noreferrer">🐞 Report an issue</a>
-              {latestVersion ? (
-                <>
-                  {'. '}
-                  <a href={latestVersionUrl || 'https://github.com/marianogappa/screpdb/releases/latest'} target="_blank" rel="noopener noreferrer">
-                    🆕 Update available (current version {currentVersion})
-                  </a>
-                </>
-              ) : null}
             </>
           ) : (
             'Loading replay count...'
