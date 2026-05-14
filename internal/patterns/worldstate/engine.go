@@ -177,6 +177,7 @@ type Engine struct {
 	streamCommands []*models.Command
 	polygonGeoms   []PolygonGeom
 	leaveSec       map[byte]int
+	lastCmdSec     map[byte]int
 	finalized      bool
 }
 
@@ -200,6 +201,7 @@ func NewEngine(replay *models.Replay, players []*models.Player, mapCtx *models.R
 		entries:               make([]NarrativeEntry, 0, 256),
 		replayEvents:          make([]ReplayEvent, 0, 256),
 		leaveSec:              map[byte]int{},
+		lastCmdSec:            map[byte]int{},
 	}
 	for _, p := range players {
 		e.players[p.PlayerID] = p
@@ -265,6 +267,19 @@ func NewEngine(replay *models.Replay, players []*models.Player, mapCtx *models.R
 
 	e.assignDisplayNames()
 	return e
+}
+
+// LastCommandSecond reports the second of the player's last observed command
+// (any action that reached ProcessCommand). Returns ok=false for players who
+// issued zero commands. Used by per-player marker gates that must distinguish
+// "player had no time" from "player had time but didn't act" — leaveSec alone
+// is unreliable here because some replays record an early spurious leave_game
+// for players who keep playing afterwards. The last-command second is the
+// most robust "still playing by threshold" signal: if a player left, was
+// dropped, or AFK'd before the gate, their last command precedes it.
+func (e *Engine) LastCommandSecond(pid byte) (int, bool) {
+	sec, ok := e.lastCmdSec[pid]
+	return sec, ok
 }
 
 // EnrichedStream returns a copy of the full per-replay enriched-command
@@ -502,6 +517,11 @@ func (e *Engine) ProcessCommand(command *models.Command) {
 	sec := command.SecondsFromGameStart
 	if sec < 0 {
 		sec = 0
+	}
+	if pid, ok := e.playerIDFromCommand(command); ok {
+		if sec > e.lastCmdSec[pid] {
+			e.lastCmdSec[pid] = sec
+		}
 	}
 	if isLeaveAction(command.ActionType) {
 		if pid, ok := e.playerIDFromCommand(command); ok {
