@@ -267,6 +267,12 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	// Aspect, etc.
 	data.Commands = cmddedup.Dedup(data.Commands)
 
+	// Rewrite Right Click → Load / LoadBunker when the target unit is a
+	// transport, so the worldstate drop detector can pair Loads against
+	// subsequent Unload events. Must run before pattern detection so the
+	// orchestrator sees the rewritten action_type.
+	commands.ClassifyLoads(data.Commands)
+
 	// Feed the filtered command stream through pattern detection.
 	for _, command := range data.Commands {
 		patternOrchestrator.ProcessCommand(command)

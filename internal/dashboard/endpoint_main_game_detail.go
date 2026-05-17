@@ -1458,18 +1458,104 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 		if event.Type == "recall" && row.Payload != nil && *row.Payload != "" {
 			applyRecallPayload(&event, *row.Payload, baseMetas)
 		}
+		if isDropEventType(event.Type) && row.Payload != nil && *row.Payload != "" {
+			applyDropPayload(&event, *row.Payload, baseMetas)
+		}
 		events = append(events, event)
 	}
 	return events
 }
 
+// isDropEventType reports whether an event_type is one of the drop variants
+// emitted by worldstate.emitDropEvents.
+func isDropEventType(t string) bool {
+	switch t {
+	case "drop", "reaver_drop", "dt_drop", "cliff_drop":
+		return true
+	}
+	return false
+}
+
+// applyDropPayload decodes a drop event's payload (same shape as the recall
+// payload, separate JSON type for clarity) and stamps the source/target
+// points, target base, and count/last-second fields onto the event.
+func applyDropPayload(event *workflowGameEvent, raw string, baseMetas []overlayBaseMeta) {
+	// The drop payload shape mirrors recallEventPayload; reuse the type.
+	var pl recallEventPayload
+	if err := json.Unmarshal([]byte(raw), &pl); err != nil {
+		return
+	}
+	if len(pl.S) == 2 {
+		event.SourcePoint = &workflowGameEventPoint{X: float64(pl.S[0]), Y: float64(pl.S[1])}
+	}
+	if len(pl.T) == 2 {
+		event.TargetPoint = &workflowGameEventPoint{X: float64(pl.T[0]), Y: float64(pl.T[1])}
+	}
+	if pl.N > 1 {
+		event.DropCount = int64(pl.N)
+	}
+	if pl.LE > 0 {
+		event.DropLastSecond = int64(pl.LE)
+	}
+	event.DropTargetVia = pl.TV
+	if pl.SB != nil {
+		var baseTypePtr *string
+		if pl.SB.K != "" {
+			k := pl.SB.K
+			baseTypePtr = &k
+		}
+		oclockCopy := pl.SB.O
+		var oclockPtr *int64
+		if pl.SB.K != "" || oclockCopy != 0 {
+			oclockPtr = &oclockCopy
+		}
+		if matched, ok := lookupOverlayBase(baseMetas, baseTypePtr, oclockPtr, pl.SB.NO); ok {
+			baseCopy := matched
+			if label := baseLabel(baseTypePtr, oclockPtr, pl.SB.NO); strings.TrimSpace(label) != "" {
+				baseCopy.Name = label
+			}
+			baseCopy.NaturalOfClock = pl.SB.NO
+			if pl.SB.MO != nil && *pl.SB.MO {
+				baseCopy.MineralOnly = pl.SB.MO
+			}
+			event.SourceBase = &baseCopy
+		}
+	}
+	if pl.TB != nil {
+		var baseTypePtr *string
+		if pl.TB.K != "" {
+			k := pl.TB.K
+			baseTypePtr = &k
+		}
+		oclockCopy := pl.TB.O
+		var oclockPtr *int64
+		if pl.TB.K != "" || oclockCopy != 0 {
+			oclockPtr = &oclockCopy
+		}
+		if matched, ok := lookupOverlayBase(baseMetas, baseTypePtr, oclockPtr, pl.TB.NO); ok {
+			baseCopy := matched
+			if label := baseLabel(baseTypePtr, oclockPtr, pl.TB.NO); strings.TrimSpace(label) != "" {
+				baseCopy.Name = label
+			}
+			baseCopy.NaturalOfClock = pl.TB.NO
+			if pl.TB.MO != nil && *pl.TB.MO {
+				baseCopy.MineralOnly = pl.TB.MO
+			}
+			event.TargetBase = &baseCopy
+		}
+	}
+}
+
 // recallEventPayload mirrors the on-disk JSON shape produced by
 // worldstate.emitRecallEvents. Short keys keep storage cost down — the
-// canonical mapping is documented at the worldstate side.
+// canonical mapping is documented at the worldstate side. The drop payload
+// also reuses this shape with an extra SB field for source base (recall's
+// source IS event.base; drops need a separate source ref).
 type recallEventPayload struct {
 	N  int                       `json:"n,omitempty"`
 	LE int                       `json:"le,omitempty"`
 	S  []int                     `json:"s,omitempty"`
+	SB *recallEventTargetBaseRef `json:"sb,omitempty"`
 	T  []int                     `json:"t,omitempty"`
 	TB *recallEventTargetBaseRef `json:"tb,omitempty"`
 	TP int64                     `json:"tp,omitempty"`
@@ -1544,15 +1630,18 @@ func resolveRecallTargetOwners(events []workflowGameEvent, players []workflowGam
 		playerByID[p.PlayerID] = p
 	}
 	for i := range events {
-		if events[i].Type != "recall" || events[i].TargetBase == nil {
+		if events[i].Type != "recall" && !isDropEventType(events[i].Type) {
 			continue
 		}
-		// The recall payload is no longer present at this layer (events came
-		// out of replayEventsFromRows). We re-derive target_owner via the
-		// existing event.Target field — populated upstream from the row's
-		// target_player_id when worldstate set it. For recall, worldstate
-		// also writes Target when the destination's owner is hostile, so
-		// Target ⇔ TargetOwner here.
+		if events[i].TargetBase == nil {
+			continue
+		}
+		// The recall/drop payload is no longer present at this layer (events
+		// came out of replayEventsFromRows). We re-derive target_owner via
+		// the existing event.Target field — populated upstream from the row's
+		// target_player_id when worldstate set it. For both recall and drop,
+		// worldstate writes Target when the destination's owner is hostile,
+		// so Target ⇔ TargetOwner here.
 		if events[i].Target != nil {
 			cp := *events[i].Target
 			if p, ok := playerByID[cp.PlayerID]; ok {

@@ -319,11 +319,19 @@ const gameEventDescription = (event, registry) => {
   }
   if (eventType === 'attack') return actor && target && location ? `${actor} attacks ${target} at ${location}` : 'Attack';
   if (eventType === 'scout') return actor && target && location ? `${actor} scouts ${target} at ${location}` : 'Scout';
-  if (eventType === 'cliff_drop') {
-    return actor && target && location ? `${actor} cliff drops ${target} at ${location}` : 'Cliff drop';
-  }
-  if (eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
-    return actor && target && location ? `${actor} drops on ${target} at ${location}` : 'Drop';
+  if (eventType === 'cliff_drop' || eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
+    const fallback = eventType === 'cliff_drop' ? 'Cliff drop' : 'Drop';
+    if (!actor || !target || !location) return fallback;
+    // event.base is the destination polygon for drops (toReplayEvent stamps
+    // DstPolyID there). Source, when worldstate could resolve it, lives on
+    // payload.sb → event.source_base.
+    const sourceLabel = String(event?.source_base?.name || '').trim();
+    const dropCount = Number(event?.drop_count || 0) > 1 ? ` (×${event.drop_count})` : '';
+    const fromClause = sourceLabel ? ` from ${sourceLabel}` : '';
+    if (eventType === 'cliff_drop') {
+      return `${actor} cliff drops${dropCount}${fromClause} ${target} at ${location}`;
+    }
+    return `${actor} drops${dropCount}${fromClause} on ${target} at ${location}`;
   }
   if (eventType === 'recall') {
     // CastRecall's X/Y is the *source* of the teleport; the destination is
@@ -387,7 +395,9 @@ const gamePlayerNameSpan = (player, key) => {
 // renderGameEventDescription returns the same sentence as gameEventDescription
 // but with the actor and target wrapped in colored <span>s. Used for rendering
 // the event-row body. The string variant remains for search + dedup keys.
-const renderGameEventDescription = (event, registry) => {
+// playerRaceByID lets us inline race-correct icons (vessel for drops) without
+// requiring the backend to embed race on every event row.
+const renderGameEventDescription = (event, registry, playerRaceByID) => {
   const eventType = normalizeEventType(event?.type);
   const actorName = String(event?.actor?.name || '').trim();
   const targetName = String(event?.target?.name || '').trim();
@@ -429,15 +439,32 @@ const renderGameEventDescription = (event, registry) => {
       ? <>{actorSpan} scouts {targetSpan} at {location}</>
       : 'Scout';
   }
-  if (eventType === 'cliff_drop') {
-    return actorName && targetName && location
-      ? <>{actorSpan} cliff drops {targetSpan} at {location}</>
-      : 'Cliff drop';
-  }
-  if (eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
-    return actorName && targetName && location
-      ? <>{actorSpan} drops on {targetSpan} at {location}</>
-      : 'Drop';
+  if (eventType === 'cliff_drop' || eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
+    const fallback = eventType === 'cliff_drop' ? 'Cliff drop' : 'Drop';
+    if (!actorName || !targetName || !location) return fallback;
+    const sourceLabel = String(event?.source_base?.name || '').trim();
+    const dropCount = Number(event?.drop_count || 0) > 1 ? ` (×${event.drop_count})` : '';
+    const fromClause = sourceLabel ? <> from {sourceLabel}</> : null;
+    // Inline vessel icon right after the verb — race-correct transport. Mirrors
+    // the Arbiter-icon-after-"recalls" pattern. The trailing row-icon strip
+    // strips the vessel to avoid duplication (see gameEventRowIconEntries).
+    const actorPidForRace = Number(event?.actor?.player_id || 0);
+    const actorRace = playerRaceByID && actorPidForRace > 0 ? (playerRaceByID.get(actorPidForRace) || '') : '';
+    const vesselURL = dropTransportIconForRace(actorRace);
+    const vesselName = (() => {
+      const r = actorRace.toLowerCase();
+      if (r === 'terran') return 'Dropship';
+      if (r === 'protoss') return 'Shuttle';
+      if (r === 'zerg') return 'Overlord';
+      return 'transport';
+    })();
+    const vesselIcon = vesselURL ? (
+      <img src={vesselURL} alt={vesselName} title={vesselName} className="workflow-event-row-recall-arbiter" />
+    ) : null;
+    if (eventType === 'cliff_drop') {
+      return <>{actorSpan} cliff drops{vesselIcon}{dropCount}{fromClause} {targetSpan} at {location}</>;
+    }
+    return <>{actorSpan} drops{vesselIcon}{dropCount}{fromClause} on {targetSpan} at {location}</>;
   }
   if (eventType === 'recall') {
     if (!actorName) return 'Recall';
@@ -841,11 +868,6 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
     if (!icon) return [];
     return [{ src: icon, alt: 'townhall', title: 'Expansion' }];
   }
-  if (normalized === 'drop') {
-    const icon = dropTransportIconForRace(actorRace);
-    return icon ? [{ src: icon, alt: 'transport', title: 'Drop' }] : [];
-  }
-
   let unitNames = Array.isArray(event?.attack_unit_types) && event.attack_unit_types.length > 0
     ? event.attack_unit_types
     : fallbackOverlayUnitNamesForEvent(event?.type, actorRace);
@@ -854,6 +876,13 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
   // strip to avoid duplication. The remaining units are what got recalled.
   if (normalized === 'recall') {
     unitNames = unitNames.filter((name) => String(name || '').toLowerCase() !== 'arbiter');
+  }
+  // Drops render the vessel (Dropship/Shuttle/Overlord) inline next to the
+  // verb in the row body. Strip it from the trailing icon strip so the
+  // trailing icons are just the dropped units.
+  if (['drop', 'reaver_drop', 'dt_drop', 'cliff_drop'].includes(normalized)) {
+    const transports = new Set(['dropship', 'shuttle', 'overlord']);
+    unitNames = unitNames.filter((name) => !transports.has(String(name || '').toLowerCase()));
   }
   const seen = new Set();
   const entries = [];
@@ -3430,6 +3459,35 @@ function App() {
         color: playerColorToCss(selectedMainGameEvent?.actor?.color),
       };
     }
+    // Drop arrow: source_base (where the player loaded — falls back to start
+    // base on the backend when no Load was paired) → event.base (destination,
+    // where the unload happened). The dropped-unit overlay is anchored at the
+    // source so the user sees "here's what got loaded" at the tail.
+    const eventType = normalizeEventType(selectedMainGameEvent.type);
+    if (['drop', 'reaver_drop', 'dt_drop', 'cliff_drop'].includes(eventType)) {
+      const sourceAnchor = polygonCenter(selectedMainGameEvent?.source_base?.polygon)
+        || selectedMainGameEvent?.source_base?.center
+        || selectedMainGameEvent?.source_point;
+      const targetAnchor = polygonCenter(selectedMainGameEvent?.base?.polygon)
+        || selectedMainGameEvent?.base?.center
+        || selectedMainGameEvent?.target_point;
+      const fromRaw = mapPointToPercent(sourceAnchor, mainEventMapBounds);
+      const toRaw = mapPointToPercent(targetAnchor, mainEventMapBounds);
+      if (!fromRaw || !toRaw) return null;
+      const dx = toRaw.x - fromRaw.x;
+      const dy = toRaw.y - fromRaw.y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      const headPullback = Math.min(6, len * 0.4);
+      const tailPullback = Math.min(6, len * 0.4);
+      const headFactor = len > 0 ? Math.max(0, len - headPullback) / len : 1;
+      const tailFactor = len > 0 ? Math.min(1, tailPullback / len) : 0;
+      return {
+        from: { x: fromRaw.x + dx * tailFactor, y: fromRaw.y + dy * tailFactor },
+        to: { x: fromRaw.x + dx * headFactor, y: fromRaw.y + dy * headFactor },
+        sourceAnchor: fromRaw,
+        color: playerColorToCss(selectedMainGameEvent?.actor?.color),
+      };
+    }
     // actor_origin is the source player's starting location. If inactivity
     // rules have stripped ownership of that starting base, anchor the arrow
     // at any base the actor still owns at event time so the visual matches
@@ -3463,10 +3521,18 @@ function App() {
     // — the backend harvests army composition either way. Always strip
     // "Arbiter" — the recall overlay paints it separately at the
     // destination; painting it at source too would duplicate the icon.
-    if (normalizeEventType(selectedMainGameEvent.type) === 'recall') {
+    const eventTypeForOverlay = normalizeEventType(selectedMainGameEvent.type);
+    if (eventTypeForOverlay === 'recall') {
       // No destination → no source→target arrow → no source units.
       if (!selectedMainGameEvent?.target_base) return [];
       unitNames = unitNames.filter((name) => String(name || '').toLowerCase() !== 'arbiter');
+    }
+    // For drops: strip the transport itself (Dropship/Shuttle/Overlord) from
+    // the source-side unit overlay — the transport icon is painted separately
+    // at the destination. Workers (SCV/Probe/Drone) and combat units stay.
+    if (['drop', 'reaver_drop', 'dt_drop', 'cliff_drop'].includes(eventTypeForOverlay)) {
+      const transports = new Set(['dropship', 'shuttle', 'overlord']);
+      unitNames = unitNames.filter((name) => !transports.has(String(name || '').toLowerCase()));
     }
     return unitNames
       .map((name) => ({ name, icon: getUnitIcon(name) }))
@@ -3495,6 +3561,25 @@ function App() {
     const playerID = Number(selectedMainGameEvent?.actor?.player_id || 0);
     const actorRow = mainGamePlayers.find((player) => Number(player?.player_id || 0) === playerID);
     const icon = getExpansionMarkerIconForRace(actorRow?.race);
+    if (!icon) return null;
+    const point = mapPointToPercent(anchor, mainEventMapBounds);
+    if (!point) return null;
+    return { icon, point };
+  }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds]);
+  // Drop overlay: anchor the race-correct transport vessel (Dropship/Shuttle/
+  // Overlord) at the destination, mirroring the Arbiter overlay used for
+  // recalls. Always render when the event is a drop variant — drops are
+  // defined by the vessel and the icon is the most recognizable signal.
+  const selectedMainGameDropOverlay = useMemo(() => {
+    const evType = normalizeEventType(selectedMainGameEvent?.type);
+    if (!['drop', 'reaver_drop', 'dt_drop', 'cliff_drop'].includes(evType)) return null;
+    const anchor = polygonCenter(selectedMainGameEvent?.base?.polygon)
+      || selectedMainGameEvent?.base?.center
+      || selectedMainGameEvent?.target_point;
+    if (!anchor) return null;
+    const actorPid = Number(selectedMainGameEvent?.actor?.player_id || 0);
+    const actorRow = mainGamePlayers.find((player) => Number(player?.player_id || 0) === actorPid);
+    const icon = dropTransportIconForRace(actorRow?.race);
     if (!icon) return null;
     const point = mapPointToPercent(anchor, mainEventMapBounds);
     if (!point) return null;
@@ -5091,11 +5176,13 @@ function App() {
                                   </svg>
                                 ) : null}
                                 {selectedMainGameArrow && selectedMainGameArrowUnits.length > 0 ? (() => {
-                                  const isRecall = normalizeEventType(selectedMainGameEvent?.type) === 'recall';
-                                  // Recalls anchor units at the actual source (where units were
-                                  // pulled FROM); other events keep their midpoint placement so
-                                  // the arrow remains the dominant visual.
-                                  const anchor = isRecall && selectedMainGameArrow.sourceAnchor
+                                  const evType = normalizeEventType(selectedMainGameEvent?.type);
+                                  const isRecall = evType === 'recall';
+                                  const isDrop = ['drop', 'reaver_drop', 'dt_drop', 'cliff_drop'].includes(evType);
+                                  // Recalls and drops anchor units at the actual source (where
+                                  // units were pulled FROM or loaded onto the transport); other
+                                  // events keep their midpoint placement.
+                                  const anchor = (isRecall || isDrop) && selectedMainGameArrow.sourceAnchor
                                     ? selectedMainGameArrow.sourceAnchor
                                     : {
                                         x: (selectedMainGameArrow.from.x + selectedMainGameArrow.to.x) / 2,
@@ -5166,6 +5253,19 @@ function App() {
                                     }}
                                   />
                                 ) : null}
+                                {selectedMainGameDropOverlay ? (
+                                  <img
+                                    key={`drop-${selectedMainGameEventKeyResolved}`}
+                                    src={selectedMainGameDropOverlay.icon}
+                                    alt="Drop transport"
+                                    title="Drop landing point — transport vessel"
+                                    className="workflow-event-map-expansion-overlay workflow-event-map-expansion-overlay--recall-arbiter"
+                                    style={{
+                                      left: `${selectedMainGameDropOverlay.point.x}%`,
+                                      top: `${selectedMainGameDropOverlay.point.y}%`,
+                                    }}
+                                  />
+                                ) : null}
                               </div>
                             </>
                           ) : (
@@ -5225,7 +5325,7 @@ function App() {
                                   >
                                     <span>{formatDuration(event.second)}</span>
                                     <span className="workflow-event-row-body">
-                                      <span>{renderGameEventDescription(event, markerRegistry)}</span>
+                                      <span>{renderGameEventDescription(event, markerRegistry, mainEventRaceByPlayerID)}</span>
                                       {(iconEntries.length > 0 || castEntries.length > 0) ? (
                                         <span className="workflow-event-row-units">
                                           {iconEntries.map((entry, idx) => (

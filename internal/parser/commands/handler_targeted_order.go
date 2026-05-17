@@ -33,5 +33,14 @@ func (h *TargetedOrderCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) 
 
 	command.IsQueued = boolPtr(targetedOrderCmd.Queued)
 
+	// Transient (not persisted) — used by the worldstate drop detector to
+	// follow the transport unit between Load and Unload events.
+	if targetedOrderCmd.Unit != nil {
+		tag := uint16(targetedOrderCmd.UnitTag)
+		command.TargetUnitTag = &tag
+		name := targetedOrderCmd.Unit.Name
+		command.TargetUnitType = &name
+	}
+
 	return command
 }

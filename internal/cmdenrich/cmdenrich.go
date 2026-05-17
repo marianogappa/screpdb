@@ -75,6 +75,16 @@ const (
 	// KindSiege / KindUnsiege: terran siege toggles (queueable).
 	KindSiege
 	KindUnsiege
+	// KindLoad: right-click onto a transport (Dropship / Shuttle / Overlord
+	// with Ventral Sacs) — synthesized from Right Click by the load-classify
+	// pass. Carries the transport's UnitTag on the source Command's
+	// TargetUnitTag transient field. Used by the worldstate drop detector to
+	// pair Loads with later Unload events.
+	KindLoad
+	// KindLoadBunker: right-click onto a Bunker. Same flow as KindLoad but
+	// kept distinct because bunkers aren't transports — they don't produce
+	// drop events, only garrison signals.
+	KindLoadBunker
 )
 
 // Aggression tri-state. Populated by Classify based on Kind; tune the mapping
@@ -118,6 +128,12 @@ type EnrichedCommand struct {
 	// Lets worldstate classify casts (PsionicStorm vs Recall vs Restoration)
 	// without re-walking the raw command stream.
 	OrderName string
+
+	// TargetUnitTag is the unit-tag of the order's target (the unit being
+	// right-clicked on), populated for KindLoad / KindLoadBunker and any
+	// other order whose source Command carries a non-nil TargetUnitTag. The
+	// worldstate drop detector tracks transport positions through this tag.
+	TargetUnitTag *uint16
 }
 
 // aggressionByKind is the tunable mapping from Kind to Aggression default.
@@ -141,6 +157,8 @@ var aggressionByKind = map[Kind]Aggression{
 	KindAttackUnit:   Aggressive,
 	KindCast:         Aggressive,
 	KindUnloadAll:    Aggressive,
+	KindLoad:         NonAggressive,
+	KindLoadBunker:   NonAggressive,
 }
 
 // Classify returns the EnrichedCommand for a raw command. The second return
@@ -184,6 +202,12 @@ func Classify(cmd *models.Command) (EnrichedCommand, bool) {
 	if kind == KindUpgrade {
 		subject = strings.TrimSpace(stringPtr(cmd.UpgradeName))
 	}
+	// Load / LoadBunker carry the transport's type on the source Command's
+	// TargetUnitType transient field. Surface it as Subject so worldstate
+	// can read it off the canonical field.
+	if kind == KindLoad || kind == KindLoadBunker {
+		subject = strings.TrimSpace(stringPtr(cmd.TargetUnitType))
+	}
 	orderName := stringPtr(cmd.OrderName)
 	// Player resolution: prefer the Player pointer when set (test fixtures
 	// and some parser paths populate Player but leave PlayerID at zero).
@@ -193,16 +217,17 @@ func Classify(cmd *models.Command) (EnrichedCommand, bool) {
 		playerID = int64(cmd.Player.PlayerID)
 	}
 	fact := EnrichedCommand{
-		Kind:       kind,
-		Subject:    subject,
-		Frame:      cmd.Frame,
-		Second:     cmd.SecondsFromGameStart,
-		PlayerID:   playerID,
-		X:          cmd.X,
-		Y:          cmd.Y,
-		Aggression: aggressionByKind[kind],
-		Queued:     boolPtr(cmd.IsQueued),
-		OrderName:  orderName,
+		Kind:          kind,
+		Subject:       subject,
+		Frame:         cmd.Frame,
+		Second:        cmd.SecondsFromGameStart,
+		PlayerID:      playerID,
+		X:             cmd.X,
+		Y:             cmd.Y,
+		Aggression:    aggressionByKind[kind],
+		Queued:        boolPtr(cmd.IsQueued),
+		OrderName:     orderName,
+		TargetUnitTag: cmd.TargetUnitTag,
 	}
 	return fact, true
 }
@@ -331,6 +356,10 @@ func kindFromActionType(actionType string) Kind {
 		return KindSiege
 	case "Unsiege":
 		return KindUnsiege
+	case "Load":
+		return KindLoad
+	case "LoadBunker":
+		return KindLoadBunker
 	}
 	return KindUnknown
 }

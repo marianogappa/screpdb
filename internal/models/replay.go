@@ -117,6 +117,12 @@ type Command struct {
 	ChatMessage *string `json:"chat_message,omitempty"` // Chat message content
 	LeaveReason *string `json:"leave_reason,omitempty"` // Reason for leaving game
 
+	// Transient (in-memory only) target-unit fields populated by RightClick and
+	// TargetedOrder handlers when the order targeted a specific unit. These are
+	// consumed by the worldstate Load/Drop detection pass and never persisted.
+	TargetUnitTag  *uint16 `json:"-"`
+	TargetUnitType *string `json:"-"`
+
 	Replay *Replay `json:"-"`
 	Player *Player `json:"-"`
 }

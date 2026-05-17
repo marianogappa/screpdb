@@ -332,6 +332,8 @@ func (e *Engine) Finalize() {
 	var ownership []PolyOwnership
 	var candidates []CandidateAttack
 
+	var dropClusters []DropCluster
+
 	if len(e.bases) > 0 {
 		e.polygonGeoms = polygonGeomFromBases(e.bases)
 		starts := e.buildPlayerStarts()
@@ -344,6 +346,12 @@ func (e *Engine) Finalize() {
 		ownership = BuildOwnership(e.stream, e.polygonGeoms, starts, durationSec)
 		candidates = BuildAttacks(e.stream, e.polygonGeoms, ownership, e.teams)
 
+		// Run the drops pass and feed its candidates back into the shared
+		// list so cross-event inference (Recall's attack-coincidence pass)
+		// keeps seeing drops as attack-class events.
+		dropClusters = BuildDrops(e.stream, e.polygonGeoms, e.bases, ownership, e.teams)
+		candidates = append(candidates, dropClustersToCandidateAttacks(dropClusters)...)
+
 		e.emitPlayerStartEvents()
 	}
 
@@ -355,6 +363,7 @@ func (e *Engine) Finalize() {
 	if len(e.bases) > 0 {
 		e.emitOwnershipTransitions(ownership)
 		e.emitRecallEvents(ownership, candidates)
+		e.emitDropEvents(ownership, dropClusters, candidates)
 	}
 	e.emitLeaveGameEvents()
 	e.emitAttackCandidates(candidates)

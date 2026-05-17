@@ -297,7 +297,11 @@ func (s *Store) ListFeaturingReplayEventRows(ctx context.Context, replayIDs []in
 		FROM replay_events
 		WHERE replay_id IN (`+placeholders+`)
 			AND event_kind = 'game_event'
-			AND event_type IN ('zergling_rush', 'cannon_rush', 'bunker_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory')
+			AND event_type IN (
+				'zergling_rush', 'cannon_rush', 'bunker_rush',
+				'proxy_gate', 'proxy_rax', 'proxy_factory',
+				'drop', 'reaver_drop', 'dt_drop', 'cliff_drop'
+			)
 	`, args...)
 	if err != nil {
 		return nil, err
