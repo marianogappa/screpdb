@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.24.0](https://github.com/marianogappa/screpdb/compare/v0.23.0...v0.24.0) (2026-05-17)
+
+
+### Features
+
+* alliance event context + DT-drop classification (closes [#133](https://github.com/marianogappa/screpdb/issues/133)) ([#134](https://github.com/marianogappa/screpdb/issues/134)) ([d550ac8](https://github.com/marianogappa/screpdb/commit/d550ac893a05bb247cd9fa6523ee5ee1521975fc))
+* detect Drops with source/target inference ([#131](https://github.com/marianogappa/screpdb/issues/131)) ([f4cc17a](https://github.com/marianogappa/screpdb/commit/f4cc17abcb110fb68e044ab0f7f32302aa768045))
+
 ## [0.23.0](https://github.com/marianogappa/screpdb/compare/v0.22.0...v0.23.0) (2026-05-14)
 
 
