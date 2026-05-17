@@ -26,10 +26,15 @@ type markerDefinition struct {
 // gameEventFeature covers the game-event-only featuring chips (cannon_rush,
 // bunker_rush, zergling_rush, mind_control) that aren't markers but still need
 // a frontend-renderable entry in the Featuring strip.
+//
+// IconKeys (multi-icon) wins over IconKey when both are populated — mirrors
+// the marker-filter chip layout so subtype pills (DT Drop, Reaver Drop) can
+// surface a shuttle + payload-unit pair like the games-list filter row.
 type gameEventFeature struct {
-	Key     string `json:"key"`
-	Label   string `json:"label"`
-	IconKey string `json:"icon_key"`
+	Key      string   `json:"key"`
+	Label    string   `json:"label"`
+	IconKey  string   `json:"icon_key,omitempty"`
+	IconKeys []string `json:"icon_keys,omitempty"`
 }
 
 type markersDefinitionsResponse struct {
@@ -51,8 +56,8 @@ var staticGameEventFeatures = []gameEventFeature{
 	{Key: "proxy_rax", Label: "Proxy barracks", IconKey: "barracks"},
 	{Key: "proxy_factory", Label: "Proxy factory", IconKey: "factory"},
 	{Key: "drop", Label: "Drop", IconKey: "shuttle"},
-	{Key: "dt_drop", Label: "DT Drop", IconKey: "darktemplar"},
-	{Key: "reaver_drop", Label: "Reaver Drop", IconKey: "reaver"},
+	{Key: "dt_drop", Label: "DT Drop", IconKeys: []string{"shuttle", "darktemplar"}},
+	{Key: "reaver_drop", Label: "Reaver Drop", IconKeys: []string{"shuttle", "reaver"}},
 	{Key: "mind_control", Label: "Mind control", IconKey: "darkarchon"},
 }
 

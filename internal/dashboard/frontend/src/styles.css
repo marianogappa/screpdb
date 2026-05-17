@@ -3480,6 +3480,24 @@ body {
   stroke-width: 0.45;
 }
 
+.workflow-event-map-alliance-line {
+  stroke-width: 0.45;
+  stroke-linecap: round;
+}
+
+.workflow-event-map-overlay-alliance {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.workflow-event-map-alliance-handshake {
+  z-index: 2;
+}
+
 .workflow-event-map-swords {
   font-size: 3.6px;
   text-anchor: middle;

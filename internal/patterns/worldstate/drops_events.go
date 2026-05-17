@@ -103,15 +103,18 @@ func (e *Engine) emitDropEvents(ownership []PolyOwnership, clusters []DropCluste
 		_ = matchedCand // reserved for future use (kept for symmetry with Recall)
 
 		// Build participating-units list. Epicenter window around the
-		// cluster's mid-second. We include workers (SCV/Probe/Drone) since
-		// transports legitimately carry them (SCV repair drops, Probe build
-		// drops, Drone expand drops). Flyers are filtered — they can't be
-		// loaded into a transport.
+		// cluster's mid-second. Workers (SCV/Probe/Drone) are excluded
+		// because workers trained inside the drop window are typically
+		// unrelated to the unload — keeping them in dilutes the dt_drop /
+		// reaver_drop subtype routing (a DT drop that coincides with a
+		// worker train would otherwise route to plain "drop"). Flyers are
+		// filtered for the original reason: they can't be loaded into a
+		// transport.
 		mid := (cl.FirstSec + cl.LastSec) / 2
 		rawUnits := e.buildOrTrainUnitsInWindow(cl.PID, mid)
 		dropUnits := make([]string, 0, len(rawUnits))
 		for _, u := range rawUnits {
-			if models.IsFlyingUnit(u) {
+			if models.IsFlyingUnit(u) || models.IsWorker(u) {
 				continue
 			}
 			dropUnits = append(dropUnits, u)
@@ -257,9 +260,9 @@ func (e *Engine) inferDropTargetByPostActivity(cl DropCluster) (int, bool) {
 
 // buildOrTrainUnitsInWindow returns distinct unit-build names produced by the
 // player in [mid - past, mid + future]. Unlike buildUnitsInEpicenterWindow it
-// includes workers (SCV/Probe/Drone) since transports legitimately carry
-// them, and walks the enriched stream directly rather than the attacker-only
-// attackUnitsByPID buffer.
+// walks the enriched stream directly rather than the attacker-only
+// attackUnitsByPID buffer (drops aren't necessarily flagged as attacks). The
+// caller is expected to filter out workers/flyers as needed.
 func (e *Engine) buildOrTrainUnitsInWindow(pid byte, mid int) []string {
 	epicenter := mid - attackUnitsEpicenterOffsetSec
 	lo := epicenter - attackUnitsPastSec
