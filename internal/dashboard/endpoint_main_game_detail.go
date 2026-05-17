@@ -202,6 +202,7 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 	}
 	detail.GameEvents = replayEventsFromRows(eventRows, mapLayout, startClockByPlayerID)
 	detail.GameEvents = resolveRecallTargetOwners(detail.GameEvents, detail.Players)
+	detail.GameEvents = resolveAllianceTeamPlayers(detail.GameEvents, detail.Players, displayByName)
 	for i := range detail.GameEvents {
 		event := &detail.GameEvents[i]
 		if event.Actor != nil {
@@ -217,6 +218,14 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 		if event.TargetOwner != nil {
 			if displayName, ok := displayByName[event.TargetOwner.Name]; ok {
 				event.TargetOwner.Name = displayName
+			}
+		}
+		for ti := range event.AllianceTeams {
+			team := event.AllianceTeams[ti]
+			for pi := range team {
+				if displayName, ok := displayByName[team[pi].Name]; ok {
+					team[pi].Name = displayName
+				}
 			}
 		}
 	}
@@ -1498,7 +1507,85 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 		if isDropEventType(event.Type) && row.Payload != nil && *row.Payload != "" {
 			applyDropPayload(&event, *row.Payload, baseMetas)
 		}
+		if event.Type == "late_alliance" && row.Payload != nil && *row.Payload != "" {
+			applyAlliancePayload(&event, *row.Payload)
+		}
 		events = append(events, event)
+	}
+	return events
+}
+
+// applyAlliancePayload decodes the {"teams":[["A","B"],["C"]]} payload that
+// parser.BuildAllianceDerivedEvents writes for late_alliance events and stamps
+// event.AllianceTeams with name-only player entries. PlayerID and Color are
+// filled in a second pass (resolveAllianceTeamPlayers) which has access to the
+// player roster.
+func applyAlliancePayload(event *workflowGameEvent, raw string) {
+	var pl struct {
+		Teams [][]string `json:"teams"`
+	}
+	if err := json.Unmarshal([]byte(raw), &pl); err != nil {
+		return
+	}
+	teams := make([][]workflowGameEventPlayer, 0, len(pl.Teams))
+	for _, team := range pl.Teams {
+		if len(team) < 2 {
+			continue
+		}
+		row := make([]workflowGameEventPlayer, 0, len(team))
+		for _, name := range team {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				continue
+			}
+			row = append(row, workflowGameEventPlayer{Name: name})
+		}
+		if len(row) >= 2 {
+			teams = append(teams, row)
+		}
+	}
+	if len(teams) > 0 {
+		event.AllianceTeams = teams
+	}
+}
+
+// resolveAllianceTeamPlayers fills PlayerID and Color on each entry of every
+// event's AllianceTeams. Mirrors the post-hoc resolution pattern used by
+// resolveRecallTargetOwners — applyAlliancePayload runs inside
+// replayEventsFromRows where the player roster isn't available.
+//
+// Lookups are keyed by both the raw player name (as stored in the alliance
+// payload) and the display name (post displayByName aliasing) to cover both
+// cases — detail.Players carries the display name in .Name, so a raw-name
+// payload entry like "chobo86" would otherwise miss the lookup for a player
+// whose display name is "chobo86 (you)".
+func resolveAllianceTeamPlayers(events []workflowGameEvent, players []workflowGamePlayer, displayByName map[string]string) []workflowGameEvent {
+	if len(events) == 0 {
+		return events
+	}
+	byName := make(map[string]*workflowGamePlayer, len(players)*2)
+	for i := range players {
+		byName[players[i].Name] = &players[i]
+	}
+	// Map raw payload names back to the patched display-name entry in detail.Players.
+	for raw, display := range displayByName {
+		if p, ok := byName[display]; ok {
+			byName[raw] = p
+		}
+	}
+	for i := range events {
+		if events[i].Type != "late_alliance" || len(events[i].AllianceTeams) == 0 {
+			continue
+		}
+		for ti := range events[i].AllianceTeams {
+			team := events[i].AllianceTeams[ti]
+			for pi := range team {
+				if p, ok := byName[team[pi].Name]; ok {
+					team[pi].PlayerID = p.PlayerID
+					team[pi].Color = p.Color
+				}
+			}
+		}
 	}
 	return events
 }

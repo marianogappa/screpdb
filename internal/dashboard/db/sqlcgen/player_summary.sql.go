@@ -143,13 +143,17 @@ WHERE lower(trim(p.name)) = ?
   AND r.map_kind IN ('Regular', 'Money')
   AND r.team_format LIKE '%v%'
   AND r.team_format != '1v1'
-  AND re.event_kind = 'marker'
-  AND re.event_type NOT IN (
-    'used_hotkey_groups',
-    'viewport_multitasking',
-    'mid_game_starts',
-    'late_game_starts',
-    'never_used_hotkeys'
+  AND (
+    (re.event_kind = 'marker' AND re.event_type NOT IN (
+      'used_hotkey_groups',
+      'viewport_multitasking',
+      'mid_game_starts',
+      'late_game_starts',
+      'never_used_hotkeys'
+    ))
+    OR (re.event_kind = 'game_event' AND re.event_type IN (
+      'dt_drop', 'reaver_drop', 'cliff_drop'
+    ))
   )
 GROUP BY p.race, r.team_format, r.map_kind, re.event_type
 `
@@ -165,7 +169,9 @@ type ListPlayerByFormatMarkerCountsRow struct {
 // Per-(own_race, team_format, map_kind, marker) replay counts for the by-
 // format summary cards. Same exclusion list as the per-matchup query so
 // meta markers (hotkeys, viewport multitasking, phase boundaries) don't
-// pollute the top-N pills.
+// pollute the top-N pills. Drop subtype game events
+// (dt_drop / reaver_drop / cliff_drop) are also surfaced alongside the
+// generic `made_drops` marker for subtype-level signal.
 func (q *Queries) ListPlayerByFormatMarkerCounts(ctx context.Context, name string) ([]ListPlayerByFormatMarkerCountsRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPlayerByFormatMarkerCounts, name)
 	if err != nil {
@@ -277,13 +283,17 @@ WHERE lower(trim(self.name)) = ?
   AND lower(trim(coalesce(self.type, ''))) = 'human'
   AND opp.is_observer = 0
   AND lower(trim(coalesce(opp.type, ''))) = 'human'
-  AND re.event_kind = 'marker'
-  AND re.event_type NOT IN (
-    'used_hotkey_groups',
-    'viewport_multitasking',
-    'mid_game_starts',
-    'late_game_starts',
-    'never_used_hotkeys'
+  AND (
+    (re.event_kind = 'marker' AND re.event_type NOT IN (
+      'used_hotkey_groups',
+      'viewport_multitasking',
+      'mid_game_starts',
+      'late_game_starts',
+      'never_used_hotkeys'
+    ))
+    OR (re.event_kind = 'game_event' AND re.event_type IN (
+      'dt_drop', 'reaver_drop', 'cliff_drop'
+    ))
   )
   AND 2 = (
     SELECT COUNT(*) FROM players p
@@ -304,7 +314,10 @@ type ListPlayerMatchupMarkerCountsRow struct {
 // 1v1 only. Per-(own_race, opp_race, marker_event_type) replay counts. The
 // consumer splits build-order markers (event_type LIKE 'bo_%') from the rest
 // and surfaces the top-N per matchup. Excludes meta markers that are not
-// meaningful per-matchup features.
+// meaningful per-matchup features. Drop subtype game events
+// (dt_drop / reaver_drop / cliff_drop) are also surfaced alongside the
+// generic `made_drops` marker so subtype-level signal lands on the Player
+// summary cards.
 func (q *Queries) ListPlayerMatchupMarkerCounts(ctx context.Context, name string) ([]ListPlayerMatchupMarkerCountsRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPlayerMatchupMarkerCounts, name)
 	if err != nil {

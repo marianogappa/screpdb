@@ -54,23 +54,25 @@ func BuildAllianceDerivedEvents(players []*models.Player, ar AllianceResult) []w
 	}
 
 	// late_alliance — per topology-changing snapshot after sec=600.
+	// Payload carries only the pairs that are NEW vs the immediately
+	// preceding snapshot (a re-affirmation of pre-existing alliances would
+	// otherwise be re-listed every time a single new pair forms — confusing
+	// at read-time). If no pairs are new for a transition, the event has no
+	// narrative value and is skipped.
 	for _, snap := range ar.LateAllianceTransitions {
-		issuer, primaryAlly := pickAllianceIssuerAndAlly(snap.Teams)
+		prevTeams := previousSnapshotTeams(ar.Snapshots, snap.Sec)
+		newPairs := pairsAdded(prevTeams, snap.Teams)
+		if len(newPairs) == 0 {
+			continue
+		}
+		issuer, primaryAlly := newPairs[0][0], newPairs[0][1]
 		event := worldstate.ReplayEvent{
-			EventType: "late_alliance",
-			Second:    snap.Sec,
+			EventType:            "late_alliance",
+			Second:               snap.Sec,
+			SourceReplayPlayerID: &issuer,
+			TargetReplayPlayerID: &primaryAlly,
 		}
-		if issuer != 0 {
-			i := issuer
-			event.SourceReplayPlayerID = &i
-		}
-		if primaryAlly != 0 {
-			a := primaryAlly
-			event.TargetReplayPlayerID = &a
-		}
-		// Payload carries all team groupings so the frontend can render the
-		// full picture if it wants ("X is now allied with Y, Z").
-		if payload, ok := marshalAllianceTopology(snap.Teams, pidToName); ok {
+		if payload, ok := marshalAllianceTopology(pairsToTeams(newPairs), pidToName); ok {
 			payloadCopy := payload
 			event.Payload = &payloadCopy
 		}
@@ -91,6 +93,71 @@ func BuildAllianceDerivedEvents(players []*models.Player, ar AllianceResult) []w
 	}
 
 	return events
+}
+
+// previousSnapshotTeams returns the team topology that was in effect
+// immediately before the snapshot at `sec`. Returns nil if there's no
+// earlier snapshot (treat as all-solos before any topology was observed).
+func previousSnapshotTeams(snapshots []AllianceSnapshot, sec int) [][]byte {
+	var prev [][]byte
+	for _, snap := range snapshots {
+		if snap.Sec >= sec {
+			break
+		}
+		prev = snap.Teams
+	}
+	return prev
+}
+
+// pairsAdded returns the alliance pairs (sorted [a, b] with a < b) that
+// appear in `curr` but not in `prev`. A pair is an unordered (a, b) where
+// a and b are in the same team grouping. Order is by min-pid for stability.
+func pairsAdded(prev, curr [][]byte) [][2]byte {
+	prevSet := pairsOf(prev)
+	currSet := pairsOf(curr)
+	out := make([][2]byte, 0)
+	for p := range currSet {
+		if _, ok := prevSet[p]; ok {
+			continue
+		}
+		out = append(out, p)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i][0] != out[j][0] {
+			return out[i][0] < out[j][0]
+		}
+		return out[i][1] < out[j][1]
+	})
+	return out
+}
+
+func pairsOf(teams [][]byte) map[[2]byte]struct{} {
+	out := map[[2]byte]struct{}{}
+	for _, team := range teams {
+		if len(team) < 2 {
+			continue
+		}
+		for i := 0; i < len(team); i++ {
+			for j := i + 1; j < len(team); j++ {
+				a, b := team[i], team[j]
+				if a > b {
+					a, b = b, a
+				}
+				out[[2]byte{a, b}] = struct{}{}
+			}
+		}
+	}
+	return out
+}
+
+// pairsToTeams reshapes a list of pairs into the [][]byte team layout used
+// by marshalAllianceTopology — each pair becomes its own 2-element "team".
+func pairsToTeams(pairs [][2]byte) [][]byte {
+	out := make([][]byte, 0, len(pairs))
+	for _, p := range pairs {
+		out = append(out, []byte{p[0], p[1]})
+	}
+	return out
 }
 
 // pickAllianceIssuerAndAlly picks a representative (issuer, ally) pair

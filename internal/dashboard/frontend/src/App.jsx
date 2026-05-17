@@ -188,11 +188,45 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
     return { positive: [], noScout: null };
   }
 
-  if (playerIsActorForGameEventTypes(events, pid, DROP_ACTOR_EVENT_TYPES)) {
+  // Drop pills — one per variant the player was the actor for. Filter UI
+  // dictates the icon layout: DT Drop / Reaver Drop ride two icons (shuttle
+  // + payload unit) side-by-side; generic Drop and Cliff drop keep the
+  // single transport icon. The post-process elideGenericDropPill drops the
+  // generic "drop" entry when any specific variant fired.
+  const transportIcon = dropTransportIconForRace(player?.race);
+  if (playerIsActorForGameEventTypes(events, pid, ['drop'])) {
     positive.push({
-      key: `ge-drop-${pid}`,
-      icon: dropTransportIconForRace(player?.race),
-      label: 'Dropped',
+      key: 'drop',
+      domKey: `ge-drop-${pid}`,
+      icons: [transportIcon].filter(Boolean),
+      label: 'Drop',
+      className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+    });
+  }
+  if (playerIsActorForGameEventTypes(events, pid, ['dt_drop'])) {
+    positive.push({
+      key: 'dt_drop',
+      domKey: `ge-dt-drop-${pid}`,
+      icons: [getUnitIcon('shuttle'), getUnitIcon('darktemplar')].filter(Boolean),
+      label: 'DT Drop',
+      className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+    });
+  }
+  if (playerIsActorForGameEventTypes(events, pid, ['reaver_drop'])) {
+    positive.push({
+      key: 'reaver_drop',
+      domKey: `ge-reaver-drop-${pid}`,
+      icons: [getUnitIcon('shuttle'), getUnitIcon('reaver')].filter(Boolean),
+      label: 'Reaver Drop',
+      className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+    });
+  }
+  if (playerIsActorForGameEventTypes(events, pid, ['cliff_drop'])) {
+    positive.push({
+      key: 'cliff_drop',
+      domKey: `ge-cliff-drop-${pid}`,
+      icons: [getUnitIcon('dropship')].filter(Boolean),
+      label: 'Cliff drop',
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
   }
@@ -237,15 +271,21 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
     });
   }
 
-  return { positive, noScout: null };
+  return { positive: elideGenericDropPill(positive), noScout: null };
 };
 
-const renderGameSummarySignalPill = (pill) => (
-  <span key={pill.key} className={pill.className} title={pill.title}>
-    {pill.icon ? <img src={pill.icon} alt="" className="workflow-pattern-icon" /> : null}
-    <span>{pill.label}</span>
-  </span>
-);
+const renderGameSummarySignalPill = (pill) => {
+  // Backwards-compat: older entries use { icon }, drop pills use { icons: [] }.
+  const icons = Array.isArray(pill.icons) ? pill.icons : (pill.icon ? [pill.icon] : []);
+  return (
+    <span key={pill.domKey || pill.key} className={pill.className} title={pill.title}>
+      {icons.map((url, i) => (
+        <img key={`${pill.key || pill.domKey}-i${i}`} src={url} alt="" className="workflow-pattern-icon" />
+      ))}
+      <span>{pill.label}</span>
+    </span>
+  );
+};
 
 const isStructuralGameEventType = (eventType) => ['player_start', 'location_inactive'].includes(normalizeEventType(eventType));
 
@@ -261,6 +301,15 @@ const isActorAtOwnNaturalBase = (event) => {
   }
   const naturalOfNum = Number(naturalOf);
   return Number.isFinite(naturalOfNum) && actorStart === naturalOfNum;
+};
+
+// joinWithAnd renders a name list as "A and B" / "A, B, and C" — used by the
+// alliance event description for 2+ player teams.
+const joinWithAnd = (items) => {
+  if (!Array.isArray(items) || items.length === 0) return '';
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
 };
 
 const gameEventLocationLabel = (event) => {
@@ -308,6 +357,12 @@ const gameEventDescription = (event, registry) => {
   if (eventType === 'leave_game') return actor ? `${actor} leaves the game` : 'Player leaves the game';
   if (eventType === 'player_stopped_playing') return actor ? `${actor} stops playing` : 'Player stops playing';
   if (eventType === 'late_alliance') {
+    const teams = Array.isArray(event?.alliance_teams) ? event.alliance_teams : [];
+    const teamPhrases = teams
+      .map((team) => Array.isArray(team) ? team.map((p) => String(p?.name || '').trim()).filter(Boolean) : [])
+      .filter((names) => names.length >= 2)
+      .map((names) => `${joinWithAnd(names)} form an alliance`);
+    if (teamPhrases.length > 0) return teamPhrases.join('; ');
     if (actor && target) return `${actor} allies with ${target}`;
     return actor ? `${actor} forms an alliance` : 'Alliance';
   }
@@ -320,7 +375,10 @@ const gameEventDescription = (event, registry) => {
   if (eventType === 'attack') return actor && target && location ? `${actor} attacks ${target} at ${location}` : 'Attack';
   if (eventType === 'scout') return actor && target && location ? `${actor} scouts ${target} at ${location}` : 'Scout';
   if (eventType === 'cliff_drop' || eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
-    const fallback = eventType === 'cliff_drop' ? 'Cliff drop' : 'Drop';
+    const fallback = eventType === 'cliff_drop' ? 'Cliff drop'
+      : eventType === 'dt_drop' ? 'DT drop'
+      : eventType === 'reaver_drop' ? 'Reaver drop'
+      : 'Drop';
     if (!actor || !target || !location) return fallback;
     // event.base is the destination polygon for drops (toReplayEvent stamps
     // DstPolyID there). Source, when worldstate could resolve it, lives on
@@ -331,7 +389,10 @@ const gameEventDescription = (event, registry) => {
     if (eventType === 'cliff_drop') {
       return `${actor} cliff drops${dropCount}${fromClause} ${target} at ${location}`;
     }
-    return `${actor} drops${dropCount}${fromClause} on ${target} at ${location}`;
+    const verb = eventType === 'dt_drop' ? 'DT drops'
+      : eventType === 'reaver_drop' ? 'Reaver drops'
+      : 'drops';
+    return `${actor} ${verb}${dropCount}${fromClause} on ${target} at ${location}`;
   }
   if (eventType === 'recall') {
     // CastRecall's X/Y is the *source* of the teleport; the destination is
@@ -420,6 +481,31 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
   if (eventType === 'leave_game') return actorName ? <>{actorSpan} leaves the game</> : 'Player leaves the game';
   if (eventType === 'player_stopped_playing') return actorName ? <>{actorSpan} stops playing</> : 'Player stops playing';
   if (eventType === 'late_alliance') {
+    const teams = Array.isArray(event?.alliance_teams) ? event.alliance_teams : [];
+    const teamPhrases = teams
+      .map((team) => Array.isArray(team) ? team.filter((p) => String(p?.name || '').trim()) : [])
+      .filter((row) => row.length >= 2);
+    if (teamPhrases.length > 0) {
+      return (
+        <>
+          {teamPhrases.map((row, ti) => {
+            const spans = row.map((p, pi) => (
+              <React.Fragment key={`a-${ti}-${pi}`}>
+                {gamePlayerNameSpan(p, `a-${ti}-p-${pi}`)}
+                {pi < row.length - 2 ? ', ' : null}
+                {pi === row.length - 2 ? (row.length === 2 ? ' and ' : ', and ') : null}
+              </React.Fragment>
+            ));
+            return (
+              <React.Fragment key={`team-${ti}`}>
+                {ti > 0 ? '; ' : null}
+                {spans} form an alliance
+              </React.Fragment>
+            );
+          })}
+        </>
+      );
+    }
     if (actorName && targetName) return <>{actorSpan} allies with {targetSpan}</>;
     return actorName ? <>{actorSpan} forms an alliance</> : 'Alliance';
   }
@@ -440,7 +526,10 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
       : 'Scout';
   }
   if (eventType === 'cliff_drop' || eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
-    const fallback = eventType === 'cliff_drop' ? 'Cliff drop' : 'Drop';
+    const fallback = eventType === 'cliff_drop' ? 'Cliff drop'
+      : eventType === 'dt_drop' ? 'DT drop'
+      : eventType === 'reaver_drop' ? 'Reaver drop'
+      : 'Drop';
     if (!actorName || !targetName || !location) return fallback;
     const sourceLabel = String(event?.source_base?.name || '').trim();
     const dropCount = Number(event?.drop_count || 0) > 1 ? ` (×${event.drop_count})` : '';
@@ -464,7 +553,10 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
     if (eventType === 'cliff_drop') {
       return <>{actorSpan} cliff drops{vesselIcon}{dropCount}{fromClause} {targetSpan} at {location}</>;
     }
-    return <>{actorSpan} drops{vesselIcon}{dropCount}{fromClause} on {targetSpan} at {location}</>;
+    const verb = eventType === 'dt_drop' ? 'DT drops'
+      : eventType === 'reaver_drop' ? 'Reaver drops'
+      : 'drops';
+    return <>{actorSpan} {verb}{vesselIcon}{dropCount}{fromClause} on {targetSpan} at {location}</>;
   }
   if (eventType === 'recall') {
     if (!actorName) return 'Recall';
@@ -637,6 +729,14 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
     if (t === 'proxy_gate')     keys.add('proxy_gate');
     if (t === 'proxy_rax')      keys.add('proxy_rax');
     if (t === 'proxy_factory')  keys.add('proxy_factory');
+    // Drop variants: every variant lights the generic 'drop' key; specific
+    // subtypes (dt_drop / reaver_drop / cliff_drop) also light their own
+    // key. The post-process elision below drops the generic chip when a
+    // specific variant is present (avoids redundant "Drop + DT Drop").
+    if (t === 'drop' || t === 'dt_drop' || t === 'reaver_drop' || t === 'cliff_drop') {
+      keys.add('drop');
+      keys.add(t);
+    }
   });
 
   (mainGame?.players || []).forEach((p) => {
@@ -663,6 +763,10 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
 // zergling_rush, mind_control) come from the backend-provided featuring_order
 // and game_event_features lists. Marker pills come from the marker registry's
 // games_list field; markers without one surface via a minimal fallback.
+//
+// Post-process: when a more-specific drop variant pill is present
+// (dt_drop / reaver_drop / cliff_drop), the generic "drop" pill is elided
+// so the strip doesn't carry both "Drop" + "DT Drop".
 const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
   if (!mainGame) return [];
   const { keys, rowByKey } = collectFeaturingKeysFromMainGame(mainGame);
@@ -671,7 +775,7 @@ const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
   const gameEventFeaturesByKey = {};
   (markerDefs?.game_event_features || []).forEach((f) => { gameEventFeaturesByKey[f.key] = f; });
 
-  return order
+  const pills = order
     .filter((key) => keys.has(key))
     .map((key) => {
       const def = registry[key];
@@ -686,16 +790,49 @@ const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
         return { key, label: def.games_list.label || def.name, iconKey: def.games_list.icon_key || '' };
       }
       const ge = gameEventFeaturesByKey[key];
-      if (ge) return { key, label: ge.label, iconKey: ge.icon_key };
+      if (ge) return { key, label: ge.label, iconKey: ge.icon_key || '', iconKeys: ge.icon_keys || [] };
       return { key, label: def?.name || key, iconKey: '' };
     });
+
+  return elideGenericDropPill(pills);
+};
+
+// elideGenericDropPill removes the generic "drop" pill from a pill list when
+// any more-specific drop variant (dt_drop / reaver_drop / cliff_drop) is
+// present in the same list. Operates on entries shaped like { key, ... } so
+// the same helper can be reused across the main featuring strip, per-player
+// signal pills, and the games-list table column.
+const SPECIFIC_DROP_KEYS = new Set(['dt_drop', 'reaver_drop', 'cliff_drop']);
+const elideGenericDropPill = (pills) => {
+  if (!Array.isArray(pills) || pills.length === 0) return pills;
+  const hasSpecific = pills.some((p) => SPECIFIC_DROP_KEYS.has(String(p?.key || '')));
+  if (!hasSpecific) return pills;
+  return pills.filter((p) => String(p?.key || '') !== 'drop');
+};
+
+// elideGenericDropLabels mirrors elideGenericDropPill for the games-list
+// table, whose Featuring column carries plain strings ("Drop", "DT Drop",
+// "DT Drop 7:59") rather than {key, ...} objects. We match on the
+// pre-timestamp prefix so suffixes like " 7:59" don't break detection.
+const SPECIFIC_DROP_LABEL_PREFIXES = ['DT Drop', 'Reaver Drop', 'Cliff drop'];
+const elideGenericDropLabels = (labels) => {
+  if (!Array.isArray(labels) || labels.length === 0) return labels;
+  const startsWith = (s, prefix) => typeof s === 'string' && (s === prefix || s.startsWith(`${prefix} `));
+  const hasSpecific = labels.some((l) => SPECIFIC_DROP_LABEL_PREFIXES.some((p) => startsWith(l, p)));
+  if (!hasSpecific) return labels;
+  return labels.filter((l) => !startsWith(l, 'Drop'));
 };
 
 const renderFeaturingPill = (pill, keyPrefix) => {
-  const icon = pill.iconKey ? getUnitIcon(pill.iconKey) : null;
+  const iconKeys = (Array.isArray(pill.iconKeys) && pill.iconKeys.length)
+    ? pill.iconKeys
+    : (pill.iconKey ? [pill.iconKey] : []);
+  const iconUrls = iconKeys.map((k) => getUnitIcon(k)).filter(Boolean);
   return (
     <span key={`${keyPrefix}-${pill.key}`} className="workflow-pattern-pill workflow-pattern-pill-strong workflow-summary-feature-pill">
-      {icon ? <img src={icon} alt="" className="workflow-pattern-icon" /> : null}
+      {iconUrls.map((url, i) => (
+        <img key={`${pill.key}-i${i}`} src={url} alt="" className="workflow-pattern-icon" />
+      ))}
       <span>{pill.label}</span>
     </span>
   );
@@ -1269,14 +1406,37 @@ const filterSummaryPillPatterns = (patterns, trustGameEventsForDrops = false) =>
 // temporal placeholders stripped) so the labels read as static prose
 // ("Recalls", "Threw Nukes", "Became Zerg") instead of the per-replay
 // "Recalls at min N" / "Threw Nukes at N mins" form.
-const renderAggregatePatternEntry = (entry, key, registry) => {
-  const pattern = { event_type: entry.pattern_name };
+const renderAggregatePatternEntry = (entry, key, registry, gameEventFeaturesByKey) => {
+  const patternKey = String(entry?.pattern_name || '');
+  // Game-event features (dt_drop / reaver_drop / cliff_drop) aren't in the
+  // marker registry — resolve them via the game_event_features metadata so
+  // the pill renders with the proper label + multi-icon layout (matching
+  // the filter row and game-detail strip).
+  const ge = gameEventFeaturesByKey ? gameEventFeaturesByKey[patternKey] : null;
+  if (ge) {
+    const iconKeys = (Array.isArray(ge.icon_keys) && ge.icon_keys.length)
+      ? ge.icon_keys
+      : (ge.icon_key ? [ge.icon_key] : []);
+    const iconUrls = iconKeys.map((k) => getUnitIcon(k)).filter(Boolean);
+    return (
+      <span key={`${key}-wrap`} className="workflow-pattern-with-count">
+        <span className="workflow-pattern-pill workflow-pattern-pill-strong" title={ge.label}>
+          {iconUrls.map((url, i) => (
+            <img key={`${patternKey}-i${i}`} src={url} alt="" className="workflow-pattern-icon" />
+          ))}
+          <span>{ge.label}</span>
+        </span>
+        <span className="workflow-pattern-count">×{entry.count}</span>
+      </span>
+    );
+  }
+  const pattern = { event_type: patternKey };
   const def = lookupDefinitionForPattern(registry, pattern);
   const rendered = def ? renderAggregatePillText(def) : null;
   if (!rendered) {
     return (
-      <span key={`${key}-fallback`} className="workflow-pattern-pill" title={entry.pattern_name}>
-        {entry.pattern_name} <span className="workflow-pattern-count">×{entry.count}</span>
+      <span key={`${key}-fallback`} className="workflow-pattern-pill" title={patternKey}>
+        {patternKey} <span className="workflow-pattern-count">×{entry.count}</span>
       </span>
     );
   }
@@ -1291,14 +1451,14 @@ const renderAggregatePatternEntry = (entry, key, registry) => {
   );
 };
 
-const renderMatchupPatternSection = (title, entries, keyPrefix, registry) => {
+const renderMatchupPatternSection = (title, entries, keyPrefix, registry, gameEventFeaturesByKey) => {
   const list = Array.isArray(entries) ? entries : [];
   if (list.length === 0) return null;
   return (
     <div className="workflow-player-matchup-section">
       <div className="workflow-player-matchup-section-title">{title}</div>
       <div className="workflow-pattern-pills workflow-pattern-pills-compact">
-        {list.map((entry, idx) => renderAggregatePatternEntry(entry, `${keyPrefix}-${idx}`, registry))}
+        {list.map((entry, idx) => renderAggregatePatternEntry(entry, `${keyPrefix}-${idx}`, registry, gameEventFeaturesByKey))}
       </div>
     </div>
   );
@@ -1496,6 +1656,14 @@ function App() {
   const markerRegistryState = useMarkerRegistry();
   const markerRegistry = markerRegistryState.markers;
   const markerDefinitions = markerRegistryState;
+  // Game-event features (drop subtypes, mind_control, rushes, proxies) keyed
+  // by their event_type — used by aggregate pill renderers to surface
+  // multi-icon pills for subtypes that aren't in the marker registry.
+  const mainPlayerGameEventFeaturesByKey = useMemo(() => {
+    const out = {};
+    (markerRegistryState?.game_event_features || []).forEach((f) => { if (f?.key) out[f.key] = f; });
+    return out;
+  }, [markerRegistryState?.game_event_features]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showGlobalReplayFilter, setShowGlobalReplayFilter] = useState(false);
@@ -3674,6 +3842,49 @@ function App() {
     if (!point) return null;
     return { icon, point };
   }, [selectedMainGameEvent, mainEventMapBounds]);
+  // Alliance overlay: for late_alliance events, render one 🤝 emoji per pair
+  // of allied players at the midpoint between their bases, plus a pair of
+  // bidirectional arrows running base↔🤝 in each player's color. The pair is
+  // skipped entirely when either player has no owned base at event time (per
+  // the spec — alliance is between active footprints, not absent ones).
+  const selectedMainGameAllianceOverlay = useMemo(() => {
+    if (normalizeEventType(selectedMainGameEvent?.type) !== 'late_alliance') return null;
+    if (!mainEventMapBounds) return null;
+    const teams = Array.isArray(selectedMainGameEvent?.alliance_teams) ? selectedMainGameEvent.alliance_teams : [];
+    if (teams.length === 0) return null;
+    const ownership = Array.isArray(selectedMainGameEvent?.ownership) ? selectedMainGameEvent.ownership : [];
+    const anchorForPlayer = (playerID) => {
+      const owned = ownership.filter((entry) => Number(entry?.owner?.player_id || 0) === playerID && entry?.base?.center);
+      if (owned.length === 0) return null;
+      const preferred = owned.find((entry) => String(entry?.base?.kind || '').toLowerCase() === 'starting') || owned[0];
+      const point = mapPointToPercent(preferred?.base?.center, mainEventMapBounds);
+      if (!point) return null;
+      return { point, base: preferred.base };
+    };
+    const pairs = [];
+    const consumedBases = [];
+    for (const team of teams) {
+      if (!Array.isArray(team) || team.length < 2) continue;
+      for (let i = 0; i < team.length; i += 1) {
+        for (let j = i + 1; j < team.length; j += 1) {
+          const a = team[i];
+          const b = team[j];
+          const aAnchor = anchorForPlayer(Number(a?.player_id || 0));
+          const bAnchor = anchorForPlayer(Number(b?.player_id || 0));
+          if (!aAnchor || !bAnchor) continue;
+          pairs.push({
+            key: `${Number(a?.player_id || 0)}-${Number(b?.player_id || 0)}`,
+            a: { from: aAnchor.point, color: playerColorToCss(a?.color) },
+            b: { from: bAnchor.point, color: playerColorToCss(b?.color) },
+            mid: { x: (aAnchor.point.x + bAnchor.point.x) / 2, y: (aAnchor.point.y + bAnchor.point.y) / 2 },
+          });
+          consumedBases.push(aAnchor.base, bAnchor.base);
+        }
+      }
+    }
+    if (pairs.length === 0) return null;
+    return { pairs, consumedBases };
+  }, [selectedMainGameEvent, mainEventMapBounds]);
   // Trained-units overlay (issue #122 BONUS): paint a small chip with each
   // player's army composition (top 4 unit types + "+N" pill) on top of the
   // player's largest owned polygon at the moment of the selected event.
@@ -3808,6 +4019,12 @@ function App() {
       }
       if (bestEntry && bestDist < 8) claimBase(bestEntry.base);
     }
+    // Alliance overlay: every base anchoring a 🤝 arrow is off-limits so
+    // the player's trained-units chip moves to a different owned base
+    // (preserving production info when one exists, hiding when it doesn't).
+    if (selectedMainGameAllianceOverlay?.consumedBases) {
+      for (const b of selectedMainGameAllianceOverlay.consumedBases) claimBase(b);
+    }
 
     const isOffLimits = (base) => {
       if (!base) return true;
@@ -3854,6 +4071,12 @@ function App() {
       const ARROW_AVOID_PCT = 9;
       const arrowFrom = selectedMainGameArrow?.from || null;
       const arrowTo = selectedMainGameArrow?.to || null;
+      // Alliance overlay segments base→midpoint per pair — chips should also
+      // stay clear of these so 🤝 + arrows aren't covered by production icons.
+      const allianceSegments = (selectedMainGameAllianceOverlay?.pairs || []).flatMap((pair) => ([
+        [pair.a.from, pair.mid],
+        [pair.b.from, pair.mid],
+      ]));
       let anchorBase = null;
       let point = null;
       for (const b of ranked) {
@@ -3866,6 +4089,11 @@ function App() {
           const d = distanceToSegment(pct, arrowFrom, arrowTo);
           if (d < ARROW_AVOID_PCT) continue;
         }
+        let tooClose = false;
+        for (const [from, to] of allianceSegments) {
+          if (distanceToSegment(pct, from, to) < ARROW_AVOID_PCT) { tooClose = true; break; }
+        }
+        if (tooClose) continue;
         anchorBase = b;
         point = pct;
         break;
@@ -3887,6 +4115,7 @@ function App() {
     mainEventMapBounds,
     selectedMainGameTrainedUnitsByPlayer,
     selectedMainGameArrow,
+    selectedMainGameAllianceOverlay,
   ]);
 
   const mainPlayerInsights = [
@@ -4570,17 +4799,21 @@ function App() {
                         <td className="workflow-games-list-map">{formatMapNameWithKind(game.map_name, game.map_kind)}</td>
                         <td className="workflow-games-list-duration">{formatDuration(game.duration_seconds)}</td>
                         <td className="workflow-games-list-featuring">
-                          {(game.featuring || []).length === 0 ? (
-                            <span className="workflow-empty-inline">-</span>
-                          ) : (
-                            <div className="workflow-pattern-pills">
-                              {(game.featuring || []).map((pill) => (
-                                <span key={`${game.replay_id}-${pill}`} className="workflow-pattern-pill workflow-feature-pill">
-                                  <span>{pill}</span>
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                          {(() => {
+                            const featuring = elideGenericDropLabels(game.featuring || []);
+                            if (featuring.length === 0) {
+                              return <span className="workflow-empty-inline">-</span>;
+                            }
+                            return (
+                              <div className="workflow-pattern-pills">
+                                {featuring.map((pill) => (
+                                  <span key={`${game.replay_id}-${pill}`} className="workflow-pattern-pill workflow-feature-pill">
+                                    <span>{pill}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </td>
                       </tr>
                     ))}
@@ -5435,6 +5668,19 @@ function App() {
                                       >
                                         <polygon points="0 0, 5 2.5, 0 5" fill={selectedMainGameArrow?.color || 'currentColor'} />
                                       </marker>
+                                      {/* Marker that inherits the line's stroke color via SVG2 context-stroke,
+                                          and auto-flips at markerStart via auto-start-reverse. Used by alliance
+                                          overlay arrows so each pair side is colorized to its player. */}
+                                      <marker
+                                        id="workflow-event-arrowhead-context"
+                                        markerWidth="5"
+                                        markerHeight="5"
+                                        refX="4.5"
+                                        refY="2.5"
+                                        orient="auto-start-reverse"
+                                      >
+                                        <polygon points="0 0, 5 2.5, 0 5" fill="context-stroke" />
+                                      </marker>
                                     </defs>
                                     {selectedMainGameOwnershipPolygons.map((overlay) => (
                                       <polygon
@@ -5456,6 +5702,51 @@ function App() {
                                         markerEnd="url(#workflow-event-arrowhead)"
                                       />
                                     ) : null}
+                                  </svg>
+                                ) : null}
+                                {selectedMainGameAllianceOverlay ? (
+                                  <svg
+                                    className="workflow-event-map-overlay workflow-event-map-overlay-alliance"
+                                    viewBox="0 0 100 100"
+                                    preserveAspectRatio="none"
+                                    aria-hidden="true"
+                                  >
+                                    <defs>
+                                      <marker
+                                        id="workflow-event-arrowhead-alliance"
+                                        markerWidth="5"
+                                        markerHeight="5"
+                                        refX="4.5"
+                                        refY="2.5"
+                                        orient="auto-start-reverse"
+                                      >
+                                        <polygon points="0 0, 5 2.5, 0 5" fill="context-stroke" />
+                                      </marker>
+                                    </defs>
+                                    {selectedMainGameAllianceOverlay.pairs.flatMap((pair) => ([
+                                      <line
+                                        key={`alliance-${selectedMainGameEventKeyResolved}-${pair.key}-a`}
+                                        x1={pair.a.from.x}
+                                        y1={pair.a.from.y}
+                                        x2={pair.mid.x}
+                                        y2={pair.mid.y}
+                                        className="workflow-event-map-alliance-line"
+                                        style={{ stroke: pair.a.color }}
+                                        markerStart="url(#workflow-event-arrowhead-alliance)"
+                                        markerEnd="url(#workflow-event-arrowhead-alliance)"
+                                      />,
+                                      <line
+                                        key={`alliance-${selectedMainGameEventKeyResolved}-${pair.key}-b`}
+                                        x1={pair.b.from.x}
+                                        y1={pair.b.from.y}
+                                        x2={pair.mid.x}
+                                        y2={pair.mid.y}
+                                        className="workflow-event-map-alliance-line"
+                                        style={{ stroke: pair.b.color }}
+                                        markerStart="url(#workflow-event-arrowhead-alliance)"
+                                        markerEnd="url(#workflow-event-arrowhead-alliance)"
+                                      />,
+                                    ]))}
                                   </svg>
                                 ) : null}
                                 {selectedMainGameTrainedUnitsAnchors.map((entry) => {
@@ -5547,6 +5838,18 @@ function App() {
                                     </span>
                                   </div>
                                 ) : null}
+                                {selectedMainGameAllianceOverlay
+                                  ? selectedMainGameAllianceOverlay.pairs.map((pair) => (
+                                    <div
+                                      key={`alliance-emoji-${selectedMainGameEventKeyResolved}-${pair.key}`}
+                                      className="workflow-event-map-flag-overlay workflow-event-map-alliance-handshake"
+                                      style={{ left: `${pair.mid.x}%`, top: `${pair.mid.y}%` }}
+                                      title="Alliance formed"
+                                    >
+                                      <span role="img" aria-label="Alliance">🤝</span>
+                                    </div>
+                                  ))
+                                  : null}
                                 {selectedMainGameExpansionOverlay ? (
                                   <img
                                     key={`expansion-${selectedMainGameEventKeyResolved}`}
@@ -6283,8 +6586,8 @@ function App() {
                                         <span><strong>{(Number(card.avg_eapm) || 0).toFixed(0)}</strong> EAPM</span>
                                       </span>
                                     </div>
-                                    {renderMatchupPatternSection('Top build orders', card.top_build_orders, `bo-${card.key}`, markerRegistry)}
-                                    {renderMatchupPatternSection('Top markers', card.top_markers, `mk-${card.key}`, markerRegistry)}
+                                    {renderMatchupPatternSection('Top build orders', card.top_build_orders, `bo-${card.key}`, markerRegistry, mainPlayerGameEventFeaturesByKey)}
+                                    {renderMatchupPatternSection('Top markers', card.top_markers, `mk-${card.key}`, markerRegistry, mainPlayerGameEventFeaturesByKey)}
                                   </div>
                                 );
                               })}

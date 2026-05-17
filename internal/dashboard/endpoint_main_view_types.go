@@ -549,6 +549,11 @@ type workflowGameEvent struct {
 	DropTargetVia  string `json:"drop_target_via,omitempty"`  // "a" | "p"
 	DropCount      int64  `json:"drop_count,omitempty"`        // omitted when 1
 	DropLastSecond int64  `json:"drop_last_second,omitempty"`  // omitted when equal to Second
+	// AllianceTeams: populated only for late_alliance events. Each entry is
+	// one team grouping at the moment the topology changed. Only teams of
+	// size ≥2 are included (solos filtered for clarity). Source is the
+	// {"teams":[["A","B"],...]} payload written by parser.BuildAllianceDerivedEvents.
+	AllianceTeams [][]workflowGameEventPlayer `json:"alliance_teams,omitempty"`
 }
 
 type workflowGameEventPlayer struct {
