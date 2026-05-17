@@ -134,6 +134,10 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 // Train / Unit Morph / Cast command stream for the replay. The result
 // is one row per (player, phase) where the player produced ≥1
 // non-excluded attacking unit. See dashboard/unit_composition.go.
+//
+// Side effect: also populates detail.TrainedUnitsTimeline from the same
+// row set so the event-map overlay can render per-player composition at
+// any selected event without a second DB query.
 func (d *Dashboard) populateUnitCompositionMarkersForGameDetail(detail *workflowGameDetail) error {
 	boundaries, err := d.dbStore.GetPhaseBoundariesForReplay(d.ctx, detail.ReplayID)
 	if err != nil {
@@ -144,7 +148,40 @@ func (d *Dashboard) populateUnitCompositionMarkersForGameDetail(detail *workflow
 		return fmt.Errorf("failed to load production/casts: %w", err)
 	}
 	detail.UnitCompositionMarkers = computeCompositionForReplay(rows, boundaries)
+	detail.TrainedUnitsTimeline = trainedUnitsTimelineFromRows(rows)
 	return nil
+}
+
+// trainedUnitsTimelineFromRows converts the production/cast rows into a flat
+// per-player "this unit became alive at this second" stream. Filters out
+// workers + Overlord (the existing compositionExcluded set). Each Train /
+// Unit Morph row contributes one sample per unit name (multi-unit morphs
+// like a Zergling pair contribute two samples). Cast rows are ignored —
+// they don't represent a new unit on the field.
+//
+// The sample's Second is the command's seconds_from_game_start shifted
+// forward by the unit's build/morph duration (Fastest game speed) via
+// buildTimeFor. Approximation: morph source units are NOT deducted (mirrors
+// computeCompositionForReplay's approach) and deaths are not tracked.
+func trainedUnitsTimelineFromRows(rows []db.UnitProductionOrCastRow) []workflowTrainedUnitSample {
+	out := make([]workflowTrainedUnitSample, 0, len(rows))
+	for _, row := range rows {
+		if row.ActionType != "Train" && row.ActionType != "Unit Morph" {
+			continue
+		}
+		for _, name := range commandUnitNamesFromPtrs(row.UnitType, row.UnitTypes) {
+			if _, excluded := compositionExcluded[name]; excluded {
+				continue
+			}
+			delay := int64(buildTimeFor(name) + 0.5)
+			out = append(out, workflowTrainedUnitSample{
+				PlayerID: row.PlayerID,
+				Second:   row.SecondsFromGameStart + delay,
+				UnitType: name,
+			})
+		}
+	}
+	return out
 }
 
 func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDetail, mapLayout *models.MapContextLayout, startClockByPlayerID map[int64]int, displayByName map[string]string) error {

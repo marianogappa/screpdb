@@ -402,6 +402,23 @@ type workflowGameDetail struct {
 	// and renders per-player rows on individual player strips. Source rows
 	// are replay_events with event_type LIKE 'unit_composition_%'.
 	UnitCompositionMarkers []workflowGameUnitComposition `json:"unit_composition_markers,omitempty"`
+
+	// TrainedUnitsTimeline is a flat per-player stream of "this unit became
+	// alive at this second" samples, used by the event-map overlay to render
+	// each player's army composition at the moment of the selected game
+	// event. Workers (Drone/Probe/SCV) and Overlord are filtered out at
+	// build time; Second is the command second shifted forward by the unit's
+	// build/morph duration (Fastest game speed). The frontend pre-indexes
+	// per-player and binary-searches per event click.
+	TrainedUnitsTimeline []workflowTrainedUnitSample `json:"trained_units_timeline,omitempty"`
+}
+
+// workflowTrainedUnitSample is one "unit alive at second" entry on the
+// trained-units timeline.
+type workflowTrainedUnitSample struct {
+	PlayerID int64  `json:"player_id"`
+	Second   int64  `json:"second"`
+	UnitType string `json:"unit_type"`
 }
 
 // workflowAllianceSnapshot is one observed team topology in the Alliances tab.
