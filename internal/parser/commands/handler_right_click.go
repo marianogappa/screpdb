@@ -28,5 +28,14 @@ func (h *RightClickCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *mo
 
 	command.IsQueued = boolPtr(rightClickCmd.Queued)
 
+	// Transient (not persisted) — the worldstate drop detector uses these to
+	// rewrite right-clicks onto transports into Load / LoadBunker actions.
+	if rightClickCmd.Unit != nil {
+		tag := uint16(rightClickCmd.UnitTag)
+		command.TargetUnitTag = &tag
+		name := rightClickCmd.Unit.Name
+		command.TargetUnitType = &name
+	}
+
 	return command
 }

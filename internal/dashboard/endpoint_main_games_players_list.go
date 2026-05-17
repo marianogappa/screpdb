@@ -336,10 +336,17 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 	}
 	for _, row := range rowsReplayEvents {
 		replayID := row.ReplayID
-		switch strings.ToLower(strings.TrimSpace(row.EventType)) {
+		eventType := strings.ToLower(strings.TrimSpace(row.EventType))
+		switch eventType {
 		case "zergling_rush", "cannon_rush", "bunker_rush",
 			"proxy_gate", "proxy_rax", "proxy_factory":
-			featureSets[replayID][strings.ToLower(strings.TrimSpace(row.EventType))] = struct{}{}
+			featureSets[replayID][eventType] = struct{}{}
+		case "drop", "reaver_drop", "dt_drop", "cliff_drop":
+			// Every drop variant lights up the generic "drop" chip; the
+			// specific subtype also lights its own chip (dt_drop /
+			// reaver_drop / cliff_drop).
+			featureSets[replayID]["drop"] = struct{}{}
+			featureSets[replayID][eventType] = struct{}{}
 		}
 	}
 	for replayID, set := range featureSets {

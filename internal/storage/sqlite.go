@@ -39,7 +39,7 @@ type dbtx interface {
 const unknownEnumValue = "UNKNOWN"
 
 var (
-	allowedCommandActionTypes = enumSetFromNames(typeNamesFromRepcmd())
+	allowedCommandActionTypes = enumSetFromNames(append(typeNamesFromRepcmd(), "Load", "LoadBunker"))
 	allowedCommandOrders      = enumSetFromNames(orderNamesFromRepcmd())
 	allowedCommandUnits       = enumSetFromNames(unitNamesFromRepcmd())
 	allowedCommandTechs       = enumSetFromNames(techNamesFromRepcmd())

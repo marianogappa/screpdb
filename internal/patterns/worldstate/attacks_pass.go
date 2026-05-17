@@ -154,12 +154,12 @@ func BuildAttacks(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, owner
 
 		switch ec.Kind {
 		case cmdenrich.KindUnloadAll:
-			out = append(out, CandidateAttack{
-				Type: "drop", Frame: ec.Frame, Second: sec,
-				OpenSec: sec, CloseSec: sec,
-				Attacker: attacker, Defender: defender,
-				PolyID: pi, X: x, Y: y,
-			})
+			// Drops are emitted by the dedicated drops pass (BuildDrops in
+			// drops_pass.go) which pairs unloads with prior Load events and
+			// clusters multi-unload drops. CandidateAttacks for drops are
+			// fed back into the candidate list via dropClustersToCandidateAttacks
+			// in Engine.Finalize so cross-event inference (Recall's
+			// attack-coincidence pass) still sees them.
 			continue
 		case cmdenrich.KindCast:
 			subjLower := strings.ToLower(ec.Subject)

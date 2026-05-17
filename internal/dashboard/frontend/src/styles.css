@@ -3544,6 +3544,56 @@ body {
   grid-template-rows: repeat(2, 36px);
 }
 
+/* Per-player trained-units overlay: 2-per-row grid of unit icons with
+   inline count labels, painted on top of each player's largest owned
+   polygon at event time. No background or border — icons read as "the
+   army is here" rather than a chip. Drop-shadows on the icons and a
+   strong text-shadow on the counts provide separation from the map. */
+.workflow-event-map-trained-units {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  column-gap: 4px;
+  row-gap: 1px;
+  align-items: center;
+  justify-items: start;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.workflow-event-map-trained-unit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.workflow-event-map-trained-unit img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.95)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
+}
+
+.workflow-event-map-trained-unit-count {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 1), 0 1px 2px rgba(0, 0, 0, 0.95);
+  margin-left: 0;
+  line-height: 1;
+}
+
+.workflow-event-map-trained-unit-more {
+  grid-column: 1 / span 2;
+  justify-self: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 1), 0 1px 2px rgba(0, 0, 0, 0.95);
+  line-height: 1;
+}
+
 /* Inline Arbiter rendered in the recall event-row description (right after
    the verb "recalls"), so the row's trailing icons can stay focused on the
    units that were recalled. */

@@ -319,11 +319,19 @@ const gameEventDescription = (event, registry) => {
   }
   if (eventType === 'attack') return actor && target && location ? `${actor} attacks ${target} at ${location}` : 'Attack';
   if (eventType === 'scout') return actor && target && location ? `${actor} scouts ${target} at ${location}` : 'Scout';
-  if (eventType === 'cliff_drop') {
-    return actor && target && location ? `${actor} cliff drops ${target} at ${location}` : 'Cliff drop';
-  }
-  if (eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
-    return actor && target && location ? `${actor} drops on ${target} at ${location}` : 'Drop';
+  if (eventType === 'cliff_drop' || eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
+    const fallback = eventType === 'cliff_drop' ? 'Cliff drop' : 'Drop';
+    if (!actor || !target || !location) return fallback;
+    // event.base is the destination polygon for drops (toReplayEvent stamps
+    // DstPolyID there). Source, when worldstate could resolve it, lives on
+    // payload.sb → event.source_base.
+    const sourceLabel = String(event?.source_base?.name || '').trim();
+    const dropCount = Number(event?.drop_count || 0) > 1 ? ` (×${event.drop_count})` : '';
+    const fromClause = sourceLabel ? ` from ${sourceLabel}` : '';
+    if (eventType === 'cliff_drop') {
+      return `${actor} cliff drops${dropCount}${fromClause} ${target} at ${location}`;
+    }
+    return `${actor} drops${dropCount}${fromClause} on ${target} at ${location}`;
   }
   if (eventType === 'recall') {
     // CastRecall's X/Y is the *source* of the teleport; the destination is
@@ -387,7 +395,9 @@ const gamePlayerNameSpan = (player, key) => {
 // renderGameEventDescription returns the same sentence as gameEventDescription
 // but with the actor and target wrapped in colored <span>s. Used for rendering
 // the event-row body. The string variant remains for search + dedup keys.
-const renderGameEventDescription = (event, registry) => {
+// playerRaceByID lets us inline race-correct icons (vessel for drops) without
+// requiring the backend to embed race on every event row.
+const renderGameEventDescription = (event, registry, playerRaceByID) => {
   const eventType = normalizeEventType(event?.type);
   const actorName = String(event?.actor?.name || '').trim();
   const targetName = String(event?.target?.name || '').trim();
@@ -429,15 +439,32 @@ const renderGameEventDescription = (event, registry) => {
       ? <>{actorSpan} scouts {targetSpan} at {location}</>
       : 'Scout';
   }
-  if (eventType === 'cliff_drop') {
-    return actorName && targetName && location
-      ? <>{actorSpan} cliff drops {targetSpan} at {location}</>
-      : 'Cliff drop';
-  }
-  if (eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
-    return actorName && targetName && location
-      ? <>{actorSpan} drops on {targetSpan} at {location}</>
-      : 'Drop';
+  if (eventType === 'cliff_drop' || eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
+    const fallback = eventType === 'cliff_drop' ? 'Cliff drop' : 'Drop';
+    if (!actorName || !targetName || !location) return fallback;
+    const sourceLabel = String(event?.source_base?.name || '').trim();
+    const dropCount = Number(event?.drop_count || 0) > 1 ? ` (×${event.drop_count})` : '';
+    const fromClause = sourceLabel ? <> from {sourceLabel}</> : null;
+    // Inline vessel icon right after the verb — race-correct transport. Mirrors
+    // the Arbiter-icon-after-"recalls" pattern. The trailing row-icon strip
+    // strips the vessel to avoid duplication (see gameEventRowIconEntries).
+    const actorPidForRace = Number(event?.actor?.player_id || 0);
+    const actorRace = playerRaceByID && actorPidForRace > 0 ? (playerRaceByID.get(actorPidForRace) || '') : '';
+    const vesselURL = dropTransportIconForRace(actorRace);
+    const vesselName = (() => {
+      const r = actorRace.toLowerCase();
+      if (r === 'terran') return 'Dropship';
+      if (r === 'protoss') return 'Shuttle';
+      if (r === 'zerg') return 'Overlord';
+      return 'transport';
+    })();
+    const vesselIcon = vesselURL ? (
+      <img src={vesselURL} alt={vesselName} title={vesselName} className="workflow-event-row-recall-arbiter" />
+    ) : null;
+    if (eventType === 'cliff_drop') {
+      return <>{actorSpan} cliff drops{vesselIcon}{dropCount}{fromClause} {targetSpan} at {location}</>;
+    }
+    return <>{actorSpan} drops{vesselIcon}{dropCount}{fromClause} on {targetSpan} at {location}</>;
   }
   if (eventType === 'recall') {
     if (!actorName) return 'Recall';
@@ -709,6 +736,75 @@ const polygonCenter = (polygon) => {
   return { x: sumX / count, y: sumY / count };
 };
 
+// polygonBoundingBox returns axis-aligned min/max in the same coordinate
+// space as the polygon vertices (pixel-space when called on raw event
+// polygons; percent-space when called on already-converted overlay polys).
+// Returns null for malformed polygons (<3 vertices).
+const polygonBoundingBox = (polygon) => {
+  if (!Array.isArray(polygon) || polygon.length < 3) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let count = 0;
+  polygon.forEach((p) => {
+    const x = Number(p?.x);
+    const y = Number(p?.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+    count += 1;
+  });
+  if (count === 0) return null;
+  return { minX, minY, maxX, maxY };
+};
+
+// polygonBoundingBoxArea is the area of the axis-aligned bounding box of
+// the polygon (not the polygon's true area). Used to compare relative
+// "size" of a player's owned bases when picking an anchor polygon for the
+// trained-units overlay.
+const polygonBoundingBoxArea = (polygon) => {
+  const bb = polygonBoundingBox(polygon);
+  if (!bb) return 0;
+  return Math.max(0, bb.maxX - bb.minX) * Math.max(0, bb.maxY - bb.minY);
+};
+
+// distanceBetween returns the Euclidean distance between two {x, y} points.
+// Returns Infinity if either argument is missing.
+const distanceBetween = (a, b) => {
+  if (!a || !b) return Infinity;
+  const dx = Number(a.x) - Number(b.x);
+  const dy = Number(a.y) - Number(b.y);
+  if (!Number.isFinite(dx) || !Number.isFinite(dy)) return Infinity;
+  return Math.sqrt(dx * dx + dy * dy);
+};
+
+// distanceToSegment returns the orthogonal distance from point p to the
+// line segment from→to, clamping at the segment endpoints (so points "past"
+// either end measure to that endpoint, not the infinite line). All
+// arguments are {x, y}.
+const distanceToSegment = (p, from, to) => {
+  if (!p || !from || !to) return Infinity;
+  const px = Number(p.x);
+  const py = Number(p.y);
+  const ax = Number(from.x);
+  const ay = Number(from.y);
+  const bx = Number(to.x);
+  const by = Number(to.y);
+  if (![px, py, ax, ay, bx, by].every(Number.isFinite)) return Infinity;
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq <= 1e-9) return Math.sqrt((px - ax) * (px - ax) + (py - ay) * (py - ay));
+  let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const cx = ax + t * dx;
+  const cy = ay + t * dy;
+  return Math.sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy));
+};
+
 const mapBoundsFromGameEvents = (events) => {
   const points = [];
   (Array.isArray(events) ? events : []).forEach((event) => {
@@ -841,11 +937,6 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
     if (!icon) return [];
     return [{ src: icon, alt: 'townhall', title: 'Expansion' }];
   }
-  if (normalized === 'drop') {
-    const icon = dropTransportIconForRace(actorRace);
-    return icon ? [{ src: icon, alt: 'transport', title: 'Drop' }] : [];
-  }
-
   let unitNames = Array.isArray(event?.attack_unit_types) && event.attack_unit_types.length > 0
     ? event.attack_unit_types
     : fallbackOverlayUnitNamesForEvent(event?.type, actorRace);
@@ -854,6 +945,13 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
   // strip to avoid duplication. The remaining units are what got recalled.
   if (normalized === 'recall') {
     unitNames = unitNames.filter((name) => String(name || '').toLowerCase() !== 'arbiter');
+  }
+  // Drops render the vessel (Dropship/Shuttle/Overlord) inline next to the
+  // verb in the row body. Strip it from the trailing icon strip so the
+  // trailing icons are just the dropped units.
+  if (['drop', 'reaver_drop', 'dt_drop', 'cliff_drop'].includes(normalized)) {
+    const transports = new Set(['dropship', 'shuttle', 'overlord']);
+    unitNames = unitNames.filter((name) => !transports.has(String(name || '').toLowerCase()));
   }
   const seen = new Set();
   const entries = [];
@@ -3430,6 +3528,35 @@ function App() {
         color: playerColorToCss(selectedMainGameEvent?.actor?.color),
       };
     }
+    // Drop arrow: source_base (where the player loaded — falls back to start
+    // base on the backend when no Load was paired) → event.base (destination,
+    // where the unload happened). The dropped-unit overlay is anchored at the
+    // source so the user sees "here's what got loaded" at the tail.
+    const eventType = normalizeEventType(selectedMainGameEvent.type);
+    if (['drop', 'reaver_drop', 'dt_drop', 'cliff_drop'].includes(eventType)) {
+      const sourceAnchor = polygonCenter(selectedMainGameEvent?.source_base?.polygon)
+        || selectedMainGameEvent?.source_base?.center
+        || selectedMainGameEvent?.source_point;
+      const targetAnchor = polygonCenter(selectedMainGameEvent?.base?.polygon)
+        || selectedMainGameEvent?.base?.center
+        || selectedMainGameEvent?.target_point;
+      const fromRaw = mapPointToPercent(sourceAnchor, mainEventMapBounds);
+      const toRaw = mapPointToPercent(targetAnchor, mainEventMapBounds);
+      if (!fromRaw || !toRaw) return null;
+      const dx = toRaw.x - fromRaw.x;
+      const dy = toRaw.y - fromRaw.y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      const headPullback = Math.min(6, len * 0.4);
+      const tailPullback = Math.min(6, len * 0.4);
+      const headFactor = len > 0 ? Math.max(0, len - headPullback) / len : 1;
+      const tailFactor = len > 0 ? Math.min(1, tailPullback / len) : 0;
+      return {
+        from: { x: fromRaw.x + dx * tailFactor, y: fromRaw.y + dy * tailFactor },
+        to: { x: fromRaw.x + dx * headFactor, y: fromRaw.y + dy * headFactor },
+        sourceAnchor: fromRaw,
+        color: playerColorToCss(selectedMainGameEvent?.actor?.color),
+      };
+    }
     // actor_origin is the source player's starting location. If inactivity
     // rules have stripped ownership of that starting base, anchor the arrow
     // at any base the actor still owns at event time so the visual matches
@@ -3463,10 +3590,18 @@ function App() {
     // — the backend harvests army composition either way. Always strip
     // "Arbiter" — the recall overlay paints it separately at the
     // destination; painting it at source too would duplicate the icon.
-    if (normalizeEventType(selectedMainGameEvent.type) === 'recall') {
+    const eventTypeForOverlay = normalizeEventType(selectedMainGameEvent.type);
+    if (eventTypeForOverlay === 'recall') {
       // No destination → no source→target arrow → no source units.
       if (!selectedMainGameEvent?.target_base) return [];
       unitNames = unitNames.filter((name) => String(name || '').toLowerCase() !== 'arbiter');
+    }
+    // For drops: strip the transport itself (Dropship/Shuttle/Overlord) from
+    // the source-side unit overlay — the transport icon is painted separately
+    // at the destination. Workers (SCV/Probe/Drone) and combat units stay.
+    if (['drop', 'reaver_drop', 'dt_drop', 'cliff_drop'].includes(eventTypeForOverlay)) {
+      const transports = new Set(['dropship', 'shuttle', 'overlord']);
+      unitNames = unitNames.filter((name) => !transports.has(String(name || '').toLowerCase()));
     }
     return unitNames
       .map((name) => ({ name, icon: getUnitIcon(name) }))
@@ -3500,6 +3635,25 @@ function App() {
     if (!point) return null;
     return { icon, point };
   }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds]);
+  // Drop overlay: anchor the race-correct transport vessel (Dropship/Shuttle/
+  // Overlord) at the destination, mirroring the Arbiter overlay used for
+  // recalls. Always render when the event is a drop variant — drops are
+  // defined by the vessel and the icon is the most recognizable signal.
+  const selectedMainGameDropOverlay = useMemo(() => {
+    const evType = normalizeEventType(selectedMainGameEvent?.type);
+    if (!['drop', 'reaver_drop', 'dt_drop', 'cliff_drop'].includes(evType)) return null;
+    const anchor = polygonCenter(selectedMainGameEvent?.base?.polygon)
+      || selectedMainGameEvent?.base?.center
+      || selectedMainGameEvent?.target_point;
+    if (!anchor) return null;
+    const actorPid = Number(selectedMainGameEvent?.actor?.player_id || 0);
+    const actorRow = mainGamePlayers.find((player) => Number(player?.player_id || 0) === actorPid);
+    const icon = dropTransportIconForRace(actorRow?.race);
+    if (!icon) return null;
+    const point = mapPointToPercent(anchor, mainEventMapBounds);
+    if (!point) return null;
+    return { icon, point };
+  }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds]);
   // Recall overlay: anchor the Arbiter at the inferred destination when known
   // (target_base populated by the backend's attack-coincidence / post-recall
   // activity proxies); otherwise fall back to the cast point. The arrow
@@ -3520,6 +3674,220 @@ function App() {
     if (!point) return null;
     return { icon, point };
   }, [selectedMainGameEvent, mainEventMapBounds]);
+  // Trained-units overlay (issue #122 BONUS): paint a small chip with each
+  // player's army composition (top 4 unit types + "+N" pill) on top of the
+  // player's largest owned polygon at the moment of the selected event.
+  // Workers (Drone/Probe/SCV) and Overlord are filtered out by the backend
+  // when building trained_units_timeline.
+  //
+  // mainGameTrainedUnitsByPlayer: pre-indexed per-player sample arrays,
+  // already sorted by second (the backend emits them in command order +
+  // shifts by build time, so insertion order is monotonic enough for our
+  // binary-search lookup). Memoized once per replay load.
+  const mainGameTrainedUnitsByPlayer = useMemo(() => {
+    const timeline = Array.isArray(mainGame?.trained_units_timeline) ? mainGame.trained_units_timeline : [];
+    const byPlayer = new Map();
+    for (const s of timeline) {
+      const pid = Number(s?.player_id);
+      const sec = Number(s?.second);
+      const unit = String(s?.unit_type || '');
+      if (!Number.isFinite(pid) || !Number.isFinite(sec) || !unit) continue;
+      if (!byPlayer.has(pid)) byPlayer.set(pid, []);
+      byPlayer.get(pid).push({ sec, unit });
+    }
+    // Sort each player's samples by sec — backend emits in command order
+    // (monotonic seconds_from_game_start) but add-build-time can shuffle
+    // adjacent entries when fast units precede slow ones in the same
+    // morph row. Cheap to sort defensively.
+    for (const arr of byPlayer.values()) arr.sort((a, b) => a.sec - b.sec);
+    return byPlayer;
+  }, [mainGame?.trained_units_timeline]);
+
+  // selectedMainGameTrainedUnitsByPlayer: per-player {items: [{name, count}],
+  // more: int} for the event's second. Top 4 unit types by count; everything
+  // else collapses into a "+N" pill.
+  const selectedMainGameTrainedUnitsByPlayer = useMemo(() => {
+    const eventSec = Number(selectedMainGameEvent?.second);
+    if (!Number.isFinite(eventSec)) return new Map();
+    const out = new Map();
+    for (const [pid, samples] of mainGameTrainedUnitsByPlayer.entries()) {
+      // Binary search for the right boundary: count samples with sec ≤ eventSec.
+      let lo = 0;
+      let hi = samples.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (samples[mid].sec <= eventSec) lo = mid + 1;
+        else hi = mid;
+      }
+      if (lo === 0) continue;
+      const counts = new Map();
+      for (let i = 0; i < lo; i += 1) {
+        const u = samples[i].unit;
+        counts.set(u, (counts.get(u) || 0) + 1);
+      }
+      const ranked = Array.from(counts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name));
+      const items = ranked.slice(0, 4);
+      const more = ranked.slice(4).reduce((acc, x) => acc + x.count, 0);
+      out.set(pid, { items, more });
+    }
+    return out;
+  }, [mainGameTrainedUnitsByPlayer, selectedMainGameEvent?.second]);
+
+  // selectedMainGameTrainedUnitsAnchors: per-player render data anchored
+  // at the centroid of the player's chosen base, in percent space.
+  //
+  // Placement strategy (pessimistic / per-base):
+  //   1. Identify the set of bases that are "off-limits" for this event —
+  //      bases where another overlay will already paint something
+  //      (arrow endpoints for attack/scout/drop/recall/rush/nuke, the
+  //      townhall icon for expansion/takeover, the leave-flag base, etc).
+  //      For arrow events that means TWO bases off-limits (source + target).
+  //   2. For each player, pick the first owned base that's NOT off-limits,
+  //      in priority: starting → natural → other expansions.
+  //   3. Anchor at that base's polygon centroid.
+  //   4. If every owned base is off-limits → don't render this player's
+  //      chip. (Last-resort fallback to any non-off-limits expansion is
+  //      already covered by step 2.)
+  const selectedMainGameTrainedUnitsAnchors = useMemo(() => {
+    if (!selectedMainGameEvent || !mainEventMapBounds) return [];
+    if (selectedMainGameTrainedUnitsByPlayer.size === 0) return [];
+    const ownership = Array.isArray(selectedMainGameEvent?.ownership) ? selectedMainGameEvent.ownership : [];
+    if (ownership.length === 0) return [];
+
+    // basePolygonKey hashes a polygon by its first three vertex coordinates.
+    // Used to test "is this ownership entry the same base as the event's
+    // base / target_base / source_base?".
+    const basePolygonKey = (polygon) => {
+      if (!Array.isArray(polygon) || polygon.length === 0) return '';
+      return polygon.slice(0, 3).map((p) => `${Math.round(Number(p?.x))}.${Math.round(Number(p?.y))}`).join('|');
+    };
+    const baseCenterKey = (center) => {
+      if (!center) return '';
+      return `c${Math.round(Number(center.x))}.${Math.round(Number(center.y))}`;
+    };
+    const offLimitsKeys = new Set();
+    const claimBase = (base) => {
+      if (!base) return;
+      const pk = basePolygonKey(base.polygon);
+      if (pk) offLimitsKeys.add(pk);
+      const ck = baseCenterKey(base.center);
+      if (ck) offLimitsKeys.add(ck);
+    };
+    // event.base is always off-limits — it's where the action's primary
+    // overlay (arrow target, expansion icon, leave flag, recall source,
+    // drop destination) is painted.
+    claimBase(selectedMainGameEvent.base);
+    // For arrow events, the source side is also off-limits.
+    // - Recall: event.target_base is the inferred Arbiter destination
+    //   (gets the Arbiter overlay).
+    // - Drop: event.source_base is the loading base (gets the units
+    //   overlay); event.target_base is the destination (gets the vessel
+    //   overlay, plus duplicates event.base).
+    // - Attack/scout/rush/nuke: the arrow originates from the actor's
+    //   start base, which sits in event.ownership too — we approximate
+    //   by claiming the polygon underneath selectedMainGameArrow.from.
+    claimBase(selectedMainGameEvent.target_base);
+    claimBase(selectedMainGameEvent.source_base);
+    // For attack/scout/rush/nuke events the source isn't a discrete base
+    // field — find the ownership entry whose center is closest to the
+    // arrow's from-anchor in percent space, and mark it off-limits.
+    if (selectedMainGameArrow?.from && !selectedMainGameEvent.source_base) {
+      let bestEntry = null;
+      let bestDist = Infinity;
+      for (const entry of ownership) {
+        const c = polygonCenter(entry?.base?.polygon) || entry?.base?.center;
+        const cp = c ? mapPointToPercent(c, mainEventMapBounds) : null;
+        if (!cp) continue;
+        const d = distanceBetween(cp, selectedMainGameArrow.from);
+        if (d < bestDist) {
+          bestDist = d;
+          bestEntry = entry;
+        }
+      }
+      if (bestEntry && bestDist < 8) claimBase(bestEntry.base);
+    }
+
+    const isOffLimits = (base) => {
+      if (!base) return true;
+      const pk = basePolygonKey(base.polygon);
+      if (pk && offLimitsKeys.has(pk)) return true;
+      const ck = baseCenterKey(base.center);
+      if (ck && offLimitsKeys.has(ck)) return true;
+      return false;
+    };
+
+    // Group ownership by player.
+    const ownedByPlayer = new Map();
+    for (const entry of ownership) {
+      const pid = Number(entry?.owner?.player_id || 0);
+      if (!pid) continue;
+      if (!entry?.base?.polygon) continue;
+      if (!ownedByPlayer.has(pid)) ownedByPlayer.set(pid, []);
+      ownedByPlayer.get(pid).push(entry);
+    }
+
+    const playerIDs = Array.from(ownedByPlayer.keys()).sort((a, b) => a - b);
+    const out = [];
+
+    for (const pid of playerIDs) {
+      const composition = selectedMainGameTrainedUnitsByPlayer.get(pid);
+      if (!composition || composition.items.length === 0) continue;
+
+      const bases = ownedByPlayer.get(pid) || [];
+      if (bases.length === 0) continue;
+
+      // Priority: starting → natural → other expansions (by polygon
+      // bounding-box area as a stable tiebreak). Skip off-limits bases
+      // AND any base whose centroid would land within 9% of the arrow
+      // segment (the arrow is the event's primary visual — adjacent
+      // bases sometimes put a chip uncomfortably close to the line).
+      const ranked = [...bases].sort((a, b) => {
+        const ak = String(a.base?.kind || '').toLowerCase();
+        const bk = String(b.base?.kind || '').toLowerCase();
+        const rank = (k) => (k === 'starting' ? 0 : k === 'natural' ? 1 : 2);
+        const r = rank(ak) - rank(bk);
+        if (r !== 0) return r;
+        return polygonBoundingBoxArea(b.base.polygon) - polygonBoundingBoxArea(a.base.polygon);
+      });
+      const ARROW_AVOID_PCT = 9;
+      const arrowFrom = selectedMainGameArrow?.from || null;
+      const arrowTo = selectedMainGameArrow?.to || null;
+      let anchorBase = null;
+      let point = null;
+      for (const b of ranked) {
+        if (isOffLimits(b.base)) continue;
+        const cRaw = polygonCenter(b.base.polygon) || b.base.center;
+        if (!cRaw) continue;
+        const pct = mapPointToPercent(cRaw, mainEventMapBounds);
+        if (!pct) continue;
+        if (arrowFrom && arrowTo) {
+          const d = distanceToSegment(pct, arrowFrom, arrowTo);
+          if (d < ARROW_AVOID_PCT) continue;
+        }
+        anchorBase = b;
+        point = pct;
+        break;
+      }
+      if (!anchorBase || !point) continue;
+
+      out.push({
+        playerID: pid,
+        color: playerColorToCss(anchorBase.owner?.color),
+        point,
+        items: composition.items,
+        more: composition.more,
+      });
+    }
+
+    return out;
+  }, [
+    selectedMainGameEvent,
+    mainEventMapBounds,
+    selectedMainGameTrainedUnitsByPlayer,
+    selectedMainGameArrow,
+  ]);
 
   const mainPlayerInsights = [
     mainPlayerApmInsight,
@@ -5090,12 +5458,50 @@ function App() {
                                     ) : null}
                                   </svg>
                                 ) : null}
+                                {selectedMainGameTrainedUnitsAnchors.map((entry) => {
+                                  // Edge-aware anchoring: the chip extends inward
+                                  // toward the map center based on which map
+                                  // quadrant the anchor sits in. Prevents the
+                                  // chip from clipping the map frame when the
+                                  // player's polygon hugs an edge.
+                                  const x = entry.point.x;
+                                  const y = entry.point.y;
+                                  const tx = x < 20 ? '0%' : x > 80 ? '-100%' : '-50%';
+                                  const ty = y < 20 ? '0%' : y > 80 ? '-100%' : '-50%';
+                                  return (
+                                  <div
+                                    key={`trained-units-${selectedMainGameEventKeyResolved}-${entry.playerID}`}
+                                    className="workflow-event-map-trained-units"
+                                    style={{
+                                      left: `${x}%`,
+                                      top: `${y}%`,
+                                      transform: `translate(${tx}, ${ty})`,
+                                    }}
+                                  >
+                                    {entry.items.map((u) => {
+                                      const icon = getUnitIcon(u.name);
+                                      if (!icon) return null;
+                                      return (
+                                        <span key={`tu-${entry.playerID}-${u.name}`} className="workflow-event-map-trained-unit">
+                                          <img src={icon} alt={u.name} title={`${u.name} ×${u.count}`} />
+                                          <span className="workflow-event-map-trained-unit-count">×{u.count}</span>
+                                        </span>
+                                      );
+                                    })}
+                                    {entry.more > 0 ? (
+                                      <span className="workflow-event-map-trained-unit-more" title={`+${entry.more} more units`}>+{entry.more}</span>
+                                    ) : null}
+                                  </div>
+                                  );
+                                })}
                                 {selectedMainGameArrow && selectedMainGameArrowUnits.length > 0 ? (() => {
-                                  const isRecall = normalizeEventType(selectedMainGameEvent?.type) === 'recall';
-                                  // Recalls anchor units at the actual source (where units were
-                                  // pulled FROM); other events keep their midpoint placement so
-                                  // the arrow remains the dominant visual.
-                                  const anchor = isRecall && selectedMainGameArrow.sourceAnchor
+                                  const evType = normalizeEventType(selectedMainGameEvent?.type);
+                                  const isRecall = evType === 'recall';
+                                  const isDrop = ['drop', 'reaver_drop', 'dt_drop', 'cliff_drop'].includes(evType);
+                                  // Recalls and drops anchor units at the actual source (where
+                                  // units were pulled FROM or loaded onto the transport); other
+                                  // events keep their midpoint placement.
+                                  const anchor = (isRecall || isDrop) && selectedMainGameArrow.sourceAnchor
                                     ? selectedMainGameArrow.sourceAnchor
                                     : {
                                         x: (selectedMainGameArrow.from.x + selectedMainGameArrow.to.x) / 2,
@@ -5166,6 +5572,19 @@ function App() {
                                     }}
                                   />
                                 ) : null}
+                                {selectedMainGameDropOverlay ? (
+                                  <img
+                                    key={`drop-${selectedMainGameEventKeyResolved}`}
+                                    src={selectedMainGameDropOverlay.icon}
+                                    alt="Drop transport"
+                                    title="Drop landing point — transport vessel"
+                                    className="workflow-event-map-expansion-overlay workflow-event-map-expansion-overlay--recall-arbiter"
+                                    style={{
+                                      left: `${selectedMainGameDropOverlay.point.x}%`,
+                                      top: `${selectedMainGameDropOverlay.point.y}%`,
+                                    }}
+                                  />
+                                ) : null}
                               </div>
                             </>
                           ) : (
@@ -5225,7 +5644,7 @@ function App() {
                                   >
                                     <span>{formatDuration(event.second)}</span>
                                     <span className="workflow-event-row-body">
-                                      <span>{renderGameEventDescription(event, markerRegistry)}</span>
+                                      <span>{renderGameEventDescription(event, markerRegistry, mainEventRaceByPlayerID)}</span>
                                       {(iconEntries.length > 0 || castEntries.length > 0) ? (
                                         <span className="workflow-event-row-units">
                                           {iconEntries.map((entry, idx) => (

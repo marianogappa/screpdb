@@ -278,7 +278,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Made drops",
-        "value": "482"
+        "value": "1801"
       },
       {
         "replay_player_id": 1,
@@ -329,7 +329,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Made drops",
-        "value": "703"
+        "value": "236"
       },
       {
         "replay_player_id": 0,
@@ -355,11 +355,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: Nexus First",
         "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":105,\"found\":true},{\"second\":125,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Made drops",
-        "value": "676"
       },
       {
         "replay_player_id": 1,

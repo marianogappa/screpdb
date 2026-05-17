@@ -657,17 +657,10 @@ func (e *Engine) emitAttackCandidates(candidates []CandidateAttack) {
 	// Used to detect "attack involves a spell cast new for this attacker."
 	spellsByAttacker := buildSpellHistoryByAttacker(e.stream)
 
-	// Pre-compute the second each player produced their first Siege Tank.
-	// Used by the cliff-drop classifier in emitDropCandidate so we can
-	// re-route a generic drop to "cliff_drop" when (BGH map + Terran +
-	// tank-by-now + corner position) lines up.
-	firstTankSecByPlayer := buildFirstTankSecByPlayer(e.stream)
-
 	// Per-attacker filter state.
 	attackedAlready := map[byte]bool{}
 	knownUnitsByAttacker := map[byte]map[string]bool{}
 	knownSpellsByAttacker := map[byte]map[string]bool{}
-	reaverDropEmitted := map[byte]bool{}
 	scoutEmitted := map[byte]bool{}
 
 	// Mid-map attack fallback: hold the earliest neutral-defender attack
@@ -691,7 +684,11 @@ func (e *Engine) emitAttackCandidates(candidates []CandidateAttack) {
 		case "nuke":
 			e.emitNukeCandidate(c, cmdByFrame[c.Frame])
 		case "drop":
-			e.emitDropCandidate(c, cmdByFrame[c.Frame], reaverDropEmitted, firstTankSecByPlayer)
+			// Drops are emitted by the dedicated drops pass — see
+			// emitDropEvents in drops_events.go. Drop candidates flow
+			// through this loop only so Recall's inferRecallTargetByAttack
+			// can still match against them; emission is handled elsewhere.
+			continue
 		case "attack":
 			if c.Defender == neutralPID {
 				if earliestNeutralAttack == nil || c.Second < earliestNeutralAttack.Second {
@@ -759,41 +756,6 @@ func (e *Engine) emitNukeCandidate(c CandidateAttack, cmd *models.Command) {
 			e.bases[c.PolyID].DisplayName),
 		e.playerRef(c.Attacker), e.playerRef(c.Defender), c.PolyID,
 		unitTypesFromCommand(cmd))
-}
-
-func (e *Engine) emitDropCandidate(c CandidateAttack, cmd *models.Command, reaverDropEmitted map[byte]bool, firstTankSecByPlayer map[byte]int) {
-	if c.Defender == neutralPID {
-		return
-	}
-	dropUnitTypes := unitTypesFromCommand(cmd)
-	dropType := "drop"
-	hasReaver := hasUnitType(dropUnitTypes, models.GeneralUnitReaver)
-	hasDT := hasUnitType(dropUnitTypes, models.GeneralUnitDarkTemplar)
-	if hasReaver {
-		dropType = "reaver_drop"
-	} else if hasDT {
-		dropType = "dt_drop"
-	} else if e.isCliffDrop(c, firstTankSecByPlayer) {
-		dropType = "cliff_drop"
-	}
-	// Importance: DT drops always emit; first reaver drop per attacker
-	// emits, subsequent reavers are dropped; generic drops always emit
-	// (rare events, useful for storyline).
-	if dropType == "reaver_drop" {
-		if reaverDropEmitted[c.Attacker] {
-			return
-		}
-		reaverDropEmitted[c.Attacker] = true
-	}
-	dropPhrase := "drops on"
-	if dropType == "cliff_drop" {
-		dropPhrase = "cliff drops"
-	}
-	e.emitEvent(dropType, c.Second,
-		fmt.Sprintf("%s %s %s %s",
-			e.playerName(c.Attacker), dropPhrase, e.playerName(c.Defender),
-			e.bases[c.PolyID].DisplayName),
-		e.playerRef(c.Attacker), e.playerRef(c.Defender), c.PolyID, dropUnitTypes)
 }
 
 // isCliffDrop reports whether a generic drop candidate qualifies as a
