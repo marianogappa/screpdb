@@ -9,7 +9,11 @@ import (
 
 // AlgorithmVersion is the current version of the pattern detection algorithm
 // Increment this when the algorithm changes to trigger re-detection
-const AlgorithmVersion = 25
+//
+// 26: build-order overhaul — Zerg 5/6/7/8/10/11 Pool rungs, loosened FFE &
+// 1 Rax FE timings, widened Protoss expand/core matchups, Bunker Rush, per-race
+// residual "… (Other)" catch-alls, and the "Opener unresolved" N/A marker.
+const AlgorithmVersion = 26
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

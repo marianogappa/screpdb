@@ -1,6 +1,10 @@
 package markers
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/marianogappa/screpdb/internal/cmdenrich"
+)
 
 // Each test builds a minimal stream exercising one BO's broad definition,
 // then asserts both positive (should match) and a close-by negative case.
@@ -143,9 +147,11 @@ func TestBO_12Pool(t *testing.T) {
 
 func TestBO_9PoolIntoHatchery(t *testing.T) {
 	bo := findBO(t, "9 Pool into Hatchery")
-	// Positive: drones, pool, then hatch within 60s of pool.
+	// Positive: exactly 5 drone morphs (= supply 9), pool, then hatch within
+	// 60s of pool. The exact 5-Drone count is what separates this from the
+	// 5–8/10–11 Pool rungs that share the "pool then fast hatch" topology.
 	b := factsBuilder()
-	for i := 0; i < 9; i++ {
+	for i := 0; i < 5; i++ {
 		b.P(subjDrone, 5+i*3)
 	}
 	pos := b.B(subjSpawningPool, 73).B(subjHatchery, 118).list()
@@ -154,12 +160,22 @@ func TestBO_9PoolIntoHatchery(t *testing.T) {
 	}
 	// Negative: hatch built too late after pool.
 	b = factsBuilder()
-	for i := 0; i < 9; i++ {
+	for i := 0; i < 5; i++ {
 		b.P(subjDrone, 5+i*3)
 	}
 	neg := b.B(subjSpawningPool, 73).B(subjHatchery, 200).list()
 	if bo.Matches(neg) {
 		t.Fatalf("9 pool → hatch should fail hatch@200 after pool@73 (gap > 60)")
+	}
+	// Negative: 7-Pool topology (3 drones) that also takes a fast hatch must
+	// NOT match here — it belongs to "7 Pool".
+	b = factsBuilder()
+	for i := 0; i < 3; i++ {
+		b.P(subjDrone, 5+i*3)
+	}
+	neg2 := b.B(subjSpawningPool, 73).B(subjHatchery, 110).list()
+	if bo.Matches(neg2) {
+		t.Fatalf("9 pool → hatch should NOT match a 3-drone (7 Pool) stream")
 	}
 }
 
@@ -415,12 +431,14 @@ func TestBO_RaxCC(t *testing.T) {
 	if !bo.Matches(pos) {
 		t.Fatalf("1 Rax FE should match Rax → CC → Refinery sequence")
 	}
-	// Negative: Refinery before CC.
-	neg := factsBuilder().
+	// Positive: gas-first expand (Rax, Refinery, CC). The gas-before-CC guard
+	// was intentionally dropped so this gas-first FE lands here; it stays
+	// disjoint from 1 Rax 1 Fac (which is Factory-before-CC).
+	posGas := factsBuilder().
 		B(subjSupplyDepot, 60).B(subjBarracks, 88).
 		B(subjRefinery, 115).B(subjCommandCenter, 180).list()
-	if bo.Matches(neg) {
-		t.Fatalf("1 Rax FE should fail when Refinery precedes CC")
+	if !bo.Matches(posGas) {
+		t.Fatalf("1 Rax FE should match a gas-first expand (Rax → Refinery → CC)")
 	}
 	// Negative: 2 Rax before CC.
 	neg2 := factsBuilder().
@@ -458,6 +476,209 @@ func TestBO_BBS(t *testing.T) {
 	neg3 := factsBuilder().B(subjBarracks, 60).list()
 	if bo.Matches(neg3) {
 		t.Fatalf("BBS should fail with a single Barracks")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// New ladder rungs / openers / residuals
+// ---------------------------------------------------------------------------
+
+// zergPool builds a stream of n drone morphs then a Pool.
+func zergPoolStream(drones, poolSec int) []cmdenrich.EnrichedCommand {
+	b := factsBuilder()
+	for i := 0; i < drones; i++ {
+		b.P(subjDrone, 5+i*3)
+	}
+	return b.B(subjSpawningPool, poolSec).list()
+}
+
+func TestBO_PoolLadder_5to11(t *testing.T) {
+	// supply → expected BO name. Supply = 4 + drone morphs before Pool.
+	cases := map[int]string{5: "5 Pool", 6: "6 Pool", 7: "7 Pool", 8: "8 Pool", 10: "10 Pool", 11: "11 Pool"}
+	for supply, name := range cases {
+		bo := findBO(t, name)
+		drones := supply - 4
+		if !bo.Matches(zergPoolStream(drones, 50+drones*6)) {
+			t.Fatalf("%s should match exactly %d drones before Pool", name, drones)
+		}
+		// One extra drone is the next rung up, not this one.
+		if bo.Matches(zergPoolStream(drones+1, 50+drones*6)) {
+			t.Fatalf("%s should NOT match with %d drones", name, drones+1)
+		}
+		// A Hatchery before the Pool makes it hatch-first, not a pool BO.
+		hatchFirst := factsBuilder()
+		for i := 0; i < drones; i++ {
+			hatchFirst.P(subjDrone, 5+i*3)
+		}
+		neg := hatchFirst.B(subjHatchery, 40).B(subjSpawningPool, 80).list()
+		if bo.Matches(neg) {
+			t.Fatalf("%s should fail when a Hatchery precedes the Pool", name)
+		}
+	}
+}
+
+func TestBO_HatchLadder_4to8(t *testing.T) {
+	cases := map[int]string{4: "4 Hatch", 5: "5 Hatch", 6: "6 Hatch", 7: "7 Hatch", 8: "8 Hatch"}
+	for supply, name := range cases {
+		bo := findBO(t, name)
+		drones := supply - 4
+		b := factsBuilder()
+		for i := 0; i < drones; i++ {
+			b.P(subjDrone, 5+i*3)
+		}
+		pos := b.B(subjHatchery, 50+drones*8).list()
+		if !bo.Matches(pos) {
+			t.Fatalf("%s should match exactly %d drones before the Hatchery", name, drones)
+		}
+		// A Pool before the Hatchery makes it pool-first, not hatch-first.
+		b2 := factsBuilder()
+		for i := 0; i < drones; i++ {
+			b2.P(subjDrone, 5+i*3)
+		}
+		neg := b2.B(subjSpawningPool, 40).B(subjHatchery, 80).list()
+		if bo.Matches(neg) {
+			t.Fatalf("%s should fail when a Pool precedes the Hatchery", name)
+		}
+	}
+}
+
+func TestBO_2RaxCC(t *testing.T) {
+	bo := findBO(t, "2 Rax CC")
+	// Positive: Depot, Rax, Rax, CC (2 rax before CC, depot first).
+	pos := factsBuilder().B(subjSupplyDepot, 55).B(subjBarracks, 80).B(subjBarracks, 110).B(subjCommandCenter, 180).list()
+	if !bo.Matches(pos) {
+		t.Fatalf("2 Rax CC should match Depot → 2 Rax → CC")
+	}
+	// Negative: only 1 Rax before CC — that's 1 Rax FE.
+	neg := factsBuilder().B(subjSupplyDepot, 55).B(subjBarracks, 80).B(subjCommandCenter, 180).list()
+	if bo.Matches(neg) {
+		t.Fatalf("2 Rax CC should fail with only 1 Rax before CC")
+	}
+	// Negative: 2 Rax before the Depot — that's BBS.
+	neg2 := factsBuilder().B(subjBarracks, 55).B(subjBarracks, 75).B(subjSupplyDepot, 95).B(subjCommandCenter, 180).list()
+	if bo.Matches(neg2) {
+		t.Fatalf("2 Rax CC should fail with 2 Rax before the Depot (that's BBS)")
+	}
+}
+
+func TestBO_ProtossNoExpa(t *testing.T) {
+	gate := findBO(t, "1 Gate (no expa)")
+	// Positive: lone Gateway, no fast Cyber, no expansion.
+	if !gate.Matches(factsBuilder().B(subjPylon, 48).B(subjGateway, 90).list()) {
+		t.Fatalf("1 Gate (no expa) should match a lone Gateway with no expand/cyber")
+	}
+	// Negative: expands (Nexus) — that's Gate Expand.
+	if gate.Matches(factsBuilder().B(subjGateway, 90).B(subjNexus, 180).list()) {
+		t.Fatalf("1 Gate (no expa) should fail when the player expands")
+	}
+	fc := findBO(t, "Forge Cannon (no expa)")
+	// Positive: Forge + Cannon, no expansion.
+	if !fc.Matches(factsBuilder().B(subjForge, 90).B(subjPhotonCannon, 130).list()) {
+		t.Fatalf("Forge Cannon (no expa) should match Forge + Cannon with no expand")
+	}
+	// Negative: Forge then Nexus is FFE, not this.
+	if fc.Matches(factsBuilder().B(subjForge, 90).B(subjPhotonCannon, 130).B(subjNexus, 200).list()) {
+		t.Fatalf("Forge Cannon (no expa) should fail when the player expands (FFE)")
+	}
+}
+
+func TestBO_BunkerRush(t *testing.T) {
+	bo := findBO(t, "Bunker Rush")
+	// Positive: Rax → Bunker, all-in (no CC, no Factory). A defensive gas is
+	// now fine — the build is defined by the absence of an expansion/tech.
+	pos := factsBuilder().B(subjBarracks, 55).B(subjSupplyDepot, 90).B(subjBunker, 130).list()
+	if !bo.Matches(pos) {
+		t.Fatalf("Bunker Rush should match Rax → Bunker all-in (no CC, no Factory)")
+	}
+	posGas := factsBuilder().B(subjBarracks, 55).B(subjRefinery, 100).B(subjBunker, 140).list()
+	if !bo.Matches(posGas) {
+		t.Fatalf("Bunker Rush should still match when a defensive gas precedes the Bunker")
+	}
+	// Negative: expands (CC) — that's 1 Rax FE, not an all-in.
+	negCC := factsBuilder().B(subjBarracks, 55).B(subjBunker, 130).B(subjCommandCenter, 200).list()
+	if bo.Matches(negCC) {
+		t.Fatalf("Bunker Rush should fail when the player expands (CC)")
+	}
+	// Negative: techs to Factory — that's 1 Rax 1 Fac / 1-1-1.
+	negFac := factsBuilder().B(subjBarracks, 55).B(subjBunker, 130).B(subjRefinery, 140).B(subjFactory, 200).list()
+	if bo.Matches(negFac) {
+		t.Fatalf("Bunker Rush should fail when the player techs to a Factory")
+	}
+	// Negative: 2 Rax before the bunker — that's BBS.
+	neg2 := factsBuilder().B(subjBarracks, 55).B(subjBarracks, 80).B(subjBunker, 130).list()
+	if bo.Matches(neg2) {
+		t.Fatalf("Bunker Rush should fail with 2 Barracks before the Bunker (that's BBS)")
+	}
+}
+
+func TestBO_GateExpand_NonPvZ(t *testing.T) {
+	bo := findBO(t, "Gate Expand")
+	// Positive: Gateway → Nexus → Cyber (the PvT/PvP 1-Gate expand).
+	pos := factsBuilder().B(subjGateway, 80).B(subjNexus, 160).B(subjCyberneticsCore, 185).list()
+	if !bo.Matches(pos) {
+		t.Fatalf("Gate Expand should match Gateway → Nexus → Cyber")
+	}
+	// Negative: Cyber before Nexus — that's 1 Gate Core, not an expand.
+	neg := factsBuilder().B(subjGateway, 80).B(subjCyberneticsCore, 130).B(subjNexus, 180).list()
+	if bo.Matches(neg) {
+		t.Fatalf("Gate Expand should fail when Cyber precedes Nexus")
+	}
+}
+
+func TestBO_ForgeExpand_Loosened(t *testing.T) {
+	bo := findBO(t, "Forge Expand")
+	// Positive: slower FFE — Forge@130 (was rejected by the old <100 bound),
+	// Nexus@240 (was rejected by the old <200 bound).
+	pos := factsBuilder().B(subjForge, 130).B(subjNexus, 240).B(subjGateway, 260).list()
+	if !bo.Matches(pos) {
+		t.Fatalf("Forge Expand should match a slow FFE (Forge@130, Nexus@240)")
+	}
+}
+
+func TestBO_Residuals_Complement(t *testing.T) {
+	// Zerg residual: greedy Pool at supply ≥13 (≥9 drones), no named rung.
+	zerg := findBO(t, "Pool/Hatch (Other)")
+	if !zerg.Matches(zergPoolStream(9, 140)) {
+		t.Fatalf("Zerg residual should match a 9-drone (supply 13) Pool")
+	}
+	if zerg.Matches(zergPoolStream(5, 73)) {
+		t.Fatalf("Zerg residual should NOT match a named rung (9 Pool)")
+	}
+	// Protoss residual: a leftover Gateway+Forge opener (no Cannon, no
+	// expansion) that matches none of the named builds — not 1 Gate (no expa)
+	// (which excludes a Forge), not Forge Cannon (no Cannon), not FFE (no Nexus).
+	prot := findBO(t, "Gateway (Other)")
+	if !prot.Matches(factsBuilder().B(subjGateway, 70).B(subjForge, 120).list()) {
+		t.Fatalf("Protoss residual should match a leftover Gateway+Forge opener")
+	}
+	if prot.Matches(factsBuilder().B(subjGateway, 70).B(subjCyberneticsCore, 138).list()) {
+		t.Fatalf("Protoss residual should NOT match a 1 Gate Core")
+	}
+	// A lone slow Gateway is now its own named build, not the residual.
+	if prot.Matches(factsBuilder().B(subjGateway, 70).B(subjCyberneticsCore, 200).list()) {
+		t.Fatalf("Protoss residual should NOT match a lone slow Gateway (that's 1 Gate (no expa))")
+	}
+	// Terran "1 Rax Bio" residual: a Barracks opener matching no named build
+	// (bio: Rax → gas → academy, no expansion, no factory).
+	terr := findBO(t, "1 Rax Bio")
+	if !terr.Matches(factsBuilder().B(subjSupplyDepot, 60).B(subjBarracks, 88).B(subjRefinery, 120).B(subjAcademy, 160).list()) {
+		t.Fatalf("1 Rax Bio should match a bio opener with no expansion/factory")
+	}
+}
+
+func TestMarker_OpenerUnresolved(t *testing.T) {
+	m := findBO(t, "Opener unresolved")
+	// Positive: no defining building ever placed (only workers/supply).
+	if !m.Matches(factsBuilder().P(subjDrone, 10).P(subjDrone, 20).list()) {
+		t.Fatalf("Opener unresolved should match when no defining building is placed")
+	}
+	// Negative: a Pool (Zerg defining building) was placed.
+	if m.Matches(factsBuilder().B(subjSpawningPool, 40).list()) {
+		t.Fatalf("Opener unresolved should NOT match once a Pool is placed")
+	}
+	// Negative: a Gateway (Protoss defining building) was placed.
+	if m.Matches(factsBuilder().B(subjGateway, 70).list()) {
+		t.Fatalf("Opener unresolved should NOT match once a Gateway is placed")
 	}
 }
 

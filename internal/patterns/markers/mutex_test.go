@@ -133,14 +133,23 @@ func formatFactsForError(facts []cmdenrich.EnrichedCommand) string {
 func FuzzInitialBOsMutualExclusion(f *testing.F) {
 	// Seed corpus: a mix of typical pool-first / hatch-first / protoss /
 	// terran timings.
-	f.Add([]byte{0, 0, 10, 0, 1, 85, 0, 0, 110, 0})                  // Zerg early Pool
+	f.Add([]byte{0, 0, 10, 0, 1, 85, 0, 0, 110, 0})                    // Zerg early Pool
 	f.Add([]byte{0, 3, 5, 0, 3, 15, 0, 3, 27, 0, 0, 73, 0, 5, 123, 0}) // Zerg 9 Pool
-	f.Add([]byte{1, 0, 48, 0, 2, 86, 0, 3, 116, 0, 4, 138, 0})       // Protoss 1 Gate Core
-	f.Add([]byte{1, 0, 48, 0, 0, 130, 0, 2, 175, 0})                 // Protoss Nexus First
-	f.Add([]byte{1, 1, 48, 0, 5, 86, 0, 6, 130, 0, 0, 152, 0})       // Protoss FFE
-	f.Add([]byte{2, 1, 60, 0, 2, 88, 0, 3, 115, 0, 4, 165, 0})       // Terran 1 Rax 1 Fac
-	f.Add([]byte{2, 1, 62, 0, 0, 145, 0, 2, 165, 0})                 // Terran CC First
-	f.Add([]byte{2, 2, 60, 0, 2, 80, 0, 1, 100, 0})                  // Terran BBS
+	f.Add([]byte{1, 0, 48, 0, 2, 86, 0, 3, 116, 0, 4, 138, 0})         // Protoss 1 Gate Core
+	f.Add([]byte{1, 0, 48, 0, 0, 130, 0, 2, 175, 0})                   // Protoss Nexus First
+	f.Add([]byte{1, 1, 48, 0, 5, 86, 0, 6, 130, 0, 0, 152, 0})         // Protoss FFE
+	f.Add([]byte{2, 1, 60, 0, 2, 88, 0, 3, 115, 0, 4, 165, 0})         // Terran 1 Rax 1 Fac
+	f.Add([]byte{2, 1, 62, 0, 0, 145, 0, 2, 165, 0})                   // Terran CC First
+	f.Add([]byte{2, 2, 60, 0, 2, 80, 0, 1, 100, 0})                    // Terran BBS
+	// New openers (subject indices: zerg pool=0 hatch=1 drone=3 overlord=4;
+	// protoss nexus=0 gateway=2; terran depot=1 rax=2 bunker=8).
+	f.Add([]byte{0, 3, 30, 0, 3, 33, 0, 3, 36, 0, 0, 60, 0})                                         // Zerg 7 Pool (3 drones)
+	f.Add([]byte{0, 4, 20, 0, 3, 30, 0, 3, 33, 0, 3, 36, 0, 3, 39, 0, 3, 42, 0, 3, 45, 0, 0, 92, 0}) // Zerg 10 Pool (overlord + 6 drones)
+	f.Add([]byte{1, 2, 80, 0, 0, 160, 0})                                                            // Protoss Gate Expand (gate→nexus)
+	f.Add([]byte{2, 2, 55, 0, 1, 90, 0, 8, 130, 0})                                                  // Terran Bunker Rush (rax→depot→bunker)
+	// Regression: rax→bunker→rax→CC@276 once both-matched Bunker Rush + 2 Rax CC
+	// (real 6-player Money game). CC second = 20 + 1*256 = 276.
+	f.Add([]byte{2, 1, 55, 0, 2, 80, 0, 8, 130, 0, 2, 180, 0, 0, 20, 1})
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		if len(data) < 1 {

@@ -83,9 +83,13 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	// all marker detections live in replay_events with event_kind='marker' alongside
 	// narrative game_events — the single count here is their sum.
 	expectedCounts := map[string]int64{
-		"replays":       4,
-		"players":       14,
-		"replay_events": 201,
+		"replays": 4,
+		"players": 14,
+		// Every classifiable player now lands on an opener (named BO or a
+		// per-race residual) regardless of team format — the opener rules are
+		// no longer matchup-gated — so the BGH team-game players in this set
+		// each gain an opener marker too.
+		"replay_events": 209,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {

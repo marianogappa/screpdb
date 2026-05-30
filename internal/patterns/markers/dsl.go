@@ -570,6 +570,55 @@ func (s *produceCountBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *produceCountBeforeBuildState) Decision(int) TriState { return s.done }
 func (s *produceCountBeforeBuildState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
+// ProduceCountAtLeastBeforeBuild matches if AT LEAST n Produce(unit) facts
+// arrive strictly before the first Build(refSubject). Like
+// ProduceCountBeforeBuild but with a >= threshold instead of an exact count —
+// used by the residual "Other Pool / Other Hatch" catch-alls, which claim the
+// greedy tail of the drone ladder (supply >= 13) that the exact rungs don't.
+//
+// Matches as soon as the n-th Produce(unit) arrives before refSubject; rejects
+// on observing refSubject with fewer than n produced.
+func ProduceCountAtLeastBeforeBuild(unit, refSubject string, n int) Predicate {
+	return func() PredicateState {
+		return &produceCountAtLeastBeforeBuildState{unit: unit, ref: refSubject, want: n}
+	}
+}
+
+type produceCountAtLeastBeforeBuildState struct {
+	commitState
+	unit, ref string
+	want      int
+	count     int
+}
+
+func (s *produceCountAtLeastBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
+	if s.done != Pending {
+		return
+	}
+	switch f.Kind {
+	case cmdenrich.KindMakeUnit:
+		if f.Subject == s.unit {
+			s.count++
+			if s.count >= s.want {
+				s.done = Matched
+			}
+		}
+	case cmdenrich.KindMakeBuilding:
+		if f.Subject == s.ref {
+			// First ref build with too few produced so far — can never reach
+			// the threshold "before the first ref build".
+			if s.count < s.want {
+				s.done = Rejected
+			} else {
+				s.done = Matched
+			}
+		}
+	}
+}
+
+func (s *produceCountAtLeastBeforeBuildState) Decision(int) TriState { return s.done }
+func (s *produceCountAtLeastBeforeBuildState) Finalize() TriState    { return s.finalizeDefaultRejected() }
+
 // CountBuildsBefore matches if at least n Build(subject) facts happen with
 // second strictly less than maxSecond.
 func CountBuildsBefore(subject string, n, maxSecond int) Predicate {

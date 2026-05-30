@@ -165,8 +165,8 @@ export const CompositionPill = ({ phase, units, casters, maxCasters, slotCount }
   const tooltip = tooltipParts.join('\n');
 
   return (
-    <span className="workflow-pattern-pill workflow-pattern-pill-strong workflow-composition-pill" title={tooltip}>
-      <span className="workflow-composition-pill-phase">{formatPhaseLabel(phase)}</span>
+    <span className="workflow-pattern-pill workflow-pattern-pill-strong workflow-composition-pill workflow-pill-legended" title={tooltip}>
+      <span className="workflow-pill-legend">{formatPhaseLabel(phase)} Composition</span>
       <span className="workflow-composition-pill-units">
         {slots.map((name, idx) => {
           const icon = getUnitIcon(name);
