@@ -170,6 +170,11 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "Build Order: Gateway (Other)",
+        "value": "150"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2,3,4]}"
       }
@@ -191,6 +196,11 @@
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":8.544303797468354}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 4 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":74,\"found\":true},{\"second\":109,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -298,10 +308,26 @@
     ]
   },
   "empty_short.rep": {
-    "detections": []
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Opener unresolved",
+        "value": "1"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Opener unresolved",
+        "value": "1"
+      }
+    ]
   },
   "never_upgraded.rep": {
     "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Opener unresolved",
+        "value": "831"
+      },
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 11 Hatch",

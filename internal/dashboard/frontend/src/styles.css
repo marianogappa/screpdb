@@ -2438,37 +2438,62 @@ body {
   gap: 12px;
 }
 
-.workflow-player-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+/* Per-player summary rendered as a compact table: aligned columns
+   (Name | APM | Featuring | Unit composition %), a header row, and no
+   black gaps between rows — just thin dividers. Tight column gap to
+   maximise content width. */
+.workflow-player-table {
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1.3fr) minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 0;
+  align-items: stretch;
 }
 
-.workflow-player-row {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.wpt-head {
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 700;
+  padding: 2px 2px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  align-self: end;
+}
+/* Align the Name header with the name cells (which have a 3px team bar +
+   8px padding). */
+.wpt-head:first-child {
+  padding-left: 11px;
 }
 
-.workflow-player-name {
-  font-size: 0.98rem;
-  display: inline-flex;
+.wpt-cell {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  width: var(--workflow-player-name-width, 15ch);
-  min-width: var(--workflow-player-name-width, 15ch);
-  max-width: var(--workflow-player-name-width, 15ch);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 0;
+  padding: 5px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.workflow-player-name-block {
-  flex: 0 1 auto;
+.wpt-name {
+  gap: 6px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  border-left: 3px solid transparent;
+  padding-left: 8px;
+  white-space: nowrap;
+}
+
+.wpt-apm {
+  justify-content: flex-start;
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+}
+
+.wpt-featuring .workflow-pattern-pills,
+.wpt-comp .workflow-pattern-pills {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .workflow-player-name-link {
@@ -2758,7 +2783,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border-radius: 999px;
+  border-radius: 9px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.08);
   min-height: 48px;
@@ -2973,6 +2998,85 @@ body {
   border-color: rgba(100, 150, 255, 0.65);
   background: rgba(100, 150, 255, 0.2);
   color: #e6efff;
+}
+
+/* Build-order pill: the opening of the game and the leading per-player pill.
+   Identified by a teal tint + the "BUILD ORDER" legend on its top border
+   (see .workflow-pill-legend) — no left-accent bar needed. */
+.workflow-pattern-pill-bo {
+  border-color: rgba(125, 211, 192, 0.55);
+  background: rgba(125, 211, 192, 0.12);
+  font-weight: 600;
+}
+
+/* Opener-unresolved (N/A) pill: occupies the opener slot but signals "no
+   build order" — muted red, same "BUILD ORDER" legend treatment. */
+.workflow-pattern-pill-na {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.12);
+  color: #fecaca;
+}
+
+/* "BUILD ORDER" legend sitting centered on the pill's top border, fieldset-
+   legend style. The background matches the dark surface to "cut" the border.
+   Only pills tagged .workflow-pill-legended reserve the top space for it. */
+.workflow-pill-legended {
+  position: relative;
+  overflow: visible;
+  margin-top: 9px;
+}
+.workflow-pill-legend {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 6px;
+  font-size: 8px;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: #0f1115;
+  color: rgba(125, 211, 192, 0.95);
+  pointer-events: none;
+}
+/* N/A legend tinted red to match its pill. */
+.workflow-pattern-pill-na .workflow-pill-legend {
+  color: rgba(252, 165, 165, 0.95);
+}
+/* Composition pills are blue ("strong"); tint their legend to match. */
+.workflow-composition-pill .workflow-pill-legend {
+  color: rgba(150, 185, 255, 0.95);
+}
+/* Hotkeys legend tinted slate to match the keys pill. */
+.workflow-pattern-pill-keys .workflow-pill-legend {
+  color: rgba(203, 213, 225, 0.95);
+}
+
+/* "Used hotkeys" pill: minimal keyboard treatment — the ⌨️ glyph carries the
+   meaning, tabular numerals keep the group list tidy. */
+.workflow-pattern-pill-keys {
+  border-color: rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.12);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+/* The keyboard glyph rendered at 2× the pill text size. */
+.workflow-hotkey-emoji {
+  font-size: 2em;
+  line-height: 1;
+  vertical-align: middle;
+}
+/* Group numbers beside the glyph: space-separated, up to two stacked rows
+   (the glyph stays vertically centered across them via the pill's align-items). */
+.workflow-hotkey-nums {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
 }
 
 .workflow-pattern-icon {

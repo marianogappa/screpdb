@@ -171,6 +171,30 @@ export const pillClassName = (style) => {
   }
 };
 
+// isBuildOrderEventType reports whether an event_type (== marker FeatureKey)
+// belongs to an opening build order. All initial-BO FeatureKeys are prefixed
+// "bo_" (including the residual "bo_*_other" catch-alls); the "opener_unresolved"
+// N/A marker is deliberately NOT one — it keeps its plain absence styling.
+export const isBuildOrderEventType = (eventType) =>
+  typeof eventType === 'string' && eventType.startsWith('bo_');
+
+// isOpenerEventType is the "fills the opener slot" predicate: a real build
+// order OR the "opener unresolved" (N/A) marker. Used for ordering (the opener
+// always leads the row) and for the "BUILD ORDER" legend.
+export const isOpenerEventType = (eventType) =>
+  isBuildOrderEventType(eventType) || eventType === 'opener_unresolved';
+
+// pillEventTypeClass returns an extra CSS class that distinguishes a pill by
+// what it represents (independent of its backend PillStyle): build orders, the
+// unresolved-opener N/A pill, and the "used hotkeys" pill each get their own
+// minimal treatment. Returns '' for everything else.
+export const pillEventTypeClass = (eventType) => {
+  if (isBuildOrderEventType(eventType)) return 'workflow-pattern-pill-bo';
+  if (eventType === 'opener_unresolved') return 'workflow-pattern-pill-na';
+  if (eventType === 'used_hotkey_groups') return 'workflow-pattern-pill-keys';
+  return '';
+};
+
 // useMarkerRegistry fetches /api/custom/markers/definitions once on mount and
 // exposes the full payload to consumers: markers keyed by FeatureKey, plus the
 // ordered featuring key list and the game-event-only feature metadata used by

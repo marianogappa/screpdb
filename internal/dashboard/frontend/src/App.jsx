@@ -22,6 +22,9 @@ import {
   useMarkerRegistry,
   renderPillText,
   pillClassName,
+  pillEventTypeClass,
+  isBuildOrderEventType,
+  isOpenerEventType,
   lookupDefinitionForPattern,
   renderAggregatePillText,
 } from './lib/markerRegistry';
@@ -828,8 +831,13 @@ const renderFeaturingPill = (pill, keyPrefix) => {
     ? pill.iconKeys
     : (pill.iconKey ? [pill.iconKey] : []);
   const iconUrls = iconKeys.map((k) => getUnitIcon(k)).filter(Boolean);
+  // Build-order pills get the teal opener accent + a "BUILD ORDER" legend on
+  // the top border, so they read as the opening across every surface.
+  const isBO = isBuildOrderEventType(pill.key);
+  const variantClass = isBO ? 'workflow-pattern-pill-bo workflow-pill-legended' : 'workflow-pattern-pill-strong';
   return (
-    <span key={`${keyPrefix}-${pill.key}`} className="workflow-pattern-pill workflow-pattern-pill-strong workflow-summary-feature-pill">
+    <span key={`${keyPrefix}-${pill.key}`} className={`workflow-pattern-pill ${variantClass} workflow-summary-feature-pill`}>
+      {isBO ? <span className="workflow-pill-legend">Build Order</span> : null}
       {iconUrls.map((url, i) => (
         <img key={`${pill.key}-i${i}`} src={url} alt="" className="workflow-pattern-icon" />
       ))}
@@ -1382,13 +1390,16 @@ const shouldHidePatternFromSummaryPills = (pattern, trustGameEventsForDrops) => 
 
 const filterSummaryPillPatterns = (patterns, trustGameEventsForDrops = false) => {
   const filtered = (patterns || []).filter((pattern) => !shouldHidePatternFromSummaryPills(pattern, trustGameEventsForDrops));
-  // Stable-sort by detected_second so pills read chronologically (BO first,
-  // then mid-game markers like SK Terran / Mech Transition). Patterns
-  // without a detected_second (e.g. unit-composition rollups) sort to the
-  // end. Hotkey markers carry an end-of-replay second already, so they
-  // naturally land after timed markers.
+  // The opening build order always leads the row (it's the headline signal and
+  // now has a guaranteed pill). After that, pills read chronologically by
+  // detected_second — mid-game markers like SK Terran / Mech Transition, then
+  // hotkey/absence markers which carry an end-of-replay second. Patterns
+  // without a detected_second sort to the end. Stable tiebreak via index.
   const indexed = filtered.map((pattern, idx) => ({ pattern, idx }));
   indexed.sort((a, b) => {
+    const aBO = isBuildOrderEventType(a.pattern?.event_type) ? 0 : 1;
+    const bBO = isBuildOrderEventType(b.pattern?.event_type) ? 0 : 1;
+    if (aBO !== bBO) return aBO - bBO;
     const ta = Number.isFinite(a.pattern?.detected_second) ? a.pattern.detected_second : Number.POSITIVE_INFINITY;
     const tb = Number.isFinite(b.pattern?.detected_second) ? b.pattern.detected_second : Number.POSITIVE_INFINITY;
     if (ta !== tb) return ta - tb;
@@ -1442,7 +1453,7 @@ const renderAggregatePatternEntry = (entry, key, registry, gameEventFeaturesByKe
   }
   return (
     <span key={`${key}-wrap`} className="workflow-pattern-with-count">
-      <span className={pillClassName(rendered.style)} title={rendered.title || undefined}>
+      <span className={`${pillClassName(rendered.style)} ${pillEventTypeClass(patternKey)}`.trim()} title={rendered.title || undefined}>
         {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
         {rendered.label ? <span>{rendered.label}</span> : null}
       </span>
@@ -1464,19 +1475,55 @@ const renderMatchupPatternSection = (title, entries, keyPrefix, registry, gameEv
   );
 };
 
+// renderHotkeyGroups lays out the hotkey group numbers space-separated (no
+// commas) beside the keyboard glyph. With more than 3 groups it wraps onto two
+// rows — first row gets max(3, ceil(n/2)), so e.g. 4→"1 2 3"/"4",
+// 6→"1 2 3"/"4 5 6", 7→"1 2 3 4"/"5 6 7" — with the glyph vertically centered.
+const renderHotkeyGroups = (label) => {
+  const nums = String(label || '').split(',').map((s) => s.trim()).filter(Boolean);
+  let rows;
+  if (nums.length > 3) {
+    const r1 = Math.max(3, Math.ceil(nums.length / 2));
+    rows = [nums.slice(0, r1), nums.slice(r1)];
+  } else {
+    rows = [nums];
+  }
+  return (
+    <>
+      <span className="workflow-hotkey-emoji" aria-label="hotkeys">⌨️</span>
+      <span className="workflow-hotkey-nums">
+        {rows.map((r, i) => <span key={i}>{r.join(' ')}</span>)}
+      </span>
+    </>
+  );
+};
+
 const renderPatternPill = (pattern, keyPrefix, team, registry) => {
   if (!registry) return null;
   const def = lookupDefinitionForPattern(registry, pattern);
   if (!def) return null;
   const rendered = renderPillText(def, PILL_SURFACES.summaryPlayer, pattern);
   if (!rendered) return null;
-  const className = pillClassName(rendered.style);
+  // Opener pills (a build order, or the "opener unresolved" N/A) carry a small
+  // "BUILD ORDER" legend on their top border instead of an inline prefix — the
+  // legend + accent colour identify the pill type.
+  const isOpener = isOpenerEventType(pattern?.event_type);
+  const isHotkeys = pattern?.event_type === 'used_hotkey_groups';
+  // A top-border legend names the pill type (opener / hotkeys); composition
+  // pills get theirs in CompositionPill.
+  const legendText = isOpener ? 'Build Order' : (isHotkeys ? 'Hotkeys' : null);
+  const className = `${pillClassName(rendered.style)} ${pillEventTypeClass(pattern?.event_type)} ${legendText ? 'workflow-pill-legended' : ''}`.trim();
   const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.event_type || ''}-${pattern?.detected_second ?? ''}`;
   return (
     <span key={key} className={className} title={rendered.title || undefined}>
+      {legendText ? <span className="workflow-pill-legend">{legendText}</span> : null}
       {team !== undefined ? <span className="team-dot" style={{ backgroundColor: getTeamColor(team) }}></span> : null}
-      {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
-      {rendered.label ? <span>{rendered.label}</span> : null}
+      {isHotkeys ? renderHotkeyGroups(rendered.label) : (
+        <>
+          {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
+          {rendered.label ? <span>{rendered.label}</span> : null}
+        </>
+      )}
     </span>
   );
 };
@@ -5490,47 +5537,54 @@ function App() {
                         ) : null}
                       </div>
                     </div>
-                    <div className="workflow-player-rows" style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
+                    <div className="workflow-player-table" style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
+                      <div className="wpt-head">Name</div>
+                      <div className="wpt-head">APM</div>
+                      <div className="wpt-head">Featuring</div>
+                      <div className="wpt-head">Unit composition %</div>
                       {(mainGame.players || []).map((player) => {
                         const raceIcon = getRaceIcon(player.race);
                         const gameSummaryParts = playerGameSummarySignalParts(player, mainGame?.game_events);
                         const trustGameEventsForDrops = Array.isArray(mainGame?.game_events) && mainGame.game_events.length > 0;
+                        const patterns = filterSummaryPillPatterns(player.detected_patterns, trustGameEventsForDrops);
+                        // BO/opener pill always leads, then game-event signal pills
+                        // (Drop / Bunker rush / Proxy …), then the remaining markers.
+                        const boPatterns = patterns.filter((p) => isOpenerEventType(p?.event_type));
+                        const restPatterns = patterns.filter((p) => !isOpenerEventType(p?.event_type));
+                        const playerPhases = Array.isArray(mainGame?.unit_composition_markers)
+                          ? mainGame.unit_composition_markers.filter((m) => m.player_id === player.player_id)
+                          : [];
                         return (
-                          <div key={player.player_id} className="workflow-player-row" style={{ borderLeft: `3px solid ${getTeamColor(player.team)}` }}>
-                            <div className="workflow-player-line">
-                              <div className="workflow-player-name workflow-player-name-block">
-                                {raceIcon ? <img src={raceIcon} alt={player.race || 'race'} className="unit-icon-inline workflow-summary-race-icon" /> : null}
-                                {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-                                <button
-                                  type="button"
-                                  className="workflow-player-name-link"
-                                  title="Analyze player"
-                                  style={gamePlayerNameStyle(player)}
-                                  onClick={() => openMainPlayer(player.player_key)}
-                                >
-                                  {player.name}
-                                </button>
-                              </div>
-                              <div className="workflow-player-actions">
-                                <span className="workflow-player-apm"><strong>APM</strong> {player.apm}</span>
-                              </div>
-                              <div className="workflow-pattern-pills">
-                                {gameSummaryParts.positive.map(renderGameSummarySignalPill)}
-                                {filterSummaryPillPatterns(player.detected_patterns, trustGameEventsForDrops).map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`, undefined, markerRegistry))}
-                              </div>
-                              {/* Per-player attacker-composition phase pills.
-                                  Source: mainGame.unit_composition_markers filtered to this player. */}
-                              {Array.isArray(mainGame?.unit_composition_markers) ? (() => {
-                                const playerPhases = mainGame.unit_composition_markers.filter((m) => m.player_id === player.player_id);
-                                if (playerPhases.length === 0) return null;
-                                return (
-                                  <div className="workflow-pattern-pills">
-                                    <CompositionPhasesRow phases={playerPhases} maxCasters={4} />
-                                  </div>
-                                );
-                              })() : null}
+                          <React.Fragment key={player.player_id}>
+                            <div className="wpt-cell wpt-name" style={{ borderLeftColor: getTeamColor(player.team) }}>
+                              {raceIcon ? <img src={raceIcon} alt={player.race || 'race'} className="unit-icon-inline workflow-summary-race-icon" /> : null}
+                              {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+                              <button
+                                type="button"
+                                className="workflow-player-name-link"
+                                title="Analyze player"
+                                style={gamePlayerNameStyle(player)}
+                                onClick={() => openMainPlayer(player.player_key)}
+                              >
+                                {player.name}
+                              </button>
                             </div>
-                          </div>
+                            <div className="wpt-cell wpt-apm">{player.apm}</div>
+                            <div className="wpt-cell wpt-featuring">
+                              <div className="workflow-pattern-pills">
+                                {boPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-bo-${idx}`, undefined, markerRegistry))}
+                                {gameSummaryParts.positive.map(renderGameSummarySignalPill)}
+                                {restPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`, undefined, markerRegistry))}
+                              </div>
+                            </div>
+                            <div className="wpt-cell wpt-comp">
+                              {playerPhases.length > 0 ? (
+                                <div className="workflow-pattern-pills">
+                                  <CompositionPhasesRow phases={playerPhases} maxCasters={4} />
+                                </div>
+                              ) : null}
+                            </div>
+                          </React.Fragment>
                         );
                       })}
                     </div>

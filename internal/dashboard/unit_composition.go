@@ -52,13 +52,13 @@ var compositionCasters = map[string]struct{}{
 // produced in meaningful numbers (4-12 Carriers, 2-6 Reavers) and read
 // as primary army composition, so they belong in the slot strip on the
 // left where the proportional fill reflects their actual share.
+// Dark Templar, Guardian and Devourer are NOT here: they're real army units
+// (and DT in particular is not a spellcaster), so they belong in the unit
+// histogram on the left, not the caster/notable strip on the right.
 var compositionSignatureNonCasters = map[string]struct{}{
-	models.GeneralUnitDarkTemplar:    {},
 	models.GeneralUnitBattlecruiser:  {},
 	models.GeneralUnitDropship:       {},
 	models.GeneralUnitNuclearMissile: {},
-	models.GeneralUnitGuardian:       {},
-	models.GeneralUnitDevourer:       {},
 }
 
 // compositionExcluded: workers + supply. Don't appear anywhere.
