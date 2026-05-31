@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/marianogappa/screpdb/compare/v1.0.0...v1.1.0) (2026-05-31)
+
+
+### Features
+
+* **spec:** generated, test-backed SPECIFICATION.md (closes [#138](https://github.com/marianogappa/screpdb/issues/138)) ([#142](https://github.com/marianogappa/screpdb/issues/142)) ([7a3fc66](https://github.com/marianogappa/screpdb/commit/7a3fc66404a8f8dd77183129edaecf0171b1e030))
+
 ## [1.0.0](https://github.com/marianogappa/screpdb/compare/v0.25.0...v1.0.0) (2026-05-31)
 
 
