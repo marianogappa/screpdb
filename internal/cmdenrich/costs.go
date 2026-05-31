@@ -1,6 +1,10 @@
 package cmdenrich
 
-import "github.com/marianogappa/screpdb/internal/models"
+import (
+	"sort"
+
+	"github.com/marianogappa/screpdb/internal/models"
+)
 
 // UnitEcon is the economic footprint of producing one instance of a Subject
 // (a Train, Build, or Morph). It is the canonical answer for: "what does it
@@ -19,45 +23,49 @@ type UnitEcon struct {
 
 // econTable is the source of truth for early-game economy. Extend as the
 // filter's coverage grows beyond Tier-1.
+//
+// BuildTimeS references the canonical models.BuildTime* consts so the build
+// times here can never drift from the build-order / expert-timing values in
+// internal/models/build_times.go (enforced by a cross-consistency test).
 var econTable = map[string]UnitEcon{
 	// Protoss
-	models.GeneralUnitPylon:           {Minerals: 100, BuildTimeS: 19, SupplyDelta: 8},
-	models.GeneralUnitGateway:         {Minerals: 150, BuildTimeS: 38},
-	models.GeneralUnitAssimilator:     {Minerals: 100, BuildTimeS: 25},
-	models.GeneralUnitNexus:           {Minerals: 400, BuildTimeS: 75},
-	models.GeneralUnitForge:           {Minerals: 150, BuildTimeS: 25},
-	models.GeneralUnitPhotonCannon:    {Minerals: 150, BuildTimeS: 31.5},
-	models.GeneralUnitCyberneticsCore: {Minerals: 200, BuildTimeS: 38},
-	models.GeneralUnitProbe:           {Minerals: 50, BuildTimeS: 12.6, SupplyCost: 1},
-	models.GeneralUnitZealot:          {Minerals: 100, BuildTimeS: 25, SupplyCost: 2},
+	models.GeneralUnitPylon:           {Minerals: 100, BuildTimeS: models.BuildTimePylon, SupplyDelta: 8},
+	models.GeneralUnitGateway:         {Minerals: 150, BuildTimeS: models.BuildTimeGateway},
+	models.GeneralUnitAssimilator:     {Minerals: 100, BuildTimeS: models.BuildTimeAssimilator},
+	models.GeneralUnitNexus:           {Minerals: 400, BuildTimeS: models.BuildTimeNexus},
+	models.GeneralUnitForge:           {Minerals: 150, BuildTimeS: models.BuildTimeForge},
+	models.GeneralUnitPhotonCannon:    {Minerals: 150, BuildTimeS: models.BuildTimePhotonCannon},
+	models.GeneralUnitCyberneticsCore: {Minerals: 200, BuildTimeS: models.BuildTimeCyberneticsCore},
+	models.GeneralUnitProbe:           {Minerals: 50, BuildTimeS: models.BuildTimeProbe, SupplyCost: 1},
+	models.GeneralUnitZealot:          {Minerals: 100, BuildTimeS: models.BuildTimeZealot, SupplyCost: 2},
 
 	// Terran
-	models.GeneralUnitSupplyDepot:    {Minerals: 100, BuildTimeS: 25, SupplyDelta: 8},
-	models.GeneralUnitBarracks:       {Minerals: 150, BuildTimeS: 50},
-	models.GeneralUnitRefinery:       {Minerals: 100, BuildTimeS: 25},
-	models.GeneralUnitCommandCenter:  {Minerals: 400, BuildTimeS: 75},
-	models.GeneralUnitEngineeringBay: {Minerals: 125, BuildTimeS: 38},
-	models.GeneralUnitFactory:        {Minerals: 200, BuildTimeS: 50},
-	models.GeneralUnitStarport:       {Minerals: 150, BuildTimeS: 44},
-	models.GeneralUnitMachineShop:    {Minerals: 50, BuildTimeS: 25},
-	models.GeneralUnitAcademy:        {Minerals: 150, BuildTimeS: 50},
-	models.GeneralUnitBunker:         {Minerals: 100, BuildTimeS: 19},
-	models.GeneralUnitSCV:            {Minerals: 50, BuildTimeS: 12.6, SupplyCost: 1},
-	models.GeneralUnitMarine:         {Minerals: 50, BuildTimeS: 15, SupplyCost: 1},
+	models.GeneralUnitSupplyDepot:    {Minerals: 100, BuildTimeS: models.BuildTimeSupplyDepot, SupplyDelta: 8},
+	models.GeneralUnitBarracks:       {Minerals: 150, BuildTimeS: models.BuildTimeBarracks},
+	models.GeneralUnitRefinery:       {Minerals: 100, BuildTimeS: models.BuildTimeRefinery},
+	models.GeneralUnitCommandCenter:  {Minerals: 400, BuildTimeS: models.BuildTimeCommandCenter},
+	models.GeneralUnitEngineeringBay: {Minerals: 125, BuildTimeS: models.BuildTimeEngineeringBay},
+	models.GeneralUnitFactory:        {Minerals: 200, BuildTimeS: models.BuildTimeFactory},
+	models.GeneralUnitStarport:       {Minerals: 150, BuildTimeS: models.BuildTimeStarport},
+	models.GeneralUnitMachineShop:    {Minerals: 50, BuildTimeS: models.BuildTimeMachineShop},
+	models.GeneralUnitAcademy:        {Minerals: 150, BuildTimeS: models.BuildTimeAcademy},
+	models.GeneralUnitBunker:         {Minerals: 100, BuildTimeS: models.BuildTimeBunker},
+	models.GeneralUnitSCV:            {Minerals: 50, BuildTimeS: models.BuildTimeSCV, SupplyCost: 1},
+	models.GeneralUnitMarine:         {Minerals: 50, BuildTimeS: models.BuildTimeMarine, SupplyCost: 1},
 
 	// Zerg
-	models.GeneralUnitOverlord:         {Minerals: 100, BuildTimeS: 25, SupplyDelta: 8},
-	models.GeneralUnitSpawningPool:     {Minerals: 200, BuildTimeS: 50},
-	models.GeneralUnitExtractor:        {Minerals: 50, BuildTimeS: 25},
-	models.GeneralUnitHatchery:         {Minerals: 300, BuildTimeS: 75},
-	models.GeneralUnitEvolutionChamber: {Minerals: 75, BuildTimeS: 25},
-	models.GeneralUnitCreepColony:      {Minerals: 75, BuildTimeS: 12},
-	models.GeneralUnitSunkenColony:     {Minerals: 50, BuildTimeS: 12},
-	models.GeneralUnitDrone:            {Minerals: 50, BuildTimeS: 12.6, SupplyCost: 1},
-	// Zerglings come in a pair from one Egg: 50m/17.1s yields 2 lings, 2 supply.
-	// We track them per-pair to match how the Train command appears in the replay
-	// (one Morph command per pair).
-	models.GeneralUnitZergling: {Minerals: 50, BuildTimeS: 17.1, SupplyCost: 2},
+	models.GeneralUnitOverlord:         {Minerals: 100, BuildTimeS: models.BuildTimeOverlord, SupplyDelta: 8},
+	models.GeneralUnitSpawningPool:     {Minerals: 200, BuildTimeS: models.BuildTimeSpawningPool},
+	models.GeneralUnitExtractor:        {Minerals: 50, BuildTimeS: models.BuildTimeExtractor},
+	models.GeneralUnitHatchery:         {Minerals: 300, BuildTimeS: models.BuildTimeHatchery},
+	models.GeneralUnitEvolutionChamber: {Minerals: 75, BuildTimeS: models.BuildTimeEvolutionChamber},
+	models.GeneralUnitCreepColony:      {Minerals: 75, BuildTimeS: models.BuildTimeCreepColony},
+	models.GeneralUnitSunkenColony:     {Minerals: 50, BuildTimeS: models.BuildTimeSunkenColony},
+	models.GeneralUnitDrone:            {Minerals: 50, BuildTimeS: models.BuildTimeDrone, SupplyCost: 1},
+	// Zerglings come in a pair from one Egg: 50m yields 2 lings, 2 supply. We
+	// track them per-pair to match how the Train command appears in the replay
+	// (one Morph command per pair); BuildTimeZergling is the per-pair morph time.
+	models.GeneralUnitZergling: {Minerals: 50, BuildTimeS: models.BuildTimeZergling, SupplyCost: 2},
 }
 
 // EconOf returns the economic footprint for a Subject. Returns (zero, false)
@@ -80,4 +88,38 @@ var gatherRates = map[string]float64{
 // Subject (SCV / Drone / Probe). Returns 0 for non-worker subjects.
 func GatherRatePerMinute(workerSubject string) float64 {
 	return gatherRates[workerSubject]
+}
+
+// EconEntry is one row of the early-game economy table (Subject + footprint).
+type EconEntry struct {
+	Subject string
+	Econ    UnitEcon
+}
+
+// AllEcon returns every early-game economy entry, sorted by Subject. Used by
+// the SPECIFICATION.md generator and cross-consistency tests.
+func AllEcon() []EconEntry {
+	out := make([]EconEntry, 0, len(econTable))
+	for subject, econ := range econTable {
+		out = append(out, EconEntry{Subject: subject, Econ: econ})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Subject < out[j].Subject })
+	return out
+}
+
+// GatherRateEntry is one row of the worker gather-rate table.
+type GatherRateEntry struct {
+	Worker         string
+	MineralsPerMin float64
+}
+
+// AllGatherRates returns the per-worker mineral gather rates, sorted by worker
+// name. Used by the SPECIFICATION.md generator and cross-consistency tests.
+func AllGatherRates() []GatherRateEntry {
+	out := make([]GatherRateEntry, 0, len(gatherRates))
+	for worker, rate := range gatherRates {
+		out = append(out, GatherRateEntry{Worker: worker, MineralsPerMin: rate})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Worker < out[j].Worker })
+	return out
 }

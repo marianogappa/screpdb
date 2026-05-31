@@ -141,11 +141,12 @@ func skipDir(root, dir string) bool {
 	}
 	switch rel {
 	case ".git", ".claude", "node_modules", "dist",
-		"internal/iofacade", // the filesystem facade implementation
-		"internal/netfacade", // the network facade implementation
-		"scripts", // dev-only debug scripts, not shipped
-		"internal/dashboard/frontend",         // React source, not Go
-		"internal/dashboard/tools":             // build-time codegen, not shipped
+		"internal/iofacade",           // the filesystem facade implementation
+		"internal/netfacade",          // the network facade implementation
+		"scripts",                     // dev-only debug scripts, not shipped
+		"internal/dashboard/frontend", // React source, not Go
+		"internal/dashboard/tools",    // build-time codegen, not shipped
+		"internal/spec/tools":         // SPECIFICATION.md codegen, not shipped
 		return true
 	}
 	base := filepath.Base(dir)
@@ -161,7 +162,8 @@ func skipFile(root, path string) bool {
 	}
 	rel = filepath.ToSlash(rel)
 	return strings.HasPrefix(rel, "scripts/") ||
-		strings.HasPrefix(rel, "internal/dashboard/tools/")
+		strings.HasPrefix(rel, "internal/dashboard/tools/") ||
+		strings.HasPrefix(rel, "internal/spec/tools/")
 }
 
 func defaultPkgName(importPath string) string {

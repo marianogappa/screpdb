@@ -21,27 +21,27 @@ import (
 // state required.
 
 const (
-	mutaBurstWindowSec   = 30
-	mutaBurstMinCount    = 3
-	turretBurstWindowSec = 60
-	turretBurstMinCount  = 3
+	MutaBurstWindowSec   = 30
+	MutaBurstMinCount    = 3
+	TurretBurstWindowSec = 60
+	TurretBurstMinCount  = 3
 )
 
 type mutaTurretSignals struct {
-	zergPID       byte
-	terranPID     byte
-	zergFound     bool
-	terranFound   bool
-	spireCmd      int
-	spireFound    bool
-	firstMutaCmd  int
-	firstMutaOK   bool
-	mutaBurst     int
-	ebayCmd       int
-	ebayFound     bool
+	zergPID        byte
+	terranPID      byte
+	zergFound      bool
+	terranFound    bool
+	spireCmd       int
+	spireFound     bool
+	firstMutaCmd   int
+	firstMutaOK    bool
+	mutaBurst      int
+	ebayCmd        int
+	ebayFound      bool
 	firstTurretCmd int
-	firstTurretOK bool
-	turretBurst   int
+	firstTurretOK  bool
+	turretBurst    int
 }
 
 // computeMutaTurretSignals walks the full enriched stream once, classifies the
@@ -108,7 +108,7 @@ func computeMutaTurretSignals(ctx CustomEvalContext) (mutaTurretSignals, bool) {
 		first := mutaTimes[0]
 		count := 0
 		for _, t := range mutaTimes {
-			if t-first > mutaBurstWindowSec {
+			if t-first > MutaBurstWindowSec {
 				break
 			}
 			count++
@@ -121,7 +121,7 @@ func computeMutaTurretSignals(ctx CustomEvalContext) (mutaTurretSignals, bool) {
 		first := turretTimes[0]
 		count := 0
 		for _, t := range turretTimes {
-			if t-first > turretBurstWindowSec {
+			if t-first > TurretBurstWindowSec {
 				break
 			}
 			count++
@@ -133,10 +133,10 @@ func computeMutaTurretSignals(ctx CustomEvalContext) (mutaTurretSignals, bool) {
 
 // bothBurstsMatch reports whether the cross-player condition holds.
 func (s mutaTurretSignals) bothBurstsMatch() bool {
-	if !s.firstMutaOK || s.mutaBurst < mutaBurstMinCount {
+	if !s.firstMutaOK || s.mutaBurst < MutaBurstMinCount {
 		return false
 	}
-	if !s.firstTurretOK || s.turretBurst < turretBurstMinCount {
+	if !s.firstTurretOK || s.turretBurst < TurretBurstMinCount {
 		return false
 	}
 	return true

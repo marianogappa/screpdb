@@ -1,6 +1,10 @@
 package cmdenrich
 
-import "github.com/marianogappa/screpdb/internal/models"
+import (
+	"sort"
+
+	"github.com/marianogappa/screpdb/internal/models"
+)
 
 // producerByUnit answers "what building produces this unit?" for the early-game
 // units the spam filter cares about. The StarCraft engine refuses to execute a
@@ -85,3 +89,40 @@ var supplyStructureSubjects = map[string]bool{
 // IsSupplyStructure reports whether the Subject increases supply cap on
 // completion.
 func IsSupplyStructure(subject string) bool { return supplyStructureSubjects[subject] }
+
+// ProducerEntry is one row of the producer table: a unit and the building that
+// produces it.
+type ProducerEntry struct {
+	Unit     string
+	Producer string
+}
+
+// AllProducers returns the unit → producer-building table, sorted by unit name.
+// Used by the SPECIFICATION.md generator and cross-consistency tests.
+func AllProducers() []ProducerEntry {
+	out := make([]ProducerEntry, 0, len(producerByUnit))
+	for unit, producer := range producerByUnit {
+		out = append(out, ProducerEntry{Unit: unit, Producer: producer})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Unit < out[j].Unit })
+	return out
+}
+
+// PrereqEntry is one row of the prerequisite table: a building and the buildings
+// that must already exist before it can be placed (the producer is implicit).
+type PrereqEntry struct {
+	Building string
+	Prereqs  []string
+}
+
+// AllPrereqs returns the building → prerequisites table, sorted by building
+// name (prerequisite lists preserve their declared order). Used by the
+// SPECIFICATION.md generator and cross-consistency tests.
+func AllPrereqs() []PrereqEntry {
+	out := make([]PrereqEntry, 0, len(prereqsByBuilding))
+	for building, prereqs := range prereqsByBuilding {
+		out = append(out, PrereqEntry{Building: building, Prereqs: prereqs})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Building < out[j].Building })
+	return out
+}

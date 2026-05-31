@@ -1,4 +1,4 @@
-.PHONY: openapi-generate ui-build build release cross-binaries windows-syso clean-windows-syso
+.PHONY: openapi-generate spec-generate ui-build build release cross-binaries windows-syso clean-windows-syso
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 REL_LDFLAGS := -s -w -X github.com/marianogappa/screpdb/internal/buildinfo.Version=$(VERSION)
@@ -23,6 +23,11 @@ SYSO_VER_FLAGS := \
 openapi-generate:
 	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest -config api/openapi/oapi-codegen.yaml api/openapi/dashboard.v1.yaml
 	go run ./internal/dashboard/tools/gen_openapi_bridge
+
+# Regenerate SPECIFICATION.md from the Go source of truth. Equivalent to
+# `go generate ./...` for the spec package; CI's `go test ./...` fails if stale.
+spec-generate:
+	go run ./internal/spec/tools/genspec
 
 ui-build:
 	cd internal/dashboard/frontend && npm ci && npm run build

@@ -73,6 +73,21 @@ go build .
 
 - All UI functionality exposed as API: [OpenAPI schema available](api/openapi/dashboard.v1.yaml)
 
+## Specification — how the numbers are computed
+
+screpdb makes a lot of derived claims: "this is a **9 Pool**", "your Spawning
+Pool was 6s late", "a Zealot takes 25.2s". Skeptical? Audit them.
+
+[**SPECIFICATION.md**](SPECIFICATION.md) documents every golden value the app
+relies on — unit names, build times, expert timings, costs, tech-tree rules,
+detection thresholds, and more. It's:
+
+- **Generated** from the Go source of truth (`go generate ./...`), so it can't drift from the code.
+- **Test-backed** — CI fails if any value is wrong or the file is stale.
+
+In short: not aspirational docs that rot, but a provably-accurate description of
+what the app actually does.
+
 ## Running on Windows
 
 The Windows binaries are **not code-signed**. On first launch you will see one or more of the following — none of them mean the binary is malicious:
