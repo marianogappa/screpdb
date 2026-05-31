@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/marianogappa/screpdb/compare/v0.25.0...v1.0.0) (2026-05-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* removed the dashboard "Ask AI" feature, the --ai-vendor/ --ai-api-key/--ai-model flags, and the ingest --watch flag.
+
+### Features
+
+* gate all I/O behind facades; remove AI and fswatch ([#135](https://github.com/marianogappa/screpdb/issues/135)) ([#139](https://github.com/marianogappa/screpdb/issues/139)) ([194fe17](https://github.com/marianogappa/screpdb/commit/194fe17a5a113e5f132e068d00dab5e16d037814))
+
 ## [0.25.0](https://github.com/marianogappa/screpdb/compare/v0.24.0...v0.25.0) (2026-05-30)
 
 
