@@ -2,8 +2,6 @@ package dashboard
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
@@ -47,49 +45,6 @@ func TestParseAliasImportJSON(t *testing.T) {
 	}
 	if found["Flash"].BattleTagNormalized != "flashwolf" {
 		t.Fatalf("unexpected normalized tag for Flash: %q", found["Flash"].BattleTagNormalized)
-	}
-}
-
-func TestCsettingsSearchDirsRemasteredReplays(t *testing.T) {
-	base := filepath.FromSlash("/Users/me/Library/Application Support/Blizzard/StarCraft/Maps/Replays")
-	dirs := csettingsSearchDirs(base)
-	if len(dirs) < 3 {
-		t.Fatalf("expected at least 3 dirs, got %d", len(dirs))
-	}
-	wantRoot := filepath.FromSlash("/Users/me/Library/Application Support/Blizzard/StarCraft")
-	if dirs[2] != wantRoot {
-		t.Fatalf("expected dirs[2]=%q, got %q", wantRoot, dirs[2])
-	}
-}
-
-func TestFindCSettingsPathFromReplayDirWalksAncestors(t *testing.T) {
-	root := t.TempDir()
-	replays := filepath.Join(root, "StarCraft", "Maps", "Replays", "Ladder")
-	if err := os.MkdirAll(replays, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	settingsPath := filepath.Join(root, "StarCraft", "CSettings.json")
-	if err := os.WriteFile(settingsPath, []byte("{}"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	got := findCSettingsPathFromReplayDir(replays)
-	if got != settingsPath {
-		t.Fatalf("expected %q, got %q", settingsPath, got)
-	}
-}
-
-func TestCsettingsSearchDirsIncludesStarCraftRootFromNestedReplays(t *testing.T) {
-	base := filepath.FromSlash("/Users/x/Library/Application Support/Blizzard/StarCraft/Maps/Replays/Ladder")
-	want := filepath.FromSlash("/Users/x/Library/Application Support/Blizzard/StarCraft")
-	var found bool
-	for _, d := range csettingsSearchDirs(base) {
-		if d == want {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Fatalf("expected StarCraft install root in search dirs for %q", base)
 	}
 }
 

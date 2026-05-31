@@ -21,7 +21,6 @@ var ingestCmd = &cobra.Command{
 var (
 	inputDir         string
 	sqlitePath       string
-	watch            bool
 	storeRightClicks bool
 	skipHotkeys      bool
 	stopAfterN       int
@@ -34,7 +33,6 @@ var (
 func init() {
 	ingestCmd.Flags().StringVarP(&inputDir, "input-dir", "i", fileops.GetDefaultReplayDir(), "Input directory containing replay files")
 	ingestCmd.Flags().StringVarP(&sqlitePath, "sqlite-path", "s", "screp.db", "SQLite database file path")
-	ingestCmd.Flags().BoolVarP(&watch, "watch", "w", false, "Watch for new files and ingest them as they appear")
 	ingestCmd.Flags().IntVarP(&stopAfterN, "stop-after-n-reps", "n", 0, "Stop after processing N replay files (0 = no limit)")
 	ingestCmd.Flags().StringVarP(&upToDate, "up-to-yyyy-mm-dd", "d", "", "Only process files up to this date (YYYY-MM-DD format)")
 	ingestCmd.Flags().IntVarP(&upToMonths, "up-to-n-months", "m", 0, "Only process files from the last N months (0 = no limit)")
@@ -50,7 +48,6 @@ func runIngest(cmd *cobra.Command, args []string) error {
 	cfg := ingest.Config{
 		InputDir:            inputDir,
 		SQLitePath:          sqlitePath,
-		Watch:               watch,
 		StoreRightClicks:    storeRightClicks,
 		SkipHotkeys:         skipHotkeys,
 		StopAfterN:          stopAfterN,
@@ -58,7 +55,6 @@ func runIngest(cmd *cobra.Command, args []string) error {
 		UpToMonths:          upToMonths,
 		Clean:               clean,
 		CleanDashboard:      cleanDashboard,
-		HandleSignals:       true,
 		UseColor:            true,
 		EarlyFilterDebugDir: os.Getenv("SCREPDB_EARLY_FILTER_DEBUG_DIR"),
 		ProfileMode:         profile.ModeFromEnv(os.Getenv("SCREPDB_INGEST_PROFILE")),

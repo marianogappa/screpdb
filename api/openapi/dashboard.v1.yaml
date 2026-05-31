@@ -230,24 +230,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
-  /api/games/{replayID}/ask:
-    parameters:
-      - $ref: "#/components/parameters/replayID"
-    post:
-      operationId: gameAsk
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AskRequest"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
   /api/games/{replayID}/see:
     parameters:
       - $ref: "#/components/parameters/replayID"
@@ -517,24 +499,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
-  /api/players/{playerKey}/ask:
-    parameters:
-      - $ref: "#/components/parameters/playerKey"
-    post:
-      operationId: playerAsk
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AskRequest"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
   /api/player-colors:
     get:
       operationId: playerColors
@@ -589,8 +553,6 @@ components:
           type: string
         sqlite_path:
           type: string
-        watch:
-          type: boolean
         store_right_clicks:
           type: boolean
         skip_hotkeys:
@@ -676,13 +638,6 @@ components:
         compiled_replays_filter_sql:
           type: string
           nullable: true
-    AskRequest:
-      type: object
-      additionalProperties: false
-      required: [question]
-      properties:
-        question:
-          type: string
     GenericObject:
       type: object
       additionalProperties: true

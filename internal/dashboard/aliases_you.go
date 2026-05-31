@@ -5,50 +5,20 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
-	"os"
-	"path/filepath"
 	"strings"
+
+	"github.com/marianogappa/screpdb/internal/iofacade"
 )
 
 const youCanonicalAlias = "you"
 
-// csettingsSearchDirs lists directories to check for CSettings.json, starting at the replay
-// folder and walking toward the filesystem root. StarCraft: Remastered normally stores
-// replays under .../StarCraft/Maps/Replays with CSettings.json in .../StarCraft/, but users may
-// point ingest at a deeper subfolder or another tree shape, so we search ancestors instead of
-// assuming a fixed depth.
-func csettingsSearchDirs(replayDir string) []string {
-	replayDir = strings.TrimSpace(replayDir)
-	if replayDir == "" {
-		return nil
-	}
-	var dirs []string
-	cur := filepath.Clean(replayDir)
-	seen := map[string]struct{}{}
-	for range 20 {
-		if _, dup := seen[cur]; !dup {
-			seen[cur] = struct{}{}
-			dirs = append(dirs, cur)
-		}
-		parent := filepath.Dir(cur)
-		if parent == cur {
-			break
-		}
-		cur = parent
-	}
-	return dirs
-}
-
-func findCSettingsPathFromReplayDir(replayDir string) string {
-	for _, dir := range csettingsSearchDirs(replayDir) {
-		candidate := filepath.Join(dir, "CSettings.json")
-		info, err := os.Stat(candidate)
-		if err == nil && !info.IsDir() {
-			return candidate
-		}
-	}
-	return ""
-}
+// csettingsMaxAncestorLevels bounds how far above the replay folder we search
+// for CSettings.json. StarCraft: Remastered normally stores replays under
+// .../StarCraft/Maps/Replays with CSettings.json in .../StarCraft/, but users
+// may point ingest at a deeper subfolder, so we walk ancestors rather than
+// assuming a fixed depth. The upward read is a sanctioned, read-only exception
+// to the iofacade allowlist (see iofacade.FindAndReadAncestorFile).
+const csettingsMaxAncestorLevels = 20
 
 func parseCSettingsBattleTags(raw []byte) ([]string, error) {
 	var root any
@@ -174,12 +144,11 @@ func (d *Dashboard) refreshYouAliasesBestEffort(ctx context.Context) {
 	if strings.TrimSpace(inputDir) == "" {
 		return
 	}
-	csettingsPath := findCSettingsPathFromReplayDir(inputDir)
+	csettingsPath, raw, err := iofacade.FindAndReadAncestorFile(inputDir, "CSettings.json", csettingsMaxAncestorLevels)
 	if csettingsPath == "" {
 		log.Printf("aliases: skipped you refresh, CSettings.json not found when walking up from replay dir %s", inputDir)
 		return
 	}
-	raw, err := os.ReadFile(csettingsPath)
 	if err != nil {
 		log.Printf("aliases: skipped you refresh, CSettings not readable at %s: %v", csettingsPath, err)
 		return

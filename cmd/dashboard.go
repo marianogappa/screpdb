@@ -10,7 +10,6 @@ import (
 
 	"github.com/marianogappa/screpdb/internal/dashboard"
 	"github.com/marianogappa/screpdb/internal/dashboardrun"
-	"github.com/marianogappa/screpdb/internal/storage"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +18,7 @@ var dashboardOpts dashboardrun.Options
 
 var dashboardCmd = &cobra.Command{
 	Use:   "dashboard",
-	Short: "Start LLM Dashboard",
+	Short: "Start the dashboard",
 	Long:  ``,
 	RunE:  runDashboard,
 }
@@ -33,18 +32,11 @@ func addDashboardFlags(cmd *cobra.Command) {
 }
 
 func defaultDashboardOptions() dashboardrun.Options {
-	o := dashboardOpts
-	o.NormalizeAfterParse()
-	return o
+	return dashboardOpts
 }
 
 func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) error {
-	store, err := storage.NewSQLiteStorage(opts.SQLitePath)
-	if err != nil {
-		return fmt.Errorf("failed to create SQLite storage: %w", err)
-	}
-
-	dash, err := dashboard.New(ctx, store, opts.SQLitePath, opts.AIVendor, opts.AIAPIKey, opts.AIModel)
+	dash, err := dashboard.New(ctx, opts.SQLitePath)
 	if err != nil {
 		return err
 	}

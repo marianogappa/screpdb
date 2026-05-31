@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/marianogappa/screpdb/internal/fileops"
+	"github.com/marianogappa/screpdb/internal/iofacade"
 )
 
 type ingestSettingsResponse struct {
@@ -40,11 +41,17 @@ func (d *Dashboard) getIngestInputDir(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to load ingest replay folder: %w", err)
 	}
+	// The replays folder is a permitted I/O root; register it as soon as we
+	// learn it (it is user-configured and stored in the DB, not known until now).
+	_ = iofacade.AllowDir(inputDir)
 	return inputDir, nil
 }
 
 func (d *Dashboard) setIngestInputDir(ctx context.Context, inputDir string) error {
 	inputDir = strings.TrimSpace(inputDir)
+	// Allow before validating: ValidateReplayDir stats/walks the folder through
+	// the facade, which would otherwise reject a not-yet-permitted root.
+	_ = iofacade.AllowDir(inputDir)
 	if err := fileops.ValidateReplayDir(inputDir); err != nil {
 		return err
 	}

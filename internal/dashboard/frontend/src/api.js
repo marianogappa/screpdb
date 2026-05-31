@@ -382,32 +382,6 @@ export const api = {
     return response.json();
   },
 
-  askGame: async (replayId, question) => {
-    const response = await fetch(`${API_BASE}/games/${encodeURIComponent(replayId)}/ask`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question }),
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to ask game question');
-    }
-    return response.json();
-  },
-
-  askPlayer: async (playerKey, question) => {
-    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/ask`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question }),
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to ask player question');
-    }
-    return response.json();
-  },
-
   getMarkerDefinitions: async () => {
     const response = await fetch(`${API_CUSTOM}/markers/definitions`);
     if (!response.ok) {

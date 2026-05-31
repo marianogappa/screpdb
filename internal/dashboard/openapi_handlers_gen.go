@@ -225,21 +225,6 @@ func (a *openAPIStrictAdapter) GameDetail(ctx context.Context, request apigen.Ga
 	return responseFromPayload(ctx, request, a.service.GameDetail, func(value any) apigen.GameDetailResponseObject { return GameDetailJSONResponse{Payload: value} })
 }
 
-type GameAskJSONResponse struct {
-	Payload any
-}
-
-func (response GameAskJSONResponse) VisitGameAskResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) GameAsk(ctx context.Context, request apigen.GameAskRequestObject) (apigen.GameAskResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.GameAsk, func(value any) apigen.GameAskResponseObject { return GameAskJSONResponse{Payload: value} })
-}
-
 type GameSeeJSONResponse struct {
 	Payload any
 }
@@ -381,21 +366,6 @@ func (response PlayerDetailJSONResponse) VisitPlayerDetailResponse(w http.Respon
 
 func (a *openAPIStrictAdapter) PlayerDetail(ctx context.Context, request apigen.PlayerDetailRequestObject) (apigen.PlayerDetailResponseObject, error) {
 	return responseFromPayload(ctx, request, a.service.PlayerDetail, func(value any) apigen.PlayerDetailResponseObject { return PlayerDetailJSONResponse{Payload: value} })
-}
-
-type PlayerAskJSONResponse struct {
-	Payload any
-}
-
-func (response PlayerAskJSONResponse) VisitPlayerAskResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) PlayerAsk(ctx context.Context, request apigen.PlayerAskRequestObject) (apigen.PlayerAskResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.PlayerAsk, func(value any) apigen.PlayerAskResponseObject { return PlayerAskJSONResponse{Payload: value} })
 }
 
 type PlayerChatSummaryJSONResponse struct {

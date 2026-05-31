@@ -24,17 +24,11 @@ import (
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
 	"github.com/marianogappa/screpdb/internal/ingest"
-	"github.com/marianogappa/screpdb/internal/storage"
+	"github.com/marianogappa/screpdb/internal/netfacade"
 )
 
 //go:embed frontend/build
 var embeddedFrontendBuild embed.FS
-
-const (
-	AIVendorOpenAI    = "OPENAI"
-	AIVendorAnthropic = "ANTHROPIC"
-	AIVendorGemini    = "GEMINI"
-)
 
 type Dashboard struct {
 	ctx                context.Context
@@ -43,7 +37,6 @@ type Dashboard struct {
 	replayScopedMu     sync.RWMutex
 	replayScopedDB     *sql.DB
 	globalReplayFilter globalReplayFilterConfig
-	ai                 *AI
 	sqlitePath         string
 	ingestMu           sync.Mutex
 	ingestRunning      bool
@@ -55,7 +48,7 @@ type Dashboard struct {
 	ingestSubscribers  map[chan ingestStreamMessage]struct{}
 }
 
-func New(ctx context.Context, store storage.Storage, sqlitePath, aiVendor, apiKey, model string) (*Dashboard, error) {
+func New(ctx context.Context, sqlitePath string) (*Dashboard, error) {
 	if err := runMigrations(sqlitePath); err != nil {
 		return nil, fmt.Errorf("failed to run migration routine: %w", err)
 	}
@@ -73,25 +66,9 @@ func New(ctx context.Context, store storage.Storage, sqlitePath, aiVendor, apiKe
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	opts := []Option{WithDebug(true)}
-	switch aiVendor {
-	case AIVendorOpenAI:
-		opts = append(opts, WithOpenAI(apiKey, model))
-	case AIVendorAnthropic:
-		opts = append(opts, WithAnthropic(apiKey, model))
-	case AIVendorGemini:
-		opts = append(opts, WithGemini(apiKey, model))
-	}
-
-	ai, err := NewAI(ctx, store, db, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create AI client: %w", err)
-	}
-
 	dashboard := &Dashboard{
 		ctx:          ctx,
 		db:           db,
-		ai:           ai,
 		ingestStatus: "idle",
 		sqlitePath:   sqlitePath,
 	}
@@ -255,25 +232,21 @@ func (d *Dashboard) StartAsync(port int) <-chan error {
 		}
 	}()
 
-	// Wait for server to be ready
+	// Wait for the server to be ready. A localhost TCP dial (via netfacade) is
+	// sufficient: routes are registered before ListenAndServe, so once the
+	// listener accepts, the dashboard is serving. This makes no outbound
+	// network call (issue #135).
 	go func() {
-		for i := 0; i < 30; i++ {
-			resp, err := http.Get(fmt.Sprintf("http://%s/api/health", addr))
-			if err == nil {
-				resp.Body.Close()
-				if resp.StatusCode == http.StatusOK {
-					log.Println("Backend server is ready")
-					select {
-					case errChan <- nil:
-					default:
-					}
-					return
-				}
+		if err := netfacade.WaitForLocalListener(addr, 30, 100*time.Millisecond); err != nil {
+			select {
+			case errChan <- err:
+			default:
 			}
-			time.Sleep(100 * time.Millisecond)
+			return
 		}
+		log.Println("Backend server is ready")
 		select {
-		case errChan <- fmt.Errorf("server failed to start within 3 seconds"):
+		case errChan <- nil:
 		default:
 		}
 	}()
