@@ -13,7 +13,12 @@ import (
 // 26: build-order overhaul — Zerg 5/6/7/8/10/11 Pool rungs, loosened FFE &
 // 1 Rax FE timings, widened Protoss expand/core matchups, Bunker Rush, per-race
 // residual "… (Other)" catch-alls, and the "Opener unresolved" N/A marker.
-const AlgorithmVersion = 26
+//
+// 27: Build dedup now requires the same build tile, not just a 3s window —
+// stops merging distinct same-type buildings placed seconds apart at different
+// spots (the time-only heuristic mis-merged ~55% of its collapses). The dead
+// non-streaming ApplyBuildDedup mirror was also removed.
+const AlgorithmVersion = 27
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

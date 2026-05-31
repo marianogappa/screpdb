@@ -54,6 +54,17 @@ func (b *TestReplayBuilder) WithCommand(playerID byte, seconds int, actionType, 
 	return b
 }
 
+// WithCommandAt is like WithCommand but pins the command's build tile (X, Y).
+// Used to exercise the same-tile Build dedup: two same-subject builds at the
+// same tile collapse; at different tiles they don't.
+func (b *TestReplayBuilder) WithCommandAt(playerID byte, seconds int, actionType, unitType string, x, y int) *TestReplayBuilder {
+	b.WithCommand(playerID, seconds, actionType, unitType)
+	cmd := b.commands[len(b.commands)-1]
+	cmd.X = intPtr(x)
+	cmd.Y = intPtr(y)
+	return b
+}
+
 func (b *TestReplayBuilder) WithDurationSeconds(durationSeconds int) *TestReplayBuilder {
 	b.replay.DurationSeconds = durationSeconds
 	return b

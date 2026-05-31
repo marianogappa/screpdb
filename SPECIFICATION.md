@@ -566,9 +566,9 @@ Standalone constants the detectors depend on — dedup windows, muta/turret burs
 
 | Constant | Value | Meaning |
 | --- | --- | --- |
-| Algorithm version | 26 | Detection algorithm revision; incremented to trigger re-detection. |
-| Build dedup gap (s) | 3 | Repeat Build orders of the same building closer than this are one event. |
-| Build dedup max second (s) | 240 | Past this second, dedup stops and every Build is observed as-is. |
+| Algorithm version | 27 | Detection algorithm revision; incremented to trigger re-detection. |
+| Build dedup gap (s) | 3 | Repeat Build orders of the same building at the same tile, closer than this, are one event (double-tap / misclick); different-tile placements are kept. |
+| Build dedup max second (s) | 240 | Past this second, dedup stops and every Build is observed as-is (a tile can be legitimately rebuilt on later). |
 | Mutalisk burst window (s) | 30 | Window within which the Mutalisk morphs must cluster. |
 | Mutalisk burst min count | 3 | Minimum Mutalisks in the window to count as a burst. |
 | Turret burst window (s) | 60 | Window within which the Missile Turrets must cluster. |

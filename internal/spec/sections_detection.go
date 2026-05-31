@@ -198,8 +198,8 @@ func registerDetectionScalars() {
 		Rows: func() [][]string {
 			return [][]string{
 				{"Algorithm version", strconv.Itoa(core.AlgorithmVersion), "Detection algorithm revision; incremented to trigger re-detection."},
-				{"Build dedup gap (s)", strconv.Itoa(markers.BuildDedupGapSeconds), "Repeat Build orders of the same building closer than this are one event."},
-				{"Build dedup max second (s)", strconv.Itoa(markers.BuildDedupMaxSecond), "Past this second, dedup stops and every Build is observed as-is."},
+				{"Build dedup gap (s)", strconv.Itoa(markers.BuildDedupGapSeconds), "Repeat Build orders of the same building at the same tile, closer than this, are one event (double-tap / misclick); different-tile placements are kept."},
+				{"Build dedup max second (s)", strconv.Itoa(markers.BuildDedupMaxSecond), "Past this second, dedup stops and every Build is observed as-is (a tile can be legitimately rebuilt on later)."},
 				{"Mutalisk burst window (s)", strconv.Itoa(markers.MutaBurstWindowSec), "Window within which the Mutalisk morphs must cluster."},
 				{"Mutalisk burst min count", strconv.Itoa(markers.MutaBurstMinCount), "Minimum Mutalisks in the window to count as a burst."},
 				{"Turret burst window (s)", strconv.Itoa(markers.TurretBurstWindowSec), "Window within which the Missile Turrets must cluster."},

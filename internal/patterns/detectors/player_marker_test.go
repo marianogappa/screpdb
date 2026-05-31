@@ -179,12 +179,12 @@ func TestMarkerDetector_SkipsOtherRaces(t *testing.T) {
 	}
 }
 
-// Dedup still collapses same-subject Build facts within the 3s gap during the
-// opening window (pre-BuildDedupMaxSecond). Only the latest observation lands.
-func TestBuildDedup_WithinOpeningCollapses(t *testing.T) {
+// Dedup collapses same-subject, SAME-TILE Build facts within the 3s gap during
+// the opening window (pre-BuildDedupMaxSecond). Only the latest observation lands.
+func TestBuildDedup_SameTileWithinOpeningCollapses(t *testing.T) {
 	d, rec := newRecordingBuildDetector()
-	d.enqueueDedup(buildFact("Gateway", 70))
-	d.enqueueDedup(buildFact("Gateway", 72)) // inside gap → replaces pending
+	d.enqueueDedup(buildFactAt("Gateway", 70, 5, 5))
+	d.enqueueDedup(buildFactAt("Gateway", 72, 5, 5)) // same tile, inside gap → replaces pending
 	d.flushAllPending()
 
 	if got := len(rec.observed); got != 1 {
@@ -192,6 +192,23 @@ func TestBuildDedup_WithinOpeningCollapses(t *testing.T) {
 	}
 	if rec.observed[0].Second != 72 {
 		t.Fatalf("expected latest-wins at second=72, got %d", rec.observed[0].Second)
+	}
+}
+
+// Two same-subject Build facts within the 3s gap but at DIFFERENT tiles are
+// genuinely distinct buildings (e.g. two Gateways going down back-to-back at
+// separate spots). Dedup must NOT collapse them — both observations land.
+func TestBuildDedup_DifferentTileDoesNotCollapse(t *testing.T) {
+	d, rec := newRecordingBuildDetector()
+	d.enqueueDedup(buildFactAt("Gateway", 70, 5, 5))
+	d.enqueueDedup(buildFactAt("Gateway", 72, 9, 9)) // different tile, inside gap → distinct
+	d.flushAllPending()
+
+	if got := len(rec.observed); got != 2 {
+		t.Fatalf("expected 2 observations (distinct tiles), got %d", got)
+	}
+	if rec.observed[0].Second != 70 || rec.observed[1].Second != 72 {
+		t.Fatalf("expected both builds in order (70, 72), got %+v", rec.observed)
 	}
 }
 
@@ -378,11 +395,20 @@ func newRecordingBuildDetector() (*MarkerPlayerDetector, *recordingState) {
 	return d, rec
 }
 
+// buildFact makes a same-tile (1,1) building fact. Dedup keys on subject + tile,
+// so same-subject buildFacts within the gap collapse; use buildFactAt to vary
+// the tile.
 func buildFact(subject string, second int) cmdenrich.EnrichedCommand {
+	return buildFactAt(subject, second, 1, 1)
+}
+
+func buildFactAt(subject string, second, x, y int) cmdenrich.EnrichedCommand {
 	return cmdenrich.EnrichedCommand{
 		Kind:    cmdenrich.KindMakeBuilding,
 		Subject: subject,
 		Second:  second,
+		X:       intPtr(x),
+		Y:       intPtr(y),
 	}
 }
 
@@ -413,13 +439,13 @@ func TestMarkerDetector_2Gate_Positive(t *testing.T) {
 func TestMarkerDetector_2Gate_PayloadHasExpertActuals(t *testing.T) {
 	builder := NewTestReplayBuilder().WithPlayer(1, "P", "Protoss", 1).WithMatchup("PvP")
 	// Anti-spam double-click on the 1st Gateway: two Build commands within
-	// BuildDedupGapSeconds. The detector should dedup → keep the later one,
-	// then a real 2nd Gateway, then a Zealot. Payload should reflect the
-	// post-dedup timings, not the raw Build stream.
-	builder.WithCommand(1, 70, models.ActionTypeBuild, models.GeneralUnitGateway) // dropped by dedup
-	builder.WithCommand(1, 71, models.ActionTypeBuild, models.GeneralUnitGateway) // wins dedup window → 1st Gateway @ 71
-	builder.WithCommand(1, 86, models.ActionTypeBuild, models.GeneralUnitGateway) // 2nd Gateway @ 86
-	builder.WithCommand(1, 130, models.ActionTypeTrain, "Zealot")                 // First Zealot @ 130
+	// BuildDedupGapSeconds at the SAME tile (5,5). The detector should dedup →
+	// keep the later one, then a real 2nd Gateway at a DIFFERENT tile, then a
+	// Zealot. Payload should reflect the post-dedup timings, not the raw stream.
+	builder.WithCommandAt(1, 70, models.ActionTypeBuild, models.GeneralUnitGateway, 5, 5) // dropped by dedup
+	builder.WithCommandAt(1, 71, models.ActionTypeBuild, models.GeneralUnitGateway, 5, 5) // same tile → wins dedup window → 1st Gateway @ 71
+	builder.WithCommandAt(1, 86, models.ActionTypeBuild, models.GeneralUnitGateway, 9, 9) // different tile → 2nd Gateway @ 86
+	builder.WithCommand(1, 130, models.ActionTypeTrain, "Zealot")                         // First Zealot @ 130
 	replay, players := builder.Build()
 
 	bo := findBOForTest(t, "2 Gate")
