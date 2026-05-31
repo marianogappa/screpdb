@@ -6,16 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"path"
 	"strings"
 
 	"github.com/icza/screp/rep/repcore"
 	"github.com/marianogappa/screpdb/internal/buildinfo"
 	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
-	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
 	"github.com/marianogappa/screpdb/internal/ingest"
+	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 	"github.com/marianogappa/screpdb/internal/storage"
 )
@@ -91,7 +90,6 @@ func (d *Dashboard) Ingest(ctx context.Context, request apigen.IngestRequestObje
 	cfg := ingest.Config{
 		InputDir:         inputDir,
 		SQLitePath:       strings.TrimSpace(nullableStringValue(body.SqlitePath)),
-		Watch:            nullableBoolValue(body.Watch),
 		StoreRightClicks: nullableBoolValue(body.StoreRightClicks),
 		SkipHotkeys:      nullableBoolValue(body.SkipHotkeys),
 		StopAfterN:       nullableIntValue(body.StopAfterNReps),
@@ -99,7 +97,6 @@ func (d *Dashboard) Ingest(ctx context.Context, request apigen.IngestRequestObje
 		UpToMonths:       nullableIntValue(body.UpToNMonths),
 		Clean:            nullableBoolValue(body.Clean),
 		CleanDashboard:   nullableBoolValue(body.CleanDashboard),
-		HandleSignals:    false,
 		UseColor:         false,
 		Logger:           d.newIngestLogger(),
 	}
@@ -261,46 +258,6 @@ func (d *Dashboard) GameDetail(_ context.Context, request apigen.GameDetailReque
 	return detail, nil
 }
 
-func (d *Dashboard) GameAsk(_ context.Context, request apigen.GameAskRequestObject) (any, error) {
-	if request.Body == nil || strings.TrimSpace(request.Body.Question) == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("question is required"))
-	}
-	if !d.ai.IsAvailable() {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("AI is not configured"))
-	}
-	detail, err := d.buildWorkflowGameDetail(request.ReplayID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
-		}
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	scope := fmt.Sprintf("The answer MUST be scoped to replay_id=%d. Prefer SQL WHERE replay_id = %d when querying replay/player/command tables.", request.ReplayID, request.ReplayID)
-	answer, err := d.ai.AnswerWorkflowQuestion(strings.TrimSpace(request.Body.Question), detail, scope)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	results := []map[string]any{}
-	columns := []string{}
-	if answer.Config.Type != WidgetTypeText && strings.TrimSpace(answer.SQLQuery) != "" {
-		filter := dashboarddb.ReplayIDFilterSQL(request.ReplayID)
-		qResults, qColumns, queryErr := d.executeQuery(answer.SQLQuery, &filter)
-		if queryErr == nil {
-			results = qResults
-			columns = qColumns
-		}
-	}
-	return map[string]any{
-		"title":       answer.Title,
-		"description": answer.Description,
-		"config":      answer.Config,
-		"sql_query":   answer.SQLQuery,
-		"text_answer": answer.TextAnswer,
-		"results":     results,
-		"columns":     columns,
-	}, nil
-}
-
 func (d *Dashboard) GameSee(ctx context.Context, request apigen.GameSeeRequestObject) (any, error) {
 	// The folder name starts with "000_" so it sorts above other folders, and folders
 	// sort above files in StarCraft's replay browser — making the staged replay easy
@@ -312,7 +269,7 @@ func (d *Dashboard) GameSee(ctx context.Context, request apigen.GameSeeRequestOb
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 	}
-	ingestDirPath, err := d.dbStore.GetIngestInputDir(ctx, globalReplayFilterConfigKey)
+	ingestDirPath, err := d.getIngestInputDir(ctx)
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
@@ -320,15 +277,15 @@ func (d *Dashboard) GameSee(ctx context.Context, request apigen.GameSeeRequestOb
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, errors.New("Replay ingestion directory is not set; cannot move replay file"))
 	}
 	destinationDirPath := path.Join(ingestDirPath, seeReplayFolderName)
-	if err := os.MkdirAll(destinationDirPath, 0755); err != nil {
+	if err := iofacade.MkdirAll(destinationDirPath, 0755); err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
 	destinationFilePath := path.Join(destinationDirPath, seeReplayFilename)
-	input, err := os.ReadFile(sourceFilePath)
+	input, err := iofacade.ReadFile(sourceFilePath)
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
-	if err := os.WriteFile(destinationFilePath, input, 0644); err != nil {
+	if err := iofacade.WriteFile(destinationFilePath, input, 0644); err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
 	return map[string]any{
@@ -346,10 +303,9 @@ func (d *Dashboard) Healthcheck(ctx context.Context, _ apigen.HealthcheckRequest
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
 	return map[string]any{
-		"ok":             true,
-		"total_replays":  totalReplays,
-		"openai_enabled": d.ai != nil && d.ai.llm != nil,
-		"version":        buildinfo.Version,
+		"ok":            true,
+		"total_replays": totalReplays,
+		"version":       buildinfo.Version,
 	}, nil
 }
 
@@ -497,49 +453,6 @@ func (d *Dashboard) PlayerDetail(_ context.Context, request apigen.PlayerDetailR
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
 	return player, nil
-}
-
-func (d *Dashboard) PlayerAsk(_ context.Context, request apigen.PlayerAskRequestObject) (any, error) {
-	if request.Body == nil || strings.TrimSpace(request.Body.Question) == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("question is required"))
-	}
-	playerKey := normalizePlayerKey(request.PlayerKey)
-	if playerKey == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("player key missing"))
-	}
-	if !d.ai.IsAvailable() {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("AI is not configured"))
-	}
-	player, err := d.buildWorkflowPlayerOverview(playerKey)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
-		}
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	scope := fmt.Sprintf("The answer MUST be scoped to player_key=%q (normalized player name). Prefer SQL WHERE lower(trim(name)) = %q for player-specific analysis.", playerKey, playerKey)
-	answer, err := d.ai.AnswerWorkflowQuestion(strings.TrimSpace(request.Body.Question), player, scope)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	results := []map[string]any{}
-	columns := []string{}
-	if answer.Config.Type != WidgetTypeText && strings.TrimSpace(answer.SQLQuery) != "" {
-		qResults, qColumns, queryErr := d.executeQuery(answer.SQLQuery, nil)
-		if queryErr == nil {
-			results = qResults
-			columns = qColumns
-		}
-	}
-	return map[string]any{
-		"title":       answer.Title,
-		"description": answer.Description,
-		"config":      answer.Config,
-		"sql_query":   answer.SQLQuery,
-		"text_answer": answer.TextAnswer,
-		"results":     results,
-		"columns":     columns,
-	}, nil
 }
 
 func (d *Dashboard) PlayerChatSummary(_ context.Context, request apigen.PlayerChatSummaryRequestObject) (any, error) {

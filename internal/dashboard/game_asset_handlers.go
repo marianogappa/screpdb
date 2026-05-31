@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/marianogappa/scmapanalyzer/lib/scmapanalyzer"
+	"github.com/marianogappa/screpdb/internal/iofacade"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -26,22 +27,27 @@ func (d *Dashboard) gameAssetsCacheDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// The screpdb cache subtree is a permitted I/O root (issue #135). Register
+	// it before any read/write so the facade allows the game-asset cache.
+	if err := iofacade.AllowDir(filepath.Join(base, "screpdb")); err != nil {
+		return "", err
+	}
 	dir := filepath.Join(base, "screpdb", "game-assets")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := iofacade.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
 	return dir, nil
 }
 
 func (d *Dashboard) writeGameAssetCacheFile(absPath string, data []byte) error {
-	if err := os.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
+	if err := iofacade.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
 		return err
 	}
 	tmp := absPath + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+	if err := iofacade.WriteFile(tmp, data, 0o644); err != nil {
 		return err
 	}
-	return os.Rename(tmp, absPath)
+	return iofacade.Rename(tmp, absPath)
 }
 
 func (d *Dashboard) handlerGameAssetUnit(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +73,7 @@ func (d *Dashboard) serveGameAssetIcon(w http.ResponseWriter, r *http.Request) {
 	}
 	cachePath := filepath.Join(cacheRoot, "icons", gameAssetIconRenderVersion, cacheKey+".png")
 
-	if data, readErr := os.ReadFile(cachePath); readErr == nil && len(data) > 0 {
+	if data, readErr := iofacade.ReadFile(cachePath); readErr == nil && len(data) > 0 {
 		w.Header().Set("Content-Type", "image/png")
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		_, _ = w.Write(data)
@@ -75,7 +81,7 @@ func (d *Dashboard) serveGameAssetIcon(w http.ResponseWriter, r *http.Request) {
 	}
 
 	v, err, _ := gameAssetFlight.Do("icon:"+gameAssetIconRenderVersion+":"+cacheKey, func() (any, error) {
-		if data, readErr := os.ReadFile(cachePath); readErr == nil && len(data) > 0 {
+		if data, readErr := iofacade.ReadFile(cachePath); readErr == nil && len(data) > 0 {
 			return data, nil
 		}
 		pngBytes, genErr := scmapanalyzer.UnitOrBuildingImagePNG(scmapQuery)
@@ -134,7 +140,7 @@ func (d *Dashboard) handlerGameAssetMap(w http.ResponseWriter, r *http.Request) 
 	}
 	cachePath := filepath.Join(cacheRoot, "maps", cacheKey+".png")
 
-	if data, readErr := os.ReadFile(cachePath); readErr == nil && len(data) > 0 {
+	if data, readErr := iofacade.ReadFile(cachePath); readErr == nil && len(data) > 0 {
 		w.Header().Set("Content-Type", "image/png")
 		// Do not let browsers disk-cache: replay_id URL is stable while map bytes can change (reingest, file swap).
 		w.Header().Set("Cache-Control", "no-store, no-cache, max-age=0, must-revalidate")
@@ -145,7 +151,7 @@ func (d *Dashboard) handlerGameAssetMap(w http.ResponseWriter, r *http.Request) 
 	}
 
 	v, err, _ := gameAssetFlight.Do("map:"+cacheKey, func() (any, error) {
-		if data, readErr := os.ReadFile(cachePath); readErr == nil && len(data) > 0 {
+		if data, readErr := iofacade.ReadFile(cachePath); readErr == nil && len(data) > 0 {
 			return data, nil
 		}
 		pngBytes, genErr := scmapanalyzer.MapImagePNGFromReplayFile(replayPath)

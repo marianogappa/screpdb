@@ -136,11 +136,6 @@ type AliasImportEntry struct {
 	BattleTag string `json:"battle_tag"`
 }
 
-// AskRequest defines model for AskRequest.
-type AskRequest struct {
-	Question string `json:"question"`
-}
-
 // GenericObject defines model for GenericObject.
 type GenericObject map[string]interface{}
 
@@ -197,7 +192,6 @@ type IngestRequest struct {
 	StoreRightClicks *bool   `json:"store_right_clicks,omitempty"`
 	UpToNMonths      *int    `json:"up_to_n_months,omitempty"`
 	UpToYyyyMmDd     *string `json:"up_to_yyyy_mm_dd,omitempty"`
-	Watch            *bool   `json:"watch,omitempty"`
 }
 
 // UpdateGlobalReplayFilterConfigRequest defines model for UpdateGlobalReplayFilterConfigRequest.
@@ -305,12 +299,6 @@ type IngestJSONRequestBody = IngestRequest
 
 // UpdateIngestSettingsJSONRequestBody defines body for UpdateIngestSettings for application/json ContentType.
 type UpdateIngestSettingsJSONRequestBody = UpdateIngestSettingsRequest
-
-// GameAskJSONRequestBody defines body for GameAsk for application/json ContentType.
-type GameAskJSONRequestBody = AskRequest
-
-// PlayerAskJSONRequestBody defines body for PlayerAsk for application/json ContentType.
-type PlayerAskJSONRequestBody = AskRequest
 
 // AsGenericObject returns the union data inside the GenericValue as a GenericObject
 func (t GenericValue) AsGenericObject() (GenericObject, error) {
@@ -663,9 +651,6 @@ type ServerInterface interface {
 	// (GET /api/games/{replayID})
 	GameDetail(w http.ResponseWriter, r *http.Request, replayID ReplayID)
 
-	// (POST /api/games/{replayID}/ask)
-	GameAsk(w http.ResponseWriter, r *http.Request, replayID ReplayID)
-
 	// (POST /api/games/{replayID}/see)
 	GameSee(w http.ResponseWriter, r *http.Request, replayID ReplayID)
 
@@ -692,9 +677,6 @@ type ServerInterface interface {
 
 	// (GET /api/players/{playerKey})
 	PlayerDetail(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
-
-	// (POST /api/players/{playerKey}/ask)
-	PlayerAsk(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
 
 	// (GET /api/players/{playerKey}/chat-summary)
 	PlayerChatSummary(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
@@ -1069,32 +1051,6 @@ func (siw *ServerInterfaceWrapper) GameDetail(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r)
 }
 
-// GameAsk operation middleware
-func (siw *ServerInterfaceWrapper) GameAsk(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "replayID" -------------
-	var replayID ReplayID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "replayID", mux.Vars(r)["replayID"], &replayID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "replayID", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GameAsk(w, r, replayID)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
 // GameSee operation middleware
 func (siw *ServerInterfaceWrapper) GameSee(w http.ResponseWriter, r *http.Request) {
 
@@ -1378,32 +1334,6 @@ func (siw *ServerInterfaceWrapper) PlayerDetail(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PlayerDetail(w, r, playerKey)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PlayerAsk operation middleware
-func (siw *ServerInterfaceWrapper) PlayerAsk(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "playerKey" -------------
-	var playerKey PlayerKey
-
-	err = runtime.BindStyledParameterWithOptions("simple", "playerKey", mux.Vars(r)["playerKey"], &playerKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playerKey", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PlayerAsk(w, r, playerKey)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1876,8 +1806,6 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/api/games/{replayID}", wrapper.GameDetail).Methods(http.MethodGet)
 
-	r.HandleFunc(options.BaseURL+"/api/games/{replayID}/ask", wrapper.GameAsk).Methods(http.MethodPost)
-
 	r.HandleFunc(options.BaseURL+"/api/games/{replayID}/see", wrapper.GameSee).Methods(http.MethodPost)
 
 	r.HandleFunc(options.BaseURL+"/api/health", wrapper.Healthcheck).Methods(http.MethodGet)
@@ -1895,8 +1823,6 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/api/players/insights/viewport-multitasking", wrapper.PlayersViewportMultitasking).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}", wrapper.PlayerDetail).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/ask", wrapper.PlayerAsk).Methods(http.MethodPost)
 
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/chat-summary", wrapper.PlayerChatSummary).Methods(http.MethodGet)
 
@@ -2323,37 +2249,6 @@ func (response GameDetail200JSONResponse) VisitGameDetailResponse(w http.Respons
 	return err
 }
 
-type GameAskRequestObject struct {
-	ReplayID ReplayID `json:"replayID"`
-	Body     *GameAskJSONRequestBody
-}
-
-type GameAskResponseObject interface {
-	VisitGameAskResponse(w http.ResponseWriter) error
-}
-
-type GameAsk200JSONResponse GenericValue
-
-func (t GameAsk200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *GameAsk200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response GameAsk200JSONResponse) VisitGameAskResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type GameSeeRequestObject struct {
 	ReplayID ReplayID `json:"replayID"`
 }
@@ -2608,37 +2503,6 @@ func (t *PlayerDetail200JSONResponse) UnmarshalJSON(b []byte) error {
 }
 
 func (response PlayerDetail200JSONResponse) VisitPlayerDetailResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PlayerAskRequestObject struct {
-	PlayerKey PlayerKey `json:"playerKey"`
-	Body      *PlayerAskJSONRequestBody
-}
-
-type PlayerAskResponseObject interface {
-	VisitPlayerAskResponse(w http.ResponseWriter) error
-}
-
-type PlayerAsk200JSONResponse GenericValue
-
-func (t PlayerAsk200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *PlayerAsk200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response PlayerAsk200JSONResponse) VisitPlayerAskResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3027,9 +2891,6 @@ type StrictServerInterface interface {
 	// (GET /api/games/{replayID})
 	GameDetail(ctx context.Context, request GameDetailRequestObject) (GameDetailResponseObject, error)
 
-	// (POST /api/games/{replayID}/ask)
-	GameAsk(ctx context.Context, request GameAskRequestObject) (GameAskResponseObject, error)
-
 	// (POST /api/games/{replayID}/see)
 	GameSee(ctx context.Context, request GameSeeRequestObject) (GameSeeResponseObject, error)
 
@@ -3056,9 +2917,6 @@ type StrictServerInterface interface {
 
 	// (GET /api/players/{playerKey})
 	PlayerDetail(ctx context.Context, request PlayerDetailRequestObject) (PlayerDetailResponseObject, error)
-
-	// (POST /api/players/{playerKey}/ask)
-	PlayerAsk(ctx context.Context, request PlayerAskRequestObject) (PlayerAskResponseObject, error)
 
 	// (GET /api/players/{playerKey}/chat-summary)
 	PlayerChatSummary(ctx context.Context, request PlayerChatSummaryRequestObject) (PlayerChatSummaryResponseObject, error)
@@ -3506,39 +3364,6 @@ func (sh *strictHandler) GameDetail(w http.ResponseWriter, r *http.Request, repl
 	}
 }
 
-// GameAsk operation middleware
-func (sh *strictHandler) GameAsk(w http.ResponseWriter, r *http.Request, replayID ReplayID) {
-	var request GameAskRequestObject
-
-	request.ReplayID = replayID
-
-	var body GameAskJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GameAsk(ctx, request.(GameAskRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GameAsk")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GameAskResponseObject); ok {
-		if err := validResponse.VisitGameAskResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // GameSee operation middleware
 func (sh *strictHandler) GameSee(w http.ResponseWriter, r *http.Request, replayID ReplayID) {
 	var request GameSeeRequestObject
@@ -3756,39 +3581,6 @@ func (sh *strictHandler) PlayerDetail(w http.ResponseWriter, r *http.Request, pl
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(PlayerDetailResponseObject); ok {
 		if err := validResponse.VisitPlayerDetailResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PlayerAsk operation middleware
-func (sh *strictHandler) PlayerAsk(w http.ResponseWriter, r *http.Request, playerKey PlayerKey) {
-	var request PlayerAskRequestObject
-
-	request.PlayerKey = playerKey
-
-	var body PlayerAskJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PlayerAsk(ctx, request.(PlayerAskRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PlayerAsk")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PlayerAskResponseObject); ok {
-		if err := validResponse.VisitPlayerAskResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -4088,36 +3880,35 @@ func (sh *strictHandler) ScrepColors(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"t67/FwAA//8=",
+	"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",
+	"wRxE1vX/AgAA//8=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

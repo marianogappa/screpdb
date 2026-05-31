@@ -3,10 +3,10 @@ package earlyfilter
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
+	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
@@ -253,7 +253,7 @@ func writeTrace(dir string, checksum string, t *Trace) error {
 	if dir == "" || t == nil {
 		return nil
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := iofacade.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", dir, err)
 	}
 	name := checksum
@@ -261,7 +261,7 @@ func writeTrace(dir string, checksum string, t *Trace) error {
 		name = "unknown"
 	}
 	path := filepath.Join(dir, name+".json")
-	f, err := os.Create(path)
+	f, err := iofacade.Create(path)
 	if err != nil {
 		return fmt.Errorf("create %s: %w", path, err)
 	}

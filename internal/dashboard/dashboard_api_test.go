@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/marianogappa/screpdb/internal/fileops"
+	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/parser"
 	"github.com/marianogappa/screpdb/internal/storage"
 )
@@ -233,7 +234,7 @@ func newTestDashboard(t *testing.T) *Dashboard {
 		t.Fatalf("ingestFiles: %v", err)
 	}
 
-	dash, err := New(ctx, store, dashboardTestDB, "", "", "")
+	dash, err := New(ctx, dashboardTestDB)
 	if err != nil {
 		t.Fatalf("New dashboard: %v", err)
 	}
@@ -273,6 +274,10 @@ func resolveReplayDir() (string, error) {
 	}
 	for _, dir := range candidates {
 		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			// Register the testdata replays folder as a permitted iofacade root:
+			// other tests in this package may have flipped the facade into
+			// enforcing mode by registering their own roots (global state).
+			_ = iofacade.AllowDir(dir)
 			return dir, nil
 		}
 	}

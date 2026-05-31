@@ -2,14 +2,6 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { api } from './api';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import IngestModal from './components/IngestModal';
-import PieChart from './components/charts/PieChart';
-import Gauge from './components/charts/Gauge';
-import Table from './components/charts/Table';
-import BarChart from './components/charts/BarChart';
-import LineChart from './components/charts/LineChart';
-import ScatterPlot from './components/charts/ScatterPlot';
-import Histogram from './components/charts/Histogram';
-import Heatmap from './components/charts/Heatmap';
 import TimingScatterRows from './components/charts/TimingScatterRows';
 import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
 import BuildOrderTimelineRows from './components/charts/BuildOrderTimelineRows';
@@ -1714,7 +1706,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showGlobalReplayFilter, setShowGlobalReplayFilter] = useState(false);
-  const [openaiEnabled, setOpenaiEnabled] = useState(false);
   const [replayCount, setReplayCount] = useState(null);
   const [currentVersion, setCurrentVersion] = useState('');
   const [latestVersion, setLatestVersion] = useState('');
@@ -1761,7 +1752,6 @@ function App() {
   });
   const [autoIngestNotice, setAutoIngestNotice] = useState('');
   const [ingestForm, setIngestForm] = useState({
-    watch: false,
     stopAfterN: 50,
     clean: false,
     autoIngestEnabled: storedAutoIngest.enabled,
@@ -1895,9 +1885,6 @@ function App() {
   const [mainPlayerViewportInsight, setMainPlayerViewportInsight] = useState(null);
   const [mainPlayerViewportInsightLoading, setMainPlayerViewportInsightLoading] = useState(false);
   const [mainPlayerViewportInsightError, setMainPlayerViewportInsightError] = useState('');
-  const [mainQuestion, setMainQuestion] = useState('');
-  const [mainAnswer, setMainAnswer] = useState(null);
-  const [mainAskLoading, setMainAskLoading] = useState(false);
   const [topPlayerColors, setTopPlayerColors] = useState({});
   // Used purely as a re-render trigger after the screp engine color map loads;
   // the actual map lives at module scope (see scPlayerColorMap above) so the
@@ -2084,8 +2071,6 @@ function App() {
       );
       setMainSelectedGameEventKey('');
       setSelectedReplayId(replayId);
-      setMainAnswer(null);
-      setMainQuestion('');
       setMainSummaryFilters(DEFAULT_SUMMARY_FILTERS);
       setProductionView('all');
       setProductionSubFilter('all');
@@ -2321,8 +2306,6 @@ function App() {
     setMainPlayerViewportInsightError('');
     setMainPlayerViewportInsightLoading(false);
     setSelectedPlayerKey(normalizedPlayerKey);
-    setMainAnswer(null);
-    setMainQuestion('');
     const wantTab = options.initialPlayerTab;
     const nextTab = wantTab && MAIN_PLAYER_TABS.includes(String(wantTab).trim().toLowerCase())
       ? String(wantTab).trim().toLowerCase()
@@ -2568,7 +2551,6 @@ function App() {
         const totalReplays = Number(health?.total_replays || 0);
         if (totalReplays >= baselineCount + 1) {
           setReplayCount(totalReplays);
-          setOpenaiEnabled(Boolean(health?.openai_enabled));
           return true;
         }
       } catch (err) {
@@ -2589,7 +2571,7 @@ function App() {
     });
     loadTopPlayerColors();
     loadScrepColors();
-    checkOpenAIStatus();
+    checkHealthStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only.
   }, []);
 
@@ -3016,7 +2998,6 @@ function App() {
         const health = await api.getHealth();
         const baselineCount = Number(health?.total_replays || 0);
         const ingestResponse = await api.startIngest({
-          watch: false,
           stop_after_n_reps: 1,
           clean: false,
           store_right_clicks: false,
@@ -3063,10 +3044,9 @@ function App() {
     }
   }, []);
 
-  const checkOpenAIStatus = async () => {
+  const checkHealthStatus = async () => {
     try {
       const data = await api.getHealth();
-      setOpenaiEnabled(Boolean(data?.openai_enabled));
       const totalReplays = Number(data?.total_replays || 0);
       setReplayCount(totalReplays);
       if (data?.version) {
@@ -3078,7 +3058,7 @@ function App() {
       }
       return data;
     } catch (err) {
-      console.error('Failed to check OpenAI status:', err);
+      console.error('Failed to check health status:', err);
       return null;
     }
   };
@@ -3102,7 +3082,6 @@ function App() {
       manualIngestInFlight.current = true;
       const response = await api.startIngest({
         input_dir: nextInputDir,
-        watch: ingestForm.watch,
         stop_after_n_reps: ingestForm.stopAfterN || 0,
         clean: ingestForm.clean,
         store_right_clicks: false,
@@ -3151,7 +3130,7 @@ function App() {
         sortDir: mainPlayersSortDir,
       }),
       loadTopPlayerColors(),
-      checkOpenAIStatus(),
+      checkHealthStatus(),
     ]);
 
     if (activeView === 'game' && selectedReplayId) {
@@ -3314,34 +3293,6 @@ function App() {
     navigateMainView('players');
   };
 
-  const handleMainAsk = async (e) => {
-    e.preventDefault();
-    const question = mainQuestion.trim();
-    if (!question || mainAskLoading) return;
-    try {
-      setMainAskLoading(true);
-      setMainAnswer(null);
-      if (activeView === 'game' && mainGame?.replay_id) {
-        const response = await api.askGame(mainGame.replay_id, question);
-        setMainAnswer(response);
-      } else if (activeView === 'player' && mainPlayer?.player_key) {
-        const response = await api.askPlayer(mainPlayer.player_key, question);
-        setMainAnswer(response);
-      }
-    } catch (err) {
-      setMainAnswer({
-        title: 'AI Error',
-        description: 'The question could not be answered.',
-        config: { type: 'text' },
-        text_answer: `Failed to ask AI: ${err.message}`,
-        results: [],
-        columns: [],
-      });
-    } finally {
-      setMainAskLoading(false);
-    }
-  };
-
   const playerAccentColor = (nameOrKey) => {
     const raw = String(nameOrKey || '').trim().toLowerCase();
     if (!raw) {
@@ -3468,62 +3419,6 @@ function App() {
         ))}
         {stackingMarker}
       </span>
-    );
-  };
-
-  const renderMainAiResult = () => {
-    if (!mainAnswer) return null;
-    const config = mainAnswer.config || { type: 'text' };
-    const data = mainAnswer.results || [];
-    const columns = mainAnswer.columns || [];
-    const chartProps = { data, config };
-
-    if (config.type === 'text') {
-      return (
-        <div className="workflow-answer">
-          {mainAnswer.title ? <div className="workflow-answer-title">{mainAnswer.title}</div> : null}
-          <div>{mainAnswer.text_answer || mainAnswer.description || 'No text answer returned.'}</div>
-        </div>
-      );
-    }
-
-    let content = null;
-    switch (config.type) {
-      case 'gauge':
-        content = <Gauge {...chartProps} />;
-        break;
-      case 'table':
-        content = <Table {...chartProps} columns={columns} />;
-        break;
-      case 'pie_chart':
-        content = <PieChart {...chartProps} />;
-        break;
-      case 'bar_chart':
-        content = <BarChart {...chartProps} />;
-        break;
-      case 'line_chart':
-        content = <LineChart {...chartProps} />;
-        break;
-      case 'scatter_plot':
-        content = <ScatterPlot {...chartProps} />;
-        break;
-      case 'histogram':
-        content = <Histogram {...chartProps} />;
-        break;
-      case 'heatmap':
-        content = <Heatmap {...chartProps} />;
-        break;
-      default:
-        content = <div className="chart-empty">Unknown AI chart type: {String(config.type || '')}</div>;
-        break;
-    }
-
-    return (
-      <div className="workflow-answer-chart">
-        {mainAnswer.title ? <div className="workflow-answer-title">{mainAnswer.title}</div> : null}
-        {mainAnswer.description ? <div className="workflow-answer-description">{mainAnswer.description}</div> : null}
-        <div className="workflow-answer-visual">{content}</div>
-      </div>
     );
   };
 
@@ -6423,24 +6318,6 @@ function App() {
               </>
             ) : (
               <div className="chart-empty">Select a game from the Games tab.</div>
-            )}
-
-            {mainGame && mainGameTab === 'summary' && openaiEnabled && (
-              <>
-                <form onSubmit={handleMainAsk} className="workflow-ask-form">
-                  <input
-                    className="widget-creation-input"
-                    value={mainQuestion}
-                    onChange={(e) => setMainQuestion(e.target.value)}
-                    placeholder="Ask AI about this game..."
-                    disabled={mainAskLoading}
-                  />
-                  <button className="btn-create-ai" type="submit" disabled={mainAskLoading || !mainQuestion.trim()}>
-                    {mainAskLoading ? 'Asking...' : 'Ask AI'}
-                  </button>
-                </form>
-                {renderMainAiResult()}
-              </>
             )}
           </div>
         )}

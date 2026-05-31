@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/marianogappa/screpdb/internal/iofacade"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -39,7 +40,7 @@ func ValidateReplayDir(rootDir string) error {
 		return errors.New("replay folder is required")
 	}
 
-	info, err := os.Stat(rootDir)
+	info, err := iofacade.Stat(rootDir)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return errors.New("replay folder does not exist")
@@ -66,7 +67,7 @@ func HasReplayFiles(rootDir string) (bool, error) {
 		return false, nil
 	}
 
-	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+	err := iofacade.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -94,7 +95,7 @@ func HasReplayFiles(rootDir string) (bool, error) {
 func WalkReplayFiles(rootDir string) ([]FileInfo, error) {
 	var files []FileInfo
 
-	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+	err := iofacade.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -244,7 +245,7 @@ func LimitFiles(files []FileInfo, limit int) []FileInfo {
 
 // calculateChecksum calculates SHA256 checksum of a file
 func calculateChecksum(filePath string) (string, error) {
-	file, err := os.Open(filePath)
+	file, err := iofacade.Open(filePath)
 	if err != nil {
 		return "", err
 	}
@@ -262,7 +263,7 @@ func calculateChecksum(filePath string) (string, error) {
 // shaped like one produced by GetReplayFiles. Used by paths that already know which
 // .rep file to ingest (e.g. bulk re-analyze) and don't want to walk a directory.
 func NewFileInfoFromPath(filePath string) (*FileInfo, error) {
-	info, err := os.Stat(filePath)
+	info, err := iofacade.Stat(filePath)
 	if err != nil {
 		return nil, err
 	}

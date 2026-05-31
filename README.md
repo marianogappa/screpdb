@@ -36,7 +36,7 @@ Download the latest release from the [Releases page](https://github.com/marianog
 
 As a convenience for non-technical Windows users, a special Windows GUI binary is included in releases (look for screpdb-dashboard).
 
-> ⚠️ **Warning:** screpdb is currently distributed as a binary with full filesystem read/write access and unrestricted Internet access. Treat it as high-risk software and think twice before executing it. Safety guardrails are being investigated.
+> ⚠️ **Warning:** screpdb runs as an unsandboxed binary. To reduce risk it now routes all I/O through in-process facades — filesystem access is confined to the working directory, the replays folder, and the OS cache dir, and the binary makes no outbound network calls (see [Security / I/O model](#security--io-model)). These are best-effort guardrails, not an OS sandbox, so still exercise judgement before running it.
 
 If you prefer to build from source, you'll need Go 1.25.2 or later:
 
@@ -54,7 +54,6 @@ go build .
 
 - `-i, --input-dir`: Input directory containing replay files (default: system replay directory)
 - `-s, --sqlite-path`: SQLite database file path (default: screp.db)
-- `-w, --watch`: Watch for new files and ingest them as they appear
 - `-n, --stop-after-n-reps`: Stop after processing N replay files (0 = no limit)
 - `-d, --up-to-yyyy-mm-dd`: Only process files up to this date (YYYY-MM-DD format)
 - `-m, --up-to-n-months`: Only process files from the last N months (0 = no limit)
@@ -63,7 +62,7 @@ go build .
 - `--clean`: Drop all non-dashboard tables before ingesting to start over (useful for migrations)
 ```
 
-- MCP server: ask AI anything about any game/player.
+- MCP server: expose the replay database to an MCP client so you can query any game/player.
 
 ```bash
 ./screpdb mcp
@@ -108,6 +107,26 @@ Get-FileHash screpdb-windows-amd64.exe -Algorithm SHA256
 ```bash
 minisign -Vm SHA256SUMS -P 'RWS9gPPOydPD/tR8JBOelXKhif526NoAKY18dau7QHR4dqg84QMhJ5L/'
 ```
+
+## Security / I/O model
+
+screpdb minimizes its attack surface by routing all I/O through facades and keeping dependencies small (see [#135](https://github.com/marianogappa/screpdb/issues/135)):
+
+- **Filesystem** — all disk access goes through `internal/iofacade`, which permits reads/writes only within: the current working directory (the SQLite database), the configured replays folder (read replays, write "watch me" replays), and the OS user-cache directory (cached game-asset images). A narrow, read-only exception walks up from the replays folder to find StarCraft's `CSettings.json`.
+- **Network** — the Go binary makes **no external outbound network calls**. The dashboard server binds to `localhost` only. The single "new version available" check is a browser `fetch()` to the GitHub releases API from the dashboard UI, not from the binary. `internal/netfacade` houses the only network-client operation (a localhost readiness probe).
+- **Enforcement** — `TestNoDirectIOOutsideFacades` (in `internal/iofacade`) parses the whole module on every `go test` run and fails the build if any package reaches the filesystem or network directly instead of through the facades.
+
+This is a best-effort, in-process guard, not an OS sandbox: paths handed to trusted dependencies (the SQLite driver, the screp parser, scmapanalyzer) are opened inside those libraries. The guarantee is that screpdb's own code keeps its I/O behind these chokepoints.
+
+### I/O Safety Audit
+
+Changes to screpdb are authored by an LLM coding agent (e.g. Claude Code). As part of authoring a change, that LLM re-assesses whether the change could weaken the I/O rules above and records a dated, one-line verdict in the log below (see `AGENTS.md`). It's an honour-system receipt written by the same LLM that wrote the code — it can be tampered with, just as the facades themselves can — but recording it makes any tampering visible in the diff. `TestIOSafetyAuditPresent` fails CI (`go test ./...`) if the log has no entry, so a change cannot land with an empty audit. The authoritative guard remains the enforcement test above.
+
+<!-- IO-AUDIT:START -->
+- **2026-05-31** — `OK`. Introduced the `iofacade`/`netfacade` chokepoints, the enforcement test, and removed the AI + fswatch surfaces; this change establishes the I/O rules rather than weakening them.
+<!-- IO-AUDIT:END -->
+
+_(Most recent first. The authoring LLM adds a dated line each time; keep the last few.)_
 
 ## License
 

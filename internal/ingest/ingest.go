@@ -5,14 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/signal"
 	"runtime"
 	"runtime/pprof"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/marianogappa/screpdb/internal/fileops"
+	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/parser"
 	"github.com/marianogappa/screpdb/internal/profile"
 	"github.com/marianogappa/screpdb/internal/storage"
@@ -27,7 +26,6 @@ var errSkippedUMS = errors.New("replay skipped: UMS not supported")
 type Config struct {
 	InputDir         string
 	SQLitePath       string
-	Watch            bool
 	StoreRightClicks bool
 	SkipHotkeys      bool
 	StopAfterN       int
@@ -35,7 +33,6 @@ type Config struct {
 	UpToMonths       int
 	Clean            bool
 	CleanDashboard   bool
-	HandleSignals    bool
 	UseColor         bool
 	Logger           *Logger
 
@@ -59,6 +56,12 @@ type Config struct {
 func Run(ctx context.Context, cfg Config) error {
 	cfg = withDefaults(cfg)
 	logger := cfg.Logger
+
+	// The replays folder is a permitted I/O root (issue #135). Register it so
+	// the facade allows discovering/reading replays under it.
+	if err := iofacade.AllowDir(cfg.InputDir); err != nil {
+		return fmt.Errorf("failed to register replay folder: %w", err)
+	}
 
 	if cfg.CPUProfilePath != "" {
 		stop, err := startCPUProfile(cfg.CPUProfilePath)
@@ -85,10 +88,6 @@ func Run(ctx context.Context, cfg Config) error {
 	sink := profile.NewSink(cfg.ProfileMode)
 	defer sink.Aggregate()
 
-	if cfg.Watch {
-		return runWatchMode(ctx, store, cfg, logger, sink)
-	}
-
 	return runBatchMode(ctx, store, cfg, logger, sink)
 }
 
@@ -110,87 +109,6 @@ func withDefaults(cfg Config) Config {
 	return cfg
 }
 
-func runWatchMode(ctx context.Context, store storage.Storage, cfg Config, logger *Logger, sink *profile.Sink) error {
-	logger.Infof("Watching directory: %s", cfg.InputDir)
-	logger.Infof("Using %d CPU cores for parsing", runtime.GOMAXPROCS(0))
-	logger.Warnf("Press Ctrl+C to stop...")
-
-	// Start the ingestion process
-	dataChan, errChan := store.StartIngestion(ctx, storage.IngestionHooks{
-		OnReplayStored: logger.Progress,
-		OnDuplicateReplay: func(err error) {
-			// Silently swallow duplicate-replay errors. The pre-check at
-			// batchCheckExistingReplays already filters known duplicates;
-			// a race-condition straggler reaching the storage layer is
-			// expected (e.g. watch-mode re-add) and shouldn't pollute
-			// the log. Aggregate "skipped" counter still surfaces them.
-			_ = err
-		},
-		OnStoreError: func(err error) {
-			logger.Errorf("Error storing replay: %v", err)
-		},
-	})
-
-	watcher, err := fileops.NewFileWatcher(cfg.InputDir)
-	if err != nil {
-		return fmt.Errorf("failed to create file watcher: %w", err)
-	}
-	defer watcher.Stop()
-
-	if err := watcher.Start(); err != nil {
-		return fmt.Errorf("failed to start file watcher: %w", err)
-	}
-
-	// Create errgroup with context for concurrent processing
-	g, gCtx := errgroup.WithContext(ctx)
-
-	// Handle graceful shutdown (optional)
-	var sigChan chan os.Signal
-	if cfg.HandleSignals {
-		sigChan = make(chan os.Signal, 1)
-		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	}
-
-	for {
-		select {
-		case fileInfo := <-watcher.Events():
-			logger.Successf("New file detected: %s", fileInfo.Name)
-
-			// Process file concurrently
-			g.Go(func() error {
-				if err := processFileToChannel(gCtx, dataChan, &fileInfo, parserOptions(cfg), sink); err != nil {
-					if errors.Is(err, errSkippedUMS) {
-						logger.Warnf("Skipping UMS replay: %s", fileInfo.Name)
-						return nil
-					}
-					logger.Errorf("Error processing file %s: %v", fileInfo.Name, err)
-					return nil // Don't stop processing on errors
-				}
-
-				logger.Successf("Successfully processed: %s", fileInfo.Name)
-				return nil
-			})
-
-		case err := <-watcher.Errors():
-			logger.Errorf("Watcher error: %v", err)
-
-		case err := <-errChan:
-			if err != nil {
-				return fmt.Errorf("storage error: %w", err)
-			}
-
-		case <-ctx.Done():
-			close(dataChan)
-			return ctx.Err()
-
-		case <-signalChan(sigChan):
-			logger.Warnf("Shutting down...")
-			close(dataChan)
-			return nil
-		}
-	}
-}
-
 func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger *Logger, sink *profile.Sink) error {
 	logger.Infof("Scanning directory: %s", cfg.InputDir)
 	logger.Infof("Using %d CPU cores for parsing", runtime.GOMAXPROCS(0))
@@ -201,9 +119,9 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 		OnDuplicateReplay: func(err error) {
 			// Silently swallow duplicate-replay errors. The pre-check at
 			// batchCheckExistingReplays already filters known duplicates;
-			// a race-condition straggler reaching the storage layer is
-			// expected (e.g. watch-mode re-add) and shouldn't pollute
-			// the log. Aggregate "skipped" counter still surfaces them.
+			// a race-condition straggler reaching the storage layer
+			// shouldn't pollute the log. Aggregate "skipped" counter still
+			// surfaces them.
 			_ = err
 		},
 		OnStoreError: func(err error) {
@@ -503,18 +421,11 @@ func processFileToChannel(ctx context.Context, dataChan storage.ReplayDataChanne
 	}
 }
 
-func signalChan(sigChan chan os.Signal) <-chan os.Signal {
-	if sigChan == nil {
-		return nil
-	}
-	return sigChan
-}
-
 // startCPUProfile opens path for writing and begins a runtime/pprof CPU profile.
 // The returned stop function ends the profile and closes the file. Caller must
 // invoke stop (e.g. via defer) so the profile is flushed.
 func startCPUProfile(path string) (func(), error) {
-	f, err := os.Create(path)
+	f, err := iofacade.Create(path)
 	if err != nil {
 		return nil, fmt.Errorf("create profile file: %w", err)
 	}

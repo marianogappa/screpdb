@@ -25,7 +25,6 @@ func main() {
 		log.Println(err)
 		os.Exit(1)
 	}
-	opts.NormalizeAfterParse()
 
 	if !tray.Supported() {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
