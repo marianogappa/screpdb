@@ -172,13 +172,23 @@ func (d *MarkerPlayerDetector) enqueueDedup(f cmdenrich.EnrichedCommand) {
 		return
 	}
 	if prior, ok := d.pending[f.Subject]; ok {
-		if f.Second-prior.Second < markers.BuildDedupGapSeconds {
+		if f.Second-prior.Second < markers.BuildDedupGapSeconds && sameBuildTile(prior, f) {
 			d.pending[f.Subject] = f
 			return
 		}
 		d.observeRuleFact(prior)
 	}
 	d.pending[f.Subject] = f
+}
+
+// sameBuildTile reports whether two build facts target the same map tile.
+// Dedup only collapses repeat placements of the same building at the same
+// spot (double-tap / misclick); two same-type buildings at *different* tiles
+// are genuinely distinct and must both be observed, even when placed seconds
+// apart. Positions are required — if either is unknown we treat the pair as
+// distinct rather than collapse on a guess.
+func sameBuildTile(a, b cmdenrich.EnrichedCommand) bool {
+	return a.X != nil && a.Y != nil && b.X != nil && b.Y != nil && *a.X == *b.X && *a.Y == *b.Y
 }
 
 func (d *MarkerPlayerDetector) flushDedupBefore(now int) {

@@ -38,17 +38,20 @@ const (
 	RaceTerran  Race = "Terran"
 )
 
-// BuildDedupGapSeconds collapses rapid repeat Build events of the same subject.
-// Progamers often double-tap a building placement (spam / misclick); the earlier
-// order is effectively cancelled. Build facts of the same subject less than
-// this many seconds apart are treated as a single event (later wins).
+// BuildDedupGapSeconds collapses rapid repeat Build events of the same subject
+// at the same build tile. Progamers often double-tap a single placement (spam /
+// misclick); the earlier order is effectively cancelled. Two Build facts of the
+// same subject AND the same tile, less than this many seconds apart, are treated
+// as one event (later wins). Repeat placements at *different* tiles are left
+// alone — they are genuinely distinct buildings, even when only seconds apart
+// (the time-only heuristic this replaced wrongly merged ~55% of those).
 const BuildDedupGapSeconds = 3
 
 // BuildDedupMaxSecond is the replay-second past which dedup stops firing.
-// Beyond the first 4 minutes, rapid-repeat Build commands of the same subject
-// are indistinguishable from legit batched placement vs. misclick spam, so we
-// stop assuming anti-spam intent and observe every fact as-is. All current
-// opening-build-order markers finalize well before this cap.
+// Even at the same tile, a building destroyed or lifted mid-game can be
+// legitimately rebuilt on the same spot much later, so beyond the first 4
+// minutes we stop assuming double-tap intent and observe every Build as-is.
+// All current opening-build-order markers finalize well before this cap.
 const BuildDedupMaxSecond = 4 * 60
 
 // TriState is the monotone decision a PredicateState reports.
