@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/marianogappa/screpdb/compare/v0.24.0...v0.25.0) (2026-05-30)
+
+
+### Features
+
+* **build-orders:** expand coverage to ~all player-replays + dashboard pill UX ([#136](https://github.com/marianogappa/screpdb/issues/136)) ([6f4c8d8](https://github.com/marianogappa/screpdb/commit/6f4c8d81404ebe546a38c03a5316c6d5d290ac70))
+
 ## [0.24.0](https://github.com/marianogappa/screpdb/compare/v0.23.0...v0.24.0) (2026-05-17)
 
 
