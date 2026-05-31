@@ -25,8 +25,8 @@ func IsBigGameHuntersMap(name string) bool {
 // rectangle of these dimensions, anchored to the corresponding corner
 // of the map.
 const (
-	cliffDropCornerWidthPx  = 256
-	cliffDropCornerHeightPx = 128
+	CliffDropCornerWidthPx  = 256
+	CliffDropCornerHeightPx = 128
 )
 
 // IsCliffDropPosition reports whether (x,y) lies in the top-left or
@@ -36,11 +36,11 @@ func IsCliffDropPosition(x, y, mapWidthPx, mapHeightPx int) bool {
 	if mapWidthPx <= 0 || mapHeightPx <= 0 {
 		return false
 	}
-	if x >= 0 && x < cliffDropCornerWidthPx && y >= 0 && y < cliffDropCornerHeightPx {
+	if x >= 0 && x < CliffDropCornerWidthPx && y >= 0 && y < CliffDropCornerHeightPx {
 		return true
 	}
-	if x >= mapWidthPx-cliffDropCornerWidthPx && x <= mapWidthPx &&
-		y >= mapHeightPx-cliffDropCornerHeightPx && y <= mapHeightPx {
+	if x >= mapWidthPx-CliffDropCornerWidthPx && x <= mapWidthPx &&
+		y >= mapHeightPx-CliffDropCornerHeightPx && y <= mapHeightPx {
 		return true
 	}
 	return false

@@ -112,6 +112,39 @@ var staticFeaturingOrder = []string{
 	"cliff_drop",
 }
 
+// GameEventFeatureSpec is the exported, package-stable view of one non-marker
+// "game event" featuring chip (cannon_rush, drop, …). Used by the
+// SPECIFICATION.md generator. IconKeys collapses the internal single/multi icon
+// fields into one ordered list.
+type GameEventFeatureSpec struct {
+	Key      string
+	Label    string
+	IconKeys []string
+}
+
+// AllGameEventFeatures returns the non-marker game-event featuring chips in
+// their declared order. Used by the SPECIFICATION.md generator.
+func AllGameEventFeatures() []GameEventFeatureSpec {
+	out := make([]GameEventFeatureSpec, 0, len(staticGameEventFeatures))
+	for _, f := range staticGameEventFeatures {
+		icons := f.IconKeys
+		if len(icons) == 0 && f.IconKey != "" {
+			icons = []string{f.IconKey}
+		}
+		out = append(out, GameEventFeatureSpec{Key: f.Key, Label: f.Label, IconKeys: icons})
+	}
+	return out
+}
+
+// FeaturingOrder returns the fixed display order of every featuring-strip chip
+// (a mix of marker FeatureKeys and game-event keys). Used by the
+// SPECIFICATION.md generator and cross-consistency tests.
+func FeaturingOrder() []string {
+	out := make([]string, len(staticFeaturingOrder))
+	copy(out, staticFeaturingOrder)
+	return out
+}
+
 // handlerMarkersDefinitions serves the per-marker Pill metadata plus ordering
 // and game-event feature metadata. Cached in-memory by the frontend; re-fetched
 // when the server's algorithm_version differs from the one the frontend last saw.
