@@ -3,12 +3,16 @@
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 REL_LDFLAGS := -s -w -X github.com/marianogappa/screpdb/internal/buildinfo.Version=$(VERSION)
 
-# Strip leading 'v' and any pre-release/dirty suffix to get a plain MAJOR.MINOR.PATCH triple
-# for embedding into the Windows PE FixedFileInfo numeric version fields.
-NUMVER := $(shell echo "$(VERSION)" | sed -e 's/^v//' -e 's/-.*$$//')
-VER_MAJOR := $(shell echo "$(NUMVER)" | awk -F. '{print ($$1+0)}')
-VER_MINOR := $(shell echo "$(NUMVER)" | awk -F. '{print ($$2+0)}')
-VER_PATCH := $(shell echo "$(NUMVER)" | awk -F. '{print ($$3+0)}')
+# Extract a plain MAJOR.MINOR.PATCH triple for the Windows PE FixedFileInfo
+# numeric version fields. Only a real semver tag (vX.Y.Z[-...]) yields a number;
+# untagged builds (git describe falls back to a bare commit SHA) have no
+# meaningful numeric version, so default to 0.0.0. This avoids feeding the SHA
+# to awk, which would misparse e.g. "182e64f" as scientific notation (1.82e66)
+# or a 7-digit SHA as an out-of-range major, both of which goversioninfo rejects.
+NUMVER := $(shell echo "$(VERSION)" | grep -Eo '^v?[0-9]+\.[0-9]+\.[0-9]+' | sed 's/^v//')
+VER_MAJOR := $(shell echo "$(NUMVER)" | awk -F. '{print int($$1)+0}')
+VER_MINOR := $(shell echo "$(NUMVER)" | awk -F. '{print int($$2)+0}')
+VER_PATCH := $(shell echo "$(NUMVER)" | awk -F. '{print int($$3)+0}')
 
 GOVERSIONINFO := go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.5.0
 VERSIONINFO_JSON := build/windows/versioninfo.json
