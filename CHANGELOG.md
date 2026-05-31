@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/marianogappa/screpdb/compare/v1.1.0...v1.1.1) (2026-05-31)
+
+
+### Bug Fixes
+
+* **markers:** require same tile for Build dedup, not just a 3s window (closes [#141](https://github.com/marianogappa/screpdb/issues/141)) ([#144](https://github.com/marianogappa/screpdb/issues/144)) ([896d8d6](https://github.com/marianogappa/screpdb/commit/896d8d613e9e05f20c503e4ac269b9f6ed9c499f))
+
 ## [1.1.0](https://github.com/marianogappa/screpdb/compare/v1.0.0...v1.1.0) (2026-05-31)
 
 
