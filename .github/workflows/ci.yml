@@ -26,6 +26,9 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Run frontend tests
+        run: make ui-test
+
       - name: Build embedded UI and cross-platform binaries
         run: make cross-binaries
 

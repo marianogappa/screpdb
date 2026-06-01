@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { api } from './api';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import IngestModal from './components/IngestModal';
+import Histogram from './components/charts/Histogram';
 import TimingScatterRows from './components/charts/TimingScatterRows';
 import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
 import BuildOrderTimelineRows from './components/charts/BuildOrderTimelineRows';
@@ -40,6 +41,7 @@ import {
   buildMainRouteSearch,
   mainRouteHref,
   mainRouteSnapshotEqual,
+  shouldLoadPlayerSkillProxyInsights,
   MAIN_GAME_TABS,
   MAIN_PLAYER_TABS,
   MAIN_PLAYER_SKILL_PROXY_SUBTABS,
@@ -2718,8 +2720,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (activeView !== 'player' || !selectedPlayerKey) return;
-    if (mainPlayerTab !== 'skill-proxies' || mainPlayerSubtab !== 'summary') return;
+    if (!shouldLoadPlayerSkillProxyInsights({ activeView, selectedPlayerKey, mainPlayerTab })) return;
     if (!mainPlayerApmInsight && !mainPlayerApmInsightLoading && !mainPlayerApmInsightError) {
       loadMainPlayerApmInsight(selectedPlayerKey);
     }
@@ -2733,7 +2734,7 @@ function App() {
       loadMainPlayerViewportInsight(selectedPlayerKey);
     }
   }, [
-    activeView, selectedPlayerKey, mainPlayerTab, mainPlayerSubtab,
+    activeView, selectedPlayerKey, mainPlayerTab,
     mainPlayerApmInsight, mainPlayerApmInsightLoading, mainPlayerApmInsightError,
     mainPlayerDelayInsight, mainPlayerDelayInsightLoading, mainPlayerDelayInsightError,
     mainPlayerCadenceInsight, mainPlayerCadenceInsightLoading, mainPlayerCadenceInsightError,
@@ -6358,7 +6359,7 @@ function App() {
                       onClick={() => {
                         if (isSkillProxiesTab) return;
                         setMainPlayerTab('skill-proxies');
-                        setMainPlayerSubtab('');
+                        setMainPlayerSubtab('summary');
                       }}>
                       Skill proxies
                     </button>

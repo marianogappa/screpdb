@@ -1,4 +1,4 @@
-.PHONY: openapi-generate spec-generate ui-build build release cross-binaries windows-syso clean-windows-syso
+.PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 REL_LDFLAGS := -s -w -X github.com/marianogappa/screpdb/internal/buildinfo.Version=$(VERSION)
@@ -35,6 +35,10 @@ spec-generate:
 
 ui-build:
 	cd internal/dashboard/frontend && npm ci && npm run build
+
+# Frontend unit tests (route/state contracts). Zero extra deps: node --test.
+ui-test:
+	cd internal/dashboard/frontend && npm ci && npm test
 
 build: ui-build
 	go build -ldflags "$(REL_LDFLAGS)" -o screpdb .

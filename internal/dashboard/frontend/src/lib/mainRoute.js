@@ -32,6 +32,22 @@ export const MAIN_PLAYER_TABS = [
 
 export const MAIN_PLAYER_SKILL_PROXY_SUBTABS = ['summary', 'usage-signals'];
 
+/**
+ * Whether the player Skill-proxies "Population comparison" insights should be
+ * fetched for the current view state. Gated on the tab alone — the player
+ * Skill-proxies surface renders the same population cards for every subtab, so
+ * the loader must not hinge on a specific subtab value. (Regression #147: the
+ * in-page tab button set the subtab to '' while the loader required 'summary',
+ * leaving the panel permanently empty.)
+ * @param {{ activeView: string, selectedPlayerKey: string, mainPlayerTab: string }} s
+ * @returns {boolean}
+ */
+export function shouldLoadPlayerSkillProxyInsights(s) {
+  if (!s || s.activeView !== 'player') return false;
+  if (!s.selectedPlayerKey) return false;
+  return s.mainPlayerTab === 'skill-proxies';
+}
+
 const normalizeSearch = (search) => {
   if (!search || search === '?') return '';
   return String(search).startsWith('?') ? search.slice(1) : search;
