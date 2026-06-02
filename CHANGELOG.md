@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.2](https://github.com/marianogappa/screpdb/compare/v1.1.1...v1.1.2) (2026-06-02)
+
+
+### Bug Fixes
+
+* **dashboard:** repair broken Skill proxies tabs (closes [#147](https://github.com/marianogappa/screpdb/issues/147)) ([#148](https://github.com/marianogappa/screpdb/issues/148)) ([6390fea](https://github.com/marianogappa/screpdb/commit/6390fea86839c158601603a42cb50cc3317b1187))
+* **events:** re-snapshot teams at Finalize so allies aren't shown attacking each other (closes [#146](https://github.com/marianogappa/screpdb/issues/146)) ([#150](https://github.com/marianogappa/screpdb/issues/150)) ([b8f6f3d](https://github.com/marianogappa/screpdb/commit/b8f6f3d54ba6c997b147490fab55f8246a11527d))
+* **melee:** credit winners on multi-team melee games with late alliances (closes [#130](https://github.com/marianogappa/screpdb/issues/130)) ([#151](https://github.com/marianogappa/screpdb/issues/151)) ([204f680](https://github.com/marianogappa/screpdb/commit/204f68005cf8db08da29c6eb38fe6913c1e9ccd9))
+
 ## [1.1.1](https://github.com/marianogappa/screpdb/compare/v1.1.0...v1.1.1) (2026-05-31)
 
 
