@@ -216,10 +216,14 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		allianceResult = &ar
 		data.Replay.TeamStacking = ar.TeamStackingFlag
 
-		// Hybrid team strategy: trust screp when it resolved teams; only fall
-		// back to our derivation if screp left every active player at team=0.
-		fellBack := false
-		if allActiveTeamsZero(data.Players) && ar.AnyMutualResolved {
+		// Team DISPLAY: prefer our full-game longest-held topology ("original
+		// teams") whenever we observed real mutual alliances. screp's
+		// computeMeleeTeams only inspects the first ~90s and, finding no
+		// alliance there, assigns every player a distinct singleton team — so
+		// trusting it would miss alliances that form later. A single static set
+		// can't capture alliance dynamism; longest-held is the most
+		// representative, and the Alliances tab shows the full timeline.
+		if ar.AnyMutualResolved {
 			for _, p := range data.Players {
 				if p.IsObserver || p.Type == "Computer" {
 					continue
@@ -229,29 +233,24 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 				}
 			}
 			data.Replay.TeamFormat, data.Replay.Matchup = computeTeamFormatAndMatchup(data.Players)
-			fellBack = true
 		}
 
 		if !allActivePlayersHaveTeam(data.Players) {
 			data.Replay.TeamInfoIncomplete = true
-			// screp's WinnerTeam was computed against the original (all-zero)
-			// team values; suppress winner claims when our derivation also
-			// couldn't fully resolve teams.
-			for _, p := range data.Players {
-				p.IsWinner = false
-			}
-		} else if fellBack {
-			// Our derivation produced a usable team partition. screp skipped
-			// winner detection (its `len(teamSizes) < 2` early-exit fires when
-			// every non-obs player is on team 0), so re-run the same algorithm
-			// against our teams.
-			var repSaverPID *byte
-			if rep.Computed != nil && rep.Computed.RepSaverPlayerID != nil {
-				v := *rep.Computed.RepSaverPlayerID
-				repSaverPID = &v
-			}
-			DeriveWinnersFromLeaves(data.Players, data.Commands, repSaverPID)
 		}
+
+		// Winner attribution is authoritative for multi-team melee and is
+		// decoupled from the display teams: it groups players by the
+		// END-OF-GAME alliance coalition, so a stable team that allied after
+		// screp's 90s window still gets credited, and a coalition that won may
+		// span two "original" display teams. Runs even when team assignment is
+		// incomplete — a clear surviving coalition is still a clear winner.
+		var repSaverPID *byte
+		if rep.Computed != nil && rep.Computed.RepSaverPlayerID != nil {
+			v := *rep.Computed.RepSaverPlayerID
+			repSaverPID = &v
+		}
+		DeriveWinnersFromFinalTopology(data.Players, data.Commands, ar, repSaverPID)
 	}
 
 	// Run the early-game spam filter before pattern detection so the
@@ -340,20 +339,6 @@ func countActiveMeleePlayers(players []*models.Player) int {
 		n++
 	}
 	return n
-}
-
-// allActiveTeamsZero reports whether every non-observer non-computer player
-// has Team==0 — the signal that screp gave up on team derivation.
-func allActiveTeamsZero(players []*models.Player) bool {
-	for _, p := range players {
-		if p == nil || p.IsObserver || p.Type == "Computer" {
-			continue
-		}
-		if p.Team != 0 {
-			return false
-		}
-	}
-	return true
 }
 
 // allActivePlayersHaveTeam returns true once every active player has a non-zero
