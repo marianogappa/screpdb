@@ -606,6 +606,105 @@ func TestDeriveWinnersFromLeaves_AllComputerTeam_NoWinner(t *testing.T) {
 	}
 }
 
+// --- End-of-game topology winner derivation (#130) ----------------------
+
+// TestDeriveWinnersFromFinalTopology_StableTeamAlliedLate is the FallenAngel +
+// chobo86 regression: two players ally well after screp's 90s window and never
+// change, the other two leave. screp would have seen the pair as solo at 90s
+// and assigned singleton teams (no winner); the end-of-game topology credits
+// the stable pair.
+func TestDeriveWinnersFromFinalTopology_StableTeamAlliedLate(t *testing.T) {
+	a, b, c, d := p(1, 1), p(2, 2), p(3, 3), p(4, 4)
+	players := []*models.Player{a, b, c, d}
+	cmds := []*models.Command{
+		allianceCmd(180, a, 1, 2),
+		allianceCmd(181, b, 1, 2),
+		leaveCmd(600, c),
+		leaveCmd(700, d),
+	}
+	ar := AnalyzeAlliances(players, cmds, 900, emptyActivity())
+	DeriveWinnersFromFinalTopology(players, cmds, ar, nil)
+
+	if !a.IsWinner || !b.IsWinner {
+		t.Fatalf("stable allied pair should win")
+	}
+	if c.IsWinner || d.IsWinner {
+		t.Fatalf("leavers should not win")
+	}
+}
+
+// TestDeriveWinnersFromFinalTopology_WinnerSpansOriginalTeams: the longest-held
+// (display) topology is a 2v2 {1,2}/{3,4}, but late in the game 2 and 3 re-ally
+// while 1 and 4 leave. The end-of-game winning coalition {2,3} therefore spans
+// two different "original" teams — which is expected and allowed.
+func TestDeriveWinnersFromFinalTopology_WinnerSpansOriginalTeams(t *testing.T) {
+	a, b, c, d := p(1, 1), p(2, 2), p(3, 3), p(4, 4)
+	players := []*models.Player{a, b, c, d}
+	cmds := []*models.Command{
+		// Long-held 2v2: {1,2} and {3,4} from sec 10.
+		allianceCmd(10, a, 1, 2),
+		allianceCmd(11, b, 1, 2),
+		allianceCmd(12, c, 3, 4),
+		allianceCmd(13, d, 3, 4),
+		// Late re-alliance: 2 and 3 pair up, dropping their old partners.
+		allianceCmd(600, b, 2, 3),
+		allianceCmd(601, c, 2, 3),
+		// 1 and 4 (now solo) leave.
+		leaveCmd(750, a),
+		leaveCmd(800, d),
+	}
+	ar := AnalyzeAlliances(players, cmds, 900, emptyActivity())
+
+	// Display teams come from the longest-held 2v2: 2 and 3 are on different
+	// original teams.
+	if ar.ResolvedTeams[2] == ar.ResolvedTeams[3] {
+		t.Fatalf("expected 2 and 3 on different original (longest-held) teams")
+	}
+
+	DeriveWinnersFromFinalTopology(players, cmds, ar, nil)
+	if !b.IsWinner || !c.IsWinner {
+		t.Fatalf("end-of-game coalition {2,3} should win")
+	}
+	if a.IsWinner || d.IsWinner {
+		t.Fatalf("leavers 1 and 4 should not win")
+	}
+}
+
+// TestDeriveWinnersFromFinalTopology_FFALastManStanding: no alliances at all;
+// everyone but one leaves → the survivor wins.
+func TestDeriveWinnersFromFinalTopology_FFALastManStanding(t *testing.T) {
+	a, b, c := p(1, 1), p(2, 2), p(3, 3)
+	players := []*models.Player{a, b, c}
+	cmds := []*models.Command{leaveCmd(100, a), leaveCmd(200, b)}
+	ar := AnalyzeAlliances(players, cmds, 300, emptyActivity())
+	if ar.AnyMutualResolved {
+		t.Fatalf("no alliances expected in FFA")
+	}
+	DeriveWinnersFromFinalTopology(players, cmds, ar, nil)
+	if a.IsWinner || b.IsWinner {
+		t.Fatalf("leavers should not win")
+	}
+	if !c.IsWinner {
+		t.Fatalf("last player standing should win")
+	}
+}
+
+// TestDeriveWinnersFromFinalTopology_NonDestructive: when no winner can be
+// determined (no leaves), existing IsWinner flags are left untouched.
+func TestDeriveWinnersFromFinalTopology_NonDestructive(t *testing.T) {
+	a, b, c := p(1, 1), p(2, 2), p(3, 3)
+	a.IsWinner = true // pretend a prior stage credited this player
+	players := []*models.Player{a, b, c}
+	ar := AnalyzeAlliances(players, nil, 300, emptyActivity())
+	DeriveWinnersFromFinalTopology(players, nil, ar, nil)
+	if !a.IsWinner {
+		t.Fatalf("existing winner flag should be preserved when undecidable")
+	}
+	if b.IsWinner || c.IsWinner {
+		t.Fatalf("no new winners should be set when undecidable")
+	}
+}
+
 func TestIsStacking(t *testing.T) {
 	cases := []struct {
 		name  string

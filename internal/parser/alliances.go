@@ -673,28 +673,19 @@ func dominantResolvedTeams(snapshots []AllianceSnapshot, durationSec int, active
 	return out
 }
 
-// DeriveWinnersFromLeaves applies the "largest remaining team wins" algorithm
-// (mirrors screp's `computeWinners` at replay.go:701-805) to the post-fallback
-// team assignments. Mutates the players slice: sets IsWinner=true on every
-// member of the detected winning team (and clears it on every other player —
-// this function is the authoritative winner setter for the fallback path).
+// winningTeamByLeaves implements screp's "largest remaining team wins" rule
+// (mirrors `computeWinners` at rep/replay.go:701-805) over an arbitrary team
+// grouping. teamOf maps each non-observer player_id to a team key (humans and
+// computers alike). Returns (winningTeamKey, true) when a single winner is
+// determined, or (0, false) when it can't be decided — the same situations in
+// which screp leaves WinnerTeam == 0.
 //
 // repSaverPID is optional. screp doesn't record a Leave Game command for the
 // replay saver, so when known we append a virtual leave for them as the last
 // leaver — that's what lets the "all non-obs players left" tie-break fire on
 // games where one team simply quit and the saver from the other team is the
 // final non-leaver.
-//
-// Bails out (no winners assigned) when the algorithm can't determine a single
-// winner. That's the same behavior screp has when WinnerTeam == 0.
-func DeriveWinnersFromLeaves(players []*models.Player, commands []*models.Command, repSaverPID *byte) {
-	for _, p := range players {
-		if p == nil {
-			continue
-		}
-		p.IsWinner = false
-	}
-
+func winningTeamByLeaves(players []*models.Player, commands []*models.Command, teamOf map[byte]byte, repSaverPID *byte) (byte, bool) {
 	teamSizes := map[byte]int{}
 	teamCompsCount := map[byte]int{}
 	nonObsCount := 0
@@ -703,10 +694,11 @@ func DeriveWinnersFromLeaves(players []*models.Player, commands []*models.Comman
 		if p == nil || p.IsObserver {
 			continue
 		}
+		team := teamOf[p.PlayerID]
 		if p.Type == "Computer" {
-			teamCompsCount[p.Team]++
+			teamCompsCount[team]++
 		} else {
-			teamSizes[p.Team]++
+			teamSizes[team]++
 		}
 		nonObsCount++
 		pidToPlayer[p.PlayerID] = p
@@ -714,7 +706,7 @@ func DeriveWinnersFromLeaves(players []*models.Player, commands []*models.Comman
 
 	for team := range teamCompsCount {
 		if teamSizes[team] == 0 {
-			return
+			return 0, false
 		}
 	}
 
@@ -735,13 +727,13 @@ func DeriveWinnersFromLeaves(players []*models.Player, commands []*models.Comman
 	}
 
 	for _, pid := range leaverPIDs {
-		if p, ok := pidToPlayer[pid]; ok {
-			teamSizes[p.Team]--
+		if _, ok := pidToPlayer[pid]; ok {
+			teamSizes[teamOf[pid]]--
 		}
 	}
 
 	if len(teamSizes) < 2 || len(leaverPIDs) == 0 {
-		return
+		return 0, false
 	}
 
 	var maxTeam byte
@@ -759,25 +751,123 @@ func DeriveWinnersFromLeaves(players []*models.Player, commands []*models.Comman
 			}
 		}
 		if count == 1 {
-			markWinnersOnTeam(players, maxTeam)
-			return
+			return maxTeam, true
 		}
 	}
 
 	if len(leaverPIDs) == nonObsCount {
 		lastPID := leaverPIDs[len(leaverPIDs)-1]
-		if last, ok := pidToPlayer[lastPID]; ok {
-			markWinnersOnTeam(players, last.Team)
+		if _, ok := pidToPlayer[lastPID]; ok {
+			return teamOf[lastPID], true
 		}
 	}
+	return 0, false
 }
 
-func markWinnersOnTeam(players []*models.Player, team byte) {
+// DeriveWinnersFromLeaves applies the "largest remaining team wins" algorithm
+// to the static `p.Team` assignments. Mutates the players slice: clears
+// IsWinner on everyone, then sets it on every member of the detected winning
+// team. Bails out (no winners assigned) when the algorithm can't determine a
+// single winner — the same behavior screp has when WinnerTeam == 0.
+func DeriveWinnersFromLeaves(players []*models.Player, commands []*models.Command, repSaverPID *byte) {
+	for _, p := range players {
+		if p == nil {
+			continue
+		}
+		p.IsWinner = false
+	}
+
+	teamOf := map[byte]byte{}
 	for _, p := range players {
 		if p == nil || p.IsObserver {
 			continue
 		}
-		if p.Team == team {
+		teamOf[p.PlayerID] = p.Team
+	}
+
+	if team, ok := winningTeamByLeaves(players, commands, teamOf, repSaverPID); ok {
+		markWinnersByTeam(players, teamOf, team)
+	}
+}
+
+// DeriveWinnersFromFinalTopology credits the winning coalition of a multi-team
+// melee using the END-OF-GAME alliance topology rather than the longest-held
+// (display) teams. This lets a coalition that formed or shifted mid-game be
+// credited correctly and — crucially — credits a stable team whose alliance
+// screp missed because computeMeleeTeams only inspects the first ~90 seconds
+// (and otherwise assigns every player a singleton team, which then ties).
+// Because the grouping is the end-of-game coalition, the credited winners can
+// span two different "original" (longest-held) display teams — that's expected
+// when alliances shifted; the Alliances tab explains why.
+//
+// Players are grouped by their largest mutual-alliance clique in the final
+// snapshot (see assignCoalitions); the same "largest remaining team after
+// leaves" rule then picks the winner.
+//
+// Non-destructive: only when a single winner coalition is determined does it
+// clear and re-set IsWinner (allied-victory semantics — a teammate who left is
+// still on the winning side). When undecidable it leaves existing IsWinner
+// flags untouched, so it never erases a winner it can't reproduce.
+func DeriveWinnersFromFinalTopology(players []*models.Player, commands []*models.Command, ar AllianceResult, repSaverPID *byte) {
+	var finalTeams [][]byte
+	if n := len(ar.Snapshots); n > 0 {
+		finalTeams = ar.Snapshots[n-1].Teams
+	}
+	coalitionOf := assignCoalitions(players, finalTeams)
+
+	team, ok := winningTeamByLeaves(players, commands, coalitionOf, repSaverPID)
+	if !ok {
+		return
+	}
+	for _, p := range players {
+		if p == nil || p.IsObserver {
+			continue
+		}
+		p.IsWinner = coalitionOf[p.PlayerID] == team
+	}
+}
+
+// assignCoalitions maps each non-observer player_id to a coalition key derived
+// from the final alliance topology. Cliques are processed largest-first (they
+// arrive pre-sorted size-desc then min-pid from mutualAllianceTeams), so each
+// player lands in their largest clique; the coalition key is the clique's
+// min pid. Players not in any clique — and computers, which never appear in the
+// alliance graph — get their own singleton coalition keyed by their own pid.
+func assignCoalitions(players []*models.Player, finalTeams [][]byte) map[byte]byte {
+	coalitionOf := map[byte]byte{}
+	for _, team := range finalTeams {
+		if len(team) == 0 {
+			continue
+		}
+		key := team[0]
+		for _, pid := range team {
+			if pid < key {
+				key = pid
+			}
+		}
+		for _, pid := range team {
+			if _, done := coalitionOf[pid]; !done {
+				coalitionOf[pid] = key
+			}
+		}
+	}
+	for _, p := range players {
+		if p == nil || p.IsObserver {
+			continue
+		}
+		if _, done := coalitionOf[p.PlayerID]; !done {
+			coalitionOf[p.PlayerID] = p.PlayerID
+		}
+	}
+	return coalitionOf
+}
+
+func markWinnersByTeam(players []*models.Player, teamOf map[byte]byte, team byte) {
+	for _, p := range players {
+		if p == nil || p.IsObserver {
+			continue
+		}
+		if teamOf[p.PlayerID] == team {
 			p.IsWinner = true
 		}
 	}
