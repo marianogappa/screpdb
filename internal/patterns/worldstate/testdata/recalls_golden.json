@@ -266,8 +266,7 @@
         "count": 1,
         "source_label": "7",
         "target_label": "5",
-        "target_via": "p",
-        "target_owner_pid": 7
+        "target_via": "p"
       },
       {
         "second": 1621,

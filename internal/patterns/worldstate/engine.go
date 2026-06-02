@@ -329,6 +329,18 @@ func (e *Engine) Finalize() {
 	}
 	e.finalized = true
 
+	// Re-snapshot teams from the player pointers. NewEngine captured p.Team at
+	// Initialize time, but the parser's alliance-fallback pass rewrites p.Team
+	// afterwards for FFA / Big Game Hunters replays where screp left every
+	// player at team 0 (resolving teams from in-game alliance commands). Those
+	// pointers are the same ones the engine holds, so reading them here picks
+	// up the resolved teams. Without this, BuildAttacks would see the stale
+	// all-zero snapshot — which sameTeamByMap treats as "unknown" — and report
+	// allied players attacking each other. See issue #146.
+	for pid, p := range e.players {
+		e.teams[pid] = p.Team
+	}
+
 	var ownership []PolyOwnership
 	var candidates []CandidateAttack
 
