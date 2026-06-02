@@ -525,6 +525,42 @@ func TestBuildAttacks_DoesNotEmitAttackOnTeammatePolygon(t *testing.T) {
 	}
 }
 
+// TestBuildAttacks_HonorsTeamsResolvedAfterNewEngine reproduces issue #146:
+// FFA / Big Game Hunters replays where screp leaves every player at team 0
+// have their teams resolved from in-game alliance commands by the parser's
+// fallback pass — which mutates p.Team *after* NewEngine has already
+// snapshotted the all-zero teams. Finalize must re-read the resolved teams
+// from the player pointers, otherwise allies are reported attacking each other.
+func TestBuildAttacks_HonorsTeamsResolvedAfterNewEngine(t *testing.T) {
+	replay := &models.Replay{DurationSeconds: 900, MapWidth: 128, MapHeight: 128}
+	// Both players start unresolved (team 0), as screp leaves them on FFA maps.
+	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "T1", Race: "Terran", Team: 0, Type: models.PlayerTypeHuman}
+	p2 := &models.Player{PlayerID: 2, SlotID: 2, Name: "T2", Race: "Terran", Team: 0, Type: models.PlayerTypeHuman}
+	engine := NewEngine(replay, []*models.Player{p1, p2}, rushProxyTestMapContext())
+
+	for i := 0; i < 15; i++ {
+		engine.ProcessCommand(&models.Command{
+			Player:               p1,
+			ActionType:           "Targeted Order",
+			OrderName:            stringPtr("Attack Move"),
+			X:                    intPtr(tilePixel(40)),
+			Y:                    intPtr(tilePixel(40)),
+			SecondsFromGameStart: 360 + i,
+		})
+	}
+
+	// Alliance fallback resolves both onto the same team after NewEngine but
+	// before Finalize, mutating the same player pointers the engine holds.
+	p1.Team = 1
+	p2.Team = 1
+
+	for _, ev := range engine.ReplayEvents() {
+		if ev.EventType == "attack" || ev.EventType == "scout" {
+			t.Fatalf("expected no %s event once alliance-resolved teams mark the players as allies, got %+v", ev.EventType, ev)
+		}
+	}
+}
+
 func TestBuildAttacks_DoesNotEmitDropOnTeammatePolygon(t *testing.T) {
 	replay := &models.Replay{DurationSeconds: 900, MapWidth: 128, MapHeight: 128}
 	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "T1", Race: "Terran", Team: 1, Type: models.PlayerTypeHuman}
