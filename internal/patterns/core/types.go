@@ -18,7 +18,13 @@ import (
 // stops merging distinct same-type buildings placed seconds apart at different
 // spots (the time-only heuristic mis-merged ~55% of its collapses). The dead
 // non-streaming ApplyBuildDedup mirror was also removed.
-const AlgorithmVersion = 27
+//
+// 28: Selection-tag build dedup (internal/unittags + internal/builddedup),
+// applied ahead of earlyfilter: provable worker one-at-a-time drops (Terran SCV
+// / Zerg Drone redirected to a different-tile build before the prior could
+// finish) and never-produced production buildings within the build-order
+// window. Removes redundant Build commands so building counts reflect reality.
+const AlgorithmVersion = 28
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

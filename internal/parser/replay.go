@@ -8,12 +8,14 @@ import (
 	"time"
 
 	"github.com/icza/screp/rep/repcmd"
+	"github.com/marianogappa/screpdb/internal/builddedup"
 	"github.com/marianogappa/screpdb/internal/cmddedup"
 	"github.com/marianogappa/screpdb/internal/earlyfilter"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser/commands"
 	"github.com/marianogappa/screpdb/internal/patterns"
 	"github.com/marianogappa/screpdb/internal/screp"
+	"github.com/marianogappa/screpdb/internal/unittags"
 	"github.com/marianogappa/screpdb/internal/utils"
 )
 
@@ -253,10 +255,17 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		DeriveWinnersFromFinalTopology(data.Players, data.Commands, ar, repSaverPID)
 	}
 
+	// Reconstruct selection state from the raw command stream (Select/Hotkey
+	// tags, which command extraction above discards) and plan the tag-based
+	// build dedup: provable worker one-at-a-time drops + never-produced
+	// production buildings. The plan is applied inside the early filter.
+	buildDedupPlan := builddedup.Compute(unittags.Analyze(rep), data.Players)
+
 	// Run the early-game spam filter before pattern detection so the
 	// orchestrator only sees commands the filter believes were real.
 	filterResult := earlyfilter.Apply(data.Replay, data.Players, data.MapContext, data.Commands, earlyfilter.Options{
-		DebugDir: opts.EarlyFilterDebugDir,
+		DebugDir:   opts.EarlyFilterDebugDir,
+		ShouldDrop: buildDedupPlan.ShouldDrop,
 	})
 	data.Commands = filterResult.Commands
 

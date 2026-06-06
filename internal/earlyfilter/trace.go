@@ -27,13 +27,17 @@ const (
 	// previously-kept worker train to free minerals for a re-admitted
 	// prerequisite.
 	VerdictDroppedByBacktrack Verdict = "dropped_by_backtrack"
+	// VerdictDroppedByTags: dropped by the selection-tag build dedup
+	// (internal/builddedup) via Options.ShouldDrop, before resource analysis
+	// and regardless of the time window.
+	VerdictDroppedByTags Verdict = "dropped_by_tags"
 )
 
 // Decision is one entry in the per-player decision log for the trace.
 type Decision struct {
 	Frame         int32   `json:"frame"`
 	Second        int     `json:"second"`
-	Action        string  `json:"action"`            // ActionType (Build / Train / Unit Morph)
+	Action        string  `json:"action"` // ActionType (Build / Train / Unit Morph)
 	Subject       string  `json:"subject"`
 	Verdict       Verdict `json:"verdict"`
 	Reason        string  `json:"reason,omitempty"`
@@ -42,11 +46,11 @@ type Decision struct {
 
 // TickSnapshot is one row in the player's per-second state timeline.
 type TickSnapshot struct {
-	Second     int    `json:"second"`
-	Minerals   int    `json:"minerals"`
-	Supply     string `json:"supply"` // formatted "used/max" for human reading
-	Workers    int    `json:"workers"`
-	Iteration  int    `json:"iteration,omitempty"` // backtrack iteration that produced this snapshot
+	Second    int    `json:"second"`
+	Minerals  int    `json:"minerals"`
+	Supply    string `json:"supply"` // formatted "used/max" for human reading
+	Workers   int    `json:"workers"`
+	Iteration int    `json:"iteration,omitempty"` // backtrack iteration that produced this snapshot
 }
 
 // PlayerTrace gathers everything the trace records for one player.
@@ -236,7 +240,7 @@ func summaryFor(commands []*models.Command, verdicts map[int]Verdict, pid int64)
 		case VerdictReadmitted:
 			s.Kept++
 			s.Readmitted++
-		case VerdictDropped:
+		case VerdictDropped, VerdictDroppedByTags:
 			s.Dropped++
 		case VerdictDroppedByBacktrack:
 			s.Dropped++

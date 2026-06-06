@@ -104,6 +104,14 @@ func runForward(
 			verdicts[i] = VerdictKept
 			continue
 		}
+		// Higher-confidence selection-tag build dedup runs first and across the
+		// whole game (the provable worker one-at-a-time rule drops late-game
+		// builds too). A dropped build contributes no resource effects.
+		if opts.ShouldDrop != nil && opts.ShouldDrop(cmd) {
+			verdicts[i] = VerdictDroppedByTags
+			continue
+		}
+
 		pid := int64(cmd.Player.PlayerID)
 		sim := sims[pid]
 		if sim == nil {
@@ -204,7 +212,7 @@ func buildStats(commands []*models.Command, verdicts map[int]Verdict, forceDrop 
 		case VerdictReadmitted:
 			s.Kept++
 			s.Readmitted++
-		case VerdictDropped:
+		case VerdictDropped, VerdictDroppedByTags:
 			s.Dropped++
 		case VerdictDroppedByBacktrack:
 			s.Dropped++

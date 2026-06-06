@@ -19,7 +19,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":9.14027149321267}"
+        "value": "{\"switches_per_minute\":8.868778280542985}"
       },
       {
         "replay_player_id": 1,
@@ -54,7 +54,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":14.117647058823529}"
+        "value": "{\"switches_per_minute\":13.755656108597284}"
       }
     ]
   },
@@ -82,11 +82,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "1-1-1",
-        "value": "277"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Rax FE",
         "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":87,\"found\":true},{\"second\":171,\"found\":true},{\"second\":174,\"found\":true}]}"
       },
@@ -98,7 +93,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Turret timing",
-        "value": "{\"ebay_cmd\":266,\"first_turret_cmd\":330,\"turret_burst_count\":10,\"turret_finished\":349}"
+        "value": "{\"ebay_cmd\":266,\"first_turret_cmd\":330,\"turret_burst_count\":9,\"turret_finished\":349}"
       },
       {
         "replay_player_id": 1,
@@ -108,7 +103,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":16.315789473684212}"
+        "value": "{\"switches_per_minute\":15.789473684210527}"
       }
     ]
   },
@@ -127,7 +122,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":22.05128205128205}"
+        "value": "{\"switches_per_minute\":21.53846153846154}"
       },
       {
         "replay_player_id": 1,
@@ -234,7 +229,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":16.544117647058822}"
+        "value": "{\"switches_per_minute\":15.661764705882353}"
       },
       {
         "replay_player_id": 1,
@@ -263,7 +258,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: CC First",
-        "value": "{\"expert_actuals\":[{\"second\":153,\"found\":true},{\"second\":117,\"found\":true},{\"second\":136,\"found\":true}]}"
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":117,\"found\":true},{\"found\":false}]}"
       },
       {
         "replay_player_id": 0,
@@ -273,7 +268,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":14.585889570552146}"
+        "value": "{\"switches_per_minute\":13.987730061349692}"
       },
       {
         "replay_player_id": 1,
@@ -375,7 +370,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":20.666666666666668}"
+        "value": "{\"switches_per_minute\":19.666666666666668}"
       },
       {
         "replay_player_id": 1,
@@ -395,7 +390,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":19.833333333333332}"
+        "value": "{\"switches_per_minute\":19.5}"
       }
     ]
   }
