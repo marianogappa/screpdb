@@ -1,0 +1,29 @@
+== battlecruisers.rep ==
+  player 0 (Zerg): tierA=5 tierB=0
+  player 1 (Terran): tierA=4 tierB=0
+    Command Center     built=3 produced=4 dropped=0
+    Barracks           built=6 produced=6 dropped=0
+    Factory            built=1 produced=0 dropped=0
+    Starport           built=6 produced=4 dropped=2
+== bo_2_gate_carriers.rep ==
+  player 0 (Terran): tierA=8 tierB=2
+    Command Center     built=7 produced=6 dropped=1
+    Barracks           built=1 produced=1 dropped=0
+    Factory            built=14 produced=9 dropped=1
+    Starport           built=4 produced=1 dropped=3
+  player 1 (Protoss): tierA=0 tierB=0
+    Nexus              built=5 produced=3 dropped=0
+    Gateway            built=4 produced=3 dropped=0
+    Robotics Facility  built=1 produced=1 dropped=0
+    Stargate           built=2 produced=2 dropped=0
+== bo_4_pool.rep ==
+  player 0 (Zerg): tierA=0 tierB=0
+  player 1 (Protoss): tierA=0 tierB=0
+    Gateway            built=1 produced=1 dropped=0
+== bo_forge_expand.rep ==
+  player 0 (Protoss): tierA=0 tierB=8
+    Nexus              built=2 produced=2 dropped=0
+    Gateway            built=17 produced=9 dropped=8
+    Robotics Facility  built=1 produced=1 dropped=0
+    Stargate           built=1 produced=1 dropped=0
+  player 1 (Zerg): tierA=1 tierB=0

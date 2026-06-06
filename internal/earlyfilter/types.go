@@ -18,6 +18,14 @@ type Options struct {
 	// per-player tick state and every keep/drop/readmit decision and reason.
 	// Empty disables tracing entirely.
 	DebugDir string
+
+	// ShouldDrop, when non-nil, is consulted for every command before the
+	// resource simulation. Commands it returns true for are dropped outright
+	// (verdict dropped_by_tags) and contribute no resource effects, across the
+	// whole game (not just within MaxSecond). This is how the higher-confidence
+	// selection-tag build dedup (internal/builddedup) is applied ahead of the
+	// resource heuristic.
+	ShouldDrop func(*models.Command) bool
 }
 
 // Result is the output of Apply.
