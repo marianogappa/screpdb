@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/marianogappa/screpdb/compare/v1.1.2...v1.2.0) (2026-06-06)
+
+
+### Features
+
+* **dedup:** selection-tag build dedup — worker one-at-a-time + never-produced (closes [#152](https://github.com/marianogappa/screpdb/issues/152)) ([#153](https://github.com/marianogappa/screpdb/issues/153)) ([2329157](https://github.com/marianogappa/screpdb/commit/23291579d4bc8fb70ea747eaa5aa1a8f4a1df7c9))
+
 ## [1.1.2](https://github.com/marianogappa/screpdb/compare/v1.1.1...v1.1.2) (2026-06-02)
 
 
