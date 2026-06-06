@@ -65,8 +65,6 @@ var staticGameEventFeatures = []gameEventFeature{
 // event-only keys with marker FeatureKeys so the FE can render a single
 // ordered strip without a parallel lookup table.
 var staticFeaturingOrder = []string{
-	// signature markers (KindMarker, persistent presence)
-	"mech",
 	// game-event-only chips (sourced from worldstate, not markers)
 	"cannon_rush",
 	"bunker_rush",
@@ -81,10 +79,6 @@ var staticFeaturingOrder = []string{
 	// late-game custom-evaluator markers
 	"threw_nukes",
 	"made_recalls",
-	"mech_transition",
-	// transition markers (KindMarker)
-	"one_one_one",
-	"sk_terran",
 	// initial build orders, ordered by race + ascending supply / aggression
 	"bo_4_pool",
 	"bo_9_pool",
@@ -101,9 +95,29 @@ var staticFeaturingOrder = []string{
 	"bo_gate_expand",
 	"bo_forge_expa",
 	"bo_bbs",
-	"bo_1_rax_1_fac",
-	"bo_rax_cc",
 	"bo_cc_first",
+	// Terran composition BOs (issue #155): former mech / 1-1-1 / SK Terran
+	// markers, now first-class build orders.
+	"bo_t_wraith",
+	"bo_t_goliath",
+	"bo_t_bio_1rax",
+	"bo_t_bio_2rax",
+	"bo_t_bio_3rax",
+	"bo_t_bio_4rax",
+	"bo_t_bio_5rax",
+	"bo_t_bio_6rax",
+	"bo_t_111_mech",
+	"bo_t_mech_2fac",
+	"bo_t_mech_3fac",
+	"bo_t_mech_4fac",
+	"bo_t_mech_5fac",
+	"bo_t_mech_6fac",
+	"bo_t_tankless_2fac",
+	"bo_t_tankless_3fac",
+	"bo_t_tankless_4fac",
+	"bo_t_tankless_5fac",
+	"bo_t_tankless_6fac",
+	"bo_t_111",
 	// money-map markers — rendered last so regular markers take priority on
 	// mixed/regular game listings; on Money games they trail Mind Control etc.
 	"carriers",

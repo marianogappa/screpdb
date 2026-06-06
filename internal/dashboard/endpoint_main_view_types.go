@@ -255,10 +255,9 @@ var workflowFeaturingFilters = []struct {
 	IconLabel string
 	Emoji     string
 }{
-	{Key: "mech", Label: "Mech", Group: "marker", IconKeys: []string{"siegetank", "goliath"}, IconLabel: "Mech"},
-	{Key: "sk_terran", Label: "SK Terran", Group: "marker", IconKeys: []string{"marine", "medic"}, IconLabel: "SK Terran"},
-	{Key: "one_one_one", Label: "1-1-1", Group: "marker"},
-	{Key: "mech_transition", Label: "Mech Transition", Group: "marker", IconKeys: []string{"siegetank", "goliath"}, IconLabel: "Mech transition"},
+	// NOTE: the former Terran style markers (mech / sk_terran / one_one_one /
+	// mech_transition) are now first-class composition BOs — see the "bo" group
+	// below (issue #155).
 	{Key: "mutalisk_timing", Label: "Mutalisk timing", Group: "marker", IconKey: "mutalisk", IconLabel: "timing"},
 	{Key: "turret_timing", Label: "Turret timing", Group: "marker", IconKey: "missileturret", IconLabel: "Timing"},
 	{Key: "cannon_rush", Label: "Cannon Rush", Group: "marker", IconKey: "photoncannon", IconLabel: "Rush"},
@@ -299,8 +298,26 @@ var workflowFeaturingFilters = []struct {
 	{Key: "bo_nexus_first", Label: "Nexus First", Group: "bo"},
 	{Key: "bo_gate_expand", Label: "Gate Expand", Group: "bo"},
 	{Key: "bo_forge_expa", Label: "Forge Expand", Group: "bo"},
-	{Key: "bo_1_rax_1_fac", Label: "1 Rax 1 Fac", Group: "bo"},
-	{Key: "bo_rax_cc", Label: "1 Rax FE", Group: "bo"},
+	{Key: "bo_t_wraith", Label: "Wraith", Group: "bo"},
+	{Key: "bo_t_goliath", Label: "Goliath", Group: "bo"},
+	{Key: "bo_t_bio_1rax", Label: "1-Rax Bio", Group: "bo"},
+	{Key: "bo_t_bio_2rax", Label: "2-Rax Bio", Group: "bo"},
+	{Key: "bo_t_bio_3rax", Label: "3-Rax Bio", Group: "bo"},
+	{Key: "bo_t_bio_4rax", Label: "4-Rax Bio", Group: "bo"},
+	{Key: "bo_t_bio_5rax", Label: "5-Rax Bio", Group: "bo"},
+	{Key: "bo_t_bio_6rax", Label: "6+ Rax Bio", Group: "bo"},
+	{Key: "bo_t_111_mech", Label: "1-1-1 into Mech", Group: "bo"},
+	{Key: "bo_t_mech_2fac", Label: "2-Fac Mech", Group: "bo"},
+	{Key: "bo_t_mech_3fac", Label: "3-Fac Mech", Group: "bo"},
+	{Key: "bo_t_mech_4fac", Label: "4-Fac Mech", Group: "bo"},
+	{Key: "bo_t_mech_5fac", Label: "5-Fac Mech", Group: "bo"},
+	{Key: "bo_t_mech_6fac", Label: "6+ Fac Mech", Group: "bo"},
+	{Key: "bo_t_tankless_2fac", Label: "2-Fac Tankless Mech", Group: "bo"},
+	{Key: "bo_t_tankless_3fac", Label: "3-Fac Tankless Mech", Group: "bo"},
+	{Key: "bo_t_tankless_4fac", Label: "4-Fac Tankless Mech", Group: "bo"},
+	{Key: "bo_t_tankless_5fac", Label: "5-Fac Tankless Mech", Group: "bo"},
+	{Key: "bo_t_tankless_6fac", Label: "6+ Fac Tankless Mech", Group: "bo"},
+	{Key: "bo_t_111", Label: "1-1-1", Group: "bo"},
 	{Key: "bo_cc_first", Label: "CC First", Group: "bo"},
 	{Key: "bo_bbs", Label: "BBS", Group: "bo"},
 }

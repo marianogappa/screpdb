@@ -28,13 +28,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 1 Rax FE",
-        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":85,\"found\":true},{\"second\":161,\"found\":true},{\"second\":174,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "SK Terran",
-        "value": "319"
+        "pattern_name": "Build Order: 5-Rax Bio",
+        "value": "600"
       },
       {
         "replay_player_id": 1,
@@ -82,13 +77,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 1 Rax FE",
-        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":87,\"found\":true},{\"second\":171,\"found\":true},{\"second\":174,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "SK Terran",
-        "value": "400"
+        "pattern_name": "Build Order: 6+ Rax Bio",
+        "value": "599"
       },
       {
         "replay_player_id": 1,
@@ -111,8 +101,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 1 Rax 1 Fac",
-        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":83,\"found\":true},{\"second\":98,\"found\":true},{\"second\":150,\"found\":true}]}"
+        "pattern_name": "Build Order: 6+ Fac Mech",
+        "value": "599"
       },
       {
         "replay_player_id": 0,
@@ -344,18 +334,13 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 1 Rax 1 Fac",
-        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":89,\"found\":true},{\"second\":100,\"found\":true},{\"second\":150,\"found\":true}]}"
+        "pattern_name": "Build Order: 5-Fac Mech",
+        "value": "976"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Made drops",
         "value": "236"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Mech",
-        "value": "976"
       },
       {
         "replay_player_id": 0,

@@ -360,45 +360,85 @@ func TestBO_2Gate(t *testing.T) {
 // Terran openers
 // ---------------------------------------------------------------------------
 
-func TestBO_1Rax1Fac(t *testing.T) {
-	bo := findBO(t, "1 Rax 1 Fac")
-	// Positive: Depot, Rax, Refinery, Factory; no early CC.
-	pos := factsBuilder().
-		B(subjSupplyDepot, 60).
-		B(subjBarracks, 88).
-		B(subjRefinery, 115).
-		B(subjFactory, 165).
-		list()
-	if !bo.Matches(pos) {
-		t.Fatalf("1 Rax 1 Fac should match standard sequence")
+// marines adds n Marine produces starting at `from`, 10s apart.
+func produceN(b *factsB, unit string, n, from int) *factsB {
+	for i := 0; i < n; i++ {
+		b.P(unit, from+i*10)
 	}
-	// Negative: Refinery after Factory.
-	neg := factsBuilder().
-		B(subjSupplyDepot, 60).B(subjBarracks, 88).
-		B(subjFactory, 165).B(subjRefinery, 175).list()
-	if bo.Matches(neg) {
-		t.Fatalf("1 Rax 1 Fac should fail when Refinery follows Factory")
+	return b
+}
+
+func TestBO_Terran_Bio_ByBarracks(t *testing.T) {
+	// 3 Barracks, mass Marine/Medic, no mech → 3-Rax Bio.
+	b := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjBarracks, 120).B(subjBarracks, 160)
+	produceN(b, subjMarine, 10, 200)
+	produceN(b, subjMedic, 2, 320)
+	stream := b.list()
+	if !findBO(t, "3-Rax Bio").Matches(stream) {
+		t.Fatalf("3 Barracks + mass M&M should be 3-Rax Bio")
 	}
-	// Negative: CC before Factory (that's Rax-CC).
-	neg2 := factsBuilder().
-		B(subjSupplyDepot, 60).B(subjBarracks, 88).
-		B(subjCommandCenter, 150).B(subjRefinery, 170).B(subjFactory, 200).list()
-	if bo.Matches(neg2) {
-		t.Fatalf("1 Rax 1 Fac should fail when CC precedes Factory")
+	for _, other := range []string{"2-Rax Bio", "4-Rax Bio", "6+ Rax Bio", "2-Fac Mech", "1-1-1"} {
+		if findBO(t, other).Matches(stream) {
+			t.Fatalf("bio stream must not also match %q (mutex)", other)
+		}
 	}
-	// Negative: 2 Rax before Factory.
-	neg3 := factsBuilder().
-		B(subjSupplyDepot, 60).B(subjBarracks, 88).B(subjBarracks, 110).
-		B(subjRefinery, 130).B(subjFactory, 180).list()
-	if bo.Matches(neg3) {
-		t.Fatalf("1 Rax 1 Fac should fail with 2 Barracks before Factory")
+	// 6 Barracks → 6+ Rax Bio.
+	b6 := factsBuilder().B(subjSupplyDepot, 30)
+	for i := 0; i < 6; i++ {
+		b6.B(subjBarracks, 80+i*20)
 	}
-	// Negative: CC before Barracks (CC First).
-	neg4 := factsBuilder().
-		B(subjSupplyDepot, 60).B(subjCommandCenter, 145).
-		B(subjBarracks, 165).B(subjRefinery, 200).B(subjFactory, 230).list()
-	if bo.Matches(neg4) {
-		t.Fatalf("1 Rax 1 Fac should fail when CC precedes Barracks")
+	produceN(b6, subjMarine, 10, 220)
+	if !findBO(t, "6+ Rax Bio").Matches(b6.list()) {
+		t.Fatalf("6 Barracks + mass Marine should be 6+ Rax Bio")
+	}
+}
+
+func TestBO_Terran_Mech_ByFactory_AndTankless(t *testing.T) {
+	// 2 Factories, Vultures + Tanks, mech-predominant → 2-Fac Mech.
+	b := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).B(subjFactory, 200)
+	produceN(b, subjVulture, 6, 220)
+	produceN(b, subjSiegeTank, 2, 300)
+	mech := b.list()
+	if !findBO(t, "2-Fac Mech").Matches(mech) {
+		t.Fatalf("2 Factories + Vultures + Tanks should be 2-Fac Mech")
+	}
+	for _, other := range []string{"3-Fac Mech", "2-Fac Tankless Mech", "3-Rax Bio", "1-1-1"} {
+		if findBO(t, other).Matches(mech) {
+			t.Fatalf("mech stream must not also match %q (mutex)", other)
+		}
+	}
+	// 2 Factories, Vultures, NO Tank → 2-Fac Tankless Mech.
+	tb := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).B(subjFactory, 200)
+	produceN(tb, subjVulture, 8, 220)
+	tankless := tb.list()
+	if !findBO(t, "2-Fac Tankless Mech").Matches(tankless) {
+		t.Fatalf("2 Factories + Vultures, no Tank should be 2-Fac Tankless Mech")
+	}
+	if findBO(t, "2-Fac Mech").Matches(tankless) {
+		t.Fatalf("tankless stream must not match 2-Fac Mech (mutex)")
+	}
+}
+
+func TestBO_Terran_Wraith_Goliath_111(t *testing.T) {
+	// 2 Starports + 5 Wraiths → Wraith.
+	w := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).
+		B(subjStarport, 200).B(subjStarport, 260)
+	produceN(w, subjWraith, 5, 300)
+	if !findBO(t, "Wraith").Matches(w.list()) {
+		t.Fatalf("2 Starports + 5 Wraiths should be Wraith")
+	}
+	// ≤2 Vultures & ≤4 Marines by 7:00, 4+ Goliaths → Goliath.
+	g := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).
+		P(subjVulture, 200).P(subjMarine, 120)
+	produceN(g, subjGoliath, 4, 300)
+	if !findBO(t, "Goliath").Matches(g.list()) {
+		t.Fatalf("≤2 Vult, ≤4 Marine, 4 Goliaths should be Goliath")
+	}
+	// Early Starport + a Wraith, balanced composition → 1-1-1.
+	o := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).B(subjStarport, 300).
+		P(subjVulture, 320).P(subjMarine, 330).P(subjWraith, 360).list()
+	if !findBO(t, "1-1-1").Matches(o) {
+		t.Fatalf("early Starport + Wraith, balanced, should be 1-1-1")
 	}
 }
 
@@ -419,39 +459,6 @@ func TestBO_CCFirst(t *testing.T) {
 	neg2 := factsBuilder().B(subjSupplyDepot, 62).B(subjCommandCenter, 220).list()
 	if bo.Matches(neg2) {
 		t.Fatalf("CC First should fail when CC is built after 200s")
-	}
-}
-
-func TestBO_RaxCC(t *testing.T) {
-	bo := findBO(t, "1 Rax FE")
-	// Positive: Depot, Rax, CC, Refinery (CC before gas + Factory).
-	pos := factsBuilder().
-		B(subjSupplyDepot, 60).B(subjBarracks, 88).
-		B(subjCommandCenter, 180).B(subjRefinery, 195).list()
-	if !bo.Matches(pos) {
-		t.Fatalf("1 Rax FE should match Rax → CC → Refinery sequence")
-	}
-	// Positive: gas-first expand (Rax, Refinery, CC). The gas-before-CC guard
-	// was intentionally dropped so this gas-first FE lands here; it stays
-	// disjoint from 1 Rax 1 Fac (which is Factory-before-CC).
-	posGas := factsBuilder().
-		B(subjSupplyDepot, 60).B(subjBarracks, 88).
-		B(subjRefinery, 115).B(subjCommandCenter, 180).list()
-	if !bo.Matches(posGas) {
-		t.Fatalf("1 Rax FE should match a gas-first expand (Rax → Refinery → CC)")
-	}
-	// Negative: 2 Rax before CC.
-	neg2 := factsBuilder().
-		B(subjSupplyDepot, 60).B(subjBarracks, 88).B(subjBarracks, 130).
-		B(subjCommandCenter, 180).list()
-	if bo.Matches(neg2) {
-		t.Fatalf("1 Rax FE should fail with 2 Barracks before CC")
-	}
-	// Negative: CC before Barracks (CC First).
-	neg3 := factsBuilder().
-		B(subjSupplyDepot, 60).B(subjCommandCenter, 145).B(subjBarracks, 165).list()
-	if bo.Matches(neg3) {
-		t.Fatalf("1 Rax FE should fail when CC precedes Barracks")
 	}
 }
 
@@ -539,25 +546,6 @@ func TestBO_HatchLadder_4to8(t *testing.T) {
 		if bo.Matches(neg) {
 			t.Fatalf("%s should fail when a Pool precedes the Hatchery", name)
 		}
-	}
-}
-
-func TestBO_2RaxCC(t *testing.T) {
-	bo := findBO(t, "2 Rax CC")
-	// Positive: Depot, Rax, Rax, CC (2 rax before CC, depot first).
-	pos := factsBuilder().B(subjSupplyDepot, 55).B(subjBarracks, 80).B(subjBarracks, 110).B(subjCommandCenter, 180).list()
-	if !bo.Matches(pos) {
-		t.Fatalf("2 Rax CC should match Depot → 2 Rax → CC")
-	}
-	// Negative: only 1 Rax before CC — that's 1 Rax FE.
-	neg := factsBuilder().B(subjSupplyDepot, 55).B(subjBarracks, 80).B(subjCommandCenter, 180).list()
-	if bo.Matches(neg) {
-		t.Fatalf("2 Rax CC should fail with only 1 Rax before CC")
-	}
-	// Negative: 2 Rax before the Depot — that's BBS.
-	neg2 := factsBuilder().B(subjBarracks, 55).B(subjBarracks, 75).B(subjSupplyDepot, 95).B(subjCommandCenter, 180).list()
-	if bo.Matches(neg2) {
-		t.Fatalf("2 Rax CC should fail with 2 Rax before the Depot (that's BBS)")
 	}
 }
 
@@ -658,11 +646,11 @@ func TestBO_Residuals_Complement(t *testing.T) {
 	if prot.Matches(factsBuilder().B(subjGateway, 70).B(subjCyberneticsCore, 200).list()) {
 		t.Fatalf("Protoss residual should NOT match a lone slow Gateway (that's 1 Gate (no expa))")
 	}
-	// Terran "1 Rax Bio" residual: a Barracks opener matching no named build
-	// (bio: Rax → gas → academy, no expansion, no factory).
-	terr := findBO(t, "1 Rax Bio")
+	// Terran residual: a Barracks opener with no real army (tiny/short game)
+	// that matches no composition BO nor a kept topology opener.
+	terr := findBO(t, "Terran (Other)")
 	if !terr.Matches(factsBuilder().B(subjSupplyDepot, 60).B(subjBarracks, 88).B(subjRefinery, 120).B(subjAcademy, 160).list()) {
-		t.Fatalf("1 Rax Bio should match a bio opener with no expansion/factory")
+		t.Fatalf("Terran (Other) should match a Barracks opener with no defining composition")
 	}
 }
 

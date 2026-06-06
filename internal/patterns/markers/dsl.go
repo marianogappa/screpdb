@@ -665,6 +665,199 @@ func (s *countBuildsBeforeState) Decision(now int) TriState {
 
 func (s *countBuildsBeforeState) Finalize() TriState { return s.finalizeDefaultRejected() }
 
+// BuildCountEqualsBefore matches if EXACTLY n Build(subject) facts happen with
+// second strictly less than maxSecond. Backs the per-Factory / per-Barracks
+// composition buckets (e.g. "exactly 3 Factories by 10:00"). Rejects early as
+// soon as the (n+1)-th build lands before the deadline; otherwise defers the
+// verdict to the deadline (fewer than n is only knowable once time is up).
+func BuildCountEqualsBefore(subject string, n, maxSecond int) Predicate {
+	return func() PredicateState {
+		return &countBuildsEqualsBeforeState{subject: subject, n: n, max: maxSecond}
+	}
+}
+
+type countBuildsEqualsBeforeState struct {
+	commitState
+	subject string
+	n, max  int
+	count   int
+}
+
+func (s *countBuildsEqualsBeforeState) Observe(f cmdenrich.EnrichedCommand) {
+	if s.done != Pending {
+		return
+	}
+	if f.Kind != cmdenrich.KindMakeBuilding || f.Subject != s.subject || f.Second >= s.max {
+		return
+	}
+	s.count++
+	if s.count > s.n {
+		s.done = Rejected
+	}
+}
+
+func (s *countBuildsEqualsBeforeState) Decision(now int) TriState {
+	if s.done != Pending {
+		return s.done
+	}
+	if now >= s.max {
+		if s.count == s.n {
+			return Matched
+		}
+		return Rejected
+	}
+	return Pending
+}
+
+func (s *countBuildsEqualsBeforeState) Finalize() TriState {
+	if s.done == Rejected {
+		return Rejected
+	}
+	if s.count == s.n {
+		return Matched
+	}
+	return Rejected
+}
+
+// ProduceCountAtLeastBefore matches if at least n units of `unit` are produced
+// (Train / Unit Morph) with second strictly less than maxSecond. Commits early
+// once the threshold is reached; rejects at the deadline if it never is.
+func ProduceCountAtLeastBefore(unit string, n, maxSecond int) Predicate {
+	return func() PredicateState {
+		return &produceCountAtLeastBeforeState{unit: unit, n: n, max: maxSecond}
+	}
+}
+
+type produceCountAtLeastBeforeState struct {
+	commitState
+	unit   string
+	n, max int
+	count  int
+}
+
+func (s *produceCountAtLeastBeforeState) Observe(f cmdenrich.EnrichedCommand) {
+	if s.done != Pending {
+		return
+	}
+	if f.Kind != cmdenrich.KindMakeUnit || f.Subject != s.unit || f.Second >= s.max {
+		return
+	}
+	s.count++
+	if s.count >= s.n {
+		s.done = Matched
+	}
+}
+
+func (s *produceCountAtLeastBeforeState) Decision(now int) TriState {
+	if s.done != Pending {
+		return s.done
+	}
+	if now >= s.max {
+		return Rejected
+	}
+	return Pending
+}
+
+func (s *produceCountAtLeastBeforeState) Finalize() TriState { return s.finalizeDefaultRejected() }
+
+// ProduceCountAtMostBefore matches if AT MOST n units of `unit` are produced
+// with second strictly less than maxSecond. Rejects early as soon as the
+// (n+1)-th unit lands before the deadline; otherwise matches (an upper bound is
+// only confirmable once the window closes, so it defaults to Matched).
+func ProduceCountAtMostBefore(unit string, n, maxSecond int) Predicate {
+	return func() PredicateState {
+		return &produceCountAtMostBeforeState{unit: unit, n: n, max: maxSecond}
+	}
+}
+
+type produceCountAtMostBeforeState struct {
+	commitState
+	unit   string
+	n, max int
+	count  int
+}
+
+func (s *produceCountAtMostBeforeState) Observe(f cmdenrich.EnrichedCommand) {
+	if s.done != Pending {
+		return
+	}
+	if f.Kind != cmdenrich.KindMakeUnit || f.Subject != s.unit || f.Second >= s.max {
+		return
+	}
+	s.count++
+	if s.count > s.n {
+		s.done = Rejected
+	}
+}
+
+func (s *produceCountAtMostBeforeState) Decision(now int) TriState {
+	if s.done != Pending {
+		return s.done
+	}
+	if now >= s.max {
+		return Matched
+	}
+	return Pending
+}
+
+func (s *produceCountAtMostBeforeState) Finalize() TriState {
+	if s.done == Rejected {
+		return Rejected
+	}
+	return Matched
+}
+
+// Predominant matches if the total count of units in `units` produced before
+// maxSecond strictly exceeds the total count of units in `over`. Backs the
+// bio-vs-mech composition split. The verdict can only be known once the window
+// closes (either side can still grow), so it always defers to the deadline.
+func Predominant(units, over []string, maxSecond int) Predicate {
+	return func() PredicateState {
+		inA := make(map[string]struct{}, len(units))
+		for _, u := range units {
+			inA[u] = struct{}{}
+		}
+		inB := make(map[string]struct{}, len(over))
+		for _, u := range over {
+			inB[u] = struct{}{}
+		}
+		return &predominantState{inA: inA, inB: inB, max: maxSecond}
+	}
+}
+
+type predominantState struct {
+	inA, inB   map[string]struct{}
+	max        int
+	aCnt, bCnt int
+}
+
+func (s *predominantState) Observe(f cmdenrich.EnrichedCommand) {
+	if f.Kind != cmdenrich.KindMakeUnit || f.Second >= s.max {
+		return
+	}
+	if _, ok := s.inA[f.Subject]; ok {
+		s.aCnt++
+	} else if _, ok := s.inB[f.Subject]; ok {
+		s.bCnt++
+	}
+}
+
+func (s *predominantState) verdict() TriState {
+	if s.aCnt > s.bCnt {
+		return Matched
+	}
+	return Rejected
+}
+
+func (s *predominantState) Decision(now int) TriState {
+	if now >= s.max {
+		return s.verdict()
+	}
+	return Pending
+}
+
+func (s *predominantState) Finalize() TriState { return s.verdict() }
+
 // NthBuildBeforeAll matches if the n-th Build(subject) exists AND its second
 // is strictly less than the first Build of every member of `others`.
 func NthBuildBeforeAll(subject string, n int, others []string) Predicate {

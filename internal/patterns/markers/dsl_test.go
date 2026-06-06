@@ -135,3 +135,69 @@ func TestNthBuildBeforeAll(t *testing.T) {
 		t.Fatalf("2nd gate after Nexus: should fail")
 	}
 }
+
+func TestBuildCountEqualsBefore(t *testing.T) {
+	three := factsBuilder().B("Factory", 150).B("Factory", 200).B("Factory", 260).list()
+	if !BuildCountEqualsBefore("Factory", 3, 600).Eval(three) {
+		t.Fatalf("3 factories before 600 should match ==3")
+	}
+	if BuildCountEqualsBefore("Factory", 2, 600).Eval(three) {
+		t.Fatalf("3 factories should not match ==2")
+	}
+	four := factsBuilder().B("Factory", 150).B("Factory", 200).B("Factory", 260).B("Factory", 300).list()
+	if BuildCountEqualsBefore("Factory", 3, 600).Eval(four) {
+		t.Fatalf("4 factories should not match ==3")
+	}
+	// A 4th factory after the window does not count.
+	lateFourth := factsBuilder().B("Factory", 150).B("Factory", 200).B("Factory", 260).B("Factory", 650).list()
+	if !BuildCountEqualsBefore("Factory", 3, 600).Eval(lateFourth) {
+		t.Fatalf("4th factory after window should still match ==3 by 600")
+	}
+}
+
+func TestProduceCountAtLeastBefore(t *testing.T) {
+	s := factsBuilder().P("Vulture", 200).P("Vulture", 250).P("Vulture", 300).P("Vulture", 350).P("Vulture", 400).list()
+	if !ProduceCountAtLeastBefore("Vulture", 5, 600).Eval(s) {
+		t.Fatalf("5 vultures before 600 should match >=5")
+	}
+	if ProduceCountAtLeastBefore("Vulture", 6, 600).Eval(s) {
+		t.Fatalf("5 vultures should not match >=6")
+	}
+	// Vultures after the window don't count toward the threshold.
+	late := factsBuilder().P("Vulture", 200).P("Vulture", 250).P("Vulture", 700).list()
+	if ProduceCountAtLeastBefore("Vulture", 3, 600).Eval(late) {
+		t.Fatalf("only 2 vultures before 600 should not match >=3")
+	}
+}
+
+func TestProduceCountAtMostBefore(t *testing.T) {
+	two := factsBuilder().P("Vulture", 200).P("Vulture", 250).list()
+	if !ProduceCountAtMostBefore("Vulture", 2, 420).Eval(two) {
+		t.Fatalf("2 vultures should match <=2")
+	}
+	three := factsBuilder().P("Vulture", 200).P("Vulture", 250).P("Vulture", 300).list()
+	if ProduceCountAtMostBefore("Vulture", 2, 420).Eval(three) {
+		t.Fatalf("3 vultures should not match <=2")
+	}
+	// Zero of the unit also satisfies an upper bound.
+	if !ProduceCountAtMostBefore("Vulture", 2, 420).Eval(factsBuilder().B("Barracks", 80).list()) {
+		t.Fatalf("0 vultures should match <=2")
+	}
+}
+
+func TestPredominant(t *testing.T) {
+	bio := []string{"Marine", "Medic", "Firebat"}
+	mech := []string{"Vulture", "Goliath", "Siege Tank (Tank Mode)"}
+	bioHeavy := factsBuilder().P("Marine", 200).P("Marine", 220).P("Medic", 240).P("Vulture", 260).list()
+	if !Predominant(bio, mech, 600).Eval(bioHeavy) {
+		t.Fatalf("3 bio vs 1 mech should be bio-predominant")
+	}
+	if Predominant(mech, bio, 600).Eval(bioHeavy) {
+		t.Fatalf("mech should not be predominant here")
+	}
+	// Tie is not predominant (strict >).
+	tie := factsBuilder().P("Marine", 200).P("Vulture", 260).list()
+	if Predominant(bio, mech, 600).Eval(tie) {
+		t.Fatalf("1v1 tie should not be predominant")
+	}
+}

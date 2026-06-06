@@ -80,7 +80,7 @@ func (d *MarkerPlayerDetector) ProcessCommand(command *models.Command) bool {
 	}
 	if len(d.marker.Matchup) > 0 {
 		replay := d.GetReplay()
-		if replay == nil || !slices.Contains(d.marker.Matchup, replay.Matchup) {
+		if replay == nil || !markers.MatchupAdmits(d.marker.Matchup, replay.Matchup, replay.TeamFormat) {
 			d.commitRejected()
 			return true
 		}

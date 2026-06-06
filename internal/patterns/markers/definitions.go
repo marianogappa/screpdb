@@ -153,10 +153,14 @@ const (
 	subjEngineeringBay = models.GeneralUnitEngineeringBay
 	subjMissileTurret  = models.GeneralUnitMissileTurret
 	subjBunker         = models.GeneralUnitBunker
+	subjMarine         = models.GeneralUnitMarine
+	subjFirebat        = models.GeneralUnitFirebat
 	subjMedic          = models.GeneralUnitMedic
 	subjVulture        = models.GeneralUnitVulture
 	subjGoliath        = models.GeneralUnitGoliath
 	subjSiegeTank      = models.GeneralUnitSiegeTankTankMode
+	subjWraith         = models.GeneralUnitWraith
+	subjScienceVessel  = models.GeneralUnitScienceVessel
 	subjBattlecruiser  = models.GeneralUnitBattlecruiser
 )
 
@@ -245,39 +249,15 @@ func allMarkers() []Marker {
 	)
 	pNamed := Any(pRule1GateCore, pRule2Gate, pRuleNexusFirst, pRuleGateExpand, pRuleForgeExpand, pRule1GateNoExpa, pRuleForgeCannonNoExpa)
 
-	// Terran.
-	tRule1Rax1Fac := All(
-		BuildBefore(subjRefinery, subjFactory),
-		FirstBuildBefore(subjFactory, 240),
-		Not(NthBuildBeforeAll(subjBarracks, 2, []string{subjFactory})),
-		Not(BuildBefore(subjCommandCenter, subjBarracks)),
-		BuildBefore(subjRefinery, subjCommandCenter),
-		BuildBefore(subjFactory, subjCommandCenter),
-		// A defensive Bunker is fine here — Bunker Rush is now separated by
-		// expansion/tech absence (no CC, no Factory), not by Bunker timing.
-	)
+	// Terran. The all-in / greedy topology openers (CC First, BBS, Bunker Rush)
+	// stay keyed on build order. Everything else — what used to be 1 Rax 1 Fac,
+	// 1 Rax FE, 2 Rax CC and the 1 Rax Bio residual — is reclassified by army
+	// composition at 10:00 (issue #155): Bio / Mech / Wraith / Goliath / 1-1-1,
+	// split by Barracks or Factory count. tCohort excludes the three kept
+	// topology openers so the composition BOs share their (complementary) space.
 	tRuleCCFirst := All(
 		BuildBefore(subjCommandCenter, subjBarracks),
 		FirstBuildBefore(subjCommandCenter, 200),
-	)
-	// 1 Rax FE: 1 Barracks then CC (CC before Factory, CC<270). Gas-first
-	// expands land here, and so do defensive Bunkers — Bunker Rush is now
-	// separated by "no expansion" (below), not by Bunker timing. Disjoint
-	// from 1 Rax 1 Fac (which is Factory-before-CC).
-	tRule1RaxFE := All(
-		BuildBefore(subjBarracks, subjCommandCenter),
-		Not(NthBuildBeforeAll(subjBarracks, 2, []string{subjCommandCenter})),
-		BuildBefore(subjCommandCenter, subjFactory),
-		FirstBuildBefore(subjCommandCenter, 270),
-	)
-	// 2 Rax CC: two Barracks before the expansion CC (a safer, pressure-first
-	// FE). Disjoint from 1 Rax FE (one Rax before CC) and from BBS (the Depot
-	// precedes the 2nd Rax here, so it isn't the no-Depot BBS topology).
-	tRule2RaxCC := All(
-		NthBuildBeforeAll(subjBarracks, 2, []string{subjCommandCenter}),
-		Not(NthBuildBeforeAll(subjBarracks, 2, []string{subjSupplyDepot})),
-		BuildBefore(subjCommandCenter, subjFactory),
-		FirstBuildBefore(subjCommandCenter, 300),
 	)
 	tRuleBBS := All(
 		NthBuildBeforeAll(subjBarracks, 2, []string{
@@ -289,23 +269,87 @@ func allMarkers() []Marker {
 		FirstBuildBefore(subjBarracks, 100),
 	)
 	// Bunker Rush: an all-in — an early Bunker (≤240s) with NO expansion (no
-	// CC by 270s) and NO Factory tech (none by 240s). Defined by commitment to
-	// one base + the Bunker, not by Bunker-vs-gas timing, so it's disjoint from
-	// 1 Rax FE (has a CC) and 1 Rax 1 Fac (has a Factory). NOTE: a true
-	// proxy/forward Bunker would also require the Bunker to sit on the enemy's
-	// base/natural — that spatial check (reusing the worldstate the cannon_rush
-	// marker uses) is a follow-up; this rule keys on the all-in topology only.
+	// CC by 270s) and NO Factory tech (none by 240s).
 	tRuleBunkerRush := All(
 		FirstBuildBefore(subjBunker, 240),
 		BuildBefore(subjBarracks, subjBunker),
 		Not(NthBuildBeforeAll(subjBarracks, 2, []string{subjBunker})),
-		// No expansion in the opener window — using 300s (matching 2 Rax CC's
-		// CC bound) so a 2-Rax build that expands at 270–300 is 2 Rax CC, not
-		// a Bunker Rush.
 		Not(FirstBuildBefore(subjCommandCenter, 300)),
 		Not(FirstBuildBefore(subjFactory, 240)),
 	)
-	tNamed := Any(tRule1Rax1Fac, tRuleCCFirst, tRule1RaxFE, tRule2RaxCC, tRuleBBS, tRuleBunkerRush)
+
+	// Composition cohort: any Terran opener that is NOT one of the kept topology
+	// openers. The composition BOs all sit inside this complement, so they never
+	// collide with CC First / BBS / Bunker Rush.
+	tCohort := All(Not(tRuleCCFirst), Not(tRuleBBS), Not(tRuleBunkerRush))
+
+	// Composition signals, all measured over the opening window (10:00 = 600s;
+	// early caps at 7:00 = 420s). bio = Marine/Medic/Firebat, mech = Vulture/
+	// Goliath/Siege Tank. "Predominant" = strict majority of produced army.
+	bioUnits := []string{subjMarine, subjMedic, subjFirebat}
+	mechUnits := []string{subjVulture, subjGoliath, subjSiegeTank}
+	tcBioPred := Predominant(bioUnits, mechUnits, 600)
+	tcMechPred := Predominant(mechUnits, bioUnits, 600)
+	tcBio := All(ProduceCountAtLeastBefore(subjMarine, 8, 600), tcBioPred)
+	tcWraith := All(CountBuildsBefore(subjStarport, 2, 600), ProduceCountAtLeastBefore(subjWraith, 5, 600))
+	tcGoliath := All(
+		ProduceCountAtMostBefore(subjVulture, 2, 420),
+		ProduceCountAtMostBefore(subjMarine, 4, 420),
+		ProduceCountAtLeastBefore(subjGoliath, 4, 600),
+	)
+	tcOneOneOne := All(FirstBuildBefore(subjStarport, 420), ProduceCountAtLeastBefore(subjWraith, 1, 600))
+	tcTank1 := ProduceCountAtLeastBefore(subjSiegeTank, 1, 600)
+	tcTank0 := ProduceCountAtMostBefore(subjSiegeTank, 0, 600)
+	tcFac2 := CountBuildsBefore(subjFactory, 2, 600)
+
+	// tNamed: the matchup-free union of everything any Terran BO can match, used
+	// to define the residual as its exact complement (mutual-exclusion is then
+	// guaranteed by construction). NOTE: the composition BOs are matchup-gated
+	// (Wraith/Goliath TvZ, Bio TvZ-or-non-1v1) but tNamed is matchup-free, so a
+	// game whose composition matches a gated BO in the "wrong" matchup is
+	// subtracted from the residual without any BO firing — a deliberate, rare
+	// coverage gap for off-matchup compositions (e.g. a TvP mass-bio game).
+	tNamed := Any(
+		tRuleCCFirst, tRuleBBS, tRuleBunkerRush,
+		All(tCohort, tcWraith),
+		All(tCohort, tcGoliath),
+		All(tCohort, tcBio),
+		All(tCohort, tcFac2, tcMechPred), // mech + tankless mech + 1-1-1-into-mech (all need ≥2 Factories)
+		All(tCohort, tcOneOneOne),        // plain 1-1-1
+	)
+
+	// Compact builders for the per-count composition buckets (issue #155). Each
+	// is an initial BO inside tCohort, made pairwise-disjoint by the predominance
+	// split (bio vs mech), the Tank present/absent split, the exact count, and
+	// Not(...) guards against the higher-signal Wraith/Goliath/1-1-1 rules.
+	mkPill := func(label, icon string) *Pill { return &Pill{Label: label, IconKey: icon} }
+	bioBucket := func(name, fkey string, rax Predicate) Marker {
+		return Marker{
+			Name: name, PatternName: InitialBuildOrderPatternNamePrefix + name, FeatureKey: fkey,
+			Race: RaceTerran, Kind: KindInitialBuildOrder, Matchup: []string{"TvZ", MatchupNon1v1},
+			Rule:          All(tCohort, tcBio, Not(tcWraith), Not(tcGoliath), rax),
+			RuleDeadline:  600,
+			SummaryPlayer: mkPill(name, "marine"), GamesList: mkPill(name, "marine"),
+		}
+	}
+	mechBucket := func(name, fkey string, fac Predicate) Marker {
+		return Marker{
+			Name: name, PatternName: InitialBuildOrderPatternNamePrefix + name, FeatureKey: fkey,
+			Race: RaceTerran, Kind: KindInitialBuildOrder,
+			Rule:          All(tCohort, fac, tcMechPred, tcTank1, Not(tcOneOneOne), Not(tcWraith), Not(tcGoliath)),
+			RuleDeadline:  600,
+			SummaryPlayer: mkPill(name, "siegetank"), GamesList: mkPill(name, "siegetank"),
+		}
+	}
+	tanklessBucket := func(name, fkey string, fac Predicate) Marker {
+		return Marker{
+			Name: name, PatternName: InitialBuildOrderPatternNamePrefix + name, FeatureKey: fkey,
+			Race: RaceTerran, Kind: KindInitialBuildOrder,
+			Rule:          All(tCohort, fac, tcMechPred, tcTank0, Not(tcWraith), Not(tcGoliath)),
+			RuleDeadline:  600,
+			SummaryPlayer: mkPill(name, "vulture"), GamesList: mkPill(name, "vulture"),
+		}
+	}
 
 	return []Marker{
 		// Pool-first BOs are keyed off exact pre-Pool Drone-morph and
@@ -825,26 +869,67 @@ func allMarkers() []Marker {
 		//     before Refinery nor before Factory.
 		// -------------------------------------------------------------------
 
+		// --- Composition-based Terran BOs (issue #155). The old 1 Rax 1 Fac /
+		// 1 Rax FE / 2 Rax CC / 1 Rax Bio openers collapse into this set,
+		// classified by army composition at 10:00. ---
 		{
-			// 1 Rax 1 Fac: ~48% of TvT and ~45% of TvP, ~12% of TvZ.
-			// Depot, Rax, Refinery, Depot, Factory. Foundation for 1-1-1,
-			// 2-Fac Vulture, SK Terran. Refinery precedes Factory and CC
-			// (gas-before-CC discriminates from Rax-CC).
-			Name:         "1 Rax 1 Fac",
-			PatternName:  "Build Order: 1 Rax 1 Fac",
-			FeatureKey:   "bo_1_rax_1_fac",
-			Race:         RaceTerran,
-			Kind:         KindInitialBuildOrder,
-			Rule:         tRule1Rax1Fac,
-			RuleDeadline: 240,
-			Expert: []ExpertEvent{
-				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 60, Tolerance: Sym(8)},
-				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 88, Tolerance: Sym(8)},
-				{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 115, Tolerance: Sym(12)},
-				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 165, Tolerance: Sym(15)},
-			},
-			SummaryPlayer: &Pill{Label: "1 Rax 1 Fac", IconKey: "factory"},
-			GamesList:     &Pill{Label: "1 Rax 1 Fac", IconKey: "factory"},
+			// Wraith: TvZ air build — 2+ Starports and 5+ Wraiths by 10:00.
+			Name: "Wraith", PatternName: "Build Order: Wraith", FeatureKey: "bo_t_wraith",
+			Race: RaceTerran, Kind: KindInitialBuildOrder, Matchup: []string{"TvZ"},
+			Rule:          All(tCohort, tcWraith),
+			RuleDeadline:  600,
+			SummaryPlayer: &Pill{Label: "Wraith", IconKey: "wraith"},
+			GamesList:     &Pill{Label: "Wraith", IconKey: "wraith"},
+		},
+		{
+			// Goliath: TvZ Goliath-dominant — ≤2 Vultures & ≤4 Marines by 7:00,
+			// 4+ Goliaths by 10:00 (with tanks it's Mech instead).
+			Name: "Goliath", PatternName: "Build Order: Goliath", FeatureKey: "bo_t_goliath",
+			Race: RaceTerran, Kind: KindInitialBuildOrder, Matchup: []string{"TvZ"},
+			Rule:          All(tCohort, tcGoliath, Not(tcWraith)),
+			RuleDeadline:  600,
+			SummaryPlayer: &Pill{Label: "Goliath", IconKey: "goliath"},
+			GamesList:     &Pill{Label: "Goliath", IconKey: "goliath"},
+		},
+		// Bio (Marine/Medic predominant, 8+ Marines; TvZ or non-1v1), split by
+		// Barracks count by 10:00.
+		bioBucket("1-Rax Bio", "bo_t_bio_1rax", BuildCountEqualsBefore(subjBarracks, 1, 600)),
+		bioBucket("2-Rax Bio", "bo_t_bio_2rax", BuildCountEqualsBefore(subjBarracks, 2, 600)),
+		bioBucket("3-Rax Bio", "bo_t_bio_3rax", BuildCountEqualsBefore(subjBarracks, 3, 600)),
+		bioBucket("4-Rax Bio", "bo_t_bio_4rax", BuildCountEqualsBefore(subjBarracks, 4, 600)),
+		bioBucket("5-Rax Bio", "bo_t_bio_5rax", BuildCountEqualsBefore(subjBarracks, 5, 600)),
+		bioBucket("6+ Rax Bio", "bo_t_bio_6rax", CountBuildsBefore(subjBarracks, 6, 600)),
+		{
+			// 1-1-1 into Mech: early Starport + Wraith, then mech (≥2 Factories,
+			// ≥1 Tank, mech-predominant).
+			Name: "1-1-1 into Mech", PatternName: "Build Order: 1-1-1 into Mech", FeatureKey: "bo_t_111_mech",
+			Race: RaceTerran, Kind: KindInitialBuildOrder,
+			Rule:          All(tCohort, tcOneOneOne, tcFac2, tcMechPred, tcTank1, Not(tcWraith), Not(tcGoliath)),
+			RuleDeadline:  600,
+			SummaryPlayer: &Pill{Label: "1-1-1 into Mech", IconKey: "siegetank"},
+			GamesList:     &Pill{Label: "1-1-1 into Mech", IconKey: "siegetank"},
+		},
+		// Mech (mech-predominant, ≥1 Tank), split by Factory count by 10:00.
+		mechBucket("2-Fac Mech", "bo_t_mech_2fac", BuildCountEqualsBefore(subjFactory, 2, 600)),
+		mechBucket("3-Fac Mech", "bo_t_mech_3fac", BuildCountEqualsBefore(subjFactory, 3, 600)),
+		mechBucket("4-Fac Mech", "bo_t_mech_4fac", BuildCountEqualsBefore(subjFactory, 4, 600)),
+		mechBucket("5-Fac Mech", "bo_t_mech_5fac", BuildCountEqualsBefore(subjFactory, 5, 600)),
+		mechBucket("6+ Fac Mech", "bo_t_mech_6fac", CountBuildsBefore(subjFactory, 6, 600)),
+		// Tankless Mech (mech-predominant, no Tank by 10:00 — pure Vulture/Goliath).
+		tanklessBucket("2-Fac Tankless Mech", "bo_t_tankless_2fac", BuildCountEqualsBefore(subjFactory, 2, 600)),
+		tanklessBucket("3-Fac Tankless Mech", "bo_t_tankless_3fac", BuildCountEqualsBefore(subjFactory, 3, 600)),
+		tanklessBucket("4-Fac Tankless Mech", "bo_t_tankless_4fac", BuildCountEqualsBefore(subjFactory, 4, 600)),
+		tanklessBucket("5-Fac Tankless Mech", "bo_t_tankless_5fac", BuildCountEqualsBefore(subjFactory, 5, 600)),
+		tanklessBucket("6+ Fac Tankless Mech", "bo_t_tankless_6fac", CountBuildsBefore(subjFactory, 6, 600)),
+		{
+			// 1-1-1: early Starport + Wraith that stays balanced (neither bio-
+			// nor mech-predominant) — the classic Vulture/Tank/Wraith opener.
+			Name: "1-1-1", PatternName: "Build Order: 1-1-1", FeatureKey: "bo_t_111",
+			Race: RaceTerran, Kind: KindInitialBuildOrder,
+			Rule:          All(tCohort, tcOneOneOne, Not(tcBio), Not(tcMechPred), Not(tcWraith), Not(tcGoliath)),
+			RuleDeadline:  600,
+			SummaryPlayer: &Pill{Label: "1-1-1", IconKey: "starport"},
+			GamesList:     &Pill{Label: "1-1-1", IconKey: "starport"},
 		},
 		{
 			// CC First: ~6% of TvT, ~9% of TvP, ~10% of TvZ (combining
@@ -866,48 +951,6 @@ func allMarkers() []Marker {
 			},
 			SummaryPlayer: &Pill{Label: "CC First", IconKey: "commandcenter"},
 			GamesList:     &Pill{Label: "CC First", IconKey: "commandcenter"},
-		},
-		{
-			// Rax-CC: ~11% of TvP, ~15% of TvZ (combining D-B-C-D-R and
-			// D-B-D-C-R/B variants). Depot, Rax, CC before any gas, before
-			// Factory. The 2nd Rax — when present — typically arrives
-			// AFTER the CC (e.g. D-B-D-C-B), which is why a separate
-			// "2-Rax CC" BO would over-fragment the data.
-			Name:         "1 Rax FE",
-			PatternName:  "Build Order: 1 Rax FE",
-			FeatureKey:   "bo_rax_cc",
-			Race:         RaceTerran,
-			Kind:         KindInitialBuildOrder,
-			Rule:         tRule1RaxFE,
-			RuleDeadline: 270,
-			Expert: []ExpertEvent{
-				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 60, Tolerance: Sym(8)},
-				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 88, Tolerance: Sym(10)},
-				{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 180, Tolerance: Sym(18)},
-				{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 195, Tolerance: Sym(18)},
-			},
-			SummaryPlayer: &Pill{Label: "1 Rax FE", IconKey: "commandcenter"},
-			GamesList:     &Pill{Label: "1 Rax FE", IconKey: "commandcenter"},
-		},
-		{
-			// 2 Rax CC: two Barracks before the expansion CC — a safer,
-			// pressure-first FE. Depot precedes the 2nd Rax (not BBS), and
-			// 2 Rax precede the CC (not 1 Rax FE).
-			Name:         "2 Rax CC",
-			PatternName:  "Build Order: 2 Rax CC",
-			FeatureKey:   "bo_2_rax_cc",
-			Race:         RaceTerran,
-			Kind:         KindInitialBuildOrder,
-			Rule:         tRule2RaxCC,
-			RuleDeadline: 300,
-			Expert: []ExpertEvent{
-				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 60, Tolerance: Sym(8)},
-				{Key: "1st Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 88, Tolerance: Sym(10)},
-				{Key: "2nd Barracks", Match: MatchNthBuild(subjBarracks, 2), TargetSecond: 120, Tolerance: Sym(15)},
-				{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 200, Tolerance: Sym(25)},
-			},
-			SummaryPlayer: &Pill{Label: "2 Rax CC", IconKey: "commandcenter"},
-			GamesList:     &Pill{Label: "2 Rax CC", IconKey: "commandcenter"},
 		},
 		{
 			// BBS: confirmed in the dataset (e.g. SST_JumJaJungJi opens
@@ -1012,14 +1055,16 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Other", IconKey: "gateway"},
 		},
 		{
-			// 1 Rax Bio: a Barracks opener that matches none of the named
-			// Terran builds — the Dep-Rax-Gas bio path (Academy/Marine-Medic,
-			// no early expansion or Factory), plus short games that only got a
-			// Barracks down. Defined as the complement of the named openers,
-			// so it stays mutually exclusive with them.
-			Name:        "1 Rax Bio",
-			PatternName: "Build Order: 1 Rax Bio",
-			FeatureKey:  "bo_1_rax_bio",
+			// Terran residual: a Terran opener that matches none of the named
+			// builds — the kept topology openers (CC First / BBS / Bunker Rush)
+			// nor any composition BO (Bio / Mech / Wraith / Goliath / 1-1-1).
+			// In practice: too-short / tiny-army games, one-Factory builds, and
+			// composition-balanced openers that aren't clearly bio or mech.
+			// Defined as the exact complement Not(tNamed). RuleDeadline matches
+			// the composition window so the residual sees the same facts.
+			Name:        "Terran (Other)",
+			PatternName: "Build Order: Terran (Other)",
+			FeatureKey:  "bo_terran_other",
 			Race:        RaceTerran,
 			Kind:        KindInitialBuildOrder,
 			Rule: All(
@@ -1030,9 +1075,9 @@ func allMarkers() []Marker {
 				),
 				Not(tNamed),
 			),
-			RuleDeadline:  300,
-			SummaryPlayer: &Pill{Label: "1 Rax Bio", IconKey: "marine"},
-			GamesList:     &Pill{Label: "1 Rax Bio", IconKey: "marine"},
+			RuleDeadline:  600,
+			SummaryPlayer: &Pill{Label: "Terran (Other)", IconKey: "marine"},
+			GamesList:     &Pill{Label: "Terran (Other)", IconKey: "marine"},
 		},
 		{
 			// Opener unresolved (N/A): the player never placed a defining
@@ -1072,86 +1117,9 @@ func allMarkers() []Marker {
 		// checks stay compatible.
 		// -------------------------------------------------------------------
 
-		{
-			// Mech: pure-Mech signal. ≥2 Factories built before 6:30 AND
-			// no Academy ever (Academy means SK / bio path). Replaces the
-			// older "Quick factory" marker which fired too eagerly on
-			// 1-Fac TvP openers that immediately go bio anyway.
-			Name:        "Mech",
-			PatternName: "Mech",
-			FeatureKey:  "mech",
-			Kind:        KindMarker,
-			Race:        RaceTerran,
-			Rule: All(
-				CountBuildsBefore(subjFactory, 2, 390),
-				Not(FirstBuildExists(subjAcademy)),
-			),
-			RuleDeadline:  390,
-			SummaryPlayer: &Pill{Label: "Mech", IconKey: "siegetank", Style: PillStyleStrong, Title: "Mech"},
-			GamesList:     &Pill{Label: "Mech", IconKey: "siegetank", Style: PillStyleStrong, Title: "Mech"},
-		},
-		{
-			// 1-1-1: Barracks → Factory → Starport transition. Starport is
-			// the discriminator; first Starport averages 206-220s in this
-			// dataset, so we extend the deadline to 6 minutes to capture
-			// stragglers. Independent of opener — fires on top of
-			// "1 Rax 1 Fac", "Rax-CC", etc.
-			//
-			// MapKind gate: on Money games every Terran builds Rax+Fac+Starport
-			// because resources are free, so the marker carries no strategic
-			// signal. Restrict to non-Money maps.
-			Name:        "1-1-1",
-			PatternName: "1-1-1",
-			FeatureKey:  "one_one_one",
-			Kind:        KindMarker,
-			Race:        RaceTerran,
-			MapKind:     []string{"Regular", "UseMapSettings"},
-			Rule: All(
-				FirstBuildExists(subjBarracks),
-				FirstBuildExists(subjFactory),
-				FirstBuildBefore(subjStarport, 360),
-			),
-			RuleDeadline:  360,
-			SummaryPlayer: &Pill{Label: "1-1-1", IconKey: "starport"},
-			GamesList:     &Pill{Label: "1-1-1", IconKey: "starport"},
-		},
-		{
-			// SK Terran: Marine-Medic-heavy bio with Engineering Bay
-			// upgrades. Signals: Academy + Medic produced + Engineering
-			// Bay all built before 8 minutes. Most relevant in TvP and
-			// TvZ — TvT rarely goes bio.
-			Name:        "SK Terran",
-			PatternName: "SK Terran",
-			FeatureKey:  "sk_terran",
-			Kind:        KindMarker,
-			Race:        RaceTerran,
-			Matchup:     []string{"PvT", "TvZ"},
-			Rule: All(
-				FirstBuildBefore(subjAcademy, 480),
-				FirstBuildBefore(subjEngineeringBay, 480),
-				FirstProduceExists(subjMedic),
-			),
-			RuleDeadline:  480,
-			SummaryPlayer: &Pill{Label: "SK Terran", IconKey: "marine", Style: PillStyleStrong, Title: "SK Terran"},
-			GamesList:     &Pill{Label: "SK Terran", IconKey: "marine", Style: PillStyleStrong, Title: "SK Terran"},
-		},
-		{
-			// Mech transition (TvZ only): bio start (Medic produced ≤330s)
-			// followed by ≥2 Factories AND a Vulture/Tank/Goliath produced
-			// after the 2nd Factory. Separate from "Mech" (which excludes
-			// Academy) — this fires when the player committed to bio first
-			// then pivoted.
-			Name:          "Mech transition",
-			PatternName:   "Mech transition",
-			FeatureKey:    "mech_transition",
-			Kind:          KindMarker,
-			Race:          RaceTerran,
-			Matchup:       []string{"TvZ"},
-			Custom:        func() CustomEvaluator { return &mechTransitionEvaluator{} },
-			RuleDeadline:  endOfReplaySentinel,
-			SummaryPlayer: &Pill{Label: "Mech Transition", IconKey: "siegetank"},
-			GamesList:     &Pill{Label: "Mech transition", IconKey: "siegetank"},
-		},
+		// NOTE: the former Terran style markers — "Mech", "1-1-1", "SK Terran"
+		// and "Mech transition" — were promoted to first-class composition
+		// initial BOs above (issue #155) and removed here.
 		{
 			// Mutalisk timing (Z side) — fires iff opponent (T) also
 			// matches the turret-timing burst. Coupled with the

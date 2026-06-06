@@ -85,11 +85,12 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	expectedCounts := map[string]int64{
 		"replays": 4,
 		"players": 14,
-		// Every classifiable player now lands on an opener (named BO or a
-		// per-race residual) regardless of team format — the opener rules are
-		// no longer matchup-gated — so the BGH team-game players in this set
-		// each gain an opener marker too.
-		"replay_events": 209,
+		// Most classifiable players land on an opener (named BO or a per-race
+		// residual). The Terran composition BOs (issue #155) are matchup-gated
+		// (Wraith/Goliath TvZ, Bio TvZ-or-non-1v1), so a few off-matchup Terran
+		// players whose composition matches a gated BO get no opener row — the
+		// deliberate coverage gap documented on tNamed.
+		"replay_events": 207,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {
