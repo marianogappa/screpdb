@@ -415,14 +415,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 1 Gate Core | Protoss | Gateway | 86 | ±6 |
 | 1 Gate Core | Protoss | Assimilator | 116 | ±10 |
 | 1 Gate Core | Protoss | Cybernetics Core | 138 | ±10 |
-| 1 Rax 1 Fac | Terran | Supply Depot | 60 | ±8 |
-| 1 Rax 1 Fac | Terran | Barracks | 88 | ±8 |
-| 1 Rax 1 Fac | Terran | Refinery | 115 | ±12 |
-| 1 Rax 1 Fac | Terran | Factory | 165 | ±15 |
-| 1 Rax FE | Terran | Supply Depot | 60 | ±8 |
-| 1 Rax FE | Terran | Barracks | 88 | ±10 |
-| 1 Rax FE | Terran | Command Center | 180 | ±18 |
-| 1 Rax FE | Terran | Refinery | 195 | ±18 |
 | 10 Hatch | Zerg | Hatchery | 80 | ±5 |
 | 10 Hatch | Zerg | Spawning Pool | 110 | −3 / +10 |
 | 10 Pool | Zerg | Spawning Pool | 92 | ±5 |
@@ -439,10 +431,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 2 Gate | Protoss | 1st Gateway | 70 | ±6 |
 | 2 Gate | Protoss | 2nd Gateway | 86 | ±10 |
 | 2 Gate | Protoss | First Zealot | 108 | ±3 |
-| 2 Rax CC | Terran | Supply Depot | 60 | ±8 |
-| 2 Rax CC | Terran | 1st Barracks | 88 | ±10 |
-| 2 Rax CC | Terran | 2nd Barracks | 120 | ±15 |
-| 2 Rax CC | Terran | Command Center | 200 | ±25 |
 | 4 Hatch | Zerg | Hatchery | 40 | ±6 |
 | 4 Hatch | Zerg | Spawning Pool | 70 | −6 / +12 |
 | 4 Pool | Zerg | Spawning Pool | 33 | ±4 |
@@ -501,9 +489,9 @@ Each opener's detector commits its decision once the replay passes this second �
 | --- | --- | --- |
 | 1 Gate (no expa) | Protoss | 320 |
 | 1 Gate Core | Protoss | 180 |
-| 1 Rax 1 Fac | Terran | 240 |
-| 1 Rax Bio | Terran | 300 |
-| 1 Rax FE | Terran | 270 |
+| 1-1-1 | Terran | 600 |
+| 1-1-1 into Mech | Terran | 600 |
+| 1-Rax Bio | Terran | 600 |
 | 10 Hatch | Zerg | 180 |
 | 10 Pool | Zerg | 180 |
 | 11 Hatch | Zerg | 180 |
@@ -511,13 +499,27 @@ Each opener's detector commits its decision once the replay passes this second �
 | 12 Hatch | Zerg | 180 |
 | 12 Pool | Zerg | 180 |
 | 2 Gate | Protoss | 180 |
-| 2 Rax CC | Terran | 300 |
+| 2-Fac Mech | Terran | 600 |
+| 2-Fac Tankless Mech | Terran | 600 |
+| 2-Rax Bio | Terran | 600 |
+| 3-Fac Mech | Terran | 600 |
+| 3-Fac Tankless Mech | Terran | 600 |
+| 3-Rax Bio | Terran | 600 |
 | 4 Hatch | Zerg | 180 |
 | 4 Pool | Zerg | 60 |
+| 4-Fac Mech | Terran | 600 |
+| 4-Fac Tankless Mech | Terran | 600 |
+| 4-Rax Bio | Terran | 600 |
 | 5 Hatch | Zerg | 180 |
 | 5 Pool | Zerg | 180 |
+| 5-Fac Mech | Terran | 600 |
+| 5-Fac Tankless Mech | Terran | 600 |
+| 5-Rax Bio | Terran | 600 |
 | 6 Hatch | Zerg | 180 |
 | 6 Pool | Zerg | 180 |
+| 6+ Fac Mech | Terran | 600 |
+| 6+ Fac Tankless Mech | Terran | 600 |
+| 6+ Rax Bio | Terran | 600 |
 | 7 Hatch | Zerg | 180 |
 | 7 Pool | Zerg | 180 |
 | 8 Hatch | Zerg | 180 |
@@ -533,8 +535,11 @@ Each opener's detector commits its decision once the replay passes this second �
 | Forge Expand | Protoss | 260 |
 | Gate Expand | Protoss | 220 |
 | Gateway (Other) | Protoss | 320 |
+| Goliath | Terran | 600 |
 | Nexus First | Protoss | 200 |
 | Pool/Hatch (Other) | Zerg | 240 |
+| Terran (Other) | Terran | 600 |
+| Wraith | Terran | 600 |
 
 ## Absence-marker game-length thresholds
 
@@ -566,7 +571,7 @@ Standalone constants the detectors depend on — dedup windows, muta/turret burs
 
 | Constant | Value | Meaning |
 | --- | --- | --- |
-| Algorithm version | 28 | Detection algorithm revision; incremented to trigger re-detection. |
+| Algorithm version | 29 | Detection algorithm revision; incremented to trigger re-detection. |
 | Build dedup gap (s) | 3 | Repeat Build orders of the same building at the same tile, closer than this, are one event (double-tap / misclick); different-tile placements are kept. |
 | Build dedup max second (s) | 240 | Past this second, dedup stops and every Build is observed as-is (a tile can be legitimately rebuilt on later). |
 | Mutalisk burst window (s) | 30 | Window within which the Mutalisk morphs must cluster. |
@@ -664,44 +669,58 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 
 | # | Feature key |
 | --- | --- |
-| 1 | mech |
-| 2 | cannon_rush |
-| 3 | bunker_rush |
-| 4 | zergling_rush |
-| 5 | proxy_gate |
-| 6 | proxy_rax |
-| 7 | proxy_factory |
-| 8 | drop |
-| 9 | dt_drop |
-| 10 | reaver_drop |
-| 11 | mind_control |
-| 12 | threw_nukes |
-| 13 | made_recalls |
-| 14 | mech_transition |
-| 15 | one_one_one |
-| 16 | sk_terran |
-| 17 | bo_4_pool |
-| 18 | bo_9_pool |
-| 19 | bo_9_overpool |
-| 20 | bo_12_pool |
-| 21 | bo_9_pool_hatch |
-| 22 | bo_9_hatch |
-| 23 | bo_10_hatch |
-| 24 | bo_11_hatch |
-| 25 | bo_12_hatch |
-| 26 | bo_2_gate |
-| 27 | bo_1_gate_core |
-| 28 | bo_nexus_first |
-| 29 | bo_gate_expand |
-| 30 | bo_forge_expa |
-| 31 | bo_bbs |
-| 32 | bo_1_rax_1_fac |
-| 33 | bo_rax_cc |
-| 34 | bo_cc_first |
-| 35 | carriers |
-| 36 | battlecruisers |
-| 37 | ten_plus_scouts |
-| 38 | cliff_drop |
+| 1 | cannon_rush |
+| 2 | bunker_rush |
+| 3 | zergling_rush |
+| 4 | proxy_gate |
+| 5 | proxy_rax |
+| 6 | proxy_factory |
+| 7 | drop |
+| 8 | dt_drop |
+| 9 | reaver_drop |
+| 10 | mind_control |
+| 11 | threw_nukes |
+| 12 | made_recalls |
+| 13 | bo_4_pool |
+| 14 | bo_9_pool |
+| 15 | bo_9_overpool |
+| 16 | bo_12_pool |
+| 17 | bo_9_pool_hatch |
+| 18 | bo_9_hatch |
+| 19 | bo_10_hatch |
+| 20 | bo_11_hatch |
+| 21 | bo_12_hatch |
+| 22 | bo_2_gate |
+| 23 | bo_1_gate_core |
+| 24 | bo_nexus_first |
+| 25 | bo_gate_expand |
+| 26 | bo_forge_expa |
+| 27 | bo_bbs |
+| 28 | bo_cc_first |
+| 29 | bo_t_wraith |
+| 30 | bo_t_goliath |
+| 31 | bo_t_bio_1rax |
+| 32 | bo_t_bio_2rax |
+| 33 | bo_t_bio_3rax |
+| 34 | bo_t_bio_4rax |
+| 35 | bo_t_bio_5rax |
+| 36 | bo_t_bio_6rax |
+| 37 | bo_t_111_mech |
+| 38 | bo_t_mech_2fac |
+| 39 | bo_t_mech_3fac |
+| 40 | bo_t_mech_4fac |
+| 41 | bo_t_mech_5fac |
+| 42 | bo_t_mech_6fac |
+| 43 | bo_t_tankless_2fac |
+| 44 | bo_t_tankless_3fac |
+| 45 | bo_t_tankless_4fac |
+| 46 | bo_t_tankless_5fac |
+| 47 | bo_t_tankless_6fac |
+| 48 | bo_t_111 |
+| 49 | carriers |
+| 50 | battlecruisers |
+| 51 | ten_plus_scouts |
+| 52 | cliff_drop |
 
 ## Game-event featuring chips
 

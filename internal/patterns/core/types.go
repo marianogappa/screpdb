@@ -24,7 +24,16 @@ import (
 // / Zerg Drone redirected to a different-tile build before the prior could
 // finish) and never-produced production buildings within the build-order
 // window. Removes redundant Build commands so building counts reflect reality.
-const AlgorithmVersion = 28
+//
+// 29: Terran build-order revamp (issue #155). The topology openers 1 Rax 1 Fac
+// / 1 Rax FE / 2 Rax CC and the style markers Mech / 1-1-1 / SK Terran / Mech
+// transition are replaced by composition-based initial BOs classified at 10:00:
+// Wraith, Goliath, N-Rax Bio, 1-1-1 (+ into Mech), N-Fac Mech, N-Fac Tankless
+// Mech — split by Barracks/Factory count and bio-vs-mech predominance. New DSL
+// primitives (Predominant, time-bounded produce/build counts) and a non-1v1
+// matchup gate back them. CC First / BBS / Bunker Rush are kept; the Terran
+// residual is now "Terran (Other)" (bo_terran_other).
+const AlgorithmVersion = 29
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

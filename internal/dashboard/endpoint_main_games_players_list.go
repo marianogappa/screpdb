@@ -304,7 +304,7 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 		// (row presence alone = match; no value-column truthiness check needed).
 		featureKey := strings.TrimSpace(strings.ToLower(row.PatternName))
 		switch featureKey {
-		case "carriers", "battlecruisers", "ten_plus_scouts", "mech", "sk_terran", "one_one_one", "mech_transition",
+		case "carriers", "battlecruisers", "ten_plus_scouts",
 			"mutalisk_timing", "turret_timing", "cliff_drop":
 			featureSets[replayID][featureKey] = struct{}{}
 			if featureKey == "mutalisk_timing" || featureKey == "turret_timing" {

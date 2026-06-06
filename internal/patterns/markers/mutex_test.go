@@ -52,6 +52,15 @@ var terranFuzzSubjects = []subjectKind{
 	{subjAcademy, cmdenrich.KindMakeBuilding},
 	{subjEngineeringBay, cmdenrich.KindMakeBuilding},
 	{subjBunker, cmdenrich.KindMakeBuilding},
+	// Units — the composition BOs (issue #155) key on produced army, so the
+	// fuzz must emit these to exercise bio-vs-mech / tank / count disjointness.
+	{subjMarine, cmdenrich.KindMakeUnit},
+	{subjMedic, cmdenrich.KindMakeUnit},
+	{subjFirebat, cmdenrich.KindMakeUnit},
+	{subjVulture, cmdenrich.KindMakeUnit},
+	{subjGoliath, cmdenrich.KindMakeUnit},
+	{subjSiegeTank, cmdenrich.KindMakeUnit},
+	{subjWraith, cmdenrich.KindMakeUnit},
 }
 
 // matchupsForRace returns the canonical 1v1 matchups in which a player of the
@@ -72,15 +81,9 @@ func matchupsForRace(race Race) []string {
 // matchupApplies reports whether a marker's Matchup gate admits the given
 // matchup. Empty Matchup = any.
 func matchupApplies(bo Marker, matchup string) bool {
-	if len(bo.Matchup) == 0 {
-		return true
-	}
-	for _, m := range bo.Matchup {
-		if m == matchup {
-			return true
-		}
-	}
-	return false
+	// The fuzz enumerates 1v1 matchups only, so the MatchupNon1v1 token never
+	// applies here (team format is 1v1).
+	return MatchupAdmits(bo.Matchup, matchup, "1v1")
 }
 
 // collectInitialMatches returns the names of every KindInitialBuildOrder BO that matches

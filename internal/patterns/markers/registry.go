@@ -61,3 +61,27 @@ func AllFeatureKeys() []string {
 	}
 	return keys
 }
+
+// MatchupNon1v1 is a special token usable in a Marker's Matchup gate. It admits
+// any replay whose team format is not 1v1 (team / FFA games), where the exact
+// per-matchup string (e.g. "TvZ") is not meaningful. Build orders that apply to
+// a 1v1 matchup AND to non-1v1 games list both, e.g. {"TvZ", MatchupNon1v1}.
+const MatchupNon1v1 = "non-1v1"
+
+// MatchupAdmits reports whether a Matchup gate admits a replay with the given
+// matchup string and team format. Empty gate = any matchup. The MatchupNon1v1
+// token matches any non-1v1 team format.
+func MatchupAdmits(gate []string, matchup, teamFormat string) bool {
+	if len(gate) == 0 {
+		return true
+	}
+	for _, m := range gate {
+		if m == matchup {
+			return true
+		}
+		if m == MatchupNon1v1 && teamFormat != "1v1" {
+			return true
+		}
+	}
+	return false
+}

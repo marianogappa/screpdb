@@ -245,21 +245,6 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 		pattern := buildWorkflowPatternValue(row.PatternName, row.Value, row.DetectedSecond, row.Payload)
 		if player, ok := playerByID[playerID]; ok {
 			player.DetectedPatterns = append(player.DetectedPatterns, pattern)
-			// Surface the mech transition marker on the Game Events
-			// timeline at the second it was committed (4th-Factory
-			// completion). The marker itself stays a per-player pill;
-			// this just adds a narrative anchor to the events list.
-			if pattern.EventType == "mech_transition" && pattern.DetectedSecond > 0 {
-				detail.GameEvents = append(detail.GameEvents, workflowGameEvent{
-					Type:   "mech_transition",
-					Second: int64(pattern.DetectedSecond),
-					Actor: &workflowGameEventPlayer{
-						PlayerID: player.PlayerID,
-						Name:     player.Name,
-						Color:    player.Color,
-					},
-				})
-			}
 		}
 	}
 	return nil
