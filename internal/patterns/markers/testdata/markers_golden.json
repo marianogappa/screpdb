@@ -29,7 +29,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 5-Rax Bio",
-        "value": "600"
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":85,\"found\":true},{\"second\":174,\"found\":true},{\"second\":238,\"found\":true},{\"second\":530,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -78,7 +78,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 6+ Rax Bio",
-        "value": "599"
+        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":87,\"found\":true},{\"second\":174,\"found\":true},{\"second\":246,\"found\":true},{\"second\":506,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -102,7 +102,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: 6+ Fac Mech",
-        "value": "599"
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":83,\"found\":true},{\"second\":98,\"found\":true},{\"second\":150,\"found\":true},{\"second\":575,\"found\":true},{\"second\":249,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -335,7 +335,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: 5-Fac Mech",
-        "value": "976"
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":89,\"found\":true},{\"second\":100,\"found\":true},{\"second\":150,\"found\":true},{\"second\":547,\"found\":true},{\"second\":380,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,

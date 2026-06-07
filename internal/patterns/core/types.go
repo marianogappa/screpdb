@@ -33,7 +33,14 @@ import (
 // primitives (Predominant, time-bounded produce/build counts) and a non-1v1
 // matchup gate back them. CC First / BBS / Bunker Rush are kept; the Terran
 // residual is now "Terran (Other)" (bo_terran_other).
-const AlgorithmVersion = 29
+//
+// 30: Expert milestone timings for the composition-based Terran BOs (issue
+// #158) — Wraith, Goliath, N-Rax Bio, N-Fac Mech, N-Fac Tankless Mech, 1-1-1
+// (+ into Mech) now carry Expert events, so the detector persists their
+// expert_actuals payload. Bumped so replays analyzed under v29 (which stored an
+// empty payload for these BOs) re-analyze and populate the Build Orders chart's
+// actual-vs-expert markers.
+const AlgorithmVersion = 30
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string
