@@ -15,7 +15,7 @@ import { getUnitIcon } from '../../lib/gameAssets';
 //   }
 
 const LEGEND_TOOLTIP =
-  'Ranges are derived from averages across tens of thousands of progamer replays. This model is an approximation — data is imperfect and degrades as the metagame evolves.';
+  'Each gold band shows when progamers usually reach this step — averaged across tens of thousands of their games. The icon on each row is when THIS player did it: green if they landed in the usual progamer window, red if they were earlier or later. It is an approximation and drifts as the metagame changes.';
 
 const formatTime = (seconds) => {
   const value = Math.max(0, Math.floor(Number(seconds) || 0));
@@ -107,7 +107,7 @@ function BuildOrderTimelineRows({ group }) {
           style={{ marginLeft: 'auto', color: 'rgba(251, 191, 36, 1)', cursor: 'help' }}
           title={LEGEND_TOOLTIP}
         >
-          * Progamer average ranges
+          Gold band = usual progamer timing ⓘ
         </span>
       </div>
       <div ref={wrapperRef} className="workflow-timing-chart-wrap">
@@ -121,6 +121,15 @@ function BuildOrderTimelineRows({ group }) {
             const buildTime = Number(entry.build_time_seconds) || 0;
             const withinTolerance = Boolean(entry.within_tolerance);
             const found = Boolean(entry.found);
+            // Plain-language verdict for the hover tooltip. No verdict when there's
+            // no progamer range to compare against (count-only rows).
+            const actualVerdict = noExpert
+              ? null
+              : withinTolerance
+                ? 'On pace with the progamers'
+                : (actual < target - early
+                  ? 'Earlier than the usual progamer timing'
+                  : 'Later than the usual progamer timing');
             const actualColor = noExpert
               ? 'rgba(148, 197, 230, 0.95)' // neutral blue — no golden range to compare against
               : (found
@@ -195,16 +204,16 @@ function BuildOrderTimelineRows({ group }) {
                     {buildTime > 0 ? (
                       <g
                         onMouseEnter={(e) => updateHover(e, {
-                          pointKind: 'Expert build span',
+                          pointKind: 'Usual progamer timing',
                           eventKey: entry.key,
                           time: target,
-                          tol: `${buildTime}s build → ${formatTime(target + buildTime)}`,
+                          detail: `${buildTime}s to build → ready ${formatTime(target + buildTime)}`,
                         })}
                         onMouseMove={(e) => updateHover(e, {
-                          pointKind: 'Expert build span',
+                          pointKind: 'Usual progamer timing',
                           eventKey: entry.key,
                           time: target,
-                          tol: `${buildTime}s build → ${formatTime(target + buildTime)}`,
+                          detail: `${buildTime}s to build → ready ${formatTime(target + buildTime)}`,
                         })}
                         onMouseLeave={() => setHover(null)}
                       >
@@ -239,16 +248,16 @@ function BuildOrderTimelineRows({ group }) {
                     ) : null}
                     <g
                       onMouseEnter={(e) => updateHover(e, {
-                        pointKind: 'Expert target',
+                        pointKind: 'Usual progamer timing',
                         eventKey: entry.key,
                         time: target,
-                        tol: `±${early === late ? early : `${early}/${late}`}s`,
+                        detail: `progamers usually ${formatTime(target - early)} – ${formatTime(target + late)}`,
                       })}
                       onMouseMove={(e) => updateHover(e, {
-                        pointKind: 'Expert target',
+                        pointKind: 'Usual progamer timing',
                         eventKey: entry.key,
                         time: target,
-                        tol: `±${early === late ? early : `${early}/${late}`}s`,
+                        detail: `progamers usually ${formatTime(target - early)} – ${formatTime(target + late)}`,
                       })}
                       onMouseLeave={() => setHover(null)}
                     >
@@ -282,16 +291,16 @@ function BuildOrderTimelineRows({ group }) {
                     {buildTime > 0 ? (
                       <g
                         onMouseEnter={(e) => updateHover(e, {
-                          pointKind: 'Player build span',
+                          pointKind: 'This player',
                           eventKey: entry.key,
                           time: actual,
-                          tol: `${buildTime}s build → ${formatTime(actual + buildTime)}`,
+                          detail: `${buildTime}s to build → ready ${formatTime(actual + buildTime)}`,
                         })}
                         onMouseMove={(e) => updateHover(e, {
-                          pointKind: 'Player build span',
+                          pointKind: 'This player',
                           eventKey: entry.key,
                           time: actual,
-                          tol: `${buildTime}s build → ${formatTime(actual + buildTime)}`,
+                          detail: `${buildTime}s to build → ready ${formatTime(actual + buildTime)}`,
                         })}
                         onMouseLeave={() => setHover(null)}
                       >
@@ -335,16 +344,16 @@ function BuildOrderTimelineRows({ group }) {
                     </text>
                     <g
                       onMouseEnter={(e) => updateHover(e, {
-                        pointKind: 'Player actual',
+                        pointKind: 'This player',
                         eventKey: entry.key,
                         time: actual,
-                        withinTolerance,
+                        verdict: actualVerdict,
                       })}
                       onMouseMove={(e) => updateHover(e, {
-                        pointKind: 'Player actual',
+                        pointKind: 'This player',
                         eventKey: entry.key,
                         time: actual,
-                        withinTolerance,
+                        verdict: actualVerdict,
                       })}
                       onMouseLeave={() => setHover(null)}
                     >
@@ -422,12 +431,9 @@ function BuildOrderTimelineRows({ group }) {
             style={{ left: `${hover.x}px`, top: `${hover.y}px` }}
           >
             <div><strong>{hover.eventKey}</strong></div>
-            <div><strong>Point</strong> {hover.pointKind}</div>
-            <div><strong>Time</strong> {formatTime(hover.time)}</div>
-            {hover.tol ? <div><strong>Tolerance</strong> {hover.tol}</div> : null}
-            {hover.pointKind === 'Player actual' ? (
-              <div>{hover.withinTolerance ? '(within tolerance)' : '(out of tolerance)'}</div>
-            ) : null}
+            <div>{hover.pointKind} — {formatTime(hover.time)}</div>
+            {hover.detail ? <div style={{ opacity: 0.7 }}>{hover.detail}</div> : null}
+            {hover.verdict ? <div style={{ marginTop: 2 }}>{hover.verdict}</div> : null}
           </div>
         ) : null}
       </div>
