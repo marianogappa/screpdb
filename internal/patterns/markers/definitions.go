@@ -1271,8 +1271,8 @@ func allMarkers() []Marker {
 			Race:          RaceTerran,
 			Custom:        func() CustomEvaluator { return &cliffDropEvaluator{} },
 			RuleDeadline:  endOfReplaySentinel,
-			SummaryPlayer: &Pill{Label: "Cliff drop at min {minute}", IconKey: "dropship"},
-			SummaryReplay: &Pill{Label: "Cliff drop at min {minute}", IconKey: "dropship"},
+			SummaryPlayer: &Pill{Label: "Cliff drop", IconKey: "dropship"},
+			SummaryReplay: &Pill{Label: "Cliff drop", IconKey: "dropship"},
 			GamesList:     &Pill{Label: "Cliff drop", IconKey: "dropship"},
 		},
 		{
@@ -1313,6 +1313,22 @@ func allMarkers() []Marker {
 			RuleDeadline:  endOfReplaySentinel,
 			SummaryPlayer: &Pill{Label: "10+ Scouts", IconKey: "scout", Style: PillStyleStrong, Title: "10+ Scouts"},
 			GamesList:     &Pill{Label: "10+ Scouts", IconKey: "scout", Style: PillStyleStrong, Title: "10+ Scouts"},
+		},
+		{
+			// Wraiths: air-heavy Terran play. The "mass air" threshold scales
+			// with team format — 3+ Wraiths reads as a deliberate air opener in
+			// a 1v1, whereas team games need 10+ (like 10+ Scouts) before the
+			// count is signal rather than incidental harass. The format-aware
+			// threshold lives in the evaluator (ctx.Replay.TeamFormat).
+			Name:          "Wraiths",
+			PatternName:   "Wraiths",
+			FeatureKey:    "wraiths",
+			Kind:          KindMarker,
+			Race:          RaceTerran,
+			Custom:        func() CustomEvaluator { return &wraithCountEvaluator{} },
+			RuleDeadline:  endOfReplaySentinel,
+			SummaryPlayer: &Pill{Label: "Wraiths", IconKey: "wraith", Style: PillStyleStrong, Title: "Wraiths"},
+			GamesList:     &Pill{Label: "Wraiths", IconKey: "wraith", Style: PillStyleStrong, Title: "Wraiths"},
 		},
 		{
 			Name:             "Never upgraded",
@@ -1394,7 +1410,7 @@ func allMarkers() []Marker {
 			// Suppressed on the summary player row when the backend already emits a
 			// drop game_event (the frontend de-dupes via trustGameEventsForDrops);
 			// we still expose the pill for the Events-list / raw consumers.
-			SummaryPlayer: &Pill{Label: "Made drops at min {minute}"},
+			SummaryPlayer: &Pill{Label: "Made drops"},
 		},
 		{
 			Name:          "Made recalls",
@@ -1404,7 +1420,7 @@ func allMarkers() []Marker {
 			Race:          RaceProtoss,
 			Custom:        func() CustomEvaluator { return &firstCastEvaluator{subject: "Recall"} },
 			RuleDeadline:  endOfReplaySentinel,
-			SummaryPlayer: &Pill{Label: "Recalls at min {minute}", IconKey: "arbiter"},
+			SummaryPlayer: &Pill{Label: "Recalls", IconKey: "arbiter"},
 			GamesList:     &Pill{Label: "Recalls", IconKey: "arbiter"},
 		},
 		{
@@ -1415,7 +1431,7 @@ func allMarkers() []Marker {
 			Race:          RaceTerran,
 			Custom:        func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "nuke"} },
 			RuleDeadline:  endOfReplaySentinel,
-			SummaryPlayer: &Pill{Label: "Threw Nukes at {minute} mins"},
+			SummaryPlayer: &Pill{Label: "Threw Nukes", IconKey: "ghost"},
 			GamesList:     &Pill{Label: "Nukes", IconKey: "ghost"},
 		},
 		{
@@ -1426,7 +1442,7 @@ func allMarkers() []Marker {
 			Custom:       func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "became_terran"} },
 			RuleDeadline: endOfReplaySentinel,
 			SummaryPlayer: &Pill{
-				Label:   "Terran at {minute} mins",
+				Label:   "Became Terran",
 				IconKey: "darkarchon",
 				Style:   PillStyleStrong,
 				Title:   "Became Terran",
@@ -1440,7 +1456,7 @@ func allMarkers() []Marker {
 			Custom:       func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "became_zerg"} },
 			RuleDeadline: endOfReplaySentinel,
 			SummaryPlayer: &Pill{
-				Label:   "Zerg at {minute} mins",
+				Label:   "Became Zerg",
 				IconKey: "darkarchon",
 				Style:   PillStyleStrong,
 				Title:   "Became Zerg",

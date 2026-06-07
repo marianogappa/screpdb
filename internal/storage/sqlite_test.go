@@ -90,7 +90,12 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		// (Wraith/Goliath TvZ, Bio TvZ-or-non-1v1), so a few off-matchup Terran
 		// players whose composition matches a gated BO get no opener row — the
 		// deliberate coverage gap documented on tNamed.
-		"replay_events": 207,
+		//
+		// Down from 207 after unit-production began maintaining base ownership:
+		// a Train/Morph proves the producing building's base is alive, so
+		// location_inactive (timeout) events dropped 35→21 (-14) and one attack
+		// on a now-owned base surfaced (+1), for a net -13.
+		"replay_events": 194,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {

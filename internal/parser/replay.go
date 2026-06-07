@@ -259,7 +259,13 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	// tags, which command extraction above discards) and plan the tag-based
 	// build dedup: provable worker one-at-a-time drops + never-produced
 	// production buildings. The plan is applied inside the early filter.
-	buildDedupPlan := builddedup.Compute(unittags.Analyze(rep), data.Players)
+	unitTagEvidence := unittags.Analyze(rep)
+	buildDedupPlan := builddedup.Compute(unitTagEvidence, data.Players)
+
+	// Maintain base ownership from unit production: a Train/Morph proves the
+	// producing building (and thus its base) is still alive, so it refreshes
+	// ownership where movement/build commands alone would let the base time out.
+	patternOrchestrator.SetProductionSignals(unitTagEvidence)
 
 	// Run the early-game spam filter before pattern detection so the
 	// orchestrator only sees commands the filter believes were real.

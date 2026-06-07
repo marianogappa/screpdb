@@ -179,6 +179,18 @@ type Engine struct {
 	leaveSec       map[byte]int
 	lastCmdSec     map[byte]int
 	finalized      bool
+
+	// productionSignals feeds BuildOwnership: per-player Train/Morph location
+	// datapoints that refresh base ownership. nil when the caller never set them
+	// (e.g. the debug map-layout endpoint) — ownership then behaves as before.
+	productionSignals []ProductionSignal
+}
+
+// SetProductionSignals supplies the per-player production-location signals used
+// to maintain base ownership (see ProductionSignal). Must be called before
+// Finalize. Source is internal/unittags, threaded via the orchestrator.
+func (e *Engine) SetProductionSignals(signals []ProductionSignal) {
+	e.productionSignals = signals
 }
 
 func NewEngine(replay *models.Replay, players []*models.Player, mapCtx *models.ReplayMapContext) *Engine {
@@ -355,7 +367,7 @@ func (e *Engine) Finalize() {
 			durationSec = e.replay.DurationSeconds
 		}
 
-		ownership = BuildOwnership(e.stream, e.polygonGeoms, starts, durationSec)
+		ownership = BuildOwnership(e.stream, e.polygonGeoms, starts, e.productionSignals, durationSec)
 		candidates = BuildAttacks(e.stream, e.polygonGeoms, ownership, e.teams)
 
 		// Run the drops pass and feed its candidates back into the shared
