@@ -4655,6 +4655,16 @@ body {
   gap: 12px;
 }
 
+/* Type hierarchy: the two section headings read as the page-level tier — larger
+   and heavier than the matchup-card labels nested under them, which in turn sit
+   above the uppercase sub-labels. Without this the headings and card labels are
+   the same size and the nesting isn't legible. */
+.workflow-card-player-special > .workflow-card-title,
+.workflow-card-player-matchups > .workflow-card-title {
+  font-size: 1.18rem;
+  font-weight: 700;
+}
+
 .workflow-player-matchup-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
@@ -4687,7 +4697,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 1.02rem;
+  font-size: 0.95rem;
 }
 
 .workflow-player-matchup-card-meta {
