@@ -149,6 +149,8 @@ const (
 	subjRefinery       = models.GeneralUnitRefinery
 	subjAcademy        = models.GeneralUnitAcademy
 	subjFactory        = models.GeneralUnitFactory
+	subjMachineShop    = models.GeneralUnitMachineShop
+	subjArmory         = models.GeneralUnitArmory
 	subjStarport       = models.GeneralUnitStarport
 	subjEngineeringBay = models.GeneralUnitEngineeringBay
 	subjMissileTurret  = models.GeneralUnitMissileTurret
@@ -318,35 +320,103 @@ func allMarkers() []Marker {
 		All(tCohort, tcOneOneOne),        // plain 1-1-1
 	)
 
+	// Expert milestone timings for the composition-based Terran BOs (issue #158),
+	// mined from a corpus of ~2,860 expert/progamer replays. Each target is the
+	// median actual second across that bucket's detected games; tolerances span
+	// roughly the p10–p90 expert range (wider, and skewed late, for the macro
+	// buildings that arrive on a sliding economy timing). The opening backbone
+	// (Depot / 1st Barracks) is shared across the Terran macro openers, but gas
+	// timing splits the families — bio delays its Refinery (~185s) while mech
+	// takes early gas (~100s) — so each family carries its own opening table.
+	// Family tech (Academy for bio, 1st Factory for mech) and the bucket-defining
+	// Nth building carry the per-build signal. Nth-building tables are indexed by
+	// count (2..6); indices 0,1 are unused.
+	tBioOpening := []ExpertEvent{
+		{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 56, Tolerance: Asym(10, 24)},
+		{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 84, Tolerance: Asym(28, 20)},
+		{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 185, Tolerance: Asym(80, 50)},
+		{Key: "Academy", Match: MatchBuild(subjAcademy), TargetSecond: 230, Tolerance: Asym(45, 90)},
+	}
+	tMechOpening := []ExpertEvent{
+		{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 55, Tolerance: Asym(10, 24)},
+		{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 85, Tolerance: Asym(26, 18)},
+		{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 100, Tolerance: Asym(12, 70)},
+		{Key: "1st Factory", Match: MatchBuild(subjFactory), TargetSecond: 152, Tolerance: Asym(12, 80)},
+	}
+	tBioNthRax := [7]int{0, 0, 220, 342, 355, 476, 512}
+	tMechNthFac := [7]int{0, 0, 275, 458, 480, 501, 528}
+	tMechTank := 290
+	tTanklessNthFac := [7]int{0, 0, 243, 349, 422, 471, 560}
+	tTanklessVulture := 205
+
 	// Compact builders for the per-count composition buckets (issue #155). Each
 	// is an initial BO inside tCohort, made pairwise-disjoint by the predominance
 	// split (bio vs mech), the Tank present/absent split, the exact count, and
 	// Not(...) guards against the higher-signal Wraith/Goliath/1-1-1 rules.
 	mkPill := func(label, icon string) *Pill { return &Pill{Label: label, IconKey: icon} }
-	bioBucket := func(name, fkey string, rax Predicate) Marker {
+	// countPred builds the bucket's count predicate: an exact count for the
+	// 1..5 rungs, "at least" for the 6+ top rung.
+	countPred := func(subj string, n int, exact bool) Predicate {
+		if exact {
+			return BuildCountEqualsBefore(subj, n, 600)
+		}
+		return CountBuildsBefore(subj, n, 600)
+	}
+	// nthLabel renders the bucket-defining building milestone label, e.g.
+	// "2nd Barracks", "6th Factory".
+	nthLabel := func(n int, building string) string {
+		suffix := "th"
+		switch n {
+		case 1:
+			suffix = "st"
+		case 2:
+			suffix = "nd"
+		case 3:
+			suffix = "rd"
+		}
+		return fmt.Sprintf("%d%s %s", n, suffix, building)
+	}
+	bioBucket := func(name, fkey string, n int, exact bool) Marker {
+		ev := append([]ExpertEvent{}, tBioOpening...)
+		if n >= 2 {
+			ev = append(ev, ExpertEvent{Key: nthLabel(n, "Barracks"), Match: MatchNthBuild(subjBarracks, n), TargetSecond: tBioNthRax[n], Tolerance: Asym(90, 130)})
+		}
 		return Marker{
 			Name: name, PatternName: InitialBuildOrderPatternNamePrefix + name, FeatureKey: fkey,
 			Race: RaceTerran, Kind: KindInitialBuildOrder, Matchup: []string{"TvZ", MatchupNon1v1},
-			Rule:          All(tCohort, tcBio, Not(tcWraith), Not(tcGoliath), rax),
+			Rule:          All(tCohort, tcBio, Not(tcWraith), Not(tcGoliath), countPred(subjBarracks, n, exact)),
 			RuleDeadline:  600,
+			Expert:        ev,
 			SummaryPlayer: mkPill(name, "marine"), GamesList: mkPill(name, "marine"),
 		}
 	}
-	mechBucket := func(name, fkey string, fac Predicate) Marker {
+	mechBucket := func(name, fkey string, n int, exact bool) Marker {
+		ev := append([]ExpertEvent{}, tMechOpening...)
+		ev = append(ev,
+			ExpertEvent{Key: nthLabel(n, "Factory"), Match: MatchNthBuild(subjFactory, n), TargetSecond: tMechNthFac[n], Tolerance: Asym(90, 130)},
+			ExpertEvent{Key: "First Siege Tank", Match: MatchFirstProduce(subjSiegeTank), TargetSecond: tMechTank, Tolerance: Asym(60, 120)},
+		)
 		return Marker{
 			Name: name, PatternName: InitialBuildOrderPatternNamePrefix + name, FeatureKey: fkey,
 			Race: RaceTerran, Kind: KindInitialBuildOrder,
-			Rule:          All(tCohort, fac, tcMechPred, tcTank1, Not(tcOneOneOne), Not(tcWraith), Not(tcGoliath)),
+			Rule:          All(tCohort, countPred(subjFactory, n, exact), tcMechPred, tcTank1, Not(tcOneOneOne), Not(tcWraith), Not(tcGoliath)),
 			RuleDeadline:  600,
+			Expert:        ev,
 			SummaryPlayer: mkPill(name, "siegetank"), GamesList: mkPill(name, "siegetank"),
 		}
 	}
-	tanklessBucket := func(name, fkey string, fac Predicate) Marker {
+	tanklessBucket := func(name, fkey string, n int, exact bool) Marker {
+		ev := append([]ExpertEvent{}, tMechOpening...)
+		ev = append(ev,
+			ExpertEvent{Key: nthLabel(n, "Factory"), Match: MatchNthBuild(subjFactory, n), TargetSecond: tTanklessNthFac[n], Tolerance: Asym(90, 130)},
+			ExpertEvent{Key: "First Vulture", Match: MatchFirstProduce(subjVulture), TargetSecond: tTanklessVulture, Tolerance: Asym(20, 50)},
+		)
 		return Marker{
 			Name: name, PatternName: InitialBuildOrderPatternNamePrefix + name, FeatureKey: fkey,
 			Race: RaceTerran, Kind: KindInitialBuildOrder,
-			Rule:          All(tCohort, fac, tcMechPred, tcTank0, Not(tcWraith), Not(tcGoliath)),
+			Rule:          All(tCohort, countPred(subjFactory, n, exact), tcMechPred, tcTank0, Not(tcWraith), Not(tcGoliath)),
 			RuleDeadline:  600,
+			Expert:        ev,
 			SummaryPlayer: mkPill(name, "vulture"), GamesList: mkPill(name, "vulture"),
 		}
 	}
@@ -876,8 +946,16 @@ func allMarkers() []Marker {
 			// Wraith: TvZ air build — 2+ Starports and 5+ Wraiths by 10:00.
 			Name: "Wraith", PatternName: "Build Order: Wraith", FeatureKey: "bo_t_wraith",
 			Race: RaceTerran, Kind: KindInitialBuildOrder, Matchup: []string{"TvZ"},
-			Rule:          All(tCohort, tcWraith),
-			RuleDeadline:  600,
+			Rule:         All(tCohort, tcWraith),
+			RuleDeadline: 600,
+			Expert: []ExpertEvent{
+				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 56, Tolerance: Asym(10, 24)},
+				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 84, Tolerance: Asym(28, 18)},
+				{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 98, Tolerance: Asym(10, 60)},
+				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 152, Tolerance: Asym(12, 60)},
+				{Key: "Starport", Match: MatchBuild(subjStarport), TargetSecond: 205, Tolerance: Asym(15, 60)},
+				{Key: "First Wraith", Match: MatchFirstProduce(subjWraith), TargetSecond: 253, Tolerance: Asym(20, 70)},
+			},
 			SummaryPlayer: &Pill{Label: "Wraith", IconKey: "wraith"},
 			GamesList:     &Pill{Label: "Wraith", IconKey: "wraith"},
 		},
@@ -886,48 +964,72 @@ func allMarkers() []Marker {
 			// 4+ Goliaths by 10:00 (with tanks it's Mech instead).
 			Name: "Goliath", PatternName: "Build Order: Goliath", FeatureKey: "bo_t_goliath",
 			Race: RaceTerran, Kind: KindInitialBuildOrder, Matchup: []string{"TvZ"},
-			Rule:          All(tCohort, tcGoliath, Not(tcWraith)),
-			RuleDeadline:  600,
+			Rule:         All(tCohort, tcGoliath, Not(tcWraith)),
+			RuleDeadline: 600,
+			Expert: []ExpertEvent{
+				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 55, Tolerance: Asym(10, 24)},
+				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 86, Tolerance: Asym(28, 18)},
+				{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 102, Tolerance: Asym(12, 70)},
+				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 161, Tolerance: Asym(15, 120)},
+				{Key: "Armory", Match: MatchBuild(subjArmory), TargetSecond: 242, Tolerance: Asym(40, 100)},
+				{Key: "First Goliath", Match: MatchFirstProduce(subjGoliath), TargetSecond: 339, Tolerance: Asym(75, 70)},
+			},
 			SummaryPlayer: &Pill{Label: "Goliath", IconKey: "goliath"},
 			GamesList:     &Pill{Label: "Goliath", IconKey: "goliath"},
 		},
 		// Bio (Marine/Medic predominant, 8+ Marines; TvZ or non-1v1), split by
 		// Barracks count by 10:00.
-		bioBucket("1-Rax Bio", "bo_t_bio_1rax", BuildCountEqualsBefore(subjBarracks, 1, 600)),
-		bioBucket("2-Rax Bio", "bo_t_bio_2rax", BuildCountEqualsBefore(subjBarracks, 2, 600)),
-		bioBucket("3-Rax Bio", "bo_t_bio_3rax", BuildCountEqualsBefore(subjBarracks, 3, 600)),
-		bioBucket("4-Rax Bio", "bo_t_bio_4rax", BuildCountEqualsBefore(subjBarracks, 4, 600)),
-		bioBucket("5-Rax Bio", "bo_t_bio_5rax", BuildCountEqualsBefore(subjBarracks, 5, 600)),
-		bioBucket("6+ Rax Bio", "bo_t_bio_6rax", CountBuildsBefore(subjBarracks, 6, 600)),
+		bioBucket("1-Rax Bio", "bo_t_bio_1rax", 1, true),
+		bioBucket("2-Rax Bio", "bo_t_bio_2rax", 2, true),
+		bioBucket("3-Rax Bio", "bo_t_bio_3rax", 3, true),
+		bioBucket("4-Rax Bio", "bo_t_bio_4rax", 4, true),
+		bioBucket("5-Rax Bio", "bo_t_bio_5rax", 5, true),
+		bioBucket("6+ Rax Bio", "bo_t_bio_6rax", 6, false),
 		{
 			// 1-1-1 into Mech: early Starport + Wraith, then mech (≥2 Factories,
 			// ≥1 Tank, mech-predominant).
 			Name: "1-1-1 into Mech", PatternName: "Build Order: 1-1-1 into Mech", FeatureKey: "bo_t_111_mech",
 			Race: RaceTerran, Kind: KindInitialBuildOrder,
-			Rule:          All(tCohort, tcOneOneOne, tcFac2, tcMechPred, tcTank1, Not(tcWraith), Not(tcGoliath)),
-			RuleDeadline:  600,
+			Rule:         All(tCohort, tcOneOneOne, tcFac2, tcMechPred, tcTank1, Not(tcWraith), Not(tcGoliath)),
+			RuleDeadline: 600,
+			Expert: []ExpertEvent{
+				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 55, Tolerance: Asym(10, 24)},
+				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 85, Tolerance: Asym(26, 18)},
+				{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 99, Tolerance: Asym(12, 70)},
+				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 153, Tolerance: Asym(12, 80)},
+				{Key: "Starport", Match: MatchBuild(subjStarport), TargetSecond: 254, Tolerance: Asym(50, 70)},
+				{Key: "First Siege Tank", Match: MatchFirstProduce(subjSiegeTank), TargetSecond: 312, Tolerance: Asym(80, 120)},
+			},
 			SummaryPlayer: &Pill{Label: "1-1-1 into Mech", IconKey: "siegetank"},
 			GamesList:     &Pill{Label: "1-1-1 into Mech", IconKey: "siegetank"},
 		},
 		// Mech (mech-predominant, ≥1 Tank), split by Factory count by 10:00.
-		mechBucket("2-Fac Mech", "bo_t_mech_2fac", BuildCountEqualsBefore(subjFactory, 2, 600)),
-		mechBucket("3-Fac Mech", "bo_t_mech_3fac", BuildCountEqualsBefore(subjFactory, 3, 600)),
-		mechBucket("4-Fac Mech", "bo_t_mech_4fac", BuildCountEqualsBefore(subjFactory, 4, 600)),
-		mechBucket("5-Fac Mech", "bo_t_mech_5fac", BuildCountEqualsBefore(subjFactory, 5, 600)),
-		mechBucket("6+ Fac Mech", "bo_t_mech_6fac", CountBuildsBefore(subjFactory, 6, 600)),
+		mechBucket("2-Fac Mech", "bo_t_mech_2fac", 2, true),
+		mechBucket("3-Fac Mech", "bo_t_mech_3fac", 3, true),
+		mechBucket("4-Fac Mech", "bo_t_mech_4fac", 4, true),
+		mechBucket("5-Fac Mech", "bo_t_mech_5fac", 5, true),
+		mechBucket("6+ Fac Mech", "bo_t_mech_6fac", 6, false),
 		// Tankless Mech (mech-predominant, no Tank by 10:00 — pure Vulture/Goliath).
-		tanklessBucket("2-Fac Tankless Mech", "bo_t_tankless_2fac", BuildCountEqualsBefore(subjFactory, 2, 600)),
-		tanklessBucket("3-Fac Tankless Mech", "bo_t_tankless_3fac", BuildCountEqualsBefore(subjFactory, 3, 600)),
-		tanklessBucket("4-Fac Tankless Mech", "bo_t_tankless_4fac", BuildCountEqualsBefore(subjFactory, 4, 600)),
-		tanklessBucket("5-Fac Tankless Mech", "bo_t_tankless_5fac", BuildCountEqualsBefore(subjFactory, 5, 600)),
-		tanklessBucket("6+ Fac Tankless Mech", "bo_t_tankless_6fac", CountBuildsBefore(subjFactory, 6, 600)),
+		tanklessBucket("2-Fac Tankless Mech", "bo_t_tankless_2fac", 2, true),
+		tanklessBucket("3-Fac Tankless Mech", "bo_t_tankless_3fac", 3, true),
+		tanklessBucket("4-Fac Tankless Mech", "bo_t_tankless_4fac", 4, true),
+		tanklessBucket("5-Fac Tankless Mech", "bo_t_tankless_5fac", 5, true),
+		tanklessBucket("6+ Fac Tankless Mech", "bo_t_tankless_6fac", 6, false),
 		{
 			// 1-1-1: early Starport + Wraith that stays balanced (neither bio-
 			// nor mech-predominant) — the classic Vulture/Tank/Wraith opener.
 			Name: "1-1-1", PatternName: "Build Order: 1-1-1", FeatureKey: "bo_t_111",
 			Race: RaceTerran, Kind: KindInitialBuildOrder,
-			Rule:          All(tCohort, tcOneOneOne, Not(tcBio), Not(tcMechPred), Not(tcWraith), Not(tcGoliath)),
-			RuleDeadline:  600,
+			Rule:         All(tCohort, tcOneOneOne, Not(tcBio), Not(tcMechPred), Not(tcWraith), Not(tcGoliath)),
+			RuleDeadline: 600,
+			Expert: []ExpertEvent{
+				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 57, Tolerance: Asym(10, 24)},
+				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 85, Tolerance: Asym(28, 20)},
+				{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 98, Tolerance: Asym(15, 70)},
+				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 160, Tolerance: Asym(15, 70)},
+				{Key: "Starport", Match: MatchBuild(subjStarport), TargetSecond: 226, Tolerance: Asym(40, 80)},
+				{Key: "First Wraith", Match: MatchFirstProduce(subjWraith), TargetSecond: 271, Tolerance: Asym(40, 90)},
+			},
 			SummaryPlayer: &Pill{Label: "1-1-1", IconKey: "starport"},
 			GamesList:     &Pill{Label: "1-1-1", IconKey: "starport"},
 		},

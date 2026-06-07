@@ -415,6 +415,22 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 1 Gate Core | Protoss | Gateway | 86 | ±6 |
 | 1 Gate Core | Protoss | Assimilator | 116 | ±10 |
 | 1 Gate Core | Protoss | Cybernetics Core | 138 | ±10 |
+| 1-1-1 | Terran | Supply Depot | 57 | −10 / +24 |
+| 1-1-1 | Terran | Barracks | 85 | −28 / +20 |
+| 1-1-1 | Terran | Refinery | 98 | −15 / +70 |
+| 1-1-1 | Terran | Factory | 160 | −15 / +70 |
+| 1-1-1 | Terran | Starport | 226 | −40 / +80 |
+| 1-1-1 | Terran | First Wraith | 271 | −40 / +90 |
+| 1-1-1 into Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 1-1-1 into Mech | Terran | Barracks | 85 | −26 / +18 |
+| 1-1-1 into Mech | Terran | Refinery | 99 | −12 / +70 |
+| 1-1-1 into Mech | Terran | Factory | 153 | −12 / +80 |
+| 1-1-1 into Mech | Terran | Starport | 254 | −50 / +70 |
+| 1-1-1 into Mech | Terran | First Siege Tank | 312 | −80 / +120 |
+| 1-Rax Bio | Terran | Supply Depot | 56 | −10 / +24 |
+| 1-Rax Bio | Terran | Barracks | 84 | −28 / +20 |
+| 1-Rax Bio | Terran | Refinery | 185 | −80 / +50 |
+| 1-Rax Bio | Terran | Academy | 230 | −45 / +90 |
 | 10 Hatch | Zerg | Hatchery | 80 | ±5 |
 | 10 Hatch | Zerg | Spawning Pool | 110 | −3 / +10 |
 | 10 Pool | Zerg | Spawning Pool | 92 | ±5 |
@@ -431,18 +447,103 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 2 Gate | Protoss | 1st Gateway | 70 | ±6 |
 | 2 Gate | Protoss | 2nd Gateway | 86 | ±10 |
 | 2 Gate | Protoss | First Zealot | 108 | ±3 |
+| 2-Fac Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 2-Fac Mech | Terran | Barracks | 85 | −26 / +18 |
+| 2-Fac Mech | Terran | Refinery | 100 | −12 / +70 |
+| 2-Fac Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 2-Fac Mech | Terran | 2nd Factory | 275 | −90 / +130 |
+| 2-Fac Mech | Terran | First Siege Tank | 290 | −60 / +120 |
+| 2-Fac Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 2-Fac Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
+| 2-Fac Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
+| 2-Fac Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 2-Fac Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
+| 2-Fac Tankless Mech | Terran | 2nd Factory | 243 | −90 / +130 |
+| 2-Rax Bio | Terran | Supply Depot | 56 | −10 / +24 |
+| 2-Rax Bio | Terran | Barracks | 84 | −28 / +20 |
+| 2-Rax Bio | Terran | Refinery | 185 | −80 / +50 |
+| 2-Rax Bio | Terran | 2nd Barracks | 220 | −90 / +130 |
+| 2-Rax Bio | Terran | Academy | 230 | −45 / +90 |
+| 3-Fac Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 3-Fac Mech | Terran | Barracks | 85 | −26 / +18 |
+| 3-Fac Mech | Terran | Refinery | 100 | −12 / +70 |
+| 3-Fac Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 3-Fac Mech | Terran | First Siege Tank | 290 | −60 / +120 |
+| 3-Fac Mech | Terran | 3rd Factory | 458 | −90 / +130 |
+| 3-Fac Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 3-Fac Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
+| 3-Fac Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
+| 3-Fac Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 3-Fac Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
+| 3-Fac Tankless Mech | Terran | 3rd Factory | 349 | −90 / +130 |
+| 3-Rax Bio | Terran | Supply Depot | 56 | −10 / +24 |
+| 3-Rax Bio | Terran | Barracks | 84 | −28 / +20 |
+| 3-Rax Bio | Terran | Refinery | 185 | −80 / +50 |
+| 3-Rax Bio | Terran | Academy | 230 | −45 / +90 |
+| 3-Rax Bio | Terran | 3rd Barracks | 342 | −90 / +130 |
 | 4 Hatch | Zerg | Hatchery | 40 | ±6 |
 | 4 Hatch | Zerg | Spawning Pool | 70 | −6 / +12 |
 | 4 Pool | Zerg | Spawning Pool | 33 | ±4 |
 | 4 Pool | Zerg | First Zerglings | 83 | ±3 |
+| 4-Fac Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 4-Fac Mech | Terran | Barracks | 85 | −26 / +18 |
+| 4-Fac Mech | Terran | Refinery | 100 | −12 / +70 |
+| 4-Fac Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 4-Fac Mech | Terran | First Siege Tank | 290 | −60 / +120 |
+| 4-Fac Mech | Terran | 4th Factory | 480 | −90 / +130 |
+| 4-Fac Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 4-Fac Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
+| 4-Fac Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
+| 4-Fac Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 4-Fac Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
+| 4-Fac Tankless Mech | Terran | 4th Factory | 422 | −90 / +130 |
+| 4-Rax Bio | Terran | Supply Depot | 56 | −10 / +24 |
+| 4-Rax Bio | Terran | Barracks | 84 | −28 / +20 |
+| 4-Rax Bio | Terran | Refinery | 185 | −80 / +50 |
+| 4-Rax Bio | Terran | Academy | 230 | −45 / +90 |
+| 4-Rax Bio | Terran | 4th Barracks | 355 | −90 / +130 |
 | 5 Hatch | Zerg | Hatchery | 50 | ±6 |
 | 5 Hatch | Zerg | Spawning Pool | 80 | −6 / +12 |
 | 5 Pool | Zerg | Spawning Pool | 45 | ±5 |
 | 5 Pool | Zerg | First Zerglings | 95 | ±4 |
+| 5-Fac Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 5-Fac Mech | Terran | Barracks | 85 | −26 / +18 |
+| 5-Fac Mech | Terran | Refinery | 100 | −12 / +70 |
+| 5-Fac Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 5-Fac Mech | Terran | First Siege Tank | 290 | −60 / +120 |
+| 5-Fac Mech | Terran | 5th Factory | 501 | −90 / +130 |
+| 5-Fac Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 5-Fac Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
+| 5-Fac Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
+| 5-Fac Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 5-Fac Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
+| 5-Fac Tankless Mech | Terran | 5th Factory | 471 | −90 / +130 |
+| 5-Rax Bio | Terran | Supply Depot | 56 | −10 / +24 |
+| 5-Rax Bio | Terran | Barracks | 84 | −28 / +20 |
+| 5-Rax Bio | Terran | Refinery | 185 | −80 / +50 |
+| 5-Rax Bio | Terran | Academy | 230 | −45 / +90 |
+| 5-Rax Bio | Terran | 5th Barracks | 476 | −90 / +130 |
 | 6 Hatch | Zerg | Hatchery | 58 | ±6 |
 | 6 Hatch | Zerg | Spawning Pool | 88 | −6 / +12 |
 | 6 Pool | Zerg | Spawning Pool | 52 | ±5 |
 | 6 Pool | Zerg | First Zerglings | 102 | ±4 |
+| 6+ Fac Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 6+ Fac Mech | Terran | Barracks | 85 | −26 / +18 |
+| 6+ Fac Mech | Terran | Refinery | 100 | −12 / +70 |
+| 6+ Fac Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 6+ Fac Mech | Terran | First Siege Tank | 290 | −60 / +120 |
+| 6+ Fac Mech | Terran | 6th Factory | 528 | −90 / +130 |
+| 6+ Fac Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 6+ Fac Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
+| 6+ Fac Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
+| 6+ Fac Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 6+ Fac Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
+| 6+ Fac Tankless Mech | Terran | 6th Factory | 560 | −90 / +130 |
+| 6+ Rax Bio | Terran | Supply Depot | 56 | −10 / +24 |
+| 6+ Rax Bio | Terran | Barracks | 84 | −28 / +20 |
+| 6+ Rax Bio | Terran | Refinery | 185 | −80 / +50 |
+| 6+ Rax Bio | Terran | Academy | 230 | −45 / +90 |
+| 6+ Rax Bio | Terran | 6th Barracks | 512 | −90 / +130 |
 | 7 Hatch | Zerg | Hatchery | 66 | ±6 |
 | 7 Hatch | Zerg | Spawning Pool | 96 | −6 / +12 |
 | 7 Pool | Zerg | Spawning Pool | 60 | ±5 |
@@ -477,9 +578,21 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | Gate Expand | Protoss | Pylon | 48 | ±4 |
 | Gate Expand | Protoss | Gateway | 88 | ±10 |
 | Gate Expand | Protoss | Nexus | 165 | ±15 |
+| Goliath | Terran | Supply Depot | 55 | −10 / +24 |
+| Goliath | Terran | Barracks | 86 | −28 / +18 |
+| Goliath | Terran | Refinery | 102 | −12 / +70 |
+| Goliath | Terran | Factory | 161 | −15 / +120 |
+| Goliath | Terran | Armory | 242 | −40 / +100 |
+| Goliath | Terran | First Goliath | 339 | −75 / +70 |
 | Nexus First | Protoss | Pylon | 48 | ±4 |
 | Nexus First | Protoss | Nexus | 145 | ±20 |
 | Nexus First | Protoss | Gateway | 175 | ±20 |
+| Wraith | Terran | Supply Depot | 56 | −10 / +24 |
+| Wraith | Terran | Barracks | 84 | −28 / +18 |
+| Wraith | Terran | Refinery | 98 | −10 / +60 |
+| Wraith | Terran | Factory | 152 | −12 / +60 |
+| Wraith | Terran | Starport | 205 | −15 / +60 |
+| Wraith | Terran | First Wraith | 253 | −20 / +70 |
 
 ## Build-order rule deadlines
 
@@ -571,7 +684,7 @@ Standalone constants the detectors depend on — dedup windows, muta/turret burs
 
 | Constant | Value | Meaning |
 | --- | --- | --- |
-| Algorithm version | 29 | Detection algorithm revision; incremented to trigger re-detection. |
+| Algorithm version | 30 | Detection algorithm revision; incremented to trigger re-detection. |
 | Build dedup gap (s) | 3 | Repeat Build orders of the same building at the same tile, closer than this, are one event (double-tap / misclick); different-tile placements are kept. |
 | Build dedup max second (s) | 240 | Past this second, dedup stops and every Build is observed as-is (a tile can be legitimately rebuilt on later). |
 | Mutalisk burst window (s) | 30 | Window within which the Mutalisk morphs must cluster. |
