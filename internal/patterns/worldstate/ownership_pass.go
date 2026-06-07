@@ -17,10 +17,10 @@ import (
 //     bug where pure movement/attack commands didn't refresh ownership).
 //   - Any KindMakeBuilding by another player into a polygon is a
 //     contested-takeover signal. Takeover happens when:
-//       (a) ≥ minContestedBuildSignalsOnStart (3) signals in the last
-//           contestedInvadeBuildWindowSec (180) AND polygon is starting; OR
-//       (b) the build is a resource building (CC/Nexus/Hatchery), regardless
-//           of starting flag (decisive ownership flip).
+//     (a) ≥ minContestedBuildSignalsOnStart (3) signals in the last
+//     contestedInvadeBuildWindowSec (180) AND polygon is starting; OR
+//     (b) the build is a resource building (CC/Nexus/Hatchery), regardless
+//     of starting flag (decisive ownership flip).
 //     AND the current owner has been quiet for ≥ contestedSwitchSec (45s).
 //     Takeover timestamp = earliest signal in the window.
 //   - If a polygon's owner has been quiet for > ownershipTimeoutSec
@@ -28,7 +28,6 @@ import (
 //     ownership reverts to neutral with reason "timeout".
 //   - Town hall placed by a player into a non-starting polygon they own
 //     (and haven't expanded to before) emits an "expansion" reason.
-//
 const (
 	ownershipTimeoutSec             = 180
 	contestedSwitchSec              = 45
@@ -52,6 +51,21 @@ type OwnEvent struct {
 type PolyOwnership struct {
 	PolyID int
 	Events []OwnEvent
+}
+
+// ProductionSignal is one "the producing building is alive here" datapoint fed
+// into the ownership pass: a player trained/morphed a unit at second Sec from a
+// building at tile (X, Y) when Anchored, or from a building whose location could
+// not be pinned (the spawn-seeded starting town hall, or a producer tag matched
+// to no Build) when not — those resolve to the player's start base. A signal
+// only REFRESHES the inactivity clock of a base the player still owns; it never
+// claims, contests, or resurrects a base (see BuildOwnership). Derived from
+// selection-tag tracking in internal/unittags; X, Y are build-placement tiles.
+type ProductionSignal struct {
+	PlayerID byte
+	Sec      int
+	X, Y     int
+	Anchored bool
 }
 
 // PolygonGeom is the minimum the state machine needs from a polygon:
@@ -97,7 +111,7 @@ func IsResourceBuilding(name string) bool {
 //
 // All time comparisons are in seconds (ec.Second). Frame is incidental and
 // only used for ordering inside EnrichFromCommands.
-func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, players []PlayerStart, durationSec int) []PolyOwnership {
+func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, players []PlayerStart, prodSignals []ProductionSignal, durationSec int) []PolyOwnership {
 	timelines := make([][]OwnEvent, len(polys))
 	for i := range timelines {
 		timelines[i] = []OwnEvent{{Sec: 0, Owner: neutralPID, Reason: "init"}}
@@ -161,7 +175,35 @@ func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, pla
 		}
 	}
 
+	// Production signals refresh the inactivity clock of a base the player still
+	// owns — a Train/Morph proves the producing building (and thus the base) is
+	// alive. Processed in time order, interleaved with the command stream: each
+	// signal behaves like a refresh-only command at its own second (timeout
+	// evaluated first, then refresh-if-still-owned). It never claims a neutral
+	// polygon, contests an opponent, or resurrects a base that already reverted
+	// — only lastOwningSec is touched, so takeover/expansion logic is untouched.
+	signals := append([]ProductionSignal(nil), prodSignals...)
+	sort.Slice(signals, func(i, j int) bool { return signals[i].Sec < signals[j].Sec })
+	sigIdx := 0
+	drainSignals := func(upTo int) {
+		for sigIdx < len(signals) && signals[sigIdx].Sec <= upTo {
+			sig := signals[sigIdx]
+			sigIdx++
+			flushTimeouts(sig.Sec)
+			pi := -1
+			if sig.Anchored {
+				pi = pointInPolyGeom(polys, sig.X*32+16, sig.Y*32+16)
+			} else if sp, ok := startPolyByPlayer[sig.PlayerID]; ok {
+				pi = sp
+			}
+			if pi >= 0 && owner[pi] == sig.PlayerID {
+				lastOwningSec[pi][sig.PlayerID] = sig.Sec
+			}
+		}
+	}
+
 	for _, ec := range stream {
+		drainSignals(ec.Second)
 		flushTimeouts(ec.Second)
 
 		if ec.X == nil || ec.Y == nil {
@@ -284,6 +326,10 @@ func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, pla
 			timelines[pi] = append(timelines[pi], OwnEvent{Sec: takeoverSec, Owner: p, Reason: "takeover"})
 		}
 	}
+
+	// Drain production signals after the last command — a player whose final
+	// activity is a Train/Morph (no later movement/build) must still refresh.
+	drainSignals(1 << 30)
 
 	// Intentionally NO end-of-replay flushTimeouts call. The legacy
 	// emit-as-you-go semantics let players keep ownership of their main

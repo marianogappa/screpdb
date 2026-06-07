@@ -13,6 +13,8 @@
 package unittags
 
 import (
+	"sort"
+
 	"github.com/icza/screp/rep"
 	"github.com/icza/screp/rep/repcmd"
 )
@@ -41,6 +43,26 @@ var addonParent = map[string]string{
 	"Comsat Station": "Command Center", "Nuclear Silo": "Command Center",
 }
 
+// larvaMorphUnits are the units that morph from a Hatchery/Lair/Hive's larvae.
+// Unlike Terran/Protoss trains, a larva-morph selects the larvae, not the
+// town hall — so the producing hall is recovered from the selection that
+// immediately preceded the larvae select (see the town-hall attribution in
+// Analyze). Non-larva morphs (Lurker, Guardian, Devourer, building morphs) are
+// deliberately absent: they select the morphing unit, not a town hall.
+var larvaMorphUnits = map[string]bool{
+	"Drone": true, "Zergling": true, "Hydralisk": true, "Mutalisk": true,
+	"Overlord": true, "Defiler": true, "Ultralisk": true, "Queen": true,
+	"Scourge": true, "Infested Terran": true,
+}
+
+// zergTownHall is the synthetic producer-building key under which Zerg town-hall
+// (Hatchery/Lair/Hive) larva production is recorded in Producers. Larva morphs
+// are attributed to the town-hall unit tag selected just before the larvae, so
+// the same tag→Build-location correlation used for Terran/Protoss applies. The
+// key is "Hatchery" so it correlates against the player's Hatchery Build
+// placements (Lair/Hive are tag-preserving morphs of an existing Hatchery).
+const zergTownHall = "Hatchery"
+
 // WorkerBuild records one Build command issued with a single worker selected.
 type WorkerBuild struct {
 	PlayerID byte
@@ -62,6 +84,20 @@ type Build struct {
 type Production struct {
 	FirstSec int
 	Units    int
+	// Secs is the second of every Train/Morph event from this building tag, in
+	// stream order. Used by the ownership pass to refresh base ownership at each
+	// production moment (a producing building proves the base is still alive).
+	Secs []int
+}
+
+// ProductionSignal is one "the producing building is alive here" datapoint:
+// a Train/Morph at second Sec from a building whose location is the build tile
+// (X, Y) when Anchored, or the player's start base when not (the spawn-seeded
+// starting town hall, or a producer whose tag matched no Build command).
+type ProductionSignal struct {
+	Sec      int
+	X, Y     int // build placement tile; meaningful only when Anchored
+	Anchored bool
 }
 
 // PlayerEvidence is the per-player evidence extracted from selection state.
@@ -74,6 +110,10 @@ type PlayerEvidence struct {
 	Producers map[string]map[uint16]*Production
 	// Addons maps building type -> set of tags proven to exist by an add-on.
 	Addons map[string]map[uint16]bool
+	// ProductionSignals is the derived, time-ordered list of production-location
+	// datapoints (see ProductionSignal). Populated by attributeProductionLocations
+	// at the end of Analyze.
+	ProductionSignals []ProductionSignal
 }
 
 // Evidence holds per-player evidence keyed by replay PlayerID.
@@ -91,6 +131,12 @@ func Analyze(r *rep.Replay) *Evidence {
 	type selState struct {
 		cur    []uint16
 		groups map[byte][]uint16
+		// prevSingle is the single unit tag selected immediately before the
+		// current selection, when the prior selection held exactly one unit.
+		// A Zerg larva morph selects larvae, not the town hall, so the hall is
+		// recovered from this prior single-select (the macro-cycle hatch tap).
+		prevSingle      uint16
+		prevSingleValid bool
 	}
 	states := map[byte]*selState{}
 	get := func(pid byte) (*selState, *PlayerEvidence) {
@@ -105,6 +151,29 @@ func Analyze(r *rep.Replay) *Evidence {
 		return states[pid], ev.Players[pid]
 	}
 
+	// snap records the single-ness of the current selection before it is
+	// replaced, so a following larva morph can attribute to the prior hall tap.
+	snap := func(s *selState) {
+		if len(s.cur) == 1 {
+			s.prevSingle, s.prevSingleValid = s.cur[0], true
+		} else {
+			s.prevSingleValid = false
+		}
+	}
+
+	recordProduction := func(pe *PlayerEvidence, bldg string, tag uint16, sec int) {
+		if pe.Producers[bldg] == nil {
+			pe.Producers[bldg] = map[uint16]*Production{}
+		}
+		p := pe.Producers[bldg][tag]
+		if p == nil {
+			p = &Production{FirstSec: sec}
+			pe.Producers[bldg][tag] = p
+		}
+		p.Units++
+		p.Secs = append(p.Secs, sec)
+	}
+
 	for _, c := range r.Commands.Cmds {
 		b := c.BaseCmd()
 		if b == nil || b.Type == nil {
@@ -116,14 +185,17 @@ func Analyze(r *rep.Replay) *Evidence {
 		switch b.Type.ID {
 		case repcmd.TypeIDSelect, repcmd.TypeIDSelect121:
 			if sc, ok := c.(*repcmd.SelectCmd); ok {
+				snap(s)
 				s.cur = tagsOf(sc.UnitTags)
 			}
 		case repcmd.TypeIDSelectAdd, repcmd.TypeIDSelectAdd121:
 			if sc, ok := c.(*repcmd.SelectCmd); ok {
+				snap(s)
 				s.cur = unionTags(s.cur, tagsOf(sc.UnitTags))
 			}
 		case repcmd.TypeIDSelectRemove, repcmd.TypeIDSelectRemove121:
 			if sc, ok := c.(*repcmd.SelectCmd); ok {
+				snap(s)
 				s.cur = removeTags(s.cur, tagsOf(sc.UnitTags))
 			}
 		case repcmd.TypeIDHotkey:
@@ -132,8 +204,10 @@ func Analyze(r *rep.Replay) *Evidence {
 				case "Assign":
 					s.groups[hc.Group] = append([]uint16(nil), s.cur...)
 				case "Select":
+					snap(s)
 					s.cur = append([]uint16(nil), s.groups[hc.Group]...)
 				case "Add":
+					snap(s)
 					s.cur = unionTags(s.cur, s.groups[hc.Group])
 				}
 			}
@@ -160,26 +234,88 @@ func Analyze(r *rep.Replay) *Evidence {
 			}
 		case repcmd.TypeIDTrain, repcmd.TypeIDUnitMorph:
 			tc, ok := c.(*repcmd.TrainCmd)
-			if !ok || tc.Unit == nil || len(s.cur) != 1 {
+			if !ok || tc.Unit == nil {
 				continue
 			}
-			bldg, ok := producerBuilding[tc.Unit.Name]
-			if !ok {
+			name := tc.Unit.Name
+			if bldg, ok := producerBuilding[name]; ok {
+				// Terran/Protoss: the producing building IS the single-selected
+				// unit (Train operates on the selected production structure).
+				if len(s.cur) == 1 {
+					recordProduction(pe, bldg, s.cur[0], sec)
+				}
 				continue
 			}
-			tag := s.cur[0]
-			if pe.Producers[bldg] == nil {
-				pe.Producers[bldg] = map[uint16]*Production{}
+			if larvaMorphUnits[name] && s.prevSingleValid {
+				// Zerg larva morph: attribute to the town-hall tag tapped just
+				// before the larvae select (see prevSingle).
+				recordProduction(pe, zergTownHall, s.prevSingle, sec)
 			}
-			p := pe.Producers[bldg][tag]
-			if p == nil {
-				p = &Production{FirstSec: sec}
-				pe.Producers[bldg][tag] = p
-			}
-			p.Units++
 		}
 	}
+
+	for _, pe := range ev.Players {
+		attributeProductionLocations(pe)
+	}
 	return ev
+}
+
+// attributeProductionLocations derives PlayerEvidence.ProductionSignals: it maps
+// each producing building tag to a build placement (so production refreshes the
+// right base), then emits one signal per production second. Tags that match no
+// Build command — the spawn-seeded starting town hall, or extras left unmatched
+// — emit Anchored:false signals the ownership pass resolves to the start base.
+func attributeProductionLocations(pe *PlayerEvidence) {
+	var signals []ProductionSignal
+	for bldg, tags := range pe.Producers {
+		loc := matchProducerTagsToBuilds(tags, pe.Builds[bldg])
+		for tag, p := range tags {
+			b, anchored := loc[tag]
+			for _, sec := range p.Secs {
+				sig := ProductionSignal{Sec: sec, Anchored: anchored}
+				if anchored {
+					sig.X, sig.Y = b.X, b.Y
+				}
+				signals = append(signals, sig)
+			}
+		}
+	}
+	sort.Slice(signals, func(i, j int) bool { return signals[i].Sec < signals[j].Sec })
+	pe.ProductionSignals = signals
+}
+
+// matchProducerTagsToBuilds greedily assigns each producing tag (earliest first
+// producer wins) to the earliest unclaimed Build placed at or before that tag's
+// first production — a building cannot produce before it is commanded. Returns
+// the assigned Build per matched tag; unmatched tags are absent from the map
+// (the starting town hall has no Build, and surplus tags fall back to the
+// start base in the ownership pass).
+func matchProducerTagsToBuilds(tags map[uint16]*Production, builds []Build) map[uint16]Build {
+	type tagFirst struct {
+		tag      uint16
+		firstSec int
+	}
+	ordered := make([]tagFirst, 0, len(tags))
+	for tag, p := range tags {
+		ordered = append(ordered, tagFirst{tag: tag, firstSec: p.FirstSec})
+	}
+	sort.Slice(ordered, func(i, j int) bool { return ordered[i].firstSec < ordered[j].firstSec })
+
+	sorted := append([]Build(nil), builds...)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Sec < sorted[j].Sec })
+	claimed := make([]bool, len(sorted))
+
+	out := map[uint16]Build{}
+	for _, t := range ordered {
+		for j := range sorted {
+			if !claimed[j] && sorted[j].Sec <= t.firstSec {
+				claimed[j] = true
+				out[t.tag] = sorted[j]
+				break
+			}
+		}
+	}
+	return out
 }
 
 func tagsOf(ut []repcmd.UnitTag) []uint16 {

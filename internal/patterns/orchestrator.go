@@ -1,11 +1,12 @@
 package patterns
 
 import (
-	"github.com/marianogappa/screpdb/internal/patterns/markers"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 	"github.com/marianogappa/screpdb/internal/patterns/detectors"
+	"github.com/marianogappa/screpdb/internal/patterns/markers"
 	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
+	"github.com/marianogappa/screpdb/internal/unittags"
 )
 
 // ReplayLevelDetectorFactory creates a replay-level detector
@@ -175,6 +176,28 @@ func (o *Orchestrator) AppendReplayEvents(events []worldstate.ReplayEvent) {
 // ReplayEvents/Entries instead.
 func (o *Orchestrator) WorldStateEngine() *worldstate.Engine {
 	return o.worldState
+}
+
+// SetProductionSignals threads selection-derived production-location evidence
+// into the worldstate engine so base ownership is maintained by unit production
+// (see worldstate.ProductionSignal). Must be called before results are read.
+func (o *Orchestrator) SetProductionSignals(ev *unittags.Evidence) {
+	if o.worldState == nil || ev == nil {
+		return
+	}
+	var signals []worldstate.ProductionSignal
+	for pid, pe := range ev.Players {
+		for _, s := range pe.ProductionSignals {
+			signals = append(signals, worldstate.ProductionSignal{
+				PlayerID: pid,
+				Sec:      s.Sec,
+				X:        s.X,
+				Y:        s.Y,
+				Anchored: s.Anchored,
+			})
+		}
+	}
+	o.worldState.SetProductionSignals(signals)
 }
 
 // ConvertResultsToDatabaseIDs converts pattern results from replay player IDs to database player IDs
