@@ -3416,6 +3416,94 @@ body {
   gap: 10px;
 }
 
+/* Game Events filter bar: two stacked rows (event types, then players) on the
+   left, with the warning(s) on the right spanning both rows. Sits above the
+   map/list grid so the map and the events list top-align. */
+.workflow-events-controls {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.workflow-events-filters {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.workflow-events-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Borderless toggle chips — a soft fill marks the active/hovered state. */
+.workflow-events-filter-chip,
+.workflow-events-player-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.82);
+  cursor: pointer;
+  user-select: none;
+  transition: background 120ms ease, opacity 120ms ease;
+}
+
+.workflow-events-filter-chip input,
+.workflow-events-player-chip input {
+  margin: 0;
+  cursor: inherit;
+}
+
+.workflow-events-filter-chip:hover,
+.workflow-events-player-chip:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.workflow-events-filter-chip--active,
+.workflow-events-filter-chip--active:hover {
+  background: rgba(100, 150, 255, 0.18);
+  color: #fff;
+}
+
+.workflow-events-filter-chip--disabled,
+.workflow-events-filter-chip--disabled:hover {
+  opacity: 0.32;
+  cursor: not-allowed;
+  background: transparent;
+}
+
+/* Player chips keep their player colour (set inline). Disabled = filtered out. */
+.workflow-events-player-chip--off {
+  opacity: 0.4;
+}
+
+/* Warnings column: to the right of the filter rows, vertically centred so a
+   single notice reads as spanning both rows. */
+.workflow-events-warnings {
+  flex: 0 0 auto;
+  width: clamp(220px, 30%, 420px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.workflow-events-controls .workflow-events-warning {
+  margin: 0;
+  flex: none;
+  max-width: none;
+  width: 100%;
+}
+
 .workflow-event-map-panel {
   display: flex;
   flex-direction: column;
@@ -3504,6 +3592,62 @@ body {
   fill: rgba(100, 150, 255, 0.25);
   stroke: rgba(120, 180, 255, 0.95);
   stroke-width: 0.4;
+}
+
+/* Consolidated BO openers event: per-start-location label painted on each
+   player's starting polygon. Race icon + crown + name on the first line, BO
+   name(s) on the second. Centered on the polygon centroid via the inline
+   left/top percent + translate(-50%, -50%). */
+.workflow-event-map-bo-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  text-align: center;
+  line-height: 1.15;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.95);
+  white-space: nowrap;
+}
+
+.workflow-event-map-bo-label-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.workflow-event-map-bo-label-race {
+  width: 14px;
+  height: 14px;
+}
+
+.workflow-event-map-bo-label-bo {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* BO openers event row: one line per player stacked vertically. */
+.workflow-bo-openers {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.workflow-bo-openers-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.workflow-bo-openers-race {
+  width: 15px;
+  height: 15px;
 }
 
 .workflow-event-map-attack-line {
@@ -3692,17 +3836,27 @@ body {
 
 .workflow-event-row {
   display: grid;
-  grid-template-columns: 80px 1fr;
-  gap: 10px;
-  align-items: start;
-  padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.03);
+  grid-template-columns: 56px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 5px 8px;
+  background: transparent;
   border-radius: 6px;
-  border: 1px solid transparent;
+  border: none;
   width: 100%;
   text-align: left;
   color: inherit;
   cursor: pointer;
+}
+
+.workflow-event-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.workflow-event-row-time {
+  color: rgba(255, 255, 255, 0.45);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
 }
 
 .workflow-event-row-body {
@@ -3746,23 +3900,22 @@ body {
   font-weight: 600;
 }
 
-.workflow-event-row-selected {
-  border-color: rgba(100, 150, 255, 0.55);
-  background: rgba(100, 150, 255, 0.16);
+.workflow-event-row-selected,
+.workflow-event-row-selected:hover {
+  background: rgba(100, 150, 255, 0.12);
 }
 
 .workflow-events-section-header {
-  margin: 8px 0 2px;
-  padding: 2px 6px;
-  font-size: 0.74rem;
+  margin: 12px 0 2px;
+  padding: 0 8px;
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.7);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .workflow-events-section-header:first-child {
-  margin-top: 0;
+  margin-top: 2px;
 }
 
 @keyframes workflow-event-overlay-appear {

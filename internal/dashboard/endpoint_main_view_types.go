@@ -571,6 +571,24 @@ type workflowGameEvent struct {
 	// size ≥2 are included (solos filtered for clarity). Source is the
 	// {"teams":[["A","B"],...]} payload written by parser.BuildAllianceDerivedEvents.
 	AllianceTeams [][]workflowGameEventPlayer `json:"alliance_teams,omitempty"`
+	// BuildOrders: populated only for the consolidated "bo_openers" event at
+	// second 0 — one entry per (player × detected opener BO). The FE groups
+	// these by player to render one line per player and to label each starting
+	// location on the map. BO timing is intentionally dropped (it conveyed
+	// nothing useful), so the single event sits at 0:00.
+	BuildOrders []workflowGameEventBuildOrder `json:"build_orders,omitempty"`
+}
+
+type workflowGameEventBuildOrder struct {
+	PlayerID      int64  `json:"player_id"`
+	Name          string `json:"name"`
+	Color         string `json:"color,omitempty"`
+	Race          string `json:"race,omitempty"`
+	IsWinner      bool   `json:"is_winner,omitempty"`
+	Team          int64  `json:"team"`
+	StartLocation string `json:"start_location,omitempty"`
+	BuildOrder    string `json:"build_order"`
+	FeatureKey    string `json:"feature_key"`
 }
 
 type workflowGameEventPlayer struct {

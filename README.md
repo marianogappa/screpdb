@@ -138,6 +138,7 @@ This is a best-effort, in-process guard, not an OS sandbox: paths handed to trus
 Changes to screpdb are authored by an LLM coding agent (e.g. Claude Code). As part of authoring a change, that LLM re-assesses whether the change could weaken the I/O rules above and records a dated, one-line verdict in the log below (see `AGENTS.md`). It's an honour-system receipt written by the same LLM that wrote the code — it can be tampered with, just as the facades themselves can — but recording it makes any tampering visible in the diff. `TestIOSafetyAuditPresent` fails CI (`go test ./...`) if the log has no entry, so a change cannot land with an empty audit. The authoritative guard remains the enforcement test above.
 
 <!-- IO-AUDIT:START -->
+- **2026-06-07** — `OK`. Early-game event overlay rework (issue #159): consolidated BO timeline events + map overlays. Pure presentation/dashboard-response changes (Go struct field, frontend rendering); no new os/net calls, no allowlist or enforcement-test changes.
 - **2026-05-31** — `OK`. Introduced the `iofacade`/`netfacade` chokepoints, the enforcement test, and removed the AI + fswatch surfaces; this change establishes the I/O rules rather than weakening them.
 <!-- IO-AUDIT:END -->
 
