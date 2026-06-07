@@ -334,11 +334,60 @@ const gameEventTargetLocationLabel = (event) => {
   return baseName;
 };
 
+// boOpenerLines groups the consolidated "bo_openers" event's per-(player × BO)
+// entries into one line per player, preserving the backend's registry ordering
+// for each player's BO names. Each line carries the player identity (name,
+// color, race, winner, team) needed to render both the events-list row and the
+// per-start-location map labels.
+const boOpenerLines = (event) => {
+  const entries = Array.isArray(event?.build_orders) ? event.build_orders : [];
+  const byPlayer = new Map();
+  for (const entry of entries) {
+    const pid = entry?.player_id;
+    if (pid == null) continue;
+    const key = String(pid);
+    if (!byPlayer.has(key)) {
+      byPlayer.set(key, {
+        playerID: pid,
+        name: String(entry?.name || '').trim() || 'Player',
+        color: entry?.color || '',
+        race: entry?.race || '',
+        isWinner: Boolean(entry?.is_winner),
+        team: entry?.team,
+        startLocation: String(entry?.start_location || '').trim(),
+        boNames: [],
+      });
+    }
+    const boName = String(entry?.build_order || '').trim();
+    const line = byPlayer.get(key);
+    if (boName && !line.boNames.includes(boName)) line.boNames.push(boName);
+  }
+  return Array.from(byPlayer.values());
+};
+
+// boOpenerLineText renders one opener line as a sentence: "X starts at L and
+// opens with BO", dropping whichever clause is missing (no start location, no
+// resolved BO, or both — leaving just the name).
+const boOpenerLineText = (line) => {
+  const bo = line.boNames.length > 0 ? `opens with ${line.boNames.join(' / ')}` : '';
+  const start = line.startLocation ? `starts at ${line.startLocation}` : '';
+  if (start && bo) return `${line.name} ${start} and ${bo}`;
+  if (start) return `${line.name} ${start}`;
+  if (bo) return `${line.name} ${bo}`;
+  return line.name;
+};
+
 const gameEventDescription = (event, registry) => {
   const eventType = normalizeEventType(event?.type);
   const actor = String(event?.actor?.name || '').trim();
   const target = String(event?.target?.name || '').trim();
   const location = gameEventLocationLabel(event);
+
+  if (eventType === 'bo_openers') {
+    const lines = boOpenerLines(event);
+    if (lines.length === 0) return 'Build orders';
+    return lines.map((line) => boOpenerLineText(line)).join('; ');
+  }
 
   if (typeof eventType === 'string' && eventType.startsWith('bo_')) {
     const def = registry?.[eventType];
@@ -462,6 +511,38 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
   const location = gameEventLocationLabel(event);
   const actorSpan = gamePlayerNameSpan(event?.actor, 'a');
   const targetSpan = gamePlayerNameSpan(event?.target, 't');
+
+  if (eventType === 'bo_openers') {
+    const lines = boOpenerLines(event);
+    if (lines.length === 0) return 'Build orders';
+    return (
+      <span className="workflow-bo-openers">
+        {lines.map((line) => {
+          const raceIcon = getRaceIcon(line.race);
+          return (
+            <span key={`bo-line-${line.playerID}`} className="workflow-bo-openers-line">
+              {raceIcon ? <img src={raceIcon} alt={line.race || 'race'} className="unit-icon-inline workflow-bo-openers-race" /> : null}
+              {line.isWinner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+              <span
+                className="workflow-event-row-player"
+                style={legendTextStyle(String(line.color || ''), playerColorToCss(line.color))}
+              >
+                {line.name}
+              </span>
+              {(() => {
+                const bo = line.boNames.length > 0 ? `opens with ${line.boNames.join(' / ')}` : '';
+                const start = line.startLocation ? `starts at ${line.startLocation}` : '';
+                if (start && bo) return <> {start} and {bo}</>;
+                if (start) return <> {start}</>;
+                if (bo) return <> {bo}</>;
+                return null;
+              })()}
+            </span>
+          );
+        })}
+      </span>
+    );
+  }
 
   if (typeof eventType === 'string' && eventType.startsWith('bo_')) {
     const def = registry?.[eventType];
@@ -694,7 +775,7 @@ const renderSummaryMapStack = ({
               key={overlay.key}
               points={overlay.points}
               className="workflow-event-map-base-polygon"
-              style={{ fill: `${overlay.ownerColor}66`, stroke: overlay.ownerColor }}
+              style={{ fill: `${overlay.ownerColor}66`, stroke: overlay.teamColor || overlay.ownerColor, strokeWidth: overlay.strokeWidth || 0.4 }}
             >
               <title>{overlay.ownerName}</title>
             </polygon>
@@ -1338,20 +1419,28 @@ const DEFENSIVE_BUILDING_KEYS = new Set([
 ]);
 
 const DEFAULT_SUMMARY_FILTERS = {
+  attack: false,
+  expansion: false,
+  leaves: false,
   nuke: false,
   drop: false,
   recall: false,
   becameRace: false,
   rush: false,
+  alliance: false,
   scout: false,
 };
 
 const SUMMARY_TOPIC_PATTERNS = {
+  attack: /\battacks?\b/i,
+  expansion: /\bexpands?\b|\bexpansion\b/i,
+  leaves: /\bleaves the game\b|\bstops playing\b/i,
   nuke: /\bnuke|nuclear\b/i,
   drop: /\bdrop|dropship|shuttle\b/i,
   recall: /\brecall\b/i,
   becameRace: /\b(became|becomes)\s+(terran|zerg)\b|\bbecame_(terran|zerg)\b/i,
   rush: /\brush|all[\s-]?in|cheese\b/i,
+  alliance: /\bform(s)? an alliance\b|\ballies with\b|\balliance\b/i,
   scout: /\bscouts?\b|\bscout\b/i,
 };
 
@@ -3443,6 +3532,13 @@ function App() {
       if (normalizeEventType(event?.type) === 'takeover') {
         return false;
       }
+      // Scouts are intentionally not surfaced: a scout's timing is misleading
+      // (instantaneous for Zerg overlords, late for P/T) and we can't tell if
+      // it actually arrived. Dropped per issue #159 — the BO openers carry the
+      // early-game signal instead.
+      if (normalizeEventType(event?.type) === 'scout') {
+        return false;
+      }
       return summaryTextMatches(gameEventSearchText(event, markerRegistry));
     });
     const deduped = [];
@@ -3472,12 +3568,16 @@ function App() {
   ), [topicFilteredGameEvents, mainEventsPlayerEnabledById]);
   const gameEventTopicAvailability = useMemo(() => {
     const base = {
+      attack: false,
+      expansion: false,
+      leaves: false,
       nuke: false,
       drop: false,
       recall: false,
       scout: false,
       becameRace: false,
       rush: false,
+      alliance: false,
     };
     const allEvents = Array.isArray(mainGame?.game_events) ? mainGame.game_events : [];
     for (const event of allEvents) {
@@ -3485,12 +3585,16 @@ function App() {
       const nt = normalizeEventType(event?.type);
       if (nt === 'takeover') continue;
       const text = gameEventSearchText(event, markerRegistry);
+      if (nt === 'attack') base.attack = true;
+      if (nt === 'expansion') base.expansion = true;
+      if (nt === 'leave_game' || nt === 'player_stopped_playing') base.leaves = true;
       if (SUMMARY_TOPIC_PATTERNS.nuke.test(text)) base.nuke = true;
       if (SUMMARY_TOPIC_PATTERNS.drop.test(text)) base.drop = true;
       if (SUMMARY_TOPIC_PATTERNS.recall.test(text)) base.recall = true;
       if (nt === 'scout' || SUMMARY_TOPIC_PATTERNS.scout.test(text)) base.scout = true;
       if (SUMMARY_TOPIC_PATTERNS.becameRace.test(text) || nt === 'became_terran' || nt === 'became_zerg') base.becameRace = true;
       if (SUMMARY_TOPIC_PATTERNS.rush.test(text)) base.rush = true;
+      if (nt === 'late_alliance') base.alliance = true;
     }
     return base;
   }, [mainGame?.game_events, markerRegistry]);
@@ -3535,6 +3639,30 @@ function App() {
     const preferredIdx = firstRowVisibleIdx >= 0 ? firstRowVisibleIdx : 0;
     setMainSelectedGameEventKey(gameEventTopicKey(preferredIdx));
   }, [topicFilteredGameEvents, mainEventsPlayerEnabledById, mainSelectedGameEventKey]);
+  const mainGameTeamByPlayerID = useMemo(() => {
+    const m = new Map();
+    (Array.isArray(mainGamePlayers) ? mainGamePlayers : []).forEach((p) => {
+      if (p?.player_id != null) m.set(String(p.player_id), p.team);
+    });
+    return m;
+  }, [mainGamePlayers]);
+  // Team-colour polygon borders apply only when there's a real team (≥2 players
+  // sharing one). 1v1 / 1v1v1 / FFA — every player on their own team — keep the
+  // plain player-colour border. Guard on ≥2 distinct teams too so a replay with
+  // no team info (everyone on team 0) isn't mistaken for one big team.
+  const isTeamGame = useMemo(() => {
+    const counts = new Map();
+    (Array.isArray(mainGamePlayers) ? mainGamePlayers : []).forEach((p) => {
+      counts.set(p?.team, (counts.get(p?.team) || 0) + 1);
+    });
+    if (counts.size < 2) return false;
+    return [...counts.values()].some((n) => n >= 2);
+  }, [mainGamePlayers]);
+  const polygonStrokeFor = (ownerColor, team) => (
+    isTeamGame && team != null
+      ? { teamColor: getTeamColor(team), strokeWidth: 0.9 }
+      : { teamColor: ownerColor, strokeWidth: 0.4 }
+  );
   const selectedMainGameOwnershipPolygons = useMemo(() => {
     const ownership = Array.isArray(selectedMainGameEvent?.ownership) ? selectedMainGameEvent.ownership : [];
     return ownership
@@ -3548,15 +3676,17 @@ function App() {
           .join(' ');
         if (!points) return null;
         const ownerColor = playerColorToCss(entry.owner.color);
+        const team = mainGameTeamByPlayerID.get(String(entry.owner.player_id));
         return {
           key: `ownership-${idx}-${entry.base?.name || 'base'}`,
           points,
           ownerName: entry.owner.name,
           ownerColor,
+          ...polygonStrokeFor(ownerColor, team),
         };
       })
       .filter(Boolean);
-  }, [selectedMainGameEvent, mainEventMapBounds]);
+  }, [selectedMainGameEvent, mainEventMapBounds, mainGameTeamByPlayerID, isTeamGame]);
   const selectedMainGameLegend = useMemo(() => {
     return (Array.isArray(mainGamePlayers) ? mainGamePlayers : [])
       .map((player) => ({
@@ -3576,22 +3706,64 @@ function App() {
       if (!ev?.actor) return;
       const polygon = Array.isArray(ev?.base?.polygon) ? ev.base.polygon : [];
       if (polygon.length < 3) return;
-      const points = polygon
+      const percentPoints = polygon
         .map((point) => mapPointToPercent(point, bounds))
-        .filter(Boolean)
-        .map((point) => `${point.x},${point.y}`)
-        .join(' ');
+        .filter(Boolean);
+      const points = percentPoints.map((point) => `${point.x},${point.y}`).join(' ');
       if (!points) return;
       const pid = eventActorID(ev);
+      const centroid = percentPoints.reduce(
+        (acc2, p) => ({ x: acc2.x + p.x / percentPoints.length, y: acc2.y + p.y / percentPoints.length }),
+        { x: 0, y: 0 },
+      );
+      const team = pid != null ? mainGameTeamByPlayerID.get(String(pid)) : undefined;
+      const ownerColor = playerColorToCss(ev.actor.color);
       acc.push({
         key: `sum-start-poly-${pid != null ? pid : idx}`,
         points,
+        centroid,
+        playerID: pid,
         ownerName: String(ev.actor.name || '').trim() || 'Player',
-        ownerColor: playerColorToCss(ev.actor.color),
+        ownerColor,
+        ...polygonStrokeFor(ownerColor, team),
       });
     });
     return acc;
-  }, [mainGame?.game_events, mainEventMapBounds]);
+  }, [mainGame?.game_events, mainEventMapBounds, mainGameTeamByPlayerID, isTeamGame]);
+  // The BO openers event sits at 0:00 with no persisted ownership snapshot, so
+  // draw the starting-location polygons directly from the player_start events.
+  // Every other event keeps using its ownership snapshot.
+  const selectedMainGameMapPolygons = useMemo(() => (
+    normalizeEventType(selectedMainGameEvent?.type) === 'bo_openers'
+      ? summaryMapStartPolygons
+      : selectedMainGameOwnershipPolygons
+  ), [selectedMainGameEvent, summaryMapStartPolygons, selectedMainGameOwnershipPolygons]);
+  // Per-start-location labels for the consolidated BO openers event: race icon
+  // + crown + name on line 1, BO name(s) on line 2, painted on each player's
+  // starting polygon. Only computed when that event is selected.
+  const selectedMainGameBOLabels = useMemo(() => {
+    if (normalizeEventType(selectedMainGameEvent?.type) !== 'bo_openers') return [];
+    const lines = boOpenerLines(selectedMainGameEvent);
+    if (lines.length === 0) return [];
+    const lineByPlayer = new Map(lines.map((line) => [String(line.playerID), line]));
+    return summaryMapStartPolygons
+      .map((poly) => {
+        const line = poly.playerID != null ? lineByPlayer.get(String(poly.playerID)) : null;
+        if (!line || !poly.centroid) return null;
+        return {
+          key: `bo-label-${poly.key}`,
+          x: poly.centroid.x,
+          y: poly.centroid.y,
+          name: line.name,
+          color: playerColorToCss(line.color),
+          rawColor: line.color,
+          race: line.race,
+          isWinner: line.isWinner,
+          boNames: line.boNames,
+        };
+      })
+      .filter(Boolean);
+  }, [selectedMainGameEvent, summaryMapStartPolygons]);
   const mainGameFeaturingPillsList = useMemo(
     () => buildMainGameFeaturingPills(mainGame, markerDefinitions),
     [mainGame, markerDefinitions],
@@ -5489,115 +5661,96 @@ function App() {
 
                 {mainGameTab === 'events' && (
                   <div className="workflow-card workflow-card-recent-games">
-                    <div className="workflow-section-top-row">
-                      <div className="workflow-events-filter-cluster workflow-events-topic-filters">
-                        <label className={`workflow-summary-filter-check${!gameEventTopicAvailability.nuke ? ' workflow-summary-filter-check--disabled' : ''}`}>
-                          <input
-                            type="checkbox"
-                            disabled={!gameEventTopicAvailability.nuke}
-                            checked={mainSummaryFilters.nuke}
-                            onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, nuke: e.target.checked }))}
-                          />
-                          nuke
-                        </label>
-                        <label className={`workflow-summary-filter-check${!gameEventTopicAvailability.drop ? ' workflow-summary-filter-check--disabled' : ''}`}>
-                          <input
-                            type="checkbox"
-                            disabled={!gameEventTopicAvailability.drop}
-                            checked={mainSummaryFilters.drop}
-                            onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, drop: e.target.checked }))}
-                          />
-                          drop
-                        </label>
-                        <label className={`workflow-summary-filter-check${!gameEventTopicAvailability.recall ? ' workflow-summary-filter-check--disabled' : ''}`}>
-                          <input
-                            type="checkbox"
-                            disabled={!gameEventTopicAvailability.recall}
-                            checked={mainSummaryFilters.recall}
-                            onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, recall: e.target.checked }))}
-                          />
-                          recall
-                        </label>
-                        <label className={`workflow-summary-filter-check${!gameEventTopicAvailability.scout ? ' workflow-summary-filter-check--disabled' : ''}`}>
-                          <input
-                            type="checkbox"
-                            disabled={!gameEventTopicAvailability.scout}
-                            checked={mainSummaryFilters.scout}
-                            onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, scout: e.target.checked }))}
-                          />
-                          scout
-                        </label>
-                        <label className={`workflow-summary-filter-check${!gameEventTopicAvailability.becameRace ? ' workflow-summary-filter-check--disabled' : ''}`}>
-                          <input
-                            type="checkbox"
-                            disabled={!gameEventTopicAvailability.becameRace}
-                            checked={mainSummaryFilters.becameRace}
-                            onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, becameRace: e.target.checked }))}
-                          />
-                          became race
-                        </label>
-                        <label className={`workflow-summary-filter-check${!gameEventTopicAvailability.rush ? ' workflow-summary-filter-check--disabled' : ''}`}>
-                          <input
-                            type="checkbox"
-                            disabled={!gameEventTopicAvailability.rush}
-                            checked={mainSummaryFilters.rush}
-                            onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, rush: e.target.checked }))}
-                          />
-                          rush
-                        </label>
+                    <div className="workflow-events-controls">
+                      <div className="workflow-events-filters">
+                      <div className="workflow-events-filter-row" role="group" aria-label="Filter events by type">
+                        {[
+                          { key: 'attack', label: 'Attack' },
+                          { key: 'expansion', label: 'Expansion' },
+                          { key: 'drop', label: 'Drop' },
+                          { key: 'rush', label: 'Rush' },
+                          { key: 'leaves', label: 'Leaves' },
+                          { key: 'recall', label: 'Recall' },
+                          { key: 'nuke', label: 'Nuke' },
+                          { key: 'becameRace', label: 'Became race' },
+                          { key: 'alliance', label: 'Alliance' },
+                        ].map(({ key, label }) => {
+                          const available = gameEventTopicAvailability[key];
+                          const active = mainSummaryFilters[key];
+                          return (
+                            <label
+                              key={key}
+                              className={`workflow-events-filter-chip${active ? ' workflow-events-filter-chip--active' : ''}${!available ? ' workflow-events-filter-chip--disabled' : ''}`}
+                            >
+                              <input
+                                type="checkbox"
+                                disabled={!available}
+                                checked={active}
+                                onChange={(e) => setMainSummaryFilters((prev) => ({ ...prev, [key]: e.target.checked }))}
+                              />
+                              {label}
+                            </label>
+                          );
+                        })}
                       </div>
-                      {!hasTeamInfo ? (
-                        <div className="workflow-section-warning">
-                          ⚠️ {mainGame?.team_info_incomplete ? 'Team information is incomplete' : 'This replay has no team information'}. Expect issues like attack events firing between teammates.
+                      {mainGamePlayers.length > 0 ? (
+                        <div className="workflow-events-filter-row workflow-events-player-filters" role="group" aria-label="Filter events by player">
+                          {mainGamePlayers.map((player) => {
+                            const enabled = mainEventsPlayerEnabledById[String(player.player_id)] !== false;
+                            return (
+                              <label
+                                key={`event-filter-${player.player_id}`}
+                                className={`workflow-events-player-chip${enabled ? '' : ' workflow-events-player-chip--off'}`}
+                                style={legendTextStyle(player.color, playerColorToCss(player.color))}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={enabled}
+                                  onChange={(e) => setMainEventsPlayerEnabledById((prev) => ({
+                                    ...prev,
+                                    [String(player.player_id)]: e.target.checked,
+                                  }))}
+                                />
+                                <span>{player.name}</span>
+                              </label>
+                            );
+                          })}
+                          <button
+                            type="button"
+                            className="workflow-legend-bulk-btn"
+                            onClick={() => setMainEventsPlayerEnabledById(
+                              Object.fromEntries(mainGamePlayers.map((p) => [String(p.player_id), false])),
+                            )}
+                          >
+                            None
+                          </button>
+                          <button
+                            type="button"
+                            className="workflow-legend-bulk-btn"
+                            onClick={() => setMainEventsPlayerEnabledById(
+                              Object.fromEntries(mainGamePlayers.map((p) => [String(p.player_id), true])),
+                            )}
+                          >
+                            All
+                          </button>
                         </div>
                       ) : null}
-                      <div className="workflow-section-warning">
-                        ⚠️ Event narratives are derived from imperfect replay signals: expect some errors.
+                      </div>
+                      <div className="workflow-events-warnings">
+                        {!hasTeamInfo ? (
+                          <div className="workflow-section-warning workflow-events-warning">
+                            ⚠️ {mainGame?.team_info_incomplete ? 'Team information is incomplete' : 'This replay has no team information'}. Expect issues like attack events firing between teammates.
+                          </div>
+                        ) : null}
+                        <div className="workflow-section-warning workflow-events-warning">
+                          ⚠️ Event narratives are derived from imperfect replay signals: expect some errors.
+                        </div>
                       </div>
                     </div>
                     <div className="workflow-events-layout">
                         <div className="workflow-event-map-panel" ref={setMainEventMapPanelEl}>
                           {mainMapVisualAvailable ? (
                             <>
-                              {mainGamePlayers.length > 0 ? (
-                                <div className="workflow-event-map-legend workflow-event-map-legend--filters" role="group" aria-label="Filter events by player">
-                                  {mainGamePlayers.map((player) => (
-                                    <label
-                                      key={`event-filter-${player.player_id}`}
-                                      className="workflow-event-legend-filter-item"
-                                      style={legendTextStyle(player.color, playerColorToCss(player.color))}
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={mainEventsPlayerEnabledById[String(player.player_id)] !== false}
-                                        onChange={(e) => setMainEventsPlayerEnabledById((prev) => ({
-                                          ...prev,
-                                          [String(player.player_id)]: e.target.checked,
-                                        }))}
-                                      />
-                                      <span>{player.name}</span>
-                                    </label>
-                                  ))}
-                                  <button
-                                    type="button"
-                                    className="workflow-legend-bulk-btn"
-                                    onClick={() => setMainEventsPlayerEnabledById(
-                                      Object.fromEntries(mainGamePlayers.map((p) => [String(p.player_id), false])),
-                                    )}
-                                  >
-                                    None
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="workflow-legend-bulk-btn"
-                                    onClick={() => setMainEventsPlayerEnabledById(
-                                      Object.fromEntries(mainGamePlayers.map((p) => [String(p.player_id), true])),
-                                    )}
-                                  >
-                                    All
-                                  </button>
-                                </div>
-                              ) : null}
                               <div className="workflow-event-map-frame">
                                 <img src={mainMapVisualURL} alt={`${mainGame.map_name} event overlay`} className="workflow-event-map-image" />
                                 {selectedMainGameEvent ? (
@@ -5632,12 +5785,12 @@ function App() {
                                         <polygon points="0 0, 5 2.5, 0 5" fill="context-stroke" />
                                       </marker>
                                     </defs>
-                                    {selectedMainGameOwnershipPolygons.map((overlay) => (
+                                    {selectedMainGameMapPolygons.map((overlay) => (
                                       <polygon
                                         key={overlay.key}
                                         points={overlay.points}
                                         className="workflow-event-map-base-polygon"
-                                        style={{ fill: `${overlay.ownerColor}66`, stroke: overlay.ownerColor }}
+                                        style={{ fill: `${overlay.ownerColor}66`, stroke: overlay.teamColor || overlay.ownerColor, strokeWidth: overlay.strokeWidth || 0.4 }}
                                       />
                                     ))}
                                     {selectedMainGameArrow ? (
@@ -5838,6 +5991,25 @@ function App() {
                                     }}
                                   />
                                 ) : null}
+                                {selectedMainGameBOLabels.map((label) => {
+                                  const raceIcon = getRaceIcon(label.race);
+                                  return (
+                                    <div
+                                      key={label.key}
+                                      className="workflow-event-map-bo-label"
+                                      style={{ left: `${label.x}%`, top: `${label.y}%` }}
+                                    >
+                                      <div className="workflow-event-map-bo-label-name" style={legendTextStyle(String(label.rawColor || ''), label.color)}>
+                                        {raceIcon ? <img src={raceIcon} alt={label.race || 'race'} className="unit-icon-inline workflow-event-map-bo-label-race" /> : null}
+                                        {label.isWinner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+                                        {label.name}
+                                      </div>
+                                      {label.boNames.length > 0 ? (
+                                        <div className="workflow-event-map-bo-label-bo">{label.boNames.join(' / ')}</div>
+                                      ) : null}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </>
                           ) : (
@@ -5895,7 +6067,7 @@ function App() {
                                     className={`workflow-event-row ${selected ? 'workflow-event-row-selected' : ''}`}
                                     onClick={() => setMainSelectedGameEventKey(eventKey)}
                                   >
-                                    <span>{formatDuration(event.second)}</span>
+                                    <span className="workflow-event-row-time">{formatDuration(event.second)}</span>
                                     <span className="workflow-event-row-body">
                                       <span>{renderGameEventDescription(event, markerRegistry, mainEventRaceByPlayerID)}</span>
                                       {(iconEntries.length > 0 || castEntries.length > 0) ? (

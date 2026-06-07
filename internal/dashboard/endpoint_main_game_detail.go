@@ -2656,12 +2656,31 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 	// Registry order drives display order so specific variants sit next to
 	// their general cousins.
 	allMarkers := markers.Markers()
+	// Start-location label per player, read from the player_start events
+	// already populated on the timeline. Lets the FE render "X starts at L and
+	// opens with BO" on the consolidated openers row.
+	startLocationByPlayer := map[int64]string{}
+	for i := range detail.GameEvents {
+		ev := &detail.GameEvents[i]
+		if strings.EqualFold(ev.Type, "player_start") && ev.Actor != nil && ev.Base != nil {
+			startLocationByPlayer[ev.Actor.PlayerID] = ev.Base.Name
+		}
+	}
+	// boOpeners accumulates one entry per (player × detected opener BO). They
+	// are surfaced as a single consolidated "bo_openers" game event at second 0
+	// (see below) rather than one timed event per BO — the per-BO timing was
+	// uninformative and the per-event rows read as noise. Every player gets at
+	// least one entry (with an empty BuildOrder when none was resolved) so the
+	// FE always shows the player's name, residual/uncalculated BO or not.
+	var boOpeners []workflowGameEventBuildOrder
+	anyBO := false
 	for _, player := range detail.Players {
 		detected := detectedByPlayer[player.PlayerID]
-		if len(detected) == 0 {
-			continue
-		}
+		playerHadOpener := false
 		for i := range allMarkers {
+			if len(detected) == 0 {
+				break
+			}
 			bo := &allMarkers[i]
 			if bo.Kind != markers.KindInitialBuildOrder {
 				continue
@@ -2704,22 +2723,53 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 				Events:     events,
 			})
 
-			// Surface the BO on the Game Events timeline at the first
-			// building's actual second (per user spec — units don't
-			// count). Skip if no building event was resolved (e.g. a
-			// stream that only matched the rule via produce facts).
-			if firstSec, ok := firstBuildingActualSecond(bo, events); ok {
-				detail.GameEvents = append(detail.GameEvents, workflowGameEvent{
-					Type:   bo.FeatureKey,
-					Second: int64(firstSec),
-					Actor: &workflowGameEventPlayer{
-						PlayerID: player.PlayerID,
-						Name:     player.Name,
-						Color:    player.Color,
-					},
+			// Surface the BO on the consolidated openers event. We still
+			// gate on a resolved first building (per user spec — units
+			// don't count): a BO that only matched via produce facts has
+			// no concrete opening to show. The actual second is no longer
+			// used (the consolidated event sits at 0:00), only the gate.
+			if _, ok := firstBuildingActualSecond(bo, events); ok {
+				boOpeners = append(boOpeners, workflowGameEventBuildOrder{
+					PlayerID:      player.PlayerID,
+					Name:          player.Name,
+					Color:         player.Color,
+					Race:          player.Race,
+					IsWinner:      player.IsWinner,
+					Team:          player.Team,
+					StartLocation: startLocationByPlayer[player.PlayerID],
+					BuildOrder:    bo.Name,
+					FeatureKey:    bo.FeatureKey,
 				})
+				playerHadOpener = true
+				anyBO = true
 			}
 		}
+		// No resolved opener for this player — still emit a name-only entry so
+		// the FE shows the player on the openers row and labels their start.
+		if !playerHadOpener {
+			boOpeners = append(boOpeners, workflowGameEventBuildOrder{
+				PlayerID:      player.PlayerID,
+				Name:          player.Name,
+				Color:         player.Color,
+				Race:          player.Race,
+				IsWinner:      player.IsWinner,
+				Team:          player.Team,
+				StartLocation: startLocationByPlayer[player.PlayerID],
+			})
+		}
+	}
+	// Emit the openers as one consolidated event at second 0 — one entry per
+	// (player × BO), plus a name-only entry for players without one. The FE
+	// groups by player (one line each) and labels each starting location on the
+	// map. Type starts with "bo_" so the ownership back-propagation below hands
+	// it the starting-position snapshot. Skip entirely when no BO was resolved
+	// for anyone (nothing meaningful to open the timeline with).
+	if anyBO {
+		detail.GameEvents = append(detail.GameEvents, workflowGameEvent{
+			Type:        "bo_openers",
+			Second:      0,
+			BuildOrders: boOpeners,
+		})
 	}
 	// detail.GameEvents was already populated by populateDetectedPatterns
 	// in time-sorted order — re-sort after appending BO entries so the
