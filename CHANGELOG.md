@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.3.0](https://github.com/marianogappa/screpdb/compare/v1.2.0...v1.3.0) (2026-06-07)
+
+
+### Features
+
+* expert timings for composition Terran build orders (closes [#158](https://github.com/marianogappa/screpdb/issues/158)) ([#160](https://github.com/marianogappa/screpdb/issues/160)) ([1148f31](https://github.com/marianogappa/screpdb/commit/1148f31992b75fd87c419b1b32f56baeefec52c3))
+* **markers:** composition-based Terran build orders (closes [#155](https://github.com/marianogappa/screpdb/issues/155)) ([#156](https://github.com/marianogappa/screpdb/issues/156)) ([10dc997](https://github.com/marianogappa/screpdb/commit/10dc997c75541ba8fd350f317343d96f0451456c))
+* rework early-game event items layout & overlays (closes [#159](https://github.com/marianogappa/screpdb/issues/159)) ([#161](https://github.com/marianogappa/screpdb/issues/161)) ([684eb39](https://github.com/marianogappa/screpdb/commit/684eb393579fa02ae1fd77effad1409ea1df2798))
+
 ## [1.2.0](https://github.com/marianogappa/screpdb/compare/v1.1.2...v1.2.0) (2026-06-06)
 
 
