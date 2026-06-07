@@ -79,6 +79,40 @@ func (e *firstCastEvaluator) Finalize(_ CustomEvalContext) CustomResult {
 }
 
 // -----------------------------------------------------------------------------
+// wraithCountEvaluator: air-heavy Terran marker with a team-format-aware
+// threshold. 1v1 needs 3+ Wraiths (a deliberate air opener); team games need
+// 10+ before the count is signal rather than incidental harass (same rationale
+// as 10+ Scouts). DetectedAtSecond is the second the threshold was crossed.
+// -----------------------------------------------------------------------------
+
+type wraithCountEvaluator struct {
+	count      int
+	secByCount []int // secByCount[i] = second the (i+1)-th Wraith was produced
+}
+
+func (e *wraithCountEvaluator) Observe(f cmdenrich.EnrichedCommand) {
+	if f.Kind != cmdenrich.KindMakeUnit || f.Subject != models.GeneralUnitWraith {
+		return
+	}
+	e.count++
+	e.secByCount = append(e.secByCount, f.Second)
+}
+
+func (e *wraithCountEvaluator) Finalize(ctx CustomEvalContext) CustomResult {
+	threshold := 10
+	if ctx.Replay != nil && ctx.Replay.TeamFormat == "1v1" {
+		threshold = 3
+	}
+	if e.count < threshold {
+		return CustomResult{}
+	}
+	return CustomResult{
+		Matched:          true,
+		DetectedAtSecond: e.secByCount[threshold-1],
+	}
+}
+
+// -----------------------------------------------------------------------------
 // viewportMultitaskingEvaluator: migrates ViewportMultitaskingPlayerDetector.
 // Tracks viewport-level coordinate jumps in the middle window of the replay.
 // Emits a formatted switches-per-minute string (ValueString), matching the
