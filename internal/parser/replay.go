@@ -197,10 +197,13 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 				command.Replay = data.Replay
 				command.Player = playerIDToPlayer[base.PlayerID]
 
-				// Edge case: ChatCmd doesn't populate PlayerID, but populates SenderSlotID
+				// Edge case: ChatCmd doesn't populate PlayerID, but populates SenderSlotID.
+				// Guard the type assertion: a future screp change (or an oddly-typed
+				// command that still classifies as "Chat") shouldn't panic the parse.
 				if command.ActionType == "Chat" {
-					chatCommand := cmd.(*repcmd.ChatCmd)
-					command.Player = slotIDToPlayer[chatCommand.SenderSlotID]
+					if chatCommand, ok := cmd.(*repcmd.ChatCmd); ok {
+						command.Player = slotIDToPlayer[chatCommand.SenderSlotID]
+					}
 				}
 
 				data.Commands = append(data.Commands, command)

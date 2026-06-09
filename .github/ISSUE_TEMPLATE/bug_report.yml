@@ -1,0 +1,70 @@
+name: 🐞 Bug report
+description: Report a crash or something not working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve screpdb! The more of the boxes below you can
+        fill in, the faster this can be fixed.
+
+        > 💡 **Did the app crash?** Look for a `screpdb-crash-*.log` file (and, on
+        > the Windows dashboard, a `screpdb-dashboard.log`) next to the binary and
+        > paste its contents into the **Logs / crash report** field below — it
+        > contains the exact version and stack trace.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: I clicked "…" and the app closed / showed an error.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown in the dashboard footer (e.g. `v1.3.0 (abc1234)`). If unsure, paste it from the crash report.
+      placeholder: v1.3.0 (abc1234)
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other (note in description)
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: A numbered list helps a lot, if you can reproduce it.
+      placeholder: |
+        1. Open the dashboard
+        2. Ingest folder X
+        3. Click on game Y
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / crash report
+      description: Paste the contents of any `screpdb-crash-*.log` / `screpdb-dashboard.log`. This is auto-formatted, no backticks needed.
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Replay & screenshots
+      description: |
+        If a specific replay triggers the bug, drag-and-drop it here (zip it if GitHub
+        rejects the `.rep` extension) — it's the single most useful thing for debugging.
+        Screenshots of the issue are also welcome.
+    validations:
+      required: false

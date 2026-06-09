@@ -39,6 +39,32 @@ jobs:
         working-directory: dist
         run: sha256sum * > SHA256SUMS
 
+      # Regenerate the Scoop manifest from the freshly built binaries and commit
+      # it to the default branch so `scoop update screpdb` picks up the release.
+      # Best-effort: never fail the release if branch protection blocks the push
+      # (the manifest can also be regenerated locally with the same script).
+      - name: Update Scoop manifest
+        if: github.ref_type == 'tag'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+          DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # dist/SHA256SUMS is untracked, so it survives the checkout.
+          git fetch origin "$DEFAULT_BRANCH"
+          git checkout "$DEFAULT_BRANCH"
+          ./scripts/update-scoop-manifest.sh "$VERSION" dist/SHA256SUMS
+          if git diff --quiet -- bucket/screpdb.json; then
+            echo "Scoop manifest already up to date."
+            exit 0
+          fi
+          git add bucket/screpdb.json
+          git commit -m "chore(scoop): bump manifest to ${VERSION}"
+          git push origin "$DEFAULT_BRANCH"
+
       - name: Sign SHA256SUMS with minisign
         env:
           MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}

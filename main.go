@@ -5,9 +5,11 @@ import (
 	"os"
 
 	"github.com/marianogappa/screpdb/cmd"
+	"github.com/marianogappa/screpdb/internal/crashreport"
 )
 
 func main() {
+	defer crashreport.Recover(false)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	if err := cmd.Execute(); err != nil {
 		log.Println(err)

@@ -1,0 +1,8 @@
+# Keep blank issues enabled: the in-app crash handler links to a pre-filled
+# blank issue (issues/new?title=...&body=...), which the template chooser would
+# otherwise block. See internal/crashreport.
+blank_issues_enabled: true
+contact_links:
+  - name: 💬 Questions & discussion
+    url: https://github.com/marianogappa/screpdb/discussions
+    about: For usage questions and general discussion (not bugs), start a discussion.

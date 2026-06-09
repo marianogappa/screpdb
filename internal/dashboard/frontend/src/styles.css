@@ -1864,6 +1864,12 @@ body {
   color: rgba(100, 150, 255, 0.9);
 }
 
+.app-footer .footer-version {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+  cursor: default;
+}
+
 .app-footer a {
   color: rgba(140, 180, 255, 0.95);
   text-decoration: none;

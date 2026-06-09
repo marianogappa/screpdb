@@ -306,6 +306,7 @@ func (d *Dashboard) Healthcheck(ctx context.Context, _ apigen.HealthcheckRequest
 		"ok":            true,
 		"total_replays": totalReplays,
 		"version":       buildinfo.Version,
+		"commit":        buildinfo.Commit,
 	}, nil
 }
 

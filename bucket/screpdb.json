@@ -1,0 +1,52 @@
+{
+    "version": "1.3.0",
+    "description": "Advanced StarCraft: Brood War replay reporting tool (CLI + local dashboard).",
+    "homepage": "https://github.com/marianogappa/screpdb",
+    "license": "MIT",
+    "notes": [
+        "Run 'screpdb' (or 'screpdb dashboard') to open the local dashboard in your browser.",
+        "The binaries are not code-signed; SmartScreen/Defender may warn on first run. See the README."
+    ],
+    "architecture": {
+        "64bit": {
+            "url": [
+                "https://github.com/marianogappa/screpdb/releases/download/v1.3.0/screpdb-windows-amd64.exe",
+                "https://github.com/marianogappa/screpdb/releases/download/v1.3.0/screpdb-dashboard-windows-amd64.exe"
+            ],
+            "hash": [
+                "6b4191aa91d1879326e643b33dd1140f7d1797e322e1c538bcd784e61f0b6ab1",
+                "0a8fd767afcaecd30839158895284b4ad47f1a06c13dcfa235245084bd6fc58c"
+            ],
+            "bin": [
+                [
+                    "screpdb-windows-amd64.exe",
+                    "screpdb"
+                ],
+                [
+                    "screpdb-dashboard-windows-amd64.exe",
+                    "screpdb-dashboard"
+                ]
+            ],
+            "shortcuts": [
+                [
+                    "screpdb-dashboard-windows-amd64.exe",
+                    "screpdb dashboard"
+                ]
+            ]
+        }
+    },
+    "checkver": "github",
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": [
+                    "https://github.com/marianogappa/screpdb/releases/download/v$version/screpdb-windows-amd64.exe",
+                    "https://github.com/marianogappa/screpdb/releases/download/v$version/screpdb-dashboard-windows-amd64.exe"
+                ]
+            }
+        },
+        "hash": {
+            "url": "https://github.com/marianogappa/screpdb/releases/download/v$version/SHA256SUMS"
+        }
+    }
+}
