@@ -1,6 +1,9 @@
 package markers
 
-import "github.com/marianogappa/screpdb/internal/cmdenrich"
+import (
+	"github.com/marianogappa/screpdb/internal/cmdenrich"
+	"github.com/marianogappa/screpdb/internal/models"
+)
 
 // This file is the DSL for composing broad-match predicates. Each helper is a
 // small, independently testable rule; Marker definitions in definitions.go
@@ -235,19 +238,33 @@ func (s *produceCountAtLeastState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *produceCountAtLeastState) Decision(int) TriState { return s.done }
 func (s *produceCountAtLeastState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// UpgradeExists matches as soon as any KindUpgrade fact arrives, regardless
-// of subject. Used via Not(...) for the Never-Upgraded marker.
-func UpgradeExists() Predicate {
-	return func() PredicateState { return &upgradeExistsState{} }
+// HPUpgradeExists matches as soon as any tiered weapon/armor/shield upgrade
+// (the "HP Upgrades" group) arrives. Used via Not(...) for the Never-Upgraded
+// marker: only HP upgrades count as "upgrading"; every other upgrade is a
+// research (see NonHPUpgradeExists).
+func HPUpgradeExists() Predicate {
+	return func() PredicateState { return &upgradeExistsState{wantHP: true} }
 }
 
-type upgradeExistsState struct{ commitState }
+// NonHPUpgradeExists matches as soon as any non-HP upgrade (range, speed,
+// energy, capacity/cooldown/damage — every upgrade tab except HP Upgrades)
+// arrives. Combined with TechExists via Any(...) to back the Never-Researched
+// marker: these upgrades are conceptually researches, split across tabs only
+// for chart readability.
+func NonHPUpgradeExists() Predicate {
+	return func() PredicateState { return &upgradeExistsState{wantHP: false} }
+}
+
+type upgradeExistsState struct {
+	commitState
+	wantHP bool
+}
 
 func (s *upgradeExistsState) Observe(f cmdenrich.EnrichedCommand) {
 	if s.done != Pending {
 		return
 	}
-	if f.Kind == cmdenrich.KindUpgrade {
+	if f.Kind == cmdenrich.KindUpgrade && models.IsHPUpgrade(f.Subject) == s.wantHP {
 		s.done = Matched
 	}
 }

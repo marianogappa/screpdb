@@ -26,6 +26,16 @@ func (b *factsB) P(unit string, second int) *factsB {
 	return b.add(cmdenrich.KindMakeUnit, unit, second)
 }
 
+// U is shorthand for an Upgrade fact (Subject is the upgrade name).
+func (b *factsB) U(name string, second int) *factsB {
+	return b.add(cmdenrich.KindUpgrade, name, second)
+}
+
+// T is shorthand for a Tech fact.
+func (b *factsB) T(name string, second int) *factsB {
+	return b.add(cmdenrich.KindTech, name, second)
+}
+
 func (b *factsB) list() []cmdenrich.EnrichedCommand { return b.facts }
 
 func TestFirstBuildBefore(t *testing.T) {
@@ -199,5 +209,46 @@ func TestPredominant(t *testing.T) {
 	tie := factsBuilder().P("Marine", 200).P("Vulture", 260).list()
 	if Predominant(bio, mech, 600).Eval(tie) {
 		t.Fatalf("1v1 tie should not be predominant")
+	}
+}
+
+func TestHPUpgradeExists_OnlyTieredCount(t *testing.T) {
+	// A tiered weapon/armor/shield upgrade satisfies HPUpgradeExists.
+	tiered := factsBuilder().U("Protoss Ground Weapons", 300).list()
+	if !HPUpgradeExists().Eval(tiered) {
+		t.Fatalf("tiered upgrade should satisfy HPUpgradeExists")
+	}
+	if NonHPUpgradeExists().Eval(tiered) {
+		t.Fatalf("tiered upgrade must not satisfy NonHPUpgradeExists")
+	}
+	// A one-shot upgrade is a research, not an HP upgrade.
+	oneShot := factsBuilder().U("Singularity Charge (Dragoon Range)", 300).list()
+	if HPUpgradeExists().Eval(oneShot) {
+		t.Fatalf("one-shot upgrade must not satisfy HPUpgradeExists")
+	}
+	if !NonHPUpgradeExists().Eval(oneShot) {
+		t.Fatalf("one-shot upgrade should satisfy NonHPUpgradeExists")
+	}
+}
+
+// Never-Researched fires only when there is neither a Tech nor a non-HP
+// upgrade — HP-only games must still be flagged as "never researched".
+func TestNeverResearched_CountsNonHPUpgrades(t *testing.T) {
+	neverResearched := Not(Any(TechExists(), NonHPUpgradeExists()))
+
+	// Only an HP upgrade: still "never researched".
+	hpOnly := factsBuilder().U("Protoss Ground Weapons", 300).list()
+	if !neverResearched.Eval(hpOnly) {
+		t.Fatalf("HP-upgrade-only game should count as never researched")
+	}
+	// A range upgrade (non-HP) counts as a research.
+	withRange := factsBuilder().U("Singularity Charge (Dragoon Range)", 300).list()
+	if neverResearched.Eval(withRange) {
+		t.Fatalf("non-HP upgrade should clear never researched")
+	}
+	// A tech also counts as a research.
+	withTech := factsBuilder().T("Psionic Storm", 300).list()
+	if neverResearched.Eval(withTech) {
+		t.Fatalf("tech should clear never researched")
 	}
 }

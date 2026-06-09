@@ -1335,7 +1335,7 @@ func allMarkers() []Marker {
 			PatternName:      "Never upgraded",
 			FeatureKey:       "never_upgraded",
 			Kind:             KindMarker,
-			Rule:             Not(UpgradeExists()),
+			Rule:             Not(HPUpgradeExists()),
 			RuleDeadline:     endOfReplaySentinel,
 			MinReplaySeconds: 10 * 60, // fallback for non-1v1
 			// 1v1 floor per (own_race, opp_race): p5 of first-Upgrade time
@@ -1361,7 +1361,7 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{
 				Label: "🚫 upgrades",
 				Style: PillStyleNegative,
-				Title: "No Upgrade commands in this replay for this player (suppressed on games shorter than matchup-typical first upgrade).",
+				Title: "No weapon/armor/shield upgrades in this replay for this player (suppressed on games shorter than matchup-typical first upgrade).",
 			},
 		},
 		{
@@ -1369,7 +1369,7 @@ func allMarkers() []Marker {
 			PatternName:      "Never researched",
 			FeatureKey:       "never_researched",
 			Kind:             KindMarker,
-			Rule:             Not(TechExists()),
+			Rule:             Not(Any(TechExists(), NonHPUpgradeExists())),
 			RuleDeadline:     endOfReplaySentinel,
 			MinReplaySeconds: 10 * 60, // fallback for non-1v1 (and ZvZ in 1v1, omitted below for n<20)
 			// 1v1 floor per (own_race, opp_race): p5 of first-Tech time
@@ -1394,7 +1394,7 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{
 				Label: "🚫 researches",
 				Style: PillStyleNegative,
-				Title: "No Tech commands in this replay for this player (suppressed on games shorter than matchup-typical first research).",
+				Title: "No tech or non-HP upgrade commands in this replay for this player (suppressed on games shorter than matchup-typical first research).",
 			},
 		},
 

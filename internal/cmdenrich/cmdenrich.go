@@ -194,8 +194,9 @@ func Classify(cmd *models.Command) (EnrichedCommand, bool) {
 	// can match on the tech/upgrade name (e.g. "Tank Siege Mode",
 	// "Singularity Charge (Dragoon Range)"). Pre-fix this was empty, so
 	// any phase/composition/timing logic that read Subject for these
-	// kinds silently misclassified them. Existing predicates
-	// (UpgradeExists / TechExists) only key on Kind and are unaffected.
+	// kinds silently misclassified them. The Never-Upgraded /
+	// Never-Researched predicates key on this Subject to split HP
+	// upgrades from research-grade upgrades.
 	if kind == KindTech {
 		subject = strings.TrimSpace(stringPtr(cmd.TechName))
 	}

@@ -94,8 +94,9 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		// Down from 207 after unit-production began maintaining base ownership:
 		// a Train/Morph proves the producing building's base is alive, so
 		// location_inactive (timeout) events dropped 35→21 (-14) and one attack
-		// on a now-owned base surfaced (+1), for a net -13.
-		"replay_events": 194,
+		// on a now-owned base surfaced (+1), for a net -13. Then -1 (issue #163):
+		// a player who did only non-HP upgrades no longer trips Never-researched.
+		"replay_events": 193,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {
