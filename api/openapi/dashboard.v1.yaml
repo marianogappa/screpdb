@@ -304,16 +304,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
-  /api/players/insights/first-unit-delay:
-    get:
-      operationId: playersDelayHistogram
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
   /api/players/insights/unit-production-cadence:
     get:
       operationId: playersUnitCadence
@@ -463,18 +453,6 @@ paths:
       - $ref: "#/components/parameters/playerKey"
     get:
       operationId: playerApmHistogram
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/players/{playerKey}/insights/first-unit-delay:
-    parameters:
-      - $ref: "#/components/parameters/playerKey"
-    get:
-      operationId: playerDelayInsight
       responses:
         "200":
           description: OK

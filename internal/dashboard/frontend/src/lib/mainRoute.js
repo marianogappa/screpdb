@@ -18,7 +18,6 @@ export const MAIN_GAME_TABS = [
 export const MAIN_PLAYERS_TABS = [
   'summary',
   'apm-histogram',
-  'first-unit-delay',
   'unit-production-cadence',
   'viewport-multitasking',
 ];
