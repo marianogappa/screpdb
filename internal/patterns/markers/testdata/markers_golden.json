@@ -126,11 +126,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Never researched",
-        "value": "1110"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,8,9]}"
       },
@@ -361,11 +356,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: Nexus First",
         "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":105,\"found\":true},{\"second\":125,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Never researched",
-        "value": "976"
       },
       {
         "replay_player_id": 1,

@@ -228,3 +228,13 @@ func LookupUpgrade(name string) (UpgradeMeta, bool) {
 	m, ok := upgradeTable[name]
 	return m, ok
 }
+
+// IsHPUpgrade reports whether an upgrade name is a tiered weapon/armor/shield
+// upgrade — the "HP Upgrades" group. These are the only upgrades that count
+// toward the Never-Upgraded marker; every other (one-shot) upgrade is a
+// research and counts toward Never-Researched instead. Unknown names are not
+// treated as HP upgrades.
+func IsHPUpgrade(name string) bool {
+	m, ok := upgradeTable[name]
+	return ok && m.MaxLevel == 3
+}
