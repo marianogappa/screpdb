@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"runtime/pprof"
 	"sync"
 	"time"
@@ -389,36 +390,60 @@ func RunForFiles(ctx context.Context, cfg Config, files []fileops.FileInfo) erro
 }
 
 func processFileToChannel(ctx context.Context, dataChan storage.ReplayDataChannel, fileInfo *fileops.FileInfo, opts parser.Options, sink *profile.Sink) error {
-	// Create replay model from file info
-	replay := parser.CreateReplayFromFileInfo(fileInfo.Path, fileInfo.Name, fileInfo.Size, fileInfo.Checksum)
+	return runGuarded(func() error {
+		// Create replay model from file info
+		replay := parser.CreateReplayFromFileInfo(fileInfo.Path, fileInfo.Name, fileInfo.Size, fileInfo.Checksum)
 
-	// Begin per-replay profile run; nil-safe when sink is disabled.
-	run := sink.Replay(fileInfo.Name)
+		// Begin per-replay profile run; nil-safe when sink is disabled.
+		run := sink.Replay(fileInfo.Name)
 
-	// Parse the replay
-	stop := run.Phase("parse")
-	data, err := parser.ParseReplayWithOptions(fileInfo.Path, replay, opts)
-	stop()
-	if err != nil {
-		return fmt.Errorf("failed to parse replay: %w", err)
-	}
+		// Parse the replay
+		stop := run.Phase("parse")
+		data, err := parser.ParseReplayWithOptions(fileInfo.Path, replay, opts)
+		stop()
+		if err != nil {
+			return fmt.Errorf("failed to parse replay: %w", err)
+		}
 
-	// UMS replays are unsupported — drop them before they reach storage.
-	// Existing UMS rows in older DBs are filtered out at query time
-	// (see global filter compiler); this prevents new ones from landing.
-	if data.Replay != nil && data.Replay.MapKind == "UseMapSettings" {
-		return errSkippedUMS
-	}
+		// UMS replays are unsupported — drop them before they reach storage.
+		// Existing UMS rows in older DBs are filtered out at query time
+		// (see global filter compiler); this prevents new ones from landing.
+		if data.Replay != nil && data.Replay.MapKind == "UseMapSettings" {
+			return errSkippedUMS
+		}
 
-	data.Profile = run
+		data.Profile = run
 
-	// Send to storage channel
-	select {
-	case dataChan <- data:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+		// Send to storage channel
+		select {
+		case dataChan <- data:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	})
+}
+
+// runGuarded runs fn under a panic guard. Parsing + detection runs a lot of
+// data-dependent code (screp, scmapanalyzer, the pattern detectors) against
+// replays that can be old, truncated, or from unusual game modes. Without this,
+// a single replay that trips a nil-deref or out-of-range index in any of that
+// code would crash the whole ingest goroutine — and the entire run. Recover it,
+// turn it into a normal per-file error (the caller logs it and bumps the error
+// counter), and keep ingesting the rest. The stack is included so a tester can
+// paste it into a bug report (issue #165).
+//
+// NOTE: recover cannot catch a runtime fatal such as "concurrent map writes";
+// the parse/detect path was audited to be free of shared mutable state so that
+// the only crash mode left here is an ordinary, recoverable panic.
+func runGuarded(fn func() error) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic while processing replay (this is a bug — please report it at "+
+				"https://github.com/marianogappa/screpdb/issues): %v\n%s", r, debug.Stack())
+		}
+	}()
+	return fn()
 }
 
 // startCPUProfile opens path for writing and begins a runtime/pprof CPU profile.
