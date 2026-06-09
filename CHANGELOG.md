@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.4.0](https://github.com/marianogappa/screpdb/compare/v1.3.0...v1.4.0) (2026-06-09)
+
+
+### Features
+
+* crash reporting, version footer & Scoop install (closes [#165](https://github.com/marianogappa/screpdb/issues/165)) ([#169](https://github.com/marianogappa/screpdb/issues/169)) ([7a0c5a2](https://github.com/marianogappa/screpdb/commit/7a0c5a2776a9b3370882d7f09378de9d9ecd53d7))
+* drop first-unit efficiency aggregation, curate per-game report (closes [#166](https://github.com/marianogappa/screpdb/issues/166)) ([#168](https://github.com/marianogappa/screpdb/issues/168)) ([03eff8d](https://github.com/marianogappa/screpdb/commit/03eff8d13065bbfed3530303409bf3d11a70c758))
+* UX improvements and Double Stargate marker (closes [#167](https://github.com/marianogappa/screpdb/issues/167)) ([#172](https://github.com/marianogappa/screpdb/issues/172)) ([9e8a2ab](https://github.com/marianogappa/screpdb/commit/9e8a2ab55d42d9813df3fd5e870439f85c5eacff))
+
+
+### Bug Fixes
+
+* count non-HP upgrades as researches in Never-researched marker (closes [#163](https://github.com/marianogappa/screpdb/issues/163)) ([#171](https://github.com/marianogappa/screpdb/issues/171)) ([05a57e9](https://github.com/marianogappa/screpdb/commit/05a57e967f0cb378c901eaaa541be0ad787400e4))
+
 ## [1.3.0](https://github.com/marianogappa/screpdb/compare/v1.2.0...v1.3.0) (2026-06-07)
 
 
