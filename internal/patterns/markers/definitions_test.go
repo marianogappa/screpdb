@@ -696,6 +696,40 @@ func TestMarker_TenPlusScouts_NegativeAtNine(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Double Stargate (PvZ signature)
+// ---------------------------------------------------------------------------
+
+func TestMarker_DoubleStargate_PositiveTwoGatesSixSairs(t *testing.T) {
+	m := findBO(t, "Double Stargate")
+	b := factsBuilder()
+	b.B(subjStargate, 300).B(subjStargate, 360)
+	produceN(b, subjCorsair, 6, 380)
+	if !m.Matches(b.list()) {
+		t.Fatalf("2 Stargates + 6 Corsairs should match Double Stargate")
+	}
+}
+
+func TestMarker_DoubleStargate_NegativeOneStargate(t *testing.T) {
+	m := findBO(t, "Double Stargate")
+	b := factsBuilder()
+	b.B(subjStargate, 300)
+	produceN(b, subjCorsair, 8, 380)
+	if m.Matches(b.list()) {
+		t.Fatalf("a single Stargate should NOT match Double Stargate")
+	}
+}
+
+func TestMarker_DoubleStargate_NegativeFewCorsairs(t *testing.T) {
+	m := findBO(t, "Double Stargate")
+	b := factsBuilder()
+	b.B(subjStargate, 300).B(subjStargate, 360)
+	produceN(b, subjCorsair, 5, 380)
+	if m.Matches(b.list()) {
+		t.Fatalf("only 5 Corsairs should NOT match Double Stargate")
+	}
+}
+
 func TestResolveExpert_ComputesDeltasAndTolerance(t *testing.T) {
 	bo := findBO(t, "9 Pool")
 	// Pool actual 78s (target 73, late by 5; within tol=4? No → out).

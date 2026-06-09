@@ -8,19 +8,9 @@ const formatTime = (seconds) => {
   return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}`;
 };
 
-const buildTimeTicks = (maxSecond, useCompressedAxis) => {
-  if (!useCompressedAxis) {
-    return Array.from({ length: 7 }).map((_, i) => Math.round((maxSecond * i) / 6));
-  }
-  const ticks = [0, 180, 360, 540, 720, 900];
-  let current = 1200;
-  while (current < maxSecond) {
-    ticks.push(current);
-    current += 300;
-  }
-  if (ticks[ticks.length - 1] !== maxSecond) ticks.push(maxSecond);
-  return ticks.filter((v, i) => i === 0 || v !== ticks[i - 1]);
-};
+const buildTimeTicks = (maxSecond) => (
+  Array.from({ length: 7 }).map((_, i) => Math.round((maxSecond * i) / 6))
+);
 
 const colorForLabel = (key) => {
   const text = String(key || '').trim().toLowerCase();
@@ -33,15 +23,21 @@ const colorForLabel = (key) => {
   return LABEL_COLORS[Math.abs(hash) % LABEL_COLORS.length];
 };
 
+// Truncate over-long player names so the row label never eats into the plot
+// area. The full name stays available via the row's <title> tooltip.
+const truncateName = (name, max = 16) => {
+  const text = String(name || '');
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+};
+
 function TimingScatterRows({
   title,
   series,
   durationSeconds,
   colorByLabel = false,
+  colorBy,
   showLegend = false,
   markerMode = 'dot',
-  axisMode = 'linear',
-  maxSecondOverride,
   inlineLegend = false,
   noticeText = '',
   rowLabelMode = 'race-suffix',
@@ -49,6 +45,11 @@ function TimingScatterRows({
 }) {
   const wrapperRef = useRef(null);
   const [hover, setHover] = useState(null);
+  // colorBy supersedes the legacy colorByLabel boolean: 'player' tints by
+  // player, 'label' hashes the item label (legacy), 'category' uses each
+  // point's precomputed overlay colour so overlaid timing categories read as
+  // distinct colour families.
+  const colorMode = colorBy || (colorByLabel ? 'label' : 'player');
   const prepared = useMemo(() => {
     const inputSeries = Array.isArray(series) ? series : [];
     const players = [];
@@ -69,9 +70,16 @@ function TimingScatterRows({
         const label = String(point?.label || '').trim();
         const displayLabel = String(point?.display_label || '').trim() || label;
         const labelKey = displayLabel || label || `Timing #${Number(point?.order) || 1}`;
-        const pointColor = colorByLabel ? colorForLabel(labelKey) : playerColor;
-        if (showLegend && colorByLabel && labelKey) {
-          legendEntries.set(labelKey, pointColor);
+        const categoryLabel = String(point?.category_label || '').trim();
+        const overlayColor = String(point?.overlay_color || '').trim();
+        const pointColor = colorMode === 'label'
+          ? colorForLabel(labelKey)
+          : colorMode === 'category'
+            ? (overlayColor || playerColor)
+            : playerColor;
+        const legendKey = colorMode === 'category' ? categoryLabel : labelKey;
+        if (showLegend && colorMode !== 'player' && legendKey) {
+          legendEntries.set(legendKey, pointColor);
         }
         points.push({
           ...point,
@@ -90,12 +98,8 @@ function TimingScatterRows({
     const legendItems = [...legendEntries.entries()]
       .map(([label, color]) => ({ label, color }))
       .sort((a, b) => a.label.localeCompare(b.label));
-    const overriddenMaxSecond = Number(maxSecondOverride);
-    const maxSecondWithOverride = Number.isFinite(overriddenMaxSecond) && overriddenMaxSecond > 0
-      ? overriddenMaxSecond
-      : maxSecond;
-    return { players, points, legendItems, maxSecond: Math.max(60, maxSecondWithOverride) };
-  }, [series, durationSeconds, colorByLabel, showLegend, maxSecondOverride]);
+    return { players, points, legendItems, maxSecond: Math.max(60, maxSecond) };
+  }, [series, durationSeconds, colorMode, showLegend]);
 
   const players = prepared.players;
   if (players.length === 0) {
@@ -114,7 +118,7 @@ function TimingScatterRows({
   const raceIconGap = rowLabelMode === 'worker-icon' ? 10 : 0;
   const topPadding = 20;
   const bottomPadding = 42;
-  const leftPadding = rowLabelMode === 'worker-icon' ? 290 : 190;
+  const leftPadding = rowLabelMode === 'worker-icon' ? 168 : 150;
   const rightPadding = 24;
   const rowOffsets = [];
   let accumulatedGroupGap = 0;
@@ -126,23 +130,12 @@ function TimingScatterRows({
   });
   const chartHeight = topPadding + bottomPadding + (players.length * rowHeight) + accumulatedGroupGap;
   const plotWidth = chartWidth - leftPadding - rightPadding;
-  const useCompressedAxis = axisMode === 'compressed15' && prepared.maxSecond > 900;
-  const splitSecond = 900;
-  const splitRatio = 0.6;
-  const splitX = leftPadding + (plotWidth * splitRatio);
   const xAt = (second) => {
     const bounded = Math.max(0, Number(second) || 0);
-    if (!useCompressedAxis) {
-      return leftPadding + (bounded / prepared.maxSecond) * plotWidth;
-    }
-    if (bounded <= splitSecond) {
-      return leftPadding + (bounded / splitSecond) * (plotWidth * splitRatio);
-    }
-    const tailSpan = Math.max(1, prepared.maxSecond - splitSecond);
-    return splitX + ((bounded - splitSecond) / tailSpan) * (plotWidth * (1 - splitRatio));
+    return leftPadding + (bounded / prepared.maxSecond) * plotWidth;
   };
   const yAt = (playerIndex) => topPadding + playerIndex * rowHeight + (rowOffsets[playerIndex] || 0) + rowHeight / 2;
-  const xTicks = buildTimeTicks(prepared.maxSecond, useCompressedAxis);
+  const xTicks = buildTimeTicks(prepared.maxSecond);
   const updateHover = (event, point) => {
     if (!wrapperRef.current) return;
     const rect = wrapperRef.current.getBoundingClientRect();
@@ -188,9 +181,10 @@ function TimingScatterRows({
                 fill="rgba(255,255,255,0.9)"
                 fontSize="12"
               >
+                <title>{player.race ? `${player.name} (${player.race})` : player.name}</title>
                 {rowLabelMode === 'worker-icon' || rowLabelMode === 'name-only'
-                  ? player.name
-                  : (player.race ? `${player.name} (${player.race})` : player.name)}
+                  ? truncateName(player.name)
+                  : (player.race ? `${truncateName(player.name, 13)} (${player.race})` : truncateName(player.name))}
               </text>
               {rowLabelMode === 'worker-icon' && player.raceIcon ? (
                 <image
@@ -229,21 +223,6 @@ function TimingScatterRows({
               </g>
             );
           })}
-
-          {useCompressedAxis ? (
-            <g>
-              <line
-                x1={splitX}
-                y1={topPadding - 8}
-                x2={splitX}
-                y2={chartHeight - bottomPadding + 8}
-                stroke="rgba(251,191,36,0.8)"
-                strokeDasharray="5 4"
-                strokeWidth="1.4"
-              />
-              <text x={splitX + 5} y={topPadding - 10} fill="rgba(251,191,36,0.95)" fontSize="11">15m split</text>
-            </g>
-          ) : null}
 
           {prepared.points.map((point, idx) => (
             <g
@@ -292,7 +271,7 @@ function TimingScatterRows({
             fill="rgba(255,255,255,0.8)"
             fontSize="12"
           >
-            {useCompressedAxis ? 'Game time (non-linear axis, first 15 minutes emphasized)' : 'Game time'}
+            Game time
           </text>
         </svg>
         {hover ? (

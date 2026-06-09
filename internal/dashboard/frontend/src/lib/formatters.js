@@ -44,11 +44,25 @@ export const formatPercent = (value) => `${((Number(value) || 0) * 100).toFixed(
 //   - UseMapSettings→ ⚙️ (matches the Settings nav button)
 //   - Regular / "" → no emoji (returns empty string)
 export const mapKindEmoji = (mapKind) => {
-  switch (String(mapKind || '')) {
-    case 'Money':
+  // Accept both the DB column casing ("Money", "UseMapSettings") and the
+  // games-list filter keys ("money", "regular").
+  switch (String(mapKind || '').toLowerCase()) {
+    case 'money':
       return '💰';
-    case 'UseMapSettings':
+    case 'usemapsettings':
       return '⚙️';
+    default:
+      return '';
+  }
+};
+
+// mapKindTooltip is the hover explanation for a map-kind emoji.
+export const mapKindTooltip = (mapKind) => {
+  switch (String(mapKind || '').toLowerCase()) {
+    case 'money':
+      return 'Money map: fixed-economy maps (Big Game Hunters, Fastest Possible) where opener timings are uninformative.';
+    case 'usemapsettings':
+      return 'Use Map Settings: custom scenario rules.';
     default:
       return '';
   }
