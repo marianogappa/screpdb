@@ -23,9 +23,6 @@ var topPlayerPalette = []string{
 }
 
 const firstUnitEfficiencyMaxGapSeconds int64 = 60
-const workflowPlayerDelayMinSamples int64 = 5
-const workflowPlayerDelayCutoffSeconds int64 = 7 * 60
-const workflowPlayerDelayMaxGapSeconds int64 = 20
 const workflowUnitCadenceStartSeconds int64 = 7 * 60
 const workflowUnitCadenceEndFraction float64 = 0.8
 const workflowUnitCadenceIdleGapSeconds int64 = 20
@@ -54,26 +51,14 @@ type firstUnitEfficiencyConfig struct {
 	Units                []firstUnitEfficiencyUnitOption
 }
 
-type workflowFirstUnitEfficiencyState struct {
-	buildTimesByUnit map[string][]int64
-	unitTimesByUnit  map[string][]int64
-}
-
-type workflowPlayerDelaySample struct {
-	PlayerKey            string
-	PlayerName           string
-	BuildingName         string
-	UnitName             string
-	GapAfterReadySeconds int64
-}
-
+// firstUnitEfficiencyConfigs is intentionally limited to bread-and-butter
+// army-production buildings whose first unit a player almost always wants out
+// as soon as the building completes. Tech/utility buildings (Forge, Fleet
+// Beacon, Arbiter Tribunal, Physics Lab, Hydralisk Den, Ultralisk Cavern,
+// Defiler Mound) are excluded: they are routinely built for upgrades or teching
+// rather than to pump that unit, so the gap-after-ready signal there is mostly
+// false positives (see issue #166).
 var firstUnitEfficiencyConfigs = []firstUnitEfficiencyConfig{
-	{
-		Race:                 "protoss",
-		BuildingName:         "Forge",
-		BuildDurationSeconds: 25,
-		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Photon Cannon", MatchKeys: []string{"Photon Cannon"}}},
-	},
 	{
 		Race:                 "protoss",
 		BuildingName:         "Gateway",
@@ -88,18 +73,6 @@ var firstUnitEfficiencyConfigs = []firstUnitEfficiencyConfig{
 			{DisplayName: "Corsair", MatchKeys: []string{"Corsair"}},
 			{DisplayName: "Scout", MatchKeys: []string{"Scout"}},
 		},
-	},
-	{
-		Race:                 "protoss",
-		BuildingName:         "Fleet Beacon",
-		BuildDurationSeconds: 38,
-		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Carrier", MatchKeys: []string{"Carrier"}}},
-	},
-	{
-		Race:                 "protoss",
-		BuildingName:         "Arbiter Tribunal",
-		BuildDurationSeconds: 38,
-		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Arbiter", MatchKeys: []string{"Arbiter"}}},
 	},
 	{
 		Race:                 "terran",
@@ -117,22 +90,10 @@ var firstUnitEfficiencyConfigs = []firstUnitEfficiencyConfig{
 		},
 	},
 	{
-		Race:                 "terran",
-		BuildingName:         "Physics Lab",
-		BuildDurationSeconds: 25,
-		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Battlecruiser", MatchKeys: []string{"Battlecruiser"}}},
-	},
-	{
 		Race:                 "zerg",
 		BuildingName:         "Spawning Pool",
 		BuildDurationSeconds: 50,
 		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Zergling", MatchKeys: []string{"Zergling"}}},
-	},
-	{
-		Race:                 "zerg",
-		BuildingName:         "Hydralisk Den",
-		BuildDurationSeconds: 25,
-		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Hydralisk", MatchKeys: []string{"Hydralisk"}}},
 	},
 	{
 		Race:                 "zerg",
@@ -142,18 +103,6 @@ var firstUnitEfficiencyConfigs = []firstUnitEfficiencyConfig{
 			{DisplayName: "Mutalisk", MatchKeys: []string{"Mutalisk"}},
 			{DisplayName: "Scourge", MatchKeys: []string{"Scourge"}},
 		},
-	},
-	{
-		Race:                 "zerg",
-		BuildingName:         "Ultralisk Cavern",
-		BuildDurationSeconds: 50,
-		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Ultralisk", MatchKeys: []string{"Ultralisk"}}},
-	},
-	{
-		Race:                 "zerg",
-		BuildingName:         "Defiler Mound",
-		BuildDurationSeconds: 38,
-		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Defiler", MatchKeys: []string{"Defiler"}}},
 	},
 }
 
@@ -956,7 +905,6 @@ type workflowPlayerInsightType string
 
 const (
 	workflowPlayerInsightTypeAPM                workflowPlayerInsightType = "apm"
-	workflowPlayerInsightTypeFirstDelay         workflowPlayerInsightType = "first-unit-delay"
 	workflowPlayerInsightTypeUnitCadence        workflowPlayerInsightType = "unit-production-cadence"
 	workflowPlayerInsightTypeViewportSwitchRate workflowPlayerInsightType = "viewport-switch-rate"
 )
@@ -1057,67 +1005,6 @@ type workflowPlayerApmHistogram struct {
 	PlayerPercentile *float64                          `json:"player_percentile,omitempty"`
 	Bins             []workflowPlayerApmHistogramBin   `json:"bins"`
 	Players          []workflowPlayerApmHistogramPoint `json:"players"`
-}
-
-type workflowPlayerDelayHistogramBin struct {
-	X0    float64 `json:"x0"`
-	X1    float64 `json:"x1"`
-	Count int64   `json:"count"`
-}
-
-type workflowPlayerDelayHistogramPoint struct {
-	PlayerKey           string                           `json:"player_key"`
-	PlayerName          string                           `json:"player_name"`
-	AverageDelaySeconds float64                          `json:"average_delay_seconds"`
-	SampleCount         int64                            `json:"sample_count"`
-	CaseAverages        []workflowPlayerDelayCaseAverage `json:"case_averages"`
-}
-
-type workflowPlayerDelayCaseAverage struct {
-	CaseKey             string  `json:"case_key"`
-	BuildingName        string  `json:"building_name"`
-	UnitName            string  `json:"unit_name"`
-	AverageDelaySeconds float64 `json:"average_delay_seconds"`
-	SampleCount         int64   `json:"sample_count"`
-}
-
-type workflowPlayerDelayCaseOption struct {
-	CaseKey      string `json:"case_key"`
-	BuildingName string `json:"building_name"`
-	UnitName     string `json:"unit_name"`
-	SampleCount  int64  `json:"sample_count"`
-	PlayerCount  int64  `json:"player_count"`
-}
-
-type workflowPlayerDelayHistogram struct {
-	SummaryVersion     string                              `json:"summary_version"`
-	MinSamples         int64                               `json:"min_samples"`
-	PlayersIncluded    int64                               `json:"players_included"`
-	MeanDelaySeconds   float64                             `json:"mean_delay_seconds"`
-	StddevDelaySeconds float64                             `json:"stddev_delay_seconds"`
-	Bins               []workflowPlayerDelayHistogramBin   `json:"bins"`
-	Players            []workflowPlayerDelayHistogramPoint `json:"players"`
-	CaseOptions        []workflowPlayerDelayCaseOption     `json:"case_options"`
-}
-
-type workflowPlayerDelayPair struct {
-	BuildingName        string  `json:"building_name"`
-	UnitName            string  `json:"unit_name"`
-	SampleCount         int64   `json:"sample_count"`
-	AverageDelaySeconds float64 `json:"average_delay_seconds"`
-	MinDelaySeconds     int64   `json:"min_delay_seconds"`
-	MaxDelaySeconds     int64   `json:"max_delay_seconds"`
-}
-
-type workflowPlayerDelayInsight struct {
-	SummaryVersion      string                    `json:"summary_version"`
-	PlayerKey           string                    `json:"player_key"`
-	PlayerName          string                    `json:"player_name"`
-	SampleCount         int64                     `json:"sample_count"`
-	AverageDelaySeconds float64                   `json:"average_delay_seconds"`
-	MinDelaySeconds     int64                     `json:"min_delay_seconds"`
-	MaxDelaySeconds     int64                     `json:"max_delay_seconds"`
-	Pairs               []workflowPlayerDelayPair `json:"pairs"`
 }
 
 type workflowPlayerUnitCadencePoint struct {

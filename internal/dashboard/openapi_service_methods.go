@@ -400,14 +400,6 @@ func (d *Dashboard) PlayersApmHistogram(_ context.Context, _ apigen.PlayersApmHi
 	return histogram, nil
 }
 
-func (d *Dashboard) PlayersDelayHistogram(_ context.Context, _ apigen.PlayersDelayHistogramRequestObject) (any, error) {
-	histogram, err := d.buildWorkflowPlayerDelayHistogram()
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return histogram, nil
-}
-
 func (d *Dashboard) PlayersUnitCadence(_ context.Context, request apigen.PlayersUnitCadenceRequestObject) (any, error) {
 	filterMode, err := parseWorkflowUnitCadenceFilterMode(nullableStringValue(request.Params.Filter))
 	if err != nil {
@@ -504,21 +496,6 @@ func (d *Dashboard) PlayerApmHistogram(_ context.Context, request apigen.PlayerA
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
 	return histogram, nil
-}
-
-func (d *Dashboard) PlayerDelayInsight(_ context.Context, request apigen.PlayerDelayInsightRequestObject) (any, error) {
-	playerKey := normalizePlayerKey(request.PlayerKey)
-	if playerKey == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("player key missing"))
-	}
-	result, err := d.buildWorkflowPlayerDelayInsight(playerKey)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
-		}
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return result, nil
 }
 
 func (d *Dashboard) PlayerUnitCadence(_ context.Context, request apigen.PlayerUnitCadenceRequestObject) (any, error) {

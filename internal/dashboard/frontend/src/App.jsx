@@ -144,13 +144,10 @@ const SKILL_PROXY_CADENCE_INFO_TEXT = 'ℹ️ How smoothly you keep adding army 
 
 const SKILL_PROXY_VIEWPORT_INFO_TEXT = 'ℹ️ How many times a player switches between places on average per minute.';
 
-const SKILL_PROXY_DELAY_INFO_TEXT = 'Average seconds from a production building becoming ready until the first matching unit command. Lower is better.';
-
 // Per-insight short descriptions for the player Skill proxies > Summary cards.
 // APM omitted intentionally (number is self-explanatory in that view).
 const PLAYER_INSIGHT_DESCRIPTION_OVERRIDES = {
   apm: '',
-  'first-unit-delay': SKILL_PROXY_DELAY_INFO_TEXT,
   'unit-production-cadence': 'How smoothly you keep adding army from the mid game on—not just how much, but how evenly you queue it. Formula: units/min ÷ (1 + gap CV).',
   'viewport-switch-rate': 'How many times a player switches between places on average per minute.',
 };
@@ -1619,7 +1616,6 @@ const formatSigned = (value) => {
 
 const PLAYER_INSIGHT_TYPES = {
   apm: 'apm',
-  firstUnitDelay: 'first-unit-delay',
   unitProductionCadence: 'unit-production-cadence',
   viewportSwitchRate: 'viewport-switch-rate',
 };
@@ -1680,8 +1676,6 @@ const playerInsightDestinationTab = (insightType) => {
   switch (String(insightType || '').trim()) {
     case PLAYER_INSIGHT_TYPES.apm:
       return 'apm-histogram';
-    case PLAYER_INSIGHT_TYPES.firstUnitDelay:
-      return 'first-unit-delay';
     case PLAYER_INSIGHT_TYPES.unitProductionCadence:
       return 'unit-production-cadence';
     case PLAYER_INSIGHT_TYPES.viewportSwitchRate:
@@ -1952,11 +1946,6 @@ function App() {
   const [mainPlayersApmHistogramLoading, setMainPlayersApmHistogramLoading] = useState(false);
   const [mainPlayersApmHistogramError, setMainPlayersApmHistogramError] = useState('');
   const [mainPlayersApmMinGames, setMainPlayersApmMinGames] = useState(5);
-  const [mainPlayersDelayHistogram, setMainPlayersDelayHistogram] = useState(null);
-  const [mainPlayersDelayHistogramLoading, setMainPlayersDelayHistogramLoading] = useState(false);
-  const [mainPlayersDelayHistogramError, setMainPlayersDelayHistogramError] = useState('');
-  const [mainPlayersDelayMinSamples, setMainPlayersDelayMinSamples] = useState(5);
-  const [mainPlayersDelaySelectedCases, setMainPlayersDelaySelectedCases] = useState(['all']);
   const [mainPlayersCadenceHistogram, setMainPlayersCadenceHistogram] = useState(null);
   const [mainPlayersCadenceHistogramLoading, setMainPlayersCadenceHistogramLoading] = useState(false);
   const [mainPlayersCadenceHistogramError, setMainPlayersCadenceHistogramError] = useState('');
@@ -1968,9 +1957,6 @@ function App() {
   const [mainPlayerApmInsight, setMainPlayerApmInsight] = useState(null);
   const [mainPlayerApmInsightLoading, setMainPlayerApmInsightLoading] = useState(false);
   const [mainPlayerApmInsightError, setMainPlayerApmInsightError] = useState('');
-  const [mainPlayerDelayInsight, setMainPlayerDelayInsight] = useState(null);
-  const [mainPlayerDelayInsightLoading, setMainPlayerDelayInsightLoading] = useState(false);
-  const [mainPlayerDelayInsightError, setMainPlayerDelayInsightError] = useState('');
   const [mainPlayerCadenceInsight, setMainPlayerCadenceInsight] = useState(null);
   const [mainPlayerCadenceInsightLoading, setMainPlayerCadenceInsightLoading] = useState(false);
   const [mainPlayerCadenceInsightError, setMainPlayerCadenceInsightError] = useState('');
@@ -2065,22 +2051,6 @@ function App() {
       setMainPlayersApmHistogram(null);
     } finally {
       setMainPlayersApmHistogramLoading(false);
-    }
-  };
-
-  const loadMainPlayersDelayHistogram = async () => {
-    try {
-      setMainPlayersDelayHistogramLoading(true);
-      setMainPlayersDelayHistogramError('');
-      const data = await api.getPlayersFirstUnitDelay();
-      setMainPlayersDelayHistogram(data);
-      setMainPlayersDelaySelectedCases(['all']);
-    } catch (err) {
-      setMainPlayersDelayHistogramError(err.message || 'Failed to load players delay');
-      setMainPlayersDelayHistogram(null);
-      setMainPlayersDelaySelectedCases(['all']);
-    } finally {
-      setMainPlayersDelayHistogramLoading(false);
     }
   };
 
@@ -2311,22 +2281,6 @@ function App() {
     });
   };
 
-  const loadMainPlayerDelayInsight = async (playerKey) => {
-    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
-    if (!normalizedPlayerKey) return;
-    try {
-      setMainPlayerDelayInsightLoading(true);
-      setMainPlayerDelayInsightError('');
-      const delayData = await api.getPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.firstUnitDelay);
-      setMainPlayerDelayInsight(delayData);
-    } catch (err) {
-      setMainPlayerDelayInsightError(err.message || 'Failed to load delay insight');
-      setMainPlayerDelayInsight(null);
-    } finally {
-      setMainPlayerDelayInsightLoading(false);
-    }
-  };
-
   const loadMainPlayerCadenceInsight = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     if (!normalizedPlayerKey) return;
@@ -2388,9 +2342,6 @@ function App() {
     setMainPlayerApmInsight(null);
     setMainPlayerApmInsightError('');
     setMainPlayerApmInsightLoading(false);
-    setMainPlayerDelayInsight(null);
-    setMainPlayerDelayInsightError('');
-    setMainPlayerDelayInsightLoading(false);
     setMainPlayerCadenceInsight(null);
     setMainPlayerCadenceInsightError('');
     setMainPlayerCadenceInsightLoading(false);
@@ -2814,9 +2765,6 @@ function App() {
     if (!mainPlayerApmInsight && !mainPlayerApmInsightLoading && !mainPlayerApmInsightError) {
       loadMainPlayerApmInsight(selectedPlayerKey);
     }
-    if (!mainPlayerDelayInsight && !mainPlayerDelayInsightLoading && !mainPlayerDelayInsightError) {
-      loadMainPlayerDelayInsight(selectedPlayerKey);
-    }
     if (!mainPlayerCadenceInsight && !mainPlayerCadenceInsightLoading && !mainPlayerCadenceInsightError) {
       loadMainPlayerCadenceInsight(selectedPlayerKey);
     }
@@ -2826,7 +2774,6 @@ function App() {
   }, [
     activeView, selectedPlayerKey, mainPlayerTab,
     mainPlayerApmInsight, mainPlayerApmInsightLoading, mainPlayerApmInsightError,
-    mainPlayerDelayInsight, mainPlayerDelayInsightLoading, mainPlayerDelayInsightError,
     mainPlayerCadenceInsight, mainPlayerCadenceInsightLoading, mainPlayerCadenceInsightError,
     mainPlayerViewportInsight, mainPlayerViewportInsightLoading, mainPlayerViewportInsightError,
   ]);
@@ -2906,19 +2853,6 @@ function App() {
     mainPlayersApmHistogram,
     mainPlayersApmHistogramLoading,
     mainPlayersApmHistogramError,
-  ]);
-
-  useEffect(() => {
-    if (activeView !== 'players' || mainPlayersTab !== 'first-unit-delay') return;
-    if (!mainPlayersDelayHistogram && !mainPlayersDelayHistogramLoading && !mainPlayersDelayHistogramError) {
-      loadMainPlayersDelayHistogram();
-    }
-  }, [
-    activeView,
-    mainPlayersTab,
-    mainPlayersDelayHistogram,
-    mainPlayersDelayHistogramLoading,
-    mainPlayersDelayHistogramError,
   ]);
 
   useEffect(() => {
@@ -3244,9 +3178,6 @@ function App() {
     if (mainPlayersApmHistogram) {
       loadMainPlayersApmHistogram();
     }
-    if (mainPlayersDelayHistogram) {
-      loadMainPlayersDelayHistogram();
-    }
     if (mainPlayersCadenceHistogram) {
       loadMainPlayersCadenceHistogram();
     }
@@ -3351,22 +3282,6 @@ function App() {
       }
       setMainPlayersSortDir(sortBy === 'games' || sortBy === 'last_played' ? 'desc' : 'asc');
       return sortBy;
-    });
-  };
-
-  const toggleMainPlayersDelayCase = (caseKey) => {
-    const normalized = String(caseKey || '').trim();
-    if (!normalized) return;
-    setMainPlayersDelaySelectedCases((prev) => {
-      const current = Array.isArray(prev) ? prev : ['all'];
-      if (normalized === 'all') return ['all'];
-      const withoutAll = current.filter((value) => value && value !== 'all');
-      const already = withoutAll.includes(normalized);
-      if (already) {
-        const next = withoutAll.filter((value) => value !== normalized);
-        return next.length === 0 ? ['all'] : next;
-      }
-      return [...withoutAll, normalized];
     });
   };
 
@@ -4240,13 +4155,11 @@ function App() {
   const mainPlayerInsights = [
     mainPlayerApmInsight,
     mainPlayerViewportInsight,
-    mainPlayerDelayInsight,
     mainPlayerCadenceInsight,
   ].filter(Boolean);
-  const mainPlayerInsightLoading = mainPlayerApmInsightLoading || mainPlayerDelayInsightLoading || mainPlayerCadenceInsightLoading || mainPlayerViewportInsightLoading;
+  const mainPlayerInsightLoading = mainPlayerApmInsightLoading || mainPlayerCadenceInsightLoading || mainPlayerViewportInsightLoading;
   const mainPlayerInsightErrors = [
     mainPlayerApmInsightError,
-    mainPlayerDelayInsightError,
     mainPlayerCadenceInsightError,
     mainPlayerViewportInsightError,
   ].filter(Boolean);
@@ -4550,56 +4463,6 @@ function App() {
       }));
     return buildHistogramSummaryFromPlayers(filtered);
   }, [playersApmHistogramPoints, mainPlayersApmMinGames]);
-  const mainPlayersDelayCaseOptions = useMemo(() => (
-    (mainPlayersDelayHistogram?.case_options || [])
-      .map((entry) => ({
-        case_key: String(entry?.case_key || '').trim(),
-        building_name: String(entry?.building_name || '').trim(),
-        unit_name: String(entry?.unit_name || '').trim(),
-        sample_count: Number(entry?.sample_count || 0),
-      }))
-      .filter((entry) => entry.case_key && entry.building_name && entry.unit_name)
-  ), [mainPlayersDelayHistogram]);
-  const playersDelayHistogramPoints = useMemo(() => {
-    const selected = new Set((mainPlayersDelaySelectedCases || []).filter((value) => value && value !== 'all'));
-    const useAll = selected.size === 0 || (mainPlayersDelaySelectedCases || []).includes('all');
-    return (mainPlayersDelayHistogram?.players || [])
-      .map((player) => {
-        const caseAverages = Array.isArray(player?.case_averages) ? player.case_averages : [];
-        const matched = caseAverages.filter((entry) => {
-          const caseKey = String(entry?.case_key || '').trim();
-          if (!caseKey) return false;
-          if (useAll) return true;
-          return selected.has(caseKey);
-        });
-        if (matched.length === 0) return null;
-        const sampleCount = matched.reduce((sum, entry) => sum + (Number(entry?.sample_count || 0)), 0);
-        if (sampleCount <= 0) return null;
-        const weightedSum = matched.reduce((sum, entry) => (
-          sum + (Number(entry?.average_delay_seconds || 0) * Number(entry?.sample_count || 0))
-        ), 0);
-        const avgDelay = weightedSum / sampleCount;
-        return {
-          value: avgDelay,
-          label: String(player?.player_name || '').trim(),
-          player_key: String(player?.player_key || '').trim(),
-          sample_count: sampleCount,
-        };
-      })
-      .filter((player) => player && Number.isFinite(player.value) && player.label);
-  }, [mainPlayersDelayHistogram, mainPlayersDelaySelectedCases]);
-  const mainPlayersDelayProcessed = useMemo(() => {
-    const minSamples = Math.max(5, Number(mainPlayersDelayMinSamples) || 5);
-    const filtered = playersDelayHistogramPoints
-      .filter((player) => Number(player.sample_count || 0) >= minSamples)
-      .map((player) => ({
-        player_key: player.player_key,
-        player_name: player.label,
-        average_apm: player.value,
-        games_played: player.sample_count,
-      }));
-    return buildHistogramSummaryFromPlayers(filtered);
-  }, [playersDelayHistogramPoints, mainPlayersDelayMinSamples]);
   const playersCadenceHistogramPoints = useMemo(() => (
     (mainPlayersCadenceHistogram?.players || [])
       .map((player) => ({
@@ -4989,15 +4852,6 @@ function App() {
                 <button
                   type="button"
                   role="tab"
-                  aria-selected={mainPlayersTab === 'first-unit-delay'}
-                  className={`workflow-production-tab ${mainPlayersTab === 'first-unit-delay' ? 'workflow-production-tab-active' : ''}`}
-                  onClick={() => setMainPlayersTab('first-unit-delay')}
-                >
-                  First Unit Delay
-                </button>
-                <button
-                  type="button"
-                  role="tab"
                   aria-selected={mainPlayersTab === 'unit-production-cadence'}
                   className={`workflow-production-tab ${mainPlayersTab === 'unit-production-cadence' ? 'workflow-production-tab-active' : ''}`}
                   onClick={() => setMainPlayersTab('unit-production-cadence')}
@@ -5155,97 +5009,6 @@ function App() {
                     />
                     <div className="workflow-subtle-note">
                       {`Population shown: ${Number(mainPlayersApmProcessed.playersIncluded) || 0} players (>=${Math.max(5, Number(mainPlayersApmMinGames) || 5)} games). Mean ${Number(mainPlayersApmProcessed.mean || 0).toFixed(1)} APM, stddev ${Number(mainPlayersApmProcessed.stddev || 0).toFixed(1)}.`}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ) : mainPlayersTab === 'first-unit-delay' ? (
-              <div className="workflow-card workflow-card-fingerprints">
-                {!mainPlayersDelayHistogramLoading && !mainPlayersDelayHistogramError ? (
-                  <>
-                    <div className="workflow-card-subtitle"><span>Included building to unit cases</span></div>
-                    <div className="workflow-pattern-pills workflow-games-filter-pills">
-                      <button
-                        type="button"
-                        className={`workflow-filter-pill ${(mainPlayersDelaySelectedCases || []).includes('all') ? 'workflow-filter-pill-active' : ''}`}
-                        onClick={() => toggleMainPlayersDelayCase('all')}
-                      >
-                        All
-                      </button>
-                      {mainPlayersDelayCaseOptions.map((option) => {
-                        const active = (mainPlayersDelaySelectedCases || []).includes(option.case_key);
-                        return (
-                          <button
-                            key={`wf-delay-case-${option.case_key}`}
-                            type="button"
-                            className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                            onClick={() => toggleMainPlayersDelayCase(option.case_key)}
-                          >
-                            {`${option.building_name} -> ${option.unit_name} (${Number(option.sample_count || 0)})`}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                ) : null}
-                {mainPlayersDelayHistogramLoading ? <div className="chart-empty">Loading first-unit delay...</div> : null}
-                {!mainPlayersDelayHistogramLoading && mainPlayersDelayHistogramError ? <div className="chart-empty">{mainPlayersDelayHistogramError}</div> : null}
-                {!mainPlayersDelayHistogramLoading && !mainPlayersDelayHistogramError && mainPlayersDelayProcessed.points.length === 0 ? (
-                  <div className="chart-empty">
-                    Not enough player delay samples to render this distribution yet.
-                    {!(mainPlayersDelaySelectedCases || []).includes('all') ? (
-                      <>
-                        {' '}
-                        <button
-                          type="button"
-                          className="workflow-link-btn"
-                          onClick={() => setMainPlayersDelaySelectedCases(['all'])}
-                        >
-                          Clear case filters
-                        </button>
-                      </>
-                    ) : null}
-                  </div>
-                ) : null}
-                {!mainPlayersDelayHistogramLoading && !mainPlayersDelayHistogramError && mainPlayersDelayProcessed.points.length > 0 ? (
-                  <div className="workflow-insight-chart workflow-insight-chart-tall">
-                    <div className="workflow-summary-filter-row workflow-slider-row">
-                      <label className="workflow-summary-filter-check">
-                        <span>Min samples (post-process): {Math.max(5, Number(mainPlayersDelayMinSamples) || 5)}</span>
-                      </label>
-                      <input
-                        type="range"
-                        className="workflow-slider-input"
-                        min="5"
-                        max={String(Math.max(5, Number(mainPlayersDelayProcessed.maxGames) || 5))}
-                        step="1"
-                        value={String(Math.max(5, Number(mainPlayersDelayMinSamples) || 5))}
-                        onChange={(e) => setMainPlayersDelayMinSamples(Math.max(5, Number(e.target.value) || 5))}
-                      />
-                    </div>
-                    <Histogram
-                      data={[]}
-                      config={{
-                        style: 'monobell_relax',
-                        precomputed_bins: mainPlayersDelayProcessed.bins,
-                        x_axis_label: 'Average delay (seconds)',
-                        y_axis_label: 'Density',
-                        overlay_value_label: 's delay',
-                        overlay_count_label: 'samples',
-                        mean: mainPlayersDelayProcessed.mean,
-                        stddev: mainPlayersDelayProcessed.stddev,
-                        chart_height: 620,
-                        overlay_points: mainPlayersDelayProcessed.points.map((player) => ({
-                          value: Number(player.average_apm || 0),
-                          label: String(player.player_name || ''),
-                          player_key: String(player.player_key || ''),
-                          games_played: Number(player.games_played || 0),
-                        })),
-                        on_overlay_point_click: openMainPlayer,
-                      }}
-                    />
-                    <div className="workflow-subtle-note">
-                      {`Population shown: ${Number(mainPlayersDelayProcessed.playersIncluded) || 0} players (>=${Math.max(5, Number(mainPlayersDelayMinSamples) || 5)} samples). Mean ${Number(mainPlayersDelayProcessed.mean || 0).toFixed(1)}s, stddev ${Number(mainPlayersDelayProcessed.stddev || 0).toFixed(1)}s.`}
                     </div>
                   </div>
                 ) : null}

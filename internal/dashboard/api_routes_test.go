@@ -29,7 +29,6 @@ func TestSetupRouter_JSONEndpoints(t *testing.T) {
 		{"player colors", http.MethodGet, "/api/player-colors", nil},
 		{"screp colors", http.MethodGet, "/api/screp-colors", nil},
 		{"players apm histogram", http.MethodGet, "/api/players/insights/apm-histogram", nil},
-		{"players delay histogram", http.MethodGet, "/api/players/insights/first-unit-delay", nil},
 		{"players cadence", http.MethodGet, "/api/players/insights/unit-production-cadence", nil},
 		{"players viewport", http.MethodGet, "/api/players/insights/viewport-multitasking", nil},
 		{"global replay filter get", http.MethodGet, "/api/custom/global-replay-filter", nil},

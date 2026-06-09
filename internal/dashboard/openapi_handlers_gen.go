@@ -302,23 +302,6 @@ func (a *openAPIStrictAdapter) PlayersApmHistogram(ctx context.Context, request 
 	})
 }
 
-type PlayersDelayHistogramJSONResponse struct {
-	Payload any
-}
-
-func (response PlayersDelayHistogramJSONResponse) VisitPlayersDelayHistogramResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) PlayersDelayHistogram(ctx context.Context, request apigen.PlayersDelayHistogramRequestObject) (apigen.PlayersDelayHistogramResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.PlayersDelayHistogram, func(value any) apigen.PlayersDelayHistogramResponseObject {
-		return PlayersDelayHistogramJSONResponse{Payload: value}
-	})
-}
-
 type PlayersUnitCadenceJSONResponse struct {
 	Payload any
 }
@@ -414,23 +397,6 @@ func (response PlayerApmHistogramJSONResponse) VisitPlayerApmHistogramResponse(w
 func (a *openAPIStrictAdapter) PlayerApmHistogram(ctx context.Context, request apigen.PlayerApmHistogramRequestObject) (apigen.PlayerApmHistogramResponseObject, error) {
 	return responseFromPayload(ctx, request, a.service.PlayerApmHistogram, func(value any) apigen.PlayerApmHistogramResponseObject {
 		return PlayerApmHistogramJSONResponse{Payload: value}
-	})
-}
-
-type PlayerDelayInsightJSONResponse struct {
-	Payload any
-}
-
-func (response PlayerDelayInsightJSONResponse) VisitPlayerDelayInsightResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) PlayerDelayInsight(ctx context.Context, request apigen.PlayerDelayInsightRequestObject) (apigen.PlayerDelayInsightResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.PlayerDelayInsight, func(value any) apigen.PlayerDelayInsightResponseObject {
-		return PlayerDelayInsightJSONResponse{Payload: value}
 	})
 }
 

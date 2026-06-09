@@ -8,63 +8,6 @@ import (
 	"github.com/marianogappa/screpdb/internal/dashboard/db/sqlcgen"
 )
 
-type DelayCommandRow struct {
-	ReplayID    int64
-	PlayerID    int64
-	PlayerName  string
-	PlayerRace  string
-	Second      int64
-	ActionType  string
-	UnitType    sql.NullString
-	UnitTypes   sql.NullString
-}
-
-func (s *Store) ListDelayCommandRows(ctx context.Context, cutoffSeconds int64, onlyPlayerKey string) ([]DelayCommandRow, error) {
-	q := sqlcgen.New(Trace(s.replayScoped()))
-	out := []DelayCommandRow{}
-	if onlyPlayerKey != "" {
-		rows, err := q.ListDelayCommandRowsForPlayer(ctx, sqlcgen.ListDelayCommandRowsForPlayerParams{
-			SecondsFromGameStart: cutoffSeconds,
-			Name:                 onlyPlayerKey,
-		})
-		if err != nil {
-			return nil, err
-		}
-		out = make([]DelayCommandRow, 0, len(rows))
-		for _, row := range rows {
-			out = append(out, DelayCommandRow{
-				ReplayID:   row.ReplayID,
-				PlayerID:   row.ID,
-				PlayerName: row.Name,
-				PlayerRace: row.Race,
-				Second:     row.SecondsFromGameStart,
-				ActionType: row.ActionType,
-				UnitType:   nullableStringPtrToNullString(row.UnitType),
-				UnitTypes:  nullableStringPtrToNullString(row.UnitTypes),
-			})
-		}
-		return out, nil
-	}
-	rows, err := q.ListDelayCommandRows(ctx, cutoffSeconds)
-	if err != nil {
-		return nil, err
-	}
-	out = make([]DelayCommandRow, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, DelayCommandRow{
-			ReplayID:   row.ReplayID,
-			PlayerID:   row.ID,
-			PlayerName: row.Name,
-			PlayerRace: row.Race,
-			Second:     row.SecondsFromGameStart,
-			ActionType: row.ActionType,
-			UnitType:   nullableStringPtrToNullString(row.UnitType),
-			UnitTypes:  nullableStringPtrToNullString(row.UnitTypes),
-		})
-	}
-	return out, nil
-}
-
 func (s *Store) CountPlayerGames(ctx context.Context, playerKey string) (int64, error) {
 	return sqlcgen.New(Trace(s.replayScoped())).CountPlayerGames(ctx, playerKey)
 }

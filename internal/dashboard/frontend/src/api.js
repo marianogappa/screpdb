@@ -206,15 +206,6 @@ export const api = {
     return response.json();
   },
 
-  getPlayersFirstUnitDelay: async () => {
-    const response = await fetch(`${API_BASE}/players/insights/first-unit-delay`);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to get players first-unit delay');
-    }
-    return response.json();
-  },
-
   getPlayersUnitProductionCadence: async ({ filter = 'strict', minGames = 4, limit = 0 } = {}) => {
     const params = new URLSearchParams();
     if (String(filter || '').trim()) params.set('filter', String(filter).trim());
@@ -339,15 +330,6 @@ export const api = {
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get player APM histogram');
-    }
-    return response.json();
-  },
-
-  getPlayerFirstUnitDelay: async (playerKey) => {
-    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/insights/first-unit-delay`);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to get player first-unit delay');
     }
     return response.json();
   },
