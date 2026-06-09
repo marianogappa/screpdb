@@ -238,6 +238,39 @@ func (s *produceCountAtLeastState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *produceCountAtLeastState) Decision(int) TriState { return s.done }
 func (s *produceCountAtLeastState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
+// BuildCountAtLeast matches once at least n Build(subject) facts have been
+// observed, with no time bound. The building analogue of ProduceCountAtLeast,
+// used by whole-game signatures (e.g. "2+ Stargates") whose verdict is
+// independent of when the builds land. Tile-level double-tap spam in the
+// opening minutes is already collapsed upstream (see BuildDedupGapSeconds).
+func BuildCountAtLeast(subject string, n int) Predicate {
+	return func() PredicateState {
+		return &buildCountAtLeastState{subject: subject, want: n}
+	}
+}
+
+type buildCountAtLeastState struct {
+	commitState
+	subject string
+	want    int
+	count   int
+}
+
+func (s *buildCountAtLeastState) Observe(f cmdenrich.EnrichedCommand) {
+	if s.done != Pending {
+		return
+	}
+	if f.Kind == cmdenrich.KindMakeBuilding && f.Subject == s.subject {
+		s.count++
+		if s.count >= s.want {
+			s.done = Matched
+		}
+	}
+}
+
+func (s *buildCountAtLeastState) Decision(int) TriState { return s.done }
+func (s *buildCountAtLeastState) Finalize() TriState    { return s.finalizeDefaultRejected() }
+
 // HPUpgradeExists matches as soon as any tiered weapon/armor/shield upgrade
 // (the "HP Upgrades" group) arrives. Used via Not(...) for the Never-Upgraded
 // marker: only HP upgrades count as "upgrading"; every other upgrade is a

@@ -147,23 +147,26 @@ function GlobalReplayFilterModal({
           <form onSubmit={handleSubmit} className="edit-form settings-modal-tab-panel">
             {error ? <div className="error-message">{error}</div> : null}
 
-            <div className="global-filter-toggle-grid">
-              <label className="global-filter-toggle">
-                <input
-                  type="checkbox"
-                  checked={formState.exclude_short_games}
-                  onChange={(e) => setFormState((prev) => ({ ...prev, exclude_short_games: e.target.checked }))}
-                />
-                <span>Exclude games that last less than 2 minutes</span>
-              </label>
-              <label className="global-filter-toggle">
-                <input
-                  type="checkbox"
-                  checked={formState.exclude_computers}
-                  onChange={(e) => setFormState((prev) => ({ ...prev, exclude_computers: e.target.checked }))}
-                />
-                <span>Exclude games with Computers</span>
-              </label>
+            <div className="global-filter-dimension">
+              <h3>Exclude</h3>
+              <div className="global-filter-toggle-grid">
+                <label className="global-filter-toggle">
+                  <input
+                    type="checkbox"
+                    checked={formState.exclude_short_games}
+                    onChange={(e) => setFormState((prev) => ({ ...prev, exclude_short_games: e.target.checked }))}
+                  />
+                  <span>Games that last less than 2 minutes</span>
+                </label>
+                <label className="global-filter-toggle">
+                  <input
+                    type="checkbox"
+                    checked={formState.exclude_computers}
+                    onChange={(e) => setFormState((prev) => ({ ...prev, exclude_computers: e.target.checked }))}
+                  />
+                  <span>Games with Computers</span>
+                </label>
+              </div>
             </div>
 
             <PillRow

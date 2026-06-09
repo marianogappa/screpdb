@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getUnitIcon } from '../../lib/gameAssets';
 
 // UnitProductionEarlyTimeline renders the first 4 minutes of a game's
@@ -15,7 +15,16 @@ import { getUnitIcon } from '../../lib/gameAssets';
 //   }
 
 const WINDOW_SECONDS = 240;
-const COLUMN_WIDTH = 220;
+// Player columns divide the available width evenly so the chart always fills
+// the panel and lines up column-for-column with the slice table below — at 2
+// players the columns are wide, at 8 they're narrow, and only once a column
+// would fall below MIN_COLUMN_WIDTH does the chart overflow into a scroll.
+const MIN_COLUMN_WIDTH = 150;
+const FALLBACK_COLUMN_WIDTH = 220;
+// Left gutter reserved for the time-axis labels. Matches the fixed width of
+// the slice table's leading "Slice" column (.workflow-production-table) so the
+// pre-4-minute timeline columns align with the post-4-minute table columns.
+const AXIS_GUTTER = 92;
 const HEADER_HEIGHT = 36;
 const TOP_PADDING = 16;
 const BOTTOM_PADDING = 24;
@@ -73,6 +82,23 @@ function UnitProductionEarlyTimeline({
 }) {
   const wrapperRef = useRef(null);
   const [hover, setHover] = useState(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return undefined;
+    const initial = Math.floor(el.getBoundingClientRect().width);
+    if (initial > 0) setContainerWidth(initial);
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = Math.floor(entry.contentRect.width);
+        if (w > 0) setContainerWidth(w);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const filteredByPlayer = useMemo(() => {
     const byPlayerID = new Map();
@@ -93,7 +119,15 @@ function UnitProductionEarlyTimeline({
     return null;
   }
 
-  const chartWidth = COLUMN_WIDTH * players.length;
+  const nPlayers = players.length;
+  const columnWidth = (() => {
+    const avail = containerWidth - AXIS_GUTTER;
+    if (avail <= 0) return FALLBACK_COLUMN_WIDTH;
+    const fit = avail / nPlayers;
+    return Math.max(MIN_COLUMN_WIDTH, fit);
+  })();
+  const columnX = (colIdx) => AXIS_GUTTER + colIdx * columnWidth;
+  const chartWidth = AXIS_GUTTER + columnWidth * nPlayers;
   const chartHeight = HEADER_HEIGHT + TOP_PADDING + PLOT_HEIGHT + BOTTOM_PADDING;
   const yAt = (second) => {
     const clamped = Math.max(0, Math.min(WINDOW_SECONDS, Number(second) || 0));
@@ -127,7 +161,7 @@ function UnitProductionEarlyTimeline({
       >
         {/* Player column headers + tinted backgrounds */}
         {filteredByPlayer.map(({ player }, colIdx) => {
-          const x0 = colIdx * COLUMN_WIDTH;
+          const x0 = columnX(colIdx);
           const headerFill = hasTeamInfo ? teamColorRgba(player.team, 0.2) : 'rgba(255,255,255,0.06)';
           const bodyFill = hasTeamInfo ? teamColorRgba(player.team, 0.05) : 'rgba(255,255,255,0.02)';
           // Stronger column outline when team colours are absent — without it the
@@ -135,11 +169,11 @@ function UnitProductionEarlyTimeline({
           const borderColor = hasTeamInfo ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.18)';
           return (
             <g key={`hdr-${player.player_id}`}>
-              <rect x={x0} y={0} width={COLUMN_WIDTH} height={HEADER_HEIGHT} fill={headerFill} />
-              <rect x={x0} y={HEADER_HEIGHT} width={COLUMN_WIDTH} height={chartHeight - HEADER_HEIGHT} fill={bodyFill} />
-              <rect x={x0 + 0.5} y={0.5} width={COLUMN_WIDTH - 1} height={chartHeight - 1} fill="none" stroke={borderColor} strokeWidth="1" />
+              <rect x={x0} y={0} width={columnWidth} height={HEADER_HEIGHT} fill={headerFill} />
+              <rect x={x0} y={HEADER_HEIGHT} width={columnWidth} height={chartHeight - HEADER_HEIGHT} fill={bodyFill} />
+              <rect x={x0 + 0.5} y={0.5} width={columnWidth - 1} height={chartHeight - 1} fill="none" stroke={borderColor} strokeWidth="1" />
               <text
-                x={x0 + COLUMN_WIDTH / 2}
+                x={x0 + columnWidth / 2}
                 y={HEADER_HEIGHT / 2 + 5}
                 textAnchor="middle"
                 fill="rgba(255,255,255,0.95)"
@@ -155,7 +189,7 @@ function UnitProductionEarlyTimeline({
         {ticks.map((t) => (
           <g key={`tick-${t}`}>
             <line
-              x1={0}
+              x1={AXIS_GUTTER}
               y1={yAt(t)}
               x2={chartWidth}
               y2={yAt(t)}
@@ -163,10 +197,11 @@ function UnitProductionEarlyTimeline({
               strokeWidth="1"
             />
             <text
-              x={4}
-              y={yAt(t) - 3}
+              x={AXIS_GUTTER - 8}
+              y={yAt(t) + 3}
+              textAnchor="end"
               fill="rgba(255,255,255,0.55)"
-              fontSize="10"
+              fontSize="11"
             >
               {formatTime(t)}
             </text>
@@ -175,7 +210,7 @@ function UnitProductionEarlyTimeline({
 
         {/* Per-player events */}
         {filteredByPlayer.map(({ player, events }, colIdx) => {
-          const colCenter = colIdx * COLUMN_WIDTH + COLUMN_WIDTH / 2;
+          const colCenter = columnX(colIdx) + columnWidth / 2;
           if (events.length === 0) {
             return (
               <text

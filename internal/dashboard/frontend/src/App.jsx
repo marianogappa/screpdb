@@ -32,6 +32,8 @@ import {
 import {
   formatDuration,
   formatMapNameWithKind,
+  mapKindEmoji,
+  mapKindTooltip,
   formatRelativeReplayDate,
   formatDaysAgoCompact,
   formatPercent,
@@ -783,6 +785,20 @@ const renderSummaryMapStack = ({
   </>
 );
 
+// renderMapNameWithKind renders the map name with its kind emoji as a hover
+// target (instant "Money map" tooltip) instead of the plain prefixed string.
+const renderMapNameWithKind = (mapName, mapKind) => {
+  const emoji = mapKindEmoji(mapKind);
+  const tip = mapKindTooltip(mapKind);
+  return (
+    <>
+      {emoji ? <span className="workflow-map-kind-emoji" data-tip={tip}>{emoji}</span> : null}
+      {emoji ? ' ' : ''}
+      {String(mapName || '')}
+    </>
+  );
+};
+
 // collectFeaturingKeysFromMainGame gathers the featuring chip keys present in
 // the replay: narrative game_events (cannon_rush / bunker_rush / zergling_rush)
 // by event_type; marker detections by event_type with a couple of aliases for
@@ -1261,18 +1277,6 @@ const HP_UPGRADE_NAMES = new Set([
   'Protoss Plasma Shields',
 ]);
 
-const DEFAULT_HP_UPGRADE_BY_RACE = {
-  terran: 'Terran Vehicle Weapons',
-  protoss: 'Protoss Ground Weapons',
-  zerg: 'Zerg Carapace',
-};
-
-const racePrefixForUpgrade = (race) => {
-  const value = String(race || '').trim().toLowerCase();
-  if (!value) return '';
-  return `${value.charAt(0).toUpperCase()}${value.slice(1)} `;
-};
-
 const setHasUpgradeLoose = (upgradeSet, upgradeName) => {
   const value = String(upgradeName || '').trim();
   if (!value) return false;
@@ -1341,18 +1345,57 @@ const upgradeCategoryForName = (upgradeName) => {
   return 'capacity_cooldown_damage';
 };
 
+// Top-level timing tabs:
+//   * Expansion & Gas — both economic timings overlaid (image markers).
+//   * Upgrades & Tech — non-HP research families overlaid via checkboxes,
+//     colour-coded, with the item name on each dot.
+//   * HP Upgrades — weapon/armor/shield tiers, with a per-race filter (these
+//     repeat per level and differ per race, so they need their own view).
 const TIMING_CATEGORY_CONFIG = [
-  { id: 'expansion', label: 'Expansion', title: 'Expansion timings (1st-4th)', source: 'expansion', markerMode: 'image', markerLabel: 'Expansion' },
-  { id: 'gas', label: 'Gas', title: 'Gas timings (1st-4th)', source: 'gas', markerMode: 'image', markerLabel: 'Gas structure' },
+  { id: 'expansion_gas', label: 'Expansion & Gas', title: 'Expansion and gas timings', source: 'expansion_gas', markerMode: 'image' },
+  { id: 'research', label: 'Upgrades & Tech', title: 'Upgrade and tech research timings', source: 'research' },
   { id: 'hp_upgrades', label: 'HP Upgrades', title: 'HP upgrades timings', source: 'upgrades' },
-  { id: 'unit_range', label: 'Unit Range', title: 'Unit range upgrades timings', source: 'upgrades' },
-  { id: 'unit_speed', label: 'Unit Speed', title: 'Unit speed upgrades timings', source: 'upgrades' },
-  { id: 'energy', label: 'Energy', title: 'Energy upgrades timings', source: 'upgrades' },
-  { id: 'capacity_cooldown_damage', label: 'Capacity/Cooldown/Damage', title: 'Capacity, cooldown and damage upgrades timings', source: 'upgrades' },
-  { id: 'tech', label: 'Tech', title: 'Tech research timings', source: 'tech' },
 ];
 
+// Sub-categories overlaid within the "Upgrades & Tech" tab. Each carries a
+// distinct colour so overlaid families stay visually separable. HP upgrades
+// are intentionally excluded — they have their own tab.
+const RESEARCH_SUBCATEGORIES = [
+  { id: 'unit_range', label: 'Unit Range', source: 'upgrades', color: '#60a5fa' },
+  { id: 'unit_speed', label: 'Unit Speed', source: 'upgrades', color: '#a78bfa' },
+  { id: 'energy', label: 'Energy', source: 'upgrades', color: '#22d3ee' },
+  { id: 'capacity_cooldown_damage', label: 'Capacity/Cooldown/Damage', source: 'upgrades', color: '#f472b6' },
+  { id: 'tech', label: 'Tech', source: 'tech', color: '#84cc16' },
+];
+
+const RESEARCH_SUBCATEGORY_BY_ID = Object.fromEntries(RESEARCH_SUBCATEGORIES.map((s) => [s.id, s]));
+
+// Sensible default overlay: the timings most players actually compare —
+// movement/range upgrades and tech — without the rarer energy/capacity noise.
+const DEFAULT_RESEARCH_SUBCATEGORIES = ['unit_range', 'unit_speed', 'tech'];
+
 const TIMING_RACE_ORDER = ['terran', 'zerg', 'protoss'];
+
+const DEFAULT_HP_UPGRADE_BY_RACE = {
+  terran: 'Terran Vehicle Weapons',
+  protoss: 'Protoss Ground Weapons',
+  zerg: 'Zerg Carapace',
+};
+
+const racePrefixForUpgrade = (race) => {
+  const value = String(race || '').trim().toLowerCase();
+  if (!value) return '';
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)} `;
+};
+
+const prettyRaceName = (race) => {
+  const value = String(race || '').trim().toLowerCase();
+  if (value === 'terran') return 'Terran';
+  if (value === 'zerg') return 'Zerg';
+  if (value === 'protoss') return 'Protoss';
+  return race || 'Unknown';
+};
+
 const FIRST_UNIT_EFFICIENCY_GROUP_CONFIG = [
   { race: 'protoss', buildingName: 'Forge', unitNames: ['Photon Cannon'] },
   { race: 'protoss', buildingName: 'Gateway', unitNames: ['Zealot'] },
@@ -1368,14 +1411,6 @@ const FIRST_UNIT_EFFICIENCY_GROUP_CONFIG = [
   { race: 'zerg', buildingName: 'Ultralisk Cavern', unitNames: ['Ultralisk'] },
   { race: 'zerg', buildingName: 'Defiler Mound', unitNames: ['Defiler'] },
 ];
-
-const prettyRaceName = (race) => {
-  const value = String(race || '').trim().toLowerCase();
-  if (value === 'terran') return 'Terran';
-  if (value === 'zerg') return 'Zerg';
-  if (value === 'protoss') return 'Protoss';
-  return race || 'Unknown';
-};
 
 const BUILDING_TYPE_KEYS = new Set([
   'academy', 'arbitertribunal', 'armory', 'assimilator', 'barracks', 'bunker', 'citadelofadun', 'comsat', 'commandcenter',
@@ -1972,7 +2007,13 @@ function App() {
   const [productionView, setProductionView] = useState('all');
   const [productionSubFilter, setProductionSubFilter] = useState('all');
   const [productionNameFilter, setProductionNameFilter] = useState('');
-  const [mainTimingCategory, setMainTimingCategory] = useState('expansion');
+  const [mainTimingCategory, setMainTimingCategory] = useState('expansion_gas');
+  const [mainResearchSubcategories, setMainResearchSubcategories] = useState(DEFAULT_RESEARCH_SUBCATEGORIES);
+  const toggleResearchSubcategory = (id) => {
+    setMainResearchSubcategories((prev) => (
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    ));
+  };
   const [mainHpUpgradeFilters, setMainHpUpgradeFilters] = useState({
     terran: DEFAULT_HP_UPGRADE_BY_RACE.terran,
     zerg: DEFAULT_HP_UPGRADE_BY_RACE.zerg,
@@ -2137,7 +2178,8 @@ function App() {
       setProductionView('all');
       setProductionSubFilter('all');
       setProductionNameFilter('');
-      setMainTimingCategory('expansion');
+      setMainTimingCategory('expansion_gas');
+      setMainResearchSubcategories(DEFAULT_RESEARCH_SUBCATEGORIES);
       setMainHpUpgradeFilters({
         terran: DEFAULT_HP_UPGRADE_BY_RACE.terran,
         zerg: DEFAULT_HP_UPGRADE_BY_RACE.zerg,
@@ -3380,7 +3422,7 @@ function App() {
     const stackingMarker = game?.team_stacking ? (
       <span
         className="workflow-team-stacking-marker"
-        title="Team stacking — uneven non-solo team sizes for over 5 minutes"
+        data-tip="Team stacking — uneven non-solo team sizes for over 5 minutes"
         style={{ marginLeft: 6 }}
       >
         😈
@@ -3400,7 +3442,7 @@ function App() {
               {idx < players.length - 1 ? ', ' : ''}
             </span>
           ))}
-          <span className="workflow-no-team-warning" title={warningText}>⚠️</span>
+          <span className="workflow-no-team-warning" data-tip={warningText}>⚠️</span>
           {stackingMarker}
         </span>
       );
@@ -3600,6 +3642,7 @@ function App() {
           key: `ownership-${idx}-${entry.base?.name || 'base'}`,
           points,
           ownerName: entry.owner.name,
+          baseName: String(entry.base?.name || '').trim(),
           ownerColor,
           ...polygonStrokeFor(ownerColor, team),
         };
@@ -3643,6 +3686,7 @@ function App() {
         centroid,
         playerID: pid,
         ownerName: String(ev.actor.name || '').trim() || 'Player',
+        baseName: String(ev?.base?.name || '').trim(),
         ownerColor,
         ...polygonStrokeFor(ownerColor, team),
       });
@@ -4187,6 +4231,19 @@ function App() {
   // beside it can be sized to match.
   const [mainEventMapPanelEl, setMainEventMapPanelEl] = useState(null);
   const [mainEventMapPanelHeight, setMainEventMapPanelHeight] = useState(null);
+  // Hover tooltip for the Game Events map: surfaces the owner (and base) of the
+  // polygon under the cursor without crowding the map with always-on labels.
+  const [mainEventMapHover, setMainEventMapHover] = useState(null);
+  const updateMainEventMapHover = (event, payload) => {
+    if (!mainEventMapPanelEl) return;
+    const rect = mainEventMapPanelEl.getBoundingClientRect();
+    setMainEventMapHover({
+      x: event.clientX - rect.left + 12,
+      y: event.clientY - rect.top + 12,
+      ...payload,
+    });
+  };
+  const clearMainEventMapHover = () => setMainEventMapHover(null);
   useEffect(() => {
     if (!mainEventMapPanelEl) {
       setMainEventMapPanelHeight(null);
@@ -4204,12 +4261,12 @@ function App() {
     () => TIMING_CATEGORY_CONFIG.find((cfg) => cfg.id === mainTimingCategory) || TIMING_CATEGORY_CONFIG[0],
     [mainTimingCategory],
   );
+  const isResearchTiming = mainTimingCategory === 'research';
+  const isHpTiming = mainTimingCategory === 'hp_upgrades';
+  const isExpansionGasTiming = mainTimingCategory === 'expansion_gas';
   const mainTimingSeries = useMemo(() => {
     const timings = mainGame?.timings || {};
-    const sourceSeries = Array.isArray(timings?.[mainTimingCategoryConfig.source])
-      ? timings[mainTimingCategoryConfig.source]
-      : [];
-    const sortedSeries = [...sourceSeries].sort((a, b) => {
+    const sortRows = (rows) => rows.sort((a, b) => {
       const raceDiff = raceRank(mainPlayersById.get(a?.player_id)?.race) - raceRank(mainPlayersById.get(b?.player_id)?.race);
       if (raceDiff !== 0) return raceDiff;
       const nameA = String(a?.name || '').toLowerCase();
@@ -4217,113 +4274,149 @@ function App() {
       if (nameA !== nameB) return nameA.localeCompare(nameB);
       return Number(a?.player_id || 0) - Number(b?.player_id || 0);
     });
-
-    return sortedSeries.map((playerSeries) => {
+    const withRace = (playerSeries, points) => {
       const playerRace = String(mainPlayersById.get(playerSeries?.player_id)?.race || '').trim();
-      const sourcePoints = Array.isArray(playerSeries?.points) ? playerSeries.points : [];
-      const mappedPoints = sourcePoints
+      return {
+        ...playerSeries,
+        race: playerRace,
+        race_icon: getRaceIcon(playerRace),
+        points: points.map((p) => ({ ...p, race: playerRace })).sort((a, b) => a.second - b.second),
+      };
+    };
+    // Merge several per-player timing sources into one row per player, keyed by
+    // player_id (preserving the first series' metadata).
+    const mergeByPlayer = (collect) => {
+      const byPlayer = new Map();
+      const ensure = (ps) => {
+        const pid = ps?.player_id;
+        if (!byPlayer.has(pid)) byPlayer.set(pid, { ...ps, points: [] });
+        return byPlayer.get(pid);
+      };
+      collect(ensure);
+      return sortRows([...byPlayer.values()].map((row) => withRace(row, row.points)));
+    };
+
+    // "Expansion & Gas": both economic timings overlaid on one row per player,
+    // each shown with its own building/gas icon.
+    if (mainTimingCategoryConfig.source === 'expansion_gas') {
+      return mergeByPlayer((ensure) => {
+        const add = (series, isGas) => (Array.isArray(series) ? series : []).forEach((ps) => {
+          const row = ensure(ps);
+          const playerRace = String(mainPlayersById.get(ps?.player_id)?.race || '').trim();
+          (ps?.points || []).forEach((point) => {
+            const second = Number(point?.second);
+            if (!Number.isFinite(second)) return;
+            const order = Number(point?.order) || 0;
+            row.points.push({
+              ...point,
+              second,
+              order,
+              label: String(point?.label || '').trim(),
+              display_label: `${isGas ? 'Gas' : 'Expansion'} #${order || 1}`,
+              category: isGas ? 'gas' : 'expansion',
+              category_label: isGas ? 'Gas' : 'Expansion',
+              marker_image: isGas ? getGasMarkerIconForRace(playerRace) : getExpansionMarkerIconForRace(playerRace),
+              marker_label: isGas ? 'Gas structure' : 'Expansion',
+              is_repeatable: false,
+              max_level: 1,
+            });
+          });
+        });
+        add(timings.expansion, false);
+        add(timings.gas, true);
+      });
+    }
+
+    // "Upgrades & Tech": merge the selected non-HP sub-categories per player so
+    // they overlay on one chart, each tinted by its sub-category colour and
+    // labelled with the upgrade/tech name.
+    if (mainTimingCategoryConfig.source === 'research') {
+      const selected = new Set(mainResearchSubcategories);
+      return mergeByPlayer((ensure) => {
+        if ([...selected].some((id) => id !== 'tech')) {
+          (Array.isArray(timings.upgrades) ? timings.upgrades : []).forEach((ps) => {
+            const row = ensure(ps);
+            (ps?.points || []).forEach((point) => {
+              const second = Number(point?.second);
+              if (!Number.isFinite(second)) return;
+              const rawLabel = String(point?.label || '').trim();
+              const cat = upgradeCategoryForName(rawLabel);
+              if (!selected.has(cat)) return;
+              const subcfg = RESEARCH_SUBCATEGORY_BY_ID[cat];
+              row.points.push({
+                ...point,
+                second,
+                order: Number(point?.order) || 0,
+                label: rawLabel,
+                display_label: normalizeTimingDisplayLabel(rawLabel),
+                category: cat,
+                category_label: subcfg?.label || 'Upgrade',
+                overlay_color: subcfg?.color || '',
+                is_repeatable: false,
+                max_level: 1,
+              });
+            });
+          });
+        }
+        if (selected.has('tech')) {
+          const techCfg = RESEARCH_SUBCATEGORY_BY_ID.tech;
+          (Array.isArray(timings.tech) ? timings.tech : []).forEach((ps) => {
+            const row = ensure(ps);
+            (ps?.points || []).forEach((point) => {
+              const second = Number(point?.second);
+              if (!Number.isFinite(second)) return;
+              const rawLabel = String(point?.label || '').trim();
+              row.points.push({
+                ...point,
+                second,
+                order: Number(point?.order) || 0,
+                label: rawLabel,
+                display_label: normalizeTimingDisplayLabel(rawLabel),
+                category: 'tech',
+                category_label: techCfg.label,
+                overlay_color: techCfg.color,
+                is_repeatable: false,
+                max_level: 1,
+              });
+            });
+          });
+        }
+      });
+    }
+
+    // "HP Upgrades": every HP-tier point per player (filtered/labelled per race
+    // downstream by mainHpTimingByRace).
+    const rows = (Array.isArray(timings.upgrades) ? timings.upgrades : []).map((playerSeries) => {
+      const points = (Array.isArray(playerSeries?.points) ? playerSeries.points : [])
         .map((point) => {
           const second = Number(point?.second);
           if (!Number.isFinite(second)) return null;
-          const order = Number(point?.order) || 0;
           const rawLabel = String(point?.label || '').trim();
-          const upgradeCategory = mainTimingCategoryConfig.source === 'upgrades' ? upgradeCategoryForName(rawLabel) : '';
-          if (mainTimingCategoryConfig.source === 'upgrades' && upgradeCategory !== mainTimingCategory) return null;
+          if (upgradeCategoryForName(rawLabel) !== 'hp_upgrades') return null;
+          const order = Number(point?.order) || 0;
           return {
             ...point,
             second,
             order,
             label: rawLabel,
-            upgrade_category: upgradeCategory,
+            display_label: rawLabel,
+            category: 'hp_upgrades',
+            category_label: 'HP Upgrades',
+            is_repeatable: true,
+            max_level: 3,
           };
         })
         .filter(Boolean);
-
-      const points = mappedPoints.map((point) => {
-        const order = Number(point?.order) || 0;
-        const rawLabel = String(point?.label || '').trim();
-        const upgradeCategory = String(point?.upgrade_category || '').trim();
-        let displayLabel = rawLabel;
-        let categoryLabel = 'Timing';
-        let markerImage = null;
-        let markerLabel = '';
-        let isRepeatable = false;
-        let maxLevel = 1;
-
-        if (mainTimingCategoryConfig.source === 'upgrades') {
-          displayLabel = inlineTimingUpgradeLabel(rawLabel, order);
-          categoryLabel = mainTimingCategoryConfig.label;
-          isRepeatable = upgradeCategory === 'hp_upgrades';
-          maxLevel = isRepeatable ? 3 : 1;
-        } else if (mainTimingCategoryConfig.source === 'tech') {
-          displayLabel = normalizeTimingDisplayLabel(rawLabel);
-          categoryLabel = 'Tech';
-        } else if (mainTimingCategory === 'gas') {
-          displayLabel = `Gas #${order || 1}`;
-          categoryLabel = 'Gas';
-          markerImage = getGasMarkerIconForRace(playerRace);
-          markerLabel = mainTimingCategoryConfig.markerLabel || 'Gas';
-        } else if (mainTimingCategory === 'expansion') {
-          displayLabel = `Expansion #${order || 1}`;
-          categoryLabel = 'Expansion';
-          markerImage = getExpansionMarkerIconForRace(playerRace);
-          markerLabel = mainTimingCategoryConfig.markerLabel || 'Expansion';
-        }
-
-        return {
-          ...point,
-          order,
-          label: rawLabel,
-          display_label: displayLabel,
-          category: upgradeCategory || mainTimingCategory,
-          category_label: categoryLabel,
-          race: playerRace,
-          marker_image: markerImage,
-          marker_label: markerLabel,
-          is_repeatable: isRepeatable,
-          max_level: maxLevel,
-        };
-      });
-
-      return {
-        ...playerSeries,
-        race: playerRace,
-        race_icon: getRaceIcon(playerRace),
-        points,
-      };
+      return withRace(playerSeries, points);
     });
-  }, [mainGame?.timings, mainTimingCategoryConfig, mainTimingCategory, mainPlayersById]);
-  const mainTimingUsesLabelColors = useMemo(
-    () => ['hp_upgrades', 'unit_range', 'unit_speed', 'energy', 'capacity_cooldown_damage', 'tech'].includes(mainTimingCategory),
-    [mainTimingCategory],
-  );
-  const mainTimingAxisMode = useMemo(
-    () => (['hp_upgrades', 'unit_range', 'unit_speed', 'energy', 'capacity_cooldown_damage', 'tech'].includes(mainTimingCategory) ? 'compressed15' : 'linear'),
-    [mainTimingCategory],
-  );
-  const mainTimingInlineLegend = useMemo(
-    () => ['hp_upgrades', 'unit_range', 'unit_speed', 'energy', 'capacity_cooldown_damage', 'tech'].includes(mainTimingCategory),
-    [mainTimingCategory],
-  );
-  const mainTimingAxisTrimMaxSecond = useMemo(() => {
-    if (!['gas', 'expansion'].includes(mainTimingCategory)) return undefined;
-    const maxPointSecond = mainTimingSeries.reduce((maxSecond, playerSeries) => {
-      const playerMax = (playerSeries?.points || []).reduce((innerMax, point) => {
-        const second = Number(point?.second);
-        return Number.isFinite(second) ? Math.max(innerMax, second) : innerMax;
-      }, 0);
-      return Math.max(maxSecond, playerMax);
-    }, 0);
-    return maxPointSecond > 0 ? maxPointSecond : undefined;
-  }, [mainTimingCategory, mainTimingSeries]);
-  const mainTimingNotice = useMemo(
-    () => (mainTimingCategory === 'expansion'
-      ? '⚠️ These are base expansions, not just Nexus/Hatchery/CC buildings.'
-      : ''),
-    [mainTimingCategory],
-  );
+    return sortRows(rows);
+  }, [mainGame?.timings, mainTimingCategoryConfig, mainResearchSubcategories, mainPlayersById]);
+  const mainTimingColorBy = isResearchTiming ? 'category' : 'player';
+  const mainTimingNotice = isExpansionGasTiming
+    ? '⚠️ These are base expansions, not just Nexus/Hatchery/CC buildings.'
+    : '';
   const mainHpTimingByRace = useMemo(() => {
-    if (mainTimingCategory !== 'hp_upgrades') return [];
+    if (!isHpTiming) return [];
     return TIMING_RACE_ORDER.map((race) => {
       const raceSeries = mainTimingSeries.filter((playerSeries) => String(playerSeries?.race || '').trim().toLowerCase() === race);
       const racePrefix = racePrefixForUpgrade(race);
@@ -4357,7 +4450,7 @@ function App() {
         series: filteredSeries,
       };
     }).filter((entry) => entry.series.some((playerSeries) => (playerSeries?.points || []).length > 0));
-  }, [mainTimingCategory, mainTimingSeries, mainHpUpgradeFilters]);
+  }, [isHpTiming, mainTimingSeries, mainHpUpgradeFilters]);
   const mainFirstUnitEfficiencyGroups = useMemo(() => {
     const sourcePlayers = Array.isArray(mainGame?.first_unit_efficiency) ? mainGame.first_unit_efficiency : [];
     const normalizedPlayers = sourcePlayers.map((playerEntry) => ({
@@ -4557,8 +4650,8 @@ function App() {
                 href={latestVersionUrl || 'https://github.com/marianogappa/screpdb/releases/latest'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="workflow-nav-update-available"
-                title={`Update available — current version ${currentVersion}`}
+                className="workflow-nav-update-available tip-below"
+                data-tip={`Update available — current version ${currentVersion}`}
               >
                 🆕 Update available
               </a>
@@ -4579,7 +4672,7 @@ function App() {
             <button type="button" onClick={() => setShowIngestPanel(true)} className="workflow-nav-text-action">
               📥 Ingest
               {!showIngestPanel && ingestStatus === 'running' ? (
-                <span className="ingest-running-badge" title="Ingestion in progress — click to view logs">Ingesting…</span>
+                <span className="ingest-running-badge tip-below" data-tip="Ingestion in progress — click to view logs">Ingesting…</span>
               ) : null}
             </button>
             {staleReplaysCount > 0 && staleReplaysCount > dismissedStaleCount && ingestStatus !== 'running' ? (
@@ -4669,7 +4762,7 @@ function App() {
                       className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
                       onClick={() => toggleMainGameMultiFilter('mapKind', option.key)}
                     >
-                      {option.label}
+                      {mapKindEmoji(option.key) ? `${mapKindEmoji(option.key)} ` : ''}{option.label}
                     </button>
                   );
                 })}
@@ -4778,7 +4871,7 @@ function App() {
                       <tr key={game.replay_id} className={selectedReplayId === game.replay_id ? 'workflow-selected-row' : ''} onClick={() => openMainGame(game.replay_id)}>
                         <td className="workflow-games-list-played">{formatRelativeReplayDate(game.replay_date)}</td>
                         <td className="workflow-games-list-players">{renderMainGameListPlayers(game, false)}</td>
-                        <td className="workflow-games-list-map">{formatMapNameWithKind(game.map_name, game.map_kind)}</td>
+                        <td className="workflow-games-list-map">{renderMapNameWithKind(game.map_name, game.map_kind)}</td>
                         <td className="workflow-games-list-duration">{formatDuration(game.duration_seconds)}</td>
                         <td className="workflow-games-list-featuring">
                           {(() => {
@@ -5158,7 +5251,7 @@ function App() {
                     <button
                       type="button"
                       className="btn-switch workflow-meta-filepath-copy"
-                      title="Copy full replay file path to clipboard"
+                      data-tip="Copy full replay file path to clipboard"
                       onClick={() => {
                         if (navigator.clipboard && navigator.clipboard.writeText) {
                           navigator.clipboard.writeText(mainGame.file_path);
@@ -5172,7 +5265,7 @@ function App() {
                     type="button"
                     className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
                     disabled={mainGameSeeLoading}
-                    title="Clones this replay into your configured replay ingestion folder as 000_screpdb_watch_me/watch_me.rep so you can easily find it within Starcraft."
+                    data-tip="Clones this replay into your configured replay ingestion folder as 000_screpdb_watch_me/watch_me.rep so you can easily find it within Starcraft."
                     onClick={copyMainGameToWatchMe}
                   >
                     {mainGameSeeLoading ? 'Copying…' : 'Stage watch replay'}
@@ -5552,14 +5645,20 @@ function App() {
                                         <polygon points="0 0, 5 2.5, 0 5" fill="context-stroke" />
                                       </marker>
                                     </defs>
-                                    {selectedMainGameMapPolygons.map((overlay) => (
-                                      <polygon
-                                        key={overlay.key}
-                                        points={overlay.points}
-                                        className="workflow-event-map-base-polygon"
-                                        style={{ fill: `${overlay.ownerColor}66`, stroke: overlay.teamColor || overlay.ownerColor, strokeWidth: overlay.strokeWidth || 0.4 }}
-                                      />
-                                    ))}
+                                    {selectedMainGameMapPolygons.map((overlay) => {
+                                      const onEnter = (e) => updateMainEventMapHover(e, { ownerName: overlay.ownerName, baseName: overlay.baseName, ownerColor: overlay.ownerColor });
+                                      return (
+                                        <polygon
+                                          key={overlay.key}
+                                          points={overlay.points}
+                                          className="workflow-event-map-base-polygon"
+                                          style={{ fill: `${overlay.ownerColor}66`, stroke: overlay.teamColor || overlay.ownerColor, strokeWidth: overlay.strokeWidth || 0.4 }}
+                                          onMouseEnter={onEnter}
+                                          onMouseMove={onEnter}
+                                          onMouseLeave={clearMainEventMapHover}
+                                        />
+                                      );
+                                    })}
                                     {selectedMainGameArrow ? (
                                       <line
                                         key={`arrow-${selectedMainGameEventKeyResolved}`}
@@ -5785,6 +5884,23 @@ function App() {
                               {mainMapVisual?.resolution_note ? ` (${mainMapVisual.resolution_note})` : ''}
                             </div>
                           )}
+                          {mainEventMapHover ? (
+                            <div
+                              className="workflow-event-map-tooltip"
+                              style={{ left: `${mainEventMapHover.x}px`, top: `${mainEventMapHover.y}px` }}
+                            >
+                              <span
+                                className="workflow-event-map-tooltip-dot"
+                                style={{ background: mainEventMapHover.ownerColor }}
+                              />
+                              <span className="workflow-event-map-tooltip-text">
+                                <strong>{mainEventMapHover.ownerName}</strong>
+                                {mainEventMapHover.baseName ? (
+                                  <span className="workflow-event-map-tooltip-base">{mainEventMapHover.baseName}</span>
+                                ) : null}
+                              </span>
+                            </div>
+                          ) : null}
                         </div>
                         <div
                           className="workflow-events"
@@ -6028,9 +6144,33 @@ function App() {
                         <div className="workflow-section-warning">{mainTimingNotice}</div>
                       ) : null}
                     </div>
-                    {mainTimingCategory === 'hp_upgrades' ? (
-                      <>
-                        {mainHpTimingByRace.map((raceChart) => (
+                    {isResearchTiming ? (
+                      <div className="workflow-timing-overlay-toggles" role="group" aria-label="Overlay timing categories">
+                        {RESEARCH_SUBCATEGORIES.map((sub) => {
+                          const active = mainResearchSubcategories.includes(sub.id);
+                          return (
+                            <label
+                              key={sub.id}
+                              className={`workflow-timing-overlay-toggle ${active ? 'is-active' : ''}`}
+                              style={active ? { borderColor: sub.color, color: sub.color } : undefined}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={active}
+                                onChange={() => toggleResearchSubcategory(sub.id)}
+                              />
+                              <span className="workflow-timing-overlay-swatch" style={{ background: sub.color }} />
+                              <span>{sub.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                    {isHpTiming ? (
+                      mainHpTimingByRace.length === 0 ? (
+                        <div className="workflow-card"><div className="chart-empty">No HP upgrade timings found.</div></div>
+                      ) : (
+                        mainHpTimingByRace.map((raceChart) => (
                           <div key={`hp-${raceChart.race}`} className="workflow-card">
                             <div className="workflow-card-title"><span>{`${raceChart.raceLabel} HP upgrades timings`}</span></div>
                             <div className="workflow-radio-group">
@@ -6051,32 +6191,30 @@ function App() {
                               title=""
                               series={raceChart.series}
                               durationSeconds={mainGame.duration_seconds}
-                              colorByLabel={mainTimingUsesLabelColors}
+                              colorBy="player"
                               showLegend={false}
-                              markerMode={mainTimingCategoryConfig.markerMode || 'dot'}
-                              axisMode={mainTimingAxisMode}
-                              maxSecondOverride={mainTimingAxisTrimMaxSecond}
+                              markerMode="dot"
                               inlineLegend={true}
                               rowLabelMode="worker-icon"
                               rowGroupingMode="none"
                             />
                           </div>
-                        ))}
-                      </>
+                        ))
+                      )
+                    ) : isResearchTiming && mainResearchSubcategories.length === 0 ? (
+                      <div className="workflow-card"><div className="chart-empty">Select at least one category to overlay.</div></div>
                     ) : (
                       <TimingScatterRows
                         title=""
                         series={mainTimingSeries}
                         durationSeconds={mainGame.duration_seconds}
-                        colorByLabel={mainTimingUsesLabelColors}
-                        showLegend={mainTimingUsesLabelColors && !mainTimingInlineLegend}
+                        colorBy={mainTimingColorBy}
+                        showLegend={isResearchTiming}
                         markerMode={mainTimingCategoryConfig.markerMode || 'dot'}
-                        axisMode={mainTimingAxisMode}
-                        maxSecondOverride={mainTimingAxisTrimMaxSecond}
-                        inlineLegend={mainTimingInlineLegend}
+                        inlineLegend={isResearchTiming}
                         noticeText=""
-                        rowLabelMode={mainTimingInlineLegend ? 'worker-icon' : (['gas', 'expansion'].includes(mainTimingCategory) ? 'name-only' : 'race-suffix')}
-                        rowGroupingMode={mainTimingInlineLegend ? 'race' : 'none'}
+                        rowLabelMode={isResearchTiming ? 'worker-icon' : 'name-only'}
+                        rowGroupingMode={isResearchTiming ? 'race' : 'none'}
                       />
                     )}
                   </div>
@@ -6433,10 +6571,9 @@ function App() {
                                   const opp = String(card.opp_race || '').charAt(0).toUpperCase() || '?';
                                   label = `${own}v${opp}`;
                                 } else {
-                                  const formatLabel = card.format_class === 'multi-team' ? 'Multi-team' : card.format_class;
-                                  const moneyTag = card.map_kind === 'Money' ? ' 💰' : '';
-                                  label = `${formatLabel}${moneyTag}`;
+                                  label = card.format_class === 'multi-team' ? 'Multi-team' : card.format_class;
                                 }
+                                const isMoneyCard = card.map_kind === 'Money';
                                 // For format cards, add the player's race so a Random
                                 // player can tell three same-format cards apart.
                                 const formatRaceIcon = card.kind === 'format' ? ownIcon : null;
@@ -6449,6 +6586,9 @@ function App() {
                                         {oppIcon ? <span>v</span> : null}
                                         {oppIcon ? <img src={oppIcon} alt={card.opp_race} title={card.opp_race} className="workflow-recent-game-worker-icon" /> : null}
                                         <strong>{label}</strong>
+                                        {isMoneyCard ? (
+                                          <span className="workflow-money-tag" data-tip="Money map: fixed-economy maps (Big Game Hunters, Fastest Possible) where opener timings are uninformative.">💰 Money map</span>
+                                        ) : null}
                                       </span>
                                       <span className="workflow-player-matchup-card-meta">
                                         <span><strong>{card.games}</strong> games</span>
