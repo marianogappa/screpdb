@@ -1,7 +1,8 @@
 .PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-REL_LDFLAGS := -s -w -X github.com/marianogappa/screpdb/internal/buildinfo.Version=$(VERSION)
+COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+REL_LDFLAGS := -s -w -X github.com/marianogappa/screpdb/internal/buildinfo.Version=$(VERSION) -X github.com/marianogappa/screpdb/internal/buildinfo.Commit=$(COMMIT)
 
 # Extract a plain MAJOR.MINOR.PATCH triple for the Windows PE FixedFileInfo
 # numeric version fields. Only a real semver tag (vX.Y.Z[-...]) yields a number;

@@ -1799,6 +1799,7 @@ function App() {
   const [showGlobalReplayFilter, setShowGlobalReplayFilter] = useState(false);
   const [replayCount, setReplayCount] = useState(null);
   const [currentVersion, setCurrentVersion] = useState('');
+  const [currentCommit, setCurrentCommit] = useState('');
   const [latestVersion, setLatestVersion] = useState('');
   const [latestVersionUrl, setLatestVersionUrl] = useState('');
   const emptyDbAutoOpenRef = useRef(false);
@@ -3141,6 +3142,9 @@ function App() {
       setReplayCount(totalReplays);
       if (data?.version) {
         setCurrentVersion(String(data.version));
+      }
+      if (data?.commit) {
+        setCurrentCommit(String(data.commit));
       }
       if (totalReplays === 0 && !emptyDbAutoOpenRef.current) {
         emptyDbAutoOpenRef.current = true;
@@ -6938,8 +6942,20 @@ function App() {
               <a href="https://github.com/marianogappa/screpdb" target="_blank" rel="noopener noreferrer">screpdb</a>
               {' by '}
               <a href="https://marianogappa.github.io" target="_blank" rel="noopener noreferrer">Mariano Gappa</a>
+              {currentVersion ? (
+                <>
+                  <span className="workflow-meta-sep" aria-hidden="true"> · </span>
+                  <span
+                    className="footer-version"
+                    title={currentCommit ? `commit ${currentCommit}` : undefined}
+                  >
+                    {currentVersion}
+                    {currentCommit && currentCommit !== 'unknown' ? ` (${currentCommit})` : ''}
+                  </span>
+                </>
+              ) : null}
               <span className="workflow-meta-sep" aria-hidden="true"> · </span>
-              <a href="https://github.com/marianogappa/screpdb/issues" target="_blank" rel="noopener noreferrer">🐞 Report an issue</a>
+              <a href="https://github.com/marianogappa/screpdb/issues/new/choose" target="_blank" rel="noopener noreferrer">🐞 Report an issue</a>
             </>
           ) : (
             'Loading replay count...'

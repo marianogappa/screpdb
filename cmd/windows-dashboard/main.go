@@ -9,13 +9,26 @@ import (
 	"syscall"
 
 	"github.com/marianogappa/screpdb/cmd"
+	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/dashboardrun"
+	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/tray"
 	"github.com/spf13/pflag"
 )
 
 func main() {
+	defer crashreport.Recover(true)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	// The GUI binary has no attached console, so route diagnostics to a log
+	// file next to the binary (and permit writes there — crash reports land in
+	// the same directory). Best-effort: fall back to default logging on failure.
+	if cwd, err := os.Getwd(); err == nil {
+		_ = iofacade.AllowDir(cwd)
+	}
+	if logFile, err := iofacade.Create("screpdb-dashboard.log"); err == nil {
+		log.SetOutput(logFile)
+	}
 
 	var opts dashboardrun.Options
 	fs := pflag.NewFlagSet("windows-dashboard", pflag.ContinueOnError)
@@ -41,6 +54,7 @@ func main() {
 
 	errCh := make(chan error, 1)
 	go func() {
+		defer crashreport.Recover(true)
 		errCh <- cmd.RunDashboardWithContext(ctx, opts)
 	}()
 

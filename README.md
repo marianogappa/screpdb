@@ -36,6 +36,23 @@ Download the latest release from the [Releases page](https://github.com/marianog
 
 As a convenience for non-technical Windows users, a special Windows GUI binary is included in releases (look for screpdb-dashboard).
 
+### Windows: install & upgrade via Scoop
+
+If you use [Scoop](https://scoop.sh), you can install screpdb (and upgrade it with one command) instead of re-downloading the binary each release:
+
+```powershell
+scoop bucket add screpdb https://github.com/marianogappa/screpdb
+scoop install screpdb
+```
+
+This installs both the `screpdb` CLI and the `screpdb-dashboard` GUI. To upgrade later:
+
+```powershell
+scoop update screpdb
+```
+
+The bucket manifest lives at [`bucket/screpdb.json`](bucket/screpdb.json) and is bumped automatically on each release.
+
 > ⚠️ **Warning:** screpdb runs as an unsandboxed binary. To reduce risk it now routes all I/O through in-process facades — filesystem access is confined to the working directory, the replays folder, and the OS cache dir, and the binary makes no outbound network calls (see [Security / I/O model](#security--io-model)). These are best-effort guardrails, not an OS sandbox, so still exercise judgement before running it.
 
 If you prefer to build from source, you'll need Go 1.25.2 or later:
@@ -100,6 +117,15 @@ The dashboard binary (`screpdb-dashboard-windows-amd64.exe`) is a GUI app — if
 
 You can always [build from source](#installation) to bypass these warnings.
 
+## Reporting a bug
+
+If screpdb misbehaves or crashes, please [open an issue](https://github.com/marianogappa/screpdb/issues/new/choose) — the bug-report form asks for the few things that make a report actionable (version, OS, and ideally the replay that triggers it).
+
+To make this painless, screpdb helps you out:
+
+- **Version is always visible.** The exact version and commit SHA are shown in the dashboard footer (e.g. `v1.3.0 (abc1234)`) — paste that into the issue.
+- **Crashes are caught.** If the app panics, it writes a `screpdb-crash-<timestamp>.log` file next to the binary (containing the version, OS, and full stack trace) and prints a pre-filled "open an issue" link. The Windows dashboard GUI — which has no console — additionally opens that pre-filled issue in your browser automatically and writes a `screpdb-dashboard.log` next to the binary. Attach those files to the issue.
+
 ### Verifying downloads
 
 Each release publishes a `SHA256SUMS` file and a `SHA256SUMS.minisig` minisign signature alongside the binaries.
@@ -138,6 +164,7 @@ This is a best-effort, in-process guard, not an OS sandbox: paths handed to trus
 Changes to screpdb are authored by an LLM coding agent (e.g. Claude Code). As part of authoring a change, that LLM re-assesses whether the change could weaken the I/O rules above and records a dated, one-line verdict in the log below (see `AGENTS.md`). It's an honour-system receipt written by the same LLM that wrote the code — it can be tampered with, just as the facades themselves can — but recording it makes any tampering visible in the diff. `TestIOSafetyAuditPresent` fails CI (`go test ./...`) if the log has no entry, so a change cannot land with an empty audit. The authoritative guard remains the enforcement test above.
 
 <!-- IO-AUDIT:START -->
+- **2026-06-09** — `OK`. Debugging/crash-reporting improvements (issue #165): new `internal/crashreport` writes a crash log via `iofacade.WriteFile`, and the Windows GUI binary opens a `screpdb-dashboard.log` via `iofacade.Create` and registers cwd with `iofacade.AllowDir` (already an allowed root). No new direct os/net calls, no allowlist widening, no enforcement-test changes; the crash handler's browser-open uses `pkg/browser` (process exec, not a net/fs primitive).
 - **2026-06-07** — `OK`. Early-game event overlay rework (issue #159): consolidated BO timeline events + map overlays. Pure presentation/dashboard-response changes (Go struct field, frontend rendering); no new os/net calls, no allowlist or enforcement-test changes.
 - **2026-05-31** — `OK`. Introduced the `iofacade`/`netfacade` chokepoints, the enforcement test, and removed the AI + fswatch surfaces; this change establishes the I/O rules rather than weakening them.
 <!-- IO-AUDIT:END -->
