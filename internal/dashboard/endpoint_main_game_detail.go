@@ -100,9 +100,6 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	if err := d.populateUnitCadenceForGameDetail(&detail); err != nil {
 		return detail, err
 	}
-	if err := d.populateSupplyDisciplineForGameDetail(&detail); err != nil {
-		return detail, err
-	}
 	if err := d.populateViewportMultitaskingForGameDetail(&detail); err != nil {
 		return detail, err
 	}

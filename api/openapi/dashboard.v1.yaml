@@ -342,41 +342,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
-  /api/players/insights/supply-discipline:
-    get:
-      operationId: playersSupplyDiscipline
-      parameters:
-        - name: min_games
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int64
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int64
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/players/{playerKey}/insights/supply-discipline:
-    parameters:
-      - $ref: "#/components/parameters/playerKey"
-    get:
-      operationId: playerSupplyDiscipline
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
   /api/players/{playerKey}:
     parameters:
       - $ref: "#/components/parameters/playerKey"

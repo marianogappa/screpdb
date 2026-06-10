@@ -302,23 +302,6 @@ func (a *openAPIStrictAdapter) PlayersApmHistogram(ctx context.Context, request 
 	})
 }
 
-type PlayersSupplyDisciplineJSONResponse struct {
-	Payload any
-}
-
-func (response PlayersSupplyDisciplineJSONResponse) VisitPlayersSupplyDisciplineResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) PlayersSupplyDiscipline(ctx context.Context, request apigen.PlayersSupplyDisciplineRequestObject) (apigen.PlayersSupplyDisciplineResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.PlayersSupplyDiscipline, func(value any) apigen.PlayersSupplyDisciplineResponseObject {
-		return PlayersSupplyDisciplineJSONResponse{Payload: value}
-	})
-}
-
 type PlayersUnitCadenceJSONResponse struct {
 	Payload any
 }
@@ -414,23 +397,6 @@ func (response PlayerApmHistogramJSONResponse) VisitPlayerApmHistogramResponse(w
 func (a *openAPIStrictAdapter) PlayerApmHistogram(ctx context.Context, request apigen.PlayerApmHistogramRequestObject) (apigen.PlayerApmHistogramResponseObject, error) {
 	return responseFromPayload(ctx, request, a.service.PlayerApmHistogram, func(value any) apigen.PlayerApmHistogramResponseObject {
 		return PlayerApmHistogramJSONResponse{Payload: value}
-	})
-}
-
-type PlayerSupplyDisciplineJSONResponse struct {
-	Payload any
-}
-
-func (response PlayerSupplyDisciplineJSONResponse) VisitPlayerSupplyDisciplineResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) PlayerSupplyDiscipline(ctx context.Context, request apigen.PlayerSupplyDisciplineRequestObject) (apigen.PlayerSupplyDisciplineResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.PlayerSupplyDiscipline, func(value any) apigen.PlayerSupplyDisciplineResponseObject {
-		return PlayerSupplyDisciplineJSONResponse{Payload: value}
 	})
 }
 

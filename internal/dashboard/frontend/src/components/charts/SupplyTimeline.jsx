@@ -1,18 +1,17 @@
 import React, { useMemo, useState } from 'react';
 import { normalizeUnitName } from '../../lib/gameAssets';
 
-// SupplyTimeline charts each player's cumulative supply provided over the whole
-// game as an overlaid step line, and annotates the flat stretches (no supply
-// added) longer than a threshold with their duration in seconds — a "supply
-// block / supply pace" comparison. Built frontend-only from production_timeline
-// (the same per-event stream the Army timeline replays).
+// SupplyTimeline overlays each player's cumulative supply provided over the game
+// as a thin step line with a dot at every supply addition. It is a descriptive
+// view of supply pace — not a skill score (gap size is heavily confounded by map
+// economy). Lines stop where a player left / stopped playing (left_second), not
+// at game end. Built frontend-only from production_timeline.
 //
-// Caveats surfaced in the UI: values use the build/morph COMMAND second (when
-// supply was committed, not when it finished), and Overlord/Pylon counts are
-// not de-duped (see builddedup — only Terran depots are), so Protoss/Zerg lines
-// can over-count. This is a labs/experimental view.
+// Values use the build/morph COMMAND second (commit time, not completion), and
+// Overlord/Pylon counts can't be de-duped, so Protoss/Zerg lines may over-count.
 
-// Displayed supply each provider adds. Lair/Hive are morphs of an
+// Displayed supply each provider adds. Townhalls (Command Center/Nexus/Hatchery)
+// provide supply too and are included. Lair/Hive are morphs of an
 // already-counted Hatchery, so they add nothing here.
 const SUPPLY_PROVIDERS = {
   supplydepot: 8,
@@ -28,14 +27,24 @@ const SUPPLY_PROVIDERS = {
 const RACE_START_SUPPLY = { Terran: 10, Protoss: 9, Zerg: 9 };
 
 const FALLBACK_COLORS = ['#60a5fa', '#f87171', '#34d399', '#fbbf24', '#a78bfa', '#f472b6', '#22d3ee', '#fb923c'];
-const THRESHOLDS = [15, 25, 40, 60];
-const DEFAULT_THRESHOLD = 25;
 
 const W = 1000;
-const H = 440;
-const M = { left: 48, right: 16, top: 16, bottom: 36 };
-const PLOT_W = W - M.left - M.right;
+const H = 420;
+const LABEL_GUTTER = 140;
+const M = { left: 44, top: 14, bottom: 32 };
+const PLOT_W = W - M.left - LABEL_GUTTER;
 const PLOT_H = H - M.top - M.bottom;
+const PLOT_RIGHT = M.left + PLOT_W;
+const LABEL_LINE_H = 15;
+
+// Non-linear scale params: over-represent the early/low-supply region where
+// lines bunch up.
+const X_EARLY_SECONDS = 600; // first 10 min...
+const X_EARLY_FRAC = 0.6; // ...gets 60% of the plot width
+const Y_MIN = 4; // y-axis baseline (just below the starting-supply seed)
+const Y_LOW_SUPPLY = 100; // the 4-100 supply band...
+const Y_LOW_FRAC = 0.55; // ...gets 55% of the plot height
+const DODGE_PX = 2; // per-line vertical separation for overlapping lines
 
 const formatTime = (seconds) => {
   const value = Math.max(0, Math.floor(Number(seconds) || 0));
@@ -49,44 +58,39 @@ const niceCeil = (v) => {
   return Math.ceil(v / 20) * 20;
 };
 
-// buildSeries folds a player's supply-provider events into a sorted list of
-// cumulative points (seeded at t=0 by race), plus the gaps between additions.
-const buildSeries = (events, race, duration) => {
-  const adds = [{ sec: 0, delta: RACE_START_SUPPLY[race] || 0 }];
+const truncateName = (name, max = 16) => {
+  const s = String(name || '');
+  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+};
+
+// buildSeries folds a player's supply-provider events into cumulative points
+// (seeded at t=0 by race), keeping only additions up to endSec (the player's
+// departure or game end). Each point carries what was built and how much it
+// added so a dot can be hovered for detail.
+const buildSeries = (events, race, endSec) => {
+  const adds = [{ sec: 0, delta: RACE_START_SUPPLY[race] || 0, built: 'Starting supply', count: 0 }];
   for (const ev of events || []) {
     const key = normalizeUnitName(ev?.unit_type);
     const value = SUPPLY_PROVIDERS[key];
     if (!value) continue;
-    adds.push({ sec: num(ev?.sec ?? ev?.second), delta: value * (num(ev?.count) || 1) });
+    const sec = num(ev?.sec ?? ev?.second);
+    if (sec > endSec) continue;
+    const count = num(ev?.count) || 1;
+    adds.push({ sec, delta: value * count, built: String(ev?.unit_type || ''), count });
   }
   adds.sort((a, b) => a.sec - b.sec);
   let cum = 0;
   const points = adds.map((a) => {
     cum += a.delta;
-    return { sec: a.sec, cum };
+    return { sec: a.sec, cum, delta: a.delta, built: a.built, count: a.count };
   });
-  // Gaps: stretch between one addition's second and the next (and from the last
-  // addition to game end). prevCum is the supply held flat during the gap.
-  const gaps = [];
-  for (let i = 0; i < points.length; i += 1) {
-    const start = points[i].sec;
-    const end = i + 1 < points.length ? points[i + 1].sec : duration;
-    if (end - start > 0) gaps.push({ start, end, durationSec: end - start, cum: points[i].cum });
-  }
-  return { points, gaps, total: cum };
+  return { points, total: cum };
 };
 
-const scoreTier = (score) => {
-  if (score >= 70) return { label: 'disciplined', color: 'var(--color-text-success, #34d399)' };
-  if (score >= 55) return { label: 'good', color: 'var(--color-text-success, #34d399)' };
-  if (score >= 45) return { label: 'average', color: 'var(--color-text-secondary)' };
-  if (score >= 30) return { label: 'below average', color: 'var(--color-text-warning, #fbbf24)' };
-  return { label: 'leaky', color: 'var(--color-text-danger, #f87171)' };
-};
-
-function SupplyTimeline({ players, timeline, durationSeconds, hasTeamInfo, teamColorRgba, discipline = [] }) {
+function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
   const duration = Math.max(1, Math.floor(Number(durationSeconds) || 0));
-  const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);
+  const [hoveredId, setHoveredId] = useState(null);
+  const [tip, setTip] = useState(null);
 
   const eventsByPlayer = useMemo(() => {
     const map = new Map();
@@ -94,103 +98,103 @@ function SupplyTimeline({ players, timeline, durationSeconds, hasTeamInfo, teamC
     return map;
   }, [timeline]);
 
-  const disciplineById = useMemo(() => {
-    const m = new Map();
-    (discipline || []).forEach((d) => m.set(d.player_id, d));
-    return m;
-  }, [discipline]);
-
-  const series = useMemo(() => (
+  const allSeries = useMemo(() => (
     (players || []).map((player, idx) => {
-      const color = hasTeamInfo ? teamColorRgba(player.team, 0.95) : FALLBACK_COLORS[idx % FALLBACK_COLORS.length];
+      const color = playerColor ? playerColor(player.color) : (player.color || FALLBACK_COLORS[idx % FALLBACK_COLORS.length]);
+      const left = player.left_second != null ? Math.floor(Number(player.left_second)) : null;
+      const endSec = left != null && left > 0 ? Math.min(left, duration) : duration;
       return {
         player,
         color,
-        ...buildSeries(eventsByPlayer.get(player.player_id), player.race, duration),
+        dodgeIdx: idx,
+        endSec,
+        ...buildSeries(eventsByPlayer.get(player.player_id), player.race, endSec),
       };
     })
-  ), [players, eventsByPlayer, hasTeamInfo, teamColorRgba, duration]);
+  ), [players, eventsByPlayer, playerColor, duration]);
 
   if (!players || players.length === 0) return null;
 
-  const maxSupply = niceCeil(Math.max(20, ...series.map((s) => s.total)));
-  const xAt = (sec) => M.left + (Math.max(0, Math.min(duration, sec)) / duration) * PLOT_W;
-  const yAt = (supply) => M.top + PLOT_H - (Math.max(0, supply) / maxSupply) * PLOT_H;
+  const series = allSeries;
+  const nSeries = series.length;
 
-  const xStep = duration <= 600 ? 60 : duration <= 1800 ? 180 : 300;
+  const maxSupply = niceCeil(Math.max(20, ...series.map((s) => s.total)));
+
+  // Non-linear scales that over-represent the dense early game (lines bunch up
+  // in the first ~10 min and the 4-100 supply band). The early time window and
+  // the low-supply band each get a larger share of the plot, so overlapping
+  // lines spread out where it matters.
+  const xBreak = Math.min(X_EARLY_SECONDS, duration);
+  const xAt = (sec) => {
+    const s = Math.max(0, Math.min(duration, sec));
+    if (duration <= xBreak || s <= xBreak) {
+      const denom = duration <= xBreak ? duration : xBreak;
+      return M.left + (s / denom) * (duration <= xBreak ? 1 : X_EARLY_FRAC) * PLOT_W;
+    }
+    return M.left + (X_EARLY_FRAC + ((s - xBreak) / (duration - xBreak)) * (1 - X_EARLY_FRAC)) * PLOT_W;
+  };
+
+  const yMax = maxSupply;
+  const yBreak = Math.min(Y_LOW_SUPPLY, yMax);
+  const yFrac = (supply) => {
+    const v = Math.max(Y_MIN, Math.min(yMax, supply));
+    if (yMax <= yBreak || v <= yBreak) {
+      const denom = yMax <= yBreak ? (yMax - Y_MIN) || 1 : (yBreak - Y_MIN) || 1;
+      return ((v - Y_MIN) / denom) * (yMax <= yBreak ? 1 : Y_LOW_FRAC);
+    }
+    return Y_LOW_FRAC + ((v - yBreak) / ((yMax - yBreak) || 1)) * (1 - Y_LOW_FRAC);
+  };
+  const yAt = (supply) => M.top + PLOT_H - yFrac(supply) * PLOT_H;
+  // Small deterministic vertical dodge so perfectly-overlapping lines stay
+  // distinguishable (tooltip/labels still report true values).
+  const yDodge = (s) => (nSeries > 1 ? (s.dodgeIdx - (nSeries - 1) / 2) * DODGE_PX : 0);
+
+  const xStep = duration <= 600 ? 60 : 120;
   const xTicks = [];
   for (let t = 0; t <= duration; t += xStep) xTicks.push(t);
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(maxSupply * f));
+  const yTicks = [Y_MIN, 50, 100, 150, 200, 250, 300].filter((v, i) => i === 0 || v <= yMax);
 
-  const stepPath = (points) => {
+  const stepPath = (points, endSec, dodge = 0) => {
     if (!points.length) return '';
-    let d = `M ${xAt(points[0].sec)} ${yAt(points[0].cum)}`;
+    const y = (cum) => yAt(cum) + dodge;
+    let d = `M ${xAt(points[0].sec)} ${y(points[0].cum)}`;
     for (let i = 1; i < points.length; i += 1) {
-      d += ` L ${xAt(points[i].sec)} ${yAt(points[i - 1].cum)}`;
-      d += ` L ${xAt(points[i].sec)} ${yAt(points[i].cum)}`;
+      d += ` L ${xAt(points[i].sec)} ${y(points[i - 1].cum)}`;
+      d += ` L ${xAt(points[i].sec)} ${y(points[i].cum)}`;
     }
-    d += ` L ${xAt(duration)} ${yAt(points[points.length - 1].cum)}`;
+    d += ` L ${xAt(endSec)} ${y(points[points.length - 1].cum)}`;
     return d;
   };
 
+  // End-of-line labels live in the right gutter, vertically de-cluttered and
+  // connected back to each line's endpoint so optics stay clean with overlap.
+  const labels = series
+    .map((s) => ({
+      id: s.player.player_id,
+      name: s.player.name,
+      isWinner: s.player.is_winner,
+      color: s.color,
+      endX: xAt(s.endSec),
+      endY: yAt(s.total) + yDodge(s),
+    }))
+    .sort((a, b) => a.endY - b.endY);
+  let lastY = -Infinity;
+  labels.forEach((l) => {
+    l.labelY = Math.max(l.endY, lastY + LABEL_LINE_H);
+    lastY = l.labelY;
+  });
+  // If labels overflow the bottom, push the whole stack up.
+  const overflow = labels.length ? labels[labels.length - 1].labelY - (M.top + PLOT_H) : 0;
+  if (overflow > 0) labels.forEach((l) => { l.labelY -= overflow; });
+
+  const dim = (id) => hoveredId != null && hoveredId !== id;
+
   return (
     <div className="workflow-card workflow-card-chat-summary">
-      <div className="workflow-section-info" role="note">
-        🧪 Experimental. Cumulative supply provided over the game, one line per
-        player. Flat stretches longer than the threshold are marked with their
-        length in seconds — long gaps mean a slow supply (likely supply-blocked).
-        Uses the build/morph <em>command</em> second (commit time, not completion).
-      </div>
-
-      {(discipline || []).length > 0 ? (
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(180px, 1fr))`, gap: 12, marginBottom: 16 }}>
-          {players.map((player, idx) => {
-            const d = disciplineById.get(player.player_id);
-            const color = hasTeamInfo ? teamColorRgba(player.team, 0.95) : FALLBACK_COLORS[idx % FALLBACK_COLORS.length];
-            return (
-              <div key={player.player_id} style={{ background: 'var(--color-background-secondary, rgba(255,255,255,0.04))', borderRadius: 8, padding: '10px 12px' }}>
-                <div style={{ fontSize: 12, opacity: 0.75, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 9, height: 9, borderRadius: 2, background: color }} />
-                  {player.is_winner ? '👑 ' : ''}{player.name}
-                </div>
-                {d && d.eligible ? (
-                  <>
-                    <div style={{ fontSize: 22, fontWeight: 600, color: scoreTier(d.score).color }}>
-                      {d.score}<span style={{ fontSize: 12, opacity: 0.6 }}>/100</span>
-                      <span style={{ fontSize: 12, marginLeft: 6, color: scoreTier(d.score).color }}>{scoreTier(d.score).label}</span>
-                    </div>
-                    <div style={{ fontSize: 11, opacity: 0.7 }}>
-                      avg early gap {Math.round(d.weighted_gap_sec)}s · typical {Math.round(d.typical_gap_sec)}s
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ fontSize: 12, opacity: 0.5 }}>not enough supply data</div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
-
-      <div className="workflow-production-top-row" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div className="workflow-radio-group" role="radiogroup" aria-label="Gap threshold">
-          <span style={{ opacity: 0.7, fontSize: 12, alignSelf: 'center', marginRight: 4 }}>Mark gaps ≥</span>
-          {THRESHOLDS.map((t) => (
-            <label key={t} className="workflow-radio-option">
-              <input
-                type="radio"
-                name="supply-gap-threshold"
-                value={t}
-                checked={threshold === t}
-                onChange={() => setThreshold(t)}
-              />
-              <span>{t}s</span>
-            </label>
-          ))}
-        </div>
-        <div className="workflow-section-warning" style={{ marginLeft: 'auto' }}>
-          ⚠️ Overlord/Pylon counts are not de-duped — Protoss/Zerg lines may over-count.
-        </div>
+      <div className="workflow-section-warning">
+        ⚠️ Overlords &amp; Pylons cannot be de-duped effectively, expect some
+        inaccuracy. The replay also doesn't track lost supply (e.g. providers
+        destroyed in attacks), so totals can exceed 200.
       </div>
 
       <svg
@@ -201,7 +205,7 @@ function SupplyTimeline({ players, timeline, durationSeconds, hasTeamInfo, teamC
       >
         {yTicks.map((v) => (
           <g key={`y-${v}`}>
-            <line x1={M.left} y1={yAt(v)} x2={W - M.right} y2={yAt(v)} stroke="rgba(255,255,255,0.10)" strokeWidth="1" />
+            <line x1={M.left} y1={yAt(v)} x2={PLOT_RIGHT} y2={yAt(v)} stroke="rgba(255,255,255,0.10)" strokeWidth="1" />
             <text x={M.left - 6} y={yAt(v) + 3} textAnchor="end" fill="rgba(255,255,255,0.55)" fontSize="11">{v}</text>
           </g>
         ))}
@@ -212,54 +216,102 @@ function SupplyTimeline({ players, timeline, durationSeconds, hasTeamInfo, teamC
           </g>
         ))}
 
-        {series.map((s) => (
-          <g key={`line-${s.player.player_id}`}>
-            <path d={stepPath(s.points)} fill="none" stroke={s.color} strokeWidth="2" strokeLinejoin="round" />
-            {s.gaps.filter((g) => g.durationSec >= threshold).map((g) => {
-              const midX = xAt((g.start + g.end) / 2);
-              const lineY = yAt(g.cum);
-              return (
-                <g key={`gap-${s.player.player_id}-${g.start}`}>
-                  <line x1={xAt(g.start)} y1={lineY} x2={xAt(g.end)} y2={lineY} stroke={s.color} strokeWidth="4" opacity="0.35" />
-                  <text x={midX} y={lineY - 5} textAnchor="middle" fill={s.color} fontSize="10" fontWeight="700">
-                    {g.durationSec}s
-                  </text>
-                </g>
-              );
-            })}
-          </g>
-        ))}
-      </svg>
+        {series.map((s) => {
+          const dimmed = dim(s.player.player_id);
+          const isHover = hoveredId === s.player.player_id;
+          const dodge = yDodge(s);
+          return (
+            <g
+              key={`line-${s.player.player_id}`}
+              opacity={dimmed ? 0.12 : 1}
+              onMouseEnter={() => setHoveredId(s.player.player_id)}
+              onMouseLeave={() => setHoveredId(null)}
+              style={{ cursor: 'pointer' }}
+            >
+              {/* invisible wide hit area so the thin line is easy to hover */}
+              <path d={stepPath(s.points, s.endSec, dodge)} fill="none" stroke="transparent" strokeWidth="14" />
+              <path d={stepPath(s.points, s.endSec, dodge)} fill="none" stroke={s.color} strokeWidth={isHover ? 2.5 : 1.5} strokeLinejoin="round" />
+              {s.points.map((p, i) => (
+                <circle
+                  key={`dot-${i}`}
+                  cx={xAt(p.sec)}
+                  cy={yAt(p.cum) + dodge}
+                  r={isHover ? 3 : 2.3}
+                  fill={s.color}
+                  onMouseEnter={() => setTip({
+                    x: xAt(p.sec),
+                    y: yAt(p.cum) + dodge,
+                    color: s.color,
+                    lines: [
+                      p.count === 0 ? p.built : `${p.built}${p.count > 1 ? ` ×${p.count}` : ''}  (+${p.delta})`,
+                      `Total: ${p.cum} supply`,
+                      formatTime(p.sec),
+                    ],
+                  })}
+                  onMouseLeave={() => setTip(null)}
+                />
+              ))}
+            </g>
+          );
+        })}
 
-      <div className="table-container">
-        <table className="data-table workflow-table">
-          <thead>
-            <tr>
-              <th>Player</th>
-              <th>Supply provided</th>
-              <th>Gaps ≥ {threshold}s</th>
-              <th>Largest gap</th>
-            </tr>
-          </thead>
-          <tbody>
-            {series.map((s) => {
-              const flagged = s.gaps.filter((g) => g.durationSec >= threshold);
-              const largest = s.gaps.reduce((mx, g) => Math.max(mx, g.durationSec), 0);
-              return (
-                <tr key={`stat-${s.player.player_id}`}>
-                  <td>
-                    <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: s.color, marginRight: 6 }} />
-                    {s.player.is_winner ? '👑 ' : ''}{s.player.name}
-                  </td>
-                  <td>{s.total}</td>
-                  <td>{flagged.length}</td>
-                  <td>{largest}s</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+        {labels.map((l) => {
+          const dimmed = dim(l.id);
+          const isHover = hoveredId === l.id;
+          return (
+            <g
+              key={`label-${l.id}`}
+              opacity={dimmed ? 0.12 : 1}
+              onMouseEnter={() => setHoveredId(l.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              style={{ cursor: 'pointer' }}
+            >
+              <path
+                d={`M ${l.endX} ${l.endY} L ${PLOT_RIGHT + 4} ${l.labelY}`}
+                fill="none"
+                stroke={l.color}
+                strokeWidth="1"
+                opacity="0.4"
+              />
+              <text
+                x={PLOT_RIGHT + 8}
+                y={l.labelY + 3}
+                fill={l.color}
+                fontSize="11"
+                fontWeight={isHover ? 700 : 500}
+              >
+                {l.isWinner ? '👑 ' : ''}{truncateName(l.name)}
+              </text>
+            </g>
+          );
+        })}
+
+        {tip ? (() => {
+          const w = Math.max(...tip.lines.map((ln) => ln.length)) * 6.1 + 16;
+          const h = tip.lines.length * 14 + 8;
+          let bx = tip.x + 10;
+          let by = tip.y - h - 8;
+          if (bx + w > W) bx = tip.x - w - 10;
+          if (by < M.top) by = tip.y + 10;
+          return (
+            <g pointerEvents="none">
+              <rect x={bx} y={by} width={w} height={h} rx={4} fill="rgba(12,15,24,0.96)" stroke={tip.color} strokeWidth="1" />
+              {tip.lines.map((ln, i) => (
+                <text
+                  key={i}
+                  x={bx + 8}
+                  y={by + 16 + i * 14}
+                  fill={i === 0 ? tip.color : 'rgba(255,255,255,0.9)'}
+                  fontSize="11"
+                  fontWeight={i === 0 ? 700 : 400}
+                >
+                  {ln}
+                </text>
+              ))}
+            </g>
+          );
+        })() : null}
+      </svg>
     </div>
   );
 }
