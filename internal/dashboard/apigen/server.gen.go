@@ -263,6 +263,12 @@ type PlayersListParamsSortBy string
 // PlayersListParamsSortDir defines parameters for PlayersList.
 type PlayersListParamsSortDir string
 
+// PlayersSupplyDisciplineParams defines parameters for PlayersSupplyDiscipline.
+type PlayersSupplyDisciplineParams struct {
+	MinGames *int64 `form:"min_games,omitempty" json:"min_games,omitempty"`
+	Limit    *int64 `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // PlayersUnitCadenceParams defines parameters for PlayersUnitCadence.
 type PlayersUnitCadenceParams struct {
 	Filter   *string `form:"filter,omitempty" json:"filter,omitempty"`
@@ -666,6 +672,9 @@ type ServerInterface interface {
 	// (GET /api/players/insights/apm-histogram)
 	PlayersApmHistogram(w http.ResponseWriter, r *http.Request)
 
+	// (GET /api/players/insights/supply-discipline)
+	PlayersSupplyDiscipline(w http.ResponseWriter, r *http.Request, params PlayersSupplyDisciplineParams)
+
 	// (GET /api/players/insights/unit-production-cadence)
 	PlayersUnitCadence(w http.ResponseWriter, r *http.Request, params PlayersUnitCadenceParams)
 
@@ -683,6 +692,9 @@ type ServerInterface interface {
 
 	// (GET /api/players/{playerKey}/insights/apm-histogram)
 	PlayerApmHistogram(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
+
+	// (GET /api/players/{playerKey}/insights/supply-discipline)
+	PlayerSupplyDiscipline(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
 
 	// (GET /api/players/{playerKey}/insights/unit-production-cadence)
 	PlayerUnitCadence(w http.ResponseWriter, r *http.Request, playerKey PlayerKey, params PlayerUnitCadenceParams)
@@ -1224,6 +1236,52 @@ func (siw *ServerInterfaceWrapper) PlayersApmHistogram(w http.ResponseWriter, r 
 	handler.ServeHTTP(w, r)
 }
 
+// PlayersSupplyDiscipline operation middleware
+func (siw *ServerInterfaceWrapper) PlayersSupplyDiscipline(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PlayersSupplyDisciplineParams
+
+	// ------------- Optional query parameter "min_games" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "min_games", r.URL.Query(), &params.MinGames, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "min_games"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "min_games", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PlayersSupplyDiscipline(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // PlayersUnitCadence operation middleware
 func (siw *ServerInterfaceWrapper) PlayersUnitCadence(w http.ResponseWriter, r *http.Request) {
 
@@ -1408,6 +1466,32 @@ func (siw *ServerInterfaceWrapper) PlayerApmHistogram(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PlayerApmHistogram(w, r, playerKey)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PlayerSupplyDiscipline operation middleware
+func (siw *ServerInterfaceWrapper) PlayerSupplyDiscipline(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "playerKey" -------------
+	var playerKey PlayerKey
+
+	err = runtime.BindStyledParameterWithOptions("simple", "playerKey", mux.Vars(r)["playerKey"], &playerKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playerKey", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PlayerSupplyDiscipline(w, r, playerKey)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1770,6 +1854,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/api/players/insights/apm-histogram", wrapper.PlayersApmHistogram).Methods(http.MethodGet)
 
+	r.HandleFunc(options.BaseURL+"/api/players/insights/supply-discipline", wrapper.PlayersSupplyDiscipline).Methods(http.MethodGet)
+
 	r.HandleFunc(options.BaseURL+"/api/players/insights/unit-production-cadence", wrapper.PlayersUnitCadence).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/players/insights/viewport-multitasking", wrapper.PlayersViewportMultitasking).Methods(http.MethodGet)
@@ -1781,6 +1867,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/insight", wrapper.PlayerInsight).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/insights/apm-histogram", wrapper.PlayerApmHistogram).Methods(http.MethodGet)
+
+	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/insights/supply-discipline", wrapper.PlayerSupplyDiscipline).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/insights/unit-production-cadence", wrapper.PlayerUnitCadence).Methods(http.MethodGet)
 
@@ -2346,6 +2434,36 @@ func (response PlayersApmHistogram200JSONResponse) VisitPlayersApmHistogramRespo
 	return err
 }
 
+type PlayersSupplyDisciplineRequestObject struct {
+	Params PlayersSupplyDisciplineParams
+}
+
+type PlayersSupplyDisciplineResponseObject interface {
+	VisitPlayersSupplyDisciplineResponse(w http.ResponseWriter) error
+}
+
+type PlayersSupplyDiscipline200JSONResponse GenericValue
+
+func (t PlayersSupplyDiscipline200JSONResponse) MarshalJSON() ([]byte, error) {
+	return GenericValue(t).MarshalJSON()
+}
+
+func (t *PlayersSupplyDiscipline200JSONResponse) UnmarshalJSON(b []byte) error {
+	return (*GenericValue)(t).UnmarshalJSON(b)
+}
+
+func (response PlayersSupplyDiscipline200JSONResponse) VisitPlayersSupplyDisciplineResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PlayersUnitCadenceRequestObject struct {
 	Params PlayersUnitCadenceParams
 }
@@ -2515,6 +2633,36 @@ func (t *PlayerApmHistogram200JSONResponse) UnmarshalJSON(b []byte) error {
 }
 
 func (response PlayerApmHistogram200JSONResponse) VisitPlayerApmHistogramResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PlayerSupplyDisciplineRequestObject struct {
+	PlayerKey PlayerKey `json:"playerKey"`
+}
+
+type PlayerSupplyDisciplineResponseObject interface {
+	VisitPlayerSupplyDisciplineResponse(w http.ResponseWriter) error
+}
+
+type PlayerSupplyDiscipline200JSONResponse GenericValue
+
+func (t PlayerSupplyDiscipline200JSONResponse) MarshalJSON() ([]byte, error) {
+	return GenericValue(t).MarshalJSON()
+}
+
+func (t *PlayerSupplyDiscipline200JSONResponse) UnmarshalJSON(b []byte) error {
+	return (*GenericValue)(t).UnmarshalJSON(b)
+}
+
+func (response PlayerSupplyDiscipline200JSONResponse) VisitPlayerSupplyDisciplineResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -2797,6 +2945,9 @@ type StrictServerInterface interface {
 	// (GET /api/players/insights/apm-histogram)
 	PlayersApmHistogram(ctx context.Context, request PlayersApmHistogramRequestObject) (PlayersApmHistogramResponseObject, error)
 
+	// (GET /api/players/insights/supply-discipline)
+	PlayersSupplyDiscipline(ctx context.Context, request PlayersSupplyDisciplineRequestObject) (PlayersSupplyDisciplineResponseObject, error)
+
 	// (GET /api/players/insights/unit-production-cadence)
 	PlayersUnitCadence(ctx context.Context, request PlayersUnitCadenceRequestObject) (PlayersUnitCadenceResponseObject, error)
 
@@ -2814,6 +2965,9 @@ type StrictServerInterface interface {
 
 	// (GET /api/players/{playerKey}/insights/apm-histogram)
 	PlayerApmHistogram(ctx context.Context, request PlayerApmHistogramRequestObject) (PlayerApmHistogramResponseObject, error)
+
+	// (GET /api/players/{playerKey}/insights/supply-discipline)
+	PlayerSupplyDiscipline(ctx context.Context, request PlayerSupplyDisciplineRequestObject) (PlayerSupplyDisciplineResponseObject, error)
 
 	// (GET /api/players/{playerKey}/insights/unit-production-cadence)
 	PlayerUnitCadence(ctx context.Context, request PlayerUnitCadenceRequestObject) (PlayerUnitCadenceResponseObject, error)
@@ -3373,6 +3527,32 @@ func (sh *strictHandler) PlayersApmHistogram(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+// PlayersSupplyDiscipline operation middleware
+func (sh *strictHandler) PlayersSupplyDiscipline(w http.ResponseWriter, r *http.Request, params PlayersSupplyDisciplineParams) {
+	var request PlayersSupplyDisciplineRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PlayersSupplyDiscipline(ctx, request.(PlayersSupplyDisciplineRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PlayersSupplyDiscipline")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PlayersSupplyDisciplineResponseObject); ok {
+		if err := validResponse.VisitPlayersSupplyDisciplineResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // PlayersUnitCadence operation middleware
 func (sh *strictHandler) PlayersUnitCadence(w http.ResponseWriter, r *http.Request, params PlayersUnitCadenceParams) {
 	var request PlayersUnitCadenceRequestObject
@@ -3521,6 +3701,32 @@ func (sh *strictHandler) PlayerApmHistogram(w http.ResponseWriter, r *http.Reque
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(PlayerApmHistogramResponseObject); ok {
 		if err := validResponse.VisitPlayerApmHistogramResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PlayerSupplyDiscipline operation middleware
+func (sh *strictHandler) PlayerSupplyDiscipline(w http.ResponseWriter, r *http.Request, playerKey PlayerKey) {
+	var request PlayerSupplyDisciplineRequestObject
+
+	request.PlayerKey = playerKey
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PlayerSupplyDiscipline(ctx, request.(PlayerSupplyDisciplineRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PlayerSupplyDiscipline")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PlayerSupplyDisciplineResponseObject); ok {
+		if err := validResponse.VisitPlayerSupplyDisciplineResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -3715,34 +3921,35 @@ func (sh *strictHandler) ScrepColors(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"rk5HQag3N6eLxf8CAAD//w==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

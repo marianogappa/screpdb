@@ -426,6 +426,40 @@ func (d *Dashboard) PlayersUnitCadence(_ context.Context, request apigen.Players
 	return result, nil
 }
 
+func (d *Dashboard) PlayersSupplyDiscipline(_ context.Context, request apigen.PlayersSupplyDisciplineRequestObject) (any, error) {
+	minGames := int64(supplyDefaultMinGames)
+	if request.Params.MinGames != nil && *request.Params.MinGames > 0 {
+		minGames = *request.Params.MinGames
+	}
+	limit := int64(0)
+	if request.Params.Limit != nil {
+		if *request.Params.Limit < 0 {
+			return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("limit must be >= 0"))
+		}
+		limit = *request.Params.Limit
+	}
+	result, err := d.buildWorkflowPlayerSupplyDisciplineLeaderboard(minGames, limit)
+	if err != nil {
+		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
+	}
+	return result, nil
+}
+
+func (d *Dashboard) PlayerSupplyDiscipline(_ context.Context, request apigen.PlayerSupplyDisciplineRequestObject) (any, error) {
+	playerKey := normalizePlayerKey(request.PlayerKey)
+	if playerKey == "" {
+		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("player key missing"))
+	}
+	result, err := d.buildWorkflowPlayerSupplyDisciplineInsight(playerKey)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
+		}
+		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
+	}
+	return result, nil
+}
+
 func (d *Dashboard) PlayersViewportMultitasking(_ context.Context, _ apigen.PlayersViewportMultitaskingRequestObject) (any, error) {
 	result, err := d.buildWorkflowPlayerViewportMultitaskingDistribution()
 	if err != nil {

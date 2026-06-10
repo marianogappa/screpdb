@@ -220,6 +220,28 @@ export const api = {
     return response.json();
   },
 
+  getPlayersSupplyDiscipline: async ({ minGames = 4, limit = 0 } = {}) => {
+    const params = new URLSearchParams();
+    if (Number.isFinite(Number(minGames)) && Number(minGames) > 0) params.set('min_games', String(Math.floor(Number(minGames))));
+    if (Number.isFinite(Number(limit)) && Number(limit) >= 0) params.set('limit', String(Math.floor(Number(limit))));
+    const query = params.toString();
+    const response = await fetch(`${API_BASE}/players/insights/supply-discipline${query ? `?${query}` : ''}`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get players supply discipline');
+    }
+    return response.json();
+  },
+
+  getPlayerSupplyDiscipline: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/insights/supply-discipline`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get player supply discipline');
+    }
+    return response.json();
+  },
+
   getPlayersViewportMultitasking: async () => {
     const response = await fetch(`${API_BASE}/players/insights/viewport-multitasking`);
     if (!response.ok) {

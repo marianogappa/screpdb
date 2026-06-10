@@ -6,6 +6,8 @@ export const MAIN_GAME_TABS = [
   'summary',
   'events',
   'units',
+  'army-timeline',
+  'supply-timeline',
   'timings',
   'build-orders',
   'mutalisk-timing',
@@ -19,6 +21,7 @@ export const MAIN_PLAYERS_TABS = [
   'summary',
   'apm-histogram',
   'unit-production-cadence',
+  'supply-discipline',
   'viewport-multitasking',
 ];
 

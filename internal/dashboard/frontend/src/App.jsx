@@ -8,6 +8,8 @@ import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEffici
 import BuildOrderTimelineRows from './components/charts/BuildOrderTimelineRows';
 import MutaliskTimingChart from './components/charts/MutaliskTimingChart';
 import UnitProductionEarlyTimeline from './components/charts/UnitProductionEarlyTimeline';
+import ProductionReplay from './components/charts/ProductionReplay';
+import SupplyTimeline from './components/charts/SupplyTimeline';
 import AllianceTimeline from './components/charts/AllianceTimeline';
 import { getUnitIcon, getWorkerIconForRace, normalizeUnitName } from './lib/gameAssets';
 import {
@@ -1985,6 +1987,10 @@ function App() {
   const [mainPlayersCadenceHistogramLoading, setMainPlayersCadenceHistogramLoading] = useState(false);
   const [mainPlayersCadenceHistogramError, setMainPlayersCadenceHistogramError] = useState('');
   const [mainPlayersCadenceMinGames, setMainPlayersCadenceMinGames] = useState(4);
+  const [mainPlayersSupplyHistogram, setMainPlayersSupplyHistogram] = useState(null);
+  const [mainPlayersSupplyHistogramLoading, setMainPlayersSupplyHistogramLoading] = useState(false);
+  const [mainPlayersSupplyHistogramError, setMainPlayersSupplyHistogramError] = useState('');
+  const [mainPlayersSupplyMinGames, setMainPlayersSupplyMinGames] = useState(4);
   const [mainPlayersViewportHistogram, setMainPlayersViewportHistogram] = useState(null);
   const [mainPlayersViewportHistogramLoading, setMainPlayersViewportHistogramLoading] = useState(false);
   const [mainPlayersViewportHistogramError, setMainPlayersViewportHistogramError] = useState('');
@@ -2106,6 +2112,20 @@ function App() {
       setMainPlayersCadenceHistogram(null);
     } finally {
       setMainPlayersCadenceHistogramLoading(false);
+    }
+  };
+
+  const loadMainPlayersSupplyHistogram = async () => {
+    try {
+      setMainPlayersSupplyHistogramLoading(true);
+      setMainPlayersSupplyHistogramError('');
+      const data = await api.getPlayersSupplyDiscipline({ minGames: 4, limit: 0 });
+      setMainPlayersSupplyHistogram(data);
+    } catch (err) {
+      setMainPlayersSupplyHistogramError(err.message || 'Failed to load players supply discipline');
+      setMainPlayersSupplyHistogram(null);
+    } finally {
+      setMainPlayersSupplyHistogramLoading(false);
     }
   };
 
@@ -2911,6 +2931,19 @@ function App() {
   ]);
 
   useEffect(() => {
+    if (activeView !== 'players' || mainPlayersTab !== 'supply-discipline') return;
+    if (!mainPlayersSupplyHistogram && !mainPlayersSupplyHistogramLoading && !mainPlayersSupplyHistogramError) {
+      loadMainPlayersSupplyHistogram();
+    }
+  }, [
+    activeView,
+    mainPlayersTab,
+    mainPlayersSupplyHistogram,
+    mainPlayersSupplyHistogramLoading,
+    mainPlayersSupplyHistogramError,
+  ]);
+
+  useEffect(() => {
     if (activeView !== 'players' || mainPlayersTab !== 'viewport-multitasking') return;
     if (!mainPlayersViewportHistogram && !mainPlayersViewportHistogramLoading && !mainPlayersViewportHistogramError) {
       loadMainPlayersViewportHistogram();
@@ -3222,6 +3255,9 @@ function App() {
     }
     if (mainPlayersCadenceHistogram) {
       loadMainPlayersCadenceHistogram();
+    }
+    if (mainPlayersSupplyHistogram) {
+      loadMainPlayersSupplyHistogram();
     }
   };
 
@@ -4586,6 +4622,30 @@ function App() {
       }));
     return buildHistogramSummaryFromPlayers(filtered);
   }, [playersCadenceHistogramPoints, mainPlayersCadenceMinGames]);
+  const playersSupplyHistogramPoints = useMemo(() => (
+    (mainPlayersSupplyHistogram?.players || [])
+      .map((player) => ({
+        value: Number(player?.score),
+        label: String(player?.player_name || '').trim(),
+        player_key: String(player?.player_key || '').trim(),
+        games_played: Number(player?.games_used || 0),
+        avg_weighted_gap_sec: Number(player?.avg_weighted_gap_sec || 0),
+      }))
+      .filter((player) => Number.isFinite(player.value) && player.label)
+  ), [mainPlayersSupplyHistogram]);
+  const mainPlayersSupplyProcessed = useMemo(() => {
+    const minGames = Math.max(4, Number(mainPlayersSupplyMinGames) || 4);
+    const filtered = playersSupplyHistogramPoints
+      .filter((player) => Number(player.games_played || 0) >= minGames)
+      .map((player) => ({
+        player_key: player.player_key,
+        player_name: player.label,
+        average_apm: player.value,
+        games_played: player.games_played,
+        avg_weighted_gap_sec: player.avg_weighted_gap_sec,
+      }));
+    return buildHistogramSummaryFromPlayers(filtered);
+  }, [playersSupplyHistogramPoints, mainPlayersSupplyMinGames]);
   const mainPlayersViewportProcessed = useMemo(() => {
     const minGames = Math.max(4, Number(mainPlayersViewportMinGames) || 4);
     const filtered = (mainPlayersViewportHistogram?.players || [])
@@ -4954,6 +5014,15 @@ function App() {
                 <button
                   type="button"
                   role="tab"
+                  aria-selected={mainPlayersTab === 'supply-discipline'}
+                  className={`workflow-production-tab ${mainPlayersTab === 'supply-discipline' ? 'workflow-production-tab-active' : ''}`}
+                  onClick={() => setMainPlayersTab('supply-discipline')}
+                >
+                  Supply discipline 🧪
+                </button>
+                <button
+                  type="button"
+                  role="tab"
                   aria-selected={mainPlayersTab === 'viewport-multitasking'}
                   className={`workflow-production-tab ${mainPlayersTab === 'viewport-multitasking' ? 'workflow-production-tab-active' : ''}`}
                   onClick={() => setMainPlayersTab('viewport-multitasking')}
@@ -5165,6 +5234,65 @@ function App() {
                   </div>
                 ) : null}
               </div>
+            ) : mainPlayersTab === 'supply-discipline' ? (
+              <div className="workflow-card workflow-card-fingerprints">
+                <div className="workflow-section-info" role="note">
+                  ℹ️ How steadily you keep supply ahead in the early game — short, even gaps between each supply rank higher. 0–100, matchup-normalized, early-weighted. Experimental.
+                </div>
+                {mainPlayersSupplyHistogramLoading ? <div className="chart-empty">Loading supply discipline...</div> : null}
+                {!mainPlayersSupplyHistogramLoading && mainPlayersSupplyHistogramError ? <div className="chart-empty">{mainPlayersSupplyHistogramError}</div> : null}
+                {!mainPlayersSupplyHistogramLoading && !mainPlayersSupplyHistogramError && mainPlayersSupplyProcessed.points.length === 0 ? (
+                  <div className="chart-empty">Not enough supply data to render this distribution yet.</div>
+                ) : null}
+                {!mainPlayersSupplyHistogramLoading && !mainPlayersSupplyHistogramError && mainPlayersSupplyProcessed.points.length > 0 ? (
+                  <div className="workflow-insight-chart workflow-insight-chart-tall">
+                    <div className="workflow-summary-filter-row workflow-slider-row">
+                      <label className="workflow-summary-filter-check">
+                        <span>Min games (post-process): {Math.max(4, Number(mainPlayersSupplyMinGames) || 4)}</span>
+                      </label>
+                      <input
+                        type="range"
+                        className="workflow-slider-input"
+                        min="4"
+                        max={String(Math.max(4, Number(mainPlayersSupplyProcessed.maxGames) || 4))}
+                        step="1"
+                        value={String(Math.max(4, Number(mainPlayersSupplyMinGames) || 4))}
+                        onChange={(e) => setMainPlayersSupplyMinGames(Math.max(4, Number(e.target.value) || 4))}
+                      />
+                    </div>
+                    <Histogram
+                      data={[]}
+                      config={{
+                        style: 'monobell_relax',
+                        precomputed_bins: mainPlayersSupplyProcessed.bins,
+                        x_axis_label: 'Supply discipline score',
+                        y_axis_label: 'Density',
+                        overlay_value_label: 'score',
+                        overlay_count_label: 'games',
+                        mean: mainPlayersSupplyProcessed.mean,
+                        stddev: mainPlayersSupplyProcessed.stddev,
+                        chart_height: 620,
+                        overlay_points: mainPlayersSupplyProcessed.points.map((player) => ({
+                          value: Number(player.average_apm || 0),
+                          label: String(player.player_name || ''),
+                          player_key: String(player.player_key || ''),
+                          games_played: Number(player.games_played || 0),
+                          tooltip_lines: [
+                            `${String(player.player_name || '')}`,
+                            `Supply discipline: ${Number(player.average_apm || 0).toFixed(1)}/100`,
+                            `Avg early supply gap: ${Number(player.avg_weighted_gap_sec || 0).toFixed(1)}s`,
+                            `Games used: ${Number(player.games_played || 0)}`,
+                          ],
+                        })),
+                        on_overlay_point_click: openMainPlayer,
+                      }}
+                    />
+                    <div className="workflow-subtle-note">
+                      {`Population shown: ${Number(mainPlayersSupplyProcessed.playersIncluded) || 0} players (>=${Math.max(4, Number(mainPlayersSupplyMinGames) || 4)} games). Mean ${Number(mainPlayersSupplyProcessed.mean || 0).toFixed(1)}, stddev ${Number(mainPlayersSupplyProcessed.stddev || 0).toFixed(1)}.`}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             ) : mainPlayersTab === 'viewport-multitasking' ? (
               <div className="workflow-card workflow-card-fingerprints">
                 {mainPlayersViewportHistogramLoading ? <div className="chart-empty">Loading viewport multitasking...</div> : null}
@@ -5321,6 +5449,24 @@ function App() {
                       onClick={() => setMainGameTab('units')}
                     >
                       Units
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={mainGameTab === 'army-timeline'}
+                      className={`workflow-production-tab ${mainGameTab === 'army-timeline' ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => setMainGameTab('army-timeline')}
+                    >
+                      Army timeline 🧪
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={mainGameTab === 'supply-timeline'}
+                      className={`workflow-production-tab ${mainGameTab === 'supply-timeline' ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => setMainGameTab('supply-timeline')}
+                    >
+                      Supply 🧪
                     </button>
                     <button
                       type="button"
@@ -6122,6 +6268,27 @@ function App() {
                       </table>
                     </div>
                   </div>
+                )}
+
+                {mainGameTab === 'army-timeline' && (
+                  <ProductionReplay
+                    players={mainGamePlayers}
+                    timeline={mainGame.production_timeline || []}
+                    durationSeconds={mainGame.duration_seconds || 0}
+                    hasTeamInfo={hasTeamInfo}
+                    teamColorRgba={teamColorRgba}
+                  />
+                )}
+
+                {mainGameTab === 'supply-timeline' && (
+                  <SupplyTimeline
+                    players={mainGamePlayers}
+                    timeline={mainGame.production_timeline || []}
+                    durationSeconds={mainGame.duration_seconds || 0}
+                    hasTeamInfo={hasTeamInfo}
+                    teamColorRgba={teamColorRgba}
+                    discipline={mainGame.supply_discipline || []}
+                  />
                 )}
 
                 {mainGameTab === 'timings' && (

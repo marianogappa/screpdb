@@ -341,6 +341,8 @@ type workflowGameDetail struct {
 	GameEvents           []workflowGameEvent                      `json:"game_events"`
 	UnitsBySlice         []workflowUnitSlice                      `json:"units_by_slice"`
 	UnitsEarlyEvents     []workflowUnitEarlyEventPlayer           `json:"units_early_events"`
+	ProductionTimeline   []workflowProductionTimelinePlayer       `json:"production_timeline"`
+	SupplyDiscipline     []workflowSupplyDisciplinePlayer         `json:"supply_discipline"`
 	Timings              workflowReplayTimings                    `json:"timings"`
 	FirstUnitEfficiency  []workflowFirstUnitEfficiencyPlayer      `json:"first_unit_efficiency"`
 	UnitCadence          []workflowGameUnitCadencePlayer          `json:"unit_production_cadence"`
@@ -606,6 +608,101 @@ type workflowUnitEarlyEvent struct {
 	IsBuilding bool   `json:"is_building"`
 	Label      string `json:"label,omitempty"`
 	Count      int64  `json:"count"`
+}
+
+// workflowProductionTimelinePlayer carries one player's full-game stream of
+// individual production events (buildings + units), ordered by second. Unlike
+// units_by_slice (which buckets and discards per-event timing after 4 minutes)
+// this keeps every event's exact second for the whole game so the frontend can
+// replay/scrub army construction over time. Same row set as units_by_slice, no
+// extra query. Count is 2 for a Zergling Morph, 1 otherwise (see
+// workflowUnitEarlyEvent).
+type workflowProductionTimelinePlayer struct {
+	PlayerID  int64                     `json:"player_id"`
+	PlayerKey string                    `json:"player_key"`
+	Name      string                    `json:"name"`
+	Events    []workflowProductionEvent `json:"events"`
+}
+
+type workflowProductionEvent struct {
+	Second     int64  `json:"second"`
+	UnitType   string `json:"unit_type"`
+	IsBuilding bool   `json:"is_building"`
+	Count      int64  `json:"count"`
+}
+
+// workflowSupplyDisciplinePlayer is one player's supply-discipline result for a
+// single game. Score is 0-100 (higher = steadier early supply, matchup-
+// normalized). WeightedGapSec/TypicalGapSec are in seconds for human-readable
+// display. See supply_discipline.go.
+type workflowSupplyDisciplinePlayer struct {
+	PlayerID         int64              `json:"player_id"`
+	PlayerKey        string             `json:"player_key"`
+	PlayerName       string             `json:"player_name"`
+	Team             int64              `json:"team"`
+	IsWinner         bool               `json:"is_winner"`
+	Eligible         bool               `json:"eligible"`
+	Score            int64              `json:"score"`
+	WeightedGapSec   float64            `json:"weighted_gap_sec"`
+	TypicalGapSec    float64            `json:"typical_gap_sec"`
+	SupplyCount      int64              `json:"supply_count"`
+	WorstGaps        []workflowSupplyGap `json:"worst_gaps"`
+	IneligibleReason string             `json:"ineligible_reason,omitempty"`
+}
+
+type workflowSupplyGap struct {
+	StartSecond int64 `json:"start_second"`
+	DurationSec int64 `json:"duration_sec"`
+}
+
+type workflowPlayerSupplyDisciplineLeaderboard struct {
+	SummaryVersion  string                            `json:"summary_version"`
+	MinGames        int64                             `json:"min_games"`
+	PlayersIncluded int64                             `json:"players_included"`
+	MeanScore       float64                           `json:"mean_score"`
+	StddevScore     float64                           `json:"stddev_score"`
+	Bins            []workflowPlayerSupplyHistogramBin `json:"bins"`
+	Players         []workflowPlayerSupplyPoint        `json:"players"`
+}
+
+type workflowPlayerSupplyPoint struct {
+	PlayerKey         string  `json:"player_key"`
+	PlayerName        string  `json:"player_name"`
+	GamesUsed         int64   `json:"games_used"`
+	Score             float64 `json:"score"`
+	AvgWeightedGapSec float64 `json:"avg_weighted_gap_sec"`
+}
+
+type workflowPlayerSupplyHistogramBin struct {
+	X0    float64 `json:"x0"`
+	X1    float64 `json:"x1"`
+	Count int64   `json:"count"`
+}
+
+type workflowPlayerSupplyDisciplineInsight struct {
+	SummaryVersion    string                            `json:"summary_version"`
+	PlayerKey         string                            `json:"player_key"`
+	PlayerName        string                            `json:"player_name"`
+	GamesUsed         int64                             `json:"games_used"`
+	Score             float64                           `json:"score"`
+	AvgWeightedGapSec float64                           `json:"avg_weighted_gap_sec"`
+	ByMatchup         []workflowSupplyMatchupBreakdown  `json:"by_matchup"`
+	WorstGames        []workflowSupplyWorstGame         `json:"worst_games"`
+}
+
+type workflowSupplyMatchupBreakdown struct {
+	OppRace           string  `json:"opp_race"`
+	GamesUsed         int64   `json:"games_used"`
+	Score             float64 `json:"score"`
+	AvgWeightedGapSec float64 `json:"avg_weighted_gap_sec"`
+	TypicalGapSec     float64 `json:"typical_gap_sec"`
+}
+
+type workflowSupplyWorstGame struct {
+	ReplayID       int64   `json:"replay_id"`
+	OppRace        string  `json:"opp_race"`
+	Score          int64   `json:"score"`
+	WeightedGapSec float64 `json:"weighted_gap_sec"`
 }
 
 type workflowReplayTimings struct {
