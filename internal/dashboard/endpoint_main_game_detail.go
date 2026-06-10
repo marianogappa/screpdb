@@ -1660,6 +1660,7 @@ func formatWorkflowSliceLabel(start, endExclusive int64) string {
 func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail) error {
 	detail.UnitsBySlice = []workflowUnitSlice{}
 	detail.UnitsEarlyEvents = []workflowUnitEarlyEventPlayer{}
+	detail.ProductionTimeline = []workflowProductionTimelinePlayer{}
 	playerOrder := make([]int64, 0, len(detail.Players))
 	playerByID := map[int64]workflowGamePlayer{}
 	for _, player := range detail.Players {
@@ -1680,6 +1681,7 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 	perSlice := map[int64]map[int64]map[string]int64{}
 	boundaries := workflowSliceBoundaries(detail.DurationSeconds)
 	earlyEventsByPlayer := map[int64][]workflowUnitEarlyEvent{}
+	timelineByPlayer := map[int64][]workflowProductionEvent{}
 	workerOrdinalByPlayer := map[int64]map[string]int64{}
 	for _, row := range rows {
 		playerID := row.PlayerID
@@ -1695,6 +1697,14 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 		if unitType == models.GeneralUnitZergling {
 			inc = 2
 		}
+
+		_, eventIsBuilding := buildingSet[unitType]
+		timelineByPlayer[playerID] = append(timelineByPlayer[playerID], workflowProductionEvent{
+			Second:     second,
+			UnitType:   unitType,
+			IsBuilding: eventIsBuilding,
+			Count:      inc,
+		})
 
 		if second < 240 {
 			_, isBuilding := buildingSet[unitType]
@@ -1740,6 +1750,18 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 			PlayerKey: player.PlayerKey,
 			Name:      player.Name,
 			Events:    events,
+		})
+
+		timeline := timelineByPlayer[playerID]
+		if timeline == nil {
+			timeline = []workflowProductionEvent{}
+		}
+		sort.SliceStable(timeline, func(i, j int) bool { return timeline[i].Second < timeline[j].Second })
+		detail.ProductionTimeline = append(detail.ProductionTimeline, workflowProductionTimelinePlayer{
+			PlayerID:  player.PlayerID,
+			PlayerKey: player.PlayerKey,
+			Name:      player.Name,
+			Events:    timeline,
 		})
 	}
 	for i, sliceStart := range boundaries {

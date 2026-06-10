@@ -8,6 +8,7 @@ import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEffici
 import BuildOrderTimelineRows from './components/charts/BuildOrderTimelineRows';
 import MutaliskTimingChart from './components/charts/MutaliskTimingChart';
 import UnitProductionEarlyTimeline from './components/charts/UnitProductionEarlyTimeline';
+import SupplyTimeline from './components/charts/SupplyTimeline';
 import AllianceTimeline from './components/charts/AllianceTimeline';
 import { getUnitIcon, getWorkerIconForRace, normalizeUnitName } from './lib/gameAssets';
 import {
@@ -5345,6 +5346,15 @@ function App() {
                     <button
                       type="button"
                       role="tab"
+                      aria-selected={mainGameTab === 'supply-timeline'}
+                      className={`workflow-production-tab ${mainGameTab === 'supply-timeline' ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => setMainGameTab('supply-timeline')}
+                    >
+                      Supply
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
                       aria-selected={isMainGameSkillProxyTab(mainGameTab)}
                       className={`workflow-production-tab ${isMainGameSkillProxyTab(mainGameTab) ? 'workflow-production-tab-active' : ''}`}
                       onClick={() => {
@@ -6122,6 +6132,15 @@ function App() {
                       </table>
                     </div>
                   </div>
+                )}
+
+                {mainGameTab === 'supply-timeline' && (
+                  <SupplyTimeline
+                    players={mainGamePlayers}
+                    timeline={mainGame.production_timeline || []}
+                    durationSeconds={mainGame.duration_seconds || 0}
+                    playerColor={playerColorToCss}
+                  />
                 )}
 
                 {mainGameTab === 'timings' && (

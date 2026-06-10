@@ -341,6 +341,7 @@ type workflowGameDetail struct {
 	GameEvents           []workflowGameEvent                      `json:"game_events"`
 	UnitsBySlice         []workflowUnitSlice                      `json:"units_by_slice"`
 	UnitsEarlyEvents     []workflowUnitEarlyEventPlayer           `json:"units_early_events"`
+	ProductionTimeline   []workflowProductionTimelinePlayer       `json:"production_timeline"`
 	Timings              workflowReplayTimings                    `json:"timings"`
 	FirstUnitEfficiency  []workflowFirstUnitEfficiencyPlayer      `json:"first_unit_efficiency"`
 	UnitCadence          []workflowGameUnitCadencePlayer          `json:"unit_production_cadence"`
@@ -605,6 +606,27 @@ type workflowUnitEarlyEvent struct {
 	UnitType   string `json:"unit_type"`
 	IsBuilding bool   `json:"is_building"`
 	Label      string `json:"label,omitempty"`
+	Count      int64  `json:"count"`
+}
+
+// workflowProductionTimelinePlayer carries one player's full-game stream of
+// individual production events (buildings + units), ordered by second. Unlike
+// units_by_slice (which buckets and discards per-event timing after 4 minutes)
+// this keeps every event's exact second for the whole game so the frontend can
+// replay/scrub army construction over time. Same row set as units_by_slice, no
+// extra query. Count is 2 for a Zergling Morph, 1 otherwise (see
+// workflowUnitEarlyEvent).
+type workflowProductionTimelinePlayer struct {
+	PlayerID  int64                     `json:"player_id"`
+	PlayerKey string                    `json:"player_key"`
+	Name      string                    `json:"name"`
+	Events    []workflowProductionEvent `json:"events"`
+}
+
+type workflowProductionEvent struct {
+	Second     int64  `json:"second"`
+	UnitType   string `json:"unit_type"`
+	IsBuilding bool   `json:"is_building"`
 	Count      int64  `json:"count"`
 }
 

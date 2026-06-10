@@ -6,6 +6,7 @@ export const MAIN_GAME_TABS = [
   'summary',
   'events',
   'units',
+  'supply-timeline',
   'timings',
   'build-orders',
   'mutalisk-timing',
