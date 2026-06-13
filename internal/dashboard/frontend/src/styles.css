@@ -49,7 +49,7 @@ body {
 .dashboard-container {
   position: relative;
   z-index: 1;
-  padding: 20px;
+  padding: 20px 10px;
   max-width: 1540px;
   margin: 0 auto;
 }
@@ -2201,20 +2201,22 @@ body {
   cursor: pointer;
 }
 
-/* Games list compactness: trim padding/font/icon sizes so an 8-player matchup
-   row fits on one visual line at 14''. The Featuring column wraps first when
-   space runs out (its pill container already flex-wraps), the Players column
-   stays nowrap so the row doesn't grow vertically just to break the matchup
-   over two lines. */
+/* Games list compactness: trim inter-column/pill spacing so an 8-player matchup
+   row stays compact. Spacing is kept tight (rather than the font tiny) so the
+   freed horizontal space — together with narrow viewport-edge padding on
+   .dashboard-container — pays for a legible type/icon size even on 8-player
+   rows. The Featuring column wraps first when space runs out (its pill container
+   already flex-wraps); the Players column stays nowrap so the row doesn't grow
+   vertically just to break the matchup over two lines. */
 .workflow-games-list-table td,
 .workflow-games-list-table th {
-  padding: 5px 8px;
+  padding: 5px 6px;
 }
 
 .workflow-games-list-table td.workflow-games-list-played,
 .workflow-games-list-table td.workflow-games-list-map,
 .workflow-games-list-table td.workflow-games-list-duration {
-  font-size: 0.8em;
+  font-size: 0.85em;
   white-space: nowrap;
 }
 
@@ -2224,19 +2226,19 @@ body {
 }
 
 .workflow-games-list-table .workflow-team-player-pill {
-  padding: 0.02em 0.3em 0.04em;
-  font-size: 0.82em;
+  padding: 0.02em 0.26em 0.04em;
+  font-size: 0.9em;
   line-height: 1.5;
-  gap: 0.12em;
+  gap: 0.1em;
 }
 
 .workflow-games-list-table .workflow-team-player-pill .workflow-race-icon {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
 }
 
 .workflow-games-list-table .workflow-team-player-pill .workflow-crown {
-  font-size: 0.8em;
+  font-size: 0.85em;
 }
 
 /* Keep each player name on a single line inside its pill — long names with
@@ -2248,16 +2250,16 @@ body {
 }
 
 .workflow-games-list-table .workflow-team-matchup {
-  column-gap: 0.18rem;
-  row-gap: 0.18rem;
+  column-gap: 0.14rem;
+  row-gap: 0.14rem;
 }
 
 .workflow-games-list-table .workflow-team-side {
-  gap: 0.12rem;
+  gap: 0.1rem;
 }
 
 .workflow-games-list-table .workflow-team-vs {
-  font-size: 0.78em;
+  font-size: 0.82em;
 }
 
 .workflow-games-list-table .workflow-feature-pill {
@@ -2307,6 +2309,15 @@ body {
   padding: 2px 8px;
   font-size: 0.82rem;
   min-height: 24px;
+}
+
+/* Games-list header: drop the grey header-cell background (sit on the page
+   background) and show the column names as emoji glyphs, sized up for legibility
+   since the table font is small. */
+.workflow-games-list-table th {
+  background: transparent;
+  font-size: 16px;
+  font-weight: 400;
 }
 
 .workflow-sortable {

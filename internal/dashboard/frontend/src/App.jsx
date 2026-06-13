@@ -1902,7 +1902,7 @@ function App() {
     matchup: [],
     mapKind: [],
   });
-  const [mainGamesShowBOFilters, setMainGamesShowBOFilters] = useState(false);
+  const [mainGamesBORaceOpen, setMainGamesBORaceOpen] = useState('');
   const [mainGameDetailLoading, setMainGameDetailLoading] = useState(false);
   const [mainPlayerLoading, setMainPlayerLoading] = useState(false);
   const [selectedReplayId, setSelectedReplayId] = useState(() => initialMainRoute.replayId);
@@ -4789,29 +4789,40 @@ function App() {
                 })}
               </div>
               <div className="workflow-filter-group">
-                <button
-                  type="button"
-                  className={`workflow-filter-pill workflow-filter-pill-disclosure ${mainGamesShowBOFilters ? 'workflow-filter-pill-active' : ''}`}
-                  onClick={() => setMainGamesShowBOFilters((prev) => !prev)}
-                  aria-expanded={mainGamesShowBOFilters}
-                >
-                  Build orders {mainGamesShowBOFilters ? '▾' : '▸'}
-                </button>
-                {mainGamesShowBOFilters && (mainGamesFilterOptions.featuring || [])
-                  .filter((option) => (option.group || '') === 'bo')
-                  .map((option) => {
-                    const active = (mainGamesFilters.featuring || []).includes(option.key);
-                    return (
+                {['zerg', 'terran', 'protoss'].map((race) => {
+                  const raceBOs = (mainGamesFilterOptions.featuring || [])
+                    .filter((option) => (option.group || '') === 'bo' && (option.race || '') === race);
+                  if (raceBOs.length === 0) return null;
+                  const open = mainGamesBORaceOpen === race;
+                  const raceIcon = getWorkerIconForRace(race);
+                  const raceLabel = race.charAt(0).toUpperCase() + race.slice(1);
+                  return (
+                    <React.Fragment key={`wf-bo-race-${race}`}>
                       <button
-                        key={`wf-feature-bo-${option.key}`}
                         type="button"
-                        className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                        onClick={() => toggleMainGameMultiFilter('featuring', option.key)}
+                        className={`workflow-filter-pill workflow-filter-pill-disclosure workflow-filter-pill-icon ${open ? 'workflow-filter-pill-active' : ''}`}
+                        onClick={() => setMainGamesBORaceOpen((prev) => (prev === race ? '' : race))}
+                        aria-expanded={open}
                       >
-                        {option.label}
+                        {raceIcon ? <img src={raceIcon} alt="" className="workflow-filter-pill-icon-img" /> : null}
+                        <span className="workflow-filter-pill-icon-label">{raceLabel} BOs {open ? '▾' : '▸'}</span>
                       </button>
-                    );
-                  })}
+                      {open && raceBOs.map((option) => {
+                        const active = (mainGamesFilters.featuring || []).includes(option.key);
+                        return (
+                          <button
+                            key={`wf-feature-bo-${option.key}`}
+                            type="button"
+                            className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
+                            onClick={() => toggleMainGameMultiFilter('featuring', option.key)}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                })}
               </div>
             </div>
             <div className="workflow-summary-filter-row workflow-games-filter-row">
@@ -4865,11 +4876,11 @@ function App() {
                 <table className={`data-table workflow-table workflow-games-list-table${mainGamesAllTwoPlayer ? ' workflow-games-list-table--roomy' : ''}`}>
                   <thead>
                     <tr>
-                      <th>Played</th>
-                      <th>Players</th>
-                      <th>Map</th>
-                      <th>Duration</th>
-                      <th>Featuring</th>
+                      <th><span title="Played" aria-label="Played" role="img">📅</span></th>
+                      <th><span title="Players" aria-label="Players" role="img">🧑‍🤝‍🧑</span></th>
+                      <th><span title="Map" aria-label="Map" role="img">🗺️</span></th>
+                      <th><span title="Duration" aria-label="Duration" role="img">⏱️</span></th>
+                      <th><span title="Featuring" aria-label="Featuring" role="img">⭐</span></th>
                     </tr>
                   </thead>
                   <tbody>
