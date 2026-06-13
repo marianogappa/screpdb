@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/marianogappa/screpdb/compare/v1.4.0...v1.5.0) (2026-06-13)
+
+
+### Features
+
+* enrich production/research commands with inferred coordinates (closes [#175](https://github.com/marianogappa/screpdb/issues/175)) ([#178](https://github.com/marianogappa/screpdb/issues/178)) ([0dc3326](https://github.com/marianogappa/screpdb/commit/0dc3326e5bc9c3b1637e26384ac5acb9d1765860))
+
 ## [1.4.0](https://github.com/marianogappa/screpdb/compare/v1.3.0...v1.4.0) (2026-06-09)
 
 
