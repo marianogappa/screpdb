@@ -181,8 +181,14 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	commandRegistry := commands.NewCommandRegistry()
 	startTime := rep.Header.StartTime.Unix()
 
+	// Infer pixel coordinates for production / research / cancel commands that
+	// the raw stream leaves spatially blank, by binding each to the producing
+	// building (recovered from selection state) and that building's placement.
+	// Keyed by index into rep.Commands.Cmds, applied to each command below. #175
+	commandCoords := unittags.Coordinates(rep, data.Players)
+
 	if rep.Commands != nil {
-		for _, cmd := range rep.Commands.Cmds {
+		for i, cmd := range rep.Commands.Cmds {
 			base := cmd.BaseCmd()
 			if int(base.PlayerID) >= len(data.Players) {
 				continue
@@ -196,6 +202,11 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 				command.Frame = int32(base.Frame)
 				command.Replay = data.Replay
 				command.Player = playerIDToPlayer[base.PlayerID]
+
+				if cc, ok := commandCoords[i]; ok && command.X == nil && command.Y == nil {
+					x, y := cc.X, cc.Y
+					command.X, command.Y = &x, &y
+				}
 
 				// Edge case: ChatCmd doesn't populate PlayerID, but populates SenderSlotID.
 				// Guard the type assertion: a future screp change (or an oddly-typed

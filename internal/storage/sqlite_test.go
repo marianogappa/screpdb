@@ -96,7 +96,10 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		// location_inactive (timeout) events dropped 35→21 (-14) and one attack
 		// on a now-owned base surfaced (+1), for a net -13. Then -1 (issue #163):
 		// a player who did only non-HP upgrades no longer trips Never-researched.
-		"replay_events": 193,
+		// Then -2 (issue #175): inferred production/research coordinates now flow
+		// through the ownership pass, so a producing building further refreshes
+		// its base's inactivity clock — netting two fewer events.
+		"replay_events": 191,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {

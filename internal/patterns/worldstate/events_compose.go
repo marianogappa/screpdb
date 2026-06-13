@@ -301,6 +301,14 @@ func (e *Engine) inferRecallTargetByPostActivity(cl recallCluster) (int, bool) {
 		if ec.Kind == cmdenrich.KindCast && ec.Subject == "Recall" {
 			continue
 		}
+		// Production / research commands carry their producing building's
+		// inferred location (issue #175), but a recall destination is where
+		// the recalled army went — macro at a Barracks/Hatchery is not a
+		// destination signal, so it must not sway the activity clustering.
+		switch ec.Kind {
+		case cmdenrich.KindMakeUnit, cmdenrich.KindTech, cmdenrich.KindUpgrade:
+			continue
+		}
 		x, y := *ec.X, *ec.Y
 		// Build positions are in tile-space; convert to pixels (mirror
 		// BuildAttacks).
