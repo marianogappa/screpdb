@@ -19,7 +19,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":8.868778280542985}"
+        "value": "{\"switches_per_minute\":16.561085972850677}"
       },
       {
         "replay_player_id": 1,
@@ -49,7 +49,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":13.755656108597284}"
+        "value": "{\"switches_per_minute\":17.013574660633484}"
       }
     ]
   },
@@ -73,7 +73,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":16.315789473684212}"
+        "value": "{\"switches_per_minute\":20}"
       },
       {
         "replay_player_id": 1,
@@ -93,7 +93,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":15.789473684210527}"
+        "value": "{\"switches_per_minute\":20.263157894736842}"
       }
     ]
   },
@@ -112,7 +112,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":21.53846153846154}"
+        "value": "{\"switches_per_minute\":24.871794871794872}"
       },
       {
         "replay_player_id": 1,
@@ -132,7 +132,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":11.794871794871796}"
+        "value": "{\"switches_per_minute\":15.512820512820513}"
       }
     ]
   },
@@ -175,7 +175,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":8.544303797468354}"
+        "value": "{\"switches_per_minute\":12.341772151898734}"
       },
       {
         "replay_player_id": 1,
@@ -195,7 +195,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":15.18987341772152}"
+        "value": "{\"switches_per_minute\":30.189873417721518}"
       }
     ]
   },
@@ -214,7 +214,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":15.661764705882353}"
+        "value": "{\"switches_per_minute\":18.08823529411765}"
       },
       {
         "replay_player_id": 1,
@@ -234,7 +234,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":15.441176470588236}"
+        "value": "{\"switches_per_minute\":31.764705882352942}"
       }
     ]
   },
@@ -253,7 +253,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":13.987730061349692}"
+        "value": "{\"switches_per_minute\":15.690184049079754}"
       },
       {
         "replay_player_id": 1,
@@ -283,7 +283,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":12.607361963190183}"
+        "value": "{\"switches_per_minute\":14.493865030674845}"
       }
     ]
   },
@@ -321,7 +321,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":33.442622950819676}"
+        "value": "{\"switches_per_minute\":47.21311475409836}"
       }
     ]
   },
@@ -350,7 +350,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":19.666666666666668}"
+        "value": "{\"switches_per_minute\":23}"
       },
       {
         "replay_player_id": 1,
@@ -365,7 +365,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":19.5}"
+        "value": "{\"switches_per_minute\":24.333333333333332}"
       }
     ]
   }

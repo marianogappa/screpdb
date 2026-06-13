@@ -40,7 +40,16 @@ import (
 // expert_actuals payload. Bumped so replays analyzed under v29 (which stored an
 // empty payload for these BOs) re-analyze and populate the Build Orders chart's
 // actual-vs-expert markers.
-const AlgorithmVersion = 30
+//
+// 31: Coordinate enrichment (issue #175). Production / research / cancel
+// commands (Train, Unit Morph, Tech, Upgrade, Building Morph, Cancel Train) —
+// previously spatially blank — now carry their producing building's inferred
+// pixel location (internal/unittags.Coordinates), recovered via selection-tag
+// state and, for Zerg larva, frequency-confirmed Hatchery tags. These coords
+// flow through ownership (a producing building further refreshes its base's
+// inactivity clock) and inflate Viewport Multitasking; the recall destination
+// inference excludes them. Re-ingest so stored coords/events reflect the change.
+const AlgorithmVersion = 31
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string
