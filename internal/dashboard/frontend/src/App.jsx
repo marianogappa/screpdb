@@ -4525,6 +4525,11 @@ function App() {
     });
   };
 
+  // When every game on the page is a 2-player (1v1) match, the Players column
+  // is narrow and the table leaves lots of horizontal slack. Bump the type/icon
+  // sizes up from the compact 8-player defaults to use that space.
+  const mainGamesAllTwoPlayer = mainGames.length > 0
+    && mainGames.every((game) => (Array.isArray(game?.players) ? game.players.length : 0) <= 2);
   const mainGamesTotalPages = Math.max(1, Math.ceil((Number(mainGamesTotal) || 0) / MAIN_GAMES_PAGE_SIZE));
   const mainGamesFrom = mainGames.length === 0 ? 0 : ((mainGamesPage - 1) * MAIN_GAMES_PAGE_SIZE) + 1;
   const mainGamesTo = mainGames.length === 0
@@ -4857,7 +4862,7 @@ function App() {
               <div className="loading">Loading games...</div>
             ) : (
               <>
-                <table className="data-table workflow-table workflow-games-list-table">
+                <table className={`data-table workflow-table workflow-games-list-table${mainGamesAllTwoPlayer ? ' workflow-games-list-table--roomy' : ''}`}>
                   <thead>
                     <tr>
                       <th>Played</th>

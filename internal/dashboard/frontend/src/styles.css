@@ -38,11 +38,20 @@ body {
   pointer-events: none;
 }
 
+/* Width cap so the dashboard doesn't stretch edge-to-edge on wide desktops.
+   Set to the games filter bar's natural single-line width (its widest row is
+   ~1469px) plus container/row chrome: the filter bar is the widest fixed-width
+   element, so the whole UI — nav, filters, table, footer — shares this width and
+   centers, keeping them aligned. Narrower content (a 1v1 games table, ~800px)
+   fills the width rather than collapsing (see the --roomy font bump); the
+   8-player table conforms by wrapping its Featuring column, as it already does
+   at smaller widths. Below this width the viewport is the cap (full width). */
 .dashboard-container {
   position: relative;
   z-index: 1;
   padding: 20px;
-  max-width: 100%;
+  max-width: 1540px;
+  margin: 0 auto;
 }
 
 .dashboard-header {
@@ -2259,6 +2268,45 @@ body {
 
 .workflow-games-list-table .workflow-pattern-pills {
   gap: 3px;
+}
+
+/* Roomy variant: applied (from App.jsx) only when every game on the page is a
+   2-player match, where the compact 8-player sizing wastes the available space.
+   Bumps padding/type/icons back up for readability. Must follow the compact
+   rules above (equal specificity → later wins). */
+.workflow-games-list-table--roomy td,
+.workflow-games-list-table--roomy th {
+  padding: 9px 12px;
+}
+
+.workflow-games-list-table--roomy td.workflow-games-list-played,
+.workflow-games-list-table--roomy td.workflow-games-list-map,
+.workflow-games-list-table--roomy td.workflow-games-list-duration {
+  font-size: 0.95em;
+}
+
+.workflow-games-list-table--roomy .workflow-team-player-pill {
+  padding: 0.1em 0.5em 0.12em;
+  font-size: 1em;
+}
+
+.workflow-games-list-table--roomy .workflow-team-player-pill .workflow-race-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.workflow-games-list-table--roomy .workflow-team-player-pill .workflow-crown {
+  font-size: 0.95em;
+}
+
+.workflow-games-list-table--roomy .workflow-team-vs {
+  font-size: 0.92em;
+}
+
+.workflow-games-list-table--roomy .workflow-feature-pill {
+  padding: 2px 8px;
+  font-size: 0.82rem;
+  min-height: 24px;
 }
 
 .workflow-sortable {
