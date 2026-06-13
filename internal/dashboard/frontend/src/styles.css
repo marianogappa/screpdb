@@ -2208,6 +2208,17 @@ body {
    rows. The Featuring column wraps first when space runs out (its pill container
    already flex-wraps); the Players column stays nowrap so the row doesn't grow
    vertically just to break the matchup over two lines. */
+/* Scale the games-list type with available width. The whole UI is capped at the
+   filter-bar width (~1540px), so once the viewport reaches that the rows have
+   their full width and slack to spare — grow the text up to the filter-bar font
+   size (0.78rem) so 8-player rows aren't needlessly tiny. Below the cap the
+   viewport is the constraint, so shrink back toward the compact size that keeps
+   an 8-player matchup on one line. Children below are em-relative so they scale
+   with this. (0.9em pill × 0.867rem ≈ 0.78rem = the filter font.) */
+.workflow-games-list-table {
+  font-size: clamp(0.8125rem, calc(0.8125rem + (100vw - 1300px) * 0.0037), 0.867rem);
+}
+
 .workflow-games-list-table td,
 .workflow-games-list-table th {
   padding: 5px 6px;
@@ -2318,6 +2329,12 @@ body {
   background: transparent;
   font-size: 16px;
   font-weight: 400;
+}
+
+/* Players list header: drop the grey header-cell background, matching the
+   games list. */
+.workflow-players-list-table th {
+  background: transparent;
 }
 
 .workflow-sortable {

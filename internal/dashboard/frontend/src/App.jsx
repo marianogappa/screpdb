@@ -5029,7 +5029,7 @@ function App() {
                   <div className="loading">Loading players...</div>
                 ) : (
                   <>
-                    <table className="data-table workflow-table">
+                    <table className="data-table workflow-table workflow-players-list-table">
                       <thead>
                         <tr>
                           <th className="workflow-sortable" onClick={() => setMainPlayersSort('name')}>Name {mainPlayersSortIndicator('name')}</th>
