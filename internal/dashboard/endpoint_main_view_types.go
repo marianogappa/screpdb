@@ -160,6 +160,7 @@ type workflowGamesListFilterOption struct {
 	IconLabel string   `json:"icon_label,omitempty"`
 	Emoji     string   `json:"emoji,omitempty"`
 	Group     string   `json:"group,omitempty"`
+	Race      string   `json:"race,omitempty"`
 }
 
 type workflowGamesListFilterOptions struct {
@@ -203,12 +204,13 @@ var workflowFeaturingFilters = []struct {
 	IconKeys  []string
 	IconLabel string
 	Emoji     string
+	// Race ("zerg"/"terran"/"protoss") groups the "bo" chips under per-race
+	// disclosures on the games-list filter bar. Empty for "marker" chips.
+	Race string
 }{
 	// NOTE: the former Terran style markers (mech / sk_terran / one_one_one /
 	// mech_transition) are now first-class composition BOs — see the "bo" group
 	// below (issue #155).
-	{Key: "mutalisk_timing", Label: "Mutalisk timing", Group: "marker", IconKey: "mutalisk", IconLabel: "timing"},
-	{Key: "turret_timing", Label: "Turret timing", Group: "marker", IconKey: "missileturret", IconLabel: "Timing"},
 	{Key: "cannon_rush", Label: "Cannon Rush", Group: "marker", IconKey: "photoncannon", IconLabel: "Rush"},
 	{Key: "bunker_rush", Label: "Bunker Rush", Group: "marker", IconKey: "bunker", IconLabel: "Rush"},
 	{Key: "zergling_rush", Label: "Zergling Rush", Group: "marker", IconKey: "zergling", IconLabel: "Rush"},
@@ -233,42 +235,42 @@ var workflowFeaturingFilters = []struct {
 	// Build order pills — keys & labels kept in sync with internal/markers.
 	// Suppressed in render for Money maps (game-list + replay-summary
 	// featuring strips); BO tab and per-player summary pills still show.
-	{Key: "bo_4_pool", Label: "4 Pool", Group: "bo"},
-	{Key: "bo_9_pool", Label: "9 Pool", Group: "bo"},
-	{Key: "bo_9_overpool", Label: "9 Overpool", Group: "bo"},
-	{Key: "bo_12_pool", Label: "12 Pool", Group: "bo"},
-	{Key: "bo_9_pool_hatch", Label: "9 Pool into Hatchery", Group: "bo"},
-	{Key: "bo_9_hatch", Label: "9 Hatch", Group: "bo"},
-	{Key: "bo_10_hatch", Label: "10 Hatch", Group: "bo"},
-	{Key: "bo_11_hatch", Label: "11 Hatch", Group: "bo"},
-	{Key: "bo_12_hatch", Label: "12 Hatch", Group: "bo"},
-	{Key: "bo_1_gate_core", Label: "1 Gate Core", Group: "bo"},
-	{Key: "bo_2_gate", Label: "2 Gate", Group: "bo"},
-	{Key: "bo_nexus_first", Label: "Nexus First", Group: "bo"},
-	{Key: "bo_gate_expand", Label: "Gate Expand", Group: "bo"},
-	{Key: "bo_forge_expa", Label: "Forge Expand", Group: "bo"},
-	{Key: "bo_t_wraith", Label: "Wraith", Group: "bo"},
-	{Key: "bo_t_goliath", Label: "Goliath", Group: "bo"},
-	{Key: "bo_t_bio_1rax", Label: "1-Rax Bio", Group: "bo"},
-	{Key: "bo_t_bio_2rax", Label: "2-Rax Bio", Group: "bo"},
-	{Key: "bo_t_bio_3rax", Label: "3-Rax Bio", Group: "bo"},
-	{Key: "bo_t_bio_4rax", Label: "4-Rax Bio", Group: "bo"},
-	{Key: "bo_t_bio_5rax", Label: "5-Rax Bio", Group: "bo"},
-	{Key: "bo_t_bio_6rax", Label: "6+ Rax Bio", Group: "bo"},
-	{Key: "bo_t_111_mech", Label: "1-1-1 into Mech", Group: "bo"},
-	{Key: "bo_t_mech_2fac", Label: "2-Fac Mech", Group: "bo"},
-	{Key: "bo_t_mech_3fac", Label: "3-Fac Mech", Group: "bo"},
-	{Key: "bo_t_mech_4fac", Label: "4-Fac Mech", Group: "bo"},
-	{Key: "bo_t_mech_5fac", Label: "5-Fac Mech", Group: "bo"},
-	{Key: "bo_t_mech_6fac", Label: "6+ Fac Mech", Group: "bo"},
-	{Key: "bo_t_tankless_2fac", Label: "2-Fac Tankless Mech", Group: "bo"},
-	{Key: "bo_t_tankless_3fac", Label: "3-Fac Tankless Mech", Group: "bo"},
-	{Key: "bo_t_tankless_4fac", Label: "4-Fac Tankless Mech", Group: "bo"},
-	{Key: "bo_t_tankless_5fac", Label: "5-Fac Tankless Mech", Group: "bo"},
-	{Key: "bo_t_tankless_6fac", Label: "6+ Fac Tankless Mech", Group: "bo"},
-	{Key: "bo_t_111", Label: "1-1-1", Group: "bo"},
-	{Key: "bo_cc_first", Label: "CC First", Group: "bo"},
-	{Key: "bo_bbs", Label: "BBS", Group: "bo"},
+	{Key: "bo_4_pool", Label: "4 Pool", Group: "bo", Race: "zerg"},
+	{Key: "bo_9_pool", Label: "9 Pool", Group: "bo", Race: "zerg"},
+	{Key: "bo_9_overpool", Label: "9 Overpool", Group: "bo", Race: "zerg"},
+	{Key: "bo_12_pool", Label: "12 Pool", Group: "bo", Race: "zerg"},
+	{Key: "bo_9_pool_hatch", Label: "9 Pool into Hatchery", Group: "bo", Race: "zerg"},
+	{Key: "bo_9_hatch", Label: "9 Hatch", Group: "bo", Race: "zerg"},
+	{Key: "bo_10_hatch", Label: "10 Hatch", Group: "bo", Race: "zerg"},
+	{Key: "bo_11_hatch", Label: "11 Hatch", Group: "bo", Race: "zerg"},
+	{Key: "bo_12_hatch", Label: "12 Hatch", Group: "bo", Race: "zerg"},
+	{Key: "bo_1_gate_core", Label: "1 Gate Core", Group: "bo", Race: "protoss"},
+	{Key: "bo_2_gate", Label: "2 Gate", Group: "bo", Race: "protoss"},
+	{Key: "bo_nexus_first", Label: "Nexus First", Group: "bo", Race: "protoss"},
+	{Key: "bo_gate_expand", Label: "Gate Expand", Group: "bo", Race: "protoss"},
+	{Key: "bo_forge_expa", Label: "Forge Expand", Group: "bo", Race: "protoss"},
+	{Key: "bo_t_wraith", Label: "Wraith", Group: "bo", Race: "terran"},
+	{Key: "bo_t_goliath", Label: "Goliath", Group: "bo", Race: "terran"},
+	{Key: "bo_t_bio_1rax", Label: "1-Rax Bio", Group: "bo", Race: "terran"},
+	{Key: "bo_t_bio_2rax", Label: "2-Rax Bio", Group: "bo", Race: "terran"},
+	{Key: "bo_t_bio_3rax", Label: "3-Rax Bio", Group: "bo", Race: "terran"},
+	{Key: "bo_t_bio_4rax", Label: "4-Rax Bio", Group: "bo", Race: "terran"},
+	{Key: "bo_t_bio_5rax", Label: "5-Rax Bio", Group: "bo", Race: "terran"},
+	{Key: "bo_t_bio_6rax", Label: "6+ Rax Bio", Group: "bo", Race: "terran"},
+	{Key: "bo_t_111_mech", Label: "1-1-1 into Mech", Group: "bo", Race: "terran"},
+	{Key: "bo_t_mech_2fac", Label: "2-Fac Mech", Group: "bo", Race: "terran"},
+	{Key: "bo_t_mech_3fac", Label: "3-Fac Mech", Group: "bo", Race: "terran"},
+	{Key: "bo_t_mech_4fac", Label: "4-Fac Mech", Group: "bo", Race: "terran"},
+	{Key: "bo_t_mech_5fac", Label: "5-Fac Mech", Group: "bo", Race: "terran"},
+	{Key: "bo_t_mech_6fac", Label: "6+ Fac Mech", Group: "bo", Race: "terran"},
+	{Key: "bo_t_tankless_2fac", Label: "2-Fac Tankless Mech", Group: "bo", Race: "terran"},
+	{Key: "bo_t_tankless_3fac", Label: "3-Fac Tankless Mech", Group: "bo", Race: "terran"},
+	{Key: "bo_t_tankless_4fac", Label: "4-Fac Tankless Mech", Group: "bo", Race: "terran"},
+	{Key: "bo_t_tankless_5fac", Label: "5-Fac Tankless Mech", Group: "bo", Race: "terran"},
+	{Key: "bo_t_tankless_6fac", Label: "6+ Fac Tankless Mech", Group: "bo", Race: "terran"},
+	{Key: "bo_t_111", Label: "1-1-1", Group: "bo", Race: "terran"},
+	{Key: "bo_cc_first", Label: "CC First", Group: "bo", Race: "terran"},
+	{Key: "bo_bbs", Label: "BBS", Group: "bo", Race: "terran"},
 }
 
 var workflowDurationFilterBuckets = []struct {

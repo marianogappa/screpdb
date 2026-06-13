@@ -38,11 +38,20 @@ body {
   pointer-events: none;
 }
 
+/* Width cap so the dashboard doesn't stretch edge-to-edge on wide desktops.
+   Set to the games filter bar's natural single-line width (its widest row is
+   ~1469px) plus container/row chrome: the filter bar is the widest fixed-width
+   element, so the whole UI — nav, filters, table, footer — shares this width and
+   centers, keeping them aligned. Narrower content (a 1v1 games table, ~800px)
+   fills the width rather than collapsing (see the --roomy font bump); the
+   8-player table conforms by wrapping its Featuring column, as it already does
+   at smaller widths. Below this width the viewport is the cap (full width). */
 .dashboard-container {
   position: relative;
   z-index: 1;
-  padding: 20px;
-  max-width: 100%;
+  padding: 20px 10px;
+  max-width: 1540px;
+  margin: 0 auto;
 }
 
 .dashboard-header {
@@ -2192,20 +2201,33 @@ body {
   cursor: pointer;
 }
 
-/* Games list compactness: trim padding/font/icon sizes so an 8-player matchup
-   row fits on one visual line at 14''. The Featuring column wraps first when
-   space runs out (its pill container already flex-wraps), the Players column
-   stays nowrap so the row doesn't grow vertically just to break the matchup
-   over two lines. */
+/* Games list compactness: trim inter-column/pill spacing so an 8-player matchup
+   row stays compact. Spacing is kept tight (rather than the font tiny) so the
+   freed horizontal space — together with narrow viewport-edge padding on
+   .dashboard-container — pays for a legible type/icon size even on 8-player
+   rows. The Featuring column wraps first when space runs out (its pill container
+   already flex-wraps); the Players column stays nowrap so the row doesn't grow
+   vertically just to break the matchup over two lines. */
+/* Scale the games-list type with available width. The whole UI is capped at the
+   filter-bar width (~1540px), so once the viewport reaches that the rows have
+   their full width and slack to spare — grow the text up to the filter-bar font
+   size (0.78rem) so 8-player rows aren't needlessly tiny. Below the cap the
+   viewport is the constraint, so shrink back toward the compact size that keeps
+   an 8-player matchup on one line. Children below are em-relative so they scale
+   with this. (0.9em pill × 0.867rem ≈ 0.78rem = the filter font.) */
+.workflow-games-list-table {
+  font-size: clamp(0.8125rem, calc(0.8125rem + (100vw - 1300px) * 0.0037), 0.867rem);
+}
+
 .workflow-games-list-table td,
 .workflow-games-list-table th {
-  padding: 5px 8px;
+  padding: 5px 6px;
 }
 
 .workflow-games-list-table td.workflow-games-list-played,
 .workflow-games-list-table td.workflow-games-list-map,
 .workflow-games-list-table td.workflow-games-list-duration {
-  font-size: 0.8em;
+  font-size: 0.85em;
   white-space: nowrap;
 }
 
@@ -2215,19 +2237,19 @@ body {
 }
 
 .workflow-games-list-table .workflow-team-player-pill {
-  padding: 0.02em 0.3em 0.04em;
-  font-size: 0.82em;
+  padding: 0.02em 0.26em 0.04em;
+  font-size: 0.9em;
   line-height: 1.5;
-  gap: 0.12em;
+  gap: 0.1em;
 }
 
 .workflow-games-list-table .workflow-team-player-pill .workflow-race-icon {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
 }
 
 .workflow-games-list-table .workflow-team-player-pill .workflow-crown {
-  font-size: 0.8em;
+  font-size: 0.85em;
 }
 
 /* Keep each player name on a single line inside its pill — long names with
@@ -2239,16 +2261,16 @@ body {
 }
 
 .workflow-games-list-table .workflow-team-matchup {
-  column-gap: 0.18rem;
-  row-gap: 0.18rem;
+  column-gap: 0.14rem;
+  row-gap: 0.14rem;
 }
 
 .workflow-games-list-table .workflow-team-side {
-  gap: 0.12rem;
+  gap: 0.1rem;
 }
 
 .workflow-games-list-table .workflow-team-vs {
-  font-size: 0.78em;
+  font-size: 0.82em;
 }
 
 .workflow-games-list-table .workflow-feature-pill {
@@ -2259,6 +2281,60 @@ body {
 
 .workflow-games-list-table .workflow-pattern-pills {
   gap: 3px;
+}
+
+/* Roomy variant: applied (from App.jsx) only when every game on the page is a
+   2-player match, where the compact 8-player sizing wastes the available space.
+   Bumps padding/type/icons back up for readability. Must follow the compact
+   rules above (equal specificity → later wins). */
+.workflow-games-list-table--roomy td,
+.workflow-games-list-table--roomy th {
+  padding: 9px 12px;
+}
+
+.workflow-games-list-table--roomy td.workflow-games-list-played,
+.workflow-games-list-table--roomy td.workflow-games-list-map,
+.workflow-games-list-table--roomy td.workflow-games-list-duration {
+  font-size: 0.95em;
+}
+
+.workflow-games-list-table--roomy .workflow-team-player-pill {
+  padding: 0.1em 0.5em 0.12em;
+  font-size: 1em;
+}
+
+.workflow-games-list-table--roomy .workflow-team-player-pill .workflow-race-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.workflow-games-list-table--roomy .workflow-team-player-pill .workflow-crown {
+  font-size: 0.95em;
+}
+
+.workflow-games-list-table--roomy .workflow-team-vs {
+  font-size: 0.92em;
+}
+
+.workflow-games-list-table--roomy .workflow-feature-pill {
+  padding: 2px 8px;
+  font-size: 0.82rem;
+  min-height: 24px;
+}
+
+/* Games-list header: drop the grey header-cell background (sit on the page
+   background) and show the column names as emoji glyphs, sized up for legibility
+   since the table font is small. */
+.workflow-games-list-table th {
+  background: transparent;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+/* Players list header: drop the grey header-cell background, matching the
+   games list. */
+.workflow-players-list-table th {
+  background: transparent;
 }
 
 .workflow-sortable {
