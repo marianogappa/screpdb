@@ -1,0 +1,301 @@
+build_id,matchup,race,build_name,variant,step,building,supply,sourced_seconds,trigger_note
+T1,TvP,Terran,Siege Expand,standard,1,Supply Depot,9,,
+T1,TvP,Terran,Siege Expand,standard,2,Barracks,12,,
+T1,TvP,Terran,Siege Expand,standard,3,Refinery,12,,
+T1,TvP,Terran,Siege Expand,standard,4,Supply Depot,15,,
+T1,TvP,Terran,Siege Expand,standard,5,Factory,16,,
+T1,TvP,Terran,Siege Expand,standard,6,Machine Shop,,,on 100% Factory
+T1,TvP,Terran,Siege Expand,standard,7,Command Center,21,,natural
+T1,TvP,Terran,Siege Expand,standard,8,Supply Depot,24,,
+T1,TvP,Terran,Siege Expand,standard,9,Engineering Bay,28,,optional vs DT/drop
+T2,TvP,Terran,Double Armory,standard,1,Supply Depot,9,,
+T2,TvP,Terran,Double Armory,standard,2,Barracks,11,,
+T2,TvP,Terran,Double Armory,standard,3,Refinery,11,,
+T2,TvP,Terran,Double Armory,standard,4,Factory,15,,
+T2,TvP,Terran,Double Armory,standard,5,Supply Depot,15,,
+T2,TvP,Terran,Double Armory,standard,6,Command Center,21,,natural
+T2,TvP,Terran,Double Armory,standard,7,Supply Depot,24,,
+T2,TvP,Terran,Double Armory,standard,8,Armory,33,,
+T2,TvP,Terran,Double Armory,standard,9,Engineering Bay,33,,
+T2,TvP,Terran,Double Armory,standard,10,Factory,49,,second
+T2,TvP,Terran,Double Armory,standard,11,Command Center,50,,third
+T2,TvP,Terran,Double Armory,standard,12,Starport,,,on 50% Vehicle Weapons L1
+T2,TvP,Terran,Double Armory,standard,13,Science Facility,,,on 100% Starport
+T2,TvP,Terran,Double Armory,standard,14,Armory,,,second; on 100% Starport
+T2,TvP,Terran,Double Armory,standard,15,Academy,,,on 100% Starport
+T3,TvP,Terran,1 Rax FE vP,fast,1,Supply Depot,9,,
+T3,TvP,Terran,1 Rax FE vP,fast,2,Barracks,11,,
+T3,TvP,Terran,1 Rax FE vP,fast,3,Command Center,15,,natural; 17 in safe variant
+T3,TvP,Terran,1 Rax FE vP,fast,4,Refinery,16,,18 in safe variant
+T3,TvP,Terran,1 Rax FE vP,fast,5,Factory,25,,
+T3,TvP,Terran,1 Rax FE vP,fast,6,Refinery,30,,natural
+T4,TvP,Terran,FD,standard,1,Supply Depot,9,,
+T4,TvP,Terran,FD,standard,2,Barracks,11,,same time as Refinery
+T4,TvP,Terran,FD,standard,3,Refinery,11,,
+T4,TvP,Terran,FD,standard,4,Factory,15,,
+T4,TvP,Terran,FD,standard,5,Supply Depot,16,,
+T4,TvP,Terran,FD,standard,6,Machine Shop,,,on 100% Factory
+T4,TvP,Terran,FD,standard,7,Command Center,,,at 400 minerals; natural
+T6,TvZ,Terran,1 Rax FE vZ,standard,1,Supply Depot,9,,
+T6,TvZ,Terran,1 Rax FE vZ,standard,2,Barracks,11,,plus scout
+T6,TvZ,Terran,1 Rax FE vZ,standard,3,Command Center,16,,natural; 15-18 by scout
+T7,TvZ,Terran,+1 Up-Terran,standard,1,Barracks,22,,second (off 1 Rax FE)
+T7,TvZ,Terran,+1 Up-Terran,standard,2,Refinery,,,after Rax 2
+T7,TvZ,Terran,+1 Up-Terran,standard,3,Engineering Bay,,,after Refinery
+T7,TvZ,Terran,+1 Up-Terran,standard,4,Academy,,,after +1 starts
+T7,TvZ,Terran,+1 Up-Terran,standard,5,Barracks,,,3rd/4th after Starport
+T8,TvZ,Terran,+1 5 Rax,fast-ebay,1,Supply Depot,9,,
+T8,TvZ,Terran,+1 5 Rax,fast-ebay,2,Barracks,11,,
+T8,TvZ,Terran,+1 5 Rax,fast-ebay,3,Supply Depot,15,,
+T8,TvZ,Terran,+1 5 Rax,fast-ebay,4,Command Center,18,,
+T8,TvZ,Terran,+1 5 Rax,fast-ebay,5,Refinery,,,
+T8,TvZ,Terran,+1 5 Rax,fast-ebay,6,Engineering Bay,,,+1 Weapons on 100%
+T8,TvZ,Terran,+1 5 Rax,fast-ebay,7,Bunker,,,
+T8,TvZ,Terran,+1 5 Rax,fast-ebay,8,Academy,,,
+T8,TvZ,Terran,+1 5 Rax,fast-ebay,9,Barracks x4,,,5 total
+T9,TvZ,Terran,5 Factory Goliaths,standard,1,Supply Depot,9,,
+T9,TvZ,Terran,5 Factory Goliaths,standard,2,Barracks,11,,
+T9,TvZ,Terran,5 Factory Goliaths,standard,3,Refinery,12,,
+T9,TvZ,Terran,5 Factory Goliaths,standard,4,Supply Depot,16,,
+T9,TvZ,Terran,5 Factory Goliaths,standard,5,Factory,17,,
+T9,TvZ,Terran,5 Factory Goliaths,standard,6,Command Center,20,,natural
+T9,TvZ,Terran,5 Factory Goliaths,standard,7,Armory,24,,
+T9,TvZ,Terran,5 Factory Goliaths,standard,8,Factory,29,,second
+T9,TvZ,Terran,5 Factory Goliaths,standard,9,Machine Shop,,390,~6:30 reference; Goliaths nonstop on 100%
+T9,TvZ,Terran,5 Factory Goliaths,standard,10,Factory,39,,third
+T9,TvZ,Terran,5 Factory Goliaths,standard,11,Engineering Bay,44,,
+T9,TvZ,Terran,5 Factory Goliaths,standard,12,Missile Turret,55,,1-2 per base
+T9,TvZ,Terran,5 Factory Goliaths,standard,13,Refinery,59,,
+T9,TvZ,Terran,5 Factory Goliaths,standard,14,Factory,78,,fourth
+T9,TvZ,Terran,5 Factory Goliaths,standard,15,Factory,78,,fifth
+T9,TvZ,Terran,5 Factory Goliaths,standard,16,Academy,82,,
+T9,TvZ,Terran,5 Factory Goliaths,standard,17,Command Center,111,,third; expand behind push
+T11,TvZ,Terran,4 Rax vs Eco Muta,standard,1,Barracks x2,,,4 total off 1 Rax FE
+T11,TvZ,Terran,4 Rax vs Eco Muta,standard,2,Factory,,,
+T11,TvZ,Terran,4 Rax vs Eco Muta,standard,3,Starport,,,dropship
+T11,TvZ,Terran,4 Rax vs Eco Muta,standard,4,Science Facility,,,plus 2nd Engineering Bay
+T12,TvT,Terran,1 Fact FE,standard,1,Supply Depot,9,,
+T12,TvT,Terran,1 Fact FE,standard,2,Barracks,12,,
+T12,TvT,Terran,1 Fact FE,standard,3,Refinery,12,,
+T12,TvT,Terran,1 Fact FE,standard,4,Supply Depot,16,,
+T12,TvT,Terran,1 Fact FE,standard,5,Factory,16,,
+T12,TvT,Terran,1 Fact FE,standard,6,Command Center,20,,natural
+T12,TvT,Terran,1 Fact FE,standard,7,Supply Depot,23,,
+T12,TvT,Terran,1 Fact FE,standard,8,Machine Shop,24,,
+T12,TvT,Terran,1 Fact FE,standard,9,Factory,26,,second
+T13,TvT,Terran,2 Fact Vults,standard,1,Barracks,11,,11-12 (at 150 min)
+T13,TvT,Terran,2 Fact Vults,standard,2,Refinery,12,105,"1:45 mark, ~2s after 12th SCV"
+T13,TvT,Terran,2 Fact Vults,standard,3,Factory,16,,Vulture Speed first
+T13,TvT,Terran,2 Fact Vults,standard,4,Factory,,,second
+T13,TvT,Terran,2 Fact Vults,standard,5,Machine Shop,,,second
+T13,TvT,Terran,2 Fact Vults,standard,6,Engineering Bay,28,,optional vs wraith/drop
+T14,TvT,Terran,3 Fact Vulture,standard,1,Supply Depot,9,,
+T14,TvT,Terran,3 Fact Vulture,standard,2,Barracks,11,,
+T14,TvT,Terran,3 Fact Vulture,standard,3,Refinery,11,,scout
+T14,TvT,Terran,3 Fact Vulture,standard,4,Supply Depot,15,,
+T14,TvT,Terran,3 Fact Vulture,standard,5,Factory,18,,
+T14,TvT,Terran,3 Fact Vulture,standard,6,Factory,20,,second
+T14,TvT,Terran,3 Fact Vulture,standard,7,Machine Shop,,,on 100% Factory
+T14,TvT,Terran,3 Fact Vulture,standard,8,Supply Depot,22,,
+T14,TvT,Terran,3 Fact Vulture,standard,9,Machine Shop,27,,second
+T14,TvT,Terran,3 Fact Vulture,standard,10,Supply Depot,30,,
+T14,TvT,Terran,3 Fact Vulture,standard,11,Factory,32,,third; Mines upgrade
+T15,TvT,Terran,2 Port Wraith,standard,1,Supply Depot,9,,
+T15,TvT,Terran,2 Port Wraith,standard,2,Barracks,11,,
+T15,TvT,Terran,2 Port Wraith,standard,3,Refinery,12,,
+T15,TvT,Terran,2 Port Wraith,standard,4,Supply Depot,13,,
+T15,TvT,Terran,2 Port Wraith,standard,5,Factory,16,,
+T15,TvT,Terran,2 Port Wraith,standard,6,Starport x2,22,,
+T15,TvT,Terran,2 Port Wraith,standard,7,Supply Depot,22,,
+T15,TvT,Terran,2 Port Wraith,standard,8,Supply Depot,30,,
+T16,TvT,Terran,14 CC,flash,1,Supply Depot,9,,
+T16,TvT,Terran,14 CC,flash,2,Command Center,14,,natural; fantasy variant 13
+T16,TvT,Terran,14 CC,flash,3,Barracks,15,,
+T16,TvT,Terran,14 CC,flash,4,Refinery,16,,
+T16,TvT,Terran,14 CC,flash,5,Supply Depot,16,,
+T16,TvT,Terran,14 CC,flash,6,Factory,21,,
+T16,TvT,Terran,14 CC,flash,7,Bunker,23,,
+T16,TvT,Terran,14 CC,flash,8,Refinery,26,,expansion
+P1,PvZ,Protoss,Forge Fast Expand,vs-12-pool,1,Pylon,8,,natural; scout
+P1,PvZ,Protoss,Forge Fast Expand,vs-12-pool,2,Forge,11,,
+P1,PvZ,Protoss,Forge Fast Expand,vs-12-pool,3,Nexus,15,,
+P1,PvZ,Protoss,Forge Fast Expand,vs-12-pool,4,Photon Cannon,15,,
+P1,PvZ,Protoss,Forge Fast Expand,vs-12-pool,5,Gateway,15,,
+P1,PvZ,Protoss,Forge Fast Expand,vs-12-pool,6,Pylon,16,,
+P1,PvZ,Protoss,Forge Fast Expand,vs-12-pool,7,Assimilator,17,,
+P1,PvZ,Protoss,Forge Fast Expand,vs-12-pool,8,Cybernetics Core,18,,
+P2,PvZ,Protoss,+1 Sair Speedlot,standard,1,Stargate,,,off Forge FE; continuous Corsairs
+P2,PvZ,Protoss,+1 Sair Speedlot,standard,2,Citadel of Adun,,,Zealot Speed
+P2,PvZ,Protoss,+1 Sair Speedlot,standard,3,Robotics Facility,,540,at around 9:00 (with Singularity Charge)
+P3,PvZ,Protoss,+1 Speedzealot,14-nexus,1,Pylon,8,,natural
+P3,PvZ,Protoss,+1 Speedzealot,14-nexus,2,Forge,10,,
+P3,PvZ,Protoss,+1 Speedzealot,14-nexus,3,Nexus,14,,
+P3,PvZ,Protoss,+1 Speedzealot,14-nexus,4,Photon Cannon,14,,
+P3,PvZ,Protoss,+1 Speedzealot,14-nexus,5,Gateway,16,,natural
+P3,PvZ,Protoss,+1 Speedzealot,14-nexus,6,Assimilator,16,,main
+P3,PvZ,Protoss,+1 Speedzealot,14-nexus,7,Cybernetics Core,21,,
+P3,PvZ,Protoss,+1 Speedzealot,14-nexus,8,Pylon,24,,main
+P3,PvZ,Protoss,+1 Speedzealot,14-nexus,9,Citadel of Adun,27,,
+P4,PvZ,Protoss,Corsair Reaver,flexible,1,Stargate,,,strategy not fixed BO
+P4,PvZ,Protoss,Corsair Reaver,flexible,2,Robotics Facility,,,
+P4,PvZ,Protoss,Corsair Reaver,flexible,3,Assimilator,,,early second gas
+P4,PvZ,Protoss,Corsair Reaver,flexible,4,Robotics Support Bay,,,Shuttle then Reaver
+P4,PvZ,Protoss,Corsair Reaver,flexible,5,Stargate,,,second optional
+P4,PvZ,Protoss,Corsair Reaver,flexible,6,Fleet Beacon,,,later (Disruption Web)
+P5,PvZ,Protoss,2 Gateway,10-12,1,Pylon,8,,
+P5,PvZ,Protoss,2 Gateway,10-12,2,Gateway,10,,
+P5,PvZ,Protoss,2 Gateway,10-12,3,Gateway,12,,
+P5,PvZ,Protoss,2 Gateway,10-12,4,Pylon,15,,
+P5,PvZ,Protoss,2 Gateway,9-9-proxy,1,Pylon,8,,proxy variant
+P5,PvZ,Protoss,2 Gateway,9-9-proxy,2,Gateway,9,,
+P5,PvZ,Protoss,2 Gateway,9-9-proxy,3,Gateway,9,,
+P5,PvZ,Protoss,2 Gateway,9-9-proxy,4,Pylon,13,,
+P6,PvZ,Protoss,Bisu Build,forge-expand,1,Pylon,8,,LEGACY
+P6,PvZ,Protoss,Bisu Build,forge-expand,2,Nexus,12,,
+P6,PvZ,Protoss,Bisu Build,forge-expand,3,Forge,13,,
+P6,PvZ,Protoss,Bisu Build,forge-expand,4,Pylon,15,,
+P6,PvZ,Protoss,Bisu Build,forge-expand,5,Gateway,17,,
+P6,PvZ,Protoss,Bisu Build,forge-expand,6,Photon Cannon,18,,
+P6,PvZ,Protoss,Bisu Build,forge-expand,7,Assimilator,20,,
+P6,PvZ,Protoss,Bisu Build,forge-expand,8,Cybernetics Core,23,,
+P6,PvZ,Protoss,Bisu Build,forge-expand,9,Assimilator,31,,natural
+P6,PvZ,Protoss,Bisu Build,forge-expand,10,Stargate,31,,then Citadel/Templar Archives/DT
+P15,PvZ,Protoss,4 Gate 2 Archon,18-nexus,1,Pylon,8,,natural
+P15,PvZ,Protoss,4 Gate 2 Archon,18-nexus,2,Forge,10,,
+P15,PvZ,Protoss,4 Gate 2 Archon,18-nexus,3,Photon Cannon x2,13,,
+P15,PvZ,Protoss,4 Gate 2 Archon,18-nexus,4,Pylon,15,,main
+P15,PvZ,Protoss,4 Gate 2 Archon,18-nexus,5,Nexus,18,,
+P15,PvZ,Protoss,4 Gate 2 Archon,18-nexus,6,Gateway,18,,natural
+P15,PvZ,Protoss,4 Gate 2 Archon,18-nexus,7,Assimilator,20,,main
+P15,PvZ,Protoss,4 Gate 2 Archon,18-nexus,8,Cybernetics Core,22,,
+P15,PvZ,Protoss,4 Gate 2 Archon,18-nexus,9,Assimilator,25,,
+P15,PvZ,Protoss,4 Gate 2 Archon,18-nexus,10,Stargate,,,on 100% Cyber; then Citadel/3 Gates/Templar Archives
+P7,PvT,Protoss,1 Gate Core vT,one-zealot,1,Pylon,8,,
+P7,PvT,Protoss,1 Gate Core vT,one-zealot,2,Gateway,10,,
+P7,PvT,Protoss,1 Gate Core vT,one-zealot,3,Assimilator,12,,
+P7,PvT,Protoss,1 Gate Core vT,one-zealot,4,Pylon,16,,
+P7,PvT,Protoss,1 Gate Core vT,one-zealot,5,Cybernetics Core,18,,
+P9,PvT,Protoss,1 Gate Reaver,standard,1,Pylon,8,,
+P9,PvT,Protoss,1 Gate Reaver,standard,2,Gateway,10,,
+P9,PvT,Protoss,1 Gate Reaver,standard,3,Assimilator,11,,
+P9,PvT,Protoss,1 Gate Reaver,standard,4,Cybernetics Core,13,,
+P9,PvT,Protoss,1 Gate Reaver,standard,5,Pylon,15,,
+P9,PvT,Protoss,1 Gate Reaver,standard,6,Pylon,21,,
+P9,PvT,Protoss,1 Gate Reaver,standard,7,Robotics Facility,26,,at 200 gas
+P9,PvT,Protoss,1 Gate Reaver,standard,8,Pylon,29,,
+P9,PvT,Protoss,1 Gate Reaver,standard,9,Observatory,34,,
+P9,PvT,Protoss,1 Gate Reaver,standard,10,Nexus,37,,natural
+P13,PvT,Protoss,2 Gate DT,standard,1,Pylon,8,,
+P13,PvT,Protoss,2 Gate DT,standard,2,Gateway,10,,
+P13,PvT,Protoss,2 Gate DT,standard,3,Assimilator,12,,
+P13,PvT,Protoss,2 Gate DT,standard,4,Cybernetics Core,14,,
+P13,PvT,Protoss,2 Gate DT,standard,5,Pylon,15,,
+P13,PvT,Protoss,2 Gate DT,standard,6,Citadel of Adun,,,
+P13,PvT,Protoss,2 Gate DT,standard,7,Gateway,,,second
+P13,PvT,Protoss,2 Gate DT,standard,8,Templar Archives,,360,first DT around 6:00 (relative)
+P11,PvP,Protoss,1 Gate Zealot Core,one-zealot,1,Pylon,8,,
+P11,PvP,Protoss,1 Gate Zealot Core,one-zealot,2,Gateway,10,,
+P11,PvP,Protoss,1 Gate Zealot Core,one-zealot,3,Assimilator,12,,
+P11,PvP,Protoss,1 Gate Zealot Core,one-zealot,4,Pylon,16,,
+P11,PvP,Protoss,1 Gate Zealot Core,one-zealot,5,Cybernetics Core,17,,
+P12,PvP,Protoss,2 Gate Reaver,gate-robo-gate,1,Pylon,8,,
+P12,PvP,Protoss,2 Gate Reaver,gate-robo-gate,2,Gateway,10,,
+P12,PvP,Protoss,2 Gate Reaver,gate-robo-gate,3,Assimilator,11,,
+P12,PvP,Protoss,2 Gate Reaver,gate-robo-gate,4,Cybernetics Core,13,,
+P12,PvP,Protoss,2 Gate Reaver,gate-robo-gate,5,Pylon,16,,
+P12,PvP,Protoss,2 Gate Reaver,gate-robo-gate,6,Pylon,24,,
+P12,PvP,Protoss,2 Gate Reaver,gate-robo-gate,7,Robotics Facility,25,,
+P12,PvP,Protoss,2 Gate Reaver,gate-robo-gate,8,Gateway,29,,second
+P12,PvP,Protoss,2 Gate Reaver,gate-robo-gate,9,Pylon,33,,
+P12,PvP,Protoss,2 Gate Reaver,gate-robo-gate,10,Observatory,,,on 100% Robo
+P12,PvP,Protoss,2 Gate Reaver,gate-robo-gate,11,Observer,,330,~5:30
+P12,PvP,Protoss,2 Gate Reaver,gate-robo-gate,12,Robotics Support Bay,40,,
+P12,PvP,Protoss,2 Gate Reaver,gate-robo-gate,13,Nexus,65,470,natural; push ~7:50-8:00
+Z1,ZvP,Zerg,3 Base Spire 5 Hatch Hydra,standard,1,Lair,,,at 100 gas; after 3rd Hatch
+Z1,ZvP,Zerg,3 Base Spire 5 Hatch Hydra,standard,2,Spire,,,on 100% Lair
+Z1,ZvP,Zerg,3 Base Spire 5 Hatch Hydra,standard,3,Hatchery,32,,3rd base
+Z1,ZvP,Zerg,3 Base Spire 5 Hatch Hydra,standard,4,Extractor,31,,natural
+Z1,ZvP,Zerg,3 Base Spire 5 Hatch Hydra,standard,5,Hydralisk Den,35,,plus Hatchery
+Z1,ZvP,Zerg,3 Base Spire 5 Hatch Hydra,standard,6,Evolution Chamber,,,on 100% Den
+Z1,ZvP,Zerg,3 Base Spire 5 Hatch Hydra,standard,7,Hatchery,110,,4th base; also 2 Evo + Lurker Aspect
+Z2,ZvP,Zerg,12 Hatch vP,standard,1,Overlord,9,,
+Z2,ZvP,Zerg,12 Hatch vP,standard,2,Hatchery,12,,natural
+Z2,ZvP,Zerg,12 Hatch vP,standard,3,Spawning Pool,11,,
+Z3,ZvP,Zerg,5 Hatch before Gas,standard,1,Overlord,9,,
+Z3,ZvP,Zerg,5 Hatch before Gas,standard,2,Spawning Pool,9,,
+Z3,ZvP,Zerg,5 Hatch before Gas,standard,3,Hatchery,11,,scout
+Z3,ZvP,Zerg,5 Hatch before Gas,standard,4,Hatchery,13,,2nd natural
+Z3,ZvP,Zerg,5 Hatch before Gas,standard,5,Overlord,17,,
+Z3,ZvP,Zerg,5 Hatch before Gas,standard,6,Hatchery,18,,simcity
+Z3,ZvP,Zerg,5 Hatch before Gas,standard,7,Extractor,26,,
+Z3,ZvP,Zerg,5 Hatch before Gas,standard,8,Extractor,25,,
+Z3,ZvP,Zerg,5 Hatch before Gas,standard,9,Hatchery,27,,simcity
+Z3,ZvP,Zerg,5 Hatch before Gas,standard,10,Hydralisk Den,,,at 50 gas
+Z3,ZvP,Zerg,5 Hatch before Gas,standard,11,Lair,,,at 100 gas
+Z4,ZvP,Zerg,2 Hatch Hydra,standard,1,Extractor,,,after natural Hatchery
+Z4,ZvP,Zerg,2 Hatch Hydra,standard,2,Hydralisk Den,,,at 50 gas
+Z4,ZvP,Zerg,2 Hatch Hydra,standard,3,Overlord,16,,
+Z6,ZvP,Zerg,2 Hatch Lurker Drop,9-overpool,1,Overlord,9,,
+Z6,ZvP,Zerg,2 Hatch Lurker Drop,9-overpool,2,Spawning Pool,9,,
+Z6,ZvP,Zerg,2 Hatch Lurker Drop,9-overpool,3,Extractor,9,,
+Z6,ZvP,Zerg,2 Hatch Lurker Drop,9-overpool,4,Hatchery,14,,natural
+Z6,ZvP,Zerg,2 Hatch Lurker Drop,9-overpool,5,Lair,15,,
+Z6,ZvP,Zerg,2 Hatch Lurker Drop,9-overpool,6,Overlord,15,,
+Z6,ZvP,Zerg,2 Hatch Lurker Drop,9-overpool,7,Hydralisk Den,,,on 100% Lair (+ Drop upgrade)
+Z6,ZvP,Zerg,2 Hatch Lurker Drop,9-overpool,8,Hatchery,29,,3rd + 2nd gas
+Z6,ZvP,Zerg,2 Hatch Lurker Drop,9-overpool,9,Hatchery,32,,4th (natural)
+Z7,ZvT,Zerg,12 Hatch vT,standard,1,Overlord,9,,
+Z7,ZvT,Zerg,12 Hatch vT,standard,2,Hatchery,12,,natural
+Z7,ZvT,Zerg,12 Hatch vT,standard,3,Spawning Pool,11,,or 13 (delays pool ~10-12s)
+Z8,ZvT,Zerg,3 Hatch Muta,standard,1,Overlord,9,,
+Z8,ZvT,Zerg,3 Hatch Muta,standard,2,Hatchery,12,,expansion
+Z8,ZvT,Zerg,3 Hatch Muta,standard,3,Spawning Pool,11,,11-13
+Z8,ZvT,Zerg,3 Hatch Muta,standard,4,Hatchery,13,,13-14
+Z8,ZvT,Zerg,3 Hatch Muta,standard,5,Extractor,12,,12-14
+Z8,ZvT,Zerg,3 Hatch Muta,standard,6,Overlord,16,,
+Z8,ZvT,Zerg,3 Hatch Muta,standard,7,Lair,,,at 100 gas
+Z8,ZvT,Zerg,3 Hatch Muta,standard,8,Extractor,21,,21-23
+Z8,ZvT,Zerg,3 Hatch Muta,standard,9,Spire,,290,"4:48-4:52; on 100% Lair"
+Z8,ZvT,Zerg,3 Hatch Muta,standard,10,Overlord,24,,
+Z9,ZvT,Zerg,2 Hatch Muta,12-hatch,1,Overlord,9,,
+Z9,ZvT,Zerg,2 Hatch Muta,12-hatch,2,Hatchery,12,,
+Z9,ZvT,Zerg,2 Hatch Muta,12-hatch,3,Spawning Pool,11,,
+Z9,ZvT,Zerg,2 Hatch Muta,12-hatch,4,Extractor,10,,
+Z9,ZvT,Zerg,2 Hatch Muta,12-hatch,5,Lair,,,at 150 min / 100 gas
+Z9,ZvT,Zerg,2 Hatch Muta,12-hatch,6,Overlord,16,,
+Z9,ZvT,Zerg,2 Hatch Muta,12-hatch,7,Spire,,,on 100% Lair; Mutas finish ~6:30
+Z10,ZvT,Zerg,3 Hatch Lurker,standard,1,Overlord,9,,
+Z10,ZvT,Zerg,3 Hatch Lurker,standard,2,Hatchery,12,,natural
+Z10,ZvT,Zerg,3 Hatch Lurker,standard,3,Spawning Pool,11,,11-13
+Z10,ZvT,Zerg,3 Hatch Lurker,standard,4,Hatchery,13,,
+Z10,ZvT,Zerg,3 Hatch Lurker,standard,5,Overlord,16,,
+Z10,ZvT,Zerg,3 Hatch Lurker,standard,6,Extractor,16,,
+Z10,ZvT,Zerg,3 Hatch Lurker,standard,7,Lair,,,at 100 gas
+Z10,ZvT,Zerg,3 Hatch Lurker,standard,8,Hydralisk Den,,,at 60% Lair
+Z10,ZvT,Zerg,3 Hatch Lurker,standard,9,Extractor,,,expansion; at 90% Lair
+Z10,ZvT,Zerg,3 Hatch Lurker,standard,10,Evolution Chamber,,,on 100% Lair (+ Lurker Aspect)
+Z12,ZvZ,Zerg,9 Pool Speed 1 Hatch Spire,standard,1,Spawning Pool,9,,
+Z12,ZvZ,Zerg,9 Pool Speed 1 Hatch Spire,standard,2,Extractor,9,,
+Z12,ZvZ,Zerg,9 Pool Speed 1 Hatch Spire,standard,3,Overlord,8,,
+Z12,ZvZ,Zerg,9 Pool Speed 1 Hatch Spire,standard,4,Lair,,,at 2nd 100 gas
+Z12,ZvZ,Zerg,9 Pool Speed 1 Hatch Spire,standard,5,Overlord,16,,16/17
+Z12,ZvZ,Zerg,9 Pool Speed 1 Hatch Spire,standard,6,Spire,,,on 100% Lair
+Z13,ZvZ,Zerg,Overpool,standard,1,Overlord,9,,
+Z13,ZvZ,Zerg,Overpool,standard,2,Spawning Pool,9,,
+Z13,ZvZ,Zerg,Overpool,standard,3,Extractor,9,,
+Z13,ZvZ,Zerg,Overpool,standard,4,Lair,,,at 100 gas
+Z13,ZvZ,Zerg,Overpool,standard,5,Spire,,,on 100% Lair
+Z13,ZvZ,Zerg,Overpool,standard,6,Hatchery,,,at 300 min
+Z14,ZvZ,Zerg,9 Gas 9 Pool,standard,1,Overlord,9,,
+Z14,ZvZ,Zerg,9 Gas 9 Pool,standard,2,Extractor,9,,at 50 min
+Z14,ZvZ,Zerg,9 Gas 9 Pool,standard,3,Spawning Pool,9,,
+Z14,ZvZ,Zerg,9 Gas 9 Pool,standard,4,Lair,11,,
+Z14,ZvZ,Zerg,9 Gas 9 Pool,standard,5,Spire,,,on 100% Lair
+Z14,ZvZ,Zerg,9 Gas 9 Pool,standard,6,Overlord,17,,
+Z15,ZvZ,Zerg,12 Pool,standard,1,Overlord,9,,
+Z15,ZvZ,Zerg,12 Pool,standard,2,Spawning Pool,12,,
+Z15,ZvZ,Zerg,12 Pool,standard,3,Extractor,11,,
+Z15,ZvZ,Zerg,12 Pool,standard,4,Hatchery,,,at next 300 min
+Z15,ZvZ,Zerg,12 Pool,standard,5,Lair,,180,around 3 minutes into the game
+Z15,ZvZ,Zerg,12 Pool,standard,6,Spire,,,on 100% Lair
+Z15,ZvZ,Zerg,12 Pool,standard,7,Overlord,16,,
