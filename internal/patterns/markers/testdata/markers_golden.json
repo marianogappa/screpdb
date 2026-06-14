@@ -3,8 +3,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 11 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":117,\"found\":true}]}"
+        "pattern_name": "Build Order: 3 Hatch Muta",
+        "value": "{\"expert_actuals\":[{\"second\":247,\"found\":true},{\"second\":326,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -57,8 +57,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 11 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":117,\"found\":true}]}"
+        "pattern_name": "Build Order: 2 Hatch Muta",
+        "value": "{\"expert_actuals\":[{\"second\":240,\"found\":true},{\"second\":322,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -101,8 +101,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 6+ Fac Mech",
-        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":83,\"found\":true},{\"second\":98,\"found\":true},{\"second\":150,\"found\":true},{\"second\":575,\"found\":true},{\"second\":249,\"found\":true}]}"
+        "pattern_name": "Build Order: Siege Expand",
+        "value": "{\"expert_actuals\":[{\"second\":150,\"found\":true},{\"second\":208,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -116,8 +116,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 1 Gate Core",
-        "value": "{\"expert_actuals\":[{\"second\":51,\"found\":true},{\"second\":78,\"found\":true},{\"second\":93,\"found\":true},{\"second\":132,\"found\":true}]}"
+        "pattern_name": "Build Order: 2 Gate DT",
+        "value": "{\"expert_actuals\":[{\"second\":493,\"found\":true},{\"second\":577,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -257,8 +257,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 1 Gate Core",
-        "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":69,\"found\":true},{\"second\":82,\"found\":true},{\"second\":111,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Gate Reaver",
+        "value": "{\"expert_actuals\":[{\"second\":247,\"found\":true},{\"second\":351,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -329,8 +329,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 5-Fac Mech",
-        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":89,\"found\":true},{\"second\":100,\"found\":true},{\"second\":150,\"found\":true},{\"second\":547,\"found\":true},{\"second\":380,\"found\":true}]}"
+        "pattern_name": "Build Order: Siege Expand",
+        "value": "{\"expert_actuals\":[{\"second\":150,\"found\":true},{\"second\":311,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,

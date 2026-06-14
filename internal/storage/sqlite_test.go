@@ -99,7 +99,10 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		// Then -2 (issue #175): inferred production/research coordinates now flow
 		// through the ownership pass, so a producing building further refreshes
 		// its base's inactivity clock — netting two fewer events.
-		"replay_events": 191,
+		// Then +1 (issue #182): a tier-1 preferred opener now matches a player
+		// whose tier-2 opener previously didn't (the muta/reaver tech-pathway
+		// openers detect where the broad bucket fell through).
+		"replay_events": 192,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {

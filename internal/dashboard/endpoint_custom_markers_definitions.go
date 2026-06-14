@@ -89,11 +89,22 @@ var staticFeaturingOrder = []string{
 	"bo_10_hatch",
 	"bo_11_hatch",
 	"bo_12_hatch",
+	// Preferred Zerg tech-pathway openers (issue #182) — listed before the broad
+	// rungs so they read first; tiering means only one ever fires per player.
+	"bo_z_3hatch_muta",
+	"bo_z_2hatch_muta",
+	"bo_z_3hatch_lurker",
+	"bo_z_2hatch_hydra",
 	"bo_2_gate",
 	"bo_1_gate_core",
 	"bo_nexus_first",
 	"bo_gate_expand",
 	"bo_forge_expa",
+	// Preferred Protoss tech-pathway openers (issue #182).
+	"bo_p_1gate_reaver",
+	"bo_p_2gate_reaver",
+	"bo_p_2gate_dt",
+	"bo_p_sair_speedlot",
 	"bo_bbs",
 	"bo_cc_first",
 	// Terran composition BOs (issue #155): former mech / 1-1-1 / SK Terran
@@ -118,6 +129,12 @@ var staticFeaturingOrder = []string{
 	"bo_t_tankless_5fac",
 	"bo_t_tankless_6fac",
 	"bo_t_111",
+	// Preferred Terran opening-sequence openers (issue #182).
+	"bo_t_siege_expand",
+	"bo_t_2port_wraith",
+	"bo_t_2fact_vults",
+	// late-game / signature markers.
+	"double_stargate",
 	// money-map markers — rendered last so regular markers take priority on
 	// mixed/regular game listings; on Money games they trail Mind Control etc.
 	"carriers",

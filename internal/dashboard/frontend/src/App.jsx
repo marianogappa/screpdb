@@ -850,11 +850,18 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
   return { keys, rowByKey };
 };
 
-// buildMainGameFeaturingPills produces the ordered pill list for the featuring
-// strip. Ordering + game-event-only metadata (cannon_rush, bunker_rush,
-// zergling_rush, mind_control) come from the backend-provided featuring_order
-// and game_event_features lists. Marker pills come from the marker registry's
-// games_list field; markers without one surface via a minimal fallback.
+// buildMainGameFeaturingPills produces the ordered pill list for the replay
+// summary "Featuring" strip. Ordering + game-event-only metadata (cannon_rush,
+// bunker_rush, zergling_rush, mind_control) come from the backend-provided
+// featuring_order and game_event_features lists. Marker pills come from the
+// marker registry's games_list field; markers without one surface via a minimal
+// fallback.
+//
+// Build-order openers are deliberately EXCLUDED here: the summary strip is for
+// game-characterising signatures/events (Carriers, drops, nukes, Double
+// Stargate, …), not the opener — which has its own per-player pill and Build
+// Orders tab. (The games-list rows keep their opener chip; that's a separate,
+// server-built `game.featuring` path.)
 //
 // Post-process: when a more-specific drop variant pill is present
 // (dt_drop / reaver_drop / cliff_drop), the generic "drop" pill is elided
@@ -869,6 +876,8 @@ const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
 
   const pills = order
     .filter((key) => keys.has(key))
+    // Never show build-order openers on the summary featuring strip.
+    .filter((key) => registry[key]?.kind !== 'initial_build_order')
     .map((key) => {
       const def = registry[key];
       if (def?.games_list) {

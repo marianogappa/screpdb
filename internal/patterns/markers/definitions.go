@@ -129,20 +129,28 @@ const (
 	subjZergling         = models.GeneralUnitZergling
 	subjSpire            = models.GeneralUnitSpire
 	subjMutalisk         = models.GeneralUnitMutalisk
+	subjHydraliskDen     = models.GeneralUnitHydraliskDen
+	subjHydralisk        = models.GeneralUnitHydralisk
+	subjLurker           = models.GeneralUnitLurker
 
 	// Protoss
-	subjNexus           = models.GeneralUnitNexus
-	subjPylon           = models.GeneralUnitPylon
-	subjGateway         = models.GeneralUnitGateway
-	subjAssimilator     = models.GeneralUnitAssimilator
-	subjCyberneticsCore = models.GeneralUnitCyberneticsCore
-	subjForge           = models.GeneralUnitForge
-	subjPhotonCannon    = models.GeneralUnitPhotonCannon
-	subjZealot          = models.GeneralUnitZealot
-	subjScout           = models.GeneralUnitScout
-	subjCarrier         = models.GeneralUnitCarrier
-	subjStargate        = models.GeneralUnitStargate
-	subjCorsair         = models.GeneralUnitCorsair
+	subjNexus            = models.GeneralUnitNexus
+	subjPylon            = models.GeneralUnitPylon
+	subjGateway          = models.GeneralUnitGateway
+	subjAssimilator      = models.GeneralUnitAssimilator
+	subjCyberneticsCore  = models.GeneralUnitCyberneticsCore
+	subjForge            = models.GeneralUnitForge
+	subjPhotonCannon     = models.GeneralUnitPhotonCannon
+	subjZealot           = models.GeneralUnitZealot
+	subjScout            = models.GeneralUnitScout
+	subjCarrier          = models.GeneralUnitCarrier
+	subjStargate         = models.GeneralUnitStargate
+	subjCorsair          = models.GeneralUnitCorsair
+	subjRoboticsFacility = models.GeneralUnitRoboticsFacility
+	subjReaver           = models.GeneralUnitReaver
+	subjCitadelOfAdun    = models.GeneralUnitCitadelOfAdun
+	subjTemplarArchives  = models.GeneralUnitTemplarArchives
+	subjDarkTemplar      = models.GeneralUnitDarkTemplar
 
 	// Terran
 	subjCommandCenter  = models.GeneralUnitCommandCenter
@@ -173,6 +181,16 @@ const (
 // at any point"). Well past any realistic SC:BW replay length; the detector
 // will still Finalize when the replay actually ends.
 const endOfReplaySentinel = 10 * 60 * 60 // 10 hours
+
+// zergOpeningHatchDeadline is the second by which the tier-1 Zerg tech-pathway
+// openers count opening Hatcheries to tell "2 base" from "3 base". Counting
+// relative to the tech building (Spire/Den) under-counts: the 3rd base usually
+// lands AT or just after the Spire (~4:50), so before-Spire is 1 hatch for both
+// 2- and 3-hatch muta. By 6:00 the 3-base opening has its 2 expansion Hatcheries
+// down while the 2-base one still has 1 — a clean split in the cwal-dl corpus
+// (1 hatch: 80 players, 2 hatch: 225). One Build(Hatchery) = 2 bases (the
+// starting Hatchery is not a command); two = 3 bases.
+const zergOpeningHatchDeadline = 360
 
 // Default tolerance used when the user spec did not give one.
 var defaultTol = Sym(5)
@@ -424,6 +442,240 @@ func allMarkers() []Marker {
 	}
 
 	return []Marker{
+		// -------------------------------------------------------------------
+		// TIER-1 PREFERRED OPENERS (issue #182). Specific, scene-named openings
+		// sourced from current BW pro / Liquipedia knowledge (docs/build-orders-
+		// research/). Each is keyed on the building SEQUENCE + defining tech
+		// unit the parser detects reliably (supply is not simulated for T/P),
+		// matchup-gated, and made pairwise-disjoint WITHIN tier 1 per (race,
+		// matchup) — across tiers, overlap is expected and resolved by tier
+		// precedence (a matched preferred opener suppresses the broad tier-2
+		// bucket it overlaps). Expert milestone timings are intentionally left
+		// empty pending corpus-derived medians (issue #182, same method as #158);
+		// the UI shows the opener label without an actual-vs-ideal compare until
+		// then.
+		//
+		// Tier-1 deliberately stays MORE SPECIFIC than tier 2: where the broad
+		// bucket is already the better classification (notably TvZ army
+		// composition, #155), no blanket tier-1 opener is added, so those games
+		// keep their composition label.
+		// -------------------------------------------------------------------
+
+		// --- Zerg tech-pathway openers: hatchery count + first tech building. ---
+		{
+			// 3 Hatch Muta (ZvT): muta-first (Spire before any Hydralisk Den)
+			// off a 3-base opening — 2 expansion Hatcheries placed before the
+			// Spire. The defining modern ZvT macro-muta build.
+			Name: "3 Hatch Muta", PatternName: InitialBuildOrderPatternNamePrefix + "3 Hatch Muta", FeatureKey: "bo_z_3hatch_muta",
+			Race: RaceZerg, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvZ"},
+			Rule: All(
+				BuildBefore(subjSpire, subjHydraliskDen),                     // muta-first: Spire before any Den
+				ProduceCountAtLeast(subjMutalisk, 4),                         // it's a muta build, not just a Spire
+				CountBuildsBefore(subjHatchery, 2, zergOpeningHatchDeadline), // 3 bases (2 expansions)
+			),
+			RuleDeadline: 600,
+			// Expert targets: medians across the cwal-dl corpus's detected games
+			// (issue #182), tolerances ~ the observed spread.
+			Expert: []ExpertEvent{
+				{Key: "Spire", Match: MatchBuild(subjSpire), TargetSecond: 240, Tolerance: Asym(30, 80)},
+				{Key: "First Mutalisks", Match: MatchFirstProduce(subjMutalisk), TargetSecond: 320, Tolerance: Asym(40, 90)},
+			},
+			SummaryPlayer: mkPill("3 Hatch Muta", "mutalisk"), GamesList: mkPill("3 Hatch Muta", "mutalisk"),
+		},
+		{
+			// 2 Hatch Muta (ZvT): muta-first off a 2-base opening — fewer than 2
+			// expansion Hatcheries before the Spire. Faster muta when a 3rd is
+			// hard to hold.
+			Name: "2 Hatch Muta", PatternName: InitialBuildOrderPatternNamePrefix + "2 Hatch Muta", FeatureKey: "bo_z_2hatch_muta",
+			Race: RaceZerg, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvZ"},
+			Rule: All(
+				BuildBefore(subjSpire, subjHydraliskDen),                          // muta-first: Spire before any Den
+				ProduceCountAtLeast(subjMutalisk, 4),                              // it's a muta build, not just a Spire
+				Not(CountBuildsBefore(subjHatchery, 2, zergOpeningHatchDeadline)), // 2 bases only
+			),
+			RuleDeadline: 600,
+			Expert: []ExpertEvent{
+				{Key: "Spire", Match: MatchBuild(subjSpire), TargetSecond: 249, Tolerance: Asym(35, 70)},
+				{Key: "First Mutalisks", Match: MatchFirstProduce(subjMutalisk), TargetSecond: 327, Tolerance: Asym(40, 90)},
+			},
+			SummaryPlayer: mkPill("2 Hatch Muta", "mutalisk"), GamesList: mkPill("2 Hatch Muta", "mutalisk"),
+		},
+		{
+			// 3 Hatch Lurker (ZvT): lurker-first (Hydralisk Den before Spire)
+			// off a 3-base opening, with Lurkers actually morphed. Defensive
+			// fast-tech vs +1 5-Rax.
+			Name: "3 Hatch Lurker", PatternName: InitialBuildOrderPatternNamePrefix + "3 Hatch Lurker", FeatureKey: "bo_z_3hatch_lurker",
+			Race: RaceZerg, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvZ"},
+			Rule: All(
+				BuildBefore(subjHydraliskDen, subjSpire),                     // lurker-first: Den before any Spire
+				ProduceCountAtLeast(subjLurker, 2),                           // lurkers are the point of the build
+				CountBuildsBefore(subjHatchery, 2, zergOpeningHatchDeadline), // 3 bases
+			),
+			RuleDeadline: 600,
+			Expert: []ExpertEvent{
+				{Key: "Hydralisk Den", Match: MatchBuild(subjHydraliskDen), TargetSecond: 270, Tolerance: Asym(50, 60)},
+				{Key: "First Lurkers", Match: MatchFirstProduce(subjLurker), TargetSecond: 417, Tolerance: Asym(80, 120)},
+			},
+			SummaryPlayer: mkPill("3 Hatch Lurker", "lurker"), GamesList: mkPill("3 Hatch Lurker", "lurker"),
+		},
+		{
+			// 2 Hatch Hydra (ZvP): a 2-base Hydralisk Den opening (Den before any
+			// Spire) — hydra pressure / bust vs cannon-light FFE.
+			Name: "2 Hatch Hydra", PatternName: InitialBuildOrderPatternNamePrefix + "2 Hatch Hydra", FeatureKey: "bo_z_2hatch_hydra",
+			Race: RaceZerg, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvZ"},
+			Rule: All(
+				BuildBefore(subjHydraliskDen, subjSpire),                          // hydra-tech, not muta
+				ProduceCountAtLeastBefore(subjHydralisk, 6, 420),                  // a hydra mass / bust
+				Not(CountBuildsBefore(subjHatchery, 2, zergOpeningHatchDeadline)), // 2 bases only
+			),
+			RuleDeadline: 600,
+			Expert: []ExpertEvent{
+				{Key: "Hydralisk Den", Match: MatchBuild(subjHydraliskDen), TargetSecond: 214, Tolerance: Asym(25, 90)},
+				{Key: "First Hydralisks", Match: MatchFirstProduce(subjHydralisk), TargetSecond: 250, Tolerance: Asym(40, 120)},
+			},
+			SummaryPlayer: mkPill("2 Hatch Hydra", "hydralisk"), GamesList: mkPill("2 Hatch Hydra", "hydralisk"),
+		},
+
+		// --- Protoss tech-pathway openers: opening topology + first tech unit. ---
+		{
+			// 1 Gate Reaver (PvT): single Gateway into Robotics + Reaver harass
+			// (no Dark Templar). Reaver-shuttle harass into expand.
+			Name: "1 Gate Reaver", PatternName: InitialBuildOrderPatternNamePrefix + "1 Gate Reaver", FeatureKey: "bo_p_1gate_reaver",
+			Race: RaceProtoss, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvT"},
+			Rule: All(
+				FirstBuildExists(subjRoboticsFacility),
+				ProduceCountAtLeast(subjReaver, 1),
+				Not(NthBuildBeforeAll(subjGateway, 2, []string{subjRoboticsFacility})),
+				Not(ProduceCountAtLeast(subjDarkTemplar, 1)),
+			),
+			RuleDeadline: 600,
+			Expert: []ExpertEvent{
+				{Key: "Robotics Facility", Match: MatchBuild(subjRoboticsFacility), TargetSecond: 252, Tolerance: Asym(60, 70)},
+				{Key: "First Reaver", Match: MatchFirstProduce(subjReaver), TargetSecond: 408, Tolerance: Asym(90, 120)},
+			},
+			SummaryPlayer: mkPill("1 Gate Reaver", "reaver"), GamesList: mkPill("1 Gate Reaver", "reaver"),
+		},
+		{
+			// 2 Gate DT (PvT): Citadel + Templar Archives into Dark Templar
+			// (no Reaver). Cloaked harass vs Siege-FE Terran lacking detection.
+			Name: "2 Gate DT", PatternName: InitialBuildOrderPatternNamePrefix + "2 Gate DT", FeatureKey: "bo_p_2gate_dt",
+			Race: RaceProtoss, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvT"},
+			Rule: All(
+				CountBuildsBefore(subjGateway, 2, 360), // it's a 2-Gate build
+				FirstBuildExists(subjCitadelOfAdun),    // Citadel → Templar Archives path
+				FirstBuildExists(subjTemplarArchives),
+				ProduceCountAtLeast(subjDarkTemplar, 2), // DTs are the point (harass pair)
+				Not(ProduceCountAtLeast(subjReaver, 1)), // disjoint from 1 Gate Reaver
+			),
+			RuleDeadline: 600,
+			Expert: []ExpertEvent{
+				{Key: "Templar Archives", Match: MatchBuild(subjTemplarArchives), TargetSecond: 327, Tolerance: Asym(80, 100)},
+				{Key: "First Dark Templar", Match: MatchFirstProduce(subjDarkTemplar), TargetSecond: 379, Tolerance: Asym(90, 120)},
+			},
+			SummaryPlayer: mkPill("2 Gate DT", "darktemplar"), GamesList: mkPill("2 Gate DT", "darktemplar"),
+		},
+		{
+			// 2 Gate Reaver (PvP): ≥2 Gateways into Robotics + Reaver — the
+			// gate-robo-gate PvP standard.
+			Name: "2 Gate Reaver", PatternName: InitialBuildOrderPatternNamePrefix + "2 Gate Reaver", FeatureKey: "bo_p_2gate_reaver",
+			Race: RaceProtoss, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvP"},
+			Rule: All(
+				FirstBuildExists(subjRoboticsFacility),
+				ProduceCountAtLeast(subjReaver, 1),
+				CountBuildsBefore(subjGateway, 2, 600),
+			),
+			RuleDeadline: 600,
+			Expert: []ExpertEvent{
+				{Key: "Robotics Facility", Match: MatchBuild(subjRoboticsFacility), TargetSecond: 260, Tolerance: Asym(60, 100)},
+				{Key: "First Reaver", Match: MatchFirstProduce(subjReaver), TargetSecond: 383, Tolerance: Asym(90, 120)},
+			},
+			SummaryPlayer: mkPill("2 Gate Reaver", "reaver"), GamesList: mkPill("2 Gate Reaver", "reaver"),
+		},
+		{
+			// Sair/Speedlot (PvZ): Stargate Corsairs + Citadel zealot-speed off a
+			// Forge/Gate expand — the dominant modern PvZ ground/air opener.
+			Name: "Sair/Speedlot", PatternName: InitialBuildOrderPatternNamePrefix + "Sair/Speedlot", FeatureKey: "bo_p_sair_speedlot",
+			Race: RaceProtoss, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvZ"},
+			Rule: All(
+				FirstBuildExists(subjStargate),
+				ProduceCountAtLeast(subjCorsair, 2), // the Sair half
+				FirstBuildExists(subjCitadelOfAdun), // Citadel → zealot leg speed
+				// Speedlot = the ground-zealot Sair variant: not Sair/DT, not
+				// Sair/Reaver (those are distinct openers in the research doc).
+				Not(ProduceCountAtLeast(subjDarkTemplar, 1)),
+				Not(ProduceCountAtLeast(subjReaver, 1)),
+			),
+			RuleDeadline: 600,
+			Expert: []ExpertEvent{
+				{Key: "Stargate", Match: MatchBuild(subjStargate), TargetSecond: 280, Tolerance: Asym(60, 90)},
+				{Key: "Citadel of Adun", Match: MatchBuild(subjCitadelOfAdun), TargetSecond: 332, Tolerance: Asym(60, 120)},
+			},
+			SummaryPlayer: mkPill("Sair/Speedlot", "corsair"), GamesList: mkPill("Sair/Speedlot", "corsair"),
+		},
+
+		// --- Terran opening-sequence openers (the new axis vs #155 composition). ---
+		{
+			// Siege Expand (TvP): 1 Rax → Factory (+ Machine Shop) → natural CC —
+			// the safest TvP mech opener. Stays disjoint from a 2-Rax opening
+			// (single Barracks before the Factory).
+			Name: "Siege Expand", PatternName: InitialBuildOrderPatternNamePrefix + "Siege Expand", FeatureKey: "bo_t_siege_expand",
+			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvT"},
+			Rule: All(
+				BuildBefore(subjBarracks, subjFactory),
+				Not(NthBuildBeforeAll(subjBarracks, 2, []string{subjFactory})),
+				FirstBuildExists(subjMachineShop),
+				BuildBefore(subjFactory, subjCommandCenter),
+				FirstBuildBefore(subjCommandCenter, 360),
+			),
+			RuleDeadline: 360,
+			Expert: []ExpertEvent{
+				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 150, Tolerance: Asym(20, 60)},
+				{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 229, Tolerance: Asym(30, 80)},
+			},
+			SummaryPlayer: mkPill("Siege Expand", "siegetank"), GamesList: mkPill("Siege Expand", "siegetank"),
+		},
+		{
+			// 2 Port Wraith (TvT): two Starports before any expansion — cloaked-
+			// wraith harass into mech.
+			Name: "2 Port Wraith", PatternName: InitialBuildOrderPatternNamePrefix + "2 Port Wraith", FeatureKey: "bo_t_2port_wraith",
+			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvT"},
+			Rule: All(
+				CountBuildsBefore(subjStarport, 2, 600),
+				NthBuildBeforeAll(subjStarport, 2, []string{subjCommandCenter}),
+				ProduceCountAtLeast(subjWraith, 4), // it's a wraith build, not just 2 Starports
+				// Disjoint from 2 Fact Vults: a wraith opener is 1 Factory into
+				// 2 Starports, not a 2-Factory vulture opening.
+				Not(NthBuildBeforeAll(subjFactory, 2, []string{subjStarport})),
+			),
+			RuleDeadline: 600,
+			Expert: []ExpertEvent{
+				{Key: "1st Starport", Match: MatchBuild(subjStarport), TargetSecond: 201, Tolerance: Asym(25, 50)},
+				{Key: "2nd Starport", Match: MatchNthBuild(subjStarport, 2), TargetSecond: 208, Tolerance: Asym(25, 60)},
+			},
+			SummaryPlayer: mkPill("2 Port Wraith", "wraith"), GamesList: mkPill("2 Port Wraith", "wraith"),
+		},
+		{
+			// 2 Fact Vults (TvT): two Factories before any expansion / Starport —
+			// the aggressive vulture/mine timing. Disjoint from 2 Port Wraith
+			// (no early Starport).
+			Name: "2 Fact Vults", PatternName: InitialBuildOrderPatternNamePrefix + "2 Fact Vults", FeatureKey: "bo_t_2fact_vults",
+			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvT"},
+			Rule: All(
+				CountBuildsBefore(subjFactory, 2, 300),
+				NthBuildBeforeAll(subjFactory, 2, []string{subjCommandCenter, subjStarport}),
+				Not(FirstBuildBefore(subjStarport, 300)),
+				// It's a vulture build — require early Vultures, which also keeps
+				// it disjoint from any wraith/air opening that took 2 Factories.
+				ProduceCountAtLeastBefore(subjVulture, 3, 360),
+			),
+			RuleDeadline: 360,
+			Expert: []ExpertEvent{
+				{Key: "1st Factory", Match: MatchBuild(subjFactory), TargetSecond: 147, Tolerance: Asym(25, 30)},
+				{Key: "2nd Factory", Match: MatchNthBuild(subjFactory, 2), TargetSecond: 183, Tolerance: Asym(40, 50)},
+			},
+			SummaryPlayer: mkPill("2 Fact Vults", "vulture"), GamesList: mkPill("2 Fact Vults", "vulture"),
+		},
+
 		// Pool-first BOs are keyed off exact pre-Pool Drone-morph and
 		// Overlord-morph counts. The early-game spam filter (internal/
 		// earlyfilter) strips engine-impossible morphs so the surviving
@@ -1116,6 +1368,7 @@ func allMarkers() []Marker {
 			FeatureKey:  "bo_zerg_other",
 			Race:        RaceZerg,
 			Kind:        KindInitialBuildOrder,
+			Tier:        TierResidual,
 			Rule: Any(
 				// Pool-first greedy tail: supply ≥13 (≥9 Drone morphs).
 				All(
@@ -1146,6 +1399,7 @@ func allMarkers() []Marker {
 			FeatureKey:  "bo_protoss_other",
 			Race:        RaceProtoss,
 			Kind:        KindInitialBuildOrder,
+			Tier:        TierResidual,
 			Rule: All(
 				Any(
 					FirstBuildExists(subjGateway),
@@ -1171,6 +1425,7 @@ func allMarkers() []Marker {
 			FeatureKey:  "bo_terran_other",
 			Race:        RaceTerran,
 			Kind:        KindInitialBuildOrder,
+			Tier:        TierResidual,
 			Rule: All(
 				Any(
 					FirstBuildExists(subjBarracks),

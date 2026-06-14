@@ -415,6 +415,8 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 1 Gate Core | Protoss | Gateway | 86 | ±6 |
 | 1 Gate Core | Protoss | Assimilator | 116 | ±10 |
 | 1 Gate Core | Protoss | Cybernetics Core | 138 | ±10 |
+| 1 Gate Reaver | Protoss | Robotics Facility | 252 | −60 / +70 |
+| 1 Gate Reaver | Protoss | First Reaver | 408 | −90 / +120 |
 | 1-1-1 | Terran | Supply Depot | 57 | −10 / +24 |
 | 1-1-1 | Terran | Barracks | 85 | −28 / +20 |
 | 1-1-1 | Terran | Refinery | 98 | −15 / +70 |
@@ -443,10 +445,22 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 12 Hatch | Zerg | Spawning Pool | 116 | −3 / +10 |
 | 12 Pool | Zerg | Spawning Pool | 104 | ±5 |
 | 12 Pool | Zerg | First Zerglings | 154 | ±4 |
+| 2 Fact Vults | Terran | 1st Factory | 147 | −25 / +30 |
+| 2 Fact Vults | Terran | 2nd Factory | 183 | −40 / +50 |
 | 2 Gate | Protoss | Pylon | 48 | ±4 |
 | 2 Gate | Protoss | 1st Gateway | 70 | ±6 |
 | 2 Gate | Protoss | 2nd Gateway | 86 | ±10 |
 | 2 Gate | Protoss | First Zealot | 108 | ±3 |
+| 2 Gate DT | Protoss | Templar Archives | 327 | −80 / +100 |
+| 2 Gate DT | Protoss | First Dark Templar | 379 | −90 / +120 |
+| 2 Gate Reaver | Protoss | Robotics Facility | 260 | −60 / +100 |
+| 2 Gate Reaver | Protoss | First Reaver | 383 | −90 / +120 |
+| 2 Hatch Hydra | Zerg | Hydralisk Den | 214 | −25 / +90 |
+| 2 Hatch Hydra | Zerg | First Hydralisks | 250 | −40 / +120 |
+| 2 Hatch Muta | Zerg | Spire | 249 | −35 / +70 |
+| 2 Hatch Muta | Zerg | First Mutalisks | 327 | −40 / +90 |
+| 2 Port Wraith | Terran | 1st Starport | 201 | −25 / +50 |
+| 2 Port Wraith | Terran | 2nd Starport | 208 | −25 / +60 |
 | 2-Fac Mech | Terran | Supply Depot | 55 | −10 / +24 |
 | 2-Fac Mech | Terran | Barracks | 85 | −26 / +18 |
 | 2-Fac Mech | Terran | Refinery | 100 | −12 / +70 |
@@ -464,6 +478,10 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 2-Rax Bio | Terran | Refinery | 185 | −80 / +50 |
 | 2-Rax Bio | Terran | 2nd Barracks | 220 | −90 / +130 |
 | 2-Rax Bio | Terran | Academy | 230 | −45 / +90 |
+| 3 Hatch Lurker | Zerg | Hydralisk Den | 270 | −50 / +60 |
+| 3 Hatch Lurker | Zerg | First Lurkers | 417 | −80 / +120 |
+| 3 Hatch Muta | Zerg | Spire | 240 | −30 / +80 |
+| 3 Hatch Muta | Zerg | First Mutalisks | 320 | −40 / +90 |
 | 3-Fac Mech | Terran | Supply Depot | 55 | −10 / +24 |
 | 3-Fac Mech | Terran | Barracks | 85 | −26 / +18 |
 | 3-Fac Mech | Terran | Refinery | 100 | −12 / +70 |
@@ -587,6 +605,10 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | Nexus First | Protoss | Pylon | 48 | ±4 |
 | Nexus First | Protoss | Nexus | 145 | ±20 |
 | Nexus First | Protoss | Gateway | 175 | ±20 |
+| Sair/Speedlot | Protoss | Stargate | 280 | −60 / +90 |
+| Sair/Speedlot | Protoss | Citadel of Adun | 332 | −60 / +120 |
+| Siege Expand | Terran | Factory | 150 | −20 / +60 |
+| Siege Expand | Terran | Command Center | 229 | −30 / +80 |
 | Wraith | Terran | Supply Depot | 56 | −10 / +24 |
 | Wraith | Terran | Barracks | 84 | −28 / +18 |
 | Wraith | Terran | Refinery | 98 | −10 / +60 |
@@ -602,6 +624,7 @@ Each opener's detector commits its decision once the replay passes this second �
 | --- | --- | --- |
 | 1 Gate (no expa) | Protoss | 320 |
 | 1 Gate Core | Protoss | 180 |
+| 1 Gate Reaver | Protoss | 600 |
 | 1-1-1 | Terran | 600 |
 | 1-1-1 into Mech | Terran | 600 |
 | 1-Rax Bio | Terran | 600 |
@@ -611,10 +634,18 @@ Each opener's detector commits its decision once the replay passes this second �
 | 11 Pool | Zerg | 180 |
 | 12 Hatch | Zerg | 180 |
 | 12 Pool | Zerg | 180 |
+| 2 Fact Vults | Terran | 360 |
 | 2 Gate | Protoss | 180 |
+| 2 Gate DT | Protoss | 600 |
+| 2 Gate Reaver | Protoss | 600 |
+| 2 Hatch Hydra | Zerg | 600 |
+| 2 Hatch Muta | Zerg | 600 |
+| 2 Port Wraith | Terran | 600 |
 | 2-Fac Mech | Terran | 600 |
 | 2-Fac Tankless Mech | Terran | 600 |
 | 2-Rax Bio | Terran | 600 |
+| 3 Hatch Lurker | Zerg | 600 |
+| 3 Hatch Muta | Zerg | 600 |
 | 3-Fac Mech | Terran | 600 |
 | 3-Fac Tankless Mech | Terran | 600 |
 | 3-Rax Bio | Terran | 600 |
@@ -651,6 +682,8 @@ Each opener's detector commits its decision once the replay passes this second �
 | Goliath | Terran | 600 |
 | Nexus First | Protoss | 200 |
 | Pool/Hatch (Other) | Zerg | 240 |
+| Sair/Speedlot | Protoss | 600 |
+| Siege Expand | Terran | 360 |
 | Terran (Other) | Terran | 600 |
 | Wraith | Terran | 600 |
 
@@ -684,7 +717,7 @@ Standalone constants the detectors depend on — dedup windows, muta/turret burs
 
 | Constant | Value | Meaning |
 | --- | --- | --- |
-| Algorithm version | 31 | Detection algorithm revision; incremented to trigger re-detection. |
+| Algorithm version | 32 | Detection algorithm revision; incremented to trigger re-detection. |
 | Build dedup gap (s) | 3 | Repeat Build orders of the same building at the same tile, closer than this, are one event (double-tap / misclick); different-tile placements are kept. |
 | Build dedup max second (s) | 240 | Past this second, dedup stops and every Build is observed as-is (a tile can be legitimately rebuilt on later). |
 | Mutalisk burst window (s) | 30 | Window within which the Mutalisk morphs must cluster. |
@@ -803,37 +836,49 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 | 19 | bo_10_hatch |
 | 20 | bo_11_hatch |
 | 21 | bo_12_hatch |
-| 22 | bo_2_gate |
-| 23 | bo_1_gate_core |
-| 24 | bo_nexus_first |
-| 25 | bo_gate_expand |
-| 26 | bo_forge_expa |
-| 27 | bo_bbs |
-| 28 | bo_cc_first |
-| 29 | bo_t_wraith |
-| 30 | bo_t_goliath |
-| 31 | bo_t_bio_1rax |
-| 32 | bo_t_bio_2rax |
-| 33 | bo_t_bio_3rax |
-| 34 | bo_t_bio_4rax |
-| 35 | bo_t_bio_5rax |
-| 36 | bo_t_bio_6rax |
-| 37 | bo_t_111_mech |
-| 38 | bo_t_mech_2fac |
-| 39 | bo_t_mech_3fac |
-| 40 | bo_t_mech_4fac |
-| 41 | bo_t_mech_5fac |
-| 42 | bo_t_mech_6fac |
-| 43 | bo_t_tankless_2fac |
-| 44 | bo_t_tankless_3fac |
-| 45 | bo_t_tankless_4fac |
-| 46 | bo_t_tankless_5fac |
-| 47 | bo_t_tankless_6fac |
-| 48 | bo_t_111 |
-| 49 | carriers |
-| 50 | battlecruisers |
-| 51 | ten_plus_scouts |
-| 52 | cliff_drop |
+| 22 | bo_z_3hatch_muta |
+| 23 | bo_z_2hatch_muta |
+| 24 | bo_z_3hatch_lurker |
+| 25 | bo_z_2hatch_hydra |
+| 26 | bo_2_gate |
+| 27 | bo_1_gate_core |
+| 28 | bo_nexus_first |
+| 29 | bo_gate_expand |
+| 30 | bo_forge_expa |
+| 31 | bo_p_1gate_reaver |
+| 32 | bo_p_2gate_reaver |
+| 33 | bo_p_2gate_dt |
+| 34 | bo_p_sair_speedlot |
+| 35 | bo_bbs |
+| 36 | bo_cc_first |
+| 37 | bo_t_wraith |
+| 38 | bo_t_goliath |
+| 39 | bo_t_bio_1rax |
+| 40 | bo_t_bio_2rax |
+| 41 | bo_t_bio_3rax |
+| 42 | bo_t_bio_4rax |
+| 43 | bo_t_bio_5rax |
+| 44 | bo_t_bio_6rax |
+| 45 | bo_t_111_mech |
+| 46 | bo_t_mech_2fac |
+| 47 | bo_t_mech_3fac |
+| 48 | bo_t_mech_4fac |
+| 49 | bo_t_mech_5fac |
+| 50 | bo_t_mech_6fac |
+| 51 | bo_t_tankless_2fac |
+| 52 | bo_t_tankless_3fac |
+| 53 | bo_t_tankless_4fac |
+| 54 | bo_t_tankless_5fac |
+| 55 | bo_t_tankless_6fac |
+| 56 | bo_t_111 |
+| 57 | bo_t_siege_expand |
+| 58 | bo_t_2port_wraith |
+| 59 | bo_t_2fact_vults |
+| 60 | double_stargate |
+| 61 | carriers |
+| 62 | battlecruisers |
+| 63 | ten_plus_scouts |
+| 64 | cliff_drop |
 
 ## Game-event featuring chips
 
