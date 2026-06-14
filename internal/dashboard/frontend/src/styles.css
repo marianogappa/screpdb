@@ -49,7 +49,7 @@ body {
 .dashboard-container {
   position: relative;
   z-index: 1;
-  padding: 20px 10px;
+  padding: 10px 10px;
   max-width: 1540px;
   margin: 0 auto;
 }
@@ -1917,7 +1917,7 @@ body {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .workflow-nav.workflow-nav-app {
@@ -2078,7 +2078,7 @@ body {
   background: transparent;
   border: none;
   border-radius: 0;
-  padding: 12px 0;
+  padding: 4px 0;
 }
 
 .workflow-panel .workflow-card {
@@ -2091,7 +2091,7 @@ body {
 .workflow-panel .workflow-summary-filter-row {
   border: none;
   padding: 0;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
   background: transparent;
 }
 
@@ -2217,6 +2217,7 @@ body {
    with this. (0.9em pill × 0.867rem ≈ 0.78rem = the filter font.) */
 .workflow-games-list-table {
   font-size: clamp(0.8125rem, calc(0.8125rem + (100vw - 1300px) * 0.0037), 0.867rem);
+  margin-top: 10px;
 }
 
 .workflow-games-list-table td,
@@ -2329,6 +2330,7 @@ body {
   background: transparent;
   font-size: 16px;
   font-weight: 400;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Players list header: drop the grey header-cell background, matching the
@@ -3519,7 +3521,7 @@ body {
 
 .workflow-events-layout {
   display: grid;
-  grid-template-columns: minmax(520px, 640px) 1fr;
+  grid-template-columns: 70% minmax(0, 1fr);
   gap: 10px;
 }
 
@@ -4035,7 +4037,9 @@ body {
   to   { opacity: 1; }
 }
 
-.workflow-event-map-overlay .workflow-event-map-base-polygon,
+/* Only the attack line fades in. Ownership polygons are persistent map context,
+   not a per-event action, so they update in place without re-animating (which
+   otherwise flickers every whole territory layer on each event step). */
 .workflow-event-map-overlay .workflow-event-map-attack-line {
   animation: workflow-event-polygon-appear 240ms ease-out both;
 }
@@ -4095,6 +4099,276 @@ body {
 .workflow-event-map-flag-overlay,
 .workflow-event-map-expansion-overlay {
   animation: workflow-event-overlay-appear 240ms ease-out both;
+}
+
+/* ===== Game-event map: per-type choreographed animations =====
+   The focal overlay elements remount on every selection (keyed by the resolved
+   event key), so these animations replay each time the user steps through events
+   with the arrow keys. A category class on .workflow-event-map-frame
+   (workflow-anim-*) scopes which choreography applies and overrides the generic
+   appear/polygon animations above via higher specificity. */
+
+/* Attack / rush / nuke: the arrow draws from attacker toward the target. Rush is
+   the same gesture, quicker and more urgent. */
+@keyframes wf-ev-line-draw {
+  0%   { stroke-dashoffset: 1; opacity: 0.15; }
+  35%  { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+.workflow-anim-attack .workflow-event-map-overlay .workflow-event-map-attack-line,
+.workflow-anim-rush .workflow-event-map-overlay .workflow-event-map-attack-line,
+.workflow-anim-nuke .workflow-event-map-overlay .workflow-event-map-attack-line {
+  stroke-dasharray: 1;
+  animation: wf-ev-line-draw 900ms cubic-bezier(0.25, 0.7, 0.25, 1) both;
+}
+.workflow-anim-rush .workflow-event-map-overlay .workflow-event-map-attack-line {
+  animation-duration: 520ms;
+}
+
+/* Army icons lunge forward after the arrow has drawn. */
+/* Movement (source→target) is driven by the Web Animations API in JS (see the
+   "travel" layout effect) because @keyframes can't read the per-event endpoint
+   values. The CSS here only handles the fade/scale entrance and the cargo spill;
+   the icons march to the target in place of the old arrow. */
+@keyframes wf-ev-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.workflow-anim-attack .workflow-event-map-unit-overlay,
+.workflow-anim-rush .workflow-event-map-unit-overlay {
+  animation: wf-ev-fade-in 300ms ease-out both;
+}
+.workflow-anim-drop .workflow-event-map-expansion-overlay.workflow-event-map-vessel--travel {
+  animation: wf-ev-fade-in 280ms ease-out both;
+}
+@keyframes wf-ev-spill {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+/* Cargo lands after the transport has crossed and vanished (≈ vessel duration). */
+.workflow-anim-drop .workflow-event-map-unit-overlay {
+  animation: wf-ev-spill 560ms ease-out both;
+  animation-delay: 2500ms;
+}
+
+/* Recall: the Arbiter crosses to the destination (it warps in en route); the
+   units' source→destination teleport (opacity + position) is driven by the
+   travel effect, so suppress the generic appear here to avoid a double anim. */
+@keyframes wf-ev-warp {
+  0%   { transform: translate(-50%, -50%) scale(2.1); filter: blur(4px) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8)); }
+  100% { transform: translate(-50%, -50%) scale(1); filter: blur(0) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8)); }
+}
+.workflow-anim-recall .workflow-event-map-expansion-overlay {
+  animation: wf-ev-warp 700ms ease-out both;
+}
+.workflow-anim-recall .workflow-event-map-unit-overlay {
+  animation: none;
+}
+
+/* Became Terran/Zerg: the Dark Archon warps in over the controlled player. */
+.workflow-anim-became .workflow-event-map-became-overlay {
+  animation: wf-ev-warp 750ms ease-out both;
+}
+
+/* Expansion: the building plops down with a slight overshoot. */
+@keyframes wf-ev-plop {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.2); }
+  60%  { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  80%  { transform: translate(-50%, -50%) scale(0.95); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.workflow-anim-expansion .workflow-event-map-expansion-overlay {
+  animation: wf-ev-plop 800ms cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+
+/* Expansion & nuke point markers: an expanding shockwave ring. */
+@keyframes wf-ev-shockwave {
+  0%   { opacity: 0.85; transform: translate(-50%, -50%) scale(0.1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+.workflow-event-map-shockwave {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+}
+.workflow-event-map-shockwave--expansion {
+  border: 2px solid rgba(120, 220, 160, 0.9);
+  box-shadow: 0 0 12px rgba(120, 220, 160, 0.55);
+  animation: wf-ev-shockwave 900ms ease-out both;
+  animation-delay: 120ms;
+}
+.workflow-event-map-shockwave--nuke {
+  width: 190px;
+  height: 190px;
+  border: 3px solid rgba(255, 90, 60, 0.95);
+  box-shadow: 0 0 22px rgba(255, 80, 40, 0.8), inset 0 0 22px rgba(255, 120, 60, 0.6);
+  background: radial-gradient(circle, rgba(255, 140, 60, 0.35), rgba(255, 60, 30, 0) 70%);
+  animation: wf-ev-shockwave 1100ms ease-out both;
+  animation-delay: 560ms;
+}
+
+/* Alliance: the link lines draw in, then the handshake springs up. */
+.workflow-anim-alliance .workflow-event-map-overlay-alliance .workflow-event-map-alliance-line {
+  stroke-dasharray: 1;
+  animation: wf-ev-line-draw 850ms ease-out both;
+}
+@keyframes wf-ev-handshake {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(-25deg); }
+  55%  { opacity: 1; transform: translate(-50%, -50%) scale(1.25) rotate(8deg); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
+}
+.workflow-anim-alliance .workflow-event-map-alliance-handshake {
+  animation: wf-ev-handshake 800ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  animation-delay: 520ms;
+}
+
+/* Leaves: the surrender flag plants with a little sway. */
+@keyframes wf-ev-flag {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-12deg); }
+  60%  { opacity: 1; transform: translate(-50%, -50%) scale(1.15) rotate(6deg); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
+}
+.workflow-anim-leaves .workflow-event-map-flag-overlay {
+  animation: wf-ev-flag 900ms cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+
+/* On-map narration: the event description fades in low on the map (out of the
+   way of the action), holds, then fades out — legible over any map via a dark
+   stroke + shadow rather than a panel, so the player can follow the action with
+   the arrow keys without reading the side list. Keyed per selection so it
+   replays each step. */
+@keyframes wf-ev-narration {
+  0%   { opacity: 0; transform: translate(-50%, 10px); }
+  10%  { opacity: 1; transform: translate(-50%, 0); }
+  74%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -6px); }
+}
+.workflow-event-map-narration {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translate(-50%, 0);
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  max-width: 92%;
+  text-align: center;
+  pointer-events: none;
+  z-index: 6;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(8, 10, 16, 0.55);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+  animation: wf-ev-narration 4200ms ease-in-out both;
+}
+.workflow-event-map-narration-text {
+  min-width: 0;
+}
+
+/* Located narration: anchored just below the focal point of the action (left/top
+   set inline) rather than the map bottom, so the text reads as a label on the
+   thing that's happening. For travel events it slides in lockstep with the
+   moving icons (same duration/easing). */
+@keyframes wf-ev-narration-located {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.workflow-event-map-narration--located {
+  bottom: auto;
+  transform: translate(-50%, 34px);
+  max-width: 240px;
+  white-space: normal;
+  font-size: 0.92rem;
+  animation: wf-ev-narration-located 5200ms ease-in-out both;
+}
+/* Near the bottom edge, flip the caption above the focal point so it isn't
+   clipped by the frame. */
+.workflow-event-map-narration--located.workflow-event-map-narration--above {
+  transform: translate(-50%, calc(-100% - 16px));
+}
+
+/* Leave / stop-playing marker: a large flag (left) or zzz (stopped) emoji over
+   the player's name, planted where their territory vanished. Replaces the
+   narration caption for these events. */
+@keyframes wf-ev-leave-in {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  60%  { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.workflow-event-map-leave-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+  z-index: 7;
+  animation: wf-ev-leave-in 700ms cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+.workflow-event-map-leave-emoji {
+  font-size: 46px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.85));
+}
+.workflow-event-map-leave-name {
+  font-size: 1rem;
+  font-weight: 800;
+  padding: 2px 9px;
+  border-radius: 7px;
+  background: rgba(8, 10, 16, 0.6);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+  white-space: nowrap;
+}
+/* Cap the events map at the smaller of its 70% column or the size where its
+   height fits the viewport (aspect preserved via --map-aspect, set inline);
+   centered in the column when the height constraint makes it narrower. */
+.workflow-event-map-panel .workflow-event-map-frame {
+  max-width: min(100%, calc(var(--map-aspect, 1) * (100vh - 28px)));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workflow-anim-attack .workflow-event-map-overlay .workflow-event-map-attack-line,
+  .workflow-anim-rush .workflow-event-map-overlay .workflow-event-map-attack-line,
+  .workflow-anim-nuke .workflow-event-map-overlay .workflow-event-map-attack-line,
+  .workflow-anim-attack .workflow-event-map-unit-overlay,
+  .workflow-anim-rush .workflow-event-map-unit-overlay,
+  .workflow-anim-drop .workflow-event-map-expansion-overlay.workflow-event-map-vessel--travel,
+  .workflow-anim-drop .workflow-event-map-unit-overlay,
+  .workflow-anim-recall .workflow-event-map-expansion-overlay,
+  .workflow-anim-recall .workflow-event-map-unit-overlay,
+  .workflow-anim-expansion .workflow-event-map-expansion-overlay,
+  .workflow-anim-became .workflow-event-map-became-overlay,
+  .workflow-anim-alliance .workflow-event-map-overlay-alliance .workflow-event-map-alliance-line,
+  .workflow-anim-alliance .workflow-event-map-alliance-handshake,
+  .workflow-event-map-leave-marker,
+  .workflow-event-map-shockwave {
+    animation-duration: 1ms;
+    animation-delay: 0ms;
+  }
+  .workflow-event-map-narration,
+  .workflow-event-map-narration--located.workflow-event-map-narration--travel {
+    animation: none;
+    opacity: 1;
+  }
 }
 
 .workflow-section-top-row,

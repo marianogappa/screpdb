@@ -230,6 +230,7 @@ var workflowFeaturingFilters = []struct {
 	// Money-map markers — rendered last so regular markers take priority.
 	{Key: "carriers", Label: "Carrier", Group: "marker", IconKey: "carrier"},
 	{Key: "battlecruisers", Label: "Battlecruiser", Group: "marker", IconKey: "battlecruiser"},
+	{Key: "wraiths", Label: "Wraith", Group: "marker", IconKey: "wraith"},
 	{Key: "ten_plus_scouts", Label: "10+ Scouts", Group: "marker", IconKey: "scout", IconLabel: "10+"},
 	{Key: "cliff_drop", Label: "Cliff drop", Group: "marker", IconKey: "dropship", IconLabel: "Cliff drop"},
 	// Build order pills — keys & labels kept in sync with internal/markers.
