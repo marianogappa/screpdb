@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import { api } from './api';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import IngestModal from './components/IngestModal';
@@ -1903,6 +1903,8 @@ function App() {
     mapKind: [],
   });
   const [mainGamesBORaceOpen, setMainGamesBORaceOpen] = useState('');
+  const mainGamesTableRef = useRef(null);
+  const [mainGamesWideWidth, setMainGamesWideWidth] = useState(0);
   const [mainGameDetailLoading, setMainGameDetailLoading] = useState(false);
   const [mainPlayerLoading, setMainPlayerLoading] = useState(false);
   const [selectedReplayId, setSelectedReplayId] = useState(() => initialMainRoute.replayId);
@@ -1917,6 +1919,8 @@ function App() {
   const mainGameSeeNoticeTimerRef = useRef(null);
   const suppressUrlSyncRef = useRef(false);
   const openMainGameRef = useRef(null);
+  const [mainEventsLayoutEl, setMainEventsLayoutEl] = useState(null);
+  const [mainEventsMapColPx, setMainEventsMapColPx] = useState(0);
   const openMainPlayerRef = useRef(null);
   // "Latest-ref" pattern: stable effects (WebSocket handler, auto-ingest interval,
   // ingest-poll tick) need to read the *current* games-list filter/page state and
@@ -3601,6 +3605,46 @@ function App() {
     const preferredIdx = firstRowVisibleIdx >= 0 ? firstRowVisibleIdx : 0;
     setMainSelectedGameEventKey(gameEventTopicKey(preferredIdx));
   }, [topicFilteredGameEvents, mainEventsPlayerEnabledById, mainSelectedGameEventKey]);
+
+  // Up/Down arrows step through the visible event rows so the map animation can
+  // be followed without clicking. Ignored while typing in a text field.
+  useEffect(() => {
+    if (mainGameTab !== 'events') return undefined;
+    const handler = (e) => {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      const target = e.target;
+      const tag = String(target?.tagName || '').toLowerCase();
+      const isCheckable = tag === 'input' && (target.type === 'checkbox' || target.type === 'radio');
+      if (target?.isContentEditable || ((tag === 'input' && !isCheckable) || tag === 'textarea' || tag === 'select')) {
+        return;
+      }
+      const visible = filteredGameEvents;
+      if (visible.length === 0) return;
+      e.preventDefault();
+      const curIdx = selectedMainGameEvent ? visible.indexOf(selectedMainGameEvent) : -1;
+      let nextIdx;
+      if (curIdx < 0) {
+        nextIdx = e.key === 'ArrowDown' ? 0 : visible.length - 1;
+      } else {
+        nextIdx = e.key === 'ArrowDown'
+          ? Math.min(visible.length - 1, curIdx + 1)
+          : Math.max(0, curIdx - 1);
+      }
+      const topicIdx = topicFilteredGameEvents.indexOf(visible[nextIdx]);
+      if (topicIdx >= 0) setMainSelectedGameEventKey(gameEventTopicKey(topicIdx));
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [mainGameTab, filteredGameEvents, topicFilteredGameEvents, selectedMainGameEvent]);
+
+  // Keep the selected row visible in the scrolling events list as arrows move it.
+  useEffect(() => {
+    if (mainGameTab !== 'events') return;
+    const selected = document.querySelector('.workflow-events .workflow-event-row-selected');
+    if (selected && typeof selected.scrollIntoView === 'function') {
+      selected.scrollIntoView({ block: 'nearest' });
+    }
+  }, [selectedMainGameEventKeyResolved, mainGameTab]);
   const mainGameTeamByPlayerID = useMemo(() => {
     const m = new Map();
     (Array.isArray(mainGamePlayers) ? mainGamePlayers : []).forEach((p) => {
@@ -3643,6 +3687,7 @@ function App() {
           key: `ownership-${idx}-${entry.base?.name || 'base'}`,
           points,
           ownerName: entry.owner.name,
+          ownerPlayerID: Number(entry.owner.player_id || 0),
           baseName: String(entry.base?.name || '').trim(),
           ownerColor,
           ...polygonStrokeFor(ownerColor, team),
@@ -3697,11 +3742,19 @@ function App() {
   // The BO openers event sits at 0:00 with no persisted ownership snapshot, so
   // draw the starting-location polygons directly from the player_start events.
   // Every other event keeps using its ownership snapshot.
-  const selectedMainGameMapPolygons = useMemo(() => (
-    normalizeEventType(selectedMainGameEvent?.type) === 'bo_openers'
-      ? summaryMapStartPolygons
-      : selectedMainGameOwnershipPolygons
-  ), [selectedMainGameEvent, summaryMapStartPolygons, selectedMainGameOwnershipPolygons]);
+  const selectedMainGameMapPolygons = useMemo(() => {
+    const nt = normalizeEventType(selectedMainGameEvent?.type);
+    if (nt === 'bo_openers') return summaryMapStartPolygons;
+    // When a player leaves or stops playing, their territory vanishes from the
+    // map (the marker takes its place at the last-known location).
+    if (nt === 'leave_game' || nt === 'player_stopped_playing') {
+      const goneID = Number(selectedMainGameEvent?.actor?.player_id || 0);
+      if (goneID > 0) {
+        return selectedMainGameOwnershipPolygons.filter((p) => p.ownerPlayerID !== goneID);
+      }
+    }
+    return selectedMainGameOwnershipPolygons;
+  }, [selectedMainGameEvent, summaryMapStartPolygons, selectedMainGameOwnershipPolygons]);
   // Per-start-location labels for the consolidated BO openers event: race icon
   // + crown + name on line 1, BO name(s) on line 2, painted on each player's
   // starting polygon. Only computed when that event is selected.
@@ -3855,16 +3908,6 @@ function App() {
       .filter((item) => item.icon)
       .slice(0, 4);
   }, [selectedMainGameArrow, selectedMainGameEvent, mainGamePlayers]);
-  const selectedMainGameLeaveFlag = useMemo(() => {
-    if (normalizeEventType(selectedMainGameEvent?.type) !== 'leave_game' || !mainEventMapBounds) return null;
-    const actorID = Number(selectedMainGameEvent?.actor?.player_id || 0);
-    if (!Number.isFinite(actorID) || actorID <= 0) return null;
-    const ownership = Array.isArray(selectedMainGameEvent?.ownership) ? selectedMainGameEvent.ownership : [];
-    const ownedBases = ownership.filter((entry) => Number(entry?.owner?.player_id || 0) === actorID && entry?.base?.center);
-    if (ownedBases.length === 0) return null;
-    const preferredBase = ownedBases.find((entry) => String(entry?.base?.kind || '').toLowerCase() === 'starting') || ownedBases[0];
-    return mapPointToPercent(preferredBase?.base?.center, mainEventMapBounds);
-  }, [selectedMainGameEvent, mainEventMapBounds]);
   const selectedMainGameExpansionOverlay = useMemo(() => {
     if (normalizeEventType(selectedMainGameEvent?.type) !== 'expansion') return null;
     // Prefer the polygon's geometric center over scmapanalyzer's base.center —
@@ -3964,6 +4007,197 @@ function App() {
     if (pairs.length === 0) return null;
     return { pairs, consumedBases };
   }, [selectedMainGameEvent, mainEventMapBounds]);
+  // Animation category for the selected event — drives the per-type map
+  // animation (scoped via a class on the map frame) so each event type unfolds
+  // with its own choreography rather than a single generic fade.
+  const selectedEventAnimCategory = useMemo(() => {
+    const nt = normalizeEventType(selectedMainGameEvent?.type);
+    if (!nt) return '';
+    if (['drop', 'reaver_drop', 'dt_drop', 'cliff_drop'].includes(nt)) return 'drop';
+    if (nt === 'recall') return 'recall';
+    if (nt === 'nuke') return 'nuke';
+    if (nt === 'leave_game' || nt === 'player_stopped_playing') return 'leaves';
+    if (nt === 'late_alliance') return 'alliance';
+    if (nt === 'became_terran' || nt === 'became_zerg') return 'became';
+    if (['cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory'].includes(nt)) return 'rush';
+    if (nt === 'attack') return 'attack';
+    if (selectedMainGameExpansionOverlay) return 'expansion';
+    if (selectedMainGameArrow) return 'attack';
+    return '';
+  }, [selectedMainGameEvent, selectedMainGameExpansionOverlay, selectedMainGameArrow]);
+  // Last location the selected event's actor owned a base — found by scanning the
+  // ownership snapshots up to this event. Used to anchor events whose own snapshot
+  // doesn't carry a base (a player leaving, stopping, or being mind-controlled).
+  const selectedActorLastBasePoint = useMemo(() => {
+    if (!mainEventMapBounds) return null;
+    const actorID = Number(selectedMainGameEvent?.actor?.player_id || 0);
+    if (!actorID) return null;
+    const events = Array.isArray(mainGame?.game_events) ? mainGame.game_events : [];
+    const cutoff = Number(selectedMainGameEvent?.second);
+    let bestCenter = null;
+    let bestSecond = -1;
+    for (const ev of events) {
+      const sec = Number(ev?.second) || 0;
+      if (Number.isFinite(cutoff) && sec > cutoff) continue;
+      const own = Array.isArray(ev?.ownership) ? ev.ownership : [];
+      const mine = own.filter((o) => Number(o?.owner?.player_id || 0) === actorID && (o?.base?.center || o?.base?.polygon));
+      if (mine.length === 0 || sec < bestSecond) continue;
+      const preferred = mine.find((o) => String(o?.base?.kind || '').toLowerCase() === 'starting') || mine[0];
+      const c = polygonCenter(preferred?.base?.polygon) || preferred?.base?.center;
+      if (c) { bestCenter = c; bestSecond = sec; }
+    }
+    return bestCenter ? mapPointToPercent(bestCenter, mainEventMapBounds) : null;
+  }, [selectedMainGameEvent, mainGame?.game_events, mainEventMapBounds]);
+  // Leave / stop-playing: the player's territory vanishes and a prominent flag
+  // (left) or zzz (stopped) marker takes its place at their last-known base.
+  const selectedLeaveInfo = useMemo(() => {
+    const nt = normalizeEventType(selectedMainGameEvent?.type);
+    if ((nt !== 'leave_game' && nt !== 'player_stopped_playing') || !selectedActorLastBasePoint) return null;
+    const actorID = Number(selectedMainGameEvent?.actor?.player_id || 0);
+    const actorRow = mainGamePlayers.find((p) => Number(p?.player_id || 0) === actorID);
+    const name = actorRow?.name || selectedMainGameEvent?.actor?.name || 'Player';
+    const emoji = nt === 'player_stopped_playing' ? '💤' : '🏳️';
+    return { name, emoji, point: selectedActorLastBasePoint, color: playerColorToCss(actorRow?.color) };
+  }, [selectedMainGameEvent, selectedActorLastBasePoint, mainGamePlayers]);
+  // Became Terran/Zerg (mind control): a Dark Archon icon planted prominently at
+  // the mind-controlled player's last-known base.
+  const selectedBecameOverlay = useMemo(() => {
+    if (selectedEventAnimCategory !== 'became' || !selectedActorLastBasePoint) return null;
+    const icon = getUnitIcon('darkarchon');
+    if (!icon) return null;
+    return { icon, point: selectedActorLastBasePoint };
+  }, [selectedEventAnimCategory, selectedActorLastBasePoint]);
+  // Focal point of the selected event: where the action happens on the map, so
+  // the narration caption can sit right below it (rather than pinned to the map
+  // bottom). `travel` events move from source→target — the caption (and the
+  // moving icons) travel together along that path; static events anchor in place.
+  // Events with no map anchor (e.g. the opener summary) return null → the caption
+  // falls back to the bottom of the map.
+  const selectedEventFocus = useMemo(() => {
+    const cat = selectedEventAnimCategory;
+    const arrow = selectedMainGameArrow;
+    if ((cat === 'attack' || cat === 'rush' || cat === 'drop' || cat === 'nuke') && arrow) {
+      return { travel: true, from: arrow.from, to: arrow.to };
+    }
+    // Recall: units start at the source, the Arbiter crosses to the destination,
+    // and the units reappear there. Travel when both endpoints are known.
+    if (cat === 'recall' && selectedMainGameRecallOverlay) {
+      if (arrow) return { travel: true, from: arrow.from, to: selectedMainGameRecallOverlay.point };
+      return { travel: false, from: selectedMainGameRecallOverlay.point, to: selectedMainGameRecallOverlay.point };
+    }
+    if (cat === 'expansion' && selectedMainGameExpansionOverlay) {
+      return { travel: false, from: selectedMainGameExpansionOverlay.point, to: selectedMainGameExpansionOverlay.point };
+    }
+    if (cat === 'leaves' && selectedLeaveInfo) {
+      return { travel: false, from: selectedLeaveInfo.point, to: selectedLeaveInfo.point };
+    }
+    if (cat === 'became' && selectedBecameOverlay) {
+      return { travel: false, from: selectedBecameOverlay.point, to: selectedBecameOverlay.point };
+    }
+    if (cat === 'alliance' && selectedMainGameAllianceOverlay?.pairs?.length) {
+      const mid = selectedMainGameAllianceOverlay.pairs[0].mid;
+      return { travel: false, from: mid, to: mid };
+    }
+    if (selectedMainGameDropOverlay) {
+      return { travel: false, from: selectedMainGameDropOverlay.point, to: selectedMainGameDropOverlay.point };
+    }
+    return null;
+  }, [selectedEventAnimCategory, selectedMainGameArrow, selectedMainGameExpansionOverlay, selectedMainGameRecallOverlay, selectedLeaveInfo, selectedBecameOverlay, selectedMainGameAllianceOverlay, selectedMainGameDropOverlay]);
+  // Map aspect ratio (w/h) so the frame can be capped by viewport height while
+  // preserving shape. BW maps are typically square (→ 1).
+  const mainEventMapAspect = useMemo(() => {
+    const w = Number(mainGame?.map_width_pixels) || 0;
+    const h = Number(mainGame?.map_height_pixels) || 0;
+    return (w > 0 && h > 0) ? w / h : 1;
+  }, [mainGame?.map_width_pixels, mainGame?.map_height_pixels]);
+  // Size the map column to the smaller of 70% of the section or the width at
+  // which the map's height fits the viewport — and hand any leftover width to
+  // the events list (rather than leaving slack in a fixed 70% column).
+  useLayoutEffect(() => {
+    if (mainGameTab !== 'events') return undefined;
+    const el = mainEventsLayoutEl;
+    if (!el) return undefined;
+    const compute = () => {
+      if (window.innerWidth <= 1100) { setMainEventsMapColPx(0); return; }
+      const layoutW = el.clientWidth;
+      const widthBound = 0.7 * layoutW;
+      // The map panel is sticky to the top of the viewport, so it may use almost
+      // the full viewport height (small margin to avoid a scrollbar when stuck).
+      const heightBound = mainEventMapAspect * (window.innerHeight - 28);
+      setMainEventsMapColPx(Math.max(0, Math.round(Math.min(widthBound, heightBound))));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    window.addEventListener('resize', compute);
+    return () => { ro.disconnect(); window.removeEventListener('resize', compute); };
+  }, [mainGameTab, mainEventsLayoutEl, mainEventMapAspect]);
+  // Slide the moving overlays (army icons, drop vessel, narration caption) from
+  // the event's source point to its target point. Done via the Web Animations
+  // API rather than CSS keyframes because @keyframes can't read the per-event
+  // endpoint values; left/top are % of the frame, so this stays correct at any
+  // map size. Re-runs on each selection (the elements remount with a fresh key).
+  useLayoutEffect(() => {
+    if (mainGameTab !== 'events') return;
+    const focus = selectedEventFocus;
+    if (!focus || !focus.travel) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const frame = document.querySelector('.workflow-event-map-panel .workflow-event-map-frame');
+    if (!frame) return;
+    const cat = selectedEventAnimCategory;
+    const fromXY = { left: `${focus.from.x}%`, top: `${focus.from.y}%` };
+    const toXY = { left: `${focus.to.x}%`, top: `${focus.to.y}%` };
+    const slide = { duration: 2300, easing: 'cubic-bezier(0.4, 0.1, 0.5, 1)', fill: 'both' };
+    const run = (sel, keyframes, opts) => {
+      const el = frame.querySelector(sel);
+      if (el && typeof el.animate === 'function') el.animate(keyframes, opts);
+    };
+    // The caption always slides with the action.
+    run('.workflow-event-map-narration--travel', [fromXY, toXY], slide);
+    if (cat === 'drop') {
+      // Vessel crosses to the target, then vanishes (the cargo is unloaded).
+      run('.workflow-event-map-vessel--travel', [
+        { ...fromXY, opacity: 1, offset: 0 },
+        { ...toXY, opacity: 1, offset: 0.72 },
+        { ...toXY, opacity: 0, offset: 1 },
+      ], { duration: 2500, easing: 'ease-in', fill: 'both' });
+    } else if (cat === 'recall') {
+      // Arbiter crosses to the destination; the units blink out at the source
+      // and reappear at the destination as it arrives. The Arbiter rides an
+      // inset stretch of the path (like the old arrow) so it doesn't sit on top
+      // of the units waiting at either end.
+      const lerp = (a, b, t) => ({ left: `${a.x + (b.x - a.x) * t}%`, top: `${a.y + (b.y - a.y) * t}%` });
+      run('.workflow-event-map-arbiter--travel', [
+        lerp(focus.from, focus.to, 0.25),
+        lerp(focus.from, focus.to, 0.78),
+      ], { duration: 2600, easing: 'ease-in-out', fill: 'both' });
+      run('.workflow-event-map-unit-overlay', [
+        { ...fromXY, opacity: 1, offset: 0 },
+        { ...fromXY, opacity: 1, offset: 0.32 },
+        { ...fromXY, opacity: 0, offset: 0.46 },
+        { ...toXY, opacity: 0, offset: 0.6 },
+        { ...toXY, opacity: 1, offset: 1 },
+      ], { duration: 3200, easing: 'ease', fill: 'both' });
+    } else {
+      // Attack / rush / nuke: the army marches to the target.
+      run('.workflow-event-map-unit-overlay--travel', [fromXY, toXY], slide);
+    }
+  }, [mainGameTab, selectedEventFocus, selectedEventAnimCategory, selectedMainGameEventKeyResolved]);
+  // The located caption is centred on its focal point; near a map edge a wide
+  // line would spill past the frame (which clips). Cap its width to what fits on
+  // the tighter side of the point so it wraps to more lines instead of clipping.
+  useLayoutEffect(() => {
+    if (mainGameTab !== 'events') return;
+    const focus = selectedEventFocus;
+    const frame = document.querySelector('.workflow-event-map-panel .workflow-event-map-frame');
+    const cap = frame && frame.querySelector('.workflow-event-map-narration--located');
+    if (!focus || !cap) return;
+    const frameW = frame.clientWidth;
+    if (!frameW) return;
+    const centerX = (focus.to.x / 100) * frameW;
+    const avail = 2 * Math.min(centerX, frameW - centerX) - 16;
+    cap.style.maxWidth = `${Math.round(Math.max(96, Math.min(240, avail)))}px`;
+  }, [mainGameTab, selectedEventFocus, selectedMainGameEventKeyResolved, mainEventsMapColPx]);
   // Trained-units overlay (issue #122 BONUS): paint a small chip with each
   // player's army composition (top 4 unit types + "+N" pill) on top of the
   // player's largest owned polygon at the moment of the selected event.
@@ -4258,6 +4492,73 @@ function App() {
     ro.observe(mainEventMapPanelEl);
     return () => ro.disconnect();
   }, [mainEventMapPanelEl]);
+
+  // Once the games-list type has grown to the filter-bar font (handled in CSS by
+  // the width-driven clamp), wide viewports still leave horizontal slack beyond
+  // the capped container. If any row's Featuring pills wrap to a second line,
+  // widen the whole container into that slack — the auto table layout funnels the
+  // extra width to the flexible Featuring column, and nav/filters grow and stay
+  // left-aligned with the list — until no row wraps or we run out of viewport.
+  useLayoutEffect(() => {
+    const table = mainGamesTableRef.current;
+    if (activeView !== 'games' || !table) {
+      setMainGamesWideWidth(0);
+      return undefined;
+    }
+    if (mainGamesLoading) return undefined;
+    const container = table.closest('.dashboard-container');
+    if (!container) return undefined;
+
+    const applyWidth = (w) => {
+      container.style.maxWidth = w == null ? '' : `${w}px`;
+    };
+
+    const anyFeaturingWraps = () => {
+      const cells = table.querySelectorAll('td.workflow-games-list-featuring .workflow-pattern-pills');
+      for (const cell of cells) {
+        const pills = cell.children;
+        if (pills.length < 2) continue;
+        const top0 = pills[0].offsetTop;
+        for (let i = 1; i < pills.length; i += 1) {
+          if (pills[i].offsetTop > top0 + 1) return true;
+        }
+      }
+      return false;
+    };
+
+    const compute = () => {
+      applyWidth(null);
+      const base = container.offsetWidth;
+      const maxWidth = document.documentElement.clientWidth - 4;
+
+      if (!anyFeaturingWraps() || maxWidth <= base + 8) {
+        setMainGamesWideWidth(0);
+        return;
+      }
+
+      applyWidth(maxWidth);
+      if (anyFeaturingWraps()) {
+        applyWidth(null);
+        setMainGamesWideWidth(maxWidth);
+        return;
+      }
+
+      let lo = base;
+      let hi = maxWidth;
+      for (let i = 0; i < 8; i += 1) {
+        const mid = Math.round((lo + hi) / 2);
+        applyWidth(mid);
+        if (anyFeaturingWraps()) lo = mid; else hi = mid;
+      }
+      applyWidth(null);
+      setMainGamesWideWidth(hi);
+    };
+
+    compute();
+    const onResize = () => compute();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [activeView, mainGames, mainGamesLoading]);
   const mainTimingCategoryConfig = useMemo(
     () => TIMING_CATEGORY_CONFIG.find((cfg) => cfg.id === mainTimingCategory) || TIMING_CATEGORY_CONFIG[0],
     [mainTimingCategory],
@@ -4644,7 +4945,7 @@ function App() {
 
   return (
     <div className="app">
-      <div className="dashboard-container">
+      <div className="dashboard-container" style={mainGamesWideWidth ? { maxWidth: `${mainGamesWideWidth}px` } : undefined}>
         <div className="workflow-nav workflow-nav-app">
           <div className="workflow-nav-group">
             <button type="button" className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('games')}>Games</button>
@@ -4873,14 +5174,17 @@ function App() {
               <div className="loading">Loading games...</div>
             ) : (
               <>
-                <table className={`data-table workflow-table workflow-games-list-table${mainGamesAllTwoPlayer ? ' workflow-games-list-table--roomy' : ''}`}>
+                <table
+                  ref={mainGamesTableRef}
+                  className={`data-table workflow-table workflow-games-list-table${mainGamesAllTwoPlayer ? ' workflow-games-list-table--roomy' : ''}`}
+                >
                   <thead>
                     <tr>
                       <th><span title="Played" aria-label="Played" role="img">📅</span></th>
-                      <th><span title="Players" aria-label="Players" role="img">🧑‍🤝‍🧑</span></th>
-                      <th><span title="Map" aria-label="Map" role="img">🗺️</span></th>
+                      <th><span role="img" aria-hidden="true">🧑‍🤝‍🧑</span> Players</th>
+                      <th><span role="img" aria-hidden="true">🗺️</span> Map</th>
                       <th><span title="Duration" aria-label="Duration" role="img">⏱️</span></th>
-                      <th><span title="Featuring" aria-label="Featuring" role="img">⭐</span></th>
+                      <th><span role="img" aria-hidden="true">⭐</span> Featuring</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -4898,8 +5202,8 @@ function App() {
                             }
                             return (
                               <div className="workflow-pattern-pills">
-                                {featuring.map((pill) => (
-                                  <span key={`${game.replay_id}-${pill}`} className="workflow-pattern-pill workflow-feature-pill">
+                                {featuring.map((pill, pillIdx) => (
+                                  <span key={`${game.replay_id}-${pillIdx}-${pill}`} className="workflow-pattern-pill workflow-feature-pill">
                                     <span>{pill}</span>
                                   </span>
                                 ))}
@@ -5633,11 +5937,18 @@ function App() {
                         </div>
                       </div>
                     </div>
-                    <div className="workflow-events-layout">
+                    <div
+                      className="workflow-events-layout"
+                      ref={setMainEventsLayoutEl}
+                      style={mainEventsMapColPx ? { gridTemplateColumns: `${mainEventsMapColPx}px minmax(0, 1fr)` } : undefined}
+                    >
                         <div className="workflow-event-map-panel" ref={setMainEventMapPanelEl}>
                           {mainMapVisualAvailable ? (
                             <>
-                              <div className="workflow-event-map-frame">
+                              <div
+                                className={`workflow-event-map-frame${selectedEventAnimCategory ? ` workflow-anim-${selectedEventAnimCategory}` : ''}`}
+                                style={{ '--map-aspect': mainEventMapAspect }}
+                              >
                                 <img src={mainMapVisualURL} alt={`${mainGame.map_name} event overlay`} className="workflow-event-map-image" />
                                 {selectedMainGameEvent ? (
                                   <svg
@@ -5685,7 +5996,7 @@ function App() {
                                         />
                                       );
                                     })}
-                                    {selectedMainGameArrow ? (
+                                    {selectedMainGameArrow && !selectedEventFocus?.travel ? (
                                       <line
                                         key={`arrow-${selectedMainGameEventKeyResolved}`}
                                         x1={selectedMainGameArrow.from.x}
@@ -5695,6 +6006,7 @@ function App() {
                                         className="workflow-event-map-attack-line"
                                         style={{ color: selectedMainGameArrow.color, stroke: selectedMainGameArrow.color }}
                                         markerEnd="url(#workflow-event-arrowhead)"
+                                        pathLength="1"
                                       />
                                     ) : null}
                                   </svg>
@@ -5729,6 +6041,7 @@ function App() {
                                         style={{ stroke: pair.a.color }}
                                         markerStart="url(#workflow-event-arrowhead-alliance)"
                                         markerEnd="url(#workflow-event-arrowhead-alliance)"
+                                        pathLength="1"
                                       />,
                                       <line
                                         key={`alliance-${selectedMainGameEventKeyResolved}-${pair.key}-b`}
@@ -5740,6 +6053,7 @@ function App() {
                                         style={{ stroke: pair.b.color }}
                                         markerStart="url(#workflow-event-arrowhead-alliance)"
                                         markerEnd="url(#workflow-event-arrowhead-alliance)"
+                                        pathLength="1"
                                       />,
                                     ]))}
                                   </svg>
@@ -5781,18 +6095,18 @@ function App() {
                                   );
                                 })}
                                 {selectedMainGameArrow && selectedMainGameArrowUnits.length > 0 ? (() => {
-                                  const evType = normalizeEventType(selectedMainGameEvent?.type);
-                                  const isRecall = evType === 'recall';
-                                  const isDrop = ['drop', 'reaver_drop', 'dt_drop', 'cliff_drop'].includes(evType);
-                                  // Recalls and drops anchor units at the actual source (where
-                                  // units were pulled FROM or loaded onto the transport); other
-                                  // events keep their midpoint placement.
-                                  const anchor = (isRecall || isDrop) && selectedMainGameArrow.sourceAnchor
-                                    ? selectedMainGameArrow.sourceAnchor
-                                    : {
-                                        x: (selectedMainGameArrow.from.x + selectedMainGameArrow.to.x) / 2,
-                                        y: (selectedMainGameArrow.from.y + selectedMainGameArrow.to.y) / 2,
-                                      };
+                                  const cat = selectedEventAnimCategory;
+                                  const isRecall = cat === 'recall';
+                                  const from = selectedMainGameArrow.from;
+                                  const to = selectedMainGameArrow.to;
+                                  const travel = cat === 'attack' || cat === 'rush';
+                                  // Where the army comes to rest. Attacks/rushes march to the
+                                  // target; drops unload at the target; nukes fire from the
+                                  // source; recalls pull from the source; otherwise midpoint.
+                                  let anchor;
+                                  if (travel || cat === 'drop' || isRecall) anchor = to;
+                                  else if (cat === 'nuke') anchor = from;
+                                  else anchor = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
                                   return (
                                     <div
                                       key={`unit-overlay-${selectedMainGameEventKeyResolved}`}
@@ -5800,6 +6114,7 @@ function App() {
                                         'workflow-event-map-unit-overlay',
                                         selectedMainGameArrowUnits.length > 2 ? 'workflow-event-map-unit-overlay--grid' : '',
                                         isRecall ? 'workflow-event-map-unit-overlay--recall' : '',
+                                        travel ? 'workflow-event-map-unit-overlay--travel' : '',
                                       ].filter(Boolean).join(' ')}
                                       style={{
                                         left: `${anchor.x}%`,
@@ -5818,18 +6133,17 @@ function App() {
                                     </div>
                                   );
                                 })() : null}
-                                {selectedMainGameLeaveFlag ? (
+                                {selectedLeaveInfo ? (
                                   <div
-                                    key={`leave-flag-${selectedMainGameEventKeyResolved}`}
-                                    className="workflow-event-map-flag-overlay"
-                                    style={{
-                                      left: `${selectedMainGameLeaveFlag.x}%`,
-                                      top: `${selectedMainGameLeaveFlag.y}%`,
-                                    }}
-                                    title="Player left the game"
+                                    key={`leave-marker-${selectedMainGameEventKeyResolved}`}
+                                    className="workflow-event-map-leave-marker"
+                                    style={{ left: `${selectedLeaveInfo.point.x}%`, top: `${selectedLeaveInfo.point.y}%` }}
                                   >
-                                    <span role="img" aria-label="Player left">
-                                      🏳️
+                                    <span className="workflow-event-map-leave-emoji" role="img" aria-label={selectedLeaveInfo.emoji === '💤' ? 'Stopped playing' : 'Left the game'}>
+                                      {selectedLeaveInfo.emoji}
+                                    </span>
+                                    <span className="workflow-event-map-leave-name" style={legendTextStyle('', selectedLeaveInfo.color)}>
+                                      {selectedLeaveInfo.name}
                                     </span>
                                   </div>
                                 ) : null}
@@ -5857,13 +6171,26 @@ function App() {
                                     }}
                                   />
                                 ) : null}
+                                {selectedBecameOverlay ? (
+                                  <img
+                                    key={`became-${selectedMainGameEventKeyResolved}`}
+                                    src={selectedBecameOverlay.icon}
+                                    alt="Mind control (Dark Archon)"
+                                    title="Mind controlled"
+                                    className="workflow-event-map-expansion-overlay workflow-event-map-became-overlay"
+                                    style={{
+                                      left: `${selectedBecameOverlay.point.x}%`,
+                                      top: `${selectedBecameOverlay.point.y}%`,
+                                    }}
+                                  />
+                                ) : null}
                                 {selectedMainGameRecallOverlay ? (
                                   <img
                                     key={`recall-${selectedMainGameEventKeyResolved}`}
                                     src={selectedMainGameRecallOverlay.icon}
                                     alt="Recall destination"
                                     title={selectedMainGameEvent?.target_base ? "Recall destination (Arbiter location, inferred)" : "Recall cast point — destination unknown"}
-                                    className="workflow-event-map-expansion-overlay workflow-event-map-expansion-overlay--recall-arbiter"
+                                    className={`workflow-event-map-expansion-overlay workflow-event-map-expansion-overlay--recall-arbiter${selectedMainGameArrow ? ' workflow-event-map-arbiter--travel' : ''}`}
                                     style={{
                                       left: `${selectedMainGameRecallOverlay.point.x}%`,
                                       top: `${selectedMainGameRecallOverlay.point.y}%`,
@@ -5876,7 +6203,7 @@ function App() {
                                     src={selectedMainGameDropOverlay.icon}
                                     alt="Drop transport"
                                     title="Drop landing point — transport vessel"
-                                    className="workflow-event-map-expansion-overlay workflow-event-map-expansion-overlay--recall-arbiter"
+                                    className={`workflow-event-map-expansion-overlay workflow-event-map-expansion-overlay--recall-arbiter${selectedMainGameArrow ? ' workflow-event-map-vessel--travel' : ''}`}
                                     style={{
                                       left: `${selectedMainGameDropOverlay.point.x}%`,
                                       top: `${selectedMainGameDropOverlay.point.y}%`,
@@ -5902,6 +6229,41 @@ function App() {
                                     </div>
                                   );
                                 })}
+                                {selectedEventAnimCategory === 'nuke' && selectedMainGameArrow ? (
+                                  <span
+                                    key={`nuke-ring-${selectedMainGameEventKeyResolved}`}
+                                    className="workflow-event-map-shockwave workflow-event-map-shockwave--nuke"
+                                    style={{ left: `${selectedMainGameArrow.to.x}%`, top: `${selectedMainGameArrow.to.y}%` }}
+                                    aria-hidden="true"
+                                  />
+                                ) : null}
+                                {selectedEventAnimCategory === 'expansion' && selectedMainGameExpansionOverlay ? (
+                                  <span
+                                    key={`expand-ring-${selectedMainGameEventKeyResolved}`}
+                                    className="workflow-event-map-shockwave workflow-event-map-shockwave--expansion"
+                                    style={{ left: `${selectedMainGameExpansionOverlay.point.x}%`, top: `${selectedMainGameExpansionOverlay.point.y}%` }}
+                                    aria-hidden="true"
+                                  />
+                                ) : null}
+                                {selectedMainGameEvent && !selectedLeaveInfo && normalizeEventType(selectedMainGameEvent?.type) !== 'bo_openers' ? (
+                                  <div
+                                    key={`event-narration-${selectedMainGameEventKeyResolved}`}
+                                    className={[
+                                      'workflow-event-map-narration',
+                                      selectedEventFocus ? 'workflow-event-map-narration--located' : 'workflow-event-map-narration--bottom',
+                                      selectedEventFocus?.travel ? 'workflow-event-map-narration--travel' : '',
+                                      selectedEventFocus && selectedEventFocus.to.y > 78 ? 'workflow-event-map-narration--above' : '',
+                                    ].filter(Boolean).join(' ')}
+                                    style={selectedEventFocus ? {
+                                      left: `${selectedEventFocus.to.x}%`,
+                                      top: `${selectedEventFocus.to.y}%`,
+                                    } : undefined}
+                                  >
+                                    <span className="workflow-event-map-narration-text">
+                                      {renderGameEventDescription(selectedMainGameEvent, markerRegistry, mainEventRaceByPlayerID)}
+                                    </span>
+                                  </div>
+                                ) : null}
                               </div>
                             </>
                           ) : (
@@ -6622,7 +6984,7 @@ function App() {
                                         {oppIcon ? <img src={oppIcon} alt={card.opp_race} title={card.opp_race} className="workflow-recent-game-worker-icon" /> : null}
                                         <strong>{label}</strong>
                                         {isMoneyCard ? (
-                                          <span className="workflow-money-tag" data-tip="Money map: fixed-economy maps (Big Game Hunters, Fastest Possible) where opener timings are uninformative.">💰 Money map</span>
+                                          <span className="workflow-money-tag" data-tip="Money map">💰 Money map</span>
                                         ) : null}
                                       </span>
                                       <span className="workflow-player-matchup-card-meta">

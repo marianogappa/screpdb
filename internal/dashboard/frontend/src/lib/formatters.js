@@ -60,7 +60,7 @@ export const mapKindEmoji = (mapKind) => {
 export const mapKindTooltip = (mapKind) => {
   switch (String(mapKind || '').toLowerCase()) {
     case 'money':
-      return 'Money map: fixed-economy maps (Big Game Hunters, Fastest Possible) where opener timings are uninformative.';
+      return 'Money map';
     case 'usemapsettings':
       return 'Use Map Settings: custom scenario rules.';
     default:

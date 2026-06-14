@@ -346,10 +346,17 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 			continue
 		}
 		labels := make([]string, 0, len(set))
+		seenLabel := make(map[string]struct{}, len(set))
 		for _, cfg := range workflowFeaturingFilters {
 			if _, has := set[cfg.Key]; !has {
 				continue
 			}
+			// Distinct keys can share a label (e.g. the "wraiths" marker and the
+			// "bo_t_wraith" opener both read "Wraith") — collapse to one pill.
+			if _, dup := seenLabel[cfg.Label]; dup {
+				continue
+			}
+			seenLabel[cfg.Label] = struct{}{}
 			labels = append(labels, cfg.Label)
 		}
 		items[idx].Featuring = labels
