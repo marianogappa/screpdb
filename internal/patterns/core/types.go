@@ -49,7 +49,14 @@ import (
 // flow through ownership (a producing building further refreshes its base's
 // inactivity clock) and inflate Viewport Multitasking; the recall destination
 // inference excludes them. Re-ingest so stored coords/events reflect the change.
-const AlgorithmVersion = 31
+//
+// 32: Preferred build-order tier. Specific, scene-named openers (e.g. "3 Hatch
+// Muta", "2 Gate Reaver", "Siege Expand") are added as tier-1 markers that take
+// precedence over the broad buckets they overlap (tier 2) and the residual
+// "… (Other)" catch-alls (tier 3); only the best-tier opener is persisted per
+// player (internal/patterns markers.Tier + Orchestrator.selectBestTierOpeners).
+// Re-ingest so stored openers reflect the more specific classification.
+const AlgorithmVersion = 32
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

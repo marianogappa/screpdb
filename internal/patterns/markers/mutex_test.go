@@ -29,6 +29,10 @@ var zergFuzzSubjects = []subjectKind{
 	{subjDrone, cmdenrich.KindMakeUnit},
 	{subjOverlord, cmdenrich.KindMakeUnit},
 	{subjZergling, cmdenrich.KindMakeUnit},
+	// Tech-pathway openers (issue #182): muta/lurker/hydra discriminators.
+	{subjSpire, cmdenrich.KindMakeBuilding},
+	{subjHydraliskDen, cmdenrich.KindMakeBuilding},
+	{subjLurker, cmdenrich.KindMakeUnit},
 }
 
 var protossFuzzSubjects = []subjectKind{
@@ -40,6 +44,14 @@ var protossFuzzSubjects = []subjectKind{
 	{subjForge, cmdenrich.KindMakeBuilding},
 	{subjPhotonCannon, cmdenrich.KindMakeBuilding},
 	{subjZealot, cmdenrich.KindMakeUnit},
+	// Tech-pathway openers (issue #182): reaver / DT / sair discriminators.
+	{subjRoboticsFacility, cmdenrich.KindMakeBuilding},
+	{subjTemplarArchives, cmdenrich.KindMakeBuilding},
+	{subjCitadelOfAdun, cmdenrich.KindMakeBuilding},
+	{subjStargate, cmdenrich.KindMakeBuilding},
+	{subjReaver, cmdenrich.KindMakeUnit},
+	{subjDarkTemplar, cmdenrich.KindMakeUnit},
+	{subjCorsair, cmdenrich.KindMakeUnit},
 }
 
 var terranFuzzSubjects = []subjectKind{
@@ -49,6 +61,7 @@ var terranFuzzSubjects = []subjectKind{
 	{subjRefinery, cmdenrich.KindMakeBuilding},
 	{subjFactory, cmdenrich.KindMakeBuilding},
 	{subjStarport, cmdenrich.KindMakeBuilding},
+	{subjMachineShop, cmdenrich.KindMakeBuilding},
 	{subjAcademy, cmdenrich.KindMakeBuilding},
 	{subjEngineeringBay, cmdenrich.KindMakeBuilding},
 	{subjBunker, cmdenrich.KindMakeBuilding},
@@ -86,11 +99,14 @@ func matchupApplies(bo Marker, matchup string) bool {
 	return MatchupAdmits(bo.Matchup, matchup, "1v1")
 }
 
-// collectInitialMatches returns the names of every KindInitialBuildOrder BO that matches
-// the given facts for the supplied (race, matchup) tuple. BOs whose Matchup
-// gate excludes the tuple are skipped — mutex is enforced per-tuple.
-func collectInitialMatches(race Race, matchup string, facts []cmdenrich.EnrichedCommand) []string {
-	var names []string
+// collectInitialMatchesByTier returns, per Tier, the names of every
+// KindInitialBuildOrder BO that matches the given facts for the supplied
+// (race, matchup) tuple. BOs whose Matchup gate excludes the tuple are skipped.
+// Mutual exclusion is enforced per (race, matchup, tier): across tiers, overlap
+// is expected and resolved by precedence in selectBestTierOpeners, so the test
+// only requires disjointness within a single tier.
+func collectInitialMatchesByTier(race Race, matchup string, facts []cmdenrich.EnrichedCommand) map[int][]string {
+	byTier := map[int][]string{}
 	for _, bo := range Markers() {
 		if bo.Kind != KindInitialBuildOrder || bo.Race != race {
 			continue
@@ -99,11 +115,17 @@ func collectInitialMatches(race Race, matchup string, facts []cmdenrich.Enriched
 			continue
 		}
 		if bo.Matches(facts) {
-			names = append(names, bo.Name)
+			tier := bo.Tier
+			if tier == 0 {
+				tier = TierBackup // mirror registry normalization
+			}
+			byTier[tier] = append(byTier[tier], bo.Name)
 		}
 	}
-	sort.Strings(names)
-	return names
+	for tier := range byTier {
+		sort.Strings(byTier[tier])
+	}
+	return byTier
 }
 
 func formatFactsForError(facts []cmdenrich.EnrichedCommand) string {
@@ -182,10 +204,11 @@ func FuzzInitialBOsMutualExclusion(f *testing.F) {
 		// invariants hold.
 		sort.SliceStable(facts, func(i, j int) bool { return facts[i].Second < facts[j].Second })
 		for _, matchup := range matchupsForRace(race) {
-			matches := collectInitialMatches(race, matchup, facts)
-			if len(matches) > 1 {
-				t.Fatalf("multiple %s initial BOs matched in %s: %v — tighten broad rules so they're mutually exclusive. Facts: %s",
-					race, matchup, matches, formatFactsForError(facts))
+			for tier, matches := range collectInitialMatchesByTier(race, matchup, facts) {
+				if len(matches) > 1 {
+					t.Fatalf("multiple %s tier-%d initial BOs matched in %s: %v — tighten broad rules so they're mutually exclusive within the tier. Facts: %s",
+						race, tier, matchup, matches, formatFactsForError(facts))
+				}
 			}
 		}
 	})

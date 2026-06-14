@@ -1,0 +1,40 @@
+build_id,race,matchup,build_name_en,build_name_kr,creator_or_popularized,confidence,has_sourced_clock,source_url
+T1,Terran,TvP,Siege Expand,시즈 앞마당,(standard),High,no,https://liquipedia.net/starcraft/Siege_Expand_(vs._Protoss)
+T2,Terran,TvP,Double Armory / Flash Build,더블 아머리,Flash,High,no,https://liquipedia.net/starcraft/Double_Armory_(vs._Protoss)
+T3,Terran,TvP,1 Rax FE,원배럭 더블,Flash,Medium,no,https://liquipedia.net/starcraft/1_Rax_FE_(vs._Protoss)
+T4,Terran,TvP,FD / Fake Double,페이크 더블,(2004 origin),Medium,no,https://liquipedia.net/starcraft/FD_(vs._Protoss)
+T6,Terran,TvZ,1 Rax FE,원배럭 더블,(all),High,no,https://liquipedia.net/starcraft/1_Rax_FE_(vs._Zerg)
+T7,Terran,TvZ,+1 Weapons Up-Terran,업테란,Flash,High,no,https://liquipedia.net/starcraft/1_Rax_FE_(vs._Zerg)
+T8,Terran,TvZ,+1 5 Rax,플러스원 5배럭,(standard),Medium,no,https://liquipedia.net/starcraft/%2B1_5_Rax
+T9,Terran,TvZ,5 Factory Goliaths,5팩 골리앗,Flash,High,yes,https://liquipedia.net/starcraft/Flash%27s_5_Factory_Goliath_Build(vs._Zerg)
+T11,Terran,TvZ,Aggressive 4-Rax vs Eco Muta,4배럭,(standard),Medium,no,https://liquipedia.net/starcraft/1_Rax_FE_(vs._Zerg)
+T12,Terran,TvT,1 Fact FE,원팩 더블,(all),High,no,https://liquipedia.net/starcraft/1_Fact_FE_(vs._Terran)
+T13,Terran,TvT,2 Fact Vults,투팩 벌처,(standard),Medium,yes,https://liquipedia.net/starcraft/2_Fact_Vults_(vs._Terran)
+T14,Terran,TvT,3 Fact Vulture,쓰리팩 벌처,Themarine,Medium,no,https://liquipedia.net/starcraft/3_Fact_Vulture_(vs._Terran)
+T15,Terran,TvT,2 Port Wraith,투포트 레이스,Flash,Medium,no,https://liquipedia.net/starcraft/2_Port_Wraith_(vs._Terran)
+T16,Terran,TvT,14 CC,14 커맨드,Flash,Medium,no,https://liquipedia.net/starcraft/14_CC_(vs._Terran)
+P1,Protoss,PvZ,Forge Fast Expand,생더블,Nal_rA / Bisu,High,no,https://liquipedia.net/starcraft/Forge_FE_(vs._Zerg)
+P2,Protoss,PvZ,+1 Sair/Speedlot,네오 비수류,Bisu,High,yes,https://liquipedia.net/starcraft/%2B1_Sair/Speedlot_(vs._Zerg)
+P3,Protoss,PvZ,+1 Speedzealot / 14 Nexus FE,+1 질럿,(standard),Medium,no,https://liquipedia.net/starcraft/%2B1_Speedzealot_(vs_Zerg)
+P4,Protoss,PvZ,Corsair/Reaver,커세어 리버,Nal_rA,Medium,no,https://liquipedia.net/starcraft/Corsair/Reaver_(vs._Zerg)
+P5,Protoss,PvZ,2 Gateway,투게이트 질럿,(standard),Medium,no,https://liquipedia.net/starcraft/2_Gateway_(vs._Zerg)
+P6,Protoss,PvZ,Bisu Build (Corsair/DT),커세어 다크,Bisu,Legacy,no,https://liquipedia.net/starcraft/Bisu_Build
+P15,Protoss,PvZ,4 Gate 2 Archon / 18 Nexus FE,4게이트 2아콘,(standard),Medium,no,https://liquipedia.net/starcraft/4_Gate_2_Archon
+P7,Protoss,PvT,1 Gate Core,원게이트 코어,(all),High,no,https://liquipedia.net/starcraft/1_Gate_Core_(vs._Terran)
+P9,Protoss,PvT,1 Gate Reaver,원게이트 리버,(standard),High,no,https://liquipedia.net/starcraft/1_Gate_Reaver
+P13,Protoss,PvT,2 Gate DT,투게이트 다크,(standard),Medium,no,https://liquipedia.net/starcraft/2_Gate_DT
+P11,Protoss,PvP,1 Gate Zealot/Core,원게이트 코어,(all),High,no,https://liquipedia.net/starcraft/1_Gate_Core_(vs._Protoss)
+P12,Protoss,PvP,2 Gate Reaver,투게이트 리버,(standard),Medium,yes,https://liquipedia.net/starcraft/2_Gate_Reaver_(vs._Protoss)
+Z1,Zerg,ZvP,3 Base Spire into 5 Hatch Hydra,3해처리→5해처리 히드라,GGPlay / Jaedong,High,no,https://liquipedia.net/starcraft/3_Base_Spire_into_5_Hatch_Hydra_(vs._Protoss)
+Z2,Zerg,ZvP,12 Hatch,12해처리,(standard),High,no,https://liquipedia.net/starcraft/12_Hatch_(vs._Protoss)
+Z3,Zerg,ZvP,5 Hatch before Gas,5해처리 노개스,(standard),Medium,no,https://liquipedia.net/starcraft/5_Hatch_before_Gas_(vs._Protoss)
+Z4,Zerg,ZvP,2 Hatch Hydra,투해처리 히드라,(standard),Medium,no,https://liquipedia.net/starcraft/2_Hatch_Hydra_(vs._Protoss)
+Z6,Zerg,ZvP,2 Hatch Lurker Drop,투해처리 럴커 드랍,(standard),Situational,no,https://liquipedia.net/starcraft/2_Hatch_Lurker_Drop_(vs._Protoss)
+Z7,Zerg,ZvT,12 Hatch,12해처리,(standard),High,no,https://liquipedia.net/starcraft/12_Hatch_(vs._Terran)
+Z8,Zerg,ZvT,3 Hatch Muta,3해처리 뮤탈,sAviOr,High,yes,https://liquipedia.net/starcraft/3_Hatch_Muta_(vs._Terran)
+Z9,Zerg,ZvT,2 Hatch Muta,투해처리 뮤탈,(standard),Medium,yes,https://liquipedia.net/starcraft/2_Hatch_Muta_(vs._Terran)
+Z10,Zerg,ZvT,3 Hatch Lurker,3해처리 럴커,(standard),High,no,https://liquipedia.net/starcraft/3_Hatch_Lurker_(vs._Terran)
+Z12,Zerg,ZvZ,9 Pool Speed into 1 Hatch Spire,9풀 스피드→1해처리 스파이어,(all),High,no,https://liquipedia.net/starcraft/9_Pool_Speed_into_1_Hatch_Spire_(vs._Zerg)
+Z13,Zerg,ZvZ,Overpool,오버풀,(all),High,no,https://liquipedia.net/starcraft/Overpool_(vs._Zerg)
+Z14,Zerg,ZvZ,9 Gas 9 Pool,9개스 9풀,(standard),Medium,no,"https://liquipedia.net/starcraft/9_Gas,_9_Pool_(vs._Zerg)"
+Z15,Zerg,ZvZ,12 Pool,12풀,(standard),Medium,yes,https://liquipedia.net/starcraft/12_Pool_(vs._Zerg)

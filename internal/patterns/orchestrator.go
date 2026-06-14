@@ -152,7 +152,61 @@ func (o *Orchestrator) GetResults() []*core.PatternResult {
 			}
 		}
 	}
+	o.results = selectBestTierOpeners(o.results)
 	return o.results
+}
+
+// selectBestTierOpeners enforces "one opener per player, best tier wins".
+// Among the KindInitialBuildOrder results for a given player, only the lowest
+// Marker.Tier survives — a preferred (tier 1) opener suppresses the broad
+// bucket (tier 2) and residual (tier 3) it overlaps. KindMarker results and
+// results whose PatternName isn't a known opener pass through untouched. The
+// pass is idempotent: re-running it on already-filtered results is a no-op.
+//
+// Players are keyed by ReplayPlayerID (this runs before DB-ID mapping) and, as
+// a fallback for replay-level openers (none today), by PlayerID. The fuzz test
+// guarantees at most one opener matches per (race, matchup, tier), so within
+// the winning tier there is exactly one survivor.
+func selectBestTierOpeners(results []*core.PatternResult) []*core.PatternResult {
+	type key struct {
+		replayPlayer int // -1 when absent
+		dbPlayer     int64
+	}
+	bestTier := map[key]int{}
+	openerKey := func(r *core.PatternResult) (key, *markers.Marker, bool) {
+		m := markers.ByPatternName(r.PatternName)
+		if m == nil || m.Kind != markers.KindInitialBuildOrder {
+			return key{}, nil, false
+		}
+		k := key{replayPlayer: -1}
+		if r.ReplayPlayerID != nil {
+			k.replayPlayer = int(*r.ReplayPlayerID)
+		}
+		if r.PlayerID != nil {
+			k.dbPlayer = *r.PlayerID
+		}
+		return k, m, true
+	}
+
+	for _, r := range results {
+		k, m, ok := openerKey(r)
+		if !ok {
+			continue
+		}
+		if t, seen := bestTier[k]; !seen || m.Tier < t {
+			bestTier[k] = m.Tier
+		}
+	}
+
+	filtered := results[:0:0]
+	for _, r := range results {
+		k, m, ok := openerKey(r)
+		if ok && m.Tier > bestTier[k] {
+			continue // a lower-tier opener won for this player
+		}
+		filtered = append(filtered, r)
+	}
+	return filtered
 }
 
 func (o *Orchestrator) ReplayEvents() []worldstate.ReplayEvent {

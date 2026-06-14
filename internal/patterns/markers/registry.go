@@ -9,7 +9,7 @@ import "strings"
 const InitialBuildOrderPatternNamePrefix = "Build Order: "
 
 var (
-	markerList      []Marker
+	markerList       []Marker
 	markersByPattern map[string]*Marker
 	markersByFeature map[string]*Marker
 )
@@ -20,6 +20,12 @@ func init() {
 	markersByFeature = make(map[string]*Marker, len(markerList))
 	for i := range markerList {
 		m := &markerList[i]
+		// Normalize the opener tier: an unset (0) tier on an opener means the
+		// broad-bucket default, so existing openers need no per-literal
+		// annotation. Preferred / residual openers set their tier explicitly.
+		if m.Kind == KindInitialBuildOrder && m.Tier == 0 {
+			m.Tier = TierBackup
+		}
 		markersByPattern[strings.ToLower(m.PatternName)] = m
 		markersByFeature[strings.ToLower(m.FeatureKey)] = m
 	}

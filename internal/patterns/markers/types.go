@@ -287,19 +287,19 @@ func PayloadFieldSubject(field string) *Subject {
 //
 // Label examples:
 //
-//   "Carriers"                     — static truthy signature
-//   "Quick {subject}"              — "Quick Factory" (SubjectStatic "Factory")
-//   "Hotkeys {subject}"            — "Hotkeys 1,3,5" (SubjectPayloadField "groups")
-//   "Drops at min {minute}"        — "Drops at min 7"
+//	"Carriers"                     — static truthy signature
+//	"Quick {subject}"              — "Quick Factory" (SubjectStatic "Factory")
+//	"Hotkeys {subject}"            — "Hotkeys 1,3,5" (SubjectPayloadField "groups")
+//	"Drops at min {minute}"        — "Drops at min 7"
 //
 // IconKey names a unit-icon sprite the frontend resolves via getUnitIcon(); empty
 // IconKey = no icon.
 type Pill struct {
-	Label   string   `json:"label,omitempty"`
-	IconKey string   `json:"icon_key,omitempty"`
-	Subject *Subject `json:"subject,omitempty"`
+	Label   string    `json:"label,omitempty"`
+	IconKey string    `json:"icon_key,omitempty"`
+	Subject *Subject  `json:"subject,omitempty"`
 	Style   PillStyle `json:"style,omitempty"`
-	Title   string   `json:"title,omitempty"` // optional tooltip
+	Title   string    `json:"title,omitempty"` // optional tooltip
 }
 
 // Kind categorizes a marker so that mutually-exclusive families (openers)
@@ -317,6 +317,21 @@ const (
 	KindMarker Kind = "marker"
 )
 
+// Opener tiers (see Marker.Tier). Lower wins. Every KindInitialBuildOrder
+// marker must set one of these; the fuzz test asserts it.
+const (
+	// TierPreferred: specific, scene-named openers sourced from current BW
+	// pro knowledge (e.g. "3 Hatch Muta", "2 Gate Reaver", "Siege Expand").
+	TierPreferred = 1
+	// TierBackup: the broad, high-coverage openers (Zerg supply rungs,
+	// Protoss topology, Terran composition buckets) — shown when no preferred
+	// opener matched.
+	TierBackup = 2
+	// TierResidual: the per-race "… (Other)" complement catch-alls — the floor
+	// below which only "Opener unresolved" remains.
+	TierResidual = 3
+)
+
 // Marker bundles both the classification rule and (for openers) the expert
 // timings used by the Build Orders UI tab.
 type Marker struct {
@@ -327,6 +342,22 @@ type Marker struct {
 	// Kind classifies the marker. Openers use KindInitialBuildOrder (mutex);
 	// everything else uses KindMarker (overlap permitted).
 	Kind Kind
+
+	// Tier ranks competing KindInitialBuildOrder markers when more than one
+	// matches the same player. The lowest tier wins and is the only opener
+	// persisted for that player; the rest are suppressed (see
+	// Orchestrator.GetResults). This is what lets a specific, scene-named
+	// "preferred" opener (tier 1) take precedence over the broad bucket it
+	// overlaps (tier 2) and the residual "… (Other)" catch-all (tier 3),
+	// while every classifiable player still resolves to exactly one opener.
+	//
+	// Ignored for KindMarker (those overlap freely). Mutual exclusion is
+	// enforced *within* a (race, matchup, tier) tuple by the fuzz test — across
+	// tiers, overlap is expected and resolved here by precedence. An unset
+	// Tier (0) on a KindInitialBuildOrder marker is normalized to TierBackup at
+	// registry build time, so existing broad openers need no annotation;
+	// preferred openers set TierPreferred and residual catch-alls TierResidual.
+	Tier int
 
 	// PatternName is the name stored in detected_patterns_replay_player.
 	// Openers use the form "Build Order: <Name>"; KindMarker entries use
