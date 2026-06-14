@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.0](https://github.com/marianogappa/screpdb/compare/v1.5.0...v1.6.0) (2026-06-14)
+
+
+### Features
+
+* animated game-events map, games-list polish, and Wraith filter ([#180](https://github.com/marianogappa/screpdb/issues/180)) ([45349d7](https://github.com/marianogappa/screpdb/commit/45349d7d4bf6abfab7932374ea74ccba8513bcf9))
+* preferred scene-named build orders via tiered fallback ([#183](https://github.com/marianogappa/screpdb/issues/183)) ([bcca66c](https://github.com/marianogappa/screpdb/commit/bcca66c1f57fb97bf0d4a9da3df4ada8686c7e15))
+
 ## [1.5.0](https://github.com/marianogappa/screpdb/compare/v1.4.0...v1.5.0) (2026-06-13)
 
 
