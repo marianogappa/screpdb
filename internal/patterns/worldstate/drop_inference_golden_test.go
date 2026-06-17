@@ -20,6 +20,10 @@ import (
 // dt_drop / cliff_drop), and diffs the per-cluster records against
 // testdata/drops_golden.json.
 //
+// The drops_cliff_bgh_*.rep fixtures are human-curated premises (verified by
+// watching the replays) and must NOT be blindly refreshed — see
+// ../GOLDEN_TIERS.md.
+//
 // Refresh with:
 //
 //	UPDATE_GOLDEN=1 go test ./internal/patterns/worldstate/ -run TestDropTargetInferenceGolden
