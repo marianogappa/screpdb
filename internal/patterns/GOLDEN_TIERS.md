@@ -14,9 +14,9 @@ needed.
 
 Examples of tier-2 assertions: Viewport Multitasking `switches_per_minute`,
 hotkey/upgrade markers, expert-milestone `expert_actuals`, regular `drop` /
-`reaver_drop` records, and every assertion on the pre-existing fixtures
+`reaver_drop` records, and every assertion on the pre-existing marker fixtures
 (`battlecruisers.rep`, `bo_*_hatch.rep`, `bo_2_gate_carriers.rep`,
-`carriers_recalls.rep`, `recalls_*.rep`, `threw_nukes.rep`, …).
+`carriers_recalls.rep`, `threw_nukes.rep`, …).
 
 ## Tier 1 — human-curated premises (changes are regressions)
 
@@ -58,6 +58,22 @@ presence/absence of a `cliff_drop` subtype record.
 
 A change that adds a cliff_drop to a *_fp fixture, or removes the one from a
 *_tp fixture, breaks a human premise → regression.
+
+### Recall target inference — `recalls_golden.json`
+
+All six `recalls_*.rep` fixtures (introduced with the recall-destination feature,
+#118) are hand-curated: the author hand-annotated each recall's **target** base.
+The golden test header says so directly — "the source of truth for the user's
+hand-annotated targets," with labels in the author's annotation style ("9",
+"9's natural", "center base"). Scenario names encode the cases probed:
+`arbiter_died`, `multi_target`, `no_teleport_case`, `single_natural`,
+`sustained_9_then_11`, `with_defensive`.
+
+The protected premise per recall cluster is the **target attribution**
+(`target_label` / `target_owner_pid`) — i.e. where the recall was inferred to go.
+The mechanical fields (`second`, `count`, `source_label`) are derived. A change
+that moves a recall's target away from the annotated base is a regression → it
+needs the author to re-annotate, not a blind `UPDATE_GOLDEN`.
 
 ## Additional human-verified ground truth (not yet fixtured)
 
