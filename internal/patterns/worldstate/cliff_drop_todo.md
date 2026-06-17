@@ -21,17 +21,22 @@ each transport tag's position as it moves (mirroring `unittags.Coordinates`
 for production coords, issue #175), then resolve a coordless `Unload` to the
 selected transport's actual position. Deferred.
 
-## Human-verified missed cliff drops (future goldens once the above is fixed)
+## Genuinely-missed cliff drops (future goldens once the above is fixed)
 
-These were manually confirmed by watching the replays; the detector currently
-misses them because the drop was a plain `Unload`:
+A cliff drop is only missed when it is performed *entirely* with plain `Unload`
+(no `MoveUnload` anywhere in the cluster). Drops that include even one corner
+`MoveUnload` are already detected via the per-unload check in
+`isCliffDropForCluster`. Human-verified purely-coordless misses:
 
-- `oldAutosave/20171230/171658- (8)Big Game Hunters.rep` — DeCartonPiedra — ~6:11
-- `oldAutosave/20180204/195036-(8)Big Game Hunters.rep` — BULLSHlT — ~8:13
 - `oldAutosave/20170527/150854- (8)Big Game Hunters.rep` — bombom — ~19:45
+  (plain Unloads at 1181-1185; the 1177 MoveUnload at (3902,3959) is off-cliff).
+- `AutoSave/20251116/225058,(8)Big Game Hunters.rep` — JustPassingThru — ~19:08
+  (plain Unloads at 1149-1165, no MoveUnload at all).
 
-(Each of these replays ALSO has an off-cliff `MoveUnload` that the 150px corner
-box correctly rejects — the misses above are separate, real cliff drops.)
+Note: two replays first thought to be missed are in fact ALREADY detected by the
+per-unload check — DeCartonPiedra (`...20171230/171658...`, cliff_drop @361,
+t≈[76,15]) and BULLSHlT (`...20180204/195036...`, cliff_drop @491, t≈[110,21]).
+The off-cliff drops in those same games (445 / 502) are correctly rejected.
 
 ## Note: centroid pollution (fixed)
 
