@@ -62,8 +62,8 @@ func toContextBase(base replaymap.BasePolygon) models.MapContextBase {
 	polygon := make([]models.MapPolygonPoint, 0, len(base.PolygonVertices))
 	for _, vertex := range base.PolygonVertices {
 		polygon = append(polygon, models.MapPolygonPoint{
-			X: tileToPixelInt(vertex.X),
-			Y: tileToPixelInt(vertex.Y),
+			X: minitileToPixelInt(vertex.X),
+			Y: minitileToPixelInt(vertex.Y),
 		})
 	}
 	return models.MapContextBase{
@@ -71,8 +71,8 @@ func toContextBase(base replaymap.BasePolygon) models.MapContextBase {
 		Kind:  base.Kind,
 		Clock: base.Clock,
 		Center: models.MapResourcePosition{
-			X: tileToPixelInt(base.CenterTile.X),
-			Y: tileToPixelInt(base.CenterTile.Y),
+			X: minitileToPixelInt(base.CenterTile.X),
+			Y: minitileToPixelInt(base.CenterTile.Y),
 		},
 		Polygon:          polygon,
 		MineralOnly:      base.MineralOnly,
@@ -81,6 +81,6 @@ func toContextBase(base replaymap.BasePolygon) models.MapContextBase {
 }
 
 // scmapanalyzer replaymap.TilePoint values are in minitiles (8x8 px cells).
-func tileToPixelInt(tileValue int) int {
-	return tileValue*8 + 4
+func minitileToPixelInt(minitileValue int) int {
+	return minitileValue*8 + 4
 }

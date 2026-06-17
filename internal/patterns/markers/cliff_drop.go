@@ -17,26 +17,34 @@ type cliffDropCandidate struct {
 //
 //  1. Map name matches the BGH family (gated at Finalize via
 //     utils.IsBigGameHuntersMap).
-//  2. Player has produced at least one Siege Tank by the drop second.
-//  3. The UnloadAll command lands within the top-left or bottom-right
+//  2. Player has produced at least one Dropship by the drop second — a
+//     cliff drop needs a transport. Without this, a Bunker's UnloadAll
+//     (which also classifies as KindUnloadAll) near a corner would
+//     register as a cliff drop.
+//  3. Player has produced at least one Siege Tank by the drop second.
+//  4. The UnloadAll command lands within the top-left or bottom-right
 //     corner box (utils.IsCliffDropPosition).
 //
 // The worldstate engine emits a parallel `cliff_drop` game_event for
 // every qualifying drop in a replay; this marker is the per-player
 // presence pill (game list / summary / filter chips).
 type cliffDropEvaluator struct {
-	hasTank    bool
-	candidates []cliffDropCandidate
+	hasTank     bool
+	hasDropship bool
+	candidates  []cliffDropCandidate
 }
 
 func (e *cliffDropEvaluator) Observe(f cmdenrich.EnrichedCommand) {
 	switch f.Kind {
 	case cmdenrich.KindMakeUnit:
-		if f.Subject == models.GeneralUnitSiegeTankTankMode {
+		switch f.Subject {
+		case models.GeneralUnitSiegeTankTankMode:
 			e.hasTank = true
+		case models.GeneralUnitDropship:
+			e.hasDropship = true
 		}
 	case cmdenrich.KindUnloadAll:
-		if !e.hasTank || f.X == nil || f.Y == nil {
+		if !e.hasTank || !e.hasDropship || f.X == nil || f.Y == nil {
 			return
 		}
 		e.candidates = append(e.candidates, cliffDropCandidate{

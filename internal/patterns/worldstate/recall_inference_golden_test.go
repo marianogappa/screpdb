@@ -20,6 +20,9 @@ import (
 // records against testdata/recalls_golden.json. The golden file is the source
 // of truth for the user's hand-annotated targets.
 //
+// These are HUMAN-CURATED premises (the annotated recall targets) — a change
+// that moves a target is a regression, not a blind refresh. See ../GOLDEN_TIERS.md.
+//
 // Refresh with:
 //
 //	UPDATE_GOLDEN=1 go test ./internal/patterns/worldstate/ -run TestRecallTargetInferenceGolden

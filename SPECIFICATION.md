@@ -717,15 +717,15 @@ Standalone constants the detectors depend on — dedup windows, muta/turret burs
 
 | Constant | Value | Meaning |
 | --- | --- | --- |
-| Algorithm version | 32 | Detection algorithm revision; incremented to trigger re-detection. |
+| Algorithm version | 34 | Detection algorithm revision; incremented to trigger re-detection. |
 | Build dedup gap (s) | 3 | Repeat Build orders of the same building at the same tile, closer than this, are one event (double-tap / misclick); different-tile placements are kept. |
 | Build dedup max second (s) | 240 | Past this second, dedup stops and every Build is observed as-is (a tile can be legitimately rebuilt on later). |
 | Mutalisk burst window (s) | 30 | Window within which the Mutalisk morphs must cluster. |
 | Mutalisk burst min count | 3 | Minimum Mutalisks in the window to count as a burst. |
 | Turret burst window (s) | 60 | Window within which the Missile Turrets must cluster. |
 | Turret burst min count | 3 | Minimum Missile Turrets in the window to count as a burst. |
-| Cliff-drop corner width (px) | 256 | Width of the corner box a drop must land in to count as a cliff drop. |
-| Cliff-drop corner height (px) | 128 | Height of that corner box. |
+| Cliff-drop corner width (px) | 150 | Width of the corner box a drop must land in to count as a cliff drop. |
+| Cliff-drop corner height (px) | 150 | Height of that corner box. |
 | Viewport window start (s) | 420 | Second from which viewport-multitasking is measured. |
 | Viewport width (px) | 704 | Width of the screen viewport in map pixels. |
 | Viewport height (px) | 512 | Height of the screen viewport in map pixels. |

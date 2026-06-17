@@ -116,12 +116,6 @@ func BuildAttacks(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, owner
 		}
 		attacker := byte(ec.PlayerID)
 		x, y := *ec.X, *ec.Y
-		// Build positions arrive in tile-space; convert to pixels so
-		// the polygon comparison matches the pixel-space PolygonGeom.
-		if ec.Kind == cmdenrich.KindMakeBuilding {
-			x = x*32 + 16
-			y = y*32 + 16
-		}
 		pi := pointInPolyGeom(polys, x, y)
 		// Spatial commands outside any polygon fall back to the
 		// globally nearest base. Mirrors legacy pointToOwnershipBase

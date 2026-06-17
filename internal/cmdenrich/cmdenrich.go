@@ -116,7 +116,10 @@ type EnrichedCommand struct {
 	Second   int
 	PlayerID int64
 
-	X, Y *int // raw coordinates when applicable; nil for non-spatial actions
+	// X, Y are in PIXELS (1 tile = 32px), uniformly — Build's tile-unit
+	// coordinates are normalized to pixels in Classify so consumers never
+	// re-convert. nil for non-spatial actions.
+	X, Y *int
 
 	Aggression Aggression
 
@@ -217,14 +220,25 @@ func Classify(cmd *models.Command) (EnrichedCommand, bool) {
 	if cmd.Player != nil {
 		playerID = int64(cmd.Player.PlayerID)
 	}
+	// Normalize coordinates to PIXELS. In the raw command stream only Build
+	// commands carry TILE-unit coordinates (1 tile = 32px); every other
+	// spatial command is already pixels. Converting here makes the enriched
+	// stream uniformly pixel-space so downstream consumers never re-convert —
+	// a missed per-consumer conversion is exactly what put a building's tile
+	// coords into pixel logic and landed a "drop" in the map corner.
+	xPx, yPx := cmd.X, cmd.Y
+	if kind == KindMakeBuilding && xPx != nil && yPx != nil {
+		px, py := *xPx*32+16, *yPx*32+16
+		xPx, yPx = &px, &py
+	}
 	fact := EnrichedCommand{
 		Kind:          kind,
 		Subject:       subject,
 		Frame:         cmd.Frame,
 		Second:        cmd.SecondsFromGameStart,
 		PlayerID:      playerID,
-		X:             cmd.X,
-		Y:             cmd.Y,
+		X:             xPx,
+		Y:             yPx,
 		Aggression:    aggressionByKind[kind],
 		Queued:        boolPtr(cmd.IsQueued),
 		OrderName:     orderName,

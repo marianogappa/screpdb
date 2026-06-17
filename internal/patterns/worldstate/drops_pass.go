@@ -70,6 +70,12 @@ type DropCluster struct {
 	DstPolyID      int
 	HasSource      bool
 	PairedLoads    []loadRecord
+	// Unloads holds every individual unload point [x,y] in the cluster (pixel
+	// space). Cliff-drop classification tests these points, not the centroid:
+	// a cluster can merge a corner cliff drop with a nearby edge unload, which
+	// drags the centroid off the cliff (e.g. corner unloads at x~84 averaged
+	// with top-edge unloads at x~390 → centroid x=246, outside the cliff box).
+	Unloads [][2]int
 }
 
 // BuildDrops walks the enriched stream and produces DropClusters. Mirrors
@@ -126,9 +132,12 @@ func BuildDrops(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, bases [
 		pid := byte(ec.PlayerID)
 
 		// Refresh player's last spatial coord — used as the last-resort
-		// destination fallback for Unload/UnloadAll commands that carry
-		// no X,Y of their own.
-		if ec.X != nil && ec.Y != nil {
+		// destination fallback for Unload/UnloadAll commands that carry no
+		// X,Y of their own. Skip KindMakeBuilding: a building placement is not
+		// a unit-unload location, so it must not anchor an unload's fallback
+		// position (this previously let a Bunker unload resolve to a stray
+		// building, surfacing a false cliff drop).
+		if ec.X != nil && ec.Y != nil && ec.Kind != cmdenrich.KindMakeBuilding {
 			playerLastCoord[pid] = point{*ec.X, *ec.Y}
 			hasPlayerLastCoord[pid] = true
 		}
@@ -275,6 +284,7 @@ func BuildDrops(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, bases [
 				}
 			}
 			cluster.LastSec = u.sec
+			cluster.Unloads = append(cluster.Unloads, [2]int{u.x, u.y})
 			// Running centroid: ((cur*count + new) / (count+1))
 			cluster.DstX = (cluster.DstX*cluster.Count + u.x) / (cluster.Count + 1)
 			cluster.DstY = (cluster.DstY*cluster.Count + u.y) / (cluster.Count + 1)

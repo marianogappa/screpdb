@@ -22,11 +22,14 @@ func IsBigGameHuntersMap(name string) bool {
 
 // Corner box dimensions (pixel space). A drop counts as a "cliff drop"
 // when its position lands inside either the top-left or bottom-right
-// rectangle of these dimensions, anchored to the corresponding corner
-// of the map.
+// square of this size, anchored to the corresponding corner of the map.
+// Big Game Hunters has exactly two unloadable cliffs — at the top-left and
+// bottom-right corners. Size calibrated against human-verified replays: real
+// on-cliff drops land within ~137px of the corner; drops just off the cliff
+// (verified non-cliff-drops) start at ~164px. 150px sits in that gap.
 const (
-	CliffDropCornerWidthPx  = 256
-	CliffDropCornerHeightPx = 128
+	CliffDropCornerWidthPx  = 150
+	CliffDropCornerHeightPx = 150
 )
 
 // IsCliffDropPosition reports whether (x,y) lies in the top-left or

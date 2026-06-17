@@ -40,8 +40,8 @@ func dashboardContextBaseFromAnalyzer(base replaymap.BasePolygon) models.MapCont
 	polygon := make([]models.MapPolygonPoint, 0, len(base.PolygonVertices))
 	for _, vertex := range base.PolygonVertices {
 		polygon = append(polygon, models.MapPolygonPoint{
-			X: tileToPixelDashboard(vertex.X),
-			Y: tileToPixelDashboard(vertex.Y),
+			X: minitileToPixelDashboard(vertex.X),
+			Y: minitileToPixelDashboard(vertex.Y),
 		})
 	}
 	return models.MapContextBase{
@@ -49,8 +49,8 @@ func dashboardContextBaseFromAnalyzer(base replaymap.BasePolygon) models.MapCont
 		Kind:  base.Kind,
 		Clock: base.Clock,
 		Center: models.MapResourcePosition{
-			X: tileToPixelDashboard(base.CenterTile.X),
-			Y: tileToPixelDashboard(base.CenterTile.Y),
+			X: minitileToPixelDashboard(base.CenterTile.X),
+			Y: minitileToPixelDashboard(base.CenterTile.Y),
 		},
 		Polygon:          polygon,
 		MineralOnly:      base.MineralOnly,
@@ -59,6 +59,6 @@ func dashboardContextBaseFromAnalyzer(base replaymap.BasePolygon) models.MapCont
 }
 
 // scmapanalyzer replaymap.TilePoint values are in minitiles (8x8 px cells).
-func tileToPixelDashboard(tileValue int) int {
-	return tileValue*8 + 4
+func minitileToPixelDashboard(minitileValue int) int {
+	return minitileValue*8 + 4
 }

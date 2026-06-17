@@ -19,6 +19,9 @@ import (
 // replays are hand-picked to collectively exercise every marker we know
 // how to detect (see marker coverage below).
 //
+// Some assertions are human-curated premises that must NOT be blindly
+// refreshed — see ../GOLDEN_TIERS.md (e.g. bo_team_mech_111.rep build orders).
+//
 // Refresh the golden with:
 //
 //	UPDATE_GOLDEN=1 go test ./internal/patterns/markers/ -run TestMarkersGolden

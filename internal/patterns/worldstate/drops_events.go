@@ -65,6 +65,7 @@ func (e *Engine) emitDropEvents(ownership []PolyOwnership, clusters []DropCluste
 	}
 
 	firstTankSecByPlayer := buildFirstTankSecByPlayer(e.stream)
+	firstDropshipSecByPlayer := buildFirstDropshipSecByPlayer(e.stream)
 
 	reaverDropEmitted := map[byte]bool{}
 
@@ -130,7 +131,7 @@ func (e *Engine) emitDropEvents(ownership []PolyOwnership, clusters []DropCluste
 			dropType = "reaver_drop"
 		case hasDT:
 			dropType = "dt_drop"
-		case e.isCliffDropForCluster(cl, firstTankSecByPlayer):
+		case e.isCliffDropForCluster(cl, firstTankSecByPlayer, firstDropshipSecByPlayer):
 			dropType = "cliff_drop"
 		}
 
@@ -228,10 +229,6 @@ func (e *Engine) inferDropTargetByPostActivity(cl DropCluster) (int, bool) {
 			continue
 		}
 		x, y := *ec.X, *ec.Y
-		if ec.Kind == cmdenrich.KindMakeBuilding {
-			x = x*32 + 16
-			y = y*32 + 16
-		}
 		bi := pointToEventBase(float64(x), float64(y), e.bases)
 		if bi < 0 {
 			continue
@@ -295,18 +292,25 @@ func (e *Engine) buildOrTrainUnitsInWindow(pid byte, mid int) []string {
 	return out
 }
 
-// isCliffDropForCluster gates a generic drop to the "cliff_drop" subtype on
-// the same predicate as the legacy emitDropCandidate: Big Game Hunters map,
-// Terran attacker who has produced a tank by drop time, and the destination
-// coordinates fall in the map corners reserved for cliff drops.
-func (e *Engine) isCliffDropForCluster(cl DropCluster, firstTankSecByPlayer map[byte]int) bool {
-	c := CandidateAttack{
-		Attacker: cl.PID,
-		Second:   cl.FirstSec,
-		X:        cl.DstX,
-		Y:        cl.DstY,
+// isCliffDropForCluster gates a generic drop to the "cliff_drop" subtype:
+// Big Game Hunters map, Terran attacker with a Dropship + Siege Tank by drop
+// time, and at least one unload landing in a corner cliff box. It tests the
+// individual unload points rather than the cluster centroid — a cluster that
+// merges a corner cliff drop with a nearby edge unload has a centroid pulled
+// off the cliff, but the corner unloads themselves still qualify.
+func (e *Engine) isCliffDropForCluster(cl DropCluster, firstTankSecByPlayer, firstDropshipSecByPlayer map[byte]int) bool {
+	for _, u := range cl.Unloads {
+		c := CandidateAttack{
+			Attacker: cl.PID,
+			Second:   cl.FirstSec,
+			X:        u[0],
+			Y:        u[1],
+		}
+		if e.isCliffDrop(c, firstTankSecByPlayer, firstDropshipSecByPlayer) {
+			return true
+		}
 	}
-	return e.isCliffDrop(c, firstTankSecByPlayer)
+	return false
 }
 
 func (e *Engine) emitDropEvent(cl DropCluster, ownerAtSec func(int, int) byte, dropType string, dropUnits []string, targetVia string) {
