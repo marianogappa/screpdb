@@ -56,7 +56,17 @@ import (
 // "… (Other)" catch-alls (tier 3); only the best-tier opener is persisted per
 // player (internal/patterns markers.Tier + Orchestrator.selectBestTierOpeners).
 // Re-ingest so stored openers reflect the more specific classification.
-const AlgorithmVersion = 32
+//
+// 33: Terran composition + cliff-drop accuracy fixes. (a) The Goliath opener now
+// requires no Siege Tanks ("with tanks it's Mech"), so tank-heavy mech in non-TvZ
+// games is no longer subtracted from the residual and lost. (b) 1-Rax Bio also
+// admits a pure-Barracks opening with no Factory/Starport transition (covers a
+// Marine opener cut short below the 8-Marine floor). (c) Cliff drops now require a
+// Dropship (not just a Bunker's UnloadAll), ignore tile-unit Build coords in the
+// unload-location fallback, use a tightened 150px corner box, and classify on
+// individual unload points instead of the cluster centroid. Re-ingest so stored
+// build orders and drop events reflect the corrected classification.
+const AlgorithmVersion = 33
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string
