@@ -312,16 +312,31 @@ func allMarkers() []Marker {
 	mechUnits := []string{subjVulture, subjGoliath, subjSiegeTank}
 	tcBioPred := Predominant(bioUnits, mechUnits, 600)
 	tcMechPred := Predominant(mechUnits, bioUnits, 600)
-	tcBio := All(ProduceCountAtLeastBefore(subjMarine, 8, 600), tcBioPred)
+	// Bio is Marine-dominant and either committed (8+ Marines by 10:00) or a
+	// pure-Barracks opening with no Factory/Starport transition by 10:00. The
+	// 8-Marine floor exists to screen out players who make a few Marines on the
+	// way into mech/air — those players always have a Factory or Starport, so a
+	// no-transition opening that fell short of the floor (e.g. died / left early
+	// under attack) is still a Bio opening, not a residual.
+	tcBioNoTransition := All(
+		ProduceCountAtLeastBefore(subjMarine, 1, 600),
+		Not(FirstBuildBefore(subjFactory, 600)),
+		Not(FirstBuildBefore(subjStarport, 600)),
+	)
+	tcBio := All(tcBioPred, Any(ProduceCountAtLeastBefore(subjMarine, 8, 600), tcBioNoTransition))
 	tcWraith := All(CountBuildsBefore(subjStarport, 2, 600), ProduceCountAtLeastBefore(subjWraith, 5, 600))
+	tcTank1 := ProduceCountAtLeastBefore(subjSiegeTank, 1, 600)
+	tcTank0 := ProduceCountAtMostBefore(subjSiegeTank, 0, 600)
+	// Goliath opener is Goliath-dominant with no tank tech: ≤2 Vultures and
+	// ≤4 Marines by 7:00, 4+ Goliaths by 10:00. Tanks make it Mech instead, so
+	// tcTank0 guards against tank-heavy mech being misread as a Goliath build.
 	tcGoliath := All(
 		ProduceCountAtMostBefore(subjVulture, 2, 420),
 		ProduceCountAtMostBefore(subjMarine, 4, 420),
 		ProduceCountAtLeastBefore(subjGoliath, 4, 600),
+		tcTank0,
 	)
 	tcOneOneOne := All(FirstBuildBefore(subjStarport, 420), ProduceCountAtLeastBefore(subjWraith, 1, 600))
-	tcTank1 := ProduceCountAtLeastBefore(subjSiegeTank, 1, 600)
-	tcTank0 := ProduceCountAtMostBefore(subjSiegeTank, 0, 600)
 	tcFac2 := CountBuildsBefore(subjFactory, 2, 600)
 
 	// tNamed: the matchup-free union of everything any Terran BO can match, used

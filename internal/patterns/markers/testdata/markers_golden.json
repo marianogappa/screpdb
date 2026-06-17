@@ -238,6 +238,125 @@
       }
     ]
   },
+  "bo_team_mech_111.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 5-Fac Mech",
+        "value": "{\"expert_actuals\":[{\"second\":78,\"found\":true},{\"second\":65,\"found\":true},{\"second\":99,\"found\":true},{\"second\":202,\"found\":true},{\"second\":577,\"found\":true},{\"second\":283,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":14.789579158316634}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Forge Cannon (no expa)",
+        "value": "{\"expert_actuals\":[{\"second\":110,\"found\":true},{\"second\":153,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Carriers",
+        "value": "1040"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":9.01803607214429}"
+      },
+      {
+        "replay_player_id": 2,
+        "pattern_name": "Became Terran",
+        "value": "856"
+      },
+      {
+        "replay_player_id": 2,
+        "pattern_name": "Build Order: 2 Gate",
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":83,\"found\":true},{\"second\":107,\"found\":true},{\"second\":125,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 2,
+        "pattern_name": "Carriers",
+        "value": "765"
+      },
+      {
+        "replay_player_id": 2,
+        "pattern_name": "Never used hotkeys",
+        "value": "1149"
+      },
+      {
+        "replay_player_id": 2,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":9.258517034068136}"
+      },
+      {
+        "replay_player_id": 3,
+        "pattern_name": "Build Order: 1-Rax Bio",
+        "value": "{\"expert_actuals\":[{\"second\":49,\"found\":true},{\"second\":119,\"found\":true},{\"second\":180,\"found\":true},{\"found\":false}]}"
+      },
+      {
+        "replay_player_id": 4,
+        "pattern_name": "Build Order: 1-1-1 into Mech",
+        "value": "{\"expert_actuals\":[{\"second\":64,\"found\":true},{\"second\":89,\"found\":true},{\"second\":111,\"found\":true},{\"second\":171,\"found\":true},{\"second\":231,\"found\":true},{\"second\":255,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 4,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1]}"
+      },
+      {
+        "replay_player_id": 4,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":12.625250501002004}"
+      },
+      {
+        "replay_player_id": 5,
+        "pattern_name": "Opener unresolved",
+        "value": "1149"
+      },
+      {
+        "replay_player_id": 6,
+        "pattern_name": "Build Order: 1-Rax Bio",
+        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":91,\"found\":true},{\"second\":129,\"found\":true},{\"found\":false}]}"
+      },
+      {
+        "replay_player_id": 6,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2]}"
+      },
+      {
+        "replay_player_id": 6,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":0}"
+      },
+      {
+        "replay_player_id": 7,
+        "pattern_name": "Build Order: 11 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":94,\"found\":true},{\"second\":177,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 7,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,5]}"
+      },
+      {
+        "replay_player_id": 7,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":12.985971943887776}"
+      }
+    ]
+  },
   "carriers_recalls.rep": {
     "detections": [
       {
