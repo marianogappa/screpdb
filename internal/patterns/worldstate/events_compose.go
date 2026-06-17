@@ -310,12 +310,6 @@ func (e *Engine) inferRecallTargetByPostActivity(cl recallCluster) (int, bool) {
 			continue
 		}
 		x, y := *ec.X, *ec.Y
-		// Build positions are in tile-space; convert to pixels (mirror
-		// BuildAttacks).
-		if ec.Kind == cmdenrich.KindMakeBuilding {
-			x = x*32 + 16
-			y = y*32 + 16
-		}
 		bi := pointToEventBase(float64(x), float64(y), e.bases)
 		if bi < 0 {
 			continue

@@ -66,7 +66,16 @@ import (
 // unload-location fallback, use a tightened 150px corner box, and classify on
 // individual unload points instead of the cluster centroid. Re-ingest so stored
 // build orders and drop events reflect the corrected classification.
-const AlgorithmVersion = 33
+//
+// 34: Coordinate-unit normalization. Build commands carry TILE-unit
+// coordinates while every other command is pixels; the enriched stream now
+// converts Build coords to pixels once in cmdenrich.Classify, so the whole
+// detection pipeline is uniformly pixel-space and per-consumer conversions are
+// removed. This also fixes Viewport Multitasking, which counted every Build as
+// a viewport teleport to the map origin (tile coords read as pixels) and so
+// over-reported switches_per_minute — most for build-heavy players. Re-ingest
+// so stored Viewport Multitasking values are corrected.
+const AlgorithmVersion = 34
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

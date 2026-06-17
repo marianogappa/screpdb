@@ -133,12 +133,10 @@ func BuildDrops(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, bases [
 
 		// Refresh player's last spatial coord — used as the last-resort
 		// destination fallback for Unload/UnloadAll commands that carry no
-		// X,Y of their own. Skip KindMakeBuilding: Build commands carry
-		// coordinates in TILE units (everything else is pixels) and a
-		// building placement is not a unit-unload location. Letting a Build
-		// through resolved Bunker unloads to a stray building tile read as a
-		// pixel coordinate — e.g. a Missile Turret at tile (26,18) became
-		// pixel (26,18), dead in the top-left corner box → false cliff drop.
+		// X,Y of their own. Skip KindMakeBuilding: a building placement is not
+		// a unit-unload location, so it must not anchor an unload's fallback
+		// position (this previously let a Bunker unload resolve to a stray
+		// building, surfacing a false cliff drop).
 		if ec.X != nil && ec.Y != nil && ec.Kind != cmdenrich.KindMakeBuilding {
 			playerLastCoord[pid] = point{*ec.X, *ec.Y}
 			hasPlayerLastCoord[pid] = true

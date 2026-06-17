@@ -17,8 +17,8 @@ type Replay struct {
 	Title           string    `json:"title"`
 	Host            string    `json:"host"`
 	MapName         string    `json:"map_name"`
-	MapWidth        uint16    `json:"map_width"`
-	MapHeight       uint16    `json:"map_height"`
+	MapWidth        uint16    `json:"map_width"`  // in TILES (×32 for pixels)
+	MapHeight       uint16    `json:"map_height"` // in TILES (×32 for pixels)
 	DurationSeconds int       `json:"duration_seconds"` // in seconds
 	FrameCount      int32     `json:"frame_count"`
 	EngineVersion   string    `json:"engine_version"`
@@ -77,7 +77,11 @@ type Command struct {
 	ActionType string `json:"action_type"`       // Build, Move, Attack, etc.
 	UnitID     *byte  `json:"unit_id,omitempty"` // Unit type ID (properly filled)
 
-	// Position data
+	// Position data, in RAW screp units — PIXELS for most commands, but
+	// TILES for Build and Land (1 tile = 32px). This mixed convention is
+	// stored as-is (incl. in the commands.x/y DB column); the detection
+	// pipeline normalizes to pixels at cmdenrich.Classify. Consumers reading
+	// these raw fields for Build/Land must convert (×32+16) themselves.
 	X *int `json:"x"`
 	Y *int `json:"y"`
 

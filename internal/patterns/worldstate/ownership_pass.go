@@ -211,10 +211,6 @@ func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, pla
 		}
 		p := byte(ec.PlayerID)
 		x, y := *ec.X, *ec.Y
-		if ec.Kind == cmdenrich.KindMakeBuilding {
-			x = x*32 + 16
-			y = y*32 + 16
-		}
 		pi := pointInPolyGeom(polys, x, y)
 		if pi < 0 {
 			continue

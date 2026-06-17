@@ -229,10 +229,6 @@ func (e *Engine) inferDropTargetByPostActivity(cl DropCluster) (int, bool) {
 			continue
 		}
 		x, y := *ec.X, *ec.Y
-		if ec.Kind == cmdenrich.KindMakeBuilding {
-			x = x*32 + 16
-			y = y*32 + 16
-		}
 		bi := pointToEventBase(float64(x), float64(y), e.bases)
 		if bi < 0 {
 			continue
