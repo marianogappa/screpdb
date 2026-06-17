@@ -1,0 +1,185 @@
+{
+  "drops_cliff_bgh_bunker_fp.rep": {
+    "records": []
+  },
+  "drops_cliff_bgh_centroid_tp.rep": {
+    "records": [
+      {
+        "second": 434,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "11",
+        "target_via": "p",
+        "target_owner_pid": 2
+      },
+      {
+        "second": 446,
+        "count": 11,
+        "subtype": "cliff_drop",
+        "target_label": "11",
+        "target_via": "p",
+        "target_owner_pid": 2
+      },
+      {
+        "second": 941,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "5",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 968,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "5",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 1034,
+        "count": 2,
+        "subtype": "drop",
+        "target_label": "5",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 1055,
+        "count": 2,
+        "subtype": "drop",
+        "target_label": "5",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 1066,
+        "count": 2,
+        "subtype": "drop",
+        "target_label": "5's natural",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 1132,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "5's natural",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 1544,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "11",
+        "target_via": "a",
+        "target_owner_pid": 2
+      },
+      {
+        "second": 1558,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "11",
+        "target_via": "a",
+        "target_owner_pid": 2
+      }
+    ]
+  },
+  "drops_cliff_bgh_offcliff_fp.rep": {
+    "records": [
+      {
+        "second": 525,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "5's natural",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 600,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "5",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 723,
+        "count": 3,
+        "subtype": "drop",
+        "target_label": "5's natural",
+        "target_via": "p",
+        "target_owner_pid": 1
+      }
+    ]
+  },
+  "drops_cliff_bgh_truepos.rep": {
+    "records": [
+      {
+        "second": 390,
+        "count": 1,
+        "subtype": "cliff_drop",
+        "target_label": "5",
+        "target_via": "p",
+        "target_owner_pid": 3
+      },
+      {
+        "second": 711,
+        "count": 2,
+        "subtype": "drop",
+        "target_label": "5's natural",
+        "target_via": "p",
+        "target_owner_pid": 3
+      },
+      {
+        "second": 731,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "5's natural",
+        "target_via": "p",
+        "target_owner_pid": 3
+      },
+      {
+        "second": 753,
+        "count": 2,
+        "subtype": "drop",
+        "target_label": "5's natural",
+        "target_via": "p",
+        "target_owner_pid": 3
+      },
+      {
+        "second": 768,
+        "count": 2,
+        "subtype": "drop",
+        "target_label": "5",
+        "target_via": "p",
+        "target_owner_pid": 3
+      },
+      {
+        "second": 778,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "5's natural",
+        "target_via": "p",
+        "target_owner_pid": 3
+      },
+      {
+        "second": 1010,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "6",
+        "target_via": "p",
+        "target_owner_pid": 5
+      },
+      {
+        "second": 1111,
+        "count": 2,
+        "subtype": "drop",
+        "target_label": "1",
+        "target_via": "p",
+        "target_owner_pid": 2
+      }
+    ]
+  }
+}

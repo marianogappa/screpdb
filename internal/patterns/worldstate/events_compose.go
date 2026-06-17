@@ -771,7 +771,7 @@ func (e *Engine) emitNukeCandidate(c CandidateAttack, cmd *models.Command) {
 // produced a Siege Tank by drop time, dropping into the top-left or
 // bottom-right corner of the map. Mirrors the marker-side gate in
 // internal/patterns/markers/cliff_drop.go.
-func (e *Engine) isCliffDrop(c CandidateAttack, firstTankSecByPlayer map[byte]int) bool {
+func (e *Engine) isCliffDrop(c CandidateAttack, firstTankSecByPlayer, firstDropshipSecByPlayer map[byte]int) bool {
 	if e.replay == nil {
 		return false
 	}
@@ -789,6 +789,12 @@ func (e *Engine) isCliffDrop(c CandidateAttack, firstTankSecByPlayer map[byte]in
 	if !hasTank || c.Second < tankSec {
 		return false
 	}
+	// A cliff drop needs a transport: require a Dropship produced by drop
+	// time. Without this, a Bunker's UnloadAll near a corner would qualify.
+	dropshipSec, hasDropship := firstDropshipSecByPlayer[c.Attacker]
+	if !hasDropship || c.Second < dropshipSec {
+		return false
+	}
 	mapWidthPx := int(e.replay.MapWidth) * 32
 	mapHeightPx := int(e.replay.MapHeight) * 32
 	return utils.IsCliffDropPosition(c.X, c.Y, mapWidthPx, mapHeightPx)
@@ -798,12 +804,23 @@ func (e *Engine) isCliffDrop(c CandidateAttack, firstTankSecByPlayer map[byte]in
 // per player, the second their first Siege Tank was produced. Empty
 // when no player ever produced one.
 func buildFirstTankSecByPlayer(stream []cmdenrich.EnrichedCommand) map[byte]int {
+	return buildFirstUnitSecByPlayer(stream, models.GeneralUnitSiegeTankTankMode)
+}
+
+// buildFirstDropshipSecByPlayer scans the enriched stream once and returns,
+// per player, the second their first Dropship was produced. Empty when no
+// player ever produced one.
+func buildFirstDropshipSecByPlayer(stream []cmdenrich.EnrichedCommand) map[byte]int {
+	return buildFirstUnitSecByPlayer(stream, models.GeneralUnitDropship)
+}
+
+func buildFirstUnitSecByPlayer(stream []cmdenrich.EnrichedCommand, subject string) map[byte]int {
 	out := map[byte]int{}
 	for _, ec := range stream {
 		if ec.Kind != cmdenrich.KindMakeUnit {
 			continue
 		}
-		if ec.Subject != models.GeneralUnitSiegeTankTankMode {
+		if ec.Subject != subject {
 			continue
 		}
 		pid := byte(ec.PlayerID)
