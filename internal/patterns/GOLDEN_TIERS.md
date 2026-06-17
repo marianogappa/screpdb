@@ -75,6 +75,24 @@ The mechanical fields (`second`, `count`, `source_label`) are derived. A change
 that moves a recall's target away from the annotated base is a regression → it
 needs the author to re-annotate, not a blind `UPDATE_GOLDEN`.
 
+### Rush detection — `rushes_golden.json`
+
+Six `rush_*.rep` fixtures (issue #189), each a real rush confirmed by watching
+the replay: three `zergling_rush` and three `cannon_rush`. The protected premise
+is the **presence** of the rush (subtype + rusher) — dropping a detection or
+adding a spurious one is a regression. Two of the zergling fixtures are ZvZ and
+correctly capture *both* players' mutual ling rush (the author verified the
+named rusher; the opponent's ling rush in ZvZ is the same well-understood case).
+
+| Fixture | Premise |
+| --- | --- |
+| `rush_zergling_thelasthydra.rep` | ZvZ — both players zergling_rush (~1:56 / ~2:06) |
+| `rush_zergling_llil.rep` | ZvZ — both players zergling_rush (~1:54 / ~2:05) |
+| `rush_zergling_asdas.rep` | zergling_rush (~1:53) |
+| `rush_cannon_afdjkdsfaf.rep` | cannon_rush (~3:14) |
+| `rush_cannon_undertaker.rep` | cannon_rush (~2:46) |
+| `rush_cannon_lyx2008.rep` | cannon_rush (~2:51) |
+
 ## Additional human-verified ground truth (not yet fixtured)
 
 From the same review, verified but not (yet) encoded as fixtures — candidates if
