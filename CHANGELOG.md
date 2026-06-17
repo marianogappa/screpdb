@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/marianogappa/screpdb/compare/v1.6.0...v1.6.1) (2026-06-17)
+
+
+### Bug Fixes
+
+* build-order and cliff-drop detection accuracy + coordinate-unit normalization ([#184](https://github.com/marianogappa/screpdb/issues/184)) ([c48b221](https://github.com/marianogappa/screpdb/commit/c48b22142f2254e912d73d23fa7a9ce78d64576a))
+
 ## [1.6.0](https://github.com/marianogappa/screpdb/compare/v1.5.0...v1.6.0) (2026-06-14)
 
 
