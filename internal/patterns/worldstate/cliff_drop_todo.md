@@ -16,10 +16,20 @@ coordinates and detection is accurate. When the player uses plain `Unload`
 So a cliff drop performed with plain `Unload` after the dropship moved to the
 cliff resolves to the wrong place and is missed.
 
-The fix is transport-position tracking: reconstruct selection state and track
-each transport tag's position as it moves (mirroring `unittags.Coordinates`
-for production coords, issue #175), then resolve a coordless `Unload` to the
-selected transport's actual position. Deferred.
+### Investigated: transport-position tracking ("Tier B") — does NOT help
+
+A prototype reconstructed selection state and tracked each transport tag's
+position as it moved (mirroring `unittags.Coordinates`, #175), resolving a
+coordless `Unload` to the selected transport's last move. It *correctly
+recovered the positions* — e.g. JustPassingThru's 19:08 burst resolved to the
+top-left corner (105,6). But across the full corpus it produced **zero new
+cliff drops**: the bottleneck is not location, it is the drop-EMISSION gate.
+A cluster is only emitted when a hostile target is inferred (attack-coincidence
+or post-drop activity), and that gate doesn't fire for these clusters. So
+recovering coordless cliff drops would require relaxing the hostile-target
+requirement — a precision risk we explicitly reject (undercategorizing a cliff
+drop is invisible; a false cliff drop hurts reputability). The prototype was
+reverted. Revisit only if the emission gate itself is reworked.
 
 ## Genuinely-missed cliff drops (future goldens once the above is fixed)
 
