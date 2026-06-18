@@ -93,7 +93,16 @@ import (
 // drop — so DT drops are no longer inferred; such unloads stay plain "drop"
 // (a real DT drop is under-classified, never mislabeled). Re-ingest so stored
 // dt_drop rows become "drop".
-const AlgorithmVersion = 36
+//
+// 37: Removed reaver_drop classification too (issue #185 follow-up). Reavers
+// are usually a-moved, leaving no reaver-specific order to confirm the drop, so
+// the "Reaver produced nearby" proxy mislabeled e.g. PvT speedlot-drops-on-Tanks
+// while a reaver was merely in production; only cliff_drop remains a subtype.
+// Also replaced the one-reaver_drop-per-player suppression (which dropped ~300
+// real target-confirmed drops corpus-wide) with a per-target time-window dedup
+// (dropDedupWindowSec) so drop-heavy games stay readable without hiding distinct
+// attacks. Re-ingest so stored reaver_drop rows become "drop" and dedup applies.
+const AlgorithmVersion = 37
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

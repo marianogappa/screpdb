@@ -717,7 +717,7 @@ Standalone constants the detectors depend on — dedup windows, muta/turret burs
 
 | Constant | Value | Meaning |
 | --- | --- | --- |
-| Algorithm version | 35 | Detection algorithm revision; incremented to trigger re-detection. |
+| Algorithm version | 36 | Detection algorithm revision; incremented to trigger re-detection. |
 | Build dedup gap (s) | 3 | Repeat Build orders of the same building at the same tile, closer than this, are one event (double-tap / misclick); different-tile placements are kept. |
 | Build dedup max second (s) | 240 | Past this second, dedup stops and every Build is observed as-is (a tile can be legitimately rebuilt on later). |
 | Mutalisk burst window (s) | 30 | Window within which the Mutalisk morphs must cluster. |
@@ -822,62 +822,61 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 | 5 | proxy_rax |
 | 6 | proxy_factory |
 | 7 | drop |
-| 8 | reaver_drop |
-| 9 | mind_control |
-| 10 | threw_nukes |
-| 11 | made_recalls |
-| 12 | bo_4_pool |
-| 13 | bo_9_pool |
-| 14 | bo_9_overpool |
-| 15 | bo_12_pool |
-| 16 | bo_9_pool_hatch |
-| 17 | bo_9_hatch |
-| 18 | bo_10_hatch |
-| 19 | bo_11_hatch |
-| 20 | bo_12_hatch |
-| 21 | bo_z_3hatch_muta |
-| 22 | bo_z_2hatch_muta |
-| 23 | bo_z_3hatch_lurker |
-| 24 | bo_z_2hatch_hydra |
-| 25 | bo_2_gate |
-| 26 | bo_1_gate_core |
-| 27 | bo_nexus_first |
-| 28 | bo_gate_expand |
-| 29 | bo_forge_expa |
-| 30 | bo_p_1gate_reaver |
-| 31 | bo_p_2gate_reaver |
-| 32 | bo_p_2gate_dt |
-| 33 | bo_p_sair_speedlot |
-| 34 | bo_bbs |
-| 35 | bo_cc_first |
-| 36 | bo_t_wraith |
-| 37 | bo_t_goliath |
-| 38 | bo_t_bio_1rax |
-| 39 | bo_t_bio_2rax |
-| 40 | bo_t_bio_3rax |
-| 41 | bo_t_bio_4rax |
-| 42 | bo_t_bio_5rax |
-| 43 | bo_t_bio_6rax |
-| 44 | bo_t_111_mech |
-| 45 | bo_t_mech_2fac |
-| 46 | bo_t_mech_3fac |
-| 47 | bo_t_mech_4fac |
-| 48 | bo_t_mech_5fac |
-| 49 | bo_t_mech_6fac |
-| 50 | bo_t_tankless_2fac |
-| 51 | bo_t_tankless_3fac |
-| 52 | bo_t_tankless_4fac |
-| 53 | bo_t_tankless_5fac |
-| 54 | bo_t_tankless_6fac |
-| 55 | bo_t_111 |
-| 56 | bo_t_siege_expand |
-| 57 | bo_t_2port_wraith |
-| 58 | bo_t_2fact_vults |
-| 59 | double_stargate |
-| 60 | carriers |
-| 61 | battlecruisers |
-| 62 | ten_plus_scouts |
-| 63 | cliff_drop |
+| 8 | mind_control |
+| 9 | threw_nukes |
+| 10 | made_recalls |
+| 11 | bo_4_pool |
+| 12 | bo_9_pool |
+| 13 | bo_9_overpool |
+| 14 | bo_12_pool |
+| 15 | bo_9_pool_hatch |
+| 16 | bo_9_hatch |
+| 17 | bo_10_hatch |
+| 18 | bo_11_hatch |
+| 19 | bo_12_hatch |
+| 20 | bo_z_3hatch_muta |
+| 21 | bo_z_2hatch_muta |
+| 22 | bo_z_3hatch_lurker |
+| 23 | bo_z_2hatch_hydra |
+| 24 | bo_2_gate |
+| 25 | bo_1_gate_core |
+| 26 | bo_nexus_first |
+| 27 | bo_gate_expand |
+| 28 | bo_forge_expa |
+| 29 | bo_p_1gate_reaver |
+| 30 | bo_p_2gate_reaver |
+| 31 | bo_p_2gate_dt |
+| 32 | bo_p_sair_speedlot |
+| 33 | bo_bbs |
+| 34 | bo_cc_first |
+| 35 | bo_t_wraith |
+| 36 | bo_t_goliath |
+| 37 | bo_t_bio_1rax |
+| 38 | bo_t_bio_2rax |
+| 39 | bo_t_bio_3rax |
+| 40 | bo_t_bio_4rax |
+| 41 | bo_t_bio_5rax |
+| 42 | bo_t_bio_6rax |
+| 43 | bo_t_111_mech |
+| 44 | bo_t_mech_2fac |
+| 45 | bo_t_mech_3fac |
+| 46 | bo_t_mech_4fac |
+| 47 | bo_t_mech_5fac |
+| 48 | bo_t_mech_6fac |
+| 49 | bo_t_tankless_2fac |
+| 50 | bo_t_tankless_3fac |
+| 51 | bo_t_tankless_4fac |
+| 52 | bo_t_tankless_5fac |
+| 53 | bo_t_tankless_6fac |
+| 54 | bo_t_111 |
+| 55 | bo_t_siege_expand |
+| 56 | bo_t_2port_wraith |
+| 57 | bo_t_2fact_vults |
+| 58 | double_stargate |
+| 59 | carriers |
+| 60 | battlecruisers |
+| 61 | ten_plus_scouts |
+| 62 | cliff_drop |
 
 ## Game-event featuring chips
 
@@ -892,5 +891,4 @@ Featuring chips for narrative game events that aren't markers (cannon rush, drop
 | proxy_factory | Proxy factory | factory |
 | proxy_gate | Proxy gateway | gateway |
 | proxy_rax | Proxy barracks | barracks |
-| reaver_drop | Reaver Drop | shuttle, reaver |
 | zergling_rush | Zergling rush | zergling |

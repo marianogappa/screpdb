@@ -152,7 +152,7 @@ WHERE lower(trim(p.name)) = ?
       'never_used_hotkeys'
     ))
     OR (re.event_kind = 'game_event' AND re.event_type IN (
-      'reaver_drop', 'cliff_drop'
+      'cliff_drop'
     ))
   )
 GROUP BY p.race, r.team_format, r.map_kind, re.event_type
@@ -170,7 +170,7 @@ type ListPlayerByFormatMarkerCountsRow struct {
 // format summary cards. Same exclusion list as the per-matchup query so
 // meta markers (hotkeys, viewport multitasking, phase boundaries) don't
 // pollute the top-N pills. Drop subtype game events
-// (reaver_drop / cliff_drop) are also surfaced alongside the
+// (cliff_drop) are also surfaced alongside the
 // generic `made_drops` marker for subtype-level signal.
 func (q *Queries) ListPlayerByFormatMarkerCounts(ctx context.Context, name string) ([]ListPlayerByFormatMarkerCountsRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPlayerByFormatMarkerCounts, name)
@@ -292,7 +292,7 @@ WHERE lower(trim(self.name)) = ?
       'never_used_hotkeys'
     ))
     OR (re.event_kind = 'game_event' AND re.event_type IN (
-      'reaver_drop', 'cliff_drop'
+      'cliff_drop'
     ))
   )
   AND 2 = (
@@ -315,7 +315,7 @@ type ListPlayerMatchupMarkerCountsRow struct {
 // consumer splits build-order markers (event_type LIKE 'bo_%') from the rest
 // and surfaces the top-N per matchup. Excludes meta markers that are not
 // meaningful per-matchup features. Drop subtype game events
-// (reaver_drop / cliff_drop) are also surfaced alongside the
+// (cliff_drop) are also surfaced alongside the
 // generic `made_drops` marker so subtype-level signal lands on the Player
 // summary cards.
 func (q *Queries) ListPlayerMatchupMarkerCounts(ctx context.Context, name string) ([]ListPlayerMatchupMarkerCountsRow, error) {

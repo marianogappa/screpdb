@@ -58,24 +58,27 @@ presence/absence of a `cliff_drop` subtype record.
 A change that adds a cliff_drop to a *_fp fixture, or removes the one from a
 *_tp fixture, breaks a human premise → regression.
 
-### Regular & reaver drops — `drops_golden.json`
+### Drops — `drops_golden.json`
 
-Six `drops_{reg,reaver,notdt}_*.rep` fixtures (issue #185), each confirmed by
-watching the replay. The premise is the drop's **presence and subtype** at the
-verified location. The `notdt` fixtures are regression guards for the removed
-`dt_drop` classification: they contain Dark Templars near a drop but the unload
-is *not* a DT drop, so they must classify as plain `drop` (never `dt_drop`).
+Six `drops_{reg,notreaver,notdt}_*.rep` fixtures (issue #185), each confirmed by
+watching the replay. The premise is a real `drop` at the verified location. The
+`notreaver` and `notdt` fixtures are regression guards: their replays contain a
+reaver / Dark Templar near the drop, but neither subtype is inferred anymore, so
+they must classify as plain `drop` — never `reaver_drop` or `dt_drop`.
 
 | Fixture | Premise |
 | --- | --- |
-| `drops_reg_ilil_11m36.rep` | regular `drop` (~11:36, ~5 o'clock) |
-| `drops_reg_ilil_8m50.rep` | regular `drop` (~8:50, ~7 o'clock) |
-| `drops_reaver_fafa_9m06.rep` | `reaver_drop` (~9:06, ~3 o'clock) |
-| `drops_reaver_eoks_16m32.rep` | `reaver_drop` (~16:32, ~11 o'clock) |
-| `drops_notdt_wwwboo_14m03.rep` | plain `drop`, **not** `dt_drop` (DTs walked; the unload was a reaver dropped in the window's blind spot) |
+| `drops_reg_ilil_11m36.rep` | `drop` (~11:36, ~5 o'clock) |
+| `drops_reg_ilil_8m50.rep` | `drop` (~8:50, ~7 o'clock) |
+| `drops_notreaver_fafa_9m06.rep` | plain `drop`, **not** `reaver_drop` (reaver a-moved; no reaver-specific order to confirm) |
+| `drops_notreaver_eoks_16m32.rep` | plain `drop`, **not** `reaver_drop` |
+| `drops_notdt_wwwboo_14m03.rep` | plain `drop`, **not** `dt_drop` (DTs walked; the unload was a reaver) |
 | `drops_notdt_llli_19m05.rep` | plain `drop`, **not** `dt_drop` (multi-shuttle Zealot/Archon/HT drop; DTs were for a later drop) |
 
-`dt_drop` no longer exists — a `dt_drop` record appearing in any fixture is a regression.
+Only `drop` and `cliff_drop` subtypes exist now — a `reaver_drop` or `dt_drop`
+record appearing in any fixture is a regression. Note these fixtures also exercise
+the per-target time-window dedup (`dropDedupWindowSec`), which collapses repeat
+drops onto the same base.
 
 ### Recall target inference — `recalls_golden.json`
 

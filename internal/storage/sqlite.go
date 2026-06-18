@@ -59,7 +59,6 @@ var (
 		"attack",
 		"scout",
 		"drop",
-		"reaver_drop",
 		"cliff_drop",
 		"recall",
 		"nuke",

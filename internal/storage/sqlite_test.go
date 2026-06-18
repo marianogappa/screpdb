@@ -107,7 +107,10 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		// used to collapse. Multiplayer/BGH replays here are unchanged (the new
 		// path is gated to exactly-two-opposing-player games); the gain is on
 		// the 1v1 test replays.
-		"replay_events": 205,
+		// Then +N (issue #185 folded in): dt_drop/reaver_drop removed (subtype
+		// change, no count effect) and the one-reaver_drop-per-player
+		// suppression replaced by a per-target time-window dedup.
+		"replay_events": 203,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {

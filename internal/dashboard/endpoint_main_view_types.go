@@ -218,10 +218,9 @@ var workflowFeaturingFilters = []struct {
 	{Key: "proxy_rax", Label: "Proxy Barracks", Group: "marker", IconKey: "barracks", IconLabel: "Proxy"},
 	{Key: "proxy_factory", Label: "Proxy Factory", Group: "marker", IconKey: "factory", IconLabel: "Proxy"},
 	// Drop filters — icon-only chips. "drop" matches ANY drop variant
-	// (drop, reaver_drop, cliff_drop); "reaver_drop"
+	// (drop, cliff_drop); the generic chip matches any
 	// match the specific subtype only.
 	{Key: "drop", Label: "Drop", Group: "marker", IconKey: "shuttle"},
-	{Key: "reaver_drop", Label: "Reaver Drop", Group: "marker", IconKeys: []string{"shuttle", "reaver"}},
 	{Key: "mind_control", Label: "Mind Control", Group: "marker", IconKey: "darkarchon", IconLabel: "Mind Control"},
 	{Key: "nukes", Label: "Nukes", Group: "marker", IconKey: "ghost", IconLabel: "Nuke"},
 	{Key: "recalls", Label: "Recalls", Group: "marker", IconKey: "arbiter", IconLabel: "Recall"},
@@ -525,7 +524,7 @@ type workflowGameEvent struct {
 	// source on event.base).
 	SourceBase *workflowGameEventBase `json:"source_base,omitempty"`
 	// Drop-specific overlay/description fields. Populated only when
-	// event.Type is one of {"drop", "reaver_drop", "cliff_drop"};
+	// event.Type is one of {"drop", "cliff_drop"};
 	// the source-of-truth for these is the drop event's payload JSON
 	// written by worldstate.emitDropEvents.
 	DropTargetVia  string `json:"drop_target_via,omitempty"`  // "a" | "p"

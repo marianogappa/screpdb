@@ -501,7 +501,7 @@ func (e *Engine) FirstEventSecondForPlayer(playerID byte, eventType string) *int
 	e.Finalize()
 	switch eventType {
 	case "drop", "recall", "nuke", "became_terran", "became_zerg",
-		"reaver_drop", "cliff_drop", "scout", "attack",
+		"cliff_drop", "scout", "attack",
 		"cannon_rush", "bunker_rush", "zergling_rush",
 		"proxy_gate", "proxy_rax", "proxy_factory",
 		"expansion", "takeover", "location_inactive",
@@ -903,19 +903,6 @@ func unitTypesFromCommand(command *models.Command) []string {
 		}
 	}
 	return normalizeUnitTypes(unitTypes)
-}
-
-func hasUnitType(unitTypes []string, unitType string) bool {
-	if len(unitTypes) == 0 {
-		return false
-	}
-	unitNorm := normalize(unitType)
-	for _, candidate := range unitTypes {
-		if normalize(candidate) == unitNorm {
-			return true
-		}
-	}
-	return false
 }
 
 func (e *Engine) ownershipSnapshot() []NarrativeOwnership {

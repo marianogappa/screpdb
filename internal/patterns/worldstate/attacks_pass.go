@@ -23,7 +23,7 @@ import (
 //
 // CarriedUnits holds the dropped unit-type names (from UnloadAll source
 // units) so the events_compose layer can route generic "drop" to
-// "reaver_drop" subtype per screpdb's existing event_type set.
+// drop subtypes per screpdb's event_type set.
 type CandidateAttack struct {
 	Type         string
 	Frame        int32

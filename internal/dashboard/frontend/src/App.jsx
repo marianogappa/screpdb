@@ -155,7 +155,7 @@ const PLAYER_INSIGHT_DESCRIPTION_OVERRIDES = {
   'viewport-switch-rate': 'How many times a player switches between places on average per minute.',
 };
 
-const DROP_ACTOR_EVENT_TYPES = ['drop', 'reaver_drop', 'cliff_drop'];
+const DROP_ACTOR_EVENT_TYPES = ['drop', 'cliff_drop'];
 
 const playerIsActorForGameEventTypes = (events, playerID, wantedTypes) => {
   const pid = Number(playerID);
@@ -186,8 +186,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   }
 
   // Drop pills — one per variant the player was the actor for. Filter UI
-  // dictates the icon layout: Reaver Drop rides two icons (shuttle
-  // + payload unit) side-by-side; generic Drop and Cliff drop keep the
+  // dictates the icon layout: generic Drop and Cliff drop keep the
   // single transport icon. The post-process elideGenericDropPill drops the
   // generic "drop" entry when any specific variant fired.
   const transportIcon = dropTransportIconForRace(player?.race);
@@ -197,15 +196,6 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
       domKey: `ge-drop-${pid}`,
       icons: [transportIcon].filter(Boolean),
       label: 'Drop',
-      className: 'workflow-pattern-pill workflow-pattern-pill-strong',
-    });
-  }
-  if (playerIsActorForGameEventTypes(events, pid, ['reaver_drop'])) {
-    positive.push({
-      key: 'reaver_drop',
-      domKey: `ge-reaver-drop-${pid}`,
-      icons: [getUnitIcon('shuttle'), getUnitIcon('reaver')].filter(Boolean),
-      label: 'Reaver Drop',
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
   }
@@ -436,9 +426,8 @@ const gameEventDescription = (event, registry) => {
   }
   if (eventType === 'attack') return actor && target && location ? `${actor} attacks ${target} ${attackLocationClause(event, location)}` : 'Attack';
   if (eventType === 'scout') return actor && target && location ? `${actor} scouts ${target} at ${location}` : 'Scout';
-  if (eventType === 'cliff_drop' || eventType === 'drop' || eventType === 'reaver_drop') {
+  if (eventType === 'cliff_drop' || eventType === 'drop') {
     const fallback = eventType === 'cliff_drop' ? 'Cliff drop'
-      : eventType === 'reaver_drop' ? 'Reaver drop'
       : 'Drop';
     if (!actor || !target || !location) return fallback;
     // event.base is the destination polygon for drops (toReplayEvent stamps
@@ -450,8 +439,7 @@ const gameEventDescription = (event, registry) => {
     if (eventType === 'cliff_drop') {
       return `${actor} cliff drops${dropCount}${fromClause} ${target} at ${location}`;
     }
-    const verb = eventType === 'reaver_drop' ? 'Reaver drops'
-      : 'drops';
+    const verb = 'drops';
     return `${actor} ${verb}${dropCount}${fromClause} on ${target} at ${location}`;
   }
   if (eventType === 'recall') {
@@ -617,9 +605,8 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
       ? <>{actorSpan} scouts {targetSpan} at {location}</>
       : 'Scout';
   }
-  if (eventType === 'cliff_drop' || eventType === 'drop' || eventType === 'reaver_drop') {
+  if (eventType === 'cliff_drop' || eventType === 'drop') {
     const fallback = eventType === 'cliff_drop' ? 'Cliff drop'
-      : eventType === 'reaver_drop' ? 'Reaver drop'
       : 'Drop';
     if (!actorName || !targetName || !location) return fallback;
     const sourceLabel = String(event?.source_base?.name || '').trim();
@@ -644,8 +631,7 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
     if (eventType === 'cliff_drop') {
       return <>{actorSpan} cliff drops{vesselIcon}{dropCount}{fromClause} {targetSpan} at {location}</>;
     }
-    const verb = eventType === 'reaver_drop' ? 'Reaver drops'
-      : 'drops';
+    const verb = 'drops';
     return <>{actorSpan} {verb}{vesselIcon}{dropCount}{fromClause} on {targetSpan} at {location}</>;
   }
   if (eventType === 'recall') {
@@ -834,10 +820,10 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
     if (t === 'proxy_rax')      keys.add('proxy_rax');
     if (t === 'proxy_factory')  keys.add('proxy_factory');
     // Drop variants: every variant lights the generic 'drop' key; specific
-    // subtypes (reaver_drop / cliff_drop) also light their own
+    // subtypes (cliff_drop) also light their own
     // key. The post-process elision below drops the generic chip when a
-    // specific variant is present (avoids redundant "Drop + Reaver Drop").
-    if (t === 'drop' || t === 'reaver_drop' || t === 'cliff_drop') {
+    // specific variant is present (avoids redundant "Drop + Cliff drop").
+    if (t === 'drop' || t === 'cliff_drop') {
       keys.add('drop');
       keys.add(t);
     }
@@ -876,8 +862,8 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
 // server-built `game.featuring` path.)
 //
 // Post-process: when a more-specific drop variant pill is present
-// (reaver_drop / cliff_drop), the generic "drop" pill is elided
-// so the strip doesn't carry both "Drop" + "Reaver Drop".
+// (cliff_drop), the generic "drop" pill is elided
+// so the strip doesn't carry both "Drop" + "Cliff drop".
 const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
   if (!mainGame) return [];
   const { keys, rowByKey } = collectFeaturingKeysFromMainGame(mainGame);
@@ -911,11 +897,11 @@ const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
 };
 
 // elideGenericDropPill removes the generic "drop" pill from a pill list when
-// any more-specific drop variant (reaver_drop / cliff_drop) is
+// any more-specific drop variant (cliff_drop) is
 // present in the same list. Operates on entries shaped like { key, ... } so
 // the same helper can be reused across the main featuring strip, per-player
 // signal pills, and the games-list table column.
-const SPECIFIC_DROP_KEYS = new Set(['reaver_drop', 'cliff_drop']);
+const SPECIFIC_DROP_KEYS = new Set(['cliff_drop']);
 const elideGenericDropPill = (pills) => {
   if (!Array.isArray(pills) || pills.length === 0) return pills;
   const hasSpecific = pills.some((p) => SPECIFIC_DROP_KEYS.has(String(p?.key || '')));
@@ -924,10 +910,10 @@ const elideGenericDropPill = (pills) => {
 };
 
 // elideGenericDropLabels mirrors elideGenericDropPill for the games-list
-// table, whose Featuring column carries plain strings ("Drop", "Reaver Drop",
-// "Reaver Drop 7:59") rather than {key, ...} objects. We match on the
+// table, whose Featuring column carries plain strings ("Drop", "Cliff drop",
+// "Cliff drop 7:59") rather than {key, ...} objects. We match on the
 // pre-timestamp prefix so suffixes like " 7:59" don't break detection.
-const SPECIFIC_DROP_LABEL_PREFIXES = ['Reaver Drop', 'Cliff drop'];
+const SPECIFIC_DROP_LABEL_PREFIXES = ['Cliff drop'];
 const elideGenericDropLabels = (labels) => {
   if (!Array.isArray(labels) || labels.length === 0) return labels;
   const startsWith = (s, prefix) => typeof s === 'string' && (s === prefix || s.startsWith(`${prefix} `));
@@ -1126,7 +1112,7 @@ const mapPointToPercent = (point, bounds) => {
 // arrow draws from the cast point (source) to the inferred Arbiter location.
 // The recall arrow is suppressed at render time when no destination was
 // inferred (target_base missing) so we don't draw a misleading vector.
-const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'reaver_drop', 'cliff_drop', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory', 'recall'].includes(String(eventType || '').toLowerCase());
+const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'cliff_drop', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory', 'recall'].includes(String(eventType || '').toLowerCase());
 
 const fallbackOverlayUnitNamesForEvent = (eventType, actorRace) => {
   const normalized = normalizeEventType(eventType);
@@ -1136,7 +1122,6 @@ const fallbackOverlayUnitNamesForEvent = (eventType, actorRace) => {
   if (normalized === 'proxy_gate') return ['gateway'];
   if (normalized === 'proxy_rax') return ['barracks'];
   if (normalized === 'proxy_factory') return ['factory'];
-  if (normalized === 'reaver_drop') return ['reaver'];
   // cliff_drop is a Terran-only marker classification, dropship is always correct.
   if (normalized === 'cliff_drop') return ['dropship'];
   if (normalized === 'drop') {
@@ -1203,7 +1188,7 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
   // Drops render the vessel (Dropship/Shuttle/Overlord) inline next to the
   // verb in the row body. Strip it from the trailing icon strip so the
   // trailing icons are just the dropped units.
-  if (['drop', 'reaver_drop', 'cliff_drop'].includes(normalized)) {
+  if (['drop', 'cliff_drop'].includes(normalized)) {
     const transports = new Set(['dropship', 'shuttle', 'overlord']);
     unitNames = unitNames.filter((name) => !transports.has(String(name || '').toLowerCase()));
   }
@@ -1514,7 +1499,7 @@ const prettyPatternName = (patternName) => {
 // shouldHidePatternFromSummaryPills suppresses markers the Summary row shouldn't
 // render as pills even though the backend stored them. viewport_multitasking
 // drives its own widget elsewhere; made_drops de-dupes against the narrative
-// drop/reaver_drop game_events when the caller sets
+// drop game_events when the caller sets
 // trustGameEventsForDrops (those drop-family events are already rendered as
 // game-event pills and re-rendering the marker would double up the strip).
 const shouldHidePatternFromSummaryPills = (pattern, trustGameEventsForDrops) => {
@@ -1555,7 +1540,7 @@ const filterSummaryPillPatterns = (patterns, trustGameEventsForDrops = false) =>
 // "Recalls at min N" / "Threw Nukes at N mins" form.
 const renderAggregatePatternEntry = (entry, key, registry, gameEventFeaturesByKey) => {
   const patternKey = String(entry?.pattern_name || '');
-  // Game-event features (reaver_drop / cliff_drop) aren't in the
+  // Game-event features (cliff_drop) aren't in the
   // marker registry — resolve them via the game_event_features metadata so
   // the pill renders with the proper label + multi-icon layout (matching
   // the filter row and game-detail strip).
@@ -3853,7 +3838,7 @@ function App() {
     // where the unload happened). The dropped-unit overlay is anchored at the
     // source so the user sees "here's what got loaded" at the tail.
     const eventType = normalizeEventType(selectedMainGameEvent.type);
-    if (['drop', 'reaver_drop', 'cliff_drop'].includes(eventType)) {
+    if (['drop', 'cliff_drop'].includes(eventType)) {
       const sourceAnchor = polygonCenter(selectedMainGameEvent?.source_base?.polygon)
         || selectedMainGameEvent?.source_base?.center
         || selectedMainGameEvent?.source_point;
@@ -3919,7 +3904,7 @@ function App() {
     // For drops: strip the transport itself (Dropship/Shuttle/Overlord) from
     // the source-side unit overlay — the transport icon is painted separately
     // at the destination. Workers (SCV/Probe/Drone) and combat units stay.
-    if (['drop', 'reaver_drop', 'cliff_drop'].includes(eventTypeForOverlay)) {
+    if (['drop', 'cliff_drop'].includes(eventTypeForOverlay)) {
       const transports = new Set(['dropship', 'shuttle', 'overlord']);
       unitNames = unitNames.filter((name) => !transports.has(String(name || '').toLowerCase()));
     }
@@ -3951,7 +3936,7 @@ function App() {
   // defined by the vessel and the icon is the most recognizable signal.
   const selectedMainGameDropOverlay = useMemo(() => {
     const evType = normalizeEventType(selectedMainGameEvent?.type);
-    if (!['drop', 'reaver_drop', 'cliff_drop'].includes(evType)) return null;
+    if (!['drop', 'cliff_drop'].includes(evType)) return null;
     const anchor = polygonCenter(selectedMainGameEvent?.base?.polygon)
       || selectedMainGameEvent?.base?.center
       || selectedMainGameEvent?.target_point;
@@ -4033,7 +4018,7 @@ function App() {
   const selectedEventAnimCategory = useMemo(() => {
     const nt = normalizeEventType(selectedMainGameEvent?.type);
     if (!nt) return '';
-    if (['drop', 'reaver_drop', 'cliff_drop'].includes(nt)) return 'drop';
+    if (['drop', 'cliff_drop'].includes(nt)) return 'drop';
     if (nt === 'recall') return 'recall';
     if (nt === 'nuke') return 'nuke';
     if (nt === 'leave_game' || nt === 'player_stopped_playing') return 'leaves';

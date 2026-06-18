@@ -13,11 +13,16 @@ import (
 // events_compose.go but with tighter pre-windows since drop coordinates are
 // usually well-defined (the unload lands somewhere specific).
 const (
-	dropAttackPreSec           = 10
-	dropAttackPostSec          = 30
-	dropActivityWindowPreSec   = 5
-	dropActivityWindowPostSec  = 60
-	dropActivityMinCommands    = 3
+	dropAttackPreSec          = 10
+	dropAttackPostSec         = 30
+	dropActivityWindowPreSec  = 5
+	dropActivityWindowPostSec = 60
+	dropActivityMinCommands   = 3
+
+	// dropDedupWindowSec collapses repeat drops by the same player onto the
+	// same target base within this many seconds into one event (drop-heavy
+	// PvT speedlot harass would otherwise be a noisy stream). Tunable.
+	dropDedupWindowSec = 120
 )
 
 // dropTargetPayload mirrors recallTargetPayload — short JSON keys so the
@@ -37,8 +42,7 @@ type dropTargetPayload struct {
 
 // emitDropEvents is the drops counterpart to emitRecallEvents. For every
 // DropCluster it picks the best hostile target (attack-coincidence first,
-// post-drop activity second) and emits a `drop` / `reaver_drop` /
-// `cliff_drop` event with the s/t/tb/tp/tv/n/le payload the dashboard maps
+// post-drop activity second) and emits a `drop` / `cliff_drop` event with the s/t/tb/tp/tv/n/le payload the dashboard maps
 // to source/target arrow endpoints.
 //
 // Clusters whose neither inference path finds a hostile target are not
@@ -67,7 +71,8 @@ func (e *Engine) emitDropEvents(ownership []PolyOwnership, clusters []DropCluste
 	firstTankSecByPlayer := buildFirstTankSecByPlayer(e.stream)
 	firstDropshipSecByPlayer := buildFirstDropshipSecByPlayer(e.stream)
 
-	reaverDropEmitted := map[byte]bool{}
+	// {playerID, targetPolyID} -> last emitted drop second, for the window dedup.
+	lastDropSecByTarget := map[[2]int]int{}
 
 	for _, cl := range clusters {
 		// Skip clusters whose destination is the player's own base or a
@@ -103,12 +108,10 @@ func (e *Engine) emitDropEvents(ownership []PolyOwnership, clusters []DropCluste
 
 		_ = matchedCand // reserved for future use (kept for symmetry with Recall)
 
-		// Build participating-units list. Epicenter window around the
-		// cluster's mid-second. Workers (SCV/Probe/Drone) are excluded
-		// because workers trained inside the drop window are typically
-		// unrelated to the unload — keeping them in dilutes the reaver_drop
-		// subtype routing. Flyers are filtered for the original reason: they
-		// can't be loaded into a transport.
+		// Build participating-units list for the event payload. Epicenter
+		// window around the cluster's mid-second. Workers (SCV/Probe/Drone) are
+		// excluded (trained mid-drop, usually unrelated to the unload); flyers
+		// are excluded because they can't be loaded into a transport.
 		mid := (cl.FirstSec + cl.LastSec) / 2
 		rawUnits := e.buildOrTrainUnitsInWindow(cl.PID, mid)
 		dropUnits := make([]string, 0, len(rawUnits))
@@ -119,25 +122,27 @@ func (e *Engine) emitDropEvents(ownership []PolyOwnership, clusters []DropCluste
 			dropUnits = append(dropUnits, u)
 		}
 
-		// Subtype routing. A Reaver produced near the drop is a reliable
-		// signal (Reavers are drop-units — almost never walked), so a reaver
-		// produced in the window means the unload is a reaver drop. Dark
-		// Templar drops are NOT inferred: a DT produced near a drop is a weak
-		// proxy (DTs are commonly walked in cloaked, or built for a later
-		// drop), so they stayed plain "drop" (issue #185).
+		// Subtype routing. Only cliff drops are distinguished. Reaver and Dark
+		// Templar drops were removed (issue #185): the dropped unit isn't
+		// observable, so "a Reaver/DT was produced nearby" is a weak proxy that
+		// mislabels e.g. PvT speedlot-drops-on-Tanks while a reaver is merely in
+		// production. A real reaver/DT drop now surfaces as a plain "drop".
 		dropType := "drop"
-		switch {
-		case hasUnitType(dropUnits, models.GeneralUnitReaver):
-			dropType = "reaver_drop"
-		case e.isCliffDropForCluster(cl, firstTankSecByPlayer, firstDropshipSecByPlayer):
+		if e.isCliffDropForCluster(cl, firstTankSecByPlayer, firstDropshipSecByPlayer) {
 			dropType = "cliff_drop"
 		}
 
-		if dropType == "reaver_drop" {
-			if reaverDropEmitted[cl.PID] {
+		// Collapse repeat drops by the same player onto the same target base
+		// within dropDedupWindowSec into a single event: drop-heavy games
+		// (PvT speedlot harass vs Tanks) otherwise emit a noisy run of
+		// near-identical drops. Distinct targets, or the same target after the
+		// window lapses, stay separate. Cliff drops are rarer and kept whole.
+		if dropType == "drop" {
+			key := [2]int{int(cl.PID), cl.DstPolyID}
+			if last, ok := lastDropSecByTarget[key]; ok && cl.FirstSec-last < dropDedupWindowSec {
 				continue
 			}
-			reaverDropEmitted[cl.PID] = true
+			lastDropSecByTarget[key] = cl.LastSec
 		}
 
 		e.emitDropEvent(cl, ownerAtSec, dropType, dropUnits, targetVia)
