@@ -1097,7 +1097,7 @@ func resolveAllianceTeamPlayers(events []workflowGameEvent, players []workflowGa
 // emitted by worldstate.emitDropEvents.
 func isDropEventType(t string) bool {
 	switch t {
-	case "drop", "reaver_drop", "dt_drop", "cliff_drop":
+	case "drop", "reaver_drop", "cliff_drop":
 		return true
 	}
 	return false

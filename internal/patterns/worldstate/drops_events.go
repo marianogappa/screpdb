@@ -37,7 +37,7 @@ type dropTargetPayload struct {
 
 // emitDropEvents is the drops counterpart to emitRecallEvents. For every
 // DropCluster it picks the best hostile target (attack-coincidence first,
-// post-drop activity second) and emits a `drop` / `reaver_drop` / `dt_drop` /
+// post-drop activity second) and emits a `drop` / `reaver_drop` /
 // `cliff_drop` event with the s/t/tb/tp/tv/n/le payload the dashboard maps
 // to source/target arrow endpoints.
 //
@@ -106,11 +106,9 @@ func (e *Engine) emitDropEvents(ownership []PolyOwnership, clusters []DropCluste
 		// Build participating-units list. Epicenter window around the
 		// cluster's mid-second. Workers (SCV/Probe/Drone) are excluded
 		// because workers trained inside the drop window are typically
-		// unrelated to the unload — keeping them in dilutes the dt_drop /
-		// reaver_drop subtype routing (a DT drop that coincides with a
-		// worker train would otherwise route to plain "drop"). Flyers are
-		// filtered for the original reason: they can't be loaded into a
-		// transport.
+		// unrelated to the unload — keeping them in dilutes the reaver_drop
+		// subtype routing. Flyers are filtered for the original reason: they
+		// can't be loaded into a transport.
 		mid := (cl.FirstSec + cl.LastSec) / 2
 		rawUnits := e.buildOrTrainUnitsInWindow(cl.PID, mid)
 		dropUnits := make([]string, 0, len(rawUnits))
@@ -121,16 +119,16 @@ func (e *Engine) emitDropEvents(ownership []PolyOwnership, clusters []DropCluste
 			dropUnits = append(dropUnits, u)
 		}
 
-		// Subtype routing. Mirrors the historical emitDropCandidate but
-		// keyed off the drop-pass's own coordinate/cluster info.
+		// Subtype routing. A Reaver produced near the drop is a reliable
+		// signal (Reavers are drop-units — almost never walked), so a reaver
+		// produced in the window means the unload is a reaver drop. Dark
+		// Templar drops are NOT inferred: a DT produced near a drop is a weak
+		// proxy (DTs are commonly walked in cloaked, or built for a later
+		// drop), so they stayed plain "drop" (issue #185).
 		dropType := "drop"
-		hasReaver := hasUnitType(dropUnits, models.GeneralUnitReaver)
-		hasDT := hasUnitType(dropUnits, models.GeneralUnitDarkTemplar)
 		switch {
-		case hasReaver:
+		case hasUnitType(dropUnits, models.GeneralUnitReaver):
 			dropType = "reaver_drop"
-		case hasDT:
-			dropType = "dt_drop"
 		case e.isCliffDropForCluster(cl, firstTankSecByPlayer, firstDropshipSecByPlayer):
 			dropType = "cliff_drop"
 		}

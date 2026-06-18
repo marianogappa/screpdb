@@ -485,7 +485,7 @@ const AllianceTimeline = ({
       for (const ev of gameEvents || []) {
         const type = String(ev.type || '');
         if (type !== 'attack' && type !== 'drop' && type !== 'reaver_drop'
-          && type !== 'dt_drop' && type !== 'cliff_drop'
+          && type !== 'cliff_drop'
           && type !== 'recall' && type !== 'nuke') continue;
         const actorPid = ev.actor?.player_id;
         const targetPid = ev.target?.player_id;
@@ -640,7 +640,7 @@ const AllianceTimeline = ({
     if (k === 'stopped') return '💤';
     if (k === 'chat') return '💬';
     if (k === 'attack') return '⚔️';
-    if (k === 'drop' || k === 'reaver_drop' || k === 'dt_drop' || k === 'cliff_drop') return '🪂';
+    if (k === 'drop' || k === 'reaver_drop' || k === 'cliff_drop') return '🪂';
     if (k === 'recall') return '🌀';
     if (k === 'nuke') return '☢️';
     return k;
@@ -929,7 +929,7 @@ const AllianceTimeline = ({
                         </>
                       ) : null}
                       {(ev.kind === 'attack' || ev.kind === 'drop' || ev.kind === 'reaver_drop'
-                          || ev.kind === 'dt_drop' || ev.kind === 'cliff_drop'
+                          || ev.kind === 'cliff_drop'
                           || ev.kind === 'recall' || ev.kind === 'nuke') ? (
                         <>
                           <span style={{ color: ev.data.actorColor || '#cbd5e1' }}>{ev.data.actor}</span>

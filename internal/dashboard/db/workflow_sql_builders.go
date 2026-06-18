@@ -220,16 +220,16 @@ func workflowFeaturingExistsSQL(featureKey string) (string, bool) {
 		)`, true
 	case "drop":
 		// Generic Drop chip matches any drop subtype — drop / reaver_drop /
-		// dt_drop / cliff_drop. All four live in replay_events as game_events
+		// cliff_drop. All three live in replay_events as game_events
 		// emitted by the worldstate drop pass.
 		return `EXISTS (
 			SELECT 1
 			FROM replay_events re
 			WHERE re.replay_id = r.id
 				AND re.event_kind = 'game_event'
-				AND re.event_type IN ('drop', 'reaver_drop', 'dt_drop', 'cliff_drop')
+				AND re.event_type IN ('drop', 'reaver_drop', 'cliff_drop')
 		)`, true
-	case "dt_drop", "reaver_drop":
+	case "reaver_drop":
 		return `EXISTS (
 			SELECT 1
 			FROM replay_events re

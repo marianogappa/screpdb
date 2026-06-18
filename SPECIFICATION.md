@@ -822,63 +822,62 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 | 5 | proxy_rax |
 | 6 | proxy_factory |
 | 7 | drop |
-| 8 | dt_drop |
-| 9 | reaver_drop |
-| 10 | mind_control |
-| 11 | threw_nukes |
-| 12 | made_recalls |
-| 13 | bo_4_pool |
-| 14 | bo_9_pool |
-| 15 | bo_9_overpool |
-| 16 | bo_12_pool |
-| 17 | bo_9_pool_hatch |
-| 18 | bo_9_hatch |
-| 19 | bo_10_hatch |
-| 20 | bo_11_hatch |
-| 21 | bo_12_hatch |
-| 22 | bo_z_3hatch_muta |
-| 23 | bo_z_2hatch_muta |
-| 24 | bo_z_3hatch_lurker |
-| 25 | bo_z_2hatch_hydra |
-| 26 | bo_2_gate |
-| 27 | bo_1_gate_core |
-| 28 | bo_nexus_first |
-| 29 | bo_gate_expand |
-| 30 | bo_forge_expa |
-| 31 | bo_p_1gate_reaver |
-| 32 | bo_p_2gate_reaver |
-| 33 | bo_p_2gate_dt |
-| 34 | bo_p_sair_speedlot |
-| 35 | bo_bbs |
-| 36 | bo_cc_first |
-| 37 | bo_t_wraith |
-| 38 | bo_t_goliath |
-| 39 | bo_t_bio_1rax |
-| 40 | bo_t_bio_2rax |
-| 41 | bo_t_bio_3rax |
-| 42 | bo_t_bio_4rax |
-| 43 | bo_t_bio_5rax |
-| 44 | bo_t_bio_6rax |
-| 45 | bo_t_111_mech |
-| 46 | bo_t_mech_2fac |
-| 47 | bo_t_mech_3fac |
-| 48 | bo_t_mech_4fac |
-| 49 | bo_t_mech_5fac |
-| 50 | bo_t_mech_6fac |
-| 51 | bo_t_tankless_2fac |
-| 52 | bo_t_tankless_3fac |
-| 53 | bo_t_tankless_4fac |
-| 54 | bo_t_tankless_5fac |
-| 55 | bo_t_tankless_6fac |
-| 56 | bo_t_111 |
-| 57 | bo_t_siege_expand |
-| 58 | bo_t_2port_wraith |
-| 59 | bo_t_2fact_vults |
-| 60 | double_stargate |
-| 61 | carriers |
-| 62 | battlecruisers |
-| 63 | ten_plus_scouts |
-| 64 | cliff_drop |
+| 8 | reaver_drop |
+| 9 | mind_control |
+| 10 | threw_nukes |
+| 11 | made_recalls |
+| 12 | bo_4_pool |
+| 13 | bo_9_pool |
+| 14 | bo_9_overpool |
+| 15 | bo_12_pool |
+| 16 | bo_9_pool_hatch |
+| 17 | bo_9_hatch |
+| 18 | bo_10_hatch |
+| 19 | bo_11_hatch |
+| 20 | bo_12_hatch |
+| 21 | bo_z_3hatch_muta |
+| 22 | bo_z_2hatch_muta |
+| 23 | bo_z_3hatch_lurker |
+| 24 | bo_z_2hatch_hydra |
+| 25 | bo_2_gate |
+| 26 | bo_1_gate_core |
+| 27 | bo_nexus_first |
+| 28 | bo_gate_expand |
+| 29 | bo_forge_expa |
+| 30 | bo_p_1gate_reaver |
+| 31 | bo_p_2gate_reaver |
+| 32 | bo_p_2gate_dt |
+| 33 | bo_p_sair_speedlot |
+| 34 | bo_bbs |
+| 35 | bo_cc_first |
+| 36 | bo_t_wraith |
+| 37 | bo_t_goliath |
+| 38 | bo_t_bio_1rax |
+| 39 | bo_t_bio_2rax |
+| 40 | bo_t_bio_3rax |
+| 41 | bo_t_bio_4rax |
+| 42 | bo_t_bio_5rax |
+| 43 | bo_t_bio_6rax |
+| 44 | bo_t_111_mech |
+| 45 | bo_t_mech_2fac |
+| 46 | bo_t_mech_3fac |
+| 47 | bo_t_mech_4fac |
+| 48 | bo_t_mech_5fac |
+| 49 | bo_t_mech_6fac |
+| 50 | bo_t_tankless_2fac |
+| 51 | bo_t_tankless_3fac |
+| 52 | bo_t_tankless_4fac |
+| 53 | bo_t_tankless_5fac |
+| 54 | bo_t_tankless_6fac |
+| 55 | bo_t_111 |
+| 56 | bo_t_siege_expand |
+| 57 | bo_t_2port_wraith |
+| 58 | bo_t_2fact_vults |
+| 59 | double_stargate |
+| 60 | carriers |
+| 61 | battlecruisers |
+| 62 | ten_plus_scouts |
+| 63 | cliff_drop |
 
 ## Game-event featuring chips
 
@@ -889,7 +888,6 @@ Featuring chips for narrative game events that aren't markers (cannon rush, drop
 | bunker_rush | Bunker rush | bunker |
 | cannon_rush | Cannon rush | photoncannon |
 | drop | Drop | shuttle |
-| dt_drop | DT Drop | shuttle, darktemplar |
 | mind_control | Mind control | darkarchon |
 | proxy_factory | Proxy factory | factory |
 | proxy_gate | Proxy gateway | gateway |

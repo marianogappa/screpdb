@@ -13,10 +13,9 @@ are explainable, refreshing with `UPDATE_GOLDEN=1` is fine — no human sign-off
 needed.
 
 Examples of tier-2 assertions: Viewport Multitasking `switches_per_minute`,
-hotkey/upgrade markers, expert-milestone `expert_actuals`, regular `drop` /
-`reaver_drop` records, and every assertion on the pre-existing marker fixtures
-(`battlecruisers.rep`, `bo_*_hatch.rep`, `bo_2_gate_carriers.rep`,
-`carriers_recalls.rep`, `threw_nukes.rep`, …).
+hotkey/upgrade markers, expert-milestone `expert_actuals`, and every assertion
+on the pre-existing marker fixtures (`battlecruisers.rep`, `bo_*_hatch.rep`,
+`bo_2_gate_carriers.rep`, `carriers_recalls.rep`, `threw_nukes.rep`, …).
 
 ## Tier 1 — human-curated premises (changes are regressions)
 
@@ -58,6 +57,25 @@ presence/absence of a `cliff_drop` subtype record.
 
 A change that adds a cliff_drop to a *_fp fixture, or removes the one from a
 *_tp fixture, breaks a human premise → regression.
+
+### Regular & reaver drops — `drops_golden.json`
+
+Six `drops_{reg,reaver,notdt}_*.rep` fixtures (issue #185), each confirmed by
+watching the replay. The premise is the drop's **presence and subtype** at the
+verified location. The `notdt` fixtures are regression guards for the removed
+`dt_drop` classification: they contain Dark Templars near a drop but the unload
+is *not* a DT drop, so they must classify as plain `drop` (never `dt_drop`).
+
+| Fixture | Premise |
+| --- | --- |
+| `drops_reg_ilil_11m36.rep` | regular `drop` (~11:36, ~5 o'clock) |
+| `drops_reg_ilil_8m50.rep` | regular `drop` (~8:50, ~7 o'clock) |
+| `drops_reaver_fafa_9m06.rep` | `reaver_drop` (~9:06, ~3 o'clock) |
+| `drops_reaver_eoks_16m32.rep` | `reaver_drop` (~16:32, ~11 o'clock) |
+| `drops_notdt_wwwboo_14m03.rep` | plain `drop`, **not** `dt_drop` (DTs walked; the unload was a reaver dropped in the window's blind spot) |
+| `drops_notdt_llli_19m05.rep` | plain `drop`, **not** `dt_drop` (multi-shuttle Zealot/Archon/HT drop; DTs were for a later drop) |
+
+`dt_drop` no longer exists — a `dt_drop` record appearing in any fixture is a regression.
 
 ### Recall target inference — `recalls_golden.json`
 

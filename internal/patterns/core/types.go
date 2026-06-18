@@ -87,7 +87,13 @@ import (
 // Also: a "starting"-kind polygon that is not an actual player main (extra
 // start locations on an N-player map played 1v1) now labels as "expansion".
 // Re-ingest so stored attack events reflect the new model.
-const AlgorithmVersion = 35
+//
+// 36: Removed dt_drop classification (issue #185). "DT produced near a drop"
+// is a weak proxy — DTs are commonly walked in cloaked or built for a later
+// drop — so DT drops are no longer inferred; such unloads stay plain "drop"
+// (a real DT drop is under-classified, never mislabeled). Re-ingest so stored
+// dt_drop rows become "drop".
+const AlgorithmVersion = 36
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

@@ -181,5 +181,185 @@
         "target_owner_pid": 2
       }
     ]
+  },
+  "drops_notdt_llli_19m05.rep": {
+    "records": [
+      {
+        "second": 1145,
+        "count": 2,
+        "subtype": "drop",
+        "target_label": "12",
+        "target_via": "p"
+      },
+      {
+        "second": 1147,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "expansion at 12",
+        "target_via": "p"
+      },
+      {
+        "second": 1184,
+        "count": 15,
+        "subtype": "drop",
+        "target_label": "expansion at 12",
+        "target_via": "p"
+      },
+      {
+        "second": 1233,
+        "count": 15,
+        "subtype": "drop",
+        "target_label": "12",
+        "target_via": "p"
+      },
+      {
+        "second": 1282,
+        "count": 2,
+        "subtype": "drop",
+        "target_label": "5",
+        "target_via": "p"
+      },
+      {
+        "second": 1292,
+        "count": 2,
+        "subtype": "drop",
+        "target_label": "expansion at 12",
+        "target_via": "p"
+      },
+      {
+        "second": 1514,
+        "count": 2,
+        "subtype": "drop",
+        "target_label": "expansion at 12",
+        "target_via": "a"
+      },
+      {
+        "second": 1514,
+        "count": 16,
+        "subtype": "drop",
+        "target_label": "12",
+        "target_via": "a"
+      },
+      {
+        "second": 1573,
+        "count": 23,
+        "subtype": "drop",
+        "target_label": "12",
+        "target_via": "a"
+      },
+      {
+        "second": 1677,
+        "count": 5,
+        "subtype": "drop",
+        "target_label": "12",
+        "target_via": "p"
+      },
+      {
+        "second": 1754,
+        "count": 15,
+        "subtype": "drop",
+        "target_label": "12",
+        "target_via": "p"
+      },
+      {
+        "second": 1826,
+        "count": 9,
+        "subtype": "drop",
+        "target_label": "expansion at 5",
+        "target_via": "p"
+      }
+    ]
+  },
+  "drops_notdt_wwwboo_14m03.rep": {
+    "records": [
+      {
+        "second": 843,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "expansion at 6",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 1295,
+        "count": 5,
+        "subtype": "drop",
+        "target_label": "expansion at 9",
+        "target_via": "p",
+        "target_owner_pid": 1
+      }
+    ]
+  },
+  "drops_reaver_eoks_16m32.rep": {
+    "records": [
+      {
+        "second": 992,
+        "count": 1,
+        "subtype": "reaver_drop",
+        "target_label": "11's natural",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 1136,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "11's natural",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 1143,
+        "count": 2,
+        "subtype": "drop",
+        "target_label": "11",
+        "target_via": "p",
+        "target_owner_pid": 1
+      }
+    ]
+  },
+  "drops_reaver_fafa_9m06.rep": {
+    "records": [
+      {
+        "second": 546,
+        "count": 2,
+        "subtype": "reaver_drop",
+        "target_label": "expansion at 3",
+        "target_via": "p",
+        "target_owner_pid": 1
+      }
+    ]
+  },
+  "drops_reg_ilil_11m36.rep": {
+    "records": [
+      {
+        "second": 696,
+        "count": 4,
+        "subtype": "drop",
+        "target_label": "5",
+        "target_via": "a",
+        "target_owner_pid": 1
+      }
+    ]
+  },
+  "drops_reg_ilil_8m50.rep": {
+    "records": [
+      {
+        "second": 530,
+        "count": 2,
+        "subtype": "drop",
+        "target_label": "7",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 561,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "7",
+        "target_via": "p",
+        "target_owner_pid": 1
+      }
+    ]
   }
 }

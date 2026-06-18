@@ -576,7 +576,7 @@ func TestBuildAttacks_DoesNotEmitDropOnTeammatePolygon(t *testing.T) {
 	})
 
 	for _, ev := range engine.ReplayEvents() {
-		if ev.EventType == "drop" || ev.EventType == "reaver_drop" || ev.EventType == "dt_drop" || ev.EventType == "cliff_drop" {
+		if ev.EventType == "drop" || ev.EventType == "reaver_drop" || ev.EventType == "cliff_drop" {
 			t.Fatalf("expected no drop event when unload lands in a teammate's polygon, got %+v", ev)
 		}
 	}

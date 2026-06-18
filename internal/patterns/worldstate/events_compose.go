@@ -639,7 +639,7 @@ func (e *Engine) emitLeaveGameEvents() {
 }
 
 // emitAttackCandidates applies the importance filter to attack candidates
-// and emits the survivors. Drop subtype routing (reaver_drop / dt_drop)
+// and emits the survivors. Drop subtype routing (reaver_drop)
 // happens here using the source command's UnitTypes payload.
 func (e *Engine) emitAttackCandidates(candidates []CandidateAttack) {
 	// Index source commands by frame for unit-types lookup at drop time.
