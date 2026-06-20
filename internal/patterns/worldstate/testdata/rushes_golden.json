@@ -49,6 +49,15 @@
       }
     ]
   },
+  "rush_zergling_skins_1v1.rep": {
+    "records": [
+      {
+        "second": 125,
+        "subtype": "zergling_rush",
+        "source_pid": 0
+      }
+    ]
+  },
   "rush_zergling_thelasthydra.rep": {
     "records": [
       {

@@ -1137,8 +1137,8 @@ func (e *Engine) recordZergRushAttack(pid byte, sec int, baseIdx int) {
 	if sec < candidate.DetectedSecond || sec > candidate.DetectedSecond+zergRushObserveSec {
 		return
 	}
-	owner := e.ownerByBase[baseIdx]
-	if owner == neutralPID || owner == pid || e.sameTeam(pid, owner) {
+	owner, ok := e.rushTargetEnemyForBase(pid, baseIdx)
+	if !ok {
 		return
 	}
 	// Attacks before the target leaves the game still count — a successful
@@ -1172,11 +1172,8 @@ func (e *Engine) finalizeZergRushCandidates(currentSec int, force bool) {
 		// processZerglingRushEvent (sec ≤ zerglingRushSec).
 		if targetBaseIdx >= 0 && maxCount > 0 && candidate.ZerglingCount >= minZerglingsForRush {
 			var target *NarrativePlayerRef
-			if targetBaseIdx < len(e.ownerByBase) {
-				owner := e.ownerByBase[targetBaseIdx]
-				if owner != neutralPID && owner != pid && !e.sameTeam(pid, owner) {
-					target = e.playerRef(owner)
-				}
+			if owner, ok := e.rushTargetEnemyForBase(pid, targetBaseIdx); ok {
+				target = e.playerRef(owner)
 			}
 			e.emitEvent(
 				"zergling_rush",
@@ -1304,6 +1301,44 @@ func (e *Engine) rushOpponentWhenTeamsAmbiguous(pid, owner byte) bool {
 		return false
 	}
 	return true
+}
+
+// rushTargetEnemyForBase resolves which enemy a zerg-rush attack landing on
+// baseIdx is aimed at. It prefers the base's current dynamic owner, but falls
+// back to the base's static start/natural assignment when it is still
+// neutral-owned. On standard (non-BGH) maps the rusher attack-moves into the
+// opponent's not-yet-taken natural on the way to the main; that base reads as
+// neutral early-game, so dynamic ownership alone would drop the strongest rush
+// signal. Returns (enemyPID, true) only when the resolved owner is a
+// rush-target enemy of pid.
+func (e *Engine) rushTargetEnemyForBase(pid byte, baseIdx int) (byte, bool) {
+	if baseIdx < 0 || baseIdx >= len(e.ownerByBase) {
+		return 0, false
+	}
+	owner := e.ownerByBase[baseIdx]
+	if owner == neutralPID {
+		owner = e.staticBaseOwner(baseIdx)
+	}
+	if owner == neutralPID || owner == pid || !e.isRushTargetEnemy(pid, owner) {
+		return 0, false
+	}
+	return owner, true
+}
+
+// staticBaseOwner returns the player whose start or natural base is baseIdx,
+// independent of in-game ownership transitions. neutralPID if none.
+func (e *Engine) staticBaseOwner(baseIdx int) byte {
+	for pid, bi := range e.startBaseByPID {
+		if bi == baseIdx {
+			return pid
+		}
+	}
+	for pid, bi := range e.naturalBaseByPID {
+		if bi == baseIdx {
+			return pid
+		}
+	}
+	return neutralPID
 }
 
 func (e *Engine) enemyBaseIdxAtPoint(pid byte, x float64, y float64) int {
