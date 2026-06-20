@@ -31,7 +31,7 @@ ORDER BY games DESC, own_race, opp_race;
 -- consumer splits build-order markers (event_type LIKE 'bo_%') from the rest
 -- and surfaces the top-N per matchup. Excludes meta markers that are not
 -- meaningful per-matchup features. Drop subtype game events
--- (dt_drop / reaver_drop / cliff_drop) are also surfaced alongside the
+-- (cliff_drop) are also surfaced alongside the
 -- generic `made_drops` marker so subtype-level signal lands on the Player
 -- summary cards.
 SELECT
@@ -56,7 +56,7 @@ WHERE lower(trim(self.name)) = ?
       'never_used_hotkeys'
     ))
     OR (re.event_kind = 'game_event' AND re.event_type IN (
-      'dt_drop', 'reaver_drop', 'cliff_drop'
+      'cliff_drop'
     ))
   )
   AND 2 = (
@@ -98,7 +98,7 @@ GROUP BY p.race, r.team_format, r.map_kind;
 -- format summary cards. Same exclusion list as the per-matchup query so
 -- meta markers (hotkeys, viewport multitasking, phase boundaries) don't
 -- pollute the top-N pills. Drop subtype game events
--- (dt_drop / reaver_drop / cliff_drop) are also surfaced alongside the
+-- (cliff_drop) are also surfaced alongside the
 -- generic `made_drops` marker for subtype-level signal.
 SELECT
   p.race AS own_race,
@@ -124,7 +124,7 @@ WHERE lower(trim(p.name)) = ?
       'never_used_hotkeys'
     ))
     OR (re.event_kind = 'game_event' AND re.event_type IN (
-      'dt_drop', 'reaver_drop', 'cliff_drop'
+      'cliff_drop'
     ))
   )
 GROUP BY p.race, r.team_format, r.map_kind, re.event_type;

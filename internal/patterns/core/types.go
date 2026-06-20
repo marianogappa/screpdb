@@ -75,7 +75,34 @@ import (
 // a viewport teleport to the map origin (tile coords read as pixels) and so
 // over-reported switches_per_minute — most for build-heavy players. Re-ingest
 // so stored Viewport Multitasking values are corrected.
-const AlgorithmVersion = 34
+//
+// 35: 1v1 attack detection rewritten (issue #186). For exactly-two-opposing-
+// player games, attacks are detected as bilateral space-time command clusters
+// (a real fight needs both sides active in one neighbourhood), located by
+// point-in-polygon (correct base kind/clock/owner) or by inter-base-axis
+// relational prose in open field ("in the middle", "near X's base", with drift
+// direction), and gated on per-side command count + duration — replacing the
+// pressure-tracker + unit-novelty filter, which over-fired on one-sided pokes
+// and mislabeled locations. Multiplayer keeps the existing per-base path.
+// Also: a "starting"-kind polygon that is not an actual player main (extra
+// start locations on an N-player map played 1v1) now labels as "expansion".
+// Re-ingest so stored attack events reflect the new model.
+//
+// 36: Removed dt_drop classification (issue #185). "DT produced near a drop"
+// is a weak proxy — DTs are commonly walked in cloaked or built for a later
+// drop — so DT drops are no longer inferred; such unloads stay plain "drop"
+// (a real DT drop is under-classified, never mislabeled). Re-ingest so stored
+// dt_drop rows become "drop".
+//
+// 37: Removed reaver_drop classification too (issue #185 follow-up). Reavers
+// are usually a-moved, leaving no reaver-specific order to confirm the drop, so
+// the "Reaver produced nearby" proxy mislabeled e.g. PvT speedlot-drops-on-Tanks
+// while a reaver was merely in production; only cliff_drop remains a subtype.
+// Also replaced the one-reaver_drop-per-player suppression (which dropped ~300
+// real target-confirmed drops corpus-wide) with a per-target time-window dedup
+// (dropDedupWindowSec) so drop-heavy games stay readable without hiding distinct
+// attacks. Re-ingest so stored reaver_drop rows become "drop" and dedup applies.
+const AlgorithmVersion = 37
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

@@ -17,7 +17,7 @@ import (
 // Integration golden test for drop target-location inference. Runs the
 // drops_*.rep hand-curated golden replays through the parser + orchestrator +
 // worldstate engine, collects every drop-class event (drop / reaver_drop /
-// dt_drop / cliff_drop), and diffs the per-cluster records against
+// cliff_drop), and diffs the per-cluster records against
 // testdata/drops_golden.json.
 //
 // The drops_cliff_bgh_*.rep fixtures are human-curated premises (verified by
@@ -36,7 +36,7 @@ const (
 type dropGoldenRecord struct {
 	Second         int    `json:"second"`
 	Count          int    `json:"count"`
-	Subtype        string `json:"subtype"` // "drop" | "reaver_drop" | "dt_drop" | "cliff_drop"
+	Subtype        string `json:"subtype"` // "drop" | "reaver_drop" | "cliff_drop"
 	SourceLabel    string `json:"source_label,omitempty"`
 	TargetLabel    string `json:"target_label,omitempty"`
 	TargetVia      string `json:"target_via,omitempty"`
@@ -121,7 +121,7 @@ func buildDropGolden(t *testing.T) (dropGoldenDoc, error) {
 
 func isDropSubtype(t string) bool {
 	switch t {
-	case "drop", "reaver_drop", "dt_drop", "cliff_drop":
+	case "drop", "reaver_drop", "cliff_drop":
 		return true
 	}
 	return false

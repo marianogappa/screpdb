@@ -28,7 +28,7 @@ type markerDefinition struct {
 // a frontend-renderable entry in the Featuring strip.
 //
 // IconKeys (multi-icon) wins over IconKey when both are populated — mirrors
-// the marker-filter chip layout so subtype pills (DT Drop, Reaver Drop) can
+// the marker-filter chip layout so subtype pills (cliff drop) can
 // surface a shuttle + payload-unit pair like the games-list filter row.
 type gameEventFeature struct {
 	Key      string   `json:"key"`
@@ -56,8 +56,6 @@ var staticGameEventFeatures = []gameEventFeature{
 	{Key: "proxy_rax", Label: "Proxy barracks", IconKey: "barracks"},
 	{Key: "proxy_factory", Label: "Proxy factory", IconKey: "factory"},
 	{Key: "drop", Label: "Drop", IconKey: "shuttle"},
-	{Key: "dt_drop", Label: "DT Drop", IconKeys: []string{"shuttle", "darktemplar"}},
-	{Key: "reaver_drop", Label: "Reaver Drop", IconKeys: []string{"shuttle", "reaver"}},
 	{Key: "mind_control", Label: "Mind control", IconKey: "darkarchon"},
 }
 
@@ -73,8 +71,6 @@ var staticFeaturingOrder = []string{
 	"proxy_rax",
 	"proxy_factory",
 	"drop",
-	"dt_drop",
-	"reaver_drop",
 	"mind_control",
 	// late-game custom-evaluator markers
 	"threw_nukes",

@@ -639,7 +639,7 @@ func (e *Engine) emitLeaveGameEvents() {
 }
 
 // emitAttackCandidates applies the importance filter to attack candidates
-// and emits the survivors. Drop subtype routing (reaver_drop / dt_drop)
+// and emits the survivors. Drop subtype routing (cliff_drop only)
 // happens here using the source command's UnitTypes payload.
 func (e *Engine) emitAttackCandidates(candidates []CandidateAttack) {
 	// Index source commands by frame for unit-types lookup at drop time.
@@ -692,6 +692,9 @@ func (e *Engine) emitAttackCandidates(candidates []CandidateAttack) {
 			// can still match against them; emission is handled elsewhere.
 			continue
 		case "attack":
+			if e.use1v1Attacks {
+				continue // 1v1 attacks are emitted by emit1v1Attacks
+			}
 			if c.Defender == neutralPID {
 				if earliestNeutralAttack == nil || c.Second < earliestNeutralAttack.Second {
 					cc := c

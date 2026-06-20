@@ -201,6 +201,7 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 		return fmt.Errorf("failed to query replay events: %w", err)
 	}
 	detail.GameEvents = replayEventsFromRows(eventRows, mapLayout, startClockByPlayerID)
+	detail.GameEvents = resolveNaturalOwnerLabels(detail.GameEvents, detail.Players, startClockByPlayerID)
 	detail.GameEvents = resolveRecallTargetOwners(detail.GameEvents, detail.Players)
 	detail.GameEvents = resolveAllianceTeamPlayers(detail.GameEvents, detail.Players, displayByName)
 	for i := range detail.GameEvents {
@@ -969,6 +970,18 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 			event.Base = &base
 			baseByKey[baseKeyForEvent(&event)] = base
 		}
+		// Open-field 1v1 attacks (issue #186) have no base columns but carry a
+		// relational location ("in the middle", "near White's base") in the
+		// payload — surface it as the event's location label.
+		if event.Base == nil && row.EventType == "attack" && row.Payload != nil {
+			if loc, x, y, ok := parseAttackRelativeLocation(*row.Payload); ok {
+				event.Base = &workflowGameEventBase{
+					Name:   loc,
+					Kind:   "open_field",
+					Center: workflowGameEventPoint{X: x, Y: y},
+				}
+			}
+		}
 		if event.Actor != nil {
 			if startClock, ok := startClockByPlayerID[event.Actor.PlayerID]; ok {
 				event.ActorStartClock = lo.ToPtr(int64(startClock))
@@ -976,6 +989,11 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 					startCenter := startBase.Center
 					event.ActorOrigin = &startCenter
 				}
+			}
+		}
+		if event.Target != nil {
+			if startClock, ok := startClockByPlayerID[event.Target.PlayerID]; ok {
+				event.TargetStartClock = lo.ToPtr(int64(startClock))
 			}
 		}
 		applyOwnershipTransition(&event, ownershipByBaseKey)
@@ -1079,7 +1097,7 @@ func resolveAllianceTeamPlayers(events []workflowGameEvent, players []workflowGa
 // emitted by worldstate.emitDropEvents.
 func isDropEventType(t string) bool {
 	switch t {
-	case "drop", "reaver_drop", "dt_drop", "cliff_drop":
+	case "drop", "cliff_drop":
 		return true
 	}
 	return false
@@ -1230,6 +1248,37 @@ func applyRecallPayload(event *workflowGameEvent, raw string, baseMetas []overla
 // for recall events using the supplied PID → workflowGameEventPlayer lookup.
 // Split from applyRecallPayload because replayEventsFromRows has no access
 // to the per-replay players list — that's owned by populateDetectedPatternsForGameDetail.
+// resolveNaturalOwnerLabels relabels a natural-expansion location with its
+// owner's player name ("Skins_'s natural") instead of the start-clock form
+// ("7's natural"), when the natural's natural_of_clock matches a player's
+// start location (issue #186 review). Falls through unchanged when no owner is
+// found, preserving the clock-based baseLabel.
+func resolveNaturalOwnerLabels(events []workflowGameEvent, players []workflowGamePlayer, startClockByPlayerID map[int64]int) []workflowGameEvent {
+	if len(events) == 0 || len(startClockByPlayerID) == 0 {
+		return events
+	}
+	nameByID := make(map[int64]string, len(players))
+	for _, p := range players {
+		nameByID[p.PlayerID] = p.Name
+	}
+	nameByClock := map[int64]string{}
+	for id, clock := range startClockByPlayerID {
+		if name, ok := nameByID[id]; ok {
+			nameByClock[int64(clock)] = name
+		}
+	}
+	for i := range events {
+		b := events[i].Base
+		if b == nil || strings.ToLower(b.Kind) != "natural" || b.NaturalOfClock == nil {
+			continue
+		}
+		if name, ok := nameByClock[*b.NaturalOfClock]; ok && strings.TrimSpace(name) != "" {
+			b.Name = name + "'s natural"
+		}
+	}
+	return events
+}
+
 func resolveRecallTargetOwners(events []workflowGameEvent, players []workflowGamePlayer) []workflowGameEvent {
 	if len(events) == 0 || len(players) == 0 {
 		return events
@@ -1561,6 +1610,29 @@ func baseLabel(baseType *string, baseOclock *int64, naturalOf *int64) string {
 		}
 		return "expansion"
 	}
+}
+
+// parseAttackRelativeLocation extracts the open-field relational location
+// label ("loc") and the fight centroid (pixels) from an attack event's payload
+// (issue #186). ok is false for any payload that doesn't carry a label.
+func parseAttackRelativeLocation(raw string) (loc string, x, y float64, ok bool) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return "", 0, 0, false
+	}
+	var p struct {
+		Loc string  `json:"loc"`
+		X   float64 `json:"x"`
+		Y   float64 `json:"y"`
+	}
+	if err := json.Unmarshal([]byte(trimmed), &p); err != nil {
+		return "", 0, 0, false
+	}
+	label := strings.TrimSpace(p.Loc)
+	if label == "" {
+		return "", 0, 0, false
+	}
+	return label, p.X, p.Y, true
 }
 
 func parseAttackUnitTypes(raw *string) []string {

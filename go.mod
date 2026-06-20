@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/icza/screp v1.12.17
-	github.com/marianogappa/scmapanalyzer v0.0.0-20260507145022-a2a0fa5de1f5
+	github.com/marianogappa/scmapanalyzer v0.0.0-20260610174907-72370c81026c
 	github.com/mark3labs/mcp-go v0.41.1
 	github.com/oapi-codegen/runtime v1.4.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c

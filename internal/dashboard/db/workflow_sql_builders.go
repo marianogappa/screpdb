@@ -219,23 +219,15 @@ func workflowFeaturingExistsSQL(featureKey string) (string, bool) {
 				AND re.event_type = '` + normalized + `'
 		)`, true
 	case "drop":
-		// Generic Drop chip matches any drop subtype — drop / reaver_drop /
-		// dt_drop / cliff_drop. All four live in replay_events as game_events
-		// emitted by the worldstate drop pass.
+		// Generic Drop chip matches any drop subtype — drop / cliff_drop.
+		// Both live in replay_events as game_events emitted by the worldstate
+		// drop pass.
 		return `EXISTS (
 			SELECT 1
 			FROM replay_events re
 			WHERE re.replay_id = r.id
 				AND re.event_kind = 'game_event'
-				AND re.event_type IN ('drop', 'reaver_drop', 'dt_drop', 'cliff_drop')
-		)`, true
-	case "dt_drop", "reaver_drop":
-		return `EXISTS (
-			SELECT 1
-			FROM replay_events re
-			WHERE re.replay_id = r.id
-				AND re.event_kind = 'game_event'
-				AND re.event_type = '` + normalized + `'
+				AND re.event_type IN ('drop', 'cliff_drop')
 		)`, true
 	case "mind_control":
 		// Composite: either became_terran OR became_zerg marker on any player.

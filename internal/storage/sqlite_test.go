@@ -102,7 +102,15 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		// Then +1 (issue #182): a tier-1 preferred opener now matches a player
 		// whose tier-2 opener previously didn't (the muta/reaver tech-pathway
 		// openers detect where the broad bucket fell through).
-		"replay_events": 192,
+		// Then +13 (issue #186): the 1v1 bilateral-fight attack model replaces
+		// the unit-novelty filter, surfacing the distinct real engagements it
+		// used to collapse. Multiplayer/BGH replays here are unchanged (the new
+		// path is gated to exactly-two-opposing-player games); the gain is on
+		// the 1v1 test replays.
+		// Then +N (issue #185 folded in): dt_drop/reaver_drop removed (subtype
+		// change, no count effect) and the one-reaver_drop-per-player
+		// suppression replaced by a per-target time-window dedup.
+		"replay_events": 203,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {

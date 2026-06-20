@@ -180,6 +180,11 @@ type Engine struct {
 	lastCmdSec     map[byte]int
 	finalized      bool
 
+	// use1v1Attacks routes "attack"-type emission through the bilateral-fight
+	// model (emit1v1Attacks) for 1v1 games; emitAttackCandidates then skips
+	// its pressure-tracker attack path. Scout/nuke/drop routing is unchanged.
+	use1v1Attacks bool
+
 	// productionSignals feeds BuildOwnership: per-player Train/Morph location
 	// datapoints that refresh base ownership. nil when the caller never set them
 	// (e.g. the debug map-layout endpoint) — ownership then behaves as before.
@@ -390,7 +395,13 @@ func (e *Engine) Finalize() {
 		e.emitDropEvents(ownership, dropClusters, candidates)
 	}
 	e.emitLeaveGameEvents()
-	e.emitAttackCandidates(candidates)
+	if aPID, bPID, ok := e.singleOpponents(); ok && len(e.bases) > 0 {
+		e.use1v1Attacks = true
+		e.emitAttackCandidates(candidates)
+		e.emit1v1Attacks(ownership, aPID, bPID)
+	} else {
+		e.emitAttackCandidates(candidates)
+	}
 
 	endSec := 0
 	if e.replay != nil {
@@ -490,7 +501,7 @@ func (e *Engine) FirstEventSecondForPlayer(playerID byte, eventType string) *int
 	e.Finalize()
 	switch eventType {
 	case "drop", "recall", "nuke", "became_terran", "became_zerg",
-		"reaver_drop", "dt_drop", "cliff_drop", "scout", "attack",
+		"cliff_drop", "scout", "attack",
 		"cannon_rush", "bunker_rush", "zergling_rush",
 		"proxy_gate", "proxy_rax", "proxy_factory",
 		"expansion", "takeover", "location_inactive",
@@ -825,13 +836,26 @@ func normalizeUnitTypes(unitTypes []string) []string {
 	return normalized
 }
 
+// isActualPlayerStart reports whether baseIdx is the main of one of the
+// players in this game. A "starting"-kind polygon that no player actually
+// started at (extra start locations on an N-player map played 1v1) is an
+// expansion, not a main — so the location label must not call it "starting".
+func (e *Engine) isActualPlayerStart(baseIdx int) bool {
+	for _, idx := range e.startBaseByPID {
+		if idx == baseIdx {
+			return true
+		}
+	}
+	return false
+}
+
 func (e *Engine) locationForBase(baseIdx int) (*string, *int, *int, *bool) {
 	if baseIdx < 0 || baseIdx >= len(e.bases) {
 		return nil, nil, nil, nil
 	}
 	base := e.bases[baseIdx]
 	baseTypeValue := "expansion"
-	if base.IsStarting {
+	if base.IsStarting && e.isActualPlayerStart(baseIdx) {
 		baseTypeValue = "starting"
 	} else if _, ok := e.naturalOwnerByBase[baseIdx]; ok {
 		baseTypeValue = "natural"
@@ -879,19 +903,6 @@ func unitTypesFromCommand(command *models.Command) []string {
 		}
 	}
 	return normalizeUnitTypes(unitTypes)
-}
-
-func hasUnitType(unitTypes []string, unitType string) bool {
-	if len(unitTypes) == 0 {
-		return false
-	}
-	unitNorm := normalize(unitType)
-	for _, candidate := range unitTypes {
-		if normalize(candidate) == unitNorm {
-			return true
-		}
-	}
-	return false
 }
 
 func (e *Engine) ownershipSnapshot() []NarrativeOwnership {
