@@ -18,6 +18,12 @@ const (
 	zerglingRushSec    = 140
 	zergRushObserveSec = 120
 	rushBuildWindowSec = 4 * 60
+	// Bunker rushes on standard (non-BGH) 2-player maps need a longer window
+	// than cannon rushes: the SCV walks cross-map to the opponent's base, so
+	// the bunker is placed later than a proxy cannon. Strong corroborating
+	// gates (marine trained + bunker landing on the enemy's start/natural)
+	// keep the wider window from over-firing.
+	bunkerRushWindowSec = 5 * 60
 	// Max distance from a rush build command to an enemy base center when the point is outside the base polygon (map polygons often miss ramp cannons).
 	rushBuildSnapToEnemyBaseCenterPx = 10 * 32
 	proxyFactoryWindowSec            = 5 * 60
@@ -1121,7 +1127,7 @@ func (e *Engine) processZerglingRushEvent(command *models.Command, pid byte, sec
 }
 
 func (e *Engine) recordMarineTraining(pid byte, sec int, command *models.Command) {
-	if sec > rushBuildWindowSec || command == nil || !command.IsUnitBuild() || command.UnitType == nil {
+	if sec > bunkerRushWindowSec || command == nil || !command.IsUnitBuild() || command.UnitType == nil {
 		return
 	}
 	if normalize(*command.UnitType) == normalize(models.GeneralUnitMarine) {
@@ -1191,12 +1197,13 @@ func (e *Engine) finalizeZergRushCandidates(currentSec int, force bool) {
 }
 
 func (e *Engine) tryEmitRushBuildEvents(command *models.Command, pid byte, sec int, x float64, y float64) {
-	if command == nil || command.UnitType == nil || sec > rushBuildWindowSec {
+	if command == nil || command.UnitType == nil {
 		return
 	}
 	unitType := strings.TrimSpace(*command.UnitType)
 	unitNorm := normalize(unitType)
 	rushType := ""
+	window := rushBuildWindowSec
 	switch {
 	case strings.Contains(unitNorm, "photoncannon"):
 		rushType = "cannon_rush"
@@ -1205,18 +1212,29 @@ func (e *Engine) tryEmitRushBuildEvents(command *models.Command, pid byte, sec i
 			return
 		}
 		rushType = "bunker_rush"
+		window = bunkerRushWindowSec
 	default:
 		return
 	}
+	if sec > window {
+		return
+	}
 	enemyBaseIdx := e.enemyBaseIdxAtPoint(pid, x, y)
+	if enemyBaseIdx < 0 && rushType == "bunker_rush" {
+		// Standard (non-BGH) maps: the bunker lands on the opponent's
+		// not-yet-taken natural, which reads as neutral early-game and is
+		// skipped by the enemy-owned lookup above. Fall back to the base
+		// polygon at the build point and resolve its static owner. (#195, cf. #196)
+		enemyBaseIdx = pointToEventBase(x, y, e.bases)
+	}
 	if enemyBaseIdx < 0 && strings.Contains(unitNorm, "photoncannon") {
 		enemyBaseIdx = e.nearestEnemyBaseIdxForRush(pid, x, y, rushBuildSnapToEnemyBaseCenterPx)
 	}
 	if enemyBaseIdx < 0 {
 		return
 	}
-	enemyPID := e.ownerByBase[enemyBaseIdx]
-	if !e.isRushTargetEnemy(pid, enemyPID) {
+	enemyPID, ok := e.rushTargetEnemyForBase(pid, enemyBaseIdx)
+	if !ok {
 		return
 	}
 	payload := []string{unitType}

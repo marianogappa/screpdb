@@ -13,7 +13,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
 )
 
-// Integration golden test for rush detection (zergling_rush / cannon_rush).
+// Integration golden test for rush detection (zergling_rush / cannon_rush / bunker_rush).
 // Runs the rush_*.rep fixtures through the parser + orchestrator + worldstate
 // engine, collects every rush event, and diffs against testdata/rushes_golden.json.
 //
@@ -33,7 +33,7 @@ const (
 
 type rushGoldenRecord struct {
 	Second    int    `json:"second"`
-	Subtype   string `json:"subtype"`    // "zergling_rush" | "cannon_rush"
+	Subtype   string `json:"subtype"`    // "zergling_rush" | "cannon_rush" | "bunker_rush"
 	SourcePID byte   `json:"source_pid"` // rusher's replay_player_id
 }
 
@@ -110,7 +110,7 @@ func buildRushGolden(t *testing.T) (rushGoldenDoc, error) {
 }
 
 func isRushSubtype(s string) bool {
-	return s == "zergling_rush" || s == "cannon_rush"
+	return s == "zergling_rush" || s == "cannon_rush" || s == "bunker_rush"
 }
 
 func collectRushRecords(events []worldstate.ReplayEvent) []rushGoldenRecord {
