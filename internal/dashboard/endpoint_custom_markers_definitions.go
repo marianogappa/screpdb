@@ -75,6 +75,7 @@ var staticFeaturingOrder = []string{
 	// late-game custom-evaluator markers
 	"threw_nukes",
 	"made_recalls",
+	"offensive_nydus",
 	// initial build orders, ordered by race + ascending supply / aggression
 	"bo_4_pool",
 	"bo_9_pool",

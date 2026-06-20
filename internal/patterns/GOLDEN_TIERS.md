@@ -114,6 +114,27 @@ named rusher; the opponent's ling rush in ZvZ is the same well-understood case).
 | `rush_cannon_undertaker.rep` | cannon_rush (~2:46) |
 | `rush_cannon_lyx2008.rep` | cannon_rush (~2:51) |
 
+### Offensive-nydus detection — `nydus_golden.json`
+
+Two `nydus_*.rep` fixtures (issue #193), each confirmed by watching the replay.
+The protected premise is the **presence of an offensive nydus** (a forward
+`BuildNydusExit` into enemy territory, surfaced as a `nydus_attack` event) by the
+named player onto the named target — dropping a detection or adding a spurious
+one is a regression. The conservative narrative is deliberate: the forward exit
+placement is what we observe; the army may never cross (the canal can be killed
+first), so the event asserts the offensive nydus, not a completed army transfer.
+
+| Fixture (source replay) | Premise | Verified |
+| --- | --- | --- |
+| `nydus_1v1_matchpoint_defiler.rep` (`replays-cwal-dl/30-MORE-mentalgap/MM-6D64D05C-3EED-11F1`) | 1v1 — mentalgap makes one offensive nydus onto the opponent's main (1 o'clock) ~23:00, Zergling/Defiler army | author-curated |
+| `nydus_bgh_team_aggression.rep` (`AutoSave/20260503/230946,(8)Big Game Hunters.rep`) | BGH 2v2v2v1v1 — chobo86 makes repeated offensive nydus onto fire-n-blood and SubTERRANeum (~27:00–39:00) | author-curated |
+
+The `target_via` field (`a` attack-coincidence / `p` post-placement activity) and
+`second` are derived; the protected premise is presence + target attribution
+(`target_label` / `target_owner_pid`). A change that removes an offensive nydus
+from either fixture, or adds one onto a base the player never nydused, is a
+regression → re-verify by watching, do not blindly `UPDATE_GOLDEN`.
+
 ## Additional human-verified ground truth (not yet fixtured)
 
 From the same review, verified but not (yet) encoded as fixtures — candidates if

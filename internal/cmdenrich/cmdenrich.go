@@ -85,6 +85,16 @@ const (
 	// kept distinct because bunkers aren't transports — they don't produce
 	// drop events, only garrison signals.
 	KindLoadBunker
+	// KindBuildNydusExit: a Zerg Nydus Canal exit placed via the
+	// BuildNydusExit TargetedOrder. Carries the exit's pixel position. Surfaced
+	// so the worldstate offensive-nydus pass can classify the exit as forward
+	// (placed in enemy territory) and synthesize an attack event there.
+	KindBuildNydusExit
+	// KindEnterNydusCanal: units ordered into a Nydus Canal — the teleport that
+	// funnels an army through to the exit. One command per selected wave; the
+	// position targets a canal end, so the pass relies on timing/count rather
+	// than these coords.
+	KindEnterNydusCanal
 )
 
 // Aggression tri-state. Populated by Classify based on Kind; tune the mapping
@@ -142,26 +152,28 @@ type EnrichedCommand struct {
 // aggressionByKind is the tunable mapping from Kind to Aggression default.
 // Tweak here; every caller picks up the change.
 var aggressionByKind = map[Kind]Aggression{
-	KindMakeBuilding: NonAggressive,
-	KindMakeUnit:     NonAggressive,
-	KindTech:         NonAggressive,
-	KindUpgrade:      NonAggressive,
-	KindStop:         NonAggressive,
-	KindHold:         NonAggressive,
-	KindHotkey:       NonAggressive,
-	KindBurrow:       NonAggressive,
-	KindUnburrow:     NonAggressive,
-	KindUnsiege:      NonAggressive,
-	KindSiege:        Ambiguous,
-	KindPatrol:       Ambiguous,
-	KindMove:         Ambiguous,
-	KindRightClick:   Ambiguous,
-	KindAttackMove:   Aggressive,
-	KindAttackUnit:   Aggressive,
-	KindCast:         Aggressive,
-	KindUnloadAll:    Aggressive,
-	KindLoad:         NonAggressive,
-	KindLoadBunker:   NonAggressive,
+	KindMakeBuilding:    NonAggressive,
+	KindMakeUnit:        NonAggressive,
+	KindTech:            NonAggressive,
+	KindUpgrade:         NonAggressive,
+	KindStop:            NonAggressive,
+	KindHold:            NonAggressive,
+	KindHotkey:          NonAggressive,
+	KindBurrow:          NonAggressive,
+	KindUnburrow:        NonAggressive,
+	KindUnsiege:         NonAggressive,
+	KindSiege:           Ambiguous,
+	KindPatrol:          Ambiguous,
+	KindMove:            Ambiguous,
+	KindRightClick:      Ambiguous,
+	KindAttackMove:      Aggressive,
+	KindAttackUnit:      Aggressive,
+	KindCast:            Aggressive,
+	KindUnloadAll:       Aggressive,
+	KindLoad:            NonAggressive,
+	KindLoadBunker:      NonAggressive,
+	KindBuildNydusExit:  Ambiguous,
+	KindEnterNydusCanal: Aggressive,
 }
 
 // Classify returns the EnrichedCommand for a raw command. The second return
@@ -226,8 +238,11 @@ func Classify(cmd *models.Command) (EnrichedCommand, bool) {
 	// stream uniformly pixel-space so downstream consumers never re-convert —
 	// a missed per-consumer conversion is exactly what put a building's tile
 	// coords into pixel logic and landed a "drop" in the map corner.
+	//
+	// BuildNydusExit is a build order issued via TargetedOrder, so its position
+	// is likewise in tiles and needs the same conversion.
 	xPx, yPx := cmd.X, cmd.Y
-	if kind == KindMakeBuilding && xPx != nil && yPx != nil {
+	if (kind == KindMakeBuilding || kind == KindBuildNydusExit) && xPx != nil && yPx != nil {
 		px, py := *xPx*32+16, *yPx*32+16
 		xPx, yPx = &px, &py
 	}
@@ -271,6 +286,20 @@ func FromAction(actionType, subject string, second int, playerID int64) (Enriche
 // classifyKind looks at ActionType, then OrderName when ActionType is
 // something ambiguous like "Right Click".
 func classifyKind(cmd *models.Command) Kind {
+	// Nydus orders take precedence over ActionType. BuildNydusExit arrives as
+	// an ActionType="Build" command (it's the canal's build-exit ability), so
+	// without this it would classify as a plain KindMakeBuilding and the
+	// offensive-nydus pass would never see it. EnterNydusCanal is included for
+	// completeness though screp rarely emits it (nydus traversal is a
+	// contextual right-click).
+	if cmd.OrderName != nil {
+		switch *cmd.OrderName {
+		case models.UnitOrderBuildNydusExit:
+			return KindBuildNydusExit
+		case models.UnitOrderEnterNydusCanal:
+			return KindEnterNydusCanal
+		}
+	}
 	if k := kindFromActionType(cmd.ActionType); k != KindUnknown {
 		return k
 	}
