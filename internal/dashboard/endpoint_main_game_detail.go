@@ -1010,6 +1010,11 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 		if isDropEventType(event.Type) && row.Payload != nil && *row.Payload != "" {
 			applyDropPayload(&event, *row.Payload, baseMetas)
 		}
+		// nydus_attack reuses the drop payload shape (source = home, target =
+		// forward exit), so the same source/target/base stamping applies.
+		if event.Type == "nydus_attack" && row.Payload != nil && *row.Payload != "" {
+			applyDropPayload(&event, *row.Payload, baseMetas)
+		}
 		if event.Type == "late_alliance" && row.Payload != nil && *row.Payload != "" {
 			applyAlliancePayload(&event, *row.Payload)
 		}

@@ -57,6 +57,7 @@ var (
 		"leave_game",
 		"expansion",
 		"attack",
+		"nydus_attack",
 		"scout",
 		"drop",
 		"cliff_drop",

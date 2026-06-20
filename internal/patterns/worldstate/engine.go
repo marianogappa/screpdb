@@ -368,6 +368,7 @@ func (e *Engine) Finalize() {
 	var candidates []CandidateAttack
 
 	var dropClusters []DropCluster
+	var nydusClusters []NydusCluster
 
 	if len(e.bases) > 0 {
 		e.polygonGeoms = polygonGeomFromBases(e.bases)
@@ -387,6 +388,8 @@ func (e *Engine) Finalize() {
 		dropClusters = BuildDrops(e.stream, e.polygonGeoms, e.bases, ownership, e.teams)
 		candidates = append(candidates, dropClustersToCandidateAttacks(dropClusters)...)
 
+		nydusClusters = e.buildNydusClusters(ownership, candidates)
+
 		e.emitPlayerStartEvents()
 	}
 
@@ -399,6 +402,7 @@ func (e *Engine) Finalize() {
 		e.emitOwnershipTransitions(ownership)
 		e.emitRecallEvents(ownership, candidates)
 		e.emitDropEvents(ownership, dropClusters, candidates)
+		e.emitNydusEvents(nydusClusters)
 	}
 	e.emitLeaveGameEvents()
 	if aPID, bPID, ok := e.singleOpponents(); ok && len(e.bases) > 0 {
@@ -507,7 +511,7 @@ func (e *Engine) FirstEventSecondForPlayer(playerID byte, eventType string) *int
 	e.Finalize()
 	switch eventType {
 	case "drop", "recall", "nuke", "became_terran", "became_zerg",
-		"cliff_drop", "scout", "attack",
+		"cliff_drop", "scout", "attack", "nydus_attack",
 		"cannon_rush", "bunker_rush", "zergling_rush",
 		"proxy_gate", "proxy_rax", "proxy_factory",
 		"expansion", "takeover", "location_inactive",

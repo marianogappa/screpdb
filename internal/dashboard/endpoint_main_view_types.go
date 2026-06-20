@@ -224,6 +224,7 @@ var workflowFeaturingFilters = []struct {
 	{Key: "mind_control", Label: "Mind Control", Group: "marker", IconKey: "darkarchon", IconLabel: "Mind Control"},
 	{Key: "nukes", Label: "Nukes", Group: "marker", IconKey: "ghost", IconLabel: "Nuke"},
 	{Key: "recalls", Label: "Recalls", Group: "marker", IconKey: "arbiter", IconLabel: "Recall"},
+	{Key: "offensive_nydus", Label: "Offensive Nydus", Group: "marker", IconKey: "nyduscanal", IconLabel: "Nydus"},
 	{Key: "team_stacking", Label: "Team stacking", Group: "marker", Emoji: "😈"},
 	// Money-map markers — rendered last so regular markers take priority.
 	{Key: "carriers", Label: "Carrier", Group: "marker", IconKey: "carrier"},
@@ -301,7 +302,7 @@ var workflowMapKindFilters = []struct {
 }
 
 type workflowGamePlayer struct {
-	PlayerID           int64                  `json:"player_id"`
+	PlayerID         int64                  `json:"player_id"`
 	PlayerKey        string                 `json:"player_key"`
 	Name             string                 `json:"name"`
 	Color            string                 `json:"color,omitempty"`
@@ -335,35 +336,35 @@ type workflowPatternValue struct {
 }
 
 type workflowGameDetail struct {
-	SummaryVersion       string                                   `json:"summary_version"`
-	ReplayID             int64                                    `json:"replay_id"`
-	ReplayDate           string                                   `json:"replay_date"`
-	FileName             string                                   `json:"file_name"`
-	FilePath             string                                   `json:"file_path"`
-	MapName              string                                   `json:"map_name"`
-	MapKind              string                                   `json:"map_kind,omitempty"`
-	MapVisual            workflowMapVisual                        `json:"map_visual"`
-	MapWidthPixels       int64                                    `json:"map_width_pixels,omitempty"`
-	MapHeightPixels      int64                                    `json:"map_height_pixels,omitempty"`
-	DurationSeconds      int64                                    `json:"duration_seconds"`
-	GameType             string                                   `json:"game_type"`
-	TeamStacking         bool                                     `json:"team_stacking"`
-	TeamInfoIncomplete   bool                                     `json:"team_info_incomplete"`
-	Players              []workflowGamePlayer                     `json:"players"`
-	ReplayPatterns       []workflowPatternValue                   `json:"replay_patterns"`
-	GameEvents           []workflowGameEvent                      `json:"game_events"`
-	UnitsBySlice         []workflowUnitSlice                      `json:"units_by_slice"`
-	UnitsEarlyEvents     []workflowUnitEarlyEventPlayer           `json:"units_early_events"`
-	ProductionTimeline   []workflowProductionTimelinePlayer       `json:"production_timeline"`
-	Timings              workflowReplayTimings                    `json:"timings"`
-	FirstUnitEfficiency  []workflowFirstUnitEfficiencyPlayer      `json:"first_unit_efficiency"`
-	UnitCadence          []workflowGameUnitCadencePlayer          `json:"unit_production_cadence"`
-	ViewportMultitasking []workflowGameViewportMultitaskingPlayer `json:"viewport_multitasking"`
-	Markers               []workflowMarkerPlayer         `json:"build_orders"`
-	MutaliskTiming        []workflowMarkerPlayer         `json:"mutalisk_timing_chart,omitempty"`
-	MutaliskTimingSummary *workflowMutaliskTimingSummary `json:"mutalisk_timing_summary,omitempty"`
-	AllianceTimeline     []workflowAllianceSnapshot               `json:"alliance_timeline,omitempty"`
-	AllianceStackingThresholdSeconds int64                        `json:"alliance_stacking_threshold_seconds,omitempty"`
+	SummaryVersion                   string                                   `json:"summary_version"`
+	ReplayID                         int64                                    `json:"replay_id"`
+	ReplayDate                       string                                   `json:"replay_date"`
+	FileName                         string                                   `json:"file_name"`
+	FilePath                         string                                   `json:"file_path"`
+	MapName                          string                                   `json:"map_name"`
+	MapKind                          string                                   `json:"map_kind,omitempty"`
+	MapVisual                        workflowMapVisual                        `json:"map_visual"`
+	MapWidthPixels                   int64                                    `json:"map_width_pixels,omitempty"`
+	MapHeightPixels                  int64                                    `json:"map_height_pixels,omitempty"`
+	DurationSeconds                  int64                                    `json:"duration_seconds"`
+	GameType                         string                                   `json:"game_type"`
+	TeamStacking                     bool                                     `json:"team_stacking"`
+	TeamInfoIncomplete               bool                                     `json:"team_info_incomplete"`
+	Players                          []workflowGamePlayer                     `json:"players"`
+	ReplayPatterns                   []workflowPatternValue                   `json:"replay_patterns"`
+	GameEvents                       []workflowGameEvent                      `json:"game_events"`
+	UnitsBySlice                     []workflowUnitSlice                      `json:"units_by_slice"`
+	UnitsEarlyEvents                 []workflowUnitEarlyEventPlayer           `json:"units_early_events"`
+	ProductionTimeline               []workflowProductionTimelinePlayer       `json:"production_timeline"`
+	Timings                          workflowReplayTimings                    `json:"timings"`
+	FirstUnitEfficiency              []workflowFirstUnitEfficiencyPlayer      `json:"first_unit_efficiency"`
+	UnitCadence                      []workflowGameUnitCadencePlayer          `json:"unit_production_cadence"`
+	ViewportMultitasking             []workflowGameViewportMultitaskingPlayer `json:"viewport_multitasking"`
+	Markers                          []workflowMarkerPlayer                   `json:"build_orders"`
+	MutaliskTiming                   []workflowMarkerPlayer                   `json:"mutalisk_timing_chart,omitempty"`
+	MutaliskTimingSummary            *workflowMutaliskTimingSummary           `json:"mutalisk_timing_summary,omitempty"`
+	AllianceTimeline                 []workflowAllianceSnapshot               `json:"alliance_timeline,omitempty"`
+	AllianceStackingThresholdSeconds int64                                    `json:"alliance_stacking_threshold_seconds,omitempty"`
 	// AllianceTabChat is the full per-replay chat stream surfaced exclusively
 	// for the Alliances tab's context panel. Each entry is one chat command
 	// keyed to the player who sent it. Empty for non-melee or ≤2-player games.
@@ -424,13 +425,13 @@ type workflowAllianceChat struct {
 // the detected BO name plus expert-vs-actual timing for each milestone.
 // Populated by populateMarkersForGameDetail in endpoint_main_game_detail.go.
 type workflowMarkerPlayer struct {
-	PlayerID     int64                     `json:"player_id"`
-	PlayerKey    string                    `json:"player_key"`
-	Name         string                    `json:"name"`
-	Race         string                    `json:"race"`
-	Marker   string                    `json:"build_order"`        // e.g. "9 pool"
-	FeatureKey   string                    `json:"feature_key"`        // e.g. "bo_9_pool"
-	Events       []workflowMarkerEvent `json:"events"`
+	PlayerID   int64                 `json:"player_id"`
+	PlayerKey  string                `json:"player_key"`
+	Name       string                `json:"name"`
+	Race       string                `json:"race"`
+	Marker     string                `json:"build_order"` // e.g. "9 pool"
+	FeatureKey string                `json:"feature_key"` // e.g. "bo_9_pool"
+	Events     []workflowMarkerEvent `json:"events"`
 }
 
 // workflowMarkerEvent is one row in the Build Orders timeline chart.
@@ -439,8 +440,8 @@ type workflowMarkerPlayer struct {
 // marker definition's Expert template — render them without the golden
 // tolerance band.
 type workflowMarkerEvent struct {
-	Key                   string `json:"key"`                     // e.g. "Spawning Pool"
-	Subject               string `json:"subject"`                 // canonical unit/building name for icon lookup (e.g. "Zergling")
+	Key                   string `json:"key"`     // e.g. "Spawning Pool"
+	Subject               string `json:"subject"` // canonical unit/building name for icon lookup (e.g. "Zergling")
 	TargetSecond          int64  `json:"target_second"`
 	ToleranceEarlySeconds int64  `json:"tolerance_early_seconds"`
 	ToleranceLateSeconds  int64  `json:"tolerance_late_seconds"`
@@ -516,8 +517,8 @@ type workflowGameEvent struct {
 	TargetBase       *workflowGameEventBase   `json:"target_base,omitempty"`
 	TargetOwner      *workflowGameEventPlayer `json:"target_owner,omitempty"`
 	RecallTargetVia  string                   `json:"recall_target_via,omitempty"`  // "a" | "p" | "t"
-	RecallCount      int64                    `json:"recall_count,omitempty"`        // omitted when 1
-	RecallLastSecond int64                    `json:"recall_last_second,omitempty"`  // omitted when equal to Second
+	RecallCount      int64                    `json:"recall_count,omitempty"`       // omitted when 1
+	RecallLastSecond int64                    `json:"recall_last_second,omitempty"` // omitted when equal to Second
 	// SourceBase: for drops only, the base the transports loaded at. Drops
 	// store the destination polygon in event.base, so the source must come
 	// from the payload's `sb` field. Unused for recalls (which keep the
@@ -528,8 +529,8 @@ type workflowGameEvent struct {
 	// the source-of-truth for these is the drop event's payload JSON
 	// written by worldstate.emitDropEvents.
 	DropTargetVia  string `json:"drop_target_via,omitempty"`  // "a" | "p"
-	DropCount      int64  `json:"drop_count,omitempty"`        // omitted when 1
-	DropLastSecond int64  `json:"drop_last_second,omitempty"`  // omitted when equal to Second
+	DropCount      int64  `json:"drop_count,omitempty"`       // omitted when 1
+	DropLastSecond int64  `json:"drop_last_second,omitempty"` // omitted when equal to Second
 	// AllianceTeams: populated only for late_alliance events. Each entry is
 	// one team grouping at the moment the topology changed. Only teams of
 	// size ≥2 are included (solos filtered for clarity). Source is the
@@ -746,11 +747,11 @@ type workflowPlayerOverview struct {
 	FingerprintMetrics  []workflowComparativeMetric   `json:"fingerprint_metrics"`
 	RecentGames         []workflowGameListItem        `json:"recent_games"`
 	ChatSummary         workflowPlayerChatSummary     `json:"chat_summary"`
-	NarrativeHints []string                      `json:"narrative_hints"`
-	Matchups       []workflowPlayerMatchupCell   `json:"matchups"`
-	RaceOrders     []workflowRaceOrderSummary    `json:"race_orders"`
-	MatchupOrders  []workflowMatchupOrderSummary `json:"matchup_orders"`
-	EarlyTimings   []workflowPlayerEarlyTiming   `json:"early_timings"`
+	NarrativeHints      []string                      `json:"narrative_hints"`
+	Matchups            []workflowPlayerMatchupCell   `json:"matchups"`
+	RaceOrders          []workflowRaceOrderSummary    `json:"race_orders"`
+	MatchupOrders       []workflowMatchupOrderSummary `json:"matchup_orders"`
+	EarlyTimings        []workflowPlayerEarlyTiming   `json:"early_timings"`
 }
 
 // workflowUnitCompositionUnit is one entry in the (player, phase)
@@ -774,6 +775,7 @@ type workflowUnitCompositionUnit struct {
 //   - spell-caster units that actually cast a spell in this phase
 //   - signature non-spellcaster units that the player BUILT
 //     (Carrier/Reaver/BC/DT/Dropship/Nuke/Guardian/Devourer)
+//
 // Both are deduped: each unit appears at most once per phase.
 type workflowGameUnitComposition struct {
 	PlayerID int64                         `json:"player_id"`
@@ -831,17 +833,17 @@ type workflowPlayerOutlier struct {
 // context surfaces first (a Money-multi-team Random player sees their
 // per-race team-format cards before any sparse 1v1 cards).
 type workflowPlayerSummaryPerMatchup struct {
-	SummaryVersion string                          `json:"summary_version"`
-	PlayerKey      string                          `json:"player_key"`
-	PlayerName     string                          `json:"player_name"`
-	Cards          []workflowPlayerSummaryCard     `json:"cards"`
+	SummaryVersion string                      `json:"summary_version"`
+	PlayerKey      string                      `json:"player_key"`
+	PlayerName     string                      `json:"player_name"`
+	Cards          []workflowPlayerSummaryCard `json:"cards"`
 }
 
 // workflowPlayerSummaryCard is one entry in the unified Summary grid. Kind
 // disambiguates the two card families:
 //   - "matchup": 1v1 with OwnRace + OppRace populated.
 //   - "format":  team-format × map-kind × own-race with FormatClass +
-//                MapKind + OwnRace populated; OppRace is "".
+//     MapKind + OwnRace populated; OppRace is "".
 //
 // Games/Wins/WinRate/Confidence/AvgAPM/AvgEAPM are uniform across both.
 // TopBuildOrders/TopMarkers are race-scoped — a Random player gets
@@ -875,21 +877,21 @@ type workflowPlayerMatchupPatternCount struct {
 // category per request lets the FE fan out the slow per-spec corpus
 // queries and render pills incrementally as each finishes.
 type workflowPlayerSummaryOutliers struct {
-	SummaryVersion string                              `json:"summary_version"`
-	PlayerKey      string                              `json:"player_key"`
-	Category       string                              `json:"category"`
-	Pills          []workflowPlayerSummaryOutlierPill  `json:"pills"`
+	SummaryVersion string                             `json:"summary_version"`
+	PlayerKey      string                             `json:"player_key"`
+	Category       string                             `json:"category"`
+	Pills          []workflowPlayerSummaryOutlierPill `json:"pills"`
 }
 
 // workflowPlayerSummarySpecial is the payload of
 // GET /api/players/{playerKey}/summary/special. It mirrors the
 // "what's special about this player" pills row.
 type workflowPlayerSummarySpecial struct {
-	SummaryVersion       string                            `json:"summary_version"`
-	PlayerKey            string                            `json:"player_key"`
-	PlayerName           string                            `json:"player_name"`
-	NeverAlliedMultiTeam workflowPlayerSpecialEligibleStat `json:"never_allied_multi_team"`
-	NeverHotkeys         workflowPlayerSpecialEligibleStat `json:"never_hotkeys"`
+	SummaryVersion       string                             `json:"summary_version"`
+	PlayerKey            string                             `json:"player_key"`
+	PlayerName           string                             `json:"player_name"`
+	NeverAlliedMultiTeam workflowPlayerSpecialEligibleStat  `json:"never_allied_multi_team"`
+	NeverHotkeys         workflowPlayerSpecialEligibleStat  `json:"never_hotkeys"`
 	OutlierPills         []workflowPlayerSummaryOutlierPill `json:"outlier_pills"`
 }
 

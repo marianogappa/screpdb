@@ -1703,6 +1703,27 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{Label: "Made drops"},
 		},
 		{
+			Name:         "Offensive nydus canal",
+			PatternName:  "Offensive nydus canal",
+			FeatureKey:   "offensive_nydus",
+			Kind:         KindMarker,
+			Race:         RaceZerg,
+			Custom:       func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "nydus_attack"} },
+			RuleDeadline: endOfReplaySentinel,
+			SummaryPlayer: &Pill{
+				Label:   "Offensive nydus",
+				IconKey: "nyduscanal",
+				Style:   PillStyleStrong,
+				Title:   "Built a forward Nydus Canal and teleported an army into enemy territory",
+			},
+			GamesList: &Pill{
+				Label:   "Offensive nydus",
+				IconKey: "nyduscanal",
+				Style:   PillStyleStrong,
+				Title:   "Built a forward Nydus Canal and teleported an army into enemy territory",
+			},
+		},
+		{
 			Name:          "Made recalls",
 			PatternName:   "Made recalls",
 			FeatureKey:    "made_recalls",

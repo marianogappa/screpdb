@@ -461,6 +461,10 @@ const gameEventDescription = (event, registry) => {
     }
     return `${actor} recalls${recallCount}${fromClause} (destination unknown)`;
   }
+  if (eventType === 'nydus_attack') {
+    if (!actor || !target || !location) return 'Offensive nydus';
+    return `${actor} makes an offensive nydus onto ${target} at ${location}`;
+  }
   if (eventType === 'nuke') return actor && target && location ? `${actor} nukes ${target} at ${location}` : 'Nuke';
   if (eventType === 'cannon_rush' || eventType === 'bunker_rush' || eventType === 'zergling_rush') {
     const rushKind = eventType === 'cannon_rush' ? 'cannon' : eventType === 'bunker_rush' ? 'bunker' : 'zergling';
@@ -604,6 +608,14 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
     return actorName && targetName && location
       ? <>{actorSpan} scouts {targetSpan} at {location}</>
       : 'Scout';
+  }
+  if (eventType === 'nydus_attack') {
+    if (!actorName || !targetName || !location) return 'Offensive nydus';
+    const nydusURL = getUnitIcon('nyduscanal');
+    const nydusIcon = nydusURL ? (
+      <img src={nydusURL} alt="Nydus Canal" title="Nydus Canal" className="workflow-event-row-recall-arbiter" />
+    ) : null;
+    return <>{actorSpan} makes an offensive nydus{nydusIcon} onto {targetSpan} at {location}</>;
   }
   if (eventType === 'cliff_drop' || eventType === 'drop') {
     const fallback = eventType === 'cliff_drop' ? 'Cliff drop'
@@ -1112,7 +1124,7 @@ const mapPointToPercent = (point, bounds) => {
 // arrow draws from the cast point (source) to the inferred Arbiter location.
 // The recall arrow is suppressed at render time when no destination was
 // inferred (target_base missing) so we don't draw a misleading vector.
-const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'cliff_drop', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory', 'recall'].includes(String(eventType || '').toLowerCase());
+const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'cliff_drop', 'nydus_attack', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory', 'recall'].includes(String(eventType || '').toLowerCase());
 
 const fallbackOverlayUnitNamesForEvent = (eventType, actorRace) => {
   const normalized = normalizeEventType(eventType);
@@ -1131,6 +1143,7 @@ const fallbackOverlayUnitNamesForEvent = (eventType, actorRace) => {
     return ['dropship'];
   }
   if (normalized === 'nuke') return ['ghost'];
+  if (normalized === 'nydus_attack') return ['nyduscanal'];
   if (normalized === 'recall') return ['arbiter'];
   if (normalized === 'became_terran' || normalized === 'became_zerg') return ['darkarchon'];
   return [];
@@ -3838,7 +3851,7 @@ function App() {
     // where the unload happened). The dropped-unit overlay is anchored at the
     // source so the user sees "here's what got loaded" at the tail.
     const eventType = normalizeEventType(selectedMainGameEvent.type);
-    if (['drop', 'cliff_drop'].includes(eventType)) {
+    if (['drop', 'cliff_drop', 'nydus_attack'].includes(eventType)) {
       const sourceAnchor = polygonCenter(selectedMainGameEvent?.source_base?.polygon)
         || selectedMainGameEvent?.source_base?.center
         || selectedMainGameEvent?.source_point;

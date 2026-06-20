@@ -102,7 +102,15 @@ import (
 // real target-confirmed drops corpus-wide) with a per-target time-window dedup
 // (dropDedupWindowSec) so drop-heavy games stay readable without hiding distinct
 // attacks. Re-ingest so stored reaver_drop rows become "drop" and dedup applies.
-const AlgorithmVersion = 37
+//
+// 38: Offensive-nydus detection (issue #193). A forward BuildNydusExit placed in
+// enemy territory and confirmed as an army insertion (attack-coincidence or
+// post-placement activity) now emits a "nydus_attack" game event at the exit and
+// an "offensive_nydus" marker. Required surfacing the BuildNydusExit order in
+// cmdenrich (it arrives as an ActionType="Build" command, so it was previously
+// classified as a plain building) with tile→pixel coordinate normalization.
+// Re-ingest so offensive nydus pushes surface.
+const AlgorithmVersion = 38
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string
