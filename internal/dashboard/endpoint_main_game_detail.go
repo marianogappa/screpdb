@@ -991,6 +991,11 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 				}
 			}
 		}
+		if event.Target != nil {
+			if startClock, ok := startClockByPlayerID[event.Target.PlayerID]; ok {
+				event.TargetStartClock = lo.ToPtr(int64(startClock))
+			}
+		}
 		applyOwnershipTransition(&event, ownershipByBaseKey)
 		event.Ownership = ownershipSnapshot(ownershipByBaseKey, baseByKey)
 		if event.ActorOrigin == nil && event.Actor != nil {

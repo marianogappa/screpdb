@@ -314,6 +314,26 @@ const joinWithAnd = (items) => {
 // base") rather than a base — so it must NOT take an "at" preposition.
 const isOpenFieldLocation = (event) => String(event?.base?.kind || '').toLowerCase() === 'open_field';
 
+// isTargetAtOwnNaturalBase is true when the attacked location is the target's
+// own natural — so "X attacks Y at Y's natural" renders as the non-stuttering
+// "X attacks Y at their natural" (issue #186).
+const isTargetAtOwnNaturalBase = (event) => {
+  if (String(event?.base?.kind || '').toLowerCase() !== 'natural') return false;
+  const targetStart = Number(event?.target_start_clock);
+  const naturalOf = event?.base?.natural_of_clock;
+  if (naturalOf == null || !Number.isFinite(targetStart)) return false;
+  return Number(naturalOf) === targetStart;
+};
+
+// attackLocationClause picks the right preposition/phrasing for an attack's
+// location: the target's own natural → "at their natural"; open field → the
+// bare relational phrase; otherwise "at <base>".
+const attackLocationClause = (event, location) => {
+  if (isTargetAtOwnNaturalBase(event)) return 'at their natural';
+  if (isOpenFieldLocation(event)) return location;
+  return `at ${location}`;
+};
+
 const gameEventLocationLabel = (event) => {
   const baseName = String(event?.base?.name || '').trim();
   if (baseName) {
@@ -423,7 +443,7 @@ const gameEventDescription = (event, registry) => {
     if (actor && isActorAtOwnNaturalBase(event)) return `${actor} expands to their natural`;
     return actor && location ? `${actor} expands to ${location}` : 'Expansion';
   }
-  if (eventType === 'attack') return actor && target && location ? `${actor} attacks ${target} ${isOpenFieldLocation(event) ? location : `at ${location}`}` : 'Attack';
+  if (eventType === 'attack') return actor && target && location ? `${actor} attacks ${target} ${attackLocationClause(event, location)}` : 'Attack';
   if (eventType === 'scout') return actor && target && location ? `${actor} scouts ${target} at ${location}` : 'Scout';
   if (eventType === 'cliff_drop' || eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
     const fallback = eventType === 'cliff_drop' ? 'Cliff drop'
@@ -600,7 +620,7 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
   }
   if (eventType === 'attack') {
     return actorName && targetName && location
-      ? <>{actorSpan} attacks {targetSpan} {isOpenFieldLocation(event) ? location : <>at {location}</>}</>
+      ? <>{actorSpan} attacks {targetSpan} {attackLocationClause(event, location)}</>
       : 'Attack';
   }
   if (eventType === 'scout') {

@@ -506,6 +506,7 @@ type workflowGameEvent struct {
 	Base             *workflowGameEventBase   `json:"base,omitempty"`
 	ActorOrigin      *workflowGameEventPoint  `json:"actor_origin,omitempty"`
 	ActorStartClock  *int64                   `json:"actor_start_clock,omitempty"`
+	TargetStartClock *int64                   `json:"target_start_clock,omitempty"`
 	Ownership        []workflowGameOwnership  `json:"ownership,omitempty"`
 	AttackUnitTypes  []string                 `json:"attack_unit_types,omitempty"`
 	AttackCastCounts map[string]int64         `json:"attack_cast_counts,omitempty"`
