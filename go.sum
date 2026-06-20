@@ -69,8 +69,8 @@ github.com/lxn/walk v0.0.0-20210112085537-c389da54e794/go.mod h1:E23UucZGqpuUANJ
 github.com/lxn/win v0.0.0-20210218163916-a377121e959e/go.mod h1:KxxjdtRkfNoYDCUP5ryK7XJJNTnpC8atvtmTheChOtk=
 github.com/mailru/easyjson v0.7.7 h1:UGYAvKxe3sBsEDzO8ZeWOSlIQfWFlxbzLZe7hwFURr0=
 github.com/mailru/easyjson v0.7.7/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
-github.com/marianogappa/scmapanalyzer v0.0.0-20260507145022-a2a0fa5de1f5 h1:fcBmjHnHJePt7t7LQNL+xxv43iMb9DpPfvQqx2b7FUY=
-github.com/marianogappa/scmapanalyzer v0.0.0-20260507145022-a2a0fa5de1f5/go.mod h1:xJL47mAPS3ZouU6N7gTmxahd1lNzbNvCYQOJX+/3kqE=
+github.com/marianogappa/scmapanalyzer v0.0.0-20260610174907-72370c81026c h1:WIxRVtTTHIe+dWkLxyWqEhQ3RoG4XNqtYQOEDBlIa9E=
+github.com/marianogappa/scmapanalyzer v0.0.0-20260610174907-72370c81026c/go.mod h1:xJL47mAPS3ZouU6N7gTmxahd1lNzbNvCYQOJX+/3kqE=
 github.com/marianogappa/screp v0.0.0-20250930085841-44d5f5ad657c h1:0JS8YGQLHH0A88qZ8gDX7a2VpJk9l2D+0J6TWV1jyf8=
 github.com/marianogappa/screp v0.0.0-20250930085841-44d5f5ad657c/go.mod h1:p5nCDcfboNnOOqPZPYENWj1v3WQm6mEFbxruAztKIz8=
 github.com/mark3labs/mcp-go v0.41.1 h1:w78eWfiQam2i8ICL7AL0WFiq7KHNJQ6UB53ZVtH4KGA=

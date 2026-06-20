@@ -201,6 +201,7 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 		return fmt.Errorf("failed to query replay events: %w", err)
 	}
 	detail.GameEvents = replayEventsFromRows(eventRows, mapLayout, startClockByPlayerID)
+	detail.GameEvents = resolveNaturalOwnerLabels(detail.GameEvents, detail.Players, startClockByPlayerID)
 	detail.GameEvents = resolveRecallTargetOwners(detail.GameEvents, detail.Players)
 	detail.GameEvents = resolveAllianceTeamPlayers(detail.GameEvents, detail.Players, displayByName)
 	for i := range detail.GameEvents {
@@ -1242,6 +1243,37 @@ func applyRecallPayload(event *workflowGameEvent, raw string, baseMetas []overla
 // for recall events using the supplied PID → workflowGameEventPlayer lookup.
 // Split from applyRecallPayload because replayEventsFromRows has no access
 // to the per-replay players list — that's owned by populateDetectedPatternsForGameDetail.
+// resolveNaturalOwnerLabels relabels a natural-expansion location with its
+// owner's player name ("Skins_'s natural") instead of the start-clock form
+// ("7's natural"), when the natural's natural_of_clock matches a player's
+// start location (issue #186 review). Falls through unchanged when no owner is
+// found, preserving the clock-based baseLabel.
+func resolveNaturalOwnerLabels(events []workflowGameEvent, players []workflowGamePlayer, startClockByPlayerID map[int64]int) []workflowGameEvent {
+	if len(events) == 0 || len(startClockByPlayerID) == 0 {
+		return events
+	}
+	nameByID := make(map[int64]string, len(players))
+	for _, p := range players {
+		nameByID[p.PlayerID] = p.Name
+	}
+	nameByClock := map[int64]string{}
+	for id, clock := range startClockByPlayerID {
+		if name, ok := nameByID[id]; ok {
+			nameByClock[int64(clock)] = name
+		}
+	}
+	for i := range events {
+		b := events[i].Base
+		if b == nil || strings.ToLower(b.Kind) != "natural" || b.NaturalOfClock == nil {
+			continue
+		}
+		if name, ok := nameByClock[*b.NaturalOfClock]; ok && strings.TrimSpace(name) != "" {
+			b.Name = name + "'s natural"
+		}
+	}
+	return events
+}
+
 func resolveRecallTargetOwners(events []workflowGameEvent, players []workflowGamePlayer) []workflowGameEvent {
 	if len(events) == 0 || len(players) == 0 {
 		return events

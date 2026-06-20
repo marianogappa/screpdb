@@ -309,6 +309,11 @@ const joinWithAnd = (items) => {
   return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
 };
 
+// isOpenFieldLocation is true for 1v1 open-field attacks (issue #186) whose
+// location is a self-contained relational phrase ("in the middle", "near X's
+// base") rather than a base — so it must NOT take an "at" preposition.
+const isOpenFieldLocation = (event) => String(event?.base?.kind || '').toLowerCase() === 'open_field';
+
 const gameEventLocationLabel = (event) => {
   const baseName = String(event?.base?.name || '').trim();
   if (baseName) {
@@ -418,7 +423,7 @@ const gameEventDescription = (event, registry) => {
     if (actor && isActorAtOwnNaturalBase(event)) return `${actor} expands to their natural`;
     return actor && location ? `${actor} expands to ${location}` : 'Expansion';
   }
-  if (eventType === 'attack') return actor && target && location ? `${actor} attacks ${target} at ${location}` : 'Attack';
+  if (eventType === 'attack') return actor && target && location ? `${actor} attacks ${target} ${isOpenFieldLocation(event) ? location : `at ${location}`}` : 'Attack';
   if (eventType === 'scout') return actor && target && location ? `${actor} scouts ${target} at ${location}` : 'Scout';
   if (eventType === 'cliff_drop' || eventType === 'drop' || eventType === 'reaver_drop' || eventType === 'dt_drop') {
     const fallback = eventType === 'cliff_drop' ? 'Cliff drop'
@@ -595,7 +600,7 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
   }
   if (eventType === 'attack') {
     return actorName && targetName && location
-      ? <>{actorSpan} attacks {targetSpan} at {location}</>
+      ? <>{actorSpan} attacks {targetSpan} {isOpenFieldLocation(event) ? location : <>at {location}</>}</>
       : 'Attack';
   }
   if (eventType === 'scout') {
