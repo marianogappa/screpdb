@@ -969,6 +969,18 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 			event.Base = &base
 			baseByKey[baseKeyForEvent(&event)] = base
 		}
+		// Open-field 1v1 attacks (issue #186) have no base columns but carry a
+		// relational location ("in the middle", "near White's base") in the
+		// payload — surface it as the event's location label.
+		if event.Base == nil && row.EventType == "attack" && row.Payload != nil {
+			if loc, x, y, ok := parseAttackRelativeLocation(*row.Payload); ok {
+				event.Base = &workflowGameEventBase{
+					Name:   loc,
+					Kind:   "open_field",
+					Center: workflowGameEventPoint{X: x, Y: y},
+				}
+			}
+		}
 		if event.Actor != nil {
 			if startClock, ok := startClockByPlayerID[event.Actor.PlayerID]; ok {
 				event.ActorStartClock = lo.ToPtr(int64(startClock))
@@ -1561,6 +1573,29 @@ func baseLabel(baseType *string, baseOclock *int64, naturalOf *int64) string {
 		}
 		return "expansion"
 	}
+}
+
+// parseAttackRelativeLocation extracts the open-field relational location
+// label ("loc") and the fight centroid (pixels) from an attack event's payload
+// (issue #186). ok is false for any payload that doesn't carry a label.
+func parseAttackRelativeLocation(raw string) (loc string, x, y float64, ok bool) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return "", 0, 0, false
+	}
+	var p struct {
+		Loc string  `json:"loc"`
+		X   float64 `json:"x"`
+		Y   float64 `json:"y"`
+	}
+	if err := json.Unmarshal([]byte(trimmed), &p); err != nil {
+		return "", 0, 0, false
+	}
+	label := strings.TrimSpace(p.Loc)
+	if label == "" {
+		return "", 0, 0, false
+	}
+	return label, p.X, p.Y, true
 }
 
 func parseAttackUnitTypes(raw *string) []string {

@@ -75,7 +75,19 @@ import (
 // a viewport teleport to the map origin (tile coords read as pixels) and so
 // over-reported switches_per_minute — most for build-heavy players. Re-ingest
 // so stored Viewport Multitasking values are corrected.
-const AlgorithmVersion = 34
+//
+// 35: 1v1 attack detection rewritten (issue #186). For exactly-two-opposing-
+// player games, attacks are detected as bilateral space-time command clusters
+// (a real fight needs both sides active in one neighbourhood), located by
+// point-in-polygon (correct base kind/clock/owner) or by inter-base-axis
+// relational prose in open field ("in the middle", "near X's base", with drift
+// direction), and gated on per-side command count + duration — replacing the
+// pressure-tracker + unit-novelty filter, which over-fired on one-sided pokes
+// and mislabeled locations. Multiplayer keeps the existing per-base path.
+// Also: a "starting"-kind polygon that is not an actual player main (extra
+// start locations on an N-player map played 1v1) now labels as "expansion".
+// Re-ingest so stored attack events reflect the new model.
+const AlgorithmVersion = 35
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

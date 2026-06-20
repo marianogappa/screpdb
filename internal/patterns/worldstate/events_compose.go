@@ -692,6 +692,9 @@ func (e *Engine) emitAttackCandidates(candidates []CandidateAttack) {
 			// can still match against them; emission is handled elsewhere.
 			continue
 		case "attack":
+			if e.use1v1Attacks {
+				continue // 1v1 attacks are emitted by emit1v1Attacks
+			}
 			if c.Defender == neutralPID {
 				if earliestNeutralAttack == nil || c.Second < earliestNeutralAttack.Second {
 					cc := c
