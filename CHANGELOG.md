@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.7.0](https://github.com/marianogappa/screpdb/compare/v1.6.1...v1.7.0) (2026-06-20)
+
+
+### Features
+
+* **attacks:** live 1v1 bilateral-fight attack detection ([#186](https://github.com/marianogappa/screpdb/issues/186)) ([#197](https://github.com/marianogappa/screpdb/issues/197)) ([3f92885](https://github.com/marianogappa/screpdb/commit/3f92885964d58544fd4a5371b9192e35aade80a4))
+* **nydus:** detect offensive nydus canals as a game event and marker (closes [#193](https://github.com/marianogappa/screpdb/issues/193)) ([#201](https://github.com/marianogappa/screpdb/issues/201)) ([2f7cb87](https://github.com/marianogappa/screpdb/commit/2f7cb87ed564c07f4c80b8b254324d0036515c30))
+
+
+### Bug Fixes
+
+* **rush:** detect bunker rush on standard 1v1 maps (closes [#195](https://github.com/marianogappa/screpdb/issues/195)) ([#200](https://github.com/marianogappa/screpdb/issues/200)) ([19f9e8c](https://github.com/marianogappa/screpdb/commit/19f9e8c58e32a3b2552edf6b0c7536de28db5ebc))
+* **rush:** detect zergling rush into enemy's neutral natural on standard maps (closes [#196](https://github.com/marianogappa/screpdb/issues/196)) ([#199](https://github.com/marianogappa/screpdb/issues/199)) ([7d5f0c4](https://github.com/marianogappa/screpdb/commit/7d5f0c40e7fc05262bafe2eebd23ba25f79f7601))
+
 ## [1.6.1](https://github.com/marianogappa/screpdb/compare/v1.6.0...v1.6.1) (2026-06-17)
 
 
