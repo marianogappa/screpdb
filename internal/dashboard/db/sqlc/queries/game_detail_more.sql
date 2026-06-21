@@ -59,6 +59,12 @@ WHERE re.replay_id = ?
 -- second roundtrip. Right-clicks/hotkeys etc. live in commands_low_value
 -- and are intentionally excluded -- per the project memory rule the
 -- dashboard never queries that table.
+--
+-- Casts/abilities are all 'Targeted Order' commands (Cast*, FireYamatoGun,
+-- PlaceMine, ...). We pull the whole action type rather than matching
+-- order_name prefixes here so the Go-side compositionSpells map is the
+-- single source of truth for which orders surface -- adding a spell never
+-- needs an SQL change. Unmapped Targeted Orders are dropped in Go.
 SELECT
   c.player_id,
   c.action_type,
@@ -71,10 +77,7 @@ JOIN players p ON p.id = c.player_id
 WHERE c.replay_id = ?
   AND p.is_observer = 0
   AND lower(trim(coalesce(p.type, ''))) = 'human'
-  AND (
-    c.action_type IN ('Train', 'Unit Morph')
-    OR (c.order_name IS NOT NULL AND (c.order_name LIKE 'Cast%' OR c.order_name LIKE 'Nuke%' OR c.order_name = 'NuclearStrike'))
-  )
+  AND c.action_type IN ('Train', 'Unit Morph', 'Targeted Order')
 ORDER BY c.player_id, c.seconds_from_game_start, c.id;
 
 -- name: ListPlayerFirstExpansionTimings :many

@@ -2525,7 +2525,7 @@ body {
 
 .workflow-summary-map-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-start;
   justify-content: flex-start;
   gap: 14px;
@@ -3297,73 +3297,135 @@ body {
   font-size: 0.74rem;
 }
 
-/* CompositionPill — per-game attacker-composition family.
+/* Composition zones — per-game attacker composition.
    Backed by internal/dashboard/frontend/src/lib/compositionPill.jsx.
-   Layout: phase label | 10-slot unit-icon strip | separator | caster
-   icons. No percentages — proportional fill comes from how many slots
-   each unit gets via largest-remainder distribution. */
-.workflow-composition-pill-row {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-.workflow-composition-pill {
-  display: inline-flex;
-  align-items: center;
+   Three phase columns (early | mid | late) rendered as solid, spaced
+   bars; each bar is a proportional stack of colour-coded unit segments
+   (width = share, icon on top). A phase the game never reached is a
+   faint empty bar (a "hole"). CompositionZonesHeader labels the columns
+   once above the rows. */
+.workflow-composition-zones {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  padding: 4px 10px;
+  width: 100%;
+  align-items: stretch;
 }
-.workflow-composition-pill-phase {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  opacity: 0.85;
-  flex: 0 0 auto;
+.workflow-composition-zones-slim {
+  flex: 1 1 0;
+  min-width: 0;
 }
-.workflow-composition-pill-units {
-  display: inline-flex;
+.workflow-composition-zones-header {
+  margin-bottom: 5px;
   align-items: center;
 }
-/* -5px left margin on EVERY chip (including the first) so the icons
-   bunch tightly together — gives a deliberate "stacked army" feel
-   rather than a spaced row. The first chip's overhang into the parent
-   is intentional and reads as part of the pill's left padding. Applies
-   to both the units strip and the casters strip per spec. */
-.workflow-composition-pill-slot {
-  display: inline-flex;
+.workflow-composition-zone-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+  text-align: center;
+}
+.workflow-composition-zone {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+/* One phase bar: rounded, clips its colour segments into a solid shape. */
+.workflow-composition-bar {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  height: 40px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.workflow-composition-bar-empty {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.09);
+}
+.workflow-composition-seg {
+  display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: -5px;
+  flex-basis: 0;
+  min-width: 0;
+  padding: 2px;
 }
-.workflow-composition-pill-icon {
-  /* 20% smaller than the previous 36px (36 * 0.8 = 28.8 → 29). Keep
-     in sync between unit slots and caster chips so the two strips
-     read as the same scale. */
-  width: 29px;
-  height: 29px;
+/* The icon scales to its segment: capped by the bar height, but shrinks
+   to fit a narrow (low-share) segment — so icon size itself echoes the
+   unit's share and nothing ever overflows the bar. */
+.workflow-composition-seg-icon {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+/* "+k" tail chip for the long tail of unit types a bar can't fit. */
+.workflow-composition-seg-more {
+  min-width: 20px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+}
+/* Slim variant for the dense per-player rows: lean into the row height
+   so the bars don't look cramped. */
+.workflow-composition-zones-slim .workflow-composition-bar {
+  height: 34px;
+  border-radius: 5px;
+}
+.workflow-composition-zones-slim .workflow-composition-seg-more {
+  min-width: 16px;
+  font-size: 0.58rem;
+}
+
+/* "Casts" pill — per-player Featuring strip: icon-only (one per distinct
+   cast, a unit repeats for distinct spells), legended. Spell names live
+   in the tooltip. Tinted to read as its own family, like the hotkeys pill. */
+.workflow-spellcasts-pill {
+  flex-wrap: wrap;
+  gap: 3px;
+  border-color: rgba(180, 160, 240, 0.4);
+  background: rgba(150, 130, 220, 0.12);
+}
+.workflow-spellcasts-pill .workflow-pill-legend {
+  color: rgba(206, 195, 255, 0.95);
+}
+.workflow-spellcast-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+.workflow-spellcast-icon {
+  width: 22px;
+  height: 22px;
   object-fit: contain;
   flex: 0 0 auto;
 }
-.workflow-composition-pill-casters {
-  display: inline-flex;
-  align-items: center;
-  padding-left: 8px;
-  border-left: 1px solid rgba(255, 255, 255, 0.18);
-  margin-left: 2px;
+
+/* Summary Spellcasts block sits below the composition; its pills reuse
+   the standard Featuring pill look. */
+.workflow-summary-spellcasts {
+  margin-top: 16px;
 }
-.workflow-composition-pill-caster {
-  display: inline-flex;
-  align-items: center;
-  margin-left: -5px;
+.workflow-summary-spellcasts-title {
+  margin-bottom: 8px;
 }
-/* Bottom margin under the "GAME PHASE" header so the pills row sits
-   slightly clear of the section title. Only the composition variant
-   uses this — the "This game" header above keeps its existing tight
-   spacing. */
+
+/* Vertical gap between the Featuring pills and the Unit Composition
+   section, plus breathing room under the section title. */
+.workflow-summary-composition {
+  margin-top: 18px;
+}
 .workflow-summary-composition-title {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+}
+/* Player-table header cell stacks the title over the phase sub-header. */
+.wpt-head-comp {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .workflow-insight-grid {

@@ -104,10 +104,10 @@ func TestComputeComposition_CarriersGoToLateWhenOnlyMidEndSet(t *testing.T) {
 		t.Fatalf("Carriers should bin to late, got phase=%q (full row: %+v)", got[0].Phase, got[0])
 	}
 	// Carrier is a regular attacking unit — appears in the slot strip
-	// (units list) with its real count, not in the right-side casters
-	// strip. Reaver behaves the same way (see test below).
-	if len(got[0].Casters) != 0 {
-		t.Fatalf("Carrier must not appear in casters strip, got %+v", got[0].Casters)
+	// (units list) with its real count, not in the spells strip. Reaver
+	// behaves the same way (see test below).
+	if len(got[0].Spells) != 0 {
+		t.Fatalf("Carrier must not appear in spells strip, got %+v", got[0].Spells)
 	}
 	if len(got[0].Units) != 1 || got[0].Units[0].Name != "Carrier" || got[0].Units[0].Count != 2 {
 		t.Fatalf("Carrier should be in units with count 2, got %+v", got[0].Units)
@@ -129,11 +129,84 @@ func TestComputeComposition_ReaverIsRegularAttackingUnit(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("want 1 row, got %d: %+v", len(got), got)
 	}
-	if len(got[0].Casters) != 0 {
-		t.Fatalf("Reaver must not appear in casters strip, got %+v", got[0].Casters)
+	if len(got[0].Spells) != 0 {
+		t.Fatalf("Reaver must not appear in spells strip, got %+v", got[0].Spells)
 	}
 	if len(got[0].Units) != 1 || got[0].Units[0].Name != "Reaver" || got[0].Units[0].Count != 3 {
 		t.Fatalf("Reaver should be in units with count 3, got %+v", got[0].Units)
+	}
+}
+
+func TestComputeComposition_SpellsByCastNotUnit(t *testing.T) {
+	// A Science Vessel that casts both Irradiate and EMP yields two
+	// distinct spell entries sharing the same unit icon. The Vessel never
+	// appears in the Units histogram. Casts arrive as 'Targeted Order'
+	// commands (mirroring the SQL). A spell-only phase still needs a
+	// non-zero productionCount, so the Vessel build is present too.
+	playerID := int64(5)
+	rows := []db.UnitProductionOrCastRow{
+		{PlayerID: playerID, ActionType: "Train", UnitType: ptr("Marine"), SecondsFromGameStart: 100},
+		{PlayerID: playerID, ActionType: "Train", UnitType: ptr("Science Vessel"), SecondsFromGameStart: 110},
+		{PlayerID: playerID, ActionType: "Targeted Order", OrderName: ptr("CastIrradiate"), SecondsFromGameStart: 120},
+		{PlayerID: playerID, ActionType: "Targeted Order", OrderName: ptr("CastEMPShockwave"), SecondsFromGameStart: 130},
+		{PlayerID: playerID, ActionType: "Targeted Order", OrderName: ptr("CastIrradiate"), SecondsFromGameStart: 140},
+	}
+	got := computeCompositionForReplay(rows, db.PhaseBoundaries{EarlyEndsAtSecond: 0, MidEndsAtSecond: 0})
+	if len(got) != 1 {
+		t.Fatalf("want 1 row, got %d: %+v", len(got), got)
+	}
+	if len(got[0].Units) != 1 || got[0].Units[0].Name != "Marine" {
+		t.Fatalf("only Marine should be in units (Vessel excluded), got %+v", got[0].Units)
+	}
+	if len(got[0].Spells) != 2 {
+		t.Fatalf("want 2 distinct spells (Irradiate deduped), got %+v", got[0].Spells)
+	}
+	for _, s := range got[0].Spells {
+		if s.Unit != "Science Vessel" {
+			t.Fatalf("spell %q should carry the Science Vessel icon, got unit %q", s.Spell, s.Unit)
+		}
+	}
+}
+
+func TestComputeComposition_BattlecruiserInHistogramPlusYamato(t *testing.T) {
+	// Battlecruiser is primarily an attacker: it always counts in the
+	// Units histogram. A Yamato cast ('Targeted Order' / FireYamatoGun —
+	// not a "Cast*" order) additionally surfaces it under Spells, so the
+	// BC appears in both places.
+	playerID := int64(9)
+	rows := []db.UnitProductionOrCastRow{
+		{PlayerID: playerID, ActionType: "Train", UnitType: ptr("Battlecruiser"), SecondsFromGameStart: 600},
+		{PlayerID: playerID, ActionType: "Train", UnitType: ptr("Battlecruiser"), SecondsFromGameStart: 610},
+		{PlayerID: playerID, ActionType: "Targeted Order", OrderName: ptr("FireYamatoGun"), SecondsFromGameStart: 620},
+	}
+	got := computeCompositionForReplay(rows, db.PhaseBoundaries{})
+	if len(got) != 1 {
+		t.Fatalf("want 1 row, got %d: %+v", len(got), got)
+	}
+	if len(got[0].Units) != 1 || got[0].Units[0].Name != "Battlecruiser" || got[0].Units[0].Count != 2 {
+		t.Fatalf("Battlecruiser should be in units with count 2, got %+v", got[0].Units)
+	}
+	if len(got[0].Spells) != 1 || got[0].Spells[0].Spell != "Yamato Gun" || got[0].Spells[0].Unit != "Battlecruiser" {
+		t.Fatalf("Yamato cast should also surface as a Yamato Gun spell, got %+v", got[0].Spells)
+	}
+}
+
+func TestComputeComposition_VultureMineIsACast(t *testing.T) {
+	// Spider Mine is a non-"Cast*" ability (PlaceMine / VultureMine). The
+	// Vulture stays in the histogram as an attacker and the mine surfaces
+	// under Spells — proving the SQL/map fix isn't Yamato-specific.
+	playerID := int64(11)
+	rows := []db.UnitProductionOrCastRow{
+		{PlayerID: playerID, ActionType: "Train", UnitType: ptr("Vulture"), SecondsFromGameStart: 200},
+		{PlayerID: playerID, ActionType: "Targeted Order", OrderName: ptr("PlaceMine"), SecondsFromGameStart: 210},
+		{PlayerID: playerID, ActionType: "Targeted Order", OrderName: ptr("VultureMine"), SecondsFromGameStart: 220},
+	}
+	got := computeCompositionForReplay(rows, db.PhaseBoundaries{})
+	if len(got) != 1 || len(got[0].Units) != 1 || got[0].Units[0].Name != "Vulture" {
+		t.Fatalf("Vulture should be in the histogram, got %+v", got)
+	}
+	if len(got[0].Spells) != 1 || got[0].Spells[0].Spell != "Spider Mine" || got[0].Spells[0].Unit != "Vulture" {
+		t.Fatalf("Spider Mine should surface once under Spells, got %+v", got[0].Spells)
 	}
 }
 

@@ -13,22 +13,20 @@ import (
 // At request time the per-game endpoint loads the persisted phase
 // boundaries (mid_game_starts / late_game_starts replay-level markers)
 // and the Train / Unit Morph / Cast command stream for the replay, then
-// produces a flat list of (player, phase, units, casters) entries. The
+// produces a flat list of (player, phase, units, spells) entries. The
 // frontend renders per-player rows on each player strip and aggregates
-// client-side into 3 replay-level pills for the per-game summary
-// surface. Counts are sent raw — the frontend does the 10-slot
-// proportional fill on render so we don't lock into a presentation
-// shape on the wire.
+// client-side into 3 replay-level bars for the per-game summary
+// surface. Counts are sent raw — the frontend does the proportional
+// fill on render so we don't lock into a presentation shape on the wire.
 //
-// Why request-time, not ingest-time: the rules (caster set, signature
-// non-casters, excluded units) iterate without re-ingest. Persisting
+// Why request-time, not ingest-time: the rules (caster set, spell map,
+// non-army units, excluded units) iterate without re-ingest. Persisting
 // the histogram on every replay would lock those rules at ingest and
 // force re-detection passes to update.
 
-// compositionCasters: units that can cast spells. Excluded from the
-// units histogram. Surfaced in the right strip iff they actually cast a
-// spell during the phase. Keep in sync with
-// internal/models/order_unit_associations.go (UnitOrderToUnit).
+// compositionCasters: spellcaster units. Kept out of the Units
+// histogram (their presence is captured via the spells they cast, not
+// their headcount). Keep in sync with compositionSpells below.
 var compositionCasters = map[string]struct{}{
 	models.GeneralUnitHighTemplar:   {},
 	models.GeneralUnitDefiler:       {},
@@ -41,24 +39,76 @@ var compositionCasters = map[string]struct{}{
 	models.GeneralUnitCorsair:       {},
 }
 
-// compositionSignatureNonCasters: notable non-spellcaster units that
-// warrant a "once if built" chip in the right strip rather than
-// counting toward the units histogram. Reserved for units that aren't
-// really part of bulk-army composition — transports, nukes, late
-// morphs, signature stealth/harassers — where seeing them appear at
-// all is the interesting signal, not their count.
+// compositionNonArmy: units kept out of the Units histogram because they
+// don't read as bulk army composition — transports (Dropship/Shuttle)
+// and the Nuke.
 //
-// Note: Carrier and Reaver are intentionally NOT in this set. Both are
-// produced in meaningful numbers (4-12 Carriers, 2-6 Reavers) and read
-// as primary army composition, so they belong in the slot strip on the
-// left where the proportional fill reflects their actual share.
-// Dark Templar, Guardian and Devourer are NOT here: they're real army units
-// (and DT in particular is not a spellcaster), so they belong in the unit
-// histogram on the left, not the caster/notable strip on the right.
-var compositionSignatureNonCasters = map[string]struct{}{
-	models.GeneralUnitBattlecruiser:  {},
+// Battlecruiser is intentionally NOT here: it's primarily an attacking
+// unit, so it always counts in the Units histogram (and additionally
+// surfaces its Yamato Gun under Spellcasts when cast — a unit can appear
+// in both, like the Vulture and its Spider Mine). Carrier, Reaver, Dark
+// Templar, Guardian and Devourer stay in the histogram for the same
+// reason.
+var compositionNonArmy = map[string]struct{}{
 	models.GeneralUnitDropship:       {},
+	models.GeneralUnitShuttle:        {},
 	models.GeneralUnitNuclearMissile: {},
+}
+
+// compositionSpell pairs the casting unit (for its icon) with the
+// spell's display name. The same unit appears under multiple spells.
+type compositionSpell struct {
+	unit  string
+	spell string
+}
+
+// compositionSpells maps an ability OrderName (a 'Targeted Order' command
+// — Cast*, FireYamatoGun, PlaceMine, ...) to the (unit, spell) it
+// represents. This map is the single source of truth for what counts as a
+// spellcast: the SQL returns every Targeted Order and unmapped ones are
+// dropped here, so adding/removing a cast is a one-line change with no SQL
+// edit. Only meaningful player abilities are listed — unit morphs (Archon
+// warp, Dark Archon meld, Guardian aspect), passives (Arbiter cloak),
+// continuous Medic heal, Comsat scans and all Nuke orders are excluded
+// (the Nuke has its own Featuring pill). Stasis Field is attributed to the
+// Arbiter even though UnitOrderToUnit ties the order to the Science Vessel
+// — the Arbiter is the unit that actually casts it.
+var compositionSpells = map[string]compositionSpell{
+	models.UnitOrderCastPsionicStorm:  {models.GeneralUnitHighTemplar, "Psionic Storm"},
+	models.UnitOrderCastHallucination: {models.GeneralUnitHighTemplar, "Hallucination"},
+	models.UnitOrderHallucination2:    {models.GeneralUnitHighTemplar, "Hallucination"},
+
+	models.UnitOrderFireYamatoGun: {models.GeneralUnitBattlecruiser, "Yamato Gun"},
+
+	models.UnitOrderVultureMine: {models.GeneralUnitVulture, "Spider Mine"},
+	models.UnitOrderPlaceMine:   {models.GeneralUnitVulture, "Spider Mine"},
+
+	models.UnitOrderCastLockdown: {models.GeneralUnitGhost, "Lockdown"},
+
+	models.UnitOrderCastDarkSwarm: {models.GeneralUnitDefiler, "Dark Swarm"},
+	models.UnitOrderCastPlague:    {models.GeneralUnitDefiler, "Plague"},
+	models.UnitOrderCastConsume:   {models.GeneralUnitDefiler, "Consume"},
+
+	models.UnitOrderCastEMPShockwave:    {models.GeneralUnitScienceVessel, "EMP Shockwave"},
+	models.UnitOrderCastIrradiate:       {models.GeneralUnitScienceVessel, "Irradiate"},
+	models.UnitOrderCastDefensiveMatrix: {models.GeneralUnitScienceVessel, "Defensive Matrix"},
+
+	models.UnitOrderCastStasisField: {models.GeneralUnitArbiter, "Stasis Field"},
+	models.UnitOrderCastRecall:      {models.GeneralUnitArbiter, "Recall"},
+
+	models.UnitOrderCastDisruptionWeb: {models.GeneralUnitCorsair, "Disruption Web"},
+
+	models.UnitOrderCastMindControl: {models.GeneralUnitDarkArchon, "Mind Control"},
+	models.UnitOrderCastFeedback:    {models.GeneralUnitDarkArchon, "Feedback"},
+	models.UnitOrderCastMaelstrom:   {models.GeneralUnitDarkArchon, "Maelstrom"},
+
+	models.UnitOrderCastParasite:        {models.GeneralUnitQueen, "Parasite"},
+	models.UnitOrderCastSpawnBroodlings: {models.GeneralUnitQueen, "Spawn Broodlings"},
+	models.UnitOrderCastEnsnare:         {models.GeneralUnitQueen, "Ensnare"},
+	models.UnitOrderCastInfestation:     {models.GeneralUnitQueen, "Infest Command Center"},
+
+	models.UnitOrderCastRestoration:  {models.GeneralUnitMedic, "Restoration"},
+	models.UnitOrderCastOpticalFlare: {models.GeneralUnitMedic, "Optical Flare"},
 }
 
 // compositionExcluded: workers + supply. Don't appear anywhere.
@@ -91,8 +141,7 @@ func computeCompositionForReplay(rows []db.UnitProductionOrCastRow, boundaries d
 	}
 	type accum struct {
 		units           map[string]int
-		castersThatCast map[string]struct{}
-		signaturesBuilt map[string]struct{}
+		spells          map[compositionSpell]struct{}
 		productionCount int
 	}
 	buckets := map[accumKey]*accum{}
@@ -101,9 +150,8 @@ func computeCompositionForReplay(rows []db.UnitProductionOrCastRow, boundaries d
 		b, ok := buckets[key]
 		if !ok {
 			b = &accum{
-				units:           map[string]int{},
-				castersThatCast: map[string]struct{}{},
-				signaturesBuilt: map[string]struct{}{},
+				units:  map[string]int{},
+				spells: map[compositionSpell]struct{}{},
 			}
 			buckets[key] = b
 		}
@@ -124,13 +172,13 @@ func computeCompositionForReplay(rows []db.UnitProductionOrCastRow, boundaries d
 				b := getBucket(row.PlayerID, phase)
 				b.productionCount++
 				if _, isCaster := compositionCasters[name]; isCaster {
-					// Caster builds count toward the gate but show in the
-					// strip only if a spell was actually cast — handled
-					// by the cast branch below.
+					// Casters stay out of the histogram — captured via the
+					// spells they cast (cast branch below), not headcount.
 					continue
 				}
-				if _, isSig := compositionSignatureNonCasters[name]; isSig {
-					b.signaturesBuilt[name] = struct{}{}
+				if _, isNonArmy := compositionNonArmy[name]; isNonArmy {
+					// Transports / Nuke / Battlecruiser: not army composition.
+					// BC surfaces only via its Yamato Gun spell.
 					continue
 				}
 				b.units[name]++
@@ -140,15 +188,12 @@ func computeCompositionForReplay(rows []db.UnitProductionOrCastRow, boundaries d
 			if row.OrderName == nil {
 				continue
 			}
-			origin, ok := models.UnitOrderToUnit[*row.OrderName]
+			spell, ok := compositionSpells[*row.OrderName]
 			if !ok {
 				continue
 			}
-			if _, isCaster := compositionCasters[origin.Unit]; !isCaster {
-				continue
-			}
 			b := getBucket(row.PlayerID, phase)
-			b.castersThatCast[origin.Unit] = struct{}{}
+			b.spells[spell] = struct{}{}
 		}
 	}
 
@@ -161,7 +206,7 @@ func computeCompositionForReplay(rows []db.UnitProductionOrCastRow, boundaries d
 			PlayerID: key.playerID,
 			Phase:    key.phase,
 			Units:    sortUnitsDesc(b.units),
-			Casters:  unionStrip(b.castersThatCast, b.signaturesBuilt),
+			Spells:   sortSpells(b.spells),
 		})
 	}
 	sortGameCompositionRows(out)
@@ -232,24 +277,22 @@ func sortUnitsDesc(counts map[string]int) []workflowUnitCompositionUnit {
 	return out
 }
 
-// unionStrip merges casters-that-cast and signature-non-casters into a
-// single right-side strip, deduplicated and alphabetically sorted.
-func unionStrip(a, b map[string]struct{}) []string {
-	if len(a) == 0 && len(b) == 0 {
+// sortSpells flattens the distinct (unit, spell) set into a stable list
+// ordered by unit then spell, so the same caster's spells group together.
+func sortSpells(spells map[compositionSpell]struct{}) []workflowUnitCompositionSpell {
+	if len(spells) == 0 {
 		return nil
 	}
-	merged := map[string]struct{}{}
-	for k := range a {
-		merged[k] = struct{}{}
+	out := make([]workflowUnitCompositionSpell, 0, len(spells))
+	for s := range spells {
+		out = append(out, workflowUnitCompositionSpell{Unit: s.unit, Spell: s.spell})
 	}
-	for k := range b {
-		merged[k] = struct{}{}
-	}
-	out := make([]string, 0, len(merged))
-	for k := range merged {
-		out = append(out, k)
-	}
-	sort.Strings(out)
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Unit != out[j].Unit {
+			return out[i].Unit < out[j].Unit
+		}
+		return out[i].Spell < out[j].Spell
+	})
 	return out
 }
 

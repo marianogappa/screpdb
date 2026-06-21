@@ -23,8 +23,12 @@ import {
   renderAggregatePillText,
 } from './lib/markerRegistry';
 import {
-  CompositionPhasesRow,
+  CompositionZones,
+  CompositionZonesHeader,
+  SpellcastsPill,
+  SpellcastsChips,
   computeReplayAggregatePhases,
+  collectPlayerSpells,
 } from './lib/compositionPill';
 import {
   getStoredAutoIngestSettings,
@@ -1643,8 +1647,8 @@ const renderPatternPill = (pattern, keyPrefix, team, registry) => {
   // legend + accent colour identify the pill type.
   const isOpener = isOpenerEventType(pattern?.event_type);
   const isHotkeys = pattern?.event_type === 'used_hotkey_groups';
-  // A top-border legend names the pill type (opener / hotkeys); composition
-  // pills get theirs in CompositionPill.
+  // A top-border legend names the pill type (opener / hotkeys); the
+  // Spellcasts pill carries its own legend (see SpellcastsPill).
   const legendText = isOpener ? 'Build Order' : (isHotkeys ? 'Hotkeys' : null);
   const className = `${pillClassName(rendered.style)} ${pillEventTypeClass(pattern?.event_type)} ${legendText ? 'workflow-pill-legended' : ''}`.trim();
   const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.event_type || ''}-${pattern?.detected_second ?? ''}`;
@@ -5859,24 +5863,30 @@ function App() {
                         ) : (
                           <div className="workflow-subtle-note">No featured highlights for this replay.</div>
                         )}
-                        {/* Replay-aggregate attacker-composition pills (early/mid/late).
-                            Computed at display time by summing per-player counts in
-                            mainGame.unit_composition_markers (Decision 6 in plan
-                            ~/.claude/plans/i-want-to-explore-snoopy-hippo.md). */}
+                        {/* Replay-aggregate attacker-composition bars (early/mid/late),
+                            computed at display time by summing per-player counts in
+                            mainGame.unit_composition_markers. Spellcasts (distinct
+                            casts, not headcount) sit in their own block below. */}
                         {Array.isArray(mainGame?.unit_composition_markers) && mainGame.unit_composition_markers.length > 0 ? (
-                          <div className="workflow-summary-composition">
-                            <div className="workflow-summary-features-title workflow-summary-composition-title">Unit composition</div>
-                            {/* Aggregate pills: slotCount=10 (vs 6 default for
-                                per-player) since this row sits alone with room
-                                to spare. maxCasters intentionally unset so the
-                                full cross-player notable list is visible on the
-                                summary surface. Per-player pills below keep the
-                                compact 6-slot, 4-caster layout. */}
-                            <CompositionPhasesRow
-                              phases={computeReplayAggregatePhases(mainGame.unit_composition_markers)}
-                              slotCount={10}
-                            />
-                          </div>
+                          (() => {
+                            const aggregatePhases = computeReplayAggregatePhases(mainGame.unit_composition_markers);
+                            const aggregateSpells = collectPlayerSpells(aggregatePhases);
+                            return (
+                              <div className="workflow-summary-composition">
+                                <div className="workflow-summary-features-title workflow-summary-composition-title">Unit Composition %</div>
+                                <CompositionZonesHeader />
+                                <CompositionZones phases={aggregatePhases} />
+                                {aggregateSpells.length > 0 ? (
+                                  <div className="workflow-summary-spellcasts">
+                                    <div className="workflow-summary-features-title workflow-summary-spellcasts-title">Spellcasts</div>
+                                    <div className="workflow-pattern-pills">
+                                      <SpellcastsChips spells={aggregateSpells} />
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })()
                         ) : null}
                       </div>
                     </div>
@@ -5884,7 +5894,10 @@ function App() {
                       <div className="wpt-head">Name</div>
                       <div className="wpt-head">APM</div>
                       <div className="wpt-head">Featuring</div>
-                      <div className="wpt-head">Unit composition %</div>
+                      <div className="wpt-head wpt-head-comp">
+                        <span>Unit Composition %</span>
+                        <CompositionZonesHeader slim />
+                      </div>
                       {(mainGame.players || []).map((player) => {
                         const raceIcon = getRaceIcon(player.race);
                         const gameSummaryParts = playerGameSummarySignalParts(player, mainGame?.game_events);
@@ -5918,13 +5931,12 @@ function App() {
                                 {boPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-bo-${idx}`, undefined, markerRegistry))}
                                 {gameSummaryParts.positive.map(renderGameSummarySignalPill)}
                                 {restPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`, undefined, markerRegistry))}
+                                <SpellcastsPill spells={collectPlayerSpells(playerPhases)} />
                               </div>
                             </div>
                             <div className="wpt-cell wpt-comp">
                               {playerPhases.length > 0 ? (
-                                <div className="workflow-pattern-pills">
-                                  <CompositionPhasesRow phases={playerPhases} maxCasters={4} />
-                                </div>
+                                <CompositionZones phases={playerPhases} slim />
                               ) : null}
                             </div>
                           </React.Fragment>
