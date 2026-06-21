@@ -13,6 +13,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/buildinfo"
 	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
+	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/ingest"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
@@ -103,7 +104,7 @@ func (d *Dashboard) Ingest(ctx context.Context, request apigen.IngestRequestObje
 	if cfg.SQLitePath == "" {
 		cfg.SQLitePath = d.sqlitePath
 	}
-	if !d.tryStartIngest(cfg.InputDir) {
+	if !d.startIngestAsync(cfg) {
 		return map[string]any{
 			"ok":          true,
 			"started":     false,
@@ -112,13 +113,6 @@ func (d *Dashboard) Ingest(ctx context.Context, request apigen.IngestRequestObje
 			"sqlitePath":  cfg.SQLitePath,
 		}, nil
 	}
-	go func() {
-		runErr := ingest.Run(d.ctx, cfg)
-		if runErr != nil {
-			cfg.Logger.Errorf("Ingestion failed: %v", runErr)
-		}
-		d.finishIngest(runErr)
-	}()
 	return map[string]any{
 		"ok":         true,
 		"started":    true,
@@ -157,7 +151,24 @@ func (d *Dashboard) GetIngestSettings(ctx context.Context, _ apigen.GetIngestSet
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
-	return ingestSettingsResponse{InputDir: inputDir}, nil
+	isSample, err := d.isSampleSetActive(ctx)
+	if err != nil {
+		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
+	}
+	// sample_auto_loaded is a one-shot signal: the frontend reads it once to
+	// show the dismissable notice (and suppress the empty-DB auto-open).
+	autoLoaded := d.sampleSetAutoLoaded
+	d.sampleSetAutoLoaded = false
+	// The detected OS replay folder, so the UI can offer "switch back to your
+	// replays" while the sample set is active (users don't know the path — we
+	// found it for them).
+	detected, _ := fileops.ResolveDefaultReplayDir()
+	return ingestSettingsResponse{
+		InputDir:          inputDir,
+		IsSampleSet:       isSample,
+		SampleAutoLoaded:  autoLoaded,
+		DetectedReplayDir: detected,
+	}, nil
 }
 
 func (d *Dashboard) UpdateIngestSettings(ctx context.Context, request apigen.UpdateIngestSettingsRequestObject) (any, error) {

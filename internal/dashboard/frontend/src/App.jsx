@@ -1862,6 +1862,10 @@ function App() {
   const [savedIngestInputDir, setSavedIngestInputDir] = useState('');
   const [ingestSettingsLoading, setIngestSettingsLoading] = useState(false);
   const [ingestSettingsSaving, setIngestSettingsSaving] = useState(false);
+  const [isSampleSet, setIsSampleSet] = useState(false);
+  const [detectedReplayDir, setDetectedReplayDir] = useState('');
+  const [sampleSetLoading, setSampleSetLoading] = useState(false);
+  const [sampleNotice, setSampleNotice] = useState('');
   const [ingestSocketState, setIngestSocketState] = useState('closed');
   const [staleReplaysCount, setStaleReplaysCount] = useState(0);
   // Session-only dismissal of the stale-replays hint icon. Stored as the
@@ -2443,6 +2447,21 @@ function App() {
       const nextInputDir = String(data?.input_dir || '');
       setIngestInputDir(nextInputDir);
       setSavedIngestInputDir(nextInputDir);
+      setIsSampleSet(Boolean(data?.is_sample_set));
+      setDetectedReplayDir(String(data?.detected_replay_dir || ''));
+      if (data?.sample_auto_loaded) {
+        // The backend auto-loaded the sample set because it couldn't find the
+        // user's replay folder. Suppress the empty-DB auto-open of this modal
+        // and show a dismissable notice instead.
+        emptyDbAutoOpenRef.current = true;
+        // The deferred sample ingest completes shortly after; mark it so the
+        // 'completed' (or reconnect 'snapshot') WebSocket event refreshes the
+        // games list once it finishes.
+        manualIngestInFlight.current = true;
+        setSampleNotice(
+          "Loaded some example replays because we couldn't find your StarCraft replay folder. Open Ingest to point screpdb at your own replays.",
+        );
+      }
       return nextInputDir;
     } catch (err) {
       setIngestMessage(err.message || 'Failed to load ingest settings.');
@@ -2467,6 +2486,47 @@ function App() {
       return nextInputDir;
     } finally {
       setIngestSettingsSaving(false);
+    }
+  };
+
+  const handleLoadSampleSet = async () => {
+    const confirmed = window.confirm(
+      'Load example replays?\n\nThis erases your current screpdb data and replaces it with the example set. Your .rep files are not affected.',
+    );
+    if (!confirmed) {
+      return;
+    }
+    setIngestMessage('');
+    setSampleSetLoading(true);
+    // Treat this like a user-initiated ingest so the 'completed' WebSocket
+    // event refreshes the games list (otherwise the newly-loaded examples
+    // don't appear until a manual browser refresh).
+    manualIngestInFlight.current = true;
+    try {
+      await api.loadSampleSet();
+      // Refresh settings so is_sample_set flips true (hides the action) and the
+      // folder path updates to the extracted sample directory.
+      await loadIngestSettings();
+    } catch (err) {
+      setIngestMessage(err.message || 'Failed to load sample set.');
+      manualIngestInFlight.current = false;
+    } finally {
+      setSampleSetLoading(false);
+    }
+  };
+
+  const handleUseDetectedFolder = async () => {
+    if (!detectedReplayDir) {
+      return;
+    }
+    setIngestMessage('');
+    try {
+      setIngestInputDir(detectedReplayDir);
+      await persistIngestInputDir(detectedReplayDir);
+      // Refresh so is_sample_set flips false and "Ingest now" returns.
+      await loadIngestSettings();
+    } catch (err) {
+      setIngestMessage(err.message || 'Failed to switch to your replays folder.');
     }
   };
 
@@ -2679,7 +2739,9 @@ function App() {
     });
     loadTopPlayerColors();
     loadScrepColors();
-    checkHealthStatus();
+    // Resolve ingest settings (incl. the one-shot sample-auto-loaded signal)
+    // before the health check so it can decide whether to auto-open this modal.
+    loadIngestSettings().finally(() => checkHealthStatus());
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only.
   }, []);
 
@@ -2977,6 +3039,11 @@ function App() {
             setIngestLogs(hydrateIngestLogEntries(message.logs || []));
             if (message.error) {
               setIngestMessage(message.error);
+            } else if (message.status === 'completed' && manualIngestInFlight.current) {
+              // Sample/manual ingest finished before this socket connected; the
+              // 'status' event was missed, so refresh from the snapshot instead.
+              manualIngestInFlight.current = false;
+              void refreshAfterIngestRef.current?.();
             }
             return;
           }
@@ -7237,6 +7304,9 @@ function App() {
           ingestSettingsLoading={ingestSettingsLoading}
           ingestSettingsSaving={ingestSettingsSaving}
           ingestSocketState={ingestSocketState}
+          isSampleSet={isSampleSet}
+          detectedReplayDir={detectedReplayDir}
+          sampleSetLoading={sampleSetLoading}
           onClose={() => {
             setShowIngestPanel(false);
           }}
@@ -7244,8 +7314,25 @@ function App() {
           onChange={setIngestForm}
           onInputDirChange={setIngestInputDir}
           onSaveInputDir={handleSaveIngestInputDir}
+          onLoadSampleSet={handleLoadSampleSet}
+          onUseDetectedFolder={handleUseDetectedFolder}
+          onDismissMessage={() => setIngestMessage('')}
         />
       )}
+
+      {sampleNotice ? (
+        <div className="ingest-toast ingest-toast-dismissable" role="status">
+          <span>{sampleNotice}</span>
+          <button
+            type="button"
+            className="ingest-toast-dismiss"
+            aria-label="Dismiss"
+            onClick={() => setSampleNotice('')}
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
 
       {autoIngestNotice ? (
         <div className="ingest-toast">{autoIngestNotice}</div>

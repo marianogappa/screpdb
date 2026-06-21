@@ -41,6 +41,19 @@ export const api = {
     return response.json();
   },
 
+  loadSampleSet: async () => {
+    const response = await fetch(`${API_CUSTOM}/sample-set/load`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to load sample set');
+    }
+    return response.json();
+  },
+
   createIngestLogsSocket: () => new WebSocket(buildWebSocketURL(`${API_CUSTOM}/ingest/logs`)),
 
   getStaleReplaysCount: async () => {

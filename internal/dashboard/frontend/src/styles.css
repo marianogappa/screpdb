@@ -745,8 +745,13 @@ body {
   color: #fff;
 }
 
-.btn-save:hover {
+.btn-save:hover:not(:disabled) {
   background: rgba(100, 150, 255, 0.5);
+}
+
+.btn-save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .btn-cancel {
@@ -1342,10 +1347,29 @@ body {
   gap: 10px;
 }
 
-.ingest-manual-block {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
-  padding: 12px 14px;
+/* Sections are separated by spacing + bold headings + thin dividers, not
+   frames, so they read as visually consistent groups. */
+.ingest-section-row,
+.ingest-progress-block {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 18px;
+}
+
+/* "Keep up to date" and "Ingest now" share a row so the log gets more height. */
+.ingest-section-row {
+  display: flex;
+  gap: 24px;
+  align-items: stretch;
+}
+
+.ingest-section-row > .ingest-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.ingest-section-row > .ingest-col + .ingest-col {
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  padding-left: 24px;
 }
 
 .ingest-plain-heading {
@@ -1501,6 +1525,139 @@ body {
 .ingest-helper-text {
   font-size: 0.78rem;
   color: rgba(255, 255, 255, 0.55);
+}
+
+/* A second group heading within the left column, spaced below the toggle. */
+.ingest-subheading {
+  margin-top: 18px;
+}
+
+/* Ingest status message lives in the header (right of the title) to avoid a
+   full-width banner eating vertical space. Compact, single-line, dismissable. */
+.ingest-header-message {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 60%;
+  margin-left: 16px;
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 0.82rem;
+}
+
+.ingest-header-message-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ingest-header-message.is-success {
+  background: rgba(40, 180, 99, 0.18);
+  border-color: rgba(40, 180, 99, 0.45);
+  color: #7fe0a7;
+}
+
+.ingest-header-message.is-error {
+  background: rgba(255, 50, 50, 0.2);
+  border-color: rgba(255, 50, 50, 0.5);
+  color: #ff6666;
+}
+
+.ingest-message-dismiss {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0.85;
+}
+
+.ingest-message-dismiss:hover {
+  opacity: 1;
+}
+
+.ingest-sample-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* "Load sample set" is an alternative source, not the primary action: render
+   it as a secondary (outlined) button rather than the filled .btn-save. */
+.ingest-load-sample {
+  background: transparent;
+  border: 1px solid rgba(120, 160, 255, 0.5);
+  color: rgba(200, 218, 255, 0.95);
+}
+
+.ingest-load-sample:hover:not(:disabled) {
+  background: rgba(100, 160, 255, 0.12);
+}
+
+.ingest-sample-active {
+  display: inline-block;
+  margin-top: 12px;
+  color: rgba(150, 210, 170, 0.9);
+}
+
+/* The destructive "Erase existing data" toggle gets visual weight. */
+.ingest-destructive-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Align the clarifying line under the checkbox label text (16px box + 10px gap). */
+.ingest-destructive-help {
+  padding-left: 26px;
+  max-width: 460px;
+}
+
+.ingest-destructive {
+  color: rgba(255, 170, 160, 0.95);
+}
+
+.ingest-destructive input {
+  accent-color: #e0654f;
+}
+
+.ingest-start {
+  align-self: flex-start;
+}
+
+/* Compound selector so the distinct (info-blue) background wins over the base
+   .ingest-toast green used by the transient success toast. */
+.ingest-toast.ingest-toast-dismissable {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 360px;
+  background: rgba(46, 96, 168, 0.96);
+}
+
+.ingest-toast-dismiss {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0.85;
+}
+
+.ingest-toast-dismiss:hover {
+  opacity: 1;
 }
 
 .ingest-checkbox {

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os/user"
 	"runtime"
+
+	"github.com/marianogappa/screpdb/internal/iofacade"
 )
 
 var errDefaultReplayDirNotFound = errors.New("default replay directory not found")
@@ -15,6 +17,10 @@ func ResolveDefaultReplayDir() (string, error) {
 		if !ok || err != nil {
 			continue
 		}
+		// Permit the candidate before validating: ValidateReplayDir stats/walks
+		// it through the facade, which would otherwise reject this not-yet-known
+		// OS-standard replay location once the facade is enforcing.
+		_ = iofacade.AllowDir(dir)
 		if err := ValidateReplayDir(dir); err != nil {
 			continue
 		}
