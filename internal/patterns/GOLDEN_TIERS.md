@@ -146,6 +146,20 @@ The `target_via` field (`a` attack-coincidence / `p` post-placement activity) an
 from either fixture, or adds one onto a base the player never nydused, is a
 regression → re-verify by watching, do not blindly `UPDATE_GOLDEN`.
 
+### Nuke detection — `nuke_golden.json` (PENDING human review — not yet tier-1)
+
+Two `nuke_*.rep` fixtures (issue #187). These are **not tier-1 yet**: the golden
+captures the detector's current nuke output as a drift guard, but the premise has
+not been confirmed by watching the replay. The candidates are in the
+`000_screpdb_watch_me` review folder. Once verified in-game, promote them here
+with the confirmed per-nuke premise (which launches actually landed, on which
+base).
+
+| Fixture (source replay) | Candidate (detector) | Status |
+| --- | --- | --- |
+| `nuke_tvz_attitude.rep` (`30-MORE-BBBuuuUU[kS]/MM-87075E8E-3C91-11F1`) | ZvT on Attitude — Terran (P1) nukes the Zerg's 12 o'clock expansion @20:14 and @21:33 | awaiting review |
+| `nuke_tvp_polestar.rep` (`30-NEW-Horang2[._.]/MM-F96E7920-1E3D-11F1`) | TvP on Pole Star — Terran (P0) nukes the Protoss 7 o'clock expansion @11:51 and 6 o'clock natural @15:19 | awaiting review |
+
 ## Additional human-verified ground truth (not yet fixtured)
 
 From the same review, verified but not (yet) encoded as fixtures — candidates if
