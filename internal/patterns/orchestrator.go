@@ -254,6 +254,31 @@ func (o *Orchestrator) SetProductionSignals(ev *unittags.Evidence) {
 	o.worldState.SetProductionSignals(signals)
 }
 
+// SetMutaHarass threads selection-derived Mutalisk hit-n-run harass episodes
+// into the worldstate engine, which attributes the harassed base/opponent and
+// emits muta_harass events (issue #194). Must be called before results are read.
+func (o *Orchestrator) SetMutaHarass(episodes []unittags.MutaHarassEpisode) {
+	if o.worldState == nil || len(episodes) == 0 {
+		return
+	}
+	candidates := make([]worldstate.MutaHarassCandidate, 0, len(episodes))
+	for _, ep := range episodes {
+		path := make([][3]int, 0, len(ep.Path))
+		for _, p := range ep.Path {
+			path = append(path, [3]int{p.Sec, p.X, p.Y})
+		}
+		candidates = append(candidates, worldstate.MutaHarassCandidate{
+			PID:       ep.PlayerID,
+			StartSec:  ep.StartSec,
+			EndSec:    ep.EndSec,
+			Cycles:    ep.Cycles,
+			GroupSize: ep.GroupSize,
+			Path:      path,
+		})
+	}
+	o.worldState.SetMutaHarassCandidates(candidates)
+}
+
 // ConvertResultsToDatabaseIDs converts pattern results from replay player IDs to database player IDs
 func (o *Orchestrator) ConvertResultsToDatabaseIDs(playerIDMap map[byte]int64) {
 	// Convert player-level results
