@@ -110,7 +110,14 @@ import (
 // cmdenrich (it arrives as an ActionType="Build" command, so it was previously
 // classified as a plain building) with tile→pixel coordinate normalization.
 // Re-ingest so offensive nydus pushes surface.
-const AlgorithmVersion = 38
+//
+// 39: Mutalisk hit-and-run detection (issue #194). Selection/hotkey state is
+// reconstructed to find the oscillating dart-in/pull-back volley signature; a
+// conservative per-game-player confidence bar (strongest window ≥30 volleys over
+// ≥20s) drives a presence-only "Muta hit-n-run" marker (no timeline/timing, which
+// is too error-prone — a microed muta attack is geometrically indistinguishable).
+// Re-ingest so the marker + games-list filter surface.
+const AlgorithmVersion = 39
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

@@ -233,6 +233,7 @@ var workflowFeaturingFilters = []struct {
 	{Key: "wraiths", Label: "Wraith", Group: "marker", IconKey: "wraith"},
 	{Key: "ten_plus_scouts", Label: "10+ Scouts", Group: "marker", IconKey: "scout", IconLabel: "10+"},
 	{Key: "cliff_drop", Label: "Cliff drop", Group: "marker", IconKey: "dropship", IconLabel: "Cliff drop"},
+	{Key: "muta_hitnrun", Label: "Muta hit-n-run", Group: "marker", IconKey: "mutalisk", IconLabel: "Muta hit-n-run"},
 	// Build order pills — keys & labels kept in sync with internal/markers.
 	// Suppressed in render for Money maps (game-list + replay-summary
 	// featuring strips); BO tab and per-player summary pills still show.

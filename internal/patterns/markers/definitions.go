@@ -1545,6 +1545,24 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Turret timing {timestamp}", IconKey: "missileturret"},
 		},
 		{
+			// Muta hit-n-run (#194): Zerg micros a hotkeyed Mutalisk flock in a
+			// sustained oscillating dart-in/pull-back rhythm. Presence-only and
+			// high-confidence — the worldstate engine applies a conservative
+			// per-player volley bar; this marker just surfaces the flag. No
+			// timeline pill (EventsList) because per-window timing is too
+			// error-prone to render. Any matchup (common in ZvT/ZvZ).
+			Name:          "Muta hit-n-run",
+			PatternName:   "Muta hit-n-run",
+			FeatureKey:    "muta_hitnrun",
+			Kind:          KindMarker,
+			Race:          RaceZerg,
+			Custom:        func() CustomEvaluator { return &mutaHitnRunEvaluator{} },
+			RuleDeadline:  endOfReplaySentinel,
+			SummaryPlayer: &Pill{Label: "Muta hit-n-run", IconKey: "mutalisk"},
+			SummaryReplay: &Pill{Label: "Muta hit-n-run", IconKey: "mutalisk"},
+			GamesList:     &Pill{Label: "Muta hit-n-run", IconKey: "mutalisk"},
+		},
+		{
 			// Cliff drop (Big Game Hunters only): Terran player produces a
 			// Siege Tank, then UnloadAll fires within the 256×128px corner
 			// box at top-left or bottom-right. Map gating happens inside

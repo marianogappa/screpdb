@@ -195,6 +195,10 @@ type Engine struct {
 	// datapoints that refresh base ownership. nil when the caller never set them
 	// (e.g. the debug map-layout endpoint) — ownership then behaves as before.
 	productionSignals []ProductionSignal
+
+	// mutaHarass holds selection-derived Mutalisk hit-n-run harass episodes,
+	// threaded in by the orchestrator (see muta_harass_pass.go).
+	mutaHarass []MutaHarassCandidate
 }
 
 // SetProductionSignals supplies the per-player production-location signals used

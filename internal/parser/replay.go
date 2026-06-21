@@ -281,6 +281,10 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	// ownership where movement/build commands alone would let the base time out.
 	patternOrchestrator.SetProductionSignals(unitTagEvidence)
 
+	// Detect Mutalisk hit-n-run harass from selection / hotkey state + the
+	// a-move→right-click cadence, gated on Zerg + Spire + muta production (#194).
+	patternOrchestrator.SetMutaHarass(unittags.DetectMutaHarass(rep, data.Players))
+
 	// Run the early-game spam filter before pattern detection so the
 	// orchestrator only sees commands the filter believes were real.
 	filterResult := earlyfilter.Apply(data.Replay, data.Players, data.MapContext, data.Commands, earlyfilter.Options{

@@ -8,6 +8,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":326,\"muta_burst_count\":5,\"mutalisk_finished\":351,\"spire_cmd\":247}"
       },
