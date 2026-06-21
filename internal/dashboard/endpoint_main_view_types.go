@@ -763,25 +763,33 @@ type workflowUnitCompositionUnit struct {
 	Count int    `json:"count"`
 }
 
+// workflowUnitCompositionSpell is one distinct spell cast in a (player,
+// phase): the casting unit (for its icon) plus the spell's display name.
+// The same unit can appear multiple times across a phase's Spells when it
+// cast distinct spells (e.g. Science Vessel → Irradiate + EMP Shockwave).
+type workflowUnitCompositionSpell struct {
+	Unit  string `json:"unit"`
+	Spell string `json:"spell"`
+}
+
 // workflowGameUnitComposition is a per-(player, phase) row attached to
 // the per-game endpoint response. Computed at request time from the
 // persisted phase boundaries (mid_game_starts / late_game_starts
 // markers) plus the Train / Unit Morph / Cast command stream — see
 // internal/dashboard/unit_composition.go. Frontend renders per-player
 // rows on individual player strips and aggregates client-side into
-// three replay-level pills for the per-game summary surface.
+// three replay-level bars for the per-game summary surface.
 //
-// Casters covers two distinct populations merged into one strip:
-//   - spell-caster units that actually cast a spell in this phase
-//   - signature non-spellcaster units that the player BUILT
-//     (Carrier/Reaver/BC/DT/Dropship/Nuke/Guardian/Devourer)
-//
-// Both are deduped: each unit appears at most once per phase.
+// Spells lists the distinct spells the player cast in this phase, keyed
+// by (unit, spell) and deduped — surfaced in the "Spellcasts" pill, not
+// in the composition bars. Spellcaster units and signature non-army
+// units (Battlecruiser/Dropship/Nuke/Shuttle) are kept out of Units;
+// Battlecruiser surfaces only via its Yamato Gun spell.
 type workflowGameUnitComposition struct {
-	PlayerID int64                         `json:"player_id"`
-	Phase    string                        `json:"phase"`
-	Units    []workflowUnitCompositionUnit `json:"units"`
-	Casters  []string                      `json:"casters,omitempty"`
+	PlayerID int64                          `json:"player_id"`
+	Phase    string                         `json:"phase"`
+	Units    []workflowUnitCompositionUnit  `json:"units"`
+	Spells   []workflowUnitCompositionSpell `json:"spells,omitempty"`
 }
 
 type workflowPlayerChatSummary struct {

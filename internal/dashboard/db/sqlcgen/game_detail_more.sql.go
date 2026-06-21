@@ -136,10 +136,7 @@ JOIN players p ON p.id = c.player_id
 WHERE c.replay_id = ?
   AND p.is_observer = 0
   AND lower(trim(coalesce(p.type, ''))) = 'human'
-  AND (
-    c.action_type IN ('Train', 'Unit Morph')
-    OR (c.order_name IS NOT NULL AND (c.order_name LIKE 'Cast%' OR c.order_name LIKE 'Nuke%' OR c.order_name = 'NuclearStrike'))
-  )
+  AND c.action_type IN ('Train', 'Unit Morph', 'Targeted Order')
 ORDER BY c.player_id, c.seconds_from_game_start, c.id
 `
 
