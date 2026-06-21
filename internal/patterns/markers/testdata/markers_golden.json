@@ -199,6 +199,140 @@
       }
     ]
   },
+  "bo_bunker_simcity_bgh_fp.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":61,\"found\":true},{\"second\":120,\"found\":true},{\"second\":177,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Carriers",
+        "value": "361"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,3,4,5]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":7.150259067357513}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":68,\"found\":true},{\"second\":112,\"found\":true},{\"found\":false}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Carriers",
+        "value": "467"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":2.33160621761658}"
+      },
+      {
+        "replay_player_id": 2,
+        "pattern_name": "Build Order: 2 Gate",
+        "value": "{\"expert_actuals\":[{\"second\":59,\"found\":true},{\"second\":82,\"found\":true},{\"second\":123,\"found\":true},{\"second\":127,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 2,
+        "pattern_name": "Never used hotkeys",
+        "value": "1008"
+      },
+      {
+        "replay_player_id": 3,
+        "pattern_name": "Build Order: 1-Rax Bio",
+        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":90,\"found\":true},{\"second\":370,\"found\":true},{\"second\":584,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 3,
+        "pattern_name": "Never used hotkeys",
+        "value": "1008"
+      },
+      {
+        "replay_player_id": 3,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":3.2642487046632125}"
+      },
+      {
+        "replay_player_id": 3,
+        "pattern_name": "Wraiths",
+        "value": "712"
+      },
+      {
+        "replay_player_id": 4,
+        "pattern_name": "Build Order: 3-Rax Bio",
+        "value": "{\"expert_actuals\":[{\"second\":159,\"found\":true},{\"second\":88,\"found\":true},{\"second\":252,\"found\":true},{\"second\":381,\"found\":true},{\"second\":442,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 4,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1]}"
+      },
+      {
+        "replay_player_id": 4,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":4.352331606217616}"
+      },
+      {
+        "replay_player_id": 5,
+        "pattern_name": "Build Order: 3-Rax Bio",
+        "value": "{\"expert_actuals\":[{\"second\":59,\"found\":true},{\"second\":88,\"found\":true},{\"second\":225,\"found\":true},{\"second\":213,\"found\":true},{\"second\":599,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 5,
+        "pattern_name": "Never used hotkeys",
+        "value": "1008"
+      },
+      {
+        "replay_player_id": 5,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":7.772020725388601}"
+      },
+      {
+        "replay_player_id": 6,
+        "pattern_name": "Build Order: 6 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":84,\"found\":true},{\"second\":164,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 6,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,7,8,9]}"
+      },
+      {
+        "replay_player_id": 6,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":5.4404145077720205}"
+      },
+      {
+        "replay_player_id": 7,
+        "pattern_name": "Build Order: 10 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":86,\"found\":true},{\"second\":178,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 7,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2]}"
+      },
+      {
+        "replay_player_id": 7,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":4.196891191709844}"
+      }
+    ]
+  },
   "bo_forge_expand.rep": {
     "detections": [
       {

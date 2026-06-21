@@ -338,6 +338,12 @@ func (d *MarkerPlayerDetector) ShouldSave() bool {
 	if !d.IsFinished() || !d.matched {
 		return false
 	}
+	if d.marker.RequireWorldstateEvent != "" {
+		ws := d.GetWorldState()
+		if ws == nil || ws.FirstEventSecondForPlayer(d.GetReplayPlayerID(), d.marker.RequireWorldstateEvent) == nil {
+			return false
+		}
+	}
 	gate := d.resolveMinReplaySeconds()
 	if gate > 0 {
 		replay := d.GetReplay()

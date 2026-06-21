@@ -412,6 +412,18 @@ type Marker struct {
 	// Custom is expected to be non-nil.
 	Custom func() CustomEvaluator
 
+	// RequireWorldstateEvent, when non-empty, layers a spatial confirmation on
+	// top of a Rule match: the marker saves only if the Rule matched AND the
+	// worldstate produced an event of this type sourced by the player. It lets
+	// a topology opener add a location signal the fact stream can't express —
+	// e.g. Bunker Rush requires an offensive bunker_rush event so a defensive
+	// sim-city bunker (no expansion topology, but built at the player's own
+	// base) on a Money map no longer reads as a rush. Markers that set this
+	// MUST use the endOfReplaySentinel RuleDeadline: the worldstate event list
+	// only exists after the full stream is processed, so the gate cannot be
+	// evaluated mid-streaming.
+	RequireWorldstateEvent string
+
 	// RuleDeadline is the last in-game second that could still change the
 	// answer. Once a replay passes this second, the detector finalizes.
 	// Set to the tightest upper-bound across all rule sub-predicates;

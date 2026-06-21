@@ -43,6 +43,17 @@ the verified premise:
 
 (The other players' BOs in this fixture are tier-2.)
 
+Fixture `bo_bunker_simcity_bgh_fp.rep` (from `AutoSave/20260607/225451,(8)Big
+Game Hunters.rep`, issue #164). The verified premise is a single negative
+assertion:
+
+| Player (idx) | Must NOT classify as | Why |
+| --- | --- | --- |
+| P3 | `Build Order: Bunker Rush` | Defensive sim-city Bunker walled at the player's own base, not a rush. On a Money map the no-expansion topology is meaningless (nobody takes a second CC), so topology alone misread it; the offensive `bunker_rush` spatial gate now keeps it out. Classifies as `Build Order: 1-Rax Bio`. |
+
+A change that classifies P3 as Bunker Rush breaks this premise → regression.
+(The other players' BOs in this fixture are tier-2.)
+
 ### Cliff-drop detection — `drops_golden.json`
 
 Each fixture below was confirmed by watching the replay. The premise is the
