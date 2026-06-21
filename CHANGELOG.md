@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.0](https://github.com/marianogappa/screpdb/compare/v1.8.0...v1.9.0) (2026-06-21)
+
+
+### Features
+
+* **dashboard:** rework unit composition into phased bars + spellcasts ([#207](https://github.com/marianogappa/screpdb/issues/207)) ([a3148c6](https://github.com/marianogappa/screpdb/commit/a3148c6a8b8ed5ede17a841c1d112deffa70cf16))
+* **markers:** detect Mutalisk hit-and-run harass (closes [#194](https://github.com/marianogappa/screpdb/issues/194)) ([#209](https://github.com/marianogappa/screpdb/issues/209)) ([04f858a](https://github.com/marianogappa/screpdb/commit/04f858a995e3ca098a8c2cf70411a8bff063ed68))
+
 ## [1.8.0](https://github.com/marianogappa/screpdb/compare/v1.7.0...v1.8.0) (2026-06-21)
 
 
