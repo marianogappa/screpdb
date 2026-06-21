@@ -386,6 +386,59 @@ func TestMarkerDetector_MatchupGate_HardFloorLiftsLowMatchupValue(t *testing.T) 
 	}
 }
 
+// runBunkerRushGate drives the real Bunker Rush marker over an all-in
+// bunker-topology stream and reports whether it saves, given whether the
+// worldstate carries an offensive bunker_rush event for the player. This
+// locks the spatial gate (issue #164): topology alone must not save — a
+// defensive sim-city Bunker (no event) is rejected, an offensive one fires.
+func runBunkerRushGate(t *testing.T, withEvent bool) bool {
+	t.Helper()
+	builder := NewTestReplayBuilder().
+		WithPlayer(1, "T", "Terran", 1).
+		WithPlayer(2, "Z", "Zerg", 2).
+		WithDurationSeconds(600).
+		WithCommand(1, 56, models.ActionTypeBuild, models.GeneralUnitBarracks).
+		WithCommand(1, 127, models.ActionTypeBuild, models.GeneralUnitBunker)
+	replay, players := builder.Build()
+
+	ws := worldstate.NewEngine(replay, players, &models.ReplayMapContext{})
+	for _, cmd := range builder.GetCommands() {
+		ws.ProcessCommand(cmd)
+	}
+	if withEvent {
+		src := byte(1)
+		ws.AppendReplayEvents([]worldstate.ReplayEvent{
+			{EventType: "bunker_rush", Second: 130, SourceReplayPlayerID: &src},
+		})
+	}
+	ws.Finalize()
+
+	d := NewMarkerPlayerDetector(findBOForTest(t, "Bunker Rush"))
+	d.SetReplayPlayerID(1)
+	d.SetWorldState(ws)
+	d.Initialize(replay, players)
+	for _, cmd := range builder.GetCommands() {
+		d.ProcessCommand(cmd)
+	}
+	d.Finalize()
+	return d.ShouldSave()
+}
+
+// Offensive bunker rush: topology + a bunker_rush worldstate event → saves.
+func TestMarkerDetector_BunkerRush_FiresWithOffensiveEvent(t *testing.T) {
+	if !runBunkerRushGate(t, true) {
+		t.Fatalf("expected Bunker Rush to save when an offensive bunker_rush event is present")
+	}
+}
+
+// Defensive sim-city bunker: same all-in topology but NO bunker_rush event
+// (the bunker was placed at the player's own base) → suppressed (issue #164).
+func TestMarkerDetector_BunkerRush_SuppressedWithoutEvent(t *testing.T) {
+	if runBunkerRushGate(t, false) {
+		t.Fatalf("expected Bunker Rush to be suppressed when no offensive bunker_rush event fired")
+	}
+}
+
 func newRecordingBuildDetector() (*MarkerPlayerDetector, *recordingState) {
 	rec := &recordingState{}
 	d := &MarkerPlayerDetector{

@@ -673,7 +673,7 @@ Each opener's detector commits its decision once the replay passes this second â
 | 9 Pool | Zerg | 180 |
 | 9 Pool into Hatchery | Zerg | 180 |
 | BBS | Terran | 120 |
-| Bunker Rush | Terran | 300 |
+| Bunker Rush | Terran | end of replay |
 | CC First | Terran | 200 |
 | Forge Cannon (no expa) | Protoss | 320 |
 | Forge Expand | Protoss | 260 |

@@ -271,12 +271,13 @@ func allMarkers() []Marker {
 	)
 	pNamed := Any(pRule1GateCore, pRule2Gate, pRuleNexusFirst, pRuleGateExpand, pRuleForgeExpand, pRule1GateNoExpa, pRuleForgeCannonNoExpa)
 
-	// Terran. The all-in / greedy topology openers (CC First, BBS, Bunker Rush)
-	// stay keyed on build order. Everything else — what used to be 1 Rax 1 Fac,
-	// 1 Rax FE, 2 Rax CC and the 1 Rax Bio residual — is reclassified by army
-	// composition at 10:00 (issue #155): Bio / Mech / Wraith / Goliath / 1-1-1,
-	// split by Barracks or Factory count. tCohort excludes the three kept
-	// topology openers so the composition BOs share their (complementary) space.
+	// Terran. CC First and BBS stay keyed on build-order topology; Bunker Rush
+	// adds a spatial gate on top of topology (see its definition below).
+	// Everything else — what used to be 1 Rax 1 Fac, 1 Rax FE, 2 Rax CC and the
+	// 1 Rax Bio residual — is reclassified by army composition at 10:00 (issue
+	// #155): Bio / Mech / Wraith / Goliath / 1-1-1, split by Barracks or Factory
+	// count. tCohort excludes only CC First and BBS so the composition BOs share
+	// their (complementary) space.
 	tRuleCCFirst := All(
 		BuildBefore(subjCommandCenter, subjBarracks),
 		FirstBuildBefore(subjCommandCenter, 200),
@@ -291,7 +292,13 @@ func allMarkers() []Marker {
 		FirstBuildBefore(subjBarracks, 100),
 	)
 	// Bunker Rush: an all-in — an early Bunker (≤240s) with NO expansion (no
-	// CC by 270s) and NO Factory tech (none by 240s).
+	// CC by 300s) and NO Factory tech (none by 240s). This topology alone can't
+	// tell an offensive bunker rush from a defensive sim-city bunker: on Money
+	// maps (BGH) nobody takes a second CC, so a player who walls their own base
+	// with an early Bunker matches every guard here (issue #164). The Bunker
+	// Rush marker pairs this topology with a spatial gate (RequireWorldstateEvent
+	// "bunker_rush") that only fires for a Bunker placed at the enemy's base, so
+	// the topology stays the all-in shape while the location decides the verdict.
 	tRuleBunkerRush := All(
 		FirstBuildBefore(subjBunker, 240),
 		BuildBefore(subjBarracks, subjBunker),
@@ -300,10 +307,13 @@ func allMarkers() []Marker {
 		Not(FirstBuildBefore(subjFactory, 240)),
 	)
 
-	// Composition cohort: any Terran opener that is NOT one of the kept topology
-	// openers. The composition BOs all sit inside this complement, so they never
-	// collide with CC First / BBS / Bunker Rush.
-	tCohort := All(Not(tRuleCCFirst), Not(tRuleBBS), Not(tRuleBunkerRush))
+	// Composition cohort: any Terran opener that is NOT a topology opener. Only
+	// CC First and BBS are excluded — Bunker Rush is no longer a pure-topology
+	// opener (it needs the spatial gate), so its bunker-topology players must
+	// stay eligible for the composition / residual buckets. A genuine offensive
+	// bunker rush still matches a composition BO too, but Bunker Rush is
+	// TierPreferred and wins by precedence (selectBestTierOpeners).
+	tCohort := All(Not(tRuleCCFirst), Not(tRuleBBS))
 
 	// Composition signals, all measured over the opening window (10:00 = 600s;
 	// early caps at 7:00 = 420s). bio = Marine/Medic/Firebat, mech = Vulture/
@@ -347,7 +357,7 @@ func allMarkers() []Marker {
 	// subtracted from the residual without any BO firing — a deliberate, rare
 	// coverage gap for off-matchup compositions (e.g. a TvP mass-bio game).
 	tNamed := Any(
-		tRuleCCFirst, tRuleBBS, tRuleBunkerRush,
+		tRuleCCFirst, tRuleBBS,
 		All(tCohort, tcWraith),
 		All(tCohort, tcGoliath),
 		All(tCohort, tcBio),
@@ -1345,17 +1355,20 @@ func allMarkers() []Marker {
 		},
 		{
 			// Bunker Rush: an all-in — early Bunker (≤240s) with no expansion
-			// (no CC by 270s) and no Factory tech (none by 240s). Separated
-			// from 1 Rax FE (has a CC) and 1 Rax 1 Fac (has a Factory) by that
-			// commitment, so defensive Bunkers in macro builds no longer land
-			// here. (Spatial "Bunker on enemy base" is a follow-up refinement.)
-			Name:         "Bunker Rush",
-			PatternName:  "Build Order: Bunker Rush",
-			FeatureKey:   "bo_bunker_rush",
-			Race:         RaceTerran,
-			Kind:         KindInitialBuildOrder,
-			Rule:         tRuleBunkerRush,
-			RuleDeadline: 300,
+			// (no CC by 300s) and no Factory tech (none by 240s), AND the spatial
+			// gate (see tRuleBunkerRush). TierPreferred so a genuine rush — which
+			// also matches its composition BO once tCohort stopped excluding
+			// bunker topology — wins by precedence. endOfReplaySentinel because
+			// the worldstate event only exists after the full stream is processed.
+			Name:                   "Bunker Rush",
+			PatternName:            "Build Order: Bunker Rush",
+			FeatureKey:             "bo_bunker_rush",
+			Race:                   RaceTerran,
+			Kind:                   KindInitialBuildOrder,
+			Tier:                   TierPreferred,
+			Rule:                   tRuleBunkerRush,
+			RequireWorldstateEvent: "bunker_rush",
+			RuleDeadline:           endOfReplaySentinel,
 			Expert: []ExpertEvent{
 				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 60, Tolerance: Sym(10)},
 				{Key: "Bunker", Match: MatchBuild(subjBunker), TargetSecond: 130, Tolerance: Sym(20)},
