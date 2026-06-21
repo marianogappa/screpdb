@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.0](https://github.com/marianogappa/screpdb/compare/v1.7.0...v1.8.0) (2026-06-21)
+
+
+### Features
+
+* **onboarding:** embedded sample replay set + ingest modal rework (closes [#203](https://github.com/marianogappa/screpdb/issues/203)) ([#206](https://github.com/marianogappa/screpdb/issues/206)) ([5f5d9a4](https://github.com/marianogappa/screpdb/commit/5f5d9a482224d6f0d7432d479f7111d917222049))
+
+
+### Bug Fixes
+
+* **bo:** gate Bunker Rush on offensive spatial event, not topology alone (closes [#164](https://github.com/marianogappa/screpdb/issues/164)) ([#202](https://github.com/marianogappa/screpdb/issues/202)) ([3decce0](https://github.com/marianogappa/screpdb/commit/3decce08866989cfa4007b0388bd6f2991848283))
+
 ## [1.7.0](https://github.com/marianogappa/screpdb/compare/v1.6.1...v1.7.0) (2026-06-20)
 
 
