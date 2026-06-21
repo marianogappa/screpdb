@@ -1,0 +1,32 @@
+{
+  "nuke_tvp_polestar.rep": {
+    "records": [
+      {
+        "second": 711,
+        "source_pid": 0,
+        "target_label": "expansion at 7",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 919,
+        "source_pid": 0,
+        "target_label": "7's natural",
+        "target_owner_pid": 1
+      }
+    ]
+  },
+  "nuke_tvz_attitude.rep": {
+    "records": [
+      {
+        "second": 1214,
+        "source_pid": 1,
+        "target_label": "expansion at 12"
+      },
+      {
+        "second": 1293,
+        "source_pid": 1,
+        "target_label": "expansion at 12"
+      }
+    ]
+  }
+}
