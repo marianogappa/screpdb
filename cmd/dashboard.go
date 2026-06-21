@@ -49,6 +49,10 @@ func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) err
 		return fmt.Errorf("dashboard server failed to start: %w", err)
 	}
 
+	// Now that the server is up and DB setup is complete, run any sample-set
+	// ingest queued at startup (deferred to avoid racing DB initialization).
+	dash.StartPendingSampleIngest()
+
 	// Open browser
 	log.Printf("Opening browser to %s...", serverURL)
 	if err := browser.OpenURL(serverURL); err != nil {

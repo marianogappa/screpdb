@@ -11,7 +11,10 @@ import (
 )
 
 type ingestSettingsResponse struct {
-	InputDir string `json:"input_dir"`
+	InputDir          string `json:"input_dir"`
+	IsSampleSet       bool   `json:"is_sample_set"`
+	SampleAutoLoaded  bool   `json:"sample_auto_loaded"`
+	DetectedReplayDir string `json:"detected_replay_dir"`
 }
 
 func (d *Dashboard) initializeIngestSettings(ctx context.Context) error {
@@ -26,6 +29,19 @@ func (d *Dashboard) initializeIngestSettings(ctx context.Context) error {
 
 	defaultDir, err := fileops.ResolveDefaultReplayDir()
 	if err != nil {
+		// We could not find the user's StarCraft replay folder. Auto-load the
+		// embedded sample set so a first-run user can explore every feature,
+		// and flag it so the frontend shows a dismissable notice (rather than
+		// force-opening the ingest modal).
+		if prepErr := d.prepareSampleSet(ctx); prepErr != nil {
+			log.Printf("Could not auto-load sample set: %v", prepErr)
+			return nil
+		}
+		// Defer the ingest until the server is up (StartPendingSampleIngest);
+		// ingesting now would race the database setup still completing in New.
+		d.sampleSetAutoLoaded = true
+		d.pendingSampleIngest = true
+		log.Printf("Auto-loaded embedded sample set into %s", d.sampleSetDir())
 		return nil
 	}
 	if err := d.setIngestInputDir(ctx, defaultDir); err != nil {
