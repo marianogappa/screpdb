@@ -95,6 +95,16 @@ type Command struct {
 	UnitTypes *string `json:"unit_types,omitempty"` // JSON array of unit types for multiple units
 	UnitIDs   *string `json:"unit_ids,omitempty"`   // JSON array of unit IDs for multiple units
 
+	// SelectedUnits is the size of the issuing player's selection at this
+	// command (set by the parser from reconstructed selection state). A single
+	// Zerg larva-morph command morphs every selected larva at once, so one
+	// command can create several units — this is the intended multiplicity.
+	SelectedUnits int `json:"-"`
+	// MorphUnitCount is how many units this command actually produced, set by
+	// the early-game filter after capping SelectedUnits by available larva and
+	// minerals. Zero means "not computed" and is treated as 1 by consumers.
+	MorphUnitCount int `json:"-"`
+
 	// Tech command fields
 	TechName *string `json:"tech_name,omitempty"`
 

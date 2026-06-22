@@ -323,7 +323,7 @@
       },
       {
         "replay_player_id": 7,
-        "pattern_name": "Build Order: 10 Pool",
+        "pattern_name": "Build Order: 11 Pool",
         "value": "{\"expert_actuals\":[{\"second\":86,\"found\":true},{\"second\":178,\"found\":true}]}"
       },
       {
@@ -481,7 +481,7 @@
       },
       {
         "replay_player_id": 7,
-        "pattern_name": "Build Order: 11 Pool",
+        "pattern_name": "Build Order: 12 Pool",
         "value": "{\"expert_actuals\":[{\"second\":94,\"found\":true},{\"second\":177,\"found\":true}]}"
       },
       {
@@ -568,7 +568,7 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 11 Hatch",
+        "pattern_name": "Build Order: 12 Hatch",
         "value": "{\"expert_actuals\":[{\"second\":98,\"found\":true},{\"second\":115,\"found\":true}]}"
       },
       {

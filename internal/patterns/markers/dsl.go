@@ -601,7 +601,7 @@ func (s *produceCountBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
 	switch f.Kind {
 	case cmdenrich.KindMakeUnit:
 		if f.Subject == s.unit {
-			s.count++
+			s.count += factUnitCount(f)
 			if s.count > s.want {
 				s.done = Rejected
 			}
@@ -615,6 +615,17 @@ func (s *produceCountBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
 			}
 		}
 	}
+}
+
+// factUnitCount is how many units a Produce fact represents — normally 1, but a
+// single Zerg larva-morph command can morph several selected larvae at once
+// (see cmdenrich.EnrichedCommand.Count). Facts built without a count (DB-side
+// FromAction, test literals) report 0 and are treated as 1.
+func factUnitCount(f cmdenrich.EnrichedCommand) int {
+	if f.Count > 1 {
+		return f.Count
+	}
+	return 1
 }
 
 func (s *produceCountBeforeBuildState) Decision(int) TriState { return s.done }
@@ -648,7 +659,7 @@ func (s *produceCountAtLeastBeforeBuildState) Observe(f cmdenrich.EnrichedComman
 	switch f.Kind {
 	case cmdenrich.KindMakeUnit:
 		if f.Subject == s.unit {
-			s.count++
+			s.count += factUnitCount(f)
 			if s.count >= s.want {
 				s.done = Matched
 			}

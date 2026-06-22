@@ -187,6 +187,11 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	// Keyed by index into rep.Commands.Cmds, applied to each command below. #175
 	commandCoords := unittags.Coordinates(rep, data.Players)
 
+	// Selection size per Zerg larva-morph command: one morph command can create
+	// several units (all selected larvae morph at once). The early filter caps
+	// this intended count by the larva/minerals actually available.
+	morphSelectionSizes := unittags.MorphSelectionSizes(rep)
+
 	if rep.Commands != nil {
 		for i, cmd := range rep.Commands.Cmds {
 			base := cmd.BaseCmd()
@@ -206,6 +211,10 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 				if cc, ok := commandCoords[i]; ok && command.X == nil && command.Y == nil {
 					x, y := cc.X, cc.Y
 					command.X, command.Y = &x, &y
+				}
+
+				if n, ok := morphSelectionSizes[i]; ok {
+					command.SelectedUnits = n
 				}
 
 				// Edge case: ChatCmd doesn't populate PlayerID, but populates SenderSlotID.

@@ -136,6 +136,12 @@ type EnrichedCommand struct {
 	// Queued is true if the player shift-queued this order.
 	Queued bool
 
+	// Count is how many units this command created. It is >1 only for a Zerg
+	// larva-morph that morphed several selected larvae at once (the early filter
+	// resolves the real number). Defaults to 1; unit-counting predicates add
+	// Count rather than 1 per command so multi-larva morphs aren't undercounted.
+	Count int
+
 	// OrderName preserves the raw OrderName for KindCast (and any
 	// KindRightClick that carried an explicit order). Empty otherwise.
 	// Lets worldstate classify casts (PsionicStorm vs Recall vs Restoration)
@@ -246,6 +252,10 @@ func Classify(cmd *models.Command) (EnrichedCommand, bool) {
 		px, py := *xPx*32+16, *yPx*32+16
 		xPx, yPx = &px, &py
 	}
+	count := cmd.MorphUnitCount
+	if count < 1 {
+		count = 1
+	}
 	fact := EnrichedCommand{
 		Kind:          kind,
 		Subject:       subject,
@@ -258,6 +268,7 @@ func Classify(cmd *models.Command) (EnrichedCommand, bool) {
 		Queued:        boolPtr(cmd.IsQueued),
 		OrderName:     orderName,
 		TargetUnitTag: cmd.TargetUnitTag,
+		Count:         count,
 	}
 	return fact, true
 }

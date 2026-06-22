@@ -213,7 +213,7 @@ func captureTicks(
 				}
 				sim.acceptBuild(en.Subject, econ, cmd.Frame, pos)
 			} else {
-				sim.acceptUnit(en.Subject, econ, cmd.Frame)
+				sim.acceptUnit(en.Subject, econ, cmd.Frame, cmd.SelectedUnits)
 			}
 		}
 	}
