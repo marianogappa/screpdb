@@ -58,6 +58,205 @@
       }
     ]
   },
+  "bo_11hatch_pvz_bbbuuuuuks.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 11 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":93,\"found\":true},{\"second\":113,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "248"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Forge Expand",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":89,\"found\":true},{\"second\":172,\"found\":true},{\"second\":215,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "248"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3]}"
+      }
+    ]
+  },
+  "bo_11hatch_tvz_lyx2008.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 11 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":100,\"found\":true},{\"second\":116,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "247"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "247"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,5,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1-Rax Bio",
+        "value": "{\"expert_actuals\":[{\"second\":80,\"found\":true},{\"second\":57,\"found\":true},{\"second\":212,\"found\":true},{\"found\":false}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "247"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2]}"
+      }
+    ]
+  },
+  "bo_11hatch_tvz_mentalgap.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 11 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":95,\"found\":true},{\"second\":114,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "252"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Terran (Other)",
+        "value": "252"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "252"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      }
+    ]
+  },
+  "bo_11pool_pvz_ililillill.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2 Gate",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":72,\"found\":true},{\"second\":100,\"found\":true},{\"second\":152,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "320"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 11 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":82,\"found\":true},{\"second\":135,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "320"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,8,9]}"
+      }
+    ]
+  },
+  "bo_11pool_pvz_mbushine.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 11 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":82,\"found\":true},{\"second\":134,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "261"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,8]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Opener unresolved",
+        "value": "261"
+      }
+    ]
+  },
+  "bo_11pool_tvz_ililillill.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: CC First",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":117,\"found\":true},{\"second\":149,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "244"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 11 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":83,\"found\":true},{\"second\":136,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "244"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
+      }
+    ]
+  },
   "bo_12_hatch.rep": {
     "detections": [
       {
@@ -102,6 +301,118 @@
       }
     ]
   },
+  "bo_12hatch_tvz_attheendpl.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Terran (Other)",
+        "value": "248"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "248"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 12 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":102,\"found\":true},{\"second\":124,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "248"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "248"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      }
+    ]
+  },
+  "bo_12hatch_tvz_junja.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 12 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":98,\"found\":true},{\"second\":116,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,5,6]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1-Rax Bio",
+        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":50,\"found\":true},{\"found\":false},{\"found\":false}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "214"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "242"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6]}"
+      }
+    ]
+  },
+  "bo_12hatch_tvz_mbushine.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 12 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":101,\"found\":true},{\"second\":115,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "279"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,7,8]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: CC First",
+        "value": "{\"expert_actuals\":[{\"second\":59,\"found\":true},{\"second\":118,\"found\":true},{\"second\":137,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "279"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "279"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      }
+    ]
+  },
   "bo_2_gate_carriers.rep": {
     "detections": [
       {
@@ -138,6 +449,225 @@
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":12.435897435897436}"
+      }
+    ]
+  },
+  "bo_2hmuta_tvz_mbushine.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1-Rax Bio",
+        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":54,\"found\":true},{\"second\":186,\"found\":true},{\"second\":195,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "331"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2 Hatch Muta",
+        "value": "{\"expert_actuals\":[{\"second\":226,\"found\":true},{\"second\":306,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "331"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "331"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
+      }
+    ]
+  },
+  "bo_2hmuta_tvz_mentalgap.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1-Rax Bio",
+        "value": "{\"expert_actuals\":[{\"second\":135,\"found\":true},{\"second\":84,\"found\":true},{\"second\":194,\"found\":true},{\"second\":214,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "342"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2 Hatch Muta",
+        "value": "{\"expert_actuals\":[{\"second\":240,\"found\":true},{\"second\":318,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "342"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "342"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      }
+    ]
+  },
+  "bo_2hmuta_tvz_skins.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2-Rax Bio",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":79,\"found\":true},{\"second\":154,\"found\":true},{\"second\":185,\"found\":true},{\"second\":151,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "356"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2 Hatch Muta",
+        "value": "{\"expert_actuals\":[{\"second\":235,\"found\":true},{\"second\":320,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      }
+    ]
+  },
+  "bo_3hlurker_tvz_honjr.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 5-Rax Bio",
+        "value": "{\"expert_actuals\":[{\"second\":132,\"found\":true},{\"second\":78,\"found\":true},{\"second\":201,\"found\":true},{\"second\":216,\"found\":true},{\"second\":421,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":11.830985915492958}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 3 Hatch Lurker",
+        "value": "{\"expert_actuals\":[{\"second\":270,\"found\":true},{\"second\":417,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":43.098591549295776}"
+      }
+    ]
+  },
+  "bo_3hlurker_tvz_lyx2008.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 4-Rax Bio",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":83,\"found\":true},{\"second\":194,\"found\":true},{\"found\":false},{\"second\":466,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":15.445544554455445}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 3 Hatch Lurker",
+        "value": "{\"expert_actuals\":[{\"second\":288,\"found\":true},{\"second\":398,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "652"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":16.633663366336634}"
+      }
+    ]
+  },
+  "bo_3hlurker_tvz_puuuuuma.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 3 Hatch Lurker",
+        "value": "{\"expert_actuals\":[{\"second\":272,\"found\":true},{\"second\":390,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "578"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":12.857142857142858}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: CC First",
+        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":122,\"found\":true},{\"second\":144,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":10}"
       }
     ]
   },
