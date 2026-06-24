@@ -369,8 +369,11 @@ const boOpenerLines = (event) => {
       });
     }
     const boName = String(entry?.build_order || '').trim();
+    const mods = Array.isArray(entry?.modifiers) ? entry.modifiers.filter(Boolean) : [];
+    // Fold modifier tags into the opener name inline: "2-Rax Bio (all-in, proxy)".
+    const display = boName && mods.length ? `${boName} (${mods.join(', ')})` : boName;
     const line = byPlayer.get(key);
-    if (boName && !line.boNames.includes(boName)) line.boNames.push(boName);
+    if (display && !line.boNames.includes(display)) line.boNames.push(display);
   }
   return Array.from(byPlayer.values());
 };

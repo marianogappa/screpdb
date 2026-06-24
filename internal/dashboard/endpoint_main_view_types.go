@@ -433,6 +433,7 @@ type workflowMarkerPlayer struct {
 	Marker     string                `json:"build_order"` // e.g. "9 pool"
 	FeatureKey string                `json:"feature_key"` // e.g. "bo_9_pool"
 	Events     []workflowMarkerEvent `json:"events"`
+	Modifiers  []string              `json:"modifiers,omitempty"` // e.g. ["all-in","proxy"]
 }
 
 // workflowMarkerEvent is one row in the Build Orders timeline chart.
@@ -552,9 +553,10 @@ type workflowGameEventBuildOrder struct {
 	Race          string `json:"race,omitempty"`
 	IsWinner      bool   `json:"is_winner,omitempty"`
 	Team          int64  `json:"team"`
-	StartLocation string `json:"start_location,omitempty"`
-	BuildOrder    string `json:"build_order"`
-	FeatureKey    string `json:"feature_key"`
+	StartLocation string   `json:"start_location,omitempty"`
+	BuildOrder    string   `json:"build_order"`
+	FeatureKey    string   `json:"feature_key"`
+	Modifiers     []string `json:"modifiers,omitempty"`
 }
 
 type workflowGameEventPlayer struct {
