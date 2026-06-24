@@ -54,6 +54,26 @@ assertion:
 A change that classifies P3 as Bunker Rush breaks this premise → regression.
 (The other players' BOs in this fixture are tier-2.)
 
+Zerg opener batch (`bo_11hatch_*`, `bo_12hatch_*`, `bo_11pool_*`, `bo_2hmuta_*`,
+`bo_3hlurker_*`). Fifteen non-mirror 1v1 ladder replays, each watched and
+confirmed 100% correct after the multi-larva-morph supply fix (a single
+larva-morph command morphs every selected larva, so counting commands had been
+undercounting supply — see the `fix(markers): count multi-larva Zerg morphs`
+commit). The verified premise is the Zerg player's build order:
+
+| Fixtures | Zerg player must classify as |
+| --- | --- |
+| `bo_11hatch_tvz_lyx2008`, `bo_11hatch_tvz_mentalgap`, `bo_11hatch_pvz_bbbuuuuuks` | `Build Order: 11 Hatch` |
+| `bo_12hatch_tvz_junja`, `bo_12hatch_tvz_attheendpl`, `bo_12hatch_tvz_mbushine` | `Build Order: 12 Hatch` |
+| `bo_11pool_tvz_ililillill`, `bo_11pool_pvz_ililillill`, `bo_11pool_pvz_mbushine` | `Build Order: 11 Pool` |
+| `bo_2hmuta_tvz_mbushine`, `bo_2hmuta_tvz_mentalgap`, `bo_2hmuta_tvz_skins` | `Build Order: 2 Hatch Muta` |
+| `bo_3hlurker_tvz_honjr`, `bo_3hlurker_tvz_lyx2008`, `bo_3hlurker_tvz_puuuuuma` | `Build Order: 3 Hatch Lurker` |
+
+The 11 Hatch / 12 Hatch / 11 Pool fixtures specifically guard the supply-rung
+boundary the fix corrected — a regression there (e.g. an 11 Hatch sliding back to
+10) means multi-larva morphs are being undercounted again. The opponent's
+(Terran / Protoss) BO in each fixture is tier-2.
+
 ### Cliff-drop detection — `drops_golden.json`
 
 Each fixture below was confirmed by watching the replay. The premise is the

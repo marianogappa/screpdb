@@ -281,6 +281,9 @@ func allMarkers() []Marker {
 	tRuleCCFirst := All(
 		BuildBefore(subjCommandCenter, subjBarracks),
 		FirstBuildBefore(subjCommandCenter, 200),
+		// Canonical 12 CC is one Supply Depot then the CC. A 2nd depot before
+		// the CC means the player floated/teched first — not a true CC First.
+		Not(NthBuildBeforeAll(subjSupplyDepot, 2, []string{subjCommandCenter})),
 	)
 	tRuleBBS := All(
 		NthBuildBeforeAll(subjBarracks, 2, []string{
@@ -429,8 +432,16 @@ func allMarkers() []Marker {
 		return Marker{
 			Name: name, PatternName: InitialBuildOrderPatternNamePrefix + name, FeatureKey: fkey,
 			Race: RaceTerran, Kind: KindInitialBuildOrder, Matchup: []string{"TvZ", MatchupNon1v1},
-			Rule:          All(tCohort, tcBio, Not(tcWraith), Not(tcGoliath), countPred(subjBarracks, n, exact)),
-			RuleDeadline:  600,
+			Rule:         All(tCohort, tcBio, Not(tcWraith), Not(tcGoliath), countPred(subjBarracks, n, exact)),
+			RuleDeadline: 600,
+			// A bio opener that never takes a natural Command Center in the
+			// opening is an all-in (marine/SCV pressure with no economy behind
+			// it) — materially different from the macro variant that expands.
+			// "proxy" flags a forward Barracks (worldstate proxy_rax event).
+			Modifiers: []Modifier{
+				{Name: "all-in", Rule: Not(FirstBuildBefore(subjCommandCenter, 360))},
+				{Name: "proxy", WorldstateEvent: "proxy_rax"},
+			},
 			Expert:        ev,
 			SummaryPlayer: mkPill(name, "marine"), GamesList: mkPill(name, "marine"),
 		}
@@ -570,7 +581,9 @@ func allMarkers() []Marker {
 			Rule: All(
 				FirstBuildExists(subjRoboticsFacility),
 				ProduceCountAtLeast(subjReaver, 1),
-				Not(NthBuildBeforeAll(subjGateway, 2, []string{subjRoboticsFacility})),
+				// Single Gateway through the Reaver: a 2nd Gateway before the
+				// first Reaver pops makes it a 2-Gate build, not 1 Gate Reaver.
+				Not(NthBuildBeforeFirstProduce(subjGateway, 2, subjReaver)),
 				Not(ProduceCountAtLeast(subjDarkTemplar, 1)),
 			),
 			RuleDeadline: 600,
@@ -640,10 +653,12 @@ func allMarkers() []Marker {
 
 		// --- Terran opening-sequence openers (the new axis vs #155 composition). ---
 		{
-			// Siege Expand (TvP): 1 Rax → Factory (+ Machine Shop) → natural CC —
-			// the safest TvP mech opener. Stays disjoint from a 2-Rax opening
-			// (single Barracks before the Factory).
-			Name: "Siege Expand", PatternName: InitialBuildOrderPatternNamePrefix + "Siege Expand", FeatureKey: "bo_t_siege_expand",
+			// Factory Expand (TvP): 1 Rax → Factory (+ Machine Shop, vultures +
+			// vulture upgrades) → natural CC. The standard safe TvP mech opener.
+			// Named for the factory-first-into-expand shape, not siege tech (no
+			// Siege research is implied). Disjoint from a 2-Rax opening (single
+			// Barracks before the Factory).
+			Name: "Factory Expand", PatternName: InitialBuildOrderPatternNamePrefix + "Factory Expand", FeatureKey: "bo_t_factory_expand",
 			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvT"},
 			Rule: All(
 				BuildBefore(subjBarracks, subjFactory),
@@ -657,7 +672,7 @@ func allMarkers() []Marker {
 				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 150, Tolerance: Asym(20, 60)},
 				{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 229, Tolerance: Asym(30, 80)},
 			},
-			SummaryPlayer: mkPill("Siege Expand", "siegetank"), GamesList: mkPill("Siege Expand", "siegetank"),
+			SummaryPlayer: mkPill("Factory Expand", "vulture"), GamesList: mkPill("Factory Expand", "vulture"),
 		},
 		{
 			// 2 Port Wraith (TvT): two Starports before any expansion — cloaked-
@@ -1084,6 +1099,7 @@ func allMarkers() []Marker {
 			Kind:         KindInitialBuildOrder,
 			Rule:         pRule2Gate,
 			RuleDeadline: 180,
+			Modifiers:    []Modifier{{Name: "proxy", WorldstateEvent: "proxy_gate"}},
 			Expert: []ExpertEvent{
 				{Key: "Pylon", Match: MatchBuild(subjPylon), TargetSecond: 48, Tolerance: Sym(4)},
 				{Key: "1st Gateway", Match: MatchBuild(subjGateway), TargetSecond: 70, Tolerance: Sym(6)},
@@ -1345,6 +1361,7 @@ func allMarkers() []Marker {
 			Kind:         KindInitialBuildOrder,
 			Rule:         tRuleBBS,
 			RuleDeadline: 120,
+			Modifiers:    []Modifier{{Name: "proxy", WorldstateEvent: "proxy_rax"}},
 			Expert: []ExpertEvent{
 				{Key: "1st Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 60, Tolerance: Sym(8)},
 				{Key: "2nd Barracks", Match: MatchNthBuild(subjBarracks, 2), TargetSecond: 80, Tolerance: Sym(8)},

@@ -51,7 +51,7 @@ import (
 // inference excludes them. Re-ingest so stored coords/events reflect the change.
 //
 // 32: Preferred build-order tier. Specific, scene-named openers (e.g. "3 Hatch
-// Muta", "2 Gate Reaver", "Siege Expand") are added as tier-1 markers that take
+// Muta", "2 Gate Reaver", "Factory Expand") are added as tier-1 markers that take
 // precedence over the broad buckets they overlap (tier 2) and the residual
 // "… (Other)" catch-alls (tier 3); only the best-tier opener is persisted per
 // player (internal/patterns markers.Tier + Orchestrator.selectBestTierOpeners).
@@ -117,7 +117,15 @@ import (
 // ≥20s) drives a presence-only "Muta hit-n-run" marker (no timeline/timing, which
 // is too error-prone — a microed muta attack is geometrically indistinguishable).
 // Re-ingest so the marker + games-list filter surface.
-const AlgorithmVersion = 39
+//
+// 40: Build-order accuracy + modifiers. Multi-larva Zerg morphs are now counted
+// by selection size (one morph command morphs every selected larva), fixing the
+// supply undercount that read 11 Hatch as 10. 1 Gate Reaver no longer matches a
+// 2-gate build, CC First requires canonical topology, and "Siege Expand" is
+// renamed "Factory Expand" (key bo_t_factory_expand). New orthogonal build-order
+// modifiers ("all-in", "proxy") ride in the marker payload. Re-ingest so corrected
+// openers, the new feature key, and modifier tags surface.
+const AlgorithmVersion = 40
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

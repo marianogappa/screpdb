@@ -38,6 +38,16 @@ type MarkerPlayerDetector struct {
 	// used as the marker's DetectedAtSecond.
 	lastObservedSecond int
 
+	// modifierStates holds one running predicate per Rule-based Modifier on the
+	// marker, fed the same dedup'd fact stream as the BO rule. Resolved at save
+	// time; WorldstateEvent modifiers are checked separately in GetResult.
+	modifierStates []modifierState
+	// hasWorldstateModifier is true when any modifier reads a worldstate event.
+	// Such a result must not be emitted until the worldstate is finalized (the
+	// orchestrator finalizes it before the final detector pass), else reading it
+	// would trigger a premature worldstate Finalize.
+	hasWorldstateModifier bool
+
 	// Custom path state:
 	custom markers.CustomEvaluator
 	// customResult is the result from CustomEvaluator.Finalize, cached so GetResult has access
@@ -48,6 +58,11 @@ type MarkerPlayerDetector struct {
 	detectedAtSecond int
 }
 
+type modifierState struct {
+	name  string
+	state markers.PredicateState
+}
+
 // NewMarkerPlayerDetector creates a detector for the given marker.
 func NewMarkerPlayerDetector(m markers.Marker) *MarkerPlayerDetector {
 	d := &MarkerPlayerDetector{marker: m}
@@ -56,6 +71,14 @@ func NewMarkerPlayerDetector(m markers.Marker) *MarkerPlayerDetector {
 		d.pending = map[string]cmdenrich.EnrichedCommand{}
 	} else if m.Custom != nil {
 		d.custom = m.Custom()
+	}
+	for _, mod := range m.Modifiers {
+		if mod.Rule != nil {
+			d.modifierStates = append(d.modifierStates, modifierState{name: mod.Name, state: mod.Rule()})
+		}
+		if mod.WorldstateEvent != "" {
+			d.hasWorldstateModifier = true
+		}
 	}
 	return d
 }
@@ -155,6 +178,9 @@ func (d *MarkerPlayerDetector) processRule(command *models.Command, now int) boo
 func (d *MarkerPlayerDetector) observeRuleFact(f cmdenrich.EnrichedCommand) {
 	d.lastObservedSecond = f.Second
 	d.state.Observe(f)
+	for i := range d.modifierStates {
+		d.modifierStates[i].state.Observe(f)
+	}
 	if len(d.marker.Expert) > 0 {
 		d.observed = append(d.observed, f)
 	}
@@ -320,17 +346,56 @@ func (d *MarkerPlayerDetector) GetResult() *core.PatternResult {
 	if !d.ShouldSave() {
 		return nil
 	}
+	// A worldstate-backed modifier can only be read after the worldstate batch
+	// pipeline runs. If this detector finished mid-stream, defer emission until
+	// the orchestrator finalizes the worldstate (before its final detector
+	// pass) — reading the event now would trigger a premature Finalize that
+	// locks in an incomplete event stream.
+	if d.hasWorldstateModifier {
+		if ws := d.GetWorldState(); ws != nil && !ws.Finalized() {
+			return nil
+		}
+	}
 	if d.state != nil {
 		var payload json.RawMessage
-		if len(d.marker.Expert) > 0 {
+		modifiers := d.matchedModifiers()
+		if len(d.marker.Expert) > 0 || len(modifiers) > 0 {
 			resolutions := d.marker.ResolveExpert(d.observed)
-			if encoded, err := markers.EncodeExpertActuals(resolutions); err == nil {
+			if encoded, err := markers.EncodeBuildOrderPayload(resolutions, modifiers); err == nil {
 				payload = encoded
 			}
 		}
 		return d.BuildPlayerResult(d.marker.PatternName, d.detectedAtSecond, payload)
 	}
 	return d.BuildPlayerResult(d.marker.PatternName, d.detectedAtSecond, d.customResult.Payload)
+}
+
+// matchedModifiers returns the names of every modifier that held for this
+// match: Rule-based modifiers whose predicate finalized Matched, plus
+// WorldstateEvent modifiers whose spatial event the player produced. Order
+// follows Marker.Modifiers so the payload is deterministic.
+func (d *MarkerPlayerDetector) matchedModifiers() []string {
+	if len(d.marker.Modifiers) == 0 {
+		return nil
+	}
+	ruleVerdict := map[string]bool{}
+	for i := range d.modifierStates {
+		ruleVerdict[d.modifierStates[i].name] = d.modifierStates[i].state.Finalize() == markers.Matched
+	}
+	ws := d.GetWorldState()
+	var out []string
+	for _, mod := range d.marker.Modifiers {
+		held := false
+		if mod.Rule != nil {
+			held = ruleVerdict[mod.Name]
+		} else if mod.WorldstateEvent != "" {
+			held = ws != nil && ws.FirstEventSecondForPlayer(d.GetReplayPlayerID(), mod.WorldstateEvent) != nil
+		}
+		if held {
+			out = append(out, mod.Name)
+		}
+	}
+	return out
 }
 
 // ShouldSave is true iff the marker matched AND any duration gate is met.

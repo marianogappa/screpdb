@@ -177,7 +177,7 @@ func applyEffects(sim *playerSim, enriched cmdenrich.EnrichedCommand, econ cmden
 		sim.acceptBuild(enriched.Subject, econ, cmd.Frame, pos)
 		return
 	}
-	sim.acceptUnit(enriched.Subject, econ, cmd.Frame)
+	cmd.MorphUnitCount = sim.acceptUnit(enriched.Subject, econ, cmd.Frame, cmd.SelectedUnits)
 }
 
 // buildFilteredCommands materialises the kept-or-readmitted command list in

@@ -321,7 +321,7 @@ const (
 // marker must set one of these; the fuzz test asserts it.
 const (
 	// TierPreferred: specific, scene-named openers sourced from current BW
-	// pro knowledge (e.g. "3 Hatch Muta", "2 Gate Reaver", "Siege Expand").
+	// pro knowledge (e.g. "3 Hatch Muta", "2 Gate Reaver", "Factory Expand").
 	TierPreferred = 1
 	// TierBackup: the broad, high-coverage openers (Zerg supply rungs,
 	// Protoss topology, Terran composition buckets) — shown when no preferred
@@ -424,6 +424,15 @@ type Marker struct {
 	// evaluated mid-streaming.
 	RequireWorldstateEvent string
 
+	// Modifiers augment a matched build order with orthogonal tags — facts that
+	// don't change *which* opener it is but materially change what it means
+	// (e.g. a 2-Rax Bio "all-in" with no expansion vs a macro 2-Rax that
+	// expands; a "proxy" Barracks built in the enemy's base). Each modifier is
+	// evaluated only when the BO itself matches; the names that hold are written
+	// to the marker payload's "modifiers" array and surfaced alongside the BO.
+	// Modifiers never gate the BO match — they only annotate it.
+	Modifiers []Modifier
+
 	// RuleDeadline is the last in-game second that could still change the
 	// answer. Once a replay passes this second, the detector finalizes.
 	// Set to the tightest upper-bound across all rule sub-predicates;
@@ -451,4 +460,20 @@ type Marker struct {
 	// EventsList is the pill shown in the Game Events timeline tab when the marker
 	// should appear alongside raw narrative events.
 	EventsList *Pill
+}
+
+// Modifier is an orthogonal tag attached to a matched build order. It holds
+// when either its Rule (a fact-stream predicate, evaluated over the same
+// dedup'd stream the BO rule sees) resolves Matched, or its WorldstateEvent
+// (a spatial/worldstate confirmation, the same hook as RequireWorldstateEvent)
+// was produced for the player. Exactly one of Rule / WorldstateEvent is set.
+type Modifier struct {
+	// Name is the tag written to the payload and shown alongside the BO
+	// (e.g. "all-in", "proxy").
+	Name string
+	// Rule, when non-nil, makes the modifier hold iff this predicate matches.
+	Rule Predicate
+	// WorldstateEvent, when non-empty, makes the modifier hold iff the
+	// worldstate produced an event of this type sourced by the player.
+	WorldstateEvent string
 }

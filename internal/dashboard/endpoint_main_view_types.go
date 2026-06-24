@@ -279,7 +279,7 @@ var workflowFeaturingFilters = []struct {
 	{Key: "bo_t_tankless_5fac", Label: "5-Fac Tankless Mech", Group: "bo", Race: "terran"},
 	{Key: "bo_t_tankless_6fac", Label: "6+ Fac Tankless Mech", Group: "bo", Race: "terran"},
 	{Key: "bo_t_111", Label: "1-1-1", Group: "bo", Race: "terran"},
-	{Key: "bo_t_siege_expand", Label: "Siege Expand", Group: "bo", Race: "terran"},
+	{Key: "bo_t_factory_expand", Label: "Factory Expand", Group: "bo", Race: "terran"},
 	{Key: "bo_t_2port_wraith", Label: "2 Port Wraith", Group: "bo", Race: "terran"},
 	{Key: "bo_t_2fact_vults", Label: "2 Fact Vults", Group: "bo", Race: "terran"},
 	{Key: "bo_cc_first", Label: "CC First", Group: "bo", Race: "terran"},
@@ -433,6 +433,7 @@ type workflowMarkerPlayer struct {
 	Marker     string                `json:"build_order"` // e.g. "9 pool"
 	FeatureKey string                `json:"feature_key"` // e.g. "bo_9_pool"
 	Events     []workflowMarkerEvent `json:"events"`
+	Modifiers  []string              `json:"modifiers,omitempty"` // e.g. ["all-in","proxy"]
 }
 
 // workflowMarkerEvent is one row in the Build Orders timeline chart.
@@ -552,9 +553,10 @@ type workflowGameEventBuildOrder struct {
 	Race          string `json:"race,omitempty"`
 	IsWinner      bool   `json:"is_winner,omitempty"`
 	Team          int64  `json:"team"`
-	StartLocation string `json:"start_location,omitempty"`
-	BuildOrder    string `json:"build_order"`
-	FeatureKey    string `json:"feature_key"`
+	StartLocation string   `json:"start_location,omitempty"`
+	BuildOrder    string   `json:"build_order"`
+	FeatureKey    string   `json:"feature_key"`
+	Modifiers     []string `json:"modifiers,omitempty"`
 }
 
 type workflowGameEventPlayer struct {

@@ -2288,6 +2288,7 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 			if !ok {
 				continue
 			}
+			boModifiers := markers.DecodeModifiers([]byte(row.Payload))
 			var events []workflowMarkerEvent
 			if schema, isSimplifiedZerg := zergBOEventSchemas[bo.FeatureKey]; isSimplifiedZerg {
 				events = buildZergBOEvents(schema, bo, zergTimings[player.PlayerID])
@@ -2320,6 +2321,7 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 				Marker:     bo.Name,
 				FeatureKey: bo.FeatureKey,
 				Events:     events,
+				Modifiers:  boModifiers,
 			})
 
 			// Surface the BO on the consolidated openers event. We still
@@ -2338,6 +2340,7 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 					StartLocation: startLocationByPlayer[player.PlayerID],
 					BuildOrder:    bo.Name,
 					FeatureKey:    bo.FeatureKey,
+					Modifiers:     boModifiers,
 				})
 				playerHadOpener = true
 				anyBO = true

@@ -536,6 +536,46 @@ func (s *noProduceBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *noProduceBeforeBuildState) Decision(int) TriState { return s.done }
 func (s *noProduceBeforeBuildState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
+// NthBuildBeforeFirstProduce matches if the n-th Build(buildSubject) happens
+// strictly before the first Produce(produceUnit). Used negated to keep a
+// single-production-structure opener honest, e.g.
+// Not(NthBuildBeforeFirstProduce(Gateway, 2, Reaver)) rejects a 2nd Gateway
+// laid before the Reaver ever pops — a "1 Gate Reaver" that already has two
+// Gateways by reaver time is really a 2-Gate build.
+func NthBuildBeforeFirstProduce(buildSubject string, n int, produceUnit string) Predicate {
+	return func() PredicateState {
+		return &nthBuildBeforeFirstProduceState{build: buildSubject, n: n, unit: produceUnit}
+	}
+}
+
+type nthBuildBeforeFirstProduceState struct {
+	commitState
+	build, unit string
+	n, builds   int
+}
+
+func (s *nthBuildBeforeFirstProduceState) Observe(f cmdenrich.EnrichedCommand) {
+	if s.done != Pending {
+		return
+	}
+	switch f.Kind {
+	case cmdenrich.KindMakeBuilding:
+		if f.Subject == s.build {
+			s.builds++
+			if s.builds >= s.n {
+				s.done = Matched
+			}
+		}
+	case cmdenrich.KindMakeUnit:
+		if f.Subject == s.unit && s.builds < s.n {
+			s.done = Rejected
+		}
+	}
+}
+
+func (s *nthBuildBeforeFirstProduceState) Decision(int) TriState { return s.done }
+func (s *nthBuildBeforeFirstProduceState) Finalize() TriState    { return s.finalizeDefaultRejected() }
+
 // ProduceBeforeBuild matches if at least one Produce(unit) happened strictly
 // before the first Build(refSubject). Requires refSubject to be built.
 func ProduceBeforeBuild(unit, refSubject string) Predicate {
@@ -601,7 +641,7 @@ func (s *produceCountBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
 	switch f.Kind {
 	case cmdenrich.KindMakeUnit:
 		if f.Subject == s.unit {
-			s.count++
+			s.count += factUnitCount(f)
 			if s.count > s.want {
 				s.done = Rejected
 			}
@@ -615,6 +655,17 @@ func (s *produceCountBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
 			}
 		}
 	}
+}
+
+// factUnitCount is how many units a Produce fact represents — normally 1, but a
+// single Zerg larva-morph command can morph several selected larvae at once
+// (see cmdenrich.EnrichedCommand.Count). Facts built without a count (DB-side
+// FromAction, test literals) report 0 and are treated as 1.
+func factUnitCount(f cmdenrich.EnrichedCommand) int {
+	if f.Count > 1 {
+		return f.Count
+	}
+	return 1
 }
 
 func (s *produceCountBeforeBuildState) Decision(int) TriState { return s.done }
@@ -648,7 +699,7 @@ func (s *produceCountAtLeastBeforeBuildState) Observe(f cmdenrich.EnrichedComman
 	switch f.Kind {
 	case cmdenrich.KindMakeUnit:
 		if f.Subject == s.unit {
-			s.count++
+			s.count += factUnitCount(f)
 			if s.count >= s.want {
 				s.done = Matched
 			}

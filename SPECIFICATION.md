@@ -587,6 +587,8 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | CC First | Terran | Supply Depot | 62 | ±8 |
 | CC First | Terran | Command Center | 145 | ±20 |
 | CC First | Terran | Barracks | 165 | ±20 |
+| Factory Expand | Terran | Factory | 150 | −20 / +60 |
+| Factory Expand | Terran | Command Center | 229 | −30 / +80 |
 | Forge Cannon (no expa) | Protoss | Forge | 90 | ±20 |
 | Forge Cannon (no expa) | Protoss | Photon Cannon | 130 | ±30 |
 | Forge Expand | Protoss | Pylon | 48 | ±4 |
@@ -607,8 +609,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | Nexus First | Protoss | Gateway | 175 | ±20 |
 | Sair/Speedlot | Protoss | Stargate | 280 | −60 / +90 |
 | Sair/Speedlot | Protoss | Citadel of Adun | 332 | −60 / +120 |
-| Siege Expand | Terran | Factory | 150 | −20 / +60 |
-| Siege Expand | Terran | Command Center | 229 | −30 / +80 |
 | Wraith | Terran | Supply Depot | 56 | −10 / +24 |
 | Wraith | Terran | Barracks | 84 | −28 / +18 |
 | Wraith | Terran | Refinery | 98 | −10 / +60 |
@@ -675,6 +675,7 @@ Each opener's detector commits its decision once the replay passes this second �
 | BBS | Terran | 120 |
 | Bunker Rush | Terran | end of replay |
 | CC First | Terran | 200 |
+| Factory Expand | Terran | 360 |
 | Forge Cannon (no expa) | Protoss | 320 |
 | Forge Expand | Protoss | 260 |
 | Gate Expand | Protoss | 220 |
@@ -683,7 +684,6 @@ Each opener's detector commits its decision once the replay passes this second �
 | Nexus First | Protoss | 200 |
 | Pool/Hatch (Other) | Zerg | 240 |
 | Sair/Speedlot | Protoss | 600 |
-| Siege Expand | Terran | 360 |
 | Terran (Other) | Terran | 600 |
 | Wraith | Terran | 600 |
 
@@ -717,7 +717,7 @@ Standalone constants the detectors depend on — dedup windows, muta/turret burs
 
 | Constant | Value | Meaning |
 | --- | --- | --- |
-| Algorithm version | 39 | Detection algorithm revision; incremented to trigger re-detection. |
+| Algorithm version | 40 | Detection algorithm revision; incremented to trigger re-detection. |
 | Build dedup gap (s) | 3 | Repeat Build orders of the same building at the same tile, closer than this, are one event (double-tap / misclick); different-tile placements are kept. |
 | Build dedup max second (s) | 240 | Past this second, dedup stops and every Build is observed as-is (a tile can be legitimately rebuilt on later). |
 | Mutalisk burst window (s) | 30 | Window within which the Mutalisk morphs must cluster. |
@@ -870,7 +870,7 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 | 53 | bo_t_tankless_5fac |
 | 54 | bo_t_tankless_6fac |
 | 55 | bo_t_111 |
-| 56 | bo_t_siege_expand |
+| 56 | bo_t_factory_expand |
 | 57 | bo_t_2port_wraith |
 | 58 | bo_t_2fact_vults |
 | 59 | double_stargate |

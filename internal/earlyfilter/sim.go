@@ -361,7 +361,20 @@ func (p *playerSim) maybeStartGasGather(cmd *models.Command) {
 // engine; supply *cap* (Overlord +8) commits at completion. Zerg larva-
 // consuming morphs (Drone / Zergling / Overlord) decrement one larva from
 // any available hatchery.
-func (p *playerSim) acceptUnit(subject string, econ cmdenrich.UnitEcon, orderFrame int32) {
+// acceptUnit applies a Train/Morph that decide() already approved, and returns
+// how many units the command produced. intended is the issuing selection size
+// (1 when unknown): a single Zerg larva-morph command morphs every selected
+// larva at once, so one command can create several units. The produced count is
+// capped by the larva and minerals available *before* the command — what the
+// engine could actually have built.
+//
+// Resource accounting deliberately commits only one unit's cost (matching the
+// original single-command model), so the filter's keep/drop verdicts are
+// unchanged for every other command and detector. The multi-unit count is an
+// annotation consumed only by build-order supply counting.
+func (p *playerSim) acceptUnit(subject string, econ cmdenrich.UnitEcon, orderFrame int32, intended int) int {
+	produced := p.producedCount(subject, econ, intended)
+
 	p.minerals -= float64(econ.Minerals)
 	p.supplyUsed += econ.SupplyCost
 	if isLarvaConsumingMorph(subject) {
@@ -376,6 +389,42 @@ func (p *playerSim) acceptUnit(subject string, econ cmdenrich.UnitEcon, orderFra
 		ev.workersDelta = 1
 	}
 	p.schedulePending(ev)
+	return produced
+}
+
+// producedCount returns how many units a single Train/Morph created, given the
+// issuing selection size and the resources on hand before the command. >1 only
+// for a multi-larva Zerg morph that the player could afford. Pure read — does
+// not mutate sim state.
+func (p *playerSim) producedCount(subject string, econ cmdenrich.UnitEcon, intended int) int {
+	if intended <= 1 {
+		return 1
+	}
+	count := intended
+	if econ.Minerals > 0 {
+		if affordable := int(p.minerals) / econ.Minerals; affordable < count {
+			count = affordable
+		}
+	}
+	if isLarvaConsumingMorph(subject) {
+		if larva := p.availableLarvaCount(); larva < count {
+			count = larva
+		}
+	}
+	if count < 1 {
+		count = 1
+	}
+	return count
+}
+
+// availableLarvaCount totals the spawned larva across all of the player's
+// hatcheries (no pre-order slack).
+func (p *playerSim) availableLarvaCount() int {
+	n := 0
+	for i := range p.hatcheries {
+		n += p.hatcheries[i].available
+	}
+	return n
 }
 
 // decide runs the keep/drop logic for one command at the player's current
