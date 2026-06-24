@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/marianogappa/screpdb/compare/v1.9.0...v1.10.0) (2026-06-24)
+
+
+### Features
+
+* **markers:** build-order modifiers, curated Zerg goldens, and opener accuracy fixes ([#210](https://github.com/marianogappa/screpdb/issues/210)) ([31ccca9](https://github.com/marianogappa/screpdb/commit/31ccca962f8345c7fedc018add9c75bc067ea1d7))
+
 ## [1.9.0](https://github.com/marianogappa/screpdb/compare/v1.8.0...v1.9.0) (2026-06-21)
 
 
