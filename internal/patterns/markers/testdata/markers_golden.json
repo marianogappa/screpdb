@@ -789,7 +789,7 @@
       {
         "replay_player_id": 3,
         "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":90,\"found\":true},{\"second\":370,\"found\":true},{\"second\":584,\"found\":true}]}"
+        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":90,\"found\":true},{\"second\":370,\"found\":true},{\"second\":584,\"found\":true}],\"modifiers\":[\"all-in\"]}"
       },
       {
         "replay_player_id": 3,
@@ -809,7 +809,7 @@
       {
         "replay_player_id": 4,
         "pattern_name": "Build Order: 3-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":159,\"found\":true},{\"second\":88,\"found\":true},{\"second\":252,\"found\":true},{\"second\":381,\"found\":true},{\"second\":442,\"found\":true}]}"
+        "value": "{\"expert_actuals\":[{\"second\":159,\"found\":true},{\"second\":88,\"found\":true},{\"second\":252,\"found\":true},{\"second\":381,\"found\":true},{\"second\":442,\"found\":true}],\"modifiers\":[\"all-in\"]}"
       },
       {
         "replay_player_id": 4,
@@ -824,7 +824,7 @@
       {
         "replay_player_id": 5,
         "pattern_name": "Build Order: 3-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":59,\"found\":true},{\"second\":88,\"found\":true},{\"second\":225,\"found\":true},{\"second\":213,\"found\":true},{\"second\":599,\"found\":true}]}"
+        "value": "{\"expert_actuals\":[{\"second\":59,\"found\":true},{\"second\":88,\"found\":true},{\"second\":225,\"found\":true},{\"second\":213,\"found\":true},{\"second\":599,\"found\":true}],\"modifiers\":[\"all-in\"]}"
       },
       {
         "replay_player_id": 5,
@@ -972,7 +972,7 @@
       {
         "replay_player_id": 3,
         "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":49,\"found\":true},{\"second\":119,\"found\":true},{\"second\":180,\"found\":true},{\"found\":false}]}"
+        "value": "{\"expert_actuals\":[{\"second\":49,\"found\":true},{\"second\":119,\"found\":true},{\"second\":180,\"found\":true},{\"found\":false}],\"modifiers\":[\"all-in\"]}"
       },
       {
         "replay_player_id": 4,
@@ -997,7 +997,7 @@
       {
         "replay_player_id": 6,
         "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":91,\"found\":true},{\"second\":129,\"found\":true},{\"found\":false}]}"
+        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":91,\"found\":true},{\"second\":129,\"found\":true},{\"found\":false}],\"modifiers\":[\"all-in\"]}"
       },
       {
         "replay_player_id": 6,

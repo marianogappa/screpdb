@@ -42,6 +42,11 @@ type MarkerPlayerDetector struct {
 	// marker, fed the same dedup'd fact stream as the BO rule. Resolved at save
 	// time; WorldstateEvent modifiers are checked separately in GetResult.
 	modifierStates []modifierState
+	// hasWorldstateModifier is true when any modifier reads a worldstate event.
+	// Such a result must not be emitted until the worldstate is finalized (the
+	// orchestrator finalizes it before the final detector pass), else reading it
+	// would trigger a premature worldstate Finalize.
+	hasWorldstateModifier bool
 
 	// Custom path state:
 	custom markers.CustomEvaluator
@@ -70,6 +75,9 @@ func NewMarkerPlayerDetector(m markers.Marker) *MarkerPlayerDetector {
 	for _, mod := range m.Modifiers {
 		if mod.Rule != nil {
 			d.modifierStates = append(d.modifierStates, modifierState{name: mod.Name, state: mod.Rule()})
+		}
+		if mod.WorldstateEvent != "" {
+			d.hasWorldstateModifier = true
 		}
 	}
 	return d
@@ -338,6 +346,16 @@ func (d *MarkerPlayerDetector) GetResult() *core.PatternResult {
 	if !d.ShouldSave() {
 		return nil
 	}
+	// A worldstate-backed modifier can only be read after the worldstate batch
+	// pipeline runs. If this detector finished mid-stream, defer emission until
+	// the orchestrator finalizes the worldstate (before its final detector
+	// pass) — reading the event now would trigger a premature Finalize that
+	// locks in an incomplete event stream.
+	if d.hasWorldstateModifier {
+		if ws := d.GetWorldState(); ws != nil && !ws.Finalized() {
+			return nil
+		}
+	}
 	if d.state != nil {
 		var payload json.RawMessage
 		modifiers := d.matchedModifiers()
@@ -365,15 +383,8 @@ func (d *MarkerPlayerDetector) matchedModifiers() []string {
 		ruleVerdict[d.modifierStates[i].name] = d.modifierStates[i].state.Finalize() == markers.Matched
 	}
 	ws := d.GetWorldState()
-	var mapKind string
-	if replay := d.GetReplay(); replay != nil {
-		mapKind = replay.MapKind
-	}
 	var out []string
 	for _, mod := range d.marker.Modifiers {
-		if len(mod.MapKind) > 0 && !slices.Contains(mod.MapKind, mapKind) {
-			continue
-		}
 		held := false
 		if mod.Rule != nil {
 			held = ruleVerdict[mod.Name]

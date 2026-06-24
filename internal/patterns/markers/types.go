@@ -476,10 +476,4 @@ type Modifier struct {
 	// WorldstateEvent, when non-empty, makes the modifier hold iff the
 	// worldstate produced an event of this type sourced by the player.
 	WorldstateEvent string
-	// MapKind, when non-empty, restricts the modifier to replays whose
-	// map_kind is listed (e.g. {"Regular"}). Empty = any. The "all-in"
-	// (no-expansion) modifier only makes sense on Regular maps: on Money/BGH
-	// maps a single base is plenty, so not expanding is normal macro, not an
-	// all-in.
-	MapKind []string
 }

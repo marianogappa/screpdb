@@ -350,6 +350,11 @@ func (e *Engine) AppendReplayEvents(events []ReplayEvent) {
 // Idempotent — safe to call from multiple lazy-finalize entry points.
 // No-op if invoked before any commands were buffered AND there are no
 // bases (the legacy path returned empty in that case anyway).
+// Finalized reports whether the batch pipeline has run. Callers that read
+// worldstate events from a context that must not trigger a premature Finalize
+// (e.g. a marker finishing mid-stream) check this first.
+func (e *Engine) Finalized() bool { return e.finalized }
+
 func (e *Engine) Finalize() {
 	if e.finalized {
 		return

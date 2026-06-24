@@ -437,7 +437,11 @@ func allMarkers() []Marker {
 			// A bio opener that never takes a natural Command Center in the
 			// opening is an all-in (marine/SCV pressure with no economy behind
 			// it) — materially different from the macro variant that expands.
-			Modifiers:     []Modifier{{Name: "all-in", Rule: Not(FirstBuildBefore(subjCommandCenter, 360)), MapKind: []string{"Regular"}}},
+			// "proxy" flags a forward Barracks (worldstate proxy_rax event).
+			Modifiers: []Modifier{
+				{Name: "all-in", Rule: Not(FirstBuildBefore(subjCommandCenter, 360))},
+				{Name: "proxy", WorldstateEvent: "proxy_rax"},
+			},
 			Expert:        ev,
 			SummaryPlayer: mkPill(name, "marine"), GamesList: mkPill(name, "marine"),
 		}
@@ -1095,6 +1099,7 @@ func allMarkers() []Marker {
 			Kind:         KindInitialBuildOrder,
 			Rule:         pRule2Gate,
 			RuleDeadline: 180,
+			Modifiers:    []Modifier{{Name: "proxy", WorldstateEvent: "proxy_gate"}},
 			Expert: []ExpertEvent{
 				{Key: "Pylon", Match: MatchBuild(subjPylon), TargetSecond: 48, Tolerance: Sym(4)},
 				{Key: "1st Gateway", Match: MatchBuild(subjGateway), TargetSecond: 70, Tolerance: Sym(6)},
@@ -1356,6 +1361,7 @@ func allMarkers() []Marker {
 			Kind:         KindInitialBuildOrder,
 			Rule:         tRuleBBS,
 			RuleDeadline: 120,
+			Modifiers:    []Modifier{{Name: "proxy", WorldstateEvent: "proxy_rax"}},
 			Expert: []ExpertEvent{
 				{Key: "1st Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 60, Tolerance: Sym(8)},
 				{Key: "2nd Barracks", Match: MatchNthBuild(subjBarracks, 2), TargetSecond: 80, Tolerance: Sym(8)},
