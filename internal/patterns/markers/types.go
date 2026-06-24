@@ -321,7 +321,7 @@ const (
 // marker must set one of these; the fuzz test asserts it.
 const (
 	// TierPreferred: specific, scene-named openers sourced from current BW
-	// pro knowledge (e.g. "3 Hatch Muta", "2 Gate Reaver", "Siege Expand").
+	// pro knowledge (e.g. "3 Hatch Muta", "2 Gate Reaver", "Factory Expand").
 	TierPreferred = 1
 	// TierBackup: the broad, high-coverage openers (Zerg supply rungs,
 	// Protoss topology, Terran composition buckets) — shown when no preferred

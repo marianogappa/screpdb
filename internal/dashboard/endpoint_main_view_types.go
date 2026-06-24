@@ -279,7 +279,7 @@ var workflowFeaturingFilters = []struct {
 	{Key: "bo_t_tankless_5fac", Label: "5-Fac Tankless Mech", Group: "bo", Race: "terran"},
 	{Key: "bo_t_tankless_6fac", Label: "6+ Fac Tankless Mech", Group: "bo", Race: "terran"},
 	{Key: "bo_t_111", Label: "1-1-1", Group: "bo", Race: "terran"},
-	{Key: "bo_t_siege_expand", Label: "Siege Expand", Group: "bo", Race: "terran"},
+	{Key: "bo_t_factory_expand", Label: "Factory Expand", Group: "bo", Race: "terran"},
 	{Key: "bo_t_2port_wraith", Label: "2 Port Wraith", Group: "bo", Race: "terran"},
 	{Key: "bo_t_2fact_vults", Label: "2 Fact Vults", Group: "bo", Race: "terran"},
 	{Key: "bo_cc_first", Label: "CC First", Group: "bo", Race: "terran"},

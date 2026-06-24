@@ -281,6 +281,9 @@ func allMarkers() []Marker {
 	tRuleCCFirst := All(
 		BuildBefore(subjCommandCenter, subjBarracks),
 		FirstBuildBefore(subjCommandCenter, 200),
+		// Canonical 12 CC is one Supply Depot then the CC. A 2nd depot before
+		// the CC means the player floated/teched first — not a true CC First.
+		Not(NthBuildBeforeAll(subjSupplyDepot, 2, []string{subjCommandCenter})),
 	)
 	tRuleBBS := All(
 		NthBuildBeforeAll(subjBarracks, 2, []string{
@@ -570,7 +573,9 @@ func allMarkers() []Marker {
 			Rule: All(
 				FirstBuildExists(subjRoboticsFacility),
 				ProduceCountAtLeast(subjReaver, 1),
-				Not(NthBuildBeforeAll(subjGateway, 2, []string{subjRoboticsFacility})),
+				// Single Gateway through the Reaver: a 2nd Gateway before the
+				// first Reaver pops makes it a 2-Gate build, not 1 Gate Reaver.
+				Not(NthBuildBeforeFirstProduce(subjGateway, 2, subjReaver)),
 				Not(ProduceCountAtLeast(subjDarkTemplar, 1)),
 			),
 			RuleDeadline: 600,
@@ -640,10 +645,12 @@ func allMarkers() []Marker {
 
 		// --- Terran opening-sequence openers (the new axis vs #155 composition). ---
 		{
-			// Siege Expand (TvP): 1 Rax → Factory (+ Machine Shop) → natural CC —
-			// the safest TvP mech opener. Stays disjoint from a 2-Rax opening
-			// (single Barracks before the Factory).
-			Name: "Siege Expand", PatternName: InitialBuildOrderPatternNamePrefix + "Siege Expand", FeatureKey: "bo_t_siege_expand",
+			// Factory Expand (TvP): 1 Rax → Factory (+ Machine Shop, vultures +
+			// vulture upgrades) → natural CC. The standard safe TvP mech opener.
+			// Named for the factory-first-into-expand shape, not siege tech (no
+			// Siege research is implied). Disjoint from a 2-Rax opening (single
+			// Barracks before the Factory).
+			Name: "Factory Expand", PatternName: InitialBuildOrderPatternNamePrefix + "Factory Expand", FeatureKey: "bo_t_factory_expand",
 			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvT"},
 			Rule: All(
 				BuildBefore(subjBarracks, subjFactory),
@@ -657,7 +664,7 @@ func allMarkers() []Marker {
 				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 150, Tolerance: Asym(20, 60)},
 				{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 229, Tolerance: Asym(30, 80)},
 			},
-			SummaryPlayer: mkPill("Siege Expand", "siegetank"), GamesList: mkPill("Siege Expand", "siegetank"),
+			SummaryPlayer: mkPill("Factory Expand", "vulture"), GamesList: mkPill("Factory Expand", "vulture"),
 		},
 		{
 			// 2 Port Wraith (TvT): two Starports before any expansion — cloaked-

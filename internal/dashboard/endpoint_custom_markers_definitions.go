@@ -127,7 +127,7 @@ var staticFeaturingOrder = []string{
 	"bo_t_tankless_6fac",
 	"bo_t_111",
 	// Preferred Terran opening-sequence openers (issue #182).
-	"bo_t_siege_expand",
+	"bo_t_factory_expand",
 	"bo_t_2port_wraith",
 	"bo_t_2fact_vults",
 	// late-game / signature markers.

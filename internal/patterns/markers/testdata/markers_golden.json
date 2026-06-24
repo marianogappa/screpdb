@@ -417,7 +417,7 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: Siege Expand",
+        "pattern_name": "Build Order: Factory Expand",
         "value": "{\"expert_actuals\":[{\"second\":150,\"found\":true},{\"second\":208,\"found\":true}]}"
       },
       {
@@ -1045,8 +1045,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 1 Gate Reaver",
-        "value": "{\"expert_actuals\":[{\"second\":247,\"found\":true},{\"second\":351,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":69,\"found\":true},{\"second\":82,\"found\":true},{\"second\":111,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -1117,7 +1117,7 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: Siege Expand",
+        "pattern_name": "Build Order: Factory Expand",
         "value": "{\"expert_actuals\":[{\"second\":150,\"found\":true},{\"second\":311,\"found\":true}]}"
       },
       {
