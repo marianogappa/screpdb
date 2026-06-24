@@ -432,8 +432,12 @@ func allMarkers() []Marker {
 		return Marker{
 			Name: name, PatternName: InitialBuildOrderPatternNamePrefix + name, FeatureKey: fkey,
 			Race: RaceTerran, Kind: KindInitialBuildOrder, Matchup: []string{"TvZ", MatchupNon1v1},
-			Rule:          All(tCohort, tcBio, Not(tcWraith), Not(tcGoliath), countPred(subjBarracks, n, exact)),
-			RuleDeadline:  600,
+			Rule:         All(tCohort, tcBio, Not(tcWraith), Not(tcGoliath), countPred(subjBarracks, n, exact)),
+			RuleDeadline: 600,
+			// A bio opener that never takes a natural Command Center in the
+			// opening is an all-in (marine/SCV pressure with no economy behind
+			// it) — materially different from the macro variant that expands.
+			Modifiers:     []Modifier{{Name: "all-in", Rule: Not(FirstBuildBefore(subjCommandCenter, 360)), MapKind: []string{"Regular"}}},
 			Expert:        ev,
 			SummaryPlayer: mkPill(name, "marine"), GamesList: mkPill(name, "marine"),
 		}

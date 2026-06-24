@@ -18,11 +18,22 @@ type ExpertActual struct {
 // fields without breaking decode.
 type ExpertPayload struct {
 	ExpertActuals []ExpertActual `json:"expert_actuals"`
+	// Modifiers are orthogonal tags that augment the build order (e.g.
+	// "all-in", "proxy"). Omitted when none hold so existing payloads are
+	// byte-identical.
+	Modifiers []string `json:"modifiers,omitempty"`
 }
 
 // EncodeExpertActuals collapses a list of ExpertResolution (one per
 // Marker.Expert event, in declaration order) into the persisted JSON.
 func EncodeExpertActuals(resolutions []ExpertResolution) (json.RawMessage, error) {
+	return EncodeBuildOrderPayload(resolutions, nil)
+}
+
+// EncodeBuildOrderPayload serializes the expert milestone actuals plus any
+// modifier tags that held for this build order. A BO with no Expert events but
+// with modifiers still round-trips (expert_actuals is an empty list).
+func EncodeBuildOrderPayload(resolutions []ExpertResolution, modifiers []string) (json.RawMessage, error) {
 	actuals := make([]ExpertActual, len(resolutions))
 	for i, r := range resolutions {
 		actuals[i].Found = r.Found
@@ -30,7 +41,20 @@ func EncodeExpertActuals(resolutions []ExpertResolution) (json.RawMessage, error
 			actuals[i].Second = r.ActualSecond
 		}
 	}
-	return json.Marshal(ExpertPayload{ExpertActuals: actuals})
+	return json.Marshal(ExpertPayload{ExpertActuals: actuals, Modifiers: modifiers})
+}
+
+// DecodeModifiers parses the modifier tags from a payload row. Returns nil when
+// absent or unparseable.
+func DecodeModifiers(payload []byte) []string {
+	if len(payload) == 0 {
+		return nil
+	}
+	var wrapper ExpertPayload
+	if err := json.Unmarshal(payload, &wrapper); err != nil {
+		return nil
+	}
+	return wrapper.Modifiers
 }
 
 // DecodeExpertActuals parses a payload row. Returns nil when the payload
