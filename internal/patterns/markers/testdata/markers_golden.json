@@ -33,8 +33,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 5-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":85,\"found\":true},{\"second\":174,\"found\":true},{\"second\":238,\"found\":true},{\"second\":530,\"found\":true}]}"
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":85,\"found\":true},{\"second\":174,\"found\":true},{\"second\":238,\"found\":true},{\"second\":161,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -116,8 +116,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":80,\"found\":true},{\"second\":57,\"found\":true},{\"second\":212,\"found\":true},{\"found\":false}]}"
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":80,\"found\":true},{\"second\":57,\"found\":true},{\"second\":212,\"found\":true},{\"found\":false},{\"second\":202,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -281,8 +281,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 6+ Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":87,\"found\":true},{\"second\":174,\"found\":true},{\"second\":246,\"found\":true},{\"second\":506,\"found\":true}]}"
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":87,\"found\":true},{\"second\":174,\"found\":true},{\"second\":246,\"found\":true},{\"second\":171,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -354,8 +354,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":50,\"found\":true},{\"found\":false},{\"found\":false}]}"
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":50,\"found\":true},{\"found\":false},{\"found\":false},{\"second\":239,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -456,8 +456,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":54,\"found\":true},{\"second\":186,\"found\":true},{\"second\":195,\"found\":true}],\"modifiers\":[\"all-in\"]}"
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":54,\"found\":true},{\"second\":186,\"found\":true},{\"second\":195,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -495,8 +495,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":135,\"found\":true},{\"second\":84,\"found\":true},{\"second\":194,\"found\":true},{\"second\":214,\"found\":true}]}"
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":135,\"found\":true},{\"second\":84,\"found\":true},{\"second\":194,\"found\":true},{\"second\":214,\"found\":true},{\"second\":166,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -534,8 +534,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 2-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":79,\"found\":true},{\"second\":154,\"found\":true},{\"second\":185,\"found\":true},{\"second\":151,\"found\":true}],\"modifiers\":[\"all-in\"]}"
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":79,\"found\":true},{\"second\":154,\"found\":true},{\"second\":185,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -563,8 +563,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 5-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":132,\"found\":true},{\"second\":78,\"found\":true},{\"second\":201,\"found\":true},{\"second\":216,\"found\":true},{\"second\":421,\"found\":true}]}"
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":132,\"found\":true},{\"second\":78,\"found\":true},{\"second\":201,\"found\":true},{\"second\":216,\"found\":true},{\"second\":167,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -597,8 +597,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 4-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":83,\"found\":true},{\"second\":194,\"found\":true},{\"found\":false},{\"second\":466,\"found\":true}]}"
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":83,\"found\":true},{\"second\":194,\"found\":true},{\"found\":false},{\"second\":173,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -788,8 +788,8 @@
       },
       {
         "replay_player_id": 3,
-        "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":90,\"found\":true},{\"second\":370,\"found\":true},{\"second\":584,\"found\":true}],\"modifiers\":[\"all-in\"]}"
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":90,\"found\":true},{\"second\":370,\"found\":true},{\"second\":584,\"found\":true}]}"
       },
       {
         "replay_player_id": 3,
@@ -808,8 +808,8 @@
       },
       {
         "replay_player_id": 4,
-        "pattern_name": "Build Order: 3-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":159,\"found\":true},{\"second\":88,\"found\":true},{\"second\":252,\"found\":true},{\"second\":381,\"found\":true},{\"second\":442,\"found\":true}],\"modifiers\":[\"all-in\"]}"
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":159,\"found\":true},{\"second\":88,\"found\":true},{\"second\":252,\"found\":true},{\"second\":381,\"found\":true}]}"
       },
       {
         "replay_player_id": 4,
@@ -823,8 +823,8 @@
       },
       {
         "replay_player_id": 5,
-        "pattern_name": "Build Order: 3-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":59,\"found\":true},{\"second\":88,\"found\":true},{\"second\":225,\"found\":true},{\"second\":213,\"found\":true},{\"second\":599,\"found\":true}],\"modifiers\":[\"all-in\"]}"
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":59,\"found\":true},{\"second\":88,\"found\":true},{\"second\":225,\"found\":true},{\"second\":213,\"found\":true}]}"
       },
       {
         "replay_player_id": 5,
@@ -971,8 +971,8 @@
       },
       {
         "replay_player_id": 3,
-        "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":49,\"found\":true},{\"second\":119,\"found\":true},{\"second\":180,\"found\":true},{\"found\":false}],\"modifiers\":[\"all-in\"]}"
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":49,\"found\":true},{\"second\":119,\"found\":true},{\"second\":180,\"found\":true},{\"found\":false}]}"
       },
       {
         "replay_player_id": 4,
@@ -996,8 +996,8 @@
       },
       {
         "replay_player_id": 6,
-        "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":91,\"found\":true},{\"second\":129,\"found\":true},{\"found\":false}],\"modifiers\":[\"all-in\"]}"
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":91,\"found\":true},{\"second\":129,\"found\":true},{\"found\":false}]}"
       },
       {
         "replay_player_id": 6,

@@ -429,10 +429,10 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 1-1-1 into Mech | Terran | Factory | 153 | −12 / +80 |
 | 1-1-1 into Mech | Terran | Starport | 254 | −50 / +70 |
 | 1-1-1 into Mech | Terran | First Siege Tank | 312 | −80 / +120 |
-| 1-Rax Bio | Terran | Supply Depot | 56 | −10 / +24 |
-| 1-Rax Bio | Terran | Barracks | 84 | −28 / +20 |
-| 1-Rax Bio | Terran | Refinery | 185 | −80 / +50 |
-| 1-Rax Bio | Terran | Academy | 230 | −45 / +90 |
+| 1-Base Bio | Terran | Supply Depot | 56 | −10 / +24 |
+| 1-Base Bio | Terran | Barracks | 84 | −28 / +20 |
+| 1-Base Bio | Terran | Refinery | 185 | −80 / +50 |
+| 1-Base Bio | Terran | Academy | 230 | −45 / +90 |
 | 10 Hatch | Zerg | Hatchery | 80 | ±5 |
 | 10 Hatch | Zerg | Spawning Pool | 110 | −3 / +10 |
 | 10 Pool | Zerg | Spawning Pool | 92 | ±5 |
@@ -461,6 +461,11 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 2 Hatch Muta | Zerg | First Mutalisks | 327 | −40 / +90 |
 | 2 Port Wraith | Terran | 1st Starport | 201 | −25 / +50 |
 | 2 Port Wraith | Terran | 2nd Starport | 208 | −25 / +60 |
+| 2-Base Bio | Terran | Supply Depot | 56 | −10 / +24 |
+| 2-Base Bio | Terran | Barracks | 84 | −28 / +20 |
+| 2-Base Bio | Terran | Refinery | 185 | −80 / +50 |
+| 2-Base Bio | Terran | Academy | 230 | −45 / +90 |
+| 2-Base Bio | Terran | Command Center | 300 | −80 / +60 |
 | 2-Fac Mech | Terran | Supply Depot | 55 | −10 / +24 |
 | 2-Fac Mech | Terran | Barracks | 85 | −26 / +18 |
 | 2-Fac Mech | Terran | Refinery | 100 | −12 / +70 |
@@ -473,11 +478,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 2-Fac Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
 | 2-Fac Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
 | 2-Fac Tankless Mech | Terran | 2nd Factory | 243 | −90 / +130 |
-| 2-Rax Bio | Terran | Supply Depot | 56 | −10 / +24 |
-| 2-Rax Bio | Terran | Barracks | 84 | −28 / +20 |
-| 2-Rax Bio | Terran | Refinery | 185 | −80 / +50 |
-| 2-Rax Bio | Terran | 2nd Barracks | 220 | −90 / +130 |
-| 2-Rax Bio | Terran | Academy | 230 | −45 / +90 |
 | 3 Hatch Lurker | Zerg | Hydralisk Den | 270 | −50 / +60 |
 | 3 Hatch Lurker | Zerg | First Lurkers | 417 | −80 / +120 |
 | 3 Hatch Muta | Zerg | Spire | 240 | −30 / +80 |
@@ -494,11 +494,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 3-Fac Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
 | 3-Fac Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
 | 3-Fac Tankless Mech | Terran | 3rd Factory | 349 | −90 / +130 |
-| 3-Rax Bio | Terran | Supply Depot | 56 | −10 / +24 |
-| 3-Rax Bio | Terran | Barracks | 84 | −28 / +20 |
-| 3-Rax Bio | Terran | Refinery | 185 | −80 / +50 |
-| 3-Rax Bio | Terran | Academy | 230 | −45 / +90 |
-| 3-Rax Bio | Terran | 3rd Barracks | 342 | −90 / +130 |
 | 4 Hatch | Zerg | Hatchery | 40 | ±6 |
 | 4 Hatch | Zerg | Spawning Pool | 70 | −6 / +12 |
 | 4 Pool | Zerg | Spawning Pool | 33 | ±4 |
@@ -515,11 +510,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 4-Fac Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
 | 4-Fac Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
 | 4-Fac Tankless Mech | Terran | 4th Factory | 422 | −90 / +130 |
-| 4-Rax Bio | Terran | Supply Depot | 56 | −10 / +24 |
-| 4-Rax Bio | Terran | Barracks | 84 | −28 / +20 |
-| 4-Rax Bio | Terran | Refinery | 185 | −80 / +50 |
-| 4-Rax Bio | Terran | Academy | 230 | −45 / +90 |
-| 4-Rax Bio | Terran | 4th Barracks | 355 | −90 / +130 |
 | 5 Hatch | Zerg | Hatchery | 50 | ±6 |
 | 5 Hatch | Zerg | Spawning Pool | 80 | −6 / +12 |
 | 5 Pool | Zerg | Spawning Pool | 45 | ±5 |
@@ -536,11 +526,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 5-Fac Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
 | 5-Fac Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
 | 5-Fac Tankless Mech | Terran | 5th Factory | 471 | −90 / +130 |
-| 5-Rax Bio | Terran | Supply Depot | 56 | −10 / +24 |
-| 5-Rax Bio | Terran | Barracks | 84 | −28 / +20 |
-| 5-Rax Bio | Terran | Refinery | 185 | −80 / +50 |
-| 5-Rax Bio | Terran | Academy | 230 | −45 / +90 |
-| 5-Rax Bio | Terran | 5th Barracks | 476 | −90 / +130 |
 | 6 Hatch | Zerg | Hatchery | 58 | ±6 |
 | 6 Hatch | Zerg | Spawning Pool | 88 | −6 / +12 |
 | 6 Pool | Zerg | Spawning Pool | 52 | ±5 |
@@ -557,11 +542,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 6+ Fac Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
 | 6+ Fac Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
 | 6+ Fac Tankless Mech | Terran | 6th Factory | 560 | −90 / +130 |
-| 6+ Rax Bio | Terran | Supply Depot | 56 | −10 / +24 |
-| 6+ Rax Bio | Terran | Barracks | 84 | −28 / +20 |
-| 6+ Rax Bio | Terran | Refinery | 185 | −80 / +50 |
-| 6+ Rax Bio | Terran | Academy | 230 | −45 / +90 |
-| 6+ Rax Bio | Terran | 6th Barracks | 512 | −90 / +130 |
 | 7 Hatch | Zerg | Hatchery | 66 | ±6 |
 | 7 Hatch | Zerg | Spawning Pool | 96 | −6 / +12 |
 | 7 Pool | Zerg | Spawning Pool | 60 | ±5 |
@@ -627,7 +607,7 @@ Each opener's detector commits its decision once the replay passes this second �
 | 1 Gate Reaver | Protoss | 600 |
 | 1-1-1 | Terran | 600 |
 | 1-1-1 into Mech | Terran | 600 |
-| 1-Rax Bio | Terran | 600 |
+| 1-Base Bio | Terran | 600 |
 | 10 Hatch | Zerg | 180 |
 | 10 Pool | Zerg | 180 |
 | 11 Hatch | Zerg | 180 |
@@ -641,29 +621,25 @@ Each opener's detector commits its decision once the replay passes this second �
 | 2 Hatch Hydra | Zerg | 600 |
 | 2 Hatch Muta | Zerg | 600 |
 | 2 Port Wraith | Terran | 600 |
+| 2-Base Bio | Terran | 600 |
 | 2-Fac Mech | Terran | 600 |
 | 2-Fac Tankless Mech | Terran | 600 |
-| 2-Rax Bio | Terran | 600 |
 | 3 Hatch Lurker | Zerg | 600 |
 | 3 Hatch Muta | Zerg | 600 |
 | 3-Fac Mech | Terran | 600 |
 | 3-Fac Tankless Mech | Terran | 600 |
-| 3-Rax Bio | Terran | 600 |
 | 4 Hatch | Zerg | 180 |
 | 4 Pool | Zerg | 60 |
 | 4-Fac Mech | Terran | 600 |
 | 4-Fac Tankless Mech | Terran | 600 |
-| 4-Rax Bio | Terran | 600 |
 | 5 Hatch | Zerg | 180 |
 | 5 Pool | Zerg | 180 |
 | 5-Fac Mech | Terran | 600 |
 | 5-Fac Tankless Mech | Terran | 600 |
-| 5-Rax Bio | Terran | 600 |
 | 6 Hatch | Zerg | 180 |
 | 6 Pool | Zerg | 180 |
 | 6+ Fac Mech | Terran | 600 |
 | 6+ Fac Tankless Mech | Terran | 600 |
-| 6+ Rax Bio | Terran | 600 |
 | 7 Hatch | Zerg | 180 |
 | 7 Pool | Zerg | 180 |
 | 8 Hatch | Zerg | 180 |
@@ -852,32 +828,28 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 | 35 | bo_cc_first |
 | 36 | bo_t_wraith |
 | 37 | bo_t_goliath |
-| 38 | bo_t_bio_1rax |
-| 39 | bo_t_bio_2rax |
-| 40 | bo_t_bio_3rax |
-| 41 | bo_t_bio_4rax |
-| 42 | bo_t_bio_5rax |
-| 43 | bo_t_bio_6rax |
-| 44 | bo_t_111_mech |
-| 45 | bo_t_mech_2fac |
-| 46 | bo_t_mech_3fac |
-| 47 | bo_t_mech_4fac |
-| 48 | bo_t_mech_5fac |
-| 49 | bo_t_mech_6fac |
-| 50 | bo_t_tankless_2fac |
-| 51 | bo_t_tankless_3fac |
-| 52 | bo_t_tankless_4fac |
-| 53 | bo_t_tankless_5fac |
-| 54 | bo_t_tankless_6fac |
-| 55 | bo_t_111 |
-| 56 | bo_t_factory_expand |
-| 57 | bo_t_2port_wraith |
-| 58 | bo_t_2fact_vults |
-| 59 | double_stargate |
-| 60 | carriers |
-| 61 | battlecruisers |
-| 62 | ten_plus_scouts |
-| 63 | cliff_drop |
+| 38 | bo_t_bio_1base |
+| 39 | bo_t_bio_2base |
+| 40 | bo_t_111_mech |
+| 41 | bo_t_mech_2fac |
+| 42 | bo_t_mech_3fac |
+| 43 | bo_t_mech_4fac |
+| 44 | bo_t_mech_5fac |
+| 45 | bo_t_mech_6fac |
+| 46 | bo_t_tankless_2fac |
+| 47 | bo_t_tankless_3fac |
+| 48 | bo_t_tankless_4fac |
+| 49 | bo_t_tankless_5fac |
+| 50 | bo_t_tankless_6fac |
+| 51 | bo_t_111 |
+| 52 | bo_t_factory_expand |
+| 53 | bo_t_2port_wraith |
+| 54 | bo_t_2fact_vults |
+| 55 | double_stargate |
+| 56 | carriers |
+| 57 | battlecruisers |
+| 58 | ten_plus_scouts |
+| 59 | cliff_drop |
 
 ## Game-event featuring chips
 

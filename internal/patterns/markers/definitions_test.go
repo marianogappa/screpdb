@@ -368,28 +368,30 @@ func produceN(b *factsB, unit string, n, from int) *factsB {
 	return b
 }
 
-func TestBO_Terran_Bio_ByBarracks(t *testing.T) {
-	// 3 Barracks, mass Marine/Medic, no mech → 3-Rax Bio.
+func TestBO_Terran_Bio_ByBase(t *testing.T) {
+	// Mass Marine/Medic, no natural Command Center → 1-Base Bio (all-in).
 	b := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjBarracks, 120).B(subjBarracks, 160)
 	produceN(b, subjMarine, 10, 200)
 	produceN(b, subjMedic, 2, 320)
-	stream := b.list()
-	if !findBO(t, "3-Rax Bio").Matches(stream) {
-		t.Fatalf("3 Barracks + mass M&M should be 3-Rax Bio")
+	oneBase := b.list()
+	if !findBO(t, "1-Base Bio").Matches(oneBase) {
+		t.Fatalf("bio with no natural CC should be 1-Base Bio")
 	}
-	for _, other := range []string{"2-Rax Bio", "4-Rax Bio", "6+ Rax Bio", "2-Fac Mech", "1-1-1"} {
-		if findBO(t, other).Matches(stream) {
-			t.Fatalf("bio stream must not also match %q (mutex)", other)
+	for _, other := range []string{"2-Base Bio", "2-Fac Mech", "1-1-1"} {
+		if findBO(t, other).Matches(oneBase) {
+			t.Fatalf("1-base bio must not also match %q (mutex)", other)
 		}
 	}
-	// 6 Barracks → 6+ Rax Bio.
-	b6 := factsBuilder().B(subjSupplyDepot, 30)
-	for i := 0; i < 6; i++ {
-		b6.B(subjBarracks, 80+i*20)
+	// Same bio but takes a natural Command Center by ~360s → 2-Base Bio.
+	b2 := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjBarracks, 120).B(subjCommandCenter, 300)
+	produceN(b2, subjMarine, 10, 200)
+	produceN(b2, subjMedic, 2, 320)
+	twoBase := b2.list()
+	if !findBO(t, "2-Base Bio").Matches(twoBase) {
+		t.Fatalf("bio with a natural CC by 360s should be 2-Base Bio")
 	}
-	produceN(b6, subjMarine, 10, 220)
-	if !findBO(t, "6+ Rax Bio").Matches(b6.list()) {
-		t.Fatalf("6 Barracks + mass Marine should be 6+ Rax Bio")
+	if findBO(t, "1-Base Bio").Matches(twoBase) {
+		t.Fatalf("2-base bio must not also match 1-Base Bio (mutex)")
 	}
 }
 
@@ -402,7 +404,7 @@ func TestBO_Terran_Mech_ByFactory_AndTankless(t *testing.T) {
 	if !findBO(t, "2-Fac Mech").Matches(mech) {
 		t.Fatalf("2 Factories + Vultures + Tanks should be 2-Fac Mech")
 	}
-	for _, other := range []string{"3-Fac Mech", "2-Fac Tankless Mech", "3-Rax Bio", "1-1-1"} {
+	for _, other := range []string{"3-Fac Mech", "2-Fac Tankless Mech", "1-Base Bio", "1-1-1"} {
 		if findBO(t, other).Matches(mech) {
 			t.Fatalf("mech stream must not also match %q (mutex)", other)
 		}

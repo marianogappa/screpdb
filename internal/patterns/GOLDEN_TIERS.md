@@ -38,7 +38,7 @@ the verified premise:
 | --- | --- | --- |
 | chobo86 (P0) | `Build Order: 5-Fac Mech` | "clear mech build with 5 factories" |
 | ALT+F4 (P4) | `Build Order: 1-1-1 into Mech` | "alt+f4 did a 1-1-1" |
-| UranAsol (P6) | `Build Order: 1-Rax Bio` | 1-rax marine opening, left early under attack |
+| UranAsol (P6) | `Build Order: 1-Base Bio` | one-base marine opening, left early under attack |
 | Mr.Cordelius (P5) | `Opener unresolved` | "fair since they didn't play" |
 
 (The other players' BOs in this fixture are tier-2.)
@@ -49,7 +49,7 @@ assertion:
 
 | Player (idx) | Must NOT classify as | Why |
 | --- | --- | --- |
-| P3 | `Build Order: Bunker Rush` | Defensive sim-city Bunker walled at the player's own base, not a rush. On a Money map the no-expansion topology is meaningless (nobody takes a second CC), so topology alone misread it; the offensive `bunker_rush` spatial gate now keeps it out. Classifies as `Build Order: 1-Rax Bio`. |
+| P3 | `Build Order: Bunker Rush` | Defensive sim-city Bunker walled at the player's own base, not a rush. On a Money map the no-expansion topology is meaningless (nobody takes a second CC), so topology alone misread it; the offensive `bunker_rush` spatial gate now keeps it out. Classifies as `Build Order: 1-Base Bio`. |
 
 A change that classifies P3 as Bunker Rush breaks this premise → regression.
 (The other players' BOs in this fixture are tier-2.)
