@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/marianogappa/screpdb/compare/v1.10.0...v1.11.0) (2026-06-25)
+
+
+### Features
+
+* **markers:** base-count bio (1-Base/2-Base), reaver expand modifier, reliable building counts ([#214](https://github.com/marianogappa/screpdb/issues/214)) ([fb81479](https://github.com/marianogappa/screpdb/commit/fb81479b54b5b355b159da8533298047f648d407))
+
 ## [1.10.0](https://github.com/marianogappa/screpdb/compare/v1.9.0...v1.10.0) (2026-06-24)
 
 
