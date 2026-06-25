@@ -1,13 +1,16 @@
-// Package netfacade is the single sanctioned surface for network operations in
-// screpdb's Go binary. Per issue #135 the binary makes NO external outbound
-// network calls: the only version-update check is a browser fetch() in the
-// frontend, and the dashboard HTTP server binds to localhost only.
+// Package netfacade is the sanctioned surface for general network operations in
+// screpdb's Go binary. Per issue #135 the binary's only network-client
+// operation here is a localhost TCP readiness probe (used to detect when the
+// embedded dashboard server has come up); the dashboard HTTP server binds to
+// localhost only.
 //
-// The sole network-client operation the binary performs is a localhost TCP
-// readiness probe (used to detect when the embedded dashboard server has come
-// up). It lives here so the enforcement test in internal/iofacade can assert
-// that no other package constructs an outbound HTTP client or dials a remote
-// host.
+// The one deliberate exception to "no outbound calls" is in-binary self-update
+// (issue #212): internal/selfupdate is a separate sanctioned surface that
+// queries the GitHub Releases API and downloads the matching asset, verifying
+// every byte against a minisign-signed SHA256SUMS before any swap. Both this
+// package and internal/selfupdate are exempt from the enforcement test in
+// internal/iofacade, which asserts that no other package constructs an outbound
+// HTTP client or dials a remote host.
 //
 // Inbound serving (http.Server / ListenAndServe bound to localhost) stays in
 // the dashboard package and is intentionally allowed by the enforcement test.

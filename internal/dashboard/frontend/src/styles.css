@@ -2118,6 +2118,66 @@ body {
   text-decoration: none;
 }
 
+/* The update notice renders as a <button> when self-update is supported; reset
+   button chrome so it matches the anchor variant. */
+button.workflow-nav-update-available {
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
+}
+
+button.workflow-nav-update-available:disabled {
+  cursor: progress;
+  opacity: 0.75;
+}
+
+/* Quiet-tier footer nudge (minor/patch updates). */
+.footer-update-nudge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.footer-update-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  color: rgba(140, 220, 160, 0.98);
+  text-decoration: none;
+}
+
+.footer-update-link:hover {
+  text-decoration: underline;
+}
+
+.footer-update-link:disabled {
+  cursor: progress;
+  opacity: 0.75;
+  text-decoration: none;
+}
+
+.footer-update-dismiss {
+  background: transparent;
+  border: none;
+  padding: 0 2px;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.footer-update-dismiss:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.footer-update-error {
+  margin-left: 8px;
+  color: rgba(255, 140, 140, 0.95);
+}
+
 .workflow-nav-text-action:hover {
   color: #fff;
   background: rgba(255, 255, 255, 0.06);

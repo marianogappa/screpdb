@@ -120,6 +120,29 @@ export const api = {
     return response.json();
   },
 
+  getUpdateStatus: async () => {
+    const response = await fetch(`${API_CUSTOM}/update/status`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to load update status');
+    }
+    return response.json();
+  },
+
+  applyUpdate: async () => {
+    const response = await fetch(`${API_CUSTOM}/update/apply`, { method: 'POST' });
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (_err) {
+      payload = null;
+    }
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Failed to apply update');
+    }
+    return payload;
+  },
+
   getGlobalReplayFilter: async () => {
     const response = await fetch(`${API_CUSTOM}/global-replay-filter`);
     if (!response.ok) {
