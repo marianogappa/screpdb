@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.1](https://github.com/marianogappa/screpdb/compare/v1.12.0...v1.12.1) (2026-06-25)
+
+
+### Bug Fixes
+
+* **ingest:** example-set re-ingest, post-save refresh, column swap ([#218](https://github.com/marianogappa/screpdb/issues/218)) ([2d27462](https://github.com/marianogappa/screpdb/commit/2d274620f967bb0cb3d72bd8cfa54d78127f520a)), closes [#213](https://github.com/marianogappa/screpdb/issues/213)
+
 ## [1.12.0](https://github.com/marianogappa/screpdb/compare/v1.11.0...v1.12.0) (2026-06-25)
 
 
