@@ -21,9 +21,9 @@
   player 1 (Protoss): tierA=0 tierB=0
     Gateway            built=1 produced=1 dropped=0
 == bo_forge_expand.rep ==
-  player 0 (Protoss): tierA=0 tierB=8
+  player 0 (Protoss): tierA=0 tierB=5
     Nexus              built=2 produced=2 dropped=0
-    Gateway            built=17 produced=9 dropped=8
+    Gateway            built=17 produced=9 dropped=5
     Robotics Facility  built=1 produced=1 dropped=0
     Stargate           built=1 produced=1 dropped=0
   player 1 (Zerg): tierA=1 tierB=0

@@ -574,7 +574,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":11.830985915492958}"
+        "value": "{\"switches_per_minute\":13.52112676056338}"
       },
       {
         "replay_player_id": 1,
@@ -883,7 +883,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":14.117647058823529}"
+        "value": "{\"switches_per_minute\":13.897058823529411}"
       },
       {
         "replay_player_id": 1,
