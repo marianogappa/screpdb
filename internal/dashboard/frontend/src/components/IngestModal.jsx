@@ -92,38 +92,7 @@ function IngestModal({
 
           {/* 2 + 3 side by side, leaving more vertical room for the log below. */}
           <div className="ingest-section-row">
-          {/* 2. Keep up to date — an ongoing behavior, not a one-shot. */}
-          <div className="ingest-plain-block ingest-col">
-            <div className="ingest-title">Keep up to date</div>
-            <label className="ingest-auto-inline">
-              <input
-                type="checkbox"
-                checked={ingestForm.autoIngestEnabled}
-                onChange={(e) => onChange({ ...ingestForm, autoIngestEnabled: e.target.checked })}
-              />
-              <span>Auto-ingest latest replay</span>
-            </label>
-
-            {/* Example replays live here to fill the left column's vertical space. */}
-            <div className="ingest-title ingest-subheading">Example replays</div>
-            {!isSampleSet ? (
-              <div className="ingest-sample-col">
-                <button
-                  type="button"
-                  className="btn-save ingest-load-sample"
-                  disabled={busy}
-                  onClick={onLoadSampleSet}
-                >
-                  {sampleSetLoading ? 'Loading example replays...' : 'Load example replays'}
-                </button>
-                <span className="ingest-helper-text">A few example games to try every feature. Replaces your current screpdb data (not your .rep files).</span>
-              </div>
-            ) : (
-              <span className="ingest-helper-text ingest-sample-active">You're using the built-in example replays.</span>
-            )}
-          </div>
-
-          {/* 3. Ingest now — the action. While the example set is active,
+          {/* 2. Ingest now — the action. While the example set is active,
               ingesting "last N" of the examples is meaningless, so this space
               instead offers a way back to the user's detected replay folder. */}
           {onSampleSource ? (
@@ -181,6 +150,49 @@ function IngestModal({
             </div>
           </form>
           )}
+
+          {/* 3. Keep up to date — an ongoing behavior, not a one-shot. */}
+          <div className="ingest-plain-block ingest-col">
+            <div className="ingest-title">Keep up to date</div>
+            <label className="ingest-auto-inline">
+              <input
+                type="checkbox"
+                checked={ingestForm.autoIngestEnabled}
+                onChange={(e) => onChange({ ...ingestForm, autoIngestEnabled: e.target.checked })}
+              />
+              <span>Auto-ingest latest replay</span>
+            </label>
+
+            {/* Example replays live here to fill the column's vertical space. */}
+            <div className="ingest-title ingest-subheading">Example replays</div>
+            {!isSampleSet ? (
+              <div className="ingest-sample-col">
+                <button
+                  type="button"
+                  className="btn-save ingest-load-sample"
+                  disabled={busy}
+                  onClick={onLoadSampleSet}
+                >
+                  {sampleSetLoading ? 'Loading example replays...' : 'Load example replays'}
+                </button>
+                <span className="ingest-helper-text">A few example games to try every feature. Replaces your current screpdb data (not your .rep files).</span>
+              </div>
+            ) : (
+              // Always offer a re-ingest action so a wiped DB on a machine with
+              // no detected replay folder isn't a dead end.
+              <div className="ingest-sample-col">
+                <span className="ingest-helper-text ingest-sample-active">You're using the built-in example replays.</span>
+                <button
+                  type="button"
+                  className="btn-save ingest-load-sample"
+                  disabled={busy}
+                  onClick={onLoadSampleSet}
+                >
+                  {sampleSetLoading ? 'Loading example replays...' : 'Re-ingest example replays'}
+                </button>
+              </div>
+            )}
+          </div>
           </div>
 
           {/* 4. Progress — status + log + connection state, together. */}
