@@ -14,8 +14,6 @@ import (
 // update whose checksums carry a signature from this exact key.
 const minisignPublicKey = "RWS9gPPOydPD/tR8JBOelXKhif526NoAKY18dau7QHR4dqg84QMhJ5L/"
 
-// verifySignature checks that sigData is a valid minisign signature over
-// sumsData produced by the embedded public key.
 func verifySignature(sumsData, sigData []byte) error {
 	var pk minisign.PublicKey
 	if err := pk.UnmarshalText([]byte(minisignPublicKey)); err != nil {

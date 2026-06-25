@@ -103,7 +103,6 @@ func assetName(goos, goarch, variant string) (string, bool) {
 	return "", false
 }
 
-// currentAssetName resolves the asset for this running binary.
 func currentAssetName() (string, bool) {
 	return assetName(runtime.GOOS, runtime.GOARCH, buildinfo.Variant)
 }
