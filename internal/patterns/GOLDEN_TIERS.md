@@ -74,6 +74,24 @@ boundary the fix corrected — a regression there (e.g. an 11 Hatch sliding back
 10) means multi-larva morphs are being undercounted again. The opponent's
 (Terran / Protoss) BO in each fixture is tier-2.
 
+Protoss/Terran opener batch (round 3). Thirteen non-mirror 1v1 ladder replays,
+each watched and confirmed correct. The verified premise is the named player's
+build order (and, where noted, a modifier):
+
+| Fixtures | Player must classify as |
+| --- | --- |
+| `bo_factory_expand_sst`, `bo_factory_expand_dsfsd`, `bo_factory_expand_ncs` | `Build Order: Factory Expand` (1 Rax → Factory + vultures → natural CC; no siege research — this is why "Siege Expand" was renamed) |
+| `bo_ccfirst_111113`, `bo_ccfirst_ilill`, `bo_ccfirst_illill` | `Build Order: CC First` (canonical: Depot then CC, no Barracks or 2nd Depot before the CC) |
+| `bo_1base_bio_sst` | `Build Order: 1-Base Bio` (bio all-in, no natural CC in the opening) |
+| `bo_2base_bio_cabeiri` | `Build Order: 2-Base Bio` (bio that takes a natural CC in the opening) |
+| `bo_2hatch_hydra_mbushine`, `bo_2hatch_hydra_lilli`, `bo_2hatch_hydra_mentalgap` | `Build Order: 2 Hatch Hydra` |
+| `bo_1gate_reaver_flashrilla` | `Build Order: 1 Gate Reaver`, **no** `expand` modifier (Nexus only after the Reaver) |
+| `bo_1gate_reaver_minimaxii` | `Build Order: 1 Gate Reaver` **with** `expand` modifier (Nexus before the first Reaver) |
+
+The 1-Base/2-Base pair guards the bio base-count split; the two 1 Gate Reaver
+fixtures guard the `expand` modifier (present vs absent). The opponent's BO in
+each fixture is tier-2.
+
 ### Cliff-drop detection — `drops_golden.json`
 
 Each fixture below was confirmed by watching the replay. The premise is the
