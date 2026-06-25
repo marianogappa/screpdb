@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/marianogappa/screpdb/compare/v1.11.0...v1.12.0) (2026-06-25)
+
+
+### Features
+
+* in-binary self-update from GitHub Releases ([#212](https://github.com/marianogappa/screpdb/issues/212)) ([#216](https://github.com/marianogappa/screpdb/issues/216)) ([ebc28c3](https://github.com/marianogappa/screpdb/commit/ebc28c3094849bcf57903c0f33a8edef6bfd4301))
+
 ## [1.11.0](https://github.com/marianogappa/screpdb/compare/v1.10.0...v1.11.0) (2026-06-25)
 
 
