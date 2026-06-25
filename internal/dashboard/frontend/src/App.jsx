@@ -3308,6 +3308,9 @@ function App() {
     setIngestMessage('');
     try {
       await persistIngestInputDir(ingestInputDir);
+      // Refresh so is_sample_set flips false once a real folder is saved;
+      // otherwise stale isSampleSet keeps "Ingest now" hidden.
+      await loadIngestSettings();
       setIngestMessage('Replay folder saved.');
       void loadAliases();
     } catch (err) {
