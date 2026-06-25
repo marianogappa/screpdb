@@ -33,8 +33,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 5-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":85,\"found\":true},{\"second\":174,\"found\":true},{\"second\":238,\"found\":true},{\"second\":530,\"found\":true}]}"
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":85,\"found\":true},{\"second\":174,\"found\":true},{\"second\":238,\"found\":true},{\"second\":161,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -116,8 +116,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":80,\"found\":true},{\"second\":57,\"found\":true},{\"second\":212,\"found\":true},{\"found\":false}]}"
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":80,\"found\":true},{\"second\":57,\"found\":true},{\"second\":212,\"found\":true},{\"found\":false},{\"second\":202,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -281,8 +281,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 6+ Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":87,\"found\":true},{\"second\":174,\"found\":true},{\"second\":246,\"found\":true},{\"second\":506,\"found\":true}]}"
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":87,\"found\":true},{\"second\":174,\"found\":true},{\"second\":246,\"found\":true},{\"second\":171,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -354,8 +354,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":50,\"found\":true},{\"found\":false},{\"found\":false}]}"
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":50,\"found\":true},{\"found\":false},{\"found\":false},{\"second\":239,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -413,6 +413,118 @@
       }
     ]
   },
+  "bo_1base_bio_sst.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":79,\"found\":true},{\"second\":56,\"found\":true},{\"found\":false},{\"found\":false}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "281"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "281"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 9 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":61,\"found\":true},{\"found\":false}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "281"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6]}"
+      }
+    ]
+  },
+  "bo_1gate_reaver_flashrilla.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Gate Reaver",
+        "value": "{\"expert_actuals\":[{\"second\":196,\"found\":true},{\"second\":293,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "367"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "412"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "412"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "412"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3]}"
+      }
+    ]
+  },
+  "bo_1gate_reaver_minimaxii.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Gate Reaver",
+        "value": "{\"expert_actuals\":[{\"second\":210,\"found\":true},{\"second\":293,\"found\":true}],\"modifiers\":[\"expand\"]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "404"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "441"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: CC First",
+        "value": "{\"expert_actuals\":[{\"second\":52,\"found\":true},{\"second\":114,\"found\":true},{\"second\":137,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
+      }
+    ]
+  },
   "bo_2_gate_carriers.rep": {
     "detections": [
       {
@@ -452,12 +564,143 @@
       }
     ]
   },
+  "bo_2base_bio_cabeiri.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":74,\"found\":true},{\"second\":174,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "437"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":50,\"found\":true},{\"second\":79,\"found\":true},{\"second\":240,\"found\":true},{\"second\":262,\"found\":true},{\"second\":188,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
+      }
+    ]
+  },
+  "bo_2hatch_hydra_lilli.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2 Hatch Hydra",
+        "value": "{\"expert_actuals\":[{\"second\":196,\"found\":true},{\"second\":245,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "375"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Gateway (Other)",
+        "value": "235"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "375"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      }
+    ]
+  },
+  "bo_2hatch_hydra_mbushine.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Sair/Speedlot",
+        "value": "{\"expert_actuals\":[{\"second\":269,\"found\":true},{\"second\":356,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "430"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2 Hatch Hydra",
+        "value": "{\"expert_actuals\":[{\"second\":199,\"found\":true},{\"second\":268,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "430"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      }
+    ]
+  },
+  "bo_2hatch_hydra_mentalgap.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Sair/Speedlot",
+        "value": "{\"expert_actuals\":[{\"second\":234,\"found\":true},{\"second\":327,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "408"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2 Hatch Hydra",
+        "value": "{\"expert_actuals\":[{\"second\":214,\"found\":true},{\"second\":257,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "408"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      }
+    ]
+  },
   "bo_2hmuta_tvz_mbushine.rep": {
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":54,\"found\":true},{\"second\":186,\"found\":true},{\"second\":195,\"found\":true}],\"modifiers\":[\"all-in\"]}"
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":54,\"found\":true},{\"second\":186,\"found\":true},{\"second\":195,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -495,8 +738,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":135,\"found\":true},{\"second\":84,\"found\":true},{\"second\":194,\"found\":true},{\"second\":214,\"found\":true}]}"
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":135,\"found\":true},{\"second\":84,\"found\":true},{\"second\":194,\"found\":true},{\"second\":214,\"found\":true},{\"second\":166,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -534,8 +777,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 2-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":79,\"found\":true},{\"second\":154,\"found\":true},{\"second\":185,\"found\":true},{\"second\":151,\"found\":true}],\"modifiers\":[\"all-in\"]}"
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":79,\"found\":true},{\"second\":154,\"found\":true},{\"second\":185,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -563,8 +806,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 5-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":132,\"found\":true},{\"second\":78,\"found\":true},{\"second\":201,\"found\":true},{\"second\":216,\"found\":true},{\"second\":421,\"found\":true}]}"
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":132,\"found\":true},{\"second\":78,\"found\":true},{\"second\":201,\"found\":true},{\"second\":216,\"found\":true},{\"second\":167,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -574,7 +817,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":11.830985915492958}"
+        "value": "{\"switches_per_minute\":13.52112676056338}"
       },
       {
         "replay_player_id": 1,
@@ -597,8 +840,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 4-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":83,\"found\":true},{\"second\":194,\"found\":true},{\"found\":false},{\"second\":466,\"found\":true}]}"
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":83,\"found\":true},{\"second\":194,\"found\":true},{\"found\":false},{\"second\":173,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -788,8 +1031,8 @@
       },
       {
         "replay_player_id": 3,
-        "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":90,\"found\":true},{\"second\":370,\"found\":true},{\"second\":584,\"found\":true}],\"modifiers\":[\"all-in\"]}"
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":90,\"found\":true},{\"second\":370,\"found\":true},{\"second\":584,\"found\":true}]}"
       },
       {
         "replay_player_id": 3,
@@ -808,8 +1051,8 @@
       },
       {
         "replay_player_id": 4,
-        "pattern_name": "Build Order: 3-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":159,\"found\":true},{\"second\":88,\"found\":true},{\"second\":252,\"found\":true},{\"second\":381,\"found\":true},{\"second\":442,\"found\":true}],\"modifiers\":[\"all-in\"]}"
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":159,\"found\":true},{\"second\":88,\"found\":true},{\"second\":252,\"found\":true},{\"second\":381,\"found\":true}]}"
       },
       {
         "replay_player_id": 4,
@@ -823,8 +1066,8 @@
       },
       {
         "replay_player_id": 5,
-        "pattern_name": "Build Order: 3-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":59,\"found\":true},{\"second\":88,\"found\":true},{\"second\":225,\"found\":true},{\"second\":213,\"found\":true},{\"second\":599,\"found\":true}],\"modifiers\":[\"all-in\"]}"
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":59,\"found\":true},{\"second\":88,\"found\":true},{\"second\":225,\"found\":true},{\"second\":213,\"found\":true}]}"
       },
       {
         "replay_player_id": 5,
@@ -868,6 +1111,220 @@
       }
     ]
   },
+  "bo_ccfirst_111113.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: CC First",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":117,\"found\":true},{\"second\":149,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "244"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 11 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":83,\"found\":true},{\"second\":136,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "244"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
+      }
+    ]
+  },
+  "bo_ccfirst_ilill.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 12 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":101,\"found\":true},{\"second\":115,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "279"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,7,8]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: CC First",
+        "value": "{\"expert_actuals\":[{\"second\":59,\"found\":true},{\"second\":118,\"found\":true},{\"second\":137,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "279"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "279"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      }
+    ]
+  },
+  "bo_ccfirst_illill.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Pool/Hatch (Other)",
+        "value": "102"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "307"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "307"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: CC First",
+        "value": "{\"expert_actuals\":[{\"second\":50,\"found\":true},{\"second\":114,\"found\":true},{\"second\":137,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "307"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "307"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6]}"
+      }
+    ]
+  },
+  "bo_factory_expand_dsfsd.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":42,\"found\":true},{\"second\":71,\"found\":true},{\"second\":89,\"found\":true},{\"second\":115,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "417"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Factory Expand",
+        "value": "{\"expert_actuals\":[{\"second\":152,\"found\":true},{\"second\":256,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "417"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      }
+    ]
+  },
+  "bo_factory_expand_ncs.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":74,\"found\":true},{\"second\":88,\"found\":true},{\"second\":117,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Factory Expand",
+        "value": "{\"expert_actuals\":[{\"second\":144,\"found\":true},{\"second\":212,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      }
+    ]
+  },
+  "bo_factory_expand_sst.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":49,\"found\":true},{\"second\":108,\"found\":true},{\"second\":129,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "352"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,5,6]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Factory Expand",
+        "value": "{\"expert_actuals\":[{\"second\":150,\"found\":true},{\"second\":232,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "352"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "352"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      }
+    ]
+  },
   "bo_forge_expand.rep": {
     "detections": [
       {
@@ -883,7 +1340,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":14.117647058823529}"
+        "value": "{\"switches_per_minute\":13.897058823529411}"
       },
       {
         "replay_player_id": 1,
@@ -971,8 +1428,8 @@
       },
       {
         "replay_player_id": 3,
-        "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":49,\"found\":true},{\"second\":119,\"found\":true},{\"second\":180,\"found\":true},{\"found\":false}],\"modifiers\":[\"all-in\"]}"
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":49,\"found\":true},{\"second\":119,\"found\":true},{\"second\":180,\"found\":true},{\"found\":false}]}"
       },
       {
         "replay_player_id": 4,
@@ -996,8 +1453,8 @@
       },
       {
         "replay_player_id": 6,
-        "pattern_name": "Build Order: 1-Rax Bio",
-        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":91,\"found\":true},{\"second\":129,\"found\":true},{\"found\":false}],\"modifiers\":[\"all-in\"]}"
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":91,\"found\":true},{\"second\":129,\"found\":true},{\"found\":false}]}"
       },
       {
         "replay_player_id": 6,

@@ -426,8 +426,9 @@ type Marker struct {
 
 	// Modifiers augment a matched build order with orthogonal tags — facts that
 	// don't change *which* opener it is but materially change what it means
-	// (e.g. a 2-Rax Bio "all-in" with no expansion vs a macro 2-Rax that
-	// expands; a "proxy" Barracks built in the enemy's base). Each modifier is
+	// (e.g. an "expand" 1 Gate Reaver that took a Nexus before the Reaver vs a
+	// one-base pressure variant; a "proxy" Barracks built in the enemy's base).
+	// Each modifier is
 	// evaluated only when the BO itself matches; the names that hold are written
 	// to the marker payload's "modifiers" array and surfaced alongside the BO.
 	// Modifiers never gate the BO match — they only annotate it.

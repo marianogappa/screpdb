@@ -127,19 +127,49 @@ func (pl *Plan) tierAWorkerOneAtATime(pid byte, pe *unittags.PlayerEvidence, rac
 // of builds to producing tags.
 func (pl *Plan) tierBNeverProduced(pid byte, pe *unittags.PlayerEvidence) {
 	for bldg := range productionBuildings {
-		// Only consider builds Tier A did not already drop, so the two tiers
-		// don't both remove from the same type (which previously deleted real
-		// buildings, e.g. a double-clicked Starport dropped by both tiers).
-		var builds []unittags.Build
-		for _, b := range pe.Builds[bldg] {
-			if _, dropped := pl.drops[buildKey{pid, b.Frame}]; !dropped {
-				builds = append(builds, b)
-			}
+		// Collapse same-tile Build commands into one distinct building: a spammed
+		// / re-queued placement at one spot is a single building, and counting
+		// each command separately makes it consume several producer matches —
+		// which then strands real buildings at other tiles as "never produced"
+		// and drops them (e.g. a 4-command Gateway placement hid three later
+		// gateways). Each distinct building carries all its frames so a dropped
+		// one removes every command at that tile. Builds Tier A already dropped
+		// are excluded so the two tiers don't both remove the same type.
+		type distinctBuilding struct {
+			sec    int
+			frames []int32
 		}
-		if len(builds) == 0 {
+		byTile := map[[2]int]*distinctBuilding{}
+		var tileOrder [][2]int
+		for _, b := range pe.Builds[bldg] {
+			if _, dropped := pl.drops[buildKey{pid, b.Frame}]; dropped {
+				continue
+			}
+			tile := [2]int{b.X, b.Y}
+			db := byTile[tile]
+			if db == nil {
+				db = &distinctBuilding{sec: b.Sec}
+				byTile[tile] = db
+				tileOrder = append(tileOrder, tile)
+			}
+			if b.Sec < db.sec {
+				db.sec = b.Sec
+			}
+			db.frames = append(db.frames, b.Frame)
+		}
+		if len(byTile) == 0 {
 			continue
 		}
-		sort.Slice(builds, func(i, j int) bool { return builds[i].Sec < builds[j].Sec })
+		distinct := make([]*distinctBuilding, 0, len(byTile))
+		for _, t := range tileOrder {
+			distinct = append(distinct, byTile[t])
+		}
+		sort.Slice(distinct, func(i, j int) bool { return distinct[i].sec < distinct[j].sec })
+		// builds is the per-distinct-building view the matching logic reasons over.
+		builds := make([]unittags.Build, len(distinct))
+		for i, db := range distinct {
+			builds[i] = unittags.Build{Sec: db.sec}
+		}
 
 		nProducers := len(pe.Producers[bldg])
 		addonOnly := 0
@@ -172,7 +202,10 @@ func (pl *Plan) tierBNeverProduced(pid byte, pe *unittags.PlayerEvidence) {
 		sort.Slice(cand, func(a, b int) bool { return builds[cand[a]].Sec > builds[cand[b]].Sec })
 
 		for k := 0; k < len(cand) && k < dropBudget; k++ {
-			pl.markDrop(pid, builds[cand[k]].Frame, "never_produced")
+			// Drop every Build command at this distinct building's tile.
+			for _, f := range distinct[cand[k]].frames {
+				pl.markDrop(pid, f, "never_produced")
+			}
 			pl.TierBDrops++
 		}
 	}

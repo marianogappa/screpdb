@@ -391,7 +391,6 @@ func allMarkers() []Marker {
 		{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 100, Tolerance: Asym(12, 70)},
 		{Key: "1st Factory", Match: MatchBuild(subjFactory), TargetSecond: 152, Tolerance: Asym(12, 80)},
 	}
-	tBioNthRax := [7]int{0, 0, 220, 342, 355, 476, 512}
 	tMechNthFac := [7]int{0, 0, 275, 458, 480, 501, 528}
 	tMechTank := 290
 	tTanklessNthFac := [7]int{0, 0, 243, 349, 422, 471, 560}
@@ -424,25 +423,21 @@ func allMarkers() []Marker {
 		}
 		return fmt.Sprintf("%d%s %s", n, suffix, building)
 	}
-	bioBucket := func(name, fkey string, n int, exact bool) Marker {
-		ev := append([]ExpertEvent{}, tBioOpening...)
-		if n >= 2 {
-			ev = append(ev, ExpertEvent{Key: nthLabel(n, "Barracks"), Match: MatchNthBuild(subjBarracks, n), TargetSecond: tBioNthRax[n], Tolerance: Asym(90, 130)})
-		}
+	// Bio is split by base count, not Barracks count: the rax count keeps
+	// growing through the game and there's no clean "the opening ended here"
+	// moment, so 1-Rax…6-Rax were fragile (a 3-Rax read as 2-Rax mid-build).
+	// Base count is the durable, meaningful axis — a one-base bio is an all-in /
+	// pressure build; a two-base bio is macro. A natural Command Center taken in
+	// the opening (by ~360s) is the discriminator. "proxy" still flags a forward
+	// Barracks (worldstate proxy_rax event).
+	bioBase := func(name, fkey string, expandRule Predicate, extraExpert []ExpertEvent) Marker {
 		return Marker{
 			Name: name, PatternName: InitialBuildOrderPatternNamePrefix + name, FeatureKey: fkey,
 			Race: RaceTerran, Kind: KindInitialBuildOrder, Matchup: []string{"TvZ", MatchupNon1v1},
-			Rule:         All(tCohort, tcBio, Not(tcWraith), Not(tcGoliath), countPred(subjBarracks, n, exact)),
-			RuleDeadline: 600,
-			// A bio opener that never takes a natural Command Center in the
-			// opening is an all-in (marine/SCV pressure with no economy behind
-			// it) — materially different from the macro variant that expands.
-			// "proxy" flags a forward Barracks (worldstate proxy_rax event).
-			Modifiers: []Modifier{
-				{Name: "all-in", Rule: Not(FirstBuildBefore(subjCommandCenter, 360))},
-				{Name: "proxy", WorldstateEvent: "proxy_rax"},
-			},
-			Expert:        ev,
+			Rule:          All(tCohort, tcBio, Not(tcWraith), Not(tcGoliath), expandRule),
+			RuleDeadline:  600,
+			Modifiers:     []Modifier{{Name: "proxy", WorldstateEvent: "proxy_rax"}},
+			Expert:        append(append([]ExpertEvent{}, tBioOpening...), extraExpert...),
 			SummaryPlayer: mkPill(name, "marine"), GamesList: mkPill(name, "marine"),
 		}
 	}
@@ -586,6 +581,9 @@ func allMarkers() []Marker {
 				Not(NthBuildBeforeFirstProduce(subjGateway, 2, subjReaver)),
 				Not(ProduceCountAtLeast(subjDarkTemplar, 1)),
 			),
+			// "expand" flags taking a Nexus before the first Reaver — an economic
+			// 1-gate reaver vs the one-base reaver-pressure variant.
+			Modifiers:    []Modifier{{Name: "expand", Rule: NthBuildBeforeFirstProduce(subjNexus, 1, subjReaver)}},
 			RuleDeadline: 600,
 			Expert: []ExpertEvent{
 				{Key: "Robotics Facility", Match: MatchBuild(subjRoboticsFacility), TargetSecond: 252, Tolerance: Asym(60, 70)},
@@ -1273,13 +1271,11 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Goliath", IconKey: "goliath"},
 		},
 		// Bio (Marine/Medic predominant, 8+ Marines; TvZ or non-1v1), split by
-		// Barracks count by 10:00.
-		bioBucket("1-Rax Bio", "bo_t_bio_1rax", 1, true),
-		bioBucket("2-Rax Bio", "bo_t_bio_2rax", 2, true),
-		bioBucket("3-Rax Bio", "bo_t_bio_3rax", 3, true),
-		bioBucket("4-Rax Bio", "bo_t_bio_4rax", 4, true),
-		bioBucket("5-Rax Bio", "bo_t_bio_5rax", 5, true),
-		bioBucket("6+ Rax Bio", "bo_t_bio_6rax", 6, false),
+		// base count: 1-Base = no natural CC in the opening (all-in / pressure),
+		// 2-Base = took a natural CC by ~360s (macro). Mutually exclusive.
+		bioBase("1-Base Bio", "bo_t_bio_1base", Not(FirstBuildBefore(subjCommandCenter, 360)), nil),
+		bioBase("2-Base Bio", "bo_t_bio_2base", FirstBuildBefore(subjCommandCenter, 360),
+			[]ExpertEvent{{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 300, Tolerance: Asym(80, 60)}}),
 		{
 			// 1-1-1 into Mech: early Starport + Wraith, then mech (≥2 Factories,
 			// ≥1 Tank, mech-predominant).

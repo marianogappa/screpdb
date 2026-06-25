@@ -125,7 +125,20 @@ import (
 // renamed "Factory Expand" (key bo_t_factory_expand). New orthogonal build-order
 // modifiers ("all-in", "proxy") ride in the marker payload. Re-ingest so corrected
 // openers, the new feature key, and modifier tags surface.
-const AlgorithmVersion = 40
+//
+// 41: Bio is classified by base count (1-Base / 2-Base, keys bo_t_bio_1base /
+// bo_t_bio_2base) instead of Barracks count — the rax count drifts through the
+// game so 1-Rax…6-Rax were unstable. The all-in modifier is subsumed by 1-Base
+// and removed; a 1 Gate Reaver "expand" modifier (Nexus before the first Reaver)
+// is added. Re-ingest so bio re-buckets and the new keys/modifiers surface.
+//
+// 42: build-dedup (Tier B never-produced) now collapses same-tile Build commands
+// into one distinct building before matching them to producing tags. A spammed
+// placement at one spot no longer consumes several producer matches and strands
+// real buildings elsewhere as "never produced" — which had dropped real later
+// gateways and made a 3-gate build read as 1 Gate Reaver. Re-ingest so building
+// counts (and the openers keyed on them) are correct.
+const AlgorithmVersion = 42
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string
