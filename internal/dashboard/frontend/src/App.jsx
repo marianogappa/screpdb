@@ -131,13 +131,6 @@ const getRaceIcon = (race) => {
   return null;
 };
 
-const cmpSemver = (a, b) => {
-  const parse = (v) => String(v || '').replace(/^v/, '').split(/[.+-]/).slice(0, 3).map((n) => parseInt(n, 10) || 0);
-  const [aMaj, aMin, aPat] = parse(a);
-  const [bMaj, bMin, bPat] = parse(b);
-  return (aMaj - bMaj) || (aMin - bMin) || (aPat - bPat);
-};
-
 const normalizeEventType = (eventType) => String(eventType || '').trim().toLowerCase();
 
 /** Aligns with NeverUsedHotkeysPlayerDetector (7+ minute replays). */
@@ -1857,6 +1850,11 @@ function App() {
   const [currentCommit, setCurrentCommit] = useState('');
   const [latestVersion, setLatestVersion] = useState('');
   const [latestVersionUrl, setLatestVersionUrl] = useState('');
+  const [updateStatus, setUpdateStatus] = useState(null);
+  const [updateApplying, setUpdateApplying] = useState(false);
+  const [updateApplied, setUpdateApplied] = useState(false);
+  const [updateError, setUpdateError] = useState('');
+  const [quietUpdateDismissed, setQuietUpdateDismissed] = useState(false);
   const emptyDbAutoOpenRef = useRef(false);
   const [globalReplayFilterConfig, setGlobalReplayFilterConfig] = useState(null);
   const [globalReplayFilterSaving, setGlobalReplayFilterSaving] = useState(false);
@@ -2769,22 +2767,52 @@ function App() {
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch('https://api.github.com/repos/marianogappa/screpdb/releases/latest');
-        if (!response.ok) return;
-        const release = await response.json();
-        if (cancelled) return;
-        const tag = String(release?.tag_name || '');
-        if (!tag) return;
-        if (cmpSemver(tag, currentVersion) > 0) {
-          setLatestVersion(tag);
-          setLatestVersionUrl(String(release?.html_url || ''));
-        }
+        // The binary performs the GitHub check and verification; the UI only
+        // renders the result and offers a one-click, verified self-update.
+        const status = await api.getUpdateStatus();
+        if (cancelled || !status) return;
+        setUpdateStatus(status);
+        if (status.latest_version) setLatestVersion(String(status.latest_version));
+        if (status.latest_release_url) setLatestVersionUrl(String(status.latest_release_url));
       } catch (_err) {
-        // Silently ignore — offline, rate-limited, etc. Banner just stays hidden.
+        // Silently ignore — offline, rate-limited, etc. Notice just stays hidden.
       }
     })();
     return () => { cancelled = true; };
   }, [currentVersion]);
+
+  const updateTier = updateStatus?.tier || 'none';
+  const updateAvailable = Boolean(updateStatus?.update_available);
+  const selfUpdateSupported = Boolean(updateStatus?.self_update_supported);
+  const updateLatest = String(updateStatus?.latest_version || latestVersion || '');
+  const updateReleaseUrl = String(updateStatus?.latest_release_url || latestVersionUrl || 'https://github.com/marianogappa/screpdb/releases/latest');
+  const updateUnsupportedTip = (() => {
+    const reason = updateStatus?.reason || '';
+    const manager = updateStatus?.package_manager || '';
+    if (reason === 'managed' && manager === 'scoop') return 'Update with: scoop update screpdb';
+    if (reason === 'managed') return `Update via your package manager (${manager})`;
+    if (reason === 'not-writable') return 'Install folder is read-only — download the new version manually';
+    if (reason === 'unsupported-platform') return 'No self-update build for this platform — download the new version';
+    return 'Download the new version';
+  })();
+
+  const handleApplyUpdate = async () => {
+    if (updateApplying || updateApplied) return;
+    setUpdateError('');
+    setUpdateApplying(true);
+    try {
+      const res = await api.applyUpdate();
+      if (res?.success) {
+        setUpdateApplied(true);
+      } else {
+        throw new Error(res?.error || 'Update failed');
+      }
+    } catch (err) {
+      setUpdateError(String(err?.message || err));
+    } finally {
+      setUpdateApplying(false);
+    }
+  };
 
   const refreshStaleReplaysCount = useCallback(async () => {
     try {
@@ -5044,16 +5072,37 @@ function App() {
             <button type="button" className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('players')}>Players</button>
           </div>
           <div className="workflow-nav-group">
-            {latestVersion ? (
-              <a
-                href={latestVersionUrl || 'https://github.com/marianogappa/screpdb/releases/latest'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="workflow-nav-update-available tip-below"
-                data-tip={`Update available — current version ${currentVersion}`}
-              >
-                🆕 Update available
-              </a>
+            {updateAvailable && updateTier === 'loud' ? (
+              updateApplied ? (
+                <button
+                  type="button"
+                  className="workflow-nav-update-available tip-below"
+                  data-tip="The new version is installed — refresh to load it"
+                  onClick={() => window.location.reload()}
+                >
+                  ✅ Updated to {updateLatest} — Refresh
+                </button>
+              ) : selfUpdateSupported ? (
+                <button
+                  type="button"
+                  className="workflow-nav-update-available tip-below"
+                  data-tip={updateError || `Update from ${currentVersion} to ${updateLatest}`}
+                  disabled={updateApplying}
+                  onClick={handleApplyUpdate}
+                >
+                  {updateApplying ? '⏳ Updating…' : `🆕 Update to ${updateLatest}`}
+                </button>
+              ) : (
+                <a
+                  href={updateReleaseUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="workflow-nav-update-available tip-below"
+                  data-tip={updateUnsupportedTip}
+                >
+                  🆕 Update available
+                </a>
+              )
             ) : null}
             <button
               type="button"
@@ -7376,6 +7425,43 @@ function App() {
               ) : null}
               <span className="workflow-meta-sep" aria-hidden="true"> · </span>
               <a href="https://github.com/marianogappa/screpdb/issues/new/choose" target="_blank" rel="noopener noreferrer">🐞 Report an issue</a>
+              {updateAvailable && updateTier === 'quiet' && !quietUpdateDismissed ? (
+                <>
+                  <span className="workflow-meta-sep" aria-hidden="true"> · </span>
+                  <span className="footer-update-nudge">
+                    {updateApplied ? (
+                      <button type="button" className="footer-update-link" onClick={() => window.location.reload()}>
+                        ✅ Updated to {updateLatest} — refresh
+                      </button>
+                    ) : selfUpdateSupported ? (
+                      <button
+                        type="button"
+                        className="footer-update-link"
+                        disabled={updateApplying}
+                        onClick={handleApplyUpdate}
+                        title={updateError || `Update from ${currentVersion} to ${updateLatest}`}
+                      >
+                        {updateApplying ? 'Updating…' : `🆕 Update to ${updateLatest}`}
+                      </button>
+                    ) : (
+                      <a href={updateReleaseUrl} target="_blank" rel="noopener noreferrer" className="footer-update-link" title={updateUnsupportedTip}>
+                        🆕 Update available ({updateLatest})
+                      </a>
+                    )}
+                    {!updateApplied ? (
+                      <button
+                        type="button"
+                        className="footer-update-dismiss"
+                        aria-label="Dismiss update notice"
+                        onClick={() => setQuietUpdateDismissed(true)}
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                  </span>
+                  {updateError ? <span className="footer-update-error">{updateError}</span> : null}
+                </>
+              ) : null}
             </>
           ) : (
             'Loading replay count...'

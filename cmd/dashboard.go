@@ -7,9 +7,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/marianogappa/screpdb/internal/dashboard"
 	"github.com/marianogappa/screpdb/internal/dashboardrun"
+	"github.com/marianogappa/screpdb/internal/selfupdate"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
@@ -36,6 +38,14 @@ func defaultDashboardOptions() dashboardrun.Options {
 }
 
 func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) error {
+	// Remove the placeholder left by a previous self-update swap (issue #212).
+	selfupdate.CleanupOldBinary()
+	if selfupdate.IsRestart() {
+		// Self-update relaunch: wait for the previous process to release the
+		// listening port (Windows has no exec-in-place) before we bind.
+		time.Sleep(1500 * time.Millisecond)
+	}
+
 	dash, err := dashboard.New(ctx, opts.SQLitePath)
 	if err != nil {
 		return err
@@ -53,10 +63,15 @@ func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) err
 	// ingest queued at startup (deferred to avoid racing DB initialization).
 	dash.StartPendingSampleIngest()
 
-	// Open browser
-	log.Printf("Opening browser to %s...", serverURL)
-	if err := browser.OpenURL(serverURL); err != nil {
-		log.Printf("Warning: failed to open browser: %v", err)
+	// Open browser, unless this is a self-update relaunch — the user's existing
+	// tab is still pointed here and will reconnect, so a second tab is just noise.
+	if selfupdate.IsRestart() {
+		log.Printf("Self-update relaunch complete; refresh the existing browser tab to load the new version.")
+	} else {
+		log.Printf("Opening browser to %s...", serverURL)
+		if err := browser.OpenURL(serverURL); err != nil {
+			log.Printf("Warning: failed to open browser: %v", err)
+		}
 	}
 
 	<-ctx.Done()

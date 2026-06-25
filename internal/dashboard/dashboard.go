@@ -150,6 +150,8 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/custom/debug/map-layout/{replayID}", d.handlerDebugMapLayout).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/markers/definitions", d.handlerMarkersDefinitions).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/sample-set/load", d.handlerLoadSampleSet).Methods(http.MethodPost)
+	r.HandleFunc("/api/custom/update/status", d.handlerUpdateStatus).Methods(http.MethodGet)
+	r.HandleFunc("/api/custom/update/apply", d.handlerUpdateApply).Methods(http.MethodPost)
 	apigen.HandlerFromMux(strictHandler, r)
 	r.PathPrefix("/api/").Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)

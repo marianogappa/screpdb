@@ -143,6 +143,7 @@ func skipDir(root, dir string) bool {
 	case ".git", ".claude", "node_modules", "dist",
 		"internal/iofacade",           // the filesystem facade implementation
 		"internal/netfacade",          // the network facade implementation
+		"internal/selfupdate",         // sanctioned self-update surface (#212): GitHub fetch + in-place binary swap
 		"scripts",                     // dev-only debug scripts, not shipped
 		"internal/dashboard/frontend", // React source, not Go
 		"internal/dashboard/tools",    // build-time codegen, not shipped

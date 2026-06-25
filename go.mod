@@ -3,6 +3,7 @@ module github.com/marianogappa/screpdb
 go 1.25.2
 
 require (
+	aead.dev/minisign v0.2.0
 	github.com/fatih/color v1.16.0
 	github.com/getkin/kin-openapi v0.132.0
 	github.com/getlantern/systray v1.2.2
@@ -11,6 +12,7 @@ require (
 	github.com/icza/screp v1.12.17
 	github.com/marianogappa/scmapanalyzer v0.0.0-20260610174907-72370c81026c
 	github.com/mark3labs/mcp-go v0.41.1
+	github.com/minio/selfupdate v0.6.0
 	github.com/oapi-codegen/runtime v1.4.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/samber/lo v1.53.0
@@ -56,9 +58,10 @@ require (
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
-	golang.org/x/sys v0.39.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/libc v1.67.6 // indirect
 	modernc.org/mathutil v1.7.1 // indirect

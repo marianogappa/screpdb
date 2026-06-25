@@ -70,7 +70,7 @@ clean-windows-syso:
 cross-binaries: ui-build windows-syso
 	mkdir -p dist
 	env GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$(REL_LDFLAGS)" -o dist/screpdb-windows-amd64.exe .
-	env GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$(REL_LDFLAGS) -H=windowsgui" -o dist/screpdb-dashboard-windows-amd64.exe ./cmd/windows-dashboard
+	env GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$(REL_LDFLAGS) -H=windowsgui -X github.com/marianogappa/screpdb/internal/buildinfo.Variant=dashboard" -o dist/screpdb-dashboard-windows-amd64.exe ./cmd/windows-dashboard
 	env GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$(REL_LDFLAGS)" -o dist/screpdb-linux-amd64 .
 	env GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$(REL_LDFLAGS)" -o dist/screpdb-linux-arm64 .
 	env GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "$(REL_LDFLAGS)" -o dist/screpdb-darwin-amd64 .
