@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.2](https://github.com/marianogappa/screpdb/compare/v1.12.1...v1.12.2) (2026-06-26)
+
+
+### Bug Fixes
+
+* **earlyfilter:** re-admit Cyber-Core-gated builds so 1 Gate Core isn't misread ([#220](https://github.com/marianogappa/screpdb/issues/220)) ([734cc61](https://github.com/marianogappa/screpdb/commit/734cc6180e3155d98dd4be0ebae7a5ef97558d7f))
+
 ## [1.12.1](https://github.com/marianogappa/screpdb/compare/v1.12.0...v1.12.1) (2026-06-25)
 
 
