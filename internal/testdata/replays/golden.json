@@ -12,7 +12,7 @@
     {
       "file": "SomaTyson.rep",
       "players": 2,
-      "commands": 9397,
+      "commands": 9388,
       "patterns": {
         "replay": 2,
         "player": 7
@@ -21,7 +21,7 @@
     {
       "file": "Somavssnow.rep",
       "players": 2,
-      "commands": 8971,
+      "commands": 8968,
       "patterns": {
         "replay": 2,
         "player": 8
@@ -30,7 +30,7 @@
     {
       "file": "bgh.rep",
       "players": 8,
-      "commands": 13953,
+      "commands": 13897,
       "patterns": {
         "replay": 2,
         "player": 36

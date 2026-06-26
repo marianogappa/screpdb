@@ -525,6 +525,187 @@
       }
     ]
   },
+  "bo_1gatecore_pvt_231314.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Factory Expand",
+        "value": "{\"expert_actuals\":[{\"second\":158,\"found\":true},{\"second\":211,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":11.898734177215191}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraiths",
+        "value": "1046"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":77,\"found\":true},{\"found\":false},{\"second\":118,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Carriers",
+        "value": "883"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "1338"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":16.79324894514768}"
+      }
+    ]
+  },
+  "bo_1gatecore_pvt_dp6.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":73,\"found\":true},{\"second\":91,\"found\":true},{\"second\":114,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "602"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":26.266094420600858}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 4-Fac Mech",
+        "value": "{\"expert_actuals\":[{\"second\":299,\"found\":true},{\"second\":86,\"found\":true},{\"second\":179,\"found\":true},{\"second\":231,\"found\":true},{\"second\":478,\"found\":true},{\"second\":313,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":13.991416309012875}"
+      }
+    ]
+  },
+  "bo_1gatecore_pvt_paralyze.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":72,\"found\":true},{\"second\":95,\"found\":true},{\"second\":114,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "690"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":35}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Factory Expand",
+        "value": "{\"expert_actuals\":[{\"second\":145,\"found\":true},{\"second\":211,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "774"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":13.2}"
+      }
+    ]
+  },
+  "bo_1gatecore_pvt_pporoktoss.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":71,\"found\":true},{\"second\":86,\"found\":true},{\"second\":115,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Carriers",
+        "value": "390"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":17.391304347826086}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1-1-1 into Mech",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":84,\"found\":true},{\"second\":167,\"found\":true},{\"second\":225,\"found\":true},{\"second\":308,\"found\":true},{\"second\":464,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "440"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":17.786561264822133}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Wraiths",
+        "value": "639"
+      }
+    ]
+  },
   "bo_2_gate_carriers.rep": {
     "detections": [
       {
@@ -590,6 +771,94 @@
         "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,9]}"
+      }
+    ]
+  },
+  "bo_2gate_pvt_duongdallas.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2 Gate",
+        "value": "{\"expert_actuals\":[{\"second\":51,\"found\":true},{\"second\":79,\"found\":true},{\"second\":103,\"found\":true},{\"second\":121,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Carriers",
+        "value": "547"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "401"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":12.962962962962964}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1-1-1 into Mech",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":83,\"found\":true},{\"second\":98,\"found\":true},{\"second\":289,\"found\":true},{\"second\":314,\"found\":true},{\"second\":337,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "465"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":15.679012345679013}"
+      }
+    ]
+  },
+  "bo_2gate_pvt_proxy_iiii.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2 Gate",
+        "value": "{\"expert_actuals\":[{\"second\":51,\"found\":true},{\"second\":75,\"found\":true},{\"second\":90,\"found\":true},{\"second\":117,\"found\":true}],\"modifiers\":[\"proxy\"]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "850"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":15.800711743772242}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Terran (Other)",
+        "value": "599"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,4,5,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":14.519572953736654}"
       }
     ]
   },
@@ -1361,6 +1630,274 @@
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":30.22058823529412}"
+      }
+    ]
+  },
+  "bo_forgeexpand_pvz_femaleval.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":127,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":15.605006954102922}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Forge Expand",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":87,\"found\":true},{\"second\":142,\"found\":true},{\"second\":129,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":7.009735744089013}"
+      }
+    ]
+  },
+  "bo_forgeexpand_pvz_jgquickly.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":72,\"found\":true},{\"second\":124,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":44.21052631578948}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Forge Expand",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":88,\"found\":true},{\"found\":false},{\"second\":132,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":20.949935815147626}"
+      }
+    ]
+  },
+  "bo_forgeexpand_pvz_llilil.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Forge Expand",
+        "value": "{\"expert_actuals\":[{\"second\":49,\"found\":true},{\"second\":87,\"found\":true},{\"second\":148,\"found\":true},{\"second\":219,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":23.586206896551722}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 11 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":92,\"found\":true},{\"second\":110,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "1288"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":31.944827586206895}"
+      }
+    ]
+  },
+  "bo_gateexpand_pvt_horang2.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 3-Fac Mech",
+        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":53,\"found\":true},{\"second\":239,\"found\":true},{\"second\":289,\"found\":true},{\"second\":585,\"found\":true},{\"second\":426,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":19.3322203672788}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Gate Expand",
+        "value": "{\"expert_actuals\":[{\"second\":51,\"found\":true},{\"second\":75,\"found\":true},{\"second\":164,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "507"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":19.833055091819702}"
+      }
+    ]
+  },
+  "bo_nexusfirst_pvt_bbbukae.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 6+ Fac Mech",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":86,\"found\":true},{\"second\":98,\"found\":true},{\"second\":149,\"found\":true},{\"second\":528,\"found\":true},{\"second\":271,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":12.507288629737609}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":105,\"found\":true},{\"second\":125,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Carriers",
+        "value": "1382"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "899"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":23.79008746355685}"
+      }
+    ]
+  },
+  "bo_nexusfirst_pvt_bysnow.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":106,\"found\":true},{\"second\":123,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Carriers",
+        "value": "480"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":21.966364812419148}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Factory Expand",
+        "value": "{\"expert_actuals\":[{\"second\":148,\"found\":true},{\"second\":198,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":22.97542043984476}"
+      }
+    ]
+  },
+  "bo_nexusfirst_pvt_kong.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: CC First",
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":118,\"found\":true},{\"second\":138,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":14.3717277486911}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":49,\"found\":true},{\"second\":109,\"found\":true},{\"second\":126,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Carriers",
+        "value": "522"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":16.49214659685864}"
       }
     ]
   },

@@ -38,13 +38,25 @@ func ProducerOf(unitSubject string) (string, bool) {
 // (Barracks → Academy, etc.) extend this map as the filter grows.
 var prereqsByBuilding = map[string][]string{
 	// Protoss buildings need Pylon for power. Photon Cannon also needs Forge.
-	// Cybernetics Core needs Gateway. Robotics/Stargate gates not modelled
-	// (out of 4-min window).
-	models.GeneralUnitGateway:         {models.GeneralUnitPylon},
-	models.GeneralUnitForge:           {models.GeneralUnitPylon},
-	models.GeneralUnitAssimilator:     {models.GeneralUnitNexus},
-	models.GeneralUnitPhotonCannon:    {models.GeneralUnitPylon, models.GeneralUnitForge},
-	models.GeneralUnitCyberneticsCore: {models.GeneralUnitPylon, models.GeneralUnitGateway},
+	// Cybernetics Core needs Gateway. The Cyber-Core-gated tech buildings
+	// (Robotics Facility / Stargate / Citadel and their children) are modelled
+	// too: findViolations is not windowed, so a kept Robo/Citadel later in the
+	// game is proof the Cyber Core existed and lets the backtrack re-admit a
+	// Cyber Core the mineral sim wrongly dropped (e.g. a 1 Gate Core → Dragoon
+	// opener whose Core was starved by a phantom spend, then misread as 2 Gate /
+	// Gate Expand).
+	models.GeneralUnitGateway:            {models.GeneralUnitPylon},
+	models.GeneralUnitForge:              {models.GeneralUnitPylon},
+	models.GeneralUnitAssimilator:        {models.GeneralUnitNexus},
+	models.GeneralUnitPhotonCannon:       {models.GeneralUnitPylon, models.GeneralUnitForge},
+	models.GeneralUnitCyberneticsCore:    {models.GeneralUnitPylon, models.GeneralUnitGateway},
+	models.GeneralUnitRoboticsFacility:   {models.GeneralUnitPylon, models.GeneralUnitCyberneticsCore},
+	models.GeneralUnitStargate:           {models.GeneralUnitPylon, models.GeneralUnitCyberneticsCore},
+	models.GeneralUnitCitadelOfAdun:      {models.GeneralUnitPylon, models.GeneralUnitCyberneticsCore},
+	models.GeneralUnitTemplarArchives:    {models.GeneralUnitPylon, models.GeneralUnitCitadelOfAdun},
+	models.GeneralUnitObservatory:        {models.GeneralUnitPylon, models.GeneralUnitRoboticsFacility},
+	models.GeneralUnitRoboticsSupportBay: {models.GeneralUnitPylon, models.GeneralUnitRoboticsFacility},
+	models.GeneralUnitFleetBeacon:        {models.GeneralUnitPylon, models.GeneralUnitStargate},
 
 	// Terran tech tree
 	models.GeneralUnitFactory:     {models.GeneralUnitBarracks},

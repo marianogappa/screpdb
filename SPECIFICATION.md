@@ -776,14 +776,21 @@ Buildings that must already exist before another can be placed (beyond the produ
 | Academy | Barracks |
 | Assimilator | Nexus |
 | Bunker | Barracks |
+| Citadel of Adun | Pylon, Cybernetics Core |
 | Cybernetics Core | Pylon, Gateway |
 | Factory | Barracks |
+| Fleet Beacon | Pylon, Stargate |
 | Forge | Pylon |
 | Gateway | Pylon |
 | Machine Shop | Factory |
+| Observatory | Pylon, Robotics Facility |
 | Photon Cannon | Pylon, Forge |
+| Robotics Facility | Pylon, Cybernetics Core |
+| Robotics Support Bay | Pylon, Robotics Facility |
+| Stargate | Pylon, Cybernetics Core |
 | Starport | Factory |
 | Sunken Colony | Creep Colony, Spawning Pool |
+| Templar Archives | Pylon, Citadel of Adun |
 
 ## Featuring strip order
 
