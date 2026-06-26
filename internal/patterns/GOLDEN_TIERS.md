@@ -92,6 +92,26 @@ The 1-Base/2-Base pair guards the bio base-count split; the two 1 Gate Reaver
 fixtures guard the `expand` modifier (present vs absent). The opponent's BO in
 each fixture is tier-2.
 
+Protoss opener batch (round 4). Thirteen non-mirror 1v1 ladder replays, each
+watched and confirmed. The verified premise is the Protoss player's opener (and,
+where noted, a modifier):
+
+| Fixtures | Protoss player must classify as |
+| --- | --- |
+| `bo_1gatecore_pvt_pporoktoss`, `bo_1gatecore_pvt_231314`, `bo_1gatecore_pvt_dp6`, `bo_1gatecore_pvt_paralyze` | `Build Order: 1 Gate Core` |
+| `bo_2gate_pvt_duongdallas` | `Build Order: 2 Gate` |
+| `bo_2gate_pvt_proxy_iiii` | `Build Order: 2 Gate` **with** `proxy` modifier (gateways near the enemy) |
+| `bo_nexusfirst_pvt_bbbukae`, `bo_nexusfirst_pvt_bysnow`, `bo_nexusfirst_pvt_kong` | `Build Order: Nexus First` |
+| `bo_gateexpand_pvt_horang2` | `Build Order: Gate Expand` |
+| `bo_forgeexpand_pvz_jgquickly`, `bo_forgeexpand_pvz_femaleval`, `bo_forgeexpand_pvz_llilil` | `Build Order: Forge Expand` |
+
+`bo_1gatecore_pvt_paralyze` specifically guards the early-filter tech-prerequisite
+backstop: it is a 1 Gate Core → Dragoon opener whose Cybernetics Core the mineral
+sim had wrongly dropped (starved by a phantom spend), making it misread as Gate
+Expand; a kept Robotics Facility now re-admits the Core (see
+`internal/cmdenrich/techtree.go`). A regression to Gate Expand there means the
+backstop broke. The opponent's BO in each fixture is tier-2.
+
 ### Cliff-drop detection — `drops_golden.json`
 
 Each fixture below was confirmed by watching the replay. The premise is the
