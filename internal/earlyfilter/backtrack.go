@@ -127,6 +127,7 @@ func resolveViolations(
 	violations []violation,
 	commands []*models.Command,
 	verdicts map[int]Verdict,
+	mineralsAfter map[int]int,
 	mustKeep map[int]bool,
 	forceDrop map[int]bool,
 ) bool {
@@ -142,6 +143,15 @@ func resolveViolations(
 				mustKeep[idx] = true
 				progress = true
 			}
+			// Only free minerals by dropping a worker when re-admitting this
+			// Build actually overdraws the account. A dropped worker leaves the
+			// income sim, so doing it when no deficit exists freezes the worker
+			// count and collapses simulated income — which cascades into
+			// dropping every early worker train (the spiral that made an
+			// SCV-from-frame-0 opening read as "no workers until ~4 min").
+			if !backtrackOverdraws(commands, idx, verdicts, mineralsAfter) {
+				continue
+			}
 			// Drop one worker train before the re-admitted Build to free
 			// minerals. Skip if we already dropped enough — the next
 			// iteration will run forward and check whether the budget
@@ -154,6 +164,38 @@ func resolveViolations(
 		}
 	}
 	return progress
+}
+
+// backtrackOverdraws reports whether re-admitting the Build at idx would drive
+// the player's minerals negative at that frame. It only applies to a Build that
+// was dropped in the latest forward pass (a genuinely new re-admission whose
+// cost is about to be charged); a Build already kept/readmitted was affordable
+// and needs no compensating worker drop. Because the dropped Build's cost was
+// not applied, mineralsAfter[idx] is the spendable balance at its frame: if that
+// covers the Build cost, re-admission is affordable.
+func backtrackOverdraws(commands []*models.Command, idx int, verdicts map[int]Verdict, mineralsAfter map[int]int) bool {
+	if verdicts[idx] != VerdictDropped {
+		return false
+	}
+	cmd := commands[idx]
+	if cmd == nil {
+		return false
+	}
+	en, ok := cmdenrich.Classify(cmd)
+	if !ok {
+		return false
+	}
+	econ, ok := cmdenrich.EconOf(en.Subject)
+	if !ok {
+		return false
+	}
+	avail, ok := mineralsAfter[idx]
+	if !ok {
+		// No recorded balance (e.g. command outside the simulated window):
+		// fall back to the original behaviour and free minerals.
+		return true
+	}
+	return avail < econ.Minerals
 }
 
 // buildPrereqChain returns subj plus its transitive PrereqsOf, deepest-first

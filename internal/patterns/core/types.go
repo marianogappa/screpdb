@@ -138,7 +138,18 @@ import (
 // real buildings elsewhere as "never produced" — which had dropped real later
 // gateways and made a 3-gate build read as 1 Gate Reaver. Re-ingest so building
 // counts (and the openers keyed on them) are correct.
-const AlgorithmVersion = 42
+//
+// 43: earlyfilter backtrack no longer force-drops income-producing worker trains
+// to fund a re-admitted proven-real building unless re-admission actually
+// overdraws minerals at that frame. Dropping affordable workers froze the
+// simulated worker count and collapsed income into a spiral that wiped out an
+// early worker line (an SCV-from-frame-0 opening read as no workers until ~4
+// min) and undercounted build-order supply (a 9 Hatch read as 4 Hatch). Bunker
+// rush detection now bounds its base-snap fallback, so an open-ground proxy /
+// simcity bunker on a money map is no longer misread as a rush on a distant
+// base. Re-ingest so early worker timing, BO supply counts, and bunker-rush
+// events are correct.
+const AlgorithmVersion = 43
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

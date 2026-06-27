@@ -51,7 +51,7 @@ func Apply(replay *models.Replay, players []*models.Player, mapCtx *models.Repla
 		if len(violations) == 0 {
 			break
 		}
-		if !resolveViolations(violations, commands, verdicts, mustKeep, forceDrop) {
+		if !resolveViolations(violations, commands, verdicts, mineralsAfter, mustKeep, forceDrop) {
 			break
 		}
 	}
