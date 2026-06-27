@@ -451,10 +451,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 2 Gate | Protoss | 1st Gateway | 70 | ±6 |
 | 2 Gate | Protoss | 2nd Gateway | 86 | ±10 |
 | 2 Gate | Protoss | First Zealot | 108 | ±3 |
-| 2 Gate DT | Protoss | Templar Archives | 327 | −80 / +100 |
-| 2 Gate DT | Protoss | First Dark Templar | 379 | −90 / +120 |
-| 2 Gate Reaver | Protoss | Robotics Facility | 260 | −60 / +100 |
-| 2 Gate Reaver | Protoss | First Reaver | 383 | −90 / +120 |
 | 2 Hatch Hydra | Zerg | Hydralisk Den | 214 | −25 / +90 |
 | 2 Hatch Hydra | Zerg | First Hydralisks | 250 | −40 / +120 |
 | 2 Hatch Muta | Zerg | Spire | 249 | −35 / +70 |
@@ -571,13 +567,22 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | Factory Expand | Terran | Command Center | 229 | −30 / +80 |
 | Forge Cannon (no expa) | Protoss | Forge | 90 | ±20 |
 | Forge Cannon (no expa) | Protoss | Photon Cannon | 130 | ±30 |
+| Forge Cannon Gate before expa | Protoss | Forge | 96 | −30 / +60 |
+| Forge Cannon Gate before expa | Protoss | Photon Cannon | 126 | −30 / +60 |
+| Forge Cannon Gate before expa | Protoss | Gateway | 144 | −30 / +80 |
 | Forge Expand | Protoss | Pylon | 48 | ±4 |
 | Forge Expand | Protoss | Forge | 86 | ±8 |
 | Forge Expand | Protoss | Photon Cannon | 130 | ±20 |
 | Forge Expand | Protoss | Nexus | 152 | ±15 |
+| Forge Gate Cannon before expa | Protoss | Forge | 96 | −30 / +60 |
+| Forge Gate Cannon before expa | Protoss | Gateway | 130 | −30 / +70 |
+| Forge Gate Cannon before expa | Protoss | Photon Cannon | 160 | −30 / +80 |
 | Gate Expand | Protoss | Pylon | 48 | ±4 |
 | Gate Expand | Protoss | Gateway | 88 | ±10 |
 | Gate Expand | Protoss | Nexus | 165 | ±15 |
+| Gate Forge Cannon before expa | Protoss | Gateway | 70 | −20 / +40 |
+| Gate Forge Cannon before expa | Protoss | Forge | 120 | −30 / +60 |
+| Gate Forge Cannon before expa | Protoss | Photon Cannon | 155 | −30 / +80 |
 | Goliath | Terran | Supply Depot | 55 | −10 / +24 |
 | Goliath | Terran | Barracks | 86 | −28 / +18 |
 | Goliath | Terran | Refinery | 102 | −12 / +70 |
@@ -587,8 +592,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | Nexus First | Protoss | Pylon | 48 | ±4 |
 | Nexus First | Protoss | Nexus | 145 | ±20 |
 | Nexus First | Protoss | Gateway | 175 | ±20 |
-| Sair/Speedlot | Protoss | Stargate | 280 | −60 / +90 |
-| Sair/Speedlot | Protoss | Citadel of Adun | 332 | −60 / +120 |
 | Wraith | Terran | Supply Depot | 56 | −10 / +24 |
 | Wraith | Terran | Barracks | 84 | −28 / +18 |
 | Wraith | Terran | Refinery | 98 | −10 / +60 |
@@ -616,8 +619,6 @@ Each opener's detector commits its decision once the replay passes this second �
 | 12 Pool | Zerg | 180 |
 | 2 Fact Vults | Terran | 360 |
 | 2 Gate | Protoss | 180 |
-| 2 Gate DT | Protoss | 600 |
-| 2 Gate Reaver | Protoss | 600 |
 | 2 Hatch Hydra | Zerg | 600 |
 | 2 Hatch Muta | Zerg | 600 |
 | 2 Port Wraith | Terran | 600 |
@@ -653,13 +654,15 @@ Each opener's detector commits its decision once the replay passes this second �
 | CC First | Terran | 200 |
 | Factory Expand | Terran | 360 |
 | Forge Cannon (no expa) | Protoss | 320 |
+| Forge Cannon Gate before expa | Protoss | 320 |
 | Forge Expand | Protoss | 260 |
+| Forge Gate Cannon before expa | Protoss | 320 |
 | Gate Expand | Protoss | 220 |
+| Gate Forge Cannon before expa | Protoss | 320 |
 | Gateway (Other) | Protoss | 320 |
 | Goliath | Terran | 600 |
 | Nexus First | Protoss | 200 |
 | Pool/Hatch (Other) | Zerg | 240 |
-| Sair/Speedlot | Protoss | 600 |
 | Terran (Other) | Terran | 600 |
 | Wraith | Terran | 600 |
 
@@ -804,59 +807,60 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 | 4 | proxy_gate |
 | 5 | proxy_rax |
 | 6 | proxy_factory |
-| 7 | drop |
-| 8 | mind_control |
-| 9 | threw_nukes |
-| 10 | made_recalls |
-| 11 | offensive_nydus |
-| 12 | bo_4_pool |
-| 13 | bo_9_pool |
-| 14 | bo_9_overpool |
-| 15 | bo_12_pool |
-| 16 | bo_9_pool_hatch |
-| 17 | bo_9_hatch |
-| 18 | bo_10_hatch |
-| 19 | bo_11_hatch |
-| 20 | bo_12_hatch |
-| 21 | bo_z_3hatch_muta |
-| 22 | bo_z_2hatch_muta |
-| 23 | bo_z_3hatch_lurker |
-| 24 | bo_z_2hatch_hydra |
-| 25 | bo_2_gate |
-| 26 | bo_1_gate_core |
-| 27 | bo_nexus_first |
-| 28 | bo_gate_expand |
-| 29 | bo_forge_expa |
-| 30 | bo_p_1gate_reaver |
-| 31 | bo_p_2gate_reaver |
-| 32 | bo_p_2gate_dt |
-| 33 | bo_p_sair_speedlot |
-| 34 | bo_bbs |
-| 35 | bo_cc_first |
-| 36 | bo_t_wraith |
-| 37 | bo_t_goliath |
-| 38 | bo_t_bio_1base |
-| 39 | bo_t_bio_2base |
-| 40 | bo_t_111_mech |
-| 41 | bo_t_mech_2fac |
-| 42 | bo_t_mech_3fac |
-| 43 | bo_t_mech_4fac |
-| 44 | bo_t_mech_5fac |
-| 45 | bo_t_mech_6fac |
-| 46 | bo_t_tankless_2fac |
-| 47 | bo_t_tankless_3fac |
-| 48 | bo_t_tankless_4fac |
-| 49 | bo_t_tankless_5fac |
-| 50 | bo_t_tankless_6fac |
-| 51 | bo_t_111 |
-| 52 | bo_t_factory_expand |
-| 53 | bo_t_2port_wraith |
-| 54 | bo_t_2fact_vults |
-| 55 | double_stargate |
-| 56 | carriers |
-| 57 | battlecruisers |
-| 58 | ten_plus_scouts |
-| 59 | cliff_drop |
+| 7 | manner_pylon |
+| 8 | drop |
+| 9 | mind_control |
+| 10 | threw_nukes |
+| 11 | made_recalls |
+| 12 | offensive_nydus |
+| 13 | bo_4_pool |
+| 14 | bo_9_pool |
+| 15 | bo_9_overpool |
+| 16 | bo_12_pool |
+| 17 | bo_9_pool_hatch |
+| 18 | bo_9_hatch |
+| 19 | bo_10_hatch |
+| 20 | bo_11_hatch |
+| 21 | bo_12_hatch |
+| 22 | bo_z_3hatch_muta |
+| 23 | bo_z_2hatch_muta |
+| 24 | bo_z_3hatch_lurker |
+| 25 | bo_z_2hatch_hydra |
+| 26 | bo_2_gate |
+| 27 | bo_1_gate_core |
+| 28 | bo_nexus_first |
+| 29 | bo_gate_expand |
+| 30 | bo_forge_expa |
+| 31 | bo_p_1gate_reaver |
+| 32 | bo_p_gate_forge_cannon |
+| 33 | bo_p_forge_cannon_gate |
+| 34 | bo_p_forge_gate_cannon |
+| 35 | bo_bbs |
+| 36 | bo_cc_first |
+| 37 | bo_t_wraith |
+| 38 | bo_t_goliath |
+| 39 | bo_t_bio_1base |
+| 40 | bo_t_bio_2base |
+| 41 | bo_t_111_mech |
+| 42 | bo_t_mech_2fac |
+| 43 | bo_t_mech_3fac |
+| 44 | bo_t_mech_4fac |
+| 45 | bo_t_mech_5fac |
+| 46 | bo_t_mech_6fac |
+| 47 | bo_t_tankless_2fac |
+| 48 | bo_t_tankless_3fac |
+| 49 | bo_t_tankless_4fac |
+| 50 | bo_t_tankless_5fac |
+| 51 | bo_t_tankless_6fac |
+| 52 | bo_t_111 |
+| 53 | bo_t_factory_expand |
+| 54 | bo_t_2port_wraith |
+| 55 | bo_t_2fact_vults |
+| 56 | double_stargate |
+| 57 | carriers |
+| 58 | battlecruisers |
+| 59 | ten_plus_scouts |
+| 60 | cliff_drop |
 
 ## Game-event featuring chips
 

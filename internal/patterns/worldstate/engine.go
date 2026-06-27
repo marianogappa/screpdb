@@ -407,6 +407,8 @@ func (e *Engine) Finalize() {
 	// returning -1, so the pass is safe to run even with empty bases.
 	e.runRushPass(ownership)
 
+	e.emitFirstTechTimingEvents()
+
 	if len(e.bases) > 0 {
 		e.emitOwnershipTransitions(ownership)
 		e.emitRecallEvents(ownership, candidates)
@@ -522,7 +524,7 @@ func (e *Engine) FirstEventSecondForPlayer(playerID byte, eventType string) *int
 	case "drop", "recall", "nuke", "became_terran", "became_zerg",
 		"cliff_drop", "scout", "attack", "nydus_attack",
 		"cannon_rush", "bunker_rush", "zergling_rush",
-		"proxy_gate", "proxy_rax", "proxy_factory",
+		"proxy_gate", "proxy_rax", "proxy_factory", "manner_pylon",
 		"expansion", "takeover", "location_inactive",
 		"player_start", "leave_game":
 	default:
@@ -1300,6 +1302,146 @@ func (e *Engine) tryEmitProxyBuildEvents(command *models.Command, pid byte, sec 
 		targetBaseIdx,
 		[]string{unitType},
 	)
+}
+
+// mannerPylonWindowSec bounds manner-pylon detection. A manner pylon is an
+// early worker-harass placement inside the enemy mineral line; allow up to
+// 8:00 to catch delayed ones.
+const mannerPylonWindowSec = 8 * 60
+
+// tryEmitMannerPylonEvent emits a manner_pylon event when a player places a
+// Pylon inside the enemy's starting base polygon (the mineral line), to block
+// worker mining. Two-human games only. The opposite of a proxy: a proxy sits
+// between the bases, a manner pylon sits inside the opponent's main.
+func (e *Engine) tryEmitMannerPylonEvent(command *models.Command, pid byte, sec int, baseIdx int) {
+	if command == nil || command.UnitType == nil || !e.isTwoHumanGame() {
+		return
+	}
+	if !strings.Contains(normalize(strings.TrimSpace(*command.UnitType)), "pylon") {
+		return
+	}
+	if sec > mannerPylonWindowSec {
+		return
+	}
+	a, b := e.humanPlayerIDs[0], e.humanPlayerIDs[1]
+	enemyPID := a
+	switch pid {
+	case a:
+		enemyPID = b
+	case b:
+		enemyPID = a
+	default:
+		return
+	}
+	enemyStart, ok := e.startBaseByPID[enemyPID]
+	if !ok || enemyStart < 0 || enemyStart >= len(e.bases) {
+		return
+	}
+	// The pylon's event-base (polygon, else nearest base within range) must be
+	// the enemy's starting base — i.e. it sits in their main / mineral line.
+	if baseIdx != enemyStart {
+		return
+	}
+	e.emitEvent(
+		"manner_pylon",
+		sec,
+		fmt.Sprintf("%s manner pylons at %s's main", e.playerName(pid), e.playerName(enemyPID)),
+		e.playerRef(pid),
+		e.playerRef(enemyPID),
+		enemyStart,
+		[]string{*command.UnitType},
+	)
+}
+
+// firstTechTimingWindowSec bounds the Protoss tech-timing game events: only a
+// first Reaver / Corsair / Zealot-speed before 10:00 is a meaningful opener
+// signal worth a timeline item.
+const firstTechTimingWindowSec = 10 * 60
+
+// opponentRace returns the other human player's race in a two-human game.
+func (e *Engine) opponentRace(pid byte) string {
+	if len(e.humanPlayerIDs) != 2 {
+		return ""
+	}
+	other := e.humanPlayerIDs[0]
+	if other == pid {
+		other = e.humanPlayerIDs[1]
+	}
+	if p, ok := e.players[other]; ok && p != nil {
+		return p.Race
+	}
+	return ""
+}
+
+// emitFirstTechTimingEvents emits a timeline game event for a Protoss player's
+// first Reaver (PvP/PvT), first Corsair (PvZ) or Zealot leg-speed (PvZ) when it
+// lands before 10:00 — the timeline counterpart of the First Reaver / First
+// Corsair / Speedlot timing pills.
+func (e *Engine) emitFirstTechTimingEvents() {
+	if !e.isTwoHumanGame() {
+		return
+	}
+	type firstKey struct {
+		pid       byte
+		eventType string
+	}
+	firstSec := map[firstKey]int{}
+	order := []firstKey{}
+	note := func(pid byte, eventType string, sec int) {
+		k := firstKey{pid, eventType}
+		if _, seen := firstSec[k]; seen {
+			return
+		}
+		firstSec[k] = sec
+		order = append(order, k)
+	}
+	for i, ec := range e.stream {
+		cmd := e.streamCommands[i]
+		pid, ok := e.playerIDFromCommand(cmd)
+		if !ok {
+			continue
+		}
+		switch {
+		case ec.Kind == cmdenrich.KindMakeUnit && ec.Subject == models.GeneralUnitReaver:
+			note(pid, "first_reaver", ec.Second)
+		case ec.Kind == cmdenrich.KindMakeUnit && ec.Subject == models.GeneralUnitCorsair:
+			note(pid, "first_corsair", ec.Second)
+		case ec.Kind == cmdenrich.KindUpgrade && ec.Subject == models.UpgradeLegEnhancementZealotSpeed:
+			note(pid, "speedlot", ec.Second)
+		}
+	}
+	for _, k := range order {
+		sec := firstSec[k]
+		if sec >= firstTechTimingWindowSec {
+			continue
+		}
+		player, ok := e.players[k.pid]
+		if !ok || player == nil || !strings.EqualFold(player.Race, "Protoss") {
+			continue
+		}
+		opp := e.opponentRace(k.pid)
+		var desc, icon string
+		switch k.eventType {
+		case "first_reaver":
+			if !strings.EqualFold(opp, "Protoss") && !strings.EqualFold(opp, "Terran") {
+				continue
+			}
+			desc, icon = fmt.Sprintf("%s trains their first Reaver", e.playerName(k.pid)), models.GeneralUnitReaver
+		case "first_corsair":
+			if !strings.EqualFold(opp, "Zerg") {
+				continue
+			}
+			desc, icon = fmt.Sprintf("%s trains their first Corsair", e.playerName(k.pid)), models.GeneralUnitCorsair
+		case "speedlot":
+			if !strings.EqualFold(opp, "Zerg") {
+				continue
+			}
+			desc, icon = fmt.Sprintf("%s starts Zealot Speed research", e.playerName(k.pid)), models.GeneralUnitZealot
+		default:
+			continue
+		}
+		e.emitEvent(k.eventType, sec, desc, e.playerRef(k.pid), nil, -1, []string{icon})
+	}
 }
 
 func (e *Engine) hasKnownEnemyTeam(a byte, b byte) bool {

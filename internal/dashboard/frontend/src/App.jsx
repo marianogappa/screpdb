@@ -419,6 +419,13 @@ const gameEventDescription = (event, registry) => {
     return actor ? `${actor} forms an alliance` : 'Alliance';
   }
   if (eventType === 'team_stacking_detected') return 'Team stacking detected';
+  if (eventType === 'manner_pylon') {
+    if (actor && target) return `${actor} manner pylons at ${target}'s main`;
+    return actor ? `${actor} manner pylons` : 'Manner pylon';
+  }
+  if (eventType === 'first_reaver') return actor ? `${actor} trains their first Reaver` : 'First Reaver';
+  if (eventType === 'first_corsair') return actor ? `${actor} trains their first Corsair` : 'First Corsair';
+  if (eventType === 'speedlot') return actor ? `${actor} starts Zealot Speed research` : 'Zealot Speed';
   if (eventType === 'location_inactive') return location ? `Location inactive: ${location}` : 'Location inactive';
   if (eventType === 'expansion') {
     if (actor && isActorAtOwnNaturalBase(event)) return `${actor} expands to their natural`;
@@ -594,6 +601,13 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
     return actorName ? <>{actorSpan} forms an alliance</> : 'Alliance';
   }
   if (eventType === 'team_stacking_detected') return 'Team stacking detected';
+  if (eventType === 'manner_pylon') {
+    if (actorName && targetName) return <>{actorSpan} manner pylons at {targetSpan}'s main</>;
+    return actorName ? <>{actorSpan} manner pylons</> : 'Manner pylon';
+  }
+  if (eventType === 'first_reaver') return actorName ? <>{actorSpan} trains their first Reaver</> : 'First Reaver';
+  if (eventType === 'first_corsair') return actorName ? <>{actorSpan} trains their first Corsair</> : 'First Corsair';
+  if (eventType === 'speedlot') return actorName ? <>{actorSpan} starts Zealot Speed research</> : 'Zealot Speed';
   if (eventType === 'location_inactive') return location ? `Location inactive: ${location}` : 'Location inactive';
   if (eventType === 'expansion') {
     if (actorName && isActorAtOwnNaturalBase(event)) return <>{actorSpan} expands to their natural</>;

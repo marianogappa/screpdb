@@ -112,6 +112,30 @@ Expand; a kept Robotics Facility now re-admits the Core (see
 `internal/cmdenrich/techtree.go`). A regression to Gate Expand there means the
 backstop broke. The opponent's BO in each fixture is tier-2.
 
+Protoss opener batch (round 5, issue #225). Tech/contain openers, each watched
+and confirmed. Round 5 also retired the `2 Gate DT`, `2 Gate Reaver` and
+`Sair/Speedlot` openers (they described post-opening tech composition, not the
+opening) — those replays fall to their true opener below.
+
+| Fixtures | Protoss player must classify as |
+| --- | --- |
+| `bo_1gatecore_pvt_23asd`, `bo_1gatecore_pvt_dicltoss`, `bo_1gatecore_pvt_dotk` | `Build Order: 1 Gate Core` (former false "2 Gate DT" — no real DT/Templar opening) |
+| `bo_gate_forge_cannon_pvz_horang2`, `bo_gate_forge_cannon_pvz_lyx2008` | `Build Order: Gate Forge Cannon before expa` |
+| `bo_forge_cannon_gate_pvz_231314` | `Build Order: Forge Cannon Gate before expa` |
+| `bo_gateexpand_pvz_asdzzz` | `Build Order: Gate Expand` (1 Gate FE; former "Sair/Speedlot") |
+| `bo_forgeexpand_pvz_dkdlt` | `Build Order: Forge Expand` (FFE; former "Sair/Speedlot", only 1 Corsair so not a Sair build) |
+
+The cannon-contain fixtures guard the {Gate, Forge, Cannon}-before-core-and-expa
+build-order permutations. The opponent's BO in each fixture is tier-2.
+
+Manner pylon (round 5, issue #225). Fixture `manner_pylon_pvp_llilil` (PvP):
+llIIlIIIIIIllll places a Pylon inside LYX2008's main mineral line at ~2:17 to
+block worker mining. The verified premise is the `Manner pylon` marker (and its
+worldstate `manner_pylon` game_event) on llIIlIIIIIIllll. The same fixture also
+guards the `First Reaver` timing marker (llIIlIIIIIIllll, ~5:25) and the
+`1 Gate Core` opener. A change that drops the manner pylon or reclassifies the
+opener is a regression.
+
 ### Cliff-drop detection — `drops_golden.json`
 
 Each fixture below was confirmed by watching the replay. The premise is the

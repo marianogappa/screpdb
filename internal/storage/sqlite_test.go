@@ -112,7 +112,11 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		// suppression replaced by a per-target time-window dedup.
 		// Then +1 (issue #194): the conservative "Muta hit-n-run" presence
 		// marker fires on the one ingested muta game (one marker row).
-		"replay_events": 204,
+		// Then +10 (issue #225): new Protoss timing/composition/spatial signals on
+		// the ingested Protoss games — First Reaver/Corsair, Speedlot timing,
+		// Sair/Speedlot and manner_pylon markers, plus the first_reaver/
+		// first_corsair/speedlot/manner_pylon timeline game_events.
+		"replay_events": 214,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {
