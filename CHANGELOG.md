@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.13.0](https://github.com/marianogappa/screpdb/compare/v1.12.2...v1.13.0) (2026-06-27)
+
+
+### Features
+
+* **markers:** Maelstrom, Crazy Zerg & Guardians markers, 1st Observer/Mine pills, proxy overlays, and a beta tag for uncurated detections ([#233](https://github.com/marianogappa/screpdb/issues/233)) ([6c35ca5](https://github.com/marianogappa/screpdb/commit/6c35ca5e367bf9578244cbca6f479792ca9816dd))
+* **markers:** retire reaver/DT/sair openers; add cannon-contain BOs, timing markers & manner pylon (closes [#225](https://github.com/marianogappa/screpdb/issues/225)) ([#229](https://github.com/marianogappa/screpdb/issues/229)) ([f58fee8](https://github.com/marianogappa/screpdb/commit/f58fee88882a7b7fd374ecd03bc6319950d764a5))
+* **markers:** Terran air/specialist openers — unify 2 Port Wraith (TvT+TvZ), 2 Fact before Expa, BBS proxy + proxy starport (closes [#228](https://github.com/marianogappa/screpdb/issues/228)) ([#232](https://github.com/marianogappa/screpdb/issues/232)) ([a4dc492](https://github.com/marianogappa/screpdb/commit/a4dc49202ef7bfad646ac6aa0d3319710d66038c))
+
+
+### Bug Fixes
+
+* **earlyfilter,worldstate:** stop dropping early workers and misreading proxy bunkers on money maps ([#231](https://github.com/marianogappa/screpdb/issues/231)) ([0622ce3](https://github.com/marianogappa/screpdb/commit/0622ce385aa96bf408c5f569f506d862175c4103))
+
 ## [1.12.2](https://github.com/marianogappa/screpdb/compare/v1.12.1...v1.12.2) (2026-06-26)
 
 
