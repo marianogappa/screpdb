@@ -17,6 +17,12 @@ func firstUpgradeTiming(subject string, maxSecond int) func() CustomEvaluator {
 	}
 }
 
+func firstTechTiming(subject string, maxSecond int) func() CustomEvaluator {
+	return func() CustomEvaluator {
+		return &firstFactTimingEvaluator{kind: cmdenrich.KindTech, subject: subject, maxSecond: maxSecond}
+	}
+}
+
 // firstFactTimingEvaluator commits at the first second a fact of the given Kind
 // and Subject appears, provided that second is strictly before maxSecond. Used
 // by the first-Reaver / first-Corsair / Speedlot timing markers: the pill's

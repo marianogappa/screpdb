@@ -330,7 +330,7 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 		eventType := strings.ToLower(strings.TrimSpace(row.EventType))
 		switch eventType {
 		case "zergling_rush", "cannon_rush", "bunker_rush",
-			"proxy_gate", "proxy_rax", "proxy_factory", "manner_pylon":
+			"proxy_gate", "proxy_rax", "proxy_factory", "proxy_starport", "manner_pylon":
 			featureSets[replayID][eventType] = struct{}{}
 		case "drop", "cliff_drop":
 			// Every drop variant lights up the generic "drop" chip; the
@@ -350,8 +350,8 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 			if _, has := set[cfg.Key]; !has {
 				continue
 			}
-			// Distinct keys can share a label (e.g. the "wraiths" marker and the
-			// "bo_t_wraith" opener both read "Wraith") — collapse to one pill.
+			// Distinct keys can share a label (e.g. a unit marker and a build-order
+			// opener that read the same word) — collapse to one pill.
 			if _, dup := seenLabel[cfg.Label]; dup {
 				continue
 			}

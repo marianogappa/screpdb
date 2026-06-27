@@ -69,6 +69,7 @@ var (
 		"proxy_gate",
 		"proxy_rax",
 		"proxy_factory",
+		"proxy_starport",
 		"manner_pylon",
 		"first_reaver",
 		"first_corsair",

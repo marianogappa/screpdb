@@ -936,7 +936,7 @@ func (e *Engine) attackerHasRushEvent(attacker byte) bool {
 		}
 		switch ev.EventType {
 		case "zergling_rush", "cannon_rush", "bunker_rush",
-			"proxy_gate", "proxy_rax", "proxy_factory":
+			"proxy_gate", "proxy_rax", "proxy_factory", "proxy_starport":
 			return true
 		}
 	}

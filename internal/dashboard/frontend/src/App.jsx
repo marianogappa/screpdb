@@ -245,6 +245,14 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
   }
+  if (playerIsActorForGameEventTypes(events, pid, ['proxy_starport'])) {
+    positive.push({
+      key: `ge-proxy-starport-${pid}`,
+      icon: getUnitIcon('starport'),
+      label: 'Proxy starport',
+      className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+    });
+  }
 
   return { positive: elideGenericDropPill(positive), noScout: null };
 };
@@ -484,9 +492,10 @@ const gameEventDescription = (event, registry) => {
     if (actor && isActorAtOwnNaturalBase(event)) return `${actor} takes over their natural`;
     return actor && location ? `${actor} takes over ${location}` : 'Takeover';
   }
-  if (eventType === 'proxy_gate' || eventType === 'proxy_rax' || eventType === 'proxy_factory') {
+  if (eventType === 'proxy_gate' || eventType === 'proxy_rax' || eventType === 'proxy_factory' || eventType === 'proxy_starport') {
     const proxyKind = eventType === 'proxy_gate' ? 'gateway'
-      : eventType === 'proxy_rax' ? 'barracks' : 'factory';
+      : eventType === 'proxy_rax' ? 'barracks'
+      : eventType === 'proxy_starport' ? 'starport' : 'factory';
     if (actor && location) return `${actor} proxies ${proxyKind} at ${location}`;
     if (actor)             return `${actor} proxies ${proxyKind}`;
     if (location)          return `Proxy ${proxyKind} at ${location}`;
@@ -695,9 +704,10 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
     if (actorName && isActorAtOwnNaturalBase(event)) return <>{actorSpan} takes over their natural</>;
     return actorName && location ? <>{actorSpan} takes over {location}</> : 'Takeover';
   }
-  if (eventType === 'proxy_gate' || eventType === 'proxy_rax' || eventType === 'proxy_factory') {
+  if (eventType === 'proxy_gate' || eventType === 'proxy_rax' || eventType === 'proxy_factory' || eventType === 'proxy_starport') {
     const proxyKind = eventType === 'proxy_gate' ? 'gateway'
-      : eventType === 'proxy_rax' ? 'barracks' : 'factory';
+      : eventType === 'proxy_rax' ? 'barracks'
+      : eventType === 'proxy_starport' ? 'starport' : 'factory';
     if (actorName && location) return <>{actorSpan} proxies {proxyKind} at {location}</>;
     if (actorName)              return <>{actorSpan} proxies {proxyKind}</>;
     if (location)               return `Proxy ${proxyKind} at ${location}`;
@@ -845,6 +855,7 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
     if (t === 'proxy_gate')     keys.add('proxy_gate');
     if (t === 'proxy_rax')      keys.add('proxy_rax');
     if (t === 'proxy_factory')  keys.add('proxy_factory');
+    if (t === 'proxy_starport') keys.add('proxy_starport');
     // Drop variants: every variant lights the generic 'drop' key; specific
     // subtypes (cliff_drop) also light their own
     // key. The post-process elision below drops the generic chip when a
@@ -1138,7 +1149,7 @@ const mapPointToPercent = (point, bounds) => {
 // arrow draws from the cast point (source) to the inferred Arbiter location.
 // The recall arrow is suppressed at render time when no destination was
 // inferred (target_base missing) so we don't draw a misleading vector.
-const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'cliff_drop', 'nydus_attack', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory', 'recall'].includes(String(eventType || '').toLowerCase());
+const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'cliff_drop', 'nydus_attack', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory', 'proxy_starport', 'recall'].includes(String(eventType || '').toLowerCase());
 
 const fallbackOverlayUnitNamesForEvent = (eventType, actorRace) => {
   const normalized = normalizeEventType(eventType);
@@ -1148,6 +1159,7 @@ const fallbackOverlayUnitNamesForEvent = (eventType, actorRace) => {
   if (normalized === 'proxy_gate') return ['gateway'];
   if (normalized === 'proxy_rax') return ['barracks'];
   if (normalized === 'proxy_factory') return ['factory'];
+  if (normalized === 'proxy_starport') return ['starport'];
   // cliff_drop is a Terran-only marker classification, dropship is always correct.
   if (normalized === 'cliff_drop') return ['dropship'];
   if (normalized === 'drop') {
@@ -4156,7 +4168,7 @@ function App() {
     if (nt === 'leave_game' || nt === 'player_stopped_playing') return 'leaves';
     if (nt === 'late_alliance') return 'alliance';
     if (nt === 'became_terran' || nt === 'became_zerg') return 'became';
-    if (['cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory'].includes(nt)) return 'rush';
+    if (['cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory', 'proxy_starport'].includes(nt)) return 'rush';
     if (nt === 'attack') return 'attack';
     if (selectedMainGameExpansionOverlay) return 'expansion';
     if (selectedMainGameArrow) return 'attack';

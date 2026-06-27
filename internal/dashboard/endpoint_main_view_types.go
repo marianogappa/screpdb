@@ -217,6 +217,7 @@ var workflowFeaturingFilters = []struct {
 	{Key: "proxy_gate", Label: "Proxy Gateway", Group: "marker", IconKey: "gateway", IconLabel: "Proxy"},
 	{Key: "proxy_rax", Label: "Proxy Barracks", Group: "marker", IconKey: "barracks", IconLabel: "Proxy"},
 	{Key: "proxy_factory", Label: "Proxy Factory", Group: "marker", IconKey: "factory", IconLabel: "Proxy"},
+	{Key: "proxy_starport", Label: "Proxy Starport", Group: "marker", IconKey: "starport", IconLabel: "Proxy"},
 	{Key: "manner_pylon", Label: "Manner Pylon", Group: "marker", IconKey: "pylon", IconLabel: "Manner"},
 	// Drop filters — icon-only chips. "drop" matches ANY drop variant
 	// (drop, cliff_drop); the generic chip matches any
@@ -260,7 +261,6 @@ var workflowFeaturingFilters = []struct {
 	{Key: "bo_p_gate_forge_cannon", Label: "Gate Forge Cannon (before expa)", Group: "bo", Race: "protoss"},
 	{Key: "bo_p_forge_cannon_gate", Label: "Forge Cannon Gate (before expa)", Group: "bo", Race: "protoss"},
 	{Key: "bo_p_forge_gate_cannon", Label: "Forge Gate Cannon (before expa)", Group: "bo", Race: "protoss"},
-	{Key: "bo_t_wraith", Label: "Wraith", Group: "bo", Race: "terran"},
 	{Key: "bo_t_goliath", Label: "Goliath", Group: "bo", Race: "terran"},
 	{Key: "bo_t_bio_1base", Label: "1-Base Bio", Group: "bo", Race: "terran"},
 	{Key: "bo_t_bio_2base", Label: "2-Base Bio", Group: "bo", Race: "terran"},
@@ -278,7 +278,7 @@ var workflowFeaturingFilters = []struct {
 	{Key: "bo_t_111", Label: "1-1-1", Group: "bo", Race: "terran"},
 	{Key: "bo_t_factory_expand", Label: "Factory Expand", Group: "bo", Race: "terran"},
 	{Key: "bo_t_2port_wraith", Label: "2 Port Wraith", Group: "bo", Race: "terran"},
-	{Key: "bo_t_2fact_vults", Label: "2 Fact Vults", Group: "bo", Race: "terran"},
+	{Key: "bo_t_2fact_expa", Label: "2 Fact before Expa", Group: "bo", Race: "terran"},
 	{Key: "bo_cc_first", Label: "CC First", Group: "bo", Race: "terran"},
 	{Key: "bo_bbs", Label: "BBS", Group: "bo", Race: "terran"},
 }

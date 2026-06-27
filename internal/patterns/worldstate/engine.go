@@ -27,6 +27,9 @@ const (
 	// Max distance from a rush build command to an enemy base center when the point is outside the base polygon (map polygons often miss ramp cannons).
 	rushBuildSnapToEnemyBaseCenterPx = 10 * 32
 	proxyFactoryWindowSec            = 5 * 60
+	// A proxy 2-port Starport lands later than a proxy Gateway/Barracks (1 Rax /
+	// 1 Fac precede it), so it gets the same 5:00 window as a proxy Factory.
+	proxyStarportWindowSec = 5 * 60
 	// Build/train evidence for an attack at second S is collected from
 	// the window centered at S - attackUnitsEpicenterOffsetSec, expanded
 	// attackUnitsPastSec into the past and attackUnitsFutureSec into the
@@ -524,7 +527,7 @@ func (e *Engine) FirstEventSecondForPlayer(playerID byte, eventType string) *int
 	case "drop", "recall", "nuke", "became_terran", "became_zerg",
 		"cliff_drop", "scout", "attack", "nydus_attack",
 		"cannon_rush", "bunker_rush", "zergling_rush",
-		"proxy_gate", "proxy_rax", "proxy_factory", "manner_pylon",
+		"proxy_gate", "proxy_rax", "proxy_factory", "proxy_starport", "manner_pylon",
 		"expansion", "takeover", "location_inactive",
 		"player_start", "leave_game":
 	default:
@@ -1287,10 +1290,13 @@ func (e *Engine) tryEmitProxyBuildEvents(command *models.Command, pid byte, sec 
 	case strings.Contains(unitNorm, "factory"):
 		proxyType = "proxy_factory"
 		window = proxyFactoryWindowSec
+	case strings.Contains(unitNorm, "starport"):
+		proxyType = "proxy_starport"
+		window = proxyStarportWindowSec
 	default:
 		return
 	}
-	if sec > window || !e.proxyPlacementAllowed(x, y) {
+	if sec > window || !e.proxyPlacementAllowed(pid, x, y) {
 		return
 	}
 	targetBaseIdx := baseIdx
@@ -1561,7 +1567,7 @@ func (e *Engine) isTwoHumanGame() bool {
 	return len(e.humanPlayerIDs) == 2
 }
 
-func (e *Engine) proxyPlacementAllowed(x float64, y float64) bool {
+func (e *Engine) proxyPlacementAllowed(pid byte, x float64, y float64) bool {
 	if len(e.humanPlayerIDs) != 2 {
 		return false
 	}
@@ -1579,12 +1585,23 @@ func (e *Engine) proxyPlacementAllowed(x float64, y float64) bool {
 	if startDist <= 0 {
 		return false
 	}
+	// Resolve own vs enemy main from the placing player so the gate can tell a
+	// home build (near own) from a forward proxy (toward / at the enemy). A
+	// proxy is any non-home placement reaching the enemy half: far enough from
+	// the builder's own main (>= 0.7 * half), and within reach of the enemy's
+	// (<= 1.3 * half). Dropping the old "<= 1.3 * half from BOTH mains" cap is
+	// what admits the aggressive at-the-enemy proxy (e.g. a 2-Rax BBS planted on
+	// the opponent's doorstep), not only the symmetric midfield one.
+	ownStart, enemyStart := startA, startB
+	if pid == e.humanPlayerIDs[1] {
+		ownStart, enemyStart = startB, startA
+	}
 	halfDist := startDist / 2
 	minDist := halfDist * 0.7
 	maxDist := halfDist * 1.3
-	distA := dist(x, y, e.bases[startA].CenterX, e.bases[startA].CenterY)
-	distB := dist(x, y, e.bases[startB].CenterX, e.bases[startB].CenterY)
-	return distA >= minDist && distA <= maxDist && distB >= minDist && distB <= maxDist
+	distOwn := dist(x, y, e.bases[ownStart].CenterX, e.bases[ownStart].CenterY)
+	distEnemy := dist(x, y, e.bases[enemyStart].CenterX, e.bases[enemyStart].CenterY)
+	return distOwn >= minDist && distEnemy <= maxDist
 }
 
 func (e *Engine) baseDisplayName(baseIdx int) string {

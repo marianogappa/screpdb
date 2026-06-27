@@ -175,6 +175,7 @@ const (
 	subjWraith         = models.GeneralUnitWraith
 	subjScienceVessel  = models.GeneralUnitScienceVessel
 	subjBattlecruiser  = models.GeneralUnitBattlecruiser
+	subjCloakingField  = models.TechCloakingField
 )
 
 // endOfReplaySentinel is a RuleDeadline for markers whose answer can only
@@ -338,7 +339,19 @@ func allMarkers() []Marker {
 		Not(FirstBuildBefore(subjStarport, 600)),
 	)
 	tcBio := All(tcBioPred, Any(ProduceCountAtLeastBefore(subjMarine, 8, 600), tcBioNoTransition))
-	tcWraith := All(CountBuildsBefore(subjStarport, 2, 600), ProduceCountAtLeastBefore(subjWraith, 5, 600))
+	// 2 Port Wraith shape: 1 Barracks + 1 Factory then two Starports, wraith-
+	// dominant air. No 2nd Barracks/Factory before the first Starport — the bio/
+	// mech transition that often follows (extra Barracks/Factories) lands after
+	// the two Starports, so it doesn't disqualify the opener. An expansion before
+	// the Starports is allowed (surfaced as the "expand" modifier on the opener).
+	// Shared by the TierPreferred "2 Port Wraith" opener (TvT/TvZ) and the
+	// composition guards / residual complement below.
+	tcWraith := All(
+		CountBuildsBefore(subjStarport, 2, 600),
+		Not(NthBuildBeforeAll(subjBarracks, 2, []string{subjStarport})),
+		Not(NthBuildBeforeAll(subjFactory, 2, []string{subjStarport})),
+		ProduceCountAtLeastBefore(subjWraith, 5, 600),
+	)
 	tcTank1 := ProduceCountAtLeastBefore(subjSiegeTank, 1, 600)
 	tcTank0 := ProduceCountAtMostBefore(subjSiegeTank, 0, 600)
 	// Goliath opener is Goliath-dominant with no tank tech: ≤2 Vultures and
@@ -685,45 +698,56 @@ func allMarkers() []Marker {
 			SummaryPlayer: mkPill("Factory Expand", "vulture"), GamesList: mkPill("Factory Expand", "vulture"),
 		},
 		{
-			// 2 Port Wraith (TvT): two Starports before any expansion — cloaked-
-			// wraith harass into mech.
+			// 2 Port Wraith (TvT & TvZ): the Terran air opener — 1 Barracks +
+			// 1 Factory into two Starports, wraith-dominant. The attacking
+			// composition after the two Starports is mostly Wraiths (a later bio/
+			// mech transition is common but lands after the two ports, so it
+			// doesn't disqualify the opener — see tcWraith). Academy / Armory /
+			// Supply may precede the ports freely; only a 2nd Barracks or 2nd
+			// Factory before the first Starport rules it out. An expansion before
+			// the Starports is the "expand" modifier. This unifies the former TvZ
+			// "Wraith" composition opener with the TvT 2 Port Wraith.
 			Name: "2 Port Wraith", PatternName: InitialBuildOrderPatternNamePrefix + "2 Port Wraith", FeatureKey: "bo_t_2port_wraith",
-			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvT"},
-			Rule: All(
-				CountBuildsBefore(subjStarport, 2, 600),
-				NthBuildBeforeAll(subjStarport, 2, []string{subjCommandCenter}),
-				ProduceCountAtLeast(subjWraith, 4), // it's a wraith build, not just 2 Starports
-				// Disjoint from 2 Fact Vults: a wraith opener is 1 Factory into
-				// 2 Starports, not a 2-Factory vulture opening.
-				Not(NthBuildBeforeAll(subjFactory, 2, []string{subjStarport})),
-			),
+			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvT", "TvZ"},
+			Rule:         All(tCohort, tcWraith),
 			RuleDeadline: 600,
+			// "expand" flags taking a Command Center before the two Starports —
+			// an economic 2-port wraith vs the one-base harass variant. "proxy"
+			// flags Starports built forward at the enemy (worldstate proxy_starport
+			// event), the same way BBS / 2 Gate carry their proxy tag.
+			Modifiers: []Modifier{
+				{Name: "expand", Rule: BuildBefore(subjCommandCenter, subjStarport)},
+				{Name: "proxy", WorldstateEvent: "proxy_starport"},
+			},
 			Expert: []ExpertEvent{
-				{Key: "1st Starport", Match: MatchBuild(subjStarport), TargetSecond: 201, Tolerance: Asym(25, 50)},
-				{Key: "2nd Starport", Match: MatchNthBuild(subjStarport, 2), TargetSecond: 208, Tolerance: Asym(25, 60)},
+				{Key: "1st Starport", Match: MatchBuild(subjStarport), TargetSecond: 205, Tolerance: Asym(25, 70)},
+				{Key: "2nd Starport", Match: MatchNthBuild(subjStarport, 2), TargetSecond: 212, Tolerance: Asym(25, 70)},
+				{Key: "First Wraith", Match: MatchFirstProduce(subjWraith), TargetSecond: 253, Tolerance: Asym(40, 90)},
 			},
 			SummaryPlayer: mkPill("2 Port Wraith", "wraith"), GamesList: mkPill("2 Port Wraith", "wraith"),
 		},
 		{
-			// 2 Fact Vults (TvT): two Factories before any expansion / Starport —
-			// the aggressive vulture/mine timing. Disjoint from 2 Port Wraith
-			// (no early Starport).
-			Name: "2 Fact Vults", PatternName: InitialBuildOrderPatternNamePrefix + "2 Fact Vults", FeatureKey: "bo_t_2fact_vults",
+			// 2 Fact before Expa (TvT): exactly two Factories before the
+			// expansion (no more, no less) and before any Starport — the standard
+			// 2-Factory mech opening (mech is implied in TvT, so it's a
+			// vulture/tank/goliath mix, not pure vultures). RuleDeadline 360 bounds
+			// the "before the expansion" window to the opening: a 3rd Factory after
+			// 6:00 (a late macro ramp) is past the deadline and doesn't count.
+			// Disjoint from 2 Port Wraith by construction (its 2nd Factory precedes
+			// the first Starport, which 2 Port Wraith forbids).
+			Name: "2 Fact before Expa", PatternName: InitialBuildOrderPatternNamePrefix + "2 Fact before Expa", FeatureKey: "bo_t_2fact_expa",
 			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvT"},
 			Rule: All(
-				CountBuildsBefore(subjFactory, 2, 300),
+				tCohort,
 				NthBuildBeforeAll(subjFactory, 2, []string{subjCommandCenter, subjStarport}),
-				Not(FirstBuildBefore(subjStarport, 300)),
-				// It's a vulture build — require early Vultures, which also keeps
-				// it disjoint from any wraith/air opening that took 2 Factories.
-				ProduceCountAtLeastBefore(subjVulture, 3, 360),
+				Not(NthBuildBeforeAll(subjFactory, 3, []string{subjCommandCenter})),
 			),
 			RuleDeadline: 360,
 			Expert: []ExpertEvent{
-				{Key: "1st Factory", Match: MatchBuild(subjFactory), TargetSecond: 147, Tolerance: Asym(25, 30)},
-				{Key: "2nd Factory", Match: MatchNthBuild(subjFactory, 2), TargetSecond: 183, Tolerance: Asym(40, 50)},
+				{Key: "1st Factory", Match: MatchBuild(subjFactory), TargetSecond: 147, Tolerance: Asym(25, 40)},
+				{Key: "2nd Factory", Match: MatchNthBuild(subjFactory, 2), TargetSecond: 177, Tolerance: Asym(40, 60)},
 			},
-			SummaryPlayer: mkPill("2 Fact Vults", "vulture"), GamesList: mkPill("2 Fact Vults", "vulture"),
+			SummaryPlayer: mkPill("2 Fact before Expa", "vulture"), GamesList: mkPill("2 Fact before Expa", "vulture"),
 		},
 
 		// Pool-first BOs are keyed off exact pre-Pool Drone-morph and
@@ -1247,23 +1271,10 @@ func allMarkers() []Marker {
 		// --- Composition-based Terran BOs (issue #155). The old 1 Rax 1 Fac /
 		// 1 Rax FE / 2 Rax CC / 1 Rax Bio openers collapse into this set,
 		// classified by army composition at 10:00. ---
-		{
-			// Wraith: TvZ air build — 2+ Starports and 5+ Wraiths by 10:00.
-			Name: "Wraith", PatternName: "Build Order: Wraith", FeatureKey: "bo_t_wraith",
-			Race: RaceTerran, Kind: KindInitialBuildOrder, Matchup: []string{"TvZ"},
-			Rule:         All(tCohort, tcWraith),
-			RuleDeadline: 600,
-			Expert: []ExpertEvent{
-				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 56, Tolerance: Asym(10, 24)},
-				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 84, Tolerance: Asym(28, 18)},
-				{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 98, Tolerance: Asym(10, 60)},
-				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 152, Tolerance: Asym(12, 60)},
-				{Key: "Starport", Match: MatchBuild(subjStarport), TargetSecond: 205, Tolerance: Asym(15, 60)},
-				{Key: "First Wraith", Match: MatchFirstProduce(subjWraith), TargetSecond: 253, Tolerance: Asym(20, 70)},
-			},
-			SummaryPlayer: &Pill{Label: "Wraith", IconKey: "wraith"},
-			GamesList:     &Pill{Label: "Wraith", IconKey: "wraith"},
-		},
+		// (The TvZ "Wraith" composition opener was retired: it is the same build
+		// as TvT 2 Port Wraith — 1 Rax / 1 Fac into two Starports, wraith-dominant
+		// — so it folds into the now matchup-shared "2 Port Wraith" TierPreferred
+		// opener above. tcWraith still gates it out of the composition buckets.)
 		{
 			// Goliath: TvZ Goliath-dominant — ≤2 Vultures & ≤4 Marines by 7:00,
 			// 4+ Goliaths by 10:00 (with tanks it's Mech instead).
@@ -1602,6 +1613,25 @@ func allMarkers() []Marker {
 			SummaryReplay: &Pill{Label: "1st Corsair {timestamp}", IconKey: "corsair"},
 			GamesList:     &Pill{Label: "1st Corsair {timestamp}", IconKey: "corsair"},
 			EventsList:    &Pill{Label: "trains first Corsair", IconKey: "corsair"},
+		},
+		{
+			// Wraith Cloak timing (TvZ/TvT): the second the player starts Cloaking
+			// Field research at the Control Tower — the key timing of the 2 Port
+			// Wraith opener (cloaked-wraith harass). Surfaced as a per-player
+			// timing pill, like Speedlot timing; not gated to the opener match
+			// (Cloaking Field in TvZ/TvT is effectively a wraith build's tell).
+			Name:          "Wraith Cloak timing",
+			PatternName:   "Wraith Cloak timing",
+			FeatureKey:    "wraith_cloak_timing",
+			Kind:          KindMarker,
+			Race:          RaceTerran,
+			Matchup:       []string{"TvZ", "TvT"},
+			Custom:        firstTechTiming(subjCloakingField, 0),
+			RuleDeadline:  endOfReplaySentinel,
+			SummaryPlayer: &Pill{Label: "Wraith Cloak {timestamp}", IconKey: "wraith"},
+			SummaryReplay: &Pill{Label: "Wraith Cloak {timestamp}", IconKey: "wraith"},
+			GamesList:     &Pill{Label: "Wraith Cloak {timestamp}", IconKey: "wraith"},
+			EventsList:    &Pill{Label: "starts Wraith Cloak research", IconKey: "wraith"},
 		},
 		{
 			// Speedlot timing (PvZ): the second the player starts Zealot leg-speed
