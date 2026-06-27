@@ -256,9 +256,9 @@ var workflowFeaturingFilters = []struct {
 	{Key: "bo_gate_expand", Label: "Gate Expand", Group: "bo", Race: "protoss"},
 	{Key: "bo_forge_expa", Label: "Forge Expand", Group: "bo", Race: "protoss"},
 	{Key: "bo_p_1gate_reaver", Label: "1 Gate Reaver", Group: "bo", Race: "protoss"},
-	{Key: "bo_p_2gate_reaver", Label: "2 Gate Reaver", Group: "bo", Race: "protoss"},
-	{Key: "bo_p_2gate_dt", Label: "2 Gate DT", Group: "bo", Race: "protoss"},
-	{Key: "bo_p_sair_speedlot", Label: "Sair/Speedlot", Group: "bo", Race: "protoss"},
+	{Key: "bo_p_gate_forge_cannon", Label: "Gate Forge Cannon (before expa)", Group: "bo", Race: "protoss"},
+	{Key: "bo_p_forge_cannon_gate", Label: "Forge Cannon Gate (before expa)", Group: "bo", Race: "protoss"},
+	{Key: "bo_p_forge_gate_cannon", Label: "Forge Gate Cannon (before expa)", Group: "bo", Race: "protoss"},
 	{Key: "bo_t_wraith", Label: "Wraith", Group: "bo", Race: "terran"},
 	{Key: "bo_t_goliath", Label: "Goliath", Group: "bo", Race: "terran"},
 	{Key: "bo_t_bio_1base", Label: "1-Base Bio", Group: "bo", Race: "terran"},
@@ -543,12 +543,12 @@ type workflowGameEvent struct {
 }
 
 type workflowGameEventBuildOrder struct {
-	PlayerID      int64  `json:"player_id"`
-	Name          string `json:"name"`
-	Color         string `json:"color,omitempty"`
-	Race          string `json:"race,omitempty"`
-	IsWinner      bool   `json:"is_winner,omitempty"`
-	Team          int64  `json:"team"`
+	PlayerID      int64    `json:"player_id"`
+	Name          string   `json:"name"`
+	Color         string   `json:"color,omitempty"`
+	Race          string   `json:"race,omitempty"`
+	IsWinner      bool     `json:"is_winner,omitempty"`
+	Team          int64    `json:"team"`
 	StartLocation string   `json:"start_location,omitempty"`
 	BuildOrder    string   `json:"build_order"`
 	FeatureKey    string   `json:"feature_key"`

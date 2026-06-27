@@ -591,62 +591,73 @@ func allMarkers() []Marker {
 			},
 			SummaryPlayer: mkPill("1 Gate Reaver", "reaver"), GamesList: mkPill("1 Gate Reaver", "reaver"),
 		},
+		// (2 Gate DT, 2 Gate Reaver and Sair/Speedlot were removed as openers:
+		// they classified the post-opening tech composition, not the opening
+		// itself, and the topology underneath is almost always 1 Gate Core /
+		// 2 Gate / Gate Expand / FFE. Reaver/Corsair tech is now surfaced by the
+		// "First Reaver"/"First Corsair" timing markers, and the Sair/Speedlot
+		// composition by its own marker, all below — not as initial BOs.)
+
+		// --- Protoss cannon-contain openers (PvZ): a Gateway, a Forge and a
+		// Photon Cannon all placed before the Cybernetics Core and before any
+		// Nexus (expansion). The three permutations below differ only in the
+		// build order of {Gate, Forge, Cannon}; Assimilator timing is irrelevant.
+		// TierPreferred so they refine the base opener (Forge Cannon (no expa) /
+		// Gate Expand / etc.) when the cannon-contain shape is present. Disjoint
+		// from each other by ordering. ---
 		{
-			// 2 Gate DT (PvT): Citadel + Templar Archives into Dark Templar
-			// (no Reaver). Cloaked harass vs Siege-FE Terran lacking detection.
-			Name: "2 Gate DT", PatternName: InitialBuildOrderPatternNamePrefix + "2 Gate DT", FeatureKey: "bo_p_2gate_dt",
-			Race: RaceProtoss, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvT"},
-			Rule: All(
-				CountBuildsBefore(subjGateway, 2, 360), // it's a 2-Gate build
-				FirstBuildExists(subjCitadelOfAdun),    // Citadel → Templar Archives path
-				FirstBuildExists(subjTemplarArchives),
-				ProduceCountAtLeast(subjDarkTemplar, 2), // DTs are the point (harass pair)
-				Not(ProduceCountAtLeast(subjReaver, 1)), // disjoint from 1 Gate Reaver
-			),
-			RuleDeadline: 600,
-			Expert: []ExpertEvent{
-				{Key: "Templar Archives", Match: MatchBuild(subjTemplarArchives), TargetSecond: 327, Tolerance: Asym(80, 100)},
-				{Key: "First Dark Templar", Match: MatchFirstProduce(subjDarkTemplar), TargetSecond: 379, Tolerance: Asym(90, 120)},
-			},
-			SummaryPlayer: mkPill("2 Gate DT", "darktemplar"), GamesList: mkPill("2 Gate DT", "darktemplar"),
-		},
-		{
-			// 2 Gate Reaver (PvP): ≥2 Gateways into Robotics + Reaver — the
-			// gate-robo-gate PvP standard.
-			Name: "2 Gate Reaver", PatternName: InitialBuildOrderPatternNamePrefix + "2 Gate Reaver", FeatureKey: "bo_p_2gate_reaver",
-			Race: RaceProtoss, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvP"},
-			Rule: All(
-				FirstBuildExists(subjRoboticsFacility),
-				ProduceCountAtLeast(subjReaver, 1),
-				CountBuildsBefore(subjGateway, 2, 600),
-			),
-			RuleDeadline: 600,
-			Expert: []ExpertEvent{
-				{Key: "Robotics Facility", Match: MatchBuild(subjRoboticsFacility), TargetSecond: 260, Tolerance: Asym(60, 100)},
-				{Key: "First Reaver", Match: MatchFirstProduce(subjReaver), TargetSecond: 383, Tolerance: Asym(90, 120)},
-			},
-			SummaryPlayer: mkPill("2 Gate Reaver", "reaver"), GamesList: mkPill("2 Gate Reaver", "reaver"),
-		},
-		{
-			// Sair/Speedlot (PvZ): Stargate Corsairs + Citadel zealot-speed off a
-			// Forge/Gate expand — the dominant modern PvZ ground/air opener.
-			Name: "Sair/Speedlot", PatternName: InitialBuildOrderPatternNamePrefix + "Sair/Speedlot", FeatureKey: "bo_p_sair_speedlot",
+			Name: "Gate Forge Cannon before expa", PatternName: InitialBuildOrderPatternNamePrefix + "Gate Forge Cannon before expa", FeatureKey: "bo_p_gate_forge_cannon",
 			Race: RaceProtoss, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvZ"},
 			Rule: All(
-				FirstBuildExists(subjStargate),
-				ProduceCountAtLeast(subjCorsair, 2), // the Sair half
-				FirstBuildExists(subjCitadelOfAdun), // Citadel → zealot leg speed
-				// Speedlot = the ground-zealot Sair variant: not Sair/DT, not
-				// Sair/Reaver (those are distinct openers in the research doc).
-				Not(ProduceCountAtLeast(subjDarkTemplar, 1)),
-				Not(ProduceCountAtLeast(subjReaver, 1)),
+				BuildBefore(subjGateway, subjForge),
+				BuildBefore(subjForge, subjPhotonCannon),
+				FirstBuildExists(subjPhotonCannon),
+				BuildBefore(subjPhotonCannon, subjCyberneticsCore),
+				BuildBefore(subjPhotonCannon, subjNexus),
 			),
-			RuleDeadline: 600,
+			RuleDeadline: 320,
 			Expert: []ExpertEvent{
-				{Key: "Stargate", Match: MatchBuild(subjStargate), TargetSecond: 280, Tolerance: Asym(60, 90)},
-				{Key: "Citadel of Adun", Match: MatchBuild(subjCitadelOfAdun), TargetSecond: 332, Tolerance: Asym(60, 120)},
+				{Key: "Gateway", Match: MatchBuild(subjGateway), TargetSecond: 70, Tolerance: Asym(20, 40)},
+				{Key: "Forge", Match: MatchBuild(subjForge), TargetSecond: 120, Tolerance: Asym(30, 60)},
+				{Key: "Photon Cannon", Match: MatchBuild(subjPhotonCannon), TargetSecond: 155, Tolerance: Asym(30, 80)},
 			},
-			SummaryPlayer: mkPill("Sair/Speedlot", "corsair"), GamesList: mkPill("Sair/Speedlot", "corsair"),
+			SummaryPlayer: mkPill("Gate Forge Cannon (before expa)", "photoncannon"), GamesList: mkPill("Gate Forge Cannon (before expa)", "photoncannon"),
+		},
+		{
+			Name: "Forge Cannon Gate before expa", PatternName: InitialBuildOrderPatternNamePrefix + "Forge Cannon Gate before expa", FeatureKey: "bo_p_forge_cannon_gate",
+			Race: RaceProtoss, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvZ"},
+			Rule: All(
+				BuildBefore(subjForge, subjPhotonCannon),
+				BuildBefore(subjPhotonCannon, subjGateway),
+				FirstBuildExists(subjGateway),
+				BuildBefore(subjGateway, subjCyberneticsCore),
+				BuildBefore(subjGateway, subjNexus),
+			),
+			RuleDeadline: 320,
+			Expert: []ExpertEvent{
+				{Key: "Forge", Match: MatchBuild(subjForge), TargetSecond: 96, Tolerance: Asym(30, 60)},
+				{Key: "Photon Cannon", Match: MatchBuild(subjPhotonCannon), TargetSecond: 126, Tolerance: Asym(30, 60)},
+				{Key: "Gateway", Match: MatchBuild(subjGateway), TargetSecond: 144, Tolerance: Asym(30, 80)},
+			},
+			SummaryPlayer: mkPill("Forge Cannon Gate (before expa)", "photoncannon"), GamesList: mkPill("Forge Cannon Gate (before expa)", "photoncannon"),
+		},
+		{
+			Name: "Forge Gate Cannon before expa", PatternName: InitialBuildOrderPatternNamePrefix + "Forge Gate Cannon before expa", FeatureKey: "bo_p_forge_gate_cannon",
+			Race: RaceProtoss, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvZ"},
+			Rule: All(
+				BuildBefore(subjForge, subjGateway),
+				BuildBefore(subjGateway, subjPhotonCannon),
+				FirstBuildExists(subjPhotonCannon),
+				BuildBefore(subjPhotonCannon, subjCyberneticsCore),
+				BuildBefore(subjPhotonCannon, subjNexus),
+			),
+			RuleDeadline: 320,
+			Expert: []ExpertEvent{
+				{Key: "Forge", Match: MatchBuild(subjForge), TargetSecond: 96, Tolerance: Asym(30, 60)},
+				{Key: "Gateway", Match: MatchBuild(subjGateway), TargetSecond: 130, Tolerance: Asym(30, 70)},
+				{Key: "Photon Cannon", Match: MatchBuild(subjPhotonCannon), TargetSecond: 160, Tolerance: Asym(30, 80)},
+			},
+			SummaryPlayer: mkPill("Forge Gate Cannon (before expa)", "photoncannon"), GamesList: mkPill("Forge Gate Cannon (before expa)", "photoncannon"),
 		},
 
 		// --- Terran opening-sequence openers (the new axis vs #155 composition). ---

@@ -99,9 +99,9 @@ var staticFeaturingOrder = []string{
 	"bo_forge_expa",
 	// Preferred Protoss tech-pathway openers (issue #182).
 	"bo_p_1gate_reaver",
-	"bo_p_2gate_reaver",
-	"bo_p_2gate_dt",
-	"bo_p_sair_speedlot",
+	"bo_p_gate_forge_cannon",
+	"bo_p_forge_cannon_gate",
+	"bo_p_forge_gate_cannon",
 	"bo_bbs",
 	"bo_cc_first",
 	// Terran composition BOs (issue #155): former mech / 1-1-1 / SK Terran

@@ -451,10 +451,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 2 Gate | Protoss | 1st Gateway | 70 | ±6 |
 | 2 Gate | Protoss | 2nd Gateway | 86 | ±10 |
 | 2 Gate | Protoss | First Zealot | 108 | ±3 |
-| 2 Gate DT | Protoss | Templar Archives | 327 | −80 / +100 |
-| 2 Gate DT | Protoss | First Dark Templar | 379 | −90 / +120 |
-| 2 Gate Reaver | Protoss | Robotics Facility | 260 | −60 / +100 |
-| 2 Gate Reaver | Protoss | First Reaver | 383 | −90 / +120 |
 | 2 Hatch Hydra | Zerg | Hydralisk Den | 214 | −25 / +90 |
 | 2 Hatch Hydra | Zerg | First Hydralisks | 250 | −40 / +120 |
 | 2 Hatch Muta | Zerg | Spire | 249 | −35 / +70 |
@@ -571,13 +567,22 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | Factory Expand | Terran | Command Center | 229 | −30 / +80 |
 | Forge Cannon (no expa) | Protoss | Forge | 90 | ±20 |
 | Forge Cannon (no expa) | Protoss | Photon Cannon | 130 | ±30 |
+| Forge Cannon Gate before expa | Protoss | Forge | 96 | −30 / +60 |
+| Forge Cannon Gate before expa | Protoss | Photon Cannon | 126 | −30 / +60 |
+| Forge Cannon Gate before expa | Protoss | Gateway | 144 | −30 / +80 |
 | Forge Expand | Protoss | Pylon | 48 | ±4 |
 | Forge Expand | Protoss | Forge | 86 | ±8 |
 | Forge Expand | Protoss | Photon Cannon | 130 | ±20 |
 | Forge Expand | Protoss | Nexus | 152 | ±15 |
+| Forge Gate Cannon before expa | Protoss | Forge | 96 | −30 / +60 |
+| Forge Gate Cannon before expa | Protoss | Gateway | 130 | −30 / +70 |
+| Forge Gate Cannon before expa | Protoss | Photon Cannon | 160 | −30 / +80 |
 | Gate Expand | Protoss | Pylon | 48 | ±4 |
 | Gate Expand | Protoss | Gateway | 88 | ±10 |
 | Gate Expand | Protoss | Nexus | 165 | ±15 |
+| Gate Forge Cannon before expa | Protoss | Gateway | 70 | −20 / +40 |
+| Gate Forge Cannon before expa | Protoss | Forge | 120 | −30 / +60 |
+| Gate Forge Cannon before expa | Protoss | Photon Cannon | 155 | −30 / +80 |
 | Goliath | Terran | Supply Depot | 55 | −10 / +24 |
 | Goliath | Terran | Barracks | 86 | −28 / +18 |
 | Goliath | Terran | Refinery | 102 | −12 / +70 |
@@ -587,8 +592,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | Nexus First | Protoss | Pylon | 48 | ±4 |
 | Nexus First | Protoss | Nexus | 145 | ±20 |
 | Nexus First | Protoss | Gateway | 175 | ±20 |
-| Sair/Speedlot | Protoss | Stargate | 280 | −60 / +90 |
-| Sair/Speedlot | Protoss | Citadel of Adun | 332 | −60 / +120 |
 | Wraith | Terran | Supply Depot | 56 | −10 / +24 |
 | Wraith | Terran | Barracks | 84 | −28 / +18 |
 | Wraith | Terran | Refinery | 98 | −10 / +60 |
@@ -616,8 +619,6 @@ Each opener's detector commits its decision once the replay passes this second �
 | 12 Pool | Zerg | 180 |
 | 2 Fact Vults | Terran | 360 |
 | 2 Gate | Protoss | 180 |
-| 2 Gate DT | Protoss | 600 |
-| 2 Gate Reaver | Protoss | 600 |
 | 2 Hatch Hydra | Zerg | 600 |
 | 2 Hatch Muta | Zerg | 600 |
 | 2 Port Wraith | Terran | 600 |
@@ -653,13 +654,15 @@ Each opener's detector commits its decision once the replay passes this second �
 | CC First | Terran | 200 |
 | Factory Expand | Terran | 360 |
 | Forge Cannon (no expa) | Protoss | 320 |
+| Forge Cannon Gate before expa | Protoss | 320 |
 | Forge Expand | Protoss | 260 |
+| Forge Gate Cannon before expa | Protoss | 320 |
 | Gate Expand | Protoss | 220 |
+| Gate Forge Cannon before expa | Protoss | 320 |
 | Gateway (Other) | Protoss | 320 |
 | Goliath | Terran | 600 |
 | Nexus First | Protoss | 200 |
 | Pool/Hatch (Other) | Zerg | 240 |
-| Sair/Speedlot | Protoss | 600 |
 | Terran (Other) | Terran | 600 |
 | Wraith | Terran | 600 |
 
@@ -828,9 +831,9 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 | 28 | bo_gate_expand |
 | 29 | bo_forge_expa |
 | 30 | bo_p_1gate_reaver |
-| 31 | bo_p_2gate_reaver |
-| 32 | bo_p_2gate_dt |
-| 33 | bo_p_sair_speedlot |
+| 31 | bo_p_gate_forge_cannon |
+| 32 | bo_p_forge_cannon_gate |
+| 33 | bo_p_forge_gate_cannon |
 | 34 | bo_bbs |
 | 35 | bo_cc_first |
 | 36 | bo_t_wraith |

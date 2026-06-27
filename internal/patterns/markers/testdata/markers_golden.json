@@ -169,8 +169,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 2 Gate",
-        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":72,\"found\":true},{\"second\":100,\"found\":true},{\"second\":152,\"found\":true}]}"
+        "pattern_name": "Build Order: Gate Forge Cannon before expa",
+        "value": "{\"expert_actuals\":[{\"second\":72,\"found\":true},{\"second\":247,\"found\":true},{\"second\":297,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -574,6 +574,118 @@
       }
     ]
   },
+  "bo_1gatecore_pvt_23asd.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":74,\"found\":true},{\"second\":119,\"found\":true},{\"second\":144,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made recalls",
+        "value": "823"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":19.925373134328357}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Factory Expand",
+        "value": "{\"expert_actuals\":[{\"second\":154,\"found\":true},{\"second\":237,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":15.223880597014926}"
+      }
+    ]
+  },
+  "bo_1gatecore_pvt_dicltoss.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":74,\"found\":true},{\"second\":92,\"found\":true},{\"second\":115,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "385"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Factory Expand",
+        "value": "{\"expert_actuals\":[{\"second\":150,\"found\":true},{\"second\":209,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "385"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      }
+    ]
+  },
+  "bo_1gatecore_pvt_dotk.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Factory Expand",
+        "value": "{\"expert_actuals\":[{\"second\":153,\"found\":true},{\"second\":241,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":19.630606860158313}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":74,\"found\":true},{\"second\":101,\"found\":true},{\"second\":126,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "697"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,5,6]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":19.313984168865435}"
+      }
+    ]
+  },
   "bo_1gatecore_pvt_dp6.rep": {
     "detections": [
       {
@@ -725,8 +837,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 2 Gate DT",
-        "value": "{\"expert_actuals\":[{\"second\":493,\"found\":true},{\"second\":577,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":51,\"found\":true},{\"second\":78,\"found\":true},{\"second\":93,\"found\":true},{\"second\":132,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -881,8 +993,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Gateway (Other)",
-        "value": "235"
+        "pattern_name": "Build Order: Forge Cannon Gate before expa",
+        "value": "{\"expert_actuals\":[{\"second\":80,\"found\":true},{\"second\":118,\"found\":true},{\"second\":147,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -900,8 +1012,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: Sair/Speedlot",
-        "value": "{\"expert_actuals\":[{\"second\":269,\"found\":true},{\"second\":356,\"found\":true}]}"
+        "pattern_name": "Build Order: Forge Expand",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":87,\"found\":true},{\"second\":118,\"found\":true},{\"second\":161,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -934,8 +1046,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: Sair/Speedlot",
-        "value": "{\"expert_actuals\":[{\"second\":234,\"found\":true},{\"second\":327,\"found\":true}]}"
+        "pattern_name": "Build Order: Gate Forge Cannon before expa",
+        "value": "{\"expert_actuals\":[{\"second\":80,\"found\":true},{\"second\":128,\"found\":true},{\"second\":165,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -1594,6 +1706,35 @@
       }
     ]
   },
+  "bo_forge_cannon_gate_pvz_231314.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Forge Cannon Gate before expa",
+        "value": "{\"expert_actuals\":[{\"second\":96,\"found\":true},{\"second\":126,\"found\":true},{\"second\":144,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "356"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "356"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,4,9]}"
+      }
+    ]
+  },
   "bo_forge_expand.rep": {
     "detections": [
       {
@@ -1630,6 +1771,45 @@
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":30.22058823529412}"
+      }
+    ]
+  },
+  "bo_forgeexpand_pvz_dkdlt.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":72,\"found\":true},{\"second\":125,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":37.21518987341772}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Forge Expand",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":95,\"found\":true},{\"second\":142,\"found\":true},{\"second\":131,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "624"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
       }
     ]
   },
@@ -1740,6 +1920,74 @@
       }
     ]
   },
+  "bo_gate_forge_cannon_pvz_horang2.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 7 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":61,\"found\":true},{\"second\":113,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "579"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":11.162790697674419}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Gate Forge Cannon before expa",
+        "value": "{\"expert_actuals\":[{\"second\":70,\"found\":true},{\"second\":123,\"found\":true},{\"second\":153,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":30.697674418604652}"
+      }
+    ]
+  },
+  "bo_gate_forge_cannon_pvz_lyx2008.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 8 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":65,\"found\":true},{\"second\":117,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "350"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Gate Forge Cannon before expa",
+        "value": "{\"expert_actuals\":[{\"second\":82,\"found\":true},{\"second\":128,\"found\":true},{\"second\":194,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3]}"
+      }
+    ]
+  },
   "bo_gateexpand_pvt_horang2.rep": {
     "detections": [
       {
@@ -1776,6 +2024,40 @@
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":19.833055091819702}"
+      }
+    ]
+  },
+  "bo_gateexpand_pvz_asdzzz.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Gate Expand",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":70,\"found\":true},{\"second\":179,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":18}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2 Hatch Hydra",
+        "value": "{\"expert_actuals\":[{\"second\":297,\"found\":true},{\"second\":352,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":17.217391304347824}"
       }
     ]
   },
