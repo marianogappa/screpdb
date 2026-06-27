@@ -261,6 +261,76 @@ func TestProcessCommand_BunkerRushRequiresMarineAndEnemyPolygon(t *testing.T) {
 	}
 }
 
+// TestProcessCommand_BunkerInOpenGroundOnMoneyMapIsNotRush guards the BGH
+// false positive: a proxy/simcity bunker placed in open ground (inside no base
+// polygon) must not be snapped onto a distant enemy base just because that
+// base's NaturalRadius is large, as it is on money maps. The bunker here sits
+// ~14 tiles from the enemy start center — beyond the bounded 10-tile snap cap
+// but within the old unbounded NaturalRadius*1.25 fallback that used to fire.
+func TestProcessCommand_BunkerInOpenGroundOnMoneyMapIsNotRush(t *testing.T) {
+	replay := &models.Replay{DurationSeconds: 300, MapWidth: 128, MapHeight: 128}
+	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "Terran", Race: "Terran", Team: 1, Type: models.PlayerTypeHuman}
+	p2 := &models.Player{PlayerID: 2, SlotID: 2, Name: "Protoss", Race: "Protoss", Team: 2, Type: models.PlayerTypeHuman}
+	mapCtx := &models.ReplayMapContext{
+		StartLocations: []models.MapStartLocation{
+			{X: tilePixel(8), Y: tilePixel(8), SlotID: 1},
+			{X: tilePixel(40), Y: tilePixel(40), SlotID: 2},
+		},
+		Layout: &models.MapContextLayout{
+			Bases: []models.MapContextBase{
+				{
+					Name:   "start-a",
+					Kind:   "start",
+					Clock:  11,
+					Center: models.MapResourcePosition{X: tilePixel(8), Y: tilePixel(8)},
+					Polygon: []models.MapPolygonPoint{
+						{X: tilePixel(6), Y: tilePixel(6)},
+						{X: tilePixel(10), Y: tilePixel(6)},
+						{X: tilePixel(10), Y: tilePixel(10)},
+						{X: tilePixel(6), Y: tilePixel(10)},
+					},
+				},
+				{
+					// Money-map-style large base: NaturalRadius ≈ 17 tiles, so
+					// the unbounded fallback used to reach ~21 tiles.
+					Name:   "start-b",
+					Kind:   "start",
+					Clock:  5,
+					Center: models.MapResourcePosition{X: tilePixel(40), Y: tilePixel(40)},
+					Polygon: []models.MapPolygonPoint{
+						{X: tilePixel(28), Y: tilePixel(28)},
+						{X: tilePixel(52), Y: tilePixel(28)},
+						{X: tilePixel(52), Y: tilePixel(52)},
+						{X: tilePixel(28), Y: tilePixel(52)},
+					},
+				},
+			},
+		},
+	}
+	engine := NewEngine(replay, []*models.Player{p1, p2}, mapCtx)
+
+	engine.ProcessCommand(&models.Command{
+		Player:               p1,
+		ActionType:           models.ActionTypeTrain,
+		UnitType:             stringPtr(models.GeneralUnitMarine),
+		SecondsFromGameStart: 120,
+	})
+	engine.ProcessCommand(&models.Command{
+		Player:               p1,
+		ActionType:           models.ActionTypeBuild,
+		UnitType:             stringPtr(models.GeneralUnitBunker),
+		X:                    intPtr(26),
+		Y:                    intPtr(40),
+		SecondsFromGameStart: 180,
+	})
+
+	for _, event := range engine.ReplayEvents() {
+		if event.EventType == "bunker_rush" {
+			t.Fatalf("did not expect bunker_rush for an open-ground bunker far from any base")
+		}
+	}
+}
+
 func TestProcessCommand_CannonRushOneVsOneAmbiguousTeams(t *testing.T) {
 	replay := &models.Replay{DurationSeconds: 300, MapWidth: 128, MapHeight: 128}
 	p1 := &models.Player{PlayerID: 1, SlotID: 1, Name: "P1", Race: "Protoss", Team: 0, Type: models.PlayerTypeHuman}

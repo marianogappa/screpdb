@@ -1240,7 +1240,11 @@ func (e *Engine) tryEmitRushBuildEvents(command *models.Command, pid byte, sec i
 		// not-yet-taken natural, which reads as neutral early-game and is
 		// skipped by the enemy-owned lookup above. Fall back to the base
 		// polygon at the build point and resolve its static owner. (#195, cf. #196)
-		enemyBaseIdx = pointToEventBase(x, y, e.bases)
+		//
+		// The radius fallback is bounded: on money maps (BGH) NaturalRadius is
+		// large, so an unbounded snap pulls an open-ground proxy/simcity bunker
+		// onto a base it never threatened. Polygon containment is unaffected.
+		enemyBaseIdx = pointToEventBaseBounded(x, y, e.bases, rushBuildSnapToEnemyBaseCenterPx)
 	}
 	if enemyBaseIdx < 0 && strings.Contains(unitNorm, "photoncannon") {
 		enemyBaseIdx = e.nearestEnemyBaseIdxForRush(pid, x, y, rushBuildSnapToEnemyBaseCenterPx)
@@ -1815,6 +1819,15 @@ func pointInBasePolygon(x float64, y float64, b base) bool {
 }
 
 func pointToEventBase(x float64, y float64, bases []base) int {
+	return pointToEventBaseBounded(x, y, bases, math.MaxFloat64)
+}
+
+// pointToEventBaseBounded is pointToEventBase with the radius fallback capped at
+// maxFallbackPx. Polygon containment (a point genuinely inside a base) is always
+// honoured; only the "just outside a base" radius snap is bounded, so a build in
+// open ground on a money map — where NaturalRadius is large — is not attributed
+// to a distant base it never threatened. Pass math.MaxFloat64 for no cap.
+func pointToEventBaseBounded(x float64, y float64, bases []base, maxFallbackPx float64) int {
 	best := -1
 	bestDist := math.MaxFloat64
 	for i, b := range bases {
@@ -1836,6 +1849,9 @@ func pointToEventBase(x float64, y float64, bases []base) int {
 		opRadius := b.NaturalRadius * commandRadiusMul
 		if opRadius < 120 {
 			opRadius = 120
+		}
+		if opRadius > maxFallbackPx {
+			opRadius = maxFallbackPx
 		}
 		d := dist(x, y, b.CenterX, b.CenterY)
 		if d <= opRadius && d < bestDist {

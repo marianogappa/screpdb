@@ -560,7 +560,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Gate Core",
-        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":77,\"found\":true},{\"found\":false},{\"second\":118,\"found\":true}]}"
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":77,\"found\":true},{\"second\":94,\"found\":true},{\"second\":118,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -1393,7 +1393,7 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 4 Hatch",
+        "pattern_name": "Build Order: 9 Hatch",
         "value": "{\"expert_actuals\":[{\"second\":74,\"found\":true},{\"second\":109,\"found\":true}]}"
       },
       {
@@ -1514,11 +1514,6 @@
         "replay_player_id": 5,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":7.772020725388601}"
-      },
-      {
-        "replay_player_id": 6,
-        "pattern_name": "Build Order: 6 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":84,\"found\":true},{\"second\":164,\"found\":true}]}"
       },
       {
         "replay_player_id": 6,
@@ -1952,7 +1947,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Forge Expand",
-        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":88,\"found\":true},{\"found\":false},{\"second\":132,\"found\":true}]}"
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":88,\"found\":true},{\"second\":142,\"found\":true},{\"second\":132,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -2039,7 +2034,7 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 7 Pool",
+        "pattern_name": "Build Order: 9 Pool",
         "value": "{\"expert_actuals\":[{\"second\":61,\"found\":true},{\"second\":113,\"found\":true}]}"
       },
       {
@@ -2093,8 +2088,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 8 Pool",
-        "value": "{\"expert_actuals\":[{\"second\":65,\"found\":true},{\"second\":117,\"found\":true}]}"
+        "pattern_name": "Build Order: 9 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":65,\"found\":true},{\"found\":false}]}"
       },
       {
         "replay_player_id": 0,
@@ -2462,7 +2457,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: CC First",
-        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":117,\"found\":true},{\"found\":false}]}"
+        "value": "{\"expert_actuals\":[{\"second\":153,\"found\":true},{\"second\":117,\"found\":true},{\"found\":false}]}"
       },
       {
         "replay_player_id": 0,

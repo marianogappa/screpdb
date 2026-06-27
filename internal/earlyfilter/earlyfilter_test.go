@@ -177,6 +177,34 @@ func TestPhotonCannonImpliesForge(t *testing.T) {
 	}
 }
 
+// TestBacktrackOverdrawsGatesWorkerDrop locks the deficit-gate that stops
+// backtrack from force-dropping income-producing workers to "pay" for a
+// re-admitted building that was actually affordable. Dropping a worker that
+// the player could afford freezes the simulated worker count and collapses
+// income, which previously wiped out an entire early-game worker line (an
+// SCV-from-frame-0 opening read as "no workers until ~4 minutes").
+func TestBacktrackOverdrawsGatesWorkerDrop(t *testing.T) {
+	p := terranPlayer()
+	commands := []*models.Command{makeCmd("Build", models.GeneralUnitBarracks, 88, p)}
+	econ, ok := cmdenrich.EconOf(models.GeneralUnitBarracks)
+	if !ok {
+		t.Fatal("expected econ for Barracks")
+	}
+
+	dropped := map[int]Verdict{0: VerdictDropped}
+	if backtrackOverdraws(commands, 0, dropped, map[int]int{0: econ.Minerals + 1}) {
+		t.Fatalf("affordable re-admission must not free a worker")
+	}
+	if !backtrackOverdraws(commands, 0, dropped, map[int]int{0: econ.Minerals - 1}) {
+		t.Fatalf("unaffordable re-admission must free a worker")
+	}
+
+	kept := map[int]Verdict{0: VerdictKept}
+	if backtrackOverdraws(commands, 0, kept, map[int]int{0: econ.Minerals - 1}) {
+		t.Fatalf("an already-kept build charges nothing new; no worker drop")
+	}
+}
+
 // TestGasGatherSubtractsFromMineralIncome — when a Harvest1 order targets
 // a geyser the player owns a built Refinery on, 3 workers leave the
 // mineral line for ~43s. Mineral count at end should be lower than the
