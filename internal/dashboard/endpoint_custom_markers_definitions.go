@@ -70,6 +70,7 @@ var staticFeaturingOrder = []string{
 	"proxy_gate",
 	"proxy_rax",
 	"proxy_factory",
+	"manner_pylon",
 	"drop",
 	"mind_control",
 	// late-game custom-evaluator markers

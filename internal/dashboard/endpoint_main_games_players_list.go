@@ -330,7 +330,7 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 		eventType := strings.ToLower(strings.TrimSpace(row.EventType))
 		switch eventType {
 		case "zergling_rush", "cannon_rush", "bunker_rush",
-			"proxy_gate", "proxy_rax", "proxy_factory":
+			"proxy_gate", "proxy_rax", "proxy_factory", "manner_pylon":
 			featureSets[replayID][eventType] = struct{}{}
 		case "drop", "cliff_drop":
 			// Every drop variant lights up the generic "drop" chip; the

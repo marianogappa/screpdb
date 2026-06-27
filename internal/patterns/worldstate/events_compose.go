@@ -140,6 +140,7 @@ func (e *Engine) runRushPass(ownership []PolyOwnership) {
 			biEvent := pointToEventBase(x, y, e.bases)
 			e.tryEmitRushBuildEvents(cmd, pid, sec, x, y)
 			e.tryEmitProxyBuildEvents(cmd, pid, sec, x, y, biEvent)
+			e.tryEmitMannerPylonEvent(cmd, pid, sec, biEvent)
 		}
 
 		// Zerg-rush attack tracking — uses the legacy actionType-based

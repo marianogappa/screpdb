@@ -1846,6 +1846,25 @@ func allMarkers() []Marker {
 			},
 		},
 		{
+			// Manner pylon: a Pylon placed inside the enemy's starting base to
+			// block worker mining. Sourced from the worldstate spatial pass.
+			Name:         "Manner pylon",
+			PatternName:  "Manner pylon",
+			FeatureKey:   "manner_pylon",
+			Kind:         KindMarker,
+			Race:         RaceProtoss,
+			Custom:       func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "manner_pylon"} },
+			RuleDeadline: endOfReplaySentinel,
+			SummaryPlayer: &Pill{
+				Label:   "Manner pylon",
+				IconKey: "pylon",
+				Style:   PillStyleStrong,
+				Title:   "Placed a Pylon in the enemy's mineral line to block worker mining",
+			},
+			SummaryReplay: &Pill{Label: "Manner pylon", IconKey: "pylon", Style: PillStyleStrong, Title: "Placed a Pylon in the enemy's mineral line to block worker mining"},
+			GamesList:     &Pill{Label: "Manner pylon", IconKey: "pylon", Style: PillStyleStrong, Title: "Placed a Pylon in the enemy's mineral line to block worker mining"},
+		},
+		{
 			Name:          "Made recalls",
 			PatternName:   "Made recalls",
 			FeatureKey:    "made_recalls",

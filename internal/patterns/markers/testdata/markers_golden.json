@@ -979,6 +979,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "Manner pylon",
+        "value": "175"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2,3,4]}"
       },
@@ -2517,6 +2522,55 @@
         "replay_player_id": 1,
         "pattern_name": "Opener unresolved",
         "value": "1"
+      }
+    ]
+  },
+  "manner_pylon_pvp_llilil.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":51,\"found\":true},{\"second\":111,\"found\":true},{\"found\":false}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":20.714285714285715}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":74,\"found\":true},{\"second\":97,\"found\":true},{\"second\":118,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Reaver",
+        "value": "325"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "432"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Manner pylon",
+        "value": "137"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":21.071428571428573}"
       }
     ]
   },

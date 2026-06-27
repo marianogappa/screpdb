@@ -217,6 +217,7 @@ var workflowFeaturingFilters = []struct {
 	{Key: "proxy_gate", Label: "Proxy Gateway", Group: "marker", IconKey: "gateway", IconLabel: "Proxy"},
 	{Key: "proxy_rax", Label: "Proxy Barracks", Group: "marker", IconKey: "barracks", IconLabel: "Proxy"},
 	{Key: "proxy_factory", Label: "Proxy Factory", Group: "marker", IconKey: "factory", IconLabel: "Proxy"},
+	{Key: "manner_pylon", Label: "Manner Pylon", Group: "marker", IconKey: "pylon", IconLabel: "Manner"},
 	// Drop filters — icon-only chips. "drop" matches ANY drop variant
 	// (drop, cliff_drop); the generic chip matches any
 	// match the specific subtype only.

@@ -128,6 +128,14 @@ opening) — those replays fall to their true opener below.
 The cannon-contain fixtures guard the {Gate, Forge, Cannon}-before-core-and-expa
 build-order permutations. The opponent's BO in each fixture is tier-2.
 
+Manner pylon (round 5, issue #225). Fixture `manner_pylon_pvp_llilil` (PvP):
+llIIlIIIIIIllll places a Pylon inside LYX2008's main mineral line at ~2:17 to
+block worker mining. The verified premise is the `Manner pylon` marker (and its
+worldstate `manner_pylon` game_event) on llIIlIIIIIIllll. The same fixture also
+guards the `First Reaver` timing marker (llIIlIIIIIIllll, ~5:25) and the
+`1 Gate Core` opener. A change that drops the manner pylon or reclassifies the
+opener is a regression.
+
 ### Cliff-drop detection — `drops_golden.json`
 
 Each fixture below was confirmed by watching the replay. The premise is the
