@@ -1,0 +1,83 @@
+package markers
+
+// curatedFeatureKeys is the machine-readable mirror of the tier-1 ("human
+// verified by watching the replay") premises documented in
+// internal/patterns/GOLDEN_TIERS.md. A marker / build-order whose FeatureKey is
+// NOT in this set has only auto-generated (tier-2) golden coverage — i.e. no
+// human has eyeballed the detection against a real replay — and the dashboard
+// flags it as "beta".
+//
+// Keep this in sync with GOLDEN_TIERS.md: when a detection is human-curated
+// (a fixture + a documented premise), add its FeatureKey here so the beta tag
+// disappears. Default is uncurated (beta) — the safe, honest default for any new
+// detection.
+var curatedFeatureKeys = map[string]bool{
+	// Build-order openers — GOLDEN_TIERS.md "Build-order classification".
+	// Zerg batch.
+	"bo_11_hatch":        true,
+	"bo_12_hatch":        true,
+	"bo_z_2hatch_muta":   true,
+	"bo_z_3hatch_lurker": true,
+	"bo_z_2hatch_hydra":  true,
+	// Round 3 (Protoss/Terran).
+	"bo_t_factory_expand": true,
+	"bo_cc_first":         true,
+	"bo_t_bio_1base":      true,
+	"bo_t_bio_2base":      true,
+	"bo_p_1gate_reaver":   true,
+	// Round 4 (Protoss).
+	"bo_1_gate_core": true,
+	"bo_2_gate":      true,
+	"bo_nexus_first": true,
+	"bo_gate_expand": true,
+	"bo_forge_expa":  true,
+	// Round 5 (Protoss cannon-contain) — only the two permutations with fixtures.
+	"bo_p_gate_forge_cannon": true,
+	"bo_p_forge_cannon_gate": true,
+	// Round 6 (Terran air/specialist).
+	"bo_t_2port_wraith": true,
+	"bo_t_goliath":      true,
+	"bo_t_2fact_expa":   true,
+	"bo_bbs":            true,
+	// bo_team_mech_111.rep tier-1 per-player premises.
+	"bo_t_mech_5fac": true,
+	"bo_t_111_mech":  true,
+
+	// Round 7 — fixtures crazy_zerg_guardians_tvz_lyx2008, maelstrom_pvz_bysnow,
+	// first_observer_pvt_0sawon, first_mine_pvt_f1ssasad.
+	"crazy_zerg":     true,
+	"guardians":      true,
+	"made_maelstrom": true,
+	"first_observer": true,
+	"first_mine":     true,
+
+	// Signature / event markers with a tier-1 fixture premise.
+	"manner_pylon":    true, // GOLDEN_TIERS.md "Manner pylon"
+	"first_reaver":    true, // guarded in the manner_pylon fixture
+	"cliff_drop":      true, // GOLDEN_TIERS.md "Cliff-drop detection"
+	"made_drops":      true, // GOLDEN_TIERS.md "Drops"
+	"made_recalls":    true, // GOLDEN_TIERS.md "Recall target inference"
+	"offensive_nydus": true, // GOLDEN_TIERS.md "Offensive-nydus detection"
+}
+
+// IsCurated reports whether the marker / build-order with this FeatureKey has a
+// human-curated (tier-1) golden premise. Uncurated detections are surfaced as
+// "beta" in the dashboard.
+func IsCurated(featureKey string) bool {
+	return curatedFeatureKeys[featureKey]
+}
+
+// betaExemptFeatureKeys are markers that should never carry the "beta" tag even
+// though they have no tier-1 golden — they are exact, deterministic
+// measurements (hotkey-group usage), not fallible pattern detections, so there
+// is nothing for a human to verify against a replay.
+var betaExemptFeatureKeys = map[string]bool{
+	"used_hotkey_groups": true,
+	"never_used_hotkeys": true,
+}
+
+// IsBetaExempt reports whether a marker is exempt from the beta tag because it
+// is a deterministic measurement rather than a verifiable detection.
+func IsBetaExempt(featureKey string) bool {
+	return betaExemptFeatureKeys[featureKey]
+}

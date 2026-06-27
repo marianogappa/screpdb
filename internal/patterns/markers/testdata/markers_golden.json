@@ -505,6 +505,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Observer",
+        "value": "351"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "First Reaver",
         "value": "293"
       },
@@ -530,6 +535,11 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "First Mine",
+        "value": "344"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,6]}"
       }
@@ -544,13 +554,18 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Mine",
+        "value": "424"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2,3]}"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":11.898734177215191}"
+        "value": "{\"switches_per_minute\":11.729957805907173}"
       },
       {
         "replay_player_id": 0,
@@ -566,6 +581,11 @@
         "replay_player_id": 1,
         "pattern_name": "Carriers",
         "value": "883"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "359"
       },
       {
         "replay_player_id": 1,
@@ -593,6 +613,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Observer",
+        "value": "406"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Made recalls",
         "value": "823"
       },
@@ -613,13 +638,18 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "First Mine",
+        "value": "311"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":15.223880597014926}"
+        "value": "{\"switches_per_minute\":15.44776119402985}"
       }
     ]
   },
@@ -647,6 +677,11 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "First Mine",
+        "value": "303"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "385"
       },
@@ -666,6 +701,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Mine",
+        "value": "326"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,8,9]}"
       },
@@ -678,6 +718,11 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Gate Core",
         "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":74,\"found\":true},{\"second\":101,\"found\":true},{\"second\":126,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "333"
       },
       {
         "replay_player_id": 1,
@@ -702,6 +747,11 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 1 Gate Core",
         "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":73,\"found\":true},{\"second\":91,\"found\":true},{\"second\":114,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Observer",
+        "value": "372"
       },
       {
         "replay_player_id": 0,
@@ -730,13 +780,18 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "First Mine",
+        "value": "691"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,8,9]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":13.991416309012875}"
+        "value": "{\"switches_per_minute\":14.163090128755364}"
       }
     ]
   },
@@ -746,6 +801,11 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 1 Gate Core",
         "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":72,\"found\":true},{\"second\":95,\"found\":true},{\"second\":114,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Observer",
+        "value": "321"
       },
       {
         "replay_player_id": 0,
@@ -771,6 +831,11 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: Factory Expand",
         "value": "{\"expert_actuals\":[{\"second\":145,\"found\":true},{\"second\":211,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Mine",
+        "value": "638"
       },
       {
         "replay_player_id": 1,
@@ -803,6 +868,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Observer",
+        "value": "853"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2]}"
       },
@@ -818,6 +888,11 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "First Mine",
+        "value": "446"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Made drops",
         "value": "440"
       },
@@ -829,7 +904,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":17.786561264822133}"
+        "value": "{\"switches_per_minute\":18.18181818181818}"
       },
       {
         "replay_player_id": 1,
@@ -844,6 +919,11 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: Factory Expand",
         "value": "{\"expert_actuals\":[{\"second\":150,\"found\":true},{\"second\":208,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Mine",
+        "value": "677"
       },
       {
         "replay_player_id": 0,
@@ -864,6 +944,11 @@
         "replay_player_id": 1,
         "pattern_name": "Carriers",
         "value": "715"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "692"
       },
       {
         "replay_player_id": 1,
@@ -1024,7 +1109,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":21.29032258064516}"
+        "value": "{\"switches_per_minute\":21.566820276497694}"
       },
       {
         "replay_player_id": 0,
@@ -1082,6 +1167,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Observer",
+        "value": "416"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "First Reaver",
         "value": "333"
       },
@@ -1104,6 +1194,11 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1-1-1 into Mech",
         "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":83,\"found\":true},{\"second\":98,\"found\":true},{\"second\":289,\"found\":true},{\"second\":314,\"found\":true},{\"second\":337,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Mine",
+        "value": "306"
       },
       {
         "replay_player_id": 1,
@@ -1161,13 +1256,18 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "First Mine",
+        "value": "883"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,4,5,9]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":14.519572953736654}"
+        "value": "{\"switches_per_minute\":14.626334519572953}"
       }
     ]
   },
@@ -1637,6 +1737,11 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: 3 Hatch Muta",
         "value": "{\"expert_actuals\":[{\"second\":240,\"found\":true},{\"second\":317,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Crazy Zerg",
+        "value": "660"
       },
       {
         "replay_player_id": 1,
@@ -2197,6 +2302,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Observer",
+        "value": "345"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Never upgraded",
         "value": "417"
       },
@@ -2209,6 +2319,11 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: Factory Expand",
         "value": "{\"expert_actuals\":[{\"second\":152,\"found\":true},{\"second\":256,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Mine",
+        "value": "328"
       },
       {
         "replay_player_id": 1,
@@ -2651,18 +2766,28 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Mine",
+        "value": "422"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":19.3322203672788}"
+        "value": "{\"switches_per_minute\":19.43238731218698}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Gate Expand",
         "value": "{\"expert_actuals\":[{\"second\":51,\"found\":true},{\"second\":75,\"found\":true},{\"second\":164,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "435"
       },
       {
         "replay_player_id": 1,
@@ -2871,13 +2996,18 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Mine",
+        "value": "463"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":12.507288629737609}"
+        "value": "{\"switches_per_minute\":12.769679300291545}"
       },
       {
         "replay_player_id": 1,
@@ -2888,6 +3018,11 @@
         "replay_player_id": 1,
         "pattern_name": "Carriers",
         "value": "1382"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "395"
       },
       {
         "replay_player_id": 1,
@@ -2925,6 +3060,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Observer",
+        "value": "349"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,6]}"
       },
@@ -2940,13 +3080,18 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "First Mine",
+        "value": "298"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":22.97542043984476}"
+        "value": "{\"switches_per_minute\":22.897800776196636}"
       }
     ]
   },
@@ -2959,13 +3104,18 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Mine",
+        "value": "512"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2,3,4]}"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":14.3717277486911}"
+        "value": "{\"switches_per_minute\":14.528795811518325}"
       },
       {
         "replay_player_id": 1,
@@ -2976,6 +3126,11 @@
         "replay_player_id": 1,
         "pattern_name": "Carriers",
         "value": "522"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "454"
       },
       {
         "replay_player_id": 1,
@@ -3117,13 +3272,18 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Mine",
+        "value": "615"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2,3,4]}"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":10.812883435582823}"
+        "value": "{\"switches_per_minute\":10.858895705521473}"
       },
       {
         "replay_player_id": 1,
@@ -3134,6 +3294,11 @@
         "replay_player_id": 1,
         "pattern_name": "Carriers",
         "value": "1703"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "426"
       },
       {
         "replay_player_id": 1,
@@ -3162,6 +3327,65 @@
       }
     ]
   },
+  "crazy_zerg_guardians_tvz_lyx2008.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":155,\"found\":true},{\"second\":90,\"found\":true},{\"second\":187,\"found\":true},{\"second\":205,\"found\":true},{\"second\":146,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":279,\"first_turret_cmd\":363,\"turret_burst_count\":4,\"turret_finished\":382}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":10.738916256157635}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraiths",
+        "value": "625"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 3 Hatch Muta",
+        "value": "{\"expert_actuals\":[{\"second\":298,\"found\":true},{\"second\":380,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Crazy Zerg",
+        "value": "834"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Guardians",
+        "value": "568"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":380,\"muta_burst_count\":3,\"mutalisk_finished\":405,\"spire_cmd\":298}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":12.610837438423644}"
+      }
+    ]
+  },
   "empty_short.rep": {
     "detections": [
       {
@@ -3173,6 +3397,138 @@
         "replay_player_id": 1,
         "pattern_name": "Opener unresolved",
         "value": "1"
+      }
+    ]
+  },
+  "first_mine_pvt_f1ssasad.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":113,\"found\":true},{\"second\":127,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "433"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Factory Expand",
+        "value": "{\"expert_actuals\":[{\"second\":150,\"found\":true},{\"second\":309,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Mine",
+        "value": "367"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "246"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "433"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      }
+    ]
+  },
+  "first_observer_pvt_0sawon.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":75,\"found\":true},{\"second\":95,\"found\":true},{\"second\":117,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Observer",
+        "value": "297"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Reaver",
+        "value": "416"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "513"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2-Fac Mech",
+        "value": "{\"expert_actuals\":[{\"second\":50,\"found\":true},{\"second\":83,\"found\":true},{\"second\":183,\"found\":true},{\"second\":238,\"found\":true},{\"second\":261,\"found\":true},{\"second\":330,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5]}"
+      }
+    ]
+  },
+  "maelstrom_pvz_bysnow.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Forge Expand",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":103,\"found\":true},{\"second\":149,\"found\":true},{\"second\":118,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made Maelstrom",
+        "value": "660"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Speedlot timing",
+        "value": "369"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":16.410256410256412}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":145,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "672"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":15.897435897435898}"
       }
     ]
   },
@@ -3197,6 +3553,11 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Gate Core",
         "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":74,\"found\":true},{\"second\":97,\"found\":true},{\"second\":118,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "408"
       },
       {
         "replay_player_id": 1,
@@ -3258,6 +3619,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Mine",
+        "value": "338"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Made drops",
         "value": "236"
       },
@@ -3280,6 +3646,11 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: Nexus First",
         "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":105,\"found\":true},{\"second\":125,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "402"
       },
       {
         "replay_player_id": 1,

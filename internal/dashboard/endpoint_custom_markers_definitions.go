@@ -21,6 +21,12 @@ type markerDefinition struct {
 	SummaryReplay *markers.Pill `json:"summary_replay,omitempty"`
 	GamesList     *markers.Pill `json:"games_list,omitempty"`
 	EventsList    *markers.Pill `json:"events_list,omitempty"`
+	// Curated is true when the detection should NOT be flagged "beta" — either a
+	// human verified it against a real replay (a tier-1 premise in
+	// GOLDEN_TIERS.md) or it is beta-exempt (a deterministic measurement like
+	// hotkey usage that can't be human-checked). When false the frontend flags
+	// the detection as "beta".
+	Curated bool `json:"curated"`
 }
 
 // gameEventFeature covers the game-event-only featuring chips (cannon_rush,
@@ -78,6 +84,7 @@ var staticFeaturingOrder = []string{
 	// late-game custom-evaluator markers
 	"threw_nukes",
 	"made_recalls",
+	"made_maelstrom",
 	"offensive_nydus",
 	// initial build orders, ordered by race + ascending supply / aggression
 	"bo_4_pool",
@@ -131,6 +138,8 @@ var staticFeaturingOrder = []string{
 	"bo_t_2fact_expa",
 	// late-game / signature markers.
 	"double_stargate",
+	"crazy_zerg",
+	"guardians",
 	// money-map markers — rendered last so regular markers take priority on
 	// mixed/regular game listings; on Money games they trail Mind Control etc.
 	"carriers",
@@ -191,6 +200,7 @@ func (d *Dashboard) handlerMarkersDefinitions(w http.ResponseWriter, _ *http.Req
 			SummaryReplay: m.SummaryReplay,
 			GamesList:     m.GamesList,
 			EventsList:    m.EventsList,
+			Curated:       markers.IsCurated(m.FeatureKey) || markers.IsBetaExempt(m.FeatureKey),
 		}
 	}
 

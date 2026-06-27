@@ -156,6 +156,19 @@ export const renderAggregatePillText = (definition) => {
   return null;
 };
 
+// BETA_TOOLTIP is the hover explanation shown next to the β tag on detections
+// that haven't been hand-checked against a real replay yet. Plain-language —
+// this isn't a research tool.
+export const BETA_TOOLTIP =
+  "Beta: we haven't hand-checked this detection against real games yet, so it may be off sometimes.";
+
+// featureIsBeta reports whether a marker/build-order definition is uncurated
+// (no human has verified it — see GOLDEN_TIERS.md). The backend sends
+// `curated: false` for those; game-event-only features carry no `curated`
+// field and are never flagged.
+export const featureIsBeta = (definition) =>
+  !!definition && definition.curated === false;
+
 // pillClassName maps a backend PillStyle to the existing CSS classes. Keeps the
 // styling table small and explicit so adding a new style requires one edit here.
 export const pillClassName = (style) => {

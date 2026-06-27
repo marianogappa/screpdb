@@ -23,6 +23,16 @@ func firstTechTiming(subject string, maxSecond int) func() CustomEvaluator {
 	}
 }
 
+// firstMineTiming fires at the first second a Vulture lays a Spider Mine. The
+// mine-lay order surfaces as a KindLayMine fact (see cmdenrich); the order name
+// varies (PlaceMine / VultureMine), so this matches any KindLayMine via the
+// evaluator's empty-subject wildcard.
+func firstMineTiming(maxSecond int) func() CustomEvaluator {
+	return func() CustomEvaluator {
+		return &firstFactTimingEvaluator{kind: cmdenrich.KindLayMine, subject: "", maxSecond: maxSecond}
+	}
+}
+
 // firstFactTimingEvaluator commits at the first second a fact of the given Kind
 // and Subject appears, provided that second is strictly before maxSecond. Used
 // by the first-Reaver / first-Corsair / Speedlot timing markers: the pill's
@@ -40,7 +50,9 @@ func (e *firstFactTimingEvaluator) Observe(f cmdenrich.EnrichedCommand) {
 	if e.matched {
 		return
 	}
-	if f.Kind != e.kind || f.Subject != e.subject {
+	// Empty subject = wildcard: match any fact of this Kind (used by the
+	// mine-lay timing, whose order name varies).
+	if f.Kind != e.kind || (e.subject != "" && f.Subject != e.subject) {
 		return
 	}
 	e.firstSec = f.Second
@@ -55,6 +67,42 @@ func (e *firstFactTimingEvaluator) Finalize(_ CustomEvalContext) CustomResult {
 		return CustomResult{}
 	}
 	return CustomResult{Matched: true, DetectedAtSecond: e.firstSec}
+}
+
+// crazyZergEvaluator matches a TvZ Zerg that transitions Mutalisk -> Ultralisk
+// with Zerg Carapace upgraded and without morphing any Lurker before the first
+// Ultralisk. Committed at the first Ultralisk's second.
+type crazyZergEvaluator struct {
+	hasMuta       bool
+	hasCarapace   bool
+	lurkerBefore  bool
+	firstUltraSec int
+	hasUltra      bool
+}
+
+func (e *crazyZergEvaluator) Observe(f cmdenrich.EnrichedCommand) {
+	switch {
+	case f.Kind == cmdenrich.KindMakeUnit && f.Subject == subjMutalisk:
+		e.hasMuta = true
+	case f.Kind == cmdenrich.KindMakeUnit && f.Subject == subjLurker:
+		if !e.hasUltra {
+			e.lurkerBefore = true
+		}
+	case f.Kind == cmdenrich.KindMakeUnit && f.Subject == subjUltralisk:
+		if !e.hasUltra {
+			e.hasUltra = true
+			e.firstUltraSec = f.Second
+		}
+	case f.Kind == cmdenrich.KindUpgrade && f.Subject == subjZergCarapace:
+		e.hasCarapace = true
+	}
+}
+
+func (e *crazyZergEvaluator) Finalize(_ CustomEvalContext) CustomResult {
+	if !e.hasMuta || !e.hasUltra || !e.hasCarapace || e.lurkerBefore {
+		return CustomResult{}
+	}
+	return CustomResult{Matched: true, DetectedAtSecond: e.firstUltraSec}
 }
 
 // sairSpeedlotEvaluator commits when a player has produced at least two Corsairs

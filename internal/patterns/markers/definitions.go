@@ -132,6 +132,9 @@ const (
 	subjHydraliskDen     = models.GeneralUnitHydraliskDen
 	subjHydralisk        = models.GeneralUnitHydralisk
 	subjLurker           = models.GeneralUnitLurker
+	subjUltralisk        = models.GeneralUnitUltralisk
+	subjGuardian         = models.GeneralUnitGuardian
+	subjZergCarapace     = models.UpgradeZergCarapace
 
 	// Protoss
 	subjNexus            = models.GeneralUnitNexus
@@ -148,6 +151,7 @@ const (
 	subjCorsair          = models.GeneralUnitCorsair
 	subjRoboticsFacility = models.GeneralUnitRoboticsFacility
 	subjReaver           = models.GeneralUnitReaver
+	subjObserver         = models.GeneralUnitObserver
 	subjCitadelOfAdun    = models.GeneralUnitCitadelOfAdun
 	subjTemplarArchives  = models.GeneralUnitTemplarArchives
 	subjDarkTemplar      = models.GeneralUnitDarkTemplar
@@ -1650,6 +1654,34 @@ func allMarkers() []Marker {
 			EventsList:    &Pill{Label: "starts Zealot Speed research", IconKey: "zealot"},
 		},
 		{
+			// First Observer timing (PvP/PvT): the second the player's first
+			// Observer pops. Surfaced as a per-player pill only — the point is
+			// comparing the two players' Observer timings in the mirror / vs Terran.
+			Name:          "First Observer",
+			PatternName:   "First Observer",
+			FeatureKey:    "first_observer",
+			Kind:          KindMarker,
+			Race:          RaceProtoss,
+			Matchup:       []string{"PvP", "PvT"},
+			Custom:        firstUnitTiming(subjObserver, 0),
+			RuleDeadline:  endOfReplaySentinel,
+			SummaryPlayer: &Pill{Label: "1st Observer {timestamp}", IconKey: "observer"},
+		},
+		{
+			// First Mine timing (PvT): the second the player's Vulture lays its
+			// first Spider Mine. Per-player pill only — the point is the distance
+			// between the two players' first-mine timings.
+			Name:          "First Mine",
+			PatternName:   "First Mine",
+			FeatureKey:    "first_mine",
+			Kind:          KindMarker,
+			Race:          RaceTerran,
+			Matchup:       []string{"PvT"},
+			Custom:        firstMineTiming(0),
+			RuleDeadline:  endOfReplaySentinel,
+			SummaryPlayer: &Pill{Label: "1st Mine {timestamp}", IconKey: "vulture"},
+		},
+		{
 			// Sair/Speedlot composition (PvZ): >=2 Corsairs AND Zealot leg-speed.
 			// The former Sair/Speedlot opener, demoted to a presence-only
 			// composition marker (the opening underneath is FFE / Gate Expand).
@@ -1915,6 +1947,53 @@ func allMarkers() []Marker {
 			RuleDeadline:  endOfReplaySentinel,
 			SummaryPlayer: &Pill{Label: "Threw Nukes", IconKey: "ghost"},
 			GamesList:     &Pill{Label: "Nukes", IconKey: "ghost"},
+		},
+		{
+			// Made Maelstrom (PvZ): the Dark Archon Maelstrom cast — a strong tell
+			// of a Protoss commitment to mass templar tech vs Zerg. Surfaced only
+			// as a games-list pill + filter; spell casting is already shown in the
+			// game-summary spell-cast surface, so no summary pills here.
+			Name:         "Made Maelstrom",
+			PatternName:  "Made Maelstrom",
+			FeatureKey:   "made_maelstrom",
+			Kind:         KindMarker,
+			Race:         RaceProtoss,
+			Matchup:      []string{"PvZ"},
+			Custom:       func() CustomEvaluator { return &firstCastEvaluator{subject: "Maelstrom"} },
+			RuleDeadline: endOfReplaySentinel,
+			GamesList:    &Pill{Label: "Maelstrom", IconKey: "darkarchon"},
+		},
+		{
+			// Crazy Zerg (TvZ): the player goes from Mutalisk straight into
+			// Ultralisk — with Zerg Carapace upgraded — and never morphs a Lurker
+			// before the first Ultralisk. The "crazy" read is skipping the standard
+			// Lurker midgame for an all-in ground transition.
+			Name:          "Crazy Zerg",
+			PatternName:   "Crazy Zerg",
+			FeatureKey:    "crazy_zerg",
+			Kind:          KindMarker,
+			Race:          RaceZerg,
+			Matchup:       []string{"TvZ"},
+			Custom:        func() CustomEvaluator { return &crazyZergEvaluator{} },
+			RuleDeadline:  endOfReplaySentinel,
+			SummaryPlayer: &Pill{Label: "Crazy Zerg", IconKey: "ultralisk"},
+			SummaryReplay: &Pill{Label: "Crazy Zerg", IconKey: "ultralisk"},
+			GamesList:     &Pill{Label: "Crazy Zerg", IconKey: "ultralisk"},
+		},
+		{
+			// Guardians (TvZ): the player morphs at least one Guardian (Greater
+			// Spire air-to-ground tech). Game-level signal — game summary + games
+			// list, but no per-player user pill and not a filter chip.
+			Name:          "Guardians",
+			PatternName:   "Guardians",
+			FeatureKey:    "guardians",
+			Kind:          KindMarker,
+			Race:          RaceZerg,
+			Matchup:       []string{"TvZ"},
+			Rule:          ProduceCountAtLeast(subjGuardian, 1),
+			RuleDeadline:  endOfReplaySentinel,
+			SummaryReplay: &Pill{Label: "Guardians", IconKey: "guardian"},
+			GamesList:     &Pill{Label: "Guardians", IconKey: "guardian"},
 		},
 		{
 			Name:         "Became Terran",
