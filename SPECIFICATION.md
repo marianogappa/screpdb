@@ -445,8 +445,8 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 12 Hatch | Zerg | Spawning Pool | 116 | −3 / +10 |
 | 12 Pool | Zerg | Spawning Pool | 104 | ±5 |
 | 12 Pool | Zerg | First Zerglings | 154 | ±4 |
-| 2 Fact Vults | Terran | 1st Factory | 147 | −25 / +30 |
-| 2 Fact Vults | Terran | 2nd Factory | 183 | −40 / +50 |
+| 2 Fact before Expa | Terran | 1st Factory | 147 | −25 / +40 |
+| 2 Fact before Expa | Terran | 2nd Factory | 177 | −40 / +60 |
 | 2 Gate | Protoss | Pylon | 48 | ±4 |
 | 2 Gate | Protoss | 1st Gateway | 70 | ±6 |
 | 2 Gate | Protoss | 2nd Gateway | 86 | ±10 |
@@ -455,8 +455,9 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 2 Hatch Hydra | Zerg | First Hydralisks | 250 | −40 / +120 |
 | 2 Hatch Muta | Zerg | Spire | 249 | −35 / +70 |
 | 2 Hatch Muta | Zerg | First Mutalisks | 327 | −40 / +90 |
-| 2 Port Wraith | Terran | 1st Starport | 201 | −25 / +50 |
-| 2 Port Wraith | Terran | 2nd Starport | 208 | −25 / +60 |
+| 2 Port Wraith | Terran | 1st Starport | 205 | −25 / +70 |
+| 2 Port Wraith | Terran | 2nd Starport | 212 | −25 / +70 |
+| 2 Port Wraith | Terran | First Wraith | 253 | −40 / +90 |
 | 2-Base Bio | Terran | Supply Depot | 56 | −10 / +24 |
 | 2-Base Bio | Terran | Barracks | 84 | −28 / +20 |
 | 2-Base Bio | Terran | Refinery | 185 | −80 / +50 |
@@ -592,12 +593,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | Nexus First | Protoss | Pylon | 48 | ±4 |
 | Nexus First | Protoss | Nexus | 145 | ±20 |
 | Nexus First | Protoss | Gateway | 175 | ±20 |
-| Wraith | Terran | Supply Depot | 56 | −10 / +24 |
-| Wraith | Terran | Barracks | 84 | −28 / +18 |
-| Wraith | Terran | Refinery | 98 | −10 / +60 |
-| Wraith | Terran | Factory | 152 | −12 / +60 |
-| Wraith | Terran | Starport | 205 | −15 / +60 |
-| Wraith | Terran | First Wraith | 253 | −20 / +70 |
 
 ## Build-order rule deadlines
 
@@ -617,7 +612,7 @@ Each opener's detector commits its decision once the replay passes this second �
 | 11 Pool | Zerg | 180 |
 | 12 Hatch | Zerg | 180 |
 | 12 Pool | Zerg | 180 |
-| 2 Fact Vults | Terran | 360 |
+| 2 Fact before Expa | Terran | 360 |
 | 2 Gate | Protoss | 180 |
 | 2 Hatch Hydra | Zerg | 600 |
 | 2 Hatch Muta | Zerg | 600 |
@@ -664,7 +659,6 @@ Each opener's detector commits its decision once the replay passes this second �
 | Nexus First | Protoss | 200 |
 | Pool/Hatch (Other) | Zerg | 240 |
 | Terran (Other) | Terran | 600 |
-| Wraith | Terran | 600 |
 
 ## Absence-marker game-length thresholds
 
@@ -696,7 +690,7 @@ Standalone constants the detectors depend on — dedup windows, muta/turret burs
 
 | Constant | Value | Meaning |
 | --- | --- | --- |
-| Algorithm version | 43 | Detection algorithm revision; incremented to trigger re-detection. |
+| Algorithm version | 44 | Detection algorithm revision; incremented to trigger re-detection. |
 | Build dedup gap (s) | 3 | Repeat Build orders of the same building at the same tile, closer than this, are one event (double-tap / misclick); different-tile placements are kept. |
 | Build dedup max second (s) | 240 | Past this second, dedup stops and every Build is observed as-is (a tile can be legitimately rebuilt on later). |
 | Mutalisk burst window (s) | 30 | Window within which the Mutalisk morphs must cluster. |
@@ -807,37 +801,37 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 | 4 | proxy_gate |
 | 5 | proxy_rax |
 | 6 | proxy_factory |
-| 7 | manner_pylon |
-| 8 | drop |
-| 9 | mind_control |
-| 10 | threw_nukes |
-| 11 | made_recalls |
-| 12 | offensive_nydus |
-| 13 | bo_4_pool |
-| 14 | bo_9_pool |
-| 15 | bo_9_overpool |
-| 16 | bo_12_pool |
-| 17 | bo_9_pool_hatch |
-| 18 | bo_9_hatch |
-| 19 | bo_10_hatch |
-| 20 | bo_11_hatch |
-| 21 | bo_12_hatch |
-| 22 | bo_z_3hatch_muta |
-| 23 | bo_z_2hatch_muta |
-| 24 | bo_z_3hatch_lurker |
-| 25 | bo_z_2hatch_hydra |
-| 26 | bo_2_gate |
-| 27 | bo_1_gate_core |
-| 28 | bo_nexus_first |
-| 29 | bo_gate_expand |
-| 30 | bo_forge_expa |
-| 31 | bo_p_1gate_reaver |
-| 32 | bo_p_gate_forge_cannon |
-| 33 | bo_p_forge_cannon_gate |
-| 34 | bo_p_forge_gate_cannon |
-| 35 | bo_bbs |
-| 36 | bo_cc_first |
-| 37 | bo_t_wraith |
+| 7 | proxy_starport |
+| 8 | manner_pylon |
+| 9 | drop |
+| 10 | mind_control |
+| 11 | threw_nukes |
+| 12 | made_recalls |
+| 13 | offensive_nydus |
+| 14 | bo_4_pool |
+| 15 | bo_9_pool |
+| 16 | bo_9_overpool |
+| 17 | bo_12_pool |
+| 18 | bo_9_pool_hatch |
+| 19 | bo_9_hatch |
+| 20 | bo_10_hatch |
+| 21 | bo_11_hatch |
+| 22 | bo_12_hatch |
+| 23 | bo_z_3hatch_muta |
+| 24 | bo_z_2hatch_muta |
+| 25 | bo_z_3hatch_lurker |
+| 26 | bo_z_2hatch_hydra |
+| 27 | bo_2_gate |
+| 28 | bo_1_gate_core |
+| 29 | bo_nexus_first |
+| 30 | bo_gate_expand |
+| 31 | bo_forge_expa |
+| 32 | bo_p_1gate_reaver |
+| 33 | bo_p_gate_forge_cannon |
+| 34 | bo_p_forge_cannon_gate |
+| 35 | bo_p_forge_gate_cannon |
+| 36 | bo_bbs |
+| 37 | bo_cc_first |
 | 38 | bo_t_goliath |
 | 39 | bo_t_bio_1base |
 | 40 | bo_t_bio_2base |
@@ -855,7 +849,7 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 | 52 | bo_t_111 |
 | 53 | bo_t_factory_expand |
 | 54 | bo_t_2port_wraith |
-| 55 | bo_t_2fact_vults |
+| 55 | bo_t_2fact_expa |
 | 56 | double_stargate |
 | 57 | carriers |
 | 58 | battlecruisers |
@@ -875,4 +869,5 @@ Featuring chips for narrative game events that aren't markers (cannon rush, drop
 | proxy_factory | Proxy factory | factory |
 | proxy_gate | Proxy gateway | gateway |
 | proxy_rax | Proxy barracks | barracks |
+| proxy_starport | Proxy starport | starport |
 | zergling_rush | Zergling rush | zergling |

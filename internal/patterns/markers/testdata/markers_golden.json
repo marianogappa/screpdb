@@ -906,6 +906,168 @@
       }
     ]
   },
+  "bo_2fact_expa_tvt_c9flash.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2 Fact before Expa",
+        "value": "{\"expert_actuals\":[{\"second\":145,\"found\":true},{\"second\":174,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "375"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "375"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2 Port Wraith",
+        "value": "{\"expert_actuals\":[{\"second\":197,\"found\":true},{\"second\":210,\"found\":true},{\"second\":244,\"found\":true}],\"modifiers\":[\"proxy\"]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "375"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Wraith Cloak timing",
+        "value": "311"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Wraiths",
+        "value": "263"
+      }
+    ]
+  },
+  "bo_2fact_expa_tvt_tipkofe.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2 Fact before Expa",
+        "value": "{\"expert_actuals\":[{\"second\":153,\"found\":true},{\"second\":176,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "678"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":18.730964467005077}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraith Cloak timing",
+        "value": "698"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraiths",
+        "value": "735"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 4-Fac Mech",
+        "value": "{\"expert_actuals\":[{\"second\":53,\"found\":true},{\"second\":86,\"found\":true},{\"second\":101,\"found\":true},{\"second\":154,\"found\":true},{\"second\":551,\"found\":true},{\"second\":253,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,4,5,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":24.82233502538071}"
+      }
+    ]
+  },
+  "bo_2fact_expa_tvt_ybscan.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2 Fact before Expa",
+        "value": "{\"expert_actuals\":[{\"second\":145,\"found\":true},{\"second\":177,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "569"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":21.29032258064516}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraith Cloak timing",
+        "value": "590"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraiths",
+        "value": "572"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2 Fact before Expa",
+        "value": "{\"expert_actuals\":[{\"second\":147,\"found\":true},{\"second\":183,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "797"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":17.972350230414747}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Wraith Cloak timing",
+        "value": "639"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Wraiths",
+        "value": "470"
+      }
+    ]
+  },
   "bo_2gate_pvt_duongdallas.rep": {
     "detections": [
       {
@@ -1233,6 +1395,261 @@
       }
     ]
   },
+  "bo_2port_wraith_tvt_boogeeyoon.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: CC First",
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":116,\"found\":true},{\"second\":132,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "499"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraith Cloak timing",
+        "value": "328"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraiths",
+        "value": "308"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2 Port Wraith",
+        "value": "{\"expert_actuals\":[{\"second\":201,\"found\":true},{\"second\":206,\"found\":true},{\"second\":247,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "499"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,7,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Wraith Cloak timing",
+        "value": "280"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Wraiths",
+        "value": "284"
+      }
+    ]
+  },
+  "bo_2port_wraith_tvt_kuri.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2 Port Wraith",
+        "value": "{\"expert_actuals\":[{\"second\":207,\"found\":true},{\"second\":208,\"found\":true},{\"second\":255,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "426"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,4,5,6]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraith Cloak timing",
+        "value": "361"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraiths",
+        "value": "286"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: CC First",
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":140,\"found\":true},{\"found\":false}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "426"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
+      }
+    ]
+  },
+  "bo_2port_wraith_tvz_hanatan.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 11 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":92,\"found\":true},{\"second\":110,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "760"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":24.933333333333334}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2 Port Wraith",
+        "value": "{\"expert_actuals\":[{\"second\":235,\"found\":true},{\"second\":237,\"found\":true},{\"second\":281,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":14}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Wraith Cloak timing",
+        "value": "510"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Wraiths",
+        "value": "283"
+      }
+    ]
+  },
+  "bo_2port_wraith_tvz_lllii.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 3 Hatch Muta",
+        "value": "{\"expert_actuals\":[{\"second\":242,\"found\":true},{\"second\":326,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":326,\"muta_burst_count\":5,\"mutalisk_finished\":351,\"spire_cmd\":242}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":16.140350877192983}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2 Port Wraith",
+        "value": "{\"expert_actuals\":[{\"second\":200,\"found\":true},{\"second\":205,\"found\":true},{\"second\":250,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":372,\"first_turret_cmd\":414,\"turret_burst_count\":4,\"turret_finished\":433}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":9.473684210526315}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Wraith Cloak timing",
+        "value": "281"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Wraiths",
+        "value": "282"
+      }
+    ]
+  },
+  "bo_2port_wraith_tvz_qwejlkqwen.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Battlecruisers",
+        "value": "967"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2 Port Wraith",
+        "value": "{\"expert_actuals\":[{\"second\":270,\"found\":true},{\"second\":271,\"found\":true},{\"second\":318,\"found\":true}],\"modifiers\":[\"expand\"]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":15.88621444201313}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraith Cloak timing",
+        "value": "345"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraiths",
+        "value": "356"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 3 Hatch Muta",
+        "value": "{\"expert_actuals\":[{\"second\":240,\"found\":true},{\"second\":317,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":34.13566739606127}"
+      }
+    ]
+  },
   "bo_3hlurker_tvz_honjr.rep": {
     "detections": [
       {
@@ -1410,6 +1827,118 @@
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":29.240506329113924}"
+      }
+    ]
+  },
+  "bo_bbs_tvp_chocobo12.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: BBS",
+        "value": "{\"expert_actuals\":[{\"second\":79,\"found\":true},{\"second\":94,\"found\":true},{\"second\":104,\"found\":true}],\"modifiers\":[\"proxy\"]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "302"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "302"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":75,\"found\":true},{\"second\":93,\"found\":true},{\"second\":118,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "302"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      }
+    ]
+  },
+  "bo_bbs_tvp_sstjumja.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: BBS",
+        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":79,\"found\":true},{\"second\":100,\"found\":true}],\"modifiers\":[\"proxy\"]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "370"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "370"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":73,\"found\":true},{\"found\":false},{\"second\":116,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "370"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
+      }
+    ]
+  },
+  "bo_bbs_tvp_standordie.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: BBS",
+        "value": "{\"expert_actuals\":[{\"second\":78,\"found\":true},{\"second\":88,\"found\":true},{\"second\":106,\"found\":true}],\"modifiers\":[\"proxy\"]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "338"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "338"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,3,4]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":109,\"found\":true},{\"second\":132,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,9]}"
       }
     ]
   },
@@ -2203,6 +2732,133 @@
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":17.217391304347824}"
+      }
+    ]
+  },
+  "bo_goliath_tvz_f1ssasad.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":149,\"found\":true},{\"second\":162,\"found\":true},{\"second\":281,\"found\":true},{\"second\":340,\"found\":true},{\"second\":395,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":435,\"first_turret_cmd\":476,\"turret_burst_count\":3,\"turret_finished\":495}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":19.178885630498534}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 12 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":106,\"found\":true},{\"second\":122,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":634,\"muta_burst_count\":4,\"mutalisk_finished\":659,\"spire_cmd\":431}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":18.47507331378299}"
+      }
+    ]
+  },
+  "bo_goliath_tvz_iilliii1.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 3 Hatch Muta",
+        "value": "{\"expert_actuals\":[{\"second\":221,\"found\":true},{\"second\":299,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":299,\"muta_burst_count\":6,\"mutalisk_finished\":324,\"spire_cmd\":221}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":23.91891891891892}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":84,\"found\":true},{\"second\":94,\"found\":true},{\"second\":142,\"found\":true},{\"second\":206,\"found\":true},{\"second\":261,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":278,\"first_turret_cmd\":323,\"turret_burst_count\":4,\"turret_finished\":342}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":12.972972972972972}"
+      }
+    ]
+  },
+  "bo_goliath_tvz_lilliill.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":94,\"found\":true},{\"second\":97,\"found\":true},{\"second\":146,\"found\":true},{\"second\":211,\"found\":true},{\"second\":265,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":11.586998087954111}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 3 Hatch Muta",
+        "value": "{\"expert_actuals\":[{\"second\":275,\"found\":true},{\"second\":353,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":19.38814531548757}"
       }
     ]
   },

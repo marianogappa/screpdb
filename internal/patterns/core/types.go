@@ -149,7 +149,18 @@ import (
 // simcity bunker on a money map is no longer misread as a rush on a distant
 // base. Re-ingest so early worker timing, BO supply counts, and bunker-rush
 // events are correct.
-const AlgorithmVersion = 43
+//
+// 44: Terran air/specialist openers (#228). The TvZ "Wraith" composition opener
+// is folded into a matchup-shared "2 Port Wraith" (TvT+TvZ; 1 Rax/1 Fac into two
+// Starports, wraith-dominant) with an "expand" modifier; "2 Fact Vults" is
+// renamed "2 Fact before Expa" (key bo_t_2fact_vults -> bo_t_2fact_expa; exactly
+// two Factories before the expansion, no vulture requirement). New "Wraith Cloak
+// timing" pill (first Cloaking Field research) and a new "proxy_starport"
+// game-event with a "proxy" modifier on 2 Port Wraith. The proxy spatial gate is
+// now player-aware, so a forward building near the enemy main (not just midfield)
+// fires proxy_gate/_rax/_factory/_starport. Re-ingest so the renamed/unified
+// openers, the new pill, and proxy events surface.
+const AlgorithmVersion = 44
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

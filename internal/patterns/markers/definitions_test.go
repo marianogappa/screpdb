@@ -422,12 +422,21 @@ func TestBO_Terran_Mech_ByFactory_AndTankless(t *testing.T) {
 }
 
 func TestBO_Terran_Wraith_Goliath_111(t *testing.T) {
-	// 2 Starports + 5 Wraiths → Wraith.
+	// 1 Rax / 1 Fac into 2 Starports + 5 Wraiths → 2 Port Wraith (the former
+	// TvZ "Wraith" composition opener, now unified with TvT 2 Port Wraith).
 	w := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).
 		B(subjStarport, 200).B(subjStarport, 260)
 	produceN(w, subjWraith, 5, 300)
-	if !findBO(t, "Wraith").Matches(w.list()) {
-		t.Fatalf("2 Starports + 5 Wraiths should be Wraith")
+	if !findBO(t, "2 Port Wraith").Matches(w.list()) {
+		t.Fatalf("1 Rax/1 Fac + 2 Starports + 5 Wraiths should be 2 Port Wraith")
+	}
+	// A 2nd Factory before the first Starport rules out 2 Port Wraith (it's a
+	// mech/air hybrid, not the 1-Rax-1-Fac air opener).
+	w2 := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).
+		B(subjFactory, 180).B(subjStarport, 220).B(subjStarport, 260)
+	produceN(w2, subjWraith, 5, 320)
+	if findBO(t, "2 Port Wraith").Matches(w2.list()) {
+		t.Fatalf("2nd Factory before the Starport must not match 2 Port Wraith")
 	}
 	// ≤2 Vultures & ≤4 Marines by 7:00, 4+ Goliaths → Goliath.
 	g := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).

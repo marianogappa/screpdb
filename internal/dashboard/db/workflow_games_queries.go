@@ -299,7 +299,7 @@ func (s *Store) ListFeaturingReplayEventRows(ctx context.Context, replayIDs []in
 			AND event_kind = 'game_event'
 			AND event_type IN (
 				'zergling_rush', 'cannon_rush', 'bunker_rush',
-				'proxy_gate', 'proxy_rax', 'proxy_factory',
+				'proxy_gate', 'proxy_rax', 'proxy_factory', 'proxy_starport',
 				'drop', 'cliff_drop'
 			)
 	`, args...)

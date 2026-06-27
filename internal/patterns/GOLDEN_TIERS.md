@@ -136,6 +136,37 @@ guards the `First Reaver` timing marker (llIIlIIIIIIllll, ~5:25) and the
 `1 Gate Core` opener. A change that drops the manner pylon or reclassifies the
 opener is a regression.
 
+Terran air/specialist opener batch (round 6, issue #228). Thirteen non-mirror
+or named-player 1v1 ladder replays, each watched and confirmed. Round 6 also
+redefined two openers and retired one: the TvZ "Wraith" composition opener was
+folded into a matchup-shared `2 Port Wraith` (1 Rax / 1 Fac into two Starports,
+wraith-dominant — the same build in TvT and TvZ), and "2 Fact Vults" became
+`2 Fact before Expa` (exactly two Factories before the expansion; mech is implied
+in TvT, so it's a vulture/tank/goliath mix, not pure vultures). The verified
+premise is the named player's opener (and, where noted, a modifier):
+
+| Fixtures | Player must classify as |
+| --- | --- |
+| `bo_2port_wraith_tvz_qwejlkqwen`, `bo_2port_wraith_tvz_hanatan`, `bo_2port_wraith_tvz_lllii` | `Build Order: 2 Port Wraith` (TvZ — the former "Wraith") |
+| `bo_2port_wraith_tvt_kuri`, `bo_2port_wraith_tvt_boogeeyoon` | `Build Order: 2 Port Wraith` (TvT) |
+| `bo_2fact_expa_tvt_c9flash` (opponent `IlllllllIlIIIll`, P1) | `Build Order: 2 Port Wraith` **with** `proxy` modifier |
+| `bo_goliath_tvz_iilliii1`, `bo_goliath_tvz_f1ssasad`, `bo_goliath_tvz_lilliill` | `Build Order: Goliath` |
+| `bo_2fact_expa_tvt_c9flash` (P0), `bo_2fact_expa_tvt_ybscan`, `bo_2fact_expa_tvt_tipkofe` | `Build Order: 2 Fact before Expa` |
+| `bo_bbs_tvp_chocobo12`, `bo_bbs_tvp_standordie`, `bo_bbs_tvp_sstjumja` | `Build Order: BBS` **with** `proxy` modifier (Barracks planted forward at the enemy) |
+
+`bo_2port_wraith_tvz_qwejlkqwen` additionally guards the `expand` modifier (a
+Command Center taken before the two Starports). `bo_2fact_expa_tvt_c9flash` is a
+single TvT game carrying two protected premises: P0 `C9_FlaSh` = 2 Fact before
+Expa, and P1 `IlllllllIlIIIll` = 2 Port Wraith **with `proxy`** — its two
+Starports are planted forward at the enemy, which fires the `proxy_starport`
+game-event (and the `proxy` BO modifier). That fixture is the guard for proxy
+Starport detection. The three BBS fixtures guard the `proxy` modifier on every
+BBS: `bo_bbs_tvp_standordie` specifically guards the proxy spatial gate's
+at-the-enemy case — its Barracks sit across the map on the opponent's half, which
+the old midfield-only band missed (it now fires because the gate is player-aware:
+far from the builder's own main, within reach of the enemy's). The opponent's BO
+in each fixture is tier-2.
+
 ### Cliff-drop detection — `drops_golden.json`
 
 Each fixture below was confirmed by watching the replay. The premise is the

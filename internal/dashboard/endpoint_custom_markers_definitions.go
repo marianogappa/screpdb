@@ -55,6 +55,7 @@ var staticGameEventFeatures = []gameEventFeature{
 	{Key: "proxy_gate", Label: "Proxy gateway", IconKey: "gateway"},
 	{Key: "proxy_rax", Label: "Proxy barracks", IconKey: "barracks"},
 	{Key: "proxy_factory", Label: "Proxy factory", IconKey: "factory"},
+	{Key: "proxy_starport", Label: "Proxy starport", IconKey: "starport"},
 	{Key: "drop", Label: "Drop", IconKey: "shuttle"},
 	{Key: "mind_control", Label: "Mind control", IconKey: "darkarchon"},
 }
@@ -70,6 +71,7 @@ var staticFeaturingOrder = []string{
 	"proxy_gate",
 	"proxy_rax",
 	"proxy_factory",
+	"proxy_starport",
 	"manner_pylon",
 	"drop",
 	"mind_control",
@@ -106,8 +108,8 @@ var staticFeaturingOrder = []string{
 	"bo_bbs",
 	"bo_cc_first",
 	// Terran composition BOs (issue #155): former mech / 1-1-1 / SK Terran
-	// markers, now first-class build orders.
-	"bo_t_wraith",
+	// markers, now first-class build orders. ("bo_t_wraith" retired — folded
+	// into the matchup-shared "2 Port Wraith" opener, issue #228.)
 	"bo_t_goliath",
 	"bo_t_bio_1base",
 	"bo_t_bio_2base",
@@ -126,7 +128,7 @@ var staticFeaturingOrder = []string{
 	// Preferred Terran opening-sequence openers (issue #182).
 	"bo_t_factory_expand",
 	"bo_t_2port_wraith",
-	"bo_t_2fact_vults",
+	"bo_t_2fact_expa",
 	// late-game / signature markers.
 	"double_stargate",
 	// money-map markers — rendered last so regular markers take priority on
