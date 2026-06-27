@@ -22,7 +22,7 @@ const formatTime = (seconds) => {
   return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}`;
 };
 
-function BuildOrderTimelineRows({ group }) {
+function BuildOrderTimelineRows({ group, beta }) {
   const wrapperRef = useRef(null);
   const [hover, setHover] = useState(null);
 
@@ -103,6 +103,13 @@ function BuildOrderTimelineRows({ group }) {
         <span><strong>{group?.name}</strong></span>
         <span className="workflow-first-unit-title-slash">·</span>
         <span>{group?.build_order}</span>
+        {beta ? (
+          <sup
+            className="workflow-beta-tag"
+            title="Beta: we haven't hand-checked this detection against real games yet, so it may be off sometimes."
+            aria-label="beta detection"
+          >β</sup>
+        ) : null}
         <span
           style={{ marginLeft: 'auto', color: 'rgba(251, 191, 36, 1)', cursor: 'help' }}
           title={LEGEND_TOOLTIP}

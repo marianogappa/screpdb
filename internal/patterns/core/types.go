@@ -160,7 +160,16 @@ import (
 // now player-aware, so a forward building near the enemy main (not just midfield)
 // fires proxy_gate/_rax/_factory/_starport. Re-ingest so the renamed/unified
 // openers, the new pill, and proxy events surface.
-const AlgorithmVersion = 44
+//
+// 46: new strategic markers — Made Maelstrom (PvZ Dark Archon cast), Crazy Zerg
+// (TvZ Mutalisk->Ultralisk with Zerg Carapace and no Lurker before the first
+// Ultralisk), and Guardians (TvZ, >=1 Guardian — required adding Guardian to
+// subjectsOfInterest so the rule-path fact isn't dropped). New per-player timing
+// pills First Observer (PvP/PvT) and First Mine (PvT), the latter backed by a new
+// cmdenrich KindLayMine fact for the PlaceMine / VultureMine orders. Dashboard
+// also gained a "beta" tag on uncurated markers (hotkey markers exempt). Re-ingest
+// so the new markers and pills surface.
+const AlgorithmVersion = 46
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

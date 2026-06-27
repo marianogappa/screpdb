@@ -3297,6 +3297,17 @@ button.workflow-nav-update-available:disabled {
 .workflow-pattern-pill-na .workflow-pill-legend {
   color: rgba(252, 165, 165, 0.95);
 }
+/* Beta tag: a small superscript β on detections not yet human-curated. Muted
+   amber so it reads as a caveat without competing with the pill label. */
+.workflow-beta-tag {
+  margin-left: 3px;
+  font-size: 0.7em;
+  font-weight: 700;
+  line-height: 0;
+  color: rgba(251, 191, 36, 0.95);
+  cursor: help;
+  vertical-align: super;
+}
 /* Composition pills are blue ("strong"); tint their legend to match. */
 .workflow-composition-pill .workflow-pill-legend {
   color: rgba(150, 185, 255, 0.95);

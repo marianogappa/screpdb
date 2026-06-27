@@ -17,6 +17,11 @@ hotkey/upgrade markers, expert-milestone `expert_actuals`, and every assertion
 on the pre-existing marker fixtures (`battlecruisers.rep`, `bo_*_hatch.rep`,
 `bo_2_gate_carriers.rep`, `carriers_recalls.rep`, `threw_nukes.rep`, …).
 
+**Dashboard "beta" tag.** The set of tier-1 feature keys is mirrored, machine-readably,
+in `internal/patterns/markers/curation.go` (`curatedFeatureKeys`). The dashboard flags any
+marker / build-order NOT in that set with a "beta" superscript. When you promote a detection
+to tier-1 below, add its FeatureKey to `curatedFeatureKeys` so the beta tag disappears.
+
 ## Tier 1 — human-curated premises (changes are regressions)
 
 A small set of fixtures encode a *specific premise a human verified by watching
@@ -166,6 +171,31 @@ at-the-enemy case — its Barracks sit across the map on the opponent's half, wh
 the old midfield-only band missed (it now fires because the gate is player-aware:
 far from the builder's own main, within reach of the enemy's). The opponent's BO
 in each fixture is tier-2.
+
+TvZ Zerg composition (round 7). Fixture `crazy_zerg_guardians_tvz_lyx2008.rep`
+(TvZ; LYX2008 = Zerg, P1), watched and confirmed. Two protected premises on
+LYX2008:
+
+| Premise | Detail |
+| --- | --- |
+| `Crazy Zerg` | Mutalisk → Ultralisk with Zerg Carapace and no Lurker before the first Ultralisk (first Ultralisk ~13:54) |
+| `Guardians` | at least one Guardian morphed (~9:28) — guards the `subjectsOfInterest` fix that lets the Guardian fact reach the rule predicate |
+
+A regression that drops either marker for LYX2008 is a regression. The opponent's
+BO is tier-2.
+
+Timing / cast pills (round 7), each watched and confirmed. These pills report the
+first *production/cast command* (not the unit's completion / the cast's effect) —
+the same convention as First Reaver / First Corsair — so an early re-click or an
+energy-less cast can set the time slightly before the visible action.
+
+| Fixture | Protected premise |
+| --- | --- |
+| `maelstrom_pvz_bysnow.rep` | `Made Maelstrom` on By.Snow1\` (P0, Protoss) — Dark Archon Maelstrom cast |
+| `first_observer_pvt_0sawon.rep` | `First Observer` on 0sawon (P0, Protoss) |
+| `first_mine_pvt_f1ssasad.rep` | `First Mine` on F1SSasad11s32dd (P1, Terran) — first Vulture spider mine |
+
+The opponent's BO in each is tier-2.
 
 ### Cliff-drop detection — `drops_golden.json`
 

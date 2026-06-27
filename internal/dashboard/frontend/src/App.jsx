@@ -21,7 +21,15 @@ import {
   isOpenerEventType,
   lookupDefinitionForPattern,
   renderAggregatePillText,
+  featureIsBeta,
+  BETA_TOOLTIP,
 } from './lib/markerRegistry';
+
+// BetaTag renders a small superscript β with a plain-language tooltip, shown on
+// any marker/build-order pill whose detection hasn't been human-curated yet.
+const BetaTag = () => (
+  <sup className="workflow-beta-tag" title={BETA_TOOLTIP} aria-label="beta detection">β</sup>
+);
 import {
   CompositionZones,
   CompositionZonesHeader,
@@ -921,13 +929,13 @@ const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
         // the matching detected-pattern row (when one exists).
         const rendered = renderPillText(def, PILL_SURFACES.gamesList, rowByKey[key]);
         if (rendered) {
-          return { key, label: rendered.label || def.name, iconKey: rendered.iconKey || '' };
+          return { key, label: rendered.label || def.name, iconKey: rendered.iconKey || '', beta: featureIsBeta(def) };
         }
-        return { key, label: def.games_list.label || def.name, iconKey: def.games_list.icon_key || '' };
+        return { key, label: def.games_list.label || def.name, iconKey: def.games_list.icon_key || '', beta: featureIsBeta(def) };
       }
       const ge = gameEventFeaturesByKey[key];
       if (ge) return { key, label: ge.label, iconKey: ge.icon_key || '', iconKeys: ge.icon_keys || [] };
-      return { key, label: def?.name || key, iconKey: '' };
+      return { key, label: def?.name || key, iconKey: '', beta: featureIsBeta(def) };
     });
 
   return elideGenericDropPill(pills);
@@ -975,6 +983,7 @@ const renderFeaturingPill = (pill, keyPrefix) => {
         <img key={`${pill.key}-i${i}`} src={url} alt="" className="workflow-pattern-icon" />
       ))}
       <span>{pill.label}</span>
+      {pill.beta ? <BetaTag /> : null}
     </span>
   );
 };
@@ -1616,6 +1625,7 @@ const renderAggregatePatternEntry = (entry, key, registry, gameEventFeaturesByKe
       <span className={`${pillClassName(rendered.style)} ${pillEventTypeClass(patternKey)}`.trim()} title={rendered.title || undefined}>
         {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
         {rendered.label ? <span>{rendered.label}</span> : null}
+        {featureIsBeta(def) ? <BetaTag /> : null}
       </span>
       <span className="workflow-pattern-count">×{entry.count}</span>
     </span>
@@ -1684,6 +1694,7 @@ const renderPatternPill = (pattern, keyPrefix, team, registry) => {
           {rendered.label ? <span>{rendered.label}</span> : null}
         </>
       )}
+      {featureIsBeta(def) ? <BetaTag /> : null}
     </span>
   );
 };
@@ -4113,6 +4124,27 @@ function App() {
     if (!point) return null;
     return { icon, point };
   }, [selectedMainGameEvent, mainEventMapBounds]);
+  // Proxy building overlay: paint the proxied building (Gateway / Barracks /
+  // Factory / Starport) at its placement coordinates for any proxy_* event —
+  // the backend already populates base coordinates for these.
+  const selectedMainGameProxyBuildingOverlay = useMemo(() => {
+    const nt = normalizeEventType(selectedMainGameEvent?.type);
+    const iconKey = {
+      proxy_gate: 'gateway',
+      proxy_rax: 'barracks',
+      proxy_factory: 'factory',
+      proxy_starport: 'starport',
+    }[nt];
+    if (!iconKey) return null;
+    const anchor = polygonCenter(selectedMainGameEvent?.base?.polygon)
+      || selectedMainGameEvent?.base?.center;
+    if (!anchor) return null;
+    const icon = getUnitIcon(iconKey);
+    if (!icon) return null;
+    const point = mapPointToPercent(anchor, mainEventMapBounds);
+    if (!point) return null;
+    return { icon, point };
+  }, [selectedMainGameEvent, mainEventMapBounds]);
   // Alliance overlay: for late_alliance events, render one 🤝 emoji per pair
   // of allied players at the midpoint between their bases, plus a pair of
   // bidirectional arrows running base↔🤝 in each player's color. The pair is
@@ -4250,8 +4282,11 @@ function App() {
     if (selectedMainGameDropOverlay) {
       return { travel: false, from: selectedMainGameDropOverlay.point, to: selectedMainGameDropOverlay.point };
     }
+    if (selectedMainGameProxyBuildingOverlay) {
+      return { travel: false, from: selectedMainGameProxyBuildingOverlay.point, to: selectedMainGameProxyBuildingOverlay.point };
+    }
     return null;
-  }, [selectedEventAnimCategory, selectedMainGameArrow, selectedMainGameExpansionOverlay, selectedMainGameRecallOverlay, selectedLeaveInfo, selectedBecameOverlay, selectedMainGameAllianceOverlay, selectedMainGameDropOverlay]);
+  }, [selectedEventAnimCategory, selectedMainGameArrow, selectedMainGameExpansionOverlay, selectedMainGameRecallOverlay, selectedLeaveInfo, selectedBecameOverlay, selectedMainGameAllianceOverlay, selectedMainGameDropOverlay, selectedMainGameProxyBuildingOverlay]);
   // Map aspect ratio (w/h) so the frame can be capped by viewport height while
   // preserving shape. BW maps are typically square (→ 1).
   const mainEventMapAspect = useMemo(() => {
@@ -6388,6 +6423,19 @@ function App() {
                                     }}
                                   />
                                 ) : null}
+                                {selectedMainGameProxyBuildingOverlay ? (
+                                  <img
+                                    key={`proxy-building-${selectedMainGameEventKeyResolved}`}
+                                    src={selectedMainGameProxyBuildingOverlay.icon}
+                                    alt="Proxy building"
+                                    title="Proxy building placement"
+                                    className="workflow-event-map-expansion-overlay"
+                                    style={{
+                                      left: `${selectedMainGameProxyBuildingOverlay.point.x}%`,
+                                      top: `${selectedMainGameProxyBuildingOverlay.point.y}%`,
+                                    }}
+                                  />
+                                ) : null}
                                 {selectedMainGameBOLabels.map((label) => {
                                   const raceIcon = getRaceIcon(label.race);
                                   return (
@@ -6801,6 +6849,7 @@ function App() {
                         <BuildOrderTimelineRows
                           key={`build-order-${bo.player_id}-${bo.feature_key}`}
                           group={bo}
+                          beta={featureIsBeta(markerRegistry?.[bo.feature_key])}
                         />
                       ))
                     ) : (

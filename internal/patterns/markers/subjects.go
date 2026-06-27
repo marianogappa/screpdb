@@ -27,6 +27,7 @@ var subjectsOfInterest = map[string]struct{}{
 	models.GeneralUnitHydraliskDen:     {},
 	models.GeneralUnitHydralisk:        {},
 	models.GeneralUnitLurker:           {},
+	models.GeneralUnitGuardian:         {},
 	// Protoss
 	models.GeneralUnitNexus:            {},
 	models.GeneralUnitPylon:            {},

@@ -95,6 +95,10 @@ const (
 	// position targets a canal end, so the pass relies on timing/count rather
 	// than these coords.
 	KindEnterNydusCanal
+	// KindLayMine: a Vulture lays a Spider Mine (VultureMine TargetedOrder).
+	// Subject is the raw order name. Surfaced so timing markers can detect the
+	// first mine drop.
+	KindLayMine
 )
 
 // Aggression tri-state. Populated by Classify based on Kind; tune the mapping
@@ -180,6 +184,7 @@ var aggressionByKind = map[Kind]Aggression{
 	KindLoadBunker:      NonAggressive,
 	KindBuildNydusExit:  Ambiguous,
 	KindEnterNydusCanal: Aggressive,
+	KindLayMine:         Aggressive,
 }
 
 // Classify returns the EnrichedCommand for a raw command. The second return
@@ -223,6 +228,11 @@ func Classify(cmd *models.Command) (EnrichedCommand, bool) {
 	}
 	if kind == KindUpgrade {
 		subject = strings.TrimSpace(stringPtr(cmd.UpgradeName))
+	}
+	// Lay-mine carries the order name (no UnitType); surface it as Subject so
+	// the first-mine timing marker can match on it.
+	if kind == KindLayMine {
+		subject = strings.TrimSpace(stringPtr(cmd.OrderName))
 	}
 	// Load / LoadBunker carry the transport's type on the source Command's
 	// TargetUnitType transient field. Surface it as Subject so worldstate
@@ -309,6 +319,8 @@ func classifyKind(cmd *models.Command) Kind {
 			return KindBuildNydusExit
 		case models.UnitOrderEnterNydusCanal:
 			return KindEnterNydusCanal
+		case models.UnitOrderPlaceMine, models.UnitOrderVultureMine:
+			return KindLayMine
 		}
 	}
 	if k := kindFromActionType(cmd.ActionType); k != KindUnknown {
