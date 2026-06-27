@@ -151,6 +151,7 @@ const (
 	subjCitadelOfAdun    = models.GeneralUnitCitadelOfAdun
 	subjTemplarArchives  = models.GeneralUnitTemplarArchives
 	subjDarkTemplar      = models.GeneralUnitDarkTemplar
+	subjLegEnhancement   = models.UpgradeLegEnhancementZealotSpeed
 
 	// Terran
 	subjCommandCenter  = models.GeneralUnitCommandCenter
@@ -1567,6 +1568,72 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{Label: "Turret timing {timestamp}", IconKey: "missileturret"},
 			SummaryReplay: &Pill{Label: "Turret timing {timestamp}", IconKey: "missileturret"},
 			GamesList:     &Pill{Label: "Turret timing {timestamp}", IconKey: "missileturret"},
+		},
+		{
+			// First Reaver timing (PvP/PvT): the second the player's first Reaver
+			// pops, only when that is before 10:00. Reaver tech is common in
+			// PvP/PvT so this replaces the former "1/2 Gate Reaver" openers with
+			// a timing signal instead of a build order.
+			Name:          "First Reaver",
+			PatternName:   "First Reaver",
+			FeatureKey:    "first_reaver",
+			Kind:          KindMarker,
+			Race:          RaceProtoss,
+			Matchup:       []string{"PvP", "PvT"},
+			Custom:        firstUnitTiming(subjReaver, 600),
+			RuleDeadline:  endOfReplaySentinel,
+			SummaryPlayer: &Pill{Label: "1st Reaver {timestamp}", IconKey: "reaver"},
+			SummaryReplay: &Pill{Label: "1st Reaver {timestamp}", IconKey: "reaver"},
+			GamesList:     &Pill{Label: "1st Reaver {timestamp}", IconKey: "reaver"},
+			EventsList:    &Pill{Label: "trains first Reaver", IconKey: "reaver"},
+		},
+		{
+			// First Corsair timing (PvZ): the second the player's first Corsair
+			// pops, only when before 10:00. Analogous to First Reaver.
+			Name:          "First Corsair",
+			PatternName:   "First Corsair",
+			FeatureKey:    "first_corsair",
+			Kind:          KindMarker,
+			Race:          RaceProtoss,
+			Matchup:       []string{"PvZ"},
+			Custom:        firstUnitTiming(subjCorsair, 600),
+			RuleDeadline:  endOfReplaySentinel,
+			SummaryPlayer: &Pill{Label: "1st Corsair {timestamp}", IconKey: "corsair"},
+			SummaryReplay: &Pill{Label: "1st Corsair {timestamp}", IconKey: "corsair"},
+			GamesList:     &Pill{Label: "1st Corsair {timestamp}", IconKey: "corsair"},
+			EventsList:    &Pill{Label: "trains first Corsair", IconKey: "corsair"},
+		},
+		{
+			// Speedlot timing (PvZ): the second the player starts Zealot leg-speed
+			// (Leg Enhancement) research, only when before 10:00.
+			Name:          "Speedlot timing",
+			PatternName:   "Speedlot timing",
+			FeatureKey:    "speedlot_timing",
+			Kind:          KindMarker,
+			Race:          RaceProtoss,
+			Matchup:       []string{"PvZ"},
+			Custom:        firstUpgradeTiming(subjLegEnhancement, 600),
+			RuleDeadline:  endOfReplaySentinel,
+			SummaryPlayer: &Pill{Label: "Zealot Speed {timestamp}", IconKey: "zealot"},
+			SummaryReplay: &Pill{Label: "Zealot Speed {timestamp}", IconKey: "zealot"},
+			GamesList:     &Pill{Label: "Zealot Speed {timestamp}", IconKey: "zealot"},
+			EventsList:    &Pill{Label: "starts Zealot Speed research", IconKey: "zealot"},
+		},
+		{
+			// Sair/Speedlot composition (PvZ): >=2 Corsairs AND Zealot leg-speed.
+			// The former Sair/Speedlot opener, demoted to a presence-only
+			// composition marker (the opening underneath is FFE / Gate Expand).
+			Name:          "Sair/Speedlot",
+			PatternName:   "Sair/Speedlot",
+			FeatureKey:    "sair_speedlot",
+			Kind:          KindMarker,
+			Race:          RaceProtoss,
+			Matchup:       []string{"PvZ"},
+			Custom:        func() CustomEvaluator { return &sairSpeedlotEvaluator{} },
+			RuleDeadline:  endOfReplaySentinel,
+			SummaryPlayer: &Pill{Label: "Sair/Speedlot", IconKey: "corsair"},
+			SummaryReplay: &Pill{Label: "Sair/Speedlot", IconKey: "corsair"},
+			GamesList:     &Pill{Label: "Sair/Speedlot", IconKey: "corsair"},
 		},
 		{
 			// Muta hit-n-run (#194): Zerg micros a hotkeyed Mutalisk flock in a

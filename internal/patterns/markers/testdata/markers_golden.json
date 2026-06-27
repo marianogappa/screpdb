@@ -461,6 +461,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Reaver",
+        "value": "293"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Made drops",
         "value": "367"
       },
@@ -497,6 +502,11 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 1 Gate Reaver",
         "value": "{\"expert_actuals\":[{\"second\":210,\"found\":true},{\"second\":293,\"found\":true}],\"modifiers\":[\"expand\"]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Reaver",
+        "value": "293"
       },
       {
         "replay_player_id": 0,
@@ -695,6 +705,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Reaver",
+        "value": "434"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Made drops",
         "value": "602"
       },
@@ -731,6 +746,11 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 1 Gate Core",
         "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":72,\"found\":true},{\"second\":95,\"found\":true},{\"second\":114,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Reaver",
+        "value": "408"
       },
       {
         "replay_player_id": 0,
@@ -900,6 +920,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Reaver",
+        "value": "333"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Made drops",
         "value": "401"
       },
@@ -941,6 +966,11 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 2 Gate",
         "value": "{\"expert_actuals\":[{\"second\":51,\"found\":true},{\"second\":75,\"found\":true},{\"second\":90,\"found\":true},{\"second\":117,\"found\":true}],\"modifiers\":[\"proxy\"]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Reaver",
+        "value": "550"
       },
       {
         "replay_player_id": 0,
@@ -998,6 +1028,11 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "First Corsair",
+        "value": "295"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "375"
       },
@@ -1014,6 +1049,11 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: Forge Expand",
         "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":87,\"found\":true},{\"second\":118,\"found\":true},{\"second\":161,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Corsair",
+        "value": "316"
       },
       {
         "replay_player_id": 0,
@@ -1048,6 +1088,11 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: Gate Forge Cannon before expa",
         "value": "{\"expert_actuals\":[{\"second\":80,\"found\":true},{\"second\":128,\"found\":true},{\"second\":165,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Corsair",
+        "value": "281"
       },
       {
         "replay_player_id": 0,
@@ -1325,6 +1370,11 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: Gate Expand",
         "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":72,\"found\":true},{\"second\":158,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Speedlot timing",
+        "value": "381"
       },
       {
         "replay_player_id": 0,
@@ -1744,6 +1794,16 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "First Corsair",
+        "value": "332"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Speedlot timing",
+        "value": "449"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2,3,4,5,6,7]}"
       },
@@ -1803,6 +1863,11 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "First Corsair",
+        "value": "316"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Never researched",
         "value": "624"
       },
@@ -1834,6 +1899,21 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: Forge Expand",
         "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":87,\"found\":true},{\"second\":142,\"found\":true},{\"second\":129,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Corsair",
+        "value": "323"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Sair/Speedlot",
+        "value": "426"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Speedlot timing",
+        "value": "335"
       },
       {
         "replay_player_id": 1,
@@ -1871,6 +1951,21 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "First Corsair",
+        "value": "309"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Sair/Speedlot",
+        "value": "331"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Speedlot timing",
+        "value": "331"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
@@ -1887,6 +1982,21 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: Forge Expand",
         "value": "{\"expert_actuals\":[{\"second\":49,\"found\":true},{\"second\":87,\"found\":true},{\"second\":148,\"found\":true},{\"second\":219,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Corsair",
+        "value": "373"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Sair/Speedlot",
+        "value": "543"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Speedlot timing",
+        "value": "543"
       },
       {
         "replay_player_id": 0,
@@ -1946,6 +2056,21 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: Gate Forge Cannon before expa",
         "value": "{\"expert_actuals\":[{\"second\":70,\"found\":true},{\"second\":123,\"found\":true},{\"second\":153,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Corsair",
+        "value": "315"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Sair/Speedlot",
+        "value": "575"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Speedlot timing",
+        "value": "575"
       },
       {
         "replay_player_id": 1,
@@ -2012,6 +2137,11 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "First Reaver",
+        "value": "400"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Made drops",
         "value": "507"
       },
@@ -2033,6 +2163,21 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: Gate Expand",
         "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":70,\"found\":true},{\"second\":179,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Corsair",
+        "value": "364"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Sair/Speedlot",
+        "value": "410"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Speedlot timing",
+        "value": "410"
       },
       {
         "replay_player_id": 0,
@@ -2087,6 +2232,11 @@
         "replay_player_id": 1,
         "pattern_name": "Carriers",
         "value": "1382"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Reaver",
+        "value": "530"
       },
       {
         "replay_player_id": 1,
@@ -2331,6 +2481,11 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "First Reaver",
+        "value": "351"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Made drops",
         "value": "482"
       },
@@ -2420,6 +2575,11 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: Nexus First",
         "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":105,\"found\":true},{\"second\":125,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Reaver",
+        "value": "497"
       },
       {
         "replay_player_id": 1,
