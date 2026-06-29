@@ -120,7 +120,7 @@ the ✗ rows above can be promoted to tier-1.
   complete too late to have repaid their cost by the Hatch frame). Touches the core
   economy sim that gates every build order → needs a dedicated pass + full fixture
   regression.
-- A clean unambiguous **13 Hatch** fixture (the rung exists but is uncurated/beta).
+- ~~A clean unambiguous **13 Hatch** fixture~~ — done: `bo_z_13hatch_llllII` (curated).
 - **Eliminate the `Pool/Hatch (Other)` residual:** deferred until the
   dropped-drone case is fixed (removing it now would send that game to
   `Opener unresolved`).

@@ -3406,6 +3406,60 @@
       }
     ]
   },
+  "bo_z_13hatch_llllII.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Gate Expand",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":70,\"found\":true},{\"second\":163,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Corsair",
+        "value": "323"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "1038"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Sair/Speedlot",
+        "value": "397"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Speedlot timing",
+        "value": "397"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":36.3716814159292}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 13 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":131,\"found\":true},{\"found\":false}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":29.734513274336283}"
+      }
+    ]
+  },
   "bo_z_3hatchmuta_chillibeans.rep": {
     "detections": [
       {

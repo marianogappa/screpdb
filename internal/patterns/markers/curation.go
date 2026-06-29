@@ -28,9 +28,7 @@ var curatedFeatureKeys = map[string]bool{
 	"bo_5_pool":     true,
 	"bo_11_pool":    true,
 	"bo_9_hatch":    true,
-	// bo_13_hatch is a real rung but has no unambiguous human-verified fixture
-	// yet (its candidate, Foreigner70, turned out to be a fuzzy ~12/~13) — left
-	// uncurated (beta) until a clean 13 Hatch example surfaces.
+	"bo_13_hatch":   true, // fixture bo_z_13hatch_llllII (clean, unambiguous)
 
 	// Round 8 — 3 Hatch Muta composition marker (converted from a BO opener);
 	// fixtures bo_z_3hatchmuta_chillibeans (12 Hatch) / _llIIll (11 Hatch).
