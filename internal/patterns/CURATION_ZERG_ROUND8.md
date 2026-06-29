@@ -101,16 +101,24 @@ the ✗ rows above can be promoted to tier-1.
 edge-case games below still misclassifying, removing the residual would push them
 to `Opener unresolved`. Revisit after the edge cases are resolved.
 
-**Still ✗ (each a distinct, deeper bug — not yet fixed):**
-- `BBBuuuUU[kS]` (MM-DEBFBBFE) → 10 Pool. Multi-larva over-count: the Drone
-  morph @0:44 has selection-count 2 (`earlyfilter/sim.go` `producedCount`), so 6
-  drones before pool. Human saw 5. Needs larva-sim accuracy work.
-- `lIlIlllIIlIlll` (MM-132913C2) → 4 Hatch. The player's early Drone morphs are
-  absent from the filtered stream (0 drones before the hatch); truth is 9 Hatch.
-  Needs investigation (filter drop or replay quirk).
-- `LYX2008` (MM-5639B7E6) → Pool/Hatch (Other). Truth 12 Hatch; likely an
-  off-by-one drone count or the missing 13 Hatch rung.
-- `Foreigner70` (MM-93F6E4B8) → Pool/Hatch (Other). Needs the new 13 Hatch rung.
+**Still ✗ — human re-confirmed truth (screenshots), root-caused, not yet fixed:**
+- `BBBuuuUU[kS]` (MM-DEBFBBFE) → 10 Pool; truth **9 Overpool**.
+- `LYX2008` (MM-5639B7E6) → 13 Hatch; truth **12 Hatch**.
+  Both are the SAME multi-larva over-count: `internal/unittags/morphcount.go`
+  `MorphSelectionSizes` records `len(s.cur)` (the whole current selection) as the
+  morph count, not the number of *larvae* in the selection. When a larva is
+  selected alongside any non-larva unit (a Drone, the Hatchery) and morphed, only
+  the larva becomes a Drone but it's counted as 2 → +1 supply before the
+  Pool/Hatch. Secondary: `earlyfilter/sim.go` `consumeLarva()` drains only 1 larva
+  per morph regardless of how many were produced.
+  FIX (focused, regression-risky): count only larvae in the morph selection —
+  needs per-tag unit-type tracking; must NOT re-introduce the multi-larva
+  UNDER-count this code originally fixed (11 Hatch→10). Re-validate all curated
+  Zerg fixtures.
+- `lIlIlllIIlIlll` (MM-132913C2) → 4 Hatch; truth **9 Hatch**. DIFFERENT bug: the
+  player's early Drone morphs are absent from the filtered stream (0 drones before
+  the hatch). Needs early-filter drop-reason investigation (the SCREPDB_EARLY_
+  FILTER_DEBUG_DIR trace).
 
 **Structural changes still TODO:** add 13 Hatch rung; convert 3 Hatch Muta to a
 marker; drop the Pool/Hatch (Other) residual; promote confirmed games to tier-1
