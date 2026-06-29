@@ -197,6 +197,49 @@ energy-less cast can set the time slightly before the visible action.
 
 The opponent's BO in each is tier-2.
 
+Zerg pool/hatch openers (round 8, issues #222/#223/#224). Non-mirror ladder
+replays, each watched and confirmed; the verified premise is the Zerg player's
+opener. Several were promoted alongside the supply-count fix (drones counted by
+game-second relative to the building, not observation order) and the new 13 Hatch
+rung.
+
+| Fixture | Zerg player must classify as |
+| --- | --- |
+| `bo_z_9pool_gaemalline` | `9 Pool` |
+| `bo_z_9overpool_mentalgap`, `bo_z_9overpool_utataneleina` | `9 Overpool` (5 Drones + Overlord before Pool; utataneleina guards the dedup-ordering fix — a 6th Drone 2s after the Pool used to inflate it to 10 Pool) |
+| `bo_z_12pool_hommage88` | `12 Pool` |
+| `bo_z_4pool_iiilil` | `4 Pool` |
+| `bo_z_5pool_eulsann` | `5 Pool` |
+| `bo_z_11pool_lototete` | `11 Pool` |
+| `bo_z_9hatch_3050kzerg` | `9 Hatch` |
+| `bo_z_13hatch_llllII` | `13 Hatch` (the new rung; clean unambiguous count) |
+
+The opponent's BO in each fixture is tier-2.
+
+**Fuzzy openers (indeterminate supply rung).** A Drone morph that selects more
+than one unit before the Pool/Hatchery makes the exact drone count unknowable
+from the replay (selection size ≠ larvae morphed), so the opener is labelled
+`~N Pool/Overpool/Hatch` at the floor instead of an exact rung. Human-confirmed
+fixtures (the premise is the fuzzy `Build Order: Zerg opening (approximate)`
+marker with the noted label):
+
+| Fixture | Premise |
+| --- | --- |
+| `bo_z_fuzzy_overpool_bbbuuu` | `~9 Overpool` (watched: 9 Overpool; exact floor + type) |
+| `bo_z_fuzzy_lllji` | `~11 Hatch` (watched: 12-13 Hatch — genuinely too close to tell) |
+| `bo_z_fuzzy_foreigner70` | `~12 Hatch` (watched: 13 Hatch; floor is one below) |
+
+The `~N` floor can read one supply below the human's eyeball count — that gap is
+the inherent ambiguity, which is why these are fuzzy rather than exact. The
+missing-drone replay (`lIlIlllIIlIlll`, true 9 Hatch) is logged in
+`CURATION_ZERG_ROUND8.md`, not yet fixed.
+
+3 Hatch Muta was reclassified from a build-order opener to a TvZ composition
+marker (`three_hatch_muta`); the opener underneath now surfaces. Fixtures
+`bo_z_3hatchmuta_chillibeans` (Zerg = `12 Hatch` + `3 Hatch Muta`) and
+`bo_z_3hatchmuta_llIIll` (Zerg = `11 Hatch` + `3 Hatch Muta`) are the protected
+premise: the player must carry both the hatch opener and the 3 Hatch Muta marker.
+
 ### Cliff-drop detection — `drops_golden.json`
 
 Each fixture below was confirmed by watching the replay. The premise is the

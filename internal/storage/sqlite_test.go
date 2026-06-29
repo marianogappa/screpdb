@@ -116,7 +116,10 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		// the ingested Protoss games — First Reaver/Corsair, Speedlot timing,
 		// Sair/Speedlot and manner_pylon markers, plus the first_reaver/
 		// first_corsair/speedlot/manner_pylon timeline game_events.
-		"replay_events": 214,
+		// Then +1 (round 8): 3 Hatch Muta is now a composition marker that fires
+		// on top of the hatch opener, adding one marker row on the ingested
+		// 3-Hatch-Muta game.
+		"replay_events": 215,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {

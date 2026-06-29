@@ -515,21 +515,21 @@ func allMarkers() []Marker {
 			// 3 Hatch Muta (ZvT): muta-first (Spire before any Hydralisk Den)
 			// off a 3-base opening — 2 expansion Hatcheries placed before the
 			// Spire. The defining modern ZvT macro-muta build.
-			Name: "3 Hatch Muta", PatternName: InitialBuildOrderPatternNamePrefix + "3 Hatch Muta", FeatureKey: "bo_z_3hatch_muta",
-			Race: RaceZerg, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvZ"},
+			// Composition MARKER (not an opener): the opener underneath is a
+			// hatch-first rung (11/12 Hatch). 3 Hatch Muta describes the
+			// post-opening macro-muta tech off a 3-base opening, so it layers on
+			// top rather than occupying the opener slot.
+			Name: "3 Hatch Muta", PatternName: "3 Hatch Muta", FeatureKey: "three_hatch_muta",
+			Race: RaceZerg, Kind: KindMarker, Matchup: []string{"TvZ"},
 			Rule: All(
 				BuildBefore(subjSpire, subjHydraliskDen),                     // muta-first: Spire before any Den
 				ProduceCountAtLeast(subjMutalisk, 4),                         // it's a muta build, not just a Spire
 				CountBuildsBefore(subjHatchery, 2, zergOpeningHatchDeadline), // 3 bases (2 expansions)
 			),
-			RuleDeadline: 600,
-			// Expert targets: medians across the cwal-dl corpus's detected games
-			// (issue #182), tolerances ~ the observed spread.
-			Expert: []ExpertEvent{
-				{Key: "Spire", Match: MatchBuild(subjSpire), TargetSecond: 240, Tolerance: Asym(30, 80)},
-				{Key: "First Mutalisks", Match: MatchFirstProduce(subjMutalisk), TargetSecond: 320, Tolerance: Asym(40, 90)},
-			},
-			SummaryPlayer: mkPill("3 Hatch Muta", "mutalisk"), GamesList: mkPill("3 Hatch Muta", "mutalisk"),
+			RuleDeadline:  600,
+			SummaryPlayer: mkPill("3 Hatch Muta", "mutalisk"),
+			SummaryReplay: mkPill("3 Hatch Muta", "mutalisk"),
+			GamesList:     mkPill("3 Hatch Muta", "mutalisk"),
 		},
 		{
 			// 2 Hatch Muta (ZvT): muta-first off a 2-base opening — fewer than 2
@@ -1088,6 +1088,55 @@ func allMarkers() []Marker {
 			},
 			SummaryPlayer: &Pill{Label: "12 Hatch", IconKey: "hatchery"},
 			GamesList:     &Pill{Label: "12 Hatch", IconKey: "hatchery"},
+		},
+		{
+			Name:        "13 Hatch",
+			PatternName: "Build Order: 13 Hatch",
+			FeatureKey:  "bo_13_hatch",
+			Race:        RaceZerg,
+			Kind:        KindInitialBuildOrder,
+			Rule: All(
+				ProduceCountBeforeBuild(subjDrone, subjHatchery, 9),
+				ProduceCountBeforeBuild(subjOverlord, subjHatchery, 1),
+				Not(BuildBefore(subjSpawningPool, subjHatchery)),
+				Not(BuildBefore(subjEvolutionChamber, subjHatchery)),
+			),
+			RuleDeadline: 180,
+			Expert: []ExpertEvent{
+				{
+					Key:          "Hatchery",
+					Match:        MatchBuild(subjHatchery),
+					TargetSecond: 104,
+					Tolerance:    defaultTol,
+				},
+				{
+					Key:          "Spawning Pool",
+					Match:        MatchBuild(subjSpawningPool),
+					TargetSecond: 122,
+					Tolerance:    Asym(3, 10),
+				},
+			},
+			SummaryPlayer: &Pill{Label: "13 Hatch", IconKey: "hatchery"},
+			GamesList:     &Pill{Label: "13 Hatch", IconKey: "hatchery"},
+		},
+		{
+			// Fuzzy Zerg opener: a clean pool/hatch opening whose exact supply
+			// rung is indeterminate because a multi-unit-selection Drone morph
+			// before the building makes the count ambiguous (the replay records
+			// selection size, not how many were larvae). Labelled "~N Pool /
+			// Overpool / Hatch" at the floor. Fires only when no exact rung does
+			// (each rung requires an unambiguous count), so it never competes
+			// with them; TierBackup wins over the generic residual.
+			Name:          "Zerg opening (approximate)",
+			PatternName:   "Build Order: Zerg opening (approximate)",
+			FeatureKey:    "bo_z_fuzzy",
+			Race:          RaceZerg,
+			Kind:          KindInitialBuildOrder,
+			Tier:          TierBackup,
+			Custom:        func() CustomEvaluator { return newZergOpenerFuzzyEvaluator() },
+			RuleDeadline:  180,
+			SummaryPlayer: &Pill{Label: "{subject}", IconKey: "drone", Subject: PayloadFieldSubject("label")},
+			GamesList:     &Pill{Label: "{subject}", IconKey: "drone", Subject: PayloadFieldSubject("label")},
 		},
 		// -------------------------------------------------------------------
 		// Protoss openers (matchup-gated). Sourced from a 3000-replay

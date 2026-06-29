@@ -169,7 +169,26 @@ import (
 // cmdenrich KindLayMine fact for the PlaceMine / VultureMine orders. Dashboard
 // also gained a "beta" tag on uncurated markers (hotkey markers exempt). Re-ingest
 // so the new markers and pills surface.
-const AlgorithmVersion = 46
+//
+// 47: Zerg pool/hatch supply-count fix. ProduceCountBeforeBuild now counts
+// produces by their game-second relative to the building, not by observation
+// order — the build-dedup tail (player_marker.go) held a Build fact for a few
+// seconds, during which a unit morphed just after the building was miscounted
+// as before it (a Drone morphed 2s after a 9-supply Pool inflated 9 Overpool
+// into 10 Pool). Re-ingest so Zerg openers re-classify correctly.
+//
+// 48: add the 13 Hatch hatch-first rung (9 Drone morphs + Overlord before the
+// expansion Hatchery) — previously fell into the Pool/Hatch (Other) residual.
+//
+// 49: 3 Hatch Muta converted from a build-order opener to a TvZ composition
+// marker (key three_hatch_muta) so the hatch-first opener underneath (11/12
+// Hatch) surfaces on its own.
+//
+// 50: fuzzy Zerg opener (bo_z_fuzzy). When a multi-unit-selection Drone morph
+// before the Pool/Hatchery makes the supply rung indeterminate, exact rungs no
+// longer fire (they require an unambiguous count) and a "~N Pool/Overpool/Hatch"
+// label is emitted at the floor instead.
+const AlgorithmVersion = 50
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

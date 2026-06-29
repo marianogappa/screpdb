@@ -19,6 +19,25 @@ var curatedFeatureKeys = map[string]bool{
 	"bo_z_2hatch_muta":   true,
 	"bo_z_3hatch_lurker": true,
 	"bo_z_2hatch_hydra":  true,
+	// Round 8 (Zerg pool/hatch openers, issues #222/#223/#224) — fixtures
+	// bo_z_*pool_*/bo_z_*hatch_* watched & confirmed.
+	"bo_9_pool":     true,
+	"bo_9_overpool": true,
+	"bo_12_pool":    true,
+	"bo_4_pool":     true,
+	"bo_5_pool":     true,
+	"bo_11_pool":    true,
+	"bo_9_hatch":    true,
+	"bo_13_hatch":   true, // fixture bo_z_13hatch_llllII (clean, unambiguous)
+
+	// Round 8 — 3 Hatch Muta composition marker (converted from a BO opener);
+	// fixtures bo_z_3hatchmuta_chillibeans (12 Hatch) / _llIIll (11 Hatch).
+	"three_hatch_muta": true,
+
+	// Round 8 — fuzzy Zerg opener (supply rung indeterminate from a multi-larva
+	// morph). Fixtures bo_z_fuzzy_lllji (~11 Hatch), bo_z_fuzzy_foreigner70
+	// (~12 Hatch), bo_z_fuzzy_overpool_bbbuuu (~9 Overpool).
+	"bo_z_fuzzy": true,
 	// Round 3 (Protoss/Terran).
 	"bo_t_factory_expand": true,
 	"bo_cc_first":         true,
