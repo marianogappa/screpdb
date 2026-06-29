@@ -83,3 +83,27 @@ Fix touches the shared dedup/counting path used by **every** build order →
 requires live-predicate instrumentation and a full re-validation of the existing
 curated Zerg fixtures (11/12 Hatch, 11 Pool, 2H Muta, 3H Lurker, 9 Pool) before
 the ✗ rows above can be promoted to tier-1.
+
+## Progress
+
+**Landed (commit "count produces by game-second before the build"):** the
+observation-ordering fix. Only 2 existing fixtures shifted, both tier-2
+(`bo_bunker_simcity_bgh_fp` P7 11 Pool→9 Overpool — same bug corrected;
+`bo_ccfirst_illill` P0 residual→12 Hatch). No tier-1 premise regressed.
+Resolved candidates: mentalgap & UtataneLeina → 9 Overpool ✓, lillljilililili
+→ 12 Hatch ✓.
+
+**Still ✗ (each a distinct, deeper bug — not yet fixed):**
+- `BBBuuuUU[kS]` (MM-DEBFBBFE) → 10 Pool. Multi-larva over-count: the Drone
+  morph @0:44 has selection-count 2 (`earlyfilter/sim.go` `producedCount`), so 6
+  drones before pool. Human saw 5. Needs larva-sim accuracy work.
+- `lIlIlllIIlIlll` (MM-132913C2) → 4 Hatch. The player's early Drone morphs are
+  absent from the filtered stream (0 drones before the hatch); truth is 9 Hatch.
+  Needs investigation (filter drop or replay quirk).
+- `LYX2008` (MM-5639B7E6) → Pool/Hatch (Other). Truth 12 Hatch; likely an
+  off-by-one drone count or the missing 13 Hatch rung.
+- `Foreigner70` (MM-93F6E4B8) → Pool/Hatch (Other). Needs the new 13 Hatch rung.
+
+**Structural changes still TODO:** add 13 Hatch rung; convert 3 Hatch Muta to a
+marker; drop the Pool/Hatch (Other) residual; promote confirmed games to tier-1
+fixtures + `curatedFeatureKeys` + GOLDEN_TIERS rows.
