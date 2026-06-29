@@ -97,6 +97,7 @@ var staticFeaturingOrder = []string{
 	"bo_11_hatch",
 	"bo_12_hatch",
 	"bo_13_hatch",
+	"bo_z_fuzzy",
 	// Preferred Zerg tech-pathway openers (issue #182) — listed before the broad
 	// rungs so they read first; tiering means only one ever fires per player.
 	"three_hatch_muta",

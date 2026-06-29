@@ -657,13 +657,21 @@ func (s *produceCountBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
 		}
 	case cmdenrich.KindMakeBuilding:
 		if f.Subject == s.ref {
-			count := 0
+			// minCount counts each morph as 1 (its guaranteed floor); maxCount
+			// sums the capped selection size. They differ only when a
+			// multi-larva morph before the building makes the true count
+			// indeterminate (we can't tell from the replay how many selected
+			// units were larvae). An exact rung matches only when the count is
+			// unambiguous; ambiguous counts are picked up by the fuzzy
+			// zergOpenerFuzzyEvaluator instead.
+			minCount, maxCount := 0, 0
 			for _, p := range s.produces {
 				if p.second < f.Second {
-					count += p.count
+					minCount++
+					maxCount += p.count
 				}
 			}
-			if count == s.want {
+			if s.want == minCount && s.want == maxCount {
 				s.done = Matched
 			} else {
 				s.done = Rejected

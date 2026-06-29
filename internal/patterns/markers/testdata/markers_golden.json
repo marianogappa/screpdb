@@ -8,8 +8,8 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 12 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":117,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
       },
       {
         "replay_player_id": 0,
@@ -67,8 +67,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 11 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":93,\"found\":true},{\"second\":113,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Hatch\"}"
       },
       {
         "replay_player_id": 0,
@@ -101,8 +101,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 11 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":100,\"found\":true},{\"second\":116,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Hatch\"}"
       },
       {
         "replay_player_id": 0,
@@ -140,8 +140,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 11 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":95,\"found\":true},{\"second\":114,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Hatch\"}"
       },
       {
         "replay_player_id": 0,
@@ -189,8 +189,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 11 Pool",
-        "value": "{\"expert_actuals\":[{\"second\":82,\"found\":true},{\"second\":135,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Overpool\"}"
       },
       {
         "replay_player_id": 1,
@@ -208,8 +208,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 11 Pool",
-        "value": "{\"expert_actuals\":[{\"second\":82,\"found\":true},{\"second\":134,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Overpool\"}"
       },
       {
         "replay_player_id": 0,
@@ -247,8 +247,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 11 Pool",
-        "value": "{\"expert_actuals\":[{\"second\":83,\"found\":true},{\"second\":136,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Overpool\"}"
       },
       {
         "replay_player_id": 1,
@@ -325,8 +325,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 12 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":102,\"found\":true},{\"second\":124,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
       },
       {
         "replay_player_id": 1,
@@ -349,8 +349,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 12 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":98,\"found\":true},{\"second\":116,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
       },
       {
         "replay_player_id": 0,
@@ -383,8 +383,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 12 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":101,\"found\":true},{\"second\":115,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
       },
       {
         "replay_player_id": 0,
@@ -1602,8 +1602,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 11 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":92,\"found\":true},{\"second\":110,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Hatch\"}"
       },
       {
         "replay_player_id": 0,
@@ -1656,8 +1656,8 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 12 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":116,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
       },
       {
         "replay_player_id": 0,
@@ -1750,8 +1750,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 12 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":98,\"found\":true},{\"second\":117,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
       },
       {
         "replay_player_id": 1,
@@ -2210,8 +2210,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 11 Pool",
-        "value": "{\"expert_actuals\":[{\"second\":83,\"found\":true},{\"second\":136,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Overpool\"}"
       },
       {
         "replay_player_id": 1,
@@ -2229,8 +2229,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 12 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":101,\"found\":true},{\"second\":115,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
       },
       {
         "replay_player_id": 0,
@@ -2268,8 +2268,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 12 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":102,\"found\":true},{\"second\":121,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
       },
       {
         "replay_player_id": 0,
@@ -2669,8 +2669,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 11 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":92,\"found\":true},{\"second\":110,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Hatch\"}"
       },
       {
         "replay_player_id": 1,
@@ -2899,8 +2899,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 12 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":106,\"found\":true},{\"second\":122,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
       },
       {
         "replay_player_id": 1,
@@ -2928,8 +2928,8 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 11 Pool",
-        "value": "{\"expert_actuals\":[{\"second\":83,\"found\":true},{\"second\":160,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Overpool\"}"
       },
       {
         "replay_player_id": 0,
@@ -2992,8 +2992,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 12 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":98,\"found\":true},{\"second\":115,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
       },
       {
         "replay_player_id": 1,
@@ -3273,8 +3273,8 @@
       },
       {
         "replay_player_id": 7,
-        "pattern_name": "Build Order: 12 Pool",
-        "value": "{\"expert_actuals\":[{\"second\":94,\"found\":true},{\"second\":177,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Overpool\"}"
       },
       {
         "replay_player_id": 7,
@@ -3332,8 +3332,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 11 Pool",
-        "value": "{\"expert_actuals\":[{\"second\":88,\"found\":true},{\"found\":false}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Overpool\"}"
       },
       {
         "replay_player_id": 1,
@@ -3354,65 +3354,6 @@
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":13.061224489795917}"
-      }
-    ]
-  },
-  "bo_z_12hatch_lllji.rep": {
-    "detections": [
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Build Order: 2 Port Wraith",
-        "value": "{\"expert_actuals\":[{\"second\":204,\"found\":true},{\"second\":508,\"found\":true},{\"second\":251,\"found\":true}],\"modifiers\":[\"proxy\"]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Made drops",
-        "value": "586"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Turret timing",
-        "value": "{\"ebay_cmd\":386,\"first_turret_cmd\":429,\"turret_burst_count\":7,\"turret_finished\":448}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":14.311926605504587}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Wraith Cloak timing",
-        "value": "372"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Wraiths",
-        "value": "333"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Build Order: 12 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":109,\"found\":true},{\"second\":133,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Mutalisk timing",
-        "value": "{\"first_muta_cmd\":421,\"muta_burst_count\":8,\"mutalisk_finished\":446,\"spire_cmd\":308}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":41.42201834862385}"
       }
     ]
   },
@@ -3450,8 +3391,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 12 Pool",
-        "value": "{\"expert_actuals\":[{\"second\":93,\"found\":true},{\"second\":146,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Overpool\"}"
       },
       {
         "replay_player_id": 1,
@@ -3462,55 +3403,6 @@
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":17.88}"
-      }
-    ]
-  },
-  "bo_z_13hatch_foreigner70.rep": {
-    "detections": [
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Build Order: Nexus First",
-        "value": "{\"expert_actuals\":[{\"second\":50,\"found\":true},{\"second\":112,\"found\":true},{\"second\":128,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "First Corsair",
-        "value": "334"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Sair/Speedlot",
-        "value": "365"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Speedlot timing",
-        "value": "355"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":13.739495798319327}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Build Order: 13 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":116,\"found\":true},{\"second\":128,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":21.932773109243698}"
       }
     ]
   },
@@ -3548,8 +3440,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 12 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":96,\"found\":true},{\"second\":115,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
       },
       {
         "replay_player_id": 1,
@@ -3582,8 +3474,8 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 11 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":92,\"found\":true},{\"second\":111,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Hatch\"}"
       },
       {
         "replay_player_id": 0,
@@ -3896,6 +3788,163 @@
       }
     ]
   },
+  "bo_z_fuzzy_foreigner70.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":50,\"found\":true},{\"second\":112,\"found\":true},{\"second\":128,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Corsair",
+        "value": "334"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Sair/Speedlot",
+        "value": "365"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Speedlot timing",
+        "value": "355"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":13.739495798319327}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~12 Hatch\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":21.932773109243698}"
+      }
+    ]
+  },
+  "bo_z_fuzzy_lllji.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2 Port Wraith",
+        "value": "{\"expert_actuals\":[{\"second\":204,\"found\":true},{\"second\":508,\"found\":true},{\"second\":251,\"found\":true}],\"modifiers\":[\"proxy\"]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "586"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":386,\"first_turret_cmd\":429,\"turret_burst_count\":7,\"turret_finished\":448}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":14.311926605504587}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraith Cloak timing",
+        "value": "372"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraiths",
+        "value": "333"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":421,\"muta_burst_count\":8,\"mutalisk_finished\":446,\"spire_cmd\":308}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":41.42201834862385}"
+      }
+    ]
+  },
+  "bo_z_fuzzy_overpool_bbbuuu.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Forge Expand",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":97,\"found\":true},{\"second\":145,\"found\":true},{\"second\":129,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Corsair",
+        "value": "379"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Sair/Speedlot",
+        "value": "442"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Speedlot timing",
+        "value": "442"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":11.929824561403509}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~9 Overpool\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":15.263157894736842}"
+      }
+    ]
+  },
   "carriers_recalls.rep": {
     "detections": [
       {
@@ -3994,8 +4043,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 11 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":103,\"found\":true},{\"second\":116,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Hatch\"}"
       },
       {
         "replay_player_id": 1,
@@ -4233,8 +4282,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 12 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":98,\"found\":true},{\"second\":115,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
       },
       {
         "replay_player_id": 1,

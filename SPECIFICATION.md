@@ -659,6 +659,7 @@ Each opener's detector commits its decision once the replay passes this second �
 | Nexus First | Protoss | 200 |
 | Pool/Hatch (Other) | Zerg | 240 |
 | Terran (Other) | Terran | 600 |
+| Zerg opening (approximate) | Zerg | 180 |
 
 ## Absence-marker game-length thresholds
 
@@ -690,7 +691,7 @@ Standalone constants the detectors depend on — dedup windows, muta/turret burs
 
 | Constant | Value | Meaning |
 | --- | --- | --- |
-| Algorithm version | 49 | Detection algorithm revision; incremented to trigger re-detection. |
+| Algorithm version | 50 | Detection algorithm revision; incremented to trigger re-detection. |
 | Build dedup gap (s) | 3 | Repeat Build orders of the same building at the same tile, closer than this, are one event (double-tap / misclick); different-tile placements are kept. |
 | Build dedup max second (s) | 240 | Past this second, dedup stops and every Build is observed as-is (a tile can be legitimately rebuilt on later). |
 | Mutalisk burst window (s) | 30 | Window within which the Mutalisk morphs must cluster. |
@@ -819,46 +820,47 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 | 22 | bo_11_hatch |
 | 23 | bo_12_hatch |
 | 24 | bo_13_hatch |
-| 25 | three_hatch_muta |
-| 26 | bo_z_2hatch_muta |
-| 27 | bo_z_3hatch_lurker |
-| 28 | bo_z_2hatch_hydra |
-| 29 | bo_2_gate |
-| 30 | bo_1_gate_core |
-| 31 | bo_nexus_first |
-| 32 | bo_gate_expand |
-| 33 | bo_forge_expa |
-| 34 | bo_p_1gate_reaver |
-| 35 | bo_p_gate_forge_cannon |
-| 36 | bo_p_forge_cannon_gate |
-| 37 | bo_p_forge_gate_cannon |
-| 38 | bo_bbs |
-| 39 | bo_cc_first |
-| 40 | bo_t_goliath |
-| 41 | bo_t_bio_1base |
-| 42 | bo_t_bio_2base |
-| 43 | bo_t_111_mech |
-| 44 | bo_t_mech_2fac |
-| 45 | bo_t_mech_3fac |
-| 46 | bo_t_mech_4fac |
-| 47 | bo_t_mech_5fac |
-| 48 | bo_t_mech_6fac |
-| 49 | bo_t_tankless_2fac |
-| 50 | bo_t_tankless_3fac |
-| 51 | bo_t_tankless_4fac |
-| 52 | bo_t_tankless_5fac |
-| 53 | bo_t_tankless_6fac |
-| 54 | bo_t_111 |
-| 55 | bo_t_factory_expand |
-| 56 | bo_t_2port_wraith |
-| 57 | bo_t_2fact_expa |
-| 58 | double_stargate |
-| 59 | crazy_zerg |
-| 60 | guardians |
-| 61 | carriers |
-| 62 | battlecruisers |
-| 63 | ten_plus_scouts |
-| 64 | cliff_drop |
+| 25 | bo_z_fuzzy |
+| 26 | three_hatch_muta |
+| 27 | bo_z_2hatch_muta |
+| 28 | bo_z_3hatch_lurker |
+| 29 | bo_z_2hatch_hydra |
+| 30 | bo_2_gate |
+| 31 | bo_1_gate_core |
+| 32 | bo_nexus_first |
+| 33 | bo_gate_expand |
+| 34 | bo_forge_expa |
+| 35 | bo_p_1gate_reaver |
+| 36 | bo_p_gate_forge_cannon |
+| 37 | bo_p_forge_cannon_gate |
+| 38 | bo_p_forge_gate_cannon |
+| 39 | bo_bbs |
+| 40 | bo_cc_first |
+| 41 | bo_t_goliath |
+| 42 | bo_t_bio_1base |
+| 43 | bo_t_bio_2base |
+| 44 | bo_t_111_mech |
+| 45 | bo_t_mech_2fac |
+| 46 | bo_t_mech_3fac |
+| 47 | bo_t_mech_4fac |
+| 48 | bo_t_mech_5fac |
+| 49 | bo_t_mech_6fac |
+| 50 | bo_t_tankless_2fac |
+| 51 | bo_t_tankless_3fac |
+| 52 | bo_t_tankless_4fac |
+| 53 | bo_t_tankless_5fac |
+| 54 | bo_t_tankless_6fac |
+| 55 | bo_t_111 |
+| 56 | bo_t_factory_expand |
+| 57 | bo_t_2port_wraith |
+| 58 | bo_t_2fact_expa |
+| 59 | double_stargate |
+| 60 | crazy_zerg |
+| 61 | guardians |
+| 62 | carriers |
+| 63 | battlecruisers |
+| 64 | ten_plus_scouts |
+| 65 | cliff_drop |
 
 ## Game-event featuring chips
 

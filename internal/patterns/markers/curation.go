@@ -28,11 +28,18 @@ var curatedFeatureKeys = map[string]bool{
 	"bo_5_pool":     true,
 	"bo_11_pool":    true,
 	"bo_9_hatch":    true,
-	"bo_13_hatch":   true,
+	// bo_13_hatch is a real rung but has no unambiguous human-verified fixture
+	// yet (its candidate, Foreigner70, turned out to be a fuzzy ~12/~13) — left
+	// uncurated (beta) until a clean 13 Hatch example surfaces.
 
 	// Round 8 — 3 Hatch Muta composition marker (converted from a BO opener);
 	// fixtures bo_z_3hatchmuta_chillibeans (12 Hatch) / _llIIll (11 Hatch).
 	"three_hatch_muta": true,
+
+	// Round 8 — fuzzy Zerg opener (supply rung indeterminate from a multi-larva
+	// morph). Fixtures bo_z_fuzzy_lllji (~11 Hatch), bo_z_fuzzy_foreigner70
+	// (~12 Hatch), bo_z_fuzzy_overpool_bbbuuu (~9 Overpool).
+	"bo_z_fuzzy": true,
 	// Round 3 (Protoss/Terran).
 	"bo_t_factory_expand": true,
 	"bo_cc_first":         true,

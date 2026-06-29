@@ -97,9 +97,19 @@ the ✗ rows above can be promoted to tier-1.
   (`three_hatch_muta`); the hatch opener surfaces underneath (chillibeans/eezxcq1
   → 12 Hatch, llIIll → 11 Hatch). Promoted 2 fixtures; marked curated.
 
-**Not done — eliminate the `Pool/Hatch (Other)` residual:** deferred. With the
-edge-case games below still misclassifying, removing the residual would push them
-to `Opener unresolved`. Revisit after the edge cases are resolved.
+- **Fuzzy opener** (`bo_z_fuzzy`) — resolves the multi-larva ambiguity: when a
+  multi-unit-selection Drone morph before the building makes the count
+  indeterminate, exact rungs no longer fire and a `~N Pool/Overpool/Hatch` label
+  is emitted at the floor. BBBuuuUU → `~9 Overpool` ✓, LYX2008 → `~11 Hatch`,
+  plus the two "too close to tell" fixtures (lllji `~11`, foreigner70 `~12`).
+
+**Still open:**
+- `lIlIlllIIlIlll` → 4 Hatch (truth 9 Hatch): dropped-drone bug, NOT ambiguity —
+  the fuzzy opener doesn't help. Needs the early-filter drop-reason trace.
+- A clean unambiguous **13 Hatch** fixture (the rung exists but is uncurated/beta).
+- **Eliminate the `Pool/Hatch (Other)` residual:** deferred until the
+  dropped-drone case is fixed (removing it now would send that game to
+  `Opener unresolved`).
 
 **Still ✗ — human re-confirmed truth (screenshots), root-caused, not yet fixed:**
 - `BBBuuuUU[kS]` (MM-DEBFBBFE) → 10 Pool; truth **9 Overpool**.

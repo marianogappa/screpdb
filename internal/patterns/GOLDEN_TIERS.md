@@ -212,12 +212,27 @@ rung.
 | `bo_z_5pool_eulsann` | `5 Pool` |
 | `bo_z_11pool_lototete` | `11 Pool` |
 | `bo_z_9hatch_3050kzerg` | `9 Hatch` |
-| `bo_z_12hatch_lllji` | `12 Hatch` |
-| `bo_z_13hatch_foreigner70` | `13 Hatch` (new rung — was the Pool/Hatch (Other) residual) |
 
-The opponent's BO in each fixture is tier-2. Edge cases still pending human
-re-review (multi-larva over-count, a missing-drone replay) are logged in
-`CURATION_ZERG_ROUND8.md`, not yet promoted.
+The opponent's BO in each fixture is tier-2.
+
+**Fuzzy openers (indeterminate supply rung).** A Drone morph that selects more
+than one unit before the Pool/Hatchery makes the exact drone count unknowable
+from the replay (selection size ≠ larvae morphed), so the opener is labelled
+`~N Pool/Overpool/Hatch` at the floor instead of an exact rung. Human-confirmed
+fixtures (the premise is the fuzzy `Build Order: Zerg opening (approximate)`
+marker with the noted label):
+
+| Fixture | Premise |
+| --- | --- |
+| `bo_z_fuzzy_overpool_bbbuuu` | `~9 Overpool` (watched: 9 Overpool; exact floor + type) |
+| `bo_z_fuzzy_lllji` | `~11 Hatch` (watched: 12-13 Hatch — genuinely too close to tell) |
+| `bo_z_fuzzy_foreigner70` | `~12 Hatch` (watched: 13 Hatch; floor is one below) |
+
+The `~N` floor can read one supply below the human's eyeball count — that gap is
+the inherent ambiguity, which is why these are fuzzy rather than exact. A clean
+unambiguous 13 Hatch fixture is still wanted (the 13 Hatch rung exists but has no
+tier-1 fixture, so it stays beta). The missing-drone replay (`lIlIlllIIlIlll`,
+true 9 Hatch) is logged in `CURATION_ZERG_ROUND8.md`, not yet fixed.
 
 3 Hatch Muta was reclassified from a build-order opener to a TvZ composition
 marker (`three_hatch_muta`); the opener underneath now surfaces. Fixtures

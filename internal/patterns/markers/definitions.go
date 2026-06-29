@@ -1119,6 +1119,25 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{Label: "13 Hatch", IconKey: "hatchery"},
 			GamesList:     &Pill{Label: "13 Hatch", IconKey: "hatchery"},
 		},
+		{
+			// Fuzzy Zerg opener: a clean pool/hatch opening whose exact supply
+			// rung is indeterminate because a multi-unit-selection Drone morph
+			// before the building makes the count ambiguous (the replay records
+			// selection size, not how many were larvae). Labelled "~N Pool /
+			// Overpool / Hatch" at the floor. Fires only when no exact rung does
+			// (each rung requires an unambiguous count), so it never competes
+			// with them; TierBackup wins over the generic residual.
+			Name:          "Zerg opening (approximate)",
+			PatternName:   "Build Order: Zerg opening (approximate)",
+			FeatureKey:    "bo_z_fuzzy",
+			Race:          RaceZerg,
+			Kind:          KindInitialBuildOrder,
+			Tier:          TierBackup,
+			Custom:        func() CustomEvaluator { return newZergOpenerFuzzyEvaluator() },
+			RuleDeadline:  180,
+			SummaryPlayer: &Pill{Label: "{subject}", IconKey: "drone", Subject: PayloadFieldSubject("label")},
+			GamesList:     &Pill{Label: "{subject}", IconKey: "drone", Subject: PayloadFieldSubject("label")},
+		},
 		// -------------------------------------------------------------------
 		// Protoss openers (matchup-gated). Sourced from a 3000-replay
 		// progamer mining run (1v1 melee). Frequencies cited per matchup
