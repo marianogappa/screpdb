@@ -104,8 +104,22 @@ the ✗ rows above can be promoted to tier-1.
   plus the two "too close to tell" fixtures (lllji `~11`, foreigner70 `~12`).
 
 **Still open:**
-- `lIlIlllIIlIlll` → 4 Hatch (truth 9 Hatch): dropped-drone bug, NOT ambiguity —
-  the fuzzy opener doesn't help. Needs the early-filter drop-reason trace.
+- `lIlIlllIIlIlll` (MM-132913C2) → 4 Hatch; truth **9 Hatch**. Root-caused via the
+  early-filter trace: the forward pass keeps the 5 opening Drones but drops the
+  Hatchery@76 as `not_enough_minerals` (a real 9 Hatch is ~40-90 min boundary-tight
+  in the affordability sim); the tech-tree backstop re-admits the Hatchery
+  (`tech_tree_readmit`); then `backtrack.go` resolveViolations drops a worker per
+  iteration to "afford" the re-admit — and since dropping a Zerg Drone removes its
+  mineral income, the deficit persists and it spirals, dropping all 5 Drones
+  (`dropped_by_backtrack freed_minerals_for_backtrack`) → 0 Drones before the Hatch
+  → 4 Hatch. NOT a multi-larva ambiguity, so the fuzzy opener doesn't apply.
+  FIX (deferred, regression-risky): make the affordability sim not under-fund a
+  boundary 9-Hatch (gather rates are already realistic — Drone 67.1/min — so this
+  is timing/ramp tuning), and/or stop the backtrack from dropping net-income-positive
+  economy workers. A payback-window guard alone doesn't help (the early Drones
+  complete too late to have repaid their cost by the Hatch frame). Touches the core
+  economy sim that gates every build order → needs a dedicated pass + full fixture
+  regression.
 - A clean unambiguous **13 Hatch** fixture (the rung exists but is uncurated/beta).
 - **Eliminate the `Pool/Hatch (Other)` residual:** deferred until the
   dropped-drone case is fixed (removing it now would send that game to
