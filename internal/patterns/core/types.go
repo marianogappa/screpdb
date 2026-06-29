@@ -176,7 +176,10 @@ import (
 // seconds, during which a unit morphed just after the building was miscounted
 // as before it (a Drone morphed 2s after a 9-supply Pool inflated 9 Overpool
 // into 10 Pool). Re-ingest so Zerg openers re-classify correctly.
-const AlgorithmVersion = 47
+//
+// 48: add the 13 Hatch hatch-first rung (9 Drone morphs + Overlord before the
+// expansion Hatchery) — previously fell into the Pool/Hatch (Other) residual.
+const AlgorithmVersion = 48
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

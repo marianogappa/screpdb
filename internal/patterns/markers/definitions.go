@@ -1089,6 +1089,36 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{Label: "12 Hatch", IconKey: "hatchery"},
 			GamesList:     &Pill{Label: "12 Hatch", IconKey: "hatchery"},
 		},
+		{
+			Name:        "13 Hatch",
+			PatternName: "Build Order: 13 Hatch",
+			FeatureKey:  "bo_13_hatch",
+			Race:        RaceZerg,
+			Kind:        KindInitialBuildOrder,
+			Rule: All(
+				ProduceCountBeforeBuild(subjDrone, subjHatchery, 9),
+				ProduceCountBeforeBuild(subjOverlord, subjHatchery, 1),
+				Not(BuildBefore(subjSpawningPool, subjHatchery)),
+				Not(BuildBefore(subjEvolutionChamber, subjHatchery)),
+			),
+			RuleDeadline: 180,
+			Expert: []ExpertEvent{
+				{
+					Key:          "Hatchery",
+					Match:        MatchBuild(subjHatchery),
+					TargetSecond: 104,
+					Tolerance:    defaultTol,
+				},
+				{
+					Key:          "Spawning Pool",
+					Match:        MatchBuild(subjSpawningPool),
+					TargetSecond: 122,
+					Tolerance:    Asym(3, 10),
+				},
+			},
+			SummaryPlayer: &Pill{Label: "13 Hatch", IconKey: "hatchery"},
+			GamesList:     &Pill{Label: "13 Hatch", IconKey: "hatchery"},
+		},
 		// -------------------------------------------------------------------
 		// Protoss openers (matchup-gated). Sourced from a 3000-replay
 		// progamer mining run (1v1 melee). Frequencies cited per matchup
