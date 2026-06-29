@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/marianogappa/screpdb/compare/v1.13.0...v1.14.0) (2026-06-29)
+
+
+### Features
+
+* **markers:** Zerg pool/hatch opener curation (round 8) — supply-count fix, 13 Hatch rung, 3 Hatch Muta marker, fuzzy openers ([#235](https://github.com/marianogappa/screpdb/issues/235)) ([00956ad](https://github.com/marianogappa/screpdb/commit/00956ad9c6643e31ddac1de54c5f651ee3c19960))
+
 ## [1.13.0](https://github.com/marianogappa/screpdb/compare/v1.12.2...v1.13.0) (2026-06-27)
 
 
