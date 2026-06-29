@@ -86,12 +86,20 @@ the ✗ rows above can be promoted to tier-1.
 
 ## Progress
 
-**Landed (commit "count produces by game-second before the build"):** the
-observation-ordering fix. Only 2 existing fixtures shifted, both tier-2
-(`bo_bunker_simcity_bgh_fp` P7 11 Pool→9 Overpool — same bug corrected;
-`bo_ccfirst_illill` P0 residual→12 Hatch). No tier-1 premise regressed.
-Resolved candidates: mentalgap & UtataneLeina → 9 Overpool ✓, lillljilililili
-→ 12 Hatch ✓.
+**Landed (committed on `fix/zerg-pool-hatch-curation`):**
+- Supply-count ordering fix (`ProduceCountBeforeBuild` counts by game-second) —
+  fixes 9 Overpool (mentalgap, UtataneLeina). 2 tier-2 fixture shifts only.
+- New **13 Hatch** rung — Foreigner70 ✓.
+- Promoted 10 tier-1 fixtures (`bo_z_*pool_*`, `bo_z_*hatch_*`) + marked their
+  rungs curated (beta tag off): 9 Pool, 9 Overpool, 12 Pool, 4 Pool, 5 Pool,
+  11 Pool, 9 Hatch, 12 Hatch, 13 Hatch.
+- **3 Hatch Muta** converted from opener to TvZ composition marker
+  (`three_hatch_muta`); the hatch opener surfaces underneath (chillibeans/eezxcq1
+  → 12 Hatch, llIIll → 11 Hatch). Promoted 2 fixtures; marked curated.
+
+**Not done — eliminate the `Pool/Hatch (Other)` residual:** deferred. With the
+edge-case games below still misclassifying, removing the residual would push them
+to `Opener unresolved`. Revisit after the edge cases are resolved.
 
 **Still ✗ (each a distinct, deeper bug — not yet fixed):**
 - `BBBuuuUU[kS]` (MM-DEBFBBFE) → 10 Pool. Multi-larva over-count: the Drone
