@@ -3,8 +3,13 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 3 Hatch Muta",
-        "value": "{\"expert_actuals\":[{\"second\":247,\"found\":true},{\"second\":326,\"found\":true}]}"
+        "pattern_name": "3 Hatch Muta",
+        "value": "341"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 12 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":117,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -1646,8 +1651,13 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 3 Hatch Muta",
-        "value": "{\"expert_actuals\":[{\"second\":242,\"found\":true},{\"second\":326,\"found\":true}]}"
+        "pattern_name": "3 Hatch Muta",
+        "value": "344"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 12 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":99,\"found\":true},{\"second\":116,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -1735,8 +1745,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 3 Hatch Muta",
-        "value": "{\"expert_actuals\":[{\"second\":240,\"found\":true},{\"second\":317,\"found\":true}]}"
+        "pattern_name": "3 Hatch Muta",
+        "value": "396"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 12 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":98,\"found\":true},{\"second\":117,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -2908,8 +2923,13 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 3 Hatch Muta",
-        "value": "{\"expert_actuals\":[{\"second\":221,\"found\":true},{\"second\":299,\"found\":true}]}"
+        "pattern_name": "3 Hatch Muta",
+        "value": "346"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 11 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":83,\"found\":true},{\"second\":160,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -2967,8 +2987,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 3 Hatch Muta",
-        "value": "{\"expert_actuals\":[{\"second\":275,\"found\":true},{\"second\":353,\"found\":true}]}"
+        "pattern_name": "3 Hatch Muta",
+        "value": "436"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 12 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":98,\"found\":true},{\"second\":115,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -3489,6 +3514,119 @@
       }
     ]
   },
+  "bo_z_3hatchmuta_chillibeans.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":57,\"found\":true},{\"second\":86,\"found\":true},{\"second\":193,\"found\":true},{\"second\":210,\"found\":true},{\"second\":158,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "651"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":280,\"first_turret_cmd\":338,\"turret_burst_count\":6,\"turret_finished\":357}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":20.63583815028902}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "3 Hatch Muta",
+        "value": "322"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 12 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":96,\"found\":true},{\"second\":115,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":314,\"muta_burst_count\":6,\"mutalisk_finished\":339,\"spire_cmd\":236}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":32.861271676300575}"
+      }
+    ]
+  },
+  "bo_z_3hatchmuta_llIIll.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "3 Hatch Muta",
+        "value": "371"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 11 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":92,\"found\":true},{\"second\":111,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":22.285714285714285}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":78,\"found\":true},{\"second\":57,\"found\":true},{\"second\":105,\"found\":true},{\"second\":268,\"found\":true}],\"modifiers\":[\"proxy\"]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "388"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "613"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":24.857142857142854}"
+      }
+    ]
+  },
   "bo_z_4pool_iiilil.rep": {
     "detections": [
       {
@@ -3851,8 +3989,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 3 Hatch Muta",
-        "value": "{\"expert_actuals\":[{\"second\":298,\"found\":true},{\"second\":380,\"found\":true}]}"
+        "pattern_name": "3 Hatch Muta",
+        "value": "429"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 11 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":103,\"found\":true},{\"second\":116,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,

@@ -479,8 +479,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 2-Fac Tankless Mech | Terran | 2nd Factory | 243 | −90 / +130 |
 | 3 Hatch Lurker | Zerg | Hydralisk Den | 270 | −50 / +60 |
 | 3 Hatch Lurker | Zerg | First Lurkers | 417 | −80 / +120 |
-| 3 Hatch Muta | Zerg | Spire | 240 | −30 / +80 |
-| 3 Hatch Muta | Zerg | First Mutalisks | 320 | −40 / +90 |
 | 3-Fac Mech | Terran | Supply Depot | 55 | −10 / +24 |
 | 3-Fac Mech | Terran | Barracks | 85 | −26 / +18 |
 | 3-Fac Mech | Terran | Refinery | 100 | −12 / +70 |
@@ -624,7 +622,6 @@ Each opener's detector commits its decision once the replay passes this second �
 | 2-Fac Mech | Terran | 600 |
 | 2-Fac Tankless Mech | Terran | 600 |
 | 3 Hatch Lurker | Zerg | 600 |
-| 3 Hatch Muta | Zerg | 600 |
 | 3-Fac Mech | Terran | 600 |
 | 3-Fac Tankless Mech | Terran | 600 |
 | 4 Hatch | Zerg | 180 |
@@ -693,7 +690,7 @@ Standalone constants the detectors depend on — dedup windows, muta/turret burs
 
 | Constant | Value | Meaning |
 | --- | --- | --- |
-| Algorithm version | 48 | Detection algorithm revision; incremented to trigger re-detection. |
+| Algorithm version | 49 | Detection algorithm revision; incremented to trigger re-detection. |
 | Build dedup gap (s) | 3 | Repeat Build orders of the same building at the same tile, closer than this, are one event (double-tap / misclick); different-tile placements are kept. |
 | Build dedup max second (s) | 240 | Past this second, dedup stops and every Build is observed as-is (a tile can be legitimately rebuilt on later). |
 | Mutalisk burst window (s) | 30 | Window within which the Mutalisk morphs must cluster. |
@@ -822,7 +819,7 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 | 22 | bo_11_hatch |
 | 23 | bo_12_hatch |
 | 24 | bo_13_hatch |
-| 25 | bo_z_3hatch_muta |
+| 25 | three_hatch_muta |
 | 26 | bo_z_2hatch_muta |
 | 27 | bo_z_3hatch_lurker |
 | 28 | bo_z_2hatch_hydra |

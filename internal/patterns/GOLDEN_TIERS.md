@@ -219,6 +219,12 @@ The opponent's BO in each fixture is tier-2. Edge cases still pending human
 re-review (multi-larva over-count, a missing-drone replay) are logged in
 `CURATION_ZERG_ROUND8.md`, not yet promoted.
 
+3 Hatch Muta was reclassified from a build-order opener to a TvZ composition
+marker (`three_hatch_muta`); the opener underneath now surfaces. Fixtures
+`bo_z_3hatchmuta_chillibeans` (Zerg = `12 Hatch` + `3 Hatch Muta`) and
+`bo_z_3hatchmuta_llIIll` (Zerg = `11 Hatch` + `3 Hatch Muta`) are the protected
+premise: the player must carry both the hatch opener and the 3 Hatch Muta marker.
+
 ### Cliff-drop detection — `drops_golden.json`
 
 Each fixture below was confirmed by watching the replay. The premise is the

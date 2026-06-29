@@ -29,6 +29,10 @@ var curatedFeatureKeys = map[string]bool{
 	"bo_11_pool":    true,
 	"bo_9_hatch":    true,
 	"bo_13_hatch":   true,
+
+	// Round 8 — 3 Hatch Muta composition marker (converted from a BO opener);
+	// fixtures bo_z_3hatchmuta_chillibeans (12 Hatch) / _llIIll (11 Hatch).
+	"three_hatch_muta": true,
 	// Round 3 (Protoss/Terran).
 	"bo_t_factory_expand": true,
 	"bo_cc_first":         true,

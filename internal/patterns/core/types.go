@@ -179,7 +179,11 @@ import (
 //
 // 48: add the 13 Hatch hatch-first rung (9 Drone morphs + Overlord before the
 // expansion Hatchery) — previously fell into the Pool/Hatch (Other) residual.
-const AlgorithmVersion = 48
+//
+// 49: 3 Hatch Muta converted from a build-order opener to a TvZ composition
+// marker (key three_hatch_muta) so the hatch-first opener underneath (11/12
+// Hatch) surfaces on its own.
+const AlgorithmVersion = 49
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string
