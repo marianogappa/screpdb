@@ -197,6 +197,28 @@ energy-less cast can set the time slightly before the visible action.
 
 The opponent's BO in each is tier-2.
 
+Zerg pool/hatch openers (round 8, issues #222/#223/#224). Non-mirror ladder
+replays, each watched and confirmed; the verified premise is the Zerg player's
+opener. Several were promoted alongside the supply-count fix (drones counted by
+game-second relative to the building, not observation order) and the new 13 Hatch
+rung.
+
+| Fixture | Zerg player must classify as |
+| --- | --- |
+| `bo_z_9pool_gaemalline` | `9 Pool` |
+| `bo_z_9overpool_mentalgap`, `bo_z_9overpool_utataneleina` | `9 Overpool` (5 Drones + Overlord before Pool; utataneleina guards the dedup-ordering fix — a 6th Drone 2s after the Pool used to inflate it to 10 Pool) |
+| `bo_z_12pool_hommage88` | `12 Pool` |
+| `bo_z_4pool_iiilil` | `4 Pool` |
+| `bo_z_5pool_eulsann` | `5 Pool` |
+| `bo_z_11pool_lototete` | `11 Pool` |
+| `bo_z_9hatch_3050kzerg` | `9 Hatch` |
+| `bo_z_12hatch_lllji` | `12 Hatch` |
+| `bo_z_13hatch_foreigner70` | `13 Hatch` (new rung — was the Pool/Hatch (Other) residual) |
+
+The opponent's BO in each fixture is tier-2. Edge cases still pending human
+re-review (multi-larva over-count, a missing-drone replay) are logged in
+`CURATION_ZERG_ROUND8.md`, not yet promoted.
+
 ### Cliff-drop detection — `drops_golden.json`
 
 Each fixture below was confirmed by watching the replay. The premise is the
