@@ -169,7 +169,14 @@ import (
 // cmdenrich KindLayMine fact for the PlaceMine / VultureMine orders. Dashboard
 // also gained a "beta" tag on uncurated markers (hotkey markers exempt). Re-ingest
 // so the new markers and pills surface.
-const AlgorithmVersion = 46
+//
+// 47: Zerg pool/hatch supply-count fix. ProduceCountBeforeBuild now counts
+// produces by their game-second relative to the building, not by observation
+// order — the build-dedup tail (player_marker.go) held a Build fact for a few
+// seconds, during which a unit morphed just after the building was miscounted
+// as before it (a Drone morphed 2s after a 9-supply Pool inflated 9 Overpool
+// into 10 Pool). Re-ingest so Zerg openers re-classify correctly.
+const AlgorithmVersion = 47
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

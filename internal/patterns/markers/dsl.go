@@ -631,7 +631,19 @@ type produceCountBeforeBuildState struct {
 	commitState
 	unit, ref string
 	want      int
-	count     int
+	// produces buffers each Produce(unit) as (second, count) until the ref
+	// Build is observed. We resolve by the produce's *game second* relative to
+	// the build's second rather than by observation order: the build-dedup tail
+	// (see player_marker.go enqueueDedup) holds a Build fact for a few seconds,
+	// during which a unit morphed just *after* the building would otherwise be
+	// miscounted as before it (e.g. the 6th Drone morphed 2s after a 9-supply
+	// Pool, inflating "9 Overpool" into "10 Pool").
+	produces []produceObservation
+}
+
+type produceObservation struct {
+	second int
+	count  int
 }
 
 func (s *produceCountBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
@@ -641,14 +653,17 @@ func (s *produceCountBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
 	switch f.Kind {
 	case cmdenrich.KindMakeUnit:
 		if f.Subject == s.unit {
-			s.count += factUnitCount(f)
-			if s.count > s.want {
-				s.done = Rejected
-			}
+			s.produces = append(s.produces, produceObservation{second: f.Second, count: factUnitCount(f)})
 		}
 	case cmdenrich.KindMakeBuilding:
 		if f.Subject == s.ref {
-			if s.count == s.want {
+			count := 0
+			for _, p := range s.produces {
+				if p.second < f.Second {
+					count += p.count
+				}
+			}
+			if count == s.want {
 				s.done = Matched
 			} else {
 				s.done = Rejected

@@ -2161,7 +2161,7 @@
       },
       {
         "replay_player_id": 7,
-        "pattern_name": "Build Order: 11 Pool",
+        "pattern_name": "Build Order: 9 Overpool",
         "value": "{\"expert_actuals\":[{\"second\":86,\"found\":true},{\"second\":178,\"found\":true}]}"
       },
       {
@@ -2253,8 +2253,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: Pool/Hatch (Other)",
-        "value": "102"
+        "pattern_name": "Build Order: 12 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":102,\"found\":true},{\"second\":121,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
