@@ -39,11 +39,10 @@ var curatedFeatureKeys = map[string]bool{
 	// (~12 Hatch), bo_z_fuzzy_overpool_bbbuuu (~9 Overpool).
 	"bo_z_fuzzy": true,
 	// Round 3 (Protoss/Terran).
-	"bo_t_factory_expand": true,
-	"bo_cc_first":         true,
-	"bo_t_bio_1base":      true,
-	"bo_t_bio_2base":      true,
-	"bo_p_1gate_reaver":   true,
+	"bo_cc_first":       true,
+	"bo_t_bio_1base":    true,
+	"bo_t_bio_2base":    true,
+	"bo_p_1gate_reaver": true,
 	// Round 4 (Protoss).
 	"bo_1_gate_core": true,
 	"bo_2_gate":      true,
@@ -53,14 +52,31 @@ var curatedFeatureKeys = map[string]bool{
 	// Round 5 (Protoss cannon-contain) — only the two permutations with fixtures.
 	"bo_p_gate_forge_cannon": true,
 	"bo_p_forge_cannon_gate": true,
-	// Round 6 (Terran air/specialist).
-	"bo_t_2port_wraith": true,
-	"bo_t_goliath":      true,
-	"bo_t_2fact_expa":   true,
-	"bo_bbs":            true,
-	// bo_team_mech_111.rep tier-1 per-player premises.
-	"bo_t_mech_5fac": true,
-	"bo_t_111_mech":  true,
+	// Round 6 (Terran air/specialist). "2 Port Wraith" → "2 Starport Wraith"
+	// (round-9 rename); the standalone "Goliath" folded into the mech
+	// composition flavor — its fixtures (iilliii1/lilliill = 1 Fact, f1ssasad =
+	// 3 Fact before expa) now classify under the Goliath flavor keys.
+	"bo_bbs":                 true,
+	"bo_t_2starport_wraith":  true,
+	"bo_t_goliath_expa_1fac": true,
+	"bo_t_goliath_expa_3fac": true,
+	// bo_team_mech_111.rep tier-1 per-player premises (round 9 re-curation:
+	// chobo86's "5-Fac Mech" → "1 Fact Expa Mech" — expanded after 1 Factory,
+	// then ramped; ALT+F4's "1-1-1 into Mech" → "1-1-1 Mech"). The retired
+	// 2 Port Wraith / 2 Fact before Expa premises now map to "2 Starport Wraith"
+	// / "2 Fact Expa Mech" and are re-curated in the round-9 watch pass.
+	"bo_t_mech_expa_1fac": true,
+	"bo_t_111_mech":       true,
+
+	// Round 9 (Terran mech taxonomy, issues #226/#227) — 27 ladder replays
+	// watched & confirmed, one fixture per name (bo_<bo>_<mu>_<player>.rep).
+	"bo_t_mech_expand":      true, // "Mech" (expand-first)
+	"bo_t_goliath_expand":   true, // "Goliath" (expand-first)
+	"bo_t_2starport_valk":   true,
+	"bo_t_3starport_wraith": true,
+	"bo_bunker_rush":        true,
+	"bo_t_111":              true,
+	"bo_t_111_tankless":     true,
 
 	// Round 7 — fixtures crazy_zerg_guardians_tvz_lyx2008, maelstrom_pvz_bysnow,
 	// first_observer_pvt_0sawon, first_mine_pvt_f1ssasad.

@@ -409,6 +409,24 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 
 | Build order | Race | Milestone | Target (s) | Tolerance (s) |
 | --- | --- | --- | --- | --- |
+| 1 Fact Expa Goliath | Terran | Supply Depot | 55 | −10 / +24 |
+| 1 Fact Expa Goliath | Terran | Barracks | 85 | −26 / +18 |
+| 1 Fact Expa Goliath | Terran | Refinery | 100 | −12 / +70 |
+| 1 Fact Expa Goliath | Terran | 1st Factory | 152 | −12 / +80 |
+| 1 Fact Expa Goliath | Terran | Command Center | 250 | −120 / +200 |
+| 1 Fact Expa Goliath | Terran | First Goliath | 339 | −75 / +110 |
+| 1 Fact Expa Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 1 Fact Expa Mech | Terran | Barracks | 85 | −26 / +18 |
+| 1 Fact Expa Mech | Terran | Refinery | 100 | −12 / +70 |
+| 1 Fact Expa Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 1 Fact Expa Mech | Terran | Command Center | 250 | −120 / +200 |
+| 1 Fact Expa Mech | Terran | First Siege Tank | 290 | −60 / +120 |
+| 1 Fact Expa Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 1 Fact Expa Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
+| 1 Fact Expa Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
+| 1 Fact Expa Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 1 Fact Expa Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
+| 1 Fact Expa Tankless Mech | Terran | Command Center | 250 | −120 / +200 |
 | 1 Gate (no expa) | Protoss | Pylon | 48 | ±6 |
 | 1 Gate (no expa) | Protoss | Gateway | 88 | ±15 |
 | 1 Gate Core | Protoss | Pylon | 48 | ±4 |
@@ -417,18 +435,21 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 1 Gate Core | Protoss | Cybernetics Core | 138 | ±10 |
 | 1 Gate Reaver | Protoss | Robotics Facility | 252 | −60 / +70 |
 | 1 Gate Reaver | Protoss | First Reaver | 408 | −90 / +120 |
-| 1-1-1 | Terran | Supply Depot | 57 | −10 / +24 |
-| 1-1-1 | Terran | Barracks | 85 | −28 / +20 |
-| 1-1-1 | Terran | Refinery | 98 | −15 / +70 |
-| 1-1-1 | Terran | Factory | 160 | −15 / +70 |
-| 1-1-1 | Terran | Starport | 226 | −40 / +80 |
-| 1-1-1 | Terran | First Wraith | 271 | −40 / +90 |
-| 1-1-1 into Mech | Terran | Supply Depot | 55 | −10 / +24 |
-| 1-1-1 into Mech | Terran | Barracks | 85 | −26 / +18 |
-| 1-1-1 into Mech | Terran | Refinery | 99 | −12 / +70 |
-| 1-1-1 into Mech | Terran | Factory | 153 | −12 / +80 |
-| 1-1-1 into Mech | Terran | Starport | 254 | −50 / +70 |
-| 1-1-1 into Mech | Terran | First Siege Tank | 312 | −80 / +120 |
+| 1-1-1 | Terran | Supply Depot | 55 | −10 / +24 |
+| 1-1-1 | Terran | Barracks | 85 | −26 / +18 |
+| 1-1-1 | Terran | Refinery | 99 | −15 / +70 |
+| 1-1-1 | Terran | Factory | 153 | −15 / +80 |
+| 1-1-1 | Terran | Starport | 240 | −50 / +80 |
+| 1-1-1 Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 1-1-1 Mech | Terran | Barracks | 85 | −26 / +18 |
+| 1-1-1 Mech | Terran | Refinery | 99 | −15 / +70 |
+| 1-1-1 Mech | Terran | Factory | 153 | −15 / +80 |
+| 1-1-1 Mech | Terran | Starport | 240 | −50 / +80 |
+| 1-1-1 Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 1-1-1 Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
+| 1-1-1 Tankless Mech | Terran | Refinery | 99 | −15 / +70 |
+| 1-1-1 Tankless Mech | Terran | Factory | 153 | −15 / +80 |
+| 1-1-1 Tankless Mech | Terran | Starport | 240 | −50 / +80 |
 | 1-Base Bio | Terran | Supply Depot | 56 | −10 / +24 |
 | 1-Base Bio | Terran | Barracks | 84 | −28 / +20 |
 | 1-Base Bio | Terran | Refinery | 185 | −80 / +50 |
@@ -447,8 +468,24 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 12 Pool | Zerg | First Zerglings | 154 | ±4 |
 | 13 Hatch | Zerg | Hatchery | 104 | ±5 |
 | 13 Hatch | Zerg | Spawning Pool | 122 | −3 / +10 |
-| 2 Fact before Expa | Terran | 1st Factory | 147 | −25 / +40 |
-| 2 Fact before Expa | Terran | 2nd Factory | 177 | −40 / +60 |
+| 2 Fact Expa Goliath | Terran | Supply Depot | 55 | −10 / +24 |
+| 2 Fact Expa Goliath | Terran | Barracks | 85 | −26 / +18 |
+| 2 Fact Expa Goliath | Terran | Refinery | 100 | −12 / +70 |
+| 2 Fact Expa Goliath | Terran | 1st Factory | 152 | −12 / +80 |
+| 2 Fact Expa Goliath | Terran | Command Center | 250 | −120 / +200 |
+| 2 Fact Expa Goliath | Terran | First Goliath | 339 | −75 / +110 |
+| 2 Fact Expa Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 2 Fact Expa Mech | Terran | Barracks | 85 | −26 / +18 |
+| 2 Fact Expa Mech | Terran | Refinery | 100 | −12 / +70 |
+| 2 Fact Expa Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 2 Fact Expa Mech | Terran | Command Center | 250 | −120 / +200 |
+| 2 Fact Expa Mech | Terran | First Siege Tank | 290 | −60 / +120 |
+| 2 Fact Expa Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 2 Fact Expa Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
+| 2 Fact Expa Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
+| 2 Fact Expa Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 2 Fact Expa Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
+| 2 Fact Expa Tankless Mech | Terran | Command Center | 250 | −120 / +200 |
 | 2 Gate | Protoss | Pylon | 48 | ±4 |
 | 2 Gate | Protoss | 1st Gateway | 70 | ±6 |
 | 2 Gate | Protoss | 2nd Gateway | 86 | ±10 |
@@ -457,88 +494,109 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 2 Hatch Hydra | Zerg | First Hydralisks | 250 | −40 / +120 |
 | 2 Hatch Muta | Zerg | Spire | 249 | −35 / +70 |
 | 2 Hatch Muta | Zerg | First Mutalisks | 327 | −40 / +90 |
-| 2 Port Wraith | Terran | 1st Starport | 205 | −25 / +70 |
-| 2 Port Wraith | Terran | 2nd Starport | 212 | −25 / +70 |
-| 2 Port Wraith | Terran | First Wraith | 253 | −40 / +90 |
+| 2 Starport Valkyrie | Terran | 1st Starport | 205 | −40 / +90 |
+| 2 Starport Valkyrie | Terran | 2nd Starport | 212 | −40 / +90 |
+| 2 Starport Valkyrie | Terran | First Valkyrie | 300 | −60 / +120 |
+| 2 Starport Wraith | Terran | 1st Starport | 205 | −25 / +70 |
+| 2 Starport Wraith | Terran | 2nd Starport | 212 | −25 / +70 |
+| 2 Starport Wraith | Terran | First Wraith | 253 | −40 / +90 |
 | 2-Base Bio | Terran | Supply Depot | 56 | −10 / +24 |
 | 2-Base Bio | Terran | Barracks | 84 | −28 / +20 |
 | 2-Base Bio | Terran | Refinery | 185 | −80 / +50 |
 | 2-Base Bio | Terran | Academy | 230 | −45 / +90 |
 | 2-Base Bio | Terran | Command Center | 300 | −80 / +60 |
-| 2-Fac Mech | Terran | Supply Depot | 55 | −10 / +24 |
-| 2-Fac Mech | Terran | Barracks | 85 | −26 / +18 |
-| 2-Fac Mech | Terran | Refinery | 100 | −12 / +70 |
-| 2-Fac Mech | Terran | 1st Factory | 152 | −12 / +80 |
-| 2-Fac Mech | Terran | 2nd Factory | 275 | −90 / +130 |
-| 2-Fac Mech | Terran | First Siege Tank | 290 | −60 / +120 |
-| 2-Fac Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
-| 2-Fac Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
-| 2-Fac Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
-| 2-Fac Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
-| 2-Fac Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
-| 2-Fac Tankless Mech | Terran | 2nd Factory | 243 | −90 / +130 |
+| 3 Fact Expa Goliath | Terran | Supply Depot | 55 | −10 / +24 |
+| 3 Fact Expa Goliath | Terran | Barracks | 85 | −26 / +18 |
+| 3 Fact Expa Goliath | Terran | Refinery | 100 | −12 / +70 |
+| 3 Fact Expa Goliath | Terran | 1st Factory | 152 | −12 / +80 |
+| 3 Fact Expa Goliath | Terran | Command Center | 250 | −120 / +200 |
+| 3 Fact Expa Goliath | Terran | First Goliath | 339 | −75 / +110 |
+| 3 Fact Expa Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 3 Fact Expa Mech | Terran | Barracks | 85 | −26 / +18 |
+| 3 Fact Expa Mech | Terran | Refinery | 100 | −12 / +70 |
+| 3 Fact Expa Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 3 Fact Expa Mech | Terran | Command Center | 250 | −120 / +200 |
+| 3 Fact Expa Mech | Terran | First Siege Tank | 290 | −60 / +120 |
+| 3 Fact Expa Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 3 Fact Expa Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
+| 3 Fact Expa Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
+| 3 Fact Expa Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 3 Fact Expa Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
+| 3 Fact Expa Tankless Mech | Terran | Command Center | 250 | −120 / +200 |
 | 3 Hatch Lurker | Zerg | Hydralisk Den | 270 | −50 / +60 |
 | 3 Hatch Lurker | Zerg | First Lurkers | 417 | −80 / +120 |
-| 3-Fac Mech | Terran | Supply Depot | 55 | −10 / +24 |
-| 3-Fac Mech | Terran | Barracks | 85 | −26 / +18 |
-| 3-Fac Mech | Terran | Refinery | 100 | −12 / +70 |
-| 3-Fac Mech | Terran | 1st Factory | 152 | −12 / +80 |
-| 3-Fac Mech | Terran | First Siege Tank | 290 | −60 / +120 |
-| 3-Fac Mech | Terran | 3rd Factory | 458 | −90 / +130 |
-| 3-Fac Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
-| 3-Fac Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
-| 3-Fac Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
-| 3-Fac Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
-| 3-Fac Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
-| 3-Fac Tankless Mech | Terran | 3rd Factory | 349 | −90 / +130 |
+| 3 Starport Valkyrie | Terran | 1st Starport | 205 | −40 / +90 |
+| 3 Starport Valkyrie | Terran | 3rd Starport | 225 | −40 / +90 |
+| 3 Starport Valkyrie | Terran | First Valkyrie | 300 | −60 / +120 |
+| 3 Starport Wraith | Terran | 1st Starport | 205 | −40 / +90 |
+| 3 Starport Wraith | Terran | 3rd Starport | 225 | −40 / +90 |
+| 3 Starport Wraith | Terran | First Wraith | 253 | −40 / +90 |
+| 4 Fact Expa Goliath | Terran | Supply Depot | 55 | −10 / +24 |
+| 4 Fact Expa Goliath | Terran | Barracks | 85 | −26 / +18 |
+| 4 Fact Expa Goliath | Terran | Refinery | 100 | −12 / +70 |
+| 4 Fact Expa Goliath | Terran | 1st Factory | 152 | −12 / +80 |
+| 4 Fact Expa Goliath | Terran | Command Center | 250 | −120 / +200 |
+| 4 Fact Expa Goliath | Terran | First Goliath | 339 | −75 / +110 |
+| 4 Fact Expa Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 4 Fact Expa Mech | Terran | Barracks | 85 | −26 / +18 |
+| 4 Fact Expa Mech | Terran | Refinery | 100 | −12 / +70 |
+| 4 Fact Expa Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 4 Fact Expa Mech | Terran | Command Center | 250 | −120 / +200 |
+| 4 Fact Expa Mech | Terran | First Siege Tank | 290 | −60 / +120 |
+| 4 Fact Expa Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 4 Fact Expa Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
+| 4 Fact Expa Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
+| 4 Fact Expa Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 4 Fact Expa Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
+| 4 Fact Expa Tankless Mech | Terran | Command Center | 250 | −120 / +200 |
 | 4 Hatch | Zerg | Hatchery | 40 | ±6 |
 | 4 Hatch | Zerg | Spawning Pool | 70 | −6 / +12 |
 | 4 Pool | Zerg | Spawning Pool | 33 | ±4 |
 | 4 Pool | Zerg | First Zerglings | 83 | ±3 |
-| 4-Fac Mech | Terran | Supply Depot | 55 | −10 / +24 |
-| 4-Fac Mech | Terran | Barracks | 85 | −26 / +18 |
-| 4-Fac Mech | Terran | Refinery | 100 | −12 / +70 |
-| 4-Fac Mech | Terran | 1st Factory | 152 | −12 / +80 |
-| 4-Fac Mech | Terran | First Siege Tank | 290 | −60 / +120 |
-| 4-Fac Mech | Terran | 4th Factory | 480 | −90 / +130 |
-| 4-Fac Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
-| 4-Fac Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
-| 4-Fac Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
-| 4-Fac Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
-| 4-Fac Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
-| 4-Fac Tankless Mech | Terran | 4th Factory | 422 | −90 / +130 |
+| 5 Fact Expa Goliath | Terran | Supply Depot | 55 | −10 / +24 |
+| 5 Fact Expa Goliath | Terran | Barracks | 85 | −26 / +18 |
+| 5 Fact Expa Goliath | Terran | Refinery | 100 | −12 / +70 |
+| 5 Fact Expa Goliath | Terran | 1st Factory | 152 | −12 / +80 |
+| 5 Fact Expa Goliath | Terran | Command Center | 250 | −120 / +200 |
+| 5 Fact Expa Goliath | Terran | First Goliath | 339 | −75 / +110 |
+| 5 Fact Expa Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 5 Fact Expa Mech | Terran | Barracks | 85 | −26 / +18 |
+| 5 Fact Expa Mech | Terran | Refinery | 100 | −12 / +70 |
+| 5 Fact Expa Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 5 Fact Expa Mech | Terran | Command Center | 250 | −120 / +200 |
+| 5 Fact Expa Mech | Terran | First Siege Tank | 290 | −60 / +120 |
+| 5 Fact Expa Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 5 Fact Expa Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
+| 5 Fact Expa Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
+| 5 Fact Expa Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 5 Fact Expa Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
+| 5 Fact Expa Tankless Mech | Terran | Command Center | 250 | −120 / +200 |
 | 5 Hatch | Zerg | Hatchery | 50 | ±6 |
 | 5 Hatch | Zerg | Spawning Pool | 80 | −6 / +12 |
 | 5 Pool | Zerg | Spawning Pool | 45 | ±5 |
 | 5 Pool | Zerg | First Zerglings | 95 | ±4 |
-| 5-Fac Mech | Terran | Supply Depot | 55 | −10 / +24 |
-| 5-Fac Mech | Terran | Barracks | 85 | −26 / +18 |
-| 5-Fac Mech | Terran | Refinery | 100 | −12 / +70 |
-| 5-Fac Mech | Terran | 1st Factory | 152 | −12 / +80 |
-| 5-Fac Mech | Terran | First Siege Tank | 290 | −60 / +120 |
-| 5-Fac Mech | Terran | 5th Factory | 501 | −90 / +130 |
-| 5-Fac Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
-| 5-Fac Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
-| 5-Fac Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
-| 5-Fac Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
-| 5-Fac Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
-| 5-Fac Tankless Mech | Terran | 5th Factory | 471 | −90 / +130 |
 | 6 Hatch | Zerg | Hatchery | 58 | ±6 |
 | 6 Hatch | Zerg | Spawning Pool | 88 | −6 / +12 |
 | 6 Pool | Zerg | Spawning Pool | 52 | ±5 |
 | 6 Pool | Zerg | First Zerglings | 102 | ±4 |
-| 6+ Fac Mech | Terran | Supply Depot | 55 | −10 / +24 |
-| 6+ Fac Mech | Terran | Barracks | 85 | −26 / +18 |
-| 6+ Fac Mech | Terran | Refinery | 100 | −12 / +70 |
-| 6+ Fac Mech | Terran | 1st Factory | 152 | −12 / +80 |
-| 6+ Fac Mech | Terran | First Siege Tank | 290 | −60 / +120 |
-| 6+ Fac Mech | Terran | 6th Factory | 528 | −90 / +130 |
-| 6+ Fac Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
-| 6+ Fac Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
-| 6+ Fac Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
-| 6+ Fac Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
-| 6+ Fac Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
-| 6+ Fac Tankless Mech | Terran | 6th Factory | 560 | −90 / +130 |
+| 6+ Fact Expa Goliath | Terran | Supply Depot | 55 | −10 / +24 |
+| 6+ Fact Expa Goliath | Terran | Barracks | 85 | −26 / +18 |
+| 6+ Fact Expa Goliath | Terran | Refinery | 100 | −12 / +70 |
+| 6+ Fact Expa Goliath | Terran | 1st Factory | 152 | −12 / +80 |
+| 6+ Fact Expa Goliath | Terran | Command Center | 250 | −120 / +200 |
+| 6+ Fact Expa Goliath | Terran | First Goliath | 339 | −75 / +110 |
+| 6+ Fact Expa Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 6+ Fact Expa Mech | Terran | Barracks | 85 | −26 / +18 |
+| 6+ Fact Expa Mech | Terran | Refinery | 100 | −12 / +70 |
+| 6+ Fact Expa Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 6+ Fact Expa Mech | Terran | Command Center | 250 | −120 / +200 |
+| 6+ Fact Expa Mech | Terran | First Siege Tank | 290 | −60 / +120 |
+| 6+ Fact Expa Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 6+ Fact Expa Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
+| 6+ Fact Expa Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
+| 6+ Fact Expa Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 6+ Fact Expa Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
+| 6+ Fact Expa Tankless Mech | Terran | Command Center | 250 | −120 / +200 |
 | 7 Hatch | Zerg | Hatchery | 66 | ±6 |
 | 7 Hatch | Zerg | Spawning Pool | 96 | −6 / +12 |
 | 7 Pool | Zerg | Spawning Pool | 60 | ±5 |
@@ -564,8 +622,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | CC First | Terran | Supply Depot | 62 | ±8 |
 | CC First | Terran | Command Center | 145 | ±20 |
 | CC First | Terran | Barracks | 165 | ±20 |
-| Factory Expand | Terran | Factory | 150 | −20 / +60 |
-| Factory Expand | Terran | Command Center | 229 | −30 / +80 |
 | Forge Cannon (no expa) | Protoss | Forge | 90 | ±20 |
 | Forge Cannon (no expa) | Protoss | Photon Cannon | 130 | ±30 |
 | Forge Cannon Gate before expa | Protoss | Forge | 96 | −30 / +60 |
@@ -585,14 +641,38 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | Gate Forge Cannon before expa | Protoss | Forge | 120 | −30 / +60 |
 | Gate Forge Cannon before expa | Protoss | Photon Cannon | 155 | −30 / +80 |
 | Goliath | Terran | Supply Depot | 55 | −10 / +24 |
-| Goliath | Terran | Barracks | 86 | −28 / +18 |
-| Goliath | Terran | Refinery | 102 | −12 / +70 |
-| Goliath | Terran | Factory | 161 | −15 / +120 |
-| Goliath | Terran | Armory | 242 | −40 / +100 |
-| Goliath | Terran | First Goliath | 339 | −75 / +70 |
+| Goliath | Terran | Barracks | 85 | −26 / +18 |
+| Goliath | Terran | Refinery | 100 | −12 / +70 |
+| Goliath | Terran | 1st Factory | 152 | −12 / +80 |
+| Goliath | Terran | First Goliath | 339 | −75 / +110 |
+| Goliath (no expa) | Terran | Supply Depot | 55 | −10 / +24 |
+| Goliath (no expa) | Terran | Barracks | 85 | −26 / +18 |
+| Goliath (no expa) | Terran | Refinery | 100 | −12 / +70 |
+| Goliath (no expa) | Terran | 1st Factory | 152 | −12 / +80 |
+| Goliath (no expa) | Terran | First Goliath | 339 | −75 / +110 |
+| Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| Mech | Terran | Barracks | 85 | −26 / +18 |
+| Mech | Terran | Refinery | 100 | −12 / +70 |
+| Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| Mech | Terran | First Siege Tank | 290 | −60 / +120 |
+| Mech (no expa) | Terran | Supply Depot | 55 | −10 / +24 |
+| Mech (no expa) | Terran | Barracks | 85 | −26 / +18 |
+| Mech (no expa) | Terran | Refinery | 100 | −12 / +70 |
+| Mech (no expa) | Terran | 1st Factory | 152 | −12 / +80 |
+| Mech (no expa) | Terran | First Siege Tank | 290 | −60 / +120 |
 | Nexus First | Protoss | Pylon | 48 | ±4 |
 | Nexus First | Protoss | Nexus | 145 | ±20 |
 | Nexus First | Protoss | Gateway | 175 | ±20 |
+| Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
+| Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
+| Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
+| Tankless Mech (no expa) | Terran | Supply Depot | 55 | −10 / +24 |
+| Tankless Mech (no expa) | Terran | Barracks | 85 | −26 / +18 |
+| Tankless Mech (no expa) | Terran | Refinery | 100 | −12 / +70 |
+| Tankless Mech (no expa) | Terran | 1st Factory | 152 | −12 / +80 |
+| Tankless Mech (no expa) | Terran | First Vulture | 205 | −20 / +50 |
 
 ## Build-order rule deadlines
 
@@ -600,11 +680,15 @@ Each opener's detector commits its decision once the replay passes this second �
 
 | Build order | Race | Rule deadline (s) |
 | --- | --- | --- |
+| 1 Fact Expa Goliath | Terran | 600 |
+| 1 Fact Expa Mech | Terran | 600 |
+| 1 Fact Expa Tankless Mech | Terran | 600 |
 | 1 Gate (no expa) | Protoss | 320 |
 | 1 Gate Core | Protoss | 180 |
 | 1 Gate Reaver | Protoss | 600 |
 | 1-1-1 | Terran | 600 |
-| 1-1-1 into Mech | Terran | 600 |
+| 1-1-1 Mech | Terran | 600 |
+| 1-1-1 Tankless Mech | Terran | 600 |
 | 1-Base Bio | Terran | 600 |
 | 10 Hatch | Zerg | 180 |
 | 10 Pool | Zerg | 180 |
@@ -613,29 +697,36 @@ Each opener's detector commits its decision once the replay passes this second �
 | 12 Hatch | Zerg | 180 |
 | 12 Pool | Zerg | 180 |
 | 13 Hatch | Zerg | 180 |
-| 2 Fact before Expa | Terran | 360 |
+| 2 Fact Expa Goliath | Terran | 600 |
+| 2 Fact Expa Mech | Terran | 600 |
+| 2 Fact Expa Tankless Mech | Terran | 600 |
 | 2 Gate | Protoss | 180 |
 | 2 Hatch Hydra | Zerg | 600 |
 | 2 Hatch Muta | Zerg | 600 |
-| 2 Port Wraith | Terran | 600 |
+| 2 Starport Valkyrie | Terran | 600 |
+| 2 Starport Wraith | Terran | 600 |
 | 2-Base Bio | Terran | 600 |
-| 2-Fac Mech | Terran | 600 |
-| 2-Fac Tankless Mech | Terran | 600 |
+| 3 Fact Expa Goliath | Terran | 600 |
+| 3 Fact Expa Mech | Terran | 600 |
+| 3 Fact Expa Tankless Mech | Terran | 600 |
 | 3 Hatch Lurker | Zerg | 600 |
-| 3-Fac Mech | Terran | 600 |
-| 3-Fac Tankless Mech | Terran | 600 |
+| 3 Starport Valkyrie | Terran | 600 |
+| 3 Starport Wraith | Terran | 600 |
+| 4 Fact Expa Goliath | Terran | 600 |
+| 4 Fact Expa Mech | Terran | 600 |
+| 4 Fact Expa Tankless Mech | Terran | 600 |
 | 4 Hatch | Zerg | 180 |
 | 4 Pool | Zerg | 60 |
-| 4-Fac Mech | Terran | 600 |
-| 4-Fac Tankless Mech | Terran | 600 |
+| 5 Fact Expa Goliath | Terran | 600 |
+| 5 Fact Expa Mech | Terran | 600 |
+| 5 Fact Expa Tankless Mech | Terran | 600 |
 | 5 Hatch | Zerg | 180 |
 | 5 Pool | Zerg | 180 |
-| 5-Fac Mech | Terran | 600 |
-| 5-Fac Tankless Mech | Terran | 600 |
 | 6 Hatch | Zerg | 180 |
 | 6 Pool | Zerg | 180 |
-| 6+ Fac Mech | Terran | 600 |
-| 6+ Fac Tankless Mech | Terran | 600 |
+| 6+ Fact Expa Goliath | Terran | 600 |
+| 6+ Fact Expa Mech | Terran | 600 |
+| 6+ Fact Expa Tankless Mech | Terran | 600 |
 | 7 Hatch | Zerg | 180 |
 | 7 Pool | Zerg | 180 |
 | 8 Hatch | Zerg | 180 |
@@ -647,7 +738,6 @@ Each opener's detector commits its decision once the replay passes this second �
 | BBS | Terran | 120 |
 | Bunker Rush | Terran | end of replay |
 | CC First | Terran | 200 |
-| Factory Expand | Terran | 360 |
 | Forge Cannon (no expa) | Protoss | 320 |
 | Forge Cannon Gate before expa | Protoss | 320 |
 | Forge Expand | Protoss | 260 |
@@ -656,8 +746,13 @@ Each opener's detector commits its decision once the replay passes this second �
 | Gate Forge Cannon before expa | Protoss | 320 |
 | Gateway (Other) | Protoss | 320 |
 | Goliath | Terran | 600 |
+| Goliath (no expa) | Terran | 600 |
+| Mech | Terran | 600 |
+| Mech (no expa) | Terran | 600 |
 | Nexus First | Protoss | 200 |
 | Pool/Hatch (Other) | Zerg | 240 |
+| Tankless Mech | Terran | 600 |
+| Tankless Mech (no expa) | Terran | 600 |
 | Terran (Other) | Terran | 600 |
 | Zerg opening (approximate) | Zerg | 180 |
 
@@ -691,7 +786,7 @@ Standalone constants the detectors depend on — dedup windows, muta/turret burs
 
 | Constant | Value | Meaning |
 | --- | --- | --- |
-| Algorithm version | 50 | Detection algorithm revision; incremented to trigger re-detection. |
+| Algorithm version | 51 | Detection algorithm revision; incremented to trigger re-detection. |
 | Build dedup gap (s) | 3 | Repeat Build orders of the same building at the same tile, closer than this, are one event (double-tap / misclick); different-tile placements are kept. |
 | Build dedup max second (s) | 240 | Past this second, dedup stops and every Build is observed as-is (a tile can be legitimately rebuilt on later). |
 | Mutalisk burst window (s) | 30 | Window within which the Mutalisk morphs must cluster. |
@@ -836,31 +931,46 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 | 38 | bo_p_forge_gate_cannon |
 | 39 | bo_bbs |
 | 40 | bo_cc_first |
-| 41 | bo_t_goliath |
-| 42 | bo_t_bio_1base |
-| 43 | bo_t_bio_2base |
-| 44 | bo_t_111_mech |
-| 45 | bo_t_mech_2fac |
-| 46 | bo_t_mech_3fac |
-| 47 | bo_t_mech_4fac |
-| 48 | bo_t_mech_5fac |
-| 49 | bo_t_mech_6fac |
-| 50 | bo_t_tankless_2fac |
-| 51 | bo_t_tankless_3fac |
-| 52 | bo_t_tankless_4fac |
-| 53 | bo_t_tankless_5fac |
-| 54 | bo_t_tankless_6fac |
-| 55 | bo_t_111 |
-| 56 | bo_t_factory_expand |
-| 57 | bo_t_2port_wraith |
-| 58 | bo_t_2fact_expa |
-| 59 | double_stargate |
-| 60 | crazy_zerg |
-| 61 | guardians |
-| 62 | carriers |
-| 63 | battlecruisers |
-| 64 | ten_plus_scouts |
-| 65 | cliff_drop |
+| 41 | bo_t_bio_1base |
+| 42 | bo_t_bio_2base |
+| 43 | bo_t_111_mech |
+| 44 | bo_t_111_tankless |
+| 45 | bo_t_111 |
+| 46 | bo_t_mech_expa_1fac |
+| 47 | bo_t_mech_expa_2fac |
+| 48 | bo_t_mech_expa_3fac |
+| 49 | bo_t_mech_expa_4fac |
+| 50 | bo_t_mech_expa_5fac |
+| 51 | bo_t_mech_expa_6fac |
+| 52 | bo_t_goliath_expa_1fac |
+| 53 | bo_t_goliath_expa_2fac |
+| 54 | bo_t_goliath_expa_3fac |
+| 55 | bo_t_goliath_expa_4fac |
+| 56 | bo_t_goliath_expa_5fac |
+| 57 | bo_t_goliath_expa_6fac |
+| 58 | bo_t_tankless_expa_1fac |
+| 59 | bo_t_tankless_expa_2fac |
+| 60 | bo_t_tankless_expa_3fac |
+| 61 | bo_t_tankless_expa_4fac |
+| 62 | bo_t_tankless_expa_5fac |
+| 63 | bo_t_tankless_expa_6fac |
+| 64 | bo_t_mech_expand |
+| 65 | bo_t_goliath_expand |
+| 66 | bo_t_tankless_expand |
+| 67 | bo_t_mech_noexpa |
+| 68 | bo_t_goliath_noexpa |
+| 69 | bo_t_tankless_noexpa |
+| 70 | bo_t_2starport_wraith |
+| 71 | bo_t_2starport_valk |
+| 72 | bo_t_3starport_wraith |
+| 73 | bo_t_3starport_valk |
+| 74 | double_stargate |
+| 75 | crazy_zerg |
+| 76 | guardians |
+| 77 | carriers |
+| 78 | battlecruisers |
+| 79 | ten_plus_scouts |
+| 80 | cliff_drop |
 
 ## Game-event featuring chips
 

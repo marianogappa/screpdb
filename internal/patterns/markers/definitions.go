@@ -177,6 +177,7 @@ const (
 	subjGoliath        = models.GeneralUnitGoliath
 	subjSiegeTank      = models.GeneralUnitSiegeTankTankMode
 	subjWraith         = models.GeneralUnitWraith
+	subjValkyrie       = models.GeneralUnitValkyrie
 	subjScienceVessel  = models.GeneralUnitScienceVessel
 	subjBattlecruiser  = models.GeneralUnitBattlecruiser
 	subjCloakingField  = models.TechCloakingField
@@ -300,20 +301,22 @@ func allMarkers() []Marker {
 		CountBuildsBefore(subjBarracks, 2, 120),
 		FirstBuildBefore(subjBarracks, 100),
 	)
-	// Bunker Rush: an all-in — an early Bunker (≤240s) with NO expansion (no
-	// CC by 300s) and NO Factory tech (none by 240s). This topology alone can't
-	// tell an offensive bunker rush from a defensive sim-city bunker: on Money
-	// maps (BGH) nobody takes a second CC, so a player who walls their own base
-	// with an early Bunker matches every guard here (issue #164). The Bunker
-	// Rush marker pairs this topology with a spatial gate (RequireWorldstateEvent
-	// "bunker_rush") that only fires for a Bunker placed at the enemy's base, so
-	// the topology stays the all-in shape while the location decides the verdict.
+	// Bunker Rush: TWO+ early Bunkers (≤240s) placed AT the enemy base. The
+	// location + commitment define it, not the economy: it's still a bunker rush
+	// when the player then expands or teches into mech (it names the opening, and
+	// is TierPreferred so it wins over the follow-up composition bucket). The
+	// spatial gate (RequireWorldstateEvent "bunker_rush") fires for a forward
+	// Bunker, but a SINGLE early bunker is usually a poke / wall (it stole
+	// 2 Port Wraith, Bio and Factory-Expand builds when allowed), so the rush
+	// requires the 2nd forward bunker as the commitment signal (issue #226/#227
+	// curation). The 1st-Barracks-before-Bunker / not-2-Rax guards stay so a BBS
+	// (its own marker) isn't relabelled. The earlier no-expansion / no-Factory
+	// all-in guards were dropped: a 2-bunker rush into 1-Fact-Expa mech still
+	// counts.
 	tRuleBunkerRush := All(
-		FirstBuildBefore(subjBunker, 240),
+		CountBuildsBefore(subjBunker, 2, 240),
 		BuildBefore(subjBarracks, subjBunker),
 		Not(NthBuildBeforeAll(subjBarracks, 2, []string{subjBunker})),
-		Not(FirstBuildBefore(subjCommandCenter, 300)),
-		Not(FirstBuildBefore(subjFactory, 240)),
 	)
 
 	// Composition cohort: any Terran opener that is NOT a topology opener. Only
@@ -358,17 +361,28 @@ func allMarkers() []Marker {
 	)
 	tcTank1 := ProduceCountAtLeastBefore(subjSiegeTank, 1, 600)
 	tcTank0 := ProduceCountAtMostBefore(subjSiegeTank, 0, 600)
-	// Goliath opener is Goliath-dominant with no tank tech: ≤2 Vultures and
-	// ≤4 Marines by 7:00, 4+ Goliaths by 10:00. Tanks make it Mech instead, so
-	// tcTank0 guards against tank-heavy mech being misread as a Goliath build.
-	tcGoliath := All(
-		ProduceCountAtMostBefore(subjVulture, 2, 420),
-		ProduceCountAtMostBefore(subjMarine, 4, 420),
-		ProduceCountAtLeastBefore(subjGoliath, 4, 600),
-		tcTank0,
-	)
+	// Goliath is a composition flavor of mech (parallel to Tankless Mech): no
+	// Siege Tanks by 10:00 and Goliath-dominant (more Goliaths than Vultures by
+	// 10:00). It names the mech bucket "… Goliath" instead of "… Tankless Mech"
+	// (issue #227 curation: "after the initial Vultures only Goliaths come out").
+	// The former standalone "Goliath" opener folds into this — the expand-first
+	// case is just "Goliath".
+	tcGoliathDom := All(tcTank0, Predominant([]string{subjGoliath}, []string{subjVulture}, 600))
 	tcOneOneOne := All(FirstBuildBefore(subjStarport, 420), ProduceCountAtLeastBefore(subjWraith, 1, 600))
-	tcFac2 := CountBuildsBefore(subjFactory, 2, 600)
+	// N Starport cluster: 2 or 3 Starports built in quick succession (the air
+	// opener's signature). Ignores what came before the Starports — a
+	// 2-Factory-then-Starports build still qualifies. The cluster size names the
+	// bucket (2 vs 3 Starport) and the air unit splits Wraith vs Valkyrie. The
+	// Wraith floor is 3 (not 5): a 3-Starport opener that pumps only 3 Wraiths by
+	// 10:00 is still a Wraith build (issue #227, NamuBulldozer).
+	tc2Starport := NthBuildWithinGapOfFirst(subjStarport, 2, 90)
+	tc3Starport := NthBuildWithinGapOfFirst(subjStarport, 3, 120)
+	tcWraithAir := ProduceCountAtLeastBefore(subjWraith, 3, 600)
+	tcValkAir := All(ProduceCountAtLeastBefore(subjValkyrie, 2, 600), Not(tcWraithAir))
+	tc3StarportWraith := All(tc3Starport, tcWraithAir)
+	tc3StarportValkyrie := All(tc3Starport, tcValkAir)
+	tc2StarportWraith := All(tc2Starport, Not(tc3Starport), tcWraithAir)
+	tc2StarportValkyrie := All(tc2Starport, Not(tc3Starport), tcValkAir)
 
 	// tNamed: the matchup-free union of everything any Terran BO can match, used
 	// to define the residual as its exact complement (mutual-exclusion is then
@@ -379,11 +393,10 @@ func allMarkers() []Marker {
 	// coverage gap for off-matchup compositions (e.g. a TvP mass-bio game).
 	tNamed := Any(
 		tRuleCCFirst, tRuleBBS,
-		All(tCohort, tcWraith),
-		All(tCohort, tcGoliath),
+		All(tCohort, tc2Starport), // covers 2 and 3 Starport (3 implies the 2-cluster)
 		All(tCohort, tcBio),
-		All(tCohort, tcFac2, tcMechPred), // mech + tankless mech + 1-1-1-into-mech (all need ≥2 Factories)
-		All(tCohort, tcOneOneOne),        // plain 1-1-1
+		All(tCohort, tcMechPred), // every mech-predominant build maps to a Mech / Goliath / Tankless bucket
+		All(tCohort, tcOneOneOne),
 	)
 
 	// Expert milestone timings for the composition-based Terran BOs (issue #158),
@@ -409,9 +422,7 @@ func allMarkers() []Marker {
 		{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 100, Tolerance: Asym(12, 70)},
 		{Key: "1st Factory", Match: MatchBuild(subjFactory), TargetSecond: 152, Tolerance: Asym(12, 80)},
 	}
-	tMechNthFac := [7]int{0, 0, 275, 458, 480, 501, 528}
 	tMechTank := 290
-	tTanklessNthFac := [7]int{0, 0, 243, 349, 422, 471, 560}
 	tTanklessVulture := 205
 
 	// Compact builders for the per-count composition buckets (issue #155). Each
@@ -419,28 +430,6 @@ func allMarkers() []Marker {
 	// split (bio vs mech), the Tank present/absent split, the exact count, and
 	// Not(...) guards against the higher-signal Wraith/Goliath/1-1-1 rules.
 	mkPill := func(label, icon string) *Pill { return &Pill{Label: label, IconKey: icon} }
-	// countPred builds the bucket's count predicate: an exact count for the
-	// 1..5 rungs, "at least" for the 6+ top rung.
-	countPred := func(subj string, n int, exact bool) Predicate {
-		if exact {
-			return BuildCountEqualsBefore(subj, n, 600)
-		}
-		return CountBuildsBefore(subj, n, 600)
-	}
-	// nthLabel renders the bucket-defining building milestone label, e.g.
-	// "2nd Barracks", "6th Factory".
-	nthLabel := func(n int, building string) string {
-		suffix := "th"
-		switch n {
-		case 1:
-			suffix = "st"
-		case 2:
-			suffix = "nd"
-		case 3:
-			suffix = "rd"
-		}
-		return fmt.Sprintf("%d%s %s", n, suffix, building)
-	}
 	// Bio is split by base count, not Barracks count: the rax count keeps
 	// growing through the game and there's no clean "the opening ended here"
 	// moment, so 1-Rax…6-Rax were fragile (a 3-Rax read as 2-Rax mid-build).
@@ -452,45 +441,98 @@ func allMarkers() []Marker {
 		return Marker{
 			Name: name, PatternName: InitialBuildOrderPatternNamePrefix + name, FeatureKey: fkey,
 			Race: RaceTerran, Kind: KindInitialBuildOrder, Matchup: []string{"TvZ", MatchupNon1v1},
-			Rule:          All(tCohort, tcBio, Not(tcWraith), Not(tcGoliath), expandRule),
+			Rule:          All(tCohort, tcBio, Not(tcWraith), Not(tcGoliathDom), expandRule),
 			RuleDeadline:  600,
 			Modifiers:     []Modifier{{Name: "proxy", WorldstateEvent: "proxy_rax"}},
 			Expert:        append(append([]ExpertEvent{}, tBioOpening...), extraExpert...),
 			SummaryPlayer: mkPill(name, "marine"), GamesList: mkPill(name, "marine"),
 		}
 	}
-	mechBucket := func(name, fkey string, n int, exact bool) Marker {
+	// Mech is named by the number of Factories built STRICTLY BEFORE the first
+	// expansion (the first Command Center build — the starting CC isn't a
+	// command). That count is deterministic, unlike a by-deadline count that
+	// conflated factories built before and after the expansion. The "expa" is
+	// baked into the name (every build in this family expanded). A composition
+	// flavor (mechComp) picks the suffix: tanks → "Mech", Goliath-dominant →
+	// "Goliath", otherwise → "Tankless Mech".
+	type mechComp struct {
+		suffix, key, icon string
+		gate              Predicate
+	}
+	mechComps := []mechComp{
+		{"Mech", "mech", "siegetank", tcTank1},
+		{"Goliath", "goliath", "goliath", tcGoliathDom},
+		{"Tankless Mech", "tankless", "vulture", All(tcTank0, Not(tcGoliathDom))},
+	}
+	mechEv := func(c mechComp, extra ...ExpertEvent) []ExpertEvent {
 		ev := append([]ExpertEvent{}, tMechOpening...)
-		ev = append(ev,
-			ExpertEvent{Key: nthLabel(n, "Factory"), Match: MatchNthBuild(subjFactory, n), TargetSecond: tMechNthFac[n], Tolerance: Asym(90, 130)},
-			ExpertEvent{Key: "First Siege Tank", Match: MatchFirstProduce(subjSiegeTank), TargetSecond: tMechTank, Tolerance: Asym(60, 120)},
-		)
-		return Marker{
-			Name: name, PatternName: InitialBuildOrderPatternNamePrefix + name, FeatureKey: fkey,
-			Race: RaceTerran, Kind: KindInitialBuildOrder,
-			Rule:          All(tCohort, countPred(subjFactory, n, exact), tcMechPred, tcTank1, Not(tcOneOneOne), Not(tcWraith), Not(tcGoliath)),
-			RuleDeadline:  600,
-			Expert:        ev,
-			SummaryPlayer: mkPill(name, "siegetank"), GamesList: mkPill(name, "siegetank"),
+		ev = append(ev, extra...)
+		switch c.key {
+		case "goliath":
+			return append(ev, ExpertEvent{Key: "First Goliath", Match: MatchFirstProduce(subjGoliath), TargetSecond: 339, Tolerance: Asym(75, 110)})
+		case "tankless":
+			return append(ev, ExpertEvent{Key: "First Vulture", Match: MatchFirstProduce(subjVulture), TargetSecond: tTanklessVulture, Tolerance: Asym(20, 50)})
+		default:
+			return append(ev, ExpertEvent{Key: "First Siege Tank", Match: MatchFirstProduce(subjSiegeTank), TargetSecond: tMechTank, Tolerance: Asym(60, 120)})
 		}
 	}
-	tanklessBucket := func(name, fkey string, n int, exact bool) Marker {
-		ev := append([]ExpertEvent{}, tMechOpening...)
-		ev = append(ev,
-			ExpertEvent{Key: nthLabel(n, "Factory"), Match: MatchNthBuild(subjFactory, n), TargetSecond: tTanklessNthFac[n], Tolerance: Asym(90, 130)},
-			ExpertEvent{Key: "First Vulture", Match: MatchFirstProduce(subjVulture), TargetSecond: tTanklessVulture, Tolerance: Asym(20, 50)},
-		)
+	mechCore := func(name, fkey string, facRule Predicate, c mechComp, ev []ExpertEvent) Marker {
 		return Marker{
 			Name: name, PatternName: InitialBuildOrderPatternNamePrefix + name, FeatureKey: fkey,
 			Race: RaceTerran, Kind: KindInitialBuildOrder,
-			Rule:          All(tCohort, countPred(subjFactory, n, exact), tcMechPred, tcTank0, Not(tcWraith), Not(tcGoliath)),
+			Rule:          All(tCohort, facRule, tcMechPred, c.gate, Not(tc2Starport), Not(tcOneOneOne)),
 			RuleDeadline:  600,
 			Expert:        ev,
-			SummaryPlayer: mkPill(name, "vulture"), GamesList: mkPill(name, "vulture"),
+			SummaryPlayer: mkPill(name, c.icon), GamesList: mkPill(name, c.icon),
+		}
+	}
+	// N Factories before the first expansion CC. n in 1..6; n==6 is the "6+" top
+	// rung ("at least"). Name "N Fact Expa {Mech|Goliath|Tankless Mech}".
+	mechExpa := func(n int, c mechComp) Marker {
+		head := fmt.Sprintf("%d Fact Expa", n)
+		facRule := BuildCountBeforeFirstBuildOf(subjFactory, subjCommandCenter, n)
+		if n >= 6 {
+			head = "6+ Fact Expa"
+			facRule = BuildCountAtLeastBeforeFirstBuildOf(subjFactory, subjCommandCenter, 6)
+		}
+		name := head + " " + c.suffix
+		fkey := fmt.Sprintf("bo_t_%s_expa_%dfac", c.key, n)
+		ev := mechEv(c, ExpertEvent{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 250, Tolerance: Asym(120, 200)})
+		return mechCore(name, fkey, facRule, c, ev)
+	}
+	// Expand-first: the natural CC is taken before ANY Factory (0 Factories
+	// before the expansion). Just "Mech" / "Goliath" / "Tankless Mech".
+	mechPlain := func(c mechComp) Marker {
+		fkey := fmt.Sprintf("bo_t_%s_expand", c.key)
+		return mechCore(c.suffix, fkey, BuildCountBeforeFirstBuildOf(subjFactory, subjCommandCenter, 0), c, mechEv(c))
+	}
+	// No expansion in the opening window (no CC by 10:00) — a greedy one-base
+	// mech. Rare, so it isn't split by factory count.
+	mechNoExpa := func(c mechComp) Marker {
+		fkey := fmt.Sprintf("bo_t_%s_noexpa", c.key)
+		facRule := All(Not(FirstBuildBefore(subjCommandCenter, 600)), CountBuildsBefore(subjFactory, 2, 600))
+		return mechCore(c.suffix+" (no expa)", fkey, facRule, c, mechEv(c))
+	}
+	// 1-1-1 (one each of Rax/Factory/Starport, early Starport + Wraith), named
+	// by the transition: Mech (tanks), Tankless Mech (no tanks), or balanced.
+	oneOneOne := func(name, fkey, icon string, comp Predicate) Marker {
+		return Marker{
+			Name: name, PatternName: "Build Order: " + name, FeatureKey: fkey,
+			Race: RaceTerran, Kind: KindInitialBuildOrder,
+			Rule:         All(tCohort, tcOneOneOne, comp, Not(tc2Starport)),
+			RuleDeadline: 600,
+			Expert: []ExpertEvent{
+				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 55, Tolerance: Asym(10, 24)},
+				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 85, Tolerance: Asym(26, 18)},
+				{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 99, Tolerance: Asym(15, 70)},
+				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 153, Tolerance: Asym(15, 80)},
+				{Key: "Starport", Match: MatchBuild(subjStarport), TargetSecond: 240, Tolerance: Asym(50, 80)},
+			},
+			SummaryPlayer: &Pill{Label: name, IconKey: icon}, GamesList: &Pill{Label: name, IconKey: icon},
 		}
 	}
 
-	return []Marker{
+	ms := []Marker{
 		// -------------------------------------------------------------------
 		// TIER-1 PREFERRED OPENERS (issue #182). Specific, scene-named openings
 		// sourced from current BW pro / Liquipedia knowledge (docs/build-orders-
@@ -678,47 +720,22 @@ func allMarkers() []Marker {
 			SummaryPlayer: mkPill("Forge Gate Cannon (before expa)", "photoncannon"), GamesList: mkPill("Forge Gate Cannon (before expa)", "photoncannon"),
 		},
 
-		// --- Terran opening-sequence openers (the new axis vs #155 composition). ---
+		// --- Terran air opener: 2 Starport. TierPreferred so it wins over the
+		// composition mech buckets. Two Starports built as a quick cluster
+		// (NthBuildWithinGapOfFirst), then Wraith- or Valkyrie-dominant air. This
+		// absorbs the former "2 Port Wraith" (now "2 Starport Wraith") and, unlike
+		// the old rule, ignores what was built before the Starports — so a
+		// 2-Factory-then-2-Starport build into Valkyries also qualifies. The old
+		// matchup-gated "Factory Expand" (TvP) and "2 Fact before Expa" (TvT)
+		// openers were retired: they are 1- and 2-Factory expands and now fall to
+		// the matchup-free "N Fact Expa Mech" composition buckets. ---
 		{
-			// Factory Expand (TvP): 1 Rax → Factory (+ Machine Shop, vultures +
-			// vulture upgrades) → natural CC. The standard safe TvP mech opener.
-			// Named for the factory-first-into-expand shape, not siege tech (no
-			// Siege research is implied). Disjoint from a 2-Rax opening (single
-			// Barracks before the Factory).
-			Name: "Factory Expand", PatternName: InitialBuildOrderPatternNamePrefix + "Factory Expand", FeatureKey: "bo_t_factory_expand",
-			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvT"},
-			Rule: All(
-				BuildBefore(subjBarracks, subjFactory),
-				Not(NthBuildBeforeAll(subjBarracks, 2, []string{subjFactory})),
-				FirstBuildExists(subjMachineShop),
-				BuildBefore(subjFactory, subjCommandCenter),
-				FirstBuildBefore(subjCommandCenter, 360),
-			),
-			RuleDeadline: 360,
-			Expert: []ExpertEvent{
-				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 150, Tolerance: Asym(20, 60)},
-				{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 229, Tolerance: Asym(30, 80)},
-			},
-			SummaryPlayer: mkPill("Factory Expand", "vulture"), GamesList: mkPill("Factory Expand", "vulture"),
-		},
-		{
-			// 2 Port Wraith (TvT & TvZ): the Terran air opener — 1 Barracks +
-			// 1 Factory into two Starports, wraith-dominant. The attacking
-			// composition after the two Starports is mostly Wraiths (a later bio/
-			// mech transition is common but lands after the two ports, so it
-			// doesn't disqualify the opener — see tcWraith). Academy / Armory /
-			// Supply may precede the ports freely; only a 2nd Barracks or 2nd
-			// Factory before the first Starport rules it out. An expansion before
-			// the Starports is the "expand" modifier. This unifies the former TvZ
-			// "Wraith" composition opener with the TvT 2 Port Wraith.
-			Name: "2 Port Wraith", PatternName: InitialBuildOrderPatternNamePrefix + "2 Port Wraith", FeatureKey: "bo_t_2port_wraith",
+			Name: "2 Starport Wraith", PatternName: InitialBuildOrderPatternNamePrefix + "2 Starport Wraith", FeatureKey: "bo_t_2starport_wraith",
 			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvT", "TvZ"},
-			Rule:         All(tCohort, tcWraith),
+			Rule:         All(tCohort, tc2StarportWraith),
 			RuleDeadline: 600,
-			// "expand" flags taking a Command Center before the two Starports —
-			// an economic 2-port wraith vs the one-base harass variant. "proxy"
-			// flags Starports built forward at the enemy (worldstate proxy_starport
-			// event), the same way BBS / 2 Gate carry their proxy tag.
+			// "expand" flags a Command Center before the two Starports (economic
+			// vs one-base harass); "proxy" flags forward Starports at the enemy.
 			Modifiers: []Modifier{
 				{Name: "expand", Rule: BuildBefore(subjCommandCenter, subjStarport)},
 				{Name: "proxy", WorldstateEvent: "proxy_starport"},
@@ -728,30 +745,57 @@ func allMarkers() []Marker {
 				{Key: "2nd Starport", Match: MatchNthBuild(subjStarport, 2), TargetSecond: 212, Tolerance: Asym(25, 70)},
 				{Key: "First Wraith", Match: MatchFirstProduce(subjWraith), TargetSecond: 253, Tolerance: Asym(40, 90)},
 			},
-			SummaryPlayer: mkPill("2 Port Wraith", "wraith"), GamesList: mkPill("2 Port Wraith", "wraith"),
+			SummaryPlayer: mkPill("2 Starport Wraith", "wraith"), GamesList: mkPill("2 Starport Wraith", "wraith"),
 		},
 		{
-			// 2 Fact before Expa (TvT): exactly two Factories before the
-			// expansion (no more, no less) and before any Starport — the standard
-			// 2-Factory mech opening (mech is implied in TvT, so it's a
-			// vulture/tank/goliath mix, not pure vultures). RuleDeadline 360 bounds
-			// the "before the expansion" window to the opening: a 3rd Factory after
-			// 6:00 (a late macro ramp) is past the deadline and doesn't count.
-			// Disjoint from 2 Port Wraith by construction (its 2nd Factory precedes
-			// the first Starport, which 2 Port Wraith forbids).
-			Name: "2 Fact before Expa", PatternName: InitialBuildOrderPatternNamePrefix + "2 Fact before Expa", FeatureKey: "bo_t_2fact_expa",
-			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvT"},
-			Rule: All(
-				tCohort,
-				NthBuildBeforeAll(subjFactory, 2, []string{subjCommandCenter, subjStarport}),
-				Not(NthBuildBeforeAll(subjFactory, 3, []string{subjCommandCenter})),
-			),
-			RuleDeadline: 360,
-			Expert: []ExpertEvent{
-				{Key: "1st Factory", Match: MatchBuild(subjFactory), TargetSecond: 147, Tolerance: Asym(25, 40)},
-				{Key: "2nd Factory", Match: MatchNthBuild(subjFactory, 2), TargetSecond: 177, Tolerance: Asym(40, 60)},
+			Name: "2 Starport Valkyrie", PatternName: InitialBuildOrderPatternNamePrefix + "2 Starport Valkyrie", FeatureKey: "bo_t_2starport_valk",
+			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvT", "TvZ"},
+			Rule:         All(tCohort, tc2StarportValkyrie),
+			RuleDeadline: 600,
+			Modifiers: []Modifier{
+				{Name: "expand", Rule: BuildBefore(subjCommandCenter, subjStarport)},
+				{Name: "proxy", WorldstateEvent: "proxy_starport"},
 			},
-			SummaryPlayer: mkPill("2 Fact before Expa", "vulture"), GamesList: mkPill("2 Fact before Expa", "vulture"),
+			Expert: []ExpertEvent{
+				{Key: "1st Starport", Match: MatchBuild(subjStarport), TargetSecond: 205, Tolerance: Asym(40, 90)},
+				{Key: "2nd Starport", Match: MatchNthBuild(subjStarport, 2), TargetSecond: 212, Tolerance: Asym(40, 90)},
+				{Key: "First Valkyrie", Match: MatchFirstProduce(subjValkyrie), TargetSecond: 300, Tolerance: Asym(60, 120)},
+			},
+			SummaryPlayer: mkPill("2 Starport Valkyrie", "valkyrie"), GamesList: mkPill("2 Starport Valkyrie", "valkyrie"),
+		},
+		{
+			// 3 Starport Wraith: three Starports clustered, Wraith-dominant. Same
+			// family as 2 Starport but the cluster size names it (issue #227).
+			Name: "3 Starport Wraith", PatternName: InitialBuildOrderPatternNamePrefix + "3 Starport Wraith", FeatureKey: "bo_t_3starport_wraith",
+			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvT", "TvZ"},
+			Rule:         All(tCohort, tc3StarportWraith),
+			RuleDeadline: 600,
+			Modifiers: []Modifier{
+				{Name: "expand", Rule: BuildBefore(subjCommandCenter, subjStarport)},
+				{Name: "proxy", WorldstateEvent: "proxy_starport"},
+			},
+			Expert: []ExpertEvent{
+				{Key: "1st Starport", Match: MatchBuild(subjStarport), TargetSecond: 205, Tolerance: Asym(40, 90)},
+				{Key: "3rd Starport", Match: MatchNthBuild(subjStarport, 3), TargetSecond: 225, Tolerance: Asym(40, 90)},
+				{Key: "First Wraith", Match: MatchFirstProduce(subjWraith), TargetSecond: 253, Tolerance: Asym(40, 90)},
+			},
+			SummaryPlayer: mkPill("3 Starport Wraith", "wraith"), GamesList: mkPill("3 Starport Wraith", "wraith"),
+		},
+		{
+			Name: "3 Starport Valkyrie", PatternName: InitialBuildOrderPatternNamePrefix + "3 Starport Valkyrie", FeatureKey: "bo_t_3starport_valk",
+			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvT", "TvZ"},
+			Rule:         All(tCohort, tc3StarportValkyrie),
+			RuleDeadline: 600,
+			Modifiers: []Modifier{
+				{Name: "expand", Rule: BuildBefore(subjCommandCenter, subjStarport)},
+				{Name: "proxy", WorldstateEvent: "proxy_starport"},
+			},
+			Expert: []ExpertEvent{
+				{Key: "1st Starport", Match: MatchBuild(subjStarport), TargetSecond: 205, Tolerance: Asym(40, 90)},
+				{Key: "3rd Starport", Match: MatchNthBuild(subjStarport, 3), TargetSecond: 225, Tolerance: Asym(40, 90)},
+				{Key: "First Valkyrie", Match: MatchFirstProduce(subjValkyrie), TargetSecond: 300, Tolerance: Asym(60, 120)},
+			},
+			SummaryPlayer: mkPill("3 Starport Valkyrie", "valkyrie"), GamesList: mkPill("3 Starport Valkyrie", "valkyrie"),
 		},
 
 		// Pool-first BOs are keyed off exact pre-Pool Drone-morph and
@@ -1328,78 +1372,25 @@ func allMarkers() []Marker {
 		// as TvT 2 Port Wraith — 1 Rax / 1 Fac into two Starports, wraith-dominant
 		// — so it folds into the now matchup-shared "2 Port Wraith" TierPreferred
 		// opener above. tcWraith still gates it out of the composition buckets.)
-		{
-			// Goliath: TvZ Goliath-dominant — ≤2 Vultures & ≤4 Marines by 7:00,
-			// 4+ Goliaths by 10:00 (with tanks it's Mech instead).
-			Name: "Goliath", PatternName: "Build Order: Goliath", FeatureKey: "bo_t_goliath",
-			Race: RaceTerran, Kind: KindInitialBuildOrder, Matchup: []string{"TvZ"},
-			Rule:         All(tCohort, tcGoliath, Not(tcWraith)),
-			RuleDeadline: 600,
-			Expert: []ExpertEvent{
-				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 55, Tolerance: Asym(10, 24)},
-				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 86, Tolerance: Asym(28, 18)},
-				{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 102, Tolerance: Asym(12, 70)},
-				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 161, Tolerance: Asym(15, 120)},
-				{Key: "Armory", Match: MatchBuild(subjArmory), TargetSecond: 242, Tolerance: Asym(40, 100)},
-				{Key: "First Goliath", Match: MatchFirstProduce(subjGoliath), TargetSecond: 339, Tolerance: Asym(75, 70)},
-			},
-			SummaryPlayer: &Pill{Label: "Goliath", IconKey: "goliath"},
-			GamesList:     &Pill{Label: "Goliath", IconKey: "goliath"},
-		},
+		// (The former standalone "Goliath" opener was folded into the mech
+		// composition flavor below — Goliath-dominant mech is "Goliath" /
+		// "N Fact Expa Goliath", issue #227.)
 		// Bio (Marine/Medic predominant, 8+ Marines; TvZ or non-1v1), split by
 		// base count: 1-Base = no natural CC in the opening (all-in / pressure),
 		// 2-Base = took a natural CC by ~360s (macro). Mutually exclusive.
 		bioBase("1-Base Bio", "bo_t_bio_1base", Not(FirstBuildBefore(subjCommandCenter, 360)), nil),
 		bioBase("2-Base Bio", "bo_t_bio_2base", FirstBuildBefore(subjCommandCenter, 360),
 			[]ExpertEvent{{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 300, Tolerance: Asym(80, 60)}}),
-		{
-			// 1-1-1 into Mech: early Starport + Wraith, then mech (≥2 Factories,
-			// ≥1 Tank, mech-predominant).
-			Name: "1-1-1 into Mech", PatternName: "Build Order: 1-1-1 into Mech", FeatureKey: "bo_t_111_mech",
-			Race: RaceTerran, Kind: KindInitialBuildOrder,
-			Rule:         All(tCohort, tcOneOneOne, tcFac2, tcMechPred, tcTank1, Not(tcWraith), Not(tcGoliath)),
-			RuleDeadline: 600,
-			Expert: []ExpertEvent{
-				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 55, Tolerance: Asym(10, 24)},
-				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 85, Tolerance: Asym(26, 18)},
-				{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 99, Tolerance: Asym(12, 70)},
-				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 153, Tolerance: Asym(12, 80)},
-				{Key: "Starport", Match: MatchBuild(subjStarport), TargetSecond: 254, Tolerance: Asym(50, 70)},
-				{Key: "First Siege Tank", Match: MatchFirstProduce(subjSiegeTank), TargetSecond: 312, Tolerance: Asym(80, 120)},
-			},
-			SummaryPlayer: &Pill{Label: "1-1-1 into Mech", IconKey: "siegetank"},
-			GamesList:     &Pill{Label: "1-1-1 into Mech", IconKey: "siegetank"},
-		},
-		// Mech (mech-predominant, ≥1 Tank), split by Factory count by 10:00.
-		mechBucket("2-Fac Mech", "bo_t_mech_2fac", 2, true),
-		mechBucket("3-Fac Mech", "bo_t_mech_3fac", 3, true),
-		mechBucket("4-Fac Mech", "bo_t_mech_4fac", 4, true),
-		mechBucket("5-Fac Mech", "bo_t_mech_5fac", 5, true),
-		mechBucket("6+ Fac Mech", "bo_t_mech_6fac", 6, false),
-		// Tankless Mech (mech-predominant, no Tank by 10:00 — pure Vulture/Goliath).
-		tanklessBucket("2-Fac Tankless Mech", "bo_t_tankless_2fac", 2, true),
-		tanklessBucket("3-Fac Tankless Mech", "bo_t_tankless_3fac", 3, true),
-		tanklessBucket("4-Fac Tankless Mech", "bo_t_tankless_4fac", 4, true),
-		tanklessBucket("5-Fac Tankless Mech", "bo_t_tankless_5fac", 5, true),
-		tanklessBucket("6+ Fac Tankless Mech", "bo_t_tankless_6fac", 6, false),
-		{
-			// 1-1-1: early Starport + Wraith that stays balanced (neither bio-
-			// nor mech-predominant) — the classic Vulture/Tank/Wraith opener.
-			Name: "1-1-1", PatternName: "Build Order: 1-1-1", FeatureKey: "bo_t_111",
-			Race: RaceTerran, Kind: KindInitialBuildOrder,
-			Rule:         All(tCohort, tcOneOneOne, Not(tcBio), Not(tcMechPred), Not(tcWraith), Not(tcGoliath)),
-			RuleDeadline: 600,
-			Expert: []ExpertEvent{
-				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 57, Tolerance: Asym(10, 24)},
-				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 85, Tolerance: Asym(28, 20)},
-				{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 98, Tolerance: Asym(15, 70)},
-				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 160, Tolerance: Asym(15, 70)},
-				{Key: "Starport", Match: MatchBuild(subjStarport), TargetSecond: 226, Tolerance: Asym(40, 80)},
-				{Key: "First Wraith", Match: MatchFirstProduce(subjWraith), TargetSecond: 271, Tolerance: Asym(40, 90)},
-			},
-			SummaryPlayer: &Pill{Label: "1-1-1", IconKey: "starport"},
-			GamesList:     &Pill{Label: "1-1-1", IconKey: "starport"},
-		},
+		// 1-1-1 (early Starport + Wraith), named by the transition. Mech vs
+		// Tankless Mech split by tank presence; balanced "1-1-1" is neither bio-
+		// nor mech-predominant (the classic Vulture/Tank/Wraith opener).
+		oneOneOne("1-1-1 Mech", "bo_t_111_mech", "siegetank", All(tcMechPred, tcTank1)),
+		oneOneOne("1-1-1 Tankless Mech", "bo_t_111_tankless", "vulture", All(tcMechPred, tcTank0)),
+		oneOneOne("1-1-1", "bo_t_111", "starport", All(Not(tcBio), Not(tcMechPred))),
+		// Mech named by Factories built strictly before the first expansion CC
+		// (deterministic), across the three composition flavors {Mech, Goliath,
+		// Tankless Mech}. Plus expand-first (0 fact) and the rare no-expansion
+		// one-base mech. Generated just below this slice via mechFamily().
 		{
 			// CC First: ~6% of TvT, ~9% of TvP, ~10% of TvZ (combining
 			// D-C-B-D-R and D-B-C-D-R variants — actually only the former
@@ -2141,4 +2132,13 @@ func allMarkers() []Marker {
 			RuleDeadline: endOfReplaySentinel,
 		},
 	}
+	// Mech composition family: {Mech, Goliath, Tankless Mech} × {1..6 Fact Expa,
+	// expand-first, no-expa}. Generated here so adding a flavor is one line.
+	for _, c := range mechComps {
+		for n := 1; n <= 6; n++ {
+			ms = append(ms, mechExpa(n, c))
+		}
+		ms = append(ms, mechPlain(c), mechNoExpa(c))
+	}
+	return ms
 }

@@ -743,6 +743,139 @@ func (s *produceCountAtLeastBeforeBuildState) Observe(f cmdenrich.EnrichedComman
 func (s *produceCountAtLeastBeforeBuildState) Decision(int) TriState { return s.done }
 func (s *produceCountAtLeastBeforeBuildState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
+// BuildCountBeforeFirstBuildOf matches if EXACTLY n Build(subject) commands
+// arrive strictly before the first Build(refSubject) — compared by game second
+// (not observation order) so the build-dedup tail (see ProduceCountBeforeBuild)
+// can't miscount a building placed within a second or two of the reference.
+//
+// Used by the Terran mech buckets: count Factories built before the first
+// Command Center (the expansion — the starting CC is not a build command, the
+// same convention Zerg uses for the Hatchery) to name "N Fact Expa Mech"
+// deterministically. Pending until the ref Build is seen; rejected if the ref
+// is never built (Finalize default) — the no-expansion case is matched by a
+// separate rule.
+func BuildCountBeforeFirstBuildOf(subject, refSubject string, n int) Predicate {
+	return func() PredicateState {
+		return &buildCountBeforeBuildState{subject: subject, ref: refSubject, want: n}
+	}
+}
+
+type buildCountBeforeBuildState struct {
+	commitState
+	subject, ref string
+	want         int
+	seconds      []int
+}
+
+func (s *buildCountBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
+	if s.done != Pending || f.Kind != cmdenrich.KindMakeBuilding {
+		return
+	}
+	switch f.Subject {
+	case s.subject:
+		s.seconds = append(s.seconds, f.Second)
+	case s.ref:
+		count := 0
+		for _, sec := range s.seconds {
+			if sec < f.Second {
+				count++
+			}
+		}
+		if count == s.want {
+			s.done = Matched
+		} else {
+			s.done = Rejected
+		}
+	}
+}
+
+func (s *buildCountBeforeBuildState) Decision(int) TriState { return s.done }
+func (s *buildCountBeforeBuildState) Finalize() TriState    { return s.finalizeDefaultRejected() }
+
+// BuildCountAtLeastBeforeFirstBuildOf matches if AT LEAST n Build(subject)
+// commands arrive strictly before the first Build(refSubject) — the "6+" top
+// rung of the N-Fact-Expa ladder. Matches as soon as the n-th subject build is
+// seen (the ref hasn't arrived yet, so they're necessarily earlier); rejects on
+// the first ref build with fewer than n seen, or if the ref is never built.
+func BuildCountAtLeastBeforeFirstBuildOf(subject, refSubject string, n int) Predicate {
+	return func() PredicateState {
+		return &buildCountAtLeastBeforeBuildState{subject: subject, ref: refSubject, want: n}
+	}
+}
+
+type buildCountAtLeastBeforeBuildState struct {
+	commitState
+	subject, ref string
+	want, count  int
+}
+
+func (s *buildCountAtLeastBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
+	if s.done != Pending || f.Kind != cmdenrich.KindMakeBuilding {
+		return
+	}
+	switch f.Subject {
+	case s.subject:
+		s.count++
+		if s.count >= s.want {
+			s.done = Matched
+		}
+	case s.ref:
+		if s.count < s.want {
+			s.done = Rejected
+		} else {
+			s.done = Matched
+		}
+	}
+}
+
+func (s *buildCountAtLeastBeforeBuildState) Decision(int) TriState { return s.done }
+func (s *buildCountAtLeastBeforeBuildState) Finalize() TriState    { return s.finalizeDefaultRejected() }
+
+// NthBuildWithinGapOfFirst matches if the n-th Build(subject) occurs within
+// maxGap seconds of the FIRST Build(subject). Used to detect a "2 Starport"
+// cluster: two Starports built in quick succession (regardless of the opening
+// before them), which distinguishes the air opener from a lone tech Starport
+// added to a mech build. Rejects once the gap is exceeded with fewer than n
+// builds, or at end-of-replay if the n-th never arrives.
+func NthBuildWithinGapOfFirst(subject string, n, maxGap int) Predicate {
+	return func() PredicateState {
+		return &nthBuildWithinGapState{subject: subject, n: n, maxGap: maxGap, firstSec: -1}
+	}
+}
+
+type nthBuildWithinGapState struct {
+	commitState
+	subject   string
+	n, maxGap int
+	firstSec  int
+	count     int
+}
+
+func (s *nthBuildWithinGapState) Observe(f cmdenrich.EnrichedCommand) {
+	if s.done != Pending || f.Kind != cmdenrich.KindMakeBuilding || f.Subject != s.subject {
+		return
+	}
+	s.count++
+	if s.firstSec < 0 {
+		s.firstSec = f.Second
+	}
+	if s.count >= s.n {
+		if f.Second-s.firstSec <= s.maxGap {
+			s.done = Matched
+		} else {
+			s.done = Rejected
+		}
+	}
+}
+
+func (s *nthBuildWithinGapState) Decision(now int) TriState {
+	if s.done == Pending && s.firstSec >= 0 && now-s.firstSec > s.maxGap {
+		return Rejected
+	}
+	return s.done
+}
+func (s *nthBuildWithinGapState) Finalize() TriState { return s.finalizeDefaultRejected() }
+
 // CountBuildsBefore matches if at least n Build(subject) facts happen with
 // second strictly less than maxSecond.
 func CountBuildsBefore(subject string, n, maxSecond int) Predicate {

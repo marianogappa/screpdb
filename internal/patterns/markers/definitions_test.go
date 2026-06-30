@@ -377,7 +377,7 @@ func TestBO_Terran_Bio_ByBase(t *testing.T) {
 	if !findBO(t, "1-Base Bio").Matches(oneBase) {
 		t.Fatalf("bio with no natural CC should be 1-Base Bio")
 	}
-	for _, other := range []string{"2-Base Bio", "2-Fac Mech", "1-1-1"} {
+	for _, other := range []string{"2-Base Bio", "2 Fact Expa Mech", "1-1-1"} {
 		if findBO(t, other).Matches(oneBase) {
 			t.Fatalf("1-base bio must not also match %q (mutex)", other)
 		}
@@ -396,54 +396,85 @@ func TestBO_Terran_Bio_ByBase(t *testing.T) {
 }
 
 func TestBO_Terran_Mech_ByFactory_AndTankless(t *testing.T) {
-	// 2 Factories, Vultures + Tanks, mech-predominant → 2-Fac Mech.
-	b := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).B(subjFactory, 200)
+	// 2 Factories before the expansion CC, Vultures + Tanks → 2 Fact Expa Mech.
+	b := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).B(subjFactory, 200).B(subjCommandCenter, 260)
 	produceN(b, subjVulture, 6, 220)
 	produceN(b, subjSiegeTank, 2, 300)
 	mech := b.list()
-	if !findBO(t, "2-Fac Mech").Matches(mech) {
-		t.Fatalf("2 Factories + Vultures + Tanks should be 2-Fac Mech")
+	if !findBO(t, "2 Fact Expa Mech").Matches(mech) {
+		t.Fatalf("2 Factories before the expansion + Tanks should be 2 Fact Expa Mech")
 	}
-	for _, other := range []string{"3-Fac Mech", "2-Fac Tankless Mech", "1-Base Bio", "1-1-1"} {
+	for _, other := range []string{"3 Fact Expa Mech", "2 Fact Expa Tankless Mech", "1-Base Bio", "1-1-1", "Mech (no expa)", "Mech"} {
 		if findBO(t, other).Matches(mech) {
 			t.Fatalf("mech stream must not also match %q (mutex)", other)
 		}
 	}
-	// 2 Factories, Vultures, NO Tank → 2-Fac Tankless Mech.
-	tb := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).B(subjFactory, 200)
+	// Same but NO Tank → 2 Fact Expa Tankless Mech.
+	tb := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).B(subjFactory, 200).B(subjCommandCenter, 260)
 	produceN(tb, subjVulture, 8, 220)
 	tankless := tb.list()
-	if !findBO(t, "2-Fac Tankless Mech").Matches(tankless) {
-		t.Fatalf("2 Factories + Vultures, no Tank should be 2-Fac Tankless Mech")
+	if !findBO(t, "2 Fact Expa Tankless Mech").Matches(tankless) {
+		t.Fatalf("2 Factories before the expansion + Vultures, no Tank should be 2 Fact Expa Tankless Mech")
 	}
-	if findBO(t, "2-Fac Mech").Matches(tankless) {
-		t.Fatalf("tankless stream must not match 2-Fac Mech (mutex)")
+	if findBO(t, "2 Fact Expa Mech").Matches(tankless) {
+		t.Fatalf("tankless stream must not match 2 Fact Expa Mech (mutex)")
+	}
+	// Expand-first: the CC precedes any Factory (0 Factories before expa) → "Mech".
+	ef := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjCommandCenter, 150).B(subjFactory, 200).B(subjFactory, 260)
+	produceN(ef, subjVulture, 6, 280)
+	produceN(ef, subjSiegeTank, 2, 320)
+	if !findBO(t, "Mech").Matches(ef.list()) {
+		t.Fatalf("CC before any Factory should be plain Mech")
+	}
+	// No expansion in the window (2 Factories, no CC) → "Mech (no expa)".
+	ne := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).B(subjFactory, 200)
+	produceN(ne, subjVulture, 6, 220)
+	produceN(ne, subjSiegeTank, 2, 300)
+	if !findBO(t, "Mech (no expa)").Matches(ne.list()) {
+		t.Fatalf("2 Factories with no expansion should be Mech (no expa)")
 	}
 }
 
 func TestBO_Terran_Wraith_Goliath_111(t *testing.T) {
-	// 1 Rax / 1 Fac into 2 Starports + 5 Wraiths → 2 Port Wraith (the former
-	// TvZ "Wraith" composition opener, now unified with TvT 2 Port Wraith).
+	// Two Starports as a quick cluster + 5 Wraiths → 2 Starport Wraith.
 	w := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).
 		B(subjStarport, 200).B(subjStarport, 260)
 	produceN(w, subjWraith, 5, 300)
-	if !findBO(t, "2 Port Wraith").Matches(w.list()) {
-		t.Fatalf("1 Rax/1 Fac + 2 Starports + 5 Wraiths should be 2 Port Wraith")
+	if !findBO(t, "2 Starport Wraith").Matches(w.list()) {
+		t.Fatalf("2 Starports + 5 Wraiths should be 2 Starport Wraith")
 	}
-	// A 2nd Factory before the first Starport rules out 2 Port Wraith (it's a
-	// mech/air hybrid, not the 1-Rax-1-Fac air opener).
+	// Unlike the old "2 Port Wraith", a 2nd Factory before the Starports no
+	// longer disqualifies — the cluster of two Starports is what counts.
 	w2 := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).
 		B(subjFactory, 180).B(subjStarport, 220).B(subjStarport, 260)
 	produceN(w2, subjWraith, 5, 320)
-	if findBO(t, "2 Port Wraith").Matches(w2.list()) {
-		t.Fatalf("2nd Factory before the Starport must not match 2 Port Wraith")
+	if !findBO(t, "2 Starport Wraith").Matches(w2.list()) {
+		t.Fatalf("2 Factories then a 2-Starport cluster + 5 Wraiths should still be 2 Starport Wraith")
 	}
-	// ≤2 Vultures & ≤4 Marines by 7:00, 4+ Goliaths → Goliath.
-	g := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).
-		P(subjVulture, 200).P(subjMarine, 120)
-	produceN(g, subjGoliath, 4, 300)
+	// Two Starports + Valkyries (and not wraith-dominant) → 2 Starport Valkyrie.
+	v := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).
+		B(subjFactory, 180).B(subjStarport, 250).B(subjStarport, 260)
+	produceN(v, subjValkyrie, 2, 320)
+	if !findBO(t, "2 Starport Valkyrie").Matches(v.list()) {
+		t.Fatalf("2 Starports + 2 Valkyries should be 2 Starport Valkyrie")
+	}
+	// Goliath-dominant (more Goliaths than Vultures), no tanks, expand-first
+	// (CC before any Factory) → plain "Goliath".
+	g := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjCommandCenter, 150).B(subjFactory, 200)
+	produceN(g, subjVulture, 2, 210)
+	produceN(g, subjGoliath, 8, 260)
 	if !findBO(t, "Goliath").Matches(g.list()) {
-		t.Fatalf("≤2 Vult, ≤4 Marine, 4 Goliaths should be Goliath")
+		t.Fatalf("goliath-dominant, no tanks, expand-first should be Goliath")
+	}
+	if findBO(t, "Tankless Mech").Matches(g.list()) {
+		t.Fatalf("goliath-dominant stream must not also match Tankless Mech (mutex)")
+	}
+	// One Factory before the expansion, goliath-dominant → 1 Fact Expa Goliath.
+	ge := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).B(subjCommandCenter, 220)
+	produceN(ge, subjVulture, 2, 200)
+	produceN(ge, subjGoliath, 8, 260)
+	if !findBO(t, "1 Fact Expa Goliath").Matches(ge.list()) {
+		t.Fatalf("goliath-dominant with 1 Factory before the expansion should be 1 Fact Expa Goliath")
 	}
 	// Early Starport + a Wraith, balanced composition → 1-1-1.
 	o := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).B(subjStarport, 300).
@@ -583,28 +614,30 @@ func TestBO_ProtossNoExpa(t *testing.T) {
 
 func TestBO_BunkerRush(t *testing.T) {
 	bo := findBO(t, "Bunker Rush")
-	// Positive: Rax → Bunker, all-in (no CC, no Factory). A defensive gas is
-	// now fine — the build is defined by the absence of an expansion/tech.
-	pos := factsBuilder().B(subjBarracks, 55).B(subjSupplyDepot, 90).B(subjBunker, 130).list()
+	// Positive: Rax → TWO early Bunkers (the commitment). A single bunker is a
+	// poke/wall, so the rush needs the 2nd. (The spatial gate that requires the
+	// bunkers be forward is the marker's RequireWorldstateEvent, tested separately.)
+	pos := factsBuilder().B(subjBarracks, 55).B(subjSupplyDepot, 90).B(subjBunker, 130).B(subjBunker, 165).list()
 	if !bo.Matches(pos) {
-		t.Fatalf("Bunker Rush should match Rax → Bunker all-in (no CC, no Factory)")
+		t.Fatalf("Bunker Rush should match Rax → two early Bunkers")
 	}
-	posGas := factsBuilder().B(subjBarracks, 55).B(subjRefinery, 100).B(subjBunker, 140).list()
-	if !bo.Matches(posGas) {
-		t.Fatalf("Bunker Rush should still match when a defensive gas precedes the Bunker")
+	// Positive: still a rush when it expands / teches into mech after the bunkers.
+	posExpand := factsBuilder().B(subjBarracks, 55).B(subjBunker, 130).B(subjBunker, 165).B(subjFactory, 200).B(subjCommandCenter, 235).list()
+	if !bo.Matches(posExpand) {
+		t.Fatalf("Bunker Rush should still match when it expands/teches after two bunkers")
 	}
-	// Negative: expands (CC) — that's 1 Rax FE, not an all-in.
-	negCC := factsBuilder().B(subjBarracks, 55).B(subjBunker, 130).B(subjCommandCenter, 200).list()
-	if bo.Matches(negCC) {
-		t.Fatalf("Bunker Rush should fail when the player expands (CC)")
+	// Negative: a single early Bunker is a poke/wall, not a rush.
+	negOne := factsBuilder().B(subjBarracks, 55).B(subjBunker, 130).list()
+	if bo.Matches(negOne) {
+		t.Fatalf("a single early Bunker must not be Bunker Rush")
 	}
-	// Negative: techs to Factory — that's 1 Rax 1 Fac / 1-1-1.
-	negFac := factsBuilder().B(subjBarracks, 55).B(subjBunker, 130).B(subjRefinery, 140).B(subjFactory, 200).list()
-	if bo.Matches(negFac) {
-		t.Fatalf("Bunker Rush should fail when the player techs to a Factory")
+	// Negative: the 2nd Bunker is after 240s (not an early commitment).
+	negLate := factsBuilder().B(subjBarracks, 55).B(subjBunker, 130).B(subjBunker, 250).list()
+	if bo.Matches(negLate) {
+		t.Fatalf("Bunker Rush should fail when the 2nd Bunker is after 240s")
 	}
-	// Negative: 2 Rax before the bunker — that's BBS.
-	neg2 := factsBuilder().B(subjBarracks, 55).B(subjBarracks, 80).B(subjBunker, 130).list()
+	// Negative: 2 Rax before the bunkers — that's BBS.
+	neg2 := factsBuilder().B(subjBarracks, 55).B(subjBarracks, 80).B(subjBunker, 130).B(subjBunker, 165).list()
 	if bo.Matches(neg2) {
 		t.Fatalf("Bunker Rush should fail with 2 Barracks before the Bunker (that's BBS)")
 	}

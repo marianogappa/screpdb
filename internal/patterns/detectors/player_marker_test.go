@@ -228,8 +228,8 @@ func TestBuildDedup_PastCapDoesNotCollapse(t *testing.T) {
 // moment the first post-cap fact arrives, so nothing is silently dropped.
 func TestBuildDedup_PendingFromBeforeCapFlushesAtCap(t *testing.T) {
 	d, rec := newRecordingBuildDetector()
-	d.enqueueDedup(buildFact("Gateway", 238))  // pending, pre-cap
-	d.enqueueDedup(buildFact("Gateway", 240))  // at cap → flushes prior, observes self
+	d.enqueueDedup(buildFact("Gateway", 238)) // pending, pre-cap
+	d.enqueueDedup(buildFact("Gateway", 240)) // at cap → flushes prior, observes self
 
 	if got := len(rec.observed); got != 2 {
 		t.Fatalf("expected 2 observations (pre-cap pending flushed + post-cap), got %d", got)
@@ -398,7 +398,8 @@ func runBunkerRushGate(t *testing.T, withEvent bool) bool {
 		WithPlayer(2, "Z", "Zerg", 2).
 		WithDurationSeconds(600).
 		WithCommand(1, 56, models.ActionTypeBuild, models.GeneralUnitBarracks).
-		WithCommand(1, 127, models.ActionTypeBuild, models.GeneralUnitBunker)
+		WithCommand(1, 127, models.ActionTypeBuild, models.GeneralUnitBunker).
+		WithCommand(1, 160, models.ActionTypeBuild, models.GeneralUnitBunker)
 	replay, players := builder.Build()
 
 	ws := worldstate.NewEngine(replay, players, &models.ReplayMapContext{})
