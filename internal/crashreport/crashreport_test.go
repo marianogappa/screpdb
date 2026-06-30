@@ -84,6 +84,26 @@ func TestWriteCreatesReportInWorkingDir(t *testing.T) {
 	}
 }
 
+func TestGuardWithoutPanicReturns(t *testing.T) {
+	// Guard must be a no-op when no panic is in flight — calling it directly
+	// (recover() == nil) must return normally and never os.Exit.
+	Guard()
+}
+
+func TestSetOpenBrowserUpdatesDefault(t *testing.T) {
+	prev := openBrowserDefault.Load()
+	t.Cleanup(func() { openBrowserDefault.Store(prev) })
+
+	SetOpenBrowser(true)
+	if !openBrowserDefault.Load() {
+		t.Error("SetOpenBrowser(true) did not set the default")
+	}
+	SetOpenBrowser(false)
+	if openBrowserDefault.Load() {
+		t.Error("SetOpenBrowser(false) did not clear the default")
+	}
+}
+
 func TestFirstLine(t *testing.T) {
 	cases := map[string]string{
 		"":                     "unexpected panic",

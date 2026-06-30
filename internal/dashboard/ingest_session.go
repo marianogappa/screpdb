@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/gorilla/websocket"
+	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/ingest"
 )
 
@@ -138,6 +139,7 @@ func (d *Dashboard) handlerIngestLogs(w http.ResponseWriter, r *http.Request) {
 
 	done := make(chan struct{})
 	go func() {
+		defer crashreport.Guard()
 		defer close(done)
 		for {
 			if _, _, err := conn.ReadMessage(); err != nil {

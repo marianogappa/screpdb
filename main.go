@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	crashreport.SetOpenBrowser(false)
 	defer crashreport.Recover(false)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	if err := cmd.Execute(); err != nil {

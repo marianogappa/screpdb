@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/gorilla/mux"
 	_ "modernc.org/sqlite"
 
+	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
@@ -84,8 +86,33 @@ func New(ctx context.Context, sqlitePath string) (*Dashboard, error) {
 	return dashboard, nil
 }
 
+// recoveryMiddleware turns a panic in any HTTP handler into a crash report and
+// a 500, without tearing down the server. net/http already isolates handler
+// panics from the process, but it does so silently — the GUI user has no
+// console, so the report file (and the prefilled issue link logged with it) is
+// their only way to surface the bug. Browser-open is deliberately suppressed
+// here (unlike goroutine Guards): a repeatedly-panicking request must not spawn
+// a new issue tab on every retry.
+func recoveryMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			rec := recover()
+			if rec == nil {
+				return
+			}
+			if rec == http.ErrAbortHandler {
+				panic(rec) // net/http's own sentinel — let it handle it
+			}
+			crashreport.Handle(rec, debug.Stack(), false)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (d *Dashboard) setupRouter() *mux.Router {
 	r := mux.NewRouter()
+	r.Use(recoveryMiddleware)
 	swagger, err := apigen.GetSwagger()
 	if err != nil {
 		panic(fmt.Errorf("failed to load embedded OpenAPI spec: %w", err))
@@ -228,6 +255,7 @@ func (d *Dashboard) StartAsync(port int) <-chan error {
 	}
 
 	go func() {
+		defer crashreport.Guard()
 		log.Printf("Server starting on %s...", addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			select {
@@ -242,6 +270,7 @@ func (d *Dashboard) StartAsync(port int) <-chan error {
 	// listener accepts, the dashboard is serving. This makes no outbound
 	// network call (issue #135).
 	go func() {
+		defer crashreport.Guard()
 		if err := netfacade.WaitForLocalListener(addr, 30, 100*time.Millisecond); err != nil {
 			select {
 			case errChan <- err:

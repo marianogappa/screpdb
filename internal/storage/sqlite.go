@@ -12,6 +12,7 @@ import (
 	"github.com/icza/screp/rep/repcore"
 	_ "modernc.org/sqlite"
 
+	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/migrations"
 	"github.com/marianogappa/screpdb/internal/models"
@@ -175,6 +176,7 @@ func (s *SQLiteStorage) StartIngestion(ctx context.Context, hooks IngestionHooks
 	errChan := make(chan error, 1)
 
 	go func() {
+		defer crashreport.Guard()
 		defer close(errChan)
 
 		// Process replays sequentially to handle dependencies

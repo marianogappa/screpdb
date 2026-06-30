@@ -17,6 +17,7 @@ import (
 )
 
 func main() {
+	crashreport.SetOpenBrowser(true)
 	defer crashreport.Recover(true)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
@@ -54,11 +55,12 @@ func main() {
 
 	errCh := make(chan error, 1)
 	go func() {
-		defer crashreport.Recover(true)
+		defer crashreport.Guard()
 		errCh <- cmd.RunDashboardWithContext(ctx, opts)
 	}()
 
 	go func() {
+		defer crashreport.Guard()
 		if err := <-errCh; err != nil && !errors.Is(err, context.Canceled) {
 			log.Printf("dashboard exited with error: %v", err)
 		}

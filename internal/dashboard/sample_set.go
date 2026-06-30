@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/ingest"
 	"github.com/marianogappa/screpdb/internal/sampledata"
 )
@@ -97,6 +98,7 @@ func (d *Dashboard) startIngestAsync(cfg ingest.Config) bool {
 		return false
 	}
 	go func() {
+		defer crashreport.Guard()
 		runErr := ingest.Run(d.ctx, cfg)
 		if runErr != nil {
 			cfg.Logger.Errorf("Ingestion failed: %v", runErr)
