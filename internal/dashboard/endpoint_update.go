@@ -56,7 +56,7 @@ func (d *Dashboard) handlerUpdateApply(w http.ResponseWriter, _ *http.Request) {
 	// Relaunch after the response reaches the client. On Unix this replaces the
 	// process image; on Windows it spawns the new binary and exits.
 	go func() {
-		defer crashreport.Guard()
+		defer crashreport.GuardNonFatal(nil)
 		time.Sleep(750 * time.Millisecond)
 		log.Printf("self-update applied (%s); relaunching", newVersion)
 		if restartErr := selfupdate.Restart(); restartErr != nil {

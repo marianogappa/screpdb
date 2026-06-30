@@ -18,6 +18,27 @@ import (
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 )
 
+// Regression for #234: a panic while storing one replay must be recovered into
+// a per-replay error (not crash the ingest), so the loop can skip it and keep
+// going. Passing nil data forces a nil dereference inside storeReplayWithBatching.
+func TestStoreReplayRecovered_PanicBecomesError(t *testing.T) {
+	dir := t.TempDir()
+	prev, _ := os.Getwd()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(prev) })
+
+	s := &SQLiteStorage{}
+	err, panicked := s.storeReplayRecovered(context.Background(), nil)
+	if !panicked {
+		t.Fatalf("expected panicked=true for nil replay data")
+	}
+	if err == nil {
+		t.Fatalf("expected a non-nil error describing the recovered panic")
+	}
+}
+
 // Regression for #234: a command whose Player could not be resolved (PlayerIDs
 // are not guaranteed contiguous) must not panic the persistence pass.
 func TestUpdateEntityIDs_NilCommandPlayer(t *testing.T) {

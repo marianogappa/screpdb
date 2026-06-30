@@ -51,6 +51,36 @@ func Guard() {
 	os.Exit(2)
 }
 
+// GuardNonFatal is deferred at the top of a goroutine that must NOT take down
+// the process on panic — e.g. a single ingest run, whose death should leave the
+// dashboard serving. On a panic it reports the crash (via Report) and runs the
+// optional cleanup so the caller can mark its work failed, then lets the
+// goroutine unwind normally. Unlike Guard it never exits. Deferred as:
+//
+//	defer crashreport.GuardNonFatal(func() { d.finishIngest(err) })
+func GuardNonFatal(cleanup func()) {
+	recovered := recover()
+	if recovered == nil {
+		return
+	}
+	ReportPanic(recovered, debug.Stack())
+	if cleanup != nil {
+		cleanup()
+	}
+}
+
+// ReportPanic writes a crash report for an already-recovered panic and surfaces
+// the prefilled issue link (opening the browser per SetOpenBrowser) WITHOUT
+// exiting. Use it for inline recovery where the surrounding loop should skip
+// the failed item and keep going (the caller captures the stack in its own
+// recover).
+func ReportPanic(recovered any, stack []byte) {
+	if recovered == nil {
+		return
+	}
+	Handle(recovered, stack, openBrowserDefault.Load())
+}
+
 // newIssueURL is the GitHub endpoint that opens a blank issue editor. We
 // pre-fill the title/body via query params rather than pointing at a specific
 // issue-form template so the link keeps working regardless of template changes

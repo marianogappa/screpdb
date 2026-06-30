@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -176,8 +177,21 @@ func (s *SQLiteStorage) StartIngestion(ctx context.Context, hooks IngestionHooks
 	errChan := make(chan error, 1)
 
 	go func() {
-		defer crashreport.Guard()
-		defer close(errChan)
+		// Non-fatal backstop: a panic in the loop plumbing or a hook is
+		// reported and turned into a terminal error on errChan, so the ingest
+		// run ends cleanly and the GUI dashboard keeps serving instead of dying
+		// (#234). Per-replay panics are handled finer-grained below (skip +
+		// continue); this only catches the rarer plumbing case.
+		defer func() {
+			if r := recover(); r != nil {
+				crashreport.ReportPanic(r, debug.Stack())
+				select {
+				case errChan <- fmt.Errorf("ingestion goroutine panicked (a crash report was generated): %v", r):
+				default:
+				}
+			}
+			close(errChan)
+		}()
 
 		// Process replays sequentially to handle dependencies
 		for {
@@ -189,8 +203,18 @@ func (s *SQLiteStorage) StartIngestion(ctx context.Context, hooks IngestionHooks
 					return
 				}
 
-				// Process this replay completely before moving to the next
-				if err := s.storeReplayWithBatching(ctx, data); err != nil {
+				// Process this replay completely before moving to the next.
+				// A panic in here is recovered into a per-replay error so one
+				// malformed replay is skipped instead of crashing the whole
+				// ingest (and, on the GUI build, the dashboard) — #234.
+				err, panicked := s.storeReplayRecovered(ctx, data)
+				if panicked {
+					if hooks.OnStoreError != nil {
+						hooks.OnStoreError(err)
+					}
+					continue
+				}
+				if err != nil {
 					if isDuplicateReplayError(err) {
 						if hooks.OnDuplicateReplay != nil {
 							hooks.OnDuplicateReplay(err)
@@ -221,6 +245,24 @@ func (s *SQLiteStorage) StartIngestion(ctx context.Context, hooks IngestionHooks
 	}()
 
 	return dataChan, errChan
+}
+
+// storeReplayRecovered runs storeReplayWithBatching under a non-fatal panic
+// guard. storeReplayWithBatching wraps its work in a transaction with a
+// deferred Rollback, so a panic leaves the database clean and the caller can
+// safely skip the offending replay and keep ingesting the rest. On a panic it
+// writes a crash report (so the user can file the bug) and returns panicked=true
+// with a descriptive error.
+func (s *SQLiteStorage) storeReplayRecovered(ctx context.Context, data *models.ReplayData) (err error, panicked bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			crashreport.ReportPanic(r, debug.Stack())
+			err = fmt.Errorf("panic while storing replay (this is a bug — please report it at "+
+				"https://github.com/marianogappa/screpdb/issues): %v", r)
+			panicked = true
+		}
+	}()
+	return s.storeReplayWithBatching(ctx, data), false
 }
 
 func isDuplicateReplayError(err error) bool {
