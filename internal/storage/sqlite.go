@@ -624,6 +624,9 @@ func (s *SQLiteStorage) updateEntityIDs(data *models.ReplayData, replayID int64,
 	}
 	for i := range data.Commands {
 		data.Commands[i].ReplayID = replayID
+		if data.Commands[i].Player == nil {
+			continue
+		}
 		data.Commands[i].PlayerID = data.Commands[i].Player.ID
 
 		// TODO Special case: VisionPlayerIDs hold slot ids
