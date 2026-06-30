@@ -6,11 +6,11 @@
     Factory            built=1 produced=0 dropped=0
     Starport           built=6 produced=4 dropped=2
 == bo_2_gate_carriers.rep ==
-  player 0 (Terran): tierA=8 tierB=2
+  player 0 (Terran): tierA=8 tierB=1
     Command Center     built=7 produced=6 dropped=1
     Barracks           built=1 produced=1 dropped=0
     Factory            built=14 produced=9 dropped=1
-    Starport           built=4 produced=1 dropped=3
+    Starport           built=4 produced=1 dropped=2
   player 1 (Protoss): tierA=0 tierB=0
     Nexus              built=5 produced=3 dropped=0
     Gateway            built=4 produced=3 dropped=0

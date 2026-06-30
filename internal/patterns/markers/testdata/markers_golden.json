@@ -63,6 +63,84 @@
       }
     ]
   },
+  "bo_111_tankless_tvz_FlOwErCoNtRoL.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1-1-1 Tankless Mech",
+        "value": "{\"expert_actuals\":[{\"second\":57,\"found\":true},{\"second\":86,\"found\":true},{\"second\":119,\"found\":true},{\"second\":175,\"found\":true},{\"second\":229,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "469"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,5,6,7]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":22.372881355932204}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":77,\"found\":true},{\"second\":130,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":13.728813559322035}"
+      }
+    ]
+  },
+  "bo_111_tvz_IloveMinzi.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Overpool\"}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "351"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1-1-1",
+        "value": "{\"expert_actuals\":[{\"second\":74,\"found\":true},{\"second\":61,\"found\":true},{\"second\":109,\"found\":true},{\"second\":173,\"found\":true},{\"second\":226,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "351"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Wraith Cloak timing",
+        "value": "348"
+      }
+    ]
+  },
   "bo_11hatch_pvz_bbbuuuuuks.rep": {
     "detections": [
       {
@@ -155,11 +233,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Terran (Other)",
-        "value": "252"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "252"
       },
@@ -233,7 +306,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: CC First",
-        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":117,\"found\":true},{\"second\":149,\"found\":true}]}"
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":117,\"found\":true},{\"second\":148,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -292,7 +365,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Turret timing",
-        "value": "{\"ebay_cmd\":266,\"first_turret_cmd\":330,\"turret_burst_count\":9,\"turret_finished\":349}"
+        "value": "{\"ebay_cmd\":266,\"first_turret_cmd\":330,\"turret_burst_count\":10,\"turret_finished\":349}"
       },
       {
         "replay_player_id": 1,
@@ -310,8 +383,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: Terran (Other)",
-        "value": "248"
+        "pattern_name": "Build Order: Bunker Rush",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":180,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -554,8 +627,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: Factory Expand",
-        "value": "{\"expert_actuals\":[{\"second\":158,\"found\":true},{\"second\":211,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":63,\"found\":true},{\"second\":84,\"found\":true},{\"second\":97,\"found\":true},{\"second\":158,\"found\":true},{\"second\":211,\"found\":true},{\"second\":247,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -638,8 +711,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Factory Expand",
-        "value": "{\"expert_actuals\":[{\"second\":154,\"found\":true},{\"second\":237,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":85,\"found\":true},{\"second\":100,\"found\":true},{\"second\":154,\"found\":true},{\"second\":237,\"found\":true},{\"second\":274,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -677,8 +750,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Factory Expand",
-        "value": "{\"expert_actuals\":[{\"second\":150,\"found\":true},{\"second\":209,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":90,\"found\":true},{\"second\":99,\"found\":true},{\"second\":150,\"found\":true},{\"second\":209,\"found\":true},{\"second\":334,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -701,8 +774,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: Factory Expand",
-        "value": "{\"expert_actuals\":[{\"second\":153,\"found\":true},{\"second\":241,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":88,\"found\":true},{\"second\":103,\"found\":true},{\"second\":153,\"found\":true},{\"second\":241,\"found\":true},{\"second\":274,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -780,8 +853,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 4-Fac Mech",
-        "value": "{\"expert_actuals\":[{\"second\":299,\"found\":true},{\"second\":86,\"found\":true},{\"second\":179,\"found\":true},{\"second\":231,\"found\":true},{\"second\":478,\"found\":true},{\"second\":313,\"found\":true}]}"
+        "pattern_name": "Build Order: Mech",
+        "value": "{\"expert_actuals\":[{\"second\":139,\"found\":true},{\"second\":86,\"found\":true},{\"second\":179,\"found\":true},{\"second\":231,\"found\":true},{\"second\":313,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -796,7 +869,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":14.163090128755364}"
+        "value": "{\"switches_per_minute\":14.334763948497853}"
       }
     ]
   },
@@ -834,8 +907,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Factory Expand",
-        "value": "{\"expert_actuals\":[{\"second\":145,\"found\":true},{\"second\":211,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":85,\"found\":true},{\"second\":96,\"found\":true},{\"second\":145,\"found\":true},{\"second\":211,\"found\":true},{\"second\":246,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -888,8 +961,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 1-1-1 into Mech",
-        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":84,\"found\":true},{\"second\":167,\"found\":true},{\"second\":225,\"found\":true},{\"second\":308,\"found\":true},{\"second\":464,\"found\":true}]}"
+        "pattern_name": "Build Order: 1-1-1 Mech",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":84,\"found\":true},{\"second\":167,\"found\":true},{\"second\":225,\"found\":true},{\"second\":308,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -922,8 +995,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: Factory Expand",
-        "value": "{\"expert_actuals\":[{\"second\":150,\"found\":true},{\"second\":208,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":83,\"found\":true},{\"second\":98,\"found\":true},{\"second\":150,\"found\":true},{\"second\":208,\"found\":true},{\"second\":249,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -938,7 +1011,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":17.435897435897438}"
+        "value": "{\"switches_per_minute\":17.307692307692307}"
       },
       {
         "replay_player_id": 1,
@@ -1000,8 +1073,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 2 Fact before Expa",
-        "value": "{\"expert_actuals\":[{\"second\":145,\"found\":true},{\"second\":174,\"found\":true}]}"
+        "pattern_name": "Build Order: Tankless Mech (no expa)",
+        "value": "{\"expert_actuals\":[{\"second\":53,\"found\":true},{\"second\":85,\"found\":true},{\"second\":96,\"found\":true},{\"second\":145,\"found\":true},{\"second\":197,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -1020,7 +1093,7 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 2 Port Wraith",
+        "pattern_name": "Build Order: 2 Starport Wraith",
         "value": "{\"expert_actuals\":[{\"second\":197,\"found\":true},{\"second\":210,\"found\":true},{\"second\":244,\"found\":true}],\"modifiers\":[\"proxy\"]}"
       },
       {
@@ -1049,8 +1122,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 2 Fact before Expa",
-        "value": "{\"expert_actuals\":[{\"second\":153,\"found\":true},{\"second\":176,\"found\":true}]}"
+        "pattern_name": "Build Order: 2 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":88,\"found\":true},{\"second\":98,\"found\":true},{\"second\":153,\"found\":true},{\"second\":378,\"found\":true},{\"second\":250,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -1079,8 +1152,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 4-Fac Mech",
-        "value": "{\"expert_actuals\":[{\"second\":53,\"found\":true},{\"second\":86,\"found\":true},{\"second\":101,\"found\":true},{\"second\":154,\"found\":true},{\"second\":551,\"found\":true},{\"second\":253,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":53,\"found\":true},{\"second\":86,\"found\":true},{\"second\":101,\"found\":true},{\"second\":152,\"found\":true},{\"second\":200,\"found\":true},{\"second\":253,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -1098,8 +1171,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 2 Fact before Expa",
-        "value": "{\"expert_actuals\":[{\"second\":145,\"found\":true},{\"second\":177,\"found\":true}]}"
+        "pattern_name": "Build Order: 1-1-1 Mech",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":85,\"found\":true},{\"second\":95,\"found\":true},{\"second\":145,\"found\":true},{\"second\":410,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -1128,8 +1201,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 2 Fact before Expa",
-        "value": "{\"expert_actuals\":[{\"second\":147,\"found\":true},{\"second\":183,\"found\":true}]}"
+        "pattern_name": "Build Order: 1-1-1 Mech",
+        "value": "{\"expert_actuals\":[{\"second\":49,\"found\":true},{\"second\":83,\"found\":true},{\"second\":98,\"found\":true},{\"second\":147,\"found\":true},{\"second\":392,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -1197,8 +1270,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 1-1-1 into Mech",
-        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":83,\"found\":true},{\"second\":98,\"found\":true},{\"second\":289,\"found\":true},{\"second\":314,\"found\":true},{\"second\":337,\"found\":true}]}"
+        "pattern_name": "Build Order: 1-1-1 Mech",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":83,\"found\":true},{\"second\":98,\"found\":true},{\"second\":148,\"found\":true},{\"second\":314,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -1256,8 +1329,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Terran (Other)",
-        "value": "599"
+        "pattern_name": "Build Order: Mech",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":87,\"found\":true},{\"second\":246,\"found\":true},{\"second\":303,\"found\":true},{\"second\":398,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -1437,7 +1510,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: 2-Base Bio",
-        "value": "{\"expert_actuals\":[{\"second\":135,\"found\":true},{\"second\":84,\"found\":true},{\"second\":194,\"found\":true},{\"second\":214,\"found\":true},{\"second\":166,\"found\":true}]}"
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":84,\"found\":true},{\"second\":194,\"found\":true},{\"second\":214,\"found\":true},{\"second\":166,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -1529,7 +1602,7 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 2 Port Wraith",
+        "pattern_name": "Build Order: 2 Starport Wraith",
         "value": "{\"expert_actuals\":[{\"second\":201,\"found\":true},{\"second\":206,\"found\":true},{\"second\":247,\"found\":true}]}"
       },
       {
@@ -1558,7 +1631,7 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 2 Port Wraith",
+        "pattern_name": "Build Order: 2 Starport Wraith",
         "value": "{\"expert_actuals\":[{\"second\":207,\"found\":true},{\"second\":208,\"found\":true},{\"second\":255,\"found\":true}]}"
       },
       {
@@ -1583,8 +1656,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: CC First",
-        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":140,\"found\":true},{\"found\":false}]}"
+        "pattern_name": "Build Order: Mech",
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":108,\"found\":true},{\"second\":153,\"found\":true},{\"second\":203,\"found\":true},{\"second\":363,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -1622,7 +1695,7 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 2 Port Wraith",
+        "pattern_name": "Build Order: 2 Starport Wraith",
         "value": "{\"expert_actuals\":[{\"second\":235,\"found\":true},{\"second\":237,\"found\":true},{\"second\":281,\"found\":true}]}"
       },
       {
@@ -1681,7 +1754,7 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 2 Port Wraith",
+        "pattern_name": "Build Order: 2 Starport Wraith",
         "value": "{\"expert_actuals\":[{\"second\":200,\"found\":true},{\"second\":205,\"found\":true},{\"second\":250,\"found\":true}]}"
       },
       {
@@ -1720,7 +1793,7 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 2 Port Wraith",
+        "pattern_name": "Build Order: 2 Starport Wraith",
         "value": "{\"expert_actuals\":[{\"second\":270,\"found\":true},{\"second\":271,\"found\":true},{\"second\":318,\"found\":true}],\"modifiers\":[\"expand\"]}"
       },
       {
@@ -1770,12 +1843,56 @@
       }
     ]
   },
+  "bo_2starport_valk_tvz_4023b.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":747,\"muta_burst_count\":3,\"mutalisk_finished\":772,\"spire_cmd\":579}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,5,6,7]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":15.69682151589242}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2 Starport Valkyrie",
+        "value": "{\"expert_actuals\":[{\"second\":263,\"found\":true},{\"second\":284,\"found\":true},{\"second\":358,\"found\":true}],\"modifiers\":[\"expand\"]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":277,\"first_turret_cmd\":389,\"turret_burst_count\":5,\"turret_finished\":408}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":12.762836185819072}"
+      }
+    ]
+  },
   "bo_3hlurker_tvz_honjr.rep": {
     "detections": [
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: 2-Base Bio",
-        "value": "{\"expert_actuals\":[{\"second\":132,\"found\":true},{\"second\":78,\"found\":true},{\"second\":201,\"found\":true},{\"second\":216,\"found\":true},{\"second\":167,\"found\":true}]}"
+        "value": "{\"expert_actuals\":[{\"second\":131,\"found\":true},{\"second\":78,\"found\":true},{\"second\":201,\"found\":true},{\"second\":216,\"found\":true},{\"second\":167,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -1879,6 +1996,50 @@
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":10}"
+      }
+    ]
+  },
+  "bo_3starport_wraith_tvz_NamuBulldozer.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 3 Starport Wraith",
+        "value": "{\"expert_actuals\":[{\"second\":215,\"found\":true},{\"second\":218,\"found\":true},{\"second\":263,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "329"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "329"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraiths",
+        "value": "265"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Hatch\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "329"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5]}"
       }
     ]
   },
@@ -2062,6 +2223,65 @@
       }
     ]
   },
+  "bo_bunker_rush_tvp_lllllIIllIlIlI.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Bunker Rush",
+        "value": "{\"expert_actuals\":[{\"second\":83,\"found\":true},{\"second\":224,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Mine",
+        "value": "382"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "315"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":16.578947368421055}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":106,\"found\":true},{\"second\":122,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "439"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Reaver",
+        "value": "415"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "487"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":24.17763157894737}"
+      }
+    ]
+  },
   "bo_bunker_simcity_bgh_fp.rep": {
     "detections": [
       {
@@ -2136,23 +2356,18 @@
       },
       {
         "replay_player_id": 4,
-        "pattern_name": "Build Order: 1-Base Bio",
-        "value": "{\"expert_actuals\":[{\"second\":159,\"found\":true},{\"second\":88,\"found\":true},{\"second\":252,\"found\":true},{\"second\":381,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 4,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1]}"
       },
       {
         "replay_player_id": 4,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":4.352331606217616}"
+        "value": "{\"switches_per_minute\":4.507772020725389}"
       },
       {
         "replay_player_id": 5,
         "pattern_name": "Build Order: 1-Base Bio",
-        "value": "{\"expert_actuals\":[{\"second\":59,\"found\":true},{\"second\":88,\"found\":true},{\"second\":225,\"found\":true},{\"second\":213,\"found\":true}]}"
+        "value": "{\"expert_actuals\":[{\"second\":57,\"found\":true},{\"second\":87,\"found\":true},{\"second\":225,\"found\":true},{\"second\":213,\"found\":true}]}"
       },
       {
         "replay_player_id": 5,
@@ -2191,12 +2406,56 @@
       }
     ]
   },
+  "bo_cc_first_tvp_58BoJi4485.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: CC First",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":115,\"found\":true},{\"second\":135,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "440"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":76,\"found\":true},{\"found\":false},{\"second\":118,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "346"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Reaver",
+        "value": "431"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "440"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8,9]}"
+      }
+    ]
+  },
   "bo_ccfirst_111113.rep": {
     "detections": [
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: CC First",
-        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":117,\"found\":true},{\"second\":149,\"found\":true}]}"
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":117,\"found\":true},{\"second\":148,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -2332,8 +2591,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Factory Expand",
-        "value": "{\"expert_actuals\":[{\"second\":152,\"found\":true},{\"second\":256,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":84,\"found\":true},{\"second\":97,\"found\":true},{\"second\":152,\"found\":true},{\"second\":256,\"found\":true},{\"second\":232,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -2366,8 +2625,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Factory Expand",
-        "value": "{\"expert_actuals\":[{\"second\":144,\"found\":true},{\"second\":212,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":53,\"found\":true},{\"second\":83,\"found\":true},{\"second\":95,\"found\":true},{\"second\":144,\"found\":true},{\"second\":212,\"found\":true},{\"second\":258,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -2395,8 +2654,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Factory Expand",
-        "value": "{\"expert_actuals\":[{\"second\":150,\"found\":true},{\"second\":232,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":83,\"found\":true},{\"second\":98,\"found\":true},{\"second\":150,\"found\":true},{\"second\":232,\"found\":true},{\"second\":268,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -2776,8 +3035,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 3-Fac Mech",
-        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":53,\"found\":true},{\"second\":239,\"found\":true},{\"second\":289,\"found\":true},{\"second\":585,\"found\":true},{\"second\":426,\"found\":true}]}"
+        "pattern_name": "Build Order: Mech",
+        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":53,\"found\":true},{\"second\":239,\"found\":true},{\"second\":289,\"found\":true},{\"second\":426,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -2792,7 +3051,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":19.43238731218698}"
+        "value": "{\"switches_per_minute\":19.23205342237062}"
       },
       {
         "replay_player_id": 1,
@@ -2875,12 +3134,531 @@
       }
     ]
   },
+  "bo_goliath_expa_1fac_tvz_40minGAME.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "3 Hatch Muta",
+        "value": "353"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":127,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":324,\"muta_burst_count\":4,\"mutalisk_finished\":349,\"spire_cmd\":238}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":29.331210191082803}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Fact Expa Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":92,\"found\":true},{\"second\":99,\"found\":true},{\"second\":149,\"found\":true},{\"second\":224,\"found\":true},{\"second\":294,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":284,\"first_turret_cmd\":417,\"turret_burst_count\":7,\"turret_finished\":436}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":25.605095541401273}"
+      }
+    ]
+  },
+  "bo_goliath_expa_1fac_tvz_7477473242.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Fact Expa Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":89,\"found\":true},{\"second\":98,\"found\":true},{\"second\":149,\"found\":true},{\"second\":199,\"found\":true},{\"second\":309,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":334,\"first_turret_cmd\":380,\"turret_burst_count\":5,\"turret_finished\":399}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":21.11111111111111}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "3 Hatch Muta",
+        "value": "335"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Hatch\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":316,\"muta_burst_count\":5,\"mutalisk_finished\":341,\"spire_cmd\":236}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":23.333333333333332}"
+      }
+    ]
+  },
+  "bo_goliath_expa_1fac_tvz_C9FlaSh.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Fact Expa Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":93,\"found\":true},{\"second\":97,\"found\":true},{\"second\":147,\"found\":true},{\"second\":192,\"found\":true},{\"second\":264,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "3 Hatch Muta",
+        "value": "345"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 9 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":112,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "413"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      }
+    ]
+  },
+  "bo_goliath_expa_1fac_tvz_FantaSyWannabe.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "3 Hatch Muta",
+        "value": "430"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":125,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":331,\"muta_burst_count\":3,\"mutalisk_finished\":356,\"spire_cmd\":251}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":33.00668151447661}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Fact Expa Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":95,\"found\":true},{\"second\":101,\"found\":true},{\"second\":152,\"found\":true},{\"second\":246,\"found\":true},{\"second\":305,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":591,\"first_turret_cmd\":633,\"turret_burst_count\":8,\"turret_finished\":652}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":22.316258351893097}"
+      }
+    ]
+  },
+  "bo_goliath_expa_1fac_tvz_Zzangdol2.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "3 Hatch Muta",
+        "value": "330"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Hatch\"}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":53.793103448275865}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Fact Expa Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":84,\"found\":true},{\"second\":101,\"found\":true},{\"second\":151,\"found\":true},{\"second\":204,\"found\":true},{\"second\":291,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":12.413793103448276}"
+      }
+    ]
+  },
+  "bo_goliath_expa_1fac_tvz_llIIlll1lllIIl.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Fact Expa Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":84,\"found\":true},{\"second\":100,\"found\":true},{\"second\":155,\"found\":true},{\"second\":226,\"found\":true},{\"second\":306,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":302,\"first_turret_cmd\":345,\"turret_burst_count\":6,\"turret_finished\":364}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":20.88105726872247}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "3 Hatch Muta",
+        "value": "323"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":126,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":313,\"muta_burst_count\":5,\"mutalisk_finished\":338,\"spire_cmd\":234}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":39.118942731277535}"
+      }
+    ]
+  },
+  "bo_goliath_expa_1fac_tvz_ss619.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Fact Expa Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":57,\"found\":true},{\"second\":95,\"found\":true},{\"second\":100,\"found\":true},{\"second\":162,\"found\":true},{\"second\":216,\"found\":true},{\"second\":322,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":282,\"first_turret_cmd\":339,\"turret_burst_count\":6,\"turret_finished\":358}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,4,5]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":4.918032786885246}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "3 Hatch Muta",
+        "value": "348"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":328,\"muta_burst_count\":5,\"mutalisk_finished\":353,\"spire_cmd\":249}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":16.393442622950822}"
+      }
+    ]
+  },
+  "bo_goliath_expa_1fac_tvz_wadadfafd.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Fact Expa Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":91,\"found\":true},{\"second\":106,\"found\":true},{\"second\":172,\"found\":true},{\"second\":216,\"found\":true},{\"second\":386,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":6.315789473684211}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "573"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":7.894736842105264}"
+      }
+    ]
+  },
+  "bo_goliath_tvz_EunhaLegend.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "3 Hatch Muta",
+        "value": "365"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":314,\"muta_burst_count\":3,\"mutalisk_finished\":339,\"spire_cmd\":236}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "417"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":84,\"found\":true},{\"second\":166,\"found\":true},{\"second\":217,\"found\":true},{\"second\":324,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":301,\"first_turret_cmd\":349,\"turret_burst_count\":6,\"turret_finished\":368}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      }
+    ]
+  },
+  "bo_goliath_tvz_IIIIIlllllIIII.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "3 Hatch Muta",
+        "value": "477"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":74,\"found\":true},{\"second\":129,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":329,\"muta_burst_count\":3,\"mutalisk_finished\":354,\"spire_cmd\":249}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":33.93103448275862}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":57,\"found\":true},{\"second\":87,\"found\":true},{\"second\":183,\"found\":true},{\"second\":235,\"found\":true},{\"second\":396,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":280,\"first_turret_cmd\":322,\"turret_burst_count\":8,\"turret_finished\":341}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":24}"
+      }
+    ]
+  },
+  "bo_goliath_tvz_IlIllllllIIl.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "3 Hatch Muta",
+        "value": "476"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":72,\"found\":true},{\"second\":124,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":33.739612188365655}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":53,\"found\":true},{\"second\":82,\"found\":true},{\"second\":173,\"found\":true},{\"second\":227,\"found\":true},{\"second\":375,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":17.451523545706372}"
+      }
+    ]
+  },
   "bo_goliath_tvz_f1ssasad.rep": {
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: Goliath",
-        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":149,\"found\":true},{\"second\":162,\"found\":true},{\"second\":281,\"found\":true},{\"second\":340,\"found\":true},{\"second\":395,\"found\":true}]}"
+        "pattern_name": "Build Order: 3 Fact Expa Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":149,\"found\":true},{\"second\":162,\"found\":true},{\"second\":281,\"found\":true},{\"second\":473,\"found\":true},{\"second\":395,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -2948,13 +3726,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Goliath",
-        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":84,\"found\":true},{\"second\":94,\"found\":true},{\"second\":142,\"found\":true},{\"second\":206,\"found\":true},{\"second\":261,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Fact Expa Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":84,\"found\":true},{\"second\":94,\"found\":true},{\"second\":142,\"found\":true},{\"second\":196,\"found\":true},{\"second\":261,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Turret timing",
-        "value": "{\"ebay_cmd\":278,\"first_turret_cmd\":323,\"turret_burst_count\":4,\"turret_finished\":342}"
+        "value": "{\"ebay_cmd\":278,\"first_turret_cmd\":322,\"turret_burst_count\":4,\"turret_finished\":341}"
       },
       {
         "replay_player_id": 1,
@@ -2968,12 +3746,66 @@
       }
     ]
   },
-  "bo_goliath_tvz_lilliill.rep": {
+  "bo_goliath_tvz_lilili1ililill.rep": {
     "detections": [
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: Goliath",
-        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":94,\"found\":true},{\"second\":97,\"found\":true},{\"second\":146,\"found\":true},{\"second\":211,\"found\":true},{\"second\":265,\"found\":true}]}"
+        "value": "{\"expert_actuals\":[{\"second\":78,\"found\":true},{\"second\":57,\"found\":true},{\"second\":188,\"found\":true},{\"second\":238,\"found\":true},{\"second\":351,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":287,\"first_turret_cmd\":331,\"turret_burst_count\":7,\"turret_finished\":350}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":27.634069400630917}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "3 Hatch Muta",
+        "value": "358"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":82,\"found\":true},{\"second\":135,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":297,\"muta_burst_count\":3,\"mutalisk_finished\":322,\"spire_cmd\":219}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":26.687697160883282}"
+      }
+    ]
+  },
+  "bo_goliath_tvz_lilliill.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Fact Expa Goliath",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":94,\"found\":true},{\"second\":97,\"found\":true},{\"second\":146,\"found\":true},{\"second\":194,\"found\":true},{\"second\":265,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -3012,12 +3844,453 @@
       }
     ]
   },
+  "bo_mech_expa_1fac_tvp_IlIIlIlIlIIllI.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":86,\"found\":true},{\"second\":99,\"found\":true},{\"second\":152,\"found\":true},{\"second\":279,\"found\":true},{\"second\":280,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Mine",
+        "value": "330"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":21.28440366972477}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":74,\"found\":true},{\"second\":96,\"found\":true},{\"second\":116,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "343"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Reaver",
+        "value": "454"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "693"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":34.678899082568805}"
+      }
+    ]
+  },
+  "bo_mech_expa_1fac_tvp_yijkeyikyekery.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":74,\"found\":true},{\"second\":90,\"found\":true},{\"second\":116,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Observer",
+        "value": "334"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":15.415617128463477}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":87,\"found\":true},{\"second\":102,\"found\":true},{\"second\":156,\"found\":true},{\"second\":217,\"found\":true},{\"second\":257,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Mine",
+        "value": "389"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":17.38035264483627}"
+      }
+    ]
+  },
+  "bo_mech_expa_1fac_tvz_IIIllll51.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "3 Hatch Muta",
+        "value": "388"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":18.862275449101798}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":84,\"found\":true},{\"second\":100,\"found\":true},{\"second\":154,\"found\":true},{\"second\":197,\"found\":true},{\"second\":394,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":14.910179640718564}"
+      }
+    ]
+  },
+  "bo_mech_tvp_PlaytheLavi.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Mech",
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":85,\"found\":true},{\"second\":174,\"found\":true},{\"second\":225,\"found\":true},{\"second\":307,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Mine",
+        "value": "415"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":16.346749226006192}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":51,\"found\":true},{\"second\":106,\"found\":true},{\"second\":125,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Carriers",
+        "value": "802"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "455"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Reaver",
+        "value": "367"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "612"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":26.56346749226006}"
+      }
+    ]
+  },
+  "bo_mech_tvp_SSTJumJaJungJi.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Mech",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":86,\"found\":true},{\"second\":165,\"found\":true},{\"second\":214,\"found\":true},{\"second\":293,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Mine",
+        "value": "411"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":18.857142857142858}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":75,\"found\":true},{\"second\":96,\"found\":true},{\"second\":118,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "399"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Reaver",
+        "value": "340"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "440"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "613"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":23.142857142857142}"
+      }
+    ]
+  },
+  "bo_mech_tvp_WicoBlack.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Mech",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":74,\"found\":true},{\"second\":203,\"found\":true},{\"second\":255,\"found\":true},{\"second\":338,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never upgraded",
+        "value": "441"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":50,\"found\":true},{\"second\":79,\"found\":true},{\"second\":100,\"found\":true},{\"second\":123,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never upgraded",
+        "value": "441"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,9]}"
+      }
+    ]
+  },
+  "bo_mech_tvp_ehdbgus.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Mech",
+        "value": "{\"expert_actuals\":[{\"second\":155,\"found\":true},{\"second\":87,\"found\":true},{\"second\":168,\"found\":true},{\"second\":219,\"found\":true},{\"second\":300,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Mine",
+        "value": "536"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":16.174698795180724}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":73,\"found\":true},{\"second\":90,\"found\":true},{\"second\":115,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Carriers",
+        "value": "808"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "307"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Reaver",
+        "value": "431"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "752"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":24.126506024096386}"
+      }
+    ]
+  },
+  "bo_mech_tvp_llllIlbv.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":106,\"found\":true},{\"second\":124,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Observer",
+        "value": "364"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":22.5}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Mech",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":83,\"found\":true},{\"second\":160,\"found\":true},{\"second\":248,\"found\":true},{\"second\":329,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":13.928571428571429}"
+      }
+    ]
+  },
+  "bo_mech_tvz_MrLuchs.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Mech",
+        "value": "{\"expert_actuals\":[{\"second\":62,\"found\":true},{\"second\":91,\"found\":true},{\"second\":131,\"found\":true},{\"second\":287,\"found\":true},{\"second\":580,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":269,\"first_turret_cmd\":319,\"turret_burst_count\":6,\"turret_finished\":338}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":8.715596330275229}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "3 Hatch Muta",
+        "value": "379"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":363,\"muta_burst_count\":6,\"mutalisk_finished\":388,\"spire_cmd\":276}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":15.596330275229358}"
+      }
+    ]
+  },
   "bo_nexusfirst_pvt_bbbukae.rep": {
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 6+ Fac Mech",
-        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":86,\"found\":true},{\"second\":98,\"found\":true},{\"second\":149,\"found\":true},{\"second\":528,\"found\":true},{\"second\":271,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":86,\"found\":true},{\"second\":98,\"found\":true},{\"second\":149,\"found\":true},{\"second\":236,\"found\":true},{\"second\":271,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -3032,7 +4305,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":12.769679300291545}"
+        "value": "{\"switches_per_minute\":12.944606413994169}"
       },
       {
         "replay_player_id": 1,
@@ -3100,8 +4373,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Factory Expand",
-        "value": "{\"expert_actuals\":[{\"second\":148,\"found\":true},{\"second\":198,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":82,\"found\":true},{\"second\":98,\"found\":true},{\"second\":148,\"found\":true},{\"second\":198,\"found\":true},{\"second\":347,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -3173,8 +4446,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 5-Fac Mech",
-        "value": "{\"expert_actuals\":[{\"second\":78,\"found\":true},{\"second\":65,\"found\":true},{\"second\":99,\"found\":true},{\"second\":202,\"found\":true},{\"second\":577,\"found\":true},{\"second\":283,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":78,\"found\":true},{\"second\":65,\"found\":true},{\"second\":99,\"found\":true},{\"second\":202,\"found\":true},{\"second\":244,\"found\":true},{\"second\":283,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -3238,8 +4511,8 @@
       },
       {
         "replay_player_id": 4,
-        "pattern_name": "Build Order: 1-1-1 into Mech",
-        "value": "{\"expert_actuals\":[{\"second\":64,\"found\":true},{\"second\":89,\"found\":true},{\"second\":111,\"found\":true},{\"second\":171,\"found\":true},{\"second\":231,\"found\":true},{\"second\":255,\"found\":true}]}"
+        "pattern_name": "Build Order: 1-1-1 Mech",
+        "value": "{\"expert_actuals\":[{\"second\":64,\"found\":true},{\"second\":89,\"found\":true},{\"second\":111,\"found\":true},{\"second\":171,\"found\":true},{\"second\":231,\"found\":true}]}"
       },
       {
         "replay_player_id": 4,
@@ -3475,7 +4748,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Turret timing",
-        "value": "{\"ebay_cmd\":280,\"first_turret_cmd\":338,\"turret_burst_count\":6,\"turret_finished\":357}"
+        "value": "{\"ebay_cmd\":280,\"first_turret_cmd\":338,\"turret_burst_count\":7,\"turret_finished\":357}"
       },
       {
         "replay_player_id": 0,
@@ -3485,7 +4758,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":20.63583815028902}"
+        "value": "{\"switches_per_minute\":20.54913294797688}"
       },
       {
         "replay_player_id": 1,
@@ -3895,8 +5168,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 2 Port Wraith",
-        "value": "{\"expert_actuals\":[{\"second\":204,\"found\":true},{\"second\":508,\"found\":true},{\"second\":251,\"found\":true}],\"modifiers\":[\"proxy\"]}"
+        "pattern_name": "Build Order: 1-1-1 Mech",
+        "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":84,\"found\":true},{\"second\":93,\"found\":true},{\"second\":152,\"found\":true},{\"second\":204,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -3906,7 +5179,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Turret timing",
-        "value": "{\"ebay_cmd\":386,\"first_turret_cmd\":429,\"turret_burst_count\":7,\"turret_finished\":448}"
+        "value": "{\"ebay_cmd\":368,\"first_turret_cmd\":429,\"turret_burst_count\":8,\"turret_finished\":448}"
       },
       {
         "replay_player_id": 0,
@@ -4004,7 +5277,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: CC First",
-        "value": "{\"expert_actuals\":[{\"second\":153,\"found\":true},{\"second\":117,\"found\":true},{\"found\":false}]}"
+        "value": "{\"expert_actuals\":[{\"second\":153,\"found\":true},{\"second\":117,\"found\":true},{\"second\":136,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -4073,7 +5346,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Turret timing",
-        "value": "{\"ebay_cmd\":279,\"first_turret_cmd\":363,\"turret_burst_count\":4,\"turret_finished\":382}"
+        "value": "{\"ebay_cmd\":279,\"first_turret_cmd\":363,\"turret_burst_count\":6,\"turret_finished\":382}"
       },
       {
         "replay_player_id": 0,
@@ -4160,8 +5433,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Factory Expand",
-        "value": "{\"expert_actuals\":[{\"second\":150,\"found\":true},{\"second\":309,\"found\":true}]}"
+        "pattern_name": "Build Order: 1-1-1 Tankless Mech",
+        "value": "{\"expert_actuals\":[{\"second\":49,\"found\":true},{\"second\":85,\"found\":true},{\"second\":95,\"found\":true},{\"second\":150,\"found\":true},{\"second\":341,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -4214,8 +5487,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 2-Fac Mech",
-        "value": "{\"expert_actuals\":[{\"second\":50,\"found\":true},{\"second\":83,\"found\":true},{\"second\":183,\"found\":true},{\"second\":238,\"found\":true},{\"second\":261,\"found\":true},{\"second\":330,\"found\":true}]}"
+        "pattern_name": "Build Order: Mech",
+        "value": "{\"expert_actuals\":[{\"second\":50,\"found\":true},{\"second\":83,\"found\":true},{\"second\":183,\"found\":true},{\"second\":238,\"found\":true},{\"second\":330,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
@@ -4355,8 +5628,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: Factory Expand",
-        "value": "{\"expert_actuals\":[{\"second\":150,\"found\":true},{\"second\":311,\"found\":true}]}"
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":89,\"found\":true},{\"second\":100,\"found\":true},{\"second\":150,\"found\":true},{\"second\":311,\"found\":true},{\"second\":380,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -4381,7 +5654,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":17.833333333333332}"
+        "value": "{\"switches_per_minute\":18.166666666666668}"
       },
       {
         "replay_player_id": 1,

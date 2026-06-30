@@ -41,8 +41,8 @@ the verified premise:
 
 | Player (idx) | Must classify as | Why (author) |
 | --- | --- | --- |
-| chobo86 (P0) | `Build Order: 5-Fac Mech` | "clear mech build with 5 factories" |
-| ALT+F4 (P4) | `Build Order: 1-1-1 into Mech` | "alt+f4 did a 1-1-1" |
+| chobo86 (P0) | `Build Order: 1 Fact Expa Mech` | clear mech build; expanded after 1 Factory, then ramped to ~5 (the old "5-Fac Mech" counted post-expansion factories — now named by Factories before the expansion, issue #226) |
+| ALT+F4 (P4) | `Build Order: 1-1-1 Mech` | "alt+f4 did a 1-1-1" (into mech) |
 | UranAsol (P6) | `Build Order: 1-Base Bio` | one-base marine opening, left early under attack |
 | Mr.Cordelius (P5) | `Opener unresolved` | "fair since they didn't play" |
 
@@ -152,11 +152,12 @@ premise is the named player's opener (and, where noted, a modifier):
 
 | Fixtures | Player must classify as |
 | --- | --- |
-| `bo_2port_wraith_tvz_qwejlkqwen`, `bo_2port_wraith_tvz_hanatan`, `bo_2port_wraith_tvz_lllii` | `Build Order: 2 Port Wraith` (TvZ — the former "Wraith") |
-| `bo_2port_wraith_tvt_kuri`, `bo_2port_wraith_tvt_boogeeyoon` | `Build Order: 2 Port Wraith` (TvT) |
-| `bo_2fact_expa_tvt_c9flash` (opponent `IlllllllIlIIIll`, P1) | `Build Order: 2 Port Wraith` **with** `proxy` modifier |
-| `bo_goliath_tvz_iilliii1`, `bo_goliath_tvz_f1ssasad`, `bo_goliath_tvz_lilliill` | `Build Order: Goliath` |
-| `bo_2fact_expa_tvt_c9flash` (P0), `bo_2fact_expa_tvt_ybscan`, `bo_2fact_expa_tvt_tipkofe` | `Build Order: 2 Fact before Expa` |
+| `bo_2port_wraith_tvz_qwejlkqwen`, `bo_2port_wraith_tvz_hanatan`, `bo_2port_wraith_tvz_lllii` | `Build Order: 2 Starport Wraith` (TvZ — round-9 rename of "2 Port Wraith") |
+| `bo_2port_wraith_tvt_kuri`, `bo_2port_wraith_tvt_boogeeyoon` | `Build Order: 2 Starport Wraith` (TvT) |
+| `bo_goliath_tvz_iilliii1`, `bo_goliath_tvz_lilliill` | `Build Order: 1 Fact Expa Goliath` (round-9: Goliath folded into the mech composition flavor) |
+| `bo_goliath_tvz_f1ssasad` | `Build Order: 3 Fact Expa Goliath` |
+| `bo_2fact_expa_tvt_c9flash` (opponent `IlllllllIlIIIll`, P1) | `Build Order: 2 Starport Wraith` **with** `proxy` modifier |
+
 | `bo_bbs_tvp_chocobo12`, `bo_bbs_tvp_standordie`, `bo_bbs_tvp_sstjumja` | `Build Order: BBS` **with** `proxy` modifier (Barracks planted forward at the enemy) |
 
 `bo_2port_wraith_tvz_qwejlkqwen` additionally guards the `expand` modifier (a
@@ -171,6 +172,27 @@ at-the-enemy case — its Barracks sit across the map on the opponent's half, wh
 the old midfield-only band missed (it now fires because the gate is player-aware:
 far from the builder's own main, within reach of the enemy's). The opponent's BO
 in each fixture is tier-2.
+
+Terran mech reformulation batch (round 9, issues #226/#227). 27 non-mirror ladder
+replays, each watched and confirmed; one fixture per name
+(`bo_<bo>_<mu>_<player>.rep`). Mech is named by the number of Factories built
+strictly before the first expansion ("N Fact Expa Mech"); the composition flavor
+is Mech (tanks) / Goliath (Goliath-dominant, no tanks) / Tankless Mech; expand-first
+(CC before any Factory) drops the count to a bare "Mech" / "Goliath". The verified
+premise is the named (Terran) player's BO:
+
+| Fixtures | Player must classify as |
+| --- | --- |
+| `bo_mech_expa_1fac_tvp_IlIIlIlIlIIllI`, `bo_mech_expa_1fac_tvp_yijkeyikyekery`, `bo_mech_expa_1fac_tvz_IIIllll51` | `Build Order: 1 Fact Expa Mech` |
+| `bo_mech_tvp_WicoBlack`, `bo_mech_tvp_SSTJumJaJungJi`, `bo_mech_tvp_PlaytheLavi`, `bo_mech_tvp_ehdbgus`, `bo_mech_tvp_llllIlbv`, `bo_mech_tvz_MrLuchs` | `Build Order: Mech` (expand-first) |
+| `bo_goliath_expa_1fac_tvz_*` (40minGAME, 7477473242, C9FlaSh, FantaSyWannabe, Zzangdol2, llIIlll1lllIIl, ss619, wadadfafd) | `Build Order: 1 Fact Expa Goliath` |
+| `bo_goliath_tvz_EunhaLegend`, `bo_goliath_tvz_IIIIIlllllIIII`, `bo_goliath_tvz_IlIllllllIIl`, `bo_goliath_tvz_lilili1ililill` | `Build Order: Goliath` (expand-first) |
+| `bo_2starport_valk_tvz_4023b` | `Build Order: 2 Starport Valkyrie` |
+| `bo_3starport_wraith_tvz_NamuBulldozer` | `Build Order: 3 Starport Wraith` |
+| `bo_bunker_rush_tvp_lllllIIllIlIlI` | `Build Order: Bunker Rush` (2 forward bunkers into 1-Fact-Expa mech) |
+| `bo_cc_first_tvp_58BoJi4485` | `Build Order: CC First` |
+| `bo_111_tvz_IloveMinzi` | `Build Order: 1-1-1` |
+| `bo_111_tankless_tvz_FlOwErCoNtRoL` | `Build Order: 1-1-1 Tankless Mech` |
 
 TvZ Zerg composition (round 7). Fixture `crazy_zerg_guardians_tvz_lyx2008.rep`
 (TvZ; LYX2008 = Zerg, P1), watched and confirmed. Two protected premises on

@@ -188,7 +188,32 @@ import (
 // before the Pool/Hatchery makes the supply rung indeterminate, exact rungs no
 // longer fire (they require an unambiguous count) and a "~N Pool/Overpool/Hatch"
 // label is emitted at the floor instead.
-const AlgorithmVersion = 50
+//
+// 51: Terran mech taxonomy reformulated (#226/#227). Mech is now named by the
+// number of Factories built STRICTLY BEFORE the first expansion ("N Fact Expa
+// Mech", deterministic) instead of a by-deadline factory count that conflated
+// pre- and post-expansion factories. Expand-first (CC before any Factory) is
+// plain "Mech"; a one-base mech with no expansion is "Mech (no expa)"; each has
+// a "Tankless Mech" variant (no Siege Tanks). The tank/tankless bucket families
+// (bo_t_mech_Nfac / bo_t_tankless_Nfac) are replaced by bo_t_mech_expa_Nfac /
+// bo_t_tankless_expa_Nfac / _expand / _noexpa. "1-1-1 into Mech" -> "1-1-1 Mech"
+// (+ "1-1-1 Tankless Mech"). "2 Port Wraith" -> "2 Starport Wraith" (cluster of
+// two Starports, ignoring the opening before them) plus a new "2 Starport
+// Valkyrie". "Factory Expand" and "2 Fact before Expa" retired — they are the
+// 1- and 2-Factory expands and fold into "N Fact Expa Mech". Also fixes a
+// builddedup bug the new naming exposed: a Terran worker re-placing one building
+// a tile over (a Factory misclick) had Tier A drop the earlier placement while
+// the resource sim dropped the later, zeroing a building that actually stood (a
+// Factory that trained Vultures read as 0 Factories). Tier A now drops the later
+// same-type duplicate for Terran (matching the resource sim's kept-earliest);
+// Zerg is unchanged. Round-9 curation also added: a Goliath composition flavor
+// (Goliath-dominant + no tanks by 10:00 → "Goliath" / "N Fact Expa Goliath",
+// folding the former standalone Goliath opener); "2 Port Wraith" → "2 Starport
+// Wraith" plus "3 Starport Wraith/Valkyrie" (cluster size names it, Wraith floor
+// lowered to 3); and Bunker Rush loosened to TWO+ forward Bunkers (≤240s) even
+// into an expand/tech follow-up (a single early bunker is a poke). Re-ingest so
+// Terran build orders re-classify.
+const AlgorithmVersion = 51
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

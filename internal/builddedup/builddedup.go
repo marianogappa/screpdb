@@ -112,10 +112,27 @@ func (pl *Plan) tierAWorkerOneAtATime(pid byte, pe *unittags.PlayerEvidence, rac
 			// worker keeps building it); command construction already collapses
 			// those, and dropping one here would delete the real building.
 			sameTile := list[i].X == list[i+1].X && list[i].Y == list[i+1].Y
-			if !sameTile && list[i+1].Sec < list[i].Sec+int(bt) {
-				pl.markDrop(pid, list[i].Frame, "worker_one_at_a_time")
-				pl.TierADrops++
+			if sameTile || list[i+1].Sec >= list[i].Sec+int(bt) {
+				continue
 			}
+			if race == "Terran" && list[i].Building == list[i+1].Building {
+				// Same building type, same worker, within build time, different
+				// tile: a re-placement of ONE intended Terran building (an SCV
+				// builds one at a time, so only one results). The earlyfilter
+				// resource simulation keeps the EARLIEST affordable placement, so
+				// drop the LATER duplicate to match it — otherwise the two passes
+				// each drop the other's survivor and the real building vanishes (a
+				// Factory re-placed one tile over read as 0 factories, not 1).
+				// Zerg is excluded: a Drone is freed once a building starts, so its
+				// next build is a genuine new building, and the supply-count rungs
+				// need the later (committed) placement kept (the original rule).
+				pl.markDrop(pid, list[i+1].Frame, "worker_one_at_a_time")
+			} else {
+				// Redirect to a DIFFERENT building before the first could finish
+				// (or a Zerg re-placement): the earlier build never completed.
+				pl.markDrop(pid, list[i].Frame, "worker_one_at_a_time")
+			}
+			pl.TierADrops++
 		}
 	}
 }
