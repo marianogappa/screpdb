@@ -109,6 +109,15 @@ func IsCurated(featureKey string) bool {
 var betaExemptFeatureKeys = map[string]bool{
 	"used_hotkey_groups": true,
 	"never_used_hotkeys": true,
+	// Deterministic facts / phase boundaries, not fallible detections — there is
+	// nothing to verify against a replay, so they carry no "beta" tag (round 10).
+	"became_terran":         true,
+	"became_zerg":           true,
+	"late_game_starts":      true,
+	"mid_game_starts":       true,
+	"viewport_multitasking": true,
+	"never_researched":      true,
+	"never_upgraded":        true,
 }
 
 // IsBetaExempt reports whether a marker is exempt from the beta tag because it
