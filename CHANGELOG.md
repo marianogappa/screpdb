@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.15.0](https://github.com/marianogappa/screpdb/compare/v1.14.0...v1.15.0) (2026-06-30)
+
+
+### Features
+
+* **markers:** Terran mech taxonomy — factories-before-expa naming + Goliath/Starport/Bunker openers ([#226](https://github.com/marianogappa/screpdb/issues/226), [#227](https://github.com/marianogappa/screpdb/issues/227)) ([#238](https://github.com/marianogappa/screpdb/issues/238)) ([f220d21](https://github.com/marianogappa/screpdb/commit/f220d21e985d4e62524f779a3821da9eb69d7927))
+
+
+### Bug Fixes
+
+* **ingest:** fix nil-player panic; make panics produce crash reports without killing the dashboard ([#234](https://github.com/marianogappa/screpdb/issues/234)) ([#240](https://github.com/marianogappa/screpdb/issues/240)) ([261c13a](https://github.com/marianogappa/screpdb/commit/261c13a2e7b83d340e89559ea52779e91582f8f9))
+
 ## [1.14.0](https://github.com/marianogappa/screpdb/compare/v1.13.0...v1.14.0) (2026-06-29)
 
 
