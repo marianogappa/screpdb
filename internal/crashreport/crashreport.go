@@ -12,12 +12,74 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/marianogappa/screpdb/internal/buildinfo"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/pkg/browser"
 )
+
+// openBrowserDefault records whether crash reports should open the prefilled
+// GitHub issue in a browser. GUI builds (no visible console) set this true at
+// startup via SetOpenBrowser; CLI builds leave it false. Goroutine guards read
+// it so they can report consistently without each knowing the build flavor.
+var openBrowserDefault atomic.Bool
+
+// SetOpenBrowser sets the process-wide browser preference for crash reports. An
+// entrypoint should call it once at startup, before spawning goroutines.
+func SetOpenBrowser(open bool) { openBrowserDefault.Store(open) }
+
+// Guard is deferred at the top of every long-lived goroutine:
+//
+//	go func() {
+//		defer crashreport.Guard()
+//		...
+//	}()
+//
+// A panic in a goroutine cannot be caught by a deferred Recover in main — Go
+// unwinds only the panicking goroutine's stack — so an unguarded goroutine
+// panic kills the whole process with a bare stack trace the GUI user never sees
+// (issue #234). Guard writes a crash report, surfaces the prefilled issue link
+// (opening the browser per SetOpenBrowser), and exits the process.
+func Guard() {
+	recovered := recover()
+	if recovered == nil {
+		return
+	}
+	Handle(recovered, debug.Stack(), openBrowserDefault.Load())
+	os.Exit(2)
+}
+
+// GuardNonFatal is deferred at the top of a goroutine that must NOT take down
+// the process on panic — e.g. a single ingest run, whose death should leave the
+// dashboard serving. On a panic it reports the crash (via Report) and runs the
+// optional cleanup so the caller can mark its work failed, then lets the
+// goroutine unwind normally. Unlike Guard it never exits. Deferred as:
+//
+//	defer crashreport.GuardNonFatal(func() { d.finishIngest(err) })
+func GuardNonFatal(cleanup func()) {
+	recovered := recover()
+	if recovered == nil {
+		return
+	}
+	ReportPanic(recovered, debug.Stack())
+	if cleanup != nil {
+		cleanup()
+	}
+}
+
+// ReportPanic writes a crash report for an already-recovered panic and surfaces
+// the prefilled issue link (opening the browser per SetOpenBrowser) WITHOUT
+// exiting. Use it for inline recovery where the surrounding loop should skip
+// the failed item and keep going (the caller captures the stack in its own
+// recover).
+func ReportPanic(recovered any, stack []byte) {
+	if recovered == nil {
+		return
+	}
+	Handle(recovered, stack, openBrowserDefault.Load())
+}
 
 // newIssueURL is the GitHub endpoint that opens a blank issue editor. We
 // pre-fill the title/body via query params rather than pointing at a specific

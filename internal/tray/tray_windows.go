@@ -6,6 +6,7 @@ import (
 	_ "embed"
 
 	"github.com/getlantern/systray"
+	"github.com/marianogappa/screpdb/internal/crashreport"
 )
 
 type Config struct {
@@ -44,6 +45,7 @@ func Run(config Config) error {
 
 		quitItem := systray.AddMenuItem("Quit", "Quit screpdb dashboard")
 		go func() {
+			defer crashreport.Guard()
 			<-quitItem.ClickedCh
 			if config.OnQuit != nil {
 				config.OnQuit()

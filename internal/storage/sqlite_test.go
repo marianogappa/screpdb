@@ -13,9 +13,55 @@ import (
 	"testing"
 
 	"github.com/marianogappa/screpdb/internal/fileops"
+	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 )
+
+// Regression for #234: a panic while storing one replay must be recovered into
+// a per-replay error (not crash the ingest), so the loop can skip it and keep
+// going. Passing nil data forces a nil dereference inside storeReplayWithBatching.
+func TestStoreReplayRecovered_PanicBecomesError(t *testing.T) {
+	dir := t.TempDir()
+	prev, _ := os.Getwd()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(prev) })
+
+	s := &SQLiteStorage{}
+	err, panicked := s.storeReplayRecovered(context.Background(), nil)
+	if !panicked {
+		t.Fatalf("expected panicked=true for nil replay data")
+	}
+	if err == nil {
+		t.Fatalf("expected a non-nil error describing the recovered panic")
+	}
+}
+
+// Regression for #234: a command whose Player could not be resolved (PlayerIDs
+// are not guaranteed contiguous) must not panic the persistence pass.
+func TestUpdateEntityIDs_NilCommandPlayer(t *testing.T) {
+	s := &SQLiteStorage{}
+	player := &models.Player{PlayerID: 0, ID: 42}
+	data := &models.ReplayData{
+		Replay:  &models.Replay{},
+		Players: []*models.Player{player},
+		Commands: []*models.Command{
+			{Player: player, PlayerID: 0},
+			{Player: nil, PlayerID: 7},
+		},
+	}
+
+	s.updateEntityIDs(data, 99, map[byte]int64{0: 42})
+
+	if data.Commands[0].PlayerID != 42 {
+		t.Fatalf("resolvable command: got PlayerID %d, want 42", data.Commands[0].PlayerID)
+	}
+	if data.Commands[0].ReplayID != 99 || data.Commands[1].ReplayID != 99 {
+		t.Fatalf("both commands should get replayID 99, got %d and %d", data.Commands[0].ReplayID, data.Commands[1].ReplayID)
+	}
+}
 
 func TestEncodeInt64ArrayJSON_MatchesEncodingJSON(t *testing.T) {
 	cases := [][]int64{

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/ingest"
 	"github.com/marianogappa/screpdb/internal/sampledata"
 )
@@ -97,6 +98,11 @@ func (d *Dashboard) startIngestAsync(cfg ingest.Config) bool {
 		return false
 	}
 	go func() {
+		// Survive a panic in the ingest run: report it and mark the run failed
+		// so the dashboard keeps serving (#234). finishIngest is idempotent for
+		// this goroutine — it runs either here on the normal path or in the
+		// guard's cleanup on panic, never both.
+		defer crashreport.GuardNonFatal(func() { d.finishIngest(errIngestPanicked) })
 		runErr := ingest.Run(d.ctx, cfg)
 		if runErr != nil {
 			cfg.Logger.Errorf("Ingestion failed: %v", runErr)

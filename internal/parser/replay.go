@@ -195,39 +195,47 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	if rep.Commands != nil {
 		for i, cmd := range rep.Commands.Cmds {
 			base := cmd.BaseCmd()
-			if int(base.PlayerID) >= len(data.Players) {
-				continue
-			}
 
 			// Process command using the registry
 			command := commandRegistry.ProcessCommand(cmd, startTime)
-
-			if command != nil {
-				// Set additional fields (registry already sets ReplayID)
-				command.Frame = int32(base.Frame)
-				command.Replay = data.Replay
-				command.Player = playerIDToPlayer[base.PlayerID]
-
-				if cc, ok := commandCoords[i]; ok && command.X == nil && command.Y == nil {
-					x, y := cc.X, cc.Y
-					command.X, command.Y = &x, &y
-				}
-
-				if n, ok := morphSelectionSizes[i]; ok {
-					command.SelectedUnits = n
-				}
-
-				// Edge case: ChatCmd doesn't populate PlayerID, but populates SenderSlotID.
-				// Guard the type assertion: a future screp change (or an oddly-typed
-				// command that still classifies as "Chat") shouldn't panic the parse.
-				if command.ActionType == "Chat" {
-					if chatCommand, ok := cmd.(*repcmd.ChatCmd); ok {
-						command.Player = slotIDToPlayer[chatCommand.SenderSlotID]
-					}
-				}
-
-				data.Commands = append(data.Commands, command)
+			if command == nil {
+				continue
 			}
+
+			// Set additional fields (registry already sets ReplayID)
+			command.Frame = int32(base.Frame)
+			command.Replay = data.Replay
+			command.Player = playerIDToPlayer[base.PlayerID]
+
+			// Edge case: ChatCmd doesn't populate PlayerID, but populates SenderSlotID.
+			// Guard the type assertion: a future screp change (or an oddly-typed
+			// command that still classifies as "Chat") shouldn't panic the parse.
+			if command.ActionType == "Chat" {
+				if chatCommand, ok := cmd.(*repcmd.ChatCmd); ok {
+					command.Player = slotIDToPlayer[chatCommand.SenderSlotID]
+				}
+			}
+
+			// Skip commands we can't attribute to a player. PlayerIDs are not
+			// guaranteed contiguous (observer/computer slots leave gaps), so a
+			// command's PlayerID can be absent from playerIDToPlayer. Every
+			// downstream consumer already ignores nil-Player commands, and the
+			// persistence pass dereferences command.Player — emitting them would
+			// crash ingestion (#234).
+			if command.Player == nil {
+				continue
+			}
+
+			if cc, ok := commandCoords[i]; ok && command.X == nil && command.Y == nil {
+				x, y := cc.X, cc.Y
+				command.X, command.Y = &x, &y
+			}
+
+			if n, ok := morphSelectionSizes[i]; ok {
+				command.SelectedUnits = n
+			}
+
+			data.Commands = append(data.Commands, command)
 		}
 	}
 

@@ -1,14 +1,21 @@
 package dashboard
 
 import (
+	"errors"
 	"net/http"
 	"os"
 
 	"github.com/gorilla/websocket"
+	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/ingest"
 )
 
 const maxIngestLogEvents = 4000
+
+// errIngestPanicked marks an ingest run that died to a panic. The panic itself
+// is captured in a crash report; this is the short reason surfaced in the
+// dashboard's ingest status.
+var errIngestPanicked = errors.New("ingestion crashed; a crash report was generated")
 
 type ingestStreamMessage struct {
 	Type     string            `json:"type"`
@@ -138,6 +145,7 @@ func (d *Dashboard) handlerIngestLogs(w http.ResponseWriter, r *http.Request) {
 
 	done := make(chan struct{})
 	go func() {
+		defer crashreport.GuardNonFatal(nil)
 		defer close(done)
 		for {
 			if _, _, err := conn.ReadMessage(); err != nil {
