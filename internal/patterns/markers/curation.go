@@ -78,6 +78,27 @@ var curatedFeatureKeys = map[string]bool{
 	"bo_t_111":              true,
 	"bo_t_111_tankless":     true,
 
+	// Round 10 (remove-betas pass) — watched & confirmed ladder replays.
+	"bo_1_gate_no_expa":   true, // bo_1gatenoexpa_pvz_566 / _pvt_broodwarisbest
+	"bo_7_pool":           true, // bo_7pool_zvt_3050sdsd / _zvp_herwater
+	"bo_8_pool":           true, // bo_8pool_zvt_coffeegene / _zvt_loveaddio
+	"bo_t_3starport_valk": true, // bo_3starport_valk_tvz_as2qs
+	// Round 10 batch 2.
+	"carriers":                true, // bo_carriers_pvt_vncgsncs
+	"battlecruisers":          true, // bo_bcs_tvz_1246768854333 / _lIIIlIllIlIll
+	"bo_forge_cannon_no_expa": true, // bo_forgecannon_noexpa_pvz_lyx2008 / _liiliil
+	"bo_p_forge_gate_cannon":  true, // bo_forgegatecannon_pvz_lllilliii
+	"bo_t_mech_expa_2fac":     true, // bo_mech_expa_2fac_tvp_f1ssasad
+	"threw_nukes":             true, // bo_nukes_tvp_iliilii / _tvz_vvwv
+	"sair_speedlot":           true, // bo_sairspeedlot_pvz_tomsonnet / _tufbeombu
+	"bo_t_tankless_expa_1fac": true, // bo_tankless_expa_1fac_tvp_f1ssasad / _tvz_wicobaduk2
+	"wraith_cloak_timing":     true, // bo_wraithcloak_tvz_1235sdfdfhg / _llllilllilll
+	"bo_t_mech_noexpa":        true, // "1-Base Mech": bo_1base_mech_tvp_namu / _wjddsu
+	// Round 10 batch 3 — Zerg N Hatch Hydra dynamic redesign (bases at the
+	// hydra-commit transition, not a 360s clock). 2-hatch fixtures unchanged.
+	"bo_z_3hatch_hydra": true, // bo_3hatch_hydra_pvz_pingcojerry
+	"bo_z_4hatch_hydra": true, // bo_4hatch_hydra_pvz_syc
+
 	// Round 7 — fixtures crazy_zerg_guardians_tvz_lyx2008, maelstrom_pvz_bysnow,
 	// first_observer_pvt_0sawon, first_mine_pvt_f1ssasad.
 	"crazy_zerg":     true,
@@ -109,6 +130,15 @@ func IsCurated(featureKey string) bool {
 var betaExemptFeatureKeys = map[string]bool{
 	"used_hotkey_groups": true,
 	"never_used_hotkeys": true,
+	// Deterministic facts / phase boundaries, not fallible detections — there is
+	// nothing to verify against a replay, so they carry no "beta" tag (round 10).
+	"became_terran":         true,
+	"became_zerg":           true,
+	"late_game_starts":      true,
+	"mid_game_starts":       true,
+	"viewport_multitasking": true,
+	"never_researched":      true,
+	"never_upgraded":        true,
 }
 
 // IsBetaExempt reports whether a marker is exempt from the beta tag because it

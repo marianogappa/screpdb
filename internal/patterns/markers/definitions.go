@@ -103,6 +103,26 @@ func zergHatchBO(supply, hatchSec int) Marker {
 	}
 }
 
+// zergHatchHydra builds the "N Hatch Hydra" composition BO (ZvP), named by the
+// bases at the Hydralisk commitment (see zergHatchHydraEvaluator). n==2 keeps
+// the former "2 Hatch Hydra" feature key.
+func zergHatchHydra(n int) Marker {
+	label := fmt.Sprintf("%d Hatch Hydra", n)
+	return Marker{
+		Name:          label,
+		PatternName:   InitialBuildOrderPatternNamePrefix + label,
+		FeatureKey:    fmt.Sprintf("bo_z_%dhatch_hydra", n),
+		Race:          RaceZerg,
+		Kind:          KindInitialBuildOrder,
+		Tier:          TierPreferred,
+		Matchup:       []string{"PvZ"},
+		Custom:        newZergHatchHydra(n),
+		RuleDeadline:  600,
+		SummaryPlayer: &Pill{Label: label, IconKey: "hydralisk"},
+		GamesList:     &Pill{Label: label, IconKey: "hydralisk"},
+	}
+}
+
 // -----------------------------------------------------------------------------
 // Build order definitions. Add / edit / remove entries here — everything else
 // (detectors, game-list featuring, UI pills, Build Orders tab) picks up
@@ -507,11 +527,12 @@ func allMarkers() []Marker {
 		return mechCore(c.suffix, fkey, BuildCountBeforeFirstBuildOf(subjFactory, subjCommandCenter, 0), c, mechEv(c))
 	}
 	// No expansion in the opening window (no CC by 10:00) — a greedy one-base
-	// mech. Rare, so it isn't split by factory count.
+	// mech. Named "1-Base <comp>" (parallel to 1-Base Bio); not split by factory
+	// count.
 	mechNoExpa := func(c mechComp) Marker {
 		fkey := fmt.Sprintf("bo_t_%s_noexpa", c.key)
 		facRule := All(Not(FirstBuildBefore(subjCommandCenter, 600)), CountBuildsBefore(subjFactory, 2, 600))
-		return mechCore(c.suffix+" (no expa)", fkey, facRule, c, mechEv(c))
+		return mechCore("1-Base "+c.suffix, fkey, facRule, c, mechEv(c))
 	}
 	// 1-1-1 (one each of Rax/Factory/Starport, early Starport + Wraith), named
 	// by the transition: Mech (tanks), Tankless Mech (no tanks), or balanced.
@@ -609,23 +630,12 @@ func allMarkers() []Marker {
 			},
 			SummaryPlayer: mkPill("3 Hatch Lurker", "lurker"), GamesList: mkPill("3 Hatch Lurker", "lurker"),
 		},
-		{
-			// 2 Hatch Hydra (ZvP): a 2-base Hydralisk Den opening (Den before any
-			// Spire) — hydra pressure / bust vs cannon-light FFE.
-			Name: "2 Hatch Hydra", PatternName: InitialBuildOrderPatternNamePrefix + "2 Hatch Hydra", FeatureKey: "bo_z_2hatch_hydra",
-			Race: RaceZerg, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvZ"},
-			Rule: All(
-				BuildBefore(subjHydraliskDen, subjSpire),                          // hydra-tech, not muta
-				ProduceCountAtLeastBefore(subjHydralisk, 6, 420),                  // a hydra mass / bust
-				Not(CountBuildsBefore(subjHatchery, 2, zergOpeningHatchDeadline)), // 2 bases only
-			),
-			RuleDeadline: 600,
-			Expert: []ExpertEvent{
-				{Key: "Hydralisk Den", Match: MatchBuild(subjHydraliskDen), TargetSecond: 214, Tolerance: Asym(25, 90)},
-				{Key: "First Hydralisks", Match: MatchFirstProduce(subjHydralisk), TargetSecond: 250, Tolerance: Asym(40, 120)},
-			},
-			SummaryPlayer: mkPill("2 Hatch Hydra", "hydralisk"), GamesList: mkPill("2 Hatch Hydra", "hydralisk"),
-		},
+		// N Hatch Hydra (ZvP): a Hydralisk-Den army (Den before any Spire) named
+		// by the bases standing at the economy→army transition (the 6th Hydralisk),
+		// NOT by a fixed clock — a player who reaches more Hatcheries but commits
+		// to Hydra at N bases is "N Hatch Hydra" (issue #227). Replaces the former
+		// single 360s-based "2 Hatch Hydra". See zergHatchHydraEvaluator.
+		zergHatchHydra(2), zergHatchHydra(3), zergHatchHydra(4),
 
 		// --- Protoss tech-pathway openers: opening topology + first tech unit. ---
 		{
@@ -1794,22 +1804,24 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{IconKey: "battlecruiser", Style: PillStyleStrong, Title: "Battlecruisers"},
 		},
 		{
-			// Double Stargate (PvZ): the Protoss player commits to 2 Stargates
-			// (rather than the standard single Stargate, or none) and pumps a
-			// significant Corsair count. 6+ Corsairs is well past the 2-3 a
-			// one-base Sair opener produces for Overlord control, signalling a
-			// dedicated air investment that only two Stargates sustain. Gated to
-			// PvZ — the build is matchup-specific and meaningless elsewhere.
+			// Double Stargate (PvZ): the EARLY multi-Corsair technique — 2
+			// Stargates and 6+ Corsairs committed inside the opening window, to
+			// control Overlords / scout / deny detection. It is time-bounded (2nd
+			// Stargate + 6th Corsair by 7:30): a corpus survey of the 2nd-Starport
+			// second showed the technique clusters 4-7 min, with an 8min-35min tail
+			// that is really a Carrier transition (2 Stargates late) — those are
+			// NOT the double-Stargate build and were false positives when the rule
+			// was unbounded. Gated to PvZ.
 			Name:          "Double Stargate",
 			PatternName:   "Double Stargate",
 			FeatureKey:    "double_stargate",
 			Kind:          KindMarker,
 			Race:          RaceProtoss,
 			Matchup:       []string{"PvZ"},
-			Rule:          All(BuildCountAtLeast(subjStargate, 2), ProduceCountAtLeast(subjCorsair, 6)),
-			RuleDeadline:  endOfReplaySentinel,
-			SummaryPlayer: &Pill{Label: "Double Stargate", IconKey: "corsair", Style: PillStyleStrong, Title: "2 Stargates + 6 Corsairs (PvZ)"},
-			GamesList:     &Pill{Label: "Double Stargate", IconKey: "corsair", Style: PillStyleStrong, Title: "2 Stargates + 6 Corsairs (PvZ)"},
+			Rule:          All(CountBuildsBefore(subjStargate, 2, 450), ProduceCountAtLeastBefore(subjCorsair, 6, 450)),
+			RuleDeadline:  450,
+			SummaryPlayer: &Pill{Label: "Double Stargate", IconKey: "corsair", Style: PillStyleStrong, Title: "2 Stargates + 6 Corsairs by 7:30 (PvZ)"},
+			GamesList:     &Pill{Label: "Double Stargate", IconKey: "corsair", Style: PillStyleStrong, Title: "2 Stargates + 6 Corsairs by 7:30 (PvZ)"},
 		},
 		{
 			// 10+ Scouts: Money-map signature. Scouts are uneconomic on

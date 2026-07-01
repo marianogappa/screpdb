@@ -1323,7 +1323,7 @@ const mannerPylonWindowSec = 8 * 60
 // Pylon inside the enemy's starting base polygon (the mineral line), to block
 // worker mining. Two-human games only. The opposite of a proxy: a proxy sits
 // between the bases, a manner pylon sits inside the opponent's main.
-func (e *Engine) tryEmitMannerPylonEvent(command *models.Command, pid byte, sec int, baseIdx int) {
+func (e *Engine) tryEmitMannerPylonEvent(command *models.Command, pid byte, sec int, xPx, yPx float64) {
 	if command == nil || command.UnitType == nil || !e.isTwoHumanGame() {
 		return
 	}
@@ -1343,13 +1343,22 @@ func (e *Engine) tryEmitMannerPylonEvent(command *models.Command, pid byte, sec 
 	default:
 		return
 	}
+	// A manner pylon blocks the enemy's mineral line — impossible against Zerg,
+	// whose creep spread prevents an opponent building inside their base. Firing
+	// there is always a false positive.
+	if p, ok := e.players[enemyPID]; ok && p != nil && p.Race == "Zerg" {
+		return
+	}
 	enemyStart, ok := e.startBaseByPID[enemyPID]
 	if !ok || enemyStart < 0 || enemyStart >= len(e.bases) {
 		return
 	}
-	// The pylon's event-base (polygon, else nearest base within range) must be
-	// the enemy's starting base — i.e. it sits in their main / mineral line.
-	if baseIdx != enemyStart {
+	// The pylon must sit INSIDE the enemy's starting-base polygon (their main /
+	// mineral line). Requiring polygon containment — not the nearest-base
+	// fallback pointToEventBase would otherwise use — rejects a pylon placed at
+	// the player's OWN natural that merely lands near the enemy's base index
+	// (e.g. a proxy Gateway warped in at one's own expansion).
+	if !pointInBasePolygon(xPx, yPx, e.bases[enemyStart]) {
 		return
 	}
 	e.emitEvent(

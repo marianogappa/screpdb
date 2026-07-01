@@ -104,6 +104,8 @@ var staticFeaturingOrder = []string{
 	"bo_z_2hatch_muta",
 	"bo_z_3hatch_lurker",
 	"bo_z_2hatch_hydra",
+	"bo_z_3hatch_hydra",
+	"bo_z_4hatch_hydra",
 	"bo_2_gate",
 	"bo_1_gate_core",
 	"bo_nexus_first",

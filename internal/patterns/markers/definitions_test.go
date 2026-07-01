@@ -404,7 +404,7 @@ func TestBO_Terran_Mech_ByFactory_AndTankless(t *testing.T) {
 	if !findBO(t, "2 Fact Expa Mech").Matches(mech) {
 		t.Fatalf("2 Factories before the expansion + Tanks should be 2 Fact Expa Mech")
 	}
-	for _, other := range []string{"3 Fact Expa Mech", "2 Fact Expa Tankless Mech", "1-Base Bio", "1-1-1", "Mech (no expa)", "Mech"} {
+	for _, other := range []string{"3 Fact Expa Mech", "2 Fact Expa Tankless Mech", "1-Base Bio", "1-1-1", "1-Base Mech", "Mech"} {
 		if findBO(t, other).Matches(mech) {
 			t.Fatalf("mech stream must not also match %q (mutex)", other)
 		}
@@ -426,12 +426,12 @@ func TestBO_Terran_Mech_ByFactory_AndTankless(t *testing.T) {
 	if !findBO(t, "Mech").Matches(ef.list()) {
 		t.Fatalf("CC before any Factory should be plain Mech")
 	}
-	// No expansion in the window (2 Factories, no CC) → "Mech (no expa)".
+	// No expansion in the window (2 Factories, no CC) → "1-Base Mech".
 	ne := factsBuilder().B(subjSupplyDepot, 30).B(subjBarracks, 80).B(subjFactory, 150).B(subjFactory, 200)
 	produceN(ne, subjVulture, 6, 220)
 	produceN(ne, subjSiegeTank, 2, 300)
-	if !findBO(t, "Mech (no expa)").Matches(ne.list()) {
-		t.Fatalf("2 Factories with no expansion should be Mech (no expa)")
+	if !findBO(t, "1-Base Mech").Matches(ne.list()) {
+		t.Fatalf("2 Factories with no expansion should be 1-Base Mech")
 	}
 }
 

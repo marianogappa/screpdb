@@ -194,6 +194,33 @@ premise is the named (Terran) player's BO:
 | `bo_111_tvz_IloveMinzi` | `Build Order: 1-1-1` |
 | `bo_111_tankless_tvz_FlOwErCoNtRoL` | `Build Order: 1-1-1 Tankless Mech` |
 
+Remove-betas batch (round 10). Non-mirror ladder replays, watched & confirmed, sourced
+from the v51 corpus re-ingest. The verified premise is the named player's BO:
+
+| Fixtures | Player must classify as |
+| --- | --- |
+| `bo_1gatenoexpa_pvz_566`, `bo_1gatenoexpa_pvt_broodwarisbest` | `Build Order: 1 Gate (no expa)` |
+| `bo_7pool_zvt_3050sdsd`, `bo_7pool_zvp_herwater` | `Build Order: 7 Pool` |
+| `bo_8pool_zvt_coffeegene`, `bo_8pool_zvt_loveaddio` | `Build Order: 8 Pool` |
+| `bo_3starport_valk_tvz_as2qs` | `Build Order: 3 Starport Valkyrie` |
+| `bo_forgecannon_noexpa_pvz_lyx2008`, `bo_forgecannon_noexpa_pvz_liiliil` | `Build Order: Forge Cannon (no expa)` |
+| `bo_forgegatecannon_pvz_lllilliii` | `Build Order: Forge Gate Cannon before expa` |
+| `bo_mech_expa_2fac_tvp_f1ssasad` | `Build Order: 2 Fact Expa Mech` |
+| `bo_tankless_expa_1fac_tvp_f1ssasad`, `bo_tankless_expa_1fac_tvz_wicobaduk2` | `Build Order: 1 Fact Expa Tankless Mech` |
+| `bo_1base_mech_tvp_namu`, `bo_1base_mech_tvp_wjddsu` | `Build Order: 1-Base Mech` |
+
+Round-10 non-BO markers (watched & confirmed; the named player's marker):
+
+| Fixtures | Player must have marker |
+| --- | --- |
+| `bo_carriers_pvt_vncgsncs` | `Carriers` (Carrier-predominant army) |
+| `bo_bcs_tvz_1246768854333`, `bo_bcs_tvz_lIIIlIllIlIll` | `Battlecruisers` |
+| `bo_nukes_tvp_iliilii`, `bo_nukes_tvz_vvwv` | `Threw Nukes` |
+| `bo_sairspeedlot_pvz_tomsonnet`, `bo_sairspeedlot_pvz_tufbeombu` | `Sair/Speedlot` |
+| `bo_wraithcloak_tvz_1235sdfdfhg`, `bo_wraithcloak_tvz_llllilllilll` | `Wraith Cloak timing` |
+| `bo_3hatch_hydra_pvz_pingcojerry` | `Build Order: 3 Hatch Hydra` (bases at the hydra transition) |
+| `bo_4hatch_hydra_pvz_syc` | `Build Order: 4 Hatch Hydra` (Spire/Scourge present but hydra-dominant) |
+
 TvZ Zerg composition (round 7). Fixture `crazy_zerg_guardians_tvz_lyx2008.rep`
 (TvZ; LYX2008 = Zerg, P1), watched and confirmed. Two protected premises on
 LYX2008:
