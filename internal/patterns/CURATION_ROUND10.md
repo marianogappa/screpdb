@@ -95,7 +95,31 @@ Corrections still to FIX (detector wrong):
 169 events across 71 replays (~2.4/replay) — high for a griefing pylon. Staged candidates for the user
 to verify; if it's mis-firing on ordinary forward pylons, tighten + possibly un-curate.
 
-## Pending watch (remaining)
+## Batch 4 verdicts (manner pylon + first corsair)
+Manner pylon (was over-firing, 169/71): FIXED the Zerg class — `manner_pylon` no longer fires vs a Zerg
+opponent (creep blocks it), v52. Verdicts:
+- `llllIIIlllIl` (PvZ) — impossible vs Zerg → now 0 ✓ (fix).
+- `SKT1JSPARK` — proxy Gateway at the player's OWN natural, mis-attributed to enemy start. STILL fires
+  (own-base false positive). DEFERRED: needs a "pylon inside the enemy polygon (not nearest-base
+  fallback)" fix — a raw own-vs-enemy start-distance guard regressed the genuine case, so reverted.
+- `132SDFSDFSD` (PvT) — genuine manner pylon, ok (still fires ✓).
+- `I11II11II` — weird replay, drop the candidate.
+
+**first_corsair BUG**: reports the Stargate-finish second (4:58), not the first Corsair train (5:08).
+Likely the other timing pills (speedlot/muta/turret) mis-report tech-building-finish vs the unit too —
+AUDIT the timing-marker definitions (don't ask the user to eyeball seconds). Fix to report the unit.
+
+## Open backlog (implement + validate; no user decisions blocking — proceed with defaults)
+1. first_corsair (+ audit speedlot/muta/turret timing) — report the unit, not the tech building.
+2. Manner pylon own-base/proxy-gate false positive (polygon-inside gate).
+3. Factory-before-expa over-count (mech2fac_SST / mech4fac_Terran3 → 1 Fact) — standing-factory count.
+4. Double Stargate — 2nd-Starport ≤~7:00 window + standing-Starport + corsair-not-carrier.
+5. Zerg "N Hatch Hydra/Muta" dynamic transition (defaults: transition = Kth tech-unit morph [4 Muta /
+   6 Hydra / 2 Lurker]; N = Build(Hatchery) before it +1; keep supply openers; validate round-8 fixtures).
+
+## Pending watch (remaining) — only these two markers still need the user
+Composition/behavior (watchable): `wraiths` ×2, `mutaharass` ×2. Timing pills are being audited by code,
+not eyeballed.
 Zerg openers (4/6/8 Hatch, 7/8 Pool), Protoss (Forge Cannon no-expa, Forge-Gate-Cannon, Carriers,
 Double Stargate, First Corsair, Sair/Speedlot, Speedlot timing), Zerg comp (Muta hit-n-run, Muta
 timing), Terran (Nukes, Turret/Wraith-Cloak timing, Wraiths, BCs, 2/4 Fact Expa Mech, Mech no-expa,
