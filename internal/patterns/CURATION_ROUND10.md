@@ -109,7 +109,24 @@ opponent (creep blocks it), v52. Verdicts:
 Likely the other timing pills (speedlot/muta/turret) mis-report tech-building-finish vs the unit too —
 AUDIT the timing-marker definitions (don't ask the user to eyeball seconds). Fix to report the unit.
 
-## Open backlog (implement + validate; no user decisions blocking — proceed with defaults)
+## Backlog resolution (batch 5)
+DONE + committed this pass:
+- Manner pylon: Zerg-opponent exclusion + require pylon INSIDE the enemy base polygon (own-base/proxy-
+  gate false positive fixed via containment, not distance). PvP fixture + genuine 132SDFSDFSD preserved.
+- Double Stargate: bounded to 2 Starports + 6 Corsairs by 7:30 (drops the 8-35min carrier-transition tail).
+- first_corsair: NOT a bug — reports the first Corsair TRAIN (299s ≈ detected 298), which coincides with
+  the Stargate finishing. The "5:08" is the unit popping / clock imprecision. Other timing pills likewise
+  report the train/research command (correct). No change.
+
+DEFERRED (deep / risky — recommend follow-up issues, NOT this PR):
+- **Factory-before-expa over-count** ROOT CAUSE FOUND: builddedup drops the REAL expansion CC (Terran3
+  CC@211 `dropped_by_tags`; detector then uses CC@477 and counts 4 factories). Same tag-attribution
+  fragility as round-9 factory drops, but on the Command Center — fixing it touches builddedup/unittags
+  with cross-race blast radius. The re-placed-single-Starport double_stargate case (89EFD77C) is the same
+  family. Needs a careful "standing/produced-building" pass + full round-8/9 revalidation.
+- **Zerg "N Hatch Hydra/Muta"** dynamic transition — a new custom evaluator; sizable feature, its own round.
+
+## Superseded backlog (was: implement + validate)
 1. first_corsair (+ audit speedlot/muta/turret timing) — report the unit, not the tech building.
 2. Manner pylon own-base/proxy-gate false positive (polygon-inside gate).
 3. Factory-before-expa over-count (mech2fac_SST / mech4fac_Terran3 → 1 Fact) — standing-factory count.
