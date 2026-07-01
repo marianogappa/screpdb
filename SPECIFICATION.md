@@ -454,6 +454,21 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 1-Base Bio | Terran | Barracks | 84 | −28 / +20 |
 | 1-Base Bio | Terran | Refinery | 185 | −80 / +50 |
 | 1-Base Bio | Terran | Academy | 230 | −45 / +90 |
+| 1-Base Goliath | Terran | Supply Depot | 55 | −10 / +24 |
+| 1-Base Goliath | Terran | Barracks | 85 | −26 / +18 |
+| 1-Base Goliath | Terran | Refinery | 100 | −12 / +70 |
+| 1-Base Goliath | Terran | 1st Factory | 152 | −12 / +80 |
+| 1-Base Goliath | Terran | First Goliath | 339 | −75 / +110 |
+| 1-Base Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 1-Base Mech | Terran | Barracks | 85 | −26 / +18 |
+| 1-Base Mech | Terran | Refinery | 100 | −12 / +70 |
+| 1-Base Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 1-Base Mech | Terran | First Siege Tank | 290 | −60 / +120 |
+| 1-Base Tankless Mech | Terran | Supply Depot | 55 | −10 / +24 |
+| 1-Base Tankless Mech | Terran | Barracks | 85 | −26 / +18 |
+| 1-Base Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
+| 1-Base Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
+| 1-Base Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
 | 10 Hatch | Zerg | Hatchery | 80 | ±5 |
 | 10 Hatch | Zerg | Spawning Pool | 110 | −3 / +10 |
 | 10 Pool | Zerg | Spawning Pool | 92 | ±5 |
@@ -645,21 +660,11 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | Goliath | Terran | Refinery | 100 | −12 / +70 |
 | Goliath | Terran | 1st Factory | 152 | −12 / +80 |
 | Goliath | Terran | First Goliath | 339 | −75 / +110 |
-| Goliath (no expa) | Terran | Supply Depot | 55 | −10 / +24 |
-| Goliath (no expa) | Terran | Barracks | 85 | −26 / +18 |
-| Goliath (no expa) | Terran | Refinery | 100 | −12 / +70 |
-| Goliath (no expa) | Terran | 1st Factory | 152 | −12 / +80 |
-| Goliath (no expa) | Terran | First Goliath | 339 | −75 / +110 |
 | Mech | Terran | Supply Depot | 55 | −10 / +24 |
 | Mech | Terran | Barracks | 85 | −26 / +18 |
 | Mech | Terran | Refinery | 100 | −12 / +70 |
 | Mech | Terran | 1st Factory | 152 | −12 / +80 |
 | Mech | Terran | First Siege Tank | 290 | −60 / +120 |
-| Mech (no expa) | Terran | Supply Depot | 55 | −10 / +24 |
-| Mech (no expa) | Terran | Barracks | 85 | −26 / +18 |
-| Mech (no expa) | Terran | Refinery | 100 | −12 / +70 |
-| Mech (no expa) | Terran | 1st Factory | 152 | −12 / +80 |
-| Mech (no expa) | Terran | First Siege Tank | 290 | −60 / +120 |
 | Nexus First | Protoss | Pylon | 48 | ±4 |
 | Nexus First | Protoss | Nexus | 145 | ±20 |
 | Nexus First | Protoss | Gateway | 175 | ±20 |
@@ -668,11 +673,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | Tankless Mech | Terran | Refinery | 100 | −12 / +70 |
 | Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
 | Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
-| Tankless Mech (no expa) | Terran | Supply Depot | 55 | −10 / +24 |
-| Tankless Mech (no expa) | Terran | Barracks | 85 | −26 / +18 |
-| Tankless Mech (no expa) | Terran | Refinery | 100 | −12 / +70 |
-| Tankless Mech (no expa) | Terran | 1st Factory | 152 | −12 / +80 |
-| Tankless Mech (no expa) | Terran | First Vulture | 205 | −20 / +50 |
 
 ## Build-order rule deadlines
 
@@ -690,6 +690,9 @@ Each opener's detector commits its decision once the replay passes this second �
 | 1-1-1 Mech | Terran | 600 |
 | 1-1-1 Tankless Mech | Terran | 600 |
 | 1-Base Bio | Terran | 600 |
+| 1-Base Goliath | Terran | 600 |
+| 1-Base Mech | Terran | 600 |
+| 1-Base Tankless Mech | Terran | 600 |
 | 10 Hatch | Zerg | 180 |
 | 10 Pool | Zerg | 180 |
 | 11 Hatch | Zerg | 180 |
@@ -746,13 +749,10 @@ Each opener's detector commits its decision once the replay passes this second �
 | Gate Forge Cannon before expa | Protoss | 320 |
 | Gateway (Other) | Protoss | 320 |
 | Goliath | Terran | 600 |
-| Goliath (no expa) | Terran | 600 |
 | Mech | Terran | 600 |
-| Mech (no expa) | Terran | 600 |
 | Nexus First | Protoss | 200 |
 | Pool/Hatch (Other) | Zerg | 240 |
 | Tankless Mech | Terran | 600 |
-| Tankless Mech (no expa) | Terran | 600 |
 | Terran (Other) | Terran | 600 |
 | Zerg opening (approximate) | Zerg | 180 |
 

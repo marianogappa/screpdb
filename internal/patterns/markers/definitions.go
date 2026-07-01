@@ -507,11 +507,12 @@ func allMarkers() []Marker {
 		return mechCore(c.suffix, fkey, BuildCountBeforeFirstBuildOf(subjFactory, subjCommandCenter, 0), c, mechEv(c))
 	}
 	// No expansion in the opening window (no CC by 10:00) — a greedy one-base
-	// mech. Rare, so it isn't split by factory count.
+	// mech. Named "1-Base <comp>" (parallel to 1-Base Bio); not split by factory
+	// count.
 	mechNoExpa := func(c mechComp) Marker {
 		fkey := fmt.Sprintf("bo_t_%s_noexpa", c.key)
 		facRule := All(Not(FirstBuildBefore(subjCommandCenter, 600)), CountBuildsBefore(subjFactory, 2, 600))
-		return mechCore(c.suffix+" (no expa)", fkey, facRule, c, mechEv(c))
+		return mechCore("1-Base "+c.suffix, fkey, facRule, c, mechEv(c))
 	}
 	// 1-1-1 (one each of Rax/Factory/Starport, early Starport + Wraith), named
 	// by the transition: Mech (tanks), Tankless Mech (no tanks), or balanced.

@@ -203,6 +203,21 @@ from the v51 corpus re-ingest. The verified premise is the named player's BO:
 | `bo_7pool_zvt_3050sdsd`, `bo_7pool_zvp_herwater` | `Build Order: 7 Pool` |
 | `bo_8pool_zvt_coffeegene`, `bo_8pool_zvt_loveaddio` | `Build Order: 8 Pool` |
 | `bo_3starport_valk_tvz_as2qs` | `Build Order: 3 Starport Valkyrie` |
+| `bo_forgecannon_noexpa_pvz_lyx2008`, `bo_forgecannon_noexpa_pvz_liiliil` | `Build Order: Forge Cannon (no expa)` |
+| `bo_forgegatecannon_pvz_lllilliii` | `Build Order: Forge Gate Cannon before expa` |
+| `bo_mech_expa_2fac_tvp_f1ssasad` | `Build Order: 2 Fact Expa Mech` |
+| `bo_tankless_expa_1fac_tvp_f1ssasad`, `bo_tankless_expa_1fac_tvz_wicobaduk2` | `Build Order: 1 Fact Expa Tankless Mech` |
+| `bo_1base_mech_tvp_namu`, `bo_1base_mech_tvp_wjddsu` | `Build Order: 1-Base Mech` |
+
+Round-10 non-BO markers (watched & confirmed; the named player's marker):
+
+| Fixtures | Player must have marker |
+| --- | --- |
+| `bo_carriers_pvt_vncgsncs` | `Carriers` (Carrier-predominant army) |
+| `bo_bcs_tvz_1246768854333`, `bo_bcs_tvz_lIIIlIllIlIll` | `Battlecruisers` |
+| `bo_nukes_tvp_iliilii`, `bo_nukes_tvz_vvwv` | `Threw Nukes` |
+| `bo_sairspeedlot_pvz_tomsonnet`, `bo_sairspeedlot_pvz_tufbeombu` | `Sair/Speedlot` |
+| `bo_wraithcloak_tvz_1235sdfdfhg`, `bo_wraithcloak_tvz_llllilllilll` | `Wraith Cloak timing` |
 
 TvZ Zerg composition (round 7). Fixture `crazy_zerg_guardians_tvz_lyx2008.rep`
 (TvZ; LYX2008 = Zerg, P1), watched and confirmed. Two protected premises on
