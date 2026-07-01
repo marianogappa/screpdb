@@ -1795,22 +1795,24 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{IconKey: "battlecruiser", Style: PillStyleStrong, Title: "Battlecruisers"},
 		},
 		{
-			// Double Stargate (PvZ): the Protoss player commits to 2 Stargates
-			// (rather than the standard single Stargate, or none) and pumps a
-			// significant Corsair count. 6+ Corsairs is well past the 2-3 a
-			// one-base Sair opener produces for Overlord control, signalling a
-			// dedicated air investment that only two Stargates sustain. Gated to
-			// PvZ — the build is matchup-specific and meaningless elsewhere.
+			// Double Stargate (PvZ): the EARLY multi-Corsair technique — 2
+			// Stargates and 6+ Corsairs committed inside the opening window, to
+			// control Overlords / scout / deny detection. It is time-bounded (2nd
+			// Stargate + 6th Corsair by 7:30): a corpus survey of the 2nd-Starport
+			// second showed the technique clusters 4-7 min, with an 8min-35min tail
+			// that is really a Carrier transition (2 Stargates late) — those are
+			// NOT the double-Stargate build and were false positives when the rule
+			// was unbounded. Gated to PvZ.
 			Name:          "Double Stargate",
 			PatternName:   "Double Stargate",
 			FeatureKey:    "double_stargate",
 			Kind:          KindMarker,
 			Race:          RaceProtoss,
 			Matchup:       []string{"PvZ"},
-			Rule:          All(BuildCountAtLeast(subjStargate, 2), ProduceCountAtLeast(subjCorsair, 6)),
-			RuleDeadline:  endOfReplaySentinel,
-			SummaryPlayer: &Pill{Label: "Double Stargate", IconKey: "corsair", Style: PillStyleStrong, Title: "2 Stargates + 6 Corsairs (PvZ)"},
-			GamesList:     &Pill{Label: "Double Stargate", IconKey: "corsair", Style: PillStyleStrong, Title: "2 Stargates + 6 Corsairs (PvZ)"},
+			Rule:          All(CountBuildsBefore(subjStargate, 2, 450), ProduceCountAtLeastBefore(subjCorsair, 6, 450)),
+			RuleDeadline:  450,
+			SummaryPlayer: &Pill{Label: "Double Stargate", IconKey: "corsair", Style: PillStyleStrong, Title: "2 Stargates + 6 Corsairs by 7:30 (PvZ)"},
+			GamesList:     &Pill{Label: "Double Stargate", IconKey: "corsair", Style: PillStyleStrong, Title: "2 Stargates + 6 Corsairs by 7:30 (PvZ)"},
 		},
 		{
 			// 10+ Scouts: Money-map signature. Scouts are uneconomic on
