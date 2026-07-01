@@ -31,6 +31,38 @@ are not BO (PingcoJerry reaches 5-6 total but transitions at 3 → "3 Hatch Hydr
 ≠ Muta; only substantial Muta production is. Dynamic threshold (like game-phase), NOT a fixed second.
 Big change — validate against curated round-8 Zerg fixtures so they hold.
 
+## Zerg redesign — design + open decisions (NOT yet implemented; needs sign-off)
+Investigated the current detection (definitions.go ~1003-1165 + dsl.go). Findings:
+- Plain **"N Hatch" (9-13) = SUPPLY** (4 start + N drone morphs before the first expansion Hatchery),
+  RuleDeadline 180. These are hatch-first ECONOMIC openers (curated, keep).
+- **"2/3 Hatch Muta/Lurker/Hydra" = HATCHERY COUNT** via `CountBuildsBefore(Hatchery, 2, 360)` — a
+  HARDCODED 360s. This is the axis the user's feedback targets.
+- No DSL primitive detects an economy→army transition; a **custom evaluator** is required (like
+  `zergOpenerFuzzyEvaluator`).
+
+Target model (user): "N Hatch {Hydra|Muta|Lurker}" where **N = bases (Build(Hatchery) count + 1) at the
+economy→army transition** = when Drone morphs cut AND substantial tech-unit production starts. Suffix by
+the dominant tech unit (Spire+substantial-Muta → Muta; Den+Hydra → Hydra; Lurker aspect+Lurkers → Lurker).
+Scourge/Spire alone ≠ Muta (need real Muta). Later Drones/Hatcheries after the transition don't count
+(PingcoJerry hits 5-6 Hatch total but transitions at 3 → "3 Hatch Hydra").
+
+DECISIONS NEEDED before implementing:
+1. Replace the hardcoded 360s with a dynamic transition. Define "transition" precisely — proposal: the
+   moment of the Kth tech-unit morph (K = 4 Muta / 6 Hydra / 2 Lurker, the existing thresholds); N =
+   Build(Hatchery) count seen strictly before that moment, +1. Confirm K and the "+1 base" convention.
+2. Extend the family beyond 2/3 to any N (add 3/4 Hatch Hydra, 4 Hatch Muta, etc.) — dynamic count makes
+   this automatic (one marker per N, or a single dynamic-name evaluator).
+3. Keep the plain supply "N Hatch" (9-13) openers as-is (they're a different, economic axis) and let the
+   composition BO win by tier precedence when a transition is detected? (Recommend yes — mirrors how
+   2 Hatch Muta already coexists with 12 Hatch today.)
+4. Risk: the dynamic count may reclassify the curated 2/3 Hatch Muta/Lurker/Hydra fixtures — must re-validate.
+
+## Supply-count accuracy (separate from the redesign)
+- `zc10_8hatch_lIIIlIllllIlIl` (9 Hatch): raw stream has 7 Drone-morph commands before the Hatchery with
+  same-second pairs (1s, 23s); dedup collapsed to 4 → exact "8 Hatch". Truth 5 drones → 9 Hatch. Same
+  multi-larva morph-count ambiguity round 8 handled with `bo_z_fuzzy`; here it fired an exact wrong count
+  instead of going fuzzy. Fix belongs with the round-8 supply-count logic — risky, defer.
+
 ## Pending watch (~38 remaining)
 Zerg openers (4/6/8 Hatch, 7/8 Pool), Protoss (Forge Cannon no-expa, Forge-Gate-Cannon, Carriers,
 Double Stargate, First Corsair, Sair/Speedlot, Speedlot timing), Zerg comp (Muta hit-n-run, Muta
