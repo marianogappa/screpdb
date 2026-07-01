@@ -991,6 +991,54 @@
       }
     ]
   },
+  "bo_1gatenoexpa_pvt_broodwarisbest.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Terran (Other)",
+        "value": "125"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,3,4]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Gate (no expa)",
+        "value": "{\"expert_actuals\":[{\"second\":62,\"found\":true},{\"second\":85,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,2,4]}"
+      }
+    ]
+  },
+  "bo_1gatenoexpa_pvz_566.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Opener unresolved",
+        "value": "74"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Gate (no expa)",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":72,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      }
+    ]
+  },
   "bo_2_gate_carriers.rep": {
     "detections": [
       {
@@ -1999,6 +2047,65 @@
       }
     ]
   },
+  "bo_3starport_valk_tvz_as2qs.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 3 Starport Valkyrie",
+        "value": "{\"expert_actuals\":[{\"second\":401,\"found\":true},{\"second\":479,\"found\":true},{\"second\":507,\"found\":true}],\"modifiers\":[\"expand\"]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":15.19650655021834}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraith Cloak timing",
+        "value": "529"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraiths",
+        "value": "620"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "3 Hatch Muta",
+        "value": "351"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Guardians",
+        "value": "624"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":22.2707423580786}"
+      }
+    ]
+  },
   "bo_3starport_wraith_tvz_NamuBulldozer.rep": {
     "detections": [
       {
@@ -2059,6 +2166,127 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: Gateway (Other)",
         "value": "150"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4]}"
+      }
+    ]
+  },
+  "bo_7pool_zvp_herwater.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2 Gate",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":74,\"found\":true},{\"second\":88,\"found\":true},{\"second\":115,\"found\":true}],\"modifiers\":[\"proxy\"]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 7 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":57,\"found\":true},{\"second\":110,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2]}"
+      }
+    ]
+  },
+  "bo_7pool_zvt_3050sdsd.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Terran (Other)",
+        "value": "93"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 7 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":53,\"found\":true},{\"found\":false}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,4]}"
+      }
+    ]
+  },
+  "bo_8pool_zvt_coffeegene.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 8 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":63,\"found\":true},{\"second\":116,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Guardians",
+        "value": "3112"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,5,6,7]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":10.8}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":128,\"found\":true},{\"second\":322,\"found\":true},{\"second\":340,\"found\":true},{\"second\":123,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":8.87027027027027}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Wraith Cloak timing",
+        "value": "2196"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Wraiths",
+        "value": "3495"
+      }
+    ]
+  },
+  "bo_8pool_zvt_loveaddio.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: CC First",
+        "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":117,\"found\":true},{\"second\":134,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 8 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":60,\"found\":true},{\"second\":113,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,

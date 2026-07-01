@@ -78,6 +78,12 @@ var curatedFeatureKeys = map[string]bool{
 	"bo_t_111":              true,
 	"bo_t_111_tankless":     true,
 
+	// Round 10 (remove-betas pass) — watched & confirmed ladder replays.
+	"bo_1_gate_no_expa":   true, // bo_1gatenoexpa_pvz_566 / _pvt_broodwarisbest
+	"bo_7_pool":           true, // bo_7pool_zvt_3050sdsd / _zvp_herwater
+	"bo_8_pool":           true, // bo_8pool_zvt_coffeegene / _zvt_loveaddio
+	"bo_t_3starport_valk": true, // bo_3starport_valk_tvz_as2qs
+
 	// Round 7 — fixtures crazy_zerg_guardians_tvz_lyx2008, maelstrom_pvz_bysnow,
 	// first_observer_pvt_0sawon, first_mine_pvt_f1ssasad.
 	"crazy_zerg":     true,

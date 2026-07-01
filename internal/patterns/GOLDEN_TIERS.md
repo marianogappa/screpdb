@@ -194,6 +194,16 @@ premise is the named (Terran) player's BO:
 | `bo_111_tvz_IloveMinzi` | `Build Order: 1-1-1` |
 | `bo_111_tankless_tvz_FlOwErCoNtRoL` | `Build Order: 1-1-1 Tankless Mech` |
 
+Remove-betas batch (round 10). Non-mirror ladder replays, watched & confirmed, sourced
+from the v51 corpus re-ingest. The verified premise is the named player's BO:
+
+| Fixtures | Player must classify as |
+| --- | --- |
+| `bo_1gatenoexpa_pvz_566`, `bo_1gatenoexpa_pvt_broodwarisbest` | `Build Order: 1 Gate (no expa)` |
+| `bo_7pool_zvt_3050sdsd`, `bo_7pool_zvp_herwater` | `Build Order: 7 Pool` |
+| `bo_8pool_zvt_coffeegene`, `bo_8pool_zvt_loveaddio` | `Build Order: 8 Pool` |
+| `bo_3starport_valk_tvz_as2qs` | `Build Order: 3 Starport Valkyrie` |
+
 TvZ Zerg composition (round 7). Fixture `crazy_zerg_guardians_tvz_lyx2008.rep`
 (TvZ; LYX2008 = Zerg, P1), watched and confirmed. Two protected premises on
 LYX2008:
