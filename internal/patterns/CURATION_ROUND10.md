@@ -126,6 +126,16 @@ DEFERRED (deep / risky — recommend follow-up issues, NOT this PR):
   family. Needs a careful "standing/produced-building" pass + full round-8/9 revalidation.
 - **Zerg "N Hatch Hydra/Muta"** dynamic transition — a new custom evaluator; sizable feature, its own round.
 
+## Batch 6 — Zerg N Hatch Hydra dynamic redesign (DONE, hydra scope)
+Replaced the single 360s-based "2 Hatch Hydra" with a transition-based hydra family (2/3/4 Hatch Hydra,
+`zergHatchHydraEvaluator`): N = Hatcheries standing when hydra production STARTS (1st Hydralisk); requires
+6+ Hydralisks total and Hydra > Muta (Spire-for-Scourge / a few Mutas is fine — SYC had 81 Hydra / 12 Muta).
+Curated 2-hatch fixtures preserved; wired PingcoJerry=3, SYC=4 (both user-confirmed). 2jd reads 2 (only 2
+Hatcheries when hydra began @5:19; user eyeballed 4) — staged to reconcile the transition rule.
+Muta / Lurker N-Hatch generalization DEFERRED (all the user's cases were hydra; muta/lurker markers unchanged).
+
+Factory-before-expa over-count remains DEFERRED (deep builddedup CC-drop; documented above).
+
 ## Superseded backlog (was: implement + validate)
 1. first_corsair (+ audit speedlot/muta/turret timing) — report the unit, not the tech building.
 2. Manner pylon own-base/proxy-gate false positive (polygon-inside gate).
