@@ -256,6 +256,8 @@ var workflowFeaturingFilters = []struct {
 	{Key: "bo_z_2hatch_muta", Label: "2 Hatch Muta", Group: "bo", Race: "zerg"},
 	{Key: "bo_z_3hatch_lurker", Label: "3 Hatch Lurker", Group: "bo", Race: "zerg"},
 	{Key: "bo_z_2hatch_hydra", Label: "2 Hatch Hydra", Group: "bo", Race: "zerg"},
+	{Key: "bo_z_3hatch_hydra", Label: "3 Hatch Hydra", Group: "bo", Race: "zerg"},
+	{Key: "bo_z_4hatch_hydra", Label: "4 Hatch Hydra", Group: "bo", Race: "zerg"},
 	{Key: "bo_1_gate_core", Label: "1 Gate Core", Group: "bo", Race: "protoss"},
 	{Key: "bo_2_gate", Label: "2 Gate", Group: "bo", Race: "protoss"},
 	{Key: "bo_nexus_first", Label: "Nexus First", Group: "bo", Race: "protoss"},

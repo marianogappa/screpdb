@@ -94,6 +94,10 @@ var curatedFeatureKeys = map[string]bool{
 	"bo_t_tankless_expa_1fac": true, // bo_tankless_expa_1fac_tvp_f1ssasad / _tvz_wicobaduk2
 	"wraith_cloak_timing":     true, // bo_wraithcloak_tvz_1235sdfdfhg / _llllilllilll
 	"bo_t_mech_noexpa":        true, // "1-Base Mech": bo_1base_mech_tvp_namu / _wjddsu
+	// Round 10 batch 3 — Zerg N Hatch Hydra dynamic redesign (bases at the
+	// hydra-commit transition, not a 360s clock). 2-hatch fixtures unchanged.
+	"bo_z_3hatch_hydra": true, // bo_3hatch_hydra_pvz_pingcojerry
+	"bo_z_4hatch_hydra": true, // bo_4hatch_hydra_pvz_syc
 
 	// Round 7 — fixtures crazy_zerg_guardians_tvz_lyx2008, maelstrom_pvz_bysnow,
 	// first_observer_pvt_0sawon, first_mine_pvt_f1ssasad.

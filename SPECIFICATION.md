@@ -505,8 +505,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 2 Gate | Protoss | 1st Gateway | 70 | ±6 |
 | 2 Gate | Protoss | 2nd Gateway | 86 | ±10 |
 | 2 Gate | Protoss | First Zealot | 108 | ±3 |
-| 2 Hatch Hydra | Zerg | Hydralisk Den | 214 | −25 / +90 |
-| 2 Hatch Hydra | Zerg | First Hydralisks | 250 | −40 / +120 |
 | 2 Hatch Muta | Zerg | Spire | 249 | −35 / +70 |
 | 2 Hatch Muta | Zerg | First Mutalisks | 327 | −40 / +90 |
 | 2 Starport Valkyrie | Terran | 1st Starport | 205 | −40 / +90 |
@@ -712,6 +710,7 @@ Each opener's detector commits its decision once the replay passes this second �
 | 3 Fact Expa Goliath | Terran | 600 |
 | 3 Fact Expa Mech | Terran | 600 |
 | 3 Fact Expa Tankless Mech | Terran | 600 |
+| 3 Hatch Hydra | Zerg | 600 |
 | 3 Hatch Lurker | Zerg | 600 |
 | 3 Starport Valkyrie | Terran | 600 |
 | 3 Starport Wraith | Terran | 600 |
@@ -719,6 +718,7 @@ Each opener's detector commits its decision once the replay passes this second �
 | 4 Fact Expa Mech | Terran | 600 |
 | 4 Fact Expa Tankless Mech | Terran | 600 |
 | 4 Hatch | Zerg | 180 |
+| 4 Hatch Hydra | Zerg | 600 |
 | 4 Pool | Zerg | 60 |
 | 5 Fact Expa Goliath | Terran | 600 |
 | 5 Fact Expa Mech | Terran | 600 |
@@ -920,57 +920,59 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 | 27 | bo_z_2hatch_muta |
 | 28 | bo_z_3hatch_lurker |
 | 29 | bo_z_2hatch_hydra |
-| 30 | bo_2_gate |
-| 31 | bo_1_gate_core |
-| 32 | bo_nexus_first |
-| 33 | bo_gate_expand |
-| 34 | bo_forge_expa |
-| 35 | bo_p_1gate_reaver |
-| 36 | bo_p_gate_forge_cannon |
-| 37 | bo_p_forge_cannon_gate |
-| 38 | bo_p_forge_gate_cannon |
-| 39 | bo_bbs |
-| 40 | bo_cc_first |
-| 41 | bo_t_bio_1base |
-| 42 | bo_t_bio_2base |
-| 43 | bo_t_111_mech |
-| 44 | bo_t_111_tankless |
-| 45 | bo_t_111 |
-| 46 | bo_t_mech_expa_1fac |
-| 47 | bo_t_mech_expa_2fac |
-| 48 | bo_t_mech_expa_3fac |
-| 49 | bo_t_mech_expa_4fac |
-| 50 | bo_t_mech_expa_5fac |
-| 51 | bo_t_mech_expa_6fac |
-| 52 | bo_t_goliath_expa_1fac |
-| 53 | bo_t_goliath_expa_2fac |
-| 54 | bo_t_goliath_expa_3fac |
-| 55 | bo_t_goliath_expa_4fac |
-| 56 | bo_t_goliath_expa_5fac |
-| 57 | bo_t_goliath_expa_6fac |
-| 58 | bo_t_tankless_expa_1fac |
-| 59 | bo_t_tankless_expa_2fac |
-| 60 | bo_t_tankless_expa_3fac |
-| 61 | bo_t_tankless_expa_4fac |
-| 62 | bo_t_tankless_expa_5fac |
-| 63 | bo_t_tankless_expa_6fac |
-| 64 | bo_t_mech_expand |
-| 65 | bo_t_goliath_expand |
-| 66 | bo_t_tankless_expand |
-| 67 | bo_t_mech_noexpa |
-| 68 | bo_t_goliath_noexpa |
-| 69 | bo_t_tankless_noexpa |
-| 70 | bo_t_2starport_wraith |
-| 71 | bo_t_2starport_valk |
-| 72 | bo_t_3starport_wraith |
-| 73 | bo_t_3starport_valk |
-| 74 | double_stargate |
-| 75 | crazy_zerg |
-| 76 | guardians |
-| 77 | carriers |
-| 78 | battlecruisers |
-| 79 | ten_plus_scouts |
-| 80 | cliff_drop |
+| 30 | bo_z_3hatch_hydra |
+| 31 | bo_z_4hatch_hydra |
+| 32 | bo_2_gate |
+| 33 | bo_1_gate_core |
+| 34 | bo_nexus_first |
+| 35 | bo_gate_expand |
+| 36 | bo_forge_expa |
+| 37 | bo_p_1gate_reaver |
+| 38 | bo_p_gate_forge_cannon |
+| 39 | bo_p_forge_cannon_gate |
+| 40 | bo_p_forge_gate_cannon |
+| 41 | bo_bbs |
+| 42 | bo_cc_first |
+| 43 | bo_t_bio_1base |
+| 44 | bo_t_bio_2base |
+| 45 | bo_t_111_mech |
+| 46 | bo_t_111_tankless |
+| 47 | bo_t_111 |
+| 48 | bo_t_mech_expa_1fac |
+| 49 | bo_t_mech_expa_2fac |
+| 50 | bo_t_mech_expa_3fac |
+| 51 | bo_t_mech_expa_4fac |
+| 52 | bo_t_mech_expa_5fac |
+| 53 | bo_t_mech_expa_6fac |
+| 54 | bo_t_goliath_expa_1fac |
+| 55 | bo_t_goliath_expa_2fac |
+| 56 | bo_t_goliath_expa_3fac |
+| 57 | bo_t_goliath_expa_4fac |
+| 58 | bo_t_goliath_expa_5fac |
+| 59 | bo_t_goliath_expa_6fac |
+| 60 | bo_t_tankless_expa_1fac |
+| 61 | bo_t_tankless_expa_2fac |
+| 62 | bo_t_tankless_expa_3fac |
+| 63 | bo_t_tankless_expa_4fac |
+| 64 | bo_t_tankless_expa_5fac |
+| 65 | bo_t_tankless_expa_6fac |
+| 66 | bo_t_mech_expand |
+| 67 | bo_t_goliath_expand |
+| 68 | bo_t_tankless_expand |
+| 69 | bo_t_mech_noexpa |
+| 70 | bo_t_goliath_noexpa |
+| 71 | bo_t_tankless_noexpa |
+| 72 | bo_t_2starport_wraith |
+| 73 | bo_t_2starport_valk |
+| 74 | bo_t_3starport_wraith |
+| 75 | bo_t_3starport_valk |
+| 76 | double_stargate |
+| 77 | crazy_zerg |
+| 78 | guardians |
+| 79 | carriers |
+| 80 | battlecruisers |
+| 81 | ten_plus_scouts |
+| 82 | cliff_drop |
 
 ## Game-event featuring chips
 

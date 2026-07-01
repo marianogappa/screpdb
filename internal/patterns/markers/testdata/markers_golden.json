@@ -1485,7 +1485,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: 2 Hatch Hydra",
-        "value": "{\"expert_actuals\":[{\"second\":196,\"found\":true},{\"second\":245,\"found\":true}]}"
+        "value": "245"
       },
       {
         "replay_player_id": 0,
@@ -1544,7 +1544,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 2 Hatch Hydra",
-        "value": "{\"expert_actuals\":[{\"second\":199,\"found\":true},{\"second\":268,\"found\":true}]}"
+        "value": "268"
       },
       {
         "replay_player_id": 1,
@@ -1583,7 +1583,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 2 Hatch Hydra",
-        "value": "{\"expert_actuals\":[{\"second\":214,\"found\":true},{\"second\":257,\"found\":true}]}"
+        "value": "257"
       },
       {
         "replay_player_id": 1,
@@ -2018,6 +2018,45 @@
       }
     ]
   },
+  "bo_3hatch_hydra_pvz_pingcojerry.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":108,\"found\":true},{\"second\":178,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Speedlot timing",
+        "value": "317"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":27.69230769230769}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 3 Hatch Hydra",
+        "value": "314"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":19.23076923076923}"
+      }
+    ]
+  },
   "bo_3hlurker_tvz_honjr.rep": {
     "detections": [
       {
@@ -2257,6 +2296,55 @@
       }
     ]
   },
+  "bo_4hatch_hydra_pvz_syc.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 4 Hatch Hydra",
+        "value": "322"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":25.37142857142857}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":51,\"found\":true},{\"second\":106,\"found\":true},{\"second\":171,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Corsair",
+        "value": "310"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Sair/Speedlot",
+        "value": "341"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Speedlot timing",
+        "value": "337"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":14.057142857142857}"
+      }
+    ]
+  },
   "bo_7pool_zvp_herwater.rep": {
     "detections": [
       {
@@ -2402,8 +2490,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 9 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":74,\"found\":true},{\"second\":109,\"found\":true}]}"
+        "pattern_name": "Build Order: 3 Hatch Hydra",
+        "value": "287"
       },
       {
         "replay_player_id": 1,
@@ -3200,8 +3288,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 9 Overpool",
-        "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":125,\"found\":true}]}"
+        "pattern_name": "Build Order: 3 Hatch Hydra",
+        "value": "264"
       },
       {
         "replay_player_id": 1,
@@ -3444,8 +3532,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Zerg opening (approximate)",
-        "value": "{\"label\":\"~10 Hatch\"}"
+        "pattern_name": "Build Order: 4 Hatch Hydra",
+        "value": "380"
       },
       {
         "replay_player_id": 1,
@@ -3522,8 +3610,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 9 Pool",
-        "value": "{\"expert_actuals\":[{\"second\":61,\"found\":true},{\"second\":113,\"found\":true}]}"
+        "pattern_name": "Build Order: 3 Hatch Hydra",
+        "value": "324"
       },
       {
         "replay_player_id": 0,
@@ -3576,8 +3664,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 9 Pool",
-        "value": "{\"expert_actuals\":[{\"second\":65,\"found\":true},{\"found\":false}]}"
+        "pattern_name": "Build Order: 3 Hatch Hydra",
+        "value": "301"
       },
       {
         "replay_player_id": 0,
@@ -3690,7 +3778,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 2 Hatch Hydra",
-        "value": "{\"expert_actuals\":[{\"second\":297,\"found\":true},{\"second\":352,\"found\":true}]}"
+        "value": "352"
       },
       {
         "replay_player_id": 1,
@@ -5198,8 +5286,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: Zerg opening (approximate)",
-        "value": "{\"label\":\"~10 Overpool\"}"
+        "pattern_name": "Build Order: 3 Hatch Hydra",
+        "value": "260"
       },
       {
         "replay_player_id": 0,
@@ -5247,8 +5335,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 9 Overpool",
-        "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":127,\"found\":true}]}"
+        "pattern_name": "Build Order: 2 Hatch Hydra",
+        "value": "291"
       },
       {
         "replay_player_id": 0,
@@ -5701,8 +5789,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Zerg opening (approximate)",
-        "value": "{\"label\":\"~10 Overpool\"}"
+        "pattern_name": "Build Order: 3 Hatch Hydra",
+        "value": "377"
       },
       {
         "replay_player_id": 1,
@@ -5760,8 +5848,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Zerg opening (approximate)",
-        "value": "{\"label\":\"~11 Overpool\"}"
+        "pattern_name": "Build Order: 4 Hatch Hydra",
+        "value": "401"
       },
       {
         "replay_player_id": 1,
@@ -6020,8 +6108,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 5 Pool",
-        "value": "{\"expert_actuals\":[{\"second\":41,\"found\":true},{\"second\":94,\"found\":true}]}"
+        "pattern_name": "Build Order: 3 Hatch Hydra",
+        "value": "337"
       },
       {
         "replay_player_id": 1,
@@ -6064,8 +6152,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 9 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":76,\"found\":true},{\"second\":110,\"found\":true}]}"
+        "pattern_name": "Build Order: 3 Hatch Hydra",
+        "value": "281"
       },
       {
         "replay_player_id": 1,
@@ -6353,8 +6441,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: Zerg opening (approximate)",
-        "value": "{\"label\":\"~9 Overpool\"}"
+        "pattern_name": "Build Order: 3 Hatch Hydra",
+        "value": "317"
       },
       {
         "replay_player_id": 1,
@@ -6622,8 +6710,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 9 Overpool",
-        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":145,\"found\":true}]}"
+        "pattern_name": "Build Order: 4 Hatch Hydra",
+        "value": "269"
       },
       {
         "replay_player_id": 1,
