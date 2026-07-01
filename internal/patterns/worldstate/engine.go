@@ -1343,6 +1343,12 @@ func (e *Engine) tryEmitMannerPylonEvent(command *models.Command, pid byte, sec 
 	default:
 		return
 	}
+	// A manner pylon blocks the enemy's mineral line — impossible against Zerg,
+	// whose creep spread prevents an opponent building inside their base. Firing
+	// there is always a false positive.
+	if p, ok := e.players[enemyPID]; ok && p != nil && p.Race == "Zerg" {
+		return
+	}
 	enemyStart, ok := e.startBaseByPID[enemyPID]
 	if !ok || enemyStart < 0 || enemyStart >= len(e.bases) {
 		return

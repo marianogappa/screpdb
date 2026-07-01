@@ -213,7 +213,13 @@ import (
 // lowered to 3); and Bunker Rush loosened to TWO+ forward Bunkers (≤240s) even
 // into an expand/tech follow-up (a single early bunker is a poke). Re-ingest so
 // Terran build orders re-classify.
-const AlgorithmVersion = 51
+//
+// 52: round-10 curation. "Mech (no expa)" family renamed to "1-Base Mech" /
+// "1-Base Goliath" / "1-Base Tankless Mech" (parallel to 1-Base Bio). Manner
+// pylon no longer fires against a Zerg opponent (creep prevents building inside
+// their base — always a false positive). Re-ingest so the renamed BOs and
+// corrected manner-pylon events apply.
+const AlgorithmVersion = 52
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string
