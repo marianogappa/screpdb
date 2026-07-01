@@ -63,7 +63,39 @@ DECISIONS NEEDED before implementing:
   multi-larva morph-count ambiguity round 8 handled with `bo_z_fuzzy`; here it fired an exact wrong count
   instead of going fuzzy. Fix belongs with the round-8 supply-count logic — risky, defer.
 
-## Pending watch (~38 remaining)
+## Batch 3 verdicts (2026-07-01)
+Confirmed & WIRED (curated): Carriers, Battlecruisers, Forge Cannon (no expa), Forge Gate Cannon,
+2 Fact Expa Mech (F1SSasad), Threw Nukes, Sair/Speedlot, 1 Fact Expa Tankless Mech, Wraith Cloak timing.
+Rename + wired: "Mech (no expa)" → **"1-Base Mech"** (family: 1-Base Goliath / 1-Base Tankless Mech);
+NaMu/WJDDSU confirmed 1-Base Mech.
+
+Corrections still to FIX (detector wrong):
+- **Factory-before-expa OVER-count**: `mech2fac_SSTJumJaJungJi` (said 2, is 1) and `mech4fac_Terran3`
+  (said 4, is 1) — user: "only one Factory before the expa." Raw shows extra Factory build commands
+  before the first CC (Terran3: 151,362,463,464 before CC@481) that were cancelled/spread re-placements.
+  The round-9 builddedup fix drops LATER same-type dups but only for near-simultaneous re-placements;
+  these are spread over minutes → not caught. Needs a standing-factory (produced/completed) count for
+  the before-expa tally. RISKY (opposite direction to the round-9 under-count fix) — investigate carefully.
+- **Double Stargate** over-fires: it's a PvZ early multi-corsair technique (observe / supply-block via
+  killing Overlords / cloak-DT support), NOT a carrier build. Corpus survey of the 2nd-Starport second:
+  bulk 4-7 min (median 5:51, p10 4:48), long tail 8min→35min (~14 matches = carrier transitions / late
+  = false positives). Fix = (a) 2nd Starport within ~7:00 window, (b) count STANDING Starports so a
+  re-placed single Starport (89EFD77C: 2 builds 3s apart, only 1 stood) doesn't fire, (c) corsair-, not
+  carrier-, focused. `82A3FA04` (2nd SP @8:23 → carriers) and `89EFD77C` (1 real SP) both correctly drop.
+
+## Timing-marker detected values (for the user to confirm against the replay)
+| Marker | Replay | Player | Detected |
+| --- | --- | --- | --- |
+| First Corsair | 55DD7250 | Tomson`net | 4:58 |
+| Speedlot timing | 55DD7250 / 632A5226 | Tomson`net / o-jing | 6:12 / 4:37 |
+| Mutalisk timing | AF8C1D90 / F26080FE | IlIlIllIlllIlll | 5:40 (6 muta burst) / 5:35 (3 muta) |
+| Turret timing | F26080FE / AF8C1D90 | 1235sdfdfhg / gimoddak7 | 6:03 (Ebay 4:59) / 5:49 (Ebay 4:47) |
+
+## Manner pylon — suspected over-fire (user)
+169 events across 71 replays (~2.4/replay) — high for a griefing pylon. Staged candidates for the user
+to verify; if it's mis-firing on ordinary forward pylons, tighten + possibly un-curate.
+
+## Pending watch (remaining)
 Zerg openers (4/6/8 Hatch, 7/8 Pool), Protoss (Forge Cannon no-expa, Forge-Gate-Cannon, Carriers,
 Double Stargate, First Corsair, Sair/Speedlot, Speedlot timing), Zerg comp (Muta hit-n-run, Muta
 timing), Terran (Nukes, Turret/Wraith-Cloak timing, Wraiths, BCs, 2/4 Fact Expa Mech, Mech no-expa,
