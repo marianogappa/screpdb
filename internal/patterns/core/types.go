@@ -219,7 +219,11 @@ import (
 // pylon no longer fires against a Zerg opponent (creep prevents building inside
 // their base — always a false positive). Re-ingest so the renamed BOs and
 // corrected manner-pylon events apply.
-const AlgorithmVersion = 52
+// 53: N Hatch Hydra counts bases up to the 1st Hydralisk + a 30s grace window
+// (an expansion placed as hydra production begins is part of the commit; later
+// macro expansions are not) — corrects 2jd (3 Hatch, not 2). Re-ingest so Zerg
+// hydra build orders re-count.
+const AlgorithmVersion = 53
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

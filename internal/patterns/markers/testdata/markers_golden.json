@@ -2018,6 +2018,50 @@
       }
     ]
   },
+  "bo_3hatch_hydra_pvz_2jd.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 3 Hatch Hydra",
+        "value": "319"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":23.121019108280255}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Nexus First",
+        "value": "{\"expert_actuals\":[{\"second\":52,\"found\":true},{\"second\":110,\"found\":true},{\"second\":155,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Corsair",
+        "value": "308"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Speedlot timing",
+        "value": "598"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":11.464968152866241}"
+      }
+    ]
+  },
   "bo_3hatch_hydra_pvz_pingcojerry.rep": {
     "detections": [
       {
@@ -3532,8 +3576,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 4 Hatch Hydra",
-        "value": "380"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Hatch\"}"
       },
       {
         "replay_player_id": 1,
@@ -5002,6 +5046,55 @@
       }
     ]
   },
+  "bo_mutaharass_zvt_iliil.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2 Hatch Muta",
+        "value": "{\"expert_actuals\":[{\"second\":236,\"found\":true},{\"second\":315,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":315,\"muta_burst_count\":6,\"mutalisk_finished\":340,\"spire_cmd\":236}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":35.45454545454546}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Mech",
+        "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":88,\"found\":true},{\"second\":165,\"found\":true},{\"second\":221,\"found\":true},{\"second\":483,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":287,\"first_turret_cmd\":330,\"turret_burst_count\":7,\"turret_finished\":349}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":5.454545454545455}"
+      }
+    ]
+  },
   "bo_nexusfirst_pvt_bbbukae.rep": {
     "detections": [
       {
@@ -5742,6 +5835,139 @@
         "replay_player_id": 1,
         "pattern_name": "Wraiths",
         "value": "634"
+      }
+    ]
+  },
+  "bo_wraiths_tvz_1235sdfdfhg.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 2-Base Bio",
+        "value": "{\"expert_actuals\":[{\"second\":51,\"found\":true},{\"second\":83,\"found\":true},{\"second\":177,\"found\":true},{\"second\":194,\"found\":true},{\"second\":162,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":299,\"first_turret_cmd\":344,\"turret_burst_count\":5,\"turret_finished\":363}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":10.76923076923077}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraith Cloak timing",
+        "value": "592"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Wraiths",
+        "value": "667"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "3 Hatch Muta",
+        "value": "347"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Overpool\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Guardians",
+        "value": "597"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":310,\"muta_burst_count\":3,\"mutalisk_finished\":335,\"spire_cmd\":233}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":19.384615384615383}"
+      }
+    ]
+  },
+  "bo_wraiths_tvz_iilliii.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "3 Hatch Muta",
+        "value": "332"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Overpool\"}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Guardians",
+        "value": "626"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":311,\"muta_burst_count\":4,\"mutalisk_finished\":336,\"spire_cmd\":232}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":31.518987341772153}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 3 Starport Wraith",
+        "value": "{\"expert_actuals\":[{\"second\":515,\"found\":true},{\"second\":538,\"found\":true},{\"second\":566,\"found\":true}],\"modifiers\":[\"expand\"]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":194,\"first_turret_cmd\":333,\"turret_burst_count\":10,\"turret_finished\":352}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":24.303797468354432}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Wraiths",
+        "value": "585"
       }
     ]
   },

@@ -220,6 +220,9 @@ Round-10 non-BO markers (watched & confirmed; the named player's marker):
 | `bo_wraithcloak_tvz_1235sdfdfhg`, `bo_wraithcloak_tvz_llllilllilll` | `Wraith Cloak timing` |
 | `bo_3hatch_hydra_pvz_pingcojerry` | `Build Order: 3 Hatch Hydra` (bases at the hydra transition) |
 | `bo_4hatch_hydra_pvz_syc` | `Build Order: 4 Hatch Hydra` (Spire/Scourge present but hydra-dominant) |
+| `bo_3hatch_hydra_pvz_2jd` | `Build Order: 3 Hatch Hydra` (3rd Hatchery lands as hydra production begins) |
+| `bo_wraiths_tvz_1235sdfdfhg`, `bo_wraiths_tvz_iilliii` | `Wraiths` (wraith-predominant air) |
+| `bo_mutaharass_zvt_iliil` | `Muta hit-n-run` |
 
 TvZ Zerg composition (round 7). Fixture `crazy_zerg_guardians_tvz_lyx2008.rep`
 (TvZ; LYX2008 = Zerg, P1), watched and confirmed. Two protected premises on
