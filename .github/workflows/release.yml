@@ -99,11 +99,14 @@ jobs:
           ./scripts/update-homebrew-formula.sh "$VERSION" dist/SHA256SUMS "$TAP_DIR/Formula/screpdb.rb"
           git -C "$TAP_DIR" config user.name "github-actions[bot]"
           git -C "$TAP_DIR" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git -C "$TAP_DIR" diff --quiet -- Formula/screpdb.rb; then
+          # Stage first, then diff the index: `git diff` alone ignores untracked
+          # files, so on a fresh/empty tap the brand-new formula would look
+          # unchanged and never get committed.
+          git -C "$TAP_DIR" add Formula/screpdb.rb
+          if git -C "$TAP_DIR" diff --cached --quiet; then
             echo "Homebrew formula already up to date."
             exit 0
           fi
-          git -C "$TAP_DIR" add Formula/screpdb.rb
           git -C "$TAP_DIR" commit -m "screpdb ${VERSION}"
           git -C "$TAP_DIR" push origin HEAD
 
