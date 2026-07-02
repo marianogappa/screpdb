@@ -2289,6 +2289,13 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 				continue
 			}
 			boModifiers := markers.DecodeModifiers([]byte(row.Payload))
+			// Dynamic openers (fuzzy Zerg opener) persist their resolved value
+			// ("~9 Overpool") in the payload; bo.Name is only a placeholder
+			// ("Zerg opening (approximate)"). Render the resolved label.
+			boLabel := bo.Name
+			if resolved, ok := markers.DecodePayloadLabel([]byte(row.Payload)); ok {
+				boLabel = resolved
+			}
 			var events []workflowMarkerEvent
 			if schema, isSimplifiedZerg := zergBOEventSchemas[bo.FeatureKey]; isSimplifiedZerg {
 				events = buildZergBOEvents(schema, bo, zergTimings[player.PlayerID])
@@ -2318,7 +2325,7 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 				PlayerKey:  player.PlayerKey,
 				Name:       player.Name,
 				Race:       player.Race,
-				Marker:     bo.Name,
+				Marker:     boLabel,
 				FeatureKey: bo.FeatureKey,
 				Events:     events,
 				Modifiers:  boModifiers,
@@ -2338,7 +2345,7 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 					IsWinner:      player.IsWinner,
 					Team:          player.Team,
 					StartLocation: startLocationByPlayer[player.PlayerID],
-					BuildOrder:    bo.Name,
+					BuildOrder:    boLabel,
 					FeatureKey:    bo.FeatureKey,
 					Modifiers:     boModifiers,
 				})
