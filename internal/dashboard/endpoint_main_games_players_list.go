@@ -3,6 +3,7 @@ package dashboard
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -279,11 +280,16 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 	replayIDs := make([]int64, 0, len(items))
 	itemIndexByReplayID := map[int64]int{}
 	featureSets := map[int64]map[string]struct{}{}
+	// Resolved payload labels per (replay, featureKey) for dynamic markers
+	// (e.g. "3 Hatch Muta", "~9 Overpool"). A game can feature more than one
+	// value of the same marker, so each distinct label becomes its own pill.
+	featureLabels := map[int64]map[string][]string{}
 	mapKindByReplayID := map[int64]string{}
 	for i, item := range items {
 		replayIDs = append(replayIDs, item.ReplayID)
 		itemIndexByReplayID[item.ReplayID] = i
 		featureSets[item.ReplayID] = map[string]struct{}{}
+		featureLabels[item.ReplayID] = map[string][]string{}
 		mapKindByReplayID[item.ReplayID] = item.MapKind
 	}
 	if len(replayIDs) == 0 {
@@ -318,6 +324,15 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 					continue
 				}
 				featureSets[replayID][bo.FeatureKey] = struct{}{}
+				// row.ValueString carries the marker payload (see the query).
+				// Dynamic markers persist their resolved value there; collect
+				// each distinct one so the pill shows the number.
+				if label, ok := markers.DecodePayloadLabel([]byte(row.ValueString.String)); ok {
+					existing := featureLabels[replayID][bo.FeatureKey]
+					if !slices.Contains(existing, label) {
+						featureLabels[replayID][bo.FeatureKey] = append(existing, label)
+					}
+				}
 			}
 		}
 	}
@@ -350,13 +365,23 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 			if _, has := set[cfg.Key]; !has {
 				continue
 			}
-			// Distinct keys can share a label (e.g. a unit marker and a build-order
-			// opener that read the same word) — collapse to one pill.
-			if _, dup := seenLabel[cfg.Label]; dup {
-				continue
+			// Prefer resolved payload labels ("3 Hatch Muta") over the static
+			// placeholder ("N Hatch Muta"); a game may feature several distinct
+			// values of the same marker. Fall back to cfg.Label when the marker
+			// has no payload label.
+			pillLabels := featureLabels[replayID][cfg.Key]
+			if len(pillLabels) == 0 {
+				pillLabels = []string{cfg.Label}
 			}
-			seenLabel[cfg.Label] = struct{}{}
-			labels = append(labels, cfg.Label)
+			for _, label := range pillLabels {
+				// Distinct keys can share a label (e.g. a unit marker and a
+				// build-order opener that read the same word) — collapse to one pill.
+				if _, dup := seenLabel[label]; dup {
+					continue
+				}
+				seenLabel[label] = struct{}{}
+				labels = append(labels, label)
+			}
 		}
 		items[idx].Featuring = labels
 	}
@@ -521,7 +546,26 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 		})
 	}
 
+	// The fuzzy Zerg opener has no single meaningful value — its identity is the
+	// resolved rung ("~9 Overpool", "~10 Hatch"). Replace the placeholder
+	// "Approx. opener" bucket with one filterable pill per distinct value present
+	// in the data (none if there are no fuzzy openers).
+	fuzzyLabels, err := d.dbStore.ListDistinctMarkerLabels(d.ctx, "bo_z_fuzzy")
+	if err != nil {
+		return result, err
+	}
 	for _, feature := range workflowFeaturingFilters {
+		if feature.Key == "bo_z_fuzzy" {
+			for _, label := range fuzzyLabels {
+				result.Featuring = append(result.Featuring, workflowGamesListFilterOption{
+					Key:   dashboarddb.PerValueFeatureKey("bo_z_fuzzy", label),
+					Label: label,
+					Group: feature.Group,
+					Race:  feature.Race,
+				})
+			}
+			continue
+		}
 		result.Featuring = append(result.Featuring, workflowGamesListFilterOption{
 			Key:       feature.Key,
 			Label:     feature.Label,

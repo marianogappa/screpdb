@@ -30,6 +30,31 @@ func TestEncodeDecodeExpertActuals_RoundTrip(t *testing.T) {
 	}
 }
 
+func TestDecodePayloadLabel(t *testing.T) {
+	cases := []struct {
+		name    string
+		payload string
+		want    string
+		wantOK  bool
+	}{
+		{"n hatch tech", `{"label":"3 Hatch Muta"}`, "3 Hatch Muta", true},
+		{"fuzzy opener", `{"label":"~9 Overpool"}`, "~9 Overpool", true},
+		{"trims whitespace", `{"label":"  12 Hatch  "}`, "12 Hatch", true},
+		{"empty label", `{"label":""}`, "", false},
+		{"missing key", `{"expert_actuals":[]}`, "", false},
+		{"empty payload", ``, "", false},
+		{"invalid json", `{`, "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := DecodePayloadLabel([]byte(tc.payload))
+			if ok != tc.wantOK || got != tc.want {
+				t.Fatalf("DecodePayloadLabel(%q) = (%q, %v), want (%q, %v)", tc.payload, got, ok, tc.want, tc.wantOK)
+			}
+		})
+	}
+}
+
 func TestDecodeExpertActuals_EmptyAndInvalid(t *testing.T) {
 	if got := DecodeExpertActuals(nil); got != nil {
 		t.Fatalf("nil payload should decode to nil, got %v", got)

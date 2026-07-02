@@ -52,6 +52,20 @@ func BenchmarkSQLiteIngestionCorpus(b *testing.B) {
 	if len(files) == 0 {
 		b.Fatalf("no replays in %s", replaysDir)
 	}
+	// Mirror production discovery: drop duplicate-checksum replays so a corpus
+	// with mirrored/copied .rep files (the markers testdata has some) still
+	// benchmarks a clean single-insert-per-replay run rather than tripping the
+	// replays.file_checksum UNIQUE constraint mid-corpus.
+	seenChecksum := make(map[string]struct{}, len(files))
+	unique := files[:0]
+	for _, f := range files {
+		if _, dup := seenChecksum[f.Checksum]; dup {
+			continue
+		}
+		seenChecksum[f.Checksum] = struct{}{}
+		unique = append(unique, f)
+	}
+	files = unique
 	fileops.SortFilesByModTime(files)
 	if capStr := os.Getenv("SCREPDB_BENCH_CORPUS_CAP"); capStr != "" {
 		var capN int

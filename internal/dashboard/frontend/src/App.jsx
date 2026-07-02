@@ -2835,7 +2835,7 @@ function App() {
   const updateUnsupportedTip = (() => {
     const reason = updateStatus?.reason || '';
     const manager = updateStatus?.package_manager || '';
-    if (updateManagerCommand) return `Run in your terminal: ${updateManagerCommand} (click for release notes)`;
+    if (updateManagerCommand) return `Run in your terminal: ${updateManagerCommand}`;
     if (reason === 'managed') return `Update via your package manager (${manager})`;
     if (reason === 'not-writable') return 'Install folder is read-only — download the new version manually';
     if (reason === 'unsupported-platform') return 'No self-update build for this platform — download the new version';
@@ -5165,6 +5165,14 @@ function App() {
                 >
                   {updateApplying ? '⏳ Updating…' : `🆕 Update to ${updateLatest}`}
                 </button>
+              ) : updateManagerCommand ? (
+                <span
+                  className="workflow-nav-update-available tip-below tip-hint"
+                  data-tip={updateUnsupportedTip}
+                  tabIndex={0}
+                >
+                  {`🆕 ${updateLatest} — run: ${updateManagerCommand}`}
+                </span>
               ) : (
                 <a
                   href={updateReleaseUrl}
@@ -5173,7 +5181,7 @@ function App() {
                   className="workflow-nav-update-available tip-below"
                   data-tip={updateUnsupportedTip}
                 >
-                  {updateManagerCommand ? `🆕 ${updateLatest} — run: ${updateManagerCommand}` : '🆕 Update available'}
+                  🆕 Update available
                 </a>
               )
             ) : null}
@@ -7526,13 +7534,17 @@ function App() {
                         className="footer-update-link"
                         disabled={updateApplying}
                         onClick={handleApplyUpdate}
-                        title={updateError || `Update from ${currentVersion} to ${updateLatest}`}
+                        data-tip={updateError || `Update from ${currentVersion} to ${updateLatest}`}
                       >
                         {updateApplying ? 'Updating…' : `🆕 Update to ${updateLatest}`}
                       </button>
+                    ) : updateManagerCommand ? (
+                      <span className="footer-update-link tip-hint" data-tip={updateUnsupportedTip} tabIndex={0}>
+                        {`🆕 ${updateLatest} — run: ${updateManagerCommand}`}
+                      </span>
                     ) : (
-                      <a href={updateReleaseUrl} target="_blank" rel="noopener noreferrer" className="footer-update-link" title={updateUnsupportedTip}>
-                        {updateManagerCommand ? `🆕 ${updateLatest} — run: ${updateManagerCommand}` : `🆕 Update available (${updateLatest})`}
+                      <a href={updateReleaseUrl} target="_blank" rel="noopener noreferrer" className="footer-update-link" data-tip={updateUnsupportedTip}>
+                        {`🆕 Update available (${updateLatest})`}
                       </a>
                     )}
                     {!updateApplied ? (
