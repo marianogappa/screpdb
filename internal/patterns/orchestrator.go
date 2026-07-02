@@ -252,6 +252,7 @@ func (o *Orchestrator) SetProductionSignals(ev *unittags.Evidence) {
 		}
 	}
 	o.worldState.SetProductionSignals(signals)
+	o.worldState.SetTownHallBuilds(unittags.TownHallBuildSeconds(ev))
 }
 
 // SetMutaHarass threads selection-derived Mutalisk hit-n-run harass episodes

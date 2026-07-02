@@ -505,8 +505,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 2 Gate | Protoss | 1st Gateway | 70 | ±6 |
 | 2 Gate | Protoss | 2nd Gateway | 86 | ±10 |
 | 2 Gate | Protoss | First Zealot | 108 | ±3 |
-| 2 Hatch Muta | Zerg | Spire | 249 | −35 / +70 |
-| 2 Hatch Muta | Zerg | First Mutalisks | 327 | −40 / +90 |
 | 2 Starport Valkyrie | Terran | 1st Starport | 205 | −40 / +90 |
 | 2 Starport Valkyrie | Terran | 2nd Starport | 212 | −40 / +90 |
 | 2 Starport Valkyrie | Terran | First Valkyrie | 300 | −60 / +120 |
@@ -536,8 +534,6 @@ The openings screpdb recognizes and each milestone's "progamer ideal" timing. Th
 | 3 Fact Expa Tankless Mech | Terran | 1st Factory | 152 | −12 / +80 |
 | 3 Fact Expa Tankless Mech | Terran | First Vulture | 205 | −20 / +50 |
 | 3 Fact Expa Tankless Mech | Terran | Command Center | 250 | −120 / +200 |
-| 3 Hatch Lurker | Zerg | Hydralisk Den | 270 | −50 / +60 |
-| 3 Hatch Lurker | Zerg | First Lurkers | 417 | −80 / +120 |
 | 3 Starport Valkyrie | Terran | 1st Starport | 205 | −40 / +90 |
 | 3 Starport Valkyrie | Terran | 3rd Starport | 225 | −40 / +90 |
 | 3 Starport Valkyrie | Terran | First Valkyrie | 300 | −60 / +120 |
@@ -702,23 +698,18 @@ Each opener's detector commits its decision once the replay passes this second �
 | 2 Fact Expa Mech | Terran | 600 |
 | 2 Fact Expa Tankless Mech | Terran | 600 |
 | 2 Gate | Protoss | 180 |
-| 2 Hatch Hydra | Zerg | 600 |
-| 2 Hatch Muta | Zerg | 600 |
 | 2 Starport Valkyrie | Terran | 600 |
 | 2 Starport Wraith | Terran | 600 |
 | 2-Base Bio | Terran | 600 |
 | 3 Fact Expa Goliath | Terran | 600 |
 | 3 Fact Expa Mech | Terran | 600 |
 | 3 Fact Expa Tankless Mech | Terran | 600 |
-| 3 Hatch Hydra | Zerg | 600 |
-| 3 Hatch Lurker | Zerg | 600 |
 | 3 Starport Valkyrie | Terran | 600 |
 | 3 Starport Wraith | Terran | 600 |
 | 4 Fact Expa Goliath | Terran | 600 |
 | 4 Fact Expa Mech | Terran | 600 |
 | 4 Fact Expa Tankless Mech | Terran | 600 |
 | 4 Hatch | Zerg | 180 |
-| 4 Hatch Hydra | Zerg | 600 |
 | 4 Pool | Zerg | 60 |
 | 5 Fact Expa Goliath | Terran | 600 |
 | 5 Fact Expa Mech | Terran | 600 |
@@ -786,7 +777,7 @@ Standalone constants the detectors depend on — dedup windows, muta/turret burs
 
 | Constant | Value | Meaning |
 | --- | --- | --- |
-| Algorithm version | 53 | Detection algorithm revision; incremented to trigger re-detection. |
+| Algorithm version | 54 | Detection algorithm revision; incremented to trigger re-detection. |
 | Build dedup gap (s) | 3 | Repeat Build orders of the same building at the same tile, closer than this, are one event (double-tap / misclick); different-tile placements are kept. |
 | Build dedup max second (s) | 240 | Past this second, dedup stops and every Build is observed as-is (a tile can be legitimately rebuilt on later). |
 | Mutalisk burst window (s) | 30 | Window within which the Mutalisk morphs must cluster. |
@@ -916,63 +907,60 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 | 23 | bo_12_hatch |
 | 24 | bo_13_hatch |
 | 25 | bo_z_fuzzy |
-| 26 | three_hatch_muta |
-| 27 | bo_z_2hatch_muta |
-| 28 | bo_z_3hatch_lurker |
-| 29 | bo_z_2hatch_hydra |
-| 30 | bo_z_3hatch_hydra |
-| 31 | bo_z_4hatch_hydra |
-| 32 | bo_2_gate |
-| 33 | bo_1_gate_core |
-| 34 | bo_nexus_first |
-| 35 | bo_gate_expand |
-| 36 | bo_forge_expa |
-| 37 | bo_p_1gate_reaver |
-| 38 | bo_p_gate_forge_cannon |
-| 39 | bo_p_forge_cannon_gate |
-| 40 | bo_p_forge_gate_cannon |
-| 41 | bo_bbs |
-| 42 | bo_cc_first |
-| 43 | bo_t_bio_1base |
-| 44 | bo_t_bio_2base |
-| 45 | bo_t_111_mech |
-| 46 | bo_t_111_tankless |
-| 47 | bo_t_111 |
-| 48 | bo_t_mech_expa_1fac |
-| 49 | bo_t_mech_expa_2fac |
-| 50 | bo_t_mech_expa_3fac |
-| 51 | bo_t_mech_expa_4fac |
-| 52 | bo_t_mech_expa_5fac |
-| 53 | bo_t_mech_expa_6fac |
-| 54 | bo_t_goliath_expa_1fac |
-| 55 | bo_t_goliath_expa_2fac |
-| 56 | bo_t_goliath_expa_3fac |
-| 57 | bo_t_goliath_expa_4fac |
-| 58 | bo_t_goliath_expa_5fac |
-| 59 | bo_t_goliath_expa_6fac |
-| 60 | bo_t_tankless_expa_1fac |
-| 61 | bo_t_tankless_expa_2fac |
-| 62 | bo_t_tankless_expa_3fac |
-| 63 | bo_t_tankless_expa_4fac |
-| 64 | bo_t_tankless_expa_5fac |
-| 65 | bo_t_tankless_expa_6fac |
-| 66 | bo_t_mech_expand |
-| 67 | bo_t_goliath_expand |
-| 68 | bo_t_tankless_expand |
-| 69 | bo_t_mech_noexpa |
-| 70 | bo_t_goliath_noexpa |
-| 71 | bo_t_tankless_noexpa |
-| 72 | bo_t_2starport_wraith |
-| 73 | bo_t_2starport_valk |
-| 74 | bo_t_3starport_wraith |
-| 75 | bo_t_3starport_valk |
-| 76 | double_stargate |
-| 77 | crazy_zerg |
-| 78 | guardians |
-| 79 | carriers |
-| 80 | battlecruisers |
-| 81 | ten_plus_scouts |
-| 82 | cliff_drop |
+| 26 | nhatch_hydra |
+| 27 | nhatch_muta |
+| 28 | nhatch_lurker |
+| 29 | bo_2_gate |
+| 30 | bo_1_gate_core |
+| 31 | bo_nexus_first |
+| 32 | bo_gate_expand |
+| 33 | bo_forge_expa |
+| 34 | bo_p_1gate_reaver |
+| 35 | bo_p_gate_forge_cannon |
+| 36 | bo_p_forge_cannon_gate |
+| 37 | bo_p_forge_gate_cannon |
+| 38 | bo_bbs |
+| 39 | bo_cc_first |
+| 40 | bo_t_bio_1base |
+| 41 | bo_t_bio_2base |
+| 42 | bo_t_111_mech |
+| 43 | bo_t_111_tankless |
+| 44 | bo_t_111 |
+| 45 | bo_t_mech_expa_1fac |
+| 46 | bo_t_mech_expa_2fac |
+| 47 | bo_t_mech_expa_3fac |
+| 48 | bo_t_mech_expa_4fac |
+| 49 | bo_t_mech_expa_5fac |
+| 50 | bo_t_mech_expa_6fac |
+| 51 | bo_t_goliath_expa_1fac |
+| 52 | bo_t_goliath_expa_2fac |
+| 53 | bo_t_goliath_expa_3fac |
+| 54 | bo_t_goliath_expa_4fac |
+| 55 | bo_t_goliath_expa_5fac |
+| 56 | bo_t_goliath_expa_6fac |
+| 57 | bo_t_tankless_expa_1fac |
+| 58 | bo_t_tankless_expa_2fac |
+| 59 | bo_t_tankless_expa_3fac |
+| 60 | bo_t_tankless_expa_4fac |
+| 61 | bo_t_tankless_expa_5fac |
+| 62 | bo_t_tankless_expa_6fac |
+| 63 | bo_t_mech_expand |
+| 64 | bo_t_goliath_expand |
+| 65 | bo_t_tankless_expand |
+| 66 | bo_t_mech_noexpa |
+| 67 | bo_t_goliath_noexpa |
+| 68 | bo_t_tankless_noexpa |
+| 69 | bo_t_2starport_wraith |
+| 70 | bo_t_2starport_valk |
+| 71 | bo_t_3starport_wraith |
+| 72 | bo_t_3starport_valk |
+| 73 | double_stargate |
+| 74 | crazy_zerg |
+| 75 | guardians |
+| 76 | carriers |
+| 77 | battlecruisers |
+| 78 | ten_plus_scouts |
+| 79 | cliff_drop |
 
 ## Game-event featuring chips
 

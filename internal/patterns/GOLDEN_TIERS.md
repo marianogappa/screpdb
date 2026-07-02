@@ -71,8 +71,9 @@ commit). The verified premise is the Zerg player's build order:
 | `bo_11hatch_tvz_lyx2008`, `bo_11hatch_tvz_mentalgap`, `bo_11hatch_pvz_bbbuuuuuks` | `Build Order: 11 Hatch` |
 | `bo_12hatch_tvz_junja`, `bo_12hatch_tvz_attheendpl`, `bo_12hatch_tvz_mbushine` | `Build Order: 12 Hatch` |
 | `bo_11pool_tvz_ililillill`, `bo_11pool_pvz_ililillill`, `bo_11pool_pvz_mbushine` | `Build Order: 11 Pool` |
-| `bo_2hmuta_tvz_mbushine`, `bo_2hmuta_tvz_mentalgap`, `bo_2hmuta_tvz_skins` | `Build Order: 2 Hatch Muta` |
-| `bo_3hlurker_tvz_honjr`, `bo_3hlurker_tvz_lyx2008`, `bo_3hlurker_tvz_puuuuuma` | `Build Order: 3 Hatch Lurker` |
+| `bo_2hmuta_tvz_mbushine`, `bo_2hmuta_tvz_mentalgap`, `bo_2hmuta_tvz_skins` | `2 Hatch Muta` marker (issue #245: now a composition marker on top of the supply opener, counted by real town-hall tags at the muta transition — no longer a BO opener) |
+| `bo_3hlurker_tvz_lyx2008`, `bo_3hlurker_tvz_puuuuuma` | `3 Hatch Lurker` marker |
+| `bo_3hlurker_tvz_honjr` | `4 Hatch Lurker` marker (four real town halls stood at the lurker transition — a Hatchery re-placed ~1s after another is collapsed as one intended base; the old fixed-360s count capped this at "3") |
 
 The 11 Hatch / 12 Hatch / 11 Pool fixtures specifically guard the supply-rung
 boundary the fix corrected — a regression there (e.g. an 11 Hatch sliding back to
@@ -89,7 +90,7 @@ build order (and, where noted, a modifier):
 | `bo_ccfirst_111113`, `bo_ccfirst_ilill`, `bo_ccfirst_illill` | `Build Order: CC First` (canonical: Depot then CC, no Barracks or 2nd Depot before the CC) |
 | `bo_1base_bio_sst` | `Build Order: 1-Base Bio` (bio all-in, no natural CC in the opening) |
 | `bo_2base_bio_cabeiri` | `Build Order: 2-Base Bio` (bio that takes a natural CC in the opening) |
-| `bo_2hatch_hydra_mbushine`, `bo_2hatch_hydra_lilli`, `bo_2hatch_hydra_mentalgap` | `Build Order: 2 Hatch Hydra` |
+| `bo_2hatch_hydra_mbushine`, `bo_2hatch_hydra_lilli`, `bo_2hatch_hydra_mentalgap` | `2 Hatch Hydra` marker (issue #245: now a composition marker on top of the supply opener, not a BO opener — two town halls at the hydra transition) |
 | `bo_1gate_reaver_flashrilla` | `Build Order: 1 Gate Reaver`, **no** `expand` modifier (Nexus only after the Reaver) |
 | `bo_1gate_reaver_minimaxii` | `Build Order: 1 Gate Reaver` **with** `expand` modifier (Nexus before the first Reaver) |
 
@@ -218,9 +219,12 @@ Round-10 non-BO markers (watched & confirmed; the named player's marker):
 | `bo_nukes_tvp_iliilii`, `bo_nukes_tvz_vvwv` | `Threw Nukes` |
 | `bo_sairspeedlot_pvz_tomsonnet`, `bo_sairspeedlot_pvz_tufbeombu` | `Sair/Speedlot` |
 | `bo_wraithcloak_tvz_1235sdfdfhg`, `bo_wraithcloak_tvz_llllilllilll` | `Wraith Cloak timing` |
-| `bo_3hatch_hydra_pvz_pingcojerry` | `Build Order: 3 Hatch Hydra` (bases at the hydra transition) |
-| `bo_4hatch_hydra_pvz_syc` | `Build Order: 4 Hatch Hydra` (Spire/Scourge present but hydra-dominant) |
-| `bo_3hatch_hydra_pvz_2jd` | `Build Order: 3 Hatch Hydra` (3rd Hatchery lands as hydra production begins) |
+| `bo_3hatch_hydra_pvz_pingcojerry` | `3 Hatch Hydra` marker (issue #245: now a composition marker on top of the supply opener, counted by real town-hall tags at the hydra transition — no longer a BO opener) |
+| `bo_4hatch_hydra_pvz_syc` | `4 Hatch Hydra` marker (Spire/Scourge present but hydra-dominant) |
+| `bo_3hatch_hydra_pvz_2jd` | `4 Hatch Hydra` marker (four real town halls at the hydra transition — the count reads the raw command stream, which keeps an early Hatchery that screpdb's dedup pass had dropped; matches the original eyeball of 4 that the fixed-clock "3" had approximated) |
+| `bo_5hatch_hydra_pvz_replace` | `5 Hatch Hydra` marker (a Hatchery re-placed 46s later at the SAME tile is collapsed as one base — guards the footprint-overlap collapse; a naive count reads 6) |
+| `bo_7hatch_hydra_pvz_macro` | `7 Hatch Hydra` marker (legit high-N: two distinct bases placed close in time but a footprint apart are BOTH kept — guards against over-collapsing) |
+| `bo_3hatch_muta_tvz_nograce` | `3 Hatch Muta` marker (muta is a timing attack, counted with NO grace window — a Hatchery added seconds after the first Mutalisk doesn't count; a +30s grace reads 5) |
 | `bo_wraiths_tvz_1235sdfdfhg`, `bo_wraiths_tvz_iilliii` | `Wraiths` (wraith-predominant air) |
 | `bo_mutaharass_zvt_iliil` | `Muta hit-n-run` |
 
@@ -286,11 +290,15 @@ the inherent ambiguity, which is why these are fuzzy rather than exact. The
 missing-drone replay (`lIlIlllIIlIlll`, true 9 Hatch) is logged in
 `CURATION_ZERG_ROUND8.md`, not yet fixed.
 
-3 Hatch Muta was reclassified from a build-order opener to a TvZ composition
-marker (`three_hatch_muta`); the opener underneath now surfaces. Fixtures
-`bo_z_3hatchmuta_chillibeans` (Zerg = `12 Hatch` + `3 Hatch Muta`) and
-`bo_z_3hatchmuta_llIIll` (Zerg = `11 Hatch` + `3 Hatch Muta`) are the protected
-premise: the player must carry both the hatch opener and the 3 Hatch Muta marker.
+The `N Hatch <tech>` family (Hydra/Muta/Lurker) is a set of TvZ/PvZ composition
+markers (`nhatch_hydra` / `nhatch_muta` / `nhatch_lurker`), not build-order
+openers — the supply opener underneath keeps naming the opening and the marker
+names the tech continuation (issue #245). Fixtures `bo_z_3hatchmuta_chillibeans`
+and `bo_z_3hatchmuta_llIIll` are the protected premise: the Zerg player must
+carry both a hatch-first supply opener (the `~11`/`~10 Hatch` approximate rung)
+and the `3 Hatch Muta` marker. The N in the marker is the town-hall count at the
+economy→army transition, read from the raw command stream with near-simultaneous
+re-placements collapsed, so a cancelled/re-placed Hatchery never inflates it.
 
 ### Cliff-drop detection — `drops_golden.json`
 

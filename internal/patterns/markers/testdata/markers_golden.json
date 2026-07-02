@@ -3,11 +3,6 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "3 Hatch Muta",
-        "value": "341"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
       },
@@ -20,6 +15,11 @@
         "replay_player_id": 0,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":326,\"muta_burst_count\":5,\"mutalisk_finished\":351,\"spire_cmd\":247}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -339,13 +339,18 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 2 Hatch Muta",
-        "value": "{\"expert_actuals\":[{\"second\":240,\"found\":true},{\"second\":322,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":322,\"muta_burst_count\":4,\"mutalisk_finished\":347,\"spire_cmd\":240}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"2 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -1484,8 +1489,13 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 2 Hatch Hydra",
-        "value": "245"
+        "pattern_name": "Build Order: 9 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":62,\"found\":true},{\"second\":115,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"2 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 0,
@@ -1543,8 +1553,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 2 Hatch Hydra",
-        "value": "268"
+        "pattern_name": "Build Order: 9 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":62,\"found\":true},{\"second\":115,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"2 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 1,
@@ -1582,8 +1597,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 2 Hatch Hydra",
-        "value": "257"
+        "pattern_name": "Build Order: 9 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":62,\"found\":true},{\"second\":114,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"2 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 1,
@@ -1616,8 +1636,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 2 Hatch Muta",
-        "value": "{\"expert_actuals\":[{\"second\":226,\"found\":true},{\"second\":306,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Overpool\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"2 Hatch Muta\"}"
       },
       {
         "replay_player_id": 1,
@@ -1655,8 +1680,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 2 Hatch Muta",
-        "value": "{\"expert_actuals\":[{\"second\":240,\"found\":true},{\"second\":318,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Hatch\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"2 Hatch Muta\"}"
       },
       {
         "replay_player_id": 1,
@@ -1694,8 +1724,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 2 Hatch Muta",
-        "value": "{\"expert_actuals\":[{\"second\":235,\"found\":true},{\"second\":320,\"found\":true}]}"
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":130,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"2 Hatch Muta\"}"
       },
       {
         "replay_player_id": 1,
@@ -1855,11 +1890,6 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "3 Hatch Muta",
-        "value": "344"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
       },
@@ -1872,6 +1902,11 @@
         "replay_player_id": 0,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":326,\"muta_burst_count\":5,\"mutalisk_finished\":351,\"spire_cmd\":242}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -1949,11 +1984,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "3 Hatch Muta",
-        "value": "396"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
       },
@@ -1961,6 +1991,11 @@
         "replay_player_id": 1,
         "pattern_name": "Crazy Zerg",
         "value": "660"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 1,
@@ -2022,8 +2057,13 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 3 Hatch Hydra",
-        "value": "319"
+        "pattern_name": "Build Order: 4 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":81,\"found\":true},{\"second\":109,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"4 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 0,
@@ -2086,8 +2126,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 3 Hatch Hydra",
-        "value": "314"
+        "pattern_name": "Build Order: 6 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":79,\"found\":true},{\"second\":98,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"3 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 1,
@@ -2098,6 +2143,55 @@
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":19.23076923076923}"
+      }
+    ]
+  },
+  "bo_3hatch_muta_tvz_nograce.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 4 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":36,\"found\":true},{\"found\":false}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Mutalisk timing",
+        "value": "{\"first_muta_cmd\":514,\"muta_burst_count\":5,\"mutalisk_finished\":539,\"spire_cmd\":432}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":30.19230769230769}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":74,\"found\":true},{\"second\":44,\"found\":true},{\"second\":349,\"found\":true},{\"second\":401,\"found\":true},{\"second\":426,\"found\":true},{\"second\":575,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Turret timing",
+        "value": "{\"ebay_cmd\":481,\"first_turret_cmd\":531,\"turret_burst_count\":3,\"turret_finished\":550}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":11.538461538461538}"
       }
     ]
   },
@@ -2120,8 +2214,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 3 Hatch Lurker",
-        "value": "{\"expert_actuals\":[{\"second\":270,\"found\":true},{\"second\":417,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Lurker",
+        "value": "{\"label\":\"4 Hatch Lurker\"}"
       },
       {
         "replay_player_id": 1,
@@ -2154,8 +2253,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 3 Hatch Lurker",
-        "value": "{\"expert_actuals\":[{\"second\":288,\"found\":true},{\"second\":398,\"found\":true}]}"
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":76,\"found\":true},{\"second\":133,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Lurker",
+        "value": "{\"label\":\"3 Hatch Lurker\"}"
       },
       {
         "replay_player_id": 1,
@@ -2178,8 +2282,13 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 3 Hatch Lurker",
-        "value": "{\"expert_actuals\":[{\"second\":272,\"found\":true},{\"second\":390,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Hatch\"}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Lurker",
+        "value": "{\"label\":\"3 Hatch Lurker\"}"
       },
       {
         "replay_player_id": 0,
@@ -2242,11 +2351,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "3 Hatch Muta",
-        "value": "351"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
       },
@@ -2259,6 +2363,11 @@
         "replay_player_id": 1,
         "pattern_name": "Muta hit-n-run",
         "value": "0"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 1,
@@ -2344,8 +2453,13 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 4 Hatch Hydra",
-        "value": "322"
+        "pattern_name": "Build Order: 4 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":81,\"found\":true},{\"second\":120,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"4 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 0,
@@ -2386,6 +2500,114 @@
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":14.057142857142857}"
+      }
+    ]
+  },
+  "bo_5hatch_hydra_pvz_replace.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Gate Expand",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":71,\"found\":true},{\"second\":187,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Corsair",
+        "value": "372"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Sair/Speedlot",
+        "value": "405"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Speedlot timing",
+        "value": "405"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":38.24644549763033}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":74,\"found\":true},{\"second\":127,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"5 Hatch Hydra\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":36.11374407582939}"
+      }
+    ]
+  },
+  "bo_7hatch_hydra_pvz_macro.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: Forge Expand",
+        "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":91,\"found\":true},{\"found\":false},{\"second\":131,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Corsair",
+        "value": "305"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Sair/Speedlot",
+        "value": "456"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Speedlot timing",
+        "value": "456"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":27.272727272727273}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":71,\"found\":true},{\"second\":125,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"7 Hatch Hydra\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":40.56818181818182}"
       }
     ]
   },
@@ -2534,13 +2756,18 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 3 Hatch Hydra",
-        "value": "287"
+        "pattern_name": "Build Order: 9 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":74,\"found\":true},{\"second\":109,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Made drops",
         "value": "691"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"3 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 1,
@@ -2739,11 +2966,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "3 Hatch Muta",
-        "value": "333"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Hatch\"}"
       },
@@ -2761,6 +2983,11 @@
         "replay_player_id": 1,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":318,\"muta_burst_count\":5,\"mutalisk_finished\":343,\"spire_cmd\":239}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"2 Hatch Muta\"}"
       },
       {
         "replay_player_id": 1,
@@ -3332,13 +3559,18 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 3 Hatch Hydra",
-        "value": "264"
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":125,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Made drops",
         "value": "691"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"3 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 1,
@@ -3411,6 +3643,11 @@
         "replay_player_id": 0,
         "pattern_name": "Muta hit-n-run",
         "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"6 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 0,
@@ -3502,6 +3739,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"6 Hatch Hydra\"}"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
@@ -3586,6 +3828,11 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"5 Hatch Hydra\"}"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
@@ -3654,8 +3901,13 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 3 Hatch Hydra",
-        "value": "324"
+        "pattern_name": "Build Order: 9 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":61,\"found\":true},{\"second\":113,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"3 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 0,
@@ -3708,8 +3960,13 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 3 Hatch Hydra",
-        "value": "301"
+        "pattern_name": "Build Order: 9 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":65,\"found\":true},{\"found\":false}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"3 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 0,
@@ -3821,8 +4078,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 2 Hatch Hydra",
-        "value": "352"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Hatch\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"2 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 1,
@@ -3840,11 +4102,6 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "3 Hatch Muta",
-        "value": "353"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Build Order: 9 Overpool",
         "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":127,\"found\":true}]}"
       },
@@ -3857,6 +4114,11 @@
         "replay_player_id": 0,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":324,\"muta_burst_count\":4,\"mutalisk_finished\":349,\"spire_cmd\":238}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -3914,11 +4176,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "3 Hatch Muta",
-        "value": "335"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Hatch\"}"
       },
@@ -3926,6 +4183,11 @@
         "replay_player_id": 1,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":316,\"muta_burst_count\":5,\"mutalisk_finished\":341,\"spire_cmd\":236}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 1,
@@ -3953,13 +4215,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "3 Hatch Muta",
-        "value": "345"
+        "pattern_name": "Build Order: 9 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":112,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 9 Hatch",
-        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":112,\"found\":true}]}"
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 1,
@@ -3977,11 +4239,6 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "3 Hatch Muta",
-        "value": "430"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Build Order: 9 Overpool",
         "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":125,\"found\":true}]}"
       },
@@ -3989,6 +4246,11 @@
         "replay_player_id": 0,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":331,\"muta_burst_count\":3,\"mutalisk_finished\":356,\"spire_cmd\":251}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -4026,11 +4288,6 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "3 Hatch Muta",
-        "value": "330"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Hatch\"}"
       },
@@ -4038,6 +4295,11 @@
         "replay_player_id": 0,
         "pattern_name": "Muta hit-n-run",
         "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -4090,11 +4352,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "3 Hatch Muta",
-        "value": "323"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Build Order: 9 Overpool",
         "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":126,\"found\":true}]}"
       },
@@ -4107,6 +4364,11 @@
         "replay_player_id": 1,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":313,\"muta_burst_count\":5,\"mutalisk_finished\":338,\"spire_cmd\":234}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 1,
@@ -4144,11 +4406,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "3 Hatch Muta",
-        "value": "348"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
       },
@@ -4156,6 +4413,11 @@
         "replay_player_id": 1,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":328,\"muta_burst_count\":5,\"mutalisk_finished\":353,\"spire_cmd\":249}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 1,
@@ -4212,11 +4474,6 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "3 Hatch Muta",
-        "value": "365"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
       },
@@ -4229,6 +4486,11 @@
         "replay_player_id": 0,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":314,\"muta_burst_count\":3,\"mutalisk_finished\":339,\"spire_cmd\":236}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -4261,11 +4523,6 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "3 Hatch Muta",
-        "value": "477"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Build Order: 9 Overpool",
         "value": "{\"expert_actuals\":[{\"second\":74,\"found\":true},{\"second\":129,\"found\":true}]}"
       },
@@ -4278,6 +4535,11 @@
         "replay_player_id": 0,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":329,\"muta_burst_count\":3,\"mutalisk_finished\":354,\"spire_cmd\":249}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -4315,11 +4577,6 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "3 Hatch Muta",
-        "value": "476"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Build Order: 9 Overpool",
         "value": "{\"expert_actuals\":[{\"second\":72,\"found\":true},{\"second\":124,\"found\":true}]}"
       },
@@ -4327,6 +4584,11 @@
         "replay_player_id": 0,
         "pattern_name": "Muta hit-n-run",
         "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -4403,11 +4665,6 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "3 Hatch Muta",
-        "value": "346"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Overpool\"}"
       },
@@ -4415,6 +4672,11 @@
         "replay_player_id": 0,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":299,\"muta_burst_count\":6,\"mutalisk_finished\":324,\"spire_cmd\":221}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"2 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -4472,11 +4734,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "3 Hatch Muta",
-        "value": "358"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Build Order: 9 Overpool",
         "value": "{\"expert_actuals\":[{\"second\":82,\"found\":true},{\"second\":135,\"found\":true}]}"
       },
@@ -4489,6 +4746,11 @@
         "replay_player_id": 1,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":297,\"muta_burst_count\":3,\"mutalisk_finished\":322,\"spire_cmd\":219}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"2 Hatch Muta\"}"
       },
       {
         "replay_player_id": 1,
@@ -4521,11 +4783,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "3 Hatch Muta",
-        "value": "436"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
       },
@@ -4533,6 +4790,11 @@
         "replay_player_id": 1,
         "pattern_name": "Muta hit-n-run",
         "value": "0"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 1,
@@ -4648,11 +4910,6 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "3 Hatch Muta",
-        "value": "388"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
       },
@@ -4660,6 +4917,11 @@
         "replay_player_id": 0,
         "pattern_name": "Muta hit-n-run",
         "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -5021,11 +5283,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "3 Hatch Muta",
-        "value": "379"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
       },
@@ -5033,6 +5290,11 @@
         "replay_player_id": 1,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":363,\"muta_burst_count\":6,\"mutalisk_finished\":388,\"spire_cmd\":276}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 1,
@@ -5050,8 +5312,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 2 Hatch Muta",
-        "value": "{\"expert_actuals\":[{\"second\":236,\"found\":true},{\"second\":315,\"found\":true}]}"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Hatch\"}"
       },
       {
         "replay_player_id": 0,
@@ -5062,6 +5324,11 @@
         "replay_player_id": 0,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":315,\"muta_burst_count\":6,\"mutalisk_finished\":340,\"spire_cmd\":236}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -5315,11 +5582,6 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "3 Hatch Muta",
-        "value": "341"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
       },
@@ -5332,6 +5594,11 @@
         "replay_player_id": 0,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":326,\"muta_burst_count\":5,\"mutalisk_finished\":351,\"spire_cmd\":247}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -5379,8 +5646,13 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 3 Hatch Hydra",
-        "value": "260"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Overpool\"}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"3 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 0,
@@ -5428,13 +5700,18 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 2 Hatch Hydra",
-        "value": "291"
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":127,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
         "pattern_name": "Made drops",
         "value": "530"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"2 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 0,
@@ -5734,11 +6011,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "3 Hatch Muta",
-        "value": "347"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Overpool\"}"
       },
@@ -5759,6 +6031,11 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
@@ -5771,11 +6048,6 @@
   },
   "bo_wraithcloak_tvz_llllilllilll.rep": {
     "detections": [
-      {
-        "replay_player_id": 0,
-        "pattern_name": "3 Hatch Muta",
-        "value": "317"
-      },
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
@@ -5795,6 +6067,11 @@
         "replay_player_id": 0,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":310,\"muta_burst_count\":5,\"mutalisk_finished\":335,\"spire_cmd\":232}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -5872,11 +6149,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "3 Hatch Muta",
-        "value": "347"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Overpool\"}"
       },
@@ -5897,6 +6169,11 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
@@ -5909,11 +6186,6 @@
   },
   "bo_wraiths_tvz_iilliii.rep": {
     "detections": [
-      {
-        "replay_player_id": 0,
-        "pattern_name": "3 Hatch Muta",
-        "value": "332"
-      },
       {
         "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
@@ -5933,6 +6205,11 @@
         "replay_player_id": 0,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":311,\"muta_burst_count\":4,\"mutalisk_finished\":336,\"spire_cmd\":232}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -6015,13 +6292,18 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 3 Hatch Hydra",
-        "value": "377"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~10 Overpool\"}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Made drops",
         "value": "541"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"3 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 1,
@@ -6074,8 +6356,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 4 Hatch Hydra",
-        "value": "401"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~11 Overpool\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"4 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 1,
@@ -6133,6 +6420,11 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"5 Hatch Hydra\"}"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2,3,4,5,6]}"
       },
@@ -6172,11 +6464,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "3 Hatch Muta",
-        "value": "322"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
       },
@@ -6189,6 +6476,11 @@
         "replay_player_id": 1,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":314,\"muta_burst_count\":6,\"mutalisk_finished\":339,\"spire_cmd\":236}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 1,
@@ -6206,11 +6498,6 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "3 Hatch Muta",
-        "value": "371"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Hatch\"}"
       },
@@ -6218,6 +6505,11 @@
         "replay_player_id": 0,
         "pattern_name": "Muta hit-n-run",
         "value": "0"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 0,
@@ -6334,8 +6626,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 3 Hatch Hydra",
-        "value": "337"
+        "pattern_name": "Build Order: 5 Pool",
+        "value": "{\"expert_actuals\":[{\"second\":41,\"found\":true},{\"second\":94,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"3 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 1,
@@ -6378,13 +6675,18 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 3 Hatch Hydra",
-        "value": "281"
+        "pattern_name": "Build Order: 9 Hatch",
+        "value": "{\"expert_actuals\":[{\"second\":76,\"found\":true},{\"second\":110,\"found\":true}]}"
       },
       {
         "replay_player_id": 1,
         "pattern_name": "Made drops",
         "value": "816"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"3 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 1,
@@ -6564,6 +6866,11 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"5 Hatch Hydra\"}"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2,3,4,5]}"
       },
@@ -6667,8 +6974,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 3 Hatch Hydra",
-        "value": "317"
+        "pattern_name": "Build Order: Zerg opening (approximate)",
+        "value": "{\"label\":\"~9 Overpool\"}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"3 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 1,
@@ -6775,11 +7087,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "3 Hatch Muta",
-        "value": "429"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Hatch\"}"
       },
@@ -6797,6 +7104,11 @@
         "replay_player_id": 1,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":380,\"muta_burst_count\":3,\"mutalisk_finished\":405,\"spire_cmd\":298}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Muta",
+        "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
         "replay_player_id": 1,
@@ -6936,8 +7248,13 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Build Order: 4 Hatch Hydra",
-        "value": "269"
+        "pattern_name": "Build Order: 9 Overpool",
+        "value": "{\"expert_actuals\":[{\"second\":75,\"found\":true},{\"second\":145,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "N Hatch Hydra",
+        "value": "{\"label\":\"3 Hatch Hydra\"}"
       },
       {
         "replay_player_id": 1,

@@ -165,7 +165,11 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		// Then +1 (round 8): 3 Hatch Muta is now a composition marker that fires
 		// on top of the hatch opener, adding one marker row on the ingested
 		// 3-Hatch-Muta game.
-		"replay_events": 215,
+		// Then +2 (issue #245): the "N Hatch <tech>" family (Hydra/Muta/Lurker)
+		// moved from build-order opener to composition marker layered on the
+		// supply opener, so each ingested Zerg tech game now carries both an
+		// opener row and a marker row (two such games in this corpus).
+		"replay_events": 217,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {

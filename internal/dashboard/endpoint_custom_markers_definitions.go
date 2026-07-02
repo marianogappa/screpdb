@@ -98,14 +98,11 @@ var staticFeaturingOrder = []string{
 	"bo_12_hatch",
 	"bo_13_hatch",
 	"bo_z_fuzzy",
-	// Preferred Zerg tech-pathway openers (issue #182) — listed before the broad
-	// rungs so they read first; tiering means only one ever fires per player.
-	"three_hatch_muta",
-	"bo_z_2hatch_muta",
-	"bo_z_3hatch_lurker",
-	"bo_z_2hatch_hydra",
-	"bo_z_3hatch_hydra",
-	"bo_z_4hatch_hydra",
+	// N Hatch {Hydra|Muta|Lurker} composition markers (issue #245) — the base
+	// count at the economy→army transition, layered on top of the supply opener.
+	"nhatch_hydra",
+	"nhatch_muta",
+	"nhatch_lurker",
 	"bo_2_gate",
 	"bo_1_gate_core",
 	"bo_nexus_first",

@@ -103,23 +103,29 @@ func zergHatchBO(supply, hatchSec int) Marker {
 	}
 }
 
-// zergHatchHydra builds the "N Hatch Hydra" composition BO (ZvP), named by the
-// bases at the Hydralisk commitment (see zergHatchHydraEvaluator). n==2 keeps
-// the former "2 Hatch Hydra" feature key.
-func zergHatchHydra(n int) Marker {
-	label := fmt.Sprintf("%d Hatch Hydra", n)
+// zergHatchTechMarker builds an "N Hatch {Hydra|Muta|Lurker}" composition
+// MARKER, named by the bases standing at the economy→army transition (see
+// zergHatchTechEvaluator) for any N. It layers on top of the supply opener
+// rather than occupying the opener slot — the opening (11/12 Hatch, Overpool, …)
+// and the tech commitment are separate axes (issue #245). The dynamic "N Hatch"
+// label rides in the result payload, like the fuzzy opener's "~N" rung.
+func zergHatchTechMarker(tech zergTech, iconKey, featureKey string, matchup []string) Marker {
+	name := "N Hatch " + tech.unit()
+	pill := func() *Pill {
+		return &Pill{Label: "{subject}", IconKey: iconKey, Subject: PayloadFieldSubject("label")}
+	}
 	return Marker{
-		Name:          label,
-		PatternName:   InitialBuildOrderPatternNamePrefix + label,
-		FeatureKey:    fmt.Sprintf("bo_z_%dhatch_hydra", n),
+		Name:          name,
+		PatternName:   name,
+		FeatureKey:    featureKey,
 		Race:          RaceZerg,
-		Kind:          KindInitialBuildOrder,
-		Tier:          TierPreferred,
-		Matchup:       []string{"PvZ"},
-		Custom:        newZergHatchHydra(n),
+		Kind:          KindMarker,
+		Matchup:       matchup,
+		Custom:        newZergHatchTech(tech),
 		RuleDeadline:  600,
-		SummaryPlayer: &Pill{Label: label, IconKey: "hydralisk"},
-		GamesList:     &Pill{Label: label, IconKey: "hydralisk"},
+		SummaryPlayer: pill(),
+		SummaryReplay: pill(),
+		GamesList:     pill(),
 	}
 }
 
@@ -208,16 +214,6 @@ const (
 // at any point"). Well past any realistic SC:BW replay length; the detector
 // will still Finalize when the replay actually ends.
 const endOfReplaySentinel = 10 * 60 * 60 // 10 hours
-
-// zergOpeningHatchDeadline is the second by which the tier-1 Zerg tech-pathway
-// openers count opening Hatcheries to tell "2 base" from "3 base". Counting
-// relative to the tech building (Spire/Den) under-counts: the 3rd base usually
-// lands AT or just after the Spire (~4:50), so before-Spire is 1 hatch for both
-// 2- and 3-hatch muta. By 6:00 the 3-base opening has its 2 expansion Hatcheries
-// down while the 2-base one still has 1 — a clean split in the cwal-dl corpus
-// (1 hatch: 80 players, 2 hatch: 225). One Build(Hatchery) = 2 bases (the
-// starting Hatchery is not a command); two = 3 bases.
-const zergOpeningHatchDeadline = 360
 
 // Default tolerance used when the user spec did not give one.
 var defaultTol = Sym(5)
@@ -573,69 +569,23 @@ func allMarkers() []Marker {
 		// keep their composition label.
 		// -------------------------------------------------------------------
 
-		// --- Zerg tech-pathway openers: hatchery count + first tech building. ---
-		{
-			// 3 Hatch Muta (ZvT): muta-first (Spire before any Hydralisk Den)
-			// off a 3-base opening — 2 expansion Hatcheries placed before the
-			// Spire. The defining modern ZvT macro-muta build.
-			// Composition MARKER (not an opener): the opener underneath is a
-			// hatch-first rung (11/12 Hatch). 3 Hatch Muta describes the
-			// post-opening macro-muta tech off a 3-base opening, so it layers on
-			// top rather than occupying the opener slot.
-			Name: "3 Hatch Muta", PatternName: "3 Hatch Muta", FeatureKey: "three_hatch_muta",
-			Race: RaceZerg, Kind: KindMarker, Matchup: []string{"TvZ"},
-			Rule: All(
-				BuildBefore(subjSpire, subjHydraliskDen),                     // muta-first: Spire before any Den
-				ProduceCountAtLeast(subjMutalisk, 4),                         // it's a muta build, not just a Spire
-				CountBuildsBefore(subjHatchery, 2, zergOpeningHatchDeadline), // 3 bases (2 expansions)
-			),
-			RuleDeadline:  600,
-			SummaryPlayer: mkPill("3 Hatch Muta", "mutalisk"),
-			SummaryReplay: mkPill("3 Hatch Muta", "mutalisk"),
-			GamesList:     mkPill("3 Hatch Muta", "mutalisk"),
-		},
-		{
-			// 2 Hatch Muta (ZvT): muta-first off a 2-base opening — fewer than 2
-			// expansion Hatcheries before the Spire. Faster muta when a 3rd is
-			// hard to hold.
-			Name: "2 Hatch Muta", PatternName: InitialBuildOrderPatternNamePrefix + "2 Hatch Muta", FeatureKey: "bo_z_2hatch_muta",
-			Race: RaceZerg, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvZ"},
-			Rule: All(
-				BuildBefore(subjSpire, subjHydraliskDen),                          // muta-first: Spire before any Den
-				ProduceCountAtLeast(subjMutalisk, 4),                              // it's a muta build, not just a Spire
-				Not(CountBuildsBefore(subjHatchery, 2, zergOpeningHatchDeadline)), // 2 bases only
-			),
-			RuleDeadline: 600,
-			Expert: []ExpertEvent{
-				{Key: "Spire", Match: MatchBuild(subjSpire), TargetSecond: 249, Tolerance: Asym(35, 70)},
-				{Key: "First Mutalisks", Match: MatchFirstProduce(subjMutalisk), TargetSecond: 327, Tolerance: Asym(40, 90)},
-			},
-			SummaryPlayer: mkPill("2 Hatch Muta", "mutalisk"), GamesList: mkPill("2 Hatch Muta", "mutalisk"),
-		},
-		{
-			// 3 Hatch Lurker (ZvT): lurker-first (Hydralisk Den before Spire)
-			// off a 3-base opening, with Lurkers actually morphed. Defensive
-			// fast-tech vs +1 5-Rax.
-			Name: "3 Hatch Lurker", PatternName: InitialBuildOrderPatternNamePrefix + "3 Hatch Lurker", FeatureKey: "bo_z_3hatch_lurker",
-			Race: RaceZerg, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvZ"},
-			Rule: All(
-				BuildBefore(subjHydraliskDen, subjSpire),                     // lurker-first: Den before any Spire
-				ProduceCountAtLeast(subjLurker, 2),                           // lurkers are the point of the build
-				CountBuildsBefore(subjHatchery, 2, zergOpeningHatchDeadline), // 3 bases
-			),
-			RuleDeadline: 600,
-			Expert: []ExpertEvent{
-				{Key: "Hydralisk Den", Match: MatchBuild(subjHydraliskDen), TargetSecond: 270, Tolerance: Asym(50, 60)},
-				{Key: "First Lurkers", Match: MatchFirstProduce(subjLurker), TargetSecond: 417, Tolerance: Asym(80, 120)},
-			},
-			SummaryPlayer: mkPill("3 Hatch Lurker", "lurker"), GamesList: mkPill("3 Hatch Lurker", "lurker"),
-		},
-		// N Hatch Hydra (ZvP): a Hydralisk-Den army (Den before any Spire) named
-		// by the bases standing at the economy→army transition (the 6th Hydralisk),
-		// NOT by a fixed clock — a player who reaches more Hatcheries but commits
-		// to Hydra at N bases is "N Hatch Hydra" (issue #227). Replaces the former
-		// single 360s-based "2 Hatch Hydra". See zergHatchHydraEvaluator.
-		zergHatchHydra(2), zergHatchHydra(3), zergHatchHydra(4),
+		// --- Zerg tech-composition markers, named "N Hatch <tech>" by the real
+		// town halls standing at the economy→army transition (when the tech
+		// unit's 1st morph cuts Drone production), for any N — NOT by a fixed
+		// clock. These layer on top of the supply opener (11/12 Hatch, Overpool,
+		// …), which keeps naming the opening; the marker names the tech
+		// continuation. Base count comes from town-hall tag evidence, so a
+		// cancelled/re-placed Hatchery doesn't inflate N (issue #245 generalizes
+		// the round-10 hydra transition count to Muta and Lurker, and moves the
+		// whole family from opener to composition marker). See
+		// zergHatchTechEvaluator. ---
+		//
+		// N Hatch Hydra (ZvP): a Hydra-dominant army (6+ Hydralisks).
+		zergHatchTechMarker(techHydra, "hydralisk", "nhatch_hydra", []string{"PvZ"}),
+		// N Hatch Muta (ZvT): muta-first (Spire before any Hydralisk Den), 4+ Mutalisks.
+		zergHatchTechMarker(techMuta, "mutalisk", "nhatch_muta", []string{"TvZ"}),
+		// N Hatch Lurker (ZvT): lurker-first (Hydralisk Den before any Spire), 2+ Lurkers.
+		zergHatchTechMarker(techLurker, "lurker", "nhatch_lurker", []string{"TvZ"}),
 
 		// --- Protoss tech-pathway openers: opening topology + first tech unit. ---
 		{

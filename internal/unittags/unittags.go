@@ -260,6 +260,87 @@ func Analyze(r *rep.Replay) *Evidence {
 	return ev
 }
 
+// A Hatchery footprint is 4 build-tiles wide and 3 tall. Two Build(Hatchery)
+// commands whose footprints overlap can't both be standing bases — they're one
+// intended Hatchery placed then re-placed (a double-order / cancelled-and-
+// re-dropped drop, only one of which ever stands). Overlap, not a time gap, is
+// the reliable signal: a re-place can land tens of seconds later (issue #245,
+// e.g. a Hatchery re-dropped 46s after the first attempt at the same tile),
+// while two genuinely distinct bases are always ≥ a footprint apart.
+const (
+	hatcheryTileWidth  = 4
+	hatcheryTileHeight = 3
+)
+
+// TownHallBuildSeconds returns, per replay PlayerID, the sorted seconds of the
+// player's distinct expansion town-hall Build commands, with footprint-
+// overlapping re-placements collapsed. The count drives the "N Hatch <tech>"
+// base tally at the economy→army transition (issue #245).
+//
+// Builds come from the RAW replay command stream (this package), not screpdb's
+// deduped stream, deliberately: the standard build-dedup pass can drop a genuine
+// expansion (its tag attribution is tuned for ownership/location, not exact
+// counting), which would under-count N. Collapsing only footprint-overlapping
+// placements drops the phantom double-order without losing a real base.
+//
+// The spawn-seeded starting town hall has no Build command and is absent;
+// callers count it as base 1. (An earlier attempt keyed the count on which tags
+// morphed larvae, but tag recycling over a long game inflates that set and the
+// larva-morph attribution misses halls the player never tap-selected, so it both
+// over- and under-counts — the raw build stream with footprint collapse is the
+// robust signal.)
+func TownHallBuildSeconds(ev *Evidence) map[byte][]int {
+	out := map[byte][]int{}
+	if ev == nil {
+		return out
+	}
+	for pid, pe := range ev.Players {
+		secs := collapsedBuildSeconds(pe.Builds[zergTownHall])
+		if len(secs) > 0 {
+			out[pid] = secs
+		}
+	}
+	return out
+}
+
+// collapsedBuildSeconds returns the sorted seconds of the given Builds, dropping
+// any whose footprint overlaps an earlier kept build (a re-placement of the same
+// intended structure). Builds are processed in time order so the first placement
+// at a spot is the one kept.
+func collapsedBuildSeconds(builds []Build) []int {
+	if len(builds) == 0 {
+		return nil
+	}
+	sorted := append([]Build(nil), builds...)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Sec < sorted[j].Sec })
+	var kept []Build
+	for _, b := range sorted {
+		overlap := false
+		for _, k := range kept {
+			if abs(b.X-k.X) < hatcheryTileWidth && abs(b.Y-k.Y) < hatcheryTileHeight {
+				overlap = true
+				break
+			}
+		}
+		if !overlap {
+			kept = append(kept, b)
+		}
+	}
+	secs := make([]int, len(kept))
+	for i, b := range kept {
+		secs[i] = b.Sec
+	}
+	sort.Ints(secs)
+	return secs
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
 // attributeProductionLocations derives PlayerEvidence.ProductionSignals: it maps
 // each producing building tag to a build placement (so production refreshes the
 // right base), then emits one signal per production second. Tags that match no
