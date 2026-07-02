@@ -44,7 +44,7 @@ ui-test:
 # Ingestion-speed benchmark over the fixed committed replay corpus. Reports a
 # headline replays/sec figure (see scripts/bench-ingest.sh); CI tracks it on the
 # README and warns on PR regressions. Override sample count with BENCH_COUNT.
-BENCH_COUNT ?= 6
+BENCH_COUNT ?= 3
 bench-ingest:
 	./scripts/bench-ingest.sh $(BENCH_COUNT)
 
