@@ -223,7 +223,15 @@ import (
 // (an expansion placed as hydra production begins is part of the commit; later
 // macro expansions are not) — corrects 2jd (3 Hatch, not 2). Re-ingest so Zerg
 // hydra build orders re-count.
-const AlgorithmVersion = 53
+// 54: "N Hatch <tech>" redesign (issue #245). Hydra/Muta/Lurker are now
+// composition MARKERS (any N) layered on top of the supply opener, not
+// build-order openers. N = town halls standing at the economy→army transition,
+// counted from the raw command stream with footprint-overlapping re-placements
+// collapsed (a cancelled/re-dropped Hatchery at the same tile doesn't inflate N).
+// Muta uses no grace window (timing attack); Hydra/Lurker keep +30s. Replaces
+// the round-10 hydra opener family and the fixed-360s "2/3 Hatch Muta/Lurker"
+// markers. Re-ingest so Zerg tech builds re-count.
+const AlgorithmVersion = 54
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

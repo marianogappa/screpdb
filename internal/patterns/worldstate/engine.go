@@ -202,6 +202,12 @@ type Engine struct {
 	// mutaHarass holds selection-derived Mutalisk hit-n-run harass episodes,
 	// threaded in by the orchestrator (see muta_harass_pass.go).
 	mutaHarass []MutaHarassCandidate
+
+	// townHallBuilds holds, per replay PlayerID, the sorted Build seconds of the
+	// player's real expansion town halls (Hatcheries whose tag morphed larvae),
+	// with phantom/cancelled placements excluded. Source is internal/unittags,
+	// threaded via the orchestrator; drives the "N Hatch <tech>" base count.
+	townHallBuilds map[byte][]int
 }
 
 // SetProductionSignals supplies the per-player production-location signals used
@@ -209,6 +215,19 @@ type Engine struct {
 // Finalize. Source is internal/unittags, threaded via the orchestrator.
 func (e *Engine) SetProductionSignals(signals []ProductionSignal) {
 	e.productionSignals = signals
+}
+
+// SetTownHallBuilds supplies the per-player real expansion town-hall build
+// seconds (see townHallBuilds). Must be called before results are read.
+func (e *Engine) SetTownHallBuilds(builds map[byte][]int) {
+	e.townHallBuilds = builds
+}
+
+// TownHallBuildSeconds returns the sorted Build seconds of the player's real
+// expansion town halls (starting hall excluded — it has no Build command). nil
+// when the caller never supplied the data.
+func (e *Engine) TownHallBuildSeconds(pid byte) []int {
+	return e.townHallBuilds[pid]
 }
 
 func NewEngine(replay *models.Replay, players []*models.Player, mapCtx *models.ReplayMapContext) *Engine {

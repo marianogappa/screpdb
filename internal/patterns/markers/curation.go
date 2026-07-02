@@ -16,9 +16,14 @@ var curatedFeatureKeys = map[string]bool{
 	// Zerg batch.
 	"bo_11_hatch":        true,
 	"bo_12_hatch":        true,
-	"bo_z_2hatch_muta":   true,
-	"bo_z_3hatch_lurker": true,
-	"bo_z_2hatch_hydra":  true,
+	// N Hatch <tech> composition markers (issue #245) — dynamic base count at the
+	// economy→army transition, layered on top of the supply opener. Fixtures:
+	// nhatch_hydra = bo_3hatch_hydra_pvz_pingcojerry(3) / _2jd(3) / bo_4hatch_hydra_pvz_syc(4);
+	// nhatch_muta  = bo_2hmuta_tvz_*(2) / bo_z_3hatchmuta_chillibeans / _llIIll(3);
+	// nhatch_lurker = bo_3hlurker_tvz_lyx2008 / _puuuuma(3) / _honjr(4).
+	"nhatch_hydra":  true,
+	"nhatch_muta":   true,
+	"nhatch_lurker": true,
 	// Round 8 (Zerg pool/hatch openers, issues #222/#223/#224) — fixtures
 	// bo_z_*pool_*/bo_z_*hatch_* watched & confirmed.
 	"bo_9_pool":     true,
@@ -29,10 +34,6 @@ var curatedFeatureKeys = map[string]bool{
 	"bo_11_pool":    true,
 	"bo_9_hatch":    true,
 	"bo_13_hatch":   true, // fixture bo_z_13hatch_llllII (clean, unambiguous)
-
-	// Round 8 — 3 Hatch Muta composition marker (converted from a BO opener);
-	// fixtures bo_z_3hatchmuta_chillibeans (12 Hatch) / _llIIll (11 Hatch).
-	"three_hatch_muta": true,
 
 	// Round 8 — fuzzy Zerg opener (supply rung indeterminate from a multi-larva
 	// morph). Fixtures bo_z_fuzzy_lllji (~11 Hatch), bo_z_fuzzy_foreigner70
@@ -94,10 +95,6 @@ var curatedFeatureKeys = map[string]bool{
 	"bo_t_tankless_expa_1fac": true, // bo_tankless_expa_1fac_tvp_f1ssasad / _tvz_wicobaduk2
 	"wraith_cloak_timing":     true, // bo_wraithcloak_tvz_1235sdfdfhg / _llllilllilll
 	"bo_t_mech_noexpa":        true, // "1-Base Mech": bo_1base_mech_tvp_namu / _wjddsu
-	// Round 10 batch 3 — Zerg N Hatch Hydra dynamic redesign (bases at the
-	// hydra-commit transition, not a 360s clock). 2-hatch fixtures unchanged.
-	"bo_z_3hatch_hydra": true, // bo_3hatch_hydra_pvz_pingcojerry / _2jd
-	"bo_z_4hatch_hydra": true, // bo_4hatch_hydra_pvz_syc
 	// Round 10 batch 4 — composition/behavior markers watched & confirmed.
 	"wraiths":      true, // bo_wraiths_tvz_1235sdfdfhg / _iilliii
 	"muta_hitnrun": true, // bo_mutaharass_zvt_iliil (+ the F26080FE wraiths game)
