@@ -13,6 +13,13 @@ import (
 // catch deliberate ganging-up.
 const StackingThresholdSec = 300
 
+// StackingEndOfGameThresholdSec is the shorter floor applied when a stacking
+// band never dissolves — it runs contiguously to game end. A stack that stays
+// intact until the game is over is a decisive gang-up (often the winning
+// coalition's), not the transient mid-game re-alliance the 5-minute threshold
+// exists to filter, so it earns the flag sooner.
+const StackingEndOfGameThresholdSec = 120
+
 // InactivityWindowSec / InactivityMinActions define the "effectively dead"
 // threshold used to filter ghost players out of the stacking topology check.
 // A player whose recent action rate falls below 20 commands/min and never
@@ -267,10 +274,14 @@ func AnalyzeAlliances(players []*models.Player, commands []*models.Command, dura
 		for j < len(snapshots) && snapshots[j].Stacking {
 			j++
 		}
+		threshold := StackingThresholdSec
 		if j < len(snapshots) {
 			end = snapshots[j].Sec
+		} else {
+			// Band runs to game end: never dissolved, so apply the shorter floor.
+			threshold = StackingEndOfGameThresholdSec
 		}
-		if end-snap.Sec > StackingThresholdSec {
+		if end-snap.Sec > threshold {
 			stackingFlag = true
 			bandStartSec = snap.Sec
 			bandTeams = cloneTeams(snap.Teams)
