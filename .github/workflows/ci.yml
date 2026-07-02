@@ -58,8 +58,11 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Build (Windows)
-        run: go build ./...
+      # Scope to internal/winsandbox: a full `go build ./...` here would require
+      # the embedded dashboard UI assets (built by the ubuntu job via make), and
+      # the containment test needs none of that.
+      - name: Build winsandbox (Windows)
+        run: go build ./internal/winsandbox/...
 
       - name: Run Low-integrity containment integration test
         run: go test -tags integration -run TestLowIntegrityContainment ./internal/winsandbox/
