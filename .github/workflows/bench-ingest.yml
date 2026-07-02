@@ -1,0 +1,122 @@
+name: bench-ingest
+
+# Tracks ingestion throughput over the fixed committed replay corpus (issue
+# #249). On pull requests it runs the benchmark against the PR and against the
+# base branch on the same runner and comments an informational benchstat delta
+# (never fails the build — GitHub runners are too variable to hard-gate). On
+# push to main it refreshes the headline figure badge in the README.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bench-ingest:
+    runs-on: ubuntu-latest
+    env:
+      # Fixed, reproducible corpus. The benchmark dedups by checksum, so the
+      # effective replay count is reported in the s/ingest_<N>replays metric.
+      CORPUS_DIR: internal/patterns/markers/testdata/replays
+      BENCH_COUNT: "6"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run ingestion benchmark (this ref)
+        run: BENCH_OUT=bench-current.txt ./scripts/bench-ingest.sh "$BENCH_COUNT" | tee bench-current.log
+
+      - name: Benchmark base branch (PR only, best-effort)
+        id: baseline
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: |
+          git fetch origin "${{ github.base_ref }}"
+          git worktree add ../base-ref "origin/${{ github.base_ref }}"
+          cd ../base-ref
+          # Point at the PR's corpus so both runs ingest identical input and only
+          # the code differs. A base branch that predates the benchmark (or its
+          # checksum-dedup fix) will fail here — that's fine, it's best-effort.
+          SCREPDB_BENCH_CORPUS="$GITHUB_WORKSPACE/$CORPUS_DIR" \
+            go test ./internal/storage/ -run '^$' -bench '^BenchmarkSQLiteIngestionCorpus$' \
+            -benchmem -benchtime=1x -count="$BENCH_COUNT" | tee "$GITHUB_WORKSPACE/bench-base.txt"
+
+      - name: Compare with benchstat (PR only)
+        id: compare
+        if: github.event_name == 'pull_request'
+        run: |
+          go install golang.org/x/perf/cmd/benchstat@latest
+          if [ -s bench-base.txt ] && grep -q 's/replay' bench-base.txt; then
+            "$(go env GOPATH)/bin/benchstat" bench-base.txt bench-current.txt > benchstat.txt || true
+            {
+              echo "### 📊 Ingestion benchmark (base → PR)"
+              echo
+              echo "Corpus: \`$CORPUS_DIR\` · $BENCH_COUNT samples · GitHub-hosted 2-core runner. Informational only — runner variance is ±10–20%, so a small delta is noise."
+              echo
+              echo '```'
+              cat benchstat.txt
+              echo '```'
+            } > comment.md
+          else
+            {
+              echo "### 📊 Ingestion benchmark"
+              echo
+              echo "No comparable base-branch baseline (the base predates this benchmark). Current run:"
+              echo
+              echo '```'
+              grep '^ingest-bench-summary:' bench-current.log || tail -n 3 bench-current.log
+              echo '```'
+            } > comment.md
+          fi
+
+      - name: Upsert PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- ingest-bench-comment -->';
+            const body = marker + '\n' + fs.readFileSync('comment.md', 'utf8');
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      - name: Update README figure and commit (main only)
+        if: github.event_name == 'push'
+        run: |
+          line="$(grep '^ingest-bench-summary:' bench-current.log)"
+          rps="$(echo "$line" | sed -n 's/.*replays_per_sec=\([^ ]*\).*/\1/p')"
+          mspr="$(echo "$line" | sed -n 's/.*ms_per_replay=\([^ ]*\).*/\1/p')"
+          corpus="$(echo "$line" | sed -n 's/.*corpus_replays=\([^ ]*\).*/\1/p')"
+          if [ -z "$rps" ]; then
+            echo "could not parse ingest-bench-summary; skipping README update" >&2
+            exit 0
+          fi
+          ./scripts/update-readme-bench.sh "$rps" "$mspr" "$corpus"
+          if git diff --quiet -- README.md; then
+            echo "README figure unchanged; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "chore(bench): update ingestion throughput figure [skip ci]"
+          git push
