@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.1](https://github.com/marianogappa/screpdb/compare/v1.17.0...v1.17.1) (2026-07-02)
+
+
+### Bug Fixes
+
+* **release:** populate empty Homebrew tap on first bump ([#253](https://github.com/marianogappa/screpdb/issues/253)) ([57ff4d9](https://github.com/marianogappa/screpdb/commit/57ff4d923f66afa763ed1351f344c0b1f755bf23))
+
 ## [1.17.0](https://github.com/marianogappa/screpdb/compare/v1.16.0...v1.17.0) (2026-07-02)
 
 
