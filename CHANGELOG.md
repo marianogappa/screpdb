@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.18.0](https://github.com/marianogappa/screpdb/compare/v1.17.1...v1.18.0) (2026-07-02)
+
+
+### Features
+
+* flag team stacking sustained to game end below the 5-min bar ([#258](https://github.com/marianogappa/screpdb/issues/258)) ([4b5f560](https://github.com/marianogappa/screpdb/commit/4b5f56073981216b8c3d4445518d5d45976766d2))
+
+
+### Bug Fixes
+
+* **builddedup:** don't drop a produced expansion CC (factory-before-expa over-count) ([#259](https://github.com/marianogappa/screpdb/issues/259)) ([fbec72b](https://github.com/marianogappa/screpdb/commit/fbec72b571ec063175e543122a7ae4a006ba1d8a)), closes [#244](https://github.com/marianogappa/screpdb/issues/244)
+* **dashboard:** show the package-manager upgrade command in the update label ([#255](https://github.com/marianogappa/screpdb/issues/255)) ([8cea499](https://github.com/marianogappa/screpdb/commit/8cea499c07bdac1429dafed97a8e17afbe09fb16))
+* render resolved BO/marker labels on all surfaces + ingestion-speed benchmark ([#251](https://github.com/marianogappa/screpdb/issues/251), [#249](https://github.com/marianogappa/screpdb/issues/249)) ([#256](https://github.com/marianogappa/screpdb/issues/256)) ([d1601d5](https://github.com/marianogappa/screpdb/commit/d1601d523359515f0c7957b380f79ac066ed64dc))
+
 ## [1.17.1](https://github.com/marianogappa/screpdb/compare/v1.17.0...v1.17.1) (2026-07-02)
 
 
