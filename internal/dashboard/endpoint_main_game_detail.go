@@ -2289,6 +2289,13 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 				continue
 			}
 			boModifiers := markers.DecodeModifiers([]byte(row.Payload))
+			// Dynamic openers (fuzzy Zerg opener) persist their resolved value
+			// ("~9 Overpool") in the payload; bo.Name is only a placeholder
+			// ("Zerg opening (approximate)"). Render the resolved label.
+			boLabel := bo.Name
+			if resolved, ok := markers.DecodePayloadLabel([]byte(row.Payload)); ok {
+				boLabel = resolved
+			}
 			var events []workflowMarkerEvent
 			if schema, isSimplifiedZerg := zergBOEventSchemas[bo.FeatureKey]; isSimplifiedZerg {
 				events = buildZergBOEvents(schema, bo, zergTimings[player.PlayerID])
@@ -2318,7 +2325,7 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 				PlayerKey:  player.PlayerKey,
 				Name:       player.Name,
 				Race:       player.Race,
-				Marker:     bo.Name,
+				Marker:     boLabel,
 				FeatureKey: bo.FeatureKey,
 				Events:     events,
 				Modifiers:  boModifiers,
@@ -2329,7 +2336,15 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 			// don't count): a BO that only matched via produce facts has
 			// no concrete opening to show. The actual second is no longer
 			// used (the consolidated event sits at 0:00), only the gate.
-			if _, ok := firstBuildingActualSecond(bo, events); ok {
+			//
+			// The fuzzy opener (bo_z_fuzzy) is a Custom evaluator that persists
+			// only its resolved label ("~10 Hatch") and no expert milestones, so
+			// firstBuildingActualSecond can't see its building — but it fires
+			// only on a clean pool/hatch open, so a resolved payload label is
+			// itself proof of a concrete opening.
+			_, hasFirstBuilding := firstBuildingActualSecond(bo, events)
+			_, hasPayloadLabel := markers.DecodePayloadLabel([]byte(row.Payload))
+			if hasFirstBuilding || hasPayloadLabel {
 				boOpeners = append(boOpeners, workflowGameEventBuildOrder{
 					PlayerID:      player.PlayerID,
 					Name:          player.Name,
@@ -2338,7 +2353,7 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 					IsWinner:      player.IsWinner,
 					Team:          player.Team,
 					StartLocation: startLocationByPlayer[player.PlayerID],
-					BuildOrder:    bo.Name,
+					BuildOrder:    boLabel,
 					FeatureKey:    bo.FeatureKey,
 					Modifiers:     boModifiers,
 				})

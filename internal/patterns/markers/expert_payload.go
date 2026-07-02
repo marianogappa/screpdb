@@ -1,6 +1,9 @@
 package markers
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strings"
+)
 
 // ExpertActual is the per-milestone payload entry. Position-aligned with
 // Marker.Expert, so the reader walks both lists in lockstep — the static
@@ -55,6 +58,28 @@ func DecodeModifiers(payload []byte) []string {
 		return nil
 	}
 	return wrapper.Modifiers
+}
+
+// DecodePayloadLabel extracts the resolved display label ({"label":"..."}) that
+// dynamic markers (N Hatch <tech>, fuzzy Zerg opener) persist in place of a
+// static name — the number is part of the build order's identity and must reach
+// every surface. Returns ("", false) when absent, so callers fall back to the
+// marker's static placeholder Name.
+func DecodePayloadLabel(payload []byte) (string, bool) {
+	if len(payload) == 0 {
+		return "", false
+	}
+	var wrapper struct {
+		Label string `json:"label"`
+	}
+	if err := json.Unmarshal(payload, &wrapper); err != nil {
+		return "", false
+	}
+	label := strings.TrimSpace(wrapper.Label)
+	if label == "" {
+		return "", false
+	}
+	return label, true
 }
 
 // DecodeExpertActuals parses a payload row. Returns nil when the payload

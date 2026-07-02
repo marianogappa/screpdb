@@ -3,21 +3,27 @@
 [![Release](https://img.shields.io/github/v/release/marianogappa/screpdb)](https://github.com/marianogappa/screpdb/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/marianogappa/screpdb)](go.mod)
+<!-- ingest-bench-start -->
+[![Ingestion throughput](https://img.shields.io/badge/ingestion-measured%20in%20CI-lightgrey)](.github/workflows/bench-ingest.yml)
+<!-- ingest-bench-end -->
 
 screpdb is an advanced Starcraft replay reporting tool.
 
 ## Features
-### Filtering/finding replays by high-level semantic features & staging them for watching on the game client
-<img width="1671" height="854" alt="Screenshot 2026-05-04 at 23 36 24" src="https://github.com/user-attachments/assets/33b28969-10fd-4226-96b2-1507f99f829c" />
+### Filtering/finding replays by high-level semantic features
+<img width="1670" alt="Game list — filter and find replays by high-level semantic features" src="docs/images/game-list.png" />
+
+### Game summary, with one-click staging of a replay for watching on the game client
+<img width="1660" alt="Game summary — per-game overview and staging a replay for watching on the game client" src="docs/images/game-summary.png" />
 
 ### Rich game events browser with map overlays
-<img width="1656" height="873" alt="Screenshot 2026-05-04 at 23 41 24" src="https://github.com/user-attachments/assets/9e31dc50-55fd-459b-9628-d3ce847af67b" />
+<img width="1582" alt="Rich game events browser with map overlays" src="docs/images/game-events.png" />
 
 ###  Build Order detection with charts and for comparing with progamer timings
 <img width="1657" height="860" alt="Screenshot 2026-05-04 at 23 42 20" src="https://github.com/user-attachments/assets/b3d909fd-17c6-410c-9bc9-fcba1cbf2313" />
 
 ###  Skill proxies measurements: Viewport Multitasking, Unit Production Cadence, First Unit Efficiency
-<img width="1665" height="841" alt="Screenshot 2026-05-04 at 23 43 39" src="https://github.com/user-attachments/assets/aa2db88d-0e12-430c-ba08-97474d462a0c" />
+<img width="1643" alt="Skill proxies — viewport multitasking, unit production cadence, first unit efficiency" src="docs/images/skill-proxies.png" />
 
 ###  Alias list support for progamer replays (built-in, editable, importable/exportable), and automatic aliasing for local user's player names
 <img width="1133" height="629" alt="Screenshot 2026-05-04 at 23 44 27" src="https://github.com/user-attachments/assets/592e773a-5691-4841-9d0e-5c53d8f22db4" />
@@ -32,7 +38,7 @@ screpdb is an advanced Starcraft replay reporting tool.
 
 ## Installation
 
-Pick your OS below. See [CHANGELOG.md](CHANGELOG.md) for release notes.
+Jump to your OS: **[Windows](#windows)** · **[Linux](#linux)** · **[macOS](#macos)**. See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 > ⚠️ **Security:** On **Windows**, screpdb runs its worker at **Low integrity** — the OS confines all of screpdb's writes to a single app-data folder, so even a compromised replay/map parser cannot write elsewhere on your machine (see [Security / I/O model](#security--io-model)). On **macOS and Linux** there is no OS sandbox yet: screpdb routes all its own I/O through in-process facades (writes confined to the app-data dir and the replays folder, no outbound network calls beyond user-initiated self-update), but these are best-effort guardrails rather than an OS boundary, so exercise judgement before running it.
 
@@ -147,6 +153,10 @@ make build
 ```
 
 ## Developer features
+
+<details>
+<summary>CLI ingestion, MCP server, and full OpenAPI — click to expand</summary>
+
 - CLI for ingestion onto SQLite database. No need to use UI: just ingest and query the database.
 
 ```bash
@@ -173,7 +183,12 @@ make build
 
 - All UI functionality exposed as API: [OpenAPI schema available](api/openapi/dashboard.v1.yaml)
 
+</details>
+
 ## Specification — how the numbers are computed
+
+<details>
+<summary>Every golden value — unit stats, build times, expert timings, detection thresholds — is generated from source and test-backed (see <code>SPECIFICATION.md</code>)</summary>
 
 screpdb makes a lot of derived claims: "this is a **9 Pool**", "your Spawning
 Pool was 6s late", "a Zealot takes 25.2s". Skeptical? Audit them.
@@ -188,16 +203,10 @@ detection thresholds, and more. It's:
 In short: not aspirational docs that rot, but a provably-accurate description of
 what the app actually does.
 
-## Reporting a bug
+</details>
 
-If screpdb misbehaves or crashes, please [open an issue](https://github.com/marianogappa/screpdb/issues/new/choose) — the bug-report form asks for the few things that make a report actionable (version, OS, and ideally the replay that triggers it).
-
-To make this painless, screpdb helps you out:
-
-- **Version is always visible.** The exact version and commit SHA are shown in the dashboard footer (e.g. `v1.3.0 (abc1234)`) — paste that into the issue.
-- **Crashes are caught.** If the app panics, it writes a `screpdb-crash-<timestamp>.log` file in the app-data folder (containing the version, OS, and full stack trace) and prints a pre-filled "open an issue" link. The Windows GUI — which has no console — additionally opens that pre-filled issue in your browser automatically and writes a `screpdb-gui.log` in the same folder. Attach those files to the issue.
-
-### Verifying downloads
+<details>
+<summary><strong>Verifying downloads</strong> — checksums + minisign signature</summary>
 
 Each release publishes a `SHA256SUMS` file and a `SHA256SUMS.minisig` minisign signature alongside the binaries.
 
@@ -220,9 +229,14 @@ Get-FileHash screpdb-windows-amd64.exe -Algorithm SHA256
 minisign -Vm SHA256SUMS -P 'RWS9gPPOydPD/tR8JBOelXKhif526NoAKY18dau7QHR4dqg84QMhJ5L/'
 ```
 
+</details>
+
 ## Security / I/O model
 
-screpdb minimizes its attack surface by routing all I/O through facades and keeping dependencies small (see [#135](https://github.com/marianogappa/screpdb/issues/135)):
+screpdb minimizes its attack surface by routing all I/O through facades and keeping dependencies small (see [#135](https://github.com/marianogappa/screpdb/issues/135)). On **macOS and Linux** this is a best-effort, in-process guard; on **Windows** a Low-integrity worker adds a real OS write boundary.
+
+<details>
+<summary><strong>How the I/O model works</strong> — filesystem, Windows sandbox, network, self-update, enforcement</summary>
 
 - **Filesystem** — all disk access goes through `internal/iofacade`, which permits reads/writes only within: a single per-OS **app-data directory** (`%LOCALAPPDATA%\screpdb` on Windows, `~/Library/Application Support/screpdb` on macOS, `$XDG_CONFIG_HOME/screpdb` on Linux) that holds the SQLite database, game-asset cache, logs, crash reports, and extracted sample replays; and the configured replays folder (read replays, write "watch me" replays). A narrow, read-only exception walks up from the replays folder to find StarCraft's `CSettings.json`.
 - **Windows OS sandbox** — on Windows the app splits into a Medium-integrity **launcher** and a **Low-integrity worker** ([#237](https://github.com/marianogappa/screpdb/issues/237)). The launcher marks the app-data directory Low-writable and relaunches the real worker at Low integrity; the worker keeps read-down access to replays anywhere but can only *write* into that one Low-labeled folder — every other write is refused by the OS, even from a compromised `screp`/`scmapanalyzer` parser. The launcher retains self-update (it must overwrite the install `.exe`) and brokers the single "watch me" write into the read-only replays folder on the worker's behalf. This does **not** stop a compromised parser from *reading* private files (Low integrity can read up-level); blocking reads needs AppContainer + a broker process, a deferred "Tier 2" follow-up.
@@ -232,11 +246,18 @@ screpdb minimizes its attack surface by routing all I/O through facades and keep
 
 On **macOS and Linux** this is a best-effort, in-process guard, not an OS sandbox: paths handed to trusted dependencies (the SQLite driver, the screp parser, scmapanalyzer) are opened inside those libraries, and the facade only constrains screpdb's own code. On **Windows** the Low-integrity worker adds a real OS write boundary on top of the same facades.
 
+</details>
+
 ### I/O Safety Audit
 
 Changes to screpdb are authored by an LLM coding agent (e.g. Claude Code). As part of authoring a change, that LLM re-assesses whether the change could weaken the I/O rules above and records a dated, one-line verdict in the log below (see `AGENTS.md`). It's an honour-system receipt written by the same LLM that wrote the code — it can be tampered with, just as the facades themselves can — but recording it makes any tampering visible in the diff. `TestIOSafetyAuditPresent` fails CI (`go test ./...`) if the log has no entry, so a change cannot land with an empty audit. The authoritative guard remains the enforcement test above.
 
 <!-- IO-AUDIT:START -->
+- **2026-07-02** — `OK`. BO/marker label render fixes (issue #251) + ingestion-speed benchmark tracking (issue #249). #251 is render-only: a new `markers.DecodePayloadLabel` decoder resolves the persisted `{"label":...}` value so the games-list Featuring strip and game-detail openers show "3 Hatch Muta"/"~9 Overpool" instead of the placeholder name — reads existing payloads, no new os/net calls. #249 adds a `make bench-ingest` target, `scripts/bench-ingest.sh` / `scripts/update-readme-bench.sh`, and a `bench-ingest.yml` workflow — all shell/CI tooling that runs *outside* the screpdb binary (not part of the Go module the enforcement test parses), plus a checksum-dedup guard in the existing storage benchmark test. No `iofacade`/`netfacade` allowlist widening, no enforcement-test changes.
+
+<details>
+<summary>Older I/O safety audit entries (click to expand)</summary>
+
 - **2026-07-02** — `OK`. Free first-install UX for macOS/Linux + GUI asset rename (issue #248). New files are the standalone `install.sh` (`curl | sh` installer) and `scripts/update-homebrew-formula.sh`/`.github` release wiring — these run *outside* the screpdb binary (they are shell installers/CI, not part of the Go module the enforcement test parses), so they touch no `iofacade`/`netfacade` surface. In-binary Go changes are a pure rename: the Windows GUI release asset `screpdb-dashboard-windows-amd64.exe` → `screpdb-gui-windows-amd64.exe` and the `buildinfo.Variant` value `dashboard` → `gui` (self-update asset-name string in `internal/selfupdate` + a one-line dashboard-frontend message), plus the GUI log file `screpdb-dashboard.log` → `screpdb-gui.log`. No new os/net calls, no `iofacade`/`netfacade` allowlist widening, no enforcement-test changes. Self-update mechanism is unchanged (still minisign-verified, user-initiated); the curl/Homebrew install paths reuse the existing package-manager / writable-dir detection.
 - **2026-07-02** — `OK` (with a deliberate, documented allowlist change + one new sanctioned surface). Windows Low-integrity sandbox (issue #237). Filesystem: writes are **consolidated** under a single per-OS app-data root via the new `internal/appdata` package (DB, game-asset cache, logs, crash reports, sample replays) — the iofacade allowlist **changes**, not widens: the working-directory and OS-user-cache roots are removed and replaced by the one app-data root (the read-only replays root is unchanged). Windows-only: a new `internal/winsandbox` package performs raw `golang.org/x/sys/windows` calls (duplicate-token → Low integrity level → `CreateProcessAsUser`; `SetNamedSecurityInfo` to Low-label the app-data dir) and a file-drop **broker** so the Medium launcher performs the one "watch me" write into the read-only replays folder on the Low worker's behalf; it is added to the enforcement-test skip list alongside `internal/selfupdate` and documented as a chokepoint. `golang.org/x/sys` is promoted from indirect to direct. Self-update is unchanged in mechanism (still minisign-verified, user-initiated) — on Windows it now runs in the Medium launcher rather than the worker. Net effect is a *reduction* in attack surface: even a compromised `screp`/`scmapanalyzer` parser can no longer write outside the single app-data dir on Windows. Residual risk documented: a compromised Low worker can request one fixed-path (`000_screpdb_watch_me/watch_me.rep`) brokered write into the replays folder — low impact, no arbitrary paths.
 - **2026-07-02** — `OK`. "N Hatch <tech>" redesign (issue #245): Hydra/Muta/Lurker become composition markers (any N) layered on the supply opener, counted by town-hall builds at the economy→army transition. New `internal/unittags.TownHallBuildSeconds` reads the already-parsed raw command stream (no new I/O), threaded through the orchestrator into a new `worldstate.Engine.TownHallBuildSeconds` getter. Pure detection-logic + dashboard-response + testdata changes; no new os/net calls, no `iofacade`/`netfacade` allowlist widening, no enforcement-test changes.
@@ -252,18 +273,14 @@ Changes to screpdb are authored by an LLM coding agent (e.g. Claude Code). As pa
 - **2026-06-09** — `OK`. Debugging/crash-reporting improvements (issue #165): new `internal/crashreport` writes a crash log via `iofacade.WriteFile`, and the Windows GUI binary opens a `screpdb-dashboard.log` via `iofacade.Create` and registers cwd with `iofacade.AllowDir` (already an allowed root). No new direct os/net calls, no allowlist widening, no enforcement-test changes; the crash handler's browser-open uses `pkg/browser` (process exec, not a net/fs primitive).
 - **2026-06-07** — `OK`. Early-game event overlay rework (issue #159): consolidated BO timeline events + map overlays. Pure presentation/dashboard-response changes (Go struct field, frontend rendering); no new os/net calls, no allowlist or enforcement-test changes.
 - **2026-05-31** — `OK`. Introduced the `iofacade`/`netfacade` chokepoints, the enforcement test, and removed the AI + fswatch surfaces; this change establishes the I/O rules rather than weakening them.
+
+</details>
 <!-- IO-AUDIT:END -->
 
 _(Most recent first. The authoring LLM adds a dated line each time; keep the last few.)_
 
-## License
+## License, Contributing & Acknowledgements
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Contributions welcome. Open a [Pull Request](https://github.com/marianogappa/screpdb/pulls) or file an [Issue](https://github.com/marianogappa/screpdb/issues).
-
-## Acknowledgments
-
+- This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+- Due to security safeguards I can no longer accept PRs or other code contributions, but please feel free to file an [Issue](https://github.com/marianogappa/screpdb/issues), and you're more than welcome to contribute non-code improvements.
 - Built using the [github.com/icza/screp](https://github.com/icza/screp) library for StarCraft replay parsing. This project would have been impossible without [András Belicza](https://github.com/icza)'s work.

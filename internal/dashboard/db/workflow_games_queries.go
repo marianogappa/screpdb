@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"sort"
 	"strings"
 
 	"github.com/marianogappa/screpdb/internal/patterns/markers"
@@ -281,6 +282,65 @@ func (s *Store) ListFeaturingPlayerPatternRows(ctx context.Context, replayIDs []
 		return nil, err
 	}
 	return result, nil
+}
+
+// ListDistinctMarkerLabels returns the distinct resolved payload labels
+// ({"label":...}) persisted by a dynamic-label marker (e.g. bo_z_fuzzy's
+// "~9 Overpool" / "~10 Hatch"), so the games-list filter bar can offer one
+// filterable pill per value instead of a single placeholder bucket. Sorted by
+// the numeric supply rung then the label so "~9" precedes "~10".
+func (s *Store) ListDistinctMarkerLabels(ctx context.Context, featureKey string) ([]string, error) {
+	rows, err := s.ReplayQueryContext(ctx, `
+		SELECT DISTINCT json_extract(payload, '$.label') AS label
+		FROM replay_events
+		WHERE event_kind = 'marker'
+			AND event_type = ?
+			AND json_extract(payload, '$.label') IS NOT NULL
+			AND json_extract(payload, '$.label') != ''
+	`, featureKey)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	labels := []string{}
+	for rows.Next() {
+		var label string
+		if err := rows.Scan(&label); err != nil {
+			return nil, err
+		}
+		labels = append(labels, label)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	sort.SliceStable(labels, func(i, j int) bool {
+		ni, nj := leadingSupplyNumber(labels[i]), leadingSupplyNumber(labels[j])
+		if ni != nj {
+			return ni < nj
+		}
+		return labels[i] < labels[j]
+	})
+	return labels, nil
+}
+
+// leadingSupplyNumber extracts the integer from a "~N ..." fuzzy-opener label so
+// filter pills sort by supply rung rather than lexically. Returns a large
+// sentinel when no number is present, sinking such labels to the end.
+func leadingSupplyNumber(label string) int {
+	digits := strings.TrimLeft(label, "~")
+	n := 0
+	found := false
+	for _, r := range digits {
+		if r < '0' || r > '9' {
+			break
+		}
+		n = n*10 + int(r-'0')
+		found = true
+	}
+	if !found {
+		return 1 << 30
+	}
+	return n
 }
 
 func (s *Store) ListFeaturingReplayEventRows(ctx context.Context, replayIDs []int64) ([]WorkflowReplayEventRow, error) {

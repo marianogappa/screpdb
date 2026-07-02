@@ -1,4 +1,4 @@
-.PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso
+.PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso bench-ingest
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
@@ -40,6 +40,13 @@ ui-build:
 # Frontend unit tests (route/state contracts). Zero extra deps: node --test.
 ui-test:
 	cd internal/dashboard/frontend && npm ci && npm test
+
+# Ingestion-speed benchmark over the fixed committed replay corpus. Reports a
+# headline replays/sec figure (see scripts/bench-ingest.sh); CI tracks it on the
+# README and warns on PR regressions. Override sample count with BENCH_COUNT.
+BENCH_COUNT ?= 6
+bench-ingest:
+	./scripts/bench-ingest.sh $(BENCH_COUNT)
 
 build: ui-build
 	go build -ldflags "$(REL_LDFLAGS)" -o screpdb .
