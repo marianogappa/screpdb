@@ -2827,6 +2827,7 @@ function App() {
     const reason = updateStatus?.reason || '';
     const manager = updateStatus?.package_manager || '';
     if (reason === 'managed' && manager === 'scoop') return 'Update with: scoop update screpdb';
+    if (reason === 'managed' && manager === 'homebrew') return 'Update with: brew upgrade screpdb';
     if (reason === 'managed') return `Update via your package manager (${manager})`;
     if (reason === 'not-writable') return 'Install folder is read-only — download the new version manually';
     if (reason === 'unsupported-platform') return 'No self-update build for this platform — download the new version';

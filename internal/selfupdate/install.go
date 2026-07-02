@@ -74,15 +74,15 @@ func dirWritable(dir string) bool {
 
 // assetName returns the GitHub release asset filename for the given platform and
 // build variant, and whether the platform is supported. Only the Windows GUI
-// dashboard ships a distinct asset; every other platform uses the root binary.
+// ships a distinct asset; every other platform uses the root binary.
 func assetName(goos, goarch, variant string) (string, bool) {
 	switch goos {
 	case "windows":
 		if goarch != "amd64" {
 			return "", false
 		}
-		if variant == "dashboard" {
-			return "screpdb-dashboard-windows-amd64.exe", true
+		if variant == "gui" {
+			return "screpdb-gui-windows-amd64.exe", true
 		}
 		return "screpdb-windows-amd64.exe", true
 	case "linux":

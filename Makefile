@@ -57,20 +57,20 @@ windows-syso:
 		-o resource_windows_amd64.syso \
 		$(VERSIONINFO_JSON)
 	$(GOVERSIONINFO) $(SYSO_VER_FLAGS) \
-		-description "screpdb dashboard - StarCraft replay analysis dashboard" \
-		-original-name "screpdb-dashboard-windows-amd64.exe" \
-		-product-name "screpdb dashboard" \
+		-description "screpdb GUI - StarCraft replay analysis dashboard" \
+		-original-name "screpdb-gui-windows-amd64.exe" \
+		-product-name "screpdb GUI" \
 		-o cmd/windows-dashboard/resource_windows_amd64.syso \
 		$(VERSIONINFO_JSON)
 
 clean-windows-syso:
 	rm -f resource_windows_amd64.syso cmd/windows-dashboard/resource_windows_amd64.syso
 
-# Release-style cross-compiles for GitHub Releases: Windows CLI + dashboard; Linux/Darwin root CLI only (linux amd64 name unchanged).
+# Release-style cross-compiles for GitHub Releases: Windows CLI + GUI; Linux/Darwin root CLI only (linux amd64 name unchanged).
 cross-binaries: ui-build windows-syso
 	mkdir -p dist
 	env GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$(REL_LDFLAGS)" -o dist/screpdb-windows-amd64.exe .
-	env GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$(REL_LDFLAGS) -H=windowsgui -X github.com/marianogappa/screpdb/internal/buildinfo.Variant=dashboard" -o dist/screpdb-dashboard-windows-amd64.exe ./cmd/windows-dashboard
+	env GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$(REL_LDFLAGS) -H=windowsgui -X github.com/marianogappa/screpdb/internal/buildinfo.Variant=gui" -o dist/screpdb-gui-windows-amd64.exe ./cmd/windows-dashboard
 	env GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$(REL_LDFLAGS)" -o dist/screpdb-linux-amd64 .
 	env GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$(REL_LDFLAGS)" -o dist/screpdb-linux-arm64 .
 	env GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "$(REL_LDFLAGS)" -o dist/screpdb-darwin-amd64 .

@@ -9,7 +9,7 @@ body:
         fill in, the faster this can be fixed.
 
         > 💡 **Did the app crash?** Look for a `screpdb-crash-*.log` file (and, on
-        > the Windows dashboard, a `screpdb-dashboard.log`) next to the binary and
+        > the Windows GUI, a `screpdb-gui.log`) next to the binary and
         > paste its contents into the **Logs / crash report** field below — it
         > contains the exact version and stack trace.
   - type: textarea
@@ -54,7 +54,7 @@ body:
     id: logs
     attributes:
       label: Logs / crash report
-      description: Paste the contents of any `screpdb-crash-*.log` / `screpdb-dashboard.log`. This is auto-formatted, no backticks needed.
+      description: Paste the contents of any `screpdb-crash-*.log` / `screpdb-gui.log`. This is auto-formatted, no backticks needed.
       render: shell
     validations:
       required: false
