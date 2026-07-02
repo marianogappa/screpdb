@@ -23,7 +23,7 @@ hash_for() {
 }
 
 CLI_HASH="$(hash_for screpdb-windows-amd64.exe)"
-DASH_HASH="$(hash_for screpdb-dashboard-windows-amd64.exe)"
+GUI_HASH="$(hash_for screpdb-gui-windows-amd64.exe)"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/bucket/screpdb.json"
@@ -35,18 +35,18 @@ cat > "$OUT" <<JSON
     "homepage": "https://github.com/marianogappa/screpdb",
     "license": "MIT",
     "notes": [
-        "Run 'screpdb' (or 'screpdb dashboard') to open the local dashboard in your browser.",
+        "Run 'screpdb-gui' (or 'screpdb dashboard') to open the local dashboard in your browser.",
         "The binaries are not code-signed; SmartScreen/Defender may warn on first run. See the README."
     ],
     "architecture": {
         "64bit": {
             "url": [
                 "https://github.com/marianogappa/screpdb/releases/download/v${VERSION}/screpdb-windows-amd64.exe",
-                "https://github.com/marianogappa/screpdb/releases/download/v${VERSION}/screpdb-dashboard-windows-amd64.exe"
+                "https://github.com/marianogappa/screpdb/releases/download/v${VERSION}/screpdb-gui-windows-amd64.exe"
             ],
             "hash": [
                 "${CLI_HASH}",
-                "${DASH_HASH}"
+                "${GUI_HASH}"
             ],
             "bin": [
                 [
@@ -54,13 +54,13 @@ cat > "$OUT" <<JSON
                     "screpdb"
                 ],
                 [
-                    "screpdb-dashboard-windows-amd64.exe",
-                    "screpdb-dashboard"
+                    "screpdb-gui-windows-amd64.exe",
+                    "screpdb-gui"
                 ]
             ],
             "shortcuts": [
                 [
-                    "screpdb-dashboard-windows-amd64.exe",
+                    "screpdb-gui-windows-amd64.exe",
                     "screpdb dashboard"
                 ]
             ]
@@ -72,7 +72,7 @@ cat > "$OUT" <<JSON
             "64bit": {
                 "url": [
                     "https://github.com/marianogappa/screpdb/releases/download/v\$version/screpdb-windows-amd64.exe",
-                    "https://github.com/marianogappa/screpdb/releases/download/v\$version/screpdb-dashboard-windows-amd64.exe"
+                    "https://github.com/marianogappa/screpdb/releases/download/v\$version/screpdb-gui-windows-amd64.exe"
                 ]
             }
         },

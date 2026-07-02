@@ -39,7 +39,7 @@ func main() {
 	// The GUI binary has no attached console, so route diagnostics to a log file
 	// under the app-data root (issue #237) — the single Low-writable directory
 	// where crash reports also land. Best-effort: fall back to default logging.
-	if logPath, err := appdata.Path("screpdb-dashboard.log"); err == nil {
+	if logPath, err := appdata.Path("screpdb-gui.log"); err == nil {
 		if logFile, err := iofacade.Create(logPath); err == nil {
 			log.SetOutput(logFile)
 		}

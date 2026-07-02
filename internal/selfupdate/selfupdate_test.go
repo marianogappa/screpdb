@@ -59,7 +59,7 @@ func TestAssetName(t *testing.T) {
 		ok                    bool
 	}{
 		{"windows", "amd64", "cli", "screpdb-windows-amd64.exe", true},
-		{"windows", "amd64", "dashboard", "screpdb-dashboard-windows-amd64.exe", true},
+		{"windows", "amd64", "gui", "screpdb-gui-windows-amd64.exe", true},
 		{"windows", "arm64", "cli", "", false},
 		{"linux", "amd64", "cli", "screpdb-linux-amd64", true},
 		{"linux", "arm64", "cli", "screpdb-linux-arm64", true},

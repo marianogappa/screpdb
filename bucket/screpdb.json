@@ -4,14 +4,14 @@
     "homepage": "https://github.com/marianogappa/screpdb",
     "license": "MIT",
     "notes": [
-        "Run 'screpdb' (or 'screpdb dashboard') to open the local dashboard in your browser.",
+        "Run 'screpdb-gui' (or 'screpdb dashboard') to open the local dashboard in your browser.",
         "The binaries are not code-signed; SmartScreen/Defender may warn on first run. See the README."
     ],
     "architecture": {
         "64bit": {
             "url": [
                 "https://github.com/marianogappa/screpdb/releases/download/v1.3.0/screpdb-windows-amd64.exe",
-                "https://github.com/marianogappa/screpdb/releases/download/v1.3.0/screpdb-dashboard-windows-amd64.exe"
+                "https://github.com/marianogappa/screpdb/releases/download/v1.3.0/screpdb-gui-windows-amd64.exe"
             ],
             "hash": [
                 "6b4191aa91d1879326e643b33dd1140f7d1797e322e1c538bcd784e61f0b6ab1",
@@ -23,13 +23,13 @@
                     "screpdb"
                 ],
                 [
-                    "screpdb-dashboard-windows-amd64.exe",
-                    "screpdb-dashboard"
+                    "screpdb-gui-windows-amd64.exe",
+                    "screpdb-gui"
                 ]
             ],
             "shortcuts": [
                 [
-                    "screpdb-dashboard-windows-amd64.exe",
+                    "screpdb-gui-windows-amd64.exe",
                     "screpdb dashboard"
                 ]
             ]
@@ -41,7 +41,7 @@
             "64bit": {
                 "url": [
                     "https://github.com/marianogappa/screpdb/releases/download/v$version/screpdb-windows-amd64.exe",
-                    "https://github.com/marianogappa/screpdb/releases/download/v$version/screpdb-dashboard-windows-amd64.exe"
+                    "https://github.com/marianogappa/screpdb/releases/download/v$version/screpdb-gui-windows-amd64.exe"
                 ]
             }
         },

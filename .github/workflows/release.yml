@@ -35,6 +35,16 @@ jobs:
       - name: Build cross-platform release binaries
         run: make cross-binaries
 
+      # One-cycle transition shim: the GUI asset was renamed
+      # screpdb-dashboard-windows-amd64.exe -> screpdb-gui-windows-amd64.exe.
+      # Already-installed GUI binaries still self-update against the OLD asset
+      # name (compiled in), so publish a byte-identical copy under the old name
+      # for one release cycle. Remove this step (and the old-name upload below)
+      # in the next release once existing installs have migrated.
+      - name: Publish legacy GUI asset name (transition)
+        working-directory: dist
+        run: cp screpdb-gui-windows-amd64.exe screpdb-dashboard-windows-amd64.exe
+
       - name: Generate SHA256SUMS
         working-directory: dist
         run: sha256sum * > SHA256SUMS
@@ -65,6 +75,38 @@ jobs:
           git commit -m "chore(scoop): bump manifest to ${VERSION}"
           git push origin "$DEFAULT_BRANCH"
 
+      # Bump the Homebrew formula in the marianogappa/homebrew-tap repo so
+      # `brew upgrade screpdb` picks up the release. Requires a HOMEBREW_TAP_TOKEN
+      # secret (a PAT with contents:write on that repo — the default GITHUB_TOKEN
+      # cannot push cross-repo). Best-effort: skips cleanly if the secret is
+      # absent and never fails the release.
+      - name: Update Homebrew formula
+        if: github.ref_type == 'tag'
+        continue-on-error: true
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HOMEBREW_TAP_TOKEN:-}" ]; then
+            echo "::warning::HOMEBREW_TAP_TOKEN secret not set; skipping Homebrew formula bump."
+            echo "::warning::See README 'macOS' / 'Linux' install sections for tap setup."
+            exit 0
+          fi
+          VERSION="${GITHUB_REF_NAME#v}"
+          TAP_DIR="$(mktemp -d)"
+          git clone --depth 1 "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/marianogappa/homebrew-tap.git" "$TAP_DIR"
+          mkdir -p "$TAP_DIR/Formula"
+          ./scripts/update-homebrew-formula.sh "$VERSION" dist/SHA256SUMS "$TAP_DIR/Formula/screpdb.rb"
+          git -C "$TAP_DIR" config user.name "github-actions[bot]"
+          git -C "$TAP_DIR" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git -C "$TAP_DIR" diff --quiet -- Formula/screpdb.rb; then
+            echo "Homebrew formula already up to date."
+            exit 0
+          fi
+          git -C "$TAP_DIR" add Formula/screpdb.rb
+          git -C "$TAP_DIR" commit -m "screpdb ${VERSION}"
+          git -C "$TAP_DIR" push origin HEAD
+
       - name: Sign SHA256SUMS with minisign
         env:
           MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
@@ -88,6 +130,7 @@ jobs:
         with:
           files: |
             dist/screpdb-windows-amd64.exe
+            dist/screpdb-gui-windows-amd64.exe
             dist/screpdb-dashboard-windows-amd64.exe
             dist/screpdb-linux-amd64
             dist/screpdb-linux-arm64

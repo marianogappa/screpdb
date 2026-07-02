@@ -11,9 +11,9 @@ var Version = "dev"
 var Commit = "unknown"
 
 // Variant identifies which release asset this binary corresponds to, set at
-// build time via -ldflags "-X github.com/marianogappa/screpdb/internal/buildinfo.Variant=dashboard".
-// Only the Windows GUI dashboard ships as a separate asset
-// (screpdb-dashboard-windows-amd64.exe); every other platform uses the root CLI
+// build time via -ldflags "-X github.com/marianogappa/screpdb/internal/buildinfo.Variant=gui".
+// Only the Windows GUI ships as a separate asset
+// (screpdb-gui-windows-amd64.exe); every other platform uses the root CLI
 // binary. Self-update uses this to download the matching asset. Defaults to
 // "cli".
 var Variant = "cli"
