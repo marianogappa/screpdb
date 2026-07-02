@@ -27,3 +27,13 @@
     Robotics Facility  built=1 produced=1 dropped=0
     Stargate           built=1 produced=1 dropped=0
   player 1 (Zerg): tierA=1 tierB=0
+== bo_mech_expa_1fac_tvp_terran3.rep ==
+  player 0 (Terran): tierA=2 tierB=0
+    Command Center     built=4 produced=4 dropped=0
+    Barracks           built=1 produced=1 dropped=0
+    Factory            built=10 produced=7 dropped=0
+    Starport           built=1 produced=0 dropped=0
+  player 1 (Protoss): tierA=0 tierB=0
+    Nexus              built=10 produced=6 dropped=0
+    Gateway            built=26 produced=19 dropped=0
+    Robotics Facility  built=2 produced=2 dropped=0

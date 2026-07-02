@@ -2679,7 +2679,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":10.8}"
+        "value": "{\"switches_per_minute\":10.832432432432434}"
       },
       {
         "replay_player_id": 1,
@@ -4621,8 +4621,8 @@
     "detections": [
       {
         "replay_player_id": 0,
-        "pattern_name": "Build Order: 3 Fact Expa Goliath",
-        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":149,\"found\":true},{\"second\":162,\"found\":true},{\"second\":281,\"found\":true},{\"second\":473,\"found\":true},{\"second\":395,\"found\":true}]}"
+        "pattern_name": "Build Order: CC First",
+        "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":121,\"found\":true},{\"second\":149,\"found\":true}]}"
       },
       {
         "replay_player_id": 0,
@@ -4859,6 +4859,60 @@
         "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":34.678899082568805}"
+      }
+    ]
+  },
+  "bo_mech_expa_1fac_tvp_terran3.rep": {
+    "detections": [
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Build Order: 1 Fact Expa Mech",
+        "value": "{\"expert_actuals\":[{\"second\":52,\"found\":true},{\"second\":83,\"found\":true},{\"second\":98,\"found\":true},{\"second\":151,\"found\":true},{\"second\":212,\"found\":true},{\"second\":265,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "First Mine",
+        "value": "315"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,9]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":13.272394881170017}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Build Order: 1 Gate Core",
+        "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":75,\"found\":true},{\"second\":90,\"found\":true},{\"second\":117,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Observer",
+        "value": "336"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "First Reaver",
+        "value": "491"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Made drops",
+        "value": "771"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Used Hotkey Groups",
+        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Viewport Multitasking",
+        "value": "{\"switches_per_minute\":25.22851919561243}"
       }
     ]
   },

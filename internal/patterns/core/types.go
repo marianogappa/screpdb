@@ -236,7 +236,13 @@ import (
 // that never dissolves (runs contiguously to game end) — a stack that stays
 // intact until the game is over is a decisive gang-up, not a transient
 // mid-game re-alliance, so it earns the 😈 marker below the usual 5-min bar.
-const AlgorithmVersion = 55
+//
+// 56: build-dedup no longer drops an expansion Command Center (or any building)
+// that produced a unit — a producing building demonstrably stood, so Tier A's
+// worker one-at-a-time redirect must not remove it (issue #244). Fixes the
+// "N Fact Expa Mech" over-count that counted Factories against a later CC when
+// the real expansion CC was dropped. Re-ingest so Terran mech builds re-count.
+const AlgorithmVersion = 56
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

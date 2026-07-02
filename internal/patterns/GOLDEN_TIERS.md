@@ -156,7 +156,7 @@ premise is the named player's opener (and, where noted, a modifier):
 | `bo_2port_wraith_tvz_qwejlkqwen`, `bo_2port_wraith_tvz_hanatan`, `bo_2port_wraith_tvz_lllii` | `Build Order: 2 Starport Wraith` (TvZ — round-9 rename of "2 Port Wraith") |
 | `bo_2port_wraith_tvt_kuri`, `bo_2port_wraith_tvt_boogeeyoon` | `Build Order: 2 Starport Wraith` (TvT) |
 | `bo_goliath_tvz_iilliii1`, `bo_goliath_tvz_lilliill` | `Build Order: 1 Fact Expa Goliath` (round-9: Goliath folded into the mech composition flavor) |
-| `bo_goliath_tvz_f1ssasad` | `Build Order: 3 Fact Expa Goliath` |
+| `bo_goliath_tvz_f1ssasad` | `Build Order: CC First` (round-10 #244: the natural CC@2:01 was being dropped by builddedup, so the count ran against a later CC and over-read "3 Fact Expa"; with the produced CC kept, no Factory precedes the expansion — a CC-first opening) |
 | `bo_2fact_expa_tvt_c9flash` (opponent `IlllllllIlIIIll`, P1) | `Build Order: 2 Starport Wraith` **with** `proxy` modifier |
 
 | `bo_bbs_tvp_chocobo12`, `bo_bbs_tvp_standordie`, `bo_bbs_tvp_sstjumja` | `Build Order: BBS` **with** `proxy` modifier (Barracks planted forward at the enemy) |
@@ -184,7 +184,7 @@ premise is the named (Terran) player's BO:
 
 | Fixtures | Player must classify as |
 | --- | --- |
-| `bo_mech_expa_1fac_tvp_IlIIlIlIlIIllI`, `bo_mech_expa_1fac_tvp_yijkeyikyekery`, `bo_mech_expa_1fac_tvz_IIIllll51` | `Build Order: 1 Fact Expa Mech` |
+| `bo_mech_expa_1fac_tvp_IlIIlIlIlIIllI`, `bo_mech_expa_1fac_tvp_yijkeyikyekery`, `bo_mech_expa_1fac_tvz_IIIllll51`, `bo_mech_expa_1fac_tvp_terran3` | `Build Order: 1 Fact Expa Mech` |
 | `bo_mech_tvp_WicoBlack`, `bo_mech_tvp_SSTJumJaJungJi`, `bo_mech_tvp_PlaytheLavi`, `bo_mech_tvp_ehdbgus`, `bo_mech_tvp_llllIlbv`, `bo_mech_tvz_MrLuchs` | `Build Order: Mech` (expand-first) |
 | `bo_goliath_expa_1fac_tvz_*` (40minGAME, 7477473242, C9FlaSh, FantaSyWannabe, Zzangdol2, llIIlll1lllIIl, ss619, wadadfafd) | `Build Order: 1 Fact Expa Goliath` |
 | `bo_goliath_tvz_EunhaLegend`, `bo_goliath_tvz_IIIIIlllllIIII`, `bo_goliath_tvz_IlIllllllIIl`, `bo_goliath_tvz_lilili1ililill` | `Build Order: Goliath` (expand-first) |

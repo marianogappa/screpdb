@@ -84,15 +84,25 @@ func Compute(ev *unittags.Evidence, players []*models.Player) *Plan {
 		}
 	}
 	for pid, pe := range ev.Players {
-		pl.tierAWorkerOneAtATime(pid, pe, raceByPID[pid])
+		// A building a producing tag was matched to demonstrably stood and made a
+		// unit, so it was not abandoned — Tier A must not drop it as a worker
+		// redirect, whatever the (fragile) worker-tag trail suggests (issue #244).
+		pl.tierAWorkerOneAtATime(pid, pe, raceByPID[pid], pe.ProducedPlacements())
 		pl.tierBNeverProduced(pid, pe)
 	}
 	return pl
 }
 
+// isProduced reports whether a build placement of bldg at (x, y) was matched to a
+// producing tag (see unittags.PlayerEvidence.ProducedPlacements) — i.e. that
+// building demonstrably stood and made a unit.
+func isProduced(produced map[string]map[[2]int]bool, bldg string, x, y int) bool {
+	return produced[bldg][[2]int{x, y}]
+}
+
 // tierAWorkerOneAtATime: same worker tag re-ordered before its prior build could
 // finish ⇒ the prior build was abandoned. Provable; applied whole game.
-func (pl *Plan) tierAWorkerOneAtATime(pid byte, pe *unittags.PlayerEvidence, race string) {
+func (pl *Plan) tierAWorkerOneAtATime(pid byte, pe *unittags.PlayerEvidence, race string, produced map[string]map[[2]int]bool) {
 	if race != "Terran" && race != "Zerg" {
 		return
 	}
@@ -126,10 +136,25 @@ func (pl *Plan) tierAWorkerOneAtATime(pid byte, pe *unittags.PlayerEvidence, rac
 				// Zerg is excluded: a Drone is freed once a building starts, so its
 				// next build is a genuine new building, and the supply-count rungs
 				// need the later (committed) placement kept (the original rule).
+				//
+				// The produced guard is deliberately NOT applied here: a re-placed
+				// single building can leave BOTH placements attributed a producing
+				// tag (recycled tags / greedy tag→build matching), and protecting
+				// the later one would resurrect the phantom duplicate — inflating
+				// the count and starving the resource sim into dropping a real
+				// building elsewhere (a 2-Starport Valkyrie mis-read as mech).
 				pl.markDrop(pid, list[i+1].Frame, "worker_one_at_a_time")
 			} else {
 				// Redirect to a DIFFERENT building before the first could finish
-				// (or a Zerg re-placement): the earlier build never completed.
+				// (or a Zerg re-placement): the earlier build never completed —
+				// UNLESS it went on to produce a unit, which proves it stood. A
+				// producing building must never be dropped, however the worker-tag
+				// trail reads (issue #244: the real expansion Command Center was
+				// dropped here even though it produced SCVs, so the marker counted
+				// factories against a later CC and over-counted "N Fact Expa").
+				if isProduced(produced, list[i].Building, list[i].X, list[i].Y) {
+					continue
+				}
 				pl.markDrop(pid, list[i].Frame, "worker_one_at_a_time")
 			}
 			pl.TierADrops++
