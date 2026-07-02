@@ -241,6 +241,10 @@ Changes to screpdb are authored by an LLM coding agent (e.g. Claude Code). As pa
 
 <!-- IO-AUDIT:START -->
 - **2026-07-02** — `OK`. BO/marker label render fixes (issue #251) + ingestion-speed benchmark tracking (issue #249). #251 is render-only: a new `markers.DecodePayloadLabel` decoder resolves the persisted `{"label":...}` value so the games-list Featuring strip and game-detail openers show "3 Hatch Muta"/"~9 Overpool" instead of the placeholder name — reads existing payloads, no new os/net calls. #249 adds a `make bench-ingest` target, `scripts/bench-ingest.sh` / `scripts/update-readme-bench.sh`, and a `bench-ingest.yml` workflow — all shell/CI tooling that runs *outside* the screpdb binary (not part of the Go module the enforcement test parses), plus a checksum-dedup guard in the existing storage benchmark test. No `iofacade`/`netfacade` allowlist widening, no enforcement-test changes.
+
+<details>
+<summary>Older I/O safety audit entries (click to expand)</summary>
+
 - **2026-07-02** — `OK`. Free first-install UX for macOS/Linux + GUI asset rename (issue #248). New files are the standalone `install.sh` (`curl | sh` installer) and `scripts/update-homebrew-formula.sh`/`.github` release wiring — these run *outside* the screpdb binary (they are shell installers/CI, not part of the Go module the enforcement test parses), so they touch no `iofacade`/`netfacade` surface. In-binary Go changes are a pure rename: the Windows GUI release asset `screpdb-dashboard-windows-amd64.exe` → `screpdb-gui-windows-amd64.exe` and the `buildinfo.Variant` value `dashboard` → `gui` (self-update asset-name string in `internal/selfupdate` + a one-line dashboard-frontend message), plus the GUI log file `screpdb-dashboard.log` → `screpdb-gui.log`. No new os/net calls, no `iofacade`/`netfacade` allowlist widening, no enforcement-test changes. Self-update mechanism is unchanged (still minisign-verified, user-initiated); the curl/Homebrew install paths reuse the existing package-manager / writable-dir detection.
 - **2026-07-02** — `OK` (with a deliberate, documented allowlist change + one new sanctioned surface). Windows Low-integrity sandbox (issue #237). Filesystem: writes are **consolidated** under a single per-OS app-data root via the new `internal/appdata` package (DB, game-asset cache, logs, crash reports, sample replays) — the iofacade allowlist **changes**, not widens: the working-directory and OS-user-cache roots are removed and replaced by the one app-data root (the read-only replays root is unchanged). Windows-only: a new `internal/winsandbox` package performs raw `golang.org/x/sys/windows` calls (duplicate-token → Low integrity level → `CreateProcessAsUser`; `SetNamedSecurityInfo` to Low-label the app-data dir) and a file-drop **broker** so the Medium launcher performs the one "watch me" write into the read-only replays folder on the Low worker's behalf; it is added to the enforcement-test skip list alongside `internal/selfupdate` and documented as a chokepoint. `golang.org/x/sys` is promoted from indirect to direct. Self-update is unchanged in mechanism (still minisign-verified, user-initiated) — on Windows it now runs in the Medium launcher rather than the worker. Net effect is a *reduction* in attack surface: even a compromised `screp`/`scmapanalyzer` parser can no longer write outside the single app-data dir on Windows. Residual risk documented: a compromised Low worker can request one fixed-path (`000_screpdb_watch_me/watch_me.rep`) brokered write into the replays folder — low impact, no arbitrary paths.
 - **2026-07-02** — `OK`. "N Hatch <tech>" redesign (issue #245): Hydra/Muta/Lurker become composition markers (any N) layered on the supply opener, counted by town-hall builds at the economy→army transition. New `internal/unittags.TownHallBuildSeconds` reads the already-parsed raw command stream (no new I/O), threaded through the orchestrator into a new `worldstate.Engine.TownHallBuildSeconds` getter. Pure detection-logic + dashboard-response + testdata changes; no new os/net calls, no `iofacade`/`netfacade` allowlist widening, no enforcement-test changes.
@@ -256,18 +260,14 @@ Changes to screpdb are authored by an LLM coding agent (e.g. Claude Code). As pa
 - **2026-06-09** — `OK`. Debugging/crash-reporting improvements (issue #165): new `internal/crashreport` writes a crash log via `iofacade.WriteFile`, and the Windows GUI binary opens a `screpdb-dashboard.log` via `iofacade.Create` and registers cwd with `iofacade.AllowDir` (already an allowed root). No new direct os/net calls, no allowlist widening, no enforcement-test changes; the crash handler's browser-open uses `pkg/browser` (process exec, not a net/fs primitive).
 - **2026-06-07** — `OK`. Early-game event overlay rework (issue #159): consolidated BO timeline events + map overlays. Pure presentation/dashboard-response changes (Go struct field, frontend rendering); no new os/net calls, no allowlist or enforcement-test changes.
 - **2026-05-31** — `OK`. Introduced the `iofacade`/`netfacade` chokepoints, the enforcement test, and removed the AI + fswatch surfaces; this change establishes the I/O rules rather than weakening them.
+
+</details>
 <!-- IO-AUDIT:END -->
 
 _(Most recent first. The authoring LLM adds a dated line each time; keep the last few.)_
 
-## License
+## License, Contributing & Acknowledgements
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Contributions welcome. Open a [Pull Request](https://github.com/marianogappa/screpdb/pulls) or file an [Issue](https://github.com/marianogappa/screpdb/issues).
-
-## Acknowledgments
-
+- This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+- Due to security safeguards I can no longer accept PRs or other code contributions, but please feel free to file an [Issue](https://github.com/marianogappa/screpdb/issues), and you're more than welcome to contribute non-code improvements.
 - Built using the [github.com/icza/screp](https://github.com/icza/screp) library for StarCraft replay parsing. This project would have been impossible without [András Belicza](https://github.com/icza)'s work.
