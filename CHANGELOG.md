@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.17.0](https://github.com/marianogappa/screpdb/compare/v1.16.0...v1.17.0) (2026-07-02)
+
+
+### Features
+
+* **install:** free first-install UX for macOS/Linux + rename GUI asset dashboard→gui ([#252](https://github.com/marianogappa/screpdb/issues/252)) ([0cb573f](https://github.com/marianogappa/screpdb/commit/0cb573fc0c184b200e7a8a652cd110f1e31385e4))
+* **markers:** N Hatch Hydra/Muta/Lurker composition markers, dynamic N ([#245](https://github.com/marianogappa/screpdb/issues/245)) ([#246](https://github.com/marianogappa/screpdb/issues/246)) ([a5167bc](https://github.com/marianogappa/screpdb/commit/a5167bcd0509842476d4741c8e2cf245f623a9a6))
+* **security:** Windows Low-integrity sandbox + single app-data root ([#237](https://github.com/marianogappa/screpdb/issues/237)) ([#250](https://github.com/marianogappa/screpdb/issues/250)) ([ae3b8ad](https://github.com/marianogappa/screpdb/commit/ae3b8adc824e9b9e36c07d4b7c6c6387e9efb50e))
+
 ## [1.16.0](https://github.com/marianogappa/screpdb/compare/v1.15.0...v1.16.0) (2026-07-01)
 
 
