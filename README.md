@@ -79,7 +79,7 @@ The Scoop manifest lives at [`bucket/screpdb.json`](bucket/screpdb.json) and is 
 
 ### Linux
 
-**Install with one command** (downloads the right binary, verifies its checksum, drops it on your PATH):
+**Install with one command** (downloads the right binary, verifies it against the release's signed `SHA256SUMS`, drops it on your PATH):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh | sh
@@ -87,10 +87,18 @@ curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.s
 
 Then run `screpdb`. To upgrade, re-run the same command (or use the in-app **Update** button).
 
+> 🔍 **Don't pipe scripts you haven't read.** [`install.sh`](install.sh) is deliberately short and dependency-free so you can audit it in under a minute — it only downloads the binary for your OS/arch, checks it against the release's signed `SHA256SUMS`, and copies it to `~/.local/bin`. To read it first, then run your local copy:
+>
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh -o screpdb-install.sh
+> less screpdb-install.sh   # audit it
+> sh screpdb-install.sh
+> ```
+
 Prefer **[Homebrew](https://brew.sh) / Linuxbrew**?
 
 ```bash
-brew install marianogappa/tap/screpdb   # upgrade later: brew upgrade screpdb
+brew install marianogappa/screpdb/screpdb   # upgrade later: brew upgrade screpdb
 ```
 
 Or download the binary for your architecture from the [Releases page](https://github.com/marianogappa/screpdb/releases) and `chmod +x screpdb-linux-amd64` (or `screpdb-linux-arm64`). Binaries fetched via curl/brew carry no quarantine flag, so they just run.
@@ -100,14 +108,16 @@ Or download the binary for your architecture from the [Releases page](https://gi
 **Install with [Homebrew](https://brew.sh):**
 
 ```bash
-brew install marianogappa/tap/screpdb   # upgrade later: brew upgrade screpdb
+brew install marianogappa/screpdb/screpdb   # upgrade later: brew upgrade screpdb
 ```
 
-Or the one-line installer (verifies the checksum, installs to `~/.local/bin`):
+Or the one-line installer (verifies it against the release's signed `SHA256SUMS`, installs to `~/.local/bin`):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh | sh
 ```
+
+Wary of piping to `sh`? It's the same [`install.sh`](install.sh) shown in the [Linux section](#linux) — read it first, then run your local copy.
 
 Then run `screpdb`. **No Gatekeeper "unidentified developer" block** with either method — `brew` and `curl` don't attach the quarantine attribute that triggers it, so the binary just runs (no notarization needed).
 

@@ -75,11 +75,12 @@ jobs:
           git commit -m "chore(scoop): bump manifest to ${VERSION}"
           git push origin "$DEFAULT_BRANCH"
 
-      # Bump the Homebrew formula in the marianogappa/homebrew-tap repo so
-      # `brew upgrade screpdb` picks up the release. Requires a HOMEBREW_TAP_TOKEN
-      # secret (a PAT with contents:write on that repo — the default GITHUB_TOKEN
-      # cannot push cross-repo). Best-effort: skips cleanly if the secret is
-      # absent and never fails the release.
+      # Bump the Homebrew formula in the dedicated marianogappa/homebrew-screpdb
+      # tap so `brew upgrade screpdb` picks up the release. Requires a
+      # HOMEBREW_TAP_TOKEN secret (a PAT with contents:write on that repo — the
+      # default GITHUB_TOKEN cannot push cross-repo). See RELEASING.md for setup.
+      # Best-effort: skips cleanly if the secret is absent and never fails the
+      # release.
       - name: Update Homebrew formula
         if: github.ref_type == 'tag'
         continue-on-error: true
@@ -88,13 +89,12 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${HOMEBREW_TAP_TOKEN:-}" ]; then
-            echo "::warning::HOMEBREW_TAP_TOKEN secret not set; skipping Homebrew formula bump."
-            echo "::warning::See README 'macOS' / 'Linux' install sections for tap setup."
+            echo "::warning::HOMEBREW_TAP_TOKEN secret not set; skipping Homebrew formula bump. See RELEASING.md."
             exit 0
           fi
           VERSION="${GITHUB_REF_NAME#v}"
           TAP_DIR="$(mktemp -d)"
-          git clone --depth 1 "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/marianogappa/homebrew-tap.git" "$TAP_DIR"
+          git clone --depth 1 "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/marianogappa/homebrew-screpdb.git" "$TAP_DIR"
           mkdir -p "$TAP_DIR/Formula"
           ./scripts/update-homebrew-formula.sh "$VERSION" dist/SHA256SUMS "$TAP_DIR/Formula/screpdb.rb"
           git -C "$TAP_DIR" config user.name "github-actions[bot]"
