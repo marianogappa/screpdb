@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/marianogappa/screpdb/internal/appdata"
 	"github.com/marianogappa/screpdb/internal/dashboard"
 	"github.com/marianogappa/screpdb/internal/dashboardrun"
 	"github.com/marianogappa/screpdb/internal/selfupdate"
@@ -46,7 +47,13 @@ func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) err
 		time.Sleep(1500 * time.Millisecond)
 	}
 
-	dash, err := dashboard.New(ctx, opts.SQLitePath)
+	dbPath, err := appdata.ResolveDBPath(opts.SQLitePath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve database path: %w", err)
+	}
+	log.Printf("Using SQLite database at %s", dbPath)
+
+	dash, err := dashboard.New(ctx, dbPath)
 	if err != nil {
 		return err
 	}

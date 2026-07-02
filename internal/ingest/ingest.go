@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/marianogappa/screpdb/internal/appdata"
 	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/parser"
@@ -102,7 +103,13 @@ func withDefaults(cfg Config) Config {
 		cfg.InputDir = fileops.GetDefaultReplayDir()
 	}
 	if cfg.SQLitePath == "" {
-		cfg.SQLitePath = "screp.db"
+		// Last-resort default for programmatic callers that didn't resolve a
+		// path; the command boundaries resolve to the app-data root up front.
+		if dbPath, err := appdata.DefaultDBPath(); err == nil {
+			cfg.SQLitePath = dbPath
+		} else {
+			cfg.SQLitePath = "screp.db"
+		}
 	}
 	if cfg.Logger == nil {
 		cfg.Logger = NewLogger(os.Stderr, cfg.UseColor, nil)

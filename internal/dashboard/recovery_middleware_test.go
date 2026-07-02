@@ -3,20 +3,16 @@ package dashboard
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 )
 
 func TestRecoveryMiddleware_PanicBecomes500(t *testing.T) {
 	// A panicking handler must be contained as a 500 rather than crashing the
 	// process. (The crash-report file itself is covered by crashreport's tests.)
-	// chdir so any crash-report file lands in a temp dir, not the package dir.
+	// Point the app-data seam at a temp dir so any crash-report file lands there,
+	// not the real app-data root (issue #237).
 	dir := t.TempDir()
-	prev, _ := os.Getwd()
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(prev) })
+	t.Setenv("SCREPDB_APPDATA_DIR", dir)
 
 	panicking := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		panic("boom in handler")

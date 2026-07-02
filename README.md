@@ -34,11 +34,13 @@ screpdb is an advanced Starcraft replay reporting tool.
 
 Download the latest release from the [Releases page](https://github.com/marianogappa/screpdb/releases). See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
-As a convenience for non-technical Windows users, a special Windows GUI binary is included in releases (look for screpdb-dashboard).
+> ⚠️ **Security:** On **Windows**, screpdb now runs its worker at **Low integrity** — the OS confines all of screpdb's writes to a single app-data folder, so even a compromised replay/map parser cannot write elsewhere on your machine (see [Security / I/O model](#security--io-model)). On **macOS and Linux** there is no OS sandbox yet: screpdb routes all its own I/O through in-process facades (writes confined to the app-data dir and the replays folder, no outbound network calls beyond user-initiated self-update), but these are best-effort guardrails rather than an OS boundary, so exercise judgement before running it.
 
-### Windows: install & upgrade via Scoop
+### Windows
 
-If you use [Scoop](https://scoop.sh), you can install screpdb (and upgrade it with one command) instead of re-downloading the binary each release:
+A dedicated GUI binary (`screpdb-dashboard-windows-amd64.exe`) is included in releases for non-technical users; `screpdb-windows-amd64.exe` is the CLI.
+
+The easiest way to install and upgrade is [Scoop](https://scoop.sh):
 
 ```powershell
 scoop bucket add screpdb https://github.com/marianogappa/screpdb
@@ -51,16 +53,36 @@ This installs both the `screpdb` CLI and the `screpdb-dashboard` GUI. To upgrade
 scoop update screpdb
 ```
 
-The bucket manifest lives at [`bucket/screpdb.json`](bucket/screpdb.json) and is bumped automatically on each release.
+The bucket manifest lives at [`bucket/screpdb.json`](bucket/screpdb.json) and is bumped automatically on each release. If you download the binaries directly instead, see [Running on Windows](#running-on-windows) for the SmartScreen/antivirus prompts you may hit (the binaries are not code-signed).
 
-> ⚠️ **Warning:** screpdb runs as an unsandboxed binary. To reduce risk it now routes all I/O through in-process facades — filesystem access is confined to the working directory, the replays folder, and the OS cache dir, and the binary makes no outbound network calls (see [Security / I/O model](#security--io-model)). These are best-effort guardrails, not an OS sandbox, so still exercise judgement before running it.
+### Linux
 
-If you prefer to build from source, you'll need Go 1.25.2 or later:
+Download the binary for your architecture from the [Releases page](https://github.com/marianogappa/screpdb/releases), then make it executable:
+
+```bash
+chmod +x screpdb-linux-amd64   # or screpdb-linux-arm64
+./screpdb-linux-amd64
+```
+
+### macOS
+
+Download the binary for your architecture from the [Releases page](https://github.com/marianogappa/screpdb/releases), then make it executable:
+
+```bash
+chmod +x screpdb-darwin-arm64   # or screpdb-darwin-amd64
+./screpdb-darwin-arm64
+```
+
+The binaries are not notarized, so Gatekeeper will block the first launch. Right-click the binary → **Open** (or clear the quarantine attribute with `xattr -d com.apple.quarantine screpdb-darwin-arm64`).
+
+### Building from source
+
+You'll need Go 1.25.2 or later. Use `make build` (not a bare `go build`) so the embedded dashboard UI assets are rebuilt first:
 
 ```bash
 git clone https://github.com/marianogappa/screpdb.git
 cd screpdb
-go build .
+make build
 ```
 
 ## Developer features
@@ -115,7 +137,7 @@ The Windows binaries are **not code-signed**. On first launch you will see one o
 
 The dashboard binary (`screpdb-dashboard-windows-amd64.exe`) is a GUI app — if you dismiss the SmartScreen dialog, it simply won't start and won't print any error.
 
-You can always [build from source](#installation) to bypass these warnings.
+You can always [build from source](#building-from-source) to bypass these warnings.
 
 ## Reporting a bug
 
@@ -153,18 +175,20 @@ minisign -Vm SHA256SUMS -P 'RWS9gPPOydPD/tR8JBOelXKhif526NoAKY18dau7QHR4dqg84QMh
 
 screpdb minimizes its attack surface by routing all I/O through facades and keeping dependencies small (see [#135](https://github.com/marianogappa/screpdb/issues/135)):
 
-- **Filesystem** — all disk access goes through `internal/iofacade`, which permits reads/writes only within: the current working directory (the SQLite database), the configured replays folder (read replays, write "watch me" replays), and the OS user-cache directory (cached game-asset images). A narrow, read-only exception walks up from the replays folder to find StarCraft's `CSettings.json`.
+- **Filesystem** — all disk access goes through `internal/iofacade`, which permits reads/writes only within: a single per-OS **app-data directory** (`%LOCALAPPDATA%\screpdb` on Windows, `~/Library/Application Support/screpdb` on macOS, `$XDG_CONFIG_HOME/screpdb` on Linux) that holds the SQLite database, game-asset cache, logs, crash reports, and extracted sample replays; and the configured replays folder (read replays, write "watch me" replays). A narrow, read-only exception walks up from the replays folder to find StarCraft's `CSettings.json`.
+- **Windows OS sandbox** — on Windows the app splits into a Medium-integrity **launcher** and a **Low-integrity worker** ([#237](https://github.com/marianogappa/screpdb/issues/237)). The launcher marks the app-data directory Low-writable and relaunches the real worker at Low integrity; the worker keeps read-down access to replays anywhere but can only *write* into that one Low-labeled folder — every other write is refused by the OS, even from a compromised `screp`/`scmapanalyzer` parser. The launcher retains self-update (it must overwrite the install `.exe`) and brokers the single "watch me" write into the read-only replays folder on the worker's behalf. This does **not** stop a compromised parser from *reading* private files (Low integrity can read up-level); blocking reads needs AppContainer + a broker process, a deferred "Tier 2" follow-up.
 - **Network** — the dashboard server binds to `localhost` only. The binary's only outbound calls are to **GitHub Releases for self-update** ([#212](https://github.com/marianogappa/screpdb/issues/212)): on launch it reads the latest release to surface an update notice, and — only when you click Update — it downloads the matching asset. Every downloaded byte is verified against a minisign-signed `SHA256SUMS` (embedded public key) before the binary is swapped, so a tampered or man-in-the-middled download is rejected regardless of which host served it. All of this lives in the single sanctioned `internal/selfupdate` package; `internal/netfacade` houses the only other network-client operation (a localhost readiness probe).
 - **Self-update** — updates are always user-initiated, never automatic. Package-manager installs (e.g. Scoop) and non-writable install directories are detected and excluded so the updater never fights `scoop update` or needs elevation; those installs are pointed back at their package manager. Self-written binaries carry no macOS quarantine xattr / Windows Mark-of-the-Web, so Gatekeeper/SmartScreen don't re-prompt after an update.
-- **Enforcement** — `TestNoDirectIOOutsideFacades` (in `internal/iofacade`) parses the whole module on every `go test` run and fails the build if any package reaches the filesystem or network directly instead of through the facades.
+- **Enforcement** — `TestNoDirectIOOutsideFacades` (in `internal/iofacade`) parses the whole module on every `go test` run and fails the build if any package reaches the filesystem or network directly instead of through the facades. `internal/selfupdate` and `internal/winsandbox` (the Windows process-spawn / integrity-labeling / broker surface) are the documented exceptions.
 
-This is a best-effort, in-process guard, not an OS sandbox: paths handed to trusted dependencies (the SQLite driver, the screp parser, scmapanalyzer) are opened inside those libraries. The guarantee is that screpdb's own code keeps its I/O behind these chokepoints.
+On **macOS and Linux** this is a best-effort, in-process guard, not an OS sandbox: paths handed to trusted dependencies (the SQLite driver, the screp parser, scmapanalyzer) are opened inside those libraries, and the facade only constrains screpdb's own code. On **Windows** the Low-integrity worker adds a real OS write boundary on top of the same facades.
 
 ### I/O Safety Audit
 
 Changes to screpdb are authored by an LLM coding agent (e.g. Claude Code). As part of authoring a change, that LLM re-assesses whether the change could weaken the I/O rules above and records a dated, one-line verdict in the log below (see `AGENTS.md`). It's an honour-system receipt written by the same LLM that wrote the code — it can be tampered with, just as the facades themselves can — but recording it makes any tampering visible in the diff. `TestIOSafetyAuditPresent` fails CI (`go test ./...`) if the log has no entry, so a change cannot land with an empty audit. The authoritative guard remains the enforcement test above.
 
 <!-- IO-AUDIT:START -->
+- **2026-07-02** — `OK` (with a deliberate, documented allowlist change + one new sanctioned surface). Windows Low-integrity sandbox (issue #237). Filesystem: writes are **consolidated** under a single per-OS app-data root via the new `internal/appdata` package (DB, game-asset cache, logs, crash reports, sample replays) — the iofacade allowlist **changes**, not widens: the working-directory and OS-user-cache roots are removed and replaced by the one app-data root (the read-only replays root is unchanged). Windows-only: a new `internal/winsandbox` package performs raw `golang.org/x/sys/windows` calls (duplicate-token → Low integrity level → `CreateProcessAsUser`; `SetNamedSecurityInfo` to Low-label the app-data dir) and a file-drop **broker** so the Medium launcher performs the one "watch me" write into the read-only replays folder on the Low worker's behalf; it is added to the enforcement-test skip list alongside `internal/selfupdate` and documented as a chokepoint. `golang.org/x/sys` is promoted from indirect to direct. Self-update is unchanged in mechanism (still minisign-verified, user-initiated) — on Windows it now runs in the Medium launcher rather than the worker. Net effect is a *reduction* in attack surface: even a compromised `screp`/`scmapanalyzer` parser can no longer write outside the single app-data dir on Windows. Residual risk documented: a compromised Low worker can request one fixed-path (`000_screpdb_watch_me/watch_me.rep`) brokered write into the replays folder — low impact, no arbitrary paths.
 - **2026-07-02** — `OK`. "N Hatch <tech>" redesign (issue #245): Hydra/Muta/Lurker become composition markers (any N) layered on the supply opener, counted by town-hall builds at the economy→army transition. New `internal/unittags.TownHallBuildSeconds` reads the already-parsed raw command stream (no new I/O), threaded through the orchestrator into a new `worldstate.Engine.TownHallBuildSeconds` getter. Pure detection-logic + dashboard-response + testdata changes; no new os/net calls, no `iofacade`/`netfacade` allowlist widening, no enforcement-test changes.
 - **2026-07-01** — `OK`. Round-10 follow-up: N Hatch Hydra base count uses a +30s grace at hydra-production start (2jd fix); curate wraiths / muta hit-n-run / 2jd fixtures. Pure detection-logic + testdata changes; no new os/net calls, no `iofacade`/`netfacade` allowlist widening, no enforcement-test changes.
 - **2026-07-01** — `OK`. Round-10 curation: beta-exempt deterministic facts (`became_*`, game-phase, viewport, `never_*`); curate 18 BOs/markers (1 Gate no-expa, 7/8 Pool, 3 Starport Valk, Carriers, BCs, Forge Cannon/Forge-Gate-Cannon, 2 Fact Expa Mech, Nukes, Sair/Speedlot, 1 Fact Expa Tankless Mech, Wraith Cloak, 1-Base Mech) with watched fixtures; rename "Mech (no expa)" family → "1-Base"; fix `manner_pylon` firing vs Zerg opponents. Pure detection-logic + dashboard-response + testdata changes (marker curation registry, worldstate manner-pylon race gate, golden fixtures); no new os/net calls, no `iofacade`/`netfacade` allowlist widening, no enforcement-test changes.

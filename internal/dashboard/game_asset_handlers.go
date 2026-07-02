@@ -5,12 +5,12 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/marianogappa/scmapanalyzer/lib/scmapanalyzer"
+	"github.com/marianogappa/screpdb/internal/appdata"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"golang.org/x/sync/singleflight"
 )
@@ -23,16 +23,13 @@ var gameAssetFlight singleflight.Group
 const gameAssetIconRenderVersion = "3"
 
 func (d *Dashboard) gameAssetsCacheDir() (string, error) {
-	base, err := os.UserCacheDir()
+	// The game-asset cache lives under the single app-data root (issue #237) so
+	// it is covered by the one grantable, Low-writable directory on Windows.
+	// appdata.Dir registers the root with the facade and creates it.
+	dir, err := appdata.Path("game-assets")
 	if err != nil {
 		return "", err
 	}
-	// The screpdb cache subtree is a permitted I/O root (issue #135). Register
-	// it before any read/write so the facade allows the game-asset cache.
-	if err := iofacade.AllowDir(filepath.Join(base, "screpdb")); err != nil {
-		return "", err
-	}
-	dir := filepath.Join(base, "screpdb", "game-assets")
 	if err := iofacade.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}

@@ -144,6 +144,7 @@ func skipDir(root, dir string) bool {
 		"internal/iofacade",           // the filesystem facade implementation
 		"internal/netfacade",          // the network facade implementation
 		"internal/selfupdate",         // sanctioned self-update surface (#212): GitHub fetch + in-place binary swap
+		"internal/winsandbox",         // sanctioned Windows sandbox surface (#237): process spawn, integrity labeling, watch-me broker
 		"scripts",                     // dev-only debug scripts, not shipped
 		"internal/dashboard/frontend", // React source, not Go
 		"internal/dashboard/tools",    // build-time codegen, not shipped

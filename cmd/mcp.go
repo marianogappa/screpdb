@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/marianogappa/screpdb/internal/appdata"
 	"github.com/marianogappa/screpdb/internal/mcp"
 	"github.com/marianogappa/screpdb/internal/storage"
 	"github.com/spf13/cobra"
@@ -28,8 +29,13 @@ func init() {
 func runMCP(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
+	dbPath, err := appdata.ResolveDBPath(mcpSQLitePath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve database path: %w", err)
+	}
+
 	// Initialize SQLite storage
-	store, err := storage.NewSQLiteStorage(mcpSQLitePath)
+	store, err := storage.NewSQLiteStorage(dbPath)
 	if err != nil {
 		return fmt.Errorf("failed to create SQLite storage: %w", err)
 	}

@@ -9,6 +9,12 @@ const restartEnv = "SCREPDB_SELFUPDATE_RESTART"
 // to wait briefly for the previous process to release the listening port.
 func IsRestart() bool { return os.Getenv(restartEnv) == "1" }
 
+// RestartEnvKV returns the "KEY=VALUE" environment entry that marks a launched
+// process as a post-update relaunch. The Windows launcher passes it when
+// relaunching the worker after applying an update, so the worker takes the same
+// IsRestart path as an in-place re-exec would.
+func RestartEnvKV() string { return restartEnv + "=1" }
+
 // Restart relaunches the just-swapped binary in place, inheriting the original
 // arguments. On Unix it replaces the current process image; on Windows it spawns
 // the new binary and exits. It does not return on success.

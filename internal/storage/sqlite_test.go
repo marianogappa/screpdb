@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/marianogappa/screpdb/internal/fileops"
+	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
@@ -23,6 +24,10 @@ import (
 // going. Passing nil data forces a nil dereference inside storeReplayWithBatching.
 func TestStoreReplayRecovered_PanicBecomesError(t *testing.T) {
 	dir := t.TempDir()
+	// Keep the recovered-panic crash report inside the temp dir rather than the
+	// real app-data root (issue #237); crashreport.write resolves app-data via
+	// this seam.
+	t.Setenv("SCREPDB_APPDATA_DIR", dir)
 	prev, _ := os.Getwd()
 	if err := os.Chdir(dir); err != nil {
 		t.Fatalf("chdir: %v", err)
@@ -113,6 +118,9 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveReplayDir: %v", err)
 	}
+	// Reading replays goes through the facade; register the testdata dir as a
+	// permitted root (production registers the replay folder before reading).
+	_ = iofacade.AllowDir(replaysDir)
 	files, err := fileops.GetReplayFiles(replaysDir)
 	if err != nil {
 		t.Fatalf("GetReplayFiles: %v", err)
@@ -373,6 +381,9 @@ func TestSQLiteStorage_CommandStorageFlags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveReplayDir: %v", err)
 	}
+	// Reading replays goes through the facade; register the testdata dir as a
+	// permitted root (production registers the replay folder before reading).
+	_ = iofacade.AllowDir(replaysDir)
 	files, err := fileops.GetReplayFiles(replaysDir)
 	if err != nil {
 		t.Fatalf("GetReplayFiles: %v", err)
