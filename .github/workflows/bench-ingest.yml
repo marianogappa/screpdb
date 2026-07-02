@@ -99,8 +99,13 @@ jobs:
               await github.rest.issues.createComment({ owner, repo, issue_number, body });
             }
 
+      # Best-effort: branch protection on main requires a `test` status check
+      # that a bot's direct push can't satisfy, so the push is rejected whenever
+      # the figure actually changes. Don't fail the run over a cosmetic badge
+      # (mirrors the Scoop-manifest step in release.yml).
       - name: Update README figure and commit (main only)
         if: github.event_name == 'push'
+        continue-on-error: true
         run: |
           line="$(grep '^ingest-bench-summary:' bench-current.log)"
           rps="$(echo "$line" | sed -n 's/.*replays_per_sec=\([^ ]*\).*/\1/p')"

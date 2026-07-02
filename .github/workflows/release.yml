@@ -1,9 +1,12 @@
 name: Release
 
+# release-please tags AND publishes a GitHub release in the same instant. Firing
+# on both `push: tags` and `release: published` launched two concurrent Release
+# runs that raced to overwrite the same assets, intermittently 404ing and
+# leaving a binary missing from the release. Trigger only on the published
+# release; on that event github.ref_type/ref_name are still the tag, so the
+# Scoop/Homebrew/minisign steps below behave identically.
 on:
-  push:
-    tags:
-      - 'v*'
   release:
     types: [published]
 
