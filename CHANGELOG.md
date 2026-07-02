@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.16.0](https://github.com/marianogappa/screpdb/compare/v1.15.0...v1.16.0) (2026-07-01)
+
+
+### Features
+
+* **markers:** curation round 10 — remove betas, dynamic N Hatch Hydra, marker fixes ([#241](https://github.com/marianogappa/screpdb/issues/241)) ([f7b119c](https://github.com/marianogappa/screpdb/commit/f7b119c3f6dd824fccdb52272ac44ef5c34e7546))
+
+
+### Bug Fixes
+
+* **markers:** 3 Hatch Hydra counts bases at hydra-production start (+30s grace); curate wraiths, muta hit-n-run, 2jd ([#243](https://github.com/marianogappa/screpdb/issues/243)) ([e6f69df](https://github.com/marianogappa/screpdb/commit/e6f69df126922e932686287c1366ff081b9dd84c))
+
 ## [1.15.0](https://github.com/marianogappa/screpdb/compare/v1.14.0...v1.15.0) (2026-06-30)
 
 
