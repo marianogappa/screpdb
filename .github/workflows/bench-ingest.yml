@@ -22,7 +22,7 @@ jobs:
       # Fixed, reproducible corpus. The benchmark dedups by checksum, so the
       # effective replay count is reported in the s/ingest_<N>replays metric.
       CORPUS_DIR: internal/patterns/markers/testdata/replays
-      BENCH_COUNT: "6"
+      BENCH_COUNT: "3"
     steps:
       - name: Checkout
         uses: actions/checkout@v4

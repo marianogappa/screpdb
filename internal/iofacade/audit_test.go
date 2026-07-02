@@ -8,9 +8,11 @@ import (
 	"testing"
 )
 
-// auditEntry matches a dated log line in the README's I/O Safety Audit block,
-// e.g. "- **2026-05-31** — `OK`. ...".
-var auditEntry = regexp.MustCompile(`(?m)^- \*\*\d{4}-\d{2}-\d{2}\*\*`)
+// auditEntry matches a dated log line in the README's I/O Safety Audit block.
+// The log is rendered as a fenced code block, so an entry is a line that starts
+// with a date, e.g. "2026-05-31  OK. ...". The older bullet form
+// ("- **2026-05-31** — ...") still matches for backward compatibility.
+var auditEntry = regexp.MustCompile(`(?m)^(?:- \*\*)?\d{4}-\d{2}-\d{2}`)
 
 // TestIOSafetyAuditPresent fails CI when the README's I/O Safety Audit log is
 // empty (issue #135). The audit itself is a best-effort verdict written by the
@@ -37,7 +39,7 @@ func TestIOSafetyAuditPresent(t *testing.T) {
 	block := text[i+len(start) : j]
 	if !auditEntry.MatchString(block) {
 		t.Fatalf("README.md I/O Safety Audit log has no dated entry between the markers; "+
-			"the authoring LLM must add a line like \"- **YYYY-MM-DD** — `OK`. <justification>\" (issue #135). Got:\n%s",
+			"the authoring LLM must add a line like \"YYYY-MM-DD  OK. <justification>\" (issue #135). Got:\n%s",
 			strings.TrimSpace(block))
 	}
 }
