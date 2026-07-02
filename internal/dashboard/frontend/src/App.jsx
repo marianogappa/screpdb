@@ -2823,11 +2823,19 @@ function App() {
   const selfUpdateSupported = Boolean(updateStatus?.self_update_supported);
   const updateLatest = String(updateStatus?.latest_version || latestVersion || '');
   const updateReleaseUrl = String(updateStatus?.latest_release_url || latestVersionUrl || 'https://github.com/marianogappa/screpdb/releases/latest');
+  // For package-manager installs the app can't swap its own binary, so surface
+  // the exact upgrade command the user should run (empty for non-managed installs).
+  const updateManagerCommand = (() => {
+    if ((updateStatus?.reason || '') !== 'managed') return '';
+    const manager = updateStatus?.package_manager || '';
+    if (manager === 'scoop') return 'scoop update screpdb';
+    if (manager === 'homebrew') return 'brew upgrade screpdb';
+    return '';
+  })();
   const updateUnsupportedTip = (() => {
     const reason = updateStatus?.reason || '';
     const manager = updateStatus?.package_manager || '';
-    if (reason === 'managed' && manager === 'scoop') return 'Update with: scoop update screpdb';
-    if (reason === 'managed' && manager === 'homebrew') return 'Update with: brew upgrade screpdb';
+    if (updateManagerCommand) return `Run in your terminal: ${updateManagerCommand}`;
     if (reason === 'managed') return `Update via your package manager (${manager})`;
     if (reason === 'not-writable') return 'Install folder is read-only — download the new version manually';
     if (reason === 'unsupported-platform') return 'No self-update build for this platform — download the new version';
@@ -5157,6 +5165,14 @@ function App() {
                 >
                   {updateApplying ? '⏳ Updating…' : `🆕 Update to ${updateLatest}`}
                 </button>
+              ) : updateManagerCommand ? (
+                <span
+                  className="workflow-nav-update-available tip-below tip-hint"
+                  data-tip={updateUnsupportedTip}
+                  tabIndex={0}
+                >
+                  {`🆕 ${updateLatest} — run: ${updateManagerCommand}`}
+                </span>
               ) : (
                 <a
                   href={updateReleaseUrl}
@@ -7518,13 +7534,17 @@ function App() {
                         className="footer-update-link"
                         disabled={updateApplying}
                         onClick={handleApplyUpdate}
-                        title={updateError || `Update from ${currentVersion} to ${updateLatest}`}
+                        data-tip={updateError || `Update from ${currentVersion} to ${updateLatest}`}
                       >
                         {updateApplying ? 'Updating…' : `🆕 Update to ${updateLatest}`}
                       </button>
+                    ) : updateManagerCommand ? (
+                      <span className="footer-update-link tip-hint" data-tip={updateUnsupportedTip} tabIndex={0}>
+                        {`🆕 ${updateLatest} — run: ${updateManagerCommand}`}
+                      </span>
                     ) : (
-                      <a href={updateReleaseUrl} target="_blank" rel="noopener noreferrer" className="footer-update-link" title={updateUnsupportedTip}>
-                        🆕 Update available ({updateLatest})
+                      <a href={updateReleaseUrl} target="_blank" rel="noopener noreferrer" className="footer-update-link" data-tip={updateUnsupportedTip}>
+                        {`🆕 Update available (${updateLatest})`}
                       </a>
                     )}
                     {!updateApplied ? (
