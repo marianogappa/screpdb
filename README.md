@@ -10,17 +10,20 @@
 screpdb is an advanced Starcraft replay reporting tool.
 
 ## Features
-### Filtering/finding replays by high-level semantic features & staging them for watching on the game client
-<img width="1671" height="854" alt="Screenshot 2026-05-04 at 23 36 24" src="https://github.com/user-attachments/assets/33b28969-10fd-4226-96b2-1507f99f829c" />
+### Filtering/finding replays by high-level semantic features
+<img width="1670" alt="Game list — filter and find replays by high-level semantic features" src="docs/images/game-list.png" />
+
+### Game summary, with one-click staging of a replay for watching on the game client
+<img width="1660" alt="Game summary — per-game overview and staging a replay for watching on the game client" src="docs/images/game-summary.png" />
 
 ### Rich game events browser with map overlays
-<img width="1656" height="873" alt="Screenshot 2026-05-04 at 23 41 24" src="https://github.com/user-attachments/assets/9e31dc50-55fd-459b-9628-d3ce847af67b" />
+<img width="1582" alt="Rich game events browser with map overlays" src="docs/images/game-events.png" />
 
 ###  Build Order detection with charts and for comparing with progamer timings
 <img width="1657" height="860" alt="Screenshot 2026-05-04 at 23 42 20" src="https://github.com/user-attachments/assets/b3d909fd-17c6-410c-9bc9-fcba1cbf2313" />
 
 ###  Skill proxies measurements: Viewport Multitasking, Unit Production Cadence, First Unit Efficiency
-<img width="1665" height="841" alt="Screenshot 2026-05-04 at 23 43 39" src="https://github.com/user-attachments/assets/aa2db88d-0e12-430c-ba08-97474d462a0c" />
+<img width="1643" alt="Skill proxies — viewport multitasking, unit production cadence, first unit efficiency" src="docs/images/skill-proxies.png" />
 
 ###  Alias list support for progamer replays (built-in, editable, importable/exportable), and automatic aliasing for local user's player names
 <img width="1133" height="629" alt="Screenshot 2026-05-04 at 23 44 27" src="https://github.com/user-attachments/assets/592e773a-5691-4841-9d0e-5c53d8f22db4" />
@@ -35,7 +38,7 @@ screpdb is an advanced Starcraft replay reporting tool.
 
 ## Installation
 
-Pick your OS below. See [CHANGELOG.md](CHANGELOG.md) for release notes.
+Jump to your OS: **[Windows](#windows)** · **[Linux](#linux)** · **[macOS](#macos)**. See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 > ⚠️ **Security:** On **Windows**, screpdb runs its worker at **Low integrity** — the OS confines all of screpdb's writes to a single app-data folder, so even a compromised replay/map parser cannot write elsewhere on your machine (see [Security / I/O model](#security--io-model)). On **macOS and Linux** there is no OS sandbox yet: screpdb routes all its own I/O through in-process facades (writes confined to the app-data dir and the replays folder, no outbound network calls beyond user-initiated self-update), but these are best-effort guardrails rather than an OS boundary, so exercise judgement before running it.
 
@@ -200,7 +203,8 @@ To make this painless, screpdb helps you out:
 - **Version is always visible.** The exact version and commit SHA are shown in the dashboard footer (e.g. `v1.3.0 (abc1234)`) — paste that into the issue.
 - **Crashes are caught.** If the app panics, it writes a `screpdb-crash-<timestamp>.log` file in the app-data folder (containing the version, OS, and full stack trace) and prints a pre-filled "open an issue" link. The Windows GUI — which has no console — additionally opens that pre-filled issue in your browser automatically and writes a `screpdb-gui.log` in the same folder. Attach those files to the issue.
 
-### Verifying downloads
+<details>
+<summary><strong>Verifying downloads</strong> — checksums + minisign signature</summary>
 
 Each release publishes a `SHA256SUMS` file and a `SHA256SUMS.minisig` minisign signature alongside the binaries.
 
@@ -223,9 +227,14 @@ Get-FileHash screpdb-windows-amd64.exe -Algorithm SHA256
 minisign -Vm SHA256SUMS -P 'RWS9gPPOydPD/tR8JBOelXKhif526NoAKY18dau7QHR4dqg84QMhJ5L/'
 ```
 
+</details>
+
 ## Security / I/O model
 
-screpdb minimizes its attack surface by routing all I/O through facades and keeping dependencies small (see [#135](https://github.com/marianogappa/screpdb/issues/135)):
+screpdb minimizes its attack surface by routing all I/O through facades and keeping dependencies small (see [#135](https://github.com/marianogappa/screpdb/issues/135)). On **macOS and Linux** this is a best-effort, in-process guard; on **Windows** a Low-integrity worker adds a real OS write boundary.
+
+<details>
+<summary><strong>How the I/O model works</strong> — filesystem, Windows sandbox, network, self-update, enforcement</summary>
 
 - **Filesystem** — all disk access goes through `internal/iofacade`, which permits reads/writes only within: a single per-OS **app-data directory** (`%LOCALAPPDATA%\screpdb` on Windows, `~/Library/Application Support/screpdb` on macOS, `$XDG_CONFIG_HOME/screpdb` on Linux) that holds the SQLite database, game-asset cache, logs, crash reports, and extracted sample replays; and the configured replays folder (read replays, write "watch me" replays). A narrow, read-only exception walks up from the replays folder to find StarCraft's `CSettings.json`.
 - **Windows OS sandbox** — on Windows the app splits into a Medium-integrity **launcher** and a **Low-integrity worker** ([#237](https://github.com/marianogappa/screpdb/issues/237)). The launcher marks the app-data directory Low-writable and relaunches the real worker at Low integrity; the worker keeps read-down access to replays anywhere but can only *write* into that one Low-labeled folder — every other write is refused by the OS, even from a compromised `screp`/`scmapanalyzer` parser. The launcher retains self-update (it must overwrite the install `.exe`) and brokers the single "watch me" write into the read-only replays folder on the worker's behalf. This does **not** stop a compromised parser from *reading* private files (Low integrity can read up-level); blocking reads needs AppContainer + a broker process, a deferred "Tier 2" follow-up.
@@ -234,6 +243,8 @@ screpdb minimizes its attack surface by routing all I/O through facades and keep
 - **Enforcement** — `TestNoDirectIOOutsideFacades` (in `internal/iofacade`) parses the whole module on every `go test` run and fails the build if any package reaches the filesystem or network directly instead of through the facades. `internal/selfupdate` and `internal/winsandbox` (the Windows process-spawn / integrity-labeling / broker surface) are the documented exceptions.
 
 On **macOS and Linux** this is a best-effort, in-process guard, not an OS sandbox: paths handed to trusted dependencies (the SQLite driver, the screp parser, scmapanalyzer) are opened inside those libraries, and the facade only constrains screpdb's own code. On **Windows** the Low-integrity worker adds a real OS write boundary on top of the same facades.
+
+</details>
 
 ### I/O Safety Audit
 
