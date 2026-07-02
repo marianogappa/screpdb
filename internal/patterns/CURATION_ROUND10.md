@@ -119,11 +119,18 @@ DONE + committed this pass:
   report the train/research command (correct). No change.
 
 DEFERRED (deep / risky — recommend follow-up issues, NOT this PR):
-- **Factory-before-expa over-count** ROOT CAUSE FOUND: builddedup drops the REAL expansion CC (Terran3
-  CC@211 `dropped_by_tags`; detector then uses CC@477 and counts 4 factories). Same tag-attribution
-  fragility as round-9 factory drops, but on the Command Center — fixing it touches builddedup/unittags
-  with cross-race blast radius. The re-placed-single-Starport double_stargate case (89EFD77C) is the same
-  family. Needs a careful "standing/produced-building" pass + full round-8/9 revalidation.
+- **Factory-before-expa over-count** — FIXED (issue #244). Root cause was builddedup Tier A
+  (`worker_one_at_a_time`) dropping the REAL expansion CC on the *different-building redirect* branch,
+  even though that CC produced SCVs — so the marker counted Factories against a later CC (Terran3 CC@212
+  kept, was dropped → detector fell back to CC@477 → "4 Fact Expa"; now "1 Fact Expa Mech"). Fix: a
+  produced-building guard (`unittags.PlayerEvidence.ProducedPlacements`) — a build a producing tag was
+  matched to demonstrably stood, so the redirect branch never drops it. Deliberately NOT applied to the
+  same-building re-placement branch: a misclicked single building can leave BOTH placements tag-attributed
+  and protecting the later one resurrects the phantom (verified against 4023b 2-Starport Valkyrie, which
+  the broad version regressed to mech). Fixtures: `bo_mech_expa_1fac_tvp_terran3` (new). Cross-race
+  revalidation: full `go test ./...` green; the only curated reclassification is `bo_goliath_tvz_f1ssasad`
+  (3 Fact Expa Goliath → CC First — same dropped-CC artifact, user-confirmed). SST was already correctly
+  "Mech" (expand-first) on main. double_stargate 89EFD77C unaffected.
 - **Zerg "N Hatch Hydra/Muta"** dynamic transition — a new custom evaluator; sizable feature, its own round.
 
 ## Batch 6 — Zerg N Hatch Hydra dynamic redesign (DONE, hydra scope)

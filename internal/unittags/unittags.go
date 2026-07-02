@@ -399,6 +399,28 @@ func matchProducerTagsToBuilds(tags map[uint16]*Production, builds []Build) map[
 	return out
 }
 
+// ProducedPlacements returns, per production building type, the set of Build
+// placement tiles that a producing tag was matched to — i.e. buildings that
+// demonstrably stood and produced a unit. A produced building was not abandoned,
+// so build-dedup must never drop it, however fragile the unit-tag attribution
+// that would otherwise flag it (issue #244: the real expansion Command Center
+// was dropped as a worker "one-at-a-time" redirect even though it produced SCVs).
+func (pe *PlayerEvidence) ProducedPlacements() map[string]map[[2]int]bool {
+	out := map[string]map[[2]int]bool{}
+	for bldg, tags := range pe.Producers {
+		loc := matchProducerTagsToBuilds(tags, pe.Builds[bldg])
+		if len(loc) == 0 {
+			continue
+		}
+		set := map[[2]int]bool{}
+		for _, b := range loc {
+			set[[2]int{b.X, b.Y}] = true
+		}
+		out[bldg] = set
+	}
+	return out
+}
+
 func tagsOf(ut []repcmd.UnitTag) []uint16 {
 	out := make([]uint16, 0, len(ut))
 	for _, t := range ut {
