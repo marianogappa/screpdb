@@ -231,7 +231,12 @@ import (
 // Muta uses no grace window (timing attack); Hydra/Lurker keep +30s. Replaces
 // the round-10 hydra opener family and the fixed-360s "2/3 Hatch Muta/Lurker"
 // markers. Re-ingest so Zerg tech builds re-count.
-const AlgorithmVersion = 54
+//
+// 55: Team-stacking flag now uses a shorter 2-minute floor for a stacking band
+// that never dissolves (runs contiguously to game end) — a stack that stays
+// intact until the game is over is a decisive gang-up, not a transient
+// mid-game re-alliance, so it earns the 😈 marker below the usual 5-min bar.
+const AlgorithmVersion = 55
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

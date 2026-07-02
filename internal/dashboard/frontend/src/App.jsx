@@ -6879,7 +6879,7 @@ function App() {
                   <div className="workflow-timing-charts">
                     {mainGame?.team_stacking ? (
                       <div className="workflow-section-warning">
-                        😈 Team stacking detected — uneven non-solo team sizes lasted over {Math.round((mainGame.alliance_stacking_threshold_seconds || 300) / 60)} minutes.
+                        😈 Team stacking detected — uneven non-solo team sizes were sustained (over {Math.round((mainGame.alliance_stacking_threshold_seconds || 300) / 60)} minutes, or until game end).
                       </div>
                     ) : null}
                     <AllianceTimeline

@@ -231,6 +231,78 @@ func TestAnalyzeAlliances_TransientImbalance_BelowThreshold(t *testing.T) {
 	}
 }
 
+// A 3v2 that forms late and never dissolves (runs to game end) fires the flag
+// once it clears the shorter end-of-game floor, even though it never reaches the
+// full 5-minute bar. Mirrors the real (8)Big Game Hunters case where the winning
+// coalition stacked up ~4 minutes before the game ended.
+func TestAnalyzeAlliances_StackingToGameEnd_AboveFloorFires(t *testing.T) {
+	a, b, c, d, e := p(1, 1), p(2, 2), p(3, 3), p(4, 4), p(5, 5)
+	players := []*models.Player{a, b, c, d, e}
+	cmds := []*models.Command{
+		allianceCmd(10, a, 1, 2, 3),
+		allianceCmd(10, b, 1, 2, 3),
+		allianceCmd(10, c, 1, 2, 3),
+		allianceCmd(10, d, 4, 5),
+		allianceCmd(10, e, 4, 5),
+	}
+	// 3v2 holds from sec=10 to game end at 200 → 190s band: under the 300s bar
+	// but over the 120s end-of-game floor.
+	res := AnalyzeAlliances(players, cmds, 200, emptyActivity())
+
+	if !res.TeamStackingFlag {
+		t.Fatalf("expected stacking flag: 3v2 held to game end for 190s (> end-of-game floor)")
+	}
+	if res.StackingBandStartSec != 10 {
+		t.Fatalf("expected stacking band to start at sec=10, got %d", res.StackingBandStartSec)
+	}
+}
+
+// A stack that runs to game end but for less than the 2-minute floor is still
+// treated as a transient endgame ally and does not fire.
+func TestAnalyzeAlliances_StackingToGameEnd_BelowFloorNoFire(t *testing.T) {
+	a, b, c, d, e := p(1, 1), p(2, 2), p(3, 3), p(4, 4), p(5, 5)
+	players := []*models.Player{a, b, c, d, e}
+	cmds := []*models.Command{
+		allianceCmd(100, a, 1, 2, 3),
+		allianceCmd(100, b, 1, 2, 3),
+		allianceCmd(100, c, 1, 2, 3),
+		allianceCmd(100, d, 4, 5),
+		allianceCmd(100, e, 4, 5),
+	}
+	// 3v2 forms at sec=100 and holds to game end at 200 → 100s band, under the
+	// 120s floor.
+	res := AnalyzeAlliances(players, cmds, 200, emptyActivity())
+
+	if res.TeamStackingFlag {
+		t.Fatalf("expected no stacking flag for a 100s end-of-game band (< floor)")
+	}
+}
+
+// The shorter floor applies ONLY to bands that run to game end. A band above the
+// floor but below the full threshold that dissolves mid-game must not fire.
+func TestAnalyzeAlliances_MidGameBand_AboveFloorDissolves_NoFire(t *testing.T) {
+	a, b, c, d, e := p(1, 1), p(2, 2), p(3, 3), p(4, 4), p(5, 5)
+	players := []*models.Player{a, b, c, d, e}
+	cmds := []*models.Command{
+		allianceCmd(10, a, 1, 2, 3),
+		allianceCmd(10, b, 1, 2, 3),
+		allianceCmd(10, c, 1, 2, 3),
+		allianceCmd(10, d, 4, 5),
+		allianceCmd(10, e, 4, 5),
+		// At sec=200 the 3-team breaks: c goes solo → 2v2v1 (balanced).
+		allianceCmd(200, a, 1, 2),
+		allianceCmd(200, b, 1, 2),
+		allianceCmd(200, c, 3),
+	}
+	// 3v2 band is sec=10..200 = 190s (> floor, < threshold) but dissolves before
+	// game end at 1200 → floor must not apply.
+	res := AnalyzeAlliances(players, cmds, 1200, emptyActivity())
+
+	if res.TeamStackingFlag {
+		t.Fatalf("expected no stacking flag: 190s mid-game band that dissolved before end")
+	}
+}
+
 func TestAnalyzeAlliances_ComputerExcluded(t *testing.T) {
 	human1 := p(1, 1)
 	human2 := p(2, 2)
