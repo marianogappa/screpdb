@@ -546,7 +546,26 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 		})
 	}
 
+	// The fuzzy Zerg opener has no single meaningful value — its identity is the
+	// resolved rung ("~9 Overpool", "~10 Hatch"). Replace the placeholder
+	// "Approx. opener" bucket with one filterable pill per distinct value present
+	// in the data (none if there are no fuzzy openers).
+	fuzzyLabels, err := d.dbStore.ListDistinctMarkerLabels(d.ctx, "bo_z_fuzzy")
+	if err != nil {
+		return result, err
+	}
 	for _, feature := range workflowFeaturingFilters {
+		if feature.Key == "bo_z_fuzzy" {
+			for _, label := range fuzzyLabels {
+				result.Featuring = append(result.Featuring, workflowGamesListFilterOption{
+					Key:   dashboarddb.PerValueFeatureKey("bo_z_fuzzy", label),
+					Label: label,
+					Group: feature.Group,
+					Race:  feature.Race,
+				})
+			}
+			continue
+		}
 		result.Featuring = append(result.Featuring, workflowGamesListFilterOption{
 			Key:       feature.Key,
 			Label:     feature.Label,

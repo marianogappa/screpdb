@@ -2336,7 +2336,15 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 			// don't count): a BO that only matched via produce facts has
 			// no concrete opening to show. The actual second is no longer
 			// used (the consolidated event sits at 0:00), only the gate.
-			if _, ok := firstBuildingActualSecond(bo, events); ok {
+			//
+			// The fuzzy opener (bo_z_fuzzy) is a Custom evaluator that persists
+			// only its resolved label ("~10 Hatch") and no expert milestones, so
+			// firstBuildingActualSecond can't see its building — but it fires
+			// only on a clean pool/hatch open, so a resolved payload label is
+			// itself proof of a concrete opening.
+			_, hasFirstBuilding := firstBuildingActualSecond(bo, events)
+			_, hasPayloadLabel := markers.DecodePayloadLabel([]byte(row.Payload))
+			if hasFirstBuilding || hasPayloadLabel {
 				boOpeners = append(boOpeners, workflowGameEventBuildOrder{
 					PlayerID:      player.PlayerID,
 					Name:          player.Name,

@@ -200,8 +200,49 @@ var uiFeatureKeyToMarkerFeatureKey = map[string]string{
 	"recalls": "made_recalls",
 }
 
+// perValueFeatureKeySep separates a marker feature key from a resolved payload
+// label value in a per-value filter key ("bo_z_fuzzy::~10 hatch").
+const perValueFeatureKeySep = "::"
+
+// PerValueFeatureKey builds the filter key for one resolved value of a
+// dynamic-label marker. The label is lowercased so the key round-trips through
+// parseCSVQueryValues (which force-lowercases) and matches splitPerValueFeatureKey.
+func PerValueFeatureKey(featureKey, label string) string {
+	return featureKey + perValueFeatureKeySep + strings.ToLower(label)
+}
+
+// splitPerValueFeatureKey parses a per-value filter key into (featureKey, label).
+// Returns ok=false for plain keys with no value suffix.
+func splitPerValueFeatureKey(key string) (featureKey, label string, ok bool) {
+	idx := strings.Index(key, perValueFeatureKeySep)
+	if idx < 0 {
+		return "", "", false
+	}
+	featureKey = key[:idx]
+	label = key[idx+len(perValueFeatureKeySep):]
+	if featureKey == "" || label == "" {
+		return "", "", false
+	}
+	return featureKey, label, true
+}
+
 func workflowFeaturingExistsSQL(featureKey string) (string, bool) {
 	normalized := strings.TrimSpace(strings.ToLower(featureKey))
+	// Per-value dynamic-marker keys ("bo_z_fuzzy::~10 hatch") filter on the
+	// resolved payload label so each approximate opener is its own bucket. The
+	// key is already lowercased (parseCSVQueryValues), so match case-insensitively.
+	if fk, label, ok := splitPerValueFeatureKey(normalized); ok {
+		escapedKey := strings.ReplaceAll(fk, "'", "''")
+		escapedLabel := strings.ReplaceAll(label, "'", "''")
+		return `EXISTS (
+			SELECT 1
+			FROM replay_events re
+			WHERE re.replay_id = r.id
+				AND re.event_kind = 'marker'
+				AND re.event_type = '` + escapedKey + `'
+				AND lower(json_extract(re.payload, '$.label')) = '` + escapedLabel + `'
+		)`, true
+	}
 	switch normalized {
 	case "team_stacking":
 		// Direct column predicate on replays — team_stacking is a flag on
