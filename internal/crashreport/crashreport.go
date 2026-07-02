@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/marianogappa/screpdb/internal/appdata"
 	"github.com/marianogappa/screpdb/internal/buildinfo"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/pkg/browser"
@@ -200,16 +201,21 @@ func (r Report) issueBody() string {
 	return b.String()
 }
 
-// write saves the full report next to the binary (the working directory, an
-// always-permitted iofacade root) and returns its absolute path.
+// write saves the full report under the app-data root (issue #237) and returns
+// its absolute path. If the app-data root cannot be resolved it falls back to a
+// working-directory-relative name so the panic handler never fails hard.
 func (r Report) write() (string, error) {
 	name := "screpdb-crash-" + r.When.Format("20060102-150405") + ".log"
-	if err := iofacade.WriteFile(name, []byte(r.FileText()), 0o644); err != nil {
+	target := name
+	if dir, err := appdata.Dir(); err == nil {
+		target = filepath.Join(dir, name)
+	}
+	if err := iofacade.WriteFile(target, []byte(r.FileText()), 0o644); err != nil {
 		return "", err
 	}
-	abs, err := filepath.Abs(name)
+	abs, err := filepath.Abs(target)
 	if err != nil {
-		return name, nil
+		return target, nil
 	}
 	return abs, nil
 }

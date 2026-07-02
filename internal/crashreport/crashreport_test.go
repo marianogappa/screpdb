@@ -56,16 +56,10 @@ func TestFileTextContainsFullStack(t *testing.T) {
 	}
 }
 
-func TestWriteCreatesReportInWorkingDir(t *testing.T) {
+func TestWriteCreatesReportInAppDataDir(t *testing.T) {
 	dir := t.TempDir()
-	prev, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd: %v", err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(prev) })
+	// crashreport.write resolves the app-data root via this seam (issue #237).
+	t.Setenv("SCREPDB_APPDATA_DIR", dir)
 
 	r := Capture("boom", []byte("stack here"))
 	path, err := r.write()
@@ -74,6 +68,9 @@ func TestWriteCreatesReportInWorkingDir(t *testing.T) {
 	}
 	if base := filepath.Base(path); !strings.HasPrefix(base, "screpdb-crash-") || !strings.HasSuffix(base, ".log") {
 		t.Errorf("unexpected report filename %q", base)
+	}
+	if want, _ := filepath.Abs(dir); filepath.Dir(path) != want {
+		t.Errorf("report written to %q, want inside app-data dir %q", filepath.Dir(path), want)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {

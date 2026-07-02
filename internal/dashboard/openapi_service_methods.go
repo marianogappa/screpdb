@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/icza/screp/rep/repcore"
+	"github.com/marianogappa/screpdb/internal/appdata"
 	"github.com/marianogappa/screpdb/internal/buildinfo"
 	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
@@ -18,6 +19,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 	"github.com/marianogappa/screpdb/internal/storage"
+	"github.com/marianogappa/screpdb/internal/winsandbox"
 )
 
 var _ dashboardservice.DashboardService = (*Dashboard)(nil)
@@ -144,7 +146,6 @@ func (d *Dashboard) GetStaleReplaysCount(ctx context.Context, _ apigen.GetStaleR
 		"current_version": core.AlgorithmVersion,
 	}, nil
 }
-
 
 func (d *Dashboard) GetIngestSettings(ctx context.Context, _ apigen.GetIngestSettingsRequestObject) (any, error) {
 	inputDir, err := d.getIngestInputDir(ctx)
@@ -288,16 +289,30 @@ func (d *Dashboard) GameSee(ctx context.Context, request apigen.GameSeeRequestOb
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, errors.New("Replay ingestion directory is not set; cannot move replay file"))
 	}
 	destinationDirPath := path.Join(ingestDirPath, seeReplayFolderName)
-	if err := iofacade.MkdirAll(destinationDirPath, 0755); err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
 	destinationFilePath := path.Join(destinationDirPath, seeReplayFilename)
-	input, err := iofacade.ReadFile(sourceFilePath)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	if err := iofacade.WriteFile(destinationFilePath, input, 0644); err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
+	if winsandbox.IsWorker() {
+		// The replays folder is read-only to the Low-integrity worker; ask the
+		// Medium launcher to stage the file there on our behalf (issue #237).
+		appDir, err := appdata.Dir()
+		if err != nil {
+			return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
+		}
+		dest, err := winsandbox.BrokerSeeReplay(appDir, sourceFilePath, ingestDirPath)
+		if err != nil {
+			return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
+		}
+		destinationFilePath = dest
+	} else {
+		if err := iofacade.MkdirAll(destinationDirPath, 0755); err != nil {
+			return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
+		}
+		input, err := iofacade.ReadFile(sourceFilePath)
+		if err != nil {
+			return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
+		}
+		if err := iofacade.WriteFile(destinationFilePath, input, 0644); err != nil {
+			return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
+		}
 	}
 	return map[string]any{
 		"sourceFilePath":      sourceFilePath,

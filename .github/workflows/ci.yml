@@ -40,3 +40,29 @@ jobs:
 
       - name: Run tests
         run: go test ./...
+
+  # Windows Low-integrity containment (issue #237): asserts on a real Windows
+  # kernel that the worker spawned via winsandbox.SpawnWorkerLow runs at Low
+  # integrity and is refused writes outside the Low-labeled app-data dir. Gated
+  # behind the `integration` build tag so it only runs here, not in the ubuntu
+  # `go test ./...` above (where the Windows syscalls don't exist).
+  windows-sandbox:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Scope to internal/winsandbox: a full `go build ./...` here would require
+      # the embedded dashboard UI assets (built by the ubuntu job via make), and
+      # the containment test needs none of that.
+      - name: Build winsandbox (Windows)
+        run: go build ./internal/winsandbox/...
+
+      - name: Run Low-integrity containment integration test
+        run: go test -tags integration -run TestLowIntegrityContainment ./internal/winsandbox/

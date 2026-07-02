@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/marianogappa/screpdb/internal/appdata"
 	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/ingest"
 	"github.com/marianogappa/screpdb/internal/profile"
@@ -45,9 +46,14 @@ func init() {
 func runIngest(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
+	dbPath, err := appdata.ResolveDBPath(sqlitePath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve database path: %w", err)
+	}
+
 	cfg := ingest.Config{
 		InputDir:            inputDir,
-		SQLitePath:          sqlitePath,
+		SQLitePath:          dbPath,
 		StoreRightClicks:    storeRightClicks,
 		SkipHotkeys:         skipHotkeys,
 		StopAfterN:          stopAfterN,

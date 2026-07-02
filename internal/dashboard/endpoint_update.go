@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/selfupdate"
+	"github.com/marianogappa/screpdb/internal/winsandbox"
 )
 
 // handlerUpdateStatus performs the read-only launch-time update check and
@@ -33,6 +35,25 @@ func (d *Dashboard) handlerUpdateStatus(w http.ResponseWriter, r *http.Request) 
 // after the response flushes. The detached context protects the critical swap
 // from a client disconnect.
 func (d *Dashboard) handlerUpdateApply(w http.ResponseWriter, _ *http.Request) {
+	// On Windows the dashboard runs in the Low-integrity worker, which cannot
+	// overwrite the install-dir binary. Signal the Medium launcher to perform
+	// the swap by exiting with the update code; the launcher applies the update
+	// (verifying the signature as always) and relaunches the worker.
+	if winsandbox.IsWorker() {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "restarting": true})
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		go func() {
+			defer crashreport.GuardNonFatal(nil)
+			time.Sleep(750 * time.Millisecond)
+			log.Printf("self-update requested; exiting for launcher to apply and relaunch")
+			os.Exit(winsandbox.ExitCodeUpdate)
+		}()
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 

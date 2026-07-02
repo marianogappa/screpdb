@@ -9,10 +9,12 @@ import (
 	"syscall"
 
 	"github.com/marianogappa/screpdb/cmd"
+	"github.com/marianogappa/screpdb/internal/appdata"
 	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/dashboardrun"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/tray"
+	"github.com/marianogappa/screpdb/internal/winsandbox"
 	"github.com/spf13/pflag"
 )
 
@@ -21,14 +23,26 @@ func main() {
 	defer crashreport.Recover(true)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	// The GUI binary has no attached console, so route diagnostics to a log
-	// file next to the binary (and permit writes there — crash reports land in
-	// the same directory). Best-effort: fall back to default logging on failure.
-	if cwd, err := os.Getwd(); err == nil {
-		_ = iofacade.AllowDir(cwd)
+	// On Windows, the first (Medium-integrity) process is the launcher: it
+	// prepares the Low-writable app-data dir and relaunches this binary as a
+	// Low-integrity worker (issue #237). ShouldLaunch is false once we are the
+	// worker, and always false off Windows.
+	if winsandbox.ShouldLaunch() {
+		if logPath, err := appdata.Path("screpdb-launcher.log"); err == nil {
+			if logFile, err := iofacade.Create(logPath); err == nil {
+				log.SetOutput(logFile)
+			}
+		}
+		os.Exit(runLauncher())
 	}
-	if logFile, err := iofacade.Create("screpdb-dashboard.log"); err == nil {
-		log.SetOutput(logFile)
+
+	// The GUI binary has no attached console, so route diagnostics to a log file
+	// under the app-data root (issue #237) — the single Low-writable directory
+	// where crash reports also land. Best-effort: fall back to default logging.
+	if logPath, err := appdata.Path("screpdb-dashboard.log"); err == nil {
+		if logFile, err := iofacade.Create(logPath); err == nil {
+			log.SetOutput(logFile)
+		}
 	}
 
 	var opts dashboardrun.Options
