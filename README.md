@@ -153,6 +153,10 @@ make build
 ```
 
 ## Developer features
+
+<details>
+<summary>CLI ingestion, MCP server, and full OpenAPI — click to expand</summary>
+
 - CLI for ingestion onto SQLite database. No need to use UI: just ingest and query the database.
 
 ```bash
@@ -179,7 +183,12 @@ make build
 
 - All UI functionality exposed as API: [OpenAPI schema available](api/openapi/dashboard.v1.yaml)
 
+</details>
+
 ## Specification — how the numbers are computed
+
+<details>
+<summary>Every golden value — unit stats, build times, expert timings, detection thresholds — is generated from source and test-backed (see <code>SPECIFICATION.md</code>)</summary>
 
 screpdb makes a lot of derived claims: "this is a **9 Pool**", "your Spawning
 Pool was 6s late", "a Zealot takes 25.2s". Skeptical? Audit them.
@@ -194,14 +203,7 @@ detection thresholds, and more. It's:
 In short: not aspirational docs that rot, but a provably-accurate description of
 what the app actually does.
 
-## Reporting a bug
-
-If screpdb misbehaves or crashes, please [open an issue](https://github.com/marianogappa/screpdb/issues/new/choose) — the bug-report form asks for the few things that make a report actionable (version, OS, and ideally the replay that triggers it).
-
-To make this painless, screpdb helps you out:
-
-- **Version is always visible.** The exact version and commit SHA are shown in the dashboard footer (e.g. `v1.3.0 (abc1234)`) — paste that into the issue.
-- **Crashes are caught.** If the app panics, it writes a `screpdb-crash-<timestamp>.log` file in the app-data folder (containing the version, OS, and full stack trace) and prints a pre-filled "open an issue" link. The Windows GUI — which has no console — additionally opens that pre-filled issue in your browser automatically and writes a `screpdb-gui.log` in the same folder. Attach those files to the issue.
+</details>
 
 <details>
 <summary><strong>Verifying downloads</strong> — checksums + minisign signature</summary>
