@@ -18,7 +18,11 @@ VER_PATCH := $(shell echo "$(NUMVER)" | awk -F. '{print int($$3)+0}')
 GOVERSIONINFO := go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.5.0
 VERSIONINFO_JSON := build/windows/versioninfo.json
 WINDOWS_ICON := build/windows/icon.ico
+# -64 makes goversioninfo emit an amd64 resource (IMAGE_REL_AMD64_ADDR32NB);
+# without it the default is a 386 resource whose type-7 relocation the Go 1.26+
+# linker rejects on windows/amd64 (golang/go#77783).
 SYSO_VER_FLAGS := \
+	-64 \
 	-icon $(WINDOWS_ICON) \
 	-file-version "$(VERSION)" \
 	-product-version "$(VERSION)" \
