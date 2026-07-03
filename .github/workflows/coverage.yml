@@ -1,0 +1,107 @@
+name: coverage
+
+# Guards the static coverage badge in the README. On a pull request it computes
+# `make coverage` (hand-written code only; generated code/scripts/tools excluded)
+# and comments the figure, warning when it dips below the badge. On push to main
+# it refreshes the badge automatically. Never hard-fails the build — the badge is
+# informational, mirroring the ingestion-throughput guard in bench-ingest.yml.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: internal/dashboard/frontend/package-lock.json
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # go test ./... compiles the dashboard package, which //go:embed's
+      # frontend/build — so the UI must exist before coverage runs.
+      - name: Build embedded UI
+        run: make ui-build
+
+      - name: Compute coverage
+        id: cov
+        run: |
+          pct="$(./scripts/coverage.sh --percent)"
+          badge="$(grep -oE 'coverage-[0-9]+' README.md | grep -oE '[0-9]+' | head -1)"
+          echo "pct=$pct"     >> "$GITHUB_OUTPUT"
+          echo "badge=$badge" >> "$GITHUB_OUTPUT"
+          echo "coverage=$pct% (badge shows $badge%)"
+
+      - name: Build PR comment
+        if: github.event_name == 'pull_request'
+        run: |
+          pct="${{ steps.cov.outputs.pct }}"
+          badge="${{ steps.cov.outputs.badge }}"
+          if awk "BEGIN{exit !($pct < $badge)}"; then
+            echo "::warning::Coverage $pct% is below the README badge ($badge%). Add tests or lower the badge via scripts/update-readme-coverage.sh."
+            {
+              echo "### 🔻 Coverage below the badge"
+              echo
+              echo "\`make coverage\` reports **$pct%** (hand-written code; generated code excluded), below the README badge of **$badge%**."
+              echo
+              echo "Either add tests, or update the badge: \`scripts/update-readme-coverage.sh $pct\`."
+            } > comment.md
+          else
+            {
+              echo "### ✅ Coverage"
+              echo
+              echo "\`make coverage\` reports **$pct%** (hand-written code; generated code excluded). README badge shows **$badge%**."
+            } > comment.md
+          fi
+
+      - name: Upsert PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- coverage-comment -->';
+            const body = marker + '\n' + fs.readFileSync('comment.md', 'utf8');
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      # Best-effort, like bench-ingest: branch protection may reject a bot push
+      # when the badge actually changes. Don't fail the run over a cosmetic badge.
+      - name: Refresh badge and commit (main only)
+        if: github.event_name == 'push'
+        continue-on-error: true
+        run: |
+          ./scripts/update-readme-coverage.sh "${{ steps.cov.outputs.pct }}"
+          if git diff --quiet -- README.md; then
+            echo "Coverage badge unchanged; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "chore(coverage): refresh coverage badge [skip ci]"
+          git push
