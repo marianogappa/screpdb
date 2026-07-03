@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.19.0](https://github.com/marianogappa/screpdb/compare/v1.18.0...v1.19.0) (2026-07-03)
+
+
+### Features
+
+* Go 1.26.4, round-11 beta curation, and test coverage to 81% ([#263](https://github.com/marianogappa/screpdb/issues/263)) ([7368239](https://github.com/marianogappa/screpdb/commit/7368239b0715f7c9d3378e4ebef6a4d5beee1647))
+
+
+### Bug Fixes
+
+* **ci:** stop Release double-run race; make bench README push best-effort ([#262](https://github.com/marianogappa/screpdb/issues/262)) ([7e96740](https://github.com/marianogappa/screpdb/commit/7e967402b4104b4a559e9f119d9a607ccc21f134))
+
 ## [1.18.0](https://github.com/marianogappa/screpdb/compare/v1.17.1...v1.18.0) (2026-07-02)
 
 
