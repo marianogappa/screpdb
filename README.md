@@ -5,7 +5,6 @@ screpdb is an advanced Starcraft replay reporting tool.
 [![Release](https://img.shields.io/github/v/release/marianogappa/screpdb)](https://github.com/marianogappa/screpdb/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/marianogappa/screpdb)](go.mod)
-[![Go Report Card](https://goreportcard.com/badge/github.com/marianogappa/screpdb)](https://goreportcard.com/report/github.com/marianogappa/screpdb)
 [![Ingestion throughput](https://img.shields.io/badge/ingestion-4.7%20replays%2Fsec-brightgreen)](.github/workflows/bench-ingest.yml)
 
 <!-- ingest-bench-start -->
@@ -266,6 +265,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
+2026-07-03  OK. Removed the Go Report Card README badge (goreportcard.com no longer rendering it). Docs-only: no code, os/net calls, or facade allowlist change.
 2026-07-03  OK. Fixed the player-outliers endpoint returning 500 (not 404) for an unknown player: GetOutlierPlayerSummary now COALESCEs the NULL-name aggregate to '' (sqlc query + regenerated sqlcgen). Query/codegen only, still through the dashboard store; no os/net calls, no facade allowlist change.
 2026-07-03  OK. scmapanalyzer bumped to v0.0.0-20260702193642 (upstream copyright-only change) + Wraith Cloak timing now reports Cloaking Field completion (start+63s, drops if the game ends first), AlgorithmVersion 58. Dependency/detection only: map analysis still runs through the iofacade allowlist, no os/net calls added, no allowlist widening, no TestNoDirectIOOutsideFacades change; 193 no-cache tests across the scmapanalyzer-dependent packages pass.
 2026-07-03  OK. Speedlot-timing now reports Leg Enhancement research completion (and drops when the game ends first) + "9 Pool 9 Hatch" relabel; AlgorithmVersion 57, goldens + SPECIFICATION.md regenerated. Pure detection/pattern logic: no os/net calls, no iofacade/netfacade allowlist change, no TestNoDirectIOOutsideFacades change.
