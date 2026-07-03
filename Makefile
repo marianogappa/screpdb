@@ -1,4 +1,4 @@
-.PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso bench-ingest
+.PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso bench-ingest coverage
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
@@ -47,6 +47,11 @@ ui-test:
 BENCH_COUNT ?= 3
 bench-ingest:
 	./scripts/bench-ingest.sh $(BENCH_COUNT)
+
+# Test coverage over hand-written code only (generated code, scripts/, and
+# **/tools/ are excluded from the denominator). Pass --html for a report.
+coverage:
+	./scripts/coverage.sh
 
 build: ui-build
 	go build -ldflags "$(REL_LDFLAGS)" -o screpdb .
