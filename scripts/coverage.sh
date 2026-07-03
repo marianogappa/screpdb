@@ -7,9 +7,10 @@
 #   - scripts/ : one-off throwaway analysis `package main` programs.
 #   - **/tools/ : code-generation tooling, not shipped logic.
 #
-# Usage: scripts/coverage.sh [--html]
-#   (no args)  print the excluded-generated total + per-package breakdown
+# Usage: scripts/coverage.sh [--html|--percent]
+#   (no args)  print the excluded-generated total line
 #   --html     also open an HTML report of the filtered profile
+#   --percent  print only the bare percentage number (e.g. 81.0) to stdout
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -37,8 +38,15 @@ awk -v gen="$GEN_RE" '
   }
 ' "$RAW" > "$FILTERED"
 
+total_line="$(go tool cover -func="$FILTERED" | tail -1)"
+
+if [[ "${1:-}" == "--percent" ]]; then
+  echo "$total_line" | grep -oE '[0-9]+\.[0-9]+%' | tr -d '%'
+  exit 0
+fi
+
 echo
-go tool cover -func="$FILTERED" | tail -1
+echo "$total_line"
 echo
 echo "(generated code, scripts/, and **/tools/ excluded from the denominator)"
 
