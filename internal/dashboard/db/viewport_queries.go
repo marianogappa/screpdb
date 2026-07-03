@@ -7,9 +7,9 @@ import (
 )
 
 type ViewportAggregateRow struct {
-	PlayerKey string
+	PlayerKey  string
 	PlayerName string
-	RawValue string
+	RawValue   string
 }
 
 func (s *Store) ListViewportAggregateRows(ctx context.Context, patternName string) ([]ViewportAggregateRow, error) {

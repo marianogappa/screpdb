@@ -159,6 +159,12 @@ type ListGameUnitProductionAndCastsRow struct {
 // second roundtrip. Right-clicks/hotkeys etc. live in commands_low_value
 // and are intentionally excluded -- per the project memory rule the
 // dashboard never queries that table.
+//
+// Casts/abilities are all 'Targeted Order' commands (Cast*, FireYamatoGun,
+// PlaceMine, ...). We pull the whole action type rather than matching
+// order_name prefixes here so the Go-side compositionSpells map is the
+// single source of truth for which orders surface -- adding a spell never
+// needs an SQL change. Unmapped Targeted Orders are dropped in Go.
 func (q *Queries) ListGameUnitProductionAndCasts(ctx context.Context, replayID int64) ([]ListGameUnitProductionAndCastsRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListGameUnitProductionAndCasts, replayID)
 	if err != nil {

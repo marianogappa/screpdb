@@ -8,9 +8,9 @@ import (
 )
 
 type Store struct {
-	defaultDB     *sql.DB
-	replayScoped  func() *sql.DB
-	withFiltered  func(*string, func(*sql.DB) error) error
+	defaultDB    *sql.DB
+	replayScoped func() *sql.DB
+	withFiltered func(*string, func(*sql.DB) error) error
 }
 
 func NewStore(defaultDB *sql.DB, replayScoped func() *sql.DB, withFiltered func(*string, func(*sql.DB) error) error) *Store {

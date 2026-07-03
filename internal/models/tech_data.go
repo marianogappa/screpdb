@@ -16,9 +16,9 @@ package models
 
 // TechMeta is the static cost/timing footprint of a Tech research.
 type TechMeta struct {
-	Race            string  // RaceTerran / RaceZerg / RaceProtoss
-	BuildingSubject string  // GeneralUnit* constant naming the building that researches it
-	Hotkey          string  // single-letter; "" when unknown / not yet populated
+	Race            string // RaceTerran / RaceZerg / RaceProtoss
+	BuildingSubject string // GeneralUnit* constant naming the building that researches it
+	Hotkey          string // single-letter; "" when unknown / not yet populated
 	Minerals        int
 	Gas             int
 	DurationS       float64 // research time in seconds at Fastest game speed

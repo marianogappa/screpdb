@@ -953,8 +953,8 @@ func allMarkers() []Marker {
 					Tolerance:    Sym(3),
 				},
 			},
-			SummaryPlayer: &Pill{Label: "9 Pool → Hatch", IconKey: "hatchery"},
-			GamesList:     &Pill{Label: "9 Pool → Hatch", IconKey: "hatchery"},
+			SummaryPlayer: &Pill{Label: "9 Pool 9 Hatch", IconKey: "hatchery"},
+			GamesList:     &Pill{Label: "9 Pool 9 Hatch", IconKey: "hatchery"},
 		},
 		// 4–8 Hatch: the fast hatch-first ladder below 9 Hatch. A Hatchery
 		// costs 300 minerals, so a player placing one at supply 4–8 genuinely
@@ -1619,39 +1619,45 @@ func allMarkers() []Marker {
 			EventsList:    &Pill{Label: "trains first Corsair", IconKey: "corsair"},
 		},
 		{
-			// Wraith Cloak timing (TvZ/TvT): the second the player starts Cloaking
-			// Field research at the Control Tower — the key timing of the 2 Port
-			// Wraith opener (cloaked-wraith harass). Surfaced as a per-player
-			// timing pill, like Speedlot timing; not gated to the opener match
-			// (Cloaking Field in TvZ/TvT is effectively a wraith build's tell).
+			// Wraith Cloak timing (TvZ/TvT): the second Cloaking Field research
+			// FINISHES at the Control Tower — when cloaked Wraiths become possible —
+			// the key timing of the 2 Port Wraith opener (cloaked-wraith harass).
+			// Reports completion (start + 63s), not the start, and only when it
+			// finishes within the replay: a research the game ends before completing
+			// yields no cloak. Surfaced as a per-player timing pill, like Speedlot
+			// timing; not gated to the opener match (Cloaking Field in TvZ/TvT is
+			// effectively a wraith build's tell).
 			Name:          "Wraith Cloak timing",
 			PatternName:   "Wraith Cloak timing",
 			FeatureKey:    "wraith_cloak_timing",
 			Kind:          KindMarker,
 			Race:          RaceTerran,
 			Matchup:       []string{"TvZ", "TvT"},
-			Custom:        firstTechTiming(subjCloakingField, 0),
+			Custom:        firstTechCompletionTiming(subjCloakingField, 0),
 			RuleDeadline:  endOfReplaySentinel,
 			SummaryPlayer: &Pill{Label: "Wraith Cloak {timestamp}", IconKey: "wraith"},
 			SummaryReplay: &Pill{Label: "Wraith Cloak {timestamp}", IconKey: "wraith"},
 			GamesList:     &Pill{Label: "Wraith Cloak {timestamp}", IconKey: "wraith"},
-			EventsList:    &Pill{Label: "starts Wraith Cloak research", IconKey: "wraith"},
+			EventsList:    &Pill{Label: "finishes Wraith Cloak research", IconKey: "wraith"},
 		},
 		{
-			// Speedlot timing (PvZ): the second the player starts Zealot leg-speed
-			// (Leg Enhancement) research, only when before 10:00.
+			// Speedlot timing (PvZ): the second Zealot leg-speed (Leg Enhancement)
+			// research FINISHES — i.e. when faster Zealots first exist — provided
+			// the research started before 10:00 and completes within the replay.
+			// Reporting the finish (not the start) means a research the game ends
+			// before completing produces no marker: no Speedlots were ever made.
 			Name:          "Speedlot timing",
 			PatternName:   "Speedlot timing",
 			FeatureKey:    "speedlot_timing",
 			Kind:          KindMarker,
 			Race:          RaceProtoss,
 			Matchup:       []string{"PvZ"},
-			Custom:        firstUpgradeTiming(subjLegEnhancement, 600),
+			Custom:        firstUpgradeCompletionTiming(subjLegEnhancement, 600),
 			RuleDeadline:  endOfReplaySentinel,
 			SummaryPlayer: &Pill{Label: "Zealot Speed {timestamp}", IconKey: "zealot"},
 			SummaryReplay: &Pill{Label: "Zealot Speed {timestamp}", IconKey: "zealot"},
 			GamesList:     &Pill{Label: "Zealot Speed {timestamp}", IconKey: "zealot"},
-			EventsList:    &Pill{Label: "starts Zealot Speed research", IconKey: "zealot"},
+			EventsList:    &Pill{Label: "finishes Zealot Speed research", IconKey: "zealot"},
 		},
 		{
 			// First Observer timing (PvP/PvT): the second the player's first

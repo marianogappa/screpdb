@@ -184,4 +184,3 @@ func nullableStringValue(value *string) string {
 	}
 	return *value
 }
-

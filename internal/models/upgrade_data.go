@@ -26,10 +26,10 @@ type UpgradeLevelMeta struct {
 // one-shot upgrades and 3 for tiered weapons/armor. Levels indexes >= MaxLevel
 // are zero-valued and should not be read.
 type UpgradeMeta struct {
-	Race            string  // RaceTerran / RaceZerg / RaceProtoss
-	BuildingSubject string  // GeneralUnit* constant naming the researching building
-	Hotkey          string  // single-letter; "" when unknown / not yet populated
-	MaxLevel        int     // 1 for one-shot upgrades, 3 for tiered
+	Race            string // RaceTerran / RaceZerg / RaceProtoss
+	BuildingSubject string // GeneralUnit* constant naming the researching building
+	Hotkey          string // single-letter; "" when unknown / not yet populated
+	MaxLevel        int    // 1 for one-shot upgrades, 3 for tiered
 	Levels          [3]UpgradeLevelMeta
 }
 

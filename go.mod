@@ -1,6 +1,6 @@
 module github.com/marianogappa/screpdb
 
-go 1.25.2
+go 1.26.4
 
 require (
 	aead.dev/minisign v0.2.0
@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/icza/screp v1.12.17
-	github.com/marianogappa/scmapanalyzer v0.0.0-20260610174907-72370c81026c
+	github.com/marianogappa/scmapanalyzer v0.0.0-20260702193642-599fd1bc7363
 	github.com/mark3labs/mcp-go v0.41.1
 	github.com/minio/selfupdate v0.6.0
 	github.com/oapi-codegen/runtime v1.4.0

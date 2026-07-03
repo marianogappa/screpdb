@@ -10,7 +10,7 @@ import (
 )
 
 const GetOutlierPlayerSummary = `-- name: GetOutlierPlayerSummary :one
-SELECT CAST(MIN(p.name) AS TEXT) AS name, COUNT(*) AS count
+SELECT CAST(COALESCE(MIN(p.name), '') AS TEXT) AS name, COUNT(*) AS count
 FROM players p
 WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
 `

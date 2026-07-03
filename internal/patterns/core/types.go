@@ -242,7 +242,16 @@ import (
 // worker one-at-a-time redirect must not remove it (issue #244). Fixes the
 // "N Fact Expa Mech" over-count that counted Factories against a later CC when
 // the real expansion CC was dropped. Re-ingest so Terran mech builds re-count.
-const AlgorithmVersion = 56
+// 57: Speedlot timing reports Leg Enhancement research COMPLETION (start +
+// duration) and only fires if it completes within the replay — a research the
+// game ends before finishing produced no faster Zealots. "9 Pool into Hatchery"
+// pill relabeled "9 Pool 9 Hatch" (the expansion lands back at supply 9, not
+// immediately after the Pool). Re-ingest so PvZ speedlot pills re-evaluate.
+// 58: Wraith Cloak timing reports Cloaking Field research COMPLETION (start +
+// 63s) and only fires if it completes within the replay — same semantics as the
+// v57 Speedlot change, generalized to techs. Re-ingest so TvZ/TvT wraith-cloak
+// pills re-evaluate.
+const AlgorithmVersion = 58
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

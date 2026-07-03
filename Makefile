@@ -1,4 +1,4 @@
-.PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso bench-ingest
+.PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso bench-ingest coverage
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
@@ -18,7 +18,11 @@ VER_PATCH := $(shell echo "$(NUMVER)" | awk -F. '{print int($$3)+0}')
 GOVERSIONINFO := go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.5.0
 VERSIONINFO_JSON := build/windows/versioninfo.json
 WINDOWS_ICON := build/windows/icon.ico
+# -64 makes goversioninfo emit an amd64 resource (IMAGE_REL_AMD64_ADDR32NB);
+# without it the default is a 386 resource whose type-7 relocation the Go 1.26+
+# linker rejects on windows/amd64 (golang/go#77783).
 SYSO_VER_FLAGS := \
+	-64 \
 	-icon $(WINDOWS_ICON) \
 	-file-version "$(VERSION)" \
 	-product-version "$(VERSION)" \
@@ -47,6 +51,11 @@ ui-test:
 BENCH_COUNT ?= 3
 bench-ingest:
 	./scripts/bench-ingest.sh $(BENCH_COUNT)
+
+# Test coverage over hand-written code only (generated code, scripts/, and
+# **/tools/ are excluded from the denominator). Pass --html for a report.
+coverage:
+	./scripts/coverage.sh
 
 build: ui-build
 	go build -ldflags "$(REL_LDFLAGS)" -o screpdb .

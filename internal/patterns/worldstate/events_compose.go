@@ -983,4 +983,3 @@ func buildSpellHistoryByAttacker(stream []cmdenrich.EnrichedCommand) map[byte][]
 	}
 	return out
 }
-

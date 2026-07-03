@@ -56,20 +56,20 @@ type unloadRecord struct {
 // is the base polygon that centroid falls in (or -1 when outside any base —
 // rare, e.g. mid-map staging). DstX / DstY are the centroid of unload coords.
 type DropCluster struct {
-	PID            byte
-	Defender       byte
-	FirstSec       int
-	LastSec        int
-	Frame          int32
-	Count          int
-	SourceX        int
-	SourceY        int
-	SourceBaseIdx  int
-	DstX           int
-	DstY           int
-	DstPolyID      int
-	HasSource      bool
-	PairedLoads    []loadRecord
+	PID           byte
+	Defender      byte
+	FirstSec      int
+	LastSec       int
+	Frame         int32
+	Count         int
+	SourceX       int
+	SourceY       int
+	SourceBaseIdx int
+	DstX          int
+	DstY          int
+	DstPolyID     int
+	HasSource     bool
+	PairedLoads   []loadRecord
 	// Unloads holds every individual unload point [x,y] in the cluster (pixel
 	// space). Cliff-drop classification tests these points, not the centroid:
 	// a cluster can merge a corner cliff drop with a nearby edge unload, which

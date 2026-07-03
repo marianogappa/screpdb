@@ -14,8 +14,8 @@ package markers
 var curatedFeatureKeys = map[string]bool{
 	// Build-order openers — GOLDEN_TIERS.md "Build-order classification".
 	// Zerg batch.
-	"bo_11_hatch":        true,
-	"bo_12_hatch":        true,
+	"bo_11_hatch": true,
+	"bo_12_hatch": true,
 	// N Hatch <tech> composition markers (issue #245) — dynamic base count at the
 	// economy→army transition, layered on top of the supply opener. Fixtures:
 	// nhatch_hydra = bo_3hatch_hydra_pvz_pingcojerry(3) / _2jd(3) / bo_4hatch_hydra_pvz_syc(4);
@@ -98,6 +98,22 @@ var curatedFeatureKeys = map[string]bool{
 	// Round 10 batch 4 — composition/behavior markers watched & confirmed.
 	"wraiths":      true, // bo_wraiths_tvz_1235sdfdfhg / _iilliii
 	"muta_hitnrun": true, // bo_mutaharass_zvt_iliil (+ the F26080FE wraiths game)
+
+	// Round 11 (remove remaining betas) — watched & confirmed by the user.
+	// Fixtures: pvz_dblstargate_corsair_speedlot (P1 = Double Stargate + First
+	// Corsair 6:21 + Speedlot completes 8:24), pvz_corsair_no_speedlot_gameend
+	// (P1 = First Corsair 5:14, Speedlot must NOT fire — research unfinished at
+	// game end), tvz_muta_turret_timing (Muta/Turret), bo_10hatch_money_dmarov
+	// (P5 = 10 Hatch), bo_9pool9hatch_money_vortex (P4 = 9 Pool 9 Hatch),
+	// money_ten_plus_scouts_denver94 (P1 = 10+ Scouts).
+	"bo_10_hatch":     true,
+	"bo_9_pool_hatch": true,
+	"double_stargate": true,
+	"first_corsair":   true,
+	"speedlot_timing": true,
+	"mutalisk_timing": true,
+	"turret_timing":   true,
+	"ten_plus_scouts": true,
 
 	// Round 7 — fixtures crazy_zerg_guardians_tvz_lyx2008, maelstrom_pvz_bysnow,
 	// first_observer_pvt_0sawon, first_mine_pvt_f1ssasad.

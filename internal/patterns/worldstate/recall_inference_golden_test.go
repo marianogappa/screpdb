@@ -39,10 +39,10 @@ import (
 // The label format mirrors the user's annotation style ("9", "9's natural",
 // "expansion at 5", "center base") — see formatRecallBaseLabel below.
 const (
-	recallsGoldenPath  = "testdata/recalls_golden.json"
-	recallsReplaysDir  = "testdata/replays"
-	recallsFilePrefix  = "recalls_"
-	recallEventType    = "recall"
+	recallsGoldenPath = "testdata/recalls_golden.json"
+	recallsReplaysDir = "testdata/replays"
+	recallsFilePrefix = "recalls_"
+	recallEventType   = "recall"
 )
 
 type recallGoldenRecord struct {

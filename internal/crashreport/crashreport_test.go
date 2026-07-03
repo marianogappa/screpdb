@@ -124,10 +124,10 @@ func TestGuardNonFatalRecoversAndRunsCleanup(t *testing.T) {
 
 func TestFirstLine(t *testing.T) {
 	cases := map[string]string{
-		"":                     "unexpected panic",
-		"  ":                   "unexpected panic",
-		"single":               "single",
-		"first\nsecond":        "first",
+		"":                       "unexpected panic",
+		"  ":                     "unexpected panic",
+		"single":                 "single",
+		"first\nsecond":          "first",
 		strings.Repeat("x", 200): strings.Repeat("x", 120),
 	}
 	for in, want := range cases {

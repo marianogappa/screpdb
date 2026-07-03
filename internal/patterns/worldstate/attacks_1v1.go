@@ -15,11 +15,11 @@ import (
 // positives. Multiplayer keeps the pressure-tracker path (BuildAttacks /
 // emitAttackIfImportant) where this relational geography doesn't generalise.
 const (
-	fightRadiusPx      = 420 // commands within this of a live fight join it
-	fightGapSec        = 16  // a fight stays live this long after its last cmd
-	fightMinCmdPerSide = 5   // each side needs >= this many cmds (FP-min)
-	fightMinDurSec     = 12  // a fight must last >= this to emit
-	fightAtBasePx      = 640 // centroid within this of a base => "at" that base
+	fightRadiusPx      = 420  // commands within this of a live fight join it
+	fightGapSec        = 16   // a fight stays live this long after its last cmd
+	fightMinCmdPerSide = 5    // each side needs >= this many cmds (FP-min)
+	fightMinDurSec     = 12   // a fight must last >= this to emit
+	fightAtBasePx      = 640  // centroid within this of a base => "at" that base
 	fightMiddleBand    = 0.15 // |t-0.5| under this => mutual / "the middle"
 )
 

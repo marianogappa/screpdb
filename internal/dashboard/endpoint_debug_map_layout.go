@@ -108,19 +108,19 @@ type debugMapLayoutResponse struct {
 }
 
 type debugRawLayout struct {
-	WidthTiles  int             `json:"width_tiles"`
-	HeightTiles int             `json:"height_tiles"`
-	Bases       []debugRawBase  `json:"bases"`
+	WidthTiles  int            `json:"width_tiles"`
+	HeightTiles int            `json:"height_tiles"`
+	Bases       []debugRawBase `json:"bases"`
 }
 
 type debugRawBase struct {
-	Name             string                 `json:"name"`
-	Kind             string                 `json:"kind"`
-	Clock            int                    `json:"clock"`
+	Name             string                     `json:"name"`
+	Kind             string                     `json:"kind"`
+	Clock            int                        `json:"clock"`
 	Center           models.MapResourcePosition `json:"center"`
 	Polygon          []models.MapPolygonPoint   `json:"polygon"`
-	MineralOnly      bool                   `json:"mineral_only"`
-	NaturalExpansion string                 `json:"natural_expansion,omitempty"`
+	MineralOnly      bool                       `json:"mineral_only"`
+	NaturalExpansion string                     `json:"natural_expansion,omitempty"`
 }
 
 type debugClockCollisionRow struct {
@@ -201,4 +201,3 @@ func stringifyIntKeysByte(in map[int]byte) map[string]int {
 	}
 	return out
 }
-

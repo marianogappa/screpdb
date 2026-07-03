@@ -17,13 +17,13 @@ type Replay struct {
 	Title           string    `json:"title"`
 	Host            string    `json:"host"`
 	MapName         string    `json:"map_name"`
-	MapWidth        uint16    `json:"map_width"`  // in TILES (×32 for pixels)
-	MapHeight       uint16    `json:"map_height"` // in TILES (×32 for pixels)
+	MapWidth        uint16    `json:"map_width"`        // in TILES (×32 for pixels)
+	MapHeight       uint16    `json:"map_height"`       // in TILES (×32 for pixels)
 	DurationSeconds int       `json:"duration_seconds"` // in seconds
 	FrameCount      int32     `json:"frame_count"`
 	EngineVersion   string    `json:"engine_version"`
-	Engine          string    `json:"engine"`     // StarCraft or Brood War
-	GameSpeed       string    `json:"game_speed"` // Slowest, Slower, Slow, Normal, Fast, Faster, Fastest
+	Engine          string    `json:"engine"`      // StarCraft or Brood War
+	GameSpeed       string    `json:"game_speed"`  // Slowest, Slower, Slow, Normal, Fast, Faster, Fastest
 	GameType        string    `json:"game_type"`   // Melee, FFA, 1on1, CTF, etc.
 	MapKind         string    `json:"map_kind"`    // Regular, Money, UseMapSettings
 	TeamFormat      string    `json:"team_format"` // 1v1, 2v2, 3v3, 2v2v2, 2v2v2v2, etc.

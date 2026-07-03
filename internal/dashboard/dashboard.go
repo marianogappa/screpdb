@@ -33,21 +33,21 @@ import (
 var embeddedFrontendBuild embed.FS
 
 type Dashboard struct {
-	ctx                context.Context
-	db                 *sql.DB
-	dbStore            *dashboarddb.Store
-	replayScopedMu     sync.RWMutex
-	replayScopedDB     *sql.DB
-	globalReplayFilter globalReplayFilterConfig
-	sqlitePath         string
-	ingestMu           sync.Mutex
-	ingestRunning      bool
-	ingestStatus       string
-	ingestError        string
-	ingestInputDir     string
-	ingestSessionID    int64
-	ingestEvents       []ingest.LogEvent
-	ingestSubscribers  map[chan ingestStreamMessage]struct{}
+	ctx                 context.Context
+	db                  *sql.DB
+	dbStore             *dashboarddb.Store
+	replayScopedMu      sync.RWMutex
+	replayScopedDB      *sql.DB
+	globalReplayFilter  globalReplayFilterConfig
+	sqlitePath          string
+	ingestMu            sync.Mutex
+	ingestRunning       bool
+	ingestStatus        string
+	ingestError         string
+	ingestInputDir      string
+	ingestSessionID     int64
+	ingestEvents        []ingest.LogEvent
+	ingestSubscribers   map[chan ingestStreamMessage]struct{}
 	sampleSetAutoLoaded bool
 	pendingSampleIngest bool
 }

@@ -69,9 +69,9 @@ func TestCompute_DragoonNeedsRangeToCount(t *testing.T) {
 
 func TestCompute_MidPickEarliestDefiler(t *testing.T) {
 	stream := []cmdenrich.EnrichedCommand{
-		unit("Mutalisk", 360, 1),     // early end
-		unit("Defiler", 720, 1),       // mid candidate
-		unit("Ultralisk", 900, 1),     // mid candidate (later)
+		unit("Mutalisk", 360, 1),  // early end
+		unit("Defiler", 720, 1),   // mid candidate
+		unit("Ultralisk", 900, 1), // mid candidate (later)
 	}
 	earlyEnd, midEnd := Compute(stream)
 	if earlyEnd != 360 {
