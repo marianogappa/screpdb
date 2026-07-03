@@ -406,6 +406,25 @@ base).
 | `nuke_tvz_attitude.rep` (`30-MORE-BBBuuuUU[kS]/MM-87075E8E-3C91-11F1`) | ZvT on Attitude — Terran (P1) nukes the Zerg's 12 o'clock expansion @20:14 and @21:33 | awaiting review |
 | `nuke_tvp_polestar.rep` (`30-NEW-Horang2[._.]/MM-F96E7920-1E3D-11F1`) | TvP on Pole Star — Terran (P0) nukes the Protoss 7 o'clock expansion @11:51 and 6 o'clock natural @15:19 | awaiting review |
 
+### Round 11 premises — remaining beta clearout (`markers_golden.json`)
+
+User watched each replay and confirmed the detection. Promoted to tier-1
+(`curatedFeatureKeys`); a change that breaks one of these is a regression.
+
+| Fixture | Player (idx) | Verified premise |
+| --- | --- | --- |
+| `pvz_dblstargate_corsair_speedlot.rep` | P1 | `Double Stargate` (2 Stargates + 6 Corsairs by 7:30); `First Corsair` @6:21; `Speedlot timing` @8:24 (Leg Enhancement *completes*, game runs to 8:44) |
+| `pvz_corsair_no_speedlot_gameend.rep` | P1 | `First Corsair` @5:14; `Speedlot timing` must **NOT** fire — research starts 6:15 but the game ends at 6:22, so speed never completes and no faster Zealots exist |
+| `tvz_muta_turret_timing.rep` | P0 / P1 | `Mutalisk timing` (Zerg, first Muta burst); `Turret timing` (Terran anti-Muta missile turrets) |
+| `bo_10hatch_money_dmarov.rep` | P5 (Dmarov) | `Build Order: 10 Hatch` |
+| `bo_9pool9hatch_money_vortex.rep` | P4 (_The_Vortex) | `Build Order: 9 Pool into Hatchery` — displayed **"9 Pool 9 Hatch"** (a Drone after the Pool takes supply back to 9 before the expansion Hatchery) |
+| `money_ten_plus_scouts_denver94.rep` | P1 (Denver94) | `10+ Scouts` (Money-map signature) |
+
+The `Speedlot timing` pair encodes the round-11 semantics change: the marker
+reports research **completion** (start + 84s), not start, and only when it
+finishes within the replay. The `pvz_corsair_no_speedlot_gameend` negative is
+the regression guard for it.
+
 ## Additional human-verified ground truth (not yet fixtured)
 
 From the same review, verified but not (yet) encoded as fixtures — candidates if
