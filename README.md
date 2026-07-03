@@ -265,6 +265,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
+2026-07-03  OK. Toolchain bump to Go 1.26.4 (go.mod go directive) plus a repo-wide gofmt pass. Tooling/formatting only: no os/net calls added, no iofacade/netfacade allowlist widening, no change to the TestNoDirectIOOutsideFacades enforcement.
 2026-07-02  OK. README presentation pass, no behaviour change: collapsed the per-OS install sections, baked the measured ingestion-throughput figure into the badge, trimmed the Security/I/O-model prose, and reformatted this audit log into a code block. The TestIOSafetyAuditPresent regex was loosened to also match the new plain-date log line. Docs/test-format only: no os/net calls, no iofacade/netfacade allowlist widening, no change to the TestNoDirectIOOutsideFacades enforcement test.
 ```
 

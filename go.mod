@@ -1,6 +1,6 @@
 module github.com/marianogappa/screpdb
 
-go 1.25.2
+go 1.26.4
 
 require (
 	aead.dev/minisign v0.2.0
