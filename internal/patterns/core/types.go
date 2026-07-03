@@ -247,7 +247,11 @@ import (
 // game ends before finishing produced no faster Zealots. "9 Pool into Hatchery"
 // pill relabeled "9 Pool 9 Hatch" (the expansion lands back at supply 9, not
 // immediately after the Pool). Re-ingest so PvZ speedlot pills re-evaluate.
-const AlgorithmVersion = 57
+// 58: Wraith Cloak timing reports Cloaking Field research COMPLETION (start +
+// 63s) and only fires if it completes within the replay — same semantics as the
+// v57 Speedlot change, generalized to techs. Re-ingest so TvZ/TvT wraith-cloak
+// pills re-evaluate.
+const AlgorithmVersion = 58
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

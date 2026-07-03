@@ -272,11 +272,6 @@
         "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2,4,5]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Wraith Cloak timing",
-        "value": "348"
       }
     ]
   },
@@ -1384,7 +1379,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Wraith Cloak timing",
-        "value": "311"
+        "value": "374"
       },
       {
         "replay_player_id": 1,
@@ -1418,7 +1413,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Wraith Cloak timing",
-        "value": "698"
+        "value": "761"
       },
       {
         "replay_player_id": 0,
@@ -1467,7 +1462,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Wraith Cloak timing",
-        "value": "590"
+        "value": "653"
       },
       {
         "replay_player_id": 0,
@@ -1497,7 +1492,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Wraith Cloak timing",
-        "value": "639"
+        "value": "702"
       },
       {
         "replay_player_id": 1,
@@ -1898,7 +1893,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Wraith Cloak timing",
-        "value": "328"
+        "value": "391"
       },
       {
         "replay_player_id": 0,
@@ -1923,7 +1918,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Wraith Cloak timing",
-        "value": "280"
+        "value": "343"
       },
       {
         "replay_player_id": 1,
@@ -1952,7 +1947,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Wraith Cloak timing",
-        "value": "361"
+        "value": "424"
       },
       {
         "replay_player_id": 0,
@@ -2016,7 +2011,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Wraith Cloak timing",
-        "value": "510"
+        "value": "573"
       },
       {
         "replay_player_id": 1,
@@ -2080,7 +2075,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Wraith Cloak timing",
-        "value": "281"
+        "value": "344"
       },
       {
         "replay_player_id": 1,
@@ -2114,7 +2109,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Wraith Cloak timing",
-        "value": "345"
+        "value": "408"
       },
       {
         "replay_player_id": 0,
@@ -2481,7 +2476,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Wraith Cloak timing",
-        "value": "529"
+        "value": "592"
       },
       {
         "replay_player_id": 0,
@@ -2838,7 +2833,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Wraith Cloak timing",
-        "value": "2196"
+        "value": "2259"
       },
       {
         "replay_player_id": 1,
@@ -6274,7 +6269,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Wraith Cloak timing",
-        "value": "592"
+        "value": "655"
       },
       {
         "replay_player_id": 0,
@@ -6378,7 +6373,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Wraith Cloak timing",
-        "value": "632"
+        "value": "695"
       },
       {
         "replay_player_id": 1,
@@ -6412,7 +6407,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Wraith Cloak timing",
-        "value": "592"
+        "value": "655"
       },
       {
         "replay_player_id": 0,
@@ -7183,7 +7178,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Wraith Cloak timing",
-        "value": "372"
+        "value": "435"
       },
       {
         "replay_player_id": 0,
