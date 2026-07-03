@@ -264,3 +264,257 @@ func TestCleanAndRunMigrations_PreservesSettingsData(t *testing.T) {
 		t.Error("replays table should be dropped by DropMigrationSet(replay)")
 	}
 }
+
+// replayDataTables are the tables owned by the replay migration set that a
+// --clean wipe must drop (player_aliases is preserved and tested separately).
+var replayDataTables = []string{"replays", "players", "commands", "commands_low_value", "replay_events"}
+
+func TestDropAllMigrations_DropsEveryTableIncludingSettings(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "x.db")
+	if err := RunMigrations(path); err != nil {
+		t.Fatalf("RunMigrations: %v", err)
+	}
+	db := openDB(t, path)
+
+	for _, tbl := range append(append([]string{}, replayDataTables...), "player_aliases", "settings") {
+		if !tableExists(t, db, tbl) {
+			t.Fatalf("precondition: table %q must exist before DropAllMigrations", tbl)
+		}
+	}
+
+	if err := DropAllMigrations(path); err != nil {
+		t.Fatalf("DropAllMigrations: %v", err)
+	}
+
+	// Unlike --clean, DropAllMigrations wipes the settings set too, so
+	// player_aliases and settings must be gone along with the replay tables.
+	for _, tbl := range append(append([]string{}, replayDataTables...), "player_aliases", "settings") {
+		if tableExists(t, db, tbl) {
+			t.Errorf("table %q should be dropped by DropAllMigrations", tbl)
+		}
+	}
+	for _, set := range []MigrationSet{MigrationSetReplay, MigrationSetDashboard, MigrationSetSettings} {
+		if tableExists(t, db, migrationsTableName(set)) {
+			t.Errorf("ledger for set %q should be dropped by DropAllMigrations", set)
+		}
+	}
+}
+
+func TestDropAllMigrations_SafeOnFreshDB(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "x.db")
+	if err := DropAllMigrations(path); err != nil {
+		t.Fatalf("DropAllMigrations on fresh DB should be a no-op, got: %v", err)
+	}
+}
+
+func TestCleanAndRunMigrations_DropAndReapplyCycle(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "x.db")
+	if err := RunMigrations(path); err != nil {
+		t.Fatalf("initial RunMigrations: %v", err)
+	}
+
+	db := openDB(t, path)
+	// player_aliases survives --clean but NOT CleanAndRunMigrations, which
+	// drops the settings set too; seeding it proves the full wipe.
+	if _, err := db.Exec(
+		`INSERT INTO player_aliases (canonical_alias, battle_tag_normalized, battle_tag_raw, source) VALUES ('me','me','Me','you')`,
+	); err != nil {
+		t.Fatalf("seed alias row: %v", err)
+	}
+
+	if err := CleanAndRunMigrations(path); err != nil {
+		t.Fatalf("CleanAndRunMigrations: %v", err)
+	}
+
+	// Every table is recreated by the reapply.
+	for _, tbl := range append(append([]string{}, replayDataTables...), "player_aliases", "settings") {
+		if !tableExists(t, db, tbl) {
+			t.Errorf("table %q should be recreated after CleanAndRunMigrations", tbl)
+		}
+	}
+	for _, set := range []MigrationSet{MigrationSetReplay, MigrationSetDashboard, MigrationSetSettings} {
+		if !tableExists(t, db, migrationsTableName(set)) {
+			t.Errorf("ledger for set %q should be recreated after CleanAndRunMigrations", set)
+		}
+	}
+
+	// The seeded row must be gone: clean drops the table, reapply makes it empty.
+	var aliasCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM player_aliases`).Scan(&aliasCount); err != nil {
+		t.Fatalf("count aliases after clean+run: %v", err)
+	}
+	if aliasCount != 0 {
+		t.Errorf("player_aliases should be empty after clean+reapply, got %d rows", aliasCount)
+	}
+
+	// Ledgers are fully repopulated so subsequent RunMigrations no-ops.
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 2 {
+		t.Errorf("replay ledger should have 2 applied migrations after reapply, got %v", got)
+	}
+}
+
+func TestCleanAndRunMigrations_OnFreshDB(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "x.db")
+	if err := CleanAndRunMigrations(path); err != nil {
+		t.Fatalf("CleanAndRunMigrations on fresh DB: %v", err)
+	}
+	db := openDB(t, path)
+	for _, tbl := range append(append([]string{}, replayDataTables...), "player_aliases", "settings") {
+		if !tableExists(t, db, tbl) {
+			t.Errorf("table %q should exist after CleanAndRunMigrations on fresh DB", tbl)
+		}
+	}
+}
+
+func TestCleanAndRunMigrationSet_ReappliesSingleSet(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "x.db")
+	if err := RunMigrations(path); err != nil {
+		t.Fatalf("initial RunMigrations: %v", err)
+	}
+
+	db := openDB(t, path)
+	// Seed a preserved-set row to prove CleanAndRunMigrationSet(replay) leaves it intact.
+	if _, err := db.Exec(
+		`INSERT INTO player_aliases (canonical_alias, battle_tag_normalized, battle_tag_raw, source) VALUES ('a','a','A','you')`,
+	); err != nil {
+		t.Fatalf("seed alias: %v", err)
+	}
+
+	if err := CleanAndRunMigrationSet(path, MigrationSetReplay); err != nil {
+		t.Fatalf("CleanAndRunMigrationSet(replay): %v", err)
+	}
+
+	for _, tbl := range replayDataTables {
+		if !tableExists(t, db, tbl) {
+			t.Errorf("table %q should be recreated by CleanAndRunMigrationSet(replay)", tbl)
+		}
+	}
+
+	// Dropping+reapplying only the replay set must not disturb settings-owned data.
+	var aliasCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM player_aliases`).Scan(&aliasCount); err != nil {
+		t.Fatalf("count aliases: %v", err)
+	}
+	if aliasCount != 1 {
+		t.Errorf("player_aliases should survive CleanAndRunMigrationSet(replay), got %d rows", aliasCount)
+	}
+
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 2 {
+		t.Errorf("replay ledger should be repopulated, got %v", got)
+	}
+}
+
+func TestCleanAndRunMigrationSet_UnknownSet(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "x.db")
+	if err := CleanAndRunMigrationSet(path, MigrationSet("bogus")); err == nil {
+		t.Fatal("expected error for unknown migration set")
+	}
+}
+
+func TestDropMigrationSet_UnknownSet(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "x.db")
+	if err := DropMigrationSet(path, MigrationSet("bogus")); err == nil {
+		t.Fatal("expected error for unknown migration set")
+	}
+}
+
+func TestDropMigrationSet_ClearsLedgerAllowingReapply(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "x.db")
+	if err := RunMigrationSet(path, MigrationSetReplay); err != nil {
+		t.Fatalf("RunMigrationSet(replay): %v", err)
+	}
+	db := openDB(t, path)
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 2 {
+		t.Fatalf("precondition: replay ledger should have 2 entries, got %v", got)
+	}
+
+	if err := DropMigrationSet(path, MigrationSetReplay); err != nil {
+		t.Fatalf("DropMigrationSet(replay): %v", err)
+	}
+	if tableExists(t, db, migrationsTableName(MigrationSetReplay)) {
+		t.Error("replay ledger table should be dropped")
+	}
+
+	// Reapply must recreate the tables and repopulate the ledger from scratch.
+	if err := RunMigrationSet(path, MigrationSetReplay); err != nil {
+		t.Fatalf("reapply RunMigrationSet(replay): %v", err)
+	}
+	if !tableExists(t, db, "replays") {
+		t.Error("replays should exist after reapply")
+	}
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 2 {
+		t.Errorf("replay ledger should be repopulated on reapply, got %v", got)
+	}
+}
+
+// unwritableDBPath returns a path that sqlite cannot open as a database file:
+// the path itself is an existing directory, so the first Exec fails. Used to
+// exercise the error-return branches without touching production code.
+func unwritableDBPath(t *testing.T) string {
+	t.Helper()
+	return t.TempDir()
+}
+
+func TestRunMigrations_PropagatesReplaySetError(t *testing.T) {
+	if err := RunMigrations(unwritableDBPath(t)); err == nil {
+		t.Fatal("expected RunMigrations to fail when the DB path is a directory")
+	}
+}
+
+func TestRunMigrationSet_PropagatesExecError(t *testing.T) {
+	if err := RunMigrationSet(unwritableDBPath(t), MigrationSetReplay); err == nil {
+		t.Fatal("expected RunMigrationSet to fail when the DB path is a directory")
+	}
+}
+
+func TestDropMigrationSet_PropagatesExecError(t *testing.T) {
+	if err := DropMigrationSet(unwritableDBPath(t), MigrationSetReplay); err == nil {
+		t.Fatal("expected DropMigrationSet to fail when the DB path is a directory")
+	}
+}
+
+func TestDropAllMigrations_PropagatesExecError(t *testing.T) {
+	if err := DropAllMigrations(unwritableDBPath(t)); err == nil {
+		t.Fatal("expected DropAllMigrations to fail when the DB path is a directory")
+	}
+}
+
+func TestCleanAndRunMigrations_PropagatesDropError(t *testing.T) {
+	if err := CleanAndRunMigrations(unwritableDBPath(t)); err == nil {
+		t.Fatal("expected CleanAndRunMigrations to fail when the DB path is a directory")
+	}
+}
+
+func TestCleanAndRunMigrationSet_PropagatesDropError(t *testing.T) {
+	if err := CleanAndRunMigrationSet(unwritableDBPath(t), MigrationSetReplay); err == nil {
+		t.Fatal("expected CleanAndRunMigrationSet to fail when the DB path is a directory")
+	}
+}
+
+func TestSqliteDSN(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"empty", "", "file:screp.db?_pragma=foreign_keys(1)"},
+		{"whitespace trimmed to empty", "   ", "file:screp.db?_pragma=foreign_keys(1)"},
+		{"plain path", "/tmp/x.db", "file:/tmp/x.db?_pragma=foreign_keys(1)"},
+		{"plain path trimmed", "  /tmp/x.db  ", "file:/tmp/x.db?_pragma=foreign_keys(1)"},
+		{"memory", ":memory:", ":memory:?_pragma=foreign_keys(1)"},
+		{"file scheme no pragma", "file:/tmp/x.db", "file:/tmp/x.db?_pragma=foreign_keys(1)"},
+		{"file scheme with existing query", "file:/tmp/x.db?cache=shared", "file:/tmp/x.db?cache=shared&_pragma=foreign_keys(1)"},
+		{"file scheme already has pragma", "file:/tmp/x.db?_pragma=foreign_keys(1)", "file:/tmp/x.db?_pragma=foreign_keys(1)"},
+		// ":memory:" only matches when it is the exact string; with a query
+		// suffix it is neither ":memory:" nor a "file:" URI, so it falls through
+		// to the plain-path branch and gets wrapped as a file: path.
+		{"memory with query falls through to plain path", ":memory:?_pragma=foreign_keys(1)", "file::memory:?_pragma=foreign_keys(1)?_pragma=foreign_keys(1)"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := sqliteDSN(tc.in); got != tc.want {
+				t.Errorf("sqliteDSN(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
