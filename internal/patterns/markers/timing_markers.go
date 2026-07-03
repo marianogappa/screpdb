@@ -1,6 +1,11 @@
 package markers
 
-import "github.com/marianogappa/screpdb/internal/cmdenrich"
+import (
+	"math"
+
+	"github.com/marianogappa/screpdb/internal/cmdenrich"
+	"github.com/marianogappa/screpdb/internal/models"
+)
 
 // firstUnitTiming / firstUpgradeTiming build the Custom factory for a timing
 // marker that fires at the first Train/Morph (resp. Upgrade) of subject, gated
@@ -20,6 +25,17 @@ func firstUpgradeTiming(subject string, maxSecond int) func() CustomEvaluator {
 func firstTechTiming(subject string, maxSecond int) func() CustomEvaluator {
 	return func() CustomEvaluator {
 		return &firstFactTimingEvaluator{kind: cmdenrich.KindTech, subject: subject, maxSecond: maxSecond}
+	}
+}
+
+// firstUpgradeCompletionTiming fires at the second an upgrade research FINISHES
+// (start + research duration), not when it starts, and only if that completion
+// falls within the replay. The research must also have STARTED before maxSecond
+// (0 = no deadline). Used by Speedlot timing: a research that the game ends
+// before completing produced no faster Zealots, so it must not count.
+func firstUpgradeCompletionTiming(subject string, maxSecond int) func() CustomEvaluator {
+	return func() CustomEvaluator {
+		return &firstUpgradeCompletionEvaluator{subject: subject, maxSecond: maxSecond}
 	}
 }
 
@@ -67,6 +83,44 @@ func (e *firstFactTimingEvaluator) Finalize(_ CustomEvalContext) CustomResult {
 		return CustomResult{}
 	}
 	return CustomResult{Matched: true, DetectedAtSecond: e.firstSec}
+}
+
+// firstUpgradeCompletionEvaluator commits at the second the first Upgrade of
+// subject COMPLETES (start second + the upgrade's research duration), provided
+// the research started before maxSecond and the completion lands within the
+// replay's duration. If the game ends before the research finishes, no upgraded
+// unit ever existed, so the marker does not fire.
+type firstUpgradeCompletionEvaluator struct {
+	subject   string
+	maxSecond int
+	startSec  int
+	matched   bool
+}
+
+func (e *firstUpgradeCompletionEvaluator) Observe(f cmdenrich.EnrichedCommand) {
+	if e.matched || f.Kind != cmdenrich.KindUpgrade || f.Subject != e.subject {
+		return
+	}
+	e.startSec = f.Second
+	e.matched = true
+}
+
+func (e *firstUpgradeCompletionEvaluator) Finalize(ctx CustomEvalContext) CustomResult {
+	if !e.matched {
+		return CustomResult{}
+	}
+	if e.maxSecond > 0 && e.startSec >= e.maxSecond {
+		return CustomResult{}
+	}
+	meta, ok := models.LookupUpgrade(e.subject)
+	if !ok {
+		return CustomResult{}
+	}
+	finishSec := e.startSec + int(math.Round(meta.Levels[0].DurationS))
+	if ctx.Replay != nil && finishSec > ctx.Replay.DurationSeconds {
+		return CustomResult{}
+	}
+	return CustomResult{Matched: true, DetectedAtSecond: finishSec}
 }
 
 // crazyZergEvaluator matches a TvZ Zerg that transitions Mutalisk -> Ultralisk

@@ -2088,7 +2088,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Speedlot timing",
-        "value": "598"
+        "value": "682"
       },
       {
         "replay_player_id": 1,
@@ -2112,7 +2112,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
-        "value": "317"
+        "value": "401"
       },
       {
         "replay_player_id": 0,
@@ -2489,7 +2489,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Speedlot timing",
-        "value": "337"
+        "value": "421"
       },
       {
         "replay_player_id": 1,
@@ -2523,7 +2523,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
-        "value": "405"
+        "value": "489"
       },
       {
         "replay_player_id": 0,
@@ -2577,7 +2577,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
-        "value": "456"
+        "value": "540"
       },
       {
         "replay_player_id": 0,
@@ -2742,7 +2742,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
-        "value": "381"
+        "value": "465"
       },
       {
         "replay_player_id": 0,
@@ -3545,7 +3545,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
-        "value": "449"
+        "value": "533"
       },
       {
         "replay_player_id": 0,
@@ -3716,7 +3716,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Speedlot timing",
-        "value": "335"
+        "value": "419"
       },
       {
         "replay_player_id": 1,
@@ -3770,7 +3770,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Speedlot timing",
-        "value": "331"
+        "value": "415"
       },
       {
         "replay_player_id": 1,
@@ -3804,7 +3804,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
-        "value": "543"
+        "value": "627"
       },
       {
         "replay_player_id": 0,
@@ -3941,11 +3941,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Speedlot timing",
-        "value": "575"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5]}"
       },
@@ -4064,7 +4059,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
-        "value": "410"
+        "value": "494"
       },
       {
         "replay_player_id": 0,
@@ -5736,7 +5731,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Speedlot timing",
-        "value": "372"
+        "value": "456"
       },
       {
         "replay_player_id": 1,
@@ -5800,7 +5795,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Speedlot timing",
-        "value": "453"
+        "value": "537"
       },
       {
         "replay_player_id": 1,
@@ -6332,7 +6327,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
-        "value": "533"
+        "value": "617"
       },
       {
         "replay_player_id": 0,
@@ -6396,7 +6391,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
-        "value": "536"
+        "value": "620"
       },
       {
         "replay_player_id": 0,
@@ -6455,7 +6450,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
-        "value": "397"
+        "value": "481"
       },
       {
         "replay_player_id": 0,
@@ -6666,7 +6661,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
-        "value": "544"
+        "value": "628"
       },
       {
         "replay_player_id": 0,
@@ -6715,7 +6710,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
-        "value": "365"
+        "value": "449"
       },
       {
         "replay_player_id": 0,
@@ -6901,7 +6896,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
-        "value": "355"
+        "value": "439"
       },
       {
         "replay_player_id": 0,
@@ -7014,7 +7009,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
-        "value": "442"
+        "value": "526"
       },
       {
         "replay_player_id": 0,
@@ -7288,7 +7283,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
-        "value": "369"
+        "value": "453"
       },
       {
         "replay_player_id": 0,
