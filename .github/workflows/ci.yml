@@ -38,6 +38,16 @@ jobs:
           name: cross-binaries
           path: dist/*
 
+      - name: Check gofmt and go vet
+        run: |
+          unformatted=$(gofmt -l $(git ls-files '*.go'))
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean; run gofmt -w:"
+            echo "$unformatted"
+            exit 1
+          fi
+          go vet ./...
+
       - name: Run tests
         run: go test ./...
 
