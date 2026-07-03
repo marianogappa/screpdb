@@ -17,7 +17,7 @@ func TestStoreQueriesPreferSQLCForStaticSQL(t *testing.T) {
 	rootDir := filepath.Dir(currentFile)
 
 	allowedManualQueryFiles := map[string]struct{}{
-		"store.go":                 {}, // query wrapper implementation
+		"store.go":                  {}, // query wrapper implementation
 		"player_insight_queries.go": {}, // dynamic outlier SQL composition
 		"unit_cadence_queries.go":   {}, // dynamic per-race/per-unit SQL composition
 		"workflow_games_queries.go": {}, // runtime-composed workflow filters/sorts

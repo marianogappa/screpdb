@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/marianogappa/screpdb/internal/patterns/markers"
 	"github.com/marianogappa/screpdb/internal/dashboard/db/sqlcgen"
+	"github.com/marianogappa/screpdb/internal/patterns/markers"
 )
 
 type WorkflowGameListRow struct {

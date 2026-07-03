@@ -124,4 +124,3 @@ func TestDashboardAPI_GlobalReplayFilterAffectsWorkflowGames(t *testing.T) {
 		t.Fatalf("expected total %d, got %d", expected, resp.Total)
 	}
 }
-

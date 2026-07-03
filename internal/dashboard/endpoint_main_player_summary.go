@@ -85,19 +85,19 @@ func outlierIconKey(category, name string) string {
 // with it. Used purely for icon attribution on the Summary pills row —
 // missing entries fall back to no-icon, never an error.
 var outlierTechMap = map[string]string{
-	"Stim Packs":       "Marine",
-	"Lockdown":         "Ghost",
-	"EMP Shockwave":    "Science Vessel",
-	"Spider Mines":     "Vulture",
-	"Tank Siege Mode":  "Siege Tank",
-	"Defensive Matrix": "Science Vessel",
-	"Irradiate":        "Science Vessel",
-	"Yamato Gun":       "Battlecruiser",
-	"Cloaking Field":   "Wraith",
+	"Stim Packs":         "Marine",
+	"Lockdown":           "Ghost",
+	"EMP Shockwave":      "Science Vessel",
+	"Spider Mines":       "Vulture",
+	"Tank Siege Mode":    "Siege Tank",
+	"Defensive Matrix":   "Science Vessel",
+	"Irradiate":          "Science Vessel",
+	"Yamato Gun":         "Battlecruiser",
+	"Cloaking Field":     "Wraith",
 	"Personnel Cloaking": "Ghost",
-	"Restoration":      "Medic",
-	"Optical Flare":    "Medic",
-	"Healing":          "Medic",
+	"Restoration":        "Medic",
+	"Optical Flare":      "Medic",
+	"Healing":            "Medic",
 
 	"Burrowing":        "Hydralisk",
 	"Infestation":      "Queen",
@@ -109,16 +109,16 @@ var outlierTechMap = map[string]string{
 	"Consume":          "Defiler",
 	"Lurker Aspect":    "Hydralisk",
 
-	"Psionic Storm":  "High Templar",
-	"Hallucination":  "High Templar",
-	"Recall":         "Arbiter",
-	"Stasis Field":   "Arbiter",
-	"Archon Warp":    "High Templar",
-	"Disruption Web": "Corsair",
-	"Mind Control":   "Dark Archon",
+	"Psionic Storm":    "High Templar",
+	"Hallucination":    "High Templar",
+	"Recall":           "Arbiter",
+	"Stasis Field":     "Arbiter",
+	"Archon Warp":      "High Templar",
+	"Disruption Web":   "Corsair",
+	"Mind Control":     "Dark Archon",
 	"Dark Archon Meld": "Dark Archon",
-	"Feedback":       "Dark Archon",
-	"Maelstrom":      "Dark Archon",
+	"Feedback":         "Dark Archon",
+	"Maelstrom":        "Dark Archon",
 }
 
 func outlierTechToUnit(name string) string { return outlierTechMap[name] }
@@ -173,36 +173,36 @@ var outlierUpgradeMap = map[string]string{
 	// but the icon registry only knows "hightemplar" / "darkarchon" etc.
 	// Pin these explicitly so each upgrade pill picks up its proper
 	// caster icon.
-	"Khaydarin Amulet (Templar Energy)":     "High Templar",
-	"Khaydarin Core (Arbiter Energy)":       "Arbiter",
-	"Argus Jewel (Corsair Energy)":          "Corsair",
-	"Argus Talisman (Dark Archon Energy)":   "Dark Archon",
-	"Caduceus Reactor (Medic Energy)":       "Medic",
-	"Apollo Reactor (Wraith Energy)":        "Wraith",
+	"Khaydarin Amulet (Templar Energy)":        "High Templar",
+	"Khaydarin Core (Arbiter Energy)":          "Arbiter",
+	"Argus Jewel (Corsair Energy)":             "Corsair",
+	"Argus Talisman (Dark Archon Energy)":      "Dark Archon",
+	"Caduceus Reactor (Medic Energy)":          "Medic",
+	"Apollo Reactor (Wraith Energy)":           "Wraith",
 	"Colossus Reactor (Battle Cruiser Energy)": "Battlecruiser",
-	"Titan Reactor (Science Vessel Energy)": "Science Vessel",
-	"Moebius Reactor (Ghost Energy)":        "Ghost",
-	"Ocular Implants (Ghost Sight)":         "Ghost",
-	"U-238 Shells (Marine Range)":           "Marine",
-	"Ion Thrusters (Vulture Speed)":         "Vulture",
-	"Charon Boosters (Goliath Range)":       "Goliath",
-	"Singularity Charge (Dragoon Range)":    "Dragoon",
-	"Leg Enhancement (Zealot Speed)":        "Zealot",
-	"Gravitic Drive (Shuttle Speed)":        "Shuttle",
-	"Sensor Array (Observer Sight)":         "Observer",
-	"Gravitic Booster (Observer Speed)":     "Observer",
-	"Apial Sensors (Scout Sight)":           "Scout",
-	"Gravitic Thrusters (Scout Speed)":      "Scout",
-	"Antennae (Overlord Sight)":             "Overlord",
-	"Pneumatized Carapace (Overlord Speed)": "Overlord",
-	"Ventral Sacs (Overlord Transport)":     "Overlord",
-	"Metabolic Boost (Zergling Speed)":      "Zergling",
-	"Adrenal Glands (Zergling Attack)":      "Zergling",
-	"Muscular Augments (Hydralisk Speed)":   "Hydralisk",
-	"Grooved Spines (Hydralisk Range)":      "Hydralisk",
-	"Gamete Meiosis (Queen Energy)":         "Queen",
-	"Chitinous Plating (Ultralisk Armor)":   "Ultralisk",
-	"Anabolic Synthesis (Ultralisk Speed)":  "Ultralisk",
+	"Titan Reactor (Science Vessel Energy)":    "Science Vessel",
+	"Moebius Reactor (Ghost Energy)":           "Ghost",
+	"Ocular Implants (Ghost Sight)":            "Ghost",
+	"U-238 Shells (Marine Range)":              "Marine",
+	"Ion Thrusters (Vulture Speed)":            "Vulture",
+	"Charon Boosters (Goliath Range)":          "Goliath",
+	"Singularity Charge (Dragoon Range)":       "Dragoon",
+	"Leg Enhancement (Zealot Speed)":           "Zealot",
+	"Gravitic Drive (Shuttle Speed)":           "Shuttle",
+	"Sensor Array (Observer Sight)":            "Observer",
+	"Gravitic Booster (Observer Speed)":        "Observer",
+	"Apial Sensors (Scout Sight)":              "Scout",
+	"Gravitic Thrusters (Scout Speed)":         "Scout",
+	"Antennae (Overlord Sight)":                "Overlord",
+	"Pneumatized Carapace (Overlord Speed)":    "Overlord",
+	"Ventral Sacs (Overlord Transport)":        "Overlord",
+	"Metabolic Boost (Zergling Speed)":         "Zergling",
+	"Adrenal Glands (Zergling Attack)":         "Zergling",
+	"Muscular Augments (Hydralisk Speed)":      "Hydralisk",
+	"Grooved Spines (Hydralisk Range)":         "Hydralisk",
+	"Gamete Meiosis (Queen Energy)":            "Queen",
+	"Chitinous Plating (Ultralisk Armor)":      "Ultralisk",
+	"Anabolic Synthesis (Ultralisk Speed)":     "Ultralisk",
 }
 
 // outlierMoneyBag is the suffix shown on Money-segment pills instead of
@@ -658,7 +658,6 @@ func lookupOutlierSpec(category string) (workflowOutlierCategorySpec, bool) {
 	return workflowOutlierCategorySpec{}, false
 }
 
-
 // workflowOutlierSpecs is the canonical list of outlier specs used by both
 // the Skill-proxies tab and the Summary-tab pills row. Kept in one place so
 // the two surfaces stay in sync.
@@ -787,13 +786,13 @@ func (d *Dashboard) segmentedOutliersForSpec(
 		// qualifies. Within the same (category, name) pair the dedup pass
 		// at the call site picks the best to surface.
 		for _, seg := range []struct {
-			mapKind         string
-			playerSegGames  int64
-			globalSegGames  int64
-			globalSegPlayers float64
-			playerRaceGames  int64
-			popRaceGames     int64
-			popRacePlayers   float64
+			mapKind             string
+			playerSegGames      int64
+			globalSegGames      int64
+			globalSegPlayers    float64
+			playerRaceGames     int64
+			popRaceGames        int64
+			popRacePlayers      float64
 			playerInstanceTotal int64
 			globalInstanceTotal int64
 		}{
@@ -917,4 +916,3 @@ func (d *Dashboard) populationDistinctPlayersByRaceMapKind() (map[string]map[str
 	}
 	return out, nil
 }
-

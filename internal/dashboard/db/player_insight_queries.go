@@ -214,11 +214,11 @@ func (s *Store) ListOutlierPlayerCounts(ctx context.Context, playerKey, primaryR
 // games_regular and games_money carry the per-segment slice. Same idea on
 // the corpus side with players_* counters.
 type SegmentedOutlierCountRow struct {
-	Race          string
-	Name          string
-	GamesAll      int64
-	GamesRegular  int64
-	GamesMoney    int64
+	Race         string
+	Name         string
+	GamesAll     int64
+	GamesRegular int64
+	GamesMoney   int64
 }
 
 type SegmentedOutlierGlobalRow struct {

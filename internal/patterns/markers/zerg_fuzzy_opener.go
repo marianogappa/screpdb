@@ -18,9 +18,9 @@ import (
 // It is the opener of last resort for clean pool/hatch openings: it fires only
 // when the count is ambiguous, so it never competes with an exact rung.
 type zergOpenerFuzzyEvaluator struct {
-	drones                       []produceObservation
-	poolSec, hatchSec            int
-	evoSec, overlordSec          int
+	drones              []produceObservation
+	poolSec, hatchSec   int
+	evoSec, overlordSec int
 }
 
 func newZergOpenerFuzzyEvaluator() *zergOpenerFuzzyEvaluator {

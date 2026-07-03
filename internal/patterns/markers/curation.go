@@ -14,8 +14,8 @@ package markers
 var curatedFeatureKeys = map[string]bool{
 	// Build-order openers — GOLDEN_TIERS.md "Build-order classification".
 	// Zerg batch.
-	"bo_11_hatch":        true,
-	"bo_12_hatch":        true,
+	"bo_11_hatch": true,
+	"bo_12_hatch": true,
 	// N Hatch <tech> composition markers (issue #245) — dynamic base count at the
 	// economy→army transition, layered on top of the supply opener. Fixtures:
 	// nhatch_hydra = bo_3hatch_hydra_pvz_pingcojerry(3) / _2jd(3) / bo_4hatch_hydra_pvz_syc(4);

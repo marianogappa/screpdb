@@ -8,9 +8,9 @@ import (
 
 func TestPhaseForSecond_BothBoundariesSet(t *testing.T) {
 	cases := []struct {
-		name              string
+		name               string
 		second, early, mid int
-		want              string
+		want               string
 	}{
 		{"early", 100, 400, 800, "early"},
 		{"on early boundary -> mid", 400, 400, 800, "mid"},

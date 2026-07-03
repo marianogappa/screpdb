@@ -169,4 +169,3 @@ func joinReasons(rs []string) string {
 	}
 	return out
 }
-

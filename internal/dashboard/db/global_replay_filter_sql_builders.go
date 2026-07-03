@@ -125,4 +125,3 @@ func mapKindPredicateSQL(values []string) string {
 	}
 	return strings.Join(predicates, " OR ")
 }
-

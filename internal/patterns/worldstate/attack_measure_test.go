@@ -83,10 +83,10 @@ func TestAttackMeasure(t *testing.T) {
 
 	// Two human players + their colors, from the parsed replay.
 	type pinfo struct {
-		pid   byte
-		name  string
-		color string
-		sx,sy float64
+		pid    byte
+		name   string
+		color  string
+		sx, sy float64
 	}
 	var players []pinfo
 	for _, p := range replay.Players {
