@@ -199,13 +199,12 @@ func TestPlayerOutliersEndpoint(t *testing.T) {
 		t.Fatalf("invalid JSON: %s", rec.Body.String())
 	}
 
-	// Unknown player: unlike PlayerDetail/PlayerRecentGames (which return 404),
-	// PlayerOutliers surfaces a 500 because GetOutlierPlayerSummary errors on the
-	// NULL-name aggregate row rather than yielding sql.ErrNoRows. Asserting the
-	// actual behavior; this divergence is a known prod inconsistency.
+	// Unknown player returns 404, consistent with PlayerDetail/PlayerRecentGames:
+	// GetOutlierPlayerSummary now COALESCEs the NULL-name aggregate to an empty
+	// string, so the builder yields sql.ErrNoRows instead of a scan error.
 	rec = performDashboardRequest(router, http.MethodGet, "/api/players/__nobody__/outliers", nil)
-	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("unknown player outliers expected 500, got %d: %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("unknown player outliers expected 404, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
 
