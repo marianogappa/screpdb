@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/minio/selfupdate"
 
@@ -24,13 +25,14 @@ type Status struct {
 	SelfUpdateSupported bool   `json:"self_update_supported"`
 	Reason              string `json:"reason"`
 	PackageManager      string `json:"package_manager"`
+	OS                  string `json:"os"`
 }
 
 // CheckStatus performs the read-only launch-time check: it fetches the latest
 // release, classifies the update tier, and reports whether this install can
 // update itself in place. It never downloads or modifies the binary.
 func CheckStatus(ctx context.Context) (Status, error) {
-	s := Status{CurrentVersion: buildinfo.Version, Tier: TierNone}
+	s := Status{CurrentVersion: buildinfo.Version, Tier: TierNone, OS: runtime.GOOS}
 
 	rel, err := fetchLatestRelease(ctx)
 	if err != nil {

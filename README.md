@@ -83,6 +83,8 @@ The binaries are **not code-signed**, so on first launch Windows may warn you �
 
 The GUI binary is a windowed app with no console — if you dismiss the SmartScreen dialog it simply won't start and won't print an error. Scoop avoids all of this. You can also [build from source](#building-from-source).
 
+> 💡 **Want the in-app Update button to work?** Put the `.exe` in a folder you can write to without admin rights — e.g. create `%LOCALAPPDATA%\Programs\screpdb\` and drop it there. screpdb can only replace its own binary when its folder is user-writable, so `C:\Program Files\` (needs admin) won't self-update. Otherwise the app just shows the download link instead.
+
 </details>
 
 The Scoop manifest lives at [`bucket/screpdb.json`](bucket/screpdb.json) and is bumped automatically on each release.
@@ -114,7 +116,16 @@ Prefer **[Homebrew](https://brew.sh) / Linuxbrew**?
 brew install marianogappa/screpdb/screpdb   # upgrade later: brew upgrade screpdb
 ```
 
-Or download the binary for your architecture from the [Releases page](https://github.com/marianogappa/screpdb/releases) and `chmod +x screpdb-linux-amd64` (or `screpdb-linux-arm64`). Binaries fetched via curl/brew carry no quarantine flag, so they just run.
+Or download the binary for your architecture from the [Releases page](https://github.com/marianogappa/screpdb/releases), make it executable, and move it onto your `PATH` — put it in a writable folder (not a Homebrew prefix) so the in-app **Update** button works:
+
+```bash
+chmod +x screpdb-linux-amd64                              # or screpdb-linux-arm64
+mkdir -p ~/.local/bin && mv screpdb-linux-amd64 ~/.local/bin/screpdb
+```
+
+`~/.local/bin` is the one-line installer's default — any writable folder on your `PATH` works. Binaries fetched via curl/brew carry no quarantine flag, so they just run.
+
+> 💡 screpdb self-updates only when its folder is user-writable and not owned by a package manager. A binary you run from `~/Downloads` or a Homebrew prefix won't auto-update — the app falls back to showing the download command instead.
 
 </details>
 
@@ -140,15 +151,17 @@ Then run `screpdb`. **No Gatekeeper "unidentified developer" block** with either
 <details>
 <summary>Prefer a direct download? (this one <em>does</em> hit Gatekeeper)</summary>
 
-Download the binary for your architecture from the [Releases page](https://github.com/marianogappa/screpdb/releases), then:
+Download the binary for your architecture from the [Releases page](https://github.com/marianogappa/screpdb/releases), then clear the quarantine flag and move it onto your `PATH` — a writable folder (not a Homebrew prefix) so the in-app **Update** button works:
 
 ```bash
-chmod +x screpdb-darwin-arm64   # or screpdb-darwin-amd64
-xattr -d com.apple.quarantine screpdb-darwin-arm64   # clear the browser-download quarantine
-./screpdb-darwin-arm64
+chmod +x screpdb-darwin-arm64                          # or screpdb-darwin-amd64
+xattr -d com.apple.quarantine screpdb-darwin-arm64     # clear the browser-download quarantine
+mkdir -p ~/.local/bin && mv screpdb-darwin-arm64 ~/.local/bin/screpdb
 ```
 
-(Or right-click the binary → **Open** to approve it once.)
+(Or right-click the binary → **Open** to approve it once.) `~/.local/bin` matches the one-line installer's default.
+
+> 💡 screpdb self-updates only when its folder is user-writable and not owned by a package manager. A binary you run straight from `~/Downloads` or a Homebrew prefix won't auto-update — the app falls back to showing the download command instead.
 
 </details>
 
@@ -266,6 +279,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
+2026-07-04  OK. "Update available" UX polish: managed/not-writable installs now show a copyable upgrade command with a Copy button and a Changelog link, the loud (major) banner is dismissable like the quiet one, and the not-writable macOS/Linux case surfaces the `curl | sh` install-script re-run. Go change is additive-only — a new runtime.GOOS-derived `OS` field on selfupdate.Status so the frontend can pick a platform-correct command; plus README direct-download placement tips. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes; the self-update mechanism (minisign-verified, user-initiated, writable-dir/package-manager detection) is unchanged.
 2026-07-03  OK. Removed the Go Report Card README badge (goreportcard.com no longer rendering it) and added a static coverage badge (81%, from scripts/coverage.sh — generated code excluded). Docs-only: no code, os/net calls, or facade allowlist change.
 2026-07-03  OK. Fixed the player-outliers endpoint returning 500 (not 404) for an unknown player: GetOutlierPlayerSummary now COALESCEs the NULL-name aggregate to '' (sqlc query + regenerated sqlcgen). Query/codegen only, still through the dashboard store; no os/net calls, no facade allowlist change.
 2026-07-03  OK. scmapanalyzer bumped to v0.0.0-20260702193642 (upstream copyright-only change) + Wraith Cloak timing now reports Cloaking Field completion (start+63s, drops if the game ends first), AlgorithmVersion 58. Dependency/detection only: map analysis still runs through the iofacade allowlist, no os/net calls added, no allowlist widening, no TestNoDirectIOOutsideFacades change; 193 no-cache tests across the scmapanalyzer-dependent packages pass.
