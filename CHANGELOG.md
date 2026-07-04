@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.20.0](https://github.com/marianogappa/screpdb/compare/v1.19.0...v1.20.0) (2026-07-04)
+
+
+### Features
+
+* copyable upgrade command, dismissable update banner, and self-update placement docs ([#266](https://github.com/marianogappa/screpdb/issues/266)) ([d1d0872](https://github.com/marianogappa/screpdb/commit/d1d08720c310c16d52d9a21919cd31668b7f3f7d))
+* exempt catch-all residual openers from the beta tag ([#267](https://github.com/marianogappa/screpdb/issues/267)) ([35228fc](https://github.com/marianogappa/screpdb/commit/35228fcd729c659e7a0cef40007cc7d64175d81b))
+* modernize MCP server for natural-language DB queries and add headless API mode ([#271](https://github.com/marianogappa/screpdb/issues/271)) ([32e0732](https://github.com/marianogappa/screpdb/commit/32e0732a989061dc9efa049738d5325908f9b948))
+
 ## [1.19.0](https://github.com/marianogappa/screpdb/compare/v1.18.0...v1.19.0) (2026-07-03)
 
 
