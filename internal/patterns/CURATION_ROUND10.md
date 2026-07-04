@@ -160,4 +160,5 @@ timing), Terran (Nukes, Turret/Wraith-Cloak timing, Wraiths, BCs, 2/4 Fact Expa 
 Tankless 1 Fact Expa, Goliath 3 Fact Expa). See watch-folder `_CURATION_NOTES.txt` for the full list.
 
 Deterministic-fact betas already exempted on this branch (became_*, *_game_starts, viewport_multitasking,
-never_*); catch-all residuals (`bo_*_other`, `opener_unresolved`) intentionally stay beta.
+never_*). Catch-all residuals (`bo_*_other`, `opener_unresolved`) were later also beta-exempted: they claim
+whatever the named rungs/openers leave over, so there is no premise to verify and the beta tag only adds noise.

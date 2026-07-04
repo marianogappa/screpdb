@@ -59,3 +59,19 @@ func TestEveryRaceHasResidualTier(t *testing.T) {
 		}
 	}
 }
+
+// TestBetaExemptKeysExist guards against the silent no-op failure mode: a
+// beta-exempt key that doesn't match a real marker FeatureKey (a typo or a
+// renamed marker) exempts nothing, so the marker keeps its beta tag and the
+// bug is invisible. Every key in betaExemptFeatureKeys must name a live marker.
+func TestBetaExemptKeysExist(t *testing.T) {
+	valid := map[string]bool{}
+	for _, m := range Markers() {
+		valid[m.FeatureKey] = true
+	}
+	for key := range betaExemptFeatureKeys {
+		if !valid[key] {
+			t.Errorf("betaExemptFeatureKeys has %q, which is not a marker FeatureKey — it exempts nothing", key)
+		}
+	}
+}
