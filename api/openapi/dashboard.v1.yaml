@@ -50,6 +50,129 @@ paths:
       responses:
         "101":
           description: Switching protocols for websocket upgrade
+  /api/custom/game-assets/unit:
+    get:
+      operationId: gameAssetUnit
+      tags: [operational]
+      summary: PNG icon for a unit by name. Served by a hand-written handler (not generated).
+      parameters:
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: PNG image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+  /api/custom/game-assets/building:
+    get:
+      operationId: gameAssetBuilding
+      tags: [operational]
+      summary: PNG icon for a building by name. Served by a hand-written handler (not generated).
+      parameters:
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: PNG image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+  /api/custom/game-assets/map:
+    get:
+      operationId: gameAssetMap
+      tags: [operational]
+      summary: Rendered map preview PNG for a replay. Served by a hand-written handler (not generated).
+      parameters:
+        - name: replay_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: PNG image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+  /api/custom/debug/map-layout/{replayID}:
+    get:
+      operationId: debugMapLayout
+      tags: [operational]
+      summary: Debug map-layout dump for a replay. Served by a hand-written handler (not generated).
+      parameters:
+        - name: replayID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/markers/definitions:
+    get:
+      operationId: markersDefinitions
+      tags: [operational]
+      summary: Marker and game-event definitions (labels, icons, algorithm version). Served by a hand-written handler (not generated).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/sample-set/load:
+    post:
+      operationId: loadSampleSet
+      tags: [operational]
+      summary: Queue ingestion of the bundled sample replay set. Served by a hand-written handler (not generated).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/update/status:
+    get:
+      operationId: updateStatus
+      tags: [operational]
+      summary: Self-update availability check. Served by a hand-written handler (not generated).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/update/apply:
+    post:
+      operationId: updateApply
+      tags: [operational]
+      summary: Apply a pending self-update and restart. Served by a hand-written handler (not generated).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
   /api/custom/replays/stale-count:
     get:
       operationId: getStaleReplaysCount

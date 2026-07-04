@@ -51,3 +51,26 @@ func TestDashboardSPA_APIRoutesStillWork(t *testing.T) {
 		t.Fatalf("api health status %d: %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestDashboardHeadless_NoSPAButAPIWorks(t *testing.T) {
+	dash := newTestDashboard(t)
+	dash.headless = true
+	router := dash.setupRouter()
+
+	// UI paths must NOT serve the SPA in headless mode.
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("headless root status = %d, want 404", rec.Code)
+	}
+	if strings.Contains(strings.ToLower(rec.Body.String()), "<!doctype html>") {
+		t.Fatalf("headless root should not serve the SPA html")
+	}
+
+	// API routes must still work.
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/health", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("headless api health status %d: %s", rec.Code, rec.Body.String())
+	}
+}

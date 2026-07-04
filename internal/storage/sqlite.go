@@ -857,7 +857,7 @@ func (s *SQLiteStorage) StorageName() string {
 
 // GetDatabaseSchema returns the database schema information
 func (s *SQLiteStorage) GetDatabaseSchema(ctx context.Context) (string, error) {
-	tables := []string{"replays", "players", "commands", "commands_low_value"}
+	tables := []string{"replays", "players", "commands", "commands_low_value", "replay_events", "player_aliases"}
 
 	var schema strings.Builder
 	schema.WriteString("# Database Schema\n\n")

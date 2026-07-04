@@ -7,3 +7,16 @@ generate:
   embedded-spec: true
 output-options:
   skip-prune: true
+  # These operational/asset/debug endpoints are documented in the spec for
+  # discoverability but are served by hand-written handlers (websocket upgrade,
+  # binary image responses, self-update side effects) rather than the generated
+  # strict server, so they're excluded from code generation.
+  exclude-operation-ids:
+    - gameAssetUnit
+    - gameAssetBuilding
+    - gameAssetMap
+    - debugMapLayout
+    - markersDefinitions
+    - loadSampleSet
+    - updateStatus
+    - updateApply

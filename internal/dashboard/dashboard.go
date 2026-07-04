@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/getkin/kin-openapi/routers"
 	"github.com/getkin/kin-openapi/routers/gorillamux"
@@ -50,9 +51,10 @@ type Dashboard struct {
 	ingestSubscribers   map[chan ingestStreamMessage]struct{}
 	sampleSetAutoLoaded bool
 	pendingSampleIngest bool
+	headless            bool
 }
 
-func New(ctx context.Context, sqlitePath string) (*Dashboard, error) {
+func New(ctx context.Context, sqlitePath string, headless bool) (*Dashboard, error) {
 	if err := runMigrations(sqlitePath); err != nil {
 		return nil, fmt.Errorf("failed to run migration routine: %w", err)
 	}
@@ -75,6 +77,7 @@ func New(ctx context.Context, sqlitePath string) (*Dashboard, error) {
 		db:           db,
 		ingestStatus: "idle",
 		sqlitePath:   sqlitePath,
+		headless:     headless,
 	}
 	dashboard.dbStore = dashboarddb.NewStore(dashboard.db, dashboard.currentReplayScopedDB, dashboard.withFilteredConnection)
 	if err := dashboard.initializeIngestSettings(ctx); err != nil {
@@ -110,6 +113,20 @@ func recoveryMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// newMethodlessPathMatcher builds a router that matches only the spec paths
+// that have no operations (operational endpoints whose operations are excluded
+// from code generation). OpenAPI path templates like "/x/{id}" are already
+// gorilla-mux compatible, so they register directly.
+func newMethodlessPathMatcher(swagger *openapi3.T) *mux.Router {
+	m := mux.NewRouter()
+	for path, item := range swagger.Paths.Map() {
+		if len(item.Operations()) == 0 {
+			m.Path(path)
+		}
+	}
+	return m
+}
+
 func (d *Dashboard) setupRouter() *mux.Router {
 	r := mux.NewRouter()
 	r.Use(recoveryMiddleware)
@@ -122,6 +139,13 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	if err != nil {
 		panic(fmt.Errorf("failed to create OpenAPI validator router: %w", err))
 	}
+	// Operational/asset endpoints are documented in the spec but their operations
+	// are excluded from code generation, so they appear in the embedded spec as
+	// method-less path items. Those must defer to their hand-written handlers
+	// rather than be rejected by the validator; build a matcher of just those
+	// paths so we can still return a clean 405 for genuine wrong-method calls on
+	// fully-documented routes.
+	methodlessPaths := newMethodlessPathMatcher(swagger)
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !strings.HasPrefix(r.URL.Path, "/api/") || r.Method == http.MethodOptions {
@@ -131,11 +155,14 @@ func (d *Dashboard) setupRouter() *mux.Router {
 
 			route, pathParams, findErr := openapiRouter.FindRoute(r)
 			if findErr != nil {
-				if errors.Is(findErr, routers.ErrMethodNotAllowed) {
+				if errors.Is(findErr, routers.ErrMethodNotAllowed) && !methodlessPaths.Match(r, &mux.RouteMatch{}) {
+					// A fully-documented route called with an undocumented method.
 					http.Error(w, findErr.Error(), http.StatusMethodNotAllowed)
 					return
 				}
-				// Unknown API paths should continue to SPA fallback behavior.
+				// Unknown paths, and operational endpoints served by hand-written
+				// handlers (method-less path items), defer to the handler chain
+				// (manual routes, then SPA/404 fallback).
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -183,7 +210,17 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.PathPrefix("/api/").Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	})
-	r.PathPrefix("/").Handler(d.spaHandler())
+	if d.headless {
+		// API-only mode: don't serve the embedded SPA. Non-API paths get a
+		// small JSON pointer to the API surface instead of the dashboard.
+		r.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"dashboard UI is disabled in headless mode; use the /api endpoints (see api/openapi/dashboard.v1.yaml)"}`))
+		})
+	} else {
+		r.PathPrefix("/").Handler(d.spaHandler())
+	}
 	return r
 }
 

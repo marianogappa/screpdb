@@ -53,7 +53,7 @@ func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) err
 	}
 	log.Printf("Using SQLite database at %s", dbPath)
 
-	dash, err := dashboard.New(ctx, dbPath)
+	dash, err := dashboard.New(ctx, dbPath, opts.Headless)
 	if err != nil {
 		return err
 	}
@@ -72,9 +72,13 @@ func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) err
 
 	// Open browser, unless this is a self-update relaunch — the user's existing
 	// tab is still pointed here and will reconnect, so a second tab is just noise.
-	if selfupdate.IsRestart() {
+	// Headless mode is API-only, so there's no UI to open.
+	switch {
+	case opts.Headless:
+		log.Printf("Running in headless mode; dashboard UI disabled. API available at %s/api", serverURL)
+	case selfupdate.IsRestart():
 		log.Printf("Self-update relaunch complete; refresh the existing browser tab to load the new version.")
-	} else {
+	default:
 		log.Printf("Opening browser to %s...", serverURL)
 		if err := browser.OpenURL(serverURL); err != nil {
 			log.Printf("Warning: failed to open browser: %v", err)

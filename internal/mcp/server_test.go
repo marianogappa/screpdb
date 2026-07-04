@@ -108,6 +108,40 @@ func TestHandleSQLQuery_BadSQL(t *testing.T) {
 	}
 }
 
+func TestHandleSQLQuery_RejectsWrites(t *testing.T) {
+	store := newTestStore(t)
+	s := NewServer(store)
+
+	for _, sql := range []string{
+		"DELETE FROM replays",
+		"DROP TABLE players",
+		"UPDATE players SET name = 'x'",
+		"INSERT INTO replays (id) VALUES (1)",
+		"SELECT 1; DROP TABLE players",
+		"/* sneaky */ DROP TABLE players",
+	} {
+		res, err := s.handleSQLQuery(context.Background(), callReq(sql))
+		if err != nil {
+			t.Fatalf("handleSQLQuery(%q): %v", sql, err)
+		}
+		if !res.IsError {
+			t.Fatalf("expected write %q to be rejected, got: %s", sql, textOf(t, res))
+		}
+	}
+
+	// Sanity: read-only statements still pass the guard.
+	for _, sql := range []string{
+		"SELECT COUNT(*) FROM replays",
+		"  with x as (select 1) select * from x",
+		"EXPLAIN QUERY PLAN SELECT * FROM replays",
+		"SELECT 1;",
+	} {
+		if err := ensureReadOnly(sql); err != nil {
+			t.Fatalf("expected %q to be allowed: %v", sql, err)
+		}
+	}
+}
+
 func TestHandleGetSchema(t *testing.T) {
 	store := newTestStore(t)
 	s := NewServer(store)
@@ -122,6 +156,36 @@ func TestHandleGetSchema(t *testing.T) {
 	out := textOf(t, res)
 	if !strings.Contains(out, "JOIN patterns") || !strings.Contains(out, "replays") {
 		t.Fatalf("schema observations missing: %q", out[:min(200, len(out))])
+	}
+	// The modern derived-analysis tables must be introspected too.
+	if !strings.Contains(out, "replay_events") || !strings.Contains(out, "player_aliases") {
+		t.Fatalf("schema missing modern tables (replay_events/player_aliases)")
+	}
+}
+
+func TestHandleListTopPlayers(t *testing.T) {
+	store := newTestStore(t)
+	s := NewServer(store)
+
+	res, err := s.handleListTopPlayers(context.Background(), mcp.CallToolRequest{})
+	if err != nil {
+		t.Fatalf("handleListTopPlayers: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("unexpected error: %s", textOf(t, res))
+	}
+}
+
+func TestHandleListEventTypes(t *testing.T) {
+	store := newTestStore(t)
+	s := NewServer(store)
+
+	res, err := s.handleListEventTypes(context.Background(), mcp.CallToolRequest{})
+	if err != nil {
+		t.Fatalf("handleListEventTypes: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("unexpected error: %s", textOf(t, res))
 	}
 }
 
