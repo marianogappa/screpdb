@@ -310,6 +310,12 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	})
 	data.Commands = filterResult.Commands
 
+	// Account for larva morphs cancelled before the first Overlord: a cancelled
+	// egg that early is provably a Drone, so it refunds a supply and must not
+	// inflate the "N Pool" / "N Hatch" opener count. Runs on the filtered stream
+	// so the opener supply count sees only morphs that actually stuck.
+	data.Commands = commands.DropCancelledMorphs(data.Commands)
+
 	// Collapse duplicate research/upgrade commands using game knowledge from
 	// internal/models. Operates over the entire game (not just the early
 	// window) — Forge-rebuilt-mid-Ground-Weapons-1 spam, double-clicked Lurker
