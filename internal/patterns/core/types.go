@@ -251,7 +251,12 @@ import (
 // 63s) and only fires if it completes within the replay — same semantics as the
 // v57 Speedlot change, generalized to techs. Re-ingest so TvZ/TvT wraith-cloak
 // pills re-evaluate.
-const AlgorithmVersion = 58
+// 59: larva morphs cancelled before the first Overlord are dropped from the
+// opener supply count (a cancelled egg that early is provably a Drone, so it
+// refunds a supply). Fixes Zerg openers read one supply too high — e.g. a 5
+// Pool with a cancelled drone read as 6 Pool. Re-ingest so Zerg openers
+// re-evaluate.
+const AlgorithmVersion = 59
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

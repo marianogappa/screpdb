@@ -155,10 +155,19 @@ var betaExemptFeatureKeys = map[string]bool{
 	"viewport_multitasking": true,
 	"never_researched":      true,
 	"never_upgraded":        true,
+	// Catch-all residual buckets, not detections: they claim whatever the named
+	// rungs/openers leave over, so there is no premise to verify against a replay
+	// and the "beta" tag only adds noise to an intentionally-unclassified label
+	// ("Pool/Hatch (Other)", "Opener unresolved").
+	"bo_zerg_other":     true,
+	"bo_protoss_other":  true,
+	"bo_terran_other":   true,
+	"opener_unresolved": true,
 }
 
 // IsBetaExempt reports whether a marker is exempt from the beta tag because it
-// is a deterministic measurement rather than a verifiable detection.
+// is a deterministic measurement or a catch-all residual bucket, rather than a
+// fallible detection with a premise to verify.
 func IsBetaExempt(featureKey string) bool {
 	return betaExemptFeatureKeys[featureKey]
 }
