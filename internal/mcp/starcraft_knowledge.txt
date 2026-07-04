@@ -45,3 +45,19 @@ Meta terms
 - "natural": The first "expansion" (main building) to gather more resources, which is in close proximity to the main starting location.
 - "expa/expansion": Another expansion which is not necessarily the "natural".
 - Main building starting locations are usually conveyed in o'clock positions (like 3, 6, 9, 12).
+
+Derived analysis (replay_events table)
+
+screpdb doesn't just store the raw command stream — it runs pattern detection at ingest and stores the results in replay_events. There are two kinds:
+
+- Markers (event_kind='marker'): one row per (replay, player, marker type). These summarise a player's game. The most important are BUILD-ORDER OPENERS, stored as event_type feature keys prefixed "bo_", describing the first ~2 minutes of macro — e.g. bo_9_pool, bo_12_hatch, bo_2_gate, bo_gate_expand, bo_1_gate_core, bo_t_111 (Terran 1-1-1), bo_cc_first, bo_forge_expa. The prefix reflects the race (bo_p_* Protoss, bo_t_* Terran, plain bo_* often Zerg pool/hatch timings). Catch-all openers that couldn't be resolved to a named build use opener_unresolved, *_fuzzy, or bo_*_other. Other markers capture timings and behaviours (e.g. used_hotkey_groups, viewport_multitasking, never_upgraded, became_zerg). event_type is descriptive on its own; a marker's payload may hold extra JSON (e.g. expert timing checkpoints).
+- Game events (event_kind='game_event'): narrative moments during a game — rushes (cannon_rush, bunker_rush, zergling_rush), drops, nydus attacks, proxies (e.g. proxy_starport), mind_control, scouting, expansion. These have a time (seconds_from_game_start), a source_player_id (who did it) and often a target_player_id and a map location.
+
+The bo_ prefix is only a loose hint about race (bo_p_*/bo_t_* are reliably Protoss/Terran, but many Zerg openers are just bo_9_pool/bo_12_hatch with no race letter). To filter openers by race RELIABLY, join replay_events.source_player_id → players.id and filter players.race, rather than pattern-matching the key. Use the list_event_types tool to see the exact event_type values and counts before querying. To answer "what openers did player X use in ZvT?", join replays (matchup) → players (name, race) → replay_events (event_kind='marker', event_type LIKE 'bo_%'). To answer "how often does player X cheese?", count the rush/proxy game_events attributed to their player rows.
+
+Notes on interpreting the data
+
+- Build orders / openers are the canonical way to describe a game's opening; prefer the stored marker over reconstructing it from raw commands.
+- Player identity: players.name is the raw in-replay name. The same person may appear under many tags. player_aliases maps tags to a canonical identity — join through it to aggregate a person across smurfs.
+- Insights screpdb computes elsewhere (and that you can reconstruct from commands): APM/eAPM (already columns on players), unit-production cadence, viewport/multitasking, hotkey usage, time-to-first-building/expansion.
+- Prefer commands over commands_low_value for meaningful analysis; the low-value table is right-clicks/hotkeys/pings and is often excluded (and may be empty if ingestion skipped them).

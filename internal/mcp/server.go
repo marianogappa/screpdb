@@ -34,30 +34,62 @@ func NewServer(storage storage.Storage) *Server {
 		mcpServer: mcpServer,
 	}
 
-	// Register the SQL query tool
+	// Register the SQL query tool. This is the workhorse: it answers arbitrary
+	// natural-language questions about any ingested game or player by running
+	// read-only SQL. Call get_database_schema first to learn the real columns.
 	sqlTool := mcp.NewTool("query_database",
-		mcp.WithDescription("Execute SQL queries against the StarCraft replay database. The database contains tables: replays (metadata), players (player info), actions (game events), units (unit data), buildings (building data). Use this tool to analyze replay statistics, player performance, unit usage, and game patterns."),
+		mcp.WithDescription("Run a read-only SQL query (SELECT/WITH/EXPLAIN/PRAGMA only) against the StarCraft: Remastered replay database and get the rows back. Tables: replays (one row per game: map, matchup, duration, engine), players (one row per player per replay: race, APM/eAPM, is_winner, start location), commands (the ordered action stream — builds, trains, morphs, tech, upgrades, micro), commands_low_value (high-volume noise: right-clicks, hotkeys, pings — usually excluded), replay_events (derived analysis: build-order openers, timing markers, and narrative game events like rushes/drops/proxies), player_aliases (maps battle.net tags to canonical player identities). Call get_database_schema for exact columns and get_starcraft_knowledge for domain terms before writing non-trivial queries."),
 		mcp.WithString("sql",
 			mcp.Required(),
-			mcp.Description("SQL query to execute against the StarCraft replay database"),
+			mcp.Description("A single read-only SQL statement (SELECT, WITH, EXPLAIN, or PRAGMA). Writes are rejected."),
 		),
+		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithOpenWorldHintAnnotation(false),
 	)
 
 	mcpServer.AddTool(sqlTool, s.handleSQLQuery)
 
 	// Register a schema information tool
 	schemaTool := mcp.NewTool("get_database_schema",
-		mcp.WithDescription("Detailed information about the StarCraft replay database schema including table structures, relationships obtained by querying the database itself."),
+		mcp.WithDescription("Return the live database schema (columns and types for every table, introspected from the database itself) plus curated notes on join patterns, common WHERE clauses, and the values found in key columns. Read this before writing a query."),
+		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithOpenWorldHintAnnotation(false),
 	)
 
 	mcpServer.AddTool(schemaTool, s.handleGetSchema)
 
 	// Register a StarCraft knowledge summary tool
 	knowledgeTool := mcp.NewTool("get_starcraft_knowledge",
-		mcp.WithDescription("Summary of StarCraft knowledge useful for knowing how to answer questions and make reports."),
+		mcp.WithDescription("Return domain knowledge about StarCraft: Remastered and how screpdb models it — game mechanics, build orders, meta terminology (rush, timing push, tech switch, natural), and how the derived replay_events (markers and game events) are computed. Read this to answer strategy questions correctly."),
+		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithOpenWorldHintAnnotation(false),
 	)
 
 	mcpServer.AddTool(knowledgeTool, s.handleGetStarCraftKnowledge)
+
+	// Curated discovery tools so an agent can orient itself without guessing
+	// SQL against an empty result set.
+	playersTool := mcp.NewTool("list_top_players",
+		mcp.WithDescription("List the human players with the most games in the database (name, game count, and the races they've played). Use this to discover who is in the corpus before asking player-specific questions."),
+		mcp.WithNumber("limit",
+			mcp.Description("Maximum number of players to return (default 25)."),
+		),
+		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithOpenWorldHintAnnotation(false),
+	)
+	mcpServer.AddTool(playersTool, s.handleListTopPlayers)
+
+	eventsTool := mcp.NewTool("list_event_types",
+		mcp.WithDescription("List the derived analysis available in replay_events: every (event_kind, event_type) pair with how many rows exist. Markers are per-replay summaries (build-order openers, timings); game_events are narrative moments (rushes, drops, proxies). Use this to learn what strategic patterns you can query."),
+		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithOpenWorldHintAnnotation(false),
+	)
+	mcpServer.AddTool(eventsTool, s.handleListEventTypes)
 
 	return s
 }
@@ -68,11 +100,67 @@ func (s *Server) Start(ctx context.Context) error {
 	return server.ServeStdio(s.mcpServer)
 }
 
+// readOnlyLeadingKeywords are the statement kinds the query tool accepts. The
+// database holds an expensive, hand-curated corpus, so we never let a client
+// (or the LLM driving it) mutate it — this tool is for questions, not edits.
+var readOnlyLeadingKeywords = []string{"SELECT", "WITH", "EXPLAIN", "PRAGMA"}
+
+// ensureReadOnly rejects anything that isn't a single read-only statement.
+func ensureReadOnly(sql string) error {
+	stmt := stripSQLComments(sql)
+
+	// Disallow stacked statements (e.g. "SELECT 1; DROP TABLE x"). A single
+	// trailing semicolon is fine.
+	if trimmed := strings.TrimRight(strings.TrimSpace(stmt), ";"); strings.Contains(trimmed, ";") {
+		return fmt.Errorf("only a single read-only statement is allowed; multiple statements are not permitted")
+	}
+
+	fields := strings.Fields(strings.TrimSpace(stmt))
+	if len(fields) == 0 {
+		return fmt.Errorf("empty query")
+	}
+	leading := strings.ToUpper(fields[0])
+	for _, kw := range readOnlyLeadingKeywords {
+		if leading == kw {
+			return nil
+		}
+	}
+	return fmt.Errorf("only read-only queries are allowed (must start with one of %s); got %q", strings.Join(readOnlyLeadingKeywords, ", "), leading)
+}
+
+// stripSQLComments removes -- line comments and /* */ block comments so the
+// leading-keyword check can't be fooled by a comment prefix.
+func stripSQLComments(sql string) string {
+	var b strings.Builder
+	for i := 0; i < len(sql); i++ {
+		if i+1 < len(sql) && sql[i] == '-' && sql[i+1] == '-' {
+			for i < len(sql) && sql[i] != '\n' {
+				i++
+			}
+			continue
+		}
+		if i+1 < len(sql) && sql[i] == '/' && sql[i+1] == '*' {
+			i += 2
+			for i+1 < len(sql) && !(sql[i] == '*' && sql[i+1] == '/') {
+				i++
+			}
+			i++ // skip the '/' of '*/' (loop's i++ skips the '*')
+			continue
+		}
+		b.WriteByte(sql[i])
+	}
+	return b.String()
+}
+
 // handleSQLQuery handles SQL query execution
 func (s *Server) handleSQLQuery(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	query, err := request.RequireString("sql")
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Invalid sql parameter: %v", err)), nil
+	}
+
+	if err := ensureReadOnly(query); err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	// Execute the query
@@ -96,17 +184,23 @@ func (s *Server) handleGetSchema(ctx context.Context, request mcp.CallToolReques
 
 	// Add some observations about the dataset
 	observations := `
-	- Replays have up to 8 players (and up to 4 observers) and a sequential list of commands/actions (like Chess). Command timing is tracked in "frames" since game start and also with a timestamp.
+	- Replays have up to 8 players (and up to 4 observers) and a sequential list of commands/actions (like Chess). Command timing is tracked in "frames" since game start and also with a timestamp (seconds_from_game_start).
 	- The commands table has action-type-specific fields, so for a given row many fields are null.
+	- commands vs commands_low_value: high-signal actions (Build, Train, morphs, Tech, Upgrade, targeted micro) live in commands; high-volume noise (Right Click, Hotkey, Minimap Ping, Vision, Alliance) is split into commands_low_value so it can be excluded from analysis. Same schema in both. Right-clicks/hotkeys are only stored if ingestion was configured to keep them, so don't assume they exist.
+	- replay_events is the DERIVED analysis layer (not raw stream). event_kind = 'marker' rows are one-per-(replay, player, event_type) summaries screpdb computed — build-order openers are stored as event_type feature keys prefixed 'bo_' (e.g. bo_9_pool, bo_12_hatch, bo_gate_expand, bo_t_111); opener_unresolved / *_fuzzy / bo_*_other are catch-alls. Other markers are timings/behaviours (e.g. used_hotkey_groups, viewport_multitasking, never_upgraded). event_kind = 'game_event' rows are narrative moments (rushes, drops, proxies, nydus, mind control, scout, expansion). source_player_id/target_player_id join to players.id; location_base_type ('starting'|'natural'|'expansion') and location_base_oclock give map position; payload is optional JSON. To discover the actual event_type values, use the list_event_types tool or: SELECT event_kind, event_type, COUNT(*) FROM replay_events GROUP BY 1,2 ORDER BY 3 DESC.
+	- player_aliases maps battle.net tags to canonical player identities. players.name is the raw in-replay name; join through player_aliases (battle_tag_normalized) when you need to group a person's games across smurfs/tags.
 
 	- JOIN patterns:
 		- players.replay_id = replays.id
-		- commands.replay_id = replays.id
+		- commands.replay_id = replays.id (also commands_low_value.replay_id = replays.id)
 		- commands.player_id = players.id
+		- replay_events.replay_id = replays.id
+		- replay_events.source_player_id = players.id (the acting player; target_player_id is the player acted upon, may be NULL)
 
 	- Common WHERE clauses:
 		- players.type = 'Human' (i.e. skip 'Computer' players)
 		- players.is_observer = false (i.e. Observer players are not part of the game)
+		- replays.matchup is a normalized string like 'TvZ' or 'PvP' for 1v1s (and e.g. 'PvPvTvZ' for larger games); replays.duration_seconds is already in seconds, frame_count is the raw frame length (≈ 23.81 frames/sec on fastest). For 1v1 analysis, filter to matchup values with a single 'v' (e.g. matchup LIKE '_v_').
 
 	action_types:
 		- Build
@@ -238,6 +332,44 @@ func (s *Server) handleGetSchema(ctx context.Context, request mcp.CallToolReques
 // handleGetStarCraftKnowledge handles StarCraft knowledge summary requests
 func (s *Server) handleGetStarCraftKnowledge(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	return mcp.NewToolResultText(starcraftKnowledge), nil
+}
+
+// handleListTopPlayers lists the human players with the most games.
+func (s *Server) handleListTopPlayers(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	limit := request.GetInt("limit", 25)
+	if limit <= 0 || limit > 500 {
+		limit = 25
+	}
+	query := fmt.Sprintf(`
+		SELECT name,
+		       COUNT(*) AS games,
+		       GROUP_CONCAT(DISTINCT race) AS races
+		FROM players
+		WHERE type = 'Human' AND is_observer = 0
+		GROUP BY name
+		ORDER BY games DESC
+		LIMIT %d`, limit)
+
+	results, err := s.storage.Query(ctx, query)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Query execution failed: %v", err)), nil
+	}
+	return mcp.NewToolResultText(s.formatQueryResults(results)), nil
+}
+
+// handleListEventTypes enumerates the derived replay_events available to query.
+func (s *Server) handleListEventTypes(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	query := `
+		SELECT event_kind, event_type, COUNT(*) AS rows
+		FROM replay_events
+		GROUP BY event_kind, event_type
+		ORDER BY event_kind, rows DESC`
+
+	results, err := s.storage.Query(ctx, query)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Query execution failed: %v", err)), nil
+	}
+	return mcp.NewToolResultText(s.formatQueryResults(results)), nil
 }
 
 // formatQueryResults formats query results for display

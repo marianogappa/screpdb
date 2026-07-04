@@ -234,7 +234,7 @@ func newTestDashboard(t *testing.T) *Dashboard {
 		t.Fatalf("ingestFiles: %v", err)
 	}
 
-	dash, err := New(ctx, dashboardTestDB)
+	dash, err := New(ctx, dashboardTestDB, false)
 	if err != nil {
 		t.Fatalf("New dashboard: %v", err)
 	}

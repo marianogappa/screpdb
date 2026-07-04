@@ -197,7 +197,7 @@ make build
 - `--clean`: Drop all non-dashboard tables before ingesting to start over (useful for migrations)
 ```
 
-- MCP server: expose the replay database to an MCP client so you can query any game/player.
+- MCP server: point an MCP client (Claude Desktop, Claude Code, Cursor, …) at the replay database and ask questions in natural language about any game, player, matchup, build order, or event. The client's model turns your question into read-only SQL over the ingested data. The server exposes tools to run queries (`query_database`), inspect the schema (`get_database_schema`), read StarCraft domain knowledge (`get_starcraft_knowledge`), and discover players and derived events (`list_top_players`, `list_event_types`).
 
 ```bash
 ./screpdb mcp
@@ -206,7 +206,12 @@ make build
 ./screpdb mcp -s /path/to/custom.db
 ```
 
-- All UI functionality exposed as API: [OpenAPI schema available](api/openapi/dashboard.v1.yaml)
+- Server / API: `./screpdb dashboard` (also the default when run with no subcommand) starts the HTTP server and opens the dashboard UI. All UI functionality is exposed as a JSON API — [OpenAPI schema available](api/openapi/dashboard.v1.yaml). Run it headless as an API-only server (no UI, no browser) with `--headless`:
+
+```bash
+./screpdb dashboard --headless -p 8000 -s /path/to/custom.db
+# then: curl http://localhost:8000/api/health
+```
 
 </details>
 
@@ -279,13 +284,14 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-07-04  OK. Zerg opener supply fix: larva morphs cancelled before the player's first Overlord are dropped from the "N Pool"/"N Hatch" count (a cancelled egg that early is provably a Drone, so it refunds a supply) — fixes e.g. a 5 Pool with a cancelled drone reading as 6 Pool. New commands.DropCancelledMorphs runs on the already-filtered stream in the parser; AlgorithmVersion 58→59 (re-ingest), SPECIFICATION.md regenerated. Reads the in-memory command slice only: no os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test change.
+2026-07-04  OK (net reduction in the SQL surface's capability). MCP-server modernization + dashboard headless API mode. MCP: query_database now rejects non-read-only SQL (only SELECT/WITH/EXPLAIN/PRAGMA, single statement, comment-stripped) so an MCP client can no longer mutate the corpus; corrected tool descriptions/annotations, expanded GetDatabaseSchema introspection to replay_events/player_aliases, refreshed the domain-knowledge text, added two read-only discovery tools (list_top_players, list_event_types), and bumped mcp-go v0.41.1→v0.55.1. Dashboard: new `--headless` flag serves the JSON API only (no embedded SPA, no browser-open — one fewer os call in that mode); documented 8 operational endpoints (game-assets, debug map-layout, markers definitions, sample-set load, self-update status/apply) in the OpenAPI spec, excluded from code generation, with the validator middleware deferring method-less spec paths to their hand-written handlers while still returning 405 for genuine wrong-method calls. All DB access stays through the storage/dashboard layer; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test change, no AlgorithmVersion bump (no detection change).
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
 
 ```
+2026-07-04  OK. Zerg opener supply fix: larva morphs cancelled before the player's first Overlord are dropped from the "N Pool"/"N Hatch" count (a cancelled egg that early is provably a Drone, so it refunds a supply) — fixes e.g. a 5 Pool with a cancelled drone reading as 6 Pool. New commands.DropCancelledMorphs runs on the already-filtered stream in the parser; AlgorithmVersion 58→59 (re-ingest), SPECIFICATION.md regenerated. Reads the in-memory command slice only: no os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test change.
 2026-07-04  OK. Beta-exempt the catch-all residual buckets (bo_zerg_other / bo_protoss_other / bo_terran_other / opener_unresolved) so the dashboard stops flagging them "beta" — they claim whatever the named openers leave over, so there is no premise to verify. Added the keys to markers.betaExemptFeatureKeys plus a guard test that every exempt key names a live marker. Display-time curation metadata only (beta tag is computed from FeatureKey at the definitions endpoint): no detection/ingest change, no AlgorithmVersion bump, no os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test change.
 2026-07-04  OK. "Update available" UX polish: managed/not-writable installs now show a copyable upgrade command with a Copy button and a Changelog link, the loud (major) banner is dismissable like the quiet one, and the not-writable macOS/Linux case surfaces the `curl | sh` install-script re-run. Go change is additive-only — a new runtime.GOOS-derived `OS` field on selfupdate.Status so the frontend can pick a platform-correct command; plus README direct-download placement tips. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes; the self-update mechanism (minisign-verified, user-initiated, writable-dir/package-manager detection) is unchanged.
 2026-07-03  OK. Removed the Go Report Card README badge (goreportcard.com no longer rendering it) and added a static coverage badge (81%, from scripts/coverage.sh — generated code excluded). Docs-only: no code, os/net calls, or facade allowlist change.
