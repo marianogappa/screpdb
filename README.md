@@ -83,6 +83,8 @@ The binaries are **not code-signed**, so on first launch Windows may warn you �
 
 The GUI binary is a windowed app with no console — if you dismiss the SmartScreen dialog it simply won't start and won't print an error. Scoop avoids all of this. You can also [build from source](#building-from-source).
 
+> 💡 **Want the in-app Update button to work?** Put the `.exe` in a folder you can write to without admin rights — e.g. create `%LOCALAPPDATA%\Programs\screpdb\` and drop it there. screpdb can only replace its own binary when its folder is user-writable, so `C:\Program Files\` (needs admin) won't self-update. Otherwise the app just shows the download link instead.
+
 </details>
 
 The Scoop manifest lives at [`bucket/screpdb.json`](bucket/screpdb.json) and is bumped automatically on each release.
@@ -114,7 +116,16 @@ Prefer **[Homebrew](https://brew.sh) / Linuxbrew**?
 brew install marianogappa/screpdb/screpdb   # upgrade later: brew upgrade screpdb
 ```
 
-Or download the binary for your architecture from the [Releases page](https://github.com/marianogappa/screpdb/releases) and `chmod +x screpdb-linux-amd64` (or `screpdb-linux-arm64`). Binaries fetched via curl/brew carry no quarantine flag, so they just run.
+Or download the binary for your architecture from the [Releases page](https://github.com/marianogappa/screpdb/releases), make it executable, and move it onto your `PATH` — put it in a writable folder (not a Homebrew prefix) so the in-app **Update** button works:
+
+```bash
+chmod +x screpdb-linux-amd64                              # or screpdb-linux-arm64
+mkdir -p ~/.local/bin && mv screpdb-linux-amd64 ~/.local/bin/screpdb
+```
+
+`~/.local/bin` is the one-line installer's default — any writable folder on your `PATH` works. Binaries fetched via curl/brew carry no quarantine flag, so they just run.
+
+> 💡 screpdb self-updates only when its folder is user-writable and not owned by a package manager. A binary you run from `~/Downloads` or a Homebrew prefix won't auto-update — the app falls back to showing the download command instead.
 
 </details>
 
@@ -140,15 +151,17 @@ Then run `screpdb`. **No Gatekeeper "unidentified developer" block** with either
 <details>
 <summary>Prefer a direct download? (this one <em>does</em> hit Gatekeeper)</summary>
 
-Download the binary for your architecture from the [Releases page](https://github.com/marianogappa/screpdb/releases), then:
+Download the binary for your architecture from the [Releases page](https://github.com/marianogappa/screpdb/releases), then clear the quarantine flag and move it onto your `PATH` — a writable folder (not a Homebrew prefix) so the in-app **Update** button works:
 
 ```bash
-chmod +x screpdb-darwin-arm64   # or screpdb-darwin-amd64
-xattr -d com.apple.quarantine screpdb-darwin-arm64   # clear the browser-download quarantine
-./screpdb-darwin-arm64
+chmod +x screpdb-darwin-arm64                          # or screpdb-darwin-amd64
+xattr -d com.apple.quarantine screpdb-darwin-arm64     # clear the browser-download quarantine
+mkdir -p ~/.local/bin && mv screpdb-darwin-arm64 ~/.local/bin/screpdb
 ```
 
-(Or right-click the binary → **Open** to approve it once.)
+(Or right-click the binary → **Open** to approve it once.) `~/.local/bin` matches the one-line installer's default.
+
+> 💡 screpdb self-updates only when its folder is user-writable and not owned by a package manager. A binary you run straight from `~/Downloads` or a Homebrew prefix won't auto-update — the app falls back to showing the download command instead.
 
 </details>
 
@@ -266,18 +279,19 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-07-03  OK. Removed the Go Report Card README badge (goreportcard.com no longer rendering it) and added a static coverage badge (81%, from scripts/coverage.sh — generated code excluded). Docs-only: no code, os/net calls, or facade allowlist change.
-2026-07-03  OK. Fixed the player-outliers endpoint returning 500 (not 404) for an unknown player: GetOutlierPlayerSummary now COALESCEs the NULL-name aggregate to '' (sqlc query + regenerated sqlcgen). Query/codegen only, still through the dashboard store; no os/net calls, no facade allowlist change.
-2026-07-03  OK. scmapanalyzer bumped to v0.0.0-20260702193642 (upstream copyright-only change) + Wraith Cloak timing now reports Cloaking Field completion (start+63s, drops if the game ends first), AlgorithmVersion 58. Dependency/detection only: map analysis still runs through the iofacade allowlist, no os/net calls added, no allowlist widening, no TestNoDirectIOOutsideFacades change; 193 no-cache tests across the scmapanalyzer-dependent packages pass.
-2026-07-03  OK. Speedlot-timing now reports Leg Enhancement research completion (and drops when the game ends first) + "9 Pool 9 Hatch" relabel; AlgorithmVersion 57, goldens + SPECIFICATION.md regenerated. Pure detection/pattern logic: no os/net calls, no iofacade/netfacade allowlist change, no TestNoDirectIOOutsideFacades change.
-2026-07-03  OK. Toolchain bump to Go 1.26.4 (go.mod go directive) plus a repo-wide gofmt pass. Tooling/formatting only: no os/net calls added, no iofacade/netfacade allowlist widening, no change to the TestNoDirectIOOutsideFacades enforcement.
-2026-07-02  OK. README presentation pass, no behaviour change: collapsed the per-OS install sections, baked the measured ingestion-throughput figure into the badge, trimmed the Security/I/O-model prose, and reformatted this audit log into a code block. The TestIOSafetyAuditPresent regex was loosened to also match the new plain-date log line. Docs/test-format only: no os/net calls, no iofacade/netfacade allowlist widening, no change to the TestNoDirectIOOutsideFacades enforcement test.
+2026-07-04  OK. "Update available" UX polish: managed/not-writable installs now show a copyable upgrade command with a Copy button and a Changelog link, the loud (major) banner is dismissable like the quiet one, and the not-writable macOS/Linux case surfaces the `curl | sh` install-script re-run. Go change is additive-only — a new runtime.GOOS-derived `OS` field on selfupdate.Status so the frontend can pick a platform-correct command; plus README direct-download placement tips. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes; the self-update mechanism (minisign-verified, user-initiated, writable-dir/package-manager detection) is unchanged.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
 
 ```
+2026-07-03  OK. Removed the Go Report Card README badge (goreportcard.com no longer rendering it) and added a static coverage badge (81%, from scripts/coverage.sh — generated code excluded). Docs-only: no code, os/net calls, or facade allowlist change.
+2026-07-03  OK. Fixed the player-outliers endpoint returning 500 (not 404) for an unknown player: GetOutlierPlayerSummary now COALESCEs the NULL-name aggregate to '' (sqlc query + regenerated sqlcgen). Query/codegen only, still through the dashboard store; no os/net calls, no facade allowlist change.
+2026-07-03  OK. scmapanalyzer bumped to v0.0.0-20260702193642 (upstream copyright-only change) + Wraith Cloak timing now reports Cloaking Field completion (start+63s, drops if the game ends first), AlgorithmVersion 58. Dependency/detection only: map analysis still runs through the iofacade allowlist, no os/net calls added, no allowlist widening, no TestNoDirectIOOutsideFacades change; 193 no-cache tests across the scmapanalyzer-dependent packages pass.
+2026-07-03  OK. Speedlot-timing now reports Leg Enhancement research completion (and drops when the game ends first) + "9 Pool 9 Hatch" relabel; AlgorithmVersion 57, goldens + SPECIFICATION.md regenerated. Pure detection/pattern logic: no os/net calls, no iofacade/netfacade allowlist change, no TestNoDirectIOOutsideFacades change.
+2026-07-03  OK. Toolchain bump to Go 1.26.4 (go.mod go directive) plus a repo-wide gofmt pass. Tooling/formatting only: no os/net calls added, no iofacade/netfacade allowlist widening, no change to the TestNoDirectIOOutsideFacades enforcement.
+2026-07-02  OK. README presentation pass, no behaviour change: collapsed the per-OS install sections, baked the measured ingestion-throughput figure into the badge, trimmed the Security/I/O-model prose, and reformatted this audit log into a code block. The TestIOSafetyAuditPresent regex was loosened to also match the new plain-date log line. Docs/test-format only: no os/net calls, no iofacade/netfacade allowlist widening, no change to the TestNoDirectIOOutsideFacades enforcement test.
 2026-07-02  OK. Follow-up to #248 (PR #255): dashboard-frontend copy only — for package-manager (Homebrew/Scoop) installs the "update available" control shows the exact upgrade command (brew upgrade screpdb / scoop update screpdb) in its label, renders as a non-link (a download page is useless when the fix is a terminal command), and surfaces it via an instant hover/focus tooltip. No Go changes, no os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-07-02  OK. BO/marker label render fixes (issue #251) + ingestion-speed benchmark tracking (issue #249). #251 is render-only: a new markers.DecodePayloadLabel decoder resolves the persisted {"label":...} value so the games-list Featuring strip and game-detail openers show "3 Hatch Muta"/"~9 Overpool" instead of the placeholder name — reads existing payloads, no new os/net calls. #249 adds a make bench-ingest target, scripts/bench-ingest.sh / scripts/update-readme-bench.sh, and a bench-ingest.yml workflow — all shell/CI tooling that runs outside the screpdb binary (not part of the Go module the enforcement test parses), plus a checksum-dedup guard in the existing storage benchmark test. No iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-07-02  OK. Free first-install UX for macOS/Linux + GUI asset rename (issue #248). New files are the standalone install.sh (curl | sh installer) and scripts/update-homebrew-formula.sh/.github release wiring — these run outside the screpdb binary (they are shell installers/CI, not part of the Go module the enforcement test parses), so they touch no iofacade/netfacade surface. In-binary Go changes are a pure rename: the Windows GUI release asset screpdb-dashboard-windows-amd64.exe → screpdb-gui-windows-amd64.exe and the buildinfo.Variant value dashboard → gui (self-update asset-name string in internal/selfupdate + a one-line dashboard-frontend message), plus the GUI log file screpdb-dashboard.log → screpdb-gui.log. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes. Self-update mechanism is unchanged (still minisign-verified, user-initiated); the curl/Homebrew install paths reuse the existing package-manager / writable-dir detection.

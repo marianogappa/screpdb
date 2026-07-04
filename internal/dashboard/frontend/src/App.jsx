@@ -1862,6 +1862,47 @@ const hydrateIngestLogEntries = (events = []) => (
 
 const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
+// Package-manager installs can't self-update, so we surface the exact upgrade
+// command with a one-click copy button plus a link to the release notes.
+const ManagedUpdateHint = ({ latestVersion, command, releaseUrl, className }) => {
+  const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef(null);
+  useEffect(() => () => {
+    if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
+  }, []);
+  const handleCopy = () => {
+    if (!navigator.clipboard || !navigator.clipboard.writeText) return;
+    navigator.clipboard.writeText(command).then(() => {
+      setCopied(true);
+      if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = window.setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  };
+  return (
+    <span className={`managed-update-hint${className ? ` ${className}` : ''}`}>
+      <span className="managed-update-hint-label">🆕 {latestVersion}</span>
+      <code className="managed-update-hint-cmd">{command}</code>
+      <button
+        type="button"
+        className="managed-update-hint-copy"
+        data-tip={copied ? 'Copied!' : 'Copy command to clipboard'}
+        onClick={handleCopy}
+      >
+        {copied ? '✅ Copied' : '📋 Copy'}
+      </button>
+      <a
+        href={releaseUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="managed-update-hint-changelog"
+        data-tip="See what's new in this release"
+      >
+        Changelog
+      </a>
+    </span>
+  );
+};
+
 function App() {
   const storedAutoIngest = getStoredAutoIngestSettings();
   const initialMainRoute = useMemo(
@@ -1892,6 +1933,7 @@ function App() {
   const [updateApplied, setUpdateApplied] = useState(false);
   const [updateError, setUpdateError] = useState('');
   const [quietUpdateDismissed, setQuietUpdateDismissed] = useState(false);
+  const [loudUpdateDismissed, setLoudUpdateDismissed] = useState(false);
   const emptyDbAutoOpenRef = useRef(false);
   const [globalReplayFilterConfig, setGlobalReplayFilterConfig] = useState(null);
   const [globalReplayFilterSaving, setGlobalReplayFilterSaving] = useState(false);
@@ -2823,13 +2865,21 @@ function App() {
   const selfUpdateSupported = Boolean(updateStatus?.self_update_supported);
   const updateLatest = String(updateStatus?.latest_version || latestVersion || '');
   const updateReleaseUrl = String(updateStatus?.latest_release_url || latestVersionUrl || 'https://github.com/marianogappa/screpdb/releases/latest');
-  // For package-manager installs the app can't swap its own binary, so surface
-  // the exact upgrade command the user should run (empty for non-managed installs).
+  // When the app can't swap its own binary, surface the exact upgrade command to
+  // run: the package manager for scoop/brew installs, or a re-run of the install
+  // script when the install dir is read-only on macOS/Linux (empty otherwise).
   const updateManagerCommand = (() => {
-    if ((updateStatus?.reason || '') !== 'managed') return '';
+    const reason = updateStatus?.reason || '';
     const manager = updateStatus?.package_manager || '';
-    if (manager === 'scoop') return 'scoop update screpdb';
-    if (manager === 'homebrew') return 'brew upgrade screpdb';
+    const os = updateStatus?.os || '';
+    if (reason === 'managed') {
+      if (manager === 'scoop') return 'scoop update screpdb';
+      if (manager === 'homebrew') return 'brew upgrade screpdb';
+      return '';
+    }
+    if (reason === 'not-writable' && os !== 'windows') {
+      return 'curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh | sh';
+    }
     return '';
   })();
   const updateUnsupportedTip = (() => {
@@ -5145,45 +5195,56 @@ function App() {
             <button type="button" className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('players')}>Players</button>
           </div>
           <div className="workflow-nav-group">
-            {updateAvailable && updateTier === 'loud' ? (
-              updateApplied ? (
-                <button
-                  type="button"
-                  className="workflow-nav-update-available tip-below"
-                  data-tip="The new version is installed — refresh to load it"
-                  onClick={() => window.location.reload()}
-                >
-                  ✅ Updated to {updateLatest} — Refresh
-                </button>
-              ) : selfUpdateSupported ? (
-                <button
-                  type="button"
-                  className="workflow-nav-update-available tip-below"
-                  data-tip={updateError || `Update from ${currentVersion} to ${updateLatest}`}
-                  disabled={updateApplying}
-                  onClick={handleApplyUpdate}
-                >
-                  {updateApplying ? '⏳ Updating…' : `🆕 Update to ${updateLatest}`}
-                </button>
-              ) : updateManagerCommand ? (
-                <span
-                  className="workflow-nav-update-available tip-below tip-hint"
-                  data-tip={updateUnsupportedTip}
-                  tabIndex={0}
-                >
-                  {`🆕 ${updateLatest} — run: ${updateManagerCommand}`}
-                </span>
-              ) : (
-                <a
-                  href={updateReleaseUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="workflow-nav-update-available tip-below"
-                  data-tip={updateUnsupportedTip}
-                >
-                  🆕 Update available
-                </a>
-              )
+            {updateAvailable && updateTier === 'loud' && !loudUpdateDismissed ? (
+              <span className="workflow-nav-update-nudge">
+                {updateApplied ? (
+                  <button
+                    type="button"
+                    className="workflow-nav-update-available tip-below"
+                    data-tip="The new version is installed — refresh to load it"
+                    onClick={() => window.location.reload()}
+                  >
+                    ✅ Updated to {updateLatest} — Refresh
+                  </button>
+                ) : selfUpdateSupported ? (
+                  <button
+                    type="button"
+                    className="workflow-nav-update-available tip-below"
+                    data-tip={updateError || `Update from ${currentVersion} to ${updateLatest}`}
+                    disabled={updateApplying}
+                    onClick={handleApplyUpdate}
+                  >
+                    {updateApplying ? '⏳ Updating…' : `🆕 Update to ${updateLatest}`}
+                  </button>
+                ) : updateManagerCommand ? (
+                  <ManagedUpdateHint
+                    className="workflow-nav-update-available managed-update-hint--nav"
+                    latestVersion={updateLatest}
+                    command={updateManagerCommand}
+                    releaseUrl={updateReleaseUrl}
+                  />
+                ) : (
+                  <a
+                    href={updateReleaseUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="workflow-nav-update-available tip-below"
+                    data-tip={updateUnsupportedTip}
+                  >
+                    🆕 Update available
+                  </a>
+                )}
+                {!updateApplied ? (
+                  <button
+                    type="button"
+                    className="footer-update-dismiss workflow-nav-update-dismiss"
+                    aria-label="Dismiss update notice"
+                    onClick={() => setLoudUpdateDismissed(true)}
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </span>
             ) : null}
             <button
               type="button"
@@ -7539,9 +7600,12 @@ function App() {
                         {updateApplying ? 'Updating…' : `🆕 Update to ${updateLatest}`}
                       </button>
                     ) : updateManagerCommand ? (
-                      <span className="footer-update-link tip-hint" data-tip={updateUnsupportedTip} tabIndex={0}>
-                        {`🆕 ${updateLatest} — run: ${updateManagerCommand}`}
-                      </span>
+                      <ManagedUpdateHint
+                        className="managed-update-hint--footer"
+                        latestVersion={updateLatest}
+                        command={updateManagerCommand}
+                        releaseUrl={updateReleaseUrl}
+                      />
                     ) : (
                       <a href={updateReleaseUrl} target="_blank" rel="noopener noreferrer" className="footer-update-link" data-tip={updateUnsupportedTip}>
                         {`🆕 Update available (${updateLatest})`}
