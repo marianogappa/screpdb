@@ -1,9 +1,10 @@
 package models
 
 const (
-	ActionTypeUnitMorph = "Unit Morph"
-	ActionTypeTrain     = "Train"
-	ActionTypeBuild     = "Build"
+	ActionTypeUnitMorph   = "Unit Morph"
+	ActionTypeTrain       = "Train"
+	ActionTypeBuild       = "Build"
+	ActionTypeCancelMorph = "Cancel Morph"
 
 	UnitNameDrone         = "Drone"
 	UnitNameProbe         = "Probe"
