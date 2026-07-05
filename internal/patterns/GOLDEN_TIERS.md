@@ -425,6 +425,49 @@ reports research **completion** (start + 84s), not start, and only when it
 finishes within the replay. The `pvz_corsair_no_speedlot_gameend` negative is
 the regression guard for it.
 
+### Round 13 premises — gas-trick fix + remaining beta clearout (`markers_golden.json`)
+
+User watched each replay and confirmed the detection. Promoted to tier-1
+(`curatedFeatureKeys`); a change that breaks one of these is a regression.
+
+| Fixture | Player (idx) | Verified premise |
+| --- | --- | --- |
+| `bo_10pool_zvz_mentalgap.rep` | P0 (mentalgap) | `Build Order: 10 Pool` (Pool at 10 supply, no earlier tech) |
+| `bo_tankless_expand_tvt_bisu.rep` | P1 (Bisu_chongchong) | `Build Order: Tankless Mech` (mech, no siege tanks, Command Center before any Factory) |
+| `bo_tankless_1base_proxy_tvt_lil.rep` | P1 (lIllllllllIl1) | `Build Order: 1-Base Tankless Mech` with `proxy` modifier (a forward/mid-map proxy Factory pumping Vultures, no expansion, no tanks — the `proxy_factory` worldstate event drives the modifier) |
+
+Round 13b/13c — corpus rescan (all corpora) for the remaining beta Terran
+fac-count buckets + 6 Pool, watched & confirmed. Regular-map fixtures first, then
+the Big-Game-Hunters-only buckets (mass factories before expanding is a money-map
+regime). A change breaking one of these is a regression.
+
+| Fixture | Player (idx) | Verified premise |
+| --- | --- | --- |
+| `bo_6pool_zvt_chobo85.rep` | chobo85 (Z), 1v1 | `Build Order: 6 Pool` (Pool at 6 supply — 2 Drone morphs before it) |
+| `bo_mech_expa_3fac_python_sabbath.rep` | Sabbath (T) | `Build Order: 3 Fact Expa Mech` (3 Factories before the expansion Command Center; siege tanks) |
+| `bo_mech_expa_4fac_fs_sabbath.rep` | Sabbath (T) | `Build Order: 4 Fact Expa Mech` (4 Factories before the expansion CC; tanks) |
+| `bo_tankless_expa_3fac_cb_sabbath.rep` | Fkc)Sabbath (T) | `Build Order: 3 Fact Expa Tankless Mech` (3 Factories before expansion CC, no siege tanks) |
+| `bo_goliath_expa_2fac_bgh_reflectingod.rep` | ReflectinG0d (T) | `Build Order: 2 Fact Expa Goliath` (money map; Goliath-dominant, 2 Factories before the expansion CC) |
+| `bo_mech_expa_5fac_bgh_zenkiller.rep` | ZenKiller (T) | `Build Order: 5 Fact Expa Mech` (money map; 5 Factories before the expansion CC) |
+| `bo_goliath_noexpa_bgh_emoplugged.rep` | EMOPlugged (T) | `Build Order: 1-Base Goliath` (money map; no expansion, Goliath-heavy) |
+
+Still beta after this round (no clean fixture): `bo_t_tankless_expa_2fac` (only
+candidate's base was destroyed early), `bo_5_hatch` (only candidate used cheated
+Drones), `bo_t_mech_expa_6fac` (only candidates double-fire with `1-Base Mech` — a
+1-base build wrongly also reads "Expa"; mutex gap tracked separately). Never fire
+anywhere: `bo_t_goliath_expa_{4,5,6}fac`, `bo_t_tankless_expa_{5,6}fac`. The 4-8
+Hatch rungs remain blocked on #272.
+
+This round also fixed the Zerg extractor / gas-trick supply undercount
+(AlgorithmVersion 60): the early-game economy sim now reverses a cancelled Build,
+so real early Drones are no longer dropped, and 10 Hatch no longer requires an
+Overlord before the Hatchery (the gas trick reaches 10 supply with none). The
+same-player Hydra fixtures `bo_3hatch_hydra_pvz_2jd` and `_pingcojerry` therefore
+now read `10 Hatch` (previously the buggy `4 Hatch` / `6 Hatch`); their tier-1
+premise remains the `N Hatch Hydra` composition, unaffected. The greedy-opener
+variant of the same drop bug (fast 2nd Hatchery, Overpool) is tracked in #272 and
+NOT fixed here — `9 Hatch` / `9 Overpool` gas-free openers may still undercount.
+
 ## Additional human-verified ground truth (not yet fixtured)
 
 From the same review, verified but not (yet) encoded as fixtures — candidates if

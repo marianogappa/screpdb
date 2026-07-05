@@ -256,7 +256,15 @@ import (
 // refunds a supply). Fixes Zerg openers read one supply too high — e.g. a 5
 // Pool with a cancelled drone read as 6 Pool. Re-ingest so Zerg openers
 // re-evaluate.
-const AlgorithmVersion = 59
+// 60: the early-game economy sim now reverses a cancelled Build (Cancel Build) —
+// refunding minerals and, for Zerg, the consumed Drone + supply — so the
+// extractor / gas trick no longer charges a phantom cost that made the backtrack
+// pass drop real early Drones. Also: 10 Hatch no longer requires an Overlord
+// before the Hatchery (the gas trick reaches 10 supply with none), and mech
+// openers gained a "proxy" modifier (WorldstateEvent proxy_factory). Fixes
+// gas-trick Zerg openers read several supply too low (a 10 Hatch read as 4
+// Hatch). Re-ingest so Zerg openers + Terran mech proxies re-evaluate.
+const AlgorithmVersion = 60
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

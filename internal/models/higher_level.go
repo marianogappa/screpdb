@@ -5,6 +5,7 @@ const (
 	ActionTypeTrain       = "Train"
 	ActionTypeBuild       = "Build"
 	ActionTypeCancelMorph = "Cancel Morph"
+	ActionTypeCancelBuild = "Cancel Build"
 
 	UnitNameDrone         = "Drone"
 	UnitNameProbe         = "Probe"

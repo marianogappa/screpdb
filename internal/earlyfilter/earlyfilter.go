@@ -120,6 +120,20 @@ func runForward(
 		}
 
 		sim.advanceTo(cmd.Frame)
+
+		// A Cancel Build reverses the most-recent in-progress Build (refund
+		// minerals, return a Zerg Drone + its supply, undo the pending
+		// completion). Critically it runs on the live sim regardless of the
+		// time window so the extractor / gas trick's economy stays faithful —
+		// otherwise the phantom extractor cost starves the early Drone stream
+		// and a 10 Hatch reads as 4 Hatch.
+		if cmd.ActionType == models.ActionTypeCancelBuild {
+			sim.cancelLastBuild()
+			verdicts[i] = VerdictKept
+			mineralsAfter[i] = int(sim.minerals)
+			continue
+		}
+
 		// Gas-mining detection runs for every command in the window:
 		// Right-click / Targeted-Order with OrderName=Harvest1 is the
 		// signal that workers leave minerals for gas. Outside the window

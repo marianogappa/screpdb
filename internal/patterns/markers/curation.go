@@ -115,6 +115,30 @@ var curatedFeatureKeys = map[string]bool{
 	"turret_timing":   true,
 	"ten_plus_scouts": true,
 
+	// Round 13 (issue #269) — watched & confirmed. Fixtures bo_10pool_zvz_mentalgap
+	// (mentalgap = 10 Pool) and bo_tankless_expand_tvt_bisu (Bisu_chongchong =
+	// Tankless Mech, expand-first). The round also fixed the gas/extractor-trick
+	// undercount (AlgorithmVersion 60): the same-player 3hatch_hydra_2jd /
+	// _pingcojerry fixtures now read 10 Hatch (was 4/6).
+	"bo_10_pool":           true,
+	"bo_t_tankless_expand": true,
+	"bo_t_tankless_noexpa": true,
+
+	// Round 13b/13c — corpus rescan (all corpora) for the still-beta Terran
+	// fac-count buckets + 6 Pool, watched & confirmed. Regular-map fixtures:
+	// bo_mech_expa_3fac_python_sabbath, bo_mech_expa_4fac_fs_sabbath,
+	// bo_tankless_expa_3fac_cb_sabbath, bo_6pool_zvt_chobo85 (1v1). The N-fact
+	// mech/goliath buckets otherwise fire only on Big Game Hunters (their natural
+	// habitat); money-map fixtures: bo_goliath_expa_2fac_bgh_reflectingod,
+	// bo_mech_expa_5fac_bgh_zenkiller, bo_goliath_noexpa_bgh_emoplugged.
+	"bo_6_pool":               true,
+	"bo_t_mech_expa_3fac":     true,
+	"bo_t_mech_expa_4fac":     true,
+	"bo_t_mech_expa_5fac":     true,
+	"bo_t_tankless_expa_3fac": true,
+	"bo_t_goliath_expa_2fac":  true,
+	"bo_t_goliath_noexpa":     true,
+
 	// Round 7 — fixtures crazy_zerg_guardians_tvz_lyx2008, maelstrom_pvz_bysnow,
 	// first_observer_pvt_0sawon, first_mine_pvt_f1ssasad.
 	"crazy_zerg":     true,

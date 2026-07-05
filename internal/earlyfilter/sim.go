@@ -116,6 +116,20 @@ type pendingEvent struct {
 	gasWorkersDelta   int
 	completedBuilding string
 	addHatchery       bool
+	// buildID ties this completion to a still-cancellable Build in
+	// openBuilds. Non-zero only for Build completions; 0 for train/morph/gas
+	// events. When the completion fires, the build is no longer cancellable.
+	buildID int
+}
+
+// reversibleBuild records the effects a Build charged to the sim so a later
+// Cancel Build can undo them (the extractor / gas trick). Cleared when the
+// build completes (see advanceTo) — a finished structure cannot be cancelled.
+type reversibleBuild struct {
+	id              int
+	minerals        int
+	workersDelta    int // what acceptBuild applied (Zerg: -1; else 0)
+	supplyUsedDelta int // what acceptBuild applied (Zerg: -1; else 0)
 }
 
 // playerSim is the per-player state machine used by the forward pass.
@@ -139,6 +153,11 @@ type playerSim struct {
 	completed map[string]int
 
 	pending []pendingEvent
+
+	// openBuilds is the LIFO of in-progress, still-cancellable Builds.
+	// buildSeq hands out their ids.
+	openBuilds []reversibleBuild
+	buildSeq   int
 
 	lastFrame int32
 
@@ -214,6 +233,9 @@ func (p *playerSim) advanceTo(targetFrame int32) {
 		if ev.completedBuilding != "" {
 			p.completed[ev.completedBuilding]++
 		}
+		if ev.buildID != 0 {
+			p.removeOpenBuild(ev.buildID)
+		}
 		if ev.addHatchery {
 			p.hatcheries = append(p.hatcheries, newBuiltHatchery(ev.completionFrame))
 		}
@@ -237,6 +259,41 @@ func (p *playerSim) accumulateIncome(fromFrame, toFrame int32) {
 	}
 	dtSec := frameToSeconds(toFrame - fromFrame)
 	p.minerals += float64(mineralWorkers) * (p.gatherRate / 60.0) * dtSec
+}
+
+// removeOpenBuild drops the build with this id from openBuilds (it completed,
+// so it is no longer cancellable). No-op if already gone.
+func (p *playerSim) removeOpenBuild(id int) {
+	for i := range p.openBuilds {
+		if p.openBuilds[i].id == id {
+			p.openBuilds = append(p.openBuilds[:i], p.openBuilds[i+1:]...)
+			return
+		}
+	}
+}
+
+// cancelLastBuild reverses the most-recent still-in-progress Build: it refunds
+// the minerals and (for Zerg) returns the consumed Drone and its supply, and
+// removes the build's scheduled completion so it never lands. This models a
+// Cancel Build — chiefly the Zerg extractor / gas trick, where the extractor
+// briefly frees a supply so an extra Drone can morph past the cap, then is
+// cancelled to pop the Drone back out. Without this the sim charges a phantom
+// cost that starves the real early Drone stream. No-op if nothing is open.
+func (p *playerSim) cancelLastBuild() {
+	if len(p.openBuilds) == 0 {
+		return
+	}
+	b := p.openBuilds[len(p.openBuilds)-1]
+	p.openBuilds = p.openBuilds[:len(p.openBuilds)-1]
+	p.minerals += float64(b.minerals)
+	p.workers -= b.workersDelta
+	p.supplyUsed -= b.supplyUsedDelta
+	for i := range p.pending {
+		if p.pending[i].buildID == b.id {
+			p.pending = append(p.pending[:i], p.pending[i+1:]...)
+			break
+		}
+	}
 }
 
 // schedulePending inserts an event in time order. Insertion sort: the list
@@ -265,10 +322,20 @@ type dropDecision struct {
 // nil if no position is available.
 func (p *playerSim) acceptBuild(subject string, econ cmdenrich.UnitEcon, orderFrame int32, posBuildTilesXY *[2]int) {
 	p.minerals -= float64(econ.Minerals)
+	workersDelta, supplyUsedDelta := 0, 0
 	if p.race == "Zerg" {
 		p.workers--
 		p.supplyUsed--
+		workersDelta, supplyUsedDelta = -1, -1
 	}
+	p.buildSeq++
+	buildID := p.buildSeq
+	p.openBuilds = append(p.openBuilds, reversibleBuild{
+		id:              buildID,
+		minerals:        econ.Minerals,
+		workersDelta:    workersDelta,
+		supplyUsedDelta: supplyUsedDelta,
+	})
 	completionFrame := orderFrame + secondsToFrame(econ.BuildTimeS)
 	p.schedulePending(pendingEvent{
 		completionFrame:   completionFrame,
@@ -278,6 +345,7 @@ func (p *playerSim) acceptBuild(subject string, econ cmdenrich.UnitEcon, orderFr
 		// place and are out of the 4-min window anyway) become a new
 		// larva producer at completion.
 		addHatchery: p.race == "Zerg" && subject == models.GeneralUnitHatchery,
+		buildID:     buildID,
 	})
 
 	if posBuildTilesXY != nil && isGasBuildingSubject(subject) {
