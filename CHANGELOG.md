@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.22.0](https://github.com/marianogappa/screpdb/compare/v1.21.1...v1.22.0) (2026-07-05)
+
+
+### Features
+
+* **release:** open Scoop bump PR as a GitHub App for hands-off auto-merge ([#281](https://github.com/marianogappa/screpdb/issues/281)) ([bf46a59](https://github.com/marianogappa/screpdb/commit/bf46a59c4a30e03206121667a34ab79a444efc15))
+
 ## [1.21.1](https://github.com/marianogappa/screpdb/compare/v1.21.0...v1.21.1) (2026-07-05)
 
 
