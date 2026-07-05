@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.1](https://github.com/marianogappa/screpdb/compare/v1.21.0...v1.21.1) (2026-07-05)
+
+
+### Bug Fixes
+
+* **release:** run Scoop bump last so it can never strip release assets ([#277](https://github.com/marianogappa/screpdb/issues/277)) ([1cbacf8](https://github.com/marianogappa/screpdb/commit/1cbacf884e4785d4bfd9de2ddae82b9976c94749))
+
 ## [1.21.0](https://github.com/marianogappa/screpdb/compare/v1.20.0...v1.21.0) (2026-07-05)
 
 
