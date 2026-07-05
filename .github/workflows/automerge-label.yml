@@ -1,0 +1,25 @@
+name: Auto-merge on label
+
+# Add the `automerge` label to a PR and it squash-merges itself once the
+# required checks pass. Uses pull_request_target so the token always has
+# write access (even for fork PRs); safe because it only calls the GitHub
+# API and never checks out or runs the PR's code.
+on:
+  pull_request_target:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable-auto-merge:
+    if: github.event.label.name == 'automerge'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: gh pr merge "$PR" --repo "$REPO" --auto --squash
