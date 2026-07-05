@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.23.0](https://github.com/marianogappa/screpdb/compare/v1.22.0...v1.23.0) (2026-07-05)
+
+
+### Features
+
+* **ci:** auto-merge PRs labeled 'automerge' once checks pass ([#283](https://github.com/marianogappa/screpdb/issues/283)) ([12abacb](https://github.com/marianogappa/screpdb/commit/12abacbf1f8b3dc5fb4b6e272078d29f6597028e))
+
 ## [1.22.0](https://github.com/marianogappa/screpdb/compare/v1.21.1...v1.22.0) (2026-07-05)
 
 
