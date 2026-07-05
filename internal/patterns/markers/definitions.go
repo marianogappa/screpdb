@@ -496,8 +496,12 @@ func allMarkers() []Marker {
 		return Marker{
 			Name: name, PatternName: InitialBuildOrderPatternNamePrefix + name, FeatureKey: fkey,
 			Race: RaceTerran, Kind: KindInitialBuildOrder,
-			Rule:          All(tCohort, facRule, tcMechPred, c.gate, Not(tc2Starport), Not(tcOneOneOne)),
-			RuleDeadline:  600,
+			Rule:         All(tCohort, facRule, tcMechPred, c.gate, Not(tc2Starport), Not(tcOneOneOne)),
+			RuleDeadline: 600,
+			// "proxy" flags a forward Factory at the enemy (vultures out of a
+			// mid-map / proxy Factory) — the mech equivalent of proxy Barracks /
+			// Starport. Orthogonal to the mech flavour + factory count.
+			Modifiers:     []Modifier{{Name: "proxy", WorldstateEvent: "proxy_factory"}},
 			Expert:        ev,
 			SummaryPlayer: mkPill(name, c.icon), GamesList: mkPill(name, c.icon),
 		}
@@ -1010,8 +1014,15 @@ func allMarkers() []Marker {
 			Race:        RaceZerg,
 			Kind:        KindInitialBuildOrder,
 			Rule: All(
+				// 10 Hatch = 10 supply at the expansion Hatchery = 6 Drone morphs
+				// (4 starting Drones + 6). No Overlord gate: reaching the 10th
+				// Drone before an Overlord is legal via the extractor / gas trick
+				// (build an Extractor to free a supply, morph the 10th Drone, then
+				// Cancel Build), and with the early-game economy sim now modelling
+				// that trick the Drone count alone is supply-faithful. Exact count
+				// keeps the rung disjoint from 9 Hatch (5) and 11 Hatch (7). Pool /
+				// Evo Chamber must not precede the Hatchery (else it's Pool-tech).
 				ProduceCountBeforeBuild(subjDrone, subjHatchery, 6),
-				ProduceCountBeforeBuild(subjOverlord, subjHatchery, 1),
 				Not(BuildBefore(subjSpawningPool, subjHatchery)),
 				Not(BuildBefore(subjEvolutionChamber, subjHatchery)),
 			),
