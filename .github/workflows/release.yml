@@ -127,19 +127,36 @@ jobs:
           files: dist/SHA256SUMS.minisig
           fail_on_unmatched_files: true
 
+      # Mint a GitHub App installation token for the Scoop bump. A PR opened by
+      # the default GITHUB_TOKEN has its checks gated as `action_required` (needs
+      # a manual "Approve workflows to run" click), which stalls auto-merge. A PR
+      # opened by a GitHub App is a trusted actor, so its checks run automatically
+      # and auto-merge can land it hands-off. Best-effort: if the SCOOP_APP_*
+      # secrets are absent, this step's outputs are empty and the Scoop step falls
+      # back to the default token (the old, approval-gated behaviour) rather than
+      # failing the release.
+      - name: Generate Scoop-bump app token
+        id: scoop-app-token
+        if: github.ref_type == 'tag'
+        continue-on-error: true
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.SCOOP_APP_ID }}
+          private-key: ${{ secrets.SCOOP_APP_PRIVATE_KEY }}
+
       # Regenerate the Scoop manifest from the freshly built binaries so
       # `scoop update screpdb` picks up the release. Runs LAST, after the release
       # artifacts are uploaded: a failure here must never strip binaries from the
       # release (an earlier version of this step, placed before the upload, hard-
       # failed and left a release with no assets). Branch protection rejects a
       # direct push to the default branch (the bot is not a bypass actor), so open
-      # a PR instead — it respects branch protection and surfaces as a visible PR
-      # rather than a swallowed error. Requires the repo's "Allow GitHub Actions
-      # to create and approve pull requests" setting; auto-merge is best-effort.
+      # a PR instead. Opened as the GitHub App (see token step above) so its
+      # required `test` check runs without manual approval and auto-merge lands it.
       - name: Update Scoop manifest
         if: github.ref_type == 'tag'
         env:
-          GH_TOKEN: ${{ github.token }}
+          APP_TOKEN: ${{ steps.scoop-app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.scoop-app-token.outputs.token || github.token }}
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
@@ -159,7 +176,16 @@ jobs:
           git checkout -B "$BRANCH"
           git add bucket/screpdb.json
           git commit -m "chore(scoop): bump manifest to ${VERSION}"
-          git push --force-with-lease origin "$BRANCH"
+          # Push as the App when its token is present so the PR's checks are not
+          # approval-gated. `-c http.extraheader=` drops the default token's
+          # persisted auth so the App token in the URL is the one that is used.
+          if [ -n "${APP_TOKEN:-}" ]; then
+            git -c http.extraheader= push --force-with-lease \
+              "https://x-access-token:${APP_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$BRANCH"
+          else
+            echo "::warning::SCOOP_APP_* secrets not set; pushing with the default token — the bump PR's checks will need manual approval."
+            git push --force-with-lease origin "$BRANCH"
+          fi
           if gh pr view "$BRANCH" --json state --jq '.state' 2>/dev/null | grep -q OPEN; then
             echo "PR for $BRANCH already open."
           else
