@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.21.0](https://github.com/marianogappa/screpdb/compare/v1.20.0...v1.21.0) (2026-07-05)
+
+
+### Features
+
+* fix Zerg gas-trick opener undercount and curate round-13 build orders ([#274](https://github.com/marianogappa/screpdb/issues/274)) ([195d525](https://github.com/marianogappa/screpdb/commit/195d5257a47c47a5956f9264e12f934023f5b392))
+
+
+### Bug Fixes
+
+* **scoop:** unstick manifest at v1.20.0 and bump via PR, not blocked push ([#276](https://github.com/marianogappa/screpdb/issues/276)) ([dee8f85](https://github.com/marianogappa/screpdb/commit/dee8f85888297d576413a193781694fd4bd8b659))
+
 ## [1.20.0](https://github.com/marianogappa/screpdb/compare/v1.19.0...v1.20.0) (2026-07-04)
 
 
