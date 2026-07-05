@@ -64,6 +64,11 @@ To upgrade later, just run:
 scoop update screpdb
 ```
 
+> 💡 **Seeing an old version, or `install` fails on a missing file?** Your local
+> copy of the bucket is a git clone that only refreshes on `scoop update`. Run
+> `scoop update` (no package name) first to pull the latest manifest, then
+> `scoop install screpdb` / `scoop update screpdb`.
+
 Scoop is the happy path because it downloads without a browser, so Windows **won't** show the "unidentified developer" / SmartScreen warning, and upgrades are one command. Don't have Scoop yet? Install it first (one line, from [scoop.sh](https://scoop.sh)):
 
 ```powershell
