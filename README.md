@@ -48,9 +48,10 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes.
 <details>
 <summary><strong>Windows</strong> — recommended: install with Scoop</summary>
 
-**👉 Recommended: install with [Scoop](https://scoop.sh).** Open **PowerShell** and paste these two commands:
+**👉 Recommended: install with [Scoop](https://scoop.sh).** Open **PowerShell** and paste these commands:
 
 ```powershell
+scoop install git   # required by 'scoop bucket add' (skip if you already have git)
 scoop bucket add screpdb https://github.com/marianogappa/screpdb
 scoop install screpdb
 ```
