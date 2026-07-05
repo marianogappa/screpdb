@@ -53,46 +53,6 @@ jobs:
         working-directory: dist
         run: sha256sum * > SHA256SUMS
 
-      # Regenerate the Scoop manifest from the freshly built binaries so
-      # `scoop update screpdb` picks up the release. Branch protection rejects a
-      # direct push to the default branch (the bot is not a bypass actor), which
-      # silently froze the manifest at an old release for many cycles. Open a PR
-      # instead — it respects branch protection and, if the bump is ever blocked,
-      # surfaces as a visible PR rather than a swallowed error. Auto-merge is
-      # requested best-effort; it lands automatically wherever the repo allows it.
-      - name: Update Scoop manifest
-        if: github.ref_type == 'tag'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
-          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
-          DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
-          BRANCH="chore/scoop-bump-${VERSION}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # dist/SHA256SUMS is untracked, so it survives the checkout.
-          git fetch origin "$DEFAULT_BRANCH"
-          git checkout "$DEFAULT_BRANCH"
-          ./scripts/update-scoop-manifest.sh "$VERSION" dist/SHA256SUMS
-          if git diff --quiet -- bucket/screpdb.json; then
-            echo "Scoop manifest already up to date."
-            exit 0
-          fi
-          git checkout -b "$BRANCH"
-          git add bucket/screpdb.json
-          git commit -m "chore(scoop): bump manifest to ${VERSION}"
-          git push --force-with-lease origin "$BRANCH"
-          if gh pr view "$BRANCH" --json state --jq '.state' 2>/dev/null | grep -q OPEN; then
-            echo "PR for $BRANCH already open."
-          else
-            gh pr create --base "$DEFAULT_BRANCH" --head "$BRANCH" \
-              --title "chore(scoop): bump manifest to ${VERSION}" \
-              --body "Automated Scoop manifest bump for v${VERSION} so \`scoop install\`/\`scoop update screpdb\` resolves the current release."
-          fi
-          gh pr merge "$BRANCH" --auto --squash || echo "::warning::Could not enable auto-merge; merge the Scoop bump PR manually."
-
       # Bump the Homebrew formula in the dedicated marianogappa/homebrew-screpdb
       # tap so `brew upgrade screpdb` picks up the release. Requires a
       # HOMEBREW_TAP_TOKEN secret (a PAT with contents:write on that repo — the
@@ -166,3 +126,45 @@ jobs:
         with:
           files: dist/SHA256SUMS.minisig
           fail_on_unmatched_files: true
+
+      # Regenerate the Scoop manifest from the freshly built binaries so
+      # `scoop update screpdb` picks up the release. Runs LAST, after the release
+      # artifacts are uploaded: a failure here must never strip binaries from the
+      # release (an earlier version of this step, placed before the upload, hard-
+      # failed and left a release with no assets). Branch protection rejects a
+      # direct push to the default branch (the bot is not a bypass actor), so open
+      # a PR instead — it respects branch protection and surfaces as a visible PR
+      # rather than a swallowed error. Requires the repo's "Allow GitHub Actions
+      # to create and approve pull requests" setting; auto-merge is best-effort.
+      - name: Update Scoop manifest
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+          DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
+          BRANCH="chore/scoop-bump-${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # dist/SHA256SUMS is untracked, so it survives the checkout.
+          git fetch origin "$DEFAULT_BRANCH"
+          git checkout "$DEFAULT_BRANCH"
+          ./scripts/update-scoop-manifest.sh "$VERSION" dist/SHA256SUMS
+          if git diff --quiet -- bucket/screpdb.json; then
+            echo "Scoop manifest already up to date."
+            exit 0
+          fi
+          git checkout -B "$BRANCH"
+          git add bucket/screpdb.json
+          git commit -m "chore(scoop): bump manifest to ${VERSION}"
+          git push --force-with-lease origin "$BRANCH"
+          if gh pr view "$BRANCH" --json state --jq '.state' 2>/dev/null | grep -q OPEN; then
+            echo "PR for $BRANCH already open."
+          else
+            gh pr create --base "$DEFAULT_BRANCH" --head "$BRANCH" \
+              --title "chore(scoop): bump manifest to ${VERSION}" \
+              --body "Automated Scoop manifest bump for v${VERSION} so \`scoop install\`/\`scoop update screpdb\` resolves the current release."
+          fi
+          gh pr merge "$BRANCH" --auto --squash || echo "::warning::Could not enable auto-merge; merge the Scoop bump PR manually."
