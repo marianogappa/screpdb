@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -67,6 +68,21 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// The tray runs inside this Low-integrity worker, so "Open dashboard" cannot
+	// open the browser directly (issue #237); it hands the URL to the Medium
+	// launcher via the broker, same as the initial auto-open.
+	var onOpen func()
+	if !opts.Headless {
+		if dir, err := appdata.Dir(); err == nil {
+			serverURL := fmt.Sprintf("http://localhost:%d", opts.Port)
+			onOpen = func() {
+				if err := winsandbox.BrokerOpenURL(dir, serverURL); err != nil {
+					log.Printf("tray: failed to open dashboard: %v", err)
+				}
+			}
+		}
+	}
+
 	errCh := make(chan error, 1)
 	go func() {
 		defer crashreport.Guard()
@@ -86,6 +102,7 @@ func main() {
 		Title:   "screpdb",
 		Tooltip: "screpdb dashboard",
 		Icon:    tray.DefaultIcon(),
+		OnOpen:  onOpen,
 		OnQuit:  cancel,
 	}); err != nil {
 		log.Println(err)

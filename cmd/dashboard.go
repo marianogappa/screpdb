@@ -13,6 +13,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/dashboard"
 	"github.com/marianogappa/screpdb/internal/dashboardrun"
 	"github.com/marianogappa/screpdb/internal/selfupdate"
+	"github.com/marianogappa/screpdb/internal/winsandbox"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
@@ -80,13 +81,32 @@ func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) err
 		log.Printf("Self-update relaunch complete; refresh the existing browser tab to load the new version.")
 	default:
 		log.Printf("Opening browser to %s...", serverURL)
-		if err := browser.OpenURL(serverURL); err != nil {
+		if err := openDashboardBrowser(serverURL); err != nil {
 			log.Printf("Warning: failed to open browser: %v", err)
 		}
+		// A successful open call does not guarantee a window appeared (on Windows
+		// ShellExecute reports success even when nothing launches), so always tell
+		// the user where to go if it didn't.
+		log.Printf("If no browser window opened, open %s manually.", serverURL)
 	}
 
 	<-ctx.Done()
 	return nil
+}
+
+// openDashboardBrowser opens the dashboard in the default browser. The
+// Low-integrity Windows worker cannot do this itself — a ShellExecute from Low
+// integrity silently fails to spawn a window (issue #237) — so it hands the URL
+// to the Medium launcher via the broker. Every other build opens it directly.
+func openDashboardBrowser(serverURL string) error {
+	if winsandbox.IsWorker() {
+		dir, err := appdata.Dir()
+		if err != nil {
+			return fmt.Errorf("resolve app-data dir: %w", err)
+		}
+		return winsandbox.BrokerOpenURL(dir, serverURL)
+	}
+	return browser.OpenURL(serverURL)
 }
 
 func runDashboard(cmd *cobra.Command, args []string) error {

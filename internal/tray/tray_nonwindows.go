@@ -8,6 +8,7 @@ type Config struct {
 	Title   string
 	Tooltip string
 	Icon    []byte
+	OnOpen  func()
 	OnQuit  func()
 }
 
