@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.23.1](https://github.com/marianogappa/screpdb/compare/v1.23.0...v1.23.1) (2026-07-09)
+
+
+### Bug Fixes
+
+* **gui:** open dashboard browser from Medium launcher, add tray item ([#288](https://github.com/marianogappa/screpdb/issues/288)) ([c3cf34c](https://github.com/marianogappa/screpdb/commit/c3cf34cae24a32e186702fb8ced2075df952282b))
+
 ## [1.23.0](https://github.com/marianogappa/screpdb/compare/v1.22.0...v1.23.0) (2026-07-05)
 
 
