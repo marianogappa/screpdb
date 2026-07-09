@@ -39,16 +39,6 @@ jobs:
       - name: Build cross-platform release binaries
         run: make cross-binaries
 
-      # One-cycle transition shim: the GUI asset was renamed
-      # screpdb-dashboard-windows-amd64.exe -> screpdb-gui-windows-amd64.exe.
-      # Already-installed GUI binaries still self-update against the OLD asset
-      # name (compiled in), so publish a byte-identical copy under the old name
-      # for one release cycle. Remove this step (and the old-name upload below)
-      # in the next release once existing installs have migrated.
-      - name: Publish legacy GUI asset name (transition)
-        working-directory: dist
-        run: cp screpdb-gui-windows-amd64.exe screpdb-dashboard-windows-amd64.exe
-
       - name: Generate SHA256SUMS
         working-directory: dist
         run: sha256sum * > SHA256SUMS
@@ -112,7 +102,6 @@ jobs:
           files: |
             dist/screpdb-windows-amd64.exe
             dist/screpdb-gui-windows-amd64.exe
-            dist/screpdb-dashboard-windows-amd64.exe
             dist/screpdb-linux-amd64
             dist/screpdb-linux-arm64
             dist/screpdb-darwin-amd64
