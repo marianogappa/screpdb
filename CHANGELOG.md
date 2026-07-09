@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.23.2](https://github.com/marianogappa/screpdb/compare/v1.23.1...v1.23.2) (2026-07-09)
+
+
+### Bug Fixes
+
+* **gui:** host tray in Medium launcher so it appears under the Low sandbox ([#292](https://github.com/marianogappa/screpdb/issues/292)) ([900e2e0](https://github.com/marianogappa/screpdb/commit/900e2e065d610f674e0e40804b1c191815128a25))
+
 ## [1.23.1](https://github.com/marianogappa/screpdb/compare/v1.23.0...v1.23.1) (2026-07-09)
 
 
