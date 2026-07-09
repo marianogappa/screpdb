@@ -4,6 +4,13 @@ name: Auto-merge on label
 # required checks pass. Uses pull_request_target so the token always has
 # write access (even for fork PRs); safe because it only calls the GitHub
 # API and never checks out or runs the PR's code.
+#
+# The merge is performed with RELEASE_PLEASE_TOKEN (a PAT), NOT the default
+# GITHUB_TOKEN: GitHub does not trigger workflows for pushes made with
+# GITHUB_TOKEN, so auto-merging the release-please "release" PR with it silently
+# skipped the Release Please run that tags the release (v1.23.2 stuck as
+# `autorelease: pending`). A PAT merge is attributed to a real user, so the push
+# fires Release Please and the release is cut.
 on:
   pull_request_target:
     types: [labeled]
@@ -19,7 +26,7 @@ jobs:
     steps:
       - name: Enable auto-merge
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: gh pr merge "$PR" --repo "$REPO" --auto --squash
