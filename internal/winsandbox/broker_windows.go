@@ -229,11 +229,12 @@ func handleSeeRequest(req brokerRequest) brokerResponse {
 }
 
 func handleOpenURLRequest(req brokerRequest) brokerResponse {
-	// Only ever open a loopback dashboard URL. This keeps the Low sandbox
-	// meaningful: a compromised worker cannot hand the Medium launcher an
-	// arbitrary string for ShellExecute to turn into a launched program or a
-	// non-http protocol handler.
-	if err := validateLoopbackURL(req.URL); err != nil {
+	// Only ever open a URL the worker legitimately needs the Medium launcher to
+	// open for it: the loopback dashboard, or a prefilled screpdb GitHub issue
+	// from the crash reporter. This keeps the Low sandbox meaningful — a
+	// compromised worker cannot hand the launcher an arbitrary string for
+	// ShellExecute to turn into a launched program or a non-http protocol handler.
+	if err := validateBrokerURL(req.URL); err != nil {
 		return brokerResponse{Error: err.Error()}
 	}
 	if err := browser.OpenURL(req.URL); err != nil {
@@ -242,23 +243,22 @@ func handleOpenURLRequest(req brokerRequest) brokerResponse {
 	return brokerResponse{Success: true}
 }
 
-func validateLoopbackURL(raw string) error {
+func validateBrokerURL(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil {
 		return fmt.Errorf("invalid url: %w", err)
 	}
-	if u.Scheme != "http" {
-		return fmt.Errorf("refusing to open non-http url scheme %q", u.Scheme)
-	}
-	switch u.Hostname() {
-	case "localhost", "127.0.0.1":
-	default:
-		return fmt.Errorf("refusing to open non-loopback host %q", u.Hostname())
-	}
-	if port := u.Port(); port != "" {
-		if _, err := strconv.Atoi(port); err != nil {
-			return fmt.Errorf("invalid port %q", port)
+	switch {
+	case u.Scheme == "http" && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1"):
+		if port := u.Port(); port != "" {
+			if _, err := strconv.Atoi(port); err != nil {
+				return fmt.Errorf("invalid port %q", port)
+			}
 		}
+		return nil
+	case u.Scheme == "https" && u.Hostname() == "github.com" && strings.HasPrefix(u.Path, "/marianogappa/screpdb"):
+		return nil
+	default:
+		return fmt.Errorf("refusing to open url %q", raw)
 	}
-	return nil
 }

@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -14,7 +12,6 @@ import (
 	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/dashboardrun"
 	"github.com/marianogappa/screpdb/internal/iofacade"
-	"github.com/marianogappa/screpdb/internal/tray"
 	"github.com/marianogappa/screpdb/internal/winsandbox"
 	"github.com/spf13/pflag"
 )
@@ -25,9 +22,9 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	// On Windows, the first (Medium-integrity) process is the launcher: it
-	// prepares the Low-writable app-data dir and relaunches this binary as a
-	// Low-integrity worker (issue #237). ShouldLaunch is false once we are the
-	// worker, and always false off Windows.
+	// prepares the Low-writable app-data dir, hosts the tray, opens the browser,
+	// and relaunches this binary as a Low-integrity worker (issue #237).
+	// ShouldLaunch is false once we are the worker, and always false off Windows.
 	if winsandbox.ShouldLaunch() {
 		if logPath, err := appdata.Path("screpdb-launcher.log"); err == nil {
 			if logFile, err := iofacade.Create(logPath); err == nil {
@@ -46,6 +43,19 @@ func main() {
 		}
 	}
 
+	// The Low-integrity worker cannot open a browser itself (issue #237), so the
+	// crash reporter's "open the prefilled issue" step is routed to the Medium
+	// launcher via the broker, same as the dashboard auto-open.
+	if winsandbox.IsWorker() {
+		crashreport.SetOpener(func(issueURL string) error {
+			dir, err := appdata.Dir()
+			if err != nil {
+				return err
+			}
+			return winsandbox.BrokerOpenURL(dir, issueURL)
+		})
+	}
+
 	var opts dashboardrun.Options
 	fs := pflag.NewFlagSet("windows-dashboard", pflag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
@@ -55,56 +65,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	if !tray.Supported() {
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
-		if err := cmd.RunDashboardWithContext(ctx, opts); err != nil {
-			log.Println(err)
-			os.Exit(1)
-		}
-		return
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// The tray runs inside this Low-integrity worker, so "Open dashboard" cannot
-	// open the browser directly (issue #237); it hands the URL to the Medium
-	// launcher via the broker, same as the initial auto-open.
-	var onOpen func()
-	if !opts.Headless {
-		if dir, err := appdata.Dir(); err == nil {
-			serverURL := fmt.Sprintf("http://localhost:%d", opts.Port)
-			onOpen = func() {
-				if err := winsandbox.BrokerOpenURL(dir, serverURL); err != nil {
-					log.Printf("tray: failed to open dashboard: %v", err)
-				}
-			}
-		}
-	}
-
-	errCh := make(chan error, 1)
-	go func() {
-		defer crashreport.Guard()
-		errCh <- cmd.RunDashboardWithContext(ctx, opts)
-	}()
-
-	go func() {
-		defer crashreport.Guard()
-		if err := <-errCh; err != nil && !errors.Is(err, context.Canceled) {
-			log.Printf("dashboard exited with error: %v", err)
-		}
-		cancel()
-		tray.Quit()
-	}()
-
-	if err := tray.Run(tray.Config{
-		Title:   "screpdb",
-		Tooltip: "screpdb dashboard",
-		Icon:    tray.DefaultIcon(),
-		OnOpen:  onOpen,
-		OnQuit:  cancel,
-	}); err != nil {
+	// The tray lives in the Medium launcher; the worker only serves the dashboard.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	if err := cmd.RunDashboardWithContext(ctx, opts); err != nil {
 		log.Println(err)
 		os.Exit(1)
 	}

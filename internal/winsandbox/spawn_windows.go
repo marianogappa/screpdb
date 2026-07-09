@@ -3,9 +3,11 @@
 package winsandbox
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -25,8 +27,10 @@ func ShouldLaunch() bool { return !IsWorker() }
 // entries ("KEY=VALUE") are added to the child's environment (WorkerEnv is set
 // by the caller). workDir becomes the child's working directory — set it to the
 // Low-writable app-data root so the worker's cwd-relative bootstrap never tries
-// to write into the Medium install directory.
-func SpawnWorkerLow(exePath string, args, extraEnv []string, workDir string) (int, error) {
+// to write into the Medium install directory. Cancelling ctx terminates the
+// worker (the tray "Quit" path): a spawned Low process is not a child job, so it
+// would otherwise outlive the launcher.
+func SpawnWorkerLow(ctx context.Context, exePath string, args, extraEnv []string, workDir string) (int, error) {
 	var procToken windows.Token
 	if err := windows.OpenProcessToken(
 		windows.CurrentProcess(),
@@ -88,8 +92,27 @@ func SpawnWorkerLow(exePath string, args, extraEnv []string, workDir string) (in
 	defer windows.CloseHandle(pi.Thread)
 	defer windows.CloseHandle(pi.Process)
 
-	if _, err := windows.WaitForSingleObject(pi.Process, windows.INFINITE); err != nil {
-		return 0, fmt.Errorf("wait for worker: %w", err)
+	// Terminate the worker when the launcher cancels ctx (tray "Quit"). We join
+	// this goroutine (wg.Wait) before the deferred CloseHandle runs, so it can
+	// never fire a TerminateProcess against an already-closed, possibly recycled
+	// handle.
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		select {
+		case <-ctx.Done():
+			_ = windows.TerminateProcess(pi.Process, 1)
+		case <-done:
+		}
+	}()
+
+	_, waitErr := windows.WaitForSingleObject(pi.Process, windows.INFINITE)
+	close(done)
+	wg.Wait()
+	if waitErr != nil {
+		return 0, fmt.Errorf("wait for worker: %w", waitErr)
 	}
 	var code uint32
 	if err := windows.GetExitCodeProcess(pi.Process, &code); err != nil {

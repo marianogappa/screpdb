@@ -21,7 +21,9 @@ func ShouldLaunch() bool { return false }
 func SetLowLabel(string) error { return errUnsupported }
 
 // SpawnWorkerLow is a no-op stub off Windows.
-func SpawnWorkerLow(string, []string, []string, string) (int, error) { return 0, errUnsupported }
+func SpawnWorkerLow(context.Context, string, []string, []string, string) (int, error) {
+	return 0, errUnsupported
+}
 
 // StartBroker is a no-op stub off Windows.
 func StartBroker(context.Context, string) (func(), error) { return func() {}, errUnsupported }
