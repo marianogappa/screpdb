@@ -13,6 +13,7 @@ type Config struct {
 	Title   string
 	Tooltip string
 	Icon    []byte
+	OnOpen  func()
 	OnQuit  func()
 }
 
@@ -41,6 +42,16 @@ func Run(config Config) error {
 		}
 		if len(icon) > 0 {
 			systray.SetIcon(icon)
+		}
+
+		if config.OnOpen != nil {
+			openItem := systray.AddMenuItem("Open dashboard", "Open the screpdb dashboard in your browser")
+			go func() {
+				defer crashreport.Guard()
+				for range openItem.ClickedCh {
+					config.OnOpen()
+				}
+			}()
 		}
 
 		quitItem := systray.AddMenuItem("Quit", "Quit screpdb dashboard")
