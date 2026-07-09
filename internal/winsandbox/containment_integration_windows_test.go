@@ -12,6 +12,7 @@
 package winsandbox
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -40,7 +41,7 @@ func TestLowIntegrityContainment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Executable: %v", err)
 	}
-	code, err := SpawnWorkerLow(self, nil, []string{selfTestEnv + "=" + appDir, WorkerEnv + "=1"}, appDir)
+	code, err := SpawnWorkerLow(context.Background(), self, nil, []string{selfTestEnv + "=" + appDir, WorkerEnv + "=1"}, appDir)
 	if err != nil {
 		t.Fatalf("SpawnWorkerLow: %v", err)
 	}

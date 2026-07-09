@@ -4,6 +4,7 @@ package tray
 
 import (
 	_ "embed"
+	"sync"
 
 	"github.com/getlantern/systray"
 	"github.com/marianogappa/screpdb/internal/crashreport"
@@ -61,13 +62,18 @@ func Run(config Config) error {
 			if config.OnQuit != nil {
 				config.OnQuit()
 			}
-			systray.Quit()
+			quit()
 		}()
 	}, func() {})
 
 	return nil
 }
 
-func Quit() {
-	systray.Quit()
-}
+// quitOnce guards systray.Quit: the launcher tears the tray down from both the
+// "Quit" click and the worker-exited path, and calling systray.Quit twice can
+// panic on its closed channel.
+var quitOnce sync.Once
+
+func quit() { quitOnce.Do(systray.Quit) }
+
+func Quit() { quit() }

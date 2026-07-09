@@ -31,6 +31,24 @@ var openBrowserDefault atomic.Bool
 // entrypoint should call it once at startup, before spawning goroutines.
 func SetOpenBrowser(open bool) { openBrowserDefault.Store(open) }
 
+// issueOpener overrides how the prefilled issue URL is opened. It holds a
+// func(string) error. The zero value falls back to browser.OpenURL, which is
+// correct for a Medium-integrity process; the Low-integrity Windows worker
+// cannot open a browser itself (issue #237), so its entrypoint sets an opener
+// that routes through the Medium launcher's broker.
+var issueOpener atomic.Value
+
+// SetOpener overrides how crash reports open the prefilled issue URL. An
+// entrypoint should call it once at startup, before spawning goroutines.
+func SetOpener(open func(string) error) { issueOpener.Store(open) }
+
+func openIssue(issueURL string) error {
+	if v := issueOpener.Load(); v != nil {
+		return v.(func(string) error)(issueURL)
+	}
+	return browser.OpenURL(issueURL)
+}
+
 // Guard is deferred at the top of every long-lived goroutine:
 //
 //	go func() {
@@ -141,7 +159,7 @@ func Handle(recovered any, stack []byte, openBrowser bool) {
 	fmt.Fprintln(os.Stderr, rule)
 
 	if openBrowser {
-		_ = browser.OpenURL(issueURL)
+		_ = openIssue(issueURL)
 	}
 }
 
