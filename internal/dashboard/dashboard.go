@@ -52,6 +52,14 @@ type Dashboard struct {
 	sampleSetAutoLoaded bool
 	pendingSampleIngest bool
 	headless            bool
+	shutdown            func()
+}
+
+// SetShutdownFunc registers the callback the /api/custom/quit endpoint invokes to
+// stop the process (typically the root context's cancel func). If unset, the
+// quit handler falls back to os.Exit(0).
+func (d *Dashboard) SetShutdownFunc(fn func()) {
+	d.shutdown = fn
 }
 
 func New(ctx context.Context, sqlitePath string, headless bool) (*Dashboard, error) {
@@ -206,6 +214,7 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/custom/sample-set/load", d.handlerLoadSampleSet).Methods(http.MethodPost)
 	r.HandleFunc("/api/custom/update/status", d.handlerUpdateStatus).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/update/apply", d.handlerUpdateApply).Methods(http.MethodPost)
+	r.HandleFunc("/api/custom/quit", d.handlerQuit).Methods(http.MethodPost)
 	apigen.HandlerFromMux(strictHandler, r)
 	r.PathPrefix("/api/").Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)

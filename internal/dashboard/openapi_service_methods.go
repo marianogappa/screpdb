@@ -329,6 +329,7 @@ func (d *Dashboard) Healthcheck(ctx context.Context, _ apigen.HealthcheckRequest
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
 	return map[string]any{
+		"app":           "screpdb",
 		"ok":            true,
 		"total_replays": totalReplays,
 		"version":       buildinfo.Version,

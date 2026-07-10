@@ -12,6 +12,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/appdata"
 	"github.com/marianogappa/screpdb/internal/dashboard"
 	"github.com/marianogappa/screpdb/internal/dashboardrun"
+	"github.com/marianogappa/screpdb/internal/netfacade"
 	"github.com/marianogappa/screpdb/internal/selfupdate"
 	"github.com/marianogappa/screpdb/internal/winsandbox"
 	"github.com/pkg/browser"
@@ -46,7 +47,35 @@ func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) err
 		// Self-update relaunch: wait for the previous process to release the
 		// listening port (Windows has no exec-in-place) before we bind.
 		time.Sleep(1500 * time.Millisecond)
+	} else {
+		// Single-instance guard: if screpdb is already serving on the requested
+		// port, reconnect to it (open the browser) rather than starting an
+		// invisible second server or failing on a busy port. If the port is held
+		// by a foreign process, fall through to the next free port in range.
+		// Skipped during a self-update relaunch, where we deliberately want to
+		// wait for and rebind the same port.
+		resolvedPort, alreadyRunning, resolveErr := resolveDashboardPort(opts.Port)
+		if resolveErr != nil {
+			return resolveErr
+		}
+		if alreadyRunning {
+			serverURL := fmt.Sprintf("http://localhost:%d", resolvedPort)
+			log.Printf("screpdb is already running at %s; opening it instead of starting another instance.", serverURL)
+			if !opts.Headless {
+				if err := openDashboardBrowser(serverURL); err != nil {
+					log.Printf("Warning: failed to open browser: %v", err)
+				}
+			}
+			return nil
+		}
+		opts.Port = resolvedPort
 	}
+
+	// Own the shutdown lifetime so the dashboard "Quit" button can stop us
+	// cleanly: cancelling this context unblocks the <-ctx.Done() below, which on
+	// Windows lets the launcher observe a clean worker exit and drop its tray.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	dbPath, err := appdata.ResolveDBPath(opts.SQLitePath)
 	if err != nil {
@@ -58,6 +87,7 @@ func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) err
 	if err != nil {
 		return err
 	}
+	dash.SetShutdownFunc(cancel)
 
 	// Start backend server asynchronously
 	serverURL := fmt.Sprintf("http://localhost:%d", opts.Port)
@@ -92,6 +122,31 @@ func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) err
 
 	<-ctx.Done()
 	return nil
+}
+
+// dashboardPortScanRange bounds how many consecutive ports single-instance
+// resolution will probe starting at the requested port before giving up.
+const dashboardPortScanRange = 10
+
+// resolveDashboardPort implements screpdb's single-instance policy. Starting at
+// the preferred port it scans a small range and returns either a free port to
+// bind (alreadyRunning=false) or the port of an existing screpdb to reconnect to
+// (alreadyRunning=true). A port held by a foreign process is skipped. It errors
+// only if the whole range is occupied by non-screpdb processes.
+func resolveDashboardPort(preferred int) (port int, alreadyRunning bool, err error) {
+	for p := preferred; p < preferred+dashboardPortScanRange; p++ {
+		addr := fmt.Sprintf("localhost:%d", p)
+		if netfacade.LocalPortAvailable(addr) {
+			return p, false, nil
+		}
+		if netfacade.IsLocalScrepdb(addr, 2*time.Second) {
+			return p, true, nil
+		}
+		log.Printf("Port %d is in use by another process; trying the next one.", p)
+	}
+	return 0, false, fmt.Errorf(
+		"no free port found in range %d-%d, and no existing screpdb to reconnect to",
+		preferred, preferred+dashboardPortScanRange-1)
 }
 
 // openDashboardBrowser opens the dashboard in the default browser. The

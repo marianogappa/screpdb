@@ -1934,6 +1934,7 @@ function App() {
   const [updateError, setUpdateError] = useState('');
   const [quietUpdateDismissed, setQuietUpdateDismissed] = useState(false);
   const [loudUpdateDismissed, setLoudUpdateDismissed] = useState(false);
+  const [stopped, setStopped] = useState(false);
   const emptyDbAutoOpenRef = useRef(false);
   const [globalReplayFilterConfig, setGlobalReplayFilterConfig] = useState(null);
   const [globalReplayFilterSaving, setGlobalReplayFilterSaving] = useState(false);
@@ -2908,6 +2909,15 @@ function App() {
     } finally {
       setUpdateApplying(false);
     }
+  };
+
+  const handleQuit = () => {
+    if (stopped) return;
+    if (!window.confirm('Stop screpdb? The server will shut down and you can close this tab.')) return;
+    // The server dies ~500ms after acknowledging, so the request may resolve or
+    // error as the socket drops — either way it's on its way down. Show the
+    // stopped screen regardless.
+    api.quit().catch(() => {}).finally(() => setStopped(true));
   };
 
   const refreshStaleReplaysCount = useCallback(async () => {
@@ -5186,6 +5196,19 @@ function App() {
     return mainPlayersSortDir === 'asc' ? '↑' : '↓';
   };
 
+  if (stopped) {
+    return (
+      <div className="app app-stopped">
+        <div className="app-stopped-card">
+          <div className="app-stopped-icon">⏻</div>
+          <h1>screpdb has stopped</h1>
+          <p>The server has shut down. You can safely close this tab.</p>
+          <p className="app-stopped-hint">To use it again, launch screpdb from your terminal or app.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <div className="dashboard-container" style={mainGamesWideWidth ? { maxWidth: `${mainGamesWideWidth}px` } : undefined}>
@@ -5264,6 +5287,14 @@ function App() {
               {!showIngestPanel && ingestStatus === 'running' ? (
                 <span className="ingest-running-badge tip-below" data-tip="Ingestion in progress — click to view logs">Ingesting…</span>
               ) : null}
+            </button>
+            <button
+              type="button"
+              onClick={handleQuit}
+              className="workflow-nav-text-action workflow-nav-quit tip-below"
+              data-tip="Stop the screpdb server and quit"
+            >
+              ⏻ Quit
             </button>
             {staleReplaysCount > 0 && staleReplaysCount > dismissedStaleCount && ingestStatus !== 'running' ? (
               <span className="stale-replays-hint-wrap">

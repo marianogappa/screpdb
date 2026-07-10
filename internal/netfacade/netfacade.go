@@ -1,8 +1,10 @@
 // Package netfacade is the sanctioned surface for general network operations in
 // screpdb's Go binary. Per issue #135 the binary's only network-client
-// operation here is a localhost TCP readiness probe (used to detect when the
-// embedded dashboard server has come up); the dashboard HTTP server binds to
-// localhost only.
+// operations here talk to the loopback interface: a localhost TCP readiness
+// probe (used to detect when the embedded dashboard server has come up) and a
+// localhost /api/health GET used for single-instance detection (deciding whether
+// a busy port is already served by another screpdb). The dashboard HTTP server
+// binds to localhost only.
 //
 // The one deliberate exception to "no outbound calls" is in-binary self-update
 // (issue #212): internal/selfupdate is a separate sanctioned surface that
@@ -17,8 +19,11 @@
 package netfacade
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -59,4 +64,48 @@ func WaitForLocalListener(addr string, attempts int, delay time.Duration) error 
 		time.Sleep(delay)
 	}
 	return fmt.Errorf("netfacade: %s did not start listening after %d attempts", addr, attempts)
+}
+
+// LocalPortAvailable reports whether nothing is currently listening on the given
+// loopback address, by attempting a short-lived bind. It refuses any
+// non-loopback address. Note the usual bind race: the port can be taken between
+// this check and an actual ListenAndServe, so callers must still handle a bind
+// failure downstream.
+func LocalPortAvailable(addr string) bool {
+	if !isLocalAddr(addr) {
+		return false
+	}
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return false
+	}
+	_ = ln.Close()
+	return true
+}
+
+// IsLocalScrepdb reports whether the loopback address is served by a screpdb
+// instance, by GETting /api/health and checking for screpdb's identity marker.
+// It refuses any non-loopback address and makes no request off the loopback
+// interface. Used for single-instance detection: a busy port that answers as
+// screpdb should be reused rather than treated as a fatal conflict.
+func IsLocalScrepdb(addr string, timeout time.Duration) bool {
+	if !isLocalAddr(addr) {
+		return false
+	}
+	client := &http.Client{Timeout: timeout}
+	resp, err := client.Get("http://" + addr + "/api/health")
+	if err != nil {
+		return false
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+	var body struct {
+		App string `json:"app"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<16)).Decode(&body); err != nil {
+		return false
+	}
+	return body.App == "screpdb"
 }

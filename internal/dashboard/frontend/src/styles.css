@@ -2251,6 +2251,49 @@ button.workflow-nav-update-available:disabled {
   outline-offset: 2px;
 }
 
+.workflow-nav-quit:hover {
+  color: #ffd9d9;
+  background: rgba(220, 80, 80, 0.16);
+}
+
+.app-stopped {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.app-stopped-card {
+  max-width: 420px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.app-stopped-icon {
+  font-size: 44px;
+  line-height: 1;
+  margin-bottom: 16px;
+  opacity: 0.85;
+}
+
+.app-stopped-card h1 {
+  font-size: 22px;
+  margin: 0 0 12px;
+}
+
+.app-stopped-card p {
+  margin: 6px 0;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.app-stopped-hint {
+  margin-top: 14px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
 .workflow-nav-active {
   background: rgba(100, 150, 255, 0.6);
 }
