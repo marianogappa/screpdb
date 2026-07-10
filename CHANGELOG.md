@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.24.1](https://github.com/marianogappa/screpdb/compare/v1.24.0...v1.24.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* **dashboard:** keep games-list Featuring column on one cropped row ([#299](https://github.com/marianogappa/screpdb/issues/299)) ([f6b6e00](https://github.com/marianogappa/screpdb/commit/f6b6e00368b688d4dda5e52abe101c874425e51f))
+
 ## [1.24.0](https://github.com/marianogappa/screpdb/compare/v1.23.2...v1.24.0) (2026-07-10)
 
 
