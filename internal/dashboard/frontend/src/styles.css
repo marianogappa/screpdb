@@ -54,6 +54,12 @@ body {
   margin: 0 auto;
 }
 
+/* The games list uses the full viewport width so the flexible Featuring column
+   has the most room before it has to crop. */
+.dashboard-container--full {
+  max-width: none;
+}
+
 .dashboard-header {
   margin-bottom: 30px;
 }
@@ -2541,6 +2547,16 @@ button.workflow-nav-update-available:disabled {
 .workflow-games-list-table {
   font-size: clamp(0.8125rem, calc(0.8125rem + (100vw - 1300px) * 0.0037), 0.867rem);
   margin-top: 10px;
+  width: 100%;
+}
+
+/* Make Featuring the flexible column: max-width:0 + width:100% lets it absorb
+   whatever width is left after the other columns take their natural size, then
+   crop its single row to that. Without this the nowrap pills inflate the column
+   to their full content width and push it off the right edge of the screen. */
+.workflow-games-list-table td.workflow-games-list-featuring {
+  width: 100%;
+  max-width: 0;
 }
 
 .workflow-games-list-table td,
@@ -2605,6 +2621,49 @@ button.workflow-nav-update-available:disabled {
 
 .workflow-games-list-table .workflow-pattern-pills {
   gap: 3px;
+}
+
+/* Featuring column: keep the pills on a single cropped row with a trailing "…"
+   toggle; expanding wraps them to show all. */
+.workflow-featuring-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.workflow-featuring-wrap .workflow-pattern-pills {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.workflow-featuring-wrap--expanded .workflow-pattern-pills {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.workflow-featuring-wrap .workflow-feature-pill {
+  flex: 0 0 auto;
+}
+
+.workflow-featuring-toggle {
+  flex: 0 0 auto;
+  align-self: center;
+  min-width: 22px;
+  min-height: 20px;
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.workflow-featuring-toggle:hover {
+  background: rgba(255, 255, 255, 0.16);
 }
 
 /* Roomy variant: applied (from App.jsx) only when every game on the page is a
