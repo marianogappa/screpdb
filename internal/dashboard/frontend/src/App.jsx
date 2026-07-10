@@ -967,6 +967,60 @@ const elideGenericDropLabels = (labels) => {
   return labels.filter((l) => !startsWith(l, 'Drop'));
 };
 
+// FeaturingCell keeps the games-list Featuring column on a single row, cropping
+// overflow. When the pills overflow, a trailing "…" toggle expands the cell to
+// wrap and show them all; the toggle stops click propagation so it doesn't open
+// the game the row links to.
+function FeaturingCell({ featuring }) {
+  const labels = elideGenericDropLabels(featuring || []);
+  const pillsRef = useRef(null);
+  const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useLayoutEffect(() => {
+    if (expanded) return undefined;
+    const el = pillsRef.current;
+    if (!el) return undefined;
+    const measure = () => setOverflowing(el.scrollWidth > el.clientWidth + 1);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [labels, expanded]);
+
+  if (labels.length === 0) {
+    return <span className="workflow-empty-inline">-</span>;
+  }
+
+  const toggle = (e) => {
+    e.stopPropagation();
+    setExpanded((v) => !v);
+  };
+
+  return (
+    <div className={`workflow-featuring-wrap${expanded ? ' workflow-featuring-wrap--expanded' : ''}`}>
+      <div ref={pillsRef} className="workflow-pattern-pills">
+        {labels.map((pill, pillIdx) => (
+          <span key={`${pillIdx}-${pill}`} className="workflow-pattern-pill workflow-feature-pill">
+            <span>{pill}</span>
+          </span>
+        ))}
+      </div>
+      {(overflowing || expanded) && (
+        <button
+          type="button"
+          className="workflow-featuring-toggle"
+          onClick={toggle}
+          title={expanded ? 'Collapse' : 'Show all'}
+          aria-label={expanded ? 'Collapse featuring' : 'Show all featuring'}
+        >
+          {expanded ? '×' : '…'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 const renderFeaturingPill = (pill, keyPrefix) => {
   const iconKeys = (Array.isArray(pill.iconKeys) && pill.iconKeys.length)
     ? pill.iconKeys
@@ -2011,7 +2065,6 @@ function App() {
   });
   const [mainGamesBORaceOpen, setMainGamesBORaceOpen] = useState('');
   const mainGamesTableRef = useRef(null);
-  const [mainGamesWideWidth, setMainGamesWideWidth] = useState(0);
   const [mainGameDetailLoading, setMainGameDetailLoading] = useState(false);
   const [mainPlayerLoading, setMainPlayerLoading] = useState(false);
   const [selectedReplayId, setSelectedReplayId] = useState(() => initialMainRoute.replayId);
@@ -4746,72 +4799,6 @@ function App() {
     return () => ro.disconnect();
   }, [mainEventMapPanelEl]);
 
-  // Once the games-list type has grown to the filter-bar font (handled in CSS by
-  // the width-driven clamp), wide viewports still leave horizontal slack beyond
-  // the capped container. If any row's Featuring pills wrap to a second line,
-  // widen the whole container into that slack — the auto table layout funnels the
-  // extra width to the flexible Featuring column, and nav/filters grow and stay
-  // left-aligned with the list — until no row wraps or we run out of viewport.
-  useLayoutEffect(() => {
-    const table = mainGamesTableRef.current;
-    if (activeView !== 'games' || !table) {
-      setMainGamesWideWidth(0);
-      return undefined;
-    }
-    if (mainGamesLoading) return undefined;
-    const container = table.closest('.dashboard-container');
-    if (!container) return undefined;
-
-    const applyWidth = (w) => {
-      container.style.maxWidth = w == null ? '' : `${w}px`;
-    };
-
-    const anyFeaturingWraps = () => {
-      const cells = table.querySelectorAll('td.workflow-games-list-featuring .workflow-pattern-pills');
-      for (const cell of cells) {
-        const pills = cell.children;
-        if (pills.length < 2) continue;
-        const top0 = pills[0].offsetTop;
-        for (let i = 1; i < pills.length; i += 1) {
-          if (pills[i].offsetTop > top0 + 1) return true;
-        }
-      }
-      return false;
-    };
-
-    const compute = () => {
-      applyWidth(null);
-      const base = container.offsetWidth;
-      const maxWidth = document.documentElement.clientWidth - 4;
-
-      if (!anyFeaturingWraps() || maxWidth <= base + 8) {
-        setMainGamesWideWidth(0);
-        return;
-      }
-
-      applyWidth(maxWidth);
-      if (anyFeaturingWraps()) {
-        applyWidth(null);
-        setMainGamesWideWidth(maxWidth);
-        return;
-      }
-
-      let lo = base;
-      let hi = maxWidth;
-      for (let i = 0; i < 8; i += 1) {
-        const mid = Math.round((lo + hi) / 2);
-        applyWidth(mid);
-        if (anyFeaturingWraps()) lo = mid; else hi = mid;
-      }
-      applyWidth(null);
-      setMainGamesWideWidth(hi);
-    };
-
-    compute();
-    const onResize = () => compute();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [activeView, mainGames, mainGamesLoading]);
   const mainTimingCategoryConfig = useMemo(
     () => TIMING_CATEGORY_CONFIG.find((cfg) => cfg.id === mainTimingCategory) || TIMING_CATEGORY_CONFIG[0],
     [mainTimingCategory],
@@ -5211,7 +5198,7 @@ function App() {
 
   return (
     <div className="app">
-      <div className="dashboard-container" style={mainGamesWideWidth ? { maxWidth: `${mainGamesWideWidth}px` } : undefined}>
+      <div className={`dashboard-container${activeView === 'games' ? ' dashboard-container--full' : ''}`}>
         <div className="workflow-nav workflow-nav-app">
           <div className="workflow-nav-group">
             <button type="button" className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('games')}>Games</button>
@@ -5509,21 +5496,7 @@ function App() {
                         <td className="workflow-games-list-map">{renderMapNameWithKind(game.map_name, game.map_kind)}</td>
                         <td className="workflow-games-list-duration">{formatDuration(game.duration_seconds)}</td>
                         <td className="workflow-games-list-featuring">
-                          {(() => {
-                            const featuring = elideGenericDropLabels(game.featuring || []);
-                            if (featuring.length === 0) {
-                              return <span className="workflow-empty-inline">-</span>;
-                            }
-                            return (
-                              <div className="workflow-pattern-pills">
-                                {featuring.map((pill, pillIdx) => (
-                                  <span key={`${game.replay_id}-${pillIdx}-${pill}`} className="workflow-pattern-pill workflow-feature-pill">
-                                    <span>{pill}</span>
-                                  </span>
-                                ))}
-                              </div>
-                            );
-                          })()}
+                          <FeaturingCell featuring={game.featuring} />
                         </td>
                       </tr>
                     ))}
