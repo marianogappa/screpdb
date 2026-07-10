@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.24.0](https://github.com/marianogappa/screpdb/compare/v1.23.2...v1.24.0) (2026-07-10)
+
+
+### Features
+
+* **dashboard:** single-instance startup, Quit button, and uninstall docs ([#296](https://github.com/marianogappa/screpdb/issues/296)) ([61ff31d](https://github.com/marianogappa/screpdb/commit/61ff31dd6877a89fac62c788f435fd421fdeecc0))
+
 ## [1.23.2](https://github.com/marianogappa/screpdb/compare/v1.23.1...v1.23.2) (2026-07-09)
 
 
