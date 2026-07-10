@@ -120,6 +120,15 @@ export const api = {
     return response.json();
   },
 
+  quit: async () => {
+    const response = await fetch(`${API_CUSTOM}/quit`, { method: 'POST' });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to stop screpdb');
+    }
+    return response.json();
+  },
+
   getUpdateStatus: async () => {
     const response = await fetch(`${API_CUSTOM}/update/status`);
     if (!response.ok) {

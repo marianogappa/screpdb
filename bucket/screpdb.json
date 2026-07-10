@@ -7,6 +7,13 @@
         "Run 'screpdb-gui' (or 'screpdb dashboard') to open the local dashboard in your browser.",
         "The binaries are not code-signed; SmartScreen/Defender may warn on first run. See the README."
     ],
+    "post_uninstall": [
+        "Write-Host ''",
+        "Write-Host 'screpdb kept its data (database, settings) at:'",
+        "Write-Host \"  $env:LOCALAPPDATA\\screpdb\"",
+        "Write-Host 'To remove it too, run this (deletes your data):'",
+        "Write-Host \"  Remove-Item -Recurse -Force '$env:LOCALAPPDATA\\screpdb'\""
+    ],
     "architecture": {
         "64bit": {
             "url": [

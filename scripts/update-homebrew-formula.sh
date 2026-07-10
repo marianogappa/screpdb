@@ -71,6 +71,16 @@ class Screpdb < Formula
     bin.install Dir["screpdb-*"].first => "screpdb"
   end
 
+  def caveats
+    dir = OS.mac? ? "~/Library/Application Support/screpdb" : "\${XDG_CONFIG_HOME:-\$HOME/.config}/screpdb"
+    <<~EOS
+      screpdb keeps its database and settings in a single folder:
+        #{dir}
+      This is left untouched on uninstall. To remove your data too, run:
+        rm -rf "#{dir}"
+    EOS
+  end
+
   test do
     assert_match "screpdb", shell_output("#{bin}/screpdb --help 2>&1")
   end
