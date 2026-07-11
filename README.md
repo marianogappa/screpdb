@@ -185,8 +185,6 @@ make build
 
 ## Uninstall
 
-Removing screpdb is two steps: uninstall the binary, then (optionally) delete its data folder. screpdb keeps everything it writes — the database, settings, cache, logs, and crash reports — under a **single folder**, so there's nothing else to hunt down.
-
 **1. Remove the binary**
 
 | Installed with | Command |
@@ -195,19 +193,17 @@ Removing screpdb is two steps: uninstall the binary, then (optionally) delete it
 | Homebrew (macOS/Linux) | `brew uninstall screpdb` |
 | One-line installer / manual | Delete the binary you placed (e.g. `~/.local/bin/screpdb`) |
 
-**2. Delete the data folder** (optional — skip this to keep your data for a future reinstall). Package managers deliberately leave it in place, and the `brew`/`scoop` uninstall prints this reminder too:
+**2. Delete the data folder** (optional — skip this to keep your data for a future reinstall).
 
 ```bash
+# Windows (PowerShell)
+Remove-Item -Recurse -Force "$env:LOCALAPPDATA\screpdb"
+
 # macOS
 rm -rf "$HOME/Library/Application Support/screpdb"
 
 # Linux
 rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/screpdb"
-```
-
-```powershell
-# Windows (PowerShell)
-Remove-Item -Recurse -Force "$env:LOCALAPPDATA\screpdb"
 ```
 
 ## Developer features
