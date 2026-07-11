@@ -175,6 +175,18 @@ jobs:
             echo "::warning::SCOOP_APP_* secrets not set; pushing with the default token — the bump PR's checks will need manual approval."
             git push --force-with-lease origin "$BRANCH"
           fi
+          # Close any older, now-superseded Scoop-bump PRs. Bumps are strictly
+          # version-monotonic, so an open bump PR from a prior release always
+          # points at an older version than this one; if its auto-merge stalled
+          # (e.g. branch went out of date under branch protection) it would
+          # otherwise linger and, if ever merged, regress the manifest.
+          gh pr list --state open --json number,headRefName \
+            --jq ".[] | select(.headRefName | startswith(\"chore/scoop-bump-\")) | select(.headRefName != \"${BRANCH}\") | .number" \
+            | while read -r stale; do
+                [ -n "$stale" ] || continue
+                gh pr close "$stale" --delete-branch \
+                  --comment "Superseded by the v${VERSION} bump; closing to avoid a Scoop manifest regression." || true
+              done
           if gh pr view "$BRANCH" --json state --jq '.state' 2>/dev/null | grep -q OPEN; then
             echo "PR for $BRANCH already open."
           else
