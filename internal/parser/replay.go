@@ -344,6 +344,8 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	// Store pattern orchestrator in data for later use
 	data.PatternOrchestrator = patternOrchestrator
 
+	data.FingerprintVectors = extractFingerprintVectors(rep)
+
 	return data, nil
 }
 

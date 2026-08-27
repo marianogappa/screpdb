@@ -302,6 +302,13 @@ func (s *SQLiteStorage) storeReplayWithBatching(ctx context.Context, data *model
 		return fmt.Errorf("failed to insert players: %w", err)
 	}
 
+	stop = run.Phase("fpvectors")
+	err = s.insertFingerprintVectorsBatchTx(ctx, tx, replayID, playerIDs, data.FingerprintVectors)
+	stop()
+	if err != nil {
+		return fmt.Errorf("failed to insert fingerprint vectors: %w", err)
+	}
+
 	// Step 3: Update commands with correct IDs and insert them
 	s.updateEntityIDs(data, replayID, playerIDs)
 

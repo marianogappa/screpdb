@@ -9,6 +9,27 @@ import (
 	"context"
 )
 
+const GetPlayerFingerprintCoverage = `-- name: GetPlayerFingerprintCoverage :one
+SELECT COUNT(DISTINCT v.replay_id) AS games_with_vectors
+FROM player_fingerprint_vectors v
+JOIN players p ON p.id = v.player_id
+WHERE lower(trim(p.name)) = ? AND v.feature_version = ?
+`
+
+type GetPlayerFingerprintCoverageParams struct {
+	Name           string
+	FeatureVersion int64
+}
+
+// Games contributing fingerprint vectors for a player, counting only vectors
+// extracted under the current feature version (older ones are not comparable).
+func (q *Queries) GetPlayerFingerprintCoverage(ctx context.Context, arg GetPlayerFingerprintCoverageParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, GetPlayerFingerprintCoverage, arg.Name, arg.FeatureVersion)
+	var games_with_vectors int64
+	err := row.Scan(&games_with_vectors)
+	return games_with_vectors, err
+}
+
 const GetPlayerOverviewSummary = `-- name: GetPlayerOverviewSummary :one
 SELECT
   CAST(COALESCE(MIN(p.name), '') AS TEXT) AS player_name,

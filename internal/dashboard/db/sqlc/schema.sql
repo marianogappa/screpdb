@@ -53,6 +53,18 @@ CREATE TABLE players (
   slot_id INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE player_fingerprint_vectors (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  replay_id INTEGER NOT NULL,
+  player_id INTEGER NOT NULL,
+  feature_version INTEGER NOT NULL,
+  model_tag TEXT NOT NULL,
+  race TEXT NOT NULL,
+  frames INTEGER NOT NULL,
+  cmd_count INTEGER NOT NULL,
+  vector BLOB NOT NULL
+);
+
 CREATE TABLE player_aliases (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   canonical_alias TEXT NOT NULL,

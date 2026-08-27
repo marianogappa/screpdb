@@ -18,6 +18,8 @@ Whenever you change anything that affects the *output* of replay detection (game
 
 If you only changed presentation (frontend rendering, descriptions, overlays) without touching what's persisted, no bump is needed.
 
+This also covers fingerprint vectors: bumping `github.com/marianogappa/scfingerprint` to a version with a new `FeatureVersion()` makes every stored row in `player_fingerprint_vectors` stale (vectors are only comparable within a feature version, and coverage counts only current-version rows), so such a bump requires an `AlgorithmVersion` bump too — the re-ingest it drives is what re-extracts the vectors.
+
 # Pull Requests
 
 - **Always use Conventional Commits format for the PR title** (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, etc.). Releases are automated from the squash-merged commit message via release-please-style tooling — a non-conventional title means no release on merge.

@@ -141,14 +141,29 @@ type Command struct {
 	Player *Player `json:"-"`
 }
 
+// PlayerFingerprintVector is one player's scfingerprint feature vector for a
+// single game, extracted at parse time. Vectors are only comparable within a
+// FeatureVersion; ModelTag identifies the trained scoring model bundled with
+// the extractor at extraction time.
+type PlayerFingerprintVector struct {
+	PlayerID       byte      `json:"player_id"` // replay player_id, not the database player id
+	Race           string    `json:"race"`
+	Vector         []float64 `json:"vector"`
+	Frames         int       `json:"frames"`
+	CmdCount       int       `json:"cmd_count"`
+	FeatureVersion int       `json:"feature_version"`
+	ModelTag       string    `json:"model_tag"`
+}
+
 // ReplayData represents the complete parsed replay data
 type ReplayData struct {
-	Replay              *Replay           `json:"replay"`
-	Players             []*Player         `json:"players"`
-	Commands            []*Command        `json:"commands"`
-	MapContext          *ReplayMapContext `json:"-"` // Runtime-only map context (not persisted)
-	PatternOrchestrator any               `json:"-"` // Pattern orchestrator (type *patterns.Orchestrator), not serialized
-	Profile             any               `json:"-"` // Optional *profile.Run, populated when SCREPDB_INGEST_PROFILE is set
+	Replay              *Replay                   `json:"replay"`
+	Players             []*Player                 `json:"players"`
+	Commands            []*Command                `json:"commands"`
+	FingerprintVectors  []PlayerFingerprintVector `json:"-"`
+	MapContext          *ReplayMapContext         `json:"-"` // Runtime-only map context (not persisted)
+	PatternOrchestrator any                       `json:"-"` // Pattern orchestrator (type *patterns.Orchestrator), not serialized
+	Profile             any                       `json:"-"` // Optional *profile.Run, populated when SCREPDB_INGEST_PROFILE is set
 }
 
 // MapResourcePosition stores a resource position in pixels.

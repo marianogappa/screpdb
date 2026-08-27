@@ -83,7 +83,7 @@ func TestRunMigrations_CreatesSchemaAndLedgers(t *testing.T) {
 
 	dataTables := []string{
 		"replays", "players", "commands", "commands_low_value", "replay_events",
-		"player_aliases", "settings",
+		"player_fingerprint_vectors", "player_aliases", "settings",
 	}
 	for _, tbl := range dataTables {
 		if !tableExists(t, db, tbl) {
@@ -100,7 +100,7 @@ func TestRunMigrations_RecordsEveryEmbeddedUpFile(t *testing.T) {
 	db := openDB(t, path)
 
 	want := map[MigrationSet][]string{
-		MigrationSetReplay:    {"000001_initial.up.sql", "000002_add_load_action_types.up.sql"},
+		MigrationSetReplay:    {"000001_initial.up.sql", "000002_add_load_action_types.up.sql", "000003_add_player_fingerprint_vectors.up.sql"},
 		MigrationSetDashboard: {"000001_initial.up.sql"},
 		MigrationSetSettings:  {"000001_initial.up.sql"},
 	}
@@ -267,7 +267,7 @@ func TestCleanAndRunMigrations_PreservesSettingsData(t *testing.T) {
 
 // replayDataTables are the tables owned by the replay migration set that a
 // --clean wipe must drop (player_aliases is preserved and tested separately).
-var replayDataTables = []string{"replays", "players", "commands", "commands_low_value", "replay_events"}
+var replayDataTables = []string{"replays", "players", "commands", "commands_low_value", "replay_events", "player_fingerprint_vectors"}
 
 func TestDropAllMigrations_DropsEveryTableIncludingSettings(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "x.db")
@@ -348,8 +348,8 @@ func TestCleanAndRunMigrations_DropAndReapplyCycle(t *testing.T) {
 	}
 
 	// Ledgers are fully repopulated so subsequent RunMigrations no-ops.
-	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 2 {
-		t.Errorf("replay ledger should have 2 applied migrations after reapply, got %v", got)
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 3 {
+		t.Errorf("replay ledger should have 3 applied migrations after reapply, got %v", got)
 	}
 }
 
@@ -399,7 +399,7 @@ func TestCleanAndRunMigrationSet_ReappliesSingleSet(t *testing.T) {
 		t.Errorf("player_aliases should survive CleanAndRunMigrationSet(replay), got %d rows", aliasCount)
 	}
 
-	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 2 {
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 3 {
 		t.Errorf("replay ledger should be repopulated, got %v", got)
 	}
 }
@@ -424,8 +424,8 @@ func TestDropMigrationSet_ClearsLedgerAllowingReapply(t *testing.T) {
 		t.Fatalf("RunMigrationSet(replay): %v", err)
 	}
 	db := openDB(t, path)
-	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 2 {
-		t.Fatalf("precondition: replay ledger should have 2 entries, got %v", got)
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 3 {
+		t.Fatalf("precondition: replay ledger should have 3 entries, got %v", got)
 	}
 
 	if err := DropMigrationSet(path, MigrationSetReplay); err != nil {
@@ -442,7 +442,7 @@ func TestDropMigrationSet_ClearsLedgerAllowingReapply(t *testing.T) {
 	if !tableExists(t, db, "replays") {
 		t.Error("replays should exist after reapply")
 	}
-	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 2 {
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 3 {
 		t.Errorf("replay ledger should be repopulated on reapply, got %v", got)
 	}
 }
