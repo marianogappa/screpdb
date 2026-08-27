@@ -7128,6 +7128,9 @@ function App() {
                   <span><strong>Win rate</strong> {mainPlayer ? `${(mainPlayer.win_rate * 100).toFixed(1)}%` : '—'}</span>
                   <span><strong>APM</strong> {mainPlayer ? mainPlayer.average_apm?.toFixed(1) : '—'}</span>
                   <span><strong>EAPM</strong> {mainPlayer ? mainPlayer.average_eapm?.toFixed(1) : '—'}</span>
+                  <span title="Games contributing a playstyle fingerprint vector (extracted at ingest; very short or low-action games don't qualify, and replays ingested before this feature need a re-ingest). More covered games make player identification stronger.">
+                    <strong>Fingerprint</strong> {mainPlayer ? `${Number(mainPlayer.fingerprint_coverage?.games_with_vectors || 0)}/${Number(mainPlayer.games_played || 0)} games` : '—'}
+                  </span>
                   {mainPlayerLoading ? <span className="workflow-subtle-note">loading overview…</span> : null}
                 </div>
                 <div className="workflow-game-tab-stack">

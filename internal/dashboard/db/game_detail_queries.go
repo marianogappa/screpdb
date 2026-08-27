@@ -270,6 +270,13 @@ func (s *Store) GetPlayerOverviewSummary(ctx context.Context, playerKey string) 
 	}, nil
 }
 
+func (s *Store) GetPlayerFingerprintCoverage(ctx context.Context, playerKey string, featureVersion int64) (int64, error) {
+	return sqlcgen.New(Trace(s.replayScoped())).GetPlayerFingerprintCoverage(ctx, sqlcgen.GetPlayerFingerprintCoverageParams{
+		Name:           playerKey,
+		FeatureVersion: featureVersion,
+	})
+}
+
 func (s *Store) ListPlayerRecentGames(ctx context.Context, playerKey string) ([]PlayerRecentGameRow, error) {
 	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListPlayerRecentGames(ctx, playerKey)
 	if err != nil {

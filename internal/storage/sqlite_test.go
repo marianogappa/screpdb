@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/marianogappa/scfingerprint"
 	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/models"
@@ -216,6 +217,36 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	}
 	if rightClickRows != 0 {
 		t.Fatalf("expected default ingestion to skip Right Click commands, got %d rows", rightClickRows)
+	}
+
+	vectorRows, err := store.Query(ctx, `
+		SELECT v.feature_version, v.model_tag, v.race, v.frames, v.cmd_count, length(v.vector) AS vector_bytes, p.type, p.is_observer
+		FROM player_fingerprint_vectors v
+		JOIN players p ON p.id = v.player_id
+	`)
+	if err != nil {
+		t.Fatalf("query fingerprint vectors: %v", err)
+	}
+	if len(vectorRows) == 0 {
+		t.Fatalf("expected fingerprint vectors to be present after ingestion")
+	}
+	for _, row := range vectorRows {
+		featureVersion, ok := asInt64(row["feature_version"])
+		if !ok || featureVersion != int64(scfingerprint.FeatureVersion()) {
+			t.Fatalf("expected feature_version %d, got %v", scfingerprint.FeatureVersion(), row["feature_version"])
+		}
+		modelTag, ok := asString(row["model_tag"])
+		if !ok || strings.TrimSpace(modelTag) == "" {
+			t.Fatalf("expected non-empty model_tag, got %v", row["model_tag"])
+		}
+		vectorBytes, ok := asInt64(row["vector_bytes"])
+		if !ok || vectorBytes == 0 || vectorBytes%8 != 0 {
+			t.Fatalf("expected non-empty float64-aligned vector blob, got %v bytes", row["vector_bytes"])
+		}
+		playerType, _ := asString(row["type"])
+		if playerType != "Human" {
+			t.Fatalf("expected fingerprint vectors only for human players, got type %q", playerType)
+		}
 	}
 
 	hotkeyRows, err := store.Query(ctx, "SELECT COUNT(*) AS c FROM replay_events WHERE event_kind = 'marker' AND event_type = 'used_hotkey_groups'")

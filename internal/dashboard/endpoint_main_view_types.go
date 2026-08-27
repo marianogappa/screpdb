@@ -750,6 +750,16 @@ type workflowPlayerEarlyTiming struct {
 	MedianSeconds float64 `json:"median_seconds"`
 }
 
+// workflowFingerprintCoverage reports how many of a player's games contributed
+// scfingerprint feature vectors under the current feature version — the
+// substrate for player identification. Surfaces why identification is or is
+// not available (short games and low-command players yield no vector, and
+// replays ingested before vector extraction shipped need a re-ingest).
+type workflowFingerprintCoverage struct {
+	GamesWithVectors int64 `json:"games_with_vectors"`
+	FeatureVersion   int   `json:"feature_version"`
+}
+
 type workflowPlayerOverview struct {
 	SummaryVersion      string                        `json:"summary_version"`
 	PlayerKey           string                        `json:"player_key"`
@@ -763,6 +773,7 @@ type workflowPlayerOverview struct {
 	CarrierCommandCount int64                         `json:"carrier_command_count"`
 	RaceBreakdown       []workflowPlayerRaceBreakdown `json:"race_breakdown"`
 	FingerprintMetrics  []workflowComparativeMetric   `json:"fingerprint_metrics"`
+	FingerprintCoverage workflowFingerprintCoverage   `json:"fingerprint_coverage"`
 	RecentGames         []workflowGameListItem        `json:"recent_games"`
 	ChatSummary         workflowPlayerChatSummary     `json:"chat_summary"`
 	NarrativeHints      []string                      `json:"narrative_hints"`

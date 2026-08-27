@@ -264,7 +264,11 @@ import (
 // openers gained a "proxy" modifier (WorldstateEvent proxy_factory). Fixes
 // gas-trick Zerg openers read several supply too low (a 10 Hatch read as 4
 // Hatch). Re-ingest so Zerg openers + Terran mech proxies re-evaluate.
-const AlgorithmVersion = 60
+// 61: ingest now extracts and stores scfingerprint feature vectors per human
+// player (player_fingerprint_vectors table) — the substrate for player
+// identification. No detection output changed; the bump exists so the stale
+// hint drives a re-ingest that backfills vectors for existing replays.
+const AlgorithmVersion = 61
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

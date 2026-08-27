@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/marianogappa/scfingerprint"
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
 	db "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/models"
@@ -291,6 +292,14 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 		return result, sql.ErrNoRows
 	}
 	result.WinRate = float64(result.Wins) / float64(result.GamesPlayed)
+	gamesWithVectors, err := d.dbStore.GetPlayerFingerprintCoverage(d.ctx, playerKey, int64(scfingerprint.FeatureVersion()))
+	if err != nil {
+		return result, fmt.Errorf("failed to load fingerprint coverage: %w", err)
+	}
+	result.FingerprintCoverage = workflowFingerprintCoverage{
+		GamesWithVectors: gamesWithVectors,
+		FeatureVersion:   scfingerprint.FeatureVersion(),
+	}
 	if err := d.populateAdvancedPlayerOverview(playerKey, &result); err != nil {
 		return result, fmt.Errorf("failed to populate advanced player overview: %w", err)
 	}

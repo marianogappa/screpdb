@@ -63,6 +63,18 @@ type PlayerAlias struct {
 	UpdatedAt           string
 }
 
+type PlayerFingerprintVector struct {
+	ID             int64
+	ReplayID       int64
+	PlayerID       int64
+	FeatureVersion int64
+	ModelTag       string
+	Race           string
+	Frames         int64
+	CmdCount       int64
+	Vector         []byte
+}
+
 type Replay struct {
 	ID                       int64
 	FilePath                 string

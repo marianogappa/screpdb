@@ -69,6 +69,8 @@ github.com/lxn/walk v0.0.0-20210112085537-c389da54e794/go.mod h1:E23UucZGqpuUANJ
 github.com/lxn/win v0.0.0-20210218163916-a377121e959e/go.mod h1:KxxjdtRkfNoYDCUP5ryK7XJJNTnpC8atvtmTheChOtk=
 github.com/mailru/easyjson v0.7.7 h1:UGYAvKxe3sBsEDzO8ZeWOSlIQfWFlxbzLZe7hwFURr0=
 github.com/mailru/easyjson v0.7.7/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
+github.com/marianogappa/scfingerprint v0.0.0-20260826174113-753e103f3eb5 h1:pkvfhvBYArT2gg6X3N/OQX0mXco65wvuYmPnsaggnlY=
+github.com/marianogappa/scfingerprint v0.0.0-20260826174113-753e103f3eb5/go.mod h1:FNbL28Bw8DNccXPfBcs/w2NPWLOQbr1B8IM7DAqufTk=
 github.com/marianogappa/scmapanalyzer v0.0.0-20260702193642-599fd1bc7363 h1:LwaiEUbpNFre6g2Yfzj/V+pONyJkneC0cHO9O+0Cm8w=
 github.com/marianogappa/scmapanalyzer v0.0.0-20260702193642-599fd1bc7363/go.mod h1:xJL47mAPS3ZouU6N7gTmxahd1lNzbNvCYQOJX+/3kqE=
 github.com/marianogappa/screp v0.0.0-20250930085841-44d5f5ad657c h1:0JS8YGQLHH0A88qZ8gDX7a2VpJk9l2D+0J6TWV1jyf8=

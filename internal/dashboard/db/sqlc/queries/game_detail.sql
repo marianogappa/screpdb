@@ -111,6 +111,14 @@ SELECT
 FROM players p
 WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human';
 
+-- name: GetPlayerFingerprintCoverage :one
+-- Games contributing fingerprint vectors for a player, counting only vectors
+-- extracted under the current feature version (older ones are not comparable).
+SELECT COUNT(DISTINCT v.replay_id) AS games_with_vectors
+FROM player_fingerprint_vectors v
+JOIN players p ON p.id = v.player_id
+WHERE lower(trim(p.name)) = ? AND v.feature_version = ?;
+
 -- name: ListPlayerRecentGames :many
 SELECT
   r.id,
