@@ -149,6 +149,57 @@ func (q *Queries) ListPlayerApmAggregates(ctx context.Context, dollar_1 interfac
 	return items, nil
 }
 
+const ListPlayerFingerprintVectors = `-- name: ListPlayerFingerprintVectors :many
+SELECT v.vector, v.race, v.frames, v.cmd_count
+FROM player_fingerprint_vectors v
+JOIN players p ON p.id = v.player_id
+JOIN replays r ON r.id = v.replay_id
+WHERE lower(trim(p.name)) = ? AND v.feature_version = ?
+ORDER BY r.replay_date ASC
+`
+
+type ListPlayerFingerprintVectorsParams struct {
+	Name           string
+	FeatureVersion int64
+}
+
+type ListPlayerFingerprintVectorsRow struct {
+	Vector   []byte
+	Race     string
+	Frames   int64
+	CmdCount int64
+}
+
+// All feature vectors for a player under a given feature version, ordered by
+// replay date so callers can reason about temporal colocation.
+func (q *Queries) ListPlayerFingerprintVectors(ctx context.Context, arg ListPlayerFingerprintVectorsParams) ([]ListPlayerFingerprintVectorsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListPlayerFingerprintVectors, arg.Name, arg.FeatureVersion)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPlayerFingerprintVectorsRow{}
+	for rows.Next() {
+		var i ListPlayerFingerprintVectorsRow
+		if err := rows.Scan(
+			&i.Vector,
+			&i.Race,
+			&i.Frames,
+			&i.CmdCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListPlayerPatterns = `-- name: ListPlayerPatterns :many
 SELECT
   source_player_id AS player_id,

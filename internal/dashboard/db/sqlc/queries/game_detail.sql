@@ -151,6 +151,16 @@ WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.ty
 ORDER BY r.replay_date DESC, r.id DESC
 LIMIT 12;
 
+-- name: ListPlayerFingerprintVectors :many
+-- All feature vectors for a player under a given feature version, ordered by
+-- replay date so callers can reason about temporal colocation.
+SELECT v.vector, v.race, v.frames, v.cmd_count
+FROM player_fingerprint_vectors v
+JOIN players p ON p.id = v.player_id
+JOIN replays r ON r.id = v.replay_id
+WHERE lower(trim(p.name)) = ? AND v.feature_version = ?
+ORDER BY r.replay_date ASC;
+
 -- name: ListPlayerApmAggregates :many
 SELECT
   lower(trim(p.name)) AS player_key,

@@ -515,6 +515,36 @@ const gameEventDescription = (event, registry) => {
   return prettyPatternName(event?.type || 'event');
 };
 
+const FingerprintBadge = ({ match, compact }) => {
+  if (!match) return null;
+  const label = match.confidence === 'high' ? 'Likely' : 'Possibly';
+  const tilde = match.confidence === 'moderate' ? '~' : '';
+  const nameEl = match.liquipedia
+    ? <a href={match.liquipedia} target="_blank" rel="noopener noreferrer">{match.label}</a>
+    : match.label;
+  if (compact) {
+    return (
+      <span className="workflow-fingerprint-icon-wrap">
+        <a href="https://github.com/marianogappa/scfingerprint" target="_blank" rel="noopener noreferrer" className="workflow-fingerprint-icon-link">
+          {tilde}<span className="workflow-fingerprint-emoji">🔎</span>
+        </a>
+        <span className="workflow-fingerprint-tooltip">{label} {match.label} · Using fingerprinting technology</span>
+      </span>
+    );
+  }
+  return (
+    <span className="workflow-fingerprint-match-row">
+      <span className="workflow-fingerprint-icon-wrap">
+        <a href="https://github.com/marianogappa/scfingerprint" target="_blank" rel="noopener noreferrer" className="workflow-fingerprint-icon-link">
+          {tilde}<span className="workflow-fingerprint-emoji">🔎</span>
+        </a>
+        <span className="workflow-fingerprint-tooltip">Using fingerprinting technology</span>
+      </span>
+      <span className="workflow-fingerprint-label">{label} {nameEl}</span>
+    </span>
+  );
+};
+
 const gamePlayerNameSpan = (player, key) => {
   const name = String(player?.name || '').trim();
   if (!name) return null;
@@ -3726,6 +3756,7 @@ function App() {
               {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
               {renderWorkerIcon(player.race)}
               {renderName(player)}
+              <FingerprintBadge match={player.fingerprint_match} compact />
               {idx < players.length - 1 ? ', ' : ''}
             </span>
           ))}
@@ -3735,6 +3766,29 @@ function App() {
       );
     }
     const groups = teamGroupsFromPlayers(players);
+    const is1v1 = groups.length === 2 && groups.every((g) => g.length === 1);
+    if (is1v1) {
+      return (
+        <span className="workflow-team-matchup workflow-team-matchup--1v1">
+          {groups.map((group, groupIdx) => (
+            <React.Fragment key={`team-${groupIdx}`}>
+              {groupIdx > 0 ? <span className="workflow-team-vs">vs</span> : null}
+              {group.map((player) => (
+                <span key={player.player_id} className="workflow-1v1-player">
+                  {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+                  {renderWorkerIcon(player.race)}
+                  {renderName(player)}
+                  {player.fingerprint_match ? (
+                    <span className="workflow-fingerprint-inline"> (<FingerprintBadge match={player.fingerprint_match} />)</span>
+                  ) : null}
+                </span>
+              ))}
+            </React.Fragment>
+          ))}
+          {stackingMarker}
+        </span>
+      );
+    }
     return (
       <span className="workflow-team-matchup">
         {groups.map((group, groupIdx) => (
@@ -3750,6 +3804,7 @@ function App() {
                   {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
                   {renderWorkerIcon(player.race)}
                   {renderName(player)}
+                  <FingerprintBadge match={player.fingerprint_match} compact />
                 </span>
               ))}
             </span>
@@ -6113,15 +6168,20 @@ function App() {
                             <div className="wpt-cell wpt-name" style={{ borderLeftColor: getTeamColor(player.team) }}>
                               {raceIcon ? <img src={raceIcon} alt={player.race || 'race'} className="unit-icon-inline workflow-summary-race-icon" /> : null}
                               {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-                              <button
-                                type="button"
-                                className="workflow-player-name-link"
-                                title="Analyze player"
-                                style={gamePlayerNameStyle(player)}
-                                onClick={() => openMainPlayer(player.player_key)}
-                              >
-                                {player.name}
-                              </button>
+                              <span className="wpt-name-col">
+                                <button
+                                  type="button"
+                                  className="workflow-player-name-link"
+                                  title="Analyze player"
+                                  style={gamePlayerNameStyle(player)}
+                                  onClick={() => openMainPlayer(player.player_key)}
+                                >
+                                  {player.name}
+                                </button>
+                                {player.fingerprint_match ? (
+                                  <FingerprintBadge match={player.fingerprint_match} />
+                                ) : null}
+                              </span>
                             </div>
                             <div className="wpt-cell wpt-apm">{player.apm}</div>
                             <div className="wpt-cell wpt-featuring">
@@ -7116,6 +7176,9 @@ function App() {
                   <div className="workflow-player-title-wrap">
                     <h2 style={playerAccentColor(mainPlayer?.player_key || selectedPlayerKey) ? { color: playerAccentColor(mainPlayer?.player_key || selectedPlayerKey) } : undefined}>
                       {mainPlayer?.player_name || selectedPlayerKey}
+                      {mainPlayer?.fingerprint_match ? (
+                        <span className="workflow-fingerprint-match"><FingerprintBadge match={mainPlayer.fingerprint_match} /></span>
+                      ) : null}
                     </h2>
                     {mainPlayer && (Number(mainPlayer.games_played) || 0) < 5 ? (
                       <span className="workflow-inline-warning">⚠️ Fewer than 5 replays: we cannot provide reliable player-level insights yet.</span>

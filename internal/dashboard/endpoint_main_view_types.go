@@ -335,7 +335,8 @@ type workflowGamePlayer struct {
 	// LeaveReason mirrors the LeaveGameCmd reason ("Quit", "Defeat", "Dropped",
 	// "Finished", "Draw", "Victory", "UNKNOWN") when LeftSecond is set by a
 	// leave_game event, or "Stopped" when set by player_stopped_playing.
-	LeaveReason string `json:"leave_reason,omitempty"`
+	LeaveReason      string                    `json:"leave_reason,omitempty"`
+	FingerprintMatch *workflowFingerprintMatch `json:"fingerprint_match,omitempty"`
 }
 
 // workflowPatternValue is the per-pattern entry shipped to the frontend inside
@@ -760,6 +761,16 @@ type workflowFingerprintCoverage struct {
 	FeatureVersion   int   `json:"feature_version"`
 }
 
+type workflowFingerprintMatch struct {
+	Label          string  `json:"label"`
+	Liquipedia     string  `json:"liquipedia,omitempty"`
+	Z              float64 `json:"z"`
+	EvidenceN      int     `json:"evidence_n"`
+	SearchFPR      float64 `json:"search_fpr"`
+	Confidence     string  `json:"confidence"`
+	ModelSynthetic bool    `json:"model_is_synthetic"`
+}
+
 type workflowPlayerOverview struct {
 	SummaryVersion      string                        `json:"summary_version"`
 	PlayerKey           string                        `json:"player_key"`
@@ -774,6 +785,7 @@ type workflowPlayerOverview struct {
 	RaceBreakdown       []workflowPlayerRaceBreakdown `json:"race_breakdown"`
 	FingerprintMetrics  []workflowComparativeMetric   `json:"fingerprint_metrics"`
 	FingerprintCoverage workflowFingerprintCoverage   `json:"fingerprint_coverage"`
+	FingerprintMatch    *workflowFingerprintMatch     `json:"fingerprint_match,omitempty"`
 	RecentGames         []workflowGameListItem        `json:"recent_games"`
 	ChatSummary         workflowPlayerChatSummary     `json:"chat_summary"`
 	NarrativeHints      []string                      `json:"narrative_hints"`

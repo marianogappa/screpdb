@@ -13,6 +13,7 @@ import (
 	"github.com/marianogappa/scfingerprint"
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
 	db "github.com/marianogappa/screpdb/internal/dashboard/db"
+	"github.com/marianogappa/screpdb/internal/fpvec"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/markers"
 	"github.com/samber/lo"
@@ -68,6 +69,9 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		p.EAPM = row.EAPM
 		p.PlayerKey = normalizePlayerKey(row.Name)
 		p.DetectedPatterns = []workflowPatternValue{}
+		if match, _ := d.matchFingerprint(p.PlayerKey, scfingerprint.FeatureVersion()); match != nil {
+			p.FingerprintMatch = match
+		}
 		detail.Players = append(detail.Players, p)
 		if row.StartLocationOclock != nil && *row.StartLocationOclock >= 1 && *row.StartLocationOclock <= 12 {
 			startClockByPlayerID[row.PlayerID] = int(*row.StartLocationOclock)
@@ -300,6 +304,12 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 		GamesWithVectors: gamesWithVectors,
 		FeatureVersion:   scfingerprint.FeatureVersion(),
 	}
+	if match, err := d.matchFingerprint(playerKey, scfingerprint.FeatureVersion()); err != nil {
+		return result, fmt.Errorf("failed to match progamer: %w", err)
+	} else if match != nil {
+		result.FingerprintMatch = match
+	}
+
 	if err := d.populateAdvancedPlayerOverview(playerKey, &result); err != nil {
 		return result, fmt.Errorf("failed to populate advanced player overview: %w", err)
 	}
@@ -2745,4 +2755,107 @@ func (d *Dashboard) populateUnitCadenceForGameDetail(detail *workflowGameDetail)
 		return a.CadenceScore > b.CadenceScore
 	})
 	return nil
+}
+
+const (
+	fingerprintMatchConfidenceHigh     = "high"
+	fingerprintMatchConfidenceModerate = "moderate"
+	fingerprintMatchSearchFPRHigh      = 0.10
+	fingerprintMatchSearchFPRModerate  = 0.50
+	fingerprintMatchMinVectors         = 3
+)
+
+func (d *Dashboard) fingerprintDataset() (*scfingerprint.Dataset, error) {
+	d.fpDatasetOnce.Do(func() {
+		d.fpDataset, d.fpDatasetErr = scfingerprint.BuiltinDataset(scfingerprint.ConfidenceHigh)
+	})
+	return d.fpDataset, d.fpDatasetErr
+}
+
+func (d *Dashboard) matchFingerprint(playerKey string, featureVersion int) (*workflowFingerprintMatch, error) {
+	d.fpMatchCacheMu.RLock()
+	if d.fpMatchCache != nil {
+		if entry, ok := d.fpMatchCache[playerKey]; ok {
+			d.fpMatchCacheMu.RUnlock()
+			return entry, nil
+		}
+	}
+	d.fpMatchCacheMu.RUnlock()
+
+	match, err := d.computeFingerprintMatch(playerKey, featureVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	d.fpMatchCacheMu.Lock()
+	if d.fpMatchCache == nil {
+		d.fpMatchCache = make(map[string]*workflowFingerprintMatch)
+	}
+	d.fpMatchCache[playerKey] = match
+	d.fpMatchCacheMu.Unlock()
+
+	return match, nil
+}
+
+func (d *Dashboard) computeFingerprintMatch(playerKey string, featureVersion int) (*workflowFingerprintMatch, error) {
+	rows, err := d.dbStore.ListPlayerFingerprintVectors(d.ctx, playerKey, int64(featureVersion))
+	if err != nil {
+		return nil, fmt.Errorf("listing fingerprint vectors: %w", err)
+	}
+	if len(rows) < fingerprintMatchMinVectors {
+		return nil, nil
+	}
+
+	games := make([]scfingerprint.PlayerGame, 0, len(rows))
+	for _, row := range rows {
+		vec, err := fpvec.Decode(row.Vector)
+		if err != nil {
+			continue
+		}
+		games = append(games, scfingerprint.PlayerGame{
+			Vector: vec,
+			Race:   row.Race,
+		})
+	}
+	if len(games) < fingerprintMatchMinVectors {
+		return nil, nil
+	}
+
+	dataset, err := d.fingerprintDataset()
+	if err != nil {
+		return nil, fmt.Errorf("loading fingerprint dataset: %w", err)
+	}
+
+	results, err := scfingerprint.MatchMany(games, dataset)
+	if err != nil {
+		return nil, fmt.Errorf("matching fingerprint: %w", err)
+	}
+	if len(results) == 0 {
+		return nil, nil
+	}
+
+	top := results[0]
+	if top.ModelIsSynthetic {
+		return nil, nil
+	}
+
+	var confidence string
+	switch {
+	case top.SearchFPR <= fingerprintMatchSearchFPRHigh:
+		confidence = fingerprintMatchConfidenceHigh
+	case top.SearchFPR <= fingerprintMatchSearchFPRModerate:
+		confidence = fingerprintMatchConfidenceModerate
+	default:
+		return nil, nil
+	}
+
+	return &workflowFingerprintMatch{
+		Label:          top.Label,
+		Liquipedia:     top.Liquipedia,
+		Z:              top.Z,
+		EvidenceN:      top.EvidenceN,
+		SearchFPR:      top.SearchFPR,
+		Confidence:     confidence,
+		ModelSynthetic: top.ModelIsSynthetic,
+	}, nil
 }
