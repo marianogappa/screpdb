@@ -37,7 +37,7 @@ var procGetExtendedTcpTable = iphlpapi.NewProc("GetExtendedTcpTable")
 // processes because the TCP table is a read-only query with no privilege
 // requirement.
 func loopbackListeningPorts() ([]int, error) {
-	const afINET = 2   // AF_INET
+	const afINET = 2 // AF_INET
 	const tcpTableOwnerPIDAll = 5
 
 	var size uint32

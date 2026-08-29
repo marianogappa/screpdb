@@ -78,4 +78,3 @@ func (d *Dashboard) setBnetDisabled(disabled bool) {
 		d.bnetState.Store(bnetStatus{State: bnetfacade.BridgeNotRunning, Disabled: true})
 	}
 }
-
