@@ -2959,7 +2959,7 @@ function App() {
       }
     };
     poll();
-    const id = setInterval(poll, 5000);
+    const id = setInterval(poll, 10000);
     return () => { cancelled = true; clearInterval(id); };
   }, [stopped]);
 
@@ -2967,8 +2967,10 @@ function App() {
   const bnetDisabled = Boolean(bnetStatus?.disabled);
 
   const handleBnetToggle = useCallback(async () => {
+    const newDisabled = !bnetDisabled;
+    setBnetStatus({ state: 'not_running', addr: '', disabled: newDisabled });
     try {
-      const result = await api.setBnetDisabled(!bnetDisabled);
+      const result = await api.setBnetDisabled(newDisabled);
       setBnetStatus(result);
     } catch (err) {
       console.error('Failed to toggle Battle.net bridge:', err);
@@ -5355,29 +5357,33 @@ function App() {
             >
               ⚙️ Settings
             </button>
-            <button type="button" onClick={() => setShowIngestPanel(true)} className="workflow-nav-text-action">
-              📥 Ingest
-              {!showIngestPanel && ingestStatus === 'running' ? (
-                <span className="ingest-running-badge tip-below" data-tip="Ingestion in progress — click to view logs">Ingesting…</span>
-              ) : null}
-            </button>
-            {staleReplaysCount > 0 && staleReplaysCount > dismissedStaleCount && ingestStatus !== 'running' ? (
-              <span className="stale-replays-hint-wrap">
-                <span className="stale-replays-hint-icon" aria-label="Replay analysis update available">⚠️</span>
-                <span className="stale-replays-hint-tooltip" role="tooltip">
-                  Replay analysis just got smarter! Please re-ingest (tick &quot;Erase data&quot;).
-                  <div className="stale-replays-hint-tooltip-actions">
-                    <button
-                      type="button"
-                      className="stale-replays-hint-dismiss"
-                      onClick={(ev) => { ev.stopPropagation(); dismissStaleHint(); }}
-                    >
-                      Dismiss
-                    </button>
-                  </div>
+            {(() => {
+              const showStaleHint = staleReplaysCount > 0 && staleReplaysCount > dismissedStaleCount && ingestStatus !== 'running';
+              return (
+                <span className={`ingest-btn-wrap${showStaleHint ? ' ingest-btn-wrap--stale' : ''}`}>
+                  <button type="button" onClick={() => setShowIngestPanel(true)} className={`workflow-nav-text-action${showStaleHint ? ' workflow-nav-text-action--stale' : ''}`}>
+                    {showStaleHint ? '⚠️' : '📥'} Ingest
+                    {!showIngestPanel && ingestStatus === 'running' ? (
+                      <span className="ingest-running-badge tip-below" data-tip="Ingestion in progress — click to view logs">Ingesting…</span>
+                    ) : null}
+                  </button>
+                  {showStaleHint ? (
+                    <span className="ingest-stale-tooltip" role="tooltip">
+                      Replay analysis just got smarter! Please re-ingest (tick &quot;Erase data&quot;).
+                      <span className="ingest-stale-tooltip-actions">
+                        <button
+                          type="button"
+                          className="ingest-stale-dismiss"
+                          onClick={(ev) => { ev.stopPropagation(); dismissStaleHint(); }}
+                        >
+                          Dismiss
+                        </button>
+                      </span>
+                    </span>
+                  ) : null}
                 </span>
-              </span>
-            ) : null}
+              );
+            })()}
           </div>
           <div className="workflow-nav-group workflow-nav-group-right">
             <button

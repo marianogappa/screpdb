@@ -173,9 +173,15 @@ func probeBridgeURL(ctx context.Context, url string) BridgeState {
 		return BridgeNotRunning
 	}
 	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	switch resp.StatusCode {
 	case http.StatusOK:
+		// SC:R's /web-api/v1/gateway returns JSON. Other servers (including
+		// screpdb itself via the SPA fallback) may return 200 with HTML. Only
+		// treat it as a bridge if the response looks like JSON.
+		if len(body) == 0 || body[0] != '{' {
+			return BridgeNotRunning
+		}
 		return BridgeConnected
 	case http.StatusUnauthorized:
 		return BridgeOffline

@@ -1960,30 +1960,27 @@ body {
    that pops in fast (no native title-attribute delay) and stays visible
    while the cursor is over the tooltip itself, so the embedded Dismiss
    button is clickable. */
-.stale-replays-hint-wrap {
+/* Ingest button wrapper — positions the stale-replays tooltip relative to
+   the button itself so hovering the button reveals the hint below it. */
+.ingest-btn-wrap {
   position: relative;
   display: inline-flex;
   align-items: center;
-  margin-left: 6px;
 }
 
-.stale-replays-hint-icon {
-  cursor: default;
-  font-size: 14px;
-  line-height: 1;
-  animation: stale-replays-hint-pulse 1.8s ease-in-out infinite;
+.workflow-nav-text-action--stale {
+  animation: ingest-stale-pulse 2s ease-in-out infinite;
 }
 
-@keyframes stale-replays-hint-pulse {
-  0%, 100% { opacity: 0.85; }
-  50%      { opacity: 1; }
+@keyframes ingest-stale-pulse {
+  0%, 100% { color: rgba(255, 255, 255, 0.88); }
+  50%      { color: #f8e0b0; }
 }
 
-.stale-replays-hint-tooltip {
+.ingest-stale-tooltip {
   position: absolute;
   top: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%) translateY(-4px);
+  right: 0;
   min-width: 240px;
   max-width: 320px;
   padding: 10px 12px;
@@ -2000,14 +1997,13 @@ body {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  /* Hide-delay 350ms after the cursor leaves so user has time to glide
-     onto the tooltip body and click Dismiss. */
-  transition: opacity 120ms ease 200ms, transform 120ms ease 200ms, visibility 0s linear 350ms;
+  /* 500ms hide-delay so user can move into the tooltip to click Dismiss. */
+  transition: opacity 120ms ease 200ms, visibility 0s linear 500ms;
 }
 
-/* Invisible bridge above the tooltip so the cursor can travel from the
-   icon into the tooltip without crossing a non-hover gap. */
-.stale-replays-hint-tooltip::before {
+/* Invisible bridge above the tooltip so cursor travel from button to
+   tooltip does not cross a non-hover gap. */
+.ingest-stale-tooltip::before {
   content: '';
   position: absolute;
   top: -10px;
@@ -2016,23 +2012,22 @@ body {
   height: 10px;
 }
 
-.stale-replays-hint-wrap:hover .stale-replays-hint-tooltip,
-.stale-replays-hint-tooltip:hover {
+.ingest-btn-wrap:hover .ingest-stale-tooltip,
+.ingest-stale-tooltip:hover {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transform: translateX(-50%) translateY(0);
-  /* No delay on appear */
-  transition: opacity 120ms ease, transform 120ms ease;
+  /* No delay on appear. */
+  transition: opacity 120ms ease, visibility 0s;
 }
 
-.stale-replays-hint-tooltip-actions {
+.ingest-stale-tooltip-actions {
   margin-top: 8px;
   display: flex;
   justify-content: flex-end;
 }
 
-.stale-replays-hint-dismiss {
+.ingest-stale-dismiss {
   background: transparent;
   border: 1px solid rgba(240, 180, 80, 0.5);
   color: #f8e0b0;
@@ -2042,7 +2037,7 @@ body {
   cursor: pointer;
 }
 
-.stale-replays-hint-dismiss:hover {
+.ingest-stale-dismiss:hover {
   background: rgba(240, 180, 80, 0.18);
 }
 

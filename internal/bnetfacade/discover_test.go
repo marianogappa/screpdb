@@ -62,6 +62,19 @@ func TestProbeBridge_NotRunning_OtherStatus(t *testing.T) {
 	}
 }
 
+func TestProbeBridge_NotRunning_HTMLResponse(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, `<!doctype html><html><body>SPA</body></html>`)
+	}))
+	defer srv.Close()
+
+	state := ProbeBridge(context.Background(), srv.Listener.Addr().String())
+	if state != BridgeNotRunning {
+		t.Errorf("HTML 200 should be rejected as not_running, got %q", state)
+	}
+}
+
 func TestProbeBridgeURL_Connected(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, `{"gateways":[]}`)

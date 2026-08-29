@@ -9,7 +9,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/crashreport"
 )
 
-const bnetProbeInterval = 10 * time.Second
+const bnetProbeInterval = 30 * time.Second
 
 type bnetStatus struct {
 	State    bnetfacade.BridgeState `json:"state"`
