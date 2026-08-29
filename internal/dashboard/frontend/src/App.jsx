@@ -2945,15 +2945,21 @@ function App() {
     return () => { cancelled = true; };
   }, [currentVersion]);
 
-  // Poll Battle.net bridge connection status every 5 seconds. The backend
-  // caches the result from its own 10-second probe loop, so this read is cheap.
+  // Poll Battle.net bridge connection status. The backend caches the result
+  // from its own 30-second probe loop, so this read is cheap.
+  const bnetReconnectingRef = useRef(false);
   useEffect(() => {
     if (stopped) return undefined;
     let cancelled = false;
     const poll = async () => {
       try {
         const status = await api.getBnetStatus();
-        if (!cancelled) setBnetStatus(status);
+        if (cancelled) return;
+        if (bnetReconnectingRef.current) {
+          if (status.disabled || status.state === 'not_running') return;
+          bnetReconnectingRef.current = false;
+        }
+        setBnetStatus(status);
       } catch (_err) {
         // Silently ignore — server may be shutting down.
       }
@@ -2971,17 +2977,14 @@ function App() {
     if (newDisabled) {
       setBnetStatus({ state: 'not_running', addr: '', disabled: true });
     } else {
+      bnetReconnectingRef.current = true;
       setBnetStatus({ state: 'reconnecting', addr: '', disabled: false });
     }
     try {
-      const result = await api.setBnetDisabled(newDisabled);
-      if (!newDisabled && result.state === 'not_running') {
-        setBnetStatus({ ...result, state: 'reconnecting' });
-      } else {
-        setBnetStatus(result);
-      }
+      await api.setBnetDisabled(newDisabled);
     } catch (err) {
       console.error('Failed to toggle Battle.net bridge:', err);
+      bnetReconnectingRef.current = false;
     }
   }, [bnetDisabled]);
 
@@ -5400,7 +5403,7 @@ function App() {
               data-tip={
                 bnetDisabled ? 'Bridge disabled — click to re-enable'
                 : bnetState === 'reconnecting' ? 'Scanning for SC:R bridge…'
-                : bnetState === 'connected' ? `Connected to SC:R on ${bnetStatus?.addr || '?'}`
+                : bnetState === 'connected' ? 'Connected to SC:R'
                 : bnetState === 'offline' ? 'SC:R is running but not logged in to Battle.net'
                 : 'SC:R not detected'
               }
