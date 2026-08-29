@@ -22,6 +22,7 @@ import (
 	"github.com/gorilla/mux"
 	_ "modernc.org/sqlite"
 
+	"github.com/marianogappa/scfingerprint"
 	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
@@ -53,6 +54,11 @@ type Dashboard struct {
 	pendingSampleIngest bool
 	headless            bool
 	shutdown            func()
+	fpDatasetOnce       sync.Once
+	fpDataset           *scfingerprint.Dataset
+	fpDatasetErr        error
+	fpMatchCacheMu      sync.RWMutex
+	fpMatchCache        map[string]*workflowFingerprintMatch
 }
 
 // SetShutdownFunc registers the callback the /api/custom/quit endpoint invokes to
@@ -526,6 +532,10 @@ func (d *Dashboard) refreshReplayScopedDB() error {
 	d.replayScopedDB = db
 	d.globalReplayFilter = config
 	d.replayScopedMu.Unlock()
+
+	d.fpMatchCacheMu.Lock()
+	d.fpMatchCache = nil
+	d.fpMatchCacheMu.Unlock()
 
 	if oldDB != nil {
 		_ = oldDB.Close()

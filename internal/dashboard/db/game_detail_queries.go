@@ -277,6 +277,13 @@ func (s *Store) GetPlayerFingerprintCoverage(ctx context.Context, playerKey stri
 	})
 }
 
+func (s *Store) ListPlayerFingerprintVectors(ctx context.Context, playerKey string, featureVersion int64) ([]sqlcgen.ListPlayerFingerprintVectorsRow, error) {
+	return sqlcgen.New(Trace(s.replayScoped())).ListPlayerFingerprintVectors(ctx, sqlcgen.ListPlayerFingerprintVectorsParams{
+		Name:           playerKey,
+		FeatureVersion: featureVersion,
+	})
+}
+
 func (s *Store) ListPlayerRecentGames(ctx context.Context, playerKey string) ([]PlayerRecentGameRow, error) {
 	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListPlayerRecentGames(ctx, playerKey)
 	if err != nil {
