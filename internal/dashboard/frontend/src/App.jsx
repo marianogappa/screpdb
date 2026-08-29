@@ -2968,10 +2968,18 @@ function App() {
 
   const handleBnetToggle = useCallback(async () => {
     const newDisabled = !bnetDisabled;
-    setBnetStatus({ state: 'not_running', addr: '', disabled: newDisabled });
+    if (newDisabled) {
+      setBnetStatus({ state: 'not_running', addr: '', disabled: true });
+    } else {
+      setBnetStatus({ state: 'reconnecting', addr: '', disabled: false });
+    }
     try {
       const result = await api.setBnetDisabled(newDisabled);
-      setBnetStatus(result);
+      if (!newDisabled && result.state === 'not_running') {
+        setBnetStatus({ ...result, state: 'reconnecting' });
+      } else {
+        setBnetStatus(result);
+      }
     } catch (err) {
       console.error('Failed to toggle Battle.net bridge:', err);
     }
@@ -5391,14 +5399,17 @@ function App() {
               className={`bnet-pill bnet-pill--${bnetDisabled ? 'disabled' : bnetState} tip-below`}
               data-tip={
                 bnetDisabled ? 'Bridge disabled — click to re-enable'
+                : bnetState === 'reconnecting' ? 'Scanning for SC:R bridge…'
                 : bnetState === 'connected' ? `Connected to SC:R on ${bnetStatus?.addr || '?'}`
                 : bnetState === 'offline' ? 'SC:R is running but not logged in to Battle.net'
                 : 'SC:R not detected'
               }
               onClick={handleBnetToggle}
+              disabled={bnetState === 'reconnecting'}
             >
               <span className="bnet-pill-dot" />
               {bnetDisabled ? 'Bridge off'
+                : bnetState === 'reconnecting' ? 'Scanning…'
                 : bnetState === 'connected' ? 'SC:R'
                 : bnetState === 'offline' ? 'SC:R offline'
                 : 'SC:R'}

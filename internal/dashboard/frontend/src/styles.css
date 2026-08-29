@@ -2330,6 +2330,21 @@ button.workflow-nav-update-available:disabled {
   background: rgba(255, 255, 255, 0.15);
 }
 
+.bnet-pill--reconnecting {
+  color: rgba(180, 200, 255, 0.7);
+  cursor: wait;
+}
+
+.bnet-pill--reconnecting .bnet-pill-dot {
+  background: rgba(130, 170, 255, 0.6);
+  animation: bnet-reconnect-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes bnet-reconnect-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+
 .app-stopped {
   min-height: 100vh;
   display: flex;
