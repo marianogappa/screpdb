@@ -12,8 +12,8 @@ import (
 
 	"github.com/marianogappa/scfingerprint"
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
-	"github.com/marianogappa/screpdb/internal/fpvec"
 	db "github.com/marianogappa/screpdb/internal/dashboard/db"
+	"github.com/marianogappa/screpdb/internal/fpvec"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/markers"
 	"github.com/samber/lo"
