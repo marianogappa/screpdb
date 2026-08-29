@@ -230,6 +230,8 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 			FileName:           row.FileName,
 			MapName:            row.MapName,
 			MapKind:            row.MapKind,
+			GameSource:         row.GameSource,
+			LobbyKind:          row.LobbyKind,
 			DurationSeconds:    row.DurationSeconds,
 			GameType:           row.GameType,
 			Matchup:            row.Matchup,

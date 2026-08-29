@@ -26,6 +26,8 @@ type Replay struct {
 	GameSpeed       string    `json:"game_speed"`  // Slowest, Slower, Slow, Normal, Fast, Faster, Fastest
 	GameType        string    `json:"game_type"`   // Melee, FFA, 1on1, CTF, etc.
 	MapKind         string    `json:"map_kind"`    // Regular, Money, UseMapSettings
+	GameSource      string    `json:"game_source"` // AssumedBattleNet, ShieldBattery, PreSCR, SinglePlayer, Unknown
+	LobbyKind       string    `json:"lobby_kind"`  // Matchmaking, Custom, Unknown
 	TeamFormat      string    `json:"team_format"` // 1v1, 2v2, 3v3, 2v2v2, 2v2v2v2, etc.
 	Matchup         string    `json:"matchup"`     // PvT, PvZ, PTvZZ, etc. Race initials sorted within team, teams sorted lex.
 	AvailSlotsCount byte      `json:"avail_slots_count"`

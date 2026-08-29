@@ -313,11 +313,15 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-08-27  OK. Fingerprint feature vectors extracted at ingest and stored in a new player_fingerprint_vectors table. New dependency github.com/marianogappa/scfingerprint is pure computation over the already-parsed replay (embedded model/dataset via go:embed, no filesystem or network I/O in the code paths used — Extract/FeatureVersion/ModelTag). No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test change; AlgorithmVersion bumped 60→61 to drive vector backfill via the existing re-ingest hint.
+2026-08-29  OK. Derive game_source and lobby_kind from replay content at ingest (issue #346). Reads only in-memory screp replay struct fields (rep.ShieldBattery, rep.RepFormat, rep.Header.Players, rep.Header.Title). Two new replays columns via migration 000004, surfaced on the API/MCP schema. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test change; AlgorithmVersion bumped 61→62 to drive backfill via the existing re-ingest hint.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
+
+```
+2026-08-27  OK. Fingerprint feature vectors extracted at ingest and stored in a new player_fingerprint_vectors table. New dependency github.com/marianogappa/scfingerprint is pure computation over the already-parsed replay (embedded model/dataset via go:embed, no filesystem or network I/O in the code paths used — Extract/FeatureVersion/ModelTag). No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test change; AlgorithmVersion bumped 60→61 to drive vector backfill via the existing re-ingest hint.
+```
 
 ```
 2026-07-04  OK (net reduction in the SQL surface's capability). MCP-server modernization + dashboard headless API mode. MCP: query_database now rejects non-read-only SQL (only SELECT/WITH/EXPLAIN/PRAGMA, single statement, comment-stripped) so an MCP client can no longer mutate the corpus; corrected tool descriptions/annotations, expanded GetDatabaseSchema introspection to replay_events/player_aliases, refreshed the domain-knowledge text, added two read-only discovery tools (list_top_players, list_event_types), and bumped mcp-go v0.41.1→v0.55.1. Dashboard: new `--headless` flag serves the JSON API only (no embedded SPA, no browser-open — one fewer os call in that mode); documented 8 operational endpoints (game-assets, debug map-layout, markers definitions, sample-set load, self-update status/apply) in the OpenAPI spec, excluded from code generation, with the validator middleware deferring method-less spec paths to their hand-written handlers while still returning 405 for genuine wrong-method calls. All DB access stays through the storage/dashboard layer; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test change, no AlgorithmVersion bump (no detection change).

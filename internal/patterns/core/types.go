@@ -268,7 +268,7 @@ import (
 // player (player_fingerprint_vectors table) — the substrate for player
 // identification. No detection output changed; the bump exists so the stale
 // hint drives a re-ingest that backfills vectors for existing replays.
-const AlgorithmVersion = 61
+const AlgorithmVersion = 62
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

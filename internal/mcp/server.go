@@ -201,6 +201,8 @@ func (s *Server) handleGetSchema(ctx context.Context, request mcp.CallToolReques
 		- players.type = 'Human' (i.e. skip 'Computer' players)
 		- players.is_observer = false (i.e. Observer players are not part of the game)
 		- replays.matchup is a normalized string like 'TvZ' or 'PvP' for 1v1s (and e.g. 'PvPvTvZ' for larger games); replays.duration_seconds is already in seconds, frame_count is the raw frame length (≈ 23.81 frames/sec on fastest). For 1v1 analysis, filter to matchup values with a single 'v' (e.g. matchup LIKE '_v_').
+		- replays.game_source = provenance of the replay: 'AssumedBattleNet' (SC:R era, default), 'ShieldBattery', 'PreSCR' (1.16.1-era iCCup/Fish/LAN), 'SinglePlayer', or 'Unknown'.
+		- replays.lobby_kind = 'Matchmaking' (SC:R ladder), 'Custom' (player-created lobby), or 'Unknown' (non-BattleNet sources where we can't determine).
 
 	action_types:
 		- Build

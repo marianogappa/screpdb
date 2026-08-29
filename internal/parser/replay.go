@@ -7,7 +7,10 @@ import (
 	"strings"
 	"time"
 
+	scraprep "github.com/icza/screp/rep"
 	"github.com/icza/screp/rep/repcmd"
+	"github.com/icza/screp/rep/repcore"
+	"github.com/icza/screp/repparser/repdecoder"
 	"github.com/marianogappa/screpdb/internal/builddedup"
 	"github.com/marianogappa/screpdb/internal/cmddedup"
 	"github.com/marianogappa/screpdb/internal/earlyfilter"
@@ -104,6 +107,9 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	if layout, err := buildMapContextLayoutFromReplay(filePath, data.Replay.MapName, int(rep.Header.MapWidth), int(rep.Header.MapHeight)); err == nil && layout != nil {
 		data.MapContext.Layout = layout
 	}
+
+	data.Replay.GameSource = deriveGameSource(rep)
+	data.Replay.LobbyKind = deriveLobbyKind(data.Replay.GameSource, data.Replay.Title)
 
 	// Parse players
 	for i, player := range rep.Header.Players {
@@ -420,6 +426,45 @@ func raceInitial(race string) byte {
 		return '?'
 	}
 	return race[0]
+}
+
+func deriveGameSource(r *scraprep.Replay) string {
+	if r.ShieldBattery != nil {
+		return "ShieldBattery"
+	}
+	humanCount := 0
+	for _, p := range r.Header.Players {
+		if p != nil && p.Type == repcore.PlayerTypeHuman {
+			humanCount++
+		}
+	}
+	if humanCount == 1 {
+		return "SinglePlayer"
+	}
+	if r.RepFormat == repdecoder.RepFormatLegacy {
+		return "PreSCR"
+	}
+	return "AssumedBattleNet"
+}
+
+func deriveLobbyKind(gameSource, title string) string {
+	switch gameSource {
+	case "PreSCR", "SinglePlayer", "ShieldBattery":
+		return "Unknown"
+	}
+	if len(title) == 12 && isMatchmakingTitle(title) {
+		return "Matchmaking"
+	}
+	return "Custom"
+}
+
+func isMatchmakingTitle(title string) bool {
+	for i := 0; i < len(title); i++ {
+		if title[i] < 0x41 || title[i] > 0x7A {
+			return false
+		}
+	}
+	return true
 }
 
 // CreateReplayFromFileInfo creates a Replay model from file information
