@@ -36,6 +36,7 @@ func TestSetupRouter_JSONEndpoints(t *testing.T) {
 		{"ingest settings get", http.MethodGet, "/api/custom/ingest/settings", nil},
 		{"stale replays count", http.MethodGet, "/api/custom/replays/stale-count", nil},
 		{"aliases list", http.MethodGet, "/api/custom/aliases", nil},
+		{"bnet status", http.MethodGet, "/api/custom/bnet/status", nil},
 	}
 
 	for _, tt := range tests {
@@ -184,6 +185,52 @@ func TestSetupRouter_StatusWrappedServiceError(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected status %d, got %d body=%s", http.StatusNotFound, rec.Code, rec.Body.String())
+	}
+}
+
+func TestSetupRouter_BnetStatusEndpoint(t *testing.T) {
+	d := newTestDashboard(t)
+	r := d.setupRouter()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/custom/bnet/status", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	var status struct {
+		State    string `json:"state"`
+		Disabled bool   `json:"disabled"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&status); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if status.State != "not_running" {
+		t.Errorf("expected initial state not_running, got %q", status.State)
+	}
+}
+
+func TestSetupRouter_BnetToggle(t *testing.T) {
+	d := newTestDashboard(t)
+	r := d.setupRouter()
+
+	body := []byte(`{"disabled":true}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/custom/bnet/toggle", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	var status struct {
+		State    string `json:"state"`
+		Disabled bool   `json:"disabled"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&status); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !status.Disabled {
+		t.Errorf("expected disabled=true after toggle, got false")
 	}
 }
 

@@ -149,6 +149,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
+  /api/custom/bnet/status:
+    get:
+      operationId: bnetStatus
+      tags: [operational]
+      summary: SC:R Battle.net bridge connection status. Served by a hand-written handler (not generated).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/bnet/toggle:
+    post:
+      operationId: bnetToggle
+      tags: [operational]
+      summary: Enable or disable the SC:R bridge monitor. Served by a hand-written handler (not generated).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenericValue"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
   /api/custom/update/status:
     get:
       operationId: updateStatus

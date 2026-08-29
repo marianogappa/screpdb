@@ -2019,6 +2019,7 @@ function App() {
   const [quietUpdateDismissed, setQuietUpdateDismissed] = useState(false);
   const [loudUpdateDismissed, setLoudUpdateDismissed] = useState(false);
   const [stopped, setStopped] = useState(false);
+  const [bnetStatus, setBnetStatus] = useState(null);
   const emptyDbAutoOpenRef = useRef(false);
   const [globalReplayFilterConfig, setGlobalReplayFilterConfig] = useState(null);
   const [globalReplayFilterSaving, setGlobalReplayFilterSaving] = useState(false);
@@ -2943,6 +2944,49 @@ function App() {
     })();
     return () => { cancelled = true; };
   }, [currentVersion]);
+
+  // Poll Battle.net bridge connection status. The backend caches the result
+  // from its own 30-second probe loop, so this read is cheap.
+  const bnetReconnectingRef = useRef(false);
+  useEffect(() => {
+    if (stopped) return undefined;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const status = await api.getBnetStatus();
+        if (cancelled) return;
+        if (bnetReconnectingRef.current) {
+          if (status.disabled || status.state === 'not_running') return;
+          bnetReconnectingRef.current = false;
+        }
+        setBnetStatus(status);
+      } catch (_err) {
+        // Silently ignore — server may be shutting down.
+      }
+    };
+    poll();
+    const id = setInterval(poll, 10000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [stopped]);
+
+  const bnetState = bnetStatus?.state || 'not_running';
+  const bnetDisabled = Boolean(bnetStatus?.disabled);
+
+  const handleBnetToggle = useCallback(async () => {
+    const newDisabled = !bnetDisabled;
+    if (newDisabled) {
+      setBnetStatus({ state: 'not_running', addr: '', disabled: true });
+    } else {
+      bnetReconnectingRef.current = true;
+      setBnetStatus({ state: 'reconnecting', addr: '', disabled: false });
+    }
+    try {
+      await api.setBnetDisabled(newDisabled);
+    } catch (err) {
+      console.error('Failed to toggle Battle.net bridge:', err);
+      bnetReconnectingRef.current = false;
+    }
+  }, [bnetDisabled]);
 
   const updateTier = updateStatus?.tier || 'none';
   const updateAvailable = Boolean(updateStatus?.update_available);
@@ -5324,11 +5368,54 @@ function App() {
             >
               ⚙️ Settings
             </button>
-            <button type="button" onClick={() => setShowIngestPanel(true)} className="workflow-nav-text-action">
-              📥 Ingest
-              {!showIngestPanel && ingestStatus === 'running' ? (
-                <span className="ingest-running-badge tip-below" data-tip="Ingestion in progress — click to view logs">Ingesting…</span>
-              ) : null}
+            {(() => {
+              const showStaleHint = staleReplaysCount > 0 && staleReplaysCount > dismissedStaleCount && ingestStatus !== 'running';
+              return (
+                <span className={`ingest-btn-wrap${showStaleHint ? ' ingest-btn-wrap--stale' : ''}`}>
+                  <button type="button" onClick={() => setShowIngestPanel(true)} className={`workflow-nav-text-action${showStaleHint ? ' workflow-nav-text-action--stale' : ''}`}>
+                    {showStaleHint ? '⚠️' : '📥'} Ingest
+                    {!showIngestPanel && ingestStatus === 'running' ? (
+                      <span className="ingest-running-badge tip-below" data-tip="Ingestion in progress — click to view logs">Ingesting…</span>
+                    ) : null}
+                  </button>
+                  {showStaleHint ? (
+                    <span className="ingest-stale-tooltip" role="tooltip">
+                      Replay analysis just got smarter! Please re-ingest (tick &quot;Erase data&quot;).
+                      <span className="ingest-stale-tooltip-actions">
+                        <button
+                          type="button"
+                          className="ingest-stale-dismiss"
+                          onClick={(ev) => { ev.stopPropagation(); dismissStaleHint(); }}
+                        >
+                          Dismiss
+                        </button>
+                      </span>
+                    </span>
+                  ) : null}
+                </span>
+              );
+            })()}
+          </div>
+          <div className="workflow-nav-group workflow-nav-group-right">
+            <button
+              type="button"
+              className={`bnet-pill bnet-pill--${bnetDisabled ? 'disabled' : bnetState} tip-below`}
+              data-tip={
+                bnetDisabled ? 'Bridge disabled — click to re-enable'
+                : bnetState === 'reconnecting' ? 'Scanning for SC:R bridge…'
+                : bnetState === 'connected' ? 'Connected to SC:R'
+                : bnetState === 'offline' ? 'SC:R is running but not logged in to Battle.net'
+                : 'SC:R not detected'
+              }
+              onClick={handleBnetToggle}
+              disabled={bnetState === 'reconnecting'}
+            >
+              <span className="bnet-pill-dot" />
+              {bnetDisabled ? 'Bridge off'
+                : bnetState === 'reconnecting' ? 'Scanning…'
+                : bnetState === 'connected' ? 'SC:R'
+                : bnetState === 'offline' ? 'SC:R offline'
+                : 'SC:R'}
             </button>
             <button
               type="button"
@@ -5338,23 +5425,6 @@ function App() {
             >
               ⏻ Quit
             </button>
-            {staleReplaysCount > 0 && staleReplaysCount > dismissedStaleCount && ingestStatus !== 'running' ? (
-              <span className="stale-replays-hint-wrap">
-                <span className="stale-replays-hint-icon" aria-label="Replay analysis update available">⚠️</span>
-                <span className="stale-replays-hint-tooltip" role="tooltip">
-                  Replay analysis just got smarter! Please re-ingest (tick &quot;Erase data&quot;).
-                  <div className="stale-replays-hint-tooltip-actions">
-                    <button
-                      type="button"
-                      className="stale-replays-hint-dismiss"
-                      onClick={(ev) => { ev.stopPropagation(); dismissStaleHint(); }}
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                </span>
-              </span>
-            ) : null}
           </div>
         </div>
 
