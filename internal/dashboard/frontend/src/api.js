@@ -417,4 +417,26 @@ export const api = {
     }
     return response.json();
   },
+
+  getBnetStatus: async () => {
+    const response = await fetch(`${API_CUSTOM}/bnet/status`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get Battle.net bridge status');
+    }
+    return response.json();
+  },
+
+  setBnetDisabled: async (disabled) => {
+    const response = await fetch(`${API_CUSTOM}/bnet/toggle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ disabled }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to toggle Battle.net bridge');
+    }
+    return response.json();
+  },
 };

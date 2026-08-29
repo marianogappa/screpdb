@@ -139,6 +139,51 @@ func downloadReplayFrom(ctx context.Context, url string) ([]byte, error) {
 	return data, nil
 }
 
+// BridgeState describes the connection status with SC:R's local web-api bridge.
+type BridgeState string
+
+const (
+	BridgeNotRunning BridgeState = "not_running" // no SC:R bridge found
+	BridgeOffline    BridgeState = "offline"     // bridge reachable but 401 (not logged in)
+	BridgeConnected  BridgeState = "connected"   // bridge reachable and authenticated
+)
+
+const probeTimeout = 2 * time.Second
+
+// ProbeBridge checks the SC:R bridge at addr by GETting /web-api/v1/gateway.
+// It returns BridgeConnected (200), BridgeOffline (401), or BridgeNotRunning
+// (connection refused, timeout, or any other failure). The addr must be
+// loopback; non-loopback addresses return BridgeNotRunning.
+func ProbeBridge(ctx context.Context, addr string) BridgeState {
+	if !isLocalAddr(addr) {
+		return BridgeNotRunning
+	}
+	return probeBridgeURL(ctx, "http://"+addr+"/web-api/v1/gateway")
+}
+
+func probeBridgeURL(ctx context.Context, url string) BridgeState {
+	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return BridgeNotRunning
+	}
+	resp, err := (&http.Client{}).Do(req)
+	if err != nil {
+		return BridgeNotRunning
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	switch resp.StatusCode {
+	case http.StatusOK:
+		return BridgeConnected
+	case http.StatusUnauthorized:
+		return BridgeOffline
+	default:
+		return BridgeNotRunning
+	}
+}
+
 func validateReplay(data []byte) error {
 	if len(data) < replayMinSize {
 		return fmt.Errorf("%w: too short (%d bytes, need at least %d)", ErrInvalidReplay, len(data), replayMinSize)

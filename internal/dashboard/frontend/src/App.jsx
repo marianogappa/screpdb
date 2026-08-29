@@ -2019,6 +2019,7 @@ function App() {
   const [quietUpdateDismissed, setQuietUpdateDismissed] = useState(false);
   const [loudUpdateDismissed, setLoudUpdateDismissed] = useState(false);
   const [stopped, setStopped] = useState(false);
+  const [bnetStatus, setBnetStatus] = useState(null);
   const emptyDbAutoOpenRef = useRef(false);
   const [globalReplayFilterConfig, setGlobalReplayFilterConfig] = useState(null);
   const [globalReplayFilterSaving, setGlobalReplayFilterSaving] = useState(false);
@@ -2943,6 +2944,36 @@ function App() {
     })();
     return () => { cancelled = true; };
   }, [currentVersion]);
+
+  // Poll Battle.net bridge connection status every 5 seconds. The backend
+  // caches the result from its own 10-second probe loop, so this read is cheap.
+  useEffect(() => {
+    if (stopped) return undefined;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const status = await api.getBnetStatus();
+        if (!cancelled) setBnetStatus(status);
+      } catch (_err) {
+        // Silently ignore — server may be shutting down.
+      }
+    };
+    poll();
+    const id = setInterval(poll, 5000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [stopped]);
+
+  const bnetState = bnetStatus?.state || 'not_running';
+  const bnetDisabled = Boolean(bnetStatus?.disabled);
+
+  const handleBnetToggle = useCallback(async () => {
+    try {
+      const result = await api.setBnetDisabled(!bnetDisabled);
+      setBnetStatus(result);
+    } catch (err) {
+      console.error('Failed to toggle Battle.net bridge:', err);
+    }
+  }, [bnetDisabled]);
 
   const updateTier = updateStatus?.tier || 'none';
   const updateAvailable = Boolean(updateStatus?.update_available);
@@ -5330,14 +5361,6 @@ function App() {
                 <span className="ingest-running-badge tip-below" data-tip="Ingestion in progress — click to view logs">Ingesting…</span>
               ) : null}
             </button>
-            <button
-              type="button"
-              onClick={handleQuit}
-              className="workflow-nav-text-action workflow-nav-quit tip-below"
-              data-tip="Stop the screpdb server and quit"
-            >
-              ⏻ Quit
-            </button>
             {staleReplaysCount > 0 && staleReplaysCount > dismissedStaleCount && ingestStatus !== 'running' ? (
               <span className="stale-replays-hint-wrap">
                 <span className="stale-replays-hint-icon" aria-label="Replay analysis update available">⚠️</span>
@@ -5355,6 +5378,33 @@ function App() {
                 </span>
               </span>
             ) : null}
+          </div>
+          <div className="workflow-nav-group workflow-nav-group-right">
+            <button
+              type="button"
+              className={`bnet-pill bnet-pill--${bnetDisabled ? 'disabled' : bnetState} tip-below`}
+              data-tip={
+                bnetDisabled ? 'Bridge disabled — click to re-enable'
+                : bnetState === 'connected' ? `Connected to SC:R on ${bnetStatus?.addr || '?'}`
+                : bnetState === 'offline' ? 'SC:R is running but not logged in to Battle.net'
+                : 'SC:R not detected'
+              }
+              onClick={handleBnetToggle}
+            >
+              <span className="bnet-pill-dot" />
+              {bnetDisabled ? 'Bridge off'
+                : bnetState === 'connected' ? 'SC:R'
+                : bnetState === 'offline' ? 'SC:R offline'
+                : 'SC:R'}
+            </button>
+            <button
+              type="button"
+              onClick={handleQuit}
+              className="workflow-nav-text-action workflow-nav-quit tip-below"
+              data-tip="Stop the screpdb server and quit"
+            >
+              ⏻ Quit
+            </button>
           </div>
         </div>
 

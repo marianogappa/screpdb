@@ -13,6 +13,7 @@ import (
 	"runtime/debug"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -59,6 +60,9 @@ type Dashboard struct {
 	fpDatasetErr        error
 	fpMatchCacheMu      sync.RWMutex
 	fpMatchCache        map[string]*workflowFingerprintMatch
+	bnetState           atomic.Value // stores bnetStatus
+	bnetAddr            atomic.Value // stores string
+	bnetDisabled        atomic.Bool
 }
 
 // SetShutdownFunc registers the callback the /api/custom/quit endpoint invokes to
@@ -220,6 +224,8 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/custom/sample-set/load", d.handlerLoadSampleSet).Methods(http.MethodPost)
 	r.HandleFunc("/api/custom/update/status", d.handlerUpdateStatus).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/update/apply", d.handlerUpdateApply).Methods(http.MethodPost)
+	r.HandleFunc("/api/custom/bnet/status", d.handlerBnetStatus).Methods(http.MethodGet)
+	r.HandleFunc("/api/custom/bnet/toggle", d.handlerBnetToggle).Methods(http.MethodPost)
 	r.HandleFunc("/api/custom/quit", d.handlerQuit).Methods(http.MethodPost)
 	apigen.HandlerFromMux(strictHandler, r)
 	r.PathPrefix("/api/").Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -331,6 +337,7 @@ func (d *Dashboard) StartAsync(port int) <-chan error {
 			return
 		}
 		log.Println("Backend server is ready")
+		d.startBnetMonitor(d.ctx)
 		select {
 		case errChan <- nil:
 		default:

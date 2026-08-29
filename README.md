@@ -313,11 +313,15 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-08-29  REVIEW (deliberate, documented widening). New internal/bnetfacade package (issue #317): third sanctioned network surface added to the enforcement-test skip list. Loopback client restricted to 127.0.0.1 + /web-api/ prefix for SC:R's local bridge. Outbound client allowlisted to exactly storage.googleapis.com + /starcraft-user-uploads-prod/S1-replays/ prefix for GCS replay downloads. Downloaded replays validated (length ≥ 16 bytes + seRS magic at offset 12). Bridge payloads decoded leniently (cp949/ISO-8859-1 fallback) for Korean map titles. Host, path, and loopback restrictions all covered by tests. This widens the attack surface: the binary now makes one genuine outbound call to a third-party host, guarded by host+path allowlist at the facade boundary. golang.org/x/text promoted from indirect to direct (cp949/charmap decoders). No iofacade allowlist widening; no AlgorithmVersion bump (no detection change).
+2026-08-29  OK. SC:R local web-api detection and connection-state UI (issue #318). Adds platform-specific port discovery (macOS: lsof, Linux: /proc/net/tcp, Windows: GetExtendedTcpTable via iphlpapi.dll) and a ProbeBridge function to bnetfacade — all loopback-only, one GET to /web-api/v1/gateway every 10s. Dashboard gains a background monitor goroutine (atomic-cached state), two new hand-written endpoints (GET/POST /api/custom/bnet/{status,toggle}), and a nav pill. The global off-switch disables all probing. No new outbound hosts (all 127.0.0.1), no iofacade allowlist widening, no AlgorithmVersion bump. Platform-specific files use os/exec (macOS lsof) and os.ReadFile (Linux /proc/net/tcp) inside the already-exempt bnetfacade package.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
+
+```
+2026-08-29  REVIEW (deliberate, documented widening). New internal/bnetfacade package (issue #317): third sanctioned network surface added to the enforcement-test skip list. Loopback client restricted to 127.0.0.1 + /web-api/ prefix for SC:R's local bridge. Outbound client allowlisted to exactly storage.googleapis.com + /starcraft-user-uploads-prod/S1-replays/ prefix for GCS replay downloads. Downloaded replays validated (length ≥ 16 bytes + seRS magic at offset 12). Bridge payloads decoded leniently (cp949/ISO-8859-1 fallback) for Korean map titles. Host, path, and loopback restrictions all covered by tests. This widens the attack surface: the binary now makes one genuine outbound call to a third-party host, guarded by host+path allowlist at the facade boundary. golang.org/x/text promoted from indirect to direct (cp949/charmap decoders). No iofacade allowlist widening; no AlgorithmVersion bump (no detection change).
+```
 
 ```
 2026-08-29  OK. Derive game_source and lobby_kind from replay content at ingest (issue #346). Reads only in-memory screp replay struct fields (rep.ShieldBattery, rep.RepFormat, rep.Header.Players, rep.Header.Title). Two new replays columns via migration 000004, surfaced on the API/MCP schema. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test change; AlgorithmVersion bumped 61→62 to drive backfill via the existing re-ingest hint.
