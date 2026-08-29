@@ -34,6 +34,8 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	detail.FilePath = summary.FilePath
 	detail.MapName = summary.MapName
 	detail.MapKind = summary.MapKind
+	detail.GameSource = summary.GameSource
+	detail.LobbyKind = summary.LobbyKind
 	detail.MapVisual = d.resolveWorkflowMapVisual(detail.ReplayID, summary.MapName, summary.FilePath, summary.FileChecksum)
 	detail.DurationSeconds = summary.DurationSeconds
 	detail.GameType = summary.GameType
@@ -335,6 +337,8 @@ func (d *Dashboard) buildWorkflowPlayerRecentGames(playerKey string) ([]workflow
 			FileName:           row.FileName,
 			MapName:            row.MapName,
 			MapKind:            row.MapKind,
+			GameSource:         row.GameSource,
+			LobbyKind:          row.LobbyKind,
 			DurationSeconds:    row.DurationSeconds,
 			GameType:           row.GameType,
 			Matchup:            row.Matchup,

@@ -16,6 +16,8 @@ type WorkflowGameListRow struct {
 	FileName           string
 	MapName            string
 	MapKind            string
+	GameSource         string
+	LobbyKind          string
 	DurationSeconds    int64
 	GameType           string
 	Matchup            string
@@ -88,6 +90,8 @@ func (s *Store) ListGamesWithWhere(ctx context.Context, whereSQL string, whereAr
 			r.file_name,
 			r.map_name,
 			r.map_kind,
+			r.game_source,
+			r.lobby_kind,
 			r.duration_seconds,
 			r.game_type,
 			r.matchup,
@@ -112,6 +116,8 @@ func (s *Store) ListGamesWithWhere(ctx context.Context, whereSQL string, whereAr
 			&item.FileName,
 			&item.MapName,
 			&item.MapKind,
+			&item.GameSource,
+			&item.LobbyKind,
 			&item.DurationSeconds,
 			&item.GameType,
 			&item.Matchup,

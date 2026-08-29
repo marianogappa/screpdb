@@ -63,7 +63,7 @@ func (q *Queries) GetPlayerOverviewSummary(ctx context.Context, name string) (Ge
 }
 
 const GetReplaySummary = `-- name: GetReplaySummary :one
-SELECT id, replay_date, file_name, file_path, file_checksum, map_name, map_kind, duration_seconds, game_type, team_stacking, team_info_incomplete
+SELECT id, replay_date, file_name, file_path, file_checksum, map_name, map_kind, game_source, lobby_kind, duration_seconds, game_type, team_stacking, team_info_incomplete
 FROM replays
 WHERE id = ?
 `
@@ -76,6 +76,8 @@ type GetReplaySummaryRow struct {
 	FileChecksum       string
 	MapName            string
 	MapKind            string
+	GameSource         string
+	LobbyKind          string
 	DurationSeconds    int64
 	GameType           string
 	TeamStacking       bool
@@ -93,6 +95,8 @@ func (q *Queries) GetReplaySummary(ctx context.Context, id int64) (GetReplaySumm
 		&i.FileChecksum,
 		&i.MapName,
 		&i.MapKind,
+		&i.GameSource,
+		&i.LobbyKind,
 		&i.DurationSeconds,
 		&i.GameType,
 		&i.TeamStacking,
@@ -258,6 +262,8 @@ SELECT
   r.file_name,
   r.map_name,
   r.map_kind,
+  r.game_source,
+  r.lobby_kind,
   r.duration_seconds,
   r.game_type,
   r.matchup,
@@ -290,6 +296,8 @@ type ListPlayerRecentGamesRow struct {
 	FileName           string
 	MapName            string
 	MapKind            string
+	GameSource         string
+	LobbyKind          string
 	DurationSeconds    int64
 	GameType           string
 	Matchup            string
@@ -314,6 +322,8 @@ func (q *Queries) ListPlayerRecentGames(ctx context.Context, name string) ([]Lis
 			&i.FileName,
 			&i.MapName,
 			&i.MapKind,
+			&i.GameSource,
+			&i.LobbyKind,
 			&i.DurationSeconds,
 			&i.GameType,
 			&i.Matchup,

@@ -1,5 +1,5 @@
 -- name: GetReplaySummary :one
-SELECT id, replay_date, file_name, file_path, file_checksum, map_name, map_kind, duration_seconds, game_type, team_stacking, team_info_incomplete
+SELECT id, replay_date, file_name, file_path, file_checksum, map_name, map_kind, game_source, lobby_kind, duration_seconds, game_type, team_stacking, team_info_incomplete
 FROM replays
 WHERE id = ?;
 
@@ -126,6 +126,8 @@ SELECT
   r.file_name,
   r.map_name,
   r.map_kind,
+  r.game_source,
+  r.lobby_kind,
   r.duration_seconds,
   r.game_type,
   r.matchup,

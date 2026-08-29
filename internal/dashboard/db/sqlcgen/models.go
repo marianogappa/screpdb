@@ -83,6 +83,8 @@ type Replay struct {
 	ReplayDate               string
 	MapName                  string
 	MapKind                  string
+	GameSource               string
+	LobbyKind                string
 	DurationSeconds          int64
 	GameType                 string
 	Matchup                  string

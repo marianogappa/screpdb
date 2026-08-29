@@ -14,6 +14,8 @@ type ReplaySummaryRow struct {
 	FileChecksum       string
 	MapName            string
 	MapKind            string
+	GameSource         string
+	LobbyKind          string
 	DurationSeconds    int64
 	GameType           string
 	TeamStacking       bool
@@ -79,6 +81,8 @@ type PlayerRecentGameRow struct {
 	FileName           string
 	MapName            string
 	MapKind            string
+	GameSource         string
+	LobbyKind          string
 	DurationSeconds    int64
 	GameType           string
 	Matchup            string
@@ -108,6 +112,8 @@ func (s *Store) GetReplaySummary(ctx context.Context, replayID int64) (*ReplaySu
 		FileChecksum:       sqlcRow.FileChecksum,
 		MapName:            sqlcRow.MapName,
 		MapKind:            sqlcRow.MapKind,
+		GameSource:         sqlcRow.GameSource,
+		LobbyKind:          sqlcRow.LobbyKind,
 		DurationSeconds:    sqlcRow.DurationSeconds,
 		GameType:           sqlcRow.GameType,
 		TeamStacking:       sqlcRow.TeamStacking,
@@ -297,6 +303,8 @@ func (s *Store) ListPlayerRecentGames(ctx context.Context, playerKey string) ([]
 			FileName:           row.FileName,
 			MapName:            row.MapName,
 			MapKind:            row.MapKind,
+			GameSource:         row.GameSource,
+			LobbyKind:          row.LobbyKind,
 			DurationSeconds:    row.DurationSeconds,
 			GameType:           row.GameType,
 			Matchup:            row.Matchup,

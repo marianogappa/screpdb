@@ -28,6 +28,8 @@ CREATE TABLE replays (
   replay_date TEXT NOT NULL,
   map_name TEXT NOT NULL,
   map_kind TEXT NOT NULL DEFAULT 'Regular',
+  game_source TEXT NOT NULL DEFAULT 'Unknown',
+  lobby_kind TEXT NOT NULL DEFAULT 'Unknown',
   duration_seconds INTEGER NOT NULL,
   game_type TEXT NOT NULL,
   matchup TEXT NOT NULL DEFAULT '',

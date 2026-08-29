@@ -112,6 +112,8 @@ type workflowGameListItem struct {
 	FileName           string                    `json:"file_name"`
 	MapName            string                    `json:"map_name"`
 	MapKind            string                    `json:"map_kind,omitempty"`
+	GameSource         string                    `json:"game_source"`
+	LobbyKind          string                    `json:"lobby_kind"`
 	DurationSeconds    int64                     `json:"duration_seconds"`
 	GameType           string                    `json:"game_type"`
 	PlayersLabel       string                    `json:"players_label"`
@@ -360,6 +362,8 @@ type workflowGameDetail struct {
 	FilePath                         string                                   `json:"file_path"`
 	MapName                          string                                   `json:"map_name"`
 	MapKind                          string                                   `json:"map_kind,omitempty"`
+	GameSource                       string                                   `json:"game_source"`
+	LobbyKind                        string                                   `json:"lobby_kind"`
 	MapVisual                        workflowMapVisual                        `json:"map_visual"`
 	MapWidthPixels                   int64                                    `json:"map_width_pixels,omitempty"`
 	MapHeightPixels                  int64                                    `json:"map_height_pixels,omitempty"`
