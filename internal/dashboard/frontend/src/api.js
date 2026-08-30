@@ -65,51 +65,6 @@ export const api = {
     return response.json();
   },
 
-  listAliases: async () => {
-    const response = await fetch(`${API_CUSTOM}/aliases`);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to list aliases');
-    }
-    return response.json();
-  },
-
-  importAliases: async (aliasesPayload) => {
-    const response = await fetch(`${API_CUSTOM}/aliases`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ aliases: aliasesPayload }),
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to import aliases');
-    }
-    return response.json();
-  },
-
-  upsertAliasEntry: async (entry) => {
-    const response = await fetch(`${API_CUSTOM}/aliases/entry`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entry),
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to upsert alias entry');
-    }
-    return response.json();
-  },
-
-  deleteAliasEntry: async (id) => {
-    const response = await fetch(`${API_CUSTOM}/aliases/${id}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to delete alias entry');
-    }
-    return response.json();
-  },
 
   getHealth: async () => {
     const response = await fetch(`${API_BASE}/health`);
@@ -414,6 +369,28 @@ export const api = {
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get marker definitions');
+    }
+    return response.json();
+  },
+
+  getFeatureFlags: async () => {
+    const response = await fetch(`${API_CUSTOM}/feature-flags`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to load feature flags');
+    }
+    return response.json();
+  },
+
+  setFeatureFlag: async (key, enabled) => {
+    const response = await fetch(`${API_CUSTOM}/feature-flags`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, enabled }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to save feature flag');
     }
     return response.json();
   },

@@ -35,7 +35,6 @@ func TestSetupRouter_JSONEndpoints(t *testing.T) {
 		{"global replay filter options", http.MethodGet, "/api/custom/global-replay-filter/options", nil},
 		{"ingest settings get", http.MethodGet, "/api/custom/ingest/settings", nil},
 		{"stale replays count", http.MethodGet, "/api/custom/replays/stale-count", nil},
-		{"aliases list", http.MethodGet, "/api/custom/aliases", nil},
 		{"bnet status", http.MethodGet, "/api/custom/bnet/status", nil},
 	}
 
@@ -166,7 +165,7 @@ func TestSetupRouter_StrictInputValidation(t *testing.T) {
 	d := newTestDashboard(t)
 	r := d.setupRouter()
 
-	req := httptest.NewRequest(http.MethodPut, "/api/custom/aliases/entry", nil)
+	req := httptest.NewRequest(http.MethodPut, "/api/custom/ingest/settings", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 

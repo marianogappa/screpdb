@@ -27,7 +27,7 @@ type MigrationSet string
 const (
 	MigrationSetReplay    MigrationSet = "replay"
 	MigrationSetDashboard MigrationSet = "dashboard"
-	// MigrationSetSettings owns user-curated state (aliases, filter prefs)
+	// MigrationSetSettings owns user-curated state (filter + ingestion prefs)
 	// that must survive both --clean and --clean-dashboard. Tables here are
 	// preserved by name in DropMigrationSet so the replay/dashboard wipes
 	// don't take them along.
@@ -38,10 +38,9 @@ const (
 // DropMigrationSet skips dropping any table whose name appears here when
 // invoked for the replay or dashboard sets — even if the older replay /
 // dashboard migrations originally created it. Keeps user-curated data
-// (aliases, global filter prefs) alive across both --clean variants.
+// (global filter + ingestion prefs) alive across both --clean variants.
 var preservedTablesAcrossWipes = map[string]struct{}{
-	"player_aliases": {},
-	"settings":       {},
+	"settings": {},
 }
 
 // RunMigrations runs all pending migrations for replay, dashboard, and
@@ -187,7 +186,7 @@ func recordMigrationApplied(db *sql.DB, set MigrationSet, name string) error {
 // DropAllMigrations drops every migration set, including settings.
 // Used for fresh-DB nukes only (test setup, full reset). Routine
 // --clean / --clean-dashboard wipes preserve the settings set and its
-// tables (player_aliases + settings).
+// tables (settings).
 func DropAllMigrations(sqlitePath string) error {
 	if err := DropMigrationSet(sqlitePath, MigrationSetReplay); err != nil {
 		return err

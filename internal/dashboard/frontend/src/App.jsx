@@ -2159,18 +2159,6 @@ function App() {
     try { window.sessionStorage.setItem('dismissedStaleReplaysCount', String(staleReplaysCount)); } catch (_) {}
     setDismissedStaleCount(staleReplaysCount);
   }, [staleReplaysCount]);
-  const [aliases, setAliases] = useState([]);
-  const [aliasesLoading, setAliasesLoading] = useState(false);
-  const [aliasesMessage, setAliasesMessage] = useState('');
-  const [aliasesMessageIsError, setAliasesMessageIsError] = useState(false);
-  const [aliasSaving, setAliasSaving] = useState(false);
-  const [aliasSources, setAliasSources] = useState(['you', 'manual', 'imported']);
-  const [aliasEditOriginal, setAliasEditOriginal] = useState(null);
-  const [aliasForm, setAliasForm] = useState({
-    canonical_alias: '',
-    battle_tag: '',
-    aurora_id: '',
-  });
   const [autoIngestNotice, setAutoIngestNotice] = useState('');
   const [ingestForm, setIngestForm] = useState({
     stopAfterN: 50,
@@ -2806,171 +2794,6 @@ function App() {
     }
   };
 
-  const normalizeAliasBattleTag = (value) => String(value || '').trim().toLowerCase();
-
-  const loadAliases = async () => {
-    try {
-      setAliasesLoading(true);
-      const data = await api.listAliases();
-      setAliases(Array.isArray(data?.aliases) ? data.aliases : []);
-    } catch (err) {
-      setAliasesMessage(err.message || 'Failed to load aliases');
-      setAliasesMessageIsError(true);
-    } finally {
-      setAliasesLoading(false);
-    }
-  };
-
-  const handleAliasSave = async () => {
-    const canonicalAlias = String(aliasForm.canonical_alias || '').trim();
-    const battleTag = String(aliasForm.battle_tag || '').trim();
-    if (!canonicalAlias || !battleTag) {
-      setAliasesMessage('Alias and name in replay are required.');
-      setAliasesMessageIsError(true);
-      return;
-    }
-    if (canonicalAlias.trim().toLowerCase() === battleTag.trim().toLowerCase()) {
-      setAliasesMessage('Alias must differ from name in replay.');
-      setAliasesMessageIsError(true);
-      return;
-    }
-    let source = 'manual';
-    if (aliasEditOriginal) {
-      if (aliasEditOriginal.source === 'you') {
-        source = 'manual';
-      } else {
-        source = aliasEditOriginal.source;
-      }
-    }
-    const wasEditing = Boolean(aliasEditOriginal);
-    try {
-      setAliasSaving(true);
-      setAliasesMessage('');
-      setAliasesMessageIsError(false);
-      const auroraIdRaw = String(aliasForm.aurora_id || '').trim();
-      await api.upsertAliasEntry({
-        canonical_alias: canonicalAlias,
-        battle_tag: battleTag,
-        source,
-        aurora_id: auroraIdRaw ? Number(auroraIdRaw) : undefined,
-      });
-      if (aliasEditOriginal) {
-        const prevNorm = normalizeAliasBattleTag(aliasEditOriginal.battle_tag_normalized);
-        const tripleChanged =
-          normalizeAliasBattleTag(battleTag) !== prevNorm ||
-          canonicalAlias !== aliasEditOriginal.canonical_alias ||
-          source !== aliasEditOriginal.source;
-        if (tripleChanged && aliasEditOriginal.id != null) {
-          await api.deleteAliasEntry(aliasEditOriginal.id);
-        }
-      }
-      setAliasForm({ canonical_alias: '', battle_tag: '', aurora_id: '' });
-      setAliasEditOriginal(null);
-      setAliasesMessage(wasEditing ? 'Alias updated.' : 'Alias saved.');
-      await loadAliases();
-    } catch (err) {
-      setAliasesMessage(err.message || 'Failed to save alias');
-      setAliasesMessageIsError(true);
-    } finally {
-      setAliasSaving(false);
-    }
-  };
-
-  const handleAliasEdit = (row) => {
-    setAliasesMessage('');
-    setAliasesMessageIsError(false);
-    setAliasEditOriginal({
-      id: row.id,
-      canonical_alias: row.canonical_alias,
-      battle_tag_normalized: row.battle_tag_normalized,
-      battle_tag_raw: row.battle_tag_raw,
-      source: row.source,
-    });
-    setAliasForm({
-      canonical_alias: row.canonical_alias || '',
-      battle_tag: row.battle_tag_raw || '',
-      aurora_id: row.aurora_id != null ? String(row.aurora_id) : '',
-    });
-  };
-
-  const handleAliasCancelEdit = () => {
-    setAliasEditOriginal(null);
-    setAliasForm({ canonical_alias: '', battle_tag: '', aurora_id: '' });
-    setAliasesMessage('');
-    setAliasesMessageIsError(false);
-  };
-
-  const handleAliasSourceToggle = (value) => {
-    setAliasSources((prev) => {
-      if (prev.includes(value)) {
-        return prev.filter((v) => v !== value);
-      }
-      return [...prev, value].sort((a, b) => a.localeCompare(b));
-    });
-  };
-
-  const handleAliasExport = () => {
-    const byCanonical = {};
-    for (const row of aliases || []) {
-      const key = row.canonical_alias || '';
-      if (!Object.prototype.hasOwnProperty.call(byCanonical, key)) {
-        byCanonical[key] = [];
-      }
-      const entry = { battle_tag: row.battle_tag_raw || '' };
-      if (row.aurora_id != null) {
-        entry.aurora_id = row.aurora_id;
-      }
-      byCanonical[key].push(entry);
-    }
-    const blob = new Blob([JSON.stringify(byCanonical, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = 'aliases-export.json';
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleAliasDelete = async (id) => {
-    try {
-      setAliasesMessage('');
-      setAliasesMessageIsError(false);
-      await api.deleteAliasEntry(id);
-      if (aliasEditOriginal && aliasEditOriginal.id === id) {
-        setAliasEditOriginal(null);
-        setAliasForm({ canonical_alias: '', battle_tag: '', aurora_id: '' });
-      }
-      setAliasesMessage('Alias removed.');
-      await loadAliases();
-    } catch (err) {
-      setAliasesMessage(err.message || 'Failed to delete alias');
-      setAliasesMessageIsError(true);
-    }
-  };
-
-  const handleAliasImportFile = async (file) => {
-    try {
-      setAliasesMessage('');
-      setAliasesMessageIsError(false);
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-      const payload =
-        parsed &&
-        typeof parsed === 'object' &&
-        !Array.isArray(parsed) &&
-        parsed.aliases &&
-        typeof parsed.aliases === 'object' &&
-        !Array.isArray(parsed.aliases)
-          ? parsed.aliases
-          : parsed;
-      await api.importAliases(payload);
-      setAliasesMessage('Alias file imported.');
-      await loadAliases();
-    } catch (err) {
-      setAliasesMessage(err.message || 'Failed to import alias file');
-      setAliasesMessageIsError(true);
-    }
-  };
 
   const showAutoIngestNotice = (message) => {
     if (autoIngestNoticeTimerRef.current) {
@@ -3534,13 +3357,7 @@ function App() {
     if (!showGlobalReplayFilter) {
       return undefined;
     }
-    setAliasesMessage('');
-    setAliasesMessageIsError(false);
-    setAliasEditOriginal(null);
-    setAliasForm({ canonical_alias: '', battle_tag: '', aurora_id: '' });
-    setAliasSources(['you', 'manual', 'imported']);
     void loadIngestSettings();
-    void loadAliases();
     return undefined;
   }, [showGlobalReplayFilter]);
 
@@ -3681,7 +3498,6 @@ function App() {
       // otherwise stale isSampleSet keeps "Ingest now" hidden.
       await loadIngestSettings();
       setIngestMessage('Replay folder saved.');
-      void loadAliases();
     } catch (err) {
       setIngestMessage(err.message || 'Failed to save replay folder.');
     }
@@ -3849,7 +3665,7 @@ function App() {
     if (topPlayerColors[raw]) {
       return topPlayerColors[raw];
     }
-    // Display names append " (alias)" after the replay header name; /api/player-colors keys are player_key (normalized raw name).
+    // Display names may append the "you" marker after the replay header name; /api/player-colors keys are player_key (normalized raw name).
     const withoutDisplaySuffix = raw.replace(/ \([^)]+\)$/, '').trim().toLowerCase();
     if (withoutDisplaySuffix && withoutDisplaySuffix !== raw && topPlayerColors[withoutDisplaySuffix]) {
       return topPlayerColors[withoutDisplaySuffix];
@@ -7776,22 +7592,6 @@ function App() {
           error={globalReplayFilterError}
           onClose={() => setShowGlobalReplayFilter(false)}
           onSave={handleSaveGlobalReplayFilter}
-          aliases={aliases}
-          aliasesLoading={aliasesLoading}
-          aliasesMessage={aliasesMessage}
-          aliasesMessageIsError={aliasesMessageIsError}
-          aliasForm={aliasForm}
-          aliasSaving={aliasSaving}
-          aliasSources={aliasSources}
-          aliasEditOriginal={aliasEditOriginal}
-          onAliasFormChange={setAliasForm}
-          onAliasSave={handleAliasSave}
-          onAliasDelete={handleAliasDelete}
-          onAliasImportFile={handleAliasImportFile}
-          onAliasSourcesToggle={handleAliasSourceToggle}
-          onAliasEdit={handleAliasEdit}
-          onAliasCancelEdit={handleAliasCancelEdit}
-          onAliasExport={handleAliasExport}
         />
       )}
 

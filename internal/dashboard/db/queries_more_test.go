@@ -69,51 +69,6 @@ func TestGetGlobalReplayFilterConfigRawDefaults(t *testing.T) {
 	}
 }
 
-func TestPlayerAliasesRoundTrip(t *testing.T) {
-	s, _ := newTestStore(t)
-	ctx := context.Background()
-
-	if err := s.UpsertPlayerAlias(ctx, "BoxeR", "boxer#123", "boxer#123", ptrI64(7), "manual"); err != nil {
-		t.Fatalf("UpsertPlayerAlias: %v", err)
-	}
-	rows, err := s.ListPlayerAliases(ctx)
-	if err != nil {
-		t.Fatalf("ListPlayerAliases: %v", err)
-	}
-	if len(rows) != 1 {
-		t.Fatalf("expected 1 alias, got %d", len(rows))
-	}
-	if rows[0].CanonicalAlias != "BoxeR" || rows[0].Source != "manual" {
-		t.Errorf("alias = %+v", rows[0])
-	}
-	if rows[0].AuroraID == nil || *rows[0].AuroraID != 7 {
-		t.Errorf("aurora id = %v", rows[0].AuroraID)
-	}
-
-	// Upsert on the same conflict key (source, normalized tag, canonical alias)
-	// updates the raw tag / aurora id in place. Only battleTagRaw changes.
-	if err := s.UpsertPlayerAlias(ctx, "BoxeR", "BoxeR#123", "boxer#123", ptrI64(9), "manual"); err != nil {
-		t.Fatalf("upsert update: %v", err)
-	}
-	rows, err = s.ListPlayerAliases(ctx)
-	if err != nil {
-		t.Fatalf("ListPlayerAliases: %v", err)
-	}
-	if len(rows) != 1 || rows[0].BattleTagRaw != "BoxeR#123" || *rows[0].AuroraID != 9 {
-		t.Fatalf("after upsert = %+v", rows)
-	}
-
-	if err := s.DeletePlayerAliasByID(ctx, rows[0].ID); err != nil {
-		t.Fatalf("DeletePlayerAliasByID: %v", err)
-	}
-	rows, err = s.ListPlayerAliases(ctx)
-	if err != nil {
-		t.Fatalf("ListPlayerAliases: %v", err)
-	}
-	if len(rows) != 0 {
-		t.Errorf("expected 0 aliases after delete, got %d", len(rows))
-	}
-}
 
 func TestCountDistinctPlayers(t *testing.T) {
 	s, conn := newTestStore(t)

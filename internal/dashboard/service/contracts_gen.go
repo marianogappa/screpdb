@@ -8,10 +8,6 @@ import (
 
 // DashboardService is generated from apigen.StrictServerInterface.
 type DashboardService interface {
-	ListAliases(ctx context.Context, request apigen.ListAliasesRequestObject) (HandlerResult, error)
-	ImportAliases(ctx context.Context, request apigen.ImportAliasesRequestObject) (HandlerResult, error)
-	UpsertAliasEntry(ctx context.Context, request apigen.UpsertAliasEntryRequestObject) (HandlerResult, error)
-	DeleteAliasEntry(ctx context.Context, request apigen.DeleteAliasEntryRequestObject) (HandlerResult, error)
 	GetGlobalReplayFilterConfig(ctx context.Context, request apigen.GetGlobalReplayFilterConfigRequestObject) (HandlerResult, error)
 	UpdateGlobalReplayFilterConfig(ctx context.Context, request apigen.UpdateGlobalReplayFilterConfigRequestObject) (HandlerResult, error)
 	GetGlobalReplayFilterOptions(ctx context.Context, request apigen.GetGlobalReplayFilterOptionsRequestObject) (HandlerResult, error)

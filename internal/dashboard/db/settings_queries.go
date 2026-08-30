@@ -49,3 +49,26 @@ func (s *Store) ListTopPlayerColorRows(ctx context.Context) ([]PlayerColorRow, e
 	}
 	return result, nil
 }
+
+// GetFeatureFlagsJSON returns the raw feature-flag JSON object stored on the
+// settings row, or "{}" when it has never been written.
+func (s *Store) GetFeatureFlagsJSON(ctx context.Context, configKey string) (string, error) {
+	var raw string
+	err := Trace(s.defaultDB).
+		QueryRowContext(ctx, `SELECT COALESCE(feature_flags, '{}') FROM settings WHERE config_key = ?`, configKey).
+		Scan(&raw)
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(raw) == "" {
+		return "{}", nil
+	}
+	return raw, nil
+}
+
+func (s *Store) SetFeatureFlagsJSON(ctx context.Context, configKey, raw string) error {
+	_, err := Trace(s.defaultDB).ExecContext(ctx,
+		`UPDATE settings SET feature_flags = ?, updated_at = CURRENT_TIMESTAMP WHERE config_key = ?`,
+		raw, configKey)
+	return err
+}

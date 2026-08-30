@@ -3492,6 +3492,10 @@ button.workflow-nav-update-available:disabled {
   align-items: center;
   gap: 0.4em;
   min-width: 0;
+  /* Sized in em, not px: this wrapper is used at both table type and page-title
+     type, so the flag has to track whatever it sits next to. A fixed box that
+     suits the players table is lost beside a 2rem heading. */
+  --player-glyph-size: 1.15em;
 }
 
 /* The race icon fills its box and anchors the group. The flag is identity too,

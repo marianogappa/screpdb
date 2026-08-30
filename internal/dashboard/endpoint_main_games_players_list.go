@@ -36,10 +36,7 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 	for _, row := range listRows {
 		playerNames = append(playerNames, row.PlayerName)
 	}
-	displayByName, err := d.aliasDisplayNames(playerNames)
-	if err != nil {
-		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
-	}
+	displayByName := d.youDisplayNames(playerNames)
 	playerKeys := make([]string, 0, len(listRows))
 	for _, row := range listRows {
 		playerKeys = append(playerKeys, row.PlayerKey)
@@ -266,10 +263,7 @@ func (d *Dashboard) populateWorkflowGameListPlayers(items []workflowGameListItem
 	for _, row := range rows {
 		playerNames = append(playerNames, row.Name)
 	}
-	displayByName, err := d.aliasDisplayNames(playerNames)
-	if err != nil {
-		return err
-	}
+	displayByName := d.youDisplayNames(playerNames)
 	playerKeys := make([]string, 0, len(rows))
 	for _, row := range rows {
 		playerKeys = append(playerKeys, normalizePlayerKey(row.Name))
@@ -431,10 +425,7 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 	for _, row := range playerRows {
 		playerNames = append(playerNames, row.Name)
 	}
-	displayByName, err := d.aliasDisplayNames(playerNames)
-	if err != nil {
-		return err
-	}
+	displayByName := d.youDisplayNames(playerNames)
 	playerIDs := []int64{}
 	currentByPlayerID := map[int64]*workflowRecentGamePlayer{}
 	for _, row := range playerRows {
@@ -527,10 +518,7 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 	for _, row := range rowsPlayers {
 		playerNames = append(playerNames, row.Label)
 	}
-	displayByName, err := d.aliasDisplayNames(playerNames)
-	if err != nil {
-		return result, err
-	}
+	displayByName := d.youDisplayNames(playerNames)
 	for _, row := range rowsPlayers {
 		var option workflowGamesListFilterOption
 		option.Key = row.Key

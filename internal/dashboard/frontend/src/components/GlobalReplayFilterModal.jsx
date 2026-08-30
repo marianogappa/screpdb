@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import AliasesSettingsPanel from './AliasesSettingsPanel';
+import FeatureFlagsSettingsPanel from './FeatureFlagsSettingsPanel';
 
 const GAME_TYPE_OPTIONS = [
   { value: 'top_vs_bottom', label: 'Top vs Bottom' },
@@ -72,22 +72,11 @@ function GlobalReplayFilterModal({
   error,
   onClose,
   onSave,
-  aliases,
-  aliasesLoading,
-  aliasesMessage,
-  aliasesMessageIsError,
-  aliasForm,
-  aliasSaving,
-  aliasSources,
-  aliasEditOriginal,
-  onAliasFormChange,
-  onAliasSave,
-  onAliasDelete,
-  onAliasImportFile,
-  onAliasSourcesToggle,
-  onAliasEdit,
-  onAliasCancelEdit,
-  onAliasExport,
+  featureFlags,
+  featureFlagsSaving,
+  featureFlagsMessage,
+  featureFlagsMessageIsError,
+  onFeatureFlagToggle,
 }) {
   const [formState, setFormState] = useState(DEFAULT_CONFIG);
   const [settingsTab, setSettingsTab] = useState('scope');
@@ -135,11 +124,11 @@ function GlobalReplayFilterModal({
             <button
               type="button"
               role="tab"
-              aria-selected={settingsTab === 'aliases'}
-              className={`workflow-production-tab${settingsTab === 'aliases' ? ' workflow-production-tab-active' : ''}`}
-              onClick={() => setSettingsTab('aliases')}
+              aria-selected={settingsTab === 'feature-flags'}
+              className={`workflow-production-tab${settingsTab === 'feature-flags' ? ' workflow-production-tab-active' : ''}`}
+              onClick={() => setSettingsTab('feature-flags')}
             >
-              Aliases
+              Feature Flags
             </button>
           </div>
         </div>
@@ -194,23 +183,12 @@ function GlobalReplayFilterModal({
           </form>
         ) : (
           <div className="edit-form ingest-form settings-modal-tab-panel">
-            <AliasesSettingsPanel
-              aliases={aliases}
-              aliasesLoading={aliasesLoading}
-              aliasesMessage={aliasesMessage}
-              aliasesMessageIsError={aliasesMessageIsError}
-              aliasForm={aliasForm}
-              aliasSaving={aliasSaving}
-              aliasSources={aliasSources}
-              aliasEditOriginal={aliasEditOriginal}
-              onAliasFormChange={onAliasFormChange}
-              onAliasSave={onAliasSave}
-              onAliasDelete={onAliasDelete}
-              onAliasImportFile={onAliasImportFile}
-              onAliasSourcesToggle={onAliasSourcesToggle}
-              onAliasEdit={onAliasEdit}
-              onAliasCancelEdit={onAliasCancelEdit}
-              onAliasExport={onAliasExport}
+            <FeatureFlagsSettingsPanel
+              flags={featureFlags}
+              saving={featureFlagsSaving}
+              message={featureFlagsMessage}
+              messageIsError={featureFlagsMessageIsError}
+              onToggle={onFeatureFlagToggle}
             />
           </div>
         )}

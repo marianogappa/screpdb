@@ -30,7 +30,10 @@ SYSO_VER_FLAGS := \
 	-product-ver-major $(VER_MAJOR) -product-ver-minor $(VER_MINOR) -product-ver-patch $(VER_PATCH) -product-ver-build 0
 
 openapi-generate:
-	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest -config api/openapi/oapi-codegen.yaml api/openapi/dashboard.v1.yaml
+	# Pinned, not @latest: the generator emits calls into oapi-codegen/runtime,
+	# so a floating generator against the pinned runtime in go.mod produces code
+	# that does not compile (v2.8 emits a runtime field v1.4 has no name for).
+	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.7.1 -config api/openapi/oapi-codegen.yaml api/openapi/dashboard.v1.yaml
 	go run ./internal/dashboard/tools/gen_openapi_bridge
 
 # Regenerate SPECIFICATION.md from the Go source of truth. Equivalent to

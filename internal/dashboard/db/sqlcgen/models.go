@@ -65,15 +65,6 @@ type Player struct {
 	SlotID              int64
 }
 
-type PlayerAlias struct {
-	ID                  int64
-	CanonicalAlias      string
-	BattleTagNormalized string
-	BattleTagRaw        string
-	AuroraID            *int64
-	Source              string
-	UpdatedAt           string
-}
 
 type PlayerFingerprintVector struct {
 	ID             int64

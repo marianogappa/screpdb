@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 
@@ -21,7 +20,7 @@ func runMigrations(sqlitePath string) error {
 	if err := dropLegacyCustomDashboardTables(sqlitePath); err != nil {
 		return err
 	}
-	return ensureImportedAliasesSeed(sqlitePath)
+	return nil
 }
 
 // dropLegacyCustomDashboardTables removes the dashboards / dashboard_widgets /
@@ -134,6 +133,11 @@ func ensureGlobalReplayFilterConfigColumns(sqlitePath string) error {
 		// globally and never present here.
 		{name: "map_kind_filter_mode", sql: `ALTER TABLE settings ADD COLUMN map_kind_filter_mode TEXT NOT NULL DEFAULT 'only_these';`},
 		{name: "map_kinds", sql: `ALTER TABLE settings ADD COLUMN map_kinds TEXT NOT NULL DEFAULT '["regular","money"]';`},
+		// Preview feature switches, as a JSON object of flag key to bool. A
+		// single column rather than a table: flags are a handful of booleans
+		// read together on every page load, and they come and go with the
+		// previews they gate.
+		{name: "feature_flags", sql: `ALTER TABLE settings ADD COLUMN feature_flags TEXT NOT NULL DEFAULT '{}';`},
 	}
 
 	newlyAddedMapKinds := false
@@ -176,19 +180,3 @@ func tableExists(db *sql.DB, tableName string) (bool, error) {
 	return count > 0, nil
 }
 
-func ensureImportedAliasesSeed(sqlitePath string) error {
-	db, err := sql.Open("sqlite", sqliteDSN(sqlitePath))
-	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
-	}
-	defer db.Close()
-
-	records, err := parseAliasImportJSON(aliasesSeedData, aliasSourceImported)
-	if err != nil {
-		return fmt.Errorf("failed to parse embedded alias seed: %w", err)
-	}
-	if err := upsertPlayerAliases(context.Background(), db, records); err != nil {
-		return fmt.Errorf("failed to upsert embedded alias seed: %w", err)
-	}
-	return nil
-}

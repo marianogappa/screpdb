@@ -50,10 +50,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	for _, row := range rows {
 		playerNames = append(playerNames, row.Name)
 	}
-	displayByName, err := d.aliasDisplayNames(playerNames)
-	if err != nil {
-		return detail, fmt.Errorf("failed to resolve player aliases: %w", err)
-	}
+	displayByName := d.youDisplayNames(playerNames)
 
 	detailPlayerKeys := make([]string, 0, len(rows))
 	for _, row := range rows {
@@ -291,10 +288,7 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 		return result, fmt.Errorf("failed to load player summary: %w", err)
 	}
 	result.PlayerName = summary.PlayerName
-	displayByName, err := d.aliasDisplayNames([]string{summary.PlayerName})
-	if err != nil {
-		return result, fmt.Errorf("failed to resolve player aliases: %w", err)
-	}
+	displayByName := d.youDisplayNames([]string{summary.PlayerName})
 	if displayName, ok := displayByName[summary.PlayerName]; ok {
 		result.PlayerName = displayName
 	}
@@ -389,10 +383,7 @@ func (d *Dashboard) buildWorkflowPlayerApmHistogram(playerKey string) (workflowP
 	for _, row := range rows {
 		playerNames = append(playerNames, row.PlayerName)
 	}
-	displayByName, err := d.aliasDisplayNames(playerNames)
-	if err != nil {
-		return result, err
-	}
+	displayByName := d.youDisplayNames(playerNames)
 
 	values := []float64{}
 	playerValue := 0.0
