@@ -637,6 +637,14 @@ const CountryFlag = ({ code, playerKey }) => {
 // no bridge budget, so the cadence is chosen for how fast flags feel like they
 // arrive, not for cost. COUNTRY_FLAG_POLL_MAX_TICKS stops a page that will never
 // resolve (players with no Battle.net profile) from polling for ever.
+// While the session view is open, sweep for new replays far more often than the
+// background loop's minute: the whole point of that screen is the game that
+// just finished. AUTO_INGEST_SESSION_POLL_SECONDS is the window we then wait
+// for the replay count to actually move, kept longer than the interval so a
+// slow ingest is not declared a no-op.
+const AUTO_INGEST_SESSION_INTERVAL_SECONDS = 15;
+const AUTO_INGEST_SESSION_POLL_SECONDS = 30;
+
 const COUNTRY_FLAG_POLL_MS = 2000;
 const COUNTRY_FLAG_POLL_MAX_TICKS = 45;
 
@@ -3489,54 +3497,84 @@ function App() {
     return undefined;
   }, [showGlobalReplayFilter]);
 
+  // One ingest sweep. Shared by the background loop and the faster loop the
+  // session view runs, with autoIngestInFlight keeping the two from overlapping.
+  // onIncrease fires only when the sweep actually brought in a replay, so a
+  // no-op sweep never makes a screen blink.
+  const runAutoIngestSweep = useCallback(async (pollSeconds, onIncrease) => {
+    if (autoIngestInFlight.current || showIngestPanel) return;
+    autoIngestInFlight.current = true;
+    try {
+      const health = await api.getHealth();
+      const baselineCount = Number(health?.total_replays || 0);
+      const ingestResponse = await api.startIngest({
+        stop_after_n_reps: 1,
+        clean: false,
+        store_right_clicks: false,
+        skip_hotkeys: false,
+      });
+      if (!ingestResponse?.started) {
+        return;
+      }
+      const didIncrease = await pollForReplayCountIncrease(baselineCount, pollSeconds);
+      if (didIncrease) {
+        await onIncrease?.();
+        showAutoIngestNotice('auto-ingested new replays');
+      }
+    } catch (err) {
+      console.error('Auto-ingest failed:', err);
+    } finally {
+      autoIngestInFlight.current = false;
+    }
+  }, [showIngestPanel]);
+
   useEffect(() => {
     if (!ingestForm.autoIngestEnabled) {
       return undefined;
     }
-
     const intervalSeconds = 60;
     let cancelled = false;
-
-    const runAutoIngest = async () => {
-      if (cancelled || autoIngestInFlight.current || showIngestPanel) return;
-      autoIngestInFlight.current = true;
-      try {
-        const health = await api.getHealth();
-        const baselineCount = Number(health?.total_replays || 0);
-        const ingestResponse = await api.startIngest({
-          stop_after_n_reps: 1,
-          clean: false,
-          store_right_clicks: false,
-          skip_hotkeys: false,
-        });
-        if (!ingestResponse?.started) {
-          return;
-        }
-
-        const didIncrease = await pollForReplayCountIncrease(baselineCount, intervalSeconds);
-        if (didIncrease) {
-          // Game-list-only refresh: no other screen should ever blink in
-          // response to a background ingestion. If auto-ingest was a
-          // no-op (didIncrease=false) nothing reloads at all. Routing
-          // via a ref so the latest filter/page state is read at fire
-          // time rather than the closure-captured value from when
-          // auto-ingest was first enabled.
-          await refreshGamesAfterAutoIngestRef.current?.();
-          showAutoIngestNotice('auto-ingested new replays');
-        }
-      } catch (err) {
-        console.error('Auto-ingest failed:', err);
-      } finally {
-        autoIngestInFlight.current = false;
-      }
+    const tick = () => {
+      if (cancelled) return;
+      // Game-list-only refresh: no other screen should ever blink in response
+      // to a background ingestion. Routed via a ref so the latest filter/page
+      // state is read at fire time rather than the value captured when
+      // auto-ingest was first enabled.
+      void runAutoIngestSweep(intervalSeconds, () => refreshGamesAfterAutoIngestRef.current?.());
     };
-
-    const timer = window.setInterval(runAutoIngest, intervalSeconds * 1000);
+    const timer = window.setInterval(tick, intervalSeconds * 1000);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [ingestForm.autoIngestEnabled, showIngestPanel]);
+  }, [ingestForm.autoIngestEnabled, runAutoIngestSweep]);
+
+  // The session view is about the games you are playing right now, so a
+  // minute-old picture is already stale. While it is open it sweeps on its own
+  // faster cadence and does so whether or not background auto-ingest is on:
+  // being on this screen is itself the statement that you want it current.
+  // The sweep is local filesystem work, so the shorter interval costs no
+  // network and no Battle.net budget.
+  useEffect(() => {
+    if (activeView !== 'session' || !gamingSessionEnabled) {
+      return undefined;
+    }
+    const intervalSeconds = AUTO_INGEST_SESSION_INTERVAL_SECONDS;
+    let cancelled = false;
+    const tick = () => {
+      if (cancelled) return;
+      void runAutoIngestSweep(AUTO_INGEST_SESSION_POLL_SECONDS, async () => {
+        await refreshGamesAfterAutoIngestRef.current?.();
+        await loadGamingSession();
+      });
+    };
+    tick();
+    const timer = window.setInterval(tick, intervalSeconds * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [activeView, gamingSessionEnabled, runAutoIngestSweep, loadGamingSession]);
 
   useEffect(() => () => {
     if (autoIngestNoticeTimerRef.current) {

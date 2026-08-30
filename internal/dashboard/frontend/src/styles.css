@@ -6148,6 +6148,36 @@ span[data-tip],
 .session-player-table {
   width: 100%;
   border-collapse: collapse;
+  /* Fixed layout so the columns get the width their content actually needs.
+     Left to itself the browser splits width by content, which gave a 3-char
+     record the same room as a list of a dozen alternate account names. The
+     small columns are pinned in px; player and battle tag take a share; the
+     toons column is left unsized so it absorbs everything remaining. */
+  table-layout: fixed;
+}
+
+.session-player-table .col-player {
+  width: 20%;
+}
+
+.session-player-table .col-result {
+  width: 68px;
+}
+
+.session-player-table .col-races {
+  width: 76px;
+}
+
+.session-player-table .col-apm {
+  width: 62px;
+}
+
+.session-player-table .col-ladder {
+  width: 132px;
+}
+
+.session-player-table .col-tag {
+  width: 15%;
 }
 
 .session-player-table th {
@@ -6200,8 +6230,11 @@ span[data-tip],
   white-space: nowrap;
 }
 
-.session-player-table .col-player {
+.session-player-table .col-player,
+.session-player-table .col-tag {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .session-race-icons {
@@ -6224,12 +6257,10 @@ span[data-tip],
 /* Alternate accounts can run to a dozen names; crop rather than let one row
    set the width of the whole table. The full list is in the title attribute. */
 .session-toon-list {
-  display: inline-block;
-  max-width: 24ch;
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  vertical-align: bottom;
   color: rgba(255, 255, 255, 0.65);
 }
 
