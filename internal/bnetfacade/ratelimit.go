@@ -34,17 +34,20 @@ var (
 )
 
 // Bridge calls ride the user's Blizzard session: being chatty risks a mid-game
-// disconnection, so the sustained rate is deliberately conservative and the
-// daily cap survives restarts. GCS downloads never touch that session — they
-// cost bandwidth, not disconnection risk — hence the separate, looser budget.
+// disconnection, so the sustained rate stays conservative and the daily cap
+// survives restarts. The burst covers a game-detail page (8 players) plus a
+// couple of clicks; the daily cap covers a once-per-day sweep of the several
+// hundred distinct players a ~1000-replay database typically holds, with
+// headroom for interactive browsing. GCS downloads never touch that session —
+// they cost bandwidth, not disconnection risk — hence the separate budget.
 const (
-	bridgeTokenInterval = 15 * time.Second
-	bridgeBurst         = 4
-	bridgeDailyCap      = 250
+	bridgeTokenInterval = 2 * time.Second
+	bridgeBurst         = 12
+	bridgeDailyCap      = 600
 
-	downloadTokenInterval = 5 * time.Second
-	downloadBurst         = 3
-	downloadDailyCap      = 500
+	downloadTokenInterval = 2 * time.Second
+	downloadBurst         = 6
+	downloadDailyCap      = 750
 
 	cooldownBase = 15 * time.Minute
 	cooldownMax  = 6 * time.Hour
