@@ -6096,39 +6096,12 @@ span[data-tip],
   color: rgba(255, 255, 255, 0.5);
 }
 
-.session-breakdown-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
 .session-breakdown-title {
   font-size: 0.78rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.6);
   margin-bottom: 6px;
-}
-
-.session-breakdown-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.session-breakdown-list li {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.session-breakdown-count {
-  color: rgba(255, 255, 255, 0.6);
-  font-variant-numeric: tabular-nums;
 }
 
 .session-section h3 {
@@ -6163,4 +6136,95 @@ span[data-tip],
   margin-left: 0.3em;
   font-size: 0.85em;
   cursor: help;
+}
+
+/* Session player tables: one line per person, columns for what we actually
+   know about them. Numeric columns are tabular so they line up down the page. */
+.session-player-table {
+  width: 100%;
+}
+
+.session-player-table th {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 500;
+}
+
+.session-player-table td {
+  font-size: 0.88rem;
+  vertical-align: middle;
+}
+
+.session-record {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.session-cell-empty {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Alternate accounts can run to a dozen names; crop rather than let one row
+   set the width of the whole table. The full list is in the title attribute. */
+.session-toon-list {
+  display: inline-block;
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.session-players {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* Battle.net identity strip under a player's name. A row of labelled facts
+   rather than a table: there are only a handful, they are all short, and a
+   table header for three cells is more chrome than content. */
+.bnet-profile-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 20px;
+  font-size: 0.82rem;
+}
+
+.bnet-profile-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.bnet-profile-label {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.bnet-profile-value {
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+
+.bnet-profile-item--toons .bnet-profile-value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.bnet-profile-toon {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  font-variant-numeric: normal;
 }

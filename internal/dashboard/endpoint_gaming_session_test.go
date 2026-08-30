@@ -92,45 +92,112 @@ func TestAutosaveOnly(t *testing.T) {
 	}
 }
 
-func TestGamingSessionOpponents(t *testing.T) {
+func TestGamingSessionPlayers(t *testing.T) {
 	youKeys := map[string]struct{}{"me": {}}
 	games := []workflowGameListItem{
 		{
 			ReplayID: 1,
 			Players: []workflowGameListPlayer{
 				{PlayerKey: "me", Name: "Me", Team: 1, IsWinner: true},
-				{PlayerKey: "mate", Name: "Mate", Team: 1, IsWinner: true},
-				{PlayerKey: "foe", Name: "Foe", Team: 2, IsWinner: false},
+				{PlayerKey: "mate", Name: "Mate", Team: 1, IsWinner: true, Race: "Zerg"},
+				{PlayerKey: "foe", Name: "Foe", Team: 2, IsWinner: false, Race: "Terran"},
 			},
 		},
 		{
 			ReplayID: 2,
 			Players: []workflowGameListPlayer{
 				{PlayerKey: "me", Name: "Me", Team: 1, IsWinner: false},
-				{PlayerKey: "foe", Name: "Foe", Team: 2, IsWinner: true},
+				{PlayerKey: "foe", Name: "Foe", Team: 2, IsWinner: true, Race: "Protoss"},
 			},
 		},
 	}
-	got := gamingSessionOpponents(games, youKeys)
-	if len(got) != 2 {
-		t.Fatalf("expected 2 opponents, got %d: %+v", len(got), got)
+	apm := map[gamePlayerKey]sessionAPM{
+		{ReplayID: 1, PlayerKey: "foe"}: {APM: 100},
+		{ReplayID: 2, PlayerKey: "foe"}: {APM: 200},
 	}
-	byKey := map[string]gamingSessionOpponent{}
-	for _, o := range got {
-		byKey[o.PlayerKey] = o
+
+	opponents, allies := gamingSessionPlayers(games, apm, youKeys)
+
+	if len(opponents) != 1 || opponents[0].PlayerKey != "foe" {
+		t.Fatalf("opponents = %+v, want just foe", opponents)
 	}
-	if _, mine := byKey["me"]; mine {
-		t.Error("the user must not appear in their own opponent list")
-	}
-	foe := byKey["foe"]
+	foe := opponents[0]
 	if foe.Games != 2 || foe.Wins != 1 || foe.Losses != 1 {
 		t.Errorf("foe = %+v, want 2 games 1-1", foe)
 	}
-	// A team-mate shares the user's result, so counting a win "against" them
-	// would be nonsense; they are listed, with no record.
-	mate := byKey["mate"]
+	if foe.APM != 150 {
+		t.Errorf("foe APM = %d, want the 100/200 mean of 150", foe.APM)
+	}
+	if len(foe.Races) != 2 || foe.Races[0] != "Protoss" || foe.Races[1] != "Terran" {
+		t.Errorf("foe races = %v, want both sorted", foe.Races)
+	}
+
+	if len(allies) != 1 || allies[0].PlayerKey != "mate" {
+		t.Fatalf("allies = %+v, want just mate", allies)
+	}
+	// An ally shares the user's result, so a record against them is meaningless
+	// and must stay empty rather than reading as a win over a team-mate.
+	mate := allies[0]
 	if mate.Games != 1 || mate.Wins != 0 || mate.Losses != 0 {
 		t.Errorf("mate = %+v, want 1 game and no record", mate)
+	}
+	for _, list := range [][]gamingSessionPlayer{opponents, allies} {
+		for _, p := range list {
+			if p.PlayerKey == "me" {
+				t.Error("the user must never appear in their own opponent or ally list")
+			}
+		}
+	}
+}
+
+func TestParseBnetProfileDetail(t *testing.T) {
+	payload := []byte(`{
+		"aurora_id": 12345,
+		"battle_tag": "Someone",
+		"country_code": "ARG",
+		"toons": [
+			{"toon": "quiet", "gateway_id": 10, "games_last_week": 0},
+			{"toon": "main", "gateway_id": 30, "games_last_week": 40}
+		],
+		"matchmaked_stats": [
+			{"rating": 1400, "highest_rating": 1471, "wins": 3, "losses": 1},
+			{"rating": 1200, "highest_rating": 1300, "wins": 2, "losses": 2}
+		]
+	}`)
+	got := parseBnetProfileDetail("Main", payload)
+	if got == nil {
+		t.Fatal("expected a detail")
+	}
+	if got.AuroraID != 12345 || got.BattleTag != "Someone" || got.CountryCode != "ARG" {
+		t.Errorf("identity fields wrong: %+v", got)
+	}
+	// Most played toon first, so the account they actually use leads.
+	if len(got.Toons) != 2 || got.Toons[0].Toon != "main" {
+		t.Errorf("toons = %+v, want the most played first", got.Toons)
+	}
+	if !got.PlaysLadder {
+		t.Error("matchmaked_stats present means they ladder")
+	}
+	if got.MMR != 1400 || got.HighestMMR != 1471 {
+		t.Errorf("mmr = %d/%d, want the best across records", got.MMR, got.HighestMMR)
+	}
+	if got.LadderWins != 5 || got.LadderLosses != 3 {
+		t.Errorf("ladder record = %d-%d, want summed across records", got.LadderWins, got.LadderLosses)
+	}
+}
+
+func TestParseBnetProfileDetail_Unusable(t *testing.T) {
+	// A page that shows profile decoration must still render when the payload
+	// is missing or malformed, so these yield no detail rather than an error.
+	if parseBnetProfileDetail("x", nil) != nil {
+		t.Error("empty payload must yield no detail")
+	}
+	if parseBnetProfileDetail("x", []byte("not json")) != nil {
+		t.Error("malformed payload must yield no detail")
+	}
+	got := parseBnetProfileDetail("x", []byte(`{"aurora_id": 7}`))
+	if got == nil || got.PlaysLadder {
+		t.Errorf("a profile with no matchmaked_stats must not read as a ladder player: %+v", got)
 	}
 }
 

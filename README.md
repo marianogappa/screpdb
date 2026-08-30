@@ -313,11 +313,15 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-08-30  OK. Money-map classification fixed and the Gaming Session view wired up. The map rule now takes the median mineral field rather than whichever field the map file stored first, and compares against a standard 1500 patch instead of a strict > 10000, so "Big Game Hunters - Remastered" stops reading as a Regular map; this reads already-parsed map data and adds no I/O. core.AlgorithmVersion 63 to 64 so map_kind is recomputed on re-ingest. New env var SCREPDB_SESSION_RECENCY widens the session window for development; it is read with os.Getenv, touches no filesystem, and cannot name a path. No new os/net calls, no facade exemptions, no allowlist widening, no new hosts or paths.
+2026-08-30  OK. Battle.net profile details surfaced on the player page and the Gaming Session players tab. All of it parses payloads already cached in the bnet_profiles table by the existing fetch path: one new read-only query (ListBnetProfilePayloadsByPlayerKeys, bounded by an IN clause over the keys on screen) and a decoder for the identity, alternate-toon and matchmaking fields. Nothing here fetches, so no bridge request is issued and no rate-limit budget is spent; the avatar URLs in the payload are decoded away rather than rendered, so no page pulls a remote asset. No new endpoints, os/net calls, facade exemptions, allowlist changes, hosts or paths; no AlgorithmVersion bump (no detection change).
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
+
+```
+2026-08-30  OK. Money-map classification fixed and the Gaming Session view wired up. The map rule now takes the median mineral field rather than whichever field the map file stored first, and compares against a standard 1500 patch instead of a strict > 10000, so "Big Game Hunters - Remastered" stops reading as a Regular map; this reads already-parsed map data and adds no I/O. core.AlgorithmVersion 63 to 64 so map_kind is recomputed on re-ingest. New env var SCREPDB_SESSION_RECENCY widens the session window for development; it is read with os.Getenv, touches no filesystem, and cannot name a path. No new os/net calls, no facade exemptions, no allowlist widening, no new hosts or paths.
+```
 
 ```
 2026-08-30  OK. Manual player aliasing removed; Feature Flags and a flag-gated Gaming Session added. The player_aliases table is dropped by a new settings migration (000002) and its queries, endpoints, OpenAPI operations and UI are gone, which narrows the API surface rather than widening it. The one piece kept, the "you" players, still reads CSettings.json through the same iofacade.FindAndReadAncestorFile call as before, at the same path, read-only; the result is now held in memory instead of persisted, so this removes a DB write and adds no I/O. Feature flags live in a new settings column. Two new read-only endpoints (GET /api/custom/feature-flags, GET /api/custom/gaming-session) and one write (PUT /api/custom/feature-flags) that accepts only allowlisted flag keys; all read the local DB only. The oapi-codegen generator is now pinned instead of @latest, which stops a floating generator emitting code against the pinned runtime. No new os/net calls, no facade exemptions, no allowlist widening, no new hosts or paths.

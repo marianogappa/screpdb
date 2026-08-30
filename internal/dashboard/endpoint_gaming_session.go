@@ -48,13 +48,20 @@ func sessionRecencyWindow() time.Duration {
 	return parsed
 }
 
-type gamingSessionOpponent struct {
-	PlayerKey   string `json:"player_key"`
-	PlayerName  string `json:"player_name"`
-	CountryCode string `json:"country_code,omitempty"`
-	Games       int    `json:"games"`
-	Wins        int    `json:"wins"`
-	Losses      int    `json:"losses"`
+// gamingSessionPlayer is someone met during the session. Opponents and allies
+// are the same shape but are reported separately: a win/loss record only means
+// something against an opponent, and mixing the two made the list read as if
+// the user had beaten their own team-mates.
+type gamingSessionPlayer struct {
+	PlayerKey   string             `json:"player_key"`
+	PlayerName  string             `json:"player_name"`
+	CountryCode string             `json:"country_code,omitempty"`
+	Games       int                `json:"games"`
+	Wins        int                `json:"wins"`
+	Losses      int                `json:"losses"`
+	Races       []string           `json:"races,omitempty"`
+	APM         int                `json:"apm,omitempty"`
+	Profile     *bnetProfileDetail `json:"profile,omitempty"`
 }
 
 type gamingSessionStats struct {
@@ -74,11 +81,12 @@ type gamingSessionStats struct {
 }
 
 type gamingSessionResponse struct {
-	Active    bool                    `json:"active"`
-	PlayerKey string                  `json:"player_key,omitempty"`
-	Stats     gamingSessionStats      `json:"stats"`
-	Opponents []gamingSessionOpponent `json:"opponents"`
-	Games     []workflowGameListItem  `json:"games"`
+	Active    bool                   `json:"active"`
+	PlayerKey string                 `json:"player_key,omitempty"`
+	Stats     gamingSessionStats     `json:"stats"`
+	Opponents []gamingSessionPlayer  `json:"opponents"`
+	Allies    []gamingSessionPlayer  `json:"allies"`
+	Games     []workflowGameListItem `json:"games"`
 }
 
 // sessionGameRow is one of the user's games, as the session builder needs it.
@@ -125,7 +133,8 @@ func autosaveOnly(filePath string) bool {
 
 func (d *Dashboard) gamingSession(ctx context.Context) (*gamingSessionResponse, error) {
 	empty := &gamingSessionResponse{
-		Opponents: []gamingSessionOpponent{},
+		Opponents: []gamingSessionPlayer{},
+		Allies:    []gamingSessionPlayer{},
 		Games:     []workflowGameListItem{},
 		Stats:     gamingSessionStats{Matchups: map[string]int{}, RacesPlayed: map[string]int{}, Maps: map[string]int{}},
 	}
@@ -169,7 +178,7 @@ func (d *Dashboard) gamingSession(ctx context.Context) (*gamingSessionResponse, 
 	if err != nil {
 		return nil, err
 	}
-	ownAPM, err := d.sessionOwnAPM(ctx, replayIDs, youKeys)
+	apmByGamePlayer, err := d.sessionAPMByGamePlayer(ctx, replayIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -177,8 +186,10 @@ func (d *Dashboard) gamingSession(ctx context.Context) (*gamingSessionResponse, 
 	resp.Active = true
 	resp.PlayerKey = sessionRows[0].PlayerKey
 	resp.Games = games
-	resp.Stats = summarizeGamingSession(sessionRows, games, ownAPM, youKeys)
-	resp.Opponents = gamingSessionOpponents(games, youKeys)
+	resp.Stats = summarizeGamingSession(sessionRows, games, apmByGamePlayer, youKeys)
+	opponents, allies := gamingSessionPlayers(games, apmByGamePlayer, youKeys)
+	resp.Opponents = d.withBnetProfiles(ctx, opponents)
+	resp.Allies = d.withBnetProfiles(ctx, allies)
 	return resp, nil
 }
 
@@ -196,7 +207,7 @@ func sortedKeys(set map[string]struct{}) []string {
 	return out
 }
 
-func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem, apm map[int64]sessionAPM, youKeys map[string]struct{}) gamingSessionStats {
+func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem, apm map[gamePlayerKey]sessionAPM, youKeys map[string]struct{}) gamingSessionStats {
 	stats := gamingSessionStats{
 		Matchups:    map[string]int{},
 		RacesPlayed: map[string]int{},
@@ -232,7 +243,7 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 			} else {
 				stats.Losses++
 			}
-			if own, ok := apm[game.ReplayID]; ok && own.APM > 0 {
+			if own, ok := apm[gamePlayerKey{ReplayID: game.ReplayID, PlayerKey: normalizePlayerKey(player.PlayerKey)}]; ok && own.APM > 0 {
 				apmSum += float64(own.APM)
 				eapmSum += float64(own.EAPM)
 				apmCount++
@@ -249,11 +260,20 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 	return stats
 }
 
-// gamingSessionOpponents counts everyone the user shared a game with this
-// session, excluding the user's own accounts. Wins/losses are from the user's
-// point of view: a game the user won is a loss for everyone on the other side.
-func gamingSessionOpponents(games []workflowGameListItem, youKeys map[string]struct{}) []gamingSessionOpponent {
-	byKey := map[string]*gamingSessionOpponent{}
+// gamingSessionPlayers splits everyone the user shared a game with into the
+// people they played against and the people they played with. Wins and losses
+// are from the user's point of view and are only tallied for opponents; an ally
+// shares the user's result, so a record against them would be meaningless.
+func gamingSessionPlayers(games []workflowGameListItem, apm map[gamePlayerKey]sessionAPM, youKeys map[string]struct{}) (opponents, allies []gamingSessionPlayer) {
+	type accumulator struct {
+		player  *gamingSessionPlayer
+		races   map[string]struct{}
+		apmSum  int
+		apmSeen int
+	}
+	opponentAcc := map[string]*accumulator{}
+	allyAcc := map[string]*accumulator{}
+
 	for _, game := range games {
 		youWon := false
 		var youTeam int64 = -1
@@ -273,38 +293,86 @@ func gamingSessionOpponents(games []workflowGameListItem, youKeys map[string]str
 			if _, mine := youKeys[key]; mine || key == "" {
 				continue
 			}
-			entry, ok := byKey[key]
+			isAlly := player.Team == youTeam
+			bucket := opponentAcc
+			if isAlly {
+				bucket = allyAcc
+			}
+			entry, ok := bucket[key]
 			if !ok {
-				entry = &gamingSessionOpponent{PlayerKey: key, PlayerName: player.Name, CountryCode: player.CountryCode}
-				byKey[key] = entry
+				entry = &accumulator{
+					player: &gamingSessionPlayer{PlayerKey: key, PlayerName: player.Name, CountryCode: player.CountryCode},
+					races:  map[string]struct{}{},
+				}
+				bucket[key] = entry
 			}
-			entry.Games++
-			if entry.CountryCode == "" {
-				entry.CountryCode = player.CountryCode
+			entry.player.Games++
+			if entry.player.CountryCode == "" {
+				entry.player.CountryCode = player.CountryCode
 			}
-			// Only opposing players get a win/loss tally; a team-mate shares
-			// the user's result and counting it as a "win against" is wrong.
-			if player.Team == youTeam {
+			if player.Race != "" {
+				entry.races[player.Race] = struct{}{}
+			}
+			if stat, ok := apm[gamePlayerKey{ReplayID: game.ReplayID, PlayerKey: key}]; ok && stat.APM > 0 {
+				entry.apmSum += int(stat.APM)
+				entry.apmSeen++
+			}
+			if isAlly {
 				continue
 			}
 			if youWon {
-				entry.Losses++
+				entry.player.Losses++
 			} else {
-				entry.Wins++
+				entry.player.Wins++
 			}
 		}
 	}
-	out := make([]gamingSessionOpponent, 0, len(byKey))
-	for _, entry := range byKey {
-		out = append(out, *entry)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Games != out[j].Games {
-			return out[i].Games > out[j].Games
+
+	finish := func(bucket map[string]*accumulator) []gamingSessionPlayer {
+		out := make([]gamingSessionPlayer, 0, len(bucket))
+		for _, entry := range bucket {
+			races := make([]string, 0, len(entry.races))
+			for race := range entry.races {
+				races = append(races, race)
+			}
+			sort.Strings(races)
+			entry.player.Races = races
+			if entry.apmSeen > 0 {
+				entry.player.APM = entry.apmSum / entry.apmSeen
+			}
+			out = append(out, *entry.player)
 		}
-		return out[i].PlayerName < out[j].PlayerName
-	})
-	return out
+		sort.Slice(out, func(i, j int) bool {
+			if out[i].Games != out[j].Games {
+				return out[i].Games > out[j].Games
+			}
+			return strings.ToLower(out[i].PlayerName) < strings.ToLower(out[j].PlayerName)
+		})
+		return out
+	}
+	return finish(opponentAcc), finish(allyAcc)
+}
+
+// withBnetProfiles attaches whatever cached Battle.net profile we already hold
+// for each player. Cache-only, so it spends no bridge budget.
+func (d *Dashboard) withBnetProfiles(ctx context.Context, players []gamingSessionPlayer) []gamingSessionPlayer {
+	if len(players) == 0 {
+		return players
+	}
+	keys := make([]string, 0, len(players))
+	for _, player := range players {
+		keys = append(keys, player.PlayerKey)
+	}
+	details := d.bnetProfileDetailsByPlayerKeys(ctx, keys)
+	for i := range players {
+		if detail, ok := details[players[i].PlayerKey]; ok {
+			players[i].Profile = detail
+			if players[i].CountryCode == "" {
+				players[i].CountryCode = detail.CountryCode
+			}
+		}
+	}
+	return players
 }
 
 func (d *Dashboard) handlerGamingSession(w http.ResponseWriter, r *http.Request) {
@@ -321,23 +389,28 @@ func (d *Dashboard) handlerGamingSession(w http.ResponseWriter, r *http.Request)
 	_ = json.NewEncoder(w).Encode(session)
 }
 
-// sessionAPM is the user's own APM in one game.
+// sessionAPM is one player's APM in one game.
 type sessionAPM struct {
 	APM  int64
 	EAPM int64
 }
 
-func (d *Dashboard) sessionOwnAPM(ctx context.Context, replayIDs []int64, youKeys map[string]struct{}) (map[int64]sessionAPM, error) {
+// gamePlayerKey identifies one player in one game, which is the grain the
+// session needs: the same person appears in several games, and the same game
+// holds several people.
+type gamePlayerKey struct {
+	ReplayID  int64
+	PlayerKey string
+}
+
+func (d *Dashboard) sessionAPMByGamePlayer(ctx context.Context, replayIDs []int64) (map[gamePlayerKey]sessionAPM, error) {
 	rows, err := d.dbStore.ListPlayerAPMByReplayIDs(ctx, replayIDs)
 	if err != nil {
 		return nil, fmt.Errorf("loading session APM: %w", err)
 	}
-	out := make(map[int64]sessionAPM, len(replayIDs))
+	out := make(map[gamePlayerKey]sessionAPM, len(rows))
 	for _, row := range rows {
-		if _, mine := youKeys[row.PlayerKey]; !mine {
-			continue
-		}
-		out[row.ReplayID] = sessionAPM{APM: row.APM, EAPM: row.EAPM}
+		out[gamePlayerKey{ReplayID: row.ReplayID, PlayerKey: row.PlayerKey}] = sessionAPM{APM: row.APM, EAPM: row.EAPM}
 	}
 	return out, nil
 }

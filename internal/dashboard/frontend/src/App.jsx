@@ -563,6 +563,54 @@ const countryCodeToFlag = (code) => {
 // rather than sitting inert inside a string.
 const YOU_MARKER = '🫵';
 
+// What the Battle.net profile tells us about a player, rendered as a compact
+// strip under their name. Every field is optional: the bridge may be off, the
+// profile may not be cached yet, and plenty of accounts never ladder.
+const BnetProfileStrip = ({ profile, currentName }) => {
+  if (!profile) return null;
+  const current = String(currentName || '').trim().toLowerCase();
+  const otherToons = (profile.toons || [])
+    .map((t) => t.toon)
+    .filter((toon) => String(toon).trim().toLowerCase() !== current);
+
+  const items = [];
+  if (profile.battle_tag) {
+    items.push(['Battle tag', profile.battle_tag]);
+  }
+  if (profile.aurora_id) {
+    items.push(['Aurora ID', String(profile.aurora_id)]);
+  }
+  if (profile.plays_ladder) {
+    const rating = profile.mmr || profile.highest_mmr;
+    const record = (profile.ladder_wins || profile.ladder_losses)
+      ? `${profile.ladder_wins || 0}-${profile.ladder_losses || 0}`
+      : '';
+    items.push(['Ladder', [rating ? `${rating} MMR` : 'yes', record].filter(Boolean).join(' · ')]);
+  }
+  if (items.length === 0 && otherToons.length === 0) return null;
+
+  return (
+    <div className="bnet-profile-strip">
+      {items.map(([label, value]) => (
+        <div key={label} className="bnet-profile-item">
+          <span className="bnet-profile-label">{label}</span>
+          <span className="bnet-profile-value">{value}</span>
+        </div>
+      ))}
+      {otherToons.length > 0 ? (
+        <div className="bnet-profile-item bnet-profile-item--toons">
+          <span className="bnet-profile-label">Also plays as</span>
+          <span className="bnet-profile-value">
+            {otherToons.map((toon) => (
+              <span key={toon} className="bnet-profile-toon">{toon}</span>
+            ))}
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 const PlayerDisplayName = ({ name }) => {
   const text = String(name ?? '');
   if (!text.endsWith(YOU_MARKER)) return <>{text}</>;
@@ -5704,7 +5752,7 @@ function App() {
             session={gamingSession}
             loading={gamingSessionLoading}
             error={gamingSessionError}
-            renderOpponent={(opponent) => (
+            renderName={(opponent) => (
               <button
                 type="button"
                 className="workflow-player-name-link workflow-name-with-flag"
@@ -7343,6 +7391,7 @@ function App() {
                         <span className="workflow-fingerprint-match"><FingerprintBadge match={mainPlayer.fingerprint_match} /></span>
                       ) : null}
                     </h2>
+                    <BnetProfileStrip profile={mainPlayer?.bnet_profile} currentName={mainPlayer?.player_name} />
                     {mainPlayer && (Number(mainPlayer.games_played) || 0) < 5 ? (
                       <span className="workflow-inline-warning">⚠️ Fewer than 5 replays: we cannot provide reliable player-level insights yet.</span>
                     ) : null}

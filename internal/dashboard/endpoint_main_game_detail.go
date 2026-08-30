@@ -295,6 +295,14 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 	if cc, _ := d.countryCodesByPlayerKeys([]string{playerKey}); len(cc) > 0 {
 		result.CountryCode = cc[playerKey]
 	}
+	// Whatever Battle.net profile we already hold: identity, alternate toons,
+	// ladder standing. Cache-only, so this costs no bridge budget.
+	if details := d.bnetProfileDetailsByPlayerKeys(d.ctx, []string{playerKey}); len(details) > 0 {
+		result.BnetProfile = details[playerKey]
+		if result.CountryCode == "" && result.BnetProfile != nil {
+			result.CountryCode = result.BnetProfile.CountryCode
+		}
+	}
 	d.triggerBnetProfileFetchesForPlayers([]string{summary.PlayerName}, "AssumedBattleNet")
 	result.GamesPlayed = summary.GamesPlayed
 	result.Wins = summary.Wins
