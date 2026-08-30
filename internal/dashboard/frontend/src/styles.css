@@ -2340,25 +2340,6 @@ button.workflow-nav-update-available:disabled {
   animation: bnet-reconnect-pulse 1.2s ease-in-out infinite;
 }
 
-.bnet-meter {
-  display: inline-flex;
-  align-items: center;
-  padding: 5px 8px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 11px;
-  white-space: nowrap;
-  cursor: default;
-}
-
-.bnet-meter--cooldown {
-  color: rgba(240, 200, 100, 0.9);
-  border-color: rgba(220, 180, 80, 0.3);
-  background: rgba(200, 160, 60, 0.08);
-}
-
 @keyframes bnet-reconnect-pulse {
   0%, 100% { opacity: 0.4; }
   50%      { opacity: 1; }

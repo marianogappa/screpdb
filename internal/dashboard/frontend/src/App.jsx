@@ -2975,6 +2975,10 @@ function App() {
   const bnetDailyCap = bnetStatus?.daily_cap ?? 0;
   const bnetCooldownUntil = bnetStatus?.cooldown_until ? new Date(bnetStatus.cooldown_until) : null;
   const bnetCoolingDown = Boolean(bnetCooldownUntil) && bnetCooldownUntil > new Date();
+  const bnetTipSuffix = bnetDisabled || bnetDailyCap <= 0 ? ''
+    : bnetCoolingDown
+      ? `. Requests today: ${bnetRequestsToday}/${bnetDailyCap}. Paused until ${bnetCooldownUntil.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} after rate limiting`
+      : `. Requests today: ${bnetRequestsToday}/${bnetDailyCap}`;
 
   const handleBnetToggle = useCallback(async () => {
     const newDisabled = !bnetDisabled;
@@ -5405,11 +5409,11 @@ function App() {
               type="button"
               className={`bnet-pill bnet-pill--${bnetDisabled ? 'disabled' : bnetState} tip-below`}
               data-tip={
-                bnetDisabled ? 'Bridge disabled — click to re-enable'
+                (bnetDisabled ? 'Bridge disabled — click to re-enable'
                 : bnetState === 'reconnecting' ? 'Scanning for SC:R bridge…'
                 : bnetState === 'connected' ? 'Connected to SC:R'
                 : bnetState === 'offline' ? 'SC:R is running but not logged in to Battle.net'
-                : 'SC:R not detected'
+                : 'SC:R not detected') + bnetTipSuffix
               }
               onClick={handleBnetToggle}
               disabled={bnetState === 'reconnecting'}
@@ -5421,18 +5425,6 @@ function App() {
                 : bnetState === 'offline' ? 'SC:R offline'
                 : 'SC:R'}
             </button>
-            {!bnetDisabled && bnetDailyCap > 0 && (
-              <span
-                className={`bnet-meter tip-below${bnetCoolingDown ? ' bnet-meter--cooldown' : ''}`}
-                data-tip={
-                  bnetCoolingDown
-                    ? `Battle.net asked us to slow down — bridge calls paused until ${bnetCooldownUntil.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Requests today: ${bnetRequestsToday} of ${bnetDailyCap}`
-                    : `Bridge requests today: ${bnetRequestsToday} of ${bnetDailyCap} — a conservative daily budget protects your Battle.net session`
-                }
-              >
-                {bnetCoolingDown ? '⏸ ' : ''}{bnetRequestsToday} today
-              </span>
-            )}
             <button
               type="button"
               onClick={handleQuit}
