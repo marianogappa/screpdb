@@ -11,7 +11,7 @@ import (
 
 func TestBridgeGetRefusesNonLocal(t *testing.T) {
 	for _, addr := range []string{"example.com:80", "8.8.8.8:53", "192.168.1.1:6119"} {
-		_, err := BridgeGet(context.Background(), addr, "/web-api/v1/profile")
+		_, err := BridgeGet(context.Background(), addr, "/web-api/v1/profile", PriorityUser)
 		if !errors.Is(err, ErrNotLocal) {
 			t.Errorf("BridgeGet(%q): got %v, want ErrNotLocal", addr, err)
 		}
@@ -20,7 +20,7 @@ func TestBridgeGetRefusesNonLocal(t *testing.T) {
 
 func TestBridgeGetRefusesBadPath(t *testing.T) {
 	for _, path := range []string{"/api/health", "/other", "/web-apifoo", "web-api/v1"} {
-		_, err := BridgeGet(context.Background(), "127.0.0.1:6119", path)
+		_, err := BridgeGet(context.Background(), "127.0.0.1:6119", path, PriorityUser)
 		if !errors.Is(err, ErrForbiddenPath) {
 			t.Errorf("BridgeGet(path=%q): got %v, want ErrForbiddenPath", path, err)
 		}
@@ -39,7 +39,7 @@ func TestBridgeGetSuccess(t *testing.T) {
 	defer srv.Close()
 
 	addr := srv.Listener.Addr().String()
-	data, err := BridgeGet(context.Background(), addr, "/web-api/v1/profile")
+	data, err := BridgeGet(context.Background(), addr, "/web-api/v1/profile", PriorityUser)
 	if err != nil {
 		t.Fatalf("BridgeGet: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestDownloadReplayRefusesBadPath(t *testing.T) {
 		"/starcraft-user-uploads-prod/S2-replays/foo.rep",
 		"starcraft-user-uploads-prod/S1-replays/foo.rep",
 	} {
-		_, err := DownloadReplay(context.Background(), path)
+		_, err := DownloadReplay(context.Background(), path, PriorityUser)
 		if !errors.Is(err, ErrForbiddenPath) {
 			t.Errorf("DownloadReplay(path=%q): got %v, want ErrForbiddenPath", path, err)
 		}

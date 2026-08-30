@@ -313,11 +313,15 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-08-29  OK. SC:R local web-api detection and connection-state UI (issue #318). Adds platform-specific port discovery (macOS: lsof, Linux: /proc/net/tcp, Windows: GetExtendedTcpTable via iphlpapi.dll) and a ProbeBridge function to bnetfacade — all loopback-only, one GET to /web-api/v1/gateway every 10s. Dashboard gains a background monitor goroutine (atomic-cached state), two new hand-written endpoints (GET/POST /api/custom/bnet/{status,toggle}), and a nav pill. The global off-switch disables all probing. No new outbound hosts (all 127.0.0.1), no iofacade allowlist widening, no AlgorithmVersion bump. Platform-specific files use os/exec (macOS lsof) and os.ReadFile (Linux /proc/net/tcp) inside the already-exempt bnetfacade package.
+2026-08-30  OK. Two-budget rate limiter at the bnetfacade boundary (issue #319). BridgeGet and DownloadReplay now spend separate in-package budgets (token buckets with priority queues, persisted daily caps, exponential cooldown on the bridge's explicit rate-limit signal), so no caller can bypass them; ProbeBridge stays unmetered (local liveness only). New file write: bnet_budget.json (daily counters + cooldown) inside the app-data root, read/written strictly through iofacade — no allowlist widening, no new hosts or paths, no AlgorithmVersion bump (no detection change). Dashboard surfaces a requests-today meter via the existing /api/custom/bnet/status endpoint.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
+
+```
+2026-08-29  OK. SC:R local web-api detection and connection-state UI (issue #318). Adds platform-specific port discovery (macOS: lsof, Linux: /proc/net/tcp, Windows: GetExtendedTcpTable via iphlpapi.dll) and a ProbeBridge function to bnetfacade — all loopback-only, one GET to /web-api/v1/gateway every 10s. Dashboard gains a background monitor goroutine (atomic-cached state), two new hand-written endpoints (GET/POST /api/custom/bnet/{status,toggle}), and a nav pill. The global off-switch disables all probing. No new outbound hosts (all 127.0.0.1), no iofacade allowlist widening, no AlgorithmVersion bump. Platform-specific files use os/exec (macOS lsof) and os.ReadFile (Linux /proc/net/tcp) inside the already-exempt bnetfacade package.
+```
 
 ```
 2026-08-29  REVIEW (deliberate, documented widening). New internal/bnetfacade package (issue #317): third sanctioned network surface added to the enforcement-test skip list. Loopback client restricted to 127.0.0.1 + /web-api/ prefix for SC:R's local bridge. Outbound client allowlisted to exactly storage.googleapis.com + /starcraft-user-uploads-prod/S1-replays/ prefix for GCS replay downloads. Downloaded replays validated (length ≥ 16 bytes + seRS magic at offset 12). Bridge payloads decoded leniently (cp949/ISO-8859-1 fallback) for Korean map titles. Host, path, and loopback restrictions all covered by tests. This widens the attack surface: the binary now makes one genuine outbound call to a third-party host, guarded by host+path allowlist at the facade boundary. golang.org/x/text promoted from indirect to direct (cp949/charmap decoders). No iofacade allowlist widening; no AlgorithmVersion bump (no detection change).
