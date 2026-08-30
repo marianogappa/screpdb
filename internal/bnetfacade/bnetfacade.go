@@ -218,6 +218,71 @@ func probeBridgeURL(ctx context.Context, url string) BridgeState {
 	}
 }
 
+// ProbeGateway checks the SC:R bridge at addr and extracts the active gateway.
+// It returns the BridgeState plus the gateway number (0 if unavailable or the
+// body doesn't contain a recognisable gateway id).
+func ProbeGateway(ctx context.Context, addr string) (BridgeState, int) {
+	if !isLocalAddr(addr) {
+		return BridgeNotRunning, 0
+	}
+	return probeGatewayURL(ctx, "http://"+addr+"/web-api/v1/gateway")
+}
+
+func probeGatewayURL(ctx context.Context, url string) (BridgeState, int) {
+	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return BridgeNotRunning, 0
+	}
+	resp, err := (&http.Client{}).Do(req)
+	if err != nil {
+		return BridgeNotRunning, 0
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	switch resp.StatusCode {
+	case http.StatusOK:
+		if len(body) == 0 || body[0] != '{' {
+			return BridgeNotRunning, 0
+		}
+		return BridgeConnected, parseGatewayFromBody(body)
+	case http.StatusUnauthorized:
+		return BridgeOffline, 0
+	default:
+		return BridgeNotRunning, 0
+	}
+}
+
+func parseGatewayFromBody(body []byte) int {
+	var raw map[string]json.RawMessage
+	if json.Unmarshal(body, &raw) != nil {
+		return 0
+	}
+	for _, key := range []string{"gateway", "gateway_id"} {
+		if v, ok := raw[key]; ok {
+			var n int
+			if json.Unmarshal(v, &n) == nil && n > 0 {
+				return n
+			}
+		}
+	}
+	if v, ok := raw["gateways"]; ok {
+		var arr []map[string]json.RawMessage
+		if json.Unmarshal(v, &arr) == nil && len(arr) > 0 {
+			for _, key := range []string{"id", "gateway_id", "gateway"} {
+				if gv, ok := arr[0][key]; ok {
+					var n int
+					if json.Unmarshal(gv, &n) == nil && n > 0 {
+						return n
+					}
+				}
+			}
+		}
+	}
+	return 0
+}
+
 func validateReplay(data []byte) error {
 	if len(data) < replayMinSize {
 		return fmt.Errorf("%w: too short (%d bytes, need at least %d)", ErrInvalidReplay, len(data), replayMinSize)

@@ -127,12 +127,13 @@ type workflowGameListItem struct {
 }
 
 type workflowGameListPlayer struct {
-	PlayerID  int64  `json:"player_id"`
-	PlayerKey string `json:"player_key"`
-	Name      string `json:"name"`
-	Race      string `json:"race"`
-	Team      int64  `json:"team"`
-	IsWinner  bool   `json:"is_winner"`
+	PlayerID    int64  `json:"player_id"`
+	PlayerKey   string `json:"player_key"`
+	Name        string `json:"name"`
+	Race        string `json:"race"`
+	Team        int64  `json:"team"`
+	IsWinner    bool   `json:"is_winner"`
+	CountryCode string `json:"country_code,omitempty"`
 }
 
 type workflowRecentGamePlayer struct {
@@ -339,6 +340,7 @@ type workflowGamePlayer struct {
 	// leave_game event, or "Stopped" when set by player_stopped_playing.
 	LeaveReason      string                    `json:"leave_reason,omitempty"`
 	FingerprintMatch *workflowFingerprintMatch `json:"fingerprint_match,omitempty"`
+	CountryCode      string                    `json:"country_code,omitempty"`
 }
 
 // workflowPatternValue is the per-pattern entry shipped to the frontend inside
@@ -790,6 +792,7 @@ type workflowPlayerOverview struct {
 	FingerprintMetrics  []workflowComparativeMetric   `json:"fingerprint_metrics"`
 	FingerprintCoverage workflowFingerprintCoverage   `json:"fingerprint_coverage"`
 	FingerprintMatch    *workflowFingerprintMatch     `json:"fingerprint_match,omitempty"`
+	CountryCode         string                        `json:"country_code,omitempty"`
 	RecentGames         []workflowGameListItem        `json:"recent_games"`
 	ChatSummary         workflowPlayerChatSummary     `json:"chat_summary"`
 	NarrativeHints      []string                      `json:"narrative_hints"`
@@ -1058,6 +1061,7 @@ type workflowPlayersListItem struct {
 	AverageAPM        float64 `json:"average_apm"`
 	LastPlayed        string  `json:"last_played"`
 	LastPlayedDaysAgo int64   `json:"last_played_days_ago"`
+	CountryCode       string  `json:"country_code,omitempty"`
 }
 
 type workflowPlayersListFilterOption struct {

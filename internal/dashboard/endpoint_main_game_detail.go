@@ -55,6 +55,12 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		return detail, fmt.Errorf("failed to resolve player aliases: %w", err)
 	}
 
+	detailPlayerKeys := make([]string, 0, len(rows))
+	for _, row := range rows {
+		detailPlayerKeys = append(detailPlayerKeys, normalizePlayerKey(row.Name))
+	}
+	countryCodes, _ := d.countryCodesByPlayerKeys(detailPlayerKeys)
+
 	startClockByPlayerID := map[int64]int{}
 	for _, row := range rows {
 		var p workflowGamePlayer
@@ -70,6 +76,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		p.APM = row.APM
 		p.EAPM = row.EAPM
 		p.PlayerKey = normalizePlayerKey(row.Name)
+		p.CountryCode = countryCodes[p.PlayerKey]
 		p.DetectedPatterns = []workflowPatternValue{}
 		if match, _ := d.matchFingerprint(p.PlayerKey, scfingerprint.FeatureVersion()); match != nil {
 			p.FingerprintMatch = match
@@ -79,6 +86,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 			startClockByPlayerID[row.PlayerID] = int(*row.StartLocationOclock)
 		}
 	}
+	d.triggerBnetProfileFetchesForPlayers(playerNames, detail.GameSource)
 
 	var mapLayout *models.MapContextLayout
 	if strings.TrimSpace(summary.FilePath) != "" {
@@ -290,6 +298,10 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 	if displayName, ok := displayByName[summary.PlayerName]; ok {
 		result.PlayerName = displayName
 	}
+	if cc, _ := d.countryCodesByPlayerKeys([]string{playerKey}); len(cc) > 0 {
+		result.CountryCode = cc[playerKey]
+	}
+	d.triggerBnetProfileFetchesForPlayers([]string{summary.PlayerName}, "AssumedBattleNet")
 	result.GamesPlayed = summary.GamesPlayed
 	result.Wins = summary.Wins
 	result.AverageAPM = summary.AverageAPM

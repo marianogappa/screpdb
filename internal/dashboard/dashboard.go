@@ -63,6 +63,7 @@ type Dashboard struct {
 	bnetState           atomic.Value // stores bnetStatus
 	bnetAddr            atomic.Value // stores string
 	bnetDisabled        atomic.Bool
+	bnetGateway         atomic.Int64 // active SC:R gateway (e.g. 20 = Europe, 30 = Korea)
 }
 
 // SetShutdownFunc registers the callback the /api/custom/quit endpoint invokes to

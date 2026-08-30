@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/marianogappa/screpdb/internal/bnetfacade"
+	"github.com/marianogappa/screpdb/internal/crashreport"
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 )
 
@@ -88,10 +91,104 @@ func (d *Dashboard) fetchAndCacheBnetProfile(ctx context.Context, toon string, g
 		Payload:     string(p.Raw),
 		FetchedAt:   now.UTC(),
 	}
-	if err := d.dbStore.UpsertBnetProfile(ctx, *row); err != nil {
+	if err := upsertBnetProfileWithRetry(ctx, d.dbStore, *row); err != nil {
 		return nil, err
 	}
 	return row, nil
+}
+
+// upsertBnetProfileWithRetry retries on "database is locked" with exponential
+// backoff. Bridge responses are rate-limited (600/day), so losing a successful
+// fetch because ingestion holds the write lock is wasteful — the retry cost is
+// negligible compared to re-spending the budget.
+func upsertBnetProfileWithRetry(ctx context.Context, store *dashboarddb.Store, row dashboarddb.BnetProfileRow) error {
+	const maxAttempts = 10
+	backoff := 100 * time.Millisecond
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		err := store.UpsertBnetProfile(ctx, row)
+		if err == nil {
+			return nil
+		}
+		if !strings.Contains(err.Error(), "database is locked") {
+			return err
+		}
+		log.Printf("[bnet-profile] upsert retry %d/%d for %q: %v", attempt+1, maxAttempts, row.Toon, err)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(backoff):
+		}
+		backoff *= 2
+		if backoff > 10*time.Second {
+			backoff = 10 * time.Second
+		}
+	}
+	return store.UpsertBnetProfile(ctx, row)
+}
+
+func (d *Dashboard) countryCodesByPlayerKeys(playerKeys []string) (map[string]string, error) {
+	if len(playerKeys) == 0 {
+		return map[string]string{}, nil
+	}
+	return d.dbStore.GetBnetCountryCodesByPlayerKeys(d.ctx, playerKeys)
+}
+
+var defaultGatewayOrder = []int64{30, 20, 10, 45, 11}
+
+func (d *Dashboard) triggerBnetProfileFetchesForPlayers(names []string, gameSource string) {
+	if d.bnetDisabled.Load() {
+		log.Printf("[country-flags] skipping: bridge disabled")
+		return
+	}
+	if gameSource != "AssumedBattleNet" {
+		log.Printf("[country-flags] skipping: game_source=%q (not bnet)", gameSource)
+		return
+	}
+	addr, _ := d.bnetAddr.Load().(string)
+	if addr == "" {
+		log.Printf("[country-flags] skipping: no bridge address")
+		return
+	}
+	playerKeys := make([]string, 0, len(names))
+	for _, n := range names {
+		playerKeys = append(playerKeys, normalizePlayerKey(n))
+	}
+	cached, err := d.countryCodesByPlayerKeys(playerKeys)
+	if err != nil {
+		log.Printf("[country-flags] skipping: cache lookup error: %v", err)
+		return
+	}
+	var uncached []string
+	for _, n := range names {
+		if _, ok := cached[normalizePlayerKey(n)]; !ok {
+			uncached = append(uncached, n)
+		}
+	}
+	if len(uncached) == 0 {
+		log.Printf("[country-flags] all %d players already cached", len(names))
+		return
+	}
+	gateways := defaultGatewayOrder
+	if known := d.bnetGateway.Load(); known > 0 {
+		gateways = append([]int64{known}, defaultGatewayOrder...)
+	}
+	log.Printf("[country-flags] fetching %d uncached players (gateways=%v)", len(uncached), gateways)
+	go func() {
+		defer crashreport.GuardNonFatal(nil)
+		for _, toon := range uncached {
+			for _, gw := range gateways {
+				res, fetchErr := d.getOrFetchBnetProfile(d.ctx, toon, gw, bnetfacade.PriorityBackground, 0)
+				if fetchErr != nil {
+					log.Printf("[country-flags] fetch %q gw=%d: %v", toon, gw, fetchErr)
+					continue
+				}
+				if res.Found {
+					log.Printf("[country-flags] found %q on gw=%d country=%q", toon, gw, res.CountryCode)
+					break
+				}
+			}
+		}
+	}()
 }
 
 func bnetProfileResultFromRow(row *dashboarddb.BnetProfileRow, cached, stale bool) *bnetProfileResult {
