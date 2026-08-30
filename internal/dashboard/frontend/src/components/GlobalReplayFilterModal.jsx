@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import FeatureFlagsSettingsPanel from './FeatureFlagsSettingsPanel';
+import LabsSettingsPanel from './LabsSettingsPanel';
 
 const GAME_TYPE_OPTIONS = [
   { value: 'top_vs_bottom', label: 'Top vs Bottom' },
@@ -124,11 +124,11 @@ function GlobalReplayFilterModal({
             <button
               type="button"
               role="tab"
-              aria-selected={settingsTab === 'feature-flags'}
-              className={`workflow-production-tab${settingsTab === 'feature-flags' ? ' workflow-production-tab-active' : ''}`}
-              onClick={() => setSettingsTab('feature-flags')}
+              aria-selected={settingsTab === 'labs'}
+              className={`workflow-production-tab${settingsTab === 'labs' ? ' workflow-production-tab-active' : ''}`}
+              onClick={() => setSettingsTab('labs')}
             >
-              Feature Flags
+              Labs
             </button>
           </div>
         </div>
@@ -183,7 +183,7 @@ function GlobalReplayFilterModal({
           </form>
         ) : (
           <div className="edit-form ingest-form settings-modal-tab-panel">
-            <FeatureFlagsSettingsPanel
+            <LabsSettingsPanel
               flags={featureFlags}
               saving={featureFlagsSaving}
               message={featureFlagsMessage}

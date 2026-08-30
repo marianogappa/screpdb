@@ -2,6 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallba
 import { api } from './api';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import IngestModal from './components/IngestModal';
+import GamingSessionPanel from './components/GamingSessionPanel';
 import Histogram from './components/charts/Histogram';
 import TimingScatterRows from './components/charts/TimingScatterRows';
 import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
@@ -556,6 +557,23 @@ const countryCodeToFlag = (code) => {
 // than block the render or make the user reload, the page keeps polling a
 // cache-only endpoint and publishes what lands here; every flag reads through
 // it, so flags appear in place as they resolve.
+// The backend marks the user's own players by appending this to their display
+// name, so every surface gets it without threading a flag through each payload.
+// Splitting it back out here is what lets the marker carry its own tooltip
+// rather than sitting inert inside a string.
+const YOU_MARKER = '🫵';
+
+const PlayerDisplayName = ({ name }) => {
+  const text = String(name ?? '');
+  if (!text.endsWith(YOU_MARKER)) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, -YOU_MARKER.length).trimEnd()}
+      <span className="you-marker" data-tip="You">{YOU_MARKER}</span>
+    </>
+  );
+};
+
 const CountryFlagOverrideContext = React.createContext(null);
 
 const CountryFlag = ({ code, playerKey }) => {
@@ -2906,6 +2924,68 @@ function App() {
   const bnetCooldownUntil = bnetStatus?.cooldown_until ? new Date(bnetStatus.cooldown_until) : null;
   const bnetCoolingDown = Boolean(bnetCooldownUntil) && bnetCooldownUntil > new Date();
 
+  const [featureFlags, setFeatureFlags] = useState({});
+  const [featureFlagsSaving, setFeatureFlagsSaving] = useState(false);
+  const [featureFlagsMessage, setFeatureFlagsMessage] = useState('');
+  const [featureFlagsMessageIsError, setFeatureFlagsMessageIsError] = useState(false);
+  const [gamingSession, setGamingSession] = useState(null);
+  const [gamingSessionLoading, setGamingSessionLoading] = useState(false);
+  const [gamingSessionError, setGamingSessionError] = useState('');
+
+  const gamingSessionEnabled = Boolean(featureFlags.gaming_session);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.getFeatureFlags();
+        if (!cancelled) setFeatureFlags(res?.feature_flags || {});
+      } catch {
+        // Flags default off; a failed load simply leaves the previews hidden.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleFeatureFlagToggle = async (key, enabled) => {
+    try {
+      setFeatureFlagsSaving(true);
+      setFeatureFlagsMessage('');
+      setFeatureFlagsMessageIsError(false);
+      const res = await api.setFeatureFlag(key, enabled);
+      setFeatureFlags(res?.feature_flags || {});
+    } catch (err) {
+      setFeatureFlagsMessage(err.message || 'Failed to save feature flag');
+      setFeatureFlagsMessageIsError(true);
+    } finally {
+      setFeatureFlagsSaving(false);
+    }
+  };
+
+  // The session is refetched whenever the flag turns on and whenever the user
+  // opens the view, so a game finishing mid-visit shows up on the next look.
+  const loadGamingSession = useCallback(async () => {
+    if (!gamingSessionEnabled) return;
+    try {
+      setGamingSessionLoading(true);
+      setGamingSessionError('');
+      const res = await api.getGamingSession();
+      setGamingSession(res);
+    } catch (err) {
+      setGamingSessionError(err.message || 'Failed to load gaming session');
+    } finally {
+      setGamingSessionLoading(false);
+    }
+  }, [gamingSessionEnabled]);
+
+  useEffect(() => {
+    if (!gamingSessionEnabled) {
+      setGamingSession(null);
+      return;
+    }
+    void loadGamingSession();
+  }, [gamingSessionEnabled, loadGamingSession]);
+
   // Every player currently on screen that has no flag yet. The poll below asks
   // only about these, and only while the bridge could still produce an answer.
   const missingCountryCodeKeys = useMemo(() => {
@@ -3675,14 +3755,14 @@ function App() {
 
   const renderPlayerLabel = (name, colorLookupKey) => {
     const color = playerAccentColor(colorLookupKey || name);
-    if (!color) return <span>{name}</span>;
-    return <span style={{ color, fontWeight: 600 }}>{name}</span>;
+    if (!color) return <span><PlayerDisplayName name={name} /></span>;
+    return <span style={{ color, fontWeight: 600 }}><PlayerDisplayName name={name} /></span>;
   };
 
   const renderPlayerLinkLabel = (name, playerKey) => {
     const color = playerAccentColor(playerKey || name);
     const style = color ? { color, fontWeight: 600 } : undefined;
-    if (!playerKey) return <span style={style}>{name}</span>;
+    if (!playerKey) return <span style={style}><PlayerDisplayName name={name} /></span>;
     return (
       <button
         type="button"
@@ -3691,7 +3771,7 @@ function App() {
         style={style}
         onClick={(e) => { e.stopPropagation(); openMainPlayer(playerKey); }}
       >
-        {name}
+        <PlayerDisplayName name={name} />
       </button>
     );
   };
@@ -5259,6 +5339,15 @@ function App() {
           <div className="workflow-nav-group">
             <button type="button" className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('games')}>Games</button>
             <button type="button" className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('players')}>Players</button>
+            {gamingSessionEnabled && gamingSession?.active ? (
+              <button
+                type="button"
+                className={`btn-manage ${activeView === 'session' ? 'workflow-nav-active' : ''}`}
+                onClick={() => navigateMainView('session')}
+              >
+                Gaming Session
+              </button>
+            ) : null}
           </div>
           <div className="workflow-nav-group">
             {updateAvailable && updateTier === 'loud' && !loudUpdateDismissed ? (
@@ -5610,6 +5699,49 @@ function App() {
           </div>
         )}
 
+        {activeView === 'session' && (
+          <GamingSessionPanel
+            session={gamingSession}
+            loading={gamingSessionLoading}
+            error={gamingSessionError}
+            renderOpponent={(opponent) => (
+              <button
+                type="button"
+                className="workflow-player-name-link workflow-name-with-flag"
+                onClick={() => openMainPlayer(opponent.player_key)}
+                title="Analyze player"
+                style={playerAccentColor(opponent.player_key) ? { color: playerAccentColor(opponent.player_key) } : undefined}
+              >
+                <CountryFlag code={opponent.country_code} playerKey={opponent.player_key} />
+                {opponent.player_name}
+              </button>
+            )}
+          >
+            <table className="workflow-table workflow-games-list-table workflow-games-list-table--roomy">
+              <thead>
+                <tr>
+                  <th>Played</th>
+                  <th>Players</th>
+                  <th>Map</th>
+                  <th>Length</th>
+                  <th>Featuring</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(gamingSession?.games || []).map((game) => (
+                  <tr key={game.replay_id} onClick={() => openMainGame(game.replay_id)}>
+                    <td className="workflow-games-list-played">{formatRelativeReplayDate(game.replay_date)}</td>
+                    <td className="workflow-games-list-players">{renderMainGameListPlayers(game)}</td>
+                    <td className="workflow-games-list-map">{renderMapNameWithKind(game.map_name, game.map_kind)}</td>
+                    <td className="workflow-games-list-duration">{formatDuration(game.duration_seconds)}</td>
+                    <td className="workflow-games-list-featuring"><FeaturingCell featuring={game.featuring} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </GamingSessionPanel>
+        )}
+
         {activeView === 'players' && (
           <div className="workflow-panel">
             <div className="workflow-players-tab-stack">
@@ -5715,7 +5847,7 @@ function App() {
                       <tbody>
                         {mainPlayers.map((player) => (
                           <tr key={player.player_key} className={selectedPlayerKey === player.player_key ? 'workflow-selected-row' : ''} onClick={() => openMainPlayer(player.player_key)}>
-                            <td style={playerAccentColor(player.player_key) ? { color: playerAccentColor(player.player_key), fontWeight: 600 } : undefined}><span className="workflow-name-with-flag"><CountryFlag code={player.country_code} playerKey={player.player_key} />{player.player_name}</span></td>
+                            <td style={playerAccentColor(player.player_key) ? { color: playerAccentColor(player.player_key), fontWeight: 600 } : undefined}><span className="workflow-name-with-flag"><CountryFlag code={player.country_code} playerKey={player.player_key} /><PlayerDisplayName name={player.player_name} /></span></td>
                             <td>{player.race}</td>
                             <td>{player.games_played}</td>
                             <td>{Number(player.average_apm || 0).toFixed(1)}</td>
@@ -6204,7 +6336,7 @@ function App() {
                                   style={gamePlayerNameStyle(player)}
                                   onClick={() => openMainPlayer(player.player_key)}
                                 >
-                                  {player.name}
+                                  <PlayerDisplayName name={player.name} />
                                 </button>
                                 {player.fingerprint_match ? (
                                   <FingerprintBadge match={player.fingerprint_match} />
@@ -7205,7 +7337,7 @@ function App() {
                     <h2 style={playerAccentColor(mainPlayer?.player_key || selectedPlayerKey) ? { color: playerAccentColor(mainPlayer?.player_key || selectedPlayerKey) } : undefined}>
                       <span className="workflow-name-with-flag">
                         <CountryFlag code={mainPlayer?.country_code} playerKey={mainPlayer?.player_key || selectedPlayerKey} />
-                        {mainPlayer?.player_name || selectedPlayerKey}
+                        <PlayerDisplayName name={mainPlayer?.player_name || selectedPlayerKey} />
                       </span>
                       {mainPlayer?.fingerprint_match ? (
                         <span className="workflow-fingerprint-match"><FingerprintBadge match={mainPlayer.fingerprint_match} /></span>
@@ -7592,6 +7724,11 @@ function App() {
           error={globalReplayFilterError}
           onClose={() => setShowGlobalReplayFilter(false)}
           onSave={handleSaveGlobalReplayFilter}
+          featureFlags={featureFlags}
+          featureFlagsSaving={featureFlagsSaving}
+          featureFlagsMessage={featureFlagsMessage}
+          featureFlagsMessageIsError={featureFlagsMessageIsError}
+          onFeatureFlagToggle={handleFeatureFlagToggle}
         />
       )}
 

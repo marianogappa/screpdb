@@ -99,7 +99,7 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	switch {
 	case data.Replay.GameType == "Use map settings":
 		data.Replay.MapKind = "UseMapSettings"
-	case rep.MapData != nil && len(rep.MapData.MineralFields) > 0 && rep.MapData.MineralFields[0].Amount > 10000:
+	case isMoneyMap(rep):
 		data.Replay.MapKind = "Money"
 	default:
 		data.Replay.MapKind = "Regular"
@@ -475,4 +475,32 @@ func CreateReplayFromFileInfo(filePath, fileName string, fileSize int64, checksu
 		FileName:     fileName,
 		CreatedAt:    time.Now(),
 	}
+}
+
+// standardMineralPatch is the amount every mineral field carries on a stock
+// melee map. Anything above it is a deliberately enriched patch, which is what
+// makes a map a "money" map.
+const standardMineralPatch = 1500
+
+// isMoneyMap classifies a map by the median mineral field rather than by any
+// single one.
+//
+// The median matters. Mineral fields arrive in whatever order the map file
+// stores them, and money maps mix amounts: "Big Game Hunters - Remastered"
+// lists a 10000 field first and 20000 for most of the rest, while plain "Big
+// Game Hunters" happens to list a 20000 field first. Sampling MineralFields[0]
+// therefore classified two versions of the same map differently. The median is
+// also what makes a partially mined map read correctly: a regular map picks up
+// a tail of half-empty patches (196, 318, 428...) as the game goes on, and the
+// median stays pinned at 1500 while a mean would drift.
+func isMoneyMap(rep *scraprep.Replay) bool {
+	if rep == nil || rep.MapData == nil || len(rep.MapData.MineralFields) == 0 {
+		return false
+	}
+	amounts := make([]int, 0, len(rep.MapData.MineralFields))
+	for _, field := range rep.MapData.MineralFields {
+		amounts = append(amounts, int(field.Amount))
+	}
+	sort.Ints(amounts)
+	return amounts[len(amounts)/2] > standardMineralPatch
 }

@@ -272,7 +272,14 @@ import (
 // newer ladder maps. Base positions/kinds feed worldstate base resolution and
 // every location-derived detection, so re-ingest to re-resolve bases on
 // replays played on those maps.
-const AlgorithmVersion = 63
+// 64: money-map classification now uses the median mineral field instead of
+// whichever field the map file happened to store first, and compares against a
+// standard 1500 patch rather than a strict > 10000. "Big Game Hunters -
+// Remastered" stores a 10000 field first and so read as a Regular map, while
+// plain "Big Game Hunters" read as Money. map_kind is persisted and feeds the
+// map filter, build-order pill suppression and the fingerprint domain gate, so
+// re-ingest to reclassify.
+const AlgorithmVersion = 64
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

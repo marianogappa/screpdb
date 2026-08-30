@@ -1,6 +1,6 @@
 /** Main workflow SPA route (query string). */
 
-export const MAIN_VIEWS = ['games', 'players', 'game', 'player'];
+export const MAIN_VIEWS = ['games', 'players', 'session', 'game', 'player'];
 
 export const MAIN_GAME_TABS = [
   'summary',

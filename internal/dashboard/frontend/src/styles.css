@@ -6025,3 +6025,142 @@ span[data-tip],
   white-space: nowrap;
   vertical-align: middle;
 }
+
+/* Labs: the settings tab holding unfinished previews. A flat column of
+   checkboxes with no bullets and no per-item headings; the list is short and
+   each line is its own description. */
+.labs-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.labs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.labs-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  line-height: 1.35;
+}
+
+.labs-item input[type='checkbox'] {
+  flex: 0 0 auto;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Gaming Session: the run of games just played. Stat tiles across the top,
+   then breakdowns, then who you faced, then the games themselves. */
+.workflow-panel--session {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.session-stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.session-stat-tile {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.session-stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.session-stat-label {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.session-stat-sub {
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.session-breakdown-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.session-breakdown-title {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 6px;
+}
+
+.session-breakdown-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.session-breakdown-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.session-breakdown-count {
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+.session-section h3 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.session-opponent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.session-opponent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.session-opponent-record {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+
+/* The "this player is you" marker. Sized to the text it follows rather than to
+   the glyph grid, because it trails a name instead of leading one. */
+.you-marker {
+  margin-left: 0.3em;
+  font-size: 0.85em;
+  cursor: help;
+}

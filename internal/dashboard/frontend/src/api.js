@@ -395,6 +395,15 @@ export const api = {
     return response.json();
   },
 
+  getGamingSession: async () => {
+    const response = await fetch(`${API_CUSTOM}/gaming-session`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to load gaming session');
+    }
+    return response.json();
+  },
+
   getBnetStatus: async () => {
     const response = await fetch(`${API_CUSTOM}/bnet/status`);
     if (!response.ok) {
