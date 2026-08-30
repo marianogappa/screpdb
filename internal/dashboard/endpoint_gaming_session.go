@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -27,26 +25,6 @@ const (
 	gamingSessionGap     = 3 * time.Hour
 	gamingSessionRecency = 3 * time.Hour
 )
-
-// SCREPDB_SESSION_RECENCY overrides how recently the last game must have been
-// played for the session to count as current. It exists so the view can be
-// looked at without waiting to actually play: set it to something like "240h"
-// and an old session becomes visible. Development aid only; unset, the constant
-// above applies.
-const gamingSessionRecencyEnv = "SCREPDB_SESSION_RECENCY"
-
-func sessionRecencyWindow() time.Duration {
-	raw := strings.TrimSpace(os.Getenv(gamingSessionRecencyEnv))
-	if raw == "" {
-		return gamingSessionRecency
-	}
-	parsed, err := time.ParseDuration(raw)
-	if err != nil || parsed <= 0 {
-		log.Printf("[gaming-session] ignoring %s=%q: %v", gamingSessionRecencyEnv, raw, err)
-		return gamingSessionRecency
-	}
-	return parsed
-}
 
 // gamingSessionPlayer is someone met during the session. Opponents and allies
 // are the same shape but are reported separately: a win/loss record only means
@@ -107,7 +85,7 @@ func gamingSessionWindow(rows []sessionGameRow, now time.Time) (start, end time.
 		return time.Time{}, time.Time{}, 0, false
 	}
 	latest := rows[0].PlayedAt
-	if now.Sub(latest) > sessionRecencyWindow() {
+	if now.Sub(latest) > gamingSessionRecency {
 		return time.Time{}, time.Time{}, 0, false
 	}
 	earliest := latest
