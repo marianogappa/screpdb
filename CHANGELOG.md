@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.25.0](https://github.com/marianogappa/screpdb/compare/v1.24.1...v1.25.0) (2026-08-30)
+
+
+### Features
+
+* country flag beside every player ([#331](https://github.com/marianogappa/screpdb/issues/331)) ([#353](https://github.com/marianogappa/screpdb/issues/353)) ([61b9876](https://github.com/marianogappa/screpdb/commit/61b98767dfd7aa72477cae005522c452fcfb9eb7))
+* derive game_source and lobby_kind from replay content ([#346](https://github.com/marianogappa/screpdb/issues/346)) ([#348](https://github.com/marianogappa/screpdb/issues/348)) ([d88f936](https://github.com/marianogappa/screpdb/commit/d88f936fba4dbff52d1506dfa6888b1cc133e880))
+* detect the SC:R local web-api and surface connection state ([#350](https://github.com/marianogappa/screpdb/issues/350)) ([9230336](https://github.com/marianogappa/screpdb/commit/9230336dc9c5a32a41c98cf978c37f91815611cf))
+* extract and store fingerprint feature vectors at ingest ([#342](https://github.com/marianogappa/screpdb/issues/342)) ([269ec70](https://github.com/marianogappa/screpdb/commit/269ec702c7f07a187bbf7eb500c3cee89628a843))
+* fetch and cache player profiles from the SC:R bridge ([#329](https://github.com/marianogappa/screpdb/issues/329)) ([#352](https://github.com/marianogappa/screpdb/issues/352)) ([1f092e3](https://github.com/marianogappa/screpdb/commit/1f092e30798426baac246206307aef29f0008780))
+* gaming session preview, honest fingerprint tiers, and player-pill polish ([#354](https://github.com/marianogappa/screpdb/issues/354)) ([f67c970](https://github.com/marianogappa/screpdb/commit/f67c970b33307e23df8faab579138d33dbf8ede3))
+* identify players via fingerprint matching on player and game detail pages ([#347](https://github.com/marianogappa/screpdb/issues/347)) ([f0cf3ad](https://github.com/marianogappa/screpdb/commit/f0cf3ad480c2db64cea92beaa8ceec6b6055f5de))
+* sanction loopback and GCS network access behind a new bnetfacade ([#349](https://github.com/marianogappa/screpdb/issues/349)) ([34e114e](https://github.com/marianogappa/screpdb/commit/34e114eae8ecdba22478583e010df8155bd2ac09))
+* two-budget rate limiter for bridge calls and replay downloads ([#351](https://github.com/marianogappa/screpdb/issues/351)) ([1a5c9dd](https://github.com/marianogappa/screpdb/commit/1a5c9dd769ed85906ebf0cbe674b62e52543b734))
+
 ## [1.24.1](https://github.com/marianogappa/screpdb/compare/v1.24.0...v1.24.1) (2026-07-10)
 
 
