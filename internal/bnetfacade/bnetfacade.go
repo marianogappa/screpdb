@@ -106,18 +106,26 @@ func BridgeGet(ctx context.Context, addr, path string, prio Priority) ([]byte, e
 // bytes first (fast path for ASCII/UTF-8 payloads), then falls back to cp949
 // and ISO 8859-1 transcoding.
 func DecodeBridgeJSON(data []byte, dst any) error {
+	normalized, err := normalizeBridgeJSON(data)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(normalized, dst)
+}
+
+func normalizeBridgeJSON(data []byte) ([]byte, error) {
 	if utf8.Valid(data) {
-		return json.Unmarshal(data, dst)
+		return data, nil
 	}
 	decoded, err := korean.EUCKR.NewDecoder().Bytes(data)
 	if err == nil && utf8.Valid(decoded) && !bytes.ContainsRune(decoded, utf8.RuneError) {
-		return json.Unmarshal(decoded, dst)
+		return decoded, nil
 	}
 	decoded, err = charmap.ISO8859_1.NewDecoder().Bytes(data)
 	if err != nil {
-		return fmt.Errorf("bnetfacade: could not decode bridge payload: %w", err)
+		return nil, fmt.Errorf("bnetfacade: could not decode bridge payload: %w", err)
 	}
-	return json.Unmarshal(decoded, dst)
+	return decoded, nil
 }
 
 // DownloadReplay fetches a replay from the GCS starcraft-user-uploads-prod

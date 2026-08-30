@@ -126,3 +126,16 @@ CREATE TABLE commands_low_value (
   chat_message TEXT,
   alliance_player_ids TEXT
 );
+
+CREATE TABLE bnet_profiles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  toon TEXT NOT NULL,
+  gateway INTEGER NOT NULL,
+  found BOOLEAN NOT NULL,
+  aurora_id INTEGER NOT NULL DEFAULT 0,
+  battle_tag TEXT NOT NULL DEFAULT '',
+  country_code TEXT NOT NULL DEFAULT '',
+  payload TEXT NOT NULL,
+  fetched_at TEXT NOT NULL,
+  UNIQUE (toon, gateway)
+);

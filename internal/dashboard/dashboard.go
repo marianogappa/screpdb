@@ -226,6 +226,7 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/custom/update/apply", d.handlerUpdateApply).Methods(http.MethodPost)
 	r.HandleFunc("/api/custom/bnet/status", d.handlerBnetStatus).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/bnet/toggle", d.handlerBnetToggle).Methods(http.MethodPost)
+	r.HandleFunc("/api/custom/bnet/profile", d.handlerBnetProfile).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/quit", d.handlerQuit).Methods(http.MethodPost)
 	apigen.HandlerFromMux(strictHandler, r)
 	r.PathPrefix("/api/").Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
