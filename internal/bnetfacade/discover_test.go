@@ -87,6 +87,75 @@ func TestProbeBridgeURL_Connected(t *testing.T) {
 	}
 }
 
+func TestProbeGateway_Connected(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"gateway": 20}`)
+	}))
+	defer srv.Close()
+	state, gw := probeGatewayURL(context.Background(), srv.URL)
+	if state != BridgeConnected {
+		t.Errorf("state = %v, want BridgeConnected", state)
+	}
+	if gw != 20 {
+		t.Errorf("gateway = %d, want 20", gw)
+	}
+}
+
+func TestProbeGateway_NestedFormat(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"gateways":[{"id":30}]}`)
+	}))
+	defer srv.Close()
+	state, gw := probeGatewayURL(context.Background(), srv.URL)
+	if state != BridgeConnected {
+		t.Errorf("state = %v, want BridgeConnected", state)
+	}
+	if gw != 30 {
+		t.Errorf("gateway = %d, want 30", gw)
+	}
+}
+
+func TestProbeGateway_NoGatewayInBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"foo":"bar"}`)
+	}))
+	defer srv.Close()
+	state, gw := probeGatewayURL(context.Background(), srv.URL)
+	if state != BridgeConnected {
+		t.Errorf("state = %v, want BridgeConnected", state)
+	}
+	if gw != 0 {
+		t.Errorf("gateway = %d, want 0", gw)
+	}
+}
+
+func TestProbeGateway_Offline(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+	state, gw := probeGatewayURL(context.Background(), srv.URL)
+	if state != BridgeOffline {
+		t.Errorf("state = %v, want BridgeOffline", state)
+	}
+	if gw != 0 {
+		t.Errorf("gateway = %d, want 0", gw)
+	}
+}
+
+func TestProbeGateway_NonLoopback(t *testing.T) {
+	state, gw := ProbeGateway(context.Background(), "8.8.8.8:53")
+	if state != BridgeNotRunning {
+		t.Errorf("state = %v, want BridgeNotRunning", state)
+	}
+	if gw != 0 {
+		t.Errorf("gateway = %d, want 0", gw)
+	}
+}
+
 func TestDiscoverBridgeAddr_FindsBridge(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/web-api/v1/gateway" {

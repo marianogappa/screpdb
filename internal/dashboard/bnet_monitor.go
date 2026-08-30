@@ -19,6 +19,8 @@ type bnetStatus struct {
 	DailyCap       int                    `json:"daily_cap"`
 	DownloadsToday int                    `json:"downloads_today"`
 	CooldownUntil  string                 `json:"cooldown_until,omitempty"`
+	Gateway        int                    `json:"gateway,omitempty"`
+	GatewayName    string                 `json:"gateway_name,omitempty"`
 }
 
 func (d *Dashboard) startBnetMonitor(ctx context.Context) {
@@ -63,7 +65,10 @@ func (d *Dashboard) probeBnet(ctx context.Context) {
 		log.Printf("SC:R bridge discovered at %s", addrStr)
 	}
 
-	state := bnetfacade.ProbeBridge(ctx, addrStr)
+	state, gateway := bnetfacade.ProbeGateway(ctx, addrStr)
+	if gateway > 0 {
+		d.bnetGateway.Store(int64(gateway))
+	}
 	if state == bnetfacade.BridgeNotRunning {
 		d.bnetAddr.Store("")
 	}
@@ -81,6 +86,10 @@ func (d *Dashboard) getBnetStatus() bnetStatus {
 	s.DownloadsToday = budget.DownloadsUsedToday
 	if !budget.CooldownUntil.IsZero() {
 		s.CooldownUntil = budget.CooldownUntil.Format(time.RFC3339)
+	}
+	if gw := int(d.bnetGateway.Load()); gw > 0 {
+		s.Gateway = gw
+		s.GatewayName = bnetfacade.GatewayNames[gw]
 	}
 	return s
 }

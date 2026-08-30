@@ -40,6 +40,11 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 	if err != nil {
 		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
 	}
+	playerKeys := make([]string, 0, len(listRows))
+	for _, row := range listRows {
+		playerKeys = append(playerKeys, row.PlayerKey)
+	}
+	countryCodes, _ := d.countryCodesByPlayerKeys(playerKeys)
 
 	items := []workflowPlayersListItem{}
 	for _, row := range listRows {
@@ -57,6 +62,7 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 		if item.LastPlayedDaysAgo < 0 {
 			item.LastPlayedDaysAgo = 0
 		}
+		item.CountryCode = countryCodes[item.PlayerKey]
 		items = append(items, item)
 	}
 
@@ -252,6 +258,11 @@ func (d *Dashboard) populateWorkflowGameListPlayers(items []workflowGameListItem
 	if err != nil {
 		return err
 	}
+	playerKeys := make([]string, 0, len(rows))
+	for _, row := range rows {
+		playerKeys = append(playerKeys, normalizePlayerKey(row.Name))
+	}
+	countryCodes, _ := d.countryCodesByPlayerKeys(playerKeys)
 	for _, row := range rows {
 		var player workflowGameListPlayer
 		replayID := row.ReplayID
@@ -264,6 +275,7 @@ func (d *Dashboard) populateWorkflowGameListPlayers(items []workflowGameListItem
 		player.Team = row.Team
 		player.IsWinner = row.IsWinner
 		player.PlayerKey = normalizePlayerKey(row.Name)
+		player.CountryCode = countryCodes[player.PlayerKey]
 		idx, ok := itemIndexByReplayID[replayID]
 		if !ok {
 			continue

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/marianogappa/screpdb/internal/dashboard/db/sqlcgen"
@@ -47,6 +48,36 @@ func (s *Store) GetBnetProfile(ctx context.Context, toon string, gateway int64) 
 		Payload:     row.Payload,
 		FetchedAt:   fetchedAt,
 	}, nil
+}
+
+func (s *Store) GetBnetCountryCodesByPlayerKeys(ctx context.Context, playerKeys []string) (map[string]string, error) {
+	if len(playerKeys) == 0 {
+		return map[string]string{}, nil
+	}
+	placeholders := make([]string, len(playerKeys))
+	args := make([]any, len(playerKeys))
+	for i, key := range playerKeys {
+		placeholders[i] = "?"
+		args[i] = key
+	}
+	query := `SELECT LOWER(TRIM(toon)) AS player_key, country_code
+		FROM bnet_profiles
+		WHERE found = 1 AND country_code != '' AND LOWER(TRIM(toon)) IN (` + strings.Join(placeholders, ",") + `)
+		GROUP BY LOWER(TRIM(toon))`
+	rows, err := Trace(s.defaultDB).QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make(map[string]string, len(playerKeys))
+	for rows.Next() {
+		var playerKey, countryCode string
+		if err := rows.Scan(&playerKey, &countryCode); err != nil {
+			return nil, err
+		}
+		result[playerKey] = countryCode
+	}
+	return result, rows.Err()
 }
 
 func (s *Store) UpsertBnetProfile(ctx context.Context, row BnetProfileRow) error {
