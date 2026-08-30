@@ -4,6 +4,18 @@
 
 package sqlcgen
 
+type BnetProfile struct {
+	ID          int64
+	Toon        string
+	Gateway     int64
+	Found       bool
+	AuroraID    int64
+	BattleTag   string
+	CountryCode string
+	Payload     string
+	FetchedAt   string
+}
+
 type Command struct {
 	ID                   int64
 	ReplayID             int64

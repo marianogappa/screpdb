@@ -313,11 +313,15 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-08-30  OK. Two-budget rate limiter at the bnetfacade boundary (issue #319). BridgeGet and DownloadReplay now spend separate in-package budgets (token buckets with priority queues, persisted daily caps, exponential cooldown on the bridge's explicit rate-limit signal), so no caller can bypass them; ProbeBridge stays unmetered (local liveness only). New file write: bnet_budget.json (daily counters + cooldown) inside the app-data root, read/written strictly through iofacade — no allowlist widening, no new hosts or paths, no AlgorithmVersion bump (no detection change). Dashboard surfaces a requests-today meter via the existing /api/custom/bnet/status endpoint.
+2026-08-30  OK. Fetch and cache SC:R aurora profiles (issue #329). New bnetfacade.FetchAuroraProfile goes through the already-metered BridgeGet (loopback-only, /web-api/ prefix, #319 budgets apply — no new hosts, paths, or facade exemptions) and normalizes the payload to UTF-8 before parsing. Responses are cached in a new bnet_profiles table (dashboard migration 000002) keyed on (toon, gateway) per #344, 24h TTL per Blizzard's Cache-Control max-age=86400, with the unknown-toon 200/aurora_id-0 response negative-cached so misses don't re-spend budget; failed refetches serve the stale row. One new hand-written endpoint (GET /api/custom/bnet/profile). No iofacade allowlist widening, no AlgorithmVersion bump (no detection change).
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
+
+```
+2026-08-30  OK. Two-budget rate limiter at the bnetfacade boundary (issue #319). BridgeGet and DownloadReplay now spend separate in-package budgets (token buckets with priority queues, persisted daily caps, exponential cooldown on the bridge's explicit rate-limit signal), so no caller can bypass them; ProbeBridge stays unmetered (local liveness only). New file write: bnet_budget.json (daily counters + cooldown) inside the app-data root, read/written strictly through iofacade — no allowlist widening, no new hosts or paths, no AlgorithmVersion bump (no detection change). Dashboard surfaces a requests-today meter via the existing /api/custom/bnet/status endpoint.
+```
 
 ```
 2026-08-29  OK. SC:R local web-api detection and connection-state UI (issue #318). Adds platform-specific port discovery (macOS: lsof, Linux: /proc/net/tcp, Windows: GetExtendedTcpTable via iphlpapi.dll) and a ProbeBridge function to bnetfacade — all loopback-only, one GET to /web-api/v1/gateway every 10s. Dashboard gains a background monitor goroutine (atomic-cached state), two new hand-written endpoints (GET/POST /api/custom/bnet/{status,toggle}), and a nav pill. The global off-switch disables all probing. No new outbound hosts (all 127.0.0.1), no iofacade allowlist widening, no AlgorithmVersion bump. Platform-specific files use os/exec (macOS lsof) and os.ReadFile (Linux /proc/net/tcp) inside the already-exempt bnetfacade package.

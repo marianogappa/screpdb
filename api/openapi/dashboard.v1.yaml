@@ -179,6 +179,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
+  /api/custom/bnet/profile:
+    get:
+      operationId: bnetProfile
+      tags: [operational]
+      summary: Cached SC:R aurora profile for one (toon, gateway); fetches through the rate-limited bridge on cache miss. Served by a hand-written handler (not generated).
+      parameters:
+        - name: toon
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: gateway
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: max_age_seconds
+          in: query
+          required: false
+          description: Serve the cached profile only if younger than this (floored at 60s, capped at the default 86400s). For following a live play session.
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
   /api/custom/update/status:
     get:
       operationId: updateStatus
