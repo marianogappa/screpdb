@@ -15,7 +15,7 @@ import { getUnitIcon } from '../../lib/gameAssets';
 //   }
 
 const LEGEND_TOOLTIP =
-  'Each gold band shows when progamers usually reach this step — averaged across tens of thousands of their games. The icon on each row is when THIS player did it: green if they landed in the usual progamer window, red if they were earlier or later. It is an approximation and drifts as the metagame changes.';
+  'Each gold band shows when progamers usually reach this step, averaged across tens of thousands of their games. The icon on each row is when THIS player did it: green if they landed in the usual progamer window, red if they were earlier or later. It is an approximation and drifts as the metagame changes.';
 
 const formatTime = (seconds) => {
   const value = Math.max(0, Math.floor(Number(seconds) || 0));
@@ -138,7 +138,7 @@ function BuildOrderTimelineRows({ group, beta }) {
                   ? 'Earlier than the usual progamer timing'
                   : 'Later than the usual progamer timing');
             const actualColor = noExpert
-              ? 'rgba(148, 197, 230, 0.95)' // neutral blue — no golden range to compare against
+              ? 'rgba(148, 197, 230, 0.95)' // neutral blue: no golden range to compare against
               : (found
                 ? (withinTolerance ? 'rgba(34, 197, 94, 0.95)' : 'rgba(239, 68, 68, 0.95)')
                 : 'rgba(148, 163, 184, 0.6)');
@@ -403,7 +403,7 @@ function BuildOrderTimelineRows({ group, beta }) {
                     fill={actualColor}
                     fontSize="10"
                   >
-                    —
+                    –
                   </text>
                 )}
               </g>
@@ -438,7 +438,7 @@ function BuildOrderTimelineRows({ group, beta }) {
             style={{ left: `${hover.x}px`, top: `${hover.y}px` }}
           >
             <div><strong>{hover.eventKey}</strong></div>
-            <div>{hover.pointKind} — {formatTime(hover.time)}</div>
+            <div>{hover.pointKind} · {formatTime(hover.time)}</div>
             {hover.detail ? <div style={{ opacity: 0.7 }}>{hover.detail}</div> : null}
             {hover.verdict ? <div style={{ marginTop: 2 }}>{hover.verdict}</div> : null}
           </div>

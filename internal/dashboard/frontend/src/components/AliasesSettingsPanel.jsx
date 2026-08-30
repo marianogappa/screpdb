@@ -103,7 +103,7 @@ function AliasesSettingsPanel({
                   <td className="aliases-cell-mono">{row.battle_tag_raw}</td>
                   <td>{row.canonical_alias}</td>
                   <td><span className={`aliases-source-pill aliases-source-${row.source}`}>{row.source}</span></td>
-                  <td className="aliases-cell-muted">{row.updated_at || '—'}</td>
+                  <td className="aliases-cell-muted">{row.updated_at || '-'}</td>
                   <td className="aliases-table-actions">
                     <button type="button" className="btn-switch aliases-row-btn" onClick={() => onAliasEdit(row)}>Edit</button>
                     <button type="button" className="btn-cancel aliases-row-btn" onClick={() => onAliasDelete(row.id)}>Remove</button>

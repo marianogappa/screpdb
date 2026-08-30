@@ -66,6 +66,18 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 		items = append(items, item)
 	}
 
+	// Kick off flag lookups for the players on this page. The rows arrive in the
+	// user's chosen sort order, so the most significant ones are already first
+	// and the backfill cap keeps those; the page polls
+	// /api/custom/bnet/country-codes to paint flags in as they land.
+	backfillNames := make([]string, 0, len(items))
+	for _, item := range items {
+		if item.CountryCode == "" {
+			backfillNames = append(backfillNames, item.PlayerKey)
+		}
+	}
+	d.backfillBnetProfiles(backfillNames)
+
 	filterOptions, err := d.workflowPlayersListFilterOptions(baseSQL, baseArgs, whereSQL, whereArgs)
 	if err != nil {
 		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err

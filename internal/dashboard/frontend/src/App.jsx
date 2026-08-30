@@ -148,7 +148,7 @@ const MAIN_GAME_SKILL_PROXY_TABS = ['first-unit-efficiency', 'unit-production-ca
 
 const isMainGameSkillProxyTab = (tab) => MAIN_GAME_SKILL_PROXY_TABS.includes(tab);
 
-const SKILL_PROXY_CADENCE_INFO_TEXT = 'ℹ️ How smoothly you keep adding army from the mid game on—not just how much, but how evenly you queue it. Formula: units/min ÷ (1 + gap CV).';
+const SKILL_PROXY_CADENCE_INFO_TEXT = 'ℹ️ How smoothly you keep adding army from the mid game on, not just how much, but how evenly you queue it. Formula: units/min ÷ (1 + gap CV).';
 
 const SKILL_PROXY_VIEWPORT_INFO_TEXT = 'ℹ️ How many times a player switches between places on average per minute.';
 
@@ -156,7 +156,7 @@ const SKILL_PROXY_VIEWPORT_INFO_TEXT = 'ℹ️ How many times a player switches 
 // APM omitted intentionally (number is self-explanatory in that view).
 const PLAYER_INSIGHT_DESCRIPTION_OVERRIDES = {
   apm: '',
-  'unit-production-cadence': 'How smoothly you keep adding army from the mid game on—not just how much, but how evenly you queue it. Formula: units/min ÷ (1 + gap CV).',
+  'unit-production-cadence': 'How smoothly you keep adding army from the mid game on, not just how much, but how evenly you queue it. Formula: units/min ÷ (1 + gap CV).',
   'viewport-switch-rate': 'How many times a player switches between places on average per minute.',
 };
 
@@ -551,12 +551,76 @@ const countryCodeToFlag = (code) => {
   return String.fromCodePoint(...codePoints);
 };
 
-const CountryFlag = ({ code }) => {
-  if (!code) return null;
-  const flag = countryCodeToFlag(code);
+// Country codes arrive from the SC:R bridge after the page has already
+// rendered, because fetching them is rate-limited and deliberately slow. Rather
+// than block the render or make the user reload, the page keeps polling a
+// cache-only endpoint and publishes what lands here; every flag reads through
+// it, so flags appear in place as they resolve.
+const CountryFlagOverrideContext = React.createContext(null);
+
+const CountryFlag = ({ code, playerKey }) => {
+  const overrides = React.useContext(CountryFlagOverrideContext);
+  const resolved = code || (playerKey ? overrides?.[String(playerKey).trim().toLowerCase()] : null);
+  if (!resolved) return null;
+  const flag = countryCodeToFlag(resolved);
   if (!flag) return null;
-  return <span className="country-flag" title={code.toUpperCase()}>{flag}</span>;
+  return <span className="country-flag" title={resolved.toUpperCase()}>{flag}</span>;
 };
+
+// COUNTRY_FLAG_POLL_MS paces the cache-only poll. It costs one local DB read and
+// no bridge budget, so the cadence is chosen for how fast flags feel like they
+// arrive, not for cost. COUNTRY_FLAG_POLL_MAX_TICKS stops a page that will never
+// resolve (players with no Battle.net profile) from polling for ever.
+const COUNTRY_FLAG_POLL_MS = 2000;
+const COUNTRY_FLAG_POLL_MAX_TICKS = 45;
+
+// useCountryFlagBackfill polls for the country codes of players currently
+// rendered without a flag, and returns the codes that have resolved so far.
+// Polling stops as soon as nothing is outstanding and the server reports no
+// backfill in flight.
+function useCountryFlagBackfill(missingKeys, enabled) {
+  const [overrides, setOverrides] = useState({});
+  const missingSignature = missingKeys.join(',');
+
+  useEffect(() => {
+    if (!enabled || missingKeys.length === 0) return undefined;
+    let cancelled = false;
+    let ticks = 0;
+    let timer = null;
+
+    const poll = async () => {
+      if (cancelled) return;
+      ticks += 1;
+      try {
+        const res = await api.getBnetCountryCodes(missingKeys);
+        if (cancelled) return;
+        const codes = res?.country_codes || {};
+        if (Object.keys(codes).length > 0) {
+          setOverrides((prev) => ({ ...prev, ...codes }));
+        }
+        const stillMissing = missingKeys.some((k) => !codes[k]);
+        if (!stillMissing || (!res?.pending && ticks >= 2) || ticks >= COUNTRY_FLAG_POLL_MAX_TICKS) {
+          return;
+        }
+      } catch {
+        // A failed poll is not worth surfacing: the flag simply stays absent.
+        if (ticks >= COUNTRY_FLAG_POLL_MAX_TICKS) return;
+      }
+      timer = setTimeout(poll, COUNTRY_FLAG_POLL_MS);
+    };
+
+    timer = setTimeout(poll, COUNTRY_FLAG_POLL_MS);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+    // missingSignature stands in for missingKeys so a re-render with an
+    // equivalent array does not restart the poll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missingSignature, enabled]);
+
+  return overrides;
+}
 
 const FingerprintBadge = ({ match, compact }) => {
   if (!match) return null;
@@ -3018,6 +3082,27 @@ function App() {
   const bnetDailyCap = bnetStatus?.daily_cap ?? 0;
   const bnetCooldownUntil = bnetStatus?.cooldown_until ? new Date(bnetStatus.cooldown_until) : null;
   const bnetCoolingDown = Boolean(bnetCooldownUntil) && bnetCooldownUntil > new Date();
+
+  // Every player currently on screen that has no flag yet. The poll below asks
+  // only about these, and only while the bridge could still produce an answer.
+  const missingCountryCodeKeys = useMemo(() => {
+    const keys = new Set();
+    const consider = (player) => {
+      const key = String(player?.player_key || '').trim().toLowerCase();
+      if (!key || player?.country_code) return;
+      keys.add(key);
+    };
+    (mainPlayers || []).forEach(consider);
+    (mainGames || []).forEach((game) => (game?.players || []).forEach(consider));
+    (mainGame?.players || []).forEach(consider);
+    if (mainPlayer) consider(mainPlayer);
+    return [...keys].sort();
+  }, [mainPlayers, mainGames, mainGame, mainPlayer]);
+
+  const countryCodeOverrides = useCountryFlagBackfill(
+    missingCountryCodeKeys,
+    !bnetDisabled && bnetState === 'connected',
+  );
   const bnetTipSuffix = bnetDisabled || bnetDailyCap <= 0 ? ''
     : bnetCoolingDown
       ? `. Requests today: ${bnetRequestsToday}/${bnetDailyCap}. Paused until ${bnetCooldownUntil.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} after rate limiting`
@@ -3066,8 +3151,8 @@ function App() {
     const manager = updateStatus?.package_manager || '';
     if (updateManagerCommand) return `Run in your terminal: ${updateManagerCommand}`;
     if (reason === 'managed') return `Update via your package manager (${manager})`;
-    if (reason === 'not-writable') return 'Install folder is read-only — download the new version manually';
-    if (reason === 'unsupported-platform') return 'No self-update build for this platform — download the new version';
+    if (reason === 'not-writable') return 'Install folder is read-only. Download the new version manually';
+    if (reason === 'unsupported-platform') return 'No self-update build for this platform. Download the new version';
     return 'Download the new version';
   })();
 
@@ -3835,7 +3920,7 @@ function App() {
     const stackingMarker = game?.team_stacking ? (
       <span
         className="workflow-team-stacking-marker"
-        data-tip="Team stacking — uneven non-solo team sizes for over 5 minutes"
+        data-tip="Team stacking: uneven non-solo team sizes for over 5 minutes"
         style={{ marginLeft: 6 }}
       >
         😈
@@ -3851,7 +3936,7 @@ function App() {
             <span key={`${player.player_id}-${idx}`}>
               {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
               {renderWorkerIcon(player.race)}
-              {showFlags ? <CountryFlag code={player.country_code} /> : null}
+              {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
               {renderName(player)}
               <FingerprintBadge match={player.fingerprint_match} compact />
               {idx < players.length - 1 ? ', ' : ''}
@@ -3874,7 +3959,7 @@ function App() {
                 <span key={player.player_id} className="workflow-1v1-player">
                   {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
                   {renderWorkerIcon(player.race)}
-                  {showFlags ? <CountryFlag code={player.country_code} /> : null}
+                  {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
                   {renderName(player)}
                   {player.fingerprint_match ? (
                     <span className="workflow-fingerprint-inline"> (<FingerprintBadge match={player.fingerprint_match} />)</span>
@@ -3901,7 +3986,7 @@ function App() {
                 >
                   {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
                   {renderWorkerIcon(player.race)}
-                  {showFlags ? <CountryFlag code={player.country_code} /> : null}
+                  {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
                   {renderName(player)}
                   <FingerprintBadge match={player.fingerprint_match} compact />
                 </span>
@@ -5351,6 +5436,7 @@ function App() {
   }
 
   return (
+    <CountryFlagOverrideContext.Provider value={countryCodeOverrides}>
     <div className="app">
       <div className={`dashboard-container${activeView === 'games' ? ' dashboard-container--full' : ''}`}>
         <div className="workflow-nav workflow-nav-app">
@@ -5365,10 +5451,10 @@ function App() {
                   <button
                     type="button"
                     className="workflow-nav-update-available tip-below"
-                    data-tip="The new version is installed — refresh to load it"
+                    data-tip="The new version is installed. Refresh to load it"
                     onClick={() => window.location.reload()}
                   >
-                    ✅ Updated to {updateLatest} — Refresh
+                    ✅ Updated to {updateLatest} · Refresh
                   </button>
                 ) : selfUpdateSupported ? (
                   <button
@@ -5430,7 +5516,7 @@ function App() {
                   <button type="button" onClick={() => setShowIngestPanel(true)} className={`workflow-nav-text-action${showStaleHint ? ' workflow-nav-text-action--stale' : ''}`}>
                     {showStaleHint ? '⚠️' : '📥'} Ingest
                     {!showIngestPanel && ingestStatus === 'running' ? (
-                      <span className="ingest-running-badge tip-below" data-tip="Ingestion in progress — click to view logs">Ingesting…</span>
+                      <span className="ingest-running-badge tip-below" data-tip="Ingestion in progress. Click to view logs">Ingesting…</span>
                     ) : null}
                   </button>
                   {showStaleHint ? (
@@ -5456,11 +5542,11 @@ function App() {
               type="button"
               className={`bnet-pill bnet-pill--${bnetDisabled ? 'disabled' : bnetState} tip-below`}
               data-tip={
-                (bnetDisabled ? 'Battle.net bridge is turned off — no player profiles, country flags, or match history will be fetched. Click to re-enable.'
+                (bnetDisabled ? 'Battle.net bridge is turned off. No player profiles, country flags, or match history will be fetched. Click to re-enable.'
                 : bnetState === 'reconnecting' ? 'Scanning for SC:R bridge…'
                 : bnetState === 'connected' ? 'Connected to SC:R'
                 : bnetState === 'offline' ? 'SC:R is running but not logged in. Log in to enable player profile lookups.'
-                : 'SC:R not detected — start it and log in to enable player profile lookups.') + bnetTipSuffix
+                : 'SC:R not detected. Start it and log in to enable player profile lookups.') + bnetTipSuffix
               }
               onClick={handleBnetToggle}
               disabled={bnetState === 'reconnecting'}
@@ -5813,7 +5899,7 @@ function App() {
                       <tbody>
                         {mainPlayers.map((player) => (
                           <tr key={player.player_key} className={selectedPlayerKey === player.player_key ? 'workflow-selected-row' : ''} onClick={() => openMainPlayer(player.player_key)}>
-                            <td style={playerAccentColor(player.player_key) ? { color: playerAccentColor(player.player_key), fontWeight: 600 } : undefined}><CountryFlag code={player.country_code} />{player.player_name}</td>
+                            <td style={playerAccentColor(player.player_key) ? { color: playerAccentColor(player.player_key), fontWeight: 600 } : undefined}><span className="workflow-name-with-flag"><CountryFlag code={player.country_code} playerKey={player.player_key} />{player.player_name}</span></td>
                             <td>{player.race}</td>
                             <td>{player.games_played}</td>
                             <td>{Number(player.average_apm || 0).toFixed(1)}</td>
@@ -6293,7 +6379,7 @@ function App() {
                             <div className="wpt-cell wpt-name" style={{ borderLeftColor: getTeamColor(player.team) }}>
                               {raceIcon ? <img src={raceIcon} alt={player.race || 'race'} className="unit-icon-inline workflow-summary-race-icon" /> : null}
                               {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-                              <CountryFlag code={player.country_code} />
+                              <CountryFlag code={player.country_code} playerKey={player.player_key} />
                               <span className="wpt-name-col">
                                 <button
                                   type="button"
@@ -6670,7 +6756,7 @@ function App() {
                                     key={`recall-${selectedMainGameEventKeyResolved}`}
                                     src={selectedMainGameRecallOverlay.icon}
                                     alt="Recall destination"
-                                    title={selectedMainGameEvent?.target_base ? "Recall destination (Arbiter location, inferred)" : "Recall cast point — destination unknown"}
+                                    title={selectedMainGameEvent?.target_base ? "Recall destination (Arbiter location, inferred)" : "Recall cast point (destination unknown)"}
                                     className={`workflow-event-map-expansion-overlay workflow-event-map-expansion-overlay--recall-arbiter${selectedMainGameArrow ? ' workflow-event-map-arbiter--travel' : ''}`}
                                     style={{
                                       left: `${selectedMainGameRecallOverlay.point.x}%`,
@@ -6683,7 +6769,7 @@ function App() {
                                     key={`drop-${selectedMainGameEventKeyResolved}`}
                                     src={selectedMainGameDropOverlay.icon}
                                     alt="Drop transport"
-                                    title="Drop landing point — transport vessel"
+                                    title="Drop landing point (transport vessel)"
                                     className={`workflow-event-map-expansion-overlay workflow-event-map-expansion-overlay--recall-arbiter${selectedMainGameArrow ? ' workflow-event-map-vessel--travel' : ''}`}
                                     style={{
                                       left: `${selectedMainGameDropOverlay.point.x}%`,
@@ -7146,7 +7232,7 @@ function App() {
                   <div className="workflow-timing-charts">
                     {mainGame?.team_stacking ? (
                       <div className="workflow-section-warning">
-                        😈 Team stacking detected — uneven non-solo team sizes were sustained (over {Math.round((mainGame.alliance_stacking_threshold_seconds || 300) / 60)} minutes, or until game end).
+                        😈 Team stacking detected: uneven non-solo team sizes were sustained (over {Math.round((mainGame.alliance_stacking_threshold_seconds || 300) / 60)} minutes, or until game end).
                       </div>
                     ) : null}
                     <AllianceTimeline
@@ -7301,8 +7387,10 @@ function App() {
                 <div className="workflow-title-row">
                   <div className="workflow-player-title-wrap">
                     <h2 style={playerAccentColor(mainPlayer?.player_key || selectedPlayerKey) ? { color: playerAccentColor(mainPlayer?.player_key || selectedPlayerKey) } : undefined}>
-                      <CountryFlag code={mainPlayer?.country_code} />
-                      {mainPlayer?.player_name || selectedPlayerKey}
+                      <span className="workflow-name-with-flag">
+                        <CountryFlag code={mainPlayer?.country_code} playerKey={mainPlayer?.player_key || selectedPlayerKey} />
+                        {mainPlayer?.player_name || selectedPlayerKey}
+                      </span>
                       {mainPlayer?.fingerprint_match ? (
                         <span className="workflow-fingerprint-match"><FingerprintBadge match={mainPlayer.fingerprint_match} /></span>
                       ) : null}
@@ -7314,10 +7402,10 @@ function App() {
                   <button type="button" className="btn-switch" onClick={goBackMainView}>Back</button>
                 </div>
                 <div className="workflow-meta">
-                  <span><strong>Games</strong> {mainPlayer ? mainPlayer.games_played : '—'}</span>
-                  <span><strong>Win rate</strong> {mainPlayer ? `${(mainPlayer.win_rate * 100).toFixed(1)}%` : '—'}</span>
-                  <span><strong>APM</strong> {mainPlayer ? mainPlayer.average_apm?.toFixed(1) : '—'}</span>
-                  <span><strong>EAPM</strong> {mainPlayer ? mainPlayer.average_eapm?.toFixed(1) : '—'}</span>
+                  <span><strong>Games</strong> {mainPlayer ? mainPlayer.games_played : '-'}</span>
+                  <span><strong>Win rate</strong> {mainPlayer ? `${(mainPlayer.win_rate * 100).toFixed(1)}%` : '-'}</span>
+                  <span><strong>APM</strong> {mainPlayer ? mainPlayer.average_apm?.toFixed(1) : '-'}</span>
+                  <span><strong>EAPM</strong> {mainPlayer ? mainPlayer.average_eapm?.toFixed(1) : '-'}</span>
                   {mainPlayerLoading ? <span className="workflow-subtle-note">loading overview…</span> : null}
                 </div>
                 <div className="workflow-game-tab-stack">
@@ -7781,7 +7869,7 @@ function App() {
                   <span className="footer-update-nudge">
                     {updateApplied ? (
                       <button type="button" className="footer-update-link" onClick={() => window.location.reload()}>
-                        ✅ Updated to {updateLatest} — refresh
+                        ✅ Updated to {updateLatest} · refresh
                       </button>
                     ) : selfUpdateSupported ? (
                       <button
@@ -7826,6 +7914,7 @@ function App() {
         </div>
       </div>
     </div>
+    </CountryFlagOverrideContext.Provider>
   );
 }
 

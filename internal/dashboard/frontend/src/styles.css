@@ -3484,6 +3484,16 @@ button.workflow-nav-update-available:disabled {
   object-fit: contain;
 }
 
+/* A country flag sitting next to a bare name (players table, player title).
+   These are not pills, so there is no flex gap to inherit: without this the
+   flag butts straight up against the first letter of the name. */
+.workflow-name-with-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  min-width: 0;
+}
+
 /* The race icon fills its box and anchors the group. The flag is identity too,
    so it sits just under it; the crown (status) and magnifier (affordance) step
    down again. Hierarchy by ink, never by box — the boxes stay identical so the

@@ -427,6 +427,19 @@ export const api = {
     return response.json();
   },
 
+  // Cache-only lookup: never triggers a fetch, so a page can poll this while a
+  // backfill runs without spending any bridge budget.
+  getBnetCountryCodes: async (players) => {
+    const list = (players || []).filter(Boolean);
+    if (list.length === 0) return { country_codes: {}, pending: false };
+    const response = await fetch(`${API_CUSTOM}/bnet/country-codes?players=${encodeURIComponent(list.join(','))}`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get country codes');
+    }
+    return response.json();
+  },
+
   setBnetDisabled: async (disabled) => {
     const response = await fetch(`${API_CUSTOM}/bnet/toggle`, {
       method: 'POST',
