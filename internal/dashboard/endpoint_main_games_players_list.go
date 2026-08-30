@@ -296,13 +296,11 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 	// (e.g. "3 Hatch Muta", "~9 Overpool"). A game can feature more than one
 	// value of the same marker, so each distinct label becomes its own pill.
 	featureLabels := map[int64]map[string][]string{}
-	mapKindByReplayID := map[int64]string{}
 	for i, item := range items {
 		replayIDs = append(replayIDs, item.ReplayID)
 		itemIndexByReplayID[item.ReplayID] = i
 		featureSets[item.ReplayID] = map[string]struct{}{}
 		featureLabels[item.ReplayID] = map[string][]string{}
-		mapKindByReplayID[item.ReplayID] = item.MapKind
 	}
 	if len(replayIDs) == 0 {
 		return nil
@@ -326,13 +324,16 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 		case "became_terran", "became_zerg":
 			featureSets[replayID]["mind_control"] = struct{}{}
 		default:
-			// Build-order markers route directly to their featuring key,
-			// but Money maps suppress them: the BO chip column gets too
-			// noisy on Big Game Hunters / Fastest-style games where opener
-			// timings are uninformative. The BO tab + per-player summary
-			// pill still surface the BO inside the game detail page.
+			// Build-order markers never reach the games-list Featuring
+			// column. An opener is a per-player property, but this column is
+			// per-game, so a row full of "~10 Hatch" / "~9 Overpool" chips
+			// says nothing about who opened that way and crowds out the
+			// game-level features the column exists to show. The BO tab and
+			// the per-player summary pill still surface openers inside the
+			// game detail page, and the BO filter dropdown still selects on
+			// them.
 			if bo := markers.ByFeatureKey(featureKey); bo != nil {
-				if bo.Kind == markers.KindInitialBuildOrder && mapKindByReplayID[replayID] == "Money" {
+				if bo.Kind == markers.KindInitialBuildOrder {
 					continue
 				}
 				featureSets[replayID][bo.FeatureKey] = struct{}{}

@@ -2776,10 +2776,33 @@ func (d *Dashboard) populateUnitCadenceForGameDetail(detail *workflowGameDetail)
 const (
 	fingerprintMatchConfidenceHigh     = "high"
 	fingerprintMatchConfidenceModerate = "moderate"
-	fingerprintMatchSearchFPRHigh      = 0.10
-	fingerprintMatchSearchFPRModerate  = 0.50
 	fingerprintMatchMinVectors         = 3
+
+	// Per-comparison operating points, as named by scfingerprint. A tier is
+	// keyed to the strictest point a hit clears rather than to a raw SearchFPR
+	// threshold, because SearchFPR is the Šidák family-wise correction of these
+	// points over the catalog — so it moves as the catalog grows, while the
+	// points themselves do not. Fixed thresholds could not survive that: with a
+	// 70-entry catalog the "moderate" band spanned exactly one reachable value,
+	// 0.50516, against a 0.50 ceiling, so every surviving match reported "high"
+	// and "moderate" was unreachable.
+	fingerprintOperatingPointStrict   = "fpr_1e4"
+	fingerprintOperatingPointModerate = "fpr_1e3"
 )
+
+// fingerprintConfidenceTier maps the operating points a hit clears to the
+// confidence tier shown in the UI. It reports false when the hit earns no tier
+// at all — clearing only fpr_1e2 is, family-wise across a catalog of this size,
+// roughly a coin flip, and a coin flip is not a claim worth rendering.
+func fingerprintConfidenceTier(operatingPoints map[string]bool) (string, bool) {
+	switch {
+	case operatingPoints[fingerprintOperatingPointStrict]:
+		return fingerprintMatchConfidenceHigh, true
+	case operatingPoints[fingerprintOperatingPointModerate]:
+		return fingerprintMatchConfidenceModerate, true
+	}
+	return "", false
+}
 
 func (d *Dashboard) fingerprintDataset() (*scfingerprint.Dataset, error) {
 	d.fpDatasetOnce.Do(func() {
@@ -2855,13 +2878,8 @@ func (d *Dashboard) computeFingerprintMatch(playerKey string, featureVersion int
 		return nil, nil
 	}
 
-	var confidence string
-	switch {
-	case top.SearchFPR <= fingerprintMatchSearchFPRHigh:
-		confidence = fingerprintMatchConfidenceHigh
-	case top.SearchFPR <= fingerprintMatchSearchFPRModerate:
-		confidence = fingerprintMatchConfidenceModerate
-	default:
+	confidence, ok := fingerprintConfidenceTier(top.OperatingPoints)
+	if !ok {
 		return nil, nil
 	}
 

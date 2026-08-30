@@ -268,7 +268,11 @@ import (
 // player (player_fingerprint_vectors table) — the substrate for player
 // identification. No detection output changed; the bump exists so the stale
 // hint drives a re-ingest that backfills vectors for existing replays.
-const AlgorithmVersion = 62
+// 63: scmapanalyzer bumped to 2026-08-16, which fixes base recognition on the
+// newer ladder maps. Base positions/kinds feed worldstate base resolution and
+// every location-derived detection, so re-ingest to re-resolve bases on
+// replays played on those maps.
+const AlgorithmVersion = 63
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

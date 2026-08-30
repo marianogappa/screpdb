@@ -313,11 +313,15 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-08-30  OK. Fetch and cache SC:R aurora profiles (issue #329). New bnetfacade.FetchAuroraProfile goes through the already-metered BridgeGet (loopback-only, /web-api/ prefix, #319 budgets apply — no new hosts, paths, or facade exemptions) and normalizes the payload to UTF-8 before parsing. Responses are cached in a new bnet_profiles table (dashboard migration 000002) keyed on (toon, gateway) per #344, 24h TTL per Blizzard's Cache-Control max-age=86400, with the unknown-toon 200/aurora_id-0 response negative-cached so misses don't re-spend budget; failed refetches serve the stale row. One new hand-written endpoint (GET /api/custom/bnet/profile). No iofacade allowlist widening, no AlgorithmVersion bump (no detection change).
+2026-08-30  OK. Player-pill glyph sizing, games-list Featuring column, fingerprint domain gate, and scmapanalyzer bump. All presentation and query-shape changes: CSS only for the pill adornments; one SQL predicate added to ListPlayerFingerprintVectors restricting fingerprint input to 2-human non-money games (narrows what is read, never widens it); build-order markers dropped from the games-list Featuring column. scmapanalyzer bumped to 2026-08-16 for base recognition on newer maps — an existing dependency at an existing call site, no new I/O capability — with core.AlgorithmVersion 62 to 63 so bases re-resolve on re-ingest. No new os/net calls, no facade exemptions, no iofacade allowlist widening, no new hosts or paths.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
+
+```
+2026-08-30  OK. Fetch and cache SC:R aurora profiles (issue #329). New bnetfacade.FetchAuroraProfile goes through the already-metered BridgeGet (loopback-only, /web-api/ prefix, #319 budgets apply — no new hosts, paths, or facade exemptions) and normalizes the payload to UTF-8 before parsing. Responses are cached in a new bnet_profiles table (dashboard migration 000002) keyed on (toon, gateway) per #344, 24h TTL per Blizzard's Cache-Control max-age=86400, with the unknown-toon 200/aurora_id-0 response negative-cached so misses don't re-spend budget; failed refetches serve the stale row. One new hand-written endpoint (GET /api/custom/bnet/profile). No iofacade allowlist widening, no AlgorithmVersion bump (no detection change).
+```
 
 ```
 2026-08-30  OK. Two-budget rate limiter at the bnetfacade boundary (issue #319). BridgeGet and DownloadReplay now spend separate in-package budgets (token buckets with priority queues, persisted daily caps, exponential cooldown on the bridge's explicit rate-limit signal), so no caller can bypass them; ProbeBridge stays unmetered (local liveness only). New file write: bnet_budget.json (daily counters + cooldown) inside the app-data root, read/written strictly through iofacade — no allowlist widening, no new hosts or paths, no AlgorithmVersion bump (no detection change). Dashboard surfaces a requests-today meter via the existing /api/custom/bnet/status endpoint.

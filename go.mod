@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/icza/screp v1.12.17
 	github.com/marianogappa/scfingerprint v0.0.0-20260826174113-753e103f3eb5
-	github.com/marianogappa/scmapanalyzer v0.0.0-20260702193642-599fd1bc7363
+	github.com/marianogappa/scmapanalyzer v0.0.0-20260816120150-33902ec84bfc
 	github.com/mark3labs/mcp-go v0.55.1
 	github.com/minio/selfupdate v0.6.0
 	github.com/oapi-codegen/runtime v1.4.0

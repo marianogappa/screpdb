@@ -2666,13 +2666,8 @@ button.workflow-nav-update-available:disabled {
   gap: 0.1em;
 }
 
-.workflow-games-list-table .workflow-team-player-pill .workflow-race-icon {
-  width: 15px;
-  height: 15px;
-}
-
-.workflow-games-list-table .workflow-team-player-pill .workflow-crown {
-  font-size: 0.85em;
+.workflow-games-list-table .workflow-team-player-pill {
+  --player-glyph-size: 16px;
 }
 
 /* Keep each player name on a single line inside its pill — long names with
@@ -2769,13 +2764,8 @@ button.workflow-nav-update-available:disabled {
   font-size: 1em;
 }
 
-.workflow-games-list-table--roomy .workflow-team-player-pill .workflow-race-icon {
-  width: 18px;
-  height: 18px;
-}
-
-.workflow-games-list-table--roomy .workflow-team-player-pill .workflow-crown {
-  font-size: 0.95em;
+.workflow-games-list-table--roomy .workflow-team-player-pill {
+  --player-glyph-size: 19px;
 }
 
 .workflow-games-list-table--roomy .workflow-team-vs {
@@ -3049,6 +3039,11 @@ button.workflow-nav-update-available:disabled {
   background: none;
   border: none;
   cursor: pointer;
+  /* The button inherits the pill's line-height, so with vertical padding on top
+     it rendered taller than the pill itself and pushed every row open. Pin it
+     to a tight line box: the hover background still reads as a target, but the
+     button no longer sets the row height. */
+  line-height: 1.15;
   padding: 3px 6px;
   margin: -3px -2px;
   border-radius: 8px;
@@ -3111,10 +3106,7 @@ button.workflow-nav-update-available:disabled {
   color: #bad5ff;
 }
 
-.workflow-crown {
-  display: inline-flex;
-  margin-right: 4px;
-}
+
 
 .workflow-card {
   background: rgba(255, 255, 255, 0.04);
@@ -3463,13 +3455,49 @@ button.workflow-nav-update-available:disabled {
   margin-left: 4px;
 }
 
+/* Player-name adornments — winner crown, race icon, country flag, fingerprint
+   badge — all render inside one square box of --player-glyph-size. Sharing the
+   box gives them a common optical size *and* a common advance width; without it
+   every emoji keeps its own natural advance and the names after them never
+   start at the same x. The box also replaces the vertical-align these rules
+   used to carry, which never applied: every pill hosting them is a flex
+   container, where vertical-align is ignored. Contexts resize the whole set by
+   overriding --player-glyph-size alone. */
+.workflow-crown,
+.workflow-race-icon,
+.country-flag,
+.workflow-fingerprint-emoji {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--player-glyph-size, 18px);
+  height: var(--player-glyph-size, 18px);
+  line-height: 1;
+  /* Glyph ink is sized as a fraction of the box rather than in em, so the
+     balance between the emoji and the race-icon artwork holds at every context
+     size instead of drifting with each pill's own font-size. */
+  font-size: calc(var(--player-glyph-size, 18px) * var(--player-glyph-fill, 0.8));
+}
+
 .workflow-race-icon {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  vertical-align: text-bottom;
-  margin: 0 3px 0 0;
   object-fit: contain;
+}
+
+/* The race icon fills its box and anchors the group. The flag is identity too,
+   so it sits just under it; the crown (status) and magnifier (affordance) step
+   down again. Hierarchy by ink, never by box — the boxes stay identical so the
+   names after them still line up. */
+.country-flag {
+  --player-glyph-fill: 0.85;
+}
+
+.workflow-crown {
+  --player-glyph-fill: 0.72;
+}
+
+.workflow-fingerprint-emoji {
+  --player-glyph-fill: 0.62;
 }
 
 .workflow-pagination-row {
@@ -5392,9 +5420,8 @@ button.workflow-nav-update-available:disabled {
   line-height: 1.5;
 }
 
-.workflow-game-players-heading .workflow-team-player-pill .workflow-race-icon {
-  width: 20px;
-  height: 20px;
+.workflow-game-players-heading .workflow-team-player-pill {
+  --player-glyph-size: 20px;
 }
 
 .workflow-game-players-heading .workflow-team-matchup {
@@ -5409,9 +5436,8 @@ button.workflow-nav-update-available:disabled {
 .workflow-team-matchup--1v1 .workflow-team-vs {
   margin: 0 0.6rem;
 }
-.workflow-1v1-player .workflow-race-icon {
-  width: 30px;
-  height: 30px;
+.workflow-1v1-player {
+  --player-glyph-size: 24px;
 }
 .workflow-fingerprint-inline {
   display: inline-flex;
@@ -5462,13 +5488,8 @@ button.workflow-nav-update-available:disabled {
   -webkit-box-decoration-break: clone;
 }
 
-.workflow-team-player-pill .workflow-race-icon {
-  width: 25px;
-  height: 25px;
-}
-
-.workflow-team-player-pill .workflow-crown {
-  font-size: 1.0em;
+.workflow-team-player-pill {
+  --player-glyph-size: 24px;
 }
 
 .workflow-fingerprint-match {
@@ -5497,14 +5518,8 @@ button.workflow-nav-update-available:disabled {
 .workflow-fingerprint-icon-link:hover {
   opacity: 1;
 }
-.country-flag {
-  font-size: 0.85em;
-  margin-right: 2px;
-  vertical-align: baseline;
-}
-.workflow-fingerprint-emoji {
-  font-size: 0.85em;
-}
+
+
 .workflow-fingerprint-tooltip {
   position: absolute;
   left: 50%;
