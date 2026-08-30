@@ -23,7 +23,7 @@ func (d *Dashboard) initializeIngestSettings(ctx context.Context) error {
 		return err
 	}
 	if inputDir != "" {
-		d.refreshYouAliasesBestEffort(ctx)
+		d.refreshYouKeysBestEffort(ctx)
 		return nil
 	}
 
@@ -48,7 +48,7 @@ func (d *Dashboard) initializeIngestSettings(ctx context.Context) error {
 		return err
 	}
 	log.Printf("Resolved ingest replay folder to %s", defaultDir)
-	d.refreshYouAliasesBestEffort(ctx)
+	d.refreshYouKeysBestEffort(ctx)
 	return nil
 }
 
@@ -75,6 +75,6 @@ func (d *Dashboard) setIngestInputDir(ctx context.Context, inputDir string) erro
 	if err := d.dbStore.SetIngestInputDir(ctx, globalReplayFilterConfigKey, inputDir); err != nil {
 		return fmt.Errorf("failed to save ingest replay folder: %w", err)
 	}
-	d.refreshYouAliasesBestEffort(ctx)
+	d.refreshYouKeysBestEffort(ctx)
 	return nil
 }

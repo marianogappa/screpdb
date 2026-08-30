@@ -292,3 +292,35 @@ func validateReplay(data []byte) error {
 	}
 	return nil
 }
+
+// portDialTimeout bounds the loopback connect used by BridgePortOpen. A
+// loopback connect either completes in microseconds or is refused outright, so
+// this only ever trips when the kernel's accept queue is saturated.
+const portDialTimeout = 250 * time.Millisecond
+
+// BridgePortOpen reports whether anything is listening on addr, by opening and
+// immediately closing a loopback TCP connection. It refuses any non-loopback
+// address.
+//
+// This is deliberately *not* an HTTP request and is unmetered, like
+// ProbeBridge. It sends zero bytes, so the SC:R client has nothing to forward
+// upstream to Battle.net and no rate-limit budget is spent; the connection is
+// accepted and closed. That makes it cheap enough (~100µs) to poll on a fast
+// tick, which is the point: the monitor watches the port for transitions and
+// only spends a real HTTP probe when one actually happens.
+//
+// A bind-probe would be cheaper still and touch SC:R not at all, but it can win
+// the race for the port while SC:R is starting up and stop the game binding its
+// own listener — so the dial is the safer of the two.
+func BridgePortOpen(ctx context.Context, addr string) bool {
+	if !isLocalAddr(addr) {
+		return false
+	}
+	dialer := net.Dialer{Timeout: portDialTimeout}
+	conn, err := dialer.DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return false
+	}
+	_ = conn.Close()
+	return true
+}

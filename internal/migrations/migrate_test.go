@@ -83,7 +83,7 @@ func TestRunMigrations_CreatesSchemaAndLedgers(t *testing.T) {
 
 	dataTables := []string{
 		"replays", "players", "commands", "commands_low_value", "replay_events",
-		"player_fingerprint_vectors", "player_aliases", "settings",
+		"player_fingerprint_vectors", "settings",
 	}
 	for _, tbl := range dataTables {
 		if !tableExists(t, db, tbl) {
@@ -102,7 +102,7 @@ func TestRunMigrations_RecordsEveryEmbeddedUpFile(t *testing.T) {
 	want := map[MigrationSet][]string{
 		MigrationSetReplay:    {"000001_initial.up.sql", "000002_add_load_action_types.up.sql", "000003_add_player_fingerprint_vectors.up.sql", "000004_add_game_source_lobby_kind.up.sql"},
 		MigrationSetDashboard: {"000001_initial.up.sql", "000002_add_bnet_profiles.up.sql"},
-		MigrationSetSettings:  {"000001_initial.up.sql"},
+		MigrationSetSettings:  {"000001_initial.up.sql", "000002_drop_player_aliases.up.sql"},
 	}
 	for set, wantNames := range want {
 		got := appliedNames(t, db, set)
@@ -240,9 +240,9 @@ func TestCleanAndRunMigrations_PreservesSettingsData(t *testing.T) {
 
 	db := openDB(t, path)
 	if _, err := db.Exec(
-		`INSERT INTO player_aliases (canonical_alias, battle_tag_normalized, battle_tag_raw, source) VALUES ('me','me','Me','you')`,
+		`INSERT OR REPLACE INTO settings (config_key, ingest_input_dir) VALUES ('global', '/tmp/replays')`,
 	); err != nil {
-		t.Fatalf("seed alias: %v", err)
+		t.Fatalf("seed settings: %v", err)
 	}
 
 	// --clean equivalent: drops replay+dashboard, preserves settings tables.
@@ -253,12 +253,12 @@ func TestCleanAndRunMigrations_PreservesSettingsData(t *testing.T) {
 		t.Fatalf("DropMigrationSet(dashboard): %v", err)
 	}
 
-	var aliasCount int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM player_aliases`).Scan(&aliasCount); err != nil {
-		t.Fatalf("count aliases after clean: %v", err)
+	var inputDir string
+	if err := db.QueryRow(`SELECT ingest_input_dir FROM settings WHERE config_key = 'global'`).Scan(&inputDir); err != nil {
+		t.Fatalf("read settings after clean: %v", err)
 	}
-	if aliasCount != 1 {
-		t.Errorf("player_aliases should survive replay/dashboard drop, got %d rows", aliasCount)
+	if inputDir != "/tmp/replays" {
+		t.Errorf("settings should survive replay/dashboard drop, got ingest_input_dir=%q", inputDir)
 	}
 	if tableExists(t, db, "replays") {
 		t.Error("replays table should be dropped by DropMigrationSet(replay)")
@@ -266,7 +266,7 @@ func TestCleanAndRunMigrations_PreservesSettingsData(t *testing.T) {
 }
 
 // replayDataTables are the tables owned by the replay migration set that a
-// --clean wipe must drop (player_aliases is preserved and tested separately).
+// --clean wipe must drop (settings is preserved and tested separately).
 var replayDataTables = []string{"replays", "players", "commands", "commands_low_value", "replay_events", "player_fingerprint_vectors"}
 
 func TestDropAllMigrations_DropsEveryTableIncludingSettings(t *testing.T) {
@@ -276,7 +276,7 @@ func TestDropAllMigrations_DropsEveryTableIncludingSettings(t *testing.T) {
 	}
 	db := openDB(t, path)
 
-	for _, tbl := range append(append([]string{}, replayDataTables...), "player_aliases", "settings") {
+	for _, tbl := range append(append([]string{}, replayDataTables...), "settings") {
 		if !tableExists(t, db, tbl) {
 			t.Fatalf("precondition: table %q must exist before DropAllMigrations", tbl)
 		}
@@ -287,8 +287,8 @@ func TestDropAllMigrations_DropsEveryTableIncludingSettings(t *testing.T) {
 	}
 
 	// Unlike --clean, DropAllMigrations wipes the settings set too, so
-	// player_aliases and settings must be gone along with the replay tables.
-	for _, tbl := range append(append([]string{}, replayDataTables...), "player_aliases", "settings") {
+	// settings must be gone along with the replay tables.
+	for _, tbl := range append(append([]string{}, replayDataTables...), "settings") {
 		if tableExists(t, db, tbl) {
 			t.Errorf("table %q should be dropped by DropAllMigrations", tbl)
 		}
@@ -314,12 +314,12 @@ func TestCleanAndRunMigrations_DropAndReapplyCycle(t *testing.T) {
 	}
 
 	db := openDB(t, path)
-	// player_aliases survives --clean but NOT CleanAndRunMigrations, which
+	// settings survives --clean but NOT CleanAndRunMigrations, which
 	// drops the settings set too; seeding it proves the full wipe.
 	if _, err := db.Exec(
-		`INSERT INTO player_aliases (canonical_alias, battle_tag_normalized, battle_tag_raw, source) VALUES ('me','me','Me','you')`,
+		`INSERT OR REPLACE INTO settings (config_key, ingest_input_dir) VALUES ('global', '/tmp/replays')`,
 	); err != nil {
-		t.Fatalf("seed alias row: %v", err)
+		t.Fatalf("seed settings row: %v", err)
 	}
 
 	if err := CleanAndRunMigrations(path); err != nil {
@@ -327,7 +327,7 @@ func TestCleanAndRunMigrations_DropAndReapplyCycle(t *testing.T) {
 	}
 
 	// Every table is recreated by the reapply.
-	for _, tbl := range append(append([]string{}, replayDataTables...), "player_aliases", "settings") {
+	for _, tbl := range append(append([]string{}, replayDataTables...), "settings") {
 		if !tableExists(t, db, tbl) {
 			t.Errorf("table %q should be recreated after CleanAndRunMigrations", tbl)
 		}
@@ -338,13 +338,14 @@ func TestCleanAndRunMigrations_DropAndReapplyCycle(t *testing.T) {
 		}
 	}
 
-	// The seeded row must be gone: clean drops the table, reapply makes it empty.
-	var aliasCount int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM player_aliases`).Scan(&aliasCount); err != nil {
-		t.Fatalf("count aliases after clean+run: %v", err)
+	// The seeded value must be gone: clean drops the table, reapply recreates
+	// it with defaults.
+	var cycleInputDir string
+	if err := db.QueryRow(`SELECT ingest_input_dir FROM settings WHERE config_key = 'global'`).Scan(&cycleInputDir); err != nil {
+		t.Fatalf("read settings after clean+run: %v", err)
 	}
-	if aliasCount != 0 {
-		t.Errorf("player_aliases should be empty after clean+reapply, got %d rows", aliasCount)
+	if cycleInputDir != "" {
+		t.Errorf("settings should be reset after clean+reapply, got ingest_input_dir=%q", cycleInputDir)
 	}
 
 	// Ledgers are fully repopulated so subsequent RunMigrations no-ops.
@@ -359,7 +360,7 @@ func TestCleanAndRunMigrations_OnFreshDB(t *testing.T) {
 		t.Fatalf("CleanAndRunMigrations on fresh DB: %v", err)
 	}
 	db := openDB(t, path)
-	for _, tbl := range append(append([]string{}, replayDataTables...), "player_aliases", "settings") {
+	for _, tbl := range append(append([]string{}, replayDataTables...), "settings") {
 		if !tableExists(t, db, tbl) {
 			t.Errorf("table %q should exist after CleanAndRunMigrations on fresh DB", tbl)
 		}
@@ -375,7 +376,7 @@ func TestCleanAndRunMigrationSet_ReappliesSingleSet(t *testing.T) {
 	db := openDB(t, path)
 	// Seed a preserved-set row to prove CleanAndRunMigrationSet(replay) leaves it intact.
 	if _, err := db.Exec(
-		`INSERT INTO player_aliases (canonical_alias, battle_tag_normalized, battle_tag_raw, source) VALUES ('a','a','A','you')`,
+		`INSERT OR REPLACE INTO settings (config_key, ingest_input_dir) VALUES ('global', '/tmp/replays')`,
 	); err != nil {
 		t.Fatalf("seed alias: %v", err)
 	}
@@ -391,12 +392,12 @@ func TestCleanAndRunMigrationSet_ReappliesSingleSet(t *testing.T) {
 	}
 
 	// Dropping+reapplying only the replay set must not disturb settings-owned data.
-	var aliasCount int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM player_aliases`).Scan(&aliasCount); err != nil {
-		t.Fatalf("count aliases: %v", err)
+	var replaySetInputDir string
+	if err := db.QueryRow(`SELECT ingest_input_dir FROM settings WHERE config_key = 'global'`).Scan(&replaySetInputDir); err != nil {
+		t.Fatalf("read settings: %v", err)
 	}
-	if aliasCount != 1 {
-		t.Errorf("player_aliases should survive CleanAndRunMigrationSet(replay), got %d rows", aliasCount)
+	if replaySetInputDir != "/tmp/replays" {
+		t.Errorf("settings should survive CleanAndRunMigrationSet(replay), got ingest_input_dir=%q", replaySetInputDir)
 	}
 
 	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 4 {

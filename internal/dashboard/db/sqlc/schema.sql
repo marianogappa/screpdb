@@ -67,16 +67,6 @@ CREATE TABLE player_fingerprint_vectors (
   vector BLOB NOT NULL
 );
 
-CREATE TABLE player_aliases (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  canonical_alias TEXT NOT NULL,
-  battle_tag_normalized TEXT NOT NULL,
-  battle_tag_raw TEXT NOT NULL,
-  aurora_id INTEGER,
-  source TEXT NOT NULL,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE replay_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   replay_id INTEGER NOT NULL,

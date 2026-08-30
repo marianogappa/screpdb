@@ -50,7 +50,6 @@ func TestSQLCSchemaMatchesRuntimeSchemaForDeclaredColumns(t *testing.T) {
 		"settings",
 		"replays",
 		"players",
-		"player_aliases",
 		"replay_events",
 		"commands",
 		"commands_low_value",

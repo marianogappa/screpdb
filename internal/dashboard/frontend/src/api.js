@@ -65,51 +65,6 @@ export const api = {
     return response.json();
   },
 
-  listAliases: async () => {
-    const response = await fetch(`${API_CUSTOM}/aliases`);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to list aliases');
-    }
-    return response.json();
-  },
-
-  importAliases: async (aliasesPayload) => {
-    const response = await fetch(`${API_CUSTOM}/aliases`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ aliases: aliasesPayload }),
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to import aliases');
-    }
-    return response.json();
-  },
-
-  upsertAliasEntry: async (entry) => {
-    const response = await fetch(`${API_CUSTOM}/aliases/entry`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entry),
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to upsert alias entry');
-    }
-    return response.json();
-  },
-
-  deleteAliasEntry: async (id) => {
-    const response = await fetch(`${API_CUSTOM}/aliases/${id}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to delete alias entry');
-    }
-    return response.json();
-  },
 
   getHealth: async () => {
     const response = await fetch(`${API_BASE}/health`);
@@ -418,11 +373,55 @@ export const api = {
     return response.json();
   },
 
+  getFeatureFlags: async () => {
+    const response = await fetch(`${API_CUSTOM}/feature-flags`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to load feature flags');
+    }
+    return response.json();
+  },
+
+  setFeatureFlag: async (key, enabled) => {
+    const response = await fetch(`${API_CUSTOM}/feature-flags`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, enabled }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to save feature flag');
+    }
+    return response.json();
+  },
+
+  getGamingSession: async () => {
+    const response = await fetch(`${API_CUSTOM}/gaming-session`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to load gaming session');
+    }
+    return response.json();
+  },
+
   getBnetStatus: async () => {
     const response = await fetch(`${API_CUSTOM}/bnet/status`);
     if (!response.ok) {
       const text = await response.text();
       throw new Error(text || 'Failed to get Battle.net bridge status');
+    }
+    return response.json();
+  },
+
+  // Cache-only lookup: never triggers a fetch, so a page can poll this while a
+  // backfill runs without spending any bridge budget.
+  getBnetCountryCodes: async (players) => {
+    const list = (players || []).filter(Boolean);
+    if (list.length === 0) return { country_codes: {}, pending: false };
+    const response = await fetch(`${API_CUSTOM}/bnet/country-codes?players=${encodeURIComponent(list.join(','))}`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get country codes');
     }
     return response.json();
   },

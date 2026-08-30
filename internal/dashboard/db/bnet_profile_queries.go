@@ -92,3 +92,41 @@ func (s *Store) UpsertBnetProfile(ctx context.Context, row BnetProfileRow) error
 		FetchedAt:   row.FetchedAt.UTC().Format(time.RFC3339),
 	})
 }
+
+// BnetProfilePayloadRow is one cached profile payload.
+type BnetProfilePayloadRow struct {
+	Toon    string
+	Gateway int64
+	Payload string
+}
+
+// ListBnetProfilePayloadsByPlayerKeys returns every cached, found profile for
+// the given normalized player keys. Read-only: it never triggers a fetch.
+func (s *Store) ListBnetProfilePayloadsByPlayerKeys(ctx context.Context, playerKeys []string) ([]BnetProfilePayloadRow, error) {
+	if len(playerKeys) == 0 {
+		return []BnetProfilePayloadRow{}, nil
+	}
+	placeholders := make([]string, len(playerKeys))
+	args := make([]any, len(playerKeys))
+	for i, key := range playerKeys {
+		placeholders[i] = "?"
+		args[i] = key
+	}
+	query := `SELECT toon, gateway, payload
+		FROM bnet_profiles
+		WHERE found = 1 AND LOWER(TRIM(toon)) IN (` + strings.Join(placeholders, ",") + `)`
+	rows, err := Trace(s.defaultDB).QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []BnetProfilePayloadRow{}
+	for rows.Next() {
+		var row BnetProfilePayloadRow
+		if err := rows.Scan(&row.Toon, &row.Gateway, &row.Payload); err != nil {
+			return nil, err
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}

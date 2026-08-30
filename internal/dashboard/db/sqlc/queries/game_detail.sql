@@ -154,13 +154,30 @@ ORDER BY r.replay_date DESC, r.id DESC
 LIMIT 12;
 
 -- name: ListPlayerFingerprintVectors :many
--- All feature vectors for a player under a given feature version, ordered by
--- replay date so callers can reason about temporal colocation.
+-- Feature vectors for a player under a given feature version, ordered by replay
+-- date so callers can reason about temporal colocation.
+--
+-- Restricted to solo games on non-money maps, because that is the distribution
+-- the fingerprint model was trained and calibrated on. An 8-player Big Game
+-- Hunters game has a structurally different command stream (mass expansion,
+-- little scouting or harassment, few hotkey groups), so its vectors land in a
+-- region of the whitened space where the z-score calibration does not hold and
+-- the reported false-positive rate is not a measurement. Feeding them in
+-- produced confident nonsense: a 42-APM money-map player matching a Korean
+-- progamer at the strictest operating point.
 SELECT v.vector, v.race, v.frames, v.cmd_count
 FROM player_fingerprint_vectors v
 JOIN players p ON p.id = v.player_id
 JOIN replays r ON r.id = v.replay_id
-WHERE lower(trim(p.name)) = ? AND v.feature_version = ?
+WHERE lower(trim(p.name)) = ?
+  AND v.feature_version = ?
+  AND r.map_kind <> 'Money'
+  AND (
+    SELECT COUNT(*) FROM players pp
+    WHERE pp.replay_id = r.id
+      AND pp.is_observer = 0
+      AND lower(trim(coalesce(pp.type, ''))) = 'human'
+  ) = 2
 ORDER BY r.replay_date ASC;
 
 -- name: ListPlayerApmAggregates :many

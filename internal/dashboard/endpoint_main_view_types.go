@@ -793,6 +793,7 @@ type workflowPlayerOverview struct {
 	FingerprintCoverage workflowFingerprintCoverage   `json:"fingerprint_coverage"`
 	FingerprintMatch    *workflowFingerprintMatch     `json:"fingerprint_match,omitempty"`
 	CountryCode         string                        `json:"country_code,omitempty"`
+	BnetProfile         *bnetProfileDetail            `json:"bnet_profile,omitempty"`
 	RecentGames         []workflowGameListItem        `json:"recent_games"`
 	ChatSummary         workflowPlayerChatSummary     `json:"chat_summary"`
 	NarrativeHints      []string                      `json:"narrative_hints"`

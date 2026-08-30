@@ -2,6 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallba
 import { api } from './api';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import IngestModal from './components/IngestModal';
+import GamingSessionPanel from './components/GamingSessionPanel';
 import Histogram from './components/charts/Histogram';
 import TimingScatterRows from './components/charts/TimingScatterRows';
 import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
@@ -148,7 +149,7 @@ const MAIN_GAME_SKILL_PROXY_TABS = ['first-unit-efficiency', 'unit-production-ca
 
 const isMainGameSkillProxyTab = (tab) => MAIN_GAME_SKILL_PROXY_TABS.includes(tab);
 
-const SKILL_PROXY_CADENCE_INFO_TEXT = 'ℹ️ How smoothly you keep adding army from the mid game on—not just how much, but how evenly you queue it. Formula: units/min ÷ (1 + gap CV).';
+const SKILL_PROXY_CADENCE_INFO_TEXT = 'ℹ️ How smoothly you keep adding army from the mid game on, not just how much, but how evenly you queue it. Formula: units/min ÷ (1 + gap CV).';
 
 const SKILL_PROXY_VIEWPORT_INFO_TEXT = 'ℹ️ How many times a player switches between places on average per minute.';
 
@@ -156,7 +157,7 @@ const SKILL_PROXY_VIEWPORT_INFO_TEXT = 'ℹ️ How many times a player switches 
 // APM omitted intentionally (number is self-explanatory in that view).
 const PLAYER_INSIGHT_DESCRIPTION_OVERRIDES = {
   apm: '',
-  'unit-production-cadence': 'How smoothly you keep adding army from the mid game on—not just how much, but how evenly you queue it. Formula: units/min ÷ (1 + gap CV).',
+  'unit-production-cadence': 'How smoothly you keep adding army from the mid game on, not just how much, but how evenly you queue it. Formula: units/min ÷ (1 + gap CV).',
   'viewport-switch-rate': 'How many times a player switches between places on average per minute.',
 };
 
@@ -551,12 +552,149 @@ const countryCodeToFlag = (code) => {
   return String.fromCodePoint(...codePoints);
 };
 
-const CountryFlag = ({ code }) => {
-  if (!code) return null;
-  const flag = countryCodeToFlag(code);
-  if (!flag) return null;
-  return <span className="country-flag" title={code.toUpperCase()}>{flag}</span>;
+// Country codes arrive from the SC:R bridge after the page has already
+// rendered, because fetching them is rate-limited and deliberately slow. Rather
+// than block the render or make the user reload, the page keeps polling a
+// cache-only endpoint and publishes what lands here; every flag reads through
+// it, so flags appear in place as they resolve.
+// The backend marks the user's own players by appending this to their display
+// name, so every surface gets it without threading a flag through each payload.
+// Splitting it back out here is what lets the marker carry its own tooltip
+// rather than sitting inert inside a string.
+const YOU_MARKER = '🫵';
+
+// What the Battle.net profile tells us about a player, rendered as a compact
+// strip under their name. Every field is optional: the bridge may be off, the
+// profile may not be cached yet, and plenty of accounts never ladder.
+const BnetProfileStrip = ({ profile, currentName }) => {
+  if (!profile) return null;
+  const current = String(currentName || '').trim().toLowerCase();
+  const otherToons = (profile.toons || [])
+    .map((t) => t.toon)
+    .filter((toon) => String(toon).trim().toLowerCase() !== current);
+
+  const items = [];
+  if (profile.battle_tag) {
+    items.push(['Battle tag', profile.battle_tag]);
+  }
+  if (profile.aurora_id) {
+    items.push(['Aurora ID', String(profile.aurora_id)]);
+  }
+  if (profile.plays_ladder) {
+    const rating = profile.mmr || profile.highest_mmr;
+    const record = (profile.ladder_wins || profile.ladder_losses)
+      ? `${profile.ladder_wins || 0}-${profile.ladder_losses || 0}`
+      : '';
+    items.push(['Ladder', [rating ? `${rating} MMR` : 'yes', record].filter(Boolean).join(' · ')]);
+  }
+  if (items.length === 0 && otherToons.length === 0) return null;
+
+  return (
+    <div className="bnet-profile-strip">
+      {items.map(([label, value]) => (
+        <div key={label} className="bnet-profile-item">
+          <span className="bnet-profile-label">{label}</span>
+          <span className="bnet-profile-value">{value}</span>
+        </div>
+      ))}
+      {otherToons.length > 0 ? (
+        <div className="bnet-profile-item bnet-profile-item--toons">
+          <span className="bnet-profile-label">Also plays as</span>
+          <span className="bnet-profile-value">
+            {otherToons.map((toon) => (
+              <span key={toon} className="bnet-profile-toon">{toon}</span>
+            ))}
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
 };
+
+const PlayerDisplayName = ({ name }) => {
+  const text = String(name ?? '');
+  if (!text.endsWith(YOU_MARKER)) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, -YOU_MARKER.length).trimEnd()}
+      <span className="you-marker" data-tip="You">{YOU_MARKER}</span>
+    </>
+  );
+};
+
+const CountryFlagOverrideContext = React.createContext(null);
+
+const CountryFlag = ({ code, playerKey }) => {
+  const overrides = React.useContext(CountryFlagOverrideContext);
+  const resolved = code || (playerKey ? overrides?.[String(playerKey).trim().toLowerCase()] : null);
+  if (!resolved) return null;
+  const flag = countryCodeToFlag(resolved);
+  if (!flag) return null;
+  return <span className="country-flag" title={resolved.toUpperCase()}>{flag}</span>;
+};
+
+// COUNTRY_FLAG_POLL_MS paces the cache-only poll. It costs one local DB read and
+// no bridge budget, so the cadence is chosen for how fast flags feel like they
+// arrive, not for cost. COUNTRY_FLAG_POLL_MAX_TICKS stops a page that will never
+// resolve (players with no Battle.net profile) from polling for ever.
+// While the session view is open, sweep for new replays far more often than the
+// background loop's minute: the whole point of that screen is the game that
+// just finished. AUTO_INGEST_SESSION_POLL_SECONDS is the window we then wait
+// for the replay count to actually move, kept longer than the interval so a
+// slow ingest is not declared a no-op.
+const AUTO_INGEST_SESSION_INTERVAL_SECONDS = 15;
+const AUTO_INGEST_SESSION_POLL_SECONDS = 30;
+
+const COUNTRY_FLAG_POLL_MS = 2000;
+const COUNTRY_FLAG_POLL_MAX_TICKS = 45;
+
+// useCountryFlagBackfill polls for the country codes of players currently
+// rendered without a flag, and returns the codes that have resolved so far.
+// Polling stops as soon as nothing is outstanding and the server reports no
+// backfill in flight.
+function useCountryFlagBackfill(missingKeys, enabled) {
+  const [overrides, setOverrides] = useState({});
+  const missingSignature = missingKeys.join(',');
+
+  useEffect(() => {
+    if (!enabled || missingKeys.length === 0) return undefined;
+    let cancelled = false;
+    let ticks = 0;
+    let timer = null;
+
+    const poll = async () => {
+      if (cancelled) return;
+      ticks += 1;
+      try {
+        const res = await api.getBnetCountryCodes(missingKeys);
+        if (cancelled) return;
+        const codes = res?.country_codes || {};
+        if (Object.keys(codes).length > 0) {
+          setOverrides((prev) => ({ ...prev, ...codes }));
+        }
+        const stillMissing = missingKeys.some((k) => !codes[k]);
+        if (!stillMissing || (!res?.pending && ticks >= 2) || ticks >= COUNTRY_FLAG_POLL_MAX_TICKS) {
+          return;
+        }
+      } catch {
+        // A failed poll is not worth surfacing: the flag simply stays absent.
+        if (ticks >= COUNTRY_FLAG_POLL_MAX_TICKS) return;
+      }
+      timer = setTimeout(poll, COUNTRY_FLAG_POLL_MS);
+    };
+
+    timer = setTimeout(poll, COUNTRY_FLAG_POLL_MS);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+    // missingSignature stands in for missingKeys so a re-render with an
+    // equivalent array does not restart the poll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missingSignature, enabled]);
+
+  return overrides;
+}
 
 const FingerprintBadge = ({ match, compact }) => {
   if (!match) return null;
@@ -2095,18 +2233,6 @@ function App() {
     try { window.sessionStorage.setItem('dismissedStaleReplaysCount', String(staleReplaysCount)); } catch (_) {}
     setDismissedStaleCount(staleReplaysCount);
   }, [staleReplaysCount]);
-  const [aliases, setAliases] = useState([]);
-  const [aliasesLoading, setAliasesLoading] = useState(false);
-  const [aliasesMessage, setAliasesMessage] = useState('');
-  const [aliasesMessageIsError, setAliasesMessageIsError] = useState(false);
-  const [aliasSaving, setAliasSaving] = useState(false);
-  const [aliasSources, setAliasSources] = useState(['you', 'manual', 'imported']);
-  const [aliasEditOriginal, setAliasEditOriginal] = useState(null);
-  const [aliasForm, setAliasForm] = useState({
-    canonical_alias: '',
-    battle_tag: '',
-    aurora_id: '',
-  });
   const [autoIngestNotice, setAutoIngestNotice] = useState('');
   const [ingestForm, setIngestForm] = useState({
     stopAfterN: 50,
@@ -2742,171 +2868,6 @@ function App() {
     }
   };
 
-  const normalizeAliasBattleTag = (value) => String(value || '').trim().toLowerCase();
-
-  const loadAliases = async () => {
-    try {
-      setAliasesLoading(true);
-      const data = await api.listAliases();
-      setAliases(Array.isArray(data?.aliases) ? data.aliases : []);
-    } catch (err) {
-      setAliasesMessage(err.message || 'Failed to load aliases');
-      setAliasesMessageIsError(true);
-    } finally {
-      setAliasesLoading(false);
-    }
-  };
-
-  const handleAliasSave = async () => {
-    const canonicalAlias = String(aliasForm.canonical_alias || '').trim();
-    const battleTag = String(aliasForm.battle_tag || '').trim();
-    if (!canonicalAlias || !battleTag) {
-      setAliasesMessage('Alias and name in replay are required.');
-      setAliasesMessageIsError(true);
-      return;
-    }
-    if (canonicalAlias.trim().toLowerCase() === battleTag.trim().toLowerCase()) {
-      setAliasesMessage('Alias must differ from name in replay.');
-      setAliasesMessageIsError(true);
-      return;
-    }
-    let source = 'manual';
-    if (aliasEditOriginal) {
-      if (aliasEditOriginal.source === 'you') {
-        source = 'manual';
-      } else {
-        source = aliasEditOriginal.source;
-      }
-    }
-    const wasEditing = Boolean(aliasEditOriginal);
-    try {
-      setAliasSaving(true);
-      setAliasesMessage('');
-      setAliasesMessageIsError(false);
-      const auroraIdRaw = String(aliasForm.aurora_id || '').trim();
-      await api.upsertAliasEntry({
-        canonical_alias: canonicalAlias,
-        battle_tag: battleTag,
-        source,
-        aurora_id: auroraIdRaw ? Number(auroraIdRaw) : undefined,
-      });
-      if (aliasEditOriginal) {
-        const prevNorm = normalizeAliasBattleTag(aliasEditOriginal.battle_tag_normalized);
-        const tripleChanged =
-          normalizeAliasBattleTag(battleTag) !== prevNorm ||
-          canonicalAlias !== aliasEditOriginal.canonical_alias ||
-          source !== aliasEditOriginal.source;
-        if (tripleChanged && aliasEditOriginal.id != null) {
-          await api.deleteAliasEntry(aliasEditOriginal.id);
-        }
-      }
-      setAliasForm({ canonical_alias: '', battle_tag: '', aurora_id: '' });
-      setAliasEditOriginal(null);
-      setAliasesMessage(wasEditing ? 'Alias updated.' : 'Alias saved.');
-      await loadAliases();
-    } catch (err) {
-      setAliasesMessage(err.message || 'Failed to save alias');
-      setAliasesMessageIsError(true);
-    } finally {
-      setAliasSaving(false);
-    }
-  };
-
-  const handleAliasEdit = (row) => {
-    setAliasesMessage('');
-    setAliasesMessageIsError(false);
-    setAliasEditOriginal({
-      id: row.id,
-      canonical_alias: row.canonical_alias,
-      battle_tag_normalized: row.battle_tag_normalized,
-      battle_tag_raw: row.battle_tag_raw,
-      source: row.source,
-    });
-    setAliasForm({
-      canonical_alias: row.canonical_alias || '',
-      battle_tag: row.battle_tag_raw || '',
-      aurora_id: row.aurora_id != null ? String(row.aurora_id) : '',
-    });
-  };
-
-  const handleAliasCancelEdit = () => {
-    setAliasEditOriginal(null);
-    setAliasForm({ canonical_alias: '', battle_tag: '', aurora_id: '' });
-    setAliasesMessage('');
-    setAliasesMessageIsError(false);
-  };
-
-  const handleAliasSourceToggle = (value) => {
-    setAliasSources((prev) => {
-      if (prev.includes(value)) {
-        return prev.filter((v) => v !== value);
-      }
-      return [...prev, value].sort((a, b) => a.localeCompare(b));
-    });
-  };
-
-  const handleAliasExport = () => {
-    const byCanonical = {};
-    for (const row of aliases || []) {
-      const key = row.canonical_alias || '';
-      if (!Object.prototype.hasOwnProperty.call(byCanonical, key)) {
-        byCanonical[key] = [];
-      }
-      const entry = { battle_tag: row.battle_tag_raw || '' };
-      if (row.aurora_id != null) {
-        entry.aurora_id = row.aurora_id;
-      }
-      byCanonical[key].push(entry);
-    }
-    const blob = new Blob([JSON.stringify(byCanonical, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = 'aliases-export.json';
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleAliasDelete = async (id) => {
-    try {
-      setAliasesMessage('');
-      setAliasesMessageIsError(false);
-      await api.deleteAliasEntry(id);
-      if (aliasEditOriginal && aliasEditOriginal.id === id) {
-        setAliasEditOriginal(null);
-        setAliasForm({ canonical_alias: '', battle_tag: '', aurora_id: '' });
-      }
-      setAliasesMessage('Alias removed.');
-      await loadAliases();
-    } catch (err) {
-      setAliasesMessage(err.message || 'Failed to delete alias');
-      setAliasesMessageIsError(true);
-    }
-  };
-
-  const handleAliasImportFile = async (file) => {
-    try {
-      setAliasesMessage('');
-      setAliasesMessageIsError(false);
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-      const payload =
-        parsed &&
-        typeof parsed === 'object' &&
-        !Array.isArray(parsed) &&
-        parsed.aliases &&
-        typeof parsed.aliases === 'object' &&
-        !Array.isArray(parsed.aliases)
-          ? parsed.aliases
-          : parsed;
-      await api.importAliases(payload);
-      setAliasesMessage('Alias file imported.');
-      await loadAliases();
-    } catch (err) {
-      setAliasesMessage(err.message || 'Failed to import alias file');
-      setAliasesMessageIsError(true);
-    }
-  };
 
   const showAutoIngestNotice = (message) => {
     if (autoIngestNoticeTimerRef.current) {
@@ -3018,6 +2979,89 @@ function App() {
   const bnetDailyCap = bnetStatus?.daily_cap ?? 0;
   const bnetCooldownUntil = bnetStatus?.cooldown_until ? new Date(bnetStatus.cooldown_until) : null;
   const bnetCoolingDown = Boolean(bnetCooldownUntil) && bnetCooldownUntil > new Date();
+
+  const [featureFlags, setFeatureFlags] = useState({});
+  const [featureFlagsSaving, setFeatureFlagsSaving] = useState(false);
+  const [featureFlagsMessage, setFeatureFlagsMessage] = useState('');
+  const [featureFlagsMessageIsError, setFeatureFlagsMessageIsError] = useState(false);
+  const [gamingSession, setGamingSession] = useState(null);
+  const [gamingSessionLoading, setGamingSessionLoading] = useState(false);
+  const [gamingSessionError, setGamingSessionError] = useState('');
+
+  const gamingSessionEnabled = Boolean(featureFlags.gaming_session);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.getFeatureFlags();
+        if (!cancelled) setFeatureFlags(res?.feature_flags || {});
+      } catch {
+        // Flags default off; a failed load simply leaves the previews hidden.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleFeatureFlagToggle = async (key, enabled) => {
+    try {
+      setFeatureFlagsSaving(true);
+      setFeatureFlagsMessage('');
+      setFeatureFlagsMessageIsError(false);
+      const res = await api.setFeatureFlag(key, enabled);
+      setFeatureFlags(res?.feature_flags || {});
+    } catch (err) {
+      setFeatureFlagsMessage(err.message || 'Failed to save feature flag');
+      setFeatureFlagsMessageIsError(true);
+    } finally {
+      setFeatureFlagsSaving(false);
+    }
+  };
+
+  // The session is refetched whenever the flag turns on and whenever the user
+  // opens the view, so a game finishing mid-visit shows up on the next look.
+  const loadGamingSession = useCallback(async () => {
+    if (!gamingSessionEnabled) return;
+    try {
+      setGamingSessionLoading(true);
+      setGamingSessionError('');
+      const res = await api.getGamingSession();
+      setGamingSession(res);
+    } catch (err) {
+      setGamingSessionError(err.message || 'Failed to load gaming session');
+    } finally {
+      setGamingSessionLoading(false);
+    }
+  }, [gamingSessionEnabled]);
+
+  useEffect(() => {
+    if (!gamingSessionEnabled) {
+      setGamingSession(null);
+      return;
+    }
+    void loadGamingSession();
+  }, [gamingSessionEnabled, loadGamingSession]);
+
+  // Every player currently on screen that has no flag yet. The poll below asks
+  // only about these, and only while the bridge could still produce an answer.
+  const missingCountryCodeKeys = useMemo(() => {
+    const keys = new Set();
+    const consider = (player) => {
+      const key = String(player?.player_key || '').trim().toLowerCase();
+      if (!key || player?.country_code) return;
+      keys.add(key);
+    };
+    (mainPlayers || []).forEach(consider);
+    (mainGames || []).forEach((game) => (game?.players || []).forEach(consider));
+    (mainGame?.players || []).forEach(consider);
+    if (mainPlayer) consider(mainPlayer);
+    return [...keys].sort();
+  }, [mainPlayers, mainGames, mainGame, mainPlayer]);
+
+  const countryCodeOverrides = useCountryFlagBackfill(
+    missingCountryCodeKeys,
+    !bnetDisabled && bnetState === 'connected',
+  );
   const bnetTipSuffix = bnetDisabled || bnetDailyCap <= 0 ? ''
     : bnetCoolingDown
       ? `. Requests today: ${bnetRequestsToday}/${bnetDailyCap}. Paused until ${bnetCooldownUntil.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} after rate limiting`
@@ -3066,8 +3110,8 @@ function App() {
     const manager = updateStatus?.package_manager || '';
     if (updateManagerCommand) return `Run in your terminal: ${updateManagerCommand}`;
     if (reason === 'managed') return `Update via your package manager (${manager})`;
-    if (reason === 'not-writable') return 'Install folder is read-only — download the new version manually';
-    if (reason === 'unsupported-platform') return 'No self-update build for this platform — download the new version';
+    if (reason === 'not-writable') return 'Install folder is read-only. Download the new version manually';
+    if (reason === 'unsupported-platform') return 'No self-update build for this platform. Download the new version';
     return 'Download the new version';
   })();
 
@@ -3449,64 +3493,88 @@ function App() {
     if (!showGlobalReplayFilter) {
       return undefined;
     }
-    setAliasesMessage('');
-    setAliasesMessageIsError(false);
-    setAliasEditOriginal(null);
-    setAliasForm({ canonical_alias: '', battle_tag: '', aurora_id: '' });
-    setAliasSources(['you', 'manual', 'imported']);
     void loadIngestSettings();
-    void loadAliases();
     return undefined;
   }, [showGlobalReplayFilter]);
+
+  // One ingest sweep. Shared by the background loop and the faster loop the
+  // session view runs, with autoIngestInFlight keeping the two from overlapping.
+  // onIncrease fires only when the sweep actually brought in a replay, so a
+  // no-op sweep never makes a screen blink.
+  const runAutoIngestSweep = useCallback(async (pollSeconds, onIncrease) => {
+    if (autoIngestInFlight.current || showIngestPanel) return;
+    autoIngestInFlight.current = true;
+    try {
+      const health = await api.getHealth();
+      const baselineCount = Number(health?.total_replays || 0);
+      const ingestResponse = await api.startIngest({
+        stop_after_n_reps: 1,
+        clean: false,
+        store_right_clicks: false,
+        skip_hotkeys: false,
+      });
+      if (!ingestResponse?.started) {
+        return;
+      }
+      const didIncrease = await pollForReplayCountIncrease(baselineCount, pollSeconds);
+      if (didIncrease) {
+        await onIncrease?.();
+        showAutoIngestNotice('auto-ingested new replays');
+      }
+    } catch (err) {
+      console.error('Auto-ingest failed:', err);
+    } finally {
+      autoIngestInFlight.current = false;
+    }
+  }, [showIngestPanel]);
 
   useEffect(() => {
     if (!ingestForm.autoIngestEnabled) {
       return undefined;
     }
-
     const intervalSeconds = 60;
     let cancelled = false;
-
-    const runAutoIngest = async () => {
-      if (cancelled || autoIngestInFlight.current || showIngestPanel) return;
-      autoIngestInFlight.current = true;
-      try {
-        const health = await api.getHealth();
-        const baselineCount = Number(health?.total_replays || 0);
-        const ingestResponse = await api.startIngest({
-          stop_after_n_reps: 1,
-          clean: false,
-          store_right_clicks: false,
-          skip_hotkeys: false,
-        });
-        if (!ingestResponse?.started) {
-          return;
-        }
-
-        const didIncrease = await pollForReplayCountIncrease(baselineCount, intervalSeconds);
-        if (didIncrease) {
-          // Game-list-only refresh: no other screen should ever blink in
-          // response to a background ingestion. If auto-ingest was a
-          // no-op (didIncrease=false) nothing reloads at all. Routing
-          // via a ref so the latest filter/page state is read at fire
-          // time rather than the closure-captured value from when
-          // auto-ingest was first enabled.
-          await refreshGamesAfterAutoIngestRef.current?.();
-          showAutoIngestNotice('auto-ingested new replays');
-        }
-      } catch (err) {
-        console.error('Auto-ingest failed:', err);
-      } finally {
-        autoIngestInFlight.current = false;
-      }
+    const tick = () => {
+      if (cancelled) return;
+      // Game-list-only refresh: no other screen should ever blink in response
+      // to a background ingestion. Routed via a ref so the latest filter/page
+      // state is read at fire time rather than the value captured when
+      // auto-ingest was first enabled.
+      void runAutoIngestSweep(intervalSeconds, () => refreshGamesAfterAutoIngestRef.current?.());
     };
-
-    const timer = window.setInterval(runAutoIngest, intervalSeconds * 1000);
+    const timer = window.setInterval(tick, intervalSeconds * 1000);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [ingestForm.autoIngestEnabled, showIngestPanel]);
+  }, [ingestForm.autoIngestEnabled, runAutoIngestSweep]);
+
+  // The session view is about the games you are playing right now, so a
+  // minute-old picture is already stale. While it is open it sweeps on its own
+  // faster cadence and does so whether or not background auto-ingest is on:
+  // being on this screen is itself the statement that you want it current.
+  // The sweep is local filesystem work, so the shorter interval costs no
+  // network and no Battle.net budget.
+  useEffect(() => {
+    if (activeView !== 'session' || !gamingSessionEnabled) {
+      return undefined;
+    }
+    const intervalSeconds = AUTO_INGEST_SESSION_INTERVAL_SECONDS;
+    let cancelled = false;
+    const tick = () => {
+      if (cancelled) return;
+      void runAutoIngestSweep(AUTO_INGEST_SESSION_POLL_SECONDS, async () => {
+        await refreshGamesAfterAutoIngestRef.current?.();
+        await loadGamingSession();
+      });
+    };
+    tick();
+    const timer = window.setInterval(tick, intervalSeconds * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [activeView, gamingSessionEnabled, runAutoIngestSweep, loadGamingSession]);
 
   useEffect(() => () => {
     if (autoIngestNoticeTimerRef.current) {
@@ -3596,7 +3664,6 @@ function App() {
       // otherwise stale isSampleSet keeps "Ingest now" hidden.
       await loadIngestSettings();
       setIngestMessage('Replay folder saved.');
-      void loadAliases();
     } catch (err) {
       setIngestMessage(err.message || 'Failed to save replay folder.');
     }
@@ -3764,7 +3831,7 @@ function App() {
     if (topPlayerColors[raw]) {
       return topPlayerColors[raw];
     }
-    // Display names append " (alias)" after the replay header name; /api/player-colors keys are player_key (normalized raw name).
+    // Display names may append the "you" marker after the replay header name; /api/player-colors keys are player_key (normalized raw name).
     const withoutDisplaySuffix = raw.replace(/ \([^)]+\)$/, '').trim().toLowerCase();
     if (withoutDisplaySuffix && withoutDisplaySuffix !== raw && topPlayerColors[withoutDisplaySuffix]) {
       return topPlayerColors[withoutDisplaySuffix];
@@ -3774,14 +3841,14 @@ function App() {
 
   const renderPlayerLabel = (name, colorLookupKey) => {
     const color = playerAccentColor(colorLookupKey || name);
-    if (!color) return <span>{name}</span>;
-    return <span style={{ color, fontWeight: 600 }}>{name}</span>;
+    if (!color) return <span><PlayerDisplayName name={name} /></span>;
+    return <span style={{ color, fontWeight: 600 }}><PlayerDisplayName name={name} /></span>;
   };
 
   const renderPlayerLinkLabel = (name, playerKey) => {
     const color = playerAccentColor(playerKey || name);
     const style = color ? { color, fontWeight: 600 } : undefined;
-    if (!playerKey) return <span style={style}>{name}</span>;
+    if (!playerKey) return <span style={style}><PlayerDisplayName name={name} /></span>;
     return (
       <button
         type="button"
@@ -3790,7 +3857,7 @@ function App() {
         style={style}
         onClick={(e) => { e.stopPropagation(); openMainPlayer(playerKey); }}
       >
-        {name}
+        <PlayerDisplayName name={name} />
       </button>
     );
   };
@@ -3835,7 +3902,7 @@ function App() {
     const stackingMarker = game?.team_stacking ? (
       <span
         className="workflow-team-stacking-marker"
-        data-tip="Team stacking — uneven non-solo team sizes for over 5 minutes"
+        data-tip="Team stacking: uneven non-solo team sizes for over 5 minutes"
         style={{ marginLeft: 6 }}
       >
         😈
@@ -3851,7 +3918,7 @@ function App() {
             <span key={`${player.player_id}-${idx}`}>
               {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
               {renderWorkerIcon(player.race)}
-              {showFlags ? <CountryFlag code={player.country_code} /> : null}
+              {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
               {renderName(player)}
               <FingerprintBadge match={player.fingerprint_match} compact />
               {idx < players.length - 1 ? ', ' : ''}
@@ -3874,7 +3941,7 @@ function App() {
                 <span key={player.player_id} className="workflow-1v1-player">
                   {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
                   {renderWorkerIcon(player.race)}
-                  {showFlags ? <CountryFlag code={player.country_code} /> : null}
+                  {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
                   {renderName(player)}
                   {player.fingerprint_match ? (
                     <span className="workflow-fingerprint-inline"> (<FingerprintBadge match={player.fingerprint_match} />)</span>
@@ -3901,7 +3968,7 @@ function App() {
                 >
                   {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
                   {renderWorkerIcon(player.race)}
-                  {showFlags ? <CountryFlag code={player.country_code} /> : null}
+                  {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
                   {renderName(player)}
                   <FingerprintBadge match={player.fingerprint_match} compact />
                 </span>
@@ -5351,12 +5418,22 @@ function App() {
   }
 
   return (
+    <CountryFlagOverrideContext.Provider value={countryCodeOverrides}>
     <div className="app">
       <div className={`dashboard-container${activeView === 'games' ? ' dashboard-container--full' : ''}`}>
         <div className="workflow-nav workflow-nav-app">
           <div className="workflow-nav-group">
             <button type="button" className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('games')}>Games</button>
             <button type="button" className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('players')}>Players</button>
+            {gamingSessionEnabled && gamingSession?.active ? (
+              <button
+                type="button"
+                className={`btn-manage ${activeView === 'session' ? 'workflow-nav-active' : ''}`}
+                onClick={() => navigateMainView('session')}
+              >
+                Gaming Session
+              </button>
+            ) : null}
           </div>
           <div className="workflow-nav-group">
             {updateAvailable && updateTier === 'loud' && !loudUpdateDismissed ? (
@@ -5365,10 +5442,10 @@ function App() {
                   <button
                     type="button"
                     className="workflow-nav-update-available tip-below"
-                    data-tip="The new version is installed — refresh to load it"
+                    data-tip="The new version is installed. Refresh to load it"
                     onClick={() => window.location.reload()}
                   >
-                    ✅ Updated to {updateLatest} — Refresh
+                    ✅ Updated to {updateLatest} · Refresh
                   </button>
                 ) : selfUpdateSupported ? (
                   <button
@@ -5430,7 +5507,7 @@ function App() {
                   <button type="button" onClick={() => setShowIngestPanel(true)} className={`workflow-nav-text-action${showStaleHint ? ' workflow-nav-text-action--stale' : ''}`}>
                     {showStaleHint ? '⚠️' : '📥'} Ingest
                     {!showIngestPanel && ingestStatus === 'running' ? (
-                      <span className="ingest-running-badge tip-below" data-tip="Ingestion in progress — click to view logs">Ingesting…</span>
+                      <span className="ingest-running-badge tip-below" data-tip="Ingestion in progress. Click to view logs">Ingesting…</span>
                     ) : null}
                   </button>
                   {showStaleHint ? (
@@ -5456,11 +5533,11 @@ function App() {
               type="button"
               className={`bnet-pill bnet-pill--${bnetDisabled ? 'disabled' : bnetState} tip-below`}
               data-tip={
-                (bnetDisabled ? 'Battle.net bridge is turned off — no player profiles, country flags, or match history will be fetched. Click to re-enable.'
+                (bnetDisabled ? 'Battle.net bridge is turned off. No player profiles, country flags, or match history will be fetched. Click to re-enable.'
                 : bnetState === 'reconnecting' ? 'Scanning for SC:R bridge…'
                 : bnetState === 'connected' ? 'Connected to SC:R'
                 : bnetState === 'offline' ? 'SC:R is running but not logged in. Log in to enable player profile lookups.'
-                : 'SC:R not detected — start it and log in to enable player profile lookups.') + bnetTipSuffix
+                : 'SC:R not detected. Start it and log in to enable player profile lookups.') + bnetTipSuffix
               }
               onClick={handleBnetToggle}
               disabled={bnetState === 'reconnecting'}
@@ -5708,6 +5785,49 @@ function App() {
           </div>
         )}
 
+        {activeView === 'session' && (
+          <GamingSessionPanel
+            session={gamingSession}
+            loading={gamingSessionLoading}
+            error={gamingSessionError}
+            renderName={(opponent) => (
+              <button
+                type="button"
+                className="workflow-player-name-link workflow-name-with-flag"
+                onClick={() => openMainPlayer(opponent.player_key)}
+                title="Analyze player"
+                style={playerAccentColor(opponent.player_key) ? { color: playerAccentColor(opponent.player_key) } : undefined}
+              >
+                <CountryFlag code={opponent.country_code} playerKey={opponent.player_key} />
+                {opponent.player_name}
+              </button>
+            )}
+          >
+            <table className="workflow-table workflow-games-list-table workflow-games-list-table--roomy">
+              <thead>
+                <tr>
+                  <th>Played</th>
+                  <th>Players</th>
+                  <th>Map</th>
+                  <th>Length</th>
+                  <th>Featuring</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(gamingSession?.games || []).map((game) => (
+                  <tr key={game.replay_id} onClick={() => openMainGame(game.replay_id)}>
+                    <td className="workflow-games-list-played">{formatRelativeReplayDate(game.replay_date)}</td>
+                    <td className="workflow-games-list-players">{renderMainGameListPlayers(game)}</td>
+                    <td className="workflow-games-list-map">{renderMapNameWithKind(game.map_name, game.map_kind)}</td>
+                    <td className="workflow-games-list-duration">{formatDuration(game.duration_seconds)}</td>
+                    <td className="workflow-games-list-featuring"><FeaturingCell featuring={game.featuring} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </GamingSessionPanel>
+        )}
+
         {activeView === 'players' && (
           <div className="workflow-panel">
             <div className="workflow-players-tab-stack">
@@ -5813,7 +5933,7 @@ function App() {
                       <tbody>
                         {mainPlayers.map((player) => (
                           <tr key={player.player_key} className={selectedPlayerKey === player.player_key ? 'workflow-selected-row' : ''} onClick={() => openMainPlayer(player.player_key)}>
-                            <td style={playerAccentColor(player.player_key) ? { color: playerAccentColor(player.player_key), fontWeight: 600 } : undefined}><CountryFlag code={player.country_code} />{player.player_name}</td>
+                            <td style={playerAccentColor(player.player_key) ? { color: playerAccentColor(player.player_key), fontWeight: 600 } : undefined}><span className="workflow-name-with-flag"><CountryFlag code={player.country_code} playerKey={player.player_key} /><PlayerDisplayName name={player.player_name} /></span></td>
                             <td>{player.race}</td>
                             <td>{player.games_played}</td>
                             <td>{Number(player.average_apm || 0).toFixed(1)}</td>
@@ -6293,7 +6413,7 @@ function App() {
                             <div className="wpt-cell wpt-name" style={{ borderLeftColor: getTeamColor(player.team) }}>
                               {raceIcon ? <img src={raceIcon} alt={player.race || 'race'} className="unit-icon-inline workflow-summary-race-icon" /> : null}
                               {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-                              <CountryFlag code={player.country_code} />
+                              <CountryFlag code={player.country_code} playerKey={player.player_key} />
                               <span className="wpt-name-col">
                                 <button
                                   type="button"
@@ -6302,7 +6422,7 @@ function App() {
                                   style={gamePlayerNameStyle(player)}
                                   onClick={() => openMainPlayer(player.player_key)}
                                 >
-                                  {player.name}
+                                  <PlayerDisplayName name={player.name} />
                                 </button>
                                 {player.fingerprint_match ? (
                                   <FingerprintBadge match={player.fingerprint_match} />
@@ -6670,7 +6790,7 @@ function App() {
                                     key={`recall-${selectedMainGameEventKeyResolved}`}
                                     src={selectedMainGameRecallOverlay.icon}
                                     alt="Recall destination"
-                                    title={selectedMainGameEvent?.target_base ? "Recall destination (Arbiter location, inferred)" : "Recall cast point — destination unknown"}
+                                    title={selectedMainGameEvent?.target_base ? "Recall destination (Arbiter location, inferred)" : "Recall cast point (destination unknown)"}
                                     className={`workflow-event-map-expansion-overlay workflow-event-map-expansion-overlay--recall-arbiter${selectedMainGameArrow ? ' workflow-event-map-arbiter--travel' : ''}`}
                                     style={{
                                       left: `${selectedMainGameRecallOverlay.point.x}%`,
@@ -6683,7 +6803,7 @@ function App() {
                                     key={`drop-${selectedMainGameEventKeyResolved}`}
                                     src={selectedMainGameDropOverlay.icon}
                                     alt="Drop transport"
-                                    title="Drop landing point — transport vessel"
+                                    title="Drop landing point (transport vessel)"
                                     className={`workflow-event-map-expansion-overlay workflow-event-map-expansion-overlay--recall-arbiter${selectedMainGameArrow ? ' workflow-event-map-vessel--travel' : ''}`}
                                     style={{
                                       left: `${selectedMainGameDropOverlay.point.x}%`,
@@ -7146,7 +7266,7 @@ function App() {
                   <div className="workflow-timing-charts">
                     {mainGame?.team_stacking ? (
                       <div className="workflow-section-warning">
-                        😈 Team stacking detected — uneven non-solo team sizes were sustained (over {Math.round((mainGame.alliance_stacking_threshold_seconds || 300) / 60)} minutes, or until game end).
+                        😈 Team stacking detected: uneven non-solo team sizes were sustained (over {Math.round((mainGame.alliance_stacking_threshold_seconds || 300) / 60)} minutes, or until game end).
                       </div>
                     ) : null}
                     <AllianceTimeline
@@ -7301,12 +7421,15 @@ function App() {
                 <div className="workflow-title-row">
                   <div className="workflow-player-title-wrap">
                     <h2 style={playerAccentColor(mainPlayer?.player_key || selectedPlayerKey) ? { color: playerAccentColor(mainPlayer?.player_key || selectedPlayerKey) } : undefined}>
-                      <CountryFlag code={mainPlayer?.country_code} />
-                      {mainPlayer?.player_name || selectedPlayerKey}
+                      <span className="workflow-name-with-flag">
+                        <CountryFlag code={mainPlayer?.country_code} playerKey={mainPlayer?.player_key || selectedPlayerKey} />
+                        <PlayerDisplayName name={mainPlayer?.player_name || selectedPlayerKey} />
+                      </span>
                       {mainPlayer?.fingerprint_match ? (
                         <span className="workflow-fingerprint-match"><FingerprintBadge match={mainPlayer.fingerprint_match} /></span>
                       ) : null}
                     </h2>
+                    <BnetProfileStrip profile={mainPlayer?.bnet_profile} currentName={mainPlayer?.player_name} />
                     {mainPlayer && (Number(mainPlayer.games_played) || 0) < 5 ? (
                       <span className="workflow-inline-warning">⚠️ Fewer than 5 replays: we cannot provide reliable player-level insights yet.</span>
                     ) : null}
@@ -7314,10 +7437,10 @@ function App() {
                   <button type="button" className="btn-switch" onClick={goBackMainView}>Back</button>
                 </div>
                 <div className="workflow-meta">
-                  <span><strong>Games</strong> {mainPlayer ? mainPlayer.games_played : '—'}</span>
-                  <span><strong>Win rate</strong> {mainPlayer ? `${(mainPlayer.win_rate * 100).toFixed(1)}%` : '—'}</span>
-                  <span><strong>APM</strong> {mainPlayer ? mainPlayer.average_apm?.toFixed(1) : '—'}</span>
-                  <span><strong>EAPM</strong> {mainPlayer ? mainPlayer.average_eapm?.toFixed(1) : '—'}</span>
+                  <span><strong>Games</strong> {mainPlayer ? mainPlayer.games_played : '-'}</span>
+                  <span><strong>Win rate</strong> {mainPlayer ? `${(mainPlayer.win_rate * 100).toFixed(1)}%` : '-'}</span>
+                  <span><strong>APM</strong> {mainPlayer ? mainPlayer.average_apm?.toFixed(1) : '-'}</span>
+                  <span><strong>EAPM</strong> {mainPlayer ? mainPlayer.average_eapm?.toFixed(1) : '-'}</span>
                   {mainPlayerLoading ? <span className="workflow-subtle-note">loading overview…</span> : null}
                 </div>
                 <div className="workflow-game-tab-stack">
@@ -7688,22 +7811,11 @@ function App() {
           error={globalReplayFilterError}
           onClose={() => setShowGlobalReplayFilter(false)}
           onSave={handleSaveGlobalReplayFilter}
-          aliases={aliases}
-          aliasesLoading={aliasesLoading}
-          aliasesMessage={aliasesMessage}
-          aliasesMessageIsError={aliasesMessageIsError}
-          aliasForm={aliasForm}
-          aliasSaving={aliasSaving}
-          aliasSources={aliasSources}
-          aliasEditOriginal={aliasEditOriginal}
-          onAliasFormChange={setAliasForm}
-          onAliasSave={handleAliasSave}
-          onAliasDelete={handleAliasDelete}
-          onAliasImportFile={handleAliasImportFile}
-          onAliasSourcesToggle={handleAliasSourceToggle}
-          onAliasEdit={handleAliasEdit}
-          onAliasCancelEdit={handleAliasCancelEdit}
-          onAliasExport={handleAliasExport}
+          featureFlags={featureFlags}
+          featureFlagsSaving={featureFlagsSaving}
+          featureFlagsMessage={featureFlagsMessage}
+          featureFlagsMessageIsError={featureFlagsMessageIsError}
+          onFeatureFlagToggle={handleFeatureFlagToggle}
         />
       )}
 
@@ -7781,7 +7893,7 @@ function App() {
                   <span className="footer-update-nudge">
                     {updateApplied ? (
                       <button type="button" className="footer-update-link" onClick={() => window.location.reload()}>
-                        ✅ Updated to {updateLatest} — refresh
+                        ✅ Updated to {updateLatest} · refresh
                       </button>
                     ) : selfUpdateSupported ? (
                       <button
@@ -7826,6 +7938,7 @@ function App() {
         </div>
       </div>
     </div>
+    </CountryFlagOverrideContext.Provider>
   );
 }
 

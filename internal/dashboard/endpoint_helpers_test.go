@@ -7,13 +7,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
-
-	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 )
-
-func aliasRow(canonical, source, updatedAt string) dashboarddb.PlayerAliasRow {
-	return dashboarddb.PlayerAliasRow{CanonicalAlias: canonical, Source: source, UpdatedAt: updatedAt}
-}
 
 func TestFormatClockFromSeconds(t *testing.T) {
 	cases := []struct {
@@ -639,50 +633,6 @@ func TestDecodeAskQuestion(t *testing.T) {
 	req = httptest.NewRequest("POST", "/", jsonBody(`not json`))
 	if _, err := decodeAskQuestion(req); err == nil {
 		t.Error("invalid body should error")
-	}
-}
-
-func TestFormatDisplayNameWithAlias(t *testing.T) {
-	cases := []struct {
-		name, alias, want string
-	}{
-		{"Bisu", "you", "Bisu (you)"},
-		{"Bisu", "", "Bisu"},
-		{"", "you", ""},
-		{"you", "you", "you"},
-		{"Bisu (you)", "you", "Bisu (you)"},
-	}
-	for _, c := range cases {
-		if got := formatDisplayNameWithAlias(c.name, c.alias); got != c.want {
-			t.Errorf("formatDisplayNameWithAlias(%q,%q) = %q, want %q", c.name, c.alias, got, c.want)
-		}
-	}
-}
-
-func TestAliasSourcePriority(t *testing.T) {
-	if aliasSourcePriority(aliasSourceYou) <= aliasSourcePriority(aliasSourceManual) {
-		t.Error("you should outrank manual")
-	}
-	if aliasSourcePriority(aliasSourceManual) <= aliasSourcePriority(aliasSourceImported) {
-		t.Error("manual should outrank imported")
-	}
-	if aliasSourcePriority("garbage") != 0 {
-		t.Error("unknown source should be 0")
-	}
-}
-
-func TestChooseBetterAliasTieBreakByUpdatedThenName(t *testing.T) {
-	current := aliasRow("Zeta", aliasSourceManual, "2020-01-01")
-	newer := aliasRow("Alpha", aliasSourceManual, "2021-01-01")
-	if !chooseBetterAlias(&current, newer) {
-		t.Error("newer updated_at should win at equal priority")
-	}
-	sameTime := aliasRow("Alpha", aliasSourceManual, "2020-01-01")
-	if !chooseBetterAlias(&current, sameTime) {
-		t.Error("lexicographically smaller canonical should win on full tie")
-	}
-	if chooseBetterAlias(nil, sameTime) != true {
-		t.Error("nil current should always be beaten")
 	}
 }
 

@@ -158,8 +158,8 @@ func TestHandleGetSchema(t *testing.T) {
 		t.Fatalf("schema observations missing: %q", out[:min(200, len(out))])
 	}
 	// The modern derived-analysis tables must be introspected too.
-	if !strings.Contains(out, "replay_events") || !strings.Contains(out, "player_aliases") {
-		t.Fatalf("schema missing modern tables (replay_events/player_aliases)")
+	if !strings.Contains(out, "replay_events") || !strings.Contains(out, "commands_low_value") {
+		t.Fatalf("schema missing modern tables (replay_events/commands_low_value)")
 	}
 }
 

@@ -2666,13 +2666,8 @@ button.workflow-nav-update-available:disabled {
   gap: 0.1em;
 }
 
-.workflow-games-list-table .workflow-team-player-pill .workflow-race-icon {
-  width: 15px;
-  height: 15px;
-}
-
-.workflow-games-list-table .workflow-team-player-pill .workflow-crown {
-  font-size: 0.85em;
+.workflow-games-list-table .workflow-team-player-pill {
+  --player-glyph-size: 16px;
 }
 
 /* Keep each player name on a single line inside its pill — long names with
@@ -2769,13 +2764,8 @@ button.workflow-nav-update-available:disabled {
   font-size: 1em;
 }
 
-.workflow-games-list-table--roomy .workflow-team-player-pill .workflow-race-icon {
-  width: 18px;
-  height: 18px;
-}
-
-.workflow-games-list-table--roomy .workflow-team-player-pill .workflow-crown {
-  font-size: 0.95em;
+.workflow-games-list-table--roomy .workflow-team-player-pill {
+  --player-glyph-size: 19px;
 }
 
 .workflow-games-list-table--roomy .workflow-team-vs {
@@ -3049,6 +3039,11 @@ button.workflow-nav-update-available:disabled {
   background: none;
   border: none;
   cursor: pointer;
+  /* The button inherits the pill's line-height, so with vertical padding on top
+     it rendered taller than the pill itself and pushed every row open. Pin it
+     to a tight line box: the hover background still reads as a target, but the
+     button no longer sets the row height. */
+  line-height: 1.15;
   padding: 3px 6px;
   margin: -3px -2px;
   border-radius: 8px;
@@ -3111,10 +3106,7 @@ button.workflow-nav-update-available:disabled {
   color: #bad5ff;
 }
 
-.workflow-crown {
-  display: inline-flex;
-  margin-right: 4px;
-}
+
 
 .workflow-card {
   background: rgba(255, 255, 255, 0.04);
@@ -3463,13 +3455,63 @@ button.workflow-nav-update-available:disabled {
   margin-left: 4px;
 }
 
+/* Player-name adornments — winner crown, race icon, country flag, fingerprint
+   badge — all render inside one square box of --player-glyph-size. Sharing the
+   box gives them a common optical size *and* a common advance width; without it
+   every emoji keeps its own natural advance and the names after them never
+   start at the same x. The box also replaces the vertical-align these rules
+   used to carry, which never applied: every pill hosting them is a flex
+   container, where vertical-align is ignored. Contexts resize the whole set by
+   overriding --player-glyph-size alone. */
+.workflow-crown,
+.workflow-race-icon,
+.country-flag,
+.workflow-fingerprint-emoji {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--player-glyph-size, 18px);
+  height: var(--player-glyph-size, 18px);
+  line-height: 1;
+  /* Glyph ink is sized as a fraction of the box rather than in em, so the
+     balance between the emoji and the race-icon artwork holds at every context
+     size instead of drifting with each pill's own font-size. */
+  font-size: calc(var(--player-glyph-size, 18px) * var(--player-glyph-fill, 0.8));
+}
+
 .workflow-race-icon {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  vertical-align: text-bottom;
-  margin: 0 3px 0 0;
   object-fit: contain;
+}
+
+/* A country flag sitting next to a bare name (players table, player title).
+   These are not pills, so there is no flex gap to inherit: without this the
+   flag butts straight up against the first letter of the name. */
+.workflow-name-with-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  min-width: 0;
+  /* Sized in em, not px: this wrapper is used at both table type and page-title
+     type, so the flag has to track whatever it sits next to. A fixed box that
+     suits the players table is lost beside a 2rem heading. */
+  --player-glyph-size: 1.15em;
+}
+
+/* The race icon fills its box and anchors the group. The flag is identity too,
+   so it sits just under it; the crown (status) and magnifier (affordance) step
+   down again. Hierarchy by ink, never by box — the boxes stay identical so the
+   names after them still line up. */
+.country-flag {
+  --player-glyph-fill: 0.85;
+}
+
+.workflow-crown {
+  --player-glyph-fill: 0.72;
+}
+
+.workflow-fingerprint-emoji {
+  --player-glyph-fill: 0.62;
 }
 
 .workflow-pagination-row {
@@ -5392,9 +5434,8 @@ button.workflow-nav-update-available:disabled {
   line-height: 1.5;
 }
 
-.workflow-game-players-heading .workflow-team-player-pill .workflow-race-icon {
-  width: 20px;
-  height: 20px;
+.workflow-game-players-heading .workflow-team-player-pill {
+  --player-glyph-size: 20px;
 }
 
 .workflow-game-players-heading .workflow-team-matchup {
@@ -5409,9 +5450,8 @@ button.workflow-nav-update-available:disabled {
 .workflow-team-matchup--1v1 .workflow-team-vs {
   margin: 0 0.6rem;
 }
-.workflow-1v1-player .workflow-race-icon {
-  width: 30px;
-  height: 30px;
+.workflow-1v1-player {
+  --player-glyph-size: 24px;
 }
 .workflow-fingerprint-inline {
   display: inline-flex;
@@ -5462,13 +5502,8 @@ button.workflow-nav-update-available:disabled {
   -webkit-box-decoration-break: clone;
 }
 
-.workflow-team-player-pill .workflow-race-icon {
-  width: 25px;
-  height: 25px;
-}
-
-.workflow-team-player-pill .workflow-crown {
-  font-size: 1.0em;
+.workflow-team-player-pill {
+  --player-glyph-size: 24px;
 }
 
 .workflow-fingerprint-match {
@@ -5497,14 +5532,8 @@ button.workflow-nav-update-available:disabled {
 .workflow-fingerprint-icon-link:hover {
   opacity: 1;
 }
-.country-flag {
-  font-size: 0.85em;
-  margin-right: 2px;
-  vertical-align: baseline;
-}
-.workflow-fingerprint-emoji {
-  font-size: 0.85em;
-}
+
+
 .workflow-fingerprint-tooltip {
   position: absolute;
   left: 50%;
@@ -5995,4 +6024,293 @@ span[data-tip],
   letter-spacing: 0.02em;
   white-space: nowrap;
   vertical-align: middle;
+}
+
+/* Labs: the settings tab holding unfinished previews. A flat column of
+   checkboxes with no bullets and no per-item headings; the list is short and
+   each line is its own description. */
+.labs-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.labs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.labs-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  line-height: 1.35;
+}
+
+.labs-item input[type='checkbox'] {
+  flex: 0 0 auto;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Gaming Session: the run of games just played. Stat tiles across the top,
+   then breakdowns, then who you faced, then the games themselves. */
+.workflow-panel--session {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.session-stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.session-stat-tile {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.session-stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.session-stat-label {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.session-stat-sub {
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.session-breakdown-title {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 6px;
+}
+
+.session-section h3 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.session-opponent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.session-opponent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.session-opponent-record {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+
+/* The "this player is you" marker. Sized to the text it follows rather than to
+   the glyph grid, because it trails a name instead of leading one. */
+.you-marker {
+  margin-left: 0.3em;
+  font-size: 0.85em;
+  cursor: help;
+}
+
+/* Session player tables: one line per person, columns for what we actually
+   know about them.
+
+   Header and cell alignment are set together per column, never separately: the
+   two drifting apart is what makes a wide table hard to read down. Rows get
+   real height and alternating bands so the eye can track one person across
+   seven columns without losing the line. */
+.session-player-table {
+  width: 100%;
+  border-collapse: collapse;
+  /* Fixed layout so the columns get the width their content actually needs.
+     Left to itself the browser splits width by content, which gave a 3-char
+     record the same room as a list of a dozen alternate account names. The
+     small columns are pinned in px; player and battle tag take a share; the
+     toons column is left unsized so it absorbs everything remaining. */
+  table-layout: fixed;
+}
+
+.session-player-table .col-player {
+  width: 20%;
+}
+
+.session-player-table .col-result {
+  width: 68px;
+}
+
+.session-player-table .col-races {
+  width: 76px;
+}
+
+.session-player-table .col-apm {
+  width: 62px;
+}
+
+.session-player-table .col-ladder {
+  width: 132px;
+}
+
+.session-player-table .col-tag {
+  width: 15%;
+}
+
+.session-player-table th {
+  padding: 8px 12px;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.session-player-table td {
+  padding: 9px 12px;
+  font-size: 0.88rem;
+  vertical-align: middle;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.session-player-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.session-player-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* One rule per column so the header can never disagree with its cells. */
+.session-player-table .col-player,
+.session-player-table .col-ladder,
+.session-player-table .col-tag,
+.session-player-table .col-toons {
+  text-align: left;
+}
+
+.session-player-table .col-result,
+.session-player-table .col-races {
+  text-align: center;
+}
+
+.session-player-table .col-apm {
+  text-align: right;
+}
+
+.session-player-table .col-result,
+.session-player-table .col-apm,
+.session-player-table .col-ladder {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.session-player-table .col-player,
+.session-player-table .col-tag {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-race-icons {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.session-race-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.session-cell-empty {
+  color: rgba(255, 255, 255, 0.28);
+}
+
+/* Alternate accounts can run to a dozen names; crop rather than let one row
+   set the width of the whole table. The full list is in the title attribute. */
+.session-toon-list {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.session-players {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* Battle.net identity strip under a player's name. A row of labelled facts
+   rather than a table: there are only a handful, they are all short, and a
+   table header for three cells is more chrome than content. */
+.bnet-profile-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 20px;
+  font-size: 0.82rem;
+}
+
+.bnet-profile-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.bnet-profile-label {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.bnet-profile-value {
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+
+.bnet-profile-item--toons .bnet-profile-value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.bnet-profile-toon {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  font-variant-numeric: normal;
 }

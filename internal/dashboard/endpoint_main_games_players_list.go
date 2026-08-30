@@ -36,10 +36,7 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 	for _, row := range listRows {
 		playerNames = append(playerNames, row.PlayerName)
 	}
-	displayByName, err := d.aliasDisplayNames(playerNames)
-	if err != nil {
-		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
-	}
+	displayByName := d.youDisplayNames(playerNames)
 	playerKeys := make([]string, 0, len(listRows))
 	for _, row := range listRows {
 		playerKeys = append(playerKeys, row.PlayerKey)
@@ -65,6 +62,18 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 		item.CountryCode = countryCodes[item.PlayerKey]
 		items = append(items, item)
 	}
+
+	// Kick off flag lookups for the players on this page. The rows arrive in the
+	// user's chosen sort order, so the most significant ones are already first
+	// and the backfill cap keeps those; the page polls
+	// /api/custom/bnet/country-codes to paint flags in as they land.
+	backfillNames := make([]string, 0, len(items))
+	for _, item := range items {
+		if item.CountryCode == "" {
+			backfillNames = append(backfillNames, item.PlayerKey)
+		}
+	}
+	d.backfillBnetProfiles(backfillNames)
 
 	filterOptions, err := d.workflowPlayersListFilterOptions(baseSQL, baseArgs, whereSQL, whereArgs)
 	if err != nil {
@@ -254,10 +263,7 @@ func (d *Dashboard) populateWorkflowGameListPlayers(items []workflowGameListItem
 	for _, row := range rows {
 		playerNames = append(playerNames, row.Name)
 	}
-	displayByName, err := d.aliasDisplayNames(playerNames)
-	if err != nil {
-		return err
-	}
+	displayByName := d.youDisplayNames(playerNames)
 	playerKeys := make([]string, 0, len(rows))
 	for _, row := range rows {
 		playerKeys = append(playerKeys, normalizePlayerKey(row.Name))
@@ -296,13 +302,11 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 	// (e.g. "3 Hatch Muta", "~9 Overpool"). A game can feature more than one
 	// value of the same marker, so each distinct label becomes its own pill.
 	featureLabels := map[int64]map[string][]string{}
-	mapKindByReplayID := map[int64]string{}
 	for i, item := range items {
 		replayIDs = append(replayIDs, item.ReplayID)
 		itemIndexByReplayID[item.ReplayID] = i
 		featureSets[item.ReplayID] = map[string]struct{}{}
 		featureLabels[item.ReplayID] = map[string][]string{}
-		mapKindByReplayID[item.ReplayID] = item.MapKind
 	}
 	if len(replayIDs) == 0 {
 		return nil
@@ -326,13 +330,16 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 		case "became_terran", "became_zerg":
 			featureSets[replayID]["mind_control"] = struct{}{}
 		default:
-			// Build-order markers route directly to their featuring key,
-			// but Money maps suppress them: the BO chip column gets too
-			// noisy on Big Game Hunters / Fastest-style games where opener
-			// timings are uninformative. The BO tab + per-player summary
-			// pill still surface the BO inside the game detail page.
+			// Build-order markers never reach the games-list Featuring
+			// column. An opener is a per-player property, but this column is
+			// per-game, so a row full of "~10 Hatch" / "~9 Overpool" chips
+			// says nothing about who opened that way and crowds out the
+			// game-level features the column exists to show. The BO tab and
+			// the per-player summary pill still surface openers inside the
+			// game detail page, and the BO filter dropdown still selects on
+			// them.
 			if bo := markers.ByFeatureKey(featureKey); bo != nil {
-				if bo.Kind == markers.KindInitialBuildOrder && mapKindByReplayID[replayID] == "Money" {
+				if bo.Kind == markers.KindInitialBuildOrder {
 					continue
 				}
 				featureSets[replayID][bo.FeatureKey] = struct{}{}
@@ -418,10 +425,7 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 	for _, row := range playerRows {
 		playerNames = append(playerNames, row.Name)
 	}
-	displayByName, err := d.aliasDisplayNames(playerNames)
-	if err != nil {
-		return err
-	}
+	displayByName := d.youDisplayNames(playerNames)
 	playerIDs := []int64{}
 	currentByPlayerID := map[int64]*workflowRecentGamePlayer{}
 	for _, row := range playerRows {
@@ -514,10 +518,7 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 	for _, row := range rowsPlayers {
 		playerNames = append(playerNames, row.Label)
 	}
-	displayByName, err := d.aliasDisplayNames(playerNames)
-	if err != nil {
-		return result, err
-	}
+	displayByName := d.youDisplayNames(playerNames)
 	for _, row := range rowsPlayers {
 		var option workflowGamesListFilterOption
 		option.Key = row.Key

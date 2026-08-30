@@ -135,13 +135,29 @@ func (d *Dashboard) countryCodesByPlayerKeys(playerKeys []string) (map[string]st
 
 var defaultGatewayOrder = []int64{30, 20, 10, 45, 11}
 
+// bnetProfileBackfillMaxPlayers bounds how many players one page view may put
+// into the backfill queue. A player who is not in the cache costs up to one
+// request per gateway, so an uncapped players page (25 rows x 5 gateways) could
+// spend a fifth of the daily bridge budget in a single navigation. Callers pass
+// their most significant players first, so the cap keeps the rows a user
+// actually cares about and drops the tail; the tail fills in as they page or
+// revisit.
+const bnetProfileBackfillMaxPlayers = 20
+
 func (d *Dashboard) triggerBnetProfileFetchesForPlayers(names []string, gameSource string) {
-	if d.bnetDisabled.Load() {
-		log.Printf("[country-flags] skipping: bridge disabled")
-		return
-	}
 	if gameSource != "AssumedBattleNet" {
 		log.Printf("[country-flags] skipping: game_source=%q (not bnet)", gameSource)
+		return
+	}
+	d.backfillBnetProfiles(names)
+}
+
+// backfillBnetProfiles fetches, in the background, the profiles of any of names
+// we have no cached country for. Names must be ordered by how much the caller
+// cares about them: the list is truncated to bnetProfileBackfillMaxPlayers.
+func (d *Dashboard) backfillBnetProfiles(names []string) {
+	if d.bnetDisabled.Load() {
+		log.Printf("[country-flags] skipping: bridge disabled")
 		return
 	}
 	addr, _ := d.bnetAddr.Load().(string)
@@ -159,22 +175,37 @@ func (d *Dashboard) triggerBnetProfileFetchesForPlayers(names []string, gameSour
 		return
 	}
 	var uncached []string
+	seen := map[string]struct{}{}
 	for _, n := range names {
-		if _, ok := cached[normalizePlayerKey(n)]; !ok {
-			uncached = append(uncached, n)
+		key := normalizePlayerKey(n)
+		if _, ok := cached[key]; ok {
+			continue
 		}
+		if _, dup := seen[key]; dup {
+			continue
+		}
+		seen[key] = struct{}{}
+		uncached = append(uncached, n)
 	}
 	if len(uncached) == 0 {
 		log.Printf("[country-flags] all %d players already cached", len(names))
 		return
 	}
+	dropped := 0
+	if len(uncached) > bnetProfileBackfillMaxPlayers {
+		dropped = len(uncached) - bnetProfileBackfillMaxPlayers
+		uncached = uncached[:bnetProfileBackfillMaxPlayers]
+	}
 	gateways := defaultGatewayOrder
 	if known := d.bnetGateway.Load(); known > 0 {
 		gateways = append([]int64{known}, defaultGatewayOrder...)
 	}
-	log.Printf("[country-flags] fetching %d uncached players (gateways=%v)", len(uncached), gateways)
+	log.Printf("[country-flags] fetching %d uncached players (%d over the cap, gateways=%v)",
+		len(uncached), dropped, gateways)
+	d.bnetBackfillActive.Add(1)
 	go func() {
 		defer crashreport.GuardNonFatal(nil)
+		defer d.bnetBackfillActive.Add(-1)
 		for _, toon := range uncached {
 			for _, gw := range gateways {
 				res, fetchErr := d.getOrFetchBnetProfile(d.ctx, toon, gw, bnetfacade.PriorityBackground, 0)
