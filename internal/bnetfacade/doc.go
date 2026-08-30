@@ -18,6 +18,12 @@
 // Bridge payloads may contain non-UTF-8 bytes (map titles in cp949 or latin-1),
 // so DecodeBridgeJSON performs lenient decoding before JSON unmarshalling.
 //
-// Rate limiting for bridge calls and replay downloads belongs in this package
-// (issue #319) to ensure no caller can bypass it.
+// Rate limiting (issue #319) is enforced here at the facade boundary so no
+// caller can bypass it, with two separate budgets: bridge calls ride the
+// user's Blizzard session (disconnection risk — conservative token bucket,
+// persisted daily cap, exponential cooldown on the bridge's explicit "Rate
+// Limited" signal), while GCS downloads only cost bandwidth (separate, looser
+// budget). Both buckets serve PriorityUser waiters before background sweeps.
+// ProbeBridge is deliberately unmetered: it is a local liveness check.
+// EnableBudgetPersistence makes the daily counters survive restarts.
 package bnetfacade

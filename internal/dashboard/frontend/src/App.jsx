@@ -2971,6 +2971,10 @@ function App() {
 
   const bnetState = bnetStatus?.state || 'not_running';
   const bnetDisabled = Boolean(bnetStatus?.disabled);
+  const bnetRequestsToday = bnetStatus?.requests_today ?? 0;
+  const bnetDailyCap = bnetStatus?.daily_cap ?? 0;
+  const bnetCooldownUntil = bnetStatus?.cooldown_until ? new Date(bnetStatus.cooldown_until) : null;
+  const bnetCoolingDown = Boolean(bnetCooldownUntil) && bnetCooldownUntil > new Date();
 
   const handleBnetToggle = useCallback(async () => {
     const newDisabled = !bnetDisabled;
@@ -5417,6 +5421,18 @@ function App() {
                 : bnetState === 'offline' ? 'SC:R offline'
                 : 'SC:R'}
             </button>
+            {!bnetDisabled && bnetDailyCap > 0 && (
+              <span
+                className={`bnet-meter tip-below${bnetCoolingDown ? ' bnet-meter--cooldown' : ''}`}
+                data-tip={
+                  bnetCoolingDown
+                    ? `Battle.net asked us to slow down — bridge calls paused until ${bnetCooldownUntil.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Requests today: ${bnetRequestsToday} of ${bnetDailyCap}`
+                    : `Bridge requests today: ${bnetRequestsToday} of ${bnetDailyCap} — a conservative daily budget protects your Battle.net session`
+                }
+              >
+                {bnetCoolingDown ? '⏸ ' : ''}{bnetRequestsToday} today
+              </span>
+            )}
             <button
               type="button"
               onClick={handleQuit}

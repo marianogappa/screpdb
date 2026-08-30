@@ -199,14 +199,22 @@ func TestSetupRouter_BnetStatusEndpoint(t *testing.T) {
 		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
 	}
 	var status struct {
-		State    string `json:"state"`
-		Disabled bool   `json:"disabled"`
+		State         string `json:"state"`
+		Disabled      bool   `json:"disabled"`
+		RequestsToday int    `json:"requests_today"`
+		DailyCap      int    `json:"daily_cap"`
 	}
 	if err := json.NewDecoder(rec.Body).Decode(&status); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if status.State != "not_running" {
 		t.Errorf("expected initial state not_running, got %q", status.State)
+	}
+	if status.DailyCap <= 0 {
+		t.Errorf("expected a positive daily_cap for the requests-today meter, got %d", status.DailyCap)
+	}
+	if status.RequestsToday < 0 || status.RequestsToday > status.DailyCap {
+		t.Errorf("requests_today out of range: %d (cap %d)", status.RequestsToday, status.DailyCap)
 	}
 }
 

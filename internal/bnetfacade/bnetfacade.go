@@ -60,14 +60,20 @@ func gcsClient() *http.Client {
 
 // BridgeGet performs a GET request against SC:R's local web-api bridge. The
 // addr must resolve to loopback (127.0.0.1 / ::1 / localhost), and path must
-// start with /web-api/. Returns the raw response body; use DecodeBridgeJSON to
-// handle the non-UTF-8 encoding quirk before JSON unmarshalling.
-func BridgeGet(ctx context.Context, addr, path string) ([]byte, error) {
+// start with /web-api/. Every call spends the bridge budget (token bucket +
+// persisted daily cap) and respects the rate-limit cooldown; prio decides who
+// wins when calls queue on the bucket. Returns the raw response body; use
+// DecodeBridgeJSON to handle the non-UTF-8 encoding quirk before JSON
+// unmarshalling.
+func BridgeGet(ctx context.Context, addr, path string, prio Priority) ([]byte, error) {
 	if !isLocalAddr(addr) {
 		return nil, fmt.Errorf("%w: %s", ErrNotLocal, addr)
 	}
 	if !strings.HasPrefix(path, bridgePathPrefix) {
 		return nil, fmt.Errorf("%w: %q does not start with %s", ErrForbiddenPath, path, bridgePathPrefix)
+	}
+	if err := theBudgets.acquireBridge(ctx, prio); err != nil {
+		return nil, err
 	}
 	url := "http://" + addr + path
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -79,10 +85,19 @@ func BridgeGet(ctx context.Context, addr, path string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBridgeResponse))
+	if err != nil {
+		return nil, err
+	}
+	if isRateLimitedResponse(resp.StatusCode, body) {
+		until := theBudgets.noteBridgeRateLimited()
+		return nil, fmt.Errorf("%w (cooling down until %s)", ErrBridgeRateLimited, until.Format(time.RFC3339))
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("bnetfacade: bridge returned %s for %s", resp.Status, path)
 	}
-	return io.ReadAll(io.LimitReader(resp.Body, maxBridgeResponse))
+	theBudgets.noteBridgeSuccess()
+	return body, nil
 }
 
 // DecodeBridgeJSON unmarshals a bridge response into dst, handling the
@@ -107,11 +122,16 @@ func DecodeBridgeJSON(data []byte, dst any) error {
 
 // DownloadReplay fetches a replay from the GCS starcraft-user-uploads-prod
 // bucket. The path must start with /starcraft-user-uploads-prod/S1-replays/.
-// Downloaded bytes are validated: they must be at least 16 bytes long and carry
-// the seRS magic at offset 12.
-func DownloadReplay(ctx context.Context, path string) ([]byte, error) {
+// Every call spends the download budget, which is separate from the bridge
+// budget: GCS never touches the user's Blizzard session. Downloaded bytes are
+// validated: they must be at least 16 bytes long and carry the seRS magic at
+// offset 12.
+func DownloadReplay(ctx context.Context, path string, prio Priority) ([]byte, error) {
 	if !strings.HasPrefix(path, gcsReplayPrefix) {
 		return nil, fmt.Errorf("%w: %q does not start with %s", ErrForbiddenPath, path, gcsReplayPrefix)
+	}
+	if err := theBudgets.acquireDownload(ctx, prio); err != nil {
+		return nil, err
 	}
 	return downloadReplayFrom(ctx, "https://"+gcsHost+path)
 }
