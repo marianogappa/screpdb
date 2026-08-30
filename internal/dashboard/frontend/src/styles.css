@@ -6139,43 +6139,98 @@ span[data-tip],
 }
 
 /* Session player tables: one line per person, columns for what we actually
-   know about them. Numeric columns are tabular so they line up down the page. */
+   know about them.
+
+   Header and cell alignment are set together per column, never separately: the
+   two drifting apart is what makes a wide table hard to read down. Rows get
+   real height and alternating bands so the eye can track one person across
+   seven columns without losing the line. */
 .session-player-table {
   width: 100%;
+  border-collapse: collapse;
 }
 
 .session-player-table th {
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
-  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .session-player-table td {
+  padding: 9px 12px;
   font-size: 0.88rem;
   vertical-align: middle;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.session-record {
+.session-player-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.session-player-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* One rule per column so the header can never disagree with its cells. */
+.session-player-table .col-player,
+.session-player-table .col-ladder,
+.session-player-table .col-tag,
+.session-player-table .col-toons {
+  text-align: left;
+}
+
+.session-player-table .col-result,
+.session-player-table .col-races {
+  text-align: center;
+}
+
+.session-player-table .col-apm {
+  text-align: right;
+}
+
+.session-player-table .col-result,
+.session-player-table .col-apm,
+.session-player-table .col-ladder {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
+.session-player-table .col-player {
+  white-space: nowrap;
+}
+
+.session-race-icons {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.session-race-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
 .session-cell-empty {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.28);
 }
 
 /* Alternate accounts can run to a dozen names; crop rather than let one row
    set the width of the whole table. The full list is in the title attribute. */
 .session-toon-list {
   display: inline-block;
-  max-width: 22ch;
+  max-width: 24ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: bottom;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .session-players {

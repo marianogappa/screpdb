@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getWorkerIconForRace } from '../lib/gameAssets';
 
 const formatDuration = (seconds) => {
   const total = Math.max(0, Math.round(Number(seconds) || 0));
@@ -28,6 +29,24 @@ function StatTile({ label, value, sub }) {
 // Alternate accounts are shown as names only. The gateway matters far less than
 // the fact that the person plays under other names, and the full list is long
 // enough already.
+// Races render as their worker icon. A player's race is a symbol everyone in
+// this game already reads instantly, and three spelled-out names in a column
+// cost more width than the whole rest of the row.
+function RaceIcons({ races }) {
+  const list = races || [];
+  if (list.length === 0) return <span className="session-cell-empty">-</span>;
+  return (
+    <span className="session-race-icons">
+      {list.map((race) => {
+        const url = getWorkerIconForRace(race);
+        return url
+          ? <img key={race} src={url} alt={race} title={race} className="session-race-icon" />
+          : <span key={race}>{race}</span>;
+      })}
+    </span>
+  );
+}
+
 function OtherToons({ profile, currentName }) {
   const current = String(currentName || '').trim().toLowerCase();
   const others = (profile?.toons || [])
@@ -56,27 +75,27 @@ function PlayerTable({ players, renderName, showRecord }) {
     <table className="workflow-table session-player-table">
       <thead>
         <tr>
-          <th>Player</th>
-          {showRecord ? <th>Result</th> : null}
-          <th>Races</th>
-          <th>APM</th>
-          <th>Ladder</th>
-          <th>Battle tag</th>
-          <th>Other toons</th>
+          <th className="col-player">Player</th>
+          {showRecord ? <th className="col-result">Result</th> : null}
+          <th className="col-races">Races</th>
+          <th className="col-apm">APM</th>
+          <th className="col-ladder">Ladder</th>
+          <th className="col-tag">Battle tag</th>
+          <th className="col-toons">Other toons</th>
         </tr>
       </thead>
       <tbody>
         {players.map((player) => (
           <tr key={player.player_key}>
-            <td>{renderName ? renderName(player) : player.player_name}</td>
+            <td className="col-player">{renderName ? renderName(player) : player.player_name}</td>
             {showRecord ? (
-              <td className="session-record">{player.wins || 0}-{player.losses || 0}</td>
+              <td className="col-result">{player.wins || 0}-{player.losses || 0}</td>
             ) : null}
-            <td>{(player.races || []).join(', ') || <span className="session-cell-empty">-</span>}</td>
-            <td>{player.apm ? player.apm : <span className="session-cell-empty">-</span>}</td>
-            <td><LadderCell profile={player.profile} /></td>
-            <td>{player.profile?.battle_tag || <span className="session-cell-empty">-</span>}</td>
-            <td><OtherToons profile={player.profile} currentName={player.player_name} /></td>
+            <td className="col-races"><RaceIcons races={player.races} /></td>
+            <td className="col-apm">{player.apm ? player.apm : <span className="session-cell-empty">-</span>}</td>
+            <td className="col-ladder"><LadderCell profile={player.profile} /></td>
+            <td className="col-tag">{player.profile?.battle_tag || <span className="session-cell-empty">-</span>}</td>
+            <td className="col-toons"><OtherToons profile={player.profile} currentName={player.player_name} /></td>
           </tr>
         ))}
       </tbody>
