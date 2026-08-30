@@ -65,7 +65,6 @@ type Player struct {
 	SlotID              int64
 }
 
-
 type PlayerFingerprintVector struct {
 	ID             int64
 	ReplayID       int64

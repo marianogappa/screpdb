@@ -69,7 +69,6 @@ func TestGetGlobalReplayFilterConfigRawDefaults(t *testing.T) {
 	}
 }
 
-
 func TestCountDistinctPlayers(t *testing.T) {
 	s, conn := newTestStore(t)
 	ctx := context.Background()

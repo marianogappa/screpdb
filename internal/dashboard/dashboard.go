@@ -66,11 +66,11 @@ type Dashboard struct {
 	bnetGateway         atomic.Int64 // active SC:R gateway (e.g. 20 = Europe, 30 = Korea)
 	// bnetBackfillActive counts in-flight profile backfills, so the country-code
 	// endpoint can tell a polling page whether more flags are still on the way.
-	bnetBackfillActive  atomic.Int64
+	bnetBackfillActive atomic.Int64
 	// youKeys holds the set of replay names that are the user, derived from
 	// CSettings.json. Kept in memory rather than persisted: it is a pure
 	// function of that file, so a stored copy could only go stale.
-	youKeys             atomic.Value // stores map[string]struct{}
+	youKeys atomic.Value // stores map[string]struct{}
 }
 
 // SetShutdownFunc registers the callback the /api/custom/quit endpoint invokes to

@@ -179,4 +179,3 @@ func tableExists(db *sql.DB, tableName string) (bool, error) {
 	}
 	return count > 0, nil
 }
-

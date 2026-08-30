@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
-
 )
 
 func TestFormatClockFromSeconds(t *testing.T) {
@@ -636,9 +635,6 @@ func TestDecodeAskQuestion(t *testing.T) {
 		t.Error("invalid body should error")
 	}
 }
-
-
-
 
 func TestSamePath(t *testing.T) {
 	if !samePath("/a/b/../b/c", "/a/b/c") {
