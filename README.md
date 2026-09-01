@@ -312,11 +312,15 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-09-01  OK. Hotkey commands now stored as an encoded blob column on players (issue #357, AlgorithmVersion 67). Each player's Hotkey commands are delta-varint-encoded in memory (new internal/hotkeystream package) and written into the new players.hotkey_stream BLOB by the existing player insert; Hotkey rows are no longer written to commands_low_value, and the --skip-hotkeys CLI flag and skip_hotkeys ingest API field are removed, which narrows the API surface. All inputs are already-parsed in-memory commands; the schema change is one additive migration. No new os/net calls, endpoints, facade exemptions, allowlist widening, hosts or paths.
+2026-09-01  OK (net reduction: one fetch and one endpoint consumer removed). Dashboard visual-hierarchy rebalance, first tranche (issue #359). Presentation-only: an emphasis-ladder token block in styles.css, games-list column widths (Featuring no longer crops behind a "..." toggle), player-name pill fills/flags/crowns dropped in the list with the winning side rendered as weight, a new Teams column computed from the already-loaded players array, event-log rows ranked by their existing event type, unit-composition segment fills changed to a greyscale ramp, and the replay player colour moved from the name's text colour to an adjacent swatch (which retires legendTextStyle and its black|navy|darkblue text-shadow allowlist, fixing 4 of 8 names below WCAG AA). The /api/player-colors rank palette is no longer consumed: the api.js client method and its loader are deleted, so the frontend makes one fewer request at boot; the Go endpoint is untouched and now unused. No Go changes at all, no detection change and no AlgorithmVersion bump, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test change.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
+
+```
+2026-09-01  OK. Hotkey commands now stored as an encoded blob column on players (issue #357, AlgorithmVersion 67). Each player's Hotkey commands are delta-varint-encoded in memory (new internal/hotkeystream package) and written into the new players.hotkey_stream BLOB by the existing player insert; Hotkey rows are no longer written to commands_low_value, and the --skip-hotkeys CLI flag and skip_hotkeys ingest API field are removed, which narrows the API surface. All inputs are already-parsed in-memory commands; the schema change is one additive migration. No new os/net calls, endpoints, facade exemptions, allowlist widening, hosts or paths.
+```
 
 ```
 2026-09-01  OK. Mass-disconnect games no longer credit the replay saver a phantom win (issue #358, AlgorithmVersion 66). All changes consume data already parsed in memory: the detector reads the in-memory players/commands slices, winner clearing touches the same structs, and the two new replay_events types (player_dropped, mass_disconnect) flow through the existing worldstate emit + storage insert path with the type allowlist widened accordingly. No new os/net calls, endpoints, facade exemptions, hosts or paths.

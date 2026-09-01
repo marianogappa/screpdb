@@ -346,15 +346,6 @@ export const api = {
     return response.json();
   },
 
-  getPlayerColors: async () => {
-    const response = await fetch(`${API_BASE}/player-colors`);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to get player colors');
-    }
-    return response.json();
-  },
-
   getScrepColors: async () => {
     const response = await fetch(`${API_BASE}/screp-colors`);
     if (!response.ok) {
