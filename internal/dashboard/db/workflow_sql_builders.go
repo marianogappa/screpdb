@@ -298,3 +298,50 @@ func workflowFeaturingExistsSQL(featureKey string) (string, bool) {
 	}
 	return "", false
 }
+
+// workflowFeaturingCountShape describes how a UI featuring key is counted.
+// It mirrors workflowFeaturingExistsSQL exactly: that function decides what a
+// key MEANS for filtering, this one decides what it means for counting, and
+// both must agree or the menu would advertise a count the filter cannot
+// deliver. Keep the two switches in step.
+type workflowFeaturingCountShape struct {
+	// eventKind + eventTypes: count replays having any of these events.
+	eventKind  string
+	eventTypes []string
+	// perValueLabel, when set, narrows a marker to one payload label.
+	perValueLabel string
+	// teamStacking counts the replays column instead of an event.
+	teamStacking bool
+}
+
+// workflowFeaturingCountShapeFor resolves a UI featuring key to its count
+// shape, using the same aliasing and compositing rules as the filter builder.
+func workflowFeaturingCountShapeFor(featureKey string) (workflowFeaturingCountShape, bool) {
+	normalized := strings.TrimSpace(strings.ToLower(featureKey))
+	if fk, label, ok := splitPerValueFeatureKey(normalized); ok {
+		return workflowFeaturingCountShape{
+			eventKind:     "marker",
+			eventTypes:    []string{fk},
+			perValueLabel: label,
+		}, true
+	}
+	switch normalized {
+	case "team_stacking":
+		return workflowFeaturingCountShape{teamStacking: true}, true
+	case "cannon_rush", "bunker_rush", "zergling_rush",
+		"proxy_gate", "proxy_rax", "proxy_factory", "proxy_starport", "manner_pylon":
+		return workflowFeaturingCountShape{eventKind: "game_event", eventTypes: []string{normalized}}, true
+	case "drop":
+		return workflowFeaturingCountShape{eventKind: "game_event", eventTypes: []string{"drop", "cliff_drop"}}, true
+	case "mind_control":
+		return workflowFeaturingCountShape{eventKind: "marker", eventTypes: []string{"became_terran", "became_zerg"}}, true
+	}
+	lookup := normalized
+	if alias, ok := uiFeatureKeyToMarkerFeatureKey[normalized]; ok {
+		lookup = alias
+	}
+	if marker := markers.ByFeatureKey(lookup); marker != nil {
+		return workflowFeaturingCountShape{eventKind: "marker", eventTypes: []string{marker.FeatureKey}}, true
+	}
+	return workflowFeaturingCountShape{}, false
+}

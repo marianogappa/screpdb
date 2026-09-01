@@ -290,3 +290,50 @@ func TestCollapseWhitespace(t *testing.T) {
 		}
 	}
 }
+
+// TestFeaturingCountShapeMatchesFilterSQL keeps the two featuring switches in
+// step. workflowFeaturingExistsSQL decides what a filter key means for
+// FILTERING; workflowFeaturingCountShapeFor decides what it means for COUNTING.
+// If one resolves a key and the other does not, the omnibar advertises a count
+// the filter cannot deliver (or silently shows no count for a working filter).
+func TestFeaturingCountShapeMatchesFilterSQL(t *testing.T) {
+	keys := []string{
+		// column predicate
+		"team_stacking",
+		// narrative game events
+		"cannon_rush", "bunker_rush", "zergling_rush",
+		"proxy_gate", "proxy_rax", "proxy_factory", "proxy_starport", "manner_pylon",
+		// composites
+		"drop", "mind_control",
+		// per-value opener
+		"bo_z_fuzzy::~10 hatch",
+		// plain markers
+		"carrier", "nukes",
+		// unknown
+		"definitely_not_a_feature_key",
+	}
+	for _, key := range keys {
+		_, filterOK := workflowFeaturingExistsSQL(key)
+		_, countOK := workflowFeaturingCountShapeFor(key)
+		if filterOK != countOK {
+			t.Errorf("key %q: filterable=%v but countable=%v; the two switches have drifted",
+				key, filterOK, countOK)
+		}
+	}
+}
+
+// TestFeaturingCompositeKeysCountDistinctly documents why composite keys cannot
+// sum their parts: a replay carrying both "drop" and "cliff_drop" must count
+// once, so those shapes get a COUNT(DISTINCT) query of their own.
+func TestFeaturingCompositeKeysCountDistinctly(t *testing.T) {
+	for _, key := range []string{"drop", "mind_control"} {
+		shape, ok := workflowFeaturingCountShapeFor(key)
+		if !ok {
+			t.Fatalf("composite key %q did not resolve", key)
+		}
+		if len(shape.eventTypes) < 2 {
+			t.Errorf("key %q resolved to %d event types; expected a composite",
+				key, len(shape.eventTypes))
+		}
+	}
+}
