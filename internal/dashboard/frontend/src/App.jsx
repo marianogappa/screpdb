@@ -426,7 +426,7 @@ const gameEventDescription = (event, registry) => {
   }
   if (eventType === 'leave_game') return actor ? `${actor} leaves the game` : 'Player leaves the game';
   if (eventType === 'player_dropped') return actor ? `${actor} drops from the game (connection lost)` : 'Player drops from the game';
-  if (eventType === 'mass_disconnect') return actor ? `${actor} lost connection — the game ended without a result` : 'Connection lost — the game ended without a result';
+  if (eventType === 'mass_disconnect') return actor ? `${actor} lost connection; the game ended without a result` : 'Connection lost; the game ended without a result';
   if (eventType === 'player_stopped_playing') return actor ? `${actor} stops playing` : 'Player stops playing';
   if (eventType === 'late_alliance') {
     const teams = Array.isArray(event?.alliance_teams) ? event.alliance_teams : [];
@@ -766,7 +766,7 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
   }
   if (eventType === 'leave_game') return actorName ? <>{actorSpan} leaves the game</> : 'Player leaves the game';
   if (eventType === 'player_dropped') return actorName ? <>{actorSpan} drops from the game (connection lost)</> : 'Player drops from the game';
-  if (eventType === 'mass_disconnect') return actorName ? <>{actorSpan} lost connection — the game ended without a result</> : 'Connection lost — the game ended without a result';
+  if (eventType === 'mass_disconnect') return actorName ? <>{actorSpan} lost connection; the game ended without a result</> : 'Connection lost; the game ended without a result';
   if (eventType === 'player_stopped_playing') return actorName ? <>{actorSpan} stops playing</> : 'Player stops playing';
   if (eventType === 'late_alliance') {
     const teams = Array.isArray(event?.alliance_teams) ? event.alliance_teams : [];
@@ -1448,7 +1448,7 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
     return [{ emoji: '🔌', alt: 'dropped', title: 'Player dropped (connection lost)' }];
   }
   if (normalized === 'mass_disconnect') {
-    return [{ emoji: '🔌', alt: 'connection lost', title: 'The replay saver lost connection — the game ended without a result' }];
+    return [{ emoji: '🔌', alt: 'connection lost', title: 'The replay saver lost connection; the game ended without a result' }];
   }
   if (normalized === 'player_stopped_playing') {
     return [{ emoji: '💤', alt: 'stopped playing', title: 'Player stopped playing (no Leave Game)' }];

@@ -73,7 +73,7 @@ func TestEmitLeaveGameEvents_MassDisconnectCondensesCluster(t *testing.T) {
 	if leaves != 1 || drops != 0 || mass != 1 {
 		t.Fatalf("expected the cluster condensed into one mass_disconnect (1 leave_game, 0 player_dropped), got leaves=%d drops=%d mass=%d", leaves, drops, mass)
 	}
-	if massDescr != "Saver lost connection — the game ended without a result" {
+	if massDescr != "Saver lost connection; the game ended without a result" {
 		t.Fatalf("unexpected mass_disconnect description: %q", massDescr)
 	}
 }

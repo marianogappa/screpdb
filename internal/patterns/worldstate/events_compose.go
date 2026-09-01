@@ -655,7 +655,7 @@ func (e *Engine) emitLeaveGameEvents() {
 	}
 	if e.massDisconnect != nil {
 		e.emitEvent("mass_disconnect", e.massDisconnect.clusterSec,
-			fmt.Sprintf("%s lost connection — the game ended without a result", e.playerName(e.massDisconnect.saverPID)),
+			fmt.Sprintf("%s lost connection; the game ended without a result", e.playerName(e.massDisconnect.saverPID)),
 			e.playerRef(e.massDisconnect.saverPID), nil, -1, nil)
 	}
 }
