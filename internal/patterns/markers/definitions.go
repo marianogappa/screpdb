@@ -25,23 +25,15 @@ func secAfter(anchor int, addends ...float64) int {
 // the rungs are mutually exclusive by construction. Hatchery / Evolution
 // Chamber must not precede the Pool (else it's a hatch-first opener).
 // poolSec is the progamer-ideal Pool placement second for the UI golden
-// compare; zerglings pop one Pool build-time later.
-func zergPoolBO(supply, poolSec int) Marker {
+// compare; zerglings pop one Pool build-time later. Rungs with a measured
+// corpus sample (MEASUREMENT.md) pass their measured events via expert,
+// overriding both derived defaults.
+func zergPoolBO(supply, poolSec int, expert ...ExpertEvent) Marker {
 	drones := supply - 4
 	label := fmt.Sprintf("%d Pool", supply)
-	return Marker{
-		Name:        label,
-		PatternName: "Build Order: " + label,
-		FeatureKey:  fmt.Sprintf("bo_%d_pool", supply),
-		Race:        RaceZerg,
-		Kind:        KindInitialBuildOrder,
-		Rule: All(
-			ProduceCountBeforeBuild(subjDrone, subjSpawningPool, drones),
-			Not(BuildBefore(subjHatchery, subjSpawningPool)),
-			Not(BuildBefore(subjEvolutionChamber, subjSpawningPool)),
-		),
-		RuleDeadline: 180,
-		Expert: []ExpertEvent{
+	ev := expert
+	if len(ev) == 0 {
+		ev = []ExpertEvent{
 			{
 				Key:          "Spawning Pool",
 				Match:        MatchBuild(subjSpawningPool),
@@ -54,7 +46,21 @@ func zergPoolBO(supply, poolSec int) Marker {
 				TargetSecond: secAfter(poolSec, models.BuildTimeSpawningPool),
 				Tolerance:    Sym(4),
 			},
-		},
+		}
+	}
+	return Marker{
+		Name:        label,
+		PatternName: "Build Order: " + label,
+		FeatureKey:  fmt.Sprintf("bo_%d_pool", supply),
+		Race:        RaceZerg,
+		Kind:        KindInitialBuildOrder,
+		Rule: All(
+			ProduceCountBeforeBuild(subjDrone, subjSpawningPool, drones),
+			Not(BuildBefore(subjHatchery, subjSpawningPool)),
+			Not(BuildBefore(subjEvolutionChamber, subjSpawningPool)),
+		),
+		RuleDeadline:  180,
+		Expert:        ev,
 		SummaryPlayer: &Pill{Label: label, IconKey: "spawningpool"},
 		GamesList:     &Pill{Label: label, IconKey: "spawningpool"},
 	}
@@ -415,31 +421,27 @@ func allMarkers() []Marker {
 		All(tCohort, tcOneOneOne),
 	)
 
-	// Expert milestone timings for the composition-based Terran BOs (issue #158),
-	// mined from a corpus of ~2,860 expert/progamer replays. Each target is the
-	// median actual second across that bucket's detected games; tolerances span
-	// roughly the p10–p90 expert range (wider, and skewed late, for the macro
-	// buildings that arrive on a sliding economy timing). The opening backbone
-	// (Depot / 1st Barracks) is shared across the Terran macro openers, but gas
-	// timing splits the families — bio delays its Refinery (~185s) while mech
-	// takes early gas (~100s) — so each family carries its own opening table.
-	// Family tech (Academy for bio, 1st Factory for mech) and the bucket-defining
-	// Nth building carry the per-build signal. Nth-building tables are indexed by
-	// count (2..6); indices 0,1 are unused.
-	tBioOpening := []ExpertEvent{
-		{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 56, Tolerance: Asym(10, 24)},
-		{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 84, Tolerance: Asym(28, 20)},
-		{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 185, Tolerance: Asym(80, 50)},
-		{Key: "Academy", Match: MatchBuild(subjAcademy), TargetSecond: 230, Tolerance: Asym(45, 90)},
+	// Expert milestone timings for the composition-based Terran BOs, measured
+	// per MEASUREMENT.md over the aurora-ID-labelled progamer corpus (issue
+	// #362; supersedes the #158 mining run). The mech opening backbone splits
+	// into two economies: factory-before-expansion takes early gas (Refinery
+	// ~97s, Factory ~148s) while expand-first pushes both a full minute later
+	// (~164s / ~216s) — a single pooled table modelled both badly. The
+	// one-base (no-expa) buckets pool with fact-first: their backbone medians
+	// agree. First Siege Tank splits the same way; the expansion CC instead
+	// depends on the factory count, not the family (tMechExpansionCC).
+	tMechOpeningFactFirst := []ExpertEvent{
+		{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 54, Tolerance: Asym(2, 3)}, // n=671, p10/50/90 = 53/54/57
+		{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 84, Tolerance: Asym(3, 4)},        // n=671, p10/50/90 = 81/84/88
+		{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 97, Tolerance: Asym(2, 4)},        // n=668, p10/50/90 = 95/97/101
+		{Key: "1st Factory", Match: MatchBuild(subjFactory), TargetSecond: 148, Tolerance: Asym(3, 4)},     // n=671, p10/50/90 = 145/148/152
 	}
-	tMechOpening := []ExpertEvent{
-		{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 55, Tolerance: Asym(10, 24)},
-		{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 85, Tolerance: Asym(26, 18)},
-		{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 100, Tolerance: Asym(12, 70)},
-		{Key: "1st Factory", Match: MatchBuild(subjFactory), TargetSecond: 152, Tolerance: Asym(12, 80)},
+	tMechOpeningExpandFirst := []ExpertEvent{
+		{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 54, Tolerance: Asym(2, 3)}, // n=154, p10/50/90 = 53/54/57
+		{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 85, Tolerance: Asym(2, 10)},       // n=154, p10/50/90 = 83/85/95
+		{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 164, Tolerance: Asym(6, 9)},       // n=154, p10/50/90 = 158/164/173
+		{Key: "1st Factory", Match: MatchBuild(subjFactory), TargetSecond: 216, Tolerance: Asym(7, 27)},    // n=154, p10/50/90 = 209/216/243
 	}
-	tMechTank := 290
-	tTanklessVulture := 205
 
 	// Compact builders for the per-count composition buckets (issue #155). Each
 	// is an initial BO inside tCohort, made pairwise-disjoint by the predominance
@@ -453,14 +455,17 @@ func allMarkers() []Marker {
 	// pressure build; a two-base bio is macro. A natural Command Center taken in
 	// the opening (by ~360s) is the discriminator. "proxy" still flags a forward
 	// Barracks (worldstate proxy_rax event).
-	bioBase := func(name, fkey string, expandRule Predicate, extraExpert []ExpertEvent) Marker {
+	// Bio carries per-bucket expert tables rather than a shared family table:
+	// both buckets clear the n >= 20 floor and their gas / tech economies
+	// genuinely differ (1-base takes its Refinery ~40s earlier than 2-base).
+	bioBase := func(name, fkey string, expandRule Predicate, expert []ExpertEvent) Marker {
 		return Marker{
 			Name: name, PatternName: InitialBuildOrderPatternNamePrefix + name, FeatureKey: fkey,
 			Race: RaceTerran, Kind: KindInitialBuildOrder, Matchup: []string{"TvZ", MatchupNon1v1},
 			Rule:          All(tCohort, tcBio, Not(tcWraith), Not(tcGoliathDom), expandRule),
 			RuleDeadline:  600,
 			Modifiers:     []Modifier{{Name: "proxy", WorldstateEvent: "proxy_rax"}},
-			Expert:        append(append([]ExpertEvent{}, tBioOpening...), extraExpert...),
+			Expert:        expert,
 			SummaryPlayer: mkPill(name, "marine"), GamesList: mkPill(name, "marine"),
 		}
 	}
@@ -480,17 +485,42 @@ func allMarkers() []Marker {
 		{"Goliath", "goliath", "goliath", tcGoliathDom},
 		{"Tankless Mech", "tankless", "vulture", All(tcTank0, Not(tcGoliathDom))},
 	}
-	mechEv := func(c mechComp, extra ...ExpertEvent) []ExpertEvent {
-		ev := append([]ExpertEvent{}, tMechOpening...)
+	mechEv := func(c mechComp, factFirst bool, extra ...ExpertEvent) []ExpertEvent {
+		backbone := tMechOpeningExpandFirst
+		if factFirst {
+			backbone = tMechOpeningFactFirst
+		}
+		ev := append([]ExpertEvent{}, backbone...)
 		ev = append(ev, extra...)
 		switch c.key {
 		case "goliath":
+			// unmeasured legacy (n=14 fact-first, n=4 expand-first)
 			return append(ev, ExpertEvent{Key: "First Goliath", Match: MatchFirstProduce(subjGoliath), TargetSecond: 339, Tolerance: Asym(75, 110)})
 		case "tankless":
-			return append(ev, ExpertEvent{Key: "First Vulture", Match: MatchFirstProduce(subjVulture), TargetSecond: tTanklessVulture, Tolerance: Asym(20, 50)})
+			if factFirst {
+				return append(ev, ExpertEvent{Key: "First Vulture", Match: MatchFirstProduce(subjVulture), TargetSecond: 201, Tolerance: Asym(3, 23)}) // n=49, p10/50/90 = 198/201/224
+			}
+			// unmeasured legacy (n=6): expand-first vultures land ~294s, but
+			// the sample is below the floor, so the old value stays.
+			return append(ev, ExpertEvent{Key: "First Vulture", Match: MatchFirstProduce(subjVulture), TargetSecond: 205, Tolerance: Asym(20, 50)})
 		default:
-			return append(ev, ExpertEvent{Key: "First Siege Tank", Match: MatchFirstProduce(subjSiegeTank), TargetSecond: tMechTank, Tolerance: Asym(60, 120)})
+			if factFirst {
+				return append(ev, ExpertEvent{Key: "First Siege Tank", Match: MatchFirstProduce(subjSiegeTank), TargetSecond: 276, Tolerance: Asym(44, 135)}) // n=608, p10/50/90 = 232/276/411
+			}
+			return append(ev, ExpertEvent{Key: "First Siege Tank", Match: MatchFirstProduce(subjSiegeTank), TargetSecond: 301, Tolerance: Asym(10, 129)}) // n=144, p10/50/90 = 291/301/430
 		}
+	}
+	// tMechExpansionCC is the expansion Command Center milestone for an
+	// N-factories-before-expa bucket. The backbone is count-invariant but the
+	// CC is not: each extra pre-expansion Factory pushes it ~110s later. The
+	// n>=3 buckets are all below the sample floor (n<=7) and reuse the 2-Fact
+	// table — their tiny samples sit later still, so "late vs the 2-Fact band"
+	// remains directionally honest.
+	tMechExpansionCC := func(n int) ExpertEvent {
+		if n >= 2 {
+			return ExpertEvent{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 321, Tolerance: Asym(52, 99)} // n=35, p10/50/90 = 269/321/420
+		}
+		return ExpertEvent{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 211, Tolerance: Asym(14, 62)} // n=593, p10/50/90 = 197/211/273
 	}
 	mechCore := func(name, fkey string, facRule Predicate, c mechComp, ev []ExpertEvent) Marker {
 		return Marker{
@@ -517,14 +547,13 @@ func allMarkers() []Marker {
 		}
 		name := head + " " + c.suffix
 		fkey := fmt.Sprintf("bo_t_%s_expa_%dfac", c.key, n)
-		ev := mechEv(c, ExpertEvent{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 250, Tolerance: Asym(120, 200)})
-		return mechCore(name, fkey, facRule, c, ev)
+		return mechCore(name, fkey, facRule, c, mechEv(c, true, tMechExpansionCC(n)))
 	}
 	// Expand-first: the natural CC is taken before ANY Factory (0 Factories
 	// before the expansion). Just "Mech" / "Goliath" / "Tankless Mech".
 	mechPlain := func(c mechComp) Marker {
 		fkey := fmt.Sprintf("bo_t_%s_expand", c.key)
-		return mechCore(c.suffix, fkey, BuildCountBeforeFirstBuildOf(subjFactory, subjCommandCenter, 0), c, mechEv(c))
+		return mechCore(c.suffix, fkey, BuildCountBeforeFirstBuildOf(subjFactory, subjCommandCenter, 0), c, mechEv(c, false))
 	}
 	// No expansion in the opening window (no CC by 10:00) — a greedy one-base
 	// mech. Named "1-Base <comp>" (parallel to 1-Base Bio); not split by factory
@@ -532,7 +561,14 @@ func allMarkers() []Marker {
 	mechNoExpa := func(c mechComp) Marker {
 		fkey := fmt.Sprintf("bo_t_%s_noexpa", c.key)
 		facRule := All(Not(FirstBuildBefore(subjCommandCenter, 600)), CountBuildsBefore(subjFactory, 2, 600))
-		return mechCore("1-Base "+c.suffix, fkey, facRule, c, mechEv(c))
+		ev := mechEv(c, true)
+		if c.key == "mech" {
+			// One-base mech pools with fact-first on the backbone but not on
+			// the tank: skipping the expansion buys a much earlier First
+			// Siege Tank than the family's 276 (35% in-band there).
+			ev[len(ev)-1] = ExpertEvent{Key: "First Siege Tank", Match: MatchFirstProduce(subjSiegeTank), TargetSecond: 229, Tolerance: Asym(3, 53)} // n=20, p10/50/90 = 226/229/282
+		}
+		return mechCore("1-Base "+c.suffix, fkey, facRule, c, ev)
 	}
 	// 1-1-1 (one each of Rax/Factory/Starport, early Starport + Wraith), named
 	// by the transition: Mech (tanks), Tankless Mech (no tanks), or balanced.
@@ -542,12 +578,16 @@ func allMarkers() []Marker {
 			Race: RaceTerran, Kind: KindInitialBuildOrder,
 			Rule:         All(tCohort, tcOneOneOne, comp, Not(tc2Starport)),
 			RuleDeadline: 600,
+			// Pooled over the three 1-1-1 buckets (n=129; bo_t_111_mech carries
+			// n=102 of it). The wide late sides are real spread, not a missing
+			// split — the TvT majority stretches its Starport to ~340s while
+			// TvZ lands ~218s, with no clean seam to cut on.
 			Expert: []ExpertEvent{
-				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 55, Tolerance: Asym(10, 24)},
-				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 85, Tolerance: Asym(26, 18)},
-				{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 99, Tolerance: Asym(15, 70)},
-				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 153, Tolerance: Asym(15, 80)},
-				{Key: "Starport", Match: MatchBuild(subjStarport), TargetSecond: 240, Tolerance: Asym(50, 80)},
+				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 54, Tolerance: Asym(2, 22)}, // n=129, p10/50/90 = 53/54/76
+				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 85, Tolerance: Asym(25, 3)},        // n=129, p10/50/90 = 60/85/88
+				{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 98, Tolerance: Asym(3, 62)},        // n=129, p10/50/90 = 95/98/160
+				{Key: "Factory", Match: MatchBuild(subjFactory), TargetSecond: 148, Tolerance: Asym(3, 58)},         // n=129, p10/50/90 = 145/148/206
+				{Key: "Starport", Match: MatchBuild(subjStarport), TargetSecond: 230, Tolerance: Asym(28, 89)},      // n=129, p10/50/90 = 202/230/319
 			},
 			SummaryPlayer: &Pill{Label: name, IconKey: icon}, GamesList: &Pill{Label: name, IconKey: icon},
 		}
@@ -610,8 +650,8 @@ func allMarkers() []Marker {
 			Modifiers:    []Modifier{{Name: "expand", Rule: NthBuildBeforeFirstProduce(subjNexus, 1, subjReaver)}},
 			RuleDeadline: 600,
 			Expert: []ExpertEvent{
-				{Key: "Robotics Facility", Match: MatchBuild(subjRoboticsFacility), TargetSecond: 252, Tolerance: Asym(60, 70)},
-				{Key: "First Reaver", Match: MatchFirstProduce(subjReaver), TargetSecond: 408, Tolerance: Asym(90, 120)},
+				{Key: "Robotics Facility", Match: MatchBuild(subjRoboticsFacility), TargetSecond: 243, Tolerance: Asym(22, 38)}, // n=34, p10/50/90 = 221/243/281
+				{Key: "First Reaver", Match: MatchFirstProduce(subjReaver), TargetSecond: 339, Tolerance: Asym(27, 36)},         // n=34, p10/50/90 = 312/339/375
 			},
 			SummaryPlayer: mkPill("1 Gate Reaver", "reaver"), GamesList: mkPill("1 Gate Reaver", "reaver"),
 		},
@@ -641,9 +681,9 @@ func allMarkers() []Marker {
 			),
 			RuleDeadline: 320,
 			Expert: []ExpertEvent{
-				{Key: "Gateway", Match: MatchBuild(subjGateway), TargetSecond: 70, Tolerance: Asym(20, 40)},
-				{Key: "Forge", Match: MatchBuild(subjForge), TargetSecond: 120, Tolerance: Asym(30, 60)},
-				{Key: "Photon Cannon", Match: MatchBuild(subjPhotonCannon), TargetSecond: 155, Tolerance: Asym(30, 80)},
+				{Key: "Gateway", Match: MatchBuild(subjGateway), TargetSecond: 73, Tolerance: Asym(2, 3)},                // n=27, p10/50/90 = 71/73/76
+				{Key: "Forge", Match: MatchBuild(subjForge), TargetSecond: 137, Tolerance: Asym(21, 117)},                // n=27, p10/50/90 = 116/137/254
+				{Key: "Photon Cannon", Match: MatchBuild(subjPhotonCannon), TargetSecond: 171, Tolerance: Asym(19, 117)}, // n=27, p10/50/90 = 152/171/288
 			},
 			SummaryPlayer: mkPill("Gate Forge Cannon (before expa)", "photoncannon"), GamesList: mkPill("Gate Forge Cannon (before expa)", "photoncannon"),
 		},
@@ -658,6 +698,7 @@ func allMarkers() []Marker {
 				BuildBefore(subjGateway, subjNexus),
 			),
 			RuleDeadline: 320,
+			// unmeasured legacy (n=7)
 			Expert: []ExpertEvent{
 				{Key: "Forge", Match: MatchBuild(subjForge), TargetSecond: 96, Tolerance: Asym(30, 60)},
 				{Key: "Photon Cannon", Match: MatchBuild(subjPhotonCannon), TargetSecond: 126, Tolerance: Asym(30, 60)},
@@ -676,6 +717,7 @@ func allMarkers() []Marker {
 				BuildBefore(subjPhotonCannon, subjNexus),
 			),
 			RuleDeadline: 320,
+			// unmeasured legacy (n=1)
 			Expert: []ExpertEvent{
 				{Key: "Forge", Match: MatchBuild(subjForge), TargetSecond: 96, Tolerance: Asym(30, 60)},
 				{Key: "Gateway", Match: MatchBuild(subjGateway), TargetSecond: 130, Tolerance: Asym(30, 70)},
@@ -704,10 +746,14 @@ func allMarkers() []Marker {
 				{Name: "expand", Rule: BuildBefore(subjCommandCenter, subjStarport)},
 				{Name: "proxy", WorldstateEvent: "proxy_starport"},
 			},
+			// The wide late sides are the "expand" modifier variant, not a
+			// missing split: 1-base games sit tight (Starport 198±10, Wraith
+			// 245±11) while the expand games land ~70s later — and already
+			// carry the modifier pill that explains it.
 			Expert: []ExpertEvent{
-				{Key: "1st Starport", Match: MatchBuild(subjStarport), TargetSecond: 205, Tolerance: Asym(25, 70)},
-				{Key: "2nd Starport", Match: MatchNthBuild(subjStarport, 2), TargetSecond: 212, Tolerance: Asym(25, 70)},
-				{Key: "First Wraith", Match: MatchFirstProduce(subjWraith), TargetSecond: 253, Tolerance: Asym(40, 90)},
+				{Key: "1st Starport", Match: MatchBuild(subjStarport), TargetSecond: 201, Tolerance: Asym(12, 126)},       // n=77, p10/50/90 = 189/201/327
+				{Key: "2nd Starport", Match: MatchNthBuild(subjStarport, 2), TargetSecond: 210, Tolerance: Asym(20, 117)}, // n=77, p10/50/90 = 190/210/327
+				{Key: "First Wraith", Match: MatchFirstProduce(subjWraith), TargetSecond: 248, Tolerance: Asym(12, 131)},  // n=77, p10/50/90 = 236/248/379
 			},
 			SummaryPlayer: mkPill("2 Starport Wraith", "wraith"), GamesList: mkPill("2 Starport Wraith", "wraith"),
 		},
@@ -720,6 +766,7 @@ func allMarkers() []Marker {
 				{Name: "expand", Rule: BuildBefore(subjCommandCenter, subjStarport)},
 				{Name: "proxy", WorldstateEvent: "proxy_starport"},
 			},
+			// unmeasured legacy (n=8)
 			Expert: []ExpertEvent{
 				{Key: "1st Starport", Match: MatchBuild(subjStarport), TargetSecond: 205, Tolerance: Asym(40, 90)},
 				{Key: "2nd Starport", Match: MatchNthBuild(subjStarport, 2), TargetSecond: 212, Tolerance: Asym(40, 90)},
@@ -738,6 +785,7 @@ func allMarkers() []Marker {
 				{Name: "expand", Rule: BuildBefore(subjCommandCenter, subjStarport)},
 				{Name: "proxy", WorldstateEvent: "proxy_starport"},
 			},
+			// unmeasured legacy (n=6)
 			Expert: []ExpertEvent{
 				{Key: "1st Starport", Match: MatchBuild(subjStarport), TargetSecond: 205, Tolerance: Asym(40, 90)},
 				{Key: "3rd Starport", Match: MatchNthBuild(subjStarport, 3), TargetSecond: 225, Tolerance: Asym(40, 90)},
@@ -754,6 +802,7 @@ func allMarkers() []Marker {
 				{Name: "expand", Rule: BuildBefore(subjCommandCenter, subjStarport)},
 				{Name: "proxy", WorldstateEvent: "proxy_starport"},
 			},
+			// unmeasured legacy (n=1)
 			Expert: []ExpertEvent{
 				{Key: "1st Starport", Match: MatchBuild(subjStarport), TargetSecond: 205, Tolerance: Asym(40, 90)},
 				{Key: "3rd Starport", Match: MatchNthBuild(subjStarport, 3), TargetSecond: 225, Tolerance: Asym(40, 90)},
@@ -783,6 +832,7 @@ func allMarkers() []Marker {
 				Not(BuildBefore(subjEvolutionChamber, subjSpawningPool)),
 			),
 			RuleDeadline: 60,
+			// unmeasured legacy (n=7)
 			Expert: []ExpertEvent{
 				{
 					Key:          "Spawning Pool",
@@ -805,10 +855,10 @@ func allMarkers() []Marker {
 		// pre-Pool Drone-morph count (1/2/3/4 → supply 5/6/7/8); no Overlord
 		// gate needed (supply <9 needs no Overlord, and the exact Drone count
 		// alone keeps each rung disjoint from every other pool BO).
-		zergPoolBO(5, 45),
-		zergPoolBO(6, 52),
-		zergPoolBO(7, 60),
-		zergPoolBO(8, 67),
+		zergPoolBO(5, 45), // unmeasured legacy (n=3)
+		zergPoolBO(6, 52), // unmeasured legacy (n=1)
+		zergPoolBO(7, 60), // unmeasured legacy (n=1)
+		zergPoolBO(8, 67), // unmeasured legacy (n=0)
 		{
 			Name:        "9 Pool",
 			PatternName: "Build Order: 9 Pool",
@@ -833,14 +883,16 @@ func allMarkers() []Marker {
 				{
 					Key:          "Spawning Pool",
 					Match:        MatchBuild(subjSpawningPool),
-					TargetSecond: 73,
-					Tolerance:    Sym(4),
+					TargetSecond: 62, // n=348, p10/50/90 = 60/62/63
+					Tolerance:    Sym(2),
 				},
 				{
+					// Measured directly, not derived from the Pool: build time
+					// does not include larva availability.
 					Key:          "First Zerglings",
 					Match:        MatchFirstProduce(subjZergling),
-					TargetSecond: secAfter(73, models.BuildTimeSpawningPool),
-					Tolerance:    Sym(3),
+					TargetSecond: 114, // n=348, p10/50/90 = 113/114/116
+					Tolerance:    Sym(2),
 				},
 			},
 			SummaryPlayer: &Pill{Label: "9 Pool", IconKey: "spawningpool"},
@@ -866,14 +918,14 @@ func allMarkers() []Marker {
 				{
 					Key:          "Spawning Pool",
 					Match:        MatchBuild(subjSpawningPool),
-					TargetSecond: 80,
-					Tolerance:    Sym(5),
+					TargetSecond: 73, // n=514, p10/50/90 = 71/73/75
+					Tolerance:    Sym(2),
 				},
 				{
 					Key:          "First Zerglings",
 					Match:        MatchFirstProduce(subjZergling),
-					TargetSecond: secAfter(80, models.BuildTimeSpawningPool),
-					Tolerance:    Sym(4),
+					TargetSecond: 126, // n=513, p10/50/90 = 124/126/128
+					Tolerance:    Sym(2),
 				},
 			},
 			SummaryPlayer: &Pill{Label: "9 Overpool", IconKey: "spawningpool"},
@@ -895,6 +947,7 @@ func allMarkers() []Marker {
 				Not(BuildBefore(subjEvolutionChamber, subjSpawningPool)),
 			),
 			RuleDeadline: 180,
+			// unmeasured legacy (n=0)
 			Expert: []ExpertEvent{
 				{
 					Key:          "Spawning Pool",
@@ -916,8 +969,11 @@ func allMarkers() []Marker {
 		// (cap 9), but the exact Drone-morph count (6/7) already makes these
 		// disjoint from every other rung, so no explicit Overlord gate is
 		// needed — keeping them parallel to the 5–8 rungs.
-		zergPoolBO(10, 92),
-		zergPoolBO(11, 98),
+		zergPoolBO(10, 84,
+			ExpertEvent{Key: "Spawning Pool", Match: MatchBuild(subjSpawningPool), TargetSecond: 84, Tolerance: Sym(2)},           // n=20, p10/50/90 = 83/84/85
+			ExpertEvent{Key: "First Zerglings", Match: MatchFirstProduce(subjZergling), TargetSecond: 136, Tolerance: Asym(2, 3)}, // n=20, p10/50/90 = 136/136/139
+		),
+		zergPoolBO(11, 98), // unmeasured legacy (n=12)
 		{
 			Name:        "9 Pool into Hatchery",
 			PatternName: "Build Order: 9 Pool into Hatchery",
@@ -937,6 +993,7 @@ func allMarkers() []Marker {
 				BuildAfterWithin(subjHatchery, subjSpawningPool, 60),
 			),
 			RuleDeadline: 180, // pool ≤120 + hatch ≤60 after pool
+			// unmeasured legacy (n=0)
 			Expert: []ExpertEvent{
 				{
 					Key:          "Spawning Pool",
@@ -964,11 +1021,11 @@ func allMarkers() []Marker {
 		// costs 300 minerals, so a player placing one at supply 4–8 genuinely
 		// waited that long with that few Drones — it's a real (greedy/fast)
 		// expansion, not noise. Keyed on exact pre-Hatch Drone count (0–4).
-		zergHatchBO(4, 40),
-		zergHatchBO(5, 50),
-		zergHatchBO(6, 58),
-		zergHatchBO(7, 66),
-		zergHatchBO(8, 70),
+		zergHatchBO(4, 40), // unmeasured legacy (n=8)
+		zergHatchBO(5, 50), // unmeasured legacy (n=17)
+		zergHatchBO(6, 58), // unmeasured legacy (n=11)
+		zergHatchBO(7, 66), // unmeasured legacy (n=13)
+		zergHatchBO(8, 70), // unmeasured legacy (n=3)
 		{
 			Name:        "9 Hatch",
 			PatternName: "Build Order: 9 Hatch",
@@ -985,6 +1042,7 @@ func allMarkers() []Marker {
 				Not(BuildBefore(subjEvolutionChamber, subjHatchery)),
 			),
 			RuleDeadline: 150,
+			// unmeasured legacy (n=4)
 			Expert: []ExpertEvent{
 				{
 					Key:          "Hatchery",
@@ -1027,6 +1085,7 @@ func allMarkers() []Marker {
 				Not(BuildBefore(subjEvolutionChamber, subjHatchery)),
 			),
 			RuleDeadline: 180,
+			// unmeasured legacy (n=2)
 			Expert: []ExpertEvent{
 				{
 					Key:          "Hatchery",
@@ -1057,6 +1116,7 @@ func allMarkers() []Marker {
 				Not(BuildBefore(subjEvolutionChamber, subjHatchery)),
 			),
 			RuleDeadline: 180,
+			// unmeasured legacy (n=3)
 			Expert: []ExpertEvent{
 				{
 					Key:          "Hatchery",
@@ -1087,6 +1147,7 @@ func allMarkers() []Marker {
 				Not(BuildBefore(subjEvolutionChamber, subjHatchery)),
 			),
 			RuleDeadline: 180,
+			// unmeasured legacy (n=2)
 			Expert: []ExpertEvent{
 				{
 					Key:          "Hatchery",
@@ -1117,6 +1178,7 @@ func allMarkers() []Marker {
 				Not(BuildBefore(subjEvolutionChamber, subjHatchery)),
 			),
 			RuleDeadline: 180,
+			// unmeasured legacy (n=0)
 			Expert: []ExpertEvent{
 				{
 					Key:          "Hatchery",
@@ -1181,11 +1243,14 @@ func allMarkers() []Marker {
 			Kind:         KindInitialBuildOrder,
 			Rule:         pRule1GateCore,
 			RuleDeadline: 180,
+			// Assimilator / Cybernetics Core are genuinely bimodal in PvT
+			// (gas-first ~90s vs gas-later ~120s), so their late tolerance is
+			// wide by design.
 			Expert: []ExpertEvent{
-				{Key: "Pylon", Match: MatchBuild(subjPylon), TargetSecond: 48, Tolerance: Sym(4)},
-				{Key: "Gateway", Match: MatchBuild(subjGateway), TargetSecond: 86, Tolerance: Sym(6)},
-				{Key: "Assimilator", Match: MatchBuild(subjAssimilator), TargetSecond: 116, Tolerance: Sym(10)},
-				{Key: "Cybernetics Core", Match: MatchBuild(subjCyberneticsCore), TargetSecond: 138, Tolerance: Sym(10)},
+				{Key: "Pylon", Match: MatchBuild(subjPylon), TargetSecond: 46, Tolerance: Sym(2)},                            // n=435, p10/50/90 = 46/46/48
+				{Key: "Gateway", Match: MatchBuild(subjGateway), TargetSecond: 73, Tolerance: Sym(2)},                        // n=435, p10/50/90 = 73/73/75
+				{Key: "Assimilator", Match: MatchBuild(subjAssimilator), TargetSecond: 93, Tolerance: Asym(5, 27)},           // n=392, p10/50/90 = 88/93/120
+				{Key: "Cybernetics Core", Match: MatchBuild(subjCyberneticsCore), TargetSecond: 116, Tolerance: Asym(2, 29)}, // n=435, p10/50/90 = 114/116/145
 			},
 			SummaryPlayer: &Pill{Label: "1 Gate Core", IconKey: "cyberneticscore"},
 			GamesList:     &Pill{Label: "1 Gate Core", IconKey: "cyberneticscore"},
@@ -1203,16 +1268,17 @@ func allMarkers() []Marker {
 			RuleDeadline: 180,
 			Modifiers:    []Modifier{{Name: "proxy", WorldstateEvent: "proxy_gate"}},
 			Expert: []ExpertEvent{
-				{Key: "Pylon", Match: MatchBuild(subjPylon), TargetSecond: 48, Tolerance: Sym(4)},
-				{Key: "1st Gateway", Match: MatchBuild(subjGateway), TargetSecond: 70, Tolerance: Sym(6)},
-				{Key: "2nd Gateway", Match: MatchNthBuild(subjGateway, 2), TargetSecond: 86, Tolerance: Sym(10)},
+				{Key: "Pylon", Match: MatchBuild(subjPylon), TargetSecond: 47, Tolerance: Asym(12, 3)},                // n=124, p10/50/90 = 35/47/50
+				{Key: "1st Gateway", Match: MatchBuild(subjGateway), TargetSecond: 73, Tolerance: Asym(7, 3)},         // n=124, p10/50/90 = 66/73/76
+				{Key: "2nd Gateway", Match: MatchNthBuild(subjGateway, 2), TargetSecond: 90, Tolerance: Asym(15, 12)}, // n=124, p10/50/90 = 75/90/102
 				{
-					// First Zealot can be queued the moment the 1st Gateway
-					// completes: 70 + Gateway build time = ~108s.
+					// Measured directly, not derived from the 1st Gateway:
+					// pros cut the probe before the Zealot, landing it ~8s
+					// after gateway-completion arithmetic says.
 					Key:          "First Zealot",
 					Match:        MatchFirstProduce(subjZealot),
-					TargetSecond: secAfter(70, models.BuildTimeGateway),
-					Tolerance:    Sym(3),
+					TargetSecond: 116, // n=105, p10/50/90 = 113/116/128
+					Tolerance:    Asym(3, 12),
 				},
 			},
 			SummaryPlayer: &Pill{Label: "2 Gate", IconKey: "gateway"},
@@ -1231,9 +1297,9 @@ func allMarkers() []Marker {
 			Rule:         pRuleNexusFirst,
 			RuleDeadline: 200,
 			Expert: []ExpertEvent{
-				{Key: "Pylon", Match: MatchBuild(subjPylon), TargetSecond: 48, Tolerance: Sym(4)},
-				{Key: "Nexus", Match: MatchBuild(subjNexus), TargetSecond: 145, Tolerance: Sym(20)},
-				{Key: "Gateway", Match: MatchBuild(subjGateway), TargetSecond: 175, Tolerance: Sym(20)},
+				{Key: "Pylon", Match: MatchBuild(subjPylon), TargetSecond: 47, Tolerance: Sym(2)},           // n=160, p10/50/90 = 46/47/48
+				{Key: "Nexus", Match: MatchBuild(subjNexus), TargetSecond: 105, Tolerance: Asym(2, 6)},      // n=160, p10/50/90 = 104/105/111
+				{Key: "Gateway", Match: MatchBuild(subjGateway), TargetSecond: 126, Tolerance: Asym(4, 36)}, // n=158, p10/50/90 = 122/126/162
 			},
 			SummaryPlayer: &Pill{Label: "Nexus First", IconKey: "nexus"},
 			GamesList:     &Pill{Label: "Nexus First", IconKey: "nexus"},
@@ -1252,9 +1318,9 @@ func allMarkers() []Marker {
 			Rule:         pRuleGateExpand,
 			RuleDeadline: 220,
 			Expert: []ExpertEvent{
-				{Key: "Pylon", Match: MatchBuild(subjPylon), TargetSecond: 48, Tolerance: Sym(4)},
-				{Key: "Gateway", Match: MatchBuild(subjGateway), TargetSecond: 88, Tolerance: Sym(10)},
-				{Key: "Nexus", Match: MatchBuild(subjNexus), TargetSecond: 165, Tolerance: Sym(15)},
+				{Key: "Pylon", Match: MatchBuild(subjPylon), TargetSecond: 47, Tolerance: Sym(2)},        // n=206, p10/50/90 = 45/47/48
+				{Key: "Gateway", Match: MatchBuild(subjGateway), TargetSecond: 72, Tolerance: Sym(4)},    // n=206, p10/50/90 = 68/72/76
+				{Key: "Nexus", Match: MatchBuild(subjNexus), TargetSecond: 164, Tolerance: Asym(43, 12)}, // n=206, p10/50/90 = 121/164/176
 			},
 			SummaryPlayer: &Pill{Label: "Gate Expand", IconKey: "nexus"},
 			GamesList:     &Pill{Label: "Gate Expand", IconKey: "nexus"},
@@ -1275,10 +1341,10 @@ func allMarkers() []Marker {
 			Rule:         pRuleForgeExpand,
 			RuleDeadline: 260,
 			Expert: []ExpertEvent{
-				{Key: "Pylon", Match: MatchBuild(subjPylon), TargetSecond: 48, Tolerance: Sym(4)},
-				{Key: "Forge", Match: MatchBuild(subjForge), TargetSecond: 86, Tolerance: Sym(8)},
-				{Key: "Photon Cannon", Match: MatchBuild(subjPhotonCannon), TargetSecond: 130, Tolerance: Sym(20)},
-				{Key: "Nexus", Match: MatchBuild(subjNexus), TargetSecond: 152, Tolerance: Sym(15)},
+				{Key: "Pylon", Match: MatchBuild(subjPylon), TargetSecond: 47, Tolerance: Sym(2)},                       // n=175, p10/50/90 = 46/47/49
+				{Key: "Forge", Match: MatchBuild(subjForge), TargetSecond: 91, Tolerance: Asym(7, 10)},                  // n=175, p10/50/90 = 84/91/101
+				{Key: "Photon Cannon", Match: MatchBuild(subjPhotonCannon), TargetSecond: 142, Tolerance: Asym(15, 28)}, // n=163, p10/50/90 = 127/142/170
+				{Key: "Nexus", Match: MatchBuild(subjNexus), TargetSecond: 135, Tolerance: Asym(7, 47)},                 // n=175, p10/50/90 = 128/135/182
 			},
 			SummaryPlayer: &Pill{Label: "FFE", IconKey: "forge"},
 			GamesList:     &Pill{Label: "FFE", IconKey: "forge"},
@@ -1294,6 +1360,7 @@ func allMarkers() []Marker {
 			Kind:         KindInitialBuildOrder,
 			Rule:         pRuleForgeCannonNoExpa,
 			RuleDeadline: 320,
+			// unmeasured legacy (n=0)
 			Expert: []ExpertEvent{
 				{Key: "Forge", Match: MatchBuild(subjForge), TargetSecond: 90, Tolerance: Sym(20)},
 				{Key: "Photon Cannon", Match: MatchBuild(subjPhotonCannon), TargetSecond: 130, Tolerance: Sym(30)},
@@ -1311,6 +1378,7 @@ func allMarkers() []Marker {
 			Kind:         KindInitialBuildOrder,
 			Rule:         pRule1GateNoExpa,
 			RuleDeadline: 320,
+			// unmeasured legacy (n=7)
 			Expert: []ExpertEvent{
 				{Key: "Pylon", Match: MatchBuild(subjPylon), TargetSecond: 48, Tolerance: Sym(6)},
 				{Key: "Gateway", Match: MatchBuild(subjGateway), TargetSecond: 88, Tolerance: Sym(15)},
@@ -1349,9 +1417,19 @@ func allMarkers() []Marker {
 		// Bio (Marine/Medic predominant, 8+ Marines; TvZ or non-1v1), split by
 		// base count: 1-Base = no natural CC in the opening (all-in / pressure),
 		// 2-Base = took a natural CC by ~360s (macro). Mutually exclusive.
-		bioBase("1-Base Bio", "bo_t_bio_1base", Not(FirstBuildBefore(subjCommandCenter, 360)), nil),
-		bioBase("2-Base Bio", "bo_t_bio_2base", FirstBuildBefore(subjCommandCenter, 360),
-			[]ExpertEvent{{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 300, Tolerance: Asym(80, 60)}}),
+		bioBase("1-Base Bio", "bo_t_bio_1base", Not(FirstBuildBefore(subjCommandCenter, 360)), []ExpertEvent{
+			{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 55, Tolerance: Asym(8, 50)}, // n=40, p10/50/90 = 47/55/105
+			{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 77, Tolerance: Asym(23, 12)},       // n=40, p10/50/90 = 54/77/89
+			{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 152, Tolerance: Asym(53, 109)},     // n=35, p10/50/90 = 99/152/261
+			{Key: "Academy", Match: MatchBuild(subjAcademy), TargetSecond: 200, Tolerance: Asym(37, 172)},       // n=32, p10/50/90 = 163/200/372
+		}),
+		bioBase("2-Base Bio", "bo_t_bio_2base", FirstBuildBefore(subjCommandCenter, 360), []ExpertEvent{
+			{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 55, Tolerance: Asym(6, 7)},        // n=405, p10/50/90 = 49/55/62
+			{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 84, Tolerance: Asym(7, 2)},               // n=405, p10/50/90 = 77/84/86
+			{Key: "Refinery", Match: MatchBuild(subjRefinery), TargetSecond: 190, Tolerance: Asym(91, 37)},            // n=404, p10/50/90 = 99/190/227
+			{Key: "Academy", Match: MatchBuild(subjAcademy), TargetSecond: 230, Tolerance: Asym(23, 183)},             // n=388, p10/50/90 = 207/230/413
+			{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 166, Tolerance: Asym(19, 41)}, // n=405, p10/50/90 = 147/166/207
+		}),
 		// 1-1-1 (early Starport + Wraith), named by the transition. Mech vs
 		// Tankless Mech split by tank presence; balanced "1-1-1" is neither bio-
 		// nor mech-predominant (the classic Vulture/Tank/Wraith opener).
@@ -1376,9 +1454,9 @@ func allMarkers() []Marker {
 			Rule:         tRuleCCFirst,
 			RuleDeadline: 200,
 			Expert: []ExpertEvent{
-				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 62, Tolerance: Sym(8)},
-				{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 145, Tolerance: Sym(20)},
-				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 165, Tolerance: Sym(20)},
+				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 54, Tolerance: Sym(2)},          // n=49, p10/50/90 = 52/54/56
+				{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 115, Tolerance: Asym(2, 5)}, // n=50, p10/50/90 = 113/115/120
+				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 135, Tolerance: Asym(5, 3)},            // n=50, p10/50/90 = 130/135/138
 			},
 			SummaryPlayer: &Pill{Label: "CC First", IconKey: "commandcenter"},
 			GamesList:     &Pill{Label: "CC First", IconKey: "commandcenter"},
@@ -1396,6 +1474,7 @@ func allMarkers() []Marker {
 			Rule:         tRuleBBS,
 			RuleDeadline: 120,
 			Modifiers:    []Modifier{{Name: "proxy", WorldstateEvent: "proxy_rax"}},
+			// unmeasured legacy (n=7)
 			Expert: []ExpertEvent{
 				{Key: "1st Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 60, Tolerance: Sym(8)},
 				{Key: "2nd Barracks", Match: MatchNthBuild(subjBarracks, 2), TargetSecond: 80, Tolerance: Sym(8)},
@@ -1421,8 +1500,8 @@ func allMarkers() []Marker {
 			RequireWorldstateEvent: "bunker_rush",
 			RuleDeadline:           endOfReplaySentinel,
 			Expert: []ExpertEvent{
-				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 60, Tolerance: Sym(10)},
-				{Key: "Bunker", Match: MatchBuild(subjBunker), TargetSecond: 130, Tolerance: Sym(20)},
+				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 57, Tolerance: Asym(15, 27)}, // n=30, p10/50/90 = 42/57/84
+				{Key: "Bunker", Match: MatchBuild(subjBunker), TargetSecond: 164, Tolerance: Asym(26, 23)},    // n=30, p10/50/90 = 138/164/187
 			},
 			SummaryPlayer: &Pill{Label: "Bunker Rush", IconKey: "bunker"},
 			GamesList:     &Pill{Label: "Bunker Rush", IconKey: "bunker"},
@@ -1567,9 +1646,9 @@ func allMarkers() []Marker {
 			//
 			// No per-event Expert tolerance bands: the only progamer
 			// reference baked into this marker is the muta-vs-turret
-			// completion gap (median + p25/p75 from the cwal-dl 1v1 TvZ
-			// corpus), surfaced on the Mutalisk Timing tab — see
-			// populateMutaliskTimingForGameDetail.
+			// completion gap (median + p25/p75 from the aurora-ID-labelled
+			// progamer corpus, MEASUREMENT.md), surfaced on the Mutalisk
+			// Timing tab — see populateMutaliskTimingForGameDetail.
 			Name:          "Mutalisk timing",
 			PatternName:   "Mutalisk timing",
 			FeatureKey:    "mutalisk_timing",
@@ -1831,24 +1910,27 @@ func allMarkers() []Marker {
 			Rule:             Not(HPUpgradeExists()),
 			RuleDeadline:     endOfReplaySentinel,
 			MinReplaySeconds: 10 * 60, // fallback for non-1v1
-			// 1v1 floor per (own_race, opp_race): p5 of first-Upgrade time
-			// across 5708 progamer 1v1 player-games. Buckets with <20 samples
-			// are omitted and fall through to MinReplaySeconds.
+			// 1v1 floor per (own_race, opp_race): p5 of the first HP-upgrade
+			// command over the aurora-ID-labelled progamer corpus
+			// (MEASUREMENT.md) — HP-only, matching this marker's rule. The
+			// previous floors were measured over all upgrades, so the fast
+			// non-HP researches (Zergling speed at ~2:05) dragged the Zerg
+			// rows far below any real armor/carapace timing.
 			MinReplaySecondsByMatchup: map[Race]map[Race]int{
 				RaceTerran: {
-					RaceTerran:  264, // n=118, p5=4:24
-					RaceProtoss: 293, // n=315, p5=4:53
-					RaceZerg:    233, // n=358, p5=3:53
+					RaceTerran:  399, // n=207, p5=6:39
+					RaceProtoss: 325, // n=461, p5=5:25
+					RaceZerg:    231, // n=525, p5=3:51
 				},
 				RaceProtoss: {
-					RaceTerran:  163, // n=366, p5=2:43
-					RaceProtoss: 169, // n=235, p5=2:49
-					RaceZerg:    237, // n=536, p5=3:57
+					RaceTerran:  236, // n=227, p5=3:56
+					RaceProtoss: 346, // n=95,  p5=5:46
+					RaceZerg:    245, // n=382, p5=4:05
 				},
 				RaceZerg: {
-					RaceTerran:  175, // n=407, p5=2:55
-					RaceProtoss: 128, // n=592, p5=2:08
-					RaceZerg:    125, // n=444, p5=2:05
+					RaceTerran:  312, // n=481, p5=5:12
+					RaceProtoss: 348, // n=492, p5=5:48
+					RaceZerg:    297, // n=92,  p5=4:57
 				},
 			},
 			SummaryPlayer: &Pill{
@@ -1864,24 +1946,29 @@ func allMarkers() []Marker {
 			Kind:             KindMarker,
 			Rule:             Not(Any(TechExists(), NonHPUpgradeExists())),
 			RuleDeadline:     endOfReplaySentinel,
-			MinReplaySeconds: 10 * 60, // fallback for non-1v1 (and ZvZ in 1v1, omitted below for n<20)
-			// 1v1 floor per (own_race, opp_race): p5 of first-Tech time
-			// across 5708 progamer 1v1 player-games. Buckets with <20 samples
-			// are omitted (ZvZ has n=17 → falls through to MinReplaySeconds).
+			MinReplaySeconds: 10 * 60, // fallback for non-1v1
+			// 1v1 floor per (own_race, opp_race): p5 of the first tech-or-
+			// non-HP-upgrade command over the aurora-ID-labelled progamer
+			// corpus (MEASUREMENT.md) — matching this marker's rule exactly.
+			// The previous floors were measured over Tech commands only, so
+			// early non-HP upgrades (Dragoon range off the 1 Gate Core Cyber,
+			// Zergling speed) didn't count and the floors over-suppressed —
+			// PvT sat at 8:16 when pros prove research activity by ~2:46.
 			MinReplaySecondsByMatchup: map[Race]map[Race]int{
 				RaceTerran: {
-					RaceTerran:  245, // n=141, p5=4:05
-					RaceProtoss: 238, // n=341, p5=3:58
-					RaceZerg:    252, // n=368, p5=4:12
+					RaceTerran:  234, // n=322, p5=3:54
+					RaceProtoss: 229, // n=616, p5=3:49
+					RaceZerg:    230, // n=602, p5=3:50
 				},
 				RaceProtoss: {
-					RaceTerran:  496, // n=176, p5=8:16
-					RaceProtoss: 332, // n=74,  p5=5:32
-					RaceZerg:    396, // n=407, p5=6:36
+					RaceTerran:  166, // n=369, p5=2:46
+					RaceProtoss: 164, // n=274, p5=2:44
+					RaceZerg:    309, // n=341, p5=5:09
 				},
 				RaceZerg: {
-					RaceTerran:  243, // n=264, p5=4:03
-					RaceProtoss: 339, // n=372, p5=5:39
+					RaceTerran:  181, // n=592, p5=3:01
+					RaceProtoss: 158, // n=717, p5=2:38
+					RaceZerg:    124, // n=557, p5=2:04
 				},
 			},
 			SummaryPlayer: &Pill{

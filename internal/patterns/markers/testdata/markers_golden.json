@@ -323,7 +323,7 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Never upgraded",
+        "pattern_name": "Never researched",
         "value": "248"
       },
       {
@@ -362,11 +362,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Never upgraded",
-        "value": "247"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,5,9]}"
       },
@@ -374,6 +369,11 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: 2-Base Bio",
         "value": "{\"expert_actuals\":[{\"second\":80,\"found\":true},{\"second\":57,\"found\":true},{\"second\":212,\"found\":true},{\"found\":false},{\"second\":202,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "247"
       },
       {
         "replay_player_id": 1,
@@ -396,13 +396,13 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Never upgraded",
-        "value": "252"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2,3,4,5]}"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "252"
       },
       {
         "replay_player_id": 1,
@@ -425,6 +425,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "320"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Never upgraded",
         "value": "320"
       },
@@ -440,11 +445,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Never upgraded",
-        "value": "320"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,6,8,9]}"
       }
@@ -456,11 +456,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Overpool\"}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Never upgraded",
-        "value": "261"
       },
       {
         "replay_player_id": 0,
@@ -483,6 +478,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "244"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Never upgraded",
         "value": "244"
       },
@@ -495,11 +495,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Overpool\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Never upgraded",
-        "value": "244"
       },
       {
         "replay_player_id": 1,
@@ -566,6 +561,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "248"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Never upgraded",
         "value": "248"
       },
@@ -582,11 +582,6 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Never researched",
-        "value": "248"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Never upgraded",
         "value": "248"
       },
       {
@@ -620,6 +615,11 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "242"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "242"
       },
@@ -636,11 +636,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Never upgraded",
-        "value": "279"
       },
       {
         "replay_player_id": 0,
@@ -695,11 +690,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: 9 Pool",
         "value": "{\"expert_actuals\":[{\"second\":61,\"found\":true},{\"second\":113,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Never upgraded",
-        "value": "281"
       },
       {
         "replay_player_id": 1,
@@ -1392,11 +1382,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Never upgraded",
-        "value": "375"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,6]}"
       },
@@ -1404,11 +1389,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: 2 Starport Wraith",
         "value": "{\"expert_actuals\":[{\"second\":197,\"found\":true},{\"second\":210,\"found\":true},{\"second\":244,\"found\":true}],\"modifiers\":[\"proxy\"]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Never upgraded",
-        "value": "375"
       },
       {
         "replay_player_id": 1,
@@ -1689,6 +1669,11 @@
         "replay_player_id": 1,
         "pattern_name": "First Corsair",
         "value": "295"
+      },
+      {
+        "replay_player_id": 1,
+        "pattern_name": "Never researched",
+        "value": "375"
       },
       {
         "replay_player_id": 1,
@@ -3096,11 +3081,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Never upgraded",
-        "value": "302"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2]}"
       },
@@ -3592,6 +3572,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "244"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Never upgraded",
         "value": "244"
       },
@@ -3607,11 +3592,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Never upgraded",
-        "value": "244"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
       }
@@ -3623,11 +3603,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Never upgraded",
-        "value": "279"
       },
       {
         "replay_player_id": 0,
@@ -3666,11 +3641,6 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Never researched",
-        "value": "307"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Never upgraded",
         "value": "307"
       },
       {
@@ -3777,6 +3747,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "352"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Never upgraded",
         "value": "352"
       },
@@ -3813,6 +3788,11 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: Forge Cannon Gate before expa",
         "value": "{\"expert_actuals\":[{\"second\":96,\"found\":true},{\"second\":126,\"found\":true},{\"second\":144,\"found\":true}]}"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Never researched",
+        "value": "356"
       },
       {
         "replay_player_id": 0,
@@ -6579,11 +6559,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Never upgraded",
-        "value": "299"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Used Hotkey Groups",
         "value": "{\"groups\":[1,2,3,4,5,6]}"
       },
@@ -6595,11 +6570,6 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Never researched",
-        "value": "299"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Never upgraded",
         "value": "299"
       },
       {
@@ -6674,11 +6644,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 9 Overpool",
         "value": "{\"expert_actuals\":[{\"second\":72,\"found\":true},{\"second\":127,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Never upgraded",
-        "value": "288"
       },
       {
         "replay_player_id": 0,

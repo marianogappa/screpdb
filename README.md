@@ -313,11 +313,15 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-08-30  OK. Battle.net profile details surfaced on the player page and the Gaming Session players tab. All of it parses payloads already cached in the bnet_profiles table by the existing fetch path: one new read-only query (ListBnetProfilePayloadsByPlayerKeys, bounded by an IN clause over the keys on screen) and a decoder for the identity, alternate-toon and matchmaking fields. Nothing here fetches, so no bridge request is issued and no rate-limit budget is spent; the avatar URLs in the payload are decoded away rather than rendered, so no page pulls a remote asset. No new endpoints, os/net calls, facade exemptions, allowlist changes, hosts or paths; no AlgorithmVersion bump (no detection change).
+2026-09-01  OK. Expert golden-line timings re-derived from the aurora-ID-labelled progamer corpus (issue #362). All shipped changes are data-only: Marker.Expert targets/tolerances in definitions.go, a render-time fuzzyZergExpertByLabel table, and the Build Orders tab resolving fuzzy-opener bands from the already-persisted payload label over the existing ListEarlyZergMorphsForBOTimings query. The mining pipeline itself lives in scripts/expert-mine — dev-only, never shipped, exempt from the facade guard like the rest of scripts/ — and reads the local screpharvest/scfingerprint corpus paths passed by flag, writing only under its -workdir. No new shipped os/net calls, endpoints, facade exemptions, allowlist changes, hosts or paths; no AlgorithmVersion bump (targets are presentation, not detection).
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
+
+```
+2026-08-30  OK. Battle.net profile details surfaced on the player page and the Gaming Session players tab. All of it parses payloads already cached in the bnet_profiles table by the existing fetch path: one new read-only query (ListBnetProfilePayloadsByPlayerKeys, bounded by an IN clause over the keys on screen) and a decoder for the identity, alternate-toon and matchmaking fields. Nothing here fetches, so no bridge request is issued and no rate-limit budget is spent; the avatar URLs in the payload are decoded away rather than rendered, so no page pulls a remote asset. No new endpoints, os/net calls, facade exemptions, allowlist changes, hosts or paths; no AlgorithmVersion bump (no detection change).
+```
 
 ```
 2026-08-30  OK. Money-map classification fixed and the Gaming Session view wired up. The map rule now takes the median mineral field rather than whichever field the map file stored first, and compares against a standard 1500 patch instead of a strict > 10000, so "Big Game Hunters - Remastered" stops reading as a Regular map; this reads already-parsed map data and adds no I/O. core.AlgorithmVersion 63 to 64 so map_kind is recomputed on re-ingest. New env var SCREPDB_SESSION_RECENCY widens the session window for development; it is read with os.Getenv, touches no filesystem, and cannot name a path. No new os/net calls, no facade exemptions, no allowlist widening, no new hosts or paths.
