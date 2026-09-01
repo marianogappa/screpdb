@@ -186,6 +186,7 @@ type Engine struct {
 	streamCommands []*models.Command
 	polygonGeoms   []PolygonGeom
 	leaveSec       map[byte]int
+	leaveReason    map[byte]string
 	lastCmdSec     map[byte]int
 	finalized      bool
 
@@ -208,6 +209,18 @@ type Engine struct {
 	// with phantom/cancelled placements excluded. Source is internal/unittags,
 	// threaded via the orchestrator; drives the "N Hatch <tech>" base count.
 	townHallBuilds map[byte][]int
+
+	// massDisconnect, when set, marks this replay as ending in a saver
+	// disconnect (issue #358): the leave cluster at ClusterSecond is an
+	// artifact of the saver's connection dying, not real departures. Threaded
+	// from the parser via the orchestrator; drives the condensed
+	// mass_disconnect timeline event.
+	massDisconnect *massDisconnectEnd
+}
+
+type massDisconnectEnd struct {
+	saverPID   byte
+	clusterSec int
 }
 
 // SetProductionSignals supplies the per-player production-location signals used
@@ -215,6 +228,12 @@ type Engine struct {
 // Finalize. Source is internal/unittags, threaded via the orchestrator.
 func (e *Engine) SetProductionSignals(signals []ProductionSignal) {
 	e.productionSignals = signals
+}
+
+// SetMassDisconnectEnd marks this replay as ending in a saver disconnect
+// (issue #358). Must be called before Finalize.
+func (e *Engine) SetMassDisconnectEnd(saverPID byte, clusterSecond int) {
+	e.massDisconnect = &massDisconnectEnd{saverPID: saverPID, clusterSec: clusterSecond}
 }
 
 // SetTownHallBuilds supplies the per-player real expansion town-hall build
@@ -251,6 +270,7 @@ func NewEngine(replay *models.Replay, players []*models.Player, mapCtx *models.R
 		replayEvents:          make([]ReplayEvent, 0, 256),
 		leaveSec:              map[byte]int{},
 		lastCmdSec:            map[byte]int{},
+		leaveReason:           map[byte]string{},
 	}
 	for _, p := range players {
 		e.players[p.PlayerID] = p
@@ -548,7 +568,7 @@ func (e *Engine) FirstEventSecondForPlayer(playerID byte, eventType string) *int
 		"cannon_rush", "bunker_rush", "zergling_rush",
 		"proxy_gate", "proxy_rax", "proxy_factory", "proxy_starport", "manner_pylon",
 		"expansion", "takeover", "location_inactive",
-		"player_start", "leave_game":
+		"player_start", "leave_game", "player_dropped", "mass_disconnect":
 	default:
 		return nil
 	}
@@ -615,6 +635,9 @@ func (e *Engine) ProcessCommand(command *models.Command) {
 			e.left[pid] = true
 			if _, exists := e.leaveSec[pid]; !exists {
 				e.leaveSec[pid] = sec
+				if command.LeaveReason != nil {
+					e.leaveReason[pid] = *command.LeaveReason
+				}
 			}
 		}
 		return

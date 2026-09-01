@@ -288,7 +288,15 @@ import (
 // re-ingest to re-decide which 🚫 pills are stored. Expert golden-line
 // targets/tolerances also moved wholesale in the same change, but those are
 // presentation-only and did not require this bump.
-const AlgorithmVersion = 65
+// 66: mass-disconnect games no longer credit the replay saver's team a phantom
+// win (issue #358). When the saver's connection dies, their client records a
+// simultaneous "Dropped" leave for every other player and both winner paths
+// read that as "last one standing" — now detected (end-of-replay drop cluster
+// + all-but-saver left + saver has no leave) and scored as no result. The
+// timeline also condenses that phantom leave cluster into one mass_disconnect
+// event and renders genuine drops as player_dropped. is_winner and
+// replay_events are written at ingest, so re-ingest to fix stale rows.
+const AlgorithmVersion = 66
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

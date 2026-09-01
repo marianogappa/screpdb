@@ -245,6 +245,12 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		}
 	}
 
+	var repSaverPID *byte
+	if rep.Computed != nil && rep.Computed.RepSaverPlayerID != nil {
+		v := *rep.Computed.RepSaverPlayerID
+		repSaverPID = &v
+	}
+
 	// Alliance analysis for multi-player melee. Runs on the full unfiltered
 	// command stream because earlyfilter / dedup don't touch Alliance commands,
 	// but consuming them here keeps the analyzer independent of those passes.
@@ -284,12 +290,21 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		// screp's 90s window still gets credited, and a coalition that won may
 		// span two "original" display teams. Runs even when team assignment is
 		// incomplete — a clear surviving coalition is still a clear winner.
-		var repSaverPID *byte
-		if rep.Computed != nil && rep.Computed.RepSaverPlayerID != nil {
-			v := *rep.Computed.RepSaverPlayerID
-			repSaverPID = &v
-		}
 		DeriveWinnersFromFinalTopology(data.Players, data.Commands, ar, repSaverPID)
+	}
+
+	// A saver disconnect masquerades as "everyone else left" and both winner
+	// paths (screp's WinnerTeam above and the topology derivation) credit the
+	// saver's team a phantom win — the game never resolved, so nobody wins
+	// (issue #358). Also threaded into the worldstate engine so the timeline
+	// condenses the phantom leave cluster into one connection-lost event.
+	if md := DetectMassDisconnectEnd(data.Players, data.Commands, repSaverPID, data.Replay.DurationSeconds); md != nil {
+		for _, p := range data.Players {
+			if p != nil {
+				p.IsWinner = false
+			}
+		}
+		patternOrchestrator.SetMassDisconnectEnd(md.SaverPID, md.ClusterSecond)
 	}
 
 	// Reconstruct selection state from the raw command stream (Select/Hotkey
