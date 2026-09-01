@@ -2669,10 +2669,10 @@ button.workflow-nav-update-available:disabled {
 /* Scoped to --main: the gaming-session panel reuses this table with five
    columns and no Teams cell, so positional widths must not leak into it. */
 .workflow-games-list-table--main th:nth-child(1) { width: 9%; }
-.workflow-games-list-table--main th:nth-child(2) { width: 45%; }
-.workflow-games-list-table--main th:nth-child(3) { width: 13.5%; }
+.workflow-games-list-table--main th:nth-child(2) { width: 49%; }
+.workflow-games-list-table--main th:nth-child(3) { width: 11%; }
 .workflow-games-list-table--main th:nth-child(4) { width: 5%; }
-.workflow-games-list-table--main th:nth-child(5) { width: 27.5%; }
+.workflow-games-list-table--main th:nth-child(5) { width: 26%; }
 
 /* Featuring is the derived insight — the only thing here that the .rep filename
    does not already give you — so it wraps in full rather than cropping to a
@@ -2711,27 +2711,38 @@ button.workflow-nav-update-available:disabled {
    base .workflow-team-matchup flex rule defined further down. */
 .workflow-team-matchup--rows,
 .workflow-games-list-table .workflow-team-matchup--rows {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  display: grid;
+  justify-content: start;
+  align-items: center;
+  column-gap: 0.28rem;
   row-gap: 2px;
 }
 
+/* The whole Players cell is ONE grid of (team, vs) column pairs; each row of
+   teams is display:contents so its cells join that grid. Because the tracks
+   are max-content, every column sizes to the widest team across all rows: the
+   "vs" separators line up vertically and no handle gets truncated. A grid per
+   row could only equalise within its own row, which needed 1fr tracks and
+   ellipsised the longer names. */
 .workflow-team-row,
 .workflow-games-list-table .workflow-team-row {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
+  display: contents;
+}
+
+/* An empty trailing "vs" on the final row must still hold its column so the
+   rows above stay aligned. */
+.workflow-games-list-table .workflow-team-vs:empty::before {
+  content: 'vs';
+  visibility: hidden;
 }
 
 .workflow-games-list-table td.workflow-games-list-players .workflow-team-side {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.42rem;
 }
+
 
 /* In the LIST the replay colour carries nothing: it is a per-replay slot, so
    the same opponent is pink in one row and teal in the next. It stays on the
@@ -2797,7 +2808,7 @@ button.workflow-nav-update-available:disabled {
 .workflow-games-list-table .workflow-team-vs {
   font-size: 0.82em;
   color: var(--e-quiet);
-  padding-left: 0.1rem;
+  padding: 0 0.1rem;
 }
 
 .workflow-games-list-table .workflow-feature-pill {
@@ -6614,3 +6625,332 @@ span[data-tip],
 .wpt-glyph .workflow-crown {
   font-size: 0.85em;
 }
+
+/* ============================================================
+   Filter omnibar (components/FilterOmnibar.jsx).
+   Replaces two <select>s and forty flat pills. Row 1 is the
+   typed surface (reaches all 122 options); row 2 is the browse
+   row (seven axis blocks previewing real option names).
+   ============================================================ */
+.wf-omni { position: relative; margin-top: 4px; }
+
+.wf-ob-box {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 6px 8px;
+  min-height: 36px;
+  cursor: text;
+}
+
+.wf-ob-box:focus-within {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.wf-ob-mag { color: var(--e-quiet); font-size: 13px; line-height: 1; flex: 0 0 auto; }
+
+.wf-ob-input {
+  flex: 1 1 130px;
+  min-width: 110px;
+  border: 0;
+  background: transparent;
+  outline: none;
+  color: var(--e-strong);
+  font: inherit;
+  font-size: 13px;
+  padding: 2px 0;
+}
+
+.wf-ob-input::placeholder { color: var(--e-quiet); }
+
+.wf-ob-count {
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  color: var(--e-quiet);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.wf-ob-count b { color: var(--e-base); font-weight: 500; }
+
+.wf-ob-clear {
+  flex: 0 0 auto;
+  background: none;
+  border: 0;
+  color: var(--e-quiet);
+  font: inherit;
+  font-size: 11.5px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.wf-ob-clear:hover { color: var(--e-base); }
+
+/* A chip group is one state key: options inside it are OR, groups are AND.
+   Showing the "or" and letting the group boundary imply the "and" is how the
+   query grammar becomes readable without a tooltip. */
+.wf-ob-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 2px 5px 2px 7px;
+}
+
+.wf-ob-group-axis {
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--e-quiet);
+}
+
+.wf-ob-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--e-accent);
+  color: var(--e-accent-ink);
+  border-radius: 3px;
+  padding: 1px 4px 1px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wf-ob-chip button {
+  background: none;
+  border: 0;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  padding: 0 1px;
+}
+
+.wf-ob-chip button:hover { opacity: 1; }
+
+.wf-ob-or {
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--e-quiet);
+}
+
+.wf-ob-and {
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* the discovery surface */
+.wf-ob-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 5px);
+  z-index: 30;
+  background: #161a22;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.8);
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 5px;
+}
+
+.wf-ob-sec {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 7px 8px 4px;
+  font-size: 9.5px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--e-quiet);
+  position: sticky;
+  top: 0;
+  background: #161a22;
+}
+
+.wf-ob-sec span { color: rgba(255, 255, 255, 0.26); letter-spacing: 0.04em; }
+
+.wf-ob-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--e-base);
+  font-size: 12.5px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.wf-ob-opt[aria-selected="true"] {
+  background: rgba(224, 184, 76, 0.14);
+  box-shadow: inset 2px 0 0 var(--e-accent);
+}
+
+.wf-ob-tick { flex: 0 0 auto; width: 10px; color: var(--e-accent); font-size: 11px; }
+
+.wf-ob-lbl { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wf-ob-lbl mark { background: none; color: var(--e-strong); font-weight: 600; }
+
+.wf-ob-n {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  color: var(--e-quiet);
+  font-variant-numeric: tabular-nums;
+}
+
+.wf-ob-empty { padding: 14px 10px; font-size: 12.5px; color: var(--e-quiet); }
+.wf-ob-empty b { color: var(--e-base); font-weight: 500; }
+.wf-ob-more { padding: 8px 10px; }
+
+.wf-ob-hint {
+  display: flex;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  padding: 6px 8px 3px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  margin-top: 4px;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* browse row: look instead of type */
+.wf-br { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+
+.wf-br-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.028);
+  padding: 4px 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--e-quiet);
+  white-space: nowrap;
+}
+
+.wf-br-block:hover,
+.wf-br-block--open {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: var(--e-base);
+}
+
+.wf-br-axis {
+  font-size: 9.5px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.34);
+}
+
+.wf-br-ex { color: var(--e-base); }
+.wf-br-more { font-size: 10px; color: rgba(255, 255, 255, 0.3); }
+
+.wf-br-block--has b {
+  color: var(--e-accent-ink);
+  background: var(--e-accent);
+  border-radius: 8px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wf-br-panel {
+  margin-top: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.022);
+  padding: 8px 9px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.wf-br-panel-label {
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+  margin-right: 3px;
+}
+
+.wf-br-opt {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--e-base);
+  font: inherit;
+  font-size: 11.5px;
+  padding: 3px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.wf-br-opt:hover { background: rgba(255, 255, 255, 0.1); }
+
+.wf-br-opt--on {
+  background: var(--e-accent);
+  border-color: var(--e-accent);
+  color: var(--e-accent-ink);
+  font-weight: 600;
+}
+
+.wf-br-opt-n { font-size: 9.5px; opacity: 0.55; margin-left: 4px; font-variant-numeric: tabular-nums; }
+
+/* A zero-count option matches nothing in this corpus. Worth showing (it says
+   the filter exists and your replays do not use it) but not worth trying
+   first, so it dims and sorts last. */
+.wf-ob-opt--zero { color: var(--e-quiet); }
+.wf-ob-opt--zero .wf-ob-n { opacity: 0.55; }
+.wf-br-opt--zero { color: var(--e-quiet); border-color: rgba(255, 255, 255, 0.09); }
+.wf-br-opt--zero.wf-br-opt--on { color: var(--e-accent-ink); }
+
+/* Menu icon slot: the unit art the filter chips already use, so a Nydus reads
+   as a Nydus while scanning. Falls back to the emoji, then the race initial,
+   and holds its width when empty so labels stay aligned. */
+.wf-ob-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.wf-ob-icon img {
+  max-width: 16px;
+  max-height: 16px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.wf-ob-icon:has(img + img) img { max-width: 9px; }

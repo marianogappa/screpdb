@@ -605,16 +605,26 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 		result.Featuring[i].Games = featureCounts[result.Featuring[i].Key]
 	}
 
+	matchupCounts, err := d.dbStore.CountWorkflowMatchupGames(d.ctx)
+	if err != nil {
+		return result, err
+	}
 	for _, matchup := range workflowMatchupFilters {
 		result.Matchups = append(result.Matchups, workflowGamesListFilterOption{
 			Key:   matchup.Key,
 			Label: matchup.Label,
+			Games: matchupCounts[matchup.Key],
 		})
+	}
+	mapKindCounts, err := d.dbStore.CountWorkflowMapKindGames(d.ctx)
+	if err != nil {
+		return result, err
 	}
 	for _, mapKind := range workflowMapKindFilters {
 		result.MapKinds = append(result.MapKinds, workflowGamesListFilterOption{
 			Key:   mapKind.Key,
 			Label: mapKind.Label,
+			Games: mapKindCounts[mapKind.Key],
 		})
 	}
 	return result, nil

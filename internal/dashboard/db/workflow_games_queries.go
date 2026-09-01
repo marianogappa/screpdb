@@ -652,3 +652,57 @@ func (s *Store) countReplaysWithAnyEvent(ctx context.Context, eventKind string, 
 	}
 	return count, nil
 }
+
+// CountWorkflowMatchupGames returns replay counts keyed by lowercase matchup
+// ("pvt", "tvz"). replays.matchup is already canonicalised (TvZ == ZvT), which
+// is what buildMatchupClause filters on, so one GROUP BY covers every key.
+func (s *Store) CountWorkflowMatchupGames(ctx context.Context) (map[string]int64, error) {
+	out := map[string]int64{}
+	rows, err := s.ReplayQueryContext(ctx, `
+		SELECT lower(trim(COALESCE(r.matchup, ''))), COUNT(*)
+		FROM replays r
+		WHERE COALESCE(r.matchup, '') <> ''
+		GROUP BY lower(trim(COALESCE(r.matchup, '')))`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var matchup string
+		var count int64
+		if err := rows.Scan(&matchup, &count); err != nil {
+			return nil, err
+		}
+		out[matchup] = count
+	}
+	return out, rows.Err()
+}
+
+// CountWorkflowMapKindGames returns replay counts for the two map-kind filter
+// keys. It mirrors buildMapKindClause: "regular" deliberately covers both
+// Regular and UseMapSettings.
+func (s *Store) CountWorkflowMapKindGames(ctx context.Context) (map[string]int64, error) {
+	out := map[string]int64{}
+	rows, err := s.ReplayQueryContext(ctx, `
+		SELECT COALESCE(r.map_kind, ''), COUNT(*)
+		FROM replays r
+		GROUP BY COALESCE(r.map_kind, '')`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var mapKind string
+		var count int64
+		if err := rows.Scan(&mapKind, &count); err != nil {
+			return nil, err
+		}
+		switch mapKind {
+		case "Money":
+			out["money"] += count
+		case "Regular", "UseMapSettings":
+			out["regular"] += count
+		}
+	}
+	return out, rows.Err()
+}

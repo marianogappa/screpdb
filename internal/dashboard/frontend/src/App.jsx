@@ -3,6 +3,7 @@ import { api } from './api';
 import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import IngestModal from './components/IngestModal';
+import FilterOmnibar from './components/FilterOmnibar';
 import GamingSessionPanel from './components/GamingSessionPanel';
 import Histogram from './components/charts/Histogram';
 import TimingScatterRows from './components/charts/TimingScatterRows';
@@ -2225,7 +2226,6 @@ function App() {
     matchup: [],
     mapKind: [],
   });
-  const [mainGamesBORaceOpen, setMainGamesBORaceOpen] = useState('');
   const mainGamesTableRef = useRef(null);
   const [mainGameDetailLoading, setMainGameDetailLoading] = useState(false);
   const [mainPlayerLoading, setMainPlayerLoading] = useState(false);
@@ -3684,14 +3684,6 @@ function App() {
     }
   };
 
-  const setMainGameSingleFilter = (name, nextValue) => {
-    setMainGamesPage(1);
-    setMainGamesFilters((prev) => ({
-      ...prev,
-      [name]: nextValue ? [nextValue] : [],
-    }));
-  };
-
   const toggleMainGameMultiFilter = (name, value) => {
     setMainGamesPage(1);
     setMainGamesFilters((prev) => ({
@@ -3907,7 +3899,10 @@ function App() {
     }
 
     return (
-      <span className="workflow-team-matchup workflow-team-matchup--rows">
+      <span
+        className="workflow-team-matchup workflow-team-matchup--rows"
+        style={{ gridTemplateColumns: `repeat(${teamsPerRow}, max-content max-content)` }}
+      >
         {teamRows.map((row, rowIdx) => {
           const teamsBefore = rowIdx * teamsPerRow;
           return (
@@ -3915,20 +3910,24 @@ function App() {
               {row.map((team, idxInRow) => {
                 const isLastTeamOverall = teamsBefore + idxInRow === teams.length - 1;
                 return (
-                  <span className="workflow-team-side" key={`team-${teamsBefore + idxInRow}`}>
-                    {team.map((player) => (
-                      <span
-                        key={player.player_id}
-                        className={`workflow-team-player-pill${outcomeClass(player)}`}
-                      >
-                        {renderWorkerIcon(player.race)}
-                        {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
-                        {renderName(player)}
-                        <FingerprintBadge match={player.fingerprint_match} compact />
-                      </span>
-                    ))}
-                    {isLastTeamOverall ? null : <span className="workflow-team-vs">vs</span>}
-                  </span>
+                  <React.Fragment key={`team-${teamsBefore + idxInRow}`}>
+                    <span className="workflow-team-side">
+                      {team.map((player) => (
+                        <span
+                          key={player.player_id}
+                          className={`workflow-team-player-pill${outcomeClass(player)}`}
+                        >
+                          {renderWorkerIcon(player.race)}
+                          {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
+                          {renderName(player)}
+                          <FingerprintBadge match={player.fingerprint_match} compact />
+                        </span>
+                      ))}
+                    </span>
+                    <span className="workflow-team-vs">
+                      {isLastTeamOverall || idxInRow === row.length - 1 ? '' : 'vs'}
+                    </span>
+                  </React.Fragment>
                 );
               })}
               {rowIdx === teamRows.length - 1 && noTeamInfo ? (
@@ -5546,157 +5545,13 @@ function App() {
 
         {activeView === 'games' && (
           <div className="workflow-panel">
-            <div className="workflow-summary-filter-row workflow-games-filter-row">
-              <select
-                className="workflow-summary-filter-select"
-                value={mainGamesFilters.player[0] || ''}
-                onChange={(e) => setMainGameSingleFilter('player', e.target.value)}
-              >
-                <option value="">Any player (5+ games)</option>
-                {(mainGamesFilterOptions.players || []).map((option) => (
-                  <option key={`wf-player-${option.key}`} value={option.key}>
-                    {option.label} ({option.games})
-                  </option>
-                ))}
-              </select>
-              <select
-                className="workflow-summary-filter-select"
-                value={mainGamesFilters.map[0] || ''}
-                onChange={(e) => setMainGameSingleFilter('map', e.target.value)}
-              >
-                <option value="">Any map (top 15)</option>
-                {(mainGamesFilterOptions.maps || []).map((option) => (
-                  <option key={`wf-map-${option.key}`} value={option.key}>
-                    {option.label} ({option.games})
-                  </option>
-                ))}
-              </select>
-              <div className="workflow-filter-group">
-                {(mainGamesFilterOptions.durations || []).map((option) => {
-                  const active = (mainGamesFilters.duration || []).includes(option.key);
-                  return (
-                    <button
-                      key={`wf-duration-${option.key}`}
-                      type="button"
-                      className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                      onClick={() => toggleMainGameMultiFilter('duration', option.key)}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="workflow-filter-group">
-                {(mainGamesFilterOptions.map_kinds || []).map((option) => {
-                  const active = (mainGamesFilters.mapKind || []).includes(option.key);
-                  return (
-                    <button
-                      key={`wf-mapkind-${option.key}`}
-                      type="button"
-                      className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                      onClick={() => toggleMainGameMultiFilter('mapKind', option.key)}
-                    >
-                      {mapKindEmoji(option.key) ? `${mapKindEmoji(option.key)} ` : ''}{option.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="workflow-filter-group">
-                {(mainGamesFilterOptions.matchups || []).map((option) => {
-                  const active = (mainGamesFilters.matchup || []).includes(option.key);
-                  return (
-                    <button
-                      key={`wf-matchup-${option.key}`}
-                      type="button"
-                      className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                      onClick={() => toggleMainGameMultiFilter('matchup', option.key)}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="workflow-filter-group">
-                {['zerg', 'terran', 'protoss'].map((race) => {
-                  const raceBOs = (mainGamesFilterOptions.featuring || [])
-                    .filter((option) => (option.group || '') === 'bo' && (option.race || '') === race);
-                  if (raceBOs.length === 0) return null;
-                  const open = mainGamesBORaceOpen === race;
-                  const raceIcon = getWorkerIconForRace(race);
-                  const raceLabel = race.charAt(0).toUpperCase() + race.slice(1);
-                  return (
-                    <React.Fragment key={`wf-bo-race-${race}`}>
-                      <button
-                        type="button"
-                        className={`workflow-filter-pill workflow-filter-pill-disclosure workflow-filter-pill-icon ${open ? 'workflow-filter-pill-active' : ''}`}
-                        onClick={() => setMainGamesBORaceOpen((prev) => (prev === race ? '' : race))}
-                        aria-expanded={open}
-                      >
-                        {raceIcon ? <img src={raceIcon} alt="" className="workflow-filter-pill-icon-img" /> : null}
-                        <span className="workflow-filter-pill-icon-label">{raceLabel} BOs {open ? '▾' : '▸'}</span>
-                      </button>
-                      {open && raceBOs.map((option) => {
-                        const active = (mainGamesFilters.featuring || []).includes(option.key);
-                        return (
-                          <button
-                            key={`wf-feature-bo-${option.key}`}
-                            type="button"
-                            className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                            onClick={() => toggleMainGameMultiFilter('featuring', option.key)}
-                          >
-                            {option.label}
-                          </button>
-                        );
-                      })}
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="workflow-summary-filter-row workflow-games-filter-row">
-              <div className="workflow-filter-group">
-                {(mainGamesFilterOptions.featuring || [])
-                  .filter((option) => (option.group || 'marker') !== 'bo')
-                  .map((option) => {
-                    const active = (mainGamesFilters.featuring || []).includes(option.key);
-                    const iconKeys = (Array.isArray(option.icon_keys) && option.icon_keys.length)
-                      ? option.icon_keys
-                      : (option.icon_key ? [option.icon_key] : []);
-                    const iconUrls = iconKeys.map((k) => getUnitIcon(k)).filter(Boolean);
-                    const hasIcons = iconUrls.length > 0;
-                    const hasEmoji = !hasIcons && Boolean(option.emoji);
-                    return (
-                      <button
-                        key={`wf-feature-${option.key}`}
-                        type="button"
-                        className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''} ${hasIcons ? 'workflow-filter-pill-icon' : ''}`}
-                        onClick={() => toggleMainGameMultiFilter('featuring', option.key)}
-                        title={option.label}
-                        aria-label={option.label}
-                      >
-                        {hasIcons ? (
-                          <>
-                            {iconUrls.map((url, i) => (
-                              <img key={`${option.key}-i${i}`} src={url} alt="" className="workflow-filter-pill-icon-img" />
-                            ))}
-                            {option.icon_label && (
-                              <span className="workflow-filter-pill-icon-label">{option.icon_label}</span>
-                            )}
-                          </>
-                        ) : hasEmoji ? (
-                          <>
-                            <span className="workflow-filter-pill-emoji">{option.emoji}</span>
-                            <span className="workflow-filter-pill-icon-label">{option.label}</span>
-                          </>
-                        ) : (
-                          option.label
-                        )}
-                      </button>
-                    );
-                  })}
-              </div>
-              <button type="button" className="workflow-filter-pill workflow-filter-pill-clear" onClick={clearMainGamesFilters}>Clear filters</button>
-            </div>
+            <FilterOmnibar
+              filterOptions={mainGamesFilterOptions}
+              selected={mainGamesFilters}
+              totalGames={mainGamesTotal}
+              onToggle={toggleMainGameMultiFilter}
+              onClear={clearMainGamesFilters}
+            />
             {mainGamesLoading ? (
               <div className="loading">Loading games...</div>
             ) : (
