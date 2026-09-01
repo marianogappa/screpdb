@@ -29,7 +29,6 @@ type Config struct {
 	InputDir         string
 	SQLitePath       string
 	StoreRightClicks bool
-	SkipHotkeys      bool
 	StopAfterN       int
 	UpToDate         string
 	UpToMonths       int
@@ -81,7 +80,7 @@ func Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("failed to create SQLite storage: %w", err)
 	}
 	defer store.Close()
-	store.SetCommandStorageOptions(cfg.StoreRightClicks, cfg.SkipHotkeys)
+	store.SetCommandStorageOptions(cfg.StoreRightClicks)
 
 	if err := store.Initialize(ctx, cfg.Clean, cfg.CleanDashboard); err != nil {
 		return fmt.Errorf("failed to initialize storage: %w", err)
@@ -330,7 +329,7 @@ func RunForFiles(ctx context.Context, cfg Config, files []fileops.FileInfo) erro
 		return fmt.Errorf("failed to create SQLite storage: %w", err)
 	}
 	defer store.Close()
-	store.SetCommandStorageOptions(cfg.StoreRightClicks, cfg.SkipHotkeys)
+	store.SetCommandStorageOptions(cfg.StoreRightClicks)
 
 	if err := store.Initialize(ctx, false, false); err != nil {
 		return fmt.Errorf("failed to initialize storage: %w", err)

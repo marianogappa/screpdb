@@ -3486,7 +3486,6 @@ function App() {
         stop_after_n_reps: 1,
         clean: false,
         store_right_clicks: false,
-        skip_hotkeys: false,
       });
       if (!ingestResponse?.started) {
         return;
@@ -3607,7 +3606,6 @@ function App() {
         stop_after_n_reps: ingestForm.stopAfterN || 0,
         clean: ingestForm.clean,
         store_right_clicks: false,
-        skip_hotkeys: false,
       });
 
       if (response?.started) {

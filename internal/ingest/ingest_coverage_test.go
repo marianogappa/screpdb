@@ -12,6 +12,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/marianogappa/screpdb/internal/fileops"
+	"github.com/marianogappa/screpdb/internal/hotkeystream"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/storage"
 
@@ -90,33 +91,60 @@ func TestRun_StoreRightClicksDefaultDropsRightClicks(t *testing.T) {
 	}
 }
 
-// TestRun_SkipHotkeysDropsHotkeys proves SkipHotkeys removes Hotkey commands.
-// The comparison run (SkipHotkeys=false) confirms the corpus actually contains
-// hotkeys, so the zero result under SkipHotkeys is meaningful.
-func TestRun_SkipHotkeysDropsHotkeys(t *testing.T) {
-	dbKept := filepath.Join(t.TempDir(), "kept.db")
+// TestRun_HotkeysStoredAsPlayerStream proves Hotkey commands never land as
+// rows and are instead encoded into the players.hotkey_stream blob
+// (issue #357). The decoded streams must be non-empty and frame-ordered,
+// confirming the corpus actually contains hotkeys.
+func TestRun_HotkeysStoredAsPlayerStream(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "hotkeys.db")
 	if err := Run(context.Background(), Config{
 		InputDir:   seedReplayDir(t, smallTestReplays...),
-		SQLitePath: dbKept,
+		SQLitePath: dbPath,
 		Logger:     quietLogger(),
 	}); err != nil {
-		t.Fatalf("Run (hotkeys kept): %v", err)
+		t.Fatalf("Run: %v", err)
 	}
-	if got := countLowValueByAction(t, dbKept, "Hotkey"); got == 0 {
-		t.Fatal("expected the corpus to contain Hotkey commands by default, got 0")
+	if got := countLowValueByAction(t, dbPath, "Hotkey"); got != 0 {
+		t.Fatalf("Hotkey commands must never be stored as rows, got %d", got)
 	}
 
-	dbSkipped := filepath.Join(t.TempDir(), "skipped.db")
-	if err := Run(context.Background(), Config{
-		InputDir:    seedReplayDir(t, smallTestReplays...),
-		SQLitePath:  dbSkipped,
-		SkipHotkeys: true,
-		Logger:      quietLogger(),
-	}); err != nil {
-		t.Fatalf("Run (SkipHotkeys): %v", err)
+	store, err := storage.NewSQLiteStorage(dbPath)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
 	}
-	if got := countLowValueByAction(t, dbSkipped, "Hotkey"); got != 0 {
-		t.Fatalf("SkipHotkeys=true should drop all Hotkey commands, got %d", got)
+	defer store.Close()
+	rows, err := store.Query(context.Background(), `SELECT hotkey_stream FROM players WHERE hotkey_stream IS NOT NULL`)
+	if err != nil {
+		t.Fatalf("query hotkey_stream: %v", err)
+	}
+
+	totalEvents := 0
+	for _, row := range rows {
+		var blob []byte
+		switch v := row["hotkey_stream"].(type) {
+		case []byte:
+			blob = v
+		case string:
+			blob = []byte(v)
+		default:
+			t.Fatalf("hotkey_stream: non-blob result %T", v)
+		}
+		events, err := hotkeystream.Decode(blob)
+		if err != nil {
+			t.Fatalf("decode hotkey_stream: %v", err)
+		}
+		if len(events) == 0 {
+			t.Fatal("non-NULL hotkey_stream decoded to zero events")
+		}
+		for i := 1; i < len(events); i++ {
+			if events[i].Frame < events[i-1].Frame {
+				t.Fatalf("decoded stream not frame-ordered: %d after %d", events[i].Frame, events[i-1].Frame)
+			}
+		}
+		totalEvents += len(events)
+	}
+	if len(rows) == 0 || totalEvents == 0 {
+		t.Fatal("expected the corpus to produce non-empty hotkey streams, got none")
 	}
 }
 

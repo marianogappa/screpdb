@@ -296,7 +296,7 @@ import (
 // timeline also condenses that phantom leave cluster into one mass_disconnect
 // event and renders genuine drops as player_dropped. is_winner and
 // replay_events are written at ingest, so re-ingest to fix stale rows.
-const AlgorithmVersion = 66
+const AlgorithmVersion = 67
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string
