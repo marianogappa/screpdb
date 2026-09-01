@@ -98,3 +98,32 @@ func (e *zergOpenerFuzzyEvaluator) Finalize(_ CustomEvalContext) CustomResult {
 	}{Label: label})
 	return CustomResult{Matched: true, DetectedAtSecond: defSec, Payload: payload}
 }
+
+// fuzzyZergExpertByLabel carries the golden targets for the fuzzy-opener
+// labels that clear the n >= 20 pro-corpus floor (see MEASUREMENT.md). The
+// fuzzy marker's Expert list is empty — its rung is only known at detection
+// time — so the Build Orders tab resolves the golden band from the persisted
+// label through this table at render time, against the same raw-command
+// timings it draws the actual ticks from. Each entry is the label's defining
+// building only, mirroring the exact rungs' zergBOEventSchemas rows; labels
+// without an entry render actual-only ticks.
+var fuzzyZergExpertByLabel = map[string][]ExpertEvent{
+	"~11 Hatch": {
+		{Key: "Hatchery", Match: MatchBuild(subjHatchery), TargetSecond: 98, Tolerance: Sym(2)}, // n=446, p10/50/90 = 96/98/100
+	},
+	"~10 Hatch": {
+		{Key: "Hatchery", Match: MatchBuild(subjHatchery), TargetSecond: 92, Tolerance: Sym(2)}, // n=349, p10/50/90 = 91/92/94
+	},
+	"~10 Overpool": {
+		{Key: "Spawning Pool", Match: MatchBuild(subjSpawningPool), TargetSecond: 83, Tolerance: Asym(2, 3)}, // n=211, p10/50/90 = 81/83/86
+	},
+	"~5 Hatch": {
+		{Key: "Hatchery", Match: MatchBuild(subjHatchery), TargetSecond: 54, Tolerance: Sym(2)}, // n=41, p10/50/90 = 53/54/55
+	},
+}
+
+// FuzzyZergExpertEvents returns the golden targets for a resolved fuzzy
+// Zerg opener label, or nil when the label is unmeasured.
+func FuzzyZergExpertEvents(label string) []ExpertEvent {
+	return fuzzyZergExpertByLabel[label]
+}

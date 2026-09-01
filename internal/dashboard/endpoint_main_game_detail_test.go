@@ -3,7 +3,9 @@ package dashboard
 import (
 	"testing"
 
+	db "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/models"
+	"github.com/marianogappa/screpdb/internal/patterns/markers"
 )
 
 // TestOverlayBaseMetas_StampsNaturalOfClock ensures natural expansions in the
@@ -129,5 +131,88 @@ func TestBaseLabel_CenterBase(t *testing.T) {
 	// Both the natural AND its owner are center (rare — self-referential).
 	if got := baseLabel(&natural, &zero, &zero); got != "center base" {
 		t.Fatalf("natural center (owner also center): expected \"center base\", got %q", got)
+	}
+}
+
+// TestFuzzyZergSchemaFromLabel covers the label → simplified-Zerg schema
+// derivation the fuzzy opener chart is built from, including that every
+// measured golden-band label resolves to a schema whose defining-building row
+// actually renders the band (subject present in the schema).
+func TestFuzzyZergSchemaFromLabel(t *testing.T) {
+	cases := []struct {
+		label  string
+		ok     bool
+		schema zergBOEventSchema
+	}{
+		{"~11 Hatch", true, zergBOEventSchema{Drones: 7, HasOverlord: true, HasHatchery: true}},
+		{"~5 Hatch", true, zergBOEventSchema{Drones: 1, HasHatchery: true}},
+		{"~10 Overpool", true, zergBOEventSchema{Drones: 6, HasOverlord: true, HasPool: true}},
+		{"~12 Pool", true, zergBOEventSchema{Drones: 8, HasPool: true}},
+		{"Zerg opening (approximate)", false, zergBOEventSchema{}},
+		{"~3 Hatch", false, zergBOEventSchema{}},
+	}
+	for _, c := range cases {
+		got, ok := fuzzyZergSchemaFromLabel("bo_z_fuzzy", c.label)
+		if ok != c.ok || got != c.schema {
+			t.Fatalf("fuzzyZergSchemaFromLabel(%q) = %+v/%v, want %+v/%v", c.label, got, ok, c.schema, c.ok)
+		}
+	}
+	if _, ok := fuzzyZergSchemaFromLabel("bo_9_pool", "~11 Hatch"); ok {
+		t.Fatalf("non-fuzzy feature key must not resolve a schema")
+	}
+
+	for _, label := range []string{"~11 Hatch", "~10 Hatch", "~10 Overpool", "~5 Hatch"} {
+		expert := markers.FuzzyZergExpertEvents(label)
+		if len(expert) == 0 {
+			t.Fatalf("measured label %q has no golden band", label)
+		}
+		schema, ok := fuzzyZergSchemaFromLabel("bo_z_fuzzy", label)
+		if !ok {
+			t.Fatalf("measured label %q does not parse", label)
+		}
+		subject := expert[0].Match.Subject
+		renders := (subject == models.GeneralUnitSpawningPool && schema.HasPool) ||
+			(subject == models.GeneralUnitHatchery && schema.HasHatchery)
+		if !renders {
+			t.Fatalf("label %q band subject %q is not rendered by schema %+v", label, subject, schema)
+		}
+	}
+}
+
+// TestBuildZergBOEvents_FuzzyBand exercises the render path the fuzzy opener
+// chart uses: a label-derived schema plus the per-label golden band, over raw
+// command timings. Drone/Overlord rows stay actual-only; the defining building
+// carries the band and the in-band verdict.
+func TestBuildZergBOEvents_FuzzyBand(t *testing.T) {
+	label := "~10 Overpool"
+	schema, ok := fuzzyZergSchemaFromLabel("bo_z_fuzzy", label)
+	if !ok {
+		t.Fatalf("label %q should parse", label)
+	}
+	expert := markers.FuzzyZergExpertEvents(label)
+	if len(expert) == 0 {
+		t.Fatalf("label %q should carry a band", label)
+	}
+	poolSec := expert[0].TargetSecond
+	overlord := 55
+	events := buildZergBOEvents(schema, expert, db.EarlyZergTimingsRow{
+		DroneMorphSecs:   []int{10, 18, 26, 34, 42, 50},
+		FirstOverlordSec: &overlord,
+		FirstPoolSec:     &poolSec,
+	})
+	if len(events) != schema.Drones+2 {
+		t.Fatalf("expected %d events, got %d", schema.Drones+2, len(events))
+	}
+	for _, ev := range events[:schema.Drones] {
+		if !ev.NoExpert || !ev.Found {
+			t.Fatalf("drone row should be found and actual-only: %+v", ev)
+		}
+	}
+	pool := events[len(events)-1]
+	if pool.Key != "Spawning Pool" || pool.NoExpert || !pool.Found {
+		t.Fatalf("pool row should carry the band: %+v", pool)
+	}
+	if pool.TargetSecond != int64(expert[0].TargetSecond) || !pool.WithinTolerance {
+		t.Fatalf("pool at the target second should be in band: %+v", pool)
 	}
 }

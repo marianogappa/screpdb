@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
+	"github.com/marianogappa/screpdb/internal/models"
 )
 
 // Each test builds a minimal stream exercising one BO's broad definition,
@@ -776,21 +777,27 @@ func TestMarker_DoubleStargate_NegativeFewCorsairs(t *testing.T) {
 
 func TestResolveExpert_ComputesDeltasAndTolerance(t *testing.T) {
 	bo := findBO(t, "9 Pool")
-	// Pool actual 78s (target 73, late by 5; within tol=4? No → out).
-	// First Zergling at 120 (target 123, early by 3; within tol=3 → in).
+	// Probe actuals derive from the marker's own targets so the test survives
+	// re-measurement: Pool one second past the late edge (out of band),
+	// First Zerglings exactly at the early edge (in band).
+	pool, ling := bo.Expert[0], bo.Expert[1]
+	poolActual := pool.TargetSecond + pool.Tolerance.LateSeconds + 1
+	lingActual := ling.TargetSecond - ling.Tolerance.EarlySeconds
 	b := factsBuilder()
 	for i := 0; i < 5; i++ {
 		b.P(subjDrone, 5+i*3)
 	}
-	s := b.B(subjSpawningPool, 78).P(subjZergling, 120).list()
+	s := b.B(subjSpawningPool, poolActual).P(subjZergling, lingActual).list()
 	res := bo.ResolveExpert(s)
 	if len(res) != 2 {
 		t.Fatalf("expected 2 resolutions, got %d", len(res))
 	}
-	if !res[0].Found || res[0].ActualSecond != 78 || res[0].DeltaSeconds != 5 || res[0].WithinTolerance {
+	if !res[0].Found || res[0].ActualSecond != poolActual ||
+		res[0].DeltaSeconds != pool.Tolerance.LateSeconds+1 || res[0].WithinTolerance {
 		t.Fatalf("pool resolution wrong: %+v", res[0])
 	}
-	if !res[1].Found || res[1].ActualSecond != 120 || res[1].DeltaSeconds != -3 || !res[1].WithinTolerance {
+	if !res[1].Found || res[1].ActualSecond != lingActual ||
+		res[1].DeltaSeconds != -ling.Tolerance.EarlySeconds || !res[1].WithinTolerance {
 		t.Fatalf("zergling resolution wrong: %+v", res[1])
 	}
 }
@@ -811,5 +818,90 @@ func TestIsInitialBuildOrderPatternName(t *testing.T) {
 	}
 	if IsInitialBuildOrderPatternName("Quick factory") {
 		t.Fatalf("expected false for non-BO pattern")
+	}
+}
+
+// TestExpertToleranceFloor enforces the MEASUREMENT.md rule that no baked
+// tolerance degenerates below 2s per side — a p10 == median milestone must
+// still leave a visible band.
+func TestExpertToleranceFloor(t *testing.T) {
+	for _, m := range Markers() {
+		for _, ev := range m.Expert {
+			if ev.Tolerance.EarlySeconds < 2 || ev.Tolerance.LateSeconds < 2 {
+				t.Errorf("%s/%s tolerance below the 2s floor: %+v", m.FeatureKey, ev.Key, ev.Tolerance)
+			}
+		}
+	}
+}
+
+// TestMechExpertFamilySplits pins the structure of the corpus-measured mech
+// timings without pinning the numbers (which move on re-measurement):
+// expand-first delays gas and Factory by a distinct margin, the expansion CC
+// grows with the pre-expansion Factory count, and the one-base mech's tank
+// lands earlier than the expanding family's.
+func TestMechExpertFamilySplits(t *testing.T) {
+	target := func(fkey, key string) int {
+		m := ByFeatureKey(fkey)
+		if m == nil {
+			t.Fatalf("marker %q not found", fkey)
+		}
+		for _, ev := range m.Expert {
+			if ev.Key == key {
+				return ev.TargetSecond
+			}
+		}
+		t.Fatalf("%s has no expert milestone %q", fkey, key)
+		return 0
+	}
+	if gap := target("bo_t_mech_expand", "Refinery") - target("bo_t_mech_expa_1fac", "Refinery"); gap < 30 {
+		t.Errorf("expand-first Refinery should trail fact-first by a family split, gap=%d", gap)
+	}
+	if gap := target("bo_t_mech_expand", "1st Factory") - target("bo_t_mech_expa_1fac", "1st Factory"); gap < 30 {
+		t.Errorf("expand-first 1st Factory should trail fact-first by a family split, gap=%d", gap)
+	}
+	if target("bo_t_mech_expa_2fac", "Command Center") <= target("bo_t_mech_expa_1fac", "Command Center") {
+		t.Errorf("expansion CC must move later with more pre-expansion Factories")
+	}
+	if target("bo_t_mech_noexpa", "First Siege Tank") >= target("bo_t_mech_expa_1fac", "First Siege Tank") {
+		t.Errorf("one-base mech tank should land earlier than the expanding family's")
+	}
+}
+
+// TestZergPoolBOMeasuredOverride ensures the measured-rung override path of
+// zergPoolBO is wired: 10 Pool carries its own corpus-measured events while an
+// unmeasured rung (11 Pool) keeps the derived First Zerglings second.
+func TestZergPoolBOMeasuredOverride(t *testing.T) {
+	ten := ByFeatureKey("bo_10_pool")
+	if ten == nil || len(ten.Expert) != 2 {
+		t.Fatalf("10 Pool should carry 2 expert events, got %+v", ten)
+	}
+	if ten.Expert[1].TargetSecond == secAfter(ten.Expert[0].TargetSecond, models.BuildTimeSpawningPool) {
+		t.Errorf("10 Pool First Zerglings should be measured directly, not derived from the Pool")
+	}
+	eleven := ByFeatureKey("bo_11_pool")
+	if eleven.Expert[1].TargetSecond != secAfter(eleven.Expert[0].TargetSecond, models.BuildTimeSpawningPool) {
+		t.Errorf("unmeasured 11 Pool should keep the derived First Zerglings second")
+	}
+}
+
+// TestFuzzyZergExpertEvents covers the per-label golden-band table the Build
+// Orders tab resolves at render time for the fuzzy Zerg opener.
+func TestFuzzyZergExpertEvents(t *testing.T) {
+	for _, label := range []string{"~11 Hatch", "~10 Hatch", "~10 Overpool", "~5 Hatch"} {
+		evs := FuzzyZergExpertEvents(label)
+		if len(evs) == 0 {
+			t.Fatalf("measured label %q has no golden band", label)
+		}
+		for _, ev := range evs {
+			if ev.Match.Subject != subjSpawningPool && ev.Match.Subject != subjHatchery {
+				t.Errorf("label %q band subject %q is not a defining building", label, ev.Match.Subject)
+			}
+			if ev.TargetSecond <= 0 {
+				t.Errorf("label %q band has no target", label)
+			}
+		}
+	}
+	if evs := FuzzyZergExpertEvents("~11 Overpool"); evs != nil {
+		t.Errorf("below-floor label should have no band, got %+v", evs)
 	}
 }

@@ -279,7 +279,16 @@ import (
 // plain "Big Game Hunters" read as Money. map_kind is persisted and feeds the
 // map filter, build-order pill suppression and the fingerprint domain gate, so
 // re-ingest to reclassify.
-const AlgorithmVersion = 64
+// 65: the never_upgraded / never_researched per-matchup suppression floors are
+// re-measured over the aurora-ID-labelled progamer corpus (issue #362),
+// rule-faithfully this time: HP-only upgrades for never_upgraded, tech OR
+// non-HP upgrade for never_researched. The old floors counted the wrong
+// command sets (all upgrades / tech only), so e.g. never_researched PvT sat at
+// 8:16 when pros prove research by ~2:46. The floors gate ShouldSave, so
+// re-ingest to re-decide which 🚫 pills are stored. Expert golden-line
+// targets/tolerances also moved wholesale in the same change, but those are
+// presentation-only and did not require this bump.
+const AlgorithmVersion = 65
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string
