@@ -3506,6 +3506,22 @@ button.workflow-nav-update-available:disabled {
   --player-glyph-fill: 0.85;
 }
 
+/* Windows has no flag glyphs, so 🇦🇷 renders as the two letters "AR". The
+   bundled font supplies only the regional-indicator range, and only the class
+   that flagFont.js adds on affected platforms activates it — everywhere else
+   the native flags are left alone. */
+@font-face {
+  font-family: 'Twemoji Country Flags';
+  unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067,
+    U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
+  src: url('./assets/TwemojiCountryFlags.woff2') format('woff2');
+  font-display: swap;
+}
+
+.flag-font-fallback .country-flag {
+  font-family: 'Twemoji Country Flags', sans-serif;
+}
+
 .workflow-crown {
   --player-glyph-fill: 0.72;
 }

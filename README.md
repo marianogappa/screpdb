@@ -313,11 +313,15 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-08-30  OK. Battle.net profile details surfaced on the player page and the Gaming Session players tab. All of it parses payloads already cached in the bnet_profiles table by the existing fetch path: one new read-only query (ListBnetProfilePayloadsByPlayerKeys, bounded by an IN clause over the keys on screen) and a decoder for the identity, alternate-toon and matchmaking fields. Nothing here fetches, so no bridge request is issued and no rate-limit budget is spent; the avatar URLs in the payload are decoded away rather than rendered, so no page pulls a remote asset. No new endpoints, os/net calls, facade exemptions, allowlist changes, hosts or paths; no AlgorithmVersion bump (no detection change).
+2026-09-01  OK. Country flags fixed on Windows + country-name tooltips (issue #361). Windows ships no flag glyphs, so the dashboard now vendors the Twemoji Country Flags woff2 (committed at frontend/src/assets, sha256-pinned) into the frontend build, where the existing go:embed of frontend/build serves it from the app's own origin — no page fetches a remote asset. A canvas feature-probe activates the font only where the platform lacks native flags; tooltips resolve names via the browser's built-in Intl.DisplayNames. Presentation only: no new endpoints, os/net calls, facade exemptions, iofacade allowlist widening, hosts or paths; no AlgorithmVersion bump (no detection change).
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
+
+```
+2026-08-30  OK. Battle.net profile details surfaced on the player page and the Gaming Session players tab. All of it parses payloads already cached in the bnet_profiles table by the existing fetch path: one new read-only query (ListBnetProfilePayloadsByPlayerKeys, bounded by an IN clause over the keys on screen) and a decoder for the identity, alternate-toon and matchmaking fields. Nothing here fetches, so no bridge request is issued and no rate-limit budget is spent; the avatar URLs in the payload are decoded away rather than rendered, so no page pulls a remote asset. No new endpoints, os/net calls, facade exemptions, allowlist changes, hosts or paths; no AlgorithmVersion bump (no detection change).
+```
 
 ```
 2026-08-30  OK. Money-map classification fixed and the Gaming Session view wired up. The map rule now takes the median mineral field rather than whichever field the map file stored first, and compares against a standard 1500 patch instead of a strict > 10000, so "Big Game Hunters - Remastered" stops reading as a Regular map; this reads already-parsed map data and adds no I/O. core.AlgorithmVersion 63 to 64 so map_kind is recomputed on re-ingest. New env var SCREPDB_SESSION_RECENCY widens the session window for development; it is read with os.Getenv, touches no filesystem, and cannot name a path. No new os/net calls, no facade exemptions, no allowlist widening, no new hosts or paths.
@@ -399,3 +403,4 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 - This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 - Due to security safeguards I can no longer accept PRs or other code contributions, but please feel free to file an [Issue](https://github.com/marianogappa/screpdb/issues), and you're more than welcome to contribute non-code improvements.
 - Built using the [github.com/icza/screp](https://github.com/icza/screp) library for StarCraft replay parsing. This project would have been impossible without [András Belicza](https://github.com/icza)'s work.
+- Country flags on platforms that lack them (Windows) are drawn with the [Twemoji Country Flags](https://github.com/talkjs/country-flag-emoji-polyfill) font, whose artwork comes from [Twemoji](https://github.com/jdecked/twemoji) and is used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).

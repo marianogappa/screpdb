@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import { api } from './api';
+import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import IngestModal from './components/IngestModal';
 import GamingSessionPanel from './components/GamingSessionPanel';
@@ -516,47 +517,6 @@ const gameEventDescription = (event, registry) => {
   return prettyPatternName(event?.type || 'event');
 };
 
-const ALPHA3_TO_ALPHA2 = {
-  AFG:'AF',ALB:'AL',DZA:'DZ',ASM:'AS',AND:'AD',AGO:'AO',AIA:'AI',ATA:'AQ',ATG:'AG',ARG:'AR',
-  ARM:'AM',ABW:'AW',AUS:'AU',AUT:'AT',AZE:'AZ',BHS:'BS',BHR:'BH',BGD:'BD',BRB:'BB',BLR:'BY',
-  BEL:'BE',BLZ:'BZ',BEN:'BJ',BMU:'BM',BTN:'BT',BOL:'BO',BIH:'BA',BWA:'BW',BRA:'BR',BRN:'BN',
-  BGR:'BG',BFA:'BF',BDI:'BI',KHM:'KH',CMR:'CM',CAN:'CA',CPV:'CV',CYM:'KY',CAF:'CF',TCD:'TD',
-  CHL:'CL',CHN:'CN',COL:'CO',COM:'KM',COG:'CG',COD:'CD',COK:'CK',CRI:'CR',CIV:'CI',HRV:'HR',
-  CUB:'CU',CYP:'CY',CZE:'CZ',DNK:'DK',DJI:'DJ',DMA:'DM',DOM:'DO',ECU:'EC',EGY:'EG',SLV:'SV',
-  GNQ:'GQ',ERI:'ER',EST:'EE',ETH:'ET',FLK:'FK',FRO:'FO',FJI:'FJ',FIN:'FI',FRA:'FR',GUF:'GF',
-  PYF:'PF',GAB:'GA',GMB:'GM',GEO:'GE',DEU:'DE',GHA:'GH',GIB:'GI',GRC:'GR',GRL:'GL',GRD:'GD',
-  GLP:'GP',GUM:'GU',GTM:'GT',GIN:'GN',GNB:'GW',GUY:'GY',HTI:'HT',HND:'HN',HKG:'HK',HUN:'HU',
-  ISL:'IS',IND:'IN',IDN:'ID',IRN:'IR',IRQ:'IQ',IRL:'IE',ISR:'IL',ITA:'IT',JAM:'JM',JPN:'JP',
-  JOR:'JO',KAZ:'KZ',KEN:'KE',KIR:'KI',PRK:'KP',KOR:'KR',KWT:'KW',KGZ:'KG',LAO:'LA',LVA:'LV',
-  LBN:'LB',LSO:'LS',LBR:'LR',LBY:'LY',LIE:'LI',LTU:'LT',LUX:'LU',MAC:'MO',MKD:'MK',MDG:'MG',
-  MWI:'MW',MYS:'MY',MDV:'MV',MLI:'ML',MLT:'MT',MHL:'MH',MTQ:'MQ',MRT:'MR',MUS:'MU',MEX:'MX',
-  FSM:'FM',MDA:'MD',MCO:'MC',MNG:'MN',MNE:'ME',MSR:'MS',MAR:'MA',MOZ:'MZ',MMR:'MM',NAM:'NA',
-  NRU:'NR',NPL:'NP',NLD:'NL',NCL:'NC',NZL:'NZ',NIC:'NI',NER:'NE',NGA:'NG',NIU:'NU',NFK:'NF',
-  MNP:'MP',NOR:'NO',OMN:'OM',PAK:'PK',PLW:'PW',PSE:'PS',PAN:'PA',PNG:'PG',PRY:'PY',PER:'PE',
-  PHL:'PH',PCN:'PN',POL:'PL',PRT:'PT',PRI:'PR',QAT:'QA',REU:'RE',ROU:'RO',RUS:'RU',RWA:'RW',
-  SHN:'SH',KNA:'KN',LCA:'LC',SPM:'PM',VCT:'VC',WSM:'WS',SMR:'SM',STP:'ST',SAU:'SA',SEN:'SN',
-  SRB:'RS',SYC:'SC',SLE:'SL',SGP:'SG',SVK:'SK',SVN:'SI',SLB:'SB',SOM:'SO',ZAF:'ZA',ESP:'ES',
-  LKA:'LK',SDN:'SD',SUR:'SR',SWZ:'SZ',SWE:'SE',CHE:'CH',SYR:'SY',TWN:'TW',TJK:'TJ',TZA:'TZ',
-  THA:'TH',TLS:'TL',TGO:'TG',TKL:'TK',TON:'TO',TTO:'TT',TUN:'TN',TUR:'TR',TKM:'TM',TCA:'TC',
-  TUV:'TV',UGA:'UG',UKR:'UA',ARE:'AE',GBR:'GB',USA:'US',URY:'UY',UZB:'UZ',VUT:'VU',VEN:'VE',
-  VNM:'VN',VGB:'VG',VIR:'VI',WLF:'WF',YEM:'YE',ZMB:'ZM',ZWE:'ZW',SSD:'SS',XKX:'XK',CUW:'CW',
-  SXM:'SX',BES:'BQ',
-};
-
-const countryCodeToFlag = (code) => {
-  if (!code) return null;
-  const upper = code.toUpperCase();
-  const a2 = upper.length === 2 ? upper : ALPHA3_TO_ALPHA2[upper];
-  if (!a2 || a2.length !== 2) return null;
-  const codePoints = [...a2].map((c) => 0x1F1E6 + c.charCodeAt(0) - 65);
-  return String.fromCodePoint(...codePoints);
-};
-
-// Country codes arrive from the SC:R bridge after the page has already
-// rendered, because fetching them is rate-limited and deliberately slow. Rather
-// than block the render or make the user reload, the page keeps polling a
-// cache-only endpoint and publishes what lands here; every flag reads through
-// it, so flags appear in place as they resolve.
 // The backend marks the user's own players by appending this to their display
 // name, so every surface gets it without threading a flag through each payload.
 // Splitting it back out here is what lets the marker carry its own tooltip
@@ -622,6 +582,11 @@ const PlayerDisplayName = ({ name }) => {
   );
 };
 
+// Country codes arrive from the SC:R bridge after the page has already
+// rendered, because fetching them is rate-limited and deliberately slow. Rather
+// than block the render or make the user reload, the page keeps polling a
+// cache-only endpoint and publishes what lands here; every flag reads through
+// it, so flags appear in place as they resolve.
 const CountryFlagOverrideContext = React.createContext(null);
 
 const CountryFlag = ({ code, playerKey }) => {
@@ -630,7 +595,7 @@ const CountryFlag = ({ code, playerKey }) => {
   if (!resolved) return null;
   const flag = countryCodeToFlag(resolved);
   if (!flag) return null;
-  return <span className="country-flag" title={resolved.toUpperCase()}>{flag}</span>;
+  return <span className="country-flag" title={countryCodeToName(resolved)}>{flag}</span>;
 };
 
 // COUNTRY_FLAG_POLL_MS paces the cache-only poll. It costs one local DB read and
