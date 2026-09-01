@@ -502,3 +502,207 @@ func (s *Store) CountWorkflowDurationBuckets(ctx context.Context) (int64, int64,
 	}
 	return row.Under10m, row.M1020, row.M2030, row.M3045, row.M45Plus, nil
 }
+
+// CountWorkflowFeaturingGames returns, per UI featuring key, how many replays
+// in the corpus carry that marker or game event.
+//
+// The filter chips have always had a Games field; for featuring it was left at
+// zero, which is 93 of the 122 filter options. Counts are what make a filter
+// menu worth browsing (they say what is worth clicking before you click it),
+// so the omnibar needs them.
+//
+// Cost is a fixed three aggregate queries regardless of how many keys are
+// asked for, rather than one EXISTS per key. Counts are corpus-wide and
+// deliberately ignore the active filters: they describe the vocabulary, not
+// the current result set, so they stay stable while the user narrows.
+func (s *Store) CountWorkflowFeaturingGames(ctx context.Context, featureKeys []string) (map[string]int64, error) {
+	out := make(map[string]int64, len(featureKeys))
+	if len(featureKeys) == 0 {
+		return out, nil
+	}
+
+	shapes := make(map[string]workflowFeaturingCountShape, len(featureKeys))
+	needPerValue := false
+	needTeamStacking := false
+	for _, key := range featureKeys {
+		shape, ok := workflowFeaturingCountShapeFor(key)
+		if !ok {
+			continue
+		}
+		shapes[key] = shape
+		if shape.perValueLabel != "" {
+			needPerValue = true
+		}
+		if shape.teamStacking {
+			needTeamStacking = true
+		}
+	}
+	if len(shapes) == 0 {
+		return out, nil
+	}
+
+	// One replay can carry the same event type many times, so every count is a
+	// COUNT(DISTINCT replay_id).
+	perType := map[string]map[string]int64{}
+	rows, err := s.ReplayQueryContext(ctx, `
+		SELECT re.event_kind, re.event_type, COUNT(DISTINCT re.replay_id)
+		FROM replay_events re
+		WHERE re.event_kind IN ('marker', 'game_event')
+		GROUP BY re.event_kind, re.event_type`)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var kind, eventType string
+		var count int64
+		if err := rows.Scan(&kind, &eventType, &count); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		if perType[kind] == nil {
+			perType[kind] = map[string]int64{}
+		}
+		perType[kind][eventType] = count
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+
+	// The per-value openers ("bo_z_fuzzy::~10 hatch") need a label breakdown.
+	perLabel := map[string]map[string]int64{}
+	if needPerValue {
+		labelRows, err := s.ReplayQueryContext(ctx, `
+			SELECT re.event_type, lower(json_extract(re.payload, '$.label')), COUNT(DISTINCT re.replay_id)
+			FROM replay_events re
+			WHERE re.event_kind = 'marker'
+				AND json_extract(re.payload, '$.label') IS NOT NULL
+			GROUP BY re.event_type, lower(json_extract(re.payload, '$.label'))`)
+		if err != nil {
+			return nil, err
+		}
+		for labelRows.Next() {
+			var eventType, label string
+			var count int64
+			if err := labelRows.Scan(&eventType, &label, &count); err != nil {
+				labelRows.Close()
+				return nil, err
+			}
+			if perLabel[eventType] == nil {
+				perLabel[eventType] = map[string]int64{}
+			}
+			perLabel[eventType][label] = count
+		}
+		if err := labelRows.Err(); err != nil {
+			labelRows.Close()
+			return nil, err
+		}
+		labelRows.Close()
+	}
+
+	var teamStackingCount int64
+	if needTeamStacking {
+		if err := s.ReplayQueryRowContext(ctx,
+			`SELECT COUNT(*) FROM replays r WHERE COALESCE(r.team_stacking, 0) = 1`,
+		).Scan(&teamStackingCount); err != nil && err != sql.ErrNoRows {
+			return nil, err
+		}
+	}
+
+	// A composite key ("drop" = drop OR cliff_drop) cannot sum its parts: a
+	// replay carrying both would be counted twice. Resolve those with one extra
+	// DISTINCT query each rather than over-reporting.
+	for key, shape := range shapes {
+		switch {
+		case shape.teamStacking:
+			out[key] = teamStackingCount
+		case shape.perValueLabel != "":
+			if byLabel, ok := perLabel[shape.eventTypes[0]]; ok {
+				out[key] = byLabel[shape.perValueLabel]
+			}
+		case len(shape.eventTypes) == 1:
+			out[key] = perType[shape.eventKind][shape.eventTypes[0]]
+		default:
+			count, err := s.countReplaysWithAnyEvent(ctx, shape.eventKind, shape.eventTypes)
+			if err != nil {
+				return nil, err
+			}
+			out[key] = count
+		}
+	}
+	return out, nil
+}
+
+func (s *Store) countReplaysWithAnyEvent(ctx context.Context, eventKind string, eventTypes []string) (int64, error) {
+	placeholders := strings.TrimRight(strings.Repeat("?, ", len(eventTypes)), ", ")
+	args := make([]any, 0, len(eventTypes)+1)
+	args = append(args, eventKind)
+	for _, eventType := range eventTypes {
+		args = append(args, eventType)
+	}
+	var count int64
+	err := s.ReplayQueryRowContext(ctx, `
+		SELECT COUNT(DISTINCT re.replay_id)
+		FROM replay_events re
+		WHERE re.event_kind = ?
+			AND re.event_type IN (`+placeholders+`)`, args...).Scan(&count)
+	if err != nil && err != sql.ErrNoRows {
+		return 0, err
+	}
+	return count, nil
+}
+
+// CountWorkflowMatchupGames returns replay counts keyed by lowercase matchup
+// ("pvt", "tvz"). replays.matchup is already canonicalised (TvZ == ZvT), which
+// is what buildMatchupClause filters on, so one GROUP BY covers every key.
+func (s *Store) CountWorkflowMatchupGames(ctx context.Context) (map[string]int64, error) {
+	out := map[string]int64{}
+	rows, err := s.ReplayQueryContext(ctx, `
+		SELECT lower(trim(COALESCE(r.matchup, ''))), COUNT(*)
+		FROM replays r
+		WHERE COALESCE(r.matchup, '') <> ''
+		GROUP BY lower(trim(COALESCE(r.matchup, '')))`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var matchup string
+		var count int64
+		if err := rows.Scan(&matchup, &count); err != nil {
+			return nil, err
+		}
+		out[matchup] = count
+	}
+	return out, rows.Err()
+}
+
+// CountWorkflowMapKindGames returns replay counts for the two map-kind filter
+// keys. It mirrors buildMapKindClause: "regular" deliberately covers both
+// Regular and UseMapSettings.
+func (s *Store) CountWorkflowMapKindGames(ctx context.Context) (map[string]int64, error) {
+	out := map[string]int64{}
+	rows, err := s.ReplayQueryContext(ctx, `
+		SELECT COALESCE(r.map_kind, ''), COUNT(*)
+		FROM replays r
+		GROUP BY COALESCE(r.map_kind, '')`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var mapKind string
+		var count int64
+		if err := rows.Scan(&mapKind, &count); err != nil {
+			return nil, err
+		}
+		switch mapKind {
+		case "Money":
+			out["money"] += count
+		case "Regular", "UseMapSettings":
+			out["regular"] += count
+		}
+	}
+	return out, rows.Err()
+}

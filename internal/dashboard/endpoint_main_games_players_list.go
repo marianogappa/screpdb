@@ -590,16 +590,41 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 			Race:      feature.Race,
 		})
 	}
+	// Populate the per-option game counts the chips have always had a field for.
+	// A count is the difference between a filter menu you can browse and one you
+	// have to guess at, and it is the only way 67 build orders become navigable.
+	featureKeys := make([]string, 0, len(result.Featuring))
+	for _, option := range result.Featuring {
+		featureKeys = append(featureKeys, option.Key)
+	}
+	featureCounts, err := d.dbStore.CountWorkflowFeaturingGames(d.ctx, featureKeys)
+	if err != nil {
+		return result, err
+	}
+	for i := range result.Featuring {
+		result.Featuring[i].Games = featureCounts[result.Featuring[i].Key]
+	}
+
+	matchupCounts, err := d.dbStore.CountWorkflowMatchupGames(d.ctx)
+	if err != nil {
+		return result, err
+	}
 	for _, matchup := range workflowMatchupFilters {
 		result.Matchups = append(result.Matchups, workflowGamesListFilterOption{
 			Key:   matchup.Key,
 			Label: matchup.Label,
+			Games: matchupCounts[matchup.Key],
 		})
+	}
+	mapKindCounts, err := d.dbStore.CountWorkflowMapKindGames(d.ctx)
+	if err != nil {
+		return result, err
 	}
 	for _, mapKind := range workflowMapKindFilters {
 		result.MapKinds = append(result.MapKinds, workflowGamesListFilterOption{
 			Key:   mapKind.Key,
 			Label: mapKind.Label,
+			Games: mapKindCounts[mapKind.Key],
 		})
 	}
 	return result, nil

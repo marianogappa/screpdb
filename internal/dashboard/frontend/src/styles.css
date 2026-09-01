@@ -4,6 +4,34 @@
   box-sizing: border-box;
 }
 
+/* Emphasis ladder. Five rungs, in ascending loudness. A surface picks one; it
+   does not invent its own. `mark` and `state` are the scarce rungs: `mark` is
+   for a value that is genuinely notable (a rare marker, a top-ranked trait) and
+   `state` is RESERVED for active/selected — nothing decorative may use it.
+   Without this, every feature invents local emphasis, and emphasis invented
+   locally is emphasis that competes globally. */
+:root {
+  --e-quiet: rgba(255, 255, 255, 0.42);
+  --e-base: rgba(255, 255, 255, 0.82);
+  --e-strong: #ffffff;
+  --e-line: rgba(255, 255, 255, 0.1);
+
+  /* the one accent, borrowed from the Build Orders progamer-timing band */
+  --e-accent: #e0b84c;
+  --e-accent-ink: #17110a;
+  --e-mark-fill: rgba(224, 184, 76, 0.17);
+  --e-mark-line: rgba(224, 184, 76, 0.55);
+  --e-mark-ink: #f2e2b0;
+
+  /* semantic, separate from the accent and from each other */
+  --e-neg: #e0796e;
+  --e-neg-fill: rgba(224, 121, 110, 0.14);
+
+  /* decorative tints must stay below the state rung's 0.22 so that "this is
+     on" always outranks "this is a label" */
+  --e-decor-max: 0.12;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
@@ -2627,19 +2655,41 @@ button.workflow-nav-update-available:disabled {
    viewport is the constraint, so shrink back toward the compact size that keeps
    an 8-player matchup on one line. Children below are em-relative so they scale
    with this. (0.9em pill × 0.867rem ≈ 0.78rem = the filter font.) */
+/* Fixed layout, explicit proportions. `auto` cannot hold a ratio here: eight
+   long handles set a min-content width that no percentage beats, which is how
+   Featuring ended up at 81px against Players' 897px. Column order is
+   Played | Players | Map | Time | Featuring. */
 .workflow-games-list-table {
   font-size: clamp(0.8125rem, calc(0.8125rem + (100vw - 1300px) * 0.0037), 0.867rem);
   margin-top: 10px;
   width: 100%;
+  table-layout: fixed;
 }
 
-/* Make Featuring the flexible column: max-width:0 + width:100% lets it absorb
-   whatever width is left after the other columns take their natural size, then
-   crop its single row to that. Without this the nowrap pills inflate the column
-   to their full content width and push it off the right edge of the screen. */
+/* Scoped to --main: the gaming-session panel reuses this table with five
+   columns and no Teams cell, so positional widths must not leak into it. */
+.workflow-games-list-table--main th:nth-child(1) { width: 9%; }
+.workflow-games-list-table--main th:nth-child(2) { width: 49%; }
+.workflow-games-list-table--main th:nth-child(3) { width: 11%; }
+.workflow-games-list-table--main th:nth-child(4) { width: 5%; }
+.workflow-games-list-table--main th:nth-child(5) { width: 26%; }
+
+/* Featuring is the derived insight — the only thing here that the .rep filename
+   does not already give you — so it wraps in full rather than cropping to a
+   single row behind a "…" toggle. */
 .workflow-games-list-table td.workflow-games-list-featuring {
-  width: 100%;
-  max-width: 0;
+  white-space: normal;
+}
+
+.workflow-games-list-table td.workflow-games-list-featuring .workflow-pattern-pills {
+  flex-wrap: wrap;
+  overflow: visible;
+  row-gap: 3px;
+}
+
+.workflow-games-list-table td.workflow-games-list-players,
+.workflow-games-list-table td.workflow-games-list-map {
+  overflow: hidden;
 }
 
 .workflow-games-list-table td,
@@ -2654,16 +2704,83 @@ button.workflow-nav-update-available:disabled {
   white-space: nowrap;
 }
 
-.workflow-games-list-table td.workflow-games-list-players .workflow-team-matchup,
-.workflow-games-list-table td.workflow-games-list-players .workflow-team-side {
-  flex-wrap: nowrap;
+/* Players cell: one component for every player count. Teams are chunked into
+   explicit rows in JSX, so the break falls where the team shape says (4 teams
+   of 2 give 2 per row; 2 teams of 4 give one per row) rather than wherever the
+   text happens to run out of width. Scoped under the table so it beats the
+   base .workflow-team-matchup flex rule defined further down. */
+.workflow-team-matchup--rows,
+.workflow-games-list-table .workflow-team-matchup--rows {
+  display: grid;
+  justify-content: start;
+  align-items: center;
+  column-gap: 0.28rem;
+  row-gap: 2px;
 }
 
+/* The whole Players cell is ONE grid of (team, vs) column pairs; each row of
+   teams is display:contents so its cells join that grid. Because the tracks
+   are max-content, every column sizes to the widest team across all rows: the
+   "vs" separators line up vertically and no handle gets truncated. A grid per
+   row could only equalise within its own row, which needed 1fr tracks and
+   ellipsised the longer names. */
+.workflow-team-row,
+.workflow-games-list-table .workflow-team-row {
+  display: contents;
+}
+
+/* An empty trailing "vs" on the final row must still hold its column so the
+   rows above stay aligned. */
+.workflow-games-list-table .workflow-team-vs:empty::before {
+  content: 'vs';
+  visibility: hidden;
+}
+
+.workflow-games-list-table td.workflow-games-list-players .workflow-team-side {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+
+/* In the LIST the replay colour carries nothing: it is a per-replay slot, so
+   the same opponent is pink in one row and teal in the next. It stays on the
+   game-detail screens, where it keys a name to its base on the map. */
 .workflow-games-list-table .workflow-team-player-pill {
-  padding: 0.02em 0.26em 0.04em;
+  padding: 0;
   font-size: 0.9em;
   line-height: 1.5;
-  gap: 0.1em;
+  gap: 0.3em;
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0;
+}
+
+/* One glyph per name instead of four. Crown → weight (below), flag and the
+   "you" poke belong on the detail screens, not in a 20px row. */
+.workflow-games-list-table .workflow-crown,
+.workflow-games-list-table .you-marker,
+.workflow-games-list-table .country-flag {
+  display: none;
+}
+
+.workflow-games-list-table .workflow-race-icon {
+  opacity: 0.82;
+}
+
+/* The winner reads as weight, which survives a glance; a crown per name does
+   not. Scoped to the component rather than the table, so the game-detail
+   header (same renderer) gets it too. Games with no recorded winner are left
+   alone rather than half-dimmed. */
+.workflow-team-matchup--rows .workflow-team-player-pill.rd-won .workflow-player-name-link,
+.workflow-team-matchup--rows .workflow-team-player-pill.rd-won > span:last-child {
+  color: var(--e-strong);
+  font-weight: 600;
+}
+
+.workflow-team-matchup--rows .workflow-team-player-pill.rd-lost {
+  opacity: 0.58;
 }
 
 .workflow-games-list-table .workflow-team-player-pill {
@@ -2684,17 +2801,38 @@ button.workflow-nav-update-available:disabled {
 }
 
 .workflow-games-list-table .workflow-team-side {
-  gap: 0.1rem;
+  gap: 0.55rem;
+  align-items: center;
 }
 
 .workflow-games-list-table .workflow-team-vs {
   font-size: 0.82em;
+  color: var(--e-quiet);
+  padding: 0 0.1rem;
 }
 
 .workflow-games-list-table .workflow-feature-pill {
-  padding: 1px 6px;
-  font-size: 0.66rem;
+  padding: 2px 7px;
+  font-size: 0.68rem;
   min-height: 20px;
+  border-color: var(--e-line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--e-base);
+}
+
+/* `mark`: a marker earns the accent only when it is genuinely notable in THIS
+   corpus. Computed server-side (see markerRarity in the dashboard response) so
+   the threshold is one number in one place. */
+.workflow-games-list-table .workflow-feature-pill.rd-rare {
+  background: var(--e-mark-fill);
+  border-color: var(--e-mark-line);
+  color: var(--e-mark-ink);
+  font-weight: 600;
+}
+
+.rd-no-feature {
+  color: rgba(255, 255, 255, 0.22);
+  font-size: 0.68rem;
 }
 
 .workflow-games-list-table .workflow-pattern-pills {
@@ -2723,25 +2861,6 @@ button.workflow-nav-update-available:disabled {
 
 .workflow-featuring-wrap .workflow-feature-pill {
   flex: 0 0 auto;
-}
-
-.workflow-featuring-toggle {
-  flex: 0 0 auto;
-  align-self: center;
-  min-width: 22px;
-  min-height: 20px;
-  padding: 0 6px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 0.8rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.workflow-featuring-toggle:hover {
-  background: rgba(255, 255, 255, 0.16);
 }
 
 /* Roomy variant: applied (from App.jsx) only when every game on the page is a
@@ -2778,13 +2897,18 @@ button.workflow-nav-update-available:disabled {
   min-height: 24px;
 }
 
-/* Games-list header: drop the grey header-cell background (sit on the page
-   background) and show the column names as emoji glyphs, sized up for legibility
-   since the table font is small. */
+/* Games-list header: named columns in a quiet uppercase label, using weight
+   rather than size for rank. The previous 16px emoji glyphs made two of the six
+   columns ("📅", "⏱️") unlabelled, and made the header the largest type on a
+   screen whose content sits at 11px. */
 .workflow-games-list-table th {
   background: transparent;
-  font-size: 16px;
-  font-weight: 400;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--e-quiet);
+  padding-bottom: 7px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -2799,8 +2923,13 @@ button.workflow-nav-update-available:disabled {
   user-select: none;
 }
 
+/* `state`: selection gets the reserved accent, as a rail plus a faint wash.
+   A rail reads at a glance without competing with the row's own content — and
+   because nothing decorative is allowed the accent, it cannot be mistaken for
+   a label. */
 .workflow-selected-row {
-  background: rgba(100, 150, 255, 0.14);
+  background: rgba(224, 184, 76, 0.07);
+  box-shadow: inset 2px 0 0 var(--e-accent);
 }
 
 .workflow-meta {
@@ -3579,9 +3708,9 @@ button.workflow-nav-update-available:disabled {
 /* Opener-unresolved (N/A) pill: occupies the opener slot but signals "no
    build order" — muted red, same "BUILD ORDER" legend treatment. */
 .workflow-pattern-pill-na {
-  border-color: rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.12);
-  color: #fecaca;
+  border-color: var(--e-line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--e-base);
 }
 
 /* "BUILD ORDER" legend sitting centered on the pill's top border, fieldset-
@@ -3968,10 +4097,12 @@ button.workflow-nav-update-available:disabled {
   font-weight: 700;
 }
 
+/* Negative facts ("no upgrades", "never researched") are content, not alarms.
+   At full red they outshouted every positive marker on the row. */
 .workflow-low-usage-pill-hotkey {
-  border-color: rgba(239, 68, 68, 0.35);
-  background: rgba(239, 68, 68, 0.18);
-  color: #fecaca;
+  border-color: var(--e-line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--e-base);
 }
 
 .workflow-recent-game-card {
@@ -4165,7 +4296,10 @@ button.workflow-nav-update-available:disabled {
   font-size: 0.82rem;
   font-weight: 600;
   border-radius: 6px;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--e-base);
+  background: transparent;
+  border: 0;
+  font-family: inherit;
   cursor: pointer;
   user-select: none;
   transition: background 120ms ease, opacity 120ms ease;
@@ -4195,10 +4329,7 @@ button.workflow-nav-update-available:disabled {
   background: transparent;
 }
 
-/* Player chips keep their player colour (set inline). Disabled = filtered out. */
-.workflow-events-player-chip--off {
-  opacity: 0.4;
-}
+
 
 /* Warnings column: to the right of the filter rows, vertically centred so a
    single notice reads as spanning both rows. */
@@ -5458,17 +5589,6 @@ button.workflow-nav-update-available:disabled {
   column-gap: 0.25rem;
   row-gap: 0.2rem;
 }
-.workflow-1v1-player {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-}
-.workflow-team-matchup--1v1 .workflow-team-vs {
-  margin: 0 0.6rem;
-}
-.workflow-1v1-player {
-  --player-glyph-size: 24px;
-}
 .workflow-fingerprint-inline {
   display: inline-flex;
   align-items: center;
@@ -6330,3 +6450,507 @@ span[data-tip],
   background: rgba(255, 255, 255, 0.05);
   font-variant-numeric: normal;
 }
+
+/* ============================================================
+   Emphasis-ladder additions (see the :root ladder at the top).
+   ============================================================ */
+
+/* The replay player colour, as a swatch. Full chroma — this is the hue you
+   remember from the game — with the name itself in legible ink beside it.
+   Replaces colouring the name text, where 4 of 8 SC:R hues fell below WCAG AA
+   on this background. */
+.rd-swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+  vertical-align: -1px;
+  margin-right: 0.42em;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+
+.workflow-event-row-player {
+  color: var(--e-base);
+  font-weight: 400;
+}
+
+.workflow-event-map-legend-item,
+.workflow-events-player-chip {
+  color: var(--e-base);
+}
+
+/* Filtered out: the name goes quiet and the swatch desaturates, so "off" reads
+   on the control you clicked instead of in a separate checkbox. Declared after
+   the base colour above, which it has to beat at equal specificity. */
+.workflow-events-player-chip--off,
+.workflow-events-player-chip--off span {
+  color: var(--e-quiet);
+}
+
+.workflow-events-player-chip--off .rd-swatch {
+  filter: grayscale(1);
+  opacity: 0.4;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
+}
+
+/* The roster name is the answer for its row, so it takes `strong`. */
+.workflow-player-name-link--strong {
+  color: var(--e-strong);
+  font-weight: 600;
+}
+
+/* Build-order and hotkey cards are content, not signals: neutral frames. The
+   per-kind tints made them compete with the one marker that matters. */
+.workflow-pattern-pill-bo,
+.workflow-pattern-pill-keys,
+.workflow-pattern-pill-strong,
+.workflow-pattern-pill-na {
+  border-color: var(--e-line);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.workflow-pill-legend {
+  color: var(--e-quiet);
+  font-weight: 500;
+}
+
+/* The summary's featuring and spellcast strips stay at `base`. Giving them
+   `mark` marked every pill in both strips, which is the original complaint in
+   a new colour: 13 gold objects say no more than 13 grey ones. */
+.workflow-spellcasts-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--e-line);
+}
+
+.workflow-composition-zone-label {
+  letter-spacing: 0.12em;
+  color: var(--e-quiet);
+}
+
+/* A quantity column reads as a quantity: number plus a bar scaled to the
+   largest value on the page. */
+.rd-qty {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 58px;
+}
+
+.rd-qty-num {
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.rd-qty-bar {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* The log already carries the result; a crown per opener line does not. */
+.workflow-bo-openers .workflow-crown {
+  display: none;
+}
+
+/* ------------------------------------------------------------
+   Report-page title. Its own component: a heading names the
+   match, so it carries races, names and "vs" and nothing else.
+   ------------------------------------------------------------ */
+.workflow-game-title-players {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.6rem;
+  row-gap: 2px;
+}
+
+.workflow-game-title-side {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.workflow-game-title-player {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  white-space: nowrap;
+  color: var(--e-base);
+  font-weight: 400;
+}
+
+.workflow-game-title-player.rd-won {
+  color: var(--e-strong);
+  font-weight: 600;
+}
+
+.workflow-game-title-vs {
+  color: var(--e-quiet);
+  font-size: 0.78em;
+  font-weight: 400;
+}
+
+/* ------------------------------------------------------------
+   Roster glyph rail: race | country | colour | winner, each in a
+   fixed slot that holds its width when empty, so the glyphs line
+   up in columns and every name starts at the same x.
+   ------------------------------------------------------------ */
+.wpt-glyphs {
+  display: inline-grid;
+  grid-template-columns: repeat(4, 18px);
+  align-items: center;
+  justify-items: center;
+  column-gap: 2px;
+  flex: 0 0 auto;
+  margin-right: 0.45rem;
+}
+
+.wpt-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+}
+
+.wpt-glyph .rd-swatch {
+  margin-right: 0;
+  vertical-align: 0;
+}
+
+.wpt-glyph .workflow-crown {
+  font-size: 0.85em;
+}
+
+/* ============================================================
+   Filter omnibar (components/FilterOmnibar.jsx).
+   Replaces two <select>s and forty flat pills. Row 1 is the
+   typed surface (reaches all 122 options); row 2 is the browse
+   row (seven axis blocks previewing real option names).
+   ============================================================ */
+.wf-omni { position: relative; margin-top: 4px; }
+
+.wf-ob-box {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 6px 8px;
+  min-height: 36px;
+  cursor: text;
+}
+
+.wf-ob-box:focus-within {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.wf-ob-mag { color: var(--e-quiet); font-size: 13px; line-height: 1; flex: 0 0 auto; }
+
+.wf-ob-input {
+  flex: 1 1 130px;
+  min-width: 110px;
+  border: 0;
+  background: transparent;
+  outline: none;
+  color: var(--e-strong);
+  font: inherit;
+  font-size: 13px;
+  padding: 2px 0;
+}
+
+.wf-ob-input::placeholder { color: var(--e-quiet); }
+
+.wf-ob-count {
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  color: var(--e-quiet);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.wf-ob-count b { color: var(--e-base); font-weight: 500; }
+
+.wf-ob-clear {
+  flex: 0 0 auto;
+  background: none;
+  border: 0;
+  color: var(--e-quiet);
+  font: inherit;
+  font-size: 11.5px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.wf-ob-clear:hover { color: var(--e-base); }
+
+/* A chip group is one state key: options inside it are OR, groups are AND.
+   Showing the "or" and letting the group boundary imply the "and" is how the
+   query grammar becomes readable without a tooltip. */
+.wf-ob-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 2px 5px 2px 7px;
+}
+
+.wf-ob-group-axis {
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--e-quiet);
+}
+
+.wf-ob-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--e-accent);
+  color: var(--e-accent-ink);
+  border-radius: 3px;
+  padding: 1px 4px 1px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wf-ob-chip button {
+  background: none;
+  border: 0;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  padding: 0 1px;
+}
+
+.wf-ob-chip button:hover { opacity: 1; }
+
+.wf-ob-or {
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--e-quiet);
+}
+
+.wf-ob-and {
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* the discovery surface */
+.wf-ob-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 5px);
+  z-index: 30;
+  background: #161a22;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.8);
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 5px;
+}
+
+.wf-ob-sec {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 7px 8px 4px;
+  font-size: 9.5px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--e-quiet);
+  position: sticky;
+  top: 0;
+  background: #161a22;
+}
+
+.wf-ob-sec span { color: rgba(255, 255, 255, 0.26); letter-spacing: 0.04em; }
+
+.wf-ob-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--e-base);
+  font-size: 12.5px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.wf-ob-opt[aria-selected="true"] {
+  background: rgba(224, 184, 76, 0.14);
+  box-shadow: inset 2px 0 0 var(--e-accent);
+}
+
+.wf-ob-tick { flex: 0 0 auto; width: 10px; color: var(--e-accent); font-size: 11px; }
+
+.wf-ob-lbl { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wf-ob-lbl mark { background: none; color: var(--e-strong); font-weight: 600; }
+
+.wf-ob-n {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  color: var(--e-quiet);
+  font-variant-numeric: tabular-nums;
+}
+
+.wf-ob-empty { padding: 14px 10px; font-size: 12.5px; color: var(--e-quiet); }
+.wf-ob-empty b { color: var(--e-base); font-weight: 500; }
+.wf-ob-more { padding: 8px 10px; }
+
+.wf-ob-hint {
+  display: flex;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  padding: 6px 8px 3px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  margin-top: 4px;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* browse row: look instead of type */
+.wf-br { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+
+.wf-br-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.028);
+  padding: 4px 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--e-quiet);
+  white-space: nowrap;
+}
+
+.wf-br-block:hover,
+.wf-br-block--open {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: var(--e-base);
+}
+
+.wf-br-axis {
+  font-size: 9.5px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.34);
+}
+
+.wf-br-ex { color: var(--e-base); }
+.wf-br-more { font-size: 10px; color: rgba(255, 255, 255, 0.3); }
+
+.wf-br-block--has b {
+  color: var(--e-accent-ink);
+  background: var(--e-accent);
+  border-radius: 8px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wf-br-panel {
+  margin-top: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.022);
+  padding: 8px 9px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.wf-br-panel-label {
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+  margin-right: 3px;
+}
+
+.wf-br-opt {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--e-base);
+  font: inherit;
+  font-size: 11.5px;
+  padding: 3px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.wf-br-opt:hover { background: rgba(255, 255, 255, 0.1); }
+
+.wf-br-opt--on {
+  background: var(--e-accent);
+  border-color: var(--e-accent);
+  color: var(--e-accent-ink);
+  font-weight: 600;
+}
+
+.wf-br-opt-n { font-size: 9.5px; opacity: 0.55; margin-left: 4px; font-variant-numeric: tabular-nums; }
+
+/* A zero-count option matches nothing in this corpus. Worth showing (it says
+   the filter exists and your replays do not use it) but not worth trying
+   first, so it dims and sorts last. */
+.wf-ob-opt--zero { color: var(--e-quiet); }
+.wf-ob-opt--zero .wf-ob-n { opacity: 0.55; }
+.wf-br-opt--zero { color: var(--e-quiet); border-color: rgba(255, 255, 255, 0.09); }
+.wf-br-opt--zero.wf-br-opt--on { color: var(--e-accent-ink); }
+
+/* Menu icon slot: the unit art the filter chips already use, so a Nydus reads
+   as a Nydus while scanning. Falls back to the emoji, then the race initial,
+   and holds its width when empty so labels stay aligned. */
+.wf-ob-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.wf-ob-icon img {
+  max-width: 16px;
+  max-height: 16px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.wf-ob-icon:has(img + img) img { max-width: 9px; }

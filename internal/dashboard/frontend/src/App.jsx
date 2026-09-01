@@ -3,6 +3,7 @@ import { api } from './api';
 import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import IngestModal from './components/IngestModal';
+import FilterOmnibar from './components/FilterOmnibar';
 import GamingSessionPanel from './components/GamingSessionPanel';
 import Histogram from './components/charts/Histogram';
 import TimingScatterRows from './components/charts/TimingScatterRows';
@@ -697,11 +698,8 @@ const gamePlayerNameSpan = (player, key) => {
   const name = String(player?.name || '').trim();
   if (!name) return null;
   return (
-    <span
-      key={key}
-      className="workflow-event-row-player"
-      style={legendTextStyle(String(player?.color || ''), playerColorToCss(player?.color))}
-    >
+    <span key={key} className="workflow-event-row-player">
+      <PlayerSwatch color={player?.color} title={name} />
       {name}
     </span>
   );
@@ -731,10 +729,8 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
             <span key={`bo-line-${line.playerID}`} className="workflow-bo-openers-line">
               {raceIcon ? <img src={raceIcon} alt={line.race || 'race'} className="unit-icon-inline workflow-bo-openers-race" /> : null}
               {line.isWinner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-              <span
-                className="workflow-event-row-player"
-                style={legendTextStyle(String(line.color || ''), playerColorToCss(line.color))}
-              >
+              <span className="workflow-event-row-player">
+                <PlayerSwatch color={line.color} title={line.name} />
                 {line.name}
               </span>
               {(() => {
@@ -947,24 +943,38 @@ const playerColorToCss = (colorValue) => {
   return scPlayerColorMap[key] || value.toLowerCase();
 };
 
-const legendTextStyle = (rawColorValue, foregroundColor) => {
-  const color = playerColorToCss(foregroundColor);
-  const key = String(rawColorValue || '').toLowerCase().replace(/\s+/g, '');
-  const needsShadow = key === 'black' || key === 'navy' || key === 'darkblue';
-  if (!needsShadow) {
-    return { color };
-  }
-  return {
-    color,
-    textShadow: '0px 0px 4px rgba(255, 255, 255, 1.8)',
-  };
-};
-
-/** In-game summary UI, use the replay player colour (not DB replay-count heat). */
-const gamePlayerNameStyle = (player) => ({
-  ...legendTextStyle(String(player?.color || '').trim(), playerColorToCss(player?.color)),
-  fontWeight: 600,
+/** The replay's player colour, as a swatch welded to the name.
+ *
+ *  It used to be the name's `color`. The SC:R palette was designed as unit
+ *  fills over bright terrain, not as 12px text on #0f1016: Brown came out at
+ *  1.92:1 and Navy at 1.94:1 against the app background, where WCAG AA wants
+ *  4.5:1. The old workaround bolted a white text-shadow onto a hardcoded
+ *  `black | navy | darkblue` allowlist — which missed Brown, the worst case.
+ *
+ *  A swatch fixes both halves: the hue keeps full chroma (so the colour you
+ *  remember from the game still finds the name instantly, and still keys it to
+ *  the base on the map) while the name itself renders in legible ink. */
+/** Labels drawn ON the map keep the player colour: they sit over terrain, where
+ *  the hue is exactly the signal, and a dark outline makes any hue legible over
+ *  any tileset — unlike the old white halo, which was applied to a hardcoded
+ *  three-colour allowlist and missed the worst offender. */
+const mapLabelStyle = (color) => ({
+  color: playerColorToCss(color),
+  textShadow: '0 1px 3px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.9)',
 });
+
+const PlayerSwatch = ({ color, title }) => {
+  const css = playerColorToCss(color);
+  if (!css) return null;
+  return (
+    <span
+      className="rd-swatch"
+      style={{ background: css }}
+      title={title || String(color || '')}
+      aria-hidden="true"
+    />
+  );
+};
 
 const renderSummaryMapStack = ({
   legendItems,
@@ -981,8 +991,8 @@ const renderSummaryMapStack = ({
           <span
             key={`sum-leg-${item.name}`}
             className="workflow-event-map-legend-item"
-            style={legendTextStyle(item.rawColor, item.color)}
           >
+            <PlayerSwatch color={item.color} title={item.name} />
             {item.name}
           </span>
         ))}
@@ -1151,52 +1161,25 @@ const elideGenericDropLabels = (labels) => {
 // overflow. When the pills overflow, a trailing "…" toggle expands the cell to
 // wrap and show them all; the toggle stops click propagation so it doesn't open
 // the game the row links to.
+/** Featuring is the derived insight — the reason this table exists — so every
+ *  marker renders. It used to crop to one row behind a "…" toggle, which hid
+ *  content in 83 of 100 rows while the player names beside it rendered in full. */
 function FeaturingCell({ featuring }) {
   const labels = elideGenericDropLabels(featuring || []);
-  const pillsRef = useRef(null);
-  const [expanded, setExpanded] = useState(false);
-  const [overflowing, setOverflowing] = useState(false);
-
-  useLayoutEffect(() => {
-    if (expanded) return undefined;
-    const el = pillsRef.current;
-    if (!el) return undefined;
-    const measure = () => setOverflowing(el.scrollWidth > el.clientWidth + 1);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [labels, expanded]);
 
   if (labels.length === 0) {
-    return <span className="workflow-empty-inline">-</span>;
+    return <span className="rd-no-feature">no markers</span>;
   }
 
-  const toggle = (e) => {
-    e.stopPropagation();
-    setExpanded((v) => !v);
-  };
-
   return (
-    <div className={`workflow-featuring-wrap${expanded ? ' workflow-featuring-wrap--expanded' : ''}`}>
-      <div ref={pillsRef} className="workflow-pattern-pills">
+    <div className="workflow-featuring-wrap">
+      <div className="workflow-pattern-pills">
         {labels.map((pill, pillIdx) => (
           <span key={`${pillIdx}-${pill}`} className="workflow-pattern-pill workflow-feature-pill">
             <span>{pill}</span>
           </span>
         ))}
       </div>
-      {(overflowing || expanded) && (
-        <button
-          type="button"
-          className="workflow-featuring-toggle"
-          onClick={toggle}
-          title={expanded ? 'Collapse' : 'Show all'}
-          aria-label={expanded ? 'Collapse featuring' : 'Show all featuring'}
-        >
-          {expanded ? '×' : '…'}
-        </button>
-      )}
     </div>
   );
 }
@@ -2072,6 +2055,11 @@ const teamGroupsFromPlayers = (players) => {
 
 const playersHaveDistinctTeams = (players) => new Set((players || []).map((p) => Number(p?.team || 0))).size > 1;
 
+// Target players per visual row in the games-list Players cell. Teams are
+// balanced across ceil(players / this) rows and never split, so the row break
+// always falls between teams.
+const PLAYERS_PER_LIST_ROW = 4;
+
 const mergeIngestLogEntries = (entries, event) => {
   if (!event || !event.message) {
     return entries;
@@ -2238,7 +2226,6 @@ function App() {
     matchup: [],
     mapKind: [],
   });
-  const [mainGamesBORaceOpen, setMainGamesBORaceOpen] = useState('');
   const mainGamesTableRef = useRef(null);
   const [mainGameDetailLoading, setMainGameDetailLoading] = useState(false);
   const [mainPlayerLoading, setMainPlayerLoading] = useState(false);
@@ -2338,10 +2325,9 @@ function App() {
   const [mainPlayerViewportInsight, setMainPlayerViewportInsight] = useState(null);
   const [mainPlayerViewportInsightLoading, setMainPlayerViewportInsightLoading] = useState(false);
   const [mainPlayerViewportInsightError, setMainPlayerViewportInsightError] = useState('');
-  const [topPlayerColors, setTopPlayerColors] = useState({});
   // Used purely as a re-render trigger after the screp engine color map loads;
   // the actual map lives at module scope (see scPlayerColorMap above) so the
-  // module-level helpers (playerColorToCss, legendTextStyle) can consume it.
+  // module-level helpers (playerColorToCss, mapLabelStyle) can consume it.
   const [, setScColorMapLoaded] = useState(false);
   const [mainSummaryFilters, setMainSummaryFilters] = useState(DEFAULT_SUMMARY_FILTERS);
   const [productionView, setProductionView] = useState('all');
@@ -2381,9 +2367,6 @@ function App() {
       setMainGamesTotal(Number(data?.total) || 0);
       if (data?.filter_options) {
         setMainGamesFilterOptions(data.filter_options);
-      }
-      if (!selectedReplayId && items.length > 0) {
-        setSelectedReplayId(items[0].replay_id);
       }
     } catch (err) {
       setError(err.message);
@@ -2460,15 +2443,6 @@ function App() {
       setMainPlayersViewportHistogram(null);
     } finally {
       setMainPlayersViewportHistogramLoading(false);
-    }
-  };
-
-  const loadTopPlayerColors = async () => {
-    try {
-      const data = await api.getPlayerColors();
-      setTopPlayerColors(data?.player_colors || {});
-    } catch (err) {
-      console.error('Failed to load top player colors:', err);
     }
   };
 
@@ -2885,7 +2859,6 @@ function App() {
     loadGlobalReplayFilterConfig().catch((err) => {
       console.error('Failed to load global replay filter config:', err);
     });
-    loadTopPlayerColors();
     loadScrepColors();
     // Resolve ingest settings (incl. the one-shot sample-auto-loaded signal)
     // before the health check so it can decide whether to auto-open this modal.
@@ -3651,7 +3624,6 @@ function App() {
         sortBy: mainPlayersSortBy,
         sortDir: mainPlayersSortDir,
       }),
-      loadTopPlayerColors(),
       checkHealthStatus(),
     ]);
 
@@ -3710,14 +3682,6 @@ function App() {
     } finally {
       setGlobalReplayFilterSaving(false);
     }
-  };
-
-  const setMainGameSingleFilter = (name, nextValue) => {
-    setMainGamesPage(1);
-    setMainGamesFilters((prev) => ({
-      ...prev,
-      [name]: nextValue ? [nextValue] : [],
-    }));
   };
 
   const toggleMainGameMultiFilter = (name, value) => {
@@ -3796,38 +3760,24 @@ function App() {
     navigateMainView('players');
   };
 
-  const playerAccentColor = (nameOrKey) => {
-    const raw = String(nameOrKey || '').trim().toLowerCase();
-    if (!raw) {
-      return '';
-    }
-    if (topPlayerColors[raw]) {
-      return topPlayerColors[raw];
-    }
-    // Display names may append the "you" marker after the replay header name; /api/player-colors keys are player_key (normalized raw name).
-    const withoutDisplaySuffix = raw.replace(/ \([^)]+\)$/, '').trim().toLowerCase();
-    if (withoutDisplaySuffix && withoutDisplaySuffix !== raw && topPlayerColors[withoutDisplaySuffix]) {
-      return topPlayerColors[withoutDisplaySuffix];
-    }
-    return '';
-  };
-
-  const renderPlayerLabel = (name, colorLookupKey) => {
-    const color = playerAccentColor(colorLookupKey || name);
-    if (!color) return <span><PlayerDisplayName name={name} /></span>;
-    return <span style={{ color, fontWeight: 600 }}><PlayerDisplayName name={name} /></span>;
-  };
+  // Player names render in the standard foreground. The rank palette that used
+  // to tint them (15 categorical hues assigned to the most-played players)
+  // encoded games-played — which the sorted Games column already shows — at the
+  // cost of 16 competing hues per screen, two of them below WCAG AA. The
+  // replay's own player colour is a different thing entirely and is kept: it is
+  // shown as a swatch on the game-detail screens, where it keys a name to its
+  // base on the map.
+  const renderPlayerLabel = (name) => (
+    <span><PlayerDisplayName name={name} /></span>
+  );
 
   const renderPlayerLinkLabel = (name, playerKey) => {
-    const color = playerAccentColor(playerKey || name);
-    const style = color ? { color, fontWeight: 600 } : undefined;
-    if (!playerKey) return <span style={style}><PlayerDisplayName name={name} /></span>;
+    if (!playerKey) return <span><PlayerDisplayName name={name} /></span>;
     return (
       <button
         type="button"
         className="workflow-player-name-link"
         title="Analyze player"
-        style={style}
         onClick={(e) => { e.stopPropagation(); openMainPlayer(playerKey); }}
       >
         <PlayerDisplayName name={name} />
@@ -3863,6 +3813,42 @@ function App() {
     return <img src={url} alt={race || ''} title={race || ''} className="workflow-race-icon" />;
   };
 
+  /** Report-page title. Deliberately NOT the games-list cell: a heading wants
+   *  the match, not the metadata. Race icon and name only, teams joined by
+   *  "vs", winner in weight. Colour, country, fingerprint and crown all live
+   *  in the roster below, where there is room to align them. */
+  const renderGameTitlePlayers = (game) => {
+    const players = Array.isArray(game?.players) ? game.players : [];
+    if (players.length === 0) {
+      return renderPlayersMatchup(game?.players_label || '');
+    }
+    const winnerKnown = players.some((player) => player.is_winner);
+    const teams = playersHaveDistinctTeams(players)
+      ? teamGroupsFromPlayers(players)
+      : [players];
+
+    return (
+      <span className="workflow-game-title-players">
+        {teams.map((team, teamIdx) => (
+          <React.Fragment key={`title-team-${teamIdx}`}>
+            {teamIdx > 0 ? <span className="workflow-game-title-vs">vs</span> : null}
+            <span className="workflow-game-title-side">
+              {team.map((player) => (
+                <span
+                  key={player.player_id}
+                  className={`workflow-game-title-player${winnerKnown && player.is_winner ? ' rd-won' : ''}`}
+                >
+                  {renderWorkerIcon(player.race)}
+                  <PlayerDisplayName name={player.name} />
+                </span>
+              ))}
+            </span>
+          </React.Fragment>
+        ))}
+      </span>
+    );
+  };
+
   const renderMainGameListPlayers = (game, linkPlayerNames = true) => {
     const players = Array.isArray(game?.players) ? game.players : [];
     if (players.length === 0) {
@@ -3876,80 +3862,81 @@ function App() {
       <span
         className="workflow-team-stacking-marker"
         data-tip="Team stacking: uneven non-solo team sizes for over 5 minutes"
-        style={{ marginLeft: 6 }}
       >
         😈
       </span>
     ) : null;
-    if (!playersHaveDistinctTeams(players)) {
-      const warningText = game?.team_info_incomplete
-        ? 'Team information is incomplete'
-        : 'This replay has no team information';
-      return (
-        <span>
-          {players.map((player, idx) => (
-            <span key={`${player.player_id}-${idx}`}>
-              {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-              {renderWorkerIcon(player.race)}
-              {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
-              {renderName(player)}
-              <FingerprintBadge match={player.fingerprint_match} compact />
-              {idx < players.length - 1 ? ', ' : ''}
-            </span>
-          ))}
-          <span className="workflow-no-team-warning" data-tip={warningText}>⚠️</span>
-          {stackingMarker}
-        </span>
-      );
+
+    // The winning side reads as weight rather than a crown per name. Only mark
+    // sides when the replay actually recorded a winner, otherwise every name
+    // would be dimmed as a loser.
+    const winnerKnown = players.some((player) => player.is_winner);
+    const outcomeClass = (player) => (winnerKnown
+      ? (player.is_winner ? ' rd-won' : ' rd-lost')
+      : '');
+
+    // One layout for every player count. A 1v1 is two teams of one, so it goes
+    // through exactly the same grid as a 4x2; nothing branches on size.
+    const hasTeams = playersHaveDistinctTeams(players);
+    const teams = hasTeams ? teamGroupsFromPlayers(players) : [players];
+    const noTeamInfo = !hasTeams && players.length > 1;
+    const warningText = game?.team_info_incomplete
+      ? 'Team information is incomplete'
+      : 'This replay has no team information';
+
+    // Teams are distributed evenly over as many rows as the players need, and a
+    // team is never split across a break: 4 teams of 2 give 2 teams per row,
+    // 2 teams of 4 give one team per row.
+    const rowCount = Math.max(1, Math.ceil(players.length / PLAYERS_PER_LIST_ROW));
+    const teamsPerRow = Math.max(1, Math.ceil(teams.length / rowCount));
+
+    // Chunk the teams into explicit rows rather than letting them wrap: a
+    // wrap point depends on rendered width, so it lands wherever it fits
+    // (3 teams then 1) instead of where the team shape says it should.
+    const teamRows = [];
+    for (let i = 0; i < teams.length; i += teamsPerRow) {
+      teamRows.push(teams.slice(i, i + teamsPerRow));
     }
-    const groups = teamGroupsFromPlayers(players);
-    const is1v1 = groups.length === 2 && groups.every((g) => g.length === 1);
-    if (is1v1) {
-      return (
-        <span className="workflow-team-matchup workflow-team-matchup--1v1">
-          {groups.map((group, groupIdx) => (
-            <React.Fragment key={`team-${groupIdx}`}>
-              {groupIdx > 0 ? <span className="workflow-team-vs">vs</span> : null}
-              {group.map((player) => (
-                <span key={player.player_id} className="workflow-1v1-player">
-                  {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-                  {renderWorkerIcon(player.race)}
-                  {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
-                  {renderName(player)}
-                  {player.fingerprint_match ? (
-                    <span className="workflow-fingerprint-inline"> (<FingerprintBadge match={player.fingerprint_match} />)</span>
-                  ) : null}
-                </span>
-              ))}
-            </React.Fragment>
-          ))}
-          {stackingMarker}
-        </span>
-      );
-    }
+
     return (
-      <span className="workflow-team-matchup">
-        {groups.map((group, groupIdx) => (
-          <React.Fragment key={`team-${groupIdx}`}>
-            {groupIdx > 0 ? <span className="workflow-team-vs">vs</span> : null}
-            <span className="workflow-team-side">
-              {group.map((player) => (
-                <span
-                  key={player.player_id}
-                  className="workflow-team-player-pill"
-                  style={{ backgroundColor: teamColorRgba(player.team, 0.24) }}
-                >
-                  {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-                  {renderWorkerIcon(player.race)}
-                  {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
-                  {renderName(player)}
-                  <FingerprintBadge match={player.fingerprint_match} compact />
-                </span>
-              ))}
+      <span
+        className="workflow-team-matchup workflow-team-matchup--rows"
+        style={{ gridTemplateColumns: `repeat(${teamsPerRow}, max-content max-content)` }}
+      >
+        {teamRows.map((row, rowIdx) => {
+          const teamsBefore = rowIdx * teamsPerRow;
+          return (
+            <span className="workflow-team-row" key={`team-row-${rowIdx}`}>
+              {row.map((team, idxInRow) => {
+                const isLastTeamOverall = teamsBefore + idxInRow === teams.length - 1;
+                return (
+                  <React.Fragment key={`team-${teamsBefore + idxInRow}`}>
+                    <span className="workflow-team-side">
+                      {team.map((player) => (
+                        <span
+                          key={player.player_id}
+                          className={`workflow-team-player-pill${outcomeClass(player)}`}
+                        >
+                          {renderWorkerIcon(player.race)}
+                          {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
+                          {renderName(player)}
+                          <FingerprintBadge match={player.fingerprint_match} compact />
+                        </span>
+                      ))}
+                    </span>
+                    <span className="workflow-team-vs">
+                      {isLastTeamOverall || idxInRow === row.length - 1 ? '' : 'vs'}
+                    </span>
+                  </React.Fragment>
+                );
+              })}
+              {rowIdx === teamRows.length - 1 && noTeamInfo ? (
+                <span className="workflow-no-team-warning" data-tip={warningText}>⚠️</span>
+              ) : null}
+              {rowIdx === teamRows.length - 1 ? stackingMarker : null}
             </span>
-          </React.Fragment>
-        ))}
-        {stackingMarker}
+          );
+        })}
       </span>
     );
   };
@@ -5271,6 +5258,13 @@ function App() {
   const mainGamesTo = mainGames.length === 0
     ? 0
     : Math.min((mainGamesPage - 1) * MAIN_GAMES_PAGE_SIZE + mainGames.length, Number(mainGamesTotal) || 0);
+  // Scale the Games bar to the largest value on THIS page, so the column reads
+  // as a quantity. That is what the rank palette was gesturing at and could not
+  // deliver: 15 categorical hues cannot be ordered by eye.
+  const mainPlayersMaxGames = mainPlayers.reduce(
+    (max, player) => Math.max(max, Number(player.games_played || 0)),
+    0,
+  );
   const mainPlayersTotalPages = Math.max(1, Math.ceil((Number(mainPlayersTotal) || 0) / MAIN_PLAYERS_PAGE_SIZE));
   const mainPlayersFrom = mainPlayers.length === 0 ? 0 : ((mainPlayersPage - 1) * MAIN_PLAYERS_PAGE_SIZE) + 1;
   const mainPlayersTo = mainPlayers.length === 0
@@ -5551,177 +5545,37 @@ function App() {
 
         {activeView === 'games' && (
           <div className="workflow-panel">
-            <div className="workflow-summary-filter-row workflow-games-filter-row">
-              <select
-                className="workflow-summary-filter-select"
-                value={mainGamesFilters.player[0] || ''}
-                onChange={(e) => setMainGameSingleFilter('player', e.target.value)}
-              >
-                <option value="">Any player (5+ games)</option>
-                {(mainGamesFilterOptions.players || []).map((option) => (
-                  <option key={`wf-player-${option.key}`} value={option.key}>
-                    {option.label} ({option.games})
-                  </option>
-                ))}
-              </select>
-              <select
-                className="workflow-summary-filter-select"
-                value={mainGamesFilters.map[0] || ''}
-                onChange={(e) => setMainGameSingleFilter('map', e.target.value)}
-              >
-                <option value="">Any map (top 15)</option>
-                {(mainGamesFilterOptions.maps || []).map((option) => (
-                  <option key={`wf-map-${option.key}`} value={option.key}>
-                    {option.label} ({option.games})
-                  </option>
-                ))}
-              </select>
-              <div className="workflow-filter-group">
-                {(mainGamesFilterOptions.durations || []).map((option) => {
-                  const active = (mainGamesFilters.duration || []).includes(option.key);
-                  return (
-                    <button
-                      key={`wf-duration-${option.key}`}
-                      type="button"
-                      className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                      onClick={() => toggleMainGameMultiFilter('duration', option.key)}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="workflow-filter-group">
-                {(mainGamesFilterOptions.map_kinds || []).map((option) => {
-                  const active = (mainGamesFilters.mapKind || []).includes(option.key);
-                  return (
-                    <button
-                      key={`wf-mapkind-${option.key}`}
-                      type="button"
-                      className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                      onClick={() => toggleMainGameMultiFilter('mapKind', option.key)}
-                    >
-                      {mapKindEmoji(option.key) ? `${mapKindEmoji(option.key)} ` : ''}{option.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="workflow-filter-group">
-                {(mainGamesFilterOptions.matchups || []).map((option) => {
-                  const active = (mainGamesFilters.matchup || []).includes(option.key);
-                  return (
-                    <button
-                      key={`wf-matchup-${option.key}`}
-                      type="button"
-                      className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                      onClick={() => toggleMainGameMultiFilter('matchup', option.key)}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="workflow-filter-group">
-                {['zerg', 'terran', 'protoss'].map((race) => {
-                  const raceBOs = (mainGamesFilterOptions.featuring || [])
-                    .filter((option) => (option.group || '') === 'bo' && (option.race || '') === race);
-                  if (raceBOs.length === 0) return null;
-                  const open = mainGamesBORaceOpen === race;
-                  const raceIcon = getWorkerIconForRace(race);
-                  const raceLabel = race.charAt(0).toUpperCase() + race.slice(1);
-                  return (
-                    <React.Fragment key={`wf-bo-race-${race}`}>
-                      <button
-                        type="button"
-                        className={`workflow-filter-pill workflow-filter-pill-disclosure workflow-filter-pill-icon ${open ? 'workflow-filter-pill-active' : ''}`}
-                        onClick={() => setMainGamesBORaceOpen((prev) => (prev === race ? '' : race))}
-                        aria-expanded={open}
-                      >
-                        {raceIcon ? <img src={raceIcon} alt="" className="workflow-filter-pill-icon-img" /> : null}
-                        <span className="workflow-filter-pill-icon-label">{raceLabel} BOs {open ? '▾' : '▸'}</span>
-                      </button>
-                      {open && raceBOs.map((option) => {
-                        const active = (mainGamesFilters.featuring || []).includes(option.key);
-                        return (
-                          <button
-                            key={`wf-feature-bo-${option.key}`}
-                            type="button"
-                            className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                            onClick={() => toggleMainGameMultiFilter('featuring', option.key)}
-                          >
-                            {option.label}
-                          </button>
-                        );
-                      })}
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="workflow-summary-filter-row workflow-games-filter-row">
-              <div className="workflow-filter-group">
-                {(mainGamesFilterOptions.featuring || [])
-                  .filter((option) => (option.group || 'marker') !== 'bo')
-                  .map((option) => {
-                    const active = (mainGamesFilters.featuring || []).includes(option.key);
-                    const iconKeys = (Array.isArray(option.icon_keys) && option.icon_keys.length)
-                      ? option.icon_keys
-                      : (option.icon_key ? [option.icon_key] : []);
-                    const iconUrls = iconKeys.map((k) => getUnitIcon(k)).filter(Boolean);
-                    const hasIcons = iconUrls.length > 0;
-                    const hasEmoji = !hasIcons && Boolean(option.emoji);
-                    return (
-                      <button
-                        key={`wf-feature-${option.key}`}
-                        type="button"
-                        className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''} ${hasIcons ? 'workflow-filter-pill-icon' : ''}`}
-                        onClick={() => toggleMainGameMultiFilter('featuring', option.key)}
-                        title={option.label}
-                        aria-label={option.label}
-                      >
-                        {hasIcons ? (
-                          <>
-                            {iconUrls.map((url, i) => (
-                              <img key={`${option.key}-i${i}`} src={url} alt="" className="workflow-filter-pill-icon-img" />
-                            ))}
-                            {option.icon_label && (
-                              <span className="workflow-filter-pill-icon-label">{option.icon_label}</span>
-                            )}
-                          </>
-                        ) : hasEmoji ? (
-                          <>
-                            <span className="workflow-filter-pill-emoji">{option.emoji}</span>
-                            <span className="workflow-filter-pill-icon-label">{option.label}</span>
-                          </>
-                        ) : (
-                          option.label
-                        )}
-                      </button>
-                    );
-                  })}
-              </div>
-              <button type="button" className="workflow-filter-pill workflow-filter-pill-clear" onClick={clearMainGamesFilters}>Clear filters</button>
-            </div>
+            <FilterOmnibar
+              filterOptions={mainGamesFilterOptions}
+              selected={mainGamesFilters}
+              totalGames={mainGamesTotal}
+              onToggle={toggleMainGameMultiFilter}
+              onClear={clearMainGamesFilters}
+            />
             {mainGamesLoading ? (
               <div className="loading">Loading games...</div>
             ) : (
               <>
                 <table
                   ref={mainGamesTableRef}
-                  className={`data-table workflow-table workflow-games-list-table${mainGamesAllTwoPlayer ? ' workflow-games-list-table--roomy' : ''}`}
+                  className={`data-table workflow-table workflow-games-list-table workflow-games-list-table--main${mainGamesAllTwoPlayer ? ' workflow-games-list-table--roomy' : ''}`}
                 >
                   <thead>
                     <tr>
-                      <th><span title="Played" aria-label="Played" role="img">📅</span></th>
-                      <th><span role="img" aria-hidden="true">🧑‍🤝‍🧑</span> Players</th>
-                      <th><span role="img" aria-hidden="true">🗺️</span> Map</th>
-                      <th><span title="Duration" aria-label="Duration" role="img">⏱️</span></th>
-                      <th><span role="img" aria-hidden="true">⭐</span> Featuring</th>
+                      <th>Played</th>
+                      <th>Players</th>
+                      <th>Map</th>
+                      <th>Time</th>
+                      <th>Featuring</th>
                     </tr>
                   </thead>
                   <tbody>
                     {mainGames.map((game) => (
-                      <tr key={game.replay_id} className={selectedReplayId === game.replay_id ? 'workflow-selected-row' : ''} onClick={() => openMainGame(game.replay_id)}>
+                      <tr
+                        key={game.replay_id}
+                        className={selectedReplayId === game.replay_id ? 'workflow-selected-row' : ''}
+                        onClick={() => openMainGame(game.replay_id)}
+                      >
                         <td className="workflow-games-list-played">{formatRelativeReplayDate(game.replay_date)}</td>
                         <td className="workflow-games-list-players">{renderMainGameListPlayers(game, false)}</td>
                         <td className="workflow-games-list-map">{renderMapNameWithKind(game.map_name, game.map_kind)}</td>
@@ -5770,7 +5624,6 @@ function App() {
                 className="workflow-player-name-link workflow-name-with-flag"
                 onClick={() => openMainPlayer(opponent.player_key)}
                 title="Analyze player"
-                style={playerAccentColor(opponent.player_key) ? { color: playerAccentColor(opponent.player_key) } : undefined}
               >
                 <CountryFlag code={opponent.country_code} playerKey={opponent.player_key} />
                 {opponent.player_name}
@@ -5907,9 +5760,17 @@ function App() {
                       <tbody>
                         {mainPlayers.map((player) => (
                           <tr key={player.player_key} className={selectedPlayerKey === player.player_key ? 'workflow-selected-row' : ''} onClick={() => openMainPlayer(player.player_key)}>
-                            <td style={playerAccentColor(player.player_key) ? { color: playerAccentColor(player.player_key), fontWeight: 600 } : undefined}><span className="workflow-name-with-flag"><CountryFlag code={player.country_code} playerKey={player.player_key} /><PlayerDisplayName name={player.player_name} /></span></td>
+                            <td><span className="workflow-name-with-flag"><CountryFlag code={player.country_code} playerKey={player.player_key} /><PlayerDisplayName name={player.player_name} /></span></td>
                             <td>{player.race}</td>
-                            <td>{player.games_played}</td>
+                            <td>
+                              <span className="rd-qty">
+                                <span className="rd-qty-num">{player.games_played}</span>
+                                <span
+                                  className="rd-qty-bar"
+                                  style={{ width: `${mainPlayersMaxGames ? Math.max(2, (Number(player.games_played || 0) / mainPlayersMaxGames) * 100) : 0}%` }}
+                                />
+                              </span>
+                            </td>
                             <td>{Number(player.average_apm || 0).toFixed(1)}</td>
                             <td>{formatDaysAgoCompact(player.last_played_days_ago)}</td>
                           </tr>
@@ -6113,7 +5974,7 @@ function App() {
             ) : mainGame ? (
               <>
                 <div className="workflow-title-row workflow-title-row--solo">
-                  <h2 className="workflow-game-players-heading">{renderMainGameListPlayers(mainGame)}</h2>
+                  <h2 className="workflow-game-players-heading">{renderGameTitlePlayers(mainGame)}</h2>
                 </div>
                 <div className="workflow-meta workflow-meta--game-header">
                   <span>{formatRelativeReplayDate(mainGame.replay_date)}</span>
@@ -6385,15 +6246,25 @@ function App() {
                         return (
                           <React.Fragment key={player.player_id}>
                             <div className="wpt-cell wpt-name" style={{ borderLeftColor: getTeamColor(player.team) }}>
-                              {raceIcon ? <img src={raceIcon} alt={player.race || 'race'} className="unit-icon-inline workflow-summary-race-icon" /> : null}
-                              {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-                              <CountryFlag code={player.country_code} playerKey={player.player_key} />
+                              <span className="wpt-glyphs">
+                                <span className="wpt-glyph wpt-glyph-race">
+                                  {raceIcon ? <img src={raceIcon} alt={player.race || 'race'} className="unit-icon-inline workflow-summary-race-icon" /> : null}
+                                </span>
+                                <span className="wpt-glyph wpt-glyph-flag">
+                                  <CountryFlag code={player.country_code} playerKey={player.player_key} />
+                                </span>
+                                <span className="wpt-glyph wpt-glyph-colour">
+                                  <PlayerSwatch color={player.color} title={player.name} />
+                                </span>
+                                <span className="wpt-glyph wpt-glyph-crown">
+                                  {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+                                </span>
+                              </span>
                               <span className="wpt-name-col">
                                 <button
                                   type="button"
-                                  className="workflow-player-name-link"
+                                  className="workflow-player-name-link workflow-player-name-link--strong"
                                   title="Analyze player"
-                                  style={gamePlayerNameStyle(player)}
                                   onClick={() => openMainPlayer(player.player_key)}
                                 >
                                   <PlayerDisplayName name={player.name} />
@@ -6463,21 +6334,20 @@ function App() {
                           {mainGamePlayers.map((player) => {
                             const enabled = mainEventsPlayerEnabledById[String(player.player_id)] !== false;
                             return (
-                              <label
+                              <button
+                                type="button"
                                 key={`event-filter-${player.player_id}`}
                                 className={`workflow-events-player-chip${enabled ? '' : ' workflow-events-player-chip--off'}`}
-                                style={legendTextStyle(player.color, playerColorToCss(player.color))}
+                                aria-pressed={enabled}
+                                title={enabled ? `Hide ${player.name}'s events` : `Show ${player.name}'s events`}
+                                onClick={() => setMainEventsPlayerEnabledById((prev) => ({
+                                  ...prev,
+                                  [String(player.player_id)]: !enabled,
+                                }))}
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={enabled}
-                                  onChange={(e) => setMainEventsPlayerEnabledById((prev) => ({
-                                    ...prev,
-                                    [String(player.player_id)]: e.target.checked,
-                                  }))}
-                                />
+                                <PlayerSwatch color={player.color} title={player.name} />
                                 <span>{player.name}</span>
-                              </label>
+                              </button>
                             );
                           })}
                           <button
@@ -6717,7 +6587,7 @@ function App() {
                                     <span className="workflow-event-map-leave-emoji" role="img" aria-label={selectedLeaveInfo.emoji === '💤' ? 'Stopped playing' : 'Left the game'}>
                                       {selectedLeaveInfo.emoji}
                                     </span>
-                                    <span className="workflow-event-map-leave-name" style={legendTextStyle('', selectedLeaveInfo.color)}>
+                                    <span className="workflow-event-map-leave-name" style={mapLabelStyle(selectedLeaveInfo.color)}>
                                       {selectedLeaveInfo.name}
                                     </span>
                                   </div>
@@ -6806,7 +6676,7 @@ function App() {
                                       className="workflow-event-map-bo-label"
                                       style={{ left: `${label.x}%`, top: `${label.y}%` }}
                                     >
-                                      <div className="workflow-event-map-bo-label-name" style={legendTextStyle(String(label.rawColor || ''), label.color)}>
+                                      <div className="workflow-event-map-bo-label-name" style={mapLabelStyle(label.color)}>
                                         {raceIcon ? <img src={raceIcon} alt={label.race || 'race'} className="unit-icon-inline workflow-event-map-bo-label-race" /> : null}
                                         {label.isWinner ? <span className="workflow-crown" title="Winner">👑</span> : null}
                                         {label.name}
@@ -7319,7 +7189,7 @@ function App() {
                       <div className="workflow-card-subtitle"><span>Per-player breakdown</span></div>
                       {(mainGame?.unit_production_cadence || []).map((entry) => (
                         <div key={`game-cadence-${entry.player_id}`} className="workflow-pattern-row">
-                          <span style={playerAccentColor(entry.player_key) ? { color: playerAccentColor(entry.player_key), fontWeight: 600 } : undefined}>
+                          <span>
                             {entry.is_winner ? '👑 ' : ''}{entry.player_name}
                           </span>
                           <span title={entry.eligible ? `rate=${Number(entry.rate_per_minute || 0).toFixed(2)}, cv=${Number(entry.cv_gap || 0).toFixed(2)}, burstiness=${Number(entry.burstiness || 0).toFixed(2)}, idle20=${(Number(entry.idle20_ratio || 0) * 100).toFixed(1)}%, units=${Number(entry.units_produced || 0)}, gaps=${Number(entry.gap_count || 0)}` : String(entry.ineligible_reason || '')}>
@@ -7366,7 +7236,7 @@ function App() {
                       <div className="workflow-card-subtitle"><span>Per-player breakdown</span></div>
                       {(mainGame?.viewport_multitasking || []).map((entry) => (
                         <div key={`game-viewport-${entry.player_id}`} className="workflow-pattern-row">
-                          <span style={playerAccentColor(entry.player_key) ? { color: playerAccentColor(entry.player_key), fontWeight: 600 } : undefined}>
+                          <span>
                             {entry.is_winner ? '👑 ' : ''}{entry.player_name}
                           </span>
                           <span title={entry.eligible ? VIEWPORT_SWITCH_RATE_CONFIG.valueFormatter(entry.viewport_switch_rate) : String(entry.ineligible_reason || '')}>
@@ -7394,7 +7264,7 @@ function App() {
               <>
                 <div className="workflow-title-row">
                   <div className="workflow-player-title-wrap">
-                    <h2 style={playerAccentColor(mainPlayer?.player_key || selectedPlayerKey) ? { color: playerAccentColor(mainPlayer?.player_key || selectedPlayerKey) } : undefined}>
+                    <h2>
                       <span className="workflow-name-with-flag">
                         <CountryFlag code={mainPlayer?.country_code} playerKey={mainPlayer?.player_key || selectedPlayerKey} />
                         <PlayerDisplayName name={mainPlayer?.player_name || selectedPlayerKey} />
