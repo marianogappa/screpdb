@@ -776,21 +776,27 @@ func TestMarker_DoubleStargate_NegativeFewCorsairs(t *testing.T) {
 
 func TestResolveExpert_ComputesDeltasAndTolerance(t *testing.T) {
 	bo := findBO(t, "9 Pool")
-	// Pool actual 78s (target 73, late by 5; within tol=4? No → out).
-	// First Zergling at 120 (target 123, early by 3; within tol=3 → in).
+	// Probe actuals derive from the marker's own targets so the test survives
+	// re-measurement: Pool one second past the late edge (out of band),
+	// First Zerglings exactly at the early edge (in band).
+	pool, ling := bo.Expert[0], bo.Expert[1]
+	poolActual := pool.TargetSecond + pool.Tolerance.LateSeconds + 1
+	lingActual := ling.TargetSecond - ling.Tolerance.EarlySeconds
 	b := factsBuilder()
 	for i := 0; i < 5; i++ {
 		b.P(subjDrone, 5+i*3)
 	}
-	s := b.B(subjSpawningPool, 78).P(subjZergling, 120).list()
+	s := b.B(subjSpawningPool, poolActual).P(subjZergling, lingActual).list()
 	res := bo.ResolveExpert(s)
 	if len(res) != 2 {
 		t.Fatalf("expected 2 resolutions, got %d", len(res))
 	}
-	if !res[0].Found || res[0].ActualSecond != 78 || res[0].DeltaSeconds != 5 || res[0].WithinTolerance {
+	if !res[0].Found || res[0].ActualSecond != poolActual ||
+		res[0].DeltaSeconds != pool.Tolerance.LateSeconds+1 || res[0].WithinTolerance {
 		t.Fatalf("pool resolution wrong: %+v", res[0])
 	}
-	if !res[1].Found || res[1].ActualSecond != 120 || res[1].DeltaSeconds != -3 || !res[1].WithinTolerance {
+	if !res[1].Found || res[1].ActualSecond != lingActual ||
+		res[1].DeltaSeconds != -ling.Tolerance.EarlySeconds || !res[1].WithinTolerance {
 		t.Fatalf("zergling resolution wrong: %+v", res[1])
 	}
 }

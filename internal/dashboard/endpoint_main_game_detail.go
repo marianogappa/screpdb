@@ -2127,10 +2127,10 @@ type zergBOEventSchema struct {
 // Hatchery rows append the first observed time. Expert (golden) ranges
 // from the marker definition are attached when available, else NoExpert
 // is set so the frontend renders the actual tick alone.
-func buildZergBOEvents(schema zergBOEventSchema, bo *markers.Marker, t db.EarlyZergTimingsRow) []workflowMarkerEvent {
+func buildZergBOEvents(schema zergBOEventSchema, expert []markers.ExpertEvent, t db.EarlyZergTimingsRow) []workflowMarkerEvent {
 	expertBySubject := map[string]*markers.ExpertEvent{}
-	for i := range bo.Expert {
-		e := &bo.Expert[i]
+	for i := range expert {
+		e := &expert[i]
 		expertBySubject[e.Match.Subject] = e
 	}
 	events := make([]workflowMarkerEvent, 0, schema.Drones+3)
@@ -2200,6 +2200,37 @@ func buildZergBOEvents(schema zergBOEventSchema, bo *markers.Marker, t db.EarlyZ
 		events = append(events, ev)
 	}
 	return events
+}
+
+// fuzzyZergSchemaFromLabel derives the simplified-Zerg event schema for a
+// fuzzy opener ("~N Pool / Overpool / Hatch") from its resolved payload label.
+// The fuzzy marker has no static schema — its rung is only known at detection
+// time — so the drone count and defining-building row come from the label,
+// mirroring the exact rungs' zergBOEventSchemas entries (defining building
+// only; Overlord row when the rung implies one morphed before it).
+func fuzzyZergSchemaFromLabel(featureKey, label string) (zergBOEventSchema, bool) {
+	if featureKey != "bo_z_fuzzy" {
+		return zergBOEventSchema{}, false
+	}
+	var n int
+	var kind string
+	if _, err := fmt.Sscanf(label, "~%d %s", &n, &kind); err != nil || n < 4 {
+		return zergBOEventSchema{}, false
+	}
+	s := zergBOEventSchema{Drones: n - 4}
+	switch kind {
+	case "Pool":
+		s.HasPool = true
+	case "Overpool":
+		s.HasPool = true
+		s.HasOverlord = true
+	case "Hatch":
+		s.HasHatchery = true
+		s.HasOverlord = n >= 10
+	default:
+		return zergBOEventSchema{}, false
+	}
+	return s, true
 }
 
 var zergBOEventSchemas = map[string]zergBOEventSchema{
@@ -2332,7 +2363,9 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 			}
 			var events []workflowMarkerEvent
 			if schema, isSimplifiedZerg := zergBOEventSchemas[bo.FeatureKey]; isSimplifiedZerg {
-				events = buildZergBOEvents(schema, bo, zergTimings[player.PlayerID])
+				events = buildZergBOEvents(schema, bo.Expert, zergTimings[player.PlayerID])
+			} else if schema, isFuzzy := fuzzyZergSchemaFromLabel(bo.FeatureKey, boLabel); isFuzzy {
+				events = buildZergBOEvents(schema, markers.FuzzyZergExpertEvents(boLabel), zergTimings[player.PlayerID])
 			} else {
 				actuals := markers.DecodeExpertActuals([]byte(row.Payload))
 				events = make([]workflowMarkerEvent, 0, len(bo.Expert))

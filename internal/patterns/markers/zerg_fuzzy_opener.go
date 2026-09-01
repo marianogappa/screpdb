@@ -98,3 +98,19 @@ func (e *zergOpenerFuzzyEvaluator) Finalize(_ CustomEvalContext) CustomResult {
 	}{Label: label})
 	return CustomResult{Matched: true, DetectedAtSecond: defSec, Payload: payload}
 }
+
+// fuzzyZergExpertByLabel carries the golden targets for the fuzzy-opener
+// labels that clear the n >= 20 pro-corpus floor (see MEASUREMENT.md). The
+// fuzzy marker's Expert list is empty — its rung is only known at detection
+// time — so the Build Orders tab resolves the golden band from the persisted
+// label through this table at render time, against the same raw-command
+// timings it draws the actual ticks from. Each entry is the label's defining
+// building only, mirroring the exact rungs' zergBOEventSchemas rows; labels
+// without an entry render actual-only ticks.
+var fuzzyZergExpertByLabel = map[string][]ExpertEvent{}
+
+// FuzzyZergExpertEvents returns the golden targets for a resolved fuzzy
+// Zerg opener label, or nil when the label is unmeasured.
+func FuzzyZergExpertEvents(label string) []ExpertEvent {
+	return fuzzyZergExpertByLabel[label]
+}
