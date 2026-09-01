@@ -2630,16 +2630,17 @@ func (d *Dashboard) populateMutaliskTimingForGameDetail(detail *workflowGameDeta
 	}
 
 	// Populate the gap summary. ExpertGap* values are corpus-derived from the
-	// 240-game cwal-dl 1v1 TvZ match set with prerequisite-clamped finish
-	// times: Mutalisk hatch = max(spire_built, morph_cmd) + 25,
+	// 723 aurora-ID-labelled progamer 1v1 TvZ matches where both markers fire
+	// (MEASUREMENT.md), with prerequisite-clamped finish times:
+	// Mutalisk hatch = max(spire_built, morph_cmd) + 25,
 	// Missile Turret finish = max(ebay_built, build_cmd) + 19.
-	// Median gap (turret_finish - muta_finish) = +8s, p25 = -5, p75 = +19.
+	// Median gap (turret_finish - muta_finish) = +10s, p25 = +3, p75 = +19.
 	// Positive median = turret completes shortly after muta hatches — mutas
 	// then eat ~10-20s of travel time across the map, so turrets land
 	// just-in-time for muta arrival.
 	summary := &workflowMutaliskTimingSummary{
-		ExpertGapSeconds:    8,
-		ExpertGapMinSeconds: -5,
+		ExpertGapSeconds:    10,
+		ExpertGapMinSeconds: 3,
 		ExpertGapMaxSeconds: 19,
 	}
 	zPayload, tPayload := byPlayer[zergPlayerID], byPlayer[terranPlayerID]

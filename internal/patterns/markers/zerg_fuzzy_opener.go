@@ -107,7 +107,20 @@ func (e *zergOpenerFuzzyEvaluator) Finalize(_ CustomEvalContext) CustomResult {
 // timings it draws the actual ticks from. Each entry is the label's defining
 // building only, mirroring the exact rungs' zergBOEventSchemas rows; labels
 // without an entry render actual-only ticks.
-var fuzzyZergExpertByLabel = map[string][]ExpertEvent{}
+var fuzzyZergExpertByLabel = map[string][]ExpertEvent{
+	"~11 Hatch": {
+		{Key: "Hatchery", Match: MatchBuild(subjHatchery), TargetSecond: 98, Tolerance: Sym(2)}, // n=446, p10/50/90 = 96/98/100
+	},
+	"~10 Hatch": {
+		{Key: "Hatchery", Match: MatchBuild(subjHatchery), TargetSecond: 92, Tolerance: Sym(2)}, // n=349, p10/50/90 = 91/92/94
+	},
+	"~10 Overpool": {
+		{Key: "Spawning Pool", Match: MatchBuild(subjSpawningPool), TargetSecond: 83, Tolerance: Asym(2, 3)}, // n=211, p10/50/90 = 81/83/86
+	},
+	"~5 Hatch": {
+		{Key: "Hatchery", Match: MatchBuild(subjHatchery), TargetSecond: 54, Tolerance: Sym(2)}, // n=41, p10/50/90 = 53/54/55
+	},
+}
 
 // FuzzyZergExpertEvents returns the golden targets for a resolved fuzzy
 // Zerg opener label, or nil when the label is unmeasured.

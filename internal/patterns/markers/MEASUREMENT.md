@@ -28,8 +28,9 @@ harvest's own `proName` field instead is **wrong**: 5,189 rows carry
 `auroraId == 0` and inherit a pro label, which alone accounts for 56% of the
 raw pro-labelled set.
 
-Restrict to `duration >= 240s` and 1v1 melee. Current size: **5,364 player-games,
-106 pros, 4,605 replay files, median MMR 2,274**.
+Restrict to `duration >= 240s` and 1v1 melee. Current size: **5,229 labelled
+player-games, 114 pro aurora IDs, 4,746 replay files, median MMR 2,275**
+(corpus hash and per-run tallies land in the tool's `meta.json`).
 
 ## Joining a label to a `(replay, player)` row
 
@@ -39,7 +40,7 @@ Restrict to `duration >= 240s` and 1v1 melee. Current size: **5,364 player-games
 2. else eliminate by `row.oppToon` matching the other slot (1v1 only)
 3. else the unique player of the pro's race (fails on mirrors)
 
-Drop what none of the three resolve — currently ~9%. Never guess.
+Drop what none of the three resolve — currently ~6%. Never guess.
 
 ## Measurement source
 
