@@ -35,7 +35,6 @@ func TestIngestFlagDefaults(t *testing.T) {
 		{"up-to-yyyy-mm-dd", ""},
 		{"up-to-n-months", "0"},
 		{"store-right-clicks", "false"},
-		{"skip-hotkeys", "false"},
 		{"clean", "false"},
 		{"clean-dashboard", "false"},
 	}

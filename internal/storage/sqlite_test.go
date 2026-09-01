@@ -403,7 +403,7 @@ func TestSQLiteStorage_CommandStorageFlags(t *testing.T) {
 	}
 	defer store.Close()
 
-	store.SetCommandStorageOptions(true, true)
+	store.SetCommandStorageOptions(true)
 	if err := store.Initialize(ctx, true, true); err != nil {
 		t.Fatalf("Initialize: %v", err)
 	}
@@ -439,7 +439,15 @@ func TestSQLiteStorage_CommandStorageFlags(t *testing.T) {
 		t.Fatalf("countAcrossCommandTables hotkey: %v", err)
 	}
 	if hotkeyRows != 0 {
-		t.Fatalf("expected skip-hotkeys to remove Hotkey commands, got %d rows", hotkeyRows)
+		t.Fatalf("expected Hotkey commands to never be stored as rows, got %d rows", hotkeyRows)
+	}
+
+	streamRows, err := store.Query(ctx, "SELECT COUNT(*) AS c FROM players WHERE hotkey_stream IS NOT NULL")
+	if err != nil {
+		t.Fatalf("query hotkey_stream count: %v", err)
+	}
+	if streamCount, ok := asInt64(streamRows[0]["c"]); !ok || streamCount == 0 {
+		t.Fatalf("expected players.hotkey_stream to be populated, got %v", streamRows[0]["c"])
 	}
 }
 

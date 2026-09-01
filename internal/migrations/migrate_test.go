@@ -100,7 +100,7 @@ func TestRunMigrations_RecordsEveryEmbeddedUpFile(t *testing.T) {
 	db := openDB(t, path)
 
 	want := map[MigrationSet][]string{
-		MigrationSetReplay:    {"000001_initial.up.sql", "000002_add_load_action_types.up.sql", "000003_add_player_fingerprint_vectors.up.sql", "000004_add_game_source_lobby_kind.up.sql"},
+		MigrationSetReplay:    {"000001_initial.up.sql", "000002_add_load_action_types.up.sql", "000003_add_player_fingerprint_vectors.up.sql", "000004_add_game_source_lobby_kind.up.sql", "000005_add_players_hotkey_stream.up.sql"},
 		MigrationSetDashboard: {"000001_initial.up.sql", "000002_add_bnet_profiles.up.sql"},
 		MigrationSetSettings:  {"000001_initial.up.sql", "000002_drop_player_aliases.up.sql"},
 	}
@@ -349,7 +349,7 @@ func TestCleanAndRunMigrations_DropAndReapplyCycle(t *testing.T) {
 	}
 
 	// Ledgers are fully repopulated so subsequent RunMigrations no-ops.
-	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 4 {
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 5 {
 		t.Errorf("replay ledger should have 4 applied migrations after reapply, got %v", got)
 	}
 }
@@ -400,7 +400,7 @@ func TestCleanAndRunMigrationSet_ReappliesSingleSet(t *testing.T) {
 		t.Errorf("settings should survive CleanAndRunMigrationSet(replay), got ingest_input_dir=%q", replaySetInputDir)
 	}
 
-	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 4 {
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 5 {
 		t.Errorf("replay ledger should be repopulated, got %v", got)
 	}
 }
@@ -425,8 +425,8 @@ func TestDropMigrationSet_ClearsLedgerAllowingReapply(t *testing.T) {
 		t.Fatalf("RunMigrationSet(replay): %v", err)
 	}
 	db := openDB(t, path)
-	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 4 {
-		t.Fatalf("precondition: replay ledger should have 4 entries, got %v", got)
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 5 {
+		t.Fatalf("precondition: replay ledger should have 5 entries, got %v", got)
 	}
 
 	if err := DropMigrationSet(path, MigrationSetReplay); err != nil {
@@ -443,7 +443,7 @@ func TestDropMigrationSet_ClearsLedgerAllowingReapply(t *testing.T) {
 	if !tableExists(t, db, "replays") {
 		t.Error("replays should exist after reapply")
 	}
-	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 4 {
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 5 {
 		t.Errorf("replay ledger should be repopulated on reapply, got %v", got)
 	}
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/fileops"
+	"github.com/marianogappa/screpdb/internal/hotkeystream"
 	"github.com/marianogappa/screpdb/internal/migrations"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns"
@@ -29,7 +30,6 @@ type SQLiteStorage struct {
 	db               *sql.DB
 	dbPath           string
 	storeRightClicks bool
-	skipHotkeys      bool
 }
 
 type dbtx interface {
@@ -93,7 +93,6 @@ var (
 	})
 	lowValueActionTypes = enumSetFromNames([]string{
 		"Right Click",
-		"Hotkey",
 		"Minimap Ping",
 		"Alliance",
 		"Vision",
@@ -138,9 +137,8 @@ func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
 }
 
 // SetCommandStorageOptions controls low-value command persistence behavior.
-func (s *SQLiteStorage) SetCommandStorageOptions(storeRightClicks bool, skipHotkeys bool) {
+func (s *SQLiteStorage) SetCommandStorageOptions(storeRightClicks bool) {
 	s.storeRightClicks = storeRightClicks
-	s.skipHotkeys = skipHotkeys
 }
 
 // Initialize creates the database schema using migrations
@@ -298,7 +296,7 @@ func (s *SQLiteStorage) storeReplayWithBatching(ctx context.Context, data *model
 
 	// Step 2: Insert players and map IDs
 	stop = run.Phase("players")
-	playerIDs, err := s.insertPlayersBatchTx(ctx, tx, replayID, data.Players)
+	playerIDs, err := s.insertPlayersBatchTx(ctx, tx, replayID, data.Players, hotkeyStreamsByPlayer(data.Commands))
 	stop()
 	if err != nil {
 		return fmt.Errorf("failed to insert players: %w", err)
@@ -448,8 +446,34 @@ func (s *SQLiteStorage) insertReplaySequentialTx(ctx context.Context, db dbtx, r
 	return id, nil
 }
 
+// hotkeyStreamsByPlayer encodes each player's Hotkey commands into the
+// players.hotkey_stream blob, keyed by replay player ID.
+func hotkeyStreamsByPlayer(commands []*models.Command) map[byte][]byte {
+	eventsByPlayer := make(map[byte][]hotkeystream.Event)
+	for _, command := range commands {
+		if command.ActionType != "Hotkey" || command.Player == nil || command.HotkeyType == nil || command.HotkeyGroup == nil {
+			continue
+		}
+		hotkeyType, ok := hotkeystream.TypeFromName(*command.HotkeyType)
+		if !ok {
+			continue
+		}
+		playerID := command.Player.PlayerID
+		eventsByPlayer[playerID] = append(eventsByPlayer[playerID], hotkeystream.Event{
+			Frame: command.Frame,
+			Type:  hotkeyType,
+			Group: *command.HotkeyGroup,
+		})
+	}
+	streams := make(map[byte][]byte, len(eventsByPlayer))
+	for playerID, events := range eventsByPlayer {
+		streams[playerID] = hotkeystream.Encode(events)
+	}
+	return streams
+}
+
 // insertPlayersBatchTx inserts all players for a replay and returns player ID mapping (uses provided connection/transaction)
-func (s *SQLiteStorage) insertPlayersBatchTx(ctx context.Context, db dbtx, replayID int64, players []*models.Player) (map[byte]int64, error) {
+func (s *SQLiteStorage) insertPlayersBatchTx(ctx context.Context, db dbtx, replayID int64, players []*models.Player, hotkeyStreams map[byte][]byte) (map[byte]int64, error) {
 	if len(players) == 0 {
 		return make(map[byte]int64), nil
 	}
@@ -469,6 +493,7 @@ func (s *SQLiteStorage) insertPlayersBatchTx(ctx context.Context, db dbtx, repla
 		"start_location_y",
 		"start_location_oclock",
 		"slot_id",
+		"hotkey_stream",
 	}
 
 	valueStrings := make([]string, 0, len(players))
@@ -493,7 +518,7 @@ func (s *SQLiteStorage) insertPlayersBatchTx(ctx context.Context, db dbtx, repla
 			startOclock = &o
 		}
 
-		valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		valueArgs = append(valueArgs,
 			int32(replayID),
 			player.Name,
@@ -509,6 +534,7 @@ func (s *SQLiteStorage) insertPlayersBatchTx(ctx context.Context, db dbtx, repla
 			startY,
 			startOclock,
 			int32(player.SlotID),
+			hotkeyStreams[player.PlayerID],
 		)
 	}
 
@@ -585,7 +611,9 @@ func (s *SQLiteStorage) insertCommandsBatchTx(ctx context.Context, db dbtx, comm
 		if actionType == "Right Click" && !s.storeRightClicks {
 			continue
 		}
-		if actionType == "Hotkey" && s.skipHotkeys {
+		// Hotkey commands are stored as an encoded blob on players
+		// (hotkey_stream), never as rows (issue #357).
+		if actionType == "Hotkey" {
 			continue
 		}
 

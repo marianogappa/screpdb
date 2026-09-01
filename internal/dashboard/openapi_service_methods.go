@@ -94,7 +94,6 @@ func (d *Dashboard) Ingest(ctx context.Context, request apigen.IngestRequestObje
 		InputDir:         inputDir,
 		SQLitePath:       strings.TrimSpace(nullableStringValue(body.SqlitePath)),
 		StoreRightClicks: nullableBoolValue(body.StoreRightClicks),
-		SkipHotkeys:      nullableBoolValue(body.SkipHotkeys),
 		StopAfterN:       nullableIntValue(body.StopAfterNReps),
 		UpToDate:         strings.TrimSpace(nullableStringValue(body.UpToYyyyMmDd)),
 		UpToMonths:       nullableIntValue(body.UpToNMonths),

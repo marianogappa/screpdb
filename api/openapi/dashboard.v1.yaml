@@ -657,8 +657,6 @@ components:
           type: string
         store_right_clicks:
           type: boolean
-        skip_hotkeys:
-          type: boolean
         stop_after_n_reps:
           type: integer
         up_to_yyyy_mm_dd:

@@ -222,7 +222,6 @@ rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/screpdb"
 - `-d, --up-to-yyyy-mm-dd`: Only process files up to this date (YYYY-MM-DD format)
 - `-m, --up-to-n-months`: Only process files from the last N months (0 = no limit)
 - `--store-right-clicks`: Store `Right Click` commands (disabled by default to reduce command-table volume)
-- `--skip-hotkeys`: Skip storing `Hotkey` commands (disabled by default)
 - `--clean`: Drop all non-dashboard tables before ingesting to start over (useful for migrations)
 ```
 
@@ -313,11 +312,15 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-09-01  OK. Mass-disconnect games no longer credit the replay saver a phantom win (issue #358, AlgorithmVersion 66). All changes consume data already parsed in memory: the detector reads the in-memory players/commands slices, winner clearing touches the same structs, and the two new replay_events types (player_dropped, mass_disconnect) flow through the existing worldstate emit + storage insert path with the type allowlist widened accordingly. No new os/net calls, endpoints, facade exemptions, hosts or paths.
+2026-09-01  OK. Hotkey commands now stored as an encoded blob column on players (issue #357, AlgorithmVersion 67). Each player's Hotkey commands are delta-varint-encoded in memory (new internal/hotkeystream package) and written into the new players.hotkey_stream BLOB by the existing player insert; Hotkey rows are no longer written to commands_low_value, and the --skip-hotkeys CLI flag and skip_hotkeys ingest API field are removed, which narrows the API surface. All inputs are already-parsed in-memory commands; the schema change is one additive migration. No new os/net calls, endpoints, facade exemptions, allowlist widening, hosts or paths.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
+
+```
+2026-09-01  OK. Mass-disconnect games no longer credit the replay saver a phantom win (issue #358, AlgorithmVersion 66). All changes consume data already parsed in memory: the detector reads the in-memory players/commands slices, winner clearing touches the same structs, and the two new replay_events types (player_dropped, mass_disconnect) flow through the existing worldstate emit + storage insert path with the type allowlist widened accordingly. No new os/net calls, endpoints, facade exemptions, hosts or paths.
+```
 
 ```
 2026-09-01  OK. Country flags fixed on Windows + country-name tooltips (issue #361). Windows ships no flag glyphs, so the dashboard now vendors the Twemoji Country Flags woff2 (committed at frontend/src/assets, sha256-pinned) into the frontend build, where the existing go:embed of frontend/build serves it from the app's own origin — no page fetches a remote asset. A canvas feature-probe activates the font only where the platform lacks native flags; tooltips resolve names via the browser's built-in Intl.DisplayNames. Presentation only: no new endpoints, os/net calls, facade exemptions, iofacade allowlist widening, hosts or paths; no AlgorithmVersion bump (no detection change).
