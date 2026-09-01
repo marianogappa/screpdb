@@ -2658,7 +2658,7 @@ button.workflow-nav-update-available:disabled {
 /* Fixed layout, explicit proportions. `auto` cannot hold a ratio here: eight
    long handles set a min-content width that no percentage beats, which is how
    Featuring ended up at 81px against Players' 897px. Column order is
-   Played | Teams | Players | Map | Time | Featuring. */
+   Played | Players | Map | Time | Featuring. */
 .workflow-games-list-table {
   font-size: clamp(0.8125rem, calc(0.8125rem + (100vw - 1300px) * 0.0037), 0.867rem);
   margin-top: 10px;
@@ -2668,12 +2668,11 @@ button.workflow-nav-update-available:disabled {
 
 /* Scoped to --main: the gaming-session panel reuses this table with five
    columns and no Teams cell, so positional widths must not leak into it. */
-.workflow-games-list-table--main th:nth-child(1) { width: 8.5%; }
-.workflow-games-list-table--main th:nth-child(2) { width: 4.5%; }
-.workflow-games-list-table--main th:nth-child(3) { width: 42%; }
-.workflow-games-list-table--main th:nth-child(4) { width: 13%; }
-.workflow-games-list-table--main th:nth-child(5) { width: 4.5%; }
-.workflow-games-list-table--main th:nth-child(6) { width: 27.5%; }
+.workflow-games-list-table--main th:nth-child(1) { width: 9%; }
+.workflow-games-list-table--main th:nth-child(2) { width: 45%; }
+.workflow-games-list-table--main th:nth-child(3) { width: 13.5%; }
+.workflow-games-list-table--main th:nth-child(4) { width: 5%; }
+.workflow-games-list-table--main th:nth-child(5) { width: 27.5%; }
 
 /* Featuring is the derived insight — the only thing here that the .rep filename
    does not already give you — so it wraps in full rather than cropping to a
@@ -2705,15 +2704,33 @@ button.workflow-nav-update-available:disabled {
   white-space: nowrap;
 }
 
-/* Sides may wrap onto a second visual line; a side itself never splits, so
-   "A B | C D" stays readable after the break. */
-.workflow-games-list-table td.workflow-games-list-players .workflow-team-matchup {
-  flex-wrap: wrap;
-  row-gap: 3px;
+/* Players cell: one component for every player count. Teams are chunked into
+   explicit rows in JSX, so the break falls where the team shape says (4 teams
+   of 2 give 2 per row; 2 teams of 4 give one per row) rather than wherever the
+   text happens to run out of width. Scoped under the table so it beats the
+   base .workflow-team-matchup flex rule defined further down. */
+.workflow-team-matchup--rows,
+.workflow-games-list-table .workflow-team-matchup--rows {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  row-gap: 2px;
+}
+
+.workflow-team-row,
+.workflow-games-list-table .workflow-team-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .workflow-games-list-table td.workflow-games-list-players .workflow-team-side {
+  display: flex;
   flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.55rem;
 }
 
 /* In the LIST the replay colour carries nothing: it is a per-replay slot, so
@@ -2742,35 +2759,17 @@ button.workflow-nav-update-available:disabled {
 }
 
 /* The winner reads as weight, which survives a glance; a crown per name does
-   not. Rows with no recorded winner are left alone rather than half-dimmed. */
-.workflow-games-list-table .workflow-team-player-pill.rd-won .workflow-player-name-link,
-.workflow-games-list-table .workflow-team-player-pill.rd-won > span:last-child,
-.workflow-games-list-table .workflow-1v1-player.rd-won .workflow-player-name-link,
-.workflow-games-list-table .workflow-1v1-player.rd-won > span:last-child {
+   not. Scoped to the component rather than the table, so the game-detail
+   header (same renderer) gets it too. Games with no recorded winner are left
+   alone rather than half-dimmed. */
+.workflow-team-matchup--rows .workflow-team-player-pill.rd-won .workflow-player-name-link,
+.workflow-team-matchup--rows .workflow-team-player-pill.rd-won > span:last-child {
   color: var(--e-strong);
   font-weight: 600;
 }
 
-.workflow-games-list-table .workflow-team-player-pill.rd-lost,
-.workflow-games-list-table .workflow-1v1-player.rd-lost {
+.workflow-team-matchup--rows .workflow-team-player-pill.rd-lost {
   opacity: 0.58;
-}
-
-/* Team format, compact and readable, in place of "PPvPZvPZvPZ". */
-.workflow-games-list-table td.rd-format-cell {
-  white-space: nowrap;
-  font-size: 0.8em;
-}
-
-.rd-format {
-  display: inline-block;
-  font-variant-numeric: tabular-nums;
-  color: var(--e-quiet);
-  border: 1px solid var(--e-line);
-  border-radius: 3px;
-  padding: 0 4px;
-  font-size: 10.5px;
-  letter-spacing: 0.02em;
 }
 
 .workflow-games-list-table .workflow-team-player-pill {
@@ -2795,30 +2794,16 @@ button.workflow-nav-update-available:disabled {
   align-items: center;
 }
 
-/* A team row uses a rule between sides: once names wrap, a stray "vs" starts a
-   line and reads as nonsense. A 1v1 has nothing to divide, so it keeps its
-   "vs" (.rd-sided is set only when there are 2+ sides). */
-.workflow-games-list-table tr.rd-sided .workflow-team-vs {
-  display: none;
-}
-
-.workflow-games-list-table tr.rd-sided .workflow-team-side:not(:first-of-type) {
-  border-left: 1px solid rgba(255, 255, 255, 0.14);
-  padding-left: 0.55rem;
-  margin-left: 0.1rem;
-}
-
-.workflow-games-list-table tr:not(.rd-sided) .workflow-team-vs {
+.workflow-games-list-table .workflow-team-vs {
   font-size: 0.82em;
   color: var(--e-quiet);
-  padding: 0 0.45rem;
+  padding-left: 0.1rem;
 }
 
 .workflow-games-list-table .workflow-feature-pill {
   padding: 2px 7px;
   font-size: 0.68rem;
   min-height: 20px;
-  border-radius: 3px;
   border-color: var(--e-line);
   background: rgba(255, 255, 255, 0.05);
   color: var(--e-base);
@@ -5591,17 +5576,6 @@ button.workflow-nav-update-available:disabled {
   column-gap: 0.25rem;
   row-gap: 0.2rem;
 }
-.workflow-1v1-player {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-}
-.workflow-team-matchup--1v1 .workflow-team-vs {
-  margin: 0 0.6rem;
-}
-.workflow-1v1-player {
-  --player-glyph-size: 24px;
-}
 .workflow-fingerprint-inline {
   display: inline-flex;
   align-items: center;
@@ -6501,10 +6475,6 @@ span[data-tip],
 
 /* Build-order and hotkey cards are content, not signals: neutral frames. The
    per-kind tints made them compete with the one marker that matters. */
-.workflow-pattern-pill {
-  border-radius: 4px;
-}
-
 .workflow-pattern-pill-bo,
 .workflow-pattern-pill-keys,
 .workflow-pattern-pill-strong,

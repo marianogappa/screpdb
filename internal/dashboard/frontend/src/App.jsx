@@ -2077,29 +2077,10 @@ const teamGroupsFromPlayers = (players) => {
 
 const playersHaveDistinctTeams = (players) => new Set((players || []).map((p) => Number(p?.team || 0))).size > 1;
 
-/** True for a team game rendered as 2+ side groups — i.e. not a 1v1, which has
- *  nothing to divide and so keeps its "vs" token. */
-const gameHasTeamSides = (players) => {
-  if (!playersHaveDistinctTeams(players)) return false;
-  const groups = teamGroupsFromPlayers(players);
-  return !(groups.length === 2 && groups.every((group) => group.length === 1));
-};
-
-/** Compact team shape for the games list: "1v1", "4×2", or "8p/5t" when the
- *  sides are uneven. Replaces the unreadable matchup string ("PPvPZvPZvPZ"). */
-const gameTeamFormat = (game) => {
-  const players = Array.isArray(game?.players) ? game.players : [];
-  if (players.length === 0) return '';
-  if (!playersHaveDistinctTeams(players)) {
-    return players.length === 2 ? '1v1' : `${players.length}p`;
-  }
-  const sizes = teamGroupsFromPlayers(players).map((group) => group.length);
-  const total = sizes.reduce((sum, n) => sum + n, 0);
-  if (sizes.every((n) => n === sizes[0])) {
-    return sizes.length === 2 && sizes[0] === 1 ? '1v1' : `${sizes.length}×${sizes[0]}`;
-  }
-  return `${total}p/${sizes.length}t`;
-};
+// Target players per visual row in the games-list Players cell. Teams are
+// balanced across ceil(players / this) rows and never split, so the row break
+// always falls between teams.
+const PLAYERS_PER_LIST_ROW = 4;
 
 const mergeIngestLogEntries = (entries, event) => {
   if (!event || !event.message) {
@@ -2409,9 +2390,6 @@ function App() {
       setMainGamesTotal(Number(data?.total) || 0);
       if (data?.filter_options) {
         setMainGamesFilterOptions(data.filter_options);
-      }
-      if (!selectedReplayId && items.length > 0) {
-        setSelectedReplayId(items[0].replay_id);
       }
     } catch (err) {
       setError(err.message);
@@ -3866,18 +3844,11 @@ function App() {
     return <img src={url} alt={race || ''} title={race || ''} className="workflow-race-icon" />;
   };
 
-  const renderMainGameListPlayers = (game, linkPlayerNames = true) => {
+  const renderMainGameListPlayers = (game, linkPlayerNames = true, showSwatch = false) => {
     const players = Array.isArray(game?.players) ? game.players : [];
     if (players.length === 0) {
       return renderPlayersMatchup(game?.players_label || '');
     }
-    // The winning side reads as weight rather than a crown per name. Only mark
-    // sides when the replay actually recorded a winner — otherwise every name
-    // would be dimmed as a loser.
-    const winnerKnown = players.some((player) => player.is_winner);
-    const outcomeClass = (player) => (winnerKnown
-      ? (player.is_winner ? ' rd-won' : ' rd-lost')
-      : '');
     const renderName = (player) => (linkPlayerNames
       ? renderPlayerLinkLabel(player.name, player.player_key)
       : renderPlayerLabel(player.name, player.player_key));
@@ -3886,79 +3857,75 @@ function App() {
       <span
         className="workflow-team-stacking-marker"
         data-tip="Team stacking: uneven non-solo team sizes for over 5 minutes"
-        style={{ marginLeft: 6 }}
       >
         😈
       </span>
     ) : null;
-    if (!playersHaveDistinctTeams(players)) {
-      const warningText = game?.team_info_incomplete
-        ? 'Team information is incomplete'
-        : 'This replay has no team information';
-      return (
-        <span>
-          {players.map((player, idx) => (
-            <span key={`${player.player_id}-${idx}`}>
-              {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-              {renderWorkerIcon(player.race)}
-              {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
-              {renderName(player)}
-              <FingerprintBadge match={player.fingerprint_match} compact />
-              {idx < players.length - 1 ? ', ' : ''}
-            </span>
-          ))}
-          <span className="workflow-no-team-warning" data-tip={warningText}>⚠️</span>
-          {stackingMarker}
-        </span>
-      );
+
+    // The winning side reads as weight rather than a crown per name. Only mark
+    // sides when the replay actually recorded a winner, otherwise every name
+    // would be dimmed as a loser.
+    const winnerKnown = players.some((player) => player.is_winner);
+    const outcomeClass = (player) => (winnerKnown
+      ? (player.is_winner ? ' rd-won' : ' rd-lost')
+      : '');
+
+    // One layout for every player count. A 1v1 is two teams of one, so it goes
+    // through exactly the same grid as a 4x2; nothing branches on size.
+    const hasTeams = playersHaveDistinctTeams(players);
+    const teams = hasTeams ? teamGroupsFromPlayers(players) : [players];
+    const noTeamInfo = !hasTeams && players.length > 1;
+    const warningText = game?.team_info_incomplete
+      ? 'Team information is incomplete'
+      : 'This replay has no team information';
+
+    // Teams are distributed evenly over as many rows as the players need, and a
+    // team is never split across a break: 4 teams of 2 give 2 teams per row,
+    // 2 teams of 4 give one team per row.
+    const rowCount = Math.max(1, Math.ceil(players.length / PLAYERS_PER_LIST_ROW));
+    const teamsPerRow = Math.max(1, Math.ceil(teams.length / rowCount));
+
+    // Chunk the teams into explicit rows rather than letting them wrap: a
+    // wrap point depends on rendered width, so it lands wherever it fits
+    // (3 teams then 1) instead of where the team shape says it should.
+    const teamRows = [];
+    for (let i = 0; i < teams.length; i += teamsPerRow) {
+      teamRows.push(teams.slice(i, i + teamsPerRow));
     }
-    const groups = teamGroupsFromPlayers(players);
-    const is1v1 = groups.length === 2 && groups.every((g) => g.length === 1);
-    if (is1v1) {
-      return (
-        <span className="workflow-team-matchup workflow-team-matchup--1v1">
-          {groups.map((group, groupIdx) => (
-            <React.Fragment key={`team-${groupIdx}`}>
-              {groupIdx > 0 ? <span className="workflow-team-vs">vs</span> : null}
-              {group.map((player) => (
-                <span key={player.player_id} className={`workflow-1v1-player${outcomeClass(player)}`}>
-                  {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-                  {renderWorkerIcon(player.race)}
-                  {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
-                  {renderName(player)}
-                  {player.fingerprint_match ? (
-                    <span className="workflow-fingerprint-inline"> (<FingerprintBadge match={player.fingerprint_match} />)</span>
-                  ) : null}
-                </span>
-              ))}
-            </React.Fragment>
-          ))}
-          {stackingMarker}
-        </span>
-      );
-    }
+
     return (
-      <span className="workflow-team-matchup">
-        {groups.map((group, groupIdx) => (
-          <React.Fragment key={`team-${groupIdx}`}>
-            {groupIdx > 0 ? <span className="workflow-team-vs">vs</span> : null}
-            <span className="workflow-team-side">
-              {group.map((player) => (
-                <span
-                  key={player.player_id}
-                  className={`workflow-team-player-pill${outcomeClass(player)}`}
-                >
-                  {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-                  {renderWorkerIcon(player.race)}
-                  {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
-                  {renderName(player)}
-                  <FingerprintBadge match={player.fingerprint_match} compact />
-                </span>
-              ))}
+      <span className="workflow-team-matchup workflow-team-matchup--rows">
+        {teamRows.map((row, rowIdx) => {
+          const teamsBefore = rowIdx * teamsPerRow;
+          return (
+            <span className="workflow-team-row" key={`team-row-${rowIdx}`}>
+              {row.map((team, idxInRow) => {
+                const isLastTeamOverall = teamsBefore + idxInRow === teams.length - 1;
+                return (
+                  <span className="workflow-team-side" key={`team-${teamsBefore + idxInRow}`}>
+                    {team.map((player) => (
+                      <span
+                        key={player.player_id}
+                        className={`workflow-team-player-pill${outcomeClass(player)}`}
+                      >
+                        {renderWorkerIcon(player.race)}
+                        {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
+                        {showSwatch ? <PlayerSwatch color={player.color} title={player.name} /> : null}
+                        {renderName(player)}
+                        <FingerprintBadge match={player.fingerprint_match} compact />
+                      </span>
+                    ))}
+                    {isLastTeamOverall ? null : <span className="workflow-team-vs">vs</span>}
+                  </span>
+                );
+              })}
+              {rowIdx === teamRows.length - 1 && noTeamInfo ? (
+                <span className="workflow-no-team-warning" data-tip={warningText}>⚠️</span>
+              ) : null}
+              {rowIdx === teamRows.length - 1 ? stackingMarker : null}
             </span>
-          </React.Fragment>
-        ))}
-        {stackingMarker}
+          );
+        })}
       </span>
     );
   };
@@ -5729,7 +5696,6 @@ function App() {
                   <thead>
                     <tr>
                       <th>Played</th>
-                      <th>Teams</th>
                       <th>Players</th>
                       <th>Map</th>
                       <th>Time</th>
@@ -5740,13 +5706,10 @@ function App() {
                     {mainGames.map((game) => (
                       <tr
                         key={game.replay_id}
-                        className={`${selectedReplayId === game.replay_id ? 'workflow-selected-row' : ''}${gameHasTeamSides(game.players) ? ' rd-sided' : ''}`.trim()}
+                        className={selectedReplayId === game.replay_id ? 'workflow-selected-row' : ''}
                         onClick={() => openMainGame(game.replay_id)}
                       >
                         <td className="workflow-games-list-played">{formatRelativeReplayDate(game.replay_date)}</td>
-                        <td className="rd-format-cell">
-                          {gameTeamFormat(game) ? <span className="rd-format">{gameTeamFormat(game)}</span> : null}
-                        </td>
                         <td className="workflow-games-list-players">{renderMainGameListPlayers(game, false)}</td>
                         <td className="workflow-games-list-map">{renderMapNameWithKind(game.map_name, game.map_kind)}</td>
                         <td className="workflow-games-list-duration">{formatDuration(game.duration_seconds)}</td>
@@ -6144,7 +6107,7 @@ function App() {
             ) : mainGame ? (
               <>
                 <div className="workflow-title-row workflow-title-row--solo">
-                  <h2 className="workflow-game-players-heading">{renderMainGameListPlayers(mainGame)}</h2>
+                  <h2 className="workflow-game-players-heading">{renderMainGameListPlayers(mainGame, true, true)}</h2>
                 </div>
                 <div className="workflow-meta workflow-meta--game-header">
                   <span>{formatRelativeReplayDate(mainGame.replay_date)}</span>
