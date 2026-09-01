@@ -280,6 +280,16 @@ func (o *Orchestrator) SetMutaHarass(episodes []unittags.MutaHarassEpisode) {
 	o.worldState.SetMutaHarassCandidates(candidates)
 }
 
+// SetMassDisconnectEnd threads the parser's saver-disconnect verdict (issue
+// #358) into the worldstate engine so the timeline condenses the phantom
+// leave cluster into a single connection-lost event.
+func (o *Orchestrator) SetMassDisconnectEnd(saverPID byte, clusterSecond int) {
+	if o.worldState == nil {
+		return
+	}
+	o.worldState.SetMassDisconnectEnd(saverPID, clusterSecond)
+}
+
 // ConvertResultsToDatabaseIDs converts pattern results from replay player IDs to database player IDs
 func (o *Orchestrator) ConvertResultsToDatabaseIDs(playerIDMap map[byte]int64) {
 	// Convert player-level results

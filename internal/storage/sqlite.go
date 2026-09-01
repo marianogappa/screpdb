@@ -57,6 +57,8 @@ var (
 	allowedReplayEventTypes = enumSetFromNames([]string{
 		"player_start",
 		"leave_game",
+		"player_dropped",
+		"mass_disconnect",
 		"expansion",
 		"attack",
 		"nydus_attack",

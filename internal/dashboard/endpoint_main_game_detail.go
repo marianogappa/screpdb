@@ -1533,7 +1533,7 @@ func applyOwnershipTransition(event *workflowGameEvent, ownership map[string]*wo
 		if baseKey != "" {
 			delete(ownership, baseKey)
 		}
-	case "leave_game":
+	case "leave_game", "player_dropped":
 		if event.Actor == nil {
 			return
 		}

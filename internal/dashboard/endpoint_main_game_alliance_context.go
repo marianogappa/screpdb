@@ -41,6 +41,13 @@ func (d *Dashboard) populatePlayerDepartureForGameDetail(detail *workflowGameDet
 			if !ok || ev.Second < cur.Second {
 				deparByPID[pid] = departure{Second: ev.Second, Reason: "Left"}
 			}
+		// player_dropped / mass_disconnect carry the reason in the type; the
+		// mass_disconnect actor is the replay saver, whose connection died.
+		case "player_dropped", "mass_disconnect":
+			cur, ok := deparByPID[pid]
+			if !ok || ev.Second < cur.Second {
+				deparByPID[pid] = departure{Second: ev.Second, Reason: "Dropped"}
+			}
 		case "player_stopped_playing":
 			cur, ok := deparByPID[pid]
 			if !ok || ev.Second < cur.Second {

@@ -313,11 +313,15 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-09-01  OK. Country flags fixed on Windows + country-name tooltips (issue #361). Windows ships no flag glyphs, so the dashboard now vendors the Twemoji Country Flags woff2 (committed at frontend/src/assets, sha256-pinned) into the frontend build, where the existing go:embed of frontend/build serves it from the app's own origin — no page fetches a remote asset. A canvas feature-probe activates the font only where the platform lacks native flags; tooltips resolve names via the browser's built-in Intl.DisplayNames. Presentation only: no new endpoints, os/net calls, facade exemptions, iofacade allowlist widening, hosts or paths; no AlgorithmVersion bump (no detection change).
+2026-09-01  OK. Mass-disconnect games no longer credit the replay saver a phantom win (issue #358, AlgorithmVersion 66). All changes consume data already parsed in memory: the detector reads the in-memory players/commands slices, winner clearing touches the same structs, and the two new replay_events types (player_dropped, mass_disconnect) flow through the existing worldstate emit + storage insert path with the type allowlist widened accordingly. No new os/net calls, endpoints, facade exemptions, hosts or paths.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
+
+```
+2026-09-01  OK. Country flags fixed on Windows + country-name tooltips (issue #361). Windows ships no flag glyphs, so the dashboard now vendors the Twemoji Country Flags woff2 (committed at frontend/src/assets, sha256-pinned) into the frontend build, where the existing go:embed of frontend/build serves it from the app's own origin — no page fetches a remote asset. A canvas feature-probe activates the font only where the platform lacks native flags; tooltips resolve names via the browser's built-in Intl.DisplayNames. Presentation only: no new endpoints, os/net calls, facade exemptions, iofacade allowlist widening, hosts or paths; no AlgorithmVersion bump (no detection change).
+```
 
 ```
 2026-09-01  OK. Expert golden-line timings re-derived from the aurora-ID-labelled progamer corpus (issue #362). All shipped changes are data-only: Marker.Expert targets/tolerances in definitions.go, a render-time fuzzyZergExpertByLabel table, and the Build Orders tab resolving fuzzy-opener bands from the already-persisted payload label over the existing ListEarlyZergMorphsForBOTimings query. The mining pipeline itself lives in scripts/expert-mine — dev-only, never shipped, exempt from the facade guard like the rest of scripts/ — and reads the local screpharvest/scfingerprint corpus paths passed by flag, writing only under its -workdir. No new shipped os/net calls, endpoints, facade exemptions, allowlist changes, hosts or paths; no AlgorithmVersion bump (targets are presentation, not detection).

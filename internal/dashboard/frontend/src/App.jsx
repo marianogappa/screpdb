@@ -425,6 +425,8 @@ const gameEventDescription = (event, registry) => {
     return 'Player start';
   }
   if (eventType === 'leave_game') return actor ? `${actor} leaves the game` : 'Player leaves the game';
+  if (eventType === 'player_dropped') return actor ? `${actor} drops from the game (connection lost)` : 'Player drops from the game';
+  if (eventType === 'mass_disconnect') return actor ? `${actor} lost connection — the game ended without a result` : 'Connection lost — the game ended without a result';
   if (eventType === 'player_stopped_playing') return actor ? `${actor} stops playing` : 'Player stops playing';
   if (eventType === 'late_alliance') {
     const teams = Array.isArray(event?.alliance_teams) ? event.alliance_teams : [];
@@ -763,6 +765,8 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
     return 'Player start';
   }
   if (eventType === 'leave_game') return actorName ? <>{actorSpan} leaves the game</> : 'Player leaves the game';
+  if (eventType === 'player_dropped') return actorName ? <>{actorSpan} drops from the game (connection lost)</> : 'Player drops from the game';
+  if (eventType === 'mass_disconnect') return actorName ? <>{actorSpan} lost connection — the game ended without a result</> : 'Connection lost — the game ended without a result';
   if (eventType === 'player_stopped_playing') return actorName ? <>{actorSpan} stops playing</> : 'Player stops playing';
   if (eventType === 'late_alliance') {
     const teams = Array.isArray(event?.alliance_teams) ? event.alliance_teams : [];
@@ -1439,6 +1443,12 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
   }
   if (normalized === 'leave_game') {
     return [{ emoji: '🏳️', alt: 'left the game', title: 'Player left the game' }];
+  }
+  if (normalized === 'player_dropped') {
+    return [{ emoji: '🔌', alt: 'dropped', title: 'Player dropped (connection lost)' }];
+  }
+  if (normalized === 'mass_disconnect') {
+    return [{ emoji: '🔌', alt: 'connection lost', title: 'The replay saver lost connection — the game ended without a result' }];
   }
   if (normalized === 'player_stopped_playing') {
     return [{ emoji: '💤', alt: 'stopped playing', title: 'Player stopped playing (no Leave Game)' }];
@@ -4021,7 +4031,7 @@ function App() {
       const text = gameEventSearchText(event, markerRegistry);
       if (nt === 'attack') base.attack = true;
       if (nt === 'expansion') base.expansion = true;
-      if (nt === 'leave_game' || nt === 'player_stopped_playing') base.leaves = true;
+      if (nt === 'leave_game' || nt === 'player_dropped' || nt === 'mass_disconnect' || nt === 'player_stopped_playing') base.leaves = true;
       if (SUMMARY_TOPIC_PATTERNS.nuke.test(text)) base.nuke = true;
       if (SUMMARY_TOPIC_PATTERNS.drop.test(text)) base.drop = true;
       if (SUMMARY_TOPIC_PATTERNS.recall.test(text)) base.recall = true;
@@ -4215,7 +4225,7 @@ function App() {
     if (nt === 'bo_openers') return summaryMapStartPolygons;
     // When a player leaves or stops playing, their territory vanishes from the
     // map (the marker takes its place at the last-known location).
-    if (nt === 'leave_game' || nt === 'player_stopped_playing') {
+    if (nt === 'leave_game' || nt === 'player_dropped' || nt === 'mass_disconnect' || nt === 'player_stopped_playing') {
       const goneID = Number(selectedMainGameEvent?.actor?.player_id || 0);
       if (goneID > 0) {
         return selectedMainGameOwnershipPolygons.filter((p) => p.ownerPlayerID !== goneID);
@@ -4505,7 +4515,7 @@ function App() {
     if (['drop', 'cliff_drop'].includes(nt)) return 'drop';
     if (nt === 'recall') return 'recall';
     if (nt === 'nuke') return 'nuke';
-    if (nt === 'leave_game' || nt === 'player_stopped_playing') return 'leaves';
+    if (nt === 'leave_game' || nt === 'player_dropped' || nt === 'mass_disconnect' || nt === 'player_stopped_playing') return 'leaves';
     if (nt === 'late_alliance') return 'alliance';
     if (nt === 'became_terran' || nt === 'became_zerg') return 'became';
     if (['cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory', 'proxy_starport'].includes(nt)) return 'rush';
@@ -4541,11 +4551,12 @@ function App() {
   // (left) or zzz (stopped) marker takes its place at their last-known base.
   const selectedLeaveInfo = useMemo(() => {
     const nt = normalizeEventType(selectedMainGameEvent?.type);
-    if ((nt !== 'leave_game' && nt !== 'player_stopped_playing') || !selectedActorLastBasePoint) return null;
+    const leaveTypes = ['leave_game', 'player_dropped', 'mass_disconnect', 'player_stopped_playing'];
+    if (!leaveTypes.includes(nt) || !selectedActorLastBasePoint) return null;
     const actorID = Number(selectedMainGameEvent?.actor?.player_id || 0);
     const actorRow = mainGamePlayers.find((p) => Number(p?.player_id || 0) === actorID);
     const name = actorRow?.name || selectedMainGameEvent?.actor?.name || 'Player';
-    const emoji = nt === 'player_stopped_playing' ? '💤' : '🏳️';
+    const emoji = nt === 'player_stopped_playing' ? '💤' : (nt === 'player_dropped' || nt === 'mass_disconnect') ? '🔌' : '🏳️';
     return { name, emoji, point: selectedActorLastBasePoint, color: playerColorToCss(actorRow?.color) };
   }, [selectedMainGameEvent, selectedActorLastBasePoint, mainGamePlayers]);
   // Became Terran/Zerg (mind control): a Dark Archon icon planted prominently at
@@ -6893,7 +6904,7 @@ function App() {
                                   ? Object.entries(event.attack_cast_counts)
                                   : [];
                                 const phase = phaseFor(Number(event?.second) || 0);
-                                const isLeaveGame = normalizeEventType(event?.type) === 'leave_game';
+                                const isLeaveGame = ['leave_game', 'player_dropped', 'mass_disconnect'].includes(normalizeEventType(event?.type));
                                 if (!isLeaveGame && phase !== lastPhase) {
                                   // Only show "Mid game" / "Late game" when mid game actually
                                   // ended; otherwise the game never reached those phases.

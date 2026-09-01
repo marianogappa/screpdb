@@ -128,7 +128,10 @@ func (d *Dashboard) populateAllianceTimelineForGameDetail(detail *workflowGameDe
 			continue
 		}
 		switch ev.EventType {
-		case "leave_game":
+		// mass_disconnect is the saver's own departure (their connection died);
+		// the clustered co-drops it condenses were never real departures, so
+		// only the saver's lane truncates.
+		case "leave_game", "player_dropped", "mass_disconnect":
 			if existing, exists := activity.LeaveSecByPID[bytePID]; !exists || int(ev.Second) < existing {
 				activity.LeaveSecByPID[bytePID] = int(ev.Second)
 			}

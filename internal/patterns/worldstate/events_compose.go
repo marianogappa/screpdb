@@ -626,6 +626,12 @@ func (e *Engine) emitRecallEvent(cl recallCluster, description string, target *N
 	e.replayEvents = append(e.replayEvents, rev)
 }
 
+// emitLeaveGameEvents emits one departure event per leaver: leave_game for a
+// deliberate leave, player_dropped when the leave reason is a connection drop.
+// On a saver disconnect (issue #358) the end-of-replay drop cluster is an
+// artifact of the SAVER's connection dying — those players never left — so the
+// cluster condenses into a single mass_disconnect event attributed to the
+// saver instead of one phantom leave per player.
 func (e *Engine) emitLeaveGameEvents() {
 	pids := make([]byte, 0, len(e.leaveSec))
 	for pid := range e.leaveSec {
@@ -633,9 +639,24 @@ func (e *Engine) emitLeaveGameEvents() {
 	}
 	sort.Slice(pids, func(i, j int) bool { return e.leaveSec[pids[i]] < e.leaveSec[pids[j]] })
 	for _, pid := range pids {
+		dropped := e.leaveReason[pid] == "Dropped"
+		if e.massDisconnect != nil && dropped && e.leaveSec[pid] == e.massDisconnect.clusterSec {
+			continue
+		}
+		if dropped {
+			e.emitEvent("player_dropped", e.leaveSec[pid],
+				fmt.Sprintf("%s drops from the game (connection lost)", e.playerName(pid)),
+				e.playerRef(pid), nil, -1, nil)
+			continue
+		}
 		e.emitEvent("leave_game", e.leaveSec[pid],
 			fmt.Sprintf("%s leaves the game", e.playerName(pid)),
 			e.playerRef(pid), nil, -1, nil)
+	}
+	if e.massDisconnect != nil {
+		e.emitEvent("mass_disconnect", e.massDisconnect.clusterSec,
+			fmt.Sprintf("%s lost connection — the game ended without a result", e.playerName(e.massDisconnect.saverPID)),
+			e.playerRef(e.massDisconnect.saverPID), nil, -1, nil)
 	}
 }
 
