@@ -3697,9 +3697,9 @@ button.workflow-nav-update-available:disabled {
 /* Opener-unresolved (N/A) pill: occupies the opener slot but signals "no
    build order" — muted red, same "BUILD ORDER" legend treatment. */
 .workflow-pattern-pill-na {
-  border-color: rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.12);
-  color: #fecaca;
+  border-color: var(--e-line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--e-base);
 }
 
 /* "BUILD ORDER" legend sitting centered on the pill's top border, fieldset-
@@ -4086,10 +4086,12 @@ button.workflow-nav-update-available:disabled {
   font-weight: 700;
 }
 
+/* Negative facts ("no upgrades", "never researched") are content, not alarms.
+   At full red they outshouted every positive marker on the row. */
 .workflow-low-usage-pill-hotkey {
-  border-color: rgba(239, 68, 68, 0.35);
-  background: rgba(239, 68, 68, 0.18);
-  color: #fecaca;
+  border-color: var(--e-line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--e-base);
 }
 
 .workflow-recent-game-card {
@@ -4283,7 +4285,10 @@ button.workflow-nav-update-available:disabled {
   font-size: 0.82rem;
   font-weight: 600;
   border-radius: 6px;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--e-base);
+  background: transparent;
+  border: 0;
+  font-family: inherit;
   cursor: pointer;
   user-select: none;
   transition: background 120ms ease, opacity 120ms ease;
@@ -4313,10 +4318,7 @@ button.workflow-nav-update-available:disabled {
   background: transparent;
 }
 
-/* Player chips keep their player colour (set inline). Disabled = filtered out. */
-.workflow-events-player-chip--off {
-  opacity: 0.4;
-}
+
 
 /* Warnings column: to the right of the filter rows, vertically centred so a
    single notice reads as spanning both rows. */
@@ -6467,6 +6469,20 @@ span[data-tip],
   color: var(--e-base);
 }
 
+/* Filtered out: the name goes quiet and the swatch desaturates, so "off" reads
+   on the control you clicked instead of in a separate checkbox. Declared after
+   the base colour above, which it has to beat at equal specificity. */
+.workflow-events-player-chip--off,
+.workflow-events-player-chip--off span {
+  color: var(--e-quiet);
+}
+
+.workflow-events-player-chip--off .rd-swatch {
+  filter: grayscale(1);
+  opacity: 0.4;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
+}
+
 /* The roster name is the answer for its row, so it takes `strong`. */
 .workflow-player-name-link--strong {
   color: var(--e-strong);
@@ -6488,16 +6504,9 @@ span[data-tip],
   font-weight: 500;
 }
 
-/* `mark`: on the game summary the headline marker is the finding the whole
-   screen exists to deliver, so it is the one object that earns the accent. */
-.workflow-summary-feature-pill {
-  background: var(--e-mark-fill);
-  border-color: var(--e-mark-line);
-  color: var(--e-mark-ink);
-  font-weight: 600;
-}
-
-/* Spellcasts are context beside it, not findings. */
+/* The summary's featuring and spellcast strips stay at `base`. Giving them
+   `mark` marked every pill in both strips, which is the original complaint in
+   a new colour: 13 gold objects say no more than 13 grey ones. */
 .workflow-spellcasts-pill {
   background: rgba(255, 255, 255, 0.05);
   border-color: var(--e-line);
@@ -6529,47 +6538,79 @@ span[data-tip],
   background: rgba(255, 255, 255, 0.22);
 }
 
+/* The log already carries the result; a crown per opener line does not. */
+.workflow-bo-openers .workflow-crown {
+  display: none;
+}
+
 /* ------------------------------------------------------------
-   Event log, ranked. One thing happened in a 2:56 game — a cannon
-   rush at 2:33 — and it used to share its row treatment with seven
-   "leaves the game" rows at 2:53.
+   Report-page title. Its own component: a heading names the
+   match, so it carries races, names and "vs" and nothing else.
    ------------------------------------------------------------ */
-
-/* `key`: the finding takes the accent rail and the full ink. The sentence is
-   the loud part; the participants stay at base behind their swatch. */
-.workflow-event-row--key {
-  background: rgba(224, 184, 76, 0.06);
-  box-shadow: inset 2px 0 0 var(--e-accent);
+.workflow-game-title-players {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.6rem;
+  row-gap: 2px;
 }
 
-.workflow-event-row--key .workflow-event-row-time {
-  color: var(--e-accent);
+.workflow-game-title-side {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.6rem;
 }
 
-.workflow-event-row--key .workflow-event-row-body {
+.workflow-game-title-player {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  white-space: nowrap;
+  color: var(--e-base);
+  font-weight: 400;
+}
+
+.workflow-game-title-player.rd-won {
   color: var(--e-strong);
   font-weight: 600;
 }
 
-.workflow-event-row--key .workflow-event-row-player {
-  font-weight: 400;
-  color: var(--e-base);
-}
-
-/* `openers` and `quiet` are context: present, findable, not competing. */
-.workflow-event-row--openers .workflow-event-row-body {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.workflow-event-row--quiet {
-  opacity: 0.55;
-}
-
-.workflow-event-row--quiet .workflow-event-row-body {
+.workflow-game-title-vs {
+  color: var(--e-quiet);
+  font-size: 0.78em;
   font-weight: 400;
 }
 
-/* The log already carries the result; a crown per opener line does not. */
-.workflow-bo-openers .workflow-crown {
-  display: none;
+/* ------------------------------------------------------------
+   Roster glyph rail: race | country | colour | winner, each in a
+   fixed slot that holds its width when empty, so the glyphs line
+   up in columns and every name starts at the same x.
+   ------------------------------------------------------------ */
+.wpt-glyphs {
+  display: inline-grid;
+  grid-template-columns: repeat(4, 18px);
+  align-items: center;
+  justify-items: center;
+  column-gap: 2px;
+  flex: 0 0 auto;
+  margin-right: 0.45rem;
+}
+
+.wpt-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+}
+
+.wpt-glyph .rd-swatch {
+  margin-right: 0;
+  vertical-align: 0;
+}
+
+.wpt-glyph .workflow-crown {
+  font-size: 0.85em;
 }

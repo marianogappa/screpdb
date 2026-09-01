@@ -143,29 +143,6 @@ const getRaceIcon = (race) => {
 
 const normalizeEventType = (eventType) => String(eventType || '').trim().toLowerCase();
 
-/** Event-log rungs.
- *
- *  `quiet` is bookkeeping: who joined, who left, who stopped playing. In a
- *  4-player game a mass disconnect prints one of these per player at the same
- *  second, so eight rows can carry one fact.
- *  `openers` is the 0:00 summary — useful, but context rather than a finding.
- *  Everything else is something that HAPPENED, and gets the accent rail. */
-const QUIET_EVENT_TYPES = new Set([
-  'leave_game',
-  'player_dropped',
-  'player_stopped_playing',
-  'mass_disconnect',
-  'location_inactive',
-  'player_start',
-]);
-
-const eventLogRung = (event) => {
-  const type = normalizeEventType(event?.type);
-  if (type === 'bo_openers') return 'openers';
-  if (QUIET_EVENT_TYPES.has(type)) return 'quiet';
-  return 'key';
-};
-
 /** Aligns with NeverUsedHotkeysPlayerDetector (7+ minute replays). */
 const GAME_SUMMARY_NEGATION_MIN_SECONDS = 7 * 60;
 
@@ -3844,7 +3821,43 @@ function App() {
     return <img src={url} alt={race || ''} title={race || ''} className="workflow-race-icon" />;
   };
 
-  const renderMainGameListPlayers = (game, linkPlayerNames = true, showSwatch = false) => {
+  /** Report-page title. Deliberately NOT the games-list cell: a heading wants
+   *  the match, not the metadata. Race icon and name only, teams joined by
+   *  "vs", winner in weight. Colour, country, fingerprint and crown all live
+   *  in the roster below, where there is room to align them. */
+  const renderGameTitlePlayers = (game) => {
+    const players = Array.isArray(game?.players) ? game.players : [];
+    if (players.length === 0) {
+      return renderPlayersMatchup(game?.players_label || '');
+    }
+    const winnerKnown = players.some((player) => player.is_winner);
+    const teams = playersHaveDistinctTeams(players)
+      ? teamGroupsFromPlayers(players)
+      : [players];
+
+    return (
+      <span className="workflow-game-title-players">
+        {teams.map((team, teamIdx) => (
+          <React.Fragment key={`title-team-${teamIdx}`}>
+            {teamIdx > 0 ? <span className="workflow-game-title-vs">vs</span> : null}
+            <span className="workflow-game-title-side">
+              {team.map((player) => (
+                <span
+                  key={player.player_id}
+                  className={`workflow-game-title-player${winnerKnown && player.is_winner ? ' rd-won' : ''}`}
+                >
+                  {renderWorkerIcon(player.race)}
+                  <PlayerDisplayName name={player.name} />
+                </span>
+              ))}
+            </span>
+          </React.Fragment>
+        ))}
+      </span>
+    );
+  };
+
+  const renderMainGameListPlayers = (game, linkPlayerNames = true) => {
     const players = Array.isArray(game?.players) ? game.players : [];
     if (players.length === 0) {
       return renderPlayersMatchup(game?.players_label || '');
@@ -3910,7 +3923,6 @@ function App() {
                       >
                         {renderWorkerIcon(player.race)}
                         {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
-                        {showSwatch ? <PlayerSwatch color={player.color} title={player.name} /> : null}
                         {renderName(player)}
                         <FingerprintBadge match={player.fingerprint_match} compact />
                       </span>
@@ -6107,7 +6119,7 @@ function App() {
             ) : mainGame ? (
               <>
                 <div className="workflow-title-row workflow-title-row--solo">
-                  <h2 className="workflow-game-players-heading">{renderMainGameListPlayers(mainGame, true, true)}</h2>
+                  <h2 className="workflow-game-players-heading">{renderGameTitlePlayers(mainGame)}</h2>
                 </div>
                 <div className="workflow-meta workflow-meta--game-header">
                   <span>{formatRelativeReplayDate(mainGame.replay_date)}</span>
@@ -6379,10 +6391,20 @@ function App() {
                         return (
                           <React.Fragment key={player.player_id}>
                             <div className="wpt-cell wpt-name" style={{ borderLeftColor: getTeamColor(player.team) }}>
-                              {raceIcon ? <img src={raceIcon} alt={player.race || 'race'} className="unit-icon-inline workflow-summary-race-icon" /> : null}
-                              {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-                              <CountryFlag code={player.country_code} playerKey={player.player_key} />
-                              <PlayerSwatch color={player.color} title={player.name} />
+                              <span className="wpt-glyphs">
+                                <span className="wpt-glyph wpt-glyph-race">
+                                  {raceIcon ? <img src={raceIcon} alt={player.race || 'race'} className="unit-icon-inline workflow-summary-race-icon" /> : null}
+                                </span>
+                                <span className="wpt-glyph wpt-glyph-flag">
+                                  <CountryFlag code={player.country_code} playerKey={player.player_key} />
+                                </span>
+                                <span className="wpt-glyph wpt-glyph-colour">
+                                  <PlayerSwatch color={player.color} title={player.name} />
+                                </span>
+                                <span className="wpt-glyph wpt-glyph-crown">
+                                  {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+                                </span>
+                              </span>
                               <span className="wpt-name-col">
                                 <button
                                   type="button"
@@ -6457,21 +6479,20 @@ function App() {
                           {mainGamePlayers.map((player) => {
                             const enabled = mainEventsPlayerEnabledById[String(player.player_id)] !== false;
                             return (
-                              <label
+                              <button
+                                type="button"
                                 key={`event-filter-${player.player_id}`}
                                 className={`workflow-events-player-chip${enabled ? '' : ' workflow-events-player-chip--off'}`}
+                                aria-pressed={enabled}
+                                title={enabled ? `Hide ${player.name}'s events` : `Show ${player.name}'s events`}
+                                onClick={() => setMainEventsPlayerEnabledById((prev) => ({
+                                  ...prev,
+                                  [String(player.player_id)]: !enabled,
+                                }))}
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={enabled}
-                                  onChange={(e) => setMainEventsPlayerEnabledById((prev) => ({
-                                    ...prev,
-                                    [String(player.player_id)]: e.target.checked,
-                                  }))}
-                                />
                                 <PlayerSwatch color={player.color} title={player.name} />
                                 <span>{player.name}</span>
-                              </label>
+                              </button>
                             );
                           })}
                           <button
@@ -6917,7 +6938,7 @@ function App() {
                                   <button
                                     key={eventKey}
                                     type="button"
-                                    className={`workflow-event-row workflow-event-row--${eventLogRung(event)} ${selected ? 'workflow-event-row-selected' : ''}`}
+                                    className={`workflow-event-row ${selected ? 'workflow-event-row-selected' : ''}`}
                                     onClick={() => setMainSelectedGameEventKey(eventKey)}
                                   >
                                     <span className="workflow-event-row-time">{formatDuration(event.second)}</span>
