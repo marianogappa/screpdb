@@ -2912,10 +2912,25 @@ button.workflow-nav-update-available:disabled {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Players list header: drop the grey header-cell background, matching the
-   games list. */
+/* Players list: same header row and hairlines as the games list. */
+.workflow-players-list-table {
+  font-size: clamp(0.8125rem, calc(0.8125rem + (100vw - 1300px) * 0.0037), 0.867rem);
+  margin-top: 10px;
+}
+
 .workflow-players-list-table th {
   background: transparent;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--e-quiet);
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.workflow-players-list-table td {
+  padding: 5px 6px;
 }
 
 .workflow-sortable {
@@ -7080,7 +7095,7 @@ span[data-tip],
 .workflow-last-games { display: flex; flex-direction: column; margin-top: 6px; }
 .workflow-last-game-row {
   display: grid;
-  grid-template-columns: 26px 48px minmax(140px, 230px) 34px 44px minmax(0, 1fr) 320px;
+  grid-template-columns: 26px 48px 44px minmax(140px, 230px) 34px 44px minmax(0, 1fr) 320px;
   gap: 12px; align-items: center;
   padding: 7px 10px;
   border-top: 1px solid var(--e-line);
@@ -7094,10 +7109,11 @@ span[data-tip],
   padding-bottom: 4px;
 }
 .wlg-head:hover { background: transparent; }
-.wlg-head .wlg-apm, .wlg-head .wlg-format, .wlg-head .wlg-map { font-size: 10.5px; color: var(--e-quiet); }
+.wlg-head .wlg-apm, .wlg-head .wlg-format, .wlg-head .wlg-map, .wlg-head .wlg-len { font-size: 10.5px; color: var(--e-quiet); }
 .wlg-head .wlg-comp .workflow-composition-zones-header { margin-bottom: 0; }
 .wlg-race img { width: 20px; height: 20px; display: block; }
 .wlg-format { font-size: 12px; color: var(--e-base); white-space: nowrap; }
+.wlg-len { font-size: 12px; color: var(--e-quiet); white-space: nowrap; }
 .wlg-map { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wlg-result { text-align: center; }
 .wlg-apm { font-size: 12px; color: var(--e-quiet); text-align: right; }
@@ -7105,7 +7121,7 @@ span[data-tip],
 .wlg-featuring .workflow-pattern-pills { flex-wrap: wrap; }
 .wlg-comp { min-width: 0; }
 @media (max-width: 1100px) {
-  .workflow-last-game-row { grid-template-columns: 26px 48px minmax(110px, 1fr) 34px 44px minmax(0, 2fr); }
+  .workflow-last-game-row { grid-template-columns: 26px 48px 44px minmax(110px, 1fr) 34px 44px minmax(0, 2fr); }
   .wlg-comp { display: none; }
 }
 

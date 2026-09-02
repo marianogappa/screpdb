@@ -87,11 +87,24 @@ const previewText = (labels) => {
 export default function FilterOmnibar({
   filterOptions,
   selected,
-  totalGames,
+  total,
   onToggle,
   onClear,
+  axes = AXES,
+  stateLabels = STATE_LABEL,
+  stateOrder = STATE_ORDER,
+  noun = 'games',
+  // When set, the typed text is itself a live filter (e.g. player name):
+  // { value, onChange, placeholder }. The same text still narrows the option
+  // menu, so picking an option stays one keystroke away.
+  textFilter = null,
 }) {
-  const [query, setQuery] = useState('');
+  const [internalQuery, setInternalQuery] = useState('');
+  const query = textFilter ? textFilter.value : internalQuery;
+  const setQuery = (value) => {
+    if (textFilter) textFilter.onChange(value);
+    else setInternalQuery(value);
+  };
   const [open, setOpen] = useState(false);
   const [cursor, setCursor] = useState(0);
   const [openAxis, setOpenAxis] = useState('');
@@ -102,7 +115,7 @@ export default function FilterOmnibar({
   // Flatten the API's per-axis option lists into one searchable vocabulary.
   const vocab = useMemo(() => {
     const out = [];
-    AXES.forEach((axis) => {
+    axes.forEach((axis) => {
       const list = filterOptions?.[axis.source] || [];
       list.forEach((option) => {
         if (axis.group && option.group !== axis.group) return;
@@ -111,6 +124,7 @@ export default function FilterOmnibar({
         const iconKeys = (Array.isArray(option.icon_keys) && option.icon_keys.length)
           ? option.icon_keys
           : (option.icon_key ? [option.icon_key] : []);
+        const count = option.games ?? option.count;
         out.push({
           uid: `${axis.id}:${option.key}`,
           axisId: axis.id,
@@ -118,7 +132,7 @@ export default function FilterOmnibar({
           state: axis.state,
           key: option.key,
           label,
-          games: Number(option.games) || 0,
+          games: count == null ? null : Number(count) || 0,
           race: option.race || '',
           // The chips already carry unit art; keeping it in the menu means a
           // Nydus reads as a Nydus while you scan, not just as a word.
@@ -128,7 +142,7 @@ export default function FilterOmnibar({
       });
     });
     return out;
-  }, [filterOptions]);
+  }, [filterOptions, axes]);
 
   const isPicked = useCallback(
     (item) => (selected?.[item.state] || []).includes(item.key),
@@ -142,7 +156,7 @@ export default function FilterOmnibar({
     const scored = [];
     vocab.forEach((item) => {
       if (!q) {
-        scored.push({ item, score: 1 + item.games });
+        scored.push({ item, score: 1 + (item.games || 0) });
         return;
       }
       const label = item.label.toLowerCase();
@@ -159,7 +173,7 @@ export default function FilterOmnibar({
         }
         if (qi === q.length) score = 1000;
       }
-      if (score) scored.push({ item, score: score + item.games });
+      if (score) scored.push({ item, score: score + (item.games || 0) });
     });
     scored.sort((a, b) => {
       // dead ends last, however well they matched
@@ -167,13 +181,13 @@ export default function FilterOmnibar({
       const bDead = b.item.games === 0;
       if (aDead !== bDead) return aDead ? 1 : -1;
       if (b.score !== a.score) return b.score - a.score;
-      const axisDelta = AXES.findIndex((x) => x.id === a.item.axisId)
-        - AXES.findIndex((x) => x.id === b.item.axisId);
+      const axisDelta = axes.findIndex((x) => x.id === a.item.axisId)
+        - axes.findIndex((x) => x.id === b.item.axisId);
       if (axisDelta) return axisDelta;
       return a.item.label.localeCompare(b.item.label);
     });
     return scored.map((entry) => entry.item);
-  }, [vocab, query]);
+  }, [vocab, query, axes]);
 
   const shown = matches.slice(0, MENU_LIMIT);
 
@@ -237,9 +251,9 @@ export default function FilterOmnibar({
       if (byState.get(item.state).some((existing) => existing.key === item.key)) return;
       byState.get(item.state).push(item);
     });
-    return STATE_ORDER.filter((state) => byState.has(state))
-      .map((state) => ({ state, label: STATE_LABEL[state], items: byState.get(state) }));
-  }, [vocab, isPicked]);
+    return stateOrder.filter((state) => byState.has(state))
+      .map((state) => ({ state, label: stateLabels[state], items: byState.get(state) }));
+  }, [vocab, isPicked, stateOrder, stateLabels]);
 
   const activeCount = chipGroups.reduce((sum, group) => sum + group.items.length, 0);
 
@@ -310,18 +324,18 @@ export default function FilterOmnibar({
               : (item.emoji || RACE_INITIAL[item.race] || '')}
           </span>
           <span className="wf-ob-lbl">{renderLabel(item)}</span>
-          <span className="wf-ob-n">{item.games}</span>
+          <span className="wf-ob-n">{item.games == null ? '' : item.games}</span>
         </button>,
       );
     });
   });
 
-  const browseAxes = AXES.map((axis) => {
+  const browseAxes = axes.map((axis) => {
     const items = vocab.filter((item) => item.axisId === axis.id);
     const active = items.filter(isPicked).length;
     const ranked = items
       .slice()
-      .sort((a, b) => b.games - a.games || a.label.localeCompare(b.label));
+      .sort((a, b) => (b.games || 0) - (a.games || 0) || a.label.localeCompare(b.label));
     const live = ranked.filter((item) => item.games > 0);
     const preview = previewText((live.length ? live : ranked).slice(0, 2).map((item) => item.label));
     // "+N" counts everything the preview did not name.
@@ -374,10 +388,10 @@ export default function FilterOmnibar({
           role="combobox"
           aria-expanded={open}
           aria-controls="wf-ob-menu"
-          aria-label="Filter games"
+          aria-label={`Filter ${noun}`}
           autoComplete="off"
           spellCheck="false"
-          placeholder={activeCount ? 'Add filter...' : 'Filter games...'}
+          placeholder={textFilter?.placeholder || (activeCount ? 'Add filter...' : `Filter ${noun}...`)}
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
@@ -386,8 +400,8 @@ export default function FilterOmnibar({
 
         <span className="wf-ob-count">
           {activeCount
-            ? <>{activeCount} filter{activeCount > 1 ? 's' : ''} &middot; <b>{totalGames}</b> games</>
-            : <><b>{totalGames}</b> games</>}
+            ? <>{activeCount} filter{activeCount > 1 ? 's' : ''} &middot; <b>{total}</b> {noun}</>
+            : <><b>{total}</b> {noun}</>}
         </span>
         {activeCount ? (
           <button type="button" className="wf-ob-clear" onClick={onClear}>clear</button>
@@ -398,8 +412,10 @@ export default function FilterOmnibar({
         <div className="wf-ob-menu" id="wf-ob-menu" role="listbox" ref={menuRef}>
           {flatShown.length === 0 ? (
             <div className="wf-ob-empty">
-              Nothing matches <b>{query}</b>. Try a build order (<b>9 Pool</b>), a tactic
-              (<b>Cannon Rush</b>), a map, or a player.
+              {textFilter
+                ? <>No filter options match. Showing {noun} whose name contains <b>{query}</b>.</>
+                : <>Nothing matches <b>{query}</b>. Try a build order (<b>9 Pool</b>), a tactic
+                  (<b>Cannon Rush</b>), a map, or a player.</>}
             </div>
           ) : (
             <>
@@ -448,7 +464,7 @@ export default function FilterOmnibar({
           <span className="wf-br-panel-label">{openEntry.axis.label}</span>
           {openEntry.items
             .slice()
-            .sort((a, b) => b.games - a.games || a.label.localeCompare(b.label))
+            .sort((a, b) => (b.games || 0) - (a.games || 0) || a.label.localeCompare(b.label))
             .map((item) => (
               <button
                 type="button"
@@ -457,7 +473,7 @@ export default function FilterOmnibar({
                 onClick={() => onToggle(item.state, item.key)}
               >
                 {item.label}
-                <span className="wf-br-opt-n">{item.games}</span>
+                <span className="wf-br-opt-n">{item.games == null ? '' : item.games}</span>
               </button>
             ))}
         </div>

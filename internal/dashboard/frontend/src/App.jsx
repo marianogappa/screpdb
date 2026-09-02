@@ -152,6 +152,15 @@ const GAME_SUMMARY_NEGATION_MIN_SECONDS = 7 * 60;
 
 const MAIN_GAME_SKILL_PROXY_TABS = ['first-unit-efficiency', 'unit-production-cadence', 'viewport-multitasking'];
 
+// The players-list FilterOmnibar axes. `min_games` is synthesized client-side
+// (the API models it as the boolean onlyFivePlus, not an options list).
+const PLAYERS_OMNIBAR_AXES = [
+  { id: 'lastPlayed', label: 'Last played', state: 'lastPlayed', source: 'last_played' },
+  { id: 'minGames', label: 'Games', state: 'onlyFivePlus', source: 'min_games' },
+];
+const PLAYERS_OMNIBAR_STATE_LABELS = { lastPlayed: 'Last played', onlyFivePlus: 'Games' };
+const PLAYERS_OMNIBAR_STATE_ORDER = ['lastPlayed', 'onlyFivePlus'];
+
 const isMainGameSkillProxyTab = (tab) => MAIN_GAME_SKILL_PROXY_TABS.includes(tab);
 
 const SKILL_PROXY_CADENCE_INFO_TEXT = 'ℹ️ How smoothly you keep adding army from the mid game on, not just how much, but how evenly you queue it. Formula: units/min ÷ (1 + gap CV).';
@@ -5366,7 +5375,7 @@ function App() {
             <FilterOmnibar
               filterOptions={mainGamesFilterOptions}
               selected={mainGamesFilters}
-              totalGames={mainGamesTotal}
+              total={mainGamesTotal}
               onToggle={toggleMainGameMultiFilter}
               onClear={clearMainGamesFilters}
             />
@@ -5528,39 +5537,31 @@ function App() {
 
             {mainPlayersTab === 'summary' ? (
               <>
-                <div className="workflow-summary-filter-row workflow-games-filter-row">
-                  <input
-                    type="text"
-                    className="workflow-summary-filter-input"
-                    placeholder="Filter by player name..."
-                    value={mainPlayersFilters.name}
-                    onChange={(e) => setMainPlayersSingleFilter('name', e.target.value)}
-                  />
-                  <label className="workflow-summary-filter-check">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(mainPlayersFilters.onlyFivePlus)}
-                      onChange={(e) => setMainPlayersSingleFilter('onlyFivePlus', e.target.checked)}
-                    />
-                    <span>Only 5+ games</span>
-                  </label>
-                  <div className="workflow-pattern-pills workflow-games-filter-pills">
-                    {(mainPlayersFilterOptions.last_played || []).map((option) => {
-                      const active = (mainPlayersFilters.lastPlayed || []).includes(option.key);
-                      return (
-                        <button
-                          key={`wf-player-last-${option.key}`}
-                          type="button"
-                          className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                          onClick={() => toggleMainPlayersMultiFilter('lastPlayed', option.key)}
-                        >
-                          {option.label} ({option.count})
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <button type="button" className="btn-create-manual" onClick={clearMainPlayersFilters}>Clear filters</button>
-                </div>
+                <FilterOmnibar
+                  filterOptions={{ ...mainPlayersFilterOptions, min_games: [{ key: '5plus', label: '5+ games' }] }}
+                  axes={PLAYERS_OMNIBAR_AXES}
+                  stateLabels={PLAYERS_OMNIBAR_STATE_LABELS}
+                  stateOrder={PLAYERS_OMNIBAR_STATE_ORDER}
+                  noun="players"
+                  selected={{
+                    lastPlayed: mainPlayersFilters.lastPlayed || [],
+                    onlyFivePlus: mainPlayersFilters.onlyFivePlus ? ['5plus'] : [],
+                  }}
+                  total={mainPlayersTotal}
+                  textFilter={{
+                    value: mainPlayersFilters.name,
+                    onChange: (value) => setMainPlayersSingleFilter('name', value),
+                    placeholder: 'Filter players by name or pick a filter...',
+                  }}
+                  onToggle={(state, key) => {
+                    if (state === 'onlyFivePlus') {
+                      setMainPlayersSingleFilter('onlyFivePlus', !mainPlayersFilters.onlyFivePlus);
+                    } else {
+                      toggleMainPlayersMultiFilter(state, key);
+                    }
+                  }}
+                  onClear={clearMainPlayersFilters}
+                />
                 {mainPlayersLoading ? (
                   <div className="loading">Loading players...</div>
                 ) : (
@@ -7178,10 +7179,23 @@ function App() {
                             <div className="wps-stats">
                               <div className="wps-stat">
                                 <span className="wps-stat-label">Ladder</span>
-                                <span className="wps-stat-value">{bnet.plays_ladder ? `${bnet.mmr || bnet.highest_mmr} MMR` : 'Unranked'}</span>
-                                {bnet.plays_ladder ? (
-                                  <span className="wps-stat-sub">{`${bnet.ladder_wins}-${bnet.ladder_losses}${bnet.highest_mmr > (bnet.mmr || 0) ? `, peak ${bnet.highest_mmr}` : ''}`}</span>
-                                ) : null}
+                                <span className="wps-stat-value">
+                                  {(() => {
+                                    if (!bnet.plays_ladder) return 'Unranked';
+                                    const mmr = Number(bnet.mmr || bnet.highest_mmr) || 0;
+                                    return mmr ? `${mmr} MMR` : 'Plays ladder';
+                                  })()}
+                                </span>
+                                {(() => {
+                                  if (!bnet.plays_ladder) return null;
+                                  const wins = Number(bnet.ladder_wins) || 0;
+                                  const losses = Number(bnet.ladder_losses) || 0;
+                                  const parts = [];
+                                  if (wins + losses > 0) parts.push(`${wins}-${losses}`);
+                                  const peak = Number(bnet.highest_mmr) || 0;
+                                  if (peak > (Number(bnet.mmr) || 0)) parts.push(`peak ${peak}`);
+                                  return parts.length ? <span className="wps-stat-sub">{parts.join(', ')}</span> : null;
+                                })()}
                               </div>
                               {bnet.lifetime_games ? (
                                 <div className="wps-stat">
@@ -7249,6 +7263,7 @@ function App() {
                             <div className="workflow-last-game-row wlg-head">
                               <span className="wlg-race" />
                               <span className="wlg-format">Type</span>
+                              <span className="wlg-len">Time</span>
                               <span className="wlg-map">Map</span>
                               <span className="wlg-result">W/L</span>
                               <span className="wlg-apm">APM</span>
@@ -7276,7 +7291,23 @@ function App() {
                                   <span className="wlg-race">
                                     {raceIcon ? <img src={raceIcon} alt={cp?.race || ''} title={cp?.race || ''} /> : null}
                                   </span>
-                                  <span className="wlg-format">{g.team_format || g.matchup || ''}</span>
+                                  <span className="wlg-format">
+                                    {(() => {
+                                      const format = g.team_format || '';
+                                      const matchup = String(g.matchup || '');
+                                      if (format && format !== '1v1') return format;
+                                      if (!matchup) return format;
+                                      // Orient the matchup from this player's side: kospetrov
+                                      // as Zerg in a PvZ game reads ZvP.
+                                      const mine = String(cp?.race || '').slice(0, 1).toUpperCase();
+                                      const sides = matchup.split('v');
+                                      if (mine && sides.length === 2 && sides[1] === mine && sides[0] !== mine) {
+                                        return `${sides[1]}v${sides[0]}`;
+                                      }
+                                      return matchup;
+                                    })()}
+                                  </span>
+                                  <span className="wlg-len">{formatDuration(g.duration_seconds)}</span>
                                   <span className="wlg-map">{renderMapNameWithKind(g.map_name, g.map_kind)}</span>
                                   <span className="wlg-result" title={resultTitle}>{resultEmoji}</span>
                                   <span className="wlg-apm" title="APM">{cp?.apm ?? ''}</span>
