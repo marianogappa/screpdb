@@ -545,79 +545,12 @@ func (d *Dashboard) PlayerUnitCadence(_ context.Context, request apigen.PlayerUn
 	return result, nil
 }
 
-func (d *Dashboard) PlayerOutliers(_ context.Context, request apigen.PlayerOutliersRequestObject) (any, error) {
+func (d *Dashboard) PlayerLastGames(_ context.Context, request apigen.PlayerLastGamesRequestObject) (any, error) {
 	playerKey := normalizePlayerKey(request.PlayerKey)
 	if playerKey == "" {
 		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("player key missing"))
 	}
-	outliers, err := d.buildWorkflowPlayerOutliers(playerKey)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
-		}
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return outliers, nil
-}
-
-func (d *Dashboard) PlayerSummaryPerMatchup(_ context.Context, request apigen.PlayerSummaryPerMatchupRequestObject) (any, error) {
-	playerKey := normalizePlayerKey(request.PlayerKey)
-	if playerKey == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("player key missing"))
-	}
-	result, err := d.buildWorkflowPlayerSummaryPerMatchup(playerKey)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
-		}
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return result, nil
-}
-
-func (d *Dashboard) PlayerSummarySpecial(_ context.Context, request apigen.PlayerSummarySpecialRequestObject) (any, error) {
-	playerKey := normalizePlayerKey(request.PlayerKey)
-	if playerKey == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("player key missing"))
-	}
-	result, err := d.buildWorkflowPlayerSummarySpecial(playerKey)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
-		}
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return result, nil
-}
-
-func (d *Dashboard) PlayerSummaryOutliers(_ context.Context, request apigen.PlayerSummaryOutliersRequestObject) (any, error) {
-	playerKey := normalizePlayerKey(request.PlayerKey)
-	if playerKey == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("player key missing"))
-	}
-	category := strings.TrimSpace(request.Params.Category)
-	if category == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("category is required"))
-	}
-	result, err := d.buildWorkflowPlayerSummaryOutliersForCategory(playerKey, category)
-	if err != nil {
-		if errors.Is(err, errUnknownOutlierCategory) {
-			return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
-		}
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
-		}
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return result, nil
-}
-
-func (d *Dashboard) PlayerRecentGames(_ context.Context, request apigen.PlayerRecentGamesRequestObject) (any, error) {
-	playerKey := normalizePlayerKey(request.PlayerKey)
-	if playerKey == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("player key missing"))
-	}
-	games, err := d.buildWorkflowPlayerRecentGames(playerKey)
+	games, err := d.buildWorkflowPlayerLastGames(playerKey)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
@@ -626,7 +559,7 @@ func (d *Dashboard) PlayerRecentGames(_ context.Context, request apigen.PlayerRe
 	}
 	return map[string]any{
 		"player_key":      playerKey,
-		"recent_games":    games,
+		"last_games":      games,
 		"summary_version": workflowSummaryVersion,
 	}, nil
 }

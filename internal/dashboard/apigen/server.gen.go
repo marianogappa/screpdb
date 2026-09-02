@@ -236,11 +236,6 @@ type PlayerUnitCadenceParams struct {
 	Filter *string `form:"filter,omitempty" json:"filter,omitempty"`
 }
 
-// PlayerSummaryOutliersParams defines parameters for PlayerSummaryOutliers.
-type PlayerSummaryOutliersParams struct {
-	Category string `form:"category" json:"category"`
-}
-
 // UpdateGlobalReplayFilterConfigJSONRequestBody defines body for UpdateGlobalReplayFilterConfig for application/json ContentType.
 type UpdateGlobalReplayFilterConfigJSONRequestBody = UpdateGlobalReplayFilterConfigRequest
 
@@ -631,20 +626,8 @@ type ServerInterface interface {
 	// (GET /api/players/{playerKey}/insights/unit-production-cadence)
 	PlayerUnitCadence(w http.ResponseWriter, r *http.Request, playerKey PlayerKey, params PlayerUnitCadenceParams)
 
-	// (GET /api/players/{playerKey}/outliers)
-	PlayerOutliers(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
-
-	// (GET /api/players/{playerKey}/recent-games)
-	PlayerRecentGames(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
-
-	// (GET /api/players/{playerKey}/summary/outliers)
-	PlayerSummaryOutliers(w http.ResponseWriter, r *http.Request, playerKey PlayerKey, params PlayerSummaryOutliersParams)
-
-	// (GET /api/players/{playerKey}/summary/per-matchup)
-	PlayerSummaryPerMatchup(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
-
-	// (GET /api/players/{playerKey}/summary/special)
-	PlayerSummarySpecial(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
+	// (GET /api/players/{playerKey}/last-games)
+	PlayerLastGames(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
 
 	// (GET /api/screp-colors)
 	ScrepColors(w http.ResponseWriter, r *http.Request)
@@ -1387,8 +1370,8 @@ func (siw *ServerInterfaceWrapper) PlayerUnitCadence(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
-// PlayerOutliers operation middleware
-func (siw *ServerInterfaceWrapper) PlayerOutliers(w http.ResponseWriter, r *http.Request) {
+// PlayerLastGames operation middleware
+func (siw *ServerInterfaceWrapper) PlayerLastGames(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
@@ -1403,127 +1386,7 @@ func (siw *ServerInterfaceWrapper) PlayerOutliers(w http.ResponseWriter, r *http
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PlayerOutliers(w, r, playerKey)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PlayerRecentGames operation middleware
-func (siw *ServerInterfaceWrapper) PlayerRecentGames(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "playerKey" -------------
-	var playerKey PlayerKey
-
-	err = runtime.BindStyledParameterWithOptions("simple", "playerKey", mux.Vars(r)["playerKey"], &playerKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playerKey", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PlayerRecentGames(w, r, playerKey)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PlayerSummaryOutliers operation middleware
-func (siw *ServerInterfaceWrapper) PlayerSummaryOutliers(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "playerKey" -------------
-	var playerKey PlayerKey
-
-	err = runtime.BindStyledParameterWithOptions("simple", "playerKey", mux.Vars(r)["playerKey"], &playerKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playerKey", Err: err})
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PlayerSummaryOutliersParams
-
-	// ------------- Required query parameter "category" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "category", r.URL.Query(), &params.Category, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "category"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "category", Err: err})
-		}
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PlayerSummaryOutliers(w, r, playerKey, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PlayerSummaryPerMatchup operation middleware
-func (siw *ServerInterfaceWrapper) PlayerSummaryPerMatchup(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "playerKey" -------------
-	var playerKey PlayerKey
-
-	err = runtime.BindStyledParameterWithOptions("simple", "playerKey", mux.Vars(r)["playerKey"], &playerKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playerKey", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PlayerSummaryPerMatchup(w, r, playerKey)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PlayerSummarySpecial operation middleware
-func (siw *ServerInterfaceWrapper) PlayerSummarySpecial(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "playerKey" -------------
-	var playerKey PlayerKey
-
-	err = runtime.BindStyledParameterWithOptions("simple", "playerKey", mux.Vars(r)["playerKey"], &playerKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playerKey", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PlayerSummarySpecial(w, r, playerKey)
+		siw.Handler.PlayerLastGames(w, r, playerKey)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1708,15 +1571,7 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/insights/unit-production-cadence", wrapper.PlayerUnitCadence).Methods(http.MethodGet)
 
-	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/outliers", wrapper.PlayerOutliers).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/recent-games", wrapper.PlayerRecentGames).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/summary/outliers", wrapper.PlayerSummaryOutliers).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/summary/per-matchup", wrapper.PlayerSummaryPerMatchup).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/summary/special", wrapper.PlayerSummarySpecial).Methods(http.MethodGet)
+	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/last-games", wrapper.PlayerLastGames).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/screp-colors", wrapper.ScrepColors).Methods(http.MethodGet)
 
@@ -2422,146 +2277,25 @@ func (response PlayerUnitCadence200JSONResponse) VisitPlayerUnitCadenceResponse(
 	return err
 }
 
-type PlayerOutliersRequestObject struct {
+type PlayerLastGamesRequestObject struct {
 	PlayerKey PlayerKey `json:"playerKey"`
 }
 
-type PlayerOutliersResponseObject interface {
-	VisitPlayerOutliersResponse(w http.ResponseWriter) error
+type PlayerLastGamesResponseObject interface {
+	VisitPlayerLastGamesResponse(w http.ResponseWriter) error
 }
 
-type PlayerOutliers200JSONResponse GenericValue
+type PlayerLastGames200JSONResponse GenericValue
 
-func (t PlayerOutliers200JSONResponse) MarshalJSON() ([]byte, error) {
+func (t PlayerLastGames200JSONResponse) MarshalJSON() ([]byte, error) {
 	return GenericValue(t).MarshalJSON()
 }
 
-func (t *PlayerOutliers200JSONResponse) UnmarshalJSON(b []byte) error {
+func (t *PlayerLastGames200JSONResponse) UnmarshalJSON(b []byte) error {
 	return (*GenericValue)(t).UnmarshalJSON(b)
 }
 
-func (response PlayerOutliers200JSONResponse) VisitPlayerOutliersResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PlayerRecentGamesRequestObject struct {
-	PlayerKey PlayerKey `json:"playerKey"`
-}
-
-type PlayerRecentGamesResponseObject interface {
-	VisitPlayerRecentGamesResponse(w http.ResponseWriter) error
-}
-
-type PlayerRecentGames200JSONResponse GenericValue
-
-func (t PlayerRecentGames200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *PlayerRecentGames200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response PlayerRecentGames200JSONResponse) VisitPlayerRecentGamesResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PlayerSummaryOutliersRequestObject struct {
-	PlayerKey PlayerKey `json:"playerKey"`
-	Params    PlayerSummaryOutliersParams
-}
-
-type PlayerSummaryOutliersResponseObject interface {
-	VisitPlayerSummaryOutliersResponse(w http.ResponseWriter) error
-}
-
-type PlayerSummaryOutliers200JSONResponse GenericValue
-
-func (t PlayerSummaryOutliers200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *PlayerSummaryOutliers200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response PlayerSummaryOutliers200JSONResponse) VisitPlayerSummaryOutliersResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PlayerSummaryPerMatchupRequestObject struct {
-	PlayerKey PlayerKey `json:"playerKey"`
-}
-
-type PlayerSummaryPerMatchupResponseObject interface {
-	VisitPlayerSummaryPerMatchupResponse(w http.ResponseWriter) error
-}
-
-type PlayerSummaryPerMatchup200JSONResponse GenericValue
-
-func (t PlayerSummaryPerMatchup200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *PlayerSummaryPerMatchup200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response PlayerSummaryPerMatchup200JSONResponse) VisitPlayerSummaryPerMatchupResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PlayerSummarySpecialRequestObject struct {
-	PlayerKey PlayerKey `json:"playerKey"`
-}
-
-type PlayerSummarySpecialResponseObject interface {
-	VisitPlayerSummarySpecialResponse(w http.ResponseWriter) error
-}
-
-type PlayerSummarySpecial200JSONResponse GenericValue
-
-func (t PlayerSummarySpecial200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *PlayerSummarySpecial200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response PlayerSummarySpecial200JSONResponse) VisitPlayerSummarySpecialResponse(w http.ResponseWriter) error {
+func (response PlayerLastGames200JSONResponse) VisitPlayerLastGamesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -2677,20 +2411,8 @@ type StrictServerInterface interface {
 	// (GET /api/players/{playerKey}/insights/unit-production-cadence)
 	PlayerUnitCadence(ctx context.Context, request PlayerUnitCadenceRequestObject) (PlayerUnitCadenceResponseObject, error)
 
-	// (GET /api/players/{playerKey}/outliers)
-	PlayerOutliers(ctx context.Context, request PlayerOutliersRequestObject) (PlayerOutliersResponseObject, error)
-
-	// (GET /api/players/{playerKey}/recent-games)
-	PlayerRecentGames(ctx context.Context, request PlayerRecentGamesRequestObject) (PlayerRecentGamesResponseObject, error)
-
-	// (GET /api/players/{playerKey}/summary/outliers)
-	PlayerSummaryOutliers(ctx context.Context, request PlayerSummaryOutliersRequestObject) (PlayerSummaryOutliersResponseObject, error)
-
-	// (GET /api/players/{playerKey}/summary/per-matchup)
-	PlayerSummaryPerMatchup(ctx context.Context, request PlayerSummaryPerMatchupRequestObject) (PlayerSummaryPerMatchupResponseObject, error)
-
-	// (GET /api/players/{playerKey}/summary/special)
-	PlayerSummarySpecial(ctx context.Context, request PlayerSummarySpecialRequestObject) (PlayerSummarySpecialResponseObject, error)
+	// (GET /api/players/{playerKey}/last-games)
+	PlayerLastGames(ctx context.Context, request PlayerLastGamesRequestObject) (PlayerLastGamesResponseObject, error)
 
 	// (GET /api/screp-colors)
 	ScrepColors(ctx context.Context, request ScrepColorsRequestObject) (ScrepColorsResponseObject, error)
@@ -3354,130 +3076,25 @@ func (sh *strictHandler) PlayerUnitCadence(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// PlayerOutliers operation middleware
-func (sh *strictHandler) PlayerOutliers(w http.ResponseWriter, r *http.Request, playerKey PlayerKey) {
-	var request PlayerOutliersRequestObject
+// PlayerLastGames operation middleware
+func (sh *strictHandler) PlayerLastGames(w http.ResponseWriter, r *http.Request, playerKey PlayerKey) {
+	var request PlayerLastGamesRequestObject
 
 	request.PlayerKey = playerKey
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PlayerOutliers(ctx, request.(PlayerOutliersRequestObject))
+		return sh.ssi.PlayerLastGames(ctx, request.(PlayerLastGamesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PlayerOutliers")
+		handler = middleware(handler, "PlayerLastGames")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PlayerOutliersResponseObject); ok {
-		if err := validResponse.VisitPlayerOutliersResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PlayerRecentGames operation middleware
-func (sh *strictHandler) PlayerRecentGames(w http.ResponseWriter, r *http.Request, playerKey PlayerKey) {
-	var request PlayerRecentGamesRequestObject
-
-	request.PlayerKey = playerKey
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PlayerRecentGames(ctx, request.(PlayerRecentGamesRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PlayerRecentGames")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PlayerRecentGamesResponseObject); ok {
-		if err := validResponse.VisitPlayerRecentGamesResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PlayerSummaryOutliers operation middleware
-func (sh *strictHandler) PlayerSummaryOutliers(w http.ResponseWriter, r *http.Request, playerKey PlayerKey, params PlayerSummaryOutliersParams) {
-	var request PlayerSummaryOutliersRequestObject
-
-	request.PlayerKey = playerKey
-	request.Params = params
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PlayerSummaryOutliers(ctx, request.(PlayerSummaryOutliersRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PlayerSummaryOutliers")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PlayerSummaryOutliersResponseObject); ok {
-		if err := validResponse.VisitPlayerSummaryOutliersResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PlayerSummaryPerMatchup operation middleware
-func (sh *strictHandler) PlayerSummaryPerMatchup(w http.ResponseWriter, r *http.Request, playerKey PlayerKey) {
-	var request PlayerSummaryPerMatchupRequestObject
-
-	request.PlayerKey = playerKey
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PlayerSummaryPerMatchup(ctx, request.(PlayerSummaryPerMatchupRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PlayerSummaryPerMatchup")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PlayerSummaryPerMatchupResponseObject); ok {
-		if err := validResponse.VisitPlayerSummaryPerMatchupResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PlayerSummarySpecial operation middleware
-func (sh *strictHandler) PlayerSummarySpecial(w http.ResponseWriter, r *http.Request, playerKey PlayerKey) {
-	var request PlayerSummarySpecialRequestObject
-
-	request.PlayerKey = playerKey
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PlayerSummarySpecial(ctx, request.(PlayerSummarySpecialRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PlayerSummarySpecial")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PlayerSummarySpecialResponseObject); ok {
-		if err := validResponse.VisitPlayerSummarySpecialResponse(w); err != nil {
+	} else if validResponse, ok := response.(PlayerLastGamesResponseObject); ok {
+		if err := validResponse.VisitPlayerLastGamesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -3514,33 +3131,32 @@ func (sh *strictHandler) ScrepColors(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"xcu+F3oHnha+oR86Bs886GROwV333wAAAP//",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

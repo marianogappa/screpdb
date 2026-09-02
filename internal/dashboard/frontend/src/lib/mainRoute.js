@@ -26,9 +26,8 @@ export const MAIN_PLAYERS_TABS = [
 
 export const MAIN_PLAYER_TABS = [
   'summary',
-  'skill-proxies',
   'hotkeys',
-  'recent-games',
+  'skill-proxies',
   'chat-summary',
 ];
 

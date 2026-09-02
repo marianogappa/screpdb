@@ -438,6 +438,8 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 		}
 		currentPlayer.Race = row.Race
 		currentPlayer.IsWinner = row.IsWinner
+		currentPlayer.APM = row.APM
+		currentPlayer.EAPM = row.EAPM
 		currentPlayer.PlayerKey = normalizePlayerKey(row.Name)
 		item := itemByReplayID[replayID]
 		if item == nil {
@@ -449,6 +451,13 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 	}
 	if len(playerIDs) == 0 {
 		return nil
+	}
+	dropped, err := d.dbStore.ListDroppedPlayerIDs(d.ctx, playerIDs)
+	if err != nil {
+		return err
+	}
+	for playerID, currentPlayer := range currentByPlayerID {
+		currentPlayer.Disconnected = dropped[playerID]
 	}
 	patternRows, err := d.dbStore.ListPatternValuesForPlayerIDs(d.ctx, playerIDs)
 	if err != nil {

@@ -9,6 +9,24 @@ import (
 	"context"
 )
 
+const CountPlayerBnetGames = `-- name: CountPlayerBnetGames :one
+SELECT COUNT(*)
+FROM replays r
+JOIN players p ON p.replay_id = r.id
+WHERE lower(trim(p.name)) = ?
+  AND p.is_observer = 0
+  AND r.game_source = 'AssumedBattleNet'
+`
+
+// Whether (and how much) a player appears in Battle.net-sourced replays; the
+// player page shows its Battle.net section only when this is non-zero.
+func (q *Queries) CountPlayerBnetGames(ctx context.Context, name string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, CountPlayerBnetGames, name)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const GetReplayPlayerHotkeyStream = `-- name: GetReplayPlayerHotkeyStream :one
 SELECT
   p.id,

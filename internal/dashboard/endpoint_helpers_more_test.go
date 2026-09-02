@@ -7,60 +7,6 @@ import (
 	"testing"
 )
 
-func TestOutlierIconKey(t *testing.T) {
-	if got := outlierIconKey("Build", "Barracks"); got == "" {
-		t.Error("Build Barracks should resolve to an icon key")
-	}
-	if got := outlierIconKey("Tech", "Psionic Storm"); got == "" {
-		t.Error("Tech Psionic Storm should map through High Templar to an icon key")
-	}
-	if got := outlierIconKey("Upgrade", "Singularity Charge (Dragoon Range)"); got == "" {
-		t.Error("Upgrade should map through Dragoon to an icon key")
-	}
-	if got := outlierIconKey("Tech", "Nonexistent Tech"); got != "" {
-		t.Errorf("unknown tech should yield empty icon key, got %q", got)
-	}
-	if got := outlierIconKey("UnknownCategory", "x"); got != "" {
-		t.Errorf("unknown category should yield empty icon key, got %q", got)
-	}
-}
-
-func TestOutlierUpgradeToUnit_MapAndParen(t *testing.T) {
-	if got := outlierUpgradeToUnit("Terran Infantry Weapons"); got != "Marine" {
-		t.Errorf("mapped upgrade = %q, want Marine", got)
-	}
-	if got := outlierUpgradeToUnit("Grooved Spines (Hydralisk Range)"); got != "Hydralisk" {
-		t.Errorf("pinned parenthetical = %q, want Hydralisk", got)
-	}
-	if got := outlierUpgradeToUnit("Made Up (Foobar Speed)"); got != "Foobar" {
-		t.Errorf("generic parenthetical extraction = %q, want Foobar", got)
-	}
-	if got := outlierUpgradeToUnit("No Parens Unknown"); got != "" {
-		t.Errorf("unknown with no parens should be empty, got %q", got)
-	}
-}
-
-func TestWorkflowOutlierSpecsAndLookup(t *testing.T) {
-	specs := workflowOutlierSpecs()
-	if len(specs) != 6 {
-		t.Fatalf("expected 6 outlier specs, got %d", len(specs))
-	}
-	spec, ok := lookupOutlierSpec("build")
-	if !ok || spec.CategoryLabel != "Build" {
-		t.Fatalf("case-insensitive lookup of build failed: %+v ok=%v", spec, ok)
-	}
-	if spec.NameColumn != "unit_type" {
-		t.Fatalf("Build spec NameColumn = %q, want unit_type", spec.NameColumn)
-	}
-	orderSpec, ok := lookupOutlierSpec("Order")
-	if !ok || !orderSpec.UseInstanceShare {
-		t.Fatalf("Order spec should use instance share: %+v ok=%v", orderSpec, ok)
-	}
-	if _, ok := lookupOutlierSpec("nope"); ok {
-		t.Error("unknown category should not resolve")
-	}
-}
-
 func TestWorkflowCanonicalOutlierName(t *testing.T) {
 	cases := []struct{ in, want string }{
 		{"Attack Move", "attackmove"},
@@ -86,24 +32,6 @@ func TestWorkflowSkipGenericTargetedOrder(t *testing.T) {
 		if workflowSkipGenericTargetedOrder(name) {
 			t.Errorf("expected %q not to be skipped", name)
 		}
-	}
-}
-
-func TestWorkflowItemAllowedForPrimaryRace(t *testing.T) {
-	techSpec := workflowOutlierCategorySpec{CategoryLabel: "Tech"}
-	orderSpec := workflowOutlierCategorySpec{CategoryLabel: "Order"}
-
-	if !workflowItemAllowedForPrimaryRace("Terran", techSpec, "Stim Packs") {
-		t.Error("non-Protoss race should allow everything")
-	}
-	if workflowItemAllowedForPrimaryRace("Protoss", techSpec, "Stim Packs") {
-		t.Error("Protoss should reject a Terran tech")
-	}
-	if !workflowItemAllowedForPrimaryRace("Protoss", orderSpec, "Attack Move") {
-		t.Error("Protoss should keep generic non-cast orders")
-	}
-	if workflowItemAllowedForPrimaryRace("Protoss", techSpec, "!!!") {
-		t.Error("Protoss with an empty canonical name should be rejected")
 	}
 }
 

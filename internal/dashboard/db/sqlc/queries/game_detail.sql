@@ -129,6 +129,7 @@ SELECT
   r.lobby_kind,
   r.duration_seconds,
   r.game_type,
+  r.team_format,
   r.matchup,
   r.team_stacking,
   r.team_info_incomplete,
@@ -150,7 +151,7 @@ FROM replays r
 JOIN players p ON p.replay_id = r.id
 WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
 ORDER BY r.replay_date DESC, r.id DESC
-LIMIT 12;
+LIMIT 10;
 
 -- name: ListPlayerFingerprintVectors :many
 -- Feature vectors for a player under a given feature version, ordered by replay

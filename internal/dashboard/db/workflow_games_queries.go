@@ -55,6 +55,8 @@ type WorkflowCurrentPlayerRow struct {
 	Name     string
 	Race     string
 	IsWinner bool
+	APM      int64
+	EAPM     int64
 }
 
 type WorkflowCurrentPlayerPatternRow struct {
@@ -398,7 +400,7 @@ func (s *Store) ListCurrentPlayersForReplayIDs(ctx context.Context, playerKey st
 		args = append(args, replayID)
 	}
 	rows, err := s.ReplayQueryContext(ctx, `
-		SELECT replay_id, id, name, race, is_winner
+		SELECT replay_id, id, name, race, is_winner, apm, eapm
 		FROM players
 		WHERE lower(trim(name)) = ?
 			AND is_observer = 0
@@ -411,7 +413,7 @@ func (s *Store) ListCurrentPlayersForReplayIDs(ctx context.Context, playerKey st
 	result := []WorkflowCurrentPlayerRow{}
 	for rows.Next() {
 		var row WorkflowCurrentPlayerRow
-		if err := rows.Scan(&row.ReplayID, &row.PlayerID, &row.Name, &row.Race, &row.IsWinner); err != nil {
+		if err := rows.Scan(&row.ReplayID, &row.PlayerID, &row.Name, &row.Race, &row.IsWinner, &row.APM, &row.EAPM); err != nil {
 			return nil, err
 		}
 		result = append(result, row)
@@ -703,6 +705,40 @@ func (s *Store) CountWorkflowMapKindGames(ctx context.Context) (map[string]int64
 		case "Regular", "UseMapSettings":
 			out["regular"] += count
 		}
+	}
+	return out, rows.Err()
+}
+
+// ListDroppedPlayerIDs returns which of the given players (players.id) have a
+// player_dropped game event in their replay, i.e. lost connection rather than
+// finishing the game.
+func (s *Store) ListDroppedPlayerIDs(ctx context.Context, playerIDs []int64) (map[int64]bool, error) {
+	out := map[int64]bool{}
+	if len(playerIDs) == 0 {
+		return out, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(playerIDs)), ",")
+	args := make([]any, 0, len(playerIDs))
+	for _, id := range playerIDs {
+		args = append(args, id)
+	}
+	rows, err := s.ReplayQueryContext(ctx, `
+		SELECT DISTINCT source_player_id
+		FROM replay_events
+		WHERE event_kind = 'game_event'
+			AND event_type = 'player_dropped'
+			AND source_player_id IN (`+placeholders+`)
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out[id] = true
 	}
 	return out, rows.Err()
 }

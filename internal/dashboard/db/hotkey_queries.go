@@ -85,3 +85,9 @@ func (s *Store) GetReplayPlayerHotkeyStream(ctx context.Context, replayID, playe
 		HotkeyStream: r.HotkeyStream,
 	}, nil
 }
+
+// CountPlayerBnetGames counts a player's Battle.net-sourced replays; the
+// player page shows its Battle.net section only when this is non-zero.
+func (s *Store) CountPlayerBnetGames(ctx context.Context, playerKey string) (int64, error) {
+	return sqlcgen.New(Trace(s.replayScoped())).CountPlayerBnetGames(ctx, playerKey)
+}

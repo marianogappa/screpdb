@@ -32,10 +32,6 @@ type DashboardService interface {
 	PlayerInsight(ctx context.Context, request apigen.PlayerInsightRequestObject) (HandlerResult, error)
 	PlayerApmHistogram(ctx context.Context, request apigen.PlayerApmHistogramRequestObject) (HandlerResult, error)
 	PlayerUnitCadence(ctx context.Context, request apigen.PlayerUnitCadenceRequestObject) (HandlerResult, error)
-	PlayerOutliers(ctx context.Context, request apigen.PlayerOutliersRequestObject) (HandlerResult, error)
-	PlayerRecentGames(ctx context.Context, request apigen.PlayerRecentGamesRequestObject) (HandlerResult, error)
-	PlayerSummaryOutliers(ctx context.Context, request apigen.PlayerSummaryOutliersRequestObject) (HandlerResult, error)
-	PlayerSummaryPerMatchup(ctx context.Context, request apigen.PlayerSummaryPerMatchupRequestObject) (HandlerResult, error)
-	PlayerSummarySpecial(ctx context.Context, request apigen.PlayerSummarySpecialRequestObject) (HandlerResult, error)
+	PlayerLastGames(ctx context.Context, request apigen.PlayerLastGamesRequestObject) (HandlerResult, error)
 	ScrepColors(ctx context.Context, request apigen.ScrepColorsRequestObject) (HandlerResult, error)
 }

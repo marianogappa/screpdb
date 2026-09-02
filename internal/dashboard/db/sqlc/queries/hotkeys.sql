@@ -42,3 +42,13 @@ SELECT
   p.hotkey_stream
 FROM players p
 WHERE p.replay_id = ? AND p.id = ?;
+
+-- name: CountPlayerBnetGames :one
+-- Whether (and how much) a player appears in Battle.net-sourced replays; the
+-- player page shows its Battle.net section only when this is non-zero.
+SELECT COUNT(*)
+FROM replays r
+JOIN players p ON p.replay_id = r.id
+WHERE lower(trim(p.name)) = ?
+  AND p.is_observer = 0
+  AND r.game_source = 'AssumedBattleNet';

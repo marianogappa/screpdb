@@ -113,28 +113,6 @@ func TestDashboardTotalDistinctPlayers(t *testing.T) {
 	}
 }
 
-func TestDashboardPlayerGamesByRace(t *testing.T) {
-	dash := newTestDashboard(t)
-	key := firstPlayerKey(t, dash)
-	byRace, err := dash.playerGamesByRace(key)
-	if err != nil {
-		t.Fatalf("playerGamesByRace: %v", err)
-	}
-	if len(byRace) == 0 {
-		t.Fatalf("expected at least one race for player %q", key)
-	}
-	var totalGames int64
-	for race, games := range byRace {
-		if games <= 0 {
-			t.Fatalf("race %q has non-positive game count %d", race, games)
-		}
-		totalGames += games
-	}
-	if totalGames <= 0 {
-		t.Fatal("expected positive total games across races")
-	}
-}
-
 func TestDashboardFirstExpansionAverageByPlayer(t *testing.T) {
 	dash := newTestDashboard(t)
 	averages, err := dash.firstExpansionAverageByPlayer()

@@ -283,6 +283,7 @@ SELECT
   r.lobby_kind,
   r.duration_seconds,
   r.game_type,
+  r.team_format,
   r.matchup,
   r.team_stacking,
   r.team_info_incomplete,
@@ -304,7 +305,7 @@ FROM replays r
 JOIN players p ON p.replay_id = r.id
 WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
 ORDER BY r.replay_date DESC, r.id DESC
-LIMIT 12
+LIMIT 10
 `
 
 type ListPlayerRecentGamesRow struct {
@@ -317,6 +318,7 @@ type ListPlayerRecentGamesRow struct {
 	LobbyKind          string
 	DurationSeconds    int64
 	GameType           string
+	TeamFormat         string
 	Matchup            string
 	TeamStacking       bool
 	TeamInfoIncomplete bool
@@ -343,6 +345,7 @@ func (q *Queries) ListPlayerRecentGames(ctx context.Context, name string) ([]Lis
 			&i.LobbyKind,
 			&i.DurationSeconds,
 			&i.GameType,
+			&i.TeamFormat,
 			&i.Matchup,
 			&i.TeamStacking,
 			&i.TeamInfoIncomplete,

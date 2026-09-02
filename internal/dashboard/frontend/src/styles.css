@@ -7039,3 +7039,28 @@ span[data-tip],
 .hk-sig-axis { display: grid; grid-template-columns: 30px 1fr; gap: 10px; margin-top: 2px; }
 .hk-sig-axis-in { position: relative; height: 14px; font-size: 9.5px; color: var(--e-quiet); }
 .hk-sig-axis-in span { position: absolute; transform: translateX(-50%); }
+
+/* ---- Player page: last games rows on the Summary tab ---- */
+
+.workflow-player-summary-meta { margin-bottom: 10px; }
+.workflow-last-games { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.workflow-last-game-row {
+  display: grid;
+  grid-template-columns: 26px 52px minmax(130px, 1fr) 24px 44px minmax(0, 3fr) 220px;
+  gap: 10px; align-items: center;
+  padding: 6px 10px; border: 1px solid var(--e-line); border-radius: 8px;
+  cursor: pointer;
+}
+.workflow-last-game-row:hover { background: rgba(255, 255, 255, 0.04); }
+.wlg-race img { width: 20px; height: 20px; display: block; }
+.wlg-format { font-size: 12px; color: var(--e-base); white-space: nowrap; }
+.wlg-map { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wlg-result { text-align: center; }
+.wlg-apm { font-size: 12px; color: var(--e-quiet); text-align: right; }
+.wlg-featuring { min-width: 0; }
+.wlg-featuring .workflow-pattern-pills { flex-wrap: wrap; }
+.wlg-comp { min-width: 0; }
+@media (max-width: 1100px) {
+  .workflow-last-game-row { grid-template-columns: 26px 52px minmax(110px, 1fr) 24px 44px minmax(0, 2fr); }
+  .wlg-comp { display: none; }
+}

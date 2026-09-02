@@ -50,10 +50,8 @@ func TestReadOnlyEndpointSweep(t *testing.T) {
 	}
 	playerPaths := []string{
 		"",
-		"/recent-games",
+		"/last-games",
 		"/chat-summary",
-		"/summary/per-matchup",
-		"/summary/special",
 		"/hotkey-signature",
 		"/insights/apm-histogram",
 		"/insights/unit-production-cadence",

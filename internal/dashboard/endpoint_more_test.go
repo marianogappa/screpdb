@@ -186,67 +186,28 @@ func TestPlayersUnitCadenceEndpoint_Params(t *testing.T) {
 	}
 }
 
-func TestPlayerOutliersEndpoint(t *testing.T) {
+func TestPlayerLastGamesEndpoint_ShapeAndUnknown(t *testing.T) {
 	dash := newTestDashboard(t)
 	router := dash.setupRouter()
 	key := firstPlayerKey(t, dash)
 
-	rec := performDashboardRequest(router, http.MethodGet, "/api/players/"+key+"/outliers", nil)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
-	}
-	if !json.Valid(rec.Body.Bytes()) {
-		t.Fatalf("invalid JSON: %s", rec.Body.String())
-	}
-
-	// Unknown player returns 404, consistent with PlayerDetail/PlayerRecentGames:
-	// GetOutlierPlayerSummary now COALESCEs the NULL-name aggregate to an empty
-	// string, so the builder yields sql.ErrNoRows instead of a scan error.
-	rec = performDashboardRequest(router, http.MethodGet, "/api/players/__nobody__/outliers", nil)
-	if rec.Code != http.StatusNotFound {
-		t.Fatalf("unknown player outliers expected 404, got %d: %s", rec.Code, rec.Body.String())
-	}
-}
-
-func TestPlayerSummaryOutliersEndpoint(t *testing.T) {
-	dash := newTestDashboard(t)
-	router := dash.setupRouter()
-	key := firstPlayerKey(t, dash)
-
-	for _, category := range []string{"Order", "Build", "Train", "Morph", "Tech", "Upgrade"} {
-		rec := performDashboardRequest(router, http.MethodGet, "/api/players/"+key+"/summary/outliers?category="+category, nil)
-		if rec.Code != http.StatusOK {
-			t.Fatalf("category %q status %d: %s", category, rec.Code, rec.Body.String())
-		}
-		if !json.Valid(rec.Body.Bytes()) {
-			t.Fatalf("category %q invalid JSON: %s", category, rec.Body.String())
-		}
-	}
-
-	rec := performDashboardRequest(router, http.MethodGet, "/api/players/"+key+"/summary/outliers?category=BogusCategory", nil)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("unknown category expected 400, got %d: %s", rec.Code, rec.Body.String())
-	}
-
-	rec = performDashboardRequest(router, http.MethodGet, "/api/players/"+key+"/summary/outliers", nil)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("missing category expected 400, got %d: %s", rec.Code, rec.Body.String())
-	}
-}
-
-func TestPlayerRecentGamesEndpoint_ShapeAndUnknown(t *testing.T) {
-	dash := newTestDashboard(t)
-	router := dash.setupRouter()
-	key := firstPlayerKey(t, dash)
-
-	rec := performDashboardRequest(router, http.MethodGet, "/api/players/"+key+"/recent-games", nil)
+	rec := performDashboardRequest(router, http.MethodGet, "/api/players/"+key+"/last-games", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
 	}
 	var resp struct {
-		PlayerKey      string            `json:"player_key"`
-		SummaryVersion string            `json:"summary_version"`
-		RecentGames    []json.RawMessage `json:"recent_games"`
+		PlayerKey      string `json:"player_key"`
+		SummaryVersion string `json:"summary_version"`
+		LastGames      []struct {
+			ReplayID      int64  `json:"replay_id"`
+			TeamFormat    string `json:"team_format"`
+			MapKind       string `json:"map_kind"`
+			CurrentPlayer *struct {
+				Race        string          `json:"race"`
+				APM         int64           `json:"apm"`
+				Composition json.RawMessage `json:"composition"`
+			} `json:"current_player"`
+		} `json:"last_games"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("unmarshal: %v", err)
@@ -257,8 +218,19 @@ func TestPlayerRecentGamesEndpoint_ShapeAndUnknown(t *testing.T) {
 	if resp.SummaryVersion == "" {
 		t.Fatal("expected summary_version")
 	}
+	if len(resp.LastGames) == 0 || len(resp.LastGames) > 10 {
+		t.Fatalf("expected 1..10 last games, got %d", len(resp.LastGames))
+	}
+	for _, g := range resp.LastGames {
+		if g.TeamFormat == "" {
+			t.Fatalf("game %d missing team_format", g.ReplayID)
+		}
+		if g.CurrentPlayer == nil || g.CurrentPlayer.Race == "" {
+			t.Fatalf("game %d missing current player context", g.ReplayID)
+		}
+	}
 
-	rec = performDashboardRequest(router, http.MethodGet, "/api/players/__nobody__/recent-games", nil)
+	rec = performDashboardRequest(router, http.MethodGet, "/api/players/__nobody__/last-games", nil)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("unknown player expected 404, got %d: %s", rec.Code, rec.Body.String())
 	}
