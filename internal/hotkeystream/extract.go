@@ -92,6 +92,18 @@ var upgradeBuilding = map[string]string{
 	"Apial Sensors (Scout Sight)": "Fleet Beacon", "Gravitic Thrusters (Scout Speed)": "Fleet Beacon",
 }
 
+// canonicalBuildingName translates the screp unit names that differ from the
+// canonical building names used across this package (and the wire enum).
+func canonicalBuildingName(screpName string) string {
+	switch screpName {
+	case "ComSat":
+		return "Comsat Station"
+	case "Queens Nest":
+		return "Queen's Nest"
+	}
+	return screpName
+}
+
 // townHalls have no Build command when they are the spawn-seeded main; their
 // location falls back to the player's start location.
 var townHalls = map[string]bool{"Hatchery": true, "Command Center": true, "Nexus": true}
@@ -241,7 +253,7 @@ func Extract(r *rep.Replay) map[byte][]Event {
 			if !ok || bc.Unit == nil {
 				continue
 			}
-			name := bc.Unit.Name
+			name := canonicalBuildingName(bc.Unit.Name)
 			pe.builds[name] = append(pe.builds[name], buildPlacement{frame: frame, x: int(bc.Pos.X), y: int(bc.Pos.Y)})
 			if len(s.cur) == 1 {
 				if parent, isAddon := addonParent[name]; isAddon {
