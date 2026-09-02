@@ -140,7 +140,7 @@ func TestBatchInsertPatternResults(t *testing.T) {
 
 	before, err := store.Query(ctx,
 		"SELECT COUNT(*) AS c FROM replay_events WHERE event_kind = 'marker' AND event_type = ? AND replay_id = ?",
-		"used_hotkey_groups", replayID)
+		"never_used_hotkeys", replayID)
 	if err != nil {
 		t.Fatalf("count before: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestBatchInsertPatternResults(t *testing.T) {
 
 	results := []*core.PatternResult{
 		{
-			PatternName:      "Used Hotkey Groups",
+			PatternName:      "Never used hotkeys",
 			ReplayID:         replayID,
 			PlayerID:         &playerID,
 			DetectedAtSecond: 123,
@@ -172,12 +172,12 @@ func TestBatchInsertPatternResults(t *testing.T) {
 
 	after, err := store.Query(ctx,
 		"SELECT seconds_from_game_start AS s, payload AS p FROM replay_events WHERE event_kind = 'marker' AND event_type = ? AND replay_id = ? AND source_player_id = ?",
-		"used_hotkey_groups", replayID, playerID)
+		"never_used_hotkeys", replayID, playerID)
 	if err != nil {
 		t.Fatalf("query after: %v", err)
 	}
 	if len(after) != 1 {
-		t.Fatalf("expected exactly 1 used_hotkey_groups row for player %d after insert, got %d", playerID, len(after))
+		t.Fatalf("expected exactly 1 never_used_hotkeys row for player %d after insert, got %d", playerID, len(after))
 	}
 	sec, ok := asInt64(after[0]["s"])
 	if !ok || sec != 123 {

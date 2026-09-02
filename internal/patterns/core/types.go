@@ -300,8 +300,10 @@ import (
 // second deltas instead of frame deltas, assigns annotated with either the
 // selection size (unit groups) or the proven building type and its build tile
 // (single-building groups, classified from selection-state evidence nearest in
-// time to the assign). Old v1 blobs still decode, without annotations;
-// re-ingest to backfill them.
+// time to the assign). Unit counts cap at Brood War's 12-unit selection limit.
+// Old v1 blobs still decode, without annotations; re-ingest to backfill them.
+// The used_hotkey_groups marker (and its pill) is retired with this: positive
+// hotkey signal now reads from the stream, while never_used_hotkeys stays.
 const AlgorithmVersion = 68
 
 // DetectorLevel indicates at which level a pattern detector operates
@@ -330,7 +332,7 @@ type PatternResult struct {
 
 	// Payload is the optional JSON blob persisted to replay_events.payload.
 	// Empty for presence-only markers. Populated only by markers that carry extra data
-	// beyond presence (currently: used_hotkey_groups, viewport_multitasking).
+	// beyond presence (currently: viewport_multitasking).
 	Payload json.RawMessage
 }
 

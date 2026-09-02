@@ -168,7 +168,6 @@ func IsCurated(featureKey string) bool {
 // measurements (hotkey-group usage), not fallible pattern detections, so there
 // is nothing for a human to verify against a replay.
 var betaExemptFeatureKeys = map[string]bool{
-	"used_hotkey_groups": true,
 	"never_used_hotkeys": true,
 	// Deterministic facts / phase boundaries, not fallible detections — there is
 	// nothing to verify against a replay, so they carry no "beta" tag (round 10).

@@ -1871,29 +1871,6 @@ const renderMatchupPatternSection = (title, entries, keyPrefix, registry, gameEv
   );
 };
 
-// renderHotkeyGroups lays out the hotkey group numbers space-separated (no
-// commas) beside the keyboard glyph. With more than 3 groups it wraps onto two
-// rows — first row gets max(3, ceil(n/2)), so e.g. 4→"1 2 3"/"4",
-// 6→"1 2 3"/"4 5 6", 7→"1 2 3 4"/"5 6 7" — with the glyph vertically centered.
-const renderHotkeyGroups = (label) => {
-  const nums = String(label || '').split(',').map((s) => s.trim()).filter(Boolean);
-  let rows;
-  if (nums.length > 3) {
-    const r1 = Math.max(3, Math.ceil(nums.length / 2));
-    rows = [nums.slice(0, r1), nums.slice(r1)];
-  } else {
-    rows = [nums];
-  }
-  return (
-    <>
-      <span className="workflow-hotkey-emoji" aria-label="hotkeys">⌨️</span>
-      <span className="workflow-hotkey-nums">
-        {rows.map((r, i) => <span key={i}>{r.join(' ')}</span>)}
-      </span>
-    </>
-  );
-};
-
 const renderPatternPill = (pattern, keyPrefix, team, registry) => {
   if (!registry) return null;
   const def = lookupDefinitionForPattern(registry, pattern);
@@ -1904,22 +1881,17 @@ const renderPatternPill = (pattern, keyPrefix, team, registry) => {
   // "BUILD ORDER" legend on their top border instead of an inline prefix — the
   // legend + accent colour identify the pill type.
   const isOpener = isOpenerEventType(pattern?.event_type);
-  const isHotkeys = pattern?.event_type === 'used_hotkey_groups';
-  // A top-border legend names the pill type (opener / hotkeys); the
-  // Spellcasts pill carries its own legend (see SpellcastsPill).
-  const legendText = isOpener ? 'Build Order' : (isHotkeys ? 'Hotkeys' : null);
+  // A top-border legend names the pill type (opener); the Spellcasts pill
+  // carries its own legend (see SpellcastsPill).
+  const legendText = isOpener ? 'Build Order' : null;
   const className = `${pillClassName(rendered.style)} ${pillEventTypeClass(pattern?.event_type)} ${legendText ? 'workflow-pill-legended' : ''}`.trim();
   const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.event_type || ''}-${pattern?.detected_second ?? ''}`;
   return (
     <span key={key} className={className} title={rendered.title || undefined}>
       {legendText ? <span className="workflow-pill-legend">{legendText}</span> : null}
       {team !== undefined ? <span className="team-dot" style={{ backgroundColor: getTeamColor(team) }}></span> : null}
-      {isHotkeys ? renderHotkeyGroups(rendered.label) : (
-        <>
-          {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
-          {rendered.label ? <span>{rendered.label}</span> : null}
-        </>
-      )}
+      {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
+      {rendered.label ? <span>{rendered.label}</span> : null}
       {featureIsBeta(def) ? <BetaTag /> : null}
     </span>
   );
@@ -7051,7 +7023,6 @@ function App() {
                         <HotkeyMaps
                           replayId={selectedReplayId}
                           players={mainGameHotkeys.players || []}
-                          durationSeconds={mainGameHotkeys.duration_seconds || mainGame.duration_seconds || 0}
                         />
                       </>
                     ) : null}
@@ -7637,7 +7608,6 @@ function App() {
 
                   {mainPlayerTab === 'hotkeys' && (
                     <div className="workflow-card">
-                      <div className="workflow-card-title"><span>Hotkey signature</span></div>
                       {mainPlayerHotkeySigLoading ? <div className="chart-empty">Loading hotkey signature...</div> : null}
                       {!mainPlayerHotkeySigLoading && mainPlayerHotkeySigError ? <div className="chart-empty">{mainPlayerHotkeySigError}</div> : null}
                       {!mainPlayerHotkeySigLoading && !mainPlayerHotkeySigError && mainPlayerHotkeySig ? (

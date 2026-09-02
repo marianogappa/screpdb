@@ -140,7 +140,7 @@ func TestWorkflowFilterCounts(t *testing.T) {
 		teamFormat: "4v4", matchup: "", teamStacking: true,
 	})
 	p1 := seedPlayer(t, conn, playerFixture{replayID: r1, name: "A", race: "Terran", team: 1, apm: 100, eapm: 80})
-	seedMarker(t, conn, r1, &p1, "used_hotkey_groups", 30, nil)
+	seedMarker(t, conn, r1, &p1, "never_used_hotkeys", 30, nil)
 	seedGameEvent(t, conn, r1, "zergling_rush", 200)
 	seedGameEvent(t, conn, r2, "drop", 400)
 
@@ -161,7 +161,7 @@ func TestWorkflowFilterCounts(t *testing.T) {
 	}
 
 	counts, err := store.CountWorkflowFeaturingGames(ctx, []string{
-		"zergling_rush", "drop", "team_stacking", "used_hotkey_groups", "not_a_real_feature",
+		"zergling_rush", "drop", "team_stacking", "never_used_hotkeys", "not_a_real_feature",
 	})
 	if err != nil {
 		t.Fatalf("CountWorkflowFeaturingGames: %v", err)
@@ -174,6 +174,9 @@ func TestWorkflowFilterCounts(t *testing.T) {
 	}
 	if counts["team_stacking"] != 1 {
 		t.Fatalf("team_stacking count wrong: %v", counts)
+	}
+	if counts["never_used_hotkeys"] != 1 {
+		t.Fatalf("never_used_hotkeys count wrong: %v", counts)
 	}
 	if _, ok := counts["not_a_real_feature"]; ok {
 		t.Fatalf("unknown feature must be skipped: %v", counts)

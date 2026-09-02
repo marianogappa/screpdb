@@ -91,13 +91,24 @@ func (d *Dashboard) handlerHotkeyMap(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "player_id is required", http.StatusBadRequest)
 		return
 	}
-	minute := int64(hotkeyMapDefaultMinute)
+	cutoffSec := int64(hotkeyMapDefaultMinute * 60)
 	if raw := strings.TrimSpace(r.URL.Query().Get("minute")); raw != "" {
-		minute, err = strconv.ParseInt(raw, 10, 64)
+		minute, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil || minute < 0 || minute > 180 {
 			http.Error(w, "minute out of range", http.StatusBadRequest)
 			return
 		}
+		cutoffSec = minute * 60
+	}
+	// An exact-second cutoff overrides the minute: the frontend notches the
+	// slider at building-assign moments, not at whole minutes.
+	if raw := strings.TrimSpace(r.URL.Query().Get("second")); raw != "" {
+		second, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || second < 0 || second > 180*60 {
+			http.Error(w, "second out of range", http.StatusBadRequest)
+			return
+		}
+		cutoffSec = second
 	}
 
 	summary, err := d.dbStore.GetReplaySummary(r.Context(), replayID)
@@ -125,9 +136,9 @@ func (d *Dashboard) handlerHotkeyMap(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no hotkey stream for player", http.StatusNotFound)
 		return
 	}
-	buildings := hotkeyBuildingsAtMinute(events, minute)
+	buildings := hotkeyBuildingsAtCutoff(events, int32(cutoffSec))
 	if len(buildings) == 0 {
-		http.Error(w, "no located hotkeyed buildings at that minute", http.StatusNotFound)
+		http.Error(w, "no located hotkeyed buildings at that moment", http.StatusNotFound)
 		return
 	}
 
@@ -148,10 +159,9 @@ func (d *Dashboard) handlerHotkeyMap(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(composite)
 }
 
-// hotkeyBuildingsAtMinute reduces a decoded stream to the located buildings
-// each group held at the cutoff: the last assign at or before it wins.
-func hotkeyBuildingsAtMinute(events []hotkeystream.Event, minute int64) []hotkeyMapBuilding {
-	cutoff := int32(minute * 60)
+// hotkeyBuildingsAtCutoff reduces a decoded stream to the located buildings
+// each group held at the cutoff second: the last assign at or before it wins.
+func hotkeyBuildingsAtCutoff(events []hotkeystream.Event, cutoff int32) []hotkeyMapBuilding {
 	last := map[byte]*hotkeystream.Event{}
 	for i := range events {
 		e := &events[i]

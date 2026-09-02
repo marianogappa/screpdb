@@ -29,7 +29,7 @@ func testTerrainPNG(t *testing.T, widthTiles, heightTiles int) []byte {
 	return buf.Bytes()
 }
 
-func TestHotkeyBuildingsAtMinute(t *testing.T) {
+func TestHotkeyBuildingsAtCutoff(t *testing.T) {
 	events := []hotkeystream.Event{
 		{Sec: 10, Type: hotkeystream.TypeAssignBuilding, Group: 5, Building: hotkeystream.BuildingID("Hatchery"), TileX: 10, TileY: 10},
 		{Sec: 20, Type: hotkeystream.TypeSelect, Group: 5},
@@ -43,15 +43,15 @@ func TestHotkeyBuildingsAtMinute(t *testing.T) {
 		// Beyond the cutoff: ignored.
 		{Sec: 700, Type: hotkeystream.TypeAssignBuilding, Group: 9, Building: hotkeystream.BuildingID("Barracks"), TileX: 50, TileY: 50},
 	}
-	atMin5 := hotkeyBuildingsAtMinute(events, 5)
+	atMin5 := hotkeyBuildingsAtCutoff(events, 5*60)
 	if len(atMin5) != 1 || atMin5[0].group != 5 || atMin5[0].building != "Hatchery" {
 		t.Fatalf("minute 5: %+v", atMin5)
 	}
-	atMin10 := hotkeyBuildingsAtMinute(events, 10)
+	atMin10 := hotkeyBuildingsAtCutoff(events, 10*60)
 	if len(atMin10) != 1 || atMin10[0].group != 6 || atMin10[0].building != "Comsat Station" {
 		t.Fatalf("minute 10: %+v", atMin10)
 	}
-	if got := hotkeyBuildingsAtMinute(events, 0); len(got) != 0 {
+	if got := hotkeyBuildingsAtCutoff(events, 0); len(got) != 0 {
 		t.Fatalf("minute 0 must have no buildings, got %+v", got)
 	}
 }

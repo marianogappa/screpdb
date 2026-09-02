@@ -415,7 +415,9 @@ func annotate(pe *playerExtract, startTile *buildPlacement) []Event {
 					out.Count = 1
 				}
 			} else {
-				out.Count = byte(min(e.selSize, 255))
+				// Brood War caps a selection at 12 units; larger reconstructed
+				// unions come from stale tags the real game had already dropped.
+				out.Count = byte(min(e.selSize, 12))
 			}
 		}
 		events = append(events, out)

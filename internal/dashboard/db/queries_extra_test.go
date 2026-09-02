@@ -360,9 +360,11 @@ func TestTimingRowsQueries(t *testing.T) {
 func TestListHotkeyGamesRateByPlayer(t *testing.T) {
 	s, conn := newTestStore(t)
 	ctx := context.Background()
-	replayID, boxerID, _ := fixtureBasic1v1(t, conn)
+	_, boxerID, _ := fixtureBasic1v1(t, conn)
 
-	seedMarker(t, conn, replayID, &boxerID, "used_hotkey_groups", 10, nil)
+	// The rate reads players.hotkey_stream (the used_hotkey_groups marker was
+	// retired); any non-NULL blob counts as a hotkey game.
+	mustExec(t, conn, `UPDATE players SET hotkey_stream = X'FF02' WHERE id = ?`, boxerID)
 
 	rates, err := s.ListHotkeyGamesRateByPlayer(ctx)
 	if err != nil {

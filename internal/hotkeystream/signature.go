@@ -48,10 +48,13 @@ type KeyRun struct {
 
 // KeySignature is one hotkey group's aggregated behaviour.
 type KeySignature struct {
-	Key       int      `json:"key"`
-	Runs      []KeyRun `json:"runs"`
-	Uses      int      `json:"uses"`
-	UsedGames int      `json:"used_games"`
+	Key  int      `json:"key"`
+	Runs []KeyRun `json:"runs"`
+	// AssignRuns are the minute spans in which the key was (re)assigned,
+	// aggregated across games; Category is always "assign".
+	AssignRuns []KeyRun `json:"assign_runs"`
+	Uses       int      `json:"uses"`
+	UsedGames  int      `json:"used_games"`
 	// MedianCount is the median selection size of unit assigns on this key.
 	MedianCount int `json:"median_count"`
 }
@@ -81,6 +84,7 @@ func ComputeSignature(playerName, race string, games [][]Event) *Signature {
 	}
 	// perKeyMin[key][minute]
 	perKeyMin := map[int]map[int]*minuteAgg{}
+	assignsPerMin := map[int]map[int]int{}
 	usedGames := map[int]int{}
 	uses := map[int]int{}
 	unitCounts := map[int][]int{}
@@ -98,16 +102,25 @@ func ComputeSignature(playerName, race string, games [][]Event) *Signature {
 				continue
 			}
 			k := int(e.Group)
+			noteAssign := func() {
+				assigned[k] = true
+				if m := int(e.Sec) / 60; m <= signatureMaxMinute {
+					if assignsPerMin[k] == nil {
+						assignsPerMin[k] = map[int]int{}
+					}
+					assignsPerMin[k][m]++
+				}
+			}
 			switch e.Type {
 			case TypeAssignUnits:
 				curCat[k] = CategoryUnits
-				assigned[k] = true
+				noteAssign()
 				if e.Count > 0 {
 					unitCounts[k] = append(unitCounts[k], int(e.Count))
 				}
 			case TypeAssignBuilding:
 				curCat[k] = CategoryOf(BuildingName(e.Building))
-				assigned[k] = true
+				noteAssign()
 			default:
 				uses[k]++
 				cat := curCat[k]
@@ -208,7 +221,7 @@ func ComputeSignature(playerName, race string, games [][]Event) *Signature {
 		if len(runs) == 0 {
 			continue
 		}
-		ks := KeySignature{Key: k, Runs: runs, Uses: uses[k], UsedGames: usedGames[k]}
+		ks := KeySignature{Key: k, Runs: runs, AssignRuns: assignRunsFor(assignsPerMin[k]), Uses: uses[k], UsedGames: usedGames[k]}
 		if counts := unitCounts[k]; len(counts) > 0 {
 			sort.Ints(counts)
 			ks.MedianCount = counts[len(counts)/2]
@@ -220,6 +233,29 @@ func ComputeSignature(playerName, race string, games [][]Event) *Signature {
 	}
 	sig.Prose = signatureProse(playerName, race, sig)
 	return sig
+}
+
+// assignRunsFor folds per-minute assign counts into consecutive-minute spans.
+func assignRunsFor(perMin map[int]int) []KeyRun {
+	if len(perMin) == 0 {
+		return nil
+	}
+	var minutes []int
+	for m := range perMin {
+		minutes = append(minutes, m)
+	}
+	sort.Ints(minutes)
+	var runs []KeyRun
+	for _, m := range minutes {
+		if len(runs) > 0 && runs[len(runs)-1].EndMin >= m-1 {
+			last := &runs[len(runs)-1]
+			last.EndMin = m
+			last.Presses += perMin[m]
+		} else {
+			runs = append(runs, KeyRun{StartMin: m, EndMin: m, Category: "assign", Presses: perMin[m], Share: 1})
+		}
+	}
+	return runs
 }
 
 var raceHall = map[string]string{"Zerg": "Hatchery", "Terran": "Command Center", "Protoss": "Nexus"}

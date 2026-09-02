@@ -2141,8 +2141,9 @@ func allMarkers() []Marker {
 			// viewport-multitasking widget, not the summary pill row.
 		},
 
-		// Hotkey markers. Migrated from the imperative detectors; same
-		// PatternNames so DB + FE stay compatible.
+		// Hotkey marker. Positive hotkey usage lives in players.hotkey_stream
+		// (the used_hotkey_groups marker was retired with it); only the
+		// negative signal remains a marker + pill.
 
 		{
 			Name:             "Never used hotkeys",
@@ -2156,21 +2157,6 @@ func allMarkers() []Marker {
 				Label: "🚫 hotkeys",
 				Style: PillStyleNegative,
 				Title: "No hotkey-group commands in this replay (same 7+ minute gate as the detector).",
-			},
-		},
-		{
-			Name:         "Used Hotkey Groups",
-			PatternName:  "Used Hotkey Groups",
-			FeatureKey:   "used_hotkey_groups",
-			Kind:         KindMarker,
-			Custom:       newUsedHotkeyGroupsEvaluator,
-			RuleDeadline: endOfReplaySentinel,
-			SummaryPlayer: &Pill{
-				// The keyboard emoji (enlarged) and a "HOTKEYS" top-border
-				// legend are added by the frontend; the stored label is just
-				// the group list.
-				Label:   "{subject}",
-				Subject: PayloadFieldSubject("groups"),
 			},
 		},
 		// Phase-boundary markers: registry-only stubs so the storage layer's

@@ -1,39 +1,90 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import {
+  EV_SEC, EV_TYPE, EV_GROUP, EV_TILE_X, TYPE_ASSIGN_UNITS, TYPE_ASSIGN_BUILDING,
+} from './HotkeyTimeline';
 
-// Per-player minute-snapshot map crops: the backend paints the part of the map
-// holding the player's hotkeyed buildings at the chosen minute, sprites at
-// footprint scale, hotkey numbers badged on top. 404 means no building was
-// locatable at that minute (e.g. only unit groups so far).
+// Per-player map crops: the backend paints the slice of the map holding the
+// player's hotkeyed buildings at a chosen moment. The slider notches at
+// building-assign moments (at most one per minute); when several assigns land
+// in the same minute, the moment showing the most buildings wins.
 
-const hotkeyMapURL = (replayId, playerId, minute) =>
-  `/api/custom/hotkeys/map?replay_id=${encodeURIComponent(replayId)}&player_id=${encodeURIComponent(playerId)}&minute=${encodeURIComponent(minute)}`;
+const TILE_UNKNOWN = 255;
 
-function HotkeyMapPanel({ replayId, player, maxMinute }) {
-  const [minute, setMinute] = useState(Math.min(8, maxMinute));
+const hotkeyMapURL = (replayId, playerId, second) =>
+  `/api/custom/hotkeys/map?replay_id=${encodeURIComponent(replayId)}&player_id=${encodeURIComponent(playerId)}&second=${encodeURIComponent(second)}`;
+
+// locatedBuildingsAt counts the distinct groups whose latest assign at or
+// before the cutoff is a located building, mirroring the backend reducer.
+const locatedBuildingsAt = (events, cutoffSec) => {
+  const last = new Map();
+  for (const e of events) {
+    if (e[EV_SEC] > cutoffSec || e[EV_GROUP] > 9) continue;
+    if (e[EV_TYPE] === TYPE_ASSIGN_BUILDING || e[EV_TYPE] === TYPE_ASSIGN_UNITS) {
+      last.set(e[EV_GROUP], e);
+    }
+  }
+  let n = 0;
+  for (const e of last.values()) {
+    if (e[EV_TYPE] === TYPE_ASSIGN_BUILDING && e[EV_TILE_X] !== TILE_UNKNOWN) n += 1;
+  }
+  return n;
+};
+
+// snapshotNotches picks one moment per minute: each located building assign is
+// a candidate, and within a minute the candidate whose snapshot shows the most
+// buildings wins (later moment breaks ties), so a quickly replaced hotkey
+// still surfaces at its best moment.
+export const snapshotNotches = (events) => {
+  const byMinute = new Map();
+  for (const e of events || []) {
+    if (e[EV_TYPE] !== TYPE_ASSIGN_BUILDING || e[EV_TILE_X] === TILE_UNKNOWN || e[EV_GROUP] > 9) continue;
+    const sec = e[EV_SEC];
+    const minute = Math.floor(sec / 60);
+    const count = locatedBuildingsAt(events, sec);
+    const cur = byMinute.get(minute);
+    if (!cur || count > cur.count || (count === cur.count && sec > cur.sec)) {
+      byMinute.set(minute, { sec, minute, count });
+    }
+  }
+  return [...byMinute.values()].sort((a, b) => a.sec - b.sec);
+};
+
+function HotkeyMapPanel({ replayId, player, notches }) {
+  const defaultIndex = useMemo(() => {
+    let best = notches.length - 1;
+    for (let i = 0; i < notches.length; i += 1) {
+      if (notches[i].minute <= 8) best = i;
+    }
+    return best;
+  }, [notches]);
+  const [index, setIndex] = useState(defaultIndex);
   const [failed, setFailed] = useState(false);
-  const src = hotkeyMapURL(replayId, player.player_id, minute);
+  const notch = notches[Math.min(index, notches.length - 1)];
+  const src = hotkeyMapURL(replayId, player.player_id, notch.sec);
   return (
     <div className="hk-map-panel">
       <div className="hk-map-head">
         <span className="hk-player-name">{player.name}</span>
-        <label className="hk-map-minute">
-          minute {minute}
+        {notches.length > 1 ? (
           <input
             type="range"
-            min="1"
-            max={maxMinute}
-            value={minute}
-            onChange={(e) => { setFailed(false); setMinute(Number(e.target.value)); }}
+            min="0"
+            max={notches.length - 1}
+            step="1"
+            value={Math.min(index, notches.length - 1)}
+            onChange={(e) => { setFailed(false); setIndex(Number(e.target.value)); }}
+            list={`hk-notches-${player.player_id}`}
+            aria-label={`Snapshot moment for ${player.name}`}
           />
-        </label>
+        ) : null}
       </div>
       {failed ? (
-        <div className="chart-empty">No hotkeyed buildings located at minute {minute}.</div>
+        <div className="chart-empty">No hotkeyed buildings located at this moment.</div>
       ) : (
         <img
           key={src}
           src={src}
-          alt={`Map crop of ${player.name}'s hotkeyed buildings at minute ${minute}`}
+          alt={`Map crop of ${player.name}'s hotkeyed buildings at minute ${notch.minute}`}
           className="hk-map-img"
           onError={() => setFailed(true)}
         />
@@ -42,20 +93,17 @@ function HotkeyMapPanel({ replayId, player, maxMinute }) {
   );
 }
 
-export default function HotkeyMaps({ replayId, players, durationSeconds }) {
-  const maxMinute = Math.max(1, Math.floor((durationSeconds || 60) / 60));
-  const eligible = (players || []).filter((p) => (p.events || []).length > 0 && !p.legacy);
-  if (!eligible.length) return null;
+export default function HotkeyMaps({ replayId, players }) {
+  const panels = useMemo(() => (players || [])
+    .filter((p) => (p.events || []).length > 0 && !p.legacy)
+    .map((p) => ({ player: p, notches: snapshotNotches(p.events) }))
+    .filter(({ notches }) => notches.length > 0), [players]);
+  if (!panels.length) return null;
   return (
     <div className="hk-maps">
-      <div className="hk-maps-title">Where the keys live</div>
-      <div className="hk-maps-note">
-        The slice of the map holding each player&apos;s hotkeyed buildings at the chosen minute -
-        hotkey number on the building it points at.
-      </div>
       <div className="hk-maps-grid">
-        {eligible.map((p) => (
-          <HotkeyMapPanel key={p.player_id} replayId={replayId} player={p} maxMinute={maxMinute} />
+        {panels.map(({ player, notches }) => (
+          <HotkeyMapPanel key={player.player_id} replayId={replayId} player={player} notches={notches} />
         ))}
       </div>
     </div>

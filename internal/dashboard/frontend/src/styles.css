@@ -6958,20 +6958,10 @@ span[data-tip],
 /* ---- Hotkeys tab (game report timeline + map, player signature) ---- */
 
 .hk-timeline { user-select: none; }
-.hk-legend {
-  display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center;
-  font-size: 12px; color: var(--e-base); margin-bottom: 12px;
-  padding: 8px 12px; border: 1px solid var(--e-line); border-radius: 8px;
-}
-.hk-legend-item { display: inline-flex; align-items: center; gap: 7px; }
-.hk-legend-icon { height: 20px; width: auto; }
-.hk-legend-ramp {
-  width: 84px; height: 10px; border-radius: 3px;
-  background: linear-gradient(90deg, #2e4f6e, #4a79a8, #6fa3d6, #a5d4ff);
-}
-.hk-legend-ticks {
-  width: 14px; height: 12px;
-  background: repeating-linear-gradient(90deg, rgba(147,161,173,.55) 0 1px, transparent 1px 4px);
+.hk-note {
+  font-size: 12.5px; color: var(--e-quiet); margin-bottom: 12px;
+  padding: 6px 10px; border: 1px solid var(--e-line); border-left-width: 3px;
+  border-radius: 4px;
 }
 .hk-player { margin-bottom: 10px; }
 .hk-player-head { display: flex; align-items: baseline; gap: 10px; margin: 10px 0 6px; }
@@ -6984,7 +6974,7 @@ span[data-tip],
 .hk-race-T { color: #7fb8ef; border-color: #2c455e; }
 .hk-race-P { color: #f0c674; border-color: #5b4a25; }
 .hk-player-stat { margin-left: auto; font-size: 11.5px; color: var(--e-quiet); }
-.hk-row { display: grid; grid-template-columns: 30px 1fr 150px; gap: 10px; align-items: center; }
+.hk-row { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; }
 .hk-keycap {
   font-size: 12px; font-weight: 500; text-align: center; color: var(--e-base);
   background: rgba(255,255,255,0.04); border: 1px solid var(--e-line);
@@ -7009,11 +6999,7 @@ span[data-tip],
   font-size: 9px; font-weight: 600; color: #0d1116; min-width: 12px; text-align: center;
   border-radius: 3px; padding: 0 1px; line-height: 12px;
 }
-.hk-row-summary {
-  font-size: 11.5px; color: var(--e-quiet);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.hk-axis-row { margin-top: 2px; }
+.hk-axis-row { margin-top: 2px; margin-bottom: 6px; }
 .hk-axis { height: 18px; cursor: default; }
 .hk-axis-label {
   position: absolute; top: 1px; transform: translateX(-50%);
@@ -7023,37 +7009,34 @@ span[data-tip],
 .hk-scrollbar::-webkit-scrollbar { height: 8px; }
 .hk-scrollbar::-webkit-scrollbar-thumb { background: var(--e-line); border-radius: 4px; }
 .hk-maps { margin-top: 22px; }
-.hk-maps-title { font-weight: 600; margin-bottom: 4px; }
-.hk-maps-note { font-size: 12.5px; color: var(--e-quiet); margin-bottom: 12px; max-width: 80ch; }
-.hk-maps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.hk-maps-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 900px) { .hk-maps-grid { grid-template-columns: 1fr; } }
 .hk-map-panel { border: 1px solid var(--e-line); border-radius: 8px; padding: 10px; }
 .hk-map-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-.hk-map-minute {
-  margin-left: auto; display: inline-flex; align-items: center; gap: 8px;
-  font-size: 12px; color: var(--e-quiet);
-}
+.hk-map-head input[type="range"] { margin-left: auto; width: 45%; }
 .hk-map-img { width: 100%; display: block; border-radius: 6px; }
 .hk-sigs { display: grid; gap: 14px; }
 .hk-sig-card { border: 1px solid var(--e-line); border-radius: 8px; padding: 12px 14px; }
-.hk-sig-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
-.hk-sig-games { font-size: 12px; color: var(--e-quiet); }
-.hk-sig-score { margin-left: auto; font-size: 18px; font-weight: 700; color: var(--e-accent); }
-.hk-sig-row { display: grid; grid-template-columns: 26px 1fr 180px; gap: 8px; align-items: center; padding: 3px 0; }
-.hk-sig-ribbon {
-  position: relative; height: 32px; border-left: 1px solid var(--e-line);
+.hk-sig-row { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; padding: 4px 0; }
+.hk-sig-keycap { align-self: stretch; display: flex; align-items: center; justify-content: center; }
+.hk-sig-lane {
+  position: relative; height: 54px; border-left: 1px solid var(--e-line);
   background: repeating-linear-gradient(90deg, transparent 0 calc(20% - 1px), var(--e-line) calc(20% - 1px) 20%);
 }
-.hk-sig-band { position: absolute; top: 12px; height: 10px; border-radius: 2px; }
-.hk-sig-sprite { position: absolute; bottom: 1px; height: 30px; width: auto; z-index: 2; }
-.hk-sig-count { position: absolute; bottom: 0; margin-left: 26px; z-index: 3; }
-.hk-sig-seq {
-  font-size: 10.5px; color: var(--e-quiet);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.hk-sig-sprite { position: absolute; top: 0; height: 30px; width: auto; z-index: 2; }
+.hk-sig-count { position: absolute; right: auto; bottom: auto; top: 20px; margin-left: 26px; z-index: 3; }
+.hk-sig-bar { position: absolute; height: 7px; border-radius: 2px; }
+.hk-sig-bar-assign { top: 36px; background: #c98500; opacity: 0.85; }
+.hk-sig-bar-use { top: 46px; background: #4a79a8; opacity: 0.85; }
+.hk-sig-bar::after {
+  content: attr(data-tip);
+  position: absolute; left: 50%; top: -22px; transform: translateX(-50%);
+  padding: 1px 7px; border-radius: 4px; font-size: 11px; white-space: nowrap;
+  background: var(--e-strong, #e8edf2); color: #10151a;
+  opacity: 0; pointer-events: none;
 }
-.hk-sig-axis { display: grid; grid-template-columns: 26px 1fr 180px; gap: 8px; margin-top: 2px; }
+.hk-sig-bar:hover::after { opacity: 1; }
+.hk-sig-bar:hover { filter: brightness(1.25); }
+.hk-sig-axis { display: grid; grid-template-columns: 30px 1fr; gap: 10px; margin-top: 2px; }
 .hk-sig-axis-in { position: relative; height: 14px; font-size: 9.5px; color: var(--e-quiet); }
 .hk-sig-axis-in span { position: absolute; transform: translateX(-50%); }
-.hk-sig-prose {
-  font-size: 13px; line-height: 1.6; color: var(--e-base); margin: 12px 0 0;
-  border-top: 1px solid var(--e-line); padding-top: 10px;
-}

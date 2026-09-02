@@ -623,9 +623,8 @@ type ListReplayPlayersForDetailRow struct {
 // Trimmed in Apr 2026: previously joined commands and ran two correlated
 // subqueries against commands_low_value (Hotkey count + total low-value)
 // per player to power a game-level hotkey-usage ratio. That ratio is no
-// longer surfaced; hotkey signal lives in the used_hotkey_groups /
-// never_used_hotkeys markers (computed at ingestion, read from
-// replay_events). Page-level metrics now only need player metadata + APM.
+// longer surfaced; hotkey signal lives in players.hotkey_stream and the
+// never_used_hotkeys marker (computed at ingestion). Page-level metrics now only need player metadata + APM.
 func (q *Queries) ListReplayPlayersForDetail(ctx context.Context, replayID int64) ([]ListReplayPlayersForDetailRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListReplayPlayersForDetail, replayID)
 	if err != nil {
