@@ -6,6 +6,7 @@ export const MAIN_GAME_TABS = [
   'summary',
   'events',
   'units',
+  'hotkeys',
   'supply-timeline',
   'timings',
   'build-orders',
@@ -25,8 +26,8 @@ export const MAIN_PLAYERS_TABS = [
 
 export const MAIN_PLAYER_TABS = [
   'summary',
+  'hotkeys',
   'skill-proxies',
-  'recent-games',
   'chat-summary',
 ];
 

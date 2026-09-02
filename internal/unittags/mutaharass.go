@@ -162,7 +162,7 @@ func DetectMutaHarass(r *rep.Replay, players []*models.Player) []MutaHarassEpiso
 					a.cur = append([]uint16(nil), a.groups[hc.Group]...)
 					a.activeGrp = int(hc.Group)
 				case "Add":
-					a.cur = unionTags(a.cur, a.groups[hc.Group])
+					a.groups[hc.Group] = unionTags(a.groups[hc.Group], a.cur)
 				}
 			}
 		case repcmd.TypeIDBuild:

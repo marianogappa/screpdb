@@ -88,6 +88,36 @@ paths:
               schema:
                 type: string
                 format: binary
+  /api/custom/hotkeys/map:
+    get:
+      operationId: hotkeyMap
+      parameters:
+        - name: replay_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: player_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: minute
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: PNG image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
   /api/custom/game-assets/map:
     get:
       operationId: gameAssetMap
@@ -354,6 +384,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
+  /api/games/{replayID}/hotkeys:
+    parameters:
+      - $ref: "#/components/parameters/replayID"
+    get:
+      operationId: gameHotkeys
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
   /api/games/{replayID}/see:
     parameters:
       - $ref: "#/components/parameters/replayID"
@@ -478,11 +520,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
-  /api/players/{playerKey}/recent-games:
+  /api/players/{playerKey}/last-games:
     parameters:
       - $ref: "#/components/parameters/playerKey"
     get:
-      operationId: playerRecentGames
+      operationId: playerLastGames
       responses:
         "200":
           description: OK
@@ -519,52 +561,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
-  /api/players/{playerKey}/summary/per-matchup:
+  /api/players/{playerKey}/hotkey-signature:
     parameters:
       - $ref: "#/components/parameters/playerKey"
     get:
-      operationId: playerSummaryPerMatchup
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/players/{playerKey}/summary/special:
-    parameters:
-      - $ref: "#/components/parameters/playerKey"
-    get:
-      operationId: playerSummarySpecial
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/players/{playerKey}/summary/outliers:
-    parameters:
-      - $ref: "#/components/parameters/playerKey"
-      - name: category
-        in: query
-        required: true
-        schema:
-          type: string
-    get:
-      operationId: playerSummaryOutliers
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/players/{playerKey}/outliers:
-    parameters:
-      - $ref: "#/components/parameters/playerKey"
-    get:
-      operationId: playerOutliers
+      operationId: playerHotkeySignature
       responses:
         "200":
           description: OK

@@ -85,6 +85,7 @@ type PlayerRecentGameRow struct {
 	LobbyKind          string
 	DurationSeconds    int64
 	GameType           string
+	TeamFormat         string
 	Matchup            string
 	TeamStacking       bool
 	TeamInfoIncomplete bool
@@ -307,6 +308,7 @@ func (s *Store) ListPlayerRecentGames(ctx context.Context, playerKey string) ([]
 			LobbyKind:          row.LobbyKind,
 			DurationSeconds:    row.DurationSeconds,
 			GameType:           row.GameType,
+			TeamFormat:         row.TeamFormat,
 			Matchup:            row.Matchup,
 			TeamStacking:       row.TeamStacking,
 			TeamInfoIncomplete: row.TeamInfoIncomplete,

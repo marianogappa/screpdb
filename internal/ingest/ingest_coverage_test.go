@@ -119,6 +119,7 @@ func TestRun_HotkeysStoredAsPlayerStream(t *testing.T) {
 	}
 
 	totalEvents := 0
+	annotatedAssigns := 0
 	for _, row := range rows {
 		var blob []byte
 		switch v := row["hotkey_stream"].(type) {
@@ -137,14 +138,25 @@ func TestRun_HotkeysStoredAsPlayerStream(t *testing.T) {
 			t.Fatal("non-NULL hotkey_stream decoded to zero events")
 		}
 		for i := 1; i < len(events); i++ {
-			if events[i].Frame < events[i-1].Frame {
-				t.Fatalf("decoded stream not frame-ordered: %d after %d", events[i].Frame, events[i-1].Frame)
+			if events[i].Sec < events[i-1].Sec {
+				t.Fatalf("decoded stream not time-ordered: %d after %d", events[i].Sec, events[i-1].Sec)
+			}
+		}
+		for _, e := range events {
+			if e.Type == hotkeystream.TypeAssignBuilding {
+				annotatedAssigns++
+				if hotkeystream.BuildingName(e.Building) == "" {
+					t.Fatalf("building assign with unknown building ID %d", e.Building)
+				}
 			}
 		}
 		totalEvents += len(events)
 	}
 	if len(rows) == 0 || totalEvents == 0 {
 		t.Fatal("expected the corpus to produce non-empty hotkey streams, got none")
+	}
+	if annotatedAssigns == 0 {
+		t.Fatal("expected at least one building-annotated assign across the corpus")
 	}
 }
 

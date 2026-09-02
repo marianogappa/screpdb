@@ -23,11 +23,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":15.475113122171944}"
       },
@@ -53,11 +48,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":12.307692307692307}"
       }
@@ -77,11 +67,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":8.856304985337243}"
       },
@@ -94,11 +79,6 @@
         "replay_player_id": 1,
         "pattern_name": "Made recalls",
         "value": "1071"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -117,11 +97,6 @@
       },
       {
         "replay_player_id": 2,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0]}"
-      },
-      {
-        "replay_player_id": 2,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":2.1114369501466275}"
       },
@@ -129,11 +104,6 @@
         "replay_player_id": 3,
         "pattern_name": "Build Order: 1 Gate Core",
         "value": "{\"expert_actuals\":[{\"second\":44,\"found\":true},{\"second\":81,\"found\":true},{\"second\":110,\"found\":true},{\"second\":126,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 3,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
       },
       {
         "replay_player_id": 3,
@@ -157,11 +127,6 @@
       },
       {
         "replay_player_id": 4,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,5]}"
-      },
-      {
-        "replay_player_id": 4,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":4.457478005865102}"
       },
@@ -169,11 +134,6 @@
         "replay_player_id": 5,
         "pattern_name": "Build Order: 10 Hatch",
         "value": "{\"expert_actuals\":[{\"second\":106,\"found\":true},{\"second\":128,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 5,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3]}"
       },
       {
         "replay_player_id": 5,
@@ -220,11 +180,6 @@
         "value": "377"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
@@ -233,11 +188,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "377"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,9]}"
       }
     ]
   },
@@ -255,11 +205,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,5,6,7]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":22.372881355932204}"
       },
@@ -267,11 +212,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: 9 Overpool",
         "value": "{\"expert_actuals\":[{\"second\":77,\"found\":true},{\"second\":130,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
       },
       {
         "replay_player_id": 1,
@@ -293,11 +233,6 @@
         "value": "351"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,8,9]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1-1-1",
         "value": "{\"expert_actuals\":[{\"second\":74,\"found\":true},{\"second\":61,\"found\":true},{\"second\":109,\"found\":true},{\"second\":173,\"found\":true},{\"second\":226,\"found\":true}]}"
@@ -306,11 +241,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "351"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,4,5]}"
       }
     ]
   },
@@ -327,11 +257,6 @@
         "value": "248"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Forge Expand",
         "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":89,\"found\":true},{\"second\":172,\"found\":true},{\"second\":215,\"found\":true}]}"
@@ -340,11 +265,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "248"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3]}"
       }
     ]
   },
@@ -361,11 +281,6 @@
         "value": "247"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,5,9]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 2-Base Bio",
         "value": "{\"expert_actuals\":[{\"second\":80,\"found\":true},{\"second\":57,\"found\":true},{\"second\":212,\"found\":true},{\"found\":false},{\"second\":202,\"found\":true}]}"
@@ -379,11 +294,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "247"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
       }
     ]
   },
@@ -395,11 +305,6 @@
         "value": "{\"label\":\"~10 Hatch\"}"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Never researched",
         "value": "252"
@@ -408,11 +313,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "252"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       }
     ]
   },
@@ -434,19 +334,9 @@
         "value": "320"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Overpool\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,8,9]}"
       }
     ]
   },
@@ -456,11 +346,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Overpool\"}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,8]}"
       },
       {
         "replay_player_id": 1,
@@ -487,19 +372,9 @@
         "value": "244"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Overpool\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
       }
     ]
   },
@@ -522,13 +397,8 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,5,6,7]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":18.42105263157895}"
+        "value": "{\"switches_per_minute\":17.894736842105264}"
       },
       {
         "replay_player_id": 1,
@@ -539,11 +409,6 @@
         "replay_player_id": 1,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":266,\"first_turret_cmd\":330,\"turret_burst_count\":10,\"turret_finished\":349}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -570,11 +435,6 @@
         "value": "248"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
@@ -583,11 +443,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never researched",
         "value": "248"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       }
     ]
   },
@@ -597,11 +452,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,5,6]}"
       },
       {
         "replay_player_id": 1,
@@ -622,11 +472,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "242"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
       }
     ]
   },
@@ -636,11 +481,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,7,8]}"
       },
       {
         "replay_player_id": 1,
@@ -656,11 +496,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "279"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
       }
     ]
   },
@@ -682,19 +517,9 @@
         "value": "281"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 9 Pool",
         "value": "{\"expert_actuals\":[{\"second\":61,\"found\":true},{\"second\":113,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
       }
     ]
   },
@@ -716,11 +541,6 @@
         "value": "384"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1-Base Mech",
         "value": "{\"expert_actuals\":[{\"second\":57,\"found\":true},{\"second\":86,\"found\":true},{\"second\":96,\"found\":true},{\"second\":147,\"found\":true},{\"second\":236,\"found\":true}]}"
@@ -734,11 +554,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "384"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,4,5,6]}"
       }
     ]
   },
@@ -760,11 +575,6 @@
         "value": "343"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,5]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Nexus First",
         "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":107,\"found\":true},{\"second\":130,\"found\":true}]}"
@@ -773,11 +583,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "343"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       }
     ]
   },
@@ -804,11 +609,6 @@
         "value": "412"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,9]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Never researched",
         "value": "412"
@@ -817,11 +617,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "412"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3]}"
       }
     ]
   },
@@ -853,11 +648,6 @@
         "value": "441"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: CC First",
         "value": "{\"expert_actuals\":[{\"second\":52,\"found\":true},{\"second\":114,\"found\":true},{\"second\":137,\"found\":true}]}"
@@ -866,11 +656,6 @@
         "replay_player_id": 1,
         "pattern_name": "First Mine",
         "value": "344"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
       }
     ]
   },
@@ -885,11 +670,6 @@
         "replay_player_id": 0,
         "pattern_name": "First Mine",
         "value": "424"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3]}"
       },
       {
         "replay_player_id": 0,
@@ -923,11 +703,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":16.79324894514768}"
       }
@@ -952,11 +727,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":19.925373134328357}"
       },
@@ -969,11 +739,6 @@
         "replay_player_id": 1,
         "pattern_name": "First Mine",
         "value": "311"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       },
       {
         "replay_player_id": 1,
@@ -995,11 +760,6 @@
         "value": "385"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Fact Expa Mech",
         "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":90,\"found\":true},{\"second\":99,\"found\":true},{\"second\":150,\"found\":true},{\"second\":209,\"found\":true},{\"second\":334,\"found\":true}]}"
@@ -1013,11 +773,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "385"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
       }
     ]
   },
@@ -1032,11 +787,6 @@
         "replay_player_id": 0,
         "pattern_name": "First Mine",
         "value": "326"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -1057,11 +807,6 @@
         "replay_player_id": 1,
         "pattern_name": "Made drops",
         "value": "697"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,5,6]}"
       },
       {
         "replay_player_id": 1,
@@ -1094,11 +839,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":26.266094420600858}"
       },
@@ -1111,11 +851,6 @@
         "replay_player_id": 1,
         "pattern_name": "First Mine",
         "value": "691"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -1148,11 +883,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":35}"
       },
@@ -1170,11 +900,6 @@
         "replay_player_id": 1,
         "pattern_name": "Made drops",
         "value": "774"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -1202,11 +927,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":17.391304347826086}"
       },
@@ -1224,11 +944,6 @@
         "replay_player_id": 1,
         "pattern_name": "Made drops",
         "value": "440"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -1250,19 +965,9 @@
         "value": "125"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,3,4]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Gate (no expa)",
         "value": "{\"expert_actuals\":[{\"second\":62,\"found\":true},{\"second\":85,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,2,4]}"
       }
     ]
   },
@@ -1274,19 +979,9 @@
         "value": "74"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Gate (no expa)",
         "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":72,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
       }
     ]
   },
@@ -1301,11 +996,6 @@
         "replay_player_id": 0,
         "pattern_name": "First Mine",
         "value": "677"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -1329,11 +1019,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":12.435897435897436}"
       }
@@ -1352,19 +1037,9 @@
         "value": "437"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 2-Base Bio",
         "value": "{\"expert_actuals\":[{\"second\":50,\"found\":true},{\"second\":79,\"found\":true},{\"second\":240,\"found\":true},{\"second\":262,\"found\":true},{\"second\":188,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       }
     ]
   },
@@ -1381,19 +1056,9 @@
         "value": "375"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 2 Starport Wraith",
         "value": "{\"expert_actuals\":[{\"second\":197,\"found\":true},{\"second\":210,\"found\":true},{\"second\":244,\"found\":true}],\"modifiers\":[\"proxy\"]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
       },
       {
         "replay_player_id": 1,
@@ -1421,11 +1086,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":18.730964467005077}"
       },
@@ -1446,11 +1106,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,4,5,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":24.82233502538071}"
       }
@@ -1467,11 +1122,6 @@
         "replay_player_id": 0,
         "pattern_name": "Made drops",
         "value": "569"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -1497,11 +1147,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "797"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
       },
       {
         "replay_player_id": 1,
@@ -1549,11 +1194,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":12.962962962962964}"
       },
@@ -1571,11 +1211,6 @@
         "replay_player_id": 1,
         "pattern_name": "Made drops",
         "value": "465"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -1608,11 +1243,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":15.800711743772242}"
       },
@@ -1625,11 +1255,6 @@
         "replay_player_id": 1,
         "pattern_name": "First Mine",
         "value": "883"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,4,5,9]}"
       },
       {
         "replay_player_id": 1,
@@ -1656,11 +1281,6 @@
         "value": "375"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Forge Cannon Gate before expa",
         "value": "{\"expert_actuals\":[{\"second\":80,\"found\":true},{\"second\":118,\"found\":true},{\"second\":147,\"found\":true}]}"
@@ -1679,11 +1299,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "375"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
       }
     ]
   },
@@ -1705,11 +1320,6 @@
         "value": "430"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 9 Pool",
         "value": "{\"expert_actuals\":[{\"second\":62,\"found\":true},{\"second\":115,\"found\":true}]}"
@@ -1723,11 +1333,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "430"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
       }
     ]
   },
@@ -1749,11 +1354,6 @@
         "value": "408"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 9 Pool",
         "value": "{\"expert_actuals\":[{\"second\":62,\"found\":true},{\"second\":114,\"found\":true}]}"
@@ -1767,11 +1367,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "408"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       }
     ]
   },
@@ -1786,11 +1381,6 @@
         "replay_player_id": 0,
         "pattern_name": "Never upgraded",
         "value": "331"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5]}"
       },
       {
         "replay_player_id": 1,
@@ -1811,11 +1401,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "331"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
       }
     ]
   },
@@ -1830,11 +1415,6 @@
         "replay_player_id": 0,
         "pattern_name": "Never upgraded",
         "value": "342"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
       },
       {
         "replay_player_id": 1,
@@ -1855,11 +1435,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "342"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       }
     ]
   },
@@ -1876,11 +1451,6 @@
         "value": "356"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 9 Overpool",
         "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":130,\"found\":true}]}"
@@ -1889,11 +1459,6 @@
         "replay_player_id": 1,
         "pattern_name": "N Hatch Muta",
         "value": "{\"label\":\"2 Hatch Muta\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
       }
     ]
   },
@@ -1908,11 +1473,6 @@
         "replay_player_id": 0,
         "pattern_name": "Never upgraded",
         "value": "499"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       },
       {
         "replay_player_id": 0,
@@ -1933,11 +1493,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "499"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,7,9]}"
       },
       {
         "replay_player_id": 1,
@@ -1965,11 +1520,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,4,5,6]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Wraith Cloak timing",
         "value": "424"
       },
@@ -1987,11 +1537,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "426"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
       }
     ]
   },
@@ -2009,11 +1554,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":24.933333333333334}"
       },
@@ -2021,11 +1561,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: 2 Starport Wraith",
         "value": "{\"expert_actuals\":[{\"second\":235,\"found\":true},{\"second\":237,\"found\":true},{\"second\":281,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       },
       {
         "replay_player_id": 1,
@@ -2068,11 +1603,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,5,6,7,8]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":16.140350877192983}"
       },
@@ -2085,11 +1615,6 @@
         "replay_player_id": 1,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":372,\"first_turret_cmd\":414,\"turret_burst_count\":4,\"turret_finished\":433}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       },
       {
         "replay_player_id": 1,
@@ -2119,11 +1644,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 2 Starport Wraith",
         "value": "{\"expert_actuals\":[{\"second\":270,\"found\":true},{\"second\":271,\"found\":true},{\"second\":318,\"found\":true}],\"modifiers\":[\"expand\"]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -2157,11 +1677,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":34.13566739606127}"
       }
@@ -2181,11 +1696,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,5,6,7]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":15.69682151589242}"
       },
@@ -2198,11 +1708,6 @@
         "replay_player_id": 1,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":277,\"first_turret_cmd\":389,\"turret_burst_count\":5,\"turret_finished\":408}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
       },
       {
         "replay_player_id": 1,
@@ -2222,11 +1727,6 @@
         "replay_player_id": 0,
         "pattern_name": "N Hatch Hydra",
         "value": "{\"label\":\"4 Hatch Hydra\"}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
       },
       {
         "replay_player_id": 0,
@@ -2250,11 +1750,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":11.464968152866241}"
       }
@@ -2274,11 +1769,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":27.69230769230769}"
       },
@@ -2291,11 +1781,6 @@
         "replay_player_id": 1,
         "pattern_name": "N Hatch Hydra",
         "value": "{\"label\":\"3 Hatch Hydra\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       },
       {
         "replay_player_id": 1,
@@ -2323,11 +1808,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":30.19230769230769}"
       },
@@ -2343,11 +1823,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":11.538461538461538}"
       }
@@ -2359,11 +1834,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 2-Base Bio",
         "value": "{\"expert_actuals\":[{\"second\":131,\"found\":true},{\"second\":78,\"found\":true},{\"second\":201,\"found\":true},{\"second\":216,\"found\":true},{\"second\":167,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -2382,11 +1852,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":43.098591549295776}"
       }
@@ -2398,11 +1863,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 2-Base Bio",
         "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":83,\"found\":true},{\"second\":194,\"found\":true},{\"found\":false},{\"second\":173,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -2423,11 +1883,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "652"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5]}"
       },
       {
         "replay_player_id": 1,
@@ -2455,11 +1910,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":12.857142857142858}"
       },
@@ -2467,11 +1917,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: CC First",
         "value": "{\"expert_actuals\":[{\"second\":58,\"found\":true},{\"second\":122,\"found\":true},{\"second\":144,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
       },
       {
         "replay_player_id": 1,
@@ -2489,13 +1934,8 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":15.19650655021834}"
+        "value": "{\"switches_per_minute\":13.100436681222707}"
       },
       {
         "replay_player_id": 0,
@@ -2529,11 +1969,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":22.2707423580786}"
       }
@@ -2558,11 +1993,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Wraiths",
         "value": "265"
       },
@@ -2575,11 +2005,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "329"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5]}"
       }
     ]
   },
@@ -2591,19 +2016,9 @@
         "value": "{\"expert_actuals\":[{\"second\":34,\"found\":true},{\"found\":false}]}"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Gateway (Other)",
         "value": "150"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
       }
     ]
   },
@@ -2618,11 +2033,6 @@
         "replay_player_id": 0,
         "pattern_name": "N Hatch Hydra",
         "value": "{\"label\":\"4 Hatch Hydra\"}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -2648,11 +2058,6 @@
         "replay_player_id": 1,
         "pattern_name": "Speedlot timing",
         "value": "421"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,9]}"
       },
       {
         "replay_player_id": 1,
@@ -2685,11 +2090,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":38.24644549763033}"
       },
@@ -2702,11 +2102,6 @@
         "replay_player_id": 1,
         "pattern_name": "N Hatch Hydra",
         "value": "{\"label\":\"5 Hatch Hydra\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7]}"
       },
       {
         "replay_player_id": 1,
@@ -2729,11 +2124,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":10.247191011235955}"
       },
@@ -2749,13 +2139,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":14.696629213483146}"
+        "value": "{\"switches_per_minute\":18.876404494382022}"
       }
     ]
   },
@@ -2783,11 +2168,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":27.272727272727273}"
       },
@@ -2800,11 +2180,6 @@
         "replay_player_id": 1,
         "pattern_name": "N Hatch Hydra",
         "value": "{\"label\":\"7 Hatch Hydra\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -2821,19 +2196,9 @@
         "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":74,\"found\":true},{\"second\":88,\"found\":true},{\"second\":115,\"found\":true}],\"modifiers\":[\"proxy\"]}"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 7 Pool",
         "value": "{\"expert_actuals\":[{\"second\":57,\"found\":true},{\"second\":110,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
       }
     ]
   },
@@ -2845,19 +2210,9 @@
         "value": "93"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 7 Pool",
         "value": "{\"expert_actuals\":[{\"second\":53,\"found\":true},{\"found\":false}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,4]}"
       }
     ]
   },
@@ -2875,11 +2230,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,5,6,7]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":10.832432432432434}"
       },
@@ -2887,11 +2237,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: 2-Base Bio",
         "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":128,\"found\":true},{\"second\":322,\"found\":true},{\"second\":340,\"found\":true},{\"second\":123,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -2918,19 +2263,9 @@
         "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":117,\"found\":true},{\"second\":134,\"found\":true}]}"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 8 Pool",
         "value": "{\"expert_actuals\":[{\"second\":60,\"found\":true},{\"second\":113,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
       }
     ]
   },
@@ -2948,13 +2283,8 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":9.683544303797468}"
+        "value": "{\"switches_per_minute\":9.30379746835443}"
       },
       {
         "replay_player_id": 1,
@@ -2973,11 +2303,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":29.240506329113924}"
       }
@@ -2991,19 +2316,9 @@
         "value": "{\"label\":\"~9 Pool\"}"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,8,9]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Gate (no expa)",
         "value": "{\"expert_actuals\":[{\"second\":44,\"found\":true},{\"second\":87,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 2,
@@ -3031,29 +2346,14 @@
         "value": "{\"expert_actuals\":[{\"second\":74,\"found\":true},{\"second\":109,\"found\":true},{\"found\":false}]}"
       },
       {
-        "replay_player_id": 4,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0]}"
-      },
-      {
         "replay_player_id": 5,
         "pattern_name": "Build Order: 1 Gate Core",
         "value": "{\"expert_actuals\":[{\"second\":49,\"found\":true},{\"second\":79,\"found\":true},{\"second\":100,\"found\":true},{\"second\":123,\"found\":true}]}"
       },
       {
-        "replay_player_id": 5,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
         "replay_player_id": 6,
         "pattern_name": "Build Order: Forge Cannon (no expa)",
         "value": "{\"expert_actuals\":[{\"second\":82,\"found\":true},{\"second\":118,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 6,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
       },
       {
         "replay_player_id": 7,
@@ -3080,11 +2380,6 @@
         "value": "302"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Gate Core",
         "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":75,\"found\":true},{\"second\":93,\"found\":true},{\"second\":118,\"found\":true}]}"
@@ -3093,11 +2388,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "302"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       }
     ]
   },
@@ -3119,11 +2409,6 @@
         "value": "370"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Gate Core",
         "value": "{\"expert_actuals\":[{\"second\":46,\"found\":true},{\"second\":73,\"found\":true},{\"found\":false},{\"second\":116,\"found\":true}]}"
@@ -3132,11 +2417,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "370"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       }
     ]
   },
@@ -3158,19 +2438,9 @@
         "value": "338"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,3,4]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Nexus First",
         "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":109,\"found\":true},{\"second\":132,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,9]}"
       }
     ]
   },
@@ -3188,11 +2458,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":3.708791208791209}"
       },
@@ -3205,11 +2470,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: 2-Base Bio",
         "value": "{\"expert_actuals\":[{\"second\":134,\"found\":true},{\"second\":86,\"found\":true},{\"second\":226,\"found\":true},{\"second\":250,\"found\":true},{\"second\":166,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,9]}"
       },
       {
         "replay_player_id": 1,
@@ -3234,11 +2494,6 @@
         "replay_player_id": 0,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":311,\"first_turret_cmd\":356,\"turret_burst_count\":9,\"turret_finished\":375}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       },
       {
         "replay_player_id": 0,
@@ -3272,11 +2527,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":27.346153846153847}"
       }
@@ -3298,11 +2548,6 @@
         "replay_player_id": 0,
         "pattern_name": "Made drops",
         "value": "315"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -3331,11 +2576,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":24.17763157894737}"
       }
@@ -3355,11 +2595,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,3,4,5]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":7.150259067357513}"
       },
@@ -3372,11 +2607,6 @@
         "replay_player_id": 1,
         "pattern_name": "Carriers",
         "value": "467"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -3415,11 +2645,6 @@
       },
       {
         "replay_player_id": 4,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1]}"
-      },
-      {
-        "replay_player_id": 4,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":4.507772020725389}"
       },
@@ -3445,11 +2670,6 @@
       },
       {
         "replay_player_id": 6,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,7,8,9]}"
-      },
-      {
-        "replay_player_id": 6,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":5.4404145077720205}"
       },
@@ -3457,11 +2677,6 @@
         "replay_player_id": 7,
         "pattern_name": "Build Order: 9 Overpool",
         "value": "{\"expert_actuals\":[{\"second\":86,\"found\":true},{\"second\":178,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 7,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
       },
       {
         "replay_player_id": 7,
@@ -3484,11 +2699,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":9.688385269121813}"
       },
@@ -3501,11 +2711,6 @@
         "replay_player_id": 1,
         "pattern_name": "First Mine",
         "value": "638"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -3532,11 +2737,6 @@
         "value": "440"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Gate Core",
         "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":76,\"found\":true},{\"found\":false},{\"second\":118,\"found\":true}]}"
@@ -3555,11 +2755,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "440"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8,9]}"
       }
     ]
   },
@@ -3581,19 +2776,9 @@
         "value": "244"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Overpool\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
       }
     ]
   },
@@ -3603,11 +2788,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,7,8]}"
       },
       {
         "replay_player_id": 1,
@@ -3623,11 +2803,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "279"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
       }
     ]
   },
@@ -3644,11 +2819,6 @@
         "value": "307"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,8,9]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: CC First",
         "value": "{\"expert_actuals\":[{\"second\":50,\"found\":true},{\"second\":114,\"found\":true},{\"second\":137,\"found\":true}]}"
@@ -3662,11 +2832,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "307"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
       }
     ]
   },
@@ -3688,11 +2853,6 @@
         "value": "417"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Fact Expa Mech",
         "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":84,\"found\":true},{\"second\":97,\"found\":true},{\"second\":152,\"found\":true},{\"second\":256,\"found\":true},{\"second\":232,\"found\":true}]}"
@@ -3706,11 +2866,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "417"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       }
     ]
   },
@@ -3722,19 +2877,9 @@
         "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":74,\"found\":true},{\"second\":88,\"found\":true},{\"second\":117,\"found\":true}]}"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Fact Expa Mech",
         "value": "{\"expert_actuals\":[{\"second\":53,\"found\":true},{\"second\":83,\"found\":true},{\"second\":95,\"found\":true},{\"second\":144,\"found\":true},{\"second\":212,\"found\":true},{\"second\":258,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
       }
     ]
   },
@@ -3756,11 +2901,6 @@
         "value": "352"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,5,6]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Fact Expa Mech",
         "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":83,\"found\":true},{\"second\":98,\"found\":true},{\"second\":150,\"found\":true},{\"second\":232,\"found\":true},{\"second\":268,\"found\":true}]}"
@@ -3774,11 +2914,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "352"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       }
     ]
   },
@@ -3800,19 +2935,9 @@
         "value": "356"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "356"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,4,9]}"
       }
     ]
   },
@@ -3832,11 +2957,6 @@
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
         "value": "533"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
       },
       {
         "replay_player_id": 0,
@@ -3860,11 +2980,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":30.22058823529412}"
       }
@@ -3878,19 +2993,9 @@
         "value": "{\"expert_actuals\":[{\"second\":85,\"found\":true},{\"second\":140,\"found\":true}]}"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Hatch\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
       }
     ]
   },
@@ -3902,19 +3007,9 @@
         "value": "{\"expert_actuals\":[{\"second\":105,\"found\":true},{\"second\":134,\"found\":true}]}"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 4 Pool",
         "value": "{\"expert_actuals\":[{\"second\":37,\"found\":true},{\"found\":false}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,4]}"
       }
     ]
   },
@@ -3937,11 +3032,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":37.21518987341772}"
       },
@@ -3959,11 +3049,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never researched",
         "value": "624"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       }
     ]
   },
@@ -3973,11 +3058,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 9 Overpool",
         "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":127,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -4006,11 +3086,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":7.009735744089013}"
       }
@@ -4027,11 +3102,6 @@
         "replay_player_id": 0,
         "pattern_name": "N Hatch Hydra",
         "value": "{\"label\":\"6 Hatch Hydra\"}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -4057,11 +3127,6 @@
         "replay_player_id": 1,
         "pattern_name": "Speedlot timing",
         "value": "415"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -4094,11 +3159,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":23.586206896551722}"
       },
@@ -4119,11 +3179,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":31.944827586206895}"
       }
@@ -4140,11 +3195,6 @@
         "replay_player_id": 0,
         "pattern_name": "Never upgraded",
         "value": "677"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
       },
       {
         "replay_player_id": 0,
@@ -4173,11 +3223,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":16.859504132231404}"
       }
@@ -4202,13 +3247,8 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":11.162790697674419}"
+        "value": "{\"switches_per_minute\":13.953488372093023}"
       },
       {
         "replay_player_id": 1,
@@ -4224,11 +3264,6 @@
         "replay_player_id": 1,
         "pattern_name": "Sair/Speedlot",
         "value": "575"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5]}"
       },
       {
         "replay_player_id": 1,
@@ -4255,19 +3290,9 @@
         "value": "350"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Gate Forge Cannon before expa",
         "value": "{\"expert_actuals\":[{\"second\":82,\"found\":true},{\"second\":128,\"found\":true},{\"second\":194,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3]}"
       }
     ]
   },
@@ -4282,11 +3307,6 @@
         "replay_player_id": 0,
         "pattern_name": "First Mine",
         "value": "422"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
       },
       {
         "replay_player_id": 0,
@@ -4312,11 +3332,6 @@
         "replay_player_id": 1,
         "pattern_name": "Made drops",
         "value": "507"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
       },
       {
         "replay_player_id": 1,
@@ -4349,11 +3364,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":18}"
       },
@@ -4366,11 +3376,6 @@
         "replay_player_id": 1,
         "pattern_name": "N Hatch Hydra",
         "value": "{\"label\":\"2 Hatch Hydra\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -4403,11 +3408,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":29.331210191082803}"
       },
@@ -4420,11 +3420,6 @@
         "replay_player_id": 1,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":284,\"first_turret_cmd\":417,\"turret_burst_count\":7,\"turret_finished\":436}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
       },
       {
         "replay_player_id": 1,
@@ -4444,11 +3439,6 @@
         "replay_player_id": 0,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":334,\"first_turret_cmd\":380,\"turret_burst_count\":5,\"turret_finished\":399}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
       },
       {
         "replay_player_id": 0,
@@ -4472,11 +3462,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":23.333333333333332}"
       }
@@ -4488,11 +3473,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 1 Fact Expa Goliath",
         "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":93,\"found\":true},{\"second\":97,\"found\":true},{\"second\":147,\"found\":true},{\"second\":192,\"found\":true},{\"second\":264,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
       },
       {
         "replay_player_id": 1,
@@ -4508,11 +3488,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never researched",
         "value": "413"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       }
     ]
   },
@@ -4535,11 +3510,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":33.00668151447661}"
       },
@@ -4555,13 +3525,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":22.316258351893097}"
+        "value": "{\"switches_per_minute\":21.915367483296215}"
       }
     ]
   },
@@ -4584,11 +3549,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":53.793103448275865}"
       },
@@ -4596,11 +3556,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Fact Expa Goliath",
         "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":84,\"found\":true},{\"second\":101,\"found\":true},{\"second\":151,\"found\":true},{\"second\":204,\"found\":true},{\"second\":291,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,3,4,5,6,7]}"
       },
       {
         "replay_player_id": 1,
@@ -4620,11 +3575,6 @@
         "replay_player_id": 0,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":302,\"first_turret_cmd\":345,\"turret_burst_count\":6,\"turret_finished\":364}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8]}"
       },
       {
         "replay_player_id": 0,
@@ -4653,11 +3603,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":39.118942731277535}"
       }
@@ -4674,11 +3619,6 @@
         "replay_player_id": 0,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":282,\"first_turret_cmd\":339,\"turret_burst_count\":6,\"turret_finished\":358}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,4,5]}"
       },
       {
         "replay_player_id": 0,
@@ -4702,11 +3642,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":16.393442622950822}"
       }
@@ -4718,11 +3653,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 1 Fact Expa Goliath",
         "value": "{\"expert_actuals\":[{\"second\":55,\"found\":true},{\"second\":91,\"found\":true},{\"second\":106,\"found\":true},{\"second\":172,\"found\":true},{\"second\":216,\"found\":true},{\"second\":386,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -4738,11 +3668,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "573"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -4775,11 +3700,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,3]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":6.3003663003663}"
       },
@@ -4792,11 +3712,6 @@
         "replay_player_id": 1,
         "pattern_name": "Made drops",
         "value": "1054"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
       },
       {
         "replay_player_id": 1,
@@ -4830,11 +3745,6 @@
       },
       {
         "replay_player_id": 4,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
-      },
-      {
-        "replay_player_id": 4,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":2.857142857142857}"
       }
@@ -4854,11 +3764,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,4]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":7.17948717948718}"
       },
@@ -4866,11 +3771,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1-Base Goliath",
         "value": "{\"expert_actuals\":[{\"second\":59,\"found\":true},{\"second\":90,\"found\":true},{\"second\":112,\"found\":true},{\"second\":190,\"found\":true},{\"second\":432,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3]}"
       },
       {
         "replay_player_id": 1,
@@ -4909,11 +3809,6 @@
       },
       {
         "replay_player_id": 3,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,4,5,6,7]}"
-      },
-      {
-        "replay_player_id": 3,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":0.25641025641025644}"
       },
@@ -4941,11 +3836,6 @@
         "replay_player_id": 5,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Overpool\"}"
-      },
-      {
-        "replay_player_id": 5,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       },
       {
         "replay_player_id": 5,
@@ -4982,11 +3872,6 @@
         "value": "417"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,7,8,9]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Goliath",
         "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":84,\"found\":true},{\"second\":166,\"found\":true},{\"second\":217,\"found\":true},{\"second\":324,\"found\":true}]}"
@@ -4995,11 +3880,6 @@
         "replay_player_id": 1,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":301,\"first_turret_cmd\":349,\"turret_burst_count\":6,\"turret_finished\":368}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       }
     ]
   },
@@ -5027,11 +3907,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":33.93103448275862}"
       },
@@ -5044,11 +3919,6 @@
         "replay_player_id": 1,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":280,\"first_turret_cmd\":322,\"turret_burst_count\":8,\"turret_finished\":341}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
       },
       {
         "replay_player_id": 1,
@@ -5076,11 +3946,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":33.739612188365655}"
       },
@@ -5088,11 +3953,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: Goliath",
         "value": "{\"expert_actuals\":[{\"second\":53,\"found\":true},{\"second\":82,\"found\":true},{\"second\":173,\"found\":true},{\"second\":227,\"found\":true},{\"second\":375,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
       },
       {
         "replay_player_id": 1,
@@ -5115,11 +3975,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":19.178885630498534}"
       },
@@ -5132,11 +3987,6 @@
         "replay_player_id": 1,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":634,\"muta_burst_count\":4,\"mutalisk_finished\":659,\"spire_cmd\":431}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -5164,11 +4014,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":23.91891891891892}"
       },
@@ -5181,11 +4026,6 @@
         "replay_player_id": 1,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":278,\"first_turret_cmd\":322,\"turret_burst_count\":4,\"turret_finished\":341}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -5205,11 +4045,6 @@
         "replay_player_id": 0,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":287,\"first_turret_cmd\":331,\"turret_burst_count\":7,\"turret_finished\":350}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -5238,11 +4073,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":26.687697160883282}"
       }
@@ -5254,11 +4084,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 1 Fact Expa Goliath",
         "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":94,\"found\":true},{\"second\":97,\"found\":true},{\"second\":146,\"found\":true},{\"second\":194,\"found\":true},{\"second\":265,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -5282,11 +4107,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,5,6,7,8]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":19.38814531548757}"
       }
@@ -5303,11 +4123,6 @@
         "replay_player_id": 0,
         "pattern_name": "First Mine",
         "value": "330"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -5336,11 +4151,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":34.678899082568805}"
       }
@@ -5357,11 +4167,6 @@
         "replay_player_id": 0,
         "pattern_name": "First Mine",
         "value": "315"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,9]}"
       },
       {
         "replay_player_id": 0,
@@ -5390,11 +4195,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":25.22851919561243}"
       }
@@ -5414,11 +4214,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":15.415617128463477}"
       },
@@ -5431,11 +4226,6 @@
         "replay_player_id": 1,
         "pattern_name": "First Mine",
         "value": "389"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
       },
       {
         "replay_player_id": 1,
@@ -5463,11 +4253,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":18.862275449101798}"
       },
@@ -5475,11 +4260,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Fact Expa Mech",
         "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":84,\"found\":true},{\"second\":100,\"found\":true},{\"second\":154,\"found\":true},{\"second\":197,\"found\":true},{\"second\":394,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -5512,11 +4292,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,7,8]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":35}"
       },
@@ -5537,11 +4312,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":10}"
       }
@@ -5553,11 +4323,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 3 Fact Expa Mech",
         "value": "{\"expert_actuals\":[{\"second\":61,\"found\":true},{\"second\":90,\"found\":true},{\"second\":107,\"found\":true},{\"second\":160,\"found\":true},{\"second\":451,\"found\":true},{\"second\":530,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -5581,11 +4346,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":11.842105263157896}"
       },
@@ -5606,11 +4366,6 @@
       },
       {
         "replay_player_id": 2,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,6]}"
-      },
-      {
-        "replay_player_id": 2,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":5.921052631578948}"
       },
@@ -5623,11 +4378,6 @@
         "replay_player_id": 3,
         "pattern_name": "Never upgraded",
         "value": "905"
-      },
-      {
-        "replay_player_id": 3,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       },
       {
         "replay_player_id": 3,
@@ -5645,11 +4395,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":5.32258064516129}"
       },
@@ -5660,28 +4405,23 @@
       },
       {
         "replay_player_id": 1,
+        "pattern_name": "Muta hit-n-run",
+        "value": "0"
+      },
+      {
+        "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "680"
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":11.61290322580645}"
+        "value": "{\"switches_per_minute\":11.129032258064514}"
       },
       {
         "replay_player_id": 2,
         "pattern_name": "Build Order: 3 Fact Expa Mech",
         "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":89,\"found\":true},{\"second\":105,\"found\":true},{\"second\":171,\"found\":true},{\"second\":395,\"found\":true},{\"second\":408,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 2,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
       },
       {
         "replay_player_id": 2,
@@ -5692,11 +4432,6 @@
         "replay_player_id": 3,
         "pattern_name": "Build Order: 2 Gate",
         "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":75,\"found\":true},{\"second\":99,\"found\":true},{\"second\":118,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 3,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 3,
@@ -5714,11 +4449,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":5.294117647058823}"
       },
@@ -5726,11 +4456,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: 5 Fact Expa Mech",
         "value": "{\"expert_actuals\":[{\"second\":53,\"found\":true},{\"second\":88,\"found\":true},{\"second\":107,\"found\":true},{\"second\":163,\"found\":true},{\"second\":500,\"found\":true},{\"second\":397,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
       },
       {
         "replay_player_id": 1,
@@ -5744,11 +4469,6 @@
       },
       {
         "replay_player_id": 2,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
-        "replay_player_id": 2,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":7.0588235294117645}"
       },
@@ -5756,11 +4476,6 @@
         "replay_player_id": 3,
         "pattern_name": "Build Order: 2 Gate",
         "value": "{\"expert_actuals\":[{\"second\":44,\"found\":true},{\"second\":71,\"found\":true},{\"second\":107,\"found\":true},{\"second\":113,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 3,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
       },
       {
         "replay_player_id": 3,
@@ -5774,11 +4489,6 @@
       },
       {
         "replay_player_id": 4,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
-      },
-      {
-        "replay_player_id": 4,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":0}"
       },
@@ -5786,11 +4496,6 @@
         "replay_player_id": 5,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Hatch\"}"
-      },
-      {
-        "replay_player_id": 5,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,5,8,9]}"
       },
       {
         "replay_player_id": 5,
@@ -5810,11 +4515,6 @@
         "replay_player_id": 0,
         "pattern_name": "First Mine",
         "value": "415"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -5848,11 +4548,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":26.56346749226006}"
       }
@@ -5869,11 +4564,6 @@
         "replay_player_id": 0,
         "pattern_name": "First Mine",
         "value": "411"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       },
       {
         "replay_player_id": 0,
@@ -5907,11 +4597,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":23.142857142857142}"
       }
@@ -5930,11 +4615,6 @@
         "value": "441"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1 Gate Core",
         "value": "{\"expert_actuals\":[{\"second\":50,\"found\":true},{\"second\":79,\"found\":true},{\"second\":100,\"found\":true},{\"second\":123,\"found\":true}]}"
@@ -5943,11 +4623,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "441"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,9]}"
       }
     ]
   },
@@ -5962,11 +4637,6 @@
         "replay_player_id": 0,
         "pattern_name": "First Mine",
         "value": "536"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -6000,11 +4670,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":24.126506024096386}"
       }
@@ -6024,11 +4689,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":22.5}"
       },
@@ -6036,11 +4696,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: Mech",
         "value": "{\"expert_actuals\":[{\"second\":54,\"found\":true},{\"second\":83,\"found\":true},{\"second\":160,\"found\":true},{\"second\":248,\"found\":true},{\"second\":329,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
       },
       {
         "replay_player_id": 1,
@@ -6063,11 +4718,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":8.715596330275229}"
       },
@@ -6085,11 +4735,6 @@
         "replay_player_id": 1,
         "pattern_name": "N Hatch Muta",
         "value": "{\"label\":\"3 Hatch Muta\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -6122,11 +4767,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":35.45454545454546}"
       },
@@ -6139,11 +4779,6 @@
         "replay_player_id": 1,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":287,\"first_turret_cmd\":330,\"turret_burst_count\":7,\"turret_finished\":349}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -6163,11 +4798,6 @@
         "replay_player_id": 0,
         "pattern_name": "First Mine",
         "value": "463"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       },
       {
         "replay_player_id": 0,
@@ -6201,13 +4831,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":23.79008746355685}"
+        "value": "{\"switches_per_minute\":23.090379008746357}"
       }
     ]
   },
@@ -6230,11 +4855,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":21.966364812419148}"
       },
@@ -6247,11 +4867,6 @@
         "replay_player_id": 1,
         "pattern_name": "First Mine",
         "value": "298"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -6274,11 +4889,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":14.528795811518325}"
       },
@@ -6296,11 +4906,6 @@
         "replay_player_id": 1,
         "pattern_name": "First Observer",
         "value": "454"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       },
       {
         "replay_player_id": 1,
@@ -6333,11 +4938,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":18.166666666666668}"
       },
@@ -6355,11 +4955,6 @@
         "replay_player_id": 1,
         "pattern_name": "First Reaver",
         "value": "497"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,9]}"
       },
       {
         "replay_player_id": 1,
@@ -6392,11 +4987,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":15.475113122171944}"
       },
@@ -6422,11 +5012,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":12.307692307692307}"
       }
@@ -6443,11 +5028,6 @@
         "replay_player_id": 0,
         "pattern_name": "N Hatch Hydra",
         "value": "{\"label\":\"3 Hatch Hydra\"}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -6473,11 +5053,6 @@
         "replay_player_id": 1,
         "pattern_name": "Speedlot timing",
         "value": "456"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -6510,11 +5085,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":14.594594594594595}"
       },
@@ -6540,11 +5110,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":24.324324324324323}"
       }
@@ -6558,11 +5123,6 @@
         "value": "{\"expert_actuals\":[{\"second\":48,\"found\":true},{\"second\":115,\"found\":true},{\"second\":129,\"found\":true}]}"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1-Base Tankless Mech",
         "value": "{\"expert_actuals\":[{\"second\":154,\"found\":true},{\"second\":62,\"found\":true},{\"second\":71,\"found\":true},{\"second\":121,\"found\":true},{\"second\":180,\"found\":true}],\"modifiers\":[\"proxy\"]}"
@@ -6571,11 +5131,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never researched",
         "value": "299"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
       }
     ]
   },
@@ -6595,11 +5150,6 @@
         "replay_player_id": 0,
         "pattern_name": "Made drops",
         "value": "591"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -6628,11 +5178,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":13.516483516483516}"
       }
@@ -6644,11 +5189,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 9 Overpool",
         "value": "{\"expert_actuals\":[{\"second\":72,\"found\":true},{\"second\":127,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
       },
       {
         "replay_player_id": 1,
@@ -6664,11 +5204,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "288"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
       }
     ]
   },
@@ -6680,19 +5215,9 @@
         "value": "{\"expert_actuals\":[{\"second\":51,\"found\":true},{\"second\":81,\"found\":true},{\"second\":102,\"found\":true},{\"second\":158,\"found\":true},{\"second\":401,\"found\":true},{\"second\":240,\"found\":true}]}"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 9 Pool",
         "value": "{\"expert_actuals\":[{\"second\":66,\"found\":true},{\"second\":119,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       },
       {
         "replay_player_id": 2,
@@ -6700,19 +5225,9 @@
         "value": "{\"expert_actuals\":[{\"second\":50,\"found\":true},{\"second\":82,\"found\":true},{\"second\":172,\"found\":true},{\"second\":127,\"found\":true}]}"
       },
       {
-        "replay_player_id": 2,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3]}"
-      },
-      {
         "replay_player_id": 3,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~10 Hatch\"}"
-      },
-      {
-        "replay_player_id": 3,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,3,4]}"
       }
     ]
   },
@@ -6730,11 +5245,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Wraiths",
         "value": "272"
       },
@@ -6747,11 +5257,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "453"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,5]}"
       }
     ]
   },
@@ -6761,11 +5266,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 1 Fact Expa Mech",
         "value": "{\"expert_actuals\":[{\"second\":78,\"found\":true},{\"second\":65,\"found\":true},{\"second\":99,\"found\":true},{\"second\":202,\"found\":true},{\"second\":244,\"found\":true},{\"second\":283,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 0,
@@ -6781,11 +5281,6 @@
         "replay_player_id": 1,
         "pattern_name": "Carriers",
         "value": "1040"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
       },
       {
         "replay_player_id": 1,
@@ -6829,11 +5324,6 @@
       },
       {
         "replay_player_id": 4,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1]}"
-      },
-      {
-        "replay_player_id": 4,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":6.3727454909819645}"
       },
@@ -6849,11 +5339,6 @@
       },
       {
         "replay_player_id": 6,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
-      },
-      {
-        "replay_player_id": 6,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":0}"
       },
@@ -6861,11 +5346,6 @@
         "replay_player_id": 7,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Overpool\"}"
-      },
-      {
-        "replay_player_id": 7,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,5]}"
       },
       {
         "replay_player_id": 7,
@@ -6885,11 +5365,6 @@
         "replay_player_id": 0,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":299,\"first_turret_cmd\":344,\"turret_burst_count\":5,\"turret_finished\":363}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,9]}"
       },
       {
         "replay_player_id": 0,
@@ -6930,11 +5405,6 @@
         "replay_player_id": 1,
         "pattern_name": "N Hatch Muta",
         "value": "{\"label\":\"3 Hatch Muta\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -6972,11 +5442,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":20.833333333333336}"
       },
@@ -6989,11 +5454,6 @@
         "replay_player_id": 1,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":242,\"first_turret_cmd\":305,\"turret_burst_count\":7,\"turret_finished\":324}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
       },
       {
         "replay_player_id": 1,
@@ -7023,11 +5483,6 @@
         "replay_player_id": 0,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":299,\"first_turret_cmd\":344,\"turret_burst_count\":5,\"turret_finished\":363}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,9]}"
       },
       {
         "replay_player_id": 0,
@@ -7071,11 +5526,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":19.384615384615383}"
       }
@@ -7110,11 +5560,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":31.518987341772153}"
       },
@@ -7127,11 +5572,6 @@
         "replay_player_id": 1,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":194,\"first_turret_cmd\":333,\"turret_burst_count\":10,\"turret_finished\":352}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -7179,11 +5619,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":15.510204081632653}"
       },
@@ -7206,11 +5641,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "709"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,5,6]}"
       },
       {
         "replay_player_id": 1,
@@ -7243,11 +5673,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":20.04}"
       },
@@ -7260,11 +5685,6 @@
         "replay_player_id": 1,
         "pattern_name": "N Hatch Hydra",
         "value": "{\"label\":\"4 Hatch Hydra\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -7302,11 +5722,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":36.3716814159292}"
       },
@@ -7319,11 +5734,6 @@
         "replay_player_id": 1,
         "pattern_name": "N Hatch Hydra",
         "value": "{\"label\":\"5 Hatch Hydra\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
       },
       {
         "replay_player_id": 1,
@@ -7348,11 +5758,6 @@
         "replay_player_id": 0,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":280,\"first_turret_cmd\":338,\"turret_burst_count\":7,\"turret_finished\":357}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       },
       {
         "replay_player_id": 0,
@@ -7381,11 +5786,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":32.861271676300575}"
       }
@@ -7410,11 +5810,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":22.285714285714285}"
       },
@@ -7432,11 +5827,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "613"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6]}"
       },
       {
         "replay_player_id": 1,
@@ -7463,11 +5853,6 @@
         "value": "335"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1-Base Bio",
         "value": "{\"expert_actuals\":[{\"second\":56,\"found\":true},{\"second\":85,\"found\":true},{\"found\":false},{\"found\":false}]}"
@@ -7481,11 +5866,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "335"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
       }
     ]
   },
@@ -7513,11 +5893,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":30.75}"
       },
@@ -7533,13 +5908,8 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
-        "value": "{\"switches_per_minute\":15.75}"
+        "value": "{\"switches_per_minute\":14.25}"
       }
     ]
   },
@@ -7559,11 +5929,6 @@
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
         "value": "449"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1]}"
       },
       {
         "replay_player_id": 0,
@@ -7587,11 +5952,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":18.301158301158303}"
       }
@@ -7610,11 +5970,6 @@
         "value": "413"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 9 Overpool",
         "value": "{\"expert_actuals\":[{\"second\":73,\"found\":true},{\"second\":126,\"found\":true}]}"
@@ -7628,11 +5983,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "503"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
       }
     ]
   },
@@ -7654,11 +6004,6 @@
         "value": "481"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,4,5]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 2 Gate",
         "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":73,\"found\":true},{\"second\":93,\"found\":true},{\"second\":114,\"found\":true}]}"
@@ -7677,11 +6022,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never researched",
         "value": "481"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5]}"
       }
     ]
   },
@@ -7703,11 +6043,6 @@
         "value": "444"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 9 Pool",
         "value": "{\"expert_actuals\":[{\"second\":65,\"found\":true},{\"second\":119,\"found\":true}]}"
@@ -7716,11 +6051,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "444"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
       }
     ]
   },
@@ -7748,11 +6078,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":13.739495798319327}"
       },
@@ -7765,11 +6090,6 @@
         "replay_player_id": 1,
         "pattern_name": "N Hatch Hydra",
         "value": "{\"label\":\"5 Hatch Hydra\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       },
       {
         "replay_player_id": 1,
@@ -7797,11 +6117,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":14.311926605504587}"
       },
@@ -7824,11 +6139,6 @@
         "replay_player_id": 1,
         "pattern_name": "Mutalisk timing",
         "value": "{\"first_muta_cmd\":421,\"muta_burst_count\":8,\"mutalisk_finished\":446,\"spire_cmd\":308}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -7861,11 +6171,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":11.929824561403509}"
       },
@@ -7878,11 +6183,6 @@
         "replay_player_id": 1,
         "pattern_name": "N Hatch Hydra",
         "value": "{\"label\":\"3 Hatch Hydra\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -7902,11 +6202,6 @@
         "replay_player_id": 0,
         "pattern_name": "First Mine",
         "value": "615"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
       },
       {
         "replay_player_id": 0,
@@ -7945,11 +6240,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":10.444785276073619}"
       }
@@ -7966,11 +6256,6 @@
         "replay_player_id": 0,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":279,\"first_turret_cmd\":363,\"turret_burst_count\":6,\"turret_finished\":382}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
       },
       {
         "replay_player_id": 0,
@@ -8009,11 +6294,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":12.610837438423644}"
       }
@@ -8046,11 +6326,6 @@
         "value": "433"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 1-1-1 Tankless Mech",
         "value": "{\"expert_actuals\":[{\"second\":49,\"found\":true},{\"second\":85,\"found\":true},{\"second\":95,\"found\":true},{\"second\":150,\"found\":true},{\"second\":341,\"found\":true}]}"
@@ -8069,11 +6344,6 @@
         "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "433"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
       }
     ]
   },
@@ -8100,19 +6370,9 @@
         "value": "513"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,9]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Mech",
         "value": "{\"expert_actuals\":[{\"second\":50,\"found\":true},{\"second\":83,\"found\":true},{\"second\":183,\"found\":true},{\"second\":238,\"found\":true},{\"second\":330,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5]}"
       }
     ]
   },
@@ -8132,11 +6392,6 @@
         "replay_player_id": 0,
         "pattern_name": "Speedlot timing",
         "value": "453"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7]}"
       },
       {
         "replay_player_id": 0,
@@ -8160,11 +6415,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,5,6,7,8]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":15.897435897435898}"
       }
@@ -8176,11 +6426,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: Nexus First",
         "value": "{\"expert_actuals\":[{\"second\":51,\"found\":true},{\"second\":111,\"found\":true},{\"found\":false}]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,9]}"
       },
       {
         "replay_player_id": 0,
@@ -8214,11 +6459,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":21.071428571428573}"
       }
@@ -8230,11 +6470,6 @@
         "replay_player_id": 0,
         "pattern_name": "Battlecruisers",
         "value": "518"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
       },
       {
         "replay_player_id": 0,
@@ -8253,11 +6488,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3]}"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":4.094488188976378}"
       },
@@ -8270,11 +6500,6 @@
         "replay_player_id": 3,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~7 Hatch\"}"
-      },
-      {
-        "replay_player_id": 3,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1]}"
       },
       {
         "replay_player_id": 3,
@@ -8298,11 +6523,6 @@
       },
       {
         "replay_player_id": 4,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4]}"
-      },
-      {
-        "replay_player_id": 4,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":7.874015748031496}"
       },
@@ -8310,11 +6530,6 @@
         "replay_player_id": 5,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~9 Pool\"}"
-      },
-      {
-        "replay_player_id": 5,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3]}"
       },
       {
         "replay_player_id": 5,
@@ -8348,11 +6563,6 @@
       },
       {
         "replay_player_id": 7,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1]}"
-      },
-      {
-        "replay_player_id": 7,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":6.850393700787402}"
       }
@@ -8369,11 +6579,6 @@
         "replay_player_id": 1,
         "pattern_name": "Build Order: Zerg opening (approximate)",
         "value": "{\"label\":\"~11 Hatch\"}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8,9]}"
       },
       {
         "replay_player_id": 1,
@@ -8395,11 +6600,6 @@
         "value": "382"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: Gate Expand",
         "value": "{\"expert_actuals\":[{\"second\":47,\"found\":true},{\"second\":74,\"found\":true},{\"second\":164,\"found\":true}]}"
@@ -8413,11 +6613,6 @@
         "replay_player_id": 1,
         "pattern_name": "Sair/Speedlot",
         "value": "375"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6]}"
       }
     ]
   },
@@ -8427,11 +6622,6 @@
         "replay_player_id": 0,
         "pattern_name": "Build Order: 9 Pool",
         "value": "{\"expert_actuals\":[{\"second\":64,\"found\":true},{\"second\":116,\"found\":true}]}"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7,8]}"
       },
       {
         "replay_player_id": 1,
@@ -8457,11 +6647,6 @@
         "replay_player_id": 1,
         "pattern_name": "Speedlot timing",
         "value": "504"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
       }
     ]
   },
@@ -8489,11 +6674,6 @@
       },
       {
         "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,8]}"
-      },
-      {
-        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":18.166666666666668}"
       },
@@ -8511,11 +6691,6 @@
         "replay_player_id": 1,
         "pattern_name": "First Reaver",
         "value": "497"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[0,1,2,3,4,5,6,7,9]}"
       },
       {
         "replay_player_id": 1,
@@ -8547,11 +6722,6 @@
         "value": "{\"label\":\"3 Hatch Muta\"}"
       },
       {
-        "replay_player_id": 0,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,5,6,7]}"
-      },
-      {
         "replay_player_id": 1,
         "pattern_name": "Build Order: 2-Base Bio",
         "value": "{\"expert_actuals\":[{\"second\":53,\"found\":true},{\"second\":84,\"found\":true},{\"second\":193,\"found\":true},{\"second\":213,\"found\":true},{\"second\":156,\"found\":true}]}"
@@ -8565,11 +6735,6 @@
         "replay_player_id": 1,
         "pattern_name": "Turret timing",
         "value": "{\"ebay_cmd\":296,\"first_turret_cmd\":355,\"turret_burst_count\":5,\"turret_finished\":374}"
-      },
-      {
-        "replay_player_id": 1,
-        "pattern_name": "Used Hotkey Groups",
-        "value": "{\"groups\":[1,2,3,4,7]}"
       }
     ]
   }

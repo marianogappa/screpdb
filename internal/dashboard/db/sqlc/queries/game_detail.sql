@@ -7,9 +7,8 @@ WHERE id = ?;
 -- Trimmed in Apr 2026: previously joined commands and ran two correlated
 -- subqueries against commands_low_value (Hotkey count + total low-value)
 -- per player to power a game-level hotkey-usage ratio. That ratio is no
--- longer surfaced; hotkey signal lives in the used_hotkey_groups /
--- never_used_hotkeys markers (computed at ingestion, read from
--- replay_events). Page-level metrics now only need player metadata + APM.
+-- longer surfaced; hotkey signal lives in players.hotkey_stream and the
+-- never_used_hotkeys marker (computed at ingestion). Page-level metrics now only need player metadata + APM.
 SELECT
   p.id,
   p.name,
@@ -130,6 +129,7 @@ SELECT
   r.lobby_kind,
   r.duration_seconds,
   r.game_type,
+  r.team_format,
   r.matchup,
   r.team_stacking,
   r.team_info_incomplete,
@@ -151,7 +151,7 @@ FROM replays r
 JOIN players p ON p.replay_id = r.id
 WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
 ORDER BY r.replay_date DESC, r.id DESC
-LIMIT 12;
+LIMIT 10;
 
 -- name: ListPlayerFingerprintVectors :many
 -- Feature vectors for a player under a given feature version, ordered by replay

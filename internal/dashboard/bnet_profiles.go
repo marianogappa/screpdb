@@ -104,7 +104,7 @@ func (d *Dashboard) fetchAndCacheBnetProfile(ctx context.Context, toon string, g
 func upsertBnetProfileWithRetry(ctx context.Context, store *dashboarddb.Store, row dashboarddb.BnetProfileRow) error {
 	const maxAttempts = 10
 	backoff := 100 * time.Millisecond
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+	for attempt := range maxAttempts {
 		err := store.UpsertBnetProfile(ctx, row)
 		if err == nil {
 			return nil
@@ -146,7 +146,6 @@ const bnetProfileBackfillMaxPlayers = 20
 
 func (d *Dashboard) triggerBnetProfileFetchesForPlayers(names []string, gameSource string) {
 	if gameSource != "AssumedBattleNet" {
-		log.Printf("[country-flags] skipping: game_source=%q (not bnet)", gameSource)
 		return
 	}
 	d.backfillBnetProfiles(names)
@@ -157,12 +156,10 @@ func (d *Dashboard) triggerBnetProfileFetchesForPlayers(names []string, gameSour
 // cares about them: the list is truncated to bnetProfileBackfillMaxPlayers.
 func (d *Dashboard) backfillBnetProfiles(names []string) {
 	if d.bnetDisabled.Load() {
-		log.Printf("[country-flags] skipping: bridge disabled")
 		return
 	}
 	addr, _ := d.bnetAddr.Load().(string)
 	if addr == "" {
-		log.Printf("[country-flags] skipping: no bridge address")
 		return
 	}
 	playerKeys := make([]string, 0, len(names))
@@ -171,7 +168,6 @@ func (d *Dashboard) backfillBnetProfiles(names []string) {
 	}
 	cached, err := d.countryCodesByPlayerKeys(playerKeys)
 	if err != nil {
-		log.Printf("[country-flags] skipping: cache lookup error: %v", err)
 		return
 	}
 	var uncached []string
@@ -188,20 +184,15 @@ func (d *Dashboard) backfillBnetProfiles(names []string) {
 		uncached = append(uncached, n)
 	}
 	if len(uncached) == 0 {
-		log.Printf("[country-flags] all %d players already cached", len(names))
 		return
 	}
-	dropped := 0
 	if len(uncached) > bnetProfileBackfillMaxPlayers {
-		dropped = len(uncached) - bnetProfileBackfillMaxPlayers
 		uncached = uncached[:bnetProfileBackfillMaxPlayers]
 	}
 	gateways := defaultGatewayOrder
 	if known := d.bnetGateway.Load(); known > 0 {
 		gateways = append([]int64{known}, defaultGatewayOrder...)
 	}
-	log.Printf("[country-flags] fetching %d uncached players (%d over the cap, gateways=%v)",
-		len(uncached), dropped, gateways)
 	d.bnetBackfillActive.Add(1)
 	go func() {
 		defer crashreport.GuardNonFatal(nil)
@@ -210,11 +201,9 @@ func (d *Dashboard) backfillBnetProfiles(names []string) {
 			for _, gw := range gateways {
 				res, fetchErr := d.getOrFetchBnetProfile(d.ctx, toon, gw, bnetfacade.PriorityBackground, 0)
 				if fetchErr != nil {
-					log.Printf("[country-flags] fetch %q gw=%d: %v", toon, gw, fetchErr)
 					continue
 				}
 				if res.Found {
-					log.Printf("[country-flags] found %q on gw=%d country=%q", toon, gw, res.CountryCode)
 					break
 				}
 			}

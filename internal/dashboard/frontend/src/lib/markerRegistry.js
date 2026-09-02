@@ -204,7 +204,6 @@ export const isOpenerEventType = (eventType) =>
 export const pillEventTypeClass = (eventType) => {
   if (isBuildOrderEventType(eventType)) return 'workflow-pattern-pill-bo';
   if (eventType === 'opener_unresolved') return 'workflow-pattern-pill-na';
-  if (eventType === 'used_hotkey_groups') return 'workflow-pattern-pill-keys';
   return '';
 };
 

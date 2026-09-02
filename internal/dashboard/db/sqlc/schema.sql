@@ -52,7 +52,8 @@ CREATE TABLE players (
   eapm INTEGER NOT NULL,
   is_winner BOOLEAN NOT NULL,
   start_location_oclock INTEGER,
-  slot_id INTEGER NOT NULL DEFAULT 0
+  slot_id INTEGER NOT NULL DEFAULT 0,
+  hotkey_stream BLOB
 );
 
 CREATE TABLE player_fingerprint_vectors (

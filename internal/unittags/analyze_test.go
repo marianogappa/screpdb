@@ -266,20 +266,27 @@ func TestAnalyze_SelectAddRemove(t *testing.T) {
 	}
 }
 
-func TestAnalyze_HotkeyAddUnion(t *testing.T) {
-	// Hotkey "Add" unions the group into the current selection; the result is
-	// multi so a train records no single producer.
+func TestAnalyze_HotkeyAddSemantics(t *testing.T) {
+	// Hotkey "Add" (shift+number) adds the current selection TO the group; the
+	// selection itself is unchanged, so a train right after still has the
+	// single selected tag as its producer, while recalling the grown group
+	// yields a multi selection that attributes nothing.
 	cmds := []repcmd.Cmd{
 		sel(1, 10, 0xA1),
 		hotkey(1, 11, "Assign", 2), // group 2 = {0xA1}
 		sel(1, 20, 0xB2),           // {0xB2}
-		hotkey(1, 21, "Add", 2),    // {0xB2, 0xA1}
-		train(1, 22, "Dragoon"),
+		hotkey(1, 21, "Add", 2),    // group 2 = {0xA1, 0xB2}; selection stays {0xB2}
+		train(1, 22, "Dragoon"),    // attributed to 0xB2
+		hotkey(1, 30, "Select", 2), // {0xA1, 0xB2}
+		train(1, 31, "Dragoon"),    // multi: no attribution
 	}
 	ev := Analyze(replayOf(cmds...))
 	pe := ev.Players[1]
-	if len(pe.Producers["Gateway"]) != 0 {
-		t.Errorf("multi selection after hotkey Add must not attribute a producer, got %+v", pe.Producers["Gateway"])
+	if p := pe.Producers["Gateway"][0xB2]; p == nil || p.Units != 1 {
+		t.Errorf("hotkey Add must leave the selection intact; want 0xB2 producing 1, got %+v", pe.Producers["Gateway"])
+	}
+	if _, ok := pe.Producers["Gateway"][0xA1]; ok {
+		t.Errorf("recalled multi selection must not attribute a producer to 0xA1")
 	}
 }
 

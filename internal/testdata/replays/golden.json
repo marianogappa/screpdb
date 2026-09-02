@@ -6,7 +6,7 @@
       "commands": 5173,
       "patterns": {
         "replay": 1,
-        "player": 10
+        "player": 8
       }
     },
     {
@@ -15,7 +15,7 @@
       "commands": 9398,
       "patterns": {
         "replay": 2,
-        "player": 11
+        "player": 9
       }
     },
     {
@@ -24,7 +24,7 @@
       "commands": 8974,
       "patterns": {
         "replay": 2,
-        "player": 12
+        "player": 10
       }
     },
     {
@@ -33,7 +33,7 @@
       "commands": 13980,
       "patterns": {
         "replay": 2,
-        "player": 36
+        "player": 30
       }
     }
   ]

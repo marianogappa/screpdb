@@ -2,8 +2,6 @@ package markers
 
 import (
 	"encoding/json"
-	"sort"
-	"strconv"
 
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
 	"github.com/marianogappa/screpdb/internal/models"
@@ -204,55 +202,4 @@ func absInt(v int) int {
 		return -v
 	}
 	return v
-}
-
-// -----------------------------------------------------------------------------
-// usedHotkeyGroupsEvaluator: migrates UsedHotkeyGroupsPlayerDetector.
-// Accumulates the set of hotkey groups the player used. Finalize emits a
-// sorted comma-separated string (e.g. "1,3,5") as ValueString so the existing
-// DB rows + FE checks keep working.
-// -----------------------------------------------------------------------------
-
-type usedHotkeyGroupsEvaluator struct {
-	groups map[int]struct{}
-}
-
-func newUsedHotkeyGroupsEvaluator() CustomEvaluator {
-	return &usedHotkeyGroupsEvaluator{groups: map[int]struct{}{}}
-}
-
-func (e *usedHotkeyGroupsEvaluator) Observe(f cmdenrich.EnrichedCommand) {
-	if f.Kind != cmdenrich.KindHotkey {
-		return
-	}
-	g, err := strconv.Atoi(f.Subject)
-	if err != nil {
-		return
-	}
-	e.groups[g] = struct{}{}
-}
-
-func (e *usedHotkeyGroupsEvaluator) Finalize(ctx CustomEvalContext) CustomResult {
-	if len(e.groups) == 0 {
-		return CustomResult{}
-	}
-	keys := make([]int, 0, len(e.groups))
-	for g := range e.groups {
-		keys = append(keys, g)
-	}
-	sort.Ints(keys)
-	payload, err := json.Marshal(map[string][]int{"groups": keys})
-	if err != nil {
-		return CustomResult{}
-	}
-	// Commit at end-of-replay — user-confirmed convention for this marker.
-	detectedAtSecond := 0
-	if ctx.Replay != nil {
-		detectedAtSecond = ctx.Replay.DurationSeconds
-	}
-	return CustomResult{
-		Matched:          true,
-		DetectedAtSecond: detectedAtSecond,
-		Payload:          payload,
-	}
 }

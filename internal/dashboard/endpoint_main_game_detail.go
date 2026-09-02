@@ -304,6 +304,9 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 		}
 	}
 	d.triggerBnetProfileFetchesForPlayers([]string{summary.PlayerName}, "AssumedBattleNet")
+	if bnetGames, err := d.dbStore.CountPlayerBnetGames(d.ctx, playerKey); err == nil {
+		result.BnetGames = bnetGames
+	}
 	result.GamesPlayed = summary.GamesPlayed
 	result.Wins = summary.Wins
 	result.AverageAPM = summary.AverageAPM
@@ -334,7 +337,10 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 	return result, nil
 }
 
-func (d *Dashboard) buildWorkflowPlayerRecentGames(playerKey string) ([]workflowGameListItem, error) {
+// buildWorkflowPlayerLastGames assembles the player page's "last games" rows:
+// the recent-games list plus, per game, the current player's result, APM,
+// disconnect flag, featuring pills and unit composition.
+func (d *Dashboard) buildWorkflowPlayerLastGames(playerKey string) ([]workflowGameListItem, error) {
 	playerName, err := d.playerNameForKey(playerKey)
 	if err != nil {
 		return nil, err
@@ -355,6 +361,7 @@ func (d *Dashboard) buildWorkflowPlayerRecentGames(playerKey string) ([]workflow
 			LobbyKind:          row.LobbyKind,
 			DurationSeconds:    row.DurationSeconds,
 			GameType:           row.GameType,
+			TeamFormat:         row.TeamFormat,
 			Matchup:            row.Matchup,
 			TeamStacking:       row.TeamStacking,
 			TeamInfoIncomplete: row.TeamInfoIncomplete,
@@ -368,6 +375,28 @@ func (d *Dashboard) buildWorkflowPlayerRecentGames(playerKey string) ([]workflow
 	}
 	if err := d.populateWorkflowRecentGamesCurrentPlayer(playerKey, result); err != nil {
 		return nil, fmt.Errorf("failed to populate recent game context for %s: %w", playerName, err)
+	}
+	// The current player's unit composition per game, the same rows the
+	// per-game player strip renders. Ten games means ten cheap re-computations
+	// (the histogram rules iterate without re-ingest; see unit_composition.go).
+	for i := range result {
+		current := result[i].CurrentPlayer
+		if current == nil {
+			continue
+		}
+		boundaries, err := d.dbStore.GetPhaseBoundariesForReplay(d.ctx, result[i].ReplayID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load phase boundaries for %s: %w", playerName, err)
+		}
+		rows, err := d.dbStore.ListGameUnitProductionAndCasts(d.ctx, result[i].ReplayID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load production for %s: %w", playerName, err)
+		}
+		for _, comp := range computeCompositionForReplay(rows, boundaries) {
+			if comp.PlayerID == current.PlayerID {
+				current.Composition = append(current.Composition, comp)
+			}
+		}
 	}
 	return result, nil
 }

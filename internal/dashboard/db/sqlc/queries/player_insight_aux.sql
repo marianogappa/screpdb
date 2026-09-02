@@ -142,21 +142,13 @@ ORDER BY c.player_id ASC, c.seconds_from_game_start ASC;
 
 -- name: ListHotkeyGamesRateByPlayer :many
 -- Hotkey usage as a per-player rate of "games where any hotkey-group command
--- fired." Sourced from the used_hotkey_groups marker (computed at ingestion;
--- one replay_events row per (replay x player) when groups exist), so this
--- avoids scanning commands_low_value at query time. EXISTS guard handles
--- duplicate marker rows defensively even though the streaming detector
--- emits at most one per (replay x player).
+-- fired." Sourced from players.hotkey_stream (encoded at ingestion, NULL when
+-- the player issued no hotkey commands); the used_hotkey_groups marker this
+-- used to read was retired in favour of the stream.
 WITH game_level AS (
   SELECT
     lower(trim(p.name)) AS player_key,
-    CASE WHEN EXISTS (
-      SELECT 1 FROM replay_events re
-      WHERE re.replay_id = p.replay_id
-        AND re.source_player_id = p.id
-        AND re.event_kind = 'marker'
-        AND re.event_type = 'used_hotkey_groups'
-    ) THEN 100.0 ELSE 0.0 END AS metric_value
+    CASE WHEN p.hotkey_stream IS NOT NULL THEN 100.0 ELSE 0.0 END AS metric_value
   FROM players p
   WHERE p.is_observer = 0
     AND lower(trim(coalesce(p.type, ''))) = 'human'

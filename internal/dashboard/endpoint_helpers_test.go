@@ -383,62 +383,6 @@ func TestBuildPlayerNarrativeHints(t *testing.T) {
 	}
 }
 
-func TestNeverEligibilityHelpers(t *testing.T) {
-	if !neverAlliedMultiTeamEligible(2, 0) {
-		t.Error("expected eligible with team games and no alliance commands")
-	}
-	if neverAlliedMultiTeamEligible(2, 1) {
-		t.Error("alliance commands should disqualify")
-	}
-	if neverAlliedMultiTeamEligible(0, 0) {
-		t.Error("no multi-team games should disqualify")
-	}
-	if !neverHotkeysEligible(1, 0) {
-		t.Error("expected eligible with games and zero hotkey rate")
-	}
-	if neverHotkeysEligible(1, 0.1) {
-		t.Error("non-zero hotkey rate should disqualify")
-	}
-	if neverHotkeysEligible(0, 0) {
-		t.Error("no games should disqualify")
-	}
-}
-
-func TestTeamFormatToClass(t *testing.T) {
-	cases := []struct {
-		in, want string
-	}{
-		{"1v1", ""}, {"", ""}, {"2v2", "2v2"}, {"3v3", "3v3"},
-		{"2v2v2", "multi-team"}, {"4v4", ""},
-	}
-	for _, c := range cases {
-		if got := teamFormatToClass(c.in); got != c.want {
-			t.Errorf("teamFormatToClass(%q) = %q, want %q", c.in, got, c.want)
-		}
-	}
-}
-
-func TestOutlierPillLabel(t *testing.T) {
-	if got := outlierPillLabel("Carrier", "Money"); got != "Carrier "+outlierMoneyBag {
-		t.Errorf("money map should append bag, got %q", got)
-	}
-	if got := outlierPillLabel("Carrier", "Regular"); got != "Carrier" {
-		t.Errorf("regular map should not append bag, got %q", got)
-	}
-}
-
-func TestOutlierTechAndUpgradeToUnit(t *testing.T) {
-	if got := outlierTechToUnit("Psionic Storm"); got != "High Templar" {
-		t.Errorf("Psionic Storm -> %q, want High Templar", got)
-	}
-	if got := outlierTechToUnit("Nonexistent Tech"); got != "" {
-		t.Errorf("unknown tech should be empty, got %q", got)
-	}
-	if got := outlierUpgradeToUnit("Singularity Charge (Dragoon Range)"); got != "Dragoon" {
-		t.Errorf("parenthetical extraction failed, got %q", got)
-	}
-}
-
 func TestFormatWorkflowPlayersLabelFromList(t *testing.T) {
 	if got := formatWorkflowPlayersLabelFromList(nil); got != "" {
 		t.Fatalf("empty players should yield empty label, got %q", got)

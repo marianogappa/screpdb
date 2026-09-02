@@ -175,7 +175,7 @@ func TestPlayerDetailEndpoint_KnownAndUnknown(t *testing.T) {
 	}
 }
 
-func TestPlayerRecentGamesEndpoint(t *testing.T) {
+func TestPlayerLastGamesEndpointBasic(t *testing.T) {
 	dash := newTestDashboard(t)
 	router := dash.setupRouter()
 
@@ -185,7 +185,7 @@ func TestPlayerRecentGamesEndpoint(t *testing.T) {
 	}
 	key := normalizePlayerKey(playerName)
 
-	rec := performDashboardRequest(router, http.MethodGet, "/api/players/"+key+"/recent-games", nil)
+	rec := performDashboardRequest(router, http.MethodGet, "/api/players/"+key+"/last-games", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -223,54 +223,5 @@ func TestGameDetailEndpoint_KnownAndUnknown(t *testing.T) {
 	rec = performDashboardRequest(router, http.MethodGet, "/api/games/424242424", nil)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("unknown game expected 404, got %d: %s", rec.Code, rec.Body.String())
-	}
-}
-
-func TestPlayerSummaryPerMatchupEndpoint(t *testing.T) {
-	dash := newTestDashboard(t)
-	router := dash.setupRouter()
-
-	var playerName string
-	if err := dash.dbStore.DefaultQueryRow(`SELECT name FROM players WHERE is_observer = 0 LIMIT 1`).Scan(&playerName); err != nil {
-		t.Skip("no players in test DB")
-	}
-	key := normalizePlayerKey(playerName)
-
-	rec := performDashboardRequest(router, http.MethodGet, "/api/players/"+key+"/summary/per-matchup", nil)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
-	}
-	var resp struct {
-		PlayerKey      string            `json:"player_key"`
-		SummaryVersion string            `json:"summary_version"`
-		Cards          []json.RawMessage `json:"cards"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if resp.PlayerKey != key {
-		t.Fatalf("expected player_key %q, got %q", key, resp.PlayerKey)
-	}
-	if resp.SummaryVersion == "" {
-		t.Fatal("expected summary_version")
-	}
-}
-
-func TestPlayerSummarySpecialEndpoint(t *testing.T) {
-	dash := newTestDashboard(t)
-	router := dash.setupRouter()
-
-	var playerName string
-	if err := dash.dbStore.DefaultQueryRow(`SELECT name FROM players WHERE is_observer = 0 LIMIT 1`).Scan(&playerName); err != nil {
-		t.Skip("no players in test DB")
-	}
-	key := normalizePlayerKey(playerName)
-
-	rec := performDashboardRequest(router, http.MethodGet, "/api/players/"+key+"/summary/special", nil)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
-	}
-	if !json.Valid(rec.Body.Bytes()) {
-		t.Fatalf("invalid JSON: %s", rec.Body.String())
 	}
 }

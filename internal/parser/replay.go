@@ -14,6 +14,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/builddedup"
 	"github.com/marianogappa/screpdb/internal/cmddedup"
 	"github.com/marianogappa/screpdb/internal/earlyfilter"
+	"github.com/marianogappa/screpdb/internal/hotkeystream"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser/commands"
 	"github.com/marianogappa/screpdb/internal/patterns"
@@ -313,6 +314,14 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	// production buildings. The plan is applied inside the early filter.
 	unitTagEvidence := unittags.Analyze(rep)
 	buildDedupPlan := builddedup.Compute(unitTagEvidence, data.Players)
+
+	// Encode each player's annotated hotkey stream (issue #357 + hotkey intel):
+	// this needs the raw stream's Select/Hotkey tags, which command extraction
+	// discards, so it runs here rather than in storage.
+	data.HotkeyStreams = map[byte][]byte{}
+	for pid, events := range hotkeystream.Extract(rep) {
+		data.HotkeyStreams[pid] = hotkeystream.Encode(events)
+	}
 
 	// Maintain base ownership from unit production: a Train/Morph proves the
 	// producing building (and thus its base) is still alive, so it refreshes

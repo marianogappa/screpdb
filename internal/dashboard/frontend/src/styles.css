@@ -2912,10 +2912,25 @@ button.workflow-nav-update-available:disabled {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Players list header: drop the grey header-cell background, matching the
-   games list. */
+/* Players list: same header row and hairlines as the games list. */
+.workflow-players-list-table {
+  font-size: clamp(0.8125rem, calc(0.8125rem + (100vw - 1300px) * 0.0037), 0.867rem);
+  margin-top: 10px;
+}
+
 .workflow-players-list-table th {
   background: transparent;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--e-quiet);
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.workflow-players-list-table td {
+  padding: 5px 6px;
 }
 
 .workflow-sortable {
@@ -6954,3 +6969,162 @@ span[data-tip],
 }
 
 .wf-ob-icon:has(img + img) img { max-width: 9px; }
+
+/* ---- Hotkeys tab (game report timeline + map, player signature) ---- */
+
+.hk-timeline { user-select: none; }
+.hk-warning { margin-left: 0; margin-bottom: 12px; flex: none; max-width: none; }
+.hk-player { margin-bottom: 10px; }
+.hk-player-head { display: flex; align-items: baseline; gap: 10px; margin: 10px 0 6px; }
+.hk-player-name { font-weight: 600; }
+.hk-race {
+  font-size: 11px; padding: 1px 8px; border-radius: 4px;
+  border: 1px solid var(--e-line); color: var(--e-base);
+}
+.hk-race-Z { color: #c792ea; border-color: #4d3d63; }
+.hk-race-T { color: #7fb8ef; border-color: #2c455e; }
+.hk-race-P { color: #f0c674; border-color: #5b4a25; }
+.hk-player-stat { margin-left: auto; font-size: 11.5px; color: var(--e-quiet); }
+.hk-row { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; }
+.hk-keycap {
+  font-size: 12px; font-weight: 500; text-align: center; color: var(--e-base);
+  background: rgba(255,255,255,0.04); border: 1px solid var(--e-line);
+  border-bottom-width: 2px; border-radius: 5px; padding: 2px 0;
+}
+.hk-viewport { position: relative; height: 40px; overflow: hidden; cursor: grab; touch-action: pan-y; }
+.hk-track { position: absolute; top: 0; left: 0; height: 100%; will-change: transform; }
+.hk-ticks { position: absolute; inset: 0; }
+.hk-mark-building {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  height: 30px; width: auto; z-index: 2; pointer-events: auto;
+}
+.hk-mark-dot {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  width: 9px; height: 9px; border-radius: 50%; z-index: 2;
+}
+.hk-mark-units { position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: 2; }
+.hk-mark-units img { display: block; height: 22px; width: auto; }
+.hk-silhouette { filter: grayscale(1) brightness(1.35) opacity(.9); }
+.hk-count {
+  position: absolute; right: -8px; bottom: -3px; font-style: normal;
+  font-size: 9px; font-weight: 600; color: #0d1116; min-width: 12px; text-align: center;
+  border-radius: 3px; padding: 0 1px; line-height: 12px;
+}
+.hk-axis-row { margin-top: 2px; margin-bottom: 6px; }
+.hk-axis { height: 18px; cursor: default; }
+.hk-axis-label {
+  position: absolute; top: 1px; transform: translateX(-50%);
+  font-size: 10.5px; color: var(--e-quiet);
+}
+.hk-scrollbar { overflow-x: auto; overflow-y: hidden; height: 16px; margin-top: 4px; }
+.hk-scrollbar::-webkit-scrollbar { height: 8px; }
+.hk-scrollbar::-webkit-scrollbar-thumb { background: var(--e-line); border-radius: 4px; }
+.hk-maps { margin-top: 22px; }
+.hk-maps-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 900px) { .hk-maps-grid { grid-template-columns: 1fr; } }
+.hk-map-panel { border: 1px solid var(--e-line); border-radius: 8px; padding: 10px; }
+.hk-map-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.hk-map-head input[type="range"] { margin-left: auto; width: 45%; }
+.hk-map-img {
+  width: 100%; max-height: 75vh; display: block; border-radius: 6px;
+  object-fit: contain; object-position: left top;
+}
+.hk-sigs { display: grid; gap: 14px; }
+.hk-sig-card { border: 1px solid var(--e-line); border-radius: 8px; padding: 12px 14px; }
+.hk-sig-row { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; padding: 4px 0; }
+.hk-sig-keycap { align-self: stretch; display: flex; align-items: center; justify-content: center; }
+.hk-sig-lane {
+  position: relative; height: 54px; border-left: 1px solid var(--e-line);
+  background: repeating-linear-gradient(90deg, transparent 0 calc(20% - 1px), var(--e-line) calc(20% - 1px) 20%);
+}
+.hk-sig-sprite { position: absolute; top: 0; height: 30px; width: auto; z-index: 2; }
+.hk-sig-count { position: absolute; right: auto; bottom: auto; top: 20px; margin-left: 26px; z-index: 3; }
+.hk-sig-bar { position: absolute; height: 7px; border-radius: 2px; }
+.hk-sig-bar-assign { top: 36px; background: #c98500; opacity: 0.85; }
+.hk-sig-bar-use { top: 46px; background: #4a79a8; opacity: 0.85; }
+.hk-sig-bar::after {
+  content: attr(data-tip);
+  position: absolute; left: 50%; top: -22px; transform: translateX(-50%);
+  padding: 1px 7px; border-radius: 4px; font-size: 11px; white-space: nowrap;
+  background: var(--e-strong, #e8edf2); color: #10151a;
+  opacity: 0; pointer-events: none;
+}
+.hk-sig-bar:hover::after { opacity: 1; }
+.hk-sig-bar:hover { filter: brightness(1.25); }
+.hk-sig-axis { display: grid; grid-template-columns: 30px 1fr; gap: 10px; margin-top: 2px; }
+.hk-sig-axis-in { position: relative; height: 14px; font-size: 9.5px; color: var(--e-quiet); }
+.hk-sig-axis-in span { position: absolute; transform: translateX(-50%); }
+
+/* ---- Player page: Summary tab ---- */
+
+.workflow-panel--player .workflow-title-row { margin: 2px 0 14px; }
+.workflow-panel--player .workflow-title-row h2 { margin: 0; }
+
+.wps-section { display: flex; flex-direction: column; gap: 10px; }
+.wps-section + .wps-section { margin-top: 22px; }
+.wps-section-title span { display: inline-flex; align-items: center; gap: 7px; }
+
+.wps-stats { display: flex; flex-wrap: wrap; gap: 10px; }
+.wps-stat {
+  display: flex; flex-direction: column; gap: 2px;
+  min-width: 96px; padding: 8px 14px;
+  border: 1px solid var(--e-line); border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.wps-stat-label {
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--e-quiet);
+}
+.wps-stat-value { font-size: 16px; font-weight: 700; color: var(--e-base); }
+.wps-stat-sub { font-size: 11.5px; color: var(--e-quiet); }
+
+.wps-aliases { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.wps-aliases .wps-stat-label { margin-right: 2px; }
+.wps-alias {
+  font-size: 12.5px; color: var(--e-base);
+  padding: 2px 9px; border: 1px solid var(--e-line); border-radius: 999px;
+  background: transparent;
+}
+.wps-alias-known {
+  color: var(--e-accent); border-color: rgba(224, 184, 76, 0.45);
+  font-weight: 600; cursor: pointer;
+}
+.wps-alias-known:hover { background: rgba(224, 184, 76, 0.1); }
+
+/* Last games: a table, one hairline between rows. */
+.workflow-last-games { display: flex; flex-direction: column; margin-top: 6px; }
+.workflow-last-game-row {
+  display: grid;
+  grid-template-columns: 26px 48px 44px minmax(140px, 230px) 34px 44px minmax(0, 1fr) 320px;
+  gap: 12px; align-items: center;
+  padding: 7px 10px;
+  border-top: 1px solid var(--e-line);
+  cursor: pointer;
+}
+.workflow-last-game-row:hover { background: rgba(255, 255, 255, 0.04); }
+.wlg-head {
+  border-top: none; cursor: default;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--e-quiet);
+  padding-bottom: 4px;
+}
+.wlg-head:hover { background: transparent; }
+.wlg-head .wlg-apm, .wlg-head .wlg-format, .wlg-head .wlg-map, .wlg-head .wlg-len { font-size: 10.5px; color: var(--e-quiet); }
+.wlg-head .wlg-comp .workflow-composition-zones-header { margin-bottom: 0; }
+.wlg-race img { width: 20px; height: 20px; display: block; }
+.wlg-format { font-size: 12px; color: var(--e-base); white-space: nowrap; }
+.wlg-len { font-size: 12px; color: var(--e-quiet); white-space: nowrap; }
+.wlg-map { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wlg-result { text-align: center; }
+.wlg-apm { font-size: 12px; color: var(--e-quiet); text-align: right; }
+.wlg-featuring { min-width: 0; }
+.wlg-featuring .workflow-pattern-pills { flex-wrap: wrap; }
+.wlg-comp { min-width: 0; }
+@media (max-width: 1100px) {
+  .workflow-last-game-row { grid-template-columns: 26px 48px 44px minmax(110px, 1fr) 34px 44px minmax(0, 2fr); }
+  .wlg-comp { display: none; }
+}
+
+/* Player chat summary: full-width message lines. */
+.workflow-chat-line { padding: 4px 8px; font-size: 13px; color: var(--e-base); }
+.workflow-chat-line + .workflow-chat-line { border-top: 1px solid var(--e-line); }

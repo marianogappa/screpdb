@@ -30,6 +30,14 @@ type bnetProfileDetail struct {
 	HighestMMR   int               `json:"highest_mmr,omitempty"`
 	LadderWins   int               `json:"ladder_wins,omitempty"`
 	LadderLosses int               `json:"ladder_losses,omitempty"`
+	// Lifetime account totals summed from the per-race counters Battle.net
+	// reports (wins/losses/draws/disconnects per race, plus per-game APM
+	// sums, from which the average APM is derived).
+	LifetimeGames       int     `json:"lifetime_games,omitempty"`
+	LifetimeWins        int     `json:"lifetime_wins,omitempty"`
+	LifetimeLosses      int     `json:"lifetime_losses,omitempty"`
+	LifetimeDisconnects int     `json:"lifetime_disconnects,omitempty"`
+	AverageAPM          float64 `json:"average_apm,omitempty"`
 }
 
 // rawBnetProfile is the subset of the bridge payload we decode. Everything else
@@ -49,6 +57,9 @@ type rawBnetProfile struct {
 		Wins          int `json:"wins"`
 		Losses        int `json:"losses"`
 	} `json:"matchmaked_stats"`
+	Stats []struct {
+		Raw map[string]float64 `json:"raw"`
+	} `json:"stats"`
 }
 
 // parseBnetProfileDetail extracts the displayable parts of a cached profile
@@ -101,6 +112,25 @@ func parseBnetProfileDetail(toon string, payload []byte) *bnetProfileDetail {
 		}
 		detail.LadderWins += stat.Wins
 		detail.LadderLosses += stat.Losses
+	}
+	// Lifetime totals: Battle.net reports per-race counters; sum them and
+	// derive the average APM from the per-game APM sums.
+	apmSum := 0.0
+	for _, stat := range raw.Stats {
+		for _, race := range []string{"zerg", "terran", "protoss"} {
+			wins := int(stat.Raw[race+"_wins_sum"])
+			losses := int(stat.Raw[race+"_losses_sum"])
+			draws := int(stat.Raw[race+"_draws_sum"])
+			disconnects := int(stat.Raw[race+"_disconnects_sum"])
+			detail.LifetimeWins += wins
+			detail.LifetimeLosses += losses
+			detail.LifetimeDisconnects += disconnects
+			detail.LifetimeGames += wins + losses + draws + disconnects
+			apmSum += stat.Raw[race+"_apm_sum"]
+		}
+	}
+	if detail.LifetimeGames > 0 {
+		detail.AverageAPM = apmSum / float64(detail.LifetimeGames)
 	}
 	return detail
 }

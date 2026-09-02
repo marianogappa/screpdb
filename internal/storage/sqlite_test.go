@@ -178,7 +178,10 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		// moved from build-order opener to composition marker layered on the
 		// supply opener, so each ingested Zerg tech game now carries both an
 		// opener row and a marker row (two such games in this corpus).
-		"replay_events": 217,
+		// Then -12: the Used Hotkey Groups marker was retired (positive hotkey
+		// signal lives in players.hotkey_stream), dropping its one row per
+		// hotkey-using player.
+		"replay_events": 205,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {
@@ -257,8 +260,8 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected numeric hotkey pattern count")
 	}
-	if hotkeyCount == 0 {
-		t.Fatalf("expected used_hotkey_groups marker detections to be present")
+	if hotkeyCount != 0 {
+		t.Fatalf("used_hotkey_groups was retired (positive hotkey signal lives in players.hotkey_stream); got %d rows", hotkeyCount)
 	}
 
 	baseStateRows, err := store.Query(ctx, "SELECT event_type, seconds_from_game_start, source_player_id FROM replay_events ORDER BY id ASC")

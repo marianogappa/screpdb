@@ -12,6 +12,9 @@ import BuildOrderTimelineRows from './components/charts/BuildOrderTimelineRows';
 import MutaliskTimingChart from './components/charts/MutaliskTimingChart';
 import UnitProductionEarlyTimeline from './components/charts/UnitProductionEarlyTimeline';
 import SupplyTimeline from './components/charts/SupplyTimeline';
+import HotkeyTimeline from './components/charts/HotkeyTimeline';
+import HotkeyMaps from './components/charts/HotkeyMaps';
+import HotkeySignature from './components/charts/HotkeySignature';
 import AllianceTimeline from './components/charts/AllianceTimeline';
 import { getUnitIcon, getWorkerIconForRace, normalizeUnitName } from './lib/gameAssets';
 import {
@@ -148,6 +151,15 @@ const normalizeEventType = (eventType) => String(eventType || '').trim().toLower
 const GAME_SUMMARY_NEGATION_MIN_SECONDS = 7 * 60;
 
 const MAIN_GAME_SKILL_PROXY_TABS = ['first-unit-efficiency', 'unit-production-cadence', 'viewport-multitasking'];
+
+// The players-list FilterOmnibar axes. `min_games` is synthesized client-side
+// (the API models it as the boolean onlyFivePlus, not an options list).
+const PLAYERS_OMNIBAR_AXES = [
+  { id: 'lastPlayed', label: 'Last played', state: 'lastPlayed', source: 'last_played' },
+  { id: 'minGames', label: 'Games', state: 'onlyFivePlus', source: 'min_games' },
+];
+const PLAYERS_OMNIBAR_STATE_LABELS = { lastPlayed: 'Last played', onlyFivePlus: 'Games' };
+const PLAYERS_OMNIBAR_STATE_ORDER = ['lastPlayed', 'onlyFivePlus'];
 
 const isMainGameSkillProxyTab = (tab) => MAIN_GAME_SKILL_PROXY_TABS.includes(tab);
 
@@ -529,50 +541,6 @@ const YOU_MARKER = '🫵';
 // What the Battle.net profile tells us about a player, rendered as a compact
 // strip under their name. Every field is optional: the bridge may be off, the
 // profile may not be cached yet, and plenty of accounts never ladder.
-const BnetProfileStrip = ({ profile, currentName }) => {
-  if (!profile) return null;
-  const current = String(currentName || '').trim().toLowerCase();
-  const otherToons = (profile.toons || [])
-    .map((t) => t.toon)
-    .filter((toon) => String(toon).trim().toLowerCase() !== current);
-
-  const items = [];
-  if (profile.battle_tag) {
-    items.push(['Battle tag', profile.battle_tag]);
-  }
-  if (profile.aurora_id) {
-    items.push(['Aurora ID', String(profile.aurora_id)]);
-  }
-  if (profile.plays_ladder) {
-    const rating = profile.mmr || profile.highest_mmr;
-    const record = (profile.ladder_wins || profile.ladder_losses)
-      ? `${profile.ladder_wins || 0}-${profile.ladder_losses || 0}`
-      : '';
-    items.push(['Ladder', [rating ? `${rating} MMR` : 'yes', record].filter(Boolean).join(' · ')]);
-  }
-  if (items.length === 0 && otherToons.length === 0) return null;
-
-  return (
-    <div className="bnet-profile-strip">
-      {items.map(([label, value]) => (
-        <div key={label} className="bnet-profile-item">
-          <span className="bnet-profile-label">{label}</span>
-          <span className="bnet-profile-value">{value}</span>
-        </div>
-      ))}
-      {otherToons.length > 0 ? (
-        <div className="bnet-profile-item bnet-profile-item--toons">
-          <span className="bnet-profile-label">Also plays as</span>
-          <span className="bnet-profile-value">
-            {otherToons.map((toon) => (
-              <span key={toon} className="bnet-profile-toon">{toon}</span>
-            ))}
-          </span>
-        </div>
-      ) : null}
-    </div>
-  );
-};
 
 const PlayerDisplayName = ({ name }) => {
   const text = String(name ?? '');
@@ -1800,97 +1768,6 @@ const filterSummaryPillPatterns = (patterns, trustGameEventsForDrops = false) =>
   return indexed.map((entry) => entry.pattern);
 };
 
-// renderPatternPill resolves a detected_patterns[] entry through the backend
-// marker registry and builds a pill from the registered SummaryPlayer metadata.
-// Returns null when the registry has no match or no SummaryPlayer pill.
-// renderMatchupPatternSection renders a "Top build orders" / "Top markers"
-// strip on a matchup or by-format card. Each entry uses the aggregate
-// pill renderer (gamesList label preferred, else summaryPlayer with
-// temporal placeholders stripped) so the labels read as static prose
-// ("Recalls", "Threw Nukes", "Became Zerg") instead of the per-replay
-// "Recalls at min N" / "Threw Nukes at N mins" form.
-const renderAggregatePatternEntry = (entry, key, registry, gameEventFeaturesByKey) => {
-  const patternKey = String(entry?.pattern_name || '');
-  // Game-event features (cliff_drop) aren't in the
-  // marker registry — resolve them via the game_event_features metadata so
-  // the pill renders with the proper label + multi-icon layout (matching
-  // the filter row and game-detail strip).
-  const ge = gameEventFeaturesByKey ? gameEventFeaturesByKey[patternKey] : null;
-  if (ge) {
-    const iconKeys = (Array.isArray(ge.icon_keys) && ge.icon_keys.length)
-      ? ge.icon_keys
-      : (ge.icon_key ? [ge.icon_key] : []);
-    const iconUrls = iconKeys.map((k) => getUnitIcon(k)).filter(Boolean);
-    return (
-      <span key={`${key}-wrap`} className="workflow-pattern-with-count">
-        <span className="workflow-pattern-pill workflow-pattern-pill-strong" title={ge.label}>
-          {iconUrls.map((url, i) => (
-            <img key={`${patternKey}-i${i}`} src={url} alt="" className="workflow-pattern-icon" />
-          ))}
-          <span>{ge.label}</span>
-        </span>
-        <span className="workflow-pattern-count">×{entry.count}</span>
-      </span>
-    );
-  }
-  const pattern = { event_type: patternKey };
-  const def = lookupDefinitionForPattern(registry, pattern);
-  const rendered = def ? renderAggregatePillText(def) : null;
-  if (!rendered) {
-    return (
-      <span key={`${key}-fallback`} className="workflow-pattern-pill" title={patternKey}>
-        {patternKey} <span className="workflow-pattern-count">×{entry.count}</span>
-      </span>
-    );
-  }
-  return (
-    <span key={`${key}-wrap`} className="workflow-pattern-with-count">
-      <span className={`${pillClassName(rendered.style)} ${pillEventTypeClass(patternKey)}`.trim()} title={rendered.title || undefined}>
-        {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
-        {rendered.label ? <span>{rendered.label}</span> : null}
-        {featureIsBeta(def) ? <BetaTag /> : null}
-      </span>
-      <span className="workflow-pattern-count">×{entry.count}</span>
-    </span>
-  );
-};
-
-const renderMatchupPatternSection = (title, entries, keyPrefix, registry, gameEventFeaturesByKey) => {
-  const list = Array.isArray(entries) ? entries : [];
-  if (list.length === 0) return null;
-  return (
-    <div className="workflow-player-matchup-section">
-      <div className="workflow-player-matchup-section-title">{title}</div>
-      <div className="workflow-pattern-pills workflow-pattern-pills-compact">
-        {list.map((entry, idx) => renderAggregatePatternEntry(entry, `${keyPrefix}-${idx}`, registry, gameEventFeaturesByKey))}
-      </div>
-    </div>
-  );
-};
-
-// renderHotkeyGroups lays out the hotkey group numbers space-separated (no
-// commas) beside the keyboard glyph. With more than 3 groups it wraps onto two
-// rows — first row gets max(3, ceil(n/2)), so e.g. 4→"1 2 3"/"4",
-// 6→"1 2 3"/"4 5 6", 7→"1 2 3 4"/"5 6 7" — with the glyph vertically centered.
-const renderHotkeyGroups = (label) => {
-  const nums = String(label || '').split(',').map((s) => s.trim()).filter(Boolean);
-  let rows;
-  if (nums.length > 3) {
-    const r1 = Math.max(3, Math.ceil(nums.length / 2));
-    rows = [nums.slice(0, r1), nums.slice(r1)];
-  } else {
-    rows = [nums];
-  }
-  return (
-    <>
-      <span className="workflow-hotkey-emoji" aria-label="hotkeys">⌨️</span>
-      <span className="workflow-hotkey-nums">
-        {rows.map((r, i) => <span key={i}>{r.join(' ')}</span>)}
-      </span>
-    </>
-  );
-};
-
 const renderPatternPill = (pattern, keyPrefix, team, registry) => {
   if (!registry) return null;
   const def = lookupDefinitionForPattern(registry, pattern);
@@ -1901,22 +1778,17 @@ const renderPatternPill = (pattern, keyPrefix, team, registry) => {
   // "BUILD ORDER" legend on their top border instead of an inline prefix — the
   // legend + accent colour identify the pill type.
   const isOpener = isOpenerEventType(pattern?.event_type);
-  const isHotkeys = pattern?.event_type === 'used_hotkey_groups';
-  // A top-border legend names the pill type (opener / hotkeys); the
-  // Spellcasts pill carries its own legend (see SpellcastsPill).
-  const legendText = isOpener ? 'Build Order' : (isHotkeys ? 'Hotkeys' : null);
+  // A top-border legend names the pill type (opener); the Spellcasts pill
+  // carries its own legend (see SpellcastsPill).
+  const legendText = isOpener ? 'Build Order' : null;
   const className = `${pillClassName(rendered.style)} ${pillEventTypeClass(pattern?.event_type)} ${legendText ? 'workflow-pill-legended' : ''}`.trim();
   const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.event_type || ''}-${pattern?.detected_second ?? ''}`;
   return (
     <span key={key} className={className} title={rendered.title || undefined}>
       {legendText ? <span className="workflow-pill-legend">{legendText}</span> : null}
       {team !== undefined ? <span className="team-dot" style={{ backgroundColor: getTeamColor(team) }}></span> : null}
-      {isHotkeys ? renderHotkeyGroups(rendered.label) : (
-        <>
-          {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
-          {rendered.label ? <span>{rendered.label}</span> : null}
-        </>
-      )}
+      {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
+      {rendered.label ? <span>{rendered.label}</span> : null}
       {featureIsBeta(def) ? <BetaTag /> : null}
     </span>
   );
@@ -1933,18 +1805,6 @@ const PLAYER_INSIGHT_TYPES = {
   unitProductionCadence: 'unit-production-cadence',
   viewportSwitchRate: 'viewport-switch-rate',
 };
-
-// PLAYER_SUMMARY_OUTLIER_CATEGORIES is the canonical list the FE iterates
-// to fan out one HTTP request per category to /summary/outliers. Order
-// here is just the request-firing order; render-time sort is by TF-IDF
-// across all categories combined.
-const PLAYER_SUMMARY_OUTLIER_CATEGORIES = ['Order', 'Build', 'Train', 'Morph', 'Tech', 'Upgrade'];
-
-// PLAYER_SUMMARY_OUTLIER_PILL_CAP is how many pills the Summary tab will
-// surface across all categories combined. Mirrors the cap the old
-// monolithic backend computed; we apply it FE-side now since pills
-// arrive incrementally.
-const PLAYER_SUMMARY_OUTLIER_PILL_CAP = 12;
 
 const VIEWPORT_SWITCH_RATE_CONFIG = {
   title: 'Viewport Switch Rate',
@@ -2268,24 +2128,23 @@ function App() {
   const mainGamesFiltersRef = useRef(null);
   const mainGamesPageRef = useRef(null);
   const [mainPlayer, setMainPlayer] = useState(null);
-  const [mainPlayerRecentGames, setMainPlayerRecentGames] = useState([]);
-  const [mainPlayerRecentGamesLoading, setMainPlayerRecentGamesLoading] = useState(false);
-  const [mainPlayerRecentGamesError, setMainPlayerRecentGamesError] = useState('');
+  const [mainGameHotkeys, setMainGameHotkeys] = useState(null);
+  const [mainGameHotkeysLoading, setMainGameHotkeysLoading] = useState(false);
+  const [mainGameHotkeysError, setMainGameHotkeysError] = useState('');
+  const [mainPlayerHotkeySig, setMainPlayerHotkeySig] = useState(null);
+  const [mainPlayerHotkeySigLoading, setMainPlayerHotkeySigLoading] = useState(false);
+  const [mainPlayerHotkeySigError, setMainPlayerHotkeySigError] = useState('');
+  const [mainPlayerLastGames, setMainPlayerLastGames] = useState(null);
+  const [mainPlayerLastGamesLoading, setMainPlayerLastGamesLoading] = useState(false);
+  const [mainPlayerLastGamesError, setMainPlayerLastGamesError] = useState('');
+  const [mainPlayerKnownAliases, setMainPlayerKnownAliases] = useState({});
   const [mainPlayerChatSummary, setMainPlayerChatSummary] = useState(null);
   const [mainPlayerChatSummaryLoading, setMainPlayerChatSummaryLoading] = useState(false);
   const [mainPlayerChatSummaryError, setMainPlayerChatSummaryError] = useState('');
-  const [mainPlayerShowLowConfidence, setMainPlayerShowLowConfidence] = useState(false);
-  const [mainPlayerPerMatchup, setMainPlayerPerMatchup] = useState(null);
-  const [mainPlayerPerMatchupLoading, setMainPlayerPerMatchupLoading] = useState(false);
-  const [mainPlayerPerMatchupError, setMainPlayerPerMatchupError] = useState('');
-  const [mainPlayerSpecial, setMainPlayerSpecial] = useState(null);
-  const [mainPlayerSpecialLoading, setMainPlayerSpecialLoading] = useState(false);
-  const [mainPlayerSpecialError, setMainPlayerSpecialError] = useState('');
   // Per-outlier-category state. Each category fires its own request so
   // pills stream into the UI as each finishes (instead of all-or-nothing
   // on a 60-90s monolithic /summary/special). Keyed by lowercase
   // category label ("order", "build", ...).
-  const [mainPlayerSpecialOutliers, setMainPlayerSpecialOutliers] = useState({});
   const [mainPlayers, setMainPlayers] = useState([]);
   const [mainPlayersLoading, setMainPlayersLoading] = useState(false);
   const [mainPlayersPage, setMainPlayersPage] = useState(1);
@@ -2468,6 +2327,9 @@ function App() {
       setMainGameSeeNoticeError(false);
       const data = await api.getGame(replayId);
       setMainGame(data);
+      setMainGameHotkeys(null);
+      setMainGameHotkeysError('');
+      setMainGameHotkeysLoading(false);
       const wantTab = options.initialGameTab;
       let nextTab = wantTab && MAIN_GAME_TABS.includes(String(wantTab).trim().toLowerCase())
         ? String(wantTab).trim().toLowerCase()
@@ -2532,19 +2394,50 @@ function App() {
     }
   };
 
-  const loadMainPlayerRecentGames = async (playerKey) => {
+  const loadMainPlayerLastGames = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     if (!normalizedPlayerKey) return;
     try {
-      setMainPlayerRecentGamesLoading(true);
-      setMainPlayerRecentGamesError('');
-      const data = await api.getPlayerRecentGames(normalizedPlayerKey);
-      setMainPlayerRecentGames(data?.recent_games || []);
+      setMainPlayerLastGamesLoading(true);
+      setMainPlayerLastGamesError('');
+      const data = await api.getPlayerLastGames(normalizedPlayerKey);
+      setMainPlayerLastGames(data?.last_games || []);
     } catch (err) {
-      setMainPlayerRecentGamesError(err.message || 'Failed to load recent games');
-      setMainPlayerRecentGames([]);
+      setMainPlayerLastGamesError(err.message || 'Failed to load last games');
+      setMainPlayerLastGames([]);
     } finally {
-      setMainPlayerRecentGamesLoading(false);
+      setMainPlayerLastGamesLoading(false);
+    }
+  };
+
+  const loadMainGameHotkeys = async (replayId) => {
+    if (!replayId) return;
+    try {
+      setMainGameHotkeysLoading(true);
+      setMainGameHotkeysError('');
+      const data = await api.getGameHotkeys(replayId);
+      setMainGameHotkeys(data || null);
+    } catch (err) {
+      setMainGameHotkeysError(err.message || 'Failed to load hotkey streams');
+      setMainGameHotkeys(null);
+    } finally {
+      setMainGameHotkeysLoading(false);
+    }
+  };
+
+  const loadMainPlayerHotkeySignature = async (playerKey) => {
+    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
+    if (!normalizedPlayerKey) return;
+    try {
+      setMainPlayerHotkeySigLoading(true);
+      setMainPlayerHotkeySigError('');
+      const data = await api.getPlayerHotkeySignature(normalizedPlayerKey);
+      setMainPlayerHotkeySig(data || null);
+    } catch (err) {
+      setMainPlayerHotkeySigError(err.message || 'Failed to load hotkey signature');
+      setMainPlayerHotkeySig(null);
+    } finally {
+      setMainPlayerHotkeySigLoading(false);
     }
   };
 
@@ -2564,7 +2457,6 @@ function App() {
     }
   };
 
-
   const loadMainPlayerApmInsight = async (playerKey) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     if (!normalizedPlayerKey) return;
@@ -2579,62 +2471,6 @@ function App() {
     } finally {
       setMainPlayerApmInsightLoading(false);
     }
-  };
-
-  const loadMainPlayerPerMatchup = async (playerKey) => {
-    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
-    if (!normalizedPlayerKey) return;
-    try {
-      setMainPlayerPerMatchupLoading(true);
-      setMainPlayerPerMatchupError('');
-      const data = await api.getPlayerSummaryPerMatchup(normalizedPlayerKey);
-      setMainPlayerPerMatchup(data);
-    } catch (err) {
-      setMainPlayerPerMatchupError(err.message || 'Failed to load per-matchup summary');
-      setMainPlayerPerMatchup(null);
-    } finally {
-      setMainPlayerPerMatchupLoading(false);
-    }
-  };
-
-  const loadMainPlayerSpecial = async (playerKey) => {
-    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
-    if (!normalizedPlayerKey) return;
-    try {
-      setMainPlayerSpecialLoading(true);
-      setMainPlayerSpecialError('');
-      const data = await api.getPlayerSummarySpecial(normalizedPlayerKey);
-      setMainPlayerSpecial(data);
-    } catch (err) {
-      setMainPlayerSpecialError(err.message || 'Failed to load player highlights');
-      setMainPlayerSpecial(null);
-    } finally {
-      setMainPlayerSpecialLoading(false);
-    }
-    // Fan out per-category outlier fetches in parallel. Each settles
-    // independently so the FE can render its pills as soon as that
-    // category's queries return — much better UX than waiting 60-90s
-    // for the previous monolithic endpoint.
-    PLAYER_SUMMARY_OUTLIER_CATEGORIES.forEach((category) => {
-      const key = category.toLowerCase();
-      setMainPlayerSpecialOutliers((prev) => ({
-        ...prev,
-        [key]: { loading: true, error: '', pills: [] },
-      }));
-      api.getPlayerSummaryOutliers(normalizedPlayerKey, category)
-        .then((data) => {
-          setMainPlayerSpecialOutliers((prev) => ({
-            ...prev,
-            [key]: { loading: false, error: '', pills: Array.isArray(data?.pills) ? data.pills : [] },
-          }));
-        })
-        .catch((err) => {
-          setMainPlayerSpecialOutliers((prev) => ({
-            ...prev,
-            [key]: { loading: false, error: err.message || 'Failed to load outliers', pills: [] },
-          }));
-        });
-    });
   };
 
   const loadMainPlayerCadenceInsight = async (playerKey) => {
@@ -2681,20 +2517,15 @@ function App() {
     setError(null);
     setMainPlayer(null);
     setMainPlayerLoading(true);
-    setMainPlayerRecentGames([]);
-    setMainPlayerRecentGamesError('');
-    setMainPlayerRecentGamesLoading(false);
+    setMainPlayerLastGames(null);
+    setMainPlayerLastGamesError('');
+    setMainPlayerLastGamesLoading(false);
     setMainPlayerChatSummary(null);
     setMainPlayerChatSummaryError('');
     setMainPlayerChatSummaryLoading(false);
-    setMainPlayerPerMatchup(null);
-    setMainPlayerPerMatchupError('');
-    setMainPlayerPerMatchupLoading(false);
-    setMainPlayerShowLowConfidence(false);
-    setMainPlayerSpecial(null);
-    setMainPlayerSpecialError('');
-    setMainPlayerSpecialLoading(false);
-    setMainPlayerSpecialOutliers({});
+    setMainPlayerHotkeySig(null);
+    setMainPlayerHotkeySigError('');
+    setMainPlayerHotkeySigLoading(false);
     setMainPlayerApmInsight(null);
     setMainPlayerApmInsightError('');
     setMainPlayerApmInsightLoading(false);
@@ -2713,9 +2544,6 @@ function App() {
     const wantSubtab = String(options.initialPlayerSubtab || '').trim().toLowerCase();
     if (nextTab === 'skill-proxies') {
       setMainPlayerSubtab(MAIN_PLAYER_SKILL_PROXY_SUBTABS.includes(wantSubtab) ? wantSubtab : 'summary');
-    } else if (nextTab === 'summary') {
-      // Race subtab is dynamic; persist if provided, else resolved at render from race_breakdown.
-      setMainPlayerSubtab(wantSubtab);
     } else {
       setMainPlayerSubtab('');
     }
@@ -2816,7 +2644,6 @@ function App() {
       setIngestMessage(err.message || 'Failed to switch to your replays folder.');
     }
   };
-
 
   const showAutoIngestNotice = (message) => {
     if (autoIngestNoticeTimerRef.current) {
@@ -3111,7 +2938,6 @@ function App() {
     }
   }, [ingestStatus, refreshStaleReplaysCount]);
 
-
   useEffect(() => {
     if (ingestStatus !== 'running') return undefined;
     let cancelled = false;
@@ -3218,46 +3044,27 @@ function App() {
 
   useEffect(() => {
     if (activeView !== 'player' || !selectedPlayerKey) return;
-    if (mainPlayerTab !== 'recent-games') return;
-    if (!mainPlayerRecentGames.length && !mainPlayerRecentGamesLoading && !mainPlayerRecentGamesError) {
-      loadMainPlayerRecentGames(selectedPlayerKey);
-    }
-  }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerRecentGames, mainPlayerRecentGamesLoading, mainPlayerRecentGamesError]);
-
-  // Summary tab: fire the cheap per-matchup fetch first; only fire the
-  // (expensive) /special pills endpoint after per-matchup resolves so the
-  // two heavy aggregate queries don't contend on the single SQLite read
-  // connection. Sequential firing keeps the per-card cards visible
-  // quickly while the slower outlier-pill computation finishes in the
-  // background.
-  useEffect(() => {
-    if (activeView !== 'player' || !selectedPlayerKey) return;
     if (mainPlayerTab !== 'summary') return;
-    if (!mainPlayerPerMatchup && !mainPlayerPerMatchupLoading && !mainPlayerPerMatchupError) {
-      loadMainPlayerPerMatchup(selectedPlayerKey);
+    if (!mainPlayerLastGames && !mainPlayerLastGamesLoading && !mainPlayerLastGamesError) {
+      loadMainPlayerLastGames(selectedPlayerKey);
     }
-  }, [
-    activeView, selectedPlayerKey, mainPlayerTab,
-    mainPlayerPerMatchup, mainPlayerPerMatchupLoading, mainPlayerPerMatchupError,
-  ]);
+  }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerLastGames, mainPlayerLastGamesLoading, mainPlayerLastGamesError]);
+
+  useEffect(() => {
+    if (activeView !== 'game' || !selectedReplayId) return;
+    if (mainGameTab !== 'hotkeys') return;
+    if (!mainGameHotkeys && !mainGameHotkeysLoading && !mainGameHotkeysError) {
+      loadMainGameHotkeys(selectedReplayId);
+    }
+  }, [activeView, selectedReplayId, mainGameTab, mainGameHotkeys, mainGameHotkeysLoading, mainGameHotkeysError]);
 
   useEffect(() => {
     if (activeView !== 'player' || !selectedPlayerKey) return;
-    if (mainPlayerTab !== 'summary') return;
-    // Wait for per-matchup to resolve (success or error) before firing the
-    // slower /special endpoint. Both surfaces use the same single-conn
-    // SQLite reader; running them sequentially halves total wall time on
-    // large corpora.
-    if (mainPlayerPerMatchupLoading) return;
-    if (!mainPlayerPerMatchup && !mainPlayerPerMatchupError) return;
-    if (!mainPlayerSpecial && !mainPlayerSpecialLoading && !mainPlayerSpecialError) {
-      loadMainPlayerSpecial(selectedPlayerKey);
+    if (mainPlayerTab !== 'hotkeys') return;
+    if (!mainPlayerHotkeySig && !mainPlayerHotkeySigLoading && !mainPlayerHotkeySigError) {
+      loadMainPlayerHotkeySignature(selectedPlayerKey);
     }
-  }, [
-    activeView, selectedPlayerKey, mainPlayerTab,
-    mainPlayerPerMatchup, mainPlayerPerMatchupLoading, mainPlayerPerMatchupError,
-    mainPlayerSpecial, mainPlayerSpecialLoading, mainPlayerSpecialError,
-  ]);
+  }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerHotkeySig, mainPlayerHotkeySigLoading, mainPlayerHotkeySigError]);
 
   useEffect(() => {
     if (activeView !== 'player' || !selectedPlayerKey) return;
@@ -3266,6 +3073,30 @@ function App() {
       loadMainPlayerChatSummary(selectedPlayerKey);
     }
   }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerChatSummary, mainPlayerChatSummaryLoading, mainPlayerChatSummaryError]);
+
+  // Resolve which Battle.net alter-ego toons have their own local player
+  // entry, so "Also plays as" can link to them.
+  useEffect(() => {
+    const toons = mainPlayer?.bnet_profile?.toons || [];
+    setMainPlayerKnownAliases({});
+    if (toons.length === 0) return undefined;
+    let cancelled = false;
+    (async () => {
+      const found = {};
+      await Promise.all(toons.map(async (t) => {
+        const key = String(t?.toon || '').trim().toLowerCase();
+        if (!key) return;
+        try {
+          await api.getPlayer(key);
+          found[key] = true;
+        } catch {
+          // Not a local player; render the alias as plain text.
+        }
+      }));
+      if (!cancelled) setMainPlayerKnownAliases(found);
+    })();
+    return () => { cancelled = true; };
+  }, [mainPlayer?.bnet_profile]);
 
   useEffect(() => {
     loadMainGames({ page: mainGamesPage, filters: mainGamesFilters });
@@ -3748,10 +3579,6 @@ function App() {
       if (currentView === nextView) return currentView;
       return nextView;
     });
-  };
-
-  const goBackMainView = () => {
-    setActiveView((currentView) => (currentView === 'player' ? 'players' : currentView));
   };
 
   const openMainPlayersSubview = (tab) => {
@@ -5548,7 +5375,7 @@ function App() {
             <FilterOmnibar
               filterOptions={mainGamesFilterOptions}
               selected={mainGamesFilters}
-              totalGames={mainGamesTotal}
+              total={mainGamesTotal}
               onToggle={toggleMainGameMultiFilter}
               onClear={clearMainGamesFilters}
             />
@@ -5710,39 +5537,31 @@ function App() {
 
             {mainPlayersTab === 'summary' ? (
               <>
-                <div className="workflow-summary-filter-row workflow-games-filter-row">
-                  <input
-                    type="text"
-                    className="workflow-summary-filter-input"
-                    placeholder="Filter by player name..."
-                    value={mainPlayersFilters.name}
-                    onChange={(e) => setMainPlayersSingleFilter('name', e.target.value)}
-                  />
-                  <label className="workflow-summary-filter-check">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(mainPlayersFilters.onlyFivePlus)}
-                      onChange={(e) => setMainPlayersSingleFilter('onlyFivePlus', e.target.checked)}
-                    />
-                    <span>Only 5+ games</span>
-                  </label>
-                  <div className="workflow-pattern-pills workflow-games-filter-pills">
-                    {(mainPlayersFilterOptions.last_played || []).map((option) => {
-                      const active = (mainPlayersFilters.lastPlayed || []).includes(option.key);
-                      return (
-                        <button
-                          key={`wf-player-last-${option.key}`}
-                          type="button"
-                          className={`workflow-filter-pill ${active ? 'workflow-filter-pill-active' : ''}`}
-                          onClick={() => toggleMainPlayersMultiFilter('lastPlayed', option.key)}
-                        >
-                          {option.label} ({option.count})
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <button type="button" className="btn-create-manual" onClick={clearMainPlayersFilters}>Clear filters</button>
-                </div>
+                <FilterOmnibar
+                  filterOptions={{ ...mainPlayersFilterOptions, min_games: [{ key: '5plus', label: '5+ games' }] }}
+                  axes={PLAYERS_OMNIBAR_AXES}
+                  stateLabels={PLAYERS_OMNIBAR_STATE_LABELS}
+                  stateOrder={PLAYERS_OMNIBAR_STATE_ORDER}
+                  noun="players"
+                  selected={{
+                    lastPlayed: mainPlayersFilters.lastPlayed || [],
+                    onlyFivePlus: mainPlayersFilters.onlyFivePlus ? ['5plus'] : [],
+                  }}
+                  total={mainPlayersTotal}
+                  textFilter={{
+                    value: mainPlayersFilters.name,
+                    onChange: (value) => setMainPlayersSingleFilter('name', value),
+                    placeholder: 'Filter players by name or pick a filter...',
+                  }}
+                  onToggle={(state, key) => {
+                    if (state === 'onlyFivePlus') {
+                      setMainPlayersSingleFilter('onlyFivePlus', !mainPlayersFilters.onlyFivePlus);
+                    } else {
+                      toggleMainPlayersMultiFilter(state, key);
+                    }
+                  }}
+                  onClear={clearMainPlayersFilters}
+                />
                 {mainPlayersLoading ? (
                   <div className="loading">Loading players...</div>
                 ) : (
@@ -5777,25 +5596,25 @@ function App() {
                         ))}
                       </tbody>
                     </table>
-                    <div className="workflow-pagination-row">
+                    <div className="workflow-pagination-row workflow-pagination-row-centered">
                       <button
                         type="button"
                         className="btn-switch"
                         disabled={mainPlayersPage <= 1 || mainPlayersLoading}
                         onClick={() => setMainPlayersPage((prev) => Math.max(1, prev - 1))}
-                      >
-                        Previous
+                        aria-label="Previous page"
+                  >
+                        {'<'}
                       </button>
-                      <span>
-                        Page {mainPlayersPage} / {mainPlayersTotalPages} - Showing {mainPlayersFrom}-{mainPlayersTo} of {mainPlayersTotal}
-                      </span>
+                      <span>{mainPlayersFrom}-{mainPlayersTo} of {mainPlayersTotal}</span>
                       <button
                         type="button"
                         className="btn-switch"
                         disabled={mainPlayersPage >= mainPlayersTotalPages || mainPlayersLoading}
                         onClick={() => setMainPlayersPage((prev) => Math.min(mainPlayersTotalPages, prev + 1))}
-                      >
-                        Next
+                        aria-label="Next page"
+                  >
+                        {'>'}
                       </button>
                     </div>
                   </>
@@ -6085,6 +5904,15 @@ function App() {
                         Alliances{mainGame?.team_stacking ? ' 😈' : ''}
                       </button>
                     ) : null}
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={mainGameTab === 'hotkeys'}
+                      className={`workflow-production-tab ${mainGameTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => setMainGameTab('hotkeys')}
+                    >
+                      Hotkeys
+                    </button>
                     <button
                       type="button"
                       role="tab"
@@ -6970,6 +6798,22 @@ function App() {
                   </div>
                 )}
 
+                {mainGameTab === 'hotkeys' && (
+                  <div className="workflow-card">
+                    {mainGameHotkeysLoading ? <div className="chart-empty">Loading hotkey streams...</div> : null}
+                    {!mainGameHotkeysLoading && mainGameHotkeysError ? <div className="chart-empty">{mainGameHotkeysError}</div> : null}
+                    {!mainGameHotkeysLoading && !mainGameHotkeysError && mainGameHotkeys ? (
+                      <>
+                        <HotkeyTimeline payload={mainGameHotkeys} />
+                        <HotkeyMaps
+                          replayId={selectedReplayId}
+                          players={mainGameHotkeys.players || []}
+                        />
+                      </>
+                    ) : null}
+                  </div>
+                )}
+
                 {mainGameTab === 'supply-timeline' && (
                   <SupplyTimeline
                     players={mainGamePlayers}
@@ -7273,26 +7117,27 @@ function App() {
                         <span className="workflow-fingerprint-match"><FingerprintBadge match={mainPlayer.fingerprint_match} /></span>
                       ) : null}
                     </h2>
-                    <BnetProfileStrip profile={mainPlayer?.bnet_profile} currentName={mainPlayer?.player_name} />
                     {mainPlayer && (Number(mainPlayer.games_played) || 0) < 5 ? (
                       <span className="workflow-inline-warning">⚠️ Fewer than 5 replays: we cannot provide reliable player-level insights yet.</span>
                     ) : null}
                   </div>
-                  <button type="button" className="btn-switch" onClick={goBackMainView}>Back</button>
                 </div>
-                <div className="workflow-meta">
-                  <span><strong>Games</strong> {mainPlayer ? mainPlayer.games_played : '-'}</span>
-                  <span><strong>Win rate</strong> {mainPlayer ? `${(mainPlayer.win_rate * 100).toFixed(1)}%` : '-'}</span>
-                  <span><strong>APM</strong> {mainPlayer ? mainPlayer.average_apm?.toFixed(1) : '-'}</span>
-                  <span><strong>EAPM</strong> {mainPlayer ? mainPlayer.average_eapm?.toFixed(1) : '-'}</span>
-                  {mainPlayerLoading ? <span className="workflow-subtle-note">loading overview…</span> : null}
-                </div>
+                {mainPlayerLoading ? (
+                  <div className="workflow-meta">
+                    <span className="workflow-subtle-note">loading overview…</span>
+                  </div>
+                ) : null}
                 <div className="workflow-game-tab-stack">
                   <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label="Player report sections">
                     <button type="button" role="tab" aria-selected={mainPlayerTab === 'summary'}
                       className={`workflow-production-tab ${mainPlayerTab === 'summary' ? 'workflow-production-tab-active' : ''}`}
                       onClick={() => { setMainPlayerTab('summary'); setMainPlayerSubtab(''); }}>
                       Summary
+                    </button>
+                    <button type="button" role="tab" aria-selected={mainPlayerTab === 'hotkeys'}
+                      className={`workflow-production-tab ${mainPlayerTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => { setMainPlayerTab('hotkeys'); setMainPlayerSubtab(''); }}>
+                      Hotkeys
                     </button>
                     <button type="button" role="tab" aria-selected={isSkillProxiesTab}
                       className={`workflow-production-tab ${isSkillProxiesTab ? 'workflow-production-tab-active' : ''}`}
@@ -7302,11 +7147,6 @@ function App() {
                         setMainPlayerSubtab('summary');
                       }}>
                       Skill proxies
-                    </button>
-                    <button type="button" role="tab" aria-selected={mainPlayerTab === 'recent-games'}
-                      className={`workflow-production-tab ${mainPlayerTab === 'recent-games' ? 'workflow-production-tab-active' : ''}`}
-                      onClick={() => { setMainPlayerTab('recent-games'); setMainPlayerSubtab(''); }}>
-                      Recent games
                     </button>
                     <button type="button" role="tab" aria-selected={mainPlayerTab === 'chat-summary'}
                       className={`workflow-production-tab ${mainPlayerTab === 'chat-summary' ? 'workflow-production-tab-active' : ''}`}
@@ -7318,169 +7158,181 @@ function App() {
                 </div>
 
                 <div className="workflow-cards">
-                  {mainPlayerTab === 'summary' && (
-                    <>
-                      <div className="workflow-card workflow-card-player-special">
-                        <div className="workflow-card-title"><span>What's special about this player</span></div>
-                        {mainPlayerSpecialLoading ? <div className="chart-empty">Loading highlights...</div> : null}
-                        {!mainPlayerSpecialLoading && mainPlayerSpecialError ? <div className="chart-empty">{mainPlayerSpecialError}</div> : null}
-                        {!mainPlayerSpecialLoading && !mainPlayerSpecialError ? (() => {
-                          const eligible = [];
-                          if (mainPlayerSpecial?.never_allied_multi_team?.eligible) {
-                            const games = Number(mainPlayerSpecial.never_allied_multi_team.games || 0);
-                            eligible.push({
-                              key: 'never-allied',
-                              label: '🚫 alliances',
-                              title: `Never issued an alliance command across ${games} multi-team melee game${games === 1 ? '' : 's'}.`,
-                              className: 'workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey',
-                            });
-                          }
-                          if (mainPlayerSpecial?.never_hotkeys?.eligible) {
-                            const games = Number(mainPlayerSpecial.never_hotkeys.games || 0);
-                            eligible.push({
-                              key: 'never-hotkeys',
-                              label: '🚫 hotkeys',
-                              title: `No hotkey-group commands across ${games} eligible game${games === 1 ? '' : 's'} (7+ minute gate).`,
-                              className: 'workflow-pattern-pill workflow-low-usage-pill workflow-low-usage-pill-hotkey',
-                            });
-                          }
-                          // Merge per-category outlier streams into one
-                          // pill list, sort by TFIDF desc, then cap. Pills
-                          // accumulate as each category's request resolves.
-                          const allPills = [];
-                          const categoryStates = PLAYER_SUMMARY_OUTLIER_CATEGORIES.map((cat) => {
-                            const state = mainPlayerSpecialOutliers[cat.toLowerCase()] || { loading: false, pills: [] };
-                            allPills.push(...(state.pills || []));
-                            return state;
-                          });
-                          allPills.sort((a, b) => {
-                            const ta = Number(a.tfidf) || 0;
-                            const tb = Number(b.tfidf) || 0;
-                            if (ta !== tb) return tb - ta;
-                            return (Number(b.ratio_to_baseline) || 0) - (Number(a.ratio_to_baseline) || 0);
-                          });
-                          const outliers = allPills.slice(0, PLAYER_SUMMARY_OUTLIER_PILL_CAP);
-                          const stillLoading = categoryStates.some((s) => s.loading);
-                          if (eligible.length === 0 && outliers.length === 0 && !stillLoading) {
-                            return <div className="workflow-subtle-note">Nothing distinctive flagged yet for this player.</div>;
-                          }
-                          return (
-                            <>
-                              <div className="workflow-pattern-pills">
-                                {eligible.map((p) => (
-                                  <span key={p.key} className={p.className} title={p.title}>{p.label}</span>
-                                ))}
-                                {outliers.map((it, idx) => {
-                                  const label = it.pretty_label || it.pretty_name || it.name;
-                                  const playerPct = ((Number(it.player_rate) || 0) * 100).toFixed(0);
-                                  const baselinePct = ((Number(it.baseline_rate) || 0) * 100).toFixed(0);
-                                  const ratio = (Number(it.ratio_to_baseline) || 0).toFixed(1);
-                                  const qualified = (it.qualified_by || []).join(' / ');
-                                  const segmentDesc = it.map_kind === 'Money'
-                                    ? ' on Money maps'
-                                    : it.map_kind === 'Regular'
-                                      ? ' on Regular maps'
-                                      : '';
-                                  const title = `${it.category}: ${playerPct}% of ${it.race} games${segmentDesc} you vs ${baselinePct}% baseline (${ratio}× peers).${qualified ? ' ' + qualified + '.' : ''}`;
-                                  const icon = it.icon_key ? getUnitIcon(it.icon_key) : null;
-                                  return (
-                                    <span
-                                      key={`outlier-${idx}-${it.category}-${it.name}-${it.map_kind || 'all'}`}
-                                      className="workflow-pattern-pill workflow-pattern-pill-strong workflow-summary-outlier-pill"
-                                      title={title}
+                  {mainPlayerTab === 'summary' && (() => {
+                    const bnet = mainPlayer?.bnet_profile;
+                    const showBnet = Number(mainPlayer?.bnet_games || 0) > 0 && !!bnet;
+                    const keyOf = (name) => String(name || '').trim().toLowerCase();
+                    const aliasSeen = new Set([keyOf(mainPlayer?.player_name || selectedPlayerKey)]);
+                    const aliases = [];
+                    (bnet?.toons || []).forEach((t) => {
+                      const key = keyOf(t.toon);
+                      if (!key || aliasSeen.has(key)) return;
+                      aliasSeen.add(key);
+                      aliases.push(t.toon);
+                    });
+                    const games = Array.isArray(mainPlayerLastGames) ? mainPlayerLastGames : [];
+                    return (
+                      <div className="workflow-card">
+                        {showBnet ? (
+                          <div className="wps-section">
+                            <div className="workflow-card-title wps-section-title"><span>🌐 Battle.net</span></div>
+                            <div className="wps-stats">
+                              <div className="wps-stat">
+                                <span className="wps-stat-label">Ladder</span>
+                                <span className="wps-stat-value">
+                                  {(() => {
+                                    if (!bnet.plays_ladder) return 'Unranked';
+                                    const mmr = Number(bnet.mmr || bnet.highest_mmr) || 0;
+                                    return mmr ? `${mmr} MMR` : 'Plays ladder';
+                                  })()}
+                                </span>
+                                {(() => {
+                                  if (!bnet.plays_ladder) return null;
+                                  const wins = Number(bnet.ladder_wins) || 0;
+                                  const losses = Number(bnet.ladder_losses) || 0;
+                                  const parts = [];
+                                  if (wins + losses > 0) parts.push(`${wins}-${losses}`);
+                                  const peak = Number(bnet.highest_mmr) || 0;
+                                  if (peak > (Number(bnet.mmr) || 0)) parts.push(`peak ${peak}`);
+                                  return parts.length ? <span className="wps-stat-sub">{parts.join(', ')}</span> : null;
+                                })()}
+                              </div>
+                              {bnet.lifetime_games ? (
+                                <div className="wps-stat">
+                                  <span className="wps-stat-label">Games</span>
+                                  <span className="wps-stat-value">{bnet.lifetime_games}</span>
+                                </div>
+                              ) : null}
+                              {bnet.lifetime_games ? (
+                                <div className="wps-stat">
+                                  <span className="wps-stat-label">Win rate</span>
+                                  <span className="wps-stat-value">{((100 * bnet.lifetime_wins) / bnet.lifetime_games).toFixed(1)}%</span>
+                                </div>
+                              ) : null}
+                              {bnet.average_apm ? (
+                                <div className="wps-stat">
+                                  <span className="wps-stat-label">APM</span>
+                                  <span className="wps-stat-value">{bnet.average_apm.toFixed(1)}</span>
+                                </div>
+                              ) : null}
+                            </div>
+                            {aliases.length ? (
+                              <div className="wps-aliases">
+                                <span className="wps-stat-label">Also plays as</span>
+                                {aliases.map((alias) => {
+                                  const aliasKey = keyOf(alias);
+                                  return mainPlayerKnownAliases[aliasKey] ? (
+                                    <button
+                                      key={aliasKey}
+                                      type="button"
+                                      className="wps-alias wps-alias-known"
+                                      title="View this player"
+                                      onClick={() => openMainPlayer(aliasKey)}
                                     >
-                                      {icon ? <img src={icon} alt="" className="workflow-pattern-icon" /> : null}
-                                      <span className="workflow-summary-outlier-pill-stack">
-                                        <span className="workflow-summary-outlier-pill-label">{label}</span>
-                                        <span className="workflow-summary-outlier-pill-qualifier">more than peers</span>
-                                      </span>
-                                    </span>
+                                      {alias}
+                                    </button>
+                                  ) : (
+                                    <span key={aliasKey} className="wps-alias">{alias}</span>
                                   );
                                 })}
                               </div>
-                              {stillLoading ? (
-                                <div className="workflow-subtle-note">{`Loading more pills (${categoryStates.filter((s) => s.loading).length}/${PLAYER_SUMMARY_OUTLIER_CATEGORIES.length} categories pending)…`}</div>
-                              ) : null}
-                            </>
-                          );
-                        })() : null}
-                      </div>
-
-                      {mainPlayerPerMatchupLoading ? (
-                        <div className="workflow-card"><div className="chart-empty">Loading matchup summary...</div></div>
-                      ) : null}
-                      {!mainPlayerPerMatchupLoading && mainPlayerPerMatchupError ? (
-                        <div className="workflow-card"><div className="chart-empty">{mainPlayerPerMatchupError}</div></div>
-                      ) : null}
-                      {!mainPlayerPerMatchupLoading && !mainPlayerPerMatchupError && mainPlayerPerMatchup && (mainPlayerPerMatchup.cards || []).length > 0 ? (() => {
-                        const cards = mainPlayerPerMatchup.cards || [];
-                        const hasNonLow = cards.some((c) => c.confidence !== 'low');
-                        const visibleCards = (hasNonLow && !mainPlayerShowLowConfidence)
-                          ? cards.filter((c) => c.confidence !== 'low')
-                          : cards;
-                        const hiddenCount = cards.length - visibleCards.length;
-                        return (
-                          <div className="workflow-card workflow-card-player-matchups">
-                            <div className="workflow-card-title"><span>Matchups & team formats</span></div>
-                            <div className="workflow-player-matchup-grid">
-                              {visibleCards.map((card) => {
-                                const winPct = (Number(card.win_rate) || 0) * 100;
-                                const dimmed = card.confidence === 'low' ? 'workflow-player-matchup-card--low' : '';
-                                const ownIcon = getWorkerIconForRace(card.own_race);
-                                const oppIcon = card.kind === 'matchup' ? getWorkerIconForRace(card.opp_race) : null;
-                                let label;
-                                if (card.kind === 'matchup') {
-                                  const own = String(card.own_race || '').charAt(0).toUpperCase() || '?';
-                                  const opp = String(card.opp_race || '').charAt(0).toUpperCase() || '?';
-                                  label = `${own}v${opp}`;
-                                } else {
-                                  label = card.format_class === 'multi-team' ? 'Multi-team' : card.format_class;
-                                }
-                                const isMoneyCard = card.map_kind === 'Money';
-                                // For format cards, add the player's race so a Random
-                                // player can tell three same-format cards apart.
-                                const formatRaceIcon = card.kind === 'format' ? ownIcon : null;
-                                return (
-                                  <div key={card.key} className={`workflow-player-matchup-card ${dimmed}`}>
-                                    <div className="workflow-player-matchup-card-header">
-                                      <span className="workflow-player-matchup-card-label">
-                                        {formatRaceIcon ? <img src={formatRaceIcon} alt={card.own_race} title={card.own_race} className="workflow-recent-game-worker-icon" /> : null}
-                                        {card.kind === 'matchup' && ownIcon ? <img src={ownIcon} alt={card.own_race} title={card.own_race} className="workflow-recent-game-worker-icon" /> : null}
-                                        {oppIcon ? <span>v</span> : null}
-                                        {oppIcon ? <img src={oppIcon} alt={card.opp_race} title={card.opp_race} className="workflow-recent-game-worker-icon" /> : null}
-                                        <strong>{label}</strong>
-                                        {isMoneyCard ? (
-                                          <span className="workflow-money-tag" data-tip="Money map">💰 Money map</span>
-                                        ) : null}
-                                      </span>
-                                      <span className="workflow-player-matchup-card-meta">
-                                        <span><strong>{card.games}</strong> games</span>
-                                        <span><strong>{winPct.toFixed(0)}%</strong> wins</span>
-                                        <span><strong>{(Number(card.avg_apm) || 0).toFixed(0)}</strong> APM</span>
-                                        <span><strong>{(Number(card.avg_eapm) || 0).toFixed(0)}</strong> EAPM</span>
-                                      </span>
-                                    </div>
-                                    {renderMatchupPatternSection('Top build orders', card.top_build_orders, `bo-${card.key}`, markerRegistry, mainPlayerGameEventFeaturesByKey)}
-                                    {renderMatchupPatternSection('Top markers', card.top_markers, `mk-${card.key}`, markerRegistry, mainPlayerGameEventFeaturesByKey)}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                            {hasNonLow && hiddenCount > 0 ? (
-                              <label className="workflow-summary-low-confidence-toggle">
-                                <input
-                                  type="checkbox"
-                                  checked={mainPlayerShowLowConfidence}
-                                  onChange={(e) => setMainPlayerShowLowConfidence(e.target.checked)}
-                                />
-                                <span>Show {hiddenCount} low-confidence card{hiddenCount === 1 ? '' : 's'} (&lt; 5 games)</span>
-                              </label>
                             ) : null}
                           </div>
-                        );
-                      })() : null}
-                    </>
-                  )}
+                        ) : null}
+                        <div className="wps-section">
+                          {showBnet ? <div className="workflow-card-title wps-section-title"><span>💾 Local games</span></div> : null}
+                          <div className="wps-stats">
+                            <div className="wps-stat">
+                              <span className="wps-stat-label">Games</span>
+                              <span className="wps-stat-value">{mainPlayer ? mainPlayer.games_played : '-'}</span>
+                            </div>
+                            <div className="wps-stat">
+                              <span className="wps-stat-label">Win rate</span>
+                              <span className="wps-stat-value">{mainPlayer ? `${(mainPlayer.win_rate * 100).toFixed(1)}%` : '-'}</span>
+                            </div>
+                            <div className="wps-stat">
+                              <span className="wps-stat-label">APM</span>
+                              <span className="wps-stat-value">{mainPlayer ? mainPlayer.average_apm?.toFixed(1) : '-'}</span>
+                              <span className="wps-stat-sub">{mainPlayer ? `${mainPlayer.average_eapm?.toFixed(1)} EAPM` : ''}</span>
+                            </div>
+                          </div>
+                        {mainPlayerLastGamesLoading ? <div className="chart-empty">Loading last games...</div> : null}
+                        {!mainPlayerLastGamesLoading && mainPlayerLastGamesError ? <div className="chart-empty">{mainPlayerLastGamesError}</div> : null}
+                        {!mainPlayerLastGamesLoading && !mainPlayerLastGamesError && games.length > 0 ? (
+                          <div className="workflow-last-games">
+                            <div className="workflow-last-game-row wlg-head">
+                              <span className="wlg-race" />
+                              <span className="wlg-format">Type</span>
+                              <span className="wlg-len">Time</span>
+                              <span className="wlg-map">Map</span>
+                              <span className="wlg-result">W/L</span>
+                              <span className="wlg-apm">APM</span>
+                              <span className="wlg-featuring">Featuring</span>
+                              <span className="wlg-comp"><CompositionZonesHeader /></span>
+                            </div>
+                            {games.map((g) => {
+                              const cp = g.current_player;
+                              const patterns = filterSummaryPillPatterns(cp?.detected_patterns || [], false);
+                              const boPatterns = patterns.filter((pt) => isOpenerEventType(pt?.event_type));
+                              const restPatterns = patterns.filter((pt) => !isOpenerEventType(pt?.event_type));
+                              const phases = Array.isArray(cp?.composition) ? cp.composition : [];
+                              const resultEmoji = cp?.disconnected ? '🔌' : (cp?.is_winner ? '✅' : '❌');
+                              const resultTitle = cp?.disconnected ? 'Disconnected' : (cp?.is_winner ? 'Win' : 'Loss');
+                              const raceIcon = getWorkerIconForRace(cp?.race);
+                              return (
+                                <div
+                                  key={g.replay_id}
+                                  className="workflow-last-game-row"
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() => openMainGame(g.replay_id)}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') openMainGame(g.replay_id); }}
+                                >
+                                  <span className="wlg-race">
+                                    {raceIcon ? <img src={raceIcon} alt={cp?.race || ''} title={cp?.race || ''} /> : null}
+                                  </span>
+                                  <span className="wlg-format">
+                                    {(() => {
+                                      const format = g.team_format || '';
+                                      const matchup = String(g.matchup || '');
+                                      if (format && format !== '1v1') return format;
+                                      if (!matchup) return format;
+                                      // Orient the matchup from this player's side: kospetrov
+                                      // as Zerg in a PvZ game reads ZvP.
+                                      const mine = String(cp?.race || '').slice(0, 1).toUpperCase();
+                                      const sides = matchup.split('v');
+                                      if (mine && sides.length === 2 && sides[1] === mine && sides[0] !== mine) {
+                                        return `${sides[1]}v${sides[0]}`;
+                                      }
+                                      return matchup;
+                                    })()}
+                                  </span>
+                                  <span className="wlg-len">{formatDuration(g.duration_seconds)}</span>
+                                  <span className="wlg-map">{renderMapNameWithKind(g.map_name, g.map_kind)}</span>
+                                  <span className="wlg-result" title={resultTitle}>{resultEmoji}</span>
+                                  <span className="wlg-apm" title="APM">{cp?.apm ?? ''}</span>
+                                  <span className="wlg-featuring">
+                                    <div className="workflow-pattern-pills">
+                                      {boPatterns.map((pattern, idx) => renderPatternPill(pattern, `lg-${g.replay_id}-bo-${idx}`, undefined, markerRegistry))}
+                                      {restPatterns.map((pattern, idx) => renderPatternPill(pattern, `lg-${g.replay_id}-${idx}`, undefined, markerRegistry))}
+                                      <SpellcastsPill spells={collectPlayerSpells(phases)} />
+                                    </div>
+                                  </span>
+                                  <span className="wlg-comp">
+                                    {phases.length > 0 ? <CompositionZones phases={phases} /> : null}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                        {!mainPlayerLastGamesLoading && !mainPlayerLastGamesError && mainPlayerLastGames && games.length === 0 ? (
+                          <div className="chart-empty">No games found for this player.</div>
+                        ) : null}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {isSkillProxiesTab && (
                     <div className="workflow-card workflow-card-fingerprints">
@@ -7542,61 +7394,13 @@ function App() {
                     </div>
                   )}
 
-                  {mainPlayerTab === 'recent-games' && (
-                    <div className="workflow-card workflow-card-recent-games">
-                      <div className="workflow-card-title"><span>Recent games</span></div>
-                      {mainPlayerRecentGamesLoading ? <div className="chart-empty">Loading recent games...</div> : null}
-                      {!mainPlayerRecentGamesLoading && mainPlayerRecentGamesError ? <div className="chart-empty">{mainPlayerRecentGamesError}</div> : null}
-                      {!mainPlayerRecentGamesLoading && !mainPlayerRecentGamesError && mainPlayerRecentGames.length === 0 ? (
-                        <div className="chart-empty">No recent games found for this player.</div>
+                  {mainPlayerTab === 'hotkeys' && (
+                    <div className="workflow-card">
+                      {mainPlayerHotkeySigLoading ? <div className="chart-empty">Loading hotkey signature...</div> : null}
+                      {!mainPlayerHotkeySigLoading && mainPlayerHotkeySigError ? <div className="chart-empty">{mainPlayerHotkeySigError}</div> : null}
+                      {!mainPlayerHotkeySigLoading && !mainPlayerHotkeySigError && mainPlayerHotkeySig ? (
+                        <HotkeySignature payload={mainPlayerHotkeySig} />
                       ) : null}
-                      {!mainPlayerRecentGamesLoading && !mainPlayerRecentGamesError && mainPlayerRecentGames.slice(0, 6).map((g) => {
-                        const isWinner = !!g.current_player?.is_winner;
-                        const hasResult = g.current_player !== undefined && g.current_player !== null;
-                        const resultClass = hasResult ? (isWinner ? 'workflow-recent-game-card--win' : 'workflow-recent-game-card--loss') : '';
-                        const playersList = Array.isArray(g.players) ? g.players : [];
-                        const is1v1 = playersList.length === 2;
-                        let matchupNode = null;
-                        if (is1v1) {
-                          const myKey = String(g.current_player?.player_key || '').toLowerCase();
-                          const me = playersList.find((p) => String(p.player_key || '').toLowerCase() === myKey) || playersList[0];
-                          const opp = playersList.find((p) => p !== me) || playersList[1];
-                          const myIcon = getWorkerIconForRace(me?.race);
-                          const oppIcon = getWorkerIconForRace(opp?.race);
-                          matchupNode = (
-                            <span className="workflow-recent-game-matchup">
-                              {myIcon ? <img src={myIcon} alt={me?.race || ''} title={me?.race || ''} className="workflow-recent-game-worker-icon" /> : <span>{me?.race || '-'}</span>}
-                              <span className="workflow-recent-game-vs">vs</span>
-                              {oppIcon ? <img src={oppIcon} alt={opp?.race || ''} title={opp?.race || ''} className="workflow-recent-game-worker-icon" /> : <span>{opp?.race || '-'}</span>}
-                            </span>
-                          );
-                        } else if (g.current_player?.race) {
-                          const icon = getWorkerIconForRace(g.current_player.race);
-                          matchupNode = (
-                            <span className="workflow-recent-game-matchup">
-                              {icon ? <img src={icon} alt={g.current_player.race} title={g.current_player.race} className="workflow-recent-game-worker-icon" /> : null}
-                              <span>{g.current_player.race}</span>
-                            </span>
-                          );
-                        }
-                        return (
-                          <button key={g.replay_id} className={`workflow-recent-game-card ${resultClass}`} onClick={() => openMainGame(g.replay_id)}>
-                            <div className="workflow-recent-game-header workflow-recent-game-header--left">
-                              {isWinner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-                              <span>{formatRelativeReplayDate(g.replay_date)}</span>
-                              <span>{formatDuration(g.duration_seconds)}</span>
-                              <span>{formatMapNameWithKind(g.map_name, g.map_kind)}</span>
-                              {matchupNode}
-                            </div>
-                            <div className="workflow-subtle-note">{renderPlayersMatchup(g.players_label || '')}</div>
-                            {filterSummaryPillPatterns(g.current_player?.detected_patterns).length > 0 ? (
-                              <div className="workflow-pattern-pills workflow-pattern-pills-compact">
-                                {filterSummaryPillPatterns(g.current_player?.detected_patterns).map((pattern, idx) => renderPatternPill(pattern, `recent-${g.replay_id}-${idx}`, undefined, markerRegistry))}
-                              </div>
-                            ) : null}
-                          </button>
-                        );
-                      })}
                     </div>
                   )}
 
@@ -7628,7 +7432,7 @@ function App() {
                             )}
                             <div className="workflow-card-subtitle"><span>Last 15 messages</span></div>
                             {(mainPlayerChatSummary?.example_messages || []).map((msg, idx) => (
-                              <div key={`player-chat-example-${idx}`} className="workflow-event-row">
+                              <div key={`player-chat-example-${idx}`} className="workflow-chat-line">
                                 <span>{msg}</span>
                               </div>
                             ))}
