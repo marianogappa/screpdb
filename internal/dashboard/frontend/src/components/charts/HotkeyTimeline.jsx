@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getUnitIcon } from '../../lib/gameAssets';
 
 // Hotkey timeline: one row per hotkey group per player, both players sharing
@@ -6,8 +6,11 @@ import { getUnitIcon } from '../../lib/gameAssets';
 // unit assigns a race silhouette with the selection count, and the tick
 // texture shows uses tinted by what the group held at that moment.
 
-const PX_PER_MIN = 84;
+// Minimum horizontal density; short games stretch to fill the full width.
+const MIN_PX_PER_MIN = 84;
 const ROW_HEIGHT = 40;
+// Keycap column plus grid gap, subtracted from the container to size lanes.
+const LANE_INSET = 40;
 
 const CATEGORY_COLORS = {
   hall: '#3987e5',
@@ -58,7 +61,7 @@ export const TYPE_ASSIGN_BUILDING = 3;
 
 const keyboardOrder = (g) => (g === 0 ? 10 : g);
 
-function TicksCanvas({ events, buildingNames, totalW, durationSeconds }) {
+function TicksCanvas({ events, buildingNames, totalW, durationSeconds, pxPerMin }) {
   const ref = useRef(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -71,7 +74,7 @@ function TicksCanvas({ events, buildingNames, totalW, durationSeconds }) {
     ctx.lineWidth = 1;
     const minutes = durationSeconds / 60;
     for (let m = 1; m < minutes; m += 1) {
-      const x = Math.round(m * PX_PER_MIN) + 0.5;
+      const x = Math.round(m * pxPerMin) + 0.5;
       ctx.beginPath();
       ctx.moveTo(x, m % 5 ? 16 : 8);
       ctx.lineTo(x, m % 5 ? 24 : 32);
@@ -84,7 +87,7 @@ function TicksCanvas({ events, buildingNames, totalW, durationSeconds }) {
 
     let current = null;
     for (const e of events) {
-      const x = (e[EV_SEC] / 60) * PX_PER_MIN;
+      const x = (e[EV_SEC] / 60) * pxPerMin;
       if (e[EV_TYPE] === TYPE_ASSIGN_BUILDING) {
         const cat = hotkeyCategoryOf(buildingNames[e[EV_BUILDING]] || '');
         current = { color: CATEGORY_COLORS[cat] };
@@ -101,7 +104,7 @@ function TicksCanvas({ events, buildingNames, totalW, durationSeconds }) {
         ctx.globalAlpha = 1;
       }
     }
-  }, [events, buildingNames, totalW, durationSeconds]);
+  }, [events, buildingNames, totalW, durationSeconds, pxPerMin]);
   return <canvas ref={ref} className="hk-ticks" aria-hidden="true" />;
 }
 
@@ -109,7 +112,21 @@ export default function HotkeyTimeline({ payload }) {
   const players = payload?.players || [];
   const buildingNames = payload?.buildings || {};
   const durationSeconds = Math.max(60, payload?.duration_seconds || 60);
-  const totalW = Math.ceil((durationSeconds / 60) * PX_PER_MIN);
+  const minutesTotal = durationSeconds / 60;
+
+  const containerRef = useRef(null);
+  const [laneWidth, setLaneWidth] = useState(0);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return undefined;
+    const measure = () => setLaneWidth(Math.max(0, el.clientWidth - LANE_INSET));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const pxPerMin = laneWidth > 0 ? Math.max(MIN_PX_PER_MIN, laneWidth / minutesTotal) : MIN_PX_PER_MIN;
+  const totalW = Math.ceil(minutesTotal * pxPerMin);
 
   const scrollRef = useRef(null);
   const tracksRef = useRef([]);
@@ -179,7 +196,7 @@ export default function HotkeyTimeline({ payload }) {
       <div className="hk-viewport hk-axis">
         <div className="hk-track" ref={registerTrack} style={{ width: `${totalW}px` }}>
           {axisLabels.map((m) => (
-            <span key={m} className="hk-axis-label" style={{ left: `${m * PX_PER_MIN}px` }}>{m}m</span>
+            <span key={m} className="hk-axis-label" style={{ left: `${m * pxPerMin}px` }}>{m}m</span>
           ))}
         </div>
       </div>
@@ -189,9 +206,9 @@ export default function HotkeyTimeline({ payload }) {
   return (
     // Wheel/drag panning needs non-passive handlers on a plain container.
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-    <div className="hk-timeline" onPointerDown={onPointerDown} onWheelCapture={onWheel}>
-      <div className="hk-note">
-        Unit types in a selection are not recorded in replays. Example units shown.
+    <div className="hk-timeline" ref={containerRef} onPointerDown={onPointerDown} onWheelCapture={onWheel}>
+      <div className="workflow-section-warning hk-warning">
+        ⚠️ Unit types in a selection are not recorded in replays. Example units shown.
       </div>
       {rowsByPlayer.map(({ player, groups, byGroup }) => (
         <div key={player.player_id} className="hk-player">
@@ -211,9 +228,10 @@ export default function HotkeyTimeline({ payload }) {
                       buildingNames={buildingNames}
                       totalW={totalW}
                       durationSeconds={durationSeconds}
+                      pxPerMin={pxPerMin}
                     />
                     {events.map((e, i) => {
-                      const x = (e[EV_SEC] / 60) * PX_PER_MIN;
+                      const x = (e[EV_SEC] / 60) * pxPerMin;
                       if (e[EV_TYPE] === TYPE_ASSIGN_BUILDING) {
                         const name = buildingNames[e[EV_BUILDING]] || 'building';
                         const icon = hotkeyBuildingIcon(name);

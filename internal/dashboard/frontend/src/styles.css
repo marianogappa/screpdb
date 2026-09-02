@@ -6958,11 +6958,7 @@ span[data-tip],
 /* ---- Hotkeys tab (game report timeline + map, player signature) ---- */
 
 .hk-timeline { user-select: none; }
-.hk-note {
-  font-size: 12.5px; color: var(--e-quiet); margin-bottom: 12px;
-  padding: 6px 10px; border: 1px solid var(--e-line); border-left-width: 3px;
-  border-radius: 4px;
-}
+.hk-warning { margin-left: 0; margin-bottom: 12px; flex: none; max-width: none; }
 .hk-player { margin-bottom: 10px; }
 .hk-player-head { display: flex; align-items: baseline; gap: 10px; margin: 10px 0 6px; }
 .hk-player-name { font-weight: 600; }
@@ -7014,7 +7010,10 @@ span[data-tip],
 .hk-map-panel { border: 1px solid var(--e-line); border-radius: 8px; padding: 10px; }
 .hk-map-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 .hk-map-head input[type="range"] { margin-left: auto; width: 45%; }
-.hk-map-img { width: 100%; display: block; border-radius: 6px; }
+.hk-map-img {
+  width: 100%; max-height: 75vh; display: block; border-radius: 6px;
+  object-fit: contain; object-position: left top;
+}
 .hk-sigs { display: grid; gap: 14px; }
 .hk-sig-card { border: 1px solid var(--e-line); border-radius: 8px; padding: 12px 14px; }
 .hk-sig-row { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; padding: 4px 0; }

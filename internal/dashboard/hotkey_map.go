@@ -65,13 +65,12 @@ var hotkeySpriteRace = map[string]string{
 	"Robotics Support Bay": "Protoss",
 }
 
-// hotkeyGroupColors matches the frontend's per-group badge palette.
-var hotkeyGroupColors = [10]color.RGBA{
-	{0xe6, 0x39, 0x46, 0xff}, {0xf4, 0xa2, 0x61, 0xff}, {0xe9, 0xc4, 0x6a, 0xff},
-	{0x2a, 0x9d, 0x8f, 0xff}, {0x26, 0x46, 0x53, 0xff}, {0xe7, 0x6f, 0x51, 0xff},
-	{0x6a, 0x4c, 0x93, 0xff}, {0x19, 0x82, 0xc4, 0xff}, {0x8a, 0xc9, 0x26, 0xff},
-	{0xff, 0x59, 0x5e, 0xff},
-}
+// Overlay chrome matches the dashboard's accent and keycap styling.
+var (
+	hotkeyOutlineColor    = color.RGBA{0xe0, 0xb8, 0x4c, 0xff}
+	hotkeyChipFillColor   = color.RGBA{0x18, 0x1e, 0x25, 0xff}
+	hotkeyChipBorderColor = color.RGBA{0x6c, 0x78, 0x84, 0xff}
+)
 
 type hotkeyMapBuilding struct {
 	group    int
@@ -234,6 +233,7 @@ func renderHotkeyMapComposite(terrainPNG []byte, buildings []hotkeyMapBuilding) 
 	draw.Draw(canvas, canvas.Bounds(), terrain, image.Point{}, draw.Src)
 
 	minTX, minTY, maxTX, maxTY := 1<<30, 1<<30, 0, 0
+	spriteTop := map[[2]int]int{}
 	for _, b := range buildings {
 		fp, ok := hotkeyBuildingFootprints[b.building]
 		if !ok {
@@ -241,18 +241,36 @@ func renderHotkeyMapComposite(terrainPNG []byte, buildings []hotkeyMapBuilding) 
 		}
 		px, py := b.tileX*32, b.tileY*32
 		w, h := fp[0]*32, fp[1]*32
+		top := py
 		if spriteName := hotkeySpriteName(b.building); spriteName != "" {
 			if spritePNG, err := scmapanalyzer.UnitOrBuildingImagePNG(spriteName); err == nil {
 				if sprite, err := png.Decode(bytes.NewReader(spritePNG)); err == nil {
-					xdraw.CatmullRom.Scale(canvas, image.Rect(px, py, px+w, py+h), sprite, sprite.Bounds(), xdraw.Over, nil)
+					// Preserve the sprite's aspect ratio: fit its width to the
+					// footprint and let it stand up to twice the footprint's
+					// height, anchored bottom center (stretching to the
+					// footprint box made near-square sprites look fat).
+					sb := sprite.Bounds()
+					scale := float64(w) / float64(sb.Dx())
+					if maxH := float64(2 * h); float64(sb.Dy())*scale > maxH {
+						scale = maxH / float64(sb.Dy())
+					}
+					drawnW, drawnH := int(float64(sb.Dx())*scale), int(float64(sb.Dy())*scale)
+					x0, y0 := px+(w-drawnW)/2, py+h-drawnH
+					xdraw.CatmullRom.Scale(canvas, image.Rect(x0, y0, x0+drawnW, y0+drawnH), sprite, sb, xdraw.Over, nil)
+					top = min(top, y0)
 				}
 			}
 		}
-		drawFootprintOutline(canvas, px, py, w, h, hotkeyGroupColors[b.group%10])
+		key := [2]int{b.tileX, b.tileY}
+		if cur, ok := spriteTop[key]; !ok || top < cur {
+			spriteTop[key] = top
+		}
+		drawFootprintOutline(canvas, px, py, w, h, hotkeyOutlineColor)
 		minTX, minTY = min(minTX, b.tileX), min(minTY, b.tileY)
 		maxTX, maxTY = max(maxTX, b.tileX+fp[0]), max(maxTY, b.tileY+fp[1])
 	}
-	// Badges last so they sit on top; groups sharing a tile share one badge.
+	// Keycap chips last so they sit on top: one small uniform chip per group,
+	// in a row above the sprite so they never cover it.
 	byTile := map[[2]int][]int{}
 	for _, b := range buildings {
 		k := [2]int{b.tileX, b.tileY}
@@ -260,14 +278,16 @@ func renderHotkeyMapComposite(terrainPNG []byte, buildings []hotkeyMapBuilding) 
 	}
 	for tile, groups := range byTile {
 		keyboardOrder(groups)
-		label := ""
-		for i, g := range groups {
-			if i > 0 {
-				label += ","
+		fpw := 3 * 32
+		for _, b := range buildings {
+			if b.tileX == tile[0] && b.tileY == tile[1] {
+				if fp, ok := hotkeyBuildingFootprints[b.building]; ok {
+					fpw = fp[0] * 32
+				}
+				break
 			}
-			label += strconv.Itoa(g)
 		}
-		drawGroupBadge(canvas, tile[0]*32, tile[1]*32, label, hotkeyGroupColors[groups[0]%10])
+		drawGroupChips(canvas, tile[0]*32+fpw/2, spriteTop[tile]-6, groups)
 	}
 
 	const marginTiles = 6
@@ -331,7 +351,7 @@ func setPixel(img *image.RGBA, x, y int, col color.RGBA) {
 	}
 }
 
-// hotkeyDigitFont is a 3x5 bitmap font for badge labels (digits and comma).
+// hotkeyDigitFont is a 3x5 bitmap font for the group chips.
 var hotkeyDigitFont = map[rune][5][3]byte{
 	'0': {{1, 1, 1}, {1, 0, 1}, {1, 0, 1}, {1, 0, 1}, {1, 1, 1}},
 	'1': {{0, 1, 0}, {1, 1, 0}, {0, 1, 0}, {0, 1, 0}, {1, 1, 1}},
@@ -343,36 +363,41 @@ var hotkeyDigitFont = map[rune][5][3]byte{
 	'7': {{1, 1, 1}, {0, 0, 1}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}},
 	'8': {{1, 1, 1}, {1, 0, 1}, {1, 1, 1}, {1, 0, 1}, {1, 1, 1}},
 	'9': {{1, 1, 1}, {1, 0, 1}, {1, 1, 1}, {0, 0, 1}, {1, 1, 1}},
-	',': {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 1, 0}, {1, 0, 0}},
 }
 
-// drawGroupBadge paints a filled circle with a white ring and the label
-// rendered from the bitmap font, centered at (cx, cy).
-func drawGroupBadge(img *image.RGBA, cx, cy int, label string, col color.RGBA) {
-	radius := 20 + 10*(len(label)-1)
+// drawGroupChips paints one small keycap-style chip per hotkey group,
+// centered on (cx, bottomY): a dark rounded square with a white digit.
+func drawGroupChips(img *image.RGBA, cx, bottomY int, groups []int) {
+	const (
+		chipSize = 26
+		chipGap  = 4
+		scale    = 4
+	)
+	rowW := len(groups)*chipSize + (len(groups)-1)*chipGap
+	x0 := cx - rowW/2
+	y0 := max(bottomY-chipSize, 2)
 	white := color.RGBA{255, 255, 255, 255}
-	for dy := -radius; dy <= radius; dy++ {
-		for dx := -radius; dx <= radius; dx++ {
-			d2 := dx*dx + dy*dy
-			if d2 > radius*radius {
-				continue
+	for i, g := range groups {
+		x := x0 + i*(chipSize+chipGap)
+		for dy := 0; dy < chipSize; dy++ {
+			for dx := 0; dx < chipSize; dx++ {
+				corner := (dx == 0 || dx == chipSize-1) && (dy == 0 || dy == chipSize-1)
+				if corner {
+					continue
+				}
+				c := hotkeyChipFillColor
+				if dx == 0 || dy == 0 || dx == chipSize-1 || dy == chipSize-1 {
+					c = hotkeyChipBorderColor
+				}
+				setPixel(img, x+dx, y0+dy, c)
 			}
-			c := col
-			if d2 > (radius-2)*(radius-2) {
-				c = white
-			}
-			setPixel(img, cx+dx, cy+dy, c)
 		}
-	}
-	const scale = 5
-	textW := (4*len(label) - 1) * scale
-	x0, y0 := cx-textW/2, cy-5*scale/2
-	for i, ch := range label {
-		glyph, ok := hotkeyDigitFont[ch]
+		glyph, ok := hotkeyDigitFont[rune('0'+g)]
 		if !ok {
 			continue
 		}
-		gx := x0 + i*4*scale
+		gx := x + (chipSize-3*scale)/2
+		gy := y0 + (chipSize-5*scale)/2
 		for row := 0; row < 5; row++ {
 			for colIdx := 0; colIdx < 3; colIdx++ {
 				if glyph[row][colIdx] == 0 {
@@ -380,7 +405,7 @@ func drawGroupBadge(img *image.RGBA, cx, cy int, label string, col color.RGBA) {
 				}
 				for dy := 0; dy < scale; dy++ {
 					for dx := 0; dx < scale; dx++ {
-						setPixel(img, gx+colIdx*scale+dx, y0+row*scale+dy, white)
+						setPixel(img, gx+colIdx*scale+dx, gy+row*scale+dy, white)
 					}
 				}
 			}
