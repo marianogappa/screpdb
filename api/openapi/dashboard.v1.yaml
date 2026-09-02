@@ -88,6 +88,36 @@ paths:
               schema:
                 type: string
                 format: binary
+  /api/custom/hotkeys/map:
+    get:
+      operationId: hotkeyMap
+      parameters:
+        - name: replay_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: player_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: minute
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: PNG image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
   /api/custom/game-assets/map:
     get:
       operationId: gameAssetMap
@@ -354,6 +384,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
+  /api/games/{replayID}/hotkeys:
+    parameters:
+      - $ref: "#/components/parameters/replayID"
+    get:
+      operationId: gameHotkeys
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
   /api/games/{replayID}/see:
     parameters:
       - $ref: "#/components/parameters/replayID"
@@ -565,6 +607,18 @@ paths:
       - $ref: "#/components/parameters/playerKey"
     get:
       operationId: playerOutliers
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/players/{playerKey}/hotkey-signature:
+    parameters:
+      - $ref: "#/components/parameters/playerKey"
+    get:
+      operationId: playerHotkeySignature
       responses:
         "200":
           description: OK

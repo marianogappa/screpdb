@@ -161,6 +161,21 @@ func (a *openAPIStrictAdapter) GameDetail(ctx context.Context, request apigen.Ga
 	return responseFromPayload(ctx, request, a.service.GameDetail, func(value any) apigen.GameDetailResponseObject { return GameDetailJSONResponse{Payload: value} })
 }
 
+type GameHotkeysJSONResponse struct {
+	Payload any
+}
+
+func (response GameHotkeysJSONResponse) VisitGameHotkeysResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return json.NewEncoder(w).Encode(response.Payload)
+}
+
+func (a *openAPIStrictAdapter) GameHotkeys(ctx context.Context, request apigen.GameHotkeysRequestObject) (apigen.GameHotkeysResponseObject, error) {
+	return responseFromPayload(ctx, request, a.service.GameHotkeys, func(value any) apigen.GameHotkeysResponseObject { return GameHotkeysJSONResponse{Payload: value} })
+}
+
 type GameSeeJSONResponse struct {
 	Payload any
 }
@@ -301,6 +316,23 @@ func (response PlayerChatSummaryJSONResponse) VisitPlayerChatSummaryResponse(w h
 func (a *openAPIStrictAdapter) PlayerChatSummary(ctx context.Context, request apigen.PlayerChatSummaryRequestObject) (apigen.PlayerChatSummaryResponseObject, error) {
 	return responseFromPayload(ctx, request, a.service.PlayerChatSummary, func(value any) apigen.PlayerChatSummaryResponseObject {
 		return PlayerChatSummaryJSONResponse{Payload: value}
+	})
+}
+
+type PlayerHotkeySignatureJSONResponse struct {
+	Payload any
+}
+
+func (response PlayerHotkeySignatureJSONResponse) VisitPlayerHotkeySignatureResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return json.NewEncoder(w).Encode(response.Payload)
+}
+
+func (a *openAPIStrictAdapter) PlayerHotkeySignature(ctx context.Context, request apigen.PlayerHotkeySignatureRequestObject) (apigen.PlayerHotkeySignatureResponseObject, error) {
+	return responseFromPayload(ctx, request, a.service.PlayerHotkeySignature, func(value any) apigen.PlayerHotkeySignatureResponseObject {
+		return PlayerHotkeySignatureJSONResponse{Payload: value}
 	})
 }
 

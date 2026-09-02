@@ -296,7 +296,13 @@ import (
 // timeline also condenses that phantom leave cluster into one mass_disconnect
 // event and renders genuine drops as player_dropped. is_winner and
 // replay_events are written at ingest, so re-ingest to fix stale rows.
-const AlgorithmVersion = 67
+// 68: players.hotkey_stream re-encoded as wire format v2 (hotkey intel):
+// second deltas instead of frame deltas, assigns annotated with either the
+// selection size (unit groups) or the proven building type and its build tile
+// (single-building groups, classified from selection-state evidence nearest in
+// time to the assign). Old v1 blobs still decode, without annotations;
+// re-ingest to backfill them.
+const AlgorithmVersion = 68
 
 // DetectorLevel indicates at which level a pattern detector operates
 type DetectorLevel string

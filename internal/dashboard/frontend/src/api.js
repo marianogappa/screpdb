@@ -258,6 +258,24 @@ export const api = {
     return response.json();
   },
 
+  getGameHotkeys: async (replayId) => {
+    const response = await fetch(`${API_BASE}/games/${encodeURIComponent(replayId)}/hotkeys`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get game hotkeys');
+    }
+    return response.json();
+  },
+
+  getPlayerHotkeySignature: async (playerKey) => {
+    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/hotkey-signature`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get player hotkey signature');
+    }
+    return response.json();
+  },
+
   getPlayerRecentGames: async (playerKey) => {
     const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/recent-games`);
     if (!response.ok) {

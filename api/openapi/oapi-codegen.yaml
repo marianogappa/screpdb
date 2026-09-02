@@ -15,6 +15,7 @@ output-options:
     - gameAssetUnit
     - gameAssetBuilding
     - gameAssetMap
+    - hotkeyMap
     - debugMapLayout
     - markersDefinitions
     - loadSampleSet

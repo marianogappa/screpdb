@@ -12,6 +12,9 @@ import BuildOrderTimelineRows from './components/charts/BuildOrderTimelineRows';
 import MutaliskTimingChart from './components/charts/MutaliskTimingChart';
 import UnitProductionEarlyTimeline from './components/charts/UnitProductionEarlyTimeline';
 import SupplyTimeline from './components/charts/SupplyTimeline';
+import HotkeyTimeline from './components/charts/HotkeyTimeline';
+import HotkeyMaps from './components/charts/HotkeyMaps';
+import HotkeySignature from './components/charts/HotkeySignature';
 import AllianceTimeline from './components/charts/AllianceTimeline';
 import { getUnitIcon, getWorkerIconForRace, normalizeUnitName } from './lib/gameAssets';
 import {
@@ -2268,6 +2271,12 @@ function App() {
   const mainGamesFiltersRef = useRef(null);
   const mainGamesPageRef = useRef(null);
   const [mainPlayer, setMainPlayer] = useState(null);
+  const [mainGameHotkeys, setMainGameHotkeys] = useState(null);
+  const [mainGameHotkeysLoading, setMainGameHotkeysLoading] = useState(false);
+  const [mainGameHotkeysError, setMainGameHotkeysError] = useState('');
+  const [mainPlayerHotkeySig, setMainPlayerHotkeySig] = useState(null);
+  const [mainPlayerHotkeySigLoading, setMainPlayerHotkeySigLoading] = useState(false);
+  const [mainPlayerHotkeySigError, setMainPlayerHotkeySigError] = useState('');
   const [mainPlayerRecentGames, setMainPlayerRecentGames] = useState([]);
   const [mainPlayerRecentGamesLoading, setMainPlayerRecentGamesLoading] = useState(false);
   const [mainPlayerRecentGamesError, setMainPlayerRecentGamesError] = useState('');
@@ -2468,6 +2477,9 @@ function App() {
       setMainGameSeeNoticeError(false);
       const data = await api.getGame(replayId);
       setMainGame(data);
+      setMainGameHotkeys(null);
+      setMainGameHotkeysError('');
+      setMainGameHotkeysLoading(false);
       const wantTab = options.initialGameTab;
       let nextTab = wantTab && MAIN_GAME_TABS.includes(String(wantTab).trim().toLowerCase())
         ? String(wantTab).trim().toLowerCase()
@@ -2545,6 +2557,37 @@ function App() {
       setMainPlayerRecentGames([]);
     } finally {
       setMainPlayerRecentGamesLoading(false);
+    }
+  };
+
+  const loadMainGameHotkeys = async (replayId) => {
+    if (!replayId) return;
+    try {
+      setMainGameHotkeysLoading(true);
+      setMainGameHotkeysError('');
+      const data = await api.getGameHotkeys(replayId);
+      setMainGameHotkeys(data || null);
+    } catch (err) {
+      setMainGameHotkeysError(err.message || 'Failed to load hotkey streams');
+      setMainGameHotkeys(null);
+    } finally {
+      setMainGameHotkeysLoading(false);
+    }
+  };
+
+  const loadMainPlayerHotkeySignature = async (playerKey) => {
+    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
+    if (!normalizedPlayerKey) return;
+    try {
+      setMainPlayerHotkeySigLoading(true);
+      setMainPlayerHotkeySigError('');
+      const data = await api.getPlayerHotkeySignature(normalizedPlayerKey);
+      setMainPlayerHotkeySig(data || null);
+    } catch (err) {
+      setMainPlayerHotkeySigError(err.message || 'Failed to load hotkey signature');
+      setMainPlayerHotkeySig(null);
+    } finally {
+      setMainPlayerHotkeySigLoading(false);
     }
   };
 
@@ -2687,6 +2730,9 @@ function App() {
     setMainPlayerChatSummary(null);
     setMainPlayerChatSummaryError('');
     setMainPlayerChatSummaryLoading(false);
+    setMainPlayerHotkeySig(null);
+    setMainPlayerHotkeySigError('');
+    setMainPlayerHotkeySigLoading(false);
     setMainPlayerPerMatchup(null);
     setMainPlayerPerMatchupError('');
     setMainPlayerPerMatchupLoading(false);
@@ -3223,6 +3269,22 @@ function App() {
       loadMainPlayerRecentGames(selectedPlayerKey);
     }
   }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerRecentGames, mainPlayerRecentGamesLoading, mainPlayerRecentGamesError]);
+
+  useEffect(() => {
+    if (activeView !== 'game' || !selectedReplayId) return;
+    if (mainGameTab !== 'hotkeys') return;
+    if (!mainGameHotkeys && !mainGameHotkeysLoading && !mainGameHotkeysError) {
+      loadMainGameHotkeys(selectedReplayId);
+    }
+  }, [activeView, selectedReplayId, mainGameTab, mainGameHotkeys, mainGameHotkeysLoading, mainGameHotkeysError]);
+
+  useEffect(() => {
+    if (activeView !== 'player' || !selectedPlayerKey) return;
+    if (mainPlayerTab !== 'hotkeys') return;
+    if (!mainPlayerHotkeySig && !mainPlayerHotkeySigLoading && !mainPlayerHotkeySigError) {
+      loadMainPlayerHotkeySignature(selectedPlayerKey);
+    }
+  }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerHotkeySig, mainPlayerHotkeySigLoading, mainPlayerHotkeySigError]);
 
   // Summary tab: fire the cheap per-matchup fetch first; only fire the
   // (expensive) /special pills endpoint after per-matchup resolves so the
@@ -6088,6 +6150,15 @@ function App() {
                     <button
                       type="button"
                       role="tab"
+                      aria-selected={mainGameTab === 'hotkeys'}
+                      className={`workflow-production-tab ${mainGameTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => setMainGameTab('hotkeys')}
+                    >
+                      Hotkeys
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
                       aria-selected={mainGameTab === 'supply-timeline'}
                       className={`workflow-production-tab ${mainGameTab === 'supply-timeline' ? 'workflow-production-tab-active' : ''}`}
                       onClick={() => setMainGameTab('supply-timeline')}
@@ -6970,6 +7041,23 @@ function App() {
                   </div>
                 )}
 
+                {mainGameTab === 'hotkeys' && (
+                  <div className="workflow-card">
+                    {mainGameHotkeysLoading ? <div className="chart-empty">Loading hotkey streams...</div> : null}
+                    {!mainGameHotkeysLoading && mainGameHotkeysError ? <div className="chart-empty">{mainGameHotkeysError}</div> : null}
+                    {!mainGameHotkeysLoading && !mainGameHotkeysError && mainGameHotkeys ? (
+                      <>
+                        <HotkeyTimeline payload={mainGameHotkeys} />
+                        <HotkeyMaps
+                          replayId={selectedReplayId}
+                          players={mainGameHotkeys.players || []}
+                          durationSeconds={mainGameHotkeys.duration_seconds || mainGame.duration_seconds || 0}
+                        />
+                      </>
+                    ) : null}
+                  </div>
+                )}
+
                 {mainGameTab === 'supply-timeline' && (
                   <SupplyTimeline
                     players={mainGamePlayers}
@@ -7308,6 +7396,11 @@ function App() {
                       onClick={() => { setMainPlayerTab('recent-games'); setMainPlayerSubtab(''); }}>
                       Recent games
                     </button>
+                    <button type="button" role="tab" aria-selected={mainPlayerTab === 'hotkeys'}
+                      className={`workflow-production-tab ${mainPlayerTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
+                      onClick={() => { setMainPlayerTab('hotkeys'); setMainPlayerSubtab(''); }}>
+                      Hotkeys
+                    </button>
                     <button type="button" role="tab" aria-selected={mainPlayerTab === 'chat-summary'}
                       className={`workflow-production-tab ${mainPlayerTab === 'chat-summary' ? 'workflow-production-tab-active' : ''}`}
                       onClick={() => { setMainPlayerTab('chat-summary'); setMainPlayerSubtab(''); }}>
@@ -7538,6 +7631,17 @@ function App() {
                             );
                           })}
                         </div>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {mainPlayerTab === 'hotkeys' && (
+                    <div className="workflow-card">
+                      <div className="workflow-card-title"><span>Hotkey signature</span></div>
+                      {mainPlayerHotkeySigLoading ? <div className="chart-empty">Loading hotkey signature...</div> : null}
+                      {!mainPlayerHotkeySigLoading && mainPlayerHotkeySigError ? <div className="chart-empty">{mainPlayerHotkeySigError}</div> : null}
+                      {!mainPlayerHotkeySigLoading && !mainPlayerHotkeySigError && mainPlayerHotkeySig ? (
+                        <HotkeySignature payload={mainPlayerHotkeySig} />
                       ) : null}
                     </div>
                   )}

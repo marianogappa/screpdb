@@ -63,6 +63,7 @@ type Player struct {
 	IsWinner            bool
 	StartLocationOclock *int64
 	SlotID              int64
+	HotkeyStream        []byte
 }
 
 type PlayerFingerprintVector struct {
