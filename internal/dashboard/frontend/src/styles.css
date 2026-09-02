@@ -7040,18 +7040,62 @@ span[data-tip],
 .hk-sig-axis-in { position: relative; height: 14px; font-size: 9.5px; color: var(--e-quiet); }
 .hk-sig-axis-in span { position: absolute; transform: translateX(-50%); }
 
-/* ---- Player page: last games rows on the Summary tab ---- */
+/* ---- Player page: Summary tab ---- */
 
-.workflow-player-summary-meta { margin-bottom: 10px; }
-.workflow-last-games { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.workflow-panel--player .workflow-title-row { margin: 2px 0 14px; }
+.workflow-panel--player .workflow-title-row h2 { margin: 0; }
+
+.wps-section { display: flex; flex-direction: column; gap: 10px; }
+.wps-section + .wps-section { margin-top: 22px; }
+.wps-section-title span { display: inline-flex; align-items: center; gap: 7px; }
+
+.wps-stats { display: flex; flex-wrap: wrap; gap: 10px; }
+.wps-stat {
+  display: flex; flex-direction: column; gap: 2px;
+  min-width: 96px; padding: 8px 14px;
+  border: 1px solid var(--e-line); border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.wps-stat-label {
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--e-quiet);
+}
+.wps-stat-value { font-size: 16px; font-weight: 700; color: var(--e-base); }
+.wps-stat-sub { font-size: 11.5px; color: var(--e-quiet); }
+
+.wps-aliases { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.wps-aliases .wps-stat-label { margin-right: 2px; }
+.wps-alias {
+  font-size: 12.5px; color: var(--e-base);
+  padding: 2px 9px; border: 1px solid var(--e-line); border-radius: 999px;
+  background: transparent;
+}
+.wps-alias-known {
+  color: var(--e-accent); border-color: rgba(224, 184, 76, 0.45);
+  font-weight: 600; cursor: pointer;
+}
+.wps-alias-known:hover { background: rgba(224, 184, 76, 0.1); }
+
+/* Last games: a table, one hairline between rows. */
+.workflow-last-games { display: flex; flex-direction: column; margin-top: 6px; }
 .workflow-last-game-row {
   display: grid;
-  grid-template-columns: 26px 52px minmax(130px, 1fr) 24px 44px minmax(0, 3fr) 220px;
-  gap: 10px; align-items: center;
-  padding: 6px 10px; border: 1px solid var(--e-line); border-radius: 8px;
+  grid-template-columns: 26px 48px minmax(140px, 230px) 34px 44px minmax(0, 1fr) 320px;
+  gap: 12px; align-items: center;
+  padding: 7px 10px;
+  border-top: 1px solid var(--e-line);
   cursor: pointer;
 }
 .workflow-last-game-row:hover { background: rgba(255, 255, 255, 0.04); }
+.wlg-head {
+  border-top: none; cursor: default;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--e-quiet);
+  padding-bottom: 4px;
+}
+.wlg-head:hover { background: transparent; }
+.wlg-head .wlg-apm, .wlg-head .wlg-format, .wlg-head .wlg-map { font-size: 10.5px; color: var(--e-quiet); }
+.wlg-head .wlg-comp .workflow-composition-zones-header { margin-bottom: 0; }
 .wlg-race img { width: 20px; height: 20px; display: block; }
 .wlg-format { font-size: 12px; color: var(--e-base); white-space: nowrap; }
 .wlg-map { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -7061,6 +7105,10 @@ span[data-tip],
 .wlg-featuring .workflow-pattern-pills { flex-wrap: wrap; }
 .wlg-comp { min-width: 0; }
 @media (max-width: 1100px) {
-  .workflow-last-game-row { grid-template-columns: 26px 52px minmax(110px, 1fr) 24px 44px minmax(0, 2fr); }
+  .workflow-last-game-row { grid-template-columns: 26px 48px minmax(110px, 1fr) 34px 44px minmax(0, 2fr); }
   .wlg-comp { display: none; }
 }
+
+/* Player chat summary: full-width message lines. */
+.workflow-chat-line { padding: 4px 8px; font-size: 13px; color: var(--e-base); }
+.workflow-chat-line + .workflow-chat-line { border-top: 1px solid var(--e-line); }

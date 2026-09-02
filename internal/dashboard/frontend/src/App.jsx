@@ -2128,6 +2128,7 @@ function App() {
   const [mainPlayerLastGames, setMainPlayerLastGames] = useState(null);
   const [mainPlayerLastGamesLoading, setMainPlayerLastGamesLoading] = useState(false);
   const [mainPlayerLastGamesError, setMainPlayerLastGamesError] = useState('');
+  const [mainPlayerKnownAliases, setMainPlayerKnownAliases] = useState({});
   const [mainPlayerChatSummary, setMainPlayerChatSummary] = useState(null);
   const [mainPlayerChatSummaryLoading, setMainPlayerChatSummaryLoading] = useState(false);
   const [mainPlayerChatSummaryError, setMainPlayerChatSummaryError] = useState('');
@@ -3063,6 +3064,30 @@ function App() {
       loadMainPlayerChatSummary(selectedPlayerKey);
     }
   }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerChatSummary, mainPlayerChatSummaryLoading, mainPlayerChatSummaryError]);
+
+  // Resolve which Battle.net alter-ego toons have their own local player
+  // entry, so "Also plays as" can link to them.
+  useEffect(() => {
+    const toons = mainPlayer?.bnet_profile?.toons || [];
+    setMainPlayerKnownAliases({});
+    if (toons.length === 0) return undefined;
+    let cancelled = false;
+    (async () => {
+      const found = {};
+      await Promise.all(toons.map(async (t) => {
+        const key = String(t?.toon || '').trim().toLowerCase();
+        if (!key) return;
+        try {
+          await api.getPlayer(key);
+          found[key] = true;
+        } catch {
+          // Not a local player; render the alias as plain text.
+        }
+      }));
+      if (!cancelled) setMainPlayerKnownAliases(found);
+    })();
+    return () => { cancelled = true; };
+  }, [mainPlayer?.bnet_profile]);
 
   useEffect(() => {
     loadMainGames({ page: mainGamesPage, filters: mainGamesFilters });
@@ -7096,9 +7121,11 @@ function App() {
                     ) : null}
                   </div>
                 </div>
-                <div className="workflow-meta">
-                  {mainPlayerLoading ? <span className="workflow-subtle-note">loading overview…</span> : null}
-                </div>
+                {mainPlayerLoading ? (
+                  <div className="workflow-meta">
+                    <span className="workflow-subtle-note">loading overview…</span>
+                  </div>
+                ) : null}
                 <div className="workflow-game-tab-stack">
                   <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label="Player report sections">
                     <button type="button" role="tab" aria-selected={mainPlayerTab === 'summary'}
@@ -7142,41 +7169,92 @@ function App() {
                       aliasSeen.add(key);
                       aliases.push(t.toon);
                     });
-                    const ladderLabel = bnet?.plays_ladder
-                      ? `${bnet.mmr || bnet.highest_mmr} MMR (${bnet.ladder_wins}-${bnet.ladder_losses}${bnet.highest_mmr > (bnet.mmr || 0) ? `, peak ${bnet.highest_mmr}` : ''})`
-                      : 'Unranked';
                     const games = Array.isArray(mainPlayerLastGames) ? mainPlayerLastGames : [];
                     return (
                       <div className="workflow-card">
                         {showBnet ? (
-                          <>
-                            <div className="workflow-card-title"><span>Battle.net</span></div>
-                            <div className="workflow-meta workflow-player-summary-meta">
-                              <span><strong>Ladder</strong> {ladderLabel}</span>
-                              {bnet.lifetime_games ? <span><strong>Games</strong> {bnet.lifetime_games}</span> : null}
-                              {bnet.lifetime_games ? <span><strong>Win rate</strong> {((100 * bnet.lifetime_wins) / bnet.lifetime_games).toFixed(1)}%</span> : null}
-                              {bnet.average_apm ? <span><strong>APM</strong> {bnet.average_apm.toFixed(1)}</span> : null}
-                              {bnet.battle_tag ? <span><strong>Battle tag</strong> {bnet.battle_tag}</span> : null}
-                              {bnet.country_code ? <span><strong>Country</strong> {countryCodeToFlag(bnet.country_code)} {countryCodeToName(bnet.country_code)}</span> : null}
+                          <div className="wps-section">
+                            <div className="workflow-card-title wps-section-title"><span>🌐 Battle.net</span></div>
+                            <div className="wps-stats">
+                              <div className="wps-stat">
+                                <span className="wps-stat-label">Ladder</span>
+                                <span className="wps-stat-value">{bnet.plays_ladder ? `${bnet.mmr || bnet.highest_mmr} MMR` : 'Unranked'}</span>
+                                {bnet.plays_ladder ? (
+                                  <span className="wps-stat-sub">{`${bnet.ladder_wins}-${bnet.ladder_losses}${bnet.highest_mmr > (bnet.mmr || 0) ? `, peak ${bnet.highest_mmr}` : ''}`}</span>
+                                ) : null}
+                              </div>
+                              {bnet.lifetime_games ? (
+                                <div className="wps-stat">
+                                  <span className="wps-stat-label">Games</span>
+                                  <span className="wps-stat-value">{bnet.lifetime_games}</span>
+                                </div>
+                              ) : null}
+                              {bnet.lifetime_games ? (
+                                <div className="wps-stat">
+                                  <span className="wps-stat-label">Win rate</span>
+                                  <span className="wps-stat-value">{((100 * bnet.lifetime_wins) / bnet.lifetime_games).toFixed(1)}%</span>
+                                </div>
+                              ) : null}
+                              {bnet.average_apm ? (
+                                <div className="wps-stat">
+                                  <span className="wps-stat-label">APM</span>
+                                  <span className="wps-stat-value">{bnet.average_apm.toFixed(1)}</span>
+                                </div>
+                              ) : null}
                             </div>
                             {aliases.length ? (
-                              <div className="workflow-meta workflow-player-summary-meta">
-                                <span><strong>Also plays as</strong> {aliases.join(', ')}</span>
+                              <div className="wps-aliases">
+                                <span className="wps-stat-label">Also plays as</span>
+                                {aliases.map((alias) => {
+                                  const aliasKey = keyOf(alias);
+                                  return mainPlayerKnownAliases[aliasKey] ? (
+                                    <button
+                                      key={aliasKey}
+                                      type="button"
+                                      className="wps-alias wps-alias-known"
+                                      title="View this player"
+                                      onClick={() => openMainPlayer(aliasKey)}
+                                    >
+                                      {alias}
+                                    </button>
+                                  ) : (
+                                    <span key={aliasKey} className="wps-alias">{alias}</span>
+                                  );
+                                })}
                               </div>
                             ) : null}
-                          </>
+                          </div>
                         ) : null}
-                        {showBnet ? <div className="workflow-card-title"><span>Local games</span></div> : null}
-                        <div className="workflow-meta workflow-player-summary-meta">
-                          <span><strong>Games</strong> {mainPlayer ? mainPlayer.games_played : '-'}</span>
-                          <span><strong>Win rate</strong> {mainPlayer ? `${(mainPlayer.win_rate * 100).toFixed(1)}%` : '-'}</span>
-                          <span><strong>APM</strong> {mainPlayer ? mainPlayer.average_apm?.toFixed(1) : '-'}</span>
-                          <span><strong>EAPM</strong> {mainPlayer ? mainPlayer.average_eapm?.toFixed(1) : '-'}</span>
-                        </div>
+                        <div className="wps-section">
+                          {showBnet ? <div className="workflow-card-title wps-section-title"><span>💾 Local games</span></div> : null}
+                          <div className="wps-stats">
+                            <div className="wps-stat">
+                              <span className="wps-stat-label">Games</span>
+                              <span className="wps-stat-value">{mainPlayer ? mainPlayer.games_played : '-'}</span>
+                            </div>
+                            <div className="wps-stat">
+                              <span className="wps-stat-label">Win rate</span>
+                              <span className="wps-stat-value">{mainPlayer ? `${(mainPlayer.win_rate * 100).toFixed(1)}%` : '-'}</span>
+                            </div>
+                            <div className="wps-stat">
+                              <span className="wps-stat-label">APM</span>
+                              <span className="wps-stat-value">{mainPlayer ? mainPlayer.average_apm?.toFixed(1) : '-'}</span>
+                              <span className="wps-stat-sub">{mainPlayer ? `${mainPlayer.average_eapm?.toFixed(1)} EAPM` : ''}</span>
+                            </div>
+                          </div>
                         {mainPlayerLastGamesLoading ? <div className="chart-empty">Loading last games...</div> : null}
                         {!mainPlayerLastGamesLoading && mainPlayerLastGamesError ? <div className="chart-empty">{mainPlayerLastGamesError}</div> : null}
                         {!mainPlayerLastGamesLoading && !mainPlayerLastGamesError && games.length > 0 ? (
                           <div className="workflow-last-games">
+                            <div className="workflow-last-game-row wlg-head">
+                              <span className="wlg-race" />
+                              <span className="wlg-format">Type</span>
+                              <span className="wlg-map">Map</span>
+                              <span className="wlg-result">W/L</span>
+                              <span className="wlg-apm">APM</span>
+                              <span className="wlg-featuring">Featuring</span>
+                              <span className="wlg-comp"><CompositionZonesHeader /></span>
+                            </div>
                             {games.map((g) => {
                               const cp = g.current_player;
                               const patterns = filterSummaryPillPatterns(cp?.detected_patterns || [], false);
@@ -7210,7 +7288,7 @@ function App() {
                                     </div>
                                   </span>
                                   <span className="wlg-comp">
-                                    {phases.length > 0 ? <CompositionZones phases={phases} slim /> : null}
+                                    {phases.length > 0 ? <CompositionZones phases={phases} /> : null}
                                   </span>
                                 </div>
                               );
@@ -7220,6 +7298,7 @@ function App() {
                         {!mainPlayerLastGamesLoading && !mainPlayerLastGamesError && mainPlayerLastGames && games.length === 0 ? (
                           <div className="chart-empty">No games found for this player.</div>
                         ) : null}
+                        </div>
                       </div>
                     );
                   })()}
@@ -7322,7 +7401,7 @@ function App() {
                             )}
                             <div className="workflow-card-subtitle"><span>Last 15 messages</span></div>
                             {(mainPlayerChatSummary?.example_messages || []).map((msg, idx) => (
-                              <div key={`player-chat-example-${idx}`} className="workflow-event-row">
+                              <div key={`player-chat-example-${idx}`} className="workflow-chat-line">
                                 <span>{msg}</span>
                               </div>
                             ))}
