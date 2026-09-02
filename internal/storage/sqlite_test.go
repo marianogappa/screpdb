@@ -178,7 +178,10 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		// moved from build-order opener to composition marker layered on the
 		// supply opener, so each ingested Zerg tech game now carries both an
 		// opener row and a marker row (two such games in this corpus).
-		"replay_events": 217,
+		// Then -12: the Used Hotkey Groups marker was retired (positive hotkey
+		// signal lives in players.hotkey_stream), dropping its one row per
+		// hotkey-using player.
+		"replay_events": 205,
 	}
 	actualCounts, err := collectCounts(store, keys(expectedCounts))
 	if err != nil {

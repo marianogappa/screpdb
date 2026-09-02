@@ -8,8 +8,9 @@
 //	uvarint(Δsec<<6 | type<<4 | 15), uvarint(group)   when group >= 15
 //
 // Δsec is the in-game second delta from the previous event (events are
-// time-ordered). The 2-bit type is 0=Select, 1=Assign of units, 2=Add,
-// 3=Assign of a proven building. Type 1 appends one byte: the selection size
+// time-ordered). The 2-bit type is 0=Select, 1=Assign of units, 2=Add (a
+// group recall variant kept for legacy blobs; extraction folds shift+number
+// group additions into assigns), 3=Assign of a proven building. Type 1 appends one byte: the selection size
 // (unit count, capped at 255). Type 3 appends three bytes: the building's wire
 // ID (see buildings.go) and its build-tile X and Y (255,255 when unknown).
 //

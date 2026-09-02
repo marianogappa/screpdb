@@ -189,11 +189,12 @@ func TestExtractAnnotatesAssigns(t *testing.T) {
 	b.sel(terran, 50, 60)
 	b.upgrade(terran, 51, "Terran Infantry Weapons")
 	b.hotkey(terran, 52, repcmd.HotkeyTypeIDAssign, 6)
-	// A three-unit army on group 7, then recalled and added.
+	// A three-unit army on group 7, then recalled; shift+number then adds
+	// that selection into group 2 (which held the Barracks tag).
 	b.sel(terran, 60, 70, 71, 72)
 	b.hotkey(terran, 61, repcmd.HotkeyTypeIDAssign, 7)
 	b.hotkey(terran, 62, repcmd.HotkeyTypeIDSelect, 7)
-	b.hotkey(terran, 63, repcmd.HotkeyTypeIDAssign+2, 2) // Add group 2
+	b.hotkey(terran, 63, repcmd.HotkeyTypeIDAdd, 2)
 	// SelectRemove down to a single unknown tag; assign is a 1-unit group.
 	b.sel(terran, 70, 300, 301)
 	b.selRemove(terran, 71, 301)
@@ -267,8 +268,9 @@ func TestExtractAnnotatesAssigns(t *testing.T) {
 	if len(g7) != 2 || g7[1].Type != TypeSelect || g7[1].Sec < 60 || g7[1].Sec > 62 {
 		t.Fatalf("group 7 recall wrong: %+v", g7)
 	}
+	// The Add lands as an assign of group 2's new contents: barracks + 3 units.
 	g2 := eventsFor(terranEvents, 2)
-	if len(g2) != 2 || g2[1].Type != TypeAdd {
+	if len(g2) != 2 || g2[1].Type != TypeAssignUnits || g2[1].Count != 4 {
 		t.Fatalf("group 2 add wrong: %+v", g2)
 	}
 

@@ -188,8 +188,7 @@ func Coordinates(r *rep.Replay, players []*models.Player) map[int]CmdCoord {
 					snap(s)
 					s.cur = append([]uint16(nil), s.groups[hc.Group]...)
 				case "Add":
-					snap(s)
-					s.cur = unionTags(s.cur, s.groups[hc.Group])
+					s.groups[hc.Group] = unionTags(s.groups[hc.Group], s.cur)
 				}
 			}
 		case repcmd.TypeIDBuild:

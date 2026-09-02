@@ -226,6 +226,7 @@ func Extract(r *rep.Replay) map[byte][]Event {
 				continue
 			}
 			e := rawHotkeyEvent{frame: frame, group: hc.Group}
+			contents := s.cur
 			switch hc.HotkeyType.Name {
 			case "Assign":
 				e.typ = TypeAssignUnits
@@ -235,17 +236,22 @@ func Extract(r *rep.Replay) map[byte][]Event {
 				snap()
 				s.cur = append([]uint16(nil), s.groups[hc.Group]...)
 				noteMulti(pe, s.cur, frame)
+				contents = s.cur
 			case "Add":
-				e.typ = TypeAdd
-				snap()
-				s.cur = unionTags(s.cur, s.groups[hc.Group])
-				noteMulti(pe, s.cur, frame)
+				// Shift+number adds the current selection TO the group,
+				// creating it when empty; the selection itself is unchanged.
+				// Some players build every group this way (never pressing
+				// ctrl+number), so it must count as an assign of the group's
+				// new contents.
+				e.typ = TypeAssignUnits
+				s.groups[hc.Group] = unionTags(s.groups[hc.Group], s.cur)
+				contents = s.groups[hc.Group]
 			default:
 				continue
 			}
-			e.selSize = len(s.cur)
+			e.selSize = len(contents)
 			if e.selSize == 1 {
-				e.selTag = s.cur[0]
+				e.selTag = contents[0]
 			}
 			pe.events = append(pe.events, e)
 		case repcmd.TypeIDBuild:

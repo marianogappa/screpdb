@@ -304,6 +304,10 @@ import (
 // Old v1 blobs still decode, without annotations; re-ingest to backfill them.
 // The used_hotkey_groups marker (and its pill) is retired with this: positive
 // hotkey signal now reads from the stream, while never_used_hotkeys stays.
+// Also fixes hotkey "Add" semantics everywhere selection state is replayed
+// (unittags and the stream extractor): shift+number adds the current
+// selection TO the group (some players build every group this way and never
+// press ctrl+number); it was misread as pulling the group into the selection.
 const AlgorithmVersion = 68
 
 // DetectorLevel indicates at which level a pattern detector operates

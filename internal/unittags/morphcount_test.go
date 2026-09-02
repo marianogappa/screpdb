@@ -54,20 +54,20 @@ func TestMorphSelectionSizes_EmptySelectionSkipped(t *testing.T) {
 
 func TestMorphSelectionSizes_HotkeyAndAddRemoveTracked(t *testing.T) {
 	// Selection is tracked through hotkey assign/select/add and select add/remove
-	// exactly as Analyze does. Final selection before the morph is size 3.
+	// exactly as Analyze does. Hotkey Add grows the group, not the selection.
 	cmds := []repcmd.Cmd{
 		sel(2, 5, 0x10, 0x11),      // {0x10,0x11}
 		hotkey(2, 6, "Assign", 1),  // group 1 = {0x10,0x11}
 		sel(2, 10, 0x20),           // {0x20}
-		hotkey(2, 11, "Add", 1),    // {0x20,0x10,0x11}
-		morph(2, 12, "Overlord"),   // idx 4: size 3
-		hotkey(2, 20, "Select", 1), // {0x10,0x11}
-		selAdd(2, 21, 0x30),        // {0x10,0x11,0x30}
-		selRemove(2, 22, 0x11),     // {0x10,0x30}
-		morph(2, 23, "Hydralisk"),  // idx 8: size 2
+		hotkey(2, 11, "Add", 1),    // group 1 = {0x10,0x11,0x20}; selection stays {0x20}
+		morph(2, 12, "Overlord"),   // idx 4: size 1
+		hotkey(2, 20, "Select", 1), // {0x10,0x11,0x20}
+		selAdd(2, 21, 0x30),        // {0x10,0x11,0x20,0x30}
+		selRemove(2, 22, 0x11),     // {0x10,0x20,0x30}
+		morph(2, 23, "Hydralisk"),  // idx 8: size 3
 	}
 	got := MorphSelectionSizes(replayOf(cmds...))
-	if want := map[int]int{4: 3, 8: 2}; !reflect.DeepEqual(got, want) {
+	if want := map[int]int{4: 1, 8: 3}; !reflect.DeepEqual(got, want) {
 		t.Errorf("MorphSelectionSizes = %+v, want %+v", got, want)
 	}
 }
