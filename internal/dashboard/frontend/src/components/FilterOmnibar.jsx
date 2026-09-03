@@ -17,10 +17,13 @@
 //     The menu and browse row still split them, because that is navigation and
 //     carries no semantics.
 //
-//  2. Counts come from the API and are complete for every axis, so a zero is
-//     information: that option matches nothing in this corpus. Those options
-//     rank last and render dimmed, because a filter that returns an empty list
-//     is a dead end worth seeing but not worth trying first.
+//  2. Counts come from the API and are complete for every axis, so once the
+//     replay library has finished loading a zero is information: that option
+//     matches nothing in this corpus. Those options rank last and render
+//     dimmed, because a filter that returns an empty list is a dead end worth
+//     seeing but not worth trying first. While the library is still loading
+//     (the `loading` prop) a zero only means "nothing yet", so nothing is
+//     demoted or dimmed until the corpus is complete.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -98,7 +101,9 @@ export default function FilterOmnibar({
   // { value, onChange, placeholder }. The same text still narrows the option
   // menu, so picking an option stays one keystroke away.
   textFilter = null,
+  loading = false,
 }) {
+  const isDeadEnd = (item) => !loading && item.games === 0;
   const [internalQuery, setInternalQuery] = useState('');
   const query = textFilter ? textFilter.value : internalQuery;
   const setQuery = (value) => {
@@ -177,8 +182,8 @@ export default function FilterOmnibar({
     });
     scored.sort((a, b) => {
       // dead ends last, however well they matched
-      const aDead = a.item.games === 0;
-      const bDead = b.item.games === 0;
+      const aDead = isDeadEnd(a.item);
+      const bDead = isDeadEnd(b.item);
       if (aDead !== bDead) return aDead ? 1 : -1;
       if (b.score !== a.score) return b.score - a.score;
       const axisDelta = axes.findIndex((x) => x.id === a.item.axisId)
@@ -187,7 +192,7 @@ export default function FilterOmnibar({
       return a.item.label.localeCompare(b.item.label);
     });
     return scored.map((entry) => entry.item);
-  }, [vocab, query, axes]);
+  }, [vocab, query, axes, loading]);
 
   const shown = matches.slice(0, MENU_LIMIT);
 
@@ -311,7 +316,7 @@ export default function FilterOmnibar({
           role="option"
           aria-selected={idx === cursor}
           key={item.uid}
-          className={`wf-ob-opt${item.games === 0 ? ' wf-ob-opt--zero' : ''}`}
+          className={`wf-ob-opt${isDeadEnd(item) ? ' wf-ob-opt--zero' : ''}`}
           onMouseEnter={() => setCursor(idx)}
           onClick={() => pick(item)}
         >
@@ -469,7 +474,7 @@ export default function FilterOmnibar({
               <button
                 type="button"
                 key={item.uid}
-                className={`wf-br-opt${isPicked(item) ? ' wf-br-opt--on' : ''}${item.games === 0 ? ' wf-br-opt--zero' : ''}`}
+                className={`wf-br-opt${isPicked(item) ? ' wf-br-opt--on' : ''}${isDeadEnd(item) ? ' wf-br-opt--zero' : ''}`}
                 onClick={() => onToggle(item.state, item.key)}
               >
                 {item.label}

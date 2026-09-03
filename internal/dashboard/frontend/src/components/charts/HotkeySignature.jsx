@@ -102,13 +102,12 @@ function SignatureCard({ card }) {
   );
 }
 
-export default function HotkeySignature({ payload }) {
+export default function HotkeySignature({ payload, loadingNotice = '' }) {
   const cards = payload?.cards || [];
   if (!cards.length) {
     return (
       <div className="chart-empty">
-        Not enough games for a hotkey signature. It needs at least 3 stored games of a race;
-        re-analyze old replays to backfill hotkey streams.
+        {loadingNotice || 'Not enough games for a hotkey signature. It needs at least 3 games of one race.'}
       </div>
     );
   }
