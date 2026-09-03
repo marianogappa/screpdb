@@ -6,37 +6,24 @@ const buildWebSocketURL = (path) => {
 };
 
 export const api = {
-  startIngest: async (data) => {
-    const response = await fetch(`${API_CUSTOM}/ingest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data || {}),
-    });
+  getLibrarySettings: async () => {
+    const response = await fetch(`${API_CUSTOM}/library/settings`);
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to start ingestion');
+      throw new Error(text || 'Failed to load replay library settings');
     }
     return response.json();
   },
 
-  getIngestSettings: async () => {
-    const response = await fetch(`${API_CUSTOM}/ingest/settings`);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to load ingest settings');
-    }
-    return response.json();
-  },
-
-  updateIngestSettings: async (data) => {
-    const response = await fetch(`${API_CUSTOM}/ingest/settings`, {
+  updateLibrarySettings: async ({ replay_dir }) => {
+    const response = await fetch(`${API_CUSTOM}/library/settings`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ replay_dir }),
     });
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to update ingest settings');
+      throw new Error(text || 'Failed to update replay library settings');
     }
     return response.json();
   },
@@ -49,22 +36,12 @@ export const api = {
     });
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to load sample set');
+      throw new Error(text || 'Failed to load example replays');
     }
     return response.json();
   },
 
-  createIngestLogsSocket: () => new WebSocket(buildWebSocketURL(`${API_CUSTOM}/ingest/logs`)),
-
-  getStaleReplaysCount: async () => {
-    const response = await fetch(`${API_CUSTOM}/replays/stale-count`);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to load stale replays count');
-    }
-    return response.json();
-  },
-
+  createLibraryEventsSocket: () => new WebSocket(buildWebSocketURL(`${API_CUSTOM}/library/events`)),
 
   getHealth: async () => {
     const response = await fetch(`${API_BASE}/health`);
