@@ -54,9 +54,14 @@ func TestReadLegacyStateWithAndWithoutOptionalColumns(t *testing.T) {
 	mustExec(t, db, `UPDATE settings SET feature_flags = '{"gaming_session":true}', game_types = '["one_on_one","Melee"]', game_type = 'ums' WHERE config_key = 'global'`)
 	mustExec(t, db, `INSERT INTO bnet_profiles (toon, gateway, found, aurora_id, battle_tag, country_code, payload, fetched_at) VALUES ('Bisu', 30, 1, 42, 'Bisu#1234', 'KR', '{"x":1}', '2026-09-01T00:00:00Z'), ('Nobody', 10, 0, 0, '', '', '{}', '2026-09-02T00:00:00Z')`)
 
+	mustExec(t, db, `INSERT INTO bnet_game_results (aurora_id, game_id, create_time, toon, gateway, race, result, apm, duration_seconds, map_name, match_guid) VALUES (42, 'g1', 1756700000, 'Bisu', 30, 'Protoss', 'win', 300, 900, 'Polypoid', 'm1')`)
+
 	second, err := Read(ctx, path)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(second.GameResults) != 1 || second.GameResults[0].GameID != "g1" || second.GameResults[0].CreateTimeUnix != 1756700000 || second.GameResults[0].APM != 300 {
+		t.Fatalf("game results = %+v", second.GameResults)
 	}
 	if !second.Settings.FeatureFlags["gaming_session"] {
 		t.Fatalf("feature flags = %v", second.Settings.FeatureFlags)

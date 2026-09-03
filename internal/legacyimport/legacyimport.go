@@ -39,9 +39,24 @@ type BnetProfile struct {
 	FetchedAt   string
 }
 
+type BnetGameResult struct {
+	AuroraID        int64
+	GameID          string
+	CreateTimeUnix  int64
+	Toon            string
+	Gateway         int
+	Race            string
+	Result          string
+	APM             int
+	DurationSeconds int
+	MapName         string
+	MatchGUID       string
+}
+
 type Result struct {
-	Settings *Settings
-	Profiles []BnetProfile
+	Settings    *Settings
+	Profiles    []BnetProfile
+	GameResults []BnetGameResult
 }
 
 func Read(ctx context.Context, dbPath string) (Result, error) {
@@ -71,7 +86,32 @@ func Read(ctx context.Context, dbPath string) (Result, error) {
 			return out, err
 		}
 	}
+	if has, err := hasTable(ctx, db, "bnet_game_results"); err != nil {
+		return out, err
+	} else if has {
+		out.GameResults, err = readGameResults(ctx, db)
+		if err != nil {
+			return out, err
+		}
+	}
 	return out, nil
+}
+
+func readGameResults(ctx context.Context, db *sql.DB) ([]BnetGameResult, error) {
+	rows, err := db.QueryContext(ctx, `SELECT aurora_id, game_id, create_time, toon, gateway, race, result, apm, duration_seconds, map_name, match_guid FROM bnet_game_results ORDER BY aurora_id, create_time`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []BnetGameResult
+	for rows.Next() {
+		var g BnetGameResult
+		if err := rows.Scan(&g.AuroraID, &g.GameID, &g.CreateTimeUnix, &g.Toon, &g.Gateway, &g.Race, &g.Result, &g.APM, &g.DurationSeconds, &g.MapName, &g.MatchGUID); err != nil {
+			return nil, err
+		}
+		out = append(out, g)
+	}
+	return out, rows.Err()
 }
 
 func hasTable(ctx context.Context, db *sql.DB, name string) (bool, error) {
