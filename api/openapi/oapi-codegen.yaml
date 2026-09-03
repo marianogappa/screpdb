@@ -24,3 +24,4 @@ output-options:
     - bnetStatus
     - bnetToggle
     - bnetProfile
+    - proPhoto

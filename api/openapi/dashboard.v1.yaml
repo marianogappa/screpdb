@@ -238,6 +238,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
+  /api/custom/pros/{proID}/photo:
+    get:
+      operationId: proPhoto
+      tags: [operational]
+      summary: Embedded Liquipedia portrait of a built-in progamer profile. Served by a hand-written handler (not generated).
+      parameters:
+        - name: proID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: JPEG or PNG image
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Unknown profile or no portrait
   /api/custom/update/status:
     get:
       operationId: updateStatus

@@ -32,6 +32,7 @@ type workflowPlayerViewportMultitaskingDistribution struct {
 	MinGames        int64                                     `json:"min_games"`
 	PlayersIncluded int64                                     `json:"players_included"`
 	Players         []workflowPlayerViewportMultitaskingPoint `json:"players"`
+	FeaturedPlayers []workflowFeaturedPoint                   `json:"featured_players,omitempty"`
 }
 
 type workflowGameViewportMultitaskingPlayer struct {

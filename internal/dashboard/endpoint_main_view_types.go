@@ -803,7 +803,10 @@ type workflowPlayerOverview struct {
 	BnetProfile         *bnetProfileDetail            `json:"bnet_profile,omitempty"`
 	// BnetGames counts this player's Battle.net-sourced replays; the summary
 	// tab shows its Battle.net section only when non-zero.
-	BnetGames      int64                         `json:"bnet_games"`
+	BnetGames int64 `json:"bnet_games"`
+	// Featured is set only for built-in progamer profiles (internal/propack);
+	// it carries what the page needs to explain where the data comes from.
+	Featured       *featuredProfile              `json:"featured,omitempty"`
 	RecentGames    []workflowGameListItem        `json:"recent_games"`
 	ChatSummary    workflowPlayerChatSummary     `json:"chat_summary"`
 	NarrativeHints []string                      `json:"narrative_hints"`
@@ -983,6 +986,7 @@ type workflowPlayerApmHistogram struct {
 	PlayerPercentile *float64                          `json:"player_percentile,omitempty"`
 	Bins             []workflowPlayerApmHistogramBin   `json:"bins"`
 	Players          []workflowPlayerApmHistogramPoint `json:"players"`
+	FeaturedPlayers  []workflowFeaturedPoint           `json:"featured_players,omitempty"`
 }
 
 type workflowPlayerUnitCadencePoint struct {
@@ -1016,6 +1020,7 @@ type workflowPlayerUnitCadenceLeaderboard struct {
 	StddevCadence     float64                                 `json:"stddev_cadence_score"`
 	Bins              []workflowPlayerUnitCadenceHistogramBin `json:"bins"`
 	Players           []workflowPlayerUnitCadencePoint        `json:"players"`
+	FeaturedPlayers   []workflowFeaturedPoint                 `json:"featured_players,omitempty"`
 }
 
 type workflowPlayerUnitCadenceReplay struct {

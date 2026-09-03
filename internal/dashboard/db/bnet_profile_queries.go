@@ -130,3 +130,35 @@ func (s *Store) ListBnetProfilePayloadsByPlayerKeys(ctx context.Context, playerK
 	}
 	return out, rows.Err()
 }
+
+// ListBnetAuroraIDsByPlayerKeys returns the aurora IDs of every cached, found
+// profile whose toon is one of the given normalized player keys. Used to tell
+// whether the user's own accounts belong to a built-in progamer profile.
+func (s *Store) ListBnetAuroraIDsByPlayerKeys(ctx context.Context, playerKeys []string) ([]int64, error) {
+	if len(playerKeys) == 0 {
+		return []int64{}, nil
+	}
+	placeholders := make([]string, len(playerKeys))
+	args := make([]any, len(playerKeys))
+	for i, key := range playerKeys {
+		placeholders[i] = "?"
+		args[i] = key
+	}
+	query := `SELECT DISTINCT aurora_id
+		FROM bnet_profiles
+		WHERE found = 1 AND aurora_id != 0 AND LOWER(TRIM(toon)) IN (` + strings.Join(placeholders, ",") + `)`
+	rows, err := Trace(s.defaultDB).QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []int64{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}

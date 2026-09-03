@@ -94,6 +94,11 @@ func (d *Dashboard) fetchAndCacheBnetProfile(ctx context.Context, toon string, g
 	if err := upsertBnetProfileWithRetry(ctx, d.dbStore, *row); err != nil {
 		return nil, err
 	}
+	if p.Found() {
+		if err := d.rememberBnetGameResults(ctx, p.AuroraID, p.Raw, toon); err != nil {
+			log.Printf("[bnet-profile] caching game results for %q: %v", toon, err)
+		}
+	}
 	return row, nil
 }
 

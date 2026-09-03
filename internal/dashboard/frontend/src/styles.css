@@ -7128,3 +7128,69 @@ span[data-tip],
 /* Player chat summary: full-width message lines. */
 .workflow-chat-line { padding: 4px 8px; font-size: 13px; color: var(--e-base); }
 .workflow-chat-line + .workflow-chat-line { border-top: 1px solid var(--e-line); }
+
+/* ---- Built-in progamer profiles (internal/propack) ---- */
+
+.workflow-featured-players { margin-top: 12px; }
+.workflow-featured-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 10px; margin-top: 10px;
+}
+.workflow-featured-row {
+  display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 10px;
+  padding: 5px 8px; border-radius: 8px; cursor: pointer; border: 1px solid transparent;
+}
+.workflow-featured-row:hover { background: rgba(255, 255, 255, 0.04); border-color: var(--e-line); }
+.workflow-featured-row.workflow-selected-row { border-color: rgba(224, 184, 76, 0.45); }
+.workflow-featured-name { display: flex; flex-direction: column; min-width: 0; }
+.workflow-featured-name > span:first-child {
+  display: inline-flex; align-items: center; gap: 5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.pro-photo {
+  width: 34px; height: 34px; border-radius: 50%; object-fit: cover; display: block;
+  border: 1px solid rgba(224, 184, 76, 0.5); background: rgba(255, 255, 255, 0.04);
+}
+.pro-photo-placeholder {
+  width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--e-line); color: var(--e-quiet); font-size: 14px; background: rgba(255, 255, 255, 0.03);
+}
+.pro-photo-large, .pro-photo-large.pro-photo-placeholder { width: 64px; height: 64px; font-size: 24px; }
+
+.featured-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--e-accent); border: 1px solid rgba(224, 184, 76, 0.45); border-radius: 999px;
+  padding: 1px 8px; white-space: nowrap;
+}
+h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10px; letter-spacing: 0.08em; }
+
+.workflow-player-title-featured { display: flex; align-items: center; gap: 14px; }
+.workflow-player-title-featured .workflow-player-title-wrap { display: flex; flex-direction: column; gap: 4px; }
+.workflow-featured-links { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--e-quiet); }
+.workflow-featured-links a { color: var(--e-accent); text-decoration: none; }
+.workflow-featured-links a:hover { text-decoration: underline; }
+
+.wps-about { font-size: 12.5px; color: var(--e-quiet); line-height: 1.5; max-width: 72ch; }
+.wps-about strong { color: var(--e-base); font-weight: 600; }
+
+.workflow-bnet-games { display: flex; flex-direction: column; margin-top: 6px; }
+.workflow-bnet-game-row {
+  display: grid; grid-template-columns: 26px 64px 1fr 36px 56px minmax(120px, 1.2fr); gap: 10px; align-items: center;
+  padding: 6px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); font-size: 12.5px;
+}
+.workflow-bnet-game-row.wbg-head {
+  font-size: 10.5px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--e-quiet);
+}
+.workflow-bnet-game-row .wbg-race img { width: 18px; height: 18px; display: block; }
+.workflow-bnet-game-row .wbg-map { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.workflow-bnet-game-row .wbg-opp { color: var(--e-quiet); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.workflow-bnet-game-row .wbg-when { color: var(--e-quiet); white-space: nowrap; }
+
+.workflow-featured-toggle {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--e-quiet); cursor: pointer;
+}
+.workflow-featured-toggle-row { display: flex; justify-content: flex-end; margin-top: 8px; }
+.workflow-featured-toggle input { accent-color: var(--e-accent); }
+.workflow-featured-expand { justify-self: start; align-self: center; font-size: 11.5px; padding: 5px 8px; }
+.workflow-panel--player .workflow-title-row.workflow-player-title-featured { justify-content: flex-start; }
+.workflow-bnet-game-row { grid-template-columns: 26px 118px 1fr 36px 56px minmax(120px, 1.2fr); }
