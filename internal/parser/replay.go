@@ -261,6 +261,7 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		ar := AnalyzeAlliances(data.Players, data.Commands, data.Replay.DurationSeconds, activity)
 		allianceResult = &ar
 		data.Replay.TeamStacking = ar.TeamStackingFlag
+		data.AllianceSnapshots = allianceSnapshotsToModels(ar.Snapshots)
 
 		// Team DISPLAY: prefer our full-game longest-held topology ("original
 		// teams") whenever we observed real mutual alliances. screp's
@@ -377,6 +378,17 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	data.FingerprintVectors = extractFingerprintVectors(rep)
 
 	return data, nil
+}
+
+func allianceSnapshotsToModels(snapshots []AllianceSnapshot) []models.AllianceSnapshot {
+	if len(snapshots) == 0 {
+		return nil
+	}
+	out := make([]models.AllianceSnapshot, len(snapshots))
+	for i, s := range snapshots {
+		out[i] = models.AllianceSnapshot{Sec: s.Sec, Teams: s.Teams, Stacking: s.Stacking}
+	}
+	return out
 }
 
 // computeTeamFormatAndMatchup derives team_format (e.g. "1v1", "2v2", "2v2v2") and
