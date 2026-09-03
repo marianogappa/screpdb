@@ -118,51 +118,6 @@ func TestListGameUnitProductionAndCasts(t *testing.T) {
 	}
 }
 
-func TestListRacePatterns(t *testing.T) {
-	s, conn := newTestStore(t)
-	ctx := context.Background()
-	replayID, boxerID, _ := fixtureBasic1v1(t, conn)
-
-	seedMarker(t, conn, replayID, &boxerID, "made_recalls", 300, nil)
-	// Meta markers must be excluded.
-	seedMarker(t, conn, replayID, &boxerID, "used_hotkey_groups", 10, nil)
-	seedMarker(t, conn, replayID, &boxerID, "viewport_multitasking", 20, ptrStr(`{"x":1}`))
-
-	rows, err := s.ListRacePatterns(ctx, "boxer")
-	if err != nil {
-		t.Fatalf("ListRacePatterns: %v", err)
-	}
-	if len(rows) != 1 {
-		t.Fatalf("expected 1 race pattern, got %d: %+v", len(rows), rows)
-	}
-	if rows[0].Race != "Terran" || rows[0].PatternName != "made_recalls" || rows[0].ReplayCount != 1 {
-		t.Errorf("row = %+v", rows[0])
-	}
-}
-
-func TestListTopActionTypes(t *testing.T) {
-	s, conn := newTestStore(t)
-	ctx := context.Background()
-	replayID, boxerID, _ := fixtureBasic1v1(t, conn)
-
-	seedCommand(t, conn, replayID, boxerID, 10, "Select", nil)
-	seedCommand(t, conn, replayID, boxerID, 11, "Select", nil)
-	seedCommand(t, conn, replayID, boxerID, 12, "Select", nil)
-	seedCommand(t, conn, replayID, boxerID, 13, "Train", ptrStr("Marine"))
-	seedCommand(t, conn, replayID, boxerID, 14, "Targeted Order", nil)
-
-	rows, err := s.ListTopActionTypes(ctx, boxerID, 2)
-	if err != nil {
-		t.Fatalf("ListTopActionTypes: %v", err)
-	}
-	if len(rows) != 2 {
-		t.Fatalf("expected 2 rows (limit), got %d: %+v", len(rows), rows)
-	}
-	if rows[0] != "Select" {
-		t.Errorf("top action = %q, want Select", rows[0])
-	}
-}
-
 func TestListReplayAllianceCommands(t *testing.T) {
 	s, conn := newTestStore(t)
 	ctx := context.Background()
@@ -191,48 +146,7 @@ func TestListReplayAllianceCommands(t *testing.T) {
 func TestPlayerInsightAuxQueries(t *testing.T) {
 	s, conn := newTestStore(t)
 	ctx := context.Background()
-	replayID, boxerID, nadaID := fixtureBasic1v1(t, conn)
-
-	t.Run("CountDistinctPlayers", func(t *testing.T) {
-		n, err := s.CountDistinctPlayers(ctx)
-		if err != nil {
-			t.Fatalf("CountDistinctPlayers: %v", err)
-		}
-		// BoxeR, NaDa, Obs (observers still counted here: WHERE is_observer=0? Obs is observer -> excluded).
-		if n != 2 {
-			t.Errorf("distinct players = %v, want 2", n)
-		}
-	})
-
-	t.Run("CountDistinctPlayersByRace", func(t *testing.T) {
-		n, err := s.CountDistinctPlayersByRace(ctx, "Terran")
-		if err != nil {
-			t.Fatalf("CountDistinctPlayersByRace: %v", err)
-		}
-		if n != 1 {
-			t.Errorf("terran players = %v, want 1", n)
-		}
-	})
-
-	t.Run("ListPlayersByReplayRows", func(t *testing.T) {
-		rows, err := s.ListPlayersByReplayRows(ctx)
-		if err != nil {
-			t.Fatalf("ListPlayersByReplayRows: %v", err)
-		}
-		if len(rows) != 2 {
-			t.Fatalf("expected 2 non-observer rows, got %d", len(rows))
-		}
-		names := map[string]bool{}
-		for _, r := range rows {
-			names[r.Name] = true
-			if r.ReplayID != replayID {
-				t.Errorf("replay id = %d", r.ReplayID)
-			}
-		}
-		if !names["BoxeR"] || !names["NaDa"] {
-			t.Errorf("names = %+v", names)
-		}
-	})
+	fixtureBasic1v1(t, conn)
 
 	t.Run("GetPlayerNameByKey", func(t *testing.T) {
 		name, err := s.GetPlayerNameByKey(ctx, "boxer")
@@ -244,29 +158,6 @@ func TestPlayerInsightAuxQueries(t *testing.T) {
 		}
 	})
 
-	t.Run("ListExpansionEvents", func(t *testing.T) {
-		mustExec(t, conn, `
-			INSERT INTO replay_events (replay_id, seconds_from_game_start, event_kind, event_type, source_player_id)
-			VALUES (?, 240, 'game_event', 'expansion', ?)`, replayID, boxerID)
-		rows, err := s.ListExpansionEvents(ctx)
-		if err != nil {
-			t.Fatalf("ListExpansionEvents: %v", err)
-		}
-		if len(rows) != 1 || rows[0].Second != 240 || rows[0].PlayerID == nil || *rows[0].PlayerID != boxerID {
-			t.Errorf("expansion events = %+v", rows)
-		}
-	})
-
-	t.Run("CountCarrierGamesByPlayer", func(t *testing.T) {
-		seedMarker(t, conn, replayID, &nadaID, "carriers", 600, nil)
-		n, err := s.CountCarrierGamesByPlayer(ctx, "nada")
-		if err != nil {
-			t.Fatalf("CountCarrierGamesByPlayer: %v", err)
-		}
-		if n != 1 {
-			t.Errorf("carrier games = %d, want 1", n)
-		}
-	})
 }
 
 func TestListRaceOrderRowsAndMatchupOrderRows(t *testing.T) {
@@ -434,15 +325,6 @@ func TestFilterOptionQueries(t *testing.T) {
 		}
 	})
 
-	t.Run("ListGlobalReplayFilterPlayerOptions", func(t *testing.T) {
-		rows, err := s.ListGlobalReplayFilterPlayerOptions(ctx)
-		if err != nil {
-			t.Fatalf("ListGlobalReplayFilterPlayerOptions: %v", err)
-		}
-		if len(rows) != 2 {
-			t.Errorf("expected 2 options, got %d: %+v", len(rows), rows)
-		}
-	})
 }
 
 func TestUnitCadenceRowQueries(t *testing.T) {

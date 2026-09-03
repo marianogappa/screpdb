@@ -966,10 +966,6 @@ func performancePercentileFromSortedValues(sortedValues []float64, playerValue f
 	return 100 * (midRank / denom)
 }
 
-func (d *Dashboard) topActionTypesForPlayer(playerID int64, limit int) ([]string, error) {
-	return d.dbStore.ListTopActionTypes(d.ctx, playerID, limit)
-}
-
 type overlayBaseMeta struct {
 	Base       workflowGameEventBase
 	IsStarting bool

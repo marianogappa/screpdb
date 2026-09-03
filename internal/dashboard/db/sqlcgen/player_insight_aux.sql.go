@@ -9,61 +9,6 @@ import (
 	"context"
 )
 
-const CountCarrierGamesByPlayer = `-- name: CountCarrierGamesByPlayer :one
-SELECT COUNT(DISTINCT p.replay_id) AS count
-FROM players p
-WHERE lower(trim(p.name)) = ?
-  AND p.is_observer = 0
-  AND EXISTS (
-    SELECT 1 FROM replay_events re
-    WHERE re.source_player_id = p.id
-      AND re.event_kind = 'marker'
-      AND re.event_type = 'carriers'
-  )
-`
-
-func (q *Queries) CountCarrierGamesByPlayer(ctx context.Context, name string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, CountCarrierGamesByPlayer, name)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const CountDistinctPlayers = `-- name: CountDistinctPlayers :one
-SELECT CAST(COUNT(*) AS FLOAT) AS total
-FROM (
-  SELECT lower(trim(name)) AS player_key
-  FROM players
-  WHERE is_observer = 0
-  GROUP BY lower(trim(name))
-)
-`
-
-func (q *Queries) CountDistinctPlayers(ctx context.Context) (float64, error) {
-	row := q.db.QueryRowContext(ctx, CountDistinctPlayers)
-	var total float64
-	err := row.Scan(&total)
-	return total, err
-}
-
-const CountDistinctPlayersByRace = `-- name: CountDistinctPlayersByRace :one
-SELECT CAST(COUNT(*) AS FLOAT) AS total
-FROM (
-  SELECT lower(trim(name)) AS player_key
-  FROM players
-  WHERE is_observer = 0
-    AND race = ?
-  GROUP BY lower(trim(name))
-)
-`
-
-func (q *Queries) CountDistinctPlayersByRace(ctx context.Context, race string) (float64, error) {
-	row := q.db.QueryRowContext(ctx, CountDistinctPlayersByRace, race)
-	var total float64
-	err := row.Scan(&total)
-	return total, err
-}
-
 const GetPlayerNameByKey = `-- name: GetPlayerNameByKey :one
 SELECT CAST(COALESCE(MIN(name), '') AS TEXT) AS player_name
 FROM players
@@ -77,43 +22,6 @@ func (q *Queries) GetPlayerNameByKey(ctx context.Context, name string) (string, 
 	var player_name string
 	err := row.Scan(&player_name)
 	return player_name, err
-}
-
-const ListExpansionEvents = `-- name: ListExpansionEvents :many
-SELECT replay_id, source_player_id, seconds_from_game_start
-FROM replay_events
-WHERE event_kind = 'game_event'
-  AND event_type = 'expansion'
-  AND source_player_id IS NOT NULL
-`
-
-type ListExpansionEventsRow struct {
-	ReplayID             int64
-	SourcePlayerID       *int64
-	SecondsFromGameStart int64
-}
-
-func (q *Queries) ListExpansionEvents(ctx context.Context) ([]ListExpansionEventsRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListExpansionEvents)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListExpansionEventsRow{}
-	for rows.Next() {
-		var i ListExpansionEventsRow
-		if err := rows.Scan(&i.ReplayID, &i.SourcePlayerID, &i.SecondsFromGameStart); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const ListGasTimingRows = `-- name: ListGasTimingRows :many
@@ -312,41 +220,6 @@ func (q *Queries) ListPlayerChatRows(ctx context.Context, name string) ([]ListPl
 	for rows.Next() {
 		var i ListPlayerChatRowsRow
 		if err := rows.Scan(&i.ReplayID, &i.ChatMessage); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const ListPlayersByReplayRows = `-- name: ListPlayersByReplayRows :many
-SELECT replay_id, id AS player_id, name
-FROM players
-WHERE is_observer = 0
-`
-
-type ListPlayersByReplayRowsRow struct {
-	ReplayID int64
-	PlayerID int64
-	Name     string
-}
-
-func (q *Queries) ListPlayersByReplayRows(ctx context.Context) ([]ListPlayersByReplayRowsRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListPlayersByReplayRows)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListPlayersByReplayRowsRow{}
-	for rows.Next() {
-		var i ListPlayersByReplayRowsRow
-		if err := rows.Scan(&i.ReplayID, &i.PlayerID, &i.Name); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

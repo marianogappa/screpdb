@@ -44,23 +44,6 @@ func (a *openAPIStrictAdapter) UpdateGlobalReplayFilterConfig(ctx context.Contex
 	})
 }
 
-type GetGlobalReplayFilterOptionsJSONResponse struct {
-	Payload any
-}
-
-func (response GetGlobalReplayFilterOptionsJSONResponse) VisitGetGlobalReplayFilterOptionsResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) GetGlobalReplayFilterOptions(ctx context.Context, request apigen.GetGlobalReplayFilterOptionsRequestObject) (apigen.GetGlobalReplayFilterOptionsResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.GetGlobalReplayFilterOptions, func(value any) apigen.GetGlobalReplayFilterOptionsResponseObject {
-		return GetGlobalReplayFilterOptionsJSONResponse{Payload: value}
-	})
-}
-
 type IngestJSONResponse struct {
 	Payload any
 }

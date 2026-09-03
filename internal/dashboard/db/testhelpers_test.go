@@ -26,10 +26,7 @@ func newTestStore(t *testing.T) (*Store, *sql.DB) {
 	}
 	t.Cleanup(func() { conn.Close() })
 
-	store := NewStore(conn,
-		func() *sql.DB { return conn },
-		func(_ *string, fn func(*sql.DB) error) error { return fn(conn) },
-	)
+	store := NewStore(conn, func() *sql.DB { return conn })
 	return store, conn
 }
 

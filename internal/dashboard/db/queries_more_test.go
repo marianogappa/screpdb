@@ -69,29 +69,6 @@ func TestGetGlobalReplayFilterConfigRawDefaults(t *testing.T) {
 	}
 }
 
-func TestCountDistinctPlayers(t *testing.T) {
-	s, conn := newTestStore(t)
-	ctx := context.Background()
-	fixtureBasic1v1(t, conn)
-
-	total, err := s.CountDistinctPlayers(ctx)
-	if err != nil {
-		t.Fatalf("CountDistinctPlayers: %v", err)
-	}
-	// BoxeR + NaDa (observer excluded).
-	if total != 2 {
-		t.Errorf("distinct players = %v, want 2", total)
-	}
-
-	terran, err := s.CountDistinctPlayersByRace(ctx, "Terran")
-	if err != nil {
-		t.Fatalf("CountDistinctPlayersByRace: %v", err)
-	}
-	if terran != 1 {
-		t.Errorf("terran players = %v, want 1", terran)
-	}
-}
-
 func TestGetPlayerNameByKey(t *testing.T) {
 	s, conn := newTestStore(t)
 	ctx := context.Background()
@@ -103,26 +80,6 @@ func TestGetPlayerNameByKey(t *testing.T) {
 	}
 	if name != "BoxeR" {
 		t.Errorf("name = %q", name)
-	}
-}
-
-func TestListExpansionEvents(t *testing.T) {
-	s, conn := newTestStore(t)
-	ctx := context.Background()
-	replayID, boxerID, _ := fixtureBasic1v1(t, conn)
-
-	mustExec(t, conn, `
-		INSERT INTO replay_events (replay_id, seconds_from_game_start, event_kind, event_type, source_player_id)
-		VALUES (?, 300, 'game_event', 'expansion', ?)`, replayID, boxerID)
-	// A non-expansion event and a NULL-source expansion should be ignored.
-	seedGameEvent(t, conn, replayID, "cannon_rush", 120)
-
-	rows, err := s.ListExpansionEvents(ctx)
-	if err != nil {
-		t.Fatalf("ListExpansionEvents: %v", err)
-	}
-	if len(rows) != 1 || rows[0].Second != 300 || rows[0].PlayerID == nil || *rows[0].PlayerID != boxerID {
-		t.Fatalf("expansion events = %+v", rows)
 	}
 }
 

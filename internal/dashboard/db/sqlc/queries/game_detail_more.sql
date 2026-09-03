@@ -1,35 +1,9 @@
--- name: CountPlayerGames :one
-SELECT COUNT(*) AS games_played
-FROM players p
-WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human';
-
 -- name: ListRaceSections :many
 SELECT p.race, COUNT(*) AS game_count, CAST(COALESCE(SUM(CASE WHEN p.is_winner = 1 THEN 1 ELSE 0 END), 0) AS INTEGER) AS wins
 FROM players p
 WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
 GROUP BY p.race
 ORDER BY game_count DESC, p.race ASC;
-
--- name: ListRacePatterns :many
--- Post-markers-migration: presence of a replay_events row (event_kind='marker') *is* the match.
--- Filter out used_hotkey_groups/viewport_multitasking (meta markers that aren't race-characterising).
-SELECT p.race, re.event_type AS pattern_name, COUNT(DISTINCT re.replay_id) AS replay_count
-FROM replay_events re
-JOIN players p ON p.id = re.source_player_id
-WHERE lower(trim(p.name)) = ?
-  AND p.is_observer = 0
-  AND lower(trim(coalesce(p.type, ''))) = 'human'
-  AND re.event_kind = 'marker'
-  AND re.event_type NOT IN ('used_hotkey_groups', 'viewport_multitasking')
-GROUP BY p.race, re.event_type;
-
--- name: ListTopActionTypes :many
-SELECT c.action_type, COUNT(*) AS n
-FROM commands c
-WHERE c.player_id = ?
-GROUP BY c.action_type
-ORDER BY n DESC
-LIMIT ?;
 
 -- name: GetPhaseBoundariesForReplay :many
 -- Returns the replay-level phase-boundary markers (mid_game_starts,

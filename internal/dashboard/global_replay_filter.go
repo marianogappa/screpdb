@@ -170,14 +170,6 @@ func ptrToString(value string) *string {
 	return &value
 }
 
-func composeReplayFilterSQL(globalFilterSQL *string, localFilterSQL *string) *string {
-	composed := dashboarddb.ComposeReplayFilterSQL(nullableStringValue(globalFilterSQL), nullableStringValue(localFilterSQL))
-	if composed == "" {
-		return nil
-	}
-	return &composed
-}
-
 func nullableStringValue(value *string) string {
 	if value == nil {
 		return ""

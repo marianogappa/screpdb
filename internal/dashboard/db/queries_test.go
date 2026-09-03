@@ -221,18 +221,10 @@ func TestListReplayEventsJoinsPlayerNames(t *testing.T) {
 	}
 }
 
-func TestCountPlayerGamesAndRaceSections(t *testing.T) {
+func TestListRaceSectionsBasic(t *testing.T) {
 	s, conn := newTestStore(t)
 	ctx := context.Background()
 	fixtureBasic1v1(t, conn)
-
-	n, err := s.CountPlayerGames(ctx, "boxer")
-	if err != nil {
-		t.Fatalf("CountPlayerGames: %v", err)
-	}
-	if n != 1 {
-		t.Errorf("count = %d, want 1", n)
-	}
 
 	sections, err := s.ListRaceSections(ctx, "boxer")
 	if err != nil {

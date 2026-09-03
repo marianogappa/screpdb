@@ -560,9 +560,6 @@ type ServerInterface interface {
 	// (PUT /api/custom/global-replay-filter)
 	UpdateGlobalReplayFilterConfig(w http.ResponseWriter, r *http.Request)
 
-	// (GET /api/custom/global-replay-filter/options)
-	GetGlobalReplayFilterOptions(w http.ResponseWriter, r *http.Request)
-
 	// (POST /api/custom/ingest)
 	Ingest(w http.ResponseWriter, r *http.Request)
 
@@ -661,20 +658,6 @@ func (siw *ServerInterfaceWrapper) UpdateGlobalReplayFilterConfig(w http.Respons
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateGlobalReplayFilterConfig(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetGlobalReplayFilterOptions operation middleware
-func (siw *ServerInterfaceWrapper) GetGlobalReplayFilterOptions(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetGlobalReplayFilterOptions(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1527,8 +1510,6 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/api/custom/global-replay-filter", wrapper.UpdateGlobalReplayFilterConfig).Methods(http.MethodPut)
 
-	r.HandleFunc(options.BaseURL+"/api/custom/global-replay-filter/options", wrapper.GetGlobalReplayFilterOptions).Methods(http.MethodGet)
-
 	r.HandleFunc(options.BaseURL+"/api/custom/ingest", wrapper.Ingest).Methods(http.MethodPost)
 
 	r.HandleFunc(options.BaseURL+"/api/custom/ingest/logs", wrapper.IngestLogs).Methods(http.MethodGet)
@@ -1626,35 +1607,6 @@ func (t *UpdateGlobalReplayFilterConfig200JSONResponse) UnmarshalJSON(b []byte) 
 }
 
 func (response UpdateGlobalReplayFilterConfig200JSONResponse) VisitUpdateGlobalReplayFilterConfigResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetGlobalReplayFilterOptionsRequestObject struct {
-}
-
-type GetGlobalReplayFilterOptionsResponseObject interface {
-	VisitGetGlobalReplayFilterOptionsResponse(w http.ResponseWriter) error
-}
-
-type GetGlobalReplayFilterOptions200JSONResponse GenericValue
-
-func (t GetGlobalReplayFilterOptions200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *GetGlobalReplayFilterOptions200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response GetGlobalReplayFilterOptions200JSONResponse) VisitGetGlobalReplayFilterOptionsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -2345,9 +2297,6 @@ type StrictServerInterface interface {
 	// (PUT /api/custom/global-replay-filter)
 	UpdateGlobalReplayFilterConfig(ctx context.Context, request UpdateGlobalReplayFilterConfigRequestObject) (UpdateGlobalReplayFilterConfigResponseObject, error)
 
-	// (GET /api/custom/global-replay-filter/options)
-	GetGlobalReplayFilterOptions(ctx context.Context, request GetGlobalReplayFilterOptionsRequestObject) (GetGlobalReplayFilterOptionsResponseObject, error)
-
 	// (POST /api/custom/ingest)
 	Ingest(ctx context.Context, request IngestRequestObject) (IngestResponseObject, error)
 
@@ -2495,30 +2444,6 @@ func (sh *strictHandler) UpdateGlobalReplayFilterConfig(w http.ResponseWriter, r
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateGlobalReplayFilterConfigResponseObject); ok {
 		if err := validResponse.VisitUpdateGlobalReplayFilterConfigResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetGlobalReplayFilterOptions operation middleware
-func (sh *strictHandler) GetGlobalReplayFilterOptions(w http.ResponseWriter, r *http.Request) {
-	var request GetGlobalReplayFilterOptionsRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetGlobalReplayFilterOptions(ctx, request.(GetGlobalReplayFilterOptionsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetGlobalReplayFilterOptions")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetGlobalReplayFilterOptionsResponseObject); ok {
-		if err := validResponse.VisitGetGlobalReplayFilterOptionsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -3131,32 +3056,32 @@ func (sh *strictHandler) ScrepColors(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"3Fndb+O4Ef9XBLbAtYAcZXttH/x2TdBscLvYxRl7L7lAoKWRxA2/Qg6TCob+94Kk/BVLdpJ6UScvm5X4",
+	"43Dmx/nSeEEKJbSSINGS6YJoaqgABBOfOG3B/Aqtf2CSTImm2JCUSCrAP63WU2Lg3jEDJZmicZASWzQg",
+	"qN+IrfZgi4bJmnSdx/qd15cjYlfL+6RWygiKZEqYxH/+naTLY5hEqMGQzh8U4cGWK5BgWPFl/h0K9C9o",
+	"WTJkSlL+1SgNBhnY5TG9LBXBXbrc/TvlDvxmJeFLRaY3C/JnAxWZkj9layKz/ths+8wuXRCGIOz/IuAJ",
+	"mes30om5N3v9ZsXE+tVcKQ5Uku62WxlJjaHtsWVfyxos/gb3DuwetivKLaREb7xakCKIme4KTuNSXlLb",
+	"zBU15TCISe0wL5kZcL6U2HvOEPLgcYPrqHROKwSTy9yAthuotdUeZiA3rG4wLzgr7uywMk7nqHKZCyWx",
+	"GZEVMW3btrkQeVkOB82OT37TJUW44mpO+W8hZP7NOIK5ULJi9Su5V0IzDmUeY9DmVRCZ23vul6XjnM45",
+	"PImTNXvwn4K7EnIvxy3TyC4rS5htlMG8pgJGgH4p96/D+ip6QDpBpjfE39WDzecKUQmSEgEcgKQ+unIl",
+	"cyX9Q2UA8kqZnHJObgeUfhIIRFCd3zFZhqNKsIVh2vNHpuQz1UlQJ0GVMBmsOEu+fZ4lPWEJNZBQ/uj/",
+	"21tZJnW4I97+If9CHapJyWxBjV+hmLAQKn9NE6uSn5ywPyXMJlJhQpMHylnp/3WQNGDg7A9J0l0WDNSO",
+	"U+PtVxLaZ9jYbWbWm02Wh+9m6GI3eboddc+YCGaAyGRtX+eU+wJ6NzC6kAIqFcAMeUAXBnQ5Ty6XmSP5",
+	"5es1SckDGBsv9sPZ+dm5V1tpkFQzMiU/n52f/UzSUJyCHhnVLCucRSWyuQTMtFEV8wcsunR31SJFZ0cW",
+	"UdX10M4S5q7OBNUTTlvlMFssq2G3C/aXM6HWAtps7hgvPSV7UYLq/QAnGQ4gggNPoiqTmBM8IzWEu/SX",
+	"Rf1lXpdkSq4Ax5JSqOhWK2njzf7t/DxmHYkgo1tozVkRhGXfrQp1YF30n1ErY4kOXrAdul9+jW+1G9B5",
+	"fy7tGxGw+C9VtkfT+HkJvNuOVp94u/87jU/8o1F4B+2Ie8UEF/pJZQe4jyniB3G83Yh0PZmnxF2kJ+Oq",
+	"tqMhFa345CFP1P9w/mG3Ss0eGRYNk3WijUJVKG6TSpnkEeZWFXeAidO1oSWMq2P7jL0vyrdz+4nH9oCy",
+	"Pyqih2veKfqeoOYOjM1KqJgM5XigXmmjbLbQRl1fdpluFKpdTN/9+JrHYVIoF80Z85yZh8WUZy8C+NSY",
+	"sVRoDhMLPjJpuWuxC1edebXa0dWdFmDV6g4z41c/sZAMN7/Eb/rP5HsHpl1/J3MmmIe+5KM4HRalqsrC",
+	"kWTFqcCWrFXLerAvHRbp68ox5ZUusn5UoRVQdGHLcU3HonH62HSGxv11Qm9PJlZDNG13yOOBdQlIGT+J",
+	"KrUd2kMi15BsNQ0Lg5VBu5f91177P/aYd0mABXg6vnyR4HSkN/XEzcJI4URcvgHK4+Rq8KI/huWigeLu",
+	"dHSOBWFSKK7MuI9+DaiLCDox3Q9p/faLdvizd2o/ooPkbf6PXHNnX7PdKoP5vN3auhxr9SoZWvg/y0EU",
+	"1YKkhFOLebibcmDctfe0kpnB46gtSPSFF0jc1OONF9Pe0zMmLasbtBnVYtIwi6o2VBwKgF+0+LjCnq5N",
+	"TjKcaKNKV/gNk4KWIAs4ZN03yfCihz4ryvsR2SsiQjC5GroeIa5fk25O2CcfGDxqZXAiHEeG1N7Fkefe",
+	"2/u93/R5c8/J2bhY/ZraHTDorXay65+L153cgPVZ0VCcWCcENe2hdqGhOOuR75aP2N1PLKul/8I8lK1i",
+	"oz9bod8tL31WOEDHdY96yzSMJPeQuffVmOfQ97JCf1p1/gd71mv7he124d253TOam73s+qZ5sn8SGnn8",
+	"RC1e9b3QO/C08Cv0oc/gmQedzFdw1/03AAD//w==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

@@ -322,16 +322,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
-  /api/custom/global-replay-filter/options:
-    get:
-      operationId: getGlobalReplayFilterOptions
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
   /api/games:
     get:
       operationId: gamesList

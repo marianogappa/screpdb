@@ -62,42 +62,6 @@ func (q *Queries) GetGlobalReplayFilterConfigRaw(ctx context.Context, configKey 
 	return i, err
 }
 
-const ListGlobalReplayFilterPlayerOptions = `-- name: ListGlobalReplayFilterPlayerOptions :many
-SELECT CAST(MIN(name) AS TEXT) AS label, COUNT(*) AS games
-FROM players
-WHERE is_observer = 0
-GROUP BY lower(trim(name))
-ORDER BY games DESC, label ASC
-`
-
-type ListGlobalReplayFilterPlayerOptionsRow struct {
-	Label string
-	Games int64
-}
-
-func (q *Queries) ListGlobalReplayFilterPlayerOptions(ctx context.Context) ([]ListGlobalReplayFilterPlayerOptionsRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListGlobalReplayFilterPlayerOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListGlobalReplayFilterPlayerOptionsRow{}
-	for rows.Next() {
-		var i ListGlobalReplayFilterPlayerOptionsRow
-		if err := rows.Scan(&i.Label, &i.Games); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const UpdateGlobalReplayFilterConfigRaw = `-- name: UpdateGlobalReplayFilterConfigRaw :exec
 UPDATE settings
 SET
