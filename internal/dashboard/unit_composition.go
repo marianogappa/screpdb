@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	db "github.com/marianogappa/screpdb/internal/dashboard/db"
+	"github.com/marianogappa/screpdb/internal/gamerules"
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
@@ -64,52 +65,16 @@ type compositionSpell struct {
 
 // compositionSpells maps an ability OrderName (a 'Targeted Order' command
 // — Cast*, FireYamatoGun, PlaceMine, ...) to the (unit, spell) it
-// represents. This map is the single source of truth for what counts as a
-// spellcast: the SQL returns every Targeted Order and unmapped ones are
-// dropped here, so adding/removing a cast is a one-line change with no SQL
-// edit. Only meaningful player abilities are listed — unit morphs (Archon
-// warp, Dark Archon meld, Guardian aspect), passives (Arbiter cloak),
-// continuous Medic heal, Comsat scans and all Nuke orders are excluded
-// (the Nuke has its own Featuring pill). Stasis Field is attributed to the
-// Arbiter even though UnitOrderToUnit ties the order to the Science Vessel
-// — the Arbiter is the unit that actually casts it.
-var compositionSpells = map[string]compositionSpell{
-	models.UnitOrderCastPsionicStorm:  {models.GeneralUnitHighTemplar, "Psionic Storm"},
-	models.UnitOrderCastHallucination: {models.GeneralUnitHighTemplar, "Hallucination"},
-	models.UnitOrderHallucination2:    {models.GeneralUnitHighTemplar, "Hallucination"},
-
-	models.UnitOrderFireYamatoGun: {models.GeneralUnitBattlecruiser, "Yamato Gun"},
-
-	models.UnitOrderVultureMine: {models.GeneralUnitVulture, "Spider Mine"},
-	models.UnitOrderPlaceMine:   {models.GeneralUnitVulture, "Spider Mine"},
-
-	models.UnitOrderCastLockdown: {models.GeneralUnitGhost, "Lockdown"},
-
-	models.UnitOrderCastDarkSwarm: {models.GeneralUnitDefiler, "Dark Swarm"},
-	models.UnitOrderCastPlague:    {models.GeneralUnitDefiler, "Plague"},
-	models.UnitOrderCastConsume:   {models.GeneralUnitDefiler, "Consume"},
-
-	models.UnitOrderCastEMPShockwave:    {models.GeneralUnitScienceVessel, "EMP Shockwave"},
-	models.UnitOrderCastIrradiate:       {models.GeneralUnitScienceVessel, "Irradiate"},
-	models.UnitOrderCastDefensiveMatrix: {models.GeneralUnitScienceVessel, "Defensive Matrix"},
-
-	models.UnitOrderCastStasisField: {models.GeneralUnitArbiter, "Stasis Field"},
-	models.UnitOrderCastRecall:      {models.GeneralUnitArbiter, "Recall"},
-
-	models.UnitOrderCastDisruptionWeb: {models.GeneralUnitCorsair, "Disruption Web"},
-
-	models.UnitOrderCastMindControl: {models.GeneralUnitDarkArchon, "Mind Control"},
-	models.UnitOrderCastFeedback:    {models.GeneralUnitDarkArchon, "Feedback"},
-	models.UnitOrderCastMaelstrom:   {models.GeneralUnitDarkArchon, "Maelstrom"},
-
-	models.UnitOrderCastParasite:        {models.GeneralUnitQueen, "Parasite"},
-	models.UnitOrderCastSpawnBroodlings: {models.GeneralUnitQueen, "Spawn Broodlings"},
-	models.UnitOrderCastEnsnare:         {models.GeneralUnitQueen, "Ensnare"},
-	models.UnitOrderCastInfestation:     {models.GeneralUnitQueen, "Infest Command Center"},
-
-	models.UnitOrderCastRestoration:  {models.GeneralUnitMedic, "Restoration"},
-	models.UnitOrderCastOpticalFlare: {models.GeneralUnitMedic, "Optical Flare"},
-}
+// represents. The SQL returns every Targeted Order and unmapped ones are
+// dropped here. The list itself lives in gamerules.CompositionSpells so
+// replay compaction keeps exactly the same casts.
+var compositionSpells = func() map[string]compositionSpell {
+	m := make(map[string]compositionSpell, len(gamerules.CompositionSpells))
+	for _, s := range gamerules.CompositionSpells {
+		m[s.Order] = compositionSpell{unit: s.Unit, spell: s.Spell}
+	}
+	return m
+}()
 
 // compositionExcluded: workers + supply. Don't appear anywhere.
 var compositionExcluded = map[string]struct{}{

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/marianogappa/screpdb/internal/crashreport"
+	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/pkg/browser"
 )
 
@@ -33,7 +34,7 @@ import (
 // launched program.
 const (
 	brokerDirName     = "broker"
-	seeReplayFolder   = "000_screpdb_watch_me"
+	seeReplayFolder   = fileops.WatchMeDirName
 	seeReplayFilename = "watch_me.rep"
 	requestSuffix     = ".request.json"
 	responseSuffix    = ".response.json"

@@ -164,6 +164,7 @@ type ReplayData struct {
 	Commands            []*Command                `json:"commands"`
 	FingerprintVectors  []PlayerFingerprintVector `json:"-"`
 	HotkeyStreams       map[byte][]byte           `json:"-"` // Encoded players.hotkey_stream blobs keyed by replay player ID
+	AllianceSnapshots   []AllianceSnapshot        `json:"-"` // Alliance topology timeline for multi-player melee; empty otherwise. Not persisted.
 	MapContext          *ReplayMapContext         `json:"-"` // Runtime-only map context (not persisted)
 	PatternOrchestrator any                       `json:"-"` // Pattern orchestrator (type *patterns.Orchestrator), not serialized
 	Profile             any                       `json:"-"` // Optional *profile.Run, populated when SCREPDB_INGEST_PROFILE is set

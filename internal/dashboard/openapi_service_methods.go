@@ -277,7 +277,7 @@ func (d *Dashboard) GameSee(ctx context.Context, request apigen.GameSeeRequestOb
 	// sort above files in StarCraft's replay browser — making the staged replay easy
 	// to find. The file inside is just "watch_me.rep" since the folder already carries
 	// the screpdb prefix.
-	const seeReplayFolderName = "000_screpdb_watch_me"
+	const seeReplayFolderName = fileops.WatchMeDirName
 	const seeReplayFilename = "watch_me.rep"
 	sourceFilePath, err := d.dbStore.GetReplayFilePathByID(ctx, request.ReplayID)
 	if err != nil {
