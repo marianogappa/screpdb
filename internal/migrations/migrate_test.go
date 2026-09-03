@@ -101,7 +101,7 @@ func TestRunMigrations_RecordsEveryEmbeddedUpFile(t *testing.T) {
 
 	want := map[MigrationSet][]string{
 		MigrationSetReplay:    {"000001_initial.up.sql", "000002_add_load_action_types.up.sql", "000003_add_player_fingerprint_vectors.up.sql", "000004_add_game_source_lobby_kind.up.sql", "000005_add_players_hotkey_stream.up.sql"},
-		MigrationSetDashboard: {"000001_initial.up.sql", "000002_add_bnet_profiles.up.sql"},
+		MigrationSetDashboard: {"000001_initial.up.sql", "000002_add_bnet_profiles.up.sql", "000003_add_bnet_game_results.up.sql"},
 		MigrationSetSettings:  {"000001_initial.up.sql", "000002_drop_player_aliases.up.sql"},
 	}
 	for set, wantNames := range want {

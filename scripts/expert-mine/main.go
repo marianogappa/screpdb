@@ -53,7 +53,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"math"
 	"os"
@@ -66,32 +65,11 @@ import (
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 	"github.com/marianogappa/screpdb/internal/patterns/markers"
+	"github.com/marianogappa/screpdb/scripts/procorpus"
 	_ "modernc.org/sqlite"
 )
 
-type harvestRow struct {
-	MatchID     string `json:"matchId"`
-	Duration    int    `json:"duration"`
-	AuroraID    int64  `json:"auroraId"`
-	Toon        string `json:"toon"`
-	Race        string `json:"race"`
-	MMR         int    `json:"mmr"`
-	OppAuroraID int64  `json:"oppAuroraId"`
-	OppToon     string `json:"oppToon"`
-	OppRace     string `json:"oppRace"`
-	OppMMR      int    `json:"oppMmr"`
-}
-
-// proSide is one labelled progamer player-game before the DB join.
-type proSide struct {
-	matchID  string
-	auroraID int64
-	toon     string // may be empty (~32% of harvest rows)
-	oppToon  string
-	race     string // full race name ("Zerg")
-	mmr      int
-}
-
+// procorpus.ProSide is one labelled progamer player-game before the DB join.
 func main() {
 	log.SetFlags(log.LstdFlags)
 	harvestDir := flag.String("harvest", "", "screpharvest harvest dir (holds replays.jsonl + replays/)")
@@ -107,14 +85,15 @@ func main() {
 		os.Exit(2)
 	}
 
-	sides, err := labelCorpus(*harvestDir, *corpusDir, *minDuration)
+	registry, err := procorpus.LoadRegistry(*corpusDir)
+	if err != nil {
+		log.Fatalf("registry: %v", err)
+	}
+	sides, err := procorpus.LabelCorpus(*harvestDir, registry, *minDuration)
 	if err != nil {
 		log.Fatalf("label: %v", err)
 	}
-	byMatch := map[string][]proSide{}
-	for _, s := range sides {
-		byMatch[s.matchID] = append(byMatch[s.matchID], s)
-	}
+	byMatch := procorpus.GroupByMatch(sides)
 	log.Printf("labelled %d pro player-games across %d matches", len(sides), len(byMatch))
 
 	stagedDir := filepath.Join(*workdir, "staged")
@@ -127,7 +106,7 @@ func main() {
 	}
 
 	if *doStage {
-		staged, missing := stage(*harvestDir, stagedDir, byMatch)
+		staged, missing := procorpus.Stage(*harvestDir, stagedDir, byMatch)
 		log.Printf("staged %d replay files (%d not on disk)", staged, missing)
 	}
 
@@ -154,7 +133,7 @@ func main() {
 	}
 	defer db.Close()
 
-	joined, tallies, err := join(db, byMatch)
+	joined, tallies, err := procorpus.Join(db, byMatch)
 	if err != nil {
 		log.Fatalf("join: %v", err)
 	}
@@ -175,257 +154,18 @@ func main() {
 	log.Printf("outputs in %s", outDir)
 }
 
-var raceByLetter = map[string]string{"Z": "Zerg", "T": "Terran", "P": "Protoss"}
-
-func labelCorpus(harvestDir, corpusDir string, minDuration int) ([]proSide, error) {
-	allowed, err := loadProAuroraIDs(corpusDir)
-	if err != nil {
-		return nil, err
-	}
-	f, err := os.Open(filepath.Join(harvestDir, "replays.jsonl"))
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	seen := map[string]bool{} // matchID:auroraID
-	var sides []proSide
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 0, 1<<20), 1<<20)
-	for sc.Scan() {
-		var r harvestRow
-		if err := json.Unmarshal(sc.Bytes(), &r); err != nil {
-			return nil, fmt.Errorf("bad jsonl row: %w", err)
-		}
-		if r.Duration < minDuration {
-			continue
-		}
-		// Both perspectives of a row can be a pro (pro-vs-pro games).
-		for _, cand := range []proSide{
-			{matchID: r.MatchID, auroraID: r.AuroraID, toon: r.Toon, oppToon: r.OppToon, race: raceByLetter[r.Race], mmr: r.MMR},
-			{matchID: r.MatchID, auroraID: r.OppAuroraID, toon: r.OppToon, oppToon: r.Toon, race: raceByLetter[r.OppRace], mmr: r.OppMMR},
-		} {
-			if cand.auroraID == 0 || !allowed[cand.auroraID] || cand.race == "" {
-				continue
-			}
-			key := cand.matchID + ":" + fmt.Sprint(cand.auroraID)
-			if seen[key] {
-				continue
-			}
-			seen[key] = true
-			sides = append(sides, cand)
-		}
-	}
-	return sides, sc.Err()
-}
-
-func loadProAuroraIDs(corpusDir string) (map[int64]bool, error) {
-	var merged map[string][]int64
-	if err := readJSON(filepath.Join(corpusDir, "pros_merged.json"), &merged); err != nil {
-		return nil, err
-	}
-	var exclusions map[string]json.RawMessage
-	if err := readJSON(filepath.Join(corpusDir, "pro_exclusions.json"), &exclusions); err != nil {
-		return nil, err
-	}
-	excluded := map[int64]bool{}
-	for name, raw := range exclusions {
-		if name == "_comment" {
-			continue
-		}
-		var byID map[string]string
-		if err := json.Unmarshal(raw, &byID); err != nil {
-			return nil, fmt.Errorf("pro_exclusions[%s]: %w", name, err)
-		}
-		for idStr := range byID {
-			var id int64
-			fmt.Sscan(idStr, &id)
-			excluded[id] = true
-		}
-	}
-	allowed := map[int64]bool{}
-	for _, ids := range merged {
-		for _, id := range ids {
-			if !excluded[id] {
-				allowed[id] = true
-			}
-		}
-	}
-	return allowed, nil
-}
-
-func readJSON(path string, v any) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(data, v)
-}
-
-func stage(harvestDir, stagedDir string, byMatch map[string][]proSide) (staged, missing int) {
-	for matchID := range byMatch {
-		src := filepath.Join(harvestDir, "replays", matchID+".rep")
-		dst := filepath.Join(stagedDir, matchID+".rep")
-		if _, err := os.Stat(dst); err == nil {
-			staged++
-			continue
-		}
-		if err := copyFile(src, dst); err != nil {
-			missing++
-			continue
-		}
-		staged++
-	}
-	return staged, missing
-}
-
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	_, err = io.Copy(out, in)
-	return err
-}
-
-// joinedPlayer is one resolved (replay, player) pro row.
-type joinedPlayer struct {
-	replayID int64
-	playerID int64
-	fileName string
-	matchup  string
-	name     string
-	race     string
-}
-
-type joinTallies struct {
-	ByToon, ByOppElim, ByRace, Unresolved, NotIngested int
-}
-
-func (t joinTallies) String() string {
-	return fmt.Sprintf("by-toon=%d by-opp-elim=%d by-race=%d unresolved=%d not-ingested=%d",
-		t.ByToon, t.ByOppElim, t.ByRace, t.Unresolved, t.NotIngested)
-}
-
-type playerRow struct {
-	id   int64
-	name string
-	race string
-}
-
-func join(db *sql.DB, byMatch map[string][]proSide) ([]joinedPlayer, joinTallies, error) {
-	type replayRow struct {
-		id       int64
-		fileName string
-		matchup  string
-		players  []playerRow
-	}
-	rows, err := db.Query(`
-		SELECT r.id, r.file_name, r.matchup, p.id, p.name, p.race
-		FROM replays r
-		JOIN players p ON p.replay_id = r.id
-		WHERE r.team_format = '1v1' AND p.is_observer = 0 AND p.type = 'Human'
-		ORDER BY r.id, p.id`)
-	if err != nil {
-		return nil, joinTallies{}, err
-	}
-	defer rows.Close()
-	byFile := map[string]*replayRow{}
-	for rows.Next() {
-		var rid, pid int64
-		var fileName, matchup, pname, prace string
-		if err := rows.Scan(&rid, &fileName, &matchup, &pid, &pname, &prace); err != nil {
-			return nil, joinTallies{}, err
-		}
-		rr, ok := byFile[fileName]
-		if !ok {
-			rr = &replayRow{id: rid, fileName: fileName, matchup: matchup}
-			byFile[fileName] = rr
-		}
-		rr.players = append(rr.players, playerRow{id: pid, name: pname, race: prace})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, joinTallies{}, err
-	}
-
-	var out []joinedPlayer
-	var t joinTallies
-	for matchID, sides := range byMatch {
-		rr, ok := byFile[matchID+".rep"]
-		if !ok {
-			t.NotIngested += len(sides)
-			continue
-		}
-		for _, s := range sides {
-			p, method := resolvePlayer(rr.players, s)
-			switch method {
-			case "toon":
-				t.ByToon++
-			case "opp":
-				t.ByOppElim++
-			case "race":
-				t.ByRace++
-			default:
-				t.Unresolved++
-				continue
-			}
-			out = append(out, joinedPlayer{
-				replayID: rr.id, playerID: p.id, fileName: rr.fileName,
-				matchup: rr.matchup, name: p.name, race: p.race,
-			})
-		}
-	}
-	return out, t, nil
-}
-
-func resolvePlayer(players []playerRow, s proSide) (playerRow, string) {
-	var zero playerRow
-	if s.toon != "" {
-		for _, p := range players {
-			if p.name == s.toon {
-				return p, "toon"
-			}
-		}
-	}
-	if s.oppToon != "" && len(players) == 2 {
-		if players[0].name == s.oppToon {
-			return players[1], "opp"
-		}
-		if players[1].name == s.oppToon {
-			return players[0], "opp"
-		}
-	}
-	var match *playerRow
-	count := 0
-	for i := range players {
-		if players[i].race == s.race {
-			match = &players[i]
-			count++
-		}
-	}
-	if count == 1 {
-		return *match, "race"
-	}
-	return zero, ""
-}
-
+// procorpus.JoinedPlayer is one resolved (replay, player) pro row.
 // markerRow is one bo_% marker event of a resolved pro player.
 type markerRow struct {
-	jp      joinedPlayer
+	jp      procorpus.JoinedPlayer
 	feature string
 	payload []byte
 }
 
-func loadMarkerRows(db *sql.DB, joined []joinedPlayer, like string) ([]markerRow, error) {
-	byPlayer := map[int64]joinedPlayer{}
+func loadMarkerRows(db *sql.DB, joined []procorpus.JoinedPlayer, like string) ([]markerRow, error) {
+	byPlayer := map[int64]procorpus.JoinedPlayer{}
 	for _, jp := range joined {
-		byPlayer[jp.playerID] = jp
+		byPlayer[jp.PlayerID] = jp
 	}
 	rows, err := db.Query(`
 		SELECT e.source_player_id, e.event_type, e.payload
@@ -452,7 +192,7 @@ func loadMarkerRows(db *sql.DB, joined []joinedPlayer, like string) ([]markerRow
 	return out, rows.Err()
 }
 
-func measureMilestones(db *sql.DB, joined []joinedPlayer, outDir string, minN int) error {
+func measureMilestones(db *sql.DB, joined []procorpus.JoinedPlayer, outDir string, minN int) error {
 	rows, err := loadMarkerRows(db, joined, `bo\_%`)
 	if err != nil {
 		return err
@@ -483,7 +223,7 @@ func measureMilestones(db *sql.DB, joined []joinedPlayer, outDir string, minN in
 			s := slot{feature: r.feature, idx: i}
 			secs[s] = append(secs[s], actuals[i].Second)
 			fmt.Fprintf(aw, "%s\t%d\t%s\t%d\t%s\t%s\t%s\n",
-				r.feature, i, ev.Key, actuals[i].Second, r.jp.fileName, r.jp.name, r.jp.matchup)
+				r.feature, i, ev.Key, actuals[i].Second, r.jp.FileName, r.jp.Name, r.jp.Matchup)
 		}
 	}
 	if err := aw.Flush(); err != nil {
@@ -531,7 +271,7 @@ func measureMilestones(db *sql.DB, joined []joinedPlayer, outDir string, minN in
 // first Spawning Pool / Hatchery / Overlord seconds from the commands table —
 // the same source and filters as ListEarlyZergMorphsForBOTimings, which is
 // what the dashboard renders for the simplified Zerg BO rows.
-func measureFuzzy(db *sql.DB, joined []joinedPlayer, outDir string) error {
+func measureFuzzy(db *sql.DB, joined []procorpus.JoinedPlayer, outDir string) error {
 	rows, err := loadMarkerRows(db, joined, `bo\_z\_fuzzy`)
 	if err != nil {
 		return err
@@ -560,7 +300,7 @@ func measureFuzzy(db *sql.DB, joined []joinedPlayer, outDir string) error {
 			continue
 		}
 		firsts := map[string]int{}
-		frows, err := stmt.Query(r.jp.playerID)
+		frows, err := stmt.Query(r.jp.PlayerID)
 		if err != nil {
 			return err
 		}
@@ -580,7 +320,7 @@ func measureFuzzy(db *sql.DB, joined []joinedPlayer, outDir string) error {
 		frows.Close()
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", label,
 			tsvInt(firsts, "Spawning Pool"), tsvInt(firsts, "Hatchery"), tsvInt(firsts, "Overlord"),
-			r.jp.fileName, r.jp.name, r.jp.matchup)
+			r.jp.FileName, r.jp.Name, r.jp.Matchup)
 	}
 	return w.Flush()
 }
@@ -596,7 +336,7 @@ func tsvInt(m map[string]int, k string) string {
 // never_researched per-matchup p5 floors (first HP-upgrade / first tech-or-
 // non-HP-upgrade command second) and the muta-vs-turret completion-gap
 // percentiles (prerequisite-clamped, mirroring the dashboard's computation).
-func measurePhase2(db *sql.DB, joined []joinedPlayer, outDir string) error {
+func measurePhase2(db *sql.DB, joined []procorpus.JoinedPlayer, outDir string) error {
 	f, err := os.Create(filepath.Join(outDir, "phase2.tsv"))
 	if err != nil {
 		return err
@@ -675,15 +415,15 @@ func measurePhase2(db *sql.DB, joined []joinedPlayer, outDir string) error {
 	upSecs := map[string][]int{}
 	techSecs := map[string][]int{}
 	for _, jp := range joined {
-		opp, ok := oppRace[jp.replayID][jp.playerID]
+		opp, ok := oppRace[jp.ReplayID][jp.PlayerID]
 		if !ok {
 			continue
 		}
-		key := jp.race + "v" + opp
-		if s, ok := firstHPUp[jp.playerID]; ok {
+		key := jp.Race + "v" + opp
+		if s, ok := firstHPUp[jp.PlayerID]; ok {
 			upSecs[key] = append(upSecs[key], s)
 		}
-		if s, ok := firstResearch[jp.playerID]; ok {
+		if s, ok := firstResearch[jp.PlayerID]; ok {
 			techSecs[key] = append(techSecs[key], s)
 		}
 	}
@@ -778,10 +518,10 @@ func mutaTurretGaps(db *sql.DB) ([]int, error) {
 	return gaps, nil
 }
 
-func writeMeta(outDir string, sides []proSide, tallies joinTallies) error {
+func writeMeta(outDir string, sides []procorpus.ProSide, tallies procorpus.JoinTallies) error {
 	keys := make([]string, 0, len(sides))
 	for _, s := range sides {
-		keys = append(keys, fmt.Sprintf("%s:%d", s.matchID, s.auroraID))
+		keys = append(keys, fmt.Sprintf("%s:%d", s.MatchID, s.AuroraID))
 	}
 	sort.Strings(keys)
 	h := sha256.New()

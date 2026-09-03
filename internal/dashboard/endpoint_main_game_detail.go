@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/marianogappa/scfingerprint"
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
@@ -301,6 +302,9 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 		result.BnetProfile = details[playerKey]
 		if result.CountryCode == "" && result.BnetProfile != nil {
 			result.CountryCode = result.BnetProfile.CountryCode
+		}
+		if result.BnetProfile != nil {
+			result.BnetProfile.Habits = d.bnetPlayHabitsFor(d.ctx, result.BnetProfile.AuroraID, result.BnetProfile.CountryCode, time.Now())
 		}
 	}
 	d.triggerBnetProfileFetchesForPlayers([]string{summary.PlayerName}, "AssumedBattleNet")

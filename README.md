@@ -377,6 +377,10 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 ```
 
 ```
+2026-09-03  OK. Built-in progamer profiles (internal/propack). The binary embeds a precomputed snapshot (pros.json + Liquipedia portraits) generated offline by scripts/pro-pack from the aurora-ID-labelled ladder corpus; the app reads it with embed only and makes no request to cwal.gg or Liquipedia (the script does, from a developer machine, outside the Go module's enforcement scope in scripts/). Runtime additions: featured rows on the players list, pro player keys (pro:<id>) on the player/insight/hotkey endpoints served from the embedded data, one new hand-written endpoint (GET /api/custom/pros/{proID}/photo) serving embedded bytes, and a cache-only read of bnet_profiles (aurora IDs of the user's own toons) to hide a pro's built-in profile when the user is that pro. Battle.net profile fetches for pros reuse getOrFetchBnetProfile with known (toon, gateway) pairs, so no new hosts, paths or facade exemptions; the Battle.net section now also decodes game_results from the already-cached payload (no extra requests) and appends them to a new bnet_game_results table (dashboard migration 000003) on each fetch the app already makes, so play habits (weekday/weekend, time of day in the account country's zone via the embedded time/tzdata) accumulate at zero extra bridge cost. No iofacade allowlist widening, no AlgorithmVersion bump (no detection change).
+```
+
+```
 2026-08-30  OK. Money-map classification fixed and the Gaming Session view wired up. The map rule now takes the median mineral field rather than whichever field the map file stored first, and compares against a standard 1500 patch instead of a strict > 10000, so "Big Game Hunters - Remastered" stops reading as a Regular map; this reads already-parsed map data and adds no I/O. core.AlgorithmVersion 63 to 64 so map_kind is recomputed on re-ingest. New env var SCREPDB_SESSION_RECENCY widens the session window for development; it is read with os.Getenv, touches no filesystem, and cannot name a path. No new os/net calls, no facade exemptions, no allowlist widening, no new hosts or paths.
 ```
 

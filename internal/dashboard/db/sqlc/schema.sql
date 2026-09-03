@@ -130,3 +130,18 @@ CREATE TABLE bnet_profiles (
   fetched_at TEXT NOT NULL,
   UNIQUE (toon, gateway)
 );
+
+CREATE TABLE bnet_game_results (
+  aurora_id INTEGER NOT NULL,
+  game_id TEXT NOT NULL,
+  create_time INTEGER NOT NULL,
+  toon TEXT NOT NULL DEFAULT '',
+  gateway INTEGER NOT NULL DEFAULT 0,
+  race TEXT NOT NULL DEFAULT '',
+  result TEXT NOT NULL DEFAULT '',
+  apm INTEGER NOT NULL DEFAULT 0,
+  duration_seconds INTEGER NOT NULL DEFAULT 0,
+  map_name TEXT NOT NULL DEFAULT '',
+  match_guid TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (aurora_id, game_id)
+);

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/marianogappa/screpdb/internal/propack"
 	"log"
 	"net/http"
 	"sort"
@@ -107,9 +108,26 @@ func (d *Dashboard) PlayerHotkeySignature(ctx context.Context, request apigen.Pl
 	if playerKey == "" {
 		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("player key missing"))
 	}
-	rows, err := d.dbStore.ListPlayerHotkeyStreamsByKey(ctx, playerKey)
+	if _, isPro := propack.IDFromKey(playerKey); isPro {
+		pro := d.featuredPro(playerKey)
+		if pro == nil {
+			return nil, dashboardservice.WithStatus(http.StatusNotFound, errors.New("unknown built-in profile"))
+		}
+		return d.featuredHotkeySignature(pro), nil
+	}
+	payload, err := d.localHotkeySignature(ctx, playerKey)
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
+	}
+	return payload, nil
+}
+
+// localHotkeySignature aggregates the stored hotkey streams of a player in the
+// database. The pro pack generator calls it too, on its scratch corpus.
+func (d *Dashboard) localHotkeySignature(ctx context.Context, playerKey string) (hotkeySignaturePayload, error) {
+	rows, err := d.dbStore.ListPlayerHotkeyStreamsByKey(ctx, playerKey)
+	if err != nil {
+		return hotkeySignaturePayload{}, err
 	}
 	displayName := playerKey
 	byRace := map[string][][]hotkeystream.Event{}

@@ -71,6 +71,11 @@ type Dashboard struct {
 	// CSettings.json. Kept in memory rather than persisted: it is a pure
 	// function of that file, so a stored copy could only go stale.
 	youKeys atomic.Value // stores map[string]struct{}
+	// featuredExcl caches which built-in progamer profiles are the user (see
+	// excludedProIDs); refreshed after featuredExclusionTTL.
+	featuredExclMu sync.Mutex
+	featuredExcl   map[string]bool
+	featuredExclAt time.Time
 }
 
 // SetShutdownFunc registers the callback the /api/custom/quit endpoint invokes to
@@ -237,6 +242,7 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/custom/bnet/toggle", d.handlerBnetToggle).Methods(http.MethodPost)
 	r.HandleFunc("/api/custom/bnet/profile", d.handlerBnetProfile).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/bnet/country-codes", d.handlerBnetCountryCodes).Methods(http.MethodGet)
+	r.HandleFunc("/api/custom/pros/{proID}/photo", d.handlerProPhoto).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/feature-flags", d.handlerFeatureFlags).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/feature-flags", d.handlerSetFeatureFlag).Methods(http.MethodPut)
 	r.HandleFunc("/api/custom/gaming-session", d.handlerGamingSession).Methods(http.MethodGet)

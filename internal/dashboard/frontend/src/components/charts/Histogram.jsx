@@ -144,6 +144,7 @@ function Histogram({ data, config }) {
           key: String(point?.player_key || point?.label || '').trim(),
           playerKey: String(point?.player_key || '').trim(),
           gamesPlayed: Number(point?.games_played || 0),
+          featured: Boolean(point?.featured),
           tooltipLines: Array.isArray(point?.tooltip_lines)
             ? point.tooltip_lines.map((line) => String(line || '').trim()).filter((line) => line)
             : [],
@@ -155,12 +156,15 @@ function Histogram({ data, config }) {
       const onOverlayPointClick = typeof config?.on_overlay_point_click === 'function' ? config.on_overlay_point_click : null;
 
       const palette = ['#60a5fa', '#f472b6', '#34d399', '#f59e0b', '#a78bfa', '#22d3ee', '#f87171', '#10b981', '#fb7185', '#c4b5fd'];
+      // Built-in progamer points share one gold ink and a star so they read as
+      // reference marks rather than members of the local population.
+      const FEATURED_COLOR = '#e0b84c';
       const placements = overlayPoints.map((point, idx) => {
-        const fullLabel = point.label;
+        const fullLabel = point.featured ? `★ ${point.label}` : point.label;
         const label = fullLabel.length > 22 ? `${fullLabel.slice(0, 21)}...` : fullLabel;
         return {
           ...point,
-          color: palette[(idx * 7) % palette.length],
+          color: point.featured ? FEATURED_COLOR : palette[(idx * 7) % palette.length],
           fullLabel,
           label,
           labelW: Math.max(34, Math.min(220, label.length * 7.6)),
@@ -235,7 +239,7 @@ function Histogram({ data, config }) {
         .append('circle')
         .attr('cx', (point) => point.xPixel)
         .attr('cy', (point) => point.dotY)
-        .attr('r', 3.2)
+        .attr('r', (point) => (point.featured ? 4.2 : 3.2))
         .attr('fill', (point) => point.color)
         .attr('stroke', 'rgba(255,255,255,0.92)')
         .attr('stroke-width', 1)
