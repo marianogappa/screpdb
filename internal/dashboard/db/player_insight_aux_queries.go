@@ -7,58 +7,6 @@ import (
 	"github.com/marianogappa/screpdb/internal/dashboard/db/sqlcgen"
 )
 
-func (s *Store) CountDistinctPlayers(ctx context.Context) (float64, error) {
-	return sqlcgen.New(Trace(s.replayScoped())).CountDistinctPlayers(ctx)
-}
-
-func (s *Store) CountDistinctPlayersByRace(ctx context.Context, race string) (float64, error) {
-	return sqlcgen.New(Trace(s.replayScoped())).CountDistinctPlayersByRace(ctx, race)
-}
-
-type ReplayExpansionEventRow struct {
-	ReplayID int64
-	PlayerID *int64
-	Second   int64
-}
-
-func (s *Store) ListExpansionEvents(ctx context.Context) ([]ReplayExpansionEventRow, error) {
-	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListExpansionEvents(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]ReplayExpansionEventRow, 0, len(sqlcRows))
-	for _, row := range sqlcRows {
-		out = append(out, ReplayExpansionEventRow{
-			ReplayID: row.ReplayID,
-			PlayerID: row.SourcePlayerID,
-			Second:   row.SecondsFromGameStart,
-		})
-	}
-	return out, nil
-}
-
-type ReplayPlayerNameRow struct {
-	ReplayID int64
-	PlayerID int64
-	Name     string
-}
-
-func (s *Store) ListPlayersByReplayRows(ctx context.Context) ([]ReplayPlayerNameRow, error) {
-	sqlcRows, err := sqlcgen.New(Trace(s.replayScoped())).ListPlayersByReplayRows(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]ReplayPlayerNameRow, 0, len(sqlcRows))
-	for _, row := range sqlcRows {
-		out = append(out, ReplayPlayerNameRow{
-			ReplayID: row.ReplayID,
-			PlayerID: row.PlayerID,
-			Name:     row.Name,
-		})
-	}
-	return out, nil
-}
-
 func (s *Store) GetPlayerNameByKey(ctx context.Context, playerKey string) (string, error) {
 	playerName, err := sqlcgen.New(Trace(s.replayScoped())).GetPlayerNameByKey(ctx, playerKey)
 	if err != nil {
@@ -125,10 +73,6 @@ func (s *Store) ListMatchupOrderRows(ctx context.Context, playerKey string) ([]M
 		})
 	}
 	return out, nil
-}
-
-func (s *Store) CountCarrierGamesByPlayer(ctx context.Context, playerKey string) (int64, error) {
-	return sqlcgen.New(Trace(s.replayScoped())).CountCarrierGamesByPlayer(ctx, playerKey)
 }
 
 type PlayerChatRow struct {

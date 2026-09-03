@@ -1,10 +1,6 @@
 package db
 
-import (
-	"context"
-	"database/sql"
-	"fmt"
-)
+import "database/sql"
 
 func EnableForeignKeys(db *sql.DB) error {
 	_, err := db.Exec(`PRAGMA foreign_keys = ON;`)
@@ -28,17 +24,4 @@ func ApplyReplayTempViews(db *sql.DB, qualifiedFilterSQL string) error {
 		return err
 	}
 	return nil
-}
-
-func ValidateSelectOnDB(ctx context.Context, db *sql.DB, qualifiedSQL string) error {
-	row := QueryRowContextOnDB(ctx, db, fmt.Sprintf("SELECT 1 FROM (%s) LIMIT 1", qualifiedSQL))
-	var tmp int
-	if err := row.Scan(&tmp); err != nil && err != sql.ErrNoRows {
-		return err
-	}
-	return nil
-}
-
-func ReplayIDFilterSQL(replayID int64) string {
-	return fmt.Sprintf("SELECT * FROM replays WHERE id = %d", replayID)
 }

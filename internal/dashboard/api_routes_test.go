@@ -32,7 +32,6 @@ func TestSetupRouter_JSONEndpoints(t *testing.T) {
 		{"players cadence", http.MethodGet, "/api/players/insights/unit-production-cadence", nil},
 		{"players viewport", http.MethodGet, "/api/players/insights/viewport-multitasking", nil},
 		{"global replay filter get", http.MethodGet, "/api/custom/global-replay-filter", nil},
-		{"global replay filter options", http.MethodGet, "/api/custom/global-replay-filter/options", nil},
 		{"ingest settings get", http.MethodGet, "/api/custom/ingest/settings", nil},
 		{"stale replays count", http.MethodGet, "/api/custom/replays/stale-count", nil},
 		{"bnet status", http.MethodGet, "/api/custom/bnet/status", nil},
@@ -69,11 +68,7 @@ func TestSetupRouter_JSONEndpoints(t *testing.T) {
 
 func TestSetupRouter_PlayerChatSummaryThroughRouter(t *testing.T) {
 	d := newTestDashboard(t)
-	var playerKey string
-	err := d.dbStore.DefaultQueryRow(`SELECT lower(trim(name)) FROM players WHERE is_observer = 0 LIMIT 1`).Scan(&playerKey)
-	if err != nil {
-		t.Skip("no players in test DB")
-	}
+	playerKey := firstPlayerKey(t, d)
 	r := d.setupRouter()
 	path := "/api/players/" + playerKey + "/chat-summary"
 	req := httptest.NewRequest(http.MethodGet, path, nil)
@@ -89,10 +84,7 @@ func TestSetupRouter_PlayerChatSummaryThroughRouter(t *testing.T) {
 
 func TestSetupRouter_GameDetailThroughRouter(t *testing.T) {
 	d := newTestDashboard(t)
-	var replayID int64
-	if err := d.dbStore.DefaultQueryRow(`SELECT id FROM replays ORDER BY id LIMIT 1`).Scan(&replayID); err != nil {
-		t.Skip("no replays in test DB")
-	}
+	replayID := firstReplayID(t, d)
 	r := d.setupRouter()
 	path := "/api/games/" + strconv.FormatInt(replayID, 10)
 	req := httptest.NewRequest(http.MethodGet, path, nil)
@@ -127,10 +119,7 @@ func TestSetupRouter_GameAssetIconReturnsPNG(t *testing.T) {
 
 func TestSetupRouter_GameAssetMapReturnsPNG(t *testing.T) {
 	d := newTestDashboard(t)
-	var replayID int64
-	if err := d.dbStore.DefaultQueryRow(`SELECT id FROM replays WHERE trim(coalesce(file_path,'')) != '' ORDER BY id LIMIT 1`).Scan(&replayID); err != nil {
-		t.Skip("no replay with file_path in test DB")
-	}
+	replayID := firstReplayID(t, d)
 	r := d.setupRouter()
 	path := "/api/custom/game-assets/map?replay_id=" + strconv.FormatInt(replayID, 10)
 	req := httptest.NewRequest(http.MethodGet, path, nil)

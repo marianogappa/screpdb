@@ -7,7 +7,6 @@ sql:
       - internal/dashboard/db/sqlc/queries/settings.sql
       - internal/dashboard/db/sqlc/queries/global_replay_filter.sql
       - internal/dashboard/db/sqlc/queries/viewport.sql
-      - internal/dashboard/db/sqlc/queries/player_insight_static.sql
       - internal/dashboard/db/sqlc/queries/player_insight_aux.sql
       - internal/dashboard/db/sqlc/queries/game_detail.sql
       - internal/dashboard/db/sqlc/queries/game_detail_more.sql

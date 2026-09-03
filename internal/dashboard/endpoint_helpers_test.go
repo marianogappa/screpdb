@@ -663,16 +663,6 @@ func TestUnmarshalStringSlice(t *testing.T) {
 	}
 }
 
-func TestComposeReplayFilterSQL(t *testing.T) {
-	if got := composeReplayFilterSQL(nil, nil); got != nil {
-		t.Fatalf("both nil should yield nil, got %v", *got)
-	}
-	g := "g_sql"
-	if got := composeReplayFilterSQL(&g, nil); got == nil || *got == "" {
-		t.Fatalf("global-only should compose non-empty, got %v", got)
-	}
-}
-
 func nullStringValid(s string) sql.NullString {
 	return sql.NullString{String: s, Valid: true}
 }

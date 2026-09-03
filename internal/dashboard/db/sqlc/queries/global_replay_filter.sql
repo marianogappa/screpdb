@@ -34,10 +34,3 @@ SET
   compiled_replays_filter_sql = ?,
   updated_at = CURRENT_TIMESTAMP
 WHERE config_key = ?;
-
--- name: ListGlobalReplayFilterPlayerOptions :many
-SELECT CAST(MIN(name) AS TEXT) AS label, COUNT(*) AS games
-FROM players
-WHERE is_observer = 0
-GROUP BY lower(trim(name))
-ORDER BY games DESC, label ASC;

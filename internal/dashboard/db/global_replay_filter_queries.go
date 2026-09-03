@@ -24,11 +24,6 @@ type GlobalReplayFilterConfigRaw struct {
 	CompiledReplaysFilterSQL  *string
 }
 
-type GlobalReplayFilterOptionRow struct {
-	Label string
-	Count int64
-}
-
 func (s *Store) GetGlobalReplayFilterConfigRaw(ctx context.Context, configKey string) (GlobalReplayFilterConfigRaw, error) {
 	sqlcRow, err := sqlcgen.New(Trace(s.defaultDB)).GetGlobalReplayFilterConfigRaw(ctx, configKey)
 	var result GlobalReplayFilterConfigRaw
@@ -79,19 +74,4 @@ func (s *Store) UpdateGlobalReplayFilterConfigRaw(
 		CompiledReplaysFilterSql: lo.ToPtr(compiledReplaysFilterSQL),
 		ConfigKey:                configKey,
 	})
-}
-
-func (s *Store) ListGlobalReplayFilterPlayerOptions(ctx context.Context) ([]GlobalReplayFilterOptionRow, error) {
-	sqlcRows, err := sqlcgen.New(Trace(s.defaultDB)).ListGlobalReplayFilterPlayerOptions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	options := make([]GlobalReplayFilterOptionRow, 0, len(sqlcRows))
-	for _, row := range sqlcRows {
-		options = append(options, GlobalReplayFilterOptionRow{
-			Label: row.Label,
-			Count: row.Games,
-		})
-	}
-	return options, nil
 }

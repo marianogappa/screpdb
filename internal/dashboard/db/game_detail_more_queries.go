@@ -8,10 +8,6 @@ import (
 	"github.com/marianogappa/screpdb/internal/dashboard/db/sqlcgen"
 )
 
-func (s *Store) CountPlayerGames(ctx context.Context, playerKey string) (int64, error) {
-	return sqlcgen.New(Trace(s.replayScoped())).CountPlayerGames(ctx, playerKey)
-}
-
 type RaceSectionRow struct {
 	Race      string
 	GameCount int64
@@ -146,43 +142,6 @@ func (s *Store) ListPlayerMatchups(ctx context.Context, playerKey string) ([]Pla
 			Games:   row.Games,
 			Wins:    row.Wins,
 		})
-	}
-	return out, nil
-}
-
-type RacePatternRow struct {
-	Race        string
-	PatternName string
-	ReplayCount int64
-}
-
-func (s *Store) ListRacePatterns(ctx context.Context, playerKey string) ([]RacePatternRow, error) {
-	rows, err := sqlcgen.New(Trace(s.replayScoped())).ListRacePatterns(ctx, playerKey)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]RacePatternRow, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, RacePatternRow{
-			Race:        row.Race,
-			PatternName: row.PatternName,
-			ReplayCount: row.ReplayCount,
-		})
-	}
-	return out, nil
-}
-
-func (s *Store) ListTopActionTypes(ctx context.Context, playerID int64, limit int) ([]string, error) {
-	rows, err := sqlcgen.New(Trace(s.replayScoped())).ListTopActionTypes(ctx, sqlcgen.ListTopActionTypesParams{
-		PlayerID: playerID,
-		Limit:    int64(limit),
-	})
-	if err != nil {
-		return nil, err
-	}
-	out := make([]string, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, strings.TrimSpace(row.ActionType))
 	}
 	return out, nil
 }

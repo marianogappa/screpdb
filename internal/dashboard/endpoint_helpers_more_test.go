@@ -3,7 +3,6 @@ package dashboard
 import (
 	"math"
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -46,31 +45,6 @@ func TestPrimaryRaceFromBreakdown(t *testing.T) {
 	}
 	if got := primaryRaceFromBreakdown(breakdown); got != "Protoss" {
 		t.Errorf("primary race = %q, want Protoss", got)
-	}
-}
-
-func TestPlayerNameByID(t *testing.T) {
-	players := []workflowGamePlayer{
-		{PlayerID: 1, Name: "Bisu"},
-		{PlayerID: 2, Name: "Flash"},
-	}
-	if got := playerNameByID(2, players); got != "Flash" {
-		t.Errorf("playerNameByID(2) = %q, want Flash", got)
-	}
-	if got := playerNameByID(99, players); got != "" {
-		t.Errorf("unknown id should be empty, got %q", got)
-	}
-}
-
-func TestBuildComparativeMetric(t *testing.T) {
-	values := map[string]float64{"bisu": 3.5}
-	got := buildComparativeMetric("apm", "bisu", values)
-	if got.Metric != "apm" || got.PlayerValue != 3.5 {
-		t.Fatalf("buildComparativeMetric = %+v", got)
-	}
-	missing := buildComparativeMetric("apm", "nobody", values)
-	if missing.PlayerValue != 0 {
-		t.Fatalf("missing player value should be 0, got %v", missing.PlayerValue)
 	}
 }
 
@@ -158,22 +132,6 @@ func TestParseViewportSwitchRate(t *testing.T) {
 	}
 	if _, ok := parseViewportSwitchRate("not-a-number"); ok {
 		t.Error("garbage should be ok=false")
-	}
-}
-
-func TestFormatQueryResults(t *testing.T) {
-	if got := formatQueryResults(nil); got != "No results found." {
-		t.Errorf("empty = %q, want \"No results found.\"", got)
-	}
-	out := formatQueryResults([]map[string]any{{"name": "Bisu"}})
-	if !strings.Contains(out, "Query Results:") {
-		t.Errorf("missing header: %q", out)
-	}
-	if !strings.Contains(out, "name") || !strings.Contains(out, "Bisu") {
-		t.Errorf("missing column/value: %q", out)
-	}
-	if !strings.Contains(out, "Total rows: 1") {
-		t.Errorf("missing row count: %q", out)
 	}
 }
 

@@ -10,7 +10,6 @@ import (
 type DashboardService interface {
 	GetGlobalReplayFilterConfig(ctx context.Context, request apigen.GetGlobalReplayFilterConfigRequestObject) (HandlerResult, error)
 	UpdateGlobalReplayFilterConfig(ctx context.Context, request apigen.UpdateGlobalReplayFilterConfigRequestObject) (HandlerResult, error)
-	GetGlobalReplayFilterOptions(ctx context.Context, request apigen.GetGlobalReplayFilterOptionsRequestObject) (HandlerResult, error)
 	Ingest(ctx context.Context, request apigen.IngestRequestObject) (HandlerResult, error)
 	IngestLogs(ctx context.Context, request apigen.IngestLogsRequestObject) (HandlerResult, error)
 	GetIngestSettings(ctx context.Context, request apigen.GetIngestSettingsRequestObject) (HandlerResult, error)

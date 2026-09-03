@@ -1,34 +1,3 @@
--- name: CountDistinctPlayers :one
-SELECT CAST(COUNT(*) AS FLOAT) AS total
-FROM (
-  SELECT lower(trim(name)) AS player_key
-  FROM players
-  WHERE is_observer = 0
-  GROUP BY lower(trim(name))
-);
-
--- name: CountDistinctPlayersByRace :one
-SELECT CAST(COUNT(*) AS FLOAT) AS total
-FROM (
-  SELECT lower(trim(name)) AS player_key
-  FROM players
-  WHERE is_observer = 0
-    AND race = ?
-  GROUP BY lower(trim(name))
-);
-
--- name: ListExpansionEvents :many
-SELECT replay_id, source_player_id, seconds_from_game_start
-FROM replay_events
-WHERE event_kind = 'game_event'
-  AND event_type = 'expansion'
-  AND source_player_id IS NOT NULL;
-
--- name: ListPlayersByReplayRows :many
-SELECT replay_id, id AS player_id, name
-FROM players
-WHERE is_observer = 0;
-
 -- name: GetPlayerNameByKey :one
 SELECT CAST(COALESCE(MIN(name), '') AS TEXT) AS player_name
 FROM players
@@ -89,18 +58,6 @@ WHERE lower(trim(self.name)) = ?
   )
 ORDER BY self.id, c.seconds_from_game_start;
 
-
--- name: CountCarrierGamesByPlayer :one
-SELECT COUNT(DISTINCT p.replay_id) AS count
-FROM players p
-WHERE lower(trim(p.name)) = ?
-  AND p.is_observer = 0
-  AND EXISTS (
-    SELECT 1 FROM replay_events re
-    WHERE re.source_player_id = p.id
-      AND re.event_kind = 'marker'
-      AND re.event_type = 'carriers'
-  );
 
 -- name: ListPlayerChatRows :many
 SELECT c.replay_id, COALESCE(c.chat_message, '') AS chat_message

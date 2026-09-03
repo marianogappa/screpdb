@@ -145,11 +145,7 @@ func TestPlayerDetailEndpoint_KnownAndUnknown(t *testing.T) {
 	dash := newTestDashboard(t)
 	router := dash.setupRouter()
 
-	var playerName string
-	if err := dash.dbStore.DefaultQueryRow(`SELECT name FROM players WHERE is_observer = 0 LIMIT 1`).Scan(&playerName); err != nil {
-		t.Skip("no players in test DB")
-	}
-	key := normalizePlayerKey(playerName)
+	key := firstPlayerKey(t, dash)
 
 	rec := performDashboardRequest(router, http.MethodGet, "/api/players/"+key, nil)
 	if rec.Code != http.StatusOK {
@@ -179,11 +175,7 @@ func TestPlayerLastGamesEndpointBasic(t *testing.T) {
 	dash := newTestDashboard(t)
 	router := dash.setupRouter()
 
-	var playerName string
-	if err := dash.dbStore.DefaultQueryRow(`SELECT name FROM players WHERE is_observer = 0 LIMIT 1`).Scan(&playerName); err != nil {
-		t.Skip("no players in test DB")
-	}
-	key := normalizePlayerKey(playerName)
+	key := firstPlayerKey(t, dash)
 
 	rec := performDashboardRequest(router, http.MethodGet, "/api/players/"+key+"/last-games", nil)
 	if rec.Code != http.StatusOK {
@@ -198,10 +190,7 @@ func TestGameDetailEndpoint_KnownAndUnknown(t *testing.T) {
 	dash := newTestDashboard(t)
 	router := dash.setupRouter()
 
-	var replayID int64
-	if err := dash.dbStore.DefaultQueryRow(`SELECT id FROM replays ORDER BY id LIMIT 1`).Scan(&replayID); err != nil {
-		t.Skip("no replays in test DB")
-	}
+	replayID := firstReplayID(t, dash)
 
 	rec := performDashboardRequest(router, http.MethodGet, "/api/games/"+strconv.FormatInt(replayID, 10), nil)
 	if rec.Code != http.StatusOK {

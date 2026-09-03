@@ -110,7 +110,7 @@ func New(ctx context.Context, sqlitePath string, headless bool) (*Dashboard, err
 		sqlitePath:   sqlitePath,
 		headless:     headless,
 	}
-	dashboard.dbStore = dashboarddb.NewStore(dashboard.db, dashboard.currentReplayScopedDB, dashboard.withFilteredConnection)
+	dashboard.dbStore = dashboarddb.NewStore(dashboard.db, dashboard.currentReplayScopedDB)
 	if err := dashboard.initializeIngestSettings(ctx); err != nil {
 		return nil, fmt.Errorf("failed to initialize ingest settings: %w", err)
 	}
@@ -367,32 +367,6 @@ func (d *Dashboard) StartAsync(port int) <-chan error {
 	return errChan
 }
 
-func (d *Dashboard) executeQuery(query string, replaysFilterSQL *string) ([]map[string]any, []string, error) {
-	var (
-		results []map[string]any
-		columns []string
-	)
-	err := d.dbStore.WithFilteredConnection(replaysFilterSQL, func(db *sql.DB) error {
-		rows, err := dashboarddb.QueryContextOnDB(d.ctx, db, query)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		scannedRows, scannedColumns, scanErr := dashboarddb.ScanDynamicRows(rows)
-		if scanErr != nil {
-			return scanErr
-		}
-		results = scannedRows
-		columns = scannedColumns
-		return nil
-	})
-
-	if err != nil {
-		return nil, nil, err
-	}
-	return results, columns, nil
-}
-
 func sqliteDSN(path string) string {
 	path = strings.TrimSpace(path)
 	if path == "" {
@@ -409,19 +383,6 @@ func sqliteDSN(path string) string {
 		return path + sep + "_pragma=foreign_keys(1)"
 	}
 	return fmt.Sprintf("file:%s?_pragma=foreign_keys(1)", path)
-}
-
-func (d *Dashboard) withFilteredConnection(replaysFilterSQL *string, fn func(db *sql.DB) error) error {
-	effectiveFilterSQL := composeReplayFilterSQL(d.currentGlobalReplayFilterSQL(), replaysFilterSQL)
-	if normalizeSQL(nullableStringValue(replaysFilterSQL)) == "" {
-		return d.withReplayScopedDB(fn)
-	}
-	db, err := openReplayScopedDB(d.sqlitePath, effectiveFilterSQL)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-	return fn(db)
 }
 
 func applyReplayFilterViews(db *sql.DB, filterSQL string) error {

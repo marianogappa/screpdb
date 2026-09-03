@@ -61,16 +61,6 @@ func (d *Dashboard) UpdateGlobalReplayFilterConfig(ctx context.Context, request 
 	return updated, nil
 }
 
-func (d *Dashboard) GetGlobalReplayFilterOptions(_ context.Context, _ apigen.GetGlobalReplayFilterOptionsRequestObject) (any, error) {
-	// Player options + mode toggles were removed; the endpoint still
-	// exists in the OpenAPI spec for backward compatibility but returns
-	// an empty payload. Frontend no longer calls it.
-	return map[string]any{
-		"top_players":   []any{},
-		"other_players": []any{},
-	}, nil
-}
-
 func (d *Dashboard) Ingest(ctx context.Context, request apigen.IngestRequestObject) (any, error) {
 	body := apigen.IngestRequest{}
 	if request.Body != nil {

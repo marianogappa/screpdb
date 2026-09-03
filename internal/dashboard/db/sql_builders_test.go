@@ -67,39 +67,6 @@ func TestBuildGlobalReplayFilterSQL(t *testing.T) {
 	}
 }
 
-func TestComposeReplayFilterSQL(t *testing.T) {
-	tests := []struct {
-		name   string
-		global string
-		local  string
-		want   string
-	}{
-		{name: "both empty", global: "", local: "", want: ""},
-		{name: "both blank/semicolon", global: "  ;; ", local: ";", want: ""},
-		{name: "only global", global: "SELECT * FROM replays;", local: "", want: "SELECT * FROM replays"},
-		{name: "only local", global: "", local: "SELECT * FROM replays WHERE id = 1", want: "SELECT * FROM replays WHERE id = 1"},
-		{
-			name:   "both compose into nested filter",
-			global: "SELECT r.* FROM replays r",
-			local:  "SELECT * FROM replays WHERE id = 1",
-			want:   "SELECT * FROM (SELECT r.* FROM replays r) AS global_replays WHERE id IN (SELECT id FROM (SELECT * FROM replays WHERE id = 1) AS local_replays)",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := ComposeReplayFilterSQL(tt.global, tt.local); got != tt.want {
-				t.Errorf("ComposeReplayFilterSQL() = %q, want %q", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestReplayIDFilterSQL(t *testing.T) {
-	if got, want := ReplayIDFilterSQL(42), "SELECT * FROM replays WHERE id = 42"; got != want {
-		t.Errorf("ReplayIDFilterSQL(42) = %q, want %q", got, want)
-	}
-}
-
 func TestBuildWorkflowPlayersListBaseSQL(t *testing.T) {
 	sqlText, args := BuildWorkflowPlayersListBaseSQL("")
 	if len(args) != 0 {

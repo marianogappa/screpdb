@@ -10,11 +10,31 @@ import (
 
 func firstPlayerKey(t *testing.T, dash *Dashboard) string {
 	t.Helper()
-	var name string
-	if err := dash.dbStore.DefaultQueryRow(`SELECT name FROM players WHERE is_observer = 0 LIMIT 1`).Scan(&name); err != nil {
-		t.Skip("no players in test DB")
+	rec := performDashboardRequest(dash.setupRouter(), http.MethodGet, "/api/players?limit=1", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("players list: %d %s", rec.Code, rec.Body.String())
 	}
-	return normalizePlayerKey(name)
+	var payload struct {
+		Items []struct {
+			PlayerKey string `json:"player_key"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("players json: %v", err)
+	}
+	if len(payload.Items) == 0 {
+		t.Skip("no players in test corpus")
+	}
+	return payload.Items[0].PlayerKey
+}
+
+func firstReplayID(t *testing.T, dash *Dashboard) int64 {
+	t.Helper()
+	ids := listTestGames(t, dash.setupRouter())
+	if len(ids) == 0 {
+		t.Skip("no replays in test corpus")
+	}
+	return ids[0]
 }
 
 func TestScrepColorsEndpoint(t *testing.T) {
@@ -305,10 +325,7 @@ func TestDebugMapLayoutEndpoint(t *testing.T) {
 	dash := newTestDashboard(t)
 	router := dash.setupRouter()
 
-	var replayID int64
-	if err := dash.dbStore.DefaultQueryRow(`SELECT id FROM replays WHERE trim(coalesce(file_path,'')) != '' ORDER BY id LIMIT 1`).Scan(&replayID); err != nil {
-		t.Skip("no replay with file_path in test DB")
-	}
+	replayID := firstReplayID(t, dash)
 
 	rec := performDashboardRequest(router, http.MethodGet, "/api/custom/debug/map-layout/"+strconv.FormatInt(replayID, 10), nil)
 	if rec.Code != http.StatusOK {

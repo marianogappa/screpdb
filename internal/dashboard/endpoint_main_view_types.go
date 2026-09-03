@@ -867,15 +867,6 @@ type workflowChatTermCount struct {
 	Count int64  `json:"count"`
 }
 
-type workflowRareUsage struct {
-	Name                string  `json:"name"`
-	PrettyName          string  `json:"pretty_name"`
-	PlayerCount         int64   `json:"player_count"`
-	PlayerRatePerGame   float64 `json:"player_rate_per_game"`
-	PopulationUsageRate float64 `json:"population_usage_rate"`
-	RarityScore         float64 `json:"rarity_score"`
-}
-
 type workflowComparativeMetric struct {
 	Metric      string  `json:"metric"`
 	PlayerValue float64 `json:"player_value"`

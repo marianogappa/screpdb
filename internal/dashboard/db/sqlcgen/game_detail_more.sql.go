@@ -9,19 +9,6 @@ import (
 	"context"
 )
 
-const CountPlayerGames = `-- name: CountPlayerGames :one
-SELECT COUNT(*) AS games_played
-FROM players p
-WHERE lower(trim(p.name)) = ? AND p.is_observer = 0 AND lower(trim(coalesce(p.type, ''))) = 'human'
-`
-
-func (q *Queries) CountPlayerGames(ctx context.Context, name string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, CountPlayerGames, name)
-	var games_played int64
-	err := row.Scan(&games_played)
-	return games_played, err
-}
-
 const GetPhaseBoundariesForReplay = `-- name: GetPhaseBoundariesForReplay :many
 SELECT
   re.event_type,
@@ -314,49 +301,6 @@ func (q *Queries) ListPlayerMatchups(ctx context.Context, name string) ([]ListPl
 	return items, nil
 }
 
-const ListRacePatterns = `-- name: ListRacePatterns :many
-SELECT p.race, re.event_type AS pattern_name, COUNT(DISTINCT re.replay_id) AS replay_count
-FROM replay_events re
-JOIN players p ON p.id = re.source_player_id
-WHERE lower(trim(p.name)) = ?
-  AND p.is_observer = 0
-  AND lower(trim(coalesce(p.type, ''))) = 'human'
-  AND re.event_kind = 'marker'
-  AND re.event_type NOT IN ('used_hotkey_groups', 'viewport_multitasking')
-GROUP BY p.race, re.event_type
-`
-
-type ListRacePatternsRow struct {
-	Race        string
-	PatternName string
-	ReplayCount int64
-}
-
-// Post-markers-migration: presence of a replay_events row (event_kind='marker') *is* the match.
-// Filter out used_hotkey_groups/viewport_multitasking (meta markers that aren't race-characterising).
-func (q *Queries) ListRacePatterns(ctx context.Context, name string) ([]ListRacePatternsRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListRacePatterns, name)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListRacePatternsRow{}
-	for rows.Next() {
-		var i ListRacePatternsRow
-		if err := rows.Scan(&i.Race, &i.PatternName, &i.ReplayCount); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const ListRaceSections = `-- name: ListRaceSections :many
 SELECT p.race, COUNT(*) AS game_count, CAST(COALESCE(SUM(CASE WHEN p.is_winner = 1 THEN 1 ELSE 0 END), 0) AS INTEGER) AS wins
 FROM players p
@@ -381,48 +325,6 @@ func (q *Queries) ListRaceSections(ctx context.Context, name string) ([]ListRace
 	for rows.Next() {
 		var i ListRaceSectionsRow
 		if err := rows.Scan(&i.Race, &i.GameCount, &i.Wins); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const ListTopActionTypes = `-- name: ListTopActionTypes :many
-SELECT c.action_type, COUNT(*) AS n
-FROM commands c
-WHERE c.player_id = ?
-GROUP BY c.action_type
-ORDER BY n DESC
-LIMIT ?
-`
-
-type ListTopActionTypesParams struct {
-	PlayerID int64
-	Limit    int64
-}
-
-type ListTopActionTypesRow struct {
-	ActionType string
-	N          int64
-}
-
-func (q *Queries) ListTopActionTypes(ctx context.Context, arg ListTopActionTypesParams) ([]ListTopActionTypesRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListTopActionTypes, arg.PlayerID, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListTopActionTypesRow{}
-	for rows.Next() {
-		var i ListTopActionTypesRow
-		if err := rows.Scan(&i.ActionType, &i.N); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

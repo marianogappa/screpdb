@@ -45,24 +45,6 @@ func BuildGlobalReplayFilterSQL(
 	return query + " WHERE " + strings.Join(clauses, " AND ")
 }
 
-func ComposeReplayFilterSQL(globalFilterSQL string, localFilterSQL string) string {
-	globalNormalized := normalizeSQL(globalFilterSQL)
-	localNormalized := normalizeSQL(localFilterSQL)
-	switch {
-	case globalNormalized == "" && localNormalized == "":
-		return ""
-	case globalNormalized == "":
-		return localNormalized
-	case localNormalized == "":
-		return globalNormalized
-	}
-	return normalizeSQLWhitespace(fmt.Sprintf(
-		"SELECT * FROM (%s) AS global_replays WHERE id IN (SELECT id FROM (%s) AS local_replays)",
-		globalNormalized,
-		localNormalized,
-	))
-}
-
 func normalizeSQL(value string) string {
 	trimmed := strings.TrimSpace(value)
 	for strings.HasSuffix(trimmed, ";") {
