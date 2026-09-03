@@ -6,6 +6,7 @@ package library
 import (
 	"errors"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -344,6 +345,9 @@ type CastCount struct {
 	Count uint16
 }
 
+// GameEvent is one worldstate timeline entry. The rarely populated attack
+// composition and payload live behind Detail so the common event costs 16
+// bytes instead of 88.
 type GameEvent struct {
 	Type                  uint16
 	Sec                   uint16
@@ -353,9 +357,34 @@ type GameEvent struct {
 	LocationOclock        uint8
 	LocationNaturalOclock uint8
 	LocationMineralOnly   bool
-	AttackUnits           []uint16
-	CastCounts            []CastCount
-	Payload               []byte
+	Detail                *EventDetail
+}
+
+type EventDetail struct {
+	AttackUnits []uint16
+	CastCounts  []CastCount
+	Payload     []byte
+}
+
+func (e *GameEvent) AttackUnits() []uint16 {
+	if e.Detail == nil {
+		return nil
+	}
+	return e.Detail.AttackUnits
+}
+
+func (e *GameEvent) CastCounts() []CastCount {
+	if e.Detail == nil {
+		return nil
+	}
+	return e.Detail.CastCounts
+}
+
+func (e *GameEvent) Payload() []byte {
+	if e.Detail == nil {
+		return nil
+	}
+	return e.Detail.Payload
 }
 
 type ProdKind uint8
@@ -435,6 +464,16 @@ func (p *ProdColumns) Less(i, j int) bool { return p.Sec[i] < p.Sec[j] }
 
 // SortBySecond orders events by second, keeping original order within a second.
 func (p *ProdColumns) SortBySecond() { sort.Stable(p) }
+
+// Clip reallocates every column to its exact length, dropping the slack that
+// incremental appends leave behind.
+func (p *ProdColumns) Clip() {
+	p.Sec = slices.Clone(p.Sec)
+	p.Player = slices.Clone(p.Player)
+	p.Kind = slices.Clone(p.Kind)
+	p.Subject = slices.Clone(p.Subject)
+	p.Count = slices.Clone(p.Count)
+}
 
 // SubjectName resolves event i's subject through the table for its kind.
 func (p *ProdColumns) SubjectName(i int) string {

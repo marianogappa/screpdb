@@ -4,6 +4,7 @@ package librarytest
 import (
 	"crypto/sha256"
 	"fmt"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -48,6 +49,10 @@ func Replay(opts ...Option) *library.Replay {
 		r.Players[i].Key = library.PlayerKey(r.Players[i].Name)
 	}
 	r.Prod.SortBySecond()
+	r.Prod.Clip()
+	r.Markers = slices.Clone(r.Markers)
+	r.Events = slices.Clone(r.Events)
+	r.Chat = slices.Clone(r.Chat)
 	return r
 }
 
