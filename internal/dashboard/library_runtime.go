@@ -187,6 +187,9 @@ func (r *libraryRuntime) UseSampleSet(ctx context.Context) (string, error) {
 	return dir, nil
 }
 
+// Rescan re-reads the folder now instead of waiting for the next check.
+func (r *libraryRuntime) Rescan() { r.manager.Rescan() }
+
 func (r *libraryRuntime) Folder() string { return r.manager.Folder() }
 
 func (r *libraryRuntime) IsSampleSetActive() bool {

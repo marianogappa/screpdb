@@ -13,38 +13,13 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/marianogappa/screpdb/internal/fileops"
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/iofacade"
-	"github.com/marianogappa/screpdb/internal/parser"
-	"github.com/marianogappa/screpdb/internal/storage"
+	"github.com/marianogappa/screpdb/internal/library"
+	"github.com/marianogappa/screpdb/internal/library/persist"
 )
-
-const dashboardTestDB = "file:dashboard_test?mode=memory&cache=shared"
-
-func TestQualifyReplayFilterSQLMultiline(t *testing.T) {
-	input := `SELECT *
-FROM replays r
-WHERE EXISTS (
-  SELECT 1
-  FROM players p
-  WHERE p.replay_id = r.id
-    AND p.type = 'Human'
-  GROUP BY p.replay_id
-  HAVING COUNT(*) = 2
-)`
-
-	qualified := qualifyReplayFilterSQL(input)
-	if !strings.Contains(qualified, "FROM main.replays r") {
-		t.Fatalf("expected main.replays qualification, got: %s", qualified)
-	}
-	if strings.Contains(qualified, "FROM replays r") {
-		t.Fatalf("expected unqualified replays to be rewritten, got: %s", qualified)
-	}
-	if !strings.Contains(qualified, "FROM main.players p") {
-		t.Fatalf("expected main.players qualification, got: %s", qualified)
-	}
-}
 
 func TestDashboardAPI_WorkflowPlayerChatSummary(t *testing.T) {
 	dash := newTestDashboard(t)
@@ -76,40 +51,38 @@ func TestDashboardAPI_WorkflowPlayerChatSummary(t *testing.T) {
 	}
 }
 
-func TestDashboardAPI_IngestSettingsUpdateAndGet(t *testing.T) {
+func TestDashboardAPI_LibrarySettingsUpdateAndGet(t *testing.T) {
 	dash := newTestDashboard(t)
 	router := dash.setupRouter()
-	replayDir, err := resolveReplayDir()
-	if err != nil {
-		t.Fatalf("resolveReplayDir: %v", err)
-	}
+	replayDir := testCorpusDir(t)
 
 	body := []byte(fmt.Sprintf(`{"input_dir":%q}`, replayDir))
 	rec := performDashboardRequest(router, http.MethodPut, "/api/custom/ingest/settings", body)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("update ingest settings status %d: %s", rec.Code, rec.Body.String())
+		t.Fatalf("update library settings status %d: %s", rec.Code, rec.Body.String())
 	}
 
 	rec = performDashboardRequest(router, http.MethodGet, "/api/custom/ingest/settings", nil)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("get ingest settings status %d: %s", rec.Code, rec.Body.String())
+		t.Fatalf("get library settings status %d: %s", rec.Code, rec.Body.String())
 	}
-
-	var resp ingestSettingsResponse
+	var resp librarySettingsResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("get ingest settings json: %v", err)
+		t.Fatalf("get library settings json: %v", err)
 	}
-	if resp.InputDir != replayDir {
-		t.Fatalf("expected input dir %q, got %q", replayDir, resp.InputDir)
+	if resp.ReplayDir != replayDir {
+		t.Fatalf("expected replay dir %q, got %q", replayDir, resp.ReplayDir)
+	}
+	if resp.IsSampleSet {
+		t.Fatal("a corpus folder is not the example replays")
 	}
 }
 
-func TestDashboardAPI_IngestSettingsRejectsFolderWithoutReplays(t *testing.T) {
+func TestDashboardAPI_LibrarySettingsRejectsFolderWithoutReplays(t *testing.T) {
 	dash := newTestDashboard(t)
 	router := dash.setupRouter()
-	emptyDir := t.TempDir()
 
-	body := []byte(fmt.Sprintf(`{"input_dir":%q}`, emptyDir))
+	body := []byte(fmt.Sprintf(`{"input_dir":%q}`, t.TempDir()))
 	rec := performDashboardRequest(router, http.MethodPut, "/api/custom/ingest/settings", body)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected bad request, got %d: %s", rec.Code, rec.Body.String())
@@ -119,99 +92,149 @@ func TestDashboardAPI_IngestSettingsRejectsFolderWithoutReplays(t *testing.T) {
 	}
 }
 
-func TestDashboardAPI_IngestUsesStoredInputDir(t *testing.T) {
+func TestDashboardAPI_HealthReportsTheLibraryState(t *testing.T) {
 	dash := newTestDashboard(t)
 	router := dash.setupRouter()
-	replayDir, err := resolveReplayDir()
-	if err != nil {
-		t.Fatalf("resolveReplayDir: %v", err)
-	}
-	if err := dash.setIngestInputDir(context.Background(), replayDir); err != nil {
-		t.Fatalf("setIngestInputDir: %v", err)
-	}
 
-	dash.ingestMu.Lock()
-	dash.ingestRunning = true
-	dash.ingestMu.Unlock()
-
-	rec := performDashboardRequest(router, http.MethodPost, "/api/custom/ingest", []byte(`{}`))
+	rec := performDashboardRequest(router, http.MethodGet, "/api/health", nil)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("ingest status %d: %s", rec.Code, rec.Body.String())
+		t.Fatalf("health status %d: %s", rec.Code, rec.Body.String())
 	}
-
 	var resp struct {
-		Started    bool   `json:"started"`
-		InProgress bool   `json:"in_progress"`
-		InputDir   string `json:"input_dir"`
+		TotalReplays int64 `json:"total_replays"`
+		Library      struct {
+			Status    string `json:"status"`
+			Loaded    int    `json:"loaded"`
+			Total     int    `json:"total"`
+			Complete  bool   `json:"complete"`
+			ReplayDir string `json:"replay_dir"`
+		} `json:"library"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("ingest json: %v", err)
+		t.Fatalf("health json: %v", err)
 	}
-	if resp.Started {
-		t.Fatalf("expected ingest not to start while already running")
+	if resp.TotalReplays != 4 {
+		t.Fatalf("total replays = %d, want the 4 committed ones", resp.TotalReplays)
 	}
-	if !resp.InProgress {
-		t.Fatalf("expected ingest response to indicate in progress")
+	if resp.Library.Status != libraryStatusWatching || !resp.Library.Complete {
+		t.Fatalf("library = %+v, want a finished load", resp.Library)
 	}
-	if resp.InputDir != replayDir {
-		t.Fatalf("expected stored input dir %q, got %q", replayDir, resp.InputDir)
+	if resp.Library.Loaded != 4 || resp.Library.Total != 4 || resp.Library.ReplayDir != dash.ReplayDir() {
+		t.Fatalf("library = %+v", resp.Library)
 	}
 }
 
+func TestDashboardAPI_StaleReplaysAreGone(t *testing.T) {
+	dash := newTestDashboard(t)
+	router := dash.setupRouter()
+
+	rec := performDashboardRequest(router, http.MethodGet, "/api/custom/replays/stale-count", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("stale count status %d: %s", rec.Code, rec.Body.String())
+	}
+	var resp struct {
+		Count int64 `json:"count"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("stale count json: %v", err)
+	}
+	if resp.Count != 0 {
+		t.Fatalf("nothing can be stale any more, got %d", resp.Count)
+	}
+}
+
+// newTestDashboard builds a dashboard over the committed replay corpus. The
+// corpus is copied into a temp folder per test so a test that changes the
+// folder, or drops a replay into it, cannot disturb the checked-in files.
 func newTestDashboard(t *testing.T) *Dashboard {
 	t.Helper()
+	t.Cleanup(iofacade.Reset)
 	ctx := context.Background()
 
-	store, err := storage.NewSQLiteStorage(dashboardTestDB)
-	if err != nil {
-		t.Fatalf("NewSQLiteStorage: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = store.Close()
-	})
-
-	if err := store.Initialize(ctx, true, true); err != nil {
-		t.Fatalf("Initialize: %v", err)
-	}
-
-	replayDir, err := resolveReplayDir()
-	if err != nil {
-		t.Fatalf("resolveReplayDir: %v", err)
-	}
-	files, err := fileops.GetReplayFiles(replayDir)
-	if err != nil {
-		t.Fatalf("GetReplayFiles: %v", err)
-	}
-	if err := ingestFiles(ctx, store, files); err != nil {
-		t.Fatalf("ingestFiles: %v", err)
-	}
-
-	dash, err := New(ctx, dashboardTestDB, false)
+	dash, err := New(ctx, Options{Root: t.TempDir(), ReplayDir: testCorpusDir(t), Headless: false})
 	if err != nil {
 		t.Fatalf("New dashboard: %v", err)
 	}
-	t.Cleanup(func() {
-		_ = dash.db.Close()
-		if dash.replayScopedDB != nil {
-			_ = dash.replayScopedDB.Close()
-		}
-	})
+	t.Cleanup(dash.Close)
+	if err := dash.StartLibrary(); err != nil {
+		t.Fatalf("StartLibrary: %v", err)
+	}
+	waitForTestCorpus(t, dash)
 	return dash
 }
 
-func ingestFiles(ctx context.Context, store *storage.SQLiteStorage, files []fileops.FileInfo) error {
-	dataChan, errChan := store.StartIngestion(ctx, storage.IngestionHooks{})
-	for i := range files {
-		fi := files[i]
-		replay := parser.CreateReplayFromFileInfo(fi.Path, fi.Name, fi.Size, fi.Checksum)
-		data, err := parser.ParseReplay(fi.Path, replay)
-		if err != nil {
-			return err
-		}
-		dataChan <- data
+// newTestDashboardWithReplays builds a dashboard over a hand-made corpus, for
+// the cases the committed replays cannot express (a player with enough games
+// of one race, say). It has no replay folder, so anything that reads one is
+// unavailable.
+func newTestDashboardWithReplays(t *testing.T, replays ...*library.Replay) *Dashboard {
+	t.Helper()
+	lib := library.New(library.Options{CoalesceRecords: 1, CoalesceDelay: time.Millisecond})
+	t.Cleanup(lib.Close)
+	lib.Reset(1)
+	lib.Add(1, replays...)
+	lib.Flush()
+
+	root := t.TempDir()
+	if err := iofacade.AllowDir(root); err != nil {
+		t.Fatalf("AllowDir: %v", err)
 	}
-	close(dataChan)
-	return <-errChan
+	settings, err := dashboarddb.NewFileSettings(root, lib)
+	if err != nil {
+		t.Fatalf("NewFileSettings: %v", err)
+	}
+	dash := &Dashboard{ctx: context.Background(), libraryHub: newLibraryHub()}
+	dash.dbStore = dashboarddb.NewLibStore(lib, persist.NewBnetCache(root), settings)
+	return dash
+}
+
+// testCorpusDir copies the committed replays into a folder of their own. The
+// copy is absolute, which the scan requires, and writable, which the folder
+// change and watcher tests need.
+func testCorpusDir(t *testing.T) string {
+	t.Helper()
+	source, err := resolveReplayDir()
+	if err != nil {
+		t.Fatalf("resolveReplayDir: %v", err)
+	}
+	entries, err := os.ReadDir(source)
+	if err != nil {
+		t.Fatalf("read corpus: %v", err)
+	}
+	dir := t.TempDir()
+	copied := 0
+	for _, entry := range entries {
+		if filepath.Ext(entry.Name()) != ".rep" {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(source, entry.Name()))
+		if err != nil {
+			t.Fatalf("read %s: %v", entry.Name(), err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, entry.Name()), data, 0o644); err != nil {
+			t.Fatalf("write %s: %v", entry.Name(), err)
+		}
+		copied++
+	}
+	if copied == 0 {
+		t.Skip("no replay files in the committed corpus")
+	}
+	return dir
+}
+
+func waitForTestCorpus(t *testing.T, dash *Dashboard) {
+	t.Helper()
+	deadline := time.After(60 * time.Second)
+	for {
+		if dash.libraryHub.Progress().Complete() {
+			return
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("the replay library never finished loading (phase %q)", dash.libraryHub.Progress().Phase)
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
 }
 
 func resolveReplayDir() (string, error) {

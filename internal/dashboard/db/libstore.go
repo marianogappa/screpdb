@@ -39,3 +39,5 @@ func NewLibStore(lib *library.Library, bnet *persist.BnetCache, settings Setting
 // from the constructor so the reads that do not need it can be built and
 // tested without one.
 func (s *LibStore) SetGameResults(results *persist.BnetGameResults) { s.results = results }
+
+var _ Reader = (*LibStore)(nil)

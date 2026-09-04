@@ -16,10 +16,8 @@ import (
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
 	"github.com/marianogappa/screpdb/internal/fileops"
-	"github.com/marianogappa/screpdb/internal/ingest"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
-	"github.com/marianogappa/screpdb/internal/storage"
 	"github.com/marianogappa/screpdb/internal/winsandbox"
 )
 
@@ -50,127 +48,55 @@ func (d *Dashboard) UpdateGlobalReplayFilterConfig(ctx context.Context, request 
 	for _, mapKind := range body.MapKinds {
 		config.MapKinds = append(config.MapKinds, string(mapKind))
 	}
-	config.CompiledReplaysFilterSQL = body.CompiledReplaysFilterSql
 	updated, err := d.updateGlobalReplayFilterConfig(ctx, config)
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
 	}
-	if err := d.refreshReplayScopedDB(); err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
+	d.invalidateFingerprintCache()
 	return updated, nil
 }
 
+// Ingest re-reads the replay folder. There is no separate ingestion step any
+// more: the library loads the folder at startup and watches it, so this only
+// exists for callers that want to force a check now.
 func (d *Dashboard) Ingest(ctx context.Context, request apigen.IngestRequestObject) (any, error) {
 	body := apigen.IngestRequest{}
 	if request.Body != nil {
 		body = *request.Body
 	}
-	inputDir := strings.TrimSpace(nullableStringValue(body.InputDir))
-	if inputDir != "" {
-		if err := d.setIngestInputDir(ctx, inputDir); err != nil {
-			return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
+	if inputDir := strings.TrimSpace(nullableStringValue(body.InputDir)); inputDir != "" {
+		if err := d.setReplayDir(ctx, inputDir); err != nil {
+			return nil, err
 		}
 	} else {
-		var err error
-		inputDir, err = d.getIngestInputDir(ctx)
-		if err != nil {
-			return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-		}
-		if inputDir == "" {
-			return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("replay folder is not configured"))
-		}
+		d.library.Rescan()
 	}
-	cfg := ingest.Config{
-		InputDir:         inputDir,
-		SQLitePath:       strings.TrimSpace(nullableStringValue(body.SqlitePath)),
-		StoreRightClicks: nullableBoolValue(body.StoreRightClicks),
-		StopAfterN:       nullableIntValue(body.StopAfterNReps),
-		UpToDate:         strings.TrimSpace(nullableStringValue(body.UpToYyyyMmDd)),
-		UpToMonths:       nullableIntValue(body.UpToNMonths),
-		Clean:            nullableBoolValue(body.Clean),
-		CleanDashboard:   nullableBoolValue(body.CleanDashboard),
-		UseColor:         false,
-		Logger:           d.newIngestLogger(),
-	}
-	if cfg.SQLitePath == "" {
-		cfg.SQLitePath = d.sqlitePath
-	}
-	if !d.startIngestAsync(cfg) {
-		return map[string]any{
-			"ok":          true,
-			"started":     false,
-			"in_progress": true,
-			"input_dir":   inputDir,
-			"sqlitePath":  cfg.SQLitePath,
-		}, nil
-	}
-	return map[string]any{
-		"ok":         true,
-		"started":    true,
-		"input_dir":  cfg.InputDir,
-		"sqlitePath": cfg.SQLitePath,
-	}, nil
+	return map[string]any{"ok": true, "started": true, "replay_dir": d.library.Folder()}, nil
 }
 
 func (d *Dashboard) IngestLogs(_ context.Context, _ apigen.IngestLogsRequestObject) (any, error) {
 	return map[string]any{"upgraded": true}, nil
 }
 
-// GetStaleReplaysCount reports how many replays were analyzed under an algorithm version
-// older than core.AlgorithmVersion. Used by the dashboard to decide whether to surface
-// the bulk re-analyze banner.
-func (d *Dashboard) GetStaleReplaysCount(ctx context.Context, _ apigen.GetStaleReplaysCountRequestObject) (any, error) {
-	store, err := storage.NewSQLiteStorage(d.sqlitePath)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	defer store.Close()
-
-	count, err := store.CountStaleReplays(ctx, core.AlgorithmVersion)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return map[string]any{
-		"count":           count,
-		"current_version": core.AlgorithmVersion,
-	}, nil
+// GetStaleReplaysCount always reports zero: every replay is analyzed by the
+// running build when the library loads it, so nothing can be stale.
+func (d *Dashboard) GetStaleReplaysCount(_ context.Context, _ apigen.GetStaleReplaysCountRequestObject) (any, error) {
+	return map[string]any{"count": 0, "current_version": core.AlgorithmVersion}, nil
 }
 
 func (d *Dashboard) GetIngestSettings(ctx context.Context, _ apigen.GetIngestSettingsRequestObject) (any, error) {
-	inputDir, err := d.getIngestInputDir(ctx)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	isSample, err := d.isSampleSetActive(ctx)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	// sample_auto_loaded is a one-shot signal: the frontend reads it once to
-	// show the dismissable notice (and suppress the empty-DB auto-open).
-	autoLoaded := d.sampleSetAutoLoaded
-	d.sampleSetAutoLoaded = false
-	// The detected OS replay folder, so the UI can offer "switch back to your
-	// replays" while the sample set is active (users don't know the path — we
-	// found it for them).
-	detected, _ := fileops.ResolveDefaultReplayDir()
-	return ingestSettingsResponse{
-		InputDir:          inputDir,
-		IsSampleSet:       isSample,
-		SampleAutoLoaded:  autoLoaded,
-		DetectedReplayDir: detected,
-	}, nil
+	return d.librarySettings(ctx), nil
 }
 
 func (d *Dashboard) UpdateIngestSettings(ctx context.Context, request apigen.UpdateIngestSettingsRequestObject) (any, error) {
-	var inputDir string
+	var replayDir string
 	if request.Body != nil && request.Body.InputDir != nil {
-		inputDir = *request.Body.InputDir
+		replayDir = *request.Body.InputDir
 	}
-	if err := d.setIngestInputDir(ctx, inputDir); err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
+	if err := d.setReplayDir(ctx, replayDir); err != nil {
+		return nil, err
 	}
-	return ingestSettingsResponse{InputDir: strings.TrimSpace(inputDir)}, nil
+	return d.librarySettings(ctx), nil
 }
 
 func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListRequestObject) (any, error) {
@@ -273,10 +199,7 @@ func (d *Dashboard) GameSee(ctx context.Context, request apigen.GameSeeRequestOb
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 	}
-	ingestDirPath, err := d.getIngestInputDir(ctx)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
+	ingestDirPath := d.library.Folder()
 	if ingestDirPath == "" {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, errors.New("Replay ingestion directory is not set; cannot move replay file"))
 	}
@@ -320,12 +243,25 @@ func (d *Dashboard) Healthcheck(ctx context.Context, _ apigen.HealthcheckRequest
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
+	progress := d.libraryHub.Progress()
 	return map[string]any{
 		"app":           "screpdb",
 		"ok":            true,
 		"total_replays": totalReplays,
 		"version":       buildinfo.Version,
 		"commit":        buildinfo.Commit,
+		"library": map[string]any{
+			"status":     statusForPhase(progress.Phase),
+			"phase":      string(progress.Phase),
+			"generation": progress.Generation,
+			"version":    progress.Version,
+			"loaded":     progress.Loaded,
+			"total":      progress.Total,
+			"failed":     progress.Failed,
+			"skipped":    progress.Skipped,
+			"replay_dir": progress.Folder,
+			"complete":   progress.Complete(),
+		},
 	}, nil
 }
 

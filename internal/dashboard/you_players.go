@@ -100,12 +100,8 @@ func formatYouDisplayName(name string) string {
 // refreshYouKeysBestEffort re-reads CSettings.json and republishes the in-memory
 // set. Failures are logged and leave the previous set in place: losing the "you"
 // marker is a worse outcome than briefly showing a stale one.
-func (d *Dashboard) refreshYouKeysBestEffort(ctx context.Context) {
-	inputDir, err := d.getIngestInputDir(ctx)
-	if err != nil {
-		log.Printf("you: skipped refresh, ingest dir unavailable: %v", err)
-		return
-	}
+func (d *Dashboard) refreshYouKeysBestEffort(_ context.Context) {
+	inputDir := d.library.Folder()
 	if strings.TrimSpace(inputDir) == "" {
 		return
 	}

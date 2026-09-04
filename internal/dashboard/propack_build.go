@@ -2,10 +2,13 @@ package dashboard
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/hotkeystream"
 	"github.com/marianogappa/screpdb/internal/propack"
+	_ "modernc.org/sqlite"
 )
 
 // ProMetrics is everything the pro pack bakes for one player key. It is
@@ -20,17 +23,21 @@ type ProMetrics struct {
 	Hotkeys            []*hotkeystream.Signature
 }
 
-// ComputeProMetrics opens the scratch database at sqlitePath as a dashboard
-// (running its migrations, applying the default global replay filter) and
-// aggregates each player key with the production code paths. Offline tooling
-// only: scripts/pro-pack calls it after renaming the resolved progamer rows to
-// their pack keys.
+// ComputeProMetrics aggregates each player key in the scratch database with
+// the production code paths, so a built pack reports what the app would.
+//
+// Offline tooling only, and the last SQL reader in this package: the shipped
+// dashboard answers every read from the in-memory replay library, but
+// scripts/pro-pack joins its labelled games against an ingested corpus and
+// renames player rows to pack keys, neither of which has a library equivalent
+// yet. Reads here are unfiltered, where the dashboard used to apply the
+// default global filter.
 func ComputeProMetrics(ctx context.Context, sqlitePath string, playerKeys []string) (map[string]ProMetrics, error) {
-	d, err := New(ctx, sqlitePath, true)
+	d, closeDashboard, err := newSQLBackedDashboard(ctx, sqlitePath)
 	if err != nil {
 		return nil, err
 	}
-	defer d.db.Close()
+	defer closeDashboard()
 
 	apmRows, err := d.dbStore.ListPlayerApmAggregates(ctx, 1)
 	if err != nil {
@@ -46,8 +53,8 @@ func ComputeProMetrics(ctx context.Context, sqlitePath string, playerKeys []stri
 	}
 
 	out := make(map[string]ProMetrics, len(playerKeys))
-	for _, key := range playerKeys {
-		key = normalizePlayerKey(key)
+	for _, rawKey := range playerKeys {
+		key := normalizePlayerKey(rawKey)
 		m := ProMetrics{Races: map[string]int{}}
 
 		summary, err := d.dbStore.GetPlayerOverviewSummary(ctx, key)
@@ -93,4 +100,26 @@ func ComputeProMetrics(ctx context.Context, sqlitePath string, playerKeys []stri
 		out[key] = m
 	}
 	return out, nil
+}
+
+// newSQLBackedDashboard builds the minimum dashboard the pack builder needs:
+// the aggregation methods and their helpers, reading an already-ingested
+// database. It has no replay library, so anything that needs the replay folder
+// is unavailable.
+func newSQLBackedDashboard(ctx context.Context, sqlitePath string) (*Dashboard, func(), error) {
+	db, err := sql.Open("sqlite", "file:"+sqlitePath+"?_pragma=foreign_keys(1)")
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := db.Ping(); err != nil {
+		_ = db.Close()
+		return nil, nil, err
+	}
+	d := &Dashboard{
+		ctx:        ctx,
+		libraryHub: newLibraryHub(),
+		headless:   true,
+	}
+	d.dbStore = dashboarddb.NewStore(db, func() *sql.DB { return db })
+	return d, func() { _ = db.Close() }, nil
 }

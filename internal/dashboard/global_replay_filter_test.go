@@ -79,8 +79,8 @@ func TestDashboardAPI_GlobalReplayFilterGetAndUpdate(t *testing.T) {
 	if len(updated.GameTypes) != 2 || updated.GameTypes[0] != globalReplayFilterGameTypeFreeForAll || updated.GameTypes[1] != globalReplayFilterGameTypeMelee {
 		t.Fatalf("expected melee + free_for_all game types, got %+v", updated)
 	}
-	if updated.CompiledReplaysFilterSQL == nil || !strings.Contains(*updated.CompiledReplaysFilterSQL, "Money") {
-		t.Fatalf("expected compiled SQL with map kind filter, got %+v", updated)
+	if len(updated.MapKinds) != 1 || updated.MapKinds[0] != globalReplayFilterMapKindMoney {
+		t.Fatalf("expected the money map kind, got %+v", updated)
 	}
 }
 
@@ -88,39 +88,46 @@ func TestDashboardAPI_GlobalReplayFilterAffectsWorkflowGames(t *testing.T) {
 	dash := newTestDashboard(t)
 	router := dash.setupRouter()
 
-	// Filter by map_kind = Regular and assert the workflow-games endpoint
-	// returns the same total as the compiled global filter SQL.
-	updated, err := dash.updateGlobalReplayFilterConfig(dash.ctx, globalReplayFilterConfig{
-		GameTypes:         []string{},
-		ExcludeShortGames: false,
-		ExcludeComputers:  false,
-		MapKinds:          []string{globalReplayFilterMapKindRegular},
-	})
-	if err != nil {
-		t.Fatalf("updateGlobalReplayFilterConfig: %v", err)
-	}
-	if err := dash.refreshReplayScopedDB(); err != nil {
-		t.Fatalf("refreshReplayScopedDB: %v", err)
-	}
-
-	var expected int64
-	query := "SELECT COUNT(*) FROM (" + *updated.CompiledReplaysFilterSQL + ")"
-	if err := dash.db.QueryRowContext(dash.ctx, query).Scan(&expected); err != nil {
-		t.Fatalf("count compiled SQL: %v", err)
+	total := func() int64 {
+		t.Helper()
+		rec := performDashboardRequest(router, http.MethodGet, "/api/games", nil)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("workflow games status %d: %s", rec.Code, rec.Body.String())
+		}
+		var resp struct {
+			Total int64 `json:"total"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("workflow games json: %v", err)
+		}
+		return resp.Total
 	}
 
-	rec := performDashboardRequest(router, http.MethodGet, "/api/games", nil)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("workflow games status %d: %s", rec.Code, rec.Body.String())
+	countWithMapKinds := func(kinds ...string) int64 {
+		t.Helper()
+		if _, err := dash.updateGlobalReplayFilterConfig(dash.ctx, globalReplayFilterConfig{
+			ExcludeShortGames: false,
+			ExcludeComputers:  false,
+			MapKinds:          kinds,
+		}); err != nil {
+			t.Fatalf("updateGlobalReplayFilterConfig: %v", err)
+		}
+		return total()
 	}
 
-	var resp struct {
-		Total int64 `json:"total"`
+	both := countWithMapKinds(globalReplayFilterMapKindRegular, globalReplayFilterMapKindMoney)
+	if both == 0 {
+		t.Fatal("the corpus should have games under both map kinds")
 	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("workflow games json: %v", err)
+	regular := countWithMapKinds(globalReplayFilterMapKindRegular)
+	money := countWithMapKinds(globalReplayFilterMapKindMoney)
+
+	// The two kinds partition the corpus, so the filter provably reaches the
+	// games list rather than the list ignoring it.
+	if regular+money != both {
+		t.Fatalf("regular (%d) plus money (%d) should account for every game (%d)", regular, money, both)
 	}
-	if resp.Total != expected {
-		t.Fatalf("expected total %d, got %d", expected, resp.Total)
+	if regular == both || money == both {
+		t.Fatalf("one map kind returned the whole corpus: regular %d, money %d, all %d", regular, money, both)
 	}
 }

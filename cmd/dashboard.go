@@ -77,16 +77,26 @@ func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) err
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	dbPath, err := appdata.ResolveDBPath(opts.SQLitePath)
+	root, err := appdata.Dir()
+	if err != nil {
+		return fmt.Errorf("failed to resolve the app data folder: %w", err)
+	}
+	legacyDBPath, err := appdata.ResolveDBPath(opts.SQLitePath)
 	if err != nil {
 		return fmt.Errorf("failed to resolve database path: %w", err)
 	}
-	log.Printf("Using SQLite database at %s", dbPath)
 
-	dash, err := dashboard.New(ctx, dbPath, opts.Headless)
+	dash, err := dashboard.New(ctx, dashboard.Options{
+		Root:         root,
+		ReplayDir:    opts.ReplayDir,
+		LegacyDBPath: legacyDBPath,
+		Headless:     opts.Headless,
+	})
 	if err != nil {
 		return err
 	}
+	defer dash.Close()
+	log.Printf("Reading replays from %s", dash.ReplayDir())
 	dash.SetShutdownFunc(cancel)
 
 	// Start backend server asynchronously
@@ -97,9 +107,11 @@ func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) err
 		return fmt.Errorf("dashboard server failed to start: %w", err)
 	}
 
-	// Now that the server is up and DB setup is complete, run any sample-set
-	// ingest queued at startup (deferred to avoid racing DB initialization).
-	dash.StartPendingSampleIngest()
+	// Load the replay folder now that the server is accepting, so the first
+	// page load already has the newest games and the rest stream in behind it.
+	if err := dash.StartLibrary(); err != nil {
+		return fmt.Errorf("failed to read the replay folder: %w", err)
+	}
 
 	// Open browser, unless this is a self-update relaunch — the user's existing
 	// tab is still pointed here and will reconnect, so a second tab is just noise.
