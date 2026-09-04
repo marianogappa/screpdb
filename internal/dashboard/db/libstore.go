@@ -27,9 +27,15 @@ type SettingsStore interface {
 type LibStore struct {
 	lib      *library.Library
 	bnet     *persist.BnetCache
+	results  *persist.BnetGameResults
 	settings SettingsStore
 }
 
 func NewLibStore(lib *library.Library, bnet *persist.BnetCache, settings SettingsStore) *LibStore {
 	return &LibStore{lib: lib, bnet: bnet, settings: settings}
 }
+
+// SetGameResults attaches the Battle.net play-history store. It is separate
+// from the constructor so the reads that do not need it can be built and
+// tested without one.
+func (s *LibStore) SetGameResults(results *persist.BnetGameResults) { s.results = results }

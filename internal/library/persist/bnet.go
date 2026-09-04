@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -178,6 +179,34 @@ func (c *BnetCache) CountryCodesByToons(toons []string) map[string]string {
 
 // PayloadsByToons returns every found profile whose toon matches one of the
 // player keys, payload included. Read-only: it never triggers a fetch.
+// AuroraIDsByToons returns the distinct aurora ids of the found profiles whose
+// toon is one of the given normalised player keys.
+func (c *BnetCache) AuroraIDsByToons(toons []string) []int64 {
+	wanted := playerKeySet(toons)
+	if len(wanted) == 0 {
+		return []int64{}
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	seen := map[int64]struct{}{}
+	out := []int64{}
+	for key, header := range c.entries {
+		if !header.Found || header.AuroraID == 0 {
+			continue
+		}
+		if _, ok := wanted[library.PlayerKey(key.toon)]; !ok {
+			continue
+		}
+		if _, ok := seen[header.AuroraID]; ok {
+			continue
+		}
+		seen[header.AuroraID] = struct{}{}
+		out = append(out, header.AuroraID)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
+}
+
 func (c *BnetCache) PayloadsByToons(toons []string) ([]BnetProfile, error) {
 	wanted := playerKeySet(toons)
 	c.mu.Lock()
