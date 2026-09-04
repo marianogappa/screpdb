@@ -7,6 +7,18 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { getUnitIcon, normalizeUnitName } from './gameAssets';
+import { t } from './i18nContext';
+
+export const markerName = (definition) => {
+  if (!definition) return '';
+  return t.server(`server.marker.${definition.feature_key}.name`, definition.name || '');
+};
+
+const pillText = (definition, surface, field) => {
+  const pill = definition?.[surface];
+  if (!pill) return '';
+  return t.server(`server.marker.${definition.feature_key}.${surface}.${field}`, pill[field] || '');
+};
 
 // PILL_SURFACES enumerates the four render sites a marker may appear on.
 // Keys match the JSON fields emitted by the backend endpoint.
@@ -27,6 +39,7 @@ const stripTemporalPlaceholders = (template) => {
   // " at min {minute}" / " at min {timestamp}" / " at {minute} mins" etc.
   out = out.replace(/\s+at\s+min(?:ute)?s?\s*\{(?:minute|timestamp)\}/gi, '');
   out = out.replace(/\s+at\s+\{(?:minute|timestamp)\}\s*min(?:ute)?s?/gi, '');
+  out = out.replace(/\s*\{(?:minute|timestamp)\}\s*분?\s*(?:에|경|쯤)?/g, ' ');
   out = out.replace(/\s*\{(?:minute|timestamp)\}\s*/g, ' ');
   return out.trim();
 };
@@ -63,8 +76,8 @@ const resolveSubject = (subjectDef, payload) => {
     }
     if (parsed && typeof parsed === 'object') {
       const raw = parsed[subjectDef.field];
-      if (Array.isArray(raw)) return raw.join(',');
-      if (raw != null) return String(raw);
+      if (Array.isArray(raw)) return raw.map((item) => t.buildLabel(String(item))).join(',');
+      if (raw != null) return t.buildLabel(String(raw));
     }
   }
   return '';
@@ -94,7 +107,7 @@ export const renderPillText = (definition, surface, row) => {
   const minute    = minuteFromSecond(row?.detected_second);
   const timestamp = timestampFromSecond(row?.detected_second);
 
-  const label   = interpolatePlaceholders(pill.label, { subject, minute, timestamp });
+  const label   = interpolatePlaceholders(pillText(definition, surface, 'label'), { subject, minute, timestamp });
   const iconKey = interpolatePlaceholders(pill.icon_key, { subject, minute, timestamp });
 
   return {
@@ -102,7 +115,7 @@ export const renderPillText = (definition, surface, row) => {
     iconKey,
     icon: iconKey ? getUnitIcon(iconKey) : null,
     style: pill.style || '',
-    title: pill.title || '',
+    title: pillText(definition, surface, 'title'),
   };
 };
 
@@ -126,31 +139,31 @@ export const renderAggregatePillText = (definition) => {
   if (gl && gl.label) {
     const iconKey = stripTemporalPlaceholders(gl.icon_key || '');
     return {
-      label: stripTemporalPlaceholders(gl.label),
+      label: stripTemporalPlaceholders(pillText(definition, 'games_list', 'label')),
       iconKey,
       icon: iconKey ? getUnitIcon(iconKey) : null,
       style: gl.style || '',
-      title: gl.title || '',
+      title: pillText(definition, 'games_list', 'title'),
     };
   }
   const sp = definition.summary_player;
   const spIcon = sp ? stripTemporalPlaceholders(sp.icon_key || '') : '';
   if (definition.name) {
     return {
-      label: definition.name,
+      label: markerName(definition),
       iconKey: spIcon,
       icon: spIcon ? getUnitIcon(spIcon) : null,
       style: sp?.style || '',
-      title: sp?.title || '',
+      title: pillText(definition, 'summary_player', 'title'),
     };
   }
   if (sp && sp.label) {
     return {
-      label: stripTemporalPlaceholders(sp.label),
+      label: stripTemporalPlaceholders(pillText(definition, 'summary_player', 'label')),
       iconKey: spIcon,
       icon: spIcon ? getUnitIcon(spIcon) : null,
       style: sp.style || '',
-      title: sp.title || '',
+      title: pillText(definition, 'summary_player', 'title'),
     };
   }
   return null;
@@ -159,8 +172,7 @@ export const renderAggregatePillText = (definition) => {
 // BETA_TOOLTIP is the hover explanation shown next to the β tag on detections
 // that haven't been hand-checked against a real replay yet. Plain-language —
 // this isn't a research tool.
-export const BETA_TOOLTIP =
-  "Beta: we haven't hand-checked this detection against real games yet, so it may be off sometimes.";
+export const betaTooltip = () => t('marker.betaTooltip');
 
 // featureIsBeta reports whether a marker/build-order definition is uncurated
 // (no human has verified it — see GOLDEN_TIERS.md). The backend sends

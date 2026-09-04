@@ -1,0 +1,9 @@
+{
+  "app.title": "StarCraft Dashboard",
+  "footer.language": "Language",
+  "footer.replaysInDatabase": "{count} replays in library",
+  "footer.by": " by ",
+  "footer.commit": "commit {commit}",
+  "footer.reportIssue": "🐞 Report an issue",
+  "marker.betaTooltip": "Beta: we haven't hand-checked this detection against real games yet, so it may be off sometimes."
+}

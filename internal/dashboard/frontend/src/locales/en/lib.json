@@ -1,0 +1,18 @@
+{
+  "composition.phase.early": "Early",
+  "composition.phase.mid": "Mid",
+  "composition.phase.late": "Late",
+  "composition.noArmyProduction": "No army production this phase",
+  "composition.segmentTooltip": "{name}: {count} ({pct}%)",
+  "composition.moreTooltip": "{count} more:\n{list}",
+  "composition.castsLegend": "Casts",
+  "composition.spellTooltip": "{unit}: {spell}",
+  "format.today": "Today",
+  "format.daysCompact": "{count}d",
+  "format.daysAgo": "{count}d ago",
+  "format.am": "am",
+  "format.pm": "pm",
+  "format.relativeReplayDate": "{day} @ {hour}.{minute}{ampm}",
+  "format.mapKind.money": "Money map",
+  "format.mapKind.ums": "Use Map Settings: custom scenario rules."
+}

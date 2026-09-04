@@ -1,6 +1,7 @@
 import React from 'react';
 import { getUnitIcon } from '../../lib/gameAssets';
 import { hotkeyBuildingIcon, hotkeyCountColor } from './HotkeyTimeline';
+import { useT } from '../../lib/i18nContext';
 
 // Hotkey signature cards: one per race with enough games. Each key shows the
 // sprite of what it held over game minutes, an assign bar (when the key is
@@ -11,12 +12,12 @@ const MAX_MINUTE = 24;
 const ASSIGN_COLOR = '#c98500';
 const USE_COLOR = '#4a79a8';
 
-const CATEGORY_LABEL = {
-  hall: 'town hall',
-  prod: 'production',
-  tech: 'tech',
-  comsat: 'Comsat',
-  units: 'units',
+const CATEGORY_LABEL_KEYS = {
+  hall: 'chart.hotkey.category.hall',
+  prod: 'chart.hotkey.category.prod',
+  tech: 'chart.hotkey.category.tech',
+  comsat: 'chart.hotkey.category.comsat',
+  units: 'chart.hotkey.category.units',
 };
 
 const CATEGORY_SPRITE = {
@@ -39,6 +40,7 @@ const pct = (minute) => (minute / (MAX_MINUTE + 1)) * 100;
 const widthPct = (run) => ((run.end_min - run.start_min + 1) / (MAX_MINUTE + 1)) * 100;
 
 function SignatureCard({ card }) {
+  const t = useT();
   const keysByNumber = new Map((card.keys || []).map((k) => [k.key, k]));
   return (
     <div className="hk-sig-card">
@@ -56,7 +58,7 @@ function SignatureCard({ card }) {
                   <img
                     key={i}
                     src={icon}
-                    alt={CATEGORY_LABEL[run.category] || run.category}
+                    alt={CATEGORY_LABEL_KEYS[run.category] ? t(CATEGORY_LABEL_KEYS[run.category]) : run.category}
                     className={`hk-sig-sprite ${run.category === 'units' ? 'hk-silhouette' : ''}`}
                     style={{ left: `${pct(run.start_min)}%` }}
                   />
@@ -74,7 +76,7 @@ function SignatureCard({ card }) {
                 <span
                   key={`a${i}`}
                   className="hk-sig-bar hk-sig-bar-assign"
-                  data-tip="Assign"
+                  data-tip={t('chart.hotkey.assignTip')}
                   style={{ left: `${pct(run.start_min)}%`, width: `${widthPct(run)}%` }}
                 />
               ))}
@@ -82,7 +84,7 @@ function SignatureCard({ card }) {
                 <span
                   key={`u${i}`}
                   className="hk-sig-bar hk-sig-bar-use"
-                  data-tip="Use"
+                  data-tip={t('chart.hotkey.useTip')}
                   style={{ left: `${pct(run.start_min)}%`, width: `${widthPct(run)}%` }}
                 />
               ))}
@@ -94,7 +96,7 @@ function SignatureCard({ card }) {
         <div />
         <div className="hk-sig-axis-in">
           {[0, 5, 10, 15, 20].map((m) => (
-            <span key={m} style={{ left: `${pct(m)}%` }}>{m}m</span>
+            <span key={m} style={{ left: `${pct(m)}%` }}>{t('chart.hotkey.minuteTick', { minute: m })}</span>
           ))}
         </div>
       </div>
@@ -103,11 +105,12 @@ function SignatureCard({ card }) {
 }
 
 export default function HotkeySignature({ payload, loadingNotice = '' }) {
+  const t = useT();
   const cards = payload?.cards || [];
   if (!cards.length) {
     return (
       <div className="chart-empty">
-        {loadingNotice || 'Not enough games for a hotkey signature. It needs at least 3 games of one race.'}
+        {loadingNotice || t('chart.hotkey.signatureEmpty')}
       </div>
     );
   }

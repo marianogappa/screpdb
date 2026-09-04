@@ -1,5 +1,8 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getUnitIcon } from '../../lib/gameAssets';
+import { useT } from '../../lib/i18nContext';
+import { slugKey } from '../../lib/i18n';
+import { subjectName } from './BuildOrderTimelineRows';
 
 // UnitProductionEarlyTimeline renders the first 4 minutes of a game's
 // production output as a vertical time-scaled chart: time on the Y axis
@@ -44,9 +47,9 @@ const formatTime = (seconds) => {
 };
 
 const ordinalPrefix = (label) => {
-  if (!label) return '';
-  const m = String(label).match(/^(\d+(?:st|nd|rd|th))\b/i);
-  return m ? m[1] : '';
+  if (!label) return null;
+  const m = String(label).match(/^(\d+)(st|nd|rd|th)\b/i);
+  return m ? { n: m[1], suffix: m[2].toLowerCase() } : null;
 };
 
 const buildClusters = (events) => {
@@ -80,6 +83,7 @@ function UnitProductionEarlyTimeline({
   hasTeamInfo,
   teamColorRgba,
 }) {
+  const t = useT();
   const wrapperRef = useRef(null);
   const [hover, setHover] = useState(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -221,7 +225,7 @@ function UnitProductionEarlyTimeline({
                 fill="rgba(255,255,255,0.35)"
                 fontSize="11"
               >
-                no production
+                {t('chart.production.empty')}
               </text>
             );
           }
@@ -275,7 +279,7 @@ function UnitProductionEarlyTimeline({
                       fontSize="10"
                       fontWeight="700"
                     >
-                      x{count}
+                      {t('chart.production.times', { count })}
                     </text>
                   ) : null}
                 </g>
@@ -285,10 +289,10 @@ function UnitProductionEarlyTimeline({
             // Single text label after the icon row. For solo events keep the
             // ordinal prefix ("5th") if present; the unit name is implicit
             // in the icon, so we drop it. For clusters, just the time.
-            const soloOrdinal = n === 1 ? ordinalPrefix(cluster[0]?.label) : '';
+            const soloOrdinal = n === 1 ? ordinalPrefix(cluster[0]?.label) : null;
             const labelText = soloOrdinal
-              ? `${soloOrdinal} @ ${formatTime(firstSec)}`
-              : `@ ${formatTime(firstSec)}`;
+              ? t('chart.production.ordinalAt', { n: soloOrdinal.n, suffix: t(`chart.ordinal.${soloOrdinal.suffix}`), time: formatTime(firstSec) })
+              : t('chart.production.at', { time: formatTime(firstSec) });
             nodes.push(
               <text
                 key={`lbl-${player.player_id}-${clusterIdx}`}
@@ -309,10 +313,10 @@ function UnitProductionEarlyTimeline({
           className="workflow-timing-tooltip"
           style={{ left: `${hover.x}px`, top: `${hover.y}px` }}
         >
-          <div><strong>{hover.unitType}</strong>{hover.count > 1 ? ` x${hover.count}` : ''}</div>
-          {hover.ordinalLabel ? <div>{hover.ordinalLabel}</div> : null}
-          <div><strong>Time</strong> {formatTime(hover.second)}</div>
-          <div style={{ opacity: 0.7 }}>{hover.isBuilding ? 'Building' : 'Unit'}</div>
+          <div><strong>{t.server(`server.name.${slugKey(hover.unitType)}`, hover.unitType)}</strong>{hover.count > 1 ? ` ${t('chart.production.times', { count: hover.count })}` : ''}</div>
+          {hover.ordinalLabel ? <div>{subjectName(t, hover.ordinalLabel)}</div> : null}
+          <div><strong>{t('chart.production.tooltip.time')}</strong> {formatTime(hover.second)}</div>
+          <div style={{ opacity: 0.7 }}>{hover.isBuilding ? t('chart.production.building') : t('chart.production.unit')}</div>
         </div>
       ) : null}
     </div>

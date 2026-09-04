@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import { api } from './api';
+import { useT, t } from './lib/i18nContext';
+import { slugKey } from './lib/i18n';
 import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
 import GamingSessionPanel from './components/GamingSessionPanel';
+import LanguageSwitcher from './components/LanguageSwitcher';
 import Histogram from './components/charts/Histogram';
 import TimingScatterRows from './components/charts/TimingScatterRows';
 import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
@@ -27,14 +30,36 @@ import {
   lookupDefinitionForPattern,
   renderAggregatePillText,
   featureIsBeta,
-  BETA_TOOLTIP,
+  betaTooltip,
+  markerName,
 } from './lib/markerRegistry';
 
 // BetaTag renders a small superscript β with a plain-language tooltip, shown on
 // any marker/build-order pill whose detection hasn't been human-curated yet.
-const BetaTag = () => (
-  <sup className="workflow-beta-tag" title={BETA_TOOLTIP} aria-label="beta detection">β</sup>
-);
+const BetaTag = () => {
+  const t = useT();
+  return (
+    <sup className="workflow-beta-tag" title={betaTooltip()} aria-label={t('marker.betaAria')}>β</sup>
+  );
+};
+
+const fillTemplate = (template, parts) => {
+  const out = [];
+  const re = /\{(\w+)\}/g;
+  let last = 0;
+  let match = re.exec(template);
+  while (match) {
+    if (match.index > last) out.push(template.slice(last, match.index));
+    const value = parts[match[1]];
+    if (value !== undefined && value !== null && value !== '') {
+      out.push(<React.Fragment key={`${match[1]}-${match.index}`}>{value}</React.Fragment>);
+    }
+    last = match.index + match[0].length;
+    match = re.exec(template);
+  }
+  if (last < template.length) out.push(template.slice(last));
+  return <>{out}</>;
+};
 import {
   CompositionZones,
   CompositionZonesHeader,
@@ -47,7 +72,7 @@ import {
   getStoredShowFeaturedPros,
   saveShowFeaturedPros,
 } from './lib/dashboardStorage';
-import { formatLoadingShort, isLibraryLoading, stillLoadingCopy } from './lib/libraryProgress';
+import { formatLoadingShortWith, isLibraryLoading, stillLoadingCopyWith } from './lib/libraryProgress';
 import {
   formatDuration,
   formatMapNameWithKind,
@@ -154,25 +179,22 @@ const MAIN_GAME_SKILL_PROXY_TABS = ['first-unit-efficiency', 'unit-production-ca
 
 // The players-list FilterOmnibar axes. `min_games` is synthesized client-side
 // (the API models it as the boolean onlyFivePlus, not an options list).
-const PLAYERS_OMNIBAR_AXES = [
-  { id: 'lastPlayed', label: 'Last played', state: 'lastPlayed', source: 'last_played' },
-  { id: 'minGames', label: 'Games', state: 'onlyFivePlus', source: 'min_games' },
+const buildPlayersOmnibarAxes = (t) => [
+  { id: 'lastPlayed', label: t('players.axis.lastPlayed'), state: 'lastPlayed', source: 'last_played' },
+  { id: 'minGames', label: t('players.axis.games'), state: 'onlyFivePlus', source: 'min_games' },
 ];
-const PLAYERS_OMNIBAR_STATE_LABELS = { lastPlayed: 'Last played', onlyFivePlus: 'Games' };
+const buildPlayersOmnibarStateLabels = (t) => ({ lastPlayed: t('players.axis.lastPlayed'), onlyFivePlus: t('players.axis.games') });
 const PLAYERS_OMNIBAR_STATE_ORDER = ['lastPlayed', 'onlyFivePlus'];
 
 const isMainGameSkillProxyTab = (tab) => MAIN_GAME_SKILL_PROXY_TABS.includes(tab);
 
-const SKILL_PROXY_CADENCE_INFO_TEXT = 'ℹ️ How smoothly you keep adding army from the mid game on, not just how much, but how evenly you queue it. Formula: units/min ÷ (1 + gap CV).';
-
-const SKILL_PROXY_VIEWPORT_INFO_TEXT = 'ℹ️ How many times a player switches between places on average per minute.';
-
 // Per-insight short descriptions for the player Skill proxies > Summary cards.
 // APM omitted intentionally (number is self-explanatory in that view).
-const PLAYER_INSIGHT_DESCRIPTION_OVERRIDES = {
-  apm: '',
-  'unit-production-cadence': 'How smoothly you keep adding army from the mid game on, not just how much, but how evenly you queue it. Formula: units/min ÷ (1 + gap CV).',
-  'viewport-switch-rate': 'How many times a player switches between places on average per minute.',
+const playerInsightDescriptionOverride = (insightType) => {
+  if (insightType === 'apm') return '';
+  if (insightType === 'unit-production-cadence') return t('skillProxies.cadence.description');
+  if (insightType === 'viewport-switch-rate') return t('skillProxies.viewport.description');
+  return undefined;
 };
 
 const DROP_ACTOR_EVENT_TYPES = ['drop', 'cliff_drop'];
@@ -215,7 +237,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
       key: 'drop',
       domKey: `ge-drop-${pid}`,
       icons: [transportIcon].filter(Boolean),
-      label: 'Drop',
+      label: t('events.drop'),
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
   }
@@ -224,7 +246,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
       key: 'cliff_drop',
       domKey: `ge-cliff-drop-${pid}`,
       icons: [getUnitIcon('dropship')].filter(Boolean),
-      label: 'Cliff drop',
+      label: t('events.cliffDrop'),
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
   }
@@ -232,7 +254,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
     positive.push({
       key: `ge-cannon-${pid}`,
       icon: getUnitIcon('photoncannon'),
-      label: 'Cannon rush',
+      label: t('events.cannonRush'),
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
   }
@@ -240,7 +262,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
     positive.push({
       key: `ge-bunker-${pid}`,
       icon: getUnitIcon('bunker'),
-      label: 'Bunker rush',
+      label: t('events.bunkerRush'),
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
   }
@@ -248,7 +270,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
     positive.push({
       key: `ge-proxy-gate-${pid}`,
       icon: getUnitIcon('gateway'),
-      label: 'Proxy gateway',
+      label: t('events.proxyGateway'),
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
   }
@@ -256,7 +278,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
     positive.push({
       key: `ge-proxy-rax-${pid}`,
       icon: getUnitIcon('barracks'),
-      label: 'Proxy barracks',
+      label: t('events.proxyBarracks'),
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
   }
@@ -264,7 +286,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
     positive.push({
       key: `ge-proxy-factory-${pid}`,
       icon: getUnitIcon('factory'),
-      label: 'Proxy factory',
+      label: t('events.proxyFactory'),
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
   }
@@ -272,7 +294,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
     positive.push({
       key: `ge-proxy-starport-${pid}`,
       icon: getUnitIcon('starport'),
-      label: 'Proxy starport',
+      label: t('events.proxyStarport'),
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
   }
@@ -314,8 +336,8 @@ const isActorAtOwnNaturalBase = (event) => {
 const joinWithAnd = (items) => {
   if (!Array.isArray(items) || items.length === 0) return '';
   if (items.length === 1) return items[0];
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+  if (items.length === 2) return `${items[0]}${t('list.twoSeparator')}${items[1]}`;
+  return `${items.slice(0, -1).join(t('list.separator'))}${t('list.lastSeparator')}${items[items.length - 1]}`;
 };
 
 // isOpenFieldLocation is true for 1v1 open-field attacks (issue #186) whose
@@ -338,9 +360,9 @@ const isTargetAtOwnNaturalBase = (event) => {
 // location: the target's own natural → "at their natural"; open field → the
 // bare relational phrase; otherwise "at <base>".
 const attackLocationClause = (event, location) => {
-  if (isTargetAtOwnNaturalBase(event)) return 'at their natural';
+  if (isTargetAtOwnNaturalBase(event)) return t('events.location.atTheirNatural');
   if (isOpenFieldLocation(event)) return location;
-  return `at ${location}`;
+  return t('events.location.at', { location });
 };
 
 const gameEventLocationLabel = (event) => {
@@ -348,7 +370,7 @@ const gameEventLocationLabel = (event) => {
   if (baseName) {
     const isMineralOnly = event?.base?.mineral_only === true;
     if (isMineralOnly && !baseName.toLowerCase().includes('mineral only')) {
-      return `${baseName} (mineral only)`;
+      return t('events.location.mineralOnly', { name: baseName });
     }
     return baseName;
   }
@@ -363,7 +385,7 @@ const gameEventTargetLocationLabel = (event) => {
   if (!baseName) return '';
   const isMineralOnly = event?.target_base?.mineral_only === true;
   if (isMineralOnly && !baseName.toLowerCase().includes('mineral only')) {
-    return `${baseName} (mineral only)`;
+    return t('events.location.mineralOnly', { name: baseName });
   }
   return baseName;
 };
@@ -383,7 +405,7 @@ const boOpenerLines = (event) => {
     if (!byPlayer.has(key)) {
       byPlayer.set(key, {
         playerID: pid,
-        name: String(entry?.name || '').trim() || 'Player',
+        name: String(entry?.name || '').trim() || t('events.playerFallback'),
         color: entry?.color || '',
         race: entry?.race || '',
         isWinner: Boolean(entry?.is_winner),
@@ -392,8 +414,10 @@ const boOpenerLines = (event) => {
         boNames: [],
       });
     }
-    const boName = String(entry?.build_order || '').trim();
-    const mods = Array.isArray(entry?.modifiers) ? entry.modifiers.filter(Boolean) : [];
+    const rawBoName = String(entry?.build_order || '').trim();
+    const boName = t.buildLabel(entry?.feature_key ? t.serverExact(`server.marker.${entry.feature_key}.name`, rawBoName) : rawBoName);
+    const mods = (Array.isArray(entry?.modifiers) ? entry.modifiers.filter(Boolean) : [])
+      .map((mod) => t.server(`server.name.${slugKey(mod)}`, mod));
     // Fold modifier tags into the opener name inline: "2-Rax Bio (all-in, proxy)".
     const display = boName && mods.length ? `${boName} (${mods.join(', ')})` : boName;
     const line = byPlayer.get(key);
@@ -406,12 +430,35 @@ const boOpenerLines = (event) => {
 // opens with BO", dropping whichever clause is missing (no start location, no
 // resolved BO, or both — leaving just the name).
 const boOpenerLineText = (line) => {
-  const bo = line.boNames.length > 0 ? `opens with ${line.boNames.join(' / ')}` : '';
-  const start = line.startLocation ? `starts at ${line.startLocation}` : '';
-  if (start && bo) return `${line.name} ${start} and ${bo}`;
-  if (start) return `${line.name} ${start}`;
-  if (bo) return `${line.name} ${bo}`;
+  const bo = line.boNames.join(' / ');
+  const params = { name: line.name, location: line.startLocation, bo };
+  if (line.startLocation && bo) return t('events.opener.startsAndOpens', params);
+  if (line.startLocation) return t('events.opener.starts', params);
+  if (bo) return t('events.opener.opens', params);
   return line.name;
+};
+
+const RUSH_SENTENCE_KEYS = {
+  cannon_rush: 'cannonRush',
+  bunker_rush: 'bunkerRush',
+  zergling_rush: 'zerglingRush',
+};
+
+const PROXY_SENTENCE_KEYS = {
+  proxy_gate: 'proxyGateway',
+  proxy_rax: 'proxyBarracks',
+  proxy_factory: 'proxyFactory',
+  proxy_starport: 'proxyStarport',
+};
+
+const boEventName = (eventType, registry) => {
+  const def = registry?.[eventType];
+  return markerName(def) || t.server(`server.marker.${eventType}.name`, prettyPatternName(eventType.replace(/^bo_/, '')));
+};
+
+const fallbackEventName = (event) => {
+  const rawType = event?.type || 'event';
+  return t.server(`server.marker.${normalizeEventType(rawType)}.name`, prettyPatternName(rawType));
 };
 
 const gameEventDescription = (event, registry) => {
@@ -422,65 +469,64 @@ const gameEventDescription = (event, registry) => {
 
   if (eventType === 'bo_openers') {
     const lines = boOpenerLines(event);
-    if (lines.length === 0) return 'Build orders';
-    return lines.map((line) => boOpenerLineText(line)).join('; ');
+    if (lines.length === 0) return t('events.buildOrders');
+    return lines.map((line) => boOpenerLineText(line)).join(t('list.clauseSeparator'));
   }
 
   if (typeof eventType === 'string' && eventType.startsWith('bo_')) {
-    const def = registry?.[eventType];
-    const boName = def?.name || prettyPatternName(eventType.replace(/^bo_/, ''));
-    return actor ? `${actor} opens with ${boName}` : `Opens with ${boName}`;
+    const bo = boEventName(eventType, registry);
+    return actor ? t('events.sentence.opensWith', { actor, bo }) : t('events.sentence.opensWithNoActor', { bo });
   }
 
   if (eventType === 'player_start') {
-    if (actor && location) return `${actor} starts at ${location}`;
-    if (actor) return `${actor} starts`;
-    return 'Player start';
+    if (actor && location) return t('events.sentence.startsAt', { actor, location });
+    if (actor) return t('events.sentence.starts', { actor });
+    return t('events.playerStart');
   }
-  if (eventType === 'leave_game') return actor ? `${actor} leaves the game` : 'Player leaves the game';
-  if (eventType === 'player_dropped') return actor ? `${actor} drops from the game (connection lost)` : 'Player drops from the game';
-  if (eventType === 'mass_disconnect') return actor ? `${actor} lost connection; the game ended without a result` : 'Connection lost; the game ended without a result';
-  if (eventType === 'player_stopped_playing') return actor ? `${actor} stops playing` : 'Player stops playing';
+  if (eventType === 'leave_game') return actor ? t('events.sentence.leavesGame', { actor }) : t('events.playerLeavesGame');
+  if (eventType === 'player_dropped') return actor ? t('events.sentence.droppedFromGame', { actor }) : t('events.playerDroppedFromGame');
+  if (eventType === 'mass_disconnect') return actor ? t('events.sentence.massDisconnect', { actor }) : t('events.massDisconnect');
+  if (eventType === 'player_stopped_playing') return actor ? t('events.sentence.stopsPlaying', { actor }) : t('events.playerStopsPlaying');
   if (eventType === 'late_alliance') {
     const teams = Array.isArray(event?.alliance_teams) ? event.alliance_teams : [];
     const teamPhrases = teams
       .map((team) => Array.isArray(team) ? team.map((p) => String(p?.name || '').trim()).filter(Boolean) : [])
       .filter((names) => names.length >= 2)
-      .map((names) => `${joinWithAnd(names)} form an alliance`);
-    if (teamPhrases.length > 0) return teamPhrases.join('; ');
-    if (actor && target) return `${actor} allies with ${target}`;
-    return actor ? `${actor} forms an alliance` : 'Alliance';
+      .map((names) => t('events.sentence.formAlliance', { players: joinWithAnd(names) }));
+    if (teamPhrases.length > 0) return teamPhrases.join(t('list.clauseSeparator'));
+    if (actor && target) return t('events.sentence.alliesWith', { actor, target });
+    return actor ? t('events.sentence.formsAlliance', { actor }) : t('events.alliance');
   }
-  if (eventType === 'team_stacking_detected') return 'Team stacking detected';
+  if (eventType === 'team_stacking_detected') return t('events.teamStackingDetected');
   if (eventType === 'manner_pylon') {
-    if (actor && target) return `${actor} manner pylons at ${target}'s main`;
-    return actor ? `${actor} manner pylons` : 'Manner pylon';
+    if (actor && target) return t('events.sentence.mannerPylonAt', { actor, target });
+    return actor ? t('events.sentence.mannerPylon', { actor }) : t('events.mannerPylon');
   }
-  if (eventType === 'first_reaver') return actor ? `${actor} trains their first Reaver` : 'First Reaver';
-  if (eventType === 'first_corsair') return actor ? `${actor} trains their first Corsair` : 'First Corsair';
-  if (eventType === 'speedlot') return actor ? `${actor} starts Zealot Speed research` : 'Zealot Speed';
-  if (eventType === 'location_inactive') return location ? `Location inactive: ${location}` : 'Location inactive';
+  if (eventType === 'first_reaver') return actor ? t('events.sentence.firstReaver', { actor }) : t('events.firstReaver');
+  if (eventType === 'first_corsair') return actor ? t('events.sentence.firstCorsair', { actor }) : t('events.firstCorsair');
+  if (eventType === 'speedlot') return actor ? t('events.sentence.speedlot', { actor }) : t('events.zealotSpeed');
+  if (eventType === 'location_inactive') return location ? t('events.locationInactive', { location }) : t('events.locationInactiveNoLocation');
   if (eventType === 'expansion') {
-    if (actor && isActorAtOwnNaturalBase(event)) return `${actor} expands to their natural`;
-    return actor && location ? `${actor} expands to ${location}` : 'Expansion';
+    if (actor && isActorAtOwnNaturalBase(event)) return t('events.sentence.expandsToNatural', { actor });
+    return actor && location ? t('events.sentence.expandsTo', { actor, location }) : t('events.expansion');
   }
-  if (eventType === 'attack') return actor && target && location ? `${actor} attacks ${target} ${attackLocationClause(event, location)}` : 'Attack';
-  if (eventType === 'scout') return actor && target && location ? `${actor} scouts ${target} at ${location}` : 'Scout';
+  if (eventType === 'attack') {
+    return actor && target && location
+      ? t('events.sentence.attacks', { actor, target, locationClause: attackLocationClause(event, location) })
+      : t('events.attack');
+  }
+  if (eventType === 'scout') return actor && target && location ? t('events.sentence.scouts', { actor, target, location }) : t('events.scout');
   if (eventType === 'cliff_drop' || eventType === 'drop') {
-    const fallback = eventType === 'cliff_drop' ? 'Cliff drop'
-      : 'Drop';
+    const fallback = eventType === 'cliff_drop' ? t('events.cliffDrop') : t('events.drop');
     if (!actor || !target || !location) return fallback;
     // event.base is the destination polygon for drops (toReplayEvent stamps
     // DstPolyID there). Source, when worldstate could resolve it, lives on
     // payload.sb → event.source_base.
     const sourceLabel = String(event?.source_base?.name || '').trim();
-    const dropCount = Number(event?.drop_count || 0) > 1 ? ` (×${event.drop_count})` : '';
-    const fromClause = sourceLabel ? ` from ${sourceLabel}` : '';
-    if (eventType === 'cliff_drop') {
-      return `${actor} cliff drops${dropCount}${fromClause} ${target} at ${location}`;
-    }
-    const verb = 'drops';
-    return `${actor} ${verb}${dropCount}${fromClause} on ${target} at ${location}`;
+    const count = Number(event?.drop_count || 0) > 1 ? t('events.fragment.count', { count: event.drop_count }) : '';
+    const from = sourceLabel ? t('events.fragment.from', { location: sourceLabel }) : '';
+    const params = { actor, target, location, icon: '', count, from };
+    return eventType === 'cliff_drop' ? t('events.sentence.cliffDrops', params) : t('events.sentence.drops', params);
   }
   if (eventType === 'recall') {
     // CastRecall's X/Y is the *source* of the teleport; the destination is
@@ -490,46 +536,42 @@ const gameEventDescription = (event, registry) => {
     // proxy fires we surface "(destination unknown)".
     const targetLocation = gameEventTargetLocationLabel(event);
     const targetOwnerName = String(event?.target_owner?.name || '').trim();
-    const recallCount = Number(event?.recall_count || 0) > 1 ? ` (×${event.recall_count})` : '';
-    if (!actor) return 'Recall';
-    const fromClause = location ? ` from ${location}` : '';
+    const count = Number(event?.recall_count || 0) > 1 ? t('events.fragment.count', { count: event.recall_count }) : '';
+    if (!actor) return t('events.recall');
+    const from = location ? t('events.fragment.from', { location }) : '';
+    const params = { actor, icon: '', count, from, owner: targetOwnerName, location: targetLocation };
     if (targetLocation) {
-      const toClause = targetOwnerName
-        ? ` to ${targetOwnerName} ${targetLocation}`
-        : ` to ${targetLocation}`;
-      return `${actor} recalls${recallCount}${fromClause}${toClause}`;
+      return targetOwnerName ? t('events.sentence.recallsToOwner', params) : t('events.sentence.recallsTo', params);
     }
-    return `${actor} recalls${recallCount}${fromClause} (destination unknown)`;
+    return t('events.sentence.recallsUnknown', params);
   }
   if (eventType === 'nydus_attack') {
-    if (!actor || !target || !location) return 'Offensive nydus';
-    return `${actor} makes an offensive nydus onto ${target} at ${location}`;
+    if (!actor || !target || !location) return t('events.offensiveNydus');
+    return t('events.sentence.nydus', { actor, target, location, icon: '' });
   }
-  if (eventType === 'nuke') return actor && target && location ? `${actor} nukes ${target} at ${location}` : 'Nuke';
-  if (eventType === 'cannon_rush' || eventType === 'bunker_rush' || eventType === 'zergling_rush') {
-    const rushKind = eventType === 'cannon_rush' ? 'cannon' : eventType === 'bunker_rush' ? 'bunker' : 'zergling';
-    if (actor && target) return `${actor} ${rushKind} rushes ${target}`;
-    if (actor && location) return `${actor} ${rushKind} rushes at ${location}`;
-    if (actor) return `${actor} ${rushKind} rushes`;
-    return 'Rush';
+  if (eventType === 'nuke') return actor && target && location ? t('events.sentence.nukes', { actor, target, location }) : t('events.nuke');
+  if (RUSH_SENTENCE_KEYS[eventType]) {
+    const kind = RUSH_SENTENCE_KEYS[eventType];
+    if (actor && target) return t(`events.sentence.${kind}`, { actor, target });
+    if (actor && location) return t(`events.sentence.${kind}At`, { actor, location });
+    if (actor) return t(`events.sentence.${kind}NoTarget`, { actor });
+    return t('events.rush');
   }
   if (eventType === 'takeover') {
-    if (actor && isActorAtOwnNaturalBase(event)) return `${actor} takes over their natural`;
-    return actor && location ? `${actor} takes over ${location}` : 'Takeover';
+    if (actor && isActorAtOwnNaturalBase(event)) return t('events.sentence.takesOverNatural', { actor });
+    return actor && location ? t('events.sentence.takesOver', { actor, location }) : t('events.takeover');
   }
-  if (eventType === 'proxy_gate' || eventType === 'proxy_rax' || eventType === 'proxy_factory' || eventType === 'proxy_starport') {
-    const proxyKind = eventType === 'proxy_gate' ? 'gateway'
-      : eventType === 'proxy_rax' ? 'barracks'
-      : eventType === 'proxy_starport' ? 'starport' : 'factory';
-    if (actor && location) return `${actor} proxies ${proxyKind} at ${location}`;
-    if (actor)             return `${actor} proxies ${proxyKind}`;
-    if (location)          return `Proxy ${proxyKind} at ${location}`;
-    return `Proxy ${proxyKind}`;
+  if (PROXY_SENTENCE_KEYS[eventType]) {
+    const kind = PROXY_SENTENCE_KEYS[eventType];
+    if (actor && location) return t(`events.sentence.${kind}`, { actor, location });
+    if (actor) return t(`events.sentence.${kind}NoLocation`, { actor });
+    if (location) return t(`events.${kind}At`, { location });
+    return t(`events.${kind}`);
   }
-  if (eventType === 'became_terran') return actor ? `${actor} became Terran` : 'Became Terran';
-  if (eventType === 'became_zerg') return actor ? `${actor} became Zerg` : 'Became Zerg';
-  if (eventType === 'mech_transition') return actor ? `${actor} transitions to Mech` : 'Mech transition';
-  return prettyPatternName(event?.type || 'event');
+  if (eventType === 'became_terran') return actor ? t('events.sentence.becameTerran', { actor }) : t('events.becameTerran');
+  if (eventType === 'became_zerg') return actor ? t('events.sentence.becameZerg', { actor }) : t('events.becameZerg');
+  if (eventType === 'mech_transition') return actor ? t('events.sentence.mechTransition', { actor }) : t('events.mechTransition');
+  return fallbackEventName(event);
 };
 
 // The backend marks the user's own players by appending this to their display
@@ -543,12 +585,13 @@ const YOU_MARKER = '🫵';
 // profile may not be cached yet, and plenty of accounts never ladder.
 
 const PlayerDisplayName = ({ name }) => {
+  const t = useT();
   const text = String(name ?? '');
   if (!text.endsWith(YOU_MARKER)) return <>{text}</>;
   return (
     <>
       {text.slice(0, -YOU_MARKER.length).trimEnd()}
-      <span className="you-marker" data-tip="You">{YOU_MARKER}</span>
+      <span className="you-marker" data-tip={t('player.youTip')}>{YOU_MARKER}</span>
     </>
   );
 };
@@ -559,20 +602,24 @@ const FEATURED_KEY_PREFIX = 'pro:';
 const isFeaturedPlayerKey = (key) => String(key || '').trim().toLowerCase().startsWith(FEATURED_KEY_PREFIX);
 
 const ProPhoto = ({ url, name, large, credit }) => {
+  const t = useT();
   const cls = large ? 'pro-photo pro-photo-large' : 'pro-photo';
   if (!url) {
     return <span className={`pro-photo-placeholder ${large ? 'pro-photo-large' : ''}`} aria-hidden="true">★</span>;
   }
-  const img = <img className={cls} src={url} alt={name ? `${name} portrait` : 'portrait'} title={credit ? 'Photo: Liquipedia' : undefined} loading="lazy" />;
+  const img = <img className={cls} src={url} alt={name ? t('player.portraitAlt', { name }) : t('player.portraitAltGeneric')} title={credit ? t('player.photoCredit') : undefined} loading="lazy" />;
   if (!credit) return img;
-  return <a href={credit} target="_blank" rel="noopener noreferrer" className="pro-photo-link" title="Photo: Liquipedia">{img}</a>;
+  return <a href={credit} target="_blank" rel="noopener noreferrer" className="pro-photo-link" title={t('player.photoCredit')}>{img}</a>;
 };
 
-const FeaturedBadge = ({ compact }) => (
-  <span className="featured-badge" title="Built-in profile: precomputed from public ladder replays, not from your database">
-    ★{compact ? '' : ' Built in'}
-  </span>
-);
+const FeaturedBadge = ({ compact }) => {
+  const t = useT();
+  return (
+    <span className="featured-badge" title={t('player.featured.badgeTitle')}>
+      ★{compact ? '' : t('player.featured.badgeLabel')}
+    </span>
+  );
+};
 
 const featuredOverlayPoints = (points, valueLabel) => (Array.isArray(points) ? points : [])
   .map((point) => ({
@@ -582,10 +629,10 @@ const featuredOverlayPoints = (points, valueLabel) => (Array.isArray(points) ? p
     games_played: Number(point?.games || 0),
     featured: true,
     tooltip_lines: [
-      `★ ${String(point?.player_name || '')} (built-in profile)`,
-      `${valueLabel}: ${Number(point?.value || 0).toFixed(2)}`,
-      `Sampled ladder games: ${Number(point?.games || 0)}`,
-      'Shown for reference, not counted in this population.',
+      t('player.featured.overlayName', { name: String(point?.player_name || '') }),
+      t('appChart.tooltip.labelValue', { label: valueLabel, value: Number(point?.value || 0).toFixed(2) }),
+      t('player.featured.sampledGames', { count: Number(point?.games || 0) }),
+      t('player.featured.referenceOnly'),
     ],
   }))
   .filter((point) => Number.isFinite(point.value) && point.label);
@@ -665,8 +712,9 @@ function useCountryFlagBackfill(missingKeys, enabled) {
 }
 
 const FingerprintBadge = ({ match, compact }) => {
+  const t = useT();
   if (!match) return null;
-  const label = match.confidence === 'high' ? 'Likely' : 'Possibly';
+  const label = match.confidence === 'high' ? t('fingerprint.likely') : t('fingerprint.possibly');
   const tilde = match.confidence === 'moderate' ? '~' : '';
   const nameEl = match.liquipedia
     ? <a href={match.liquipedia} target="_blank" rel="noopener noreferrer">{match.label}</a>
@@ -677,7 +725,7 @@ const FingerprintBadge = ({ match, compact }) => {
         <a href="https://github.com/marianogappa/scfingerprint" target="_blank" rel="noopener noreferrer" className="workflow-fingerprint-icon-link">
           {tilde}<span className="workflow-fingerprint-emoji">🔎</span>
         </a>
-        <span className="workflow-fingerprint-tooltip">{label} {match.label} · Using fingerprinting technology</span>
+        <span className="workflow-fingerprint-tooltip">{t('fingerprint.compactTooltip', { confidence: label, name: match.label })}</span>
       </span>
     );
   }
@@ -687,9 +735,9 @@ const FingerprintBadge = ({ match, compact }) => {
         <a href="https://github.com/marianogappa/scfingerprint" target="_blank" rel="noopener noreferrer" className="workflow-fingerprint-icon-link">
           {tilde}<span className="workflow-fingerprint-emoji">🔎</span>
         </a>
-        <span className="workflow-fingerprint-tooltip">Using fingerprinting technology</span>
+        <span className="workflow-fingerprint-tooltip">{t('fingerprint.tooltip')}</span>
       </span>
-      <span className="workflow-fingerprint-label">{label} {nameEl}</span>
+      <span className="workflow-fingerprint-label">{fillTemplate(t('fingerprint.label'), { confidence: label, name: nameEl })}</span>
     </span>
   );
 };
@@ -717,30 +765,31 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
   const location = gameEventLocationLabel(event);
   const actorSpan = gamePlayerNameSpan(event?.actor, 'a');
   const targetSpan = gamePlayerNameSpan(event?.target, 't');
+  const fill = (key, parts) => fillTemplate(t(key), parts);
 
   if (eventType === 'bo_openers') {
     const lines = boOpenerLines(event);
-    if (lines.length === 0) return 'Build orders';
+    if (lines.length === 0) return t('events.buildOrders');
     return (
       <span className="workflow-bo-openers">
         {lines.map((line) => {
           const raceIcon = getRaceIcon(line.race);
+          const nameSpan = (
+            <span className="workflow-event-row-player">
+              <PlayerSwatch color={line.color} title={line.name} />
+              {line.name}
+            </span>
+          );
+          const bo = line.boNames.join(' / ');
+          const parts = { name: nameSpan, location: line.startLocation, bo };
           return (
             <span key={`bo-line-${line.playerID}`} className="workflow-bo-openers-line">
-              {raceIcon ? <img src={raceIcon} alt={line.race || 'race'} className="unit-icon-inline workflow-bo-openers-race" /> : null}
-              {line.isWinner ? <span className="workflow-crown" title="Winner">👑</span> : null}
-              <span className="workflow-event-row-player">
-                <PlayerSwatch color={line.color} title={line.name} />
-                {line.name}
-              </span>
-              {(() => {
-                const bo = line.boNames.length > 0 ? `opens with ${line.boNames.join(' / ')}` : '';
-                const start = line.startLocation ? `starts at ${line.startLocation}` : '';
-                if (start && bo) return <> {start} and {bo}</>;
-                if (start) return <> {start}</>;
-                if (bo) return <> {bo}</>;
-                return null;
-              })()}
+              {raceIcon ? <img src={raceIcon} alt={line.race || t('race.alt')} className="unit-icon-inline workflow-bo-openers-race" /> : null}
+              {line.isWinner ? <span className="workflow-crown" title={t('common.winner')}>👑</span> : null}
+              {line.startLocation && bo ? fill('events.opener.startsAndOpens', parts)
+                : line.startLocation ? fill('events.opener.starts', parts)
+                  : bo ? fill('events.opener.opens', parts)
+                    : nameSpan}
             </span>
           );
         })}
@@ -749,21 +798,20 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
   }
 
   if (typeof eventType === 'string' && eventType.startsWith('bo_')) {
-    const def = registry?.[eventType];
-    const boName = def?.name || prettyPatternName(eventType.replace(/^bo_/, ''));
-    if (!actorName) return `Opens with ${boName}`;
-    return <>{actorSpan} opens with {boName}</>;
+    const bo = boEventName(eventType, registry);
+    if (!actorName) return t('events.sentence.opensWithNoActor', { bo });
+    return fill('events.sentence.opensWith', { actor: actorSpan, bo });
   }
 
   if (eventType === 'player_start') {
-    if (actorName && location) return <>{actorSpan} starts at {location}</>;
-    if (actorName) return <>{actorSpan} starts</>;
-    return 'Player start';
+    if (actorName && location) return fill('events.sentence.startsAt', { actor: actorSpan, location });
+    if (actorName) return fill('events.sentence.starts', { actor: actorSpan });
+    return t('events.playerStart');
   }
-  if (eventType === 'leave_game') return actorName ? <>{actorSpan} leaves the game</> : 'Player leaves the game';
-  if (eventType === 'player_dropped') return actorName ? <>{actorSpan} drops from the game (connection lost)</> : 'Player drops from the game';
-  if (eventType === 'mass_disconnect') return actorName ? <>{actorSpan} lost connection; the game ended without a result</> : 'Connection lost; the game ended without a result';
-  if (eventType === 'player_stopped_playing') return actorName ? <>{actorSpan} stops playing</> : 'Player stops playing';
+  if (eventType === 'leave_game') return actorName ? fill('events.sentence.leavesGame', { actor: actorSpan }) : t('events.playerLeavesGame');
+  if (eventType === 'player_dropped') return actorName ? fill('events.sentence.droppedFromGame', { actor: actorSpan }) : t('events.playerDroppedFromGame');
+  if (eventType === 'mass_disconnect') return actorName ? fill('events.sentence.massDisconnect', { actor: actorSpan }) : t('events.massDisconnect');
+  if (eventType === 'player_stopped_playing') return actorName ? fill('events.sentence.stopsPlaying', { actor: actorSpan }) : t('events.playerStopsPlaying');
   if (eventType === 'late_alliance') {
     const teams = Array.isArray(event?.alliance_teams) ? event.alliance_teams : [];
     const teamPhrases = teams
@@ -776,61 +824,61 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
             const spans = row.map((p, pi) => (
               <React.Fragment key={`a-${ti}-${pi}`}>
                 {gamePlayerNameSpan(p, `a-${ti}-p-${pi}`)}
-                {pi < row.length - 2 ? ', ' : null}
-                {pi === row.length - 2 ? (row.length === 2 ? ' and ' : ', and ') : null}
+                {pi < row.length - 2 ? t('list.separator') : null}
+                {pi === row.length - 2 ? (row.length === 2 ? t('list.twoSeparator') : t('list.lastSeparator')) : null}
               </React.Fragment>
             ));
             return (
               <React.Fragment key={`team-${ti}`}>
-                {ti > 0 ? '; ' : null}
-                {spans} form an alliance
+                {ti > 0 ? t('list.clauseSeparator') : null}
+                {fill('events.sentence.formAlliance', { players: spans })}
               </React.Fragment>
             );
           })}
         </>
       );
     }
-    if (actorName && targetName) return <>{actorSpan} allies with {targetSpan}</>;
-    return actorName ? <>{actorSpan} forms an alliance</> : 'Alliance';
+    if (actorName && targetName) return fill('events.sentence.alliesWith', { actor: actorSpan, target: targetSpan });
+    return actorName ? fill('events.sentence.formsAlliance', { actor: actorSpan }) : t('events.alliance');
   }
-  if (eventType === 'team_stacking_detected') return 'Team stacking detected';
+  if (eventType === 'team_stacking_detected') return t('events.teamStackingDetected');
   if (eventType === 'manner_pylon') {
-    if (actorName && targetName) return <>{actorSpan} manner pylons at {targetSpan}'s main</>;
-    return actorName ? <>{actorSpan} manner pylons</> : 'Manner pylon';
+    if (actorName && targetName) return fill('events.sentence.mannerPylonAt', { actor: actorSpan, target: targetSpan });
+    return actorName ? fill('events.sentence.mannerPylon', { actor: actorSpan }) : t('events.mannerPylon');
   }
-  if (eventType === 'first_reaver') return actorName ? <>{actorSpan} trains their first Reaver</> : 'First Reaver';
-  if (eventType === 'first_corsair') return actorName ? <>{actorSpan} trains their first Corsair</> : 'First Corsair';
-  if (eventType === 'speedlot') return actorName ? <>{actorSpan} starts Zealot Speed research</> : 'Zealot Speed';
-  if (eventType === 'location_inactive') return location ? `Location inactive: ${location}` : 'Location inactive';
+  if (eventType === 'first_reaver') return actorName ? fill('events.sentence.firstReaver', { actor: actorSpan }) : t('events.firstReaver');
+  if (eventType === 'first_corsair') return actorName ? fill('events.sentence.firstCorsair', { actor: actorSpan }) : t('events.firstCorsair');
+  if (eventType === 'speedlot') return actorName ? fill('events.sentence.speedlot', { actor: actorSpan }) : t('events.zealotSpeed');
+  if (eventType === 'location_inactive') return location ? t('events.locationInactive', { location }) : t('events.locationInactiveNoLocation');
   if (eventType === 'expansion') {
-    if (actorName && isActorAtOwnNaturalBase(event)) return <>{actorSpan} expands to their natural</>;
-    return actorName && location ? <>{actorSpan} expands to {location}</> : 'Expansion';
+    if (actorName && isActorAtOwnNaturalBase(event)) return fill('events.sentence.expandsToNatural', { actor: actorSpan });
+    return actorName && location ? fill('events.sentence.expandsTo', { actor: actorSpan, location }) : t('events.expansion');
   }
   if (eventType === 'attack') {
     return actorName && targetName && location
-      ? <>{actorSpan} attacks {targetSpan} {attackLocationClause(event, location)}</>
-      : 'Attack';
+      ? fill('events.sentence.attacks', { actor: actorSpan, target: targetSpan, locationClause: attackLocationClause(event, location) })
+      : t('events.attack');
   }
   if (eventType === 'scout') {
     return actorName && targetName && location
-      ? <>{actorSpan} scouts {targetSpan} at {location}</>
-      : 'Scout';
+      ? fill('events.sentence.scouts', { actor: actorSpan, target: targetSpan, location })
+      : t('events.scout');
   }
   if (eventType === 'nydus_attack') {
-    if (!actorName || !targetName || !location) return 'Offensive nydus';
+    if (!actorName || !targetName || !location) return t('events.offensiveNydus');
     const nydusURL = getUnitIcon('nyduscanal');
+    const nydusName = t.server('server.name.nydus_canal', 'Nydus Canal');
     const nydusIcon = nydusURL ? (
-      <img src={nydusURL} alt="Nydus Canal" title="Nydus Canal" className="workflow-event-row-recall-arbiter" />
+      <img src={nydusURL} alt={nydusName} title={nydusName} className="workflow-event-row-recall-arbiter" />
     ) : null;
-    return <>{actorSpan} makes an offensive nydus{nydusIcon} onto {targetSpan} at {location}</>;
+    return fill('events.sentence.nydus', { actor: actorSpan, target: targetSpan, location, icon: nydusIcon });
   }
   if (eventType === 'cliff_drop' || eventType === 'drop') {
-    const fallback = eventType === 'cliff_drop' ? 'Cliff drop'
-      : 'Drop';
+    const fallback = eventType === 'cliff_drop' ? t('events.cliffDrop') : t('events.drop');
     if (!actorName || !targetName || !location) return fallback;
     const sourceLabel = String(event?.source_base?.name || '').trim();
-    const dropCount = Number(event?.drop_count || 0) > 1 ? ` (×${event.drop_count})` : '';
-    const fromClause = sourceLabel ? <> from {sourceLabel}</> : null;
+    const count = Number(event?.drop_count || 0) > 1 ? t('events.fragment.count', { count: event.drop_count }) : '';
+    const from = sourceLabel ? t('events.fragment.from', { location: sourceLabel }) : '';
     // Inline vessel icon right after the verb — race-correct transport. Mirrors
     // the Arbiter-icon-after-"recalls" pattern. The trailing row-icon strip
     // strips the vessel to avoid duplication (see gameEventRowIconEntries).
@@ -839,74 +887,70 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
     const vesselURL = dropTransportIconForRace(actorRace);
     const vesselName = (() => {
       const r = actorRace.toLowerCase();
-      if (r === 'terran') return 'Dropship';
-      if (r === 'protoss') return 'Shuttle';
-      if (r === 'zerg') return 'Overlord';
-      return 'transport';
+      if (r === 'terran') return t.server('server.name.dropship', 'Dropship');
+      if (r === 'protoss') return t.server('server.name.shuttle', 'Shuttle');
+      if (r === 'zerg') return t.server('server.name.overlord', 'Overlord');
+      return t('events.transportAlt');
     })();
     const vesselIcon = vesselURL ? (
       <img src={vesselURL} alt={vesselName} title={vesselName} className="workflow-event-row-recall-arbiter" />
     ) : null;
-    if (eventType === 'cliff_drop') {
-      return <>{actorSpan} cliff drops{vesselIcon}{dropCount}{fromClause} {targetSpan} at {location}</>;
-    }
-    const verb = 'drops';
-    return <>{actorSpan} {verb}{vesselIcon}{dropCount}{fromClause} on {targetSpan} at {location}</>;
+    const parts = { actor: actorSpan, target: targetSpan, location, icon: vesselIcon, count, from };
+    return eventType === 'cliff_drop' ? fill('events.sentence.cliffDrops', parts) : fill('events.sentence.drops', parts);
   }
   if (eventType === 'recall') {
-    if (!actorName) return 'Recall';
+    if (!actorName) return t('events.recall');
     const targetLocation = gameEventTargetLocationLabel(event);
     const targetOwner = event?.target_owner;
     const targetOwnerSpan = gamePlayerNameSpan(targetOwner, 'to');
     const targetOwnerName = String(targetOwner?.name || '').trim();
-    const recallCount = Number(event?.recall_count || 0) > 1 ? ` (×${event.recall_count})` : '';
+    const count = Number(event?.recall_count || 0) > 1 ? t('events.fragment.count', { count: event.recall_count }) : '';
     const arbiterIconURL = getUnitIcon('arbiter');
+    const arbiterName = t.server('server.name.arbiter', 'Arbiter');
     const arbiterIcon = arbiterIconURL ? (
-      <img src={arbiterIconURL} alt="Arbiter" title="Arbiter" className="workflow-event-row-recall-arbiter" />
+      <img src={arbiterIconURL} alt={arbiterName} title={arbiterName} className="workflow-event-row-recall-arbiter" />
     ) : null;
+    const from = location ? t('events.fragment.from', { location }) : '';
+    const parts = { actor: actorSpan, icon: arbiterIcon, count, from, owner: targetOwnerSpan, location: targetLocation };
     if (targetLocation) {
-      if (targetOwnerName) {
-        return <>{actorSpan} recalls{arbiterIcon}{recallCount}{location ? <> from {location}</> : null} to {targetOwnerSpan} {targetLocation}</>;
-      }
-      return <>{actorSpan} recalls{arbiterIcon}{recallCount}{location ? <> from {location}</> : null} to {targetLocation}</>;
+      return targetOwnerName ? fill('events.sentence.recallsToOwner', parts) : fill('events.sentence.recallsTo', parts);
     }
-    return <>{actorSpan} recalls{arbiterIcon}{recallCount}{location ? <> from {location}</> : null} (destination unknown)</>;
+    return fill('events.sentence.recallsUnknown', parts);
   }
   if (eventType === 'nuke') {
     return actorName && targetName && location
-      ? <>{actorSpan} nukes {targetSpan} at {location}</>
-      : 'Nuke';
+      ? fill('events.sentence.nukes', { actor: actorSpan, target: targetSpan, location })
+      : t('events.nuke');
   }
-  if (eventType === 'cannon_rush' || eventType === 'bunker_rush' || eventType === 'zergling_rush') {
-    const rushKind = eventType === 'cannon_rush' ? 'cannon' : eventType === 'bunker_rush' ? 'bunker' : 'zergling';
-    if (actorName && targetName) return <>{actorSpan} {rushKind} rushes {targetSpan}</>;
-    if (actorName && location) return <>{actorSpan} {rushKind} rushes at {location}</>;
-    if (actorName) return <>{actorSpan} {rushKind} rushes</>;
-    return 'Rush';
+  if (RUSH_SENTENCE_KEYS[eventType]) {
+    const kind = RUSH_SENTENCE_KEYS[eventType];
+    if (actorName && targetName) return fill(`events.sentence.${kind}`, { actor: actorSpan, target: targetSpan });
+    if (actorName && location) return fill(`events.sentence.${kind}At`, { actor: actorSpan, location });
+    if (actorName) return fill(`events.sentence.${kind}NoTarget`, { actor: actorSpan });
+    return t('events.rush');
   }
   if (eventType === 'takeover') {
-    if (actorName && isActorAtOwnNaturalBase(event)) return <>{actorSpan} takes over their natural</>;
-    return actorName && location ? <>{actorSpan} takes over {location}</> : 'Takeover';
+    if (actorName && isActorAtOwnNaturalBase(event)) return fill('events.sentence.takesOverNatural', { actor: actorSpan });
+    return actorName && location ? fill('events.sentence.takesOver', { actor: actorSpan, location }) : t('events.takeover');
   }
-  if (eventType === 'proxy_gate' || eventType === 'proxy_rax' || eventType === 'proxy_factory' || eventType === 'proxy_starport') {
-    const proxyKind = eventType === 'proxy_gate' ? 'gateway'
-      : eventType === 'proxy_rax' ? 'barracks'
-      : eventType === 'proxy_starport' ? 'starport' : 'factory';
-    if (actorName && location) return <>{actorSpan} proxies {proxyKind} at {location}</>;
-    if (actorName)              return <>{actorSpan} proxies {proxyKind}</>;
-    if (location)               return `Proxy ${proxyKind} at ${location}`;
-    return `Proxy ${proxyKind}`;
+  if (PROXY_SENTENCE_KEYS[eventType]) {
+    const kind = PROXY_SENTENCE_KEYS[eventType];
+    if (actorName && location) return fill(`events.sentence.${kind}`, { actor: actorSpan, location });
+    if (actorName) return fill(`events.sentence.${kind}NoLocation`, { actor: actorSpan });
+    if (location) return t(`events.${kind}At`, { location });
+    return t(`events.${kind}`);
   }
-  if (eventType === 'became_terran') return actorName ? <>{actorSpan} became Terran</> : 'Became Terran';
-  if (eventType === 'became_zerg') return actorName ? <>{actorSpan} became Zerg</> : 'Became Zerg';
-  if (eventType === 'mech_transition') return actorName ? <>{actorSpan} transitions to Mech</> : 'Mech transition';
-  return prettyPatternName(event?.type || 'event');
+  if (eventType === 'became_terran') return actorName ? fill('events.sentence.becameTerran', { actor: actorSpan }) : t('events.becameTerran');
+  if (eventType === 'became_zerg') return actorName ? fill('events.sentence.becameZerg', { actor: actorSpan }) : t('events.becameZerg');
+  if (eventType === 'mech_transition') return actorName ? fill('events.sentence.mechTransition', { actor: actorSpan }) : t('events.mechTransition');
+  return fallbackEventName(event);
 };
 
 const gameEventSearchText = (event, registry) => {
   const parts = [
     gameEventDescription(event, registry),
     event?.type,
+    String(event?.type || '').replace(/_/g, ' '),
     event?.actor?.name,
     event?.target?.name,
     gameEventLocationLabel(event),
@@ -1119,13 +1163,13 @@ const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
         // the matching detected-pattern row (when one exists).
         const rendered = renderPillText(def, PILL_SURFACES.gamesList, rowByKey[key]);
         if (rendered) {
-          return { key, label: rendered.label || def.name, iconKey: rendered.iconKey || '', beta: featureIsBeta(def) };
+          return { key, label: rendered.label || markerName(def), iconKey: rendered.iconKey || '', beta: featureIsBeta(def) };
         }
-        return { key, label: def.games_list.label || def.name, iconKey: def.games_list.icon_key || '', beta: featureIsBeta(def) };
+        return { key, label: t.server(`server.marker.${key}.games_list.label`, def.games_list.label) || markerName(def), iconKey: def.games_list.icon_key || '', beta: featureIsBeta(def) };
       }
       const ge = gameEventFeaturesByKey[key];
-      if (ge) return { key, label: ge.label, iconKey: ge.icon_key || '', iconKeys: ge.icon_keys || [] };
-      return { key, label: def?.name || key, iconKey: '', beta: featureIsBeta(def) };
+      if (ge) return { key, label: t.server(`server.game_event.${key}.label`, ge.label), iconKey: ge.icon_key || '', iconKeys: ge.icon_keys || [] };
+      return { key, label: markerName(def) || key, iconKey: '', beta: featureIsBeta(def) };
     });
 
   return elideGenericDropPill(pills);
@@ -1164,21 +1208,26 @@ const elideGenericDropLabels = (labels) => {
 /** Featuring is the derived insight — the reason this table exists — so every
  *  marker renders. It used to crop to one row behind a "…" toggle, which hid
  *  content in 83 of 100 rows while the player names beside it rendered in full. */
-function FeaturingCell({ featuring }) {
+function FeaturingCell({ featuring, featuringKeys }) {
+  const t = useT();
+  const keyByLabel = new Map((featuring || []).map((label, idx) => [label, featuringKeys?.[idx] || '']));
   const labels = elideGenericDropLabels(featuring || []);
 
   if (labels.length === 0) {
-    return <span className="rd-no-feature">no markers</span>;
+    return <span className="rd-no-feature">{t('games.noMarkers')}</span>;
   }
 
   return (
     <div className="workflow-featuring-wrap">
       <div className="workflow-pattern-pills">
-        {labels.map((pill, pillIdx) => (
-          <span key={`${pillIdx}-${pill}`} className="workflow-pattern-pill workflow-feature-pill">
-            <span>{pill}</span>
-          </span>
-        ))}
+        {labels.map((pill, pillIdx) => {
+          const key = keyByLabel.get(pill);
+          return (
+            <span key={`${pillIdx}-${pill}`} className="workflow-pattern-pill workflow-feature-pill">
+              <span>{key ? t.server(`server.chip.featuring.${key}.label`, pill) : t.buildLabel(pill)}</span>
+            </span>
+          );
+        })}
       </div>
     </div>
   );
@@ -1195,7 +1244,7 @@ const renderFeaturingPill = (pill, keyPrefix) => {
   const variantClass = isBO ? 'workflow-pattern-pill-bo workflow-pill-legended' : 'workflow-pattern-pill-strong';
   return (
     <span key={`${keyPrefix}-${pill.key}`} className={`workflow-pattern-pill ${variantClass} workflow-summary-feature-pill`}>
-      {isBO ? <span className="workflow-pill-legend">Build Order</span> : null}
+      {isBO ? <span className="workflow-pill-legend">{t('pill.buildOrderLegend')}</span> : null}
       {iconUrls.map((url, i) => (
         <img key={`${pill.key}-i${i}`} src={url} alt="" className="workflow-pattern-icon" />
       ))}
@@ -1421,31 +1470,31 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
     if (!iconKey) return [];
     const icon = getUnitIcon(iconKey);
     if (!icon) return [];
-    const label = def?.name || prettyPatternName(normalized.replace(/^bo_/, ''));
+    const label = boEventName(normalized, registry);
     return [{ src: icon, alt: label, title: label }];
   }
   if (normalized === 'leave_game') {
-    return [{ emoji: '🏳️', alt: 'left the game', title: 'Player left the game' }];
+    return [{ emoji: '🏳️', alt: t('events.icon.leftGame.alt'), title: t('events.icon.leftGame.title') }];
   }
   if (normalized === 'player_dropped') {
-    return [{ emoji: '🔌', alt: 'dropped', title: 'Player dropped (connection lost)' }];
+    return [{ emoji: '🔌', alt: t('events.icon.dropped.alt'), title: t('events.icon.dropped.title') }];
   }
   if (normalized === 'mass_disconnect') {
-    return [{ emoji: '🔌', alt: 'connection lost', title: 'The replay saver lost connection; the game ended without a result' }];
+    return [{ emoji: '🔌', alt: t('events.icon.massDisconnect.alt'), title: t('events.icon.massDisconnect.title') }];
   }
   if (normalized === 'player_stopped_playing') {
-    return [{ emoji: '💤', alt: 'stopped playing', title: 'Player stopped playing (no Leave Game)' }];
+    return [{ emoji: '💤', alt: t('events.icon.stoppedPlaying.alt'), title: t('events.icon.stoppedPlaying.title') }];
   }
   if (normalized === 'late_alliance') {
-    return [{ emoji: '🤝', alt: 'late alliance', title: 'Alliance formed after 10:00' }];
+    return [{ emoji: '🤝', alt: t('events.icon.lateAlliance.alt'), title: t('events.icon.lateAlliance.title') }];
   }
   if (normalized === 'team_stacking_detected') {
-    return [{ emoji: '😈', alt: 'team stacking', title: 'Stacking topology held >5 min' }];
+    return [{ emoji: '😈', alt: t('events.icon.teamStacking.alt'), title: t('events.icon.teamStacking.title') }];
   }
   if (normalized === 'expansion' || normalized === 'takeover') {
     const icon = getExpansionMarkerIconForRace(actorRace);
     if (!icon) return [];
-    return [{ src: icon, alt: 'townhall', title: 'Expansion' }];
+    return [{ src: icon, alt: t('events.icon.townhall.alt'), title: t('events.expansion') }];
   }
   let unitNames = Array.isArray(event?.attack_unit_types) && event.attack_unit_types.length > 0
     ? event.attack_unit_types
@@ -1470,7 +1519,8 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
     if (!icon) continue;
     if (seen.has(icon)) continue;
     seen.add(icon);
-    entries.push({ src: icon, alt: name, title: name });
+    const unitLabel = t.server(`server.name.${slugKey(name)}`, name);
+    entries.push({ src: icon, alt: unitLabel, title: unitLabel });
     if (entries.length >= 4) break;
   }
   return entries;
@@ -1629,20 +1679,20 @@ const upgradeCategoryForName = (upgradeName) => {
 //   * HP Upgrades — weapon/armor/shield tiers, with a per-race filter (these
 //     repeat per level and differ per race, so they need their own view).
 const TIMING_CATEGORY_CONFIG = [
-  { id: 'expansion_gas', label: 'Expansion & Gas', title: 'Expansion and gas timings', source: 'expansion_gas', markerMode: 'image' },
-  { id: 'research', label: 'Upgrades & Tech', title: 'Upgrade and tech research timings', source: 'research' },
-  { id: 'hp_upgrades', label: 'HP Upgrades', title: 'HP upgrades timings', source: 'upgrades' },
+  { id: 'expansion_gas', labelKey: 'timings.category.expansionGas', source: 'expansion_gas', markerMode: 'image' },
+  { id: 'research', labelKey: 'timings.category.research', source: 'research' },
+  { id: 'hp_upgrades', labelKey: 'timings.category.hpUpgrades', source: 'upgrades' },
 ];
 
 // Sub-categories overlaid within the "Upgrades & Tech" tab. Each carries a
 // distinct colour so overlaid families stay visually separable. HP upgrades
 // are intentionally excluded — they have their own tab.
 const RESEARCH_SUBCATEGORIES = [
-  { id: 'unit_range', label: 'Unit Range', source: 'upgrades', color: '#60a5fa' },
-  { id: 'unit_speed', label: 'Unit Speed', source: 'upgrades', color: '#a78bfa' },
-  { id: 'energy', label: 'Energy', source: 'upgrades', color: '#22d3ee' },
-  { id: 'capacity_cooldown_damage', label: 'Capacity/Cooldown/Damage', source: 'upgrades', color: '#f472b6' },
-  { id: 'tech', label: 'Tech', source: 'tech', color: '#84cc16' },
+  { id: 'unit_range', labelKey: 'timings.sub.unitRange', source: 'upgrades', color: '#60a5fa' },
+  { id: 'unit_speed', labelKey: 'timings.sub.unitSpeed', source: 'upgrades', color: '#a78bfa' },
+  { id: 'energy', labelKey: 'timings.sub.energy', source: 'upgrades', color: '#22d3ee' },
+  { id: 'capacity_cooldown_damage', labelKey: 'timings.sub.capacity', source: 'upgrades', color: '#f472b6' },
+  { id: 'tech', labelKey: 'timings.sub.tech', source: 'tech', color: '#84cc16' },
 ];
 
 const RESEARCH_SUBCATEGORY_BY_ID = Object.fromEntries(RESEARCH_SUBCATEGORIES.map((s) => [s.id, s]));
@@ -1667,11 +1717,13 @@ const racePrefixForUpgrade = (race) => {
 
 const prettyRaceName = (race) => {
   const value = String(race || '').trim().toLowerCase();
-  if (value === 'terran') return 'Terran';
-  if (value === 'zerg') return 'Zerg';
-  if (value === 'protoss') return 'Protoss';
-  return race || 'Unknown';
+  if (value === 'terran') return t('race.terran');
+  if (value === 'zerg') return t('race.zerg');
+  if (value === 'protoss') return t('race.protoss');
+  return race || t('race.unknown');
 };
+
+const raceLabel = (race) => (race ? prettyRaceName(race) : '');
 
 const FIRST_UNIT_EFFICIENCY_GROUP_CONFIG = [
   { race: 'protoss', buildingName: 'Forge', unitNames: ['Photon Cannon'] },
@@ -1743,7 +1795,7 @@ const DEFAULT_SUMMARY_FILTERS = {
 const SUMMARY_TOPIC_PATTERNS = {
   attack: /\battacks?\b/i,
   expansion: /\bexpands?\b|\bexpansion\b/i,
-  leaves: /\bleaves the game\b|\bstops playing\b/i,
+  leaves: /\bleaves the game\b|\bstops playing\b|\bleave game\b|\bplayer dropped\b|\bmass disconnect\b|\bstopped playing\b/i,
   nuke: /\bnuke|nuclear\b/i,
   drop: /\bdrop|dropship|shuttle\b/i,
   recall: /\brecall\b/i,
@@ -1812,12 +1864,12 @@ const renderPatternPill = (pattern, keyPrefix, team, registry) => {
   const isOpener = isOpenerEventType(pattern?.event_type);
   // A top-border legend names the pill type (opener); the Spellcasts pill
   // carries its own legend (see SpellcastsPill).
-  const legendText = isOpener ? 'Build Order' : null;
+  const legendText = isOpener ? 'pill.buildOrderLegend' : null;
   const className = `${pillClassName(rendered.style)} ${pillEventTypeClass(pattern?.event_type)} ${legendText ? 'workflow-pill-legended' : ''}`.trim();
   const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.event_type || ''}-${pattern?.detected_second ?? ''}`;
   return (
     <span key={key} className={className} title={rendered.title || undefined}>
-      {legendText ? <span className="workflow-pill-legend">{legendText}</span> : null}
+      {legendText ? <span className="workflow-pill-legend">{t(legendText)}</span> : null}
       {team !== undefined ? <span className="team-dot" style={{ backgroundColor: getTeamColor(team) }}></span> : null}
       {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
       {rendered.label ? <span>{rendered.label}</span> : null}
@@ -1838,16 +1890,18 @@ const PLAYER_INSIGHT_TYPES = {
   viewportSwitchRate: 'viewport-switch-rate',
 };
 
-const VIEWPORT_SWITCH_RATE_CONFIG = {
-  title: 'Viewport Switch Rate',
+const VIEWPORT_SWITCH_RATE_FIELDS = {
   playerField: 'average_viewport_switch_rate',
   gameField: 'viewport_switch_rate',
-  axisLabel: 'Average switches per minute',
-  overlayValueLabel: 'switches/min',
-  valueFormatter: (value) => `${Number(value || 0).toFixed(2)} switches/min`,
-  summaryFormatter: (value) => `${Number(value || 0).toFixed(2)}`,
-  interpretation: 'Higher means the player more often jumps outside the prior viewport-sized area during the mid-game window.',
 };
+
+const viewportSwitchRateText = (t) => ({
+  title: t('skillProxies.viewport.title'),
+  axisLabel: t('skillProxies.viewport.axisLabel'),
+  overlayValueLabel: t('skillProxies.viewport.overlayValueLabel'),
+  valueFormatter: (value) => t('skillProxies.viewport.value', { value: Number(value || 0).toFixed(2) }),
+  summaryFormatter: (value) => `${Number(value || 0).toFixed(2)}`,
+});
 
 const HelpTooltip = ({ text, label }) => (
   <span className="workflow-help-wrap" aria-label={label || 'Explanation'}>
@@ -1871,11 +1925,17 @@ const insightScoreLabel = (percentile) => {
   return 'Needs work';
 };
 
+const insightValueLabel = (t, label) => {
+  const match = String(label || '').match(/^(\S+)\s+(.+)$/);
+  if (!match) return label;
+  return t.server(`server.insight.valueLabel.${slugKey(match[2])}`, label, { value: match[1] });
+};
+
 const insightSummaryLabel = (percentile) => {
   const score = Math.max(0, Math.min(100, Number(percentile) || 0));
-  if (score >= 99) return 'Best in sample';
-  if (score >= 80) return `Top ${Math.max(1, Math.round(100 - score))}%`;
-  return `Better than ${Math.round(score)}%`;
+  if (score >= 99) return t('skillProxies.score.best');
+  if (score >= 80) return t('skillProxies.score.top', { value: Math.max(1, Math.round(100 - score)) });
+  return t('skillProxies.score.betterThan', { value: Math.round(score) });
 };
 
 const playerInsightDestinationTab = (insightType) => {
@@ -1955,6 +2015,7 @@ const PLAYERS_PER_LIST_ROW = 4;
 // Package-manager installs can't self-update, so we surface the exact upgrade
 // command with a one-click copy button plus a link to the release notes.
 const ManagedUpdateHint = ({ latestVersion, command, releaseUrl, className }) => {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef(null);
   useEffect(() => () => {
@@ -1975,25 +2036,26 @@ const ManagedUpdateHint = ({ latestVersion, command, releaseUrl, className }) =>
       <button
         type="button"
         className="managed-update-hint-copy"
-        data-tip={copied ? 'Copied!' : 'Copy command to clipboard'}
+        data-tip={copied ? t('update.copied') : t('update.copyCommand')}
         onClick={handleCopy}
       >
-        {copied ? '✅ Copied' : '📋 Copy'}
+        {copied ? t('update.copiedButton') : t('update.copyButton')}
       </button>
       <a
         href={releaseUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="managed-update-hint-changelog"
-        data-tip="See what's new in this release"
+        data-tip={t('update.changelogTip')}
       >
-        Changelog
+        {t('update.changelog')}
       </a>
     </span>
   );
 };
 
 function App() {
+  const t = useT();
   const initialMainRoute = useMemo(
     () => parseMainRouteSearch(typeof window !== 'undefined' ? window.location.search : ''),
     [],
@@ -2250,7 +2312,7 @@ function App() {
       setMainPlayersApmHistogram(data);
       if (data?.corpus) setResponseCorpus(data.corpus);
     } catch (err) {
-      setMainPlayersApmHistogramError(err.message || 'Failed to load players histogram');
+      setMainPlayersApmHistogramError(err.message || t('errors.loadPlayersHistogram'));
       setMainPlayersApmHistogram(null);
     } finally {
       setMainPlayersApmHistogramLoading(false);
@@ -2265,7 +2327,7 @@ function App() {
       setMainPlayersCadenceHistogram(data);
       if (data?.corpus) setResponseCorpus(data.corpus);
     } catch (err) {
-      setMainPlayersCadenceHistogramError(err.message || 'Failed to load players unit production cadence');
+      setMainPlayersCadenceHistogramError(err.message || t('errors.loadPlayersCadence'));
       setMainPlayersCadenceHistogram(null);
     } finally {
       setMainPlayersCadenceHistogramLoading(false);
@@ -2280,7 +2342,7 @@ function App() {
       setMainPlayersViewportHistogram(data);
       if (data?.corpus) setResponseCorpus(data.corpus);
     } catch (err) {
-      setMainPlayersViewportHistogramError(err.message || 'Failed to load players viewport multitasking');
+      setMainPlayersViewportHistogramError(err.message || t('errors.loadPlayersViewport'));
       setMainPlayersViewportHistogram(null);
     } finally {
       setMainPlayersViewportHistogramLoading(false);
@@ -2363,13 +2425,13 @@ function App() {
       setMainGameSeeNotice('');
       setMainGameSeeNoticeError(false);
       await api.seeGame(replayId);
-      setMainGameSeeNotice('Copied to 000_screpdb_watch_me/watch_me.rep in your replay folder.');
+      setMainGameSeeNotice(t('game.stage.copied'));
       mainGameSeeNoticeTimerRef.current = window.setTimeout(() => {
         setMainGameSeeNotice('');
         mainGameSeeNoticeTimerRef.current = null;
       }, 5000);
     } catch (err) {
-      setMainGameSeeNotice(err.message || 'Failed to copy replay');
+      setMainGameSeeNotice(err.message || t('game.stage.failed'));
       setMainGameSeeNoticeError(true);
     } finally {
       setMainGameSeeLoading(false);
@@ -2385,7 +2447,7 @@ function App() {
       const data = await api.getPlayerLastGames(normalizedPlayerKey);
       setMainPlayerLastGames(data?.last_games || []);
     } catch (err) {
-      setMainPlayerLastGamesError(err.message || 'Failed to load last games');
+      setMainPlayerLastGamesError(err.message || t('errors.loadLastGames'));
       setMainPlayerLastGames([]);
     } finally {
       setMainPlayerLastGamesLoading(false);
@@ -2400,7 +2462,7 @@ function App() {
       const data = await api.getGameHotkeys(replayId);
       setMainGameHotkeys(data || null);
     } catch (err) {
-      setMainGameHotkeysError(err.message || 'Failed to load hotkey streams');
+      setMainGameHotkeysError(err.message || t('errors.loadHotkeyStreams'));
       setMainGameHotkeys(null);
     } finally {
       setMainGameHotkeysLoading(false);
@@ -2416,7 +2478,7 @@ function App() {
       const data = await api.getPlayerHotkeySignature(normalizedPlayerKey);
       setMainPlayerHotkeySig(data || null);
     } catch (err) {
-      setMainPlayerHotkeySigError(err.message || 'Failed to load hotkey signature');
+      setMainPlayerHotkeySigError(err.message || t('errors.loadHotkeySignature'));
       setMainPlayerHotkeySig(null);
     } finally {
       setMainPlayerHotkeySigLoading(false);
@@ -2432,7 +2494,7 @@ function App() {
       const data = await api.getPlayerChatSummary(normalizedPlayerKey);
       setMainPlayerChatSummary(data?.chat_summary || null);
     } catch (err) {
-      setMainPlayerChatSummaryError(err.message || 'Failed to load chat summary');
+      setMainPlayerChatSummaryError(err.message || t('errors.loadChatSummary'));
       setMainPlayerChatSummary(null);
     } finally {
       setMainPlayerChatSummaryLoading(false);
@@ -2448,7 +2510,7 @@ function App() {
       const insightData = await api.getPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.apm);
       setMainPlayerApmInsight(insightData);
     } catch (err) {
-      setMainPlayerApmInsightError(err.message || 'Failed to load APM insight');
+      setMainPlayerApmInsightError(err.message || t('errors.loadApmInsight'));
       setMainPlayerApmInsight(null);
     } finally {
       setMainPlayerApmInsightLoading(false);
@@ -2464,7 +2526,7 @@ function App() {
       const cadenceData = await api.getPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.unitProductionCadence);
       setMainPlayerCadenceInsight(cadenceData);
     } catch (err) {
-      setMainPlayerCadenceInsightError(err.message || 'Failed to load cadence insight');
+      setMainPlayerCadenceInsightError(err.message || t('errors.loadCadenceInsight'));
       setMainPlayerCadenceInsight(null);
     } finally {
       setMainPlayerCadenceInsightLoading(false);
@@ -2480,7 +2542,7 @@ function App() {
       const viewportData = await api.getPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.viewportSwitchRate);
       setMainPlayerViewportInsight(viewportData);
     } catch (err) {
-      setMainPlayerViewportInsightError(err.message || 'Failed to load viewport insight');
+      setMainPlayerViewportInsightError(err.message || t('errors.loadViewportInsight'));
       setMainPlayerViewportInsight(null);
     } finally {
       setMainPlayerViewportInsightLoading(false);
@@ -2551,13 +2613,11 @@ function App() {
         // the user's replay folder. Suppress the empty-library auto-open of the
         // modal and show a dismissable notice instead.
         emptyDbAutoOpenRef.current = true;
-        setSampleNotice(
-          "Loaded some example replays because we couldn't find your StarCraft replay folder. Open Replay library to point screpdb at your own replays.",
-        );
+        setSampleNotice(t('library.message.sampleNotice'));
       }
       return nextReplayDir;
     } catch (err) {
-      setLibraryMessage(err.message || 'Failed to load replay library settings.');
+      setLibraryMessage(err.message || t('library.message.loadSettingsFailed'));
       return '';
     } finally {
       setLibrarySettingsLoading(false);
@@ -2567,7 +2627,7 @@ function App() {
   const persistReplayDir = async (replayDir = replayDirInput) => {
     const trimmed = String(replayDir || '').trim();
     if (!trimmed) {
-      throw new Error('Replay folder is required');
+      throw new Error(t('library.message.folderRequired'));
     }
 
     setLibrarySettingsSaving(true);
@@ -2585,9 +2645,7 @@ function App() {
   };
 
   const handleLoadSampleSet = async () => {
-    const confirmed = window.confirm(
-      'Switch to the example replays?\n\nThis changes your replay folder setting to the bundled example set. Your own replays stay where they are.',
-    );
+    const confirmed = window.confirm(t('library.message.confirmLoadSample'));
     if (!confirmed) {
       return;
     }
@@ -2596,9 +2654,9 @@ function App() {
     try {
       await api.loadSampleSet();
       await loadLibrarySettings();
-      setLibraryMessage('Switched to the example replays.');
+      setLibraryMessage(t('library.switchedToExamples'));
     } catch (err) {
-      setLibraryMessage(err.message || 'Failed to load example replays.');
+      setLibraryMessage(err.message || t('library.message.loadSampleFailed'));
     } finally {
       setSampleSetLoading(false);
     }
@@ -2613,9 +2671,9 @@ function App() {
       setReplayDirInput(detectedReplayDir);
       await persistReplayDir(detectedReplayDir);
       await loadLibrarySettings();
-      setLibraryMessage('Replay folder saved.');
+      setLibraryMessage(t('library.folderSaved'));
     } catch (err) {
-      setLibraryMessage(err.message || 'Failed to switch to your replay folder.');
+      setLibraryMessage(err.message || t('library.message.switchFolderFailed'));
     }
   };
 
@@ -2727,7 +2785,7 @@ function App() {
       const res = await api.setFeatureFlag(key, enabled);
       setFeatureFlags(res?.feature_flags || {});
     } catch (err) {
-      setFeatureFlagsMessage(err.message || 'Failed to save feature flag');
+      setFeatureFlagsMessage(err.message || t('settings.errors.saveFlag'));
       setFeatureFlagsMessageIsError(true);
     } finally {
       setFeatureFlagsSaving(false);
@@ -2744,7 +2802,7 @@ function App() {
       const res = await api.getGamingSession();
       setGamingSession(res);
     } catch (err) {
-      setGamingSessionError(err.message || 'Failed to load gaming session');
+      setGamingSessionError(err.message || t('session.message.loadFailed'));
     } finally {
       setGamingSessionLoading(false);
     }
@@ -2780,8 +2838,8 @@ function App() {
   );
   const bnetTipSuffix = bnetDisabled || bnetDailyCap <= 0 ? ''
     : bnetCoolingDown
-      ? `. Requests today: ${bnetRequestsToday}/${bnetDailyCap}. Paused until ${bnetCooldownUntil.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} after rate limiting`
-      : `. Requests today: ${bnetRequestsToday}/${bnetDailyCap}`;
+      ? t('bnet.tip.requestsPaused', { used: bnetRequestsToday, cap: bnetDailyCap, time: bnetCooldownUntil.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
+      : t('bnet.tip.requests', { used: bnetRequestsToday, cap: bnetDailyCap });
 
   const handleBnetToggle = useCallback(async () => {
     const newDisabled = !bnetDisabled;
@@ -2824,11 +2882,11 @@ function App() {
   const updateUnsupportedTip = (() => {
     const reason = updateStatus?.reason || '';
     const manager = updateStatus?.package_manager || '';
-    if (updateManagerCommand) return `Run in your terminal: ${updateManagerCommand}`;
-    if (reason === 'managed') return `Update via your package manager (${manager})`;
-    if (reason === 'not-writable') return 'Install folder is read-only. Download the new version manually';
-    if (reason === 'unsupported-platform') return 'No self-update build for this platform. Download the new version';
-    return 'Download the new version';
+    if (updateManagerCommand) return t('update.runInTerminal', { command: updateManagerCommand });
+    if (reason === 'managed') return t('update.viaPackageManager', { manager });
+    if (reason === 'not-writable') return t('update.notWritable');
+    if (reason === 'unsupported-platform') return t('update.unsupportedPlatform');
+    return t('update.download');
   })();
 
   const handleApplyUpdate = async () => {
@@ -2840,7 +2898,7 @@ function App() {
       if (res?.success) {
         setUpdateApplied(true);
       } else {
-        throw new Error(res?.error || 'Update failed');
+        throw new Error(res?.error || t('update.failed'));
       }
     } catch (err) {
       setUpdateError(String(err?.message || err));
@@ -2851,7 +2909,7 @@ function App() {
 
   const handleQuit = () => {
     if (stopped) return;
-    if (!window.confirm('Stop screpdb? The server will shut down and you can close this tab.')) return;
+    if (!window.confirm(t('quit.confirm'))) return;
     // The server dies ~500ms after acknowledging, so the request may resolve or
     // error as the socket drops — either way it's on its way down. Show the
     // stopped screen regardless.
@@ -3230,9 +3288,9 @@ function App() {
     try {
       await persistReplayDir(replayDirInput);
       await loadLibrarySettings();
-      setLibraryMessage('Replay folder saved.');
+      setLibraryMessage(t('library.folderSaved'));
     } catch (err) {
-      setLibraryMessage(err.message || 'Failed to save replay folder.');
+      setLibraryMessage(err.message || t('library.message.saveFolderFailed'));
     }
   };
 
@@ -3318,7 +3376,7 @@ function App() {
     }
     return isLibraryLoading(libraryStatus);
   })();
-  const libraryLoadingCopy = libraryLoading ? stillLoadingCopy() : '';
+  const libraryLoadingCopy = libraryLoading ? stillLoadingCopyWith(t) : '';
 
   const handleSaveGlobalReplayFilter = async (nextConfig) => {
     try {
@@ -3329,7 +3387,7 @@ function App() {
       await refreshDataAfterGlobalReplayFilterSave();
       setShowGlobalReplayFilter(false);
     } catch (err) {
-      setGlobalReplayFilterError(err.message || 'Failed to save main config');
+      setGlobalReplayFilterError(err.message || t('settings.errors.save'));
     } finally {
       setGlobalReplayFilterSaving(false);
     }
@@ -3424,7 +3482,7 @@ function App() {
       <button
         type="button"
         className="workflow-player-name-link"
-        title="Analyze player"
+        title={t('player.analyze')}
         onClick={(e) => { e.stopPropagation(); openMainPlayer(playerKey); }}
       >
         <PlayerDisplayName name={name} />
@@ -3457,7 +3515,7 @@ function App() {
   const renderWorkerIcon = (race) => {
     const url = getWorkerIconForRace(race);
     if (!url) return null;
-    return <img src={url} alt={race || ''} title={race || ''} className="workflow-race-icon" />;
+    return <img src={url} alt={raceLabel(race)} title={raceLabel(race)} className="workflow-race-icon" />;
   };
 
   /** Report-page title. Deliberately NOT the games-list cell: a heading wants
@@ -3508,7 +3566,7 @@ function App() {
     const stackingMarker = game?.team_stacking ? (
       <span
         className="workflow-team-stacking-marker"
-        data-tip="Team stacking: uneven non-solo team sizes for over 5 minutes"
+        data-tip={t('games.teamStackingTip')}
       >
         😈
       </span>
@@ -3528,8 +3586,8 @@ function App() {
     const teams = hasTeams ? teamGroupsFromPlayers(players) : [players];
     const noTeamInfo = !hasTeams && players.length > 1;
     const warningText = game?.team_info_incomplete
-      ? 'Team information is incomplete'
-      : 'This replay has no team information';
+      ? t('games.teamInfoIncomplete')
+      : t('games.noTeamInfo');
 
     // Teams are distributed evenly over as many rows as the players need, and a
     // team is never split across a break: 4 teams of 2 give 2 teams per row,
@@ -3605,11 +3663,11 @@ function App() {
       >
         <thead>
           <tr>
-            <th>Played</th>
-            <th>Players</th>
-            <th>Map</th>
-            <th>Time</th>
-            <th>Featuring</th>
+            <th>{t('games.table.played')}</th>
+            <th>{t('games.table.players')}</th>
+            <th>{t('common.map')}</th>
+            <th>{t('common.time')}</th>
+            <th>{t('common.featuring')}</th>
           </tr>
         </thead>
         <tbody>
@@ -3624,7 +3682,7 @@ function App() {
               <td className="workflow-games-list-map">{renderMapNameWithKind(game.map_name, game.map_kind)}</td>
               <td className="workflow-games-list-duration">{formatDuration(game.duration_seconds)}</td>
               <td className="workflow-games-list-featuring">
-                <FeaturingCell featuring={game.featuring} />
+                <FeaturingCell featuring={game.featuring} featuringKeys={game.featuring_keys} />
               </td>
             </tr>
           ))}
@@ -3677,7 +3735,7 @@ function App() {
       deduped.push(event);
     }
     return deduped;
-  }, [mainGame?.game_events, mainSummaryFilters, markerRegistry]);
+  }, [mainGame?.game_events, mainSummaryFilters, markerRegistry, t]);
 
   const filteredGameEvents = useMemo(() => (
     topicFilteredGameEvents.filter((event) => {
@@ -3719,7 +3777,7 @@ function App() {
       if (nt === 'late_alliance') base.alliance = true;
     }
     return base;
-  }, [mainGame?.game_events, markerRegistry]);
+  }, [mainGame?.game_events, markerRegistry, t]);
   const mainMapVisual = mainGame?.map_visual || {};
   const mainMapVisualURL = String(mainMapVisual?.url || '').trim();
   const mainMapVisualThumbURL = String(mainMapVisual?.thumbnail_url || mainMapVisualURL).trim();
@@ -3887,14 +3945,14 @@ function App() {
         points,
         centroid,
         playerID: pid,
-        ownerName: String(ev.actor.name || '').trim() || 'Player',
+        ownerName: String(ev.actor.name || '').trim() || t('events.playerFallback'),
         baseName: String(ev?.base?.name || '').trim(),
         ownerColor,
         ...polygonStrokeFor(ownerColor, team),
       });
     });
     return acc;
-  }, [mainGame?.game_events, mainEventMapBounds, mainGameTeamByPlayerID, isTeamGame]);
+  }, [mainGame?.game_events, mainEventMapBounds, mainGameTeamByPlayerID, isTeamGame, t]);
   // The BO openers event sits at 0:00 with no persisted ownership snapshot, so
   // draw the starting-location polygons directly from the player_start events.
   // Every other event keeps using its ownership snapshot.
@@ -3939,7 +3997,7 @@ function App() {
   }, [selectedMainGameEvent, summaryMapStartPolygons]);
   const mainGameFeaturingPillsList = useMemo(
     () => buildMainGameFeaturingPills(mainGame, markerDefinitions),
-    [mainGame, markerDefinitions],
+    [mainGame, markerDefinitions, t],
   );
   const selectedMainGameArrow = useMemo(() => {
     if (!selectedMainGameEvent || !isArrowEventType(selectedMainGameEvent.type)) return null;
@@ -4233,10 +4291,10 @@ function App() {
     if (!leaveTypes.includes(nt) || !selectedActorLastBasePoint) return null;
     const actorID = Number(selectedMainGameEvent?.actor?.player_id || 0);
     const actorRow = mainGamePlayers.find((p) => Number(p?.player_id || 0) === actorID);
-    const name = actorRow?.name || selectedMainGameEvent?.actor?.name || 'Player';
+    const name = actorRow?.name || selectedMainGameEvent?.actor?.name || t('events.playerFallback');
     const emoji = nt === 'player_stopped_playing' ? '💤' : (nt === 'player_dropped' || nt === 'mass_disconnect') ? '🔌' : '🏳️';
     return { name, emoji, point: selectedActorLastBasePoint, color: playerColorToCss(actorRow?.color) };
-  }, [selectedMainGameEvent, selectedActorLastBasePoint, mainGamePlayers]);
+  }, [selectedMainGameEvent, selectedActorLastBasePoint, mainGamePlayers, t]);
   // Became Terran/Zerg (mind control): a Dark Archon icon planted prominently at
   // the mind-controlled player's last-known base.
   const selectedBecameOverlay = useMemo(() => {
@@ -4729,11 +4787,11 @@ function App() {
               second,
               order,
               label: String(point?.label || '').trim(),
-              display_label: `${isGas ? 'Gas' : 'Expansion'} #${order || 1}`,
+              display_label: isGas ? t('timings.gasNumber', { n: order || 1 }) : t('timings.expansionNumber', { n: order || 1 }),
               category: isGas ? 'gas' : 'expansion',
-              category_label: isGas ? 'Gas' : 'Expansion',
+              category_label: isGas ? t('timings.gas') : t('timings.expansion'),
               marker_image: isGas ? getGasMarkerIconForRace(playerRace) : getExpansionMarkerIconForRace(playerRace),
-              marker_label: isGas ? 'Gas structure' : 'Expansion',
+              marker_label: isGas ? t('timings.gasStructure') : t('timings.expansion'),
               is_repeatable: false,
               max_level: 1,
             });
@@ -4767,7 +4825,7 @@ function App() {
                 label: rawLabel,
                 display_label: normalizeTimingDisplayLabel(rawLabel),
                 category: cat,
-                category_label: subcfg?.label || 'Upgrade',
+                category_label: subcfg ? t(subcfg.labelKey) : t('timings.category.upgrade'),
                 overlay_color: subcfg?.color || '',
                 is_repeatable: false,
                 max_level: 1,
@@ -4790,7 +4848,7 @@ function App() {
                 label: rawLabel,
                 display_label: normalizeTimingDisplayLabel(rawLabel),
                 category: 'tech',
-                category_label: techCfg.label,
+                category_label: t(techCfg.labelKey),
                 overlay_color: techCfg.color,
                 is_repeatable: false,
                 max_level: 1,
@@ -4818,7 +4876,7 @@ function App() {
             label: rawLabel,
             display_label: rawLabel,
             category: 'hp_upgrades',
-            category_label: 'HP Upgrades',
+            category_label: t('timings.category.hpUpgrades'),
             is_repeatable: true,
             max_level: 3,
           };
@@ -4827,10 +4885,10 @@ function App() {
       return withRace(playerSeries, points);
     });
     return sortRows(rows);
-  }, [mainGame?.timings, mainTimingCategoryConfig, mainResearchSubcategories, mainPlayersById]);
+  }, [mainGame?.timings, mainTimingCategoryConfig, mainResearchSubcategories, mainPlayersById, t]);
   const mainTimingColorBy = isResearchTiming ? 'category' : 'player';
   const mainTimingNotice = isExpansionGasTiming
-    ? '⚠️ These are base expansions, not just Nexus/Hatchery/CC buildings.'
+    ? t('timings.expansionNotice')
     : '';
   const mainHpTimingByRace = useMemo(() => {
     if (!isHpTiming) return [];
@@ -4867,7 +4925,7 @@ function App() {
         series: filteredSeries,
       };
     }).filter((entry) => entry.series.some((playerSeries) => (playerSeries?.points || []).length > 0));
-  }, [isHpTiming, mainTimingSeries, mainHpUpgradeFilters]);
+  }, [isHpTiming, mainTimingSeries, mainHpUpgradeFilters, t]);
   const mainFirstUnitEfficiencyGroups = useMemo(() => {
     const sourcePlayers = Array.isArray(mainGame?.first_unit_efficiency) ? mainGame.first_unit_efficiency : [];
     const normalizedPlayers = sourcePlayers.map((playerEntry) => ({
@@ -5017,7 +5075,7 @@ function App() {
       .map((player) => ({
         player_key: String(player?.player_key || '').trim(),
         player_name: String(player?.player_name || '').trim(),
-        average_apm: Number(player?.[VIEWPORT_SWITCH_RATE_CONFIG.playerField] || 0),
+        average_apm: Number(player?.[VIEWPORT_SWITCH_RATE_FIELDS.playerField] || 0),
         games_played: Number(player?.games_played || 0),
         average_viewport_switch_rate: Number(player?.average_viewport_switch_rate || 0),
       }))
@@ -5048,7 +5106,7 @@ function App() {
       .map((player) => ({
         player_key: String(player?.player_key || '').trim(),
         player_name: String(player?.player_name || '').trim(),
-        average_apm: Number(player?.[VIEWPORT_SWITCH_RATE_CONFIG.gameField] || 0),
+        average_apm: Number(player?.[VIEWPORT_SWITCH_RATE_FIELDS.gameField] || 0),
         games_played: 1,
         viewport_switch_rate: Number(player?.viewport_switch_rate || 0),
       }))
@@ -5061,22 +5119,25 @@ function App() {
       return !prev;
     });
   };
+  const viewportText = useMemo(() => viewportSwitchRateText(t), [t]);
+  const playersOmnibarAxes = useMemo(() => buildPlayersOmnibarAxes(t), [t]);
+  const playersOmnibarStateLabels = useMemo(() => buildPlayersOmnibarStateLabels(t), [t]);
   const featuredApmOverlayPoints = useMemo(
-    () => featuredOverlayPoints(mainPlayersApmHistogram?.featured_players, 'Average APM'),
-    [mainPlayersApmHistogram],
+    () => featuredOverlayPoints(mainPlayersApmHistogram?.featured_players, t('appChart.averageApm')),
+    [mainPlayersApmHistogram, t],
   );
   const featuredCadenceOverlayPoints = useMemo(
-    () => featuredOverlayPoints(mainPlayersCadenceHistogram?.featured_players, 'Cadence score'),
-    [mainPlayersCadenceHistogram],
+    () => featuredOverlayPoints(mainPlayersCadenceHistogram?.featured_players, t('appChart.cadenceScore')),
+    [mainPlayersCadenceHistogram, t],
   );
   const featuredViewportOverlayPoints = useMemo(
-    () => featuredOverlayPoints(mainPlayersViewportHistogram?.featured_players, VIEWPORT_SWITCH_RATE_CONFIG.title),
-    [mainPlayersViewportHistogram],
+    () => featuredOverlayPoints(mainPlayersViewportHistogram?.featured_players, viewportText.title),
+    [mainPlayersViewportHistogram, viewportText],
   );
   const renderFeaturedToggle = (count) => (
-    <label className="workflow-featured-toggle" title="Built-in players are drawn for reference only. They are never counted in the bins, the mean or the percentiles of your players.">
+    <label className="workflow-featured-toggle" title={t('players.featuredToggleTip')}>
       <input type="checkbox" checked={showFeaturedPros} onChange={toggleShowFeaturedPros} />
-      <span>{`Show built-in players${count ? ` (${count})` : ''}`}</span>
+      <span>{count ? t('players.showFeaturedCount', { count }) : t('players.showFeatured')}</span>
     </label>
   );
   const mainPlayersSortIndicator = (sortBy) => {
@@ -5089,9 +5150,9 @@ function App() {
       <div className="app app-stopped">
         <div className="app-stopped-card">
           <div className="app-stopped-icon">⏻</div>
-          <h1>screpdb has stopped</h1>
-          <p>The server has shut down. You can safely close this tab.</p>
-          <p className="app-stopped-hint">To use it again, launch screpdb from your terminal or app.</p>
+          <h1>{t('stopped.title')}</h1>
+          <p>{t('stopped.body')}</p>
+          <p className="app-stopped-hint">{t('stopped.hint')}</p>
         </div>
       </div>
     );
@@ -5103,15 +5164,15 @@ function App() {
       <div className={`dashboard-container${activeView === 'games' ? ' dashboard-container--full' : ''}`}>
         <div className="workflow-nav workflow-nav-app">
           <div className="workflow-nav-group">
-            <button type="button" className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('games')}>Games</button>
-            <button type="button" className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('players')}>Players</button>
+            <button type="button" className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('games')}>{t('nav.games')}</button>
+            <button type="button" className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('players')}>{t('nav.players')}</button>
             {gamingSessionEnabled && gamingSession?.active ? (
               <button
                 type="button"
                 className={`btn-manage ${activeView === 'session' ? 'workflow-nav-active' : ''}`}
                 onClick={() => navigateMainView('session')}
               >
-                Gaming Session
+                {t('nav.session')}
               </button>
             ) : null}
           </div>
@@ -5122,20 +5183,20 @@ function App() {
                   <button
                     type="button"
                     className="workflow-nav-update-available tip-below"
-                    data-tip="The new version is installed. Refresh to load it"
+                    data-tip={t('update.installedTip')}
                     onClick={() => window.location.reload()}
                   >
-                    ✅ Updated to {updateLatest} · Refresh
+                    {t('update.updatedRefresh', { version: updateLatest })}
                   </button>
                 ) : selfUpdateSupported ? (
                   <button
                     type="button"
                     className="workflow-nav-update-available tip-below"
-                    data-tip={updateError || `Update from ${currentVersion} to ${updateLatest}`}
+                    data-tip={updateError || t('update.fromTo', { from: currentVersion, to: updateLatest })}
                     disabled={updateApplying}
                     onClick={handleApplyUpdate}
                   >
-                    {updateApplying ? '⏳ Updating…' : `🆕 Update to ${updateLatest}`}
+                    {updateApplying ? t('update.updating') : t('update.updateTo', { version: updateLatest })}
                   </button>
                 ) : updateManagerCommand ? (
                   <ManagedUpdateHint
@@ -5152,14 +5213,14 @@ function App() {
                     className="workflow-nav-update-available tip-below"
                     data-tip={updateUnsupportedTip}
                   >
-                    🆕 Update available
+                    {t('update.available')}
                   </a>
                 )}
                 {!updateApplied ? (
                   <button
                     type="button"
                     className="footer-update-dismiss workflow-nav-update-dismiss"
-                    aria-label="Dismiss update notice"
+                    aria-label={t('update.dismiss')}
                     onClick={() => setLoudUpdateDismissed(true)}
                   >
                     ×
@@ -5178,10 +5239,10 @@ function App() {
               }}
               className="workflow-nav-text-action"
             >
-              ⚙️ Settings
+              {t('nav.settings')}
               {!showGlobalReplayFilter && isLibraryLoading(libraryStatus) ? (
-                <span className="ingest-running-badge tip-below" data-tip="Reading your replay folder">
-                  {formatLoadingShort()}
+                <span className="ingest-running-badge tip-below" data-tip={t('library.readingFolderTip')}>
+                  {formatLoadingShortWith(t)}
                 </span>
               ) : null}
             </button>
@@ -5191,29 +5252,29 @@ function App() {
               type="button"
               className={`bnet-pill bnet-pill--${bnetDisabled ? 'disabled' : bnetState} tip-below`}
               data-tip={
-                (bnetDisabled ? 'Battle.net bridge is turned off. No player profiles, country flags, or match history will be fetched. Click to re-enable.'
-                : bnetState === 'reconnecting' ? 'Scanning for SC:R bridge…'
-                : bnetState === 'connected' ? 'Connected to SC:R'
-                : bnetState === 'offline' ? 'SC:R is running but not logged in. Log in to enable player profile lookups.'
-                : 'SC:R not detected. Start it and log in to enable player profile lookups.') + bnetTipSuffix
+                (bnetDisabled ? t('bnet.tip.disabled')
+                : bnetState === 'reconnecting' ? t('bnet.tip.scanning')
+                : bnetState === 'connected' ? t('bnet.tip.connected')
+                : bnetState === 'offline' ? t('bnet.tip.offline')
+                : t('bnet.tip.notDetected')) + bnetTipSuffix
               }
               onClick={handleBnetToggle}
               disabled={bnetState === 'reconnecting'}
             >
               <span className="bnet-pill-dot" />
-              {bnetDisabled ? 'Bridge off'
-                : bnetState === 'reconnecting' ? 'Scanning…'
+              {bnetDisabled ? t('bnet.pill.off')
+                : bnetState === 'reconnecting' ? t('bnet.pill.scanning')
                 : bnetState === 'connected' ? 'SC:R'
-                : bnetState === 'offline' ? 'SC:R offline'
+                : bnetState === 'offline' ? t('bnet.pill.offline')
                 : 'SC:R'}
             </button>
             <button
               type="button"
               onClick={handleQuit}
               className="workflow-nav-text-action workflow-nav-quit tip-below"
-              data-tip="Stop the screpdb server and quit"
+              data-tip={t('quit.tip')}
             >
-              ⏻ Quit
+              {t('quit.button')}
             </button>
           </div>
         </div>
@@ -5224,8 +5285,8 @@ function App() {
             <button
               type="button"
               className="error-message-dismiss"
-              aria-label="Dismiss error"
-              title="Dismiss"
+              aria-label={t('errors.dismiss')}
+              title={t('common.dismiss')}
               onClick={() => setError(null)}
             >
               ×
@@ -5244,7 +5305,7 @@ function App() {
               loading={libraryLoading}
             />
             {mainGamesLoading ? (
-              <div className="loading">Loading games...</div>
+              <div className="loading">{t('games.loading')}</div>
             ) : (
               <>
                 {renderGamesListTable({
@@ -5258,17 +5319,17 @@ function App() {
                     className="btn-switch"
                     disabled={mainGamesPage <= 1 || mainGamesLoading}
                     onClick={() => setMainGamesPage((prev) => Math.max(1, prev - 1))}
-                    aria-label="Previous page"
+                    aria-label={t('pagination.previous')}
                   >
                     {'<'}
                   </button>
-                  <span>{mainGamesFrom}-{mainGamesTo} of {mainGamesTotal}</span>
+                  <span>{t('pagination.range', { from: mainGamesFrom, to: mainGamesTo, total: mainGamesTotal })}</span>
                   <button
                     type="button"
                     className="btn-switch"
                     disabled={mainGamesPage >= mainGamesTotalPages || mainGamesLoading}
                     onClick={() => setMainGamesPage((prev) => Math.min(mainGamesTotalPages, prev + 1))}
-                    aria-label="Next page"
+                    aria-label={t('pagination.next')}
                   >
                     {'>'}
                   </button>
@@ -5288,7 +5349,7 @@ function App() {
                 type="button"
                 className="workflow-player-name-link workflow-name-with-flag"
                 onClick={() => openMainPlayer(opponent.player_key)}
-                title="Analyze player"
+                title={t('player.analyze')}
               >
                 <CountryFlag code={opponent.country_code} playerKey={opponent.player_key} />
                 {opponent.player_name}
@@ -5302,7 +5363,7 @@ function App() {
         {activeView === 'players' && (
           <div className="workflow-panel">
             <div className="workflow-players-tab-stack">
-              <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label="Players sections">
+              <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label={t('players.sectionsAria')}>
                 <button
                   type="button"
                   role="tab"
@@ -5310,7 +5371,7 @@ function App() {
                   className={`workflow-production-tab ${mainPlayersTab === 'summary' ? 'workflow-production-tab-active' : ''}`}
                   onClick={() => setMainPlayersTab('summary')}
                 >
-                  Summary
+                  {t('tabs.summary')}
                 </button>
                 <button
                   type="button"
@@ -5319,7 +5380,7 @@ function App() {
                   className={`workflow-production-tab ${mainPlayersTab === 'apm-histogram' ? 'workflow-production-tab-active' : ''}`}
                   onClick={() => setMainPlayersTab('apm-histogram')}
                 >
-                  APM Histogram
+                  {t('players.tabs.apmHistogram')}
                 </button>
                 <button
                   type="button"
@@ -5328,7 +5389,7 @@ function App() {
                   className={`workflow-production-tab ${mainPlayersTab === 'unit-production-cadence' ? 'workflow-production-tab-active' : ''}`}
                   onClick={() => setMainPlayersTab('unit-production-cadence')}
                 >
-                  Unit Production Cadence
+                  {t('players.tabs.cadence')}
                 </button>
                 <button
                   type="button"
@@ -5337,17 +5398,17 @@ function App() {
                   className={`workflow-production-tab ${mainPlayersTab === 'viewport-multitasking' ? 'workflow-production-tab-active' : ''}`}
                   onClick={() => setMainPlayersTab('viewport-multitasking')}
                 >
-                  Viewport Multitasking
+                  {t('players.tabs.viewport')}
                 </button>
               </div>
               {mainPlayersTab === 'unit-production-cadence' ? (
                 <div className="workflow-section-info workflow-skill-proxy-tab-info" role="note">
-                  {SKILL_PROXY_CADENCE_INFO_TEXT}
+                  {t('skillProxies.cadence.info')}
                 </div>
               ) : null}
               {mainPlayersTab === 'viewport-multitasking' ? (
                 <div className="workflow-section-info workflow-skill-proxy-tab-info" role="note">
-                  {SKILL_PROXY_VIEWPORT_INFO_TEXT}
+                  {t('skillProxies.viewport.info')}
                 </div>
               ) : null}
             </div>
@@ -5355,9 +5416,9 @@ function App() {
             {mainPlayersTab === 'summary' ? (
               <>
                 <FilterOmnibar
-                  filterOptions={{ ...mainPlayersFilterOptions, min_games: [{ key: '5plus', label: '5+ games' }] }}
-                  axes={PLAYERS_OMNIBAR_AXES}
-                  stateLabels={PLAYERS_OMNIBAR_STATE_LABELS}
+                  filterOptions={{ ...mainPlayersFilterOptions, min_games: [{ key: '5plus', label: t('players.filter.fivePlusGames') }] }}
+                  axes={playersOmnibarAxes}
+                  stateLabels={playersOmnibarStateLabels}
                   stateOrder={PLAYERS_OMNIBAR_STATE_ORDER}
                   noun="players"
                   loading={libraryLoading}
@@ -5369,7 +5430,7 @@ function App() {
                   textFilter={{
                     value: mainPlayersFilters.name,
                     onChange: (value) => setMainPlayersSingleFilter('name', value),
-                    placeholder: 'Filter players by name or pick a filter...',
+                    placeholder: t('players.filterPlaceholder'),
                   }}
                   onToggle={(state, key) => {
                     if (state === 'onlyFivePlus') {
@@ -5381,7 +5442,7 @@ function App() {
                   onClear={clearMainPlayersFilters}
                 />
                 {mainPlayersLoading ? (
-                  <div className="loading">Loading players...</div>
+                  <div className="loading">{t('players.loading')}</div>
                 ) : (
                   <>
                     {mainPlayersFeatured.length > 0 ? (() => {
@@ -5412,7 +5473,7 @@ function App() {
                           ))}
                           {!filtering && mainPlayersFeatured.length > collapsedCount ? (
                             <button type="button" className="workflow-link-btn workflow-featured-expand" onClick={() => setMainPlayersFeaturedExpanded((prev) => !prev)}>
-                              {mainPlayersFeaturedExpanded ? 'Show fewer' : `Show all ${mainPlayersFeatured.length}`}
+                              {mainPlayersFeaturedExpanded ? t('players.showFewer') : t('players.showAll', { count: mainPlayersFeatured.length })}
                             </button>
                           ) : null}
                         </div>
@@ -5422,18 +5483,18 @@ function App() {
                     <table className="data-table workflow-table workflow-players-list-table">
                       <thead>
                         <tr>
-                          <th className="workflow-sortable" onClick={() => setMainPlayersSort('name')}>Name {mainPlayersSortIndicator('name')}</th>
-                          <th className="workflow-sortable" onClick={() => setMainPlayersSort('race')}>Race {mainPlayersSortIndicator('race')}</th>
-                          <th className="workflow-sortable" onClick={() => setMainPlayersSort('games')}>Games {mainPlayersSortIndicator('games')}</th>
-                          <th className="workflow-sortable" onClick={() => setMainPlayersSort('apm')}>Avg APM {mainPlayersSortIndicator('apm')}</th>
-                          <th className="workflow-sortable" onClick={() => setMainPlayersSort('last_played')}>Last played {mainPlayersSortIndicator('last_played')}</th>
+                          <th className="workflow-sortable" onClick={() => setMainPlayersSort('name')}>{t('common.name')} {mainPlayersSortIndicator('name')}</th>
+                          <th className="workflow-sortable" onClick={() => setMainPlayersSort('race')}>{t('players.table.race')} {mainPlayersSortIndicator('race')}</th>
+                          <th className="workflow-sortable" onClick={() => setMainPlayersSort('games')}>{t('players.table.games')} {mainPlayersSortIndicator('games')}</th>
+                          <th className="workflow-sortable" onClick={() => setMainPlayersSort('apm')}>{t('players.table.avgApm')} {mainPlayersSortIndicator('apm')}</th>
+                          <th className="workflow-sortable" onClick={() => setMainPlayersSort('last_played')}>{t('common.lastPlayed')} {mainPlayersSortIndicator('last_played')}</th>
                         </tr>
                       </thead>
                       <tbody>
                         {mainPlayers.map((player) => (
                           <tr key={player.player_key} className={selectedPlayerKey === player.player_key ? 'workflow-selected-row' : ''} onClick={() => openMainPlayer(player.player_key)}>
                             <td><span className="workflow-name-with-flag"><CountryFlag code={player.country_code} playerKey={player.player_key} /><PlayerDisplayName name={player.player_name} /></span></td>
-                            <td>{player.race}</td>
+                            <td>{raceLabel(player.race)}</td>
                             <td>
                               <span className="rd-qty">
                                 <span className="rd-qty-num">{player.games_played}</span>
@@ -5455,17 +5516,17 @@ function App() {
                         className="btn-switch"
                         disabled={mainPlayersPage <= 1 || mainPlayersLoading}
                         onClick={() => setMainPlayersPage((prev) => Math.max(1, prev - 1))}
-                        aria-label="Previous page"
+                        aria-label={t('pagination.previous')}
                   >
                         {'<'}
                       </button>
-                      <span>{mainPlayersFrom}-{mainPlayersTo} of {mainPlayersTotal}</span>
+                      <span>{t('pagination.range', { from: mainPlayersFrom, to: mainPlayersTo, total: mainPlayersTotal })}</span>
                       <button
                         type="button"
                         className="btn-switch"
                         disabled={mainPlayersPage >= mainPlayersTotalPages || mainPlayersLoading}
                         onClick={() => setMainPlayersPage((prev) => Math.min(mainPlayersTotalPages, prev + 1))}
-                        aria-label="Next page"
+                        aria-label={t('pagination.next')}
                   >
                         {'>'}
                       </button>
@@ -5475,10 +5536,10 @@ function App() {
               </>
             ) : mainPlayersTab === 'apm-histogram' ? (
               <div className="workflow-card workflow-card-fingerprints">
-                {mainPlayersApmHistogramLoading ? <div className="chart-empty">Loading APM histogram...</div> : null}
+                {mainPlayersApmHistogramLoading ? <div className="chart-empty">{t('players.apm.loading')}</div> : null}
                 {!mainPlayersApmHistogramLoading && mainPlayersApmHistogramError ? <div className="chart-empty">{mainPlayersApmHistogramError}</div> : null}
                 {!mainPlayersApmHistogramLoading && !mainPlayersApmHistogramError && mainPlayersApmProcessed.points.length === 0 ? (
-                  <div className="chart-empty">{libraryLoadingCopy || 'Not enough player data to render this histogram yet.'}</div>
+                  <div className="chart-empty">{libraryLoadingCopy || t('players.apm.notEnough')}</div>
                 ) : null}
                 {!mainPlayersApmHistogramLoading && !mainPlayersApmHistogramError && mainPlayersApmProcessed.points.length > 0 ? (
                   <div className="workflow-insight-chart workflow-insight-chart-tall">
@@ -5487,8 +5548,8 @@ function App() {
                       config={{
                         style: 'monobell_relax',
                         precomputed_bins: mainPlayersApmProcessed.bins,
-                        x_axis_label: 'Average APM',
-                        y_axis_label: 'Density',
+                        x_axis_label: t('appChart.averageApm'),
+                        y_axis_label: t('appChart.density'),
                         mean: mainPlayersApmProcessed.mean,
                         stddev: mainPlayersApmProcessed.stddev,
                         chart_height: 620,
@@ -5505,7 +5566,7 @@ function App() {
                       }}
                     />
                     <div className="workflow-subtle-note">
-                      {`Population shown: ${Number(mainPlayersApmProcessed.playersIncluded) || 0} players (>=${Math.max(5, Number(mainPlayersApmMinGames) || 5)} games). Mean ${Number(mainPlayersApmProcessed.mean || 0).toFixed(1)} APM, stddev ${Number(mainPlayersApmProcessed.stddev || 0).toFixed(1)}.${showFeaturedPros && featuredApmOverlayPoints.length ? ' ★ Built-in players are shown for reference and not counted.' : ''}`}
+                      {`${t('players.apm.population', { players: Number(mainPlayersApmProcessed.playersIncluded) || 0, minGames: Math.max(5, Number(mainPlayersApmMinGames) || 5), mean: Number(mainPlayersApmProcessed.mean || 0).toFixed(1), stddev: Number(mainPlayersApmProcessed.stddev || 0).toFixed(1) })}${showFeaturedPros && featuredApmOverlayPoints.length ? t('players.featuredNote') : ''}`}
                     </div>
                     {featuredApmOverlayPoints.length > 0 ? <div className="workflow-featured-toggle-row">{renderFeaturedToggle(featuredApmOverlayPoints.length)}</div> : null}
                   </div>
@@ -5513,10 +5574,10 @@ function App() {
               </div>
             ) : mainPlayersTab === 'unit-production-cadence' ? (
               <div className="workflow-card workflow-card-fingerprints">
-                {mainPlayersCadenceHistogramLoading ? <div className="chart-empty">Loading unit production cadence...</div> : null}
+                {mainPlayersCadenceHistogramLoading ? <div className="chart-empty">{t('players.cadence.loading')}</div> : null}
                 {!mainPlayersCadenceHistogramLoading && mainPlayersCadenceHistogramError ? <div className="chart-empty">{mainPlayersCadenceHistogramError}</div> : null}
                 {!mainPlayersCadenceHistogramLoading && !mainPlayersCadenceHistogramError && mainPlayersCadenceProcessed.points.length === 0 ? (
-                  <div className="chart-empty">{libraryLoadingCopy || 'Not enough cadence data to render this distribution yet.'}</div>
+                  <div className="chart-empty">{libraryLoadingCopy || t('players.cadence.notEnough')}</div>
                 ) : null}
                 {!mainPlayersCadenceHistogramLoading && !mainPlayersCadenceHistogramError && mainPlayersCadenceProcessed.points.length > 0 ? (
                   <div className="workflow-insight-chart workflow-insight-chart-tall">
@@ -5525,10 +5586,10 @@ function App() {
                       config={{
                         style: 'monobell_relax',
                         precomputed_bins: mainPlayersCadenceProcessed.bins,
-                        x_axis_label: 'Average cadence score',
-                        y_axis_label: 'Density',
-                        overlay_value_label: 'cadence',
-                        overlay_count_label: 'games',
+                        x_axis_label: t('appChart.averageCadence'),
+                        y_axis_label: t('appChart.density'),
+                        overlay_value_label: t('appChart.overlay.cadence'),
+                        overlay_count_label: t('appChart.overlay.games'),
                         mean: mainPlayersCadenceProcessed.mean,
                         stddev: mainPlayersCadenceProcessed.stddev,
                         chart_height: 620,
@@ -5540,12 +5601,12 @@ function App() {
                             games_played: Number(player.games_played || 0),
                             tooltip_lines: [
                               `${String(player.player_name || '')}`,
-                              `Cadence score: ${Number(player.average_apm || 0).toFixed(3)}`,
-                              `Rate per minute: ${Number(player.average_rate_per_min || 0).toFixed(2)}`,
-                              `Gap CV: ${Number(player.average_cv_gap || 0).toFixed(2)}`,
-                              `Burstiness: ${Number(player.average_burstiness || 0).toFixed(2)}`,
-                              `Idle gap ratio (>=20s): ${(Number(player.average_idle20_ratio || 0) * 100).toFixed(1)}%`,
-                              `Games used: ${Number(player.games_played || 0)}`,
+                              t('appChart.tooltip.cadenceScore', { value: Number(player.average_apm || 0).toFixed(3) }),
+                              t('appChart.tooltip.ratePerMinute', { value: Number(player.average_rate_per_min || 0).toFixed(2) }),
+                              t('appChart.tooltip.gapCv', { value: Number(player.average_cv_gap || 0).toFixed(2) }),
+                              t('appChart.tooltip.burstiness', { value: Number(player.average_burstiness || 0).toFixed(2) }),
+                              t('appChart.tooltip.idleGapRatio', { value: (Number(player.average_idle20_ratio || 0) * 100).toFixed(1) }),
+                              t('appChart.tooltip.gamesUsed', { count: Number(player.games_played || 0) }),
                             ],
                           })),
                           ...(showFeaturedPros ? featuredCadenceOverlayPoints : []),
@@ -5554,7 +5615,7 @@ function App() {
                       }}
                     />
                     <div className="workflow-subtle-note">
-                      {`Population shown: ${Number(mainPlayersCadenceProcessed.playersIncluded) || 0} players (>=${Math.max(4, Number(mainPlayersCadenceMinGames) || 4)} games). Mean ${Number(mainPlayersCadenceProcessed.mean || 0).toFixed(3)}, stddev ${Number(mainPlayersCadenceProcessed.stddev || 0).toFixed(3)}.${showFeaturedPros && featuredCadenceOverlayPoints.length ? ' ★ Built-in players are shown for reference and not counted.' : ''}`}
+                      {`${t('players.cadence.population', { players: Number(mainPlayersCadenceProcessed.playersIncluded) || 0, minGames: Math.max(4, Number(mainPlayersCadenceMinGames) || 4), mean: Number(mainPlayersCadenceProcessed.mean || 0).toFixed(3), stddev: Number(mainPlayersCadenceProcessed.stddev || 0).toFixed(3) })}${showFeaturedPros && featuredCadenceOverlayPoints.length ? t('players.featuredNote') : ''}`}
                     </div>
                     {featuredCadenceOverlayPoints.length > 0 ? <div className="workflow-featured-toggle-row">{renderFeaturedToggle(featuredCadenceOverlayPoints.length)}</div> : null}
                   </div>
@@ -5562,10 +5623,10 @@ function App() {
               </div>
             ) : mainPlayersTab === 'viewport-multitasking' ? (
               <div className="workflow-card workflow-card-fingerprints">
-                {mainPlayersViewportHistogramLoading ? <div className="chart-empty">Loading viewport multitasking...</div> : null}
+                {mainPlayersViewportHistogramLoading ? <div className="chart-empty">{t('players.viewport.loading')}</div> : null}
                 {!mainPlayersViewportHistogramLoading && mainPlayersViewportHistogramError ? <div className="chart-empty">{mainPlayersViewportHistogramError}</div> : null}
                 {!mainPlayersViewportHistogramLoading && !mainPlayersViewportHistogramError && mainPlayersViewportProcessed.points.length === 0 ? (
-                  <div className="chart-empty">{libraryLoadingCopy || 'Not enough viewport multitasking data to render this distribution yet.'}</div>
+                  <div className="chart-empty">{libraryLoadingCopy || t('players.viewport.notEnough')}</div>
                 ) : null}
                 {!mainPlayersViewportHistogramLoading && !mainPlayersViewportHistogramError && mainPlayersViewportProcessed.points.length > 0 ? (
                   <div className="workflow-insight-chart workflow-insight-chart-tall">
@@ -5574,10 +5635,10 @@ function App() {
                       config={{
                         style: 'monobell_relax',
                         precomputed_bins: mainPlayersViewportProcessed.bins,
-                        x_axis_label: VIEWPORT_SWITCH_RATE_CONFIG.axisLabel,
-                        y_axis_label: 'Density',
-                        overlay_value_label: VIEWPORT_SWITCH_RATE_CONFIG.overlayValueLabel,
-                        overlay_count_label: 'games',
+                        x_axis_label: viewportText.axisLabel,
+                        y_axis_label: t('appChart.density'),
+                        overlay_value_label: viewportText.overlayValueLabel,
+                        overlay_count_label: t('appChart.overlay.games'),
                         mean: mainPlayersViewportProcessed.mean,
                         stddev: mainPlayersViewportProcessed.stddev,
                         chart_height: 620,
@@ -5589,8 +5650,8 @@ function App() {
                             games_played: Number(player.games_played || 0),
                             tooltip_lines: [
                               `${String(player.player_name || '')}`,
-                              `${VIEWPORT_SWITCH_RATE_CONFIG.title}: ${VIEWPORT_SWITCH_RATE_CONFIG.valueFormatter(player.average_apm)}`,
-                              `Games used: ${Number(player.games_played || 0)}`,
+                              t('appChart.tooltip.labelValue', { label: viewportText.title, value: viewportText.valueFormatter(player.average_apm) }),
+                              t('appChart.tooltip.gamesUsed', { count: Number(player.games_played || 0) }),
                             ],
                           })),
                           ...(showFeaturedPros ? featuredViewportOverlayPoints : []),
@@ -5599,7 +5660,7 @@ function App() {
                       }}
                     />
                     <div className="workflow-subtle-note">
-                      {`Population shown: ${Number(mainPlayersViewportProcessed.playersIncluded) || 0} players (>=${Math.max(4, Number(mainPlayersViewportMinGames) || 4)} games after post-filter). Mean ${VIEWPORT_SWITCH_RATE_CONFIG.summaryFormatter(mainPlayersViewportProcessed.mean)}, stddev ${VIEWPORT_SWITCH_RATE_CONFIG.summaryFormatter(mainPlayersViewportProcessed.stddev)}.${showFeaturedPros && featuredViewportOverlayPoints.length ? ' ★ Built-in players are shown for reference and not counted.' : ''}`}
+                      {`${t('players.viewport.population', { players: Number(mainPlayersViewportProcessed.playersIncluded) || 0, minGames: Math.max(4, Number(mainPlayersViewportMinGames) || 4), mean: viewportText.summaryFormatter(mainPlayersViewportProcessed.mean), stddev: viewportText.summaryFormatter(mainPlayersViewportProcessed.stddev) })}${showFeaturedPros && featuredViewportOverlayPoints.length ? t('players.featuredNote') : ''}`}
                     </div>
                     {featuredViewportOverlayPoints.length > 0 ? <div className="workflow-featured-toggle-row">{renderFeaturedToggle(featuredViewportOverlayPoints.length)}</div> : null}
                   </div>
@@ -5612,7 +5673,7 @@ function App() {
         {activeView === 'game' && (
           <div className="workflow-panel">
             {mainGameDetailLoading ? (
-              <div className="loading">Loading game report...</div>
+              <div className="loading">{t('game.loading')}</div>
             ) : mainGame ? (
               <>
                 <div className="workflow-title-row workflow-title-row--solo">
@@ -5636,28 +5697,28 @@ function App() {
                     <button
                       type="button"
                       className="btn-switch workflow-meta-filepath-copy"
-                      data-tip="Copy full replay file path to clipboard"
+                      data-tip={t('game.copyPathTip')}
                       onClick={() => {
                         if (navigator.clipboard && navigator.clipboard.writeText) {
                           navigator.clipboard.writeText(mainGame.file_path);
                         }
                       }}
                     >
-                      Copy full path
+                      {t('game.copyPath')}
                     </button>
                   ) : null}
                   <button
                     type="button"
                     className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
                     disabled={mainGameSeeLoading}
-                    data-tip="Clones this replay into your replay folder as 000_screpdb_watch_me/watch_me.rep so you can easily find it within Starcraft."
+                    data-tip={t('game.stage.tip')}
                     onClick={copyMainGameToWatchMe}
                   >
-                    {mainGameSeeLoading ? 'Copying…' : 'Stage watch replay'}
+                    {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.button')}
                   </button>
                 </div>
                 <div className="workflow-game-tab-stack">
-                  <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label="Game report sections">
+                  <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label={t('game.sectionsAria')}>
                     <button
                       type="button"
                       role="tab"
@@ -5665,7 +5726,7 @@ function App() {
                       className={`workflow-production-tab ${mainGameTab === 'summary' ? 'workflow-production-tab-active' : ''}`}
                       onClick={() => setMainGameTab('summary')}
                     >
-                      Summary
+                      {t('tabs.summary')}
                     </button>
                     <button
                       type="button"
@@ -5674,7 +5735,7 @@ function App() {
                       className={`workflow-production-tab ${mainGameTab === 'events' ? 'workflow-production-tab-active' : ''}`}
                       onClick={() => setMainGameTab('events')}
                     >
-                      Game Events
+                      {t('game.tabs.events')}
                     </button>
                     {Array.isArray(mainGame?.build_orders) && mainGame.build_orders.length > 0 ? (
                       <button
@@ -5684,7 +5745,7 @@ function App() {
                         className={`workflow-production-tab ${mainGameTab === 'build-orders' ? 'workflow-production-tab-active' : ''}`}
                         onClick={() => setMainGameTab('build-orders')}
                       >
-                        Build Orders
+                        {t('game.tabs.buildOrders')}
                       </button>
                     ) : null}
                     {Array.isArray(mainGame?.mutalisk_timing_chart) && mainGame.mutalisk_timing_chart.length > 0 ? (
@@ -5695,7 +5756,7 @@ function App() {
                         className={`workflow-production-tab ${mainGameTab === 'mutalisk-timing' ? 'workflow-production-tab-active' : ''}`}
                         onClick={() => setMainGameTab('mutalisk-timing')}
                       >
-                        Mutalisk Timing
+                        {t('game.tabs.mutaTiming')}
                       </button>
                     ) : null}
                     <button
@@ -5705,7 +5766,7 @@ function App() {
                       className={`workflow-production-tab ${mainGameTab === 'units' ? 'workflow-production-tab-active' : ''}`}
                       onClick={() => setMainGameTab('units')}
                     >
-                      Units
+                      {t('game.tabs.units')}
                     </button>
                     <button
                       type="button"
@@ -5714,7 +5775,7 @@ function App() {
                       className={`workflow-production-tab ${mainGameTab === 'timings' ? 'workflow-production-tab-active' : ''}`}
                       onClick={() => setMainGameTab('timings')}
                     >
-                      Timings
+                      {t('game.tabs.timings')}
                     </button>
                     {Array.isArray(mainGame?.alliance_timeline) && mainGame.alliance_timeline.length > 0 ? (
                       <button
@@ -5724,7 +5785,7 @@ function App() {
                         className={`workflow-production-tab ${mainGameTab === 'alliances' ? 'workflow-production-tab-active' : ''}`}
                         onClick={() => setMainGameTab('alliances')}
                       >
-                        Alliances{mainGame?.team_stacking ? ' 😈' : ''}
+                        {t('game.tabs.alliances')}{mainGame?.team_stacking ? ' 😈' : ''}
                       </button>
                     ) : null}
                     <button
@@ -5734,7 +5795,7 @@ function App() {
                       className={`workflow-production-tab ${mainGameTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
                       onClick={() => setMainGameTab('hotkeys')}
                     >
-                      Hotkeys
+                      {t('tabs.hotkeys')}
                     </button>
                     <button
                       type="button"
@@ -5743,7 +5804,7 @@ function App() {
                       className={`workflow-production-tab ${mainGameTab === 'supply-timeline' ? 'workflow-production-tab-active' : ''}`}
                       onClick={() => setMainGameTab('supply-timeline')}
                     >
-                      Supply
+                      {t('game.tabs.supply')}
                     </button>
                     <button
                       type="button"
@@ -5755,12 +5816,12 @@ function App() {
                         setMainGameTab('first-unit-efficiency');
                       }}
                     >
-                      Skill proxies
+                      {t('tabs.skillProxies')}
                     </button>
                   </div>
                   {isMainGameSkillProxyTab(mainGameTab) ? (
                     <div className="workflow-skill-proxy-subnav">
-                      <div className="workflow-production-tabs workflow-skill-proxy-tabs" role="tablist" aria-label="Skill proxy views">
+                      <div className="workflow-production-tabs workflow-skill-proxy-tabs" role="tablist" aria-label={t('skillProxies.viewsAria')}>
                         <button
                           type="button"
                           role="tab"
@@ -5768,7 +5829,7 @@ function App() {
                           className={`workflow-production-tab ${mainGameTab === 'first-unit-efficiency' ? 'workflow-production-tab-active' : ''}`}
                           onClick={() => setMainGameTab('first-unit-efficiency')}
                         >
-                          First unit efficiency
+                          {t('skillProxies.tabs.firstUnit')}
                         </button>
                         <button
                           type="button"
@@ -5777,7 +5838,7 @@ function App() {
                           className={`workflow-production-tab ${mainGameTab === 'unit-production-cadence' ? 'workflow-production-tab-active' : ''}`}
                           onClick={() => setMainGameTab('unit-production-cadence')}
                         >
-                          Unit production cadence
+                          {t('skillProxies.tabs.cadence')}
                         </button>
                         <button
                           type="button"
@@ -5786,17 +5847,17 @@ function App() {
                           className={`workflow-production-tab ${mainGameTab === 'viewport-multitasking' ? 'workflow-production-tab-active' : ''}`}
                           onClick={() => setMainGameTab('viewport-multitasking')}
                         >
-                          Viewport multitasking
+                          {t('skillProxies.tabs.viewport')}
                         </button>
                       </div>
                       {mainGameTab === 'unit-production-cadence' ? (
                         <div className="workflow-section-info workflow-skill-proxy-tab-info" role="note">
-                          {SKILL_PROXY_CADENCE_INFO_TEXT}
+                          {t('skillProxies.cadence.info')}
                         </div>
                       ) : null}
                       {mainGameTab === 'viewport-multitasking' ? (
                         <div className="workflow-section-info workflow-skill-proxy-tab-info" role="note">
-                          {SKILL_PROXY_VIEWPORT_INFO_TEXT}
+                          {t('skillProxies.viewport.info')}
                         </div>
                       ) : null}
                     </div>
@@ -5815,23 +5876,23 @@ function App() {
                             type="button"
                             className="workflow-map-thumb-btn workflow-map-thumb-btn--events-link"
                             onClick={() => setMainGameTab('events')}
-                            title="Open Game Events"
+                            title={t('game.summary.openEvents')}
                           >
                             <div className="workflow-map-thumb-btn-inner">
                               {renderSummaryMapStack({
                                 legendItems: selectedMainGameLegend,
                                 showLegend: false,
                                 imageUrl: mainMapVisualThumbURL,
-                                mapAlt: `${mainGame.map_name} map`,
+                                mapAlt: t('game.summary.mapAlt', { map: mainGame.map_name }),
                                 bounds: mainEventMapBounds,
                                 startPolygons: summaryMapStartPolygons,
                               })}
-                              <span className="workflow-map-thumb-btn-hover-label" aria-hidden="true">Game Events</span>
+                              <span className="workflow-map-thumb-btn-hover-label" aria-hidden="true">{t('game.tabs.events')}</span>
                             </div>
                           </button>
                         ) : (
                           <div className="workflow-map-summary-fallback">
-                            Map image unavailable for this replay map.
+                            {t('game.summary.mapUnavailable')}
                             {mainMapVisual?.resolution_note ? ` (${mainMapVisual.resolution_note})` : ''}
                           </div>
                         )}
@@ -5839,13 +5900,13 @@ function App() {
                       <div className="workflow-summary-features-col">
                         {mainGameFeaturingPillsList.length > 0 ? (
                           <>
-                            <div className="workflow-summary-features-title">Featuring</div>
+                            <div className="workflow-summary-features-title">{t('common.featuring')}</div>
                             <div className="workflow-pattern-pills">
                               {mainGameFeaturingPillsList.map((pill) => renderFeaturingPill(pill, 'summary-game'))}
                             </div>
                           </>
                         ) : (
-                          <div className="workflow-subtle-note">No featured highlights for this replay.</div>
+                          <div className="workflow-subtle-note">{t('game.summary.noHighlights')}</div>
                         )}
                         {/* Replay-aggregate attacker-composition bars (early/mid/late),
                             computed at display time by summing per-player counts in
@@ -5857,12 +5918,12 @@ function App() {
                             const aggregateSpells = collectPlayerSpells(aggregatePhases);
                             return (
                               <div className="workflow-summary-composition">
-                                <div className="workflow-summary-features-title workflow-summary-composition-title">Unit Composition %</div>
+                                <div className="workflow-summary-features-title workflow-summary-composition-title">{t('game.summary.unitComposition')}</div>
                                 <CompositionZonesHeader />
                                 <CompositionZones phases={aggregatePhases} />
                                 {aggregateSpells.length > 0 ? (
                                   <div className="workflow-summary-spellcasts">
-                                    <div className="workflow-summary-features-title workflow-summary-spellcasts-title">Spellcasts</div>
+                                    <div className="workflow-summary-features-title workflow-summary-spellcasts-title">{t('game.summary.spellcasts')}</div>
                                     <div className="workflow-pattern-pills">
                                       <SpellcastsChips spells={aggregateSpells} />
                                     </div>
@@ -5875,11 +5936,11 @@ function App() {
                       </div>
                     </div>
                     <div className="workflow-player-table" style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
-                      <div className="wpt-head">Name</div>
+                      <div className="wpt-head">{t('common.name')}</div>
                       <div className="wpt-head">APM</div>
-                      <div className="wpt-head">Featuring</div>
+                      <div className="wpt-head">{t('common.featuring')}</div>
                       <div className="wpt-head wpt-head-comp">
-                        <span>Unit Composition %</span>
+                        <span>{t('game.summary.unitComposition')}</span>
                         <CompositionZonesHeader slim />
                       </div>
                       {(mainGame.players || []).map((player) => {
@@ -5899,7 +5960,7 @@ function App() {
                             <div className="wpt-cell wpt-name" style={{ borderLeftColor: getTeamColor(player.team) }}>
                               <span className="wpt-glyphs">
                                 <span className="wpt-glyph wpt-glyph-race">
-                                  {raceIcon ? <img src={raceIcon} alt={player.race || 'race'} className="unit-icon-inline workflow-summary-race-icon" /> : null}
+                                  {raceIcon ? <img src={raceIcon} alt={player.race || t('race.alt')} className="unit-icon-inline workflow-summary-race-icon" /> : null}
                                 </span>
                                 <span className="wpt-glyph wpt-glyph-flag">
                                   <CountryFlag code={player.country_code} playerKey={player.player_key} />
@@ -5908,14 +5969,14 @@ function App() {
                                   <PlayerSwatch color={player.color} title={player.name} />
                                 </span>
                                 <span className="wpt-glyph wpt-glyph-crown">
-                                  {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+                                  {player.is_winner ? <span className="workflow-crown" title={t('common.winner')}>👑</span> : null}
                                 </span>
                               </span>
                               <span className="wpt-name-col">
                                 <button
                                   type="button"
                                   className="workflow-player-name-link workflow-player-name-link--strong"
-                                  title="Analyze player"
+                                  title={t('player.analyze')}
                                   onClick={() => openMainPlayer(player.player_key)}
                                 >
                                   <PlayerDisplayName name={player.name} />
@@ -5950,17 +6011,17 @@ function App() {
                   <div className="workflow-card workflow-card-recent-games">
                     <div className="workflow-events-controls">
                       <div className="workflow-events-filters">
-                      <div className="workflow-events-filter-row" role="group" aria-label="Filter events by type">
+                      <div className="workflow-events-filter-row" role="group" aria-label={t('events.filterByTypeAria')}>
                         {[
-                          { key: 'attack', label: 'Attack' },
-                          { key: 'expansion', label: 'Expansion' },
-                          { key: 'drop', label: 'Drop' },
-                          { key: 'rush', label: 'Rush' },
-                          { key: 'leaves', label: 'Leaves' },
-                          { key: 'recall', label: 'Recall' },
-                          { key: 'nuke', label: 'Nuke' },
-                          { key: 'becameRace', label: 'Became race' },
-                          { key: 'alliance', label: 'Alliance' },
+                          { key: 'attack', label: t('events.attack') },
+                          { key: 'expansion', label: t('events.expansion') },
+                          { key: 'drop', label: t('events.drop') },
+                          { key: 'rush', label: t('events.rush') },
+                          { key: 'leaves', label: t('events.filter.leaves') },
+                          { key: 'recall', label: t('events.recall') },
+                          { key: 'nuke', label: t('events.nuke') },
+                          { key: 'becameRace', label: t('events.filter.becameRace') },
+                          { key: 'alliance', label: t('events.alliance') },
                         ].map(({ key, label }) => {
                           const available = gameEventTopicAvailability[key];
                           const active = mainSummaryFilters[key];
@@ -5981,7 +6042,7 @@ function App() {
                         })}
                       </div>
                       {mainGamePlayers.length > 0 ? (
-                        <div className="workflow-events-filter-row workflow-events-player-filters" role="group" aria-label="Filter events by player">
+                        <div className="workflow-events-filter-row workflow-events-player-filters" role="group" aria-label={t('events.filterByPlayerAria')}>
                           {mainGamePlayers.map((player) => {
                             const enabled = mainEventsPlayerEnabledById[String(player.player_id)] !== false;
                             return (
@@ -5990,7 +6051,7 @@ function App() {
                                 key={`event-filter-${player.player_id}`}
                                 className={`workflow-events-player-chip${enabled ? '' : ' workflow-events-player-chip--off'}`}
                                 aria-pressed={enabled}
-                                title={enabled ? `Hide ${player.name}'s events` : `Show ${player.name}'s events`}
+                                title={enabled ? t('events.hidePlayerEvents', { name: player.name }) : t('events.showPlayerEvents', { name: player.name })}
                                 onClick={() => setMainEventsPlayerEnabledById((prev) => ({
                                   ...prev,
                                   [String(player.player_id)]: !enabled,
@@ -6008,7 +6069,7 @@ function App() {
                               Object.fromEntries(mainGamePlayers.map((p) => [String(p.player_id), false])),
                             )}
                           >
-                            None
+                            {t('common.none')}
                           </button>
                           <button
                             type="button"
@@ -6017,7 +6078,7 @@ function App() {
                               Object.fromEntries(mainGamePlayers.map((p) => [String(p.player_id), true])),
                             )}
                           >
-                            All
+                            {t('common.all')}
                           </button>
                         </div>
                       ) : null}
@@ -6025,11 +6086,11 @@ function App() {
                       <div className="workflow-events-warnings">
                         {!hasTeamInfo ? (
                           <div className="workflow-section-warning workflow-events-warning">
-                            ⚠️ {mainGame?.team_info_incomplete ? 'Team information is incomplete' : 'This replay has no team information'}. Expect issues like attack events firing between teammates.
+                            {t('events.teamWarning', { reason: mainGame?.team_info_incomplete ? t('games.teamInfoIncomplete') : t('games.noTeamInfo') })}
                           </div>
                         ) : null}
                         <div className="workflow-section-warning workflow-events-warning">
-                          ⚠️ Event narratives are derived from imperfect replay signals: expect some errors.
+                          {t('events.narrativeWarning')}
                         </div>
                       </div>
                     </div>
@@ -6045,7 +6106,7 @@ function App() {
                                 className={`workflow-event-map-frame${selectedEventAnimCategory ? ` workflow-anim-${selectedEventAnimCategory}` : ''}`}
                                 style={{ '--map-aspect': mainEventMapAspect }}
                               >
-                                <img src={mainMapVisualURL} alt={`${mainGame.map_name} event overlay`} className="workflow-event-map-image" />
+                                <img src={mainMapVisualURL} alt={t('events.mapAlt', { map: mainGame.map_name })} className="workflow-event-map-image" />
                                 {selectedMainGameEvent ? (
                                   <svg
                                     className="workflow-event-map-overlay"
@@ -6179,13 +6240,13 @@ function App() {
                                       if (!icon) return null;
                                       return (
                                         <span key={`tu-${entry.playerID}-${u.name}`} className="workflow-event-map-trained-unit">
-                                          <img src={icon} alt={u.name} title={`${u.name} ×${u.count}`} />
+                                          <img src={icon} alt={t.server(`server.name.${slugKey(u.name)}`, u.name)} title={t('events.unitCount', { unit: t.server(`server.name.${slugKey(u.name)}`, u.name), count: u.count })} />
                                           <span className="workflow-event-map-trained-unit-count">×{u.count}</span>
                                         </span>
                                       );
                                     })}
                                     {entry.more > 0 ? (
-                                      <span className="workflow-event-map-trained-unit-more" title={`+${entry.more} more units`}>+{entry.more}</span>
+                                      <span className="workflow-event-map-trained-unit-more" title={t('events.moreUnits', { count: entry.more })}>+{entry.more}</span>
                                     ) : null}
                                   </div>
                                   );
@@ -6221,8 +6282,8 @@ function App() {
                                         <img
                                           key={`${selectedMainGameEventKeyResolved}-${unit.name}-${unitIdx}`}
                                           src={unit.icon}
-                                          alt={unit.name}
-                                          title={unit.name}
+                                          alt={t.server(`server.name.${slugKey(unit.name)}`, unit.name)}
+                                          title={t.server(`server.name.${slugKey(unit.name)}`, unit.name)}
                                           className="workflow-event-map-unit-icon"
                                         />
                                       ))}
@@ -6235,7 +6296,7 @@ function App() {
                                     className="workflow-event-map-leave-marker"
                                     style={{ left: `${selectedLeaveInfo.point.x}%`, top: `${selectedLeaveInfo.point.y}%` }}
                                   >
-                                    <span className="workflow-event-map-leave-emoji" role="img" aria-label={selectedLeaveInfo.emoji === '💤' ? 'Stopped playing' : 'Left the game'}>
+                                    <span className="workflow-event-map-leave-emoji" role="img" aria-label={selectedLeaveInfo.emoji === '💤' ? t('events.stoppedPlaying') : t('events.leftGame')}>
                                       {selectedLeaveInfo.emoji}
                                     </span>
                                     <span className="workflow-event-map-leave-name" style={mapLabelStyle(selectedLeaveInfo.color)}>
@@ -6249,9 +6310,9 @@ function App() {
                                       key={`alliance-emoji-${selectedMainGameEventKeyResolved}-${pair.key}`}
                                       className="workflow-event-map-flag-overlay workflow-event-map-alliance-handshake"
                                       style={{ left: `${pair.mid.x}%`, top: `${pair.mid.y}%` }}
-                                      title="Alliance formed"
+                                      title={t('events.allianceFormed')}
                                     >
-                                      <span role="img" aria-label="Alliance">🤝</span>
+                                      <span role="img" aria-label={t('events.alliance')}>🤝</span>
                                     </div>
                                   ))
                                   : null}
@@ -6259,7 +6320,7 @@ function App() {
                                   <img
                                     key={`expansion-${selectedMainGameEventKeyResolved}`}
                                     src={selectedMainGameExpansionOverlay.icon}
-                                    alt="Expansion building"
+                                    alt={t('events.expansionBuildingAlt')}
                                     className="workflow-event-map-expansion-overlay"
                                     style={{
                                       left: `${selectedMainGameExpansionOverlay.point.x}%`,
@@ -6271,8 +6332,8 @@ function App() {
                                   <img
                                     key={`became-${selectedMainGameEventKeyResolved}`}
                                     src={selectedBecameOverlay.icon}
-                                    alt="Mind control (Dark Archon)"
-                                    title="Mind controlled"
+                                    alt={t('events.mindControlAlt')}
+                                    title={t('events.mindControlled')}
                                     className="workflow-event-map-expansion-overlay workflow-event-map-became-overlay"
                                     style={{
                                       left: `${selectedBecameOverlay.point.x}%`,
@@ -6284,8 +6345,8 @@ function App() {
                                   <img
                                     key={`recall-${selectedMainGameEventKeyResolved}`}
                                     src={selectedMainGameRecallOverlay.icon}
-                                    alt="Recall destination"
-                                    title={selectedMainGameEvent?.target_base ? "Recall destination (Arbiter location, inferred)" : "Recall cast point (destination unknown)"}
+                                    alt={t('events.recallDestinationAlt')}
+                                    title={selectedMainGameEvent?.target_base ? t('events.recallDestinationInferred') : t('events.recallCastPoint')}
                                     className={`workflow-event-map-expansion-overlay workflow-event-map-expansion-overlay--recall-arbiter${selectedMainGameArrow ? ' workflow-event-map-arbiter--travel' : ''}`}
                                     style={{
                                       left: `${selectedMainGameRecallOverlay.point.x}%`,
@@ -6297,8 +6358,8 @@ function App() {
                                   <img
                                     key={`drop-${selectedMainGameEventKeyResolved}`}
                                     src={selectedMainGameDropOverlay.icon}
-                                    alt="Drop transport"
-                                    title="Drop landing point (transport vessel)"
+                                    alt={t('events.dropTransportAlt')}
+                                    title={t('events.dropLandingPoint')}
                                     className={`workflow-event-map-expansion-overlay workflow-event-map-expansion-overlay--recall-arbiter${selectedMainGameArrow ? ' workflow-event-map-vessel--travel' : ''}`}
                                     style={{
                                       left: `${selectedMainGameDropOverlay.point.x}%`,
@@ -6310,8 +6371,8 @@ function App() {
                                   <img
                                     key={`proxy-building-${selectedMainGameEventKeyResolved}`}
                                     src={selectedMainGameProxyBuildingOverlay.icon}
-                                    alt="Proxy building"
-                                    title="Proxy building placement"
+                                    alt={t('events.proxyBuildingAlt')}
+                                    title={t('events.proxyBuildingPlacement')}
                                     className="workflow-event-map-expansion-overlay"
                                     style={{
                                       left: `${selectedMainGameProxyBuildingOverlay.point.x}%`,
@@ -6328,8 +6389,8 @@ function App() {
                                       style={{ left: `${label.x}%`, top: `${label.y}%` }}
                                     >
                                       <div className="workflow-event-map-bo-label-name" style={mapLabelStyle(label.color)}>
-                                        {raceIcon ? <img src={raceIcon} alt={label.race || 'race'} className="unit-icon-inline workflow-event-map-bo-label-race" /> : null}
-                                        {label.isWinner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+                                        {raceIcon ? <img src={raceIcon} alt={label.race || t('race.alt')} className="unit-icon-inline workflow-event-map-bo-label-race" /> : null}
+                                        {label.isWinner ? <span className="workflow-crown" title={t('common.winner')}>👑</span> : null}
                                         {label.name}
                                       </div>
                                       {label.boNames.length > 0 ? (
@@ -6377,7 +6438,7 @@ function App() {
                             </>
                           ) : (
                             <div className="workflow-map-summary-fallback">
-                              Map image unavailable for event overlays.
+                              {t('events.mapUnavailable')}
                               {mainMapVisual?.resolution_note ? ` (${mainMapVisual.resolution_note})` : ''}
                             </div>
                           )}
@@ -6428,9 +6489,9 @@ function App() {
                                   // Only show "Mid game" / "Late game" when mid game actually
                                   // ended; otherwise the game never reached those phases.
                                   let label = null;
-                                  if (phase === 'early' && earlyEnd > 0) label = 'Early game';
-                                  else if (phase === 'mid' && midEnd > 0) label = 'Mid game';
-                                  else if (phase === 'late' && midEnd > 0) label = 'Late game';
+                                  if (phase === 'early' && earlyEnd > 0) label = t('events.phase.early');
+                                  else if (phase === 'mid' && midEnd > 0) label = t('events.phase.mid');
+                                  else if (phase === 'late' && midEnd > 0) label = t('events.phase.late');
                                   if (label) {
                                     nodes.push(
                                       <div key={`hdr-${phase}`} className={`workflow-events-section-header workflow-events-section-header--${phase}`}>
@@ -6467,11 +6528,14 @@ function App() {
                                               />
                                             )
                                           ))}
-                                          {castEntries.map(([spell, count]) => (
-                                            <span key={`cast-${spell}`} className="workflow-event-row-cast-pill" title={`${spell} cast ${count}× near this attack`}>
-                                              {Number(count) > 1 ? `${count}× ` : ''}{spell}
-                                            </span>
-                                          ))}
+                                          {castEntries.map(([spell, count]) => {
+                                            const spellName = t.server(`server.name.${slugKey(spell)}`, spell);
+                                            return (
+                                              <span key={`cast-${spell}`} className="workflow-event-row-cast-pill" title={t('events.castNearAttack', { spell: spellName, count })}>
+                                                {Number(count) > 1 ? `${count}× ` : ''}{spellName}
+                                              </span>
+                                            );
+                                          })}
                                         </span>
                                       ) : null}
                                     </span>
@@ -6481,7 +6545,7 @@ function App() {
                               return nodes;
                             })()
                           ) : (
-                            <div className="chart-empty">No events match the current filters. Use All to show players again.</div>
+                            <div className="chart-empty">{t('events.noMatch')}</div>
                           )}
                         </div>
                       </div>
@@ -6491,11 +6555,11 @@ function App() {
                 {mainGameTab === 'units' && (
                   <div className="workflow-card workflow-card-chat-summary">
                     <div className="workflow-production-top-row">
-                      <div className="workflow-radio-group" role="radiogroup" aria-label="Production view">
+                      <div className="workflow-radio-group" role="radiogroup" aria-label={t('units.viewAria')}>
                         {[
-                          { value: 'all', label: 'All' },
-                          { value: 'units', label: 'Units' },
-                          { value: 'buildings', label: 'Buildings' },
+                          { value: 'all', label: t('common.all') },
+                          { value: 'units', label: t('units.units') },
+                          { value: 'buildings', label: t('units.buildings') },
                         ].map((opt) => (
                           <label key={opt.value} className="workflow-radio-option">
                             <input
@@ -6513,34 +6577,34 @@ function App() {
                         ))}
                       </div>
                       <div className="workflow-section-warning">
-                        ⚠️ Replay commands contain significant false positives. Expect inflated numbers.
+                        {t('units.warning')}
                       </div>
                     </div>
                     <div className="workflow-summary-filter-row">
                       <div className="workflow-radio-group">
                         {(productionView === 'units'
                           ? [
-                              { value: 'all', label: 'All units' },
-                              { value: 'workers', label: 'Workers only' },
-                              { value: 'non-workers', label: 'Non-workers only' },
-                              { value: 'spellcasters', label: 'Spellcasters only' },
-                              { value: 'tier-1', label: 'Tier 1 only' },
-                              { value: 'tier-2', label: 'Tier 2 only' },
-                              { value: 'tier-3', label: 'Tier 3 only' },
+                              { value: 'all', label: t('units.filter.allUnits') },
+                              { value: 'workers', label: t('units.filter.workers') },
+                              { value: 'non-workers', label: t('units.filter.nonWorkers') },
+                              { value: 'spellcasters', label: t('units.filter.spellcasters') },
+                              { value: 'tier-1', label: t('units.filter.tier1') },
+                              { value: 'tier-2', label: t('units.filter.tier2') },
+                              { value: 'tier-3', label: t('units.filter.tier3') },
                             ]
                           : productionView === 'buildings'
                             ? [
-                                { value: 'all', label: 'All buildings' },
-                                { value: 'defenses', label: 'Defenses only' },
-                                { value: 'tier-1', label: 'Tier 1 only' },
-                                { value: 'tier-2', label: 'Tier 2 only' },
-                                { value: 'tier-3', label: 'Tier 3 only' },
+                                { value: 'all', label: t('units.filter.allBuildings') },
+                                { value: 'defenses', label: t('units.filter.defenses') },
+                                { value: 'tier-1', label: t('units.filter.tier1') },
+                                { value: 'tier-2', label: t('units.filter.tier2') },
+                                { value: 'tier-3', label: t('units.filter.tier3') },
                               ]
                             : [
-                                { value: 'all', label: 'All' },
-                                { value: 'tier-2', label: 'Tier 2 only' },
-                                { value: 'tier-3', label: 'Tier 3 only' },
-                                { value: 'defenses', label: 'Defenses only' },
+                                { value: 'all', label: t('common.all') },
+                                { value: 'tier-2', label: t('units.filter.tier2') },
+                                { value: 'tier-3', label: t('units.filter.tier3') },
+                                { value: 'defenses', label: t('units.filter.defenses') },
                               ]
                         ).map((opt) => (
                           <label key={opt.value} className="workflow-radio-option">
@@ -6558,7 +6622,7 @@ function App() {
                       <input
                         type="text"
                         className="workflow-summary-filter-input"
-                        placeholder={productionView === 'buildings' ? 'Filter building name...' : 'Filter unit name...'}
+                        placeholder={productionView === 'buildings' ? t('units.filterBuildingPlaceholder') : t('units.filterUnitPlaceholder')}
                         value={productionNameFilter}
                         onChange={(e) => setProductionNameFilter(e.target.value)}
                       />
@@ -6574,13 +6638,13 @@ function App() {
                       <table className="data-table workflow-table workflow-production-table">
                         <thead>
                           <tr>
-                            <th>Slice</th>
+                            <th>{t('units.table.slice')}</th>
                             {mainGamePlayers.map((player) => (
                               <th
                                 key={player.player_id}
                                 style={hasTeamInfo ? { backgroundColor: teamColorRgba(player.team, 0.2) } : undefined}
                               >
-                                {player.is_winner ? <span className="workflow-crown" title="Winner">👑</span> : null}
+                                {player.is_winner ? <span className="workflow-crown" title={t('common.winner')}>👑</span> : null}
                                 {player.name}
                               </th>
                             ))}
@@ -6604,7 +6668,7 @@ function App() {
                                       <div className="workflow-unit-chips">
                                         {filtered.map((unit) => (
                                           <span key={`${player.player_id}-${unit.unit_type}`} className="workflow-unit-chip">
-                                            {getUnitIcon(unit.unit_type) ? <img src={getUnitIcon(unit.unit_type)} alt={unit.unit_type} className="workflow-unit-chip-icon" /> : null}
+                                            {getUnitIcon(unit.unit_type) ? <img src={getUnitIcon(unit.unit_type)} alt={t.server(`server.name.${slugKey(unit.unit_type)}`, unit.unit_type)} className="workflow-unit-chip-icon" /> : null}
                                             <strong className="workflow-unit-chip-count">x{unit.count}</strong>
                                           </span>
                                         ))}
@@ -6623,7 +6687,7 @@ function App() {
 
                 {mainGameTab === 'hotkeys' && (
                   <div className="workflow-card">
-                    {mainGameHotkeysLoading ? <div className="chart-empty">Loading hotkey streams...</div> : null}
+                    {mainGameHotkeysLoading ? <div className="chart-empty">{t('hotkeys.loading')}</div> : null}
                     {!mainGameHotkeysLoading && mainGameHotkeysError ? <div className="chart-empty">{mainGameHotkeysError}</div> : null}
                     {!mainGameHotkeysLoading && !mainGameHotkeysError && mainGameHotkeys ? (
                       <>
@@ -6649,7 +6713,7 @@ function App() {
                 {mainGameTab === 'timings' && (
                   <div className="workflow-timing-charts">
                     <div className="workflow-section-top-row">
-                      <div className="workflow-production-tabs workflow-timing-tabs" role="tablist" aria-label="Timing category tabs">
+                      <div className="workflow-production-tabs workflow-timing-tabs" role="tablist" aria-label={t('timings.tabsAria')}>
                         {TIMING_CATEGORY_CONFIG.map((cfg) => (
                           <button
                             key={cfg.id}
@@ -6658,7 +6722,7 @@ function App() {
                             role="tab"
                             aria-selected={mainTimingCategory === cfg.id}
                           >
-                            {cfg.label}
+                            {t(cfg.labelKey)}
                           </button>
                         ))}
                       </div>
@@ -6667,7 +6731,7 @@ function App() {
                       ) : null}
                     </div>
                     {isResearchTiming ? (
-                      <div className="workflow-timing-overlay-toggles" role="group" aria-label="Overlay timing categories">
+                      <div className="workflow-timing-overlay-toggles" role="group" aria-label={t('timings.overlayAria')}>
                         {RESEARCH_SUBCATEGORIES.map((sub) => {
                           const active = mainResearchSubcategories.includes(sub.id);
                           return (
@@ -6682,7 +6746,7 @@ function App() {
                                 onChange={() => toggleResearchSubcategory(sub.id)}
                               />
                               <span className="workflow-timing-overlay-swatch" style={{ background: sub.color }} />
-                              <span>{sub.label}</span>
+                              <span>{t(sub.labelKey)}</span>
                             </label>
                           );
                         })}
@@ -6690,11 +6754,11 @@ function App() {
                     ) : null}
                     {isHpTiming ? (
                       mainHpTimingByRace.length === 0 ? (
-                        <div className="workflow-card"><div className="chart-empty">No HP upgrade timings found.</div></div>
+                        <div className="workflow-card"><div className="chart-empty">{t('timings.noHp')}</div></div>
                       ) : (
                         mainHpTimingByRace.map((raceChart) => (
                           <div key={`hp-${raceChart.race}`} className="workflow-card">
-                            <div className="workflow-card-title"><span>{`${raceChart.raceLabel} HP upgrades timings`}</span></div>
+                            <div className="workflow-card-title"><span>{t('timings.hpTitle', { race: raceChart.raceLabel })}</span></div>
                             <div className="workflow-radio-group">
                               {raceChart.labelOptions.map((labelName) => (
                                 <label key={`${raceChart.race}-${labelName}`} className="workflow-radio-option">
@@ -6705,7 +6769,7 @@ function App() {
                                     checked={raceChart.selected === labelName}
                                     onChange={(e) => setMainHpUpgradeFilters((prev) => ({ ...prev, [raceChart.race]: e.target.value }))}
                                   />
-                                  <span>{labelName}</span>
+                                  <span>{t.server(`server.name.${slugKey(labelName)}`, labelName)}</span>
                                 </label>
                               ))}
                             </div>
@@ -6724,7 +6788,7 @@ function App() {
                         ))
                       )
                     ) : isResearchTiming && mainResearchSubcategories.length === 0 ? (
-                      <div className="workflow-card"><div className="chart-empty">Select at least one category to overlay.</div></div>
+                      <div className="workflow-card"><div className="chart-empty">{t('timings.selectCategory')}</div></div>
                     ) : (
                       <TimingScatterRows
                         title=""
@@ -6753,7 +6817,7 @@ function App() {
                       ))
                     ) : (
                       <div className="workflow-card">
-                        <div className="chart-empty">No recognized build orders for this game.</div>
+                        <div className="chart-empty">{t('buildOrders.none')}</div>
                       </div>
                     )}
                   </div>
@@ -6768,7 +6832,7 @@ function App() {
                       />
                     ) : (
                       <div className="workflow-card">
-                        <div className="chart-empty">Mutalisk-Turret timing not detected for this game.</div>
+                        <div className="chart-empty">{t('mutaTiming.none')}</div>
                       </div>
                     )}
                   </div>
@@ -6777,7 +6841,7 @@ function App() {
                   <div className="workflow-timing-charts">
                     {mainGame?.team_stacking ? (
                       <div className="workflow-section-warning">
-                        😈 Team stacking detected: uneven non-solo team sizes were sustained (over {Math.round((mainGame.alliance_stacking_threshold_seconds || 300) / 60)} minutes, or until game end).
+                        {t('alliances.stackingWarning', { minutes: Math.round((mainGame.alliance_stacking_threshold_seconds || 300) / 60) })}
                       </div>
                     ) : null}
                     <AllianceTimeline
@@ -6799,7 +6863,7 @@ function App() {
                     <div className="workflow-section-top-row">
                       <span className="workflow-section-top-spacer" aria-hidden="true" />
                       <div className="workflow-section-warning">
-                        ⚠️ Worker travel starting build inflates these numbers.
+                        {t('firstUnit.warning')}
                       </div>
                     </div>
                     {mainFirstUnitEfficiencyGroups.length > 0 ? (
@@ -6811,7 +6875,7 @@ function App() {
                       ))
                     ) : (
                       <div className="workflow-card">
-                        <div className="chart-empty">No first unit efficiency rows found for this game.</div>
+                        <div className="chart-empty">{t('firstUnit.none')}</div>
                       </div>
                     )}
                   </div>
@@ -6825,10 +6889,10 @@ function App() {
                           config={{
                             style: 'monobell_relax',
                             precomputed_bins: mainGameCadenceProcessed.bins,
-                            x_axis_label: 'Cadence score',
-                            y_axis_label: 'Density',
-                            overlay_value_label: 'cadence',
-                            overlay_count_label: 'units',
+                            x_axis_label: t('appChart.cadenceScore'),
+                            y_axis_label: t('appChart.density'),
+                            overlay_value_label: t('appChart.overlay.cadence'),
+                            overlay_count_label: t('appChart.overlay.units'),
                             mean: mainGameCadenceProcessed.mean,
                             stddev: mainGameCadenceProcessed.stddev,
                             chart_height: 560,
@@ -6839,21 +6903,21 @@ function App() {
                               games_played: Number(player.games_played || 0),
                               tooltip_lines: [
                                 `${String(player.player_name || '')}`,
-                                `Cadence score: ${Number(player.average_apm || 0).toFixed(3)}`,
-                                `Rate per minute: ${Number(player.average_rate_per_min || 0).toFixed(2)}`,
-                                `Gap CV: ${Number(player.average_cv_gap || 0).toFixed(2)}`,
-                                `Burstiness: ${Number(player.average_burstiness || 0).toFixed(2)}`,
-                                `Idle gap ratio (>=20s): ${(Number(player.average_idle20_ratio || 0) * 100).toFixed(1)}%`,
-                                `Units counted in window: ${Number(player.games_played || 0)}`,
-                                `Window length: ${formatDuration(Number(player.window_seconds || 0))}`,
+                                t('appChart.tooltip.cadenceScore', { value: Number(player.average_apm || 0).toFixed(3) }),
+                                t('appChart.tooltip.ratePerMinute', { value: Number(player.average_rate_per_min || 0).toFixed(2) }),
+                                t('appChart.tooltip.gapCv', { value: Number(player.average_cv_gap || 0).toFixed(2) }),
+                                t('appChart.tooltip.burstiness', { value: Number(player.average_burstiness || 0).toFixed(2) }),
+                                t('appChart.tooltip.idleGapRatio', { value: (Number(player.average_idle20_ratio || 0) * 100).toFixed(1) }),
+                                t('appChart.tooltip.unitsInWindow', { count: Number(player.games_played || 0) }),
+                                t('appChart.tooltip.windowLength', { value: formatDuration(Number(player.window_seconds || 0)) }),
                               ],
                             })),
                           }}
                         />
                       ) : (
-                        <div className="chart-empty">No eligible players for this game cadence window yet.</div>
+                        <div className="chart-empty">{t('game.cadence.noEligible')}</div>
                       )}
-                      <div className="workflow-card-subtitle"><span>Per-player breakdown</span></div>
+                      <div className="workflow-card-subtitle"><span>{t('game.perPlayerBreakdown')}</span></div>
                       {(mainGame?.unit_production_cadence || []).map((entry) => (
                         <div key={`game-cadence-${entry.player_id}`} className="workflow-pattern-row">
                           <span>
@@ -6861,8 +6925,8 @@ function App() {
                           </span>
                           <span title={entry.eligible ? `rate=${Number(entry.rate_per_minute || 0).toFixed(2)}, cv=${Number(entry.cv_gap || 0).toFixed(2)}, burstiness=${Number(entry.burstiness || 0).toFixed(2)}, idle20=${(Number(entry.idle20_ratio || 0) * 100).toFixed(1)}%, units=${Number(entry.units_produced || 0)}, gaps=${Number(entry.gap_count || 0)}` : String(entry.ineligible_reason || '')}>
                             {entry.eligible
-                              ? `${Number(entry.cadence_score || 0).toFixed(3)} cadence (${Number(entry.units_produced || 0)} units, ${formatDuration(Number(entry.window_seconds || 0))} window)`
-                              : `N/A (${entry.ineligible_reason || 'insufficient data'})`}
+                              ? t('game.cadence.value', { score: Number(entry.cadence_score || 0).toFixed(3), units: Number(entry.units_produced || 0), window: formatDuration(Number(entry.window_seconds || 0)) })
+                              : t('game.notAvailable', { reason: entry.ineligible_reason || t('game.insufficientData') })}
                           </span>
                         </div>
                       ))}
@@ -6878,10 +6942,10 @@ function App() {
                           config={{
                             style: 'monobell_relax',
                             precomputed_bins: mainGameViewportProcessed.bins,
-                            x_axis_label: VIEWPORT_SWITCH_RATE_CONFIG.axisLabel,
-                            y_axis_label: 'Density',
-                            overlay_value_label: VIEWPORT_SWITCH_RATE_CONFIG.overlayValueLabel,
-                            overlay_count_label: 'player',
+                            x_axis_label: viewportText.axisLabel,
+                            y_axis_label: t('appChart.density'),
+                            overlay_value_label: viewportText.overlayValueLabel,
+                            overlay_count_label: t('appChart.overlay.player'),
                             mean: mainGameViewportProcessed.mean,
                             stddev: mainGameViewportProcessed.stddev,
                             chart_height: 560,
@@ -6892,24 +6956,24 @@ function App() {
                               games_played: Number(player.games_played || 0),
                               tooltip_lines: [
                                 `${String(player.player_name || '')}`,
-                                `${VIEWPORT_SWITCH_RATE_CONFIG.title}: ${VIEWPORT_SWITCH_RATE_CONFIG.valueFormatter(player.average_apm)}`,
+                                t('appChart.tooltip.labelValue', { label: viewportText.title, value: viewportText.valueFormatter(player.average_apm) }),
                               ],
                             })),
                           }}
                         />
                       ) : (
-                        <div className="chart-empty">No eligible players for this game viewport multitasking window yet.</div>
+                        <div className="chart-empty">{t('game.viewport.noEligible')}</div>
                       )}
-                      <div className="workflow-card-subtitle"><span>Per-player breakdown</span></div>
+                      <div className="workflow-card-subtitle"><span>{t('game.perPlayerBreakdown')}</span></div>
                       {(mainGame?.viewport_multitasking || []).map((entry) => (
                         <div key={`game-viewport-${entry.player_id}`} className="workflow-pattern-row">
                           <span>
                             {entry.is_winner ? '👑 ' : ''}{entry.player_name}
                           </span>
-                          <span title={entry.eligible ? VIEWPORT_SWITCH_RATE_CONFIG.valueFormatter(entry.viewport_switch_rate) : String(entry.ineligible_reason || '')}>
+                          <span title={entry.eligible ? viewportText.valueFormatter(entry.viewport_switch_rate) : String(entry.ineligible_reason || '')}>
                             {entry.eligible
-                              ? VIEWPORT_SWITCH_RATE_CONFIG.valueFormatter(entry.viewport_switch_rate)
-                              : `N/A (${entry.ineligible_reason || 'insufficient data'})`}
+                              ? viewportText.valueFormatter(entry.viewport_switch_rate)
+                              : t('game.notAvailable', { reason: entry.ineligible_reason || t('game.insufficientData') })}
                           </span>
                         </div>
                       ))}
@@ -6918,7 +6982,7 @@ function App() {
                 )}
               </>
             ) : (
-              <div className="chart-empty">Select a game from the Games tab.</div>
+              <div className="chart-empty">{t('game.selectPrompt')}</div>
             )}
           </div>
         )}
@@ -6946,32 +7010,32 @@ function App() {
                     </h2>
                     {isFeaturedPlayer && featured ? (
                       <div className="workflow-featured-links">
-                        {featured.main_race ? <span>{featured.main_race}</span> : null}
-                        <span>{`${featured.games_sampled} recent games sampled`}</span>
+                        {featured.main_race ? <span>{raceLabel(featured.main_race)}</span> : null}
+                        <span>{t('player.featured.gamesSampled', { count: featured.games_sampled })}</span>
                         {featured.liquipedia ? <a href={featured.liquipedia} target="_blank" rel="noopener noreferrer">Liquipedia</a> : null}
                       </div>
                     ) : null}
                     {!isFeaturedPlayer && mainPlayer && (Number(mainPlayer.games_played) || 0) < 5 ? (
-                      <span className="workflow-inline-warning">⚠️ Fewer than 5 replays: we cannot provide reliable player-level insights yet.</span>
+                      <span className="workflow-inline-warning">{t('player.fewReplaysWarning')}</span>
                     ) : null}
                   </div>
                 </div>
                 {mainPlayerLoading ? (
                   <div className="workflow-meta">
-                    <span className="workflow-subtle-note">loading overview…</span>
+                    <span className="workflow-subtle-note">{t('player.loadingOverview')}</span>
                   </div>
                 ) : null}
                 <div className="workflow-game-tab-stack">
-                  <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label="Player report sections">
+                  <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label={t('player.sectionsAria')}>
                     <button type="button" role="tab" aria-selected={mainPlayerTab === 'summary'}
                       className={`workflow-production-tab ${mainPlayerTab === 'summary' ? 'workflow-production-tab-active' : ''}`}
                       onClick={() => { setMainPlayerTab('summary'); setMainPlayerSubtab(''); }}>
-                      Summary
+                      {t('tabs.summary')}
                     </button>
                     <button type="button" role="tab" aria-selected={mainPlayerTab === 'hotkeys'}
                       className={`workflow-production-tab ${mainPlayerTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
                       onClick={() => { setMainPlayerTab('hotkeys'); setMainPlayerSubtab(''); }}>
-                      Hotkeys
+                      {t('tabs.hotkeys')}
                     </button>
                     {!isFeaturedPlayer ? (
                       <button type="button" role="tab" aria-selected={isSkillProxiesTab}
@@ -6981,14 +7045,14 @@ function App() {
                           setMainPlayerTab('skill-proxies');
                           setMainPlayerSubtab('summary');
                         }}>
-                        Skill proxies
+                        {t('tabs.skillProxies')}
                       </button>
                     ) : null}
                     {!isFeaturedPlayer ? (
                       <button type="button" role="tab" aria-selected={mainPlayerTab === 'chat-summary'}
                         className={`workflow-production-tab ${mainPlayerTab === 'chat-summary' ? 'workflow-production-tab-active' : ''}`}
                         onClick={() => { setMainPlayerTab('chat-summary'); setMainPlayerSubtab(''); }}>
-                        Chat summary
+                        {t('player.tabs.chatSummary')}
                       </button>
                     ) : null}
                   </div>
@@ -7016,15 +7080,15 @@ function App() {
                       <div className="workflow-card">
                         {showBnet ? (
                           <div className="wps-section">
-                            <div className="workflow-card-title wps-section-title"><span>🌐 Battle.net</span></div>
+                            <div className="workflow-card-title wps-section-title"><span>{t('player.bnet.title')}</span></div>
                             <div className="wps-stats">
                               <div className="wps-stat">
-                                <span className="wps-stat-label">Ladder</span>
+                                <span className="wps-stat-label">{t('player.bnet.ladder')}</span>
                                 <span className="wps-stat-value">
                                   {(() => {
-                                    if (!bnet.plays_ladder) return 'Unranked';
+                                    if (!bnet.plays_ladder) return t('player.bnet.unranked');
                                     const mmr = Number(bnet.mmr || bnet.highest_mmr) || 0;
-                                    return mmr ? `${mmr} MMR` : 'Plays ladder';
+                                    return mmr ? t('player.bnet.mmr', { mmr }) : t('player.bnet.playsLadder');
                                   })()}
                                 </span>
                                 {(() => {
@@ -7034,19 +7098,19 @@ function App() {
                                   const parts = [];
                                   if (wins + losses > 0) parts.push(`${wins}-${losses}`);
                                   const peak = Number(bnet.highest_mmr) || 0;
-                                  if (peak > (Number(bnet.mmr) || 0)) parts.push(`peak ${peak}`);
+                                  if (peak > (Number(bnet.mmr) || 0)) parts.push(t('player.bnet.peak', { mmr: peak }));
                                   return parts.length ? <span className="wps-stat-sub">{parts.join(', ')}</span> : null;
                                 })()}
                               </div>
                               {bnet.lifetime_games ? (
                                 <div className="wps-stat">
-                                  <span className="wps-stat-label">Games</span>
+                                  <span className="wps-stat-label">{t('player.stats.games')}</span>
                                   <span className="wps-stat-value">{bnet.lifetime_games}</span>
                                 </div>
                               ) : null}
                               {bnet.lifetime_games ? (
                                 <div className="wps-stat">
-                                  <span className="wps-stat-label">Win rate</span>
+                                  <span className="wps-stat-label">{t('player.stats.winRate')}</span>
                                   <span className="wps-stat-value">{((100 * bnet.lifetime_wins) / bnet.lifetime_games).toFixed(1)}%</span>
                                 </div>
                               ) : null}
@@ -7058,26 +7122,26 @@ function App() {
                               ) : null}
                               {bnetHours >= 1 ? (
                                 <div className="wps-stat">
-                                  <span className="wps-stat-label">Time played</span>
-                                  <span className="wps-stat-value">{`${Math.round(bnetHours).toLocaleString()} h`}</span>
+                                  <span className="wps-stat-label">{t('player.bnet.timePlayed')}</span>
+                                  <span className="wps-stat-value">{t('player.bnet.hours', { hours: Math.round(bnetHours).toLocaleString() })}</span>
                                 </div>
                               ) : null}
                               {bnetLastPlayed ? (
                                 <div className="wps-stat">
-                                  <span className="wps-stat-label">Last played</span>
+                                  <span className="wps-stat-label">{t('common.lastPlayed')}</span>
                                   <span className="wps-stat-value">{bnetLastPlayed}</span>
-                                  <span className="wps-stat-sub">{`${Number(bnet.games_last_week || 0)} games in the last week`}</span>
+                                  <span className="wps-stat-sub">{t('player.bnet.gamesLastWeek', { count: Number(bnet.games_last_week || 0) })}</span>
                                 </div>
                               ) : null}
                             </div>
                             {bnet.habits?.summary ? (
-                              <div className="wps-about" title="Read from the games Battle.net reported on every profile refresh over the last 90 days. Time of day uses the country's time zone.">
+                              <div className="wps-about" title={t('player.bnet.habitsTip')}>
                                 🕒 {bnet.habits.summary}
                               </div>
                             ) : null}
                             {aliases.length ? (
                               <div className="wps-aliases">
-                                <span className="wps-stat-label">Also plays as</span>
+                                <span className="wps-stat-label">{t('player.bnet.alsoPlaysAs')}</span>
                                 {aliases.map((alias) => {
                                   const aliasKey = keyOf(alias);
                                   return mainPlayerKnownAliases[aliasKey] ? (
@@ -7085,7 +7149,7 @@ function App() {
                                       key={aliasKey}
                                       type="button"
                                       className="wps-alias wps-alias-known"
-                                      title="View this player"
+                                      title={t('player.viewThisPlayer')}
                                       onClick={() => openMainPlayer(aliasKey)}
                                     >
                                       {alias}
@@ -7100,24 +7164,24 @@ function App() {
                         ) : null}
                         {isFeaturedPlayer ? (
                           <div className="wps-section">
-                            <div className="workflow-card-title wps-section-title"><span>🏁 Recent ladder games</span></div>
+                            <div className="workflow-card-title wps-section-title"><span>{t('player.bnet.recentGames')}</span></div>
                             {!bnet ? (
                               <div className="chart-empty">
                                 {(!bnetDisabled && bnetState === 'connected')
-                                  ? 'Fetching this player\'s Battle.net profile. Recent ladder games appear once it arrives.'
-                                  : 'Connect to Battle.net (start StarCraft: Remastered) to see this player\'s recent ladder games.'}
+                                  ? t('player.bnet.fetchingProfile')
+                                  : t('player.bnet.connectPrompt')}
                               </div>
                             ) : bnetRecent.length === 0 ? (
-                              <div className="chart-empty">Battle.net reports no recent games for this player.</div>
+                              <div className="chart-empty">{t('player.bnet.noRecentGames')}</div>
                             ) : (
                               <div className="workflow-bnet-games">
                                 <div className="workflow-bnet-game-row wbg-head">
                                   <span className="wbg-race" />
-                                  <span className="wbg-when">When</span>
-                                  <span className="wbg-map">Map</span>
-                                  <span className="wbg-result">W/L</span>
+                                  <span className="wbg-when">{t('player.bnet.table.when')}</span>
+                                  <span className="wbg-map">{t('common.map')}</span>
+                                  <span className="wbg-result">{t('common.winLoss')}</span>
                                   <span className="wbg-apm">APM</span>
-                                  <span className="wbg-opp">Opponent</span>
+                                  <span className="wbg-opp">{t('player.bnet.table.opponent')}</span>
                                 </div>
                                 {bnetRecent.map((g) => {
                                   const raceIcon = getWorkerIconForRace(g.race);
@@ -7126,7 +7190,7 @@ function App() {
                                   const opponents = Array.isArray(g.opponents) ? g.opponents : [];
                                   return (
                                     <div key={`${g.match_guid || g.played_at}`} className="workflow-bnet-game-row">
-                                      <span className="wbg-race">{raceIcon ? <img src={raceIcon} alt={g.race || ''} title={g.race || ''} /> : null}</span>
+                                      <span className="wbg-race">{raceIcon ? <img src={raceIcon} alt={raceLabel(g.race)} title={raceLabel(g.race)} /> : null}</span>
                                       <span className="wbg-when" title={g.played_at}>{formatRelativeReplayDate(g.played_at)}</span>
                                       <span className="wbg-map" title={g.map_name}>{g.map_name || '-'}</span>
                                       <span className="wbg-result" title={result}>{resultEmoji}</span>
@@ -7141,34 +7205,34 @@ function App() {
                         ) : null}
                         {!isFeaturedPlayer ? (
                         <div className="wps-section">
-                          {showBnet ? <div className="workflow-card-title wps-section-title"><span>💾 Local games</span></div> : null}
+                          {showBnet ? <div className="workflow-card-title wps-section-title"><span>{t('player.localGames')}</span></div> : null}
                           <div className="wps-stats">
                             <div className="wps-stat">
-                              <span className="wps-stat-label">Games</span>
+                              <span className="wps-stat-label">{t('player.stats.games')}</span>
                               <span className="wps-stat-value">{mainPlayer ? mainPlayer.games_played : '-'}</span>
                             </div>
                             <div className="wps-stat">
-                              <span className="wps-stat-label">Win rate</span>
+                              <span className="wps-stat-label">{t('player.stats.winRate')}</span>
                               <span className="wps-stat-value">{mainPlayer ? `${(mainPlayer.win_rate * 100).toFixed(1)}%` : '-'}</span>
                             </div>
                             <div className="wps-stat">
                               <span className="wps-stat-label">APM</span>
                               <span className="wps-stat-value">{mainPlayer ? mainPlayer.average_apm?.toFixed(1) : '-'}</span>
-                              <span className="wps-stat-sub">{mainPlayer ? `${mainPlayer.average_eapm?.toFixed(1)} EAPM` : ''}</span>
+                              <span className="wps-stat-sub">{mainPlayer ? t('player.stats.eapm', { value: mainPlayer.average_eapm?.toFixed(1) }) : ''}</span>
                             </div>
                           </div>
-                        {mainPlayerLastGamesLoading ? <div className="chart-empty">Loading last games...</div> : null}
+                        {mainPlayerLastGamesLoading ? <div className="chart-empty">{t('player.lastGames.loading')}</div> : null}
                         {!mainPlayerLastGamesLoading && mainPlayerLastGamesError ? <div className="chart-empty">{mainPlayerLastGamesError}</div> : null}
                         {!mainPlayerLastGamesLoading && !mainPlayerLastGamesError && games.length > 0 ? (
                           <div className="workflow-last-games">
                             <div className="workflow-last-game-row wlg-head">
                               <span className="wlg-race" />
-                              <span className="wlg-format">Type</span>
-                              <span className="wlg-len">Time</span>
-                              <span className="wlg-map">Map</span>
-                              <span className="wlg-result">W/L</span>
+                              <span className="wlg-format">{t('player.lastGames.type')}</span>
+                              <span className="wlg-len">{t('common.time')}</span>
+                              <span className="wlg-map">{t('common.map')}</span>
+                              <span className="wlg-result">{t('common.winLoss')}</span>
                               <span className="wlg-apm">APM</span>
-                              <span className="wlg-featuring">Featuring</span>
+                              <span className="wlg-featuring">{t('common.featuring')}</span>
                               <span className="wlg-comp"><CompositionZonesHeader /></span>
                             </div>
                             {games.map((g) => {
@@ -7178,7 +7242,7 @@ function App() {
                               const restPatterns = patterns.filter((pt) => !isOpenerEventType(pt?.event_type));
                               const phases = Array.isArray(cp?.composition) ? cp.composition : [];
                               const resultEmoji = cp?.disconnected ? '🔌' : (cp?.is_winner ? '✅' : '❌');
-                              const resultTitle = cp?.disconnected ? 'Disconnected' : (cp?.is_winner ? 'Win' : 'Loss');
+                              const resultTitle = cp?.disconnected ? t('player.result.disconnected') : (cp?.is_winner ? t('player.result.win') : t('player.result.loss'));
                               const raceIcon = getWorkerIconForRace(cp?.race);
                               return (
                                 <div
@@ -7190,7 +7254,7 @@ function App() {
                                   onKeyDown={(e) => { if (e.key === 'Enter') openMainGame(g.replay_id); }}
                                 >
                                   <span className="wlg-race">
-                                    {raceIcon ? <img src={raceIcon} alt={cp?.race || ''} title={cp?.race || ''} /> : null}
+                                    {raceIcon ? <img src={raceIcon} alt={raceLabel(cp?.race)} title={raceLabel(cp?.race)} /> : null}
                                   </span>
                                   <span className="wlg-format">
                                     {(() => {
@@ -7228,7 +7292,7 @@ function App() {
                           </div>
                         ) : null}
                         {!mainPlayerLastGamesLoading && !mainPlayerLastGamesError && mainPlayerLastGames && games.length === 0 ? (
-                          <div className="chart-empty">No games found for this player.</div>
+                          <div className="chart-empty">{t('player.lastGames.none')}</div>
                         ) : null}
                         </div>
                         ) : null}
@@ -7238,13 +7302,13 @@ function App() {
 
                   {isSkillProxiesTab && (
                     <div className="workflow-card workflow-card-fingerprints">
-                      <div className="workflow-card-title"><span>Population comparison</span></div>
+                      <div className="workflow-card-title"><span>{t('skillProxies.populationComparison')}</span></div>
                       {isFeaturedPlayer ? (
                         <div className="workflow-subtle-note">
-                          {`Where ${featured?.label || 'this progamer'} would sit among the players in your database. The progamer is not part of the population.`}
+                          {t('skillProxies.featuredNote', { name: featured?.label || t('skillProxies.thisProgamer') })}
                         </div>
                       ) : null}
-                      {mainPlayerInsightLoading ? <div className="chart-empty">Loading population comparisons...</div> : null}
+                      {mainPlayerInsightLoading ? <div className="chart-empty">{t('skillProxies.loading')}</div> : null}
                       {!mainPlayerInsightLoading && mainPlayerInsightErrors.length > 0 ? (
                         <div className="chart-empty">{mainPlayerInsightErrors[0]}</div>
                       ) : null}
@@ -7253,8 +7317,14 @@ function App() {
                           {mainPlayerInsights.map((insight) => {
                             const percentile = Number(insight.performance_percentile || 0);
                             const accent = insightScoreColor(percentile);
-                            const overrideDesc = isFeaturedPlayer ? undefined : PLAYER_INSIGHT_DESCRIPTION_OVERRIDES[insight.insight_type];
-                            const description = overrideDesc !== undefined ? overrideDesc : insight.description;
+                            const overrideDesc = isFeaturedPlayer ? undefined : playerInsightDescriptionOverride(insight.insight_type);
+                            const description = overrideDesc !== undefined
+                              ? overrideDesc
+                              : (isFeaturedPlayer ? insight.description : t.server(`server.insight.${insight.insight_type}.description`, insight.description));
+                            const reasonArgs = Array.isArray(insight.ineligible_reason_args) ? insight.ineligible_reason_args : [];
+                            const ineligibleReason = insight.ineligible_reason_key
+                              ? t.server(`server.insight.reason.${insight.ineligible_reason_key}`, insight.ineligible_reason, Object.fromEntries(reasonArgs.map((arg, idx) => [idx, arg])))
+                              : insight.ineligible_reason;
                             const popTab = playerInsightDestinationTab(insight.insight_type);
                             return (
                               <div
@@ -7263,20 +7333,20 @@ function App() {
                                 style={insight.eligible ? { borderColor: `${accent}55`, boxShadow: `inset 0 0 0 1px ${accent}22` } : undefined}
                               >
                                 <div className="workflow-insight-card-header">
-                                  <span>{insight.title}</span>
+                                  <span>{t.server(`server.insight.${insight.insight_type}.title`, insight.title)}</span>
                                 </div>
                                 {insight.eligible ? (
                                   <>
                                     <div className="workflow-insight-score-row">
                                       <span className="workflow-insight-score" style={{ color: accent }}>{insightSummaryLabel(percentile)}</span>
                                     </div>
-                                    <div className="workflow-insight-value">{insight.player_value_label}</div>
-                                    <div className="workflow-subtle-note">{`${insight.population_size} eligible players in population.`}</div>
+                                    <div className="workflow-insight-value">{insightValueLabel(t, insight.player_value_label)}</div>
+                                    <div className="workflow-subtle-note">{t('skillProxies.populationSize', { count: insight.population_size })}</div>
                                   </>
                                 ) : (
                                   <>
-                                    <div className="workflow-insight-unavailable">Not enough data yet</div>
-                                    <div className="workflow-subtle-note">{libraryLoadingCopy || insight.ineligible_reason || 'This comparison is not available yet.'}</div>
+                                    <div className="workflow-insight-unavailable">{t('skillProxies.notEnoughData')}</div>
+                                    <div className="workflow-subtle-note">{libraryLoadingCopy || ineligibleReason || t('skillProxies.notAvailable')}</div>
                                   </>
                                 )}
                                 {description ? (
@@ -7289,7 +7359,7 @@ function App() {
                                       className="workflow-link-btn"
                                       onClick={() => openMainPlayersSubview(popTab)}
                                     >
-                                      See all players comparison →
+                                      {t('skillProxies.seeAllPlayers')}
                                     </button>
                                   </div>
                                 ) : null}
@@ -7303,7 +7373,7 @@ function App() {
 
                   {mainPlayerTab === 'hotkeys' && (
                     <div className="workflow-card">
-                      {mainPlayerHotkeySigLoading ? <div className="chart-empty">Loading hotkey signature...</div> : null}
+                      {mainPlayerHotkeySigLoading ? <div className="chart-empty">{t('hotkeys.loadingSignature')}</div> : null}
                       {!mainPlayerHotkeySigLoading && mainPlayerHotkeySigError ? <div className="chart-empty">{mainPlayerHotkeySigError}</div> : null}
                       {!mainPlayerHotkeySigLoading && !mainPlayerHotkeySigError && mainPlayerHotkeySig ? (
                         <HotkeySignature payload={mainPlayerHotkeySig} loadingNotice={libraryLoadingCopy} />
@@ -7313,20 +7383,20 @@ function App() {
 
                   {mainPlayerTab === 'chat-summary' && (
                     <div className="workflow-card workflow-card-chat-summary">
-                      <div className="workflow-card-title"><span>Chat Summary</span></div>
-                      {mainPlayerChatSummaryLoading ? <div className="chart-empty">Loading chat summary...</div> : null}
+                      <div className="workflow-card-title"><span>{t('chat.title')}</span></div>
+                      {mainPlayerChatSummaryLoading ? <div className="chart-empty">{t('chat.loading')}</div> : null}
                       {!mainPlayerChatSummaryLoading && mainPlayerChatSummaryError ? <div className="chart-empty">{mainPlayerChatSummaryError}</div> : null}
                       {!mainPlayerChatSummaryLoading && !mainPlayerChatSummaryError && (Number(mainPlayerChatSummary?.total_messages) || 0) === 0 ? (
-                        <div className="chart-empty">{libraryLoadingCopy || 'No chat messages found for this player in your replays.'}</div>
+                        <div className="chart-empty">{libraryLoadingCopy || t('chat.none')}</div>
                       ) : (
                         !mainPlayerChatSummaryLoading && !mainPlayerChatSummaryError && mainPlayerChatSummary ? (
                           <>
                             <div className="workflow-subtle-note">
-                              {`${mainPlayerChatSummary?.total_messages || 0} messages across ${mainPlayerChatSummary?.games_with_chat || 0} games, ${mainPlayerChatSummary?.distinct_terms || 0} distinct terms after cleanup.`}
+                              {t('chat.stats', { messages: mainPlayerChatSummary?.total_messages || 0, games: mainPlayerChatSummary?.games_with_chat || 0, terms: mainPlayerChatSummary?.distinct_terms || 0 })}
                             </div>
-                            <div className="workflow-card-subtitle"><span>Top terms</span></div>
+                            <div className="workflow-card-subtitle"><span>{t('chat.topTerms')}</span></div>
                             {(mainPlayerChatSummary?.top_terms || []).length === 0 ? (
-                              <div className="chart-empty">Not enough messages to infer common terms.</div>
+                              <div className="chart-empty">{t('chat.notEnough')}</div>
                             ) : (
                               <div className="workflow-pattern-pills">
                                 {(mainPlayerChatSummary?.top_terms || []).map((item) => (
@@ -7337,7 +7407,7 @@ function App() {
                                 ))}
                               </div>
                             )}
-                            <div className="workflow-card-subtitle"><span>Last 15 messages</span></div>
+                            <div className="workflow-card-subtitle"><span>{t('chat.lastMessages')}</span></div>
                             {(mainPlayerChatSummary?.example_messages || []).map((msg, idx) => (
                               <div key={`player-chat-example-${idx}`} className="workflow-chat-line">
                                 <span>{msg}</span>
@@ -7351,7 +7421,7 @@ function App() {
                 </div>
               </>
             ) : (
-              <div className="chart-empty">Select a player from a game report.</div>
+              <div className="chart-empty">{t('player.selectPrompt')}</div>
             )}
           </div>
           );
@@ -7393,7 +7463,7 @@ function App() {
           <button
             type="button"
             className="ingest-toast-dismiss"
-            aria-label="Dismiss"
+            aria-label={t('common.dismiss')}
             onClick={() => setSampleNotice('')}
           >
             ×
@@ -7405,17 +7475,17 @@ function App() {
         <div className="footer-left">
           {replayCount !== null ? (
             <>
-              {replayCount.toLocaleString()} replays in library
+              {t('footer.replaysInDatabase', { count: replayCount.toLocaleString() })}
               <span className="workflow-meta-sep" aria-hidden="true"> · </span>
               <a href="https://github.com/marianogappa/screpdb" target="_blank" rel="noopener noreferrer">screpdb</a>
-              {' by '}
+              {t('footer.by')}
               <a href="https://marianogappa.github.io" target="_blank" rel="noopener noreferrer">Mariano Gappa</a>
               {currentVersion ? (
                 <>
                   <span className="workflow-meta-sep" aria-hidden="true"> · </span>
                   <span
                     className="footer-version"
-                    title={currentCommit ? `commit ${currentCommit}` : undefined}
+                    title={currentCommit ? t('footer.commit', { commit: currentCommit }) : undefined}
                   >
                     {currentVersion}
                     {currentCommit && currentCommit !== 'unknown' ? ` (${currentCommit})` : ''}
@@ -7423,14 +7493,14 @@ function App() {
                 </>
               ) : null}
               <span className="workflow-meta-sep" aria-hidden="true"> · </span>
-              <a href="https://github.com/marianogappa/screpdb/issues/new/choose" target="_blank" rel="noopener noreferrer">🐞 Report an issue</a>
+              <a href="https://github.com/marianogappa/screpdb/issues/new/choose" target="_blank" rel="noopener noreferrer">{t('footer.reportIssue')}</a>
               {updateAvailable && updateTier === 'quiet' && !quietUpdateDismissed ? (
                 <>
                   <span className="workflow-meta-sep" aria-hidden="true"> · </span>
                   <span className="footer-update-nudge">
                     {updateApplied ? (
                       <button type="button" className="footer-update-link" onClick={() => window.location.reload()}>
-                        ✅ Updated to {updateLatest} · refresh
+                        {t('update.updatedRefreshFooter', { version: updateLatest })}
                       </button>
                     ) : selfUpdateSupported ? (
                       <button
@@ -7438,9 +7508,9 @@ function App() {
                         className="footer-update-link"
                         disabled={updateApplying}
                         onClick={handleApplyUpdate}
-                        data-tip={updateError || `Update from ${currentVersion} to ${updateLatest}`}
+                        data-tip={updateError || t('update.fromTo', { from: currentVersion, to: updateLatest })}
                       >
-                        {updateApplying ? 'Updating…' : `🆕 Update to ${updateLatest}`}
+                        {updateApplying ? t('update.updatingPlain') : t('update.updateTo', { version: updateLatest })}
                       </button>
                     ) : updateManagerCommand ? (
                       <ManagedUpdateHint
@@ -7451,14 +7521,14 @@ function App() {
                       />
                     ) : (
                       <a href={updateReleaseUrl} target="_blank" rel="noopener noreferrer" className="footer-update-link" data-tip={updateUnsupportedTip}>
-                        {`🆕 Update available (${updateLatest})`}
+                        {t('update.availableVersion', { version: updateLatest })}
                       </a>
                     )}
                     {!updateApplied ? (
                       <button
                         type="button"
                         className="footer-update-dismiss"
-                        aria-label="Dismiss update notice"
+                        aria-label={t('update.dismiss')}
                         onClick={() => setQuietUpdateDismissed(true)}
                       >
                         ×
@@ -7470,8 +7540,11 @@ function App() {
               ) : null}
             </>
           ) : (
-            'Loading replay count...'
+            t('footer.loadingReplayCount')
           )}
+        </div>
+        <div className="footer-right">
+          <LanguageSwitcher />
         </div>
       </div>
     </div>

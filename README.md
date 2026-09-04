@@ -2,6 +2,8 @@
 
 screpdb is an advanced Starcraft replay reporting tool.
 
+[English](README.md) | [한국어](README.ko.md)
+
 [![Release](https://img.shields.io/github/v/release/marianogappa/screpdb)](https://github.com/marianogappa/screpdb/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/marianogappa/screpdb)](go.mod)
@@ -36,6 +38,8 @@ screpdb is an advanced Starcraft replay reporting tool.
 
 ### Alliance timeline and team stacking detection on multiplayer melee games
 <img width="1557" height="872" alt="Screenshot 2026-05-13 at 22 59 15" src="https://github.com/user-attachments/assets/ce38f46a-89c8-4a9a-b9f9-6489afd9c05b" />
+
+### Korean UI: the dashboard follows your system language (English / 한국어) and has a switcher in the footer
 
 
 
@@ -312,13 +316,14 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-09-04  OK. Battle.net battle tags rendered double-encoded (UTF-8 read as latin-1). Cause was normalizeBridgeJSON transcoding the WHOLE bridge response as cp949/ISO 8859-1 whenever any byte was invalid UTF-8 — SC:R truncates map titles and game names mid-sequence in fixed-width buffers, so a few damaged bytes mojibaked every correct Cyrillic and Korean string in the payload. Normalization is now byte-local: well-formed UTF-8 passes through untouched and only the invalid runs are transcoded. Added bnetfacade.IsMojibakedPayload, a whole-payload structural check, so cached entries an older build corrupted read as absent and refetch through the existing rate-limited path instead of being repaired in place (21 of 408 local entries). No new I/O, endpoints, os/net calls, or facade changes; no AlgorithmVersion bump (replay detection is untouched).
+2026-09-04  OK. Korean UI. Frontend-only locale catalogs (internal/dashboard/frontend/src/locales) with the choice kept in browser localStorage; the Go side only adds JSON fields to existing responses (ingest log key/args, insight ineligible_reason_key/args, games-list featuring_keys) so labels can be looked up by stable id. No new I/O, no new capability, no new dependency.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
 
 ```
+2026-09-04  OK. Battle.net battle tags rendered double-encoded (UTF-8 read as latin-1). Cause was normalizeBridgeJSON transcoding the WHOLE bridge response as cp949/ISO 8859-1 whenever any byte was invalid UTF-8 — SC:R truncates map titles and game names mid-sequence in fixed-width buffers, so a few damaged bytes mojibaked every correct Cyrillic and Korean string in the payload. Normalization is now byte-local: well-formed UTF-8 passes through untouched and only the invalid runs are transcoded. Added bnetfacade.IsMojibakedPayload, a whole-payload structural check, so cached entries an older build corrupted read as absent and refetch through the existing rate-limited path instead of being repaired in place (21 of 408 local entries). No new I/O, endpoints, os/net calls, or facade changes; no AlgorithmVersion bump (replay detection is untouched).
 2026-09-04  OK. Deletes the SQLite ingestion benchmark, its runner script and its workflow (BenchmarkSQLiteIngestionCorpus, scripts/bench-ingest.sh, bench-ingest.yml, the make target). It measured the screpdb ingest write path, which the dashboard stopped using when it moved to the in-memory library, and the README badge now tracks the replay-load path instead, so it was spending CI minutes guarding a figure nobody read. Nothing is stranded: resolveReplayDir is still used by three other storage tests, storeReplayWithBatching is production code, and profile.NewSink is still used by internal/ingest; only the bench-only SCREPDB_BENCH_CORPUS_CAP and SCREPDB_BENCH_CPUPROFILE env vars go away with it. The screpdb ingest and screpdb mcp code paths themselves are untouched. Pure removal of test and CI tooling: no new os/net calls, roots, hosts, endpoints, queries, facade changes, enforcement-test change, or AlgorithmVersion bump.
 2026-09-04  OK. Frontend only, no Go changes at all. The Gaming Session games table was a hand-copy of the games list markup that had drifted: it was missing the data-table and --main classes so it had no column widths, it hardcoded the roomy variant, it titled the duration column "Length", and it linked player names, which swallowed the row click that opens the game. Both lists now render through one renderGamesListTable helper so a second games list cannot drift again; the backend already shared its row builders with the games list, so no read path changed. No new os/net calls, roots, hosts, endpoints, queries, facade changes, enforcement-test change, or AlgorithmVersion bump.
 2026-09-04  OK. CI and benchmark tooling only, no change to the shipped binary. The README throughput badge now tracks the replay-library load path, the read a user actually waits for on launch, instead of the SQLite screpdb ingest path the dashboard no longer uses: a new BenchmarkLibraryLoadCorpus test in internal/library/load runs the production loader over the committed markers corpus, driven by scripts/bench-load.sh and a bench-load.yml workflow. The SQLite benchmark stays as an unbadged regression guard for the CLI. The two measured README figures (coverage and throughput) also stop being pushed straight to main, which branch protection silently rejected so both had gone stale, and are refreshed through one auto-merging pull request from readme-figures.yml instead. The benchmark reads only the committed corpus, through the same fileops walk and screp parser the loader already uses, into a temporary in-memory library that is closed again, and writes nothing. No new os/net calls, roots, hosts, endpoints, facade exemptions, enforcement-test change, or AlgorithmVersion bump.

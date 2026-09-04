@@ -434,6 +434,8 @@ func (d *Dashboard) featuredAsyncInsight(pro *propack.Pro, insightType workflowP
 	}
 	if !haveValue {
 		result.IneligibleReason = fmt.Sprintf("Not enough sampled games of %s for this comparison.", pro.Label)
+		result.IneligibleReasonKey = "not_enough_sampled_games_of_pro"
+		result.IneligibleReasonArgs = []string{pro.Label}
 		return result, nil
 	}
 	result.PlayerValue = &value
@@ -448,6 +450,7 @@ func (d *Dashboard) featuredAsyncInsight(pro *propack.Pro, insightType workflowP
 	result.Details = append(result.Details, workflowPlayerInsightDetail{Label: "Sampled games", Value: fmt.Sprintf("%d", games)})
 	if len(values) == 0 {
 		result.IneligibleReason = "Your database has no eligible players to compare against yet."
+		result.IneligibleReasonKey = "no_eligible_players_to_compare"
 		return result, nil
 	}
 	percentile := performancePercentileFromSortedValues(values, value, false)

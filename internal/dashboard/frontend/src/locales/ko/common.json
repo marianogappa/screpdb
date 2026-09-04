@@ -1,0 +1,9 @@
+{
+  "app.title": "스타크래프트 대시보드",
+  "footer.language": "언어",
+  "footer.replaysInDatabase": "라이브러리에 리플레이 {count}개",
+  "footer.by": " 제작: ",
+  "footer.commit": "커밋 {commit}",
+  "footer.reportIssue": "🐞 문제 신고",
+  "marker.betaTooltip": "베타: 이 감지 결과는 아직 실제 게임으로 직접 검증하지 않았으므로 가끔 틀릴 수 있습니다."
+}

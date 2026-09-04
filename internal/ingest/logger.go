@@ -24,6 +24,8 @@ type LogEvent struct {
 	Level   LogLevel `json:"level"`
 	Message string   `json:"message"`
 	Append  bool     `json:"append,omitempty"`
+	Key     string   `json:"key,omitempty"`
+	Args    []string `json:"args,omitempty"`
 }
 
 type Logger struct {
@@ -42,20 +44,20 @@ func NewLogger(writer io.Writer, useColor bool, onEvent func(LogEvent)) *Logger 
 	}
 }
 
-func (l *Logger) Infof(format string, args ...any) {
-	l.printf(LogLevelInfo, format, args...)
+func (l *Logger) Infof(key, format string, args ...any) {
+	l.printf(LogLevelInfo, key, format, args...)
 }
 
-func (l *Logger) Successf(format string, args ...any) {
-	l.printf(LogLevelSuccess, format, args...)
+func (l *Logger) Successf(key, format string, args ...any) {
+	l.printf(LogLevelSuccess, key, format, args...)
 }
 
-func (l *Logger) Warnf(format string, args ...any) {
-	l.printf(LogLevelWarn, format, args...)
+func (l *Logger) Warnf(key, format string, args ...any) {
+	l.printf(LogLevelWarn, key, format, args...)
 }
 
-func (l *Logger) Errorf(format string, args ...any) {
-	l.printf(LogLevelError, format, args...)
+func (l *Logger) Errorf(key, format string, args ...any) {
+	l.printf(LogLevelError, key, format, args...)
 }
 
 func (l *Logger) Progress() {
@@ -66,11 +68,24 @@ func (l *Logger) Progress() {
 	})
 }
 
-func (l *Logger) printf(level LogLevel, format string, args ...any) {
+func (l *Logger) printf(level LogLevel, key, format string, args ...any) {
 	l.emit(LogEvent{
 		Level:   level,
 		Message: fmt.Sprintf(format, args...),
+		Key:     key,
+		Args:    stringifyArgs(args),
 	})
+}
+
+func stringifyArgs(args []any) []string {
+	if len(args) == 0 {
+		return nil
+	}
+	out := make([]string, len(args))
+	for i, arg := range args {
+		out[i] = fmt.Sprint(arg)
+	}
+	return out
 }
 
 func (l *Logger) emit(event LogEvent) {

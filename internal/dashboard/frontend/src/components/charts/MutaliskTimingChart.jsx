@@ -1,5 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { getUnitIcon } from '../../lib/gameAssets';
+import { useT } from '../../lib/i18nContext';
+import { slugKey } from '../../lib/i18n';
 
 // MutaliskTimingChart renders the 1v1 TvZ Mutalisk-Turret timing as two
 // horizontal lanes — Zerg (top) and Terran (bottom) — sharing one x-axis.
@@ -14,9 +16,6 @@ import { getUnitIcon } from '../../lib/gameAssets';
 // itself is green when the actual gap falls inside the sweet spot, red
 // otherwise.
 
-const LEGEND_TOOLTIP =
-  'Expert range comes from the cwal-dl 1v1 TvZ corpus (240-game match set). It is the p25-p75 interquartile of (turret_finished - mutalisk_finished); progamers aim for turrets to land just-in-time as mutas arrive.';
-
 const formatTime = (sec) => {
   const v = Math.max(0, Math.floor(Number(sec) || 0));
   return `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`;
@@ -24,9 +23,8 @@ const formatTime = (sec) => {
 
 const formatSigned = (n) => {
   const v = Number(n) || 0;
-  if (v > 0) return `+${v}s`;
-  if (v < 0) return `${v}s`;
-  return '0s';
+  if (v > 0) return `+${v}`;
+  return `${v}`;
 };
 
 // Expert range geometry (relative to corpus median, in seconds):
@@ -46,11 +44,11 @@ const expertBoundaries = (median) => ({
 
 const verdictForGap = (actual, median) => {
   if (!Number.isFinite(actual)) return null;
-  if (actual < EARLY_WASTE_THRESHOLD) return 'Waste of early minerals';
+  if (actual < EARLY_WASTE_THRESHOLD) return 'earlyWaste';
   const { innerL, innerR, outerL, outerR } = expertBoundaries(median);
-  if (actual >= innerL && actual <= innerR) return 'Perfect timing';
-  if (actual >= outerL && actual <= outerR) return 'Within expert range';
-  return 'Terran base at risk';
+  if (actual >= innerL && actual <= innerR) return 'perfect';
+  if (actual >= outerL && actual <= outerR) return 'withinRange';
+  return 'baseAtRisk';
 };
 
 const pickLane = (group) => {
@@ -80,6 +78,7 @@ const LANE_T_TINT = 'rgba(245, 158, 66, 0.06)';
 const LANE_T_BORDER = 'rgba(245, 158, 66, 0.20)';
 
 function MutaliskTimingChart({ zSide, tSide, summary }) {
+  const t = useT();
   const wrapperRef = useRef(null);
   const [hover, setHover] = useState(null);
 
@@ -149,6 +148,11 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
     const yMid = laneTop + laneMid;
     const xTrig = xAt(trigSec);
     const xDone = xAt(doneSec);
+    const hoverPayload = {
+      title: t.server(`server.name.${slugKey(e.key)}`, e.key),
+      line1: t('chart.muta.triggeredAt', { time: formatTime(trigSec) }),
+      line2: e.buildTime > 0 ? t('chart.muta.buildArrow', { seconds: e.buildTime, time: formatTime(doneSec) }) : '',
+    };
 
     return (
       <g key={`trig-${laneTop}-${e.key}`}>
@@ -173,21 +177,13 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
             fill="rgba(255,255,255,0.6)"
             fontSize="10"
           >
-            building {e.buildTime}s
+            {t('chart.muta.buildingSeconds', { seconds: e.buildTime })}
           </text>
         ) : null}
         {/* Trigger icon */}
         <g
-          onMouseEnter={(ev) => updateHover(ev, {
-            title: e.key,
-            line1: `triggered at ${formatTime(trigSec)}`,
-            line2: e.buildTime > 0 ? `${e.buildTime}s build → ${formatTime(doneSec)}` : '',
-          })}
-          onMouseMove={(ev) => updateHover(ev, {
-            title: e.key,
-            line1: `triggered at ${formatTime(trigSec)}`,
-            line2: e.buildTime > 0 ? `${e.buildTime}s build → ${formatTime(doneSec)}` : '',
-          })}
+          onMouseEnter={(ev) => updateHover(ev, hoverPayload)}
+          onMouseMove={(ev) => updateHover(ev, hoverPayload)}
           onMouseLeave={() => setHover(null)}
         >
           {iconURL ? (
@@ -245,7 +241,7 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
         fill={NEUTRAL}
         fontSize="11"
       >
-        built {formatTime(doneSec)}
+        {t('chart.muta.builtAt', { time: formatTime(doneSec) })}
       </text>
     );
   };
@@ -289,7 +285,7 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
           fill={RED}
           fontSize="10"
         >
-          gap {nextStart - prevDone}s
+          {t('chart.muta.gapSeconds', { seconds: nextStart - prevDone })}
         </text>
         {/* Connector tick from label down to the band so it's visually
             anchored even when the gap is very narrow. */}
@@ -376,12 +372,12 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
         <line x1={xTurret} y1={yMid - 5} x2={xTurret} y2={yMid + 5} stroke={connectorColor} strokeWidth="2" />
         {/* Gap label above connector */}
         <text x={(xMuta + xTurret) / 2} y={yMid - 10} textAnchor="middle" fill={connectorColor} fontSize="11">
-          gap {formatSigned(actualGap)}
+          {t('chart.muta.gapSeconds', { seconds: formatSigned(actualGap) })}
         </text>
         {/* Verdict line just under the gap overlays */}
         {verdict ? (
           <text x={(xMuta + xTurret) / 2} y={yMid + 18} textAnchor="middle" fill={verdictColor} fontSize="10">
-            {verdict}
+            {t(`chart.muta.verdict.${verdict}`)}
           </text>
         ) : null}
       </g>
@@ -397,16 +393,19 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
   return (
     <div className="workflow-card timing-chart-card">
       <div className="workflow-first-unit-title" style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-        <span><strong>Mutalisk-Turret timing</strong></span>
+        <span><strong>{t('chart.muta.title')}</strong></span>
         <span className="workflow-first-unit-title-slash">·</span>
         <span style={{ color: 'rgba(255,255,255,0.7)' }}>
-          {zSide?.name ? `${zSide.name} (Z)` : 'Zerg'} vs {tSide?.name ? `${tSide.name} (T)` : 'Terran'}
+          {t('chart.muta.versus', {
+            zerg: zSide?.name ? t('chart.muta.zergSide', { name: zSide.name }) : t('chart.muta.zerg'),
+            terran: tSide?.name ? t('chart.muta.terranSide', { name: tSide.name }) : t('chart.muta.terran'),
+          })}
         </span>
         <span
           style={{ marginLeft: 'auto', color: GOLDEN, cursor: 'help', fontSize: '11px' }}
-          title={LEGEND_TOOLTIP}
+          title={t('chart.muta.legendTooltip')}
         >
-          * Expert range
+          {t('chart.muta.legend')}
         </span>
       </div>
       <div ref={wrapperRef} className="workflow-timing-chart-wrap">
@@ -453,9 +452,9 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
             rx="6"
           />
           {/* Lane labels */}
-          <text x={leftPadding - 12} y={zLaneTop + laneMid + 4} textAnchor="end" fill="rgba(255,255,255,0.85)" fontSize="12">Zerg</text>
+          <text x={leftPadding - 12} y={zLaneTop + laneMid + 4} textAnchor="end" fill="rgba(255,255,255,0.85)" fontSize="12">{t('chart.muta.zerg')}</text>
           <text x={leftPadding - 12} y={zLaneTop + laneMid + 18} textAnchor="end" fill="rgba(255,255,255,0.5)" fontSize="9">{zSide?.name || ''}</text>
-          <text x={leftPadding - 12} y={tLaneTop + laneMid + 4} textAnchor="end" fill="rgba(255,255,255,0.85)" fontSize="12">Terran</text>
+          <text x={leftPadding - 12} y={tLaneTop + laneMid + 4} textAnchor="end" fill="rgba(255,255,255,0.85)" fontSize="12">{t('chart.muta.terran')}</text>
           <text x={leftPadding - 12} y={tLaneTop + laneMid + 18} textAnchor="end" fill="rgba(255,255,255,0.5)" fontSize="9">{tSide?.name || ''}</text>
           {/* Lane base lines */}
           <line x1={leftPadding} y1={zLaneTop + laneMid} x2={chartWidth - rightPadding} y2={zLaneTop + laneMid} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />

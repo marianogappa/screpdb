@@ -1,5 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { getUnitIcon } from '../../lib/gameAssets';
+import { t, useT } from '../../lib/i18nContext';
+import { slugKey } from '../../lib/i18n';
 
 // BuildOrderTimelineRows renders one SVG chart per player, comparing their
 // actual build-order milestone timings against the expert ("progamer") template.
@@ -14,8 +16,24 @@ import { getUnitIcon } from '../../lib/gameAssets';
 //     }, ...]
 //   }
 
-const LEGEND_TOOLTIP =
-  'Each gold band shows when progamers usually reach this step, averaged across tens of thousands of their games. The icon on each row is when THIS player did it: green if they landed in the usual progamer window, red if they were earlier or later. It is an approximation and drifts as the metagame changes.';
+const ORDINAL_SUBJECT = /^(\d+)(st|nd|rd|th) (.+)$/;
+
+export const subjectName = (t, label) => {
+  const text = String(label || '');
+  const match = ORDINAL_SUBJECT.exec(text);
+  if (!match) return t.server(`server.name.${slugKey(text)}`, text);
+  return t('chart.ordinal.unit', {
+    n: match[1],
+    suffix: t(`chart.ordinal.${match[2]}`),
+    unit: t.server(`server.name.${slugKey(match[3])}`, match[3]),
+  });
+};
+
+const buildOrderLabel = (group) => {
+  const label = String(group?.build_order || '');
+  if (!group?.feature_key) return t.buildLabel(label);
+  return t.buildLabel(t.serverExact(`server.marker.${group.feature_key}.name`, label));
+};
 
 const formatTime = (seconds) => {
   const value = Math.max(0, Math.floor(Number(seconds) || 0));
@@ -23,6 +41,7 @@ const formatTime = (seconds) => {
 };
 
 function BuildOrderTimelineRows({ group, beta }) {
+  const t = useT();
   const wrapperRef = useRef(null);
   const [hover, setHover] = useState(null);
 
@@ -102,19 +121,19 @@ function BuildOrderTimelineRows({ group, beta }) {
       <div className="workflow-first-unit-title" style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
         <span><strong>{group?.name}</strong></span>
         <span className="workflow-first-unit-title-slash">·</span>
-        <span>{group?.build_order}</span>
+        <span>{buildOrderLabel(group)}</span>
         {beta ? (
           <sup
             className="workflow-beta-tag"
-            title="Beta: we haven't hand-checked this detection against real games yet, so it may be off sometimes."
-            aria-label="beta detection"
+            title={t('marker.betaTooltip')}
+            aria-label={t('chart.bo.betaAria')}
           >β</sup>
         ) : null}
         <span
           style={{ marginLeft: 'auto', color: 'rgba(251, 191, 36, 1)', cursor: 'help' }}
-          title={LEGEND_TOOLTIP}
+          title={t('chart.bo.legendTooltip')}
         >
-          Gold band = usual progamer timing ⓘ
+          {t('chart.bo.legend')}
         </span>
       </div>
       <div ref={wrapperRef} className="workflow-timing-chart-wrap">
@@ -133,16 +152,22 @@ function BuildOrderTimelineRows({ group, beta }) {
             const actualVerdict = noExpert
               ? null
               : withinTolerance
-                ? 'On pace with the progamers'
+                ? t('chart.bo.verdict.onPace')
                 : (actual < target - early
-                  ? 'Earlier than the usual progamer timing'
-                  : 'Later than the usual progamer timing');
+                  ? t('chart.bo.verdict.earlier')
+                  : t('chart.bo.verdict.later'));
             const actualColor = noExpert
               ? 'rgba(148, 197, 230, 0.95)' // neutral blue: no golden range to compare against
               : (found
                 ? (withinTolerance ? 'rgba(34, 197, 94, 0.95)' : 'rgba(239, 68, 68, 0.95)')
                 : 'rgba(148, 163, 184, 0.6)');
             const iconURL = getUnitIcon(entry.subject || entry.key);
+            const rowLabel = subjectName(t, entry.key);
+            const expertKind = t('chart.bo.usualTiming');
+            const playerKind = t('chart.bo.thisPlayer');
+            const expertBuildDetail = t('chart.bo.buildDetail', { seconds: buildTime, time: formatTime(target + buildTime) });
+            const actualBuildDetail = t('chart.bo.buildDetail', { seconds: buildTime, time: formatTime(actual + buildTime) });
+            const usualRange = t('chart.bo.usualRange', { from: formatTime(target - early), to: formatTime(target + late) });
             const rowY = yAt(idx);
             return (
               <g key={`bo-row-${idx}-${entry.key}`}>
@@ -168,7 +193,7 @@ function BuildOrderTimelineRows({ group, beta }) {
                       width={iconSize}
                       height={iconSize}
                     >
-                      <title>{entry.key}</title>
+                      <title>{rowLabel}</title>
                     </image>
                     <text
                       x={leftPadding - iconSize - 12}
@@ -177,7 +202,7 @@ function BuildOrderTimelineRows({ group, beta }) {
                       fill="rgba(255,255,255,0.85)"
                       fontSize="11"
                     >
-                      {entry.key}
+                      {rowLabel}
                     </text>
                   </>
                 ) : (
@@ -188,7 +213,7 @@ function BuildOrderTimelineRows({ group, beta }) {
                     fill="rgba(255,255,255,0.9)"
                     fontSize="12"
                   >
-                    {entry.key}
+                    {rowLabel}
                   </text>
                 )}
                 {/* Tolerance band + expert target marker — only for rows
@@ -211,16 +236,16 @@ function BuildOrderTimelineRows({ group, beta }) {
                     {buildTime > 0 ? (
                       <g
                         onMouseEnter={(e) => updateHover(e, {
-                          pointKind: 'Usual progamer timing',
-                          eventKey: entry.key,
+                          pointKind: expertKind,
+                          eventKey: rowLabel,
                           time: target,
-                          detail: `${buildTime}s to build → ready ${formatTime(target + buildTime)}`,
+                          detail: expertBuildDetail,
                         })}
                         onMouseMove={(e) => updateHover(e, {
-                          pointKind: 'Usual progamer timing',
-                          eventKey: entry.key,
+                          pointKind: expertKind,
+                          eventKey: rowLabel,
                           time: target,
-                          detail: `${buildTime}s to build → ready ${formatTime(target + buildTime)}`,
+                          detail: expertBuildDetail,
                         })}
                         onMouseLeave={() => setHover(null)}
                       >
@@ -255,16 +280,16 @@ function BuildOrderTimelineRows({ group, beta }) {
                     ) : null}
                     <g
                       onMouseEnter={(e) => updateHover(e, {
-                        pointKind: 'Usual progamer timing',
-                        eventKey: entry.key,
+                        pointKind: expertKind,
+                        eventKey: rowLabel,
                         time: target,
-                        detail: `progamers usually ${formatTime(target - early)} – ${formatTime(target + late)}`,
+                        detail: usualRange,
                       })}
                       onMouseMove={(e) => updateHover(e, {
-                        pointKind: 'Usual progamer timing',
-                        eventKey: entry.key,
+                        pointKind: expertKind,
+                        eventKey: rowLabel,
                         time: target,
-                        detail: `progamers usually ${formatTime(target - early)} – ${formatTime(target + late)}`,
+                        detail: usualRange,
                       })}
                       onMouseLeave={() => setHover(null)}
                     >
@@ -298,16 +323,16 @@ function BuildOrderTimelineRows({ group, beta }) {
                     {buildTime > 0 ? (
                       <g
                         onMouseEnter={(e) => updateHover(e, {
-                          pointKind: 'This player',
-                          eventKey: entry.key,
+                          pointKind: playerKind,
+                          eventKey: rowLabel,
                           time: actual,
-                          detail: `${buildTime}s to build → ready ${formatTime(actual + buildTime)}`,
+                          detail: actualBuildDetail,
                         })}
                         onMouseMove={(e) => updateHover(e, {
-                          pointKind: 'This player',
-                          eventKey: entry.key,
+                          pointKind: playerKind,
+                          eventKey: rowLabel,
                           time: actual,
-                          detail: `${buildTime}s to build → ready ${formatTime(actual + buildTime)}`,
+                          detail: actualBuildDetail,
                         })}
                         onMouseLeave={() => setHover(null)}
                       >
@@ -351,14 +376,14 @@ function BuildOrderTimelineRows({ group, beta }) {
                     </text>
                     <g
                       onMouseEnter={(e) => updateHover(e, {
-                        pointKind: 'This player',
-                        eventKey: entry.key,
+                        pointKind: playerKind,
+                        eventKey: rowLabel,
                         time: actual,
                         verdict: actualVerdict,
                       })}
                       onMouseMove={(e) => updateHover(e, {
-                        pointKind: 'This player',
-                        eventKey: entry.key,
+                        pointKind: playerKind,
+                        eventKey: rowLabel,
                         time: actual,
                         verdict: actualVerdict,
                       })}

@@ -124,6 +124,7 @@ type workflowGameListItem struct {
 	TeamInfoIncomplete bool                      `json:"team_info_incomplete"`
 	Players            []workflowGameListPlayer  `json:"players"`
 	Featuring          []string                  `json:"featuring"`
+	FeaturingKeys      []string                  `json:"featuring_keys,omitempty"`
 	CurrentPlayer      *workflowRecentGamePlayer `json:"current_player,omitempty"`
 }
 
@@ -703,21 +704,23 @@ type workflowFirstUnitEfficiencyEntry struct {
 }
 
 type workflowGameUnitCadencePlayer struct {
-	PlayerID         int64   `json:"player_id"`
-	PlayerKey        string  `json:"player_key"`
-	PlayerName       string  `json:"player_name"`
-	Team             int64   `json:"team"`
-	IsWinner         bool    `json:"is_winner"`
-	Eligible         bool    `json:"eligible"`
-	WindowSeconds    int64   `json:"window_seconds"`
-	UnitsProduced    int64   `json:"units_produced"`
-	GapCount         int64   `json:"gap_count"`
-	RatePerMinute    float64 `json:"rate_per_minute"`
-	CVGap            float64 `json:"cv_gap"`
-	Burstiness       float64 `json:"burstiness"`
-	Idle20Ratio      float64 `json:"idle20_ratio"`
-	CadenceScore     float64 `json:"cadence_score"`
-	IneligibleReason string  `json:"ineligible_reason,omitempty"`
+	PlayerID             int64    `json:"player_id"`
+	PlayerKey            string   `json:"player_key"`
+	PlayerName           string   `json:"player_name"`
+	Team                 int64    `json:"team"`
+	IsWinner             bool     `json:"is_winner"`
+	Eligible             bool     `json:"eligible"`
+	WindowSeconds        int64    `json:"window_seconds"`
+	UnitsProduced        int64    `json:"units_produced"`
+	GapCount             int64    `json:"gap_count"`
+	RatePerMinute        float64  `json:"rate_per_minute"`
+	CVGap                float64  `json:"cv_gap"`
+	Burstiness           float64  `json:"burstiness"`
+	Idle20Ratio          float64  `json:"idle20_ratio"`
+	CadenceScore         float64  `json:"cadence_score"`
+	IneligibleReason     string   `json:"ineligible_reason,omitempty"`
+	IneligibleReasonKey  string   `json:"ineligible_reason_key,omitempty"`
+	IneligibleReasonArgs []string `json:"ineligible_reason_args,omitempty"`
 }
 
 type workflowPlayerTimingSeries struct {
@@ -899,6 +902,8 @@ type workflowPlayerAsyncInsight struct {
 	PlayerValueLabel      string                        `json:"player_value_label,omitempty"`
 	Description           string                        `json:"description"`
 	IneligibleReason      string                        `json:"ineligible_reason,omitempty"`
+	IneligibleReasonKey   string                        `json:"ineligible_reason_key,omitempty"`
+	IneligibleReasonArgs  []string                      `json:"ineligible_reason_args,omitempty"`
 	Details               []workflowPlayerInsightDetail `json:"details"`
 }
 

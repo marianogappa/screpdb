@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   EV_SEC, EV_TYPE, EV_GROUP, EV_TILE_X, TYPE_ASSIGN_UNITS, TYPE_ASSIGN_BUILDING,
 } from './HotkeyTimeline';
+import { useT } from '../../lib/i18nContext';
 
 // Per-player map crops: the backend paints the slice of the map holding the
 // player's hotkeyed buildings at a chosen moment. The slider notches at
@@ -50,6 +51,7 @@ export const snapshotNotches = (events) => {
 };
 
 function HotkeyMapPanel({ replayId, player, notches }) {
+  const t = useT();
   const defaultIndex = useMemo(() => {
     let best = notches.length - 1;
     for (let i = 0; i < notches.length; i += 1) {
@@ -74,17 +76,17 @@ function HotkeyMapPanel({ replayId, player, notches }) {
             value={Math.min(index, notches.length - 1)}
             onChange={(e) => { setFailed(false); setIndex(Number(e.target.value)); }}
             list={`hk-notches-${player.player_id}`}
-            aria-label={`Snapshot moment for ${player.name}`}
+            aria-label={t('chart.hotkey.snapshotAria', { name: player.name })}
           />
         ) : null}
       </div>
       {failed ? (
-        <div className="chart-empty">No hotkeyed buildings located at this moment.</div>
+        <div className="chart-empty">{t('chart.hotkey.mapEmpty')}</div>
       ) : (
         <img
           key={src}
           src={src}
-          alt={`Map crop of ${player.name}'s hotkeyed buildings at minute ${notch.minute}`}
+          alt={t('chart.hotkey.mapAlt', { name: player.name, minute: notch.minute })}
           className="hk-map-img"
           onError={() => setFailed(true)}
         />

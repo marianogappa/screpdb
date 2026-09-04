@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import LabsSettingsPanel from './LabsSettingsPanel';
+import { useT } from '../lib/i18nContext';
 
 const GAME_TYPE_OPTIONS = [
-  { value: 'top_vs_bottom', label: 'Top vs Bottom' },
-  { value: 'melee', label: 'Melee' },
-  { value: 'one_on_one', label: 'One on One' },
-  { value: 'free_for_all', label: 'Free For All' },
+  { value: 'top_vs_bottom', labelKey: 'globalFilter.gameType.topVsBottom' },
+  { value: 'melee', labelKey: 'globalFilter.gameType.melee' },
+  { value: 'one_on_one', labelKey: 'globalFilter.gameType.oneOnOne' },
+  { value: 'free_for_all', labelKey: 'globalFilter.gameType.freeForAll' },
 ];
 
 const MAP_KIND_OPTIONS = [
-  { value: 'regular', label: 'Regular' },
-  { value: 'money', label: 'Money' },
+  { value: 'regular', labelKey: 'globalFilter.mapKind.regular' },
+  { value: 'money', labelKey: 'globalFilter.mapKind.money' },
 ];
 
 const ALL_GAME_TYPES = GAME_TYPE_OPTIONS.map((o) => o.value);
@@ -42,6 +43,7 @@ const normalizeConfig = (config) => ({
 });
 
 function PillRow({ heading, options, selectedValues, onToggle }) {
+  const t = useT();
   const selected = Array.isArray(selectedValues) ? selectedValues : [];
   return (
     <div className="global-filter-dimension">
@@ -57,7 +59,7 @@ function PillRow({ heading, options, selectedValues, onToggle }) {
               className={className}
               onClick={() => onToggle(option.value)}
             >
-              {option.label}
+              {t(option.labelKey)}
             </button>
           );
         })}
@@ -91,6 +93,7 @@ function GlobalReplayFilterModal({
   onUseDetectedFolder,
   onDismissMessage,
 }) {
+  const t = useT();
   const [formState, setFormState] = useState(DEFAULT_CONFIG);
   const [settingsTab, setSettingsTab] = useState('folder');
 
@@ -99,7 +102,7 @@ function GlobalReplayFilterModal({
   const detectedIsCurrent = Boolean(detectedReplayDir) && String(detectedReplayDir).trim() === String(savedReplayDir || '').trim();
   // Colour by the message itself, not the library status: an error can arrive
   // while the folder is still happily loading, and it must still show red.
-  const libraryMessageIsSuccess = libraryMessage === 'Replay folder saved.' || libraryMessage === 'Switched to the example replays.';
+  const libraryMessageIsSuccess = libraryMessage === t('library.folderSaved') || libraryMessage === t('library.switchedToExamples');
 
   useEffect(() => {
     setFormState(normalizeConfig(config || DEFAULT_CONFIG));
@@ -128,7 +131,7 @@ function GlobalReplayFilterModal({
       <div className="modal-content global-filter-modal settings-filter-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header settings-modal-header">
           <div className="settings-modal-header-row">
-            <h2>Settings</h2>
+            <h2>{t('globalFilter.title')}</h2>
             <button type="button" onClick={onClose} className="btn-close">×</button>
           </div>
           <div className="workflow-production-tabs settings-modal-main-tabs" role="tablist">
@@ -139,7 +142,7 @@ function GlobalReplayFilterModal({
               className={`workflow-production-tab${settingsTab === 'folder' ? ' workflow-production-tab-active' : ''}`}
               onClick={() => setSettingsTab('folder')}
             >
-              Replay Folder
+              {t('globalFilter.tab.folder')}
             </button>
             <button
               type="button"
@@ -148,7 +151,7 @@ function GlobalReplayFilterModal({
               className={`workflow-production-tab${settingsTab === 'scope' ? ' workflow-production-tab-active' : ''}`}
               onClick={() => setSettingsTab('scope')}
             >
-              Replay Filtering
+              {t('globalFilter.tab.scope')}
             </button>
             <button
               type="button"
@@ -157,7 +160,7 @@ function GlobalReplayFilterModal({
               className={`workflow-production-tab${settingsTab === 'labs' ? ' workflow-production-tab-active' : ''}`}
               onClick={() => setSettingsTab('labs')}
             >
-              Labs
+              {t('globalFilter.tab.labs')}
             </button>
           </div>
         </div>
@@ -172,7 +175,7 @@ function GlobalReplayFilterModal({
                 <button
                   type="button"
                   className="ingest-message-dismiss"
-                  aria-label="Dismiss"
+                  aria-label={t('common.dismiss')}
                   onClick={onDismissMessage}
                 >
                   ×
@@ -181,13 +184,13 @@ function GlobalReplayFilterModal({
             ) : null}
 
             <div className="ingest-plain-block">
-              <div className="ingest-title">Replay folder path</div>
+              <div className="ingest-title">{t('library.folderPath')}</div>
               <div className="ingest-field ingest-path-field">
                 <div className="ingest-path-row">
                   <input
                     type="text"
                     value={replayDirInput}
-                    placeholder={librarySettingsLoading ? 'Loading replay folder...' : '/path/to/replays'}
+                    placeholder={librarySettingsLoading ? t('library.loadingFolder') : '/path/to/replays'}
                     disabled={folderBusy}
                     onChange={(e) => onReplayDirChange(e.target.value)}
                   />
@@ -197,40 +200,40 @@ function GlobalReplayFilterModal({
                     disabled={folderBusy || !replayDirDirty}
                     onClick={onSaveReplayDir}
                   >
-                    {librarySettingsSaving ? 'Saving...' : 'Save Folder'}
+                    {librarySettingsSaving ? t('globalFilter.saving') : t('library.saveFolder')}
                   </button>
                 </div>
                 <span className="ingest-helper-text">
-                  Folder must contain at least one `.rep` file (subfolders included).
+                  {t('library.folderHelp')}
                 </span>
               </div>
             </div>
 
             <div className="ingest-section-row">
               <div className="ingest-plain-block ingest-col">
-                <div className="ingest-title">Your replays</div>
+                <div className="ingest-title">{t('library.yourReplays')}</div>
                 {detectedReplayDir && !detectedIsCurrent ? (
                   <>
-                    <span className="ingest-helper-text">Switch to the StarCraft replay folder we found on this computer:</span>
+                    <span className="ingest-helper-text">{t('library.switchHelp')}</span>
                     <button
                       type="button"
                       className="btn-save ingest-start"
                       disabled={folderBusy}
                       onClick={onUseDetectedFolder}
                     >
-                      Use my replay folder
+                      {t('library.useMyFolder')}
                     </button>
                     <span className="ingest-helper-text" title={detectedReplayDir}>{detectedReplayDir}</span>
                   </>
                 ) : detectedIsCurrent ? (
-                  <span className="ingest-helper-text">You are on the StarCraft replay folder we found on this computer.</span>
+                  <span className="ingest-helper-text">{t('library.onDetectedFolder')}</span>
                 ) : (
-                  <span className="ingest-helper-text">Set your replay folder above to analyze your own games.</span>
+                  <span className="ingest-helper-text">{t('library.setFolderHelp')}</span>
                 )}
               </div>
 
               <div className="ingest-plain-block ingest-col">
-                <div className="ingest-title">Example replays</div>
+                <div className="ingest-title">{t('library.exampleReplays')}</div>
                 {!isSampleSet ? (
                   <div className="ingest-sample-col">
                     <button
@@ -239,20 +242,20 @@ function GlobalReplayFilterModal({
                       disabled={folderBusy}
                       onClick={onLoadSampleSet}
                     >
-                      {sampleSetLoading ? 'Switching to example replays...' : 'Load example replays'}
+                      {sampleSetLoading ? t('library.switchingToExamples') : t('library.loadExamples')}
                     </button>
-                    <span className="ingest-helper-text">A few example games to try every feature. Switches the replay folder to the bundled examples; your own .rep files are not touched.</span>
+                    <span className="ingest-helper-text">{t('library.examplesHelp')}</span>
                   </div>
                 ) : (
                   <div className="ingest-sample-col">
-                    <span className="ingest-helper-text ingest-sample-active">You are using the built-in example replays.</span>
+                    <span className="ingest-helper-text ingest-sample-active">{t('library.usingExamples')}</span>
                     <button
                       type="button"
                       className="btn-save ingest-load-sample"
                       disabled={folderBusy}
                       onClick={onLoadSampleSet}
                     >
-                      {sampleSetLoading ? 'Switching to example replays...' : 'Reload example replays'}
+                      {sampleSetLoading ? t('library.switchingToExamples') : t('library.reloadExamples')}
                     </button>
                   </div>
                 )}
@@ -264,7 +267,7 @@ function GlobalReplayFilterModal({
             {error ? <div className="error-message">{error}</div> : null}
 
             <div className="global-filter-dimension">
-              <h3>Exclude</h3>
+              <h3>{t('globalFilter.exclude')}</h3>
               <div className="global-filter-toggle-grid">
                 <label className="global-filter-toggle">
                   <input
@@ -272,7 +275,7 @@ function GlobalReplayFilterModal({
                     checked={formState.exclude_short_games}
                     onChange={(e) => setFormState((prev) => ({ ...prev, exclude_short_games: e.target.checked }))}
                   />
-                  <span>Games that last less than 2 minutes</span>
+                  <span>{t('globalFilter.excludeShort')}</span>
                 </label>
                 <label className="global-filter-toggle">
                   <input
@@ -280,20 +283,20 @@ function GlobalReplayFilterModal({
                     checked={formState.exclude_computers}
                     onChange={(e) => setFormState((prev) => ({ ...prev, exclude_computers: e.target.checked }))}
                   />
-                  <span>Games with Computers</span>
+                  <span>{t('globalFilter.excludeComputers')}</span>
                 </label>
               </div>
             </div>
 
             <PillRow
-              heading="Game Type"
+              heading={t('globalFilter.gameType')}
               options={GAME_TYPE_OPTIONS}
               selectedValues={formState.game_types}
               onToggle={(value) => toggleArrayValue('game_types', value)}
             />
 
             <PillRow
-              heading="Map Type"
+              heading={t('globalFilter.mapType')}
               options={MAP_KIND_OPTIONS}
               selectedValues={formState.map_kinds}
               onToggle={(value) => toggleArrayValue('map_kinds', value)}
@@ -301,10 +304,10 @@ function GlobalReplayFilterModal({
 
             <div className="form-actions">
               <button type="button" onClick={onClose} className="btn-cancel">
-                Cancel
+                {t('globalFilter.cancel')}
               </button>
               <button type="submit" className="btn-save" disabled={saving}>
-                {saving ? 'Saving...' : 'Save'}
+                {saving ? t('globalFilter.saving') : t('globalFilter.save')}
               </button>
             </div>
           </form>

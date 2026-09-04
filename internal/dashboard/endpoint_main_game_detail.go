@@ -854,6 +854,8 @@ func (d *Dashboard) buildWorkflowPlayerApmAsyncInsight(playerKey string) (workfl
 	}
 	if !histogram.PlayerEligible || histogram.PlayerAverageAPM == nil {
 		result.IneligibleReason = fmt.Sprintf("Not enough games yet for a stable APM comparison. This view currently requires at least %d games.", histogram.MinGames)
+		result.IneligibleReasonKey = "not_enough_games_apm"
+		result.IneligibleReasonArgs = []string{fmt.Sprint(histogram.MinGames)}
 		return result, nil
 	}
 	percentile := performancePercentileFromSortedValues(extractApmValues(histogram.Players), *histogram.PlayerAverageAPM, false)
@@ -902,6 +904,8 @@ func (d *Dashboard) buildWorkflowPlayerCadenceAsyncInsight(playerKey string) (wo
 	}
 	if insight.GamesUsed < leaderboard.MinGames {
 		result.IneligibleReason = fmt.Sprintf("Not enough eligible games yet. This view currently requires at least %d games with enough production events.", leaderboard.MinGames)
+		result.IneligibleReasonKey = "not_enough_eligible_games_cadence"
+		result.IneligibleReasonArgs = []string{fmt.Sprint(leaderboard.MinGames)}
 		return result, nil
 	}
 	values := extractCadenceValues(leaderboard.Players)
@@ -2737,13 +2741,14 @@ func (d *Dashboard) populateUnitCadenceForGameDetail(detail *workflowGameDetail)
 	for _, player := range detail.Players {
 		playerByID[player.PlayerID] = player
 		detail.UnitCadence = append(detail.UnitCadence, workflowGameUnitCadencePlayer{
-			PlayerID:         player.PlayerID,
-			PlayerKey:        player.PlayerKey,
-			PlayerName:       player.Name,
-			Team:             player.Team,
-			IsWinner:         player.IsWinner,
-			Eligible:         false,
-			IneligibleReason: "not enough attacking-unit production samples in analysis window",
+			PlayerID:            player.PlayerID,
+			PlayerKey:           player.PlayerKey,
+			PlayerName:          player.Name,
+			Team:                player.Team,
+			IsWinner:            player.IsWinner,
+			Eligible:            false,
+			IneligibleReason:    "not enough attacking-unit production samples in analysis window",
+			IneligibleReasonKey: "not_enough_attacking_unit_samples",
 		})
 	}
 	if len(detail.Players) == 0 {
@@ -2782,16 +2787,17 @@ func (d *Dashboard) populateUnitCadenceForGameDetail(detail *workflowGameDetail)
 			continue
 		}
 		entry := workflowGameUnitCadencePlayer{
-			PlayerID:         player.PlayerID,
-			PlayerKey:        player.PlayerKey,
-			PlayerName:       player.Name,
-			Team:             player.Team,
-			IsWinner:         player.IsWinner,
-			Eligible:         unitsProduced >= workflowUnitCadenceMinUnitsPerReplay && gapCount >= workflowUnitCadenceMinGapsPerReplay,
-			WindowSeconds:    windowSeconds,
-			UnitsProduced:    unitsProduced,
-			GapCount:         gapCount,
-			IneligibleReason: "not enough attacking-unit production samples in analysis window",
+			PlayerID:            player.PlayerID,
+			PlayerKey:           player.PlayerKey,
+			PlayerName:          player.Name,
+			Team:                player.Team,
+			IsWinner:            player.IsWinner,
+			Eligible:            unitsProduced >= workflowUnitCadenceMinUnitsPerReplay && gapCount >= workflowUnitCadenceMinGapsPerReplay,
+			WindowSeconds:       windowSeconds,
+			UnitsProduced:       unitsProduced,
+			GapCount:            gapCount,
+			IneligibleReason:    "not enough attacking-unit production samples in analysis window",
+			IneligibleReasonKey: "not_enough_attacking_unit_samples",
 		}
 		if ratePerMinute != nil {
 			entry.RatePerMinute = *ratePerMinute
@@ -2810,6 +2816,7 @@ func (d *Dashboard) populateUnitCadenceForGameDetail(detail *workflowGameDetail)
 		}
 		if entry.Eligible {
 			entry.IneligibleReason = ""
+			entry.IneligibleReasonKey = ""
 		}
 		scoredByPlayerID[playerID] = entry
 	}

@@ -1,4 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { useT } from '../../lib/i18nContext';
+import { slugKey } from '../../lib/i18n';
 
 const formatTime = (seconds) => {
   const value = Math.max(0, Math.floor(Number(seconds) || 0));
@@ -14,6 +16,7 @@ const buildTicks = (minSecond, maxSecond, count = 6) => {
 };
 
 function FirstUnitEfficiencyTimelineRows({ group }) {
+  const t = useT();
   const wrapperRef = useRef(null);
   const [hover, setHover] = useState(null);
   const prepared = useMemo(() => {
@@ -90,13 +93,13 @@ function FirstUnitEfficiencyTimelineRows({ group }) {
     <div className="workflow-card timing-chart-card">
       <div className="workflow-first-unit-title">
         {group?.building_icon ? (
-          <img src={group.building_icon} alt={group?.building_name || 'Building'} className="workflow-first-unit-title-icon workflow-first-unit-title-icon-building" />
+          <img src={group.building_icon} alt={group?.building_name ? t.server(`server.name.${slugKey(group.building_name)}`, group.building_name) : t('chart.fue.buildingAlt')} className="workflow-first-unit-title-icon workflow-first-unit-title-icon-building" />
         ) : null}
         <span className="workflow-first-unit-title-arrow">→</span>
         {(group?.unit_icons || []).map((icon, idx) => (
           <React.Fragment key={`${group?.id || 'group'}-unit-icon-${idx}`}>
             {idx > 0 ? <span className="workflow-first-unit-title-slash">/</span> : null}
-            <img src={icon} alt={group?.unit_names?.[idx] || 'Unit'} className="workflow-first-unit-title-icon workflow-first-unit-title-icon-unit" />
+            <img src={icon} alt={group?.unit_names?.[idx] ? t.server(`server.name.${slugKey(group.unit_names[idx])}`, group.unit_names[idx]) : t('chart.fue.unitAlt')} className="workflow-first-unit-title-icon workflow-first-unit-title-icon-unit" />
           </React.Fragment>
         ))}
       </div>
@@ -162,7 +165,7 @@ function FirstUnitEfficiencyTimelineRows({ group }) {
                   fontSize="8"
                   className="workflow-first-unit-buildtime-label"
                 >
-                  {`${Math.max(0, Number(entry.build_duration_seconds) || 0)}s build time`}
+                  {t('chart.fue.buildTimeLabel', { seconds: Math.max(0, Number(entry.build_duration_seconds) || 0) })}
                 </text>
               ) : null}
               <line
@@ -179,12 +182,12 @@ function FirstUnitEfficiencyTimelineRows({ group }) {
                 <g
                   onMouseEnter={(event) => updateHover(event, {
                     playerName: entry.player_name,
-                    pointKind: 'Building triggered',
+                    pointKind: t('chart.fue.point.buildingTriggered'),
                     time: entry.building_start_second,
                   })}
                   onMouseMove={(event) => updateHover(event, {
                     playerName: entry.player_name,
-                    pointKind: 'Building triggered',
+                    pointKind: t('chart.fue.point.buildingTriggered'),
                     time: entry.building_start_second,
                   })}
                   onMouseLeave={() => setHover(null)}
@@ -202,13 +205,13 @@ function FirstUnitEfficiencyTimelineRows({ group }) {
               <g
                 onMouseEnter={(event) => updateHover(event, {
                   playerName: entry.player_name,
-                  pointKind: 'Building ready',
+                  pointKind: t('chart.fue.point.buildingReady'),
                   time: entry.building_ready_second,
                   duration: entry.build_duration_seconds,
                 })}
                 onMouseMove={(event) => updateHover(event, {
                   playerName: entry.player_name,
-                  pointKind: 'Building ready',
+                  pointKind: t('chart.fue.point.buildingReady'),
                   time: entry.building_ready_second,
                   duration: entry.build_duration_seconds,
                 })}
@@ -227,13 +230,13 @@ function FirstUnitEfficiencyTimelineRows({ group }) {
                 <g
                   onMouseEnter={(event) => updateHover(event, {
                     playerName: entry.player_name,
-                    pointKind: 'Unit created',
+                    pointKind: t('chart.fue.point.unitCreated'),
                     time: entry.unit_second,
                     gap: entry.gap_after_ready_seconds,
                   })}
                   onMouseMove={(event) => updateHover(event, {
                     playerName: entry.player_name,
-                    pointKind: 'Unit created',
+                    pointKind: t('chart.fue.point.unitCreated'),
                     time: entry.unit_second,
                     gap: entry.gap_after_ready_seconds,
                   })}
@@ -256,7 +259,7 @@ function FirstUnitEfficiencyTimelineRows({ group }) {
                 fontSize="9.8"
                 className="workflow-timing-inline-label"
               >
-                {`+${Math.max(0, Number(entry.gap_after_ready_seconds) || 0)}s`}
+                {t('chart.fue.delaySeconds', { seconds: Math.max(0, Number(entry.gap_after_ready_seconds) || 0) })}
               </text>
             </g>
           ))}
@@ -290,10 +293,10 @@ function FirstUnitEfficiencyTimelineRows({ group }) {
             style={{ left: `${hover.x}px`, top: `${hover.y}px` }}
           >
             <div><strong>{hover.playerName}</strong></div>
-            <div><strong>Point</strong> {hover.pointKind}</div>
-            <div><strong>Time</strong> {formatTime(hover.time)}</div>
-            {Number.isFinite(Number(hover.duration)) ? <div><strong>Build time</strong> {Math.max(0, Number(hover.duration) || 0)}s</div> : null}
-            {Number.isFinite(Number(hover.gap)) ? <div><strong>Delay</strong> +{Math.max(0, Number(hover.gap) || 0)}s</div> : null}
+            <div><strong>{t('chart.fue.tooltip.point')}</strong> {hover.pointKind}</div>
+            <div><strong>{t('chart.fue.tooltip.time')}</strong> {formatTime(hover.time)}</div>
+            {Number.isFinite(Number(hover.duration)) ? <div><strong>{t('chart.fue.tooltip.buildTime')}</strong> {t('chart.fue.seconds', { seconds: Math.max(0, Number(hover.duration) || 0) })}</div> : null}
+            {Number.isFinite(Number(hover.gap)) ? <div><strong>{t('chart.fue.tooltip.delay')}</strong> {t('chart.fue.delaySeconds', { seconds: Math.max(0, Number(hover.gap) || 0) })}</div> : null}
           </div>
         ) : null}
       </div>

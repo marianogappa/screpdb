@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
+import { useLocale, useT } from '../../lib/i18nContext';
 
 const DEFAULT_COLORS = ['#4e79a7'];
 
 function Histogram({ data, config }) {
+  const t = useT();
+  const { locale } = useLocale();
   const svgRef = useRef(null);
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -152,7 +155,7 @@ function Histogram({ data, config }) {
         .filter((point) => Number.isFinite(point.value) && point.label)
         .sort((a, b) => a.value - b.value);
       const overlayValueLabel = String(config?.overlay_value_label || '').trim() || 'APM';
-      const overlayCountLabel = String(config?.overlay_count_label || '').trim() || 'games';
+      const overlayCountLabel = String(config?.overlay_count_label || '').trim() || t('chart.histogram.gamesFallback');
       const onOverlayPointClick = typeof config?.on_overlay_point_click === 'function' ? config.on_overlay_point_click : null;
 
       const palette = ['#60a5fa', '#f472b6', '#34d399', '#f59e0b', '#a78bfa', '#22d3ee', '#f87171', '#10b981', '#fb7185', '#c4b5fd'];
@@ -245,7 +248,13 @@ function Histogram({ data, config }) {
         .attr('stroke-width', 1)
         .style('cursor', (point) => (onOverlayPointClick && point.playerKey ? 'pointer' : 'default'))
         .on('mousemove', (event, point) => {
-          const fallback = `${point.fullLabel} - ${point.value.toFixed(1)} ${overlayValueLabel} (${point.gamesPlayed} ${overlayCountLabel})`;
+          const fallback = t('chart.histogram.pointTooltip', {
+            label: point.fullLabel,
+            value: point.value.toFixed(1),
+            valueLabel: overlayValueLabel,
+            count: point.gamesPlayed,
+            countLabel: overlayCountLabel,
+          });
           setTooltip({
             visible: true,
             x: event.clientX + 10,
@@ -276,7 +285,13 @@ function Histogram({ data, config }) {
         .style('text-decoration', (point) => (onOverlayPointClick && point.playerKey ? 'underline' : 'none'))
         .text((point) => point.label)
         .on('mousemove', (event, point) => {
-          const fallback = `${point.fullLabel} - ${point.value.toFixed(1)} ${overlayValueLabel} (${point.gamesPlayed} ${overlayCountLabel})`;
+          const fallback = t('chart.histogram.pointTooltip', {
+            label: point.fullLabel,
+            value: point.value.toFixed(1),
+            valueLabel: overlayValueLabel,
+            count: point.gamesPlayed,
+            countLabel: overlayCountLabel,
+          });
           setTooltip({
             visible: true,
             x: event.clientX + 10,
@@ -369,7 +384,7 @@ function Histogram({ data, config }) {
       .attr("y", height + 35)
       .attr('fill', '#fff')
       .attr('font-size', '12px')
-      .text(config?.x_axis_label || config?.histogram_value_column || 'Value');
+      .text(config?.x_axis_label || config?.histogram_value_column || t('chart.histogram.valueAxis'));
 
     svg.append("text")
       .attr("text-anchor", "middle")
@@ -378,13 +393,13 @@ function Histogram({ data, config }) {
       .attr("transform", "rotate(-90)")
       .attr('fill', '#fff')
       .attr('font-size', '12px')
-      .text(config?.y_axis_label || 'Count');
+      .text(config?.y_axis_label || t('chart.histogram.countAxis'));
 
-  }, [data, config, dimensions]);
+  }, [data, config, dimensions, locale]);
 
   const hasPrecomputedBins = Array.isArray(config?.precomputed_bins) && config.precomputed_bins.length > 0;
   if ((!data || data.length === 0) && !hasPrecomputedBins) {
-    return <div className="chart-empty">No data available</div>;
+    return <div className="chart-empty">{t('chart.histogram.empty')}</div>;
   }
 
   const chartHeight = Number(config?.chart_height);

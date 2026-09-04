@@ -23,6 +23,8 @@
 
 import React from 'react';
 import { getUnitIcon } from './gameAssets';
+import { slugKey } from './i18n';
+import { useT } from './i18nContext';
 
 export const PHASE_ORDER = ['early', 'mid', 'late'];
 const PHASE_RANK = { early: 0, mid: 1, late: 2 };
@@ -43,14 +45,16 @@ const SEG_PALETTE = [
 ];
 const SEG_TAIL_FILL = 'rgba(255, 255, 255, 0.035)';
 
-const formatPhaseLabel = (phase) => {
+const formatPhaseLabel = (t, phase) => {
   switch (phase) {
-    case 'early': return 'Early';
-    case 'mid':   return 'Mid';
-    case 'late':  return 'Late';
+    case 'early': return t('composition.phase.early');
+    case 'mid':   return t('composition.phase.mid');
+    case 'late':  return t('composition.phase.late');
     default:      return phase || '';
   }
 };
+
+const unitName = (t, name) => t.server(`server.name.${slugKey(name)}`, name);
 
 // sortPhasesByRank stable-sorts a list of phase entries early -> mid -> late.
 export const sortPhasesByRank = (phases) =>
@@ -136,14 +140,17 @@ const withProportions = (units, cap) => {
 };
 
 const CompositionZone = ({ units, cap }) => {
+  const t = useT();
   const { shown, hidden } = withProportions(units, cap);
   // A phase the game never reached stays a visible hole so the three-bar
   // rhythm holds across rows.
   if (shown.length === 0) {
-    return <span className="workflow-composition-bar workflow-composition-bar-empty" title="No army production this phase" />;
+    return <span className="workflow-composition-bar workflow-composition-bar-empty" title={t('composition.noArmyProduction')} />;
   }
+  const segmentTooltip = (seg) =>
+    t('composition.segmentTooltip', { name: unitName(t, seg.name), count: seg.count, pct: seg.pct });
   const hiddenWeight = hidden.reduce((acc, h) => acc + h.count, 0);
-  const hiddenTooltip = hidden.map((h) => `${h.name}: ${h.count} (${h.pct}%)`).join('\n');
+  const hiddenTooltip = hidden.map(segmentTooltip).join('\n');
   return (
     <span className="workflow-composition-bar">
       {shown.map((seg, idx) => {
@@ -153,7 +160,7 @@ const CompositionZone = ({ units, cap }) => {
             key={`${seg.name}-${idx}`}
             className="workflow-composition-seg"
             style={{ flexGrow: seg.count, background: SEG_PALETTE[idx % SEG_PALETTE.length] }}
-            title={`${seg.name}: ${seg.count} (${seg.pct}%)`}
+            title={segmentTooltip(seg)}
           >
             {icon ? <img className="workflow-composition-seg-icon" src={icon} alt="" /> : null}
           </span>
@@ -163,7 +170,7 @@ const CompositionZone = ({ units, cap }) => {
         <span
           className="workflow-composition-seg workflow-composition-seg-more"
           style={{ flexGrow: hiddenWeight, background: SEG_TAIL_FILL }}
-          title={`${hidden.length} more:\n${hiddenTooltip}`}
+          title={t('composition.moreTooltip', { count: hidden.length, list: hiddenTooltip })}
         >+{hidden.length}</span>
       ) : null}
     </span>
@@ -172,13 +179,16 @@ const CompositionZone = ({ units, cap }) => {
 
 // CompositionZonesHeader renders the early/mid/late labels aligned to
 // the three zones. Render once above a stack of CompositionZones rows.
-export const CompositionZonesHeader = ({ slim }) => (
-  <span className={`workflow-composition-zones workflow-composition-zones-header${slim ? ' workflow-composition-zones-slim' : ''}`}>
-    {PHASE_ORDER.map((phase) => (
-      <span key={phase} className="workflow-composition-zone-label">{formatPhaseLabel(phase)}</span>
-    ))}
-  </span>
-);
+export const CompositionZonesHeader = ({ slim }) => {
+  const t = useT();
+  return (
+    <span className={`workflow-composition-zones workflow-composition-zones-header${slim ? ' workflow-composition-zones-slim' : ''}`}>
+      {PHASE_ORDER.map((phase) => (
+        <span key={phase} className="workflow-composition-zone-label">{formatPhaseLabel(t, phase)}</span>
+      ))}
+    </span>
+  );
+};
 
 // CompositionZones renders one player's (or the replay aggregate's)
 // three-zone composition bar. Always three fixed columns so rows line up
@@ -204,6 +214,9 @@ export const CompositionZones = ({ phases, slim }) => {
   );
 };
 
+const spellTooltip = (t, s) =>
+  t('composition.spellTooltip', { unit: unitName(t, s.unit), spell: unitName(t, s.spell) });
+
 const spellIcon = (unit) => {
   const icon = getUnitIcon(unit);
   return icon ? <img className="workflow-spellcast-icon" src={icon} alt="" /> : null;
@@ -213,14 +226,15 @@ const spellIcon = (unit) => {
 // strip: icons only (one per distinct cast — the same unit repeats for
 // distinct spells), legended "Casts". Spell names live in the tooltip.
 export const SpellcastsPill = ({ spells }) => {
+  const t = useT();
   const safe = sortSpells(spells);
   if (safe.length === 0) return null;
-  const tooltip = safe.map((s) => `${s.unit}: ${s.spell}`).join('\n');
+  const tooltip = safe.map((s) => spellTooltip(t, s)).join('\n');
   return (
     <span className="workflow-pattern-pill workflow-pattern-pill-strong workflow-spellcasts-pill workflow-pill-legended" title={tooltip}>
-      <span className="workflow-pill-legend">Casts</span>
+      <span className="workflow-pill-legend">{t('composition.castsLegend')}</span>
       {safe.map((s, idx) => (
-        <span key={`${s.unit}-${s.spell}-${idx}`} className="workflow-spellcast-icon-wrap" title={`${s.unit}: ${s.spell}`}>
+        <span key={`${s.unit}-${s.spell}-${idx}`} className="workflow-spellcast-icon-wrap" title={spellTooltip(t, s)}>
           {spellIcon(s.unit)}
         </span>
       ))}
@@ -231,6 +245,7 @@ export const SpellcastsPill = ({ spells }) => {
 // SpellcastsChips renders the spells as standard summary pills (icon +
 // spell name), matching the Featuring pills on this tab — one per cast.
 export const SpellcastsChips = ({ spells }) => {
+  const t = useT();
   const safe = sortSpells(spells);
   if (safe.length === 0) return null;
   return (
@@ -241,10 +256,10 @@ export const SpellcastsChips = ({ spells }) => {
           <span
             key={`${s.unit}-${s.spell}-${idx}`}
             className="workflow-pattern-pill workflow-pattern-pill-strong workflow-summary-feature-pill"
-            title={`${s.unit}: ${s.spell}`}
+            title={spellTooltip(t, s)}
           >
             {icon ? <img className="workflow-pattern-icon" src={icon} alt="" /> : null}
-            <span>{s.spell}</span>
+            <span>{unitName(t, s.spell)}</span>
           </span>
         );
       })}

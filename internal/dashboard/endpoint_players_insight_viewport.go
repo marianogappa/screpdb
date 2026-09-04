@@ -36,14 +36,16 @@ type workflowPlayerViewportMultitaskingDistribution struct {
 }
 
 type workflowGameViewportMultitaskingPlayer struct {
-	PlayerID           int64   `json:"player_id"`
-	PlayerKey          string  `json:"player_key"`
-	PlayerName         string  `json:"player_name"`
-	Team               int64   `json:"team"`
-	IsWinner           bool    `json:"is_winner"`
-	Eligible           bool    `json:"eligible"`
-	IneligibleReason   string  `json:"ineligible_reason,omitempty"`
-	ViewportSwitchRate float64 `json:"viewport_switch_rate"`
+	PlayerID             int64    `json:"player_id"`
+	PlayerKey            string   `json:"player_key"`
+	PlayerName           string   `json:"player_name"`
+	Team                 int64    `json:"team"`
+	IsWinner             bool     `json:"is_winner"`
+	Eligible             bool     `json:"eligible"`
+	IneligibleReason     string   `json:"ineligible_reason,omitempty"`
+	IneligibleReasonKey  string   `json:"ineligible_reason_key,omitempty"`
+	IneligibleReasonArgs []string `json:"ineligible_reason_args,omitempty"`
+	ViewportSwitchRate   float64  `json:"viewport_switch_rate"`
 }
 
 type workflowViewportMultitaskingAggregate struct {
@@ -107,12 +109,15 @@ func (d *Dashboard) buildWorkflowPlayerViewportAsyncInsight(playerKey string) (w
 	)
 	if !ok {
 		result.IneligibleReason = "No viewport multitasking data was found for this player yet."
+		result.IneligibleReasonKey = "no_viewport_data"
 		return result, nil
 	}
 
 	result.Details = append(result.Details, workflowPlayerInsightDetail{Label: "Player games", Value: strconv.FormatInt(playerSummary.GamesPlayed, 10)})
 	if !playerSummary.isEligible() {
 		result.IneligibleReason = fmt.Sprintf("Not enough viewport samples yet for a stable comparison. This view currently requires at least %d games.", workflowViewportMultitaskingMinGames)
+		result.IneligibleReasonKey = "not_enough_viewport_samples"
+		result.IneligibleReasonArgs = []string{fmt.Sprint(workflowViewportMultitaskingMinGames)}
 		return result, nil
 	}
 
@@ -259,13 +264,14 @@ func (d *Dashboard) populateViewportMultitaskingForGameDetail(detail *workflowGa
 	for _, player := range detail.Players {
 		playerByID[player.PlayerID] = player
 		detail.ViewportMultitasking = append(detail.ViewportMultitasking, workflowGameViewportMultitaskingPlayer{
-			PlayerID:         player.PlayerID,
-			PlayerKey:        player.PlayerKey,
-			PlayerName:       player.Name,
-			Team:             player.Team,
-			IsWinner:         player.IsWinner,
-			Eligible:         false,
-			IneligibleReason: "no viewport switch rate found for this player",
+			PlayerID:            player.PlayerID,
+			PlayerKey:           player.PlayerKey,
+			PlayerName:          player.Name,
+			Team:                player.Team,
+			IsWinner:            player.IsWinner,
+			Eligible:            false,
+			IneligibleReason:    "no viewport switch rate found for this player",
+			IneligibleReasonKey: "no_viewport_switch_rate",
 		})
 	}
 	if len(detail.Players) == 0 {
