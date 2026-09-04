@@ -9,7 +9,6 @@ package procorpus
 
 import (
 	"bufio"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -222,42 +221,23 @@ type PlayerRow struct {
 	Race string
 }
 
-// Join resolves each labelled side to a (replay, player) row in the ingested
-// scratch DB: by toon, else by eliminating the opponent's toon (1v1 only),
-// else by unique race. Unresolved sides are dropped, never guessed.
-func Join(db *sql.DB, byMatch map[string][]ProSide) ([]JoinedPlayer, JoinTallies, error) {
-	type replayRow struct {
-		id       int64
-		fileName string
-		matchup  string
-		players  []PlayerRow
-	}
-	rows, err := db.Query(`
-		SELECT r.id, r.file_name, r.matchup, p.id, p.name, p.race
-		FROM replays r
-		JOIN players p ON p.replay_id = r.id
-		WHERE r.team_format = '1v1' AND p.is_observer = 0 AND p.type = 'Human'
-		ORDER BY r.id, p.id`)
-	if err != nil {
-		return nil, JoinTallies{}, err
-	}
-	defer rows.Close()
-	byFile := map[string]*replayRow{}
-	for rows.Next() {
-		var rid, pid int64
-		var fileName, matchup, pname, prace string
-		if err := rows.Scan(&rid, &fileName, &matchup, &pid, &pname, &prace); err != nil {
-			return nil, JoinTallies{}, err
-		}
-		rr, ok := byFile[fileName]
-		if !ok {
-			rr = &replayRow{id: rid, fileName: fileName, matchup: matchup}
-			byFile[fileName] = rr
-		}
-		rr.players = append(rr.players, PlayerRow{ID: pid, Name: pname, Race: prace})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, JoinTallies{}, err
+// Replay1v1 is one analysed 1v1 replay the labelled sides are joined against:
+// its file name, and its human non-observer players. Callers build these from
+// wherever their corpus lives.
+type Replay1v1 struct {
+	ID       int64
+	FileName string
+	Matchup  string
+	Players  []PlayerRow
+}
+
+// Join resolves each labelled side to a player of the analysed replay of the
+// same name: by toon, else by eliminating the opponent's toon, else by unique
+// race. Unresolved sides are dropped, never guessed.
+func Join(replays []Replay1v1, byMatch map[string][]ProSide) ([]JoinedPlayer, JoinTallies) {
+	byFile := make(map[string]Replay1v1, len(replays))
+	for _, replay := range replays {
+		byFile[replay.FileName] = replay
 	}
 
 	var out []JoinedPlayer
@@ -269,7 +249,7 @@ func Join(db *sql.DB, byMatch map[string][]ProSide) ([]JoinedPlayer, JoinTallies
 			continue
 		}
 		for _, s := range sides {
-			p, method := ResolvePlayer(rr.players, s)
+			p, method := ResolvePlayer(rr.Players, s)
 			switch method {
 			case "toon":
 				t.ByToon++
@@ -282,12 +262,12 @@ func Join(db *sql.DB, byMatch map[string][]ProSide) ([]JoinedPlayer, JoinTallies
 				continue
 			}
 			out = append(out, JoinedPlayer{
-				ReplayID: rr.id, PlayerID: p.ID, FileName: rr.fileName,
-				Matchup: rr.matchup, Name: p.Name, Race: p.Race, Side: s,
+				ReplayID: rr.ID, PlayerID: p.ID, FileName: rr.FileName,
+				Matchup: rr.Matchup, Name: p.Name, Race: p.Race, Side: s,
 			})
 		}
 	}
-	return out, t, nil
+	return out, t
 }
 
 // ResolvePlayer picks the replay player a labelled side refers to and reports

@@ -3,44 +3,32 @@ package dashboard
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
+	"reflect"
 	"testing"
+
+	"github.com/marianogappa/screpdb/internal/library"
 )
 
-func TestCompileGlobalReplayFilterSQLDefaults(t *testing.T) {
+// TestDefaultFilterMatchesTheLibraryDefault pins the two default definitions
+// together: the dashboard's config defaults are what the settings screen
+// renders, the library's are what an unconfigured corpus is filtered by, and a
+// silent divergence would show the user one thing and count another.
+func TestDefaultFilterMatchesTheLibraryDefault(t *testing.T) {
 	config := defaultGlobalReplayFilterConfig()
-	compiled, err := compileGlobalReplayFilterSQL(config)
-	if err != nil {
-		t.Fatalf("compileGlobalReplayFilterSQL: %v", err)
-	}
-	if !strings.Contains(compiled, "r.duration_seconds >= 120") {
-		t.Fatalf("expected short game clause, got: %s", compiled)
-	}
-	if !strings.Contains(compiled, "computer controlled") {
-		t.Fatalf("expected computer exclusion clause, got: %s", compiled)
-	}
-}
+	want := library.DefaultFilterConfig()
 
-func TestCompileGlobalReplayFilterSQLWithOptions(t *testing.T) {
-	config := globalReplayFilterConfig{
-		GameTypes:         []string{globalReplayFilterGameTypeOneOnOne, globalReplayFilterGameTypeFreeForAll},
-		ExcludeShortGames: false,
-		ExcludeComputers:  false,
-		MapKinds:          []string{globalReplayFilterMapKindMoney},
+	if !reflect.DeepEqual(config.GameTypes, want.GameTypes) {
+		t.Errorf("game types = %v, library default = %v", config.GameTypes, want.GameTypes)
 	}
-	compiled, err := compileGlobalReplayFilterSQL(config)
-	if err != nil {
-		t.Fatalf("compileGlobalReplayFilterSQL: %v", err)
+	if !reflect.DeepEqual(config.MapKinds, want.MapKinds) {
+		t.Errorf("map kinds = %v, library default = %v", config.MapKinds, want.MapKinds)
 	}
-	for _, fragment := range []string{
-		"COUNT(DISTINCT p.team)",
-		"lower(trim(coalesce(r.game_type, ''))) = 'free for all'",
-		"r.map_kind = 'Money'",
-		"r.map_kind != 'UseMapSettings'",
-	} {
-		if !strings.Contains(compiled, fragment) {
-			t.Fatalf("expected fragment %q in compiled SQL: %s", fragment, compiled)
-		}
+	if config.ExcludeShortGames != want.ExcludeShortGames || config.ExcludeComputers != want.ExcludeComputers {
+		t.Errorf("exclusions = (%v, %v), library default = (%v, %v)",
+			config.ExcludeShortGames, config.ExcludeComputers, want.ExcludeShortGames, want.ExcludeComputers)
+	}
+	if globalReplayFilterShortGameSeconds != library.ShortGameSeconds {
+		t.Errorf("short game cutoff = %d, library = %d", globalReplayFilterShortGameSeconds, library.ShortGameSeconds)
 	}
 }
 

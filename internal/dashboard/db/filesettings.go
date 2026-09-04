@@ -27,10 +27,21 @@ type FileSettings struct {
 
 // NewFileSettings loads settings.json under root and applies its filter to
 // lib. A missing file yields the defaults without writing anything.
+// NewMemorySettings keeps the same settings in memory only, for offline tools
+// that want the global filter applied to a library without leaving a settings
+// file behind.
+func NewMemorySettings(lib *library.Library) (*FileSettings, error) {
+	return NewFileSettings("", lib)
+}
+
 func NewFileSettings(root string, lib *library.Library) (*FileSettings, error) {
-	loaded, _, err := persist.LoadSettings(root)
-	if err != nil {
-		return nil, err
+	loaded := persist.DefaultSettings()
+	if root != "" {
+		stored, _, err := persist.LoadSettings(root)
+		if err != nil {
+			return nil, err
+		}
+		loaded = stored
 	}
 	s := &FileSettings{root: root, lib: lib, current: loaded}
 	if lib != nil {
@@ -56,13 +67,19 @@ func (s *FileSettings) Save(next persist.Settings) error {
 }
 
 func (s *FileSettings) saveLocked(next persist.Settings) error {
-	if err := persist.SaveSettings(s.root, next); err != nil {
-		return err
+	if s.root != "" {
+		if err := persist.SaveSettings(s.root, next); err != nil {
+			return err
+		}
 	}
 	if s.lib != nil {
 		if err := s.lib.SetFilter(next.GlobalFilter); err != nil {
 			return err
 		}
+	}
+	if s.root == "" {
+		s.current = next
+		return nil
 	}
 	reloaded, _, err := persist.LoadSettings(s.root)
 	if err != nil {

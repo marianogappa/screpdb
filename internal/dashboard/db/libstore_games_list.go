@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"sort"
 	"strings"
 
@@ -417,11 +416,11 @@ func (s *LibStore) ListFeaturingPlayerPatternRows(ctx context.Context, replayIDs
 			row := WorkflowPlayerPatternRow{
 				ReplayID:       r.ID,
 				PatternName:    key,
-				ValueBool:      sql.NullBool{Bool: true, Valid: true},
+				ValueBool:      ptrBool(true),
 				DetectedSecond: int64(m.Sec),
 			}
 			if len(m.Payload) > 0 {
-				row.ValueString = sql.NullString{String: string(m.Payload), Valid: true}
+				row.ValueString = ptrString(string(m.Payload))
 			}
 			result = append(result, row)
 		}

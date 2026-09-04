@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -599,17 +598,17 @@ func TestLibStoreListGameUnitCadenceRowsUsesThePrecomputedCadence(t *testing.T) 
 	if scored.PlayerID != rowPlayerID(r, 0) || scored.WindowSeconds != 300 || scored.UnitsProduced != 10 || scored.GapCount != 9 {
 		t.Fatalf("scored row = %+v", scored)
 	}
-	if !scored.CVGap.Valid || scored.CVGap.Float64 != 0.5 || !scored.Burstiness.Valid || !scored.Idle20Ratio.Valid {
+	if scored.CVGap == nil || *scored.CVGap != 0.5 || scored.Burstiness == nil || scored.Idle20Ratio == nil {
 		t.Fatalf("scored row nullability = %+v", scored)
 	}
 	single := rows[1]
 	if single.GapCount != 0 {
 		t.Fatalf("single-unit row = %+v", single)
 	}
-	if single.CVGap.Valid || single.Burstiness.Valid || single.Idle20Ratio.Valid {
+	if single.CVGap != nil || single.Burstiness != nil || single.Idle20Ratio != nil {
 		t.Fatalf("a gapless row must report NULL deviations, got %+v", single)
 	}
-	if !single.RatePerMinute.Valid || !single.CadenceScore.Valid {
+	if single.RatePerMinute == nil || single.CadenceScore == nil {
 		t.Fatalf("rate and score are never NULL, got %+v", single)
 	}
 
@@ -665,13 +664,13 @@ func TestLibStoreListGameUnitCadenceRowsRecomputesForOtherTuning(t *testing.T) {
 	}
 }
 
-func assertNullFloat(t *testing.T, label string, got sql.NullFloat64, want float64) {
+func assertNullFloat(t *testing.T, label string, got *float64, want float64) {
 	t.Helper()
-	if !got.Valid {
+	if got == nil {
 		t.Fatalf("%s is NULL, want %v", label, want)
 	}
-	if math.Abs(got.Float64-want) > 1e-9 {
-		t.Fatalf("%s = %v, want %v", label, got.Float64, want)
+	if math.Abs(*got-want) > 1e-9 {
+		t.Fatalf("%s = %v, want %v", label, *got, want)
 	}
 }
 
@@ -1207,7 +1206,7 @@ func TestLibStoreGameReadsOverTheRealCorpus(t *testing.T) {
 			if other.PlayerID != row.PlayerID || other.WindowSeconds != row.WindowSeconds || other.UnitsProduced != row.UnitsProduced {
 				t.Fatalf("cadence row %d differs between paths: %+v vs %+v", i, row, other)
 			}
-			if row.CVGap.Valid != other.CVGap.Valid || (row.CVGap.Valid && math.Abs(row.CVGap.Float64-other.CVGap.Float64) > 1e-9) {
+			if (row.CVGap == nil) != (other.CVGap == nil) || (row.CVGap != nil && math.Abs(*row.CVGap-*other.CVGap) > 1e-9) {
 				t.Fatalf("cadence row %d cv differs between paths: %+v vs %+v", i, row.CVGap, other.CVGap)
 			}
 		}

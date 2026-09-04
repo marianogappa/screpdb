@@ -2793,20 +2793,20 @@ func (d *Dashboard) populateUnitCadenceForGameDetail(detail *workflowGameDetail)
 			GapCount:         gapCount,
 			IneligibleReason: "not enough attacking-unit production samples in analysis window",
 		}
-		if ratePerMinute.Valid {
-			entry.RatePerMinute = ratePerMinute.Float64
+		if ratePerMinute != nil {
+			entry.RatePerMinute = *ratePerMinute
 		}
-		if cvGap.Valid {
-			entry.CVGap = cvGap.Float64
+		if cvGap != nil {
+			entry.CVGap = *cvGap
 		}
-		if burstiness.Valid {
-			entry.Burstiness = burstiness.Float64
+		if burstiness != nil {
+			entry.Burstiness = *burstiness
 		}
-		if idle20Ratio.Valid {
-			entry.Idle20Ratio = idle20Ratio.Float64
+		if idle20Ratio != nil {
+			entry.Idle20Ratio = *idle20Ratio
 		}
-		if cadenceScore.Valid {
-			entry.CadenceScore = cadenceScore.Float64
+		if cadenceScore != nil {
+			entry.CadenceScore = *cadenceScore
 		}
 		if entry.Eligible {
 			entry.IneligibleReason = ""

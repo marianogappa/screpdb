@@ -641,9 +641,6 @@ func TestNormalizeGlobalReplayFilterConfigRejectsInvalid(t *testing.T) {
 	if !reflect.DeepEqual(got.GameTypes, []string{"melee", "one_on_one"}) {
 		t.Fatalf("expected dedup+lower+sort, got %v", got.GameTypes)
 	}
-	if got.CompiledReplaysFilterSQL == nil || *got.CompiledReplaysFilterSQL == "" {
-		t.Fatal("expected compiled SQL to be populated")
-	}
 }
 
 func TestUnmarshalStringSlice(t *testing.T) {

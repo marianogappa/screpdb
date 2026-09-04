@@ -342,7 +342,7 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 				// row.ValueString carries the marker payload (see the query).
 				// Dynamic markers persist their resolved value there; collect
 				// each distinct one so the pill shows the number.
-				if label, ok := markers.DecodePayloadLabel([]byte(row.ValueString.String)); ok {
+				if label, ok := markers.DecodePayloadLabel([]byte(nullableStringValue(row.ValueString))); ok {
 					existing := featureLabels[replayID][bo.FeatureKey]
 					if !slices.Contains(existing, label) {
 						featureLabels[replayID][bo.FeatureKey] = append(existing, label)

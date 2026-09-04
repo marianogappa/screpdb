@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"math"
 	"sort"
@@ -746,13 +745,13 @@ func cadenceRowFromCadence(playerID int64, c *library.Cadence) *GameUnitCadenceR
 		WindowSeconds: int64(c.WindowSec),
 		UnitsProduced: int64(c.Units),
 		GapCount:      int64(c.Gaps),
-		RatePerMinute: sql.NullFloat64{Float64: c.RatePerMinute, Valid: true},
-		CadenceScore:  sql.NullFloat64{Float64: c.Score, Valid: true},
+		RatePerMinute: ptrFloat64(c.RatePerMinute),
+		CadenceScore:  ptrFloat64(c.Score),
 	}
 	if c.Gaps == 0 {
 		return row
 	}
-	row.Idle20Ratio = sql.NullFloat64{Float64: c.Idle20Ratio, Valid: true}
+	row.Idle20Ratio = ptrFloat64(c.Idle20Ratio)
 	// Cadence flattens the SQL NULLs to zero, so the undefined-deviation branch
 	// has to be recognised by its fingerprint: only it leaves both the
 	// coefficient of variation and the burstiness at zero, because a real
@@ -760,8 +759,8 @@ func cadenceRowFromCadence(playerID int64, c *library.Cadence) *GameUnitCadenceR
 	if c.CVGap == 0 && c.Burstiness == 0 {
 		return row
 	}
-	row.CVGap = sql.NullFloat64{Float64: c.CVGap, Valid: true}
-	row.Burstiness = sql.NullFloat64{Float64: c.Burstiness, Valid: true}
+	row.CVGap = ptrFloat64(c.CVGap)
+	row.Burstiness = ptrFloat64(c.Burstiness)
 	return row
 }
 
@@ -818,10 +817,10 @@ func cadenceRowFromProd(
 		WindowSeconds: windowSeconds,
 		UnitsProduced: int64(len(times)),
 		GapCount:      int64(len(times) - 1),
-		RatePerMinute: sql.NullFloat64{Float64: rate, Valid: true},
+		RatePerMinute: ptrFloat64(rate),
 	}
 	if len(times) < 2 {
-		row.CadenceScore = sql.NullFloat64{Float64: rate / (1.0 + cadenceUndefinedDeviationFallback), Valid: true}
+		row.CadenceScore = ptrFloat64(rate / (1.0 + cadenceUndefinedDeviationFallback))
 		return row
 	}
 
@@ -838,14 +837,14 @@ func cadenceRowFromProd(
 	n := float64(len(times) - 1)
 	mean := sum / n
 	variance := sumSquares/n - mean*mean
-	row.Idle20Ratio = sql.NullFloat64{Float64: float64(idle) / n, Valid: true}
+	row.Idle20Ratio = ptrFloat64(float64(idle) / n)
 	if variance < 0 || mean == 0 {
-		row.CadenceScore = sql.NullFloat64{Float64: rate / (1.0 + cadenceUndefinedDeviationFallback), Valid: true}
+		row.CadenceScore = ptrFloat64(rate / (1.0 + cadenceUndefinedDeviationFallback))
 		return row
 	}
 	cv := math.Sqrt(variance) / mean
-	row.CVGap = sql.NullFloat64{Float64: cv, Valid: true}
-	row.Burstiness = sql.NullFloat64{Float64: (cv - 1.0) / (cv + 1.0), Valid: true}
-	row.CadenceScore = sql.NullFloat64{Float64: rate / (1.0 + cv), Valid: true}
+	row.CVGap = ptrFloat64(cv)
+	row.Burstiness = ptrFloat64((cv - 1.0) / (cv + 1.0))
+	row.CadenceScore = ptrFloat64(rate / (1.0 + cv))
 	return row
 }

@@ -506,11 +506,11 @@ func TestLibStoreFeaturingRowReads(t *testing.T) {
 	if !ok {
 		t.Fatalf("rows = %+v, want threw_nukes", patternRows)
 	}
-	if !nuke.ValueBool.Valid || !nuke.ValueBool.Bool || nuke.DetectedSecond != 700 {
+	if nuke.ValueBool == nil || !*nuke.ValueBool || nuke.DetectedSecond != 700 {
 		t.Errorf("nuke row = %+v", nuke)
 	}
 	fuzzy, ok := byName["bo_z_fuzzy"]
-	if !ok || !fuzzy.ValueString.Valid || fuzzy.ValueString.String != `{"label":"~10 Hatch"}` {
+	if !ok || fuzzy.ValueString == nil || *fuzzy.ValueString != `{"label":"~10 Hatch"}` {
 		t.Errorf("fuzzy row = %+v", fuzzy)
 	}
 

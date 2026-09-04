@@ -11,9 +11,9 @@ import (
 )
 
 // TestDashboardDoesNotOpenADatabase keeps the dashboard answering its reads
-// from the in-memory replay library. Reaching for the SQL stack again would
-// reintroduce the ingest step, the migrations and the re-ingest that this
-// package exists to be rid of.
+// from the in-memory replay library, offline pack building included. Reaching
+// for the SQL stack again would reintroduce the ingest step, the migrations
+// and the re-ingest that this package exists to be rid of.
 func TestDashboardDoesNotOpenADatabase(t *testing.T) {
 	forbidden := []string{
 		"database/sql",
@@ -22,21 +22,15 @@ func TestDashboardDoesNotOpenADatabase(t *testing.T) {
 		"github.com/marianogappa/screpdb/internal/migrations",
 		"github.com/marianogappa/screpdb/internal/ingest",
 	}
-	// propack_build.go is offline tooling, not part of the served dashboard:
-	// scripts/pro-pack joins its labelled games against an ingested corpus and
-	// renames player rows to pack keys, neither of which the library can do
-	// yet, so it keeps its own SQL-backed constructor.
-	exempt := map[string]bool{"propack_build.go": true}
-
 	fset := token.NewFileSet()
-	for _, dir := range []string{".", "service", "apigen"} {
+	for _, dir := range []string{".", "db", "service", "apigen"} {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
 			t.Fatalf("read %s: %v", dir, err)
 		}
 		for _, entry := range entries {
 			name := entry.Name()
-			if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") || exempt[name] {
+			if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
 				continue
 			}
 			path := filepath.Join(dir, name)

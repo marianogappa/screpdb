@@ -3,7 +3,7 @@
 #
 # Excluded from the denominator (testing them is noise, not signal):
 #   - Generated code: any file carrying a "// Code generated ... DO NOT EDIT."
-#     header (OpenAPI apigen, sqlc sqlcgen, the openapi handler bridge).
+#     header (OpenAPI apigen, the openapi handler bridge).
 #   - scripts/ : one-off throwaway analysis `package main` programs.
 #   - **/tools/ : code-generation tooling, not shipped logic.
 #

@@ -8,18 +8,18 @@
 //   - the screpharvest harvest (replays.jsonl + replays/*.rep),
 //   - the scfingerprint corpus dir (pros_merged.json, pro_exclusions.json),
 //   - the scfingerprint dataset dir (players/*.json + liquipedia.json), which
-//     is the roster: a player is built in iff scfingerprint knows them,
-//   - a scratch DB already ingested by scripts/expert-mine (its stage +
-//     ingest steps; pass -db to reuse it).
+//     is the roster: a player is built in iff scfingerprint knows them.
 //
 // Steps:
 //
-//  1. label + join exactly like expert-mine (scripts/procorpus),
-//  2. rename every resolved pro row in the scratch DB to its pack key
-//     ("pro:<id>") so the dashboard's own per-player aggregators see one
-//     player per pro regardless of which account they played on,
-//  3. dashboard.ComputeProMetrics runs those aggregators (APM, cadence,
-//     viewport switch rate, hotkey signatures) on the scratch DB,
+//  1. label the harvest by aurora ID and stage every labelled match's replay
+//     flat into a work folder (scripts/procorpus),
+//  2. read that folder into a replay library and join the labelled sides to
+//     its players,
+//  3. rename every resolved player to its pack key ("pro:<id>") so the
+//     dashboard's own per-player aggregators see one player per pro regardless
+//     of which account they played on, then run those aggregators (APM,
+//     cadence, viewport switch rate, hotkey signatures),
 //  4. optionally fetch country + portrait from Liquipedia (MediaWiki API,
 //     gzip, identifying User-Agent, one request every 2s per their terms),
 //  5. write pros.json + photos/.
@@ -29,17 +29,14 @@
 //	go run ./scripts/pro-pack \
 //	  -harvest ~/Code/go/src/github.com/marianogappa/screpharvest/harvest \
 //	  -corpus  ~/Code/go/src/github.com/marianogappa/scfingerprint/corpus \
-//	  -dataset $(go list -m -f '{{.Dir}}' github.com/marianogappa/scfingerprint)/internal/dataset \
-//	  -db      /tmp/expert-mine/pro_corpus.db
+//	  -dataset $(go list -m -f '{{.Dir}}' github.com/marianogappa/scfingerprint)/internal/dataset
 //
-// The scratch DB is modified (player rows renamed); never point -db at a
-// user database.
+// Nothing is written outside -out and -staged, and no database is involved.
 package main
 
 import (
 	"compress/gzip"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -58,7 +55,6 @@ import (
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 	"github.com/marianogappa/screpdb/internal/propack"
 	"github.com/marianogappa/screpdb/scripts/procorpus"
-	_ "modernc.org/sqlite"
 )
 
 const userAgent = "screpdb-pro-pack/1.0 (https://github.com/marianogappa/screpdb)"
@@ -84,13 +80,13 @@ func main() {
 	harvestDir := flag.String("harvest", "", "screpharvest harvest dir")
 	corpusDir := flag.String("corpus", "", "scfingerprint corpus dir (pros_merged.json, pro_exclusions.json)")
 	datasetDir := flag.String("dataset", "", "scfingerprint internal/dataset dir (players/*.json, liquipedia.json)")
-	dbPath := flag.String("db", "", "expert-mine scratch DB (will be modified)")
+	stagedDir := flag.String("staged", filepath.Join(os.TempDir(), "pro-pack", "staged"), "work folder the labelled replays are staged into")
 	outDir := flag.String("out", "internal/propack/data", "output dir")
 	photos := flag.Bool("photos", true, "fetch country + portrait from Liquipedia")
 	minGames := flag.Int("min-games", 10, "drop pros with fewer sampled games")
 	minDuration := flag.Int("min-duration", 240, "minimum game duration in seconds")
 	flag.Parse()
-	if *harvestDir == "" || *corpusDir == "" || *datasetDir == "" || *dbPath == "" {
+	if *harvestDir == "" || *corpusDir == "" || *datasetDir == "" {
 		flag.Usage()
 		os.Exit(2)
 	}
@@ -118,33 +114,32 @@ func main() {
 	}
 	byMatch := procorpus.GroupByMatch(sides)
 
-	db, err := sql.Open("sqlite", *dbPath)
-	if err != nil {
-		log.Fatalf("open db: %v", err)
+	if err := os.MkdirAll(*stagedDir, 0o755); err != nil {
+		log.Fatalf("staged dir: %v", err)
 	}
-	joined, tallies, err := procorpus.Join(db, byMatch)
+	staged, missing := procorpus.Stage(*harvestDir, *stagedDir, byMatch)
+	log.Printf("staged %d replays in %s (%d missing from the harvest)", staged, *stagedDir, missing)
+
+	ctx := context.Background()
+	start := time.Now()
+	corpus, err := dashboard.LoadProCorpus(ctx, *stagedDir, nil)
 	if err != nil {
-		log.Fatalf("join: %v", err)
+		log.Fatalf("read staged replays: %v", err)
 	}
+	defer corpus.Close()
+	log.Printf("analysed %d replays in %s", corpus.Len(), time.Since(start).Round(time.Second))
+
+	joined, tallies := procorpus.Join(replays1v1(corpus), byMatch)
 	log.Printf("joined %d/%d player-games (%s)", len(joined), len(sides), tallies)
 
-	renamed, err := renameProRows(db, joined, rosterByName)
-	if err != nil {
-		log.Fatalf("rename: %v", err)
-	}
-	if err := db.Close(); err != nil {
-		log.Fatalf("close db: %v", err)
-	}
-	log.Printf("renamed %d player rows to pack keys", renamed)
+	renamed := corpus.RenamePlayers(packKeyByPlayerID(joined, rosterByName))
+	log.Printf("renamed %d players to pack keys", renamed)
 
-	ids := make([]string, 0, len(rosterByName))
 	keys := make([]string, 0, len(rosterByName))
 	for _, r := range rosterByName {
-		ids = append(ids, r.id)
 		keys = append(keys, propack.Key(r.id))
 	}
-	sort.Strings(keys)
-	metrics, err := dashboard.ComputeProMetrics(context.Background(), *dbPath, keys)
+	metrics, err := corpus.Metrics(ctx, keys)
 	if err != nil {
 		log.Fatalf("metrics: %v", err)
 	}
@@ -226,7 +221,6 @@ func main() {
 		log.Fatalf("write: %v", err)
 	}
 	log.Printf("wrote %d pros to %s (%d KB)", len(pack.Pros), *outDir, len(data)/1024)
-	_ = ids
 }
 
 // loadRoster reads the scfingerprint dataset identities and pairs each with
@@ -279,29 +273,32 @@ func loadRoster(datasetDir string, reg *procorpus.Registry) (map[string]roster, 
 
 // renameProRows points every resolved pro player row at its pack key. Pros
 // unknown to the roster (registry-only names) are left alone.
-func renameProRows(db *sql.DB, joined []procorpus.JoinedPlayer, rosterByName map[string]roster) (int, error) {
-	tx, err := db.Begin()
-	if err != nil {
-		return 0, err
+func replays1v1(corpus *dashboard.ProCorpus) []procorpus.Replay1v1 {
+	analysed := corpus.Replays1v1()
+	out := make([]procorpus.Replay1v1, 0, len(analysed))
+	for _, replay := range analysed {
+		players := make([]procorpus.PlayerRow, 0, len(replay.Players))
+		for _, player := range replay.Players {
+			players = append(players, procorpus.PlayerRow{ID: player.PlayerID, Name: player.Name, Race: player.Race})
+		}
+		out = append(out, procorpus.Replay1v1{
+			ID:       replay.ReplayID,
+			FileName: replay.FileName,
+			Matchup:  replay.Matchup,
+			Players:  players,
+		})
 	}
-	stmt, err := tx.Prepare(`UPDATE players SET name = ? WHERE id = ?`)
-	if err != nil {
-		return 0, err
-	}
-	defer stmt.Close()
-	n := 0
+	return out
+}
+
+func packKeyByPlayerID(joined []procorpus.JoinedPlayer, rosterByName map[string]roster) map[int64]string {
+	out := make(map[int64]string, len(joined))
 	for _, jp := range joined {
-		r, ok := rosterByName[jp.Side.ProName]
-		if !ok {
-			continue
+		if r, ok := rosterByName[jp.Side.ProName]; ok {
+			out[jp.PlayerID] = propack.Key(r.id)
 		}
-		if _, err := stmt.Exec(propack.Key(r.id), jp.PlayerID); err != nil {
-			_ = tx.Rollback()
-			return 0, err
-		}
-		n++
 	}
-	return n, tx.Commit()
+	return out
 }
 
 // recentToons lists each pro's known (toon, gateway) accounts, most recently
