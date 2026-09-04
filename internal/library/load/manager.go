@@ -26,7 +26,12 @@ type Manager struct {
 	lib  *library.Library
 	opts ManagerOptions
 
-	mu         sync.Mutex
+	mu sync.Mutex
+	// base is the lifetime the loads run under. A folder change is asked for
+	// by an HTTP request whose context is cancelled the moment the response is
+	// written, which would kill the load it just started, so the request's
+	// context is used to validate the folder and never to read it.
+	base       context.Context
 	folder     string
 	generation uint64
 	loader     *Loader
@@ -43,19 +48,22 @@ func NewManager(lib *library.Library, opts ManagerOptions) *Manager {
 // Start loads the configured folder in the background and begins watching it.
 // It returns as soon as the load is under way so the server can start serving.
 func (m *Manager) Start(ctx context.Context) error {
-	return m.restart(ctx, m.Folder(), false)
+	m.mu.Lock()
+	m.base = ctx
+	m.mu.Unlock()
+	return m.restart(m.Folder(), false)
 }
 
 // SetFolder points the library at a different folder. The current corpus keeps
 // serving until the newest replays of the new folder have loaded.
-func (m *Manager) SetFolder(ctx context.Context, folder string) error {
+func (m *Manager) SetFolder(_ context.Context, folder string) error {
 	if err := fileops.ValidateReplayDir(folder); err != nil {
 		return err
 	}
 	if err := iofacade.AllowDir(folder); err != nil {
 		return err
 	}
-	return m.restart(ctx, folder, true)
+	return m.restart(folder, true)
 }
 
 // Rescan re-reads the folder now instead of waiting for the next check.
@@ -90,17 +98,21 @@ func (m *Manager) Close() {
 	stop(cancel, done)
 }
 
-func (m *Manager) restart(ctx context.Context, folder string, staged bool) error {
+func (m *Manager) restart(folder string, staged bool) error {
 	m.mu.Lock()
 	if m.closed {
 		m.mu.Unlock()
 		return nil
 	}
+	base := m.base
 	previousCancel, previousDone := m.cancel, m.done
 	m.mu.Unlock()
 	stop(previousCancel, previousDone)
 
-	runCtx, cancel := context.WithCancel(ctx)
+	if base == nil {
+		base = context.Background()
+	}
+	runCtx, cancel := context.WithCancel(base)
 	done := make(chan struct{})
 
 	m.mu.Lock()
@@ -139,6 +151,9 @@ func (m *Manager) restart(ctx context.Context, folder string, staged bool) error
 func (m *Manager) watch(ctx context.Context, folder string, generation uint64, loader *Loader) {
 	watchOpts := m.opts.Watch
 	watchOpts.Folder = folder
+	if watchOpts.Since.IsZero() {
+		watchOpts.Since = loader.Cutoff()
+	}
 	if watchOpts.Log == nil && m.opts.Log != nil {
 		log := m.opts.Log
 		watchOpts.Log = func(message string) { log(LogEvent{Level: LogLevelWarn, Message: message}) }

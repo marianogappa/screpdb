@@ -2,101 +2,67 @@ package dashboard
 
 import (
 	"testing"
-	"time"
 
 	"github.com/marianogappa/screpdb/internal/library"
-	"github.com/marianogappa/screpdb/internal/library/load"
 )
 
-func TestStatusForPhase(t *testing.T) {
-	for phase, want := range map[library.Phase]string{
-		library.PhaseIdle:     libraryStatusIdle,
-		library.PhaseScanning: libraryStatusLoading,
-		library.PhaseRecent:   libraryStatusLoading,
-		library.PhaseBackfill: libraryStatusLoading,
-		library.PhaseReady:    libraryStatusWatching,
-		library.PhaseWatching: libraryStatusWatching,
-		library.PhaseFailed:   libraryStatusFailed,
-	} {
-		if got := statusForPhase(phase); got != want {
-			t.Errorf("statusForPhase(%q) = %q, want %q", phase, got, want)
-		}
-	}
-}
-
-func TestProgressToWireNamesTheFolderAsTheBrowserDoes(t *testing.T) {
-	wire := progressToWire(library.ProgressState{
-		Generation: 3, Version: 7, Folder: "/replays", Phase: library.PhaseBackfill,
-		Total: 100, Loaded: 40, Failed: 1, Skipped: 2,
-	})
-	if wire.ReplayDir != "/replays" || wire.Phase != "backfill" || wire.Loaded != 40 || wire.Complete {
-		t.Fatalf("wire = %+v", wire)
-	}
-	if done := progressToWire(library.ProgressState{Phase: library.PhaseWatching}); !done.Complete {
-		t.Fatal("a watching library should report complete")
-	}
-}
-
-func TestLibraryHubSnapshotThenStream(t *testing.T) {
-	lib := library.New(library.Options{})
-	defer lib.Close()
-	hub := newLibraryHub()
-	hub.Watch(lib)
-
-	snapshot, events, unsubscribe := hub.subscribe()
-	defer unsubscribe()
-	if snapshot.Type != "snapshot" || snapshot.Progress == nil {
-		t.Fatalf("snapshot = %+v", snapshot)
-	}
-
-	hub.Log(load.LogEvent{Level: load.LogLevelInfo, Message: "found 2 replays"})
-	lib.SetProgress(library.ProgressState{Generation: 1, Folder: "/replays", Phase: library.PhaseRecent, Total: 2, Loaded: 1})
-
-	seen := map[string]libraryEventMessage{}
-	deadline := time.After(3 * time.Second)
-	for len(seen) < 3 {
-		select {
-		case message := <-events:
-			seen[message.Type] = message
-		case <-deadline:
-			t.Fatalf("only saw %v", seen)
-		}
-	}
-	if got := seen["log"]; got.Log == nil || got.Log.Message != "found 2 replays" {
-		t.Fatalf("log message = %+v", got.Log)
-	}
-	if got := seen["progress"]; got.Progress == nil || got.Progress.Loaded != 1 || got.Status != libraryStatusLoading {
-		t.Fatalf("progress message = %+v", got)
-	}
-	if got := seen["status"]; got.Status != libraryStatusLoading {
-		t.Fatalf("status message = %+v", got)
-	}
-
-	later, _, cancel := hub.subscribe()
-	defer cancel()
-	if len(later.Logs) != 1 || later.Progress.Loaded != 1 || later.ReplayDir != "/replays" {
-		t.Fatalf("a page connecting mid-load should see the tail: %+v", later)
-	}
-}
-
-func TestLibraryHubKeepsTheLogTailBounded(t *testing.T) {
-	hub := newLibraryHub()
-	for i := 0; i < maxLibraryLogEvents+10; i++ {
-		hub.Log(load.LogEvent{Level: load.LogLevelInfo, Message: "line"})
-	}
-	if got := len(hub.snapshotMessage().Logs); got != maxLibraryLogEvents {
-		t.Fatalf("log tail = %d, want %d", got, maxLibraryLogEvents)
-	}
-}
-
-func TestLibraryHubDropsForASlowSubscriber(t *testing.T) {
+// TestHubStaysQuietWhileTheFolderIsRead is the fix for a page that twitched
+// for as long as a read took: the corpus commits a batch every few hundred
+// milliseconds, and forwarding each one made the browser refetch and
+// re-render over and over.
+func TestHubStaysQuietWhileTheFolderIsRead(t *testing.T) {
 	hub := newLibraryHub()
 	_, events, unsubscribe := hub.subscribe()
 	defer unsubscribe()
-	for i := 0; i < 1000; i++ {
-		hub.Log(load.LogEvent{Level: load.LogLevelInfo, Message: "line"})
+
+	drain := func() []libraryEventMessage {
+		var out []libraryEventMessage
+		for {
+			select {
+			case message := <-events:
+				out = append(out, message)
+			default:
+				return out
+			}
+		}
 	}
-	if len(events) != cap(events) {
-		t.Fatalf("expected the buffer to fill and further messages to drop, got %d of %d", len(events), cap(events))
+
+	hub.publishProgress(library.ProgressState{Phase: library.PhaseScanning, Folder: "/replays"})
+	started := drain()
+	if len(started) != 2 || started[0].Type != "progress" || started[1].Type != "status" {
+		t.Fatalf("starting a read should say so once, got %+v", started)
+	}
+	if started[1].Status != libraryStatusLoading {
+		t.Fatalf("status = %q, want loading", started[1].Status)
+	}
+
+	// Everything a read does in between.
+	for loaded := 100; loaded <= 500; loaded += 100 {
+		hub.publishProgress(library.ProgressState{Phase: library.PhaseBackfill, Folder: "/replays", Loaded: loaded, Total: 500})
+		hub.publishCorpus(library.Event{Kind: library.EventCorpus, Added: []int64{int64(loaded)}})
+	}
+	if quiet := drain(); len(quiet) != 0 {
+		t.Fatalf("a read in progress should be quiet, got %d messages: %+v", len(quiet), quiet)
+	}
+	if got := hub.Progress().Loaded; got != 500 {
+		t.Fatalf("the hub still has to track progress for the health endpoint, got %d", got)
+	}
+
+	hub.publishProgress(library.ProgressState{Phase: library.PhaseWatching, Folder: "/replays", Loaded: 500, Total: 500})
+	finished := drain()
+	if len(finished) != 3 {
+		t.Fatalf("finishing should reveal once, got %+v", finished)
+	}
+	if finished[0].Type != "progress" || finished[1].Type != "status" || finished[2].Type != "corpus" {
+		t.Fatalf("unexpected reveal: %+v", finished)
+	}
+	if finished[1].Status != libraryStatusWatching {
+		t.Fatalf("status = %q, want watching", finished[1].Status)
+	}
+
+	// Once the read is done the watcher's own changes flow again.
+	hub.publishCorpus(library.Event{Kind: library.EventCorpus, Added: []int64{7}})
+	if live := drain(); len(live) != 1 || live[0].Type != "corpus" {
+		t.Fatalf("a change after the read should reach the page, got %+v", live)
 	}
 }

@@ -24,13 +24,15 @@ test('formatLoaded tolerates missing or garbage counts', () => {
 });
 
 test('formatLoadingShort is the nav badge text', () => {
-  assert.equal(formatLoadingShort(1240, 8102), 'Loading 1,240 of 8,102');
+  // Counts are deliberately absent: the folder is read in one go and telling
+  // the page about every batch made it re-render for as long as the read took.
+  assert.equal(formatLoadingShort(), 'Loading');
 });
 
 test('stillLoadingCopy is the partial-corpus empty state', () => {
   assert.equal(
-    stillLoadingCopy(1240, 8102),
-    'Still loading your replays (1,240 of 8,102). This fills in as more games load.',
+    stillLoadingCopy(),
+    'Still reading your replay folder. This fills in when it finishes.',
   );
 });
 

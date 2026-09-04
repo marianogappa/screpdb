@@ -27,7 +27,12 @@ type Settings struct {
 	GlobalFilter        library.FilterConfig `json:"global_filter"`
 	FeatureFlags        map[string]bool      `json:"feature_flags"`
 	SampleSetAutoLoaded bool                 `json:"sample_set_auto_loaded"`
-	UpdatedAt           time.Time            `json:"updated_at"`
+	// MaxReplays caps how many of the newest replays in the folder are read.
+	// Zero means the built-in default; a negative value reads all of them.
+	// There is no screen for this: a folder large enough to want it changed is
+	// rare enough to edit the file.
+	MaxReplays int       `json:"max_replays"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 func DefaultSettings() Settings {

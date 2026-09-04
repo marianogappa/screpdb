@@ -97,7 +97,7 @@ func newLibraryRuntime(ctx context.Context, opts libraryRuntimeOptions) (*librar
 
 	runtime.manager = load.NewManager(lib, load.ManagerOptions{
 		Folder: folder,
-		Loader: load.Options{Log: runtime.log},
+		Loader: load.Options{Log: runtime.log, MaxReplays: settings.Settings().MaxReplays},
 		Watch:  watch.Options{},
 		Log:    runtime.log,
 	})
@@ -189,6 +189,14 @@ func (r *libraryRuntime) UseSampleSet(ctx context.Context) (string, error) {
 
 // Rescan re-reads the folder now instead of waiting for the next check.
 func (r *libraryRuntime) Rescan() { r.manager.Rescan() }
+
+// MaxReplays is how many of the newest replays in the folder are read.
+func (r *libraryRuntime) MaxReplays() int {
+	if configured := r.settings.Settings().MaxReplays; configured != 0 {
+		return configured
+	}
+	return load.DefaultMaxReplays
+}
 
 func (r *libraryRuntime) Folder() string { return r.manager.Folder() }
 

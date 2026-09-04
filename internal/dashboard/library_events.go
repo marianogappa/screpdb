@@ -134,20 +134,41 @@ func (h *libraryHub) Log(event load.LogEvent) {
 	h.broadcast(libraryEventMessage{Type: "log", Log: &copied})
 }
 
+// publishProgress keeps the hub's own copy current for /api/health, but tells
+// the browser only when the state it renders actually changes.
+//
+// Reading a folder commits a batch every few hundred milliseconds. Forwarding
+// each one made the page refetch its lists and re-render for as long as the
+// read took, which on a large folder is a minute of a twitching screen. The
+// browser needs to know that a read started, and that it finished.
 func (h *libraryHub) publishProgress(p library.ProgressState) {
 	h.mu.Lock()
 	previous := h.progress
 	h.progress = p
 	h.mu.Unlock()
-	wire := progressToWire(p)
+
 	status := statusForPhase(p.Phase)
+	if statusForPhase(previous.Phase) == status {
+		return
+	}
+	wire := progressToWire(p)
 	h.broadcast(libraryEventMessage{Type: "progress", Status: status, ReplayDir: p.Folder, Progress: &wire})
-	if statusForPhase(previous.Phase) != status {
-		h.broadcast(libraryEventMessage{Type: "status", Status: status, ReplayDir: p.Folder, Error: h.Error()})
+	h.broadcast(libraryEventMessage{Type: "status", Status: status, ReplayDir: p.Folder, Error: h.Error()})
+	if status == libraryStatusWatching {
+		// One reveal for everything the read added.
+		h.broadcast(libraryEventMessage{Type: "corpus", Corpus: &libraryCorpus{
+			Generation: p.Generation,
+			Version:    p.Version,
+		}})
 	}
 }
 
+// publishCorpus forwards the watcher's changes. Batches committed while a
+// folder is still being read are covered by the single reveal above.
 func (h *libraryHub) publishCorpus(event library.Event) {
+	if statusForPhase(h.Progress().Phase) == libraryStatusLoading {
+		return
+	}
 	h.broadcast(libraryEventMessage{Type: "corpus", Corpus: &libraryCorpus{
 		Generation: event.Generation,
 		Version:    event.Version,

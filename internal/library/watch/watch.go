@@ -49,7 +49,13 @@ type Options struct {
 	// before it is considered finished being written.
 	Settle   time.Duration
 	Debounce time.Duration
-	Log      func(string)
+	// Since, when set, is the oldest replay the initial read kept. Files older
+	// than it were deliberately left out and must stay out, or the
+	// reconciliation walk would hand back the whole folder the cap excluded.
+	// Anything at or after it is watched, so a game played now always loads
+	// even though that takes the corpus past the cap.
+	Since time.Time
+	Log   func(string)
 	// NewNativeWatcher is overridable for tests; it defaults to the facade's.
 	NewNativeWatcher func() (iofacade.DirWatcher, error)
 }
@@ -92,8 +98,10 @@ type Watcher struct {
 	watched map[string]bool
 	pending map[string]pending
 	// emitted remembers what was already handed over, so a file the loader
-	// cannot parse is not retried on every single walk.
+	// cannot parse is not retried on every single walk, and a removal is not
+	// repeated while the consumer is still applying it.
 	emitted map[string]stamp
+	dropped map[string]struct{}
 	now     func() time.Time
 }
 
@@ -105,6 +113,7 @@ func New(opts Options, corpus Corpus, onChange func(Change)) *Watcher {
 		watched:  map[string]bool{},
 		pending:  map[string]pending{},
 		emitted:  map[string]stamp{},
+		dropped:  map[string]struct{}{},
 		now:      time.Now,
 	}
 }
@@ -200,6 +209,15 @@ func (w *Watcher) Reconcile() {
 		w.logf("Could not read the replay folder: %v", err)
 		return
 	}
+	if !w.opts.Since.IsZero() {
+		kept := files[:0]
+		for _, file := range files {
+			if !file.ModTime.Before(w.opts.Since) {
+				kept = append(kept, file)
+			}
+		}
+		files = kept
+	}
 
 	present := make(map[string]struct{}, len(files))
 	var change Change
@@ -236,6 +254,16 @@ func (w *Watcher) Reconcile() {
 		if !w.underFolder(path) {
 			continue
 		}
+		if _, already := w.dropped[path]; already {
+			continue
+		}
+		// A path can be missing from the walk because the cutoff excluded it
+		// rather than because it is gone. Only a file that has really left
+		// the disk leaves the corpus.
+		if _, err := iofacade.Stat(path); err == nil {
+			continue
+		}
+		w.dropped[path] = struct{}{}
 		change.Removed = append(change.Removed, path)
 	}
 	for path := range w.pending {
@@ -246,6 +274,11 @@ func (w *Watcher) Reconcile() {
 	for path := range w.emitted {
 		if _, ok := present[path]; !ok {
 			delete(w.emitted, path)
+		}
+	}
+	for path := range w.dropped {
+		if _, ok := present[path]; ok {
+			delete(w.dropped, path)
 		}
 	}
 

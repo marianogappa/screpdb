@@ -613,7 +613,6 @@ const CountryFlag = ({ code, playerKey }) => {
 // resolve (players with no Battle.net profile) from polling for ever.
 // The games list refreshes on library progress at most this often: progress
 // events can arrive several times a second during the initial load.
-const LIBRARY_PROGRESS_REFRESH_MS = 2000;
 
 const COUNTRY_FLAG_POLL_MS = 2000;
 const COUNTRY_FLAG_POLL_MAX_TICKS = 45;
@@ -1921,7 +1920,7 @@ const teamColorRgba = (team, alpha = 0.14) => {
   return `rgba(${Number.isNaN(r) ? 96 : r}, ${Number.isNaN(g) ? 165 : g}, ${Number.isNaN(b) ? 250 : b}, ${alpha})`;
 };
 
-const MAIN_GAMES_PAGE_SIZE = 100;
+const MAIN_GAMES_PAGE_SIZE = 50;
 const MAIN_PLAYERS_PAGE_SIZE = 30;
 
 const toggleFilterValue = (values, value) => {
@@ -2070,6 +2069,7 @@ function App() {
   const [librarySettingsSaving, setLibrarySettingsSaving] = useState(false);
   const [isSampleSet, setIsSampleSet] = useState(false);
   const [detectedReplayDir, setDetectedReplayDir] = useState('');
+  const [libraryMaxReplays, setLibraryMaxReplays] = useState(0);
   const [sampleSetLoading, setSampleSetLoading] = useState(false);
   const [sampleNotice, setSampleNotice] = useState('');
   const [librarySocketState, setLibrarySocketState] = useState('closed');
@@ -2579,6 +2579,7 @@ function App() {
       setSavedReplayDir(nextReplayDir);
       setIsSampleSet(Boolean(data?.is_sample_set));
       setDetectedReplayDir(String(data?.detected_replay_dir || ''));
+      setLibraryMaxReplays(Number(data?.max_replays) || 0);
       if (data?.sample_auto_loaded) {
         // The backend fell back to the example replays because it couldn't find
         // the user's replay folder. Suppress the empty-library auto-open of the
@@ -2611,6 +2612,7 @@ function App() {
       setSavedReplayDir(nextReplayDir);
       setIsSampleSet(Boolean(data?.is_sample_set));
       setDetectedReplayDir(String(data?.detected_replay_dir || ''));
+      setLibraryMaxReplays(Number(data?.max_replays) || 0);
       return nextReplayDir;
     } finally {
       setLibrarySettingsSaving(false);
@@ -3082,43 +3084,25 @@ function App() {
     let reconnectTimer = null;
     let reconnectAttempt = 0;
     let socket = null;
-    let lastGamesRefreshAt = 0;
-    let pendingGamesRefresh = null;
     let lastStatus = '';
+    let connectedBefore = false;
 
-    const refreshGamesThrottled = () => {
-      if (activeViewRef.current !== 'games') return;
-      const now = Date.now();
-      const elapsed = now - lastGamesRefreshAt;
-      if (elapsed >= LIBRARY_PROGRESS_REFRESH_MS) {
-        lastGamesRefreshAt = now;
-        void refreshGamesListRef.current?.();
-        return;
-      }
-      if (pendingGamesRefresh) return;
-      pendingGamesRefresh = window.setTimeout(() => {
-        pendingGamesRefresh = null;
-        lastGamesRefreshAt = Date.now();
-        void refreshGamesListRef.current?.();
-      }, LIBRARY_PROGRESS_REFRESH_MS - elapsed);
-    };
-
-    const applyStatus = (status) => {
-      const next = String(status || 'idle');
-      setLibraryStatus(next);
-      // A load (initial or after a folder change) just finished: everything on
-      // screen was computed from a partial corpus, so refresh broadly once. A
-      // first snapshot that is already `watching` is skipped because the mount
-      // effects are loading those views right now anyway.
-      if (next === 'watching' && lastStatus && lastStatus !== 'watching') {
-        void refreshAfterLibraryLoadRef.current?.();
-        void loadGamingSessionRef.current?.();
-      }
-      lastStatus = next;
+    // A tab left in the background gets its timers throttled and its socket
+    // closed, so it can miss every change while it sleeps. Whatever arrives
+    // after a gap is not enough: the page reloads what it is showing.
+    const refreshAfterGap = () => {
+      void refreshGamesListRef.current?.();
+      if (activeViewRef.current === 'players') void refreshPlayersListRef.current?.();
+      void loadGamingSessionRef.current?.();
+      void checkHealthStatus();
     };
 
     const connect = () => {
       if (unmounted) return;
+      if (reconnectTimer) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
       setLibrarySocketState('connecting');
       socket = api.createLibraryEventsSocket();
       librarySocketRef.current = socket;
@@ -3126,6 +3110,8 @@ function App() {
       socket.onopen = () => {
         reconnectAttempt = 0;
         setLibrarySocketState('open');
+        if (connectedBefore) refreshAfterGap();
+        connectedBefore = true;
       };
 
       socket.onmessage = (event) => {
@@ -3142,7 +3128,6 @@ function App() {
           if (message.type === 'progress') {
             if (message.progress) setLibraryProgress(message.progress);
             if (message.status) setLibraryStatus(String(message.status));
-            refreshGamesThrottled();
             return;
           }
 
@@ -3187,15 +3172,29 @@ function App() {
 
     connect();
 
+    // Waking up must not wait out a backoff that grew while the tab slept.
+    const onWake = () => {
+      if (unmounted || document.visibilityState !== 'visible') return;
+      const state = socket?.readyState;
+      if (state === WebSocket.OPEN) {
+        refreshAfterGap();
+        return;
+      }
+      if (state !== WebSocket.CONNECTING) {
+        reconnectAttempt = 0;
+        connect();
+      }
+    };
+    document.addEventListener('visibilitychange', onWake);
+    window.addEventListener('online', onWake);
+
     return () => {
       unmounted = true;
+      document.removeEventListener('visibilitychange', onWake);
+      window.removeEventListener('online', onWake);
       if (reconnectTimer) {
         window.clearTimeout(reconnectTimer);
         reconnectTimer = null;
-      }
-      if (pendingGamesRefresh) {
-        window.clearTimeout(pendingGamesRefresh);
-        pendingGamesRefresh = null;
       }
       if (librarySocketRef.current === socket) {
         librarySocketRef.current = null;
@@ -3350,9 +3349,7 @@ function App() {
     }
     return isLibraryLoading(libraryStatus);
   })();
-  const libraryLoaded = Number(libraryProgress?.loaded ?? responseCorpus?.loaded ?? 0);
-  const libraryTotal = Number(libraryProgress?.total ?? responseCorpus?.total ?? 0);
-  const libraryLoadingCopy = libraryLoading ? stillLoadingCopy(libraryLoaded, libraryTotal) : '';
+  const libraryLoadingCopy = libraryLoading ? stillLoadingCopy() : '';
 
   const handleSaveGlobalReplayFilter = async (nextConfig) => {
     try {
@@ -5177,7 +5174,7 @@ function App() {
               📁 Replay library
               {!showLibraryPanel && isLibraryLoading(libraryStatus) ? (
                 <span className="ingest-running-badge tip-below" data-tip="Loading your replays. Click to view progress">
-                  {formatLoadingShort(libraryLoaded, libraryTotal)}
+                  {formatLoadingShort()}
                 </span>
               ) : null}
             </button>
@@ -7430,6 +7427,7 @@ function App() {
           librarySettingsSaving={librarySettingsSaving}
           isSampleSet={isSampleSet}
           detectedReplayDir={detectedReplayDir}
+          maxReplays={libraryMaxReplays}
           sampleSetLoading={sampleSetLoading}
           onClose={() => {
             setShowLibraryPanel(false);

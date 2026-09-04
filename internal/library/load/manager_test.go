@@ -132,3 +132,31 @@ func TestManagerKnowsWhatTheCorpusHolds(t *testing.T) {
 		t.Fatal("an unknown path should not be known")
 	}
 }
+
+// TestSetFolderOutlivesTheRequestThatAskedForIt pins the bug where a folder
+// change loaded nothing: the load ran under the HTTP request's context, which
+// is cancelled as soon as the response is written.
+func TestSetFolderOutlivesTheRequestThatAskedForIt(t *testing.T) {
+	first := corpusDir(t, "SomaJyJ.rep")
+	second := corpusDir(t, "bgh.rep")
+	lib := newLibrary(t)
+	manager := newTestManager(t, lib, first)
+
+	if err := manager.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the first folder to load", func() bool { return lib.Snapshot().Len() == 1 })
+
+	// Already cancelled, which is what the handler's context is by the time
+	// the load would get anywhere: the load must not inherit it.
+	request, cancelRequest := context.WithCancel(context.Background())
+	cancelRequest()
+	if err := manager.SetFolder(request, second); err != nil {
+		t.Fatalf("SetFolder: %v", err)
+	}
+
+	waitFor(t, "the second folder to load anyway", func() bool {
+		snap := lib.Snapshot()
+		return snap.Len() == 1 && snap.Replays[0].FileName() == "bgh.rep"
+	})
+}

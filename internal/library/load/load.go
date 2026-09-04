@@ -18,7 +18,13 @@ import (
 )
 
 const (
-	defaultRecentCount = 100
+	// DefaultMaxReplays bounds how much of a folder is read. A big folder is
+	// a minute of every core and hundreds of megabytes, paid on every launch,
+	// for games the user is unlikely to open; the newest few hundred are what
+	// the dashboard is actually about.
+	DefaultMaxReplays = 500
+
+	defaultRecentCount = 50
 	defaultPublishRate = 100 * time.Millisecond
 )
 
@@ -27,8 +33,13 @@ type Options struct {
 	Generation uint64
 	// Workers defaults to one less than GOMAXPROCS so HTTP keeps a core.
 	Workers int
-	// RecentCount is how many of the newest replays load before the rest.
+	// RecentCount is how many of the newest replays load before the rest. It
+	// should cover the first page of the games list, so that page is complete
+	// as soon as the dashboard answers.
 	RecentCount int
+	// MaxReplays caps how many of the newest replays are read. Zero means
+	// DefaultMaxReplays; a negative value reads the whole folder.
+	MaxReplays int
 	// Staged loads into a hidden working set and promotes it once the recent
 	// phase commits, so a folder change never blanks the running dashboard.
 	Staged bool
@@ -43,6 +54,9 @@ func (o Options) withDefaults() Options {
 	}
 	if o.RecentCount <= 0 {
 		o.RecentCount = defaultRecentCount
+	}
+	if o.MaxReplays == 0 {
+		o.MaxReplays = DefaultMaxReplays
 	}
 	if o.PublishRate <= 0 {
 		o.PublishRate = defaultPublishRate
@@ -59,6 +73,9 @@ type Loader struct {
 
 	aliasMu sync.Mutex
 	aliases map[[32]byte][]library.FileRef
+
+	cutoffMu sync.Mutex
+	cutoff   time.Time
 
 	total   atomic.Int64
 	loaded  atomic.Int64
@@ -85,8 +102,17 @@ func (l *Loader) Run(ctx context.Context) error {
 		l.logf(LogLevelError, "Could not read %s: %v", l.opts.Folder, err)
 		return err
 	}
+	found := len(files)
+	if l.opts.MaxReplays > 0 && found > l.opts.MaxReplays {
+		files = files[:l.opts.MaxReplays]
+		l.setCutoff(files[len(files)-1].ModTime)
+	}
 	l.total.Store(int64(len(files)))
-	l.logf(LogLevelInfo, "Found %d replays in %s", len(files), l.opts.Folder)
+	if len(files) < found {
+		l.logf(LogLevelInfo, "Found %d replays in %s, reading the newest %d", found, l.opts.Folder, len(files))
+	} else {
+		l.logf(LogLevelInfo, "Found %d replays in %s", found, l.opts.Folder)
+	}
 
 	// A staged load fills a hidden working set so the folder currently on
 	// screen keeps serving; a load into a generation that is not live yet
@@ -117,7 +143,7 @@ func (l *Loader) Run(ctx context.Context) error {
 	}
 
 	l.setPhase(library.PhaseBackfill)
-	l.runPhase(ctx, files[recent:])
+	l.runPhaseWith(ctx, files[recent:], l.backfillWorkers())
 	l.lib.Flush()
 	l.flushAliases(l.opts.Generation)
 	if ctx.Err() != nil {
@@ -146,13 +172,23 @@ func (l *Loader) Process(ctx context.Context, files []fileops.FileInfo) {
 	l.publish()
 }
 
+// backfillWorkers leaves half the machine alone. The newest replays are
+// already on screen by then, so finishing sooner buys nothing worth a fan.
+func (l *Loader) backfillWorkers() int {
+	return max(1, l.opts.Workers/2)
+}
+
 func (l *Loader) runPhase(ctx context.Context, files []fileops.FileInfo) {
+	l.runPhaseWith(ctx, files, l.opts.Workers)
+}
+
+func (l *Loader) runPhaseWith(ctx context.Context, files []fileops.FileInfo, workers int) {
 	if len(files) == 0 {
 		return
 	}
 	jobs := make(chan fileops.FileInfo)
 	var wg sync.WaitGroup
-	for range l.opts.Workers {
+	for range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -226,6 +262,21 @@ func (l *Loader) publishPeriodically(ctx context.Context) func() {
 }
 
 func (l *Loader) publish() { l.lib.SetProgress(l.Progress()) }
+
+func (l *Loader) setCutoff(t time.Time) {
+	l.cutoffMu.Lock()
+	defer l.cutoffMu.Unlock()
+	l.cutoff = t
+}
+
+// Cutoff is the oldest replay this run kept when the folder was bigger than
+// the cap, and the zero time when it read everything. The watcher uses it to
+// leave the excluded games out while still picking up new ones.
+func (l *Loader) Cutoff() time.Time {
+	l.cutoffMu.Lock()
+	defer l.cutoffMu.Unlock()
+	return l.cutoff
+}
 
 // Progress is the loader's current counters. Loaded counts files handled
 // without error, of which Skipped produced no new record (duplicate content,

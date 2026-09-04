@@ -23,11 +23,9 @@ export const formatCount = (value) => count(value).toLocaleString('en-US');
 
 export const formatLoaded = (loaded, total) => `Loaded ${formatCount(loaded)} of ${formatCount(total)} replays`;
 
-export const formatLoadingShort = (loaded, total) => `Loading ${formatCount(loaded)} of ${formatCount(total)}`;
+export const formatLoadingShort = () => 'Loading';
 
-export const stillLoadingCopy = (loaded, total) => (
-  `Still loading your replays (${formatCount(loaded)} of ${formatCount(total)}). This fills in as more games load.`
-);
+export const stillLoadingCopy = () => 'Still reading your replay folder. This fills in when it finishes.';
 
 export const phaseLabel = (phase) => PHASE_LABELS[String(phase || '').toLowerCase()] || 'Idle';
 

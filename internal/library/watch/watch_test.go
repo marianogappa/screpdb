@@ -5,6 +5,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -220,5 +222,113 @@ func TestRunReconcilesOnItsOwnAndStopsWithTheContext(t *testing.T) {
 	case <-done:
 	case <-time.After(3 * time.Second):
 		t.Fatal("the watcher did not stop with its context")
+	}
+}
+
+func TestReconcileLeavesOutWhatTheCapExcludedButTakesNewGames(t *testing.T) {
+	dir := t.TempDir()
+	base := time.Now().Add(-time.Hour)
+	stamps := map[string]time.Time{}
+	for i, name := range []string{"oldest.rep", "middle.rep", "newest.rep"} {
+		path := filepath.Join(dir, name)
+		writeReplay(t, path, name)
+		stamp := base.Add(time.Duration(i) * time.Minute)
+		stamps[name] = stamp
+		if err := os.Chtimes(path, stamp, stamp); err != nil {
+			t.Fatal(err)
+		}
+	}
+	corpus := newFakeCorpus()
+	var changes []Change
+	// The initial read kept the two newest, so middle.rep is the cutoff.
+	w := New(Options{
+		Folder:           dir,
+		Settle:           time.Second,
+		Since:            stamps["middle.rep"],
+		NewNativeWatcher: func() (iofacade.DirWatcher, error) { return nil, iofacade.ErrWatchUnsupported },
+	}, corpus, func(change Change) { changes = append(changes, change) })
+	clock := time.Date(2026, 9, 4, 12, 0, 0, 0, time.UTC)
+	w.now = func() time.Time { return clock }
+
+	w.Reconcile()
+	clock = clock.Add(2 * time.Second)
+	w.Reconcile()
+	var reported []string
+	for _, change := range changes {
+		for _, file := range change.Changed {
+			reported = append(reported, filepath.Base(file.Path))
+		}
+	}
+	sort.Strings(reported)
+	if !reflect.DeepEqual(reported, []string{"middle.rep", "newest.rep"}) {
+		t.Fatalf("reported %v, want the cutoff and everything after it", reported)
+	}
+
+	corpus.add(t, filepath.Join(dir, "middle.rep"))
+	corpus.add(t, filepath.Join(dir, "newest.rep"))
+	changes = nil
+	w.Reconcile()
+	if len(changes) != 0 {
+		t.Fatalf("a settled folder should be quiet, got %+v", changes)
+	}
+
+	// A game played now always loads, cap or no cap, and nothing is evicted.
+	newer := filepath.Join(dir, "newer.rep")
+	writeReplay(t, newer, "newer")
+	stamp := base.Add(time.Hour)
+	if err := os.Chtimes(newer, stamp, stamp); err != nil {
+		t.Fatal(err)
+	}
+	changes = nil
+	w.Reconcile()
+	clock = clock.Add(2 * time.Second)
+	w.Reconcile()
+	var added, removed []string
+	for _, change := range changes {
+		for _, file := range change.Changed {
+			added = append(added, filepath.Base(file.Path))
+		}
+		removed = append(removed, change.Removed...)
+	}
+	if !reflect.DeepEqual(added, []string{"newer.rep"}) {
+		t.Fatalf("added %v, want the new game", added)
+	}
+	if len(removed) != 0 {
+		t.Fatalf("nothing should be evicted to make room, got %v", removed)
+	}
+}
+
+func TestReconcileOnlyReportsFilesThatReallyLeftTheDisk(t *testing.T) {
+	dir := t.TempDir()
+	kept := filepath.Join(dir, "kept.rep")
+	gone := filepath.Join(dir, "gone.rep")
+	writeReplay(t, kept, "kept")
+	writeReplay(t, gone, "gone")
+	corpus := newFakeCorpus()
+	corpus.add(t, kept)
+	corpus.add(t, gone)
+	if err := os.Remove(gone); err != nil {
+		t.Fatal(err)
+	}
+
+	var changes []Change
+	// A cutoff in the future excludes kept.rep from the walk, so it is absent
+	// for a reason that is not deletion.
+	w := New(Options{
+		Folder:           dir,
+		Settle:           time.Second,
+		Since:            time.Now().Add(time.Hour),
+		NewNativeWatcher: func() (iofacade.DirWatcher, error) { return nil, iofacade.ErrWatchUnsupported },
+	}, corpus, func(change Change) { changes = append(changes, change) })
+	w.Reconcile()
+
+	var removed []string
+	for _, change := range changes {
+		for _, path := range change.Removed {
+			removed = append(removed, filepath.Base(path))
+		}
+	}
+	if !reflect.DeepEqual(removed, []string{"gone.rep"}) {
+		t.Fatalf("removed %v, want only the deleted file", removed)
 	}
 }
