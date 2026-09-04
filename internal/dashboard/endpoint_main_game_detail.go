@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,8 +23,8 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	detail := workflowGameDetail{SummaryVersion: workflowSummaryVersion}
 	summary, err := d.dbStore.GetReplaySummary(d.ctx, replayID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return detail, sql.ErrNoRows
+		if errors.Is(err, db.ErrNotFound) {
+			return detail, db.ErrNotFound
 		}
 		return detail, fmt.Errorf("failed to load replay: %w", err)
 	}
@@ -182,7 +181,7 @@ func trainedUnitsTimelineFromRows(rows []db.UnitProductionOrCastRow) []workflowT
 		if row.ActionType != "Train" && row.ActionType != "Unit Morph" {
 			continue
 		}
-		for _, name := range commandUnitNamesFromPtrs(row.UnitType, row.UnitTypes) {
+		for _, name := range parseCommandUnitNames(row.UnitType, row.UnitTypes) {
 			if _, excluded := compositionExcluded[name]; excluded {
 				continue
 			}
@@ -316,7 +315,7 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 	result.AverageAPM = summary.AverageAPM
 	result.AverageEAPM = summary.AverageEAPM
 	if result.GamesPlayed == 0 {
-		return result, sql.ErrNoRows
+		return result, db.ErrNotFound
 	}
 	result.WinRate = float64(result.Wins) / float64(result.GamesPlayed)
 	gamesWithVectors, err := d.dbStore.GetPlayerFingerprintCoverage(d.ctx, playerKey, int64(scfingerprint.FeatureVersion()))
@@ -767,7 +766,7 @@ func (d *Dashboard) buildWorkflowPlayerUnitCadenceInsight(playerKey string, filt
 	}
 	result.PlayerName = playerName
 	if result.PlayerName == "" {
-		return result, sql.ErrNoRows
+		return result, db.ErrNotFound
 	}
 	replays, err := d.queryWorkflowUnitCadenceReplayMetrics(filterMode, playerKey)
 	if err != nil {

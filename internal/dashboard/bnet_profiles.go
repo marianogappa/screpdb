@@ -106,7 +106,7 @@ func (d *Dashboard) fetchAndCacheBnetProfile(ctx context.Context, toon string, g
 // backoff. Bridge responses are rate-limited (600/day), so losing a successful
 // fetch because ingestion holds the write lock is wasteful — the retry cost is
 // negligible compared to re-spending the budget.
-func upsertBnetProfileWithRetry(ctx context.Context, store *dashboarddb.Store, row dashboarddb.BnetProfileRow) error {
+func upsertBnetProfileWithRetry(ctx context.Context, store dashboarddb.Reader, row dashboarddb.BnetProfileRow) error {
 	const maxAttempts = 10
 	backoff := 100 * time.Millisecond
 	for attempt := range maxAttempts {

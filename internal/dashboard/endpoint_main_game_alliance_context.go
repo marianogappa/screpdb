@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -68,41 +67,19 @@ func (d *Dashboard) populatePlayerDepartureForGameDetail(detail *workflowGameDet
 		}
 	}
 	if hasLeaveGame {
-		rows, err := d.dbStore.ReplayQueryContext(d.ctx,
-			`SELECT c.player_id, COALESCE(c.leave_reason, '')
-			 FROM commands c
-			 WHERE c.replay_id = ?
-			   AND c.action_type = 'Leave Game'
-			   AND c.leave_reason IS NOT NULL
-			 UNION ALL
-			 SELECT c.player_id, COALESCE(c.leave_reason, '')
-			 FROM commands_low_value c
-			 WHERE c.replay_id = ?
-			   AND c.action_type = 'Leave Game'
-			   AND c.leave_reason IS NOT NULL`,
-			detail.ReplayID, detail.ReplayID,
-		)
+		rows, err := d.dbStore.ListReplayLeaveReasons(d.ctx, detail.ReplayID)
 		if err != nil {
-			return fmt.Errorf("failed to query leave reasons: %w", err)
+			return err
 		}
-		defer rows.Close()
-		for rows.Next() {
-			var pid int64
-			var reason string
-			if err := rows.Scan(&pid, &reason); err != nil {
-				return fmt.Errorf("failed to scan leave reason: %w", err)
-			}
-			reason = strings.TrimSpace(reason)
+		for _, row := range rows {
+			reason := strings.TrimSpace(row.Reason)
 			if reason == "" {
 				continue
 			}
-			if dep, ok := deparByPID[pid]; ok && dep.Reason == "Left" {
+			if dep, ok := deparByPID[row.PlayerID]; ok && dep.Reason == "Left" {
 				dep.Reason = reason
-				deparByPID[pid] = dep
+				deparByPID[row.PlayerID] = dep
 			}
-		}
-		if err := rows.Err(); err != nil {
-			return fmt.Errorf("failed to iterate leave reasons: %w", err)
 		}
 	}
 
@@ -134,41 +111,17 @@ func (d *Dashboard) populateAllianceTabChatForGameDetail(detail *workflowGameDet
 		return nil
 	}
 
-	rows, err := d.dbStore.ReplayQueryContext(d.ctx,
-		`SELECT c.seconds_from_game_start, c.player_id, COALESCE(c.chat_message, '')
-		 FROM commands c
-		 WHERE c.replay_id = ?
-		   AND c.chat_message IS NOT NULL
-		   AND trim(c.chat_message) <> ''
-		 UNION ALL
-		 SELECT c.seconds_from_game_start, c.player_id, COALESCE(c.chat_message, '')
-		 FROM commands_low_value c
-		 WHERE c.replay_id = ?
-		   AND c.chat_message IS NOT NULL
-		   AND trim(c.chat_message) <> ''
-		 ORDER BY 1 ASC, 2 ASC`,
-		detail.ReplayID, detail.ReplayID,
-	)
+	rows, err := d.dbStore.ListReplayChat(d.ctx, detail.ReplayID)
 	if err != nil {
-		return fmt.Errorf("failed to query alliance-tab chat: %w", err)
+		return err
 	}
-	defer rows.Close()
 	out := []workflowAllianceChat{}
-	for rows.Next() {
-		var second int64
-		var pid int64
-		var message string
-		if err := rows.Scan(&second, &pid, &message); err != nil {
-			return fmt.Errorf("failed to scan chat row: %w", err)
-		}
+	for _, row := range rows {
 		out = append(out, workflowAllianceChat{
-			Second:   second,
-			PlayerID: pid,
-			Message:  message,
+			Second:   row.Second,
+			PlayerID: row.PlayerID,
+			Message:  row.Message,
 		})
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("failed to iterate chat rows: %w", err)
 	}
 	if len(out) > 0 {
 		detail.AllianceTabChat = out

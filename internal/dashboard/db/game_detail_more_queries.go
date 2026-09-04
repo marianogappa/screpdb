@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 
 	"github.com/marianogappa/screpdb/internal/dashboard/db/sqlcgen"
@@ -144,11 +143,4 @@ func (s *Store) ListPlayerMatchups(ctx context.Context, playerKey string) ([]Pla
 		})
 	}
 	return out, nil
-}
-
-func nullableStringPtrToNullString(value *string) sql.NullString {
-	if value == nil {
-		return sql.NullString{}
-	}
-	return sql.NullString{String: *value, Valid: true}
 }

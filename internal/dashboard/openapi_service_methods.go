@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/marianogappa/screpdb/internal/propack"
@@ -14,6 +13,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/appdata"
 	"github.com/marianogappa/screpdb/internal/buildinfo"
 	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
 	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/ingest"
@@ -203,12 +203,12 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 	if request.Params.MapKind != nil {
 		filters.MapKindKeys = parseCSVQueryValues(*request.Params.MapKind, true)
 	}
-	whereSQL, whereArgs := buildWorkflowGamesListWhere(filters)
-	total, err := d.dbStore.CountGamesWithWhere(ctx, whereSQL, whereArgs)
+	query := buildGamesQuery(filters)
+	total, err := d.dbStore.CountGames(ctx, query)
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
-	listRows, err := d.dbStore.ListGamesWithWhere(ctx, whereSQL, whereArgs, limit, offset)
+	listRows, err := d.dbStore.ListGames(ctx, query, limit, offset)
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
@@ -254,7 +254,7 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 func (d *Dashboard) GameDetail(_ context.Context, request apigen.GameDetailRequestObject) (any, error) {
 	detail, err := d.buildWorkflowGameDetail(request.ReplayID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 		}
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
@@ -475,7 +475,7 @@ func (d *Dashboard) PlayerDetail(_ context.Context, request apigen.PlayerDetailR
 	}
 	player, err := build(playerKey)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 		}
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
@@ -493,7 +493,7 @@ func (d *Dashboard) PlayerChatSummary(_ context.Context, request apigen.PlayerCh
 	}
 	chatSummary, err := d.buildPlayerChatSummary(playerKey)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 		}
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
@@ -514,7 +514,7 @@ func (d *Dashboard) PlayerInsight(_ context.Context, request apigen.PlayerInsigh
 	if _, isPro := propack.IDFromKey(playerKey); isPro {
 		pro := d.featuredPro(playerKey)
 		if pro == nil {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, sql.ErrNoRows)
+			return nil, dashboardservice.WithStatus(http.StatusNotFound, dashboarddb.ErrNotFound)
 		}
 		result, err := d.featuredAsyncInsight(pro, insightType)
 		if err != nil {
@@ -530,7 +530,7 @@ func (d *Dashboard) PlayerInsight(_ context.Context, request apigen.PlayerInsigh
 		if errors.Is(err, errUnsupportedWorkflowPlayerInsightType) {
 			return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
 		}
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 		}
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
@@ -567,7 +567,7 @@ func (d *Dashboard) PlayerUnitCadence(_ context.Context, request apigen.PlayerUn
 	}
 	result, err := d.buildWorkflowPlayerUnitCadenceInsight(playerKey, filterMode)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 		}
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
@@ -585,7 +585,7 @@ func (d *Dashboard) PlayerLastGames(_ context.Context, request apigen.PlayerLast
 	}
 	games, err := d.buildWorkflowPlayerLastGames(playerKey)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 		}
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)

@@ -38,7 +38,7 @@ var embeddedFrontendBuild embed.FS
 type Dashboard struct {
 	ctx                 context.Context
 	db                  *sql.DB
-	dbStore             *dashboarddb.Store
+	dbStore             dashboarddb.Reader
 	replayScopedMu      sync.RWMutex
 	replayScopedDB      *sql.DB
 	globalReplayFilter  globalReplayFilterConfig
@@ -501,7 +501,7 @@ func (d *Dashboard) currentGlobalReplayFilterSQL() *string {
 func (d *Dashboard) refreshReplayScopedDB() error {
 	config, err := d.getGlobalReplayFilterConfig(d.ctx)
 	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
+		if !errors.Is(err, dashboarddb.ErrNotFound) {
 			return err
 		}
 		config = defaultGlobalReplayFilterConfig()

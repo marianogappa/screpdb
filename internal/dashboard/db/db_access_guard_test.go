@@ -21,6 +21,7 @@ func TestStoreQueriesPreferSQLCForStaticSQL(t *testing.T) {
 		"player_insight_queries.go": {}, // dynamic outlier SQL composition
 		"unit_cadence_queries.go":   {}, // dynamic per-race/per-unit SQL composition
 		"workflow_games_queries.go": {}, // runtime-composed workflow filters/sorts
+		"store_reshaped.go":         {}, // verbatim SQL lifted out of the endpoints, deleted with the SQL store
 	}
 
 	manualQueryPattern := regexp.MustCompile(`\bs\.(Replay|Default)Query(Row)?Context\(`)

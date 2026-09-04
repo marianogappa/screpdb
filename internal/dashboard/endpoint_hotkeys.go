@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"github.com/marianogappa/screpdb/internal/propack"
 	"log"
@@ -10,6 +9,7 @@ import (
 	"sort"
 
 	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
 	"github.com/marianogappa/screpdb/internal/hotkeystream"
 )
@@ -48,7 +48,7 @@ func (d *Dashboard) GameHotkeys(ctx context.Context, request apigen.GameHotkeysR
 	replayID := int64(request.ReplayID)
 	summary, err := d.dbStore.GetReplaySummary(ctx, replayID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 		}
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)

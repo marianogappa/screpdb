@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"bytes"
-	"database/sql"
 	"errors"
 	"fmt"
 	"image"
@@ -16,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/marianogappa/scmapanalyzer/lib/scmapanalyzer"
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/hotkeystream"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	xdraw "golang.org/x/image/draw"
@@ -112,7 +112,7 @@ func (d *Dashboard) handlerHotkeyMap(w http.ResponseWriter, r *http.Request) {
 
 	summary, err := d.dbStore.GetReplaySummary(r.Context(), replayID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			http.NotFound(w, r)
 			return
 		}
@@ -122,7 +122,7 @@ func (d *Dashboard) handlerHotkeyMap(w http.ResponseWriter, r *http.Request) {
 	}
 	player, err := d.dbStore.GetReplayPlayerHotkeyStream(r.Context(), replayID, playerID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			http.NotFound(w, r)
 			return
 		}

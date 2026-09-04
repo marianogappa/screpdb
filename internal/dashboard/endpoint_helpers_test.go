@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"bytes"
-	"database/sql"
 	"io"
 	"net/http/httptest"
 	"reflect"
@@ -282,9 +281,9 @@ func TestUnitNameAliases(t *testing.T) {
 }
 
 func TestParseCommandUnitNames(t *testing.T) {
-	one := nullStringValid("Marine")
-	list := nullStringValid(`["Marine","Firebat"," Marine "]`)
-	got := parseCommandUnitNames(one, list)
+	one := "Marine"
+	list := `["Marine","Firebat"," Marine "]`
+	got := parseCommandUnitNames(&one, &list)
 	want := []string{"Marine", "Firebat"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("parseCommandUnitNames = %v, want %v (dedup by normalized name)", got, want)
@@ -661,10 +660,6 @@ func TestUnmarshalStringSlice(t *testing.T) {
 	if _, err := unmarshalStringSlice("not json"); err == nil {
 		t.Error("invalid json should error")
 	}
-}
-
-func nullStringValid(s string) sql.NullString {
-	return sql.NullString{String: s, Valid: true}
 }
 
 func jsonBody(s string) io.Reader {

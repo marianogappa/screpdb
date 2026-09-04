@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"database/sql"
 	"errors"
 	"log"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/marianogappa/scmapanalyzer/lib/scmapanalyzer"
 	"github.com/marianogappa/screpdb/internal/appdata"
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"golang.org/x/sync/singleflight"
 )
@@ -111,7 +111,7 @@ func (d *Dashboard) handlerGameAssetMap(w http.ResponseWriter, r *http.Request) 
 
 	summary, err := d.dbStore.GetReplaySummary(r.Context(), replayID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			http.NotFound(w, r)
 			return
 		}

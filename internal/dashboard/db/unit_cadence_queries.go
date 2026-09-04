@@ -221,8 +221,8 @@ type FirstUnitCommandRow struct {
 	PlayerID   int64
 	Second     int64
 	ActionType string
-	UnitType   sql.NullString
-	UnitTypes  sql.NullString
+	UnitType   *string
+	UnitTypes  *string
 }
 
 func (s *Store) ListFirstUnitCommandRows(ctx context.Context, replayID int64) ([]FirstUnitCommandRow, error) {
@@ -236,8 +236,8 @@ func (s *Store) ListFirstUnitCommandRows(ctx context.Context, replayID int64) ([
 			PlayerID:   row.PlayerID,
 			Second:     row.SecondsFromGameStart,
 			ActionType: row.ActionType,
-			UnitType:   nullableStringPtrToNullString(row.UnitType),
-			UnitTypes:  nullableStringPtrToNullString(row.UnitTypes),
+			UnitType:   row.UnitType,
+			UnitTypes:  row.UnitTypes,
 		})
 	}
 	return out, nil

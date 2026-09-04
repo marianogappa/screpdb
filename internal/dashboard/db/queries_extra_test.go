@@ -356,7 +356,7 @@ func TestUnitCadenceRowQueries(t *testing.T) {
 	if len(firsts) != 3 {
 		t.Fatalf("expected 3 first-unit rows, got %d: %+v", len(firsts), firsts)
 	}
-	if firsts[0].ActionType != "Train" || !firsts[0].UnitType.Valid || firsts[0].UnitType.String != "Marine" {
+	if firsts[0].ActionType != "Train" || firsts[0].UnitType == nil || *firsts[0].UnitType != "Marine" {
 		t.Errorf("first0 = %+v", firsts[0])
 	}
 }
