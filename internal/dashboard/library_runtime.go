@@ -190,14 +190,6 @@ func (r *libraryRuntime) UseSampleSet(ctx context.Context) (string, error) {
 // Rescan re-reads the folder now instead of waiting for the next check.
 func (r *libraryRuntime) Rescan() { r.manager.Rescan() }
 
-// MaxReplays is how many of the newest replays in the folder are read.
-func (r *libraryRuntime) MaxReplays() int {
-	if configured := r.settings.Settings().MaxReplays; configured != 0 {
-		return configured
-	}
-	return load.DefaultMaxReplays
-}
-
 func (r *libraryRuntime) Folder() string { return r.manager.Folder() }
 
 func (r *libraryRuntime) IsSampleSetActive() bool {

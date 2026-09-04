@@ -17,7 +17,6 @@ type librarySettingsResponse struct {
 	IsSampleSet       bool   `json:"is_sample_set"`
 	SampleAutoLoaded  bool   `json:"sample_auto_loaded"`
 	DetectedReplayDir string `json:"detected_replay_dir"`
-	MaxReplays        int    `json:"max_replays"`
 }
 
 func (d *Dashboard) librarySettings(_ context.Context) librarySettingsResponse {
@@ -35,7 +34,6 @@ func (d *Dashboard) librarySettings(_ context.Context) librarySettingsResponse {
 		IsSampleSet:       d.library.IsSampleSetActive(),
 		SampleAutoLoaded:  autoLoaded,
 		DetectedReplayDir: detected,
-		MaxReplays:        d.library.MaxReplays(),
 	}
 }
 

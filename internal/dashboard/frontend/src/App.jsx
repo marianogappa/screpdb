@@ -2069,7 +2069,6 @@ function App() {
   const [librarySettingsSaving, setLibrarySettingsSaving] = useState(false);
   const [isSampleSet, setIsSampleSet] = useState(false);
   const [detectedReplayDir, setDetectedReplayDir] = useState('');
-  const [libraryMaxReplays, setLibraryMaxReplays] = useState(0);
   const [sampleSetLoading, setSampleSetLoading] = useState(false);
   const [sampleNotice, setSampleNotice] = useState('');
   const [librarySocketState, setLibrarySocketState] = useState('closed');
@@ -2579,7 +2578,6 @@ function App() {
       setSavedReplayDir(nextReplayDir);
       setIsSampleSet(Boolean(data?.is_sample_set));
       setDetectedReplayDir(String(data?.detected_replay_dir || ''));
-      setLibraryMaxReplays(Number(data?.max_replays) || 0);
       if (data?.sample_auto_loaded) {
         // The backend fell back to the example replays because it couldn't find
         // the user's replay folder. Suppress the empty-library auto-open of the
@@ -2612,7 +2610,6 @@ function App() {
       setSavedReplayDir(nextReplayDir);
       setIsSampleSet(Boolean(data?.is_sample_set));
       setDetectedReplayDir(String(data?.detected_replay_dir || ''));
-      setLibraryMaxReplays(Number(data?.max_replays) || 0);
       return nextReplayDir;
     } finally {
       setLibrarySettingsSaving(false);
@@ -7427,7 +7424,6 @@ function App() {
           librarySettingsSaving={librarySettingsSaving}
           isSampleSet={isSampleSet}
           detectedReplayDir={detectedReplayDir}
-          maxReplays={libraryMaxReplays}
           sampleSetLoading={sampleSetLoading}
           onClose={() => {
             setShowLibraryPanel(false);

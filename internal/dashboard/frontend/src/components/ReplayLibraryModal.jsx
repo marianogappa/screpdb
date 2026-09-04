@@ -27,7 +27,6 @@ function ReplayLibraryModal({
   librarySettingsSaving,
   isSampleSet,
   detectedReplayDir,
-  maxReplays,
   sampleSetLoading,
   onClose,
   onReplayDirChange,
@@ -98,13 +97,8 @@ function ReplayLibraryModal({
                 </button>
               </div>
               <span className="ingest-helper-text">
-                Folder must contain at least one `.rep` file (subfolders included). screpdb reads it directly and picks up new replays as you play.
+                Folder must contain at least one `.rep` file (subfolders included).
               </span>
-              {maxReplays > 0 ? (
-                <span className="ingest-helper-text">
-                  {`Reads the newest ${Number(maxReplays).toLocaleString('en-US')} replays in the folder.`}
-                </span>
-              ) : null}
             </div>
           </div>
 
