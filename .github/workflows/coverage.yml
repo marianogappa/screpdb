@@ -2,17 +2,13 @@ name: coverage
 
 # Guards the static coverage badge in the README. On a pull request it computes
 # `make coverage` (hand-written code only; generated code/scripts/tools excluded)
-# and comments the figure, warning when it dips below the badge. On push to main
-# it refreshes the badge automatically. Never hard-fails the build — the badge is
-# informational, mirroring the ingestion-throughput guard in bench-ingest.yml.
+# and comments the figure, warning when it dips below the badge. The badge itself
+# is refreshed by readme-figures.yml on push to main. Never hard-fails the build:
+# the badge is informational, like the benchmark guards in bench-load.yml.
 on:
   pull_request:
-  push:
-    branches:
-      - main
 
 permissions:
-  contents: write
   pull-requests: write
 
 jobs:
@@ -50,7 +46,6 @@ jobs:
           echo "coverage=$pct% (badge shows $badge%)"
 
       - name: Build PR comment
-        if: github.event_name == 'pull_request'
         run: |
           pct="${{ steps.cov.outputs.pct }}"
           badge="${{ steps.cov.outputs.badge }}"
@@ -72,7 +67,6 @@ jobs:
           fi
 
       - name: Upsert PR comment
-        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
@@ -89,19 +83,3 @@ jobs:
               await github.rest.issues.createComment({ owner, repo, issue_number, body });
             }
 
-      # Best-effort, like bench-ingest: branch protection may reject a bot push
-      # when the badge actually changes. Don't fail the run over a cosmetic badge.
-      - name: Refresh badge and commit (main only)
-        if: github.event_name == 'push'
-        continue-on-error: true
-        run: |
-          ./scripts/update-readme-coverage.sh "${{ steps.cov.outputs.pct }}"
-          if git diff --quiet -- README.md; then
-            echo "Coverage badge unchanged; nothing to commit."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md
-          git commit -m "chore(coverage): refresh coverage badge [skip ci]"
-          git push
