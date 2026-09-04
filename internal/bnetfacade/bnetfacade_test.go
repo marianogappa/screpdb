@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"golang.org/x/text/encoding/charmap"
 )
 
 func TestBridgeGetRefusesNonLocal(t *testing.T) {
@@ -169,4 +171,53 @@ func TestDownloadReplayValidation(t *testing.T) {
 			t.Errorf("got %v, want ErrInvalidReplay", err)
 		}
 	})
+}
+
+// TestNormalizeBridgeJSON_MixedPayloadKeepsValidUTF8 is the regression: a
+// payload that is UTF-8 apart from a few damaged bytes used to be transcoded
+// whole, mojibaking every correct string in it.
+func TestNormalizeBridgeJSON_MixedPayloadKeepsValidUTF8(t *testing.T) {
+	// "ê¸" — a Korean map title truncated mid-sequence by SC:R's fixed-width
+	// buffer, which is what makes the whole response invalid UTF-8.
+	truncated := []byte{0xEA, 0xB8}
+	raw := append([]byte(`{"battle_tag":"МрачныйВолк","other":"차세대라임늑대","map":"`), truncated...)
+	raw = append(raw, []byte(`"}`)...)
+
+	var out struct {
+		BattleTag string `json:"battle_tag"`
+		Other     string `json:"other"`
+	}
+	if err := DecodeBridgeJSON(raw, &out); err != nil {
+		t.Fatalf("DecodeBridgeJSON: %v", err)
+	}
+	if out.BattleTag != "МрачныйВолк" {
+		t.Errorf("cyrillic battle tag: got %q, want %q", out.BattleTag, "МрачныйВолк")
+	}
+	if out.Other != "차세대라임늑대" {
+		t.Errorf("korean string: got %q, want %q", out.Other, "차세대라임늑대")
+	}
+}
+
+func TestIsMojibakedPayload(t *testing.T) {
+	utf8Payload := []byte(`{"battle_tag":"МрачныйВолк"}`)
+	expanded, err := charmap.ISO8859_1.NewDecoder().Bytes(utf8Payload)
+	if err != nil {
+		t.Fatalf("building expanded payload: %v", err)
+	}
+	for _, tc := range []struct {
+		name string
+		in   []byte
+		want bool
+	}{
+		{"latin1-expanded", expanded, true},
+		{"correct utf8", utf8Payload, false},
+		{"correct korean", []byte(`{"battle_tag":"차세대라임늑대"}`), false},
+		{"pure ascii", []byte(`{"battle_tag":"joshfrz"}`), false},
+		{"genuine latin1 text", []byte(`{"map":"café brûlée"}`), false},
+		{"empty", nil, false},
+	} {
+		if got := IsMojibakedPayload(tc.in); got != tc.want {
+			t.Errorf("%s: got %v, want %v", tc.name, got, tc.want)
+		}
+	}
 }

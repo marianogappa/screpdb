@@ -57,6 +57,12 @@ func (d *Dashboard) getOrFetchBnetProfile(ctx context.Context, toon string, gate
 	if err != nil {
 		return nil, err
 	}
+	// An entry an older build mojibaked is worse than no entry: it would serve
+	// a double-encoded battle tag, and as a stale fallback it would keep doing
+	// so forever. Drop it so this call refetches.
+	if row != nil && bnetfacade.IsMojibakedPayload([]byte(row.Payload)) {
+		row = nil
+	}
 	now := time.Now()
 	if row != nil && now.Sub(row.FetchedAt) < maxAge {
 		return bnetProfileResultFromRow(row, true, false), nil
@@ -175,6 +181,12 @@ func (d *Dashboard) backfillBnetProfiles(names []string) {
 	if err != nil {
 		return
 	}
+	// A country code is ASCII, so it survived the whole-payload transcode that
+	// mojibaked battle tags. Without this those entries would look cached
+	// forever and never get the refetch that repairs the tag.
+	for key := range d.mojibakedPlayerKeys(playerKeys) {
+		delete(cached, key)
+	}
 	var uncached []string
 	seen := map[string]struct{}{}
 	for _, n := range names {
@@ -214,6 +226,22 @@ func (d *Dashboard) backfillBnetProfiles(names []string) {
 			}
 		}
 	}()
+}
+
+// mojibakedPlayerKeys returns the player keys holding at least one cached
+// profile an older build corrupted, so the backfill re-queues them.
+func (d *Dashboard) mojibakedPlayerKeys(playerKeys []string) map[string]struct{} {
+	out := map[string]struct{}{}
+	rows, err := d.dbStore.ListBnetProfilePayloadsByPlayerKeys(d.ctx, playerKeys)
+	if err != nil {
+		return out
+	}
+	for _, row := range rows {
+		if bnetfacade.IsMojibakedPayload([]byte(row.Payload)) {
+			out[normalizePlayerKey(row.Toon)] = struct{}{}
+		}
+	}
+	return out
 }
 
 func bnetProfileResultFromRow(row *dashboarddb.BnetProfileRow, cached, stale bool) *bnetProfileResult {

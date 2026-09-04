@@ -102,30 +102,104 @@ func BridgeGet(ctx context.Context, addr, path string, prio Priority) ([]byte, e
 
 // DecodeBridgeJSON unmarshals a bridge response into dst, handling the
 // non-UTF-8 encoding quirk: map titles may contain raw cp949 (Korean) or
-// latin-1 bytes that make the payload invalid UTF-8. The function tries the raw
-// bytes first (fast path for ASCII/UTF-8 payloads), then falls back to cp949
-// and ISO 8859-1 transcoding.
+// latin-1 bytes that make the payload invalid UTF-8.
 func DecodeBridgeJSON(data []byte, dst any) error {
-	normalized, err := normalizeBridgeJSON(data)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(normalized, dst)
+	return json.Unmarshal(normalizeBridgeJSON(data), dst)
 }
 
-func normalizeBridgeJSON(data []byte) ([]byte, error) {
+// normalizeBridgeJSON repairs only the byte runs that are not valid UTF-8 and
+// copies every well-formed UTF-8 sequence through untouched.
+//
+// Transcoding the whole payload is wrong here. Bridge responses are UTF-8 that
+// occasionally carry a handful of legacy-encoded or byte-truncated fields (SC:R
+// writes map titles and game names into fixed-width buffers, so a multi-byte
+// character can be cut mid-sequence). Re-decoding the entire response as
+// cp949 or ISO 8859-1 because of those few bytes mojibakes every correct
+// string in it, which is how Cyrillic and Korean battle tags came back
+// double-encoded.
+//
+// Runs only ever contain bytes >= 0x80, since ASCII always decodes cleanly, and
+// neither legacy decoder emits ASCII for such bytes. The JSON structure
+// therefore survives the substitution.
+func normalizeBridgeJSON(data []byte) []byte {
 	if utf8.Valid(data) {
-		return data, nil
+		return data
 	}
-	decoded, err := korean.EUCKR.NewDecoder().Bytes(data)
-	if err == nil && utf8.Valid(decoded) && !bytes.ContainsRune(decoded, utf8.RuneError) {
-		return decoded, nil
+	out := make([]byte, 0, len(data)+len(data)/8)
+	for i := 0; i < len(data); {
+		if r, size := utf8.DecodeRune(data[i:]); r != utf8.RuneError || size > 1 {
+			out = append(out, data[i:i+size]...)
+			i += size
+			continue
+		}
+		j := i + 1
+		for j < len(data) {
+			if r, size := utf8.DecodeRune(data[j:]); r != utf8.RuneError || size > 1 {
+				break
+			}
+			j++
+		}
+		out = append(out, decodeLegacyRun(data[i:j])...)
+		i = j
 	}
-	decoded, err = charmap.ISO8859_1.NewDecoder().Bytes(data)
+	return out
+}
+
+// decodeLegacyRun transcodes one run of bytes that is not valid UTF-8. cp949 is
+// tried first because Korean map titles are the common case; ISO 8859-1 is the
+// fallback, and it cannot fail because every byte maps to a code point. A run
+// that is really the truncated head of a UTF-8 character is indistinguishable
+// from legacy bytes, so it decodes to whichever character the run spells — the
+// field is already damaged upstream either way.
+func decodeLegacyRun(run []byte) []byte {
+	if decoded, err := korean.EUCKR.NewDecoder().Bytes(run); err == nil &&
+		!bytes.ContainsRune(decoded, utf8.RuneError) {
+		return decoded
+	}
+	decoded, err := charmap.ISO8859_1.NewDecoder().Bytes(run)
 	if err != nil {
-		return nil, fmt.Errorf("bnetfacade: could not decode bridge payload: %w", err)
+		return bytes.Repeat([]byte(string(utf8.RuneError)), len(run))
 	}
-	return decoded, nil
+	return decoded
+}
+
+// IsMojibakedPayload reports whether data is a cached bridge payload that an
+// older build corrupted by transcoding a whole response as ISO 8859-1. Callers
+// use it to invalidate such an entry so it refetches, never to repair the text
+// in place.
+//
+// The signature is structural and whole-payload, which is what makes it safe:
+// a latin-1 expansion leaves every rune in U+0000..U+00FF, and re-encoding
+// recovers the original UTF-8 sequences. A payload holding real non-latin-1
+// text cannot have been produced that way, and genuine latin-1 text yields
+// stray high bytes rather than well-formed multi-byte sequences. Repairing a
+// single field on its own would have no such evidence behind it.
+func IsMojibakedPayload(data []byte) bool {
+	if len(data) == 0 || !utf8.Valid(data) {
+		return false
+	}
+	latin1 := make([]byte, 0, len(data))
+	for _, r := range string(data) {
+		if r > 0xFF {
+			return false
+		}
+		latin1 = append(latin1, byte(r))
+	}
+	var recovered, stray int
+	for i := 0; i < len(latin1); {
+		if latin1[i] < utf8.RuneSelf {
+			i++
+			continue
+		}
+		if r, size := utf8.DecodeRune(latin1[i:]); size > 1 && r != utf8.RuneError {
+			recovered += size
+			i += size
+			continue
+		}
+		stray++
+		i++
+	}
+	return recovered > 0 && recovered >= stray
 }
 
 // DownloadReplay fetches a replay from the GCS starcraft-user-uploads-prod

@@ -292,6 +292,9 @@ func (d *Dashboard) bnetProfileDetailsByPlayerKeys(ctx context.Context, playerKe
 		return out
 	}
 	for _, row := range rows {
+		if bnetfacade.IsMojibakedPayload([]byte(row.Payload)) {
+			continue
+		}
 		detail := parseBnetProfileDetail(row.Toon, []byte(row.Payload))
 		if detail == nil {
 			continue

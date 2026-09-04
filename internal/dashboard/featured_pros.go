@@ -319,7 +319,11 @@ func (d *Dashboard) backfillBnetProfilesForToons(toons []propack.Toon) {
 			continue
 		}
 		row, err := d.dbStore.GetBnetProfile(d.ctx, toon.Toon, int64(toon.Gateway))
-		if err != nil || (row != nil && time.Since(row.FetchedAt) < bnetProfileTTL) {
+		if err != nil {
+			continue
+		}
+		fresh := row != nil && time.Since(row.FetchedAt) < bnetProfileTTL
+		if fresh && !bnetfacade.IsMojibakedPayload([]byte(row.Payload)) {
 			continue
 		}
 		pending = append(pending, toon)
