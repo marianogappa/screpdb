@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.26.0](https://github.com/marianogappa/screpdb/compare/v1.25.0...v1.26.0) (2026-09-04)
+
+
+### Features
+
+* **dashboard:** built-in progamer profiles and Battle.net play habits ([#370](https://github.com/marianogappa/screpdb/issues/370)) ([23f8419](https://github.com/marianogappa/screpdb/commit/23f8419821bc862efa0a0cbe7f42f7753b074031))
+* **dashboard:** hotkey intel and players page rework ([#369](https://github.com/marianogappa/screpdb/issues/369)) ([981a880](https://github.com/marianogappa/screpdb/commit/981a880304b69679e2b6f9fdc3374facb624d405))
+* **dashboard:** Korean UI with system-locale detection and footer language switcher ([#379](https://github.com/marianogappa/screpdb/issues/379)) ([f04b5fb](https://github.com/marianogappa/screpdb/commit/f04b5fb1eb6e05e0d80f0920631d8a82969fe709))
+* **dashboard:** rebalance visual emphasis and filter from one omnibar ([#368](https://github.com/marianogappa/screpdb/issues/368)) ([8593a89](https://github.com/marianogappa/screpdb/commit/8593a89cb59e6a6acf7a93ab48566f604bfdd284))
+* **dashboard:** serve the dashboard from an in-memory replay library ([#373](https://github.com/marianogappa/screpdb/issues/373)) ([802645d](https://github.com/marianogappa/screpdb/commit/802645d5ef8a99fd125aa7561805844dc49c6a7d))
+* **library:** in-memory replay library core ([#372](https://github.com/marianogappa/screpdb/issues/372)) ([78d37b4](https://github.com/marianogappa/screpdb/commit/78d37b43c61b867ccf10d2266cd2887d817a5fd0))
+* re-derive all expert golden-line timings from the curated progamer corpus ([#364](https://github.com/marianogappa/screpdb/issues/364)) ([cbdedf5](https://github.com/marianogappa/screpdb/commit/cbdedf5f8cfc2866128298c5ccca0cc3dbc7307b))
+* store hotkey commands as an encoded blob column on players ([#357](https://github.com/marianogappa/screpdb/issues/357)) ([#367](https://github.com/marianogappa/screpdb/issues/367)) ([854d133](https://github.com/marianogappa/screpdb/commit/854d133424fc093faebbe700bf7adb214915b302))
+
+
+### Bug Fixes
+
+* **dashboard:** render the session games list like the main one ([#376](https://github.com/marianogappa/screpdb/issues/376)) ([1ca2b45](https://github.com/marianogappa/screpdb/commit/1ca2b453f83d788a1b07089f34a646c179f423a6))
+* **dashboard:** stop mojibaking Battle.net battle tags ([#378](https://github.com/marianogappa/screpdb/issues/378)) ([2abf091](https://github.com/marianogappa/screpdb/commit/2abf09160b2f51ed278a22121f467e6706b324e4))
+* render country flags on Windows and name countries in the flag tooltip ([#361](https://github.com/marianogappa/screpdb/issues/361)) ([#363](https://github.com/marianogappa/screpdb/issues/363)) ([7a21a0f](https://github.com/marianogappa/screpdb/commit/7a21a0f407307bc14171d706eb95e595e3474764))
+* stop crediting mass-disconnect games as wins to the replay saver ([#366](https://github.com/marianogappa/screpdb/issues/366)) ([e50bad6](https://github.com/marianogappa/screpdb/commit/e50bad62009624179b42f38898a3e3bc88214682))
+
 ## [1.25.0](https://github.com/marianogappa/screpdb/compare/v1.24.1...v1.25.0) (2026-08-30)
 
 
