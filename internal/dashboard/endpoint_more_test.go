@@ -365,29 +365,6 @@ func TestUpdateStatusEndpoint(t *testing.T) {
 	}
 }
 
-func TestStaleReplaysCountEndpoint(t *testing.T) {
-	dash := newTestDashboard(t)
-	router := dash.setupRouter()
-
-	rec := performDashboardRequest(router, http.MethodGet, "/api/custom/replays/stale-count", nil)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
-	}
-	var resp struct {
-		Count          int64 `json:"count"`
-		CurrentVersion int   `json:"current_version"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if resp.CurrentVersion == 0 {
-		t.Fatal("expected non-zero current_version")
-	}
-	if resp.Count < 0 {
-		t.Fatalf("negative stale count: %d", resp.Count)
-	}
-}
-
 func TestGlobalReplayFilterEndpoints(t *testing.T) {
 	dash := newTestDashboard(t)
 	router := dash.setupRouter()

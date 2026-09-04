@@ -17,7 +17,6 @@ import (
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
 	"github.com/marianogappa/screpdb/internal/fileops"
 	"github.com/marianogappa/screpdb/internal/iofacade"
-	"github.com/marianogappa/screpdb/internal/patterns/core"
 	"github.com/marianogappa/screpdb/internal/winsandbox"
 )
 
@@ -56,42 +55,14 @@ func (d *Dashboard) UpdateGlobalReplayFilterConfig(ctx context.Context, request 
 	return updated, nil
 }
 
-// Ingest re-reads the replay folder. There is no separate ingestion step any
-// more: the library loads the folder at startup and watches it, so this only
-// exists for callers that want to force a check now.
-func (d *Dashboard) Ingest(ctx context.Context, request apigen.IngestRequestObject) (any, error) {
-	body := apigen.IngestRequest{}
-	if request.Body != nil {
-		body = *request.Body
-	}
-	if inputDir := strings.TrimSpace(nullableStringValue(body.InputDir)); inputDir != "" {
-		if err := d.setReplayDir(ctx, inputDir); err != nil {
-			return nil, err
-		}
-	} else {
-		d.library.Rescan()
-	}
-	return map[string]any{"ok": true, "started": true, "replay_dir": d.library.Folder()}, nil
-}
-
-func (d *Dashboard) IngestLogs(_ context.Context, _ apigen.IngestLogsRequestObject) (any, error) {
-	return map[string]any{"upgraded": true}, nil
-}
-
-// GetStaleReplaysCount always reports zero: every replay is analyzed by the
-// running build when the library loads it, so nothing can be stale.
-func (d *Dashboard) GetStaleReplaysCount(_ context.Context, _ apigen.GetStaleReplaysCountRequestObject) (any, error) {
-	return map[string]any{"count": 0, "current_version": core.AlgorithmVersion}, nil
-}
-
-func (d *Dashboard) GetIngestSettings(ctx context.Context, _ apigen.GetIngestSettingsRequestObject) (any, error) {
+func (d *Dashboard) GetLibrarySettings(ctx context.Context, _ apigen.GetLibrarySettingsRequestObject) (any, error) {
 	return d.librarySettings(ctx), nil
 }
 
-func (d *Dashboard) UpdateIngestSettings(ctx context.Context, request apigen.UpdateIngestSettingsRequestObject) (any, error) {
+func (d *Dashboard) UpdateLibrarySettings(ctx context.Context, request apigen.UpdateLibrarySettingsRequestObject) (any, error) {
 	var replayDir string
-	if request.Body != nil && request.Body.InputDir != nil {
-		replayDir = *request.Body.InputDir
+	if request.Body != nil && request.Body.ReplayDir != nil {
+		replayDir = *request.Body.ReplayDir
 	}
 	if err := d.setReplayDir(ctx, replayDir); err != nil {
 		return nil, err

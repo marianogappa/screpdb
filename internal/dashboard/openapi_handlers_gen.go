@@ -44,73 +44,37 @@ func (a *openAPIStrictAdapter) UpdateGlobalReplayFilterConfig(ctx context.Contex
 	})
 }
 
-type IngestJSONResponse struct {
+type GetLibrarySettingsJSONResponse struct {
 	Payload any
 }
 
-func (response IngestJSONResponse) VisitIngestResponse(w http.ResponseWriter) error {
+func (response GetLibrarySettingsJSONResponse) VisitGetLibrarySettingsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
 	return json.NewEncoder(w).Encode(response.Payload)
 }
 
-func (a *openAPIStrictAdapter) Ingest(ctx context.Context, request apigen.IngestRequestObject) (apigen.IngestResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.Ingest, func(value any) apigen.IngestResponseObject { return IngestJSONResponse{Payload: value} })
-}
-
-func (a *openAPIStrictAdapter) IngestLogs(ctx context.Context, request apigen.IngestLogsRequestObject) (apigen.IngestLogsResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.IngestLogs, func(_ any) apigen.IngestLogsResponseObject { return apigen.IngestLogs101Response{} })
-}
-
-type GetIngestSettingsJSONResponse struct {
-	Payload any
-}
-
-func (response GetIngestSettingsJSONResponse) VisitGetIngestSettingsResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) GetIngestSettings(ctx context.Context, request apigen.GetIngestSettingsRequestObject) (apigen.GetIngestSettingsResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.GetIngestSettings, func(value any) apigen.GetIngestSettingsResponseObject {
-		return GetIngestSettingsJSONResponse{Payload: value}
+func (a *openAPIStrictAdapter) GetLibrarySettings(ctx context.Context, request apigen.GetLibrarySettingsRequestObject) (apigen.GetLibrarySettingsResponseObject, error) {
+	return responseFromPayload(ctx, request, a.service.GetLibrarySettings, func(value any) apigen.GetLibrarySettingsResponseObject {
+		return GetLibrarySettingsJSONResponse{Payload: value}
 	})
 }
 
-type UpdateIngestSettingsJSONResponse struct {
+type UpdateLibrarySettingsJSONResponse struct {
 	Payload any
 }
 
-func (response UpdateIngestSettingsJSONResponse) VisitUpdateIngestSettingsResponse(w http.ResponseWriter) error {
+func (response UpdateLibrarySettingsJSONResponse) VisitUpdateLibrarySettingsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
 	return json.NewEncoder(w).Encode(response.Payload)
 }
 
-func (a *openAPIStrictAdapter) UpdateIngestSettings(ctx context.Context, request apigen.UpdateIngestSettingsRequestObject) (apigen.UpdateIngestSettingsResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.UpdateIngestSettings, func(value any) apigen.UpdateIngestSettingsResponseObject {
-		return UpdateIngestSettingsJSONResponse{Payload: value}
-	})
-}
-
-type GetStaleReplaysCountJSONResponse struct {
-	Payload any
-}
-
-func (response GetStaleReplaysCountJSONResponse) VisitGetStaleReplaysCountResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) GetStaleReplaysCount(ctx context.Context, request apigen.GetStaleReplaysCountRequestObject) (apigen.GetStaleReplaysCountResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.GetStaleReplaysCount, func(value any) apigen.GetStaleReplaysCountResponseObject {
-		return GetStaleReplaysCountJSONResponse{Payload: value}
+func (a *openAPIStrictAdapter) UpdateLibrarySettings(ctx context.Context, request apigen.UpdateLibrarySettingsRequestObject) (apigen.UpdateLibrarySettingsResponseObject, error) {
+	return responseFromPayload(ctx, request, a.service.UpdateLibrarySettings, func(value any) apigen.UpdateLibrarySettingsResponseObject {
+		return UpdateLibrarySettingsJSONResponse{Payload: value}
 	})
 }
 

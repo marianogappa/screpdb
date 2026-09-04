@@ -56,13 +56,13 @@ func TestDashboardAPI_LibrarySettingsUpdateAndGet(t *testing.T) {
 	router := dash.setupRouter()
 	replayDir := testCorpusDir(t)
 
-	body := []byte(fmt.Sprintf(`{"input_dir":%q}`, replayDir))
-	rec := performDashboardRequest(router, http.MethodPut, "/api/custom/ingest/settings", body)
+	body := []byte(fmt.Sprintf(`{"replay_dir":%q}`, replayDir))
+	rec := performDashboardRequest(router, http.MethodPut, "/api/custom/library/settings", body)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("update library settings status %d: %s", rec.Code, rec.Body.String())
 	}
 
-	rec = performDashboardRequest(router, http.MethodGet, "/api/custom/ingest/settings", nil)
+	rec = performDashboardRequest(router, http.MethodGet, "/api/custom/library/settings", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get library settings status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -82,8 +82,8 @@ func TestDashboardAPI_LibrarySettingsRejectsFolderWithoutReplays(t *testing.T) {
 	dash := newTestDashboard(t)
 	router := dash.setupRouter()
 
-	body := []byte(fmt.Sprintf(`{"input_dir":%q}`, t.TempDir()))
-	rec := performDashboardRequest(router, http.MethodPut, "/api/custom/ingest/settings", body)
+	body := []byte(fmt.Sprintf(`{"replay_dir":%q}`, t.TempDir()))
+	rec := performDashboardRequest(router, http.MethodPut, "/api/custom/library/settings", body)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected bad request, got %d: %s", rec.Code, rec.Body.String())
 	}
@@ -121,25 +121,6 @@ func TestDashboardAPI_HealthReportsTheLibraryState(t *testing.T) {
 	}
 	if resp.Library.Loaded != 4 || resp.Library.Total != 4 || resp.Library.ReplayDir != dash.ReplayDir() {
 		t.Fatalf("library = %+v", resp.Library)
-	}
-}
-
-func TestDashboardAPI_StaleReplaysAreGone(t *testing.T) {
-	dash := newTestDashboard(t)
-	router := dash.setupRouter()
-
-	rec := performDashboardRequest(router, http.MethodGet, "/api/custom/replays/stale-count", nil)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("stale count status %d: %s", rec.Code, rec.Body.String())
-	}
-	var resp struct {
-		Count int64 `json:"count"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("stale count json: %v", err)
-	}
-	if resp.Count != 0 {
-		t.Fatalf("nothing can be stale any more, got %d", resp.Count)
 	}
 }
 
