@@ -428,8 +428,7 @@ func (s *LibStore) ListPlayerFingerprintVectors(_ context.Context, playerKey str
 		if fp == nil || int64(fp.FeatureVersion) != featureVersion {
 			continue
 		}
-		r := ref.Replay
-		if r.MapKind == library.MapKindMoney || !r.Flags.Has(library.FlagIsOneOnOne) {
+		if !ref.Replay.FingerprintEligible() {
 			continue
 		}
 		out = append(out, PlayerFingerprintVectorRow{Vector: fpvec.Encode(fp.Vector), Race: fp.Race.String()})

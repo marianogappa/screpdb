@@ -104,8 +104,15 @@ func TestFromReplayDataCorpus(t *testing.T) {
 			}
 			for _, fp := range data.FingerprintVectors {
 				found := false
+				wantVector := len(fp.Vector)
+				if !r.FingerprintEligible() {
+					// The player page never matches on these games, so their
+					// vectors are not kept; the header still is, because the
+					// coverage count is over every analysed game.
+					wantVector = 0
+				}
 				for i := range r.Players {
-					if r.Players[i].ReplayPlayerID == fp.PlayerID && r.Players[i].Fingerprint != nil && len(r.Players[i].Fingerprint.Vector) == len(fp.Vector) {
+					if r.Players[i].ReplayPlayerID == fp.PlayerID && r.Players[i].Fingerprint != nil && len(r.Players[i].Fingerprint.Vector) == wantVector {
 						found = true
 					}
 				}
@@ -420,8 +427,8 @@ func syntheticData() *models.ReplayData {
 		},
 		FingerprintVectors: []models.PlayerFingerprintVector{
 			{PlayerID: 0, Race: "Terran", Vector: []float64{1, 2}, FeatureVersion: 3, ModelTag: "m"},
-			{PlayerID: 255, Race: "Protoss", Vector: []float64{5}},
-			{PlayerID: 255, Race: "Protoss", Vector: []float64{6}},
+			{PlayerID: 255, Race: "Protoss", Vector: []float64{5}, Frames: 5},
+			{PlayerID: 255, Race: "Protoss", Vector: []float64{6}, Frames: 6},
 		},
 		AllianceSnapshots: []models.AllianceSnapshot{
 			{Sec: 0, Teams: [][]byte{{0}, {1}, {255}}},
@@ -447,10 +454,17 @@ func TestFromReplayDataSynthetic(t *testing.T) {
 	if len(r.Players[0].HotkeyStream) != 3 || len(r.Players[2].HotkeyStream) != 1 || r.Players[3].HotkeyStream != nil {
 		t.Fatal("hotkey streams: shared computer id must go to the first computer only")
 	}
+	// Frames stands in for the vector here: this replay is not two humans, so
+	// its vectors are dropped and only the headers remain.
 	if r.Players[0].Fingerprint == nil || r.Players[0].Fingerprint.FeatureVersion != 3 ||
-		r.Players[2].Fingerprint == nil || r.Players[2].Fingerprint.Vector[0] != 5 ||
-		r.Players[3].Fingerprint == nil || r.Players[3].Fingerprint.Vector[0] != 6 || r.Players[1].Fingerprint != nil {
+		r.Players[2].Fingerprint == nil || r.Players[2].Fingerprint.Frames != 5 ||
+		r.Players[3].Fingerprint == nil || r.Players[3].Fingerprint.Frames != 6 || r.Players[1].Fingerprint != nil {
 		t.Fatal("fingerprints must fill shared-id computers in slot order")
+	}
+	for i := range r.Players {
+		if fp := r.Players[i].Fingerprint; fp != nil && fp.Vector != nil {
+			t.Fatalf("player %d kept a fingerprint vector for a game no fingerprint is computed for", i)
+		}
 	}
 
 	type prod struct {
@@ -596,5 +610,52 @@ func TestFromReplayDataRejectsMalformedInput(t *testing.T) {
 	r, err := FromReplayData(&models.ReplayData{Replay: &models.Replay{}}, meta)
 	if err != nil || r.Prod.Len() != 0 || len(r.Players) != 0 || r.Layout != nil || r.Alliance != nil {
 		t.Fatalf("an empty replay must compact to an empty record: %v", err)
+	}
+}
+
+func TestTrimPlayerBuffers(t *testing.T) {
+	stream := make([]byte, 3, 64)
+	vector := make([]float64, 2, 64)
+	vector[0], vector[1] = 1, 2
+
+	eligible := &library.Replay{
+		Flags:   library.FlagIsOneOnOne,
+		MapKind: library.MapKindRegular,
+		Players: []library.Player{{HotkeyStream: stream, Fingerprint: &library.Fingerprint{Vector: vector}}},
+	}
+	trimPlayerBuffers(eligible)
+	kept := eligible.Players[0]
+	// The copy is right-sized up to the allocator's size class, which is what
+	// matters: the 64-element array append left behind is released.
+	if len(kept.HotkeyStream) != 3 || cap(kept.HotkeyStream) >= 64 {
+		t.Fatalf("hotkey stream = len %d cap %d, still holds the oversized array", len(kept.HotkeyStream), cap(kept.HotkeyStream))
+	}
+	if len(kept.Fingerprint.Vector) != 2 || cap(kept.Fingerprint.Vector) >= 64 || kept.Fingerprint.Vector[0] != 1 {
+		t.Fatalf("vector = %v (cap %d), still holds the oversized array", kept.Fingerprint.Vector, cap(kept.Fingerprint.Vector))
+	}
+
+	moneyMap := &library.Replay{
+		Flags:   library.FlagIsOneOnOne,
+		MapKind: library.MapKindMoney,
+		Players: []library.Player{{Fingerprint: &library.Fingerprint{Vector: []float64{1, 2}, Frames: 7}}},
+	}
+	trimPlayerBuffers(moneyMap)
+	if moneyMap.Players[0].Fingerprint == nil {
+		t.Fatal("the fingerprint header must survive so the coverage count does not change")
+	}
+	if moneyMap.Players[0].Fingerprint.Vector != nil {
+		t.Fatal("a money map is outside the model's domain, so its vector is dead weight")
+	}
+	if moneyMap.Players[0].Fingerprint.Frames != 7 {
+		t.Fatal("the header lost its contents")
+	}
+
+	teamGame := &library.Replay{
+		MapKind: library.MapKindRegular,
+		Players: []library.Player{{Fingerprint: &library.Fingerprint{Vector: []float64{1}}}},
+	}
+	trimPlayerBuffers(teamGame)
+	if teamGame.Players[0].Fingerprint.Vector != nil {
+		t.Fatal("a game that is not two humans is outside the model's domain too")
 	}
 }
