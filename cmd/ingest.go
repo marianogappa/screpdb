@@ -27,7 +27,6 @@ var (
 	upToDate         string
 	upToMonths       int
 	clean            bool
-	cleanDashboard   bool
 )
 
 func init() {
@@ -38,7 +37,6 @@ func init() {
 	ingestCmd.Flags().IntVarP(&upToMonths, "up-to-n-months", "m", 0, "Only process files from the last N months (0 = no limit)")
 	ingestCmd.Flags().BoolVar(&storeRightClicks, "store-right-clicks", false, "Store Right Click commands (disabled by default to reduce table size)")
 	ingestCmd.Flags().BoolVar(&clean, "clean", false, "Drop all non-dashboard tables before ingesting to start over (useful for migrations).")
-	ingestCmd.Flags().BoolVar(&cleanDashboard, "clean-dashboard", false, "Drop all dashboard tables")
 }
 
 func runIngest(cmd *cobra.Command, args []string) error {
@@ -57,7 +55,6 @@ func runIngest(cmd *cobra.Command, args []string) error {
 		UpToDate:            upToDate,
 		UpToMonths:          upToMonths,
 		Clean:               clean,
-		CleanDashboard:      cleanDashboard,
 		UseColor:            true,
 		EarlyFilterDebugDir: os.Getenv("SCREPDB_EARLY_FILTER_DEBUG_DIR"),
 		ProfileMode:         profile.ModeFromEnv(os.Getenv("SCREPDB_INGEST_PROFILE")),

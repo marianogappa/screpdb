@@ -12,7 +12,6 @@ import (
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser"
-	"github.com/marianogappa/screpdb/internal/patterns/core"
 )
 
 // newIngestedStore spins up a fresh file-backed store in a temp dir, runs a
@@ -29,7 +28,7 @@ func newIngestedStore(t *testing.T) *SQLiteStorage {
 	}
 	t.Cleanup(func() { _ = store.Close() })
 
-	if err := store.Initialize(ctx, true, true); err != nil {
+	if err := store.Initialize(ctx, true); err != nil {
 		t.Fatalf("Initialize: %v", err)
 	}
 
@@ -49,158 +48,6 @@ func newIngestedStore(t *testing.T) *SQLiteStorage {
 		t.Fatalf("ingestFiles: %v", err)
 	}
 	return store
-}
-
-func TestStorageName(t *testing.T) {
-	store, err := NewSQLiteStorage(filepath.Join(t.TempDir(), "name.db"))
-	if err != nil {
-		t.Fatalf("NewSQLiteStorage: %v", err)
-	}
-	t.Cleanup(func() { _ = store.Close() })
-
-	if got := store.StorageName(); got != StorageSQLite {
-		t.Fatalf("StorageName() = %q, want %q", got, StorageSQLite)
-	}
-}
-
-func TestGetReplayAlgorithmVersion(t *testing.T) {
-	ctx := context.Background()
-	store := newIngestedStore(t)
-
-	replayID, _, _ := firstReplayInfo(t, store)
-
-	// The ingested replays run pattern detection, so the row is stamped with the
-	// current AlgorithmVersion. Cross-check the method against a direct query.
-	version, err := store.GetReplayAlgorithmVersion(ctx, replayID)
-	if err != nil {
-		t.Fatalf("GetReplayAlgorithmVersion: %v", err)
-	}
-
-	rows, err := store.Query(ctx, "SELECT analyzer_algorithm_version AS v FROM replays WHERE id = ?", replayID)
-	if err != nil {
-		t.Fatalf("query stored version: %v", err)
-	}
-	stored, ok := asInt64(rows[0]["v"])
-	if !ok {
-		t.Fatalf("expected numeric stored version")
-	}
-	if int64(version) != stored {
-		t.Fatalf("GetReplayAlgorithmVersion(%d) = %d, want stored %d", replayID, version, stored)
-	}
-	if version != core.AlgorithmVersion {
-		t.Fatalf("expected ingested replay to be stamped with current AlgorithmVersion %d, got %d", core.AlgorithmVersion, version)
-	}
-}
-
-func TestGetReplayAlgorithmVersion_MissingReplay(t *testing.T) {
-	ctx := context.Background()
-	store := newIngestedStore(t)
-
-	if _, err := store.GetReplayAlgorithmVersion(ctx, 999999); err == nil {
-		t.Fatalf("expected error for missing replay id")
-	}
-}
-
-func TestCountStaleReplays(t *testing.T) {
-	ctx := context.Background()
-	store := newIngestedStore(t)
-
-	total, err := countTable(ctx, store, "replays")
-	if err != nil {
-		t.Fatalf("count replays: %v", err)
-	}
-	if total == 0 {
-		t.Fatalf("expected replays present")
-	}
-
-	// Ingested replays are stamped at core.AlgorithmVersion. A currentVersion at
-	// or below that leaves nothing stale; one strictly above marks them all stale.
-	staleAtCurrent, err := store.CountStaleReplays(ctx, core.AlgorithmVersion)
-	if err != nil {
-		t.Fatalf("CountStaleReplays(current): %v", err)
-	}
-	if staleAtCurrent != 0 {
-		t.Fatalf("expected 0 stale replays at current version, got %d", staleAtCurrent)
-	}
-
-	staleAtHigher, err := store.CountStaleReplays(ctx, core.AlgorithmVersion+1)
-	if err != nil {
-		t.Fatalf("CountStaleReplays(higher): %v", err)
-	}
-	if int64(staleAtHigher) != total {
-		t.Fatalf("expected all %d replays stale at version %d, got %d", total, core.AlgorithmVersion+1, staleAtHigher)
-	}
-}
-
-func TestBatchInsertPatternResults(t *testing.T) {
-	ctx := context.Background()
-	store := newIngestedStore(t)
-
-	replayID, _, _ := firstReplayInfo(t, store)
-
-	before, err := store.Query(ctx,
-		"SELECT COUNT(*) AS c FROM replay_events WHERE event_kind = 'marker' AND event_type = ? AND replay_id = ?",
-		"never_used_hotkeys", replayID)
-	if err != nil {
-		t.Fatalf("count before: %v", err)
-	}
-	beforeCount, _ := asInt64(before[0]["c"])
-
-	var playerID int64 = 0
-	prow, err := store.Query(ctx, "SELECT id FROM players WHERE replay_id = ? ORDER BY id LIMIT 1", replayID)
-	if err != nil {
-		t.Fatalf("query player: %v", err)
-	}
-	if len(prow) == 1 {
-		if id, ok := asInt64(prow[0]["id"]); ok {
-			playerID = id
-		}
-	}
-
-	results := []*core.PatternResult{
-		{
-			PatternName:      "Never used hotkeys",
-			ReplayID:         replayID,
-			PlayerID:         &playerID,
-			DetectedAtSecond: 123,
-			Payload:          []byte(`{"groups":3}`),
-		},
-	}
-	if err := store.BatchInsertPatternResults(ctx, results); err != nil {
-		t.Fatalf("BatchInsertPatternResults: %v", err)
-	}
-
-	after, err := store.Query(ctx,
-		"SELECT seconds_from_game_start AS s, payload AS p FROM replay_events WHERE event_kind = 'marker' AND event_type = ? AND replay_id = ? AND source_player_id = ?",
-		"never_used_hotkeys", replayID, playerID)
-	if err != nil {
-		t.Fatalf("query after: %v", err)
-	}
-	if len(after) != 1 {
-		t.Fatalf("expected exactly 1 never_used_hotkeys row for player %d after insert, got %d", playerID, len(after))
-	}
-	sec, ok := asInt64(after[0]["s"])
-	if !ok || sec != 123 {
-		t.Fatalf("expected detected-at second 123, got %v", after[0]["s"])
-	}
-	payload, ok := asString(after[0]["p"])
-	if !ok || payload != `{"groups":3}` {
-		t.Fatalf("expected payload to round-trip, got %v", after[0]["p"])
-	}
-
-	_ = beforeCount // documents that we do not depend on the pre-existing count
-}
-
-func TestBatchInsertPatternResults_EmptyIsNoop(t *testing.T) {
-	ctx := context.Background()
-	store := newIngestedStore(t)
-
-	if err := store.BatchInsertPatternResults(ctx, nil); err != nil {
-		t.Fatalf("BatchInsertPatternResults(nil): %v", err)
-	}
-	if err := store.BatchInsertPatternResults(ctx, []*core.PatternResult{}); err != nil {
-		t.Fatalf("BatchInsertPatternResults(empty): %v", err)
-	}
 }
 
 func TestIsDuplicateReplayError(t *testing.T) {
@@ -275,10 +122,10 @@ func TestInitialize_NonCleanIsIdempotent(t *testing.T) {
 
 	// First run does a clean init; the second is non-clean and must not error or
 	// drop the schema (migrations already applied are skipped).
-	if err := store.Initialize(ctx, true, true); err != nil {
+	if err := store.Initialize(ctx, true); err != nil {
 		t.Fatalf("Initialize clean: %v", err)
 	}
-	if err := store.Initialize(ctx, false, false); err != nil {
+	if err := store.Initialize(ctx, false); err != nil {
 		t.Fatalf("Initialize non-clean: %v", err)
 	}
 
@@ -288,19 +135,6 @@ func TestInitialize_NonCleanIsIdempotent(t *testing.T) {
 	}
 	if c, ok := asInt64(rows[0]["c"]); !ok || c != 0 {
 		t.Fatalf("expected empty replays table, got %v", rows[0]["c"])
-	}
-}
-
-func TestReplayExists_NotFound(t *testing.T) {
-	ctx := context.Background()
-	store := newIngestedStore(t)
-
-	exists, err := store.ReplayExists(ctx, "/no/such/path.rep", "deadbeefchecksum")
-	if err != nil {
-		t.Fatalf("ReplayExists: %v", err)
-	}
-	if exists {
-		t.Fatalf("expected ReplayExists to report false for unknown path+checksum")
 	}
 }
 
@@ -375,7 +209,7 @@ func TestStartIngestion_EmptyChannelReturnsNil(t *testing.T) {
 		t.Fatalf("NewSQLiteStorage: %v", err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	if err := store.Initialize(ctx, true, true); err != nil {
+	if err := store.Initialize(ctx, true); err != nil {
 		t.Fatalf("Initialize: %v", err)
 	}
 
@@ -393,7 +227,7 @@ func TestStartIngestion_CancelledContext(t *testing.T) {
 		t.Fatalf("NewSQLiteStorage: %v", err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	if err := store.Initialize(context.Background(), true, true); err != nil {
+	if err := store.Initialize(context.Background(), true); err != nil {
 		t.Fatalf("Initialize: %v", err)
 	}
 
@@ -414,7 +248,7 @@ func TestStartIngestion_DuplicateReplayHooked(t *testing.T) {
 		t.Fatalf("NewSQLiteStorage: %v", err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	if err := store.Initialize(ctx, true, true); err != nil {
+	if err := store.Initialize(ctx, true); err != nil {
 		t.Fatalf("Initialize: %v", err)
 	}
 

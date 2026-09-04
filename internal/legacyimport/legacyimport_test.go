@@ -6,8 +6,6 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
-
-	"github.com/marianogappa/screpdb/internal/migrations"
 )
 
 func TestReadMissingDatabase(t *testing.T) {
@@ -20,14 +18,12 @@ func TestReadMissingDatabase(t *testing.T) {
 func TestReadLegacyStateWithAndWithoutOptionalColumns(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "screp.db")
-	if err := migrations.RunMigrations(path); err != nil {
-		t.Fatal(err)
-	}
 	db, err := sql.Open("sqlite", "file:"+path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
+	mustExec(t, db, legacySchema)
 	mustExec(t, db, `UPDATE settings SET ingest_input_dir = ' /replays ', game_type = 'melee', game_types = '[]', exclude_short_games = 0, map_kinds = '["Money"]' WHERE config_key = 'global'`)
 
 	first, err := Read(ctx, path)
@@ -104,3 +100,45 @@ func mustExec(t *testing.T, db *sql.DB, query string, args ...any) {
 		t.Fatalf("%s: %v", query, err)
 	}
 }
+
+// legacySchema is the shape a pre-library database has: the tables the
+// dashboard used to own here, spelled out because the migrations no longer
+// create them. The import reads exactly this and nothing else.
+const legacySchema = `
+CREATE TABLE settings (
+	config_key TEXT PRIMARY KEY,
+	game_type TEXT NOT NULL DEFAULT 'all',
+	exclude_short_games BOOLEAN NOT NULL DEFAULT 1,
+	exclude_computers BOOLEAN NOT NULL DEFAULT 1,
+	ingest_input_dir TEXT NOT NULL DEFAULT '',
+	game_types TEXT NOT NULL DEFAULT '[]',
+	map_kinds TEXT NOT NULL DEFAULT '["regular","money"]'
+);
+INSERT INTO settings (config_key) VALUES ('global');
+CREATE TABLE bnet_profiles (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	toon TEXT NOT NULL,
+	gateway INTEGER NOT NULL,
+	found BOOLEAN NOT NULL,
+	aurora_id INTEGER NOT NULL DEFAULT 0,
+	battle_tag TEXT NOT NULL DEFAULT '',
+	country_code TEXT NOT NULL DEFAULT '',
+	payload TEXT NOT NULL,
+	fetched_at TEXT NOT NULL,
+	UNIQUE (toon, gateway)
+);
+CREATE TABLE bnet_game_results (
+	aurora_id INTEGER NOT NULL,
+	game_id TEXT NOT NULL,
+	create_time INTEGER NOT NULL,
+	toon TEXT NOT NULL DEFAULT '',
+	gateway INTEGER NOT NULL DEFAULT 0,
+	race TEXT NOT NULL DEFAULT '',
+	result TEXT NOT NULL DEFAULT '',
+	apm INTEGER NOT NULL DEFAULT 0,
+	duration_seconds INTEGER NOT NULL DEFAULT 0,
+	map_name TEXT NOT NULL DEFAULT '',
+	match_guid TEXT NOT NULL DEFAULT '',
+	PRIMARY KEY (aurora_id, game_id)
+);
+`

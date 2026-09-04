@@ -11,7 +11,6 @@ import (
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/persist"
-	"github.com/marianogappa/screpdb/internal/migrations"
 )
 
 func replayFolder(t *testing.T, names ...string) string {
@@ -161,11 +160,35 @@ func TestLibraryRuntimeCarriesOverTheLegacyDatabaseOnce(t *testing.T) {
 	folder := replayFolder(t, "SomaJyJ.rep")
 	root := t.TempDir()
 	legacy := filepath.Join(root, "screp.db")
-	if err := migrations.RunMigrations(legacy); err != nil {
-		t.Fatal(err)
-	}
 	conn, err := sql.Open("sqlite", "file:"+legacy)
 	if err != nil {
+		t.Fatal(err)
+	}
+	// Spelled out because the migrations no longer create these: they belonged
+	// to the dashboard, which keeps its state in JSON files now.
+	if _, err := conn.Exec(`
+		CREATE TABLE settings (
+			config_key TEXT PRIMARY KEY,
+			game_type TEXT NOT NULL DEFAULT 'all',
+			exclude_short_games BOOLEAN NOT NULL DEFAULT 1,
+			exclude_computers BOOLEAN NOT NULL DEFAULT 1,
+			ingest_input_dir TEXT NOT NULL DEFAULT '',
+			game_types TEXT NOT NULL DEFAULT '[]',
+			map_kinds TEXT NOT NULL DEFAULT '[]'
+		);
+		INSERT INTO settings (config_key) VALUES ('global');
+		CREATE TABLE bnet_profiles (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			toon TEXT NOT NULL,
+			gateway INTEGER NOT NULL,
+			found BOOLEAN NOT NULL,
+			aurora_id INTEGER NOT NULL DEFAULT 0,
+			battle_tag TEXT NOT NULL DEFAULT '',
+			country_code TEXT NOT NULL DEFAULT '',
+			payload TEXT NOT NULL,
+			fetched_at TEXT NOT NULL,
+			UNIQUE (toon, gateway)
+		);`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := conn.Exec(`UPDATE settings SET ingest_input_dir = ?, exclude_short_games = 0, game_types = '["one_on_one"]', map_kinds = '["money"]' WHERE config_key = 'global'`, folder); err != nil {

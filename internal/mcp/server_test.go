@@ -18,7 +18,7 @@ func newTestStore(t *testing.T) *storage.SQLiteStorage {
 		t.Fatalf("NewSQLiteStorage: %v", err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	if err := store.Initialize(context.Background(), true, true); err != nil {
+	if err := store.Initialize(context.Background(), true); err != nil {
 		t.Fatalf("Initialize: %v", err)
 	}
 	return store

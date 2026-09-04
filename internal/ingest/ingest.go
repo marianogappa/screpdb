@@ -33,7 +33,6 @@ type Config struct {
 	UpToDate         string
 	UpToMonths       int
 	Clean            bool
-	CleanDashboard   bool
 	UseColor         bool
 	Logger           *Logger
 
@@ -82,7 +81,7 @@ func Run(ctx context.Context, cfg Config) error {
 	defer store.Close()
 	store.SetCommandStorageOptions(cfg.StoreRightClicks)
 
-	if err := store.Initialize(ctx, cfg.Clean, cfg.CleanDashboard); err != nil {
+	if err := store.Initialize(ctx, cfg.Clean); err != nil {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 
@@ -331,7 +330,7 @@ func RunForFiles(ctx context.Context, cfg Config, files []fileops.FileInfo) erro
 	defer store.Close()
 	store.SetCommandStorageOptions(cfg.StoreRightClicks)
 
-	if err := store.Initialize(ctx, false, false); err != nil {
+	if err := store.Initialize(ctx, false); err != nil {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 

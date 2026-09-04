@@ -596,8 +596,8 @@ func allMarkers() []Marker {
 	ms := []Marker{
 		// -------------------------------------------------------------------
 		// TIER-1 PREFERRED OPENERS (issue #182). Specific, scene-named openings
-		// sourced from current BW pro / Liquipedia knowledge (docs/build-orders-
-		// research/). Each is keyed on the building SEQUENCE + defining tech
+		// sourced from current BW pro / Liquipedia knowledge. Each is keyed on
+		// the building SEQUENCE + defining tech
 		// unit the parser detects reliably (supply is not simulated for T/P),
 		// matchup-gated, and made pairwise-disjoint WITHIN tier 1 per (race,
 		// matchup) — across tiers, overlap is expected and resolved by tier

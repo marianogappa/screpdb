@@ -85,7 +85,7 @@ func BenchmarkSQLiteIngestionCorpus(b *testing.B) {
 		if err != nil {
 			b.Fatalf("NewSQLiteStorage: %v", err)
 		}
-		if err := store.Initialize(ctx, true, true); err != nil {
+		if err := store.Initialize(ctx, true); err != nil {
 			_ = store.Close()
 			b.Fatalf("Initialize: %v", err)
 		}

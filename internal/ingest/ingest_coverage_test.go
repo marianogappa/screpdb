@@ -225,42 +225,6 @@ func TestRun_CleanDropsReplayData(t *testing.T) {
 	}
 }
 
-// TestRun_CleanDashboardPreservesSettings documents the observed behavior of
-// CleanDashboard=true: the dashboard migration set is dropped and re-run, but
-// the settings table is preserved across the wipe by design (it is owned by the
-// settings migration set), so a mutated settings row survives.
-func TestRun_CleanDashboardPreservesSettings(t *testing.T) {
-	inputDir := seedReplayDir(t, smallTestReplays...)
-	dbPath := filepath.Join(t.TempDir(), "x.db")
-
-	if err := Run(context.Background(), Config{
-		InputDir: inputDir, SQLitePath: dbPath, Logger: quietLogger(),
-	}); err != nil {
-		t.Fatalf("first Run: %v", err)
-	}
-
-	mutateSettingsGameType(t, dbPath, "mutated")
-	if got := querySingleString(t, dbPath,
-		"SELECT game_type FROM settings WHERE config_key = 'global'"); got != "mutated" {
-		t.Fatalf("precondition: settings mutation did not persist, got %q", got)
-	}
-
-	if err := Run(context.Background(), Config{
-		InputDir: inputDir, SQLitePath: dbPath, CleanDashboard: true, Logger: quietLogger(),
-	}); err != nil {
-		t.Fatalf("CleanDashboard Run: %v", err)
-	}
-
-	if got := querySingleString(t, dbPath,
-		"SELECT game_type FROM settings WHERE config_key = 'global'"); got != "mutated" {
-		t.Fatalf("settings must survive CleanDashboard (preserved-across-wipes), got %q", got)
-	}
-	// Replays are untouched by CleanDashboard.
-	if got := countRows(t, dbPath, "replays"); got != int64(len(smallTestReplays)) {
-		t.Fatalf("CleanDashboard must not touch replay data, got %d replays", got)
-	}
-}
-
 // TestRun_CorruptReplayIsCountedNotFatal covers the per-file error branch in
 // runBatchMode: a corrupt .rep is counted as an error and skipped, while a
 // valid replay in the same batch still ingests and the run returns nil.

@@ -36,7 +36,6 @@ func TestIngestFlagDefaults(t *testing.T) {
 		{"up-to-n-months", "0"},
 		{"store-right-clicks", "false"},
 		{"clean", "false"},
-		{"clean-dashboard", "false"},
 	}
 	for _, tt := range tests {
 		f := ingestCmd.Flags().Lookup(tt.name)
