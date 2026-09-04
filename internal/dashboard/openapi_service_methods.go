@@ -144,6 +144,7 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 		"limit":           limit,
 		"offset":          offset,
 		"total":           total,
+		"corpus":          d.corpusStamp(),
 		"filter_options":  filterOptions,
 	}, nil
 }
@@ -322,6 +323,7 @@ func (d *Dashboard) PlayersList(_ context.Context, request apigen.PlayersListReq
 		"limit":            limit,
 		"offset":           offset,
 		"total":            total,
+		"corpus":           d.corpusStamp(),
 		"filter_options":   filterOptions,
 	}, nil
 }

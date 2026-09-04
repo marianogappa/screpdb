@@ -19,7 +19,6 @@ import (
 	"github.com/getkin/kin-openapi/routers"
 	"github.com/getkin/kin-openapi/routers/gorillamux"
 	"github.com/gorilla/mux"
-	_ "modernc.org/sqlite"
 
 	"github.com/marianogappa/scfingerprint"
 	"github.com/marianogappa/screpdb/internal/crashreport"

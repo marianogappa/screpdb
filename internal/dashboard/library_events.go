@@ -255,3 +255,21 @@ func (d *Dashboard) handlerLibraryEvents(w http.ResponseWriter, r *http.Request)
 		}
 	}
 }
+
+// corpusStamp tells a page how much of the folder the numbers it just received
+// were computed from. Counts that look like a dead end while the library is
+// still loading are only "nothing yet", which the browser renders differently.
+func (d *Dashboard) corpusStamp() map[string]any {
+	progress := d.libraryHub.Progress()
+	loaded, total := progress.Loaded, progress.Total
+	if total < loaded {
+		total = loaded
+	}
+	return map[string]any{
+		"generation": progress.Generation,
+		"version":    progress.Version,
+		"loaded":     loaded,
+		"total":      total,
+		"complete":   progress.Complete(),
+	}
+}
