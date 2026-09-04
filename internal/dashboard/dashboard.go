@@ -51,6 +51,7 @@ type Dashboard struct {
 	ingestSessionID     int64
 	ingestEvents        []ingest.LogEvent
 	ingestSubscribers   map[chan ingestStreamMessage]struct{}
+	libraryHub          *libraryHub
 	sampleSetAutoLoaded bool
 	pendingSampleIngest bool
 	headless            bool
@@ -105,6 +106,7 @@ func New(ctx context.Context, sqlitePath string, headless bool) (*Dashboard, err
 
 	dashboard := &Dashboard{
 		ctx:          ctx,
+		libraryHub:   newLibraryHub(),
 		db:           db,
 		ingestStatus: "idle",
 		sqlitePath:   sqlitePath,

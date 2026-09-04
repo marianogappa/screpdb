@@ -1,0 +1,257 @@
+package dashboard
+
+import (
+	"net/http"
+	"sync"
+
+	"github.com/gorilla/websocket"
+	"github.com/marianogappa/screpdb/internal/crashreport"
+	"github.com/marianogappa/screpdb/internal/library"
+	"github.com/marianogappa/screpdb/internal/library/load"
+)
+
+const maxLibraryLogEvents = 4000
+
+// Library status values as the browser sees them. The loader's phases are
+// finer grained than the UI needs, so several collapse into one status.
+const (
+	libraryStatusIdle     = "idle"
+	libraryStatusLoading  = "loading"
+	libraryStatusWatching = "watching"
+	libraryStatusFailed   = "failed"
+)
+
+// libraryProgress is the wire form of library.ProgressState. It is a separate
+// type because the browser names the folder replay_dir everywhere else.
+type libraryProgress struct {
+	Generation uint64 `json:"generation"`
+	Version    uint64 `json:"version"`
+	Phase      string `json:"phase"`
+	Total      int    `json:"total"`
+	Loaded     int    `json:"loaded"`
+	Failed     int    `json:"failed"`
+	Skipped    int    `json:"skipped"`
+	ReplayDir  string `json:"replay_dir"`
+	Complete   bool   `json:"complete"`
+}
+
+type libraryCorpus struct {
+	Generation uint64  `json:"generation"`
+	Version    uint64  `json:"version"`
+	Added      []int64 `json:"added,omitempty"`
+	Removed    []int64 `json:"removed,omitempty"`
+}
+
+type libraryEventMessage struct {
+	Type      string           `json:"type"`
+	Status    string           `json:"status,omitempty"`
+	ReplayDir string           `json:"replay_dir,omitempty"`
+	Error     string           `json:"error,omitempty"`
+	Progress  *libraryProgress `json:"progress,omitempty"`
+	Corpus    *libraryCorpus   `json:"corpus,omitempty"`
+	Log       *load.LogEvent   `json:"log,omitempty"`
+	Logs      []load.LogEvent  `json:"logs,omitempty"`
+}
+
+func progressToWire(p library.ProgressState) libraryProgress {
+	return libraryProgress{
+		Generation: p.Generation,
+		Version:    p.Version,
+		Phase:      string(p.Phase),
+		Total:      p.Total,
+		Loaded:     p.Loaded,
+		Failed:     p.Failed,
+		Skipped:    p.Skipped,
+		ReplayDir:  p.Folder,
+		Complete:   p.Complete(),
+	}
+}
+
+func statusForPhase(phase library.Phase) string {
+	switch phase {
+	case library.PhaseScanning, library.PhaseRecent, library.PhaseBackfill:
+		return libraryStatusLoading
+	case library.PhaseReady, library.PhaseWatching:
+		return libraryStatusWatching
+	case library.PhaseFailed:
+		return libraryStatusFailed
+	default:
+		return libraryStatusIdle
+	}
+}
+
+var libraryEventUpgrader = websocket.Upgrader{
+	CheckOrigin: func(_ *http.Request) bool { return true },
+}
+
+// libraryHub turns the library's progress and corpus events into the browser's
+// event stream, keeping a bounded log tail so a page that connects mid-load
+// still shows what happened.
+type libraryHub struct {
+	mu          sync.Mutex
+	logs        []load.LogEvent
+	progress    library.ProgressState
+	lastError   string
+	subscribers map[chan libraryEventMessage]struct{}
+}
+
+func newLibraryHub() *libraryHub {
+	return &libraryHub{subscribers: map[chan libraryEventMessage]struct{}{}}
+}
+
+// Watch consumes the library's event channel until it closes.
+func (h *libraryHub) Watch(lib *library.Library) {
+	progress, events, cancel := lib.Subscribe()
+	h.mu.Lock()
+	h.progress = progress
+	h.mu.Unlock()
+	go func() {
+		defer crashreport.GuardNonFatal(nil)
+		defer cancel()
+		for event := range events {
+			switch event.Kind {
+			case library.EventProgress:
+				h.publishProgress(event.Progress)
+			case library.EventCorpus:
+				h.publishCorpus(event)
+			}
+		}
+	}()
+}
+
+// Log records one loader log line and forwards it.
+func (h *libraryHub) Log(event load.LogEvent) {
+	h.mu.Lock()
+	h.logs = append(h.logs, event)
+	if len(h.logs) > maxLibraryLogEvents {
+		h.logs = append([]load.LogEvent(nil), h.logs[len(h.logs)-maxLibraryLogEvents:]...)
+	}
+	if event.Level == load.LogLevelError {
+		h.lastError = event.Message
+	}
+	h.mu.Unlock()
+	copied := event
+	h.broadcast(libraryEventMessage{Type: "log", Log: &copied})
+}
+
+func (h *libraryHub) publishProgress(p library.ProgressState) {
+	h.mu.Lock()
+	previous := h.progress
+	h.progress = p
+	h.mu.Unlock()
+	wire := progressToWire(p)
+	status := statusForPhase(p.Phase)
+	h.broadcast(libraryEventMessage{Type: "progress", Status: status, ReplayDir: p.Folder, Progress: &wire})
+	if statusForPhase(previous.Phase) != status {
+		h.broadcast(libraryEventMessage{Type: "status", Status: status, ReplayDir: p.Folder, Error: h.Error()})
+	}
+}
+
+func (h *libraryHub) publishCorpus(event library.Event) {
+	h.broadcast(libraryEventMessage{Type: "corpus", Corpus: &libraryCorpus{
+		Generation: event.Generation,
+		Version:    event.Version,
+		Added:      event.Added,
+		Removed:    event.Removed,
+	}})
+}
+
+func (h *libraryHub) Progress() library.ProgressState {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.progress
+}
+
+func (h *libraryHub) Error() string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.lastError
+}
+
+func (h *libraryHub) snapshotMessage() libraryEventMessage {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	wire := progressToWire(h.progress)
+	return libraryEventMessage{
+		Type:      "snapshot",
+		Status:    statusForPhase(h.progress.Phase),
+		ReplayDir: h.progress.Folder,
+		Error:     h.lastError,
+		Progress:  &wire,
+		Logs:      append([]load.LogEvent(nil), h.logs...),
+	}
+}
+
+func (h *libraryHub) subscribe() (libraryEventMessage, chan libraryEventMessage, func()) {
+	ch := make(chan libraryEventMessage, 256)
+	h.mu.Lock()
+	h.subscribers[ch] = struct{}{}
+	h.mu.Unlock()
+
+	var once sync.Once
+	unsubscribe := func() {
+		once.Do(func() {
+			h.mu.Lock()
+			defer h.mu.Unlock()
+			if _, ok := h.subscribers[ch]; ok {
+				delete(h.subscribers, ch)
+				close(ch)
+			}
+		})
+	}
+	return h.snapshotMessage(), ch, unsubscribe
+}
+
+// broadcast drops messages for a subscriber that has fallen behind rather than
+// stalling the loader; the next snapshot brings a reconnecting page up to date.
+func (h *libraryHub) broadcast(message libraryEventMessage) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for ch := range h.subscribers {
+		select {
+		case ch <- message:
+		default:
+		}
+	}
+}
+
+func (d *Dashboard) handlerLibraryEvents(w http.ResponseWriter, r *http.Request) {
+	conn, err := libraryEventUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	snapshot, events, unsubscribe := d.libraryHub.subscribe()
+	defer unsubscribe()
+
+	if err := conn.WriteJSON(snapshot); err != nil {
+		return
+	}
+
+	closed := make(chan struct{})
+	go func() {
+		defer close(closed)
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				return
+			}
+		}
+	}()
+
+	for {
+		select {
+		case message, ok := <-events:
+			if !ok {
+				return
+			}
+			if err := conn.WriteJSON(message); err != nil {
+				return
+			}
+		case <-closed:
+			return
+		case <-d.ctx.Done():
+			return
+		}
+	}
+}
