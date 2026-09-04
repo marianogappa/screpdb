@@ -5,6 +5,7 @@ go 1.26.4
 require (
 	aead.dev/minisign v0.2.0
 	github.com/fatih/color v1.16.0
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/getkin/kin-openapi v0.132.0
 	github.com/getlantern/systray v1.2.2
 	github.com/gorilla/mux v1.8.1

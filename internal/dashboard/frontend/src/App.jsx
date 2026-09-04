@@ -2,7 +2,6 @@ import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallba
 import { api } from './api';
 import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
-import IngestModal from './components/IngestModal';
 import FilterOmnibar from './components/FilterOmnibar';
 import GamingSessionPanel from './components/GamingSessionPanel';
 import Histogram from './components/charts/Histogram';
@@ -45,11 +44,10 @@ import {
   collectPlayerSpells,
 } from './lib/compositionPill';
 import {
-  getStoredAutoIngestSettings,
-  saveAutoIngestSettings,
   getStoredShowFeaturedPros,
   saveShowFeaturedPros,
 } from './lib/dashboardStorage';
+import { formatLoadingShort, isLibraryLoading, stillLoadingCopy } from './lib/libraryProgress';
 import {
   formatDuration,
   formatMapNameWithKind,
@@ -612,13 +610,8 @@ const CountryFlag = ({ code, playerKey }) => {
 // no bridge budget, so the cadence is chosen for how fast flags feel like they
 // arrive, not for cost. COUNTRY_FLAG_POLL_MAX_TICKS stops a page that will never
 // resolve (players with no Battle.net profile) from polling for ever.
-// While the session view is open, sweep for new replays far more often than the
-// background loop's minute: the whole point of that screen is the game that
-// just finished. AUTO_INGEST_SESSION_POLL_SECONDS is the window we then wait
-// for the replay count to actually move, kept longer than the interval so a
-// slow ingest is not declared a no-op.
-const AUTO_INGEST_SESSION_INTERVAL_SECONDS = 15;
-const AUTO_INGEST_SESSION_POLL_SECONDS = 30;
+// The games list refreshes on library progress at most this often: progress
+// events can arrive several times a second during the initial load.
 
 const COUNTRY_FLAG_POLL_MS = 2000;
 const COUNTRY_FLAG_POLL_MAX_TICKS = 45;
@@ -1926,7 +1919,7 @@ const teamColorRgba = (team, alpha = 0.14) => {
   return `rgba(${Number.isNaN(r) ? 96 : r}, ${Number.isNaN(g) ? 165 : g}, ${Number.isNaN(b) ? 250 : b}, ${alpha})`;
 };
 
-const MAIN_GAMES_PAGE_SIZE = 100;
+const MAIN_GAMES_PAGE_SIZE = 50;
 const MAIN_PLAYERS_PAGE_SIZE = 30;
 
 const toggleFilterValue = (values, value) => {
@@ -1958,36 +1951,6 @@ const playersHaveDistinctTeams = (players) => new Set((players || []).map((p) =>
 // balanced across ceil(players / this) rows and never split, so the row break
 // always falls between teams.
 const PLAYERS_PER_LIST_ROW = 4;
-
-const mergeIngestLogEntries = (entries, event) => {
-  if (!event || !event.message) {
-    return entries;
-  }
-
-  if (event.append && entries.length > 0 && entries[entries.length - 1].append) {
-    const next = [...entries];
-    const last = next[next.length - 1];
-    next[next.length - 1] = {
-      ...last,
-      level: event.level || last.level,
-      message: `${last.message}${event.message}`,
-      append: true,
-    };
-    return next;
-  }
-
-  return [...entries, {
-    level: event.level || 'info',
-    message: event.message,
-    append: Boolean(event.append),
-  }];
-};
-
-const hydrateIngestLogEntries = (events = []) => (
-  (events || []).reduce((entries, event) => mergeIngestLogEntries(entries, event), [])
-);
-
-const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 // Package-manager installs can't self-update, so we surface the exact upgrade
 // command with a one-click copy button plus a link to the release notes.
@@ -2031,7 +1994,6 @@ const ManagedUpdateHint = ({ latestVersion, command, releaseUrl, className }) =>
 };
 
 function App() {
-  const storedAutoIngest = getStoredAutoIngestSettings();
   const initialMainRoute = useMemo(
     () => parseMainRouteSearch(typeof window !== 'undefined' ? window.location.search : ''),
     [],
@@ -2067,43 +2029,23 @@ function App() {
   const [globalReplayFilterConfig, setGlobalReplayFilterConfig] = useState(null);
   const [globalReplayFilterSaving, setGlobalReplayFilterSaving] = useState(false);
   const [globalReplayFilterError, setGlobalReplayFilterError] = useState('');
-  const [showIngestPanel, setShowIngestPanel] = useState(false);
-  const [ingestMessage, setIngestMessage] = useState('');
-  const [ingestStatus, setIngestStatus] = useState('idle');
-  const [ingestLogs, setIngestLogs] = useState([]);
-  const [ingestInputDir, setIngestInputDir] = useState('');
-  const [savedIngestInputDir, setSavedIngestInputDir] = useState('');
-  const [ingestSettingsLoading, setIngestSettingsLoading] = useState(false);
-  const [ingestSettingsSaving, setIngestSettingsSaving] = useState(false);
+  const [libraryMessage, setLibraryMessage] = useState('');
+  const [libraryStatus, setLibraryStatus] = useState('idle');
+  const [libraryProgress, setLibraryProgress] = useState(null);
+  const [replayDirInput, setReplayDirInput] = useState('');
+  const [savedReplayDir, setSavedReplayDir] = useState('');
+  const [librarySettingsLoading, setLibrarySettingsLoading] = useState(false);
+  const [librarySettingsSaving, setLibrarySettingsSaving] = useState(false);
   const [isSampleSet, setIsSampleSet] = useState(false);
   const [detectedReplayDir, setDetectedReplayDir] = useState('');
   const [sampleSetLoading, setSampleSetLoading] = useState(false);
   const [sampleNotice, setSampleNotice] = useState('');
-  const [ingestSocketState, setIngestSocketState] = useState('closed');
-  const [staleReplaysCount, setStaleReplaysCount] = useState(0);
-  // Session-only dismissal of the stale-replays hint icon. Stored as the
-  // count at the moment the user dismissed it; the icon reappears when a
-  // larger stale count is detected (e.g. after a fresh ingest left some
-  // older replays behind). sessionStorage = clears with the tab.
-  const [dismissedStaleCount, setDismissedStaleCount] = useState(() => {
-    try {
-      const v = window.sessionStorage.getItem('dismissedStaleReplaysCount');
-      return v == null ? 0 : Number(v) || 0;
-    } catch (_) { return 0; }
-  });
-  const dismissStaleHint = useCallback(() => {
-    try { window.sessionStorage.setItem('dismissedStaleReplaysCount', String(staleReplaysCount)); } catch (_) {}
-    setDismissedStaleCount(staleReplaysCount);
-  }, [staleReplaysCount]);
-  const [autoIngestNotice, setAutoIngestNotice] = useState('');
-  const [ingestForm, setIngestForm] = useState({
-    stopAfterN: 50,
-    clean: false,
-    autoIngestEnabled: storedAutoIngest.enabled,
-  });
-  const autoIngestInFlight = useRef(false);
-  const ingestSocketRef = useRef(null);
-  const autoIngestNoticeTimerRef = useRef(null);
+  // The most recent `corpus` block seen on a list/insight response. Preferred
+  // over the websocket status for "is the corpus complete?" because it is the
+  // truth about the data actually on screen; the websocket is the fallback
+  // until a response has arrived.
+  const [responseCorpus, setResponseCorpus] = useState(null);
+  const librarySocketRef = useRef(null);
   const [activeView, setActiveView] = useState(() => initialMainRoute.view);
   const [mainGames, setMainGames] = useState([]);
   const [mainGamesLoading, setMainGamesLoading] = useState(false);
@@ -2143,27 +2085,19 @@ function App() {
   const [mainEventsLayoutEl, setMainEventsLayoutEl] = useState(null);
   const [mainEventsMapColPx, setMainEventsMapColPx] = useState(0);
   const openMainPlayerRef = useRef(null);
-  // "Latest-ref" pattern: stable effects (WebSocket handler, auto-ingest interval,
-  // ingest-poll tick) need to read the *current* games-list filter/page state and
-  // call the *current* refresh function. Their dependency arrays intentionally
-  // exclude these to avoid effect churn, so we mirror them into refs that are
-  // re-assigned on every render.
-  const refreshAfterIngestRef = useRef(null);
-  // Auto-ingest fires every 60s; when it actually adds replays we only
-  // want the game list to refresh — never the active game/player view,
-  // never the player histograms, never the player overview. Earlier
-  // wiring routed auto-ingest through refreshDataAfterGlobalReplayFilterSave
-  // which reloads everything; that was correct for filter-save (filter
-  // scope changed everywhere) but caused a full-UI blink every minute
-  // for auto-ingest. Split the two paths.
-  const refreshGamesAfterAutoIngestRef = useRef(null);
-  // The ingest WebSocket handler emits a 'completed' status for EVERY
-  // ingest run — manual button-press AND background auto-ingest tick.
-  // We want the broad refresh only on manual: the auto-ingest poller
-  // already does its own scoped refresh (game list only). This flag is
-  // set by handleIngestSubmit before calling api.startIngest, and the
-  // WebSocket 'completed' handler reads + clears it.
-  const manualIngestInFlight = useRef(false);
+  // "Latest-ref" pattern: the mount-once library websocket handler needs to
+  // read the *current* games-list filter/page state and call the *current*
+  // refresh functions. Its dependency array intentionally excludes these to
+  // avoid reconnect churn, so we mirror them into refs re-assigned on every
+  // render.
+  const refreshAfterLibraryLoadRef = useRef(null);
+  // Progress and corpus events only touch the lists that new replays affect
+  // (games, players, session); never the active game/player view or the
+  // histograms, which would blink on every event during the initial load.
+  const refreshGamesListRef = useRef(null);
+  const refreshPlayersListRef = useRef(null);
+  const loadGamingSessionRef = useRef(null);
+  const activeViewRef = useRef(null);
   const mainGamesFiltersRef = useRef(null);
   const mainGamesPageRef = useRef(null);
   const [mainPlayer, setMainPlayer] = useState(null);
@@ -2269,6 +2203,7 @@ function App() {
       if (data?.filter_options) {
         setMainGamesFilterOptions(data.filter_options);
       }
+      if (data?.corpus) setResponseCorpus(data.corpus);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -2299,6 +2234,7 @@ function App() {
       if (data?.filter_options) {
         setMainPlayersFilterOptions(data.filter_options);
       }
+      if (data?.corpus) setResponseCorpus(data.corpus);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -2312,6 +2248,7 @@ function App() {
       setMainPlayersApmHistogramError('');
       const data = await api.getPlayersApmHistogram();
       setMainPlayersApmHistogram(data);
+      if (data?.corpus) setResponseCorpus(data.corpus);
     } catch (err) {
       setMainPlayersApmHistogramError(err.message || 'Failed to load players histogram');
       setMainPlayersApmHistogram(null);
@@ -2326,6 +2263,7 @@ function App() {
       setMainPlayersCadenceHistogramError('');
       const data = await api.getPlayersUnitProductionCadence({ filter: 'strict', minGames: 4, limit: 0 });
       setMainPlayersCadenceHistogram(data);
+      if (data?.corpus) setResponseCorpus(data.corpus);
     } catch (err) {
       setMainPlayersCadenceHistogramError(err.message || 'Failed to load players unit production cadence');
       setMainPlayersCadenceHistogram(null);
@@ -2340,6 +2278,7 @@ function App() {
       setMainPlayersViewportHistogramError('');
       const data = await api.getPlayersViewportMultitasking();
       setMainPlayersViewportHistogram(data);
+      if (data?.corpus) setResponseCorpus(data.corpus);
     } catch (err) {
       setMainPlayersViewportHistogramError(err.message || 'Failed to load players viewport multitasking');
       setMainPlayersViewportHistogram(null);
@@ -2424,7 +2363,7 @@ function App() {
       setMainGameSeeNotice('');
       setMainGameSeeNoticeError(false);
       await api.seeGame(replayId);
-      setMainGameSeeNotice('Copied to 000_screpdb_watch_me/watch_me.rep in your ingest folder.');
+      setMainGameSeeNotice('Copied to 000_screpdb_watch_me/watch_me.rep in your replay folder.');
       mainGameSeeNoticeTimerRef.current = window.setTimeout(() => {
         setMainGameSeeNotice('');
         mainGameSeeNoticeTimerRef.current = null;
@@ -2598,76 +2537,68 @@ function App() {
       .finally(() => setMainPlayerLoading(false));
   };
 
-  const loadIngestSettings = async () => {
+  const loadLibrarySettings = async () => {
     try {
-      setIngestSettingsLoading(true);
-      const data = await api.getIngestSettings();
-      const nextInputDir = String(data?.input_dir || '');
-      setIngestInputDir(nextInputDir);
-      setSavedIngestInputDir(nextInputDir);
+      setLibrarySettingsLoading(true);
+      const data = await api.getLibrarySettings();
+      const nextReplayDir = String(data?.replay_dir || '');
+      setReplayDirInput(nextReplayDir);
+      setSavedReplayDir(nextReplayDir);
       setIsSampleSet(Boolean(data?.is_sample_set));
       setDetectedReplayDir(String(data?.detected_replay_dir || ''));
       if (data?.sample_auto_loaded) {
-        // The backend auto-loaded the sample set because it couldn't find the
-        // user's replay folder. Suppress the empty-DB auto-open of this modal
-        // and show a dismissable notice instead.
+        // The backend fell back to the example replays because it couldn't find
+        // the user's replay folder. Suppress the empty-library auto-open of the
+        // modal and show a dismissable notice instead.
         emptyDbAutoOpenRef.current = true;
-        // The deferred sample ingest completes shortly after; mark it so the
-        // 'completed' (or reconnect 'snapshot') WebSocket event refreshes the
-        // games list once it finishes.
-        manualIngestInFlight.current = true;
         setSampleNotice(
-          "Loaded some example replays because we couldn't find your StarCraft replay folder. Open Ingest to point screpdb at your own replays.",
+          "Loaded some example replays because we couldn't find your StarCraft replay folder. Open Replay library to point screpdb at your own replays.",
         );
       }
-      return nextInputDir;
+      return nextReplayDir;
     } catch (err) {
-      setIngestMessage(err.message || 'Failed to load ingest settings.');
+      setLibraryMessage(err.message || 'Failed to load replay library settings.');
       return '';
     } finally {
-      setIngestSettingsLoading(false);
+      setLibrarySettingsLoading(false);
     }
   };
 
-  const persistIngestInputDir = async (inputDir = ingestInputDir) => {
-    const trimmedInputDir = String(inputDir || '').trim();
-    if (!trimmedInputDir) {
+  const persistReplayDir = async (replayDir = replayDirInput) => {
+    const trimmed = String(replayDir || '').trim();
+    if (!trimmed) {
       throw new Error('Replay folder is required');
     }
 
-    setIngestSettingsSaving(true);
+    setLibrarySettingsSaving(true);
     try {
-      const data = await api.updateIngestSettings({ input_dir: trimmedInputDir });
-      const nextInputDir = String(data?.input_dir || trimmedInputDir);
-      setIngestInputDir(nextInputDir);
-      setSavedIngestInputDir(nextInputDir);
-      return nextInputDir;
+      const data = await api.updateLibrarySettings({ replay_dir: trimmed });
+      const nextReplayDir = String(data?.replay_dir || trimmed);
+      setReplayDirInput(nextReplayDir);
+      setSavedReplayDir(nextReplayDir);
+      setIsSampleSet(Boolean(data?.is_sample_set));
+      setDetectedReplayDir(String(data?.detected_replay_dir || ''));
+      return nextReplayDir;
     } finally {
-      setIngestSettingsSaving(false);
+      setLibrarySettingsSaving(false);
     }
   };
 
   const handleLoadSampleSet = async () => {
     const confirmed = window.confirm(
-      'Load example replays?\n\nThis erases your current screpdb data and replaces it with the example set. Your .rep files are not affected.',
+      'Switch to the example replays?\n\nThis changes your replay folder setting to the bundled example set. Your own replays stay where they are.',
     );
     if (!confirmed) {
       return;
     }
-    setIngestMessage('');
+    setLibraryMessage('');
     setSampleSetLoading(true);
-    // Treat this like a user-initiated ingest so the 'completed' WebSocket
-    // event refreshes the games list (otherwise the newly-loaded examples
-    // don't appear until a manual browser refresh).
-    manualIngestInFlight.current = true;
     try {
       await api.loadSampleSet();
-      // Refresh settings so is_sample_set flips true (hides the action) and the
-      // folder path updates to the extracted sample directory.
-      await loadIngestSettings();
+      await loadLibrarySettings();
+      setLibraryMessage('Switched to the example replays.');
     } catch (err) {
-      setIngestMessage(err.message || 'Failed to load sample set.');
-      manualIngestInFlight.current = false;
+      setLibraryMessage(err.message || 'Failed to load example replays.');
     } finally {
       setSampleSetLoading(false);
     }
@@ -2677,48 +2608,15 @@ function App() {
     if (!detectedReplayDir) {
       return;
     }
-    setIngestMessage('');
+    setLibraryMessage('');
     try {
-      setIngestInputDir(detectedReplayDir);
-      await persistIngestInputDir(detectedReplayDir);
-      // Refresh so is_sample_set flips false and "Ingest now" returns.
-      await loadIngestSettings();
+      setReplayDirInput(detectedReplayDir);
+      await persistReplayDir(detectedReplayDir);
+      await loadLibrarySettings();
+      setLibraryMessage('Replay folder saved.');
     } catch (err) {
-      setIngestMessage(err.message || 'Failed to switch to your replays folder.');
+      setLibraryMessage(err.message || 'Failed to switch to your replay folder.');
     }
-  };
-
-  const showAutoIngestNotice = (message) => {
-    if (autoIngestNoticeTimerRef.current) {
-      window.clearTimeout(autoIngestNoticeTimerRef.current);
-    }
-    setAutoIngestNotice(message);
-    autoIngestNoticeTimerRef.current = window.setTimeout(() => {
-      setAutoIngestNotice('');
-      autoIngestNoticeTimerRef.current = null;
-    }, 3500);
-  };
-
-  const pollForReplayCountIncrease = async (baselineCount, intervalSeconds) => {
-    const maxWaitMs = Math.max(5000, Math.floor(intervalSeconds * 1000 * 0.5));
-    const stepMs = 3000;
-    const attempts = Math.max(1, Math.floor(maxWaitMs / stepMs));
-
-    for (let attempt = 0; attempt < attempts; attempt += 1) {
-      await sleep(stepMs);
-      try {
-        const health = await api.getHealth();
-        const totalReplays = Number(health?.total_replays || 0);
-        if (totalReplays >= baselineCount + 1) {
-          setReplayCount(totalReplays);
-          return true;
-        }
-      } catch (err) {
-        console.error('Failed to poll replay count after auto-ingest:', err);
-      }
-    }
-
-    return false;
   };
 
   openMainGameRef.current = openMainGame;
@@ -2730,9 +2628,9 @@ function App() {
       console.error('Failed to load global replay filter config:', err);
     });
     loadScrepColors();
-    // Resolve ingest settings (incl. the one-shot sample-auto-loaded signal)
-    // before the health check so it can decide whether to auto-open this modal.
-    loadIngestSettings().finally(() => checkHealthStatus());
+    // Resolve library settings (incl. the one-shot sample-auto-loaded signal)
+    // before the health check so it can decide whether to auto-open the modal.
+    loadLibrarySettings().finally(() => checkHealthStatus());
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only.
   }, []);
 
@@ -2960,56 +2858,6 @@ function App() {
     api.quit().catch(() => {}).finally(() => setStopped(true));
   };
 
-  const refreshStaleReplaysCount = useCallback(async () => {
-    try {
-      const data = await api.getStaleReplaysCount();
-      const next = Number(data?.count || 0);
-      setStaleReplaysCount(next);
-    } catch (err) {
-      // Surface nothing to the user — banner just stays hidden if the lookup fails.
-      console.error('Failed to load stale replays count:', err);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refreshStaleReplaysCount();
-  }, [refreshStaleReplaysCount]);
-
-  useEffect(() => {
-    if (ingestStatus === 'completed' || ingestStatus === 'failed' || ingestStatus === 'idle') {
-      void refreshStaleReplaysCount();
-    }
-  }, [ingestStatus, refreshStaleReplaysCount]);
-
-  useEffect(() => {
-    if (ingestStatus !== 'running') return undefined;
-    let cancelled = false;
-    let lastCount = replayCount ?? 0;
-    const tick = async () => {
-      if (cancelled) return;
-      try {
-        const data = await api.getHealth();
-        const next = Number(data?.total_replays || 0);
-        if (next !== lastCount) {
-          lastCount = next;
-          setReplayCount(next);
-          if (activeView === 'games') {
-            // Read current filters/page via refs — closure-captured state would
-            // be stale (the effect doesn't re-run when filters change), and
-            // calling loadMainGames with stale filters silently reverts the
-            // visible list to "no filters" while the filter pills stay active.
-            await loadMainGames({ page: mainGamesPageRef.current, filters: mainGamesFiltersRef.current });
-          }
-        }
-      } catch (err) {
-        console.error('Failed to poll during ingest:', err);
-      }
-    };
-    const timer = window.setInterval(tick, 5000);
-    return () => { cancelled = true; window.clearInterval(timer); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally re-runs only on status/view change; latest filters/page are read via refs (mainGamesFiltersRef, mainGamesPageRef) inside the tick.
-  }, [ingestStatus, activeView]);
-
   useEffect(() => {
     if (suppressUrlSyncRef.current) return;
     const next = buildMainRouteSearch({
@@ -3197,88 +3045,91 @@ function App() {
   ]);
 
   useEffect(() => {
-    saveAutoIngestSettings({
-      enabled: ingestForm.autoIngestEnabled,
-    });
-  }, [ingestForm.autoIngestEnabled]);
-
-  useEffect(() => {
     let unmounted = false;
     let reconnectTimer = null;
     let reconnectAttempt = 0;
     let socket = null;
+    let lastStatus = '';
+    let connectedBefore = false;
+
+    // A tab left in the background gets its timers throttled and its socket
+    // closed, so it can miss every change while it sleeps. Whatever arrives
+    // after a gap is not enough: the page reloads what it is showing.
+    const refreshAfterGap = () => {
+      void refreshGamesListRef.current?.();
+      if (activeViewRef.current === 'players') void refreshPlayersListRef.current?.();
+      void loadGamingSessionRef.current?.();
+      void checkHealthStatus();
+    };
+
+    const applyStatus = (status) => {
+      const next = String(status || 'idle');
+      setLibraryStatus(next);
+      // A read (initial or after a folder change) just finished: everything on
+      // screen was computed from a partial corpus, so refresh broadly once. A
+      // first snapshot that is already `watching` is skipped because the mount
+      // effects are loading those views right now anyway.
+      if (next === 'watching' && lastStatus && lastStatus !== 'watching') {
+        void refreshAfterLibraryLoadRef.current?.();
+        void loadGamingSessionRef.current?.();
+      }
+      lastStatus = next;
+    };
 
     const connect = () => {
       if (unmounted) return;
-      setIngestSocketState('connecting');
-      socket = api.createIngestLogsSocket();
-      ingestSocketRef.current = socket;
+      if (reconnectTimer) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      socket = api.createLibraryEventsSocket();
+      librarySocketRef.current = socket;
 
       socket.onopen = () => {
         reconnectAttempt = 0;
-        setIngestSocketState('open');
+        if (connectedBefore) refreshAfterGap();
+        connectedBefore = true;
       };
 
       socket.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
           if (message.type === 'snapshot') {
-            setIngestStatus(message.status || 'idle');
-            setIngestLogs(hydrateIngestLogEntries(message.logs || []));
-            if (message.error) {
-              setIngestMessage(message.error);
-            } else if (message.status === 'completed' && manualIngestInFlight.current) {
-              // Sample/manual ingest finished before this socket connected; the
-              // 'status' event was missed, so refresh from the snapshot instead.
-              manualIngestInFlight.current = false;
-              void refreshAfterIngestRef.current?.();
-            }
+            if (message.progress) setLibraryProgress(message.progress);
+            if (message.error) setLibraryMessage(message.error);
+            applyStatus(message.status);
             return;
           }
 
-          if (message.type === 'log' && message.log) {
-            setIngestLogs((current) => mergeIngestLogEntries(current, message.log));
+          if (message.type === 'progress') {
+            if (message.progress) setLibraryProgress(message.progress);
+            if (message.status) setLibraryStatus(String(message.status));
             return;
           }
 
           if (message.type === 'status') {
-            setIngestStatus(message.status || 'idle');
-            if (message.error) {
-              setIngestMessage(message.error);
-              manualIngestInFlight.current = false;
-            } else if (message.status === 'running') {
-              setIngestMessage('');
-            } else if (message.status === 'completed') {
-              setIngestMessage('Ingestion completed.');
-              // Auto-ingest fires the same 'completed' status every 60s
-              // and was the source of the whole-UI blink. Only run the
-              // broad refresh when this run was user-initiated (button
-              // press); auto-ingest's own poller does a game-list-only
-              // refresh that's already wired separately. Call via ref
-              // so we always invoke the *current* render's refresh
-              // function — the WebSocket handler is mount-once (deps
-              // `[]`), so a direct call would close over the initial-
-              // render version and refresh with empty filters.
-              if (manualIngestInFlight.current) {
-                manualIngestInFlight.current = false;
-                void refreshAfterIngestRef.current?.();
-              }
-            }
+            if (message.error) setLibraryMessage(message.error);
+            applyStatus(message.status);
+            return;
+          }
+
+          if (message.type === 'corpus') {
+            void refreshGamesListRef.current?.();
+            if (activeViewRef.current === 'players') void refreshPlayersListRef.current?.();
+            void loadGamingSessionRef.current?.();
           }
         } catch (err) {
-          console.error('Failed to parse ingest stream message:', err);
+          console.error('Failed to parse library events message:', err);
         }
       };
 
       socket.onerror = () => {
-        setIngestSocketState('error');
       };
 
       socket.onclose = () => {
-        if (ingestSocketRef.current === socket) {
-          ingestSocketRef.current = null;
+        if (librarySocketRef.current === socket) {
+          librarySocketRef.current = null;
         }
-        setIngestSocketState('closed');
         if (unmounted) return;
         // Reconnect with backoff: 2s, 5s, 10s, then 30s thereafter.
         const delays = [2000, 5000, 10000, 30000];
@@ -3290,14 +3141,32 @@ function App() {
 
     connect();
 
+    // Waking up must not wait out a backoff that grew while the tab slept.
+    const onWake = () => {
+      if (unmounted || document.visibilityState !== 'visible') return;
+      const state = socket?.readyState;
+      if (state === WebSocket.OPEN) {
+        refreshAfterGap();
+        return;
+      }
+      if (state !== WebSocket.CONNECTING) {
+        reconnectAttempt = 0;
+        connect();
+      }
+    };
+    document.addEventListener('visibilitychange', onWake);
+    window.addEventListener('online', onWake);
+
     return () => {
       unmounted = true;
+      document.removeEventListener('visibilitychange', onWake);
+      window.removeEventListener('online', onWake);
       if (reconnectTimer) {
         window.clearTimeout(reconnectTimer);
         reconnectTimer = null;
       }
-      if (ingestSocketRef.current === socket) {
-        ingestSocketRef.current = null;
+      if (librarySocketRef.current === socket) {
+        librarySocketRef.current = null;
       }
       if (socket) {
         socket.close();
@@ -3307,104 +3176,12 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!showIngestPanel) return undefined;
-    setIngestMessage('');
-    void loadIngestSettings();
+    if (!showGlobalReplayFilter) return undefined;
+    setLibraryMessage('');
+    void loadLibrarySettings();
     return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only refresh settings + clear message when modal opens.
-  }, [showIngestPanel]);
-
-  useEffect(() => {
-    if (!showGlobalReplayFilter) {
-      return undefined;
-    }
-    void loadIngestSettings();
-    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only refresh settings + clear message when the modal opens.
   }, [showGlobalReplayFilter]);
-
-  // One ingest sweep. Shared by the background loop and the faster loop the
-  // session view runs, with autoIngestInFlight keeping the two from overlapping.
-  // onIncrease fires only when the sweep actually brought in a replay, so a
-  // no-op sweep never makes a screen blink.
-  const runAutoIngestSweep = useCallback(async (pollSeconds, onIncrease) => {
-    if (autoIngestInFlight.current || showIngestPanel) return;
-    autoIngestInFlight.current = true;
-    try {
-      const health = await api.getHealth();
-      const baselineCount = Number(health?.total_replays || 0);
-      const ingestResponse = await api.startIngest({
-        stop_after_n_reps: 1,
-        clean: false,
-        store_right_clicks: false,
-      });
-      if (!ingestResponse?.started) {
-        return;
-      }
-      const didIncrease = await pollForReplayCountIncrease(baselineCount, pollSeconds);
-      if (didIncrease) {
-        await onIncrease?.();
-        showAutoIngestNotice('auto-ingested new replays');
-      }
-    } catch (err) {
-      console.error('Auto-ingest failed:', err);
-    } finally {
-      autoIngestInFlight.current = false;
-    }
-  }, [showIngestPanel]);
-
-  useEffect(() => {
-    if (!ingestForm.autoIngestEnabled) {
-      return undefined;
-    }
-    const intervalSeconds = 60;
-    let cancelled = false;
-    const tick = () => {
-      if (cancelled) return;
-      // Game-list-only refresh: no other screen should ever blink in response
-      // to a background ingestion. Routed via a ref so the latest filter/page
-      // state is read at fire time rather than the value captured when
-      // auto-ingest was first enabled.
-      void runAutoIngestSweep(intervalSeconds, () => refreshGamesAfterAutoIngestRef.current?.());
-    };
-    const timer = window.setInterval(tick, intervalSeconds * 1000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [ingestForm.autoIngestEnabled, runAutoIngestSweep]);
-
-  // The session view is about the games you are playing right now, so a
-  // minute-old picture is already stale. While it is open it sweeps on its own
-  // faster cadence and does so whether or not background auto-ingest is on:
-  // being on this screen is itself the statement that you want it current.
-  // The sweep is local filesystem work, so the shorter interval costs no
-  // network and no Battle.net budget.
-  useEffect(() => {
-    if (activeView !== 'session' || !gamingSessionEnabled) {
-      return undefined;
-    }
-    const intervalSeconds = AUTO_INGEST_SESSION_INTERVAL_SECONDS;
-    let cancelled = false;
-    const tick = () => {
-      if (cancelled) return;
-      void runAutoIngestSweep(AUTO_INGEST_SESSION_POLL_SECONDS, async () => {
-        await refreshGamesAfterAutoIngestRef.current?.();
-        await loadGamingSession();
-      });
-    };
-    tick();
-    const timer = window.setInterval(tick, intervalSeconds * 1000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [activeView, gamingSessionEnabled, runAutoIngestSweep, loadGamingSession]);
-
-  useEffect(() => () => {
-    if (autoIngestNoticeTimerRef.current) {
-      window.clearTimeout(autoIngestNoticeTimerRef.current);
-    }
-  }, []);
 
   useEffect(() => () => {
     if (mainGameSeeNoticeTimerRef.current) {
@@ -3423,9 +3200,23 @@ function App() {
       if (data?.commit) {
         setCurrentCommit(String(data.commit));
       }
-      if (totalReplays === 0 && !emptyDbAutoOpenRef.current) {
+      const library = data?.library || null;
+      if (library?.status) {
+        setLibraryStatus(String(library.status));
+        setLibraryProgress((current) => current || {
+          generation: library.generation,
+          version: library.version,
+          phase: library.phase,
+          total: library.total,
+          loaded: library.loaded,
+          failed: library.failed,
+          skipped: library.skipped,
+          replay_dir: library.replay_dir,
+        });
+      }
+      if (totalReplays === 0 && !isLibraryLoading(library?.status) && !emptyDbAutoOpenRef.current) {
         emptyDbAutoOpenRef.current = true;
-        setShowIngestPanel(true);
+        setShowGlobalReplayFilter(true);
       }
       return data;
     } catch (err) {
@@ -3434,61 +3225,14 @@ function App() {
     }
   };
 
-  const handleIngestSubmit = async (e) => {
-    e.preventDefault();
-    setIngestMessage('');
+  const handleSaveReplayDir = async () => {
+    setLibraryMessage('');
     try {
-      let nextInputDir = String(ingestInputDir || '').trim();
-      if (!nextInputDir) {
-        throw new Error('Replay folder is required');
-      }
-      if (nextInputDir !== String(savedIngestInputDir || '').trim()) {
-        nextInputDir = await persistIngestInputDir(nextInputDir);
-      }
-
-      // Mark this as a user-initiated ingest: the WebSocket 'completed'
-      // handler should fire the broad refresh for THIS run only. Reset
-      // when the handler observes 'completed' (or 'error', via the
-      // status branch that doesn't refresh).
-      manualIngestInFlight.current = true;
-      const response = await api.startIngest({
-        input_dir: nextInputDir,
-        stop_after_n_reps: ingestForm.stopAfterN || 0,
-        clean: ingestForm.clean,
-        store_right_clicks: false,
-      });
-
-      if (response?.started) {
-        setIngestStatus('running');
-        setIngestLogs([]);
-        setIngestMessage('');
-        return;
-      }
-
-      if (response?.in_progress) {
-        setIngestStatus('running');
-        setIngestMessage('Ingestion is already in progress.');
-        return;
-      }
+      await persistReplayDir(replayDirInput);
+      await loadLibrarySettings();
+      setLibraryMessage('Replay folder saved.');
     } catch (err) {
-      setIngestMessage(err.message || 'Failed to start ingestion.');
-      // Clear the flag — no 'completed' WebSocket message will follow
-      // a failed startIngest, so without this the next ingest run
-      // (manual or auto) would inherit a stale "manual" verdict.
-      manualIngestInFlight.current = false;
-    }
-  };
-
-  const handleSaveIngestInputDir = async () => {
-    setIngestMessage('');
-    try {
-      await persistIngestInputDir(ingestInputDir);
-      // Refresh so is_sample_set flips false once a real folder is saved;
-      // otherwise stale isSampleSet keeps "Ingest now" hidden.
-      await loadIngestSettings();
-      setIngestMessage('Replay folder saved.');
-    } catch (err) {
-      setIngestMessage(err.message || 'Failed to save replay folder.');
+      setLibraryMessage(err.message || 'Failed to save replay folder.');
     }
   };
 
@@ -3526,14 +3270,26 @@ function App() {
     }
   };
 
-  // Lightweight game-list-only refresh used by the auto-ingest path.
-  // No active-view re-fetch, no histogram reloads — just the game list,
-  // which is the only screen that newly-ingested replays affect.
+  // Lightweight list-only refreshes used by the library events path. No
+  // active-view re-fetch, no histogram reloads: just the lists that newly
+  // loaded replays affect.
   const refreshGameListOnly = async () => {
     try {
       await loadMainGames({ page: mainGamesPage, filters: mainGamesFilters });
     } catch (err) {
-      console.error('Failed to refresh game list after auto-ingest:', err);
+      console.error('Failed to refresh game list after library update:', err);
+    }
+  };
+  const refreshPlayersListOnly = async () => {
+    try {
+      await loadMainPlayers({
+        page: mainPlayersPage,
+        filters: mainPlayersFilters,
+        sortBy: mainPlayersSortBy,
+        sortDir: mainPlayersSortDir,
+      });
+    } catch (err) {
+      console.error('Failed to refresh players list after library update:', err);
     }
   };
 
@@ -3541,10 +3297,28 @@ function App() {
   // (rather than in an effect) is the standard React pattern and is safe
   // because we only *read* these refs from event/timer callbacks, never
   // during the render itself.
-  refreshAfterIngestRef.current = refreshDataAfterGlobalReplayFilterSave;
-  refreshGamesAfterAutoIngestRef.current = refreshGameListOnly;
+  refreshAfterLibraryLoadRef.current = refreshDataAfterGlobalReplayFilterSave;
+  refreshGamesListRef.current = refreshGameListOnly;
+  refreshPlayersListRef.current = refreshPlayersListOnly;
+  loadGamingSessionRef.current = loadGamingSession;
+  activeViewRef.current = activeView;
   mainGamesFiltersRef.current = mainGamesFilters;
   mainGamesPageRef.current = mainGamesPage;
+
+  // Corpus completeness for partial-load states. The `corpus` block on the
+  // most recent response wins when it describes the same generation the
+  // websocket is reporting; otherwise (a folder change bumped the generation,
+  // or no response has arrived yet) the websocket status decides.
+  const libraryLoading = (() => {
+    const wsGeneration = Number(libraryProgress?.generation);
+    const responseGeneration = Number(responseCorpus?.generation);
+    const sameGeneration = !Number.isFinite(wsGeneration) || !Number.isFinite(responseGeneration) || responseGeneration >= wsGeneration;
+    if (responseCorpus && sameGeneration && typeof responseCorpus.complete === 'boolean') {
+      return !responseCorpus.complete;
+    }
+    return isLibraryLoading(libraryStatus);
+  })();
+  const libraryLoadingCopy = libraryLoading ? stillLoadingCopy() : '';
 
   const handleSaveGlobalReplayFilter = async (nextConfig) => {
     try {
@@ -5364,34 +5138,12 @@ function App() {
               className="workflow-nav-text-action"
             >
               ⚙️ Settings
-            </button>
-            {(() => {
-              const showStaleHint = staleReplaysCount > 0 && staleReplaysCount > dismissedStaleCount && ingestStatus !== 'running';
-              return (
-                <span className={`ingest-btn-wrap${showStaleHint ? ' ingest-btn-wrap--stale' : ''}`}>
-                  <button type="button" onClick={() => setShowIngestPanel(true)} className={`workflow-nav-text-action${showStaleHint ? ' workflow-nav-text-action--stale' : ''}`}>
-                    {showStaleHint ? '⚠️' : '📥'} Ingest
-                    {!showIngestPanel && ingestStatus === 'running' ? (
-                      <span className="ingest-running-badge tip-below" data-tip="Ingestion in progress. Click to view logs">Ingesting…</span>
-                    ) : null}
-                  </button>
-                  {showStaleHint ? (
-                    <span className="ingest-stale-tooltip" role="tooltip">
-                      Replay analysis just got smarter! Please re-ingest (tick &quot;Erase data&quot;).
-                      <span className="ingest-stale-tooltip-actions">
-                        <button
-                          type="button"
-                          className="ingest-stale-dismiss"
-                          onClick={(ev) => { ev.stopPropagation(); dismissStaleHint(); }}
-                        >
-                          Dismiss
-                        </button>
-                      </span>
-                    </span>
-                  ) : null}
+              {!showGlobalReplayFilter && isLibraryLoading(libraryStatus) ? (
+                <span className="ingest-running-badge tip-below" data-tip="Reading your replay folder">
+                  {formatLoadingShort()}
                 </span>
-              );
-            })()}
+              ) : null}
+            </button>
           </div>
           <div className="workflow-nav-group workflow-nav-group-right">
             <button
@@ -5448,6 +5200,7 @@ function App() {
               total={mainGamesTotal}
               onToggle={toggleMainGameMultiFilter}
               onClear={clearMainGamesFilters}
+              loading={libraryLoading}
             />
             {mainGamesLoading ? (
               <div className="loading">Loading games...</div>
@@ -5613,6 +5366,7 @@ function App() {
                   stateLabels={PLAYERS_OMNIBAR_STATE_LABELS}
                   stateOrder={PLAYERS_OMNIBAR_STATE_ORDER}
                   noun="players"
+                  loading={libraryLoading}
                   selected={{
                     lastPlayed: mainPlayersFilters.lastPlayed || [],
                     onlyFivePlus: mainPlayersFilters.onlyFivePlus ? ['5plus'] : [],
@@ -5730,7 +5484,7 @@ function App() {
                 {mainPlayersApmHistogramLoading ? <div className="chart-empty">Loading APM histogram...</div> : null}
                 {!mainPlayersApmHistogramLoading && mainPlayersApmHistogramError ? <div className="chart-empty">{mainPlayersApmHistogramError}</div> : null}
                 {!mainPlayersApmHistogramLoading && !mainPlayersApmHistogramError && mainPlayersApmProcessed.points.length === 0 ? (
-                  <div className="chart-empty">Not enough player data to render this histogram yet.</div>
+                  <div className="chart-empty">{libraryLoadingCopy || 'Not enough player data to render this histogram yet.'}</div>
                 ) : null}
                 {!mainPlayersApmHistogramLoading && !mainPlayersApmHistogramError && mainPlayersApmProcessed.points.length > 0 ? (
                   <div className="workflow-insight-chart workflow-insight-chart-tall">
@@ -5768,7 +5522,7 @@ function App() {
                 {mainPlayersCadenceHistogramLoading ? <div className="chart-empty">Loading unit production cadence...</div> : null}
                 {!mainPlayersCadenceHistogramLoading && mainPlayersCadenceHistogramError ? <div className="chart-empty">{mainPlayersCadenceHistogramError}</div> : null}
                 {!mainPlayersCadenceHistogramLoading && !mainPlayersCadenceHistogramError && mainPlayersCadenceProcessed.points.length === 0 ? (
-                  <div className="chart-empty">Not enough cadence data to render this distribution yet.</div>
+                  <div className="chart-empty">{libraryLoadingCopy || 'Not enough cadence data to render this distribution yet.'}</div>
                 ) : null}
                 {!mainPlayersCadenceHistogramLoading && !mainPlayersCadenceHistogramError && mainPlayersCadenceProcessed.points.length > 0 ? (
                   <div className="workflow-insight-chart workflow-insight-chart-tall">
@@ -5817,7 +5571,7 @@ function App() {
                 {mainPlayersViewportHistogramLoading ? <div className="chart-empty">Loading viewport multitasking...</div> : null}
                 {!mainPlayersViewportHistogramLoading && mainPlayersViewportHistogramError ? <div className="chart-empty">{mainPlayersViewportHistogramError}</div> : null}
                 {!mainPlayersViewportHistogramLoading && !mainPlayersViewportHistogramError && mainPlayersViewportProcessed.points.length === 0 ? (
-                  <div className="chart-empty">Not enough viewport multitasking data to render this distribution yet.</div>
+                  <div className="chart-empty">{libraryLoadingCopy || 'Not enough viewport multitasking data to render this distribution yet.'}</div>
                 ) : null}
                 {!mainPlayersViewportHistogramLoading && !mainPlayersViewportHistogramError && mainPlayersViewportProcessed.points.length > 0 ? (
                   <div className="workflow-insight-chart workflow-insight-chart-tall">
@@ -5902,7 +5656,7 @@ function App() {
                     type="button"
                     className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
                     disabled={mainGameSeeLoading}
-                    data-tip="Clones this replay into your configured replay ingestion folder as 000_screpdb_watch_me/watch_me.rep so you can easily find it within Starcraft."
+                    data-tip="Clones this replay into your replay folder as 000_screpdb_watch_me/watch_me.rep so you can easily find it within Starcraft."
                     onClick={copyMainGameToWatchMe}
                   >
                     {mainGameSeeLoading ? 'Copying…' : 'Stage watch replay'}
@@ -7528,7 +7282,7 @@ function App() {
                                 ) : (
                                   <>
                                     <div className="workflow-insight-unavailable">Not enough data yet</div>
-                                    <div className="workflow-subtle-note">{insight.ineligible_reason || 'This comparison is not available yet.'}</div>
+                                    <div className="workflow-subtle-note">{libraryLoadingCopy || insight.ineligible_reason || 'This comparison is not available yet.'}</div>
                                   </>
                                 )}
                                 {description ? (
@@ -7558,7 +7312,7 @@ function App() {
                       {mainPlayerHotkeySigLoading ? <div className="chart-empty">Loading hotkey signature...</div> : null}
                       {!mainPlayerHotkeySigLoading && mainPlayerHotkeySigError ? <div className="chart-empty">{mainPlayerHotkeySigError}</div> : null}
                       {!mainPlayerHotkeySigLoading && !mainPlayerHotkeySigError && mainPlayerHotkeySig ? (
-                        <HotkeySignature payload={mainPlayerHotkeySig} />
+                        <HotkeySignature payload={mainPlayerHotkeySig} loadingNotice={libraryLoadingCopy} />
                       ) : null}
                     </div>
                   )}
@@ -7569,7 +7323,7 @@ function App() {
                       {mainPlayerChatSummaryLoading ? <div className="chart-empty">Loading chat summary...</div> : null}
                       {!mainPlayerChatSummaryLoading && mainPlayerChatSummaryError ? <div className="chart-empty">{mainPlayerChatSummaryError}</div> : null}
                       {!mainPlayerChatSummaryLoading && !mainPlayerChatSummaryError && (Number(mainPlayerChatSummary?.total_messages) || 0) === 0 ? (
-                        <div className="chart-empty">No chat messages found for this player in ingested games.</div>
+                        <div className="chart-empty">{libraryLoadingCopy || 'No chat messages found for this player in your replays.'}</div>
                       ) : (
                         !mainPlayerChatSummaryLoading && !mainPlayerChatSummaryError && mainPlayerChatSummary ? (
                           <>
@@ -7623,33 +7377,19 @@ function App() {
           featureFlagsMessage={featureFlagsMessage}
           featureFlagsMessageIsError={featureFlagsMessageIsError}
           onFeatureFlagToggle={handleFeatureFlagToggle}
-        />
-      )}
-
-      {showIngestPanel && (
-        <IngestModal
-          ingestForm={ingestForm}
-          ingestMessage={ingestMessage}
-          ingestStatus={ingestStatus}
-          ingestLogs={ingestLogs}
-          ingestInputDir={ingestInputDir}
-          ingestInputDirDirty={String(ingestInputDir || '').trim() !== String(savedIngestInputDir || '').trim()}
-          ingestSettingsLoading={ingestSettingsLoading}
-          ingestSettingsSaving={ingestSettingsSaving}
-          ingestSocketState={ingestSocketState}
+          libraryMessage={libraryMessage}
+          replayDirInput={replayDirInput}
+          savedReplayDir={savedReplayDir}
+          librarySettingsLoading={librarySettingsLoading}
+          librarySettingsSaving={librarySettingsSaving}
           isSampleSet={isSampleSet}
           detectedReplayDir={detectedReplayDir}
           sampleSetLoading={sampleSetLoading}
-          onClose={() => {
-            setShowIngestPanel(false);
-          }}
-          onSubmit={handleIngestSubmit}
-          onChange={setIngestForm}
-          onInputDirChange={setIngestInputDir}
-          onSaveInputDir={handleSaveIngestInputDir}
+          onReplayDirChange={setReplayDirInput}
+          onSaveReplayDir={handleSaveReplayDir}
           onLoadSampleSet={handleLoadSampleSet}
           onUseDetectedFolder={handleUseDetectedFolder}
-          onDismissMessage={() => setIngestMessage('')}
+          onDismissMessage={() => setLibraryMessage('')}
         />
       )}
 
@@ -7667,15 +7407,11 @@ function App() {
         </div>
       ) : null}
 
-      {autoIngestNotice ? (
-        <div className="ingest-toast">{autoIngestNotice}</div>
-      ) : null}
-
       <div className="app-footer">
         <div className="footer-left">
           {replayCount !== null ? (
             <>
-              {replayCount.toLocaleString()} replays in database
+              {replayCount.toLocaleString()} replays in library
               <span className="workflow-meta-sep" aria-hidden="true"> · </span>
               <a href="https://github.com/marianogappa/screpdb" target="_blank" rel="noopener noreferrer">screpdb</a>
               {' by '}

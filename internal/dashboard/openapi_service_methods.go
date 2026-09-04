@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/marianogappa/screpdb/internal/propack"
@@ -14,12 +13,10 @@ import (
 	"github.com/marianogappa/screpdb/internal/appdata"
 	"github.com/marianogappa/screpdb/internal/buildinfo"
 	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
 	"github.com/marianogappa/screpdb/internal/fileops"
-	"github.com/marianogappa/screpdb/internal/ingest"
 	"github.com/marianogappa/screpdb/internal/iofacade"
-	"github.com/marianogappa/screpdb/internal/patterns/core"
-	"github.com/marianogappa/screpdb/internal/storage"
 	"github.com/marianogappa/screpdb/internal/winsandbox"
 )
 
@@ -50,127 +47,27 @@ func (d *Dashboard) UpdateGlobalReplayFilterConfig(ctx context.Context, request 
 	for _, mapKind := range body.MapKinds {
 		config.MapKinds = append(config.MapKinds, string(mapKind))
 	}
-	config.CompiledReplaysFilterSQL = body.CompiledReplaysFilterSql
 	updated, err := d.updateGlobalReplayFilterConfig(ctx, config)
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
 	}
-	if err := d.refreshReplayScopedDB(); err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
+	d.invalidateFingerprintCache()
 	return updated, nil
 }
 
-func (d *Dashboard) Ingest(ctx context.Context, request apigen.IngestRequestObject) (any, error) {
-	body := apigen.IngestRequest{}
-	if request.Body != nil {
-		body = *request.Body
-	}
-	inputDir := strings.TrimSpace(nullableStringValue(body.InputDir))
-	if inputDir != "" {
-		if err := d.setIngestInputDir(ctx, inputDir); err != nil {
-			return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
-		}
-	} else {
-		var err error
-		inputDir, err = d.getIngestInputDir(ctx)
-		if err != nil {
-			return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-		}
-		if inputDir == "" {
-			return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("replay folder is not configured"))
-		}
-	}
-	cfg := ingest.Config{
-		InputDir:         inputDir,
-		SQLitePath:       strings.TrimSpace(nullableStringValue(body.SqlitePath)),
-		StoreRightClicks: nullableBoolValue(body.StoreRightClicks),
-		StopAfterN:       nullableIntValue(body.StopAfterNReps),
-		UpToDate:         strings.TrimSpace(nullableStringValue(body.UpToYyyyMmDd)),
-		UpToMonths:       nullableIntValue(body.UpToNMonths),
-		Clean:            nullableBoolValue(body.Clean),
-		CleanDashboard:   nullableBoolValue(body.CleanDashboard),
-		UseColor:         false,
-		Logger:           d.newIngestLogger(),
-	}
-	if cfg.SQLitePath == "" {
-		cfg.SQLitePath = d.sqlitePath
-	}
-	if !d.startIngestAsync(cfg) {
-		return map[string]any{
-			"ok":          true,
-			"started":     false,
-			"in_progress": true,
-			"input_dir":   inputDir,
-			"sqlitePath":  cfg.SQLitePath,
-		}, nil
-	}
-	return map[string]any{
-		"ok":         true,
-		"started":    true,
-		"input_dir":  cfg.InputDir,
-		"sqlitePath": cfg.SQLitePath,
-	}, nil
+func (d *Dashboard) GetLibrarySettings(ctx context.Context, _ apigen.GetLibrarySettingsRequestObject) (any, error) {
+	return d.librarySettings(ctx), nil
 }
 
-func (d *Dashboard) IngestLogs(_ context.Context, _ apigen.IngestLogsRequestObject) (any, error) {
-	return map[string]any{"upgraded": true}, nil
-}
-
-// GetStaleReplaysCount reports how many replays were analyzed under an algorithm version
-// older than core.AlgorithmVersion. Used by the dashboard to decide whether to surface
-// the bulk re-analyze banner.
-func (d *Dashboard) GetStaleReplaysCount(ctx context.Context, _ apigen.GetStaleReplaysCountRequestObject) (any, error) {
-	store, err := storage.NewSQLiteStorage(d.sqlitePath)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
+func (d *Dashboard) UpdateLibrarySettings(ctx context.Context, request apigen.UpdateLibrarySettingsRequestObject) (any, error) {
+	var replayDir string
+	if request.Body != nil && request.Body.ReplayDir != nil {
+		replayDir = *request.Body.ReplayDir
 	}
-	defer store.Close()
-
-	count, err := store.CountStaleReplays(ctx, core.AlgorithmVersion)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
+	if err := d.setReplayDir(ctx, replayDir); err != nil {
+		return nil, err
 	}
-	return map[string]any{
-		"count":           count,
-		"current_version": core.AlgorithmVersion,
-	}, nil
-}
-
-func (d *Dashboard) GetIngestSettings(ctx context.Context, _ apigen.GetIngestSettingsRequestObject) (any, error) {
-	inputDir, err := d.getIngestInputDir(ctx)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	isSample, err := d.isSampleSetActive(ctx)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	// sample_auto_loaded is a one-shot signal: the frontend reads it once to
-	// show the dismissable notice (and suppress the empty-DB auto-open).
-	autoLoaded := d.sampleSetAutoLoaded
-	d.sampleSetAutoLoaded = false
-	// The detected OS replay folder, so the UI can offer "switch back to your
-	// replays" while the sample set is active (users don't know the path — we
-	// found it for them).
-	detected, _ := fileops.ResolveDefaultReplayDir()
-	return ingestSettingsResponse{
-		InputDir:          inputDir,
-		IsSampleSet:       isSample,
-		SampleAutoLoaded:  autoLoaded,
-		DetectedReplayDir: detected,
-	}, nil
-}
-
-func (d *Dashboard) UpdateIngestSettings(ctx context.Context, request apigen.UpdateIngestSettingsRequestObject) (any, error) {
-	var inputDir string
-	if request.Body != nil && request.Body.InputDir != nil {
-		inputDir = *request.Body.InputDir
-	}
-	if err := d.setIngestInputDir(ctx, inputDir); err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
-	}
-	return ingestSettingsResponse{InputDir: strings.TrimSpace(inputDir)}, nil
+	return d.librarySettings(ctx), nil
 }
 
 func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListRequestObject) (any, error) {
@@ -203,12 +100,12 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 	if request.Params.MapKind != nil {
 		filters.MapKindKeys = parseCSVQueryValues(*request.Params.MapKind, true)
 	}
-	whereSQL, whereArgs := buildWorkflowGamesListWhere(filters)
-	total, err := d.dbStore.CountGamesWithWhere(ctx, whereSQL, whereArgs)
+	query := buildGamesQuery(filters)
+	total, err := d.dbStore.CountGames(ctx, query)
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
-	listRows, err := d.dbStore.ListGamesWithWhere(ctx, whereSQL, whereArgs, limit, offset)
+	listRows, err := d.dbStore.ListGames(ctx, query, limit, offset)
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
@@ -247,6 +144,7 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 		"limit":           limit,
 		"offset":          offset,
 		"total":           total,
+		"corpus":          d.corpusStamp(),
 		"filter_options":  filterOptions,
 	}, nil
 }
@@ -254,7 +152,7 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 func (d *Dashboard) GameDetail(_ context.Context, request apigen.GameDetailRequestObject) (any, error) {
 	detail, err := d.buildWorkflowGameDetail(request.ReplayID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 		}
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
@@ -273,10 +171,7 @@ func (d *Dashboard) GameSee(ctx context.Context, request apigen.GameSeeRequestOb
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 	}
-	ingestDirPath, err := d.getIngestInputDir(ctx)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
+	ingestDirPath := d.library.Folder()
 	if ingestDirPath == "" {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, errors.New("Replay ingestion directory is not set; cannot move replay file"))
 	}
@@ -320,12 +215,25 @@ func (d *Dashboard) Healthcheck(ctx context.Context, _ apigen.HealthcheckRequest
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
+	progress := d.libraryHub.Progress()
 	return map[string]any{
 		"app":           "screpdb",
 		"ok":            true,
 		"total_replays": totalReplays,
 		"version":       buildinfo.Version,
 		"commit":        buildinfo.Commit,
+		"library": map[string]any{
+			"status":     statusForPhase(progress.Phase),
+			"phase":      string(progress.Phase),
+			"generation": progress.Generation,
+			"version":    progress.Version,
+			"loaded":     progress.Loaded,
+			"total":      progress.Total,
+			"failed":     progress.Failed,
+			"skipped":    progress.Skipped,
+			"replay_dir": progress.Folder,
+			"complete":   progress.Complete(),
+		},
 	}, nil
 }
 
@@ -415,6 +323,7 @@ func (d *Dashboard) PlayersList(_ context.Context, request apigen.PlayersListReq
 		"limit":            limit,
 		"offset":           offset,
 		"total":            total,
+		"corpus":           d.corpusStamp(),
 		"filter_options":   filterOptions,
 	}, nil
 }
@@ -475,7 +384,7 @@ func (d *Dashboard) PlayerDetail(_ context.Context, request apigen.PlayerDetailR
 	}
 	player, err := build(playerKey)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 		}
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
@@ -493,7 +402,7 @@ func (d *Dashboard) PlayerChatSummary(_ context.Context, request apigen.PlayerCh
 	}
 	chatSummary, err := d.buildPlayerChatSummary(playerKey)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 		}
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
@@ -514,7 +423,7 @@ func (d *Dashboard) PlayerInsight(_ context.Context, request apigen.PlayerInsigh
 	if _, isPro := propack.IDFromKey(playerKey); isPro {
 		pro := d.featuredPro(playerKey)
 		if pro == nil {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, sql.ErrNoRows)
+			return nil, dashboardservice.WithStatus(http.StatusNotFound, dashboarddb.ErrNotFound)
 		}
 		result, err := d.featuredAsyncInsight(pro, insightType)
 		if err != nil {
@@ -530,7 +439,7 @@ func (d *Dashboard) PlayerInsight(_ context.Context, request apigen.PlayerInsigh
 		if errors.Is(err, errUnsupportedWorkflowPlayerInsightType) {
 			return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
 		}
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 		}
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
@@ -567,7 +476,7 @@ func (d *Dashboard) PlayerUnitCadence(_ context.Context, request apigen.PlayerUn
 	}
 	result, err := d.buildWorkflowPlayerUnitCadenceInsight(playerKey, filterMode)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 		}
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
@@ -585,7 +494,7 @@ func (d *Dashboard) PlayerLastGames(_ context.Context, request apigen.PlayerLast
 	}
 	games, err := d.buildWorkflowPlayerLastGames(playerKey)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 		}
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)

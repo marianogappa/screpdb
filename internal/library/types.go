@@ -248,6 +248,14 @@ func (r *Replay) OneOnOne() bool {
 }
 
 // HasNonObserverComputer mirrors the global filter's "exclude computers" test.
+// FingerprintEligible reports whether this game is inside the fingerprinting
+// model's domain. The model is calibrated on two-human games on regular maps;
+// money maps and bigger lobbies produce confident nonsense, so the player page
+// never matches on them and compaction does not keep their vectors.
+func (r *Replay) FingerprintEligible() bool {
+	return r.MapKind != MapKindMoney && r.Flags.Has(FlagIsOneOnOne)
+}
+
 func (r *Replay) HasNonObserverComputer() bool {
 	for i := range r.Players {
 		if !r.Players[i].IsObserver() && r.Players[i].Type.IsComputer() {

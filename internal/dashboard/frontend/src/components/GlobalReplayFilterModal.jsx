@@ -77,9 +77,29 @@ function GlobalReplayFilterModal({
   featureFlagsMessage,
   featureFlagsMessageIsError,
   onFeatureFlagToggle,
+  libraryMessage,
+  replayDirInput,
+  savedReplayDir,
+  librarySettingsLoading,
+  librarySettingsSaving,
+  isSampleSet,
+  detectedReplayDir,
+  sampleSetLoading,
+  onReplayDirChange,
+  onSaveReplayDir,
+  onLoadSampleSet,
+  onUseDetectedFolder,
+  onDismissMessage,
 }) {
   const [formState, setFormState] = useState(DEFAULT_CONFIG);
-  const [settingsTab, setSettingsTab] = useState('scope');
+  const [settingsTab, setSettingsTab] = useState('folder');
+
+  const folderBusy = librarySettingsLoading || librarySettingsSaving || sampleSetLoading;
+  const replayDirDirty = String(replayDirInput || '').trim() !== String(savedReplayDir || '').trim();
+  const detectedIsCurrent = Boolean(detectedReplayDir) && String(detectedReplayDir).trim() === String(savedReplayDir || '').trim();
+  // Colour by the message itself, not the library status: an error can arrive
+  // while the folder is still happily loading, and it must still show red.
+  const libraryMessageIsSuccess = libraryMessage === 'Replay folder saved.' || libraryMessage === 'Switched to the example replays.';
 
   useEffect(() => {
     setFormState(normalizeConfig(config || DEFAULT_CONFIG));
@@ -115,6 +135,15 @@ function GlobalReplayFilterModal({
             <button
               type="button"
               role="tab"
+              aria-selected={settingsTab === 'folder'}
+              className={`workflow-production-tab${settingsTab === 'folder' ? ' workflow-production-tab-active' : ''}`}
+              onClick={() => setSettingsTab('folder')}
+            >
+              Replay Folder
+            </button>
+            <button
+              type="button"
+              role="tab"
               aria-selected={settingsTab === 'scope'}
               className={`workflow-production-tab${settingsTab === 'scope' ? ' workflow-production-tab-active' : ''}`}
               onClick={() => setSettingsTab('scope')}
@@ -132,7 +161,105 @@ function GlobalReplayFilterModal({
             </button>
           </div>
         </div>
-        {settingsTab === 'scope' ? (
+        {settingsTab === 'folder' ? (
+          <div className="edit-form ingest-form ingest-form-plain settings-modal-tab-panel">
+            {libraryMessage ? (
+              <div
+                className={`ingest-header-message ${libraryMessageIsSuccess ? 'is-success' : 'is-error'}`}
+                role="status"
+              >
+                <span className="ingest-header-message-text" title={libraryMessage}>{libraryMessage}</span>
+                <button
+                  type="button"
+                  className="ingest-message-dismiss"
+                  aria-label="Dismiss"
+                  onClick={onDismissMessage}
+                >
+                  ×
+                </button>
+              </div>
+            ) : null}
+
+            <div className="ingest-plain-block">
+              <div className="ingest-title">Replay folder path</div>
+              <div className="ingest-field ingest-path-field">
+                <div className="ingest-path-row">
+                  <input
+                    type="text"
+                    value={replayDirInput}
+                    placeholder={librarySettingsLoading ? 'Loading replay folder...' : '/path/to/replays'}
+                    disabled={folderBusy}
+                    onChange={(e) => onReplayDirChange(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="btn-save"
+                    disabled={folderBusy || !replayDirDirty}
+                    onClick={onSaveReplayDir}
+                  >
+                    {librarySettingsSaving ? 'Saving...' : 'Save Folder'}
+                  </button>
+                </div>
+                <span className="ingest-helper-text">
+                  Folder must contain at least one `.rep` file (subfolders included).
+                </span>
+              </div>
+            </div>
+
+            <div className="ingest-section-row">
+              <div className="ingest-plain-block ingest-col">
+                <div className="ingest-title">Your replays</div>
+                {detectedReplayDir && !detectedIsCurrent ? (
+                  <>
+                    <span className="ingest-helper-text">Switch to the StarCraft replay folder we found on this computer:</span>
+                    <button
+                      type="button"
+                      className="btn-save ingest-start"
+                      disabled={folderBusy}
+                      onClick={onUseDetectedFolder}
+                    >
+                      Use my replay folder
+                    </button>
+                    <span className="ingest-helper-text" title={detectedReplayDir}>{detectedReplayDir}</span>
+                  </>
+                ) : detectedIsCurrent ? (
+                  <span className="ingest-helper-text">You are on the StarCraft replay folder we found on this computer.</span>
+                ) : (
+                  <span className="ingest-helper-text">Set your replay folder above to analyze your own games.</span>
+                )}
+              </div>
+
+              <div className="ingest-plain-block ingest-col">
+                <div className="ingest-title">Example replays</div>
+                {!isSampleSet ? (
+                  <div className="ingest-sample-col">
+                    <button
+                      type="button"
+                      className="btn-save ingest-load-sample"
+                      disabled={folderBusy}
+                      onClick={onLoadSampleSet}
+                    >
+                      {sampleSetLoading ? 'Switching to example replays...' : 'Load example replays'}
+                    </button>
+                    <span className="ingest-helper-text">A few example games to try every feature. Switches the replay folder to the bundled examples; your own .rep files are not touched.</span>
+                  </div>
+                ) : (
+                  <div className="ingest-sample-col">
+                    <span className="ingest-helper-text ingest-sample-active">You are using the built-in example replays.</span>
+                    <button
+                      type="button"
+                      className="btn-save ingest-load-sample"
+                      disabled={folderBusy}
+                      onClick={onLoadSampleSet}
+                    >
+                      {sampleSetLoading ? 'Switching to example replays...' : 'Reload example replays'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : settingsTab === 'scope' ? (
           <form onSubmit={handleSubmit} className="edit-form settings-modal-tab-panel">
             {error ? <div className="error-message">{error}</div> : null}
 

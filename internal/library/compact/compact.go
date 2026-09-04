@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -123,7 +124,39 @@ func FromReplayData(data *models.ReplayData, file FileMeta) (*library.Replay, er
 	if r.OneOnOne() {
 		r.Flags |= library.FlagIsOneOnOne
 	}
+	trimPlayerBuffers(r)
 	return r, nil
+}
+
+// trimPlayerBuffers gives back what the encoders over-allocated and drops the
+// fingerprint vectors of games no fingerprint is ever computed for. Both
+// buffers arrive grown by append, which on a hotkey stream is most of its
+// size, and the corpus holds every replay for the life of the process, so a
+// copy into a right-sized array pays for itself immediately. Clipping would
+// not: it lowers the capacity but keeps the same oversized allocation.
+func trimPlayerBuffers(r *library.Replay) {
+	keepVectors := r.FingerprintEligible()
+	for i := range r.Players {
+		p := &r.Players[i]
+		p.HotkeyStream = shrink(p.HotkeyStream)
+		if p.Fingerprint == nil {
+			continue
+		}
+		if !keepVectors {
+			p.Fingerprint.Vector = nil
+			continue
+		}
+		p.Fingerprint.Vector = shrink(p.Fingerprint.Vector)
+	}
+}
+
+// shrink copies s into an exactly sized array when append left a wasteful tail
+// behind, and leaves it alone when the waste is not worth a copy.
+func shrink[T any](s []T) []T {
+	if len(s) == 0 || cap(s) <= len(s)+len(s)/16 {
+		return s
+	}
+	return slices.Clone(s)
 }
 
 // ordinals maps replay-local player identities to indexes in Replay.Players.

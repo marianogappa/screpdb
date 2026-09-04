@@ -149,24 +149,11 @@ type GenericValue4 = int
 // GenericValue5 defines model for .
 type GenericValue5 = bool
 
-// IngestRequest defines model for IngestRequest.
-type IngestRequest struct {
-	Clean            *bool   `json:"clean,omitempty"`
-	CleanDashboard   *bool   `json:"clean_dashboard,omitempty"`
-	InputDir         *string `json:"input_dir,omitempty"`
-	SqlitePath       *string `json:"sqlite_path,omitempty"`
-	StopAfterNReps   *int    `json:"stop_after_n_reps,omitempty"`
-	StoreRightClicks *bool   `json:"store_right_clicks,omitempty"`
-	UpToNMonths      *int    `json:"up_to_n_months,omitempty"`
-	UpToYyyyMmDd     *string `json:"up_to_yyyy_mm_dd,omitempty"`
-}
-
 // UpdateGlobalReplayFilterConfigRequest defines model for UpdateGlobalReplayFilterConfigRequest.
 type UpdateGlobalReplayFilterConfigRequest struct {
-	CompiledReplaysFilterSql *string                                          `json:"compiled_replays_filter_sql,omitempty"`
-	ExcludeComputers         bool                                             `json:"exclude_computers"`
-	ExcludeShortGames        bool                                             `json:"exclude_short_games"`
-	GameTypes                []UpdateGlobalReplayFilterConfigRequestGameTypes `json:"game_types"`
+	ExcludeComputers  bool                                             `json:"exclude_computers"`
+	ExcludeShortGames bool                                             `json:"exclude_short_games"`
+	GameTypes         []UpdateGlobalReplayFilterConfigRequestGameTypes `json:"game_types"`
 
 	// MapKinds Map types to include. UMS replays are always excluded globally
 	// (auto-discarded at ingest), so 'ums' is not a valid value here.
@@ -179,9 +166,9 @@ type UpdateGlobalReplayFilterConfigRequestGameTypes string
 // UpdateGlobalReplayFilterConfigRequestMapKinds defines model for UpdateGlobalReplayFilterConfigRequest.MapKinds.
 type UpdateGlobalReplayFilterConfigRequestMapKinds string
 
-// UpdateIngestSettingsRequest defines model for UpdateIngestSettingsRequest.
-type UpdateIngestSettingsRequest struct {
-	InputDir *string `json:"input_dir,omitempty"`
+// UpdateLibrarySettingsRequest defines model for UpdateLibrarySettingsRequest.
+type UpdateLibrarySettingsRequest struct {
+	ReplayDir *string `json:"replay_dir,omitempty"`
 }
 
 // PlayerKey defines model for playerKey.
@@ -239,11 +226,8 @@ type PlayerUnitCadenceParams struct {
 // UpdateGlobalReplayFilterConfigJSONRequestBody defines body for UpdateGlobalReplayFilterConfig for application/json ContentType.
 type UpdateGlobalReplayFilterConfigJSONRequestBody = UpdateGlobalReplayFilterConfigRequest
 
-// IngestJSONRequestBody defines body for Ingest for application/json ContentType.
-type IngestJSONRequestBody = IngestRequest
-
-// UpdateIngestSettingsJSONRequestBody defines body for UpdateIngestSettings for application/json ContentType.
-type UpdateIngestSettingsJSONRequestBody = UpdateIngestSettingsRequest
+// UpdateLibrarySettingsJSONRequestBody defines body for UpdateLibrarySettings for application/json ContentType.
+type UpdateLibrarySettingsJSONRequestBody = UpdateLibrarySettingsRequest
 
 // AsGenericObject returns the union data inside the GenericValue as a GenericObject
 func (t GenericValue) AsGenericObject() (GenericObject, error) {
@@ -560,20 +544,11 @@ type ServerInterface interface {
 	// (PUT /api/custom/global-replay-filter)
 	UpdateGlobalReplayFilterConfig(w http.ResponseWriter, r *http.Request)
 
-	// (POST /api/custom/ingest)
-	Ingest(w http.ResponseWriter, r *http.Request)
+	// (GET /api/custom/library/settings)
+	GetLibrarySettings(w http.ResponseWriter, r *http.Request)
 
-	// (GET /api/custom/ingest/logs)
-	IngestLogs(w http.ResponseWriter, r *http.Request)
-
-	// (GET /api/custom/ingest/settings)
-	GetIngestSettings(w http.ResponseWriter, r *http.Request)
-
-	// (PUT /api/custom/ingest/settings)
-	UpdateIngestSettings(w http.ResponseWriter, r *http.Request)
-
-	// (GET /api/custom/replays/stale-count)
-	GetStaleReplaysCount(w http.ResponseWriter, r *http.Request)
+	// (PUT /api/custom/library/settings)
+	UpdateLibrarySettings(w http.ResponseWriter, r *http.Request)
 
 	// (GET /api/games)
 	GamesList(w http.ResponseWriter, r *http.Request, params GamesListParams)
@@ -667,11 +642,11 @@ func (siw *ServerInterfaceWrapper) UpdateGlobalReplayFilterConfig(w http.Respons
 	handler.ServeHTTP(w, r)
 }
 
-// Ingest operation middleware
-func (siw *ServerInterfaceWrapper) Ingest(w http.ResponseWriter, r *http.Request) {
+// GetLibrarySettings operation middleware
+func (siw *ServerInterfaceWrapper) GetLibrarySettings(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.Ingest(w, r)
+		siw.Handler.GetLibrarySettings(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -681,53 +656,11 @@ func (siw *ServerInterfaceWrapper) Ingest(w http.ResponseWriter, r *http.Request
 	handler.ServeHTTP(w, r)
 }
 
-// IngestLogs operation middleware
-func (siw *ServerInterfaceWrapper) IngestLogs(w http.ResponseWriter, r *http.Request) {
+// UpdateLibrarySettings operation middleware
+func (siw *ServerInterfaceWrapper) UpdateLibrarySettings(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.IngestLogs(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetIngestSettings operation middleware
-func (siw *ServerInterfaceWrapper) GetIngestSettings(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetIngestSettings(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// UpdateIngestSettings operation middleware
-func (siw *ServerInterfaceWrapper) UpdateIngestSettings(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateIngestSettings(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetStaleReplaysCount operation middleware
-func (siw *ServerInterfaceWrapper) GetStaleReplaysCount(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetStaleReplaysCount(w, r)
+		siw.Handler.UpdateLibrarySettings(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1510,15 +1443,9 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/api/custom/global-replay-filter", wrapper.UpdateGlobalReplayFilterConfig).Methods(http.MethodPut)
 
-	r.HandleFunc(options.BaseURL+"/api/custom/ingest", wrapper.Ingest).Methods(http.MethodPost)
+	r.HandleFunc(options.BaseURL+"/api/custom/library/settings", wrapper.GetLibrarySettings).Methods(http.MethodGet)
 
-	r.HandleFunc(options.BaseURL+"/api/custom/ingest/logs", wrapper.IngestLogs).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/custom/ingest/settings", wrapper.GetIngestSettings).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/custom/ingest/settings", wrapper.UpdateIngestSettings).Methods(http.MethodPut)
-
-	r.HandleFunc(options.BaseURL+"/api/custom/replays/stale-count", wrapper.GetStaleReplaysCount).Methods(http.MethodGet)
+	r.HandleFunc(options.BaseURL+"/api/custom/library/settings", wrapper.UpdateLibrarySettings).Methods(http.MethodPut)
 
 	r.HandleFunc(options.BaseURL+"/api/games", wrapper.GamesList).Methods(http.MethodGet)
 
@@ -1618,25 +1545,24 @@ func (response UpdateGlobalReplayFilterConfig200JSONResponse) VisitUpdateGlobalR
 	return err
 }
 
-type IngestRequestObject struct {
-	Body *IngestJSONRequestBody
+type GetLibrarySettingsRequestObject struct {
 }
 
-type IngestResponseObject interface {
-	VisitIngestResponse(w http.ResponseWriter) error
+type GetLibrarySettingsResponseObject interface {
+	VisitGetLibrarySettingsResponse(w http.ResponseWriter) error
 }
 
-type Ingest200JSONResponse GenericValue
+type GetLibrarySettings200JSONResponse GenericValue
 
-func (t Ingest200JSONResponse) MarshalJSON() ([]byte, error) {
+func (t GetLibrarySettings200JSONResponse) MarshalJSON() ([]byte, error) {
 	return GenericValue(t).MarshalJSON()
 }
 
-func (t *Ingest200JSONResponse) UnmarshalJSON(b []byte) error {
+func (t *GetLibrarySettings200JSONResponse) UnmarshalJSON(b []byte) error {
 	return (*GenericValue)(t).UnmarshalJSON(b)
 }
 
-func (response Ingest200JSONResponse) VisitIngestResponse(w http.ResponseWriter) error {
+func (response GetLibrarySettings200JSONResponse) VisitGetLibrarySettingsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -1648,98 +1574,25 @@ func (response Ingest200JSONResponse) VisitIngestResponse(w http.ResponseWriter)
 	return err
 }
 
-type IngestLogsRequestObject struct {
+type UpdateLibrarySettingsRequestObject struct {
+	Body *UpdateLibrarySettingsJSONRequestBody
 }
 
-type IngestLogsResponseObject interface {
-	VisitIngestLogsResponse(w http.ResponseWriter) error
+type UpdateLibrarySettingsResponseObject interface {
+	VisitUpdateLibrarySettingsResponse(w http.ResponseWriter) error
 }
 
-type IngestLogs101Response struct {
-}
+type UpdateLibrarySettings200JSONResponse GenericValue
 
-func (response IngestLogs101Response) VisitIngestLogsResponse(w http.ResponseWriter) error {
-	w.WriteHeader(101)
-	return nil
-}
-
-type GetIngestSettingsRequestObject struct {
-}
-
-type GetIngestSettingsResponseObject interface {
-	VisitGetIngestSettingsResponse(w http.ResponseWriter) error
-}
-
-type GetIngestSettings200JSONResponse GenericValue
-
-func (t GetIngestSettings200JSONResponse) MarshalJSON() ([]byte, error) {
+func (t UpdateLibrarySettings200JSONResponse) MarshalJSON() ([]byte, error) {
 	return GenericValue(t).MarshalJSON()
 }
 
-func (t *GetIngestSettings200JSONResponse) UnmarshalJSON(b []byte) error {
+func (t *UpdateLibrarySettings200JSONResponse) UnmarshalJSON(b []byte) error {
 	return (*GenericValue)(t).UnmarshalJSON(b)
 }
 
-func (response GetIngestSettings200JSONResponse) VisitGetIngestSettingsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type UpdateIngestSettingsRequestObject struct {
-	Body *UpdateIngestSettingsJSONRequestBody
-}
-
-type UpdateIngestSettingsResponseObject interface {
-	VisitUpdateIngestSettingsResponse(w http.ResponseWriter) error
-}
-
-type UpdateIngestSettings200JSONResponse GenericValue
-
-func (t UpdateIngestSettings200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *UpdateIngestSettings200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response UpdateIngestSettings200JSONResponse) VisitUpdateIngestSettingsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetStaleReplaysCountRequestObject struct {
-}
-
-type GetStaleReplaysCountResponseObject interface {
-	VisitGetStaleReplaysCountResponse(w http.ResponseWriter) error
-}
-
-type GetStaleReplaysCount200JSONResponse GenericValue
-
-func (t GetStaleReplaysCount200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *GetStaleReplaysCount200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response GetStaleReplaysCount200JSONResponse) VisitGetStaleReplaysCountResponse(w http.ResponseWriter) error {
+func (response UpdateLibrarySettings200JSONResponse) VisitUpdateLibrarySettingsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -2297,20 +2150,11 @@ type StrictServerInterface interface {
 	// (PUT /api/custom/global-replay-filter)
 	UpdateGlobalReplayFilterConfig(ctx context.Context, request UpdateGlobalReplayFilterConfigRequestObject) (UpdateGlobalReplayFilterConfigResponseObject, error)
 
-	// (POST /api/custom/ingest)
-	Ingest(ctx context.Context, request IngestRequestObject) (IngestResponseObject, error)
+	// (GET /api/custom/library/settings)
+	GetLibrarySettings(ctx context.Context, request GetLibrarySettingsRequestObject) (GetLibrarySettingsResponseObject, error)
 
-	// (GET /api/custom/ingest/logs)
-	IngestLogs(ctx context.Context, request IngestLogsRequestObject) (IngestLogsResponseObject, error)
-
-	// (GET /api/custom/ingest/settings)
-	GetIngestSettings(ctx context.Context, request GetIngestSettingsRequestObject) (GetIngestSettingsResponseObject, error)
-
-	// (PUT /api/custom/ingest/settings)
-	UpdateIngestSettings(ctx context.Context, request UpdateIngestSettingsRequestObject) (UpdateIngestSettingsResponseObject, error)
-
-	// (GET /api/custom/replays/stale-count)
-	GetStaleReplaysCount(ctx context.Context, request GetStaleReplaysCountRequestObject) (GetStaleReplaysCountResponseObject, error)
+	// (PUT /api/custom/library/settings)
+	UpdateLibrarySettings(ctx context.Context, request UpdateLibrarySettingsRequestObject) (UpdateLibrarySettingsResponseObject, error)
 
 	// (GET /api/games)
 	GamesList(ctx context.Context, request GamesListRequestObject) (GamesListResponseObject, error)
@@ -2451,11 +2295,35 @@ func (sh *strictHandler) UpdateGlobalReplayFilterConfig(w http.ResponseWriter, r
 	}
 }
 
-// Ingest operation middleware
-func (sh *strictHandler) Ingest(w http.ResponseWriter, r *http.Request) {
-	var request IngestRequestObject
+// GetLibrarySettings operation middleware
+func (sh *strictHandler) GetLibrarySettings(w http.ResponseWriter, r *http.Request) {
+	var request GetLibrarySettingsRequestObject
 
-	var body IngestJSONRequestBody
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetLibrarySettings(ctx, request.(GetLibrarySettingsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetLibrarySettings")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetLibrarySettingsResponseObject); ok {
+		if err := validResponse.VisitGetLibrarySettingsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateLibrarySettings operation middleware
+func (sh *strictHandler) UpdateLibrarySettings(w http.ResponseWriter, r *http.Request) {
+	var request UpdateLibrarySettingsRequestObject
+
+	var body UpdateLibrarySettingsJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		if !errors.Is(err, io.EOF) {
 			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
@@ -2466,124 +2334,18 @@ func (sh *strictHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.Ingest(ctx, request.(IngestRequestObject))
+		return sh.ssi.UpdateLibrarySettings(ctx, request.(UpdateLibrarySettingsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "Ingest")
+		handler = middleware(handler, "UpdateLibrarySettings")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(IngestResponseObject); ok {
-		if err := validResponse.VisitIngestResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// IngestLogs operation middleware
-func (sh *strictHandler) IngestLogs(w http.ResponseWriter, r *http.Request) {
-	var request IngestLogsRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.IngestLogs(ctx, request.(IngestLogsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "IngestLogs")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(IngestLogsResponseObject); ok {
-		if err := validResponse.VisitIngestLogsResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetIngestSettings operation middleware
-func (sh *strictHandler) GetIngestSettings(w http.ResponseWriter, r *http.Request) {
-	var request GetIngestSettingsRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetIngestSettings(ctx, request.(GetIngestSettingsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetIngestSettings")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetIngestSettingsResponseObject); ok {
-		if err := validResponse.VisitGetIngestSettingsResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// UpdateIngestSettings operation middleware
-func (sh *strictHandler) UpdateIngestSettings(w http.ResponseWriter, r *http.Request) {
-	var request UpdateIngestSettingsRequestObject
-
-	var body UpdateIngestSettingsJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		if !errors.Is(err, io.EOF) {
-			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-			return
-		}
-	} else {
-		request.Body = &body
-	}
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.UpdateIngestSettings(ctx, request.(UpdateIngestSettingsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "UpdateIngestSettings")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(UpdateIngestSettingsResponseObject); ok {
-		if err := validResponse.VisitUpdateIngestSettingsResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetStaleReplaysCount operation middleware
-func (sh *strictHandler) GetStaleReplaysCount(w http.ResponseWriter, r *http.Request) {
-	var request GetStaleReplaysCountRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetStaleReplaysCount(ctx, request.(GetStaleReplaysCountRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetStaleReplaysCount")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetStaleReplaysCountResponseObject); ok {
-		if err := validResponse.VisitGetStaleReplaysCountResponse(w); err != nil {
+	} else if validResponse, ok := response.(UpdateLibrarySettingsResponseObject); ok {
+		if err := validResponse.VisitUpdateLibrarySettingsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -3056,32 +2818,29 @@ func (sh *strictHandler) ScrepColors(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"RC1e9b3QO/C08Cv0oc/gmQedzFdw1/03AAD//w==",
+	"3Flfb9s4Ev8qAu+A3gFSlLvu7oPfug02DdqiRYP2JQ2EsTSS2FAkSw7TFQx99wUp2Y4TyU6yLtbJSxyT",
+	"Pw45v/lLesFy1WglUZJlswXTYKBBQtN/E9CieYut/8IlmzENVLOYSWjQf1vNx8zgd8cNFmxGxmHMbF5j",
+	"A34htdqDLRkuK9Z1HutXnp1MiF1Nb5NaKtMAsRnjkn77hcXLbbgkrNCwzm/Uw4MupyjR8PzD/Bvm5Aeg",
+	"KDhxJUF8NEqjIY52uc0gS/XgLl6u/gLCoV+sJH4o2exiwf5tsGQz9q90TWQ6bJtu7tnFC8YJG/t3BNwi",
+	"cz0iXTP3aq9HVkysh+ZKCQTJustupSQYA+2+ZX/WBRCeCjUH8SmY8w8uCM1rJUtefcLvDu0WK5QgLMZM",
+	"3xhaMPwzF67AzPPkli56e/N4BbO1MpRV0OAE0E9lfjjMryyD0jVsdsFI6ezaZnNFpBoWswYFIou95TIl",
+	"MyX9l9IgZqUyGQjBLuM7FN4mmTWgsysui7BVgTY3XHv92Yy9Bx2F40SkIi6DFkfR5/fnUR8QNgKDEYgf",
+	"/t9ByyKqAsei/Sr/A45UUnCbg/EzQBGXFVr6bxxZFb1wjX0RcRtJRRFE1yB44f86jGo0ePRVsvguCwYr",
+	"J8B4/ZXE9h46djej9uImy+O2iUcMe5Ony5Fw7N3rHZ8bMO05EnFZ2cd5Vc9tVnAznqtu7e2HuCxVAHMS",
+	"AZ0b1MU8OgFbzxWYInr18YzF7BqN7U37v6Pjo2N/cKVRguZsxl4eHR+9ZHFIfeEgKWie5s6SatK5REq1",
+	"USX3Gyy6+O6sJSBnJyZJVdXYygLnrkob0ImAVjlKF8tc290Fe/MkYC2STeeOi8JTshXVgN4OcJLTCCK4",
+	"cNIfJSlDovCMVBiM6a0F3ppnBZuxU6SptBLqhdVK2t60/z8+9h+5koSy9wutBc+DsPSb9aZZ3Cgp98jE",
+	"fQEIXrAZvB/e9qPajZx5ezYcyhxa+l0V7d5OfL8U3G3Gqy9/3T9O4y3/qBVdYTvhXqJPAileDz3MxLxB",
+	"m4OcnrdDFtnmeLcSzoH729hpf5abTaTibnCvQ/KmBswVGpsWWHIZqsSI12ijbLrQRp2ddKmuFam7GAuN",
+	"FphYpFQoKO4CXKAm9fq1k7N38viqYxn3Qj/7jlsKpWPdrF8MnfR3h6Zdt9KCN9xDH9I3x+OiVFla3JOs",
+	"/uKwIWvVeexsL8ZF+uSwT3mF61nfq9ASgVxYsl/VKa+d3jedof96nNDLgwn6EE2bbc50YJ0gARcHkdY3",
+	"Q3tM5BqSri7M4e41qveyiG7V/82AeZYEWMTbLxwPEhwzrewEcefhZnggLl8jCKonDf0mTOc15leHc+a+",
+	"ICS5EspM++jHgHrdgw7s7LtO/fSLdvjY+rA3cQYp2uzXTAtnH7PcKkPZvN1YunydGI5kIPcfy/cE0A2L",
+	"mQBLWbBNMfJqsXW3gpvR7cDmrPeFB0i8eY4nXkwHT0+5tLyqyaagm6TmllRloNkVAK9082aFPVydnOSU",
+	"aKMKl/sFSQ4Fyhx3afdZcno9QO8V5cM7xyMiouFy9Xa2h7h+TLo5YJ+85vhDK0NJ4wRxAnvVv1tttd6X",
+	"YdH7m2sOTsfF6geXbodCT7WTXf+itO7kRrRP8xoosa5pwLS72oUa6HxAPls++u4+sbyS/oa5K1v1jf75",
+	"Cv1seRmywg46zgbUU6ZhIrmHzL2txtyHvocV+sOq8z/Zsx7bL2y2C8/O7e7R3Gxl1zfNyfaX0J7Hd2Dp",
+	"dOiFnoGnhZ8Sd12Dzz3oYG7BXfdXAAAA//8=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

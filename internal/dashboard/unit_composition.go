@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"database/sql"
 	"sort"
 
 	db "github.com/marianogappa/screpdb/internal/dashboard/db"
@@ -130,7 +129,7 @@ func computeCompositionForReplay(rows []db.UnitProductionOrCastRow, boundaries d
 		}
 		switch row.ActionType {
 		case "Train", "Unit Morph":
-			for _, name := range commandUnitNamesFromPtrs(row.UnitType, row.UnitTypes) {
+			for _, name := range parseCommandUnitNames(row.UnitType, row.UnitTypes) {
 				if _, excluded := compositionExcluded[name]; excluded {
 					continue
 				}
@@ -212,20 +211,6 @@ func phaseForSecond(second, earlyEnd, midEnd int) string {
 		return "mid"
 	}
 	return "late"
-}
-
-// commandUnitNamesFromPtrs adapts the *string columns from the sqlc-
-// generated row to the existing parseCommandUnitNames helper that takes
-// sql.NullString.
-func commandUnitNamesFromPtrs(unitType *string, unitTypes *string) []string {
-	var n1, n2 sql.NullString
-	if unitType != nil {
-		n1 = sql.NullString{String: *unitType, Valid: true}
-	}
-	if unitTypes != nil {
-		n2 = sql.NullString{String: *unitTypes, Valid: true}
-	}
-	return parseCommandUnitNames(n1, n2)
 }
 
 func sortUnitsDesc(counts map[string]int) []workflowUnitCompositionUnit {

@@ -214,7 +214,7 @@ export default function HotkeyTimeline({ payload }) {
         <div key={player.player_id} className="hk-player">
           <div className="hk-player-head">
             <span className="hk-player-name">{player.name}</span>
-            {player.legacy ? <span className="hk-player-stat">legacy stream: re-analyze for building labels</span> : null}
+            {player.legacy ? <span className="hk-player-stat">building labels unavailable for this replay</span> : null}
           </div>
           {groups.map((g) => {
             const events = byGroup.get(g);

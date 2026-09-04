@@ -133,10 +133,11 @@ func main() {
 	}
 	defer db.Close()
 
-	joined, tallies, err := procorpus.Join(db, byMatch)
+	replays, err := load1v1Replays(db)
 	if err != nil {
-		log.Fatalf("join: %v", err)
+		log.Fatalf("read 1v1 replays: %v", err)
 	}
+	joined, tallies := procorpus.Join(replays, byMatch)
 	log.Printf("joined %d/%d player-games (%s)", len(joined), len(sides), tallies)
 
 	if err := measureMilestones(db, joined, outDir, *minN); err != nil {
@@ -152,6 +153,45 @@ func main() {
 		log.Fatalf("meta: %v", err)
 	}
 	log.Printf("outputs in %s", outDir)
+}
+
+// load1v1Replays reads the analysed 1v1 replays the labelled sides are joined
+// against out of the mining database.
+func load1v1Replays(db *sql.DB) ([]procorpus.Replay1v1, error) {
+	rows, err := db.Query(`
+		SELECT r.id, r.file_name, r.matchup, p.id, p.name, p.race
+		FROM replays r
+		JOIN players p ON p.replay_id = r.id
+		WHERE r.team_format = '1v1' AND p.is_observer = 0 AND p.type = 'Human'
+		ORDER BY r.id, p.id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	byFile := map[string]*procorpus.Replay1v1{}
+	var order []string
+	for rows.Next() {
+		var replayID, playerID int64
+		var fileName, matchup, name, race string
+		if err := rows.Scan(&replayID, &fileName, &matchup, &playerID, &name, &race); err != nil {
+			return nil, err
+		}
+		replay, ok := byFile[fileName]
+		if !ok {
+			replay = &procorpus.Replay1v1{ID: replayID, FileName: fileName, Matchup: matchup}
+			byFile[fileName] = replay
+			order = append(order, fileName)
+		}
+		replay.Players = append(replay.Players, procorpus.PlayerRow{ID: playerID, Name: name, Race: race})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := make([]procorpus.Replay1v1, 0, len(order))
+	for _, fileName := range order {
+		out = append(out, *byFile[fileName])
+	}
+	return out, nil
 }
 
 // procorpus.JoinedPlayer is one resolved (replay, player) pro row.

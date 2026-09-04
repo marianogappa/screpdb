@@ -15,53 +15,20 @@ import (
 //go:embed replay/*.sql
 var replayFS embed.FS
 
-//go:embed dashboard/*.sql
-var dashboardFS embed.FS
-
-//go:embed settings/*.sql
-var settingsFS embed.FS
-
 // MigrationSet represents which set of migrations to run
 type MigrationSet string
 
-const (
-	MigrationSetReplay    MigrationSet = "replay"
-	MigrationSetDashboard MigrationSet = "dashboard"
-	// MigrationSetSettings owns user-curated state (filter + ingestion prefs)
-	// that must survive both --clean and --clean-dashboard. Tables here are
-	// preserved by name in DropMigrationSet so the replay/dashboard wipes
-	// don't take them along.
-	MigrationSetSettings MigrationSet = "settings"
-)
+const MigrationSetReplay MigrationSet = "replay"
 
-// preservedTablesAcrossWipes lists tables owned by MigrationSetSettings.
-// DropMigrationSet skips dropping any table whose name appears here when
-// invoked for the replay or dashboard sets — even if the older replay /
-// dashboard migrations originally created it. Keeps user-curated data
-// (global filter + ingestion prefs) alive across both --clean variants.
-var preservedTablesAcrossWipes = map[string]struct{}{
-	"settings": {},
-}
-
-// RunMigrations runs all pending migrations for replay, dashboard, and
-// settings sets. Settings runs last so the IF NOT EXISTS statements no-op
-// against tables already created by the older replay/dashboard migrations
-// on legacy DBs.
+// RunMigrations runs every pending migration. Only the replay set is left:
+// the dashboard reads the replay folder into memory and keeps its own state in
+// JSON files, so the tables it used to own here are gone.
 func RunMigrations(sqlitePath string) error {
-	if err := RunMigrationSet(sqlitePath, MigrationSetReplay); err != nil {
-		return err
-	}
-	if err := RunMigrationSet(sqlitePath, MigrationSetDashboard); err != nil {
-		return err
-	}
-	if err := RunMigrationSet(sqlitePath, MigrationSetSettings); err != nil {
-		return err
-	}
-	return nil
+	return RunMigrationSet(sqlitePath, MigrationSetReplay)
 }
 
-// RunMigrationSet runs migrations for a specific set (replay or dashboard).
-// Applied migrations are recorded in the `schema_migrations_<set>` table so
+// RunMigrationSet runs migrations for a specific set. Applied migrations are
+// recorded in the `schema_migrations_<set>` table so
 // re-invocations become no-ops — important because rebuild-style migrations
 // (e.g. 000003_replay_events_refinement) destructively copy rows and would
 // re-trip CHECK constraints against newer schemas (markers) added in later
@@ -74,12 +41,6 @@ func RunMigrationSet(sqlitePath string, set MigrationSet) error {
 	case MigrationSetReplay:
 		fs = replayFS
 		subdir = "replay"
-	case MigrationSetDashboard:
-		fs = dashboardFS
-		subdir = "dashboard"
-	case MigrationSetSettings:
-		fs = settingsFS
-		subdir = "settings"
 	default:
 		return fmt.Errorf("unknown migration set: %s", set)
 	}
@@ -183,21 +144,10 @@ func recordMigrationApplied(db *sql.DB, set MigrationSet, name string) error {
 	return nil
 }
 
-// DropAllMigrations drops every migration set, including settings.
-// Used for fresh-DB nukes only (test setup, full reset). Routine
-// --clean / --clean-dashboard wipes preserve the settings set and its
-// tables (settings).
+// DropAllMigrations drops every migration set. Used for fresh-DB nukes only
+// (test setup, full reset).
 func DropAllMigrations(sqlitePath string) error {
-	if err := DropMigrationSet(sqlitePath, MigrationSetReplay); err != nil {
-		return err
-	}
-	if err := DropMigrationSet(sqlitePath, MigrationSetDashboard); err != nil {
-		return err
-	}
-	if err := DropMigrationSet(sqlitePath, MigrationSetSettings); err != nil {
-		return err
-	}
-	return nil
+	return DropMigrationSet(sqlitePath, MigrationSetReplay)
 }
 
 // createTableRegexp matches `CREATE TABLE [IF NOT EXISTS] "?name"?` in a SQL file.
@@ -229,12 +179,6 @@ func DropMigrationSet(sqlitePath string, set MigrationSet) error {
 	case MigrationSetReplay:
 		fs = replayFS
 		subdir = "replay"
-	case MigrationSetDashboard:
-		fs = dashboardFS
-		subdir = "dashboard"
-	case MigrationSetSettings:
-		fs = settingsFS
-		subdir = "settings"
 	default:
 		return fmt.Errorf("unknown migration set: %s", set)
 	}
@@ -301,18 +245,7 @@ func DropMigrationSet(sqlitePath string, set MigrationSet) error {
 				tables = append(tables, name)
 			}
 		}
-		// When dropping the replay or dashboard sets, skip tables that
-		// migrated to the settings set — they live in older migration
-		// files for legacy DB compatibility but their data is now owned
-		// by settings and must survive --clean / --clean-dashboard.
-		preserve := map[string]struct{}{}
-		if set == MigrationSetReplay || set == MigrationSetDashboard {
-			preserve = preservedTablesAcrossWipes
-		}
 		for i := len(tables) - 1; i >= 0; i-- {
-			if _, skip := preserve[tables[i]]; skip {
-				continue
-			}
 			if _, err := db.Exec(`DROP TABLE IF EXISTS ` + tables[i]); err != nil {
 				return fmt.Errorf("failed to drop table %s: %w", tables[i], err)
 			}

@@ -213,7 +213,7 @@ func TestBatchCheckExistingReplays_DedupSemantics(t *testing.T) {
 		t.Fatalf("open store: %v", err)
 	}
 	defer store.Close()
-	if err := store.Initialize(context.Background(), false, false); err != nil {
+	if err := store.Initialize(context.Background(), false); err != nil {
 		t.Fatalf("Initialize: %v", err)
 	}
 

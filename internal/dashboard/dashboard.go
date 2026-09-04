@@ -2,14 +2,12 @@ package dashboard
 
 import (
 	"context"
-	"database/sql"
 	"embed"
 	"errors"
 	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
-	"regexp"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -21,14 +19,12 @@ import (
 	"github.com/getkin/kin-openapi/routers"
 	"github.com/getkin/kin-openapi/routers/gorillamux"
 	"github.com/gorilla/mux"
-	_ "modernc.org/sqlite"
 
 	"github.com/marianogappa/scfingerprint"
 	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
-	"github.com/marianogappa/screpdb/internal/ingest"
 	"github.com/marianogappa/screpdb/internal/netfacade"
 )
 
@@ -37,28 +33,17 @@ var embeddedFrontendBuild embed.FS
 
 type Dashboard struct {
 	ctx                 context.Context
-	db                  *sql.DB
-	dbStore             *dashboarddb.Store
-	replayScopedMu      sync.RWMutex
-	replayScopedDB      *sql.DB
-	globalReplayFilter  globalReplayFilterConfig
-	sqlitePath          string
-	ingestMu            sync.Mutex
-	ingestRunning       bool
-	ingestStatus        string
-	ingestError         string
-	ingestInputDir      string
-	ingestSessionID     int64
-	ingestEvents        []ingest.LogEvent
-	ingestSubscribers   map[chan ingestStreamMessage]struct{}
+	dbStore             dashboarddb.Reader
+	library             *libraryRuntime
+	libraryHub          *libraryHub
 	sampleSetAutoLoaded bool
-	pendingSampleIngest bool
 	headless            bool
 	shutdown            func()
 	fpDatasetOnce       sync.Once
 	fpDataset           *scfingerprint.Dataset
 	fpDatasetErr        error
 	fpMatchCacheMu      sync.RWMutex
+	fpMatchCacheVersion uint64
 	fpMatchCache        map[string]*workflowFingerprintMatch
 	bnetState           atomic.Value // stores bnetStatus
 	bnetAddr            atomic.Value // stores string
@@ -85,39 +70,69 @@ func (d *Dashboard) SetShutdownFunc(fn func()) {
 	d.shutdown = fn
 }
 
-func New(ctx context.Context, sqlitePath string, headless bool) (*Dashboard, error) {
-	if err := runMigrations(sqlitePath); err != nil {
-		return nil, fmt.Errorf("failed to run migration routine: %w", err)
-	}
+// Options configures a dashboard server.
+type Options struct {
+	// Root is the app-data directory: settings.json, the Battle.net caches and
+	// the extracted example replays live here.
+	Root string
+	// ReplayDir overrides the saved replay folder, for headless callers.
+	ReplayDir string
+	// LegacyDBPath is the pre-library database whose settings and Battle.net
+	// caches are carried over once, on the first run after upgrading.
+	LegacyDBPath string
+	Headless     bool
+}
 
-	db, err := sql.Open("sqlite", sqliteDSN(sqlitePath))
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-
-	if err := dashboarddb.EnableForeignKeys(db); err != nil {
-		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
-	}
-
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
-	}
-
+func New(ctx context.Context, opts Options) (*Dashboard, error) {
 	dashboard := &Dashboard{
-		ctx:          ctx,
-		db:           db,
-		ingestStatus: "idle",
-		sqlitePath:   sqlitePath,
-		headless:     headless,
+		ctx:        ctx,
+		libraryHub: newLibraryHub(),
+		headless:   opts.Headless,
 	}
-	dashboard.dbStore = dashboarddb.NewStore(dashboard.db, dashboard.currentReplayScopedDB)
-	if err := dashboard.initializeIngestSettings(ctx); err != nil {
-		return nil, fmt.Errorf("failed to initialize ingest settings: %w", err)
+
+	runtime, err := newLibraryRuntime(ctx, libraryRuntimeOptions{
+		Root:         opts.Root,
+		ReplayDir:    opts.ReplayDir,
+		LegacyDBPath: opts.LegacyDBPath,
+		Hub:          dashboard.libraryHub,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to open the replay library: %w", err)
 	}
-	if err := dashboard.refreshReplayScopedDB(); err != nil {
-		return nil, fmt.Errorf("failed to initialize replay scoped db: %w", err)
-	}
+	dashboard.library = runtime
+	dashboard.dbStore = runtime.store
+	dashboard.sampleSetAutoLoaded = runtime.sampleSetAutoLoaded
+	dashboard.refreshYouKeysBestEffort(ctx)
 	return dashboard, nil
+}
+
+// ReplayDir is the folder the corpus mirrors.
+func (d *Dashboard) ReplayDir() string {
+	if d.library == nil {
+		return ""
+	}
+	return d.library.Folder()
+}
+
+// StartLibrary begins loading the replay folder and watching it for changes.
+// Call it once the HTTP server is accepting, so the first page load already
+// has the newest games while the rest stream in behind it.
+func (d *Dashboard) StartLibrary() error { return d.library.Start(d.ctx) }
+
+// Close releases the library and stops the loader and watcher.
+func (d *Dashboard) Close() {
+	if d.library != nil {
+		d.library.Close()
+	}
+}
+
+// invalidateFingerprintCache drops the per-player fingerprint matches when the
+// corpus or the filter behind them has moved on.
+func (d *Dashboard) invalidateFingerprintCache() {
+	d.fpMatchCacheMu.Lock()
+	d.fpMatchCache = nil
+	d.fpMatchCacheVersion = 0
+	d.fpMatchCacheMu.Unlock()
 }
 
 // recoveryMiddleware turns a panic in any HTTP handler into a crash report and
@@ -228,7 +243,8 @@ func (d *Dashboard) setupRouter() *mux.Router {
 		},
 	)
 	// websocket endpoint remains a manual route to preserve Upgrade semantics
-	r.HandleFunc("/api/custom/ingest/logs", d.handlerIngestLogs).Methods(http.MethodGet)
+	r.HandleFunc("/api/custom/library/events", d.handlerLibraryEvents).Methods(http.MethodGet)
+	r.HandleFunc("/api/custom/library/rescan", d.handlerLibraryRescan).Methods(http.MethodPost)
 	r.HandleFunc("/api/custom/game-assets/unit", d.handlerGameAssetUnit).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/game-assets/building", d.handlerGameAssetBuilding).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/game-assets/map", d.handlerGameAssetMap).Methods(http.MethodGet)
@@ -365,168 +381,4 @@ func (d *Dashboard) StartAsync(port int) <-chan error {
 	}()
 
 	return errChan
-}
-
-func sqliteDSN(path string) string {
-	path = strings.TrimSpace(path)
-	if path == "" {
-		return "file:screp.db?_pragma=foreign_keys(1)"
-	}
-	if path == ":memory:" || strings.HasPrefix(path, "file:") {
-		if strings.Contains(path, "_pragma=foreign_keys(1)") {
-			return path
-		}
-		sep := "?"
-		if strings.Contains(path, "?") {
-			sep = "&"
-		}
-		return path + sep + "_pragma=foreign_keys(1)"
-	}
-	return fmt.Sprintf("file:%s?_pragma=foreign_keys(1)", path)
-}
-
-func applyReplayFilterViews(db *sql.DB, filterSQL string) error {
-	qualified := qualifyReplayFilterSQL(filterSQL)
-	if hasUnqualifiedReplays(qualified) {
-		return fmt.Errorf("replays_filter_sql must reference main.replays when used in a view")
-	}
-	return dashboarddb.ApplyReplayTempViews(db, qualified)
-}
-
-func normalizeSQL(value string) string {
-	trimmed := strings.TrimSpace(value)
-	for strings.HasSuffix(trimmed, ";") {
-		trimmed = strings.TrimSpace(strings.TrimSuffix(trimmed, ";"))
-	}
-	return trimmed
-}
-
-func normalizeSQLWhitespace(value string) string {
-	trimmed := normalizeSQL(value)
-	re := regexp.MustCompile(`\s+`)
-	return re.ReplaceAllString(trimmed, " ")
-}
-
-func qualifyReplayFilterSQL(filterSQL string) string {
-	normalized := normalizeSQLWhitespace(filterSQL)
-	qualified := normalized
-	tables := []string{
-		"replays",
-		"players",
-		"commands",
-		"commands_low_value",
-		"replay_events",
-	}
-	for _, table := range tables {
-		re := regexp.MustCompile(`(?i)\b(from|join)\s+(?:main\.)?(?:\"` + table + `\"|` + "`" + table + "`" + `|\[` + table + `\]|` + table + `)\b`)
-		qualified = re.ReplaceAllString(qualified, "${1} main."+table)
-	}
-	return qualified
-}
-
-func hasUnqualifiedReplays(filterSQL string) bool {
-	tables := []string{
-		"replays",
-		"players",
-		"commands",
-		"commands_low_value",
-		"replay_events",
-	}
-	for _, table := range tables {
-		re := regexp.MustCompile(`(?i)\b(from|join)\s+(?:\"` + table + `\"|` + "`" + table + "`" + `|\[` + table + `\]|` + table + `)\b`)
-		if re.MatchString(filterSQL) {
-			return true
-		}
-	}
-	return false
-}
-
-func openReplayScopedDB(sqlitePath string, replaysFilterSQL *string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", sqliteDSN(sqlitePath))
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-
-	if err := dashboarddb.EnableForeignKeys(db); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
-	}
-
-	if err := db.Ping(); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("failed to ping database: %w", err)
-	}
-
-	filterSQL := normalizeSQL(nullableStringValue(replaysFilterSQL))
-	if filterSQL != "" {
-		if err := applyReplayFilterViews(db, filterSQL); err != nil {
-			_ = db.Close()
-			return nil, err
-		}
-	}
-	return db, nil
-}
-
-func (d *Dashboard) currentReplayScopedDB() *sql.DB {
-	d.replayScopedMu.RLock()
-	defer d.replayScopedMu.RUnlock()
-	if d.replayScopedDB != nil {
-		return d.replayScopedDB
-	}
-	return d.db
-}
-
-func (d *Dashboard) withReplayScopedDB(fn func(db *sql.DB) error) error {
-	d.replayScopedMu.RLock()
-	db := d.replayScopedDB
-	d.replayScopedMu.RUnlock()
-	if db == nil {
-		db = d.db
-	}
-	return fn(db)
-}
-
-func (d *Dashboard) currentGlobalReplayFilterSQL() *string {
-	d.replayScopedMu.RLock()
-	defer d.replayScopedMu.RUnlock()
-	if d.globalReplayFilter.CompiledReplaysFilterSQL == nil {
-		return nil
-	}
-	value := *d.globalReplayFilter.CompiledReplaysFilterSQL
-	return &value
-}
-
-func (d *Dashboard) refreshReplayScopedDB() error {
-	config, err := d.getGlobalReplayFilterConfig(d.ctx)
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return err
-		}
-		config = defaultGlobalReplayFilterConfig()
-		if _, updateErr := d.updateGlobalReplayFilterConfig(d.ctx, config); updateErr != nil {
-			return updateErr
-		}
-	}
-
-	db, err := openReplayScopedDB(d.sqlitePath, config.CompiledReplaysFilterSQL)
-	if err != nil {
-		return err
-	}
-
-	d.replayScopedMu.Lock()
-	oldDB := d.replayScopedDB
-	d.replayScopedDB = db
-	d.globalReplayFilter = config
-	d.replayScopedMu.Unlock()
-
-	d.fpMatchCacheMu.Lock()
-	d.fpMatchCache = nil
-	d.fpMatchCacheMu.Unlock()
-
-	if oldDB != nil {
-		_ = oldDB.Close()
-	}
-	return nil
 }

@@ -10,11 +10,8 @@ import (
 type DashboardService interface {
 	GetGlobalReplayFilterConfig(ctx context.Context, request apigen.GetGlobalReplayFilterConfigRequestObject) (HandlerResult, error)
 	UpdateGlobalReplayFilterConfig(ctx context.Context, request apigen.UpdateGlobalReplayFilterConfigRequestObject) (HandlerResult, error)
-	Ingest(ctx context.Context, request apigen.IngestRequestObject) (HandlerResult, error)
-	IngestLogs(ctx context.Context, request apigen.IngestLogsRequestObject) (HandlerResult, error)
-	GetIngestSettings(ctx context.Context, request apigen.GetIngestSettingsRequestObject) (HandlerResult, error)
-	UpdateIngestSettings(ctx context.Context, request apigen.UpdateIngestSettingsRequestObject) (HandlerResult, error)
-	GetStaleReplaysCount(ctx context.Context, request apigen.GetStaleReplaysCountRequestObject) (HandlerResult, error)
+	GetLibrarySettings(ctx context.Context, request apigen.GetLibrarySettingsRequestObject) (HandlerResult, error)
+	UpdateLibrarySettings(ctx context.Context, request apigen.UpdateLibrarySettingsRequestObject) (HandlerResult, error)
 	GamesList(ctx context.Context, request apigen.GamesListRequestObject) (HandlerResult, error)
 	GameDetail(ctx context.Context, request apigen.GameDetailRequestObject) (HandlerResult, error)
 	GameHotkeys(ctx context.Context, request apigen.GameHotkeysRequestObject) (HandlerResult, error)

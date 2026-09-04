@@ -56,9 +56,7 @@ func appliedNames(t *testing.T, db *sql.DB, set MigrationSet) []string {
 
 func TestMigrationsTableName(t *testing.T) {
 	cases := map[MigrationSet]string{
-		MigrationSetReplay:    "schema_migrations_replay",
-		MigrationSetDashboard: "schema_migrations_dashboard",
-		MigrationSetSettings:  "schema_migrations_settings",
+		MigrationSetReplay: "schema_migrations_replay",
 	}
 	for set, want := range cases {
 		if got := migrationsTableName(set); got != want {
@@ -75,7 +73,7 @@ func TestRunMigrations_CreatesSchemaAndLedgers(t *testing.T) {
 
 	db := openDB(t, path)
 
-	for _, set := range []MigrationSet{MigrationSetReplay, MigrationSetDashboard, MigrationSetSettings} {
+	for _, set := range []MigrationSet{MigrationSetReplay} {
 		if !tableExists(t, db, migrationsTableName(set)) {
 			t.Errorf("missing ledger table for set %q", set)
 		}
@@ -83,7 +81,7 @@ func TestRunMigrations_CreatesSchemaAndLedgers(t *testing.T) {
 
 	dataTables := []string{
 		"replays", "players", "commands", "commands_low_value", "replay_events",
-		"player_fingerprint_vectors", "settings",
+		"player_fingerprint_vectors",
 	}
 	for _, tbl := range dataTables {
 		if !tableExists(t, db, tbl) {
@@ -100,9 +98,7 @@ func TestRunMigrations_RecordsEveryEmbeddedUpFile(t *testing.T) {
 	db := openDB(t, path)
 
 	want := map[MigrationSet][]string{
-		MigrationSetReplay:    {"000001_initial.up.sql", "000002_add_load_action_types.up.sql", "000003_add_player_fingerprint_vectors.up.sql", "000004_add_game_source_lobby_kind.up.sql", "000005_add_players_hotkey_stream.up.sql"},
-		MigrationSetDashboard: {"000001_initial.up.sql", "000002_add_bnet_profiles.up.sql", "000003_add_bnet_game_results.up.sql"},
-		MigrationSetSettings:  {"000001_initial.up.sql", "000002_drop_player_aliases.up.sql"},
+		MigrationSetReplay: {"000001_initial.up.sql", "000002_add_load_action_types.up.sql", "000003_add_player_fingerprint_vectors.up.sql", "000004_add_game_source_lobby_kind.up.sql", "000005_add_players_hotkey_stream.up.sql", "000006_drop_dead_dashboard_tables.up.sql"},
 	}
 	for set, wantNames := range want {
 		got := appliedNames(t, db, set)
@@ -125,35 +121,25 @@ func TestRunMigrations_Idempotent(t *testing.T) {
 
 	db := openDB(t, path)
 	before := map[MigrationSet][]string{}
-	for _, set := range []MigrationSet{MigrationSetReplay, MigrationSetDashboard, MigrationSetSettings} {
+	for _, set := range []MigrationSet{MigrationSetReplay} {
 		before[set] = appliedNames(t, db, set)
-	}
-
-	// The default settings row is a good idempotency canary: the settings
-	// migration does INSERT OR IGNORE, so re-running must not duplicate it and
-	// must not error re-executing the CREATE TABLE / INSERT statements.
-	var settingsRows int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM settings`).Scan(&settingsRows); err != nil {
-		t.Fatalf("count settings: %v", err)
 	}
 
 	if err := RunMigrations(path); err != nil {
 		t.Fatalf("second RunMigrations: %v", err)
 	}
 
-	for _, set := range []MigrationSet{MigrationSetReplay, MigrationSetDashboard, MigrationSetSettings} {
+	for _, set := range []MigrationSet{MigrationSetReplay} {
 		after := appliedNames(t, db, set)
 		if len(after) != len(before[set]) {
 			t.Errorf("set %q applied count changed: before %v, after %v", set, before[set], after)
 		}
 	}
 
-	var settingsRowsAfter int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM settings`).Scan(&settingsRowsAfter); err != nil {
-		t.Fatalf("count settings after: %v", err)
-	}
-	if settingsRowsAfter != settingsRows {
-		t.Errorf("settings row count changed on re-run: %d -> %d", settingsRows, settingsRowsAfter)
+	for _, tbl := range replayDataTables {
+		if !tableExists(t, db, tbl) {
+			t.Errorf("table %q should still exist after a second RunMigrations", tbl)
+		}
 	}
 }
 
@@ -169,12 +155,6 @@ func TestRunMigrationSet_AppliesOnlyOneSet(t *testing.T) {
 	}
 	if !tableExists(t, db, "replays") {
 		t.Error("replays table should exist after replay set")
-	}
-	if tableExists(t, db, migrationsTableName(MigrationSetDashboard)) {
-		t.Error("dashboard ledger should NOT exist when only replay set ran")
-	}
-	if tableExists(t, db, migrationsTableName(MigrationSetSettings)) {
-		t.Error("settings ledger should NOT exist when only replay set ran")
 	}
 }
 
@@ -232,73 +212,9 @@ func TestRecordAndLoadAppliedMigrations(t *testing.T) {
 	}
 }
 
-func TestCleanAndRunMigrations_PreservesSettingsData(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "x.db")
-	if err := RunMigrations(path); err != nil {
-		t.Fatalf("RunMigrations: %v", err)
-	}
-
-	db := openDB(t, path)
-	if _, err := db.Exec(
-		`INSERT OR REPLACE INTO settings (config_key, ingest_input_dir) VALUES ('global', '/tmp/replays')`,
-	); err != nil {
-		t.Fatalf("seed settings: %v", err)
-	}
-
-	// --clean equivalent: drops replay+dashboard, preserves settings tables.
-	if err := DropMigrationSet(path, MigrationSetReplay); err != nil {
-		t.Fatalf("DropMigrationSet(replay): %v", err)
-	}
-	if err := DropMigrationSet(path, MigrationSetDashboard); err != nil {
-		t.Fatalf("DropMigrationSet(dashboard): %v", err)
-	}
-
-	var inputDir string
-	if err := db.QueryRow(`SELECT ingest_input_dir FROM settings WHERE config_key = 'global'`).Scan(&inputDir); err != nil {
-		t.Fatalf("read settings after clean: %v", err)
-	}
-	if inputDir != "/tmp/replays" {
-		t.Errorf("settings should survive replay/dashboard drop, got ingest_input_dir=%q", inputDir)
-	}
-	if tableExists(t, db, "replays") {
-		t.Error("replays table should be dropped by DropMigrationSet(replay)")
-	}
-}
-
 // replayDataTables are the tables owned by the replay migration set that a
 // --clean wipe must drop (settings is preserved and tested separately).
 var replayDataTables = []string{"replays", "players", "commands", "commands_low_value", "replay_events", "player_fingerprint_vectors"}
-
-func TestDropAllMigrations_DropsEveryTableIncludingSettings(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "x.db")
-	if err := RunMigrations(path); err != nil {
-		t.Fatalf("RunMigrations: %v", err)
-	}
-	db := openDB(t, path)
-
-	for _, tbl := range append(append([]string{}, replayDataTables...), "settings") {
-		if !tableExists(t, db, tbl) {
-			t.Fatalf("precondition: table %q must exist before DropAllMigrations", tbl)
-		}
-	}
-
-	if err := DropAllMigrations(path); err != nil {
-		t.Fatalf("DropAllMigrations: %v", err)
-	}
-
-	// Unlike --clean, DropAllMigrations wipes the settings set too, so
-	// settings must be gone along with the replay tables.
-	for _, tbl := range append(append([]string{}, replayDataTables...), "settings") {
-		if tableExists(t, db, tbl) {
-			t.Errorf("table %q should be dropped by DropAllMigrations", tbl)
-		}
-	}
-	for _, set := range []MigrationSet{MigrationSetReplay, MigrationSetDashboard, MigrationSetSettings} {
-		if tableExists(t, db, migrationsTableName(set)) {
-			t.Errorf("ledger for set %q should be dropped by DropAllMigrations", set)
-		}
-	}
-}
 
 func TestDropAllMigrations_SafeOnFreshDB(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "x.db")
@@ -314,43 +230,35 @@ func TestCleanAndRunMigrations_DropAndReapplyCycle(t *testing.T) {
 	}
 
 	db := openDB(t, path)
-	// settings survives --clean but NOT CleanAndRunMigrations, which
-	// drops the settings set too; seeding it proves the full wipe.
-	if _, err := db.Exec(
-		`INSERT OR REPLACE INTO settings (config_key, ingest_input_dir) VALUES ('global', '/tmp/replays')`,
-	); err != nil {
-		t.Fatalf("seed settings row: %v", err)
-	}
 
 	if err := CleanAndRunMigrations(path); err != nil {
 		t.Fatalf("CleanAndRunMigrations: %v", err)
 	}
 
 	// Every table is recreated by the reapply.
-	for _, tbl := range append(append([]string{}, replayDataTables...), "settings") {
+	for _, tbl := range replayDataTables {
 		if !tableExists(t, db, tbl) {
 			t.Errorf("table %q should be recreated after CleanAndRunMigrations", tbl)
 		}
 	}
-	for _, set := range []MigrationSet{MigrationSetReplay, MigrationSetDashboard, MigrationSetSettings} {
+	for _, set := range []MigrationSet{MigrationSetReplay} {
 		if !tableExists(t, db, migrationsTableName(set)) {
 			t.Errorf("ledger for set %q should be recreated after CleanAndRunMigrations", set)
 		}
 	}
 
-	// The seeded value must be gone: clean drops the table, reapply recreates
-	// it with defaults.
-	var cycleInputDir string
-	if err := db.QueryRow(`SELECT ingest_input_dir FROM settings WHERE config_key = 'global'`).Scan(&cycleInputDir); err != nil {
-		t.Fatalf("read settings after clean+run: %v", err)
+	// The tables are recreated empty: clean drops them, reapply builds them.
+	var replays int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM replays`).Scan(&replays); err != nil {
+		t.Fatalf("count replays after clean+run: %v", err)
 	}
-	if cycleInputDir != "" {
-		t.Errorf("settings should be reset after clean+reapply, got ingest_input_dir=%q", cycleInputDir)
+	if replays != 0 {
+		t.Errorf("replays should be empty after clean+reapply, got %d", replays)
 	}
 
 	// Ledgers are fully repopulated so subsequent RunMigrations no-ops.
-	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 5 {
-		t.Errorf("replay ledger should have 4 applied migrations after reapply, got %v", got)
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 6 {
+		t.Errorf("replay ledger should hold every applied migration after reapply, got %v", got)
 	}
 }
 
@@ -360,7 +268,7 @@ func TestCleanAndRunMigrations_OnFreshDB(t *testing.T) {
 		t.Fatalf("CleanAndRunMigrations on fresh DB: %v", err)
 	}
 	db := openDB(t, path)
-	for _, tbl := range append(append([]string{}, replayDataTables...), "settings") {
+	for _, tbl := range replayDataTables {
 		if !tableExists(t, db, tbl) {
 			t.Errorf("table %q should exist after CleanAndRunMigrations on fresh DB", tbl)
 		}
@@ -374,12 +282,6 @@ func TestCleanAndRunMigrationSet_ReappliesSingleSet(t *testing.T) {
 	}
 
 	db := openDB(t, path)
-	// Seed a preserved-set row to prove CleanAndRunMigrationSet(replay) leaves it intact.
-	if _, err := db.Exec(
-		`INSERT OR REPLACE INTO settings (config_key, ingest_input_dir) VALUES ('global', '/tmp/replays')`,
-	); err != nil {
-		t.Fatalf("seed alias: %v", err)
-	}
 
 	if err := CleanAndRunMigrationSet(path, MigrationSetReplay); err != nil {
 		t.Fatalf("CleanAndRunMigrationSet(replay): %v", err)
@@ -391,16 +293,7 @@ func TestCleanAndRunMigrationSet_ReappliesSingleSet(t *testing.T) {
 		}
 	}
 
-	// Dropping+reapplying only the replay set must not disturb settings-owned data.
-	var replaySetInputDir string
-	if err := db.QueryRow(`SELECT ingest_input_dir FROM settings WHERE config_key = 'global'`).Scan(&replaySetInputDir); err != nil {
-		t.Fatalf("read settings: %v", err)
-	}
-	if replaySetInputDir != "/tmp/replays" {
-		t.Errorf("settings should survive CleanAndRunMigrationSet(replay), got ingest_input_dir=%q", replaySetInputDir)
-	}
-
-	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 5 {
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 6 {
 		t.Errorf("replay ledger should be repopulated, got %v", got)
 	}
 }
@@ -425,8 +318,8 @@ func TestDropMigrationSet_ClearsLedgerAllowingReapply(t *testing.T) {
 		t.Fatalf("RunMigrationSet(replay): %v", err)
 	}
 	db := openDB(t, path)
-	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 5 {
-		t.Fatalf("precondition: replay ledger should have 5 entries, got %v", got)
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 6 {
+		t.Fatalf("precondition: replay ledger should hold every migration, got %v", got)
 	}
 
 	if err := DropMigrationSet(path, MigrationSetReplay); err != nil {
@@ -443,7 +336,7 @@ func TestDropMigrationSet_ClearsLedgerAllowingReapply(t *testing.T) {
 	if !tableExists(t, db, "replays") {
 		t.Error("replays should exist after reapply")
 	}
-	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 5 {
+	if got := appliedNames(t, db, MigrationSetReplay); len(got) != 6 {
 		t.Errorf("replay ledger should be repopulated on reapply, got %v", got)
 	}
 }

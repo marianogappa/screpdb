@@ -140,32 +140,18 @@ func (s *SQLiteStorage) SetCommandStorageOptions(storeRightClicks bool) {
 	s.storeRightClicks = storeRightClicks
 }
 
-// Initialize creates the database schema using migrations
-// If clean is true, drops all non-dashboard tables before creating new ones
-// If cleanDashboard is true, drops all dashboard tables
-func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool, cleanDashboard bool) error {
+// Initialize creates the database schema using migrations. When clean is true
+// the replay tables are dropped first, so the run starts from nothing.
+func (s *SQLiteStorage) Initialize(ctx context.Context, clean bool) error {
 	_ = ctx
 
-	// Drop dashboard migrations if requested
-	if cleanDashboard {
-		if err := migrations.DropMigrationSet(s.dbPath, migrations.MigrationSetDashboard); err != nil {
-			return fmt.Errorf("failed to drop dashboard migrations: %w", err)
-		}
-	}
-
-	// Drop replay migrations if requested
 	if clean {
 		if err := migrations.DropMigrationSet(s.dbPath, migrations.MigrationSetReplay); err != nil {
 			return fmt.Errorf("failed to drop replay migrations: %w", err)
 		}
 	}
-
-	// Always run both migration sets to ensure everything is up to date
 	if err := migrations.RunMigrationSet(s.dbPath, migrations.MigrationSetReplay); err != nil {
 		return fmt.Errorf("failed to run replay migrations: %w", err)
-	}
-	if err := migrations.RunMigrationSet(s.dbPath, migrations.MigrationSetDashboard); err != nil {
-		return fmt.Errorf("failed to run dashboard migrations: %w", err)
 	}
 	return nil
 }
@@ -690,20 +676,6 @@ func (s *SQLiteStorage) updateEntityIDs(data *models.ReplayData, replayID int64,
 	}
 }
 
-// ReplayExists checks if a replay already exists by file path or checksum
-func (s *SQLiteStorage) ReplayExists(ctx context.Context, filePath, checksum string) (bool, error) {
-	query := `SELECT 1 FROM replays WHERE file_path = ? OR file_checksum = ? LIMIT 1`
-	var exists int
-	err := s.db.QueryRowContext(ctx, query, filePath, checksum).Scan(&exists)
-	if err == sql.ErrNoRows {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
 // FilterOutExistingReplaysByPath filters out replays whose file_path is already
 // known to the database. Does not require Checksum to be set, so callers can
 // invoke it before hashing the surviving files. The post-hash
@@ -862,11 +834,6 @@ func (s *SQLiteStorage) Query(ctx context.Context, query string, args ...any) ([
 	return results, rows.Err()
 }
 
-// StorageName returns the storage backend name
-func (s *SQLiteStorage) StorageName() string {
-	return StorageSQLite
-}
-
 // GetDatabaseSchema returns the database schema information
 func (s *SQLiteStorage) GetDatabaseSchema(ctx context.Context) (string, error) {
 	tables := []string{"replays", "players", "commands", "commands_low_value", "replay_events"}
@@ -919,128 +886,6 @@ func (s *SQLiteStorage) GetDatabaseSchema(ctx context.Context) (string, error) {
 	}
 
 	return schema.String(), nil
-}
-
-// FilterOutExistingPatternDetections filters out replays that already have pattern detection run
-// with the current or higher algorithm version
-func (s *SQLiteStorage) FilterOutExistingPatternDetections(ctx context.Context, files []fileops.FileInfo, algorithmVersion int) ([]fileops.FileInfo, error) {
-	if len(files) == 0 {
-		return []fileops.FileInfo{}, nil
-	}
-	_ = algorithmVersion
-
-	// Extract file paths and checksums
-	filePaths := make([]string, len(files))
-	checksums := make([]string, len(files))
-	for i, file := range files {
-		filePaths[i] = file.Path
-		checksums[i] = file.Checksum
-	}
-
-	// Build placeholders for file_paths
-	filePathPlaceholders := make([]string, len(filePaths))
-	for i := range filePaths {
-		filePathPlaceholders[i] = "?"
-	}
-
-	// Build placeholders for checksums
-	checksumPlaceholders := make([]string, len(checksums))
-	for i := range checksums {
-		checksumPlaceholders[i] = "?"
-	}
-
-	// Combine all args: file_paths first, then checksums.
-	args := make([]any, 0, len(filePaths)+len(checksums))
-	for _, fp := range filePaths {
-		args = append(args, fp)
-	}
-	for _, cs := range checksums {
-		args = append(args, cs)
-	}
-
-	query := fmt.Sprintf(`
-		SELECT DISTINCT r.file_path, r.file_checksum
-		FROM replay_events re
-		JOIN replays r ON r.id = re.replay_id
-		WHERE (r.file_path IN (%s) OR r.file_checksum IN (%s))
-	`, strings.Join(filePathPlaceholders, ", "), strings.Join(checksumPlaceholders, ", "))
-
-	rows, err := s.db.QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query existing pattern detections: %w", err)
-	}
-	defer rows.Close()
-
-	existingPaths := make(map[string]bool)
-	existingChecksums := make(map[string]bool)
-	for rows.Next() {
-		var filePath, fileChecksum string
-		if err := rows.Scan(&filePath, &fileChecksum); err != nil {
-			return nil, fmt.Errorf("failed to scan file path and checksum: %w", err)
-		}
-		existingPaths[filePath] = true
-		existingChecksums[fileChecksum] = true
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating rows: %w", err)
-	}
-
-	// Filter out existing files (by path or checksum)
-	var filtered []fileops.FileInfo
-	for _, file := range files {
-		if !existingPaths[file.Path] && !existingChecksums[file.Checksum] {
-			filtered = append(filtered, file)
-		}
-	}
-
-	return filtered, nil
-}
-
-// DeletePatternDetectionsForReplay clears prior marker rows and the narrative-events
-// companion rows so a fresh detection pass starts from a clean slate. Both kinds live
-// in replay_events (distinguished by event_kind); one DELETE covers them. The replay's
-// analyzer_algorithm_version column is reset to 0 so the caller's next detection run
-// re-stamps it under the current AlgorithmVersion.
-func (s *SQLiteStorage) DeletePatternDetectionsForReplay(ctx context.Context, replayID int64) error {
-	queries := []string{
-		"DELETE FROM replay_events WHERE replay_id = ?",
-		"UPDATE replays SET analyzer_algorithm_version = 0 WHERE id = ?",
-	}
-	for _, query := range queries {
-		if _, err := s.db.ExecContext(ctx, query, replayID); err != nil {
-			return fmt.Errorf("failed to delete pattern detections: %w", err)
-		}
-	}
-	return nil
-}
-
-// GetReplayAlgorithmVersion returns the analyzer algorithm version stamped on the
-// replay row. A fresh replay that has not yet had pattern detection run returns 0
-// (the column default), which the caller treats as "stale".
-func (s *SQLiteStorage) GetReplayAlgorithmVersion(ctx context.Context, replayID int64) (int, error) {
-	var version int
-	err := s.db.QueryRowContext(ctx, "SELECT analyzer_algorithm_version FROM replays WHERE id = ?", replayID).Scan(&version)
-	if err != nil {
-		return 0, fmt.Errorf("failed to query analyzer_algorithm_version: %w", err)
-	}
-	return version, nil
-}
-
-// CountStaleReplays returns the number of replay rows whose analyzer_algorithm_version
-// is below currentVersion (including default-0 rows that have never been analyzed).
-func (s *SQLiteStorage) CountStaleReplays(ctx context.Context, currentVersion int) (int, error) {
-	var count int
-	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM replays WHERE analyzer_algorithm_version < ?", currentVersion).Scan(&count)
-	if err != nil {
-		return 0, fmt.Errorf("failed to count stale replays: %w", err)
-	}
-	return count, nil
-}
-
-// BatchInsertPatternResults inserts pattern detection results in batch (uses default connection)
-func (s *SQLiteStorage) BatchInsertPatternResults(ctx context.Context, results []*core.PatternResult) error {
-	return s.BatchInsertPatternResultsTx(ctx, s.db, results)
 }
 
 // BatchInsertPatternResultsTx writes marker detection results as replay_events rows

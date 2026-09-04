@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 	"github.com/marianogappa/scfingerprint"
 	"github.com/marianogappa/screpdb/internal/bnetfacade"
 	"github.com/marianogappa/screpdb/internal/crashreport"
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/hotkeystream"
 	"github.com/marianogappa/screpdb/internal/propack"
 )
@@ -248,7 +248,7 @@ func featuredProfileOf(pack *propack.Pack, pro *propack.Pro) *featuredProfile {
 func (d *Dashboard) buildFeaturedPlayerOverview(playerKey string) (workflowPlayerOverview, error) {
 	pro := d.featuredPro(playerKey)
 	if pro == nil {
-		return workflowPlayerOverview{}, sql.ErrNoRows
+		return workflowPlayerOverview{}, dashboarddb.ErrNotFound
 	}
 	pack := d.loadProPack()
 	result := workflowPlayerOverview{

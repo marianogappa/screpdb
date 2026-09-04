@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,7 +14,7 @@ import (
 	db "github.com/marianogappa/screpdb/internal/dashboard/db"
 )
 
-func parseCommandUnitNames(unitType sql.NullString, unitTypes sql.NullString) []string {
+func parseCommandUnitNames(unitType *string, unitTypes *string) []string {
 	unique := map[string]struct{}{}
 	names := []string{}
 	appendName := func(raw string) {
@@ -34,12 +33,12 @@ func parseCommandUnitNames(unitType sql.NullString, unitTypes sql.NullString) []
 		names = append(names, trimmed)
 	}
 
-	if unitType.Valid {
-		appendName(unitType.String)
+	if unitType != nil {
+		appendName(*unitType)
 	}
-	if unitTypes.Valid {
+	if unitTypes != nil {
 		list := []string{}
-		if err := json.Unmarshal([]byte(unitTypes.String), &list); err == nil {
+		if err := json.Unmarshal([]byte(*unitTypes), &list); err == nil {
 			for _, item := range list {
 				appendName(item)
 			}
@@ -354,7 +353,7 @@ func (d *Dashboard) playerNameForKey(playerKey string) (string, error) {
 		return "", err
 	}
 	if playerName == "" {
-		return "", sql.ErrNoRows
+		return "", db.ErrNotFound
 	}
 	return playerName, nil
 }

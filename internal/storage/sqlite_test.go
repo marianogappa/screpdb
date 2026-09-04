@@ -17,7 +17,6 @@ import (
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser"
-	"github.com/marianogappa/screpdb/internal/patterns/core"
 )
 
 // Regression for #234: a panic while storing one replay must be recovered into
@@ -111,7 +110,7 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	}
 	defer store.Close()
 
-	if err := store.Initialize(ctx, true, true); err != nil {
+	if err := store.Initialize(ctx, true); err != nil {
 		t.Fatalf("Initialize: %v", err)
 	}
 
@@ -285,16 +284,6 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 		t.Fatalf("expected player_start replay events to be present")
 	}
 
-	// ReplayExists and FilterOutExistingReplays
-	first := files[0]
-	exists, err := store.ReplayExists(ctx, first.Path, first.Checksum)
-	if err != nil {
-		t.Fatalf("ReplayExists: %v", err)
-	}
-	if !exists {
-		t.Fatalf("expected replay to exist after ingestion")
-	}
-
 	filtered, err := store.FilterOutExistingReplays(ctx, files)
 	if err != nil {
 		t.Fatalf("FilterOutExistingReplays: %v", err)
@@ -373,28 +362,6 @@ func TestSQLiteStorage_IngestionAndQueries(t *testing.T) {
 	if !hasPayload {
 		t.Fatalf("expected replay_events.payload column after markers migration")
 	}
-
-	// Pattern detection filters and deletes
-	patternFiltered, err := store.FilterOutExistingPatternDetections(ctx, files, core.AlgorithmVersion)
-	if err != nil {
-		t.Fatalf("FilterOutExistingPatternDetections: %v", err)
-	}
-	if len(patternFiltered) != 0 {
-		t.Fatalf("expected 0 filtered pattern files after ingestion, got %d", len(patternFiltered))
-	}
-
-	replayID, replayPath, replayChecksum := firstReplayInfo(t, store)
-	if err := store.DeletePatternDetectionsForReplay(ctx, replayID); err != nil {
-		t.Fatalf("DeletePatternDetectionsForReplay: %v", err)
-	}
-
-	afterDeleteFiltered, err := store.FilterOutExistingPatternDetections(ctx, files, core.AlgorithmVersion)
-	if err != nil {
-		t.Fatalf("FilterOutExistingPatternDetections after delete: %v", err)
-	}
-	if !containsFile(afterDeleteFiltered, replayPath, replayChecksum) {
-		t.Fatalf("expected replay %s to require pattern detection after delete", replayPath)
-	}
 }
 
 func TestSQLiteStorage_CommandStorageFlags(t *testing.T) {
@@ -407,7 +374,7 @@ func TestSQLiteStorage_CommandStorageFlags(t *testing.T) {
 	defer store.Close()
 
 	store.SetCommandStorageOptions(true)
-	if err := store.Initialize(ctx, true, true); err != nil {
+	if err := store.Initialize(ctx, true); err != nil {
 		t.Fatalf("Initialize: %v", err)
 	}
 

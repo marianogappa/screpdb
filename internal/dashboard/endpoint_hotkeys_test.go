@@ -2,11 +2,14 @@ package dashboard
 
 import (
 	"context"
-	"database/sql"
+	"fmt"
 	"testing"
 
 	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/hotkeystream"
+	"github.com/marianogappa/screpdb/internal/library"
+	"github.com/marianogappa/screpdb/internal/library/librarytest"
 )
 
 func TestGameHotkeysAcrossTestCorpus(t *testing.T) {
@@ -59,50 +62,25 @@ func TestIsLegacyStream(t *testing.T) {
 	}
 }
 
-// TestPlayerHotkeySignatureWithCards renames three ingested player rows to one
-// key (via a second connection into the shared in-memory test DB), so the
-// signature endpoint crosses the 3-games-per-race threshold and builds a card.
+// TestPlayerHotkeySignatureWithCards gives one player three long Zerg games
+// with hotkey streams, which is the threshold the signature endpoint needs
+// before it will build a card.
 func TestPlayerHotkeySignatureWithCards(t *testing.T) {
-	d := newTestDashboard(t)
+	source := newTestDashboard(t)
+	streams := corpusHotkeyStreams(t, source, 3)
 
-	db, err := sql.Open("sqlite", dashboardTestDB)
-	if err != nil {
-		t.Fatalf("open test db: %v", err)
+	replays := make([]*library.Replay, 0, len(streams))
+	for i, blob := range streams {
+		replays = append(replays, librarytest.Replay(
+			librarytest.WithID(int64(9000+i)),
+			librarytest.WithChecksum(fmt.Sprintf("sigcard-%d", i)),
+			librarytest.WithDuration(1800),
+			librarytest.WithPlayer("SigCardTester", librarytest.Race(library.RaceZerg)),
+			librarytest.WithPlayer("Opponent", librarytest.Race(library.RaceTerran)),
+			librarytest.WithHotkeyStream(0, blob),
+		))
 	}
-	defer db.Close()
-	rows, err := db.Query(`SELECT id, name, race FROM players WHERE hotkey_stream IS NOT NULL LIMIT 4`)
-	if err != nil {
-		t.Fatalf("list seedable rows: %v", err)
-	}
-	type original struct {
-		id   int64
-		name string
-		race string
-	}
-	var originals []original
-	for rows.Next() {
-		var o original
-		if err := rows.Scan(&o.id, &o.name, &o.race); err != nil {
-			t.Fatalf("scan: %v", err)
-		}
-		originals = append(originals, o)
-	}
-	_ = rows.Close()
-	if len(originals) < 3 {
-		t.Fatalf("only %d seedable rows with hotkey streams", len(originals))
-	}
-	for _, o := range originals {
-		if _, err := db.Exec(`UPDATE players SET name = 'SigCardTester', race = 'Zerg' WHERE id = ?`, o.id); err != nil {
-			t.Fatalf("seed row %d: %v", o.id, err)
-		}
-	}
-	// The shared in-memory DB outlives this test: restore the original rows so
-	// later tests keep seeing the untouched corpus.
-	t.Cleanup(func() {
-		for _, o := range originals {
-			_, _ = db.Exec(`UPDATE players SET name = ?, race = ? WHERE id = ?`, o.name, o.race, o.id)
-		}
-	})
+	d := newTestDashboardWithReplays(t, replays...)
 
 	payload, err := d.PlayerHotkeySignature(context.Background(), apigen.PlayerHotkeySignatureRequestObject{PlayerKey: "sigcardtester"})
 	if err != nil {
@@ -125,6 +103,35 @@ func TestPlayerHotkeySignatureWithCards(t *testing.T) {
 	if card.TemporalScore <= 0 || card.TemporalScore > 1 {
 		t.Fatalf("temporal score out of range: %f", card.TemporalScore)
 	}
+}
+
+// corpusHotkeyStreams borrows real hotkey blobs from the committed replays, so
+// the synthetic games carry streams the decoder actually accepts.
+func corpusHotkeyStreams(t *testing.T, d *Dashboard, want int) [][]byte {
+	t.Helper()
+	ctx := context.Background()
+	games, err := d.dbStore.ListGames(ctx, dashboarddb.GamesQuery{}, 50, 0)
+	if err != nil {
+		t.Fatalf("ListGames: %v", err)
+	}
+	var out [][]byte
+	for _, game := range games {
+		streams, err := d.dbStore.ListReplayPlayerHotkeyStreams(ctx, game.ReplayID)
+		if err != nil {
+			t.Fatalf("ListReplayPlayerHotkeyStreams: %v", err)
+		}
+		for _, stream := range streams {
+			if len(stream.HotkeyStream) == 0 {
+				continue
+			}
+			out = append(out, stream.HotkeyStream)
+			if len(out) == want {
+				return out
+			}
+		}
+	}
+	t.Skipf("only %d hotkey streams in the committed corpus, need %d", len(out), want)
+	return nil
 }
 
 func TestPlayerHotkeySignatureRejectsEmptyKey(t *testing.T) {

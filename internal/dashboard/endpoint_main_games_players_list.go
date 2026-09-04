@@ -13,22 +13,14 @@ import (
 )
 
 func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlayersListFilters, sortSpec workflowPlayersListSort) ([]workflowPlayersListItem, int64, workflowPlayersListFilterOptions, error) {
-	baseSQL, baseArgs := buildWorkflowPlayersListBaseSQL(filters)
-	whereSQL, whereArgs := buildWorkflowPlayersListWhere(filters)
-	allArgs := append(append([]any{}, baseArgs...), whereArgs...)
+	query := buildPlayersQuery(filters, sortSpec)
 
-	total, err := d.dbStore.CountWorkflowPlayers(d.ctx, baseSQL, whereSQL, allArgs)
+	total, err := d.dbStore.CountPlayers(d.ctx, query)
 	if err != nil {
 		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
 	}
 
-	sortColumn := sortSpec.Column
-	sortDir := "ASC"
-	if sortSpec.Desc {
-		sortDir = "DESC"
-	}
-
-	listRows, err := d.dbStore.ListWorkflowPlayers(d.ctx, baseSQL, whereSQL, sortColumn, sortDir, allArgs, limit, offset)
+	listRows, err := d.dbStore.ListPlayers(d.ctx, query, limit, offset)
 	if err != nil {
 		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
 	}
@@ -75,19 +67,25 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 	}
 	d.backfillBnetProfiles(backfillNames)
 
-	filterOptions, err := d.workflowPlayersListFilterOptions(baseSQL, baseArgs, whereSQL, whereArgs)
+	filterOptions, err := d.workflowPlayersListFilterOptions(query)
 	if err != nil {
 		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
 	}
 	return items, total, filterOptions, nil
 }
 
-func buildWorkflowPlayersListBaseSQL(filters workflowPlayersListFilters) (string, []any) {
-	return dashboarddb.BuildWorkflowPlayersListBaseSQL(normalizePlayerKey(filters.NameContains))
-}
-
-func buildWorkflowPlayersListWhere(filters workflowPlayersListFilters) (string, []any) {
-	return dashboarddb.BuildWorkflowPlayersListWhere(filters.OnlyFivePlus, filters.LastPlayedBuckets)
+func buildPlayersQuery(filters workflowPlayersListFilters, sortSpec workflowPlayersListSort) dashboarddb.PlayersQuery {
+	sortDir := "ASC"
+	if sortSpec.Desc {
+		sortDir = "DESC"
+	}
+	return dashboarddb.PlayersQuery{
+		NameFilter:   normalizePlayerKey(filters.NameContains),
+		OnlyFivePlus: filters.OnlyFivePlus,
+		LastPlayed:   filters.LastPlayedBuckets,
+		SortColumn:   sortSpec.Column,
+		SortDir:      sortDir,
+	}
 }
 
 func parseWorkflowPlayersListFilters(r *http.Request) workflowPlayersListFilters {
@@ -120,7 +118,7 @@ func parseWorkflowPlayersListSort(r *http.Request) workflowPlayersListSort {
 	return workflowPlayersListSort{Column: column, Desc: desc}
 }
 
-func (d *Dashboard) workflowPlayersListFilterOptions(baseSQL string, baseArgs []any, whereSQL string, whereArgs []any) (workflowPlayersListFilterOptions, error) {
+func (d *Dashboard) workflowPlayersListFilterOptions(query dashboarddb.PlayersQuery) (workflowPlayersListFilterOptions, error) {
 	result := workflowPlayersListFilterOptions{
 		Races: []workflowPlayersListFilterOption{},
 		LastPlayed: []workflowPlayersListFilterOption{
@@ -129,8 +127,7 @@ func (d *Dashboard) workflowPlayersListFilterOptions(baseSQL string, baseArgs []
 		},
 	}
 
-	countRowArgs := append(append([]any{}, baseArgs...), whereArgs...)
-	count1m, count3m, err := d.dbStore.CountWorkflowLastPlayedBuckets(d.ctx, baseSQL, whereSQL, countRowArgs)
+	count1m, count3m, err := d.dbStore.CountPlayersLastPlayedBuckets(d.ctx, query)
 	if err != nil {
 		return result, err
 	}
@@ -222,16 +219,15 @@ func parseCSVQueryValues(values []string, forceLower bool) []string {
 	return out
 }
 
-func buildWorkflowGamesListWhere(filters workflowGamesListFilters) (string, []any) {
-	return dashboarddb.BuildWorkflowGamesListWhere(
-		filters.PlayerKeys,
-		filters.MapNames,
-		filters.DurationBuckets,
-		filters.FeaturingKeys,
-		filters.MatchupKeys,
-		filters.MapKindKeys,
-		dashboarddb.WorkflowDurationSQLByKey(),
-	)
+func buildGamesQuery(filters workflowGamesListFilters) dashboarddb.GamesQuery {
+	return dashboarddb.GamesQuery{
+		PlayerKeys:      filters.PlayerKeys,
+		MapNames:        filters.MapNames,
+		DurationBuckets: filters.DurationBuckets,
+		Featuring:       filters.FeaturingKeys,
+		MatchupKeys:     filters.MatchupKeys,
+		MapKindKeys:     filters.MapKindKeys,
+	}
 }
 
 func buildInClausePlaceholders(size int) string {
@@ -346,7 +342,7 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 				// row.ValueString carries the marker payload (see the query).
 				// Dynamic markers persist their resolved value there; collect
 				// each distinct one so the pill shows the number.
-				if label, ok := markers.DecodePayloadLabel([]byte(row.ValueString.String)); ok {
+				if label, ok := markers.DecodePayloadLabel([]byte(nullableStringValue(row.ValueString))); ok {
 					existing := featureLabels[replayID][bo.FeatureKey]
 					if !slices.Contains(existing, label) {
 						featureLabels[replayID][bo.FeatureKey] = append(existing, label)

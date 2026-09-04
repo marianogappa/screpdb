@@ -31,9 +31,6 @@ func (d *Dashboard) getGlobalReplayFilterConfig(ctx context.Context) (globalRepl
 			config.GameTypes = []string{legacyGameType}
 		}
 	}
-	if raw.CompiledReplaysFilterSQL != nil {
-		config.CompiledReplaysFilterSQL = raw.CompiledReplaysFilterSQL
-	}
 	return normalizeGlobalReplayFilterConfig(config)
 }
 
@@ -52,10 +49,6 @@ func (d *Dashboard) updateGlobalReplayFilterConfig(ctx context.Context, config g
 		return normalized, err
 	}
 
-	// player_filter_mode / players / *_mode columns still exist in the
-	// settings table — write fixed defaults so legacy DBs don't choke on
-	// missing values. The simplified config no longer surfaces these to
-	// callers.
 	err = d.dbStore.UpdateGlobalReplayFilterConfigRaw(
 		ctx,
 		globalReplayFilterConfigKey,
@@ -68,7 +61,7 @@ func (d *Dashboard) updateGlobalReplayFilterConfig(ctx context.Context, config g
 		mapKindsJSON,
 		globalReplayFilterModeOnlyThese,
 		"[]",
-		nullableStringValue(normalized.CompiledReplaysFilterSQL),
+		"",
 	)
 	if err != nil {
 		return normalized, err

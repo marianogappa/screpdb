@@ -3,25 +3,9 @@ info:
   title: screpdb Dashboard API
   version: 1.0.0
 paths:
-  /api/custom/ingest:
-    post:
-      operationId: ingest
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/IngestRequest"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/custom/ingest/settings:
+  /api/custom/library/settings:
     get:
-      operationId: getIngestSettings
+      operationId: getLibrarySettings
       responses:
         "200":
           description: OK
@@ -30,13 +14,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/GenericValue"
     put:
-      operationId: updateIngestSettings
+      operationId: updateLibrarySettings
       requestBody:
         required: false
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateIngestSettingsRequest"
+              $ref: "#/components/schemas/UpdateLibrarySettingsRequest"
       responses:
         "200":
           description: OK
@@ -44,9 +28,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
-  /api/custom/ingest/logs:
+  /api/custom/library/rescan:
+    post:
+      operationId: libraryRescan
+      tags: [operational]
+      summary: Re-read the replay folder now. Served by a hand-written handler (not generated).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericValue"
+  /api/custom/library/events:
     get:
-      operationId: ingestLogs
+      operationId: libraryEvents
+      tags: [operational]
+      summary: Live load progress and corpus changes. Served by a hand-written websocket handler.
       responses:
         "101":
           description: Switching protocols for websocket upgrade
@@ -280,16 +278,6 @@ paths:
       operationId: updateApply
       tags: [operational]
       summary: Apply a pending self-update and restart. Served by a hand-written handler (not generated).
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/custom/replays/stale-count:
-    get:
-      operationId: getStaleReplaysCount
       responses:
         "200":
           description: OK
@@ -663,31 +651,11 @@ components:
       schema:
         type: string
   schemas:
-    IngestRequest:
+    UpdateLibrarySettingsRequest:
       type: object
       additionalProperties: false
       properties:
-        input_dir:
-          type: string
-        sqlite_path:
-          type: string
-        store_right_clicks:
-          type: boolean
-        stop_after_n_reps:
-          type: integer
-        up_to_yyyy_mm_dd:
-          type: string
-        up_to_n_months:
-          type: integer
-        clean:
-          type: boolean
-        clean_dashboard:
-          type: boolean
-    UpdateIngestSettingsRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        input_dir:
+        replay_dir:
           type: string
     UpdateGlobalReplayFilterConfigRequest:
       type: object
@@ -715,9 +683,6 @@ components:
           items:
             type: string
             enum: [regular, money]
-        compiled_replays_filter_sql:
-          type: string
-          nullable: true
     GenericObject:
       type: object
       additionalProperties: true

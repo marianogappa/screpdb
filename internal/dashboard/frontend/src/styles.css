@@ -1310,7 +1310,6 @@ body {
   }
 }
 
-
 /* Ingest Panel */
 .ingest-panel {
   margin-top: 16px;
@@ -1384,12 +1383,6 @@ body {
 /* Sections are separated by spacing + bold headings + thin dividers, not
    frames, so they read as visually consistent groups. */
 .ingest-section-row,
-.ingest-progress-block {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 18px;
-}
-
-/* "Keep up to date" and "Ingest now" share a row so the log gets more height. */
 .ingest-section-row {
   display: flex;
   gap: 24px;
@@ -1411,75 +1404,6 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-}
-
-.ingest-manual-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 14px;
-  margin-top: 4px;
-}
-
-.ingest-manual-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.ingest-manual-caption {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.ingest-manual-number {
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
-  color: #e0e0e0;
-  font-size: 0.9rem;
-  width: 120px;
-  max-width: 120px;
-}
-
-.ingest-manual-check {
-  cursor: pointer;
-  font-size: 0.88rem;
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.ingest-manual-check span {
-  user-select: none;
-}
-
-.ingest-manual-check input {
-  width: 16px;
-  height: 16px;
-  accent-color: #64a0ff;
-}
-
-.ingest-auto-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 12px;
-  margin-bottom: 12px;
-  font-size: 0.88rem;
-  color: rgba(230, 236, 255, 0.9);
-  cursor: pointer;
-}
-
-.ingest-auto-inline input {
-  width: 16px;
-  height: 16px;
-  accent-color: #64a0ff;
-}
-
-.ingest-log-panel-plain {
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .ingest-section {
@@ -1643,27 +1567,6 @@ body {
   color: rgba(150, 210, 170, 0.9);
 }
 
-/* The destructive "Erase existing data" toggle gets visual weight. */
-.ingest-destructive-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-/* Align the clarifying line under the checkbox label text (16px box + 10px gap). */
-.ingest-destructive-help {
-  padding-left: 26px;
-  max-width: 460px;
-}
-
-.ingest-destructive {
-  color: rgba(255, 170, 160, 0.95);
-}
-
-.ingest-destructive input {
-  accent-color: #e0654f;
-}
-
 .ingest-start {
   align-self: flex-start;
 }
@@ -1717,48 +1620,6 @@ body {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-}
-
-.ingest-log-panel {
-  max-height: 260px;
-  overflow: auto;
-  padding: 12px;
-  border-radius: 8px;
-  background: rgba(5, 10, 20, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.ingest-log-empty {
-  color: rgba(255, 255, 255, 0.45);
-}
-
-.ingest-log-line {
-  white-space: pre-wrap;
-}
-
-.ingest-log-info {
-  color: #c8d7f0;
-}
-
-.ingest-log-success {
-  color: #8ee0a7;
-}
-
-.ingest-log-warn {
-  color: #f6d57a;
-}
-
-.ingest-log-error {
-  color: #ff9a9a;
-}
-
-.ingest-log-progress {
-  color: #7ec8ff;
 }
 
 .aliases-settings-root {
@@ -1982,91 +1843,6 @@ body {
 @keyframes ingest-running-badge-pulse {
   0%, 100% { opacity: 0.85; }
   50% { opacity: 1; }
-}
-
-/* Stale-replays hint — small icon next to Ingest with a custom CSS tooltip
-   that pops in fast (no native title-attribute delay) and stays visible
-   while the cursor is over the tooltip itself, so the embedded Dismiss
-   button is clickable. */
-/* Ingest button wrapper — positions the stale-replays tooltip relative to
-   the button itself so hovering the button reveals the hint below it. */
-.ingest-btn-wrap {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-
-.workflow-nav-text-action--stale {
-  animation: ingest-stale-pulse 2s ease-in-out infinite;
-}
-
-@keyframes ingest-stale-pulse {
-  0%, 100% { color: rgba(255, 255, 255, 0.88); }
-  50%      { color: #f8e0b0; }
-}
-
-.ingest-stale-tooltip {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  min-width: 240px;
-  max-width: 320px;
-  padding: 10px 12px;
-  border-radius: 6px;
-  background: rgba(20, 22, 30, 0.96);
-  border: 1px solid rgba(240, 180, 80, 0.55);
-  color: #f8e0b0;
-  font-size: 13px;
-  line-height: 1.4;
-  text-align: left;
-  white-space: normal;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
-  z-index: 50;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  /* 500ms hide-delay so user can move into the tooltip to click Dismiss. */
-  transition: opacity 120ms ease 200ms, visibility 0s linear 500ms;
-}
-
-/* Invisible bridge above the tooltip so cursor travel from button to
-   tooltip does not cross a non-hover gap. */
-.ingest-stale-tooltip::before {
-  content: '';
-  position: absolute;
-  top: -10px;
-  left: 0;
-  right: 0;
-  height: 10px;
-}
-
-.ingest-btn-wrap:hover .ingest-stale-tooltip,
-.ingest-stale-tooltip:hover {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  /* No delay on appear. */
-  transition: opacity 120ms ease, visibility 0s;
-}
-
-.ingest-stale-tooltip-actions {
-  margin-top: 8px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.ingest-stale-dismiss {
-  background: transparent;
-  border: 1px solid rgba(240, 180, 80, 0.5);
-  color: #f8e0b0;
-  border-radius: 4px;
-  padding: 3px 10px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.ingest-stale-dismiss:hover {
-  background: rgba(240, 180, 80, 0.18);
 }
 
 /* Footer */
@@ -2743,7 +2519,6 @@ button.workflow-nav-update-available:disabled {
   gap: 0.42rem;
 }
 
-
 /* In the LIST the replay colour carries nothing: it is a per-replay slot, so
    the same opponent is pink in one row and teal in the next. It stays on the
    game-detail screens, where it keys a name to its base on the map. */
@@ -3249,8 +3024,6 @@ button.workflow-nav-update-available:disabled {
 .workflow-link-btn:hover {
   color: #bad5ff;
 }
-
-
 
 .workflow-card {
   background: rgba(255, 255, 255, 0.04);
@@ -4343,8 +4116,6 @@ button.workflow-nav-update-available:disabled {
   cursor: not-allowed;
   background: transparent;
 }
-
-
 
 /* Warnings column: to the right of the filter rows, vertically centred so a
    single notice reads as spanning both rows. */
@@ -5683,7 +5454,6 @@ button.workflow-nav-update-available:disabled {
 .workflow-fingerprint-icon-link:hover {
   opacity: 1;
 }
-
 
 .workflow-fingerprint-tooltip {
   position: absolute;

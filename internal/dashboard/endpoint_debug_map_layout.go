@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser"
 	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
@@ -36,7 +36,7 @@ func (d *Dashboard) handlerDebugMapLayout(w http.ResponseWriter, r *http.Request
 	summary, err := d.dbStore.GetReplaySummary(r.Context(), replayID)
 	if err != nil {
 		status := http.StatusInternalServerError
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, dashboarddb.ErrNotFound) {
 			status = http.StatusNotFound
 		}
 		http.Error(w, err.Error(), status)
