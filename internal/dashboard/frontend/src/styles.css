@@ -1310,7 +1310,6 @@ body {
   }
 }
 
-
 /* Ingest Panel */
 .ingest-panel {
   margin-top: 16px;
@@ -1384,12 +1383,6 @@ body {
 /* Sections are separated by spacing + bold headings + thin dividers, not
    frames, so they read as visually consistent groups. */
 .ingest-section-row,
-.ingest-progress-block {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 18px;
-}
-
-/* "Your replays" and "Example replays" share a row so the log gets more height. */
 .ingest-section-row {
   display: flex;
   gap: 24px;
@@ -1411,11 +1404,6 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-}
-
-.ingest-log-panel-plain {
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .ingest-section {
@@ -1634,48 +1622,6 @@ body {
   flex-wrap: wrap;
 }
 
-.ingest-log-panel {
-  max-height: 260px;
-  overflow: auto;
-  padding: 12px;
-  border-radius: 8px;
-  background: rgba(5, 10, 20, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.ingest-log-empty {
-  color: rgba(255, 255, 255, 0.45);
-}
-
-.ingest-log-line {
-  white-space: pre-wrap;
-}
-
-.ingest-log-info {
-  color: #c8d7f0;
-}
-
-.ingest-log-success {
-  color: #8ee0a7;
-}
-
-.ingest-log-warn {
-  color: #f6d57a;
-}
-
-.ingest-log-error {
-  color: #ff9a9a;
-}
-
-.ingest-log-progress {
-  color: #7ec8ff;
-}
-
 .aliases-settings-root {
   display: flex;
   flex-direction: column;
@@ -1880,57 +1826,6 @@ body {
   color: #f5fff8;
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
-}
-
-.library-progress-bar {
-  position: relative;
-  height: 8px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.library-progress-bar-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: rgba(85, 170, 255, 0.75);
-  transition: width 300ms ease;
-}
-
-.library-progress-bar--active .library-progress-bar-fill {
-  background: linear-gradient(90deg, rgba(85, 170, 255, 0.75), rgba(143, 199, 255, 0.95));
-  animation: library-progress-pulse 1.6s ease-in-out infinite;
-}
-
-@keyframes library-progress-pulse {
-  0%, 100% { opacity: 0.85; }
-  50% { opacity: 1; }
-}
-
-.library-progress-text {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 12px;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.library-progress-failed {
-  color: #ff8f8f;
-}
-
-.library-progress-skipped {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.library-progress-dir {
-  margin-left: auto;
-  max-width: 50%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: rgba(255, 255, 255, 0.45);
 }
 
 .ingest-running-badge {
@@ -2624,7 +2519,6 @@ button.workflow-nav-update-available:disabled {
   gap: 0.42rem;
 }
 
-
 /* In the LIST the replay colour carries nothing: it is a per-replay slot, so
    the same opponent is pink in one row and teal in the next. It stays on the
    game-detail screens, where it keys a name to its base on the map. */
@@ -3130,8 +3024,6 @@ button.workflow-nav-update-available:disabled {
 .workflow-link-btn:hover {
   color: #bad5ff;
 }
-
-
 
 .workflow-card {
   background: rgba(255, 255, 255, 0.04);
@@ -4224,8 +4116,6 @@ button.workflow-nav-update-available:disabled {
   cursor: not-allowed;
   background: transparent;
 }
-
-
 
 /* Warnings column: to the right of the filter rows, vertically centred so a
    single notice reads as spanning both rows. */
@@ -5564,7 +5454,6 @@ button.workflow-nav-update-available:disabled {
 .workflow-fingerprint-icon-link:hover {
   opacity: 1;
 }
-
 
 .workflow-fingerprint-tooltip {
   position: absolute;

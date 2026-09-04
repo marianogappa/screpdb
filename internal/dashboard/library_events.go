@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"log"
 	"net/http"
 	"sync"
 
@@ -9,8 +10,6 @@ import (
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/load"
 )
-
-const maxLibraryLogEvents = 4000
 
 // Library status values as the browser sees them. The loader's phases are
 // finer grained than the UI needs, so several collapse into one status.
@@ -49,8 +48,6 @@ type libraryEventMessage struct {
 	Error     string           `json:"error,omitempty"`
 	Progress  *libraryProgress `json:"progress,omitempty"`
 	Corpus    *libraryCorpus   `json:"corpus,omitempty"`
-	Log       *load.LogEvent   `json:"log,omitempty"`
-	Logs      []load.LogEvent  `json:"logs,omitempty"`
 }
 
 func progressToWire(p library.ProgressState) libraryProgress {
@@ -85,11 +82,9 @@ var libraryEventUpgrader = websocket.Upgrader{
 }
 
 // libraryHub turns the library's progress and corpus events into the browser's
-// event stream, keeping a bounded log tail so a page that connects mid-load
-// still shows what happened.
+// event stream.
 type libraryHub struct {
 	mu          sync.Mutex
-	logs        []load.LogEvent
 	progress    library.ProgressState
 	lastError   string
 	subscribers map[chan libraryEventMessage]struct{}
@@ -119,19 +114,16 @@ func (h *libraryHub) Watch(lib *library.Library) {
 	}()
 }
 
-// Log records one loader log line and forwards it.
+// Log writes one loader line to the server log and keeps the last failure, so
+// the screen can say something went wrong without listing every line.
 func (h *libraryHub) Log(event load.LogEvent) {
+	log.Printf("library: %s", event.Message)
+	if event.Level != load.LogLevelError {
+		return
+	}
 	h.mu.Lock()
-	h.logs = append(h.logs, event)
-	if len(h.logs) > maxLibraryLogEvents {
-		h.logs = append([]load.LogEvent(nil), h.logs[len(h.logs)-maxLibraryLogEvents:]...)
-	}
-	if event.Level == load.LogLevelError {
-		h.lastError = event.Message
-	}
+	h.lastError = event.Message
 	h.mu.Unlock()
-	copied := event
-	h.broadcast(libraryEventMessage{Type: "log", Log: &copied})
 }
 
 // publishProgress keeps the hub's own copy current for /api/health, but tells
@@ -199,7 +191,6 @@ func (h *libraryHub) snapshotMessage() libraryEventMessage {
 		ReplayDir: h.progress.Folder,
 		Error:     h.lastError,
 		Progress:  &wire,
-		Logs:      append([]load.LogEvent(nil), h.logs...),
 	}
 }
 

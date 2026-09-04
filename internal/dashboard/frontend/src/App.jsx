@@ -2,7 +2,6 @@ import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallba
 import { api } from './api';
 import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
-import ReplayLibraryModal from './components/ReplayLibraryModal';
 import FilterOmnibar from './components/FilterOmnibar';
 import GamingSessionPanel from './components/GamingSessionPanel';
 import Histogram from './components/charts/Histogram';
@@ -1953,34 +1952,6 @@ const playersHaveDistinctTeams = (players) => new Set((players || []).map((p) =>
 // always falls between teams.
 const PLAYERS_PER_LIST_ROW = 4;
 
-const mergeLibraryLogEntries = (entries, event) => {
-  if (!event || !event.message) {
-    return entries;
-  }
-
-  if (event.append && entries.length > 0 && entries[entries.length - 1].append) {
-    const next = [...entries];
-    const last = next[next.length - 1];
-    next[next.length - 1] = {
-      ...last,
-      level: event.level || last.level,
-      message: `${last.message}${event.message}`,
-      append: true,
-    };
-    return next;
-  }
-
-  return [...entries, {
-    level: event.level || 'info',
-    message: event.message,
-    append: Boolean(event.append),
-  }];
-};
-
-const hydrateLibraryLogEntries = (events = []) => (
-  (events || []).reduce((entries, event) => mergeLibraryLogEntries(entries, event), [])
-);
-
 // Package-manager installs can't self-update, so we surface the exact upgrade
 // command with a one-click copy button plus a link to the release notes.
 const ManagedUpdateHint = ({ latestVersion, command, releaseUrl, className }) => {
@@ -2058,11 +2029,9 @@ function App() {
   const [globalReplayFilterConfig, setGlobalReplayFilterConfig] = useState(null);
   const [globalReplayFilterSaving, setGlobalReplayFilterSaving] = useState(false);
   const [globalReplayFilterError, setGlobalReplayFilterError] = useState('');
-  const [showLibraryPanel, setShowLibraryPanel] = useState(false);
   const [libraryMessage, setLibraryMessage] = useState('');
   const [libraryStatus, setLibraryStatus] = useState('idle');
   const [libraryProgress, setLibraryProgress] = useState(null);
-  const [libraryLogs, setLibraryLogs] = useState([]);
   const [replayDirInput, setReplayDirInput] = useState('');
   const [savedReplayDir, setSavedReplayDir] = useState('');
   const [librarySettingsLoading, setLibrarySettingsLoading] = useState(false);
@@ -2071,7 +2040,6 @@ function App() {
   const [detectedReplayDir, setDetectedReplayDir] = useState('');
   const [sampleSetLoading, setSampleSetLoading] = useState(false);
   const [sampleNotice, setSampleNotice] = useState('');
-  const [librarySocketState, setLibrarySocketState] = useState('closed');
   // The most recent `corpus` block seen on a list/insight response. Preferred
   // over the websocket status for "is the corpus complete?" because it is the
   // truth about the data actually on screen; the websocket is the fallback
@@ -3094,19 +3062,31 @@ function App() {
       void checkHealthStatus();
     };
 
+    const applyStatus = (status) => {
+      const next = String(status || 'idle');
+      setLibraryStatus(next);
+      // A read (initial or after a folder change) just finished: everything on
+      // screen was computed from a partial corpus, so refresh broadly once. A
+      // first snapshot that is already `watching` is skipped because the mount
+      // effects are loading those views right now anyway.
+      if (next === 'watching' && lastStatus && lastStatus !== 'watching') {
+        void refreshAfterLibraryLoadRef.current?.();
+        void loadGamingSessionRef.current?.();
+      }
+      lastStatus = next;
+    };
+
     const connect = () => {
       if (unmounted) return;
       if (reconnectTimer) {
         window.clearTimeout(reconnectTimer);
         reconnectTimer = null;
       }
-      setLibrarySocketState('connecting');
       socket = api.createLibraryEventsSocket();
       librarySocketRef.current = socket;
 
       socket.onopen = () => {
         reconnectAttempt = 0;
-        setLibrarySocketState('open');
         if (connectedBefore) refreshAfterGap();
         connectedBefore = true;
       };
@@ -3116,7 +3096,6 @@ function App() {
           const message = JSON.parse(event.data);
           if (message.type === 'snapshot') {
             if (message.progress) setLibraryProgress(message.progress);
-            setLibraryLogs(hydrateLibraryLogEntries(message.logs || []));
             if (message.error) setLibraryMessage(message.error);
             applyStatus(message.status);
             return;
@@ -3125,11 +3104,6 @@ function App() {
           if (message.type === 'progress') {
             if (message.progress) setLibraryProgress(message.progress);
             if (message.status) setLibraryStatus(String(message.status));
-            return;
-          }
-
-          if (message.type === 'log' && message.log) {
-            setLibraryLogs((current) => mergeLibraryLogEntries(current, message.log));
             return;
           }
 
@@ -3150,14 +3124,12 @@ function App() {
       };
 
       socket.onerror = () => {
-        setLibrarySocketState('error');
       };
 
       socket.onclose = () => {
         if (librarySocketRef.current === socket) {
           librarySocketRef.current = null;
         }
-        setLibrarySocketState('closed');
         if (unmounted) return;
         // Reconnect with backoff: 2s, 5s, 10s, then 30s thereafter.
         const delays = [2000, 5000, 10000, 30000];
@@ -3204,12 +3176,12 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!showLibraryPanel) return undefined;
+    if (!showGlobalReplayFilter) return undefined;
     setLibraryMessage('');
     void loadLibrarySettings();
     return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only refresh settings + clear message when modal opens.
-  }, [showLibraryPanel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only refresh settings + clear message when the modal opens.
+  }, [showGlobalReplayFilter]);
 
   useEffect(() => () => {
     if (mainGameSeeNoticeTimerRef.current) {
@@ -3244,7 +3216,7 @@ function App() {
       }
       if (totalReplays === 0 && !isLibraryLoading(library?.status) && !emptyDbAutoOpenRef.current) {
         emptyDbAutoOpenRef.current = true;
-        setShowLibraryPanel(true);
+        setShowGlobalReplayFilter(true);
       }
       return data;
     } catch (err) {
@@ -5166,11 +5138,8 @@ function App() {
               className="workflow-nav-text-action"
             >
               ⚙️ Settings
-            </button>
-            <button type="button" onClick={() => setShowLibraryPanel(true)} className="workflow-nav-text-action">
-              📁 Replay library
-              {!showLibraryPanel && isLibraryLoading(libraryStatus) ? (
-                <span className="ingest-running-badge tip-below" data-tip="Loading your replays. Click to view progress">
+              {!showGlobalReplayFilter && isLibraryLoading(libraryStatus) ? (
+                <span className="ingest-running-badge tip-below" data-tip="Reading your replay folder">
                   {formatLoadingShort()}
                 </span>
               ) : null}
@@ -7408,16 +7377,7 @@ function App() {
           featureFlagsMessage={featureFlagsMessage}
           featureFlagsMessageIsError={featureFlagsMessageIsError}
           onFeatureFlagToggle={handleFeatureFlagToggle}
-        />
-      )}
-
-      {showLibraryPanel && (
-        <ReplayLibraryModal
           libraryMessage={libraryMessage}
-          libraryStatus={libraryStatus}
-          libraryProgress={libraryProgress}
-          libraryLogs={libraryLogs}
-          librarySocketState={librarySocketState}
           replayDirInput={replayDirInput}
           savedReplayDir={savedReplayDir}
           librarySettingsLoading={librarySettingsLoading}
@@ -7425,9 +7385,6 @@ function App() {
           isSampleSet={isSampleSet}
           detectedReplayDir={detectedReplayDir}
           sampleSetLoading={sampleSetLoading}
-          onClose={() => {
-            setShowLibraryPanel(false);
-          }}
           onReplayDirChange={setReplayDirInput}
           onSaveReplayDir={handleSaveReplayDir}
           onLoadSampleSet={handleLoadSampleSet}
