@@ -1,13 +1,11 @@
-name: bench-ingest
+name: bench-load
 
-# Tracks SQLite ingestion throughput over the fixed committed replay corpus
-# (issue #249). This is the `screpdb ingest` CLI/MCP write path only — the
-# dashboard no longer uses it, so this figure is NOT the README badge (that
-# tracks the replay-library load path, see bench-load.yml). Kept as a regression
-# guard for the CLI. On pull requests it runs the benchmark against the PR and
-# against the base branch on the same runner and comments an informational
-# benchstat delta (never fails the build — GitHub runners are too variable to
-# hard-gate).
+# Tracks replay-library load throughput over the fixed committed replay corpus:
+# the path a user waits for on launch, and the figure behind the README badge.
+# On pull requests it runs the benchmark against the PR and against the base
+# branch on the same runner and comments an informational benchstat delta (never
+# fails the build — GitHub runners are too variable to hard-gate). The README
+# badge itself is refreshed by readme-figures.yml on push to main.
 on:
   pull_request:
 
@@ -15,11 +13,12 @@ permissions:
   pull-requests: write
 
 jobs:
-  bench-ingest:
+  bench-load:
     runs-on: ubuntu-latest
     env:
-      # Fixed, reproducible corpus. The benchmark dedups by checksum, so the
-      # effective replay count is reported in the s/ingest_<N>replays metric.
+      # Fixed, reproducible corpus. The loader collapses duplicate-checksum
+      # files, so the effective replay count is reported in the
+      # s/load_<N>replays metric.
       CORPUS_DIR: internal/patterns/markers/testdata/replays
       BENCH_COUNT: "3"
     steps:
@@ -34,8 +33,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run ingestion benchmark (this ref)
-        run: BENCH_OUT=bench-current.txt ./scripts/bench-ingest.sh "$BENCH_COUNT" | tee bench-current.log
+      - name: Run load benchmark (this ref)
+        run: BENCH_OUT=bench-current.txt ./scripts/bench-load.sh "$BENCH_COUNT" | tee bench-current.log
 
       - name: Benchmark base branch (best-effort)
         id: baseline
@@ -44,11 +43,11 @@ jobs:
           git fetch origin "${{ github.base_ref }}"
           git worktree add ../base-ref "origin/${{ github.base_ref }}"
           cd ../base-ref
-          # Point at the PR's corpus so both runs ingest identical input and only
-          # the code differs. A base branch that predates the benchmark (or its
-          # checksum-dedup fix) will fail here — that's fine, it's best-effort.
+          # Point at the PR's corpus so both runs read identical input and only
+          # the code differs. A base branch that predates this benchmark will
+          # fail here — that's fine, it's best-effort.
           SCREPDB_BENCH_CORPUS="$GITHUB_WORKSPACE/$CORPUS_DIR" \
-            go test ./internal/storage/ -run '^$' -bench '^BenchmarkSQLiteIngestionCorpus$' \
+            go test ./internal/library/load/ -run '^$' -bench '^BenchmarkLibraryLoadCorpus$' \
             -benchmem -benchtime=1x -count="$BENCH_COUNT" | tee "$GITHUB_WORKSPACE/bench-base.txt"
 
       - name: Compare with benchstat
@@ -57,7 +56,7 @@ jobs:
           if [ -s bench-base.txt ] && grep -q 's/replay' bench-base.txt; then
             "$(go env GOPATH)/bin/benchstat" bench-base.txt bench-current.txt > benchstat.txt || true
             {
-              echo "### 📊 Ingestion benchmark, CLI path (base → PR)"
+              echo "### 📊 Replay load benchmark (base → PR)"
               echo
               echo "Corpus: \`$CORPUS_DIR\` · $BENCH_COUNT samples · GitHub-hosted 2-core runner. Informational only — runner variance is ±10–20%, so a small delta is noise."
               echo
@@ -67,12 +66,12 @@ jobs:
             } > comment.md
           else
             {
-              echo "### 📊 Ingestion benchmark, CLI path"
+              echo "### 📊 Replay load benchmark"
               echo
               echo "No comparable base-branch baseline (the base predates this benchmark). Current run:"
               echo
               echo '```'
-              grep '^ingest-bench-summary:' bench-current.log || tail -n 3 bench-current.log
+              grep '^load-bench-summary:' bench-current.log || tail -n 3 bench-current.log
               echo '```'
             } > comment.md
           fi
@@ -82,7 +81,7 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const marker = '<!-- ingest-bench-comment -->';
+            const marker = '<!-- load-bench-comment -->';
             const body = marker + '\n' + fs.readFileSync('comment.md', 'utf8');
             const { owner, repo } = context.repo;
             const issue_number = context.payload.pull_request.number;

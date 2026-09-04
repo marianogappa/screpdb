@@ -1,4 +1,4 @@
-.PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso bench-ingest coverage
+.PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso bench-load bench-ingest coverage
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
@@ -48,10 +48,17 @@ ui-build:
 ui-test:
 	cd internal/dashboard/frontend && npm ci && npm test
 
-# Ingestion-speed benchmark over the fixed committed replay corpus. Reports a
-# headline replays/sec figure (see scripts/bench-ingest.sh); CI tracks it on the
-# README and warns on PR regressions. Override sample count with BENCH_COUNT.
+# Replay-load benchmark over the fixed committed replay corpus: the path a user
+# waits for on launch (dashboard reading a folder into the in-memory library).
+# Reports a headline replays/sec figure (see scripts/bench-load.sh); this is the
+# figure on the README badge. Override sample count with BENCH_COUNT.
 BENCH_COUNT ?= 3
+bench-load:
+	./scripts/bench-load.sh $(BENCH_COUNT)
+
+# SQLite ingestion benchmark for the `screpdb ingest` CLI/MCP write path. The
+# dashboard no longer uses it, so this figure is not badged; it stays as a
+# regression guard for the CLI.
 bench-ingest:
 	./scripts/bench-ingest.sh $(BENCH_COUNT)
 
