@@ -58,10 +58,7 @@ func FetchAuroraProfile(ctx context.Context, addr, toon string, gateway int, pri
 	if err != nil {
 		return nil, err
 	}
-	normalized, err := normalizeBridgeJSON(body)
-	if err != nil {
-		return nil, err
-	}
+	normalized := normalizeBridgeJSON(body)
 	var p AuroraProfile
 	if err := json.Unmarshal(normalized, &p); err != nil {
 		return nil, fmt.Errorf("bnetfacade: parsing aurora profile: %w", err)

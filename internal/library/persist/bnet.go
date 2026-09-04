@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/marianogappa/screpdb/internal/bnetfacade"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/library"
 )
@@ -130,6 +131,11 @@ func (c *BnetCache) readProfile(h bnetHeader) (*BnetProfile, error) {
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return nil, fmt.Errorf("persist: decode %s: %w", path, err)
 	}
+	// An entry an older build mojibaked reads as absent, so the fetch path
+	// replaces it instead of serving a double-encoded battle tag.
+	if bnetfacade.IsMojibakedPayload([]byte(p.Payload)) {
+		return nil, nil
+	}
 	return &p, nil
 }
 
@@ -223,6 +229,9 @@ func (c *BnetCache) PayloadsByToons(toons []string) ([]BnetProfile, error) {
 		p, err := c.readProfile(h)
 		if err != nil {
 			return nil, err
+		}
+		if p == nil {
+			continue
 		}
 		out = append(out, *p)
 	}
