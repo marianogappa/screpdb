@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getUnitIcon } from '../../lib/gameAssets';
+import { useT } from '../../lib/i18nContext';
+import { slugKey } from '../../lib/i18n';
 
 // Hotkey timeline: one row per hotkey group per player, both players sharing
 // one horizontal scroll. Building assigns render the actual building sprite,
@@ -109,6 +111,7 @@ function TicksCanvas({ events, buildingNames, totalW, durationSeconds, pxPerMin 
 }
 
 export default function HotkeyTimeline({ payload }) {
+  const t = useT();
   const players = payload?.players || [];
   const buildingNames = payload?.buildings || {};
   const durationSeconds = Math.max(60, payload?.duration_seconds || 60);
@@ -187,7 +190,7 @@ export default function HotkeyTimeline({ payload }) {
   for (let m = 0; m <= minutes; m += step) axisLabels.push(m);
 
   if (!rowsByPlayer.length) {
-    return <div className="chart-empty">No hotkey use in this game.</div>;
+    return <div className="chart-empty">{t('chart.hotkey.empty')}</div>;
   }
 
   const axisRow = (key) => (
@@ -196,7 +199,7 @@ export default function HotkeyTimeline({ payload }) {
       <div className="hk-viewport hk-axis">
         <div className="hk-track" ref={registerTrack} style={{ width: `${totalW}px` }}>
           {axisLabels.map((m) => (
-            <span key={m} className="hk-axis-label" style={{ left: `${m * pxPerMin}px` }}>{m}m</span>
+            <span key={m} className="hk-axis-label" style={{ left: `${m * pxPerMin}px` }}>{t('chart.hotkey.minuteTick', { minute: m })}</span>
           ))}
         </div>
       </div>
@@ -208,13 +211,13 @@ export default function HotkeyTimeline({ payload }) {
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div className="hk-timeline" ref={containerRef} onPointerDown={onPointerDown} onWheelCapture={onWheel}>
       <div className="workflow-section-warning hk-warning">
-        ⚠️ Unit types in a selection are not recorded in replays. Example units shown.
+        {t('chart.hotkey.selectionWarning')}
       </div>
       {rowsByPlayer.map(({ player, groups, byGroup }) => (
         <div key={player.player_id} className="hk-player">
           <div className="hk-player-head">
             <span className="hk-player-name">{player.name}</span>
-            {player.legacy ? <span className="hk-player-stat">building labels unavailable for this replay</span> : null}
+            {player.legacy ? <span className="hk-player-stat">{t('chart.hotkey.legacyStream')}</span> : null}
           </div>
           {groups.map((g) => {
             const events = byGroup.get(g);
@@ -233,14 +236,17 @@ export default function HotkeyTimeline({ payload }) {
                     {events.map((e, i) => {
                       const x = (e[EV_SEC] / 60) * pxPerMin;
                       if (e[EV_TYPE] === TYPE_ASSIGN_BUILDING) {
-                        const name = buildingNames[e[EV_BUILDING]] || 'building';
+                        const name = buildingNames[e[EV_BUILDING]] || '';
                         const icon = hotkeyBuildingIcon(name);
-                        const title = `${mmss(e[EV_SEC])} assign ${g}: ${name}`;
+                        const displayName = name
+                          ? t.server(`server.name.${slugKey(name)}`, name)
+                          : t('chart.hotkey.buildingFallback');
+                        const title = t('chart.hotkey.assignBuildingTitle', { time: mmss(e[EV_SEC]), group: g, name: displayName });
                         return icon ? (
                           <img
                             key={i}
                             src={icon}
-                            alt={name}
+                            alt={displayName}
                             title={title}
                             className="hk-mark-building"
                             style={{ left: `${x}px` }}
@@ -263,7 +269,7 @@ export default function HotkeyTimeline({ payload }) {
                             key={i}
                             className="hk-mark-units"
                             style={{ left: `${x}px` }}
-                            title={`${mmss(e[EV_SEC])} assign ${g}: ${n} unit${n === 1 ? '' : 's'}`}
+                            title={t.plural('chart.hotkey.assignUnitsTitle', n, { time: mmss(e[EV_SEC]), group: g })}
                           >
                             <img src={getUnitIcon(UNIT_SILHOUETTE[player.race] || 'Marine')} alt="" className="hk-silhouette" />
                             <i className="hk-count" style={{ background: hotkeyCountColor(n) }}>{n}</i>

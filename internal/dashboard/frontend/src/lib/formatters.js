@@ -1,3 +1,5 @@
+import { t } from './i18nContext';
+
 export const formatDuration = (seconds) => {
   const total = Math.max(0, Math.floor(Number(seconds) || 0));
   const mins = Math.floor(total / 60);
@@ -5,7 +7,7 @@ export const formatDuration = (seconds) => {
   return `${mins}:${String(secs).padStart(2, '0')}`;
 };
 
-export const formatRelativeReplayDate = (value) => {
+export const formatRelativeReplayDateWith = (translate, value) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
 
@@ -18,23 +20,26 @@ export const formatRelativeReplayDate = (value) => {
   // "1d" so the games-list "Played" column doesn't burn horizontal space we
   // need for the 8-player matchup pills (see workflow-games-list-table CSS).
   let dayLabel = '';
-  if (diffDays === 0) dayLabel = 'Today';
-  else if (diffDays >= 1) dayLabel = `${diffDays}d`;
+  if (diffDays === 0) dayLabel = translate('format.today');
+  else if (diffDays >= 1) dayLabel = translate('format.daysCompact', { count: diffDays });
   else dayLabel = date.toLocaleDateString();
 
   const hours = date.getHours();
   const minutes = String(date.getMinutes()).padStart(2, '0');
   const hour12 = hours % 12 || 12;
-  const ampm = hours >= 12 ? 'pm' : 'am';
-  return `${dayLabel} @ ${hour12}.${minutes}${ampm}`;
+  const ampm = translate(hours >= 12 ? 'format.pm' : 'format.am');
+  return translate('format.relativeReplayDate', { day: dayLabel, hour: hour12, minute: minutes, ampm });
 };
 
-export const formatDaysAgoCompact = (value) => {
+export const formatRelativeReplayDate = (value) => formatRelativeReplayDateWith(t, value);
+
+export const formatDaysAgoCompactWith = (translate, value) => {
   const days = Math.max(0, Number(value) || 0);
-  if (days === 0) return 'Today';
-  if (days === 1) return '1d ago';
-  return `${days}d ago`;
+  if (days === 0) return translate('format.today');
+  return translate('format.daysAgo', { count: days });
 };
+
+export const formatDaysAgoCompact = (value) => formatDaysAgoCompactWith(t, value);
 
 export const formatPercent = (value) => `${((Number(value) || 0) * 100).toFixed(1)}%`;
 
@@ -57,16 +62,18 @@ export const mapKindEmoji = (mapKind) => {
 };
 
 // mapKindTooltip is the hover explanation for a map-kind emoji.
-export const mapKindTooltip = (mapKind) => {
+export const mapKindTooltipWith = (translate, mapKind) => {
   switch (String(mapKind || '').toLowerCase()) {
     case 'money':
-      return 'Money map';
+      return translate('format.mapKind.money');
     case 'usemapsettings':
-      return 'Use Map Settings: custom scenario rules.';
+      return translate('format.mapKind.ums');
     default:
       return '';
   }
 };
+
+export const mapKindTooltip = (mapKind) => mapKindTooltipWith(t, mapKind);
 
 // formatMapNameWithKind prefixes the map name with the kind emoji + a space
 // when relevant. Regular maps render unchanged.

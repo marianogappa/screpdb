@@ -1,0 +1,18 @@
+{
+  "composition.phase.early": "초반",
+  "composition.phase.mid": "중반",
+  "composition.phase.late": "후반",
+  "composition.noArmyProduction": "이 구간에는 병력 생산이 없습니다",
+  "composition.segmentTooltip": "{name}: {count}기 ({pct}%)",
+  "composition.moreTooltip": "외 {count}종:\n{list}",
+  "composition.castsLegend": "마법",
+  "composition.spellTooltip": "{unit}: {spell}",
+  "format.today": "오늘",
+  "format.daysCompact": "{count}일 전",
+  "format.daysAgo": "{count}일 전",
+  "format.am": "오전",
+  "format.pm": "오후",
+  "format.relativeReplayDate": "{day} {ampm} {hour}:{minute}",
+  "format.mapKind.money": "머니맵",
+  "format.mapKind.ums": "유즈맵 세팅: 사용자 지정 시나리오 규칙이 적용됩니다."
+}

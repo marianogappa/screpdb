@@ -68,12 +68,12 @@ func Run(ctx context.Context, cfg Config) error {
 		if err != nil {
 			return fmt.Errorf("failed to start CPU profile: %w", err)
 		}
-		logger.Infof("CPU profile writing to %s", cfg.CPUProfilePath)
+		logger.Infof("cpu_profile_writing", "CPU profile writing to %s", cfg.CPUProfilePath)
 		defer stop()
 	}
 
 	// Initialize storage
-	logger.Infof("Using SQLite storage at %s", cfg.SQLitePath)
+	logger.Infof("using_sqlite_storage", "Using SQLite storage at %s", cfg.SQLitePath)
 	store, err := storage.NewSQLiteStorage(cfg.SQLitePath)
 	if err != nil {
 		return fmt.Errorf("failed to create SQLite storage: %w", err)
@@ -116,8 +116,8 @@ func withDefaults(cfg Config) Config {
 }
 
 func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger *Logger, sink *profile.Sink) error {
-	logger.Infof("Scanning directory: %s", cfg.InputDir)
-	logger.Infof("Using %d CPU cores for parsing", runtime.GOMAXPROCS(0))
+	logger.Infof("scanning_directory", "Scanning directory: %s", cfg.InputDir)
+	logger.Infof("using_cpu_cores", "Using %d CPU cores for parsing", runtime.GOMAXPROCS(0))
 
 	// Start the ingestion process
 	dataChan, errChan := store.StartIngestion(ctx, storage.IngestionHooks{
@@ -131,7 +131,7 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 			_ = err
 		},
 		OnStoreError: func(err error) {
-			logger.Errorf("Error storing replay: %v", err)
+			logger.Errorf("error_storing_replay", "Error storing replay: %v", err)
 		},
 	})
 
@@ -142,7 +142,7 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 		return fmt.Errorf("failed to get replay files: %w", err)
 	}
 
-	logger.Successf("Found %d replay files", len(files))
+	logger.Successf("found_replay_files", "Found %d replay files", len(files))
 
 	// Sort by modification time (newest first)
 	fileops.SortFilesByModTime(files)
@@ -163,42 +163,42 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 	}
 
 	filteredFiles := fileops.FilterFilesByDate(files, upToDatePtr, upToMonthsPtr)
-	logger.Successf("After date filtering: %d files", len(filteredFiles))
+	logger.Successf("after_date_filtering", "After date filtering: %d files", len(filteredFiles))
 
 	// Apply count limit
 	if cfg.StopAfterN > 0 {
 		filteredFiles = fileops.LimitFiles(filteredFiles, cfg.StopAfterN)
-		logger.Successf("Limited to %d files", len(filteredFiles))
+		logger.Successf("limited_to_files", "Limited to %d files", len(filteredFiles))
 	}
 
 	// Phase 1: cheap path-based dedup. Cuts I/O dramatically on incremental
 	// re-scans of the same replay folder by skipping the SHA256 read of
 	// every file that's already in the DB by file_path.
-	logger.Warnf("Checking existing replays by path...")
+	logger.Warnf("checking_existing_by_path", "Checking existing replays by path...")
 	pathSurvivors, err := batchCheckExistingReplaysByPath(ctx, store, filteredFiles, logger)
 	if err != nil {
 		return fmt.Errorf("failed to check existing replays by path: %w", err)
 	}
 	pathSkipped := len(filteredFiles) - len(pathSurvivors)
-	logger.Warnf("Skipped %d files already known by path", pathSkipped)
+	logger.Warnf("skipped_known_by_path", "Skipped %d files already known by path", pathSkipped)
 
 	// Phase 2: hash the survivors in parallel, then run checksum-based dedup
 	// to catch the rename/move case (same content, new path).
-	logger.Warnf("Hashing %d candidate files...", len(pathSurvivors))
+	logger.Warnf("hashing_candidate_files", "Hashing %d candidate files...", len(pathSurvivors))
 	hashed, err := fileops.HashFiles(ctx, pathSurvivors)
 	if err != nil {
 		return fmt.Errorf("failed to hash candidate files: %w", err)
 	}
 
-	logger.Warnf("Checking existing replays by checksum...")
+	logger.Warnf("checking_existing_by_checksum", "Checking existing replays by checksum...")
 	filesToProcess, err := batchCheckExistingReplays(ctx, store, hashed, logger)
 	if err != nil {
 		return fmt.Errorf("failed to check existing replays: %w", err)
 	}
 
 	skippedCount := len(filteredFiles) - len(filesToProcess)
-	logger.Warnf("Skipping %d existing replays", skippedCount)
-	logger.Successf("Processing %d new replays", len(filesToProcess))
+	logger.Warnf("skipping_existing_replays", "Skipping %d existing replays", skippedCount)
+	logger.Successf("processing_new_replays", "Processing %d new replays", len(filesToProcess))
 
 	// Process files in batches of 100
 	const batchSize = 100
@@ -209,7 +209,7 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 		end := min(i+batchSize, len(filesToProcess))
 
 		batch := filesToProcess[i:end]
-		logger.Infof("Processing batch %d-%d of %d", i+1, end, len(filesToProcess))
+		logger.Infof("processing_batch", "Processing batch %d-%d of %d", i+1, end, len(filesToProcess))
 
 		// Create errgroup with context for this batch
 		g, gCtx := errgroup.WithContext(ctx)
@@ -223,10 +223,10 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 						mu.Lock()
 						skippedUMS++
 						mu.Unlock()
-						logger.Warnf("Skipping UMS replay: %s", fileInfo.Name)
+						logger.Warnf("skipping_ums_replay", "Skipping UMS replay: %s", fileInfo.Name)
 						return nil
 					}
-					logger.Errorf("Error processing file %s: %v", fileInfo.Name, err)
+					logger.Errorf("error_processing_file", "Error processing file %s: %v", fileInfo.Name, err)
 					mu.Lock()
 					errCount++
 					mu.Unlock()
@@ -242,7 +242,7 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 
 		// Wait for this batch to complete
 		if err := g.Wait(); err != nil {
-			logger.Errorf("Error during batch processing: %v", err)
+			logger.Errorf("error_batch_processing", "Error during batch processing: %v", err)
 		}
 	}
 
@@ -254,7 +254,7 @@ func runBatchMode(ctx context.Context, store storage.Storage, cfg Config, logger
 		return fmt.Errorf("storage error: %w", err)
 	}
 
-	logger.Successf("Processing complete: processed=%d skipped_existing=%d skipped_ums=%d errors=%d", processed, skippedCount, skippedUMS, errCount)
+	logger.Successf("processing_complete", "Processing complete: processed=%d skipped_existing=%d skipped_ums=%d errors=%d", processed, skippedCount, skippedUMS, errCount)
 
 	return nil
 }
@@ -278,7 +278,7 @@ func batchCheckExistingReplays(ctx context.Context, store storage.Storage, files
 		allFiltered = append(allFiltered, batchFiltered...)
 
 		skippedInBatch := len(batch) - len(batchFiltered)
-		logger.Infof("Checked batch %d-%d: %d existing replays found", i+1, end, skippedInBatch)
+		logger.Infof("checked_batch_existing", "Checked batch %d-%d: %d existing replays found", i+1, end, skippedInBatch)
 	}
 
 	return allFiltered, nil
@@ -303,7 +303,7 @@ func batchCheckExistingReplaysByPath(ctx context.Context, store storage.Storage,
 		allFiltered = append(allFiltered, batchFiltered...)
 
 		skippedInBatch := len(batch) - len(batchFiltered)
-		logger.Infof("Path-checked batch %d-%d: %d existing paths found", i+1, end, skippedInBatch)
+		logger.Infof("path_checked_batch_existing", "Path-checked batch %d-%d: %d existing paths found", i+1, end, skippedInBatch)
 	}
 
 	return allFiltered, nil
@@ -343,7 +343,7 @@ func RunForFiles(ctx context.Context, cfg Config, files []fileops.FileInfo) erro
 			_ = err
 		},
 		OnStoreError: func(err error) {
-			logger.Errorf("Error storing replay: %v", err)
+			logger.Errorf("error_storing_replay", "Error storing replay: %v", err)
 		},
 	})
 
@@ -354,7 +354,7 @@ func RunForFiles(ctx context.Context, cfg Config, files []fileops.FileInfo) erro
 	for i := 0; i < len(files); i += batchSize {
 		end := min(i+batchSize, len(files))
 		batch := files[i:end]
-		logger.Infof("Re-analyzing batch %d-%d of %d", i+1, end, len(files))
+		logger.Infof("reanalyzing_batch", "Re-analyzing batch %d-%d of %d", i+1, end, len(files))
 
 		g, gCtx := errgroup.WithContext(ctx)
 		for _, fileInfo := range batch {
@@ -365,10 +365,10 @@ func RunForFiles(ctx context.Context, cfg Config, files []fileops.FileInfo) erro
 						mu.Lock()
 						skippedUMS++
 						mu.Unlock()
-						logger.Warnf("Skipping UMS replay: %s", fileInfo.Name)
+						logger.Warnf("skipping_ums_replay", "Skipping UMS replay: %s", fileInfo.Name)
 						return nil
 					}
-					logger.Errorf("Error re-analyzing file %s: %v", fileInfo.Name, err)
+					logger.Errorf("error_reanalyzing_file", "Error re-analyzing file %s: %v", fileInfo.Name, err)
 					mu.Lock()
 					errCount++
 					mu.Unlock()
@@ -381,7 +381,7 @@ func RunForFiles(ctx context.Context, cfg Config, files []fileops.FileInfo) erro
 			})
 		}
 		if err := g.Wait(); err != nil {
-			logger.Errorf("Error during re-analyze batch: %v", err)
+			logger.Errorf("error_reanalyze_batch", "Error during re-analyze batch: %v", err)
 		}
 	}
 
@@ -390,7 +390,7 @@ func RunForFiles(ctx context.Context, cfg Config, files []fileops.FileInfo) erro
 		return fmt.Errorf("storage error: %w", err)
 	}
 
-	logger.Successf("Re-analyze complete: processed=%d skipped_ums=%d errors=%d", processed, skippedUMS, errCount)
+	logger.Successf("reanalyze_complete", "Re-analyze complete: processed=%d skipped_ums=%d errors=%d", processed, skippedUMS, errCount)
 	return nil
 }
 

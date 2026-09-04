@@ -28,28 +28,31 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { getUnitIcon } from '../lib/gameAssets';
+import { t, useLocale, useT } from '../lib/i18nContext';
 
 // Display axes, in menu order. `state` is the mainGamesFilters key the axis
 // writes to; `source` is the filter_options field it reads.
-const AXES = [
-  { id: 'length', label: 'Length', state: 'duration', source: 'durations' },
-  { id: 'mapKind', label: 'Map type', state: 'mapKind', source: 'map_kinds' },
-  { id: 'matchup', label: 'Matchup', state: 'matchup', source: 'matchups' },
-  { id: 'map', label: 'Map', state: 'map', source: 'maps' },
-  { id: 'player', label: 'Player', state: 'player', source: 'players' },
-  { id: 'bo', label: 'Build order', state: 'featuring', source: 'featuring', group: 'bo' },
-  { id: 'tactic', label: 'Tactic', state: 'featuring', source: 'featuring', group: 'marker' },
+const defaultAxes = () => [
+  { id: 'length', label: t('omnibar.axis.length'), state: 'duration', source: 'durations' },
+  { id: 'mapKind', label: t('omnibar.axis.mapKind'), state: 'mapKind', source: 'map_kinds' },
+  { id: 'matchup', label: t('omnibar.axis.matchup'), state: 'matchup', source: 'matchups' },
+  { id: 'map', label: t('omnibar.axis.map'), state: 'map', source: 'maps' },
+  { id: 'player', label: t('omnibar.axis.player'), state: 'player', source: 'players' },
+  { id: 'bo', label: t('omnibar.axis.buildOrder'), state: 'featuring', source: 'featuring', group: 'bo' },
+  { id: 'tactic', label: t('omnibar.axis.tactic'), state: 'featuring', source: 'featuring', group: 'marker' },
 ];
 
 // One label per state key, for the chip groups.
-const STATE_LABEL = {
-  duration: 'Length',
-  mapKind: 'Map type',
-  matchup: 'Matchup',
-  map: 'Map',
-  player: 'Player',
-  featuring: 'Featuring',
-};
+const defaultStateLabels = () => ({
+  duration: t('omnibar.axis.length'),
+  mapKind: t('omnibar.axis.mapKind'),
+  matchup: t('omnibar.axis.matchup'),
+  map: t('omnibar.axis.map'),
+  player: t('omnibar.axis.player'),
+  featuring: t('omnibar.state.featuring'),
+});
+
+const NAME_SOURCES = new Set(['players', 'maps']);
 
 const STATE_ORDER = ['duration', 'mapKind', 'matchup', 'map', 'player', 'featuring'];
 
@@ -87,14 +90,22 @@ const previewText = (labels) => {
   return first.slice(0, PREVIEW_BUDGET - 1) + '...';
 };
 
+// Splits a translated template on its {placeholders} and drops React nodes in,
+// so a sentence can carry a <b> without being assembled from fragments.
+const renderRich = (template, nodes) => template.split(/(\{\w+\})/).map((part, i) => {
+  const match = /^\{(\w+)\}$/.exec(part);
+  if (!match || nodes[match[1]] === undefined) return part;
+  return <React.Fragment key={i}>{nodes[match[1]]}</React.Fragment>;
+});
+
 export default function FilterOmnibar({
   filterOptions,
   selected,
   total,
   onToggle,
   onClear,
-  axes = AXES,
-  stateLabels = STATE_LABEL,
+  axes = null,
+  stateLabels = null,
   stateOrder = STATE_ORDER,
   noun = 'games',
   // When set, the typed text is itself a live filter (e.g. player name):
@@ -104,6 +115,10 @@ export default function FilterOmnibar({
   loading = false,
 }) {
   const isDeadEnd = (item) => !loading && item.games === 0;
+  const t = useT();
+  const { locale } = useLocale();
+  const axisList = useMemo(() => axes || defaultAxes(), [axes, locale]);
+  const stateLabelMap = useMemo(() => stateLabels || defaultStateLabels(), [stateLabels, locale]);
   const [internalQuery, setInternalQuery] = useState('');
   const query = textFilter ? textFilter.value : internalQuery;
   const setQuery = (value) => {
@@ -120,11 +135,13 @@ export default function FilterOmnibar({
   // Flatten the API's per-axis option lists into one searchable vocabulary.
   const vocab = useMemo(() => {
     const out = [];
-    axes.forEach((axis) => {
+    axisList.forEach((axis) => {
       const list = filterOptions?.[axis.source] || [];
       list.forEach((option) => {
         if (axis.group && option.group !== axis.group) return;
-        const label = clean(option.label);
+        const label = NAME_SOURCES.has(axis.source)
+          ? clean(option.label)
+          : t.buildLabel(t.server(`server.chip.${axis.source}.${option.key}.label`, clean(option.label)));
         if (!label) return;
         const iconKeys = (Array.isArray(option.icon_keys) && option.icon_keys.length)
           ? option.icon_keys
@@ -147,7 +164,7 @@ export default function FilterOmnibar({
       });
     });
     return out;
-  }, [filterOptions, axes]);
+  }, [filterOptions, axisList, locale]);
 
   const isPicked = useCallback(
     (item) => (selected?.[item.state] || []).includes(item.key),
@@ -186,13 +203,13 @@ export default function FilterOmnibar({
       const bDead = isDeadEnd(b.item);
       if (aDead !== bDead) return aDead ? 1 : -1;
       if (b.score !== a.score) return b.score - a.score;
-      const axisDelta = axes.findIndex((x) => x.id === a.item.axisId)
-        - axes.findIndex((x) => x.id === b.item.axisId);
+      const axisDelta = axisList.findIndex((x) => x.id === a.item.axisId)
+        - axisList.findIndex((x) => x.id === b.item.axisId);
       if (axisDelta) return axisDelta;
       return a.item.label.localeCompare(b.item.label);
     });
     return scored.map((entry) => entry.item);
-  }, [vocab, query, axes, loading]);
+  }, [vocab, query, axisList, loading]);
 
   const shown = matches.slice(0, MENU_LIMIT);
 
@@ -257,8 +274,8 @@ export default function FilterOmnibar({
       byState.get(item.state).push(item);
     });
     return stateOrder.filter((state) => byState.has(state))
-      .map((state) => ({ state, label: stateLabels[state], items: byState.get(state) }));
-  }, [vocab, isPicked, stateOrder, stateLabels]);
+      .map((state) => ({ state, label: stateLabelMap[state], items: byState.get(state) }));
+  }, [vocab, isPicked, stateOrder, stateLabelMap]);
 
   const activeCount = chipGroups.reduce((sum, group) => sum + group.items.length, 0);
 
@@ -335,7 +352,7 @@ export default function FilterOmnibar({
     });
   });
 
-  const browseAxes = axes.map((axis) => {
+  const browseAxes = axisList.map((axis) => {
     const items = vocab.filter((item) => item.axisId === axis.id);
     const active = items.filter(isPicked).length;
     const ranked = items
@@ -364,17 +381,17 @@ export default function FilterOmnibar({
 
         {chipGroups.map((group, gi) => (
           <React.Fragment key={`grp-${group.state}`}>
-            {gi > 0 ? <span className="wf-ob-and">and</span> : null}
+            {gi > 0 ? <span className="wf-ob-and">{t('omnibar.and')}</span> : null}
             <span className="wf-ob-group">
               <span className="wf-ob-group-axis">{group.label}</span>
               {group.items.map((item, ii) => (
                 <React.Fragment key={item.uid}>
-                  {ii > 0 ? <span className="wf-ob-or">or</span> : null}
+                  {ii > 0 ? <span className="wf-ob-or">{t('omnibar.or')}</span> : null}
                   <span className="wf-ob-chip">
                     {item.label}
                     <button
                       type="button"
-                      aria-label={`Remove ${item.label}`}
+                      aria-label={t('omnibar.remove', { label: item.label })}
                       onClick={() => onToggle(item.state, item.key)}
                     >
                       &times;
@@ -393,10 +410,10 @@ export default function FilterOmnibar({
           role="combobox"
           aria-expanded={open}
           aria-controls="wf-ob-menu"
-          aria-label={`Filter ${noun}`}
+          aria-label={t(`omnibar.filterAria.${noun}`)}
           autoComplete="off"
           spellCheck="false"
-          placeholder={textFilter?.placeholder || (activeCount ? 'Add filter...' : `Filter ${noun}...`)}
+          placeholder={textFilter?.placeholder || (activeCount ? t('omnibar.addFilter') : t(`omnibar.placeholder.${noun}`))}
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
@@ -405,11 +422,11 @@ export default function FilterOmnibar({
 
         <span className="wf-ob-count">
           {activeCount
-            ? <>{activeCount} filter{activeCount > 1 ? 's' : ''} &middot; <b>{total}</b> {noun}</>
-            : <><b>{total}</b> {noun}</>}
+            ? renderRich(t.plural(`omnibar.summary.${noun}`, activeCount), { total: <b>{total}</b> })
+            : renderRich(t(`omnibar.total.${noun}`), { total: <b>{total}</b> })}
         </span>
         {activeCount ? (
-          <button type="button" className="wf-ob-clear" onClick={onClear}>clear</button>
+          <button type="button" className="wf-ob-clear" onClick={onClear}>{t('omnibar.clear')}</button>
         ) : null}
       </div>
 
@@ -418,23 +435,26 @@ export default function FilterOmnibar({
           {flatShown.length === 0 ? (
             <div className="wf-ob-empty">
               {textFilter
-                ? <>No filter options match. Showing {noun} whose name contains <b>{query}</b>.</>
-                : <>Nothing matches <b>{query}</b>. Try a build order (<b>9 Pool</b>), a tactic
-                  (<b>Cannon Rush</b>), a map, or a player.</>}
+                ? renderRich(t(`omnibar.textFilterEmpty.${noun}`), { query: <b>{query}</b> })
+                : renderRich(t('omnibar.empty'), {
+                  query: <b>{query}</b>,
+                  buildOrder: <b>{t('omnibar.exampleBuildOrder')}</b>,
+                  tactic: <b>{t('omnibar.exampleTactic')}</b>,
+                })}
             </div>
           ) : (
             <>
               {menuNodes}
               {matches.length > shown.length ? (
                 <div className="wf-ob-empty wf-ob-more">
-                  {matches.length - shown.length} more. Keep typing to narrow.
+                  {t('omnibar.more', { count: matches.length - shown.length })}
                 </div>
               ) : null}
               <div className="wf-ob-hint">
-                <span>Up/Down move</span>
-                <span>Enter toggle</span>
-                <span>Esc close</span>
-                <span>{vocab.length} filters across {browseAxes.length} axes</span>
+                <span>{t('omnibar.hint.move')}</span>
+                <span>{t('omnibar.hint.toggle')}</span>
+                <span>{t('omnibar.hint.close')}</span>
+                <span>{t('omnibar.hint.coverage', { count: vocab.length, axes: browseAxes.length })}</span>
               </div>
             </>
           )}

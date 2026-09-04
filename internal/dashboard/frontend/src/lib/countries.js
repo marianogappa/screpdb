@@ -1,3 +1,5 @@
+import { LOCALE_STORAGE_KEY, detectLocale, normalizeLocale } from './i18n.js';
+
 const ALPHA3_TO_ALPHA2 = {
   AFG:'AF',ALB:'AL',DZA:'DZ',ASM:'AS',AND:'AD',AGO:'AO',AIA:'AI',ATA:'AQ',ATG:'AG',ARG:'AR',
   ARM:'AM',ABW:'AW',AUS:'AU',AUT:'AT',AZE:'AZ',BHS:'BS',BHR:'BH',BGD:'BD',BRB:'BB',BLR:'BY',
@@ -41,35 +43,57 @@ export const countryCodeToFlag = (code) => {
 
 // Intl.DisplayNames carries every region name the browser already ships for
 // its own locale data, so the names cost us no bundle weight and stay correct
-// as countries rename themselves. The names are pinned to English because the
-// rest of the dashboard is.
-let regionNames;
-let regionNamesResolved = false;
-const englishRegionNames = () => {
-  if (!regionNamesResolved) {
-    regionNamesResolved = true;
-    try {
-      regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
-    } catch {
-      regionNames = null;
-    }
+// as countries rename themselves. Names follow the dashboard locale.
+//
+// The locale is re-derived the same way i18nContext derives it (stored choice,
+// then the <html lang> the provider stamps, then the browser languages) instead
+// of importing i18nContext, so this module stays loadable from plain node tests.
+const readStoredLocale = () => {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(LOCALE_STORAGE_KEY) : null;
+  } catch {
+    return null;
   }
-  return regionNames;
+};
+
+const activeLocale = () => detectLocale({
+  stored: readStoredLocale(),
+  languages: [
+    typeof document !== 'undefined' ? document.documentElement.lang : '',
+    ...(typeof navigator !== 'undefined' ? (navigator.languages || [navigator.language]) : []),
+  ],
+});
+
+const regionNamesByLocale = new Map();
+const regionNamesFor = (locale) => {
+  if (!regionNamesByLocale.has(locale)) {
+    let entry = null;
+    try {
+      const names = new Intl.DisplayNames([locale], { type: 'region' });
+      // ZZ is the ICU "unknown region" code, so its label is the localized
+      // placeholder ICU hands back for any code it cannot name.
+      entry = { names, unknownLabel: names.of('ZZ') };
+    } catch {
+      entry = null;
+    }
+    regionNamesByLocale.set(locale, entry);
+  }
+  return regionNamesByLocale.get(locale);
 };
 
 // Falls back to the bare code whenever the platform cannot name the region, so
 // a tooltip never reads worse than the code it replaced.
-export const countryCodeToName = (code) => {
+export const countryCodeToName = (code, locale) => {
   const a2 = countryCodeToAlpha2(code);
   if (!a2) return null;
-  const names = englishRegionNames();
-  if (!names) return a2;
+  const entry = regionNamesFor(normalizeLocale(locale) || activeLocale());
+  if (!entry) return a2;
   let name;
   try {
-    name = names.of(a2);
+    name = entry.names.of(a2);
   } catch {
     return a2;
   }
-  if (!name || name === a2 || name === 'Unknown Region') return a2;
+  if (!name || name === a2 || name === entry.unknownLabel) return a2;
   return name;
 };

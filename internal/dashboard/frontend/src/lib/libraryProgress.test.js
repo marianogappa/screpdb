@@ -1,21 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
 import {
-  formatLoadingShort,
+  formatLoadingShortWith,
   isLibraryLoading,
-  stillLoadingCopy,
+  stillLoadingCopyWith,
 } from './libraryProgress.js';
 
-test('formatLoadingShort is the nav badge text', () => {
+const catalog = JSON.parse(readFileSync(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), '../locales/en/app.json'),
+  'utf8',
+));
+const translate = (key) => catalog[key] ?? key;
+
+test('formatLoadingShortWith is the nav badge text', () => {
   // Counts are deliberately absent: the folder is read in one go and telling
   // the page about every batch made it re-render for as long as the read took.
-  assert.equal(formatLoadingShort(), 'Loading');
+  assert.equal(formatLoadingShortWith(translate), 'Loading');
 });
 
-test('stillLoadingCopy is the partial-corpus empty state', () => {
+test('stillLoadingCopyWith is the partial-corpus empty state', () => {
   assert.equal(
-    stillLoadingCopy(),
+    stillLoadingCopyWith(translate),
     'Still reading your replay folder. This fills in when it finishes.',
   );
 });

@@ -1,4 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { useT } from '../../lib/i18nContext';
+import { slugKey } from '../../lib/i18n';
 
 // AllianceTimeline renders alliance topology as a Sankey-style flow.
 // Time runs top-to-bottom on a non-linear axis (rows = significant events
@@ -166,6 +168,7 @@ const AllianceTimeline = ({
   getRaceIcon,
   getPlayerColor,
 }) => {
+  const t = useT();
   const playerByID = useMemo(() => {
     const m = {};
     for (const p of players) {
@@ -530,7 +533,7 @@ const AllianceTimeline = ({
   if (rows.length === 0 || activePlayers.length === 0) {
     return (
       <div className="workflow-card">
-        <div className="chart-empty">No alliance information available for this game.</div>
+        <div className="chart-empty">{t('chart.alliance.empty')}</div>
       </div>
     );
   }
@@ -648,6 +651,12 @@ const AllianceTimeline = ({
 
   const kindBadgeClass = (k) => `workflow-alliance-event-badge workflow-alliance-event-badge-${k.replace('_', '-')}`;
 
+  const phaseLabel = (tag) => t(`chart.alliance.phase.${tag.toLowerCase()}`);
+  const reasonLabel = (reason) => {
+    const key = `chart.alliance.reason.${slugKey(reason)}`;
+    return t.has(key) ? t(key) : reason;
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="workflow-card workflow-alliance-timeline-v2" ref={wrapRef}>
@@ -685,7 +694,7 @@ const AllianceTimeline = ({
                     fontSize={12}
                     fill="#cbd5e1"
                   >
-                    {ri === 0 && r.sec === 0 ? 'START' : formatMMSS(r.sec)}
+                    {ri === 0 && r.sec === 0 ? t('chart.alliance.start') : formatMMSS(r.sec)}
                   </text>
                   {tag
                     && tag !== 'START'
@@ -698,7 +707,7 @@ const AllianceTimeline = ({
                       fill="#64748b"
                       letterSpacing={1}
                     >
-                      {tag}
+                      {phaseLabel(tag)}
                     </text>
                   ) : null}
                 </g>
@@ -750,7 +759,9 @@ const AllianceTimeline = ({
                 .map((t) => t.length)
                 .filter((n) => n >= 2)
                 .sort((a, b) => b - a);
-              const label = cliqueSizes.length >= 2 ? `${cliqueSizes.join('v')} stacked` : 'stacked';
+              const label = cliqueSizes.length >= 2
+                ? t('chart.alliance.stackedSizes', { sizes: cliqueSizes.join('v') })
+                : t('chart.alliance.stacked');
               return (
                 <text
                   key={`stack-${ri}`}
@@ -902,7 +913,7 @@ const AllianceTimeline = ({
                   <div
                     key={`ev-${ri}-${i}`}
                     className="workflow-alliance-event"
-                    title={ev.kind === 'chat' ? `${ev.data.name}: "${ev.data.message}"` : undefined}
+                    title={ev.kind === 'chat' ? t('chart.alliance.chatTitle', { name: ev.data.name, message: ev.data.message }) : undefined}
                   >
                     <span className="workflow-alliance-event-time">{formatMMSS(ev.sec)}</span>
                     <span className={kindBadgeClass(ev.kind)}>{kindBadgeLabel(ev.kind)}</span>
@@ -914,12 +925,12 @@ const AllianceTimeline = ({
                           <span style={{ color: ev.data.colorB || '#cbd5e1' }}>{ev.data.b}</span>
                         </>
                       ) : null}
-                      {ev.kind === 'stack' ? <span>uneven non-solo teams</span> : null}
-                      {ev.kind === 'unstack' ? <span>teams now even</span> : null}
+                      {ev.kind === 'stack' ? <span>{t('chart.alliance.stackEvent')}</span> : null}
+                      {ev.kind === 'unstack' ? <span>{t('chart.alliance.unstackEvent')}</span> : null}
                       {ev.kind === 'depart' || ev.kind === 'stopped' ? (
                         <>
                           <span style={{ color: playerHexColor(playerByID[ev.data.pid], getPlayerColor) }}>{ev.data.name}</span>
-                          <span className="workflow-alliance-event-reason"> ({ev.data.reason})</span>
+                          <span className="workflow-alliance-event-reason"> ({reasonLabel(ev.data.reason)})</span>
                         </>
                       ) : null}
                       {ev.kind === 'chat' ? (

@@ -1858,6 +1858,42 @@ body {
 
 .app-footer .footer-right {
   color: rgba(100, 150, 255, 0.9);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.language-switcher {
+  display: inline-flex;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.language-switcher-option {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.language-switcher-option + .language-switcher-option {
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.language-switcher-option:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.language-switcher-option.is-active {
+  color: #fff;
+  background: rgba(100, 150, 255, 0.25);
+  cursor: default;
 }
 
 .app-footer .footer-version {

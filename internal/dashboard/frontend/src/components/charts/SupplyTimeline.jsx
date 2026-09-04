@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { normalizeUnitName } from '../../lib/gameAssets';
+import { useT } from '../../lib/i18nContext';
+import { slugKey } from '../../lib/i18n';
 
 // SupplyTimeline overlays each player's cumulative supply provided over the game
 // as a thin step line with a dot at every supply addition. It is a descriptive
@@ -88,6 +90,7 @@ const buildSeries = (events, race, endSec) => {
 };
 
 function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
+  const t = useT();
   const duration = Math.max(1, Math.floor(Number(durationSeconds) || 0));
   const [hoveredId, setHoveredId] = useState(null);
   const [tip, setTip] = useState(null);
@@ -189,12 +192,17 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
 
   const dim = (id) => hoveredId != null && hoveredId !== id;
 
+  const supplyAdditionLine = (p) => {
+    if (p.count === 0) return t('chart.supply.startingSupply');
+    const built = t.server(`server.name.${slugKey(p.built)}`, p.built);
+    if (p.count > 1) return t('chart.supply.additionMulti', { built, count: p.count, delta: p.delta });
+    return t('chart.supply.addition', { built, delta: p.delta });
+  };
+
   return (
     <div className="workflow-card workflow-card-chat-summary">
       <div className="workflow-section-warning">
-        ⚠️ Overlords &amp; Pylons cannot be de-duped effectively, expect some
-        inaccuracy. The replay also doesn't track lost supply (e.g. providers
-        destroyed in attacks), so totals can exceed 200.
+        {t('chart.supply.warning')}
       </div>
 
       <svg
@@ -243,8 +251,8 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
                     y: yAt(p.cum) + dodge,
                     color: s.color,
                     lines: [
-                      p.count === 0 ? p.built : `${p.built}${p.count > 1 ? ` ×${p.count}` : ''}  (+${p.delta})`,
-                      `Total: ${p.cum} supply`,
+                      supplyAdditionLine(p),
+                      t('chart.supply.total', { total: p.cum }),
                       formatTime(p.sec),
                     ],
                   })}

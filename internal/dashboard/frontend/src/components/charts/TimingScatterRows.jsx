@@ -1,4 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { useT } from '../../lib/i18nContext';
+import { slugKey } from '../../lib/i18n';
 
 const PLAYER_COLORS = ['#7dd3fc', '#a7f3d0', '#f9a8d4', '#fcd34d', '#c4b5fd', '#fca5a5'];
 const LABEL_COLORS = ['#60a5fa', '#34d399', '#f472b6', '#f59e0b', '#a78bfa', '#ef4444', '#22d3ee', '#84cc16', '#f97316', '#e879f9', '#14b8a6', '#f43f5e'];
@@ -43,8 +45,14 @@ function TimingScatterRows({
   rowLabelMode = 'race-suffix',
   rowGroupingMode = 'none',
 }) {
+  const t = useT();
   const wrapperRef = useRef(null);
   const [hover, setHover] = useState(null);
+  const raceLabel = (race) => {
+    const key = `chart.race.${slugKey(race)}`;
+    return t.has(key) ? t(key) : race;
+  };
+  const nameWithRace = (name, race) => (race ? t('chart.scatter.nameWithRace', { name, race: raceLabel(race) }) : name);
   // colorBy supersedes the legacy colorByLabel boolean: 'player' tints by
   // player, 'label' hashes the item label (legacy), 'category' uses each
   // point's precomputed overlay colour so overlaid timing categories read as
@@ -58,7 +66,7 @@ function TimingScatterRows({
     let maxSecond = Number(durationSeconds) || 0;
 
     inputSeries.forEach((playerSeries, playerIndex) => {
-      const playerName = String(playerSeries?.name || '').trim() || `Player ${playerIndex + 1}`;
+      const playerName = String(playerSeries?.name || '').trim() || t('chart.scatter.playerFallback', { n: playerIndex + 1 });
       const playerRace = String(playerSeries?.race || '').trim();
       const playerRaceIcon = String(playerSeries?.race_icon || '').trim();
       const playerColor = PLAYER_COLORS[playerIndex % PLAYER_COLORS.length];
@@ -69,7 +77,7 @@ function TimingScatterRows({
         maxSecond = Math.max(maxSecond, second);
         const label = String(point?.label || '').trim();
         const displayLabel = String(point?.display_label || '').trim() || label;
-        const labelKey = displayLabel || label || `Timing #${Number(point?.order) || 1}`;
+        const labelKey = displayLabel || label || t('chart.scatter.timingFallback', { n: Number(point?.order) || 1 });
         const categoryLabel = String(point?.category_label || '').trim();
         const overlayColor = String(point?.overlay_color || '').trim();
         const pointColor = colorMode === 'label'
@@ -99,14 +107,14 @@ function TimingScatterRows({
       .map(([label, color]) => ({ label, color }))
       .sort((a, b) => a.label.localeCompare(b.label));
     return { players, points, legendItems, maxSecond: Math.max(60, maxSecond) };
-  }, [series, durationSeconds, colorMode, showLegend]);
+  }, [series, durationSeconds, colorMode, showLegend, t]);
 
   const players = prepared.players;
   if (players.length === 0) {
     return (
       <div className="workflow-card timing-chart-card">
         {title ? <div className="workflow-card-title"><span>{title}</span></div> : null}
-        <div className="chart-empty">No timing data found.</div>
+        <div className="chart-empty">{t('chart.scatter.empty')}</div>
       </div>
     );
   }
@@ -181,10 +189,10 @@ function TimingScatterRows({
                 fill="rgba(255,255,255,0.9)"
                 fontSize="12"
               >
-                <title>{player.race ? `${player.name} (${player.race})` : player.name}</title>
+                <title>{nameWithRace(player.name, player.race)}</title>
                 {rowLabelMode === 'worker-icon' || rowLabelMode === 'name-only'
                   ? truncateName(player.name)
-                  : (player.race ? `${truncateName(player.name, 13)} (${player.race})` : truncateName(player.name))}
+                  : (player.race ? nameWithRace(truncateName(player.name, 13), player.race) : truncateName(player.name))}
               </text>
               {rowLabelMode === 'worker-icon' && player.raceIcon ? (
                 <image
@@ -218,7 +226,7 @@ function TimingScatterRows({
                   fill="rgba(255,255,255,0.75)"
                   fontSize="11"
                 >
-                  {Math.floor(second / 60)}m
+                  {t('chart.scatter.minuteTick', { minute: Math.floor(second / 60) })}
                 </text>
               </g>
             );
@@ -271,7 +279,7 @@ function TimingScatterRows({
             fill="rgba(255,255,255,0.8)"
             fontSize="12"
           >
-            Game time
+            {t('chart.scatter.gameTime')}
           </text>
         </svg>
         {hover ? (
@@ -279,12 +287,12 @@ function TimingScatterRows({
             className="workflow-timing-tooltip"
             style={{ left: `${hover.x}px`, top: `${hover.y}px` }}
           >
-            <div><strong>{hover.point.playerName}</strong>{hover.point.playerRace ? ` (${hover.point.playerRace})` : ''}</div>
-            <div><strong>Time</strong> {formatTime(hover.point.second)}</div>
-            {hover.point.displayLabel ? <div><strong>Item</strong> {hover.point.displayLabel}</div> : null}
-            {hover.point.category_label ? <div><strong>Category</strong> {hover.point.category_label}</div> : null}
-            {hover.point.order > 0 ? <div><strong>Occurrence</strong> #{hover.point.order}</div> : null}
-            {hover.point.is_repeatable ? <div><strong>Level</strong> {`L${hover.point.order}/${hover.point.max_level || 3}`}</div> : null}
+            <div><strong>{hover.point.playerName}</strong>{hover.point.playerRace ? ` (${raceLabel(hover.point.playerRace)})` : ''}</div>
+            <div><strong>{t('chart.scatter.tooltip.time')}</strong> {formatTime(hover.point.second)}</div>
+            {hover.point.displayLabel ? <div><strong>{t('chart.scatter.tooltip.item')}</strong> {hover.point.displayLabel}</div> : null}
+            {hover.point.category_label ? <div><strong>{t('chart.scatter.tooltip.category')}</strong> {hover.point.category_label}</div> : null}
+            {hover.point.order > 0 ? <div><strong>{t('chart.scatter.tooltip.occurrence')}</strong> #{hover.point.order}</div> : null}
+            {hover.point.is_repeatable ? <div><strong>{t('chart.scatter.tooltip.level')}</strong> {`L${hover.point.order}/${hover.point.max_level || 3}`}</div> : null}
           </div>
         ) : null}
       </div>

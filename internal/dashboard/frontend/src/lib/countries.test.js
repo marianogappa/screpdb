@@ -37,6 +37,15 @@ test('countryCodeToName resolves English country names', () => {
   assert.equal(countryCodeToName('US'), 'United States');
 });
 
+test('countryCodeToName names regions in the requested locale', () => {
+  assert.equal(countryCodeToName('KR', 'en'), 'South Korea');
+  assert.equal(countryCodeToName('KR', 'ko'), '대한민국');
+  assert.equal(countryCodeToName('US', 'ko'), '미국');
+  assert.equal(countryCodeToName('ARG', 'ko-KR'), '아르헨티나');
+  assert.equal(countryCodeToName('AR', 'xx'), 'Argentina');
+  assert.equal(countryCodeToName('ZZ', 'ko'), 'ZZ');
+});
+
 test('countryCodeToName falls back to the code for unnamed regions', () => {
   assert.equal(countryCodeToName('ZZ'), 'ZZ');
   assert.equal(countryCodeToName('QQ'), 'QQ');

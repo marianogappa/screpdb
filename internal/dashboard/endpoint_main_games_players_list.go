@@ -375,6 +375,7 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 			continue
 		}
 		labels := make([]string, 0, len(set))
+		keys := make([]string, 0, len(set))
 		seenLabel := make(map[string]struct{}, len(set))
 		for _, cfg := range workflowFeaturingFilters {
 			if _, has := set[cfg.Key]; !has {
@@ -396,9 +397,15 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 				}
 				seenLabel[label] = struct{}{}
 				labels = append(labels, label)
+				if label == cfg.Label {
+					keys = append(keys, cfg.Key)
+				} else {
+					keys = append(keys, "")
+				}
 			}
 		}
 		items[idx].Featuring = labels
+		items[idx].FeaturingKeys = keys
 	}
 	return nil
 }

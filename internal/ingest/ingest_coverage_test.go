@@ -478,7 +478,7 @@ func mutateSettingsGameType(t *testing.T, dbPath, value string) {
 func TestLogger_ErrorfWritesTimestampedLine(t *testing.T) {
 	var buf bytes.Buffer
 	l := NewLogger(&buf, false, nil)
-	l.Errorf("boom %d", 42)
+	l.Errorf("boom", "boom %d", 42)
 
 	out := buf.String()
 	if !strings.Contains(out, "boom 42") {
@@ -497,13 +497,19 @@ func TestLogger_ErrorfWritesTimestampedLine(t *testing.T) {
 func TestLogger_ErrorfForwardsEvent(t *testing.T) {
 	var got LogEvent
 	l := NewLogger(nil, false, func(e LogEvent) { got = e })
-	l.Errorf("failed: %s", "reason")
+	l.Errorf("failed", "failed: %s", "reason")
 
 	if got.Level != LogLevelError {
 		t.Fatalf("event level: got %q, want %q", got.Level, LogLevelError)
 	}
 	if got.Message != "failed: reason" {
 		t.Fatalf("event message: got %q", got.Message)
+	}
+	if got.Key != "failed" {
+		t.Fatalf("event key: got %q, want %q", got.Key, "failed")
+	}
+	if len(got.Args) != 1 || got.Args[0] != "reason" {
+		t.Fatalf("event args: got %v, want [reason]", got.Args)
 	}
 }
 
@@ -572,7 +578,7 @@ func TestLogger_ProgressAppendsThenLineFlushes(t *testing.T) {
 		t.Fatalf("two Progress calls should append two dots, got %q", got)
 	}
 
-	l.Infof("done")
+	l.Infof("done", "done")
 	out := buf.String()
 	if !strings.HasPrefix(out, "..\n") {
 		t.Fatalf("a full line after Progress should flush with a leading newline, got %q", out)
@@ -585,7 +591,7 @@ func TestLogger_ProgressAppendsThenLineFlushes(t *testing.T) {
 // TestLogger_NilEmitIsSafe covers the nil-receiver guard in emit.
 func TestLogger_NilEmitIsSafe(t *testing.T) {
 	var l *Logger
-	l.Errorf("must not panic %d", 1)
+	l.Errorf("must_not_panic", "must not panic %d", 1)
 }
 
 func TestTrimLogMessage(t *testing.T) {
