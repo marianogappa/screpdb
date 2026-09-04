@@ -1,4 +1,4 @@
-.PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso bench-load bench-ingest coverage
+.PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso bench-load coverage
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
@@ -55,12 +55,6 @@ ui-test:
 BENCH_COUNT ?= 3
 bench-load:
 	./scripts/bench-load.sh $(BENCH_COUNT)
-
-# SQLite ingestion benchmark for the `screpdb ingest` CLI/MCP write path. The
-# dashboard no longer uses it, so this figure is not badged; it stays as a
-# regression guard for the CLI.
-bench-ingest:
-	./scripts/bench-ingest.sh $(BENCH_COUNT)
 
 # Test coverage over hand-written code only (generated code, scripts/, and
 # **/tools/ are excluded from the denominator). Pass --html for a report.

@@ -3,8 +3,7 @@
 # Runs the replay-library load benchmark against a fixed, committed replay
 # corpus and prints a stable headline throughput figure (replays/sec +
 # ms/replay). This is the path a user waits for on launch: the dashboard reading
-# a replay folder into memory. The SQLite `screpdb ingest` path is benchmarked
-# separately by scripts/bench-ingest.sh (CLI/MCP only, not badged).
+# a replay folder into memory.
 #
 # The corpus defaults to the markers testdata set so results are reproducible
 # across runs. The figure is still hardware-bound (the loader scales with cores),
