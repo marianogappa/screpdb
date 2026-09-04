@@ -3588,6 +3588,52 @@ function App() {
     );
   };
 
+  // Every games list renders through here, so a second list cannot drift from
+  // the main one's columns, widths and row behaviour the way the session view
+  // had (it was missing the data-table and --main classes, so it lost the
+  // column widths, and it linked player names, which swallowed the row click).
+  const renderGamesListTable = ({ games, tableRef = null, selectedId = null }) => {
+    // When every game on screen is 2-player (1v1) the Players column is narrow
+    // and the table leaves horizontal slack; bump type/icons up from the
+    // compact 8-player defaults to use it.
+    const allTwoPlayer = games.length > 0
+      && games.every((game) => (Array.isArray(game?.players) ? game.players.length : 0) <= 2);
+    return (
+      <table
+        ref={tableRef}
+        className={`data-table workflow-table workflow-games-list-table workflow-games-list-table--main${allTwoPlayer ? ' workflow-games-list-table--roomy' : ''}`}
+      >
+        <thead>
+          <tr>
+            <th>Played</th>
+            <th>Players</th>
+            <th>Map</th>
+            <th>Time</th>
+            <th>Featuring</th>
+          </tr>
+        </thead>
+        <tbody>
+          {games.map((game) => (
+            <tr
+              key={game.replay_id}
+              className={selectedId === game.replay_id ? 'workflow-selected-row' : ''}
+              onClick={() => openMainGame(game.replay_id)}
+            >
+              <td className="workflow-games-list-played">{formatRelativeReplayDate(game.replay_date)}</td>
+              <td className="workflow-games-list-players">{renderMainGameListPlayers(game, false)}</td>
+              <td className="workflow-games-list-map">{renderMapNameWithKind(game.map_name, game.map_kind)}</td>
+              <td className="workflow-games-list-duration">{formatDuration(game.duration_seconds)}</td>
+              <td className="workflow-games-list-featuring">
+                <FeaturingCell featuring={game.featuring} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  };
+
+
   const summaryTextMatches = (text) => {
     const value = String(text || '').toLowerCase();
     const activeTopics = Object.entries(SUMMARY_TOPIC_PATTERNS)
@@ -4895,11 +4941,6 @@ function App() {
     });
   };
 
-  // When every game on the page is a 2-player (1v1) match, the Players column
-  // is narrow and the table leaves lots of horizontal slack. Bump the type/icon
-  // sizes up from the compact 8-player defaults to use that space.
-  const mainGamesAllTwoPlayer = mainGames.length > 0
-    && mainGames.every((game) => (Array.isArray(game?.players) ? game.players.length : 0) <= 2);
   const mainGamesTotalPages = Math.max(1, Math.ceil((Number(mainGamesTotal) || 0) / MAIN_GAMES_PAGE_SIZE));
   const mainGamesFrom = mainGames.length === 0 ? 0 : ((mainGamesPage - 1) * MAIN_GAMES_PAGE_SIZE) + 1;
   const mainGamesTo = mainGames.length === 0
@@ -5206,37 +5247,11 @@ function App() {
               <div className="loading">Loading games...</div>
             ) : (
               <>
-                <table
-                  ref={mainGamesTableRef}
-                  className={`data-table workflow-table workflow-games-list-table workflow-games-list-table--main${mainGamesAllTwoPlayer ? ' workflow-games-list-table--roomy' : ''}`}
-                >
-                  <thead>
-                    <tr>
-                      <th>Played</th>
-                      <th>Players</th>
-                      <th>Map</th>
-                      <th>Time</th>
-                      <th>Featuring</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mainGames.map((game) => (
-                      <tr
-                        key={game.replay_id}
-                        className={selectedReplayId === game.replay_id ? 'workflow-selected-row' : ''}
-                        onClick={() => openMainGame(game.replay_id)}
-                      >
-                        <td className="workflow-games-list-played">{formatRelativeReplayDate(game.replay_date)}</td>
-                        <td className="workflow-games-list-players">{renderMainGameListPlayers(game, false)}</td>
-                        <td className="workflow-games-list-map">{renderMapNameWithKind(game.map_name, game.map_kind)}</td>
-                        <td className="workflow-games-list-duration">{formatDuration(game.duration_seconds)}</td>
-                        <td className="workflow-games-list-featuring">
-                          <FeaturingCell featuring={game.featuring} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {renderGamesListTable({
+                  games: mainGames,
+                  tableRef: mainGamesTableRef,
+                  selectedId: selectedReplayId,
+                })}
                 <div className="workflow-pagination-row workflow-pagination-row-centered">
                   <button
                     type="button"
@@ -5280,28 +5295,7 @@ function App() {
               </button>
             )}
           >
-            <table className="workflow-table workflow-games-list-table workflow-games-list-table--roomy">
-              <thead>
-                <tr>
-                  <th>Played</th>
-                  <th>Players</th>
-                  <th>Map</th>
-                  <th>Length</th>
-                  <th>Featuring</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(gamingSession?.games || []).map((game) => (
-                  <tr key={game.replay_id} onClick={() => openMainGame(game.replay_id)}>
-                    <td className="workflow-games-list-played">{formatRelativeReplayDate(game.replay_date)}</td>
-                    <td className="workflow-games-list-players">{renderMainGameListPlayers(game)}</td>
-                    <td className="workflow-games-list-map">{renderMapNameWithKind(game.map_name, game.map_kind)}</td>
-                    <td className="workflow-games-list-duration">{formatDuration(game.duration_seconds)}</td>
-                    <td className="workflow-games-list-featuring"><FeaturingCell featuring={game.featuring} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {renderGamesListTable({ games: gamingSession?.games || [] })}
           </GamingSessionPanel>
         )}
 
