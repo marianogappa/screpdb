@@ -1,10 +1,9 @@
 // Package sampledata embeds a small curated set of StarCraft replays so a
 // first-run user can explore every screpdb feature without owning a .rep file.
 //
-// The set is deliberately feature-mapped rather than realistic: three 1v1
-// non-mirror games (one per matchup) covering rushes, build orders and skill
-// proxies, plus two BGH team games — one with an offensive nydus canal, one
-// that trips the team-stacking flag — driving the alliance timeline views.
+// Five 1v1 progamer ladder games from CWAL.gg:
+// Soma (ZvP), Jaedong (ZvT), Light (TvZ), RoyaL (ZvT), Bisu (PvT).
+// All are long games chosen for feature coverage (build orders, timings, etc.).
 package sampledata
 
 import (

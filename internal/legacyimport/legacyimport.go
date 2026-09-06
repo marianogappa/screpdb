@@ -1,3 +1,4 @@
+//go:build !js
 // Package legacyimport reads the dashboard state that older releases kept in
 // screp.db (the settings row and the Battle.net profile cache) so a first
 // launch after the upgrade keeps the user's replay folder, filters and the

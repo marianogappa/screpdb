@@ -32,7 +32,7 @@ func TestExtractIsIdempotent(t *testing.T) {
 	if err := Extract(dir); err != nil {
 		t.Fatalf("first Extract: %v", err)
 	}
-	sample := filepath.Join(dir, "01_zvt_zergling_rush.rep")
+	sample := filepath.Join(dir, "01_zvp_soma.rep")
 	before, err := os.Stat(sample)
 	if err != nil {
 		t.Fatal(err)
