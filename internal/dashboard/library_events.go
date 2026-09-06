@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"sync"
@@ -10,6 +11,8 @@ import (
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/load"
 )
+
+func jsonMarshal(v any) ([]byte, error) { return json.Marshal(v) }
 
 // Library status values as the browser sees them. The loader's phases are
 // finer grained than the UI needs, so several collapse into one status.
@@ -212,6 +215,27 @@ func (h *libraryHub) subscribe() (libraryEventMessage, chan libraryEventMessage,
 		})
 	}
 	return h.snapshotMessage(), ch, unsubscribe
+}
+
+// addVirtualSubscriber registers fn as a non-WebSocket consumer of library
+// events. The hub drains the subscription channel in a goroutine, JSON-encodes
+// each message and hands it to fn. Returns a cancel function.
+func (h *libraryHub) addVirtualSubscriber(fn func([]byte)) func() {
+	snapshot, ch, unsub := h.subscribe()
+
+	go func() {
+		defer crashreport.GuardNonFatal(nil)
+		if data, err := jsonMarshal(snapshot); err == nil {
+			fn(data)
+		}
+		for msg := range ch {
+			if data, err := jsonMarshal(msg); err == nil {
+				fn(data)
+			}
+		}
+	}()
+
+	return unsub
 }
 
 // broadcast drops messages for a subscriber that has fallen behind rather than

@@ -52,6 +52,42 @@ func TestDashboardSPA_APIRoutesStillWork(t *testing.T) {
 	}
 }
 
+func TestHandler_ReturnsSameRouterAsSetupRouter(t *testing.T) {
+	dash := newTestDashboard(t)
+	handler := dash.Handler()
+	if handler == nil {
+		t.Fatal("Handler() returned nil")
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Handler() health status %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestOnLibraryEvent_ReceivesSnapshot(t *testing.T) {
+	dash := newTestDashboard(t)
+	done := make(chan []byte, 4)
+	cancel := dash.OnLibraryEvent(func(data []byte) {
+		done <- append([]byte(nil), data...)
+	})
+	defer cancel()
+
+	select {
+	case raw := <-done:
+		if len(raw) == 0 {
+			t.Fatal("empty snapshot")
+		}
+		if !strings.Contains(string(raw), `"type":"snapshot"`) {
+			t.Fatalf("expected snapshot, got %s", raw)
+		}
+	case <-make(chan struct{}):
+		t.Fatal("timed out waiting for snapshot")
+	}
+}
+
 func TestDashboardHeadless_NoSPAButAPIWorks(t *testing.T) {
 	dash := newTestDashboard(t)
 	dash.headless = true
