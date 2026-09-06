@@ -316,7 +316,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-09-06  OK. Caps the built-in progamer overlay on the three skill-proxy distributions (APM, unit production cadence, viewport switch rate) at 15 markers, five per race by curated rank, instead of overlaying all 70 pros. The cap lives server-side in featuredOverlayPros so the payload shrinks with it; the pros left out are unchanged everywhere else and still resolve to their own player pages. Population statistics are untouched: featured points were already reference-only, never binned and never part of the mean, stddev or percentile. Frontend change is one sentence of tooltip copy in both locales. No new os/net calls, roots, hosts, endpoints, queries, facade changes, enforcement-test change, or AlgorithmVersion bump (no detection code is touched).
+2026-09-06  OK. Caps the built-in progamer overlay on the three skill-proxy distributions (APM, unit production cadence, viewport switch rate) at 15 markers, five per race by curated rank, instead of overlaying all 70 pros. The cap lives server-side in featuredOverlayPros so the payload shrinks with it; the pros left out are unchanged everywhere else and still resolve to their own player pages. Population statistics are untouched: featured points were already reference-only, never binned and never part of the mean, stddev or percentile. No new os/net calls, roots, hosts, endpoints, queries, facade changes, enforcement-test change, or AlgorithmVersion bump (no detection code is touched).
 ```
 
 <details>

@@ -114,7 +114,7 @@
   "players.table.race": "Race",
   "players.table.games": "Games",
   "players.table.avgApm": "Avg APM",
-  "players.featuredToggleTip": "Built-in players are drawn for reference only. They are never counted in the bins, the mean or the percentiles of your players. Only a curated few are drawn on the chart; every built-in player has their own page with the same comparison.",
+  "players.featuredToggleTip": "Built-in players are drawn for reference only. They are never counted in the bins, the mean or the percentiles of your players.",
   "players.showFeatured": "Show built-in players",
   "players.showFeaturedCount": "Show built-in players ({count})",
   "players.featuredNote": " ★ Built-in players are shown for reference and not counted.",
