@@ -135,11 +135,20 @@ func parseBnetProfileDetail(toon string, payload []byte) *bnetProfileDetail {
 		BattleTag:   strings.TrimSpace(raw.BattleTag),
 		CountryCode: strings.TrimSpace(raw.CountryCode),
 	}
+	// The bridge lists a toon once per gateway it exists on, so the same name
+	// arrives several times. Collapse them onto the normalised key, keeping the
+	// first gateway seen and summing the per-gateway weekly counts.
+	toonIndex := map[string]int{}
 	for _, t := range raw.Toons {
 		name := strings.TrimSpace(t.Toon)
 		if name == "" {
 			continue
 		}
+		if i, ok := toonIndex[normalizePlayerKey(name)]; ok {
+			detail.Toons[i].GamesLastWeek += t.GamesLastWeek
+			continue
+		}
+		toonIndex[normalizePlayerKey(name)] = len(detail.Toons)
 		detail.Toons = append(detail.Toons, bnetProfileToon{
 			Toon:          name,
 			Gateway:       t.GatewayID,

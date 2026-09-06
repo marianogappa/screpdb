@@ -186,6 +186,42 @@ func TestParseBnetProfileDetail(t *testing.T) {
 	}
 }
 
+func TestParseBnetProfileDetail_CollapsesGatewayRepeats(t *testing.T) {
+	// The bridge lists a toon once per gateway it exists on. The alias row must
+	// show each name once, not once per gateway.
+	payload := []byte(`{
+		"toons": [
+			{"toon": "chobo85", "gateway_id": 10, "games_last_week": 2},
+			{"toon": "chobo85", "gateway_id": 11, "games_last_week": 3},
+			{"toon": "Chobo85s", "gateway_id": 10, "games_last_week": 1},
+			{"toon": "chobo85s", "gateway_id": 11, "games_last_week": 0},
+			{"toon": "chobo86", "gateway_id": 10, "games_last_week": 9}
+		]
+	}`)
+	got := parseBnetProfileDetail("chobo86", payload)
+	if got == nil {
+		t.Fatal("expected a detail")
+	}
+	names := []string{}
+	for _, toon := range got.Toons {
+		names = append(names, toon.Toon)
+	}
+	if len(names) != 3 {
+		t.Fatalf("toons = %v, want one entry per distinct name", names)
+	}
+	if names[0] != "chobo86" || names[1] != "chobo85" || names[2] != "Chobo85s" {
+		t.Errorf("toons = %v, want most played first with the first-seen casing", names)
+	}
+	// Weekly counts are per gateway, so the collapsed entry carries their sum.
+	if got.Toons[1].GamesLastWeek != 5 {
+		t.Errorf("chobo85 games_last_week = %d, want 5 summed across gateways", got.Toons[1].GamesLastWeek)
+	}
+	// The account total still counts every gateway row.
+	if got.GamesLastWeek != 15 {
+		t.Errorf("account games_last_week = %d, want 15", got.GamesLastWeek)
+	}
+}
+
 func TestParseBnetProfileDetail_Unusable(t *testing.T) {
 	// A page that shows profile decoration must still render when the payload
 	// is missing or malformed, so these yield no detail rather than an error.
