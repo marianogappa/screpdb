@@ -213,37 +213,45 @@ rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/screpdb"
 ## Developer features
 
 <details>
-<summary>CLI ingestion, MCP server, and full OpenAPI — click to expand</summary>
+<summary>MCP server and full OpenAPI — click to expand</summary>
 
-- CLI for ingestion onto SQLite database. No need to use UI: just ingest and query the database.
-
-```bash
-./screpdb ingest
-
-- `-i, --input-dir`: Input directory containing replay files (default: system replay directory)
-- `-s, --sqlite-path`: SQLite database file path (default: screp.db)
-- `-n, --stop-after-n-reps`: Stop after processing N replay files (0 = no limit)
-- `-d, --up-to-yyyy-mm-dd`: Only process files up to this date (YYYY-MM-DD format)
-- `-m, --up-to-n-months`: Only process files from the last N months (0 = no limit)
-- `--store-right-clicks`: Store `Right Click` commands (disabled by default to reduce command-table volume)
-- `--clean`: Drop all non-dashboard tables before ingesting to start over (useful for migrations)
-```
-
-- MCP server: point an MCP client (Claude Desktop, Claude Code, Cursor, …) at the replay database and ask questions in natural language about any game, player, matchup, build order, or event. The client's model turns your question into read-only SQL over the ingested data. The server exposes tools to run queries (`query_database`), inspect the schema (`get_database_schema`), read StarCraft domain knowledge (`get_starcraft_knowledge`), and discover players and derived events (`list_top_players`, `list_event_types`).
-
-```bash
-./screpdb mcp
-
-# Specify custom database file
-./screpdb mcp -s /path/to/custom.db
-```
+There is no SQLite database and no ingest step. screpdb reads your replay
+folder into memory when it starts; the dashboard, the JSON API and the MCP
+server all answer from that one in-memory corpus. The database, its schema and
+migrations, and the `ingest` command were removed in
+[#381](https://github.com/marianogappa/screpdb/issues/381): the dashboard had
+stopped using the write path, and code nothing runs is code that quietly gets
+buggy. The one remaining trace is a read-only, one-time import of a pre-2.0
+`screp.db` so an upgrade keeps your folder, filters and Battle.net cache
+(`--legacy-db-path`); nothing writes a database any more.
 
 - Server / API: `./screpdb dashboard` (also the default when run with no subcommand) starts the HTTP server and opens the dashboard UI. All UI functionality is exposed as a JSON API — [OpenAPI schema available](api/openapi/dashboard.v1.yaml). Run it headless as an API-only server (no UI, no browser) with `--headless`:
 
 ```bash
-./screpdb dashboard --headless -p 8000 -s /path/to/custom.db
+./screpdb dashboard --headless -p 8000
 # then: curl http://localhost:8000/api/health
 ```
+
+- MCP server: point an MCP client (Claude Desktop, Claude Code, Cursor, …) at your replays and ask questions in natural language about any game, player, matchup, build order, or event.
+
+```bash
+./screpdb mcp
+```
+
+  `screpdb mcp` holds no data of its own. It reads that same headless JSON API,
+  so one process owns the corpus: if the dashboard is already open it attaches
+  to it, and otherwise it starts a headless server and shuts it down on exit.
+  The server exposes tools to read the API (`query_replay_api`), list the
+  endpoints it can reach (`get_api_schema`), read StarCraft domain knowledge
+  (`get_starcraft_knowledge`), and discover players and derived analysis
+  (`list_top_players`, `list_marker_definitions`).
+
+  Only a curated read-only subset of the API is reachable from MCP: games,
+  players, hotkeys, insights and the marker vocabulary. Everything that drives
+  the UI or changes local state stays out, including `/api/games/{id}/see`,
+  which launches the game client.
+
+- `-p` picks the first port to look for a running screpdb on; `--no-auto-start` makes it fail instead of starting one; `--replay-dir` and `--wait-for-load` apply to a server it starts itself.
 
 </details>
 
@@ -300,13 +308,13 @@ screpdb minimizes its attack surface by routing all I/O through facades and keep
 <details>
 <summary><strong>How the I/O model works</strong> — filesystem, Windows sandbox, network, self-update, enforcement</summary>
 
-- **Filesystem** — all disk access goes through `internal/iofacade`, which permits reads/writes only within: a single per-OS **app-data directory** (`%LOCALAPPDATA%\screpdb` on Windows, `~/Library/Application Support/screpdb` on macOS, `$XDG_CONFIG_HOME/screpdb` on Linux) that holds the SQLite database, game-asset cache, logs, crash reports, and extracted sample replays; and the configured replays folder (read replays, write "watch me" replays). A narrow, read-only exception walks up from the replays folder to find StarCraft's `CSettings.json`.
+- **Filesystem** — all disk access goes through `internal/iofacade`, which permits reads/writes only within: a single per-OS **app-data directory** (`%LOCALAPPDATA%\screpdb` on Windows, `~/Library/Application Support/screpdb` on macOS, `$XDG_CONFIG_HOME/screpdb` on Linux) that holds settings, the Battle.net and game-asset caches, logs, crash reports, and extracted sample replays; and the configured replays folder (read replays, write "watch me" replays). A narrow, read-only exception walks up from the replays folder to find StarCraft's `CSettings.json`.
 - **Windows OS sandbox** — on Windows the app splits into a Medium-integrity **launcher** and a **Low-integrity worker** ([#237](https://github.com/marianogappa/screpdb/issues/237)). The launcher marks the app-data directory Low-writable and relaunches the real worker at Low integrity; the worker keeps read-down access to replays anywhere but can only *write* into that one Low-labeled folder — every other write is refused by the OS, even from a compromised `screp`/`scmapanalyzer` parser. The launcher retains self-update (it must overwrite the install `.exe`) and brokers the single "watch me" write into the read-only replays folder on the worker's behalf. This does **not** stop a compromised parser from *reading* private files (Low integrity can read up-level); blocking reads needs AppContainer + a broker process, a deferred "Tier 2" follow-up.
 - **Network** — the dashboard server binds to `localhost` only. The binary's outbound calls are confined to three sanctioned packages: **`internal/selfupdate`** ([#212](https://github.com/marianogappa/screpdb/issues/212)) queries GitHub Releases for self-update, verifying every byte against a minisign-signed `SHA256SUMS` (embedded public key) before any swap; **`internal/bnetfacade`** ([#317](https://github.com/marianogappa/screpdb/issues/317)) talks to SC:R's local web-api bridge (loopback only, path-prefixed to `/web-api/`) and downloads replays from `storage.googleapis.com` (allowlisted to the single path prefix `/starcraft-user-uploads-prod/S1-replays/`, with length + `seRS` magic-byte validation on every download); **`internal/netfacade`** houses localhost readiness probes.
 - **Self-update** — updates are always user-initiated, never automatic. Package-manager installs (Scoop on Windows, Homebrew/Linuxbrew on macOS/Linux) and non-writable install directories are detected and excluded so the updater never fights `scoop update` / `brew upgrade` or needs elevation; those installs are pointed back at their package manager. The `curl | sh` installer drops into a writable dir (`~/.local/bin`), so in-app self-update keeps working there. Self-written binaries carry no macOS quarantine xattr / Windows Mark-of-the-Web, so Gatekeeper/SmartScreen don't re-prompt after an update.
 - **Enforcement** — `TestNoDirectIOOutsideFacades` (in `internal/iofacade`) parses the whole module on every `go test` run and fails the build if any package reaches the filesystem or network directly instead of through the facades. `internal/selfupdate`, `internal/bnetfacade`, and `internal/winsandbox` (the Windows process-spawn / integrity-labeling / broker surface) are the documented exceptions.
 
-On **macOS and Linux** this is a best-effort, in-process guard, not an OS sandbox: paths handed to trusted dependencies (the SQLite driver, the screp parser, scmapanalyzer) are opened inside those libraries, and the facade only constrains screpdb's own code. On **Windows** the Low-integrity worker adds a real OS write boundary on top of the same facades.
+On **macOS and Linux** this is a best-effort, in-process guard, not an OS sandbox: paths handed to trusted dependencies (the screp parser, scmapanalyzer) are opened inside those libraries, and the facade only constrains screpdb's own code. On **Windows** the Low-integrity worker adds a real OS write boundary on top of the same facades.
 
 </details>
 
@@ -316,13 +324,14 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-09-04  OK. Korean UI. Frontend-only locale catalogs (internal/dashboard/frontend/src/locales) with the choice kept in browser localStorage; the Go side only adds JSON fields to existing responses (ingest log key/args, insight ineligible_reason_key/args, games-list featuring_keys) so labels can be looked up by stable id. No new I/O, no new capability, no new dependency.
+2026-09-06  REVIEW. Removes SQLite from the binary: the ingest command, internal/ingest, internal/storage and internal/migrations are deleted, and screpdb mcp stops opening a database and reads the headless dashboard's JSON API instead, so one process owns the corpus and MCP holds no state. Two new capabilities, both narrow. (1) netfacade.LocalAPIGet, a loopback-only GET added to the existing network facade and refusing any non-loopback address, so the MCP tools cannot be pointed at a remote host by the model driving them; MCP reaches only a hand-written allowlist of 16 read-only GET paths (games, players, hotkeys, insights, marker definitions, health), cross-checked against the OpenAPI document by test, with every mutating and UI-only operation excluded and /api/games/{id}/see, which launches the game client, explicitly out. (2) screpdb mcp spawns `screpdb dashboard --headless` with os/exec when no screpdb answers on localhost:8000-8009, and kills it on exit; it is the binary re-executing itself with fixed arguments, os.Executable resolves the path, and no argument comes from the model. internal/legacyimport keeps its read-only (mode=ro) open of the pre-2.0 screp.db, and stays the only database reader and the only reason modernc.org/sqlite is still required. The per-package no-database guards in the dashboard and the replay library are replaced by one module-wide TestBinaryHasNoDatabaseDependencies in internal/iofacade, next to the existing enforcement test, exempting only internal/legacyimport and pinned to it by a second test. scripts/expert-mine, the reproducible provenance of the SPECIFICATION golden lines, is ported from the scratch database onto the in-memory library and reads the same staged folder through the same loader. github.com/fatih/color drops out of go.mod with the ingest logger. No new roots, no new hosts, no outbound calls off loopback, no weakened enforcement test, no AlgorithmVersion bump (detection is untouched).
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
 
 ```
+2026-09-04  OK. Korean UI. Frontend-only locale catalogs (internal/dashboard/frontend/src/locales) with the choice kept in browser localStorage; the Go side only adds JSON fields to existing responses (ingest log key/args, insight ineligible_reason_key/args, games-list featuring_keys) so labels can be looked up by stable id. No new I/O, no new capability, no new dependency.
 2026-09-04  OK. Battle.net battle tags rendered double-encoded (UTF-8 read as latin-1). Cause was normalizeBridgeJSON transcoding the WHOLE bridge response as cp949/ISO 8859-1 whenever any byte was invalid UTF-8 — SC:R truncates map titles and game names mid-sequence in fixed-width buffers, so a few damaged bytes mojibaked every correct Cyrillic and Korean string in the payload. Normalization is now byte-local: well-formed UTF-8 passes through untouched and only the invalid runs are transcoded. Added bnetfacade.IsMojibakedPayload, a whole-payload structural check, so cached entries an older build corrupted read as absent and refetch through the existing rate-limited path instead of being repaired in place (21 of 408 local entries). No new I/O, endpoints, os/net calls, or facade changes; no AlgorithmVersion bump (replay detection is untouched).
 2026-09-04  OK. Deletes the SQLite ingestion benchmark, its runner script and its workflow (BenchmarkSQLiteIngestionCorpus, scripts/bench-ingest.sh, bench-ingest.yml, the make target). It measured the screpdb ingest write path, which the dashboard stopped using when it moved to the in-memory library, and the README badge now tracks the replay-load path instead, so it was spending CI minutes guarding a figure nobody read. Nothing is stranded: resolveReplayDir is still used by three other storage tests, storeReplayWithBatching is production code, and profile.NewSink is still used by internal/ingest; only the bench-only SCREPDB_BENCH_CORPUS_CAP and SCREPDB_BENCH_CPUPROFILE env vars go away with it. The screpdb ingest and screpdb mcp code paths themselves are untouched. Pure removal of test and CI tooling: no new os/net calls, roots, hosts, endpoints, queries, facade changes, enforcement-test change, or AlgorithmVersion bump.
 2026-09-04  OK. Frontend only, no Go changes at all. The Gaming Session games table was a hand-copy of the games list markup that had drifted: it was missing the data-table and --main classes so it had no column widths, it hardcoded the roomy variant, it titled the duration column "Length", and it linked player names, which swallowed the row click that opens the game. Both lists now render through one renderGamesListTable helper so a second games list cannot drift again; the backend already shared its row builders with the games list, so no read path changed. No new os/net calls, roots, hosts, endpoints, queries, facade changes, enforcement-test change, or AlgorithmVersion bump.

@@ -24,9 +24,8 @@ import (
 // boundary is not detected (game ends before reaching it) the
 // corresponding detector emits no row.
 
-// PatternName / FeatureKey / event_type strings persisted in
-// replay_events. Stable identifiers: changing requires an
-// AlgorithmVersion bump and re-ingest.
+// PatternName / FeatureKey / event_type strings the game-event timeline is
+// keyed by. Stable identifiers: changing one requires an AlgorithmVersion bump.
 const (
 	PhaseBoundaryMidGameStartsEventType  = "mid_game_starts"
 	PhaseBoundaryLateGameStartsEventType = "late_game_starts"

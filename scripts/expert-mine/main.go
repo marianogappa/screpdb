@@ -3,25 +3,28 @@
 // progamer corpus. It is the committed, reproducible form of the procedure in
 // internal/patterns/markers/MEASUREMENT.md — read that first.
 //
-// Pipeline (each step skippable once its artifact exists):
+// Pipeline:
 //
 //  1. label:   read <harvest>/replays.jsonl and the pro JSONs in <corpus>;
 //     a player-game is pro iff auroraId != 0, the id is enrolled in
 //     pros_merged.json and not in pro_exclusions.json, and the game
 //     lasted >= 240s. Never trust the harvest's proName field.
-//  2. stage:   copy the selected .rep files flat into <workdir>/staged.
-//  3. ingest:  screpdb-ingest the staged files into <workdir>/pro_corpus.db.
-//  4. join:    resolve each pro label to a (replay, player) row by toon,
-//     else opponent-toon elimination, else unique race. Drop the
-//     rest; never guess.
-//  5. measure: read payload.expert_actuals for every bo_% marker row of a
+//  2. stage:   copy the selected .rep files flat into <workdir>/staged
+//     (skippable once the folder exists).
+//  3. load:    read <workdir>/staged into the in-memory replay library with
+//     the production loader — the same parse, filters and pattern
+//     detection the dashboard runs.
+//  4. join:    resolve each pro label to a (replay, player) of the loaded
+//     corpus by toon, else opponent-toon elimination, else unique
+//     race. Drop the rest; never guess.
+//  5. measure: read payload.expert_actuals for every bo_% marker of a
 //     resolved pro player (the same resolution path the Build Orders
 //     tab scores) and emit per-milestone n/p10/p50/p90 + the in-band%
 //     of the CURRENT definitions, plus proposed target/tolerance.
 //     The fuzzy Zerg opener (bo_z_fuzzy) has no expert_actuals; its
-//     per-label pool/hatch seconds are read from the commands table
-//     with the same filters as ListEarlyZergMorphsForBOTimings — the
-//     query the dashboard renders those rows from.
+//     per-label pool/hatch seconds are read from the production
+//     stream with the same filters as LoadEarlyZergTimings — what the
+//     dashboard renders those rows from.
 //
 // Outputs under <workdir>/out:
 //
@@ -40,16 +43,15 @@
 //	  -corpus  ~/Code/go/src/github.com/marianogappa/scfingerprint/corpus \
 //	  -workdir /tmp/expert-mine
 //
-// Re-run with -stage=false -ingest=false to re-measure an existing scratch DB
-// (e.g. after editing definitions.go, to recompute in-band% against the new
-// bands).
+// Re-run with -stage=false to re-measure the already-staged folder (e.g. after
+// editing definitions.go, to recompute in-band% against the new bands). The
+// corpus is re-read on every run; there is no scratch database any more.
 package main
 
 import (
 	"bufio"
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -58,25 +60,42 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/marianogappa/screpdb/internal/appdata"
-	"github.com/marianogappa/screpdb/internal/ingest"
+	"github.com/marianogappa/screpdb/internal/iofacade"
+	"github.com/marianogappa/screpdb/internal/library"
+	"github.com/marianogappa/screpdb/internal/library/load"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 	"github.com/marianogappa/screpdb/internal/patterns/markers"
 	"github.com/marianogappa/screpdb/scripts/procorpus"
-	_ "modernc.org/sqlite"
 )
 
-// procorpus.ProSide is one labelled progamer player-game before the DB join.
+// earlyZergWindowSeconds bounds the fuzzy-opener scan, mirroring the window
+// the dashboard's LoadEarlyZergTimings uses.
+const earlyZergWindowSeconds = 600
+
+// corpus is the loaded replay library plus the player index the measurement
+// steps address it by. A player id is library.PlayerID(replayID, ordinal),
+// the same identity the dashboard's API exposes.
+type corpus struct {
+	snapshot *library.Snapshot
+	byPlayer map[int64]playerRef
+}
+
+type playerRef struct {
+	replay  *library.Replay
+	ordinal uint8
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags)
 	harvestDir := flag.String("harvest", "", "screpharvest harvest dir (holds replays.jsonl + replays/)")
 	corpusDir := flag.String("corpus", "", "scfingerprint corpus dir (holds pros_merged.json + pro_exclusions.json)")
-	workdir := flag.String("workdir", "", "scratch dir for staged reps, DB and outputs")
+	workdir := flag.String("workdir", "", "scratch dir for staged reps and outputs")
 	doStage := flag.Bool("stage", true, "copy pro .rep files into <workdir>/staged")
-	doIngest := flag.Bool("ingest", true, "ingest staged files into <workdir>/pro_corpus.db")
 	minDuration := flag.Int("min-duration", 240, "minimum game duration in seconds")
 	minN := flag.Int("min-n", 20, "sample floor below which no value should be baked")
 	flag.Parse()
@@ -97,7 +116,6 @@ func main() {
 	log.Printf("labelled %d pro player-games across %d matches", len(sides), len(byMatch))
 
 	stagedDir := filepath.Join(*workdir, "staged")
-	dbPath := filepath.Join(*workdir, "pro_corpus.db")
 	outDir := filepath.Join(*workdir, "out")
 	for _, d := range []string{stagedDir, outDir} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
@@ -110,43 +128,22 @@ func main() {
 		log.Printf("staged %d replay files (%d not on disk)", staged, missing)
 	}
 
-	if *doIngest {
-		// appdata.Dir registers the app-data root the ingest pipeline's map
-		// cache lives under; ingest.Run registers the staged dir itself.
-		if _, err := appdata.Dir(); err != nil {
-			log.Fatalf("appdata: %v", err)
-		}
-		start := time.Now()
-		if err := ingest.Run(context.Background(), ingest.Config{
-			InputDir:   stagedDir,
-			SQLitePath: dbPath,
-			UseColor:   true,
-		}); err != nil {
-			log.Fatalf("ingest: %v", err)
-		}
-		log.Printf("ingest done in %s", time.Since(start).Round(time.Second))
-	}
-
-	db, err := sql.Open("sqlite", dbPath+"?mode=ro")
+	c, closeCorpus, err := loadCorpus(stagedDir)
 	if err != nil {
-		log.Fatalf("open db: %v", err)
+		log.Fatalf("load: %v", err)
 	}
-	defer db.Close()
+	defer closeCorpus()
 
-	replays, err := load1v1Replays(db)
-	if err != nil {
-		log.Fatalf("read 1v1 replays: %v", err)
-	}
-	joined, tallies := procorpus.Join(replays, byMatch)
+	joined, tallies := procorpus.Join(c.replays1v1(), byMatch)
 	log.Printf("joined %d/%d player-games (%s)", len(joined), len(sides), tallies)
 
-	if err := measureMilestones(db, joined, outDir, *minN); err != nil {
+	if err := measureMilestones(c, joined, outDir, *minN); err != nil {
 		log.Fatalf("measure: %v", err)
 	}
-	if err := measureFuzzy(db, joined, outDir); err != nil {
+	if err := measureFuzzy(c, joined, outDir); err != nil {
 		log.Fatalf("fuzzy: %v", err)
 	}
-	if err := measurePhase2(db, joined, outDir); err != nil {
+	if err := measurePhase2(c, joined, outDir); err != nil {
 		log.Fatalf("phase2: %v", err)
 	}
 	if err := writeMeta(outDir, sides, tallies); err != nil {
@@ -155,88 +152,108 @@ func main() {
 	log.Printf("outputs in %s", outDir)
 }
 
-// load1v1Replays reads the analysed 1v1 replays the labelled sides are joined
-// against out of the mining database.
-func load1v1Replays(db *sql.DB) ([]procorpus.Replay1v1, error) {
-	rows, err := db.Query(`
-		SELECT r.id, r.file_name, r.matchup, p.id, p.name, p.race
-		FROM replays r
-		JOIN players p ON p.replay_id = r.id
-		WHERE r.team_format = '1v1' AND p.is_observer = 0 AND p.type = 'Human'
-		ORDER BY r.id, p.id`)
-	if err != nil {
-		return nil, err
+// loadCorpus reads the staged folder with the production loader, so what is
+// measured here is exactly what the dashboard would show for the same files.
+func loadCorpus(stagedDir string) (*corpus, func(), error) {
+	// appdata.Dir registers the app-data root the map cache lives under; the
+	// staged folder has to be permitted explicitly, as the dashboard's loader
+	// manager does for the replay folder.
+	if _, err := appdata.Dir(); err != nil {
+		return nil, nil, fmt.Errorf("appdata: %w", err)
 	}
-	defer rows.Close()
-	byFile := map[string]*procorpus.Replay1v1{}
-	var order []string
-	for rows.Next() {
-		var replayID, playerID int64
-		var fileName, matchup, name, race string
-		if err := rows.Scan(&replayID, &fileName, &matchup, &playerID, &name, &race); err != nil {
-			return nil, err
+	if err := iofacade.AllowDir(stagedDir); err != nil {
+		return nil, nil, fmt.Errorf("allow %s: %w", stagedDir, err)
+	}
+
+	lib := library.New(library.Options{})
+	// MaxReplays -1 reads the whole folder; the loader's default cap keeps
+	// only the newest few hundred, which would silently shrink the corpus.
+	loader := load.New(lib, load.Options{
+		Folder:     stagedDir,
+		Generation: 1,
+		MaxReplays: -1,
+		Log:        func(e load.LogEvent) { log.Printf("[load] %s", e.Message) },
+	})
+	start := time.Now()
+	if err := loader.Run(context.Background()); err != nil {
+		lib.Close()
+		return nil, nil, err
+	}
+	snapshot := lib.Snapshot()
+	log.Printf("loaded %d replays in %s", snapshot.Len(), time.Since(start).Round(time.Second))
+
+	c := &corpus{snapshot: snapshot, byPlayer: map[int64]playerRef{}}
+	for _, r := range snapshot.Replays {
+		for i := range r.Players {
+			c.byPlayer[r.PlayerID(uint8(i))] = playerRef{replay: r, ordinal: uint8(i)}
 		}
-		replay, ok := byFile[fileName]
-		if !ok {
-			replay = &procorpus.Replay1v1{ID: replayID, FileName: fileName, Matchup: matchup}
-			byFile[fileName] = replay
-			order = append(order, fileName)
-		}
-		replay.Players = append(replay.Players, procorpus.PlayerRow{ID: playerID, Name: name, Race: race})
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	out := make([]procorpus.Replay1v1, 0, len(order))
-	for _, fileName := range order {
-		out = append(out, *byFile[fileName])
-	}
-	return out, nil
+	return c, func() { lib.Close() }, nil
 }
 
-// procorpus.JoinedPlayer is one resolved (replay, player) pro row.
-// markerRow is one bo_% marker event of a resolved pro player.
+// replays1v1 returns the analysed 1v1 replays the labelled sides are joined
+// against, with their human non-observer players.
+func (c *corpus) replays1v1() []procorpus.Replay1v1 {
+	out := make([]procorpus.Replay1v1, 0, c.snapshot.Len())
+	for _, r := range c.snapshot.Replays {
+		if library.Strings.Name(r.TeamFormat) != "1v1" {
+			continue
+		}
+		replay := procorpus.Replay1v1{
+			ID:       r.ID,
+			FileName: r.FileName(),
+			Matchup:  library.Strings.Name(r.Matchup),
+		}
+		for i := range r.Players {
+			p := &r.Players[i]
+			if p.IsObserver() || !p.IsHuman() {
+				continue
+			}
+			replay.Players = append(replay.Players, procorpus.PlayerRow{
+				ID:   r.PlayerID(uint8(i)),
+				Name: p.Name,
+				Race: p.Race.String(),
+			})
+		}
+		out = append(out, replay)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out
+}
+
+// markerRow is one marker of a resolved pro player.
 type markerRow struct {
 	jp      procorpus.JoinedPlayer
 	feature string
 	payload []byte
 }
 
-func loadMarkerRows(db *sql.DB, joined []procorpus.JoinedPlayer, like string) ([]markerRow, error) {
-	byPlayer := map[int64]procorpus.JoinedPlayer{}
-	for _, jp := range joined {
-		byPlayer[jp.PlayerID] = jp
-	}
-	rows, err := db.Query(`
-		SELECT e.source_player_id, e.event_type, e.payload
-		FROM replay_events e
-		WHERE e.event_kind = 'marker' AND e.event_type LIKE ? ESCAPE '\'`, like)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+// loadMarkerRows collects the markers of every resolved pro player whose
+// feature key has the given prefix (a bare prefix, not a SQL LIKE pattern).
+func (c *corpus) loadMarkerRows(joined []procorpus.JoinedPlayer, prefix string) []markerRow {
 	var out []markerRow
-	for rows.Next() {
-		var pid sql.NullInt64
-		var feature string
-		var payload sql.NullString
-		if err := rows.Scan(&pid, &feature, &payload); err != nil {
-			return nil, err
-		}
-		jp, ok := byPlayer[pid.Int64]
+	for _, jp := range joined {
+		ref, ok := c.byPlayer[jp.PlayerID]
 		if !ok {
 			continue
 		}
-		out = append(out, markerRow{jp: jp, feature: feature, payload: []byte(payload.String)})
+		for i := range ref.replay.Markers {
+			m := &ref.replay.Markers[i]
+			if m.Player != ref.ordinal {
+				continue
+			}
+			feature := library.Features.Name(m.Feature)
+			if !strings.HasPrefix(feature, prefix) {
+				continue
+			}
+			out = append(out, markerRow{jp: jp, feature: feature, payload: m.Payload})
+		}
 	}
-	return out, rows.Err()
+	return out
 }
 
-func measureMilestones(db *sql.DB, joined []procorpus.JoinedPlayer, outDir string, minN int) error {
-	rows, err := loadMarkerRows(db, joined, `bo\_%`)
-	if err != nil {
-		return err
-	}
+func measureMilestones(c *corpus, joined []procorpus.JoinedPlayer, outDir string, minN int) error {
+	rows := c.loadMarkerRows(joined, "bo_")
 
 	type slot struct {
 		feature string
@@ -308,14 +325,11 @@ func measureMilestones(db *sql.DB, joined []procorpus.JoinedPlayer, outDir strin
 }
 
 // measureFuzzy reads each resolved pro player's bo_z_fuzzy label plus their
-// first Spawning Pool / Hatchery / Overlord seconds from the commands table —
-// the same source and filters as ListEarlyZergMorphsForBOTimings, which is
-// what the dashboard renders for the simplified Zerg BO rows.
-func measureFuzzy(db *sql.DB, joined []procorpus.JoinedPlayer, outDir string) error {
-	rows, err := loadMarkerRows(db, joined, `bo\_z\_fuzzy`)
-	if err != nil {
-		return err
-	}
+// first Spawning Pool / Hatchery / Overlord seconds from the production
+// stream — the same source and filters as LoadEarlyZergTimings, which is what
+// the dashboard renders for the simplified Zerg BO rows.
+func measureFuzzy(c *corpus, joined []procorpus.JoinedPlayer, outDir string) error {
+	rows := c.loadMarkerRows(joined, "bo_z_fuzzy")
 	f, err := os.Create(filepath.Join(outDir, "fuzzy.tsv"))
 	if err != nil {
 		return err
@@ -323,46 +337,44 @@ func measureFuzzy(db *sql.DB, joined []procorpus.JoinedPlayer, outDir string) er
 	defer f.Close()
 	w := bufio.NewWriter(f)
 	fmt.Fprintln(w, "label\tpool_sec\thatch_sec\toverlord_sec\tfile\tplayer\tmatchup")
-	stmt, err := db.Prepare(`
-		SELECT c.action_type, c.unit_type, MIN(c.seconds_from_game_start)
-		FROM commands c
-		WHERE c.player_id = ? AND c.seconds_from_game_start < 600
-		  AND ((c.action_type = 'Build' AND c.unit_type IN ('Spawning Pool', 'Hatchery'))
-		    OR (c.action_type = 'Unit Morph' AND c.unit_type = 'Overlord'))
-		GROUP BY c.action_type, c.unit_type`)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
 	for _, r := range rows {
 		label, ok := markers.DecodePayloadLabel(r.payload)
 		if !ok {
 			continue
 		}
-		firsts := map[string]int{}
-		frows, err := stmt.Query(r.jp.PlayerID)
-		if err != nil {
-			return err
-		}
-		for frows.Next() {
-			var action, unit string
-			var sec int
-			if err := frows.Scan(&action, &unit, &sec); err != nil {
-				frows.Close()
-				return err
-			}
-			firsts[unit] = sec
-		}
-		if err := frows.Err(); err != nil {
-			frows.Close()
-			return err
-		}
-		frows.Close()
+		firsts := c.earlyZergFirsts(r.jp.PlayerID)
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", label,
 			tsvInt(firsts, "Spawning Pool"), tsvInt(firsts, "Hatchery"), tsvInt(firsts, "Overlord"),
 			r.jp.FileName, r.jp.Name, r.jp.Matchup)
 	}
 	return w.Flush()
+}
+
+// earlyZergFirsts returns the first second this player built a Spawning Pool
+// or Hatchery, and morphed an Overlord, inside the early-game window.
+func (c *corpus) earlyZergFirsts(playerID int64) map[string]int {
+	firsts := map[string]int{}
+	ref, ok := c.byPlayer[playerID]
+	if !ok {
+		return firsts
+	}
+	prod := &ref.replay.Prod
+	for i := 0; i < prod.Len(); i++ {
+		if prod.Player[i] != ref.ordinal || int(prod.Sec[i]) >= earlyZergWindowSeconds {
+			continue
+		}
+		name := prod.SubjectName(i)
+		switch {
+		case prod.Kind[i] == library.ProdBuild && (name == "Spawning Pool" || name == "Hatchery"):
+		case prod.Kind[i] == library.ProdUnitMorph && name == "Overlord":
+		default:
+			continue
+		}
+		if cur, seen := firsts[name]; !seen || int(prod.Sec[i]) < cur {
+			firsts[name] = int(prod.Sec[i])
+		}
+	}
+	return firsts
 }
 
 func tsvInt(m map[string]int, k string) string {
@@ -376,7 +388,7 @@ func tsvInt(m map[string]int, k string) string {
 // never_researched per-matchup p5 floors (first HP-upgrade / first tech-or-
 // non-HP-upgrade command second) and the muta-vs-turret completion-gap
 // percentiles (prerequisite-clamped, mirroring the dashboard's computation).
-func measurePhase2(db *sql.DB, joined []procorpus.JoinedPlayer, outDir string) error {
+func measurePhase2(c *corpus, joined []procorpus.JoinedPlayer, outDir string) error {
 	f, err := os.Create(filepath.Join(outDir, "phase2.tsv"))
 	if err != nil {
 		return err
@@ -385,72 +397,29 @@ func measurePhase2(db *sql.DB, joined []procorpus.JoinedPlayer, outDir string) e
 	w := bufio.NewWriter(f)
 
 	oppRace := map[int64]map[int64]string{} // replayID -> playerID -> opponent race
-	prows, err := db.Query(`
-		SELECT p.replay_id, p.id, p.race FROM players p
-		JOIN replays r ON r.id = p.replay_id
-		WHERE r.team_format = '1v1' AND p.is_observer = 0 AND p.type = 'Human'`)
-	if err != nil {
-		return err
-	}
-	type pr struct {
-		id   int64
-		race string
-	}
-	replayPlayers := map[int64][]pr{}
-	for prows.Next() {
-		var rid, pid int64
-		var race string
-		if err := prows.Scan(&rid, &pid, &race); err != nil {
-			prows.Close()
-			return err
-		}
-		replayPlayers[rid] = append(replayPlayers[rid], pr{pid, race})
-	}
-	if err := prows.Err(); err != nil {
-		prows.Close()
-		return err
-	}
-	prows.Close()
-	for rid, ps := range replayPlayers {
-		if len(ps) != 2 {
+	firstHPUp := map[int64]int{}            // playerID -> second
+	firstResearch := map[int64]int{}        // playerID -> second (tech or non-HP upgrade)
+	for _, r := range c.snapshot.Replays {
+		if library.Strings.Name(r.TeamFormat) != "1v1" {
 			continue
 		}
-		oppRace[rid] = map[int64]string{ps[0].id: ps[1].race, ps[1].id: ps[0].race}
-	}
-
-	firstHPUp := map[int64]int{}     // playerID -> second
-	firstResearch := map[int64]int{} // playerID -> second (tech or non-HP upgrade)
-	crows, err := db.Query(`
-		SELECT c.player_id, c.action_type, c.upgrade_name, MIN(c.seconds_from_game_start)
-		FROM commands c
-		WHERE c.action_type IN ('Upgrade', 'Tech')
-		GROUP BY c.player_id, c.action_type, c.upgrade_name`)
-	if err != nil {
-		return err
-	}
-	for crows.Next() {
-		var pid int64
-		var action string
-		var upgrade sql.NullString
-		var sec int
-		if err := crows.Scan(&pid, &action, &upgrade, &sec); err != nil {
-			crows.Close()
-			return err
+		type pr struct {
+			id   int64
+			race string
 		}
-		isHP := action == "Upgrade" && upgrade.Valid && models.IsHPUpgrade(upgrade.String)
-		target := firstResearch
-		if isHP {
-			target = firstHPUp
+		var ps []pr
+		for i := range r.Players {
+			p := &r.Players[i]
+			if p.IsObserver() || !p.IsHuman() {
+				continue
+			}
+			ps = append(ps, pr{id: r.PlayerID(uint8(i)), race: p.Race.String()})
 		}
-		if cur, ok := target[pid]; !ok || sec < cur {
-			target[pid] = sec
+		if len(ps) == 2 {
+			oppRace[r.ID] = map[int64]string{ps[0].id: ps[1].race, ps[1].id: ps[0].race}
 		}
+		collectFirstResearch(r, firstHPUp, firstResearch)
 	}
-	if err := crows.Err(); err != nil {
-		crows.Close()
-		return err
-	}
-	crows.Close()
 
 	upSecs := map[string][]int{}
 	techSecs := map[string][]int{}
@@ -481,62 +450,70 @@ func measurePhase2(db *sql.DB, joined []procorpus.JoinedPlayer, outDir string) e
 		}
 	}
 
-	gaps, err := mutaTurretGaps(db)
-	if err != nil {
-		return err
-	}
+	gaps := mutaTurretGaps(c)
 	sort.Ints(gaps)
 	fmt.Fprintf(w, "muta_turret_gap\tTvZ\t%d\t%d\t%d\n", len(gaps), percentile(gaps, 0.05), percentile(gaps, 0.50))
 	fmt.Fprintf(w, "muta_turret_gap_p25_p75\tTvZ\t%d\t%d\t%d\n", len(gaps), percentile(gaps, 0.25), percentile(gaps, 0.75))
 	return w.Flush()
 }
 
+// collectFirstResearch records, per player of one replay, the first HP-upgrade
+// second and the first tech-or-non-HP-upgrade second.
+func collectFirstResearch(r *library.Replay, firstHPUp, firstResearch map[int64]int) {
+	prod := &r.Prod
+	for i := 0; i < prod.Len(); i++ {
+		kind := prod.Kind[i]
+		if kind != library.ProdUpgrade && kind != library.ProdTech {
+			continue
+		}
+		playerID := r.PlayerID(prod.Player[i])
+		sec := int(prod.Sec[i])
+		target := firstResearch
+		if kind == library.ProdUpgrade && models.IsHPUpgrade(prod.SubjectName(i)) {
+			target = firstHPUp
+		}
+		if cur, ok := target[playerID]; !ok || sec < cur {
+			target[playerID] = sec
+		}
+	}
+}
+
 // mutaTurretGaps pairs the mutalisk_timing / turret_timing payloads per replay
 // and computes turret_finish - muta_finish with the same prerequisite clamping
 // as populateMutaliskTimingForGameDetail.
-func mutaTurretGaps(db *sql.DB) ([]int, error) {
-	rows, err := db.Query(`
-		SELECT e.replay_id, e.event_type, e.payload
-		FROM replay_events e
-		WHERE e.event_kind = 'marker' AND e.event_type IN ('mutalisk_timing', 'turret_timing')`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+func mutaTurretGaps(c *corpus) []int {
 	type side struct {
 		spireCmd, firstMutaCmd, ebayCmd, firstTurretCmd int
 		hasZ, hasT                                      bool
 	}
 	byReplay := map[int64]*side{}
-	for rows.Next() {
-		var rid int64
-		var typ string
-		var payload sql.NullString
-		if err := rows.Scan(&rid, &typ, &payload); err != nil {
-			return nil, err
+	for _, r := range c.snapshot.Replays {
+		for i := range r.Markers {
+			m := &r.Markers[i]
+			typ := library.Features.Name(m.Feature)
+			if typ != "mutalisk_timing" && typ != "turret_timing" {
+				continue
+			}
+			var raw map[string]float64
+			if err := json.Unmarshal(m.Payload, &raw); err != nil {
+				continue
+			}
+			s := byReplay[r.ID]
+			if s == nil {
+				s = &side{}
+				byReplay[r.ID] = s
+			}
+			switch typ {
+			case "mutalisk_timing":
+				s.hasZ = true
+				s.spireCmd = int(raw["spire_cmd"])
+				s.firstMutaCmd = int(raw["first_muta_cmd"])
+			case "turret_timing":
+				s.hasT = true
+				s.ebayCmd = int(raw["ebay_cmd"])
+				s.firstTurretCmd = int(raw["first_turret_cmd"])
+			}
 		}
-		var raw map[string]float64
-		if err := json.Unmarshal([]byte(payload.String), &raw); err != nil {
-			continue
-		}
-		s := byReplay[rid]
-		if s == nil {
-			s = &side{}
-			byReplay[rid] = s
-		}
-		switch typ {
-		case "mutalisk_timing":
-			s.hasZ = true
-			s.spireCmd = int(raw["spire_cmd"])
-			s.firstMutaCmd = int(raw["first_muta_cmd"])
-		case "turret_timing":
-			s.hasT = true
-			s.ebayCmd = int(raw["ebay_cmd"])
-			s.firstTurretCmd = int(raw["first_turret_cmd"])
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 	var gaps []int
 	for _, s := range byReplay {
@@ -555,7 +532,7 @@ func mutaTurretGaps(db *sql.DB) ([]int, error) {
 		turretFinish := turretStart + int(math.Round(models.BuildTimeMissileTurret))
 		gaps = append(gaps, turretFinish-mutaFinish)
 	}
-	return gaps, nil
+	return gaps
 }
 
 func writeMeta(outDir string, sides []procorpus.ProSide, tallies procorpus.JoinTallies) error {

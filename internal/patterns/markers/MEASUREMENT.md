@@ -5,12 +5,13 @@ trace back to a run of this procedure. Where a value does not, its comment says
 so ("unmeasured legacy").
 
 The procedure is committed as `scripts/expert-mine` — see its package comment
-for usage. It stages + ingests the labelled pro subset into a scratch DB and
-emits per-milestone percentiles, the in-band% of the current definitions, and
-proposed values, plus the fuzzy-opener and phase-2 (non-BO constant)
-measurements. Re-running it with `-stage=false -ingest=false` after editing
-`definitions.go` recomputes in-band% against the new bands — the acceptance
-check below.
+for usage. It stages the labelled pro subset into a folder, reads that folder
+into the in-memory replay library with the production loader (the same parse,
+filters and pattern detection the dashboard runs), and emits per-milestone
+percentiles, the in-band% of the current definitions, and proposed values, plus
+the fuzzy-opener and phase-2 (non-BO constant) measurements. Re-running it with
+`-stage=false` after editing `definitions.go` recomputes in-band% against the
+new bands — the acceptance check below.
 
 ## Corpus
 
@@ -44,13 +45,9 @@ Drop what none of the three resolve — currently ~6%. Never guess.
 
 ## Measurement source
 
-```sql
-SELECT r.file_name, p.name, e.event_type, e.payload
-FROM replay_events e
-JOIN players p ON p.id = e.source_player_id
-JOIN replays r ON r.id = e.replay_id
-WHERE e.event_kind = 'marker' AND e.event_type LIKE 'bo_%';
-```
+Every `bo_`-prefixed marker of a resolved pro player, read off the loaded
+corpus: `library.Replay.Markers`, keyed by feature name through
+`library.Features` and filtered to the player's own slot.
 
 `payload.expert_actuals[i].second` is milestone `i` of `Marker.Expert`, in
 declaration order. This is the same resolution path the Build Orders tab
@@ -104,7 +101,7 @@ bump either.
 
 Targets and tolerances are presentation, not detection: `expert_actuals`
 positions are unchanged, so `markers_golden.json` does not move and **no
-`AlgorithmVersion` bump / re-ingest is required** — as long as no milestone is
+`AlgorithmVersion` bump is required** — as long as no milestone is
 added to or removed from a marker's `Expert` list. Adding or removing one shifts
 payload positions and does require a bump.
 

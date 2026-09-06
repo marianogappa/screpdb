@@ -5,7 +5,7 @@
 # <!-- load-bench-start --> / <!-- load-bench-end --> markers.
 #
 # The figure tracks the replay-library load path (what a user waits for on
-# launch), not the SQLite `screpdb ingest` path — see scripts/bench-load.sh.
+# launch) — see scripts/bench-load.sh.
 #
 # Usage: scripts/update-readme-bench.sh <replays_per_sec> <ms_per_replay> <corpus_replays> [runner_label]
 set -euo pipefail

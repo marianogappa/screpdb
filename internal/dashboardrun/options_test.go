@@ -11,7 +11,7 @@ func TestRegisterFlagsDefaultsAndParsing(t *testing.T) {
 	fs := pflag.NewFlagSet("dashboard", pflag.ContinueOnError)
 	RegisterFlags(fs, &opts)
 
-	if opts.SQLitePath != "screp.db" || opts.Port != 8000 || opts.Headless || opts.ReplayDir != "" {
+	if opts.LegacyDBPath != "screp.db" || opts.Port != 8000 || opts.Headless || opts.ReplayDir != "" {
 		t.Fatalf("defaults = %+v", opts)
 	}
 	if err := fs.Parse([]string{"--replay-dir", "/replays", "--headless", "-p", "9000"}); err != nil {

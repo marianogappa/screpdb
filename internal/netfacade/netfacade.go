@@ -19,7 +19,9 @@
 package netfacade
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -108,4 +110,37 @@ func IsLocalScrepdb(addr string, timeout time.Duration) bool {
 		return false
 	}
 	return body.App == "screpdb"
+}
+
+// ErrNotLoopback is returned when a caller asks this facade to reach an
+// address that is not on the loopback interface.
+var ErrNotLoopback = errors.New("netfacade: only loopback addresses are allowed")
+
+// LocalAPIGet issues a GET against a loopback screpdb API and returns the
+// status code and the response body, capped at maxBytes. It refuses any
+// non-loopback address, so the MCP server (issue #381), which reads the
+// dashboard's JSON API instead of opening a database, cannot be pointed at a
+// remote host by the model driving it.
+func LocalAPIGet(ctx context.Context, addr, path string, timeout time.Duration, maxBytes int64) (int, []byte, error) {
+	if !isLocalAddr(addr) {
+		return 0, nil, fmt.Errorf("%w: %s", ErrNotLoopback, addr)
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://"+addr+path, nil)
+	if err != nil {
+		return 0, nil, err
+	}
+	client := &http.Client{Timeout: timeout}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBytes))
+	if err != nil {
+		return resp.StatusCode, nil, err
+	}
+	return resp.StatusCode, body, nil
 }
