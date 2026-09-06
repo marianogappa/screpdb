@@ -123,8 +123,13 @@
       };
 
       // ---- Intercept <img src="/api/..."> ----
-      // Two layers: setAttribute interception (prevents some native 404s) and
-      // MutationObserver (catches the rest and replaces with blob URLs).
+      // Three layers working together:
+      // 1. setAttribute interception — prevents the browser's native 404 load
+      // 2. src property setter — catches React's direct property assignments
+      // 3. MutationObserver — fallback for anything the first two miss
+
+      // 1x1 transparent PNG — shown instantly while the real icon fetches.
+      var BLANK = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 
       var MAP_PLACEHOLDER = (function () {
         var c = document.createElement("canvas"); c.width = 512; c.height = 512;
@@ -138,47 +143,111 @@
         return c.toDataURL("image/png");
       })();
 
+      // Pre-fetch icon blob URLs into a cache so repeat requests are instant.
+      var iconCache = {};
+      function fetchIconBlob(apiUrl) {
+        if (iconCache[apiUrl]) return iconCache[apiUrl];
+        iconCache[apiUrl] = window.fetch(apiUrl).then(function (resp) {
+          if (!resp.ok) return BLANK;
+          return resp.blob().then(function (b) { return URL.createObjectURL(b); });
+        }).catch(function () { return BLANK; });
+        return iconCache[apiUrl];
+      }
+
       function isMapUrl(v) {
         return v.indexOf("/game-assets/map?") !== -1 || v.indexOf("/hotkeys/map?") !== -1;
       }
 
-      function fixApiImage(img) {
-        var src = img.getAttribute("src");
-        if (!src || !src.startsWith("/api/") || img.dataset.wasmHandled) return;
-        img.dataset.wasmHandled = "1";
-        if (isMapUrl(src)) {
-          img.src = MAP_PLACEHOLDER;
-          return;
+      // Set the right attribute for the element type.
+      function setImgSrc(el, url) {
+        if (el.nodeName === "image") {
+          // SVG <image> uses href (and xlink:href for older browsers)
+          el.setAttribute("href", url);
+          el.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", url);
+        } else {
+          el.src = url;
         }
-        window.fetch(src).then(function (resp) {
-          if (!resp.ok) return null;
-          return resp.blob();
-        }).then(function (blob) {
-          if (blob) img.src = URL.createObjectURL(blob);
-        }).catch(function () {});
       }
 
-      // MutationObserver: catches every <img src="/api/..."> regardless of how
-      // React sets it (property, setAttribute, innerHTML).
+      function resolveApiImage(apiUrl, el) {
+        if (isMapUrl(apiUrl)) {
+          setImgSrc(el, MAP_PLACEHOLDER);
+          return;
+        }
+        fetchIconBlob(apiUrl).then(function (blobUrl) { setImgSrc(el, blobUrl); });
+      }
+
+      // Layer 1: intercept setAttribute("src"|"href", "/api/...")
+      var origSetAttribute = Element.prototype.setAttribute;
+      Element.prototype.setAttribute = function (name, value) {
+        if (typeof value === "string" && value.startsWith("/api/")) {
+          // <img src="/api/...">
+          if (this.nodeName === "IMG" && name === "src") {
+            origSetAttribute.call(this, "src", BLANK);
+            resolveApiImage(value, this);
+            return;
+          }
+          // SVG <image href="/api/..."> or <image xlink:href="/api/...">
+          if (this.nodeName === "image" && (name === "href" || name === "xlink:href")) {
+            origSetAttribute.call(this, name, BLANK);
+            resolveApiImage(value, this);
+            return;
+          }
+        }
+        return origSetAttribute.call(this, name, value);
+      };
+
+      // Also intercept setAttributeNS for SVG xlink:href
+      var origSetAttributeNS = Element.prototype.setAttributeNS;
+      Element.prototype.setAttributeNS = function (ns, name, value) {
+        if (this.nodeName === "image" && typeof value === "string" && value.startsWith("/api/")) {
+          origSetAttributeNS.call(this, ns, name, BLANK);
+          resolveApiImage(value, this);
+          return;
+        }
+        return origSetAttributeNS.call(this, ns, name, value);
+      };
+
+      // Layer 2: intercept img.src = "/api/..."
+      var imgSrcDesc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
+      if (imgSrcDesc && imgSrcDesc.set) {
+        Object.defineProperty(HTMLImageElement.prototype, "src", {
+          get: imgSrcDesc.get,
+          set: function (value) {
+            if (typeof value === "string" && value.startsWith("/api/")) {
+              imgSrcDesc.set.call(this, BLANK);
+              resolveApiImage(value, this);
+              return;
+            }
+            imgSrcDesc.set.call(this, value);
+          },
+          enumerable: true, configurable: true,
+        });
+      }
+
+      // Layer 3: MutationObserver for <img> and SVG <image>
+      function fixNode(node) {
+        if (node.nodeName === "IMG") {
+          var s = node.getAttribute("src");
+          if (s && s.startsWith("/api/")) resolveApiImage(s, node);
+        } else if (node.nodeName === "image") {
+          var h = node.getAttribute("href") || node.getAttributeNS("http://www.w3.org/1999/xlink", "href");
+          if (h && h.startsWith("/api/")) resolveApiImage(h, node);
+        }
+        if (node.querySelectorAll) {
+          node.querySelectorAll('img[src^="/api/"], image[href^="/api/"]').forEach(fixNode);
+        }
+      }
+
       new MutationObserver(function (mutations) {
         for (var i = 0; i < mutations.length; i++) {
           var m = mutations[i];
           if (m.type === "childList") {
-            for (var j = 0; j < m.addedNodes.length; j++) {
-              var node = m.addedNodes[j];
-              if (node.nodeName === "IMG") fixApiImage(node);
-              else if (node.querySelectorAll) {
-                var imgs = node.querySelectorAll('img[src^="/api/"]');
-                for (var k = 0; k < imgs.length; k++) fixApiImage(imgs[k]);
-              }
-            }
-          } else if (m.type === "attributes" && m.target.nodeName === "IMG") {
-            fixApiImage(m.target);
+            for (var j = 0; j < m.addedNodes.length; j++) fixNode(m.addedNodes[j]);
           }
         }
       }).observe(document.documentElement, {
         childList: true, subtree: true,
-        attributes: true, attributeFilter: ["src"],
       });
 
       // ---- Patch WebSocket for library events ----

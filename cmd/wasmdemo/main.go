@@ -4,10 +4,13 @@ package main
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall/js"
 
@@ -17,6 +20,9 @@ import (
 )
 
 const appRoot = "/screpdb"
+
+//go:embed bnetdata
+var bnetDataFS embed.FS
 
 func main() {
 	if err := os.Setenv("SCREPDB_APPDATA_DIR", appRoot); err != nil {
@@ -36,6 +42,8 @@ func main() {
 		js.Global().Get("console").Call("error", fmt.Sprintf("extract samples: %v", err))
 		return
 	}
+
+	extractBnetProfiles()
 
 	ctx := context.Background()
 	dash, err := dashboard.New(ctx, dashboard.Options{
@@ -84,9 +92,6 @@ func main() {
 		return nil
 	}))
 
-	// Expose a subscribe function that JS calls when the FakeLibrarySocket
-	// connects. This ensures the initial snapshot is delivered to the right
-	// callback instead of being dropped during WASM init.
 	js.Global().Set("__screpdb_subscribeLibraryEvents", js.FuncOf(func(_ js.Value, args []js.Value) any {
 		callback := args[0]
 		dash.OnLibraryEvent(func(data []byte) {
@@ -103,4 +108,22 @@ func main() {
 	js.Global().Get("console").Call("log", "screpdb WASM backend ready")
 
 	select {}
+}
+
+func extractBnetProfiles() {
+	destRoot := filepath.Join(appRoot, "bnet_profiles")
+	_ = fs.WalkDir(bnetDataFS, "bnetdata", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		rel, _ := filepath.Rel("bnetdata", path)
+		dest := filepath.Join(destRoot, rel)
+		_ = iofacade.MkdirAll(filepath.Dir(dest), 0o755)
+		data, readErr := fs.ReadFile(bnetDataFS, path)
+		if readErr != nil {
+			return nil
+		}
+		_ = iofacade.WriteFile(dest, data, 0o644)
+		return nil
+	})
 }
