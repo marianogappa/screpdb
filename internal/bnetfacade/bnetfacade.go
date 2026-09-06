@@ -30,6 +30,7 @@ const (
 	gcsReplayPrefix   = "/starcraft-user-uploads-prod/S1-replays/"
 	maxReplaySize     = 20 << 20 // 20 MiB; SC:R replays are typically under 1 MiB.
 	maxBridgeResponse = 1 << 20  // 1 MiB ceiling for bridge JSON responses.
+	maxProbeResponse  = 4096     // probes only need the first JSON brace.
 	replayMagic       = "seRS"
 	replayMagicOffset = 12
 	replayMinSize     = replayMagicOffset + len(replayMagic) // 16 bytes
@@ -67,20 +68,11 @@ func BridgeGet(ctx context.Context, addr, path string, prio Priority) ([]byte, e
 	if err := theBudgets.acquireBridge(ctx, prio); err != nil {
 		return nil, err
 	}
-	url := "http://" + addr + path
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	resp, err := loopbackGet(ctx, "http://"+addr+path, bridgeTimeout, maxBridgeResponse)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := bridgeHTTPClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBridgeResponse))
-	if err != nil {
-		return nil, err
-	}
+	body := resp.Body
 	if isRateLimitedResponse(resp.StatusCode, body) {
 		until := theBudgets.noteBridgeRateLimited()
 		return nil, fmt.Errorf("%w (cooling down until %s)", ErrBridgeRateLimited, until.Format(time.RFC3339))
@@ -256,18 +248,11 @@ func ProbeBridge(ctx context.Context, addr string) BridgeState {
 }
 
 func probeBridgeURL(ctx context.Context, url string) BridgeState {
-	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	resp, err := loopbackGet(ctx, url, probeTimeout, maxProbeResponse)
 	if err != nil {
 		return BridgeNotRunning
 	}
-	resp, err := probeHTTPClient.Do(req)
-	if err != nil {
-		return BridgeNotRunning
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	body := resp.Body
 	switch resp.StatusCode {
 	case http.StatusOK:
 		// SC:R's /web-api/v1/gateway returns JSON. Other servers (including
@@ -295,18 +280,11 @@ func ProbeGateway(ctx context.Context, addr string) (BridgeState, int) {
 }
 
 func probeGatewayURL(ctx context.Context, url string) (BridgeState, int) {
-	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	resp, err := loopbackGet(ctx, url, probeTimeout, maxProbeResponse)
 	if err != nil {
 		return BridgeNotRunning, 0
 	}
-	resp, err := probeHTTPClient.Do(req)
-	if err != nil {
-		return BridgeNotRunning, 0
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	body := resp.Body
 	switch resp.StatusCode {
 	case http.StatusOK:
 		if len(body) == 0 || body[0] != '{' {

@@ -26,4 +26,11 @@
 // budget). Both buckets serve PriorityUser waiters before background sweeps.
 // ProbeBridge is deliberately unmetered: it is a local liveness check.
 // EnableBudgetPersistence makes the daily counters survive restarts.
+//
+// Every loopback request goes out on a connection this package owns end to end
+// (loopbackGet) rather than through any http.Transport. Discovery GETs every
+// loopback listening port on the machine, so it necessarily speaks HTTP to
+// unrelated local daemons; owning the connection keeps their bytes away from
+// net/http's read loop, which reports unsolicited data straight to the default
+// logger (#384), and keeps a probe from being redirected off loopback.
 package bnetfacade
