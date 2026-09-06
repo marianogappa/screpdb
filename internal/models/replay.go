@@ -167,7 +167,6 @@ type ReplayData struct {
 	AllianceSnapshots   []AllianceSnapshot        `json:"-"` // Alliance topology timeline for multi-player melee; empty otherwise. Not persisted.
 	MapContext          *ReplayMapContext         `json:"-"` // Runtime-only map context (not persisted)
 	PatternOrchestrator any                       `json:"-"` // Pattern orchestrator (type *patterns.Orchestrator), not serialized
-	Profile             any                       `json:"-"` // Optional *profile.Run, populated when SCREPDB_INGEST_PROFILE is set
 }
 
 // MapResourcePosition stores a resource position in pixels.

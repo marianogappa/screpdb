@@ -90,13 +90,14 @@ func Path(sub ...string) (string, error) {
 	return filepath.Join(append([]string{dir}, sub...)...), nil
 }
 
-// DefaultDBPath returns the default SQLite database path inside the app-data
-// root.
+// DefaultDBPath returns the path a pre-library release wrote its SQLite
+// database to inside the app-data root. It survives only as the source of the
+// one-time legacy import (issue #381); nothing writes there any more.
 func DefaultDBPath() (string, error) {
 	return Path(dbFileName)
 }
 
-// ResolveDBPath maps the sqlite-path flag to a concrete path: the sentinel
+// ResolveDBPath maps the legacy-db-path flag to a concrete path: the sentinel
 // default (the bare filename) resolves to the app-data root, while any explicit
 // user-provided path is honored as-is.
 func ResolveDBPath(flag string) (string, error) {

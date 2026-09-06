@@ -7,8 +7,11 @@ import (
 	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
 )
 
-// AlgorithmVersion is the current version of the pattern detection algorithm
-// Increment this when the algorithm changes to trigger re-detection
+// AlgorithmVersion is the current version of the pattern detection algorithm.
+// Increment it whenever the algorithm's output changes. Replays are now
+// re-detected on every launch (the corpus is read into memory, not ingested),
+// so it no longer drives a re-ingest; it gates the built-in progamer pack and
+// is published on /api/custom/markers/definitions and in SPECIFICATION.md.
 //
 // 26: build-order overhaul — Zerg 5/6/7/8/10/11 Pool rungs, loosened FFE &
 // 1 Rax FE timings, widened Protoss expand/core matchups, Bunker Rush, per-race

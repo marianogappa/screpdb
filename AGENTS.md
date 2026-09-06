@@ -14,11 +14,11 @@
 
 # Detection Changes — bump `core.AlgorithmVersion`
 
-Whenever you change anything that affects the *output* of replay detection (game-event composition, marker firing rules, attack/scout/recall/drop heuristics, ownership inference, base resolution, payload shape on `replay_events`, etc.), bump `AlgorithmVersion` in `internal/patterns/core/types.go`. The ingest pipeline stamps each replay's `analyzer_algorithm_version`; replays older than the current constant are re-detected on next ingest. Forgetting this leaves stale detections in users' DBs.
+Whenever you change anything that affects the *output* of replay detection (game-event composition, marker firing rules, attack/scout/recall/drop heuristics, ownership inference, base resolution, marker payload shape, etc.), bump `AlgorithmVersion` in `internal/patterns/core/types.go`. Replays are re-detected on every launch now that the corpus is read into memory rather than ingested into a database, so the constant no longer drives a re-ingest — but it still gates the built-in progamer pack (`internal/propack` refuses a pack built by an older detector) and is published on `/api/custom/markers/definitions` and in `SPECIFICATION.md`. Forgetting it ships a stale pack and a wrong version number.
 
 If you only changed presentation (frontend rendering, descriptions, overlays) without touching what's persisted, no bump is needed.
 
-This also covers fingerprint vectors: bumping `github.com/marianogappa/scfingerprint` to a version with a new `FeatureVersion()` makes every stored row in `player_fingerprint_vectors` stale (vectors are only comparable within a feature version, and coverage counts only current-version rows), so such a bump requires an `AlgorithmVersion` bump too — the re-ingest it drives is what re-extracts the vectors.
+This also covers fingerprint vectors: bumping `github.com/marianogappa/scfingerprint` to a version with a new `FeatureVersion()` makes every vector baked into the progamer pack stale (vectors are only comparable within a feature version), so such a bump requires an `AlgorithmVersion` bump too.
 
 # Pull Requests
 

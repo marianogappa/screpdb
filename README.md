@@ -213,37 +213,22 @@ rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/screpdb"
 ## Developer features
 
 <details>
-<summary>CLI ingestion, MCP server, and full OpenAPI — click to expand</summary>
-
-- CLI for ingestion onto SQLite database. No need to use UI: just ingest and query the database.
-
-```bash
-./screpdb ingest
-
-- `-i, --input-dir`: Input directory containing replay files (default: system replay directory)
-- `-s, --sqlite-path`: SQLite database file path (default: screp.db)
-- `-n, --stop-after-n-reps`: Stop after processing N replay files (0 = no limit)
-- `-d, --up-to-yyyy-mm-dd`: Only process files up to this date (YYYY-MM-DD format)
-- `-m, --up-to-n-months`: Only process files from the last N months (0 = no limit)
-- `--store-right-clicks`: Store `Right Click` commands (disabled by default to reduce command-table volume)
-- `--clean`: Drop all non-dashboard tables before ingesting to start over (useful for migrations)
-```
-
-- MCP server: point an MCP client (Claude Desktop, Claude Code, Cursor, …) at the replay database and ask questions in natural language about any game, player, matchup, build order, or event. The client's model turns your question into read-only SQL over the ingested data. The server exposes tools to run queries (`query_database`), inspect the schema (`get_database_schema`), read StarCraft domain knowledge (`get_starcraft_knowledge`), and discover players and derived events (`list_top_players`, `list_event_types`).
-
-```bash
-./screpdb mcp
-
-# Specify custom database file
-./screpdb mcp -s /path/to/custom.db
-```
+<summary>MCP server and full OpenAPI — click to expand</summary>
 
 - Server / API: `./screpdb dashboard` (also the default when run with no subcommand) starts the HTTP server and opens the dashboard UI. All UI functionality is exposed as a JSON API — [OpenAPI schema available](api/openapi/dashboard.v1.yaml). Run it headless as an API-only server (no UI, no browser) with `--headless`:
 
 ```bash
-./screpdb dashboard --headless -p 8000 -s /path/to/custom.db
+./screpdb dashboard --headless -p 8000
 # then: curl http://localhost:8000/api/health
 ```
+
+- MCP server: point an MCP client (Claude Desktop, Claude Code, Cursor, …) at your replays and ask questions in natural language about any game, player, matchup, build order, or event. A curated read-only subset of the API is reachable; nothing that changes local state is.
+
+```bash
+./screpdb mcp
+```
+
+If you want to build something on top of screpdb's API or MCP, let me know. I'm open to facilitating this, but I won't add untested features otherwise.
 
 </details>
 
@@ -300,13 +285,13 @@ screpdb minimizes its attack surface by routing all I/O through facades and keep
 <details>
 <summary><strong>How the I/O model works</strong> — filesystem, Windows sandbox, network, self-update, enforcement</summary>
 
-- **Filesystem** — all disk access goes through `internal/iofacade`, which permits reads/writes only within: a single per-OS **app-data directory** (`%LOCALAPPDATA%\screpdb` on Windows, `~/Library/Application Support/screpdb` on macOS, `$XDG_CONFIG_HOME/screpdb` on Linux) that holds the SQLite database, game-asset cache, logs, crash reports, and extracted sample replays; and the configured replays folder (read replays, write "watch me" replays). A narrow, read-only exception walks up from the replays folder to find StarCraft's `CSettings.json`.
+- **Filesystem** — all disk access goes through `internal/iofacade`, which permits reads/writes only within: a single per-OS **app-data directory** (`%LOCALAPPDATA%\screpdb` on Windows, `~/Library/Application Support/screpdb` on macOS, `$XDG_CONFIG_HOME/screpdb` on Linux) that holds settings, the Battle.net and game-asset caches, logs, crash reports, and extracted sample replays; and the configured replays folder (read replays, write "watch me" replays). A narrow, read-only exception walks up from the replays folder to find StarCraft's `CSettings.json`.
 - **Windows OS sandbox** — on Windows the app splits into a Medium-integrity **launcher** and a **Low-integrity worker** ([#237](https://github.com/marianogappa/screpdb/issues/237)). The launcher marks the app-data directory Low-writable and relaunches the real worker at Low integrity; the worker keeps read-down access to replays anywhere but can only *write* into that one Low-labeled folder — every other write is refused by the OS, even from a compromised `screp`/`scmapanalyzer` parser. The launcher retains self-update (it must overwrite the install `.exe`) and brokers the single "watch me" write into the read-only replays folder on the worker's behalf. This does **not** stop a compromised parser from *reading* private files (Low integrity can read up-level); blocking reads needs AppContainer + a broker process, a deferred "Tier 2" follow-up.
 - **Network** — the dashboard server binds to `localhost` only. The binary's outbound calls are confined to three sanctioned packages: **`internal/selfupdate`** ([#212](https://github.com/marianogappa/screpdb/issues/212)) queries GitHub Releases for self-update, verifying every byte against a minisign-signed `SHA256SUMS` (embedded public key) before any swap; **`internal/bnetfacade`** ([#317](https://github.com/marianogappa/screpdb/issues/317)) talks to SC:R's local web-api bridge (loopback only, path-prefixed to `/web-api/`) and downloads replays from `storage.googleapis.com` (allowlisted to the single path prefix `/starcraft-user-uploads-prod/S1-replays/`, with length + `seRS` magic-byte validation on every download); **`internal/netfacade`** houses localhost readiness probes.
 - **Self-update** — updates are always user-initiated, never automatic. Package-manager installs (Scoop on Windows, Homebrew/Linuxbrew on macOS/Linux) and non-writable install directories are detected and excluded so the updater never fights `scoop update` / `brew upgrade` or needs elevation; those installs are pointed back at their package manager. The `curl | sh` installer drops into a writable dir (`~/.local/bin`), so in-app self-update keeps working there. Self-written binaries carry no macOS quarantine xattr / Windows Mark-of-the-Web, so Gatekeeper/SmartScreen don't re-prompt after an update.
 - **Enforcement** — `TestNoDirectIOOutsideFacades` (in `internal/iofacade`) parses the whole module on every `go test` run and fails the build if any package reaches the filesystem or network directly instead of through the facades. `internal/selfupdate`, `internal/bnetfacade`, and `internal/winsandbox` (the Windows process-spawn / integrity-labeling / broker surface) are the documented exceptions.
 
-On **macOS and Linux** this is a best-effort, in-process guard, not an OS sandbox: paths handed to trusted dependencies (the SQLite driver, the screp parser, scmapanalyzer) are opened inside those libraries, and the facade only constrains screpdb's own code. On **Windows** the Low-integrity worker adds a real OS write boundary on top of the same facades.
+On **macOS and Linux** this is a best-effort, in-process guard, not an OS sandbox: paths handed to trusted dependencies (the screp parser, scmapanalyzer) are opened inside those libraries, and the facade only constrains screpdb's own code. On **Windows** the Low-integrity worker adds a real OS write boundary on top of the same facades.
 
 </details>
 
@@ -316,13 +301,14 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-09-06  OK. Narrows I/O, does not widen it. Follow-up to the #384 fix below: loopback bridge requests (discovery probes, state probes and real bridge calls) now go out on a connection bnetfacade owns end to end (net.Dialer + Request.Write + http.ReadResponse, one shot) instead of an http.Transport, and loopbackTransport goes away. DisableKeepAlives closed only one of the two ways into net/http's "Unsolicited response received on idle HTTP channel": the other is a freshly dialled connection, because dialConn starts the read loop before roundTrip claims it, so a peer that greets on connect lands its banner while no request is counted in flight and nothing was ever pooled. Measured against such a peer, the unpooled transport still logged 27 lines in 20,000 probes and an owned connection logged none. Owning the connection also stops an http.Client following a redirect off 127.0.0.1 on a probe. The GCS download client keeps its pooled transport unchanged, as do the skiplist and every loopback-only, /web-api/ prefix and rate-limit check; no new os/net calls, roots, hosts, endpoints, facade exemptions, enforcement-test change, or AlgorithmVersion bump.
+2026-09-06  REVIEW. Removes SQLite from the binary: the ingest command, internal/ingest, internal/storage and internal/migrations are deleted, and screpdb mcp stops opening a database and reads the headless dashboard's JSON API instead, so one process owns the corpus and MCP holds no state. Two new capabilities, both narrow. (1) netfacade.LocalAPIGet, a loopback-only GET added to the existing network facade and refusing any non-loopback address, so the MCP tools cannot be pointed at a remote host by the model driving them; MCP reaches only a hand-written allowlist of 16 read-only GET paths (games, players, hotkeys, insights, marker definitions, health), cross-checked against the OpenAPI document by test, with every mutating and UI-only operation excluded and /api/games/{id}/see, which launches the game client, explicitly out. (2) screpdb mcp spawns `screpdb dashboard --headless` with os/exec when no screpdb answers on localhost:8000-8009, and kills it on exit; it is the binary re-executing itself with fixed arguments, os.Executable resolves the path, and no argument comes from the model. internal/legacyimport keeps its read-only (mode=ro) open of the pre-2.0 screp.db, and stays the only database reader and the only reason modernc.org/sqlite is still required. The per-package no-database guards in the dashboard and the replay library are replaced by one module-wide TestBinaryHasNoDatabaseDependencies in internal/iofacade, next to the existing enforcement test, exempting only internal/legacyimport and pinned to it by a second test. scripts/expert-mine, the reproducible provenance of the SPECIFICATION golden lines, is ported from the scratch database onto the in-memory library and reads the same staged folder through the same loader. github.com/fatih/color drops out of go.mod with the ingest logger. No new roots, no new hosts, no outbound calls off loopback, no weakened enforcement test, no AlgorithmVersion bump (detection is untouched).
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand)</summary>
 
 ```
+2026-09-06  OK. Narrows I/O, does not widen it. Follow-up to the #384 fix below: loopback bridge requests (discovery probes, state probes and real bridge calls) now go out on a connection bnetfacade owns end to end (net.Dialer + Request.Write + http.ReadResponse, one shot) instead of an http.Transport, and loopbackTransport goes away. DisableKeepAlives closed only one of the two ways into net/http's "Unsolicited response received on idle HTTP channel": the other is a freshly dialled connection, because dialConn starts the read loop before roundTrip claims it, so a peer that greets on connect lands its banner while no request is counted in flight and nothing was ever pooled. Measured against such a peer, the unpooled transport still logged 27 lines in 20,000 probes and an owned connection logged none. Owning the connection also stops an http.Client following a redirect off 127.0.0.1 on a probe. The GCS download client keeps its pooled transport unchanged, as do the skiplist and every loopback-only, /web-api/ prefix and rate-limit check; no new os/net calls, roots, hosts, endpoints, facade exemptions, enforcement-test change, or AlgorithmVersion bump.
 2026-09-06  OK. Reduces outbound I/O. Fixes the "Unsolicited response received on idle HTTP channel" log noise (#384): bridge discovery HTTP-GETs every loopback listening port, so most probes hit unrelated local daemons, and a peer that is not an HTTP server can write binary garbage back after we are done with the connection. Because the probes ran on http.DefaultTransport, that connection was pooled and idle when the bytes arrived, and net/http logged them. The issue's suggested Transport.ErrorLog does not exist (net/http emits this line with a bare log.Printf from the shared read loop, so it cannot be attributed or redirected), leaving one lever: internal/bnetfacade now owns its transports, and the loopback one sets DisableKeepAlives with Proxy nil so no probe connection is ever pooled or proxied. Replay downloads keep pooling on a cloned default transport. Discovery also stops re-probing ports it already rejected, for 5 minutes, dropping the entry as soon as the port stops listening and never remembering a 401 (that is the bridge with nobody logged in); that cuts the steady-state HTTP GETs to unrelated local services from every port every 20s to roughly one per port per 5 minutes. No new hosts, endpoints, paths, roots, os/net calls, facade exemptions, enforcement-test change, or AlgorithmVersion bump; the loopback-only and /web-api/ path-prefix guards are untouched.
 2026-09-06  OK. Update hint for Homebrew installs now copies `brew update && brew upgrade screpdb` (issue #360): `brew upgrade` alone is a no-op when the local tap cache is stale, and Homebrew only auto-refreshes tap metadata every ~24h. Frontend copy string plus the two README install snippets; Scoop left as `scoop update screpdb` (its update subcommand syncs buckets itself when Scoop is >3h stale). No Go changes, no os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test change, no AlgorithmVersion bump (no detection change).
 2026-09-06  OK. Caps the built-in progamer overlay on the three skill-proxy distributions (APM, unit production cadence, viewport switch rate) at 15 markers, five per race by curated rank, instead of overlaying all 70 pros. The cap lives server-side in featuredOverlayPros so the payload shrinks with it; the pros left out are unchanged everywhere else and still resolve to their own player pages. Population statistics are untouched: featured points were already reference-only, never binned and never part of the mean, stddev or percentile. No new os/net calls, roots, hosts, endpoints, queries, facade changes, enforcement-test change, or AlgorithmVersion bump (no detection code is touched).

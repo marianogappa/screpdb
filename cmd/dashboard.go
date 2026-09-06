@@ -81,9 +81,9 @@ func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) err
 	if err != nil {
 		return fmt.Errorf("failed to resolve the app data folder: %w", err)
 	}
-	legacyDBPath, err := appdata.ResolveDBPath(opts.SQLitePath)
+	legacyDBPath, err := appdata.ResolveDBPath(opts.LegacyDBPath)
 	if err != nil {
-		return fmt.Errorf("failed to resolve database path: %w", err)
+		return fmt.Errorf("failed to resolve the legacy database path: %w", err)
 	}
 
 	dash, err := dashboard.New(ctx, dashboard.Options{

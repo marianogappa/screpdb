@@ -23,41 +23,80 @@ Replay Essentials
 - Map size is in tiles (128x128, 96x256) but (x, y) is in pixels. 1 tile = 32 pixels.
 - Map control, scouting, expansions
 
-Macro vs Micro
-
-- These commands are macro: Build, Train, BuildInterceptorOrScarab, UnitMorph, Tech, Upgrade
-- These commands are micro: RightClick, TargetedOrder, Hotkey, UnloadAll, HoldPosition, Burrow, Unburrow, Siege, Unsiege, Cloack, Decloack
-
-Report Metrics
-
-- If you're asked to report on players, stick to `players.type = 'Human'` (skip Computer)
-- `players.is_winner` is not too accurate. Players may leave game after winning, replays may be incomplete.
-- Resource collection & spending efficiency
-- Player performance stats (APM, using hotkeys, macro vs micro balance, time to first building, time to first combat unit, time to expansion)
-- Better players: have higher APMs, use hotkeys, > micro actions, if they have more workers they make more units/buildings.
-- Build order timings (e.g. “2 Hatch Muta,” “1 Gate Expand”)
-
 Meta terms
 
-- "rush": when a player attacks another (e.g. RightClick, TargetedOrder w/ order_name Attack*) within a few minutes of game start
+- "rush": attacking an opponent within a few minutes of game start.
 - "timing push": deliberate attack launched at a specific moment when a build order hits a temporary power spike (e.g. first tanks with siege, zealots become fast, mutalisks get +1 attack).
-- "tech switch": Rapidly shifting production to a different unit tech path to exploit an opponent’s weak counters (e.g. mutalisks → lurkers, marine+medic → tank+goliath).
-- "natural": The first "expansion" (main building) to gather more resources, which is in close proximity to the main starting location.
-- "expa/expansion": Another expansion which is not necessarily the "natural".
+- "tech switch": rapidly shifting production to a different unit tech path to exploit an opponent's weak counters (e.g. mutalisks → lurkers, marine+medic → tank+goliath).
+- "natural": the first expansion (main building) to gather more resources, in close proximity to the main starting location.
+- "expa/expansion": another expansion which is not necessarily the natural.
 - Main building starting locations are usually conveyed in o'clock positions (like 3, 6, 9, 12).
 
-Derived analysis (replay_events table)
+How screpdb models a replay
 
-screpdb doesn't just store the raw command stream — it runs pattern detection at ingest and stores the results in replay_events. There are two kinds:
+screpdb reads a folder of replay files into memory and runs pattern detection
+on each one. What it keeps per game, and what you read over the JSON API, is:
 
-- Markers (event_kind='marker'): one row per (replay, player, marker type). These summarise a player's game. The most important are BUILD-ORDER OPENERS, stored as event_type feature keys prefixed "bo_", describing the first ~2 minutes of macro — e.g. bo_9_pool, bo_12_hatch, bo_2_gate, bo_gate_expand, bo_1_gate_core, bo_t_111 (Terran 1-1-1), bo_cc_first, bo_forge_expa. The prefix reflects the race (bo_p_* Protoss, bo_t_* Terran, plain bo_* often Zerg pool/hatch timings). Catch-all openers that couldn't be resolved to a named build use opener_unresolved, *_fuzzy, or bo_*_other. Other markers capture timings and behaviours (e.g. used_hotkey_groups, viewport_multitasking, never_upgraded, became_zerg). event_type is descriptive on its own; a marker's payload may hold extra JSON (e.g. expert timing checkpoints).
-- Game events (event_kind='game_event'): narrative moments during a game — rushes (cannon_rush, bunker_rush, zergling_rush), drops, nydus attacks, proxies (e.g. proxy_starport), mind_control, scouting, expansion. These have a time (seconds_from_game_start), a source_player_id (who did it) and often a target_player_id and a map location.
+- The game: map, matchup, duration, engine, lobby kind, game source, map kind
+  (Regular, Money, UseMapSettings), and the map's base layout.
+- The players: name, race, team, APM and eAPM, start location, winner flag,
+  observer flag, human/computer type, hotkey usage and viewport activity.
+- The production stream: every Build, Train, unit morph, building morph, Tech,
+  Upgrade and composition-relevant spell cast, with the second it happened.
+  This is what build orders, timings and army composition are derived from.
+- Chat lines, alliance topology over time, and the derived markers and game
+  events below.
 
-The bo_ prefix is only a loose hint about race (bo_p_*/bo_t_* are reliably Protoss/Terran, but many Zerg openers are just bo_9_pool/bo_12_hatch with no race letter). To filter openers by race RELIABLY, join replay_events.source_player_id → players.id and filter players.race, rather than pattern-matching the key. Use the list_event_types tool to see the exact event_type values and counts before querying. To answer "what openers did player X use in ZvT?", join replays (matchup) → players (name, race) → replay_events (event_kind='marker', event_type LIKE 'bo_%'). To answer "how often does player X cheese?", count the rush/proxy game_events attributed to their player rows.
+There is NO raw command stream. Right-clicks, move orders, unit tags and screen
+coordinates are parsed and used during detection, then dropped. Questions that
+need individual micro actions cannot be answered from this API — say so rather
+than inventing an answer.
 
-Notes on interpreting the data
+Derived analysis: markers and game events
 
-- Build orders / openers are the canonical way to describe a game's opening; prefer the stored marker over reconstructing it from raw commands.
-- Player identity: players.name is the raw in-replay name. The same person may appear under many tags. player_aliases maps tags to a canonical identity — join through it to aggregate a person across smurfs.
-- Insights screpdb computes elsewhere (and that you can reconstruct from commands): APM/eAPM (already columns on players), unit-production cadence, viewport/multitasking, hotkey usage, time-to-first-building/expansion.
-- Prefer commands over commands_low_value for meaningful analysis; the low-value table is right-clicks/hotkeys/pings and is often excluded (and may be empty if ingestion skipped them).
+screpdb does not just store what happened; it runs pattern detection and stores
+the verdicts. There are two kinds, and list_marker_definitions returns the live
+vocabulary of both with their labels.
+
+- Markers: one per (game, player). The most important are BUILD-ORDER OPENERS,
+  whose feature keys are prefixed "bo_", describing the first ~2 minutes of
+  macro — e.g. bo_9_pool, bo_12_hatch, bo_2_gate, bo_gate_expand,
+  bo_1_gate_core, bo_t_111 (Terran 1-1-1), bo_cc_first, bo_forge_expa. Openers
+  that could not be resolved to a named build use opener_unresolved, *_fuzzy or
+  bo_*_other; treat those as "unknown", not as a build. Other markers capture
+  timings and behaviours (e.g. never_used_hotkeys, viewport_multitasking,
+  never_upgraded), and many carry the measured seconds behind the verdict.
+- Game events: narrative moments during a game — rushes (cannon_rush,
+  bunker_rush, zergling_rush), drops, nydus attacks, proxies (e.g.
+  proxy_starport), mind control, scouting and expansions. Each has a second, an
+  acting player, often a target player, and a map location expressed as a base
+  (starting / natural / expansion) and an o'clock position.
+
+The bo_ prefix is only a loose hint about race: bo_p_*/bo_t_* are reliably
+Protoss/Terran, but many Zerg openers are just bo_9_pool/bo_12_hatch with no
+race letter. Read the player's race from the response rather than inferring it
+from the key.
+
+Report metrics
+
+- Stick to human players; skip computers and observers.
+- The winner flag is not fully reliable: players may leave after winning, and
+  replays may be incomplete.
+- Useful per-player signals the API already computes: APM and eAPM, hotkey
+  usage and hotkey signature, unit-production cadence, viewport multitasking,
+  build-order openers and their expert timing deltas.
+- Better players tend to have higher APM, use hotkeys, and convert a bigger
+  worker count into more units and buildings.
+- Build-order names ("2 Hatch Muta", "1 Gate Expand") are the canonical way to
+  describe an opening; prefer the stored marker over reconstructing one.
+
+Answering questions
+
+- Start with get_api_schema, then list_top_players or /api/games to see what is
+  actually in this corpus.
+- The corpus is one user's replay folder, capped at its newest games. Do not
+  generalise from it to StarCraft as a whole, and say how many games a claim
+  rests on.
+- /api/games/{replayID} returns the whole game report in one response: players,
+  build orders, timings, events, chat. Reach for it before assembling an answer
+  from several endpoints.
