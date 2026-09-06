@@ -1,4 +1,5 @@
 //go:build !js
+
 package dashboard
 
 import (
