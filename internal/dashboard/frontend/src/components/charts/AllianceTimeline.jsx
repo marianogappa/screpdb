@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useT } from '../../lib/i18nContext';
 import { slugKey } from '../../lib/i18n';
+import { computeColumnLayout } from '../../lib/allianceLayout';
 
 // AllianceTimeline renders alliance topology as a Sankey-style flow.
 // Time runs top-to-bottom on a non-linear axis (rows = significant events
@@ -243,163 +244,12 @@ const AllianceTimeline = ({
   }, [timeline, activePlayers, playerByID, durationSeconds]);
 
   // ── Column ordering per row ────────────────────────────────────────────
-  // Per-row layout: place the first (largest, lowest-min) clique, then
-  // repeatedly pick the unplaced clique that shares the most members with
-  // what's already laid down. That's the natural chain order for non-
-  // transitive alliances (D-C-Y-f stays D-C-Y-f rather than being shuffled
-  // into D-C-f-Y). Departed players keep their last-known column index so
-  // their terminating "x" lands where the lane was.
-  const computeRowOrder = (row, prev) => {
-    const remaining = row.teams.map((_, i) => i);
-    const placed = new Set();
-    const newOrderActive = [];
-    const placeMembers = (team) => {
-      const toPlace = team.filter((pid) => !placed.has(pid));
-      const retained = toPlace
-        .filter((pid) => prev.includes(pid))
-        .sort((a, b) => prev.indexOf(a) - prev.indexOf(b));
-      const newcomers = toPlace
-        .filter((pid) => !prev.includes(pid))
-        .sort((a, b) => a - b);
-      for (const pid of [...retained, ...newcomers]) {
-        newOrderActive.push(pid);
-        placed.add(pid);
-      }
-    };
-    while (remaining.length > 0) {
-      let bestIdx = 0;
-      let bestKey = null;
-      for (let i = 0; i < remaining.length; i += 1) {
-        const ti = remaining[i];
-        const team = row.teams[ti];
-        const overlap = team.reduce((acc, pid) => acc + (placed.has(pid) ? 1 : 0), 0);
-        const size = team.length;
-        const idxs = team.map((pid) => prev.indexOf(pid)).filter((v) => v >= 0);
-        const centroid = idxs.length === 0
-          ? Number.MAX_SAFE_INTEGER
-          : idxs.reduce((a, v) => a + v, 0) / idxs.length;
-        // Priority: extend the existing layout (overlap), then preserve the
-        // prev-row position of the team's centroid (-centroid), THEN prefer
-        // larger cliques as a tiebreaker. Putting -centroid before size
-        // stops a newly-formed bigger clique from hijacking column 0 just
-        // because it has more members than the pair currently anchored
-        // there — concretely, the {D,C,Y} triangle at 11:28 stays in its
-        // home columns instead of swapping with chobo+FA.
-        const key = [overlap, -centroid, size, -ti];
-        if (
-          bestKey === null
-          || key[0] > bestKey[0]
-          || (key[0] === bestKey[0] && key[1] > bestKey[1])
-          || (key[0] === bestKey[0] && key[1] === bestKey[1] && key[2] > bestKey[2])
-          || (key[0] === bestKey[0] && key[1] === bestKey[1] && key[2] === bestKey[2] && key[3] > bestKey[3])
-        ) {
-          bestKey = key;
-          bestIdx = i;
-        }
-      }
-      const ti = remaining[bestIdx];
-      remaining.splice(bestIdx, 1);
-      placeMembers(row.teams[ti]);
-    }
-
-    const newOrder = newOrderActive.slice();
-    for (const pid of row.departures) {
-      if (newOrder.includes(pid)) continue;
-      const prevIdx = prev.indexOf(pid);
-      if (prevIdx < 0) {
-        newOrder.push(pid);
-        continue;
-      }
-      const target = Math.min(prevIdx, newOrder.length);
-      newOrder.splice(target, 0, pid);
-    }
-    return newOrder;
-  };
-
-  // simulate(initialOrder) walks every row applying computeRowOrder, returns
-  // both the resulting column arrays AND a quality score (lower = better).
-  // The score charges 2 points for each player whose column index shifts
-  // between consecutive rows (visual line crossing) and 1 point per column
-  // of arc length (pair-allied players placed far apart). With both terms
-  // we get layouts that are *stable* (chobo + FA never swap) AND have
-  // adjacent arcs (chain D-C-Y-f naturally lined up).
-  const simulateOrder = (initialOrder) => {
-    const cols = [];
-    let movement = 0;
-    let arcLen = 0;
-    let prev = initialOrder.slice();
-    for (let ri = 0; ri < rows.length; ri += 1) {
-      const row = rows[ri];
-      const newOrder = computeRowOrder(row, prev);
-      cols.push(newOrder);
-      for (let i = 0; i < newOrder.length; i += 1) {
-        const prevIdx = prev.indexOf(newOrder[i]);
-        if (prevIdx >= 0) movement += Math.abs(i - prevIdx);
-      }
-      for (const team of row.teams) {
-        if (team.length === 2) {
-          const c1 = newOrder.indexOf(team[0]);
-          const c2 = newOrder.indexOf(team[1]);
-          if (c1 >= 0 && c2 >= 0) arcLen += Math.abs(c1 - c2) - 1;
-        }
-      }
-      prev = newOrder.filter((pid) => !row.departures.includes(pid));
-    }
-    return { cols, score: movement * 2 + arcLen };
-  };
-
-  // Compute the BEST initial column order to minimise total movement and
-  // arc length. Players who never appear in a size-≥2 clique anywhere in
-  // the timeline ("permanent solos" — e.g. someone whose ally requests are
-  // never reciprocated, like RememberMyName in replay 500) get pinned to
-  // the end of the lineup: their position has no impact on movement or
-  // arc-length scoring, so multiple permutations tie. Without this pin the
-  // first tied perm encountered in iteration wins, which can drop a solo
-  // randomly into the middle of an otherwise stable lineup.
-  const { columns, initialOrder } = useMemo(() => {
-    if (rows.length === 0) return { columns: [], initialOrder: [] };
-    const pidList = activePlayers.map((p) => p.player_id);
-    const isPermaSolo = (pid) => {
-      for (const row of rows) {
-        for (const team of row.teams) {
-          if (team.length >= 2 && team.includes(pid)) return false;
-        }
-      }
-      return true;
-    };
-    const permaSolos = pidList.filter(isPermaSolo);
-    const nonSolos = pidList.filter((pid) => !permaSolos.includes(pid));
-    if (nonSolos.length > 8) {
-      const fallback = [...nonSolos, ...permaSolos];
-      const r = simulateOrder(fallback);
-      return { columns: r.cols, initialOrder: fallback };
-    }
-    const permute = (arr) => {
-      if (arr.length <= 1) return [arr];
-      const out = [];
-      for (let i = 0; i < arr.length; i += 1) {
-        const rest = arr.slice(0, i).concat(arr.slice(i + 1));
-        for (const p of permute(rest)) out.push([arr[i], ...p]);
-      }
-      return out;
-    };
-    let bestOrder = [...nonSolos, ...permaSolos];
-    let bestCols = null;
-    let bestScore = Infinity;
-    for (const perm of permute(nonSolos)) {
-      const candidate = [...perm, ...permaSolos];
-      const { cols, score } = simulateOrder(candidate);
-      if (score < bestScore) {
-        bestScore = score;
-        bestOrder = candidate;
-        bestCols = cols;
-      }
-    }
-    return { columns: bestCols || [], initialOrder: bestOrder };
-    // computeRowOrder + simulateOrder are stable closures over `rows` which
-    // is itself a useMemo — only those identities matter for dep tracking.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, activePlayers]);
+  // Which lane each player occupies on each row. See lib/allianceLayout.js
+  // for the placement rule and the search over initial orderings.
+  const { columns } = useMemo(
+    () => computeColumnLayout(rows, activePlayers.map((p) => p.player_id)),
+    [rows, activePlayers],
+  );
 
   // ── Layout dimensions ──────────────────────────────────────────────────
   const wrapRef = useRef(null);
