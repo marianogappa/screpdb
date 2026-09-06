@@ -2871,7 +2871,7 @@ function App() {
     const os = updateStatus?.os || '';
     if (reason === 'managed') {
       if (manager === 'scoop') return 'scoop update screpdb';
-      if (manager === 'homebrew') return 'brew upgrade screpdb';
+      if (manager === 'homebrew') return 'brew update && brew upgrade screpdb';
       return '';
     }
     if (reason === 'not-writable' && os !== 'windows') {
