@@ -1,4 +1,4 @@
-.PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso bench-load coverage
+.PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso bench-load coverage wasm wasm-assets wasm-binary wasm-dist
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
@@ -82,6 +82,31 @@ windows-syso:
 		-product-name "screpdb GUI" \
 		-o cmd/windows-dashboard/resource_windows_amd64.syso \
 		$(VERSIONINFO_JSON)
+
+# WASM demo: build the browser-based preview and bundle everything into cmd/wasmdemo/dist/.
+wasm: ui-build wasm-assets wasm-binary wasm-dist
+
+WASM_DIST := cmd/wasmdemo/dist
+
+wasm-assets:
+	mkdir -p $(WASM_DIST)/assets
+	go run scripts/generate-demo-assets/main.go $(WASM_DIST)/assets
+
+wasm-binary:
+	mkdir -p $(WASM_DIST)
+	install -m 644 "$$(go env GOROOT)/lib/wasm/wasm_exec.js" $(WASM_DIST)/wasm_exec.js
+	env GOOS=js GOARCH=wasm go build -trimpath -ldflags "$(REL_LDFLAGS)" -o $(WASM_DIST)/screpdb.wasm ./cmd/wasmdemo
+
+wasm-dist:
+	cp cmd/wasmdemo/static/fs-shim.js $(WASM_DIST)/
+	cp -r internal/dashboard/frontend/build/assets/* $(WASM_DIST)/assets/ 2>/dev/null || true
+	@SPA_JS=$$(ls internal/dashboard/frontend/build/assets/index-*.js 2>/dev/null | head -1 | xargs basename 2>/dev/null); \
+	SPA_CSS=$$(ls internal/dashboard/frontend/build/assets/index-*.css 2>/dev/null | head -1 | xargs basename 2>/dev/null); \
+	sed -e "s|__SPA_JS__|$${SPA_JS}|g" -e "s|__SPA_CSS__|$${SPA_CSS}|g" \
+		cmd/wasmdemo/static/index.html > $(WASM_DIST)/index.html
+
+clean-wasm:
+	rm -rf $(WASM_DIST)
 
 clean-windows-syso:
 	rm -f resource_windows_amd64.syso cmd/windows-dashboard/resource_windows_amd64.syso
