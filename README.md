@@ -215,16 +215,6 @@ rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/screpdb"
 <details>
 <summary>MCP server and full OpenAPI — click to expand</summary>
 
-There is no SQLite database and no ingest step. screpdb reads your replay
-folder into memory when it starts; the dashboard, the JSON API and the MCP
-server all answer from that one in-memory corpus. The database, its schema and
-migrations, and the `ingest` command were removed in
-[#381](https://github.com/marianogappa/screpdb/issues/381): the dashboard had
-stopped using the write path, and code nothing runs is code that quietly gets
-buggy. The one remaining trace is a read-only, one-time import of a pre-2.0
-`screp.db` so an upgrade keeps your folder, filters and Battle.net cache
-(`--legacy-db-path`); nothing writes a database any more.
-
 - Server / API: `./screpdb dashboard` (also the default when run with no subcommand) starts the HTTP server and opens the dashboard UI. All UI functionality is exposed as a JSON API — [OpenAPI schema available](api/openapi/dashboard.v1.yaml). Run it headless as an API-only server (no UI, no browser) with `--headless`:
 
 ```bash
@@ -232,26 +222,13 @@ buggy. The one remaining trace is a read-only, one-time import of a pre-2.0
 # then: curl http://localhost:8000/api/health
 ```
 
-- MCP server: point an MCP client (Claude Desktop, Claude Code, Cursor, …) at your replays and ask questions in natural language about any game, player, matchup, build order, or event.
+- MCP server: point an MCP client (Claude Desktop, Claude Code, Cursor, …) at your replays and ask questions in natural language about any game, player, matchup, build order, or event. A curated read-only subset of the API is reachable; nothing that changes local state is.
 
 ```bash
 ./screpdb mcp
 ```
 
-  `screpdb mcp` holds no data of its own. It reads that same headless JSON API,
-  so one process owns the corpus: if the dashboard is already open it attaches
-  to it, and otherwise it starts a headless server and shuts it down on exit.
-  The server exposes tools to read the API (`query_replay_api`), list the
-  endpoints it can reach (`get_api_schema`), read StarCraft domain knowledge
-  (`get_starcraft_knowledge`), and discover players and derived analysis
-  (`list_top_players`, `list_marker_definitions`).
-
-  Only a curated read-only subset of the API is reachable from MCP: games,
-  players, hotkeys, insights and the marker vocabulary. Everything that drives
-  the UI or changes local state stays out, including `/api/games/{id}/see`,
-  which launches the game client.
-
-- `-p` picks the first port to look for a running screpdb on; `--no-auto-start` makes it fail instead of starting one; `--replay-dir` and `--wait-for-load` apply to a server it starts itself.
+If you want to build something on top of screpdb's API or MCP, let me know. I'm open to facilitating this, but I won't add untested features otherwise.
 
 </details>
 

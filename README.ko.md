@@ -214,7 +214,9 @@ rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/screpdb"
 
 ## 개발자 기능
 
-SQLite 데이터베이스도, 별도의 불러오기 단계도 없습니다. screpdb는 시작할 때 리플레이 폴더를 메모리로 읽어 들이고, 대시보드와 JSON API와 MCP 서버가 모두 그 하나의 코퍼스에서 답합니다. `screpdb dashboard --headless`는 UI 없이 JSON API 서버만 실행하며, 모든 UI 기능이 OpenAPI 스키마와 함께 API로 제공됩니다. `screpdb mcp`로 MCP 클라이언트(Claude Desktop, Claude Code, Cursor 등)에서 게임, 플레이어, 종족전, 빌드 오더에 대해 자연어로 질문할 수 있으며, MCP 서버는 자체 데이터를 갖지 않고 바로 그 headless JSON API를 읽습니다. 대시보드가 이미 열려 있으면 거기에 연결하고, 아니면 headless 서버를 직접 띄운 뒤 종료할 때 정리합니다. 명령별 옵션은 [영어 README의 Developer features 참고](README.md#developer-features).
+`screpdb dashboard --headless`는 UI 없이 JSON API 서버만 실행하며, 모든 UI 기능이 OpenAPI 스키마와 함께 API로 제공됩니다. `screpdb mcp`로 MCP 클라이언트(Claude Desktop, Claude Code, Cursor 등)에서 게임, 플레이어, 종족전, 빌드 오더에 대해 자연어로 질문할 수 있습니다. 명령별 옵션은 [영어 README의 Developer features 참고](README.md#developer-features).
+
+screpdb의 API나 MCP 위에 무언가를 만들고 싶다면 알려주세요. 기꺼이 도울 의향이 있지만, 그런 요청 없이 검증되지 않은 기능을 추가하지는 않습니다.
 
 ## 사양: 수치가 계산되는 방식
 
