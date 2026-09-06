@@ -774,11 +774,11 @@ Each opener's detector commits its decision once the replay passes this second �
 
 ## Detection scalars & versioning
 
-Standalone constants the detectors depend on — dedup windows, muta/turret burst thresholds, cliff-drop corner boxes, the viewport window, and the algorithm version (bump it to force re-detection).
+Standalone constants the detectors depend on — dedup windows, muta/turret burst thresholds, cliff-drop corner boxes, the viewport window, and the detector version the embedded progamer pack is keyed to.
 
 | Constant | Value | Meaning |
 | --- | --- | --- |
-| Algorithm version | 68 | Detection algorithm revision; incremented to trigger re-detection. |
+| Detector version | 68 | Identifies the detection pipeline's output; the embedded progamer pack must be stamped with the same value. |
 | Build dedup gap (s) | 3 | Repeat Build orders of the same building at the same tile, closer than this, are one event (double-tap / misclick); different-tile placements are kept. |
 | Build dedup max second (s) | 240 | Past this second, dedup stops and every Build is observed as-is (a tile can be legitimately rebuilt on later). |
 | Mutalisk burst window (s) | 30 | Window within which the Mutalisk morphs must cluster. |

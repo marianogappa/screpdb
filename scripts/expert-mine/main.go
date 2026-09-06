@@ -34,7 +34,7 @@
 //	fuzzy.tsv       raw per-game fuzzy-opener label + pool/hatch/overlord secs
 //	phase2.tsv      non-BO constants: first-upgrade / first-tech p5 floors per
 //	                matchup, muta-vs-turret completion gap percentiles
-//	meta.json       AlgorithmVersion, corpus hash, join tallies
+//	meta.json       DetectorVersion, corpus hash, join tallies
 //
 // Usage:
 //
@@ -546,11 +546,11 @@ func writeMeta(outDir string, sides []procorpus.ProSide, tallies procorpus.JoinT
 		fmt.Fprintln(h, k)
 	}
 	meta := map[string]any{
-		"algorithm_version": core.AlgorithmVersion,
-		"corpus_hash":       fmt.Sprintf("%x", h.Sum(nil)),
-		"pro_player_games":  len(sides),
-		"join":              tallies,
-		"generated_at":      time.Now().UTC().Format(time.RFC3339),
+		"detector_version": core.DetectorVersion,
+		"corpus_hash":      fmt.Sprintf("%x", h.Sum(nil)),
+		"pro_player_games": len(sides),
+		"join":             tallies,
+		"generated_at":     time.Now().UTC().Format(time.RFC3339),
 	}
 	data, err := json.MarshalIndent(meta, "", "  ")
 	if err != nil {

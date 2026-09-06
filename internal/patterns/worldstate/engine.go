@@ -18,32 +18,26 @@ const (
 	zerglingRushSec    = 140
 	zergRushObserveSec = 120
 	rushBuildWindowSec = 4 * 60
-	// Bunker rushes on standard (non-BGH) 2-player maps need a longer window
-	// than cannon rushes: the SCV walks cross-map to the opponent's base, so
-	// the bunker is placed later than a proxy cannon. Strong corroborating
-	// gates (marine trained + bunker landing on the enemy's start/natural)
-	// keep the wider window from over-firing.
+	// Bunker rushes on standard (non-BGH) maps need a longer window than cannon
+	// rushes: the SCV walks cross-map, so the bunker lands later than a proxy
+	// cannon. The marine-trained + enemy-start gates keep it from over-firing.
 	bunkerRushWindowSec = 5 * 60
-	// Max distance from a rush build command to an enemy base center when the point is outside the base polygon (map polygons often miss ramp cannons).
+	// Snap radius for a rush build outside any base polygon (map polygons often
+	// miss ramp cannons).
 	rushBuildSnapToEnemyBaseCenterPx = 10 * 32
 	proxyFactoryWindowSec            = 5 * 60
 	// A proxy 2-port Starport lands later than a proxy Gateway/Barracks (1 Rax /
 	// 1 Fac precede it), so it gets the same 5:00 window as a proxy Factory.
 	proxyStarportWindowSec = 5 * 60
-	// Build/train evidence for an attack at second S is collected from
-	// the window centered at S - attackUnitsEpicenterOffsetSec, expanded
-	// attackUnitsPastSec into the past and attackUnitsFutureSec into the
-	// future. The epicenter ~45s before the attack matches the typical
-	// "units are already on their way" delay; the past arm reaches deep
-	// enough to cover an army that was massed and then sent out, while
-	// the short future arm catches reinforcements.
+	// Build/train evidence for an attack at second S is collected from a window
+	// centered at S - offset. ~45s before matches the "units are already on their
+	// way" delay; the past arm covers an army massed then sent out, the short
+	// future arm catches reinforcements.
 	attackUnitsEpicenterOffsetSec = 45
 	attackUnitsPastSec            = 120
 	attackUnitsFutureSec          = 30
-	// castSamplesRetentionSec bounds memory for the per-attacker cast
-	// sample buffer. Casts older than this many seconds before the
-	// current stream second are dropped — well outside any plausible
-	// attack pressure window.
+	// Bounds the per-attacker cast sample buffer: older casts are well outside any
+	// plausible attack pressure window.
 	castSamplesRetentionSec = 600
 	eventDedupWindowSec     = 60
 	neutralPID              = byte(255)
@@ -97,15 +91,11 @@ type ReplayEvent struct {
 	LocationNaturalOfClock *int
 	LocationMineralOnly    *bool
 	AttackUnitTypes        []string
-	// AttackCastCounts is a per-cast-name tally of every aggressive cast
-	// that landed inside the attack pressure window for "attack" events.
-	// Keyed by the canonical cast subject (e.g. "PsionicStorm", "Plague",
-	// "Recall"). Empty / nil for non-attack events.
+	// AttackCastCounts tallies aggressive casts landing inside the attack pressure
+	// window, keyed by canonical cast subject ("PsionicStorm"). Nil for non-attacks.
 	AttackCastCounts map[string]int
-	// Payload is an opaque JSON-encoded string carrying event-specific
-	// detail not covered by the structured columns. Used by alliance-derived
-	// events to ship the team-sizes-summary and ally-name lists for the
-	// frontend to render. Nil for events that have no extra payload.
+	// Payload ships event-specific detail the structured columns don't cover (the
+	// alliance events' team-sizes summary and ally-name lists). Nil when unused.
 	Payload *string
 }
 
@@ -114,9 +104,8 @@ type attackUnitSample struct {
 	UnitType string
 }
 
-// castSample records a single aggressive cast issued by a given attacker
-// at a given stream second. Used to derive ground-truth caster-unit
-// presence (and per-cast cardinalities) for attack events.
+// castSample records one aggressive cast, used to derive ground-truth
+// caster-unit presence and per-cast cardinalities for attack events.
 type castSample struct {
 	Second    int
 	OrderName string
@@ -128,10 +117,8 @@ type zergRushCandidate struct {
 	AttackCountsByBase map[int]int
 }
 
-// minZerglingsForRush is the minimum count of Zerglings ordered for a
-// Zergling rush emission to fire. Below this threshold the early-zergling
-// pressure is not strong enough to call a "rush" — a single pair of
-// scouting Zerglings shouldn't trip the chip / pill.
+// Below three Zerglings the early pressure isn't a rush — a scouting pair
+// shouldn't trip the chip.
 const minZerglingsForRush = 3
 
 type point struct {
@@ -179,9 +166,7 @@ type Engine struct {
 	entries      []NarrativeEntry
 	replayEvents []ReplayEvent
 
-	// Batch pipeline state. ProcessCommand appends to stream /
-	// streamCommands; Finalize runs the ownership / attacks / rush passes
-	// and populates entries / replayEvents.
+	// Batch pipeline state: ProcessCommand appends here, Finalize runs the passes.
 	stream         []cmdenrich.EnrichedCommand
 	streamCommands []*models.Command
 	polygonGeoms   []PolygonGeom
@@ -190,31 +175,24 @@ type Engine struct {
 	lastCmdSec     map[byte]int
 	finalized      bool
 
-	// use1v1Attacks routes "attack"-type emission through the bilateral-fight
-	// model (emit1v1Attacks) for 1v1 games; emitAttackCandidates then skips
-	// its pressure-tracker attack path. Scout/nuke/drop routing is unchanged.
+	// use1v1Attacks routes "attack" emission through the bilateral-fight model for
+	// 1v1 games, and emitAttackCandidates then skips its pressure-tracker path.
 	use1v1Attacks bool
 
-	// productionSignals feeds BuildOwnership: per-player Train/Morph location
-	// datapoints that refresh base ownership. nil when the caller never set them
-	// (e.g. the debug map-layout endpoint) — ownership then behaves as before.
+	// productionSignals feeds BuildOwnership. Nil when the caller never set them
+	// (e.g. the debug map-layout endpoint), and ownership then behaves as before.
 	productionSignals []ProductionSignal
 
-	// mutaHarass holds selection-derived Mutalisk hit-n-run harass episodes,
-	// threaded in by the orchestrator (see muta_harass_pass.go).
 	mutaHarass []MutaHarassCandidate
 
-	// townHallBuilds holds, per replay PlayerID, the sorted Build seconds of the
-	// player's real expansion town halls (Hatcheries whose tag morphed larvae),
-	// with phantom/cancelled placements excluded. Source is internal/unittags,
-	// threaded via the orchestrator; drives the "N Hatch <tech>" base count.
+	// townHallBuilds holds per-player Build seconds of REAL expansion town halls
+	// (halls whose tag morphed larvae), phantom/cancelled placements excluded, so
+	// the "N Hatch <tech>" base count can't be inflated. Source is internal/unittags.
 	townHallBuilds map[byte][]int
 
-	// massDisconnect, when set, marks this replay as ending in a saver
-	// disconnect (issue #358): the leave cluster at ClusterSecond is an
-	// artifact of the saver's connection dying, not real departures. Threaded
-	// from the parser via the orchestrator; drives the condensed
-	// mass_disconnect timeline event.
+	// massDisconnect marks a replay ending in a saver disconnect (issue #358): the
+	// leave cluster is an artifact of the saver's connection dying, not real
+	// departures.
 	massDisconnect *massDisconnectEnd
 }
 
@@ -223,28 +201,23 @@ type massDisconnectEnd struct {
 	clusterSec int
 }
 
-// SetProductionSignals supplies the per-player production-location signals used
-// to maintain base ownership (see ProductionSignal). Must be called before
-// Finalize. Source is internal/unittags, threaded via the orchestrator.
+// Must be called before Finalize. Source is internal/unittags.
 func (e *Engine) SetProductionSignals(signals []ProductionSignal) {
 	e.productionSignals = signals
 }
 
-// SetMassDisconnectEnd marks this replay as ending in a saver disconnect
-// (issue #358). Must be called before Finalize.
+// Must be called before Finalize.
 func (e *Engine) SetMassDisconnectEnd(saverPID byte, clusterSecond int) {
 	e.massDisconnect = &massDisconnectEnd{saverPID: saverPID, clusterSec: clusterSecond}
 }
 
-// SetTownHallBuilds supplies the per-player real expansion town-hall build
-// seconds (see townHallBuilds). Must be called before results are read.
+// Must be called before results are read.
 func (e *Engine) SetTownHallBuilds(builds map[byte][]int) {
 	e.townHallBuilds = builds
 }
 
-// TownHallBuildSeconds returns the sorted Build seconds of the player's real
-// expansion town halls (starting hall excluded — it has no Build command). nil
-// when the caller never supplied the data.
+// The starting hall is excluded — it has no Build command. Nil when the caller
+// never supplied the data.
 func (e *Engine) TownHallBuildSeconds(pid byte) []int {
 	return e.townHallBuilds[pid]
 }
@@ -338,24 +311,18 @@ func NewEngine(replay *models.Replay, players []*models.Player, mapCtx *models.R
 	return e
 }
 
-// LastCommandSecond reports the second of the player's last observed command
-// (any action that reached ProcessCommand). Returns ok=false for players who
-// issued zero commands. Used by per-player marker gates that must distinguish
-// "player had no time" from "player had time but didn't act" — leaveSec alone
-// is unreliable here because some replays record an early spurious leave_game
-// for players who keep playing afterwards. The last-command second is the
-// most robust "still playing by threshold" signal: if a player left, was
-// dropped, or AFK'd before the gate, their last command precedes it.
+// LastCommandSecond distinguishes "player had no time" from "player had time
+// but didn't act" for per-player marker gates. leaveSec is unreliable here:
+// some replays record an early spurious leave_game for players who keep
+// playing. Returns ok=false for players who issued zero commands.
 func (e *Engine) LastCommandSecond(pid byte) (int, bool) {
 	sec, ok := e.lastCmdSec[pid]
 	return sec, ok
 }
 
-// EnrichedStream returns a copy of the full per-replay enriched-command
-// stream (all players, in time order). Used by markers that need cross-player
-// visibility at Finalize time — the per-(player × marker) detector framework
-// only feeds Observe with the current player's commands, so callers that gate
-// on opponent activity walk this stream.
+// EnrichedStream is for markers needing cross-player visibility at Finalize:
+// the per-(player × marker) framework only feeds Observe the current player's
+// commands, so gating on opponent activity means walking this stream.
 func (e *Engine) EnrichedStream() []cmdenrich.EnrichedCommand {
 	out := make([]cmdenrich.EnrichedCommand, len(e.stream))
 	copy(out, e.stream)
@@ -376,25 +343,18 @@ func (e *Engine) ReplayEvents() []ReplayEvent {
 	return out
 }
 
-// AppendReplayEvents appends externally-produced replay events to the
-// engine's event list. Used by the parser to push alliance-derived events
-// (player_stopped_playing, late_alliance, team_stacking_detected) into the
-// same channel the storage layer drains. The engine's Finalize will sort
-// the combined list by Second.
+// AppendReplayEvents lets the parser push alliance-derived events into the same
+// channel the storage layer drains. Finalize sorts the combined list by Second.
 func (e *Engine) AppendReplayEvents(events []ReplayEvent) {
 	e.replayEvents = append(e.replayEvents, events...)
 }
 
-// Finalize runs the v2 batch pipeline: ownership pass, attacks pass,
-// rush/proxy/race-change pass over the buffered stream, then composes
-// final entries / replayEvents with the attack-importance filter.
-//
-// Idempotent — safe to call from multiple lazy-finalize entry points.
-// No-op if invoked before any commands were buffered AND there are no
-// bases (the legacy path returned empty in that case anyway).
-// Finalized reports whether the batch pipeline has run. Callers that read
-// worldstate events from a context that must not trigger a premature Finalize
-// (e.g. a marker finishing mid-stream) check this first.
+// Finalize runs the batch pipeline: ownership, attacks, then rush/proxy/
+// race-change over the buffered stream. Idempotent, so the lazy-finalize entry
+// points can all call it; a no-op before any commands with no bases.
+
+// Finalized lets callers that must not trigger a premature Finalize (e.g. a
+// marker finishing mid-stream) check first.
 func (e *Engine) Finalized() bool { return e.finalized }
 
 func (e *Engine) Finalize() {
@@ -403,14 +363,11 @@ func (e *Engine) Finalize() {
 	}
 	e.finalized = true
 
-	// Re-snapshot teams from the player pointers. NewEngine captured p.Team at
-	// Initialize time, but the parser's alliance-fallback pass rewrites p.Team
-	// afterwards for FFA / Big Game Hunters replays where screp left every
-	// player at team 0 (resolving teams from in-game alliance commands). Those
-	// pointers are the same ones the engine holds, so reading them here picks
-	// up the resolved teams. Without this, BuildAttacks would see the stale
-	// all-zero snapshot — which sameTeamByMap treats as "unknown" — and report
-	// allied players attacking each other. See issue #146.
+	// Re-snapshot teams from the player pointers: NewEngine captured p.Team at
+	// Initialize, but the parser's alliance-fallback pass rewrites it afterwards for
+	// FFA / BGH replays where screp left everyone on team 0. Without this,
+	// BuildAttacks sees the stale all-zero snapshot — read as "unknown" — and
+	// reports allied players attacking each other (issue #146).
 	for pid, p := range e.players {
 		e.teams[pid] = p.Team
 	}
@@ -433,9 +390,8 @@ func (e *Engine) Finalize() {
 		ownership = BuildOwnership(e.stream, e.polygonGeoms, starts, e.productionSignals, durationSec)
 		candidates = BuildAttacks(e.stream, e.polygonGeoms, ownership, e.teams)
 
-		// Run the drops pass and feed its candidates back into the shared
-		// list so cross-event inference (Recall's attack-coincidence pass)
-		// keeps seeing drops as attack-class events.
+		// Feed drop candidates back into the shared list so cross-event inference
+		// (Recall's attack-coincidence pass) keeps seeing drops as attack-class.
 		dropClusters = BuildDrops(e.stream, e.polygonGeoms, e.bases, ownership, e.teams)
 		candidates = append(candidates, dropClustersToCandidateAttacks(dropClusters)...)
 
@@ -444,9 +400,8 @@ func (e *Engine) Finalize() {
 		e.emitPlayerStartEvents()
 	}
 
-	// runRushPass walks the buffered stream. Race-switch detection works
-	// without bases; the rush/proxy emits inside guard on base lookups
-	// returning -1, so the pass is safe to run even with empty bases.
+	// Safe with empty bases: race-switch detection needs none, and the rush/proxy
+	// emits guard on base lookups returning -1.
 	e.runRushPass(ownership)
 
 	e.emitFirstTechTimingEvents()
@@ -496,9 +451,8 @@ func (e *Engine) buildPlayerStarts() []PlayerStart {
 	return out
 }
 
-// DebugBase mirrors the internal `base` struct for read-only external
-// inspection (e.g. the /api/debug/map-layout endpoint). Kept separate so
-// internal fields stay unexported.
+// DebugBase mirrors the internal base struct for read-only external inspection,
+// keeping the internal fields unexported.
 type DebugBase struct {
 	Index       int     `json:"index"`
 	Name        string  `json:"name"`
@@ -511,10 +465,8 @@ type DebugBase struct {
 	DisplayName string  `json:"display_name"`
 }
 
-// DebugSnapshot exposes the resolved world-state base layout for diagnostics.
-// Used by the /api/debug/map-layout endpoint to compare engine-resolved
-// structure (start/natural ownership, display names) against the raw
-// scmapanalyzer data — critical for debugging location misclassifications.
+// DebugSnapshot compares engine-resolved structure against raw scmapanalyzer
+// data, which is how location misclassifications get debugged.
 func (e *Engine) DebugSnapshot() (bases []DebugBase, startBaseByPID map[byte]int, naturalBaseByPID map[byte]int, naturalOwnerByBase map[int]byte) {
 	bases = make([]DebugBase, 0, len(e.bases))
 	for i, b := range e.bases {
@@ -545,7 +497,6 @@ func (e *Engine) DebugSnapshot() (bases []DebugBase, startBaseByPID map[byte]int
 	return bases, startBaseByPID, naturalBaseByPID, naturalOwnerByBase
 }
 
-// NaturalExpansionForPlayer returns the player's natural expansion display name.
 func (e *Engine) NaturalExpansionForPlayer(playerID byte) (string, bool) {
 	baseIdx, ok := e.naturalBaseByPID[playerID]
 	if !ok || baseIdx < 0 || baseIdx >= len(e.bases) {
@@ -554,12 +505,8 @@ func (e *Engine) NaturalExpansionForPlayer(playerID byte) (string, bool) {
 	return e.bases[baseIdx].DisplayName, true
 }
 
-// FirstEventSecondForPlayer returns the first second where the given event
-// type appears for the provided player in the replay-events stream.
-//
-// Matches by (EventType, SourceReplayPlayerID) for the typed event_type
-// values markers consume; the legacy description-prefix variants are
-// folded through the same path. Calls Finalize lazily.
+// FirstEventSecondForPlayer matches by (EventType, SourceReplayPlayerID); the
+// legacy description-prefix variants fold through the same path. Finalizes lazily.
 func (e *Engine) FirstEventSecondForPlayer(playerID byte, eventType string) *int {
 	e.Finalize()
 	switch eventType {
@@ -586,8 +533,6 @@ func (e *Engine) FirstEventSecondForPlayer(playerID byte, eventType string) *int
 	return nil
 }
 
-// FirstExpansionForPlayer returns the first expansion second and location text
-// for a player based on existing narrative expansion entries.
 func (e *Engine) FirstExpansionForPlayer(playerID byte) (*int, *string) {
 	e.Finalize()
 	name := e.playerName(playerID)
@@ -613,10 +558,9 @@ func (e *Engine) FirstExpansionForPlayer(playerID byte) (*int, *string) {
 	return nil, nil
 }
 
-// ProcessCommand buffers commands for the v2 batch pipeline. Real work
-// happens in Finalize. Keeps lifecycle bookkeeping (left / leaveSec) here
-// because rush detection later in the pass needs them for opponent-aware
-// gating.
+// ProcessCommand only buffers; real work happens in Finalize. Lifecycle
+// bookkeeping (left / leaveSec) stays here because rush detection later in the
+// pass needs it for opponent-aware gating.
 func (e *Engine) ProcessCommand(command *models.Command) {
 	if command == nil {
 		return
@@ -724,9 +668,8 @@ func (e *Engine) toReplayEvent(eventType string, second int, actor *NarrativePla
 }
 
 func (e *Engine) shouldSuppressEvent(eventType string, second int, actor *NarrativePlayerRef, target *NarrativePlayerRef, baseIdx int, attackUnitTypes []string) bool {
-	// Recall events are explicit per-cast — multiple recalls in quick
-	// succession (a recall combo onto an enemy main) are the whole point of
-	// surfacing them, so the 60s dedup window must not collapse them.
+	// Recalls are explicit per-cast: a recall combo onto an enemy main is the whole
+	// point of surfacing them, so the 60s dedup must not collapse them.
 	if eventType == "recall" {
 		return false
 	}
@@ -759,10 +702,8 @@ func (e *Engine) recordRecentAttackUnit(pid byte, second int, command *models.Co
 	e.attackUnitsByPID[pid] = append(e.attackUnitsByPID[pid], attackUnitSample{Second: second, UnitType: unitType})
 }
 
-// recordRecentCast appends an aggressive cast to the per-attacker cast
-// sample buffer. Non-aggressive utility casts (Restoration, Hallucination,
-// ScannerSweep, DefensiveMatrix) are skipped — they don't represent
-// combat presence.
+// Non-aggressive utility casts (Restoration, Hallucination, ScannerSweep,
+// DefensiveMatrix) are skipped — they don't represent combat presence.
 func (e *Engine) recordRecentCast(pid byte, second int, ec cmdenrich.EnrichedCommand) {
 	if ec.Kind != cmdenrich.KindCast {
 		return
@@ -772,8 +713,8 @@ func (e *Engine) recordRecentCast(pid byte, second int, ec cmdenrich.EnrichedCom
 	}
 	samples := e.castsByPID[pid]
 	cutoff := second - castSamplesRetentionSec
-	// Drop samples too old to ever be useful for any future attack-window
-	// query (the longest reach is the build/train epicenter past arm).
+	// Too old to be useful to any future window (the longest reach is the
+	// build/train epicenter past arm).
 	for len(samples) > 0 && samples[0].Second < cutoff {
 		samples = samples[1:]
 	}
@@ -781,9 +722,7 @@ func (e *Engine) recordRecentCast(pid byte, second int, ec cmdenrich.EnrichedCom
 	e.castsByPID[pid] = samples
 }
 
-// buildUnitsInEpicenterWindow returns distinct attacking-unit-build names
-// the given attacker issued inside the epicenter window for an attack at
-// `attackSec`. Window: [attackSec - epicOffset - past, attackSec - epicOffset + future].
+// Window: [attackSec - epicOffset - past, attackSec - epicOffset + future].
 func (e *Engine) buildUnitsInEpicenterWindow(pid byte, attackSec int) []string {
 	epicenter := attackSec - attackUnitsEpicenterOffsetSec
 	lo := epicenter - attackUnitsPastSec
@@ -803,11 +742,10 @@ func (e *Engine) buildUnitsInEpicenterWindow(pid byte, attackSec int) []string {
 	return out
 }
 
-// attackUnitsCombined builds the attack event's unit_types list. Cast
-// evidence comes first (ground-truth: a Storm cast proves a High Templar
-// existed at that moment) — looked up over the full attack pressure
-// window. Build/train history fills in the rest from the epicenter
-// window. Result is sorted for stable downstream comparison.
+// Cast evidence comes first because it is ground truth — a Storm cast proves a
+// High Templar existed then — and is looked up over the full pressure window;
+// build/train history fills the rest from the epicenter window. Sorted for
+// stable downstream comparison.
 func (e *Engine) attackUnitsCombined(c CandidateAttack) []string {
 	seen := map[string]struct{}{}
 	out := []string{}
@@ -840,10 +778,8 @@ func (e *Engine) attackUnitsCombined(c CandidateAttack) []string {
 	return out
 }
 
-// attackCastCounts tallies aggressive casts by the attacker inside the
-// attack pressure window. Keys are the canonical cast subject (Cast
-// prefix stripped, normalized name) — same shape used by the importance
-// filter's spell-novelty check.
+// Keys are the canonical cast subject (Cast prefix stripped, normalized), the
+// same shape the importance filter's spell-novelty check uses.
 func (e *Engine) attackCastCounts(c CandidateAttack) map[string]int {
 	lo, hi := c.OpenSec, c.CloseSec
 	if hi < lo {
@@ -866,10 +802,8 @@ func (e *Engine) attackCastCounts(c CandidateAttack) map[string]int {
 	return counts
 }
 
-// castSubjectFromOrderName strips the "Cast" prefix from raw OrderName
-// values so storage keys match the canonical Subject form used elsewhere
-// (e.g. "CastPsionicStorm" → "PsionicStorm", "CastRecall" → "Recall",
-// "NukeLaunch" → "NukeLaunch").
+// castSubjectFromOrderName strips the "Cast" prefix so storage keys match the
+// canonical Subject form used elsewhere ("CastPsionicStorm" → "PsionicStorm").
 func castSubjectFromOrderName(orderName string) string {
 	trimmed := strings.TrimSpace(orderName)
 	if trimmed == "" {
@@ -902,10 +836,9 @@ func normalizeUnitTypes(unitTypes []string) []string {
 	return normalized
 }
 
-// isActualPlayerStart reports whether baseIdx is the main of one of the
-// players in this game. A "starting"-kind polygon that no player actually
-// started at (extra start locations on an N-player map played 1v1) is an
-// expansion, not a main — so the location label must not call it "starting".
+// A "starting"-kind polygon nobody started at (extra start locations on an
+// N-player map played 1v1) is an expansion, not a main, so the location label
+// must not call it "starting".
 func (e *Engine) isActualPlayerStart(baseIdx int) bool {
 	for _, idx := range e.startBaseByPID {
 		if idx == baseIdx {
@@ -927,11 +860,10 @@ func (e *Engine) locationForBase(baseIdx int) (*string, *int, *int, *bool) {
 		baseTypeValue = "natural"
 	}
 	baseType := &baseTypeValue
-	// Always emit the base's clock so the dashboard's overlay lookup can
-	// match by (kind, clock) even for bases scmapanalyzer flagged with an
-	// out-of-range / unknown clock (negative values or >12). The same clock
-	// value lands in overlayBaseMetasFromLayout, so equal-on-both-sides is
-	// enough — no need to semantically enforce the 0..12 dial range here.
+	// Always emit the base's clock so the dashboard overlay can match by (kind,
+	// clock) even for bases scmapanalyzer flagged with an out-of-range clock. The
+	// same value lands in overlayBaseMetasFromLayout, so equal-on-both-sides is
+	// enough — no need to enforce the 0..12 dial range here.
 	clock := base.Clock
 	baseOclock := &clock
 	var naturalOfClock *int
@@ -1051,7 +983,6 @@ func (e *Engine) workerUnitForPlayer(pid byte) string {
 	}
 }
 
-// scoutPayloadUnitsFromCommand picks replay-event unit payload for early "scout" classification.
 // Zerg Overlords can satisfy the same early-pressure heuristic as workers.
 func (e *Engine) scoutPayloadUnitsFromCommand(pid byte, commandUnitType string) []string {
 	u := strings.TrimSpace(commandUnitType)
@@ -1164,10 +1095,9 @@ func (e *Engine) processZerglingRushEvent(command *models.Command, pid byte, sec
 	}
 	candidate := e.zergRushCandidates[pid]
 	if candidate == nil {
-		// Only the *first* morph is timing-gated — once a candidate is open,
-		// later morphs continue to count as long as they fall inside the
-		// observation window. This avoids losing real 9-pool rushes whose
-		// 2nd/3rd morphs land just past the early cutoff.
+		// Only the FIRST morph is timing-gated: once a candidate is open, later morphs
+		// keep counting inside the observation window, so a real 9-pool rush whose
+		// 2nd/3rd morphs land just past the cutoff isn't lost.
 		if sec > zerglingRushSec {
 			return
 		}
@@ -1179,10 +1109,8 @@ func (e *Engine) processZerglingRushEvent(command *models.Command, pid byte, sec
 	} else if sec > candidate.DetectedSecond+zergRushObserveSec {
 		return
 	}
-	// One Zergling-morph command can spawn two Zerglings (Zerg morphs
-	// pair-wise). The exact count isn't critical here — we just need a
-	// monotone tally that crosses the minZerglingsForRush threshold to
-	// distinguish a real rush from a 2-zergling scout.
+	// One Zergling-morph command spawns two (Zerg morphs pair-wise). The exact
+	// count doesn't matter — only a monotone tally crossing the threshold.
 	candidate.ZerglingCount += 2
 }
 
@@ -1207,9 +1135,8 @@ func (e *Engine) recordZergRushAttack(pid byte, sec int, baseIdx int) {
 	if !ok {
 		return
 	}
-	// Attacks before the target leaves the game still count — a successful
-	// rush often forces the target to leave, and rejecting evidence of
-	// that exact pattern would lose the strongest rush signal.
+	// Attacks before the target leaves still count: a successful rush often forces
+	// the target out, and rejecting that would lose the strongest rush signal.
 	if leaveSec, left := e.leaveSec[owner]; left && sec > leaveSec {
 		return
 	}
@@ -1233,9 +1160,8 @@ func (e *Engine) finalizeZergRushCandidates(currentSec int, force bool) {
 				maxCount = count
 			}
 		}
-		// Triple gate: ≥3 Zerglings ordered, attack on a confirmed enemy
-		// base, and the early-timing window already enforced by
-		// processZerglingRushEvent (sec ≤ zerglingRushSec).
+		// Triple gate: ≥3 Zerglings, attack on a confirmed enemy base, and the early
+		// window already enforced by processZerglingRushEvent.
 		if targetBaseIdx >= 0 && maxCount > 0 && candidate.ZerglingCount >= minZerglingsForRush {
 			var target *NarrativePlayerRef
 			if owner, ok := e.rushTargetEnemyForBase(pid, targetBaseIdx); ok {
@@ -1281,14 +1207,11 @@ func (e *Engine) tryEmitRushBuildEvents(command *models.Command, pid byte, sec i
 	}
 	enemyBaseIdx := e.enemyBaseIdxAtPoint(pid, x, y)
 	if enemyBaseIdx < 0 && rushType == "bunker_rush" {
-		// Standard (non-BGH) maps: the bunker lands on the opponent's
-		// not-yet-taken natural, which reads as neutral early-game and is
-		// skipped by the enemy-owned lookup above. Fall back to the base
-		// polygon at the build point and resolve its static owner. (#195, cf. #196)
-		//
-		// The radius fallback is bounded: on money maps (BGH) NaturalRadius is
-		// large, so an unbounded snap pulls an open-ground proxy/simcity bunker
-		// onto a base it never threatened. Polygon containment is unaffected.
+		// On standard (non-BGH) maps the bunker lands on the opponent's not-yet-taken
+		// natural, which reads as neutral early and is skipped by the enemy-owned
+		// lookup above, so fall back to the polygon's static owner (#195, cf. #196).
+		// Bounded, because on money maps NaturalRadius is large and an unbounded snap
+		// pulls an open-ground proxy bunker onto a base it never threatened.
 		enemyBaseIdx = pointToEventBaseBounded(x, y, e.bases, rushBuildSnapToEnemyBaseCenterPx)
 	}
 	if enemyBaseIdx < 0 && strings.Contains(unitNorm, "photoncannon") {
@@ -1356,15 +1279,11 @@ func (e *Engine) tryEmitProxyBuildEvents(command *models.Command, pid byte, sec 
 	)
 }
 
-// mannerPylonWindowSec bounds manner-pylon detection. A manner pylon is an
-// early worker-harass placement inside the enemy mineral line; allow up to
-// 8:00 to catch delayed ones.
+// A manner pylon is an early worker-harass placement; 8:00 catches delayed ones.
 const mannerPylonWindowSec = 8 * 60
 
-// tryEmitMannerPylonEvent emits a manner_pylon event when a player places a
-// Pylon inside the enemy's starting base polygon (the mineral line), to block
-// worker mining. Two-human games only. The opposite of a proxy: a proxy sits
-// between the bases, a manner pylon sits inside the opponent's main.
+// The opposite of a proxy: a proxy sits between the bases, a manner pylon sits
+// inside the opponent's main. Two-human games only.
 func (e *Engine) tryEmitMannerPylonEvent(command *models.Command, pid byte, sec int, xPx, yPx float64) {
 	if command == nil || command.UnitType == nil || !e.isTwoHumanGame() {
 		return
@@ -1385,9 +1304,8 @@ func (e *Engine) tryEmitMannerPylonEvent(command *models.Command, pid byte, sec 
 	default:
 		return
 	}
-	// A manner pylon blocks the enemy's mineral line — impossible against Zerg,
-	// whose creep spread prevents an opponent building inside their base. Firing
-	// there is always a false positive.
+	// A manner pylon is impossible against Zerg — creep spread prevents building
+	// inside their base — so firing there is always a false positive.
 	if p, ok := e.players[enemyPID]; ok && p != nil && p.Race == "Zerg" {
 		return
 	}
@@ -1395,11 +1313,9 @@ func (e *Engine) tryEmitMannerPylonEvent(command *models.Command, pid byte, sec 
 	if !ok || enemyStart < 0 || enemyStart >= len(e.bases) {
 		return
 	}
-	// The pylon must sit INSIDE the enemy's starting-base polygon (their main /
-	// mineral line). Requiring polygon containment — not the nearest-base
-	// fallback pointToEventBase would otherwise use — rejects a pylon placed at
-	// the player's OWN natural that merely lands near the enemy's base index
-	// (e.g. a proxy Gateway warped in at one's own expansion).
+	// Require polygon containment rather than pointToEventBase's nearest-base
+	// fallback, which would accept a pylon at the player's OWN natural that merely
+	// lands near the enemy's base index (e.g. a proxy Gateway at one's own expa).
 	if !pointInBasePolygon(xPx, yPx, e.bases[enemyStart]) {
 		return
 	}
@@ -1414,12 +1330,10 @@ func (e *Engine) tryEmitMannerPylonEvent(command *models.Command, pid byte, sec 
 	)
 }
 
-// firstTechTimingWindowSec bounds the Protoss tech-timing game events: only a
-// first Reaver / Corsair / Zealot-speed before 10:00 is a meaningful opener
-// signal worth a timeline item.
+// Only a first Reaver / Corsair / Zealot-speed before 10:00 is a meaningful
+// opener signal worth a timeline item.
 const firstTechTimingWindowSec = 10 * 60
 
-// opponentRace returns the other human player's race in a two-human game.
 func (e *Engine) opponentRace(pid byte) string {
 	if len(e.humanPlayerIDs) != 2 {
 		return ""
@@ -1434,10 +1348,7 @@ func (e *Engine) opponentRace(pid byte) string {
 	return ""
 }
 
-// emitFirstTechTimingEvents emits a timeline game event for a Protoss player's
-// first Reaver (PvP/PvT), first Corsair (PvZ) or Zealot leg-speed (PvZ) when it
-// lands before 10:00 — the timeline counterpart of the First Reaver / First
-// Corsair / Speedlot timing pills.
+// The timeline counterpart of the First Reaver / First Corsair / Speedlot pills.
 func (e *Engine) emitFirstTechTimingEvents() {
 	if !e.isTwoHumanGame() {
 		return
@@ -1511,7 +1422,8 @@ func (e *Engine) hasKnownEnemyTeam(a byte, b byte) bool {
 	return oka && okb && ta != 0 && tb != 0 && ta != tb
 }
 
-// isRushTargetEnemy is like hasKnownEnemyTeam but treats two humans in a 1v1 as opponents when replay teams are missing or zero (common in some replays).
+// isRushTargetEnemy is like hasKnownEnemyTeam but treats two humans in a 1v1 as
+// opponents when replay teams are missing or zero, as some replays leave them.
 func (e *Engine) isRushTargetEnemy(pid, owner byte) bool {
 	if owner == neutralPID || owner == pid {
 		return false
@@ -1537,14 +1449,11 @@ func (e *Engine) rushOpponentWhenTeamsAmbiguous(pid, owner byte) bool {
 	return true
 }
 
-// rushTargetEnemyForBase resolves which enemy a zerg-rush attack landing on
-// baseIdx is aimed at. It prefers the base's current dynamic owner, but falls
-// back to the base's static start/natural assignment when it is still
-// neutral-owned. On standard (non-BGH) maps the rusher attack-moves into the
-// opponent's not-yet-taken natural on the way to the main; that base reads as
-// neutral early-game, so dynamic ownership alone would drop the strongest rush
-// signal. Returns (enemyPID, true) only when the resolved owner is a
-// rush-target enemy of pid.
+// rushTargetEnemyForBase prefers the base's dynamic owner but falls back to its
+// static start/natural assignment while still neutral-owned: on standard maps
+// the rusher attack-moves through the opponent's not-yet-taken natural, which
+// reads as neutral early, so dynamic ownership alone would drop the strongest
+// rush signal.
 func (e *Engine) rushTargetEnemyForBase(pid byte, baseIdx int) (byte, bool) {
 	if baseIdx < 0 || baseIdx >= len(e.ownerByBase) {
 		return 0, false
@@ -1559,8 +1468,7 @@ func (e *Engine) rushTargetEnemyForBase(pid byte, baseIdx int) (byte, bool) {
 	return owner, true
 }
 
-// staticBaseOwner returns the player whose start or natural base is baseIdx,
-// independent of in-game ownership transitions. neutralPID if none.
+// staticBaseOwner ignores in-game ownership transitions. neutralPID if none.
 func (e *Engine) staticBaseOwner(baseIdx int) byte {
 	for pid, bi := range e.startBaseByPID {
 		if bi == baseIdx {
@@ -1636,13 +1544,11 @@ func (e *Engine) proxyPlacementAllowed(pid byte, x float64, y float64) bool {
 	if startDist <= 0 {
 		return false
 	}
-	// Resolve own vs enemy main from the placing player so the gate can tell a
-	// home build (near own) from a forward proxy (toward / at the enemy). A
-	// proxy is any non-home placement reaching the enemy half: far enough from
-	// the builder's own main (>= 0.7 * half), and within reach of the enemy's
-	// (<= 1.3 * half). Dropping the old "<= 1.3 * half from BOTH mains" cap is
-	// what admits the aggressive at-the-enemy proxy (e.g. a 2-Rax BBS planted on
-	// the opponent's doorstep), not only the symmetric midfield one.
+	// Resolve own vs enemy main from the placing player so the gate can tell a home
+	// build from a forward proxy: far enough from the builder's own main
+	// (>= 0.7 * half) and within reach of the enemy's (<= 1.3 * half). Dropping the
+	// old "<= 1.3 * half from BOTH mains" cap is what admits an at-the-enemy proxy
+	// (a 2-Rax BBS on the doorstep), not only the symmetric midfield one.
 	ownStart, enemyStart := startA, startB
 	if pid == e.humanPlayerIDs[1] {
 		ownStart, enemyStart = startB, startA
@@ -1700,14 +1606,12 @@ func (e *Engine) baseRef(baseIdx int) *NarrativeBaseRef {
 func nonProtossBuildingRace(unitName string) string {
 	switch normalize(unitName) {
 	case
-		// Terran buildings.
 		"commandcenter", "supplydepot", "barracks", "engineeringbay", "academy",
 		"bunker", "missileturret", "factory", "starport", "armory", "refinery",
 		"sciencefacility", "covertops", "physicslab", "nuclearsilo",
 		"machineshop", "comsat", "controltower":
 		return "Terran"
 	case
-		// Zerg buildings.
 		"hatchery", "lair", "hive", "nyduscanal", "hydraliskden", "defilermound",
 		"greaterspire", "queensnest", "evolutionchamber", "ultraliskcavern",
 		"spire", "spawningpool", "creepcolony", "sporecolony", "sunkencolony",
@@ -1808,10 +1712,8 @@ func (e *Engine) assignNaturalBasesFromLayoutByName(layout *models.MapContextLay
 func (e *Engine) assignDisplayNames() {
 	for i := range e.bases {
 		oc := e.bases[i].Clock
-		// Clock==0 is scmapanalyzer's "center base" marker. Label it
-		// explicitly so sentences like "P1 expands to center base" read
-		// correctly — the existing "at N" / "an expa near N" templates
-		// don't accommodate the center concept.
+		// Clock==0 is scmapanalyzer's "center base" marker; label it explicitly because
+		// the "at N" / "an expa near N" templates don't accommodate the center concept.
 		if oc == 0 {
 			e.bases[i].DisplayName = "center base"
 			continue
@@ -1890,11 +1792,10 @@ func pointToEventBase(x float64, y float64, bases []base) int {
 	return pointToEventBaseBounded(x, y, bases, math.MaxFloat64)
 }
 
-// pointToEventBaseBounded is pointToEventBase with the radius fallback capped at
-// maxFallbackPx. Polygon containment (a point genuinely inside a base) is always
-// honoured; only the "just outside a base" radius snap is bounded, so a build in
-// open ground on a money map — where NaturalRadius is large — is not attributed
-// to a distant base it never threatened. Pass math.MaxFloat64 for no cap.
+// pointToEventBaseBounded caps only the "just outside a base" radius snap;
+// polygon containment is always honoured. Without the cap, a build in open
+// ground on a money map (large NaturalRadius) is attributed to a distant base
+// it never threatened. Pass math.MaxFloat64 for no cap.
 func pointToEventBaseBounded(x float64, y float64, bases []base, maxFallbackPx float64) int {
 	best := -1
 	bestDist := math.MaxFloat64
@@ -1951,8 +1852,6 @@ func dist(x1 float64, y1 float64, x2 float64, y2 float64) float64 {
 	dy := y1 - y2
 	return math.Sqrt(dx*dx + dy*dy)
 }
-
-// --- Geofence clustering internals ---
 
 type mstEdge struct {
 	A int

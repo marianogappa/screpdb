@@ -12,13 +12,74 @@
 - Do not widen the iofacade allowlist (currently: the app-data dir `internal/appdata` resolves — `%LOCALAPPDATA%\screpdb` on Windows, `~/Library/Application Support/screpdb` on macOS, `$XDG_CONFIG_HOME/screpdb` on Linux — plus the user's replays folder, which is read-only in practice) or add a dependency with broad filesystem/network capability without explicit review — these expand the attack surface the facades exist to contain. On Windows the app-data dir is the single grantable root the Low-integrity worker can write to (issue #237); `internal/winsandbox` is a sanctioned raw-syscall surface (process spawn + integrity labeling + watch-me broker) on the enforcement-test skip list alongside `internal/selfupdate`.
 - **When authoring a commit, update the "I/O Safety Audit" log in `README.md`**: the log is a fenced code block (newest entry shown, older ones in a collapsed `<details>`); add a new dated line at the top in the form `YYYY-MM-DD  OK. <justification>` with a one-word verdict (`OK` / `REVIEW` / `CONCERN`) and a brief justification of whether the change could weaken the I/O rules (new direct os/net calls, a widened allowlist, an outbound network call, a weakened enforcement test, or a dependency with broad I/O capability). You — the authoring LLM — perform this assessment; it is an honour-system receipt that makes tampering visible in the diff. `TestIOSafetyAuditPresent` fails CI if the log is empty, so the entry is not optional. The enforcement test is the real guard.
 
-# Detection Changes — bump `core.AlgorithmVersion`
+# Code comments — default to none
 
-Whenever you change anything that affects the *output* of replay detection (game-event composition, marker firing rules, attack/scout/recall/drop heuristics, ownership inference, base resolution, marker payload shape, etc.), bump `AlgorithmVersion` in `internal/patterns/core/types.go`. Replays are re-detected on every launch now that the corpus is read into memory rather than ingested into a database, so the constant no longer drives a re-ingest — but it still gates the built-in progamer pack (`internal/propack` refuses a pack built by an older detector) and is published on `/api/custom/markers/definitions` and in `SPECIFICATION.md`. Forgetting it ships a stale pack and a wrong version number.
+The code is the documentation. Write a comment only when it carries a fact a
+careful reader cannot recover from the code itself, and then keep it to the
+shortest form that carries it — usually one line, occasionally three.
 
-If you only changed presentation (frontend rendering, descriptions, overlays) without touching what's persisted, no bump is needed.
+**Delete or don't write:**
 
-This also covers fingerprint vectors: bumping `github.com/marianogappa/scfingerprint` to a version with a new `FeatureVersion()` makes every vector baked into the progamer pack stale (vectors are only comparable within a feature version), so such a bump requires an `AlgorithmVersion` bump too.
+- Doc comments that restate the declaration (`// Close closes the connection`,
+  `// Options holds options`, `// FileInfo represents a replay file`). Go's
+  exported-symbol convention does not override this rule here.
+- Step narration inside a function (`// Parse players`, `// Step 3: insert
+  commands`, `// Convert nullable int fields`). If the block needs a label,
+  extract it into a named function instead.
+- Section banners whose text repeats the declaration or selector below them
+  (`/* Footer */` above `.app-footer`, `// ----- Combinators -----`).
+- Changelogs, version history and curation notes. Those belong in a file —
+  see `docs/DETECTOR_VERSIONS.md` for the `core.DetectorVersion` log.
+- Restatements of a rule the code expresses declaratively. A marker's `Rule:`
+  already says which buildings must precede which.
+
+**Keep, in one pithy line where possible:**
+
+- Why a threshold, window, tolerance or magic number is *that* value, and what
+  broke at the other value. Cite the issue (`#227`) or corpus/measurement
+  source when there is one.
+- A non-obvious invariant or ordering constraint a caller must honour
+  (`// Must be called before Finalize.`, `// Markers setting this MUST use the
+  endOfReplaySentinel RuleDeadline, because …`).
+- Why the obvious implementation was rejected — a measured performance result,
+  a false-positive class, an upstream (screp / SC:BW engine) quirk.
+- A pointer to where the other half of a mechanism lives, when the coupling is
+  not visible from here.
+- Units and coordinate spaces when they are not in the identifier (tiles vs
+  pixels, frames vs seconds).
+
+**When editing existing code:** if you touch a function whose comments violate
+the above, trim them in the same change. Do not preserve a stale comment just
+because it was already there, and do not restore a comment the code now makes
+obvious.
+
+**Tests are more lenient.** A comment naming what a case proves, or recording
+the replay/fixture a premise came from, is worth keeping.
+
+# Detection changes — bump `core.DetectorVersion`
+
+`DetectorVersion` in `internal/patterns/core/types.go` has exactly one job: it
+keeps the embedded progamer pack honest. `scripts/pro-pack` stamps the pack it
+builds with the value, and `internal/propack`'s test fails when the pack is
+stamped older than the code. That matters because the dashboard plots the pack's
+precomputed APM, cadence and viewport-switch figures against the *same figures
+computed locally from the user's replays*, and two detector versions are not
+comparable.
+
+Nothing re-detects or re-ingests on it. The corpus is read into memory and
+detected on every launch, so a detection change reaches users on their next
+launch whether or not you touch the constant.
+
+**Bump it when, and only when, a change would alter what `scripts/pro-pack`
+computes** — that is, the APM / cadence / viewport-switch-rate aggregates, or
+the sampling that feeds them. Regenerate the pack in the same change (this needs
+the expert-mine scratch corpus; if you cannot, say so in the PR rather than
+bumping and leaving the test red). Log the entry in `docs/DETECTOR_VERSIONS.md`.
+
+Changing marker firing rules, game-event composition, or a `FeatureKey` does
+*not* need a bump on its own: none of it is persisted, and the pack does not
+carry marker data. Renaming a `FeatureKey` or `event_type` is still a breaking
+change across the API, the frontend pill registry and the locale catalogs.
 
 # Pull Requests
 

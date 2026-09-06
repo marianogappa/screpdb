@@ -25,7 +25,8 @@ import (
 // corresponding detector emits no row.
 
 // PatternName / FeatureKey / event_type strings the game-event timeline is
-// keyed by. Stable identifiers: changing one requires an AlgorithmVersion bump.
+// keyed by. The API, the frontend pill registry and the locale catalogs all key
+// on these, so renaming one is a breaking change across all three.
 const (
 	PhaseBoundaryMidGameStartsEventType  = "mid_game_starts"
 	PhaseBoundaryLateGameStartsEventType = "late_game_starts"

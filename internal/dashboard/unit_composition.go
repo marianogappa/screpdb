@@ -19,10 +19,9 @@ import (
 // surface. Counts are sent raw — the frontend does the proportional
 // fill on render so we don't lock into a presentation shape on the wire.
 //
-// Why request-time, not ingest-time: the rules (caster set, spell map,
-// non-army units, excluded units) iterate without re-ingest. Persisting
-// the histogram on every replay would lock those rules at ingest and
-// force re-detection passes to update.
+// Why request-time: the rules (caster set, spell map, non-army units,
+// excluded units) can then change freely, where a histogram baked into the
+// wire payload would freeze them.
 
 // compositionCasters: spellcaster units. Kept out of the Units
 // histogram (their presence is captured via the spells they cast, not

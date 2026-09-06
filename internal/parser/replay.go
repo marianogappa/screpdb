@@ -23,33 +23,26 @@ import (
 	"github.com/marianogappa/screpdb/internal/utils"
 )
 
-// Options controls optional behaviour of ParseReplayWithOptions. The
-// zero-value runs the early-game spam filter without writing any debug
-// trace.
+// The zero value runs the early-game spam filter without writing a trace.
 type Options struct {
-	// EarlyFilterDebugDir, when non-empty, makes the early-game spam
-	// filter dump a per-replay JSON trace into this directory. See
-	// internal/earlyfilter for the trace format.
+	// When non-empty, the early-game spam filter dumps a per-replay JSON trace
+	// here. See internal/earlyfilter for the format.
 	EarlyFilterDebugDir string
 }
 
-// ParseReplay parses a StarCraft: Brood War replay file and returns
-// structured data. Equivalent to ParseReplayWithOptions with default Options.
+// ParseReplay is ParseReplayWithOptions with default Options.
 func ParseReplay(filePath string, fileInfo *models.Replay) (*models.ReplayData, error) {
 	return ParseReplayWithOptions(filePath, fileInfo, Options{})
 }
 
-// ParseReplayWithOptions is the configurable entry point. The early-game
-// spam filter always runs; opts.EarlyFilterDebugDir controls only the
-// optional JSON debug trace.
+// The early-game spam filter always runs; opts.EarlyFilterDebugDir controls
+// only the optional JSON debug trace.
 func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Options) (*models.ReplayData, error) {
-	// Parse the replay file using the real screp library
 	rep, err := screp.ParseFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse replay file: %w", err)
 	}
 
-	// Create the replay data structure
 	data := &models.ReplayData{
 		Replay:     fileInfo,
 		Players:    []*models.Player{},
@@ -57,7 +50,6 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		MapContext: &models.ReplayMapContext{},
 	}
 
-	// Parse replay metadata
 	data.Replay.ReplayDate = rep.Header.StartTime
 	data.Replay.Title = rep.Header.Title
 	data.Replay.Host = rep.Header.Host
@@ -72,7 +64,7 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	data.Replay.GameType = rep.Header.Type.String()
 	data.Replay.AvailSlotsCount = rep.Header.AvailSlotsCount
 
-	// On Melee & Free for all this is always 1, and on Top vs Bottom it's what the game creator set for the home team.
+	// Always 1 on Melee and FFA; on Top vs Bottom it is what the creator set.
 	data.Replay.HomeTeamSize = rep.Header.SubType
 
 	if rep.MapData != nil {
@@ -112,13 +104,11 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	data.Replay.GameSource = deriveGameSource(rep)
 	data.Replay.LobbyKind = deriveLobbyKind(data.Replay.GameSource, data.Replay.Title)
 
-	// Parse players
 	for i, player := range rep.Header.Players {
 		if player == nil {
 			continue
 		}
 
-		// Extract APM and EAPM from computed data
 		apm := 0
 		eapm := 0
 		isWinner := false
@@ -128,13 +118,11 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 			apm = int(pd.APM)
 			eapm = int(pd.EAPM)
 
-			// Check if this player is on the winning team
 			if rep.Computed.WinnerTeam != 0 && player.Team == rep.Computed.WinnerTeam {
 				isWinner = true
 			}
 		}
 
-		// Extract start location if available
 		var startX, startY, startOclock *int
 		if rep.Computed != nil && i < len(rep.Computed.PlayerDescs) {
 			pd := rep.Computed.PlayerDescs[i]
@@ -144,7 +132,6 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 				startX = &x
 				startY = &y
 
-				// Calculate oclock position
 				oclock := utils.CalculateStartLocationOclock(int(data.Replay.MapWidth), int(data.Replay.MapHeight), x, y)
 				startOclock = &oclock
 			}
@@ -172,11 +159,9 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	data.Replay.Players = data.Players
 	data.Replay.TeamFormat, data.Replay.Matchup = computeTeamFormatAndMatchup(data.Players)
 
-	// Initialize pattern detection orchestrator
 	patternOrchestrator := patterns.NewOrchestrator()
 	patternOrchestrator.Initialize(data.Replay, data.Players, data.MapContext)
 
-	// Create slot-to-player mapping for alliance and vision commands
 	playerIDToPlayer := make(map[byte]*models.Player)
 	slotIDToPlayer := make(map[byte]*models.Player)
 	for _, player := range data.Players {
@@ -184,50 +169,42 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		slotIDToPlayer[byte(player.SlotID)] = player
 	}
 
-	// Parse commands using the command handling system
 	commandRegistry := commands.NewCommandRegistry()
 	startTime := rep.Header.StartTime.Unix()
 
-	// Infer pixel coordinates for production / research / cancel commands that
-	// the raw stream leaves spatially blank, by binding each to the producing
-	// building (recovered from selection state) and that building's placement.
-	// Keyed by index into rep.Commands.Cmds, applied to each command below. #175
+	// Infer pixel coordinates for production / research / cancel commands the raw
+	// stream leaves spatially blank, by binding each to the producing building
+	// recovered from selection state. Keyed by index into rep.Commands.Cmds (#175).
 	commandCoords := unittags.Coordinates(rep, data.Players)
 
-	// Selection size per Zerg larva-morph command: one morph command can create
-	// several units (all selected larvae morph at once). The early filter caps
-	// this intended count by the larva/minerals actually available.
+	// One morph command can create several units (all selected larvae morph at
+	// once). The early filter caps this intended count by what was available.
 	morphSelectionSizes := unittags.MorphSelectionSizes(rep)
 
 	if rep.Commands != nil {
 		for i, cmd := range rep.Commands.Cmds {
 			base := cmd.BaseCmd()
 
-			// Process command using the registry
 			command := commandRegistry.ProcessCommand(cmd, startTime)
 			if command == nil {
 				continue
 			}
 
-			// Set additional fields (registry already sets ReplayID)
 			command.Frame = int32(base.Frame)
 			command.Replay = data.Replay
 			command.Player = playerIDToPlayer[base.PlayerID]
 
-			// Edge case: ChatCmd doesn't populate PlayerID, but populates SenderSlotID.
-			// Guard the type assertion: a future screp change (or an oddly-typed
-			// command that still classifies as "Chat") shouldn't panic the parse.
+			// ChatCmd populates SenderSlotID rather than PlayerID. The assertion is
+			// guarded so a future screp change can't panic the parse.
 			if command.ActionType == "Chat" {
 				if chatCommand, ok := cmd.(*repcmd.ChatCmd); ok {
 					command.Player = slotIDToPlayer[chatCommand.SenderSlotID]
 				}
 			}
 
-			// Skip commands we can't attribute to a player. PlayerIDs are not
-			// guaranteed contiguous (observer/computer slots leave gaps), so a
-			// command's PlayerID can be absent from playerIDToPlayer. Every
-			// downstream consumer already ignores nil-Player commands, and the
-			// persistence pass dereferences command.Player — emitting them would
+			// PlayerIDs are not contiguous (observer/computer slots leave gaps), so a
+			// command's PlayerID can be absent here. Downstream already ignores nil-Player
+			// commands, and the persistence pass dereferences it — emitting them would
 			// crash ingestion (#234).
 			if command.Player == nil {
 				continue
@@ -252,9 +229,8 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		repSaverPID = &v
 	}
 
-	// Alliance analysis for multi-player melee. Runs on the full unfiltered
-	// command stream because earlyfilter / dedup don't touch Alliance commands,
-	// but consuming them here keeps the analyzer independent of those passes.
+	// Runs on the full unfiltered stream because earlyfilter / dedup don't touch
+	// Alliance commands, which keeps the analyzer independent of those passes.
 	var allianceResult *AllianceResult
 	if data.Replay.GameType == "Melee" && countActiveMeleePlayers(data.Players) > 2 {
 		activity := ComputeActivity(data.Players, data.Commands, data.Replay.DurationSeconds)
@@ -263,13 +239,12 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		data.Replay.TeamStacking = ar.TeamStackingFlag
 		data.AllianceSnapshots = allianceSnapshotsToModels(ar.Snapshots)
 
-		// Team DISPLAY: prefer our full-game longest-held topology ("original
-		// teams") whenever we observed real mutual alliances. screp's
-		// computeMeleeTeams only inspects the first ~90s and, finding no
-		// alliance there, assigns every player a distinct singleton team — so
-		// trusting it would miss alliances that form later. A single static set
-		// can't capture alliance dynamism; longest-held is the most
-		// representative, and the Alliances tab shows the full timeline.
+		// Team DISPLAY prefers our longest-held topology whenever real mutual
+		// alliances were observed: screp's computeMeleeTeams only inspects the first
+		// ~90s and, finding nothing, makes everyone a singleton, so trusting it misses
+		// alliances formed later. No single static set captures alliance dynamism —
+		// longest-held is the most representative, and the Alliances tab has the
+		// full timeline.
 		if ar.AnyMutualResolved {
 			for _, p := range data.Players {
 				if p.IsObserver || p.Type == "Computer" {
@@ -286,19 +261,17 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 			data.Replay.TeamInfoIncomplete = true
 		}
 
-		// Winner attribution is authoritative for multi-team melee and is
-		// decoupled from the display teams: it groups players by the
-		// END-OF-GAME alliance coalition, so a stable team that allied after
-		// screp's 90s window still gets credited, and a coalition that won may
-		// span two "original" display teams. Runs even when team assignment is
-		// incomplete — a clear surviving coalition is still a clear winner.
+		// Winner attribution is deliberately decoupled from the display teams: it
+		// groups by the END-OF-GAME coalition, so a team that allied after screp's 90s
+		// window still gets credited, and a winning coalition may span two display
+		// teams. Runs even with incomplete team assignment — a clear surviving
+		// coalition is still a clear winner.
 		DeriveWinnersFromFinalTopology(data.Players, data.Commands, ar, repSaverPID)
 	}
 
-	// A saver disconnect masquerades as "everyone else left" and both winner
-	// paths (screp's WinnerTeam above and the topology derivation) credit the
-	// saver's team a phantom win — the game never resolved, so nobody wins
-	// (issue #358). Also threaded into the worldstate engine so the timeline
+	// A saver disconnect masquerades as "everyone else left", and both winner paths
+	// would credit the saver's team a phantom win — the game never resolved, so
+	// nobody wins (issue #358). Also threaded into worldstate so the timeline
 	// condenses the phantom leave cluster into one connection-lost event.
 	if md := DetectMassDisconnectEnd(data.Players, data.Commands, repSaverPID, data.Replay.DurationSeconds); md != nil {
 		for _, p := range data.Players {
@@ -309,70 +282,60 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		patternOrchestrator.SetMassDisconnectEnd(md.SaverPID, md.ClusterSecond)
 	}
 
-	// Reconstruct selection state from the raw command stream (Select/Hotkey
-	// tags, which command extraction above discards) and plan the tag-based
-	// build dedup: provable worker one-at-a-time drops + never-produced
-	// production buildings. The plan is applied inside the early filter.
+	// Reconstruct selection state from the raw stream's Select/Hotkey tags, which
+	// command extraction above discards, and plan the tag-based build dedup. The
+	// plan is applied inside the early filter.
 	unitTagEvidence := unittags.Analyze(rep)
 	buildDedupPlan := builddedup.Compute(unitTagEvidence, data.Players)
 
-	// Encode each player's annotated hotkey stream (issue #357 + hotkey intel):
-	// this needs the raw stream's Select/Hotkey tags, which command extraction
+	// Encoding needs the raw stream's Select/Hotkey tags, which command extraction
 	// discards, so it runs here rather than in storage.
 	data.HotkeyStreams = map[byte][]byte{}
 	for pid, events := range hotkeystream.Extract(rep) {
 		data.HotkeyStreams[pid] = hotkeystream.Encode(events)
 	}
 
-	// Maintain base ownership from unit production: a Train/Morph proves the
-	// producing building (and thus its base) is still alive, so it refreshes
-	// ownership where movement/build commands alone would let the base time out.
+	// A Train/Morph proves the producing building — and so its base — is still
+	// alive, refreshing ownership where movement/build commands alone would let the
+	// base time out.
 	patternOrchestrator.SetProductionSignals(unitTagEvidence)
 
-	// Detect Mutalisk hit-n-run harass from selection / hotkey state + the
-	// a-move→right-click cadence, gated on Zerg + Spire + muta production (#194).
+	// Gated on Zerg + Spire + muta production (#194).
 	patternOrchestrator.SetMutaHarass(unittags.DetectMutaHarass(rep, data.Players))
 
-	// Run the early-game spam filter before pattern detection so the
-	// orchestrator only sees commands the filter believes were real.
+	// Filter before pattern detection so the orchestrator only sees commands the
+	// filter believes were real.
 	filterResult := earlyfilter.Apply(data.Replay, data.Players, data.MapContext, data.Commands, earlyfilter.Options{
 		DebugDir:   opts.EarlyFilterDebugDir,
 		ShouldDrop: buildDedupPlan.ShouldDrop,
 	})
 	data.Commands = filterResult.Commands
 
-	// Account for larva morphs cancelled before the first Overlord: a cancelled
-	// egg that early is provably a Drone, so it refunds a supply and must not
-	// inflate the "N Pool" / "N Hatch" opener count. Runs on the filtered stream
-	// so the opener supply count sees only morphs that actually stuck.
+	// A larva morph cancelled before the first Overlord is provably a Drone, so it
+	// refunds a supply and must not inflate the opener count. Runs on the filtered
+	// stream so the count sees only morphs that actually stuck.
 	data.Commands = commands.DropCancelledMorphs(data.Commands)
 
-	// Collapse duplicate research/upgrade commands using game knowledge from
-	// internal/models. Operates over the entire game (not just the early
-	// window) — Forge-rebuilt-mid-Ground-Weapons-1 spam, double-clicked Lurker
-	// Aspect, etc.
+	// Operates over the whole game, not just the early window: Forge rebuilt
+	// mid-Ground-Weapons-1, double-clicked Lurker Aspect, and similar.
 	data.Commands = cmddedup.Dedup(data.Commands)
 
-	// Rewrite Right Click → Load / LoadBunker when the target unit is a
-	// transport, so the worldstate drop detector can pair Loads against
-	// subsequent Unload events. Must run before pattern detection so the
-	// orchestrator sees the rewritten action_type.
+	// Rewrite Right Click → Load / LoadBunker when the target is a transport, so
+	// the drop detector can pair Loads against later Unloads. Must precede pattern
+	// detection so the orchestrator sees the rewritten action_type.
 	commands.ClassifyLoads(data.Commands)
 
-	// Feed the filtered command stream through pattern detection.
 	for _, command := range data.Commands {
 		patternOrchestrator.ProcessCommand(command)
 	}
 
-	// Push alliance-derived events into the orchestrator's event channel so
-	// they land in replay_events alongside leave_game / attacks / etc. The
-	// orchestrator's Finalize will sort the merged list by second.
+	// Push alliance-derived events into the orchestrator's channel so they land in
+	// replay_events alongside leave_game and attacks; its Finalize sorts the merge.
 	if allianceResult != nil {
 		extraEvents := BuildAllianceDerivedEvents(data.Players, *allianceResult)
 		patternOrchestrator.AppendReplayEvents(extraEvents)
 	}
 
-	// Store pattern orchestrator in data for later use
 	data.PatternOrchestrator = patternOrchestrator
 
 	data.FingerprintVectors = extractFingerprintVectors(rep)
@@ -391,10 +354,8 @@ func allianceSnapshotsToModels(snapshots []AllianceSnapshot) []models.AllianceSn
 	return out
 }
 
-// computeTeamFormatAndMatchup derives team_format (e.g. "1v1", "2v2", "2v2v2") and
-// matchup (e.g. "PvT", "PTvZZ") from player race+team. Observers are excluded.
-// Within each team, race initials are sorted lex; teams are then sorted lex.
-// Team sizes in team_format are sorted descending.
+// Observers are excluded. Within each team race initials sort lexically, then
+// teams sort lexically; team sizes in team_format sort descending.
 func computeTeamFormatAndMatchup(players []*models.Player) (string, string) {
 	teams := map[byte][]string{}
 	for _, p := range players {
@@ -428,8 +389,7 @@ func computeTeamFormatAndMatchup(players []*models.Player) (string, string) {
 	return strings.Join(parts, "v"), strings.Join(teamRaces, "v")
 }
 
-// countActiveMeleePlayers returns the count of non-observer, non-computer
-// players — the population that participates in alliance topology.
+// The population that participates in alliance topology.
 func countActiveMeleePlayers(players []*models.Player) int {
 	n := 0
 	for _, p := range players {
@@ -441,8 +401,7 @@ func countActiveMeleePlayers(players []*models.Player) int {
 	return n
 }
 
-// allActivePlayersHaveTeam returns true once every active player has a non-zero
-// team. Drives the team_info_incomplete flag.
+// Drives the team_info_incomplete flag.
 func allActivePlayersHaveTeam(players []*models.Player) bool {
 	for _, p := range players {
 		if p == nil || p.IsObserver || p.Type == "Computer" {
@@ -455,8 +414,7 @@ func allActivePlayersHaveTeam(players []*models.Player) bool {
 	return true
 }
 
-// raceInitial returns the first letter of the race name (P/T/Z/R/U). Falls back
-// to '?' for empty input.
+// Falls back to '?' for empty input.
 func raceInitial(race string) byte {
 	if race == "" {
 		return '?'
@@ -503,7 +461,6 @@ func isMatchmakingTitle(title string) bool {
 	return true
 }
 
-// CreateReplayFromFileInfo creates a Replay model from file information
 func CreateReplayFromFileInfo(filePath, fileName string, fileSize int64, checksum string) *models.Replay {
 	return &models.Replay{
 		FilePath:     filePath,
@@ -513,22 +470,19 @@ func CreateReplayFromFileInfo(filePath, fileName string, fileSize int64, checksu
 	}
 }
 
-// standardMineralPatch is the amount every mineral field carries on a stock
-// melee map. Anything above it is a deliberately enriched patch, which is what
-// makes a map a "money" map.
+// What every mineral field carries on a stock melee map. Anything above it is a
+// deliberately enriched patch, which is what makes a map a "money" map.
 const standardMineralPatch = 1500
 
-// isMoneyMap classifies a map by the median mineral field rather than by any
-// single one.
+// isMoneyMap classifies by the MEDIAN mineral field, not any single one.
 //
-// The median matters. Mineral fields arrive in whatever order the map file
-// stores them, and money maps mix amounts: "Big Game Hunters - Remastered"
-// lists a 10000 field first and 20000 for most of the rest, while plain "Big
-// Game Hunters" happens to list a 20000 field first. Sampling MineralFields[0]
-// therefore classified two versions of the same map differently. The median is
-// also what makes a partially mined map read correctly: a regular map picks up
-// a tail of half-empty patches (196, 318, 428...) as the game goes on, and the
-// median stays pinned at 1500 while a mean would drift.
+// Fields arrive in whatever order the map file stores them, and money maps mix
+// amounts: "Big Game Hunters - Remastered" lists a 10000 field first and 20000
+// for most of the rest, while plain "Big Game Hunters" lists a 20000 first — so
+// sampling MineralFields[0] classified two versions of the same map
+// differently. The median also survives partial mining: a regular map picks up
+// a tail of half-empty patches as the game goes on, and the median stays pinned
+// at 1500 where a mean would drift.
 func isMoneyMap(rep *scraprep.Replay) bool {
 	if rep == nil || rep.MapData == nil || len(rep.MapData.MineralFields) == 0 {
 		return false

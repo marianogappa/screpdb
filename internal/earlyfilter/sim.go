@@ -5,52 +5,41 @@ import (
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
-// fastestFrameMs is the per-frame duration in milliseconds at "Fastest" game
-// speed (~23.81 frames per second). Brood War replays universally record
-// frames; we convert to seconds to drive a continuous gather simulation.
+// Per-frame duration at "Fastest" speed (~23.81 fps). Replays universally
+// record frames, so this converts them to seconds for the gather simulation.
 const fastestFrameMs = 42
 
-// Gas-gather model: when a player Right-Clicks (or Targeted Order) on a
-// geyser building they own, we assume up to 3 workers leave the mineral
-// line. They return after gathering ~100 gas — at 46 gas/min/worker (BW
-// saturation rate) that's ~43 seconds with 3 workers. Capping at 3 and
-// pre-emptively returning matches the "100 gas / lair / pull off" play
-// pattern the user flagged for Zerg.
+// Gas-gather model: a Right-Click on an owned geyser building pulls up to 3
+// workers off minerals; they return after ~100 gas, which at BW's 46
+// gas/min/worker saturation rate is ~43 seconds. Capping at 3 and returning
+// pre-emptively matches the "100 gas / lair / pull off" Zerg play pattern.
 const (
 	gasGatherDurationS    = 43.0
 	gasWorkersPerGather   = 3
 	gasGeyserProximityPx2 = 96 * 96 // squared euclidean threshold; ~3 tiles
 )
 
-// Larva model: each Zerg Hatchery (and its Lair / Hive upgrades) caps at
-// 3 larva and produces 1 every 14.4 in-game seconds (Fastest). Drone,
-// Zergling, and Overlord morphs each consume one larva. Morph commands
-// without an available larva are engine-rejected — the kept replay still
-// records the order, but the engine never executed it. Filtering by
-// larva availability is the primary lever against drone/morph spam.
+// Larva model: each Hatchery (and its Lair / Hive upgrades) caps at 3 larva and
+// produces one every 14.4 in-game seconds. Morph commands issued with no larva
+// available are engine-rejected — the replay still records the order, but the
+// engine never executed it — which makes larva availability the primary lever
+// against morph spam.
 const (
 	larvaSpawnIntervalS = 14.4
 	larvaPerHatchery    = 3
-	// larvaPreorderSlackS lets a morph fire if the next larva will spawn
-	// within this many seconds. Pro Zergs routinely issue morph commands
-	// a beat before the larva is ready — the BW engine accepts and waits.
-	// Without slack the filter rejects these as "no_larva" and we land
-	// 1 morph short of the player's actual count.
+	// Slack for a morph whose larva is about to spawn. Pro Zergs routinely issue
+	// morph commands a beat early and the engine accepts and waits; without slack
+	// the filter rejects them as "no_larva" and lands one morph short.
 	larvaPreorderSlackS = 5.0
 )
 
-// hatcheryLarva tracks a single Hatchery's larva slot. Lair and Hive
-// upgrade in-place so they reuse the same struct (no replacement).
+// Lair and Hive upgrade in-place, so they reuse this struct.
 type hatcheryLarva struct {
-	// completionFrame is the frame the hatchery comes online. The starting
-	// hatchery uses 0; built hatcheries use their order frame plus build
-	// time.
+	// The starting hatchery uses frame 0; built ones use order frame + build time.
 	completionFrame int32
-	// nextSpawnFrame is the frame at which the next larva attempts to
-	// spawn. Spawning ticks every 14.4s regardless of cap; if at cap when
-	// the timer fires, the spawn is wasted.
+	// Spawning ticks every 14.4s regardless of cap; a tick at cap is wasted.
 	nextSpawnFrame int32
-	// available is the current larva count, 0..3.
+	// 0..3.
 	available int
 }
 
@@ -70,8 +59,7 @@ func newBuiltHatchery(completionFrame int32) hatcheryLarva {
 	}
 }
 
-// advance ticks larva spawning up to (and including) `now`. Spawns past
-// the cap are wasted.
+// Spawns past the cap are wasted.
 func (h *hatcheryLarva) advance(now int32) {
 	if now < h.completionFrame {
 		return
@@ -85,9 +73,8 @@ func (h *hatcheryLarva) advance(now int32) {
 	}
 }
 
-// isLarvaConsumingMorph reports whether the subject is a Zerg unit morph
-// that consumes a larva (Drone, Zergling, Overlord — the early-window
-// set; later units like Hydra/Mutalisk also do but are out of scope).
+// Drone, Zergling and Overlord — the early-window set. Later units (Hydra,
+// Mutalisk) consume larva too but are out of scope here.
 func isLarvaConsumingMorph(subject string) bool {
 	switch subject {
 	case models.GeneralUnitDrone, models.GeneralUnitZergling, models.GeneralUnitOverlord:
@@ -104,11 +91,9 @@ func secondsToFrame(s float64) int32 {
 	return int32(s * 1000.0 / float64(fastestFrameMs))
 }
 
-// pendingEvent is a scheduled effect on a player's sim state. Buildings
-// completing add to `completed`; supply structures add to `supplyMax`;
-// worker trains/morphs add to `workers`; gas-gather windows expiring
-// adjust `gasWorkers`; Zerg hatch completions append a new larva
-// producer. One event captures all of these.
+// pendingEvent is a scheduled effect on a player's sim state, covering all of:
+// building completions, supply-structure caps, worker trains/morphs, expiring
+// gas-gather windows, and a Zerg hatch's new larva producer.
 type pendingEvent struct {
 	completionFrame   int32
 	workersDelta      int
@@ -116,15 +101,15 @@ type pendingEvent struct {
 	gasWorkersDelta   int
 	completedBuilding string
 	addHatchery       bool
-	// buildID ties this completion to a still-cancellable Build in
-	// openBuilds. Non-zero only for Build completions; 0 for train/morph/gas
-	// events. When the completion fires, the build is no longer cancellable.
+	// buildID ties this completion to a still-cancellable Build in openBuilds, and
+	// is non-zero only for Build completions. Once the completion fires, the build
+	// is no longer cancellable.
 	buildID int
 }
 
-// reversibleBuild records the effects a Build charged to the sim so a later
-// Cancel Build can undo them (the extractor / gas trick). Cleared when the
-// build completes (see advanceTo) — a finished structure cannot be cancelled.
+// reversibleBuild records what a Build charged to the sim so a later Cancel
+// Build can undo it (the extractor / gas trick). Cleared on completion — a
+// finished structure cannot be cancelled.
 type reversibleBuild struct {
 	id              int
 	minerals        int
@@ -132,12 +117,10 @@ type reversibleBuild struct {
 	supplyUsedDelta int // what acceptBuild applied (Zerg: -1; else 0)
 }
 
-// playerSim is the per-player state machine used by the forward pass.
-//
-// Income model: every alive worker gathers at its race's per-minute rate
-// continuously from frame 0. SCV "busy building" downtime is intentionally
-// ignored — over-estimating Terran income biases toward admitting more
-// commands, matching the user's "err on filtering less" preference.
+// playerSim is the per-player state machine used by the forward pass. Every
+// alive worker gathers at its race's rate continuously from frame 0; SCV "busy
+// building" downtime is deliberately ignored, since over-estimating Terran
+// income biases toward admitting more commands (err on filtering less).
 type playerSim struct {
 	race string
 
@@ -145,17 +128,15 @@ type playerSim struct {
 	supplyUsed int
 	supplyMax  int
 	workers    int
-	// gasWorkers is the number of workers currently mining gas. They are
-	// counted in `workers` (the population) but excluded from mineral
-	// income.
+	// gasWorkers are counted in `workers` (the population) but excluded from
+	// mineral income.
 	gasWorkers int
 
 	completed map[string]int
 
 	pending []pendingEvent
 
-	// openBuilds is the LIFO of in-progress, still-cancellable Builds.
-	// buildSeq hands out their ids.
+	// LIFO of in-progress, still-cancellable Builds; buildSeq hands out their ids.
 	openBuilds []reversibleBuild
 	buildSeq   int
 
@@ -164,20 +145,18 @@ type playerSim struct {
 	workerSubject string
 	gatherRate    float64 // per worker per minute
 
-	// Geysers known on the map (pixel coords, shared across players).
+	// Pixel coords, shared across players.
 	geysers []models.MapResourcePosition
 
-	// Per-geyser-index, the completion frame of an own gas building
-	// (Refinery / Extractor / Assimilator) placed on it. 0 = none.
+	// Per geyser index, the completion frame of an own gas building on it. 0 = none.
 	gasBuildingCompletionAtGeyser map[int]int32
 
-	// Per-geyser-index, the frame at which the current gas-mining window
-	// ends. Subsequent Harvest1 orders inside the window are no-ops.
+	// Per geyser index, when the current gas-mining window ends. Harvest1 orders
+	// inside the window are no-ops.
 	gasActiveUntilFrame map[int]int32
 
-	// hatcheries tracks per-hatchery larva state for Zerg. Empty for
-	// other races. The starting hatchery is added at sim init; built
-	// hatcheries are appended on completion via the pending-event hook.
+	// Empty for non-Zerg. The starting hatchery is added at sim init; built ones
+	// are appended on completion via the pending-event hook.
 	hatcheries []hatcheryLarva
 }
 
@@ -213,8 +192,8 @@ func newPlayerSim(race string, geysers []models.MapResourcePosition) *playerSim 
 	return p
 }
 
-// advanceTo advances the sim's clock to targetFrame, applying mineral income
-// and any pending completions in chronological order along the way.
+// advanceTo applies mineral income and pending completions in chronological
+// order along the way.
 func (p *playerSim) advanceTo(targetFrame int32) {
 	if targetFrame <= p.lastFrame {
 		return
@@ -241,7 +220,6 @@ func (p *playerSim) advanceTo(targetFrame int32) {
 		}
 		cursor = ev.completionFrame
 	}
-	// Advance larva spawn timers across all hatcheries.
 	for i := range p.hatcheries {
 		p.hatcheries[i].advance(targetFrame)
 	}
@@ -261,8 +239,7 @@ func (p *playerSim) accumulateIncome(fromFrame, toFrame int32) {
 	p.minerals += float64(mineralWorkers) * (p.gatherRate / 60.0) * dtSec
 }
 
-// removeOpenBuild drops the build with this id from openBuilds (it completed,
-// so it is no longer cancellable). No-op if already gone.
+// removeOpenBuild drops a completed build, which is no longer cancellable.
 func (p *playerSim) removeOpenBuild(id int) {
 	for i := range p.openBuilds {
 		if p.openBuilds[i].id == id {
@@ -272,13 +249,11 @@ func (p *playerSim) removeOpenBuild(id int) {
 	}
 }
 
-// cancelLastBuild reverses the most-recent still-in-progress Build: it refunds
-// the minerals and (for Zerg) returns the consumed Drone and its supply, and
-// removes the build's scheduled completion so it never lands. This models a
-// Cancel Build — chiefly the Zerg extractor / gas trick, where the extractor
-// briefly frees a supply so an extra Drone can morph past the cap, then is
-// cancelled to pop the Drone back out. Without this the sim charges a phantom
-// cost that starves the real early Drone stream. No-op if nothing is open.
+// cancelLastBuild refunds minerals, returns the consumed Drone and its supply
+// for Zerg, and unschedules the completion. This models the Zerg extractor /
+// gas trick, where an extractor briefly frees a supply so an extra Drone can
+// morph past the cap and is then cancelled to pop the Drone back out. Without
+// it the sim charges a phantom cost that starves the real early Drone stream.
 func (p *playerSim) cancelLastBuild() {
 	if len(p.openBuilds) == 0 {
 		return
@@ -296,8 +271,7 @@ func (p *playerSim) cancelLastBuild() {
 	}
 }
 
-// schedulePending inserts an event in time order. Insertion sort: the list
-// stays small (rarely above ~10 simultaneously inflight in early game).
+// Insertion sort: the list stays small, rarely above ~10 inflight early on.
 func (p *playerSim) schedulePending(ev pendingEvent) {
 	p.pending = append(p.pending, ev)
 	for i := len(p.pending) - 1; i > 0 && p.pending[i].completionFrame < p.pending[i-1].completionFrame; i-- {
@@ -305,21 +279,18 @@ func (p *playerSim) schedulePending(ev pendingEvent) {
 	}
 }
 
-// dropDecision describes why the forward pass refused a command. It is the
-// payload attached to a Verdict in the trace.
+// dropDecision is the payload attached to a Verdict in the trace.
 type dropDecision struct {
 	verdict Verdict
 	reason  string
 }
 
-// processBuild applies a Build command's effects to the sim, assuming
-// resources have already been checked. Race-specific worker behaviour:
-// Probe is unaffected, SCV is occupied for the building's BuildTime
-// (ignored — see income-model note), Drone is consumed.
+// acceptBuild assumes resources were already checked. Race-specific worker
+// behaviour: Probe unaffected, SCV occupied for BuildTime (ignored — see the
+// income-model note), Drone consumed.
 //
-// If the Build is a gas building, posBuildTilesXY is the placement tile
-// (X, Y) used to associate the gas building with a specific geyser. Pass
-// nil if no position is available.
+// posBuildTilesXY is the placement tile, used to associate a gas building with
+// a specific geyser. Pass nil when no position is available.
 func (p *playerSim) acceptBuild(subject string, econ cmdenrich.UnitEcon, orderFrame int32, posBuildTilesXY *[2]int) {
 	p.minerals -= float64(econ.Minerals)
 	workersDelta, supplyUsedDelta := 0, 0
@@ -341,17 +312,15 @@ func (p *playerSim) acceptBuild(subject string, econ cmdenrich.UnitEcon, orderFr
 		completionFrame:   completionFrame,
 		supplyMaxDelta:    econ.SupplyDelta,
 		completedBuilding: subject,
-		// Zerg Hatcheries (and only Hatcheries; Lair / Hive upgrade in
-		// place and are out of the 4-min window anyway) become a new
-		// larva producer at completion.
+		// Only Hatcheries: Lair / Hive upgrade in place and are outside the 4-minute
+		// window anyway.
 		addHatchery: p.race == "Zerg" && subject == models.GeneralUnitHatchery,
 		buildID:     buildID,
 	})
 
 	if posBuildTilesXY != nil && isGasBuildingSubject(subject) {
-		// Build positions are stored in TILE units; the geyser building
-		// footprint is 4×2 tiles, centred on the geyser. Convert to the
-		// building's centre pixel and find the nearest known geyser.
+		// Build positions are TILE units and the gas-building footprint is 4×2 tiles
+		// centred on the geyser, so convert to the building's centre pixel first.
 		cx := posBuildTilesXY[0]*32 + 64
 		cy := posBuildTilesXY[1]*32 + 32
 		if idx := p.nearestGeyser(cx, cy, gasGeyserProximityPx2); idx >= 0 {
@@ -370,8 +339,7 @@ func isGasBuildingSubject(subject string) bool {
 	return false
 }
 
-// nearestGeyser returns the index of the closest geyser to (px, py) within
-// maxDist2 pixels squared. Returns -1 if none in range.
+// Returns -1 if none within maxDist2 (pixels squared).
 func (p *playerSim) nearestGeyser(px, py, maxDist2 int) int {
 	best := -1
 	bestD2 := maxDist2 + 1
@@ -387,12 +355,10 @@ func (p *playerSim) nearestGeyser(px, py, maxDist2 int) int {
 	return best
 }
 
-// maybeStartGasGather inspects a player's command for a gas-gather order
-// (OrderName="Harvest1") whose target lies near a geyser the player owns
-// a completed gas building on. If so, it starts a gas-mining window: 3
-// workers leave the mineral line for ~43 seconds (≈ 100 gas at full
-// 3-worker saturation). Subsequent Harvest1 orders to the same geyser
-// inside the active window are ignored — matches the pro-Zerg "100 gas
+// maybeStartGasGather starts a gas-mining window when a Harvest1 order targets
+// a geyser the player has a completed gas building on: 3 workers leave the
+// mineral line for ~43s (≈100 gas at full saturation). Repeat orders to the
+// same geyser inside the window are ignored, matching the pro-Zerg "100 gas
 // pull-off" pattern conservatively.
 func (p *playerSim) maybeStartGasGather(cmd *models.Command) {
 	if cmd.OrderName == nil || *cmd.OrderName != models.UnitOrderHarvest1 {
@@ -424,22 +390,19 @@ func (p *playerSim) maybeStartGasGather(cmd *models.Command) {
 	})
 }
 
-// acceptUnit applies a Train/Morph command's effects (worker or combat unit
-// or supply unit like Overlord). Supply *cost* commits at order time per the
-// engine; supply *cap* (Overlord +8) commits at completion. Zerg larva-
-// consuming morphs (Drone / Zergling / Overlord) decrement one larva from
-// any available hatchery.
-// acceptUnit applies a Train/Morph that decide() already approved, and returns
-// how many units the command produced. intended is the issuing selection size
-// (1 when unknown): a single Zerg larva-morph command morphs every selected
-// larva at once, so one command can create several units. The produced count is
-// capped by the larva and minerals available *before* the command — what the
-// engine could actually have built.
+// acceptUnit applies a Train/Morph that decide() already approved and returns
+// how many units it produced. Supply COST commits at order time per the engine;
+// supply CAP (Overlord +8) commits at completion.
 //
-// Resource accounting deliberately commits only one unit's cost (matching the
-// original single-command model), so the filter's keep/drop verdicts are
-// unchanged for every other command and detector. The multi-unit count is an
-// annotation consumed only by build-order supply counting.
+// intended is the issuing selection size (1 when unknown): one Zerg larva-morph
+// command morphs every selected larva at once, so the produced count is capped
+// by the larva and minerals available BEFORE the command — what the engine
+// could actually have built.
+//
+// Resource accounting deliberately commits only one unit's cost, matching the
+// original single-command model, so keep/drop verdicts are unchanged for every
+// other command and detector. The multi-unit count is an annotation consumed
+// only by build-order supply counting.
 func (p *playerSim) acceptUnit(subject string, econ cmdenrich.UnitEcon, orderFrame int32, intended int) int {
 	produced := p.producedCount(subject, econ, intended)
 
@@ -460,10 +423,8 @@ func (p *playerSim) acceptUnit(subject string, econ cmdenrich.UnitEcon, orderFra
 	return produced
 }
 
-// producedCount returns how many units a single Train/Morph created, given the
-// issuing selection size and the resources on hand before the command. >1 only
-// for a multi-larva Zerg morph that the player could afford. Pure read — does
-// not mutate sim state.
+// producedCount is >1 only for a multi-larva Zerg morph the player could
+// afford. Pure read — does not mutate sim state.
 func (p *playerSim) producedCount(subject string, econ cmdenrich.UnitEcon, intended int) int {
 	if intended <= 1 {
 		return 1
@@ -485,8 +446,7 @@ func (p *playerSim) producedCount(subject string, econ cmdenrich.UnitEcon, inten
 	return count
 }
 
-// availableLarvaCount totals the spawned larva across all of the player's
-// hatcheries (no pre-order slack).
+// No pre-order slack.
 func (p *playerSim) availableLarvaCount() int {
 	n := 0
 	for i := range p.hatcheries {
@@ -495,15 +455,13 @@ func (p *playerSim) availableLarvaCount() int {
 	return n
 }
 
-// decide runs the keep/drop logic for one command at the player's current
-// frame. The sim must have already been advanced to orderFrame. Returns the
-// verdict and the reason string (empty for kept).
+// decide runs the keep/drop logic for one command; the sim must already be
+// advanced to orderFrame.
 //
-// Tech-tree prerequisites are NOT used to drop commands: the StarCraft
-// engine refuses to execute orders without their prerequisites, so a
-// command landing in the replay is itself proof those prerequisites
-// existed. Backtrack uses kept commands to drive prereq re-admission
-// (see backtrack.go).
+// Tech-tree prerequisites are deliberately NOT used to drop commands: the
+// engine refuses orders without their prerequisites, so a command landing in the
+// replay is itself proof they existed. Backtrack uses kept commands to drive
+// prereq re-admission (see backtrack.go).
 func (p *playerSim) decide(enriched cmdenrich.EnrichedCommand, econ cmdenrich.UnitEcon) dropDecision {
 	if enriched.Subject == models.GeneralUnitEvolutionChamber {
 		return dropDecision{VerdictDropped, "evolution_chamber_heuristic"}
@@ -522,11 +480,9 @@ func (p *playerSim) decide(enriched cmdenrich.EnrichedCommand, econ cmdenrich.Un
 	return dropDecision{VerdictKept, ""}
 }
 
-// canConsumeLarva returns true if any hatchery has an available larva at
-// `now`, or will produce one within larvaPreorderSlackS seconds. The
-// "future larva" leniency models how BW players issue morph commands a
-// beat before the larva is actually ready — the engine queues the order
-// until the larva spawns. advanceTo must have been called already.
+// canConsumeLarva also accepts a larva arriving within larvaPreorderSlackS,
+// modelling how players issue morphs a beat early and the engine queues the
+// order until it spawns. advanceTo must have been called already.
 func (p *playerSim) canConsumeLarva(now int32) bool {
 	slackFrames := secondsToFrame(larvaPreorderSlackS)
 	for i := range p.hatcheries {
@@ -540,9 +496,8 @@ func (p *playerSim) canConsumeLarva(now int32) bool {
 	return false
 }
 
-// consumeLarva takes one larva from the first hatchery that has any
-// available, otherwise borrows from the soonest-to-spawn hatchery
-// (advancing its nextSpawnFrame by one cycle). Returns true on success.
+// consumeLarva otherwise borrows from the soonest-to-spawn hatchery, advancing
+// its nextSpawnFrame by one cycle.
 func (p *playerSim) consumeLarva() bool {
 	for i := range p.hatcheries {
 		if p.hatcheries[i].available > 0 {

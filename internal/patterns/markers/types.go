@@ -1,24 +1,11 @@
-// Package markers is the single source of truth for Marker definitions.
+// Package markers is the single source of truth for Marker definitions: a
+// classifier attached to a (replay × player) that reports something interesting
+// about the player's play.
 //
-// A Marker is a classifier attached to a (replay × player) that reports
-// something interesting about the player's play — an opening build order, a
-// late-game signature (Carriers, Battlecruisers), an absence (Never
-// researched), or a worldstate-sourced event (Made drops, Became Zerg).
-//
-// Two layers of definition are expressed for each Marker:
-//
-//  1. Rule or Custom — the match + value extraction. Bool-only markers use
-//     a composable Predicate over a player's stream of cmdenrich.EnrichedCommand.
-//     Value-producing markers (e.g. "second at which drop happened") use a
-//     CustomEvaluator that can read worldstate at Finalize.
-//  2. Expert (opener-only) — a list of named milestones with target second +
-//     tolerance describing the "progamer ideal". Used by the UI's Build
-//     Orders tab to compare actual player timings against the gold
-//     standard. Only KindInitialBuildOrder markers populate this.
-//
-// Both definitions live here so consumers (pattern detectors, dashboard UI
-// tab) share the same knowledge. Adding a new marker, or tweaking an
-// existing one, is a single-file change in definitions.go.
+// Each Marker carries a Rule or Custom evaluator (the match) and, for openers,
+// Expert milestones (the "progamer ideal" the Build Orders tab compares against).
+// Both live here so detectors and the dashboard share one definition, and adding
+// a marker stays a single-file change in definitions.go.
 package markers
 
 import (
@@ -29,7 +16,6 @@ import (
 	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
 )
 
-// Race is a narrow race identifier used to gate detectors.
 type Race string
 
 const (
@@ -38,70 +24,44 @@ const (
 	RaceTerran  Race = "Terran"
 )
 
-// BuildDedupGapSeconds collapses rapid repeat Build events of the same subject
-// at the same build tile. Progamers often double-tap a single placement (spam /
-// misclick); the earlier order is effectively cancelled. Two Build facts of the
-// same subject AND the same tile, less than this many seconds apart, are treated
-// as one event (later wins). Repeat placements at *different* tiles are left
-// alone — they are genuinely distinct buildings, even when only seconds apart
-// (the time-only heuristic this replaced wrongly merged ~55% of those).
+// BuildDedupGapSeconds collapses rapid repeat Builds of the same subject at the
+// same build tile: progamers double-tap a placement (spam / misclick) and the
+// earlier order is effectively cancelled. Repeats at *different* tiles are left
+// alone — the time-only heuristic this replaced wrongly merged ~55% of those.
 const BuildDedupGapSeconds = 3
 
-// BuildDedupMaxSecond is the replay-second past which dedup stops firing.
-// Even at the same tile, a building destroyed or lifted mid-game can be
-// legitimately rebuilt on the same spot much later, so beyond the first 4
-// minutes we stop assuming double-tap intent and observe every Build as-is.
-// All current opening-build-order markers finalize well before this cap.
+// BuildDedupMaxSecond stops dedup firing past this second: a building destroyed
+// or lifted mid-game can legitimately be rebuilt on the same spot much later.
+// All opening-build-order markers finalize well before this cap.
 const BuildDedupMaxSecond = 4 * 60
 
-// TriState is the monotone decision a PredicateState reports.
-//
-// Once a state commits to Matched or Rejected it must stay there — Observe
-// never un-commits a prior decision. Pending means "not enough information
-// yet"; the caller's Finalize() pass collapses any remaining Pending to
-// Rejected per the plan's deadline contract.
+// TriState is the monotone decision a PredicateState reports. Once committed to
+// Matched or Rejected it must stay there; Finalize collapses Pending to Rejected.
 type TriState int
 
 const (
-	// Pending: the predicate cannot yet decide.
 	Pending TriState = iota
-	// Matched: the predicate is satisfied. Final.
 	Matched
-	// Rejected: the predicate cannot be satisfied. Final.
 	Rejected
 )
 
-// PredicateState is the streaming evaluator a Predicate produces. Each
-// marker's broad rule compiles into a tree of PredicateStates that together
-// observe a player's commands as they arrive and report Matched / Rejected
-// as soon as determinate.
+// PredicateState is the streaming evaluator a Predicate produces. Contract:
 //
-// Implementation contract:
-//
-//   - Observe must be idempotent once committed (Matched or Rejected).
-//     Further facts are ignored.
-//   - Decision(now) reports the current best answer at the given in-game
-//     second. It may return Pending before the predicate's intrinsic deadline.
-//   - Finalize forces a final commitment. Pending collapses to the
-//     "event-never-happened" answer for that predicate (usually Rejected, but
-//     Not wraps children and inverts).
-//
-// All combinators (All / Any / Not) and every leaf DSL helper implement this
-// interface.
+//   - Observe must be idempotent once committed (further facts are ignored).
+//   - Decision(now) may return Pending before the predicate's intrinsic deadline.
+//   - Finalize forces a final commitment: Pending collapses to the
+//     "event-never-happened" answer, which Not inverts.
 type PredicateState interface {
 	Observe(f cmdenrich.EnrichedCommand)
 	Decision(now int) TriState
 	Finalize() TriState
 }
 
-// Predicate is a factory that produces a fresh PredicateState each time it is
-// called. Marker authors in definitions.go compose Predicates with All / Any /
-// Not — never seeing the underlying state machinery.
+// Predicate is a factory producing a fresh PredicateState per call, so marker
+// authors compose with All / Any / Not and never see the state machinery.
 type Predicate func() PredicateState
 
-// Eval runs this predicate over a slice of facts (time-ordered) and returns
-// whether the marker's broad rule ultimately matches. Used by tests and
-// one-shot callers. The streaming detector path never calls Eval; it drives
+// Eval is for tests and one-shot callers; the streaming detector path drives
 // PredicateState directly.
 func (p Predicate) Eval(facts []cmdenrich.EnrichedCommand) bool {
 	if p == nil {
@@ -114,77 +74,54 @@ func (p Predicate) Eval(facts []cmdenrich.EnrichedCommand) bool {
 	return st.Finalize() == Matched
 }
 
-// -----------------------------------------------------------------------------
-// Custom evaluators — for markers that can't be expressed as a bool predicate
-// (worldstate-sourced events, spatial/ratio stats). A Custom evaluator sees
-// every classified command in order and emits a MarkerResult at Finalize.
-// -----------------------------------------------------------------------------
+// Custom evaluators, for markers that can't be expressed as a bool predicate
+// (worldstate-sourced events, spatial/ratio stats).
 
-// MarkerValue carries optional extras for a Custom evaluator's verdict.
-//
-// Post-migration, presence of a replay_events row for (replay, player, marker) is the
-// "matched" signal — no value columns needed for the majority of markers. Evaluators
-// that carry auxiliary data (hotkey groups, viewport switches-per-minute) populate
-// Payload with a JSON blob stored in replay_events.payload.
+// MarkerValue carries optional extras for a Custom evaluator's verdict. The
+// presence of a replay_events row is itself the "matched" signal, so most
+// markers need no value; those with auxiliary data set Payload.
 type MarkerValue struct {
 	Payload json.RawMessage
 }
 
-// CustomEvalContext carries the replay-scoped state a Custom evaluator may
-// need at Finalize. Rule-based (Predicate) markers don't see this — they
-// only observe the command stream.
+// CustomEvalContext carries replay-scoped state a Custom evaluator may need at
+// Finalize. Rule-based markers only observe the command stream.
 type CustomEvalContext struct {
 	ReplayPlayerID byte
 	Replay         *models.Replay
 	WorldState     *worldstate.Engine
 }
 
-// CustomResult is the verdict + optional extras a Custom evaluator returns
-// at Finalize.
-//
-// DetectedAtSecond is the replay second persisted as replay_events.seconds_from_game_start.
-// Absence markers (those that commit at end-of-replay) and hotkey/viewport windows each
-// document their own source of this value.
-//
-// Payload is written to replay_events.payload. Empty for presence-only markers.
+// CustomResult is the verdict plus optional extras a Custom evaluator returns
+// at Finalize. Absence markers and hotkey/viewport windows each document their
+// own source for DetectedAtSecond.
 type CustomResult struct {
 	Matched          bool
 	DetectedAtSecond int
 	Payload          json.RawMessage
 }
 
-// CustomEvaluator is the streaming evaluator for a Custom marker.
-//
-//   - Observe is called once per EnrichedCommand in replay time order.
-//     Implementations that don't care about commands (purely worldstate-
-//     sourced markers) can leave Observe a no-op.
-//   - Finalize is called at end-of-window (RuleDeadline exceeded OR
-//     end-of-replay) and reports the final verdict + value.
+// CustomEvaluator is the streaming evaluator for a Custom marker. Purely
+// worldstate-sourced markers can leave Observe a no-op; Finalize is called at
+// RuleDeadline or end-of-replay, whichever comes first.
 type CustomEvaluator interface {
 	Observe(f cmdenrich.EnrichedCommand)
 	Finalize(ctx CustomEvalContext) CustomResult
 }
 
-// Tolerance describes acceptable early/late deviation around an expert target
-// second. Use Sym or Asym to construct.
+// Tolerance describes acceptable deviation around an expert target second.
+// Construct with Sym or Asym.
 type Tolerance struct {
 	EarlySeconds int
 	LateSeconds  int
 }
 
-// Sym constructs a symmetric tolerance (± v).
 func Sym(v int) Tolerance { return Tolerance{EarlySeconds: v, LateSeconds: v} }
 
-// Asym constructs an asymmetric tolerance (early, late).
 func Asym(early, late int) Tolerance { return Tolerance{EarlySeconds: early, LateSeconds: late} }
 
-// ExpertEvent describes one milestone in the progamer template.
-//
-//   - Key is a human-readable label used in the UI (e.g. "Spawning Pool",
-//     "First Zergling").
-//   - Match selects which fact counts as the actual occurrence.
-//   - TargetSecond is the ideal second from game start.
-//   - Tolerance is the acceptable deviation around TargetSecond.
+// ExpertEvent is one milestone in the progamer template. Key is the UI label
+// (e.g. "Spawning Pool"); Match selects which fact counts as the occurrence.
 type ExpertEvent struct {
 	Key          string
 	Match        FactMatcher
@@ -192,30 +129,24 @@ type ExpertEvent struct {
 	Tolerance    Tolerance
 }
 
-// FactMatcher selects a specific occurrence of a specific kind+subject.
 type FactMatcher struct {
 	Kind            cmdenrich.Kind
 	Subject         string
 	OccurrenceIndex int // 1-indexed; defaults to 1 when zero.
 }
 
-// MatchBuild is shorthand for the first Build of a subject.
 func MatchBuild(subject string) FactMatcher {
 	return FactMatcher{Kind: cmdenrich.KindMakeBuilding, Subject: subject, OccurrenceIndex: 1}
 }
 
-// MatchNthBuild is shorthand for the n-th Build of a subject.
 func MatchNthBuild(subject string, n int) FactMatcher {
 	return FactMatcher{Kind: cmdenrich.KindMakeBuilding, Subject: subject, OccurrenceIndex: n}
 }
 
-// MatchFirstProduce is shorthand for the first Produce of a unit.
 func MatchFirstProduce(unit string) FactMatcher {
 	return FactMatcher{Kind: cmdenrich.KindMakeUnit, Subject: unit, OccurrenceIndex: 1}
 }
 
-// Resolve finds the Second at which this matcher's fact actually occurred in
-// the given slice. Returns (second, true) or (0, false) if not present.
 func (m FactMatcher) Resolve(facts []cmdenrich.EnrichedCommand) (int, bool) {
 	n := m.OccurrenceIndex
 	if n <= 0 {
@@ -234,10 +165,8 @@ func (m FactMatcher) Resolve(facts []cmdenrich.EnrichedCommand) (int, bool) {
 	return 0, false
 }
 
-// PillStyle selects the visual variant the frontend should use when rendering
-// a marker pill. Empty / PillStyleDefault = normal; Strong = truthy signature
-// pills (Carriers, Battlecruisers); Negative = absence pills (🚫 upgrades,
-// 🚫 hotkeys); Inline = pills that embed a sub-icon (Quick {subject}).
+// PillStyle selects the frontend's visual variant: Strong for truthy signature
+// pills, Negative for absence pills, Inline for pills embedding a sub-icon.
 type PillStyle string
 
 const (
@@ -247,14 +176,8 @@ const (
 	PillStyleInline   PillStyle = "inline"
 )
 
-// SubjectKind picks where {subject} interpolation reads its value from when the
-// pill's Label / IconKey contains a {subject} placeholder.
-//
-//   - SubjectStatic: fixed string (SubjectValue).
-//   - SubjectPayloadField: reads payload JSON and stringifies the named field.
-//
-// Openers and signatures mostly use SubjectStatic (or omit Subject). Hotkey-groups
-// uses SubjectPayloadField("groups") to render "Hotkeys 1,3,5" from the JSON blob.
+// SubjectKind picks where a pill's {subject} placeholder reads its value from:
+// a fixed string, or a named field of the marker's payload JSON.
 type SubjectKind string
 
 const (
@@ -262,38 +185,27 @@ const (
 	SubjectKindPayloadField SubjectKind = "payload_field"
 )
 
-// Subject describes how the frontend should resolve a {subject} placeholder
-// embedded in a Pill's Label or IconKey. All fields are optional.
+// Subject describes how the frontend resolves a {subject} placeholder in a
+// Pill's Label or IconKey. All fields are optional.
 type Subject struct {
 	Kind  SubjectKind `json:"kind"`
 	Value string      `json:"value,omitempty"`
 	Field string      `json:"field,omitempty"`
 }
 
-// StaticSubject constructs a fixed-text Subject.
 func StaticSubject(value string) *Subject {
 	return &Subject{Kind: SubjectKindStatic, Value: value}
 }
 
-// PayloadFieldSubject constructs a Subject that reads payload JSON.
 func PayloadFieldSubject(field string) *Subject {
 	return &Subject{Kind: SubjectKindPayloadField, Field: field}
 }
 
-// Pill describes how a marker renders on one UI surface. Non-nil pointer on the
-// Marker means "show this marker here"; nil means "hide". Label + IconKey support
-// two placeholders: {subject} (resolved via Subject) and {minute} (derived from
-// replay_events.seconds_from_game_start / 60 at render time).
-//
-// Label examples:
-//
-//	"Carriers"                     — static truthy signature
-//	"Quick {subject}"              — "Quick Factory" (SubjectStatic "Factory")
-//	"Hotkeys {subject}"            — "Hotkeys 1,3,5" (SubjectPayloadField "groups")
-//	"Drops at min {minute}"        — "Drops at min 7"
-//
-// IconKey names a unit-icon sprite the frontend resolves via getUnitIcon(); empty
-// IconKey = no icon.
+// Pill describes how a marker renders on one UI surface: a non-nil pointer on
+// the Marker means "show here", nil means "hide". Label and IconKey support two
+// placeholders, {subject} (resolved via Subject) and {minute} (derived from
+// replay_events.seconds_from_game_start at render time), e.g. "Quick {subject}"
+// or "Drops at min {minute}". IconKey names a sprite resolved via getUnitIcon().
 type Pill struct {
 	Label   string    `json:"label,omitempty"`
 	IconKey string    `json:"icon_key,omitempty"`
@@ -302,179 +214,119 @@ type Pill struct {
 	Title   string    `json:"title,omitempty"` // optional tooltip
 }
 
-// Kind categorizes a marker so that mutually-exclusive families (openers)
-// can coexist in the registry alongside overlap-permitted ones (signatures,
-// absences, worldstate-sourced events).
+// Kind lets mutually-exclusive families (openers) coexist in the registry
+// alongside overlap-permitted ones (signatures, absences, worldstate events).
 type Kind string
 
 const (
-	// KindInitialBuildOrder is an opening build order: the player's first
-	// few actions from game start. At most one initial BO may match per
-	// player (fuzz-enforced mutex).
+	// At most one KindInitialBuildOrder may match per player (fuzz-enforced mutex).
 	KindInitialBuildOrder Kind = "initial_build_order"
-	// KindMarker is everything else. Multiple KindMarker entries may match
-	// the same player simultaneously, including alongside a KindInitialBuildOrder.
+	// Multiple KindMarker entries may match a player at once, including alongside
+	// a KindInitialBuildOrder.
 	KindMarker Kind = "marker"
 )
 
 // Opener tiers (see Marker.Tier). Lower wins. Every KindInitialBuildOrder
-// marker must set one of these; the fuzz test asserts it.
+// marker must set one; the fuzz test asserts it.
 const (
-	// TierPreferred: specific, scene-named openers sourced from current BW
-	// pro knowledge (e.g. "3 Hatch Muta", "2 Gate Reaver", "Factory Expand").
 	TierPreferred = 1
-	// TierBackup: the broad, high-coverage openers (Zerg supply rungs,
-	// Protoss topology, Terran composition buckets) — shown when no preferred
-	// opener matched.
-	TierBackup = 2
-	// TierResidual: the per-race "… (Other)" complement catch-alls — the floor
-	// below which only "Opener unresolved" remains.
-	TierResidual = 3
+	TierBackup    = 2
+	TierResidual  = 3
 )
 
-// Marker bundles both the classification rule and (for openers) the expert
-// timings used by the Build Orders UI tab.
 type Marker struct {
-	// Name is the user-facing short name ("4 Pool", "Carriers", etc.). It
-	// also doubles as the pattern name suffix stored in the DB for openers.
+	// Name doubles as the pattern-name suffix stored in the DB for openers.
 	Name string
 
-	// Kind classifies the marker. Openers use KindInitialBuildOrder (mutex);
-	// everything else uses KindMarker (overlap permitted).
 	Kind Kind
 
-	// Tier ranks competing KindInitialBuildOrder markers when more than one
-	// matches the same player. The lowest tier wins and is the only opener
-	// persisted for that player; the rest are suppressed (see
-	// Orchestrator.GetResults). This is what lets a specific, scene-named
-	// "preferred" opener (tier 1) take precedence over the broad bucket it
-	// overlaps (tier 2) and the residual "… (Other)" catch-all (tier 3),
-	// while every classifiable player still resolves to exactly one opener.
-	//
-	// Ignored for KindMarker (those overlap freely). Mutual exclusion is
-	// enforced *within* a (race, matchup, tier) tuple by the fuzz test — across
-	// tiers, overlap is expected and resolved here by precedence. An unset
-	// Tier (0) on a KindInitialBuildOrder marker is normalized to TierBackup at
-	// registry build time, so existing broad openers need no annotation;
-	// preferred openers set TierPreferred and residual catch-alls TierResidual.
+	// Tier ranks competing KindInitialBuildOrder markers when several match the
+	// same player: the lowest wins and is the only opener persisted (see
+	// Orchestrator.GetResults), so a scene-named opener takes precedence over the
+	// broad bucket it overlaps and the residual catch-all, while every classifiable
+	// player still resolves to exactly one opener. Mutual exclusion is fuzz-enforced
+	// only WITHIN a (race, matchup, tier) tuple; across tiers overlap is expected.
+	// An unset Tier normalizes to TierBackup at registry build time.
 	Tier int
 
-	// PatternName is the name stored in detected_patterns_replay_player.
-	// Openers use the form "Build Order: <Name>"; KindMarker entries use
-	// bare names ("Carriers", "Quick factory", …) to preserve existing
-	// frontend checks and DB-row compatibility.
+	// PatternName is stored in detected_patterns_replay_player. Openers use
+	// "Build Order: <Name>"; KindMarker entries use bare names, to preserve
+	// existing frontend checks and DB-row compatibility.
 	PatternName string
 
-	// FeatureKey is the stable identifier used on the games-list
-	// "Featuring" filter and in the frontend pill registry
-	// (e.g. "bo_9_pool", "carriers", "made_drops").
+	// FeatureKey is the stable identifier used by the games-list "Featuring"
+	// filter and the frontend pill registry (e.g. "bo_9_pool", "made_drops").
 	FeatureKey string
 
-	// Race is the race this marker applies to. Empty string means "any race".
+	// Empty means "any race".
 	Race Race
 
-	// Matchup, if non-empty, restricts this marker to replays whose
-	// replays.matchup column equals one of the listed values (e.g.
-	// {"TvP", "TvZ"}). Empty = any matchup. Combined with Race, this gates
-	// per-(race, matchup) tuple — same opener can be a different rule /
-	// timings under PvP vs PvZ. Mutual exclusion among initial-build-order
-	// markers is enforced per (race, matchup) tuple by the fuzz test.
+	// Matchup restricts this marker to replays whose replays.matchup is one of the
+	// listed values; empty means any. Combined with Race it gates per (race,
+	// matchup) tuple, which is also the granularity the opener mutex is fuzzed at.
 	Matchup []string
 
-	// MapKind, if non-empty, restricts this marker to replays whose
-	// replays.map_kind column equals one of the listed values (e.g.
-	// {"Money"}). Empty = any map kind. Used for markers that only make
-	// sense on specific economies — e.g. "10+ Scouts" only fires on
-	// Money maps where Scout-massing is a recognised pattern.
+	// MapKind restricts this marker to replays whose replays.map_kind is one of the
+	// listed values; empty means any. For markers that only make sense on specific
+	// economies — "10+ Scouts" is only a pattern on Money maps.
 	MapKind []string
 
-	// MinReplaySeconds gates this marker on replay duration. 0 = no gate.
-	// Used by "never X" markers that would otherwise trip on short games.
+	// MinReplaySeconds gates on replay duration (0 = no gate), for "never X"
+	// markers that would otherwise trip on short games.
 	MinReplaySeconds int
 
-	// MinReplaySecondsByMatchup gates this marker on replay duration using a
-	// per-(own_race, opp_race) threshold. Outer key is the player's race,
-	// inner key is the opponent's race. Consulted ONLY for 1v1 replays; for
-	// non-1v1 (team games, FFA) MinReplaySeconds is used instead. Used by
-	// "never X" markers whose "valid game" length depends on the matchup —
-	// e.g. ZvZ first research is much earlier than PvP first research, so a
-	// flat 10-min floor over-fires on short PvP games. Missing entries fall
-	// back to MinReplaySeconds.
+	// MinReplaySecondsByMatchup gates on duration per (own race, opp race), and is
+	// consulted for 1v1 replays only; team games and FFA use MinReplaySeconds, as do
+	// missing entries. Exists because a "valid game" length depends on the matchup —
+	// ZvZ first research lands far earlier than PvP, so a flat floor over-fires.
 	MinReplaySecondsByMatchup map[Race]map[Race]int
 
-	// Rule is the predicate-DSL path — tree of PredicateState factories.
-	// If non-nil, the marker emits ValueBool:true on match.
+	// Rule is the predicate-DSL path; exactly one of Rule / Custom is expected.
 	Rule Predicate
 
-	// Custom is the alternative evaluator path for markers that can't be
-	// expressed as a bool predicate — produces richer values (int / string
-	// / time) typically sourced from worldstate. Exactly one of Rule /
-	// Custom is expected to be non-nil.
+	// Custom is the evaluator path for markers that can't be expressed as a bool
+	// predicate, typically sourced from worldstate.
 	Custom func() CustomEvaluator
 
-	// RequireWorldstateEvent, when non-empty, layers a spatial confirmation on
-	// top of a Rule match: the marker saves only if the Rule matched AND the
-	// worldstate produced an event of this type sourced by the player. It lets
-	// a topology opener add a location signal the fact stream can't express —
-	// e.g. Bunker Rush requires an offensive bunker_rush event so a defensive
-	// sim-city bunker (no expansion topology, but built at the player's own
-	// base) on a Money map no longer reads as a rush. Markers that set this
-	// MUST use the endOfReplaySentinel RuleDeadline: the worldstate event list
-	// only exists after the full stream is processed, so the gate cannot be
-	// evaluated mid-streaming.
+	// RequireWorldstateEvent layers a spatial confirmation on a Rule match: the
+	// marker saves only if the Rule matched AND the worldstate produced this event
+	// type for the player, letting a topology opener add a location signal the fact
+	// stream can't express (a defensive sim-city bunker no longer reads as a rush).
+	// Markers setting this MUST use the endOfReplaySentinel RuleDeadline, because
+	// the worldstate event list only exists once the full stream is processed.
 	RequireWorldstateEvent string
 
-	// Modifiers augment a matched build order with orthogonal tags — facts that
-	// don't change *which* opener it is but materially change what it means
-	// (e.g. an "expand" 1 Gate Reaver that took a Nexus before the Reaver vs a
-	// one-base pressure variant; a "proxy" Barracks built in the enemy's base).
-	// Each modifier is
-	// evaluated only when the BO itself matches; the names that hold are written
-	// to the marker payload's "modifiers" array and surfaced alongside the BO.
-	// Modifiers never gate the BO match — they only annotate it.
+	// Modifiers tag a matched build order with orthogonal facts that don't change
+	// WHICH opener it is but materially change what it means (an "expand" 1 Gate
+	// Reaver vs the one-base pressure variant). Evaluated only once the BO matches,
+	// and they never gate the match — they only annotate it.
 	Modifiers []Modifier
 
-	// RuleDeadline is the last in-game second that could still change the
-	// answer. Once a replay passes this second, the detector finalizes.
-	// Set to the tightest upper-bound across all rule sub-predicates;
-	// Custom markers that need the full replay use a large value (e.g.
-	// end-of-replay sentinel).
+	// RuleDeadline is the last in-game second that could still change the answer;
+	// past it the detector finalizes. Set to the tightest upper bound across all
+	// sub-predicates.
 	RuleDeadline int
 
-	// Expert is the ordered list of ideal timings used by the Build Orders
-	// UI tab to compare actual vs. gold-standard. Only populated for
-	// KindInitialBuildOrder markers.
+	// Expert is only populated for KindInitialBuildOrder markers.
 	Expert []ExpertEvent
 
-	// SummaryPlayer is the pill shown on the per-player row in Game Summary.
-	// Non-nil = show on this surface; nil = hide.
+	// A non-nil pill means "show on this surface"; nil means hide.
 	SummaryPlayer *Pill
 
-	// SummaryReplay is the pill shown at the replay level in Game Summary
-	// (used for markers that characterise the whole game, e.g. "Threw Nukes").
+	// SummaryReplay is for markers characterising the whole game ("Threw Nukes").
 	SummaryReplay *Pill
 
-	// GamesList is the pill shown in the games-list "Featuring" column. Doubles
-	// as the featuring-filter entry.
+	// GamesList doubles as the featuring-filter entry.
 	GamesList *Pill
 
-	// EventsList is the pill shown in the Game Events timeline tab when the marker
-	// should appear alongside raw narrative events.
 	EventsList *Pill
 }
 
-// Modifier is an orthogonal tag attached to a matched build order. It holds
-// when either its Rule (a fact-stream predicate, evaluated over the same
-// dedup'd stream the BO rule sees) resolves Matched, or its WorldstateEvent
-// (a spatial/worldstate confirmation, the same hook as RequireWorldstateEvent)
-// was produced for the player. Exactly one of Rule / WorldstateEvent is set.
+// Modifier is an orthogonal tag on a matched build order. It holds when either
+// its Rule matches over the same dedup'd stream the BO rule sees, or its
+// WorldstateEvent was produced for the player. Exactly one of the two is set.
 type Modifier struct {
-	// Name is the tag written to the payload and shown alongside the BO
-	// (e.g. "all-in", "proxy").
-	Name string
-	// Rule, when non-nil, makes the modifier hold iff this predicate matches.
-	Rule Predicate
-	// WorldstateEvent, when non-empty, makes the modifier hold iff the
-	// worldstate produced an event of this type sourced by the player.
+	Name            string
+	Rule            Predicate
 	WorldstateEvent string
 }

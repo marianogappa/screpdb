@@ -58,7 +58,6 @@ func NewCommandRegistry() *CommandRegistry {
 
 // registerHandlers registers all command handlers
 func (r *CommandRegistry) registerHandlers() {
-	// Build commands
 	r.register(repcmd.TypeIDBuild, NewBuildCommandHandler())
 	r.register(repcmd.VirtualTypeIDLand, NewLandCommandHandler())
 
@@ -115,14 +114,12 @@ func (r *CommandRegistry) register(commandType byte, handler CommandHandler) {
 func (r *CommandRegistry) ProcessCommand(cmd repcmd.Cmd, startTime int64) *models.Command {
 	base := cmd.BaseCmd()
 
-	// Check if we should ignore this command type
 	if r.shouldIgnoreCommand(base) {
 		return nil
 	}
 
 	handler, exists := r.handlers[base.Type.ID]
 	if !exists {
-		// Use general handler for unhandled commands
 		handler = NewGeneralCommandHandler(base.Type.String(), base.Type.ID)
 	}
 

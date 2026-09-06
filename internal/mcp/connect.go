@@ -28,8 +28,6 @@ const (
 	pollInterval  = 250 * time.Millisecond
 )
 
-// ConnectOptions controls how the MCP server finds the process that owns the
-// replay corpus.
 type ConnectOptions struct {
 	// Port is where the probe starts; PortScanRange ports are tried.
 	Port int
@@ -38,9 +36,8 @@ type ConnectOptions struct {
 	AutoStart bool
 	// ReplayDir is passed to a spawned server; empty means its saved folder.
 	ReplayDir string
-	// WaitForCorpus holds startup until the spawned server has finished
-	// reading its replay folder, so the first question is not answered from a
-	// half-loaded corpus.
+	// WaitForCorpus holds startup until the spawned server has read its replay
+	// folder, so the first question isn't answered from a half-loaded corpus.
 	WaitForCorpus bool
 }
 
@@ -71,7 +68,6 @@ func Connect(ctx context.Context, opts ConnectOptions) (*Client, func(), error) 
 	return start(ctx, opts)
 }
 
-// findRunning returns the first scanned port answering as screpdb.
 func findRunning(preferred int) (string, bool) {
 	for p := preferred; p < preferred+PortScanRange; p++ {
 		addr := "localhost:" + strconv.Itoa(p)
@@ -87,7 +83,6 @@ func findRunning(preferred int) (string, bool) {
 // and shutdown path without a dashboard.
 var execCommand = func(exe string, args ...string) *exec.Cmd { return exec.Command(exe, args...) }
 
-// start spawns a headless dashboard and waits for it to answer.
 func start(ctx context.Context, opts ConnectOptions) (*Client, func(), error) {
 	exe, err := os.Executable()
 	if err != nil {
@@ -132,7 +127,6 @@ func start(ctx context.Context, opts ConnectOptions) (*Client, func(), error) {
 	return client, stop, nil
 }
 
-// freePort returns the first port in the scan range nothing is listening on.
 func freePort(preferred int) (int, error) {
 	for p := preferred; p < preferred+PortScanRange; p++ {
 		if netfacade.LocalPortAvailable("localhost:" + strconv.Itoa(p)) {
@@ -172,8 +166,8 @@ func waitForServer(ctx context.Context, port int, waitForCorpus bool, exited <-c
 	return client, nil
 }
 
-// poll calls probe until it reports success, the context ends, the child
-// exits, or the budget runs out.
+// poll calls probe until it reports success, the context ends, the child exits,
+// or the budget runs out.
 func poll(ctx context.Context, exited <-chan struct{}, exitErr *error, budget time.Duration, probe func() (Health, bool)) (Health, error) {
 	deadline := time.Now().Add(budget)
 	for time.Now().Before(deadline) {

@@ -193,11 +193,11 @@ func registerDetectionScalars() {
 		Title: "Detection scalars & versioning",
 		Intro: "Standalone constants the detectors depend on — dedup windows, " +
 			"muta/turret burst thresholds, cliff-drop corner boxes, the viewport " +
-			"window, and the algorithm version (bump it to force re-detection).",
+			"window, and the detector version the embedded progamer pack is keyed to.",
 		Columns: []string{"Constant", "Value", "Meaning"},
 		Rows: func() [][]string {
 			return [][]string{
-				{"Algorithm version", strconv.Itoa(core.AlgorithmVersion), "Detection algorithm revision; incremented to trigger re-detection."},
+				{"Detector version", strconv.Itoa(core.DetectorVersion), "Identifies the detection pipeline's output; the embedded progamer pack must be stamped with the same value."},
 				{"Build dedup gap (s)", strconv.Itoa(markers.BuildDedupGapSeconds), "Repeat Build orders of the same building at the same tile, closer than this, are one event (double-tap / misclick); different-tile placements are kept."},
 				{"Build dedup max second (s)", strconv.Itoa(markers.BuildDedupMaxSecond), "Past this second, dedup stops and every Build is observed as-is (a tile can be legitimately rebuilt on later)."},
 				{"Mutalisk burst window (s)", strconv.Itoa(markers.MutaBurstWindowSec), "Window within which the Mutalisk morphs must cluster."},
@@ -212,8 +212,8 @@ func registerDetectionScalars() {
 			}
 		},
 		Verify: func() error {
-			if core.AlgorithmVersion <= 0 {
-				return fmt.Errorf("AlgorithmVersion = %d, want > 0", core.AlgorithmVersion)
+			if core.DetectorVersion <= 0 {
+				return fmt.Errorf("DetectorVersion = %d, want > 0", core.DetectorVersion)
 			}
 			if markers.BuildDedupGapSeconds <= 0 || markers.BuildDedupMaxSecond <= 0 {
 				return fmt.Errorf("dedup constants must be positive")

@@ -303,15 +303,11 @@ func TestMarkersDefinitionsEndpoint(t *testing.T) {
 		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
 	}
 	var resp struct {
-		AlgorithmVersion int                        `json:"algorithm_version"`
-		Markers          map[string]json.RawMessage `json:"markers"`
-		FeaturingOrder   []string                   `json:"featuring_order"`
+		Markers        map[string]json.RawMessage `json:"markers"`
+		FeaturingOrder []string                   `json:"featuring_order"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("unmarshal: %v", err)
-	}
-	if resp.AlgorithmVersion == 0 {
-		t.Fatal("expected non-zero algorithm_version")
 	}
 	if len(resp.Markers) == 0 {
 		t.Fatal("expected at least one marker definition")

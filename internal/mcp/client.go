@@ -20,19 +20,18 @@ const (
 	maxResponseBytes = 4 << 20
 )
 
-// Client reads the dashboard's JSON API over loopback. It owns no corpus
-// state: every answer comes from the one process that loaded the replays.
+// Client reads the dashboard's JSON API over loopback. It owns no corpus state:
+// every answer comes from the one process that loaded the replays.
 type Client struct {
 	addr string
 }
 
-// NewClient returns a client for a loopback host:port.
 func NewClient(addr string) *Client { return &Client{addr: addr} }
 
 func (c *Client) Addr() string { return c.addr }
 
-// Get reads an API path (which may carry a query string) and returns the raw
-// body. A non-2xx response is an error carrying the server's own message.
+// Get takes a path that may carry a query string. A non-2xx response becomes an
+// error carrying the server's own message.
 func (c *Client) Get(ctx context.Context, path string) ([]byte, error) {
 	status, body, err := netfacade.LocalAPIGet(ctx, c.addr, path, requestTimeout, maxResponseBytes)
 	if err != nil {
@@ -44,8 +43,7 @@ func (c *Client) Get(ctx context.Context, path string) ([]byte, error) {
 	return body, nil
 }
 
-// Health reads /api/health, the endpoint that reports corpus size and load
-// progress.
+// /api/health is the endpoint reporting corpus size and load progress.
 func (c *Client) Health(ctx context.Context) (Health, error) {
 	var out Health
 	body, err := c.Get(ctx, "/api/health")

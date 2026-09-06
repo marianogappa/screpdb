@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/marianogappa/screpdb/internal/patterns/core"
 	"github.com/marianogappa/screpdb/internal/patterns/markers"
 )
 
@@ -44,7 +43,6 @@ type gameEventFeature struct {
 }
 
 type markersDefinitionsResponse struct {
-	AlgorithmVersion  int                         `json:"algorithm_version"`
 	Markers           map[string]markerDefinition `json:"markers"`
 	FeaturingOrder    []string                    `json:"featuring_order"`
 	GameEventFeatures []gameEventFeature          `json:"game_event_features"`
@@ -198,8 +196,7 @@ func FeaturingOrder() []string {
 }
 
 // handlerMarkersDefinitions serves the per-marker Pill metadata plus ordering
-// and game-event feature metadata. Cached in-memory by the frontend; re-fetched
-// when the server's algorithm_version differs from the one the frontend last saw.
+// and game-event feature metadata. The frontend fetches it once per session.
 func (d *Dashboard) handlerMarkersDefinitions(w http.ResponseWriter, _ *http.Request) {
 	all := markers.Markers()
 	out := make(map[string]markerDefinition, len(all))
@@ -221,7 +218,6 @@ func (d *Dashboard) handlerMarkersDefinitions(w http.ResponseWriter, _ *http.Req
 	}
 
 	resp := markersDefinitionsResponse{
-		AlgorithmVersion:  core.AlgorithmVersion,
 		Markers:           out,
 		FeaturingOrder:    staticFeaturingOrder,
 		GameEventFeatures: staticGameEventFeatures,

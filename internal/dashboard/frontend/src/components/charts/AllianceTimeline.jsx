@@ -3,32 +3,19 @@ import { useT } from '../../lib/i18nContext';
 import { slugKey } from '../../lib/i18n';
 import { computeColumnLayout } from '../../lib/allianceLayout';
 
-// AllianceTimeline renders alliance topology as a Sankey-style flow.
-// Time runs top-to-bottom on a non-linear axis (rows = significant events
-// only). Each player owns a vertical lane that terminates when they leave or
-// stop playing. Team membership at each row is shown as a translucent pill
-// hugging the contiguous columns of allied players. A right-hand context
-// panel — chat, alliance diffs, departures, military events near departures
-// — anchors each event to its time row.
-//
-// Inputs:
-//   players: [{ player_id, name, race, team, color, left_second, leave_reason }]
-//   timeline: [{ sec, teams: [[player_id, ...], ...], stacking }]
-//   chat: [{ second, player_id, message }]
-//   gameEvents: [{ type, second, actor, target, ... }] — the full game-event
-//                stream; we filter for attack/drop/recall/nuke near departures.
-//   durationSeconds: number
-//   earlyEndsAt / midEndsAt: number (phase-boundary seconds)
-//   stackingThresholdSeconds: number — bands ≥ this earn the stacked badge.
-//   getRaceIcon: race -> url (or null)
+// AllianceTimeline renders alliance topology as a Sankey-style flow. Time runs
+// top-to-bottom on a NON-LINEAR axis: rows are significant events only. Each
+// player owns a vertical lane that terminates when they leave or stop playing,
+// team membership per row is a translucent pill hugging contiguous columns of
+// allied players, and a right-hand context panel anchors chat, alliance diffs,
+// departures and nearby military events to their time row.
 
-// Fallback palette used only when a player has no recognizable BW colour name.
+// Used only when a player has no recognizable BW colour name.
 const TEAM_COLORS = ['#60A5FA', '#F472B6', '#34D399', '#FBBF24', '#A78BFA', '#22D3EE', '#FB7185', '#4ADE80'];
 
-// playerHexColor returns a player's in-game BW colour via the resolver passed
-// in by the host (App.jsx wraps the engine's screp-colors map). Falls back to
-// the palette above when the resolver is missing or doesn't know the name —
-// e.g. for synthetic player ids or pre-bootstrapped renders.
+// Resolved via the host-supplied resolver (App.jsx wraps the engine's
+// screp-colors map), falling back to the palette above when it is missing or
+// doesn't know the name — synthetic player ids, pre-bootstrapped renders.
 const playerHexColor = (player, getPlayerColor) => {
   if (!player) return TEAM_COLORS[0];
   if (typeof getPlayerColor === 'function') {
@@ -43,8 +30,8 @@ const playerHexColor = (player, getPlayerColor) => {
 const ROW_MIN_HEIGHT = 110;
 const EVENT_ROW_HEIGHT = 30; // Each event entry's vertical footprint in the side panel.
 const EVENT_ROW_TOP_OFFSET = 18; // Top padding inside a row group before the first event.
-// How many rows of stable column position can pass before the player's name
-// is re-rendered above their node so the reader stays oriented in long games.
+// Rows of stable column position before a player's name is re-rendered above
+// their node, so the reader stays oriented in long games.
 const NAME_REFRESH_INTERVAL = 4;
 const TOP_PAD = 60;
 const BOTTOM_PAD = 32;
@@ -58,9 +45,9 @@ const RIGHT_PANEL_PAD_LEFT = 16;
 const NEAR_DEPARTURE_WINDOW_SEC = 60;
 // Two events closer than this in seconds collapse onto one row.
 const ROW_MERGE_SEC = 1;
-// Generic events ≥ this gap from the prior row introduce a new row even
-// without an alliance change — so the right-hand event panel has a row to
-// dock against. Set conservatively so we don't add too many rows.
+// Generic events at least this far from the prior row introduce a new row even
+// without an alliance change, so the event panel has a row to dock against.
+// Conservative, to avoid adding too many rows.
 const STANDALONE_EVENT_MIN_GAP_SEC = 0;
 
 const formatMMSS = (sec) => {
@@ -68,16 +55,16 @@ const formatMMSS = (sec) => {
   return `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`;
 };
 
-// Team-level colour: use the BW colour of the team's lowest-pid member when
-// available. This keeps a player's colour (and the lines/arcs touching them)
-// in sync with the in-game replay colour they had.
+// Team colour is the BW colour of the team's lowest-pid member, which keeps a
+// player's colour — and the lines and arcs touching them — in sync with the
+// replay colour they had in game.
 const teamColor = (pids, playerByID, getPlayerColor) => {
   if (!pids || pids.length === 0) return TEAM_COLORS[0];
   const p = playerByID ? playerByID[pids[0]] : null;
   return playerHexColor(p || { player_id: pids[0] }, getPlayerColor);
 };
 
-// "4v2v1" style label — used inside team pills with ≥2 teams visible.
+// "4v2v1" style label, used inside team pills with ≥2 teams visible.
 const teamShape = (teams) => {
   const sizes = teams.map((t) => t.length).filter((n) => n >= 1);
   if (sizes.length < 2) return '';
@@ -90,7 +77,6 @@ const isStacked = (teams) => {
   return new Set(sizes).size > 1;
 };
 
-// Phase tag for a row second based on early/mid boundary markers.
 const phaseTagFor = (sec, earlyEndsAt, midEndsAt) => {
   const s = Number(sec) || 0;
   if (s <= 0) return 'START';
@@ -101,11 +87,10 @@ const phaseTagFor = (sec, earlyEndsAt, midEndsAt) => {
   return '';
 };
 
-// Diff teams[t-1] vs teams[t] and return human-readable change pills.
-// rowSec is the second of the *new* row — we use it (with playerByID's
-// left_second) to suppress "× break" events that are merely the side-effect
-// of a player departing. The player's line already terminates visually; a
-// separate break pill would just be noise.
+// diffTopology returns human-readable change pills. rowSec is the second of the
+// NEW row, used with left_second to suppress "× break" events that are merely a
+// side-effect of a departure: the player's line already terminates visually, so
+// a separate break pill would be noise.
 const diffTopology = (prevTeams, nextTeams, playerByID, rowSec, getPlayerColor) => {
   const prevPairs = new Set();
   const nextPairs = new Set();
@@ -145,8 +130,7 @@ const diffTopology = (prevTeams, nextTeams, playerByID, rowSec, getPlayerColor) 
   }
   for (const k of removed) {
     const [a, b] = k.split('|').map(Number);
-    // Skip pair-removals where either member has departed by this row — the
-    // terminating line already explains the lost alliance.
+    // The terminating line already explains the lost alliance.
     if (departedBy(a) || departedBy(b)) continue;
     out.push({ kind: 'break', a: nameOf(a), b: nameOf(b), colorA: colorOf(a), colorB: colorOf(b) });
   }
@@ -178,19 +162,16 @@ const AllianceTimeline = ({
     return m;
   }, [players]);
 
-  // Active (non-observer) players in API order. Backend already filters
-  // is_observer=0, but be defensive.
+  // The backend already filters is_observer=0, but be defensive.
   const activePlayers = useMemo(
     () => players.filter((p) => p && p.player_id != null),
     [players],
   );
 
-  // ── Phase rows ─────────────────────────────────────────────────────────
-  // A row = a distinct time point. Each snapshot in the alliance timeline
-  // emits a row; each player departure (left_second) emits a row if it
-  // doesn't already coincide with an alliance event. We always anchor a
-  // final row at duration_seconds so terminating lines have somewhere to
-  // run to.
+  // A row is a distinct time point: every alliance snapshot emits one, and each
+  // player departure emits one unless it coincides with an alliance event. A final
+  // row is always anchored at duration_seconds so terminating lines have somewhere
+  // to run to.
   const rows = useMemo(() => {
     const snaps = (Array.isArray(timeline) ? timeline : []).map((s) => ({
       sec: Math.max(0, Number(s.sec) || 0),
@@ -208,8 +189,8 @@ const AllianceTimeline = ({
     }
     if (durationSeconds > 0) secs.add(Math.max(0, Number(durationSeconds) || 0));
 
-    // Merge near-duplicates so we don't get two rows for events 1 second apart
-    // (e.g. snapshot at sec=64 + departure at sec=64).
+    // Merge near-duplicates so a snapshot and a departure one second apart don't
+    // produce two rows.
     const sortedSecs = Array.from(secs).sort((a, b) => a - b);
     const mergedSecs = [];
     for (const s of sortedSecs) {
@@ -243,15 +224,13 @@ const AllianceTimeline = ({
     });
   }, [timeline, activePlayers, playerByID, durationSeconds]);
 
-  // ── Column ordering per row ────────────────────────────────────────────
-  // Which lane each player occupies on each row. See lib/allianceLayout.js
-  // for the placement rule and the search over initial orderings.
+  // Which lane each player occupies on each row. See lib/allianceLayout.js for
+  // the placement rule and the search over initial orderings.
   const { columns } = useMemo(
     () => computeColumnLayout(rows, activePlayers.map((p) => p.player_id)),
     [rows, activePlayers],
   );
 
-  // ── Layout dimensions ──────────────────────────────────────────────────
   const wrapRef = useRef(null);
   const [wrapWidth, setWrapWidth] = useState(960);
   useEffect(() => {
@@ -267,16 +246,15 @@ const AllianceTimeline = ({
     return () => ro.disconnect();
   }, []);
 
-  // ── Context panel rows (computed before layout so row heights can flex) ─
-  // For each row index, gather the events that "belong" to it. Kept above
-  // the early-return guard so hook order stays stable across renders.
+  // Events belonging to each row index. Kept above the early-return guard so hook
+  // order stays stable across renders.
   const eventsByRowIdx = useMemo(() => {
     const out = rows.map(() => []);
     if (rows.length === 0) return out;
     const rowSecOf = (sec) => {
-      // Pick the row whose sec is closest to the event — so an attack at
-      // 17:21 buckets to the 17:44 row (near the departure it correlates
-      // with), not the 4:55 row (last alliance change before it).
+      // Bucket to the row whose sec is CLOSEST, so an attack at 17:21 lands on the
+      // 17:44 row near the departure it correlates with, not the 4:55 row that was
+      // the last alliance change before it.
       let chosen = 0;
       let bestDist = Infinity;
       for (let i = 0; i < rows.length; i += 1) {
@@ -301,9 +279,8 @@ const AllianceTimeline = ({
       for (const pid of rows[ri].departures) {
         const p = playerByID[pid];
         if (!p) continue;
-        // "Stopped" (inactivity-derived) gets its own visual treatment from
-        // an explicit quit — the player didn't formally leave, they just
-        // stopped issuing meaningful commands.
+        // "Stopped" (inactivity-derived) gets its own treatment: the player didn't
+        // formally leave, they just stopped issuing meaningful commands.
         const reason = p.leave_reason || 'Left';
         const kind = reason === 'Stopped' ? 'stopped' : 'depart';
         out[ri].push({
@@ -388,9 +365,8 @@ const AllianceTimeline = ({
     );
   }
 
-  // Per-row Y coordinates — each row gets enough space to fit its events
-  // without overflowing into the next row. Both SVG and the right panel
-  // index into rowYs[] for vertical positioning.
+  // Each row gets enough space to fit its events without overflowing into the
+  // next. Both the SVG and the right panel index into rowYs for positioning.
   const rowYs = [];
   let cursorY = TOP_PAD;
   for (let ri = 0; ri < rows.length; ri += 1) {
@@ -406,8 +382,8 @@ const AllianceTimeline = ({
   const svgHeight = (rowYs[rows.length - 1] || TOP_PAD) + BOTTOM_PAD;
 
   const numCols = activePlayers.length;
-  // Right panel takes a fixed minimum; SVG takes the remainder. If the
-  // viewport is narrow the SVG stretches horizontally with min-width per col.
+  // The right panel takes a fixed minimum and the SVG the remainder; on a narrow
+  // viewport the SVG stretches horizontally with a min-width per column.
   const rightPanelWidth = Math.max(RIGHT_PANEL_MIN_W, Math.min(420, Math.floor(wrapWidth * 0.36)));
   const svgWidthBudget = Math.max(360, wrapWidth - rightPanelWidth - RIGHT_PANEL_PAD_LEFT);
   const colsSpace = svgWidthBudget - LEFT_LABEL_W - 24;
@@ -415,8 +391,7 @@ const AllianceTimeline = ({
   const svgWidth = LEFT_LABEL_W + colW * numCols + 24;
   const colX = (i) => LEFT_LABEL_W + colW * i + colW / 2;
 
-  // For each player, walk through rows and collect their (rowIdx, x, y).
-  // Lines terminate at the row in which they appear in the departures list.
+  // Lines terminate at the row in which the player appears in the departures list.
   const playerPaths = activePlayers.map((p) => {
     const points = [];
     let terminated = false;
@@ -433,12 +408,10 @@ const AllianceTimeline = ({
     return { player: p, points, terminated };
   });
 
-  // Team rendering: each maximal clique becomes either an arc (size 2) or
-  // a rounded pill (size ≥3). Arcs are how non-transitive alliances stay
-  // honest — a chain A↔B↔C↔D draws three separate arcs, not one fake
-  // 4-stack pill. A player who appears in multiple cliques contributes to
-  // each of them (e.g. C draws both the A-C arc and the B-C arc) without
-  // any pretense that A and B are themselves allied.
+  // Each maximal clique becomes an arc (size 2) or a rounded pill (size ≥3). Arcs
+  // are how non-transitive alliances stay honest: a chain A↔B↔C↔D draws three
+  // separate arcs, not one fake 4-stack pill, and a player in several cliques
+  // contributes to each without pretending A and B are themselves allied.
   const pills = [];
   const arcs = [];
   for (let ri = 0; ri < rows.length; ri += 1) {
@@ -462,9 +435,8 @@ const AllianceTimeline = ({
         });
         continue;
       }
-      // size ≥ 3 → render as an enclosing rounded pill (clique implies all
-      // members are mutually allied, so a single enclosing rectangle is
-      // faithful).
+      // A clique implies all members are mutually allied, so one enclosing rectangle
+      // is faithful.
       const xs = cols.map((i) => colX(i));
       const minX = Math.min(...xs) - NODE_R - 6;
       const maxX = Math.max(...xs) + NODE_R + 6;
@@ -481,9 +453,8 @@ const AllianceTimeline = ({
     }
   }
 
-  // Single-glyph emoji badges per event kind. Words ("ally", "break", etc.)
-  // are dropped — the colored pill + emoji conveys the type, and the body
-  // text already names the actors.
+  // Words ("ally", "break") are dropped: the coloured pill plus emoji conveys the
+  // type, and the body text already names the actors.
   const kindBadgeLabel = (k) => {
     if (k === 'ally') return '🤝';
     if (k === 'break') return '💔';
@@ -507,7 +478,6 @@ const AllianceTimeline = ({
     return t.has(key) ? t(key) : reason;
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="workflow-card workflow-alliance-timeline-v2" ref={wrapRef}>
       <div className="workflow-alliance-timeline-grid" style={{ gridTemplateColumns: `${svgWidth}px ${rightPanelWidth}px` }}>
@@ -668,7 +638,6 @@ const AllianceTimeline = ({
               const color = playerHexColor(player, getPlayerColor);
               const icon = getRaceIcon ? getRaceIcon(player.race) : null;
               const displayName = String(player.name || `#${player.player_id}`).slice(0, 14);
-              // Precompute which rows show this player's name.
               const showNameAt = new Set();
               let lastNamedRow = -Infinity;
               let lastCol = -1;
@@ -684,7 +653,7 @@ const AllianceTimeline = ({
                 }
                 lastCol = colIdx;
               }
-              // Approximate text width for backdrop (SVG can't measure pre-paint).
+              // SVG can't measure text pre-paint, so approximate the backdrop width.
               const nameW = Math.max(28, Math.min(120, displayName.length * 7 + 8));
               return points.map((pt) => (
                 <g key={`node-${player.player_id}-${pt.rowIdx}`}>

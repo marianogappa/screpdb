@@ -1,22 +1,11 @@
-// Package cmdenrich normalizes raw models.Command into a compact, enriched
-// form (EnrichedCommand) that downstream analysis (marker detection, future
-// predicates) can consume without re-discriminating action types or
-// re-normalizing game quirks.
+// Package cmdenrich normalizes raw models.Command into a compact EnrichedCommand
+// so downstream analysis never re-discriminates action types or re-normalizes
+// game quirks: Kind is flattened from both ActionType and nested OrderName,
+// Subject absorbs the Zerg "Drone → Spawning Pool" morph quirk, and Aggression
+// is a tunable tri-state kept in one table.
 //
-// An EnrichedCommand answers questions the raw command can't answer cheaply:
-//
-//   - Is this a MakeBuilding, a MakeUnit, an Attack? (Kind, flattened from
-//     both ActionType and nested OrderName fields so callers never have to
-//     peer into targeted-order subtypes).
-//   - What's the canonical subject? (Zerg unit morph's "Drone → Spawning
-//     Pool" quirk is absorbed; callers see a single KindMakeBuilding fact.)
-//   - Is it aggressive? (tri-state: Aggressive / NonAggressive / Ambiguous;
-//     the per-action mapping lives here and is tunable in one place.)
-//
-// Locations are exposed as raw (X, Y). A follow-up enrichment step can
-// resolve them against worldstate + scmapanalyzer into structured bases /
-// regions; that deeper resolution lives near worldstate so cmdenrich stays
-// cheap and dependency-free from the map layer.
+// Locations stay raw (X, Y). Resolving them against worldstate + scmapanalyzer
+// lives near worldstate, so cmdenrich stays cheap and free of the map layer.
 package cmdenrich
 
 import (
@@ -26,103 +15,75 @@ import (
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
-// Kind is the flattened command category. One canonical kind per conceptual
-// action — targeted-order subtypes collapse into their nearest semantic
-// category here so predicates don't have to.
+// Kind is the flattened command category: targeted-order subtypes collapse into
+// their nearest semantic category here so predicates don't have to.
 type Kind int
 
 const (
-	// KindUnknown is the zero value; set when the command wasn't interesting
-	// enough to classify or didn't fit any known bucket.
+	// KindUnknown is the zero value: unclassifiable or uninteresting.
 	KindUnknown Kind = iota
-	// KindMakeBuilding: a building is placed / starts construction.
 	KindMakeBuilding
-	// KindMakeUnit: a unit is trained or morphed (unit-morph quirk absorbed).
+	// KindMakeUnit absorbs the unit-morph quirk.
 	KindMakeUnit
-	// KindAttackMove: explicit attack-move or attack-tile order.
 	KindAttackMove
-	// KindAttackUnit: attack ordered at a specific target.
 	KindAttackUnit
-	// KindMove: plain move order.
 	KindMove
-	// KindPatrol: patrol order.
 	KindPatrol
-	// KindHold: hold-position order.
 	KindHold
-	// KindStop: stop order.
 	KindStop
-	// KindRightClick: contextual right-click (order not explicit).
+	// KindRightClick: contextual right-click, order not explicit.
 	KindRightClick
-	// KindTech: research / tech command.
 	KindTech
-	// KindUpgrade: upgrade command.
 	KindUpgrade
-	// KindHotkey: hotkey-group assign / select / add. Subject is the group
-	// number as a string ("0".."9"); callers that care parse it.
+	// KindHotkey: Subject is the group number as a string ("0".."9").
 	KindHotkey
-	// KindCast: a targeted spell cast (CastPsionicStorm, CastIrradiate, …).
-	// Subject is the canonical spell name with "Cast" prefix stripped when
-	// present, or the raw OrderName when no prefix (e.g. "NuclearStrike").
-	// Used by the worldstate attack/recall/nuke detector.
+	// KindCast: Subject is the spell name with any "Cast" prefix stripped, or the
+	// raw OrderName when there is none (e.g. "NuclearStrike").
 	KindCast
-	// KindUnloadAll: drop signal (UnloadAll queueable). No spatial coords.
-	// Used by the worldstate drop detector via engagement-layer position
-	// backfill.
+	// KindUnloadAll carries no spatial coords; the worldstate drop detector
+	// backfills position from the engagement layer.
 	KindUnloadAll
-	// KindBurrow / KindUnburrow: zerg burrow toggles (queueable).
+	// Zerg burrow toggles (queueable).
 	KindBurrow
 	KindUnburrow
-	// KindSiege / KindUnsiege: terran siege toggles (queueable).
+	// Terran siege toggles (queueable).
 	KindSiege
 	KindUnsiege
-	// KindLoad: right-click onto a transport (Dropship / Shuttle / Overlord
-	// with Ventral Sacs) — synthesized from Right Click by the load-classify
-	// pass. Carries the transport's UnitTag on the source Command's
-	// TargetUnitTag transient field. Used by the worldstate drop detector to
-	// pair Loads with later Unload events.
+	// KindLoad is a right-click onto a transport, synthesized from Right Click by
+	// the load-classify pass. The transport's tag rides on the source Command's
+	// TargetUnitTag, which is how the drop detector pairs Loads with later Unloads.
 	KindLoad
-	// KindLoadBunker: right-click onto a Bunker. Same flow as KindLoad but
-	// kept distinct because bunkers aren't transports — they don't produce
-	// drop events, only garrison signals.
+	// KindLoadBunker follows the same flow as KindLoad but stays distinct because
+	// bunkers aren't transports: they produce garrison signals, not drop events.
 	KindLoadBunker
-	// KindBuildNydusExit: a Zerg Nydus Canal exit placed via the
-	// BuildNydusExit TargetedOrder. Carries the exit's pixel position. Surfaced
-	// so the worldstate offensive-nydus pass can classify the exit as forward
-	// (placed in enemy territory) and synthesize an attack event there.
+	// KindBuildNydusExit carries the exit's pixel position, so the offensive-nydus
+	// pass can classify a forward exit and synthesize an attack event there.
 	KindBuildNydusExit
-	// KindEnterNydusCanal: units ordered into a Nydus Canal — the teleport that
-	// funnels an army through to the exit. One command per selected wave; the
-	// position targets a canal end, so the pass relies on timing/count rather
-	// than these coords.
+	// KindEnterNydusCanal is one command per selected wave. The position targets a
+	// canal end, so the pass relies on timing and count rather than these coords.
 	KindEnterNydusCanal
-	// KindLayMine: a Vulture lays a Spider Mine (VultureMine TargetedOrder).
-	// Subject is the raw order name. Surfaced so timing markers can detect the
-	// first mine drop.
+	// KindLayMine: Subject is the raw order name, for the first-mine timing marker.
 	KindLayMine
 )
 
-// Aggression tri-state. Populated by Classify based on Kind; tune the mapping
-// in the aggressionByKind table below rather than at each call site.
+// Aggression is populated by Classify from Kind; tune aggressionByKind below
+// rather than at each call site.
 type Aggression int
 
 const (
-	// AggressionUnknown is the zero value for facts we haven't categorized.
 	AggressionUnknown Aggression = iota
 	// Aggressive: the action, in isolation, signals offensive intent.
 	Aggressive
-	// NonAggressive: the action is economic, defensive, or neutral.
+	// NonAggressive: economic, defensive, or neutral.
 	NonAggressive
-	// Ambiguous: context-dependent (e.g. a Move into the enemy's natural
-	// may be aggressive, a Move at home isn't). Predicates should lean on
-	// Location to disambiguate.
+	// Ambiguous: context-dependent (a Move into the enemy's natural is aggressive,
+	// a Move at home isn't), so predicates should lean on Location.
 	Ambiguous
 )
 
-// EnrichedCommand is the normalized view of one models.Command.
-//
-// Design note: callers rarely need every field. Kind + Subject + Second is
-// enough for build-order detection. Location / Aggression are there for
-// predicates that care about where or whether the action is hostile.
+// EnrichedCommand is the normalized view of one models.Command. Kind + Subject
+// + Second is enough for build-order detection; Location and Aggression exist
+// for predicates that care where or whether the action is hostile.
 type EnrichedCommand struct {
 	Kind     Kind
 	Subject  string // canonical unit/building name, post-normalization
@@ -130,36 +91,30 @@ type EnrichedCommand struct {
 	Second   int
 	PlayerID int64
 
-	// X, Y are in PIXELS (1 tile = 32px), uniformly — Build's tile-unit
-	// coordinates are normalized to pixels in Classify so consumers never
-	// re-convert. nil for non-spatial actions.
+	// X, Y are uniformly in PIXELS: Build's tile coordinates are normalized in
+	// Classify so consumers never re-convert. Nil for non-spatial actions.
 	X, Y *int
 
 	Aggression Aggression
 
-	// Queued is true if the player shift-queued this order.
 	Queued bool
 
-	// Count is how many units this command created. It is >1 only for a Zerg
-	// larva-morph that morphed several selected larvae at once (the early filter
-	// resolves the real number). Defaults to 1; unit-counting predicates add
-	// Count rather than 1 per command so multi-larva morphs aren't undercounted.
+	// Count is >1 only for a Zerg larva-morph that morphed several selected larvae
+	// at once (the early filter resolves the real number). Unit-counting predicates
+	// must add Count rather than 1, or multi-larva morphs get undercounted.
 	Count int
 
-	// OrderName preserves the raw OrderName for KindCast (and any
-	// KindRightClick that carried an explicit order). Empty otherwise.
-	// Lets worldstate classify casts (PsionicStorm vs Recall vs Restoration)
-	// without re-walking the raw command stream.
+	// OrderName preserves the raw order for KindCast and any KindRightClick that
+	// carried an explicit one, so worldstate can tell PsionicStorm from Recall from
+	// Restoration without re-walking the raw stream. Empty otherwise.
 	OrderName string
 
-	// TargetUnitTag is the unit-tag of the order's target (the unit being
-	// right-clicked on), populated for KindLoad / KindLoadBunker and any
-	// other order whose source Command carries a non-nil TargetUnitTag. The
-	// worldstate drop detector tracks transport positions through this tag.
+	// TargetUnitTag is the tag of the unit being right-clicked, populated for
+	// KindLoad / KindLoadBunker and any order whose source Command carries one. The
+	// drop detector tracks transport positions through it.
 	TargetUnitTag *uint16
 }
 
-// aggressionByKind is the tunable mapping from Kind to Aggression default.
 // Tweak here; every caller picks up the change.
 var aggressionByKind = map[Kind]Aggression{
 	KindMakeBuilding:    NonAggressive,
@@ -187,9 +142,8 @@ var aggressionByKind = map[Kind]Aggression{
 	KindLayMine:         Aggressive,
 }
 
-// Classify returns the EnrichedCommand for a raw command. The second return
-// value is false when the command isn't a recognized action (Sync, Chat,
-// etc.) and callers can skip it entirely.
+// Classify returns false when the command isn't a recognized action (Sync,
+// Chat, …) and callers can skip it entirely.
 func Classify(cmd *models.Command) (EnrichedCommand, bool) {
 	if cmd == nil {
 		return EnrichedCommand{}, false
@@ -199,64 +153,53 @@ func Classify(cmd *models.Command) (EnrichedCommand, bool) {
 		return EnrichedCommand{}, false
 	}
 	subject := strings.TrimSpace(stringPtr(cmd.UnitType))
-	// Hotkey commands carry the group in HotkeyGroup; surface it as Subject
-	// ("0".."9") so predicates / evaluators can read it off the common field.
+	// Surface the hotkey group as Subject so predicates read it off the common field.
 	if kind == KindHotkey {
 		if cmd.HotkeyGroup == nil {
 			return EnrichedCommand{}, false
 		}
 		subject = strconv.Itoa(int(*cmd.HotkeyGroup))
 	}
-	// Cast commands carry the spell name in OrderName ("CastPsionicStorm",
-	// "NuclearStrike", "Recall"). Strip the "Cast" prefix so Subject reads
-	// as the canonical spell name; nuke variants without the prefix pass
-	// through unchanged.
+	// Strip the "Cast" prefix so Subject is the canonical spell name; nuke variants
+	// that lack the prefix pass through unchanged.
 	if kind == KindCast {
 		on := stringPtr(cmd.OrderName)
 		subject = strings.TrimPrefix(on, "Cast")
 	}
-	// Tech / Upgrade commands carry the canonical name in TechName /
-	// UpgradeName, not UnitType. Surface that as Subject so consumers
-	// can match on the tech/upgrade name (e.g. "Tank Siege Mode",
-	// "Singularity Charge (Dragoon Range)"). Pre-fix this was empty, so
-	// any phase/composition/timing logic that read Subject for these
-	// kinds silently misclassified them. The Never-Upgraded /
-	// Never-Researched predicates key on this Subject to split HP
-	// upgrades from research-grade upgrades.
+	// Tech / Upgrade carry their canonical name in TechName / UpgradeName, not
+	// UnitType. Before this, Subject was empty for these kinds and every
+	// phase/composition/timing rule reading it silently misclassified them. The
+	// Never-Upgraded / Never-Researched predicates key on this Subject to split HP
+	// upgrades from research-grade ones.
 	if kind == KindTech {
 		subject = strings.TrimSpace(stringPtr(cmd.TechName))
 	}
 	if kind == KindUpgrade {
 		subject = strings.TrimSpace(stringPtr(cmd.UpgradeName))
 	}
-	// Lay-mine carries the order name (no UnitType); surface it as Subject so
-	// the first-mine timing marker can match on it.
+	// Lay-mine carries no UnitType, so surface the order name for the first-mine
+	// timing marker to match on.
 	if kind == KindLayMine {
 		subject = strings.TrimSpace(stringPtr(cmd.OrderName))
 	}
-	// Load / LoadBunker carry the transport's type on the source Command's
-	// TargetUnitType transient field. Surface it as Subject so worldstate
-	// can read it off the canonical field.
+	// Surface the transport's type from the source Command's TargetUnitType so
+	// worldstate can read it off the canonical field.
 	if kind == KindLoad || kind == KindLoadBunker {
 		subject = strings.TrimSpace(stringPtr(cmd.TargetUnitType))
 	}
 	orderName := stringPtr(cmd.OrderName)
-	// Player resolution: prefer the Player pointer when set (test fixtures
-	// and some parser paths populate Player but leave PlayerID at zero).
-	// Mirror of engine.playerIDFromCommand.
+	// Prefer the Player pointer: test fixtures and some parser paths populate it
+	// but leave PlayerID at zero. Mirror of engine.playerIDFromCommand.
 	playerID := cmd.PlayerID
 	if cmd.Player != nil {
 		playerID = int64(cmd.Player.PlayerID)
 	}
-	// Normalize coordinates to PIXELS. In the raw command stream only Build
-	// commands carry TILE-unit coordinates (1 tile = 32px); every other
-	// spatial command is already pixels. Converting here makes the enriched
-	// stream uniformly pixel-space so downstream consumers never re-convert —
-	// a missed per-consumer conversion is exactly what put a building's tile
-	// coords into pixel logic and landed a "drop" in the map corner.
-	//
-	// BuildNydusExit is a build order issued via TargetedOrder, so its position
-	// is likewise in tiles and needs the same conversion.
+	// Normalize to PIXELS. Only Build commands carry TILE coordinates in the raw
+	// stream; everything spatial else is already pixels. Converting once here is
+	// what keeps a missed per-consumer conversion from recurring — that is exactly
+	// what put a building's tile coords into pixel logic and landed a "drop" in the
+	// map corner. BuildNydusExit is a build issued via TargetedOrder, so it is in
+	// tiles too.
 	xPx, yPx := cmd.X, cmd.Y
 	if (kind == KindMakeBuilding || kind == KindBuildNydusExit) && xPx != nil && yPx != nil {
 		px, py := *xPx*32+16, *yPx*32+16
@@ -283,13 +226,9 @@ func Classify(cmd *models.Command) (EnrichedCommand, bool) {
 	return fact, true
 }
 
-// FromAction is the DB-side constructor: callers that have the raw action
-// type + subject + second (dashboard reading from detected_patterns DB rows)
-// use this to get a fact without the full Command struct.
-//
-// It resolves Kind from the action-type string only — Location and
-// Aggression stay at their zero values. Intended for one-shot dashboard
-// reads that don't need those fields.
+// FromAction is the DB-side constructor for callers holding only action type,
+// subject and second (the dashboard reading detected_patterns rows). Kind comes
+// from the action-type string alone; Location and Aggression stay zero.
 func FromAction(actionType, subject string, second int, playerID int64) (EnrichedCommand, bool) {
 	kind := kindFromActionType(strings.TrimSpace(actionType))
 	if kind == KindUnknown {
@@ -304,15 +243,11 @@ func FromAction(actionType, subject string, second int, playerID int64) (Enriche
 	}, true
 }
 
-// classifyKind looks at ActionType, then OrderName when ActionType is
-// something ambiguous like "Right Click".
 func classifyKind(cmd *models.Command) Kind {
-	// Nydus orders take precedence over ActionType. BuildNydusExit arrives as
-	// an ActionType="Build" command (it's the canal's build-exit ability), so
-	// without this it would classify as a plain KindMakeBuilding and the
-	// offensive-nydus pass would never see it. EnterNydusCanal is included for
-	// completeness though screp rarely emits it (nydus traversal is a
-	// contextual right-click).
+	// Nydus orders take precedence over ActionType: BuildNydusExit arrives as
+	// ActionType="Build", so without this it classifies as a plain
+	// KindMakeBuilding and the offensive-nydus pass never sees it.
+	// EnterNydusCanal is here for completeness though screp rarely emits it.
 	if cmd.OrderName != nil {
 		switch *cmd.OrderName {
 		case models.UnitOrderBuildNydusExit:
@@ -326,11 +261,10 @@ func classifyKind(cmd *models.Command) Kind {
 	if k := kindFromActionType(cmd.ActionType); k != KindUnknown {
 		return k
 	}
-	// Right Click and Targeted Order commands carry the real semantic in
-	// OrderName (Move, AttackMove, Patrol, Cast*, …) — flatten that into a
-	// Kind rather than leaving callers to re-parse. Match on a
-	// space-stripped lowercase form so test fixtures using "Attack Move"
-	// resolve identically to the parser-emitted "AttackMove".
+	// Right Click and Targeted Order carry the real semantic in OrderName, so
+	// flatten it into a Kind rather than leaving callers to re-parse. Matched on a
+	// space-stripped lowercase form so a fixture's "Attack Move" resolves the same
+	// as the parser's "AttackMove".
 	if cmd.OrderName != nil {
 		switch *cmd.OrderName {
 		case models.UnitOrderAttackMove:
@@ -363,20 +297,16 @@ func classifyKind(cmd *models.Command) Kind {
 		case "stop":
 			return KindStop
 		}
-		// Spell casts: TargetedOrder with OrderName starting "Cast"
-		// (CastPsionicStorm, CastIrradiate, CastRecall, …) and the
-		// nuke family (NukeLaunch, NukePaint, NuclearStrike, NukeUnit,
-		// NukeTrack) which the engine treats as casts for routing.
+		// The nuke family (NukeLaunch, NuclearStrike, …) lacks the "Cast" prefix but
+		// the engine treats it as casts for routing.
 		if strings.HasPrefix(on, "Cast") ||
 			strings.HasPrefix(on, "Nuke") ||
 			on == "NuclearStrike" {
 			return KindCast
 		}
-		// Unload variants on TargetedOrder ("Unload", "UnloadAll",
-		// "MoveUnload" etc.) — needed for spatial drop detection in
-		// the v2 worldstate engine. The QueueableCmd UnloadAll path
-		// also classifies as KindUnloadAll via the ActionType match
-		// but carries no X/Y, so it is filtered out downstream.
+		// Unload variants on TargetedOrder, needed for spatial drop detection. The
+		// QueueableCmd UnloadAll path also lands on KindUnloadAll but carries no X/Y,
+		// so it is filtered out downstream.
 		if strings.Contains(strings.ToLower(on), "unload") {
 			return KindUnloadAll
 		}

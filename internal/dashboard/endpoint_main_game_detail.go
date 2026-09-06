@@ -140,16 +140,11 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	return detail, nil
 }
 
-// populateUnitCompositionMarkersForGameDetail computes attacker-composition
-// pills at request time from the persisted phase boundaries
-// (mid_game_starts / late_game_starts replay-level markers) and the
-// Train / Unit Morph / Cast command stream for the replay. The result
-// is one row per (player, phase) where the player produced ≥1
-// non-excluded attacking unit. See dashboard/unit_composition.go.
+// Computed at request time from the persisted phase boundaries and the
+// Train / Unit Morph / Cast stream; see dashboard/unit_composition.go.
 //
-// Side effect: also populates detail.TrainedUnitsTimeline from the same
-// row set so the event-map overlay can render per-player composition at
-// any selected event without a second DB query.
+// Side effect: also populates detail.TrainedUnitsTimeline from the same rows,
+// so the event-map overlay needs no second DB query.
 func (d *Dashboard) populateUnitCompositionMarkersForGameDetail(detail *workflowGameDetail) error {
 	boundaries, err := d.dbStore.GetPhaseBoundariesForReplay(d.ctx, detail.ReplayID)
 	if err != nil {
@@ -164,17 +159,12 @@ func (d *Dashboard) populateUnitCompositionMarkersForGameDetail(detail *workflow
 	return nil
 }
 
-// trainedUnitsTimelineFromRows converts the production/cast rows into a flat
-// per-player "this unit became alive at this second" stream. Filters out
-// workers + Overlord (the existing compositionExcluded set). Each Train /
-// Unit Morph row contributes one sample per unit name (multi-unit morphs
-// like a Zergling pair contribute two samples). Cast rows are ignored —
-// they don't represent a new unit on the field.
-//
-// The sample's Second is the command's seconds_from_game_start shifted
-// forward by the unit's build/morph duration (Fastest game speed) via
-// buildTimeFor. Approximation: morph source units are NOT deducted (mirrors
-// computeCompositionForReplay's approach) and deaths are not tracked.
+// trainedUnitsTimelineFromRows flattens production/cast rows into a per-player
+// "this unit became alive at this second" stream. Cast rows are ignored — they
+// don't put a new unit on the field — and multi-unit morphs contribute one
+// sample each. Second is shifted forward by the unit's build duration (Fastest
+// speed). Approximation: morph source units are not deducted (mirroring
+// computeCompositionForReplay) and deaths are not tracked.
 func trainedUnitsTimelineFromRows(rows []db.UnitProductionOrCastRow) []workflowTrainedUnitSample {
 	out := make([]workflowTrainedUnitSample, 0, len(rows))
 	for _, row := range rows {
@@ -263,9 +253,8 @@ func (d *Dashboard) populateDetectedPatternsForGameDetail(detail *workflowGameDe
 	return nil
 }
 
-// buildWorkflowPatternValue constructs the detected_patterns[] entry the frontend
-// consumes. Shape is registry-driven: event_type (FeatureKey), detected_second,
-// and an optional JSON payload for markers carrying extras.
+// Shape is registry-driven: event_type (FeatureKey), detected_second, and an
+// optional JSON payload for markers carrying extras.
 func buildWorkflowPatternValue(featureKey string, _ string, detectedSecond int64, rawPayload string) workflowPatternValue {
 	pv := workflowPatternValue{
 		EventType:      featureKey,
@@ -295,8 +284,7 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 	if cc, _ := d.countryCodesByPlayerKeys([]string{playerKey}); len(cc) > 0 {
 		result.CountryCode = cc[playerKey]
 	}
-	// Whatever Battle.net profile we already hold: identity, alternate toons,
-	// ladder standing. Cache-only, so this costs no bridge budget.
+	// Cache-only, so this costs no bridge budget.
 	if details := d.bnetProfileDetailsByPlayerKeys(d.ctx, []string{playerKey}); len(details) > 0 {
 		result.BnetProfile = details[playerKey]
 		if result.CountryCode == "" && result.BnetProfile != nil {
@@ -340,9 +328,6 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 	return result, nil
 }
 
-// buildWorkflowPlayerLastGames assembles the player page's "last games" rows:
-// the recent-games list plus, per game, the current player's result, APM,
-// disconnect flag, featuring pills and unit composition.
 func (d *Dashboard) buildWorkflowPlayerLastGames(playerKey string) ([]workflowGameListItem, error) {
 	playerName, err := d.playerNameForKey(playerKey)
 	if err != nil {
@@ -379,9 +364,7 @@ func (d *Dashboard) buildWorkflowPlayerLastGames(playerKey string) ([]workflowGa
 	if err := d.populateWorkflowRecentGamesCurrentPlayer(playerKey, result); err != nil {
 		return nil, fmt.Errorf("failed to populate recent game context for %s: %w", playerName, err)
 	}
-	// The current player's unit composition per game, the same rows the
-	// per-game player strip renders. Ten games means ten cheap re-computations
-	// (the histogram rules iterate without re-ingest; see unit_composition.go).
+	// Ten games means ten cheap re-computations (see unit_composition.go).
 	for i := range result {
 		current := result[i].CurrentPlayer
 		if current == nil {
@@ -845,7 +828,7 @@ func (d *Dashboard) buildWorkflowPlayerApmAsyncInsight(playerKey string) (workfl
 		Title:           "APM",
 		BetterDirection: "higher",
 		PopulationSize:  histogram.PlayersIncluded,
-		Description:     "Average actions per minute across this player's non-observer human games. Higher tends to mean more activity, but it is still contextual rather than a direct skill rating.",
+		Description:     "Average actions per minute across this player's non-observer human games. Higher tends to mean more activity.",
 		Details: []workflowPlayerInsightDetail{
 			{Label: "Eligible players", Value: fmt.Sprintf("%d (minimum %d games)", histogram.PlayersIncluded, histogram.MinGames)},
 			{Label: "Population mean", Value: fmt.Sprintf("%.1f APM", histogram.MeanAPM)},
@@ -895,7 +878,7 @@ func (d *Dashboard) buildWorkflowPlayerCadenceAsyncInsight(playerKey string) (wo
 		Title:           "Unit production cadence",
 		BetterDirection: "higher",
 		PopulationSize:  leaderboard.PlayersIncluded,
-		Description:     "Cadence looks at attacking-unit production rhythm from 7:00 until 80% game length. For each eligible game we combine unit rate and evenness using cadence = ratePerMin / (1 + cvGap), where cvGap is gap stddev divided by gap mean. Higher is better.",
+		Description:     "Cadence looks at attacking-unit production rhythm from 7:00 until 80% game length, combining how fast you produce with how evenly you space it. Higher is better.",
 		Details: []workflowPlayerInsightDetail{
 			{Label: "Eligible players", Value: fmt.Sprintf("%d (minimum %d games)", leaderboard.PlayersIncluded, leaderboard.MinGames)},
 			{Label: "Population mean", Value: fmt.Sprintf("%.3f", leaderboard.MeanCadence)},
@@ -1037,8 +1020,7 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 			baseByKey[baseKeyForEvent(&event)] = base
 		}
 		// Open-field 1v1 attacks (issue #186) have no base columns but carry a
-		// relational location ("in the middle", "near White's base") in the
-		// payload — surface it as the event's location label.
+		// relational location in the payload; surface it as the event's label.
 		if event.Base == nil && row.EventType == "attack" && row.Payload != nil {
 			if loc, x, y, ok := parseAttackRelativeLocation(*row.Payload); ok {
 				event.Base = &workflowGameEventBase{
@@ -1076,8 +1058,8 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 		if isDropEventType(event.Type) && row.Payload != nil && *row.Payload != "" {
 			applyDropPayload(&event, *row.Payload, baseMetas)
 		}
-		// nydus_attack reuses the drop payload shape (source = home, target =
-		// forward exit), so the same source/target/base stamping applies.
+		// nydus_attack reuses the drop payload shape (source = home, target = forward
+		// exit), so the same source/target/base stamping applies.
 		if event.Type == "nydus_attack" && row.Payload != nil && *row.Payload != "" {
 			applyDropPayload(&event, *row.Payload, baseMetas)
 		}
@@ -1089,11 +1071,8 @@ func replayEventsFromRows(rows []db.ReplayEventRow, mapLayout *models.MapContext
 	return events
 }
 
-// applyAlliancePayload decodes the {"teams":[["A","B"],["C"]]} payload that
-// parser.BuildAllianceDerivedEvents writes for late_alliance events and stamps
-// event.AllianceTeams with name-only player entries. PlayerID and Color are
-// filled in a second pass (resolveAllianceTeamPlayers) which has access to the
-// player roster.
+// applyAlliancePayload stamps name-only entries; PlayerID and Color are filled
+// by resolveAllianceTeamPlayers, which has access to the player roster.
 func applyAlliancePayload(event *workflowGameEvent, raw string) {
 	var pl struct {
 		Teams [][]string `json:"teams"`
@@ -1123,16 +1102,13 @@ func applyAlliancePayload(event *workflowGameEvent, raw string) {
 	}
 }
 
-// resolveAllianceTeamPlayers fills PlayerID and Color on each entry of every
-// event's AllianceTeams. Mirrors the post-hoc resolution pattern used by
-// resolveRecallTargetOwners — applyAlliancePayload runs inside
-// replayEventsFromRows where the player roster isn't available.
+// resolveAllianceTeamPlayers fills PlayerID and Color on every AllianceTeams
+// entry. It is a post-pass because applyAlliancePayload runs inside
+// replayEventsFromRows, where the roster isn't available.
 //
-// Lookups are keyed by both the raw player name (as stored in the alliance
-// payload) and the display name (post displayByName aliasing) to cover both
-// cases — detail.Players carries the display name in .Name, so a raw-name
-// payload entry like "chobo86" would otherwise miss the lookup for a player
-// whose display name is "chobo86 (you)".
+// Lookups are keyed by BOTH raw and display name: detail.Players carries the
+// display name, so a raw payload entry like "chobo86" would otherwise miss a
+// player whose display name is "chobo86 (you)".
 func resolveAllianceTeamPlayers(events []workflowGameEvent, players []workflowGamePlayer, displayByName map[string]string) []workflowGameEvent {
 	if len(events) == 0 {
 		return events
@@ -1141,7 +1117,6 @@ func resolveAllianceTeamPlayers(events []workflowGameEvent, players []workflowGa
 	for i := range players {
 		byName[players[i].Name] = &players[i]
 	}
-	// Map raw payload names back to the patched display-name entry in detail.Players.
 	for raw, display := range displayByName {
 		if p, ok := byName[display]; ok {
 			byName[raw] = p
@@ -1164,8 +1139,6 @@ func resolveAllianceTeamPlayers(events []workflowGameEvent, players []workflowGa
 	return events
 }
 
-// isDropEventType reports whether an event_type is one of the drop variants
-// emitted by worldstate.emitDropEvents.
 func isDropEventType(t string) bool {
 	switch t {
 	case "drop", "cliff_drop":
@@ -1174,11 +1147,7 @@ func isDropEventType(t string) bool {
 	return false
 }
 
-// applyDropPayload decodes a drop event's payload (same shape as the recall
-// payload, separate JSON type for clarity) and stamps the source/target
-// points, target base, and count/last-second fields onto the event.
 func applyDropPayload(event *workflowGameEvent, raw string, baseMetas []overlayBaseMeta) {
-	// The drop payload shape mirrors recallEventPayload; reuse the type.
 	var pl recallEventPayload
 	if err := json.Unmarshal([]byte(raw), &pl); err != nil {
 		return
@@ -1244,11 +1213,10 @@ func applyDropPayload(event *workflowGameEvent, raw string, baseMetas []overlayB
 	}
 }
 
-// recallEventPayload mirrors the on-disk JSON shape produced by
-// worldstate.emitRecallEvents. Short keys keep storage cost down — the
-// canonical mapping is documented at the worldstate side. The drop payload
-// also reuses this shape with an extra SB field for source base (recall's
-// source IS event.base; drops need a separate source ref).
+// recallEventPayload mirrors the JSON worldstate.emitRecallEvents produces;
+// short keys keep storage cost down. The drop payload reuses this shape with an
+// extra SB field, because recall's source IS event.base while drops need a
+// separate source ref.
 type recallEventPayload struct {
 	N  int                       `json:"n,omitempty"`
 	LE int                       `json:"le,omitempty"`
@@ -1267,11 +1235,8 @@ type recallEventTargetBaseRef struct {
 	MO *bool  `json:"mo,omitempty"`
 }
 
-// applyRecallPayload decodes the recall event's Payload JSON and populates
-// the recall-specific fields on workflowGameEvent (source/target points,
-// target base, count, last-second). The target_owner field — which needs
-// the per-replay player list to resolve PID → name/color — is handled in a
-// second pass after replayEventsFromRows returns.
+// The target_owner field needs the per-replay player list to resolve PID →
+// name/color, so it is filled in a second pass after replayEventsFromRows.
 func applyRecallPayload(event *workflowGameEvent, raw string, baseMetas []overlayBaseMeta) {
 	var pl recallEventPayload
 	if err := json.Unmarshal([]byte(raw), &pl); err != nil {
@@ -1315,15 +1280,10 @@ func applyRecallPayload(event *workflowGameEvent, raw string, baseMetas []overla
 	}
 }
 
-// resolveRecallTargetOwners is the post-pass that fills in event.TargetOwner
-// for recall events using the supplied PID → workflowGameEventPlayer lookup.
-// Split from applyRecallPayload because replayEventsFromRows has no access
-// to the per-replay players list — that's owned by populateDetectedPatternsForGameDetail.
-// resolveNaturalOwnerLabels relabels a natural-expansion location with its
-// owner's player name ("Skins_'s natural") instead of the start-clock form
-// ("7's natural"), when the natural's natural_of_clock matches a player's
-// start location (issue #186 review). Falls through unchanged when no owner is
-// found, preserving the clock-based baseLabel.
+// resolveNaturalOwnerLabels relabels a natural expansion with its owner's name
+// ("Skins_'s natural") instead of the start-clock form ("7's natural") when the
+// natural_of_clock matches a player's start location (issue #186). Falls through
+// unchanged when no owner is found, preserving the clock-based label.
 func resolveNaturalOwnerLabels(events []workflowGameEvent, players []workflowGamePlayer, startClockByPlayerID map[int64]int) []workflowGameEvent {
 	if len(events) == 0 || len(startClockByPlayerID) == 0 {
 		return events
@@ -1365,12 +1325,10 @@ func resolveRecallTargetOwners(events []workflowGameEvent, players []workflowGam
 		if events[i].TargetBase == nil {
 			continue
 		}
-		// The recall/drop payload is no longer present at this layer (events
-		// came out of replayEventsFromRows). We re-derive target_owner via
-		// the existing event.Target field — populated upstream from the row's
-		// target_player_id when worldstate set it. For both recall and drop,
-		// worldstate writes Target when the destination's owner is hostile,
-		// so Target ⇔ TargetOwner here.
+		// The payload is gone at this layer, so re-derive target_owner from
+		// event.Target, populated upstream from the row's target_player_id. Worldstate
+		// writes Target only when the destination's owner is hostile, so for both
+		// recall and drop, Target ⇔ TargetOwner.
 		if events[i].Target != nil {
 			cp := *events[i].Target
 			if p, ok := playerByID[cp.PlayerID]; ok {
@@ -1387,12 +1345,10 @@ func overlayBaseMetasFromLayout(layout *models.MapContextLayout) []overlayBaseMe
 	if layout == nil || len(layout.Bases) == 0 {
 		return nil
 	}
-	// scmapanalyzer annotates each start base with the Name of its natural.
-	// Build: natural_base_name -> start_clock, so we can stamp NaturalOfClock
-	// onto the natural base's overlay metadata. This lets the render-time
-	// lookup distinguish a natural from an unrelated expa that happens to
-	// share the same o'clock position (previously they collapsed to the
-	// same (kind, clock) key and painted the wrong polygon).
+	// Build natural_base_name -> start_clock so NaturalOfClock can be stamped onto
+	// the natural's overlay metadata. Without it, a natural and an unrelated expa
+	// at the same o'clock collapse to one (kind, clock) key and paint the wrong
+	// polygon.
 	startClockByNaturalName := map[string]int64{}
 	for _, base := range layout.Bases {
 		if !strings.EqualFold(strings.TrimSpace(base.Kind), "start") {
@@ -1449,9 +1405,8 @@ func lookupOverlayBase(baseMetas []overlayBaseMeta, baseType *string, baseOclock
 	}
 	targetClock := *baseOclock
 	targetType := strings.ToLower(strings.TrimSpace(nullableString(baseType)))
-	// Primary pass: match by (kind, clock[, natural_of_clock]). The
-	// natural_of_clock component is what disambiguates a natural from a
-	// coincident expa at the same clock.
+	// Primary pass: (kind, clock[, natural_of_clock]), where natural_of_clock is
+	// what separates a natural from a coincident expa at the same clock.
 	for _, candidate := range baseMetas {
 		if candidate.Base.Clock != targetClock {
 			continue
@@ -1481,9 +1436,9 @@ func lookupOverlayBase(baseMetas []overlayBaseMeta, baseType *string, baseOclock
 		}
 		return candidate.Base, true
 	}
-	// Secondary fallback: kind-agnostic clock match, preserving prior behavior
-	// when the primary pass fails (e.g. layout missing or natural-of-clock
-	// unmapped). Keeps rendering best-effort rather than dropping the polygon.
+	// Kind-agnostic clock fallback, preserving prior behaviour when the primary
+	// pass fails (layout missing, natural-of-clock unmapped) so rendering stays
+	// best-effort rather than dropping the polygon.
 	for _, candidate := range baseMetas {
 		if candidate.Base.Clock != targetClock {
 			continue
@@ -1523,10 +1478,9 @@ func baseKeyForEvent(event *workflowGameEvent) string {
 		return ""
 	}
 	kind := strings.ToLower(strings.TrimSpace(event.Base.Kind))
-	// Disambiguate naturals by the clock of the start they belong to — two
-	// different players' naturals can sit at the same clock, and an expa
-	// can share a clock with a natural. Without natural_of_clock in the
-	// key, ownership bookkeeping collapses them.
+	// Two players' naturals can sit at the same clock, and an expa can share a
+	// clock with a natural, so without natural_of_clock in the key ownership
+	// bookkeeping collapses them.
 	if kind == "natural" && event.Base.NaturalOfClock != nil {
 		return fmt.Sprintf("natural|%d|%d", *event.Base.NaturalOfClock, event.Base.Clock)
 	}
@@ -1536,10 +1490,8 @@ func baseKeyForEvent(event *workflowGameEvent) string {
 	return fmt.Sprintf("%s|%s", kind, strings.ToLower(strings.TrimSpace(event.Base.Name)))
 }
 
-// hasValidCenterBaseKind returns true for event base kinds that can legitimately
-// carry clock=0 (the "center base" emitted by scmapanalyzer for maps with a
-// rich expansion in the middle). Without this, center bases would silently
-// fall through to name-based keying.
+// Base kinds that can legitimately carry clock=0 (scmapanalyzer's "center
+// base"). Without this they silently fall through to name-based keying.
 func hasValidCenterBaseKind(kind string) bool {
 	switch kind {
 	case "start", "starting", "natural", "expansion", "expa":
@@ -1639,9 +1591,8 @@ func baseLabel(baseType *string, baseOclock *int64, naturalOf *int64) string {
 	if baseType == nil {
 		return ""
 	}
-	// oclock==0 means scmapanalyzer's "center base". None of the templated
-	// labels ("9", "12's natural near 6", "an expansion near 3") read right
-	// when inserted with 0, so short-circuit to a clear literal.
+	// oclock==0 is scmapanalyzer's "center base". None of the templated labels read
+	// right with 0 inserted, so short-circuit to a clear literal.
 	isCenter := func(v *int64) bool { return v != nil && *v == 0 }
 	switch strings.ToLower(strings.TrimSpace(*baseType)) {
 	case "starting":
@@ -1683,9 +1634,7 @@ func baseLabel(baseType *string, baseOclock *int64, naturalOf *int64) string {
 	}
 }
 
-// parseAttackRelativeLocation extracts the open-field relational location
-// label ("loc") and the fight centroid (pixels) from an attack event's payload
-// (issue #186). ok is false for any payload that doesn't carry a label.
+// ok is false for any payload that doesn't carry a label (issue #186).
 func parseAttackRelativeLocation(raw string) (loc string, x, y float64, ok bool) {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
@@ -1764,9 +1713,8 @@ func formatClockFromSeconds(second int64) string {
 	return fmt.Sprintf("%d:%02d", minute, sec)
 }
 
-// workflowSliceBoundaries returns the start-second of each post-4-minute slice
-// row for the production table. The first 4 minutes (0-239s) are rendered
-// separately as a time-scaled vertical chart (UnitsEarlyEvents), not bucketed.
+// The first 4 minutes are rendered separately as a time-scaled vertical chart
+// (UnitsEarlyEvents), not bucketed.
 func workflowSliceBoundaries(durationSeconds int64) []int64 {
 	base := []int64{240, 300, 360, 420, 600, 900, 1200, 1500, 1800, 2400, 3000, 3600}
 	boundaries := []int64{}
@@ -1833,9 +1781,8 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 		if second < 0 {
 			second = 0
 		}
-		// One Zergling Unit Morph command produces a pair of Zerglings
-		// from a single larva. Source rows have Count=1 per command, so
-		// double the increment for Zerglings.
+		// One Zergling Unit Morph produces a pair from a single larva, and source rows
+		// carry Count=1 per command, so double the increment.
 		inc := int64(1)
 		if unitType == models.GeneralUnitZergling {
 			inc = 2
@@ -1857,8 +1804,7 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 					workerOrdinalByPlayer[playerID] = map[string]int64{}
 				}
 				workerOrdinalByPlayer[playerID][unitType]++
-				// Players begin every game with 4 starting workers, so the
-				// first worker we observe being trained is the 5th overall.
+				// Players start with 4 workers, so the first one observed training is the 5th.
 				n := workerOrdinalByPlayer[playerID][unitType] + 4
 				label = fmt.Sprintf("%d%s %s", n, ordinalSuffix(int(n)), unitType)
 			}
@@ -2109,27 +2055,13 @@ func (d *Dashboard) populateFirstUnitEfficiencyForGameDetail(detail *workflowGam
 	return nil
 }
 
-// populatePhaseMarkersForGameDetail copies the persisted Early/Mid
-// game-end seconds onto the response so the frontend can split the Game
-// Events list into three sections. The boundaries come from the
-// mid_game_starts / late_game_starts markers persisted at ingest by
-// detectors.PhaseBoundaryDetector (which runs phases.Compute over the
-// enriched stream). Reading the persisted markers here keeps this
-// surface in lockstep with attacker-composition (which also reads them
-// via GetPhaseBoundariesForReplay) and avoids the action-type drift
-// that broke a request-time recomputation against raw rows.
-//
-// Algorithm (lives in internal/patterns/phases — see PhaseBoundaryDetector):
-//
-//   - earlyEnd: earliest first-occurrence across all players of
-//     Mutalisk / Lurker / Wraith / max(Siege Tank, Tank Siege Mode) /
-//     max(Dragoon, Singularity Charge) / Reaver / Dark Templar.
-//   - midEnd:   earliest of Defiler / Arbiter / Carrier / Battlecruiser /
-//     Ultralisk / any Terran ground or armor +2.
-//
-// Either field stays 0 when the corresponding marker isn't present
-// (game ended before that signal); the frontend collapses empty
-// sections.
+// populatePhaseMarkersForGameDetail copies the persisted Early/Mid game-end
+// seconds onto the response so the frontend can split Game Events into three
+// sections. Reading the persisted mid_game_starts / late_game_starts markers
+// keeps this in lockstep with attacker-composition and avoids the action-type
+// drift that broke recomputing them at request time from raw rows. Either field
+// stays 0 when its marker is absent, and the frontend collapses that section.
+// The algorithm lives in internal/patterns/phases.
 func (d *Dashboard) populatePhaseMarkersForGameDetail(detail *workflowGameDetail) error {
 	boundaries, err := d.dbStore.GetPhaseBoundariesForReplay(d.ctx, detail.ReplayID)
 	if err != nil {
@@ -2140,12 +2072,10 @@ func (d *Dashboard) populatePhaseMarkersForGameDetail(detail *workflowGameDetail
 	return nil
 }
 
-// zergBOEventSchema describes the per-BO event list shown in the Build
-// Orders detail tab for the simplified count-based Zerg BOs. Drones is
-// the ordered drone-morph count to render (1st, 2nd, ..., Nth Drone);
-// the boolean fields control whether to emit a Pool / Overlord / Hatchery
-// row. Pool/Overlord/Hatch ticks come from each player's command stream
-// at game-detail time (not persisted per detection).
+// zergBOEventSchema describes the per-BO event list for the count-based Zerg
+// BOs: Drones is the ordered drone-morph count to render, and the booleans
+// control the Pool / Overlord / Hatchery rows. Their ticks come from the command
+// stream at game-detail time, not from the persisted detection.
 type zergBOEventSchema struct {
 	Drones      int
 	HasOverlord bool
@@ -2153,12 +2083,8 @@ type zergBOEventSchema struct {
 	HasHatchery bool
 }
 
-// buildZergBOEvents builds the per-event timeline rows for one of the
-// simplified Zerg BOs. Drone events are numbered (1st, 2nd, ..., Nth)
-// from the player's command stream; the optional Overlord / Pool /
-// Hatchery rows append the first observed time. Expert (golden) ranges
-// from the marker definition are attached when available, else NoExpert
-// is set so the frontend renders the actual tick alone.
+// Expert (golden) ranges from the marker definition are attached when
+// available, else NoExpert is set so the frontend renders the tick alone.
 func buildZergBOEvents(schema zergBOEventSchema, expert []markers.ExpertEvent, t db.EarlyZergTimingsRow) []workflowMarkerEvent {
 	expertBySubject := map[string]*markers.ExpertEvent{}
 	for i := range expert {
@@ -2167,8 +2093,7 @@ func buildZergBOEvents(schema zergBOEventSchema, expert []markers.ExpertEvent, t
 	}
 	events := make([]workflowMarkerEvent, 0, schema.Drones+3)
 
-	// Labels start at "5th" — the player begins with 4 starting drones, so
-	// the first morphed drone is the 5th overall.
+	// Labels start at "5th": the player begins with 4 drones.
 	const startingDrones = 4
 	for i := 0; i < schema.Drones; i++ {
 		ordinal := i + 1 + startingDrones
@@ -2234,12 +2159,9 @@ func buildZergBOEvents(schema zergBOEventSchema, expert []markers.ExpertEvent, t
 	return events
 }
 
-// fuzzyZergSchemaFromLabel derives the simplified-Zerg event schema for a
-// fuzzy opener ("~N Pool / Overpool / Hatch") from its resolved payload label.
 // The fuzzy marker has no static schema — its rung is only known at detection
-// time — so the drone count and defining-building row come from the label,
-// mirroring the exact rungs' zergBOEventSchemas entries (defining building
-// only; Overlord row when the rung implies one morphed before it).
+// time — so the drone count and defining-building row come from the resolved
+// payload label instead.
 func fuzzyZergSchemaFromLabel(featureKey, label string) (zergBOEventSchema, bool) {
 	if featureKey != "bo_z_fuzzy" {
 		return zergBOEventSchema{}, false
@@ -2276,7 +2198,6 @@ var zergBOEventSchemas = map[string]zergBOEventSchema{
 	"bo_12_hatch":   {Drones: 8, HasOverlord: true, HasHatchery: true},
 }
 
-// ordinalSuffix returns the English ordinal suffix for an integer.
 func ordinalSuffix(n int) string {
 	if n%100 >= 11 && n%100 <= 13 {
 		return "th"
@@ -2292,24 +2213,20 @@ func ordinalSuffix(n int) string {
 	return "th"
 }
 
-// populateMarkersForGameDetail walks each player's detected build-order
-// patterns and attaches one expert-vs-actual comparison entry per (player ×
-// detected BO) to the detail's Markers field. Actual milestone timings are
-// read from each marker's persisted payload (resolved once at detection
-// time), so this path doesn't re-parse or re-resolve commands.
-//
-// BO broad definitions overlap on purpose (e.g. a "9 pool into hatchery" game
-// also matches "9 pool"), so multiple entries can surface for the same player.
-// Registry ordering in internal/patterns/markers drives the display order.
+// populateMarkersForGameDetail attaches one expert-vs-actual entry per
+// (player × detected BO). Actual timings are read from each marker's persisted
+// payload, resolved once at detection time, so this path never re-parses
+// commands. BO definitions overlap on purpose (a "9 pool into hatchery" game
+// also matches "9 pool"), so several entries can surface for one player;
+// registry ordering drives display order.
 func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) error {
 	detail.Markers = []workflowMarkerPlayer{}
 	if len(detail.Players) == 0 {
 		return nil
 	}
 
-	// Per-player Zerg morph / build timings (queried once for the replay).
-	// Used to render simplified-Zerg BO events (drone-numbered ticks +
-	// pool / overlord / hatchery) without re-parsing the replay.
+	// Queried once per replay, so simplified-Zerg BO events render without
+	// re-parsing.
 	zergTimings := map[int64]db.EarlyZergTimingsRow{}
 	if rows, err := d.dbStore.LoadEarlyZergTimings(d.ctx, detail.ReplayID); err == nil {
 		for _, r := range rows {
@@ -2317,11 +2234,9 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 		}
 	}
 
-	// Read pattern rows including their payload — payload carries the
-	// resolved Expert milestone seconds (set at detection time). Post
-	// markers-migration row.PatternName is the marker FeatureKey (e.g.
-	// "bo_9_pool"); resolve through the registry rather than matching
-	// "Build Order: <Name>" prefixes.
+	// Payload carries the Expert milestone seconds resolved at detection time.
+	// Post-migration row.PatternName is the marker FeatureKey, so resolve through
+	// the registry rather than matching "Build Order: <Name>" prefixes.
 	patternRows, err := d.dbStore.ListPlayerPatterns(d.ctx, detail.ReplayID)
 	if err != nil {
 		return fmt.Errorf("failed to load player patterns for build orders: %w", err)
@@ -2346,15 +2261,11 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 		}
 	}
 
-	// One chart per (player × detected BO). Broad definitions overlap on
-	// purpose (e.g. "9 pool" and "9 pool into hatchery" can both match the
-	// same game) — render every match so the user can interpret them.
-	// Registry order drives display order so specific variants sit next to
-	// their general cousins.
+	// Broad definitions overlap on purpose, so render every match and let the user
+	// interpret them; registry order puts specific variants next to their cousins.
 	allMarkers := markers.Markers()
-	// Start-location label per player, read from the player_start events
-	// already populated on the timeline. Lets the FE render "X starts at L and
-	// opens with BO" on the consolidated openers row.
+	// Read from the player_start events already on the timeline, so the FE can
+	// render "X starts at L and opens with BO" on the consolidated openers row.
 	startLocationByPlayer := map[int64]string{}
 	for i := range detail.GameEvents {
 		ev := &detail.GameEvents[i]
@@ -2362,12 +2273,10 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 			startLocationByPlayer[ev.Actor.PlayerID] = ev.Base.Name
 		}
 	}
-	// boOpeners accumulates one entry per (player × detected opener BO). They
-	// are surfaced as a single consolidated "bo_openers" game event at second 0
-	// (see below) rather than one timed event per BO — the per-BO timing was
-	// uninformative and the per-event rows read as noise. Every player gets at
-	// least one entry (with an empty BuildOrder when none was resolved) so the
-	// FE always shows the player's name, residual/uncalculated BO or not.
+	// Surfaced as ONE consolidated "bo_openers" event at second 0 rather than one
+	// timed event per BO: the per-BO timing was uninformative and read as noise.
+	// Every player gets an entry (empty BuildOrder when none resolved) so the FE
+	// always shows their name.
 	var boOpeners []workflowGameEventBuildOrder
 	anyBO := false
 	for _, player := range detail.Players {
@@ -2386,9 +2295,8 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 				continue
 			}
 			boModifiers := markers.DecodeModifiers([]byte(row.Payload))
-			// Dynamic openers (fuzzy Zerg opener) persist their resolved value
-			// ("~9 Overpool") in the payload; bo.Name is only a placeholder
-			// ("Zerg opening (approximate)"). Render the resolved label.
+			// Dynamic openers persist their resolved value ("~9 Overpool") in the payload;
+			// bo.Name is only a placeholder.
 			boLabel := bo.Name
 			if resolved, ok := markers.DecodePayloadLabel([]byte(row.Payload)); ok {
 				boLabel = resolved
@@ -2430,17 +2338,13 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 				Modifiers:  boModifiers,
 			})
 
-			// Surface the BO on the consolidated openers event. We still
-			// gate on a resolved first building (per user spec — units
-			// don't count): a BO that only matched via produce facts has
-			// no concrete opening to show. The actual second is no longer
-			// used (the consolidated event sits at 0:00), only the gate.
+			// Still gate on a resolved first building (units don't count): a BO that
+			// matched only via produce facts has no concrete opening to show. The actual
+			// second is unused now that the consolidated event sits at 0:00.
 			//
-			// The fuzzy opener (bo_z_fuzzy) is a Custom evaluator that persists
-			// only its resolved label ("~10 Hatch") and no expert milestones, so
-			// firstBuildingActualSecond can't see its building — but it fires
-			// only on a clean pool/hatch open, so a resolved payload label is
-			// itself proof of a concrete opening.
+			// The fuzzy opener persists only its label and no expert milestones, so
+			// firstBuildingActualSecond can't see its building — but it fires only on a
+			// clean pool/hatch open, so a resolved label is itself proof of one.
 			_, hasFirstBuilding := firstBuildingActualSecond(bo, events)
 			_, hasPayloadLabel := markers.DecodePayloadLabel([]byte(row.Payload))
 			if hasFirstBuilding || hasPayloadLabel {
@@ -2460,8 +2364,7 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 				anyBO = true
 			}
 		}
-		// No resolved opener for this player — still emit a name-only entry so
-		// the FE shows the player on the openers row and labels their start.
+		// Emit a name-only entry so the FE still shows the player and their start.
 		if !playerHadOpener {
 			boOpeners = append(boOpeners, workflowGameEventBuildOrder{
 				PlayerID:      player.PlayerID,
@@ -2474,12 +2377,8 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 			})
 		}
 	}
-	// Emit the openers as one consolidated event at second 0 — one entry per
-	// (player × BO), plus a name-only entry for players without one. The FE
-	// groups by player (one line each) and labels each starting location on the
-	// map. Type starts with "bo_" so the ownership back-propagation below hands
-	// it the starting-position snapshot. Skip entirely when no BO was resolved
-	// for anyone (nothing meaningful to open the timeline with).
+	// Type starts with "bo_" so the ownership back-propagation below hands it the
+	// starting-position snapshot. Skipped entirely when nobody resolved a BO.
 	if anyBO {
 		detail.GameEvents = append(detail.GameEvents, workflowGameEvent{
 			Type:        "bo_openers",
@@ -2487,19 +2386,15 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 			BuildOrders: boOpeners,
 		})
 	}
-	// detail.GameEvents was already populated by populateDetectedPatterns
-	// in time-sorted order — re-sort after appending BO entries so the
-	// timeline stays monotonic.
+	// populateDetectedPatterns left GameEvents time-sorted; re-sort after appending
+	// BO entries so the timeline stays monotonic.
 	sort.SliceStable(detail.GameEvents, func(i, j int) bool {
 		return detail.GameEvents[i].Second < detail.GameEvents[j].Second
 	})
-	// Propagate ownership snapshots forward to BO events. replayEventsFromRows
-	// computed Ownership for every replay_events row by walking transitions in
-	// time order, but synthesized BO events are appended here without that
-	// data. BOs don't change ownership themselves, so each one inherits the
-	// snapshot from the most recent prior event — which gives the FE the
-	// same set of base polygons it would draw if a real game_event fired at
-	// the BO's second.
+	// replayEventsFromRows computed Ownership for real rows by walking transitions
+	// in time order, but synthesized BO events are appended without it. BOs don't
+	// change ownership, so each inherits the most recent prior snapshot — giving the
+	// FE the same polygons it would draw for a real event at that second.
 	var prevOwnership []workflowGameOwnership
 	for i := range detail.GameEvents {
 		ev := &detail.GameEvents[i]
@@ -2512,13 +2407,9 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 	return nil
 }
 
-// populateMutaliskTimingForGameDetail emits the chart payload for the
-// "Mutalisk Timing" tab — one entry per side (Z + T) when both the
-// mutalisk_timing and turret_timing markers fired. The payload schema mirrors
-// workflowMarkerPlayer so the existing BuildOrderTimelineRows component
-// renders it unchanged. Actual timings are read from each marker's persisted
-// payload (set by the Custom evaluator at detection time); Expert ranges come
-// from the marker definition.
+// One entry per side, when both mutalisk_timing and turret_timing fired. The
+// payload schema mirrors workflowMarkerPlayer so BuildOrderTimelineRows renders
+// it unchanged. Actual timings come from each marker's persisted payload.
 func (d *Dashboard) populateMutaliskTimingForGameDetail(detail *workflowGameDetail) error {
 	if detail == nil {
 		return errors.New("nil game detail")
@@ -2588,12 +2479,10 @@ func (d *Dashboard) populateMutaliskTimingForGameDetail(detail *workflowGameDeta
 		return nil
 	}
 
-	// Each side has 2 events: the prerequisite building, then the unit/turret
-	// it gates. The chart renders trigger time + dotted build span + "built"
-	// time per event. The "built" second clamps to max(prereq_built, trigger)
-	// + build_time so queued commands don't fictitiously land before their
-	// prerequisite. No Expert tolerance bands — the only progamer reference
-	// is the muta-vs-turret completion gap (see summary below).
+	// Each side has 2 events: the prerequisite building, then what it gates. The
+	// "built" second clamps to max(prereq_built, trigger) + build_time so queued
+	// commands can't fictitiously land before their prerequisite. No Expert bands —
+	// the only progamer reference is the muta-vs-turret gap in the summary below.
 	type sideEventSpec struct {
 		key       string
 		subject   string
@@ -2602,8 +2491,7 @@ func (d *Dashboard) populateMutaliskTimingForGameDetail(detail *workflowGameDeta
 	}
 	makeEvents := func(specs []sideEventSpec) []workflowMarkerEvent {
 		events := make([]workflowMarkerEvent, 0, len(specs))
-		// Track the previous (= prerequisite) event's actual built second so
-		// the next event's built time clamps against it.
+		// Clamp the next event's built time against the prerequisite's.
 		var prevActualBuilt int64 = 0
 		for _, sp := range specs {
 			ev := workflowMarkerEvent{
@@ -2661,15 +2549,12 @@ func (d *Dashboard) populateMutaliskTimingForGameDetail(detail *workflowGameDeta
 		}
 	}
 
-	// Populate the gap summary. ExpertGap* values are corpus-derived from the
-	// 723 aurora-ID-labelled progamer 1v1 TvZ matches where both markers fire
-	// (MEASUREMENT.md), with prerequisite-clamped finish times:
-	// Mutalisk hatch = max(spire_built, morph_cmd) + 25,
-	// Missile Turret finish = max(ebay_built, build_cmd) + 19.
-	// Median gap (turret_finish - muta_finish) = +10s, p25 = +3, p75 = +19.
-	// Positive median = turret completes shortly after muta hatches — mutas
-	// then eat ~10-20s of travel time across the map, so turrets land
-	// just-in-time for muta arrival.
+	// ExpertGap* are corpus-derived from the 723 labelled progamer 1v1 TvZ matches
+	// where both markers fire (MEASUREMENT.md), with prerequisite-clamped finishes:
+	// Mutalisk hatch = max(spire_built, morph_cmd) + 25, Missile Turret =
+	// max(ebay_built, build_cmd) + 19. Median gap +10s, p25 +3, p75 +19: the turret
+	// completes just after the muta hatches, which then spends ~10-20s crossing the
+	// map, so turrets land just-in-time.
 	summary := &workflowMutaliskTimingSummary{
 		ExpertGapSeconds:    10,
 		ExpertGapMinSeconds: 3,
@@ -2699,12 +2584,9 @@ func (d *Dashboard) populateMutaliskTimingForGameDetail(detail *workflowGameDeta
 	return nil
 }
 
-// firstBuildingActualSecond returns the actual_second of the first building
-// milestone observed for a BO. For non-Zerg openers the events array is
-// position-aligned with bo.Expert, so we walk Expert entries and pick the
-// first KindMakeBuilding match. For simplified-Zerg BOs the events array is
-// reshaped (drone-numbered ticks + pool/hatch); we scan it for the first
-// known building Subject (Spawning Pool / Hatchery).
+// For non-Zerg openers the events array is position-aligned with bo.Expert, so
+// walk Expert and take the first KindMakeBuilding. Simplified-Zerg BOs reshape
+// the array, so scan it for the first known building Subject instead.
 func firstBuildingActualSecond(bo *markers.Marker, events []workflowMarkerEvent) (int, bool) {
 	if bo == nil {
 		return 0, false
@@ -2846,22 +2728,19 @@ const (
 	fingerprintMatchConfidenceModerate = "moderate"
 	fingerprintMatchMinVectors         = 3
 
-	// Per-comparison operating points, as named by scfingerprint. A tier is
-	// keyed to the strictest point a hit clears rather than to a raw SearchFPR
-	// threshold, because SearchFPR is the Šidák family-wise correction of these
-	// points over the catalog — so it moves as the catalog grows, while the
-	// points themselves do not. Fixed thresholds could not survive that: with a
-	// 70-entry catalog the "moderate" band spanned exactly one reachable value,
-	// 0.50516, against a 0.50 ceiling, so every surviving match reported "high"
-	// and "moderate" was unreachable.
+	// Per-comparison operating points, as named by scfingerprint. A tier keys to
+	// the strictest point a hit clears rather than a raw SearchFPR threshold,
+	// because SearchFPR is the Šidák family-wise correction of these points over the
+	// catalog and so moves as the catalog grows. Fixed thresholds couldn't survive
+	// that: at 70 entries the "moderate" band spanned one reachable value against a
+	// 0.50 ceiling, so every surviving match reported "high".
 	fingerprintOperatingPointStrict   = "fpr_1e4"
 	fingerprintOperatingPointModerate = "fpr_1e3"
 )
 
-// fingerprintConfidenceTier maps the operating points a hit clears to the
-// confidence tier shown in the UI. It reports false when the hit earns no tier
-// at all — clearing only fpr_1e2 is, family-wise across a catalog of this size,
-// roughly a coin flip, and a coin flip is not a claim worth rendering.
+// Reports false when the hit earns no tier at all: clearing only fpr_1e2 is,
+// family-wise across a catalog this size, roughly a coin flip — not a claim
+// worth rendering.
 func fingerprintConfidenceTier(operatingPoints map[string]bool) (string, bool) {
 	switch {
 	case operatingPoints[fingerprintOperatingPointStrict]:

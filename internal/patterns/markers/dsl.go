@@ -5,25 +5,16 @@ import (
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
-// This file is the DSL for composing broad-match predicates. Each helper is a
-// small, independently testable rule; Marker definitions in definitions.go
-// combine them with All / Any / Not.
+// The DSL for composing broad-match predicates. Each helper is a small,
+// independently testable rule returning a Predicate — a factory producing a
+// fresh PredicateState per invocation. States observe commands as they arrive
+// and commit as soon as the answer is determinate; at the RuleDeadline any
+// still-Pending state collapses to Rejected via Finalize().
 //
-// Every helper returns a Predicate — a factory that produces a fresh
-// PredicateState each time it's invoked. A PredicateState observes
-// cmdenrich.EnrichedCommand as they arrive and reports Matched / Rejected as soon
-// as the answer is determinate. At the RuleDeadline, any remaining Pending
-// states collapse to Rejected via Finalize().
-//
-// Authors in definitions.go never see the state machinery: the combinators
-// keep definitions reading as flat All(...) / Any(...) trees.
+// The combinators keep definitions.go reading as flat All(…) / Any(…) trees,
+// so marker authors never see the state machinery.
 
-// -----------------------------------------------------------------------------
-// Combinators
-// -----------------------------------------------------------------------------
-
-// All returns a Predicate that matches iff every child matches. Empty All
-// matches.
+// All matches iff every child matches. Empty All matches.
 func All(ps ...Predicate) Predicate {
 	return func() PredicateState {
 		children := make([]PredicateState, len(ps))
@@ -67,8 +58,7 @@ func (a *allState) Finalize() TriState {
 	return Matched
 }
 
-// Any returns a Predicate that matches iff at least one child matches. Empty
-// Any never matches.
+// Any matches iff at least one child matches. Empty Any never matches.
 func Any(ps ...Predicate) Predicate {
 	return func() PredicateState {
 		children := make([]PredicateState, len(ps))
@@ -112,7 +102,7 @@ func (a *anyState) Finalize() TriState {
 	return Rejected
 }
 
-// Not inverts a predicate's Matched/Rejected. Pending stays Pending.
+// Not inverts Matched/Rejected. Pending stays Pending.
 func Not(p Predicate) Predicate {
 	return func() PredicateState {
 		return &notState{child: p()}
@@ -142,13 +132,11 @@ func (n *notState) Finalize() TriState {
 	}
 }
 
-// -----------------------------------------------------------------------------
-// Leaf predicates. Each is a small struct that observes facts monotonically
-// and self-commits to Matched / Rejected as soon as its rule is decidable.
-// -----------------------------------------------------------------------------
+// Leaf predicates: each observes facts monotonically and self-commits as soon
+// as its rule is decidable.
 
-// commitState is a tiny mixin for predicates whose answer is a single
-// Matched / Rejected commit once a distinguishing fact arrives.
+// commitState is a mixin for predicates whose answer is a single commit once a
+// distinguishing fact arrives.
 type commitState struct{ done TriState }
 
 func (c *commitState) finalizeDefaultRejected() TriState {
@@ -158,7 +146,6 @@ func (c *commitState) finalizeDefaultRejected() TriState {
 	return c.done
 }
 
-// FirstBuildExists matches if the player ever Builds `subject`.
 func FirstBuildExists(subject string) Predicate {
 	return func() PredicateState {
 		return &firstBuildExistsState{subject: subject}
@@ -182,8 +169,7 @@ func (s *firstBuildExistsState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *firstBuildExistsState) Decision(int) TriState { return s.done }
 func (s *firstBuildExistsState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// FirstProduceExists matches if the player ever produces a unit of `subject`
-// (Train or Unit Morph). Backs the Carriers / Battlecruisers markers.
+// FirstProduceExists matches on Train or Unit Morph of `subject`.
 func FirstProduceExists(subject string) Predicate {
 	return func() PredicateState {
 		return &firstProduceExistsState{subject: subject}
@@ -207,9 +193,8 @@ func (s *firstProduceExistsState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *firstProduceExistsState) Decision(int) TriState { return s.done }
 func (s *firstProduceExistsState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// ProduceCountAtLeast matches once the player has produced at least n units
-// of `subject`. Time-agnostic: anchored only to the running tally, not to a
-// build / second. Backs unit-mass signatures like "10+ Scouts".
+// ProduceCountAtLeast is time-agnostic — anchored to the running tally, not to
+// a build or second — and backs unit-mass signatures like "10+ Scouts".
 func ProduceCountAtLeast(subject string, n int) Predicate {
 	return func() PredicateState {
 		return &produceCountAtLeastState{subject: subject, want: n}
@@ -238,11 +223,10 @@ func (s *produceCountAtLeastState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *produceCountAtLeastState) Decision(int) TriState { return s.done }
 func (s *produceCountAtLeastState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// BuildCountAtLeast matches once at least n Build(subject) facts have been
-// observed, with no time bound. The building analogue of ProduceCountAtLeast,
-// used by whole-game signatures (e.g. "2+ Stargates") whose verdict is
-// independent of when the builds land. Tile-level double-tap spam in the
-// opening minutes is already collapsed upstream (see BuildDedupGapSeconds).
+// BuildCountAtLeast is the building analogue of ProduceCountAtLeast, with no
+// time bound, for whole-game signatures whose verdict is independent of when
+// the builds land. Opening-minute double-tap spam is already collapsed upstream
+// (see BuildDedupGapSeconds).
 func BuildCountAtLeast(subject string, n int) Predicate {
 	return func() PredicateState {
 		return &buildCountAtLeastState{subject: subject, want: n}
@@ -271,19 +255,16 @@ func (s *buildCountAtLeastState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *buildCountAtLeastState) Decision(int) TriState { return s.done }
 func (s *buildCountAtLeastState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// HPUpgradeExists matches as soon as any tiered weapon/armor/shield upgrade
-// (the "HP Upgrades" group) arrives. Used via Not(...) for the Never-Upgraded
-// marker: only HP upgrades count as "upgrading"; every other upgrade is a
-// research (see NonHPUpgradeExists).
+// HPUpgradeExists matches any tiered weapon/armor/shield upgrade. Used via
+// Not() for Never-Upgraded: only HP upgrades count as "upgrading", every other
+// upgrade is a research (see NonHPUpgradeExists).
 func HPUpgradeExists() Predicate {
 	return func() PredicateState { return &upgradeExistsState{wantHP: true} }
 }
 
-// NonHPUpgradeExists matches as soon as any non-HP upgrade (range, speed,
-// energy, capacity/cooldown/damage — every upgrade tab except HP Upgrades)
-// arrives. Combined with TechExists via Any(...) to back the Never-Researched
-// marker: these upgrades are conceptually researches, split across tabs only
-// for chart readability.
+// NonHPUpgradeExists matches any upgrade outside the HP Upgrades tab. Combined
+// with TechExists via Any() for Never-Researched: these are conceptually
+// researches, split across tabs only for chart readability.
 func NonHPUpgradeExists() Predicate {
 	return func() PredicateState { return &upgradeExistsState{wantHP: false} }
 }
@@ -305,8 +286,7 @@ func (s *upgradeExistsState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *upgradeExistsState) Decision(int) TriState { return s.done }
 func (s *upgradeExistsState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// TechExists matches as soon as any KindTech fact arrives. Used via Not(...)
-// for the Never-Researched marker.
+// Used via Not() for the Never-Researched marker.
 func TechExists() Predicate {
 	return func() PredicateState { return &techExistsState{} }
 }
@@ -325,8 +305,7 @@ func (s *techExistsState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *techExistsState) Decision(int) TriState { return s.done }
 func (s *techExistsState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// HotkeyExists matches as soon as any KindHotkey fact arrives. Used via
-// Not(...) for the Never-Used-Hotkeys marker.
+// Used via Not() for the Never-Used-Hotkeys marker.
 func HotkeyExists() Predicate {
 	return func() PredicateState { return &hotkeyExistsState{} }
 }
@@ -345,8 +324,7 @@ func (s *hotkeyExistsState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *hotkeyExistsState) Decision(int) TriState { return s.done }
 func (s *hotkeyExistsState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// FirstBuildBefore matches if the first Build(subject) happens strictly
-// before maxSecond.
+// Strictly before maxSecond.
 func FirstBuildBefore(subject string, maxSecond int) Predicate {
 	return func() PredicateState {
 		return &firstBuildBeforeState{subject: subject, max: maxSecond}
@@ -384,8 +362,7 @@ func (s *firstBuildBeforeState) Decision(now int) TriState {
 
 func (s *firstBuildBeforeState) Finalize() TriState { return s.finalizeDefaultRejected() }
 
-// FirstBuildAtOrAfter matches if the first Build(subject) happens at or after
-// minSecond.
+// At or after minSecond.
 func FirstBuildAtOrAfter(subject string, minSecond int) Predicate {
 	return func() PredicateState {
 		return &firstBuildAtOrAfterState{subject: subject, min: minSecond}
@@ -414,9 +391,8 @@ func (s *firstBuildAtOrAfterState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *firstBuildAtOrAfterState) Decision(int) TriState { return s.done }
 func (s *firstBuildAtOrAfterState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// BuildBefore matches if `a` is built AND either `b` is never built OR a < b.
-// Leverages monotonic command arrival: whichever of a/b is observed first
-// wins.
+// BuildBefore matches if `a` is built AND either `b` is never built or a < b.
+// Leverages monotonic arrival: whichever of a/b is observed first wins.
 func BuildBefore(a, b string) Predicate {
 	return func() PredicateState {
 		return &buildBeforeState{a: a, b: b}
@@ -446,8 +422,7 @@ func (s *buildBeforeState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *buildBeforeState) Decision(int) TriState { return s.done }
 func (s *buildBeforeState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// BuildAfterWithin matches if the first Build(after) falls in the half-open
-// window (firstBuild(ref), firstBuild(ref)+maxGap]. Requires both to exist.
+// Half-open window (firstBuild(ref), firstBuild(ref)+maxGap]. Both must exist.
 func BuildAfterWithin(after, ref string, maxGap int) Predicate {
 	return func() PredicateState {
 		return &buildAfterWithinState{after: after, ref: ref, maxGap: maxGap, refSec: -1}
@@ -499,8 +474,6 @@ func (s *buildAfterWithinState) Decision(now int) TriState {
 
 func (s *buildAfterWithinState) Finalize() TriState { return s.finalizeDefaultRejected() }
 
-// NoProduceBeforeBuild matches if refSubject is eventually built AND no
-// Produce(unit) happened strictly before the first Build(refSubject).
 func NoProduceBeforeBuild(unit, refSubject string) Predicate {
 	return func() PredicateState {
 		return &noProduceBeforeBuildState{unit: unit, ref: refSubject}
@@ -536,12 +509,8 @@ func (s *noProduceBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *noProduceBeforeBuildState) Decision(int) TriState { return s.done }
 func (s *noProduceBeforeBuildState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// NthBuildBeforeFirstProduce matches if the n-th Build(buildSubject) happens
-// strictly before the first Produce(produceUnit). Used negated to keep a
-// single-production-structure opener honest, e.g.
-// Not(NthBuildBeforeFirstProduce(Gateway, 2, Reaver)) rejects a 2nd Gateway
-// laid before the Reaver ever pops — a "1 Gate Reaver" that already has two
-// Gateways by reaver time is really a 2-Gate build.
+// Used negated to keep a single-production-structure opener honest: a "1 Gate
+// Reaver" that already has two Gateways by reaver time is really a 2-Gate build.
 func NthBuildBeforeFirstProduce(buildSubject string, n int, produceUnit string) Predicate {
 	return func() PredicateState {
 		return &nthBuildBeforeFirstProduceState{build: buildSubject, n: n, unit: produceUnit}
@@ -576,8 +545,7 @@ func (s *nthBuildBeforeFirstProduceState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *nthBuildBeforeFirstProduceState) Decision(int) TriState { return s.done }
 func (s *nthBuildBeforeFirstProduceState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// ProduceBeforeBuild matches if at least one Produce(unit) happened strictly
-// before the first Build(refSubject). Requires refSubject to be built.
+// Strictly before the first Build(refSubject), which must happen.
 func ProduceBeforeBuild(unit, refSubject string) Predicate {
 	return func() PredicateState {
 		return &produceBeforeBuildState{unit: unit, ref: refSubject}
@@ -613,14 +581,10 @@ func (s *produceBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *produceBeforeBuildState) Decision(int) TriState { return s.done }
 func (s *produceBeforeBuildState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// ProduceCountBeforeBuild matches if EXACTLY n Produce(unit) facts arrive
-// strictly before the first Build(refSubject). The early-game spam filter
-// (internal/earlyfilter) drops engine-impossible morphs so the surviving
-// stream is a faithful count: this predicate keys Zerg build orders off
-// that count alone — no timing windows, no race-against-clock heuristics.
-//
-// Rejects on observing the (n+1)-th Produce(unit) before refSubject, and
-// on observing refSubject with a count != n.
+// ProduceCountBeforeBuild matches EXACTLY n Produce(unit) strictly before the
+// first Build(refSubject). The early-game spam filter (internal/earlyfilter)
+// drops engine-impossible morphs, so Zerg build orders can key off this count
+// alone — no timing windows, no race-against-clock heuristics.
 func ProduceCountBeforeBuild(unit, refSubject string, n int) Predicate {
 	return func() PredicateState {
 		return &produceCountBeforeBuildState{unit: unit, ref: refSubject, want: n}
@@ -631,13 +595,11 @@ type produceCountBeforeBuildState struct {
 	commitState
 	unit, ref string
 	want      int
-	// produces buffers each Produce(unit) as (second, count) until the ref
-	// Build is observed. We resolve by the produce's *game second* relative to
-	// the build's second rather than by observation order: the build-dedup tail
-	// (see player_marker.go enqueueDedup) holds a Build fact for a few seconds,
-	// during which a unit morphed just *after* the building would otherwise be
-	// miscounted as before it (e.g. the 6th Drone morphed 2s after a 9-supply
-	// Pool, inflating "9 Overpool" into "10 Pool").
+	// produces buffers each Produce as (second, count) until the ref Build lands,
+	// and resolves by GAME SECOND rather than observation order: the build-dedup
+	// tail (see player_marker.go enqueueDedup) holds a Build fact for a few seconds,
+	// during which a unit morphed just AFTER the building would be miscounted as
+	// before it — inflating "9 Overpool" into "10 Pool".
 	produces []produceObservation
 }
 
@@ -657,13 +619,11 @@ func (s *produceCountBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
 		}
 	case cmdenrich.KindMakeBuilding:
 		if f.Subject == s.ref {
-			// minCount counts each morph as 1 (its guaranteed floor); maxCount
-			// sums the capped selection size. They differ only when a
-			// multi-larva morph before the building makes the true count
-			// indeterminate (we can't tell from the replay how many selected
-			// units were larvae). An exact rung matches only when the count is
-			// unambiguous; ambiguous counts are picked up by the fuzzy
-			// zergOpenerFuzzyEvaluator instead.
+			// minCount counts each morph as 1 (its guaranteed floor); maxCount sums the
+			// capped selection size. They differ only when a multi-larva morph before the
+			// building makes the true count indeterminate, since the replay doesn't say how
+			// many selected units were larvae. An exact rung matches only on an unambiguous
+			// count; ambiguous ones go to zergOpenerFuzzyEvaluator instead.
 			minCount, maxCount := 0, 0
 			for _, p := range s.produces {
 				if p.second < f.Second {
@@ -680,9 +640,8 @@ func (s *produceCountBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
 	}
 }
 
-// factUnitCount is how many units a Produce fact represents — normally 1, but a
-// single Zerg larva-morph command can morph several selected larvae at once
-// (see cmdenrich.EnrichedCommand.Count). Facts built without a count (DB-side
+// factUnitCount is normally 1, but one Zerg larva-morph command can morph
+// several selected larvae at once. Facts built without a count (DB-side
 // FromAction, test literals) report 0 and are treated as 1.
 func factUnitCount(f cmdenrich.EnrichedCommand) int {
 	if f.Count > 1 {
@@ -694,14 +653,9 @@ func factUnitCount(f cmdenrich.EnrichedCommand) int {
 func (s *produceCountBeforeBuildState) Decision(int) TriState { return s.done }
 func (s *produceCountBeforeBuildState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// ProduceCountAtLeastBeforeBuild matches if AT LEAST n Produce(unit) facts
-// arrive strictly before the first Build(refSubject). Like
-// ProduceCountBeforeBuild but with a >= threshold instead of an exact count —
-// used by the residual "Other Pool / Other Hatch" catch-alls, which claim the
-// greedy tail of the drone ladder (supply >= 13) that the exact rungs don't.
-//
-// Matches as soon as the n-th Produce(unit) arrives before refSubject; rejects
-// on observing refSubject with fewer than n produced.
+// ProduceCountAtLeastBeforeBuild is ProduceCountBeforeBuild with a >= threshold
+// instead of an exact count, for the residual catch-alls that claim the greedy
+// tail of the drone ladder (supply >= 13) the exact rungs don't.
 func ProduceCountAtLeastBeforeBuild(unit, refSubject string, n int) Predicate {
 	return func() PredicateState {
 		return &produceCountAtLeastBeforeBuildState{unit: unit, ref: refSubject, want: n}
@@ -729,8 +683,7 @@ func (s *produceCountAtLeastBeforeBuildState) Observe(f cmdenrich.EnrichedComman
 		}
 	case cmdenrich.KindMakeBuilding:
 		if f.Subject == s.ref {
-			// First ref build with too few produced so far — can never reach
-			// the threshold "before the first ref build".
+			// The first ref build with too few produced can never reach the threshold.
 			if s.count < s.want {
 				s.done = Rejected
 			} else {
@@ -743,17 +696,15 @@ func (s *produceCountAtLeastBeforeBuildState) Observe(f cmdenrich.EnrichedComman
 func (s *produceCountAtLeastBeforeBuildState) Decision(int) TriState { return s.done }
 func (s *produceCountAtLeastBeforeBuildState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// BuildCountBeforeFirstBuildOf matches if EXACTLY n Build(subject) commands
-// arrive strictly before the first Build(refSubject) — compared by game second
-// (not observation order) so the build-dedup tail (see ProduceCountBeforeBuild)
-// can't miscount a building placed within a second or two of the reference.
+// BuildCountBeforeFirstBuildOf matches EXACTLY n Build(subject) strictly before
+// the first Build(refSubject), compared by game second (not observation order)
+// so the build-dedup tail can't miscount a building placed a second or two from
+// the reference.
 //
-// Used by the Terran mech buckets: count Factories built before the first
-// Command Center (the expansion — the starting CC is not a build command, the
-// same convention Zerg uses for the Hatchery) to name "N Fact Expa Mech"
-// deterministically. Pending until the ref Build is seen; rejected if the ref
-// is never built (Finalize default) — the no-expansion case is matched by a
-// separate rule.
+// Used by the Terran mech buckets to name "N Fact Expa Mech" deterministically:
+// the starting CC is not a build command, the same convention Zerg uses for the
+// Hatchery. Rejected if the ref is never built — the no-expansion case has its
+// own rule.
 func BuildCountBeforeFirstBuildOf(subject, refSubject string, n int) Predicate {
 	return func() PredicateState {
 		return &buildCountBeforeBuildState{subject: subject, ref: refSubject, want: n}
@@ -792,11 +743,9 @@ func (s *buildCountBeforeBuildState) Observe(f cmdenrich.EnrichedCommand) {
 func (s *buildCountBeforeBuildState) Decision(int) TriState { return s.done }
 func (s *buildCountBeforeBuildState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// BuildCountAtLeastBeforeFirstBuildOf matches if AT LEAST n Build(subject)
-// commands arrive strictly before the first Build(refSubject) — the "6+" top
-// rung of the N-Fact-Expa ladder. Matches as soon as the n-th subject build is
-// seen (the ref hasn't arrived yet, so they're necessarily earlier); rejects on
-// the first ref build with fewer than n seen, or if the ref is never built.
+// BuildCountAtLeastBeforeFirstBuildOf is the "6+" top rung of the N-Fact-Expa
+// ladder. Matches as soon as the n-th subject build lands, since the ref hasn't
+// arrived and they're necessarily earlier.
 func BuildCountAtLeastBeforeFirstBuildOf(subject, refSubject string, n int) Predicate {
 	return func() PredicateState {
 		return &buildCountAtLeastBeforeBuildState{subject: subject, ref: refSubject, want: n}
@@ -831,12 +780,9 @@ func (s *buildCountAtLeastBeforeBuildState) Observe(f cmdenrich.EnrichedCommand)
 func (s *buildCountAtLeastBeforeBuildState) Decision(int) TriState { return s.done }
 func (s *buildCountAtLeastBeforeBuildState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
-// NthBuildWithinGapOfFirst matches if the n-th Build(subject) occurs within
-// maxGap seconds of the FIRST Build(subject). Used to detect a "2 Starport"
-// cluster: two Starports built in quick succession (regardless of the opening
-// before them), which distinguishes the air opener from a lone tech Starport
-// added to a mech build. Rejects once the gap is exceeded with fewer than n
-// builds, or at end-of-replay if the n-th never arrives.
+// NthBuildWithinGapOfFirst detects a Starport cluster: several built in quick
+// succession regardless of the opening before them, which is what separates the
+// air opener from a lone tech Starport added to a mech build.
 func NthBuildWithinGapOfFirst(subject string, n, maxGap int) Predicate {
 	return func() PredicateState {
 		return &nthBuildWithinGapState{subject: subject, n: n, maxGap: maxGap, firstSec: -1}
@@ -876,8 +822,7 @@ func (s *nthBuildWithinGapState) Decision(now int) TriState {
 }
 func (s *nthBuildWithinGapState) Finalize() TriState { return s.finalizeDefaultRejected() }
 
-// CountBuildsBefore matches if at least n Build(subject) facts happen with
-// second strictly less than maxSecond.
+// Second strictly less than maxSecond.
 func CountBuildsBefore(subject string, n, maxSecond int) Predicate {
 	return func() PredicateState {
 		return &countBuildsBeforeState{subject: subject, n: n, max: maxSecond}
@@ -922,11 +867,9 @@ func (s *countBuildsBeforeState) Decision(now int) TriState {
 
 func (s *countBuildsBeforeState) Finalize() TriState { return s.finalizeDefaultRejected() }
 
-// BuildCountEqualsBefore matches if EXACTLY n Build(subject) facts happen with
-// second strictly less than maxSecond. Backs the per-Factory / per-Barracks
-// composition buckets (e.g. "exactly 3 Factories by 10:00"). Rejects early as
-// soon as the (n+1)-th build lands before the deadline; otherwise defers the
-// verdict to the deadline (fewer than n is only knowable once time is up).
+// BuildCountEqualsBefore backs the per-Factory / per-Barracks composition
+// buckets. Rejects early on the (n+1)-th build, but otherwise defers to the
+// deadline: fewer than n is only knowable once time is up.
 func BuildCountEqualsBefore(subject string, n, maxSecond int) Predicate {
 	return func() PredicateState {
 		return &countBuildsEqualsBeforeState{subject: subject, n: n, max: maxSecond}
@@ -976,9 +919,7 @@ func (s *countBuildsEqualsBeforeState) Finalize() TriState {
 	return Rejected
 }
 
-// ProduceCountAtLeastBefore matches if at least n units of `unit` are produced
-// (Train / Unit Morph) with second strictly less than maxSecond. Commits early
-// once the threshold is reached; rejects at the deadline if it never is.
+// Commits early once the threshold is reached; rejects at the deadline if not.
 func ProduceCountAtLeastBefore(unit string, n, maxSecond int) Predicate {
 	return func() PredicateState {
 		return &produceCountAtLeastBeforeState{unit: unit, n: n, max: maxSecond}
@@ -1017,10 +958,8 @@ func (s *produceCountAtLeastBeforeState) Decision(now int) TriState {
 
 func (s *produceCountAtLeastBeforeState) Finalize() TriState { return s.finalizeDefaultRejected() }
 
-// ProduceCountAtMostBefore matches if AT MOST n units of `unit` are produced
-// with second strictly less than maxSecond. Rejects early as soon as the
-// (n+1)-th unit lands before the deadline; otherwise matches (an upper bound is
-// only confirmable once the window closes, so it defaults to Matched).
+// ProduceCountAtMostBefore rejects early on the (n+1)-th unit but otherwise
+// defaults to Matched: an upper bound is only confirmable once the window closes.
 func ProduceCountAtMostBefore(unit string, n, maxSecond int) Predicate {
 	return func() PredicateState {
 		return &produceCountAtMostBeforeState{unit: unit, n: n, max: maxSecond}
@@ -1064,10 +1003,8 @@ func (s *produceCountAtMostBeforeState) Finalize() TriState {
 	return Matched
 }
 
-// Predominant matches if the total count of units in `units` produced before
-// maxSecond strictly exceeds the total count of units in `over`. Backs the
-// bio-vs-mech composition split. The verdict can only be known once the window
-// closes (either side can still grow), so it always defers to the deadline.
+// Predominant backs the bio-vs-mech composition split. Either side can still
+// grow, so the verdict always defers to the deadline.
 func Predominant(units, over []string, maxSecond int) Predicate {
 	return func() PredicateState {
 		inA := make(map[string]struct{}, len(units))
@@ -1115,8 +1052,8 @@ func (s *predominantState) Decision(now int) TriState {
 
 func (s *predominantState) Finalize() TriState { return s.verdict() }
 
-// NthBuildBeforeAll matches if the n-th Build(subject) exists AND its second
-// is strictly less than the first Build of every member of `others`.
+// The n-th Build(subject) must exist and precede the first build of every
+// member of `others`.
 func NthBuildBeforeAll(subject string, n int, others []string) Predicate {
 	return func() PredicateState {
 		set := make(map[string]struct{}, len(others))

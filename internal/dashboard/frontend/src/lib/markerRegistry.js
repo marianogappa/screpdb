@@ -1,8 +1,7 @@
-// markerRegistry loads the backend-authored Pill metadata once per session and
-// exposes a small surface for rendering marker pills without the per-marker
-// branches that used to live in App.jsx. Backend source of truth is
-// internal/patterns/markers/definitions.go; wire-shape comes from
-// /api/custom/markers/definitions (handlerMarkersDefinitions).
+// markerRegistry loads the backend-authored Pill metadata once per session, so
+// pill rendering needs none of the per-marker branches that used to live in
+// App.jsx. Source of truth is internal/patterns/markers/definitions.go, served
+// by /api/custom/markers/definitions.
 
 import { useEffect, useState } from 'react';
 import { api } from '../api';
@@ -20,8 +19,7 @@ const pillText = (definition, surface, field) => {
   return t.server(`server.marker.${definition.feature_key}.${surface}.${field}`, pill[field] || '');
 };
 
-// PILL_SURFACES enumerates the four render sites a marker may appear on.
-// Keys match the JSON fields emitted by the backend endpoint.
+// Keys match the JSON fields the backend endpoint emits.
 export const PILL_SURFACES = Object.freeze({
   summaryPlayer: 'summary_player',
   summaryReplay: 'summary_replay',
@@ -29,14 +27,11 @@ export const PILL_SURFACES = Object.freeze({
   eventsList:    'events_list',
 });
 
-// stripTemporalPlaceholders removes the "{minute}" / "{timestamp}" tokens
-// and the surrounding " at min", " at  mins", " min" stems from a label.
-// Used by the aggregate surface where there's no single timestamp to
-// interpolate (the marker fired across many games at varying times).
+// Used by the aggregate surface, where there is no single timestamp to
+// interpolate: the marker fired across many games at varying times.
 const stripTemporalPlaceholders = (template) => {
   if (!template) return '';
   let out = template;
-  // " at min {minute}" / " at min {timestamp}" / " at {minute} mins" etc.
   out = out.replace(/\s+at\s+min(?:ute)?s?\s*\{(?:minute|timestamp)\}/gi, '');
   out = out.replace(/\s+at\s+\{(?:minute|timestamp)\}\s*min(?:ute)?s?/gi, '');
   out = out.replace(/\s*\{(?:minute|timestamp)\}\s*분?\s*(?:에|경|쯤)?/g, ' ');
@@ -44,10 +39,8 @@ const stripTemporalPlaceholders = (template) => {
   return out.trim();
 };
 
-// interpolatePlaceholders resolves {subject}, {minute}, and {timestamp} in a template string.
-// {subject} reads the marker's payload (JSON blob) via the definition's Subject;
-// {minute} comes from detected_second divided by 60 (integer);
-// {timestamp} formats detected_second as M:SS.
+// {subject} reads the marker's payload via the definition's Subject, {minute} is
+// detected_second / 60, and {timestamp} formats detected_second as M:SS.
 const interpolatePlaceholders = (template, { subject, minute, timestamp }) => {
   if (!template) return '';
   let out = template;
@@ -63,9 +56,8 @@ const interpolatePlaceholders = (template, { subject, minute, timestamp }) => {
   return out;
 };
 
-// resolveSubject runs the Subject resolver declared by the marker definition.
-// Static subjects return their configured Value; payload_field subjects read
-// the named field and stringify it (joining arrays with ",").
+// Static subjects return their configured Value; payload_field subjects read the
+// named field and stringify it, joining arrays with ",".
 const resolveSubject = (subjectDef, payload) => {
   if (!subjectDef) return '';
   if (subjectDef.kind === 'static') return subjectDef.value || '';
@@ -96,8 +88,7 @@ const timestampFromSecond = (second) => {
   return `${m}:${s}`;
 };
 
-// renderPillText computes the final displayed label + icon-key for a (marker,
-// surface, row) triple. Returns null when the surface has no pill declared.
+// Returns null when the surface has no pill declared.
 export const renderPillText = (definition, surface, row) => {
   if (!definition) return null;
   const pill = definition[surface];
@@ -119,20 +110,13 @@ export const renderPillText = (definition, surface, row) => {
   };
 };
 
-// renderAggregatePillText computes the label/icon for a marker on the
-// aggregate Summary-tab cards (per-matchup, per-format) where there's no
-// single replay context. Priority:
-//   1. games_list pill — its labels are already temporal-free and the
-//      shortest user-facing form ("Recalls", "Nukes").
-//   2. definition.name — backend-friendly noun phrase ("Made drops",
-//      "Became Terran"). Used when there's no games_list and the
-//      summary_player label only contains placeholders/race tokens that
-//      strip down to something less descriptive than the Name.
-//   3. summary_player with temporal placeholders stripped — final fallback
-//      for markers without a games_list / Name that fits.
+// renderAggregatePillText computes the label/icon for the aggregate Summary-tab
+// cards, where there is no single replay context. In priority order:
 //
-// Style/title come from the chosen surface; icon resolves via the chosen
-// surface's icon_key (or stays null when none was set).
+//   1. games_list — already temporal-free and the shortest user-facing form.
+//   2. definition.name — used when there is no games_list and summary_player
+//      strips down to something less descriptive than the Name.
+//   3. summary_player with temporal placeholders stripped.
 export const renderAggregatePillText = (definition) => {
   if (!definition) return null;
   const gl = definition.games_list;
@@ -169,20 +153,16 @@ export const renderAggregatePillText = (definition) => {
   return null;
 };
 
-// BETA_TOOLTIP is the hover explanation shown next to the β tag on detections
-// that haven't been hand-checked against a real replay yet. Plain-language —
-// this isn't a research tool.
+// Plain-language on purpose: this isn't a research tool.
 export const betaTooltip = () => t('marker.betaTooltip');
 
-// featureIsBeta reports whether a marker/build-order definition is uncurated
-// (no human has verified it — see GOLDEN_TIERS.md). The backend sends
-// `curated: false` for those; game-event-only features carry no `curated`
-// field and are never flagged.
+// Uncurated means no human has verified the detection (see GOLDEN_TIERS.md).
+// The backend sends `curated: false` for those; game-event-only features carry
+// no `curated` field and are never flagged.
 export const featureIsBeta = (definition) =>
   !!definition && definition.curated === false;
 
-// pillClassName maps a backend PillStyle to the existing CSS classes. Keeps the
-// styling table small and explicit so adding a new style requires one edit here.
+// Keeps the styling table small and explicit, so a new style is one edit here.
 export const pillClassName = (style) => {
   switch (style) {
     case 'strong':
@@ -196,40 +176,31 @@ export const pillClassName = (style) => {
   }
 };
 
-// isBuildOrderEventType reports whether an event_type (== marker FeatureKey)
-// belongs to an opening build order. All initial-BO FeatureKeys are prefixed
-// "bo_" (including the residual "bo_*_other" catch-alls); the "opener_unresolved"
-// N/A marker is deliberately NOT one — it keeps its plain absence styling.
+// All initial-BO FeatureKeys are prefixed "bo_", including the residual
+// "bo_*_other" catch-alls. "opener_unresolved" is deliberately NOT one — it
+// keeps its plain absence styling.
 export const isBuildOrderEventType = (eventType) =>
   typeof eventType === 'string' && eventType.startsWith('bo_');
 
-// isOpenerEventType is the "fills the opener slot" predicate: a real build
-// order OR the "opener unresolved" (N/A) marker. Used for ordering (the opener
-// always leads the row) and for the "BUILD ORDER" legend.
+// isOpenerEventType is the "fills the opener slot" predicate: a real build order
+// OR the unresolved-opener marker. Drives ordering and the legend.
 export const isOpenerEventType = (eventType) =>
   isBuildOrderEventType(eventType) || eventType === 'opener_unresolved';
 
-// pillEventTypeClass returns an extra CSS class that distinguishes a pill by
-// what it represents (independent of its backend PillStyle): build orders, the
-// unresolved-opener N/A pill, and the "used hotkeys" pill each get their own
-// minimal treatment. Returns '' for everything else.
+// An extra class distinguishing a pill by what it REPRESENTS, independent of its
+// backend PillStyle. Returns '' for everything else.
 export const pillEventTypeClass = (eventType) => {
   if (isBuildOrderEventType(eventType)) return 'workflow-pattern-pill-bo';
   if (eventType === 'opener_unresolved') return 'workflow-pattern-pill-na';
   return '';
 };
 
-// useMarkerRegistry fetches /api/custom/markers/definitions once on mount and
-// exposes the full payload to consumers: markers keyed by FeatureKey, plus the
-// ordered featuring key list and the game-event-only feature metadata used by
-// the featuring-chip strip. Stable across a session (bumped only when
-// AlgorithmVersion changes on the backend).
+// Fetched once on mount and stable for the session.
 export const useMarkerRegistry = () => {
   const [state, setState] = useState({
     markers: {},
     featuring_order: [],
     game_event_features: [],
-    algorithmVersion: 0,
     loading: true,
     error: null,
   });
@@ -243,7 +214,6 @@ export const useMarkerRegistry = () => {
           markers: resp?.markers || {},
           featuring_order: Array.isArray(resp?.featuring_order) ? resp.featuring_order : [],
           game_event_features: Array.isArray(resp?.game_event_features) ? resp.game_event_features : [],
-          algorithmVersion: Number(resp?.algorithm_version) || 0,
           loading: false,
           error: null,
         });
@@ -258,16 +228,14 @@ export const useMarkerRegistry = () => {
   return state;
 };
 
-// lookupDefinitionForPattern resolves a detected_patterns[] row to its backend
-// definition. Tries the canonical event_type first, then falls back to a
-// normalized pattern_name lookup for rows emitted by older codepaths.
+// Tries the canonical event_type first, then a normalized pattern_name lookup
+// for rows emitted by older codepaths.
 export const lookupDefinitionForPattern = (registry, pattern) => {
   if (!registry || !pattern) return null;
   const byEventType = pattern.event_type ? registry[pattern.event_type] : null;
   if (byEventType) return byEventType;
 
-  // Fallback: some older endpoints still pass only pattern_name. Scan the
-  // registry for a case-insensitive name match.
+  // Some older endpoints pass only pattern_name.
   const normalized = normalizeUnitName(pattern.pattern_name);
   if (!normalized) return null;
   for (const key of Object.keys(registry)) {

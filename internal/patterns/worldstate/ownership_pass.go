@@ -6,28 +6,23 @@ import (
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
 )
 
-// Ownership state machine — donor-derived batch pass over an enriched
-// command stream.
-//
-// Semantics:
+// Ownership state machine, a batch pass over the enriched command stream:
 //
 //   - Frame 0: each player's start polygon is owned by them.
-//   - Any spatial command by the current owner inside their polygon
-//     refreshes the inactivity clock (not just builds — fixes a screpdb
-//     bug where pure movement/attack commands didn't refresh ownership).
-//   - Any KindMakeBuilding by another player into a polygon is a
-//     contested-takeover signal. Takeover happens when:
-//     (a) ≥ minContestedBuildSignalsOnStart (3) signals in the last
-//     contestedInvadeBuildWindowSec (180) AND polygon is starting; OR
-//     (b) the build is a resource building (CC/Nexus/Hatchery), regardless
-//     of starting flag (decisive ownership flip).
-//     AND the current owner has been quiet for ≥ contestedSwitchSec (45s).
-//     Takeover timestamp = earliest signal in the window.
-//   - If a polygon's owner has been quiet for > ownershipTimeoutSec
-//     (180s — kept screpdb-aligned, NOT donor's 600s viewer-tint value),
-//     ownership reverts to neutral with reason "timeout".
-//   - Town hall placed by a player into a non-starting polygon they own
-//     (and haven't expanded to before) emits an "expansion" reason.
+//   - ANY spatial command by the owner inside their polygon refreshes the
+//     inactivity clock, not just builds — pure movement/attack commands used to
+//     leave ownership un-refreshed.
+//   - A KindMakeBuilding by another player into a polygon is a contested-takeover
+//     signal. Takeover needs the owner quiet for ≥ contestedSwitchSec AND either
+//     ≥ minContestedBuildSignalsOnStart signals inside
+//     contestedInvadeBuildWindowSec on a starting polygon, or a resource building
+//     (a decisive flip regardless of the starting flag). The takeover timestamp
+//     is the earliest signal in the window.
+//   - An owner quiet for more than ownershipTimeoutSec reverts to neutral with
+//     reason "timeout". Kept at screpdb's 180s, NOT the donor's 600s viewer-tint
+//     value.
+//   - A town hall placed into a non-starting polygon the player owns and hasn't
+//     expanded to before emits an "expansion" reason.
 const (
 	ownershipTimeoutSec             = 180
 	contestedSwitchSec              = 45
@@ -35,32 +30,26 @@ const (
 	contestedInvadeBuildWindowSec   = 180
 )
 
-// OwnEvent is one transition in a polygon's ownership timeline.
-//
-// Owner is a raw replay byte PlayerID, or neutralPID (255) for unowned.
-// Sec is the second (game-clock time) at which the transition takes effect.
-// Stored as seconds (not frames) so that compose layer maps events
-// directly to ReplayEvent.Second without converting.
+// OwnEvent is one transition in a polygon's ownership timeline. Owner is a raw
+// replay byte PlayerID, or neutralPID for unowned. Sec is game-clock seconds,
+// not frames, so the compose layer maps straight to ReplayEvent.Second.
 type OwnEvent struct {
 	Sec    int
 	Owner  byte
 	Reason string // "init" | "start" | "claim" | "takeover" | "expansion" | "timeout"
 }
 
-// PolyOwnership is the per-polygon emitted timeline.
 type PolyOwnership struct {
 	PolyID int
 	Events []OwnEvent
 }
 
-// ProductionSignal is one "the producing building is alive here" datapoint fed
-// into the ownership pass: a player trained/morphed a unit at second Sec from a
-// building at tile (X, Y) when Anchored, or from a building whose location could
-// not be pinned (the spawn-seeded starting town hall, or a producer tag matched
-// to no Build) when not — those resolve to the player's start base. A signal
-// only REFRESHES the inactivity clock of a base the player still owns; it never
-// claims, contests, or resurrects a base (see BuildOwnership). Derived from
-// selection-tag tracking in internal/unittags; X, Y are build-placement tiles.
+// ProductionSignal is one "the producing building is alive here" datapoint: a
+// Train/Morph at second Sec from a building at tile (X, Y) when Anchored, or
+// from one whose location couldn't be pinned when not — those resolve to the
+// player's start base. A signal only REFRESHES the inactivity clock of a base
+// the player still owns; it never claims, contests, or resurrects one. Derived
+// from selection-tag tracking in internal/unittags.
 type ProductionSignal struct {
 	PlayerID byte
 	Sec      int
@@ -68,11 +57,10 @@ type ProductionSignal struct {
 	Anchored bool
 }
 
-// PolygonGeom is the minimum the state machine needs from a polygon:
-// pixel-space bounding box (BBox = [minX, minY, maxX, maxY]) and ordered
-// vertices for ray-cast point-in-polygon. Kind carries the layout role
-// ("start", "natural", "expa") so detectors can decide which polygons
-// matter (e.g. scouts only target start/natural).
+// PolygonGeom is the minimum the state machine needs: pixel-space bounding box
+// and ordered vertices for ray-cast point-in-polygon. Kind carries the layout
+// role ("start", "natural", "expa") so detectors can decide which polygons
+// matter — scouts, for instance, only target start and natural.
 type PolygonGeom struct {
 	ID       int
 	Kind     string
@@ -86,16 +74,15 @@ type geomPoint struct {
 	X, Y int
 }
 
-// PlayerStart describes a player's seed: byte PlayerID used as Owner in
-// OwnEvent, and pixel start position used to seed the starting polygon.
+// PlayerStart is a player's seed: the byte PlayerID used as OwnEvent.Owner, and
+// the pixel start position used to seed the starting polygon.
 type PlayerStart struct {
 	PlayerID byte
 	X, Y     int
 }
 
-// IsResourceBuilding tells whether a building name represents a town hall
-// (and thus a resource expansion). Mirror of screpdb's commitment-build
-// resource subset.
+// IsResourceBuilding reports a town hall, and thus a resource expansion. Mirror
+// of screpdb's commitment-build resource subset.
 func IsResourceBuilding(name string) bool {
 	switch name {
 	case "Command Center", "Nexus", "Hatchery", "Lair", "Hive":
@@ -104,13 +91,10 @@ func IsResourceBuilding(name string) bool {
 	return false
 }
 
-// BuildOwnership runs the state machine over the enriched stream and
-// returns the per-polygon timeline. Linear time over (commands, polygons):
-// each command does an O(n_polys) point-in-polygon (with a bbox prefilter)
-// and an O(1) state update.
-//
-// All time comparisons are in seconds (ec.Second). Frame is incidental and
-// only used for ordering inside EnrichFromCommands.
+// BuildOwnership is linear over (commands, polygons): each command does an
+// O(n_polys) point-in-polygon with a bbox prefilter plus an O(1) state update.
+// All time comparisons are in seconds; Frame is incidental and only orders
+// things inside EnrichFromCommands.
 func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, players []PlayerStart, prodSignals []ProductionSignal, durationSec int) []PolyOwnership {
 	timelines := make([][]OwnEvent, len(polys))
 	for i := range timelines {
@@ -125,14 +109,12 @@ func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, pla
 	}
 	playerExpanded := map[byte]map[int]bool{}
 	startPolyByPlayer := map[byte]int{}
-	// hasBuiltResource[poly][player] tracks whether a player has ever
-	// *explicitly* placed a town hall in the polygon. The game's spawned
-	// starting town hall does NOT count: when an opponent later plants a
-	// town hall in a polygon whose nominal owner only has the spawn-seeded
-	// base (and never replaced/expanded it themselves), the spawn must be
-	// gone — otherwise the opponent couldn't have built there. That makes
-	// the opponent's plant a clean expansion, not a takeover from a real
-	// active base.
+	// hasBuiltResource[poly][player] tracks whether a player ever EXPLICITLY placed
+	// a town hall there. The game's spawned starting hall does not count: if an
+	// opponent later plants one in a polygon whose nominal owner only ever had the
+	// spawn seed, the spawn must be gone — otherwise the opponent couldn't have
+	// built there — which makes the plant a clean expansion rather than a takeover
+	// from a real active base.
 	hasBuiltResource := map[int]map[byte]bool{}
 	markBuiltResource := func(pi int, p byte) {
 		if hasBuiltResource[pi] == nil {
@@ -175,13 +157,11 @@ func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, pla
 		}
 	}
 
-	// Production signals refresh the inactivity clock of a base the player still
-	// owns — a Train/Morph proves the producing building (and thus the base) is
-	// alive. Processed in time order, interleaved with the command stream: each
-	// signal behaves like a refresh-only command at its own second (timeout
-	// evaluated first, then refresh-if-still-owned). It never claims a neutral
-	// polygon, contests an opponent, or resurrects a base that already reverted
-	// — only lastOwningSec is touched, so takeover/expansion logic is untouched.
+	// Production signals refresh the clock of a base the player still owns: a
+	// Train/Morph proves the producing building, and thus the base, is alive. They
+	// are interleaved with the command stream in time order and behave like a
+	// refresh-only command (timeout first, then refresh-if-still-owned). Only
+	// lastOwningSec is touched, so takeover and expansion logic is untouched.
 	signals := append([]ProductionSignal(nil), prodSignals...)
 	sort.Slice(signals, func(i, j int) bool { return signals[i].Sec < signals[j].Sec })
 	sigIdx := 0
@@ -260,11 +240,10 @@ func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, pla
 			continue
 		}
 
-		// Opponent's resource building in a polygon whose nominal owner
-		// never built a town hall there themselves: the spawn-seeded base
-		// must be gone (otherwise the opponent couldn't physically build),
-		// so this is a fresh expansion rather than a takeover of a real
-		// active base. Nullify the old owner's claim immediately.
+		// An opponent's resource building in a polygon whose nominal owner never built
+		// a town hall there means the spawn-seeded base must be gone (they couldn't
+		// physically build otherwise), so this is a fresh expansion rather than a
+		// takeover. Nullify the old owner's claim immediately.
 		if isResource && !hasBuiltResource[pi][cur] {
 			owner[pi] = p
 			lastOwningSec[pi][p] = ec.Second
@@ -312,9 +291,8 @@ func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, pla
 			if playerExpanded[p] == nil {
 				playerExpanded[p] = map[int]bool{}
 			}
-			// A takeover already conveys "this player now controls the
-			// polygon"; mark it as expanded so a subsequent town-hall plant
-			// by the same player doesn't double-emit as expansion.
+			// A takeover already conveys "this player now controls the polygon", so mark it
+			// expanded and a later town-hall plant by them won't double-emit.
 			playerExpanded[p][pi] = true
 			if isResource {
 				markBuiltResource(pi, p)
@@ -323,20 +301,18 @@ func BuildOwnership(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, pla
 		}
 	}
 
-	// Drain production signals after the last command — a player whose final
-	// activity is a Train/Morph (no later movement/build) must still refresh.
+	// Drain after the last command: a player whose final activity is a Train/Morph,
+	// with no later movement or build, must still refresh.
 	drainSignals(1 << 30)
 
-	// Intentionally NO end-of-replay flushTimeouts call. The legacy
-	// emit-as-you-go semantics let players keep ownership of their main
-	// at end-of-game; only mid-game inactivity emits location_inactive.
+	// Intentionally NO end-of-replay flushTimeouts: the legacy emit-as-you-go
+	// semantics let players keep their main at end-of-game, and only mid-game
+	// inactivity emits location_inactive.
 	_ = durationSec
 
-	// Collapse adjacent same-owner entries so the timeline only keeps
-	// real transitions — EXCEPT for "expansion": a player who already
-	// owns the polygon (via an earlier non-resource "claim" or via their
-	// initial start seed) and then plants a town hall is meaningfully
-	// expanding. Dropping it would silently lose the player's
+	// Collapse adjacent same-owner entries so only real transitions survive —
+	// EXCEPT "expansion": a player who already owns the polygon and then plants a
+	// town hall is meaningfully expanding, and dropping it would silently lose their
 	// commitment-to-resources signal.
 	out := make([]PolyOwnership, 0, len(polys))
 	for i, evs := range timelines {
@@ -408,11 +384,9 @@ func rayCastGeom(verts []geomPoint, x, y int) bool {
 	return inside
 }
 
-// polygonGeomFromBases adapts the engine's internal []base layout into the
-// PolygonGeom shape consumed by BuildOwnership / BuildAttacks.
-//
-// IDs are array indices (matching the engine's biOwnership / biEvent
-// indices) so callers can cross-reference against the original bases slice.
+// polygonGeomFromBases adapts the engine's internal []base layout. IDs are
+// array indices, matching the engine's biOwnership / biEvent indices, so callers
+// can cross-reference against the original bases slice.
 func polygonGeomFromBases(bases []base) []PolygonGeom {
 	out := make([]PolygonGeom, 0, len(bases))
 	for i, b := range bases {

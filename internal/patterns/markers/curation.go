@@ -1,16 +1,9 @@
 package markers
 
-// curatedFeatureKeys is the machine-readable mirror of the tier-1 ("human
-// verified by watching the replay") premises documented in
-// internal/patterns/GOLDEN_TIERS.md. A marker / build-order whose FeatureKey is
-// NOT in this set has only auto-generated (tier-2) golden coverage — i.e. no
-// human has eyeballed the detection against a real replay — and the dashboard
-// flags it as "beta".
-//
-// Keep this in sync with GOLDEN_TIERS.md: when a detection is human-curated
-// (a fixture + a documented premise), add its FeatureKey here so the beta tag
-// disappears. Default is uncurated (beta) — the safe, honest default for any new
-// detection.
+// curatedFeatureKeys mirrors the tier-1 ("human verified by watching the
+// replay") premises in internal/patterns/GOLDEN_TIERS.md. A FeatureKey absent
+// here has only auto-generated tier-2 coverage and the dashboard flags it
+// "beta". Keep in sync with GOLDEN_TIERS.md; uncurated is the safe default.
 var curatedFeatureKeys = map[string]bool{
 	// Build-order openers — GOLDEN_TIERS.md "Build-order classification".
 	// Zerg batch.
@@ -118,7 +111,7 @@ var curatedFeatureKeys = map[string]bool{
 	// Round 13 (issue #269) — watched & confirmed. Fixtures bo_10pool_zvz_mentalgap
 	// (mentalgap = 10 Pool) and bo_tankless_expand_tvt_bisu (Bisu_chongchong =
 	// Tankless Mech, expand-first). The round also fixed the gas/extractor-trick
-	// undercount (AlgorithmVersion 60): the same-player 3hatch_hydra_2jd /
+	// undercount (DetectorVersion 60): the same-player 3hatch_hydra_2jd /
 	// _pingcojerry fixtures now read 10 Hatch (was 4/6).
 	"bo_10_pool":           true,
 	"bo_t_tankless_expand": true,
@@ -156,21 +149,17 @@ var curatedFeatureKeys = map[string]bool{
 	"offensive_nydus": true, // GOLDEN_TIERS.md "Offensive-nydus detection"
 }
 
-// IsCurated reports whether the marker / build-order with this FeatureKey has a
-// human-curated (tier-1) golden premise. Uncurated detections are surfaced as
-// "beta" in the dashboard.
+// Uncurated detections are surfaced as "beta" in the dashboard.
 func IsCurated(featureKey string) bool {
 	return curatedFeatureKeys[featureKey]
 }
 
-// betaExemptFeatureKeys are markers that should never carry the "beta" tag even
-// though they have no tier-1 golden — they are exact, deterministic
-// measurements (hotkey-group usage), not fallible pattern detections, so there
-// is nothing for a human to verify against a replay.
+// betaExemptFeatureKeys never carry the "beta" tag despite having no tier-1
+// golden: they are exact, deterministic measurements rather than fallible
+// detections, so there is nothing for a human to verify against a replay.
 var betaExemptFeatureKeys = map[string]bool{
 	"never_used_hotkeys": true,
-	// Deterministic facts / phase boundaries, not fallible detections — there is
-	// nothing to verify against a replay, so they carry no "beta" tag (round 10).
+	// Deterministic facts / phase boundaries, so nothing to verify (round 10).
 	"became_terran":         true,
 	"became_zerg":           true,
 	"late_game_starts":      true,
@@ -178,19 +167,16 @@ var betaExemptFeatureKeys = map[string]bool{
 	"viewport_multitasking": true,
 	"never_researched":      true,
 	"never_upgraded":        true,
-	// Catch-all residual buckets, not detections: they claim whatever the named
-	// rungs/openers leave over, so there is no premise to verify against a replay
-	// and the "beta" tag only adds noise to an intentionally-unclassified label
-	// ("Pool/Hatch (Other)", "Opener unresolved").
+	// Catch-all residuals, not detections: they claim whatever the named openers
+	// leave over, so there is no premise to verify and "beta" only adds noise.
 	"bo_zerg_other":     true,
 	"bo_protoss_other":  true,
 	"bo_terran_other":   true,
 	"opener_unresolved": true,
 }
 
-// IsBetaExempt reports whether a marker is exempt from the beta tag because it
-// is a deterministic measurement or a catch-all residual bucket, rather than a
-// fallible detection with a premise to verify.
+// Exempt because the marker is a deterministic measurement or a catch-all
+// residual, rather than a fallible detection with a premise to verify.
 func IsBetaExempt(featureKey string) bool {
 	return betaExemptFeatureKeys[featureKey]
 }

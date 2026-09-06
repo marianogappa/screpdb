@@ -7,9 +7,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
-// secAfter is shorthand for "second anchor + N build-time increments, rounded".
-// Exists because some SC:BW build times are fractional (Zealot 25.2s) and
-// target seconds must be ints.
+// secAfter rounds fractional SC:BW build times (Zealot 25.2s) to whole seconds.
 func secAfter(anchor int, addends ...float64) int {
 	total := float64(anchor)
 	for _, a := range addends {
@@ -18,16 +16,9 @@ func secAfter(anchor int, addends ...float64) int {
 	return int(math.Round(total))
 }
 
-// zergPoolBO builds one rung of the pool-first ladder. Supply at Pool = 4
-// starting Drones + N Drone morphs, so the rule keys off the exact morph count
-// (the early-game spam filter makes the surviving Drone stream supply-faithful
-// — see the 4/9/12 Pool comments). Each rung uses a distinct exact count, so
-// the rungs are mutually exclusive by construction. Hatchery / Evolution
-// Chamber must not precede the Pool (else it's a hatch-first opener).
-// poolSec is the progamer-ideal Pool placement second for the UI golden
-// compare; zerglings pop one Pool build-time later. Rungs with a measured
-// corpus sample (MEASUREMENT.md) pass their measured events via expert,
-// overriding both derived defaults.
+// zergPoolBO builds one rung of the pool-first ladder, keyed on the exact
+// Drone-morph count so the rungs are mutually exclusive by construction.
+// poolSec is the progamer-ideal Pool second for the UI golden compare.
 func zergPoolBO(supply, poolSec int, expert ...ExpertEvent) Marker {
 	drones := supply - 4
 	label := fmt.Sprintf("%d Pool", supply)
@@ -66,15 +57,8 @@ func zergPoolBO(supply, poolSec int, expert ...ExpertEvent) Marker {
 	}
 }
 
-// zergHatchBO builds one rung of the hatch-first ladder. Supply at the
-// expansion Hatchery = 4 starting Drones + N Drone morphs (the first
-// Build(Hatchery) is the expansion — the starting Hatchery isn't a command).
-// Keyed on the exact morph count, so rungs are mutually exclusive. A Pool /
-// Evolution Chamber before the Hatchery makes it a Pool-tech opening, not
-// hatch-first. The lower rungs (4–8 Hatch) need no Overlord gate — a Hatchery
-// costs 300 minerals, so a Drone morphing or not before it is the whole signal,
-// and the build can't be faked (the spam filter keeps the morph stream
-// supply-faithful). hatchSec is the progamer-ideal Hatchery second.
+// zergHatchBO builds one rung of the hatch-first ladder, keyed on the exact
+// Drone-morph count so the rungs are mutually exclusive by construction.
 func zergHatchBO(supply, hatchSec int) Marker {
 	drones := supply - 4
 	label := fmt.Sprintf("%d Hatch", supply)
@@ -109,12 +93,8 @@ func zergHatchBO(supply, hatchSec int) Marker {
 	}
 }
 
-// zergHatchTechMarker builds an "N Hatch {Hydra|Muta|Lurker}" composition
-// MARKER, named by the bases standing at the economy→army transition (see
-// zergHatchTechEvaluator) for any N. It layers on top of the supply opener
-// rather than occupying the opener slot — the opening (11/12 Hatch, Overpool, …)
-// and the tech commitment are separate axes (issue #245). The dynamic "N Hatch"
-// label rides in the result payload, like the fuzzy opener's "~N" rung.
+// zergHatchTechMarker layers "N Hatch <tech>" on top of the supply opener: the
+// opening and the tech commitment are separate axes (issue #245).
 func zergHatchTechMarker(tech zergTech, iconKey, featureKey string, matchup []string) Marker {
 	name := "N Hatch " + tech.unit()
 	pill := func() *Pill {
@@ -135,24 +115,12 @@ func zergHatchTechMarker(tech zergTech, iconKey, featureKey string, matchup []st
 	}
 }
 
-// -----------------------------------------------------------------------------
-// Build order definitions. Add / edit / remove entries here — everything else
-// (detectors, game-list featuring, UI pills, Build Orders tab) picks up
-// changes via the registry below.
-//
-// Conventions:
-//   - Subjects use the canonical in-game unit names from internal/models.
-//   - Times are in seconds from game start.
-//   - Tolerance defaults to ±5s when the user spec didn't give one.
-//   - The expert "First X" event keys are named exactly how they should render
-//     in the UI timeline.
-//   - RuleDeadline is the last second the Rule could flip; the detector
-//     finalizes past that point and frees its event buffer.
-// -----------------------------------------------------------------------------
+// Build order definitions. Everything else (detectors, game-list featuring, UI
+// pills, Build Orders tab) picks up changes via the registry below. Times are
+// seconds from game start; RuleDeadline is the last second the Rule could flip,
+// after which the detector finalizes and frees its event buffer.
 
-// Subject shorthand — kept in one place so typos are easy to catch.
 const (
-	// Zerg
 	subjSpawningPool     = models.GeneralUnitSpawningPool
 	subjHatchery         = models.GeneralUnitHatchery
 	subjEvolutionChamber = models.GeneralUnitEvolutionChamber
@@ -168,7 +136,6 @@ const (
 	subjGuardian         = models.GeneralUnitGuardian
 	subjZergCarapace     = models.UpgradeZergCarapace
 
-	// Protoss
 	subjNexus            = models.GeneralUnitNexus
 	subjPylon            = models.GeneralUnitPylon
 	subjGateway          = models.GeneralUnitGateway
@@ -189,7 +156,6 @@ const (
 	subjDarkTemplar      = models.GeneralUnitDarkTemplar
 	subjLegEnhancement   = models.UpgradeLegEnhancementZealotSpeed
 
-	// Terran
 	subjCommandCenter  = models.GeneralUnitCommandCenter
 	subjSupplyDepot    = models.GeneralUnitSupplyDepot
 	subjBarracks       = models.GeneralUnitBarracks
@@ -215,31 +181,18 @@ const (
 	subjCloakingField  = models.TechCloakingField
 )
 
-// endOfReplaySentinel is a RuleDeadline for markers whose answer can only
-// be resolved at end-of-replay (e.g. "never upgraded", "Carriers produced
-// at any point"). Well past any realistic SC:BW replay length; the detector
-// will still Finalize when the replay actually ends.
+// RuleDeadline for markers only resolvable at end-of-replay; well past any
+// real replay, and the detector still finalizes when the replay ends.
 const endOfReplaySentinel = 10 * 60 * 60 // 10 hours
 
-// Default tolerance used when the user spec did not give one.
 var defaultTol = Sym(5)
 
-// All orders in a stable, UI-facing order. Defined as a func so initialization
-// order doesn't trip on cross-file references.
+// A func, not a var, so initialization order can't trip on cross-file refs.
 func allMarkers() []Marker {
-	// -------------------------------------------------------------------
-	// Shared opener rules. Each named Protoss / Terran opener's Rule is
-	// declared once here and referenced both by its BO entry below and by
-	// the per-race residual "… (Other)" catch-all, which is defined as the
-	// EXACT complement Not(Any(named…)). Keeping a single source of truth
-	// means the residual can never drift out of sync with the named set, and
-	// the FuzzInitialBOsMutualExclusion test guarantees the named rules stay
-	// pairwise disjoint. Drone-count-keyed Zerg rungs don't need this — their
-	// exact counts are disjoint by construction — so their residual uses the
-	// ProduceCountAtLeastBeforeBuild primitive directly.
-	// -------------------------------------------------------------------
+	// Shared opener rules. Each is declared once and referenced by both its BO
+	// entry and its race's residual "… (Other)", defined as the exact complement
+	// Not(Any(named…)) so the residual can never drift out of sync.
 
-	// Protoss.
 	pRule1GateCore := All(
 		BuildBefore(subjGateway, subjCyberneticsCore),
 		FirstBuildBefore(subjCyberneticsCore, 180),
@@ -255,9 +208,7 @@ func allMarkers() []Marker {
 		BuildBefore(subjNexus, subjForge),
 		FirstBuildBefore(subjNexus, 200),
 	)
-	// Gate Expand: single Gateway then Nexus. The Nexus-before-Cyber guard is
-	// what keeps it disjoint from 1 Gate Core once both run in PvT/PvP
-	// (1 Gate Core is Cyber-before-Nexus). Nexus window loosened 200→220.
+	// The Nexus-before-Cyber guard is what keeps this disjoint from 1 Gate Core.
 	pRuleGateExpand := All(
 		BuildBefore(subjGateway, subjForge),
 		BuildBefore(subjGateway, subjNexus),
@@ -265,9 +216,8 @@ func allMarkers() []Marker {
 		Not(NthBuildBeforeAll(subjGateway, 2, []string{subjNexus})),
 		Not(BuildBefore(subjCyberneticsCore, subjNexus)),
 	)
-	// Forge Expand (FFE): Forge window loosened 100→140 and Nexus 200→260 —
-	// the corpus shows progamer FFEs with Forge up to ~140s and Nexus up to
-	// ~260s that the legacy bounds missed.
+	// Windows are loose because the corpus shows progamer FFEs with the Forge up
+	// to ~140s and the Nexus up to ~260s.
 	pRuleForgeExpand := All(
 		FirstBuildBefore(subjForge, 140),
 		BuildBefore(subjForge, subjGateway),
@@ -275,10 +225,7 @@ func allMarkers() []Marker {
 		FirstBuildBefore(subjNexus, 260),
 		BuildBefore(subjNexus, subjGateway),
 	)
-	// 1 Gate (no expa): a single-Gateway opener that doesn't rush Cyber
-	// (1 Gate Core), doesn't go 2 Gate, and never expands early — a slow /
-	// contain Gateway. "no expa" is baked in (no Nexus by 300s); a Gateway
-	// build that DOES expand is Gate Expand instead.
+	// "no expa" is baked in: a Gateway build that does expand is Gate Expand.
 	pRule1GateNoExpa := All(
 		FirstBuildExists(subjGateway),
 		Not(FirstBuildExists(subjForge)),
@@ -286,11 +233,8 @@ func allMarkers() []Marker {
 		Not(FirstBuildBefore(subjCyberneticsCore, 180)),
 		Not(NthBuildBeforeAll(subjGateway, 2, []string{subjCyberneticsCore, subjNexus, subjForge})),
 	)
-	// Forge Cannon (no expa): a Forge + Photon Cannon defensive opening with no
-	// early expansion (and not a Cyber-rush). NOTE: whether the Cannons are
-	// defensive (own base) or a proxy Cannon Rush is a spatial distinction the
-	// separate cannon_rush marker already makes; this opener keys on the build
-	// sequence only.
+	// Keys on the build sequence only — proxy-vs-defensive cannons are the
+	// separate cannon_rush marker's spatial distinction.
 	pRuleForgeCannonNoExpa := All(
 		FirstBuildExists(subjForge),
 		FirstBuildExists(subjPhotonCannon),
@@ -300,18 +244,12 @@ func allMarkers() []Marker {
 	)
 	pNamed := Any(pRule1GateCore, pRule2Gate, pRuleNexusFirst, pRuleGateExpand, pRuleForgeExpand, pRule1GateNoExpa, pRuleForgeCannonNoExpa)
 
-	// Terran. CC First and BBS stay keyed on build-order topology; Bunker Rush
-	// adds a spatial gate on top of topology (see its definition below).
-	// Everything else — what used to be 1 Rax 1 Fac, 1 Rax FE, 2 Rax CC and the
-	// 1 Rax Bio residual — is reclassified by army composition at 10:00 (issue
-	// #155): Bio / Mech / Wraith / Goliath / 1-1-1, split by Barracks or Factory
-	// count. tCohort excludes only CC First and BBS so the composition BOs share
-	// their (complementary) space.
+	// Terran. Everything but CC First and BBS is reclassified by army composition
+	// at 10:00 (issue #155), so tCohort excludes only those two.
 	tRuleCCFirst := All(
 		BuildBefore(subjCommandCenter, subjBarracks),
 		FirstBuildBefore(subjCommandCenter, 200),
-		// Canonical 12 CC is one Supply Depot then the CC. A 2nd depot before
-		// the CC means the player floated/teched first — not a true CC First.
+		// A 2nd depot before the CC means the player floated or teched first.
 		Not(NthBuildBeforeAll(subjSupplyDepot, 2, []string{subjCommandCenter})),
 	)
 	tRuleBBS := All(
@@ -323,58 +261,36 @@ func allMarkers() []Marker {
 		CountBuildsBefore(subjBarracks, 2, 120),
 		FirstBuildBefore(subjBarracks, 100),
 	)
-	// Bunker Rush: TWO+ early Bunkers (≤240s) placed AT the enemy base. The
-	// location + commitment define it, not the economy: it's still a bunker rush
-	// when the player then expands or teches into mech (it names the opening, and
-	// is TierPreferred so it wins over the follow-up composition bucket). The
-	// spatial gate (RequireWorldstateEvent "bunker_rush") fires for a forward
-	// Bunker, but a SINGLE early bunker is usually a poke / wall (it stole
-	// 2 Port Wraith, Bio and Factory-Expand builds when allowed), so the rush
-	// requires the 2nd forward bunker as the commitment signal (issue #226/#227
-	// curation). The 1st-Barracks-before-Bunker / not-2-Rax guards stay so a BBS
-	// (its own marker) isn't relabelled. The earlier no-expansion / no-Factory
-	// all-in guards were dropped: a 2-bunker rush into 1-Fact-Expa mech still
-	// counts.
+	// Location and commitment define a bunker rush, not the economy. A SINGLE
+	// early bunker is usually a poke or wall (it stole 2 Port Wraith, Bio and
+	// Factory-Expand builds), so the 2nd forward bunker is the commitment
+	// signal (issue #226/#227).
 	tRuleBunkerRush := All(
 		CountBuildsBefore(subjBunker, 2, 240),
 		BuildBefore(subjBarracks, subjBunker),
 		Not(NthBuildBeforeAll(subjBarracks, 2, []string{subjBunker})),
 	)
 
-	// Composition cohort: any Terran opener that is NOT a topology opener. Only
-	// CC First and BBS are excluded — Bunker Rush is no longer a pure-topology
-	// opener (it needs the spatial gate), so its bunker-topology players must
-	// stay eligible for the composition / residual buckets. A genuine offensive
-	// bunker rush still matches a composition BO too, but Bunker Rush is
-	// TierPreferred and wins by precedence (selectBestTierOpeners).
+	// Only CC First and BBS are excluded: Bunker Rush needs a spatial gate, so its
+	// players stay eligible here and lose to it by tier precedence instead.
 	tCohort := All(Not(tRuleCCFirst), Not(tRuleBBS))
 
-	// Composition signals, all measured over the opening window (10:00 = 600s;
-	// early caps at 7:00 = 420s). bio = Marine/Medic/Firebat, mech = Vulture/
-	// Goliath/Siege Tank. "Predominant" = strict majority of produced army.
+	// "Predominant" = strict majority of produced army.
 	bioUnits := []string{subjMarine, subjMedic, subjFirebat}
 	mechUnits := []string{subjVulture, subjGoliath, subjSiegeTank}
 	tcBioPred := Predominant(bioUnits, mechUnits, 600)
 	tcMechPred := Predominant(mechUnits, bioUnits, 600)
-	// Bio is Marine-dominant and either committed (8+ Marines by 10:00) or a
-	// pure-Barracks opening with no Factory/Starport transition by 10:00. The
-	// 8-Marine floor exists to screen out players who make a few Marines on the
-	// way into mech/air — those players always have a Factory or Starport, so a
-	// no-transition opening that fell short of the floor (e.g. died / left early
-	// under attack) is still a Bio opening, not a residual.
+	// The 8-Marine floor screens out players who make a few Marines on the way
+	// into mech or air; those always have a Factory or Starport, so a
+	// no-transition opening below the floor (died / left early) is still Bio.
 	tcBioNoTransition := All(
 		ProduceCountAtLeastBefore(subjMarine, 1, 600),
 		Not(FirstBuildBefore(subjFactory, 600)),
 		Not(FirstBuildBefore(subjStarport, 600)),
 	)
 	tcBio := All(tcBioPred, Any(ProduceCountAtLeastBefore(subjMarine, 8, 600), tcBioNoTransition))
-	// 2 Port Wraith shape: 1 Barracks + 1 Factory then two Starports, wraith-
-	// dominant air. No 2nd Barracks/Factory before the first Starport — the bio/
-	// mech transition that often follows (extra Barracks/Factories) lands after
-	// the two Starports, so it doesn't disqualify the opener. An expansion before
-	// the Starports is allowed (surfaced as the "expand" modifier on the opener).
-	// Shared by the TierPreferred "2 Port Wraith" opener (TvT/TvZ) and the
-	// composition guards / residual complement below.
+	// The bio/mech transition that often follows lands after the two Starports, so
+	// extra Barracks/Factories must not disqualify the opener.
 	tcWraith := All(
 		CountBuildsBefore(subjStarport, 2, 600),
 		Not(NthBuildBeforeAll(subjBarracks, 2, []string{subjStarport})),
@@ -383,20 +299,11 @@ func allMarkers() []Marker {
 	)
 	tcTank1 := ProduceCountAtLeastBefore(subjSiegeTank, 1, 600)
 	tcTank0 := ProduceCountAtMostBefore(subjSiegeTank, 0, 600)
-	// Goliath is a composition flavor of mech (parallel to Tankless Mech): no
-	// Siege Tanks by 10:00 and Goliath-dominant (more Goliaths than Vultures by
-	// 10:00). It names the mech bucket "… Goliath" instead of "… Tankless Mech"
-	// (issue #227 curation: "after the initial Vultures only Goliaths come out").
-	// The former standalone "Goliath" opener folds into this — the expand-first
-	// case is just "Goliath".
+	// Goliath is a composition flavor of mech, not its own opener (issue #227).
 	tcGoliathDom := All(tcTank0, Predominant([]string{subjGoliath}, []string{subjVulture}, 600))
 	tcOneOneOne := All(FirstBuildBefore(subjStarport, 420), ProduceCountAtLeastBefore(subjWraith, 1, 600))
-	// N Starport cluster: 2 or 3 Starports built in quick succession (the air
-	// opener's signature). Ignores what came before the Starports — a
-	// 2-Factory-then-Starports build still qualifies. The cluster size names the
-	// bucket (2 vs 3 Starport) and the air unit splits Wraith vs Valkyrie. The
-	// Wraith floor is 3 (not 5): a 3-Starport opener that pumps only 3 Wraiths by
-	// 10:00 is still a Wraith build (issue #227, NamuBulldozer).
+	// Ignores what came before the Starports. The Wraith floor is 3, not 5: a
+	// 3-Starport opener pumping only 3 Wraiths by 10:00 is still a Wraith build.
 	tc2Starport := NthBuildWithinGapOfFirst(subjStarport, 2, 90)
 	tc3Starport := NthBuildWithinGapOfFirst(subjStarport, 3, 120)
 	tcWraithAir := ProduceCountAtLeastBefore(subjWraith, 3, 600)
@@ -406,13 +313,10 @@ func allMarkers() []Marker {
 	tc2StarportWraith := All(tc2Starport, Not(tc3Starport), tcWraithAir)
 	tc2StarportValkyrie := All(tc2Starport, Not(tc3Starport), tcValkAir)
 
-	// tNamed: the matchup-free union of everything any Terran BO can match, used
-	// to define the residual as its exact complement (mutual-exclusion is then
-	// guaranteed by construction). NOTE: the composition BOs are matchup-gated
-	// (Wraith/Goliath TvZ, Bio TvZ-or-non-1v1) but tNamed is matchup-free, so a
-	// game whose composition matches a gated BO in the "wrong" matchup is
-	// subtracted from the residual without any BO firing — a deliberate, rare
-	// coverage gap for off-matchup compositions (e.g. a TvP mass-bio game).
+	// The matchup-free union of every Terran BO, so the residual is its exact
+	// complement. The composition BOs are matchup-gated but this union is not, so
+	// an off-matchup composition is subtracted from the residual with no BO firing
+	// — a deliberate, rare coverage gap.
 	tNamed := Any(
 		tRuleCCFirst, tRuleBBS,
 		All(tCohort, tc2Starport), // covers 2 and 3 Starport (3 implies the 2-cluster)
@@ -421,15 +325,10 @@ func allMarkers() []Marker {
 		All(tCohort, tcOneOneOne),
 	)
 
-	// Expert milestone timings for the composition-based Terran BOs, measured
-	// per MEASUREMENT.md over the aurora-ID-labelled progamer corpus (issue
-	// #362; supersedes the #158 mining run). The mech opening backbone splits
-	// into two economies: factory-before-expansion takes early gas (Refinery
-	// ~97s, Factory ~148s) while expand-first pushes both a full minute later
-	// (~164s / ~216s) — a single pooled table modelled both badly. The
-	// one-base (no-expa) buckets pool with fact-first: their backbone medians
-	// agree. First Siege Tank splits the same way; the expansion CC instead
-	// depends on the factory count, not the family (tMechExpansionCC).
+	// Measured per MEASUREMENT.md over the progamer corpus (issue #362). Split in
+	// two because factory-before-expansion takes gas a full minute earlier than
+	// expand-first, and one pooled table modelled both badly. The one-base buckets
+	// pool with fact-first: their backbone medians agree.
 	tMechOpeningFactFirst := []ExpertEvent{
 		{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 54, Tolerance: Asym(2, 3)}, // n=671, p10/50/90 = 53/54/57
 		{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 84, Tolerance: Asym(3, 4)},        // n=671, p10/50/90 = 81/84/88
@@ -443,21 +342,14 @@ func allMarkers() []Marker {
 		{Key: "1st Factory", Match: MatchBuild(subjFactory), TargetSecond: 216, Tolerance: Asym(7, 27)},    // n=154, p10/50/90 = 209/216/243
 	}
 
-	// Compact builders for the per-count composition buckets (issue #155). Each
-	// is an initial BO inside tCohort, made pairwise-disjoint by the predominance
-	// split (bio vs mech), the Tank present/absent split, the exact count, and
-	// Not(...) guards against the higher-signal Wraith/Goliath/1-1-1 rules.
+	// Pairwise-disjoint via the bio/mech predominance split, the Tank
+	// present/absent split, the exact count, and Not() guards against the
+	// higher-signal Wraith/Goliath/1-1-1 rules.
 	mkPill := func(label, icon string) *Pill { return &Pill{Label: label, IconKey: icon} }
-	// Bio is split by base count, not Barracks count: the rax count keeps
-	// growing through the game and there's no clean "the opening ended here"
-	// moment, so 1-Rax…6-Rax were fragile (a 3-Rax read as 2-Rax mid-build).
-	// Base count is the durable, meaningful axis — a one-base bio is an all-in /
-	// pressure build; a two-base bio is macro. A natural Command Center taken in
-	// the opening (by ~360s) is the discriminator. "proxy" still flags a forward
-	// Barracks (worldstate proxy_rax event).
-	// Bio carries per-bucket expert tables rather than a shared family table:
-	// both buckets clear the n >= 20 floor and their gas / tech economies
-	// genuinely differ (1-base takes its Refinery ~40s earlier than 2-base).
+	// Split by base count, not Barracks count: the rax count keeps growing all
+	// game with no clean "the opening ended here" moment, so 1-Rax…6-Rax were
+	// fragile. One-base bio is all-in/pressure, two-base is macro. Per-bucket
+	// expert tables because 1-base takes its Refinery ~40s earlier than 2-base.
 	bioBase := func(name, fkey string, expandRule Predicate, expert []ExpertEvent) Marker {
 		return Marker{
 			Name: name, PatternName: InitialBuildOrderPatternNamePrefix + name, FeatureKey: fkey,
@@ -469,13 +361,8 @@ func allMarkers() []Marker {
 			SummaryPlayer: mkPill(name, "marine"), GamesList: mkPill(name, "marine"),
 		}
 	}
-	// Mech is named by the number of Factories built STRICTLY BEFORE the first
-	// expansion (the first Command Center build — the starting CC isn't a
-	// command). That count is deterministic, unlike a by-deadline count that
-	// conflated factories built before and after the expansion. The "expa" is
-	// baked into the name (every build in this family expanded). A composition
-	// flavor (mechComp) picks the suffix: tanks → "Mech", Goliath-dominant →
-	// "Goliath", otherwise → "Tankless Mech".
+	// Named by Factories built STRICTLY BEFORE the first expansion, which is
+	// deterministic — a by-deadline count conflated pre- and post-expansion ones.
 	type mechComp struct {
 		suffix, key, icon string
 		gate              Predicate
@@ -500,8 +387,8 @@ func allMarkers() []Marker {
 			if factFirst {
 				return append(ev, ExpertEvent{Key: "First Vulture", Match: MatchFirstProduce(subjVulture), TargetSecond: 201, Tolerance: Asym(3, 23)}) // n=49, p10/50/90 = 198/201/224
 			}
-			// unmeasured legacy (n=6): expand-first vultures land ~294s, but
-			// the sample is below the floor, so the old value stays.
+			// unmeasured legacy (n=6): expand-first vultures land ~294s, but the sample
+			// is below the floor.
 			return append(ev, ExpertEvent{Key: "First Vulture", Match: MatchFirstProduce(subjVulture), TargetSecond: 205, Tolerance: Asym(20, 50)})
 		default:
 			if factFirst {
@@ -510,12 +397,9 @@ func allMarkers() []Marker {
 			return append(ev, ExpertEvent{Key: "First Siege Tank", Match: MatchFirstProduce(subjSiegeTank), TargetSecond: 301, Tolerance: Asym(10, 129)}) // n=144, p10/50/90 = 291/301/430
 		}
 	}
-	// tMechExpansionCC is the expansion Command Center milestone for an
-	// N-factories-before-expa bucket. The backbone is count-invariant but the
-	// CC is not: each extra pre-expansion Factory pushes it ~110s later. The
-	// n>=3 buckets are all below the sample floor (n<=7) and reuse the 2-Fact
-	// table — their tiny samples sit later still, so "late vs the 2-Fact band"
-	// remains directionally honest.
+	// The backbone is count-invariant but the expansion CC is not: each extra
+	// pre-expansion Factory pushes it ~110s later. n>=3 is below the sample floor
+	// and reuses the 2-Fact table.
 	tMechExpansionCC := func(n int) ExpertEvent {
 		if n >= 2 {
 			return ExpertEvent{Key: "Command Center", Match: MatchBuild(subjCommandCenter), TargetSecond: 321, Tolerance: Asym(52, 99)} // n=35, p10/50/90 = 269/321/420
@@ -528,16 +412,14 @@ func allMarkers() []Marker {
 			Race: RaceTerran, Kind: KindInitialBuildOrder,
 			Rule:         All(tCohort, facRule, tcMechPred, c.gate, Not(tc2Starport), Not(tcOneOneOne)),
 			RuleDeadline: 600,
-			// "proxy" flags a forward Factory at the enemy (vultures out of a
-			// mid-map / proxy Factory) — the mech equivalent of proxy Barracks /
-			// Starport. Orthogonal to the mech flavour + factory count.
+			// "proxy" flags a forward Factory at the enemy; orthogonal to the mech
+			// flavour and factory count.
 			Modifiers:     []Modifier{{Name: "proxy", WorldstateEvent: "proxy_factory"}},
 			Expert:        ev,
 			SummaryPlayer: mkPill(name, c.icon), GamesList: mkPill(name, c.icon),
 		}
 	}
-	// N Factories before the first expansion CC. n in 1..6; n==6 is the "6+" top
-	// rung ("at least"). Name "N Fact Expa {Mech|Goliath|Tankless Mech}".
+	// n==6 is the "6+" top rung ("at least").
 	mechExpa := func(n int, c mechComp) Marker {
 		head := fmt.Sprintf("%d Fact Expa", n)
 		facRule := BuildCountBeforeFirstBuildOf(subjFactory, subjCommandCenter, n)
@@ -549,39 +431,30 @@ func allMarkers() []Marker {
 		fkey := fmt.Sprintf("bo_t_%s_expa_%dfac", c.key, n)
 		return mechCore(name, fkey, facRule, c, mechEv(c, true, tMechExpansionCC(n)))
 	}
-	// Expand-first: the natural CC is taken before ANY Factory (0 Factories
-	// before the expansion). Just "Mech" / "Goliath" / "Tankless Mech".
 	mechPlain := func(c mechComp) Marker {
 		fkey := fmt.Sprintf("bo_t_%s_expand", c.key)
 		return mechCore(c.suffix, fkey, BuildCountBeforeFirstBuildOf(subjFactory, subjCommandCenter, 0), c, mechEv(c, false))
 	}
-	// No expansion in the opening window (no CC by 10:00) — a greedy one-base
-	// mech. Named "1-Base <comp>" (parallel to 1-Base Bio); not split by factory
-	// count.
 	mechNoExpa := func(c mechComp) Marker {
 		fkey := fmt.Sprintf("bo_t_%s_noexpa", c.key)
 		facRule := All(Not(FirstBuildBefore(subjCommandCenter, 600)), CountBuildsBefore(subjFactory, 2, 600))
 		ev := mechEv(c, true)
 		if c.key == "mech" {
-			// One-base mech pools with fact-first on the backbone but not on
-			// the tank: skipping the expansion buys a much earlier First
-			// Siege Tank than the family's 276 (35% in-band there).
+			// One-base pools with fact-first on the backbone but not the tank: skipping
+			// the expansion buys a much earlier First Siege Tank than the family's 276.
 			ev[len(ev)-1] = ExpertEvent{Key: "First Siege Tank", Match: MatchFirstProduce(subjSiegeTank), TargetSecond: 229, Tolerance: Asym(3, 53)} // n=20, p10/50/90 = 226/229/282
 		}
 		return mechCore("1-Base "+c.suffix, fkey, facRule, c, ev)
 	}
-	// 1-1-1 (one each of Rax/Factory/Starport, early Starport + Wraith), named
-	// by the transition: Mech (tanks), Tankless Mech (no tanks), or balanced.
 	oneOneOne := func(name, fkey, icon string, comp Predicate) Marker {
 		return Marker{
 			Name: name, PatternName: "Build Order: " + name, FeatureKey: fkey,
 			Race: RaceTerran, Kind: KindInitialBuildOrder,
 			Rule:         All(tCohort, tcOneOneOne, comp, Not(tc2Starport)),
 			RuleDeadline: 600,
-			// Pooled over the three 1-1-1 buckets (n=129; bo_t_111_mech carries
-			// n=102 of it). The wide late sides are real spread, not a missing
-			// split — the TvT majority stretches its Starport to ~340s while
-			// TvZ lands ~218s, with no clean seam to cut on.
+			// Pooled over the three 1-1-1 buckets (n=129). The wide late sides are real
+			// spread, not a missing split: TvT stretches its Starport to ~340s while TvZ
+			// lands ~218s, with no clean seam to cut on.
 			Expert: []ExpertEvent{
 				{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 54, Tolerance: Asym(2, 22)}, // n=129, p10/50/90 = 53/54/76
 				{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 85, Tolerance: Asym(25, 3)},        // n=129, p10/50/90 = 60/85/88
@@ -594,59 +467,31 @@ func allMarkers() []Marker {
 	}
 
 	ms := []Marker{
-		// -------------------------------------------------------------------
-		// TIER-1 PREFERRED OPENERS (issue #182). Specific, scene-named openings
-		// sourced from current BW pro / Liquipedia knowledge. Each is keyed on
-		// the building SEQUENCE + defining tech
-		// unit the parser detects reliably (supply is not simulated for T/P),
-		// matchup-gated, and made pairwise-disjoint WITHIN tier 1 per (race,
-		// matchup) — across tiers, overlap is expected and resolved by tier
-		// precedence (a matched preferred opener suppresses the broad tier-2
-		// bucket it overlaps). Expert milestone timings are intentionally left
-		// empty pending corpus-derived medians (issue #182, same method as #158);
-		// the UI shows the opener label without an actual-vs-ideal compare until
-		// then.
-		//
-		// Tier-1 deliberately stays MORE SPECIFIC than tier 2: where the broad
-		// bucket is already the better classification (notably TvZ army
-		// composition, #155), no blanket tier-1 opener is added, so those games
-		// keep their composition label.
-		// -------------------------------------------------------------------
+		// TIER-1 PREFERRED OPENERS (issue #182). Pairwise-disjoint WITHIN tier 1 per
+		// (race, matchup); across tiers overlap is expected and resolved by tier
+		// precedence. Deliberately stays MORE SPECIFIC than tier 2 — where the broad
+		// composition bucket is already the better classification (issue #155), no
+		// blanket tier-1 opener is added.
 
-		// --- Zerg tech-composition markers, named "N Hatch <tech>" by the real
-		// town halls standing at the economy→army transition (when the tech
-		// unit's 1st morph cuts Drone production), for any N — NOT by a fixed
-		// clock. These layer on top of the supply opener (11/12 Hatch, Overpool,
-		// …), which keeps naming the opening; the marker names the tech
-		// continuation. Base count comes from town-hall tag evidence, so a
-		// cancelled/re-placed Hatchery doesn't inflate N (issue #245 generalizes
-		// the round-10 hydra transition count to Muta and Lurker, and moves the
-		// whole family from opener to composition marker). See
-		// zergHatchTechEvaluator. ---
-		//
-		// N Hatch Hydra (ZvP): a Hydra-dominant army (6+ Hydralisks).
+		// Zerg tech-composition markers, named by the town halls standing at the
+		// economy→army transition rather than a fixed clock. Base count comes from
+		// town-hall tag evidence, so a cancelled or re-placed Hatchery doesn't inflate
+		// N (issue #245). See zergHatchTechEvaluator.
 		zergHatchTechMarker(techHydra, "hydralisk", "nhatch_hydra", []string{"PvZ"}),
-		// N Hatch Muta (ZvT): muta-first (Spire before any Hydralisk Den), 4+ Mutalisks.
 		zergHatchTechMarker(techMuta, "mutalisk", "nhatch_muta", []string{"TvZ"}),
-		// N Hatch Lurker (ZvT): lurker-first (Hydralisk Den before any Spire), 2+ Lurkers.
 		zergHatchTechMarker(techLurker, "lurker", "nhatch_lurker", []string{"TvZ"}),
 
-		// --- Protoss tech-pathway openers: opening topology + first tech unit. ---
 		{
-			// 1 Gate Reaver (PvT): single Gateway into Robotics + Reaver harass
-			// (no Dark Templar). Reaver-shuttle harass into expand.
 			Name: "1 Gate Reaver", PatternName: InitialBuildOrderPatternNamePrefix + "1 Gate Reaver", FeatureKey: "bo_p_1gate_reaver",
 			Race: RaceProtoss, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvT"},
 			Rule: All(
 				FirstBuildExists(subjRoboticsFacility),
 				ProduceCountAtLeast(subjReaver, 1),
-				// Single Gateway through the Reaver: a 2nd Gateway before the
-				// first Reaver pops makes it a 2-Gate build, not 1 Gate Reaver.
+				// A 2nd Gateway before the first Reaver makes it a 2-Gate build.
 				Not(NthBuildBeforeFirstProduce(subjGateway, 2, subjReaver)),
 				Not(ProduceCountAtLeast(subjDarkTemplar, 1)),
 			),
-			// "expand" flags taking a Nexus before the first Reaver — an economic
-			// 1-gate reaver vs the one-base reaver-pressure variant.
+			// "expand" separates the economic variant from one-base reaver pressure.
 			Modifiers:    []Modifier{{Name: "expand", Rule: NthBuildBeforeFirstProduce(subjNexus, 1, subjReaver)}},
 			RuleDeadline: 600,
 			Expert: []ExpertEvent{
@@ -655,20 +500,13 @@ func allMarkers() []Marker {
 			},
 			SummaryPlayer: mkPill("1 Gate Reaver", "reaver"), GamesList: mkPill("1 Gate Reaver", "reaver"),
 		},
-		// (2 Gate DT, 2 Gate Reaver and Sair/Speedlot were removed as openers:
-		// they classified the post-opening tech composition, not the opening
-		// itself, and the topology underneath is almost always 1 Gate Core /
-		// 2 Gate / Gate Expand / FFE. Reaver/Corsair tech is now surfaced by the
-		// "First Reaver"/"First Corsair" timing markers, and the Sair/Speedlot
-		// composition by its own marker, all below — not as initial BOs.)
+		// 2 Gate DT, 2 Gate Reaver and Sair/Speedlot were removed as openers: they
+		// classified the post-opening tech composition, not the opening itself. They
+		// are timing / composition markers below instead.
 
-		// --- Protoss cannon-contain openers (PvZ): a Gateway, a Forge and a
-		// Photon Cannon all placed before the Cybernetics Core and before any
-		// Nexus (expansion). The three permutations below differ only in the
-		// build order of {Gate, Forge, Cannon}; Assimilator timing is irrelevant.
-		// TierPreferred so they refine the base opener (Forge Cannon (no expa) /
-		// Gate Expand / etc.) when the cannon-contain shape is present. Disjoint
-		// from each other by ordering. ---
+		// Protoss cannon-contain openers (PvZ). The three permutations differ only in
+		// the build order of {Gate, Forge, Cannon}, so they are disjoint by ordering.
+		// TierPreferred so they refine the base opener when the shape is present.
 		{
 			Name: "Gate Forge Cannon before expa", PatternName: InitialBuildOrderPatternNamePrefix + "Gate Forge Cannon before expa", FeatureKey: "bo_p_gate_forge_cannon",
 			Race: RaceProtoss, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"PvZ"},
@@ -726,30 +564,23 @@ func allMarkers() []Marker {
 			SummaryPlayer: mkPill("Forge Gate Cannon (before expa)", "photoncannon"), GamesList: mkPill("Forge Gate Cannon (before expa)", "photoncannon"),
 		},
 
-		// --- Terran air opener: 2 Starport. TierPreferred so it wins over the
-		// composition mech buckets. Two Starports built as a quick cluster
-		// (NthBuildWithinGapOfFirst), then Wraith- or Valkyrie-dominant air. This
-		// absorbs the former "2 Port Wraith" (now "2 Starport Wraith") and, unlike
-		// the old rule, ignores what was built before the Starports — so a
-		// 2-Factory-then-2-Starport build into Valkyries also qualifies. The old
-		// matchup-gated "Factory Expand" (TvP) and "2 Fact before Expa" (TvT)
-		// openers were retired: they are 1- and 2-Factory expands and now fall to
-		// the matchup-free "N Fact Expa Mech" composition buckets. ---
+		// Terran air opener. Absorbs the former "2 Port Wraith" and, unlike the old
+		// rule, ignores what was built before the Starports. The matchup-gated
+		// "Factory Expand" and "2 Fact before Expa" openers were retired: they are 1-
+		// and 2-Factory expands and now fall to the "N Fact Expa Mech" buckets.
 		{
 			Name: "2 Starport Wraith", PatternName: InitialBuildOrderPatternNamePrefix + "2 Starport Wraith", FeatureKey: "bo_t_2starport_wraith",
 			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvT", "TvZ"},
 			Rule:         All(tCohort, tc2StarportWraith),
 			RuleDeadline: 600,
-			// "expand" flags a Command Center before the two Starports (economic
-			// vs one-base harass); "proxy" flags forward Starports at the enemy.
+			// "expand" is the economic variant; "proxy" is forward Starports at the enemy.
 			Modifiers: []Modifier{
 				{Name: "expand", Rule: BuildBefore(subjCommandCenter, subjStarport)},
 				{Name: "proxy", WorldstateEvent: "proxy_starport"},
 			},
-			// The wide late sides are the "expand" modifier variant, not a
-			// missing split: 1-base games sit tight (Starport 198±10, Wraith
-			// 245±11) while the expand games land ~70s later — and already
-			// carry the modifier pill that explains it.
+			// The wide late sides are the "expand" variant, not a missing split: 1-base
+			// games sit tight while expand games land ~70s later, and already carry the
+			// modifier pill that explains it.
 			Expert: []ExpertEvent{
 				{Key: "1st Starport", Match: MatchBuild(subjStarport), TargetSecond: 201, Tolerance: Asym(12, 126)},       // n=77, p10/50/90 = 189/201/327
 				{Key: "2nd Starport", Match: MatchNthBuild(subjStarport, 2), TargetSecond: 210, Tolerance: Asym(20, 117)}, // n=77, p10/50/90 = 190/210/327
@@ -775,8 +606,7 @@ func allMarkers() []Marker {
 			SummaryPlayer: mkPill("2 Starport Valkyrie", "valkyrie"), GamesList: mkPill("2 Starport Valkyrie", "valkyrie"),
 		},
 		{
-			// 3 Starport Wraith: three Starports clustered, Wraith-dominant. Same
-			// family as 2 Starport but the cluster size names it (issue #227).
+			// Same family as 2 Starport, but the cluster size names it (issue #227).
 			Name: "3 Starport Wraith", PatternName: InitialBuildOrderPatternNamePrefix + "3 Starport Wraith", FeatureKey: "bo_t_3starport_wraith",
 			Race: RaceTerran, Kind: KindInitialBuildOrder, Tier: TierPreferred, Matchup: []string{"TvT", "TvZ"},
 			Rule:         All(tCohort, tc3StarportWraith),
@@ -811,13 +641,9 @@ func allMarkers() []Marker {
 			SummaryPlayer: mkPill("3 Starport Valkyrie", "valkyrie"), GamesList: mkPill("3 Starport Valkyrie", "valkyrie"),
 		},
 
-		// Pool-first BOs are keyed off exact pre-Pool Drone-morph and
-		// Overlord-morph counts. The early-game spam filter (internal/
-		// earlyfilter) strips engine-impossible morphs so the surviving
-		// stream is a faithful supply count: 4 starting drones + N kept
-		// Drone morphs. Hatchery / Evolution Chamber must not precede
-		// the Pool, else it's a hatch-first BO. Timings live in the
-		// Expert events (UI golden compare) only.
+		// Pool-first BOs key off exact pre-Pool morph counts: the early-game spam
+		// filter (internal/earlyfilter) strips engine-impossible morphs, so the
+		// surviving stream is a faithful supply count.
 		{
 			Name:        "4 Pool",
 			PatternName: "Build Order: 4 Pool",
@@ -825,7 +651,7 @@ func allMarkers() []Marker {
 			Race:        RaceZerg,
 			Kind:        KindInitialBuildOrder,
 			Rule: All(
-				// 4 Pool = supply 4 at Pool placement: 0 drones, 0 overlords.
+				// Supply 4 at Pool placement = 0 Drone morphs, 0 Overlords.
 				ProduceCountBeforeBuild(subjDrone, subjSpawningPool, 0),
 				ProduceCountBeforeBuild(subjOverlord, subjSpawningPool, 0),
 				Not(BuildBefore(subjHatchery, subjSpawningPool)),
@@ -841,7 +667,6 @@ func allMarkers() []Marker {
 					Tolerance:    Sym(4),
 				},
 				{
-					// First Zergling pops one Pool build-time after the Pool.
 					Key:          "First Zerglings",
 					Match:        MatchFirstProduce(subjZergling),
 					TargetSecond: secAfter(33, models.BuildTimeSpawningPool),
@@ -851,10 +676,8 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{Label: "4 Pool", IconKey: "spawningpool"},
 			GamesList:     &Pill{Label: "4 Pool", IconKey: "spawningpool"},
 		},
-		// 5–8 Pool: the lower rungs of the ladder. Keyed purely on the exact
-		// pre-Pool Drone-morph count (1/2/3/4 → supply 5/6/7/8); no Overlord
-		// gate needed (supply <9 needs no Overlord, and the exact Drone count
-		// alone keeps each rung disjoint from every other pool BO).
+		// 5–8 Pool needs no Overlord gate: supply <9 needs no Overlord, and the exact
+		// Drone count alone keeps each rung disjoint from every other pool BO.
 		zergPoolBO(5, 45), // unmeasured legacy (n=3)
 		zergPoolBO(6, 52), // unmeasured legacy (n=1)
 		zergPoolBO(7, 60), // unmeasured legacy (n=1)
@@ -866,16 +689,13 @@ func allMarkers() []Marker {
 			Race:        RaceZerg,
 			Kind:        KindInitialBuildOrder,
 			Rule: All(
-				// 9 Pool = supply 9 at Pool placement: 5 drone morphs and
-				// no Overlord yet (Overlord follows the Pool). The 9-
-				// Overpool variant — same drone count but with the
-				// Overlord already morphed — is its own BO.
+				// Supply 9 = 5 Drone morphs with no Overlord yet; the same count WITH the
+				// Overlord already morphed is 9 Overpool, its own BO.
 				ProduceCountBeforeBuild(subjDrone, subjSpawningPool, 5),
 				ProduceCountBeforeBuild(subjOverlord, subjSpawningPool, 0),
 				Not(BuildBefore(subjHatchery, subjSpawningPool)),
 				Not(BuildBefore(subjEvolutionChamber, subjSpawningPool)),
-				// Mutex with "9 Pool into Hatchery" — fast follow-up Hatch
-				// belongs to that BO, not plain 9 Pool.
+				// Mutex with "9 Pool into Hatchery", which owns the fast follow-up Hatch.
 				Not(BuildAfterWithin(subjHatchery, subjSpawningPool, 60)),
 			),
 			RuleDeadline: 180,
@@ -887,8 +707,8 @@ func allMarkers() []Marker {
 					Tolerance:    Sym(2),
 				},
 				{
-					// Measured directly, not derived from the Pool: build time
-					// does not include larva availability.
+					// Measured directly, not derived from the Pool: build time does not include
+					// larva availability.
 					Key:          "First Zerglings",
 					Match:        MatchFirstProduce(subjZergling),
 					TargetSecond: 114, // n=348, p10/50/90 = 113/114/116
@@ -905,9 +725,7 @@ func allMarkers() []Marker {
 			Race:        RaceZerg,
 			Kind:        KindInitialBuildOrder,
 			Rule: All(
-				// 9 Overpool = supply 9 at Pool placement, but the
-				// Overlord was morphed before the Pool (vs plain 9 Pool
-				// where Pool comes first). Same 5 Drone morphs.
+				// Supply 9 with the Overlord morphed BEFORE the Pool (vs plain 9 Pool).
 				ProduceCountBeforeBuild(subjDrone, subjSpawningPool, 5),
 				ProduceCountBeforeBuild(subjOverlord, subjSpawningPool, 1),
 				Not(BuildBefore(subjHatchery, subjSpawningPool)),
@@ -938,9 +756,7 @@ func allMarkers() []Marker {
 			Race:        RaceZerg,
 			Kind:        KindInitialBuildOrder,
 			Rule: All(
-				// 12 Pool = supply 12 at Pool: 4 starting + 8 drone
-				// morphs + 1 Overlord (Overlord required to lift the
-				// supply cap past 9 to reach 12).
+				// Supply 12 = 8 Drone morphs + 1 Overlord (needed to lift the cap past 9).
 				ProduceCountBeforeBuild(subjDrone, subjSpawningPool, 8),
 				ProduceCountBeforeBuild(subjOverlord, subjSpawningPool, 1),
 				Not(BuildBefore(subjHatchery, subjSpawningPool)),
@@ -965,10 +781,8 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{Label: "12 Pool", IconKey: "spawningpool"},
 			GamesList:     &Pill{Label: "12 Pool", IconKey: "spawningpool"},
 		},
-		// 10–11 Pool: between 9 and 12. Supply 10/11 forces an Overlord first
-		// (cap 9), but the exact Drone-morph count (6/7) already makes these
-		// disjoint from every other rung, so no explicit Overlord gate is
-		// needed — keeping them parallel to the 5–8 rungs.
+		// 10–11 Pool force an Overlord first (cap 9), but the exact Drone-morph count
+		// already makes them disjoint, so no explicit Overlord gate is needed.
 		zergPoolBO(10, 84,
 			ExpertEvent{Key: "Spawning Pool", Match: MatchBuild(subjSpawningPool), TargetSecond: 84, Tolerance: Sym(2)},           // n=20, p10/50/90 = 83/84/85
 			ExpertEvent{Key: "First Zerglings", Match: MatchFirstProduce(subjZergling), TargetSecond: 136, Tolerance: Asym(2, 3)}, // n=20, p10/50/90 = 136/136/139
@@ -981,15 +795,12 @@ func allMarkers() []Marker {
 			Race:        RaceZerg,
 			Kind:        KindInitialBuildOrder,
 			Rule: All(
-				// Same supply as 9 Pool (exactly 5 Drone morphs, no Overlord
-				// yet). Keyed on the exact count — not a loose "≥1 Drone" — so
-				// it stays disjoint from the 5–8/10–11 Pool rungs (only the
-				// 5-Drone stream can match here).
+				// The exact 5-Drone count, not a loose "≥1 Drone", keeps this disjoint from
+				// the 5–8/10–11 Pool rungs.
 				ProduceCountBeforeBuild(subjDrone, subjSpawningPool, 5),
 				NoProduceBeforeBuild(subjOverlord, subjSpawningPool),
 				FirstBuildAtOrAfter(subjSpawningPool, 70),
 				FirstBuildBefore(subjSpawningPool, 120),
-				// ...plus: "hatchery is built within 1 minute after pool"
 				BuildAfterWithin(subjHatchery, subjSpawningPool, 60),
 			),
 			RuleDeadline: 180, // pool ≤120 + hatch ≤60 after pool
@@ -1017,10 +828,8 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{Label: "9 Pool 9 Hatch", IconKey: "hatchery"},
 			GamesList:     &Pill{Label: "9 Pool 9 Hatch", IconKey: "hatchery"},
 		},
-		// 4–8 Hatch: the fast hatch-first ladder below 9 Hatch. A Hatchery
-		// costs 300 minerals, so a player placing one at supply 4–8 genuinely
-		// waited that long with that few Drones — it's a real (greedy/fast)
-		// expansion, not noise. Keyed on exact pre-Hatch Drone count (0–4).
+		// 4–8 Hatch: a Hatchery costs 300 minerals, so placing one at supply 4–8 is a
+		// real greedy/fast expansion rather than noise.
 		zergHatchBO(4, 40), // unmeasured legacy (n=8)
 		zergHatchBO(5, 50), // unmeasured legacy (n=17)
 		zergHatchBO(6, 58), // unmeasured legacy (n=11)
@@ -1033,9 +842,7 @@ func allMarkers() []Marker {
 			Race:        RaceZerg,
 			Kind:        KindInitialBuildOrder,
 			Rule: All(
-				// 9 Hatch first = supply 9 at Hatch placement: 5 drone
-				// morphs, no Overlord yet (supply cap 9 blocks further
-				// morphs anyway). Pool / Evo Chamber must not precede.
+				// Supply 9 = 5 Drone morphs, no Overlord (the cap blocks further morphs).
 				ProduceCountBeforeBuild(subjDrone, subjHatchery, 5),
 				ProduceCountBeforeBuild(subjOverlord, subjHatchery, 0),
 				Not(BuildBefore(subjSpawningPool, subjHatchery)),
@@ -1060,11 +867,8 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{Label: "9 Hatch", IconKey: "hatchery"},
 			GamesList:     &Pill{Label: "9 Hatch", IconKey: "hatchery"},
 		},
-		// Hatch-first BOs are keyed off exact pre-Hatch drone / overlord
-		// counts. Spawning Pool / Evolution Chamber must not precede the
-		// expansion Hatchery (else it'd be a Pool-tech opening). All
-		// three of 10 / 11 / 12 Hatch require an Overlord first because
-		// reaching supply >9 demands cap expansion.
+		// Hatch-first BOs key off exact pre-Hatch morph counts. 10/11/12 Hatch all
+		// require an Overlord first because reaching supply >9 demands cap expansion.
 		{
 			Name:        "10 Hatch",
 			PatternName: "Build Order: 10 Hatch",
@@ -1072,14 +876,9 @@ func allMarkers() []Marker {
 			Race:        RaceZerg,
 			Kind:        KindInitialBuildOrder,
 			Rule: All(
-				// 10 Hatch = 10 supply at the expansion Hatchery = 6 Drone morphs
-				// (4 starting Drones + 6). No Overlord gate: reaching the 10th
-				// Drone before an Overlord is legal via the extractor / gas trick
-				// (build an Extractor to free a supply, morph the 10th Drone, then
-				// Cancel Build), and with the early-game economy sim now modelling
-				// that trick the Drone count alone is supply-faithful. Exact count
-				// keeps the rung disjoint from 9 Hatch (5) and 11 Hatch (7). Pool /
-				// Evo Chamber must not precede the Hatchery (else it's Pool-tech).
+				// No Overlord gate: reaching the 10th Drone before an Overlord is legal via
+				// the extractor trick, which the early-game economy sim models, so the Drone
+				// count alone stays supply-faithful.
 				ProduceCountBeforeBuild(subjDrone, subjHatchery, 6),
 				Not(BuildBefore(subjSpawningPool, subjHatchery)),
 				Not(BuildBefore(subjEvolutionChamber, subjHatchery)),
@@ -1197,13 +996,9 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "13 Hatch", IconKey: "hatchery"},
 		},
 		{
-			// Fuzzy Zerg opener: a clean pool/hatch opening whose exact supply
-			// rung is indeterminate because a multi-unit-selection Drone morph
-			// before the building makes the count ambiguous (the replay records
-			// selection size, not how many were larvae). Labelled "~N Pool /
-			// Overpool / Hatch" at the floor. Fires only when no exact rung does
-			// (each rung requires an unambiguous count), so it never competes
-			// with them; TierBackup wins over the generic residual.
+			// Fires only when no exact rung does: a multi-unit-selection Drone morph makes
+			// the count ambiguous, because the replay records selection size rather than
+			// how many of them were larvae.
 			Name:          "Zerg opening (approximate)",
 			PatternName:   "Build Order: Zerg opening (approximate)",
 			FeatureKey:    "bo_z_fuzzy",
@@ -1215,37 +1010,19 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{Label: "{subject}", IconKey: "drone", Subject: PayloadFieldSubject("label")},
 			GamesList:     &Pill{Label: "{subject}", IconKey: "drone", Subject: PayloadFieldSubject("label")},
 		},
-		// -------------------------------------------------------------------
-		// Protoss openers (matchup-gated). Sourced from a 3000-replay
-		// progamer mining run (1v1 melee). Frequencies cited per matchup
-		// in the per-BO comments are pre-detection raw building-sequence
-		// frequencies; expected post-detector hit rates will be similar.
-		//
-		// Mutex within (Protoss, matchup):
-		//   * 1 Gate Core requires Cyber before Nexus AND before 2nd Gate.
-		//   * 2 Gate requires 2 Gateways before Cyber/Nexus/Forge.
-		//   * Nexus First requires Nexus before Gateway AND before Forge.
-		//   * Gate Expand (PvZ only) requires Gateway before Forge AND Nexus.
-		//   * Forge Expand (PvZ only) requires Forge before Gateway AND Nexus.
-		// -------------------------------------------------------------------
+		// Protoss openers, mutually exclusive within (Protoss, matchup) by build-order
+		// topology — each requires its defining building before the others'.
 
 		{
-			// 1 Gate Core: ~47% of PvP and ~47% of PvT in the dataset.
-			// Pylon, Gateway, Assimilator, Cybernetics Core. Foundation for
-			// Goon Range / DT / Reaver tech. Not used as the dominant
-			// PvZ opener (FFE / Gate FE are preferred), so PvZ excluded.
-			Name:        "1 Gate Core",
-			PatternName: "Build Order: 1 Gate Core",
-			FeatureKey:  "bo_1_gate_core",
-			Race:        RaceProtoss,
-			// Extended to PvZ: the Gate→Cyber→Stargate (Corsair / Sair-DT)
-			// opener is a standard PvZ build that previously fell through.
+			Name:         "1 Gate Core",
+			PatternName:  "Build Order: 1 Gate Core",
+			FeatureKey:   "bo_1_gate_core",
+			Race:         RaceProtoss,
 			Kind:         KindInitialBuildOrder,
 			Rule:         pRule1GateCore,
 			RuleDeadline: 180,
-			// Assimilator / Cybernetics Core are genuinely bimodal in PvT
-			// (gas-first ~90s vs gas-later ~120s), so their late tolerance is
-			// wide by design.
+			// Assimilator / Cybernetics Core are genuinely bimodal in PvT (gas-first ~90s
+			// vs gas-later ~120s), so their late tolerance is wide by design.
 			Expert: []ExpertEvent{
 				{Key: "Pylon", Match: MatchBuild(subjPylon), TargetSecond: 46, Tolerance: Sym(2)},                            // n=435, p10/50/90 = 46/46/48
 				{Key: "Gateway", Match: MatchBuild(subjGateway), TargetSecond: 73, Tolerance: Sym(2)},                        // n=435, p10/50/90 = 73/73/75
@@ -1256,9 +1033,6 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "1 Gate Core", IconKey: "cyberneticscore"},
 		},
 		{
-			// 2 Gate: ~11% of PvP, ~4% of PvZ in the dataset (rarer in PvT).
-			// Pylon, Gateway, Gateway, Pylon. Pressure / Zealot rush. Both
-			// Gateways must precede Cyber Core, Nexus, and Forge.
 			Name:         "2 Gate",
 			PatternName:  "Build Order: 2 Gate",
 			FeatureKey:   "bo_2_gate",
@@ -1272,9 +1046,8 @@ func allMarkers() []Marker {
 				{Key: "1st Gateway", Match: MatchBuild(subjGateway), TargetSecond: 73, Tolerance: Asym(7, 3)},         // n=124, p10/50/90 = 66/73/76
 				{Key: "2nd Gateway", Match: MatchNthBuild(subjGateway, 2), TargetSecond: 90, Tolerance: Asym(15, 12)}, // n=124, p10/50/90 = 75/90/102
 				{
-					// Measured directly, not derived from the 1st Gateway:
-					// pros cut the probe before the Zealot, landing it ~8s
-					// after gateway-completion arithmetic says.
+					// Measured directly, not derived from the 1st Gateway: pros cut the probe
+					// before the Zealot, landing it ~8s after the arithmetic says.
 					Key:          "First Zealot",
 					Match:        MatchFirstProduce(subjZealot),
 					TargetSecond: 116, // n=105, p10/50/90 = 113/116/128
@@ -1285,10 +1058,8 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "2 Gate", IconKey: "gateway"},
 		},
 		{
-			// Nexus First: ~10% of PvP, ~14% of PvT, smaller in PvZ.
-			// Pioneered by Bisu (NeoSair-style greedy expand). Pylon, Nexus,
-			// Gateway. Loosened upper bound from the legacy 150s rule because
-			// the data shows Nexus placement up to ~170s in PvT.
+			// Upper bound loosened from the legacy 150s: the data shows Nexus placement
+			// up to ~170s in PvT.
 			Name:         "Nexus First",
 			PatternName:  "Build Order: Nexus First",
 			FeatureKey:   "bo_nexus_first",
@@ -1305,15 +1076,10 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Nexus First", IconKey: "nexus"},
 		},
 		{
-			// Gate Expand (Gate FE): ~24% of PvZ (data combines variants
-			// like P-G-P-N-P/F/A/N). Single Gateway then Nexus, no Forge
-			// yet. Mirrors FFE in PvZ frequency at progamer level.
-			Name:        "Gate Expand",
-			PatternName: "Build Order: Gate Expand",
-			FeatureKey:  "bo_gate_expand",
-			Race:        RaceProtoss,
-			// Extended beyond PvZ: the Gate→Nexus expand (e.g. Gate→Nexus→Cyber)
-			// is common in PvT/PvP and previously had no opener.
+			Name:         "Gate Expand",
+			PatternName:  "Build Order: Gate Expand",
+			FeatureKey:   "bo_gate_expand",
+			Race:         RaceProtoss,
 			Kind:         KindInitialBuildOrder,
 			Rule:         pRuleGateExpand,
 			RuleDeadline: 220,
@@ -1326,17 +1092,11 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Gate Expand", IconKey: "nexus"},
 		},
 		{
-			// Forge Expand (FFE): ~20% of PvZ (data combines defensive
-			// variants P-F-N-H-G, P-F-F-N-H, P-F-H-H-N, P-F-H-N-G).
-			// Pylon, Forge, optional Cannon, Nexus, then Gateway. Loosened
-			// the legacy upper bound from 90s to 100s for the Forge to
-			// admit slower openers.
-			Name:        "Forge Expand",
-			PatternName: "Build Order: Forge Expand",
-			FeatureKey:  "bo_forge_expa",
-			Race:        RaceProtoss,
-			// Extended beyond PvZ for the rare FFE-style opener in other
-			// matchups; the topology (Forge→Nexus→Gate) is matchup-agnostic.
+			// Forge upper bound loosened from the legacy 90s to admit slower openers.
+			Name:         "Forge Expand",
+			PatternName:  "Build Order: Forge Expand",
+			FeatureKey:   "bo_forge_expa",
+			Race:         RaceProtoss,
 			Kind:         KindInitialBuildOrder,
 			Rule:         pRuleForgeExpand,
 			RuleDeadline: 260,
@@ -1350,9 +1110,7 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "FFE", IconKey: "forge"},
 		},
 		{
-			// Forge Cannon (no expa): defensive Forge + Cannon, no early
-			// expansion. Cannon icon. (Proxy vs in-base cannons → cannon_rush
-			// marker.)
+			// Proxy vs in-base cannons is the cannon_rush marker's distinction.
 			Name:         "Forge Cannon (no expa)",
 			PatternName:  "Build Order: Forge Cannon (no expa)",
 			FeatureKey:   "bo_forge_cannon_no_expa",
@@ -1369,8 +1127,6 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Forge Cannon (no expa)", IconKey: "photoncannon"},
 		},
 		{
-			// 1 Gate (no expa): slow / contain single Gateway, no fast Cyber,
-			// no expansion.
 			Name:         "1 Gate (no expa)",
 			PatternName:  "Build Order: 1 Gate (no expa)",
 			FeatureKey:   "bo_1_gate_no_expa",
@@ -1387,36 +1143,14 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "1 Gate (no expa)", IconKey: "gateway"},
 		},
 
-		// -------------------------------------------------------------------
-		// Terran openers (matchup-gated). Sourced from the same dataset as
-		// the Protoss block. TvT is heavily monolithic (~57% 1 Rax 1 Fac);
-		// TvZ is the diverse matchup with at least 4 distinct families.
-		//
-		// Mutex within (Terran, matchup):
-		//   * BBS commits at 2nd Rax before any Depot — disjoint from all
-		//     others (which all have Depot first).
-		//   * CC First requires CC before any Rax — disjoint from Rax-CC
-		//     and 1 Rax 1 Fac.
-		//   * Rax-CC requires CC before Refinery AND Factory, with ≤1 Rax
-		//     before CC — disjoint from 1 Rax 1 Fac (Refinery before Factory)
-		//     and from BBS (2 Rax before Depot).
-		//   * 1 Rax 1 Fac requires Refinery before Factory and CC neither
-		//     before Refinery nor before Factory.
-		// -------------------------------------------------------------------
+		// Terran openers, mutually exclusive within (Terran, matchup): BBS commits at
+		// the 2nd Rax before any Depot, CC First needs the CC before any Rax, and the
+		// rest split on Refinery-vs-Factory-vs-CC ordering.
 
-		// --- Composition-based Terran BOs (issue #155). The old 1 Rax 1 Fac /
-		// 1 Rax FE / 2 Rax CC / 1 Rax Bio openers collapse into this set,
-		// classified by army composition at 10:00. ---
-		// (The TvZ "Wraith" composition opener was retired: it is the same build
-		// as TvT 2 Port Wraith — 1 Rax / 1 Fac into two Starports, wraith-dominant
-		// — so it folds into the now matchup-shared "2 Port Wraith" TierPreferred
-		// opener above. tcWraith still gates it out of the composition buckets.)
-		// (The former standalone "Goliath" opener was folded into the mech
-		// composition flavor below — Goliath-dominant mech is "Goliath" /
-		// "N Fact Expa Goliath", issue #227.)
-		// Bio (Marine/Medic predominant, 8+ Marines; TvZ or non-1v1), split by
-		// base count: 1-Base = no natural CC in the opening (all-in / pressure),
-		// 2-Base = took a natural CC by ~360s (macro). Mutually exclusive.
+		// Composition-based Terran BOs (issue #155): the old 1 Rax 1 Fac / 1 Rax FE /
+		// 2 Rax CC / 1 Rax Bio openers collapse into this set, classified by army
+		// composition at 10:00. The TvZ "Wraith" opener folded into 2 Port Wraith
+		// (same build) and the standalone "Goliath" into the mech flavors (#227).
 		bioBase("1-Base Bio", "bo_t_bio_1base", Not(FirstBuildBefore(subjCommandCenter, 360)), []ExpertEvent{
 			{Key: "Supply Depot", Match: MatchBuild(subjSupplyDepot), TargetSecond: 55, Tolerance: Asym(8, 50)}, // n=40, p10/50/90 = 47/55/105
 			{Key: "Barracks", Match: MatchBuild(subjBarracks), TargetSecond: 77, Tolerance: Asym(23, 12)},       // n=40, p10/50/90 = 54/77/89
@@ -1436,16 +1170,10 @@ func allMarkers() []Marker {
 		oneOneOne("1-1-1 Mech", "bo_t_111_mech", "siegetank", All(tcMechPred, tcTank1)),
 		oneOneOne("1-1-1 Tankless Mech", "bo_t_111_tankless", "vulture", All(tcMechPred, tcTank0)),
 		oneOneOne("1-1-1", "bo_t_111", "starport", All(Not(tcBio), Not(tcMechPred))),
-		// Mech named by Factories built strictly before the first expansion CC
-		// (deterministic), across the three composition flavors {Mech, Goliath,
-		// Tankless Mech}. Plus expand-first (0 fact) and the rare no-expansion
-		// one-base mech. Generated just below this slice via mechFamily().
+		// Mech named by Factories built strictly before the first expansion CC, which
+		// is deterministic. Generated just below this slice via mechFamily().
 		{
-			// CC First: ~6% of TvT, ~9% of TvP, ~10% of TvZ (combining
-			// D-C-B-D-R and D-B-C-D-R variants — actually only the former
-			// is true CC-first; the latter falls under Rax-CC). True CC
-			// First is Depot, CC, Rax. Risky vs Protoss without map help;
-			// canonical for greedy macro vs Z.
+			// True CC First is Depot, CC, Rax — the D-B-C-D-R variant falls under Rax-CC.
 			Name:         "CC First",
 			PatternName:  "Build Order: CC First",
 			FeatureKey:   "bo_cc_first",
@@ -1462,10 +1190,8 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "CC First", IconKey: "commandcenter"},
 		},
 		{
-			// BBS: confirmed in the dataset (e.g. SST_JumJaJungJi opens
-			// BBS in many TvZs: Rax @58s, Rax @79s, Depot @100s, Bunker
-			// @157s). All-in 2-Rax before any other Terran building. Rare
-			// in modern pro play but a recognizable signature.
+			// All-in 2-Rax before any other Terran building. Rare in modern pro play but
+			// a recognizable signature.
 			Name:         "BBS",
 			PatternName:  "Build Order: BBS",
 			FeatureKey:   "bo_bbs",
@@ -1484,12 +1210,10 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "BBS", IconKey: "barracks"},
 		},
 		{
-			// Bunker Rush: an all-in — early Bunker (≤240s) with no expansion
-			// (no CC by 300s) and no Factory tech (none by 240s), AND the spatial
-			// gate (see tRuleBunkerRush). TierPreferred so a genuine rush — which
-			// also matches its composition BO once tCohort stopped excluding
-			// bunker topology — wins by precedence. endOfReplaySentinel because
-			// the worldstate event only exists after the full stream is processed.
+			// TierPreferred so a genuine rush — which also matches its composition BO now
+			// that tCohort no longer excludes bunker topology — wins by precedence.
+			// endOfReplaySentinel because the spatial gate's worldstate event only exists
+			// once the full stream is processed.
 			Name:                   "Bunker Rush",
 			PatternName:            "Build Order: Bunker Rush",
 			FeatureKey:             "bo_bunker_rush",
@@ -1507,20 +1231,13 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Bunker Rush", IconKey: "bunker"},
 		},
 
-		// -------------------------------------------------------------------
-		// Residual "… (Other)" catch-alls (one per race). Each is the EXACT
-		// complement of its race's named openers, gated on the player having
-		// actually placed a defining opener building — so every classifiable
-		// player-replay lands on exactly one initial BO (a named one or its
-		// race's residual). Players who never place a defining building are
-		// left to the "Opener unresolved" marker below. Mutual exclusion with
-		// the named openers is guaranteed by construction (Not(Any(named))).
-		// -------------------------------------------------------------------
+		// Residual "… (Other)" catch-alls, one per race: the EXACT complement of the
+		// race's named openers, gated on the player having placed a defining opener
+		// building, so every classifiable player lands on exactly one initial BO.
+		// Players who never place one fall to "Opener unresolved" below.
 		{
-			// Zerg residual: the greedy tail of the Drone ladder — a Pool or
-			// expansion Hatchery placed at supply ≥13 (≥9 Drone morphs), which
-			// no exact rung claims. Pool-first vs hatch-first guards keep the
-			// two arms disjoint from each other and from the named rungs.
+			// The greedy tail of the Drone ladder: a Pool or expansion Hatchery placed at
+			// supply ≥13, which no exact rung claims.
 			Name:        "Pool/Hatch (Other)",
 			PatternName: "Build Order: Pool/Hatch (Other)",
 			FeatureKey:  "bo_zerg_other",
@@ -1528,16 +1245,12 @@ func allMarkers() []Marker {
 			Kind:        KindInitialBuildOrder,
 			Tier:        TierResidual,
 			Rule: Any(
-				// Pool-first greedy tail: supply ≥13 (≥9 Drone morphs).
 				All(
 					FirstBuildExists(subjSpawningPool),
 					ProduceCountAtLeastBeforeBuild(subjDrone, subjSpawningPool, 9),
 					Not(BuildBefore(subjHatchery, subjSpawningPool)),
 					Not(BuildBefore(subjEvolutionChamber, subjSpawningPool)),
 				),
-				// Hatch-first greedy tail: supply ≥13 (≥9 Drone morphs). The
-				// low tail (supply 4–8) is now covered by the named 4–8 Hatch
-				// rungs.
 				All(
 					FirstBuildExists(subjHatchery),
 					ProduceCountAtLeastBeforeBuild(subjDrone, subjHatchery, 9),
@@ -1550,8 +1263,6 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Other", IconKey: "spawningpool"},
 		},
 		{
-			// Protoss residual: a Gateway / Nexus / Forge opener that matches
-			// none of the five named Protoss builds.
 			Name:        "Gateway (Other)",
 			PatternName: "Build Order: Gateway (Other)",
 			FeatureKey:  "bo_protoss_other",
@@ -1571,13 +1282,10 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Other", IconKey: "gateway"},
 		},
 		{
-			// Terran residual: a Terran opener that matches none of the named
-			// builds — the kept topology openers (CC First / BBS / Bunker Rush)
-			// nor any composition BO (Bio / Mech / Wraith / Goliath / 1-1-1).
 			// In practice: too-short / tiny-army games, one-Factory builds, and
-			// composition-balanced openers that aren't clearly bio or mech.
-			// Defined as the exact complement Not(tNamed). RuleDeadline matches
-			// the composition window so the residual sees the same facts.
+			// composition-balanced openers that are clearly neither bio nor mech.
+			// RuleDeadline matches the composition window so the residual sees the same
+			// facts as the buckets it complements.
 			Name:        "Terran (Other)",
 			PatternName: "Build Order: Terran (Other)",
 			FeatureKey:  "bo_terran_other",
@@ -1597,14 +1305,10 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Terran (Other)", IconKey: "marine"},
 		},
 		{
-			// Opener unresolved (N/A): the player never placed a defining
-			// opener building — Pool/Hatchery (Z), Gateway/Forge/Nexus (P), or
-			// Barracks/CC/Factory (T). Almost always a <2-minute abort / instant
-			// leave / dodge where no build order ever happened. Race-agnostic
-			// (no Race gate) so one entry covers all three; disjoint from every
-			// initial BO, which all require a defining building. Stored so the
-			// dashboard can render "—" and coverage can be reported over
-			// classifiable players only, instead of counting these as misses.
+			// The player never placed a defining opener building — almost always a
+			// sub-2-minute abort, instant leave or dodge. Race-agnostic, and stored so the
+			// dashboard can render "—" and coverage can be reported over classifiable
+			// players instead of counting these as misses.
 			Name:        "Opener unresolved",
 			PatternName: "Opener unresolved",
 			FeatureKey:  "opener_unresolved",
@@ -1627,28 +1331,16 @@ func allMarkers() []Marker {
 			},
 		},
 
-		// -------------------------------------------------------------------
-		// KindMarker entries. These may coexist with each other and with a
-		// KindInitialBuildOrder. Bool-only via Rule; PatternName kept equal
-		// to the old imperative detector's Name() so DB rows + frontend
-		// checks stay compatible.
-		// -------------------------------------------------------------------
+		// KindMarker entries, which may coexist with each other and with a
+		// KindInitialBuildOrder. PatternName is kept equal to the old imperative
+		// detector's Name() so DB rows and frontend checks stay compatible.
 
-		// NOTE: the former Terran style markers — "Mech", "1-1-1", "SK Terran"
-		// and "Mech transition" — were promoted to first-class composition
-		// initial BOs above (issue #155) and removed here.
 		{
-			// Mutalisk timing (Z side) — fires iff opponent (T) also
-			// matches the turret-timing burst. Coupled with the
-			// turret_timing marker below via a shared cross-player gate
-			// in mutalisk_turret_timing.go that walks the worldstate
-			// engine's full enriched stream at Finalize.
-			//
-			// No per-event Expert tolerance bands: the only progamer
-			// reference baked into this marker is the muta-vs-turret
-			// completion gap (median + p25/p75 from the aurora-ID-labelled
-			// progamer corpus, MEASUREMENT.md), surfaced on the Mutalisk
-			// Timing tab — see populateMutaliskTimingForGameDetail.
+			// Fires iff the opponent also matches the turret-timing burst, via a shared
+			// cross-player gate in mutalisk_turret_timing.go that walks the worldstate
+			// engine's full enriched stream at Finalize. No Expert bands: the only
+			// progamer reference is the muta-vs-turret completion gap, surfaced on the
+			// Mutalisk Timing tab (see populateMutaliskTimingForGameDetail).
 			Name:          "Mutalisk timing",
 			PatternName:   "Mutalisk timing",
 			FeatureKey:    "mutalisk_timing",
@@ -1675,10 +1367,8 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Turret timing {timestamp}", IconKey: "missileturret"},
 		},
 		{
-			// First Reaver timing (PvP/PvT): the second the player's first Reaver
-			// pops, only when that is before 10:00. Reaver tech is common in
-			// PvP/PvT so this replaces the former "1/2 Gate Reaver" openers with
-			// a timing signal instead of a build order.
+			// Replaces the former 1/2 Gate Reaver openers: Reaver tech is common in
+			// PvP/PvT, so a timing signal reads better than a build order.
 			Name:          "First Reaver",
 			PatternName:   "First Reaver",
 			FeatureKey:    "first_reaver",
@@ -1693,8 +1383,6 @@ func allMarkers() []Marker {
 			EventsList:    &Pill{Label: "trains first Reaver", IconKey: "reaver"},
 		},
 		{
-			// First Corsair timing (PvZ): the second the player's first Corsair
-			// pops, only when before 10:00. Analogous to First Reaver.
 			Name:          "First Corsair",
 			PatternName:   "First Corsair",
 			FeatureKey:    "first_corsair",
@@ -1709,14 +1397,9 @@ func allMarkers() []Marker {
 			EventsList:    &Pill{Label: "trains first Corsair", IconKey: "corsair"},
 		},
 		{
-			// Wraith Cloak timing (TvZ/TvT): the second Cloaking Field research
-			// FINISHES at the Control Tower — when cloaked Wraiths become possible —
-			// the key timing of the 2 Port Wraith opener (cloaked-wraith harass).
-			// Reports completion (start + 63s), not the start, and only when it
-			// finishes within the replay: a research the game ends before completing
-			// yields no cloak. Surfaced as a per-player timing pill, like Speedlot
-			// timing; not gated to the opener match (Cloaking Field in TvZ/TvT is
-			// effectively a wraith build's tell).
+			// Reports the second Cloaking Field research FINISHES (start + 63s), not the
+			// start: a research the game ends before completing yields no cloaked Wraiths.
+			// Not gated to the opener — Cloaking Field in TvZ/TvT is a wraith build's tell.
 			Name:          "Wraith Cloak timing",
 			PatternName:   "Wraith Cloak timing",
 			FeatureKey:    "wraith_cloak_timing",
@@ -1731,11 +1414,8 @@ func allMarkers() []Marker {
 			EventsList:    &Pill{Label: "finishes Wraith Cloak research", IconKey: "wraith"},
 		},
 		{
-			// Speedlot timing (PvZ): the second Zealot leg-speed (Leg Enhancement)
-			// research FINISHES — i.e. when faster Zealots first exist — provided
-			// the research started before 10:00 and completes within the replay.
-			// Reporting the finish (not the start) means a research the game ends
-			// before completing produces no marker: no Speedlots were ever made.
+			// Reports the second Leg Enhancement FINISHES, not the start: a research the
+			// game ends before completing produces no Speedlots, so no marker.
 			Name:          "Speedlot timing",
 			PatternName:   "Speedlot timing",
 			FeatureKey:    "speedlot_timing",
@@ -1750,9 +1430,8 @@ func allMarkers() []Marker {
 			EventsList:    &Pill{Label: "finishes Zealot Speed research", IconKey: "zealot"},
 		},
 		{
-			// First Observer timing (PvP/PvT): the second the player's first
-			// Observer pops. Surfaced as a per-player pill only — the point is
-			// comparing the two players' Observer timings in the mirror / vs Terran.
+			// Per-player pill only: the point is comparing the two players' Observer
+			// timings in the mirror or vs Terran.
 			Name:          "First Observer",
 			PatternName:   "First Observer",
 			FeatureKey:    "first_observer",
@@ -1764,9 +1443,8 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{Label: "1st Observer {timestamp}", IconKey: "observer"},
 		},
 		{
-			// First Mine timing (PvT): the second the player's Vulture lays its
-			// first Spider Mine. Per-player pill only — the point is the distance
-			// between the two players' first-mine timings.
+			// Per-player pill only: the point is the distance between the two players'
+			// first-mine timings.
 			Name:          "First Mine",
 			PatternName:   "First Mine",
 			FeatureKey:    "first_mine",
@@ -1778,9 +1456,8 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{Label: "1st Mine {timestamp}", IconKey: "vulture"},
 		},
 		{
-			// Sair/Speedlot composition (PvZ): >=2 Corsairs AND Zealot leg-speed.
-			// The former Sair/Speedlot opener, demoted to a presence-only
-			// composition marker (the opening underneath is FFE / Gate Expand).
+			// The former Sair/Speedlot opener, demoted to a presence-only composition
+			// marker because the opening underneath is FFE or Gate Expand.
 			Name:          "Sair/Speedlot",
 			PatternName:   "Sair/Speedlot",
 			FeatureKey:    "sair_speedlot",
@@ -1794,12 +1471,9 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Sair/Speedlot", IconKey: "corsair"},
 		},
 		{
-			// Muta hit-n-run (#194): Zerg micros a hotkeyed Mutalisk flock in a
-			// sustained oscillating dart-in/pull-back rhythm. Presence-only and
-			// high-confidence — the worldstate engine applies a conservative
-			// per-player volley bar; this marker just surfaces the flag. No
-			// timeline pill (EventsList) because per-window timing is too
-			// error-prone to render. Any matchup (common in ZvT/ZvZ).
+			// Presence-only and high-confidence: the worldstate engine applies the
+			// conservative per-player volley bar, so this marker just surfaces the flag.
+			// No timeline pill — per-window timing is too error-prone to render.
 			Name:          "Muta hit-n-run",
 			PatternName:   "Muta hit-n-run",
 			FeatureKey:    "muta_hitnrun",
@@ -1812,10 +1486,7 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Muta hit-n-run", IconKey: "mutalisk"},
 		},
 		{
-			// Cliff drop (Big Game Hunters only): Terran player produces a
-			// Siege Tank, then UnloadAll fires within the 256×128px corner
-			// box at top-left or bottom-right. Map gating happens inside
-			// the evaluator's Finalize via IsBigGameHuntersMap.
+			// Map gating happens inside the evaluator's Finalize via IsBigGameHuntersMap.
 			Name:          "Cliff drop",
 			PatternName:   "Cliff drop",
 			FeatureKey:    "cliff_drop",
@@ -1850,14 +1521,9 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{IconKey: "battlecruiser", Style: PillStyleStrong, Title: "Battlecruisers"},
 		},
 		{
-			// Double Stargate (PvZ): the EARLY multi-Corsair technique — 2
-			// Stargates and 6+ Corsairs committed inside the opening window, to
-			// control Overlords / scout / deny detection. It is time-bounded (2nd
-			// Stargate + 6th Corsair by 7:30): a corpus survey of the 2nd-Starport
-			// second showed the technique clusters 4-7 min, with an 8min-35min tail
-			// that is really a Carrier transition (2 Stargates late) — those are
-			// NOT the double-Stargate build and were false positives when the rule
-			// was unbounded. Gated to PvZ.
+			// Time-bounded (2nd Stargate + 6th Corsair by 7:30) because a corpus survey
+			// found an 8-35min tail that is really a Carrier transition, not the
+			// double-Stargate technique — false positives when the rule was unbounded.
 			Name:          "Double Stargate",
 			PatternName:   "Double Stargate",
 			FeatureKey:    "double_stargate",
@@ -1870,11 +1536,9 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Double Stargate", IconKey: "corsair", Style: PillStyleStrong, Title: "2 Stargates + 6 Corsairs by 7:30 (PvZ)"},
 		},
 		{
-			// 10+ Scouts: Money-map signature. Scouts are uneconomic on
-			// Regular maps (275m + 125g + Stargate prerequisite), so a
-			// 10-Scout count almost never happens outside Money games.
-			// MapKind gate keeps the chip / pill noise-free on standard
-			// games even if a player accidentally produces a few Scouts.
+			// Money-map signature: Scouts are uneconomic on Regular maps (275m + 125g +
+			// Stargate), so the MapKind gate keeps the pill noise-free on standard games
+			// even if a player accidentally produces a few.
 			Name:          "10+ Scouts",
 			PatternName:   "10+ Scouts",
 			FeatureKey:    "ten_plus_scouts",
@@ -1887,11 +1551,9 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "10+ Scouts", IconKey: "scout", Style: PillStyleStrong, Title: "10+ Scouts"},
 		},
 		{
-			// Wraiths: air-heavy Terran play. The "mass air" threshold scales
-			// with team format — 3+ Wraiths reads as a deliberate air opener in
-			// a 1v1, whereas team games need 10+ (like 10+ Scouts) before the
-			// count is signal rather than incidental harass. The format-aware
-			// threshold lives in the evaluator (ctx.Replay.TeamFormat).
+			// The "mass air" threshold scales with team format (3+ in 1v1, 10+ in team
+			// games, where a low count is incidental harass rather than signal); it lives
+			// in the evaluator via ctx.Replay.TeamFormat.
 			Name:          "Wraiths",
 			PatternName:   "Wraiths",
 			FeatureKey:    "wraiths",
@@ -1910,12 +1572,10 @@ func allMarkers() []Marker {
 			Rule:             Not(HPUpgradeExists()),
 			RuleDeadline:     endOfReplaySentinel,
 			MinReplaySeconds: 10 * 60, // fallback for non-1v1
-			// 1v1 floor per (own_race, opp_race): p5 of the first HP-upgrade
-			// command over the aurora-ID-labelled progamer corpus
-			// (MEASUREMENT.md) — HP-only, matching this marker's rule. The
-			// previous floors were measured over all upgrades, so the fast
-			// non-HP researches (Zergling speed at ~2:05) dragged the Zerg
-			// rows far below any real armor/carapace timing.
+			// p5 of the first HP-upgrade command over the progamer corpus
+			// (MEASUREMENT.md), HP-only to match this marker's rule. The previous floors
+			// were measured over all upgrades, so fast non-HP researches (Zergling speed
+			// at ~2:05) dragged the Zerg rows below any real carapace timing.
 			MinReplaySecondsByMatchup: map[Race]map[Race]int{
 				RaceTerran: {
 					RaceTerran:  399, // n=207, p5=6:39
@@ -1936,7 +1596,7 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{
 				Label: "🚫 upgrades",
 				Style: PillStyleNegative,
-				Title: "No weapon/armor/shield upgrades in this replay for this player (suppressed on games shorter than matchup-typical first upgrade).",
+				Title: "No weapon/armor/shield upgrades in this replay for this player.",
 			},
 		},
 		{
@@ -1947,13 +1607,10 @@ func allMarkers() []Marker {
 			Rule:             Not(Any(TechExists(), NonHPUpgradeExists())),
 			RuleDeadline:     endOfReplaySentinel,
 			MinReplaySeconds: 10 * 60, // fallback for non-1v1
-			// 1v1 floor per (own_race, opp_race): p5 of the first tech-or-
-			// non-HP-upgrade command over the aurora-ID-labelled progamer
-			// corpus (MEASUREMENT.md) — matching this marker's rule exactly.
-			// The previous floors were measured over Tech commands only, so
-			// early non-HP upgrades (Dragoon range off the 1 Gate Core Cyber,
-			// Zergling speed) didn't count and the floors over-suppressed —
-			// PvT sat at 8:16 when pros prove research activity by ~2:46.
+			// p5 of the first tech-or-non-HP-upgrade command over the progamer corpus
+			// (MEASUREMENT.md), matching this marker's rule exactly. The previous floors
+			// counted Tech commands only, so early non-HP upgrades didn't count and the
+			// floors over-suppressed — PvT sat at 8:16 when pros research by ~2:46.
 			MinReplaySecondsByMatchup: map[Race]map[Race]int{
 				RaceTerran: {
 					RaceTerran:  234, // n=322, p5=3:54
@@ -1974,11 +1631,9 @@ func allMarkers() []Marker {
 			SummaryPlayer: &Pill{
 				Label: "🚫 researches",
 				Style: PillStyleNegative,
-				Title: "No tech or non-HP upgrade commands in this replay for this player (suppressed on games shorter than matchup-typical first research).",
+				Title: "No tech or non-HP upgrade commands in this replay for this player.",
 			},
 		},
-
-		// Custom evaluator markers — worldstate-sourced events + spatial stat.
 
 		{
 			Name:         "Made drops",
@@ -1987,9 +1642,9 @@ func allMarkers() []Marker {
 			Kind:         KindMarker,
 			Custom:       func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "drop"} },
 			RuleDeadline: endOfReplaySentinel,
-			// Suppressed on the summary player row when the backend already emits a
-			// drop game_event (the frontend de-dupes via trustGameEventsForDrops);
-			// we still expose the pill for the Events-list / raw consumers.
+			// Suppressed on the summary player row when the backend already emits a drop
+			// game_event (the frontend de-dupes via trustGameEventsForDrops); the pill
+			// still exists for the Events-list and raw consumers.
 			SummaryPlayer: &Pill{Label: "Made drops"},
 		},
 		{
@@ -2137,13 +1792,11 @@ func allMarkers() []Marker {
 			Custom:           newViewportMultitaskingEvaluator,
 			RuleDeadline:     endOfReplaySentinel,
 			MinReplaySeconds: models.ViewportMultitaskingWindowStartSecond, // 7m
-			// Deliberately no pill surfaces: this marker feeds the dedicated
-			// viewport-multitasking widget, not the summary pill row.
+			// Deliberately no pill surfaces: this feeds the viewport-multitasking widget.
 		},
 
-		// Hotkey marker. Positive hotkey usage lives in players.hotkey_stream
-		// (the used_hotkey_groups marker was retired with it); only the
-		// negative signal remains a marker + pill.
+		// Positive hotkey usage lives in players.hotkey_stream, so only the negative
+		// signal remains a marker.
 
 		{
 			Name:             "Never used hotkeys",
@@ -2160,15 +1813,9 @@ func allMarkers() []Marker {
 			},
 		},
 		// Phase-boundary markers: registry-only stubs so the storage layer's
-		// markers.ByPatternName() lookup resolves their FeatureKey on insert.
-		// They have NO Rule and NO Custom — the orchestrator's auto-registered
-		// MarkerPlayerDetector becomes a no-op for them. The actual data is
-		// produced by the replay-level detectors in
-		// internal/patterns/detectors/phase_boundary_detector.go which emit
-		// PatternResults that share these PatternNames. Pills are
-		// intentionally absent on every surface: these markers exist only
-		// to be queried server-side by feature code that needs the
-		// early/mid/late split, never rendered as a chip.
+		// markers.ByPatternName() lookup resolves their FeatureKey on insert. The data
+		// comes from detectors/phase_boundary_detector.go, which emits PatternResults
+		// sharing these PatternNames. No pills: these are queried server-side only.
 		{
 			Name:         "Mid game starts",
 			PatternName:  "mid_game_starts",
@@ -2184,8 +1831,7 @@ func allMarkers() []Marker {
 			RuleDeadline: endOfReplaySentinel,
 		},
 	}
-	// Mech composition family: {Mech, Goliath, Tankless Mech} × {1..6 Fact Expa,
-	// expand-first, no-expa}. Generated here so adding a flavor is one line.
+	// Generated here so adding a flavor is one line.
 	for _, c := range mechComps {
 		for n := 1; n <= 6; n++ {
 			ms = append(ms, mechExpa(n, c))

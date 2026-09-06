@@ -17,15 +17,12 @@ import (
 //
 // Returns one of: 11, 12, 1, 3, 5, 6, 7, 9
 func CalculateStartLocationOclock(tileX, tileY, startLocationX, startLocationY int) int {
-	// Convert tile dimensions to pixel dimensions
 	mapWidth := tileX * 32
 	mapHeight := tileY * 32
 
-	// Calculate the center of the map
 	centerX := float64(mapWidth) / 2.0
 	centerY := float64(mapHeight) / 2.0
 
-	// Convert start location to relative coordinates from center
 	relX := float64(startLocationX) - centerX
 	relY := float64(startLocationY) - centerY
 
@@ -33,7 +30,6 @@ func CalculateStartLocationOclock(tileX, tileY, startLocationX, startLocationY i
 	// Note: Y axis is flipped in StarCraft (0,0 is top-left), so we use relY directly
 	angle := math.Atan2(relY, relX)
 
-	// Convert to degrees and normalize to 0-360 range
 	angleDegrees := angle * 180.0 / math.Pi
 	if angleDegrees < 0 {
 		angleDegrees += 360

@@ -34,8 +34,7 @@ import {
   markerName,
 } from './lib/markerRegistry';
 
-// BetaTag renders a small superscript β with a plain-language tooltip, shown on
-// any marker/build-order pill whose detection hasn't been human-curated yet.
+// Shown on any marker/build-order pill whose detection isn't human-curated yet.
 const BetaTag = () => {
   const t = useT();
   return (
@@ -188,8 +187,7 @@ const PLAYERS_OMNIBAR_STATE_ORDER = ['lastPlayed', 'onlyFivePlus'];
 
 const isMainGameSkillProxyTab = (tab) => MAIN_GAME_SKILL_PROXY_TABS.includes(tab);
 
-// Per-insight short descriptions for the player Skill proxies > Summary cards.
-// APM omitted intentionally (number is self-explanatory in that view).
+// APM is omitted intentionally: the number is self-explanatory in that view.
 const playerInsightDescriptionOverride = (insightType) => {
   if (insightType === 'apm') return '';
   if (insightType === 'unit-production-cadence') return t('skillProxies.cadence.description');
@@ -331,8 +329,7 @@ const isActorAtOwnNaturalBase = (event) => {
   return Number.isFinite(naturalOfNum) && actorStart === naturalOfNum;
 };
 
-// joinWithAnd renders a name list as "A and B" / "A, B, and C" — used by the
-// alliance event description for 2+ player teams.
+// Used by the alliance event description for 2+ player teams.
 const joinWithAnd = (items) => {
   if (!Array.isArray(items) || items.length === 0) return '';
   if (items.length === 1) return items[0];
@@ -377,9 +374,8 @@ const gameEventLocationLabel = (event) => {
   return '';
 };
 
-// gameEventTargetLocationLabel renders a recall event's target_base name with
-// the same mineral-only suffix convention as gameEventLocationLabel. Returns
-// empty string when the event has no target_base (i.e. destination unknown).
+// Same mineral-only suffix convention as gameEventLocationLabel. Empty when the
+// event has no target_base, i.e. the destination is unknown.
 const gameEventTargetLocationLabel = (event) => {
   const baseName = String(event?.target_base?.name || '').trim();
   if (!baseName) return '';
@@ -390,10 +386,9 @@ const gameEventTargetLocationLabel = (event) => {
   return baseName;
 };
 
-// boOpenerLines groups the consolidated "bo_openers" event's per-(player × BO)
-// entries into one line per player, preserving the backend's registry ordering
-// for each player's BO names. Each line carries the player identity (name,
-// color, race, winner, team) needed to render both the events-list row and the
+// boOpenerLines groups the "bo_openers" event's per-(player × BO) entries into
+// one line per player, preserving the backend's registry ordering. Each line
+// carries the player identity needed by both the events-list row and the
 // per-start-location map labels.
 const boOpenerLines = (event) => {
   const entries = Array.isArray(event?.build_orders) ? event.build_orders : [];
@@ -426,9 +421,8 @@ const boOpenerLines = (event) => {
   return Array.from(byPlayer.values());
 };
 
-// boOpenerLineText renders one opener line as a sentence: "X starts at L and
-// opens with BO", dropping whichever clause is missing (no start location, no
-// resolved BO, or both — leaving just the name).
+// Renders one line as "X starts at L and opens with BO", dropping whichever
+// clause is missing (no start location, no resolved BO, or both).
 const boOpenerLineText = (line) => {
   const bo = line.boNames.join(' / ');
   const params = { name: line.name, location: line.startLocation, bo };
@@ -653,18 +647,16 @@ const CountryFlag = ({ code, playerKey }) => {
   return <span className="country-flag" title={countryCodeToName(resolved)}>{flag}</span>;
 };
 
-// COUNTRY_FLAG_POLL_MS paces the cache-only poll. It costs one local DB read and
+// COUNTRY_FLAG_POLL_MS paces the cache-only poll: it costs one local DB read and
 // no bridge budget, so the cadence is chosen for how fast flags feel like they
-// arrive, not for cost. COUNTRY_FLAG_POLL_MAX_TICKS stops a page that will never
-// resolve (players with no Battle.net profile) from polling for ever.
-// The games list refreshes on library progress at most this often: progress
-// events can arrive several times a second during the initial load.
+// arrive rather than for cost. COUNTRY_FLAG_POLL_MAX_TICKS stops a page that
+// will never resolve (players with no Battle.net profile) polling for ever.
+// The games list refreshes on library progress at most this often, since
+// progress events can arrive several times a second during the initial load.
 
 const COUNTRY_FLAG_POLL_MS = 2000;
 const COUNTRY_FLAG_POLL_MAX_TICKS = 45;
 
-// useCountryFlagBackfill polls for the country codes of players currently
-// rendered without a flag, and returns the codes that have resolved so far.
 // Polling stops as soon as nothing is outstanding and the server reports no
 // backfill in flight.
 function useCountryFlagBackfill(missingKeys, enabled) {
@@ -753,11 +745,10 @@ const gamePlayerNameSpan = (player, key) => {
   );
 };
 
-// renderGameEventDescription returns the same sentence as gameEventDescription
-// but with the actor and target wrapped in colored <span>s. Used for rendering
-// the event-row body. The string variant remains for search + dedup keys.
-// playerRaceByID lets us inline race-correct icons (vessel for drops) without
-// requiring the backend to embed race on every event row.
+// Same sentence as gameEventDescription, but with actor and target wrapped in
+// colored spans for the event-row body; the string variant remains for search
+// and dedup keys. playerRaceByID inlines race-correct icons without requiring
+// the backend to embed race on every event row.
 const renderGameEventDescription = (event, registry, playerRaceByID) => {
   const eventType = normalizeEventType(event?.type);
   const actorName = String(event?.actor?.name || '').trim();
@@ -1076,15 +1067,13 @@ const renderMapNameWithKind = (mapName, mapKind) => {
   );
 };
 
-// collectFeaturingKeysFromMainGame gathers the featuring chip keys present in
-// the replay: narrative game_events (cannon_rush / bunker_rush / zergling_rush)
-// by event_type; marker detections by event_type with a couple of aliases for
+// Gathers featuring chip keys from the replay: narrative game_events by
+// event_type, marker detections by event_type, plus a couple of aliases for
 // composite chips ("mind_control" from became_terran/became_zerg, and the UI's
 // short "recalls"/"nukes" labels).
 const collectFeaturingKeysFromMainGame = (mainGame) => {
-  // Returns { keys: Set<string>, rowByKey: Record<key, pattern row> }.
   // The row carries detected_second + payload so pill labels with
-  // {minute}/{timestamp}/{subject} placeholders can interpolate properly.
+  // {minute}/{timestamp}/{subject} placeholders can interpolate.
   const keys = new Set();
   const rowByKey = {};
   const isMoney = String(mainGame?.map_kind || '') === 'Money';
@@ -1098,10 +1087,9 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
     if (t === 'proxy_rax')      keys.add('proxy_rax');
     if (t === 'proxy_factory')  keys.add('proxy_factory');
     if (t === 'proxy_starport') keys.add('proxy_starport');
-    // Drop variants: every variant lights the generic 'drop' key; specific
-    // subtypes (cliff_drop) also light their own
-    // key. The post-process elision below drops the generic chip when a
-    // specific variant is present (avoids redundant "Drop + Cliff drop").
+    // Every drop variant lights the generic 'drop' key and subtypes also light
+    // their own; the elision below drops the generic chip when a specific variant
+    // is present, avoiding a redundant "Drop + Cliff drop".
     if (t === 'drop' || t === 'cliff_drop') {
       keys.add('drop');
       keys.add(t);
@@ -1127,22 +1115,14 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
   return { keys, rowByKey };
 };
 
-// buildMainGameFeaturingPills produces the ordered pill list for the replay
-// summary "Featuring" strip. Ordering + game-event-only metadata (cannon_rush,
-// bunker_rush, zergling_rush, mind_control) come from the backend-provided
-// featuring_order and game_event_features lists. Marker pills come from the
-// marker registry's games_list field; markers without one surface via a minimal
-// fallback.
+// Ordering and game-event-only metadata come from the backend's
+// featuring_order and game_event_features lists; marker pills come from the
+// registry's games_list field, with a minimal fallback for markers without one.
 //
-// Build-order openers are deliberately EXCLUDED here: the summary strip is for
-// game-characterising signatures/events (Carriers, drops, nukes, Double
-// Stargate, …), not the opener — which has its own per-player pill and Build
-// Orders tab. (The games-list rows keep their opener chip; that's a separate,
-// server-built `game.featuring` path.)
-//
-// Post-process: when a more-specific drop variant pill is present
-// (cliff_drop), the generic "drop" pill is elided
-// so the strip doesn't carry both "Drop" + "Cliff drop".
+// Build-order openers are deliberately EXCLUDED: this strip is for
+// game-characterising signatures and events, not the opener, which has its own
+// per-player pill and Build Orders tab. The games-list rows keep their opener
+// chip via the separate server-built `game.featuring` path.
 const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
   if (!mainGame) return [];
   const { keys, rowByKey } = collectFeaturingKeysFromMainGame(mainGame);
@@ -1158,9 +1138,8 @@ const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
     .map((key) => {
       const def = registry[key];
       if (def?.games_list) {
-        // Resolve via renderPillText so {minute}/{timestamp}/{subject}
-        // tokens in the games_list label/icon_key get interpolated against
-        // the matching detected-pattern row (when one exists).
+        // Resolve via renderPillText so {minute}/{timestamp}/{subject} tokens
+        // interpolate against the matching detected-pattern row.
         const rendered = renderPillText(def, PILL_SURFACES.gamesList, rowByKey[key]);
         if (rendered) {
           return { key, label: rendered.label || markerName(def), iconKey: rendered.iconKey || '', beta: featureIsBeta(def) };
@@ -1175,11 +1154,9 @@ const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
   return elideGenericDropPill(pills);
 };
 
-// elideGenericDropPill removes the generic "drop" pill from a pill list when
-// any more-specific drop variant (cliff_drop) is
-// present in the same list. Operates on entries shaped like { key, ... } so
-// the same helper can be reused across the main featuring strip, per-player
-// signal pills, and the games-list table column.
+// elideGenericDropPill drops the generic "drop" pill when a more specific
+// variant is present. It operates on { key, ... } entries so the same helper
+// serves the featuring strip, per-player signal pills and the games-list column.
 const SPECIFIC_DROP_KEYS = new Set(['cliff_drop']);
 const elideGenericDropPill = (pills) => {
   if (!Array.isArray(pills) || pills.length === 0) return pills;
@@ -1188,9 +1165,8 @@ const elideGenericDropPill = (pills) => {
   return pills.filter((p) => String(p?.key || '') !== 'drop');
 };
 
-// elideGenericDropLabels mirrors elideGenericDropPill for the games-list
-// table, whose Featuring column carries plain strings ("Drop", "Cliff drop",
-// "Cliff drop 7:59") rather than {key, ...} objects. We match on the
+// elideGenericDropLabels mirrors elideGenericDropPill for the games-list, whose
+// Featuring column carries plain strings rather than objects. Matched on the
 // pre-timestamp prefix so suffixes like " 7:59" don't break detection.
 const SPECIFIC_DROP_LABEL_PREFIXES = ['Cliff drop'];
 const elideGenericDropLabels = (labels) => {
@@ -1201,10 +1177,9 @@ const elideGenericDropLabels = (labels) => {
   return labels.filter((l) => !startsWith(l, 'Drop'));
 };
 
-// FeaturingCell keeps the games-list Featuring column on a single row, cropping
-// overflow. When the pills overflow, a trailing "…" toggle expands the cell to
-// wrap and show them all; the toggle stops click propagation so it doesn't open
-// the game the row links to.
+// FeaturingCell keeps the games-list Featuring column on a single row, with a
+// trailing "…" toggle to expand and wrap when the pills overflow. The toggle
+// stops click propagation so it doesn't open the game the row links to.
 /** Featuring is the derived insight — the reason this table exists — so every
  *  marker renders. It used to crop to one row behind a "…" toggle, which hid
  *  content in 83 of 100 rows while the player names beside it rendered in full. */
@@ -1267,10 +1242,9 @@ const mapBoundsFromDimensions = (widthPixels, heightPixels) => {
   return { minX: 0, minY: 0, maxX: w, maxY: h };
 };
 
-// polygonCenter returns the vertex-average center of a base polygon, which
-// is visually closer to "the middle of the painted area" than the
-// scmapanalyzer-provided base.center (biased toward mineral mass). Used for
-// positioning the townhall overlay icon on expansion events.
+// polygonCenter is the vertex average, which is visually closer to "the middle
+// of the painted area" than scmapanalyzer's base.center (biased toward mineral
+// mass). Used to position the townhall overlay icon on expansion events.
 const polygonCenter = (polygon) => {
   if (!Array.isArray(polygon) || polygon.length < 3) return null;
   let sumX = 0;
@@ -1289,10 +1263,9 @@ const polygonCenter = (polygon) => {
   return { x: sumX / count, y: sumY / count };
 };
 
-// polygonBoundingBox returns axis-aligned min/max in the same coordinate
-// space as the polygon vertices (pixel-space when called on raw event
-// polygons; percent-space when called on already-converted overlay polys).
-// Returns null for malformed polygons (<3 vertices).
+// Axis-aligned min/max in the polygon's own coordinate space — pixels for raw
+// event polygons, percent for already-converted overlay polys. Null for
+// malformed polygons (<3 vertices).
 const polygonBoundingBox = (polygon) => {
   if (!Array.isArray(polygon) || polygon.length < 3) return null;
   let minX = Infinity;
@@ -1314,18 +1287,16 @@ const polygonBoundingBox = (polygon) => {
   return { minX, minY, maxX, maxY };
 };
 
-// polygonBoundingBoxArea is the area of the axis-aligned bounding box of
-// the polygon (not the polygon's true area). Used to compare relative
-// "size" of a player's owned bases when picking an anchor polygon for the
-// trained-units overlay.
+// The area of the axis-aligned BOUNDING BOX, not the polygon's true area. Used
+// to compare the relative size of a player's bases when picking an anchor
+// polygon for the trained-units overlay.
 const polygonBoundingBoxArea = (polygon) => {
   const bb = polygonBoundingBox(polygon);
   if (!bb) return 0;
   return Math.max(0, bb.maxX - bb.minX) * Math.max(0, bb.maxY - bb.minY);
 };
 
-// distanceBetween returns the Euclidean distance between two {x, y} points.
-// Returns Infinity if either argument is missing.
+// Infinity if either argument is missing.
 const distanceBetween = (a, b) => {
   if (!a || !b) return Infinity;
   const dx = Number(a.x) - Number(b.x);
@@ -1334,10 +1305,8 @@ const distanceBetween = (a, b) => {
   return Math.sqrt(dx * dx + dy * dy);
 };
 
-// distanceToSegment returns the orthogonal distance from point p to the
-// line segment from→to, clamping at the segment endpoints (so points "past"
-// either end measure to that endpoint, not the infinite line). All
-// arguments are {x, y}.
+// Clamped at the segment endpoints, so points "past" either end measure to that
+// endpoint rather than to the infinite line.
 const distanceToSegment = (p, from, to) => {
   if (!p || !from || !to) return Infinity;
   const px = Number(p.x);
@@ -1450,11 +1419,9 @@ const fallbackOverlayUnitNamesForEvent = (eventType, actorRace) => {
   return [];
 };
 
-// gameEventRowIconEntries returns a list of inline icons to render alongside an
-// event-row description. Mirrors the units rendered on the map overlay so the
-// row carries the same visual signal (bunker-on-bunker-rush, arbiter-on-recall,
-// race-correct townhall on expansions, etc.). The leave-game flag is returned
-// as an emoji entry; everything else is a unit/building icon URL.
+// gameEventRowIconEntries mirrors the units rendered on the map overlay so the
+// row carries the same visual signal. The leave-game flag comes back as an emoji
+// entry; everything else is a unit/building icon URL.
 const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
   if (!event) return [];
   const normalized = normalizeEventType(event?.type);
@@ -1805,9 +1772,8 @@ const SUMMARY_TOPIC_PATTERNS = {
   scout: /\bscouts?\b|\bscout\b/i,
 };
 
-// prettyPatternName formats an event-type string (e.g. "zergling_rush") as a
-// human-readable title ("Zergling Rush"). Used by the Game Events timeline to
-// label entries whose event_type doesn't have a dedicated phrase.
+// prettyPatternName titles an event_type ("zergling_rush" → "Zergling Rush") for
+// timeline entries with no dedicated phrase.
 const prettyPatternName = (patternName) => {
   const trimmed = String(patternName || '').trim();
   if (!trimmed) return '';
@@ -1819,12 +1785,11 @@ const prettyPatternName = (patternName) => {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
-// shouldHidePatternFromSummaryPills suppresses markers the Summary row shouldn't
-// render as pills even though the backend stored them. viewport_multitasking
-// drives its own widget elsewhere; made_drops de-dupes against the narrative
-// drop game_events when the caller sets
-// trustGameEventsForDrops (those drop-family events are already rendered as
-// game-event pills and re-rendering the marker would double up the strip).
+// Suppresses markers the Summary row shouldn't render as pills even though the
+// backend stored them: viewport_multitasking drives its own widget, and
+// made_drops de-dupes against the narrative drop game_events when
+// trustGameEventsForDrops is set, since those are already rendered as
+// game-event pills.
 const shouldHidePatternFromSummaryPills = (pattern, trustGameEventsForDrops) => {
   const featureKey = pattern?.event_type;
   if (featureKey === 'viewport_multitasking') return true;
@@ -4437,16 +4402,12 @@ function App() {
     const avail = 2 * Math.min(centerX, frameW - centerX) - 16;
     cap.style.maxWidth = `${Math.round(Math.max(96, Math.min(240, avail)))}px`;
   }, [mainGameTab, selectedEventFocus, selectedMainGameEventKeyResolved, mainEventsMapColPx]);
-  // Trained-units overlay (issue #122 BONUS): paint a small chip with each
-  // player's army composition (top 4 unit types + "+N" pill) on top of the
-  // player's largest owned polygon at the moment of the selected event.
-  // Workers (Drone/Probe/SCV) and Overlord are filtered out by the backend
-  // when building trained_units_timeline.
+  // Trained-units overlay (issue #122): a chip with each player's army
+  // composition on their largest owned polygon at the selected event's moment.
+  // Workers and Overlord are filtered out by the backend.
   //
-  // mainGameTrainedUnitsByPlayer: pre-indexed per-player sample arrays,
-  // already sorted by second (the backend emits them in command order +
-  // shifts by build time, so insertion order is monotonic enough for our
-  // binary-search lookup). Memoized once per replay load.
+  // Pre-indexed per-player sample arrays sorted by second, memoized once per
+  // replay load, for the binary-search lookup below.
   const mainGameTrainedUnitsByPlayer = useMemo(() => {
     const timeline = Array.isArray(mainGame?.trained_units_timeline) ? mainGame.trained_units_timeline : [];
     const byPlayer = new Map();
@@ -4458,23 +4419,20 @@ function App() {
       if (!byPlayer.has(pid)) byPlayer.set(pid, []);
       byPlayer.get(pid).push({ sec, unit });
     }
-    // Sort each player's samples by sec — backend emits in command order
-    // (monotonic seconds_from_game_start) but add-build-time can shuffle
-    // adjacent entries when fast units precede slow ones in the same
-    // morph row. Cheap to sort defensively.
+    // The backend emits in command order, but adding build time can shuffle
+    // adjacent entries when fast units precede slow ones in the same morph row.
     for (const arr of byPlayer.values()) arr.sort((a, b) => a.sec - b.sec);
     return byPlayer;
   }, [mainGame?.trained_units_timeline]);
 
-  // selectedMainGameTrainedUnitsByPlayer: per-player {items: [{name, count}],
-  // more: int} for the event's second. Top 4 unit types by count; everything
-  // else collapses into a "+N" pill.
+  // Top 4 unit types by count for the event's second; everything else collapses
+  // into a "+N" pill.
   const selectedMainGameTrainedUnitsByPlayer = useMemo(() => {
     const eventSec = Number(selectedMainGameEvent?.second);
     if (!Number.isFinite(eventSec)) return new Map();
     const out = new Map();
     for (const [pid, samples] of mainGameTrainedUnitsByPlayer.entries()) {
-      // Binary search for the right boundary: count samples with sec ≤ eventSec.
+      // Binary search for the right boundary: samples with sec ≤ eventSec.
       let lo = 0;
       let hi = samples.length;
       while (lo < hi) {
@@ -4498,30 +4456,24 @@ function App() {
     return out;
   }, [mainGameTrainedUnitsByPlayer, selectedMainGameEvent?.second]);
 
-  // selectedMainGameTrainedUnitsAnchors: per-player render data anchored
-  // at the centroid of the player's chosen base, in percent space.
+  // Per-player render data anchored at the centroid of the player's chosen base,
+  // in percent space. Placement is pessimistic and per-base:
   //
-  // Placement strategy (pessimistic / per-base):
-  //   1. Identify the set of bases that are "off-limits" for this event —
-  //      bases where another overlay will already paint something
-  //      (arrow endpoints for attack/scout/drop/recall/rush/nuke, the
-  //      townhall icon for expansion/takeover, the leave-flag base, etc).
-  //      For arrow events that means TWO bases off-limits (source + target).
-  //   2. For each player, pick the first owned base that's NOT off-limits,
-  //      in priority: starting → natural → other expansions.
-  //   3. Anchor at that base's polygon centroid.
-  //   4. If every owned base is off-limits → don't render this player's
-  //      chip. (Last-resort fallback to any non-off-limits expansion is
-  //      already covered by step 2.)
+  //   1. Mark every base another overlay will paint on as off-limits (arrow
+  //      endpoints, the townhall icon, the leave-flag base). Arrow events claim
+  //      TWO bases, source and target.
+  //   2. Take the player's first non-off-limits base, preferring
+  //      starting → natural → other expansions.
+  //   3. Anchor at its polygon centroid, or skip the chip when every owned base
+  //      is off-limits.
   const selectedMainGameTrainedUnitsAnchors = useMemo(() => {
     if (!selectedMainGameEvent || !mainEventMapBounds) return [];
     if (selectedMainGameTrainedUnitsByPlayer.size === 0) return [];
     const ownership = Array.isArray(selectedMainGameEvent?.ownership) ? selectedMainGameEvent.ownership : [];
     if (ownership.length === 0) return [];
 
-    // basePolygonKey hashes a polygon by its first three vertex coordinates.
-    // Used to test "is this ownership entry the same base as the event's
-    // base / target_base / source_base?".
+    // Hashes a polygon by its first three vertices, to test whether an ownership
+    // entry is the same base as the event's base / target_base / source_base.
     const basePolygonKey = (polygon) => {
       if (!Array.isArray(polygon) || polygon.length === 0) return '';
       return polygon.slice(0, 3).map((p) => `${Math.round(Number(p?.x))}.${Math.round(Number(p?.y))}`).join('|');
@@ -4587,7 +4539,6 @@ function App() {
       return false;
     };
 
-    // Group ownership by player.
     const ownedByPlayer = new Map();
     for (const entry of ownership) {
       const pid = Number(entry?.owner?.player_id || 0);
@@ -4758,8 +4709,7 @@ function App() {
         points: points.map((p) => ({ ...p, race: playerRace })).sort((a, b) => a.second - b.second),
       };
     };
-    // Merge several per-player timing sources into one row per player, keyed by
-    // player_id (preserving the first series' metadata).
+    // Keyed by player_id, preserving the first series' metadata.
     const mergeByPlayer = (collect) => {
       const byPlayer = new Map();
       const ensure = (ps) => {
@@ -4970,11 +4920,10 @@ function App() {
     }).filter(Boolean);
   }, [mainGame?.first_unit_efficiency]);
 
-  // filterProductionEntries applies the unified production-view filter to a
-  // list of {unit_type, ...} entries. `view` selects whether the universe is
-  // 'all' / 'units' / 'buildings'; `productionSubFilter` then narrows further.
-  // Under 'all', tier filters target the union of UNIT_TIER_MAP and
-  // BUILDING_TIER_MAP; 'defenses' is building-only so it filters out units.
+  // `view` selects the universe ('all' / 'units' / 'buildings') and
+  // productionSubFilter narrows further. Under 'all', tier filters target the union
+  // of UNIT_TIER_MAP and BUILDING_TIER_MAP, and 'defenses' is building-only so it
+  // filters units out.
   const filterProductionEntries = (entries, view) => {
     const mode = productionSubFilter;
     const nameNeedle = String(productionNameFilter).trim().toLowerCase();

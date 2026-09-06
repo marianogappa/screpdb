@@ -70,12 +70,10 @@ func (o *Orchestrator) Initialize(replay *models.Replay, players []*models.Playe
 	o.players = players
 	o.worldState = worldstate.NewEngine(replay, players, mapContext)
 
-	// Create replay-level detectors (one per replay)
 	for _, factory := range replayLevelDetectors {
 		o.detectors = append(o.detectors, factory())
 	}
 
-	// Create player-level detectors (one per player)
 	for _, player := range players {
 		if player.IsObserver {
 			continue
@@ -85,7 +83,6 @@ func (o *Orchestrator) Initialize(replay *models.Replay, players []*models.Playe
 		}
 	}
 
-	// Initialize all detectors
 	for _, detector := range o.detectors {
 		if consumer, ok := detector.(core.WorldStateConsumer); ok {
 			consumer.SetWorldState(o.worldState)
@@ -129,7 +126,6 @@ func (o *Orchestrator) GetResults() []*core.PatternResult {
 	for _, detector := range o.detectors {
 		if detector.IsFinished() {
 			if result := detector.GetResult(); result != nil && detector.ShouldSave() {
-				// Check if we already have this result
 				found := false
 				for _, existing := range o.results {
 					samePlayer := (existing.PlayerID == nil && result.PlayerID == nil) || (existing.PlayerID != nil && result.PlayerID != nil && *existing.PlayerID == *result.PlayerID)
@@ -292,7 +288,6 @@ func (o *Orchestrator) SetMassDisconnectEnd(saverPID byte, clusterSecond int) {
 
 // ConvertResultsToDatabaseIDs converts pattern results from replay player IDs to database player IDs
 func (o *Orchestrator) ConvertResultsToDatabaseIDs(playerIDMap map[byte]int64) {
-	// Convert player-level results
 	for _, result := range o.results {
 		if result.Level == core.LevelPlayer && result.PlayerID == nil && result.ReplayPlayerID != nil {
 			if dbPlayerID, exists := playerIDMap[*result.ReplayPlayerID]; exists {

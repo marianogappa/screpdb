@@ -15,7 +15,6 @@ func ParseFile(filePath string) (*rep.Replay, error) {
 		return nil, fmt.Errorf("failed to parse replay file: %w", err)
 	}
 
-	// Compute derived data
 	replay.Compute()
 
 	return replay, nil
