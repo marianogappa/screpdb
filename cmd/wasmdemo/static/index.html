@@ -83,8 +83,8 @@
 
   <div id="root"></div>
 
-  <script src="/wasm_exec.js"></script>
-  <script src="/fs-shim.js"></script>
+  <script src="wasm_exec.js"></script>
+  <script src="fs-shim.js"></script>
   <script>
     (function () {
       "use strict";
@@ -99,7 +99,7 @@
         if (url.startsWith("/api/custom/game-assets/unit?") || url.startsWith("/api/custom/game-assets/building?")) {
           var params = new URLSearchParams(url.split("?")[1] || "");
           var name = (params.get("name") || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-          if (name) return originalFetch.call(window, "/assets/icons/" + name + ".png");
+          if (name) return originalFetch.call(window, "assets/icons/" + name + ".png");
           return Promise.resolve(new Response("not found", { status: 404 }));
         }
 
@@ -318,7 +318,7 @@
           subtitleEl.textContent = "Downloading replay engine…";
           var go = new Go();
           var result = await WebAssembly.instantiateStreaming(
-            fetch("/screpdb.wasm"),
+            fetch("screpdb.wasm"),
             go.importObject
           );
 
@@ -360,13 +360,13 @@
         var link = document.createElement("link");
         link.rel = "stylesheet";
         link.crossOrigin = "";
-        link.href = "/assets/__SPA_CSS__";
+        link.href = "assets/__SPA_CSS__";
         document.head.appendChild(link);
 
         var script = document.createElement("script");
         script.type = "module";
         script.crossOrigin = "";
-        script.src = "/assets/__SPA_JS__";
+        script.src = "assets/__SPA_JS__";
         document.head.appendChild(script);
       }
 
