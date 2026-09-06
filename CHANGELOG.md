@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.26.0](https://github.com/marianogappa/screpdb/compare/v1.25.0...v1.26.0) (2026-09-06)
+
+
+### Features
+
+* **dashboard:** built-in progamer profiles and Battle.net play habits ([#370](https://github.com/marianogappa/screpdb/issues/370)) ([23f8419](https://github.com/marianogappa/screpdb/commit/23f8419821bc862efa0a0cbe7f42f7753b074031))
+* **dashboard:** hotkey intel and players page rework ([#369](https://github.com/marianogappa/screpdb/issues/369)) ([981a880](https://github.com/marianogappa/screpdb/commit/981a880304b69679e2b6f9fdc3374facb624d405))
+* **dashboard:** Korean UI with system-locale detection and footer language switcher ([#379](https://github.com/marianogappa/screpdb/issues/379)) ([f04b5fb](https://github.com/marianogappa/screpdb/commit/f04b5fb1eb6e05e0d80f0920631d8a82969fe709))
+* **dashboard:** rebalance visual emphasis and filter from one omnibar ([#368](https://github.com/marianogappa/screpdb/issues/368)) ([8593a89](https://github.com/marianogappa/screpdb/commit/8593a89cb59e6a6acf7a93ab48566f604bfdd284))
+* **dashboard:** serve the dashboard from an in-memory replay library ([#373](https://github.com/marianogappa/screpdb/issues/373)) ([802645d](https://github.com/marianogappa/screpdb/commit/802645d5ef8a99fd125aa7561805844dc49c6a7d))
+* **library:** in-memory replay library core ([#372](https://github.com/marianogappa/screpdb/issues/372)) ([78d37b4](https://github.com/marianogappa/screpdb/commit/78d37b43c61b867ccf10d2266cd2887d817a5fd0))
+* re-derive all expert golden-line timings from the curated progamer corpus ([#364](https://github.com/marianogappa/screpdb/issues/364)) ([cbdedf5](https://github.com/marianogappa/screpdb/commit/cbdedf5f8cfc2866128298c5ccca0cc3dbc7307b))
+* remove SQLite and make MCP a thin client of the headless API ([#390](https://github.com/marianogappa/screpdb/issues/390)) ([f28b8b6](https://github.com/marianogappa/screpdb/commit/f28b8b6b11fe7397cf8b1083be2aa40e985cb5f3))
+* store hotkey commands as an encoded blob column on players ([#357](https://github.com/marianogappa/screpdb/issues/357)) ([#367](https://github.com/marianogappa/screpdb/issues/367)) ([854d133](https://github.com/marianogappa/screpdb/commit/854d133424fc093faebbe700bf7adb214915b302))
+* try screpdb with zero install via WebAssembly ([#385](https://github.com/marianogappa/screpdb/issues/385)) ([6d35af0](https://github.com/marianogappa/screpdb/commit/6d35af0e6b7943372310638bf1dff6d21679bcdc))
+
+
+### Bug Fixes
+
+* **bnet:** own the loopback connection so probes cannot log at all ([#391](https://github.com/marianogappa/screpdb/issues/391)) ([fd91105](https://github.com/marianogappa/screpdb/commit/fd91105fc5f62d214f2fbde375d139ec9a586fdd))
+* **bnet:** stop bridge discovery logging unsolicited-response noise ([#388](https://github.com/marianogappa/screpdb/issues/388)) ([c150d9e](https://github.com/marianogappa/screpdb/commit/c150d9e5472fd13f6aeab81fb6a6b1e4bcbc2bf2))
+* **dashboard:** cap the built-in progamer overlay at 15, race balanced ([#389](https://github.com/marianogappa/screpdb/issues/389)) ([4a1a9ae](https://github.com/marianogappa/screpdb/commit/4a1a9ae87a78ba9766f887b08f382a6e97d880b5))
+* **dashboard:** collapse gateway repeats and drop the subject from the alias row ([#387](https://github.com/marianogappa/screpdb/issues/387)) ([c6e224e](https://github.com/marianogappa/screpdb/commit/c6e224e07da49d63c79eaa463f76a26ae90dcdea))
+* **dashboard:** copy `brew update && brew upgrade screpdb` in the update hint ([#386](https://github.com/marianogappa/screpdb/issues/386)) ([9c27cd6](https://github.com/marianogappa/screpdb/commit/9c27cd6def0947c65f1a089edf8e83704dc15462))
+* **dashboard:** make the Alliances tab open instantly on 8-player games ([#394](https://github.com/marianogappa/screpdb/issues/394)) ([bb4acb5](https://github.com/marianogappa/screpdb/commit/bb4acb57f1c3ece0e3adb0db84eac173aa9adfc0))
+* **dashboard:** render the session games list like the main one ([#376](https://github.com/marianogappa/screpdb/issues/376)) ([1ca2b45](https://github.com/marianogappa/screpdb/commit/1ca2b453f83d788a1b07089f34a646c179f423a6))
+* **dashboard:** stop mojibaking Battle.net battle tags ([#378](https://github.com/marianogappa/screpdb/issues/378)) ([2abf091](https://github.com/marianogappa/screpdb/commit/2abf09160b2f51ed278a22121f467e6706b324e4))
+* render country flags on Windows and name countries in the flag tooltip ([#361](https://github.com/marianogappa/screpdb/issues/361)) ([#363](https://github.com/marianogappa/screpdb/issues/363)) ([7a21a0f](https://github.com/marianogappa/screpdb/commit/7a21a0f407307bc14171d706eb95e595e3474764))
+* stop crediting mass-disconnect games as wins to the replay saver ([#366](https://github.com/marianogappa/screpdb/issues/366)) ([e50bad6](https://github.com/marianogappa/screpdb/commit/e50bad62009624179b42f38898a3e3bc88214682))
+* **wasm-demo:** serve the browser preview from the GitHub Pages subpath ([#393](https://github.com/marianogappa/screpdb/issues/393)) ([86c9da5](https://github.com/marianogappa/screpdb/commit/86c9da505fb70de473347771f7abbf2e94cea193))
+
 ## [1.25.0](https://github.com/marianogappa/screpdb/compare/v1.24.1...v1.25.0) (2026-08-30)
 
 
