@@ -466,12 +466,40 @@ func apmGames(pro *propack.Pro) int {
 	return pro.APM.Games
 }
 
-func (d *Dashboard) featuredApmPoints() []workflowFeaturedPoint {
-	points := []workflowFeaturedPoint{}
+// The whole pack overlaid on one histogram is a wall, not a reference: seventy
+// markers collide into each other and bury the local population underneath, and
+// no single pro stays readable. The overlay is capped here rather than in the
+// frontend so the payload shrinks too. Cutting by curated rank alone is
+// race-skewed (the top 15 are 8 Terran, 5 Zerg and 2 Protoss), so the cap is
+// taken per race. Everyone left out keeps their own player page, which shows
+// that pro's placement on the same distributions.
+const (
+	featuredOverlayPerRace = 5
+	featuredOverlayLimit   = 15
+)
+
+// featuredOverlayPros picks the pros to draw on one skill-proxy distribution:
+// the best curated ranks per race among those hasValue accepts, so a pro with
+// no value for that particular metric does not cost the overlay a slot.
+func (d *Dashboard) featuredOverlayPros(hasValue func(*propack.Pro) bool) []*propack.Pro {
+	perRace := map[string]int{}
+	out := make([]*propack.Pro, 0, featuredOverlayLimit)
 	for _, pro := range d.featuredPros() {
-		if pro.APM == nil {
+		if len(out) >= featuredOverlayLimit {
+			break
+		}
+		if !hasValue(pro) || perRace[pro.MainRace] >= featuredOverlayPerRace {
 			continue
 		}
+		perRace[pro.MainRace]++
+		out = append(out, pro)
+	}
+	return out
+}
+
+func (d *Dashboard) featuredApmPoints() []workflowFeaturedPoint {
+	points := []workflowFeaturedPoint{}
+	for _, pro := range d.featuredOverlayPros(func(p *propack.Pro) bool { return p.APM != nil }) {
 		points = append(points, featuredPointOf(pro, pro.APM.Value, pro.APM.Games))
 	}
 	return points
@@ -479,10 +507,7 @@ func (d *Dashboard) featuredApmPoints() []workflowFeaturedPoint {
 
 func (d *Dashboard) featuredCadencePoints() []workflowFeaturedPoint {
 	points := []workflowFeaturedPoint{}
-	for _, pro := range d.featuredPros() {
-		if pro.Cadence == nil {
-			continue
-		}
+	for _, pro := range d.featuredOverlayPros(func(p *propack.Pro) bool { return p.Cadence != nil }) {
 		points = append(points, featuredPointOf(pro, pro.Cadence.Score, pro.Cadence.Games))
 	}
 	return points
@@ -490,10 +515,7 @@ func (d *Dashboard) featuredCadencePoints() []workflowFeaturedPoint {
 
 func (d *Dashboard) featuredViewportPoints() []workflowFeaturedPoint {
 	points := []workflowFeaturedPoint{}
-	for _, pro := range d.featuredPros() {
-		if pro.ViewportSwitchRate == nil {
-			continue
-		}
+	for _, pro := range d.featuredOverlayPros(func(p *propack.Pro) bool { return p.ViewportSwitchRate != nil }) {
 		points = append(points, featuredPointOf(pro, pro.ViewportSwitchRate.Value, pro.ViewportSwitchRate.Games))
 	}
 	return points

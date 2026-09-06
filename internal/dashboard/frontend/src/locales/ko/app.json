@@ -114,7 +114,7 @@
   "players.table.race": "종족",
   "players.table.games": "게임 수",
   "players.table.avgApm": "평균 APM",
-  "players.featuredToggleTip": "내장 플레이어는 참고용으로만 표시됩니다. 구간, 평균, 백분위 계산에는 포함되지 않습니다.",
+  "players.featuredToggleTip": "내장 플레이어는 참고용으로만 표시됩니다. 구간, 평균, 백분위 계산에는 포함되지 않습니다. 차트에는 선별된 일부만 표시되며, 나머지 내장 플레이어도 각자의 페이지에서 같은 비교를 볼 수 있습니다.",
   "players.showFeatured": "내장 플레이어 표시",
   "players.showFeaturedCount": "내장 플레이어 표시 ({count})",
   "players.featuredNote": " ★ 내장 플레이어는 참고용으로만 표시되며 집계에 포함되지 않습니다.",
