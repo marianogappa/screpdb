@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>screpdb — Preview</title>
+  <style>
+    :root {
+      --preview-bar-height: 40px;
+    }
+    #screpdb-loading {
+      position: fixed; inset: 0; z-index: 100000;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: #1a1a2e; color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    #screpdb-loading h1 { font-size: 1.4rem; margin-bottom: 1rem; font-weight: 600; }
+    #screpdb-loading .spinner {
+      width: 40px; height: 40px; border: 3px solid #333;
+      border-top-color: #6c8aff; border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin-bottom: 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #screpdb-loading .subtitle { font-size: 0.85rem; color: #888; }
+
+    #screpdb-preview-banner {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 99999;
+      height: var(--preview-bar-height);
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      background: #2a2a4a; color: #c0c0d0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 0.8rem; border-bottom: 1px solid #3a3a5a;
+    }
+    #screpdb-preview-banner .badge {
+      background: #6c8aff; color: #fff; font-size: 0.7rem; font-weight: 700;
+      padding: 2px 6px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    #screpdb-preview-banner a {
+      color: #8ca8ff; text-decoration: underline; text-underline-offset: 2px;
+    }
+    #screpdb-preview-banner a:hover { color: #b0c8ff; }
+    #screpdb-preview-banner .dismiss {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: #888; font-size: 1.1rem; cursor: pointer;
+      padding: 4px 8px; line-height: 1;
+    }
+    #screpdb-preview-banner .dismiss:hover { color: #ccc; }
+    #screpdb-preview-banner .details {
+      display: none; position: absolute; top: 100%; right: 12px;
+      background: #2a2a4a; border: 1px solid #3a3a5a; border-radius: 4px;
+      padding: 8px 12px; font-size: 0.75rem; white-space: nowrap; line-height: 1.6;
+    }
+    #screpdb-preview-banner .info-trigger:hover + .details,
+    #screpdb-preview-banner .details:hover { display: block; }
+
+    body.preview-banner-visible #root {
+      margin-top: var(--preview-bar-height);
+    }
+  </style>
+</head>
+<body>
+  <div id="screpdb-loading">
+    <div class="spinner"></div>
+    <h1>Loading screpdb preview…</h1>
+    <div class="subtitle">Initializing the replay analysis engine in your browser</div>
+  </div>
+
+  <div id="screpdb-preview-banner" hidden>
+    <span class="badge">Preview</span>
+    <span>You're trying screpdb in the browser. Some features are limited.</span>
+    <a href="https://github.com/marianogappa/screpdb#installation" target="_blank" rel="noopener">Install the full version →</a>
+    <span class="info-trigger" style="cursor:help; color:#888">ⓘ</span>
+    <div class="details">
+      Not available in preview:<br>
+      · Map rendering<br>
+      · Hotkey map composites<br>
+      · Battle.net integration<br>
+      · Auto update<br>
+      · Folder watching
+    </div>
+    <button class="dismiss" aria-label="Dismiss preview banner">&times;</button>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="/wasm_exec.js"></script>
+  <script src="/fs-shim.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      // ---- Patch fetch: route /api/ calls through the WASM handler ----
+      var originalFetch = window.fetch;
+      window.fetch = function (input, init) {
+        var url = typeof input === "string" ? input : (input && input.url) || "";
+        if (!url.startsWith("/api/")) return originalFetch.call(window, input, init);
+
+        // Pre-rendered icons: serve from static files
+        if (url.startsWith("/api/custom/game-assets/unit?") || url.startsWith("/api/custom/game-assets/building?")) {
+          var params = new URLSearchParams(url.split("?")[1] || "");
+          var name = (params.get("name") || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          if (name) return originalFetch.call(window, "/assets/icons/" + name + ".png");
+          return Promise.resolve(new Response("not found", { status: 404 }));
+        }
+
+        if (!window.__screpdb_handleRequest) {
+          return Promise.resolve(new Response("WASM not ready", { status: 503 }));
+        }
+
+        var method = (init && init.method) || "GET";
+        var body = (init && init.body) || "";
+
+        return new Promise(function (resolve) {
+          window.__screpdb_handleRequest(method, url, String(body), function (result) {
+            var headers = {};
+            if (result.headers) {
+              var keys = Object.keys(result.headers);
+              for (var i = 0; i < keys.length; i++) headers[keys[i]] = result.headers[keys[i]];
+            }
+            resolve(new Response(result.body, { status: result.status, headers: headers }));
+          });
+        });
+      };
+
+      // ---- Intercept <img src="/api/..."> ----
+      // Three layers working together:
+      // 1. setAttribute interception — prevents the browser's native 404 load
+      // 2. src property setter — catches React's direct property assignments
+      // 3. MutationObserver — fallback for anything the first two miss
+
+      // 1x1 transparent PNG — shown instantly while the real icon fetches.
+      var BLANK = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+
+      var MAP_PLACEHOLDER = (function () {
+        var c = document.createElement("canvas"); c.width = 512; c.height = 512;
+        var ctx = c.getContext("2d");
+        ctx.fillStyle = "#1a1a2e"; ctx.fillRect(0, 0, 512, 512);
+        ctx.strokeStyle = "#333"; ctx.lineWidth = 2;
+        ctx.strokeRect(4, 4, 504, 504);
+        ctx.fillStyle = "#555"; ctx.font = "14px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("Map preview available in the full version", 256, 250);
+        ctx.fillText("github.com/marianogappa/screpdb", 256, 274);
+        return c.toDataURL("image/png");
+      })();
+
+      // Pre-fetch icon blob URLs into a cache so repeat requests are instant.
+      var iconCache = {};
+      function fetchIconBlob(apiUrl) {
+        if (iconCache[apiUrl]) return iconCache[apiUrl];
+        iconCache[apiUrl] = window.fetch(apiUrl).then(function (resp) {
+          if (!resp.ok) return BLANK;
+          return resp.blob().then(function (b) { return URL.createObjectURL(b); });
+        }).catch(function () { return BLANK; });
+        return iconCache[apiUrl];
+      }
+
+      function isMapUrl(v) {
+        return v.indexOf("/game-assets/map?") !== -1 || v.indexOf("/hotkeys/map?") !== -1;
+      }
+
+      // Set the right attribute for the element type.
+      function setImgSrc(el, url) {
+        if (el.nodeName === "image") {
+          // SVG <image> uses href (and xlink:href for older browsers)
+          el.setAttribute("href", url);
+          el.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", url);
+        } else {
+          el.src = url;
+        }
+      }
+
+      function resolveApiImage(apiUrl, el) {
+        if (isMapUrl(apiUrl)) {
+          setImgSrc(el, MAP_PLACEHOLDER);
+          return;
+        }
+        fetchIconBlob(apiUrl).then(function (blobUrl) { setImgSrc(el, blobUrl); });
+      }
+
+      // Layer 1: intercept setAttribute("src"|"href", "/api/...")
+      var origSetAttribute = Element.prototype.setAttribute;
+      Element.prototype.setAttribute = function (name, value) {
+        if (typeof value === "string" && value.startsWith("/api/")) {
+          // <img src="/api/...">
+          if (this.nodeName === "IMG" && name === "src") {
+            origSetAttribute.call(this, "src", BLANK);
+            resolveApiImage(value, this);
+            return;
+          }
+          // SVG <image href="/api/..."> or <image xlink:href="/api/...">
+          if (this.nodeName === "image" && (name === "href" || name === "xlink:href")) {
+            origSetAttribute.call(this, name, BLANK);
+            resolveApiImage(value, this);
+            return;
+          }
+        }
+        return origSetAttribute.call(this, name, value);
+      };
+
+      // Also intercept setAttributeNS for SVG xlink:href
+      var origSetAttributeNS = Element.prototype.setAttributeNS;
+      Element.prototype.setAttributeNS = function (ns, name, value) {
+        if (this.nodeName === "image" && typeof value === "string" && value.startsWith("/api/")) {
+          origSetAttributeNS.call(this, ns, name, BLANK);
+          resolveApiImage(value, this);
+          return;
+        }
+        return origSetAttributeNS.call(this, ns, name, value);
+      };
+
+      // Layer 2: intercept img.src = "/api/..."
+      var imgSrcDesc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
+      if (imgSrcDesc && imgSrcDesc.set) {
+        Object.defineProperty(HTMLImageElement.prototype, "src", {
+          get: imgSrcDesc.get,
+          set: function (value) {
+            if (typeof value === "string" && value.startsWith("/api/")) {
+              imgSrcDesc.set.call(this, BLANK);
+              resolveApiImage(value, this);
+              return;
+            }
+            imgSrcDesc.set.call(this, value);
+          },
+          enumerable: true, configurable: true,
+        });
+      }
+
+      // Layer 3: MutationObserver for <img> and SVG <image>
+      function fixNode(node) {
+        if (node.nodeName === "IMG") {
+          var s = node.getAttribute("src");
+          if (s && s.startsWith("/api/")) resolveApiImage(s, node);
+        } else if (node.nodeName === "image") {
+          var h = node.getAttribute("href") || node.getAttributeNS("http://www.w3.org/1999/xlink", "href");
+          if (h && h.startsWith("/api/")) resolveApiImage(h, node);
+        }
+        if (node.querySelectorAll) {
+          node.querySelectorAll('img[src^="/api/"], image[href^="/api/"]').forEach(fixNode);
+        }
+      }
+
+      new MutationObserver(function (mutations) {
+        for (var i = 0; i < mutations.length; i++) {
+          var m = mutations[i];
+          if (m.type === "childList") {
+            for (var j = 0; j < m.addedNodes.length; j++) fixNode(m.addedNodes[j]);
+          }
+        }
+      }).observe(document.documentElement, {
+        childList: true, subtree: true,
+      });
+
+      // ---- Patch WebSocket for library events ----
+      var RealWebSocket = window.WebSocket;
+
+      function FakeLibrarySocket() {
+        this.readyState = 0;
+        this.onopen = null;
+        this.onmessage = null;
+        this.onclose = null;
+        this.onerror = null;
+        this._listeners = {};
+        var self = this;
+
+        // Subscribe to library events from Go. This triggers the initial
+        // snapshot to be sent NOW (not during WASM init when nobody was listening).
+        if (window.__screpdb_subscribeLibraryEvents) {
+          window.__screpdb_subscribeLibraryEvents(function (jsonString) {
+            self._fire("message", { data: jsonString });
+          });
+        }
+
+        Promise.resolve().then(function () {
+          self.readyState = 1;
+          self._fire("open", {});
+        });
+      }
+      FakeLibrarySocket.prototype.close = function () { this.readyState = 3; };
+      FakeLibrarySocket.prototype.send = function () {};
+      FakeLibrarySocket.prototype.addEventListener = function (type, fn) {
+        (this._listeners[type] = this._listeners[type] || []).push(fn);
+      };
+      FakeLibrarySocket.prototype.removeEventListener = function (type, fn) {
+        var arr = this._listeners[type];
+        if (arr) this._listeners[type] = arr.filter(function (f) { return f !== fn; });
+      };
+      FakeLibrarySocket.prototype._fire = function (type, detail) {
+        var event = new MessageEvent(type, detail);
+        var handler = this["on" + type];
+        if (typeof handler === "function") handler.call(this, event);
+        var arr = this._listeners[type] || [];
+        for (var i = 0; i < arr.length; i++) arr[i](event);
+      };
+
+      window.WebSocket = function (url, protocols) {
+        if (typeof url === "string" && url.indexOf("/api/custom/library/events") !== -1) {
+          return new FakeLibrarySocket();
+        }
+        return new RealWebSocket(url, protocols);
+      };
+      window.WebSocket.CONNECTING = 0;
+      window.WebSocket.OPEN = 1;
+      window.WebSocket.CLOSING = 2;
+      window.WebSocket.CLOSED = 3;
+
+      // ---- Bootstrap: load WASM, then load SPA ----
+      async function bootstrap() {
+        var loadingEl = document.getElementById("screpdb-loading");
+        var subtitleEl = loadingEl.querySelector(".subtitle");
+
+        // Clean up any stale Service Worker from previous architecture.
+        if ("serviceWorker" in navigator) {
+          var regs = await navigator.serviceWorker.getRegistrations();
+          for (var i = 0; i < regs.length; i++) await regs[i].unregister();
+        }
+
+        try {
+          subtitleEl.textContent = "Downloading replay engine…";
+          var go = new Go();
+          var result = await WebAssembly.instantiateStreaming(
+            fetch("/screpdb.wasm"),
+            go.importObject
+          );
+
+          subtitleEl.textContent = "Starting replay engine…";
+          go.run(result.instance);
+
+          await new Promise(function (resolve) {
+            var check = function () {
+              if (window.__screpdb_ready) resolve();
+              else setTimeout(check, 50);
+            };
+            check();
+          });
+
+          subtitleEl.textContent = "Loading dashboard…";
+        } catch (err) {
+          subtitleEl.textContent = "Error: " + err.message;
+          console.error("WASM bootstrap failed:", err);
+          return;
+        }
+
+        // Hide loading, show banner.
+        // style.display beats the CSS #screpdb-loading { display: flex } rule
+        // that would override the [hidden] attribute's display:none.
+        loadingEl.style.display = "none";
+
+        var banner = document.getElementById("screpdb-preview-banner");
+        if (localStorage.getItem("screpdb-preview-banner-dismissed") !== "1") {
+          banner.hidden = false;
+          document.body.classList.add("preview-banner-visible");
+          banner.querySelector(".dismiss").addEventListener("click", function () {
+            banner.hidden = true;
+            document.body.classList.remove("preview-banner-visible");
+            localStorage.setItem("screpdb-preview-banner-dismissed", "1");
+          });
+        }
+
+        // Load the SPA
+        var link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.crossOrigin = "";
+        link.href = "/assets/__SPA_CSS__";
+        document.head.appendChild(link);
+
+        var script = document.createElement("script");
+        script.type = "module";
+        script.crossOrigin = "";
+        script.src = "/assets/__SPA_JS__";
+        document.head.appendChild(script);
+      }
+
+      bootstrap();
+    })();
+  </script>
+</body>
+</html>

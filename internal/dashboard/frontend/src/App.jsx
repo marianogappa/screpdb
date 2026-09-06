@@ -2871,7 +2871,7 @@ function App() {
     const os = updateStatus?.os || '';
     if (reason === 'managed') {
       if (manager === 'scoop') return 'scoop update screpdb';
-      if (manager === 'homebrew') return 'brew upgrade screpdb';
+      if (manager === 'homebrew') return 'brew update && brew upgrade screpdb';
       return '';
     }
     if (reason === 'not-writable' && os !== 'windows') {
@@ -7067,7 +7067,9 @@ function App() {
                     const bnetLastPlayed = bnet?.last_played_at ? formatRelativeReplayDate(bnet.last_played_at) : '';
                     const bnetHours = Number(bnet?.play_time_seconds || 0) / 3600;
                     const keyOf = (name) => String(name || '').trim().toLowerCase();
-                    const aliasSeen = new Set([keyOf(mainPlayer?.player_name || selectedPlayerKey)]);
+                    // player_name carries the "you" marker, so the subject is
+                    // matched on the undecorated key instead.
+                    const aliasSeen = new Set([keyOf(mainPlayer?.player_key || selectedPlayerKey), keyOf(bnet?.toon)]);
                     const aliases = [];
                     (bnet?.toons || []).forEach((t) => {
                       const key = keyOf(t.toon);

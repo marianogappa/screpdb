@@ -119,7 +119,7 @@ curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.s
 **[Homebrew](https://brew.sh) / Linuxbrew**를 선호하시나요?
 
 ```bash
-brew install marianogappa/screpdb/screpdb   # upgrade later: brew upgrade screpdb
+brew install marianogappa/screpdb/screpdb   # upgrade later: brew update && brew upgrade screpdb
 ```
 
 또는 [릴리스 페이지](https://github.com/marianogappa/screpdb/releases)에서 아키텍처에 맞는 바이너리를 내려받아 실행 권한을 주고 `PATH`에 있는 폴더로 옮기세요. 앱 내 **업데이트** 버튼이 작동하도록 쓰기 가능한 폴더(Homebrew prefix 제외)에 두는 것이 좋습니다:
@@ -141,7 +141,7 @@ mkdir -p ~/.local/bin && mv screpdb-linux-amd64 ~/.local/bin/screpdb
 **[Homebrew](https://brew.sh)로 설치:**
 
 ```bash
-brew install marianogappa/screpdb/screpdb   # upgrade later: brew upgrade screpdb
+brew install marianogappa/screpdb/screpdb   # upgrade later: brew update && brew upgrade screpdb
 ```
 
 또는 한 줄 설치 스크립트를 사용하세요(릴리스의 서명된 `SHA256SUMS`와 대조하고 `~/.local/bin`에 설치합니다):
@@ -214,7 +214,7 @@ rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/screpdb"
 
 ## 개발자 기능
 
-UI 없이 `screpdb ingest`로 리플레이를 SQLite 데이터베이스에 불러와 직접 쿼리할 수 있고, `screpdb mcp`로 MCP 클라이언트(Claude Desktop, Claude Code, Cursor 등)에서 게임, 플레이어, 종족전, 빌드 오더에 대해 자연어로 질문하면 읽기 전용 SQL로 답을 얻을 수 있습니다. `screpdb dashboard --headless`는 UI 없이 JSON API 서버만 실행하며, 모든 UI 기능이 OpenAPI 스키마와 함께 API로 제공됩니다. 명령별 옵션은 [영어 README의 Developer features 참고](README.md#developer-features).
+SQLite 데이터베이스도, 별도의 불러오기 단계도 없습니다. screpdb는 시작할 때 리플레이 폴더를 메모리로 읽어 들이고, 대시보드와 JSON API와 MCP 서버가 모두 그 하나의 코퍼스에서 답합니다. `screpdb dashboard --headless`는 UI 없이 JSON API 서버만 실행하며, 모든 UI 기능이 OpenAPI 스키마와 함께 API로 제공됩니다. `screpdb mcp`로 MCP 클라이언트(Claude Desktop, Claude Code, Cursor 등)에서 게임, 플레이어, 종족전, 빌드 오더에 대해 자연어로 질문할 수 있으며, MCP 서버는 자체 데이터를 갖지 않고 바로 그 headless JSON API를 읽습니다. 대시보드가 이미 열려 있으면 거기에 연결하고, 아니면 headless 서버를 직접 띄운 뒤 종료할 때 정리합니다. 명령별 옵션은 [영어 README의 Developer features 참고](README.md#developer-features).
 
 ## 사양: 수치가 계산되는 방식
 

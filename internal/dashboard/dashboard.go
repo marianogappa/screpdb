@@ -119,6 +119,20 @@ func (d *Dashboard) ReplayDir() string {
 // has the newest games while the rest stream in behind it.
 func (d *Dashboard) StartLibrary() error { return d.library.Start(d.ctx) }
 
+// Handler returns the fully-wired HTTP handler without starting a TCP listener.
+// Use this in environments where a real net.Listener is unavailable (e.g. WASM).
+func (d *Dashboard) Handler() http.Handler {
+	return d.setupRouter()
+}
+
+// OnLibraryEvent registers fn as a virtual subscriber that receives every
+// library event as a JSON-encoded message (same format as the WebSocket
+// endpoint). It returns a cancel function that removes the subscriber. The
+// WASM entry point uses this to forward events to JavaScript.
+func (d *Dashboard) OnLibraryEvent(fn func([]byte)) func() {
+	return d.libraryHub.addVirtualSubscriber(fn)
+}
+
 // Close releases the library and stops the loader and watcher.
 func (d *Dashboard) Close() {
 	if d.library != nil {
