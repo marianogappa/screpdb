@@ -99,7 +99,6 @@ func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) err
 	log.Printf("Reading replays from %s", dash.ReplayDir())
 	dash.SetShutdownFunc(cancel)
 
-	// Start backend server asynchronously
 	serverURL := fmt.Sprintf("http://localhost:%d", opts.Port)
 	log.Printf("Starting dashboard server on %s...", serverURL)
 	backendReady := dash.StartAsync(opts.Port)

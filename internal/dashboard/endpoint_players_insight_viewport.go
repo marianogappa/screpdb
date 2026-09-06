@@ -97,7 +97,7 @@ func (d *Dashboard) buildWorkflowPlayerViewportAsyncInsight(playerKey string) (w
 		Title:           "Viewport switch rate",
 		BetterDirection: "higher",
 		PopulationSize:  int64(len(eligible)),
-		Description:     "This tracks how often a player's coordinate-bearing commands jump outside the prior viewport-sized area from 7:00 until 80% of game length. Higher suggests more frequent attention shifts across the map, though it is still a proxy rather than literal camera tracking.",
+		Description:     "This tracks how often a player's coordinate-bearing commands jump outside the prior viewport-sized area from 7:00 until 80% of game length. Higher suggests more frequent attention shifts across the map.",
 	}
 
 	playerSummary, ok := findWorkflowViewportMultitaskingAggregate(allPlayers, playerKey)

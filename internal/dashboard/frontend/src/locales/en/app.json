@@ -61,7 +61,7 @@
   "library.message.sampleNotice": "Loaded some example replays because we couldn't find your StarCraft replay folder. Open Replay library to point screpdb at your own replays.",
   "library.message.loadSettingsFailed": "Failed to load replay library settings.",
   "library.message.folderRequired": "Replay folder is required",
-  "library.message.confirmLoadSample": "Switch to the example replays?\n\nThis changes your replay folder setting to the bundled example set. Your own replays stay where they are.",
+  "library.message.confirmLoadSample": "Switch to the example replays? Your own replays stay where they are.",
   "library.message.loadSampleFailed": "Failed to load example replays.",
   "library.message.switchFolderFailed": "Failed to switch to your replay folder.",
   "library.message.saveFolderFailed": "Failed to save replay folder.",

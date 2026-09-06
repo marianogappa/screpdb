@@ -1,25 +1,16 @@
-// compositionPill renders the per-game attacker-composition family.
+// compositionPill renders the per-game attacker-composition family: one
+// fixed-width module split into early | mid | late zones side by side. Each zone
+// is a proportional stacked bar — a segment per distinct unit, width by share of
+// that phase's production, with the icon inside and a % label when wide enough.
+// A phase the game never reached renders as a faint "–".
 //
-// Layout is a single fixed-width module split into three phase zones
-// (early | mid | late) sitting side by side in one row. Each zone is a
-// proportional stacked bar: every distinct unit gets a segment whose
-// width is proportional to its share of that phase's production, with
-// the unit icon inside and a % label when the segment is wide enough.
-// A phase the game never reached renders as a faint "–". A header line
-// (CompositionZonesHeader) labels the three zones once, above the rows.
+// Spellcasters are NOT in the bars: the backend emits a per-phase list of
+// distinct (unit, spell) casts, surfaced instead as a "Spellcasts" pill on the
+// Featuring strip and a chip block on the wider summary surface. The same unit
+// icon can appear under several spells (Vessel → Irradiate + EMP).
 //
-// Spellcasters are NOT in the bars. The backend emits a per-phase list
-// of distinct (unit, spell) casts; the frontend surfaces them in a
-// "Spellcasts" pill (SpellcastsPill) on the Featuring strip and a chip
-// block (SpellcastsChips) on the wider summary surface. The same unit
-// icon can appear under multiple spells (e.g. Vessel → Irradiate + EMP).
-//
-// Backend source:
-//   - boundaries persisted at ingest as replay-level markers
-//     (mid_game_starts, late_game_starts)
-//   - composition rows computed at request time from those boundaries
-//     plus the Train/Unit Morph/Cast command stream
-//     (internal/dashboard/unit_composition.go)
+// Boundaries are persisted at ingest as replay-level markers; the composition
+// rows are computed at request time in internal/dashboard/unit_composition.go.
 
 import React from 'react';
 import { getUnitIcon } from './gameAssets';
@@ -29,12 +20,11 @@ import { useT } from './i18nContext';
 export const PHASE_ORDER = ['early', 'mid', 'late'];
 const PHASE_RANK = { early: 0, mid: 1, late: 2 };
 
-// Segment fills, stepping down by position within a phase bar (dominant unit
-// first). The icon already identifies the unit and the width already gives its
-// share, so hue was carrying nothing here — six saturated fills per row made
-// the bars the loudest thing on the summary while saying no more than a
-// greyscale ramp does. The descending ramp still separates adjacent segments,
-// echoes the ordering, and leaves the unit sprites fully legible on top.
+// Segment fills step down by position within a phase bar, dominant unit first.
+// The icon already identifies the unit and the width already gives its share, so
+// hue carried nothing: six saturated fills per row made the bars the loudest
+// thing on the summary while saying no more than a greyscale ramp. The ramp still
+// separates adjacent segments and leaves the unit sprites legible on top.
 const SEG_PALETTE = [
   'rgba(255, 255, 255, 0.24)',
   'rgba(255, 255, 255, 0.17)',
@@ -56,14 +46,11 @@ const formatPhaseLabel = (t, phase) => {
 
 const unitName = (t, name) => t.server(`server.name.${slugKey(name)}`, name);
 
-// sortPhasesByRank stable-sorts a list of phase entries early -> mid -> late.
 export const sortPhasesByRank = (phases) =>
   [...(phases || [])].sort((a, b) => (PHASE_RANK[a.phase] ?? 99) - (PHASE_RANK[b.phase] ?? 99));
 
-// computeReplayAggregatePhases sums per-player counts and unions spells
-// across all rows for a single replay, returning per-phase entries
-// shaped identically to a single-player phase. Source:
-// detail.unit_composition_markers.
+// Sums per-player counts and unions spells across a replay's rows, returning
+// per-phase entries shaped identically to a single player's.
 export const computeReplayAggregatePhases = (rows) => {
   if (!Array.isArray(rows) || rows.length === 0) return [];
   const byPhase = new Map(); // phase -> { units: Map<name,count>, spells: Map<key,{unit,spell}> }
@@ -98,8 +85,8 @@ const sortSpells = (spells) =>
   [...(spells || [])].sort((a, b) =>
     (a.unit || '').localeCompare(b.unit || '') || (a.spell || '').localeCompare(b.spell || ''));
 
-// collectPlayerSpells flattens the distinct (unit, spell) casts across a
-// player's phases into one ordered list for the Spellcasts pill.
+// Flattens the distinct (unit, spell) casts across a player's phases into one
+// ordered list for the Spellcasts pill.
 export const collectPlayerSpells = (phases) => {
   const seen = new Map();
   for (const p of (phases || [])) {
@@ -111,15 +98,13 @@ export const collectPlayerSpells = (phases) => {
   return sortSpells(Array.from(seen.values()));
 };
 
-// withProportions turns raw unit counts into segments carrying their
-// percentage share, ordered by count desc then name. A single-unit zone
-// gets no % label (the lone icon already reads as "all of this").
+// withProportions orders segments by count desc then name. A single-unit zone
+// gets no % label — the lone icon already reads as "all of this".
 //
-// A zone is only so wide, so beyond `cap` distinct units the long tail
-// is split off — the renderer collapses it into a "+k" chip rather than
-// overflowing. Percentages are always computed against the full phase
-// total, so shown shares stay honest (they sum to <100 when a tail
-// exists).
+// Beyond `cap` distinct units the long tail is split off for the renderer to
+// collapse into a "+k" chip rather than overflowing the zone. Percentages are
+// always computed against the FULL phase total, so shown shares stay honest and
+// sum to under 100 when a tail exists.
 const withProportions = (units, cap) => {
   const safe = (units || []).filter((u) => u && u.name && Number(u.count) > 0);
   const total = safe.reduce((acc, u) => acc + Number(u.count), 0);
@@ -132,8 +117,8 @@ const withProportions = (units, cap) => {
     pct: Math.round((Number(u.count) * 100) / total),
   }));
   if (typeof cap === 'number' && cap > 0 && segs.length > cap) {
-    // The "+k" tail chip takes a slot, so keep at most `cap` visual items
-    // (cap-1 icons + the chip) — never cap+1, which would overflow.
+    // The "+k" chip takes a slot, so keep at most `cap` visual items — never cap+1,
+    // which would overflow.
     return { shown: segs.slice(0, cap - 1), hidden: segs.slice(cap - 1) };
   }
   return { shown: segs, hidden: [] };
@@ -142,8 +127,8 @@ const withProportions = (units, cap) => {
 const CompositionZone = ({ units, cap }) => {
   const t = useT();
   const { shown, hidden } = withProportions(units, cap);
-  // A phase the game never reached stays a visible hole so the three-bar
-  // rhythm holds across rows.
+  // A phase the game never reached stays a visible hole so the three-bar rhythm
+  // holds across rows.
   if (shown.length === 0) {
     return <span className="workflow-composition-bar workflow-composition-bar-empty" title={t('composition.noArmyProduction')} />;
   }
@@ -177,8 +162,7 @@ const CompositionZone = ({ units, cap }) => {
   );
 };
 
-// CompositionZonesHeader renders the early/mid/late labels aligned to
-// the three zones. Render once above a stack of CompositionZones rows.
+// Render once above a stack of CompositionZones rows.
 export const CompositionZonesHeader = ({ slim }) => {
   const t = useT();
   return (
@@ -190,9 +174,8 @@ export const CompositionZonesHeader = ({ slim }) => {
   );
 };
 
-// CompositionZones renders one player's (or the replay aggregate's)
-// three-zone composition bar. Always three fixed columns so rows line up
-// under the shared header; a missing phase shows a faint "–".
+// Always three fixed columns so rows line up under the shared header; a missing
+// phase shows a faint "–".
 export const CompositionZones = ({ phases, slim }) => {
   const byPhase = new Map();
   for (const p of (phases || [])) {
@@ -200,8 +183,8 @@ export const CompositionZones = ({ phases, slim }) => {
   }
   const hasAny = PHASE_ORDER.some((phase) => (byPhase.get(phase)?.units || []).length > 0);
   if (!hasAny) return null;
-  // Per-player zones are narrow (~60px) so they hold far fewer icons than
-  // the wide summary zones (~230px) before they'd overflow.
+  // Per-player zones are ~60px against the summary's ~230px, so they hold far
+  // fewer icons before overflowing.
   const cap = slim ? 3 : 7;
   return (
     <span className={`workflow-composition-zones${slim ? ' workflow-composition-zones-slim' : ''}`}>
@@ -222,9 +205,8 @@ const spellIcon = (unit) => {
   return icon ? <img className="workflow-spellcast-icon" src={icon} alt="" /> : null;
 };
 
-// SpellcastsPill is the single legended pill for the per-player Featuring
-// strip: icons only (one per distinct cast — the same unit repeats for
-// distinct spells), legended "Casts". Spell names live in the tooltip.
+// Icons only, one per distinct cast, so the same unit repeats for distinct
+// spells. Spell names live in the tooltip.
 export const SpellcastsPill = ({ spells }) => {
   const t = useT();
   const safe = sortSpells(spells);
@@ -242,8 +224,8 @@ export const SpellcastsPill = ({ spells }) => {
   );
 };
 
-// SpellcastsChips renders the spells as standard summary pills (icon +
-// spell name), matching the Featuring pills on this tab — one per cast.
+// Standard summary pills (icon + spell name), matching this tab's Featuring
+// pills, one per cast.
 export const SpellcastsChips = ({ spells }) => {
   const t = useT();
   const safe = sortSpells(spells);

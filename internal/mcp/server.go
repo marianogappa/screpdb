@@ -24,13 +24,11 @@ var starcraftKnowledge string
 // that regularly approaches it; the model is told when it was cut.
 const maxToolResultBytes = 400 << 10
 
-// Server implements the MCP server over the dashboard's read-only JSON API.
 type Server struct {
 	client    *Client
 	mcpServer *server.MCPServer
 }
 
-// NewServer wires the MCP tools onto an API client.
 func NewServer(client *Client) *Server {
 	mcpServer := server.NewMCPServer(
 		"screpdb-mcp-server",
@@ -39,8 +37,8 @@ func NewServer(client *Client) *Server {
 	)
 	s := &Server{client: client, mcpServer: mcpServer}
 
-	// The workhorse: every question about the corpus is a GET against one of
-	// the exposed endpoints, filtered and aggregated by the model.
+	// The workhorse: every question about the corpus is a GET against one of the
+	// exposed endpoints, filtered and aggregated by the model.
 	queryTool := mcp.NewTool("query_replay_api",
 		mcp.WithDescription("Read the screpdb replay corpus over its read-only JSON API and get the response back. Pass an API path with an optional query string, e.g. /api/games?limit=20&matchup=TvZ, /api/games/{replayID}, /api/players?sort_by=games&sort_dir=desc, or /api/players/{playerKey}/insight?type=build_orders. Only a curated read-only subset of the dashboard API is reachable; call get_api_schema first for the exact paths and their parameters, and get_starcraft_knowledge for what the data means."),
 		mcp.WithString("path",
@@ -69,8 +67,8 @@ func NewServer(client *Client) *Server {
 	)
 	mcpServer.AddTool(knowledgeTool, s.handleGetStarCraftKnowledge)
 
-	// Curated discovery tools so an agent can orient itself without guessing
-	// at a corpus it has not seen.
+	// Curated discovery tools, so an agent can orient itself without guessing at a
+	// corpus it has not seen.
 	playersTool := mcp.NewTool("list_top_players",
 		mcp.WithDescription("List the players with the most games in the corpus. Use this to discover who is in it before asking player-specific questions; the playerKey each row carries is what the /api/players/{playerKey}/... endpoints take."),
 		mcp.WithNumber("limit",
@@ -93,7 +91,6 @@ func NewServer(client *Client) *Server {
 	return s
 }
 
-// Start serves the MCP protocol over stdio.
 func (s *Server) Start(ctx context.Context) error {
 	return server.ServeStdio(s.mcpServer)
 }
@@ -138,7 +135,6 @@ func (s *Server) handleGetSchema(ctx context.Context, _ mcp.CallToolRequest) (*m
 	return mcp.NewToolResultText(b.String()), nil
 }
 
-// get reads one API path and returns it as an indented JSON tool result.
 func (s *Server) get(ctx context.Context, path string) (*mcp.CallToolResult, error) {
 	body, err := s.client.Get(ctx, path)
 	if err != nil {
@@ -147,8 +143,8 @@ func (s *Server) get(ctx context.Context, path string) (*mcp.CallToolResult, err
 	return mcp.NewToolResultText(formatJSON(path, body)), nil
 }
 
-// formatJSON indents a response for readability and truncates an oversized
-// one rather than flooding the model's context with it.
+// formatJSON indents for readability and truncates an oversized response rather
+// than flooding the model's context with it.
 func formatJSON(path string, body []byte) string {
 	var pretty bytes.Buffer
 	if err := json.Indent(&pretty, body, "", "  "); err != nil {

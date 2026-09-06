@@ -33,7 +33,6 @@ const (
 	bridgeTimeout       = 5 * time.Second
 )
 
-// loopbackResponse is the outcome of one loopbackGet.
 type loopbackResponse struct {
 	StatusCode int
 	Status     string

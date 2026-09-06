@@ -22,7 +22,6 @@ func NewChatCommandHandler() *ChatCommandHandler {
 func (h *ChatCommandHandler) Handle(cmd repcmd.Cmd, base *repcmd.Base) *models.Command {
 	command := createBaseCommand(base, 0, 0) // replayID and startTime will be set by caller
 
-	// Extract chat message from the command
 	if chatCmd, ok := cmd.(*repcmd.ChatCmd); ok {
 		command.ChatMessage = stringPtr(chatCmd.Message)
 	}

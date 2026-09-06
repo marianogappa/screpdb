@@ -10,48 +10,37 @@ import (
 	"github.com/marianogappa/screpdb/internal/patterns/markers"
 )
 
-// MarkerPlayerDetector evaluates one Marker for one player. Instances are
-// created per (player × marker) by the orchestrator's markers-loop.
+// MarkerPlayerDetector evaluates one Marker for one player; the orchestrator's
+// markers-loop creates one per (player × marker). Exactly one of the Marker's
+// Rule / Custom fields is expected to be set.
 //
-// Two dispatch modes:
-//
-//   - Rule (predicate DSL): streaming PredicateState tree + small dedup tail
-//     buffer. Commits Matched/Rejected as soon as the state is determinate.
-//   - Custom (escape-hatch evaluator): feeds every classified command to a
-//     CustomEvaluator; calls evaluator.Finalize at end-of-window to obtain
-//     a richer value (int / string / time) alongside the match verdict.
-//
-// Exactly one of the Marker's Rule / Custom fields is expected to be set.
+// The Rule path streams a PredicateState tree plus a small dedup tail buffer and
+// commits as soon as determinate. The Custom path feeds every classified command
+// to a CustomEvaluator and calls its Finalize at end-of-window for a richer value.
 type MarkerPlayerDetector struct {
 	BasePlayerDetector
 	marker markers.Marker
 
-	// Rule path state:
 	state   markers.PredicateState
 	pending map[string]cmdenrich.EnrichedCommand // dedup tail for KindMakeBuilding facts
-	// observed records every fact past dedup, in stream order. Used to resolve
-	// Expert milestones once at save time so the dashboard doesn't re-resolve on
-	// every page load. Only populated for markers with non-empty Expert.
+	// observed records every fact past dedup, in stream order, so Expert milestones
+	// resolve once at save time instead of on every dashboard page load. Only
+	// populated for markers with non-empty Expert.
 	observed []cmdenrich.EnrichedCommand
-	// lastObservedSecond tracks the replay second of the most recent fact fed into state.
-	// On a Matched commit during streaming, this is the second that flipped the decision —
-	// used as the marker's DetectedAtSecond.
+	// On a Matched commit during streaming this is the second that flipped the
+	// decision, which becomes the marker's DetectedAtSecond.
 	lastObservedSecond int
 
-	// modifierStates holds one running predicate per Rule-based Modifier on the
-	// marker, fed the same dedup'd fact stream as the BO rule. Resolved at save
-	// time; WorldstateEvent modifiers are checked separately in GetResult.
+	// One running predicate per Rule-based Modifier, fed the same dedup'd stream as
+	// the BO rule. WorldstateEvent modifiers are checked separately in GetResult.
 	modifierStates []modifierState
-	// hasWorldstateModifier is true when any modifier reads a worldstate event.
 	// Such a result must not be emitted until the worldstate is finalized (the
-	// orchestrator finalizes it before the final detector pass), else reading it
-	// would trigger a premature worldstate Finalize.
+	// orchestrator does so before the final detector pass), else reading it would
+	// trigger a premature worldstate Finalize.
 	hasWorldstateModifier bool
 
-	// Custom path state:
 	custom markers.CustomEvaluator
-	// customResult is the result from CustomEvaluator.Finalize, cached so GetResult has access
-	// to DetectedAtSecond + Payload.
+	// Cached so GetResult can reach DetectedAtSecond and Payload.
 	customResult markers.CustomResult
 
 	matched          bool
@@ -63,7 +52,6 @@ type modifierState struct {
 	state markers.PredicateState
 }
 
-// NewMarkerPlayerDetector creates a detector for the given marker.
 func NewMarkerPlayerDetector(m markers.Marker) *MarkerPlayerDetector {
 	d := &MarkerPlayerDetector{marker: m}
 	if m.Rule != nil {
@@ -83,18 +71,15 @@ func NewMarkerPlayerDetector(m markers.Marker) *MarkerPlayerDetector {
 	return d
 }
 
-// Name returns the stored pattern name (e.g. "Build Order: 9 Pool", "Carriers").
 func (d *MarkerPlayerDetector) Name() string { return d.marker.PatternName }
 
-// ProcessCommand dispatches to the Rule or Custom path.
 func (d *MarkerPlayerDetector) ProcessCommand(command *models.Command) bool {
 	if !d.ShouldProcessCommand(command) {
 		return false
 	}
 	if d.IsFinished() {
-		// Rule already committed Matched/Rejected (or marker finalized at
-		// deadline). Trailing commands must be ignored; in particular the
-		// dedup map is nil after commit and would panic on insert.
+		// Already committed (or finalized at deadline). Trailing commands must be
+		// ignored: the dedup map is nil after commit and would panic on insert.
 		return true
 	}
 	if d.marker.Race != "" && !isPlayerRace(d.GetPlayers(), d.GetReplayPlayerID(), string(d.marker.Race)) {
@@ -115,15 +100,11 @@ func (d *MarkerPlayerDetector) ProcessCommand(command *models.Command) bool {
 			return true
 		}
 	}
-	// NOTE: Money maps are NOT filtered at detection time for build
-	// orders. BOs still detect so the per-player Build Orders tab +
-	// per-player summary pills can show on Money games. The render layer
-	// (games-list "Featuring" column and game-detail summary featuring
-	// strip) is responsible for suppressing BO chips on Money maps — see
-	// internal/dashboard/endpoint_main_games_players_list.go and the
-	// frontend buildMainGameFeaturingPills helper. Markers that should
-	// ONLY fire on a specific MapKind set the field above explicitly
-	// (e.g. "10+ Scouts" on Money maps only).
+	// Money maps are deliberately NOT filtered at detection time for build orders:
+	// BOs still detect so the Build Orders tab and per-player summary pills show on
+	// Money games, and the render layer suppresses the BO chips instead (see
+	// endpoint_main_games_players_list.go and buildMainGameFeaturingPills). Markers
+	// that should fire ONLY on a MapKind set the field above explicitly.
 	now := command.SecondsFromGameStart
 
 	if d.state != nil {
@@ -132,14 +113,10 @@ func (d *MarkerPlayerDetector) ProcessCommand(command *models.Command) bool {
 	if d.custom != nil {
 		return d.processCustom(command, now)
 	}
-	// Misconfigured marker — neither Rule nor Custom. Finalize as a no-op.
+	// Neither Rule nor Custom: misconfigured, so finalize as a no-op.
 	d.SetFinished(true)
 	return true
 }
-
-// -----------------------------------------------------------------------------
-// Rule path
-// -----------------------------------------------------------------------------
 
 func (d *MarkerPlayerDetector) processRule(command *models.Command, now int) bool {
 	d.flushDedupBefore(now)
@@ -163,18 +140,17 @@ func (d *MarkerPlayerDetector) processRule(command *models.Command, now int) boo
 			d.observeRuleFact(fact)
 		}
 	case cmdenrich.KindUpgrade, cmdenrich.KindTech, cmdenrich.KindHotkey:
-		// Upgrade/Tech/Hotkey facts bypass the subject gate — their
-		// subjects are upgrade/tech names or hotkey groups, not
-		// units/buildings, and their predicates don't filter by subject.
+		// Upgrade/Tech/Hotkey facts bypass the subject gate: their subjects are
+		// upgrade/tech names or hotkey groups rather than units, and their predicates
+		// don't filter by subject.
 		d.observeRuleFact(fact)
 	}
 	return d.checkRuleDecision(now)
 }
 
-// observeRuleFact funnels a fact into the predicate state and records its second
-// so a subsequent Matched commit can report the flipping fact's timestamp.
-// Also captures the fact into d.observed when the marker has Expert events,
-// so GetResult can ResolveExpert against the same dedup'd stream the detector saw.
+// observeRuleFact records the fact's second so a subsequent Matched commit can
+// report the flipping fact's timestamp, and captures it into d.observed when the
+// marker has Expert events so ResolveExpert sees the same dedup'd stream.
 func (d *MarkerPlayerDetector) observeRuleFact(f cmdenrich.EnrichedCommand) {
 	d.lastObservedSecond = f.Second
 	d.state.Observe(f)
@@ -187,7 +163,7 @@ func (d *MarkerPlayerDetector) observeRuleFact(f cmdenrich.EnrichedCommand) {
 }
 
 func (d *MarkerPlayerDetector) enqueueDedup(f cmdenrich.EnrichedCommand) {
-	// After BuildDedupMaxSecond, skip dedup: flush any prior pending for this
+	// Past BuildDedupMaxSecond, skip dedup: flush any prior pending for this
 	// subject as a real observation, then observe the current fact too.
 	if f.Second >= markers.BuildDedupMaxSecond {
 		if prior, ok := d.pending[f.Subject]; ok {
@@ -207,12 +183,11 @@ func (d *MarkerPlayerDetector) enqueueDedup(f cmdenrich.EnrichedCommand) {
 	d.pending[f.Subject] = f
 }
 
-// sameBuildTile reports whether two build facts target the same map tile.
-// Dedup only collapses repeat placements of the same building at the same
-// spot (double-tap / misclick); two same-type buildings at *different* tiles
-// are genuinely distinct and must both be observed, even when placed seconds
-// apart. Positions are required — if either is unknown we treat the pair as
-// distinct rather than collapse on a guess.
+// Dedup only collapses repeat placements of the same building at the same spot
+// (double-tap / misclick); two same-type buildings at DIFFERENT tiles are
+// genuinely distinct and must both be observed, even seconds apart. Positions
+// are required — an unknown one makes the pair distinct rather than collapsing
+// on a guess.
 func sameBuildTile(a, b cmdenrich.EnrichedCommand) bool {
 	return a.X != nil && a.Y != nil && b.X != nil && b.Y != nil && *a.X == *b.X && *a.Y == *b.Y
 }
@@ -236,18 +211,15 @@ func (d *MarkerPlayerDetector) flushAllPending() {
 func (d *MarkerPlayerDetector) checkRuleDecision(now int) bool {
 	switch d.state.Decision(now) {
 	case markers.Matched:
-		// First-time match: stamp the second the rule flipped. Subsequent
-		// calls (post-match) keep the original second so DetectedAtSecond
-		// reflects the build-decision moment, not later observations.
+		// Post-match calls keep the original second, so DetectedAtSecond reflects the
+		// build-decision moment rather than later observations.
 		if !d.matched {
 			d.matched = true
 			d.detectedAtSecond = d.lastObservedSecond
 		}
-		// Don't SetFinished yet: the marker may have Expert milestones
-		// further out (e.g. "First Zealot" at ~108s for 2 Gate, after the
-		// 2nd-Gateway commit at ~86s). Stay alive until RuleDeadline so
-		// observeRuleFact keeps appending to d.observed and ResolveExpert
-		// can resolve them at GetResult-time.
+		// Don't SetFinished yet: Expert milestones can lie further out ("First Zealot"
+		// ~108s for 2 Gate, after the 2nd-Gateway commit at ~86s), so stay alive until
+		// RuleDeadline to keep appending to d.observed for ResolveExpert.
 		return false
 	case markers.Rejected:
 		d.commitRejected()
@@ -259,13 +231,10 @@ func (d *MarkerPlayerDetector) checkRuleDecision(now int) bool {
 func (d *MarkerPlayerDetector) finalizeRuleAtDeadline() {
 	d.SetFinished(true)
 	d.flushAllPending()
-	// If the rule already committed Matched during streaming, keep that
-	// verdict + DetectedAtSecond from the original commit. Re-running
-	// Finalize on a Matched state would be a no-op anyway (Matched is
-	// terminal), but we deliberately bypass overwriting DetectedAtSecond
-	// with replay-end / RuleDeadline. That overwrite is only correct for
-	// late-finalized rules that resolved at the deadline (absence
-	// markers, etc.), not for rules that committed early.
+	// Keep the streaming commit's verdict and DetectedAtSecond. Re-running Finalize
+	// on a Matched state is a no-op anyway, but this deliberately bypasses
+	// overwriting DetectedAtSecond with replay-end / RuleDeadline — correct only for
+	// rules that actually resolved at the deadline, like absence markers.
 	if d.matched {
 		d.pending = nil
 		return
@@ -281,10 +250,6 @@ func (d *MarkerPlayerDetector) finalizeRuleAtDeadline() {
 	}
 	d.pending = nil
 }
-
-// -----------------------------------------------------------------------------
-// Custom path
-// -----------------------------------------------------------------------------
 
 func (d *MarkerPlayerDetector) processCustom(command *models.Command, now int) bool {
 	if now > d.marker.RuleDeadline {
@@ -315,7 +280,7 @@ func (d *MarkerPlayerDetector) finalizeCustomAtDeadline() {
 }
 
 // Finalize handles end-of-replay for detectors that never tripped their
-// deadline. It forces a final commitment on whichever path is active.
+// deadline, forcing a commitment on whichever path is active.
 func (d *MarkerPlayerDetector) Finalize() {
 	if d.IsFinished() {
 		return
@@ -337,20 +302,18 @@ func (d *MarkerPlayerDetector) commitRejected() {
 	d.pending = nil
 }
 
-// GetResult returns a PatternResult when the marker matched AND any duration
-// gate is satisfied. Rule markers with Expert milestones emit a payload of
-// position-aligned actual seconds (so the dashboard doesn't re-resolve on
-// every read); other rule markers emit nil payload; Custom markers emit
-// whatever their evaluator returned.
+// GetResult returns a result only when the marker matched AND any duration gate
+// is satisfied. Rule markers with Expert milestones emit a payload of
+// position-aligned actual seconds so the dashboard doesn't re-resolve on every
+// read; Custom markers emit whatever their evaluator returned.
 func (d *MarkerPlayerDetector) GetResult() *core.PatternResult {
 	if !d.ShouldSave() {
 		return nil
 	}
-	// A worldstate-backed modifier can only be read after the worldstate batch
-	// pipeline runs. If this detector finished mid-stream, defer emission until
-	// the orchestrator finalizes the worldstate (before its final detector
-	// pass) — reading the event now would trigger a premature Finalize that
-	// locks in an incomplete event stream.
+	// A worldstate-backed modifier can only be read after the batch pipeline runs.
+	// If this detector finished mid-stream, defer emission until the orchestrator
+	// finalizes the worldstate — reading the event now would trigger a premature
+	// Finalize that locks in an incomplete event stream.
 	if d.hasWorldstateModifier {
 		if ws := d.GetWorldState(); ws != nil && !ws.Finalized() {
 			return nil
@@ -370,10 +333,7 @@ func (d *MarkerPlayerDetector) GetResult() *core.PatternResult {
 	return d.BuildPlayerResult(d.marker.PatternName, d.detectedAtSecond, d.customResult.Payload)
 }
 
-// matchedModifiers returns the names of every modifier that held for this
-// match: Rule-based modifiers whose predicate finalized Matched, plus
-// WorldstateEvent modifiers whose spatial event the player produced. Order
-// follows Marker.Modifiers so the payload is deterministic.
+// Order follows Marker.Modifiers so the payload is deterministic.
 func (d *MarkerPlayerDetector) matchedModifiers() []string {
 	if len(d.marker.Modifiers) == 0 {
 		return nil
@@ -398,7 +358,6 @@ func (d *MarkerPlayerDetector) matchedModifiers() []string {
 	return out
 }
 
-// ShouldSave is true iff the marker matched AND any duration gate is met.
 func (d *MarkerPlayerDetector) ShouldSave() bool {
 	if !d.IsFinished() || !d.matched {
 		return false
@@ -415,13 +374,10 @@ func (d *MarkerPlayerDetector) ShouldSave() bool {
 		if replay == nil {
 			return false
 		}
-		// Compare against the player's effective time-in-game, not the
-		// whole replay's duration. In non-1v1 games a player can leave
-		// or stop playing long before the replay ends — using the
-		// replay duration would wrongly flag e.g. "never upgraded" on
-		// a player who quit at 5min in a 30min FFA, even though they
-		// never had a chance to research/upgrade past the 10-min floor.
-		// Last command second is more robust than leaveSec — some replays
+		// Compare against the player's effective time in game, not the replay's
+		// duration: in non-1v1 games a player can leave long before the replay ends, and
+		// the replay duration would wrongly flag "never upgraded" on someone who quit at
+		// 5min of a 30min FFA. Last-command second beats leaveSec here — some replays
 		// record a spurious early leave_game for players who keep playing.
 		playerTime := replay.DurationSeconds
 		if ws := d.GetWorldState(); ws != nil {
@@ -436,24 +392,18 @@ func (d *MarkerPlayerDetector) ShouldSave() bool {
 	return true
 }
 
-// matchupGateMinSeconds is a hard lower bound applied on top of any
-// per-(own_race, opp_race) gate from Marker.MinReplaySecondsByMatchup.
-// Several Upgrade matchups have a progamer p5 of first-Upgrade around
-// 2:00-3:00 (e.g. ZvZ Speed, PvT Singularity Charge). Used alone, those
-// gates would flag "never upgraded" on successful 4-pool / Bunker rush /
-// Proxy gate finishes — exactly the rush-suppression case the matchup
-// gate was meant to preserve. 4 min is above the typical successful-rush
-// game-end time, so short rushes stay suppressed; longer games still get
-// the matchup-aware gate raised above this floor when applicable
-// (e.g. PvT first-Tech p5 = 8:16).
+// A hard floor on top of any per-matchup gate. Several Upgrade matchups have a
+// progamer p5 of first-Upgrade around 2:00-3:00 (ZvZ Speed, PvT Singularity
+// Charge), and used alone those gates flag "never upgraded" on successful 4-pool
+// / Bunker rush finishes — the exact rush-suppression case the matchup gate
+// exists to preserve. 4 min sits above the typical successful-rush game end, so
+// short rushes stay suppressed while longer games still get a higher gate.
 const matchupGateMinSeconds = 4 * 60
 
-// resolveMinReplaySeconds picks the effective duration gate for this marker.
-// For 1v1 replays we prefer a per-(own_race, opp_race) entry from
-// MinReplaySecondsByMatchup so "never X" markers respect matchup-typical
-// first-research / first-upgrade timings, lifted to at least
-// matchupGateMinSeconds to keep short rushes suppressed. For non-1v1 or
-// a missing bucket we fall back to the flat MinReplaySeconds.
+// resolveMinReplaySeconds prefers a per-(own race, opp race) entry for 1v1 so
+// "never X" markers respect matchup-typical first-research timings, lifted to at
+// least matchupGateMinSeconds. Non-1v1 or a missing bucket falls back to the
+// flat MinReplaySeconds.
 func (d *MarkerPlayerDetector) resolveMinReplaySeconds() int {
 	if len(d.marker.MinReplaySecondsByMatchup) == 0 {
 		return d.marker.MinReplaySeconds

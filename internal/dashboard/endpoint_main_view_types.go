@@ -51,13 +51,11 @@ type firstUnitEfficiencyConfig struct {
 	Units                []firstUnitEfficiencyUnitOption
 }
 
-// firstUnitEfficiencyConfigs is intentionally limited to bread-and-butter
-// army-production buildings whose first unit a player almost always wants out
-// as soon as the building completes. Tech/utility buildings (Forge, Fleet
-// Beacon, Arbiter Tribunal, Physics Lab, Hydralisk Den, Ultralisk Cavern,
-// Defiler Mound) are excluded: they are routinely built for upgrades or teching
-// rather than to pump that unit, so the gap-after-ready signal there is mostly
-// false positives (see issue #166).
+// Deliberately limited to bread-and-butter army buildings whose first unit a
+// player almost always wants out the moment it completes. Tech/utility
+// buildings (Forge, Fleet Beacon, Hydralisk Den, …) are excluded: they are
+// routinely built for upgrades, so the gap-after-ready signal there is mostly
+// false positives (issue #166).
 var firstUnitEfficiencyConfigs = []firstUnitEfficiencyConfig{
 	{
 		Race:                 "protoss",
@@ -139,18 +137,16 @@ type workflowGameListPlayer struct {
 }
 
 type workflowRecentGamePlayer struct {
-	PlayerID         int64                  `json:"player_id"`
-	PlayerKey        string                 `json:"player_key"`
-	Name             string                 `json:"name"`
-	Race             string                 `json:"race"`
-	IsWinner         bool                   `json:"is_winner"`
-	Disconnected     bool                   `json:"disconnected,omitempty"`
-	APM              int64                  `json:"apm"`
-	EAPM             int64                  `json:"eapm"`
-	DetectedPatterns []workflowPatternValue `json:"detected_patterns"`
-	// Composition is this player's per-phase unit/spell histogram, the same
-	// rows the per-game player strip renders.
-	Composition []workflowGameUnitComposition `json:"composition,omitempty"`
+	PlayerID         int64                         `json:"player_id"`
+	PlayerKey        string                        `json:"player_key"`
+	Name             string                        `json:"name"`
+	Race             string                        `json:"race"`
+	IsWinner         bool                          `json:"is_winner"`
+	Disconnected     bool                          `json:"disconnected,omitempty"`
+	APM              int64                         `json:"apm"`
+	EAPM             int64                         `json:"eapm"`
+	DetectedPatterns []workflowPatternValue        `json:"detected_patterns"`
+	Composition      []workflowGameUnitComposition `json:"composition,omitempty"`
 }
 
 type workflowGamesListFilters struct {
@@ -183,8 +179,7 @@ type workflowGamesListFilterOptions struct {
 	MapKinds  []workflowGamesListFilterOption `json:"map_kinds"`
 }
 
-// workflowMatchupFilters lists the canonical matchup keys. TvZ==ZvT and
-// PvZ==ZvP, so the key is always the alphabetically-sorted race-pair form.
+// TvZ==ZvT and PvZ==ZvP, so the key is always the alphabetically-sorted form.
 var workflowMatchupFilters = []struct {
 	Key   string
 	Label string
@@ -197,16 +192,10 @@ var workflowMatchupFilters = []struct {
 	{Key: "zvz", Label: "ZvZ"},
 }
 
-// workflowFeaturingFilters lists the chips on the games-list filter bar.
-//
-// Group splits the row visually on the frontend:
-//   - "marker" → narrative/late-game/rush markers (always visible)
-//   - "bo"     → opener build orders (collapsed under a disclosure by default)
-//
-// IconKey / IconKeys, when set, render the chip with one or more unit/building
-// icons (Label remains the tooltip). IconKeys (multi-icon) wins over IconKey
-// when both are present. IconLabel, when set, renders short text (e.g. "Rush",
-// "Proxy") next to the icon(s) for disambiguation.
+// The chips on the games-list filter bar. Group splits the row visually:
+// "marker" is always visible, "bo" collapses under a disclosure by default.
+// IconKeys (multi-icon) wins over IconKey when both are present; IconLabel adds
+// short text next to the icon(s) for disambiguation.
 var workflowFeaturingFilters = []struct {
 	Key       string
 	Label     string
@@ -215,12 +204,11 @@ var workflowFeaturingFilters = []struct {
 	IconKeys  []string
 	IconLabel string
 	Emoji     string
-	// Race ("zerg"/"terran"/"protoss") groups the "bo" chips under per-race
-	// disclosures on the games-list filter bar. Empty for "marker" chips.
+	// Race groups the "bo" chips under per-race disclosures. Empty for "marker".
 	Race string
 }{
-	// NOTE: the former Terran style markers (mech / sk_terran / one_one_one /
-	// mech_transition) are now first-class composition BOs — see the "bo" group
+	// The former Terran style markers (mech / sk_terran / one_one_one /
+	// mech_transition) are now first-class composition BOs in the "bo" group
 	// below (issue #155).
 	{Key: "cannon_rush", Label: "Cannon Rush", Group: "marker", IconKey: "photoncannon", IconLabel: "Rush"},
 	{Key: "bunker_rush", Label: "Bunker Rush", Group: "marker", IconKey: "bunker", IconLabel: "Rush"},
@@ -230,9 +218,7 @@ var workflowFeaturingFilters = []struct {
 	{Key: "proxy_factory", Label: "Proxy Factory", Group: "marker", IconKey: "factory", IconLabel: "Proxy"},
 	{Key: "proxy_starport", Label: "Proxy Starport", Group: "marker", IconKey: "starport", IconLabel: "Proxy"},
 	{Key: "manner_pylon", Label: "Manner Pylon", Group: "marker", IconKey: "pylon", IconLabel: "Manner"},
-	// Drop filters — icon-only chips. "drop" matches ANY drop variant
-	// (drop, cliff_drop); the generic chip matches any
-	// match the specific subtype only.
+	// "drop" matches ANY drop variant; the subtype chips match only their own.
 	{Key: "drop", Label: "Drop", Group: "marker", IconKey: "shuttle"},
 	{Key: "mind_control", Label: "Mind Control", Group: "marker", IconKey: "darkarchon", IconLabel: "Mind Control"},
 	{Key: "made_maelstrom", Label: "Maelstrom", Group: "marker", IconKey: "darkarchon", IconLabel: "Maelstrom"},
@@ -241,7 +227,7 @@ var workflowFeaturingFilters = []struct {
 	{Key: "recalls", Label: "Recalls", Group: "marker", IconKey: "arbiter", IconLabel: "Recall"},
 	{Key: "offensive_nydus", Label: "Offensive Nydus", Group: "marker", IconKey: "nyduscanal", IconLabel: "Nydus"},
 	{Key: "team_stacking", Label: "Team stacking", Group: "marker", Emoji: "😈"},
-	// Money-map markers — rendered last so regular markers take priority.
+	// Money-map markers, last so regular markers take priority.
 	{Key: "carriers", Label: "Carrier", Group: "marker", IconKey: "carrier"},
 	{Key: "battlecruisers", Label: "Battlecruiser", Group: "marker", IconKey: "battlecruiser"},
 	{Key: "double_stargate", Label: "Double Stargate", Group: "marker", IconKey: "corsair", IconLabel: "2 Stargate"},
@@ -249,9 +235,9 @@ var workflowFeaturingFilters = []struct {
 	{Key: "ten_plus_scouts", Label: "10+ Scouts", Group: "marker", IconKey: "scout", IconLabel: "10+"},
 	{Key: "cliff_drop", Label: "Cliff drop", Group: "marker", IconKey: "dropship", IconLabel: "Cliff drop"},
 	{Key: "muta_hitnrun", Label: "Muta hit-n-run", Group: "marker", IconKey: "mutalisk", IconLabel: "Muta hit-n-run"},
-	// Build order pills — keys & labels kept in sync with internal/markers.
-	// Suppressed in render for Money maps (game-list + replay-summary
-	// featuring strips); BO tab and per-player summary pills still show.
+	// Keys and labels are kept in sync with internal/markers. Suppressed in render
+	// for Money maps on the featuring strips; the BO tab and per-player summary
+	// pills still show them.
 	{Key: "bo_4_pool", Label: "4 Pool", Group: "bo", Race: "zerg"},
 	{Key: "bo_9_pool", Label: "9 Pool", Group: "bo", Race: "zerg"},
 	{Key: "bo_9_overpool", Label: "9 Overpool", Group: "bo", Race: "zerg"},
@@ -339,25 +325,20 @@ type workflowGamePlayer struct {
 	APM              int64                  `json:"apm"`
 	EAPM             int64                  `json:"eapm"`
 	DetectedPatterns []workflowPatternValue `json:"detected_patterns"`
-	// LeftSecond is the earliest second the player became inactive — either an
-	// explicit Leave Game command or the inactivity-derived
-	// player_stopped_playing event. Nil when the player played to the end.
+	// LeftSecond is the earliest second the player became inactive: an explicit
+	// Leave Game command, or the inactivity-derived player_stopped_playing event.
+	// Nil when the player played to the end.
 	LeftSecond *int64 `json:"left_second,omitempty"`
-	// LeaveReason mirrors the LeaveGameCmd reason ("Quit", "Defeat", "Dropped",
-	// "Finished", "Draw", "Victory", "UNKNOWN") when LeftSecond is set by a
-	// leave_game event, or "Stopped" when set by player_stopped_playing.
+	// LeaveReason mirrors the LeaveGameCmd reason when LeftSecond comes from a
+	// leave_game event, or "Stopped" when it comes from player_stopped_playing.
 	LeaveReason      string                    `json:"leave_reason,omitempty"`
 	FingerprintMatch *workflowFingerprintMatch `json:"fingerprint_match,omitempty"`
 	CountryCode      string                    `json:"country_code,omitempty"`
 }
 
-// workflowPatternValue is the per-pattern entry shipped to the frontend inside
-// detected_patterns[] on the game-summary response. EventType is the marker
-// FeatureKey (e.g. "carriers", "bo_9_pool") and is the stable identifier.
-// DetectedSecond is the replay second the marker committed at; the FE uses it
-// to render "{minute}" interpolations on pill labels. Payload carries optional
-// JSON extras for markers that store structured data (hotkey groups, viewport
-// switches-per-minute).
+// workflowPatternValue is one detected_patterns[] entry on the game-summary
+// response. EventType is the marker FeatureKey and is the stable identifier;
+// the FE uses DetectedSecond to render "{minute}" interpolations on pill labels.
 type workflowPatternValue struct {
 	EventType      string          `json:"event_type"`
 	DetectedSecond int             `json:"detected_second"`
@@ -396,64 +377,51 @@ type workflowGameDetail struct {
 	MutaliskTimingSummary            *workflowMutaliskTimingSummary           `json:"mutalisk_timing_summary,omitempty"`
 	AllianceTimeline                 []workflowAllianceSnapshot               `json:"alliance_timeline,omitempty"`
 	AllianceStackingThresholdSeconds int64                                    `json:"alliance_stacking_threshold_seconds,omitempty"`
-	// AllianceTabChat is the full per-replay chat stream surfaced exclusively
-	// for the Alliances tab's context panel. Each entry is one chat command
-	// keyed to the player who sent it. Empty for non-melee or ≤2-player games.
+	// AllianceTabChat is the full per-replay chat stream, surfaced only for the
+	// Alliances tab's context panel. Empty for non-melee or ≤2-player games.
 	AllianceTabChat []workflowAllianceChat `json:"alliance_tab_chat,omitempty"`
 
-	// EarlyGameEndsAtSecond / MidGameEndsAtSecond split the game-events list
-	// into Early/Mid/Late sections. Computed from unit-completion + research
-	// timings (see populatePhaseMarkersForGameDetail). Zero = no boundary
-	// detected — the frontend collapses the empty section header.
+	// These split the game-events list into Early/Mid/Late sections (see
+	// populatePhaseMarkersForGameDetail). Zero means no boundary was detected, and
+	// the frontend collapses the empty section header.
 	EarlyGameEndsAtSecond int64 `json:"early_game_ends_at_second,omitempty"`
 	MidGameEndsAtSecond   int64 `json:"mid_game_ends_at_second,omitempty"`
 
-	// UnitCompositionMarkers is a flat list of (player, phase) attacker-
-	// composition rows for this replay. The frontend aggregates them into
-	// three replay-level pills at display time (per-game summary surface)
-	// and renders per-player rows on individual player strips. Source rows
-	// are replay_events with event_type LIKE 'unit_composition_%'.
+	// A flat list of (player, phase) rows, sourced from replay_events with
+	// event_type LIKE 'unit_composition_%'. The frontend aggregates them into three
+	// replay-level pills at display time and renders per-player rows on the strips.
 	UnitCompositionMarkers []workflowGameUnitComposition `json:"unit_composition_markers,omitempty"`
 
-	// TrainedUnitsTimeline is a flat per-player stream of "this unit became
-	// alive at this second" samples, used by the event-map overlay to render
-	// each player's army composition at the moment of the selected game
-	// event. Workers (Drone/Probe/SCV) and Overlord are filtered out at
-	// build time; Second is the command second shifted forward by the unit's
-	// build/morph duration (Fastest game speed). The frontend pre-indexes
-	// per-player and binary-searches per event click.
+	// A flat per-player stream of "this unit became alive at this second" samples,
+	// used by the event-map overlay. Workers and Overlord are filtered out at build
+	// time; Second is the command second shifted forward by the unit's build
+	// duration (Fastest speed). The frontend pre-indexes and binary-searches it.
 	TrainedUnitsTimeline []workflowTrainedUnitSample `json:"trained_units_timeline,omitempty"`
 }
 
-// workflowTrainedUnitSample is one "unit alive at second" entry on the
-// trained-units timeline.
 type workflowTrainedUnitSample struct {
 	PlayerID int64  `json:"player_id"`
 	Second   int64  `json:"second"`
 	UnitType string `json:"unit_type"`
 }
 
-// workflowAllianceSnapshot is one observed team topology in the Alliances tab.
-// Valid from Sec until the next snapshot's Sec (or duration_seconds for the
-// last snapshot). Teams is a list of teams; each team is a sorted list of
-// player_ids (the DB row id, not the screp player_id).
+// workflowAllianceSnapshot is valid from Sec until the next snapshot's Sec (or
+// duration_seconds for the last). Teams hold player_ids — the DB row id, not
+// the screp player_id.
 type workflowAllianceSnapshot struct {
 	Sec      int64     `json:"sec"`
 	Teams    [][]int64 `json:"teams"`
 	Stacking bool      `json:"stacking"`
 }
 
-// workflowAllianceChat is one chat message attached to the Alliances tab.
-// Player_id matches the players[].player_id (DB row id). Message is the raw
-// text the player sent; the frontend handles any escaping for display.
+// Player_id matches players[].player_id (the DB row id). Message is raw text;
+// the frontend handles escaping.
 type workflowAllianceChat struct {
 	Second   int64  `json:"second"`
 	PlayerID int64  `json:"player_id"`
 	Message  string `json:"message"`
 }
 
-// workflowMarkerPlayer carries per-player Build Orders tab data:
-// the detected BO name plus expert-vs-actual timing for each milestone.
 // Populated by populateMarkersForGameDetail in endpoint_main_game_detail.go.
 type workflowMarkerPlayer struct {
 	PlayerID   int64                 `json:"player_id"`
@@ -466,11 +434,8 @@ type workflowMarkerPlayer struct {
 	Modifiers  []string              `json:"modifiers,omitempty"` // e.g. ["all-in","proxy"]
 }
 
-// workflowMarkerEvent is one row in the Build Orders timeline chart.
-// NoExpert=true rows are sourced from the player's command stream (drone
-// morph counts + pool/overlord/hatch first occurrences) rather than the
-// marker definition's Expert template — render them without the golden
-// tolerance band.
+// NoExpert=true rows come from the player's command stream rather than the
+// marker definition's Expert template, so they render without the golden band.
 type workflowMarkerEvent struct {
 	Key                   string `json:"key"`     // e.g. "Spawning Pool"
 	Subject               string `json:"subject"` // canonical unit/building name for icon lookup (e.g. "Zergling")
@@ -482,35 +447,23 @@ type workflowMarkerEvent struct {
 	DeltaSeconds          int64  `json:"delta_seconds"` // actual - target; + late, - early
 	WithinTolerance       bool   `json:"within_tolerance"`
 	NoExpert              bool   `json:"no_expert,omitempty"` // true = no golden range; render actual only
-	// BuildTimeSeconds is the in-game build duration of the unit/building this
-	// row represents. When >0 the chart renders a horizontal span from the
-	// start tick to start+BuildTime, ending at the completion second — making
-	// it visually obvious that the chart's tick is "build started" while the
-	// unit/building is only available from start+BuildTime onward. 0 = render
-	// without a span bar (caller didn't supply a build time).
+	// When >0 the chart renders a span from the start tick to start+BuildTime,
+	// making it visually obvious that the tick is "build started" while the
+	// unit is only available at the end. 0 renders without a span bar.
 	BuildTimeSeconds int64 `json:"build_time_seconds,omitempty"`
-	// ActualBuiltSecond / TargetBuiltSecond, when > 0, override the naive
-	// "Actual + BuildTime" / "Target + BuildTime" finish-time calculation. Used
-	// by markers whose subject has prerequisites (e.g. a Mutalisk morph cmd
-	// queued before its Spire finishes — the morph effectively starts when the
-	// Spire pops, not when the click was registered). The frontend renders the
-	// "built" marker at *BuiltSecond when supplied; otherwise it falls back to
-	// start + BuildTimeSeconds.
+	// These override the naive "Actual/Target + BuildTime" finish calculation, for
+	// markers whose subject has prerequisites: a Mutalisk morph queued before its
+	// Spire finishes effectively starts when the Spire pops, not when the click
+	// registered. The frontend falls back to start + BuildTimeSeconds when unset.
 	ActualBuiltSecond int64 `json:"actual_built_second,omitempty"`
 	TargetBuiltSecond int64 `json:"target_built_second,omitempty"`
 }
 
-// workflowMutaliskTimingSummary is the per-game Mutalisk-Turret gap
-// comparison rendered alongside the timeline. The "gap" is
-// (turret_finished - mutalisk_finished) — i.e. how much later the first
-// Missile Turret completes relative to the first Mutalisk hatching.
-//
-// Sweet spot: progamers aim to finish turrets just-in-time for muta arrival,
-// so the median gap is small (a few seconds) — turrets land at roughly the
-// same time mutas hatch, with mutas eating their travel time across the map.
-// ActualGapSeconds < ExpertGapMinSeconds → turrets done too early (wasted
-// economy). ActualGapSeconds > ExpertGapMaxSeconds → turrets late, Z mutas
-// threaten the Terran main.
+// The gap is (turret_finished - mutalisk_finished): how much later the first
+// Missile Turret completes than the first Mutalisk hatches. Progamers aim to
+// finish turrets just-in-time for muta arrival, so the median gap is a few
+// seconds. Below ExpertGapMin the turrets were built too early (wasted
+// economy); above ExpertGapMax they are late and the mutas threaten the main.
 type workflowMutaliskTimingSummary struct {
 	ExpertGapSeconds    int64 `json:"expert_gap_seconds"`     // median (sweet spot center)
 	ExpertGapMinSeconds int64 `json:"expert_gap_min_seconds"` // p25 of corpus distribution
@@ -541,9 +494,8 @@ type workflowGameEvent struct {
 	Ownership        []workflowGameOwnership  `json:"ownership,omitempty"`
 	AttackUnitTypes  []string                 `json:"attack_unit_types,omitempty"`
 	AttackCastCounts map[string]int64         `json:"attack_cast_counts,omitempty"`
-	// Recall-specific overlay/description fields. Populated only when
-	// event.Type == "recall"; the source-of-truth for these is the recall
-	// event's payload JSON written by worldstate.emitRecallEvents.
+	// Recall-only fields; the source of truth is the recall event's payload JSON
+	// written by worldstate.emitRecallEvents.
 	SourcePoint      *workflowGameEventPoint  `json:"source_point,omitempty"`
 	TargetPoint      *workflowGameEventPoint  `json:"target_point,omitempty"`
 	TargetBase       *workflowGameEventBase   `json:"target_base,omitempty"`
@@ -551,28 +503,21 @@ type workflowGameEvent struct {
 	RecallTargetVia  string                   `json:"recall_target_via,omitempty"`  // "a" | "p" | "t"
 	RecallCount      int64                    `json:"recall_count,omitempty"`       // omitted when 1
 	RecallLastSecond int64                    `json:"recall_last_second,omitempty"` // omitted when equal to Second
-	// SourceBase: for drops only, the base the transports loaded at. Drops
-	// store the destination polygon in event.base, so the source must come
-	// from the payload's `sb` field. Unused for recalls (which keep the
-	// source on event.base).
+	// SourceBase is drops-only: drops store the destination polygon in event.base,
+	// so the source comes from the payload's `sb` field. Recalls keep their source
+	// on event.base.
 	SourceBase *workflowGameEventBase `json:"source_base,omitempty"`
-	// Drop-specific overlay/description fields. Populated only when
-	// event.Type is one of {"drop", "cliff_drop"};
-	// the source-of-truth for these is the drop event's payload JSON
+	// Drop-only fields; the source of truth is the drop event's payload JSON
 	// written by worldstate.emitDropEvents.
 	DropTargetVia  string `json:"drop_target_via,omitempty"`  // "a" | "p"
 	DropCount      int64  `json:"drop_count,omitempty"`       // omitted when 1
 	DropLastSecond int64  `json:"drop_last_second,omitempty"` // omitted when equal to Second
-	// AllianceTeams: populated only for late_alliance events. Each entry is
-	// one team grouping at the moment the topology changed. Only teams of
-	// size ≥2 are included (solos filtered for clarity). Source is the
-	// {"teams":[["A","B"],...]} payload written by parser.BuildAllianceDerivedEvents.
+	// late_alliance events only. Each entry is one team grouping at the moment the
+	// topology changed; solos are filtered for clarity.
 	AllianceTeams [][]workflowGameEventPlayer `json:"alliance_teams,omitempty"`
-	// BuildOrders: populated only for the consolidated "bo_openers" event at
-	// second 0 — one entry per (player × detected opener BO). The FE groups
-	// these by player to render one line per player and to label each starting
-	// location on the map. BO timing is intentionally dropped (it conveyed
-	// nothing useful), so the single event sits at 0:00.
+	// The consolidated "bo_openers" event at second 0 only — one entry per
+	// (player × detected opener BO). The FE groups by player to render one line
+	// each and label their starting location. BO timing is deliberately dropped.
 	BuildOrders []workflowGameEventBuildOrder `json:"build_orders,omitempty"`
 }
 
@@ -633,10 +578,9 @@ type workflowUnitCount struct {
 	Count    int64  `json:"count"`
 }
 
-// workflowUnitEarlyEventPlayer carries one player's individual unit/building
-// production events for the first 4 minutes of the game. The frontend renders
-// these as a vertical time-scaled chart (one icon per event with exact-second
-// labels) so users can compare production efficiency between same-race builds.
+// One player's individual production events for the first 4 minutes, rendered
+// as a vertical time-scaled chart so users can compare production efficiency
+// between same-race builds.
 type workflowUnitEarlyEventPlayer struct {
 	PlayerID  int64                    `json:"player_id"`
 	PlayerKey string                   `json:"player_key"`
@@ -644,11 +588,10 @@ type workflowUnitEarlyEventPlayer struct {
 	Events    []workflowUnitEarlyEvent `json:"events"`
 }
 
-// workflowUnitEarlyEvent is a single Train/Morph command surfaced as an
-// individual event (not aggregated into a slice count). Label is pre-formatted
-// as "5th SCV"/"3rd Drone" for workers; empty for non-workers. Count is 2 for
-// a Zergling Morph (one larva → two zerglings) and 1 for everything else, so
-// the frontend can render an "x2" badge without re-implementing the rule.
+// One Train/Morph command as an individual event, not aggregated into a slice
+// count. Label is pre-formatted ("5th SCV") for workers, empty otherwise. Count
+// is 2 for a Zergling Morph (one larva → two zerglings) so the frontend can
+// render an "x2" badge without re-implementing the rule.
 type workflowUnitEarlyEvent struct {
 	Second     int64  `json:"second"`
 	UnitType   string `json:"unit_type"`
@@ -657,13 +600,10 @@ type workflowUnitEarlyEvent struct {
 	Count      int64  `json:"count"`
 }
 
-// workflowProductionTimelinePlayer carries one player's full-game stream of
-// individual production events (buildings + units), ordered by second. Unlike
-// units_by_slice (which buckets and discards per-event timing after 4 minutes)
-// this keeps every event's exact second for the whole game so the frontend can
-// replay/scrub army construction over time. Same row set as units_by_slice, no
-// extra query. Count is 2 for a Zergling Morph, 1 otherwise (see
-// workflowUnitEarlyEvent).
+// One player's full-game production stream. Unlike units_by_slice, which
+// buckets and discards per-event timing after 4 minutes, this keeps every
+// event's exact second so the frontend can scrub army construction over time.
+// Same row set, no extra query.
 type workflowProductionTimelinePlayer struct {
 	PlayerID  int64                     `json:"player_id"`
 	PlayerKey string                    `json:"player_key"`
@@ -742,10 +682,8 @@ type workflowPlayerRaceBreakdown struct {
 	Wins      int64  `json:"wins"`
 }
 
-// workflowPlayerMatchupCell is one (own_race, opp_race) cell of the matchup
-// table. Confidence buckets the sample size: low (<5), medium (5–14),
-// high (15+) — used by the UI to dim cells that don't have enough games
-// to be informative.
+// Confidence buckets the sample size — low (<5), medium (5–14), high (15+) —
+// so the UI can dim cells with too few games to be informative.
 type workflowPlayerMatchupCell struct {
 	OwnRace    string  `json:"own_race"`
 	OppRace    string  `json:"opp_race"`
@@ -755,10 +693,8 @@ type workflowPlayerMatchupCell struct {
 	Confidence string  `json:"confidence"`
 }
 
-// workflowPlayerEarlyTiming is a per-(race, map_kind) summary of an early-game
-// milestone. We surface median + sample size to compare a player's pacing on
-// Regular vs Money maps without committing to a full histogram (the
-// distributions are usually too sparse per-player to warrant one).
+// Median + sample size, rather than a full histogram: per-player distributions
+// are usually too sparse to warrant one.
 type workflowPlayerEarlyTiming struct {
 	Race          string  `json:"race"`
 	MapKind       string  `json:"map_kind"`
@@ -767,10 +703,9 @@ type workflowPlayerEarlyTiming struct {
 	MedianSeconds float64 `json:"median_seconds"`
 }
 
-// workflowFingerprintCoverage reports how many of a player's games contributed
-// scfingerprint feature vectors under the current feature version — the
-// substrate for player identification. Surfaces why identification is or is
-// not available (short games and low-command players yield no vector, and
+// Reports how many of a player's games contributed scfingerprint vectors under
+// the current feature version, which is what explains why identification is or
+// isn't available (short games and low-command players yield no vector, and
 // replays ingested before vector extraction shipped need a re-ingest).
 type workflowFingerprintCoverage struct {
 	GamesWithVectors int64 `json:"games_with_vectors"`
@@ -804,11 +739,10 @@ type workflowPlayerOverview struct {
 	FingerprintMatch    *workflowFingerprintMatch     `json:"fingerprint_match,omitempty"`
 	CountryCode         string                        `json:"country_code,omitempty"`
 	BnetProfile         *bnetProfileDetail            `json:"bnet_profile,omitempty"`
-	// BnetGames counts this player's Battle.net-sourced replays; the summary
-	// tab shows its Battle.net section only when non-zero.
+	// The summary tab shows its Battle.net section only when this is non-zero.
 	BnetGames int64 `json:"bnet_games"`
-	// Featured is set only for built-in progamer profiles (internal/propack);
-	// it carries what the page needs to explain where the data comes from.
+	// Set only for built-in progamer profiles (internal/propack); carries what the
+	// page needs to explain where the data comes from.
 	Featured       *featuredProfile              `json:"featured,omitempty"`
 	RecentGames    []workflowGameListItem        `json:"recent_games"`
 	ChatSummary    workflowPlayerChatSummary     `json:"chat_summary"`
@@ -819,37 +753,27 @@ type workflowPlayerOverview struct {
 	EarlyTimings   []workflowPlayerEarlyTiming   `json:"early_timings"`
 }
 
-// workflowUnitCompositionUnit is one entry in the (player, phase)
-// composition histogram. Counts are raw — the frontend renders by
-// proportional fill across a fixed-size slot strip rather than as
-// percentages.
+// Counts are raw: the frontend renders proportional fill across a fixed-size
+// slot strip rather than percentages.
 type workflowUnitCompositionUnit struct {
 	Name  string `json:"name"`
 	Count int    `json:"count"`
 }
 
-// workflowUnitCompositionSpell is one distinct spell cast in a (player,
-// phase): the casting unit (for its icon) plus the spell's display name.
-// The same unit can appear multiple times across a phase's Spells when it
-// cast distinct spells (e.g. Science Vessel → Irradiate + EMP Shockwave).
+// The same unit can appear several times across a phase's Spells when it cast
+// distinct spells (Science Vessel → Irradiate + EMP Shockwave).
 type workflowUnitCompositionSpell struct {
 	Unit  string `json:"unit"`
 	Spell string `json:"spell"`
 }
 
-// workflowGameUnitComposition is a per-(player, phase) row attached to
-// the per-game endpoint response. Computed at request time from the
-// persisted phase boundaries (mid_game_starts / late_game_starts
-// markers) plus the Train / Unit Morph / Cast command stream — see
-// internal/dashboard/unit_composition.go. Frontend renders per-player
-// rows on individual player strips and aggregates client-side into
-// three replay-level bars for the per-game summary surface.
+// One per-(player, phase) row, computed at request time from the persisted
+// phase boundaries plus the Train / Unit Morph / Cast stream (see
+// unit_composition.go).
 //
-// Spells lists the distinct spells the player cast in this phase, keyed
-// by (unit, spell) and deduped — surfaced in the "Spellcasts" pill, not
-// in the composition bars. Spellcaster units and signature non-army
-// units (Battlecruiser/Dropship/Nuke/Shuttle) are kept out of Units;
-// Battlecruiser surfaces only via its Yamato Gun spell.
+// Spells is deduped by (unit, spell) and surfaced in the "Spellcasts" pill, not
+// the composition bars. Spellcaster and signature non-army units are kept out of
+// Units; Battlecruiser surfaces only via its Yamato Gun spell.
 type workflowGameUnitComposition struct {
 	PlayerID int64                          `json:"player_id"`
 	Phase    string                         `json:"phase"`
@@ -913,9 +837,8 @@ type workflowRaceOrderSummary struct {
 	UpgradeOrder []string `json:"upgrade_order"`
 }
 
-// workflowMatchupOrderSummary is the most-common tech and upgrade sequence for
-// a single (own_race, opp_race) matchup. Games is the sample size used to pick
-// the top sequence; the UI dims rows with Games < 5 to flag low confidence.
+// Games is the sample size used to pick the top sequence; the UI dims rows with
+// Games < 5 to flag low confidence.
 type workflowMatchupOrderSummary struct {
 	OwnRace      string   `json:"own_race"`
 	OppRace      string   `json:"opp_race"`

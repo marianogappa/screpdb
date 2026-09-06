@@ -12,9 +12,53 @@
 - Do not widen the iofacade allowlist (currently: the app-data dir `internal/appdata` resolves — `%LOCALAPPDATA%\screpdb` on Windows, `~/Library/Application Support/screpdb` on macOS, `$XDG_CONFIG_HOME/screpdb` on Linux — plus the user's replays folder, which is read-only in practice) or add a dependency with broad filesystem/network capability without explicit review — these expand the attack surface the facades exist to contain. On Windows the app-data dir is the single grantable root the Low-integrity worker can write to (issue #237); `internal/winsandbox` is a sanctioned raw-syscall surface (process spawn + integrity labeling + watch-me broker) on the enforcement-test skip list alongside `internal/selfupdate`.
 - **When authoring a commit, update the "I/O Safety Audit" log in `README.md`**: the log is a fenced code block (newest entry shown, older ones in a collapsed `<details>`); add a new dated line at the top in the form `YYYY-MM-DD  OK. <justification>` with a one-word verdict (`OK` / `REVIEW` / `CONCERN`) and a brief justification of whether the change could weaken the I/O rules (new direct os/net calls, a widened allowlist, an outbound network call, a weakened enforcement test, or a dependency with broad I/O capability). You — the authoring LLM — perform this assessment; it is an honour-system receipt that makes tampering visible in the diff. `TestIOSafetyAuditPresent` fails CI if the log is empty, so the entry is not optional. The enforcement test is the real guard.
 
+# Code comments — default to none
+
+The code is the documentation. Write a comment only when it carries a fact a
+careful reader cannot recover from the code itself, and then keep it to the
+shortest form that carries it — usually one line, occasionally three.
+
+**Delete or don't write:**
+
+- Doc comments that restate the declaration (`// Close closes the connection`,
+  `// Options holds options`, `// FileInfo represents a replay file`). Go's
+  exported-symbol convention does not override this rule here.
+- Step narration inside a function (`// Parse players`, `// Step 3: insert
+  commands`, `// Convert nullable int fields`). If the block needs a label,
+  extract it into a named function instead.
+- Section banners whose text repeats the declaration or selector below them
+  (`/* Footer */` above `.app-footer`, `// ----- Combinators -----`).
+- Changelogs, version history and curation notes. Those belong in a file —
+  see `docs/ALGORITHM_VERSIONS.md` for the `core.AlgorithmVersion` log.
+- Restatements of a rule the code expresses declaratively. A marker's `Rule:`
+  already says which buildings must precede which.
+
+**Keep, in one pithy line where possible:**
+
+- Why a threshold, window, tolerance or magic number is *that* value, and what
+  broke at the other value. Cite the issue (`#227`) or corpus/measurement
+  source when there is one.
+- A non-obvious invariant or ordering constraint a caller must honour
+  (`// Must be called before Finalize.`, `// Markers setting this MUST use the
+  endOfReplaySentinel RuleDeadline, because …`).
+- Why the obvious implementation was rejected — a measured performance result,
+  a false-positive class, an upstream (screp / SC:BW engine) quirk.
+- A pointer to where the other half of a mechanism lives, when the coupling is
+  not visible from here.
+- Units and coordinate spaces when they are not in the identifier (tiles vs
+  pixels, frames vs seconds).
+
+**When editing existing code:** if you touch a function whose comments violate
+the above, trim them in the same change. Do not preserve a stale comment just
+because it was already there, and do not restore a comment the code now makes
+obvious.
+
+**Tests are more lenient.** A comment naming what a case proves, or recording
+the replay/fixture a premise came from, is worth keeping.
+
 # Detection Changes — bump `core.AlgorithmVersion`
 
-Whenever you change anything that affects the *output* of replay detection (game-event composition, marker firing rules, attack/scout/recall/drop heuristics, ownership inference, base resolution, marker payload shape, etc.), bump `AlgorithmVersion` in `internal/patterns/core/types.go`. Replays are re-detected on every launch now that the corpus is read into memory rather than ingested into a database, so the constant no longer drives a re-ingest — but it still gates the built-in progamer pack (`internal/propack` refuses a pack built by an older detector) and is published on `/api/custom/markers/definitions` and in `SPECIFICATION.md`. Forgetting it ships a stale pack and a wrong version number.
+Whenever you change anything that affects the *output* of replay detection (game-event composition, marker firing rules, attack/scout/recall/drop heuristics, ownership inference, base resolution, marker payload shape, etc.), bump `AlgorithmVersion` in `internal/patterns/core/types.go`. Replays are re-detected on every launch now that the corpus is read into memory rather than ingested into a database, so the constant no longer drives a re-ingest — but it still gates the built-in progamer pack (`internal/propack` refuses a pack built by an older detector) and is published on `/api/custom/markers/definitions` and in `SPECIFICATION.md`. Forgetting it ships a stale pack and a wrong version number. Log the change in `docs/ALGORITHM_VERSIONS.md` rather than in a comment above the constant.
 
 If you only changed presentation (frontend rendering, descriptions, overlays) without touching what's persisted, no bump is needed.
 

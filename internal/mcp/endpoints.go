@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-// endpoint is one read-only GET path an MCP client may reach.
 type endpoint struct {
 	template    string
 	segments    []string
@@ -113,7 +112,6 @@ func isPlaceholder(segment string) bool {
 	return strings.HasPrefix(segment, "{") && strings.HasSuffix(segment, "}")
 }
 
-// match reports whether a concrete request path is this endpoint.
 func (e endpoint) match(segments []string) bool {
 	if len(segments) != len(e.segments) {
 		return false
@@ -154,8 +152,8 @@ func (e endpoint) checkQuery(values url.Values) error {
 		e.template, strings.Join(unknown, ", "), strings.Join(e.queryParams, ", "))
 }
 
-// resolve validates a caller-supplied path (optionally carrying a query
-// string) against the exposed surface and returns it normalized.
+// resolve validates a caller-supplied path, which may carry a query string,
+// against the exposed surface and returns it normalized.
 func resolve(raw string) (string, error) {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
@@ -185,7 +183,6 @@ func resolve(raw string) (string, error) {
 	return "", fmt.Errorf("%s is not an exposed endpoint; call get_api_schema for the ones that are", parsed.Path)
 }
 
-// renderSchema lists the exposed endpoints for the schema tool.
 func renderSchema() string {
 	sorted := make([]endpoint, len(exposed))
 	copy(sorted, exposed)

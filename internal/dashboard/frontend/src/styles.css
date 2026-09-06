@@ -201,7 +201,6 @@ body {
   box-shadow: 0 0 10px rgba(100, 150, 255, 0.2);
 }
 
-/* Widget Creation Section */
 .widget-creation-section {
   margin-bottom: 20px;
 }
@@ -494,7 +493,6 @@ body {
   padding: 40px;
 }
 
-/* Chart styles */
 .gauge-container {
   width: 100%;
   text-align: center;
@@ -647,7 +645,6 @@ body {
   border-color: rgba(100, 150, 255, 0.4);
 }
 
-/* Modal styles */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -798,7 +795,6 @@ body {
   background: rgba(255, 255, 255, 0.15);
 }
 
-/* Dashboard Manager */
 .dashboard-manager {
   max-width: 900px;
 }
@@ -999,7 +995,6 @@ body {
   background: rgba(100, 150, 255, 0.5);
 }
 
-/* Widget Creation Spinner */
 .widget-creation-spinner-overlay {
   position: fixed;
   top: 0;
@@ -1050,7 +1045,6 @@ body {
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* Fullscreen Widget Editor */
 .fullscreen-editor {
   position: fixed;
   top: 0;
@@ -1245,7 +1239,6 @@ body {
   font-style: italic;
 }
 
-/* Responsive */
 @media (max-width: 1200px) {
   .widgets-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -1310,7 +1303,6 @@ body {
   }
 }
 
-/* Ingest Panel */
 .ingest-panel {
   margin-top: 16px;
   padding: 16px;
@@ -1845,7 +1837,6 @@ body {
   50% { opacity: 1; }
 }
 
-/* Footer */
 .app-footer {
   margin-top: 24px;
   padding: 12px 20px 20px;
@@ -2101,7 +2092,6 @@ button.workflow-nav-update-available:disabled {
   margin-left: auto;
 }
 
-/* Battle.net bridge status pill */
 .bnet-pill {
   display: inline-flex;
   align-items: center;

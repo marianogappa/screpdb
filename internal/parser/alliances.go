@@ -6,23 +6,19 @@ import (
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
-// StackingThresholdSec is the minimum contiguous duration of an "uneven non-solo
-// team sizes" topology that flips a melee game's team_stacking flag and earns
-// the 😈 marker. Five minutes is long enough to filter transient mid-game
-// re-alliances (someone's teammate dies and they re-ally) but short enough to
-// catch deliberate ganging-up.
+// Minimum contiguous duration of an "uneven non-solo team sizes" topology that
+// flips a melee game's team_stacking flag. Five minutes filters transient
+// mid-game re-alliances (a teammate dies and they re-ally) while still catching
+// deliberate ganging-up.
 const StackingThresholdSec = 300
 
-// StackingEndOfGameThresholdSec is the shorter floor applied when a stacking
-// band never dissolves — it runs contiguously to game end. A stack that stays
-// intact until the game is over is a decisive gang-up (often the winning
-// coalition's), not the transient mid-game re-alliance the 5-minute threshold
-// exists to filter, so it earns the flag sooner.
+// The shorter floor for a stacking band that never dissolves. A stack intact
+// until the game is over is a decisive gang-up, not the transient re-alliance
+// the 5-minute threshold exists to filter, so it earns the flag sooner.
 const StackingEndOfGameThresholdSec = 120
 
-// InactivityWindowSec / InactivityMinActions define the "effectively dead"
-// threshold used to filter ghost players out of the stacking topology check.
-// A player whose recent action rate falls below 20 commands/min and never
+// The "effectively dead" threshold that filters ghost players out of the
+// stacking check. A player whose recent action rate falls below this and never
 // recovers is treated as gone for the rest of the game (monotonic).
 const (
 	InactivityWindowSec   = 60
@@ -30,48 +26,40 @@ const (
 	InactivityEndGraceSec = 60 // skip emitting stop events if T is in the last minute of the game
 )
 
-// LateAllianceThresholdSec defines what counts as a "late" alliance —
-// alliance-topology-changing transitions after this point are surfaced as
-// game events for storyline value.
+// Alliance transitions after this point are surfaced as game events for
+// storyline value.
 const LateAllianceThresholdSec = 600
 
-// AllianceSnapshot is one observed team topology, valid from Sec until the
-// next snapshot's Sec (or game end for the last one).
+// AllianceSnapshot is valid from Sec until the next snapshot's Sec (or game end).
 type AllianceSnapshot struct {
 	Sec      int      `json:"sec"`
 	Teams    [][]byte `json:"teams"` // each entry is a sorted []player_id; teams ordered by min pid
 	Stacking bool     `json:"stacking"`
 }
 
-// Activity captures per-player presence info: when each player left (Leave
-// Game command) and when each player became permanently inactive (their
-// last 60-second action rate that hit ≥20). Both are monotonic — once a
-// player is "gone" at sec T, they're treated as gone for all sec ≥ T.
+// Activity captures per-player presence. Both maps are monotonic: once a player
+// is "gone" at second T they are treated as gone for every second ≥ T.
 type Activity struct {
 	StoppedSecByPID map[byte]int // pid → sec the player became permanently inactive (only set when applicable)
 	LeaveSecByPID   map[byte]int // pid → sec of the player's first Leave Game command
 }
 
-// AllianceResult is what the parser/replay pipeline and the dashboard endpoint
-// both consume.
 type AllianceResult struct {
 	Snapshots         []AllianceSnapshot
 	ResolvedTeams     map[byte]byte // player_id → 1-indexed team_id, derived from the longest-held topology
 	AnyMutualResolved bool          // at least one mutual alliance pair was observed
 	TeamStackingFlag  bool          // any single contiguous stacking band lasted > StackingThresholdSec
 
-	// Inputs surfaced for event emission. The analyzer is the natural owner
-	// of these — it already iterates the command stream and the activity
-	// maps in lockstep.
+	// Inputs surfaced for event emission. The analyzer owns these because it
+	// already iterates the command stream and the activity maps in lockstep.
 	StoppedSecByPID         map[byte]int       // copy of activity.StoppedSecByPID for emitters
 	LateAllianceTransitions []AllianceSnapshot // topology-changing snapshots after LateAllianceThresholdSec
 	StackingBandStartSec    int                // start sec of the qualifying band (zero when TeamStackingFlag is false)
 	StackingBandTeams       [][]byte           // alliance topology at the start of the qualifying band (for the event description)
 }
 
-// ComputeActivity builds the Activity maps from the full command stream.
-// Used at ingest time; the dashboard reconstructs the same maps from
-// stored replay_events instead of rescanning commands.
+// Used at ingest time; the dashboard reconstructs the same maps from stored
+// replay_events instead of rescanning commands.
 func ComputeActivity(players []*models.Player, commands []*models.Command, durationSec int) Activity {
 	activePIDs := map[byte]bool{}
 	for _, p := range players {
@@ -112,9 +100,8 @@ func ComputeActivity(players []*models.Player, commands []*models.Command, durat
 		if !ok {
 			continue
 		}
-		// If the player also has a Leave Game, the leave event already
-		// covers the "gone" semantics — don't double-emit a stop event,
-		// but still record the earlier of the two so stacking sees them
+		// A Leave Game already covers the "gone" semantics, so don't double-emit a
+		// stop event — but still record the earlier of the two so stacking sees them
 		// as gone from the earliest moment.
 		if leaveAt, hasLeave := leaveSec[pid]; hasLeave && leaveAt <= stop {
 			continue
@@ -129,29 +116,20 @@ func ComputeActivity(players []*models.Player, commands []*models.Command, durat
 }
 
 // computeStoppedSec finds the latest second at which the player's recent
-// 60-second action count hit InactivityMinActions. After that second they
-// never recovered, so they can be treated as gone for stacking purposes.
+// 60-second action count hit InactivityMinActions; after that they never
+// recovered, so they count as gone for stacking.
 //
-// Returns (stoppedSec, true) when:
-//   - The player has at least one "alive" moment in their command history
-//     (a window with ≥InactivityMinActions actions), AND
-//   - The last alive moment is at least InactivityEndGraceSec before game end
-//     (otherwise they were active right up to the end — no stop event).
-//
-// Returns (0, true) when the player never reached the threshold at all
-// (e.g. AFK from the start) — they are inactive for the whole game.
-//
-// Returns (_, false) when the player was active until the very end.
+// Returns (0, true) when the player never reached the threshold at all (AFK
+// from the start), and (_, false) when they were active until the very end —
+// including within InactivityEndGraceSec of it, which is not a stop.
 func computeStoppedSec(actionTimes []int, durationSec int) (int, bool) {
 	if len(actionTimes) == 0 {
 		return 0, true
 	}
-	// Walk forward; for each action time t, count actions in [t-W, t]
-	// using the index difference (timestamps are sorted).
+	// Timestamps are sorted, so the window count is an index difference.
 	lastAlive := -1
 	for i := range actionTimes {
 		t := actionTimes[i]
-		// Find first index j where actionTimes[j] >= t - InactivityWindowSec.
 		lo := sort.SearchInts(actionTimes, t-InactivityWindowSec)
 		count := i - lo + 1
 		if count >= InactivityMinActions {
@@ -159,7 +137,7 @@ func computeStoppedSec(actionTimes []int, durationSec int) (int, bool) {
 		}
 	}
 	if lastAlive < 0 {
-		// Never hit the threshold — count as stopped from sec 0.
+		// Never hit the threshold, so stopped from second 0.
 		return 0, true
 	}
 	if durationSec-lastAlive < InactivityEndGraceSec {
@@ -168,19 +146,15 @@ func computeStoppedSec(actionTimes []int, durationSec int) (int, bool) {
 	return lastAlive, true
 }
 
-// AnalyzeAlliances replays the alliance command stream chronologically,
-// tracking each player's allies set and emitting a topology snapshot every
-// time the mutual-alliance graph changes.
+// AnalyzeAlliances replays the alliance command stream chronologically and
+// emits a topology snapshot whenever the mutual-alliance graph changes.
 //
-// The Stacking boolean on each snapshot is computed from the **effective**
-// view of the topology — players who have left or gone permanently inactive
-// (per `activity`) are dropped from team-size comparison. Caller is expected
-// to have filtered to a melee game with >2 active players.
-//
-// The "active player set" is everyone who is not Observer and not type
-// "Computer" — mirroring screp's own computeMeleeTeams filter.
+// Stacking is computed from the EFFECTIVE topology: players who left or went
+// permanently inactive are dropped from the team-size comparison. Callers are
+// expected to have filtered to a melee game with >2 active players. The active
+// set is everyone not Observer and not "Computer", mirroring screp's own
+// computeMeleeTeams filter.
 func AnalyzeAlliances(players []*models.Player, commands []*models.Command, durationSec int, activity Activity) AllianceResult {
-	// Build slot/pid → player lookups for the active set.
 	slotToPlayer := map[byte]*models.Player{}
 	pidToPlayer := map[byte]*models.Player{}
 	activePIDs := []byte{}
@@ -201,14 +175,13 @@ func AnalyzeAlliances(players []*models.Player, commands []*models.Command, dura
 		}
 	}
 
-	// allies[pid] = set of pids the issuer currently considers allied. Initial
-	// state: each player is allied with self only (mirrors screp).
+	// Each player starts allied with self only, mirroring screp.
 	allies := make(map[byte]map[byte]bool, len(activePIDs))
 	for _, pid := range activePIDs {
 		allies[pid] = map[byte]bool{pid: true}
 	}
 
-	// Initial snapshot at sec=0 (everyone solo).
+	// Initial snapshot at sec=0: everyone solo.
 	snapshots := []AllianceSnapshot{computeSnapshot(0, allies, activePIDs, activity)}
 	anyMutual := snapshots[0].hasMutual()
 
@@ -222,9 +195,8 @@ func AnalyzeAlliances(players []*models.Player, commands []*models.Command, dura
 		}
 		issuerPID := issuer.PlayerID
 
-		// Map slot-IDs from the command to active player_ids. Observers and
-		// computers are filtered (the computer slot ID can appear on certain
-		// random-team maps; mirrors screp's filterOutObserverSlotIDs).
+		// Observers and computers are filtered out: the computer slot ID can appear on
+		// certain random-team maps (mirrors screp's filterOutObserverSlotIDs).
 		newSet := map[byte]bool{issuerPID: true}
 		if cmd.AlliancePlayerIDs != nil {
 			for _, slotID := range *cmd.AlliancePlayerIDs {
@@ -242,8 +214,7 @@ func AnalyzeAlliances(players []*models.Player, commands []*models.Command, dura
 		allies[issuerPID] = newSet
 
 		snap := computeSnapshot(cmd.SecondsFromGameStart, allies, activePIDs, activity)
-		// Dedupe identical topology (e.g., one-way change without altering
-		// any mutual edge).
+		// Dedupe identical topology, e.g. a one-way change altering no mutual edge.
 		if teamsEqual(snap.Teams, snapshots[len(snapshots)-1].Teams) {
 			continue
 		}
@@ -253,15 +224,13 @@ func AnalyzeAlliances(players []*models.Player, commands []*models.Command, dura
 		}
 	}
 
-	// Splice in virtual snapshots at activity-transition times. The alliance
-	// topology (Teams) doesn't change at these moments, but the effective
-	// view does — so Stacking may flip even when no alliance command fired.
-	// Virtual snapshots are only inserted when they actually change Stacking
-	// from the prior snapshot's flag.
+	// Splice in virtual snapshots at activity transitions: the topology doesn't
+	// change there, but the effective view does, so Stacking can flip with no
+	// alliance command. Inserted only when Stacking actually changes.
 	snapshots = injectActivitySnapshots(snapshots, activity)
 
-	// Stacking-band scan: contiguous runs where Stacking == true. The flag
-	// is computed against the effective view inside computeSnapshot.
+	// Scan contiguous runs where Stacking == true, computed against the effective
+	// view inside computeSnapshot.
 	stackingFlag := false
 	bandStartSec := 0
 	var bandTeams [][]byte
@@ -278,7 +247,7 @@ func AnalyzeAlliances(players []*models.Player, commands []*models.Command, dura
 		if j < len(snapshots) {
 			end = snapshots[j].Sec
 		} else {
-			// Band runs to game end: never dissolved, so apply the shorter floor.
+			// The band runs to game end — never dissolved — so apply the shorter floor.
 			threshold = StackingEndOfGameThresholdSec
 		}
 		if end-snap.Sec > threshold {
@@ -289,8 +258,7 @@ func AnalyzeAlliances(players []*models.Player, commands []*models.Command, dura
 		}
 	}
 
-	// Late-alliance transitions: snapshots with Sec > LateAllianceThresholdSec.
-	// Snapshots are already deduped by topology, so each is a real change.
+	// Snapshots are already deduped by topology, so each late one is a real change.
 	lateTransitions := make([]AllianceSnapshot, 0)
 	for _, snap := range snapshots {
 		if snap.Sec > LateAllianceThresholdSec {
@@ -335,16 +303,13 @@ func computeSnapshot(sec int, allies map[byte]map[byte]bool, activePIDs []byte, 
 	}
 }
 
-// injectActivitySnapshots inserts virtual snapshots at every activity-
-// transition time (Leave Game / stopped playing) where the effective
-// stacking flips relative to the most recent snapshot. The alliance
-// topology at the inserted snapshot is copied from the prior snapshot —
-// only Stacking is recomputed against the effective view at the new sec.
+// injectActivitySnapshots inserts a virtual snapshot at each activity
+// transition where the effective stacking flips. Topology is copied from the
+// prior snapshot; only Stacking is recomputed at the new second.
 func injectActivitySnapshots(snapshots []AllianceSnapshot, activity Activity) []AllianceSnapshot {
 	if len(snapshots) == 0 {
 		return snapshots
 	}
-	// Collect unique transition times > 0.
 	timeSet := map[int]bool{}
 	for _, sec := range activity.LeaveSecByPID {
 		if sec > 0 {
@@ -368,7 +333,6 @@ func injectActivitySnapshots(snapshots []AllianceSnapshot, activity Activity) []
 	out := make([]AllianceSnapshot, 0, len(snapshots)+len(times))
 	si := 0
 	for _, t := range times {
-		// Drain alliance snapshots whose Sec <= t.
 		for si < len(snapshots) && snapshots[si].Sec <= t {
 			out = append(out, snapshots[si])
 			si++
@@ -377,8 +341,7 @@ func injectActivitySnapshots(snapshots []AllianceSnapshot, activity Activity) []
 			continue
 		}
 		last := out[len(out)-1]
-		// If a real alliance snapshot already lives at sec=t, no need for a
-		// virtual one — the real snapshot already used the activity at sec=t.
+		// A real snapshot at sec=t already used the activity at sec=t.
 		if last.Sec == t {
 			continue
 		}
@@ -400,16 +363,13 @@ func injectActivitySnapshots(snapshots []AllianceSnapshot, activity Activity) []
 	return out
 }
 
-// effectiveTeamsAt returns the teams with players who have left or stopped
-// playing by sec dropped out. Empty teams are dropped from the slice. The
-// original teams slice is not mutated.
+// effectiveTeamsAt drops players who have left or stopped by sec, and any
+// team that empties. The original slice is not mutated.
 //
-// Cliques can overlap (a player may belong to several maximal cliques), so a
-// pass-through of departure filtering would emit duplicate singletons —
-// every clique a departed player's lone partner survived in shrinks to {p}.
-// We dedupe: when a player is still part of a surviving size-≥2 clique, we
-// drop any singleton entry for them. When they're a singleton in multiple
-// shrunk cliques, only one survives.
+// Cliques can overlap, so plain departure filtering would emit duplicate
+// singletons — every clique a departed player's lone partner survived in
+// shrinks to {p}. So when a player is still in a surviving size-≥2 clique, any
+// singleton entry for them is dropped, and only one shrunk singleton survives.
 func effectiveTeamsAt(teams [][]byte, sec int, activity Activity) [][]byte {
 	departed := func(pid byte) bool {
 		if leaveAt, ok := activity.LeaveSecByPID[pid]; ok && leaveAt <= sec {
@@ -457,20 +417,15 @@ func effectiveTeamsAt(teams [][]byte, sec int, activity Activity) [][]byte {
 }
 
 // mutualAllianceTeams enumerates the maximal cliques of the mutual-alliance
-// graph (edge a↔b iff a∈allies[b] AND b∈allies[a], excluding self-loops).
+// graph (edge a↔b iff each is in the other's allies, self-loops excluded).
 //
-// A "team" in Brood War semantics is a clique: every member must mutually
-// ally every other member. Connected components — the previous model — over-
-// reports teams: a chain A↔B↔C↔D (with no other edges) is NOT a 4-stack, it
-// is three overlapping pair-stacks {A,B}, {B,C}, {C,D}. Without this fix the
-// stacking detector flags a chain of pair-alliances as e.g. "4v2 stacked"
-// even though none of the four chain members all-mutually ally each other.
-// A player can legitimately appear in more than one returned clique — that
-// is the honest answer when the alliance graph is not transitive.
+// A Brood War "team" is a clique, not a connected component: a chain A↔B↔C↔D
+// is NOT a 4-stack but three overlapping pair-stacks, and the component model
+// made the detector report it as "4v2 stacked". A player legitimately appearing
+// in more than one clique is the honest answer for a non-transitive graph.
 //
-// Singletons (active players not in any mutual edge) are appended as solo
-// teams so every player has at least one entry to render against. Cliques
-// are sorted by size (larger first) then by min(pid) for stable output.
+// Singletons are appended as solo teams so every player has an entry to render
+// against. Cliques sort by size (larger first) then min(pid) for stable output.
 func mutualAllianceTeams(allies map[byte]map[byte]bool, activePIDs []byte) [][]byte {
 	sortedPIDs := append([]byte(nil), activePIDs...)
 	sort.Slice(sortedPIDs, func(i, j int) bool { return sortedPIDs[i] < sortedPIDs[j] })
@@ -496,13 +451,11 @@ func mutualAllianceTeams(allies map[byte]map[byte]bool, activePIDs []byte) [][]b
 	}
 
 	n := len(sortedPIDs)
-	// Brute-force subset enumeration is fine for melee (n≤8 → ≤256 subsets).
-	// If n grows past 16 we'd want Bron-Kerbosch; guard so we don't OOM if
-	// the assumption ever breaks.
+	// Brute-force subset enumeration is fine for melee (n≤8 → ≤256 subsets). Past
+	// 16 we'd want Bron-Kerbosch; guard so a broken assumption can't OOM.
 	if n > 16 {
-		// Fall back to a non-overlapping component grouping — same shape as
-		// the old algorithm — so the analyzer still produces *some* answer
-		// rather than spinning over 65k subsets.
+		// Fall back to non-overlapping component grouping so the analyzer still
+		// produces *some* answer rather than spinning over 65k subsets.
 		return mutualAllianceTeamsComponents(allies, sortedPIDs, mutual)
 	}
 
@@ -536,7 +489,6 @@ func mutualAllianceTeams(allies map[byte]map[byte]bool, activePIDs []byte) [][]b
 		cliques = append(cliques, subset{members: members, mask: mask})
 	}
 
-	// Keep only maximal cliques.
 	maximal := make([]subset, 0, len(cliques))
 	for i, c := range cliques {
 		dominated := false
@@ -578,10 +530,9 @@ func mutualAllianceTeams(allies map[byte]map[byte]bool, activePIDs []byte) [][]b
 	return out
 }
 
-// mutualAllianceTeamsComponents is the connected-component fallback used
-// only when player count exceeds the brute-force clique enumeration ceiling
-// (n>16). Melee never hits this path; included so the analyzer stays safe
-// if future replay formats grow the slot count.
+// mutualAllianceTeamsComponents is the fallback past the clique-enumeration
+// ceiling (n>16). Melee never hits this path; it exists so the analyzer stays
+// safe if a future replay format grows the slot count.
 func mutualAllianceTeamsComponents(allies map[byte]map[byte]bool, sortedPIDs []byte, mutual func(a, b byte) bool) [][]byte {
 	parent := map[byte]byte{}
 	for _, pid := range sortedPIDs {
@@ -627,8 +578,8 @@ func mutualAllianceTeamsComponents(allies map[byte]map[byte]bool, sortedPIDs []b
 	return teams
 }
 
-// isStacking: among teams of size ≥2, sizes must all match. A 2v2v1 is fine
-// (one solo is valid); a 3v2 is not. Need at least 2 non-solo teams to compare.
+// isStacking: among teams of size ≥2, sizes must all match — a 2v2v1 is fine
+// (one solo is valid), a 3v2 is not. Needs 2 non-solo teams to compare.
 func isStacking(teams [][]byte) bool {
 	var sizes []int
 	for _, t := range teams {
@@ -648,9 +599,8 @@ func isStacking(teams [][]byte) bool {
 	return false
 }
 
-// dominantResolvedTeams returns player_id → 1-indexed team_id from the snapshot
-// with the longest held duration. If no mutual alliance exists, every player
-// gets their own team_id (caller can detect this via AnyMutualResolved=false).
+// Uses the snapshot with the longest held duration. With no mutual alliance
+// every player gets their own team_id (detectable via AnyMutualResolved=false).
 func dominantResolvedTeams(snapshots []AllianceSnapshot, durationSec int, activePIDs []byte) map[byte]byte {
 	if len(snapshots) == 0 {
 		out := map[byte]byte{}
@@ -684,18 +634,14 @@ func dominantResolvedTeams(snapshots []AllianceSnapshot, durationSec int, active
 	return out
 }
 
-// winningTeamByLeaves implements screp's "largest remaining team wins" rule
-// (mirrors `computeWinners` at rep/replay.go:701-805) over an arbitrary team
-// grouping. teamOf maps each non-observer player_id to a team key (humans and
-// computers alike). Returns (winningTeamKey, true) when a single winner is
-// determined, or (0, false) when it can't be decided — the same situations in
-// which screp leaves WinnerTeam == 0.
+// winningTeamByLeaves applies screp's "largest remaining team wins" rule (see
+// computeWinners in rep/replay.go) over an arbitrary team grouping. Returns
+// (0, false) in the same situations where screp leaves WinnerTeam == 0.
 //
-// repSaverPID is optional. screp doesn't record a Leave Game command for the
-// replay saver, so when known we append a virtual leave for them as the last
-// leaver — that's what lets the "all non-obs players left" tie-break fire on
-// games where one team simply quit and the saver from the other team is the
-// final non-leaver.
+// screp records no Leave Game for the replay saver, so when repSaverPID is
+// known a virtual leave is appended for them as the last leaver. That is what
+// lets the "all non-obs players left" tie-break fire on games where one team
+// quit and the saver from the other team is the final non-leaver.
 func winningTeamByLeaves(players []*models.Player, commands []*models.Command, teamOf map[byte]byte, repSaverPID *byte) (byte, bool) {
 	teamSizes := map[byte]int{}
 	teamCompsCount := map[byte]int{}
@@ -775,11 +721,9 @@ func winningTeamByLeaves(players []*models.Player, commands []*models.Command, t
 	return 0, false
 }
 
-// DeriveWinnersFromLeaves applies the "largest remaining team wins" algorithm
-// to the static `p.Team` assignments. Mutates the players slice: clears
-// IsWinner on everyone, then sets it on every member of the detected winning
-// team. Bails out (no winners assigned) when the algorithm can't determine a
-// single winner — the same behavior screp has when WinnerTeam == 0.
+// DeriveWinnersFromLeaves applies the rule to the static p.Team assignments,
+// mutating the slice. It assigns no winners when a single winner can't be
+// determined — the same behaviour screp has when WinnerTeam == 0.
 func DeriveWinnersFromLeaves(players []*models.Player, commands []*models.Command, repSaverPID *byte) {
 	for _, p := range players {
 		if p == nil {
@@ -801,24 +745,16 @@ func DeriveWinnersFromLeaves(players []*models.Player, commands []*models.Comman
 	}
 }
 
-// DeriveWinnersFromFinalTopology credits the winning coalition of a multi-team
-// melee using the END-OF-GAME alliance topology rather than the longest-held
-// (display) teams. This lets a coalition that formed or shifted mid-game be
-// credited correctly and — crucially — credits a stable team whose alliance
-// screp missed because computeMeleeTeams only inspects the first ~90 seconds
-// (and otherwise assigns every player a singleton team, which then ties).
-// Because the grouping is the end-of-game coalition, the credited winners can
-// span two different "original" (longest-held) display teams — that's expected
-// when alliances shifted; the Alliances tab explains why.
+// DeriveWinnersFromFinalTopology credits the winning coalition using the
+// END-OF-GAME alliance topology rather than the longest-held display teams.
+// That credits coalitions formed mid-game, and — crucially — stable teams whose
+// alliance screp missed, since computeMeleeTeams only inspects the first ~90
+// seconds and otherwise makes everyone a singleton, which then ties. Credited
+// winners can therefore span two display teams; the Alliances tab explains why.
 //
-// Players are grouped by their largest mutual-alliance clique in the final
-// snapshot (see assignCoalitions); the same "largest remaining team after
-// leaves" rule then picks the winner.
-//
-// Non-destructive: only when a single winner coalition is determined does it
-// clear and re-set IsWinner (allied-victory semantics — a teammate who left is
-// still on the winning side). When undecidable it leaves existing IsWinner
-// flags untouched, so it never erases a winner it can't reproduce.
+// Non-destructive: IsWinner is only cleared and re-set when a single coalition
+// is determined (allied-victory semantics — a teammate who left still won), so
+// it never erases a winner it cannot reproduce.
 func DeriveWinnersFromFinalTopology(players []*models.Player, commands []*models.Command, ar AllianceResult, repSaverPID *byte) {
 	var finalTeams [][]byte
 	if n := len(ar.Snapshots); n > 0 {
@@ -838,12 +774,10 @@ func DeriveWinnersFromFinalTopology(players []*models.Player, commands []*models
 	}
 }
 
-// assignCoalitions maps each non-observer player_id to a coalition key derived
-// from the final alliance topology. Cliques are processed largest-first (they
-// arrive pre-sorted size-desc then min-pid from mutualAllianceTeams), so each
-// player lands in their largest clique; the coalition key is the clique's
-// min pid. Players not in any clique — and computers, which never appear in the
-// alliance graph — get their own singleton coalition keyed by their own pid.
+// assignCoalitions keys each non-observer player to their LARGEST mutual
+// clique's min pid — cliques arrive pre-sorted size-desc then min-pid, so
+// largest-first processing lands each player in theirs. Players in no clique,
+// and computers (never in the alliance graph), get a singleton keyed by pid.
 func assignCoalitions(players []*models.Player, finalTeams [][]byte) map[byte]byte {
 	coalitionOf := map[byte]byte{}
 	for _, team := range finalTeams {
