@@ -29,7 +29,7 @@ shortest form that carries it — usually one line, occasionally three.
 - Section banners whose text repeats the declaration or selector below them
   (`/* Footer */` above `.app-footer`, `// ----- Combinators -----`).
 - Changelogs, version history and curation notes. Those belong in a file —
-  see `docs/ALGORITHM_VERSIONS.md` for the `core.AlgorithmVersion` log.
+  see `docs/DETECTOR_VERSIONS.md` for the `core.DetectorVersion` log.
 - Restatements of a rule the code expresses declaratively. A marker's `Rule:`
   already says which buildings must precede which.
 
@@ -56,13 +56,30 @@ obvious.
 **Tests are more lenient.** A comment naming what a case proves, or recording
 the replay/fixture a premise came from, is worth keeping.
 
-# Detection Changes — bump `core.AlgorithmVersion`
+# Detection changes — bump `core.DetectorVersion`
 
-Whenever you change anything that affects the *output* of replay detection (game-event composition, marker firing rules, attack/scout/recall/drop heuristics, ownership inference, base resolution, marker payload shape, etc.), bump `AlgorithmVersion` in `internal/patterns/core/types.go`. Replays are re-detected on every launch now that the corpus is read into memory rather than ingested into a database, so the constant no longer drives a re-ingest — but it still gates the built-in progamer pack (`internal/propack` refuses a pack built by an older detector) and is published on `/api/custom/markers/definitions` and in `SPECIFICATION.md`. Forgetting it ships a stale pack and a wrong version number. Log the change in `docs/ALGORITHM_VERSIONS.md` rather than in a comment above the constant.
+`DetectorVersion` in `internal/patterns/core/types.go` has exactly one job: it
+keeps the embedded progamer pack honest. `scripts/pro-pack` stamps the pack it
+builds with the value, and `internal/propack`'s test fails when the pack is
+stamped older than the code. That matters because the dashboard plots the pack's
+precomputed APM, cadence and viewport-switch figures against the *same figures
+computed locally from the user's replays*, and two detector versions are not
+comparable.
 
-If you only changed presentation (frontend rendering, descriptions, overlays) without touching what's persisted, no bump is needed.
+Nothing re-detects or re-ingests on it. The corpus is read into memory and
+detected on every launch, so a detection change reaches users on their next
+launch whether or not you touch the constant.
 
-This also covers fingerprint vectors: bumping `github.com/marianogappa/scfingerprint` to a version with a new `FeatureVersion()` makes every vector baked into the progamer pack stale (vectors are only comparable within a feature version), so such a bump requires an `AlgorithmVersion` bump too.
+**Bump it when, and only when, a change would alter what `scripts/pro-pack`
+computes** — that is, the APM / cadence / viewport-switch-rate aggregates, or
+the sampling that feeds them. Regenerate the pack in the same change (this needs
+the expert-mine scratch corpus; if you cannot, say so in the PR rather than
+bumping and leaving the test red). Log the entry in `docs/DETECTOR_VERSIONS.md`.
+
+Changing marker firing rules, game-event composition, or a `FeatureKey` does
+*not* need a bump on its own: none of it is persisted, and the pack does not
+carry marker data. Renaming a `FeatureKey` or `event_type` is still a breaking
+change across the API, the frontend pill registry and the locale catalogs.
 
 # Pull Requests
 

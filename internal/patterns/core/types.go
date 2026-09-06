@@ -7,12 +7,18 @@ import (
 	"github.com/marianogappa/screpdb/internal/patterns/worldstate"
 )
 
-// AlgorithmVersion is the version of the pattern detection algorithm. Bump it
-// whenever the algorithm's output changes, and log the change in
-// docs/ALGORITHM_VERSIONS.md. It no longer drives a re-ingest (replays are
-// re-detected on every launch); it gates the built-in progamer pack and is
-// published on /api/custom/markers/definitions and in SPECIFICATION.md.
-const AlgorithmVersion = 68
+// DetectorVersion identifies the output of the detection pipeline. Its one job
+// is to keep the embedded progamer pack honest: scripts/pro-pack stamps the
+// pack it builds with this value and internal/propack's test refuses a pack
+// stamped older than the code, because the dashboard plots the pack's
+// precomputed APM / cadence / viewport figures against the same figures
+// computed locally, and two detector versions are not comparable.
+//
+// Bump it only when a change would alter what scripts/pro-pack computes, and
+// regenerate the pack in the same change. Nothing re-detects or re-ingests on
+// it: the corpus is read into memory and detected on every launch.
+// docs/DETECTOR_VERSIONS.md logs the history.
+const DetectorVersion = 68
 
 type DetectorLevel string
 

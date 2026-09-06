@@ -11,8 +11,8 @@ func TestLoadPack(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if pack.AlgorithmVersion != core.AlgorithmVersion {
-		t.Fatalf("pack was generated at AlgorithmVersion %d but the code is at %d: regenerate it with scripts/pro-pack so built-in profiles stay comparable with local players", pack.AlgorithmVersion, core.AlgorithmVersion)
+	if pack.DetectorVersion != core.DetectorVersion {
+		t.Fatalf("pack was generated at DetectorVersion %d but the code is at %d: regenerate it with scripts/pro-pack so built-in profiles stay comparable with local players", pack.DetectorVersion, core.DetectorVersion)
 	}
 	for _, pro := range pack.Pros {
 		if pro.Label == "" {

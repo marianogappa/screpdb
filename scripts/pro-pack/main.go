@@ -148,9 +148,9 @@ func main() {
 	toonsByName := recentToons(sides)
 
 	pack := propack.Pack{
-		GeneratedAt:      time.Now().UTC().Format(time.RFC3339),
-		AlgorithmVersion: core.AlgorithmVersion,
-		Source:           "public ladder replays labelled by aurora ID (scfingerprint corpus); photos and countries from Liquipedia",
+		GeneratedAt:     time.Now().UTC().Format(time.RFC3339),
+		DetectorVersion: core.DetectorVersion,
+		Source:          "public ladder replays labelled by aurora ID (scfingerprint corpus); photos and countries from Liquipedia",
 	}
 	photosDir := filepath.Join(*outDir, "photos")
 	if err := os.MkdirAll(photosDir, 0o755); err != nil {

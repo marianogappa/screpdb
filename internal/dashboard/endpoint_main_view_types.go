@@ -705,8 +705,7 @@ type workflowPlayerEarlyTiming struct {
 
 // Reports how many of a player's games contributed scfingerprint vectors under
 // the current feature version, which is what explains why identification is or
-// isn't available (short games and low-command players yield no vector, and
-// replays ingested before vector extraction shipped need a re-ingest).
+// isn't available: short games and low-command players yield no vector.
 type workflowFingerprintCoverage struct {
 	GamesWithVectors int64 `json:"games_with_vectors"`
 	FeatureVersion   int   `json:"feature_version"`

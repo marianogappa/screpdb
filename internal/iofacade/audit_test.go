@@ -48,7 +48,7 @@ func TestIOSafetyAuditPresent(t *testing.T) {
 // single (latest) entry: every change appends a fresh line and pushes the
 // previous ones down into the collapsed "Older ... entries" <details>. Without
 // this guard the visible log grows unbounded, which repeatedly happens by
-// accident. The collapsed archive below the markers is unbounded on purpose.
+// accident. TestIOSafetyAuditArchiveBounded caps the collapsed archive.
 func TestIOSafetyAuditSingleNonCollapsedEntry(t *testing.T) {
 	root := moduleRoot(t)
 	data, err := os.ReadFile(filepath.Join(root, "README.md"))
@@ -79,5 +79,47 @@ func TestIOSafetyAuditSingleNonCollapsedEntry(t *testing.T) {
 			"keep only the latest line above the <details> and move the older ones into the collapsed "+
 			"\"Older I/O safety audit entries\" section. Got:\n%s",
 			len(entries), strings.TrimSpace(nonCollapsed))
+	}
+}
+
+// auditArchiveMax is how many entries the collapsed archive keeps. The audit is
+// a receipt that makes tampering visible in the diff, and git history is the
+// real record, so the README only needs enough recent context to read the
+// current entry against. The log had accreted to 73 entries across 27 separate
+// fenced blocks before this bound existed.
+const auditArchiveMax = 5
+
+// TestIOSafetyAuditArchiveBounded caps the collapsed "Older I/O safety audit
+// entries" archive at auditArchiveMax. Adding an entry means promoting it to
+// the visible slot and dropping the oldest archived one, so the log stays a
+// fixed size instead of growing without limit.
+func TestIOSafetyAuditArchiveBounded(t *testing.T) {
+	root := moduleRoot(t)
+	data, err := os.ReadFile(filepath.Join(root, "README.md"))
+	if err != nil {
+		t.Fatalf("read README.md: %v", err)
+	}
+
+	const start = "<!-- IO-AUDIT:START -->"
+	const end = "<!-- IO-AUDIT:END -->"
+	text := string(data)
+	i := strings.Index(text, start)
+	j := strings.Index(text, end)
+	if i < 0 || j < 0 || j < i {
+		t.Fatalf("README.md is missing the I/O Safety Audit markers %q / %q", start, end)
+	}
+
+	block := text[i+len(start) : j]
+	d := strings.Index(block, "<details>")
+	if d < 0 {
+		// No archive yet is fine: the visible entry is the whole log.
+		return
+	}
+	archived := auditEntry.FindAllString(block[d:], -1)
+	if len(archived) > auditArchiveMax {
+		t.Fatalf("README.md I/O Safety Audit archive has %d entries, want at most %d; "+
+			"when you add an entry, promote it to the visible slot above the <details> and drop "+
+			"the oldest archived line (git history keeps the full record)",
+			len(archived), auditArchiveMax)
 	}
 }

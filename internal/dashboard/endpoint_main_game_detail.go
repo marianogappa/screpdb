@@ -364,8 +364,7 @@ func (d *Dashboard) buildWorkflowPlayerLastGames(playerKey string) ([]workflowGa
 	if err := d.populateWorkflowRecentGamesCurrentPlayer(playerKey, result); err != nil {
 		return nil, fmt.Errorf("failed to populate recent game context for %s: %w", playerName, err)
 	}
-	// Ten games means ten cheap re-computations: the histogram rules iterate
-	// without re-ingest (see unit_composition.go).
+	// Ten games means ten cheap re-computations (see unit_composition.go).
 	for i := range result {
 		current := result[i].CurrentPlayer
 		if current == nil {

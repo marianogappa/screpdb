@@ -111,7 +111,7 @@ var curatedFeatureKeys = map[string]bool{
 	// Round 13 (issue #269) — watched & confirmed. Fixtures bo_10pool_zvz_mentalgap
 	// (mentalgap = 10 Pool) and bo_tankless_expand_tvt_bisu (Bisu_chongchong =
 	// Tankless Mech, expand-first). The round also fixed the gas/extractor-trick
-	// undercount (AlgorithmVersion 60): the same-player 3hatch_hydra_2jd /
+	// undercount (DetectorVersion 60): the same-player 3hatch_hydra_2jd /
 	// _pingcojerry fixtures now read 10 Hatch (was 4/6).
 	"bo_10_pool":           true,
 	"bo_t_tankless_expand": true,

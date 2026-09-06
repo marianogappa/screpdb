@@ -99,10 +99,10 @@ func (p *Pro) Key() string { return Key(p.ID) }
 
 // Pack is the embedded snapshot.
 type Pack struct {
-	GeneratedAt      string `json:"generated_at"`
-	AlgorithmVersion int    `json:"algorithm_version"`
-	Source           string `json:"source,omitempty"`
-	Pros             []Pro  `json:"pros"`
+	GeneratedAt     string `json:"generated_at"`
+	DetectorVersion int    `json:"detector_version"`
+	Source          string `json:"source,omitempty"`
+	Pros            []Pro  `json:"pros"`
 
 	byID    map[string]*Pro
 	byLabel map[string]*Pro

@@ -1,13 +1,14 @@
-# Algorithm version history
+# Detector version history
 
-`core.AlgorithmVersion` (in `internal/patterns/core/types.go`) is the version of
-the pattern detection algorithm. Increment it whenever the algorithm's output
-changes, and add an entry here.
+`core.DetectorVersion` (in `internal/patterns/core/types.go`) identifies the
+output of the detection pipeline. Its one job is to keep the embedded progamer
+pack honest: `scripts/pro-pack` stamps the pack with this value and
+`internal/propack`'s test refuses a pack stamped older than the code.
 
-Replays are re-detected on every launch (the corpus is read into memory, not
-ingested), so the constant no longer drives a re-ingest; it gates the built-in
-progamer pack and is published on `/api/custom/markers/definitions` and in
-`SPECIFICATION.md`.
+Bump it only when a change would alter what `scripts/pro-pack` computes, and
+regenerate the pack in the same change. Nothing re-detects or re-ingests on it.
+Entries below 68 were written when it still drove a database re-ingest, and are
+kept as history.
 
 ## 26
 

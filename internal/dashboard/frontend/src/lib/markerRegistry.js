@@ -195,14 +195,12 @@ export const pillEventTypeClass = (eventType) => {
   return '';
 };
 
-// Fetched once on mount and stable across a session, bumped only when
-// AlgorithmVersion changes on the backend.
+// Fetched once on mount and stable for the session.
 export const useMarkerRegistry = () => {
   const [state, setState] = useState({
     markers: {},
     featuring_order: [],
     game_event_features: [],
-    algorithmVersion: 0,
     loading: true,
     error: null,
   });
@@ -216,7 +214,6 @@ export const useMarkerRegistry = () => {
           markers: resp?.markers || {},
           featuring_order: Array.isArray(resp?.featuring_order) ? resp.featuring_order : [],
           game_event_features: Array.isArray(resp?.game_event_features) ? resp.game_event_features : [],
-          algorithmVersion: Number(resp?.algorithm_version) || 0,
           loading: false,
           error: null,
         });
