@@ -208,3 +208,61 @@ func TestFeaturedProsOrderedByCuratedRank(t *testing.T) {
 		t.Fatalf("first featured pro should carry rank 1, got %s rank %d", pros[0].ID, pros[0].Rank)
 	}
 }
+
+// The skill-proxy overlays draw a capped, race-balanced slice of the pack, not
+// all of it: an unbounded overlay buries the local population it is meant to
+// give a reference for.
+func TestFeaturedOverlayIsCappedAndRaceBalanced(t *testing.T) {
+	loadPackForTest(t)
+	d := newTestDashboard(t)
+	for name, points := range map[string][]workflowFeaturedPoint{
+		"apm":      d.featuredApmPoints(),
+		"cadence":  d.featuredCadencePoints(),
+		"viewport": d.featuredViewportPoints(),
+	} {
+		if len(points) == 0 {
+			t.Errorf("%s: no featured points", name)
+			continue
+		}
+		if len(points) > featuredOverlayLimit {
+			t.Errorf("%s: %d featured points, want at most %d", name, len(points), featuredOverlayLimit)
+		}
+		perRace := map[string]int{}
+		for _, point := range points {
+			perRace[point.Race]++
+		}
+		for race, count := range perRace {
+			if count > featuredOverlayPerRace {
+				t.Errorf("%s: %d %s pros, want at most %d", name, count, race, featuredOverlayPerRace)
+			}
+		}
+		for _, race := range []string{"Zerg", "Terran", "Protoss"} {
+			if perRace[race] == 0 {
+				t.Errorf("%s: overlay has no %s pro", name, race)
+			}
+		}
+	}
+}
+
+// Capping the overlay must not hide anyone: every pro the overlay leaves out
+// still resolves to their own player page.
+func TestFeaturedProsOutsideTheOverlayKeepTheirPages(t *testing.T) {
+	loadPackForTest(t)
+	d := newTestDashboard(t)
+	overlay := map[string]bool{}
+	for _, point := range d.featuredApmPoints() {
+		overlay[point.PlayerKey] = true
+	}
+	all := d.featuredPros()
+	if len(all) <= len(overlay) {
+		t.Skip("pack is smaller than the overlay cap")
+	}
+	for _, pro := range all {
+		if overlay[pro.Key()] {
+			continue
+		}
+		if d.featuredPro(pro.Key()) == nil {
+			t.Fatalf("pro %s dropped off its own page", pro.ID)
+		}
+	}
+}
