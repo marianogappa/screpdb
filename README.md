@@ -123,7 +123,7 @@ Then run `screpdb`. To upgrade, re-run the same command (or use the in-app **Upd
 Prefer **[Homebrew](https://brew.sh) / Linuxbrew**?
 
 ```bash
-brew install marianogappa/screpdb/screpdb   # upgrade later: brew upgrade screpdb
+brew install marianogappa/screpdb/screpdb   # upgrade later: brew update && brew upgrade screpdb
 ```
 
 Or download the binary for your architecture from the [Releases page](https://github.com/marianogappa/screpdb/releases), make it executable, and move it onto your `PATH` — put it in a writable folder (not a Homebrew prefix) so the in-app **Update** button works:
@@ -145,7 +145,7 @@ mkdir -p ~/.local/bin && mv screpdb-linux-amd64 ~/.local/bin/screpdb
 **Install with [Homebrew](https://brew.sh):**
 
 ```bash
-brew install marianogappa/screpdb/screpdb   # upgrade later: brew upgrade screpdb
+brew install marianogappa/screpdb/screpdb   # upgrade later: brew update && brew upgrade screpdb
 ```
 
 Or the one-line installer (verifies it against the release's signed `SHA256SUMS`, installs to `~/.local/bin`):
@@ -323,6 +323,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 <summary>Older I/O safety audit entries (click to expand)</summary>
 
 ```
+2026-09-06  OK. Update hint for Homebrew installs now copies `brew update && brew upgrade screpdb` (issue #360): `brew upgrade` alone is a no-op when the local tap cache is stale, and Homebrew only auto-refreshes tap metadata every ~24h. Frontend copy string plus the two README install snippets; Scoop left as `scoop update screpdb` (its update subcommand syncs buckets itself when Scoop is >3h stale). No Go changes, no os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test change, no AlgorithmVersion bump (no detection change).
 2026-09-06  OK. Caps the built-in progamer overlay on the three skill-proxy distributions (APM, unit production cadence, viewport switch rate) at 15 markers, five per race by curated rank, instead of overlaying all 70 pros. The cap lives server-side in featuredOverlayPros so the payload shrinks with it; the pros left out are unchanged everywhere else and still resolve to their own player pages. Population statistics are untouched: featured points were already reference-only, never binned and never part of the mean, stddev or percentile. No new os/net calls, roots, hosts, endpoints, queries, facade changes, enforcement-test change, or AlgorithmVersion bump (no detection code is touched).
 2026-09-06  OK. Player page "Also plays as" row showed each alias once per gateway and listed the player themselves. parseBnetProfileDetail now collapses the bridge's per-gateway toon rows onto the normalised player key (first casing and gateway kept, weekly counts summed; the account total still sums every raw row), and the frontend filters the subject out with player_key instead of player_name, which carries the "you" marker and so never matched. Presentation of an already-cached payload: no new I/O, endpoints, queries, os/net calls, facade changes, or AlgorithmVersion bump (nothing persisted changed).
 2026-09-04  OK. Korean UI. Frontend-only locale catalogs (internal/dashboard/frontend/src/locales) with the choice kept in browser localStorage; the Go side only adds JSON fields to existing responses (ingest log key/args, insight ineligible_reason_key/args, games-list featuring_keys) so labels can be looked up by stable id. No new I/O, no new capability, no new dependency.
