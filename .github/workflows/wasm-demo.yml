@@ -1,6 +1,9 @@
 name: WASM Demo
 
 on:
+  push:
+    branches: [main]
+  pull_request:
   release:
     types: [published]
   workflow_dispatch:
@@ -11,15 +14,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: wasm-demo-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,11 +40,28 @@ jobs:
       - name: Build WASM demo
         run: make wasm
 
+      # GitHub Pages serves this from the /screpdb/ subpath, so any root-absolute
+      # asset reference 404s. Catch a regression here rather than on the live site.
+      - name: Check the demo has no root-absolute asset references
+        run: |
+          if grep -nE '"/(assets/|screpdb\.wasm|wasm_exec\.js|fs-shim\.js)' cmd/wasmdemo/dist/index.html; then
+            echo "::error::root-absolute asset reference found; it will 404 under /screpdb/"
+            exit 1
+          fi
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: cmd/wasmdemo/dist
 
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deploy
         uses: actions/deploy-pages@v4

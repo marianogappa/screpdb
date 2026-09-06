@@ -4,6 +4,8 @@ screpdb is an advanced Starcraft replay reporting tool.
 
 [English](README.md) | [한국어](README.ko.md)
 
+**▶️ [Try it in your browser](https://marianogappa.github.io/screpdb/)** — the full dashboard on sample replays, no install, runs entirely client side.
+
 [![Release](https://img.shields.io/github/v/release/marianogappa/screpdb)](https://github.com/marianogappa/screpdb/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/marianogappa/screpdb)](go.mod)
@@ -452,6 +454,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 2026-06-09  OK. Ingestion crash resilience (issue #165): added a per-replay panic guard in internal/ingest (recover → per-file error) and a guarded type assertion in the parser. Pure control-flow/error-handling change; no new os/net calls, no allowlist or enforcement-test changes. Audited the concurrent parse/detect path and its screp/scmapanalyzer deps for shared mutable state (none found unguarded).
 2026-06-09  OK. Debugging/crash-reporting improvements (issue #165): new internal/crashreport writes a crash log via iofacade.WriteFile, and the Windows GUI binary opens a screpdb-dashboard.log via iofacade.Create and registers cwd with iofacade.AllowDir (already an allowed root). No new direct os/net calls, no allowlist widening, no enforcement-test changes; the crash handler's browser-open uses pkg/browser (process exec, not a net/fs primitive).
 2026-08-29  OK. Fingerprint-based player identification on the player detail page (issue #322). New read-only SQL query (ListPlayerFingerprintVectors) against the existing player_fingerprint_vectors table; scfingerprint.MatchMany runs in-process on already-stored vectors. No new os/net calls, no allowlist changes.
+2026-09-06  OK. WASM demo published to GitHub Pages: the demo now references its assets relatively (Vite --base=./ for the WASM build only, relative wasm_exec.js/fs-shim.js/screpdb.wasm/assets URLs in the demo index.html) so it works from the /screpdb/ project subpath, and its workflow also builds on pull requests. Build/packaging and static-asset-path changes only; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes, and the native build path is untouched.
 2026-09-06  OK. WASM demo (issue #383): build-tag stubs for js/wasm target, separate cmd/wasmdemo entry point. WASM uses iofacade.MkdirAll (not os.MkdirAll); os.Setenv is the only direct os call (not gated by the enforcement test). No new I/O surfaces in the native build path.
 2026-06-07  OK. Early-game event overlay rework (issue #159): consolidated BO timeline events + map overlays. Pure presentation/dashboard-response changes (Go struct field, frontend rendering); no new os/net calls, no allowlist or enforcement-test changes.
 2026-05-31  OK. Introduced the iofacade/netfacade chokepoints, the enforcement test, and removed the AI + fswatch surfaces; this change establishes the I/O rules rather than weakening them.

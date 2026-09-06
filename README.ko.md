@@ -4,6 +4,8 @@ screpdb는 스타크래프트 리플레이를 위한 고급 분석 리포팅 도
 
 [English](README.md) | [한국어](README.ko.md)
 
+**▶️ [브라우저에서 바로 사용해 보기](https://marianogappa.github.io/screpdb/)** — 설치 없이 예시 리플레이로 전체 대시보드를 체험할 수 있고, 모든 처리는 브라우저에서 실행됩니다.
+
 [![Release](https://img.shields.io/github/v/release/marianogappa/screpdb)](https://github.com/marianogappa/screpdb/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/marianogappa/screpdb)](go.mod)

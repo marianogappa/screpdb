@@ -1,4 +1,4 @@
-.PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso bench-load coverage wasm wasm-assets wasm-binary wasm-dist
+.PHONY: openapi-generate spec-generate ui-build ui-test build release cross-binaries windows-syso clean-windows-syso bench-load coverage wasm wasm-ui-build wasm-assets wasm-binary wasm-dist
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
@@ -84,7 +84,12 @@ windows-syso:
 		$(VERSIONINFO_JSON)
 
 # WASM demo: build the browser-based preview and bundle everything into cmd/wasmdemo/dist/.
-wasm: ui-build wasm-assets wasm-binary wasm-dist
+wasm: wasm-ui-build wasm-assets wasm-binary wasm-dist
+
+# The WASM demo is served from a GitHub Pages project subpath (/screpdb/), so the
+# SPA bundle must reference its own assets relatively rather than from the root.
+wasm-ui-build:
+	cd internal/dashboard/frontend && npm ci && npm run build -- --base=./
 
 WASM_DIST := cmd/wasmdemo/dist
 
