@@ -14,32 +14,34 @@ screpdb는 스타크래프트 리플레이를 위한 고급 분석 리포팅 도
 
 ## 주요 기능
 ### 고수준 의미 기반 특징으로 리플레이 필터링 및 검색
-<img width="1670" alt="게임 목록: 고수준 의미 기반 특징으로 리플레이를 필터링하고 찾기" src="docs/images/game-list.png" />
+<img width="1680" alt="게임 목록: 고수준 의미 기반 특징으로 리플레이를 필터링하고 찾기" src="docs/images/game-list.ko.png" />
 
-### 게임 요약과 클릭 한 번으로 게임 클라이언트에서 볼 리플레이 관전 준비
-<img width="1660" alt="게임 요약: 게임별 개요와 게임 클라이언트에서 볼 리플레이 관전 준비" src="docs/images/game-summary.png" />
+### 게임 요약: 플레이어별 주요 의미 기반 이벤트와 유닛 구성
+<img width="1680" alt="게임 요약: 플레이어별 의미 기반 이벤트, 마법 사용, 유닛 구성" src="docs/images/game-summary.ko.png" />
 
 ### 맵 오버레이를 갖춘 풍부한 게임 이벤트 브라우저
-<img width="1582" alt="맵 오버레이를 갖춘 풍부한 게임 이벤트 브라우저" src="docs/images/game-events.png" />
+<img width="1680" alt="맵 오버레이를 갖춘 게임 이벤트 브라우저" src="docs/images/game-events.ko.png" />
 
-###  빌드 오더 감지, 차트, 프로게이머 타이밍 비교
-<img width="1657" height="860" alt="빌드 오더 감지와 프로게이머 타이밍 비교 차트" src="https://github.com/user-attachments/assets/b3d909fd-17c6-410c-9bc9-fcba1cbf2313" />
+### 단축키 분석: 각 플레이어가 어떤 키에 무엇을 두는지 게임 내내 추적
+<img width="1520" alt="두 플레이어의 키별 단축키 타임라인" src="docs/images/game-hotkeys.ko.png" />
 
-###  실력 지표 측정: 화면 전환 멀티태스킹, 유닛 생산 리듬, 첫 유닛 효율
-<img width="1643" alt="실력 지표: 화면 전환 멀티태스킹, 유닛 생산 리듬, 첫 유닛 효율" src="docs/images/skill-proxies.png" />
+### 그리고 단축키가 지정된 건물을 지어진 위치 그대로 맵 위에 표시
+<img width="731" alt="단축키가 지정된 건물을 단축키 번호와 함께 맵에 표시" src="docs/images/game-hotkeys-map.ko.png" />
 
-###  프로게이머 리플레이용 별칭 목록 지원(내장, 편집 가능, 가져오기/내보내기 가능)과 로컬 사용자 플레이어 이름 자동 별칭 처리
-<img width="1133" height="629" alt="프로게이머 별칭 목록과 자동 별칭 처리" src="https://github.com/user-attachments/assets/592e773a-5691-4841-9d0e-5c53d8f22db4" />
+### 빌드 오더 감지: 초반 명령 중복 제거를 거쳐 프로게이머 평균 타이밍과 비교
+<img width="1680" alt="빌드 오더 감지와 프로게이머 타이밍 비교 차트" src="docs/images/build-orders.ko.png" />
 
-### 정밀한 빌드 오더 감지와 타이밍 비교를 위한 정교한 초반 명령 중복 제거
-<img width="1665" height="877" alt="초반 명령 중복 제거" src="https://github.com/user-attachments/assets/fcf5c796-89a8-4536-8d41-2ab4d868676c" />
+### 내 리플레이의 플레이어와 나란히 표시되는 내장 프로게이머 프로필
+<img width="1680" alt="내장 프로게이머 프로필이 포함된 플레이어 목록" src="docs/images/players-list.ko.png" />
+
+### 실력 지표: 화면 전환 멀티태스킹, 유닛 생산 리듬, 첫 유닛 효율
+<img width="1680" alt="실력 지표: 프로게이머가 함께 표시된 분포" src="docs/images/skill-proxies.ko.png" />
+
+### 내장 프로게이머를 포함한 플레이어별 단축키 시그니처
+<img width="1680" alt="플레이어별 단축키 시그니처" src="docs/images/player-hotkey-signature.ko.png" />
 
 ### 멀티플레이어 밀리 게임의 동맹 타임라인과 팀 몰아주기 감지
-<img width="1557" height="872" alt="동맹 타임라인과 팀 몰아주기 감지" src="https://github.com/user-attachments/assets/ce38f46a-89c8-4a9a-b9f9-6489afd9c05b" />
-
-### 한국어 UI: 대시보드가 시스템 언어(English / 한국어)를 따르며 푸터에 전환 스위치가 있습니다
-
-
+<img width="1680" alt="동맹 타임라인과 팀 몰아주기 감지" src="docs/images/alliances.ko.png" />
 
 ## 설치
 
