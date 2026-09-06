@@ -119,7 +119,7 @@ curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.s
 **[Homebrew](https://brew.sh) / Linuxbrew**를 선호하시나요?
 
 ```bash
-brew install marianogappa/screpdb/screpdb   # upgrade later: brew upgrade screpdb
+brew install marianogappa/screpdb/screpdb   # upgrade later: brew update && brew upgrade screpdb
 ```
 
 또는 [릴리스 페이지](https://github.com/marianogappa/screpdb/releases)에서 아키텍처에 맞는 바이너리를 내려받아 실행 권한을 주고 `PATH`에 있는 폴더로 옮기세요. 앱 내 **업데이트** 버튼이 작동하도록 쓰기 가능한 폴더(Homebrew prefix 제외)에 두는 것이 좋습니다:
@@ -141,7 +141,7 @@ mkdir -p ~/.local/bin && mv screpdb-linux-amd64 ~/.local/bin/screpdb
 **[Homebrew](https://brew.sh)로 설치:**
 
 ```bash
-brew install marianogappa/screpdb/screpdb   # upgrade later: brew upgrade screpdb
+brew install marianogappa/screpdb/screpdb   # upgrade later: brew update && brew upgrade screpdb
 ```
 
 또는 한 줄 설치 스크립트를 사용하세요(릴리스의 서명된 `SHA256SUMS`와 대조하고 `~/.local/bin`에 설치합니다):

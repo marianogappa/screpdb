@@ -123,7 +123,7 @@ Then run `screpdb`. To upgrade, re-run the same command (or use the in-app **Upd
 Prefer **[Homebrew](https://brew.sh) / Linuxbrew**?
 
 ```bash
-brew install marianogappa/screpdb/screpdb   # upgrade later: brew upgrade screpdb
+brew install marianogappa/screpdb/screpdb   # upgrade later: brew update && brew upgrade screpdb
 ```
 
 Or download the binary for your architecture from the [Releases page](https://github.com/marianogappa/screpdb/releases), make it executable, and move it onto your `PATH` — put it in a writable folder (not a Homebrew prefix) so the in-app **Update** button works:
@@ -145,7 +145,7 @@ mkdir -p ~/.local/bin && mv screpdb-linux-amd64 ~/.local/bin/screpdb
 **Install with [Homebrew](https://brew.sh):**
 
 ```bash
-brew install marianogappa/screpdb/screpdb   # upgrade later: brew upgrade screpdb
+brew install marianogappa/screpdb/screpdb   # upgrade later: brew update && brew upgrade screpdb
 ```
 
 Or the one-line installer (verifies it against the release's signed `SHA256SUMS`, installs to `~/.local/bin`):
@@ -315,6 +315,10 @@ On **macOS and Linux** this is a best-effort, in-process guard, not an OS sandbo
 The LLM that authors each change records a dated, one-line verdict on whether it could weaken the I/O rules above (see `AGENTS.md`); `TestIOSafetyAuditPresent` fails CI if the log is empty, and the enforcement test above stays the authoritative guard.
 
 <!-- IO-AUDIT:START -->
+```
+2026-09-06  OK. Update hint for Homebrew installs now copies `brew update && brew upgrade screpdb` (issue #360): `brew upgrade` alone is a no-op when the local tap cache is stale, and Homebrew only auto-refreshes tap metadata every ~24h. Frontend copy string plus the two README install snippets; Scoop left as `scoop update screpdb` (its update subcommand syncs buckets itself when Scoop is >3h stale). No Go changes, no os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test change, no AlgorithmVersion bump (no detection change).
+```
+
 ```
 2026-09-04  OK. Korean UI. Frontend-only locale catalogs (internal/dashboard/frontend/src/locales) with the choice kept in browser localStorage; the Go side only adds JSON fields to existing responses (ingest log key/args, insight ineligible_reason_key/args, games-list featuring_keys) so labels can be looked up by stable id. No new I/O, no new capability, no new dependency.
 ```
