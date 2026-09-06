@@ -50,14 +50,6 @@ func isLocalAddr(addr string) bool {
 	return false
 }
 
-func bridgeClient() *http.Client {
-	return &http.Client{Timeout: 5 * time.Second}
-}
-
-func gcsClient() *http.Client {
-	return &http.Client{Timeout: 60 * time.Second}
-}
-
 // BridgeGet performs a GET request against SC:R's local web-api bridge. The
 // addr must resolve to loopback (127.0.0.1 / ::1 / localhost), and path must
 // start with /web-api/. Every call spends the bridge budget (token bucket +
@@ -80,7 +72,7 @@ func BridgeGet(ctx context.Context, addr, path string, prio Priority) ([]byte, e
 	if err != nil {
 		return nil, err
 	}
-	resp, err := bridgeClient().Do(req)
+	resp, err := bridgeHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +215,7 @@ func downloadReplayFrom(ctx context.Context, url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := gcsClient().Do(req)
+	resp, err := downloadHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +262,7 @@ func probeBridgeURL(ctx context.Context, url string) BridgeState {
 	if err != nil {
 		return BridgeNotRunning
 	}
-	resp, err := (&http.Client{}).Do(req)
+	resp, err := probeHTTPClient.Do(req)
 	if err != nil {
 		return BridgeNotRunning
 	}
@@ -309,7 +301,7 @@ func probeGatewayURL(ctx context.Context, url string) (BridgeState, int) {
 	if err != nil {
 		return BridgeNotRunning, 0
 	}
-	resp, err := (&http.Client{}).Do(req)
+	resp, err := probeHTTPClient.Do(req)
 	if err != nil {
 		return BridgeNotRunning, 0
 	}
