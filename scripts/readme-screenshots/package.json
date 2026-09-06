@@ -1,0 +1,12 @@
+{
+  "name": "screpdb-readme-screenshots",
+  "private": true,
+  "type": "module",
+  "description": "Regenerates docs/images/*.png from a running dashboard. Dev-only; nothing here ships in the binary.",
+  "scripts": {
+    "capture": "node capture.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

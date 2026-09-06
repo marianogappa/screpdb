@@ -17,33 +17,35 @@ screpdb is an advanced Starcraft replay reporting tool.
 <!-- load-bench-end -->
 
 ## Features
-### Filtering/finding replays by high-level semantic features
-<img width="1670" alt="Game list — filter and find replays by high-level semantic features" src="docs/images/game-list.png" />
+### Filtering and finding replays by high-level semantic features
+<img width="1680" alt="Game list: filter and find replays by high-level semantic features" src="docs/images/game-list.png" />
 
-### Game summary, with one-click staging of a replay for watching on the game client
-<img width="1660" alt="Game summary — per-game overview and staging a replay for watching on the game client" src="docs/images/game-summary.png" />
+### Game summary: each player's noteworthy semantic events and unit composition
+<img width="1680" alt="Game summary: per-player semantic events, spellcasts and unit composition" src="docs/images/game-summary.png" />
 
 ### Rich game events browser with map overlays
-<img width="1582" alt="Rich game events browser with map overlays" src="docs/images/game-events.png" />
+<img width="1680" alt="Game events browser with map overlays" src="docs/images/game-events.png" />
 
-###  Build Order detection with charts and for comparing with progamer timings
-<img width="1657" height="860" alt="Screenshot 2026-05-04 at 23 42 20" src="https://github.com/user-attachments/assets/b3d909fd-17c6-410c-9bc9-fcba1cbf2313" />
+### Hotkey intel: what each player keeps on which key, all game long
+<img width="1520" alt="Per-key hotkey timeline for both players" src="docs/images/game-hotkeys.png" />
 
-###  Skill proxies measurements: Viewport Multitasking, Unit Production Cadence, First Unit Efficiency
-<img width="1643" alt="Skill proxies — viewport multitasking, unit production cadence, first unit efficiency" src="docs/images/skill-proxies.png" />
+### …and the hotkeyed buildings drawn on the map where they were built
+<img width="731" alt="Map overlay of hotkeyed buildings, labelled with their hotkey" src="docs/images/game-hotkeys-map.png" />
 
-###  Alias list support for progamer replays (built-in, editable, importable/exportable), and automatic aliasing for local user's player names
-<img width="1133" height="629" alt="Screenshot 2026-05-04 at 23 44 27" src="https://github.com/user-attachments/assets/592e773a-5691-4841-9d0e-5c53d8f22db4" />
+### Build order detection, de-duped and charted against usual progamer timings
+<img width="1680" alt="Build order detection with charts and progamer timing bands" src="docs/images/build-orders.png" />
 
-### Sophisticated command de-duping on the early game to facilitate precise build order detection and timing comparisons
-<img width="1665" height="877" alt="Screenshot 2026-05-04 at 23 46 48" src="https://github.com/user-attachments/assets/fcf5c796-89a8-4536-8d41-2ab4d868676c" />
+### Built-in progamer profiles alongside the players in your own library
+<img width="1680" alt="Players list with built-in progamer profiles" src="docs/images/players-list.png" />
+
+### Skill proxies: viewport multitasking, unit production cadence, first unit efficiency
+<img width="1680" alt="Skill proxies: population distribution with progamers for reference" src="docs/images/skill-proxies.png" />
+
+### Per-player hotkey signature, including the built-in progamers
+<img width="1680" alt="Per-player hotkey signature" src="docs/images/player-hotkey-signature.png" />
 
 ### Alliance timeline and team stacking detection on multiplayer melee games
-<img width="1557" height="872" alt="Screenshot 2026-05-13 at 22 59 15" src="https://github.com/user-attachments/assets/ce38f46a-89c8-4a9a-b9f9-6489afd9c05b" />
-
-### Korean UI: the dashboard follows your system language (English / 한국어) and has a switcher in the footer
-
-
+<img width="1680" alt="Alliance timeline and team stacking detection" src="docs/images/alliances.png" />
 
 ## Installation
 
@@ -303,18 +305,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-09-06  OK. Retires the detection-algorithm version machinery the SQLite removal left behind, and finishes the comment cleanup. `core.AlgorithmVersion` is renamed `core.DetectorVersion` and re-documented against its one real consumer: scripts/pro-pack stamps the embedded pack with it and internal/propack's test refuses a pack stamped older than the code, because the dashboard plots the pack's precomputed APM / cadence / viewport figures against the same figures computed locally from the user's replays. The dead `algorithm_version` field on /api/custom/markers/definitions is deleted together with the frontend property that stored it and never read it; its own doc comment described a re-fetch-on-version-change cache that was never implemented, and the field is absent from the OpenAPI spec. SPECIFICATION.md's row no longer claims the value triggers re-detection, AGENTS.md's rule is rewritten to the narrow condition that actually holds, and its claim that an scfingerprint FeatureVersion bump makes the pack's vectors stale is removed as false (the pack carries no vectors). Four comments that still described a re-ingest are corrected, and this log is trimmed to the five most recent archived entries, now enforced by TestIOSafetyAuditArchiveBounded. Rename and removal only: no new os/net calls, roots, hosts, endpoints, queries, facade exemptions or enforcement-test weakening. The pack's stamped value stays 68, so no regeneration is needed.
+2026-09-06  OK. README screenshot tooling and refreshed screenshots only; no binary code is touched. scripts/readme-screenshots is dev-only Node (scripts/ is on the enforcement-test skip list) and never ships: stage.mjs copies replays out of a local screpharvest harvest and out of internal/sampledata/replays into a temp folder, capture.mjs drives Chromium via Playwright against a locally started `screpdb dashboard` on loopback and writes PNGs into docs/images, and run.sh starts and stops that dashboard. Playwright is a devDependency of that folder's own package.json, not of the app's frontend, so it cannot reach the embedded bundle. One binary fixture is re-added, scripts/readme-screenshots/replays/bgh_team_stacking.rep, restored byte-for-byte from git history (blob 21a7a97) because the multiplayer-melee shot has no source in the current 1v1 example set; it is read, never parsed by anything new. Go source, iofacade/netfacade allowlists, the enforcement test and DetectorVersion are all unchanged.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-09-06  OK. Retires the detection-algorithm version machinery the SQLite removal left behind, and finishes the comment cleanup. `core.AlgorithmVersion` is renamed `core.DetectorVersion` and re-documented against its one real consumer: scripts/pro-pack stamps the embedded pack with it and internal/propack's test refuses a pack stamped older than the code, because the dashboard plots the pack's precomputed APM / cadence / viewport figures against the same figures computed locally from the user's replays. The dead `algorithm_version` field on /api/custom/markers/definitions is deleted together with the frontend property that stored it and never read it; its own doc comment described a re-fetch-on-version-change cache that was never implemented, and the field is absent from the OpenAPI spec. SPECIFICATION.md's row no longer claims the value triggers re-detection, AGENTS.md's rule is rewritten to the narrow condition that actually holds, and its claim that an scfingerprint FeatureVersion bump makes the pack's vectors stale is removed as false (the pack carries no vectors). Four comments that still described a re-ingest are corrected, and this log is trimmed to the five most recent archived entries, now enforced by TestIOSafetyAuditArchiveBounded. Rename and removal only: no new os/net calls, roots, hosts, endpoints, queries, facade exemptions or enforcement-test weakening. The pack's stamped value stays 68, so no regeneration is needed.
 2026-09-06  OK. Comment-only cleanup pass, plus the AGENTS.md rule that keeps it that way. Trimmed or removed redundant comments across the Go packages and the dashboard frontend, and moved the ~300-line `core.AlgorithmVersion` history out of a comment above the constant into `docs/ALGORITHM_VERSIONS.md` (the constant itself, 68, is unchanged, and the comment left behind states what it now gates). Rebased onto the SQLite removal above, which deleted three of the files this pass had touched (internal/ingest, internal/storage); those edits went with them, and internal/mcp/server.go was re-trimmed against its rewritten form. No statements were added, removed or reordered by this pass: every edit replaced a comment range with a shorter comment or with nothing, `gofmt` reformatted the touched Go files, and the build plus the patterns/cmdenrich/parser/earlyfilter test suites stay green. Also shortens eight user-facing strings that carried implementation detail or a redundant hedge (the two insight descriptions, the APM description, the build-order and mutalisk chart legends, the example-replay confirm, and the never_upgraded / never_researched pill titles), in the Go source and both locale catalogs together so the serverExact lookup keeps matching; the catalog parity test passes. No new os/net calls, roots, hosts, endpoints, queries, facade exemptions or enforcement-test changes, and no AlgorithmVersion bump (the pill titles are presentation only and nothing persisted changed).
 2026-09-06  OK. Frontend only, and it removes work rather than adding any. The Alliances tab's column-ordering search moves out of AllianceTimeline.jsx into internal/dashboard/frontend/src/lib/allianceLayout.js, where it memoises per-row suffix scores and runs its inner loop on dense player ordinals in preallocated typed arrays instead of re-simulating the whole timeline once per permutation (8 players = 40,320 of them, which blocked the main thread for seconds on an 8-player melee). Scoring, tie-breaking and the permutation enumeration order are unchanged, so the layout is byte-identical; a new test pins that against the previous exhaustive implementation over generated topologies, and it was confirmed against the committed bgh.rep replay in the running dashboard. No Go code, no os/net calls, no new roots, hosts, endpoints, paths or facade exemptions, no enforcement-test change, and no AlgorithmVersion bump (detection and everything persisted are untouched).
 2026-09-06  OK. WASM demo published to GitHub Pages: the demo now references its assets relatively (Vite --base=./ for the WASM build only, relative wasm_exec.js/fs-shim.js/screpdb.wasm/assets URLs in the demo index.html) so it works from the /screpdb/ project subpath, and its workflow also builds on pull requests. Build/packaging and static-asset-path changes only; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes, and the native build path is untouched.
 2026-09-06  REVIEW. Removes SQLite from the binary: the ingest command, internal/ingest, internal/storage and internal/migrations are deleted, and screpdb mcp stops opening a database and reads the headless dashboard's JSON API instead, so one process owns the corpus and MCP holds no state. Two new capabilities, both narrow. (1) netfacade.LocalAPIGet, a loopback-only GET added to the existing network facade and refusing any non-loopback address, so the MCP tools cannot be pointed at a remote host by the model driving them; MCP reaches only a hand-written allowlist of 16 read-only GET paths (games, players, hotkeys, insights, marker definitions, health), cross-checked against the OpenAPI document by test, with every mutating and UI-only operation excluded and /api/games/{id}/see, which launches the game client, explicitly out. (2) screpdb mcp spawns `screpdb dashboard --headless` with os/exec when no screpdb answers on localhost:8000-8009, and kills it on exit; it is the binary re-executing itself with fixed arguments, os.Executable resolves the path, and no argument comes from the model. internal/legacyimport keeps its read-only (mode=ro) open of the pre-2.0 screp.db, and stays the only database reader and the only reason modernc.org/sqlite is still required. The per-package no-database guards in the dashboard and the replay library are replaced by one module-wide TestBinaryHasNoDatabaseDependencies in internal/iofacade, next to the existing enforcement test, exempting only internal/legacyimport and pinned to it by a second test. scripts/expert-mine, the reproducible provenance of the SPECIFICATION golden lines, is ported from the scratch database onto the in-memory library and reads the same staged folder through the same loader. github.com/fatih/color drops out of go.mod with the ingest logger. No new roots, no new hosts, no outbound calls off loopback, no weakened enforcement test, no AlgorithmVersion bump (detection is untouched).
-2026-09-06  OK. Narrows I/O, does not widen it. Follow-up to the #384 fix below: loopback bridge requests (discovery probes, state probes and real bridge calls) now go out on a connection bnetfacade owns end to end (net.Dialer + Request.Write + http.ReadResponse, one shot) instead of an http.Transport, and loopbackTransport goes away. DisableKeepAlives closed only one of the two ways into net/http's "Unsolicited response received on idle HTTP channel": the other is a freshly dialled connection, because dialConn starts the read loop before roundTrip claims it, so a peer that greets on connect lands its banner while no request is counted in flight and nothing was ever pooled. Measured against such a peer, the unpooled transport still logged 27 lines in 20,000 probes and an owned connection logged none. Owning the connection also stops an http.Client following a redirect off 127.0.0.1 on a probe. The GCS download client keeps its pooled transport unchanged, as do the skiplist and every loopback-only, /web-api/ prefix and rate-limit check; no new os/net calls, roots, hosts, endpoints, facade exemptions, enforcement-test change, or AlgorithmVersion bump.
 ```
 
 </details>
