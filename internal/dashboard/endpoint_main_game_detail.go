@@ -302,12 +302,15 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 	}
 	result.GamesPlayed = summary.GamesPlayed
 	result.Wins = summary.Wins
+	result.Undecided = summary.Undecided
 	result.AverageAPM = summary.AverageAPM
 	result.AverageEAPM = summary.AverageEAPM
 	if result.GamesPlayed == 0 {
 		return result, db.ErrNotFound
 	}
-	result.WinRate = float64(result.Wins) / float64(result.GamesPlayed)
+	if decided := result.GamesPlayed - result.Undecided; decided > 0 {
+		result.WinRate = float64(result.Wins) / float64(decided)
+	}
 	gamesWithVectors, err := d.dbStore.GetPlayerFingerprintCoverage(d.ctx, playerKey, int64(scfingerprint.FeatureVersion()))
 	if err != nil {
 		return result, fmt.Errorf("failed to load fingerprint coverage: %w", err)

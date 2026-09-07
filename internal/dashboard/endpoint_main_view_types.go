@@ -727,6 +727,7 @@ type workflowPlayerOverview struct {
 	PlayerName          string                        `json:"player_name"`
 	GamesPlayed         int64                         `json:"games_played"`
 	Wins                int64                         `json:"wins"`
+	Undecided           int64                         `json:"undecided"`
 	WinRate             float64                       `json:"win_rate"`
 	AverageAPM          float64                       `json:"average_apm"`
 	AverageEAPM         float64                       `json:"average_eapm"`

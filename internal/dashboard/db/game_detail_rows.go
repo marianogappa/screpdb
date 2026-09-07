@@ -65,6 +65,7 @@ type PlayerOverviewSummaryRow struct {
 	PlayerName  string
 	GamesPlayed int64
 	Wins        int64
+	Undecided   int64
 	AverageAPM  float64
 	AverageEAPM float64
 }

@@ -46,6 +46,7 @@ type gamingSessionStats struct {
 	Games           int            `json:"games"`
 	Wins            int            `json:"wins"`
 	Losses          int            `json:"losses"`
+	Undecided       int            `json:"undecided"`
 	WinRate         float64        `json:"win_rate"`
 	AverageAPM      float64        `json:"average_apm"`
 	AverageEAPM     float64        `json:"average_eapm"`
@@ -185,6 +186,18 @@ func sortedKeys(set map[string]struct{}) []string {
 	return out
 }
 
+// gameWinnerKnown mirrors the frontend's `players.some(is_winner)` derivation:
+// a game where nobody won was never resolved, which is a different fact from a
+// loss.
+func gameWinnerKnown(game workflowGameListItem) bool {
+	for _, player := range game.Players {
+		if player.IsWinner {
+			return true
+		}
+	}
+	return false
+}
+
 func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem, apm map[gamePlayerKey]sessionAPM, youKeys map[string]struct{}) gamingSessionStats {
 	stats := gamingSessionStats{
 		Matchups:    map[string]int{},
@@ -202,6 +215,7 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 	var apmSum, eapmSum float64
 	var apmCount int
 	for _, game := range games {
+		winnerKnown := gameWinnerKnown(game)
 		stats.PlayedSeconds += game.DurationSeconds
 		if game.MapName != "" {
 			stats.Maps[game.MapName]++
@@ -216,9 +230,12 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 			if player.Race != "" {
 				stats.RacesPlayed[player.Race]++
 			}
-			if player.IsWinner {
+			switch {
+			case !winnerKnown:
+				stats.Undecided++
+			case player.IsWinner:
 				stats.Wins++
-			} else {
+			default:
 				stats.Losses++
 			}
 			if own, ok := apm[gamePlayerKey{ReplayID: game.ReplayID, PlayerKey: normalizePlayerKey(player.PlayerKey)}]; ok && own.APM > 0 {
@@ -241,7 +258,9 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 // gamingSessionPlayers splits everyone the user shared a game with into the
 // people they played against and the people they played with. Wins and losses
 // are from the user's point of view and are only tallied for opponents; an ally
-// shares the user's result, so a record against them would be meaningless.
+// shares the user's result, so a record against them would be meaningless. A
+// game with no determined winner tallies no record either: reading the user's
+// missing win as a loss would invent a win for the opponent.
 func gamingSessionPlayers(games []workflowGameListItem, apm map[gamePlayerKey]sessionAPM, youKeys map[string]struct{}) (opponents, allies []gamingSessionPlayer) {
 	type accumulator struct {
 		player  *gamingSessionPlayer
@@ -253,6 +272,7 @@ func gamingSessionPlayers(games []workflowGameListItem, apm map[gamePlayerKey]se
 	allyAcc := map[string]*accumulator{}
 
 	for _, game := range games {
+		winnerKnown := gameWinnerKnown(game)
 		youWon := false
 		var youTeam int64 = -1
 		for _, player := range game.Players {
@@ -295,7 +315,7 @@ func gamingSessionPlayers(games []workflowGameListItem, apm map[gamePlayerKey]se
 				entry.apmSum += int(stat.APM)
 				entry.apmSeen++
 			}
-			if isAlly {
+			if isAlly || !winnerKnown {
 				continue
 			}
 			if youWon {

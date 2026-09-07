@@ -110,6 +110,13 @@ func TestGamingSessionPlayers(t *testing.T) {
 				{PlayerKey: "foe", Name: "Foe", Team: 2, IsWinner: true, Race: "Protoss"},
 			},
 		},
+		{
+			ReplayID: 3,
+			Players: []workflowGameListPlayer{
+				{PlayerKey: "me", Name: "Me", Team: 1, IsWinner: false},
+				{PlayerKey: "foe", Name: "Foe", Team: 2, IsWinner: false, Race: "Protoss"},
+			},
+		},
 	}
 	apm := map[gamePlayerKey]sessionAPM{
 		{ReplayID: 1, PlayerKey: "foe"}: {APM: 100},
@@ -121,9 +128,11 @@ func TestGamingSessionPlayers(t *testing.T) {
 	if len(opponents) != 1 || opponents[0].PlayerKey != "foe" {
 		t.Fatalf("opponents = %+v, want just foe", opponents)
 	}
+	// Game 3 was never resolved, so it counts as played but adds no record:
+	// booking the user's missing win as a loss would invent a win for Foe.
 	foe := opponents[0]
-	if foe.Games != 2 || foe.Wins != 1 || foe.Losses != 1 {
-		t.Errorf("foe = %+v, want 2 games 1-1", foe)
+	if foe.Games != 3 || foe.Wins != 1 || foe.Losses != 1 {
+		t.Errorf("foe = %+v, want 3 games 1-1", foe)
 	}
 	if foe.APM != 150 {
 		t.Errorf("foe APM = %d, want the 100/200 mean of 150", foe.APM)
@@ -147,6 +156,44 @@ func TestGamingSessionPlayers(t *testing.T) {
 				t.Error("the user must never appear in their own opponent or ally list")
 			}
 		}
+	}
+}
+
+func TestSummarizeGamingSessionUndecided(t *testing.T) {
+	now := time.Date(2026, 8, 30, 20, 0, 0, 0, time.UTC)
+	youKeys := map[string]struct{}{"me": {}}
+	games := []workflowGameListItem{
+		{
+			ReplayID: 1,
+			Players: []workflowGameListPlayer{
+				{PlayerKey: "me", Team: 1, IsWinner: true},
+				{PlayerKey: "foe", Team: 2, IsWinner: false},
+			},
+		},
+		{
+			ReplayID: 2,
+			Players: []workflowGameListPlayer{
+				{PlayerKey: "me", Team: 1, IsWinner: false},
+				{PlayerKey: "foe", Team: 2, IsWinner: true},
+			},
+		},
+		{
+			ReplayID: 3,
+			Players: []workflowGameListPlayer{
+				{PlayerKey: "me", Team: 1, IsWinner: false},
+				{PlayerKey: "foe", Team: 2, IsWinner: false},
+			},
+		},
+	}
+
+	stats := summarizeGamingSession(rowsAt(now, 0, time.Hour, 2*time.Hour), games, nil, youKeys)
+
+	if stats.Wins != 1 || stats.Losses != 1 || stats.Undecided != 1 {
+		t.Fatalf("record = %d-%d with %d undecided, want 1-1 with 1", stats.Wins, stats.Losses, stats.Undecided)
+	}
+	// The unresolved game must not drag the rate down as if it were lost.
+	if stats.WinRate != 0.5 {
+		t.Fatalf("win rate = %v, want 0.5 over decided games only", stats.WinRate)
 	}
 }
 

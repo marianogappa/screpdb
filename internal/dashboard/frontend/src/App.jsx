@@ -7173,6 +7173,7 @@ function App() {
                             <div className="wps-stat">
                               <span className="wps-stat-label">{t('player.stats.winRate')}</span>
                               <span className="wps-stat-value">{mainPlayer ? `${(mainPlayer.win_rate * 100).toFixed(1)}%` : '-'}</span>
+                              <span className="wps-stat-sub">{mainPlayer?.undecided > 0 ? t('player.stats.undecided', { value: mainPlayer.undecided }) : ''}</span>
                             </div>
                             <div className="wps-stat">
                               <span className="wps-stat-label">APM</span>
@@ -7200,8 +7201,9 @@ function App() {
                               const boPatterns = patterns.filter((pt) => isOpenerEventType(pt?.event_type));
                               const restPatterns = patterns.filter((pt) => !isOpenerEventType(pt?.event_type));
                               const phases = Array.isArray(cp?.composition) ? cp.composition : [];
-                              const resultEmoji = cp?.disconnected ? '🔌' : (cp?.is_winner ? '✅' : '❌');
-                              const resultTitle = cp?.disconnected ? t('player.result.disconnected') : (cp?.is_winner ? t('player.result.win') : t('player.result.loss'));
+                              const winnerKnown = (g.players || []).some((player) => player.is_winner);
+                              const resultEmoji = !winnerKnown ? '·' : (cp?.disconnected ? '🔌' : (cp?.is_winner ? '✅' : '❌'));
+                              const resultTitle = !winnerKnown ? t('player.result.undetermined') : (cp?.disconnected ? t('player.result.disconnected') : (cp?.is_winner ? t('player.result.win') : t('player.result.loss')));
                               const raceIcon = getWorkerIconForRace(cp?.race);
                               return (
                                 <div
