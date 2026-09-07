@@ -52,6 +52,13 @@ func (s *LibStore) GetBnetCountryCodesByPlayerKeys(_ context.Context, playerKeys
 	return out, nil
 }
 
+func (s *LibStore) GetBnetFetchedAtByPlayerKeys(_ context.Context, playerKeys []string) (map[string]time.Time, error) {
+	if len(playerKeys) == 0 {
+		return map[string]time.Time{}, nil
+	}
+	return s.bnet.FetchedAtByToons(playerKeys), nil
+}
+
 func (s *LibStore) ListBnetProfilePayloadsByPlayerKeys(_ context.Context, playerKeys []string) ([]BnetProfilePayloadRow, error) {
 	if len(playerKeys) == 0 {
 		return []BnetProfilePayloadRow{}, nil

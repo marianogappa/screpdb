@@ -7011,7 +7011,7 @@ function App() {
                 <div className="workflow-cards">
                   {mainPlayerTab === 'summary' && (() => {
                     const bnet = mainPlayer?.bnet_profile;
-                    const showBnet = (isFeaturedPlayer || Number(mainPlayer?.bnet_games || 0) > 0) && !!bnet;
+                    const showBnet = !!bnet || isFeaturedPlayer || Number(mainPlayer?.bnet_games || 0) > 0;
                     const bnetRecent = Array.isArray(bnet?.recent_games) ? bnet.recent_games : [];
                     const bnetLastPlayed = bnet?.last_played_at ? formatRelativeReplayDate(bnet.last_played_at) : '';
                     const bnetHours = Number(bnet?.play_time_seconds || 0) / 3600;
@@ -7032,6 +7032,13 @@ function App() {
                         {showBnet ? (
                           <div className="wps-section">
                             <div className="workflow-card-title wps-section-title"><span>{t('player.bnet.title')}</span></div>
+                            {!bnet ? (
+                              <div className="chart-empty">
+                                {(!bnetDisabled && bnetState === 'connected')
+                                  ? t('player.bnet.fetchingProfile')
+                                  : t('player.bnet.connectPrompt')}
+                              </div>
+                            ) : (<>
                             <div className="wps-stats">
                               <div className="wps-stat">
                                 <span className="wps-stat-label">{t('player.bnet.ladder')}</span>
@@ -7111,6 +7118,7 @@ function App() {
                                 })}
                               </div>
                             ) : null}
+                            </>)}
                           </div>
                         ) : null}
                         {isFeaturedPlayer ? (

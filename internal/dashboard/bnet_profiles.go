@@ -162,9 +162,10 @@ func (d *Dashboard) triggerBnetProfileFetchesForPlayers(names []string, gameSour
 	d.backfillBnetProfiles(names)
 }
 
-// backfillBnetProfiles fetches, in the background, the profiles of any of names
-// we have no cached country for. Names must be ordered by how much the caller
-// cares about them: the list is truncated to bnetProfileBackfillMaxPlayers.
+// backfillBnetProfiles fetches, in the background, profiles that are missing,
+// stale (older than bnetProfileTTL), or mojibaked. Names must be ordered by how
+// much the caller cares about them: the list is truncated to
+// bnetProfileBackfillMaxPlayers.
 func (d *Dashboard) backfillBnetProfiles(names []string) {
 	if d.bnetDisabled.Load() {
 		return
@@ -177,34 +178,32 @@ func (d *Dashboard) backfillBnetProfiles(names []string) {
 	for _, n := range names {
 		playerKeys = append(playerKeys, normalizePlayerKey(n))
 	}
-	cached, err := d.countryCodesByPlayerKeys(playerKeys)
+	fetchTimes, err := d.dbStore.GetBnetFetchedAtByPlayerKeys(d.ctx, playerKeys)
 	if err != nil {
 		return
 	}
-	// A country code is ASCII, so it survived the whole-payload transcode that
-	// mojibaked battle tags. Without this those entries would look cached
-	// forever and never get the refetch that repairs the tag.
 	for key := range d.mojibakedPlayerKeys(playerKeys) {
-		delete(cached, key)
+		delete(fetchTimes, key)
 	}
-	var uncached []string
+	now := time.Now()
+	var stale []string
 	seen := map[string]struct{}{}
 	for _, n := range names {
 		key := normalizePlayerKey(n)
-		if _, ok := cached[key]; ok {
+		if fetchTime, ok := fetchTimes[key]; ok && now.Sub(fetchTime) < bnetProfileTTL {
 			continue
 		}
 		if _, dup := seen[key]; dup {
 			continue
 		}
 		seen[key] = struct{}{}
-		uncached = append(uncached, n)
+		stale = append(stale, n)
 	}
-	if len(uncached) == 0 {
+	if len(stale) == 0 {
 		return
 	}
-	if len(uncached) > bnetProfileBackfillMaxPlayers {
-		uncached = uncached[:bnetProfileBackfillMaxPlayers]
+	if len(stale) > bnetProfileBackfillMaxPlayers {
+		stale = stale[:bnetProfileBackfillMaxPlayers]
 	}
 	gateways := defaultGatewayOrder
 	if known := d.bnetGateway.Load(); known > 0 {
@@ -214,7 +213,7 @@ func (d *Dashboard) backfillBnetProfiles(names []string) {
 	go func() {
 		defer crashreport.GuardNonFatal(nil)
 		defer d.bnetBackfillActive.Add(-1)
-		for _, toon := range uncached {
+		for _, toon := range stale {
 			for _, gw := range gateways {
 				res, fetchErr := d.getOrFetchBnetProfile(d.ctx, toon, gw, bnetfacade.PriorityBackground, 0)
 				if fetchErr != nil {

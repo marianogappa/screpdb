@@ -129,6 +129,7 @@ type Reader interface {
 	GetBnetProfile(ctx context.Context, toon string, gateway int64) (*BnetProfileRow, error)
 	UpsertBnetProfile(ctx context.Context, row BnetProfileRow) error
 	GetBnetCountryCodesByPlayerKeys(ctx context.Context, playerKeys []string) (map[string]string, error)
+	GetBnetFetchedAtByPlayerKeys(ctx context.Context, playerKeys []string) (map[string]time.Time, error)
 	ListBnetProfilePayloadsByPlayerKeys(ctx context.Context, playerKeys []string) ([]BnetProfilePayloadRow, error)
 	ListBnetAuroraIDsByPlayerKeys(ctx context.Context, playerKeys []string) ([]int64, error)
 	UpsertBnetGameResults(ctx context.Context, rows []BnetGameResultRow) error

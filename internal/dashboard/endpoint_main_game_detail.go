@@ -294,9 +294,11 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 			result.BnetProfile.Habits = d.bnetPlayHabitsFor(d.ctx, result.BnetProfile.AuroraID, result.BnetProfile.CountryCode, time.Now())
 		}
 	}
-	d.triggerBnetProfileFetchesForPlayers([]string{summary.PlayerName}, "AssumedBattleNet")
 	if bnetGames, err := d.dbStore.CountPlayerBnetGames(d.ctx, playerKey); err == nil {
 		result.BnetGames = bnetGames
+	}
+	if result.BnetProfile != nil || result.BnetGames > 0 {
+		d.backfillBnetProfiles([]string{summary.PlayerName})
 	}
 	result.GamesPlayed = summary.GamesPlayed
 	result.Wins = summary.Wins
