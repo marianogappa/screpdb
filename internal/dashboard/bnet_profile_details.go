@@ -15,10 +15,11 @@ import (
 // per-race lifetime counters. These are the parts worth surfacing: who the
 // account belongs to, what else they play as, and whether they ladder.
 type bnetProfileToon struct {
-	Toon          string `json:"toon"`
-	Gateway       int    `json:"gateway,omitempty"`
-	GatewayName   string `json:"gateway_name,omitempty"`
-	GamesLastWeek int    `json:"games_last_week"`
+	Toon           string `json:"toon"`
+	Gateway        int    `json:"gateway,omitempty"`
+	GatewayName    string `json:"gateway_name,omitempty"`
+	GamesLastWeek  int    `json:"games_last_week"`
+	LocalPlayerKey string `json:"local_player_key,omitempty"`
 }
 
 type bnetProfileDetail struct {
@@ -331,4 +332,21 @@ func bnetProfileDetailScore(detail *bnetProfileDetail) int {
 		score++
 	}
 	return score
+}
+
+func (d *Dashboard) fillLocalPlayerKeys(ctx context.Context, profile *bnetProfileDetail) {
+	if profile == nil || len(profile.Toons) == 0 {
+		return
+	}
+	names := make([]string, 0, len(profile.Toons))
+	for _, toon := range profile.Toons {
+		names = append(names, toon.Toon)
+	}
+	local, _ := d.dbStore.HasLocalPlayers(ctx, names)
+	for i := range profile.Toons {
+		key := strings.ToLower(strings.TrimSpace(profile.Toons[i].Toon))
+		if _, ok := local[key]; ok {
+			profile.Toons[i].LocalPlayerKey = key
+		}
+	}
 }

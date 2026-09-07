@@ -2991,28 +2991,17 @@ function App() {
     }
   }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerChatSummary, mainPlayerChatSummaryLoading, mainPlayerChatSummaryError]);
 
-  // Resolve which Battle.net alter-ego toons have their own local player
-  // entry, so "Also plays as" can link to them.
+  // Derive known aliases from the server-side local_player_key field on each
+  // toon, which is cheaper than one API call per toon.
   useEffect(() => {
     const toons = mainPlayer?.bnet_profile?.toons || [];
-    setMainPlayerKnownAliases({});
-    if (toons.length === 0) return undefined;
-    let cancelled = false;
-    (async () => {
-      const found = {};
-      await Promise.all(toons.map(async (t) => {
-        const key = String(t?.toon || '').trim().toLowerCase();
-        if (!key) return;
-        try {
-          await api.getPlayer(key);
-          found[key] = true;
-        } catch {
-          // Not a local player; render the alias as plain text.
-        }
-      }));
-      if (!cancelled) setMainPlayerKnownAliases(found);
-    })();
-    return () => { cancelled = true; };
+    const found = {};
+    for (const toon of toons) {
+      if (toon.local_player_key) {
+        found[toon.local_player_key] = true;
+      }
+    }
+    setMainPlayerKnownAliases(found);
   }, [mainPlayer?.bnet_profile]);
 
   useEffect(() => {
@@ -5293,6 +5282,7 @@ function App() {
             session={gamingSession}
             loading={gamingSessionLoading}
             error={gamingSessionError}
+            onPlayerClick={openMainPlayer}
             renderName={(opponent) => (
               <button
                 type="button"

@@ -135,6 +135,9 @@ type Reader interface {
 	UpsertBnetGameResults(ctx context.Context, rows []BnetGameResultRow) error
 	ListBnetGameTimes(ctx context.Context, auroraID int64, since time.Time) ([]time.Time, error)
 
+	// HasLocalPlayers returns the subset of names that have at least one local game.
+	HasLocalPlayers(ctx context.Context, names []string) (map[string]struct{}, error)
+
 	// Settings: the persisted replay folder, feature flags and global filter.
 	GetIngestInputDir(ctx context.Context, configKey string) (string, error)
 	SetIngestInputDir(ctx context.Context, configKey, inputDir string) error

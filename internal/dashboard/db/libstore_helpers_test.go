@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -224,6 +225,23 @@ func TestMarkerLabelPrefersTheInternedLabel(t *testing.T) {
 	}
 	if _, ok := markerLabel(nil); ok {
 		t.Fatal("nil marker has no label")
+	}
+}
+
+func TestHasLocalPlayers(t *testing.T) {
+	s := newTestLibStore(t, melee("game"))
+	got, err := s.HasLocalPlayers(context.Background(), []string{"Flash", "Nobody", "BISU"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := got["flash"]; !ok {
+		t.Error("flash must be a local player")
+	}
+	if _, ok := got["bisu"]; !ok {
+		t.Error("bisu must be a local player")
+	}
+	if _, ok := got["nobody"]; ok {
+		t.Error("nobody must not be a local player")
 	}
 }
 
