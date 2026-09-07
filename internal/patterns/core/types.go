@@ -18,7 +18,7 @@ import (
 // regenerate the pack in the same change. Nothing re-detects or re-ingests on
 // it: the corpus is read into memory and detected on every launch.
 // docs/DETECTOR_VERSIONS.md logs the history.
-const DetectorVersion = 68
+const DetectorVersion = 69
 
 type DetectorLevel string
 

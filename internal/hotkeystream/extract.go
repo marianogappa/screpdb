@@ -104,6 +104,26 @@ func canonicalBuildingName(screpName string) string {
 	return screpName
 }
 
+// droneMorphBuildings are Zerg buildings placed via Build commands: the drone's
+// tag persists through the morph, so the Build proves the tag is the resulting
+// building, not a worker. Terran/Protoss workers survive construction and
+// remain workers.
+var droneMorphBuildings = map[string]bool{
+	"Hatchery": true, "Spawning Pool": true, "Evolution Chamber": true,
+	"Hydralisk Den": true, "Creep Colony": true, "Extractor": true,
+	"Spire": true, "Queen's Nest": true, "Defiler Mound": true,
+	"Ultralisk Cavern": true, "Nydus Canal": true,
+}
+
+// morphSourceBuild maps a building-morph target to the source building type
+// whose tag it inherits. Building morphs are tag-preserving: Lair inherits the
+// Hatchery's tag, Hive inherits the Lair's (originally the Hatchery's), etc.
+var morphSourceBuild = map[string]string{
+	"Lair": "Hatchery", "Hive": "Hatchery",
+	"Greater Spire": "Spire",
+	"Sunken Colony": "Creep Colony", "Spore Colony": "Creep Colony",
+}
+
 // townHalls have no Build command when they are the spawn-seeded main; their
 // location falls back to the player's start location.
 var townHalls = map[string]bool{"Hatchery": true, "Command Center": true, "Nexus": true}
@@ -264,8 +284,9 @@ func Extract(r *rep.Replay) map[byte][]Event {
 			if len(s.cur) == 1 {
 				if parent, isAddon := addonParent[name]; isAddon {
 					addBldgEv(pe, s.cur[0], frame, parent)
+				} else if droneMorphBuildings[name] {
+					addBldgEv(pe, s.cur[0], frame, name)
 				} else {
-					// A single-selected tag issuing a Build is a worker.
 					t := tagOf(pe, s.cur[0])
 					t.unitEvs = append(t.unitEvs, frame)
 				}
@@ -282,7 +303,9 @@ func Extract(r *rep.Replay) map[byte][]Event {
 			}
 		case repcmd.TypeIDBuildingMorph:
 			if bm, ok := c.(*repcmd.BuildingMorphCmd); ok && bm.Unit != nil && len(s.cur) == 1 {
-				addBldgEv(pe, s.cur[0], frame, "Hatchery")
+				if src, ok := morphSourceBuild[bm.Unit.Name]; ok {
+					addBldgEv(pe, s.cur[0], frame, src)
+				}
 			}
 		case repcmd.TypeIDTech:
 			if tc, ok := c.(*repcmd.TechCmd); ok && tc.Tech != nil && len(s.cur) == 1 {

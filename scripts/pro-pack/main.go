@@ -122,7 +122,7 @@ func main() {
 
 	ctx := context.Background()
 	start := time.Now()
-	corpus, err := dashboard.LoadProCorpus(ctx, *stagedDir, nil)
+	corpus, err := dashboard.LoadProCorpus(ctx, *stagedDir, nil, -1)
 	if err != nil {
 		log.Fatalf("read staged replays: %v", err)
 	}

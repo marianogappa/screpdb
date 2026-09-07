@@ -57,8 +57,9 @@ type ProCorpus struct {
 
 // LoadProCorpus parses every replay in replayDir. It applies the same default
 // global filter the dashboard ships with, so a pro's numbers are measured on
-// the games the app would have counted.
-func LoadProCorpus(ctx context.Context, replayDir string, log func(load.LogEvent)) (*ProCorpus, error) {
+// the games the app would have counted. Pass maxReplays <= 0 to read the
+// whole folder; the default (0) applies the library's DefaultMaxReplays cap.
+func LoadProCorpus(ctx context.Context, replayDir string, log func(load.LogEvent), maxReplays int) (*ProCorpus, error) {
 	if err := iofacade.AllowDir(replayDir); err != nil {
 		return nil, err
 	}
@@ -68,7 +69,7 @@ func LoadProCorpus(ctx context.Context, replayDir string, log func(load.LogEvent
 		lib.Close()
 		return nil, err
 	}
-	loader := load.New(lib, load.Options{Folder: replayDir, Generation: 1, Log: log})
+	loader := load.New(lib, load.Options{Folder: replayDir, Generation: 1, Log: log, MaxReplays: maxReplays})
 	if err := loader.Run(ctx); err != nil {
 		lib.Close()
 		return nil, fmt.Errorf("read %s: %w", replayDir, err)
