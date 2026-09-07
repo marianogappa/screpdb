@@ -60,7 +60,8 @@ func TestLibStoreGetPlayerOverviewSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := &PlayerOverviewSummaryRow{PlayerName: "Flash", GamesPlayed: 2, Wins: 1, AverageAPM: 150, AverageEAPM: 100}
+	// The second game has no winner, so it is undecided rather than a loss.
+	want := &PlayerOverviewSummaryRow{PlayerName: "Flash", GamesPlayed: 2, Wins: 1, Undecided: 1, AverageAPM: 150, AverageEAPM: 100}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("summary = %+v, want %+v", got, want)
 	}
@@ -72,6 +73,10 @@ func TestLibStoreGetPlayerOverviewSummary(t *testing.T) {
 	}
 	if bisu.GamesPlayed != 2 || bisu.AverageAPM != 80 || bisu.AverageEAPM != 60 {
 		t.Fatalf("bisu = %+v", bisu)
+	}
+	// Bisu genuinely lost the first game but the second was never resolved.
+	if bisu.Wins != 0 || bisu.Undecided != 1 {
+		t.Fatalf("bisu record = %+v, want 0 wins and 1 undecided", bisu)
 	}
 
 	empty, err := s.GetPlayerOverviewSummary(context.Background(), "nobody")

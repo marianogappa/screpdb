@@ -61,6 +61,8 @@ func (s *LibStore) GetPlayerOverviewSummary(_ context.Context, playerKey string)
 		out.GamesPlayed++
 		if p.IsWinner() {
 			out.Wins++
+		} else if !replayWinnerKnown(ref.Replay) {
+			out.Undecided++
 		}
 		if p.APM > 0 {
 			apmSum += float64(p.APM)
@@ -131,6 +133,16 @@ func playersLabel(r *library.Replay) string {
 		names = append(names, r.Players[ordinal].Name)
 	}
 	return strings.Join(names, ", ")
+}
+
+func replayWinnerKnown(r *library.Replay) bool {
+	for i := range r.Players {
+		p := &r.Players[i]
+		if humanNonObserver(p) && p.IsWinner() {
+			return true
+		}
+	}
+	return false
 }
 
 func winnersLabel(r *library.Replay) string {
