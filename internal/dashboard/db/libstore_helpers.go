@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"strings"
 
 	"github.com/marianogappa/screpdb/internal/library"
@@ -39,6 +40,18 @@ func (s *LibStore) replaysByIDs(ids []int64) []*library.Replay {
 // first.
 func (s *LibStore) playerGames(playerKey string) []library.PlayerRef {
 	return s.view().PlayerGames(normalizeKey(playerKey))
+}
+
+// HasLocalPlayers checks which of the given names (toon-style, lowercased
+// internally) map to at least one local game. Returns the set of names that do.
+func (s *LibStore) HasLocalPlayers(_ context.Context, names []string) (map[string]struct{}, error) {
+	out := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		if len(s.view().PlayerGames(normalizeKey(name))) > 0 {
+			out[normalizeKey(name)] = struct{}{}
+		}
+	}
+	return out, nil
 }
 
 // resolvePlayer recovers the replay and player ordinal behind a player id.

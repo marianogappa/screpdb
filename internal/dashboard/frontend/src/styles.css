@@ -6201,15 +6201,18 @@ span[data-tip],
   color: rgba(255, 255, 255, 0.28);
 }
 
-/* Alternate accounts can run to a dozen names; crop rather than let one row
-   set the width of the whole table. The full list is in the title attribute. */
-.session-toon-list {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: rgba(255, 255, 255, 0.65);
+.session-toon-pills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
 }
+.session-toon-more {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 11px;
+}
+.session-toon-more:hover { background: rgba(255, 255, 255, 0.06); }
 
 .session-players {
   display: flex;

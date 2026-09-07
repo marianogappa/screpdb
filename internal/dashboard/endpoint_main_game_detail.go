@@ -292,6 +292,7 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 		}
 		if result.BnetProfile != nil {
 			result.BnetProfile.Habits = d.bnetPlayHabitsFor(d.ctx, result.BnetProfile.AuroraID, result.BnetProfile.CountryCode, time.Now())
+			d.fillLocalPlayerKeys(d.ctx, result.BnetProfile)
 		}
 	}
 	if bnetGames, err := d.dbStore.CountPlayerBnetGames(d.ctx, playerKey); err == nil {

@@ -363,11 +363,14 @@ func (d *Dashboard) withBnetProfiles(ctx context.Context, players []gamingSessio
 	}
 	details := d.bnetProfileDetailsByPlayerKeys(ctx, keys)
 	for i := range players {
-		if detail, ok := details[players[i].PlayerKey]; ok {
-			players[i].Profile = detail
-			if players[i].CountryCode == "" {
-				players[i].CountryCode = detail.CountryCode
-			}
+		detail, ok := details[players[i].PlayerKey]
+		if !ok {
+			continue
+		}
+		d.fillLocalPlayerKeys(ctx, detail)
+		players[i].Profile = detail
+		if players[i].CountryCode == "" {
+			players[i].CountryCode = detail.CountryCode
 		}
 	}
 	return players

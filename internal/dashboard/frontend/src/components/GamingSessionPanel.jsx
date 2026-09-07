@@ -54,13 +54,51 @@ function RaceIcons({ races }) {
   );
 }
 
-function OtherToons({ profile, currentName }) {
+function OtherToons({ profile, currentName, onPlayerClick }) {
+  const t = useT();
+  const [expanded, setExpanded] = useState(false);
   const current = String(currentName || '').trim().toLowerCase();
   const others = (profile?.toons || [])
-    .map((t) => t.toon)
-    .filter((toon) => String(toon).trim().toLowerCase() !== current);
+    .filter((toon) => String(toon?.toon || '').trim().toLowerCase() !== current);
   if (others.length === 0) return <span className="session-cell-empty">-</span>;
-  return <span className="session-toon-list" title={others.join(', ')}>{others.join(', ')}</span>;
+
+  const sorted = [...others].sort((a, b) => {
+    const aLocal = a.local_player_key ? 0 : 1;
+    const bLocal = b.local_player_key ? 0 : 1;
+    return aLocal - bLocal;
+  });
+  const visibleLimit = 3;
+  const visible = expanded ? sorted : sorted.slice(0, visibleLimit);
+  const overflow = sorted.length - visibleLimit;
+
+  return (
+    <span className="session-toon-pills">
+      {visible.map((toon) =>
+        toon.local_player_key ? (
+          <button
+            key={toon.toon}
+            type="button"
+            className="wps-alias wps-alias-known"
+            title={t('player.viewThisPlayer')}
+            onClick={(e) => { e.stopPropagation(); onPlayerClick?.(toon.local_player_key); }}
+          >
+            {toon.toon}
+          </button>
+        ) : (
+          <span key={toon.toon} className="wps-alias">{toon.toon}</span>
+        )
+      )}
+      {!expanded && overflow > 0 ? (
+        <button
+          type="button"
+          className="wps-alias session-toon-more"
+          onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+        >
+          +{overflow}
+        </button>
+      ) : null}
+    </span>
+  );
 }
 
 function LadderCell({ profile }) {
@@ -75,7 +113,7 @@ function LadderCell({ profile }) {
   return <span>{parts.length > 0 ? parts.join(' · ') : t('session.ladder.yes')}</span>;
 }
 
-function PlayerTable({ players, renderName, showRecord }) {
+function PlayerTable({ players, renderName, showRecord, onPlayerClick }) {
   const t = useT();
   if (!players || players.length === 0) {
     return <div className="workflow-subtle-note">{t('session.nobody')}</div>;
@@ -104,7 +142,7 @@ function PlayerTable({ players, renderName, showRecord }) {
             <td className="col-apm">{player.apm ? player.apm : <span className="session-cell-empty">-</span>}</td>
             <td className="col-ladder"><LadderCell profile={player.profile} /></td>
             <td className="col-tag">{player.profile?.battle_tag || <span className="session-cell-empty">-</span>}</td>
-            <td className="col-toons"><OtherToons profile={player.profile} currentName={player.player_name} /></td>
+            <td className="col-toons"><OtherToons profile={player.profile} currentName={player.player_name} onPlayerClick={onPlayerClick} /></td>
           </tr>
         ))}
       </tbody>
@@ -112,7 +150,7 @@ function PlayerTable({ players, renderName, showRecord }) {
   );
 }
 
-function GamingSessionPanel({ session, loading, error, renderName, children }) {
+function GamingSessionPanel({ session, loading, error, renderName, onPlayerClick, children }) {
   const t = useT();
   const [tab, setTab] = useState('games');
 
@@ -181,11 +219,11 @@ function GamingSessionPanel({ session, loading, error, renderName, children }) {
 
       {tab === 'games' ? children : (
         <div className="session-players">
-          <PlayerTable players={opponents} renderName={renderName} showRecord />
+          <PlayerTable players={opponents} renderName={renderName} showRecord onPlayerClick={onPlayerClick} />
           {allies.length > 0 ? (
             <div className="session-allies">
               <div className="session-breakdown-title">{t('session.playedAlongside')}</div>
-              <PlayerTable players={allies} renderName={renderName} showRecord={false} />
+              <PlayerTable players={allies} renderName={renderName} showRecord={false} onPlayerClick={onPlayerClick} />
             </div>
           ) : null}
         </div>
