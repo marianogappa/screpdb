@@ -216,6 +216,18 @@ func TestExtractAnnotatesAssigns(t *testing.T) {
 	b.sel(zergP, 15, 210)
 	b.buildingMorph(zergP, 16, "Lair")
 	b.hotkey(zergP, 17, repcmd.HotkeyTypeIDAssign, 6)
+	// Tag 220 is a drone that builds a Hatchery: the drone's tag persists
+	// through the morph, so the Build proves it is a Hatchery, not a worker.
+	b.sel(zergP, 25, 220)
+	b.hotkey(zergP, 26, repcmd.HotkeyTypeIDAssign, 7)
+	b.build(zergP, 27, "Hatchery", 80, 80)
+	// Tag 230 builds a Creep Colony then morphs to Sunken Colony; the morph
+	// must credit "Creep Colony" (the source building), not "Hatchery".
+	b.sel(zergP, 35, 230)
+	b.build(zergP, 36, "Creep Colony", 90, 90)
+	b.sel(zergP, 37, 230)
+	b.buildingMorph(zergP, 38, "Sunken Colony")
+	b.hotkey(zergP, 39, repcmd.HotkeyTypeIDAssign, 8)
 
 	streams := Extract(b.replay())
 	terranEvents, zergEvents := streams[terran], streams[zergP]
@@ -260,6 +272,8 @@ func TestExtractAnnotatesAssigns(t *testing.T) {
 
 	check(t, zergEvents, 5, TypeAssignBuilding, "Hatchery", 198, 199, 0)
 	check(t, zergEvents, 6, TypeAssignBuilding, "Hatchery", TileUnknown, TileUnknown, 0)
+	check(t, zergEvents, 7, TypeAssignBuilding, "Hatchery", 80, 80, 0)
+	check(t, zergEvents, 8, TypeAssignBuilding, "Creep Colony", 90, 90, 0)
 
 	// Select/Add events survive with their type and second.
 	g7 := eventsFor(terranEvents, 7)
@@ -292,6 +306,48 @@ func TestExtractNilAndEmpty(t *testing.T) {
 	b.sel(1, 1, 10) // selection but no hotkey events: no stream
 	if got := Extract(b.replay()); len(got) != 0 {
 		t.Fatalf("player without hotkey events must produce no stream, got %v", got)
+	}
+}
+
+func TestExtractBuildingMorphCreditsSourceBuilding(t *testing.T) {
+	b := &replayBuilder{t: t}
+	const zergP = byte(2)
+	// Greater Spire morph must credit "Spire", not "Hatchery".
+	b.build(zergP, 1, "Spire", 50, 50)
+	b.sel(zergP, 10, 10)
+	b.buildingMorph(zergP, 11, "Greater Spire")
+	b.hotkey(zergP, 12, repcmd.HotkeyTypeIDAssign, 1)
+	// Spore Colony morph must credit "Creep Colony".
+	b.build(zergP, 2, "Creep Colony", 60, 60)
+	b.sel(zergP, 20, 20)
+	b.buildingMorph(zergP, 21, "Spore Colony")
+	b.hotkey(zergP, 22, repcmd.HotkeyTypeIDAssign, 2)
+	events := Extract(b.replay())[zergP]
+	got1 := eventsFor(events, 1)
+	if len(got1) != 1 || got1[0].Type != TypeAssignBuilding || BuildingName(got1[0].Building) != "Spire" {
+		t.Fatalf("Greater Spire morph must credit Spire, got %+v (building=%q)", got1, BuildingName(got1[0].Building))
+	}
+	got2 := eventsFor(events, 2)
+	if len(got2) != 1 || got2[0].Type != TypeAssignBuilding || BuildingName(got2[0].Building) != "Creep Colony" {
+		t.Fatalf("Spore Colony morph must credit Creep Colony, got %+v (building=%q)", got2, BuildingName(got2[0].Building))
+	}
+}
+
+func TestExtractDroneBuildClassifiesAsBuilding(t *testing.T) {
+	b := &replayBuilder{t: t}
+	const zergP = byte(2)
+	// A drone hotkeyed before building a Hatchery: the tag persists through
+	// the morph, so the assign must classify as a Hatchery with the Build's tile.
+	b.sel(zergP, 1, 10)
+	b.hotkey(zergP, 2, repcmd.HotkeyTypeIDAssign, 1)
+	b.build(zergP, 3, "Hatchery", 70, 70)
+	events := Extract(b.replay())[zergP]
+	got := eventsFor(events, 1)
+	if len(got) != 1 || got[0].Type != TypeAssignBuilding || BuildingName(got[0].Building) != "Hatchery" {
+		t.Fatalf("drone Build Hatchery must classify as building, got %+v", got)
+	}
+	if got[0].TileX != 70 || got[0].TileY != 70 {
+		t.Fatalf("drone Hatchery tile = (%d,%d), want (70,70)", got[0].TileX, got[0].TileY)
 	}
 }
 

@@ -389,6 +389,15 @@ timeline also condenses that phantom leave cluster into one mass_disconnect
 event and renders genuine drops as player_dropped. is_winner and
 replay_events are written at ingest, so re-ingest to fix stale rows.
 
+## 69
+
+Zerg hatchery hotkey groups under-reported and sometimes invented: drone
+builds recorded unit evidence (worker) instead of building evidence for the
+resulting structure, and all building morphs hardcoded "Hatchery" instead of
+crediting the real source building. Fixes both via a droneMorphBuildings set
+and a morphSourceBuild map. Zerg recall rises from 35% to 78% on the labeled
+progamer corpus; Terran and Protoss are unchanged.
+
 ## 68
 
 players.hotkey_stream re-encoded as wire format v2 (hotkey intel):
