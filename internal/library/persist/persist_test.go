@@ -175,6 +175,17 @@ func TestBnetCacheRoundTrip(t *testing.T) {
 		}
 	}
 
+	fetchTimes := reloaded.FetchedAtByToons([]string{"flash", "nobody", "bisu", "ghost"})
+	if len(fetchTimes) != 2 {
+		t.Fatalf("FetchedAtByToons = %d entries, want 2 (flash + bisu, not nobody/ghost)", len(fetchTimes))
+	}
+	if !fetchTimes["flash"].Equal(now) {
+		t.Fatalf("flash FetchedAt = %v, want %v", fetchTimes["flash"], now)
+	}
+	if _, ok := fetchTimes["nobody"]; ok {
+		t.Fatal("FetchedAtByToons must exclude not-found entries")
+	}
+
 	updated := flash
 	updated.CountryCode = "JP"
 	updated.Payload = `{"v":2}`

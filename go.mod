@@ -14,7 +14,7 @@ require (
 	github.com/marianogappa/scmapanalyzer v0.0.0-20260816120150-33902ec84bfc
 	github.com/mark3labs/mcp-go v0.55.1
 	github.com/minio/selfupdate v0.6.0
-	github.com/oapi-codegen/runtime v1.4.0
+	github.com/oapi-codegen/runtime v1.7.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/samber/lo v1.53.0
 	github.com/spf13/cobra v1.8.0

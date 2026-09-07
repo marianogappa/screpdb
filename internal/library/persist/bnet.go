@@ -183,6 +183,26 @@ func (c *BnetCache) CountryCodesByToons(toons []string) map[string]string {
 	return out
 }
 
+// FetchedAtByToons maps each player key to the most recent FetchedAt across
+// all gateways, considering only found, non-mojibaked entries.
+func (c *BnetCache) FetchedAtByToons(toons []string) map[string]time.Time {
+	wanted := playerKeySet(toons)
+	out := make(map[string]time.Time, len(wanted))
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, h := range c.entries {
+		key := library.PlayerKey(h.Toon)
+		if _, ok := wanted[key]; !ok || !h.Found {
+			continue
+		}
+		if seen, ok := out[key]; ok && !h.FetchedAt.After(seen) {
+			continue
+		}
+		out[key] = h.FetchedAt
+	}
+	return out
+}
+
 // PayloadsByToons returns every found profile whose toon matches one of the
 // player keys, payload included. Read-only: it never triggers a fetch.
 // AuroraIDsByToons returns the distinct aurora ids of the found profiles whose
