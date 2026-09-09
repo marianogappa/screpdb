@@ -2748,6 +2748,22 @@ button.workflow-nav-update-available:disabled {
   box-shadow: inset 2px 0 0 var(--e-accent);
 }
 
+/* A background refresh just changed this row (e.g. a complete replay landed):
+   a brief accent wash that fades, quieter than the selected state so it reads
+   as "updated", never as "selected". */
+.workflow-row-updated {
+  animation: workflow-row-updated-fade 4s ease-out forwards;
+}
+
+@keyframes workflow-row-updated-fade {
+  from {
+    background-color: rgba(224, 184, 76, 0.16);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
 .workflow-meta {
   display: flex;
   gap: 12px;

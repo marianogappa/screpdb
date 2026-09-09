@@ -9,6 +9,10 @@ export const LABS_FEATURES = [
     key: 'gaming_session',
     labelKey: 'labs.feature.gamingSession',
   },
+  {
+    key: 'complete_replays',
+    labelKey: 'labs.feature.completeReplays',
+  },
 ];
 
 function LabsSettingsPanel({ flags, saving, message, messageIsError, onToggle }) {

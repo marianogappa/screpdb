@@ -39,8 +39,9 @@ const (
 	requestSuffix     = ".request.json"
 	responseSuffix    = ".response.json"
 
-	kindSeeReplay = "see-replay"
-	kindOpenURL   = "open-url"
+	kindSeeReplay   = "see-replay"
+	kindPlaceReplay = "place-replay"
+	kindOpenURL     = "open-url"
 
 	brokerPollInterval = 200 * time.Millisecond
 	clientPollInterval = 50 * time.Millisecond
@@ -50,9 +51,10 @@ const (
 type brokerRequest struct {
 	Kind string `json:"kind"`
 
-	// See-replay fields.
+	// See-replay and place-replay fields.
 	Source       string `json:"source,omitempty"`        // absolute path inside app-data
 	ReplayFolder string `json:"replay_folder,omitempty"` // current ingest dir (write target parent)
+	DestName     string `json:"dest_name,omitempty"`     // destination basename, allowlisted per kind
 
 	// open-url fields.
 	URL string `json:"url,omitempty"`
@@ -104,13 +106,34 @@ func brokerRoundtrip(appDataDir string, req brokerRequest) (brokerResponse, erro
 }
 
 // BrokerSeeReplay (worker side) drops a request for the launcher to copy source
-// into <replayFolder>/000_screpdb_watch_me/watch_me.rep and waits for the
-// response. Returns the destination path on success.
-func BrokerSeeReplay(appDataDir, source, replayFolder string) (string, error) {
+// into <replayFolder>/000_screpdb_watch_me/<destName> and waits for the
+// response. destName must be one of the two known staging filenames (empty
+// means watch_me.rep). Returns the destination path on success.
+func BrokerSeeReplay(appDataDir, source, replayFolder, destName string) (string, error) {
 	resp, err := brokerRoundtrip(appDataDir, brokerRequest{
 		Kind:         kindSeeReplay,
 		Source:       source,
 		ReplayFolder: replayFolder,
+		DestName:     destName,
+	})
+	if err != nil {
+		return "", err
+	}
+	if !resp.Success {
+		return "", fmt.Errorf("broker: %s", resp.Error)
+	}
+	return resp.Dest, nil
+}
+
+// BrokerPlaceReplay (worker side) asks the launcher to copy a downloaded
+// complete replay (source, inside app-data) into the user's replay folder as
+// destName ("<stem>-complete.rep"). Returns the destination path on success.
+func BrokerPlaceReplay(appDataDir, source, replayFolder, destName string) (string, error) {
+	resp, err := brokerRoundtrip(appDataDir, brokerRequest{
+		Kind:         kindPlaceReplay,
+		Source:       source,
+		ReplayFolder: replayFolder,
+		DestName:     destName,
 	})
 	if err != nil {
 		return "", err
@@ -193,33 +216,69 @@ func handleBrokerRequest(reqPath string) brokerResponse {
 		return handleOpenURLRequest(req)
 	case kindSeeReplay, "":
 		return handleSeeRequest(req)
+	case kindPlaceReplay:
+		return handlePlaceRequest(req)
 	default:
 		return brokerResponse{Error: "unknown broker request kind: " + req.Kind}
 	}
 }
 
-func handleSeeRequest(req brokerRequest) brokerResponse {
-	// Source is the replay to stage (read-down access is always allowed, so the
+func validateReplayFolderRequest(req brokerRequest) (string, brokerResponse) {
+	// Source is the replay to copy (read-down access is always allowed, so the
 	// launcher grants no new read capability); require it to be a regular file.
 	if info, err := os.Stat(req.Source); err != nil || info.IsDir() {
-		return brokerResponse{Error: "source is not a readable file"}
+		return "", brokerResponse{Error: "source is not a readable file"}
 	}
 	replayFolder := strings.TrimSpace(req.ReplayFolder)
 	if replayFolder == "" {
-		return brokerResponse{Error: "empty replay folder"}
+		return "", brokerResponse{Error: "empty replay folder"}
 	}
 	if info, err := os.Stat(replayFolder); err != nil || !info.IsDir() {
-		return brokerResponse{Error: "replay folder is not a directory"}
+		return "", brokerResponse{Error: "replay folder is not a directory"}
 	}
+	return replayFolder, brokerResponse{Success: true}
+}
 
+func handleSeeRequest(req brokerRequest) brokerResponse {
+	replayFolder, resp := validateReplayFolderRequest(req)
+	if !resp.Success {
+		return resp
+	}
 	// The destination is fixed — a compromised worker cannot direct the
-	// Medium launcher to write anywhere but this one file.
+	// Medium launcher to write anywhere but the two known staging files.
+	if !validSeeReplayDestName(req.DestName) {
+		return brokerResponse{Error: "invalid see-replay destination name"}
+	}
+	destName := req.DestName
+	if destName == "" {
+		destName = seeReplayFilename
+	}
 	destDir := filepath.Join(replayFolder, seeReplayFolder)
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return brokerResponse{Error: "create dest dir: " + err.Error()}
 	}
-	dest := filepath.Join(destDir, seeReplayFilename)
-	input, err := os.ReadFile(req.Source)
+	return copyBrokerFile(req.Source, filepath.Join(destDir, destName))
+}
+
+func handlePlaceRequest(req brokerRequest) brokerResponse {
+	replayFolder, resp := validateReplayFolderRequest(req)
+	if !resp.Success {
+		return resp
+	}
+	// A compromised worker may only ever create "<stem>-complete.rep" files
+	// directly inside the replay folder, and never overwrite one.
+	if !validPlaceReplayDestName(req.DestName) {
+		return brokerResponse{Error: "invalid place-replay destination name"}
+	}
+	dest := filepath.Join(replayFolder, req.DestName)
+	if _, err := os.Stat(dest); err == nil {
+		return brokerResponse{Error: "destination already exists"}
+	}
+	return copyBrokerFile(req.Source, dest)
+}
+
+func copyBrokerFile(source, dest string) brokerResponse {
+	input, err := os.ReadFile(source)
 	if err != nil {
 		return brokerResponse{Error: "read source: " + err.Error()}
 	}

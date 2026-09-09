@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -32,6 +33,11 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	detail.ReplayDate = summary.ReplayDate
 	detail.FileName = summary.FileName
 	detail.FilePath = summary.FilePath
+	// A complete-copy game (issue #341) keeps the user's own recording beside
+	// it; naming it lets the frontend offer both for watching.
+	if ownPath, completePath, err := d.dbStore.GetReplayWatchFiles(d.ctx, replayID); err == nil && completePath != "" && ownPath != "" {
+		detail.OwnCopyFileName = filepath.Base(ownPath)
+	}
 	detail.MapName = summary.MapName
 	detail.MapKind = summary.MapKind
 	detail.GameSource = summary.GameSource

@@ -43,6 +43,30 @@ func (s *LibStore) GetReplayFilePathByID(ctx context.Context, replayID int64) (s
 	return r.Path(), nil
 }
 
+// GetReplayWatchFiles resolves the two watchable copies of a game (issue
+// #341). For a complete-copy record the user's own file is its superseded
+// sibling, looked up in the unfiltered snapshot because the global filter
+// hides superseded records. completePath is empty when the game has no
+// complete copy.
+func (s *LibStore) GetReplayWatchFiles(ctx context.Context, replayID int64) (ownPath, completePath string, err error) {
+	r, err := s.replay(replayID)
+	if err != nil {
+		return "", "", err
+	}
+	for _, f := range r.Paths {
+		base, ok := library.CompleteBasePath(f.Path)
+		if !ok {
+			continue
+		}
+		completePath = f.Path
+		if _, exists := s.view().Snapshot().ByPath(base); exists {
+			return base, completePath, nil
+		}
+		return "", completePath, nil
+	}
+	return r.Path(), "", nil
+}
+
 func (s *LibStore) ListReplayPlayersForDetail(ctx context.Context, replayID int64) ([]ReplayPlayerDetailRow, error) {
 	r, err := s.replay(replayID)
 	if err != nil {

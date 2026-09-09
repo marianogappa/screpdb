@@ -12,12 +12,19 @@ import (
 // run of games you have just played. It is a preview, so it defaults off.
 const featureFlagGamingSession = "gaming_session"
 
+// featureFlagCompleteReplays gates the #341 enrichment worker, which downloads
+// co-players' fuller recordings of multiplayer games the user left early. It
+// writes files into the replay folder and spends bridge budget, so it stays a
+// default-off preview until the edge cases have soaked.
+const featureFlagCompleteReplays = "complete_replays"
+
 // knownFeatureFlags is the allowlist. Writes to anything outside it are
 // rejected, so a stale client cannot litter the settings row with keys nothing
 // reads, and a flag that is retired stops being settable the moment it leaves
 // this list.
 var knownFeatureFlags = map[string]struct{}{
-	featureFlagGamingSession: {},
+	featureFlagGamingSession:   {},
+	featureFlagCompleteReplays: {},
 }
 
 func (d *Dashboard) featureFlags(ctx context.Context) (map[string]bool, error) {

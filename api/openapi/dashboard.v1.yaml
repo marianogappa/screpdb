@@ -404,6 +404,13 @@ paths:
       - $ref: "#/components/parameters/replayID"
     post:
       operationId: gameSee
+      parameters:
+        - name: variant
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [own, complete]
       responses:
         "200":
           description: OK

@@ -351,6 +351,7 @@ type workflowGameDetail struct {
 	ReplayDate                       string                                   `json:"replay_date"`
 	FileName                         string                                   `json:"file_name"`
 	FilePath                         string                                   `json:"file_path"`
+	OwnCopyFileName                  string                                   `json:"own_copy_file_name,omitempty"`
 	MapName                          string                                   `json:"map_name"`
 	MapKind                          string                                   `json:"map_kind,omitempty"`
 	GameSource                       string                                   `json:"game_source"`

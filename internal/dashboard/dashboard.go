@@ -38,6 +38,7 @@ type Dashboard struct {
 	libraryHub          *libraryHub
 	sampleSetAutoLoaded bool
 	headless            bool
+	debug               bool
 	shutdown            func()
 	fpDatasetOnce       sync.Once
 	fpDataset           *scfingerprint.Dataset
@@ -56,6 +57,11 @@ type Dashboard struct {
 	// CSettings.json. Kept in memory rather than persisted: it is a pure
 	// function of that file, so a stored copy could only go stale.
 	youKeys atomic.Value // stores map[string]struct{}
+	// youGateway is the gateway CSettings says the user last logged into. The
+	// bridge cannot be asked which gateway a session is on, so this is what
+	// the enrichment worker fetches the user's own profile against when the
+	// monitor has not learned a gateway.
+	youGateway atomic.Int64
 	// featuredExcl caches which built-in progamer profiles are the user (see
 	// excludedProIDs); refreshed after featuredExclusionTTL.
 	featuredExclMu sync.Mutex
@@ -81,6 +87,8 @@ type Options struct {
 	// caches are carried over once, on the first run after upgrading.
 	LegacyDBPath string
 	Headless     bool
+	// Debug turns on background-work console diagnostics (the --debug flag).
+	Debug bool
 }
 
 func New(ctx context.Context, opts Options) (*Dashboard, error) {
@@ -88,6 +96,7 @@ func New(ctx context.Context, opts Options) (*Dashboard, error) {
 		ctx:        ctx,
 		libraryHub: newLibraryHub(),
 		headless:   opts.Headless,
+		debug:      opts.Debug,
 	}
 
 	runtime, err := newLibraryRuntime(ctx, libraryRuntimeOptions{
@@ -388,6 +397,7 @@ func (d *Dashboard) StartAsync(port int) <-chan error {
 		}
 		log.Println("Backend server is ready")
 		d.startBnetMonitor(d.ctx)
+		d.startBnetEnrich(d.ctx)
 		select {
 		case errChan <- nil:
 		default:

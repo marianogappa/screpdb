@@ -13,6 +13,7 @@ type Options struct {
 	ReplayDir    string
 	Port         int
 	Headless     bool
+	Debug        bool
 }
 
 // RegisterFlags binds dashboard flags to fs (Cobra command flags or a standalone pflag set).
@@ -21,4 +22,5 @@ func RegisterFlags(fs *pflag.FlagSet, o *Options) {
 	fs.StringVar(&o.ReplayDir, "replay-dir", "", "Replay folder to read. Defaults to the saved folder, then to the StarCraft one.")
 	fs.IntVarP(&o.Port, "port", "p", 8000, "Dashboard server port")
 	fs.BoolVar(&o.Headless, "headless", false, "Run as an API-only server: don't serve the dashboard UI and don't open a browser")
+	fs.BoolVar(&o.Debug, "debug", false, "Log background-work diagnostics to the console")
 }
