@@ -26,6 +26,8 @@ func (s *LibStore) GetReplaySummary(ctx context.Context, replayID int64) (*Repla
 		FileChecksum:       library.ChecksumHex(r.Checksum),
 		MapName:            library.Strings.Name(r.Map),
 		MapKind:            r.MapKind.String(),
+		MapTileWidth:       int(r.MapWidth),
+		MapTileHeight:      int(r.MapHeight),
 		GameSource:         library.Strings.Name(r.GameSource),
 		LobbyKind:          library.Strings.Name(r.LobbyKind),
 		DurationSeconds:    int64(r.Duration),

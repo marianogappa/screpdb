@@ -116,7 +116,7 @@ func TestSetupRouter_GameAssetIconReturnsPNG(t *testing.T) {
 	}
 }
 
-func TestSetupRouter_GameAssetMapReturnsPNG(t *testing.T) {
+func TestSetupRouter_GameAssetMapReturnsJPEG(t *testing.T) {
 	d := newTestDashboard(t)
 	replayID := firstReplayID(t, d)
 	r := d.setupRouter()
@@ -128,8 +128,12 @@ func TestSetupRouter_GameAssetMapReturnsPNG(t *testing.T) {
 		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
 	}
 	body := rec.Body.Bytes()
-	if len(body) < 24 || string(body[1:4]) != "PNG" {
-		t.Fatalf("expected PNG bytes, got len=%d prefix=%q", len(body), truncateForLog(body, 16))
+	if len(body) < 24 || body[0] != 0xFF || body[1] != 0xD8 {
+		t.Fatalf("expected JPEG bytes, got len=%d prefix=%q", len(body), truncateForLog(body, 16))
+	}
+	ct := rec.Header().Get("Content-Type")
+	if !strings.Contains(ct, "image/jpeg") {
+		t.Fatalf("expected image/jpeg content-type, got %q", ct)
 	}
 }
 

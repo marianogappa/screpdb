@@ -120,7 +120,7 @@ paths:
     get:
       operationId: gameAssetMap
       tags: [operational]
-      summary: Rendered map preview PNG for a replay. Served by a hand-written handler (not generated).
+      summary: Rendered map preview JPEG for a replay. Served by a hand-written handler (not generated).
       parameters:
         - name: replay_id
           in: query
@@ -129,9 +129,9 @@ paths:
             type: string
       responses:
         "200":
-          description: PNG image
+          description: JPEG image
           content:
-            image/png:
+            image/jpeg:
               schema:
                 type: string
                 format: binary

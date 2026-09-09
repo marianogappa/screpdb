@@ -43,6 +43,8 @@ func defaultDashboardOptions() dashboardrun.Options {
 func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) error {
 	// Remove the placeholder left by a previous self-update swap (issue #212).
 	selfupdate.CleanupOldBinary()
+	// Reclaim stale game-asset cache versions and cap the map cache (issue #409).
+	dashboard.PruneGameAssetCache()
 	if selfupdate.IsRestart() {
 		// Self-update relaunch: wait for the previous process to release the
 		// listening port (Windows has no exec-in-place) before we bind.
