@@ -164,12 +164,23 @@ func (d *Dashboard) GameSee(ctx context.Context, request apigen.GameSeeRequestOb
 	// The folder name starts with "000_" so it sorts above other folders, and folders
 	// sort above files in StarCraft's replay browser — making the staged replay easy
 	// to find. The file inside is just "watch_me.rep" since the folder already carries
-	// the screpdb prefix.
+	// the screpdb prefix; a game's complete copy stages beside it as
+	// "watch_me_complete.rep" so both copies can be watched (issue #341).
 	const seeReplayFolderName = fileops.WatchMeDirName
-	const seeReplayFilename = "watch_me.rep"
-	sourceFilePath, err := d.dbStore.GetReplayFilePathByID(ctx, request.ReplayID)
+	ownPath, completePath, err := d.dbStore.GetReplayWatchFiles(ctx, request.ReplayID)
 	if err != nil {
 		return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
+	}
+	sourceFilePath, seeReplayFilename := ownPath, winsandbox.SeeReplayDefaultName
+	variant := ""
+	if request.Params.Variant != nil {
+		variant = string(*request.Params.Variant)
+	}
+	if variant == "complete" || (variant == "" && ownPath == "") {
+		sourceFilePath, seeReplayFilename = completePath, winsandbox.SeeReplayCompleteName
+	}
+	if sourceFilePath == "" {
+		return nil, dashboardservice.WithStatus(http.StatusNotFound, fmt.Errorf("no %s copy for replay %d", variant, request.ReplayID))
 	}
 	ingestDirPath := d.library.Folder()
 	if ingestDirPath == "" {
@@ -184,7 +195,7 @@ func (d *Dashboard) GameSee(ctx context.Context, request apigen.GameSeeRequestOb
 		if err != nil {
 			return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 		}
-		dest, err := winsandbox.BrokerSeeReplay(appDir, sourceFilePath, ingestDirPath)
+		dest, err := winsandbox.BrokerSeeReplay(appDir, sourceFilePath, ingestDirPath, seeReplayFilename)
 		if err != nil {
 			return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 		}

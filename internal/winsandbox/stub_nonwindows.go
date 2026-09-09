@@ -30,7 +30,11 @@ func StartBroker(context.Context, string) (func(), error) { return func() {}, er
 
 // BrokerSeeReplay is a no-op stub off Windows; the worker path that calls it
 // only runs on Windows (guarded by IsWorker()).
-func BrokerSeeReplay(string, string, string) (string, error) { return "", errUnsupported }
+func BrokerSeeReplay(string, string, string, string) (string, error) { return "", errUnsupported }
+
+// BrokerPlaceReplay is a no-op stub off Windows; the worker path that calls it
+// only runs on Windows (guarded by IsWorker()).
+func BrokerPlaceReplay(string, string, string, string) (string, error) { return "", errUnsupported }
 
 // BrokerOpenURL is a no-op stub off Windows; the worker path that calls it only
 // runs on Windows (guarded by IsWorker()).

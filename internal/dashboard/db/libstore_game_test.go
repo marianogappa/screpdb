@@ -1295,3 +1295,37 @@ func TestLibStoreGameReadsOverTheRealCorpus(t *testing.T) {
 		}
 	}
 }
+
+func TestLibStoreGetReplayWatchFiles(t *testing.T) {
+	date := time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC)
+	own := melee("own",
+		librarytest.WithDate(date),
+		librarytest.WithPath("/replays/bgh.rep", date))
+	complete := melee("complete",
+		librarytest.WithDate(date),
+		librarytest.WithPath("/replays/bgh-complete.rep", date))
+	unpaired := melee("unpaired")
+	s := newTestLibStore(t, own, complete, unpaired)
+
+	ownPath, completePath, err := s.GetReplayWatchFiles(context.Background(), complete.ID)
+	if err != nil {
+		t.Fatalf("GetReplayWatchFiles: %v", err)
+	}
+	if ownPath != "/replays/bgh.rep" || completePath != "/replays/bgh-complete.rep" {
+		t.Fatalf("paths: %q %q", ownPath, completePath)
+	}
+
+	// The superseded own record is hidden by the filter, so it is not
+	// addressable by its own id.
+	if _, _, err := s.GetReplayWatchFiles(context.Background(), own.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("superseded record: %v", err)
+	}
+
+	ownPath, completePath, err = s.GetReplayWatchFiles(context.Background(), unpaired.ID)
+	if err != nil {
+		t.Fatalf("GetReplayWatchFiles unpaired: %v", err)
+	}
+	if ownPath != unpaired.Path() || completePath != "" {
+		t.Fatalf("unpaired paths: %q %q", ownPath, completePath)
+	}
+}

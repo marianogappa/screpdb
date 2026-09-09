@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/marianogappa/screpdb/internal/iofacade"
@@ -120,6 +121,44 @@ func (d *Dashboard) refreshYouKeysBestEffort(_ context.Context) {
 		return
 	}
 	d.youKeys.Store(youKeySetFromBattleTags(battleTags))
+	if gw := parseCSettingsRecentGateway(raw); gw > 0 {
+		d.youGateway.Store(int64(gw))
+	}
+}
+
+// parseCSettingsRecentGateway returns the gateway the user last logged into,
+// or 0. The bridge's /v1/gateway endpoint lists every gateway without saying
+// which one the session is on, so CSettings is the one reliable source — and
+// it is the same file the you-keys come from, so whoever can be identified in
+// a replay also has a gateway.
+func parseCSettingsRecentGateway(raw []byte) int {
+	var root map[string]json.RawMessage
+	if json.Unmarshal(raw, &root) != nil {
+		return 0
+	}
+	general, ok := root["General settings"]
+	if !ok {
+		return 0
+	}
+	var section map[string]json.RawMessage
+	if json.Unmarshal(general, &section) != nil {
+		return 0
+	}
+	value, ok := section["Configuration-Recent gateway id"]
+	if !ok {
+		return 0
+	}
+	var n int
+	if json.Unmarshal(value, &n) == nil && n > 0 {
+		return n
+	}
+	var s string
+	if json.Unmarshal(value, &s) == nil {
+		if parsed, err := strconv.Atoi(strings.TrimSpace(s)); err == nil && parsed > 0 {
+			return parsed
+		}
+	}
+	return 0
 }
 
 func parseCSettingsBattleTags(raw []byte) ([]string, error) {

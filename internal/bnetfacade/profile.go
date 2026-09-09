@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
+	"strings"
 )
 
 var ErrUnknownGateway = errors.New("bnetfacade: unknown gateway")
@@ -36,6 +38,64 @@ type AuroraProfile struct {
 	Stats           json.RawMessage `json:"stats"`
 
 	Raw []byte `json:"-"`
+}
+
+// ProfileReplay is one replays[] entry of an aurora profile. MD5, URL and Link
+// (the game id) are present only on entries belonging to the requesting
+// account's own toons; other players' entries carry attributes and create_time
+// alone. The list holds the account's last 25 games and rolls fast, so game
+// ids must be harvested while a game is still listed.
+type ProfileReplay struct {
+	MD5        string            `json:"md5"`
+	URL        string            `json:"url"`
+	Link       string            `json:"link"`
+	CreateTime int64             `json:"create_time"`
+	Attributes map[string]string `json:"attributes"`
+}
+
+// ProfileReplaysFromPayload extracts the replays[] entries from a raw
+// scr_profile payload (fresh or cached). A payload that cannot be decoded
+// yields nil.
+func ProfileReplaysFromPayload(payload []byte) []ProfileReplay {
+	var parsed struct {
+		Replays []ProfileReplay `json:"replays"`
+	}
+	if err := json.Unmarshal(normalizeBridgeJSON(payload), &parsed); err != nil {
+		return nil
+	}
+	return parsed.Replays
+}
+
+// ProfileGameRef is one game_results[] entry's identity. Some replays[]
+// entries arrive with an empty link; the game id can still be recovered by
+// matching create times against these, which come in the same payload.
+type ProfileGameRef struct {
+	GameID     string
+	CreateTime int64
+}
+
+// ProfileGameRefsFromPayload extracts (game id, create time) pairs from a raw
+// scr_profile payload's game_results. Entries without both are skipped; an
+// undecodable payload yields nil.
+func ProfileGameRefsFromPayload(payload []byte) []ProfileGameRef {
+	var parsed struct {
+		GameResults []struct {
+			GameID     string `json:"game_id"`
+			CreateTime string `json:"create_time"`
+		} `json:"game_results"`
+	}
+	if err := json.Unmarshal(normalizeBridgeJSON(payload), &parsed); err != nil {
+		return nil
+	}
+	out := make([]ProfileGameRef, 0, len(parsed.GameResults))
+	for _, g := range parsed.GameResults {
+		createTime, err := strconv.ParseInt(strings.TrimSpace(g.CreateTime), 10, 64)
+		if err != nil || g.GameID == "" {
+			continue
+		}
+		out = append(out, ProfileGameRef{GameID: g.GameID, CreateTime: createTime})
+	}
+	return out
 }
 
 // Found reports whether the toon exists on the queried gateway. The bridge

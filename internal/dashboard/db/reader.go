@@ -53,6 +53,7 @@ type Reader interface {
 	// Per game: the game detail page and its tabs.
 	GetReplaySummary(ctx context.Context, replayID int64) (*ReplaySummaryRow, error)
 	GetReplayFilePathByID(ctx context.Context, replayID int64) (string, error)
+	GetReplayWatchFiles(ctx context.Context, replayID int64) (ownPath, completePath string, err error)
 	ListReplayPlayersForDetail(ctx context.Context, replayID int64) ([]ReplayPlayerDetailRow, error)
 	ListReplayPlayersForAlliance(ctx context.Context, replayID int64) ([]ReplayPlayerForAllianceRow, error)
 	ListReplayAllianceCommands(ctx context.Context, replayID int64) ([]ReplayAllianceCommandRow, error)

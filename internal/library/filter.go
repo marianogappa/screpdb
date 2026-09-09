@@ -83,7 +83,7 @@ func (c FilterConfig) Equal(o FilterConfig) bool {
 // Matches is the filter predicate. Unrecognised list values are ignored, as
 // the SQL builder dropped them.
 func (c FilterConfig) Matches(r *Replay) bool {
-	if r == nil || r.MapKind == MapKindUseMapSettings {
+	if r == nil || r.MapKind == MapKindUseMapSettings || r.Flags.Has(FlagSuperseded) {
 		return false
 	}
 	if c.ExcludeShortGames && int(r.Duration) < ShortGameSeconds {

@@ -98,5 +98,6 @@
   "globalFilter.saving": "Saving...",
   "globalFilter.save": "Save",
   "labs.warning": "Unfinished work. Expect rough edges and things that change or vanish.",
-  "labs.feature.gamingSession": "Session summary for the games you just played"
+  "labs.feature.gamingSession": "Session summary for the games you just played",
+  "labs.feature.completeReplays": "Augment your replays of 3+ players with no known winner"
 }

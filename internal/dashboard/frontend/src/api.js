@@ -215,8 +215,9 @@ export const api = {
     return response.json();
   },
 
-  seeGame: async (replayId) => {
-    const response = await fetch(`${API_BASE}/games/${encodeURIComponent(replayId)}/see`, {
+  seeGame: async (replayId, variant) => {
+    const query = variant ? `?variant=${encodeURIComponent(variant)}` : '';
+    const response = await fetch(`${API_BASE}/games/${encodeURIComponent(replayId)}/see${query}`, {
       method: 'POST',
     });
     if (!response.ok) {

@@ -135,6 +135,13 @@ const (
 	FlagHasComputer
 	FlagIsOneOnOne
 	FlagIsAutosave
+	// FlagIsCompleteCopy marks a downloaded co-player copy of the game
+	// (a "-complete" file, issue #341). Path-derived, like FlagIsAutosave.
+	FlagIsCompleteCopy
+	// FlagSuperseded marks the user's own copy of a game whose complete copy
+	// is in the corpus. The global filter hides it; the record stays in the
+	// snapshot so the file remains addressable.
+	FlagSuperseded
 )
 
 func (f Flags) Has(flag Flags) bool { return f&flag != 0 }

@@ -2076,6 +2076,10 @@ function App() {
   const [activeView, setActiveView] = useState(() => initialMainRoute.view);
   const [mainGames, setMainGames] = useState([]);
   const [mainGamesLoading, setMainGamesLoading] = useState(false);
+  // Rows a background refresh just changed; they carry the update flash until
+  // the timer clears them.
+  const [mainGamesUpdatedIds, setMainGamesUpdatedIds] = useState(() => new Set());
+  const mainGamesUpdatedTimerRef = useRef(null);
   const [mainGamesPage, setMainGamesPage] = useState(1);
   const [mainGamesTotal, setMainGamesTotal] = useState(0);
   const [mainGamesFilterOptions, setMainGamesFilterOptions] = useState({
@@ -2127,6 +2131,7 @@ function App() {
   const activeViewRef = useRef(null);
   const mainGamesFiltersRef = useRef(null);
   const mainGamesPageRef = useRef(null);
+  const mainGamesRef = useRef([]);
   const [mainPlayer, setMainPlayer] = useState(null);
   const [mainGameHotkeys, setMainGameHotkeys] = useState(null);
   const [mainGameHotkeysLoading, setMainGameHotkeysLoading] = useState(false);
@@ -2214,9 +2219,14 @@ function App() {
     return data;
   };
 
-  const loadMainGames = async ({ page = mainGamesPage, filters = mainGamesFilters } = {}) => {
+  // silent: refresh triggered by a background library event, not the user.
+  // The table stays mounted (no loading swap), untouched rows keep their
+  // rendered identity, and only rows whose content actually changed are
+  // replaced and briefly highlighted — so an enrichment landing reads as "that
+  // one game updated", not as the whole list flickering.
+  const loadMainGames = async ({ page = mainGamesPage, filters = mainGamesFilters, silent = false } = {}) => {
     try {
-      setMainGamesLoading(true);
+      if (!silent) setMainGamesLoading(true);
       const safePage = Math.max(1, Number(page) || 1);
       const offset = (safePage - 1) * MAIN_GAMES_PAGE_SIZE;
       const data = await api.listGames({
@@ -2225,17 +2235,67 @@ function App() {
         filters,
       });
       const items = data?.items || [];
-      setMainGames(items);
+      if (silent) {
+        mergeMainGamesSilently(items);
+      } else {
+        setMainGames(items);
+      }
       setMainGamesTotal(Number(data?.total) || 0);
       if (data?.filter_options) {
         setMainGamesFilterOptions(data.filter_options);
       }
       if (data?.corpus) setResponseCorpus(data.corpus);
     } catch (err) {
+      if (silent) return;
       setError(err.message);
     } finally {
-      setMainGamesLoading(false);
+      if (!silent) setMainGamesLoading(false);
     }
+  };
+
+  // mergeReplayRows reconciles a background refetch into a rendered games
+  // list: identical rows keep their existing objects (so React leaves their
+  // DOM alone), changed or new rows are swapped in and reported for the update
+  // flash.
+  const mergeReplayRows = (prev, items) => {
+    const prevById = new Map(prev.map((game) => [game.replay_id, game]));
+    const changedIds = [];
+    let identical = items.length === prev.length;
+    const rows = items.map((game, i) => {
+      const existing = prevById.get(game.replay_id);
+      if (existing && JSON.stringify(existing) === JSON.stringify(game)) {
+        if (identical && prev[i] !== existing) identical = false;
+        return existing;
+      }
+      identical = false;
+      changedIds.push(game.replay_id);
+      return game;
+    });
+    return { rows, changedIds, identical };
+  };
+
+  // markGameRowsUpdated puts rows on the update flash and schedules its fade.
+  // One shared set covers every list rendered through renderGamesListTable.
+  const markGameRowsUpdated = (changedIds) => {
+    if (changedIds.length === 0) return;
+    setMainGamesUpdatedIds((current) => {
+      const next = new Set(current);
+      for (const id of changedIds) next.add(id);
+      return next;
+    });
+    if (mainGamesUpdatedTimerRef.current) window.clearTimeout(mainGamesUpdatedTimerRef.current);
+    mainGamesUpdatedTimerRef.current = window.setTimeout(() => {
+      setMainGamesUpdatedIds(new Set());
+      mainGamesUpdatedTimerRef.current = null;
+    }, 4000);
+  };
+
+  // An unchanged page is a no-op.
+  const mergeMainGamesSilently = (items) => {
+    const { rows, changedIds, identical } = mergeReplayRows(mainGamesRef.current || [], items);
+    if (identical) return;
+    setMainGames(rows);
+    markGameRowsUpdated(changedIds);
   };
 
   const loadMainPlayers = async ({
@@ -2378,7 +2438,7 @@ function App() {
     }
   };
 
-  const copyMainGameToWatchMe = async () => {
+  const copyMainGameToWatchMe = async (variant) => {
     const replayId = mainGame?.replay_id;
     if (!replayId || mainGameSeeLoading) return;
     if (mainGameSeeNoticeTimerRef.current) {
@@ -2389,8 +2449,8 @@ function App() {
       setMainGameSeeLoading(true);
       setMainGameSeeNotice('');
       setMainGameSeeNoticeError(false);
-      await api.seeGame(replayId);
-      setMainGameSeeNotice(t('game.stage.copied'));
+      await api.seeGame(replayId, variant);
+      setMainGameSeeNotice(t(variant === 'complete' ? 'game.stage.copiedComplete' : 'game.stage.copied'));
       mainGameSeeNoticeTimerRef.current = window.setTimeout(() => {
         setMainGameSeeNotice('');
         mainGameSeeNoticeTimerRef.current = null;
@@ -2724,6 +2784,7 @@ function App() {
   const [featureFlagsMessage, setFeatureFlagsMessage] = useState('');
   const [featureFlagsMessageIsError, setFeatureFlagsMessageIsError] = useState(false);
   const [gamingSession, setGamingSession] = useState(null);
+  const gamingSessionRef = useRef(null);
   const [gamingSessionLoading, setGamingSessionLoading] = useState(false);
   const [gamingSessionError, setGamingSessionError] = useState('');
 
@@ -2759,17 +2820,32 @@ function App() {
 
   // The session is refetched whenever the flag turns on and whenever the user
   // opens the view, so a game finishing mid-visit shows up on the next look.
-  const loadGamingSession = useCallback(async () => {
+  // A silent call (background library events) keeps the panel mounted, keeps
+  // unchanged game rows' identity, flashes the changed ones, and swallows
+  // errors — the same treatment as the games list.
+  const loadGamingSession = useCallback(async ({ silent = false } = {}) => {
     if (!gamingSessionEnabled) return;
     try {
-      setGamingSessionLoading(true);
-      setGamingSessionError('');
+      if (!silent) {
+        setGamingSessionLoading(true);
+        setGamingSessionError('');
+      }
       const res = await api.getGamingSession();
+      const prev = gamingSessionRef.current;
+      if (silent && prev && res) {
+        const { rows, changedIds, identical } = mergeReplayRows(prev.games || [], res.games || []);
+        if (identical && JSON.stringify({ ...prev, games: [] }) === JSON.stringify({ ...res, games: [] })) {
+          return;
+        }
+        setGamingSession({ ...res, games: rows });
+        markGameRowsUpdated(changedIds);
+        return;
+      }
       setGamingSession(res);
     } catch (err) {
-      setGamingSessionError(err.message || t('session.message.loadFailed'));
+      if (!silent) setGamingSessionError(err.message || t('session.message.loadFailed'));
     } finally {
-      setGamingSessionLoading(false);
+      if (!silent) setGamingSessionLoading(false);
     }
   }, [gamingSessionEnabled]);
 
@@ -3070,7 +3146,7 @@ function App() {
     const refreshAfterGap = () => {
       void refreshGamesListRef.current?.();
       if (activeViewRef.current === 'players') void refreshPlayersListRef.current?.();
-      void loadGamingSessionRef.current?.();
+      void loadGamingSessionRef.current?.({ silent: true });
       void checkHealthStatus();
     };
 
@@ -3128,7 +3204,7 @@ function App() {
           if (message.type === 'corpus') {
             void refreshGamesListRef.current?.();
             if (activeViewRef.current === 'players') void refreshPlayersListRef.current?.();
-            void loadGamingSessionRef.current?.();
+            void loadGamingSessionRef.current?.({ silent: true });
           }
         } catch (err) {
           console.error('Failed to parse library events message:', err);
@@ -3287,7 +3363,7 @@ function App() {
   // loaded replays affect.
   const refreshGameListOnly = async () => {
     try {
-      await loadMainGames({ page: mainGamesPage, filters: mainGamesFilters });
+      await loadMainGames({ page: mainGamesPage, filters: mainGamesFilters, silent: true });
     } catch (err) {
       console.error('Failed to refresh game list after library update:', err);
     }
@@ -3316,6 +3392,8 @@ function App() {
   activeViewRef.current = activeView;
   mainGamesFiltersRef.current = mainGamesFilters;
   mainGamesPageRef.current = mainGamesPage;
+  mainGamesRef.current = mainGames;
+  gamingSessionRef.current = gamingSession;
 
   // Corpus completeness for partial-load states. The `corpus` block on the
   // most recent response wins when it describes the same generation the
@@ -3628,7 +3706,10 @@ function App() {
           {games.map((game) => (
             <tr
               key={game.replay_id}
-              className={selectedId === game.replay_id ? 'workflow-selected-row' : ''}
+              className={[
+                selectedId === game.replay_id ? 'workflow-selected-row' : '',
+                mainGamesUpdatedIds.has(game.replay_id) ? 'workflow-row-updated' : '',
+              ].filter(Boolean).join(' ')}
               onClick={() => openMainGame(game.replay_id)}
             >
               <td className="workflow-games-list-played">{formatRelativeReplayDate(game.replay_date)}</td>
@@ -5646,15 +5727,38 @@ function App() {
                       {t('game.copyPath')}
                     </button>
                   ) : null}
-                  <button
-                    type="button"
-                    className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
-                    disabled={mainGameSeeLoading}
-                    data-tip={t('game.stage.tip')}
-                    onClick={copyMainGameToWatchMe}
-                  >
-                    {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.button')}
-                  </button>
+                  {mainGame?.own_copy_file_name ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
+                        disabled={mainGameSeeLoading}
+                        data-tip={t('game.stage.tipOwn')}
+                        onClick={() => copyMainGameToWatchMe('own')}
+                      >
+                        {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.buttonOwn')}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
+                        disabled={mainGameSeeLoading}
+                        data-tip={t('game.stage.tipComplete')}
+                        onClick={() => copyMainGameToWatchMe('complete')}
+                      >
+                        {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.buttonComplete')}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
+                      disabled={mainGameSeeLoading}
+                      data-tip={t('game.stage.tip')}
+                      onClick={() => copyMainGameToWatchMe()}
+                    >
+                      {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.button')}
+                    </button>
+                  )}
                 </div>
                 <div className="workflow-game-tab-stack">
                   <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label={t('game.sectionsAria')}>

@@ -374,12 +374,17 @@ func (w *workingSet) apply(m mutation) {
 	case opAdd:
 		for _, r := range m.replays {
 			w.add(r)
+			for _, f := range r.Paths {
+				w.reconcileComplete(f.Path)
+			}
 		}
 	case opRemove:
 		w.detachPath(m.path)
+		w.reconcileComplete(m.path)
 	case opAlias:
 		if existing, ok := w.byChecksum[m.checksum]; ok {
 			w.attachPaths(existing, []FileRef{m.file})
+			w.reconcileComplete(m.file.Path)
 		}
 	}
 }
@@ -518,11 +523,50 @@ func (w *workingSet) drainChanges() (added, removed []int64) {
 }
 
 func setAutosaveFlag(r *Replay) {
-	r.Flags &^= FlagIsAutosave
+	r.Flags &^= FlagIsAutosave | FlagIsCompleteCopy
 	for _, f := range r.Paths {
 		if IsAutosavePath(f.Path) {
 			r.Flags |= FlagIsAutosave
-			return
 		}
+		if IsCompletePath(f.Path) {
+			r.Flags |= FlagIsCompleteCopy
+		}
+	}
+}
+
+// mutate replaces a possibly-committed record with a shallow copy so snapshots
+// already holding the old pointer stay immutable, and reindexes the copy.
+func (w *workingSet) mutate(r *Replay, apply func(*Replay)) *Replay {
+	updated := *r
+	apply(&updated)
+	w.unindex(r)
+	w.index(&updated)
+	w.dirty = true
+	return &updated
+}
+
+// reconcileComplete keeps the "-complete" pairing (issue #341) consistent
+// around any change to path: when both the user's own copy and a complete copy
+// of one game are present, the own copy is superseded (hidden by the global
+// filter) and its chat is folded into the complete record; when the pair is
+// broken the own copy is reinstated.
+func (w *workingSet) reconcileComplete(path string) {
+	basePath, completePath := path, CompletePathFor(path)
+	if bp, ok := CompleteBasePath(path); ok {
+		basePath, completePath = bp, path
+	}
+	base, baseOK := w.byPath[basePath]
+	complete, completeOK := w.byPath[completePath]
+	if baseOK && completeOK && base != complete {
+		if !base.Flags.Has(FlagSuperseded) {
+			base = w.mutate(base, func(r *Replay) { r.Flags |= FlagSuperseded })
+		}
+		if merged, changed := MergeChat(complete, base); changed {
+			w.mutate(complete, func(r *Replay) { r.Chat = merged })
+		}
+		return
+	}
+	if baseOK && base.Flags.Has(FlagSuperseded) {
+		w.mutate(base, func(r *Replay) { r.Flags &^= FlagSuperseded })
 	}
 }
