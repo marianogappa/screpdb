@@ -215,4 +215,54 @@ func TestLibraryRuntimeCarriesOverTheLegacyDatabaseOnce(t *testing.T) {
 	if _, err := os.Stat(persist.SettingsPath(root)); err != nil {
 		t.Fatalf("settings.json was not written: %v", err)
 	}
+
+	// The legacy DB must still exist after the first launch: the sweep only
+	// runs once settings.json is already present (i.e. on the next launch).
+	if _, err := os.Stat(legacy); err != nil {
+		t.Fatalf("the legacy DB was deleted on the import launch: %v", err)
+	}
+}
+
+func TestSweepDeletesLegacyDatabaseOnSecondLaunch(t *testing.T) {
+	folder := replayFolder(t, "SomaJyJ.rep")
+	root := t.TempDir()
+	legacy := filepath.Join(root, "screp.db")
+
+	if err := os.WriteFile(legacy, []byte("fake-db"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(legacy+"-wal", []byte("fake-wal"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(legacy+"-shm", []byte("fake-shm"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := persist.SaveSettings(root, persist.DefaultSettings()); err != nil {
+		t.Fatal(err)
+	}
+
+	_ = newTestRuntime(t, libraryRuntimeOptions{Root: root, ReplayDir: folder, LegacyDBPath: legacy})
+
+	for _, name := range []string{legacy, legacy + "-wal", legacy + "-shm"} {
+		if _, err := os.Stat(name); err == nil {
+			t.Fatalf("%s was not removed by the sweep", name)
+		}
+	}
+}
+
+func TestSweepSkipsWhenSettingsAreMissing(t *testing.T) {
+	folder := replayFolder(t, "SomaJyJ.rep")
+	root := t.TempDir()
+	legacy := filepath.Join(root, "screp.db")
+
+	if err := os.WriteFile(legacy, []byte("fake-db"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_ = newTestRuntime(t, libraryRuntimeOptions{Root: root, ReplayDir: folder, LegacyDBPath: legacy})
+
+	if _, err := os.Stat(legacy); err != nil {
+		t.Fatalf("the sweep deleted the DB before the import had a chance to run: %v", err)
+	}
 }

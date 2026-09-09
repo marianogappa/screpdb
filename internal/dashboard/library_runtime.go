@@ -62,6 +62,7 @@ func newLibraryRuntime(ctx context.Context, opts libraryRuntimeOptions) (*librar
 
 	bnet := persist.NewBnetCache(root)
 	results := persist.NewBnetGameResults(root)
+	sweepLegacyDatabase(root, opts.LegacyDBPath)
 	if err := importLegacyState(ctx, root, opts.LegacyDBPath, bnet, results); err != nil {
 		log.Printf("Could not carry over the previous settings: %v", err)
 	}
@@ -230,24 +231,6 @@ func importLegacyState(ctx context.Context, root, legacyDBPath string, bnet *per
 		return err
 	}
 
-	if legacy.Settings != nil {
-		next := persist.DefaultSettings()
-		next.ReplayFolder = legacy.Settings.ReplayDir
-		next.FeatureFlags = legacy.Settings.FeatureFlags
-		filter := library.FilterConfig{
-			GameTypes:         legacy.Settings.GameTypes,
-			ExcludeShortGames: legacy.Settings.ExcludeShortGames,
-			ExcludeComputers:  legacy.Settings.ExcludeComputers,
-			MapKinds:          legacy.Settings.MapKinds,
-		}
-		if normalized, err := filter.Normalize(); err == nil {
-			next.GlobalFilter = normalized
-		}
-		if err := persist.SaveSettings(root, next); err != nil {
-			return err
-		}
-	}
-
 	for _, profile := range legacy.Profiles {
 		fetchedAt, err := parseLegacyTime(profile.FetchedAt)
 		if err != nil {
@@ -288,8 +271,68 @@ func importLegacyState(ctx context.Context, root, legacyDBPath string, bnet *per
 			return err
 		}
 	}
+
+	// SaveSettings is last: the settings file is the sentinel that gates this
+	// import (and the sweep), so writing it only after every cache file has
+	// landed guarantees a retry on partial failure.
+	if legacy.Settings != nil {
+		next := persist.DefaultSettings()
+		next.ReplayFolder = legacy.Settings.ReplayDir
+		next.FeatureFlags = legacy.Settings.FeatureFlags
+		filter := library.FilterConfig{
+			GameTypes:         legacy.Settings.GameTypes,
+			ExcludeShortGames: legacy.Settings.ExcludeShortGames,
+			ExcludeComputers:  legacy.Settings.ExcludeComputers,
+			MapKinds:          legacy.Settings.MapKinds,
+		}
+		if normalized, err := filter.Normalize(); err == nil {
+			next.GlobalFilter = normalized
+		}
+		if err := persist.SaveSettings(root, next); err != nil {
+			return err
+		}
+	}
 	log.Printf("Carried over %d Battle.net profiles and %d game results from the previous version", len(legacy.Profiles), len(legacy.GameResults))
 	return nil
+}
+
+// sweepLegacyDatabase removes the pre-library SQLite files once the one-time
+// import has succeeded. It is gated on settings.json existing: that file is
+// written last by importLegacyState, so its presence proves the caches have
+// already been carried over. Running the sweep before the import means the two
+// never execute on the same launch.
+func sweepLegacyDatabase(root, legacyDBPath string) {
+	if strings.TrimSpace(legacyDBPath) == "" {
+		return
+	}
+	if _, found, err := persist.LoadSettings(root); err != nil || !found {
+		return
+	}
+	targets := []string{
+		legacyDBPath,
+		legacyDBPath + "-wal",
+		legacyDBPath + "-shm",
+	}
+	var freed int64
+	for _, path := range targets {
+		freed += removeAndMeasure(path)
+	}
+	if freed > 0 {
+		log.Printf("Removed the legacy database, freeing %.1f MB", float64(freed)/(1024*1024))
+	}
+}
+
+func removeAndMeasure(path string) int64 {
+	info, err := iofacade.Stat(path)
+	if err != nil {
+		return 0
+	}
+	size := info.Size()
+	if err := iofacade.Remove(path); err != nil {
+		log.Printf("Could not remove %s: %v", path, err)
+		return 0
+	}
+	return size
 }
 
 func parseLegacyTime(value string) (time.Time, error) { return time.Parse(time.RFC3339, value) }
