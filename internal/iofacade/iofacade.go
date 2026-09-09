@@ -184,6 +184,24 @@ func Remove(path string) error {
 	return os.Remove(p)
 }
 
+// RemoveAll deletes a permitted path and its entire subtree.
+func RemoveAll(path string) error {
+	p, err := resolve(path)
+	if err != nil {
+		return err
+	}
+	return os.RemoveAll(p)
+}
+
+// ReadDir lists the entries of a permitted directory.
+func ReadDir(path string) ([]os.DirEntry, error) {
+	p, err := resolve(path)
+	if err != nil {
+		return nil, err
+	}
+	return os.ReadDir(p)
+}
+
 // Walk walks the file tree rooted at a permitted directory. The whole subtree
 // is implicitly permitted because it lives under root.
 func Walk(root string, fn filepath.WalkFunc) error {

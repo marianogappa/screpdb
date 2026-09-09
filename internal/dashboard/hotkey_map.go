@@ -12,14 +12,12 @@ import (
 	"image/png"
 	"log"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/marianogappa/scmapanalyzer/lib/scmapanalyzer"
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/hotkeystream"
-	"github.com/marianogappa/screpdb/internal/iofacade"
 	xdraw "golang.org/x/image/draw"
 )
 
@@ -143,13 +141,20 @@ func (d *Dashboard) handlerHotkeyMap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	terrain, err := d.mapTerrainPNG(strings.TrimSpace(summary.FilePath), summary.MapName)
+	replayPath := strings.TrimSpace(summary.FilePath)
+	if replayPath == "" {
+		log.Printf("hotkey map terrain replay=%d: replay file path unknown", replayID)
+		http.Error(w, "map render failed", http.StatusInternalServerError)
+		return
+	}
+	rect := hotkeyMapTileRect(buildings, summary.MapTileWidth, summary.MapTileHeight)
+	terrain, err := scmapanalyzer.MapImagePNGCropFromReplayFile(replayPath, rect)
 	if err != nil {
 		log.Printf("hotkey map terrain replay=%d: %v", replayID, err)
 		http.Error(w, "map render failed", http.StatusInternalServerError)
 		return
 	}
-	composite, err := renderHotkeyMapComposite(terrain, buildings)
+	composite, err := renderHotkeyMapComposite(terrain, rect, buildings)
 	if err != nil {
 		log.Printf("hotkey map composite replay=%d player=%d: %v", replayID, playerID, err)
 		http.Error(w, "map render failed", http.StatusInternalServerError)
@@ -187,61 +192,46 @@ func hotkeyBuildingsAtCutoff(events []hotkeystream.Event, cutoff int32) []hotkey
 	return out
 }
 
-// mapTerrainPNG returns the full-map terrain render, sharing the on-disk cache
-// and singleflight key with handlerGameAssetMap.
-func (d *Dashboard) mapTerrainPNG(replayPath, mapName string) ([]byte, error) {
-	if replayPath == "" {
-		return nil, errors.New("replay file path unknown")
-	}
-	cacheRoot, err := d.gameAssetsCacheDir()
-	if err != nil {
-		return nil, err
-	}
-	cacheKey := scmapanalyzer.NormalizeMapKey(mapName)
-	if cacheKey == "" {
-		cacheKey = "unknown-map"
-	}
-	cachePath := filepath.Join(cacheRoot, "maps", cacheKey+".png")
-	if data, readErr := iofacade.ReadFile(cachePath); readErr == nil && len(data) > 0 {
-		return data, nil
-	}
-	v, err, _ := gameAssetFlight.Do("map:"+cacheKey, func() (any, error) {
-		if data, readErr := iofacade.ReadFile(cachePath); readErr == nil && len(data) > 0 {
-			return data, nil
+// hotkeyMapTileRectMargin pads the buildings' bounding box so sprites, badges
+// and surrounding terrain context fit inside the crop.
+const hotkeyMapTileRectMargin = 6
+
+// hotkeyMapTileRect returns the tile rect enclosing the buildings' footprints
+// plus a margin, clamped to the map bounds.
+func hotkeyMapTileRect(buildings []hotkeyMapBuilding, mapTilesW, mapTilesH int) scmapanalyzer.TileRect {
+	minTX, minTY, maxTX, maxTY := 1<<30, 1<<30, 0, 0
+	for _, b := range buildings {
+		fp, ok := hotkeyBuildingFootprints[b.building]
+		if !ok {
+			fp = [2]int{3, 2}
 		}
-		pngBytes, genErr := scmapanalyzer.MapImagePNGFromReplayFile(replayPath)
-		if genErr != nil {
-			return nil, genErr
-		}
-		if writeErr := d.writeGameAssetCacheFile(cachePath, pngBytes); writeErr != nil {
-			return nil, writeErr
-		}
-		return pngBytes, nil
-	})
-	if err != nil {
-		return nil, err
+		minTX, minTY = min(minTX, b.tileX), min(minTY, b.tileY)
+		maxTX, maxTY = max(maxTX, b.tileX+fp[0]), max(maxTY, b.tileY+fp[1])
 	}
-	return v.([]byte), nil
+	x0 := clampInt(minTX-hotkeyMapTileRectMargin, 0, mapTilesW)
+	y0 := clampInt(minTY-hotkeyMapTileRectMargin, 0, mapTilesH)
+	x1 := clampInt(maxTX+hotkeyMapTileRectMargin, 0, mapTilesW)
+	y1 := clampInt(maxTY+hotkeyMapTileRectMargin, 0, mapTilesH)
+	return scmapanalyzer.TileRect{X: x0, Y: y0, W: x1 - x0, H: y1 - y0}
 }
 
 // renderHotkeyMapComposite overlays building sprites, footprint outlines and
-// group badges on the terrain, cropped to the buildings' bounding box.
-func renderHotkeyMapComposite(terrainPNG []byte, buildings []hotkeyMapBuilding) ([]byte, error) {
+// group badges on the terrain crop, which covers rect at 32 px per tile.
+func renderHotkeyMapComposite(terrainPNG []byte, rect scmapanalyzer.TileRect, buildings []hotkeyMapBuilding) ([]byte, error) {
 	terrain, err := png.Decode(bytes.NewReader(terrainPNG))
 	if err != nil {
 		return nil, fmt.Errorf("decode terrain: %w", err)
 	}
-	canvas := image.NewRGBA(terrain.Bounds())
-	draw.Draw(canvas, canvas.Bounds(), terrain, image.Point{}, draw.Src)
+	canvas := image.NewRGBA(image.Rect(0, 0, terrain.Bounds().Dx(), terrain.Bounds().Dy()))
+	draw.Draw(canvas, canvas.Bounds(), terrain, terrain.Bounds().Min, draw.Src)
 
-	minTX, minTY, maxTX, maxTY := 1<<30, 1<<30, 0, 0
 	spriteTop := map[[2]int]int{}
 	for _, b := range buildings {
 		fp, ok := hotkeyBuildingFootprints[b.building]
 		if !ok {
 			fp = [2]int{3, 2}
 		}
-		px, py := b.tileX*32, b.tileY*32
+		px, py := (b.tileX-rect.X)*32, (b.tileY-rect.Y)*32
 		w, h := fp[0]*32, fp[1]*32
 		top := py
 		if spriteName := hotkeySpriteName(b.building); spriteName != "" {
@@ -268,8 +258,6 @@ func renderHotkeyMapComposite(terrainPNG []byte, buildings []hotkeyMapBuilding) 
 			spriteTop[key] = top
 		}
 		drawFootprintOutline(canvas, px, py, w, h, hotkeyOutlineColor)
-		minTX, minTY = min(minTX, b.tileX), min(minTY, b.tileY)
-		maxTX, maxTY = max(maxTX, b.tileX+fp[0]), max(maxTY, b.tileY+fp[1])
 	}
 	// Keycap chips last so they sit on top: one small uniform chip per group,
 	// in a row above the sprite so they never cover it.
@@ -289,23 +277,12 @@ func renderHotkeyMapComposite(terrainPNG []byte, buildings []hotkeyMapBuilding) 
 				break
 			}
 		}
-		drawGroupChips(canvas, tile[0]*32+fpw/2, spriteTop[tile]-6, groups)
+		drawGroupChips(canvas, (tile[0]-rect.X)*32+fpw/2, spriteTop[tile]-6, groups)
 	}
-
-	const marginTiles = 6
-	bounds := canvas.Bounds()
-	crop := image.Rect(
-		clampInt((minTX-marginTiles)*32, 0, bounds.Max.X),
-		clampInt((minTY-marginTiles)*32, 0, bounds.Max.Y),
-		clampInt((maxTX+marginTiles)*32, 0, bounds.Max.X),
-		clampInt((maxTY+marginTiles)*32, 0, bounds.Max.Y),
-	)
-	cropped := image.NewRGBA(image.Rect(0, 0, crop.Dx(), crop.Dy()))
-	draw.Draw(cropped, cropped.Bounds(), canvas, crop.Min, draw.Src)
 
 	var buf bytes.Buffer
 	enc := png.Encoder{CompressionLevel: png.BestSpeed}
-	if err := enc.Encode(&buf, cropped); err != nil {
+	if err := enc.Encode(&buf, canvas); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil

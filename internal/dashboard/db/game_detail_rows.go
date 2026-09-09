@@ -8,6 +8,8 @@ type ReplaySummaryRow struct {
 	FileChecksum       string
 	MapName            string
 	MapKind            string
+	MapTileWidth       int
+	MapTileHeight      int
 	GameSource         string
 	LobbyKind          string
 	DurationSeconds    int64

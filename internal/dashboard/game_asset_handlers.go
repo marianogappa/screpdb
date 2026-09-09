@@ -24,6 +24,11 @@ var gameAssetFlight singleflight.Group
 // icon mapping) changes so browsers and disk cache pick up new PNGs.
 const gameAssetIconRenderVersion = "3"
 
+// gameAssetMapRenderVersion segments the on-disk map cache under
+// game-assets/maps/v<N>/. Bump when the map render changes (scmapanalyzer or
+// our options); pruneGameAssetCache reclaims stale dirs on the next launch.
+const gameAssetMapRenderVersion = "1"
+
 func (d *Dashboard) gameAssetsCacheDir() (string, error) {
 	// The game-asset cache lives under the single app-data root (issue #237) so
 	// it is covered by the one grantable, Low-writable directory on Windows.
@@ -137,40 +142,39 @@ func (d *Dashboard) handlerGameAssetMap(w http.ResponseWriter, r *http.Request) 
 	if cacheKey == "" {
 		cacheKey = "unknown-map"
 	}
-	cachePath := filepath.Join(cacheRoot, "maps", cacheKey+".png")
+	cachePath := filepath.Join(cacheRoot, "maps", "v"+gameAssetMapRenderVersion, cacheKey+".jpg")
 
 	if data, readErr := iofacade.ReadFile(cachePath); readErr == nil && len(data) > 0 {
-		w.Header().Set("Content-Type", "image/png")
-		// Do not let browsers disk-cache: replay_id URL is stable while map bytes can change (reingest, file swap).
-		w.Header().Set("Cache-Control", "no-store, no-cache, max-age=0, must-revalidate")
-		w.Header().Set("Pragma", "no-cache")
-		w.Header().Set("Expires", "0")
-		_, _ = w.Write(data)
+		writeGameAssetMapResponse(w, data)
 		return
 	}
 
-	v, err, _ := gameAssetFlight.Do("map:"+cacheKey, func() (any, error) {
+	v, err, _ := gameAssetFlight.Do("map:"+gameAssetMapRenderVersion+":"+cacheKey, func() (any, error) {
 		if data, readErr := iofacade.ReadFile(cachePath); readErr == nil && len(data) > 0 {
 			return data, nil
 		}
-		pngBytes, genErr := scmapanalyzer.MapImagePNGFromReplayFile(replayPath)
+		jpegBytes, genErr := scmapanalyzer.MapImageJPEGFromReplayFile(replayPath, scmapanalyzer.MapImageOptions{})
 		if genErr != nil {
 			return nil, genErr
 		}
-		if writeErr := d.writeGameAssetCacheFile(cachePath, pngBytes); writeErr != nil {
+		if writeErr := d.writeGameAssetCacheFile(cachePath, jpegBytes); writeErr != nil {
 			return nil, writeErr
 		}
-		return pngBytes, nil
+		return jpegBytes, nil
 	})
 	if err != nil {
 		log.Printf("game asset map replay_id=%d: %v", replayID, err)
 		http.Error(w, "map render failed", http.StatusInternalServerError)
 		return
 	}
-	pngBytes := v.([]byte)
-	w.Header().Set("Content-Type", "image/png")
+	writeGameAssetMapResponse(w, v.([]byte))
+}
+
+func writeGameAssetMapResponse(w http.ResponseWriter, data []byte) {
+	w.Header().Set("Content-Type", "image/jpeg")
+	// Do not let browsers disk-cache: replay_id URL is stable while map bytes can change (reingest, file swap).
 	w.Header().Set("Cache-Control", "no-store, no-cache, max-age=0, must-revalidate")
 	w.Header().Set("Pragma", "no-cache")
 	w.Header().Set("Expires", "0")
-	_, _ = w.Write(pngBytes)
+	_, _ = w.Write(data)
 }

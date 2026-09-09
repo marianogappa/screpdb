@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/marianogappa/scmapanalyzer/lib/scmapanalyzer"
 	"github.com/marianogappa/screpdb/internal/hotkeystream"
 )
 
@@ -56,8 +57,26 @@ func TestHotkeyBuildingsAtCutoff(t *testing.T) {
 	}
 }
 
+func TestHotkeyMapTileRect(t *testing.T) {
+	buildings := []hotkeyMapBuilding{
+		{group: 5, building: "Hatchery", tileX: 10, tileY: 10},
+		{group: 2, building: "Comsat Station", tileX: 30, tileY: 12},
+	}
+	rect := hotkeyMapTileRect(buildings, 64, 64)
+	want := scmapanalyzer.TileRect{X: 4, Y: 4, W: 34, H: 16}
+	if rect != want {
+		t.Fatalf("rect = %+v, want %+v", rect, want)
+	}
+	// Buildings near the edge clamp to the map bounds.
+	edge := []hotkeyMapBuilding{{group: 1, building: "Hatchery", tileX: 1, tileY: 62}}
+	rect = hotkeyMapTileRect(edge, 64, 64)
+	want = scmapanalyzer.TileRect{X: 0, Y: 56, W: 11, H: 8}
+	if rect != want {
+		t.Fatalf("edge rect = %+v, want %+v", rect, want)
+	}
+}
+
 func TestRenderHotkeyMapComposite(t *testing.T) {
-	terrain := testTerrainPNG(t, 64, 64)
 	buildings := []hotkeyMapBuilding{
 		{group: 5, building: "Hatchery", tileX: 10, tileY: 10},
 		{group: 2, building: "Comsat Station", tileX: 30, tileY: 12},
@@ -65,7 +84,9 @@ func TestRenderHotkeyMapComposite(t *testing.T) {
 		{group: 8, building: "Hatchery", tileX: 10, tileY: 10},
 		{group: 0, building: "Not A Real Building", tileX: 40, tileY: 40},
 	}
-	out, err := renderHotkeyMapComposite(terrain, buildings)
+	rect := hotkeyMapTileRect(buildings, 64, 64)
+	terrain := testTerrainPNG(t, rect.W, rect.H)
+	out, err := renderHotkeyMapComposite(terrain, rect, buildings)
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}
@@ -74,18 +95,18 @@ func TestRenderHotkeyMapComposite(t *testing.T) {
 		t.Fatalf("decode composite: %v", err)
 	}
 	b := img.Bounds()
-	if b.Dx() <= 0 || b.Dx() > 64*32 || b.Dy() <= 0 || b.Dy() > 64*32 {
-		t.Fatalf("unexpected crop bounds: %v", b)
+	if b.Dx() != rect.W*32 || b.Dy() != rect.H*32 {
+		t.Fatalf("composite bounds %v, want %dx%d", b, rect.W*32, rect.H*32)
 	}
-	// The badge for groups 5+8 paints the group-5 color at tile (10,10)'s
-	// corner; the crop starts 6 tiles before the min tile (10-6=4 tiles).
-	badgeCenter := img.At((10-4)*32, (10-4)*32)
-	r, g, bl, _ := badgeCenter.RGBA()
+	// The footprint outline for tile (10,10) paints over terrain at the
+	// building's rect-relative corner.
+	corner := img.At((10-rect.X)*32, (10-rect.Y)*32)
+	r, g, bl, _ := corner.RGBA()
 	if r == 40<<8 && g == 44<<8 && bl == 48<<8 {
-		t.Fatal("badge not painted over terrain")
+		t.Fatal("overlay not painted over terrain")
 	}
 
-	if _, err := renderHotkeyMapComposite([]byte("not a png"), buildings); err == nil {
+	if _, err := renderHotkeyMapComposite([]byte("not a png"), rect, buildings); err == nil {
 		t.Fatal("expected error for invalid terrain")
 	}
 }

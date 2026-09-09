@@ -86,9 +86,9 @@ func TestReadOnlyEndpointSweep(t *testing.T) {
 	}
 }
 
-// TestGameAssetMapReturnsPNG renders the plain terrain map for a real replay
-// through the shared game-assets cache path.
-func TestGameAssetMapReturnsPNG(t *testing.T) {
+// TestGameAssetMapReturnsJPEG renders the downscaled terrain map for a real
+// replay through the versioned game-assets cache path.
+func TestGameAssetMapReturnsJPEG(t *testing.T) {
 	d := newTestDashboard(t)
 	r := d.setupRouter()
 	games := listTestGames(t, r)
@@ -100,7 +100,7 @@ func TestGameAssetMapReturnsPNG(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("map asset: %d %s", rec.Code, rec.Body.String())
 	}
-	if body := rec.Body.Bytes(); len(body) < 24 || string(body[1:4]) != "PNG" {
-		t.Fatalf("expected PNG bytes, got prefix %q", rec.Body.Bytes()[:8])
+	if body := rec.Body.Bytes(); len(body) < 24 || body[0] != 0xFF || body[1] != 0xD8 {
+		t.Fatalf("expected JPEG bytes, got prefix %q", rec.Body.Bytes()[:8])
 	}
 }
