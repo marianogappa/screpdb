@@ -160,7 +160,7 @@ function GamingSessionPanel({ session, loading, error, renderName, onPlayerClick
   if (error) {
     return <div className="workflow-panel"><div className="error-message">{error}</div></div>;
   }
-  if (!session?.active) {
+  if (!session?.has_session) {
     return (
       <div className="workflow-panel">
         <p className="workflow-subtle-note">

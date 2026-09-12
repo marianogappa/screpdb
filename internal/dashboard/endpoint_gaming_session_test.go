@@ -1,9 +1,13 @@
 package dashboard
 
 import (
+	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/marianogappa/screpdb/internal/library"
+	"github.com/marianogappa/screpdb/internal/library/librarytest"
 	"github.com/marianogappa/screpdb/internal/library/persist"
 )
 
@@ -19,21 +23,28 @@ func TestGamingSessionWindow(t *testing.T) {
 	now := time.Date(2026, 8, 30, 20, 0, 0, 0, time.UTC)
 
 	t.Run("no games is no session", func(t *testing.T) {
-		if _, _, _, ok := gamingSessionWindow(nil, now); ok {
+		if _, _, _, ok := gamingSessionWindow(nil); ok {
 			t.Fatal("expected no session")
 		}
 	})
 
-	t.Run("a stale last game ends the session", func(t *testing.T) {
+	t.Run("a stale last game is still a session, just not a live one", func(t *testing.T) {
 		rows := rowsAt(now, 4*time.Hour, 5*time.Hour)
-		if _, _, _, ok := gamingSessionWindow(rows, now); ok {
-			t.Fatal("a game older than the recency window must not open a session")
+		_, end, count, ok := gamingSessionWindow(rows)
+		if !ok {
+			t.Fatal("a finished sitting is still the last session")
+		}
+		if count != 2 {
+			t.Fatalf("count = %d, want 2", count)
+		}
+		if gamingSessionIsLive(end, now) {
+			t.Error("a game older than the recency window must not read as live")
 		}
 	})
 
 	t.Run("games within the gap are one sitting", func(t *testing.T) {
 		rows := rowsAt(now, 10*time.Minute, 40*time.Minute, 80*time.Minute)
-		start, end, count, ok := gamingSessionWindow(rows, now)
+		start, end, count, ok := gamingSessionWindow(rows)
 		if !ok {
 			t.Fatal("expected a session")
 		}
@@ -46,13 +57,16 @@ func TestGamingSessionWindow(t *testing.T) {
 		if !start.Equal(now.Add(-80 * time.Minute)) {
 			t.Errorf("start = %v", start)
 		}
+		if !gamingSessionIsLive(end, now) {
+			t.Error("a sitting that ended ten minutes ago is live")
+		}
 	})
 
 	t.Run("a gap longer than the threshold cuts the session", func(t *testing.T) {
 		// Two games close together, then a 5h hole, then an older cluster that
 		// belongs to a previous sitting and must be excluded.
 		rows := rowsAt(now, 10*time.Minute, 40*time.Minute, 6*time.Hour, 7*time.Hour)
-		_, _, count, ok := gamingSessionWindow(rows, now)
+		_, _, count, ok := gamingSessionWindow(rows)
 		if !ok {
 			t.Fatal("expected a session")
 		}
@@ -65,7 +79,7 @@ func TestGamingSessionWindow(t *testing.T) {
 		// Each step is under the gap, so a long session chains together even
 		// though the earliest game is far older than the recency window.
 		rows := rowsAt(now, 0, 2*time.Hour, 4*time.Hour, 6*time.Hour, 8*time.Hour)
-		_, _, count, ok := gamingSessionWindow(rows, now)
+		_, _, count, ok := gamingSessionWindow(rows)
 		if !ok {
 			t.Fatal("expected a session")
 		}
@@ -73,6 +87,34 @@ func TestGamingSessionWindow(t *testing.T) {
 			t.Fatalf("count = %d, want 5", count)
 		}
 	})
+}
+
+func TestGamingSessionLiveness(t *testing.T) {
+	now := time.Date(2026, 8, 30, 20, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		name         string
+		age          time.Duration
+		live         bool
+		recentEnough bool
+	}{
+		{"just finished", 0, true, true},
+		{"inside the recency window", gamingSessionRecency - time.Minute, true, true},
+		{"exactly at the recency boundary", gamingSessionRecency, true, true},
+		{"just past the recency boundary", gamingSessionRecency + time.Minute, false, true},
+		{"weeks ago", 22 * 24 * time.Hour, false, true},
+		{"exactly at the max age", gamingSessionMaxAge, false, true},
+		{"past the max age", gamingSessionMaxAge + time.Minute, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			end := now.Add(-tc.age)
+			if got := gamingSessionIsLive(end, now); got != tc.live {
+				t.Errorf("gamingSessionIsLive = %v, want %v", got, tc.live)
+			}
+			if got := gamingSessionIsRecentEnough(end, now); got != tc.recentEnough {
+				t.Errorf("gamingSessionIsRecentEnough = %v, want %v", got, tc.recentEnough)
+			}
+		})
+	}
 }
 
 func TestAutosaveOnly(t *testing.T) {
@@ -320,5 +362,104 @@ func TestYouLookupKeys(t *testing.T) {
 	}
 	if got := youLookupKeys("  "); got != nil {
 		t.Errorf("got %v, want nil", got)
+	}
+}
+
+// sessionReplay builds one autosaved 1v1 between the user and an opponent,
+// played at playedAt.
+//
+// The store writes the replay date with time.Time.String(), which appends a
+// monotonic reading ("m=+0.000") that parseReplayDate then rejects, so any
+// time derived from time.Now() has to be stripped with Round(0).
+func sessionReplay(id int64, playedAt time.Time, autosave bool) *library.Replay {
+	path := fmt.Sprintf("/sc/Maps/Replays/Autosave/LastReplay-%d.rep", id)
+	if !autosave {
+		path = fmt.Sprintf("/Users/me/Downloads/some_pro_game-%d.rep", id)
+	}
+	r := librarytest.Replay(
+		librarytest.WithID(id),
+		librarytest.WithChecksum(fmt.Sprintf("session-%d", id)),
+		librarytest.WithDate(playedAt.Round(0)),
+		librarytest.WithPath(path, playedAt.Round(0)),
+		librarytest.WithPlayer("Chobo86", librarytest.Team(1), librarytest.Winner(), librarytest.APM(120, 90)),
+		librarytest.WithPlayer("Foe", librarytest.Team(2), librarytest.APM(200, 150)),
+	)
+	if autosave {
+		r.Flags |= library.FlagIsAutosave
+	}
+	return r
+}
+
+func newSessionDashboard(t *testing.T, replays ...*library.Replay) *Dashboard {
+	t.Helper()
+	d := newTestDashboardWithReplays(t, replays...)
+	d.youKeys.Store(youKeySetFromBattleTags([]string{"Chobo86#1234"}))
+	return d
+}
+
+func TestGamingSessionNeedsYou(t *testing.T) {
+	// Without CSettings there is no "you", and the whole feature stays dark
+	// rather than guessing which of the replay's players the user is.
+	d := newTestDashboardWithReplays(t, sessionReplay(1, time.Now().Add(-time.Hour), true))
+	resp, err := d.gamingSession(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.HasSession || resp.Active {
+		t.Fatalf("no you must mean no session: %+v", resp)
+	}
+}
+
+func TestGamingSessionIgnoresNonAutosavedReplays(t *testing.T) {
+	// A replay the user downloaded or was sent says nothing about them sitting
+	// down to play, so it must not invent a session.
+	d := newSessionDashboard(t, sessionReplay(1, time.Now().Add(-time.Hour), false))
+	resp, err := d.gamingSession(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.HasSession || resp.Active {
+		t.Fatalf("a downloaded replay must not open a session: %+v", resp)
+	}
+}
+
+func TestGamingSessionFinishedVersusLive(t *testing.T) {
+	now := time.Now()
+	for _, tc := range []struct {
+		name       string
+		age        time.Duration
+		hasSession bool
+		active     bool
+	}{
+		{"still playing", 20 * time.Minute, true, true},
+		{"finished this morning", 8 * time.Hour, true, false},
+		{"finished weeks ago", 22 * 24 * time.Hour, true, false},
+		{"older than the max age", gamingSessionMaxAge + 24*time.Hour, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			end := now.Add(-tc.age)
+			d := newSessionDashboard(t,
+				sessionReplay(1, end, true),
+				sessionReplay(2, end.Add(-30*time.Minute), true),
+			)
+			resp, err := d.gamingSession(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resp.HasSession != tc.hasSession || resp.Active != tc.active {
+				t.Fatalf("has_session/active = %v/%v, want %v/%v", resp.HasSession, resp.Active, tc.hasSession, tc.active)
+			}
+			if !tc.hasSession {
+				return
+			}
+			// A finished session still carries the full payload: the view it
+			// feeds is the same one a live session renders.
+			if len(resp.Games) != 2 || resp.Stats.Games != 2 {
+				t.Fatalf("games = %d, stats.games = %d, want both 2", len(resp.Games), resp.Stats.Games)
+			}
+			if len(resp.Opponents) != 1 || resp.Opponents[0].PlayerName != "Foe" {
+				t.Fatalf("opponents = %+v, want Foe", resp.Opponents)
+			}
+		})
 	}
 }

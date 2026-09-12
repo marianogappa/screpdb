@@ -10,20 +10,26 @@ import (
 	"time"
 )
 
-// A gaming session is the run of games you have just played. Two constants
+// A gaming session is a run of games played in one sitting. Three constants
 // define it:
 //
 //	gamingSessionGap     the quiet period that ends a session. Games closer
 //	                     together than this belong to the same sitting.
 //	gamingSessionRecency how recently the last game must have been for the
-//	                     session to still count as current, which is what makes
-//	                     the nav entry appear.
+//	                     session to still count as live, which is what decides
+//	                     whether the nav entry reads "Gaming Session" or
+//	                     "Last Session".
+//	gamingSessionMaxAge  how far back a finished session may be and still be
+//	                     worth surfacing at all.
 //
-// Both are the same span deliberately: a session is "games no more than this
-// far apart, ending no longer ago than this".
+// The first two are the same span deliberately: a live session is "games no
+// more than this far apart, ending no longer ago than this". The third is a
+// separate judgement: a sitting from last year is history, not something the
+// user is still coming back to.
 const (
 	gamingSessionGap     = 3 * time.Hour
 	gamingSessionRecency = 3 * time.Hour
+	gamingSessionMaxAge  = 90 * 24 * time.Hour
 )
 
 // gamingSessionPlayer is someone met during the session. Opponents and allies
@@ -60,12 +66,13 @@ type gamingSessionStats struct {
 }
 
 type gamingSessionResponse struct {
-	Active    bool                   `json:"active"`
-	PlayerKey string                 `json:"player_key,omitempty"`
-	Stats     gamingSessionStats     `json:"stats"`
-	Opponents []gamingSessionPlayer  `json:"opponents"`
-	Allies    []gamingSessionPlayer  `json:"allies"`
-	Games     []workflowGameListItem `json:"games"`
+	HasSession bool                   `json:"has_session"`
+	Active     bool                   `json:"active"`
+	PlayerKey  string                 `json:"player_key,omitempty"`
+	Stats      gamingSessionStats     `json:"stats"`
+	Opponents  []gamingSessionPlayer  `json:"opponents"`
+	Allies     []gamingSessionPlayer  `json:"allies"`
+	Games      []workflowGameListItem `json:"games"`
 }
 
 // sessionGameRow is one of the user's games, as the session builder needs it.
@@ -77,18 +84,15 @@ type sessionGameRow struct {
 }
 
 // gamingSessionWindow walks the user's games newest-first and returns the
-// bounds of the current session: every game reachable from the most recent one
-// without a gap longer than gamingSessionGap. It returns ok=false when the most
-// recent game is older than gamingSessionRecency, which is how the whole
-// feature stays invisible outside a play session.
-func gamingSessionWindow(rows []sessionGameRow, now time.Time) (start, end time.Time, count int, ok bool) {
+// bounds of the most recent session: every game reachable from the newest one
+// without a gap longer than gamingSessionGap. It says nothing about how long
+// ago that was; gamingSessionIsLive and gamingSessionIsRecentEnough answer
+// that, so a finished sitting can still be shown as the last session.
+func gamingSessionWindow(rows []sessionGameRow) (start, end time.Time, count int, ok bool) {
 	if len(rows) == 0 {
 		return time.Time{}, time.Time{}, 0, false
 	}
 	latest := rows[0].PlayedAt
-	if now.Sub(latest) > gamingSessionRecency {
-		return time.Time{}, time.Time{}, 0, false
-	}
 	earliest := latest
 	count = 1
 	for i := 1; i < len(rows); i++ {
@@ -99,6 +103,19 @@ func gamingSessionWindow(rows []sessionGameRow, now time.Time) (start, end time.
 		count++
 	}
 	return earliest, latest, count, true
+}
+
+// gamingSessionIsLive reports whether the session ending at end is still the
+// one the user is sitting in, rather than one they have walked away from.
+func gamingSessionIsLive(end, now time.Time) bool {
+	return now.Sub(end) <= gamingSessionRecency
+}
+
+// gamingSessionIsRecentEnough bounds how stale a finished session may be before
+// it stops being offered. Without it a user who played once and stopped would
+// keep a "Last Session" entry pointing at a sitting from years ago.
+func gamingSessionIsRecentEnough(end, now time.Time) bool {
+	return now.Sub(end) <= gamingSessionMaxAge
 }
 
 // autosaveOnly reports whether a replay came from StarCraft's own Autosave
@@ -143,8 +160,9 @@ func (d *Dashboard) gamingSession(ctx context.Context) (*gamingSessionResponse, 
 	}
 	sort.Slice(candidates, func(i, j int) bool { return candidates[i].PlayedAt.After(candidates[j].PlayedAt) })
 
-	_, _, count, ok := gamingSessionWindow(candidates, time.Now())
-	if !ok || count == 0 {
+	now := time.Now()
+	_, end, count, ok := gamingSessionWindow(candidates)
+	if !ok || count == 0 || !gamingSessionIsRecentEnough(end, now) {
 		return empty, nil
 	}
 	sessionRows := candidates[:count]
@@ -162,7 +180,8 @@ func (d *Dashboard) gamingSession(ctx context.Context) (*gamingSessionResponse, 
 		return nil, err
 	}
 	resp := empty
-	resp.Active = true
+	resp.HasSession = true
+	resp.Active = gamingSessionIsLive(end, now)
 	resp.PlayerKey = sessionRows[0].PlayerKey
 	resp.Games = games
 	resp.Stats = summarizeGamingSession(sessionRows, games, apmByGamePlayer, youKeys)
