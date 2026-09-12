@@ -703,11 +703,67 @@ function useCountryFlagBackfill(missingKeys, enabled) {
   return overrides;
 }
 
-const FingerprintBadge = ({ match, compact }) => {
+const IDENTITY_ICONS = {
+  'fingerprint-confirmed': (
+    <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" strokeWidth="2"/><line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M8 12a2 2 0 0 1 4 0" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M7 11a3 3 0 0 1 6 0" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M8.5 9a1.5 1.5 0 0 1 3 0" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><circle cx="18" cy="6" r="4" fill="currentColor" opacity="0.9"/><polyline points="16,6 17.5,7.5 20,4.5" fill="none" stroke="var(--s-bg, #1a1a20)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+  ),
+  'fingerprint-high': (
+    <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" strokeWidth="2"/><line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M8 12a2 2 0 0 1 4 0" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M7 11a3 3 0 0 1 6 0" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M8.5 9a1.5 1.5 0 0 1 3 0" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M15.5 5.5c.5-1 1.5-1 2 0s1.5 1 2 0" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+  ),
+  'fingerprint-lead': (
+    <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" strokeWidth="2"/><line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M8 12a2 2 0 0 1 4 0" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M7 11a3 3 0 0 1 6 0" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M8.5 9a1.5 1.5 0 0 1 3 0" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><text x="18" y="8.5" fontSize="9" fontWeight="bold" textAnchor="middle" fill="currentColor">?</text></svg>
+  ),
+  'account-confirmed': (
+    <svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="5" width="16" height="13" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8"/><rect x="4.5" y="8" width="4" height="4.5" rx="0.5" fill="none" stroke="currentColor" strokeWidth="1"/><line x1="10.5" y1="9" x2="15.5" y2="9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><line x1="10.5" y1="11.5" x2="14" y2="11.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><line x1="4.5" y1="15" x2="11" y2="15" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><circle cx="18" cy="6" r="4" fill="currentColor" opacity="0.9"/><polyline points="16,6 17.5,7.5 20,4.5" fill="none" stroke="var(--s-bg, #1a1a20)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+  ),
+  'account-high': (
+    <svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="5" width="16" height="13" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8"/><rect x="4.5" y="8" width="4" height="4.5" rx="0.5" fill="none" stroke="currentColor" strokeWidth="1"/><line x1="10.5" y1="9" x2="15.5" y2="9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><line x1="10.5" y1="11.5" x2="14" y2="11.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><line x1="4.5" y1="15" x2="11" y2="15" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M15.5 5.5c.5-1 1.5-1 2 0s1.5 1 2 0" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+  ),
+};
+
+const badgeTierLabel = (t, badge) => {
+  if (!badge) return '';
+  const key = `identity.${badge.kind}.${badge.tier}`;
+  return t(key, { name: badge.label });
+};
+
+const IdentityBadge = ({ badge, compact }) => {
   const t = useT();
+  if (!badge) return null;
+  const iconKey = `${badge.kind}-${badge.tier}`;
+  const icon = IDENTITY_ICONS[iconKey];
+  if (!icon) return null;
+  const tierClass = `identity-badge--${badge.tier}`;
+  const tooltip = badgeTierLabel(t, badge);
+  const nameEl = badge.liquipedia
+    ? <a href={badge.liquipedia} target="_blank" rel="noopener noreferrer">{badge.label}</a>
+    : badge.label;
+  if (compact) {
+    return (
+      <span className={`identity-badge identity-badge--compact ${tierClass}`}>
+        <span className="identity-badge-icon">{icon}</span>
+        <span className="identity-badge-tooltip">{tooltip}</span>
+      </span>
+    );
+  }
+  return (
+    <span className={`identity-badge ${tierClass}`}>
+      <span className="identity-badge-icon">{icon}</span>
+      <span className="identity-badge-tooltip">{tooltip}</span>
+      <span className="identity-badge-label">{nameEl}</span>
+    </span>
+  );
+};
+
+const FingerprintBadge = ({ match, compact, badge }) => {
+  if (badge) return <IdentityBadge badge={badge} compact={compact} />;
   if (!match) return null;
-  const label = match.confidence === 'high' ? t('fingerprint.likely') : t('fingerprint.possibly');
-  const tilde = match.confidence === 'moderate' ? '~' : '';
+  const t = useT();
+  const tierLabel = match.tier === 'confirmed' ? t('identity.fingerprint.confirmed', { name: match.label })
+    : match.tier === 'high' ? t('identity.fingerprint.high', { name: match.label })
+    : match.tier === 'lead' ? t('identity.fingerprint.lead', { name: match.label })
+    : match.confidence === 'high' ? t('fingerprint.likely')
+    : t('fingerprint.possibly');
   const nameEl = match.liquipedia
     ? <a href={match.liquipedia} target="_blank" rel="noopener noreferrer">{match.label}</a>
     : match.label;
@@ -715,9 +771,9 @@ const FingerprintBadge = ({ match, compact }) => {
     return (
       <span className="workflow-fingerprint-icon-wrap">
         <a href="https://github.com/marianogappa/scfingerprint" target="_blank" rel="noopener noreferrer" className="workflow-fingerprint-icon-link">
-          {tilde}<span className="workflow-fingerprint-emoji">🔎</span>
+          <span className="workflow-fingerprint-emoji">🔎</span>
         </a>
-        <span className="workflow-fingerprint-tooltip">{t('fingerprint.compactTooltip', { confidence: label, name: match.label })}</span>
+        <span className="workflow-fingerprint-tooltip">{t('fingerprint.compactTooltip', { confidence: tierLabel, name: match.label })}</span>
       </span>
     );
   }
@@ -725,11 +781,11 @@ const FingerprintBadge = ({ match, compact }) => {
     <span className="workflow-fingerprint-match-row">
       <span className="workflow-fingerprint-icon-wrap">
         <a href="https://github.com/marianogappa/scfingerprint" target="_blank" rel="noopener noreferrer" className="workflow-fingerprint-icon-link">
-          {tilde}<span className="workflow-fingerprint-emoji">🔎</span>
+          <span className="workflow-fingerprint-emoji">🔎</span>
         </a>
         <span className="workflow-fingerprint-tooltip">{t('fingerprint.tooltip')}</span>
       </span>
-      <span className="workflow-fingerprint-label">{fillTemplate(t('fingerprint.label'), { confidence: label, name: nameEl })}</span>
+      <span className="workflow-fingerprint-label">{fillTemplate(t('fingerprint.label'), { confidence: tierLabel, name: nameEl })}</span>
     </span>
   );
 };
@@ -3657,7 +3713,7 @@ function App() {
                           {renderWorkerIcon(player.race)}
                           {showFlags ? <CountryFlag code={player.country_code} playerKey={player.player_key} /> : null}
                           {renderName(player)}
-                          <FingerprintBadge match={player.fingerprint_match} compact />
+                          {player.primary_badge ? <IdentityBadge badge={player.primary_badge} compact /> : <FingerprintBadge match={player.fingerprint_match} compact />}
                         </span>
                       ))}
                     </span>
@@ -6024,7 +6080,12 @@ function App() {
                                 >
                                   <PlayerDisplayName name={player.name} />
                                 </button>
-                                {player.fingerprint_match ? (
+                                {player.primary_badge ? (
+                                  <>
+                                    <IdentityBadge badge={player.primary_badge} />
+                                    {player.secondary_badge ? <IdentityBadge badge={player.secondary_badge} /> : null}
+                                  </>
+                                ) : player.fingerprint_match ? (
                                   <FingerprintBadge match={player.fingerprint_match} />
                                 ) : null}
                               </span>
@@ -7047,7 +7108,12 @@ function App() {
                         <PlayerDisplayName name={mainPlayer?.player_name || (isFeaturedPlayer ? '' : selectedPlayerKey)} />
                       </span>
                       {isFeaturedPlayer ? <FeaturedBadge /> : null}
-                      {!isFeaturedPlayer && mainPlayer?.fingerprint_match ? (
+                      {!isFeaturedPlayer && mainPlayer?.primary_badge ? (
+                        <span className="workflow-fingerprint-match">
+                          <IdentityBadge badge={mainPlayer.primary_badge} />
+                          {mainPlayer.secondary_badge ? <IdentityBadge badge={mainPlayer.secondary_badge} /> : null}
+                        </span>
+                      ) : !isFeaturedPlayer && mainPlayer?.fingerprint_match ? (
                         <span className="workflow-fingerprint-match"><FingerprintBadge match={mainPlayer.fingerprint_match} /></span>
                       ) : null}
                     </h2>

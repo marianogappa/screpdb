@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+  <rect x="2" y="5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+  <rect x="4.5" y="8" width="4" height="4.5" rx="0.5" fill="none" stroke="currentColor" stroke-width="1"/>
+  <line x1="10.5" y1="9" x2="15.5" y2="9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="10.5" y1="11.5" x2="14" y2="11.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="4.5" y1="15" x2="11" y2="15" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+  <!-- question mark -->
+  <text x="18" y="8.5" font-size="9" font-weight="bold" text-anchor="middle" fill="currentColor">?</text>
+</svg>
