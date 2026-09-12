@@ -42,8 +42,16 @@ type ReplayChatRow struct {
 // PlayerFingerprintVectorRow is one game's hotkey-habit feature vector for a
 // player.
 type PlayerFingerprintVectorRow struct {
-	Vector []byte
+	Vector []float64
 	Race   string
+	Name   string
+}
+
+// BnetFoundProfile is one Battle.net profile entry where the toon was found on
+// a specific gateway. Used by identity badge resolution.
+type BnetFoundProfile struct {
+	Gateway  int64
+	AuroraID int64
 }
 
 // Reader is every corpus read the dashboard performs. It exists so the
@@ -135,6 +143,9 @@ type Reader interface {
 	ListBnetAuroraIDsByPlayerKeys(ctx context.Context, playerKeys []string) ([]int64, error)
 	UpsertBnetGameResults(ctx context.Context, rows []BnetGameResultRow) error
 	ListBnetGameTimes(ctx context.Context, auroraID int64, since time.Time) ([]time.Time, error)
+
+	// Bnet: identity badge resolution.
+	BnetFoundProfilesForToon(ctx context.Context, toon string) ([]BnetFoundProfile, error)
 
 	// HasLocalPlayers returns the subset of names that have at least one local game.
 	HasLocalPlayers(ctx context.Context, names []string) (map[string]struct{}, error)

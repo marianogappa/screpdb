@@ -127,13 +127,14 @@ type workflowGameListItem struct {
 }
 
 type workflowGameListPlayer struct {
-	PlayerID    int64  `json:"player_id"`
-	PlayerKey   string `json:"player_key"`
-	Name        string `json:"name"`
-	Race        string `json:"race"`
-	Team        int64  `json:"team"`
-	IsWinner    bool   `json:"is_winner"`
-	CountryCode string `json:"country_code,omitempty"`
+	PlayerID     int64          `json:"player_id"`
+	PlayerKey    string         `json:"player_key"`
+	Name         string         `json:"name"`
+	Race         string         `json:"race"`
+	Team         int64          `json:"team"`
+	IsWinner     bool           `json:"is_winner"`
+	CountryCode  string         `json:"country_code,omitempty"`
+	PrimaryBadge *IdentityBadge `json:"primary_badge,omitempty"`
 }
 
 type workflowRecentGamePlayer struct {
@@ -334,6 +335,8 @@ type workflowGamePlayer struct {
 	LeaveReason      string                    `json:"leave_reason,omitempty"`
 	FingerprintMatch *workflowFingerprintMatch `json:"fingerprint_match,omitempty"`
 	CountryCode      string                    `json:"country_code,omitempty"`
+	PrimaryBadge     *IdentityBadge            `json:"primary_badge,omitempty"`
+	SecondaryBadge   *IdentityBadge            `json:"secondary_badge,omitempty"`
 }
 
 // workflowPatternValue is one detected_patterns[] entry on the game-summary
@@ -713,13 +716,33 @@ type workflowFingerprintCoverage struct {
 }
 
 type workflowFingerprintMatch struct {
-	Label          string  `json:"label"`
-	Liquipedia     string  `json:"liquipedia,omitempty"`
-	Z              float64 `json:"z"`
-	EvidenceN      int     `json:"evidence_n"`
-	SearchFPR      float64 `json:"search_fpr"`
-	Confidence     string  `json:"confidence"`
-	ModelSynthetic bool    `json:"model_is_synthetic"`
+	Label             string                   `json:"label"`
+	Liquipedia        string                   `json:"liquipedia,omitempty"`
+	Z                 float64                  `json:"z"`
+	EvidenceN         int                      `json:"evidence_n"`
+	SearchFPR         float64                  `json:"search_fpr"`
+	Tier              string                   `json:"tier"`
+	IdentityBar       float64                  `json:"identity_bar,omitempty"`
+	ClearsIdentityBar bool                     `json:"clears_identity_bar"`
+	Registry          *workflowRegistryOpinion `json:"registry,omitempty"`
+	Confidence        string                   `json:"confidence"`
+	ModelSynthetic    bool                     `json:"model_is_synthetic"`
+}
+
+type workflowRegistryOpinion struct {
+	Name     string `json:"name"`
+	Toon     string `json:"toon"`
+	AuroraID int64  `json:"aurora_id"`
+	Agrees   bool   `json:"agrees"`
+}
+
+type IdentityBadge struct {
+	Kind         string   `json:"kind"`
+	Tier         string   `json:"tier"`
+	Label        string   `json:"label"`
+	Liquipedia   string   `json:"liquipedia,omitempty"`
+	EvidenceKey  string   `json:"evidence_key"`
+	EvidenceArgs []string `json:"evidence_args,omitempty"`
 }
 
 type workflowPlayerOverview struct {
@@ -738,6 +761,8 @@ type workflowPlayerOverview struct {
 	FingerprintMetrics  []workflowComparativeMetric   `json:"fingerprint_metrics"`
 	FingerprintCoverage workflowFingerprintCoverage   `json:"fingerprint_coverage"`
 	FingerprintMatch    *workflowFingerprintMatch     `json:"fingerprint_match,omitempty"`
+	PrimaryBadge        *IdentityBadge                `json:"primary_badge,omitempty"`
+	SecondaryBadge      *IdentityBadge                `json:"secondary_badge,omitempty"`
 	CountryCode         string                        `json:"country_code,omitempty"`
 	BnetProfile         *bnetProfileDetail            `json:"bnet_profile,omitempty"`
 	// The summary tab shows its Battle.net section only when this is non-zero.
@@ -860,14 +885,15 @@ type workflowPlayersListSort struct {
 }
 
 type workflowPlayersListItem struct {
-	PlayerKey         string  `json:"player_key"`
-	PlayerName        string  `json:"player_name"`
-	Race              string  `json:"race"`
-	GamesPlayed       int64   `json:"games_played"`
-	AverageAPM        float64 `json:"average_apm"`
-	LastPlayed        string  `json:"last_played"`
-	LastPlayedDaysAgo int64   `json:"last_played_days_ago"`
-	CountryCode       string  `json:"country_code,omitempty"`
+	PlayerKey         string         `json:"player_key"`
+	PlayerName        string         `json:"player_name"`
+	Race              string         `json:"race"`
+	GamesPlayed       int64          `json:"games_played"`
+	AverageAPM        float64        `json:"average_apm"`
+	LastPlayed        string         `json:"last_played"`
+	LastPlayedDaysAgo int64          `json:"last_played_days_ago"`
+	CountryCode       string         `json:"country_code,omitempty"`
+	PrimaryBadge      *IdentityBadge `json:"primary_badge,omitempty"`
 }
 
 type workflowPlayersListFilterOption struct {

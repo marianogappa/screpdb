@@ -87,8 +87,8 @@ func TestEnrichQueueTerminalAndPrune(t *testing.T) {
 		t.Fatalf("pruned too early: %v", paths)
 	}
 	// ...and go away past it. Upsert stamps UpdatedAt with the wall clock, so
-	// leave slack beyond the fixture's fixed base time.
-	if err := q.Prune(now.Add(enrichRetainTerminal + 48*time.Hour)); err != nil {
+	// prune relative to the actual wall clock, not the fixture's base time.
+	if err := q.Prune(time.Now().UTC().Add(enrichRetainTerminal + time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	if paths, _ := q.KnownPaths(); len(paths) != 0 {

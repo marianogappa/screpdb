@@ -104,6 +104,15 @@ func (s *LibStore) UpsertBnetGameResults(_ context.Context, rows []BnetGameResul
 	return s.results.Upsert(converted)
 }
 
+func (s *LibStore) BnetFoundProfilesForToon(_ context.Context, toon string) ([]BnetFoundProfile, error) {
+	profiles := s.bnet.FoundProfilesForToon(toon)
+	out := make([]BnetFoundProfile, 0, len(profiles))
+	for _, p := range profiles {
+		out = append(out, BnetFoundProfile{Gateway: p.Gateway, AuroraID: p.AuroraID})
+	}
+	return out, nil
+}
+
 func (s *LibStore) ListBnetGameTimes(_ context.Context, auroraID int64, since time.Time) ([]time.Time, error) {
 	if s.results == nil {
 		return []time.Time{}, nil

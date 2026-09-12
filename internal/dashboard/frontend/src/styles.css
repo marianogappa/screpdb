@@ -5553,6 +5553,79 @@ button.workflow-nav-update-available:disabled {
   text-decoration-style: solid;
 }
 
+/* ── Identity badges ─────────────────────────────────────────────── */
+.identity-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  opacity: 0.75;
+  cursor: default;
+  margin-left: 8px;
+}
+.identity-badge-icon {
+  display: inline-flex;
+  align-items: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.identity-badge-icon svg {
+  width: 100%;
+  height: 100%;
+}
+h2 .identity-badge {
+  font-size: 0.42em;
+  vertical-align: middle;
+  margin-left: 10px;
+}
+h2 .identity-badge .identity-badge-icon {
+  width: 1.6em;
+  height: 1.6em;
+}
+h2 .identity-badge .identity-badge-label {
+  font-size: 1em;
+  font-weight: 400;
+}
+.identity-badge-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(9, 10, 16, 0.97);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.72rem;
+  line-height: 1.3;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0s;
+  z-index: 20;
+}
+.identity-badge:hover .identity-badge-tooltip { opacity: 1; }
+.identity-badge-label {
+  white-space: nowrap;
+}
+.identity-badge-label a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+.identity-badge-label a:hover {
+  text-decoration-style: solid;
+}
+.identity-badge--compact .identity-badge-label { display: none; }
+.identity-badge--compact { margin-left: 4px; gap: 3px; }
+/* games list: show icon + name */
+.identity-badge--games-list { margin-left: 4px; gap: 4px; font-size: 0.72rem; }
+.identity-badge--games-list .identity-badge-icon { width: 14px; height: 14px; }
+
 .workflow-inline-warning {
   display: inline-flex;
   align-items: center;

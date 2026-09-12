@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/marianogappa/screpdb/internal/fpvec"
 	"github.com/marianogappa/screpdb/internal/library"
 )
 
@@ -443,7 +442,7 @@ func (s *LibStore) ListPlayerFingerprintVectors(_ context.Context, playerKey str
 		if !ref.Replay.FingerprintEligible() {
 			continue
 		}
-		out = append(out, PlayerFingerprintVectorRow{Vector: fpvec.Encode(fp.Vector), Race: fp.Race.String()})
+		out = append(out, PlayerFingerprintVectorRow{Vector: fp.Vector, Race: fp.Race.String(), Name: ref.Player().Name})
 	}
 	return out, nil
 }

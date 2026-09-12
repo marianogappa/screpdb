@@ -258,6 +258,31 @@ func (c *BnetCache) PayloadsByToons(toons []string) ([]BnetProfile, error) {
 	return out, nil
 }
 
+// FoundProfilesForToon returns every cached profile entry where Found is true
+// for a given toon (case-insensitive), across all gateways. Headers only —
+// payloads are not read from disk.
+func (c *BnetCache) FoundProfilesForToon(toon string) []BnetProfile {
+	key := library.PlayerKey(toon)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var out []BnetProfile
+	for k, h := range c.entries {
+		if !h.Found || library.PlayerKey(k.toon) != key {
+			continue
+		}
+		out = append(out, BnetProfile{
+			Toon:        h.Toon,
+			Gateway:     h.Gateway,
+			Found:       h.Found,
+			AuroraID:    h.AuroraID,
+			BattleTag:   h.BattleTag,
+			CountryCode: h.CountryCode,
+			FetchedAt:   h.FetchedAt,
+		})
+	}
+	return out
+}
+
 // PruneOlderThan deletes entries fetched more than d ago and returns how many.
 func (c *BnetCache) PruneOlderThan(d time.Duration) (int, error) {
 	cutoff := time.Now().Add(-d)

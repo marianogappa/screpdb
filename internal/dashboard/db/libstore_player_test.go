@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/marianogappa/screpdb/internal/fpvec"
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/librarytest"
 	"github.com/marianogappa/screpdb/internal/library/load"
@@ -409,12 +408,8 @@ func TestLibStoreFingerprintCoverageAndVectors(t *testing.T) {
 	if rows[0].Race != "Terran" || rows[1].Race != "Zerg" {
 		t.Fatalf("vectors must be replay-date ascending: %+v", rows)
 	}
-	decoded, err := fpvec.Decode(rows[0].Vector)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(decoded, []float64{1, 2}) {
-		t.Fatalf("decoded vector = %v", decoded)
+	if !reflect.DeepEqual(rows[0].Vector, []float64{1, 2}) {
+		t.Fatalf("vector = %v, want [1 2]", rows[0].Vector)
 	}
 	if rows, _ := s.ListPlayerFingerprintVectors(context.Background(), "flash", 99); len(rows) != 0 {
 		t.Fatalf("other feature version = %+v", rows)
@@ -643,8 +638,8 @@ func TestLibStoreRealCorpusReadsAreSelfConsistent(t *testing.T) {
 			t.Fatalf("%q: vectors: %v", key, err)
 		}
 		for _, row := range vectors {
-			if _, err := fpvec.Decode(row.Vector); err != nil {
-				t.Fatalf("%q: vector does not decode: %v", key, err)
+			if len(row.Vector) == 0 {
+				t.Fatalf("%q: empty vector", key)
 			}
 		}
 

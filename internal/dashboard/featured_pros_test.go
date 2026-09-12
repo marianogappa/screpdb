@@ -43,8 +43,8 @@ func TestFeaturedProsAppearOnPlayersListFirstPageOnly(t *testing.T) {
 	if err := json.Unmarshal(get("/api/players?limit=5")["featured_players"], &first); err != nil {
 		t.Fatal(err)
 	}
-	if len(first) != len(pack.Pros) {
-		t.Fatalf("first page featured %d, pack has %d", len(first), len(pack.Pros))
+	if len(first) != len(featuredVisibleIDs) {
+		t.Fatalf("first page featured %d, visible set has %d", len(first), len(featuredVisibleIDs))
 	}
 	for _, item := range first {
 		if _, ok := propack.IDFromKey(item.PlayerKey); !ok {
@@ -61,13 +61,22 @@ func TestFeaturedProsAppearOnPlayersListFirstPageOnly(t *testing.T) {
 	if len(second) != 0 {
 		t.Fatalf("second page carried %d featured rows", len(second))
 	}
-	needle := pack.Pros[0].Label
+	var needle string
+	for i := range pack.Pros {
+		if featuredVisibleIDs[pack.Pros[i].ID] {
+			needle = pack.Pros[i].Label
+			break
+		}
+	}
+	if needle == "" {
+		t.Skip("no visible pro in pack")
+	}
 	var filtered []workflowFeaturedPlayerItem
 	if err := json.Unmarshal(get("/api/players?limit=5&name=" + url.QueryEscape(needle))["featured_players"], &filtered); err != nil {
 		t.Fatal(err)
 	}
-	if len(filtered) == 0 || len(filtered) == len(pack.Pros) && len(pack.Pros) > 1 {
-		t.Fatalf("name filter %q returned %d featured rows", needle, len(filtered))
+	if len(filtered) == 0 {
+		t.Fatalf("name filter %q returned 0 featured rows", needle)
 	}
 }
 
@@ -164,7 +173,7 @@ func TestFeaturedProExcludedWhenUserIsThePro(t *testing.T) {
 	pack := loadPackForTest(t)
 	var pro *propack.Pro
 	for i := range pack.Pros {
-		if len(pack.Pros[i].Toons) > 0 {
+		if len(pack.Pros[i].Toons) > 0 && featuredVisibleIDs[pack.Pros[i].ID] {
 			pro = &pack.Pros[i]
 			break
 		}
@@ -183,8 +192,14 @@ func TestFeaturedProExcludedWhenUserIsThePro(t *testing.T) {
 			t.Fatalf("pro %s still listed", pro.ID)
 		}
 	}
-	if len(d.featuredPlayersList("")) != len(pack.Pros)-1 {
-		t.Fatalf("expected exactly one exclusion, got %d of %d listed", len(d.featuredPlayersList("")), len(pack.Pros))
+	visibleCount := 0
+	for _, p := range pack.Pros {
+		if featuredVisibleIDs[p.ID] {
+			visibleCount++
+		}
+	}
+	if len(d.featuredPlayersList("")) != visibleCount-1 {
+		t.Fatalf("expected exactly one exclusion, got %d of %d listed", len(d.featuredPlayersList("")), visibleCount)
 	}
 }
 

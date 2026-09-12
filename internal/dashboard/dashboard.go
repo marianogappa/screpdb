@@ -67,6 +67,8 @@ type Dashboard struct {
 	featuredExclMu sync.Mutex
 	featuredExcl   map[string]bool
 	featuredExclAt time.Time
+	fpRegistryOnce sync.Once
+	fpRegistry     *scfingerprint.Registry
 }
 
 // SetShutdownFunc registers the callback the /api/custom/quit endpoint invokes to

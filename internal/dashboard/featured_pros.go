@@ -87,8 +87,22 @@ func (d *Dashboard) loadProPack() *propack.Pack {
 	return pack
 }
 
-// featuredPros returns every built-in profile the user is not, most popular
-// first: curated rank, then pros with a portrait, then label.
+// featuredVisibleIDs is the curated set of progamers shown on the players page
+// and the bell-curve overlays. Pros not in this set stay in the embedded pack
+// (their player pages still work when navigated to directly) but are hidden
+// from the listing and the distribution overlays.
+var featuredVisibleIDs = map[string]bool{
+	"action": true, "ample": true, "artosis": true, "barracks": true,
+	"best": true, "bisu": true, "dewalt": true, "effort": true,
+	"ggaemo": true, "hero": true, "jaedong": true, "jyj": true,
+	"larva": true, "leta": true, "light": true, "mind": true,
+	"mong": true, "queen": true, "royal": true, "rush": true,
+	"sharp": true, "shuttle": true, "snow": true, "soma": true,
+	"speed": true, "ssak": true, "stork": true, "xiaoshuai": true,
+}
+
+// featuredPros returns the curated built-in profiles the user is not, most
+// popular first: curated rank, then pros with a portrait, then label.
 func (d *Dashboard) featuredPros() []*propack.Pro {
 	pack := d.loadProPack()
 	if pack == nil {
@@ -98,7 +112,7 @@ func (d *Dashboard) featuredPros() []*propack.Pro {
 	out := make([]*propack.Pro, 0, len(pack.Pros))
 	for i := range pack.Pros {
 		pro := &pack.Pros[i]
-		if excluded[pro.ID] {
+		if excluded[pro.ID] || !featuredVisibleIDs[pro.ID] {
 			continue
 		}
 		out = append(out, pro)
@@ -182,7 +196,7 @@ func (d *Dashboard) excludedProIDs(pack *propack.Pack) map[string]bool {
 		}
 		for _, key := range keys {
 			match, err := d.matchFingerprint(key, scfingerprint.FeatureVersion())
-			if err != nil || match == nil || match.Confidence != fingerprintMatchConfidenceHigh {
+			if err != nil || match == nil || (match.Tier != fingerprintTierConfirmed && match.Tier != fingerprintTierHigh) {
 				continue
 			}
 			if pro := pack.ByLabel(match.Label); pro != nil {
@@ -473,9 +487,20 @@ func apmGames(pro *propack.Pro) int {
 // race-skewed (the top 15 are 8 Terran, 5 Zerg and 2 Protoss), so the cap is
 // taken per race. Everyone left out keeps their own player page, which shows
 // that pro's placement on the same distributions.
+// featuredOverlayIDs is the subset of progamers shown on the bell-curve
+// skill-proxy distributions. Smaller than the players-page list to keep the
+// overlays readable.
+var featuredOverlayIDs = map[string]bool{
+	"barracks": true, "best": true, "bisu": true, "effort": true,
+	"hero": true, "jaedong": true, "jyj": true, "larva": true,
+	"leta": true, "light": true, "mind": true, "queen": true,
+	"royal": true, "rush": true, "sharp": true, "shuttle": true,
+	"snow": true, "soma": true, "speed": true, "ssak": true,
+}
+
 const (
 	featuredOverlayPerRace = 5
-	featuredOverlayLimit   = 15
+	featuredOverlayLimit   = 20
 )
 
 // featuredOverlayPros picks the pros to draw on one skill-proxy distribution:
@@ -488,7 +513,7 @@ func (d *Dashboard) featuredOverlayPros(hasValue func(*propack.Pro) bool) []*pro
 		if len(out) >= featuredOverlayLimit {
 			break
 		}
-		if !hasValue(pro) || perRace[pro.MainRace] >= featuredOverlayPerRace {
+		if !featuredOverlayIDs[pro.ID] || !hasValue(pro) || perRace[pro.MainRace] >= featuredOverlayPerRace {
 			continue
 		}
 		perRace[pro.MainRace]++
