@@ -442,6 +442,7 @@
   "identity.badge.fingerprintEvidence": "Fingerprinting: {name}",
   "identity.badge.accountConfirmedEvidence": "{name} confirmed on {gateway}",
   "identity.badge.accountHighEvidence": "Registry lookup: {name}",
+  "identity.badge.playedAs": "Played as {name}",
   "identity.badge.disagreement": "Fingerprint says {fp}, registry says {acct}",
   "chat.title": "Chat Summary",
   "chat.loading": "Loading chat summary...",

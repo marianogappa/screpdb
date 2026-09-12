@@ -52,6 +52,7 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 			item.LastPlayedDaysAgo = 0
 		}
 		item.CountryCode = countryCodes[item.PlayerKey]
+		item.PrimaryBadge = d.primaryIdentityBadge(item.PlayerKey)
 		items = append(items, item)
 	}
 
@@ -278,6 +279,7 @@ func (d *Dashboard) populateWorkflowGameListPlayers(items []workflowGameListItem
 		player.IsWinner = row.IsWinner
 		player.PlayerKey = normalizePlayerKey(row.Name)
 		player.CountryCode = countryCodes[player.PlayerKey]
+		player.PrimaryBadge = d.primaryIdentityBadge(player.PlayerKey)
 		idx, ok := itemIndexByReplayID[replayID]
 		if !ok {
 			continue

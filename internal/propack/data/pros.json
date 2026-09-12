@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-07T18:04:31Z",
+  "generated_at": "2026-09-12T12:37:03Z",
   "detector_version": 69,
   "source": "public ladder replays labelled by aurora ID (scfingerprint corpus); photos and countries from Liquipedia",
   "pros": [
@@ -20,7 +20,7 @@
           "gateway": 10
         }
       ],
-      "rank": 45,
+      "rank": 48,
       "main_race": "Terran",
       "races": {
         "Terran": 67
@@ -387,6 +387,8 @@
     {
       "id": "action",
       "label": "Action",
+      "liquipedia": "https://liquipedia.net/starcraft/Action",
+      "country": "KR",
       "confidence": "confirmed",
       "aurora_ids": [
         14812543,
@@ -398,6 +400,7 @@
           "gateway": 30
         }
       ],
+      "photo": "action.png",
       "main_race": "Zerg",
       "races": {
         "Zerg": 31
@@ -812,7 +815,7 @@
           "gateway": 10
         }
       ],
-      "rank": 46,
+      "rank": 49,
       "main_race": "Zerg",
       "races": {
         "Zerg": 65
@@ -1180,7 +1183,7 @@
         }
       ],
       "photo": "ample.png",
-      "rank": 18,
+      "rank": 21,
       "main_race": "Terran",
       "races": {
         "Terran": 48
@@ -1620,7 +1623,7 @@
         }
       ],
       "photo": "artosis.jpg",
-      "rank": 33,
+      "rank": 36,
       "main_race": "Terran",
       "races": {
         "Protoss": 1,
@@ -1981,7 +1984,7 @@
         }
       ],
       "photo": "barracks.png",
-      "rank": 10,
+      "rank": 13,
       "main_race": "Terran",
       "races": {
         "Protoss": 7,
@@ -2763,7 +2766,7 @@
           "gateway": 45
         }
       ],
-      "rank": 47,
+      "rank": 50,
       "main_race": "Terran",
       "races": {
         "Protoss": 16,
@@ -3463,7 +3466,7 @@
         }
       ],
       "photo": "best.png",
-      "rank": 6,
+      "rank": 8,
       "main_race": "Protoss",
       "races": {
         "Protoss": 59,
@@ -4192,7 +4195,7 @@
         }
       ],
       "photo": "bishop.png",
-      "rank": 26,
+      "rank": 29,
       "main_race": "Terran",
       "races": {
         "Protoss": 3,
@@ -5180,7 +5183,7 @@
       "label": "Bisu",
       "liquipedia": "https://liquipedia.net/starcraft/Bisu",
       "country": "KR",
-      "confidence": "high",
+      "confidence": "confirmed",
       "aurora_ids": [
         18372718,
         778296319,
@@ -5193,7 +5196,7 @@
         }
       ],
       "photo": "bisu.jpg",
-      "rank": 4,
+      "rank": 5,
       "main_race": "Protoss",
       "races": {
         "Protoss": 17,
@@ -5822,7 +5825,7 @@
     {
       "id": "blade",
       "label": "Blade",
-      "confidence": "high",
+      "confidence": "confirmed",
       "aurora_ids": [
         18875340,
         792041952
@@ -5849,7 +5852,7 @@
           "gateway": 45
         }
       ],
-      "rank": 48,
+      "rank": 51,
       "main_race": "Protoss",
       "races": {
         "Protoss": 30
@@ -6237,7 +6240,7 @@
           "gateway": 30
         }
       ],
-      "rank": 49,
+      "rank": 52,
       "main_race": "Zerg",
       "races": {
         "Zerg": 47
@@ -6599,10 +6602,9 @@
       "label": "Byul",
       "liquipedia": "https://liquipedia.net/starcraft/ByuL",
       "country": "KR",
-      "confidence": "high",
+      "confidence": "confirmed",
       "aurora_ids": [
-        11020815,
-        786567149
+        11020815
       ],
       "toons": [
         {
@@ -6610,39 +6612,31 @@
           "gateway": 30
         },
         {
-          "toon": "TuF`K",
-          "gateway": 30
-        },
-        {
-          "toon": "1p1p88",
-          "gateway": 30
-        },
-        {
           "toon": "xodxodqhf",
           "gateway": 30
         }
       ],
-      "rank": 50,
+      "rank": 53,
       "main_race": "Terran",
       "races": {
-        "Terran": 71
+        "Terran": 46
       },
-      "games_sampled": 71,
+      "games_sampled": 46,
       "apm": {
-        "value": 287.6478873239437,
-        "games": 71
+        "value": 289.0217391304348,
+        "games": 46
       },
       "cadence": {
-        "score": 4.14029345330485,
-        "rate_per_min": 11.777586691742373,
-        "cv_gap": 1.8415826063661522,
-        "burstiness": 0.286044993246008,
-        "idle20_ratio": 0.09754279552405656,
-        "games": 45
+        "score": 4.186480962689392,
+        "rate_per_min": 12.28296252042749,
+        "cv_gap": 1.933576651788582,
+        "burstiness": 0.30811033890086725,
+        "idle20_ratio": 0.10182976127392228,
+        "games": 30
       },
       "viewport_switch_rate": {
-        "value": 20.70080326111112,
-        "games": 54
+        "value": 20.95440402857143,
+        "games": 35
       },
       "hotkeys": [
         {
@@ -6654,17 +6648,10 @@
               "runs": [
                 {
                   "start_min": 0,
-                  "end_min": 1,
-                  "category": "hall",
-                  "share": 0.7247987734764277,
-                  "presses": 2609
-                },
-                {
-                  "start_min": 2,
                   "end_min": 21,
                   "category": "units",
-                  "share": 0.9594770109966231,
-                  "presses": 11549
+                  "share": 1,
+                  "presses": 12272
                 }
               ],
               "assign_runs": [
@@ -6673,10 +6660,10 @@
                   "end_min": 24,
                   "category": "assign",
                   "share": 1,
-                  "presses": 4849
+                  "presses": 6601
                 }
               ],
-              "uses": 14551,
+              "uses": 12593,
               "used_games": 40,
               "median_count": 3
             },
@@ -6687,29 +6674,36 @@
                   "start_min": 0,
                   "end_min": 6,
                   "category": "hall",
-                  "share": 0.712694095973331,
-                  "presses": 11399
+                  "share": 0.9814679167887489,
+                  "presses": 13652
                 },
                 {
                   "start_min": 7,
                   "end_min": 21,
                   "category": "units",
-                  "share": 0.8882389805723835,
-                  "presses": 4787
+                  "share": 0.8797671617824167,
+                  "presses": 4982
                 }
               ],
               "assign_runs": [
                 {
                   "start_min": 0,
+                  "end_min": 0,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 66
+                },
+                {
+                  "start_min": 3,
                   "end_min": 24,
                   "category": "assign",
                   "share": 1,
-                  "presses": 1416
+                  "presses": 1106
                 }
               ],
-              "uses": 16727,
+              "uses": 19350,
               "used_games": 40,
-              "median_count": 6
+              "median_count": 8
             },
             {
               "key": 3,
@@ -6718,41 +6712,41 @@
                   "start_min": 0,
                   "end_min": 1,
                   "category": "units",
-                  "share": 0.8563913729615992,
-                  "presses": 3802
+                  "share": 0.8168850072780204,
+                  "presses": 3435
                 },
                 {
                   "start_min": 2,
                   "end_min": 12,
                   "category": "prod",
-                  "share": 0.8807551269862828,
-                  "presses": 7363
+                  "share": 0.904742352699651,
+                  "presses": 9742
                 },
                 {
                   "start_min": 13,
-                  "end_min": 20,
+                  "end_min": 19,
                   "category": "units",
-                  "share": 0.7902869757174393,
-                  "presses": 1812
+                  "share": 0.6877213695395513,
+                  "presses": 1694
                 }
               ],
               "assign_runs": [
                 {
                   "start_min": 0,
-                  "end_min": 21,
+                  "end_min": 4,
                   "category": "assign",
                   "share": 1,
-                  "presses": 602
+                  "presses": 383
                 },
                 {
-                  "start_min": 23,
-                  "end_min": 23,
+                  "start_min": 6,
+                  "end_min": 24,
                   "category": "assign",
                   "share": 1,
-                  "presses": 5
+                  "presses": 144
                 }
               ],
-              "uses": 13441,
+              "uses": 15533,
               "used_games": 40,
               "median_count": 1
             },
@@ -6760,114 +6754,93 @@
               "key": 4,
               "runs": [
                 {
-                  "start_min": 0,
-                  "end_min": 3,
-                  "category": "units",
-                  "share": 0.5650869826034793,
-                  "presses": 1667
-                },
-                {
-                  "start_min": 4,
+                  "start_min": 2,
                   "end_min": 13,
                   "category": "prod",
-                  "share": 0.8650166754432157,
-                  "presses": 5697
+                  "share": 0.9095784299121108,
+                  "presses": 6713
                 },
                 {
                   "start_min": 14,
-                  "end_min": 19,
+                  "end_min": 17,
                   "category": "units",
-                  "share": 0.6854460093896714,
-                  "presses": 1065
+                  "share": 0.6815980629539952,
+                  "presses": 826
                 }
               ],
               "assign_runs": [
                 {
-                  "start_min": 0,
+                  "start_min": 1,
                   "end_min": 24,
                   "category": "assign",
                   "share": 1,
-                  "presses": 408
+                  "presses": 273
                 }
               ],
-              "uses": 8748,
+              "uses": 7936,
               "used_games": 40,
-              "median_count": 5
+              "median_count": 6
             },
             {
               "key": 5,
               "runs": [
                 {
                   "start_min": 4,
-                  "end_min": 14,
+                  "end_min": 16,
                   "category": "prod",
-                  "share": 0.9149449959753153,
-                  "presses": 3727
-                },
-                {
-                  "start_min": 15,
-                  "end_min": 18,
-                  "category": "units",
-                  "share": 0.6625615763546798,
-                  "presses": 406
+                  "share": 0.9061383566092888,
+                  "presses": 3079
                 }
               ],
               "assign_runs": [
                 {
                   "start_min": 1,
-                  "end_min": 20,
+                  "end_min": 1,
                   "category": "assign",
                   "share": 1,
-                  "presses": 184
+                  "presses": 1
                 },
                 {
-                  "start_min": 23,
-                  "end_min": 24,
+                  "start_min": 4,
+                  "end_min": 19,
                   "category": "assign",
                   "share": 1,
-                  "presses": 2
+                  "presses": 101
                 }
               ],
-              "uses": 4429,
-              "used_games": 36,
-              "median_count": 2
+              "uses": 3283,
+              "used_games": 35,
+              "median_count": 4
             },
             {
               "key": 6,
               "runs": [
                 {
-                  "start_min": 6,
-                  "end_min": 19,
+                  "start_min": 5,
+                  "end_min": 21,
                   "category": "prod",
-                  "share": 0.9992520568436799,
-                  "presses": 1337
+                  "share": 0.9975323874151758,
+                  "presses": 1621
                 }
               ],
               "assign_runs": [
                 {
                   "start_min": 5,
-                  "end_min": 9,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 49
-                },
-                {
-                  "start_min": 11,
                   "end_min": 13,
                   "category": "assign",
                   "share": 1,
-                  "presses": 12
+                  "presses": 44
                 },
                 {
                   "start_min": 15,
                   "end_min": 15,
                   "category": "assign",
                   "share": 1,
-                  "presses": 2
+                  "presses": 1
                 },
                 {
-                  "start_min": 17,
-                  "end_min": 18,
+                  "start_min": 18,
+                  "end_min": 19,
                   "category": "assign",
                   "share": 1,
                   "presses": 4
@@ -6880,9 +6853,9 @@
                   "presses": 1
                 }
               ],
-              "uses": 1412,
-              "used_games": 32,
-              "median_count": 1
+              "uses": 1688,
+              "used_games": 33,
+              "median_count": 0
             },
             {
               "key": 7,
@@ -6891,62 +6864,69 @@
                   "start_min": 8,
                   "end_min": 13,
                   "category": "prod",
-                  "share": 0.993421052631579,
+                  "share": 0.9967105263157895,
                   "presses": 304
                 }
               ],
               "assign_runs": [
                 {
                   "start_min": 6,
+                  "end_min": 11,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 30
+                },
+                {
+                  "start_min": 13,
                   "end_min": 13,
                   "category": "assign",
                   "share": 1,
-                  "presses": 44
+                  "presses": 1
                 },
                 {
                   "start_min": 15,
-                  "end_min": 18,
+                  "end_min": 16,
                   "category": "assign",
                   "share": 1,
-                  "presses": 10
+                  "presses": 8
                 },
                 {
-                  "start_min": 20,
+                  "start_min": 18,
                   "end_min": 20,
                   "category": "assign",
                   "share": 1,
-                  "presses": 1
+                  "presses": 3
                 }
               ],
-              "uses": 410,
-              "used_games": 29,
-              "median_count": 1
+              "uses": 381,
+              "used_games": 28,
+              "median_count": 2
             },
             {
               "key": 8,
               "runs": [
                 {
-                  "start_min": 9,
-                  "end_min": 10,
-                  "category": "prod",
-                  "share": 0.8636363636363636,
-                  "presses": 44
-                },
-                {
-                  "start_min": 12,
-                  "end_min": 19,
+                  "start_min": 13,
+                  "end_min": 16,
                   "category": "comsat",
-                  "share": 0.8813559322033898,
-                  "presses": 59
+                  "share": 0.9347826086956522,
+                  "presses": 46
                 }
               ],
               "assign_runs": [
                 {
                   "start_min": 8,
-                  "end_min": 19,
+                  "end_min": 16,
                   "category": "assign",
                   "share": 1,
-                  "presses": 35
+                  "presses": 21
+                },
+                {
+                  "start_min": 18,
+                  "end_min": 18,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
                 },
                 {
                   "start_min": 22,
@@ -6956,8 +6936,8 @@
                   "presses": 1
                 }
               ],
-              "uses": 201,
-              "used_games": 17,
+              "uses": 145,
+              "used_games": 14,
               "median_count": 1
             },
             {
@@ -6965,10 +6945,10 @@
               "runs": [
                 {
                   "start_min": 7,
-                  "end_min": 21,
+                  "end_min": 19,
                   "category": "comsat",
-                  "share": 0.9944598337950139,
-                  "presses": 361
+                  "share": 0.9929824561403509,
+                  "presses": 285
                 }
               ],
               "assign_runs": [
@@ -6977,7 +6957,7 @@
                   "end_min": 12,
                   "category": "assign",
                   "share": 1,
-                  "presses": 36
+                  "presses": 35
                 },
                 {
                   "start_min": 17,
@@ -6992,21 +6972,28 @@
                   "category": "assign",
                   "share": 1,
                   "presses": 1
+                },
+                {
+                  "start_min": 22,
+                  "end_min": 22,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
                 }
               ],
-              "uses": 390,
-              "used_games": 30,
-              "median_count": 0
+              "uses": 336,
+              "used_games": 28,
+              "median_count": 1
             },
             {
               "key": 0,
               "runs": [
                 {
                   "start_min": 7,
-                  "end_min": 20,
+                  "end_min": 19,
                   "category": "comsat",
-                  "share": 0.9821958456973294,
-                  "presses": 337
+                  "share": 1,
+                  "presses": 333
                 }
               ],
               "assign_runs": [
@@ -7015,23 +7002,16 @@
                   "end_min": 11,
                   "category": "assign",
                   "share": 1,
-                  "presses": 33
-                },
-                {
-                  "start_min": 13,
-                  "end_min": 13,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 1
+                  "presses": 35
                 }
               ],
-              "uses": 379,
-              "used_games": 32,
+              "uses": 394,
+              "used_games": 31,
               "median_count": 1
             }
           ],
-          "temporal_score": 0.8438576939562795,
-          "prose": "pro:byul plays a phase-driven layout: Comsats on 9 and 0, production on 6 and 7. Keys 1 and 2 are repurposed: town hall early, then army from ~min 7. Keys 3 and 4 are repurposed: army early, then production from ~min 4, then army from ~min 14. Key 5 is repurposed: production early, then army from ~min 15. Key 8 is repurposed: production early, then Comsat from ~min 12. Minute for minute, 84% of key presses match this pattern (40 games)."
+          "temporal_score": 0.9303709480537095,
+          "prose": "pro:byul plays a phase-driven layout: armies on 1, Comsats on 8–0, production on 5–7. Key 2 is repurposed: town hall early, then army from ~min 7. Key 3 is repurposed: army early, then production from ~min 2, then army from ~min 13. Key 4 is repurposed: production early, then army from ~min 14. Army groups typically hold ~3 units. Minute for minute, 93% of key presses match this pattern (40 games)."
         }
       ]
     },
@@ -7060,7 +7040,7 @@
           "gateway": 45
         }
       ],
-      "rank": 51,
+      "rank": 54,
       "main_race": "Protoss",
       "races": {
         "Protoss": 53
@@ -7345,7 +7325,7 @@
         }
       ],
       "photo": "dewalt.png",
-      "rank": 34,
+      "rank": 37,
       "main_race": "Protoss",
       "races": {
         "Protoss": 113,
@@ -7765,7 +7745,7 @@
           "gateway": 30
         }
       ],
-      "rank": 52,
+      "rank": 55,
       "main_race": "Protoss",
       "races": {
         "Protoss": 26
@@ -8083,7 +8063,7 @@
         }
       ],
       "photo": "effort.png",
-      "rank": 13,
+      "rank": 16,
       "main_race": "Zerg",
       "races": {
         "Terran": 1,
@@ -8427,7 +8407,7 @@
           "gateway": 30
         }
       ],
-      "rank": 53,
+      "rank": 56,
       "main_race": "Terran",
       "races": {
         "Protoss": 1,
@@ -8737,7 +8717,7 @@
         }
       ],
       "photo": "fantasy.jpg",
-      "rank": 35,
+      "rank": 38,
       "main_race": "Terran",
       "races": {
         "Protoss": 1,
@@ -9132,9 +9112,456 @@
       ]
     },
     {
+      "id": "flash",
+      "label": "FlaSh",
+      "liquipedia": "https://liquipedia.net/starcraft/Flash",
+      "country": "KR",
+      "confidence": "confirmed",
+      "aurora_ids": [
+        18505773,
+        1416123498
+      ],
+      "photo": "flash.png",
+      "main_race": "Terran",
+      "races": {
+        "Terran": 33
+      },
+      "games_sampled": 33,
+      "apm": {
+        "value": 290.90909090909093,
+        "games": 33
+      },
+      "cadence": {
+        "score": 4.254748890785631,
+        "rate_per_min": 12.261765891333786,
+        "cv_gap": 1.833069086749264,
+        "burstiness": 0.27834958753790456,
+        "idle20_ratio": 0.11043583810503117,
+        "games": 28
+      },
+      "viewport_switch_rate": {
+        "value": 21.68324666666667,
+        "games": 30
+      },
+      "hotkeys": [
+        {
+          "race": "Terran",
+          "games": 33,
+          "keys": [
+            {
+              "key": 1,
+              "runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 0,
+                  "category": "hall",
+                  "share": 0.5555555555555556,
+                  "presses": 261
+                },
+                {
+                  "start_min": 1,
+                  "end_min": 24,
+                  "category": "units",
+                  "share": 1,
+                  "presses": 12423
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 24,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 4778
+                }
+              ],
+              "uses": 13285,
+              "used_games": 33,
+              "median_count": 5
+            },
+            {
+              "key": 2,
+              "runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 1,
+                  "category": "hall",
+                  "share": 0.8128342245989305,
+                  "presses": 187
+                },
+                {
+                  "start_min": 2,
+                  "end_min": 24,
+                  "category": "units",
+                  "share": 0.9930838801205888,
+                  "presses": 5639
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 24,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 2112
+                }
+              ],
+              "uses": 6308,
+              "used_games": 33,
+              "median_count": 4
+            },
+            {
+              "key": 3,
+              "runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 7,
+                  "category": "hall",
+                  "share": 0.9788814110002321,
+                  "presses": 8618
+                },
+                {
+                  "start_min": 8,
+                  "end_min": 24,
+                  "category": "units",
+                  "share": 0.9921182266009853,
+                  "presses": 2030
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 24,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1321
+                }
+              ],
+              "uses": 10923,
+              "used_games": 33,
+              "median_count": 4
+            },
+            {
+              "key": 4,
+              "runs": [
+                {
+                  "start_min": 1,
+                  "end_min": 14,
+                  "category": "prod",
+                  "share": 0.9740448860716121,
+                  "presses": 11674
+                },
+                {
+                  "start_min": 15,
+                  "end_min": 24,
+                  "category": "units",
+                  "share": 0.8072916666666666,
+                  "presses": 960
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 24,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1482
+                }
+              ],
+              "uses": 12835,
+              "used_games": 32,
+              "median_count": 3
+            },
+            {
+              "key": 5,
+              "runs": [
+                {
+                  "start_min": 2,
+                  "end_min": 14,
+                  "category": "prod",
+                  "share": 0.9283343577135833,
+                  "presses": 8135
+                },
+                {
+                  "start_min": 15,
+                  "end_min": 24,
+                  "category": "units",
+                  "share": 0.6767676767676768,
+                  "presses": 495
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 24,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1101
+                }
+              ],
+              "uses": 9157,
+              "used_games": 33,
+              "median_count": 5
+            },
+            {
+              "key": 6,
+              "runs": [
+                {
+                  "start_min": 4,
+                  "end_min": 14,
+                  "category": "prod",
+                  "share": 0.9834642414220752,
+                  "presses": 2419
+                },
+                {
+                  "start_min": 15,
+                  "end_min": 16,
+                  "category": "units",
+                  "share": 0.8076923076923077,
+                  "presses": 104
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 1,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 73
+                },
+                {
+                  "start_min": 4,
+                  "end_min": 11,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 66
+                },
+                {
+                  "start_min": 13,
+                  "end_min": 18,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 57
+                },
+                {
+                  "start_min": 21,
+                  "end_min": 24,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 13
+                }
+              ],
+              "uses": 2666,
+              "used_games": 33,
+              "median_count": 4
+            },
+            {
+              "key": 7,
+              "runs": [
+                {
+                  "start_min": 8,
+                  "end_min": 16,
+                  "category": "prod",
+                  "share": 0.9560853199498118,
+                  "presses": 797
+                },
+                {
+                  "start_min": 17,
+                  "end_min": 24,
+                  "category": "comsat",
+                  "share": 0.7932203389830509,
+                  "presses": 295
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 4,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 84
+                },
+                {
+                  "start_min": 7,
+                  "end_min": 10,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 22
+                },
+                {
+                  "start_min": 12,
+                  "end_min": 23,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 29
+                }
+              ],
+              "uses": 1262,
+              "used_games": 30,
+              "median_count": 1
+            },
+            {
+              "key": 8,
+              "runs": [
+                {
+                  "start_min": 9,
+                  "end_min": 10,
+                  "category": "prod",
+                  "share": 0.826530612244898,
+                  "presses": 98
+                },
+                {
+                  "start_min": 11,
+                  "end_min": 24,
+                  "category": "comsat",
+                  "share": 0.9275766016713092,
+                  "presses": 718
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 1,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 70
+                },
+                {
+                  "start_min": 6,
+                  "end_min": 6,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 3
+                },
+                {
+                  "start_min": 8,
+                  "end_min": 14,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 44
+                },
+                {
+                  "start_min": 17,
+                  "end_min": 17,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
+                },
+                {
+                  "start_min": 20,
+                  "end_min": 22,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 4
+                }
+              ],
+              "uses": 944,
+              "used_games": 29,
+              "median_count": 1
+            },
+            {
+              "key": 9,
+              "runs": [
+                {
+                  "start_min": 6,
+                  "end_min": 24,
+                  "category": "comsat",
+                  "share": 0.9955197132616488,
+                  "presses": 1116
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 1,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 89
+                },
+                {
+                  "start_min": 5,
+                  "end_min": 11,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 41
+                },
+                {
+                  "start_min": 15,
+                  "end_min": 15,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
+                },
+                {
+                  "start_min": 19,
+                  "end_min": 21,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 3
+                }
+              ],
+              "uses": 1210,
+              "used_games": 32,
+              "median_count": 0
+            },
+            {
+              "key": 0,
+              "runs": [
+                {
+                  "start_min": 6,
+                  "end_min": 24,
+                  "category": "comsat",
+                  "share": 0.9940535183349851,
+                  "presses": 1009
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 1,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 69
+                },
+                {
+                  "start_min": 5,
+                  "end_min": 11,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 38
+                },
+                {
+                  "start_min": 15,
+                  "end_min": 15,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
+                },
+                {
+                  "start_min": 20,
+                  "end_min": 20,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
+                }
+              ],
+              "uses": 1099,
+              "used_games": 33,
+              "median_count": 0
+            }
+          ],
+          "temporal_score": 0.9674435747130471,
+          "prose": "pro:flash plays a phase-driven layout: Comsats on 9 and 0. Keys 1–3 are repurposed: town hall early, then army from ~min 2. Keys 4–6 are repurposed: production early, then army from ~min 15. Keys 7 and 8 are repurposed: production early, then Comsat from ~min 17. Minute for minute, 97% of key presses match this pattern (33 games)."
+        }
+      ],
+      "rank": 2
+    },
+    {
       "id": "free",
       "label": "Free",
-      "confidence": "high",
+      "liquipedia": "https://liquipedia.net/starcraft/Free",
+      "country": "KR",
+      "confidence": "confirmed",
       "aurora_ids": [
         18389381
       ],
@@ -9144,6 +9571,7 @@
           "gateway": 30
         }
       ],
+      "photo": "free.png",
       "main_race": "Protoss",
       "races": {
         "Protoss": 42,
@@ -9554,7 +9982,7 @@
           "gateway": 45
         }
       ],
-      "rank": 54,
+      "rank": 57,
       "main_race": "Zerg",
       "races": {
         "Terran": 1,
@@ -9918,7 +10346,7 @@
         }
       ],
       "photo": "ggaemo.png",
-      "rank": 21,
+      "rank": 24,
       "main_race": "Zerg",
       "races": {
         "Zerg": 41
@@ -10178,17 +10606,17 @@
               "runs": [
                 {
                   "start_min": 5,
-                  "end_min": 12,
+                  "end_min": 16,
                   "category": "units",
-                  "share": 0.6853333333333333,
-                  "presses": 375
+                  "share": 0.6368515205724508,
+                  "presses": 559
                 },
                 {
-                  "start_min": 13,
+                  "start_min": 17,
                   "end_min": 19,
                   "category": "hall",
-                  "share": 0.5596026490066225,
-                  "presses": 302
+                  "share": 0.5932203389830508,
+                  "presses": 118
                 }
               ],
               "assign_runs": [
@@ -10279,7 +10707,7 @@
             }
           ],
           "temporal_score": 0.9191467053794661,
-          "prose": "pro:ggaemo plays a phase-driven layout: armies on 1 and 2, 5, Hatcheries on 4, 8. Key 3 is repurposed: army early, then tech from ~min 3, then army from ~min 7. Key 6 is repurposed: town hall early, then army from ~min 2, then town hall from ~min 6. Key 7 is repurposed: army early, then town hall from ~min 13. Army groups typically hold ~8 units. Minute for minute, 92% of key presses match this pattern (36 games)."
+          "prose": "pro:ggaemo plays a phase-driven layout: armies on 1 and 2, 5, Hatcheries on 4, 8. Key 3 is repurposed: army early, then tech from ~min 3, then army from ~min 7. Key 6 is repurposed: town hall early, then army from ~min 2, then town hall from ~min 6. Key 7 is repurposed: army early, then town hall from ~min 17. Army groups typically hold ~8 units. Minute for minute, 92% of key presses match this pattern (36 games)."
         }
       ]
     },
@@ -10300,7 +10728,7 @@
           "gateway": 30
         }
       ],
-      "rank": 55,
+      "rank": 58,
       "main_race": "Zerg",
       "races": {
         "Protoss": 2,
@@ -10982,6 +11410,8 @@
     {
       "id": "hbq",
       "label": "HBQ",
+      "liquipedia": "https://liquipedia.net/starcraft/HBQ",
+      "country": "KR",
       "confidence": "confirmed",
       "aurora_ids": [
         20009496,
@@ -11009,7 +11439,7 @@
           "gateway": 20
         }
       ],
-      "rank": 56,
+      "rank": 59,
       "main_race": "Zerg",
       "races": {
         "Terran": 7,
@@ -11845,7 +12275,7 @@
         }
       ],
       "photo": "hero.png",
-      "rank": 7,
+      "rank": 9,
       "main_race": "Zerg",
       "races": {
         "Zerg": 49
@@ -12261,6 +12691,8 @@
     {
       "id": "hiya",
       "label": "HiyA",
+      "liquipedia": "https://liquipedia.net/starcraft/HiyA",
+      "country": "KR",
       "confidence": "confirmed",
       "aurora_ids": [
         13968648
@@ -12275,6 +12707,7 @@
           "gateway": 20
         }
       ],
+      "photo": "hiya.png",
       "main_race": "Terran",
       "races": {
         "Terran": 34
@@ -12672,7 +13105,7 @@
         }
       ],
       "photo": "hm.png",
-      "rank": 27,
+      "rank": 30,
       "main_race": "Zerg",
       "races": {
         "Zerg": 53
@@ -13084,7 +13517,7 @@
           "gateway": 20
         }
       ],
-      "rank": 57,
+      "rank": 60,
       "main_race": "Protoss",
       "races": {
         "Protoss": 70
@@ -13452,7 +13885,7 @@
         }
       ],
       "photo": "hyuk.png",
-      "rank": 36,
+      "rank": 39,
       "main_race": "Zerg",
       "races": {
         "Zerg": 47
@@ -13773,7 +14206,7 @@
         }
       ],
       "photo": "hyun.png",
-      "rank": 22,
+      "rank": 25,
       "main_race": "Zerg",
       "races": {
         "Zerg": 47
@@ -14127,7 +14560,7 @@
         }
       ],
       "photo": "jaedong.png",
-      "rank": 3,
+      "rank": 7,
       "main_race": "Zerg",
       "races": {
         "Zerg": 44
@@ -14550,7 +14983,7 @@
     {
       "id": "jiter",
       "label": "Jiter",
-      "confidence": "high",
+      "confidence": "confirmed",
       "aurora_ids": [
         797183037
       ],
@@ -14564,7 +14997,7 @@
           "gateway": 30
         }
       ],
-      "rank": 58,
+      "rank": 61,
       "main_race": "Terran",
       "races": {
         "Terran": 53
@@ -15025,7 +15458,7 @@
           "gateway": 30
         }
       ],
-      "rank": 59,
+      "rank": 62,
       "main_race": "Zerg",
       "races": {
         "Zerg": 61
@@ -15389,7 +15822,7 @@
         }
       ],
       "photo": "jyj.png",
-      "rank": 12,
+      "rank": 15,
       "main_race": "Terran",
       "races": {
         "Terran": 44
@@ -15773,7 +16206,7 @@
         }
       ],
       "photo": "kante.png",
-      "rank": 37,
+      "rank": 40,
       "main_race": "Zerg",
       "races": {
         "Zerg": 50
@@ -16271,394 +16704,6 @@
       ]
     },
     {
-      "id": "killer",
-      "label": "Killer",
-      "confidence": "high",
-      "aurora_ids": [
-        12273860
-      ],
-      "toons": [
-        {
-          "toon": "Mstz_Killer.",
-          "gateway": 30
-        }
-      ],
-      "main_race": "Zerg",
-      "races": {
-        "Protoss": 1,
-        "Zerg": 22
-      },
-      "games_sampled": 23,
-      "apm": {
-        "value": 334.6521739130435,
-        "games": 23
-      },
-      "cadence": {
-        "score": 3.7893855830666654,
-        "rate_per_min": 10.146513979533378,
-        "cv_gap": 1.750239488656597,
-        "burstiness": 0.2605446888320124,
-        "idle20_ratio": 0.08703987245670561,
-        "games": 13
-      },
-      "viewport_switch_rate": {
-        "value": 33.67888883333333,
-        "games": 18
-      },
-      "hotkeys": [
-        {
-          "race": "Zerg",
-          "games": 20,
-          "keys": [
-            {
-              "key": 1,
-              "runs": [
-                {
-                  "start_min": 0,
-                  "end_min": 18,
-                  "category": "hall",
-                  "share": 1,
-                  "presses": 9994
-                }
-              ],
-              "assign_runs": [
-                {
-                  "start_min": 0,
-                  "end_min": 2,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 29
-                },
-                {
-                  "start_min": 4,
-                  "end_min": 4,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 1
-                },
-                {
-                  "start_min": 7,
-                  "end_min": 8,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 3
-                }
-              ],
-              "uses": 10110,
-              "used_games": 20,
-              "median_count": 3
-            },
-            {
-              "key": 2,
-              "runs": [
-                {
-                  "start_min": 0,
-                  "end_min": 18,
-                  "category": "units",
-                  "share": 0.9950716845878136,
-                  "presses": 6696
-                }
-              ],
-              "assign_runs": [
-                {
-                  "start_min": 0,
-                  "end_min": 24,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 744
-                }
-              ],
-              "uses": 6870,
-              "used_games": 20,
-              "median_count": 6
-            },
-            {
-              "key": 3,
-              "runs": [
-                {
-                  "start_min": 1,
-                  "end_min": 18,
-                  "category": "units",
-                  "share": 0.9179290827368071,
-                  "presses": 6007
-                }
-              ],
-              "assign_runs": [
-                {
-                  "start_min": 0,
-                  "end_min": 24,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 388
-                }
-              ],
-              "uses": 6248,
-              "used_games": 20,
-              "median_count": 7
-            },
-            {
-              "key": 4,
-              "runs": [
-                {
-                  "start_min": 0,
-                  "end_min": 17,
-                  "category": "units",
-                  "share": 0.7913160552002693,
-                  "presses": 5942
-                }
-              ],
-              "assign_runs": [
-                {
-                  "start_min": 0,
-                  "end_min": 20,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 116
-                },
-                {
-                  "start_min": 23,
-                  "end_min": 24,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 2
-                }
-              ],
-              "uses": 6018,
-              "used_games": 20,
-              "median_count": 1
-            },
-            {
-              "key": 5,
-              "runs": [
-                {
-                  "start_min": 1,
-                  "end_min": 4,
-                  "category": "units",
-                  "share": 0.7880724174653887,
-                  "presses": 939
-                },
-                {
-                  "start_min": 5,
-                  "end_min": 13,
-                  "category": "hall",
-                  "share": 0.6886285993167399,
-                  "presses": 2049
-                },
-                {
-                  "start_min": 14,
-                  "end_min": 17,
-                  "category": "units",
-                  "share": 0.650887573964497,
-                  "presses": 169
-                }
-              ],
-              "assign_runs": [
-                {
-                  "start_min": 1,
-                  "end_min": 5,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 70
-                },
-                {
-                  "start_min": 7,
-                  "end_min": 8,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 12
-                },
-                {
-                  "start_min": 10,
-                  "end_min": 20,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 30
-                },
-                {
-                  "start_min": 24,
-                  "end_min": 24,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 1
-                }
-              ],
-              "uses": 3184,
-              "used_games": 20,
-              "median_count": 1
-            },
-            {
-              "key": 6,
-              "runs": [
-                {
-                  "start_min": 4,
-                  "end_min": 4,
-                  "category": "hall",
-                  "share": 0.6981132075471698,
-                  "presses": 53
-                },
-                {
-                  "start_min": 5,
-                  "end_min": 12,
-                  "category": "units",
-                  "share": 0.6647398843930635,
-                  "presses": 1211
-                },
-                {
-                  "start_min": 13,
-                  "end_min": 14,
-                  "category": "hall",
-                  "share": 0.5522388059701493,
-                  "presses": 67
-                },
-                {
-                  "start_min": 15,
-                  "end_min": 16,
-                  "category": "units",
-                  "share": 0.6944444444444444,
-                  "presses": 36
-                }
-              ],
-              "assign_runs": [
-                {
-                  "start_min": 2,
-                  "end_min": 2,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 2
-                },
-                {
-                  "start_min": 4,
-                  "end_min": 14,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 41
-                },
-                {
-                  "start_min": 16,
-                  "end_min": 17,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 5
-                }
-              ],
-              "uses": 1389,
-              "used_games": 16,
-              "median_count": 1
-            },
-            {
-              "key": 7,
-              "runs": [
-                {
-                  "start_min": 5,
-                  "end_min": 15,
-                  "category": "hall",
-                  "share": 0.9867452135493373,
-                  "presses": 679
-                }
-              ],
-              "assign_runs": [
-                {
-                  "start_min": 4,
-                  "end_min": 9,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 21
-                },
-                {
-                  "start_min": 11,
-                  "end_min": 14,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 5
-                },
-                {
-                  "start_min": 16,
-                  "end_min": 16,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 1
-                }
-              ],
-              "uses": 689,
-              "used_games": 16,
-              "median_count": 1
-            },
-            {
-              "key": 8,
-              "runs": [
-                {
-                  "start_min": 6,
-                  "end_min": 15,
-                  "category": "hall",
-                  "share": 1,
-                  "presses": 292
-                }
-              ],
-              "assign_runs": [
-                {
-                  "start_min": 5,
-                  "end_min": 10,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 17
-                },
-                {
-                  "start_min": 12,
-                  "end_min": 14,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 3
-                },
-                {
-                  "start_min": 16,
-                  "end_min": 16,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 2
-                }
-              ],
-              "uses": 300,
-              "used_games": 14,
-              "median_count": 0
-            },
-            {
-              "key": 9,
-              "runs": [
-                {
-                  "start_min": 8,
-                  "end_min": 13,
-                  "category": "hall",
-                  "share": 1,
-                  "presses": 48
-                }
-              ],
-              "assign_runs": [
-                {
-                  "start_min": 7,
-                  "end_min": 10,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 11
-                },
-                {
-                  "start_min": 12,
-                  "end_min": 14,
-                  "category": "assign",
-                  "share": 1,
-                  "presses": 3
-                }
-              ],
-              "uses": 59,
-              "used_games": 9,
-              "median_count": 1
-            }
-          ],
-          "temporal_score": 0.9083143174770347,
-          "prose": "pro:killer plays a phase-driven layout: armies on 2–4, Hatcheries on 1, 7–9. Key 5 is repurposed: army early, then town hall from ~min 5, then army from ~min 14. Key 6 is repurposed: town hall early, then army from ~min 5, then town hall from ~min 13, then army from ~min 15. Army groups typically hold ~7 units. Minute for minute, 91% of key presses match this pattern (20 games)."
-        }
-      ]
-    },
-    {
       "id": "larva",
       "label": "Larva",
       "liquipedia": "https://liquipedia.net/starcraft/Larva_(Player)",
@@ -16682,7 +16727,7 @@
         }
       ],
       "photo": "larva.jpg",
-      "rank": 19,
+      "rank": 22,
       "main_race": "Zerg",
       "races": {
         "Zerg": 42
@@ -17101,7 +17146,7 @@
         }
       ],
       "photo": "leta.png",
-      "rank": 14,
+      "rank": 17,
       "main_race": "Terran",
       "races": {
         "Terran": 24
@@ -17571,7 +17616,7 @@
         }
       ],
       "photo": "light.png",
-      "rank": 1,
+      "rank": 4,
       "main_race": "Terran",
       "races": {
         "Terran": 41,
@@ -18024,7 +18069,7 @@
           "gateway": 30
         }
       ],
-      "rank": 60,
+      "rank": 63,
       "main_race": "Terran",
       "races": {
         "Terran": 78
@@ -18397,7 +18442,7 @@
         }
       ],
       "photo": "midas.jpg",
-      "rank": 38,
+      "rank": 41,
       "main_race": "Terran",
       "races": {
         "Terran": 40
@@ -18902,7 +18947,7 @@
         }
       ],
       "photo": "mighty.png",
-      "rank": 39,
+      "rank": 42,
       "main_race": "Protoss",
       "races": {
         "Protoss": 53,
@@ -20071,7 +20116,7 @@
         }
       ],
       "photo": "mihu.png",
-      "rank": 40,
+      "rank": 43,
       "main_race": "Terran",
       "races": {
         "Terran": 44
@@ -20484,7 +20529,7 @@
         }
       ],
       "photo": "mind.png",
-      "rank": 11,
+      "rank": 14,
       "main_race": "Terran",
       "races": {
         "Terran": 46
@@ -20865,7 +20910,9 @@
     {
       "id": "mong",
       "label": "Mong",
-      "confidence": "high",
+      "liquipedia": "https://liquipedia.net/starcraft/Mong",
+      "country": "KR",
+      "confidence": "confirmed",
       "aurora_ids": [
         12351289
       ],
@@ -20879,6 +20926,7 @@
           "gateway": 30
         }
       ],
+      "photo": "mong.jpg",
       "main_race": "Terran",
       "races": {
         "Terran": 41,
@@ -21018,17 +21066,17 @@
                 },
                 {
                   "start_min": 1,
-                  "end_min": 3,
+                  "end_min": 2,
                   "category": "prod",
-                  "share": 0.6001564945226917,
-                  "presses": 5112
+                  "share": 0.6389986824769434,
+                  "presses": 3795
                 },
                 {
-                  "start_min": 4,
+                  "start_min": 3,
                   "end_min": 6,
                   "category": "hall",
-                  "share": 0.7280528052805281,
-                  "presses": 3030
+                  "share": 0.6553945249597424,
+                  "presses": 4347
                 },
                 {
                   "start_min": 7,
@@ -21267,7 +21315,7 @@
             }
           ],
           "temporal_score": 0.9136369651938819,
-          "prose": "pro:mong plays a phase-driven layout: armies on 1 and 2, Comsats on 9 and 0, production on 6 and 7. Key 3 is repurposed: town hall early, then army from ~min 9. Key 4 is repurposed: army early, then production from ~min 1, then town hall from ~min 4, then production from ~min 7, then army from ~min 14. Key 5 is repurposed: production early, then army from ~min 15. Key 8 is repurposed: production early, then Comsat from ~min 16. Army groups typically hold ~3 units. Minute for minute, 91% of key presses match this pattern (36 games)."
+          "prose": "pro:mong plays a phase-driven layout: armies on 1 and 2, Comsats on 9 and 0, production on 6 and 7. Key 3 is repurposed: town hall early, then army from ~min 9. Key 4 is repurposed: army early, then production from ~min 1, then town hall from ~min 3, then production from ~min 7, then army from ~min 14. Key 5 is repurposed: production early, then army from ~min 15. Key 8 is repurposed: production early, then Comsat from ~min 16. Army groups typically hold ~3 units. Minute for minute, 91% of key presses match this pattern (36 games)."
         }
       ]
     },
@@ -21291,7 +21339,7 @@
         }
       ],
       "photo": "motive.png",
-      "rank": 28,
+      "rank": 31,
       "main_race": "Protoss",
       "races": {
         "Protoss": 52,
@@ -21677,7 +21725,7 @@
         }
       ],
       "photo": "nada.jpg",
-      "rank": 41,
+      "rank": 44,
       "main_race": "Terran",
       "races": {
         "Terran": 64
@@ -22055,7 +22103,7 @@
           "gateway": 30
         }
       ],
-      "rank": 61,
+      "rank": 64,
       "main_race": "Terran",
       "races": {
         "Terran": 43
@@ -22417,7 +22465,7 @@
       "label": "nOOB",
       "liquipedia": "https://liquipedia.net/starcraft/NOOB",
       "country": "KR",
-      "confidence": "high",
+      "confidence": "confirmed",
       "aurora_ids": [
         12357306
       ],
@@ -22431,7 +22479,7 @@
           "gateway": 10
         }
       ],
-      "rank": 62,
+      "rank": 65,
       "main_race": "Protoss",
       "races": {
         "Protoss": 37
@@ -22785,7 +22833,7 @@
           "gateway": 11
         }
       ],
-      "rank": 63,
+      "rank": 66,
       "main_race": "Protoss",
       "races": {
         "Protoss": 92,
@@ -23403,7 +23451,7 @@
         }
       ],
       "photo": "paralyze.png",
-      "rank": 24,
+      "rank": 27,
       "main_race": "Protoss",
       "races": {
         "Protoss": 46
@@ -23800,7 +23848,7 @@
           "gateway": 20
         }
       ],
-      "rank": 64,
+      "rank": 67,
       "main_race": "Terran",
       "races": {
         "Terran": 32
@@ -24178,7 +24226,9 @@
     {
       "id": "promise",
       "label": "ProMise",
-      "confidence": "high",
+      "liquipedia": "https://liquipedia.net/starcraft/ProMise",
+      "country": "KR",
+      "confidence": "confirmed",
       "aurora_ids": [
         41037753
       ],
@@ -24867,7 +24917,7 @@
         }
       ],
       "photo": "queen.jpg",
-      "rank": 9,
+      "rank": 12,
       "main_race": "Zerg",
       "races": {
         "Zerg": 58
@@ -25307,7 +25357,7 @@
           "gateway": 20
         }
       ],
-      "rank": 65,
+      "rank": 68,
       "main_race": "Protoss",
       "races": {
         "Protoss": 69,
@@ -25709,7 +25759,7 @@
         }
       ],
       "photo": "royal.png",
-      "rank": 7,
+      "rank": 10,
       "main_race": "Terran",
       "races": {
         "Terran": 60
@@ -26170,7 +26220,7 @@
         }
       ],
       "photo": "ruin.jpg",
-      "rank": 29,
+      "rank": 32,
       "main_race": "Protoss",
       "races": {
         "Protoss": 49,
@@ -26525,6 +26575,8 @@
     {
       "id": "rush",
       "label": "Rush",
+      "liquipedia": "https://liquipedia.net/starcraft/Rush",
+      "country": "KR",
       "confidence": "confirmed",
       "aurora_ids": [
         15005496,
@@ -26536,6 +26588,7 @@
           "gateway": 30
         }
       ],
+      "photo": "rush.png",
       "main_race": "Terran",
       "races": {
         "Terran": 56
@@ -26970,7 +27023,7 @@
           "gateway": 30
         }
       ],
-      "rank": 31,
+      "rank": 34,
       "main_race": "Zerg",
       "races": {
         "Zerg": 56
@@ -27344,7 +27397,9 @@
     {
       "id": "sacsri",
       "label": "Sacsri",
-      "confidence": "high",
+      "liquipedia": "https://liquipedia.net/starcraft/Sacsri",
+      "country": "KR",
+      "confidence": "confirmed",
       "aurora_ids": [
         13914099
       ],
@@ -27354,6 +27409,7 @@
           "gateway": 20
         }
       ],
+      "photo": "sacsri.png",
       "main_race": "Zerg",
       "races": {
         "Zerg": 24
@@ -27757,7 +27813,7 @@
           "gateway": 30
         }
       ],
-      "rank": 66,
+      "rank": 69,
       "main_race": "Zerg",
       "races": {
         "Zerg": 128
@@ -28025,7 +28081,7 @@
         }
       ],
       "photo": "scan.png",
-      "rank": 20,
+      "rank": 23,
       "main_race": "Terran",
       "races": {
         "Terran": 65
@@ -28420,7 +28476,7 @@
         }
       ],
       "photo": "sharp.png",
-      "rank": 8,
+      "rank": 11,
       "main_race": "Terran",
       "races": {
         "Terran": 32
@@ -28791,6 +28847,8 @@
     {
       "id": "shine",
       "label": "Shine",
+      "liquipedia": "https://liquipedia.net/starcraft/Shine",
+      "country": "KR",
       "confidence": "confirmed",
       "aurora_ids": [
         11900593,
@@ -28810,6 +28868,7 @@
           "gateway": 30
         }
       ],
+      "photo": "shine.png",
       "main_race": "Terran",
       "races": {
         "Protoss": 3,
@@ -29734,7 +29793,7 @@
         }
       ],
       "photo": "shinee.jpg",
-      "rank": 25,
+      "rank": 28,
       "main_race": "Terran",
       "races": {
         "Terran": 58
@@ -30108,6 +30167,8 @@
     {
       "id": "shuttle",
       "label": "Shuttle",
+      "liquipedia": "https://liquipedia.net/starcraft/Shuttle_(Player)",
+      "country": "KR",
       "confidence": "confirmed",
       "aurora_ids": [
         18434492
@@ -30118,6 +30179,7 @@
           "gateway": 30
         }
       ],
+      "photo": "shuttle.png",
       "main_race": "Protoss",
       "races": {
         "Protoss": 46
@@ -30430,7 +30492,7 @@
           "gateway": 30
         }
       ],
-      "rank": 32,
+      "rank": 35,
       "main_race": "Terran",
       "races": {
         "Terran": 58
@@ -30877,7 +30939,7 @@
           "gateway": 45
         }
       ],
-      "rank": 67,
+      "rank": 70,
       "main_race": "Protoss",
       "races": {
         "Protoss": 74
@@ -31137,6 +31199,8 @@
     {
       "id": "snow",
       "label": "Snow",
+      "liquipedia": "https://liquipedia.net/starcraft/Snow",
+      "country": "KR",
       "confidence": "confirmed",
       "aurora_ids": [
         14955604
@@ -31151,6 +31215,8 @@
           "gateway": 30
         }
       ],
+      "photo": "snow.png",
+      "rank": 6,
       "main_race": "Protoss",
       "races": {
         "Protoss": 37,
@@ -31892,8 +31958,7 @@
           "temporal_score": 0.9709786688638652,
           "prose": "pro:snow plays a phase-driven layout: armies on 1, production on 4–6, 8 and 9. Key 2 is repurposed: town hall early, then army from ~min 6. Key 3 is repurposed: army early, then town hall from ~min 3, then army from ~min 8. Key 7 is repurposed: army early, then production from ~min 7, then Comsat from ~min 13. Army groups typically hold ~3 units. Minute for minute, 97% of key presses match this pattern (9 games)."
         }
-      ],
-      "rank": 5
+      ]
     },
     {
       "id": "soma",
@@ -31911,7 +31976,7 @@
         }
       ],
       "photo": "soma.png",
-      "rank": 2,
+      "rank": 1,
       "main_race": "Zerg",
       "races": {
         "Zerg": 54
@@ -32320,6 +32385,8 @@
     {
       "id": "soo",
       "label": "Soo",
+      "liquipedia": "https://liquipedia.net/starcraft/SoO",
+      "country": "KR",
       "confidence": "confirmed",
       "aurora_ids": [
         14726310,
@@ -32351,7 +32418,8 @@
           "gateway": 30
         }
       ],
-      "rank": 68,
+      "photo": "soo.jpg",
+      "rank": 71,
       "main_race": "Zerg",
       "races": {
         "Zerg": 124
@@ -32699,6 +32767,733 @@
       ]
     },
     {
+      "id": "soulkey",
+      "label": "Soulkey",
+      "liquipedia": "https://liquipedia.net/starcraft/Soulkey",
+      "country": "KR",
+      "confidence": "confirmed",
+      "aurora_ids": [
+        12355047
+      ],
+      "toons": [
+        {
+          "toon": "Mstz_NeedMoney",
+          "gateway": 30
+        }
+      ],
+      "photo": "soulkey.jpg",
+      "main_race": "Terran",
+      "races": {
+        "Terran": 15,
+        "Zerg": 13
+      },
+      "games_sampled": 28,
+      "apm": {
+        "value": 295.75,
+        "games": 28
+      },
+      "cadence": {
+        "score": 4.189149817522157,
+        "rate_per_min": 11.788335727419733,
+        "cv_gap": 1.7838259064249546,
+        "burstiness": 0.26698902896804,
+        "idle20_ratio": 0.08204724671600572,
+        "games": 16
+      },
+      "viewport_switch_rate": {
+        "value": 25.174228894736842,
+        "games": 19
+      },
+      "hotkeys": [
+        {
+          "race": "Terran",
+          "games": 12,
+          "keys": [
+            {
+              "key": 1,
+              "runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 20,
+                  "category": "units",
+                  "share": 0.9998079508354139,
+                  "presses": 5207
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 1,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 45
+                },
+                {
+                  "start_min": 3,
+                  "end_min": 19,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 199
+                }
+              ],
+              "uses": 5207,
+              "used_games": 12,
+              "median_count": 6
+            },
+            {
+              "key": 2,
+              "runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 20,
+                  "category": "units",
+                  "share": 0.999792917788362,
+                  "presses": 4829
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 19,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 264
+                }
+              ],
+              "uses": 4829,
+              "used_games": 12,
+              "median_count": 4
+            },
+            {
+              "key": 3,
+              "runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 10,
+                  "category": "hall",
+                  "share": 0.9714494875549048,
+                  "presses": 4098
+                },
+                {
+                  "start_min": 11,
+                  "end_min": 20,
+                  "category": "units",
+                  "share": 0.8881057268722466,
+                  "presses": 1135
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 0,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 33
+                },
+                {
+                  "start_min": 9,
+                  "end_min": 19,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 54
+                }
+              ],
+              "uses": 5233,
+              "used_games": 12,
+              "median_count": 6
+            },
+            {
+              "key": 4,
+              "runs": [
+                {
+                  "start_min": 1,
+                  "end_min": 19,
+                  "category": "prod",
+                  "share": 0.9891035165923725,
+                  "presses": 8076
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 1,
+                  "end_min": 4,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 21
+                },
+                {
+                  "start_min": 12,
+                  "end_min": 12,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 6
+                },
+                {
+                  "start_min": 16,
+                  "end_min": 16,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
+                }
+              ],
+              "uses": 8076,
+              "used_games": 12,
+              "median_count": 9
+            },
+            {
+              "key": 5,
+              "runs": [
+                {
+                  "start_min": 2,
+                  "end_min": 19,
+                  "category": "prod",
+                  "share": 0.9895691609977324,
+                  "presses": 2205
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 2,
+                  "end_min": 6,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 17
+                },
+                {
+                  "start_min": 8,
+                  "end_min": 8,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
+                },
+                {
+                  "start_min": 10,
+                  "end_min": 10,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
+                },
+                {
+                  "start_min": 13,
+                  "end_min": 13,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
+                },
+                {
+                  "start_min": 17,
+                  "end_min": 17,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
+                }
+              ],
+              "uses": 2205,
+              "used_games": 12,
+              "median_count": 6
+            },
+            {
+              "key": 6,
+              "runs": [
+                {
+                  "start_min": 5,
+                  "end_min": 13,
+                  "category": "prod",
+                  "share": 0.9598765432098766,
+                  "presses": 324
+                },
+                {
+                  "start_min": 14,
+                  "end_min": 15,
+                  "category": "units",
+                  "share": 0.78125,
+                  "presses": 64
+                },
+                {
+                  "start_min": 16,
+                  "end_min": 20,
+                  "category": "prod",
+                  "share": 0.925,
+                  "presses": 40
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 4,
+                  "end_min": 8,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 13
+                },
+                {
+                  "start_min": 10,
+                  "end_min": 11,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 2
+                },
+                {
+                  "start_min": 13,
+                  "end_min": 13,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
+                },
+                {
+                  "start_min": 19,
+                  "end_min": 19,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
+                }
+              ],
+              "uses": 429,
+              "used_games": 12,
+              "median_count": 6
+            },
+            {
+              "key": 7,
+              "runs": [
+                {
+                  "start_min": 5,
+                  "end_min": 16,
+                  "category": "prod",
+                  "share": 1,
+                  "presses": 200
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 5,
+                  "end_min": 8,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 14
+                },
+                {
+                  "start_min": 12,
+                  "end_min": 12,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
+                }
+              ],
+              "uses": 209,
+              "used_games": 11,
+              "median_count": 0
+            },
+            {
+              "key": 8,
+              "runs": [
+                {
+                  "start_min": 7,
+                  "end_min": 10,
+                  "category": "prod",
+                  "share": 1,
+                  "presses": 30
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 7,
+                  "end_min": 9,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 6
+                },
+                {
+                  "start_min": 11,
+                  "end_min": 13,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 5
+                },
+                {
+                  "start_min": 16,
+                  "end_min": 16,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
+                }
+              ],
+              "uses": 42,
+              "used_games": 6,
+              "median_count": 1
+            },
+            {
+              "key": 9,
+              "runs": [
+                {
+                  "start_min": 5,
+                  "end_min": 18,
+                  "category": "comsat",
+                  "share": 0.9895833333333334,
+                  "presses": 96
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 2,
+                  "end_min": 3,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 13
+                },
+                {
+                  "start_min": 5,
+                  "end_min": 9,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 13
+                }
+              ],
+              "uses": 100,
+              "used_games": 12,
+              "median_count": 1
+            },
+            {
+              "key": 0,
+              "runs": [
+                {
+                  "start_min": 5,
+                  "end_min": 15,
+                  "category": "comsat",
+                  "share": 0.9777777777777777,
+                  "presses": 90
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 0,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 27
+                },
+                {
+                  "start_min": 4,
+                  "end_min": 9,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 10
+                }
+              ],
+              "uses": 97,
+              "used_games": 12,
+              "median_count": 0
+            }
+          ],
+          "temporal_score": 0.9852239145260286,
+          "prose": "pro:soulkey plays a phase-driven layout: armies on 1 and 2, Comsats on 9 and 0, production on 4 and 5, 7 and 8. Key 3 is repurposed: town hall early, then army from ~min 11. Key 6 is repurposed: production early, then army from ~min 14, then production from ~min 16. Army groups typically hold ~6 units. Minute for minute, 99% of key presses match this pattern (12 games)."
+        },
+        {
+          "race": "Zerg",
+          "games": 11,
+          "keys": [
+            {
+              "key": 1,
+              "runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 14,
+                  "category": "units",
+                  "share": 1,
+                  "presses": 3667
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 17,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 283
+                }
+              ],
+              "uses": 3748,
+              "used_games": 11,
+              "median_count": 10
+            },
+            {
+              "key": 2,
+              "runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 14,
+                  "category": "units",
+                  "share": 0.9418360196215837,
+                  "presses": 2854
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 0,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 11
+                },
+                {
+                  "start_min": 2,
+                  "end_min": 17,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 159
+                }
+              ],
+              "uses": 2897,
+              "used_games": 11,
+              "median_count": 5
+            },
+            {
+              "key": 3,
+              "runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 14,
+                  "category": "units",
+                  "share": 0.9748031496062992,
+                  "presses": 1270
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 1,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 19
+                },
+                {
+                  "start_min": 3,
+                  "end_min": 17,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 66
+                }
+              ],
+              "uses": 1299,
+              "used_games": 11,
+              "median_count": 4
+            },
+            {
+              "key": 4,
+              "runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 14,
+                  "category": "hall",
+                  "share": 1,
+                  "presses": 5604
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 0,
+                  "end_min": 0,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 12
+                }
+              ],
+              "uses": 5636,
+              "used_games": 11,
+              "median_count": 1
+            },
+            {
+              "key": 5,
+              "runs": [
+                {
+                  "start_min": 1,
+                  "end_min": 14,
+                  "category": "units",
+                  "share": 0.9013299013299013,
+                  "presses": 2331
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 1,
+                  "end_min": 2,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 11
+                }
+              ],
+              "uses": 2342,
+              "used_games": 11,
+              "median_count": 1
+            },
+            {
+              "key": 6,
+              "runs": [
+                {
+                  "start_min": 2,
+                  "end_min": 6,
+                  "category": "units",
+                  "share": 0.6462765957446809,
+                  "presses": 376
+                },
+                {
+                  "start_min": 7,
+                  "end_min": 14,
+                  "category": "hall",
+                  "share": 0.6882793017456359,
+                  "presses": 401
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 2,
+                  "end_min": 7,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 17
+                }
+              ],
+              "uses": 786,
+              "used_games": 10,
+              "median_count": 1
+            },
+            {
+              "key": 7,
+              "runs": [
+                {
+                  "start_min": 5,
+                  "end_min": 14,
+                  "category": "units",
+                  "share": 0.8060941828254847,
+                  "presses": 361
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 2,
+                  "end_min": 3,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 6
+                },
+                {
+                  "start_min": 5,
+                  "end_min": 6,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 5
+                },
+                {
+                  "start_min": 9,
+                  "end_min": 10,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 3
+                }
+              ],
+              "uses": 368,
+              "used_games": 9,
+              "median_count": 1
+            },
+            {
+              "key": 8,
+              "runs": [
+                {
+                  "start_min": 6,
+                  "end_min": 14,
+                  "category": "hall",
+                  "share": 0.9748427672955975,
+                  "presses": 159
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 5,
+                  "end_min": 6,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 7
+                },
+                {
+                  "start_min": 10,
+                  "end_min": 11,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 3
+                }
+              ],
+              "uses": 165,
+              "used_games": 8,
+              "median_count": 1
+            },
+            {
+              "key": 9,
+              "runs": [
+                {
+                  "start_min": 7,
+                  "end_min": 14,
+                  "category": "hall",
+                  "share": 1,
+                  "presses": 54
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 6,
+                  "end_min": 8,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 4
+                },
+                {
+                  "start_min": 11,
+                  "end_min": 11,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 1
+                }
+              ],
+              "uses": 60,
+              "used_games": 5,
+              "median_count": 0
+            },
+            {
+              "key": 0,
+              "runs": [
+                {
+                  "start_min": 9,
+                  "end_min": 14,
+                  "category": "hall",
+                  "share": 1,
+                  "presses": 58
+                }
+              ],
+              "assign_runs": [
+                {
+                  "start_min": 7,
+                  "end_min": 8,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 3
+                },
+                {
+                  "start_min": 11,
+                  "end_min": 11,
+                  "category": "assign",
+                  "share": 1,
+                  "presses": 2
+                }
+              ],
+              "uses": 71,
+              "used_games": 4,
+              "median_count": 0
+            }
+          ],
+          "temporal_score": 0.9556463379048731,
+          "prose": "pro:soulkey plays a phase-driven layout: armies on 1–3, 5, 7, Hatcheries on 4, 8–0. Key 6 is repurposed: army early, then town hall from ~min 7. Army groups typically hold ~5 units. Minute for minute, 96% of key presses match this pattern (11 games)."
+        }
+      ],
+      "rank": 3
+    },
+    {
       "id": "speed",
       "label": "Speed",
       "liquipedia": "https://liquipedia.net/starcraft/Speed",
@@ -32718,7 +33513,7 @@
         }
       ],
       "photo": "speed.png",
-      "rank": 16,
+      "rank": 19,
       "main_race": "Terran",
       "races": {
         "Protoss": 3,
@@ -33387,7 +34182,7 @@
         }
       ],
       "photo": "ssak.png",
-      "rank": 15,
+      "rank": 18,
       "main_race": "Terran",
       "races": {
         "Terran": 43
@@ -33774,7 +34569,7 @@
         }
       ],
       "photo": "stork.jpg",
-      "rank": 17,
+      "rank": 20,
       "main_race": "Protoss",
       "races": {
         "Protoss": 36
@@ -34127,6 +34922,8 @@
     {
       "id": "stryker",
       "label": "Stryker",
+      "liquipedia": "https://liquipedia.net/starcraft/StRyKeR",
+      "country": "US",
       "confidence": "confirmed",
       "aurora_ids": [
         2264640
@@ -34149,7 +34946,8 @@
           "gateway": 11
         }
       ],
-      "rank": 69,
+      "photo": "stryker.png",
+      "rank": 72,
       "main_race": "Zerg",
       "races": {
         "Zerg": 199
@@ -34544,7 +35342,7 @@
           "gateway": 11
         }
       ],
-      "rank": 70,
+      "rank": 73,
       "main_race": "Zerg",
       "races": {
         "Zerg": 102
@@ -34832,7 +35630,7 @@
         }
       ],
       "photo": "true.png",
-      "rank": 23,
+      "rank": 26,
       "main_race": "Zerg",
       "races": {
         "Terran": 3,
@@ -35412,10 +36210,13 @@
     {
       "id": "tyson",
       "label": "Tyson",
+      "liquipedia": "https://liquipedia.net/starcraft/Tyson",
+      "country": "KR",
       "confidence": "confirmed",
       "aurora_ids": [
         14192060
       ],
+      "photo": "tyson.jpg",
       "main_race": "Protoss",
       "races": {
         "Protoss": 39,
@@ -36054,7 +36855,7 @@
         }
       ],
       "photo": "xiaoshuai.png",
-      "rank": 42,
+      "rank": 45,
       "main_race": "Zerg",
       "races": {
         "Zerg": 123
@@ -36313,7 +37114,7 @@
         }
       ],
       "photo": "xuanxuan.jpg",
-      "rank": 43,
+      "rank": 46,
       "main_race": "Terran",
       "races": {
         "Terran": 46
@@ -36727,7 +37528,7 @@
         }
       ],
       "photo": "yoon.png",
-      "rank": 44,
+      "rank": 47,
       "main_race": "Zerg",
       "races": {
         "Protoss": 1,
@@ -37062,7 +37863,7 @@
         }
       ],
       "photo": "zelot.png",
-      "rank": 30,
+      "rank": 33,
       "main_race": "Zerg",
       "races": {
         "Terran": 4,
