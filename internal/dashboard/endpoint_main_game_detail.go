@@ -2740,30 +2740,33 @@ func (d *Dashboard) populateUnitCadenceForGameDetail(detail *workflowGameDetail)
 const (
 	fingerprintTierConfirmed = "confirmed"
 	fingerprintTierHigh      = "high"
-	fingerprintTierLead      = "lead"
 
 	fingerprintMatchMinVectors = 3
 
 	fingerprintOperatingPointStrict   = "fpr_1e4"
 	fingerprintOperatingPointModerate = "fpr_1e3"
-	fingerprintOperatingPointLoose    = "fpr_1e2"
 )
 
+// fingerprintTier reports the claim a match earns, or "" for no claim at all.
+//
+// There are only two claims. A hit that clears just fpr_1e2 is, family-wise
+// across a catalog this size, roughly a coin flip, and a hit that misses its
+// own identity bar says the probe looks like a crowded corner of style space
+// rather than like that person. Neither is worth a name: attaching one to a
+// player tells them they play like a progamer they have never been compared
+// to, and the whole feature is only worth having if a badge can be trusted.
 func fingerprintTier(m scfingerprint.MatchResult) string {
-	if m.ModelIsSynthetic {
+	if m.ModelIsSynthetic || !m.ClearsIdentityBar {
 		return ""
 	}
 	clearsStrict := m.OperatingPoints[fingerprintOperatingPointStrict]
 	clearsModerate := m.OperatingPoints[fingerprintOperatingPointModerate]
-	clearsLoose := m.OperatingPoints[fingerprintOperatingPointLoose]
 
 	switch {
-	case clearsStrict && m.ClearsIdentityBar && m.EvidenceN >= 3:
+	case clearsStrict && m.EvidenceN >= 3:
 		return fingerprintTierConfirmed
-	case (clearsStrict || clearsModerate) && m.ClearsIdentityBar:
+	case clearsStrict || clearsModerate:
 		return fingerprintTierHigh
-	case clearsStrict || clearsModerate || clearsLoose:
-		return fingerprintTierLead
 	}
 	return ""
 }
@@ -2881,11 +2884,8 @@ func (d *Dashboard) computeFingerprintMatch(playerKey string, featureVersion int
 		}
 	}
 	// Backward compat: map new tiers to old confidence values.
-	switch tier {
-	case fingerprintTierConfirmed, fingerprintTierHigh:
+	if tier == fingerprintTierConfirmed || tier == fingerprintTierHigh {
 		match.Confidence = fingerprintTierHigh
-	case fingerprintTierLead:
-		match.Confidence = "moderate"
 	}
 	return match, nil
 }

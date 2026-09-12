@@ -5603,7 +5603,6 @@ button.workflow-nav-update-available:disabled {
 .identity-badge-icon .ib-glyph { fill: var(--ib-ink); }
 .identity-badge-icon[data-tier='confirmed'] { --ib-disc: #3fb875; --ib-ink: #05140c; }
 .identity-badge-icon[data-tier='high'] { --ib-disc: #d9a938; --ib-ink: #17110a; }
-.identity-badge-icon[data-tier='lead'] { --ib-disc: var(--e-neg); --ib-ink: #1a0908; }
 /* On the player page the badge annotates the title, so it is set at the
    title's own size rather than shrunk into a footnote. */
 /* The player title lays its parts out as a flex row so the name, the badge

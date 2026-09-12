@@ -436,7 +436,6 @@
   "fingerprint.tooltip": "Using fingerprinting technology",
   "identity.fingerprint.confirmed": "Plays exactly like {name}",
   "identity.fingerprint.high": "Plays like {name}",
-  "identity.fingerprint.lead": "Plays similar to {name}",
   "identity.account.confirmed": "Confirmed account of {name}",
   "identity.account.high": "Likely account of {name}",
   "identity.badge.fingerprintEvidence": "Fingerprinting: {name}",

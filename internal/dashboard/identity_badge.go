@@ -90,7 +90,6 @@ var badgePrecedenceOrder = []struct {
 	{badgeKindAccount, fingerprintTierConfirmed},
 	{badgeKindFingerprint, fingerprintTierHigh},
 	{badgeKindAccount, fingerprintTierHigh},
-	{badgeKindFingerprint, fingerprintTierLead},
 }
 
 func badgeRank(b *IdentityBadge) int {
