@@ -2,6 +2,7 @@
   "nav.games": "Games",
   "nav.players": "Players",
   "nav.session": "Gaming Session",
+  "nav.lastSession": "Last Session",
   "nav.settings": "⚙️ Settings",
   "quit.button": "⏻ Quit",
   "quit.tip": "Stop the screpdb server and quit",

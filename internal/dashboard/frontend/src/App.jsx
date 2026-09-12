@@ -5425,13 +5425,13 @@ function App() {
           <div className="workflow-nav-group">
             <button type="button" className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('games')}>{t('nav.games')}</button>
             <button type="button" className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('players')}>{t('nav.players')}</button>
-            {gamingSessionEnabled && gamingSession?.active ? (
+            {gamingSessionEnabled && gamingSession?.has_session ? (
               <button
                 type="button"
                 className={`btn-manage ${activeView === 'session' ? 'workflow-nav-active' : ''}`}
                 onClick={() => navigateMainView('session')}
               >
-                {t('nav.session')}
+                {gamingSession.active ? t('nav.session') : t('nav.lastSession')}
               </button>
             ) : null}
           </div>

@@ -127,8 +127,7 @@ function PlayerTable({ players, renderName, showRecord, onPlayerClick }) {
           <th className="col-races">{t('session.col.races')}</th>
           <th className="col-apm">{t('session.col.apm')}</th>
           <th className="col-ladder">{t('session.col.ladder')}</th>
-          <th className="col-tag">{t('session.col.battleTag')}</th>
-          <th className="col-toons">{t('session.col.otherToons')}</th>
+          <th className="col-toons">{t('session.col.alsoPlaysAs')}</th>
         </tr>
       </thead>
       <tbody>
@@ -141,12 +140,67 @@ function PlayerTable({ players, renderName, showRecord, onPlayerClick }) {
             <td className="col-races"><RaceIcons races={player.races} /></td>
             <td className="col-apm">{player.apm ? player.apm : <span className="session-cell-empty">-</span>}</td>
             <td className="col-ladder"><LadderCell profile={player.profile} /></td>
-            <td className="col-tag">{player.profile?.battle_tag || <span className="session-cell-empty">-</span>}</td>
             <td className="col-toons"><OtherToons profile={player.profile} currentName={player.player_name} onPlayerClick={onPlayerClick} /></td>
           </tr>
         ))}
       </tbody>
     </table>
+  );
+}
+
+// formatLastGame is deliberately relative and coarse. The underlying fact is
+// "the newest game Battle.net has published for this account", which is a
+// moment in the past, not a presence signal; a relative distance says that
+// plainly where a clock time would invite the reader to infer more.
+const formatLastGame = (iso) => {
+  if (!iso) return '';
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '';
+  const minutes = Math.max(0, Math.round((Date.now() - at.getTime()) / 60000));
+  if (minutes < 5) return t('session.ago.justNow');
+  if (minutes < 60) return t('session.ago.minutes', { count: minutes });
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return t('session.ago.hours', { count: hours });
+  return t('session.ago.days', { count: Math.round(hours / 24) });
+};
+
+// RegularsPulse is the "is anyone around?" line. It is the reason this page is
+// worth opening before a session rather than after one, so it sits with the
+// totals instead of behind a tab.
+//
+// Two tiers, and never both: someone who has just finished a game is worth
+// interrupting your evening for, and when nobody is, naming who has been alive
+// in the last few days is still better than a blank. Below that, it renders
+// nothing at all: an empty shelf teaches the eye to skip the whole region.
+function RegularsPulse({ regulars, onPlayerClick }) {
+  const t = useT();
+  const all = regulars || [];
+  const now = all.filter((regular) => regular.freshness === 'now');
+  const lately = all.filter((regular) => regular.freshness === 'lately');
+  const live = now.length > 0;
+  const shown = live ? now : lately;
+  if (shown.length === 0) return null;
+  return (
+    <div className={`session-pulse${live ? ' session-pulse--live' : ''}`}>
+      <span className="session-pulse-label">
+        {live ? <span className="session-pulse-dot" aria-hidden="true" /> : null}
+        {t(live ? 'session.pulse.now' : 'session.pulse.lately')}
+      </span>
+      <span className="session-pulse-names">
+        {shown.map((regular) => (
+          <button
+            key={regular.player_key}
+            type="button"
+            className="session-pulse-name"
+            onClick={() => onPlayerClick?.(regular.player_key)}
+            title={t('player.viewThisPlayer')}
+          >
+            {regular.player_name}
+            <span className="session-pulse-when">{formatLastGame(regular.last_seen)}</span>
+          </button>
+        ))}
+      </span>
+    </div>
   );
 }
 
@@ -160,12 +214,15 @@ function GamingSessionPanel({ session, loading, error, renderName, onPlayerClick
   if (error) {
     return <div className="workflow-panel"><div className="error-message">{error}</div></div>;
   }
-  if (!session?.active) {
+  const regulars = session?.regulars || [];
+
+  if (!session?.has_session) {
     return (
-      <div className="workflow-panel">
+      <div className="workflow-panel workflow-panel--session">
         <p className="workflow-subtle-note">
           {t('session.noRecent')}
         </p>
+        <RegularsPulse regulars={regulars} onPlayerClick={onPlayerClick} />
       </div>
     );
   }
@@ -193,8 +250,16 @@ function GamingSessionPanel({ session, loading, error, renderName, onPlayerClick
           value={(stats.average_apm || 0).toFixed(0)}
           sub={t('session.stat.eapm', { value: (stats.average_eapm || 0).toFixed(0) })}
         />
-        <StatTile label={t('session.stat.timePlayed')} value={formatDuration(stats.played_seconds)} sub={t('session.stat.inGame')} />
+        <StatTile
+          label={t('session.stat.timePlayed')}
+          value={formatDuration(stats.played_seconds)}
+          sub={stats.duration_seconds > 0
+            ? t('session.stat.inGameOfElapsed', { elapsed: formatDuration(stats.duration_seconds) })
+            : t('session.stat.inGame')}
+        />
       </div>
+
+      <RegularsPulse regulars={regulars} onPlayerClick={onPlayerClick} />
 
       <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label={t('session.sectionsAria')}>
         <button

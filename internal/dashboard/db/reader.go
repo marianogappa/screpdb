@@ -130,6 +130,7 @@ type Reader interface {
 	ListRecentAutosaveGamesForPlayers(ctx context.Context, playerKeys []string, limit int) ([]SessionCandidateRow, error)
 	ListReplaysByIDs(ctx context.Context, replayIDs []int64) ([]SessionReplayRow, error)
 	ListPlayerAPMByReplayIDs(ctx context.Context, replayIDs []int64) ([]SessionPlayerAPMRow, error)
+	ListCoPlayerCounts(ctx context.Context, playerKeys []string, since time.Time) ([]CoPlayerRow, error)
 
 	// Hotkeys: the hotkey signature, timeline and map surfaces.
 	ListReplayPlayerHotkeyStreams(ctx context.Context, replayID int64) ([]ReplayPlayerHotkeyStreamRow, error)

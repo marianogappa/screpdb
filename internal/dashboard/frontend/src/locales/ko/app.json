@@ -2,6 +2,7 @@
   "nav.games": "게임",
   "nav.players": "플레이어",
   "nav.session": "게임 세션",
+  "nav.lastSession": "지난 세션",
   "nav.settings": "⚙️ 설정",
   "quit.button": "⏻ 종료",
   "quit.tip": "screpdb 서버를 중지하고 종료합니다",
