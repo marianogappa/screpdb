@@ -27,27 +27,29 @@ const (
 )
 
 var (
-	ErrBridgeBudgetExhausted   = errors.New("bnetfacade: bridge daily request budget exhausted")
-	ErrDownloadBudgetExhausted = errors.New("bnetfacade: replay download daily budget exhausted")
-	ErrBridgeCoolingDown       = errors.New("bnetfacade: bridge cooling down after rate limiting")
-	ErrBridgeRateLimited       = errors.New("bnetfacade: bridge reported rate limiting")
+	ErrBridgeCoolingDown = errors.New("bnetfacade: bridge cooling down after rate limiting")
+	ErrBridgeRateLimited = errors.New("bnetfacade: bridge reported rate limiting")
 )
 
-// Bridge calls ride the user's Blizzard session: being chatty risks a mid-game
-// disconnection, so the sustained rate stays conservative and the daily cap
-// survives restarts. The burst covers a game-detail page (8 players) plus a
-// couple of clicks; the daily cap covers a once-per-day sweep of the several
-// hundred distinct players a ~1000-replay database typically holds, with
-// headroom for interactive browsing. GCS downloads never touch that session —
-// they cost bandwidth, not disconnection risk — hence the separate budget.
+// Rate limiting here is about pace, not quota. Bridge calls ride the user's
+// Blizzard session, so what risks a mid-game disconnection is a burst of
+// requests at once; the same number spread across the day is unremarkable, and
+// the server tells us directly when it disagrees (see noteBridgeRateLimited's
+// exponential cooldown). So the sustained interval and the burst are the
+// enforcement, and there is deliberately no daily ceiling: a cap only ever
+// stopped legitimate work partway through — a sweep of a large database, or a
+// recurring poll — with no corresponding benefit to the server, which sees the
+// same steady trickle either way.
+//
+// The burst covers a game-detail page (8 players) plus a couple of clicks. GCS
+// downloads never touch the Blizzard session — they cost bandwidth, not
+// disconnection risk — hence the separate, looser bucket.
 const (
 	bridgeTokenInterval = 2 * time.Second
 	bridgeBurst         = 12
-	bridgeDailyCap      = 600
 
 	downloadTokenInterval = 2 * time.Second
 	downloadBurst         = 6
-	downloadDailyCap      = 750
 
 	cooldownBase = 15 * time.Minute
 	cooldownMax  = 6 * time.Hour
@@ -159,9 +161,10 @@ func (l *limiter) abandon(prio Priority, ch chan struct{}) {
 	l.tokens = math.Min(l.burst, l.tokens+1)
 }
 
-// budgets holds both daily budgets, the bridge cooldown state, and the
-// optional persistence path. Enforcement is in-memory always; persistence only
-// makes the daily counters and the cooldown survive restarts.
+// budgets holds the two pacing buckets, the day's request counters and the
+// bridge cooldown state. The counters are reporting only — nothing is refused
+// on their account; persistence exists so the meter and the cooldown survive a
+// restart rather than to enforce anything.
 type budgets struct {
 	bridgeLim   *limiter
 	downloadLim *limiter
@@ -171,8 +174,6 @@ type budgets struct {
 	day           string
 	bridgeUsed    int
 	downloadsUsed int
-	bridgeCap     int
-	downloadCap   int
 	cooldownN     int
 	cooldownUntil time.Time
 	persistPath   string
@@ -183,8 +184,6 @@ func newBudgets() *budgets {
 		bridgeLim:   newLimiter(bridgeTokenInterval, bridgeBurst),
 		downloadLim: newLimiter(downloadTokenInterval, downloadBurst),
 		now:         time.Now,
-		bridgeCap:   bridgeDailyCap,
-		downloadCap: downloadDailyCap,
 	}
 }
 
@@ -198,10 +197,10 @@ type budgetFile struct {
 	CooldownConsecutive int       `json:"cooldown_consecutive,omitempty"`
 }
 
-// EnableBudgetPersistence loads any persisted daily counters and cooldown from
-// the app-data root and arms saving, so restarting screpdb does not reset the
-// daily caps. Without this call the budgets still enforce, from zero, in
-// memory only.
+// EnableBudgetPersistence loads the persisted day counters and cooldown from
+// the app-data root and arms saving, so a restart neither loses the day's
+// request count nor forgets an active cooldown. Without it both start at zero
+// in memory; only the cooldown actually gates anything.
 func EnableBudgetPersistence() error {
 	dir, err := appdata.Dir()
 	if err != nil {
@@ -270,10 +269,6 @@ func (b *budgets) acquireBridge(ctx context.Context, prio Priority) error {
 		b.mu.Unlock()
 		return fmt.Errorf("%w (until %s)", ErrBridgeCoolingDown, until.Format(time.RFC3339))
 	}
-	if b.bridgeUsed >= b.bridgeCap {
-		b.mu.Unlock()
-		return fmt.Errorf("%w (%d today)", ErrBridgeBudgetExhausted, b.bridgeCap)
-	}
 	b.bridgeUsed++
 	b.saveLocked()
 	b.mu.Unlock()
@@ -291,10 +286,6 @@ func (b *budgets) acquireBridge(ctx context.Context, prio Priority) error {
 func (b *budgets) acquireDownload(ctx context.Context, prio Priority) error {
 	b.mu.Lock()
 	b.rollDayLocked(b.now())
-	if b.downloadsUsed >= b.downloadCap {
-		b.mu.Unlock()
-		return fmt.Errorf("%w (%d today)", ErrDownloadBudgetExhausted, b.downloadCap)
-	}
 	b.downloadsUsed++
 	b.saveLocked()
 	b.mu.Unlock()
@@ -331,13 +322,11 @@ func (b *budgets) noteBridgeSuccess() {
 	b.saveLocked()
 }
 
-// BudgetStatus is a read-only snapshot of both daily budgets, surfaced to the
-// dashboard's "requests today" meter.
+// BudgetStatus is a read-only snapshot of today's request counters and any
+// active cooldown, surfaced to the dashboard's "requests today" meter.
 type BudgetStatus struct {
 	BridgeUsedToday    int
-	BridgeDailyCap     int
 	DownloadsUsedToday int
-	DownloadsDailyCap  int
 	CooldownUntil      time.Time
 }
 
@@ -352,9 +341,7 @@ func (b *budgets) snapshot() BudgetStatus {
 	b.rollDayLocked(now)
 	s := BudgetStatus{
 		BridgeUsedToday:    b.bridgeUsed,
-		BridgeDailyCap:     b.bridgeCap,
 		DownloadsUsedToday: b.downloadsUsed,
-		DownloadsDailyCap:  b.downloadCap,
 	}
 	if now.Before(b.cooldownUntil) {
 		s.CooldownUntil = b.cooldownUntil
