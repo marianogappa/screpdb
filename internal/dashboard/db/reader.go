@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"time"
+
+	"github.com/marianogappa/screpdb/internal/library/persist"
 )
 
 // GamesQuery is the games-list selection the dashboard asks for. Values are
@@ -134,14 +136,15 @@ type Reader interface {
 	ListPlayerHotkeyStreamsByKey(ctx context.Context, playerKey string) ([]PlayerHotkeyStreamRow, error)
 	GetReplayPlayerHotkeyStream(ctx context.Context, replayID, playerID int64) (*ReplayPlayerHotkeyStream, error)
 
-	// Bnet: the Battle.net profile cache and its game-result history.
-	GetBnetProfile(ctx context.Context, toon string, gateway int64) (*BnetProfileRow, error)
-	UpsertBnetProfile(ctx context.Context, row BnetProfileRow) error
+	// Bnet: the distilled Battle.net profile store and the game archive.
+	GetBnetProfile(ctx context.Context, toon string, gateway int64) (*persist.BnetProfile, error)
+	UpsertBnetProfile(ctx context.Context, p persist.BnetProfile) error
 	GetBnetCountryCodesByPlayerKeys(ctx context.Context, playerKeys []string) (map[string]string, error)
 	GetBnetFetchedAtByPlayerKeys(ctx context.Context, playerKeys []string) (map[string]time.Time, error)
-	ListBnetProfilePayloadsByPlayerKeys(ctx context.Context, playerKeys []string) ([]BnetProfilePayloadRow, error)
+	ListBnetProfilesByPlayerKeys(ctx context.Context, playerKeys []string) ([]persist.BnetProfile, error)
 	ListBnetAuroraIDsByPlayerKeys(ctx context.Context, playerKeys []string) ([]int64, error)
-	UpsertBnetGameResults(ctx context.Context, rows []BnetGameResultRow) error
+	UpsertBnetGames(ctx context.Context, games []persist.BnetGame) error
+	ListBnetGamesByAccount(ctx context.Context, auroraID int64) ([]persist.BnetGame, error)
 	ListBnetGameTimes(ctx context.Context, auroraID int64, since time.Time) ([]time.Time, error)
 
 	// Bnet: identity badge resolution.

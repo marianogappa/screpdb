@@ -3,6 +3,8 @@ package dashboard
 import (
 	"testing"
 	"time"
+
+	"github.com/marianogappa/screpdb/internal/library/persist"
 )
 
 func rowsAt(base time.Time, offsets ...time.Duration) []sessionGameRow {
@@ -197,7 +199,7 @@ func TestSummarizeGamingSessionUndecided(t *testing.T) {
 	}
 }
 
-func TestParseBnetProfileDetail(t *testing.T) {
+func TestBnetProfileDetailFromRecord(t *testing.T) {
 	payload := []byte(`{
 		"aurora_id": 12345,
 		"battle_tag": "Someone",
@@ -211,10 +213,8 @@ func TestParseBnetProfileDetail(t *testing.T) {
 			{"rating": 1200, "highest_rating": 1300, "wins": 2, "losses": 2}
 		]
 	}`)
-	got := parseBnetProfileDetail("Main", payload)
-	if got == nil {
-		t.Fatal("expected a detail")
-	}
+	record, _ := persist.DistillBnetProfile("Main", 30, time.Now(), payload)
+	got := bnetProfileDetailFromRecord(record, nil)
 	if got.AuroraID != 12345 || got.BattleTag != "Someone" || got.CountryCode != "ARG" {
 		t.Errorf("identity fields wrong: %+v", got)
 	}
@@ -233,10 +233,11 @@ func TestParseBnetProfileDetail(t *testing.T) {
 	}
 }
 
-func TestParseBnetProfileDetail_CollapsesGatewayRepeats(t *testing.T) {
+func TestBnetProfileDetailFromRecord_CollapsesGatewayRepeats(t *testing.T) {
 	// The bridge lists a toon once per gateway it exists on. The alias row must
 	// show each name once, not once per gateway.
 	payload := []byte(`{
+		"aurora_id": 7,
 		"toons": [
 			{"toon": "chobo85", "gateway_id": 10, "games_last_week": 2},
 			{"toon": "chobo85", "gateway_id": 11, "games_last_week": 3},
@@ -245,10 +246,8 @@ func TestParseBnetProfileDetail_CollapsesGatewayRepeats(t *testing.T) {
 			{"toon": "chobo86", "gateway_id": 10, "games_last_week": 9}
 		]
 	}`)
-	got := parseBnetProfileDetail("chobo86", payload)
-	if got == nil {
-		t.Fatal("expected a detail")
-	}
+	record, _ := persist.DistillBnetProfile("chobo86", 10, time.Now(), payload)
+	got := bnetProfileDetailFromRecord(record, nil)
 	names := []string{}
 	for _, toon := range got.Toons {
 		names = append(names, toon.Toon)
@@ -269,16 +268,17 @@ func TestParseBnetProfileDetail_CollapsesGatewayRepeats(t *testing.T) {
 	}
 }
 
-func TestParseBnetProfileDetail_Unusable(t *testing.T) {
-	// A page that shows profile decoration must still render when the payload
-	// is missing or malformed, so these yield no detail rather than an error.
-	if parseBnetProfileDetail("x", nil) != nil {
-		t.Error("empty payload must yield no detail")
+func TestBnetProfileDetailFromRecord_Unusable(t *testing.T) {
+	// A missing or malformed payload distils to a not-found record, so the
+	// pages that show profile decoration never see it.
+	if record, _ := persist.DistillBnetProfile("x", 30, time.Now(), nil); record.Found {
+		t.Error("empty payload must distil to a not-found record")
 	}
-	if parseBnetProfileDetail("x", []byte("not json")) != nil {
-		t.Error("malformed payload must yield no detail")
+	if record, _ := persist.DistillBnetProfile("x", 30, time.Now(), []byte("not json")); record.Found {
+		t.Error("malformed payload must distil to a not-found record")
 	}
-	got := parseBnetProfileDetail("x", []byte(`{"aurora_id": 7}`))
+	record, _ := persist.DistillBnetProfile("x", 30, time.Now(), []byte(`{"aurora_id": 7}`))
+	got := bnetProfileDetailFromRecord(record, nil)
 	if got == nil || got.PlaysLadder {
 		t.Errorf("a profile with no matchmaked_stats must not read as a ladder player: %+v", got)
 	}

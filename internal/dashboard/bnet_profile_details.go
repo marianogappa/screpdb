@@ -2,18 +2,17 @@ package dashboard
 
 import (
 	"context"
-	"encoding/json"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/marianogappa/screpdb/internal/bnetfacade"
+	"github.com/marianogappa/screpdb/internal/library/persist"
 )
 
-// The profile payload the SC:R bridge returns is large and mostly avatars and
-// per-race lifetime counters. These are the parts worth surfacing: who the
-// account belongs to, what else they play as, and whether they ladder.
+// The distilled profile record still carries more than the pages surface.
+// These are the parts worth showing: who the account belongs to, what else
+// they play as, and whether they ladder.
 type bnetProfileToon struct {
 	Toon           string `json:"toon"`
 	Gateway        int    `json:"gateway,omitempty"`
@@ -44,22 +43,22 @@ type bnetProfileDetail struct {
 	// PlayTimeSeconds sums the per-race lifetime play_time counters.
 	PlayTimeSeconds int64 `json:"play_time_seconds,omitempty"`
 	// GamesLastWeek sums Battle.net's own games_last_week over the account's
-	// toons; LastPlayedAt is the newest game in game_results (RFC3339, UTC).
+	// toons; LastPlayedAt is the newest game in the archive (RFC3339, UTC).
 	GamesLastWeek int    `json:"games_last_week"`
 	LastPlayedAt  string `json:"last_played_at,omitempty"`
-	// RecentGames is the account's game_results list, newest first: the last
-	// ~20 games Battle.net remembers, whichever toon they were played on.
+	// RecentGames is the account's slice of the game archive, newest first. It
+	// accumulates across fetches, so it is not capped at the ~20 games one
+	// Battle.net response carries.
 	RecentGames []bnetRecentGame `json:"recent_games,omitempty"`
-	// Habits is filled by the player page from the rolling game cache.
+	// Habits is filled by the player page from the game archive.
 	Habits *bnetPlayHabits `json:"habits,omitempty"`
 }
 
-// bnetRecentGame is one entry of the profile's game_results, seen from this
-// account's side. Nothing here allows downloading the replay.
+// bnetRecentGame is one archived game, seen from this account's side. Nothing
+// here allows downloading the replay.
 type bnetRecentGame struct {
 	PlayedAt        string               `json:"played_at"`
 	GameID          string               `json:"game_id,omitempty"`
-	MatchGUID       string               `json:"match_guid,omitempty"`
 	Gateway         int                  `json:"gateway,omitempty"`
 	GatewayName     string               `json:"gateway_name,omitempty"`
 	MapName         string               `json:"map_name"`
@@ -76,86 +75,34 @@ type bnetRecentOpponent struct {
 	Race string `json:"race,omitempty"`
 }
 
-// rawBnetProfile is the subset of the bridge payload we decode. Everything else
-// (avatars, per-race lifetime counters, replay lists) is ignored.
-type rawBnetProfile struct {
-	AuroraID    int64  `json:"aurora_id"`
-	BattleTag   string `json:"battle_tag"`
-	CountryCode string `json:"country_code"`
-	Toons       []struct {
-		Toon          string `json:"toon"`
-		GatewayID     int    `json:"gateway_id"`
-		GamesLastWeek int    `json:"games_last_week"`
-	} `json:"toons"`
-	MatchmakedStats []struct {
-		Rating        int `json:"rating"`
-		HighestRating int `json:"highest_rating"`
-		Wins          int `json:"wins"`
-		Losses        int `json:"losses"`
-	} `json:"matchmaked_stats"`
-	Stats []struct {
-		Raw map[string]float64 `json:"raw"`
-	} `json:"stats"`
-	GameResults []rawBnetGameResult `json:"game_results"`
-}
-
-// rawBnetGameResult is one game_results entry. Numbers arrive as strings.
-type rawBnetGameResult struct {
-	Attributes struct {
-		MapName string `json:"mapName"`
-	} `json:"attributes"`
-	CreateTime string `json:"create_time"`
-	GameID     string `json:"game_id"`
-	GatewayID  int    `json:"gateway_id"`
-	MatchGUID  string `json:"match_guid"`
-	Players    []struct {
-		Attributes struct {
-			Race string `json:"race"`
-			Type string `json:"type"`
-		} `json:"attributes"`
-		Result string            `json:"result"`
-		Stats  map[string]string `json:"stats"`
-		Toon   string            `json:"toon"`
-	} `json:"players"`
-}
-
-// parseBnetProfileDetail extracts the displayable parts of a cached profile
-// payload. A payload we cannot decode yields no detail rather than an error:
-// this is decoration on a page that must render regardless.
-func parseBnetProfileDetail(toon string, payload []byte) *bnetProfileDetail {
-	if len(payload) == 0 {
-		return nil
-	}
-	var raw rawBnetProfile
-	if err := json.Unmarshal(payload, &raw); err != nil {
-		return nil
-	}
+// bnetProfileDetailFromRecord assembles the displayable parts of a distilled
+// profile and the account's archived games.
+func bnetProfileDetailFromRecord(p persist.BnetProfile, games []persist.BnetGame) *bnetProfileDetail {
 	detail := &bnetProfileDetail{
-		Toon:        toon,
-		AuroraID:    raw.AuroraID,
-		BattleTag:   strings.TrimSpace(raw.BattleTag),
-		CountryCode: strings.TrimSpace(raw.CountryCode),
+		Toon:        p.Toon,
+		AuroraID:    p.AuroraID,
+		BattleTag:   p.BattleTag,
+		CountryCode: p.CountryCode,
 	}
 	// The bridge lists a toon once per gateway it exists on, so the same name
 	// arrives several times. Collapse them onto the normalised key, keeping the
 	// first gateway seen and summing the per-gateway weekly counts.
 	toonIndex := map[string]int{}
-	for _, t := range raw.Toons {
-		name := strings.TrimSpace(t.Toon)
-		if name == "" {
-			continue
-		}
-		if i, ok := toonIndex[normalizePlayerKey(name)]; ok {
+	for _, t := range p.Toons {
+		if i, ok := toonIndex[normalizePlayerKey(t.Toon)]; ok {
 			detail.Toons[i].GamesLastWeek += t.GamesLastWeek
 			continue
 		}
-		toonIndex[normalizePlayerKey(name)] = len(detail.Toons)
+		toonIndex[normalizePlayerKey(t.Toon)] = len(detail.Toons)
 		detail.Toons = append(detail.Toons, bnetProfileToon{
-			Toon:          name,
-			Gateway:       t.GatewayID,
-			GatewayName:   bnetfacade.GatewayNames[t.GatewayID],
+			Toon:          t.Toon,
+			Gateway:       t.Gateway,
+			GatewayName:   bnetfacade.GatewayNames[t.Gateway],
 			GamesLastWeek: t.GamesLastWeek,
 		})
+	}
+	for _, t := range p.Toons {
+		detail.GamesLastWeek += t.GamesLastWeek
 	}
 	// Most played first, so the account someone actually uses leads.
 	sort.SliceStable(detail.Toons, func(i, j int) bool {
@@ -168,7 +115,7 @@ func parseBnetProfileDetail(toon string, payload []byte) *bnetProfileDetail {
 	// A player can hold several matchmaking records (per season and mode). The
 	// best current rating is the meaningful headline; wins/losses are summed
 	// across records so "laddered at all" is not hidden by an empty season.
-	for _, stat := range raw.MatchmakedStats {
+	for _, stat := range p.Ladder {
 		detail.PlaysLadder = true
 		if stat.Rating > detail.MMR {
 			detail.MMR = stat.Rating
@@ -182,98 +129,72 @@ func parseBnetProfileDetail(toon string, payload []byte) *bnetProfileDetail {
 	// Lifetime totals: Battle.net reports per-race counters; sum them and
 	// derive the average APM from the per-game APM sums.
 	apmSum := 0.0
-	for _, stat := range raw.Stats {
+	for _, row := range p.Lifetime {
 		for _, race := range []string{"zerg", "terran", "protoss"} {
-			wins := int(stat.Raw[race+"_wins_sum"])
-			losses := int(stat.Raw[race+"_losses_sum"])
-			draws := int(stat.Raw[race+"_draws_sum"])
-			disconnects := int(stat.Raw[race+"_disconnects_sum"])
-			detail.LifetimeWins += wins
-			detail.LifetimeLosses += losses
-			detail.LifetimeDisconnects += disconnects
-			detail.LifetimeGames += wins + losses + draws + disconnects
-			apmSum += stat.Raw[race+"_apm_sum"]
+			totals := row.Race[race]
+			detail.LifetimeWins += totals.Wins
+			detail.LifetimeLosses += totals.Losses
+			detail.LifetimeDisconnects += totals.Disconnects
+			detail.LifetimeGames += totals.Wins + totals.Losses + totals.Draws + totals.Disconnects
+			apmSum += totals.APMSum
+			detail.PlayTimeSeconds += totals.PlayTimeSec
 		}
 	}
 	if detail.LifetimeGames > 0 {
 		detail.AverageAPM = apmSum / float64(detail.LifetimeGames)
 	}
-	for _, stat := range raw.Stats {
-		for _, race := range []string{"zerg", "terran", "protoss"} {
-			detail.PlayTimeSeconds += int64(stat.Raw[race+"_play_time_sum"])
-		}
-	}
-	for _, t := range raw.Toons {
-		detail.GamesLastWeek += t.GamesLastWeek
-	}
-	detail.RecentGames = parseBnetRecentGames(raw)
+	detail.RecentGames = bnetRecentGamesFromArchive(p, games)
 	if len(detail.RecentGames) > 0 {
 		detail.LastPlayedAt = detail.RecentGames[0].PlayedAt
 	}
 	return detail
 }
 
-// parseBnetRecentGames reads game_results from the account's side: the entry
-// whose toon is one of the account's toons is "us", every other human is an
-// opponent. Games where no toon of ours appears are kept without a side.
-func parseBnetRecentGames(raw rawBnetProfile) []bnetRecentGame {
+// bnetRecentGamesFromArchive reads the account's games from its side: the
+// player whose toon is one of the account's toons is "us", every other human
+// is an opponent. Games where no toon of ours appears are kept without a side.
+func bnetRecentGamesFromArchive(p persist.BnetProfile, games []persist.BnetGame) []bnetRecentGame {
 	ours := map[string]bool{}
-	for _, t := range raw.Toons {
+	for _, t := range p.Toons {
 		if key := normalizePlayerKey(t.Toon); key != "" {
 			ours[key] = true
 		}
 	}
-	games := make([]bnetRecentGame, 0, len(raw.GameResults))
-	for _, g := range raw.GameResults {
-		createTime, err := strconv.ParseInt(strings.TrimSpace(g.CreateTime), 10, 64)
-		if err != nil || createTime <= 0 {
+	out := make([]bnetRecentGame, 0, len(games))
+	for _, g := range games {
+		if g.CreateTime.IsZero() {
 			continue
 		}
 		game := bnetRecentGame{
-			PlayedAt:    time.Unix(createTime, 0).UTC().Format(time.RFC3339),
+			PlayedAt:    g.CreateTime.UTC().Format(time.RFC3339),
 			GameID:      g.GameID,
-			MatchGUID:   g.MatchGUID,
-			Gateway:     g.GatewayID,
-			GatewayName: bnetfacade.GatewayNames[g.GatewayID],
-			MapName:     stripBnetControlChars(g.Attributes.MapName),
-			Result:      "unknown",
+			Gateway:     g.Gateway,
+			GatewayName: bnetfacade.GatewayNames[g.Gateway],
+			MapName:     g.MapName,
+			Result:      persist.BnetResultString(persist.BnetResultUnknown),
 		}
-		for _, p := range g.Players {
-			if p.Attributes.Type != "player" {
+		for _, player := range g.Players {
+			if player.Computer {
 				continue
 			}
-			race := prettyBnetRace(p.Attributes.Race)
-			playTime, _ := strconv.Atoi(p.Stats[p.Attributes.Race+"_play_time"])
-			if playTime > game.DurationSeconds {
-				game.DurationSeconds = playTime
+			if player.Seconds > game.DurationSeconds {
+				game.DurationSeconds = player.Seconds
 			}
-			if ours[normalizePlayerKey(p.Toon)] && game.Toon == "" {
-				game.Toon = p.Toon
-				game.Race = race
-				if p.Result != "" {
-					game.Result = p.Result
+			if ours[normalizePlayerKey(player.Toon)] && game.Toon == "" {
+				game.Toon = player.Toon
+				game.Race = prettyBnetRace(player.Race)
+				if player.Result != persist.BnetResultUnknown {
+					game.Result = persist.BnetResultString(player.Result)
 				}
-				game.APM, _ = strconv.Atoi(p.Stats[p.Attributes.Race+"_apm"])
+				game.APM = player.APM
 				continue
 			}
-			game.Opponents = append(game.Opponents, bnetRecentOpponent{Toon: p.Toon, Race: race})
+			game.Opponents = append(game.Opponents, bnetRecentOpponent{Toon: player.Toon, Race: prettyBnetRace(player.Race)})
 		}
-		games = append(games, game)
+		out = append(out, game)
 	}
-	sort.SliceStable(games, func(i, j int) bool { return games[i].PlayedAt > games[j].PlayedAt })
-	return games
-}
-
-// stripBnetControlChars drops the colour-code bytes (0x01-0x1f) Battle.net
-// leaves in map titles ("\x07KnockOut \x051.4").
-func stripBnetControlChars(s string) string {
-	var b strings.Builder
-	for _, r := range s {
-		if r >= 0x20 {
-			b.WriteRune(r)
-		}
-	}
-	return strings.TrimSpace(b.String())
+	sort.SliceStable(out, func(i, j int) bool { return out[i].PlayedAt > out[j].PlayedAt })
+	return out
 }
 
 func prettyBnetRace(race string) string {
@@ -290,26 +211,28 @@ func prettyBnetRace(race string) string {
 	return ""
 }
 
-// bnetProfileDetailsByPlayerKeys reads cached profiles only. It never fetches,
-// so calling it costs no bridge budget and cannot block on the network.
+// bnetProfileDetailsByPlayerKeys reads the caches only. It never fetches, so
+// calling it costs no bridge budget and cannot block on the network or disk.
 func (d *Dashboard) bnetProfileDetailsByPlayerKeys(ctx context.Context, playerKeys []string) map[string]*bnetProfileDetail {
 	out := map[string]*bnetProfileDetail{}
 	if len(playerKeys) == 0 {
 		return out
 	}
-	rows, err := d.dbStore.ListBnetProfilePayloadsByPlayerKeys(ctx, playerKeys)
+	profiles, err := d.dbStore.ListBnetProfilesByPlayerKeys(ctx, playerKeys)
 	if err != nil {
 		return out
 	}
-	for _, row := range rows {
-		if bnetfacade.IsMojibakedPayload([]byte(row.Payload)) {
-			continue
+	gamesByAccount := map[int64][]persist.BnetGame{}
+	for _, p := range profiles {
+		if _, ok := gamesByAccount[p.AuroraID]; !ok {
+			games, gamesErr := d.dbStore.ListBnetGamesByAccount(ctx, p.AuroraID)
+			if gamesErr != nil {
+				games = nil
+			}
+			gamesByAccount[p.AuroraID] = games
 		}
-		detail := parseBnetProfileDetail(row.Toon, []byte(row.Payload))
-		if detail == nil {
-			continue
-		}
-		key := normalizePlayerKey(row.Toon)
+		detail := bnetProfileDetailFromRecord(p, gamesByAccount[p.AuroraID])
+		key := normalizePlayerKey(p.Toon)
 		// A toon can be cached under several gateways; keep the richest row.
 		if existing, ok := out[key]; ok && bnetProfileDetailScore(existing) >= bnetProfileDetailScore(detail) {
 			continue

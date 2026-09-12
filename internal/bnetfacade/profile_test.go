@@ -48,9 +48,6 @@ func TestFetchAuroraProfile_Success(t *testing.T) {
 	if p.AuroraID != 1234567 || p.BattleTag != "Player#1234" || p.CountryCode != "KR" {
 		t.Errorf("scalars: got %d %q %q", p.AuroraID, p.BattleTag, p.CountryCode)
 	}
-	if len(p.GameResults) == 0 || len(p.Replays) == 0 || len(p.Toons) == 0 || len(p.MatchmakedStats) == 0 || len(p.Stats) == 0 {
-		t.Error("expected all raw sections populated")
-	}
 	if !utf8.Valid(p.Raw) {
 		t.Error("Raw is not valid UTF-8 after normalization")
 	}

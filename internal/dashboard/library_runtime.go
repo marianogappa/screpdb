@@ -29,7 +29,7 @@ type libraryRuntime struct {
 	lib      *library.Library
 	settings *dashboarddb.FileSettings
 	bnet     *persist.BnetCache
-	results  *persist.BnetGameResults
+	games    *persist.BnetGameArchive
 	store    *dashboarddb.LibStore
 	manager  *load.Manager
 	hub      *libraryHub
@@ -61,13 +61,21 @@ func newLibraryRuntime(ctx context.Context, opts libraryRuntimeOptions) (*librar
 	}
 
 	bnet := persist.NewBnetCache(root)
-	results := persist.NewBnetGameResults(root)
+	games := persist.NewBnetGameArchive(root)
 	sweepLegacyDatabase(root, opts.LegacyDBPath)
-	if err := importLegacyState(ctx, root, opts.LegacyDBPath, bnet, results); err != nil {
+	if err := importLegacyState(ctx, root, opts.LegacyDBPath, bnet, games); err != nil {
 		log.Printf("Could not carry over the previous settings: %v", err)
 	}
 	if err := bnet.Load(); err != nil {
 		log.Printf("Could not read the cached Battle.net profiles: %v", err)
+	}
+	if err := games.Load(); err != nil {
+		log.Printf("Could not read the Battle.net game archive: %v", err)
+	}
+	if profiles, migrated, err := persist.MigrateLegacyBnetCaches(root, bnet, games); err != nil {
+		log.Printf("Could not migrate the pre-v2 Battle.net caches: %v", err)
+	} else if profiles > 0 || migrated > 0 {
+		log.Printf("Migrated %d Battle.net profiles and %d archived games out of the pre-v2 caches", profiles, migrated)
 	}
 
 	lib := library.New(library.Options{})
@@ -78,14 +86,14 @@ func newLibraryRuntime(ctx context.Context, opts libraryRuntimeOptions) (*librar
 	}
 
 	store := dashboarddb.NewLibStore(lib, bnet, settings)
-	store.SetGameResults(results)
+	store.SetGameArchive(games)
 
 	runtime := &libraryRuntime{
 		root:     root,
 		lib:      lib,
 		settings: settings,
 		bnet:     bnet,
-		results:  results,
+		games:    games,
 		store:    store,
 		hub:      opts.Hub,
 	}
@@ -216,7 +224,7 @@ func (r *libraryRuntime) log(event load.LogEvent) {
 // caches out of the database once, so the first run after upgrading keeps the
 // user's folder and does not re-spend the rate-limited profile budget. The
 // database is opened read-only and is never written to.
-func importLegacyState(ctx context.Context, root, legacyDBPath string, bnet *persist.BnetCache, results *persist.BnetGameResults) error {
+func importLegacyState(ctx context.Context, root, legacyDBPath string, bnet *persist.BnetCache, games *persist.BnetGameArchive) error {
 	if strings.TrimSpace(legacyDBPath) == "" {
 		return nil
 	}
@@ -231,45 +239,49 @@ func importLegacyState(ctx context.Context, root, legacyDBPath string, bnet *per
 		return err
 	}
 
+	var profiles []persist.BnetProfile
+	var archived []persist.BnetGame
 	for _, profile := range legacy.Profiles {
 		fetchedAt, err := parseLegacyTime(profile.FetchedAt)
 		if err != nil {
 			continue
 		}
-		if err := bnet.Upsert(persist.BnetProfile{
-			Toon:        profile.Toon,
-			Gateway:     int64(profile.Gateway),
-			Found:       profile.Found,
-			AuroraID:    profile.AuroraID,
-			BattleTag:   profile.BattleTag,
-			CountryCode: profile.CountryCode,
-			FetchedAt:   fetchedAt,
-			Payload:     profile.Payload,
-		}); err != nil {
-			return err
+		distilled, profileGames := persist.DistillBnetProfile(profile.Toon, int64(profile.Gateway), fetchedAt, []byte(profile.Payload))
+		if !distilled.Found && profile.Found {
+			distilled.Found = true
+			distilled.AuroraID = profile.AuroraID
+			distilled.BattleTag = profile.BattleTag
+			distilled.CountryCode = profile.CountryCode
 		}
+		profiles = append(profiles, distilled)
+		archived = append(archived, profileGames...)
+	}
+	if err := bnet.UpsertBatch(profiles); err != nil {
+		return err
 	}
 
-	if len(legacy.GameResults) > 0 {
-		converted := make([]persist.BnetGameResult, 0, len(legacy.GameResults))
-		for _, game := range legacy.GameResults {
-			converted = append(converted, persist.BnetGameResult{
-				AuroraID:        game.AuroraID,
-				GameID:          game.GameID,
-				CreateTime:      unixTime(game.CreateTimeUnix),
-				Toon:            game.Toon,
-				Gateway:         game.Gateway,
-				Race:            game.Race,
-				Result:          game.Result,
-				APM:             game.APM,
-				DurationSeconds: game.DurationSeconds,
-				MapName:         game.MapName,
-				MatchGUID:       game.MatchGUID,
-			})
+	for _, game := range legacy.GameResults {
+		converted := persist.BnetGame{
+			GameID:     game.GameID,
+			CreateTime: unixTime(game.CreateTimeUnix),
+			Gateway:    game.Gateway,
+			Ladder:     game.MatchGUID != "",
+			MapName:    game.MapName,
+			Accounts:   []int64{game.AuroraID},
 		}
-		if err := results.Upsert(converted); err != nil {
-			return err
+		if toon := strings.TrimSpace(game.Toon); toon != "" {
+			converted.Players = []persist.BnetGamePlayer{{
+				Toon:    toon,
+				Race:    strings.ToLower(strings.TrimSpace(game.Race)),
+				Result:  persist.BnetResultFromString(game.Result),
+				APM:     game.APM,
+				Seconds: game.DurationSeconds,
+			}}
 		}
+		archived = append(archived, converted)
+	}
+	if err := games.Upsert(archived); err != nil {
+		return err
 	}
 
 	// SaveSettings is last: the settings file is the sentinel that gates this

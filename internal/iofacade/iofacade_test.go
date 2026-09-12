@@ -152,6 +152,33 @@ func TestRemoveAllAndReadDirEnforceRoots(t *testing.T) {
 	}
 }
 
+func TestAppendFileEnforcesRootsAndAppends(t *testing.T) {
+	Reset()
+	t.Cleanup(Reset)
+
+	allowedDir := t.TempDir()
+	outsideDir := t.TempDir()
+	if err := Configure(allowedDir); err != nil {
+		t.Fatalf("Configure: %v", err)
+	}
+
+	path := filepath.Join(allowedDir, "log.jsonl")
+	if err := AppendFile(path, []byte("one\n"), 0o644); err != nil {
+		t.Fatalf("AppendFile create: %v", err)
+	}
+	if err := AppendFile(path, []byte("two\n"), 0o644); err != nil {
+		t.Fatalf("AppendFile append: %v", err)
+	}
+	got, err := ReadFile(path)
+	if err != nil || string(got) != "one\ntwo\n" {
+		t.Fatalf("appended contents: %q err=%v", got, err)
+	}
+
+	if err := AppendFile(filepath.Join(outsideDir, "log.jsonl"), []byte("x"), 0o644); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("AppendFile outside: want ErrForbidden, got %v", err)
+	}
+}
+
 func TestCreateRenameRemoveWalkEnforceRoots(t *testing.T) {
 	Reset()
 	t.Cleanup(Reset)

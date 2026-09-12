@@ -208,9 +208,9 @@ func TestLibraryRuntimeCarriesOverTheLegacyDatabaseOnce(t *testing.T) {
 	if filter.ExcludeShortGames || len(filter.GameTypes) != 1 || filter.GameTypes[0] != "one_on_one" {
 		t.Fatalf("the legacy filter was not carried over: %+v", filter)
 	}
-	profile, err := runtime.bnet.Get("Bisu", 30)
-	if err != nil || profile == nil || profile.AuroraID != 42 {
-		t.Fatalf("the legacy Battle.net cache was not carried over: %+v %v", profile, err)
+	profile := runtime.bnet.Get("Bisu", 30)
+	if profile == nil || profile.AuroraID != 42 {
+		t.Fatalf("the legacy Battle.net cache was not carried over: %+v", profile)
 	}
 	if _, err := os.Stat(persist.SettingsPath(root)); err != nil {
 		t.Fatalf("settings.json was not written: %v", err)
