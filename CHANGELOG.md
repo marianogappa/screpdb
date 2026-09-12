@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.27.0](https://github.com/marianogappa/screpdb/compare/v1.26.0...v1.27.0) (2026-09-12)
+
+
+### Features
+
+* **bnet:** pace Battle.net requests instead of capping them daily ([#423](https://github.com/marianogappa/screpdb/issues/423)) ([a6f867d](https://github.com/marianogappa/screpdb/commit/a6f867d4e02f8052e5fae0354928b0feffe27754))
+* **dashboard:** cache map images as downscaled JPEG and prune the legacy PNG cache ([#415](https://github.com/marianogappa/screpdb/issues/415)) ([0c44d16](https://github.com/marianogappa/screpdb/commit/0c44d169e2f56d296059d07844d25eebea4d2392))
+* **dashboard:** complete multiplayer games by fetching a co-player's replay ([#341](https://github.com/marianogappa/screpdb/issues/341)) ([#412](https://github.com/marianogappa/screpdb/issues/412)) ([d0c4c9b](https://github.com/marianogappa/screpdb/commit/d0c4c9b75224bf6cae4cde20f62d44ed0c4f9b66))
+* **dashboard:** drop the legacy screp.db once the migration has run ([#414](https://github.com/marianogappa/screpdb/issues/414)) ([1a2fcf0](https://github.com/marianogappa/screpdb/commit/1a2fcf0b195553470ee935a5714ca31e4887b3f6)), closes [#413](https://github.com/marianogappa/screpdb/issues/413)
+* **dashboard:** render session AKAs as pills, linked when the toon is a known player ([#408](https://github.com/marianogappa/screpdb/issues/408)) ([cd7bd62](https://github.com/marianogappa/screpdb/commit/cd7bd621d8a7aba1f27309508ea77c77587e3ab7)), closes [#397](https://github.com/marianogappa/screpdb/issues/397)
+* **dashboard:** replace the Battle.net payload cache with a distilled profile store and a game archive ([#420](https://github.com/marianogappa/screpdb/issues/420)) ([1b9c06d](https://github.com/marianogappa/screpdb/commit/1b9c06d5e13ac3b301b5096aa9e2851f21b70217)), closes [#411](https://github.com/marianogappa/screpdb/issues/411) [#417](https://github.com/marianogappa/screpdb/issues/417)
+* **identity:** confirm Battle.net and gateway at ingest, and surface identity as fingerprint / account-mapping badges ([#418](https://github.com/marianogappa/screpdb/issues/418)) ([54d5954](https://github.com/marianogappa/screpdb/commit/54d5954fba646703eba7b803f4a5b5e4e4fe9af6))
+* **identity:** surface identity badges on the list surfaces and attribute pros from replay manifests ([#419](https://github.com/marianogappa/screpdb/issues/419)) ([71d00a4](https://github.com/marianogappa/screpdb/commit/71d00a4868615db07dd33abb0fe8f2d9a1150da3))
+
+
+### Bug Fixes
+
+* **bnet:** refresh stale profiles and show empty states for all players ([#405](https://github.com/marianogappa/screpdb/issues/405)) ([db37b33](https://github.com/marianogappa/screpdb/commit/db37b33ce6ee198681a9d4c2dff27546b3758911)), closes [#401](https://github.com/marianogappa/screpdb/issues/401)
+* **dashboard:** give games with no determined winner a third result state ([#406](https://github.com/marianogappa/screpdb/issues/406)) ([cdc6ba6](https://github.com/marianogappa/screpdb/commit/cdc6ba6be3b744356615ddfd4a087c17675349f5)), closes [#400](https://github.com/marianogappa/screpdb/issues/400)
+* **hotkeys:** correct Zerg hatchery hotkey group classification ([#403](https://github.com/marianogappa/screpdb/issues/403)) ([6c11f82](https://github.com/marianogappa/screpdb/commit/6c11f825003e9c6594adf65ca912d3c75a55fd94)), closes [#399](https://github.com/marianogappa/screpdb/issues/399)
+
 ## [1.26.0](https://github.com/marianogappa/screpdb/compare/v1.25.0...v1.26.0) (2026-09-06)
 
 
