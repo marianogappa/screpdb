@@ -107,6 +107,7 @@ func (s *LibStore) ListPlayerAPMByReplayIDs(_ context.Context, replayIDs []int64
 				PlayerKey: p.Key,
 				APM:       int64(p.APM),
 				EAPM:      int64(p.EAPM),
+				LeaveSec:  int64(p.LeaveSec),
 			})
 		}
 	}

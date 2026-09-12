@@ -170,6 +170,7 @@ func (d *Dashboard) gamingSession(ctx context.Context) (*gamingSessionResponse, 
 		return nil, err
 	}
 	empty.Regulars = regulars
+	d.refreshRegularsInBackground(regulars, now)
 
 	_, end, count, ok := gamingSessionWindow(candidates)
 	if !ok || count == 0 || !gamingSessionIsRecentEnough(end, now) {
@@ -227,6 +228,19 @@ func gameWinnerKnown(game workflowGameListItem) bool {
 	return false
 }
 
+// playerTimeInGame is how long the user was actually in a game. An SC:R replay
+// keeps recording after a player drops, so its own length is the whole game and
+// counting it as time played overstates a session badly: a run of team games
+// the user died early in can sum to more wall-clock time than the sitting
+// lasted. Their leave stamp is the real answer; zero means they were still
+// there at the end, which is the replay's full length.
+func playerTimeInGame(replaySeconds, leaveSec int64) int64 {
+	if leaveSec <= 0 || leaveSec > replaySeconds {
+		return replaySeconds
+	}
+	return leaveSec
+}
+
 func replayDurationSeconds(games []workflowGameListItem, replayID int64) int64 {
 	for _, game := range games {
 		if game.ReplayID == replayID {
@@ -259,7 +273,6 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 	var apmCount int
 	for _, game := range games {
 		winnerKnown := gameWinnerKnown(game)
-		stats.PlayedSeconds += game.DurationSeconds
 		if game.MapName != "" {
 			stats.Maps[game.MapName]++
 		}
@@ -281,11 +294,13 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 			default:
 				stats.Losses++
 			}
-			if own, ok := apm[gamePlayerKey{ReplayID: game.ReplayID, PlayerKey: normalizePlayerKey(player.PlayerKey)}]; ok && own.APM > 0 {
+			own, haveOwn := apm[gamePlayerKey{ReplayID: game.ReplayID, PlayerKey: normalizePlayerKey(player.PlayerKey)}]
+			if haveOwn && own.APM > 0 {
 				apmSum += float64(own.APM)
 				eapmSum += float64(own.EAPM)
 				apmCount++
 			}
+			stats.PlayedSeconds += playerTimeInGame(game.DurationSeconds, own.LeaveSec)
 		}
 	}
 	if apmCount > 0 {
@@ -435,8 +450,9 @@ func (d *Dashboard) handlerGamingSession(w http.ResponseWriter, r *http.Request)
 
 // sessionAPM is one player's APM in one game.
 type sessionAPM struct {
-	APM  int64
-	EAPM int64
+	APM      int64
+	EAPM     int64
+	LeaveSec int64
 }
 
 // gamePlayerKey identifies one player in one game, which is the grain the
@@ -454,7 +470,7 @@ func (d *Dashboard) sessionAPMByGamePlayer(ctx context.Context, replayIDs []int6
 	}
 	out := make(map[gamePlayerKey]sessionAPM, len(rows))
 	for _, row := range rows {
-		out[gamePlayerKey{ReplayID: row.ReplayID, PlayerKey: row.PlayerKey}] = sessionAPM{APM: row.APM, EAPM: row.EAPM}
+		out[gamePlayerKey{ReplayID: row.ReplayID, PlayerKey: row.PlayerKey}] = sessionAPM{APM: row.APM, EAPM: row.EAPM, LeaveSec: row.LeaveSec}
 	}
 	return out, nil
 }

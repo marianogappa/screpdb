@@ -18,11 +18,37 @@ const (
 	regularsMax      = 20
 )
 
-// regularsRecently is how fresh a person's newest known game must be before we
-// say they played recently. It is deliberately not called "online": nothing in
-// the data says anyone is logged in. A game is only known once it has been
-// played and published, so this always describes the past.
-const regularsRecently = time.Hour
+// Freshness has two tiers, and both are stated as the past tense of a game,
+// never as presence: nothing in this data says anyone is logged in. A game is
+// only known once it has been played and published.
+//
+//	regularsPlayingNow  someone who finished a game this recently is very likely
+//	                    still at the keyboard, which is the whole point of the
+//	                    surface: it is worth starting a session for.
+//	regularsPlayedLately the fallback when nobody is around right now, so the
+//	                    page still says who is alive at all rather than going
+//	                    blank.
+const (
+	regularsPlayingNow   = time.Hour
+	regularsPlayedLately = 3 * 24 * time.Hour
+)
+
+// Freshness tiers, as carried to the frontend. The empty string means the
+// person is not fresh enough to mention at all.
+const (
+	regularFreshnessNow    = "now"
+	regularFreshnessLately = "lately"
+)
+
+func regularFreshness(lastSeen, now time.Time) string {
+	switch age := now.Sub(lastSeen); {
+	case age <= regularsPlayingNow:
+		return regularFreshnessNow
+	case age <= regularsPlayedLately:
+		return regularFreshnessLately
+	}
+	return ""
+}
 
 // sessionRegular is one person the user plays with often. Identity is merged
 // across accounts, so a regular is a human, not a toon.
@@ -34,8 +60,13 @@ type sessionRegular struct {
 	Accounts       []string           `json:"accounts,omitempty"`
 	LastPlayedWith string             `json:"last_played_with"`
 	LastSeen       string             `json:"last_seen,omitempty"`
-	PlayedRecently bool               `json:"played_recently"`
+	Freshness      string             `json:"freshness,omitempty"`
 	Profile        *bnetProfileDetail `json:"profile,omitempty"`
+
+	// refreshToon and gateway address the one account of this person we know
+	// answers. Kept out of the payload: they only serve the refresh sweep.
+	refreshToon string
+	gateway     int64
 }
 
 // regularsIdentity is one merged human, accumulated across their toons.
@@ -46,6 +77,11 @@ type regularsIdentity struct {
 	lastPlayed time.Time
 	topKey     string
 	topGames   int
+	// refreshToon and gateway are any one of this person's toons we have
+	// actually reached, which is not necessarily the one they play most: an
+	// identity is often merged from a fetched account onto an unfetched alt.
+	refreshToon string
+	gateway     int64
 }
 
 // mergeCoPlayersByAccount folds the raw per-toon counts into one entry per
@@ -53,7 +89,8 @@ type regularsIdentity struct {
 // account; a toon with no cached profile stands alone, which is the safe
 // failure — an unmerged regular is merely counted twice, while a wrong merge
 // would attribute someone's games to a stranger.
-func mergeCoPlayersByAccount(rows []coPlayerCount, auroraByKey map[string]int64) []*regularsIdentity {
+func mergeCoPlayersByAccount(rows []coPlayerCount, index regularsIdentityIndex) []*regularsIdentity {
+	auroraByKey := index.auroraByKey
 	byGroup := map[string]*regularsIdentity{}
 	order := []*regularsIdentity{}
 	for _, row := range rows {
@@ -79,6 +116,11 @@ func mergeCoPlayersByAccount(rows []coPlayerCount, auroraByKey map[string]int64)
 		}
 		if row.Games > identity.topGames {
 			identity.topKey, identity.topGames = key, row.Games
+		}
+		if identity.gateway == 0 {
+			if gateway, ok := index.gatewayByKey[key]; ok && gateway != 0 {
+				identity.refreshToon, identity.gateway = key, gateway
+			}
 		}
 	}
 	return order
@@ -170,7 +212,8 @@ func (d *Dashboard) sessionRegulars(ctx context.Context, youKeys map[string]stru
 		keys = append(keys, row.PlayerKey)
 	}
 
-	identities := rankRegulars(mergeCoPlayersByAccount(counts, d.auroraIDsByPlayerKey(ctx, keys)))
+	index := d.identityIndex(ctx, keys)
+	identities := rankRegulars(mergeCoPlayersByAccount(counts, index))
 
 	out := make([]sessionRegular, 0, len(identities))
 	for _, identity := range identities {
@@ -180,45 +223,57 @@ func (d *Dashboard) sessionRegulars(ctx context.Context, youKeys map[string]stru
 			Games:          identity.games,
 			Accounts:       identity.otherNames(),
 			LastPlayedWith: identity.lastPlayed.Format(time.RFC3339),
+			refreshToon:    identity.refreshToon,
+			gateway:        identity.gateway,
 		}
 		lastSeen := identity.lastPlayed
 		if fresh, ok := d.bnetLastGameAt(ctx, identity.auroraID); ok && fresh.After(lastSeen) {
 			lastSeen = fresh
 		}
 		regular.LastSeen = lastSeen.Format(time.RFC3339)
-		regular.PlayedRecently = now.Sub(lastSeen) <= regularsRecently
+		regular.Freshness = regularFreshness(lastSeen, now)
 		out = append(out, regular)
 	}
 	return d.withRegularProfiles(ctx, out), nil
 }
 
-// auroraIDsByPlayerKey maps each toon name we know to the Battle.net account it
+// regularsIdentityIndex is what the cached Battle.net profiles tell us about a
+// set of toons: which account each belongs to, and which gateway we last
+// reached it on.
+type regularsIdentityIndex struct {
+	auroraByKey  map[string]int64
+	gatewayByKey map[string]int64
+}
+
+// identityIndex maps each toon name we know to the Battle.net account it
 // belongs to. Both the fetched toon and every alternate account listed on that
 // profile are registered, which is what lets an alt merge into its owner even
-// when only one of the two was ever fetched.
-func (d *Dashboard) auroraIDsByPlayerKey(ctx context.Context, playerKeys []string) map[string]int64 {
-	out := map[string]int64{}
+// when only one of the two was ever fetched; the gateway is recorded only for
+// toons actually fetched, since that is the only one we know answers.
+func (d *Dashboard) identityIndex(ctx context.Context, playerKeys []string) regularsIdentityIndex {
+	index := regularsIdentityIndex{auroraByKey: map[string]int64{}, gatewayByKey: map[string]int64{}}
 	if len(playerKeys) == 0 {
-		return out
+		return index
 	}
 	profiles, err := d.dbStore.ListBnetProfilesByPlayerKeys(ctx, playerKeys)
 	if err != nil {
-		return out
+		return index
 	}
 	for _, profile := range profiles {
 		if profile.AuroraID == 0 {
 			continue
 		}
 		if key := normalizePlayerKey(profile.Toon); key != "" {
-			out[key] = profile.AuroraID
+			index.auroraByKey[key] = profile.AuroraID
+			index.gatewayByKey[key] = profile.Gateway
 		}
 		for _, toon := range profile.Toons {
 			if key := normalizePlayerKey(toon.Toon); key != "" {
-				out[key] = profile.AuroraID
+				index.auroraByKey[key] = profile.AuroraID
 			}
 		}
 	}
-	return out
+	return index
 }
 
 // bnetLastGameAt reports the newest game Battle.net has published for an
