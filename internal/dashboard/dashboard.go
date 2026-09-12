@@ -400,6 +400,7 @@ func (d *Dashboard) StartAsync(port int) <-chan error {
 		log.Println("Backend server is ready")
 		d.startBnetMonitor(d.ctx)
 		d.startBnetEnrich(d.ctx)
+		d.startBnetCacheMaintenance(d.ctx)
 		select {
 		case errChan <- nil:
 		default:

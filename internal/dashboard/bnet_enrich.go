@@ -201,12 +201,25 @@ func (d *Dashboard) enrichDeps() enrichDeps {
 			if err != nil {
 				return enrichProfile{}, err
 			}
-			return enrichProfile{
-				Replays:   bnetfacade.ProfileReplaysFromPayload(res.Profile),
-				GameRefs:  bnetfacade.ProfileGameRefsFromPayload(res.Profile),
-				FetchedAt: res.FetchedAt,
-				Cached:    res.Cached,
-			}, nil
+			// The archive holds every game this account's fetches ever
+			// reported, own-replay md5/url included, so the worker sees a
+			// wider window than the 25 games one payload carries.
+			games, err := d.dbStore.ListBnetGamesByAccount(ctx, res.AuroraID)
+			if err != nil {
+				return enrichProfile{}, err
+			}
+			p := enrichProfile{FetchedAt: res.FetchedAt, Cached: res.Cached}
+			for _, g := range games {
+				ref := bnetfacade.ProfileGameRef{GameID: g.GameID, CreateTime: g.CreateTime.Unix()}
+				p.GameRefs = append(p.GameRefs, ref)
+				if g.MD5 == "" {
+					continue
+				}
+				p.Replays = append(p.Replays, bnetfacade.ProfileReplay{
+					MD5: g.MD5, URL: g.URL, Link: g.GameID, CreateTime: ref.CreateTime,
+				})
+			}
+			return p, nil
 		},
 		gameInfo: func(ctx context.Context, addr, gameID string) (*bnetfacade.GameInfo, error) {
 			return bnetfacade.FetchGameInfo(ctx, addr, gameID, bnetfacade.PriorityBackground)

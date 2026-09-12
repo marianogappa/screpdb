@@ -8,34 +8,12 @@ import (
 	"github.com/marianogappa/screpdb/internal/library/persist"
 )
 
-func (s *LibStore) GetBnetProfile(_ context.Context, toon string, gateway int64) (*BnetProfileRow, error) {
-	profile, err := s.bnet.Get(toon, gateway)
-	if err != nil || profile == nil {
-		return nil, err
-	}
-	return &BnetProfileRow{
-		Toon:        profile.Toon,
-		Gateway:     profile.Gateway,
-		Found:       profile.Found,
-		AuroraID:    profile.AuroraID,
-		BattleTag:   profile.BattleTag,
-		CountryCode: profile.CountryCode,
-		Payload:     profile.Payload,
-		FetchedAt:   profile.FetchedAt,
-	}, nil
+func (s *LibStore) GetBnetProfile(_ context.Context, toon string, gateway int64) (*persist.BnetProfile, error) {
+	return s.bnet.Get(toon, gateway), nil
 }
 
-func (s *LibStore) UpsertBnetProfile(_ context.Context, row BnetProfileRow) error {
-	return s.bnet.Upsert(persist.BnetProfile{
-		Toon:        row.Toon,
-		Gateway:     row.Gateway,
-		Found:       row.Found,
-		AuroraID:    row.AuroraID,
-		BattleTag:   row.BattleTag,
-		CountryCode: row.CountryCode,
-		FetchedAt:   row.FetchedAt,
-		Payload:     row.Payload,
-	})
+func (s *LibStore) UpsertBnetProfile(_ context.Context, p persist.BnetProfile) error {
+	return s.bnet.Upsert(p)
 }
 
 func (s *LibStore) GetBnetCountryCodesByPlayerKeys(_ context.Context, playerKeys []string) (map[string]string, error) {
@@ -59,19 +37,11 @@ func (s *LibStore) GetBnetFetchedAtByPlayerKeys(_ context.Context, playerKeys []
 	return s.bnet.FetchedAtByToons(playerKeys), nil
 }
 
-func (s *LibStore) ListBnetProfilePayloadsByPlayerKeys(_ context.Context, playerKeys []string) ([]BnetProfilePayloadRow, error) {
+func (s *LibStore) ListBnetProfilesByPlayerKeys(_ context.Context, playerKeys []string) ([]persist.BnetProfile, error) {
 	if len(playerKeys) == 0 {
-		return []BnetProfilePayloadRow{}, nil
+		return []persist.BnetProfile{}, nil
 	}
-	profiles, err := s.bnet.PayloadsByToons(playerKeys)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]BnetProfilePayloadRow, 0, len(profiles))
-	for _, profile := range profiles {
-		out = append(out, BnetProfilePayloadRow{Toon: profile.Toon, Gateway: profile.Gateway, Payload: profile.Payload})
-	}
-	return out, nil
+	return s.bnet.ProfilesByToons(playerKeys), nil
 }
 
 func (s *LibStore) ListBnetAuroraIDsByPlayerKeys(_ context.Context, playerKeys []string) ([]int64, error) {
@@ -81,27 +51,18 @@ func (s *LibStore) ListBnetAuroraIDsByPlayerKeys(_ context.Context, playerKeys [
 	return s.bnet.AuroraIDsByToons(playerKeys), nil
 }
 
-func (s *LibStore) UpsertBnetGameResults(_ context.Context, rows []BnetGameResultRow) error {
-	if len(rows) == 0 || s.results == nil {
+func (s *LibStore) UpsertBnetGames(_ context.Context, games []persist.BnetGame) error {
+	if len(games) == 0 || s.games == nil {
 		return nil
 	}
-	converted := make([]persist.BnetGameResult, 0, len(rows))
-	for _, row := range rows {
-		converted = append(converted, persist.BnetGameResult{
-			AuroraID:        row.AuroraID,
-			GameID:          row.GameID,
-			CreateTime:      row.CreateTime,
-			Toon:            row.Toon,
-			Gateway:         row.Gateway,
-			Race:            row.Race,
-			Result:          row.Result,
-			APM:             row.APM,
-			DurationSeconds: row.DurationSeconds,
-			MapName:         row.MapName,
-			MatchGUID:       row.MatchGUID,
-		})
+	return s.games.Upsert(games)
+}
+
+func (s *LibStore) ListBnetGamesByAccount(_ context.Context, auroraID int64) ([]persist.BnetGame, error) {
+	if s.games == nil || auroraID == 0 {
+		return []persist.BnetGame{}, nil
 	}
-	return s.results.Upsert(converted)
+	return s.games.GamesForAccount(auroraID), nil
 }
 
 func (s *LibStore) BnetFoundProfilesForToon(_ context.Context, toon string) ([]BnetFoundProfile, error) {
@@ -114,8 +75,8 @@ func (s *LibStore) BnetFoundProfilesForToon(_ context.Context, toon string) ([]B
 }
 
 func (s *LibStore) ListBnetGameTimes(_ context.Context, auroraID int64, since time.Time) ([]time.Time, error) {
-	if s.results == nil {
+	if s.games == nil {
 		return []time.Time{}, nil
 	}
-	return s.results.TimesSince(auroraID, since)
+	return s.games.TimesSince(auroraID, since), nil
 }

@@ -337,8 +337,7 @@ func (d *Dashboard) backfillBnetProfilesForToons(toons []propack.Toon) {
 		if err != nil {
 			continue
 		}
-		fresh := row != nil && time.Since(row.FetchedAt) < bnetProfileTTL
-		if fresh && !bnetfacade.IsMojibakedPayload([]byte(row.Payload)) {
+		if row != nil && time.Since(row.FetchedAt) < bnetProfileTTL {
 			continue
 		}
 		pending = append(pending, toon)

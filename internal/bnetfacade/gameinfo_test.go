@@ -86,23 +86,3 @@ func TestHeadReplayRefusesBadPath(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 }
-
-func TestProfileReplaysFromPayload(t *testing.T) {
-	payload := []byte(`{"aurora_id": 1, "replays": [
-		{"md5": "abc", "url": "https://x", "link": "MM-1", "create_time": 5, "attributes": {"game_type": "2"}},
-		{"create_time": 6, "attributes": {}}
-	]}`)
-	entries := ProfileReplaysFromPayload(payload)
-	if len(entries) != 2 {
-		t.Fatalf("entries: %d", len(entries))
-	}
-	if entries[0].MD5 != "abc" || entries[0].Link != "MM-1" || entries[0].CreateTime != 5 {
-		t.Errorf("first: %+v", entries[0])
-	}
-	if entries[1].MD5 != "" || entries[1].Link != "" {
-		t.Errorf("second: %+v", entries[1])
-	}
-	if ProfileReplaysFromPayload([]byte("not json")) != nil {
-		t.Error("expected nil for undecodable payload")
-	}
-}

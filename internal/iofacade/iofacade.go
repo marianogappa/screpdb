@@ -144,6 +144,24 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 	return os.WriteFile(p, data, perm)
 }
 
+// AppendFile appends data to a permitted path, creating it if absent. The
+// write is a single syscall, so a crash can tear at most the trailing record.
+func AppendFile(path string, data []byte, perm os.FileMode) error {
+	p, err := resolve(path)
+	if err != nil {
+		return err
+	}
+	f, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, perm)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		return err
+	}
+	return f.Close()
+}
+
 // MkdirAll creates a permitted directory tree.
 func MkdirAll(path string, perm os.FileMode) error {
 	p, err := resolve(path)

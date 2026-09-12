@@ -7,11 +7,9 @@ import (
 	"strings"
 	"time"
 	_ "time/tzdata" // country time zones must resolve on Windows machines without a zoneinfo database
-
-	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 )
 
-// Play habits are read off the rolling bnet_game_results cache. One profile
+// Play habits are read off the game archive. One profile
 // fetch only shows ~20 games and a single long evening fills that, so nothing
 // is claimed until the cache holds bnetHabitsMinGames games spread over
 // bnetHabitsMinWeeks distinct weeks inside bnetHabitsWindow.
@@ -64,42 +62,6 @@ func timeOfDaySlot(hour int) string {
 		return "evening"
 	}
 	return "night"
-}
-
-// bnetGameResultRows turns a parsed profile into cache rows for its account.
-func bnetGameResultRows(auroraID int64, detail *bnetProfileDetail) []dashboarddb.BnetGameResultRow {
-	if auroraID == 0 || detail == nil {
-		return nil
-	}
-	rows := make([]dashboarddb.BnetGameResultRow, 0, len(detail.RecentGames))
-	for _, g := range detail.RecentGames {
-		playedAt, err := time.Parse(time.RFC3339, g.PlayedAt)
-		if err != nil || g.GameID == "" {
-			continue
-		}
-		rows = append(rows, dashboarddb.BnetGameResultRow{
-			AuroraID:        auroraID,
-			GameID:          g.GameID,
-			CreateTime:      playedAt,
-			Toon:            g.Toon,
-			Gateway:         g.Gateway,
-			Race:            g.Race,
-			Result:          g.Result,
-			APM:             g.APM,
-			DurationSeconds: g.DurationSeconds,
-			MapName:         g.MapName,
-			MatchGUID:       g.MatchGUID,
-		})
-	}
-	return rows
-}
-
-// rememberBnetGameResults appends a freshly fetched profile's games to the
-// rolling cache. Failures are logged by the caller's crash guard, never
-// surfaced: the cache is an accumulating convenience.
-func (d *Dashboard) rememberBnetGameResults(ctx context.Context, auroraID int64, payload []byte, toon string) error {
-	detail := parseBnetProfileDetail(toon, payload)
-	return d.dbStore.UpsertBnetGameResults(ctx, bnetGameResultRows(auroraID, detail))
 }
 
 // bnetPlayHabitsFor reads the cache for an account and, once the floor is met,

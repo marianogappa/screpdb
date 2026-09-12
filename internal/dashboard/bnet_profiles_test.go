@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,7 +9,7 @@ import (
 	"time"
 
 	"github.com/marianogappa/screpdb/internal/bnetfacade"
-	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
+	"github.com/marianogappa/screpdb/internal/library/persist"
 )
 
 func TestBnetProfileEndpoint_BadRequest(t *testing.T) {
@@ -49,10 +48,10 @@ func TestGetOrFetchBnetProfile_FreshCacheHitSkipsBridge(t *testing.T) {
 	d := newTestDashboard(t)
 	ctx := context.Background()
 
-	seed := dashboarddb.BnetProfileRow{
+	seed := persist.BnetProfile{
 		Toon: "ByuN", Gateway: 30, Found: true, AuroraID: 42,
 		BattleTag: "ByuN#123", CountryCode: "KR",
-		Payload: `{"aurora_id":42}`, FetchedAt: time.Now().UTC().Add(-time.Hour),
+		FetchedAt: time.Now().UTC().Add(-time.Hour),
 	}
 	if err := d.dbStore.UpsertBnetProfile(ctx, seed); err != nil {
 		t.Fatalf("seed: %v", err)
@@ -73,9 +72,9 @@ func TestGetOrFetchBnetProfile_StaleServedOnFetchFailure(t *testing.T) {
 	d := newTestDashboard(t)
 	ctx := context.Background()
 
-	seed := dashboarddb.BnetProfileRow{
+	seed := persist.BnetProfile{
 		Toon: "Stale", Gateway: 20, Found: true, AuroraID: 7,
-		Payload: `{"aurora_id":7}`, FetchedAt: time.Now().UTC().Add(-25 * time.Hour),
+		FetchedAt: time.Now().UTC().Add(-25 * time.Hour),
 	}
 	if err := d.dbStore.UpsertBnetProfile(ctx, seed); err != nil {
 		t.Fatalf("seed: %v", err)
@@ -120,11 +119,8 @@ func TestGetOrFetchBnetProfile_FetchesAndCaches(t *testing.T) {
 	if !res.Cached || calls != 1 {
 		t.Errorf("second call: cached=%v bridge calls=%d, want cache hit with no new call", res.Cached, calls)
 	}
-	var payload struct {
-		AuroraID int64 `json:"aurora_id"`
-	}
-	if err := json.Unmarshal(res.Profile, &payload); err != nil || payload.AuroraID != 99 {
-		t.Errorf("cached payload: %v %+v", err, payload)
+	if res.AuroraID != 99 {
+		t.Errorf("cached record: %+v", res)
 	}
 }
 
@@ -166,9 +162,9 @@ func TestGetOrFetchBnetProfile_MaxAgeForcesRefetch(t *testing.T) {
 	defer srv.Close()
 	d.bnetAddr.Store(srv.Listener.Addr().String())
 
-	seed := dashboarddb.BnetProfileRow{
+	seed := persist.BnetProfile{
 		Toon: "Live", Gateway: 30, Found: true, AuroraID: 100,
-		Payload: `{"aurora_id":100}`, FetchedAt: time.Now().UTC().Add(-10 * time.Minute),
+		FetchedAt: time.Now().UTC().Add(-10 * time.Minute),
 	}
 	if err := d.dbStore.UpsertBnetProfile(ctx, seed); err != nil {
 		t.Fatalf("seed: %v", err)

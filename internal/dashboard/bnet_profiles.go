@@ -7,12 +7,11 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/marianogappa/screpdb/internal/bnetfacade"
 	"github.com/marianogappa/screpdb/internal/crashreport"
-	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
+	"github.com/marianogappa/screpdb/internal/library/persist"
 )
 
 // bnetProfileTTL honours the 24h freshness Blizzard itself specifies on the
@@ -29,16 +28,15 @@ const (
 var errBnetBridgeUnavailable = errors.New("SC:R bridge is not connected")
 
 type bnetProfileResult struct {
-	Toon        string          `json:"toon"`
-	Gateway     int64           `json:"gateway"`
-	Found       bool            `json:"found"`
-	AuroraID    int64           `json:"aurora_id,omitempty"`
-	BattleTag   string          `json:"battle_tag,omitempty"`
-	CountryCode string          `json:"country_code,omitempty"`
-	Profile     json.RawMessage `json:"profile,omitempty"`
-	FetchedAt   time.Time       `json:"fetched_at"`
-	Cached      bool            `json:"cached"`
-	Stale       bool            `json:"stale,omitempty"`
+	Toon        string    `json:"toon"`
+	Gateway     int64     `json:"gateway"`
+	Found       bool      `json:"found"`
+	AuroraID    int64     `json:"aurora_id,omitempty"`
+	BattleTag   string    `json:"battle_tag,omitempty"`
+	CountryCode string    `json:"country_code,omitempty"`
+	FetchedAt   time.Time `json:"fetched_at"`
+	Cached      bool      `json:"cached"`
+	Stale       bool      `json:"stale,omitempty"`
 }
 
 // getOrFetchBnetProfile serves the cached profile when younger than maxAge
@@ -53,32 +51,29 @@ func (d *Dashboard) getOrFetchBnetProfile(ctx context.Context, toon string, gate
 	if maxAge < bnetProfileMinMaxAge {
 		maxAge = bnetProfileMinMaxAge
 	}
-	row, err := d.dbStore.GetBnetProfile(ctx, toon, gateway)
+	cached, err := d.dbStore.GetBnetProfile(ctx, toon, gateway)
 	if err != nil {
 		return nil, err
 	}
-	// An entry an older build mojibaked is worse than no entry: it would serve
-	// a double-encoded battle tag, and as a stale fallback it would keep doing
-	// so forever. Drop it so this call refetches.
-	if row != nil && bnetfacade.IsMojibakedPayload([]byte(row.Payload)) {
-		row = nil
-	}
 	now := time.Now()
-	if row != nil && now.Sub(row.FetchedAt) < maxAge {
-		return bnetProfileResultFromRow(row, true, false), nil
+	if cached != nil && now.Sub(cached.FetchedAt) < maxAge {
+		return bnetProfileResultFromRecord(cached, true, false), nil
 	}
 
 	fresh, err := d.fetchAndCacheBnetProfile(ctx, toon, gateway, prio, now)
 	if err != nil {
-		if row != nil {
-			return bnetProfileResultFromRow(row, true, true), nil
+		if cached != nil {
+			return bnetProfileResultFromRecord(cached, true, true), nil
 		}
 		return nil, err
 	}
-	return bnetProfileResultFromRow(fresh, false, false), nil
+	return bnetProfileResultFromRecord(fresh, false, false), nil
 }
 
-func (d *Dashboard) fetchAndCacheBnetProfile(ctx context.Context, toon string, gateway int64, prio bnetfacade.Priority, now time.Time) (*dashboarddb.BnetProfileRow, error) {
+// fetchAndCacheBnetProfile is the one place the upstream payload exists: it is
+// distilled into the typed profile record and the game archive's records, and
+// the raw bytes are discarded.
+func (d *Dashboard) fetchAndCacheBnetProfile(ctx context.Context, toon string, gateway int64, prio bnetfacade.Priority, now time.Time) (*persist.BnetProfile, error) {
 	addr, _ := d.bnetAddr.Load().(string)
 	if addr == "" || d.bnetDisabled.Load() {
 		return nil, errBnetBridgeUnavailable
@@ -87,54 +82,14 @@ func (d *Dashboard) fetchAndCacheBnetProfile(ctx context.Context, toon string, g
 	if err != nil {
 		return nil, err
 	}
-	row := &dashboarddb.BnetProfileRow{
-		Toon:        toon,
-		Gateway:     gateway,
-		Found:       p.Found(),
-		AuroraID:    p.AuroraID,
-		BattleTag:   p.BattleTag,
-		CountryCode: p.CountryCode,
-		Payload:     string(p.Raw),
-		FetchedAt:   now.UTC(),
-	}
-	if err := upsertBnetProfileWithRetry(ctx, d.dbStore, *row); err != nil {
+	profile, games := persist.DistillBnetProfile(toon, gateway, now, p.Raw)
+	if err := d.dbStore.UpsertBnetProfile(ctx, profile); err != nil {
 		return nil, err
 	}
-	if p.Found() {
-		if err := d.rememberBnetGameResults(ctx, p.AuroraID, p.Raw, toon); err != nil {
-			log.Printf("[bnet-profile] caching game results for %q: %v", toon, err)
-		}
+	if err := d.dbStore.UpsertBnetGames(ctx, games); err != nil {
+		log.Printf("[bnet-profile] archiving games for %q: %v", toon, err)
 	}
-	return row, nil
-}
-
-// upsertBnetProfileWithRetry retries on "database is locked" with exponential
-// backoff. Bridge responses are rate-limited (600/day), so losing a successful
-// fetch because ingestion holds the write lock is wasteful — the retry cost is
-// negligible compared to re-spending the budget.
-func upsertBnetProfileWithRetry(ctx context.Context, store dashboarddb.Reader, row dashboarddb.BnetProfileRow) error {
-	const maxAttempts = 10
-	backoff := 100 * time.Millisecond
-	for attempt := range maxAttempts {
-		err := store.UpsertBnetProfile(ctx, row)
-		if err == nil {
-			return nil
-		}
-		if !strings.Contains(err.Error(), "database is locked") {
-			return err
-		}
-		log.Printf("[bnet-profile] upsert retry %d/%d for %q: %v", attempt+1, maxAttempts, row.Toon, err)
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(backoff):
-		}
-		backoff *= 2
-		if backoff > 10*time.Second {
-			backoff = 10 * time.Second
-		}
-	}
-	return store.UpsertBnetProfile(ctx, row)
+	return &profile, nil
 }
 
 func (d *Dashboard) countryCodesByPlayerKeys(playerKeys []string) (map[string]string, error) {
@@ -162,9 +117,9 @@ func (d *Dashboard) triggerBnetProfileFetchesForPlayers(names []string, gameSour
 	d.backfillBnetProfiles(names)
 }
 
-// backfillBnetProfiles fetches, in the background, profiles that are missing,
-// stale (older than bnetProfileTTL), or mojibaked. Names must be ordered by how
-// much the caller cares about them: the list is truncated to
+// backfillBnetProfiles fetches, in the background, profiles that are missing
+// or stale (older than bnetProfileTTL). Names must be ordered by how much the
+// caller cares about them: the list is truncated to
 // bnetProfileBackfillMaxPlayers.
 func (d *Dashboard) backfillBnetProfiles(names []string) {
 	if d.bnetDisabled.Load() {
@@ -181,9 +136,6 @@ func (d *Dashboard) backfillBnetProfiles(names []string) {
 	fetchTimes, err := d.dbStore.GetBnetFetchedAtByPlayerKeys(d.ctx, playerKeys)
 	if err != nil {
 		return
-	}
-	for key := range d.mojibakedPlayerKeys(playerKeys) {
-		delete(fetchTimes, key)
 	}
 	now := time.Now()
 	var stale []string
@@ -227,38 +179,18 @@ func (d *Dashboard) backfillBnetProfiles(names []string) {
 	}()
 }
 
-// mojibakedPlayerKeys returns the player keys holding at least one cached
-// profile an older build corrupted, so the backfill re-queues them.
-func (d *Dashboard) mojibakedPlayerKeys(playerKeys []string) map[string]struct{} {
-	out := map[string]struct{}{}
-	rows, err := d.dbStore.ListBnetProfilePayloadsByPlayerKeys(d.ctx, playerKeys)
-	if err != nil {
-		return out
-	}
-	for _, row := range rows {
-		if bnetfacade.IsMojibakedPayload([]byte(row.Payload)) {
-			out[normalizePlayerKey(row.Toon)] = struct{}{}
-		}
-	}
-	return out
-}
-
-func bnetProfileResultFromRow(row *dashboarddb.BnetProfileRow, cached, stale bool) *bnetProfileResult {
-	res := &bnetProfileResult{
-		Toon:        row.Toon,
-		Gateway:     row.Gateway,
-		Found:       row.Found,
-		AuroraID:    row.AuroraID,
-		BattleTag:   row.BattleTag,
-		CountryCode: row.CountryCode,
-		FetchedAt:   row.FetchedAt,
+func bnetProfileResultFromRecord(p *persist.BnetProfile, cached, stale bool) *bnetProfileResult {
+	return &bnetProfileResult{
+		Toon:        p.Toon,
+		Gateway:     p.Gateway,
+		Found:       p.Found,
+		AuroraID:    p.AuroraID,
+		BattleTag:   p.BattleTag,
+		CountryCode: p.CountryCode,
+		FetchedAt:   p.FetchedAt,
 		Cached:      cached,
 		Stale:       stale,
 	}
-	if row.Found {
-		res.Profile = json.RawMessage(row.Payload)
-	}
-	return res
 }
 
 func (d *Dashboard) handlerBnetProfile(w http.ResponseWriter, r *http.Request) {
