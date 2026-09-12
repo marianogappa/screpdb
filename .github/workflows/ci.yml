@@ -20,23 +20,39 @@ jobs:
           cache: 'npm'
           cache-dependency-path: internal/dashboard/frontend/package-lock.json
 
+      # cache: false because setup-go keys its cache on go.sum alone and only
+      # writes it on a miss, so the compile cache freezes at the last dependency
+      # bump and our own churning packages recompile cold every run. The explicit
+      # cache below is keyed on the commit instead. See "Cache Go builds".
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          cache: true
+          cache: false
+
+      # Restore on every run, but only write from main: a PR branch's cache is
+      # visible to that branch alone, so saving it would burn the repo's 10GB
+      # budget (evicting the main caches everything else restores from) to warm
+      # nothing but repeat pushes to the same PR.
+      - name: Restore Go build and module cache
+        id: go-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-test-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-test-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+            go-test-${{ runner.os }}-
 
       - name: Run frontend tests
         run: make ui-test
 
-      - name: Build embedded UI and cross-platform binaries
-        run: make cross-binaries
-
-      - name: Upload cross-platform binaries
-        uses: actions/upload-artifact@v4
-        with:
-          name: cross-binaries
-          path: dist/*
+      # internal/dashboard //go:embed's frontend/build, which is gitignored, so
+      # the UI must exist before anything compiles that package.
+      - name: Build embedded UI
+        run: make ui-build
 
       - name: Check gofmt and go vet
         run: |
@@ -50,6 +66,71 @@ jobs:
 
       - name: Run tests
         run: go test ./...
+
+      - name: Save Go build and module cache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ steps.go-cache.outputs.cache-primary-key }}
+
+  # Split out of `test` so a compile check does not gate the test feedback: this
+  # cross-compiles six targets, which took longer than the tests, gofmt, vet and
+  # frontend suite combined. The artifact is a convenience build for the PR;
+  # release.yml builds the shipped binaries itself.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: internal/dashboard/frontend/package-lock.json
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      # Namespaced apart from the test job's cache: this one holds six
+      # GOOS/GOARCH trees, and sharing a key would make the two jobs race to
+      # overwrite each other with a cache that suits neither.
+      - name: Restore Go build and module cache
+        id: go-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-cross-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-cross-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+            go-cross-${{ runner.os }}-
+
+      - name: Build embedded UI and cross-platform binaries
+        run: make cross-binaries
+
+      - name: Upload cross-platform binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-binaries
+          path: dist/*
+
+      - name: Save Go build and module cache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ steps.go-cache.outputs.cache-primary-key }}
 
   # Windows Low-integrity containment (issue #237): asserts on a real Windows
   # kernel that the worker spawned via winsandbox.SpawnWorkerLow runs at Low
