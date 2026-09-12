@@ -7,82 +7,108 @@ import (
 	"github.com/marianogappa/scfingerprint"
 )
 
-func TestFingerprintConfidenceTier(t *testing.T) {
+func TestFingerprintTier(t *testing.T) {
 	for _, tc := range []struct {
-		name     string
-		points   map[string]bool
-		want     string
-		wantShow bool
+		name string
+		m    scfingerprint.MatchResult
+		want string
 	}{
 		{
-			name:     "strictest point earns high",
-			points:   map[string]bool{"fpr_1e2": true, "fpr_1e3": true, "fpr_1e4": true},
-			want:     fingerprintMatchConfidenceHigh,
-			wantShow: true,
+			name: "confirmed: strict + identity bar + 3 evidence",
+			m: scfingerprint.MatchResult{
+				OperatingPoints:   map[string]bool{"fpr_1e2": true, "fpr_1e3": true, "fpr_1e4": true},
+				ClearsIdentityBar: true,
+				EvidenceN:         3,
+			},
+			want: fingerprintTierConfirmed,
 		},
 		{
-			name:     "one-in-a-thousand earns moderate",
-			points:   map[string]bool{"fpr_1e2": true, "fpr_1e3": true, "fpr_1e4": false},
-			want:     fingerprintMatchConfidenceModerate,
-			wantShow: true,
+			name: "high: strict + identity bar but only 2 evidence",
+			m: scfingerprint.MatchResult{
+				OperatingPoints:   map[string]bool{"fpr_1e2": true, "fpr_1e3": true, "fpr_1e4": true},
+				ClearsIdentityBar: true,
+				EvidenceN:         2,
+			},
+			want: fingerprintTierHigh,
 		},
 		{
-			name:     "one-in-a-hundred earns nothing",
-			points:   map[string]bool{"fpr_1e2": true, "fpr_1e3": false, "fpr_1e4": false},
-			wantShow: false,
+			name: "high: moderate + identity bar",
+			m: scfingerprint.MatchResult{
+				OperatingPoints:   map[string]bool{"fpr_1e2": true, "fpr_1e3": true, "fpr_1e4": false},
+				ClearsIdentityBar: true,
+				EvidenceN:         5,
+			},
+			want: fingerprintTierHigh,
 		},
 		{
-			name:     "no points earns nothing",
-			points:   map[string]bool{},
-			wantShow: false,
+			name: "lead: strict but no identity bar",
+			m: scfingerprint.MatchResult{
+				OperatingPoints:   map[string]bool{"fpr_1e2": true, "fpr_1e3": true, "fpr_1e4": true},
+				ClearsIdentityBar: false,
+				EvidenceN:         5,
+			},
+			want: fingerprintTierLead,
+		},
+		{
+			name: "lead: loose only",
+			m: scfingerprint.MatchResult{
+				OperatingPoints:   map[string]bool{"fpr_1e2": true, "fpr_1e3": false, "fpr_1e4": false},
+				ClearsIdentityBar: false,
+			},
+			want: fingerprintTierLead,
+		},
+		{
+			name: "none: no points",
+			m:    scfingerprint.MatchResult{OperatingPoints: map[string]bool{}},
+			want: "",
+		},
+		{
+			name: "none: synthetic model",
+			m: scfingerprint.MatchResult{
+				OperatingPoints:   map[string]bool{"fpr_1e2": true, "fpr_1e3": true, "fpr_1e4": true},
+				ClearsIdentityBar: true,
+				EvidenceN:         5,
+				ModelIsSynthetic:  true,
+			},
+			want: "",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, show := fingerprintConfidenceTier(tc.points)
-			if show != tc.wantShow {
-				t.Fatalf("show = %v, want %v", show, tc.wantShow)
-			}
-			if show && got != tc.want {
-				t.Fatalf("tier = %q, want %q", got, tc.want)
+			got := fingerprintTier(tc.m)
+			if got != tc.want {
+				t.Fatalf("fingerprintTier = %q, want %q", got, tc.want)
 			}
 		})
 	}
 }
 
-// TestFingerprintConfidenceTiersAreReachable guards the bug this logic replaced.
-// Tiers used to be cut from raw SearchFPR thresholds, but SearchFPR is the Šidák
-// family-wise correction of the operating points over the catalog, so it moves
-// as the catalog grows. At 70 entries the "moderate" band spanned exactly one
-// reachable value — 0.50516, against a 0.50 ceiling — which made moderate
-// unreachable and every surviving match report "high".
-//
-// Keying the tiers to the operating points removes that coupling. This test
-// asserts it stays removed: both tiers must be reachable at the shipped catalog
-// size, and at catalog sizes well beyond it.
+func TestFingerprintTierPrecedence(t *testing.T) {
+	tiers := []string{fingerprintTierConfirmed, fingerprintTierHigh, fingerprintTierLead}
+	for i := 0; i < len(tiers)-1; i++ {
+		if tierRank(tiers[i]) >= tierRank(tiers[i+1]) {
+			t.Errorf("tier %q must outrank %q", tiers[i], tiers[i+1])
+		}
+	}
+}
+
+func tierRank(tier string) int {
+	switch tier {
+	case fingerprintTierConfirmed:
+		return 0
+	case fingerprintTierHigh:
+		return 1
+	case fingerprintTierLead:
+		return 2
+	}
+	return 99
+}
+
 func TestFingerprintConfidenceTiersAreReachable(t *testing.T) {
 	ds, err := scfingerprint.BuiltinDataset(scfingerprint.ConfidenceHigh)
 	if err != nil {
 		t.Skipf("builtin dataset unavailable: %v", err)
 	}
 
-	tiers := map[string]bool{}
-	for _, points := range []map[string]bool{
-		{"fpr_1e2": true, "fpr_1e3": true, "fpr_1e4": true},
-		{"fpr_1e2": true, "fpr_1e3": true, "fpr_1e4": false},
-	} {
-		tier, show := fingerprintConfidenceTier(points)
-		if !show {
-			t.Fatalf("operating points %v earned no tier", points)
-		}
-		tiers[tier] = true
-	}
-	if !tiers[fingerprintMatchConfidenceHigh] || !tiers[fingerprintMatchConfidenceModerate] {
-		t.Fatalf("both tiers must be reachable, got %v", tiers)
-	}
-
-	// The family-wise rates the UI reports alongside each tier must still be
-	// meaningfully different from each other and from a coin flip, otherwise the
-	// two tiers would be a distinction without a difference.
 	n := ds.Len()
 	strict := familyWiseRate(1e-4, n)
 	moderate := familyWiseRate(1e-3, n)
@@ -92,12 +118,10 @@ func TestFingerprintConfidenceTiersAreReachable(t *testing.T) {
 	}
 	if moderate > 0.25 {
 		t.Errorf("catalog size %d pushes the moderate tier to a family-wise rate of %.3f; "+
-			"'Possibly' is no longer defensible at that rate", n, moderate)
+			"tier label no longer defensible at that rate", n, moderate)
 	}
 }
 
-// familyWiseRate mirrors scfingerprint's Šidák correction so the test can reason
-// about the rates the tiers imply without reaching into the library's internals.
 func familyWiseRate(alpha float64, catalogSize int) float64 {
 	if catalogSize < 1 {
 		catalogSize = 1

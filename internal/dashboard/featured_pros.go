@@ -182,7 +182,7 @@ func (d *Dashboard) excludedProIDs(pack *propack.Pack) map[string]bool {
 		}
 		for _, key := range keys {
 			match, err := d.matchFingerprint(key, scfingerprint.FeatureVersion())
-			if err != nil || match == nil || match.Confidence != fingerprintMatchConfidenceHigh {
+			if err != nil || match == nil || (match.Tier != fingerprintTierConfirmed && match.Tier != fingerprintTierHigh) {
 				continue
 			}
 			if pro := pack.ByLabel(match.Label); pro != nil {

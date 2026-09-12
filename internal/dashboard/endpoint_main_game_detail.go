@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"path/filepath"
 	"sort"
@@ -14,7 +15,6 @@ import (
 	"github.com/marianogappa/scfingerprint"
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
 	db "github.com/marianogappa/screpdb/internal/dashboard/db"
-	"github.com/marianogappa/screpdb/internal/fpvec"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/markers"
 	"github.com/samber/lo"
@@ -84,6 +84,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		if match, _ := d.matchFingerprint(p.PlayerKey, scfingerprint.FeatureVersion()); match != nil {
 			p.FingerprintMatch = match
 		}
+		p.PrimaryBadge, p.SecondaryBadge = d.resolvePlayerIdentityBadges(p.PlayerKey, p.FingerprintMatch)
 		detail.Players = append(detail.Players, p)
 		if row.StartLocationOclock != nil && *row.StartLocationOclock >= 1 && *row.StartLocationOclock <= 12 {
 			startClockByPlayerID[row.PlayerID] = int(*row.StartLocationOclock)
@@ -331,6 +332,7 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 	} else if match != nil {
 		result.FingerprintMatch = match
 	}
+	result.PrimaryBadge, result.SecondaryBadge = d.resolvePlayerIdentityBadges(playerKey, result.FingerprintMatch)
 
 	if err := d.populateAdvancedPlayerOverview(playerKey, &result); err != nil {
 		return result, fmt.Errorf("failed to populate advanced player overview: %w", err)
@@ -2736,38 +2738,54 @@ func (d *Dashboard) populateUnitCadenceForGameDetail(detail *workflowGameDetail)
 }
 
 const (
-	fingerprintMatchConfidenceHigh     = "high"
-	fingerprintMatchConfidenceModerate = "moderate"
-	fingerprintMatchMinVectors         = 3
+	fingerprintTierConfirmed = "confirmed"
+	fingerprintTierHigh      = "high"
+	fingerprintTierLead      = "lead"
 
-	// Per-comparison operating points, as named by scfingerprint. A tier keys to
-	// the strictest point a hit clears rather than a raw SearchFPR threshold,
-	// because SearchFPR is the Šidák family-wise correction of these points over the
-	// catalog and so moves as the catalog grows. Fixed thresholds couldn't survive
-	// that: at 70 entries the "moderate" band spanned one reachable value against a
-	// 0.50 ceiling, so every surviving match reported "high".
+	fingerprintMatchMinVectors = 3
+
 	fingerprintOperatingPointStrict   = "fpr_1e4"
 	fingerprintOperatingPointModerate = "fpr_1e3"
+	fingerprintOperatingPointLoose    = "fpr_1e2"
 )
 
-// Reports false when the hit earns no tier at all: clearing only fpr_1e2 is,
-// family-wise across a catalog this size, roughly a coin flip — not a claim
-// worth rendering.
-func fingerprintConfidenceTier(operatingPoints map[string]bool) (string, bool) {
-	switch {
-	case operatingPoints[fingerprintOperatingPointStrict]:
-		return fingerprintMatchConfidenceHigh, true
-	case operatingPoints[fingerprintOperatingPointModerate]:
-		return fingerprintMatchConfidenceModerate, true
+func fingerprintTier(m scfingerprint.MatchResult) string {
+	if m.ModelIsSynthetic {
+		return ""
 	}
-	return "", false
+	clearsStrict := m.OperatingPoints[fingerprintOperatingPointStrict]
+	clearsModerate := m.OperatingPoints[fingerprintOperatingPointModerate]
+	clearsLoose := m.OperatingPoints[fingerprintOperatingPointLoose]
+
+	switch {
+	case clearsStrict && m.ClearsIdentityBar && m.EvidenceN >= 3:
+		return fingerprintTierConfirmed
+	case (clearsStrict || clearsModerate) && m.ClearsIdentityBar:
+		return fingerprintTierHigh
+	case clearsStrict || clearsModerate || clearsLoose:
+		return fingerprintTierLead
+	}
+	return ""
 }
+
 
 func (d *Dashboard) fingerprintDataset() (*scfingerprint.Dataset, error) {
 	d.fpDatasetOnce.Do(func() {
 		d.fpDataset, d.fpDatasetErr = scfingerprint.BuiltinDataset(scfingerprint.ConfidenceHigh)
 	})
 	return d.fpDataset, d.fpDatasetErr
+}
+
+func (d *Dashboard) fingerprintRegistry() *scfingerprint.Registry {
+	d.fpRegistryOnce.Do(func() {
+		reg, err := scfingerprint.BuiltinRegistry()
+		if err != nil {
+			log.Printf("[fingerprint] loading built-in registry: %v", err)
+			return
+		}
+		d.fpRegistry = reg
+	})
+	return d.fpRegistry
 }
 
 func (d *Dashboard) matchFingerprint(playerKey string, featureVersion int) (*workflowFingerprintMatch, error) {
@@ -2806,13 +2824,13 @@ func (d *Dashboard) computeFingerprintMatch(playerKey string, featureVersion int
 
 	games := make([]scfingerprint.PlayerGame, 0, len(rows))
 	for _, row := range rows {
-		vec, err := fpvec.Decode(row.Vector)
-		if err != nil {
+		if len(row.Vector) == 0 {
 			continue
 		}
 		games = append(games, scfingerprint.PlayerGame{
-			Vector: vec,
+			Vector: row.Vector,
 			Race:   row.Race,
+			Toon:   row.Name,
 		})
 	}
 	if len(games) < fingerprintMatchMinVectors {
@@ -2824,7 +2842,13 @@ func (d *Dashboard) computeFingerprintMatch(playerKey string, featureVersion int
 		return nil, fmt.Errorf("loading fingerprint dataset: %w", err)
 	}
 
-	results, err := scfingerprint.MatchMany(games, dataset)
+	reg := d.fingerprintRegistry()
+	var opts []scfingerprint.Option
+	if reg != nil {
+		opts = append(opts, scfingerprint.WithRegistry(reg))
+	}
+
+	results, err := scfingerprint.MatchMany(games, dataset, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("matching fingerprint: %w", err)
 	}
@@ -2833,22 +2857,36 @@ func (d *Dashboard) computeFingerprintMatch(playerKey string, featureVersion int
 	}
 
 	top := results[0]
-	if top.ModelIsSynthetic {
+	tier := fingerprintTier(top)
+	if tier == "" {
 		return nil, nil
 	}
 
-	confidence, ok := fingerprintConfidenceTier(top.OperatingPoints)
-	if !ok {
-		return nil, nil
+	match := &workflowFingerprintMatch{
+		Label:             top.Label,
+		Liquipedia:        top.Liquipedia,
+		Z:                 top.Z,
+		EvidenceN:         top.EvidenceN,
+		SearchFPR:         top.SearchFPR,
+		Tier:              tier,
+		IdentityBar:       top.IdentityBar,
+		ClearsIdentityBar: top.ClearsIdentityBar,
+		ModelSynthetic:    top.ModelIsSynthetic,
 	}
-
-	return &workflowFingerprintMatch{
-		Label:          top.Label,
-		Liquipedia:     top.Liquipedia,
-		Z:              top.Z,
-		EvidenceN:      top.EvidenceN,
-		SearchFPR:      top.SearchFPR,
-		Confidence:     confidence,
-		ModelSynthetic: top.ModelIsSynthetic,
-	}, nil
+	if top.Registry != nil {
+		match.Registry = &workflowRegistryOpinion{
+			Name:     top.Registry.Name,
+			Toon:     top.Registry.Toon,
+			AuroraID: top.Registry.AuroraID,
+			Agrees:   top.Registry.Agrees,
+		}
+	}
+	// Backward compat: map new tiers to old confidence values.
+	switch tier {
+	case fingerprintTierConfirmed, fingerprintTierHigh:
+		match.Confidence = fingerprintTierHigh
+	case fingerprintTierLead:
+		match.Confidence = "moderate"
+	}
+	return match, nil
 }
