@@ -193,7 +193,13 @@ function GamingSessionPanel({ session, loading, error, renderName, onPlayerClick
           value={(stats.average_apm || 0).toFixed(0)}
           sub={t('session.stat.eapm', { value: (stats.average_eapm || 0).toFixed(0) })}
         />
-        <StatTile label={t('session.stat.timePlayed')} value={formatDuration(stats.played_seconds)} sub={t('session.stat.inGame')} />
+        <StatTile
+          label={t('session.stat.timePlayed')}
+          value={formatDuration(stats.played_seconds)}
+          sub={stats.duration_seconds > 0
+            ? t('session.stat.inGameOfElapsed', { elapsed: formatDuration(stats.duration_seconds) })
+            : t('session.stat.inGame')}
+        />
       </div>
 
       <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label={t('session.sectionsAria')}>

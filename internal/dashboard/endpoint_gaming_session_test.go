@@ -463,3 +463,31 @@ func TestGamingSessionFinishedVersusLive(t *testing.T) {
 		})
 	}
 }
+
+func TestSummarizeGamingSessionElapsedIncludesTheLastGame(t *testing.T) {
+	// Replays are dated from their start, so a sitting whose last game ran 20
+	// minutes ends 20 minutes after that game's stamp. Without it the elapsed
+	// total can come out shorter than the time actually spent in game.
+	now := time.Date(2026, 8, 30, 20, 0, 0, 0, time.UTC)
+	rows := rowsAt(now, 0, 30*time.Minute)
+	games := []workflowGameListItem{
+		{ReplayID: 1, DurationSeconds: 1200, Players: []workflowGameListPlayer{{PlayerKey: "me", Team: 1}}},
+		{ReplayID: 2, DurationSeconds: 1500, Players: []workflowGameListPlayer{{PlayerKey: "me", Team: 1}}},
+	}
+
+	stats := summarizeGamingSession(rows, games, nil, map[string]struct{}{"me": {}})
+
+	// 30 minutes between the two starts, plus the 20-minute last game.
+	if stats.DurationSeconds != 3000 {
+		t.Fatalf("duration = %ds, want 3000 (the span plus the last game)", stats.DurationSeconds)
+	}
+	if stats.PlayedSeconds != 2700 {
+		t.Fatalf("played = %ds, want 2700", stats.PlayedSeconds)
+	}
+	if stats.PlayedSeconds > stats.DurationSeconds {
+		t.Error("time in game can never exceed the elapsed sitting")
+	}
+	if stats.EndedAt != now.Add(20*time.Minute).Format(time.RFC3339) {
+		t.Errorf("ended_at = %s, want the end of the last game", stats.EndedAt)
+	}
+}

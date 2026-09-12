@@ -73,6 +73,7 @@ type gamingSessionResponse struct {
 	Opponents  []gamingSessionPlayer  `json:"opponents"`
 	Allies     []gamingSessionPlayer  `json:"allies"`
 	Games      []workflowGameListItem `json:"games"`
+	Regulars   []sessionRegular       `json:"regulars"`
 }
 
 // sessionGameRow is one of the user's games, as the session builder needs it.
@@ -132,6 +133,7 @@ func (d *Dashboard) gamingSession(ctx context.Context) (*gamingSessionResponse, 
 		Opponents: []gamingSessionPlayer{},
 		Allies:    []gamingSessionPlayer{},
 		Games:     []workflowGameListItem{},
+		Regulars:  []sessionRegular{},
 		Stats:     gamingSessionStats{Matchups: map[string]int{}, RacesPlayed: map[string]int{}, Maps: map[string]int{}},
 	}
 	youKeys := d.loadYouKeys()
@@ -161,6 +163,14 @@ func (d *Dashboard) gamingSession(ctx context.Context) (*gamingSessionResponse, 
 	sort.Slice(candidates, func(i, j int) bool { return candidates[i].PlayedAt.After(candidates[j].PlayedAt) })
 
 	now := time.Now()
+	// The regulars list is about who the user plays with, not about this
+	// sitting, so it is built whether or not a session is showable.
+	regulars, err := d.sessionRegulars(ctx, youKeys, now)
+	if err != nil {
+		return nil, err
+	}
+	empty.Regulars = regulars
+
 	_, end, count, ok := gamingSessionWindow(candidates)
 	if !ok || count == 0 || !gamingSessionIsRecentEnough(end, now) {
 		return empty, nil
@@ -217,6 +227,15 @@ func gameWinnerKnown(game workflowGameListItem) bool {
 	return false
 }
 
+func replayDurationSeconds(games []workflowGameListItem, replayID int64) int64 {
+	for _, game := range games {
+		if game.ReplayID == replayID {
+			return game.DurationSeconds
+		}
+	}
+	return 0
+}
+
 func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem, apm map[gamePlayerKey]sessionAPM, youKeys map[string]struct{}) gamingSessionStats {
 	stats := gamingSessionStats{
 		Matchups:    map[string]int{},
@@ -227,9 +246,14 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 		return stats
 	}
 	stats.Games = len(games)
-	stats.StartedAt = rows[len(rows)-1].PlayedAt.Format(time.RFC3339)
-	stats.EndedAt = rows[0].PlayedAt.Format(time.RFC3339)
-	stats.DurationSeconds = int64(rows[0].PlayedAt.Sub(rows[len(rows)-1].PlayedAt).Seconds())
+	first, last := rows[len(rows)-1], rows[0]
+	stats.StartedAt = first.PlayedAt.Format(time.RFC3339)
+	// A replay is dated from its start, so the sitting runs to the end of the
+	// last game, not to the moment it began. Without the final game's own
+	// length the elapsed total reads as shorter than the time in game.
+	sessionEnd := last.PlayedAt.Add(time.Duration(replayDurationSeconds(games, last.ReplayID)) * time.Second)
+	stats.EndedAt = sessionEnd.Format(time.RFC3339)
+	stats.DurationSeconds = int64(sessionEnd.Sub(first.PlayedAt).Seconds())
 
 	var apmSum, eapmSum float64
 	var apmCount int

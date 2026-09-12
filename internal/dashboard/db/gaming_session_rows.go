@@ -1,5 +1,7 @@
 package db
 
+import "time"
+
 // SessionCandidateRow is one of the user's games, with just enough to decide
 // whether it belongs to the current session.
 type SessionCandidateRow struct {
@@ -32,4 +34,12 @@ type SessionPlayerAPMRow struct {
 	PlayerKey string
 	APM       int64
 	EAPM      int64
+}
+
+// CoPlayerRow is one person the user has shared games with, and how often.
+type CoPlayerRow struct {
+	PlayerKey  string
+	PlayerName string
+	Games      int
+	LastPlayed time.Time
 }

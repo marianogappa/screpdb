@@ -58,6 +58,7 @@
   "session.stat.eapm": "EAPM {value}",
   "session.stat.timePlayed": "플레이 시간",
   "session.stat.inGame": "게임 내 시간",
+  "session.stat.inGameOfElapsed": "게임 내 시간 · 전체 {elapsed}",
   "session.sectionsAria": "세션 섹션",
   "session.tab.games": "게임",
   "session.tab.players": "플레이어",

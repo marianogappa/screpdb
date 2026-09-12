@@ -58,6 +58,7 @@
   "session.stat.eapm": "{value} EAPM",
   "session.stat.timePlayed": "Time played",
   "session.stat.inGame": "in game",
+  "session.stat.inGameOfElapsed": "in game · {elapsed} total",
   "session.sectionsAria": "Session sections",
   "session.tab.games": "Games",
   "session.tab.players": "Players",
