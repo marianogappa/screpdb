@@ -101,20 +101,22 @@ func TestLimiterAcquireHonoursContextCancel(t *testing.T) {
 	}
 }
 
-func TestBridgeDailyCapExhaustsAndRolls(t *testing.T) {
+func TestBridgeRequestsAreCountedNotCapped(t *testing.T) {
+	// There is deliberately no daily ceiling: the counters report, the token
+	// bucket paces, and only the server's own rate-limit signal stops us.
 	b := fastBudgets(time.Millisecond, 10)
-	b.bridgeCap = 2
 	now := time.Date(2026, 8, 30, 23, 0, 0, 0, time.UTC)
 	b.now = func() time.Time { return now }
 	ctx := context.Background()
 
-	for range 2 {
+	const many = 5000
+	for i := range many {
 		if err := b.acquireBridge(ctx, PriorityUser); err != nil {
-			t.Fatalf("acquire under cap: %v", err)
+			t.Fatalf("acquire %d of %d: %v", i+1, many, err)
 		}
 	}
-	if err := b.acquireBridge(ctx, PriorityUser); !errors.Is(err, ErrBridgeBudgetExhausted) {
-		t.Fatalf("got %v, want ErrBridgeBudgetExhausted", err)
+	if s := b.snapshot(); s.BridgeUsedToday != many {
+		t.Fatalf("requests today = %d, want every one of the %d counted", s.BridgeUsedToday, many)
 	}
 
 	now = now.Add(2 * time.Hour) // past midnight
@@ -126,19 +128,36 @@ func TestBridgeDailyCapExhaustsAndRolls(t *testing.T) {
 	}
 }
 
-func TestDownloadBudgetIsSeparate(t *testing.T) {
+func TestBridgeCooldownStillStopsRequests(t *testing.T) {
+	// Removing the daily cap must not remove the one gate that matters: the
+	// server told us to back off.
 	b := fastBudgets(time.Millisecond, 10)
-	b.bridgeCap = 1
+	now := time.Date(2026, 8, 30, 12, 0, 0, 0, time.UTC)
+	b.now = func() time.Time { return now }
 	ctx := context.Background()
 
-	if err := b.acquireBridge(ctx, PriorityUser); err != nil {
-		t.Fatalf("bridge acquire: %v", err)
+	b.noteBridgeRateLimited()
+	if err := b.acquireBridge(ctx, PriorityUser); !errors.Is(err, ErrBridgeCoolingDown) {
+		t.Fatalf("got %v, want ErrBridgeCoolingDown", err)
 	}
-	if err := b.acquireBridge(ctx, PriorityUser); !errors.Is(err, ErrBridgeBudgetExhausted) {
-		t.Fatalf("got %v, want ErrBridgeBudgetExhausted", err)
+	now = now.Add(cooldownMax + time.Hour)
+	if err := b.acquireBridge(ctx, PriorityUser); err != nil {
+		t.Fatalf("acquire once the cooldown lapsed: %v", err)
+	}
+}
+
+func TestDownloadBudgetIsSeparate(t *testing.T) {
+	// The two buckets pace independently: a bridge cooldown must not stall a
+	// GCS download, which never touches the Blizzard session.
+	b := fastBudgets(time.Millisecond, 10)
+	ctx := context.Background()
+
+	b.noteBridgeRateLimited()
+	if err := b.acquireBridge(ctx, PriorityUser); !errors.Is(err, ErrBridgeCoolingDown) {
+		t.Fatalf("got %v, want ErrBridgeCoolingDown", err)
 	}
 	if err := b.acquireDownload(ctx, PriorityUser); err != nil {
-		t.Fatalf("download budget must not be affected by an exhausted bridge budget: %v", err)
+		t.Fatalf("downloads must not be affected by a bridge cooldown: %v", err)
 	}
 }
 
@@ -265,13 +284,13 @@ func TestBridgeGetSpendsBudget(t *testing.T) {
 		t.Fatalf("BridgeGet: %v", err)
 	}
 	if s := BudgetSnapshot(); s.BridgeUsedToday != 1 {
-		t.Fatalf("BridgeGet must spend the bridge budget: got %d", s.BridgeUsedToday)
+		t.Fatalf("BridgeGet must count against the bridge meter: got %d", s.BridgeUsedToday)
 	}
 
-	b.bridgeCap = 1
+	b.noteBridgeRateLimited()
 	_, err := BridgeGet(context.Background(), addr, "/web-api/v1/profile", PriorityUser)
-	if !errors.Is(err, ErrBridgeBudgetExhausted) {
-		t.Fatalf("got %v, want ErrBridgeBudgetExhausted", err)
+	if !errors.Is(err, ErrBridgeCoolingDown) {
+		t.Fatalf("got %v, want ErrBridgeCoolingDown", err)
 	}
 }
 

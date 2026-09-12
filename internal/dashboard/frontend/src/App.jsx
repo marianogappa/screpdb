@@ -2983,7 +2983,6 @@ function App() {
   const bnetState = bnetStatus?.state || 'not_running';
   const bnetDisabled = Boolean(bnetStatus?.disabled);
   const bnetRequestsToday = bnetStatus?.requests_today ?? 0;
-  const bnetDailyCap = bnetStatus?.daily_cap ?? 0;
   const bnetCooldownUntil = bnetStatus?.cooldown_until ? new Date(bnetStatus.cooldown_until) : null;
   const bnetCoolingDown = Boolean(bnetCooldownUntil) && bnetCooldownUntil > new Date();
 
@@ -3085,10 +3084,10 @@ function App() {
     missingCountryCodeKeys,
     !bnetDisabled && bnetState === 'connected',
   );
-  const bnetTipSuffix = bnetDisabled || bnetDailyCap <= 0 ? ''
+  const bnetTipSuffix = bnetDisabled ? ''
     : bnetCoolingDown
-      ? t('bnet.tip.requestsPaused', { used: bnetRequestsToday, cap: bnetDailyCap, time: bnetCooldownUntil.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
-      : t('bnet.tip.requests', { used: bnetRequestsToday, cap: bnetDailyCap });
+      ? t('bnet.tip.requestsPaused', { used: bnetRequestsToday, time: bnetCooldownUntil.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
+      : t('bnet.tip.requests', { used: bnetRequestsToday });
 
   const handleBnetToggle = useCallback(async () => {
     const newDisabled = !bnetDisabled;

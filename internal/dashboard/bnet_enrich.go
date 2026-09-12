@@ -64,9 +64,12 @@ const (
 	// enrichBetterRatio is the Content-Length ratio below which a co-player
 	// copy is the same recording, merely compressed differently.
 	enrichBetterRatio = 1.05
-	// enrichDailyCallCap bounds the worker's own bridge spend. A long session
-	// costs roughly three calls per game (profile share, first poll, confirm),
-	// so this covers a big session while staying a sliver of the #319 budget.
+	// enrichDailyCallCap bounds the worker's own bridge spend. Unlike the
+	// facade's pacing, this is a real ceiling, because this worker chases games
+	// speculatively: it polls for a winner that may never be published, so
+	// without a stop it would keep asking forever. A long session costs roughly
+	// three calls per game (profile share, first poll, confirm), so this covers
+	// a big session and then stands down.
 	enrichDailyCallCap     = 40
 	enrichMaxProfileMisses = 3
 	// enrichMinHumans scopes the feature to multiplayer: in a two-human game

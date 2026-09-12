@@ -33,7 +33,6 @@ type bnetStatus struct {
 	Addr           string                 `json:"addr"`
 	Disabled       bool                   `json:"disabled"`
 	RequestsToday  int                    `json:"requests_today"`
-	DailyCap       int                    `json:"daily_cap"`
 	DownloadsToday int                    `json:"downloads_today"`
 	CooldownUntil  string                 `json:"cooldown_until,omitempty"`
 	Gateway        int                    `json:"gateway,omitempty"`
@@ -177,7 +176,6 @@ func (d *Dashboard) getBnetStatus() bnetStatus {
 	}
 	budget := bnetfacade.BudgetSnapshot()
 	s.RequestsToday = budget.BridgeUsedToday
-	s.DailyCap = budget.BridgeDailyCap
 	s.DownloadsToday = budget.DownloadsUsedToday
 	if !budget.CooldownUntil.IsZero() {
 		s.CooldownUntil = budget.CooldownUntil.Format(time.RFC3339)
