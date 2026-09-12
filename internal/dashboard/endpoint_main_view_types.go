@@ -716,17 +716,17 @@ type workflowFingerprintCoverage struct {
 }
 
 type workflowFingerprintMatch struct {
-	Label             string                  `json:"label"`
-	Liquipedia        string                  `json:"liquipedia,omitempty"`
-	Z                 float64                 `json:"z"`
-	EvidenceN         int                     `json:"evidence_n"`
-	SearchFPR         float64                 `json:"search_fpr"`
-	Tier              string                  `json:"tier"`
-	IdentityBar       float64                 `json:"identity_bar,omitempty"`
-	ClearsIdentityBar bool                    `json:"clears_identity_bar"`
+	Label             string                   `json:"label"`
+	Liquipedia        string                   `json:"liquipedia,omitempty"`
+	Z                 float64                  `json:"z"`
+	EvidenceN         int                      `json:"evidence_n"`
+	SearchFPR         float64                  `json:"search_fpr"`
+	Tier              string                   `json:"tier"`
+	IdentityBar       float64                  `json:"identity_bar,omitempty"`
+	ClearsIdentityBar bool                     `json:"clears_identity_bar"`
 	Registry          *workflowRegistryOpinion `json:"registry,omitempty"`
-	Confidence        string                  `json:"confidence"`
-	ModelSynthetic    bool                    `json:"model_is_synthetic"`
+	Confidence        string                   `json:"confidence"`
+	ModelSynthetic    bool                     `json:"model_is_synthetic"`
 }
 
 type workflowRegistryOpinion struct {
@@ -737,11 +737,11 @@ type workflowRegistryOpinion struct {
 }
 
 type IdentityBadge struct {
-	Kind        string   `json:"kind"`
-	Tier        string   `json:"tier"`
-	Label       string   `json:"label"`
-	Liquipedia  string   `json:"liquipedia,omitempty"`
-	EvidenceKey string   `json:"evidence_key"`
+	Kind         string   `json:"kind"`
+	Tier         string   `json:"tier"`
+	Label        string   `json:"label"`
+	Liquipedia   string   `json:"liquipedia,omitempty"`
+	EvidenceKey  string   `json:"evidence_key"`
 	EvidenceArgs []string `json:"evidence_args,omitempty"`
 }
 

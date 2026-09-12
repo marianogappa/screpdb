@@ -5558,10 +5558,11 @@ button.workflow-nav-update-available:disabled {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  font-size: 0.72rem;
-  opacity: 0.85;
+  gap: 6px;
+  color: inherit;
+  opacity: 0.75;
   cursor: default;
+  margin-left: 8px;
 }
 .identity-badge-icon {
   display: inline-flex;
@@ -5574,9 +5575,19 @@ button.workflow-nav-update-available:disabled {
   width: 100%;
   height: 100%;
 }
-.identity-badge--confirmed { color: var(--e-strong); }
-.identity-badge--high { color: var(--e-accent); }
-.identity-badge--lead { color: var(--e-quiet); }
+h2 .identity-badge {
+  font-size: 0.42em;
+  vertical-align: middle;
+  margin-left: 10px;
+}
+h2 .identity-badge .identity-badge-icon {
+  width: 1.6em;
+  height: 1.6em;
+}
+h2 .identity-badge .identity-badge-label {
+  font-size: 1em;
+  font-weight: 400;
+}
 .identity-badge-tooltip {
   position: absolute;
   left: 50%;
@@ -5610,6 +5621,10 @@ button.workflow-nav-update-available:disabled {
   text-decoration-style: solid;
 }
 .identity-badge--compact .identity-badge-label { display: none; }
+.identity-badge--compact { margin-left: 4px; gap: 3px; }
+/* games list: show icon + name */
+.identity-badge--games-list { margin-left: 4px; gap: 4px; font-size: 0.72rem; }
+.identity-badge--games-list .identity-badge-icon { width: 14px; height: 14px; }
 
 .workflow-inline-warning {
   display: inline-flex;

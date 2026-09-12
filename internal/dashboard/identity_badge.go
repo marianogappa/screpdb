@@ -20,11 +20,11 @@ func fingerprintBadge(m *workflowFingerprintMatch) *IdentityBadge {
 		return nil
 	}
 	return &IdentityBadge{
-		Kind:        badgeKindFingerprint,
-		Tier:        m.Tier,
-		Label:       m.Label,
-		Liquipedia:  m.Liquipedia,
-		EvidenceKey: "identity.badge.fingerprintEvidence",
+		Kind:         badgeKindFingerprint,
+		Tier:         m.Tier,
+		Label:        m.Label,
+		Liquipedia:   m.Liquipedia,
+		EvidenceKey:  "identity.badge.fingerprintEvidence",
 		EvidenceArgs: []string{m.Label},
 	}
 }

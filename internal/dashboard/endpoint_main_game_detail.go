@@ -2768,7 +2768,6 @@ func fingerprintTier(m scfingerprint.MatchResult) string {
 	return ""
 }
 
-
 func (d *Dashboard) fingerprintDataset() (*scfingerprint.Dataset, error) {
 	d.fpDatasetOnce.Do(func() {
 		d.fpDataset, d.fpDatasetErr = scfingerprint.BuiltinDataset(scfingerprint.ConfidenceHigh)
