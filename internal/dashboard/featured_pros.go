@@ -94,11 +94,12 @@ func (d *Dashboard) loadProPack() *propack.Pack {
 var featuredVisibleIDs = map[string]bool{
 	"action": true, "ample": true, "artosis": true, "barracks": true,
 	"best": true, "bisu": true, "dewalt": true, "effort": true,
-	"ggaemo": true, "hero": true, "jaedong": true, "jyj": true,
-	"larva": true, "leta": true, "light": true, "mind": true,
-	"mong": true, "queen": true, "royal": true, "rush": true,
-	"sharp": true, "shuttle": true, "snow": true, "soma": true,
-	"speed": true, "ssak": true, "stork": true, "xiaoshuai": true,
+	"flash": true, "ggaemo": true, "hero": true, "jaedong": true,
+	"jyj": true, "larva": true, "leta": true, "light": true,
+	"mind": true, "mong": true, "queen": true, "royal": true,
+	"rush": true, "sharp": true, "shuttle": true, "snow": true,
+	"soma": true, "soulkey": true, "speed": true, "ssak": true,
+	"stork": true, "xiaoshuai": true,
 }
 
 // featuredPros returns the curated built-in profiles the user is not, most

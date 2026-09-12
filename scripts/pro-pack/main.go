@@ -145,6 +145,35 @@ func main() {
 	}
 	log.Printf("computed metrics for %d pros", len(metrics))
 
+	// Identities the harvest could not label fall back to the replay_manifest
+	// their catalog entry carries. Without this a pro enrolled from outside the
+	// cwal harvest — or one with no registry toons at all — can never reach the
+	// pack, however well attested their fingerprint is.
+	unlabelled := map[string]roster{}
+	for name, r := range rosterByName {
+		if metrics[propack.Key(r.id)].GamesSampled < *minGames {
+			unlabelled[name] = r
+		}
+	}
+	if len(unlabelled) > 0 {
+		manifestDir := filepath.Join(filepath.Dir(*stagedDir), "manifest")
+		if err := os.RemoveAll(manifestDir); err != nil {
+			log.Fatalf("clear manifest dir: %v", err)
+		}
+		extra, err := metricsFromManifests(ctx, *datasetDir, *corpusDir, manifestDir, unlabelled)
+		if err != nil {
+			log.Printf("manifest pass: %v", err)
+		}
+		for key, m := range extra {
+			if m.GamesSampled > metrics[key].GamesSampled {
+				metrics[key] = m
+			}
+		}
+		if len(extra) > 0 {
+			log.Printf("manifest pass: recovered metrics for %d pros", len(extra))
+		}
+	}
+
 	toonsByName := recentToons(sides)
 
 	pack := propack.Pack{
@@ -226,10 +255,26 @@ func main() {
 // loadRoster reads the scfingerprint dataset identities and pairs each with
 // its registry aurora IDs by name (dataset IDs are the lower-cased registry
 // names). Identities unknown to the registry cannot be labelled and are skipped.
+// liquipediaOverrides corrects the upstream link table. A wrong or missing URL
+// costs the pro their portrait and country, because that is the only place the
+// generator looks for either. Upstream should be fixed too; this keeps the pack
+// correct until it is.
+var liquipediaOverrides = map[string]string{
+	// Upstream points at the disambiguation-free title, which is the Protoss
+	// unit, not the player.
+	"shuttle": "https://liquipedia.net/starcraft/Shuttle_(Player)",
+	// Absent upstream entirely: FlaSh is enrolled from community archives
+	// rather than the ladder harvest that seeds that table.
+	"flash": "https://liquipedia.net/starcraft/Flash",
+}
+
 func loadRoster(datasetDir string, reg *procorpus.Registry) (map[string]roster, error) {
 	var links map[string]string
 	if err := procorpus.ReadJSON(filepath.Join(datasetDir, "liquipedia.json"), &links); err != nil {
 		return nil, err
+	}
+	for id, url := range liquipediaOverrides {
+		links[id] = url
 	}
 	registryNameByLower := map[string]string{}
 	for name := range reg.AurorasByName {

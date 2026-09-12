@@ -5558,56 +5558,109 @@ button.workflow-nav-update-available:disabled {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.34em;
   color: inherit;
-  opacity: 0.75;
   cursor: default;
-  margin-left: 8px;
+  margin-left: 0.5em;
+  /* An inline-flex box takes its baseline from its first flex item, and the
+     first item here is an icon with no text, so the default alignment hung the
+     badge above the name it annotates. Centring on the text's midline is what
+     actually lines the two up. */
+  vertical-align: middle;
+}
+/* The badge is a supporting claim, so it sits a rung below the name it
+   annotates. Muting the subject drawing and the label rather than the whole
+   badge keeps two things at full strength: the tooltip, which carries the
+   evidence, and the qualifier disc, which is the part that has to survive at
+   16px. */
+.identity-badge-label {
+  opacity: 0.78;
+}
+.identity-badge:hover .identity-badge-label {
+  opacity: 1;
 }
 .identity-badge-icon {
   display: inline-flex;
   align-items: center;
-  width: 20px;
-  height: 20px;
+  width: 1.35em;
+  height: 1.35em;
   flex-shrink: 0;
 }
 .identity-badge-icon svg {
   width: 100%;
   height: 100%;
 }
+.identity-badge-icon .ib-subject {
+  fill: currentColor;
+  opacity: 0.72;
+}
+.identity-badge:hover .ib-subject {
+  opacity: 1;
+}
+/* Tier reads as colour first and shape second: the tick, tilde and question
+   mark are only a few pixels across in a list row, but their disc is not. */
+.identity-badge-icon .ib-disc { fill: var(--ib-disc); }
+.identity-badge-icon .ib-glyph { fill: var(--ib-ink); }
+.identity-badge-icon[data-tier='confirmed'] { --ib-disc: #3fb875; --ib-ink: #05140c; }
+.identity-badge-icon[data-tier='high'] { --ib-disc: #d9a938; --ib-ink: #17110a; }
+/* On the player page the badge annotates the title, so it is set at the
+   title's own size rather than shrunk into a footnote. */
+/* The player title lays its parts out as a flex row so the name, the badge
+   icons and the pro name all centre on one another. vertical-align could not
+   do it: an inline-flex badge takes its baseline from its first flex item —
+   an icon with no text — which floats the badge above the name, and `middle`
+   then overshoots because it aligns to half the x-height rather than to the
+   text's optical centre. */
+.workflow-player-title-wrap h2 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.1em 0;
+}
 h2 .identity-badge {
-  font-size: 0.42em;
-  vertical-align: middle;
-  margin-left: 10px;
+  font-size: 1em;
+  margin-left: 0.6em;
+  gap: 0.3em;
 }
 h2 .identity-badge .identity-badge-icon {
-  width: 1.6em;
-  height: 1.6em;
+  width: 1.05em;
+  height: 1.05em;
 }
 h2 .identity-badge .identity-badge-label {
   font-size: 1em;
   font-weight: 400;
 }
 .identity-badge-tooltip {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 6px);
-  transform: translateX(-50%);
+  /* Fixed, and placed by placeIdentityTooltip on hover: the badge sits inside
+     table cells with overflow:hidden, which would clip an absolutely
+     positioned tooltip however high its z-index. */
+  position: fixed;
+  left: 0;
+  top: 0;
   white-space: nowrap;
-  padding: 4px 8px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(9, 10, 16, 0.97);
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 0.72rem;
-  line-height: 1.3;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 7px 11px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  /* Fully opaque: the tooltip carries the evidence, so nothing behind it may
+     bleed through and compete with the text. */
+  background: #1b1d27;
+  color: #f2f4f8;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.72), 0 2px 6px rgba(0, 0, 0, 0.5);
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity 0s;
-  z-index: 20;
+  transition: none;
+  /* Above every pill, row, sticky header and overlay it may be anchored in. */
+  z-index: 4000;
 }
-.identity-badge:hover .identity-badge-tooltip { opacity: 1; }
+.identity-badge:hover .identity-badge-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
 .identity-badge-label {
   white-space: nowrap;
 }
@@ -5620,11 +5673,33 @@ h2 .identity-badge .identity-badge-label {
 .identity-badge-label a:hover {
   text-decoration-style: solid;
 }
+.identity-badge-paren {
+  opacity: 0.42;
+  margin: 0 -0.06em;
+}
+.identity-badge--parens { gap: 0.22em; }
 .identity-badge--compact .identity-badge-label { display: none; }
-.identity-badge--compact { margin-left: 4px; gap: 3px; }
-/* games list: show icon + name */
-.identity-badge--games-list { margin-left: 4px; gap: 4px; font-size: 0.72rem; }
-.identity-badge--games-list .identity-badge-icon { width: 14px; height: 14px; }
+.identity-badge--compact { margin-left: 0.34em; }
+/* Games list and game-summary title: one icon plus the pro name, set slightly
+   below the name it follows so the row still reads name-first. */
+.identity-badge--players-list,
+.identity-badge--games-list,
+.identity-badge--game-title {
+  margin-left: 0.4em;
+  font-size: 0.92em;
+}
+/* Specific enough to beat the h2 rule above, since the game summary title is
+   itself an h2 and carries one badge per player. */
+h2 .identity-badge--game-title,
+.identity-badge--game-title {
+  font-size: 0.62em;
+  margin-left: 0.45em;
+  font-weight: 400;
+}
+h2 .identity-badge--game-title .identity-badge-icon {
+  width: 1.2em;
+  height: 1.2em;
+}
 
 .workflow-inline-warning {
   display: inline-flex;
@@ -7082,3 +7157,26 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .workflow-featured-expand { justify-self: start; align-self: center; font-size: 11.5px; padding: 5px 8px; }
 .workflow-panel--player .workflow-title-row.workflow-player-title-featured { justify-content: flex-start; }
 .workflow-bnet-game-row { grid-template-columns: 26px 118px 1fr 36px 56px minmax(120px, 1.2fr); }
+
+/* Players list: the identity rides in its own column so every badge starts at
+   the same x, instead of ragging along the end of names of every length.
+   Both columns shrink to their content so the identity sits just past the
+   longest name rather than adrift at the far right, and the header keeps its
+   rule so the line under the header runs unbroken across the table. */
+.workflow-players-list-table .wpl-name-cell,
+.workflow-players-list-table .wpl-identity-cell,
+.workflow-players-list-table .wpl-identity-head {
+  width: 1%;
+  white-space: nowrap;
+}
+.workflow-players-list-table .wpl-name-cell {
+  padding-right: 0.75rem;
+}
+.workflow-players-list-table .wpl-identity-cell,
+.workflow-players-list-table .wpl-identity-head {
+  padding-left: 0;
+  padding-right: 1.5rem;
+}
+.workflow-players-list-table .wpl-identity-cell .identity-badge {
+  margin-left: 0;
+}

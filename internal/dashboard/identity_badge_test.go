@@ -50,7 +50,7 @@ func TestPrecedenceNilsYieldNil(t *testing.T) {
 }
 
 func TestPrecedenceSingleBadge(t *testing.T) {
-	fp := &IdentityBadge{Kind: badgeKindFingerprint, Tier: fingerprintTierLead, Label: "X"}
+	fp := &IdentityBadge{Kind: badgeKindFingerprint, Tier: fingerprintTierHigh, Label: "X"}
 	primary, secondary := precedence(fp, nil)
 	if primary != fp || secondary != nil {
 		t.Fatalf("single badge should be primary with nil secondary")

@@ -15,6 +15,16 @@ func (d *Dashboard) resolvePlayerIdentityBadges(playerKey string, fpMatch *workf
 	return precedence(fpBadge, acctBadge)
 }
 
+// primaryIdentityBadge is the one badge a list row has room for: the winner of
+// the precedence contest, with the losing claim dropped. The fingerprint match
+// it needs is memoised per player key, so calling this once per row on a page
+// costs one registry lookup per distinct player.
+func (d *Dashboard) primaryIdentityBadge(playerKey string) *IdentityBadge {
+	match, _ := d.matchFingerprint(playerKey, scfingerprint.FeatureVersion())
+	primary, _ := d.resolvePlayerIdentityBadges(playerKey, match)
+	return primary
+}
+
 func fingerprintBadge(m *workflowFingerprintMatch) *IdentityBadge {
 	if m == nil || m.Tier == "" {
 		return nil
@@ -80,7 +90,6 @@ var badgePrecedenceOrder = []struct {
 	{badgeKindAccount, fingerprintTierConfirmed},
 	{badgeKindFingerprint, fingerprintTierHigh},
 	{badgeKindAccount, fingerprintTierHigh},
-	{badgeKindFingerprint, fingerprintTierLead},
 }
 
 func badgeRank(b *IdentityBadge) int {

@@ -41,21 +41,26 @@ func TestFingerprintTier(t *testing.T) {
 			want: fingerprintTierHigh,
 		},
 		{
-			name: "lead: strict but no identity bar",
+			// Missing its own identity bar means the probe sits in a crowded
+			// corner of style space, not that it is this person.
+			name: "none: strict but no identity bar",
 			m: scfingerprint.MatchResult{
 				OperatingPoints:   map[string]bool{"fpr_1e2": true, "fpr_1e3": true, "fpr_1e4": true},
 				ClearsIdentityBar: false,
 				EvidenceN:         5,
 			},
-			want: fingerprintTierLead,
+			want: "",
 		},
 		{
-			name: "lead: loose only",
+			// Family-wise across a catalog this size, fpr_1e2 alone is roughly
+			// a coin flip.
+			name: "none: loose only",
 			m: scfingerprint.MatchResult{
 				OperatingPoints:   map[string]bool{"fpr_1e2": true, "fpr_1e3": false, "fpr_1e4": false},
-				ClearsIdentityBar: false,
+				ClearsIdentityBar: true,
+				EvidenceN:         5,
 			},
-			want: fingerprintTierLead,
+			want: "",
 		},
 		{
 			name: "none: no points",
@@ -83,7 +88,7 @@ func TestFingerprintTier(t *testing.T) {
 }
 
 func TestFingerprintTierPrecedence(t *testing.T) {
-	tiers := []string{fingerprintTierConfirmed, fingerprintTierHigh, fingerprintTierLead}
+	tiers := []string{fingerprintTierConfirmed, fingerprintTierHigh}
 	for i := 0; i < len(tiers)-1; i++ {
 		if tierRank(tiers[i]) >= tierRank(tiers[i+1]) {
 			t.Errorf("tier %q must outrank %q", tiers[i], tiers[i+1])
@@ -97,8 +102,6 @@ func tierRank(tier string) int {
 		return 0
 	case fingerprintTierHigh:
 		return 1
-	case fingerprintTierLead:
-		return 2
 	}
 	return 99
 }
