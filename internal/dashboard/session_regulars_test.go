@@ -171,7 +171,7 @@ func TestRegularFreshness(t *testing.T) {
 		}
 	})
 
-	t.Run("a long-unanswered picture is dropped, not narrated", func(t *testing.T) {
+	t.Run("an unanswered picture is dropped, not narrated", func(t *testing.T) {
 		lastSeen := now.Add(-2 * time.Hour)
 		for _, tc := range []struct {
 			name     string
@@ -179,14 +179,29 @@ func TestRegularFreshness(t *testing.T) {
 			want     string
 		}{
 			{"never asked", time.Time{}, ""},
-			{"asked within the day", now.Add(-regularsObservationMaxAge), regularFreshnessLately},
-			{"asked longer ago than the day", now.Add(-regularsObservationMaxAge - time.Minute), ""},
+			{"asked a sweep ago", now.Add(-regularsRefreshEvery), regularFreshnessLately},
+			{"asked at the max age", now.Add(-regularsObservationMaxAge), regularFreshnessLately},
+			{"asked longer ago than the max age", now.Add(-regularsObservationMaxAge - time.Minute), ""},
+			{"asked most of a day ago", now.Add(-20 * time.Hour), ""},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				if got := regularFreshness(lastSeen, tc.observed, now); got != tc.want {
 					t.Errorf("freshness = %q, want %q", got, tc.want)
 				}
 			})
+		}
+	})
+
+	// The max age answers "who is around", so it is bounded by how often we
+	// look, not by how wide the tier's own window is. A stale observation omits
+	// everyone who started playing since, which makes a surviving list biased
+	// rather than merely old.
+	t.Run("the max age is measured in sweeps, not days", func(t *testing.T) {
+		if regularsObservationMaxAge > 4*regularsRefreshEvery {
+			t.Fatalf("max age %v is too lenient for a %v sweep", regularsObservationMaxAge, regularsRefreshEvery)
+		}
+		if regularsObservationMaxAge < regularsObservationWindow {
+			t.Fatalf("max age %v must not undercut the live window %v", regularsObservationMaxAge, regularsObservationWindow)
 		}
 	})
 }

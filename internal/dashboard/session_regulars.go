@@ -47,19 +47,29 @@ const (
 //	                           look; without one the person is demoted to the
 //	                           lately tier rather than dropped, because a game
 //	                           within the hour is still a game within three days.
-//	regularsObservationMaxAge  how long the whole picture survives. Past this,
-//	                           even "played in the last three days" is guesswork
-//	                           and the row is dropped rather than narrated.
+//	regularsObservationMaxAge  how long the whole picture survives. Past this
+//	                           the row is dropped rather than narrated.
 //
 // The window is deliberately a little longer than regularsRefreshEvery, so a
 // sweep that lands on schedule always keeps the live tier alive; it lapses only
-// when sweeps actually stop, which is the case it exists to catch. Note this
-// keys off when we last got an answer, never off whether the bridge is
-// connected right now: connection state flaps as SC:R restarts and would make
-// the row blink, while observation age only ever moves one way.
+// when sweeps actually stop, which is the case it exists to catch.
+//
+// The max age is short — a couple of sweeps, not a couple of days — and it is
+// short for a reason that is easy to get wrong. It is tempting to argue that
+// the lately tier survives a stale observation, because "played in the last
+// three days" stays true however long ago we looked. That confuses truth with
+// completeness. An old observation does not merely age what we know: it omits
+// everyone who started playing since, so the list stops being a slightly stale
+// answer to "who is around" and becomes a biased one, quietly favouring whoever
+// happened to be visible at the last look. A partial answer to that question is
+// worse than none, so past this the surface says nothing.
+//
+// Note both key off when Battle.net last answered, never off whether the bridge
+// is connected right now: connection state flaps as SC:R restarts and would
+// make the row blink, while observation age only ever moves one way.
 const (
 	regularsObservationWindow = regularsRefreshEvery + 5*time.Minute
-	regularsObservationMaxAge = 24 * time.Hour
+	regularsObservationMaxAge = 2 * regularsRefreshEvery
 )
 
 // Freshness tiers, as carried to the frontend. The empty string means the
