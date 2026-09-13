@@ -298,6 +298,15 @@ func (d *Dashboard) PlayersList(_ context.Context, request apigen.PlayersListReq
 	if request.Params.LastPlayed != nil {
 		filters.LastPlayedBuckets = parseCSVQueryValues(*request.Params.LastPlayed, true)
 	}
+	if request.Params.Races != nil {
+		filters.Races = parseCSVQueryValues(*request.Params.Races, true)
+	}
+	if request.Params.Apm != nil {
+		filters.ApmBuckets = parseCSVQueryValues(*request.Params.Apm, true)
+	}
+	if request.Params.Games != nil {
+		filters.GamesBuckets = parseCSVQueryValues(*request.Params.Games, true)
+	}
 	sortSpec := workflowPlayersListSort{Column: "games_played", Desc: true}
 	if request.Params.SortBy != nil {
 		switch *request.Params.SortBy {

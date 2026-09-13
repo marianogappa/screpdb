@@ -53,20 +53,25 @@ type gamingSessionPlayer struct {
 }
 
 type gamingSessionStats struct {
-	Games           int            `json:"games"`
-	Wins            int            `json:"wins"`
-	Losses          int            `json:"losses"`
-	Undecided       int            `json:"undecided"`
-	WinRate         float64        `json:"win_rate"`
-	AverageAPM      float64        `json:"average_apm"`
-	AverageEAPM     float64        `json:"average_eapm"`
-	DurationSeconds int64          `json:"duration_seconds"`
-	PlayedSeconds   int64          `json:"played_seconds"`
-	StartedAt       string         `json:"started_at"`
-	EndedAt         string         `json:"ended_at"`
-	Matchups        map[string]int `json:"matchups"`
-	RacesPlayed     map[string]int `json:"races_played"`
-	Maps            map[string]int `json:"maps"`
+	Games       int     `json:"games"`
+	Wins        int     `json:"wins"`
+	Losses      int     `json:"losses"`
+	Undecided   int     `json:"undecided"`
+	WinRate     float64 `json:"win_rate"`
+	AverageAPM  float64 `json:"average_apm"`
+	AverageEAPM float64 `json:"average_eapm"`
+	// APMByRace is the user's mean APM in each race they played this session.
+	// A race-switching session hides more than it shows behind one average:
+	// Zerg and Protoss APM are not the same quantity, and averaging them makes
+	// a number that describes neither.
+	APMByRace       map[string]float64 `json:"apm_by_race,omitempty"`
+	DurationSeconds int64              `json:"duration_seconds"`
+	PlayedSeconds   int64              `json:"played_seconds"`
+	StartedAt       string             `json:"started_at"`
+	EndedAt         string             `json:"ended_at"`
+	Matchups        map[string]int     `json:"matchups"`
+	RacesPlayed     map[string]int     `json:"races_played"`
+	Maps            map[string]int     `json:"maps"`
 }
 
 type gamingSessionResponse struct {
@@ -275,6 +280,8 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 
 	var apmSum, eapmSum float64
 	var apmCount int
+	apmSumByRace := map[string]float64{}
+	apmCountByRace := map[string]int{}
 	for _, game := range games {
 		winnerKnown := gameWinnerKnown(game)
 		if game.MapName != "" {
@@ -303,6 +310,10 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 				apmSum += float64(own.APM)
 				eapmSum += float64(own.EAPM)
 				apmCount++
+				if player.Race != "" {
+					apmSumByRace[player.Race] += float64(own.APM)
+					apmCountByRace[player.Race]++
+				}
 			}
 			stats.PlayedSeconds += playerTimeInGame(game.DurationSeconds, own.LeaveSec)
 		}
@@ -311,8 +322,17 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 		stats.AverageAPM = apmSum / float64(apmCount)
 		stats.AverageEAPM = eapmSum / float64(apmCount)
 	}
-	if decided := stats.Wins + stats.Losses; decided > 0 {
-		stats.WinRate = float64(stats.Wins) / float64(decided)
+	if len(apmCountByRace) > 1 {
+		stats.APMByRace = make(map[string]float64, len(apmCountByRace))
+		for race, count := range apmCountByRace {
+			stats.APMByRace[race] = apmSumByRace[race] / float64(count)
+		}
+	}
+	// Over every game of the sitting, undecided ones included, because that is
+	// the number the tile sits beside: a rate out of the decided games alone
+	// reads as wrong next to a games count and a record that both include them.
+	if stats.Games > 0 {
+		stats.WinRate = float64(stats.Wins) / float64(stats.Games)
 	}
 	return stats
 }

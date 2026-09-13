@@ -7319,3 +7319,39 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   font-size: 0.76rem;
   color: rgba(255, 255, 255, 0.5);
 }
+
+/* The record and the per-race APM split both pack several small facts into one
+   stat tile, so they step down from the tile's headline size rather than
+   competing with it: the tile's job is still to be read in one glance. */
+.session-record {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 1.25rem;
+}
+
+.session-record-part {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+/* The emoji carries the meaning, the number carries the weight, so the glyph
+   sits below the digits' size rather than shouting over them. */
+.session-record-icon {
+  font-size: 0.72em;
+}
+
+.session-apm-races {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.session-apm-race {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}

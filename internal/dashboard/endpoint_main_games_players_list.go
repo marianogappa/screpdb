@@ -84,6 +84,9 @@ func buildPlayersQuery(filters workflowPlayersListFilters, sortSpec workflowPlay
 		NameFilter:   normalizePlayerKey(filters.NameContains),
 		OnlyFivePlus: filters.OnlyFivePlus,
 		LastPlayed:   filters.LastPlayedBuckets,
+		Races:        filters.Races,
+		ApmBuckets:   filters.ApmBuckets,
+		GamesBuckets: filters.GamesBuckets,
 		SortColumn:   sortSpec.Column,
 		SortDir:      sortDir,
 	}
@@ -93,6 +96,9 @@ func parseWorkflowPlayersListFilters(r *http.Request) workflowPlayersListFilters
 	filters := workflowPlayersListFilters{
 		NameContains:      strings.TrimSpace(r.URL.Query().Get("name")),
 		LastPlayedBuckets: parseCSVQueryValues(r.URL.Query()["last_played"], true),
+		Races:             parseCSVQueryValues(r.URL.Query()["races"], true),
+		ApmBuckets:        parseCSVQueryValues(r.URL.Query()["apm"], true),
+		GamesBuckets:      parseCSVQueryValues(r.URL.Query()["games"], true),
 	}
 	onlyFivePlus := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("only_5_plus")))
 	if onlyFivePlus == "1" || onlyFivePlus == "true" || onlyFivePlus == "on" || onlyFivePlus == "yes" {
@@ -136,7 +142,67 @@ func (d *Dashboard) workflowPlayersListFilterOptions(query dashboarddb.PlayersQu
 		{Key: "1m", Label: "Last month", Count: count1m},
 		{Key: "3m", Label: "Last 3 months", Count: count3m},
 	}
+
+	facets, err := d.dbStore.CountPlayerFacets(d.ctx, query)
+	if err != nil {
+		return result, err
+	}
+	// Races are offered only where somebody actually plays them, so a corpus
+	// with no Random players carries no dead Random chip.
+	for _, race := range []string{"zerg", "terran", "protoss", "random"} {
+		if count := facets.Races[race]; count > 0 {
+			result.Races = append(result.Races, workflowPlayersListFilterOption{Key: race, Label: playersRaceLabel(race), Count: count})
+		}
+	}
+	for _, key := range dashboarddb.PlayerApmBuckets {
+		result.Apm = append(result.Apm, workflowPlayersListFilterOption{Key: key, Label: playersApmLabel(key), Count: facets.Apm[key]})
+	}
+	for _, key := range dashboarddb.PlayerGamesBuckets {
+		result.Games = append(result.Games, workflowPlayersListFilterOption{Key: key, Label: playersGamesLabel(key), Count: facets.Games[key]})
+	}
 	return result, nil
+}
+
+// The labels below are the English source the frontend catalogs key off; the
+// UI translates by the option key, so these never reach a non-English screen.
+func playersRaceLabel(race string) string {
+	switch race {
+	case "zerg":
+		return "Zerg"
+	case "terran":
+		return "Terran"
+	case "protoss":
+		return "Protoss"
+	case "random":
+		return "Random"
+	}
+	return race
+}
+
+func playersApmLabel(key string) string {
+	switch key {
+	case dashboarddb.PlayerApmUnder60:
+		return "Under 60 APM"
+	case dashboarddb.PlayerApm60To120:
+		return "60 to 120 APM"
+	case dashboarddb.PlayerApm120To200:
+		return "120 to 200 APM"
+	case dashboarddb.PlayerApm200Plus:
+		return "200+ APM"
+	}
+	return key
+}
+
+func playersGamesLabel(key string) string {
+	switch key {
+	case dashboarddb.PlayerGames1To4:
+		return "1 to 4 games"
+	case dashboarddb.PlayerGames5To19:
+		return "5 to 19 games"
+	case dashboarddb.PlayerGames20Plus:
+		return "20+ games"
+	}
+	return key
 }
 
 func parseOptionalInt64Query(r *http.Request, key string) (int64, bool) {

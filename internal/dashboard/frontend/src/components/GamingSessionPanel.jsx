@@ -23,6 +23,57 @@ const formatClock = (iso) => {
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 };
 
+// RecordValue reads the session at a glance. The old "2-4" hid the undecided
+// games entirely, so a ten-game night showed a record adding up to six and left
+// the reader to wonder where the rest went; it also made the win rate beside it
+// look wrong, since that is computed over decided games only.
+function RecordValue({ stats }) {
+  const t = useT();
+  const parts = [
+    { key: 'wins', icon: '\u2705', value: stats.wins || 0, title: t('session.record.wins') },
+    { key: 'losses', icon: '\u274c', value: stats.losses || 0, title: t('session.record.losses') },
+    // ❓ looks lighter than the two glyphs beside it, because it is a thin
+    // stroke in a box they fill. That is left alone deliberately: the fix would
+    // be to size it up, and emoji metrics differ across the Apple, Segoe and
+    // Noto fonts, so a correction tuned on one platform is a defect on the
+    // others. No filled glyph means "we never learned the result" anyway.
+    { key: 'undecided', icon: '\u2753', value: stats.undecided || 0, title: t('session.record.undecided') },
+  ].filter((part) => part.key !== 'undecided' || part.value > 0);
+  return (
+    <span className="session-record">
+      {parts.map((part) => (
+        <span key={part.key} className="session-record-part" title={part.title}>
+          <span className="session-record-icon" aria-hidden="true">{part.icon}</span>
+          <span>{part.value}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+// ApmByRace replaces the EAPM line when the user switched race mid-session.
+// One mean across races describes none of them, and the per-race split is the
+// more useful of the two numbers exactly when it exists.
+function ApmByRace({ apmByRace }) {
+  const entries = Object.entries(apmByRace || {}).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) return null;
+  return (
+    <span className="session-apm-races">
+      {entries.map(([race, apm]) => {
+        const url = getWorkerIconForRace(race);
+        return (
+          <span key={race} className="session-apm-race" title={raceLabel(race)}>
+            {url
+              ? <img src={url} alt={raceLabel(race)} className="session-race-icon" />
+              : <span>{raceLabel(race)}</span>}
+            <span>{Math.round(apm)}</span>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 function StatTile({ label, value, sub }) {
   return (
     <div className="session-stat-tile">
@@ -290,7 +341,7 @@ function GamingSessionPanel({ session, loading, error, renderName, renderBadge, 
   }
 
   const stats = session.stats || {};
-  const decided = (stats.wins || 0) + (stats.losses || 0);
+  const hasRaceSplit = Object.keys(stats.apm_by_race || {}).length > 1;
   const opponents = session.opponents || [];
   const allies = session.allies || [];
 
@@ -304,13 +355,15 @@ function GamingSessionPanel({ session, loading, error, renderName, renderBadge, 
         />
         <StatTile
           label={t('session.stat.record')}
-          value={`${stats.wins || 0}-${stats.losses || 0}`}
-          sub={decided > 0 ? t('session.stat.winRate', { value: Math.round((stats.win_rate || 0) * 100) }) : null}
+          value={<RecordValue stats={stats} />}
+          sub={(stats.games || 0) > 0 ? t('session.stat.winRate', { value: Math.round((stats.win_rate || 0) * 100) }) : null}
         />
         <StatTile
           label={t('session.stat.avgApm')}
           value={(stats.average_apm || 0).toFixed(0)}
-          sub={t('session.stat.eapm', { value: (stats.average_eapm || 0).toFixed(0) })}
+          sub={hasRaceSplit
+            ? <ApmByRace apmByRace={stats.apm_by_race} />
+            : t('session.stat.eapm', { value: (stats.average_eapm || 0).toFixed(0) })}
         />
         <StatTile
           label={t('session.stat.timePlayed')}

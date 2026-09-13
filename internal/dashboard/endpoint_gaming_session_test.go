@@ -235,9 +235,11 @@ func TestSummarizeGamingSessionUndecided(t *testing.T) {
 	if stats.Wins != 1 || stats.Losses != 1 || stats.Undecided != 1 {
 		t.Fatalf("record = %d-%d with %d undecided, want 1-1 with 1", stats.Wins, stats.Losses, stats.Undecided)
 	}
-	// The unresolved game must not drag the rate down as if it were lost.
-	if stats.WinRate != 0.5 {
-		t.Fatalf("win rate = %v, want 0.5 over decided games only", stats.WinRate)
+	// The rate is over every game of the sitting, undecided included: it is
+	// read next to a games count and a record that both carry them, and a
+	// denominator that quietly differs from the one on screen reads as a bug.
+	if want := 1.0 / 3.0; stats.WinRate != want {
+		t.Fatalf("win rate = %v, want %v (1 win of 3 games)", stats.WinRate, want)
 	}
 }
 

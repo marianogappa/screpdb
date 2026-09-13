@@ -164,6 +164,13 @@ export const api = {
       if (v) params.append('last_played', v);
     });
 
+    [['races', filters.races], ['apm', filters.apm], ['games', filters.games]].forEach(([param, values]) => {
+      (Array.isArray(values) ? values : []).forEach((value) => {
+        const v = String(value || '').trim();
+        if (v) params.append(param, v);
+      });
+    });
+
     if (filters.onlyFivePlus) params.set('only_5_plus', '1');
 
     const response = await fetch(`${API_BASE}/players?${params.toString()}`);

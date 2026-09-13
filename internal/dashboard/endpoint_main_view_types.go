@@ -877,6 +877,9 @@ type workflowPlayersListFilters struct {
 	NameContains      string
 	OnlyFivePlus      bool
 	LastPlayedBuckets []string
+	Races             []string
+	ApmBuckets        []string
+	GamesBuckets      []string
 }
 
 type workflowPlayersListSort struct {
@@ -904,6 +907,8 @@ type workflowPlayersListFilterOption struct {
 
 type workflowPlayersListFilterOptions struct {
 	Races      []workflowPlayersListFilterOption `json:"races"`
+	Apm        []workflowPlayersListFilterOption `json:"apm"`
+	Games      []workflowPlayersListFilterOption `json:"games"`
 	LastPlayed []workflowPlayersListFilterOption `json:"last_played"`
 }
 
