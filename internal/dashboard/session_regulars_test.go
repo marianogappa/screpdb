@@ -124,24 +124,71 @@ func TestRankRegulars(t *testing.T) {
 
 func TestRegularFreshness(t *testing.T) {
 	now := time.Date(2026, 9, 12, 19, 0, 0, 0, time.UTC)
-	for _, tc := range []struct {
-		name string
-		age  time.Duration
-		want string
-	}{
-		{"just finished a game", 5 * time.Minute, regularFreshnessNow},
-		{"at the hour boundary", regularsPlayingNow, regularFreshnessNow},
-		{"just past the hour", regularsPlayingNow + time.Minute, regularFreshnessLately},
-		{"yesterday", 24 * time.Hour, regularFreshnessLately},
-		{"at the lately boundary", regularsPlayedLately, regularFreshnessLately},
-		{"a week ago is not worth mentioning", 7 * 24 * time.Hour, ""},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := regularFreshness(now.Add(-tc.age), now); got != tc.want {
-				t.Errorf("freshness = %q, want %q", got, tc.want)
-			}
-		})
-	}
+	fresh := now.Add(-time.Minute) // we asked Battle.net a minute ago
+
+	t.Run("tiers, with a fresh observation", func(t *testing.T) {
+		for _, tc := range []struct {
+			name string
+			age  time.Duration
+			want string
+		}{
+			{"just finished a game", 5 * time.Minute, regularFreshnessNow},
+			{"at the hour boundary", regularsPlayingNow, regularFreshnessNow},
+			{"just past the hour", regularsPlayingNow + time.Minute, regularFreshnessLately},
+			{"yesterday", 24 * time.Hour, regularFreshnessLately},
+			{"at the lately boundary", regularsPlayedLately, regularFreshnessLately},
+			{"a week ago is not worth mentioning", 7 * 24 * time.Hour, ""},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				if got := regularFreshness(now.Add(-tc.age), fresh, now); got != tc.want {
+					t.Errorf("freshness = %q, want %q", got, tc.want)
+				}
+			})
+		}
+	})
+
+	// A claim about *this moment* needs a look at this moment. With a stale
+	// observation the person is demoted rather than dropped: a game within the
+	// hour is still a game within three days, and that much is still true.
+	t.Run("a stale observation cannot support the live tier", func(t *testing.T) {
+		lastSeen := now.Add(-10 * time.Minute)
+		stale := now.Add(-regularsObservationWindow - time.Minute)
+		if got := regularFreshness(lastSeen, stale, now); got != regularFreshnessLately {
+			t.Errorf("freshness = %q, want a demotion to %q", got, regularFreshnessLately)
+		}
+		// Right at the window it still counts, so a sweep landing on schedule
+		// never blinks the row off.
+		if got := regularFreshness(lastSeen, now.Add(-regularsObservationWindow), now); got != regularFreshnessNow {
+			t.Errorf("freshness = %q, want %q at the window boundary", got, regularFreshnessNow)
+		}
+	})
+
+	t.Run("the window outlives the sweep interval", func(t *testing.T) {
+		// Otherwise a sweep that lands exactly on time would already be too old
+		// to support the tier it just refreshed, and "now" could never appear.
+		if regularsObservationWindow <= regularsRefreshEvery {
+			t.Fatalf("observation window %v must exceed the sweep interval %v", regularsObservationWindow, regularsRefreshEvery)
+		}
+	})
+
+	t.Run("a long-unanswered picture is dropped, not narrated", func(t *testing.T) {
+		lastSeen := now.Add(-2 * time.Hour)
+		for _, tc := range []struct {
+			name     string
+			observed time.Time
+			want     string
+		}{
+			{"never asked", time.Time{}, ""},
+			{"asked within the day", now.Add(-regularsObservationMaxAge), regularFreshnessLately},
+			{"asked longer ago than the day", now.Add(-regularsObservationMaxAge - time.Minute), ""},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				if got := regularFreshness(lastSeen, tc.observed, now); got != tc.want {
+					t.Errorf("freshness = %q, want %q", got, tc.want)
+				}
+			})
+		}
+	})
 }
 
 func TestPlayerTimeInGame(t *testing.T) {

@@ -232,8 +232,13 @@ function PlayerTable({ players, renderName, renderBadge, showRecord, onPlayerCli
 function RegularsPulse({ regulars, onPlayerClick }) {
   const t = useT();
   const all = regulars || [];
-  const now = all.filter((regular) => regular.freshness === 'now');
-  const lately = all.filter((regular) => regular.freshness === 'lately');
+  // Most recently seen first. The list this comes from is ranked by how much
+  // the user plays with each person, which is the right order for a roster and
+  // the wrong one here: the question this line answers is who is around, so the
+  // one who just finished a game leads regardless of how often they play.
+  const byRecency = (a, b) => String(b.last_seen || '').localeCompare(String(a.last_seen || ''));
+  const now = all.filter((regular) => regular.freshness === 'now').sort(byRecency);
+  const lately = all.filter((regular) => regular.freshness === 'lately').sort(byRecency);
   const live = now.length > 0;
   const shown = live ? now : lately;
   if (shown.length === 0) return null;

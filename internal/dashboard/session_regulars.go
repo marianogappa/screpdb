@@ -22,15 +22,44 @@ const (
 // never as presence: nothing in this data says anyone is logged in. A game is
 // only known once it has been played and published.
 //
-//	regularsPlayingNow  someone who finished a game this recently is very likely
-//	                    still at the keyboard, which is the whole point of the
-//	                    surface: it is worth starting a session for.
+//	regularsPlayingNow   someone who finished a game this recently is very
+//	                     likely still at the keyboard, which is the whole point
+//	                     of the surface: it is worth starting a session for.
 //	regularsPlayedLately the fallback when nobody is around right now, so the
-//	                    page still says who is alive at all rather than going
-//	                    blank.
+//	                     page still says who is alive at all rather than going
+//	                     blank.
 const (
 	regularsPlayingNow   = time.Hour
 	regularsPlayedLately = 3 * 24 * time.Hour
+)
+
+// Both tiers are claims about the world made from an observation, and an
+// observation has its own age: everything here is only as current as the last
+// time Battle.net actually answered us. Reopening the app after a night away
+// must not keep asserting what was true when it was last closed.
+//
+// The two tiers tolerate a stale observation very differently, which is what
+// makes one cutoff wrong and these two right:
+//
+//	regularsObservationWindow  how recently we must have asked before claiming
+//	                           someone is playing *now*. That claim is about
+//	                           this moment and nothing else, so it needs a fresh
+//	                           look; without one the person is demoted to the
+//	                           lately tier rather than dropped, because a game
+//	                           within the hour is still a game within three days.
+//	regularsObservationMaxAge  how long the whole picture survives. Past this,
+//	                           even "played in the last three days" is guesswork
+//	                           and the row is dropped rather than narrated.
+//
+// The window is deliberately a little longer than regularsRefreshEvery, so a
+// sweep that lands on schedule always keeps the live tier alive; it lapses only
+// when sweeps actually stop, which is the case it exists to catch. Note this
+// keys off when we last got an answer, never off whether the bridge is
+// connected right now: connection state flaps as SC:R restarts and would make
+// the row blink, while observation age only ever moves one way.
+const (
+	regularsObservationWindow = regularsRefreshEvery + 5*time.Minute
+	regularsObservationMaxAge = 24 * time.Hour
 )
 
 // Freshness tiers, as carried to the frontend. The empty string means the
@@ -40,9 +69,15 @@ const (
 	regularFreshnessLately = "lately"
 )
 
-func regularFreshness(lastSeen, now time.Time) string {
+// regularFreshness rates one person from their newest known game (lastSeen) and
+// when we last heard from Battle.net about them (observedAt). A zero observedAt
+// means we never did, which is not evidence of anything.
+func regularFreshness(lastSeen, observedAt, now time.Time) string {
+	if observedAt.IsZero() || now.Sub(observedAt) > regularsObservationMaxAge {
+		return ""
+	}
 	switch age := now.Sub(lastSeen); {
-	case age <= regularsPlayingNow:
+	case age <= regularsPlayingNow && now.Sub(observedAt) <= regularsObservationWindow:
 		return regularFreshnessNow
 	case age <= regularsPlayedLately:
 		return regularFreshnessLately
@@ -67,6 +102,10 @@ type sessionRegular struct {
 	// answers. Kept out of the payload: they only serve the refresh sweep.
 	refreshToon string
 	gateway     int64
+	// observedAt is the newest answer Battle.net gave us about any of this
+	// person's toons: one fetch refreshes the whole account's archive, so the
+	// most recent fetch is what dates the picture.
+	observedAt time.Time
 }
 
 // regularsIdentity is one merged human, accumulated across their toons.
@@ -82,6 +121,10 @@ type regularsIdentity struct {
 	// identity is often merged from a fetched account onto an unfetched alt.
 	refreshToon string
 	gateway     int64
+	// observedAt is the newest answer Battle.net gave us about any of this
+	// person's toons: one fetch refreshes the whole account's archive, so the
+	// most recent fetch is what dates the picture.
+	observedAt time.Time
 }
 
 // mergeCoPlayersByAccount folds the raw per-toon counts into one entry per
@@ -121,6 +164,9 @@ func mergeCoPlayersByAccount(rows []coPlayerCount, index regularsIdentityIndex) 
 			if gateway, ok := index.gatewayByKey[key]; ok && gateway != 0 {
 				identity.refreshToon, identity.gateway = key, gateway
 			}
+		}
+		if fetched := index.fetchedByKey[key]; fetched.After(identity.observedAt) {
+			identity.observedAt = fetched
 		}
 	}
 	return order
@@ -231,7 +277,7 @@ func (d *Dashboard) sessionRegulars(ctx context.Context, youKeys map[string]stru
 			lastSeen = fresh
 		}
 		regular.LastSeen = lastSeen.Format(time.RFC3339)
-		regular.Freshness = regularFreshness(lastSeen, now)
+		regular.Freshness = regularFreshness(lastSeen, identity.observedAt, now)
 		out = append(out, regular)
 	}
 	return d.withRegularProfiles(ctx, out), nil
@@ -243,6 +289,7 @@ func (d *Dashboard) sessionRegulars(ctx context.Context, youKeys map[string]stru
 type regularsIdentityIndex struct {
 	auroraByKey  map[string]int64
 	gatewayByKey map[string]int64
+	fetchedByKey map[string]time.Time
 }
 
 // identityIndex maps each toon name we know to the Battle.net account it
@@ -251,7 +298,7 @@ type regularsIdentityIndex struct {
 // when only one of the two was ever fetched; the gateway is recorded only for
 // toons actually fetched, since that is the only one we know answers.
 func (d *Dashboard) identityIndex(ctx context.Context, playerKeys []string) regularsIdentityIndex {
-	index := regularsIdentityIndex{auroraByKey: map[string]int64{}, gatewayByKey: map[string]int64{}}
+	index := regularsIdentityIndex{auroraByKey: map[string]int64{}, gatewayByKey: map[string]int64{}, fetchedByKey: map[string]time.Time{}}
 	if len(playerKeys) == 0 {
 		return index
 	}
@@ -266,6 +313,9 @@ func (d *Dashboard) identityIndex(ctx context.Context, playerKeys []string) regu
 		if key := normalizePlayerKey(profile.Toon); key != "" {
 			index.auroraByKey[key] = profile.AuroraID
 			index.gatewayByKey[key] = profile.Gateway
+			if profile.FetchedAt.After(index.fetchedByKey[key]) {
+				index.fetchedByKey[key] = profile.FetchedAt
+			}
 		}
 		for _, toon := range profile.Toons {
 			if key := normalizePlayerKey(toon.Toon); key != "" {
