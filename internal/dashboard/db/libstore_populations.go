@@ -168,6 +168,15 @@ func (s *LibStore) playersListRows(query PlayersQuery) []WorkflowPlayersListRow 
 		if len(buckets) > 0 && !anyLastPlayedBucket(buckets, daysAgo) {
 			continue
 		}
+		if !matchesAnyBucket(query.Races, strings.ToLower(strings.TrimSpace(aggregate.Race()))) {
+			continue
+		}
+		if !matchesAnyBucket(query.ApmBuckets, playerApmBucket(aggregate.AverageAPM())) {
+			continue
+		}
+		if !matchesAnyBucket(query.GamesBuckets, playerGamesBucket(aggregate.Games)) {
+			continue
+		}
 		lastPlayed := ""
 		if !aggregate.LastPlayed.IsZero() {
 			lastPlayed = aggregate.LastPlayed.String()

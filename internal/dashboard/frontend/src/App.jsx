@@ -176,14 +176,23 @@ const GAME_SUMMARY_NEGATION_MIN_SECONDS = 7 * 60;
 
 const MAIN_GAME_SKILL_PROXY_TABS = ['first-unit-efficiency', 'unit-production-cadence', 'viewport-multitasking'];
 
-// The players-list FilterOmnibar axes. `min_games` is synthesized client-side
-// (the API models it as the boolean onlyFivePlus, not an options list).
+// The players-list FilterOmnibar axes. The games-played bands replaced an
+// older boolean "5+ games" axis: two axes asking the same question, one of them
+// unable to express "fewer than five", read as a bug rather than a choice. The
+// API still accepts only_5_plus, so a saved link keeps working.
 const buildPlayersOmnibarAxes = (t) => [
+  { id: 'races', label: t('players.axis.race'), state: 'races', source: 'races' },
+  { id: 'apm', label: t('players.axis.apm'), state: 'apm', source: 'apm' },
+  { id: 'games', label: t('players.axis.gamesPlayed'), state: 'games', source: 'games' },
   { id: 'lastPlayed', label: t('players.axis.lastPlayed'), state: 'lastPlayed', source: 'last_played' },
-  { id: 'minGames', label: t('players.axis.games'), state: 'onlyFivePlus', source: 'min_games' },
 ];
-const buildPlayersOmnibarStateLabels = (t) => ({ lastPlayed: t('players.axis.lastPlayed'), onlyFivePlus: t('players.axis.games') });
-const PLAYERS_OMNIBAR_STATE_ORDER = ['lastPlayed', 'onlyFivePlus'];
+const buildPlayersOmnibarStateLabels = (t) => ({
+  races: t('players.axis.race'),
+  apm: t('players.axis.apm'),
+  games: t('players.axis.gamesPlayed'),
+  lastPlayed: t('players.axis.lastPlayed'),
+});
+const PLAYERS_OMNIBAR_STATE_ORDER = ['races', 'apm', 'games', 'lastPlayed'];
 
 const isMainGameSkillProxyTab = (tab) => MAIN_GAME_SKILL_PROXY_TABS.includes(tab);
 
@@ -2372,12 +2381,17 @@ function App() {
   const [mainPlayerSubtab, setMainPlayerSubtab] = useState(() => initialMainRoute.playerSubtab || '');
   const [mainPlayersFilterOptions, setMainPlayersFilterOptions] = useState({
     races: [],
+    apm: [],
+    games: [],
     last_played: [],
   });
   const [mainPlayersFilters, setMainPlayersFilters] = useState({
     name: '',
     onlyFivePlus: false,
     lastPlayed: [],
+    races: [],
+    apm: [],
+    games: [],
   });
   const [mainPlayersApmHistogram, setMainPlayersApmHistogram] = useState(null);
   const [mainPlayersApmHistogramLoading, setMainPlayersApmHistogramLoading] = useState(false);
@@ -3674,6 +3688,9 @@ function App() {
       name: '',
       onlyFivePlus: false,
       lastPlayed: [],
+      races: [],
+      apm: [],
+      games: [],
     });
     setMainPlayersSortBy('games');
     setMainPlayersSortDir('desc');
@@ -5425,13 +5442,13 @@ function App() {
           <div className="workflow-nav-group">
             <button type="button" className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('games')}>{t('nav.games')}</button>
             <button type="button" className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('players')}>{t('nav.players')}</button>
-            {gamingSessionEnabled && gamingSession?.active ? (
+            {gamingSessionEnabled && gamingSession?.has_session ? (
               <button
                 type="button"
                 className={`btn-manage ${activeView === 'session' ? 'workflow-nav-active' : ''}`}
                 onClick={() => navigateMainView('session')}
               >
-                {t('nav.session')}
+                {gamingSession.active ? t('nav.session') : t('nav.lastSession')}
               </button>
             ) : null}
           </div>
@@ -5604,6 +5621,9 @@ function App() {
             loading={gamingSessionLoading}
             error={gamingSessionError}
             onPlayerClick={openMainPlayer}
+            renderBadge={(player) => (
+              player.primary_badge ? <IdentityBadge badge={player.primary_badge} variant="players-list" /> : null
+            )}
             renderName={(opponent) => (
               <button
                 type="button"
@@ -5676,15 +5696,17 @@ function App() {
             {mainPlayersTab === 'summary' ? (
               <>
                 <FilterOmnibar
-                  filterOptions={{ ...mainPlayersFilterOptions, min_games: [{ key: '5plus', label: t('players.filter.fivePlusGames') }] }}
+                  filterOptions={mainPlayersFilterOptions}
                   axes={playersOmnibarAxes}
                   stateLabels={playersOmnibarStateLabels}
                   stateOrder={PLAYERS_OMNIBAR_STATE_ORDER}
                   noun="players"
                   loading={libraryLoading}
                   selected={{
+                    races: mainPlayersFilters.races || [],
+                    apm: mainPlayersFilters.apm || [],
+                    games: mainPlayersFilters.games || [],
                     lastPlayed: mainPlayersFilters.lastPlayed || [],
-                    onlyFivePlus: mainPlayersFilters.onlyFivePlus ? ['5plus'] : [],
                   }}
                   total={mainPlayersTotal}
                   textFilter={{
@@ -5692,13 +5714,7 @@ function App() {
                     onChange: (value) => setMainPlayersSingleFilter('name', value),
                     placeholder: t('players.filterPlaceholder'),
                   }}
-                  onToggle={(state, key) => {
-                    if (state === 'onlyFivePlus') {
-                      setMainPlayersSingleFilter('onlyFivePlus', !mainPlayersFilters.onlyFivePlus);
-                    } else {
-                      toggleMainPlayersMultiFilter(state, key);
-                    }
-                  }}
+                  onToggle={(state, key) => toggleMainPlayersMultiFilter(state, key)}
                   onClear={clearMainPlayersFilters}
                 />
                 {mainPlayersLoading ? (

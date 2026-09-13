@@ -24,6 +24,11 @@ type PlayersQuery struct {
 	NameFilter   string
 	OnlyFivePlus bool
 	LastPlayed   []string
+	// Races, ApmBuckets and GamesBuckets each OR within themselves and AND
+	// across, the same way the games list treats its own facets.
+	Races        []string
+	ApmBuckets   []string
+	GamesBuckets []string
 	SortColumn   string
 	SortDir      string
 }
@@ -120,6 +125,7 @@ type Reader interface {
 	CountPlayers(ctx context.Context, query PlayersQuery) (int64, error)
 	ListPlayers(ctx context.Context, query PlayersQuery, limit, offset int) ([]WorkflowPlayersListRow, error)
 	CountPlayersLastPlayedBuckets(ctx context.Context, query PlayersQuery) (int64, int64, error)
+	CountPlayerFacets(ctx context.Context, query PlayersQuery) (PlayerFacetCounts, error)
 	ListPlayerApmAggregates(ctx context.Context, minGames int64) ([]PlayerApmAggregateRow, error)
 	ListUnitCadenceReplayMetrics(ctx context.Context, excludedUnits []string, onlyPlayerKey string, startSeconds int64, endFraction float64, idleGapSeconds int64, minUnitsPerReplay int64, minGapsPerReplay int64) ([]UnitCadenceReplayMetricRow, error)
 	ListViewportAggregateRows(ctx context.Context, patternName string) ([]ViewportAggregateRow, error)
@@ -130,6 +136,7 @@ type Reader interface {
 	ListRecentAutosaveGamesForPlayers(ctx context.Context, playerKeys []string, limit int) ([]SessionCandidateRow, error)
 	ListReplaysByIDs(ctx context.Context, replayIDs []int64) ([]SessionReplayRow, error)
 	ListPlayerAPMByReplayIDs(ctx context.Context, replayIDs []int64) ([]SessionPlayerAPMRow, error)
+	ListCoPlayerCounts(ctx context.Context, playerKeys []string, since time.Time) ([]CoPlayerRow, error)
 
 	// Hotkeys: the hotkey signature, timeline and map surfaces.
 	ListReplayPlayerHotkeyStreams(ctx context.Context, replayID int64) ([]ReplayPlayerHotkeyStreamRow, error)

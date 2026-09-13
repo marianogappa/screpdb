@@ -463,6 +463,27 @@ paths:
             type: array
             items:
               type: string
+        - name: races
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: apm
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: games
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
       responses:
         "200":
           description: OK

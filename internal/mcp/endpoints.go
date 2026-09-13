@@ -46,7 +46,7 @@ var exposed = []endpoint{
 	{
 		template:    "/api/players",
 		summary:     "The players list with game counts, races and APM.",
-		queryParams: []string{"last_played", "limit", "name", "offset", "only_5_plus", "sort_by", "sort_dir"},
+		queryParams: []string{"apm", "games", "last_played", "limit", "name", "offset", "only_5_plus", "races", "sort_by", "sort_dir"},
 	},
 	{
 		template: "/api/players/{playerKey}",

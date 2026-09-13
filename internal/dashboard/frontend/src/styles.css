@@ -6271,12 +6271,82 @@ span[data-tip],
   width: 20%;
 }
 
-.session-player-table .col-result {
-  width: 68px;
+/* Identity column, matching the players list: the badge rides in its own
+   column so every badge starts at the same x instead of ragging along the end
+   of names of every length, and it sits snug against the name rather than
+   adrift at the far right.
+
+   The players list gets that by letting both columns shrink to content
+   (width: 1%). This table is table-layout: fixed, where a declared width is
+   taken literally, so 1% would give a 1%-wide column and an unstyled one takes
+   an equal share of the leftover — which is how this column first came out as
+   wide as the names beside it.
+
+   The width is therefore stated outright, and stated with headroom: a
+   shrink-wrapped column can never clip its badge, but a fixed one can. The
+   widest badge in a real corpus measures ~68px ("FantaSy"), so 88px of content
+   carries a label around half again as long, and the overflow guard means even
+   that spills nowhere near the numbers to its right. */
+.session-player-table .wpl-identity-head,
+.session-player-table .wpl-identity-cell {
+  width: 112px;
+  padding-left: 0;
+  padding-right: 1.5rem;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.session-player-table .wpl-identity-cell .identity-badge {
+  margin-left: 0;
 }
 
 .session-player-table .col-races {
   width: 76px;
+}
+
+/* P / W / L. Single-letter heads because the numbers under them are one or two
+   digits: a spelled-out "Played" would set the column three times wider than
+   anything it ever holds. The full word is on the header's title. */
+.session-player-table .col-count {
+  width: 44px;
+  text-align: right;
+}
+
+/* Sortable heads. The arrow is the only thing that moves, so a sorted column
+   reads as a state rather than as a different kind of header; an unsorted head
+   still reserves the arrow's width, otherwise every click nudges the row. */
+.session-player-table .session-sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.session-player-table .session-sort-button:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.session-player-table .col-count .session-sort-button,
+.session-player-table .col-apm .session-sort-button {
+  flex-direction: row-reverse;
+}
+
+.session-player-table .session-sort-arrow {
+  display: inline-block;
+  min-width: 0.7em;
+  font-size: 0.72em;
+}
+
+.session-player-table th.session-col-sorted {
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .session-player-table .col-apm {
@@ -6285,10 +6355,6 @@ span[data-tip],
 
 .session-player-table .col-ladder {
   width: 132px;
-}
-
-.session-player-table .col-tag {
-  width: 15%;
 }
 
 .session-player-table th {
@@ -6320,12 +6386,10 @@ span[data-tip],
 /* One rule per column so the header can never disagree with its cells. */
 .session-player-table .col-player,
 .session-player-table .col-ladder,
-.session-player-table .col-tag,
 .session-player-table .col-toons {
   text-align: left;
 }
 
-.session-player-table .col-result,
 .session-player-table .col-races {
   text-align: center;
 }
@@ -6334,15 +6398,14 @@ span[data-tip],
   text-align: right;
 }
 
-.session-player-table .col-result,
+.session-player-table .col-count,
 .session-player-table .col-apm,
 .session-player-table .col-ladder {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.session-player-table .col-player,
-.session-player-table .col-tag {
+.session-player-table .col-player {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -7179,4 +7242,116 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 }
 .workflow-players-list-table .wpl-identity-cell .identity-badge {
   margin-left: 0;
+}
+
+/* The regulars pulse: who of the people you play with has been alive recently.
+
+   It is the only loud thing on the session page, and only in its live tier.
+   Everything else here already competes at one level of emphasis, so a second
+   strong voice would cancel the first; the "lately" tier therefore drops to the
+   same quiet register as the stat tiles, and below that the block renders
+   nothing rather than an empty shelf the eye learns to skip. */
+.session-pulse {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.session-pulse--live {
+  background: rgba(80, 220, 140, 0.08);
+  border-color: rgba(80, 220, 140, 0.28);
+}
+
+.session-pulse-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+}
+
+.session-pulse--live .session-pulse-label {
+  color: rgba(150, 235, 190, 0.95);
+}
+
+/* A filled dot rather than a ring: at this size a ring reads as a bullet. */
+.session-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgb(80, 220, 140);
+  flex: none;
+}
+
+.session-pulse-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.session-pulse-name {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.session-pulse-name:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.session-pulse-when {
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* The record and the per-race APM split both pack several small facts into one
+   stat tile, so they step down from the tile's headline size rather than
+   competing with it: the tile's job is still to be read in one glance. */
+.session-record {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 1.25rem;
+}
+
+.session-record-part {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+/* The emoji carries the meaning, the number carries the weight, so the glyph
+   sits below the digits' size rather than shouting over them. */
+.session-record-icon {
+  font-size: 0.72em;
+}
+
+.session-apm-races {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.session-apm-race {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
