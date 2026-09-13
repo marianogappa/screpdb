@@ -6279,6 +6279,50 @@ span[data-tip],
   width: 76px;
 }
 
+/* P / W / L. Single-letter heads because the numbers under them are one or two
+   digits: a spelled-out "Played" would set the column three times wider than
+   anything it ever holds. The full word is on the header's title. */
+.session-player-table .col-count {
+  width: 44px;
+  text-align: right;
+}
+
+/* Sortable heads. The arrow is the only thing that moves, so a sorted column
+   reads as a state rather than as a different kind of header; an unsorted head
+   still reserves the arrow's width, otherwise every click nudges the row. */
+.session-player-table .session-sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.session-player-table .session-sort-button:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.session-player-table .col-count .session-sort-button,
+.session-player-table .col-apm .session-sort-button {
+  flex-direction: row-reverse;
+}
+
+.session-player-table .session-sort-arrow {
+  display: inline-block;
+  min-width: 0.7em;
+  font-size: 0.72em;
+}
+
+.session-player-table th.session-col-sorted {
+  color: rgba(255, 255, 255, 0.82);
+}
+
 .session-player-table .col-apm {
   width: 62px;
 }

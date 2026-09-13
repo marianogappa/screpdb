@@ -113,41 +113,6 @@ function LadderCell({ profile }) {
   return <span>{parts.length > 0 ? parts.join(' · ') : t('session.ladder.yes')}</span>;
 }
 
-function PlayerTable({ players, renderName, showRecord, onPlayerClick }) {
-  const t = useT();
-  if (!players || players.length === 0) {
-    return <div className="workflow-subtle-note">{t('session.nobody')}</div>;
-  }
-  return (
-    <table className="workflow-table session-player-table">
-      <thead>
-        <tr>
-          <th className="col-player">{t('session.col.player')}</th>
-          {showRecord ? <th className="col-result">{t('session.col.result')}</th> : null}
-          <th className="col-races">{t('session.col.races')}</th>
-          <th className="col-apm">{t('session.col.apm')}</th>
-          <th className="col-ladder">{t('session.col.ladder')}</th>
-          <th className="col-toons">{t('session.col.alsoPlaysAs')}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {players.map((player) => (
-          <tr key={player.player_key}>
-            <td className="col-player">{renderName ? renderName(player) : player.player_name}</td>
-            {showRecord ? (
-              <td className="col-result">{player.wins || 0}-{player.losses || 0}</td>
-            ) : null}
-            <td className="col-races"><RaceIcons races={player.races} /></td>
-            <td className="col-apm">{player.apm ? player.apm : <span className="session-cell-empty">-</span>}</td>
-            <td className="col-ladder"><LadderCell profile={player.profile} /></td>
-            <td className="col-toons"><OtherToons profile={player.profile} currentName={player.player_name} onPlayerClick={onPlayerClick} /></td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
 // formatLastGame is deliberately relative and coarse. The underlying fact is
 // "the newest game Battle.net has published for this account", which is a
 // moment in the past, not a presence signal; a relative distance says that
@@ -164,14 +129,106 @@ const formatLastGame = (iso) => {
   return t('session.ago.days', { count: Math.round(hours / 24) });
 };
 
-// RegularsPulse is the "is anyone around?" line. It is the reason this page is
-// worth opening before a session rather than after one, so it sits with the
-// totals instead of behind a tab.
-//
-// Two tiers, and never both: someone who has just finished a game is worth
-// interrupting your evening for, and when nobody is, naming who has been alive
-// in the last few days is still better than a blank. Below that, it renders
-// nothing at all: an empty shelf teaches the eye to skip the whole region.
+// sessionSortValue is the one place a column's sort key is defined, so a
+// column can never sort by something other than what it renders.
+const sessionSortValue = {
+  player: (p) => String(p.player_name || '').toLowerCase(),
+  games: (p) => Number(p.games) || 0,
+  wins: (p) => Number(p.wins) || 0,
+  losses: (p) => Number(p.losses) || 0,
+  apm: (p) => Number(p.apm) || 0,
+};
+
+// Counts open descending and names ascending, because that is the first thing
+// anyone wants from each: who played the most, and where is so-and-so.
+const sessionSortFirstDir = { player: 'asc' };
+
+// nextSortState cycles a column through ascending, descending and off. The
+// third state matters: it restores the order the server chose, which already
+// encodes "most games first", so a reader can always get back to the default
+// without knowing what the default was.
+function nextSortState(current, key) {
+  const firstDir = sessionSortFirstDir[key] || 'desc';
+  if (current.key !== key) return { key, dir: firstDir };
+  if (current.dir === firstDir) return { key, dir: firstDir === 'asc' ? 'desc' : 'asc' };
+  return { key: null, dir: null };
+}
+
+function sortSessionPlayers(players, sort) {
+  if (!sort.key || !sessionSortValue[sort.key]) return players;
+  const read = sessionSortValue[sort.key];
+  const sign = sort.dir === 'asc' ? 1 : -1;
+  // Array.prototype.sort is stable, so equal rows keep the server's order and
+  // a name tiebreak is only needed to keep numeric columns readable.
+  return [...players].sort((a, b) => {
+    const av = read(a);
+    const bv = read(b);
+    if (av < bv) return -1 * sign;
+    if (av > bv) return 1 * sign;
+    return sessionSortValue.player(a).localeCompare(sessionSortValue.player(b));
+  });
+}
+
+function SortableHeader({ label, title, sortKey, sort, onSort, className }) {
+  const active = sort.key === sortKey;
+  return (
+    <th
+      className={`${className} session-col-sortable${active ? ' session-col-sorted' : ''}`}
+      aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+    >
+      <button type="button" className="session-sort-button" onClick={() => onSort(sortKey)} title={title}>
+        <span>{label}</span>
+        <span className="session-sort-arrow" aria-hidden="true">{active ? (sort.dir === 'asc' ? '\u25b2' : '\u25bc') : ''}</span>
+      </button>
+    </th>
+  );
+}
+
+function PlayerTable({ players, renderName, renderBadge, showRecord, onPlayerClick }) {
+  const t = useT();
+  const [sort, setSort] = useState({ key: null, dir: null });
+  const onSort = (key) => setSort((current) => nextSortState(current, key));
+  const rows = sortSessionPlayers(players || [], sort);
+  if (!players || players.length === 0) {
+    return <div className="workflow-subtle-note">{t('session.nobody')}</div>;
+  }
+  const header = (label, title, sortKey, className) => (
+    <SortableHeader label={label} title={title} sortKey={sortKey} sort={sort} onSort={onSort} className={className} />
+  );
+  return (
+    <table className="workflow-table session-player-table">
+      <thead>
+        <tr>
+          {header(t('session.col.player'), t('session.col.player'), 'player', 'col-player')}
+          <th className="wpl-identity-head" aria-label="" />
+          {header(t('session.col.played'), t('session.col.playedTitle'), 'games', 'col-count')}
+          {showRecord ? header(t('session.col.wins'), t('session.col.winsTitle'), 'wins', 'col-count') : null}
+          {showRecord ? header(t('session.col.losses'), t('session.col.lossesTitle'), 'losses', 'col-count') : null}
+          <th className="col-races">{t('session.col.races')}</th>
+          {header(t('session.col.apm'), t('session.col.apm'), 'apm', 'col-apm')}
+          <th className="col-ladder">{t('session.col.ladder')}</th>
+          <th className="col-toons">{t('session.col.alsoPlaysAs')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((player) => (
+          <tr key={player.player_key}>
+            <td className="col-player">{renderName ? renderName(player) : player.player_name}</td>
+            <td className="wpl-identity-cell">{renderBadge ? renderBadge(player) : null}</td>
+            <td className="col-count">{player.games || 0}</td>
+            {showRecord ? <td className="col-count">{player.wins || 0}</td> : null}
+            {showRecord ? <td className="col-count">{player.losses || 0}</td> : null}
+            <td className="col-races"><RaceIcons races={player.races} /></td>
+            <td className="col-apm">{player.apm ? player.apm : <span className="session-cell-empty">-</span>}</td>
+            <td className="col-ladder"><LadderCell profile={player.profile} /></td>
+            <td className="col-toons"><OtherToons profile={player.profile} currentName={player.player_name} onPlayerClick={onPlayerClick} /></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function RegularsPulse({ regulars, onPlayerClick }) {
   const t = useT();
   const all = regulars || [];
@@ -204,7 +261,7 @@ function RegularsPulse({ regulars, onPlayerClick }) {
   );
 }
 
-function GamingSessionPanel({ session, loading, error, renderName, onPlayerClick, children }) {
+function GamingSessionPanel({ session, loading, error, renderName, renderBadge, onPlayerClick, children }) {
   const t = useT();
   const [tab, setTab] = useState('games');
 
@@ -284,11 +341,11 @@ function GamingSessionPanel({ session, loading, error, renderName, onPlayerClick
 
       {tab === 'games' ? children : (
         <div className="session-players">
-          <PlayerTable players={opponents} renderName={renderName} showRecord onPlayerClick={onPlayerClick} />
+          <PlayerTable players={opponents} renderName={renderName} renderBadge={renderBadge} showRecord onPlayerClick={onPlayerClick} />
           {allies.length > 0 ? (
             <div className="session-allies">
               <div className="session-breakdown-title">{t('session.playedAlongside')}</div>
-              <PlayerTable players={allies} renderName={renderName} showRecord={false} onPlayerClick={onPlayerClick} />
+              <PlayerTable players={allies} renderName={renderName} renderBadge={renderBadge} showRecord={false} onPlayerClick={onPlayerClick} />
             </div>
           ) : null}
         </div>

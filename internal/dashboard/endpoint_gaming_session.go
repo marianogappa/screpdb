@@ -37,15 +37,19 @@ const (
 // something against an opponent, and mixing the two made the list read as if
 // the user had beaten their own team-mates.
 type gamingSessionPlayer struct {
-	PlayerKey   string             `json:"player_key"`
-	PlayerName  string             `json:"player_name"`
-	CountryCode string             `json:"country_code,omitempty"`
-	Games       int                `json:"games"`
-	Wins        int                `json:"wins"`
-	Losses      int                `json:"losses"`
-	Races       []string           `json:"races,omitempty"`
-	APM         int                `json:"apm,omitempty"`
-	Profile     *bnetProfileDetail `json:"profile,omitempty"`
+	PlayerKey   string   `json:"player_key"`
+	PlayerName  string   `json:"player_name"`
+	CountryCode string   `json:"country_code,omitempty"`
+	Games       int      `json:"games"`
+	Wins        int      `json:"wins"`
+	Losses      int      `json:"losses"`
+	Races       []string `json:"races,omitempty"`
+	APM         int      `json:"apm,omitempty"`
+	// PrimaryBadge is the same fingerprint/account identity mark the games and
+	// players lists carry, resolved through the one shared resolver so a
+	// player is never labelled differently on two surfaces.
+	PrimaryBadge *IdentityBadge     `json:"primary_badge,omitempty"`
+	Profile      *bnetProfileDetail `json:"profile,omitempty"`
 }
 
 type gamingSessionStats struct {
@@ -421,6 +425,7 @@ func (d *Dashboard) withBnetProfiles(ctx context.Context, players []gamingSessio
 	}
 	details := d.bnetProfileDetailsByPlayerKeys(ctx, keys)
 	for i := range players {
+		players[i].PrimaryBadge = d.primaryIdentityBadge(players[i].PlayerKey)
 		detail, ok := details[players[i].PlayerKey]
 		if !ok {
 			continue

@@ -5604,6 +5604,9 @@ function App() {
             loading={gamingSessionLoading}
             error={gamingSessionError}
             onPlayerClick={openMainPlayer}
+            renderBadge={(player) => (
+              player.primary_badge ? <IdentityBadge badge={player.primary_badge} variant="players-list" /> : null
+            )}
             renderName={(opponent) => (
               <button
                 type="button"
