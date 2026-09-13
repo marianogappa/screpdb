@@ -6271,8 +6271,34 @@ span[data-tip],
   width: 20%;
 }
 
-.session-player-table .col-result {
-  width: 68px;
+/* Identity column, matching the players list: the badge rides in its own
+   column so every badge starts at the same x instead of ragging along the end
+   of names of every length, and it sits snug against the name rather than
+   adrift at the far right.
+
+   The players list gets that by letting both columns shrink to content
+   (width: 1%). This table is table-layout: fixed, where a declared width is
+   taken literally, so 1% would give a 1%-wide column and an unstyled one takes
+   an equal share of the leftover — which is how this column first came out as
+   wide as the names beside it.
+
+   The width is therefore stated outright, and stated with headroom: a
+   shrink-wrapped column can never clip its badge, but a fixed one can. The
+   widest badge in a real corpus measures ~68px ("FantaSy"), so 88px of content
+   carries a label around half again as long, and the overflow guard means even
+   that spills nowhere near the numbers to its right. */
+.session-player-table .wpl-identity-head,
+.session-player-table .wpl-identity-cell {
+  width: 112px;
+  padding-left: 0;
+  padding-right: 1.5rem;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.session-player-table .wpl-identity-cell .identity-badge {
+  margin-left: 0;
 }
 
 .session-player-table .col-races {
@@ -6364,7 +6390,6 @@ span[data-tip],
   text-align: left;
 }
 
-.session-player-table .col-result,
 .session-player-table .col-races {
   text-align: center;
 }
@@ -6373,7 +6398,7 @@ span[data-tip],
   text-align: right;
 }
 
-.session-player-table .col-result,
+.session-player-table .col-count,
 .session-player-table .col-apm,
 .session-player-table .col-ladder {
   font-variant-numeric: tabular-nums;
