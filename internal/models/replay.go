@@ -167,6 +167,17 @@ type ReplayData struct {
 	AllianceSnapshots   []AllianceSnapshot        `json:"-"` // Alliance topology timeline for multi-player melee; empty otherwise. Not persisted.
 	MapContext          *ReplayMapContext         `json:"-"` // Runtime-only map context (not persisted)
 	PatternOrchestrator any                       `json:"-"` // Pattern orchestrator (type *patterns.Orchestrator), not serialized
+	SaverDisconnect     *SaverDisconnect          `json:"-"` // Set when the replay ended because the saver's connection died. Not persisted.
+}
+
+// SaverDisconnect records that this replay ended when the player who saved it
+// lost their connection (issue #358). Their client has no Leave Game of its
+// own — it records every remaining player leaving at once instead — so the one
+// player who actually dropped is the only one the file does not say so about,
+// and the ones it does say so about did not.
+type SaverDisconnect struct {
+	SaverPlayerID byte
+	Second        int
 }
 
 // MapResourcePosition stores a resource position in pixels.

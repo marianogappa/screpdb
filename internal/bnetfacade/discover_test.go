@@ -204,13 +204,77 @@ func TestProbeSkiplist_Expires(t *testing.T) {
 	s := newProbeSkiplist()
 	s.remember(4000, now)
 
-	later := now.Add(probeSkipTTL + time.Second)
+	later := now.Add(probeSkipBackoff(1) + time.Second)
 	if s.skips(4000, later) {
 		t.Error("entry should have expired")
 	}
+	// The entry survives its own expiry on purpose: it stops muting the port,
+	// but the strike it carries is what makes a repeat offender escalate. A
+	// retain that forgot expired entries would reset every stable daemon to
+	// the short mute each time, so nothing would ever reach the ceiling.
 	s.retain([]int{4000}, later)
-	if len(s.until) != 0 {
-		t.Errorf("retain should prune expired entries, got %d", len(s.until))
+	if len(s.entries) != 1 {
+		t.Errorf("an expired entry for a still-listening port must be kept as evidence, got %d", len(s.entries))
+	}
+	s.retain(nil, later)
+	if len(s.entries) != 0 {
+		t.Errorf("a port that stopped listening must be forgotten, got %d", len(s.entries))
+	}
+}
+
+// The #424 regression: SC:R binds its port at launch but serves /web-api/
+// appreciably later, so its own port earns a not-the-bridge verdict while it is
+// still warming up. Under the old flat five-minute mute the app then reported
+// not_running for five minutes with the game open.
+func TestProbeSkiplist_AWarmingUpBridgeIsRetriedWithinTheMinute(t *testing.T) {
+	now := time.Now()
+	s := newProbeSkiplist()
+
+	s.remember(63585, now)
+
+	if !s.skips(63585, now.Add(probeSkipTTLInitial-time.Second)) {
+		t.Error("the first verdict must still mute the port briefly, or #384's probe noise comes back")
+	}
+	if s.skips(63585, now.Add(probeSkipTTLInitial+time.Second)) {
+		t.Error("a port muted once must be retried within the short window, not held for the ceiling")
+	}
+	if probeSkipTTLInitial > time.Minute {
+		t.Errorf("the first mute is %v; #424 asks for well under a minute", probeSkipTTLInitial)
+	}
+}
+
+// The other half of the bargain: a genuine third-party daemon must still go
+// quiet, or the skiplist stops doing the job #384 built it for.
+func TestProbeSkiplist_ARepeatOffenderReachesTheCeiling(t *testing.T) {
+	now := time.Now()
+	s := newProbeSkiplist()
+
+	var last time.Duration
+	for strike := 1; strike <= 8; strike++ {
+		ttl := probeSkipBackoff(strike)
+		if ttl < last {
+			t.Fatalf("strike %d shortened the mute: %v after %v", strike, ttl, last)
+		}
+		if ttl > probeSkipTTLMax {
+			t.Fatalf("strike %d exceeded the ceiling: %v > %v", strike, ttl, probeSkipTTLMax)
+		}
+		last = ttl
+	}
+	if probeSkipBackoff(8) != probeSkipTTLMax {
+		t.Errorf("a persistent non-bridge must reach the ceiling, got %v", probeSkipBackoff(8))
+	}
+
+	// And it escalates through the skiplist itself, not just the arithmetic:
+	// each repeat verdict on a still-listening port mutes it for longer.
+	for strike := 1; strike <= 5; strike++ {
+		s.remember(4000, now)
+		s.retain([]int{4000}, now)
+		if !s.skips(4000, now.Add(probeSkipBackoff(strike)-time.Second)) {
+			t.Fatalf("strike %d: port should be muted for %v", strike, probeSkipBackoff(strike))
+		}
+	}
+	if !s.skips(4000, now.Add(probeSkipTTLMax-time.Second)) {
+		t.Error("five strikes must have reached the ceiling")
 	}
 }
 
@@ -282,5 +346,49 @@ func TestDiscoverBridgeAddr_CancelledSweepDoesNotPoisonSkiplist(t *testing.T) {
 	}
 	if addr != srv.Listener.Addr().String() {
 		t.Errorf("addr = %q, want %q", addr, srv.Listener.Addr().String())
+	}
+}
+
+// The #424 scenario end to end, on the sweep rather than on the skiplist: a
+// port that is still coming up answers as not-the-bridge, then starts serving,
+// and must be found on the next sweep after the short mute rather than being
+// silenced for the ceiling. The old flat TTL failed this by five minutes.
+func TestDiscoverBridgeAddr_FindsAPortThatWasStillWarmingUp(t *testing.T) {
+	var serving bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if !serving {
+			// SC:R has bound the port but web-api is not up yet.
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		fmt.Fprint(w, `{"gateways":[]}`)
+	}))
+	defer srv.Close()
+	port := srv.Listener.Addr().(*net.TCPAddr).Port
+
+	s := newProbeSkiplist()
+	start := time.Now()
+	if _, err := discoverBridgeAddr(context.Background(), []int{port}, s, start); err == nil {
+		t.Fatal("expected no bridge while the port is still warming up")
+	}
+
+	serving = true
+
+	// Still inside the short mute: the sweep is entitled to skip it, which is
+	// what keeps #384's probe noise down.
+	if _, err := discoverBridgeAddr(context.Background(), []int{port}, s, start.Add(probeSkipTTLInitial/2)); err == nil {
+		t.Fatal("the port is still muted; the sweep must not have probed it")
+	}
+
+	addr, err := discoverBridgeAddr(context.Background(), []int{port}, s, start.Add(probeSkipTTLInitial+time.Second))
+	if err != nil {
+		t.Fatalf("the bridge must be found once the short mute lapses: %v", err)
+	}
+	if addr != srv.Listener.Addr().String() {
+		t.Fatalf("found %q, want %q", addr, srv.Listener.Addr().String())
+	}
+	// And the recovery must land well inside the outage #424 reported.
+	if probeSkipTTLInitial+time.Second >= time.Minute {
+		t.Errorf("recovery took %v; #424 asks for well under a minute", probeSkipTTLInitial+time.Second)
 	}
 }

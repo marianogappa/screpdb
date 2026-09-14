@@ -73,6 +73,13 @@ func (d *Dashboard) getOrFetchBnetProfile(ctx context.Context, toon string, gate
 // fetchAndCacheBnetProfile is the one place the upstream payload exists: it is
 // distilled into the typed profile record and the game archive's records, and
 // the raw bytes are discarded.
+//
+// It is also the one place a fresh answer lands, whatever the caller wanted it
+// for, which is why the browser is told from here rather than from any one
+// caller. A profile fetched to put a flag on a player carries that player's
+// last 25 games and everyone who was in them, so it is just as much an answer
+// about who is around as the regulars sweep's own request is; announcing it
+// here is what lets a page pick that up without asking for it again.
 func (d *Dashboard) fetchAndCacheBnetProfile(ctx context.Context, toon string, gateway int64, prio bnetfacade.Priority, now time.Time) (*persist.BnetProfile, error) {
 	addr, _ := d.bnetAddr.Load().(string)
 	if addr == "" || d.bnetDisabled.Load() {
@@ -88,6 +95,11 @@ func (d *Dashboard) fetchAndCacheBnetProfile(ctx context.Context, toon string, g
 	}
 	if err := d.dbStore.UpsertBnetGames(ctx, games); err != nil {
 		log.Printf("[bnet-profile] archiving games for %q: %v", toon, err)
+	}
+	// Only a found profile is an observation of anyone: a miss dates nothing
+	// and is indexed nowhere, and a gateway sweep is mostly misses.
+	if profile.Found && d.libraryHub != nil {
+		d.libraryHub.publishObservation()
 	}
 	return &profile, nil
 }
@@ -161,12 +173,20 @@ func (d *Dashboard) backfillBnetProfiles(names []string) {
 	if known := d.bnetGateway.Load(); known > 0 {
 		gateways = append([]int64{known}, defaultGatewayOrder...)
 	}
+	// Profiles we already hold name the other accounts on them, gateway and
+	// all, so a toon we have never fetched is often one we already know where
+	// to find. Asking there first turns a blind sweep of up to five gateways
+	// into a single request.
+	known, err := d.dbStore.GetBnetGatewaysByToons(d.ctx, playerKeys)
+	if err != nil {
+		known = map[string]int64{}
+	}
 	d.bnetBackfillActive.Add(1)
 	go func() {
 		defer crashreport.GuardNonFatal(nil)
 		defer d.bnetBackfillActive.Add(-1)
 		for _, toon := range stale {
-			for _, gw := range gateways {
+			for _, gw := range gatewayOrderFor(known[normalizePlayerKey(toon)], gateways) {
 				res, fetchErr := d.getOrFetchBnetProfile(d.ctx, toon, gw, bnetfacade.PriorityBackground, 0)
 				if fetchErr != nil {
 					continue
@@ -177,6 +197,24 @@ func (d *Dashboard) backfillBnetProfiles(names []string) {
 			}
 		}
 	}()
+}
+
+// gatewayOrderFor puts the gateway we have evidence for at the front of the
+// fallback sweep. The rest still follow: the evidence can be out of date, and a
+// stale first guess costs one request, while dropping the fallback would lose
+// the player entirely.
+func gatewayOrderFor(known int64, fallback []int64) []int64 {
+	if known == 0 {
+		return fallback
+	}
+	out := make([]int64, 0, len(fallback)+1)
+	out = append(out, known)
+	for _, gw := range fallback {
+		if gw != known {
+			out = append(out, gw)
+		}
+	}
+	return out
 }
 
 func bnetProfileResultFromRecord(p *persist.BnetProfile, cached, stale bool) *bnetProfileResult {

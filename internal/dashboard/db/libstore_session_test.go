@@ -120,3 +120,32 @@ func TestLibStoreListPlayerAPMByReplayIDs(t *testing.T) {
 		t.Fatalf("no ids = %+v", rows)
 	}
 }
+
+func TestLibStoreListPlayerAPMCarriesTheDropFlag(t *testing.T) {
+	r := librarytest.Replay(
+		librarytest.WithPlayer("Flash", librarytest.Team(1)),
+		librarytest.WithPlayer("Bisu", librarytest.Team(2)),
+	)
+	r.Players[0].Flags |= library.PlayerLeft | library.PlayerDropped
+	r.Players[0].LeaveSec = 300
+	r.Players[1].Flags |= library.PlayerLeft
+	r.Players[1].LeaveSec = 600
+	s := newTestLibStore(t, r)
+
+	rows, err := s.ListPlayerAPMByReplayIDs(context.Background(), []int64{r.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	byKey := map[string]SessionPlayerAPMRow{}
+	for _, row := range rows {
+		byKey[row.PlayerKey] = row
+	}
+	// Losing the connection and deciding to stop are both a Leave Game; only
+	// one of them is a drop, and the session record turns on the difference.
+	if !byKey["flash"].Dropped {
+		t.Fatalf("flash = %+v, want the drop carried through", byKey["flash"])
+	}
+	if byKey["bisu"].Dropped {
+		t.Fatalf("bisu = %+v, want a plain leave to stay undropped", byKey["bisu"])
+	}
+}

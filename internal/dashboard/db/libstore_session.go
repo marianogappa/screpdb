@@ -108,6 +108,7 @@ func (s *LibStore) ListPlayerAPMByReplayIDs(_ context.Context, replayIDs []int64
 				APM:       int64(p.APM),
 				EAPM:      int64(p.EAPM),
 				LeaveSec:  int64(p.LeaveSec),
+				Dropped:   p.Flags.Has(library.PlayerDropped),
 			})
 		}
 	}

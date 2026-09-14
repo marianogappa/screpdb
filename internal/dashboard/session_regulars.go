@@ -82,7 +82,17 @@ const (
 // regularFreshness rates one person from their newest known game (lastSeen) and
 // when we last heard from Battle.net about them (observedAt). A zero observedAt
 // means we never did, which is not evidence of anything.
+//
+// lastSeen is itself an observation, and a stricter one than any timestamp we
+// record beside it: a game is only knowable after it has been played, so
+// holding a game from ten minutes ago means we looked no earlier than ten
+// minutes ago. Folding it in is what lets evidence we already paid for carry
+// the row — a replay the watcher just ingested, or a game someone else's
+// profile fetch happened to report — instead of the row waiting on a request
+// of its own to say what we already know. It can never make the picture look
+// fresher than it is, because the evidence is the observation.
 func regularFreshness(lastSeen, observedAt, now time.Time) string {
+	observedAt = regularObservedAt(lastSeen, observedAt)
 	if observedAt.IsZero() || now.Sub(observedAt) > regularsObservationMaxAge {
 		return ""
 	}
@@ -93,6 +103,15 @@ func regularFreshness(lastSeen, observedAt, now time.Time) string {
 		return regularFreshnessLately
 	}
 	return ""
+}
+
+// regularObservedAt is when we last had a look at this person, counting the
+// evidence itself: see regularFreshness for why a known game dates the look.
+func regularObservedAt(lastSeen, fetchedAt time.Time) time.Time {
+	if lastSeen.After(fetchedAt) {
+		return lastSeen
+	}
+	return fetchedAt
 }
 
 // sessionRegular is one person the user plays with often. Identity is merged
@@ -112,9 +131,10 @@ type sessionRegular struct {
 	// answers. Kept out of the payload: they only serve the refresh sweep.
 	refreshToon string
 	gateway     int64
-	// observedAt is the newest answer Battle.net gave us about any of this
-	// person's toons: one fetch refreshes the whole account's archive, so the
-	// most recent fetch is what dates the picture.
+	// observedAt is when the picture of this person was last taken, counting
+	// both the answers Battle.net gave us about their toons and the games we
+	// learned of by any route. The refresh sweep reads it to decide whether a
+	// request would tell it anything it does not already hold.
 	observedAt time.Time
 }
 
@@ -135,6 +155,9 @@ type regularsIdentity struct {
 	// person's toons: one fetch refreshes the whole account's archive, so the
 	// most recent fetch is what dates the picture.
 	observedAt time.Time
+	// keys are the toons this human is known by, which is what the game
+	// archive names players with.
+	keys map[string]struct{}
 }
 
 // mergeCoPlayersByAccount folds the raw per-toon counts into one entry per
@@ -158,10 +181,11 @@ func mergeCoPlayersByAccount(rows []coPlayerCount, index regularsIdentityIndex) 
 		}
 		identity, ok := byGroup[group]
 		if !ok {
-			identity = &regularsIdentity{auroraID: auroraID, names: map[string]int{}}
+			identity = &regularsIdentity{auroraID: auroraID, names: map[string]int{}, keys: map[string]struct{}{}}
 			byGroup[group] = identity
 			order = append(order, identity)
 		}
+		identity.keys[key] = struct{}{}
 		identity.names[row.PlayerName] += row.Games
 		identity.games += row.Games
 		if row.LastPlayed.After(identity.lastPlayed) {
@@ -270,6 +294,7 @@ func (d *Dashboard) sessionRegulars(ctx context.Context, youKeys map[string]stru
 
 	index := d.identityIndex(ctx, keys)
 	identities := rankRegulars(mergeCoPlayersByAccount(counts, index))
+	archived := d.archivedLastSeen(ctx, identities, index)
 
 	out := make([]sessionRegular, 0, len(identities))
 	for _, identity := range identities {
@@ -286,11 +311,77 @@ func (d *Dashboard) sessionRegulars(ctx context.Context, youKeys map[string]stru
 		if fresh, ok := d.bnetLastGameAt(ctx, identity.auroraID); ok && fresh.After(lastSeen) {
 			lastSeen = fresh
 		}
+		if fresh := archived[identity]; fresh.After(lastSeen) {
+			lastSeen = fresh
+		}
 		regular.LastSeen = lastSeen.Format(time.RFC3339)
-		regular.Freshness = regularFreshness(lastSeen, identity.observedAt, now)
+		regular.observedAt = regularObservedAt(lastSeen, identity.observedAt)
+		regular.Freshness = regularFreshness(lastSeen, regular.observedAt, now)
 		out = append(out, regular)
 	}
 	return d.withRegularProfiles(ctx, out), nil
+}
+
+// identityToons lists every toon this human is known by: the names they appear
+// under in the user's own games, plus every other account their Battle.net
+// profile lists. The archive names players by toon, so a lookup that asked only
+// about the names the user has played against would miss the alt they were on
+// tonight.
+func identityToons(identity *regularsIdentity, index regularsIdentityIndex) []string {
+	seen := make(map[string]struct{}, len(identity.keys))
+	out := make([]string, 0, len(identity.keys))
+	add := func(key string) {
+		if key == "" {
+			return
+		}
+		if _, dup := seen[key]; dup {
+			return
+		}
+		seen[key] = struct{}{}
+		out = append(out, key)
+	}
+	for key := range identity.keys {
+		add(key)
+	}
+	for _, key := range index.toonsByAurora[identity.auroraID] {
+		add(key)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// archivedLastSeen asks the archive, in one pass, when each of these people
+// last played under any of their toons.
+//
+// This is the synergy the archive exists to allow: a game is archived once, by
+// whoever's profile reported it, but it names everyone who was in it — so a
+// fetch made to put a flag on a player, or the enrich worker's own-profile
+// poll, already answers "is this regular around" for every co-player in the
+// games it returned. Reading it costs nothing and spends no bridge budget.
+func (d *Dashboard) archivedLastSeen(ctx context.Context, identities []*regularsIdentity, index regularsIdentityIndex) map[*regularsIdentity]time.Time {
+	out := map[*regularsIdentity]time.Time{}
+	toonsPer := make(map[*regularsIdentity][]string, len(identities))
+	toons := []string{}
+	for _, identity := range identities {
+		own := identityToons(identity, index)
+		toonsPer[identity] = own
+		toons = append(toons, own...)
+	}
+	if len(toons) == 0 {
+		return out
+	}
+	byToon, err := d.dbStore.GetBnetLastGameAtByToons(ctx, toons)
+	if err != nil {
+		return out
+	}
+	for identity, own := range toonsPer {
+		for _, toon := range own {
+			if at := byToon[toon]; at.After(out[identity]) {
+				out[identity] = at
+			}
+		}
+	}
+	return out
 }
 
 // regularsIdentityIndex is what the cached Battle.net profiles tell us about a
@@ -300,15 +391,34 @@ type regularsIdentityIndex struct {
 	auroraByKey  map[string]int64
 	gatewayByKey map[string]int64
 	fetchedByKey map[string]time.Time
+	// toonsByAurora lists every toon we know an account plays under, including
+	// ones that never appear in the user's own games: the archive names players
+	// by toon, so a lookup has to ask about all of them.
+	toonsByAurora map[int64][]string
+}
+
+func (i regularsIdentityIndex) addToon(auroraID int64, key string) {
+	for _, known := range i.toonsByAurora[auroraID] {
+		if known == key {
+			return
+		}
+	}
+	i.toonsByAurora[auroraID] = append(i.toonsByAurora[auroraID], key)
 }
 
 // identityIndex maps each toon name we know to the Battle.net account it
 // belongs to. Both the fetched toon and every alternate account listed on that
 // profile are registered, which is what lets an alt merge into its owner even
-// when only one of the two was ever fetched; the gateway is recorded only for
-// toons actually fetched, since that is the only one we know answers.
+// when only one of the two was ever fetched. One answer dates every toon on the
+// account it describes, so all of them are stamped; the gateway is recorded
+// only for toons actually fetched, since that is the only one we know answers.
 func (d *Dashboard) identityIndex(ctx context.Context, playerKeys []string) regularsIdentityIndex {
-	index := regularsIdentityIndex{auroraByKey: map[string]int64{}, gatewayByKey: map[string]int64{}, fetchedByKey: map[string]time.Time{}}
+	index := regularsIdentityIndex{
+		auroraByKey:   map[string]int64{},
+		gatewayByKey:  map[string]int64{},
+		fetchedByKey:  map[string]time.Time{},
+		toonsByAurora: map[int64][]string{},
+	}
 	if len(playerKeys) == 0 {
 		return index
 	}
@@ -326,10 +436,21 @@ func (d *Dashboard) identityIndex(ctx context.Context, playerKeys []string) regu
 			if profile.FetchedAt.After(index.fetchedByKey[key]) {
 				index.fetchedByKey[key] = profile.FetchedAt
 			}
+			index.addToon(profile.AuroraID, key)
 		}
 		for _, toon := range profile.Toons {
-			if key := normalizePlayerKey(toon.Toon); key != "" {
-				index.auroraByKey[key] = profile.AuroraID
+			key := normalizePlayerKey(toon.Toon)
+			if key == "" {
+				continue
+			}
+			index.auroraByKey[key] = profile.AuroraID
+			index.addToon(profile.AuroraID, key)
+			// One fetch answers for the whole account, so it dates every toon
+			// on it. Stamping only the toon we asked for made a fetch of
+			// someone's main leave their alt looking unobserved, and the alt is
+			// often the only name the user's own games know them by.
+			if profile.FetchedAt.After(index.fetchedByKey[key]) {
+				index.fetchedByKey[key] = profile.FetchedAt
 			}
 		}
 	}

@@ -776,3 +776,63 @@ func TestMigrateLegacyBnetCachesPrefersNewerV2Entry(t *testing.T) {
 		t.Fatalf("a newer v2 entry must win over the legacy file: %+v", got)
 	}
 }
+
+func TestBnetGameArchiveLastGameByToons(t *testing.T) {
+	archive := NewBnetGameArchive(t.TempDir())
+	older := time.Date(2026, 5, 1, 18, 0, 0, 0, time.UTC)
+	newer := time.Date(2026, 5, 1, 20, 0, 0, 0, time.UTC)
+	// Both games were reported by account 100 only, and neither names account
+	// 200: this is exactly the shape a fetch of someone else's profile leaves
+	// behind, and the whole reason the lookup reads players rather than
+	// Accounts.
+	if err := archive.Upsert([]BnetGame{
+		{GameID: "g1", CreateTime: older, Accounts: []int64{100}, Players: []BnetGamePlayer{
+			{Toon: "Owner"}, {Toon: "Regular"},
+		}},
+		{GameID: "g2", CreateTime: newer, Accounts: []int64{100}, Players: []BnetGamePlayer{
+			{Toon: "Owner"}, {Toon: "Regular"}, {Toon: "Bot", Computer: true},
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	got := archive.LastGameByToons([]string{"regular", "BOT", "stranger"})
+
+	if !got["regular"].Equal(newer) {
+		t.Fatalf("regular last played %v, want the newer game at %v", got["regular"], newer)
+	}
+	// A computer slot is not a person whose liveness means anything.
+	if _, ok := got["bot"]; ok {
+		t.Fatalf("a computer slot must not date anyone: %v", got)
+	}
+	if _, ok := got["stranger"]; ok {
+		t.Fatalf("nobody unseen may appear: %v", got)
+	}
+	if len(archive.LastGameByToons(nil)) != 0 {
+		t.Fatal("asking about nobody must return nothing")
+	}
+}
+
+func TestBnetCacheGatewaysByToons(t *testing.T) {
+	cache := NewBnetCache(t.TempDir())
+	// One fetch of "Main" on gateway 30 also tells us where "Alt" lives, even
+	// though we have never fetched "Alt" ourselves.
+	if err := cache.Upsert(BnetProfile{
+		Toon: "Main", Gateway: 30, Found: true, AuroraID: 7, FetchedAt: time.Now(),
+		Toons: []BnetToon{{Toon: "Main", Gateway: 30}, {Toon: "Alt", Gateway: 20}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	got := cache.GatewaysByToons([]string{"main", "alt", "never-seen"})
+
+	if got["main"] != 30 {
+		t.Fatalf("main gateway = %d, want 30", got["main"])
+	}
+	if got["alt"] != 20 {
+		t.Fatalf("alt gateway = %d, want the 20 its owner's profile named", got["alt"])
+	}
+	if _, ok := got["never-seen"]; ok {
+		t.Fatalf("a toon we hold nothing for must stay unknown: %v", got)
+	}
+}

@@ -101,7 +101,7 @@ func FromReplayData(data *models.ReplayData, file FileMeta) (*library.Replay, er
 
 	ords := newOrdinals(data.Players)
 	r.Players = compactPlayers(data, ords)
-	compactCommands(r, data.Commands, ords)
+	compactCommands(r, data.Commands, ords, phantomDropSecond(data.SaverDisconnect))
 
 	if orch, ok := data.PatternOrchestrator.(*patterns.Orchestrator); ok && orch != nil {
 		r.Markers = compactMarkers(r, orch.GetResults(), ords)
@@ -224,6 +224,11 @@ func compactPlayers(data *models.ReplayData, ords *ordinals) []library.Player {
 		if p.IsWinner {
 			lp.Flags |= library.PlayerWinner
 		}
+		// The saver of a connection-lost replay is the one player who really
+		// dropped, and the only one their own file never records leaving.
+		if data.SaverDisconnect != nil && data.SaverDisconnect.SaverPlayerID == p.PlayerID {
+			lp.Flags |= library.PlayerDropped
+		}
 		if p.StartLocationX != nil && p.StartLocationY != nil {
 			lp.Flags |= library.PlayerHasStartLocation
 			lp.StartX = library.ClampU16(*p.StartLocationX)
@@ -261,7 +266,17 @@ func compactPlayers(data *models.ReplayData, ords *ordinals) []library.Player {
 	return players
 }
 
-func compactCommands(r *library.Replay, commands []*models.Command, ords *ordinals) {
+// phantomDropSecond reports the second whose "Dropped" leaves are the saver's
+// client inventing a departure for everyone still in the game, and so must not
+// flag anyone as having dropped. Negative when the replay ended normally.
+func phantomDropSecond(disconnect *models.SaverDisconnect) int {
+	if disconnect == nil {
+		return -1
+	}
+	return disconnect.Second
+}
+
+func compactCommands(r *library.Replay, commands []*models.Command, ords *ordinals, phantomDropSec int) {
 	for _, cmd := range commands {
 		if cmd == nil {
 			continue
@@ -302,7 +317,7 @@ func compactCommands(r *library.Replay, commands []*models.Command, ords *ordina
 			if cmd.LeaveReason != nil {
 				reason := strings.TrimSpace(*cmd.LeaveReason)
 				p.LeaveReason = library.Strings.Intern(reason)
-				if reason == leaveReasonDropped {
+				if reason == leaveReasonDropped && int(sec) != phantomDropSec {
 					p.Flags |= library.PlayerDropped
 				}
 			}

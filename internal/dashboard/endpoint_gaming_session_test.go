@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
+	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/librarytest"
 	"github.com/marianogappa/screpdb/internal/library/persist"
@@ -491,5 +493,148 @@ func TestSummarizeGamingSessionElapsedIncludesTheLastGame(t *testing.T) {
 	}
 	if stats.EndedAt != now.Add(20*time.Minute).Format(time.RFC3339) {
 		t.Errorf("ended_at = %s, want the end of the last game", stats.EndedAt)
+	}
+}
+
+func TestSummarizeGamingSessionDropped(t *testing.T) {
+	now := time.Date(2026, 8, 30, 20, 0, 0, 0, time.UTC)
+	youKeys := map[string]struct{}{"me": {}}
+	games := []workflowGameListItem{
+		{
+			ReplayID: 1,
+			Players: []workflowGameListPlayer{
+				{PlayerKey: "me", Team: 1, IsWinner: true},
+				{PlayerKey: "foe", Team: 2, IsWinner: false},
+			},
+		},
+		{
+			ReplayID: 2,
+			Players: []workflowGameListPlayer{
+				{PlayerKey: "me", Team: 1, IsWinner: false},
+				{PlayerKey: "foe", Team: 2, IsWinner: true},
+			},
+		},
+		// Resolved against the user, but only because they lost the link: the
+		// complete copy arrived after the game finished without them.
+		{
+			ReplayID: 3,
+			Players: []workflowGameListPlayer{
+				{PlayerKey: "me", Team: 1, IsWinner: false},
+				{PlayerKey: "foe", Team: 2, IsWinner: true},
+			},
+		},
+	}
+	apm := map[gamePlayerKey]sessionAPM{
+		{ReplayID: 3, PlayerKey: "me"}: {Dropped: true},
+	}
+
+	stats := summarizeGamingSession(rowsAt(now, 0, time.Hour, 2*time.Hour), games, apm, youKeys)
+
+	if stats.Wins != 1 || stats.Losses != 1 || stats.Dropped != 1 || stats.Undecided != 0 {
+		t.Fatalf("record = %d-%d with %d dropped and %d undecided, want 1-1 with 1 dropped and 0 undecided",
+			stats.Wins, stats.Losses, stats.Dropped, stats.Undecided)
+	}
+	// A drop is not a loss and not an unresolved game, so it leaves the rate
+	// alone entirely: one win out of the two games actually played out.
+	if want := 0.5; stats.WinRate != want {
+		t.Fatalf("win rate = %v, want %v (1 win of the 2 games that were not dropped)", stats.WinRate, want)
+	}
+}
+
+func TestGamingSessionPlayersSkipsDroppedGames(t *testing.T) {
+	youKeys := map[string]struct{}{"me": {}}
+	games := []workflowGameListItem{
+		{
+			ReplayID: 1,
+			Players: []workflowGameListPlayer{
+				{PlayerKey: "me", Team: 1, IsWinner: true},
+				{PlayerKey: "foe", Name: "Foe", Team: 2, IsWinner: false},
+			},
+		},
+		{
+			ReplayID: 2,
+			Players: []workflowGameListPlayer{
+				{PlayerKey: "me", Team: 1, IsWinner: false},
+				{PlayerKey: "foe", Name: "Foe", Team: 2, IsWinner: true},
+			},
+		},
+	}
+	apm := map[gamePlayerKey]sessionAPM{
+		{ReplayID: 2, PlayerKey: "me"}: {Dropped: true},
+	}
+
+	opponents, _ := gamingSessionPlayers(games, apm, youKeys)
+
+	if len(opponents) != 1 {
+		t.Fatalf("opponents = %+v, want just foe", opponents)
+	}
+	// Both games are played, but the dropped one credits Foe with nothing: the
+	// session record and the per-opponent record must agree on what counts.
+	foe := opponents[0]
+	if foe.Games != 2 || foe.Wins != 0 || foe.Losses != 1 {
+		t.Fatalf("foe = %+v, want 2 games and a 0-1 record (the drop is not a win for them)", foe)
+	}
+}
+
+// The game we just played is the observation. Nothing here has ever spoken to
+// Battle.net, and the row still has to say the opponent is around: the replay
+// the watcher ingested two minutes ago is stronger evidence of that than any
+// request we could make for it.
+func TestSessionRegularIsLiveFromOurOwnGames(t *testing.T) {
+	now := time.Now()
+	replays := make([]*library.Replay, 0, regularsMinGames)
+	for i := 0; i < regularsMinGames; i++ {
+		replays = append(replays, sessionReplay(int64(i+1), now.Add(-time.Duration(i)*time.Hour-2*time.Minute), true))
+	}
+	d := newSessionDashboard(t, replays...)
+
+	regulars, err := d.sessionRegulars(context.Background(), d.loadYouKeys(), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(regulars) != 1 || regulars[0].PlayerKey != "foe" {
+		t.Fatalf("regulars = %+v, want just Foe", regulars)
+	}
+	if regulars[0].Freshness != regularFreshnessNow {
+		t.Fatalf("freshness = %q, want %q without spending a single request", regulars[0].Freshness, regularFreshnessNow)
+	}
+}
+
+// The same row, from a game nobody asked about on this player's behalf: the
+// archive holds it because some other fetch reported it, and participation is a
+// fact of the record whoever the reporter was.
+func TestSessionRegularIsLiveFromAnotherAccountsArchivedGame(t *testing.T) {
+	now := time.Now()
+	replays := make([]*library.Replay, 0, regularsMinGames)
+	for i := 0; i < regularsMinGames; i++ {
+		// Old enough that our own games say nothing about tonight.
+		replays = append(replays, sessionReplay(int64(i+1), now.Add(-time.Duration(i+1)*24*time.Hour), true))
+	}
+	d := newSessionDashboard(t, replays...)
+	archiveRoot := t.TempDir()
+	if err := iofacade.AllowDir(archiveRoot); err != nil {
+		t.Fatal(err)
+	}
+	archive := persist.NewBnetGameArchive(archiveRoot)
+	if err := archive.Upsert([]persist.BnetGame{{
+		GameID:     "g1",
+		CreateTime: now.Add(-5 * time.Minute).UTC(),
+		// Reported by a stranger's profile, and never by Foe's.
+		Accounts: []int64{999},
+		Players:  []persist.BnetGamePlayer{{Toon: "Stranger"}, {Toon: "Foe"}},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	d.dbStore.(*dashboarddb.LibStore).SetGameArchive(archive)
+
+	regulars, err := d.sessionRegulars(context.Background(), d.loadYouKeys(), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(regulars) != 1 {
+		t.Fatalf("regulars = %+v, want just Foe", regulars)
+	}
+	if regulars[0].Freshness != regularFreshnessNow {
+		t.Fatalf("freshness = %q, want %q from the game the archive already holds", regulars[0].Freshness, regularFreshnessNow)
 	}
 }

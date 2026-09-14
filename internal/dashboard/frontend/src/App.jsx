@@ -3426,6 +3426,16 @@ function App() {
             void refreshGamesListRef.current?.();
             if (activeViewRef.current === 'players') void refreshPlayersListRef.current?.();
             void loadGamingSessionRef.current?.({ silent: true });
+            return;
+          }
+
+          // A Battle.net answer landed. The session is reloaded silently, which
+          // keeps the panel mounted and swaps only the rows that changed, so a
+          // sweep fills the liveness rows in one by one as the answers arrive
+          // instead of the page showing a stale picture until something else
+          // happens to refetch it.
+          if (message.type === 'observation') {
+            void loadGamingSessionRef.current?.({ silent: true });
           }
         } catch (err) {
           console.error('Failed to parse library events message:', err);

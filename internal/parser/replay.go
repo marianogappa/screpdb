@@ -280,6 +280,7 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 			}
 		}
 		patternOrchestrator.SetMassDisconnectEnd(md.SaverPID, md.ClusterSecond)
+		data.SaverDisconnect = &models.SaverDisconnect{SaverPlayerID: md.SaverPID, Second: md.ClusterSecond}
 	}
 
 	// Reconstruct selection state from the raw stream's Select/Hotkey tags, which

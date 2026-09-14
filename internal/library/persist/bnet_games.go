@@ -280,6 +280,49 @@ func (a *BnetGameArchive) TimesSince(auroraID int64, since time.Time) []time.Tim
 	return out
 }
 
+// LastGameByToons reports, for each toon named, the newest archived game that
+// toon took part in, keyed by lowercased toon.
+//
+// This reads participation, not provenance, and that distinction is the whole
+// point: a game is archived once, by whichever account's profile happened to
+// report it, but it names everyone who was in it. Asking "when did this person
+// last play" through Accounts alone throws away every game we learned about
+// from someone else's fetch — which, for the people the user plays with most,
+// is nearly all of them. Participation and create time are facts of the game
+// record and carry no provenance caveat (unlike per-player results, which are
+// only trustworthy from the player's own profile), so this is safe to read from
+// any reporter.
+func (a *BnetGameArchive) LastGameByToons(toons []string) map[string]time.Time {
+	wanted := make(map[string]struct{}, len(toons))
+	for _, toon := range toons {
+		if key := strings.ToLower(strings.TrimSpace(toon)); key != "" {
+			wanted[key] = struct{}{}
+		}
+	}
+	out := map[string]time.Time{}
+	if len(wanted) == 0 {
+		return out
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, g := range a.games {
+		at := g.CreateTime.UTC()
+		for _, p := range g.Players {
+			if p.Computer {
+				continue
+			}
+			key := strings.ToLower(strings.TrimSpace(p.Toon))
+			if _, ok := wanted[key]; !ok {
+				continue
+			}
+			if at.After(out[key]) {
+				out[key] = at
+			}
+		}
+	}
+	return out
+}
+
 // GamesForAccount returns every game an account's profile fetches reported,
 // newest first.
 func (a *BnetGameArchive) GamesForAccount(auroraID int64) []BnetGame {

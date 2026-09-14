@@ -659,3 +659,54 @@ func TestTrimPlayerBuffers(t *testing.T) {
 		t.Fatal("a game that is not two humans is outside the model's domain too")
 	}
 }
+
+// A saver disconnect inverts what the file appears to say, so the compacted
+// record has to read it inside out: the one player who really lost their
+// connection is the one their own client never recorded leaving, and every
+// "Dropped" leave it did record at that instant is invented.
+func TestFromReplayDataSaverDisconnectInvertsTheDropFlags(t *testing.T) {
+	saver := &models.Player{PlayerID: 0, Name: "Saver", Race: "Zerg", Type: "Human", Team: 1}
+	phantom := &models.Player{PlayerID: 1, Name: "Phantom", Race: "Terran", Type: "Human", Team: 2}
+	genuine := &models.Player{PlayerID: 2, Name: "Genuine", Race: "Protoss", Type: "Human", Team: 2}
+	leave := func(p *models.Player, sec int, reason string) *models.Command {
+		return &models.Command{Player: p, SecondsFromGameStart: sec, ActionType: "Leave Game", LeaveReason: strPtr(reason)}
+	}
+	data := &models.ReplayData{
+		Replay: &models.Replay{
+			ReplayDate: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC), DurationSeconds: 900,
+			GameType: "Melee", MapKind: "Regular", MapName: "Synthetic",
+		},
+		Players: []*models.Player{saver, phantom, genuine},
+		Commands: []*models.Command{
+			// A real mid-game drop, well before the end.
+			leave(genuine, 400, "Dropped"),
+			// The saver's client inventing a departure for whoever was left.
+			leave(phantom, 895, "Dropped"),
+		},
+		SaverDisconnect: &models.SaverDisconnect{SaverPlayerID: 0, Second: 895},
+	}
+
+	meta := FileMeta{Path: "/sc/Maps/Replays/AutoSave/x.rep", Size: 1, ModTime: time.Unix(1, 0), Checksum: sha256.Sum256([]byte("md"))}
+	r, err := FromReplayData(data, meta)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !r.Players[0].Flags.Has(library.PlayerDropped) {
+		t.Errorf("the saver is the player who actually dropped: %+v", r.Players[0])
+	}
+	if r.Players[0].Flags.Has(library.PlayerLeft) {
+		t.Errorf("the saver never recorded a leave of their own: %+v", r.Players[0])
+	}
+	// The recorded reason is kept as the file wrote it; only the verdict drawn
+	// from it is withheld.
+	if r.Players[1].Flags.Has(library.PlayerDropped) {
+		t.Errorf("the phantom cluster must not flag anyone as dropped: %+v", r.Players[1])
+	}
+	if library.Strings.Name(r.Players[1].LeaveReason) != "Dropped" {
+		t.Errorf("the raw leave reason is still what the file said: %+v", r.Players[1])
+	}
+	if !r.Players[2].Flags.Has(library.PlayerDropped) {
+		t.Errorf("a genuine mid-game drop survives the cluster rule: %+v", r.Players[2])
+	}
+}
