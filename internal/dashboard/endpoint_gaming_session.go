@@ -53,10 +53,15 @@ type gamingSessionPlayer struct {
 }
 
 type gamingSessionStats struct {
-	Games       int     `json:"games"`
-	Wins        int     `json:"wins"`
-	Losses      int     `json:"losses"`
-	Undecided   int     `json:"undecided"`
+	Games     int `json:"games"`
+	Wins      int `json:"wins"`
+	Losses    int `json:"losses"`
+	Undecided int `json:"undecided"`
+	// Dropped counts the games the user lost the connection in. It is a
+	// separate outcome from Undecided: a dropped game often does resolve, and
+	// the resolution is a loss, but losing the link is not losing the game and
+	// booking it as one would make a flaky night read as a bad one.
+	Dropped     int     `json:"dropped"`
 	WinRate     float64 `json:"win_rate"`
 	AverageAPM  float64 `json:"average_apm"`
 	AverageEAPM float64 `json:"average_eapm"`
@@ -297,7 +302,10 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 			if player.Race != "" {
 				stats.RacesPlayed[player.Race]++
 			}
+			own, haveOwn := apm[gamePlayerKey{ReplayID: game.ReplayID, PlayerKey: normalizePlayerKey(player.PlayerKey)}]
 			switch {
+			case own.Dropped:
+				stats.Dropped++
 			case !winnerKnown:
 				stats.Undecided++
 			case player.IsWinner:
@@ -305,7 +313,6 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 			default:
 				stats.Losses++
 			}
-			own, haveOwn := apm[gamePlayerKey{ReplayID: game.ReplayID, PlayerKey: normalizePlayerKey(player.PlayerKey)}]
 			if haveOwn && own.APM > 0 {
 				apmSum += float64(own.APM)
 				eapmSum += float64(own.EAPM)
@@ -328,11 +335,14 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 			stats.APMByRace[race] = apmSumByRace[race] / float64(count)
 		}
 	}
-	// Over every game of the sitting, undecided ones included, because that is
-	// the number the tile sits beside: a rate out of the decided games alone
-	// reads as wrong next to a games count and a record that both include them.
-	if stats.Games > 0 {
-		stats.WinRate = float64(stats.Wins) / float64(stats.Games)
+	// Over every game the user actually played out, undecided ones included,
+	// because that is the number the tile sits beside: a rate out of the
+	// decided games alone reads as wrong next to a record that carries them.
+	// Dropped games are the exception, and they are excluded for the same
+	// reason they are not booked as losses — the user never got to play them to
+	// a finish, so counting them would be scoring a game that did not happen.
+	if rated := stats.Games - stats.Dropped; rated > 0 {
+		stats.WinRate = float64(stats.Wins) / float64(rated)
 	}
 	return stats
 }
@@ -342,7 +352,9 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 // are from the user's point of view and are only tallied for opponents; an ally
 // shares the user's result, so a record against them would be meaningless. A
 // game with no determined winner tallies no record either: reading the user's
-// missing win as a loss would invent a win for the opponent.
+// missing win as a loss would invent a win for the opponent. A game the user
+// dropped out of is skipped for the same reason it is kept out of the session
+// record: whatever the replay resolved to, the connection decided it.
 func gamingSessionPlayers(games []workflowGameListItem, apm map[gamePlayerKey]sessionAPM, youKeys map[string]struct{}) (opponents, allies []gamingSessionPlayer) {
 	type accumulator struct {
 		player  *gamingSessionPlayer
@@ -356,12 +368,15 @@ func gamingSessionPlayers(games []workflowGameListItem, apm map[gamePlayerKey]se
 	for _, game := range games {
 		winnerKnown := gameWinnerKnown(game)
 		youWon := false
+		youDropped := false
 		var youTeam int64 = -1
 		for _, player := range game.Players {
-			if _, mine := youKeys[normalizePlayerKey(player.PlayerKey)]; !mine {
+			key := normalizePlayerKey(player.PlayerKey)
+			if _, mine := youKeys[key]; !mine {
 				continue
 			}
 			youWon = player.IsWinner
+			youDropped = apm[gamePlayerKey{ReplayID: game.ReplayID, PlayerKey: key}].Dropped
 			youTeam = player.Team
 			break
 		}
@@ -397,7 +412,7 @@ func gamingSessionPlayers(games []workflowGameListItem, apm map[gamePlayerKey]se
 				entry.apmSum += int(stat.APM)
 				entry.apmSeen++
 			}
-			if isAlly || !winnerKnown {
+			if isAlly || !winnerKnown || youDropped {
 				continue
 			}
 			if youWon {
@@ -478,6 +493,7 @@ type sessionAPM struct {
 	APM      int64
 	EAPM     int64
 	LeaveSec int64
+	Dropped  bool
 }
 
 // gamePlayerKey identifies one player in one game, which is the grain the
@@ -495,7 +511,7 @@ func (d *Dashboard) sessionAPMByGamePlayer(ctx context.Context, replayIDs []int6
 	}
 	out := make(map[gamePlayerKey]sessionAPM, len(rows))
 	for _, row := range rows {
-		out[gamePlayerKey{ReplayID: row.ReplayID, PlayerKey: row.PlayerKey}] = sessionAPM{APM: row.APM, EAPM: row.EAPM, LeaveSec: row.LeaveSec}
+		out[gamePlayerKey{ReplayID: row.ReplayID, PlayerKey: row.PlayerKey}] = sessionAPM{APM: row.APM, EAPM: row.EAPM, LeaveSec: row.LeaveSec, Dropped: row.Dropped}
 	}
 	return out, nil
 }

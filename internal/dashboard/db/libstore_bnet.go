@@ -80,3 +80,21 @@ func (s *LibStore) ListBnetGameTimes(_ context.Context, auroraID int64, since ti
 	}
 	return s.games.TimesSince(auroraID, since), nil
 }
+
+// GetBnetLastGameAtByToons reports when each named toon was last seen playing
+// in the game archive, whoever's profile fetch happened to report the game.
+func (s *LibStore) GetBnetLastGameAtByToons(_ context.Context, toons []string) (map[string]time.Time, error) {
+	if s.games == nil || len(toons) == 0 {
+		return map[string]time.Time{}, nil
+	}
+	return s.games.LastGameByToons(toons), nil
+}
+
+// GetBnetGatewaysByToons reports a gateway we already have evidence for, per
+// toon, so a backfill does not sweep gateways blind for an answer we hold.
+func (s *LibStore) GetBnetGatewaysByToons(_ context.Context, toons []string) (map[string]int64, error) {
+	if len(toons) == 0 {
+		return map[string]int64{}, nil
+	}
+	return s.bnet.GatewaysByToons(toons), nil
+}

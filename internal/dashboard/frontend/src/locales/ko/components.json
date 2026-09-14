@@ -60,6 +60,7 @@
   "session.record.wins": "승리",
   "session.record.losses": "패배",
   "session.record.undecided": "미결",
+  "session.record.dropped": "연결 끊김",
   "session.stat.winRate": "승률 {value}%",
   "session.stat.avgApm": "평균 APM",
   "session.stat.eapm": "EAPM {value}",

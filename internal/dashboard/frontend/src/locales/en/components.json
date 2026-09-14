@@ -60,6 +60,7 @@
   "session.record.wins": "Wins",
   "session.record.losses": "Losses",
   "session.record.undecided": "Undecided",
+  "session.record.dropped": "Dropped",
   "session.stat.winRate": "{value}% wins",
   "session.stat.avgApm": "Avg APM",
   "session.stat.eapm": "{value} EAPM",

@@ -151,15 +151,45 @@ func TestRegularFreshness(t *testing.T) {
 	// observation the person is demoted rather than dropped: a game within the
 	// hour is still a game within three days, and that much is still true.
 	t.Run("a stale observation cannot support the live tier", func(t *testing.T) {
-		lastSeen := now.Add(-10 * time.Minute)
+		// The game must be as old as the look, or the game would itself be the
+		// fresher look — see the subtest below.
 		stale := now.Add(-regularsObservationWindow - time.Minute)
-		if got := regularFreshness(lastSeen, stale, now); got != regularFreshnessLately {
+		if got := regularFreshness(stale, stale, now); got != regularFreshnessLately {
 			t.Errorf("freshness = %q, want a demotion to %q", got, regularFreshnessLately)
 		}
 		// Right at the window it still counts, so a sweep landing on schedule
 		// never blinks the row off.
-		if got := regularFreshness(lastSeen, now.Add(-regularsObservationWindow), now); got != regularFreshnessNow {
+		atWindow := now.Add(-regularsObservationWindow)
+		if got := regularFreshness(now.Add(-10*time.Minute), atWindow, now); got != regularFreshnessNow {
 			t.Errorf("freshness = %q, want %q at the window boundary", got, regularFreshnessNow)
+		}
+	})
+
+	// The whole point of the synergy: a game we already hold is a look we
+	// already took, whoever paid for it — the watcher ingesting the replay of
+	// the game just played, or a fetch made for some other surface that
+	// happened to report it. Without this the row waits on a request of its own
+	// to say what we already know, and the person the user finished playing two
+	// minutes ago reads as absent.
+	t.Run("a known game is its own observation", func(t *testing.T) {
+		justPlayed := now.Add(-2 * time.Minute)
+		for _, tc := range []struct {
+			name     string
+			observed time.Time
+		}{
+			{"never fetched at all", time.Time{}},
+			{"last fetched long past the max age", now.Add(-20 * time.Hour)},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				if got := regularFreshness(justPlayed, tc.observed, now); got != regularFreshnessNow {
+					t.Errorf("freshness = %q, want %q", got, regularFreshnessNow)
+				}
+			})
+		}
+		// It cannot flatter the picture either: an old game is still an old
+		// game, and dates the look no later than itself.
+		if got := regularFreshness(now.Add(-20*time.Hour), time.Time{}, now); got != "" {
+			t.Errorf("freshness = %q, want an old game to stay silent", got)
 		}
 	})
 
@@ -220,5 +250,63 @@ func TestPlayerTimeInGame(t *testing.T) {
 	// A leave stamp past the recording is not usable.
 	if got := playerTimeInGame(1500, 9000); got != 1500 {
 		t.Errorf("got %d, want the recording clamped to 1500", got)
+	}
+}
+
+func TestGatewayOrderForPutsKnownFirst(t *testing.T) {
+	fallback := []int64{30, 20, 10}
+
+	if got := gatewayOrderFor(0, fallback); len(got) != 3 || got[0] != 30 {
+		t.Fatalf("with nothing known the sweep is unchanged, got %v", got)
+	}
+
+	// One request instead of three: the gateway we have evidence for goes
+	// first, and is not asked twice.
+	got := gatewayOrderFor(10, fallback)
+	want := []int64{10, 30, 20}
+	if len(got) != len(want) {
+		t.Fatalf("order = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("order = %v, want %v", got, want)
+		}
+	}
+}
+
+func TestRefreshRegularsSkipsWhatWeAlreadyObserved(t *testing.T) {
+	now := time.Date(2026, 9, 12, 19, 0, 0, 0, time.UTC)
+	regulars := []sessionRegular{
+		// Seen a moment ago by some route that cost us nothing: a request here
+		// could only repeat what we hold.
+		{PlayerKey: "fresh", refreshToon: "fresh", gateway: 30, observedAt: now.Add(-time.Minute)},
+		// Last looked at longer ago than a sweep, so worth the request.
+		{PlayerKey: "stale", refreshToon: "stale", gateway: 30, observedAt: now.Add(-2 * regularsRefreshEvery)},
+		// Never looked at.
+		{PlayerKey: "unknown", refreshToon: "unknown", gateway: 30},
+	}
+
+	var targets []string
+	for _, regular := range regulars {
+		if !regular.observedAt.IsZero() && now.Sub(regular.observedAt) < regularsObservationGoodEnough {
+			continue
+		}
+		targets = append(targets, regular.PlayerKey)
+	}
+
+	if len(targets) != 2 || targets[0] != "stale" || targets[1] != "unknown" {
+		t.Fatalf("targets = %v, want the stale and never-seen regulars only", targets)
+	}
+}
+
+// The skip must not stretch the sweep: an observation between the interval and
+// the wider tolerance the live tier allows still earns a request, or someone
+// who started playing in between would go unnoticed for two sweeps.
+func TestRegularsObservationGoodEnoughIsTighterThanTheTier(t *testing.T) {
+	if regularsObservationGoodEnough >= regularsRefreshEvery {
+		t.Fatalf("good-enough %v must sit under the sweep interval %v", regularsObservationGoodEnough, regularsRefreshEvery)
+	}
+	if regularsObservationGoodEnough >= regularsObservationWindow {
+		t.Fatalf("good-enough %v must be tighter than the tier's tolerance %v", regularsObservationGoodEnough, regularsObservationWindow)
 	}
 }

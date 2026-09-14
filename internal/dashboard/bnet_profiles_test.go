@@ -194,3 +194,49 @@ func TestGetOrFetchBnetProfile_MaxAgeForcesRefetch(t *testing.T) {
 		t.Errorf("max_age below the 1min floor must not force a refetch of a just-fetched row: cached=%v calls=%d", res.Cached, calls)
 	}
 }
+
+// Every fresh answer is announced from the one place answers land, whatever the
+// caller wanted it for: a profile fetched to put a flag on a player carries
+// that player's recent games and everyone in them, so it is as much an answer
+// about who is around as the regulars sweep's own request is.
+func TestFetchAndCacheBnetProfileAnnouncesTheAnswer(t *testing.T) {
+	d := newTestDashboard(t)
+	d.libraryHub.observationWindow = 20 * time.Millisecond
+	ctx := context.Background()
+
+	var payload string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, payload)
+	}))
+	defer srv.Close()
+	d.bnetAddr.Store(srv.Listener.Addr().String())
+
+	_, ch, unsubscribe := d.libraryHub.subscribe()
+	defer unsubscribe()
+
+	payload = `{"aurora_id": 0, "game_results": [], "replays": [], "toons": []}`
+	if _, err := d.getOrFetchBnetProfile(ctx, "NoSuchToon", 10, bnetfacade.PriorityUser, 0); err != nil {
+		t.Fatalf("miss: %v", err)
+	}
+	// A gateway sweep is mostly misses, and a miss observes nobody: it dates
+	// no row and is indexed nowhere, so it must not wake the page.
+	if got := drainObservations(t, ch, 10*d.libraryHub.observationWindow); got != 0 {
+		t.Fatalf("a not-found answer broadcast %d times, want silence", got)
+	}
+
+	payload = `{"aurora_id": 99, "battle_tag": "Fresh#1", "country_code": "DE"}`
+	if _, err := d.getOrFetchBnetProfile(ctx, "Fresh", 20, bnetfacade.PriorityUser, 0); err != nil {
+		t.Fatalf("hit: %v", err)
+	}
+	if got := drainObservations(t, ch, 10*d.libraryHub.observationWindow); got != 1 {
+		t.Fatalf("a found answer broadcast %d times, want 1", got)
+	}
+
+	// A cache hit is not a new answer and has nothing to announce.
+	if _, err := d.getOrFetchBnetProfile(ctx, "Fresh", 20, bnetfacade.PriorityUser, 0); err != nil {
+		t.Fatalf("cached: %v", err)
+	}
+	if got := drainObservations(t, ch, 10*d.libraryHub.observationWindow); got != 0 {
+		t.Fatalf("a cache hit broadcast %d times, want silence", got)
+	}
+}

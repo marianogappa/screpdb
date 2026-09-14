@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/marianogappa/screpdb/internal/crashreport"
@@ -84,6 +85,20 @@ var libraryEventUpgrader = websocket.Upgrader{
 	CheckOrigin: func(_ *http.Request) bool { return true },
 }
 
+// observationEventType tells the browser that a fresh Battle.net answer has
+// landed, so the surfaces built from those answers can pick it up. It rides
+// this socket because this is the server's one push channel to the page, not
+// because it has anything to do with the replay library.
+const observationEventType = "observation"
+
+// observationThrottle bounds how often a run of landing answers wakes the page.
+// A sweep of the user's regulars lands one answer every couple of seconds for a
+// minute or more, and each one is worth showing the moment it arrives — but a
+// burst released by the facade's token bucket is not worth one refetch each.
+// The window is short enough that a row still appears to update as its answer
+// arrives.
+const observationThrottle = 2 * time.Second
+
 // libraryHub turns the library's progress and corpus events into the browser's
 // event stream.
 type libraryHub struct {
@@ -91,10 +106,52 @@ type libraryHub struct {
 	progress    library.ProgressState
 	lastError   string
 	subscribers map[chan libraryEventMessage]struct{}
+
+	// observationWindow is the throttle, held as a field so tests need not
+	// wait it out; observationTimer is non-nil exactly while a window is open,
+	// and observationPending records that answers landed inside one.
+	observationWindow  time.Duration
+	observationTimer   *time.Timer
+	observationPending bool
 }
 
 func newLibraryHub() *libraryHub {
-	return &libraryHub{subscribers: map[chan libraryEventMessage]struct{}{}}
+	return &libraryHub{
+		subscribers:       map[chan libraryEventMessage]struct{}{},
+		observationWindow: observationThrottle,
+	}
+}
+
+// publishObservation announces that a fresh answer landed. The first one goes
+// out at once — the point of the signal is that the page stops waiting for the
+// rest — and any that land inside the window are carried by one trailing
+// broadcast, so the last answer of a sweep is never the one nobody hears.
+func (h *libraryHub) publishObservation() {
+	h.mu.Lock()
+	if h.observationTimer != nil {
+		h.observationPending = true
+		h.mu.Unlock()
+		return
+	}
+	h.observationTimer = time.AfterFunc(h.observationWindow, h.flushObservation)
+	h.mu.Unlock()
+	h.broadcast(libraryEventMessage{Type: observationEventType})
+}
+
+func (h *libraryHub) flushObservation() {
+	defer crashreport.GuardNonFatal(nil)
+	h.mu.Lock()
+	pending := h.observationPending
+	h.observationPending = false
+	if pending {
+		h.observationTimer = time.AfterFunc(h.observationWindow, h.flushObservation)
+	} else {
+		h.observationTimer = nil
+	}
+	h.mu.Unlock()
+	if pending {
+		h.broadcast(libraryEventMessage{Type: observationEventType})
+	}
 }
 
 // Watch consumes the library's event channel until it closes.

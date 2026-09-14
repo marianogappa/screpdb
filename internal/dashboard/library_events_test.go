@@ -1,10 +1,17 @@
 package dashboard
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
+	"github.com/marianogappa/screpdb/internal/bnetfacade"
 	"github.com/marianogappa/screpdb/internal/library"
 )
 
@@ -135,5 +142,120 @@ func TestJsonMarshal(t *testing.T) {
 	}
 	if decoded["type"] != "status" || decoded["status"] != "watching" {
 		t.Fatalf("unexpected: %s", data)
+	}
+}
+
+// drainObservations collects observation events off a subscription until the
+// stream goes quiet for the given grace period.
+func drainObservations(t *testing.T, ch chan libraryEventMessage, quiet time.Duration) int {
+	t.Helper()
+	count := 0
+	for {
+		select {
+		case msg, ok := <-ch:
+			if !ok {
+				return count
+			}
+			if msg.Type == observationEventType {
+				count++
+			}
+		case <-time.After(quiet):
+			return count
+		}
+	}
+}
+
+func TestPublishObservationAnnouncesTheFirstAnswerAtOnce(t *testing.T) {
+	hub := newLibraryHub()
+	hub.observationWindow = 20 * time.Millisecond
+	_, ch, unsubscribe := hub.subscribe()
+	defer unsubscribe()
+
+	hub.publishObservation()
+
+	// The whole point of the signal: the page is told the moment one answer
+	// lands, not once the sweep that produced it has finished.
+	select {
+	case msg := <-ch:
+		if msg.Type != observationEventType {
+			t.Fatalf("first message = %q, want %q", msg.Type, observationEventType)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("the first answer must be announced immediately, not held for the window")
+	}
+}
+
+func TestPublishObservationCoalescesABurstButKeepsTheLastAnswer(t *testing.T) {
+	hub := newLibraryHub()
+	hub.observationWindow = 20 * time.Millisecond
+	_, ch, unsubscribe := hub.subscribe()
+	defer unsubscribe()
+
+	// A burst the facade's token bucket released all at once.
+	for i := 0; i < 10; i++ {
+		hub.publishObservation()
+	}
+
+	// One leading broadcast plus exactly one trailing one for the other nine:
+	// the burst is not worth ten refetches, but the answers that arrived
+	// inside the window must not be the ones nobody hears about.
+	if got := drainObservations(t, ch, 10*hub.observationWindow); got != 2 {
+		t.Fatalf("broadcasts = %d, want 2 (one leading, one trailing)", got)
+	}
+
+	// And the hub quiesces rather than ticking forever.
+	if got := drainObservations(t, ch, 10*hub.observationWindow); got != 0 {
+		t.Fatalf("broadcasts after the burst = %d, want silence", got)
+	}
+	hub.mu.Lock()
+	pendingTimer := hub.observationTimer
+	hub.mu.Unlock()
+	if pendingTimer != nil {
+		t.Fatal("the window must close once no more answers land")
+	}
+}
+
+// The end of the wire: an answer landing anywhere in the server reaches a
+// browser that is sitting on the events socket, without it having asked.
+func TestObservationReachesAConnectedBrowser(t *testing.T) {
+	d := newTestDashboard(t)
+	d.libraryHub.observationWindow = 20 * time.Millisecond
+
+	server := httptest.NewServer(d.setupRouter())
+	defer server.Close()
+
+	bridge := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `{"aurora_id": 99, "battle_tag": "Fresh#1", "country_code": "DE"}`)
+	}))
+	defer bridge.Close()
+	d.bnetAddr.Store(bridge.Listener.Addr().String())
+
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/api/custom/library/events"
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial %s: %v", wsURL, err)
+	}
+	defer conn.Close()
+
+	if _, err := d.getOrFetchBnetProfile(context.Background(), "Fresh", 20, bnetfacade.PriorityUser, 0); err != nil {
+		t.Fatalf("fetch: %v", err)
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if err := conn.SetReadDeadline(deadline); err != nil {
+			t.Fatal(err)
+		}
+		_, raw, err := conn.ReadMessage()
+		if err != nil {
+			t.Fatalf("no observation reached the socket: %v", err)
+		}
+		var msg libraryEventMessage
+		if err := json.Unmarshal(raw, &msg); err != nil {
+			t.Fatalf("decode %s: %v", raw, err)
+		}
+		if msg.Type == observationEventType {
+			return
+		}
 	}
 }

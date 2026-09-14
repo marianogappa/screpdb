@@ -285,6 +285,45 @@ func (c *BnetCache) FetchedAtByToons(toons []string) map[string]time.Time {
 	return out
 }
 
+// GatewaysByToons maps each player key to a gateway we have evidence it lives
+// on, from a profile we fetched for that toon or from the alternate accounts a
+// profile we fetched for someone else listed.
+//
+// The alternates are the interesting half. A profile payload names every toon
+// on the account along with its gateway, so one fetch tells us where a handful
+// of toons live — including ones we have never fetched. Without this a
+// backfill has to sweep the gateway list blind, spending up to five requests
+// to learn what an answer we already hold could have told us for free.
+func (c *BnetCache) GatewaysByToons(toons []string) map[string]int64 {
+	wanted := playerKeySet(toons)
+	out := make(map[string]int64, len(wanted))
+	if len(wanted) == 0 {
+		return out
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, p := range c.entries {
+		if !p.Found {
+			continue
+		}
+		if key := library.PlayerKey(p.Toon); p.Gateway != 0 {
+			if _, ok := wanted[key]; ok {
+				out[key] = p.Gateway
+			}
+		}
+		for _, t := range p.Toons {
+			key := library.PlayerKey(t.Toon)
+			if _, ok := wanted[key]; !ok || t.Gateway == 0 {
+				continue
+			}
+			if _, known := out[key]; !known {
+				out[key] = int64(t.Gateway)
+			}
+		}
+	}
+	return out
+}
+
 // AuroraIDsByToons returns the distinct aurora ids of the found profiles whose
 // toon is one of the given normalised player keys.
 func (c *BnetCache) AuroraIDsByToons(toons []string) []int64 {

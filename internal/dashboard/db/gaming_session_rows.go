@@ -38,6 +38,9 @@ type SessionPlayerAPMRow struct {
 	// they never left: an SC:R replay keeps recording after a player drops, so
 	// the replay's own length is the whole game, not this player's share of it.
 	LeaveSec int64
+	// Dropped records that this player's Leave Game carried the "Dropped"
+	// reason: they lost the connection rather than deciding to stop playing.
+	Dropped bool
 }
 
 // CoPlayerRow is one person the user has shared games with, and how often.

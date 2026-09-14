@@ -38,7 +38,10 @@ function RecordValue({ stats }) {
     // Noto fonts, so a correction tuned on one platform is a defect on the
     // others. No filled glyph means "we never learned the result" anyway.
     { key: 'undecided', icon: '\u2753', value: stats.undecided || 0, title: t('session.record.undecided') },
-  ].filter((part) => part.key !== 'undecided' || part.value > 0);
+    // A drop is its own outcome, not a loss and not an unknown: the game often
+    // did resolve against the user, but losing the link is not losing the game.
+    { key: 'dropped', icon: '\u{1F50C}', value: stats.dropped || 0, title: t('session.record.dropped') },
+  ].filter((part) => (part.key !== 'undecided' && part.key !== 'dropped') || part.value > 0);
   return (
     <span className="session-record">
       {parts.map((part) => (
