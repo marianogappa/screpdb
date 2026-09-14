@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.28.0](https://github.com/marianogappa/screpdb/compare/v1.27.0...v1.28.0) (2026-09-14)
+
+
+### Features
+
+* **dashboard:** separate dropped games from losses and push Battle.net observations as they land ([#426](https://github.com/marianogappa/screpdb/issues/426)) ([0389f55](https://github.com/marianogappa/screpdb/commit/0389f55be6a92e7ea72dbd256064e1151b55c148)), closes [#424](https://github.com/marianogappa/screpdb/issues/424)
+
 ## [1.27.0](https://github.com/marianogappa/screpdb/compare/v1.26.0...v1.27.0) (2026-09-13)
 
 
