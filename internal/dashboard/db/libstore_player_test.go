@@ -47,7 +47,7 @@ func TestLibStoreGetPlayerOverviewSummary(t *testing.T) {
 	s := newTestLibStore(t,
 		librarytest.Replay(
 			librarytest.WithPlayer("Flash", librarytest.Team(1), librarytest.Winner(), librarytest.APM(200, 150)),
-			librarytest.WithPlayer("Bisu", librarytest.Team(2), librarytest.APM(0, 0)),
+			librarytest.WithPlayer("Bisu", librarytest.Team(2), librarytest.Loser(), librarytest.APM(0, 0)),
 		),
 		librarytest.Replay(
 			librarytest.WithPlayer("Flash", librarytest.Team(1), librarytest.APM(100, 50)),
@@ -59,7 +59,9 @@ func TestLibStoreGetPlayerOverviewSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The second game has no winner, so it is undecided rather than a loss.
+	// The second game resolved for nobody, so it is undecided rather than a loss.
+	// Losing is now recorded explicitly: "not the winner" no longer implies it,
+	// because a replay routinely cannot tell the two apart.
 	want := &PlayerOverviewSummaryRow{PlayerName: "Flash", GamesPlayed: 2, Wins: 1, Undecided: 1, AverageAPM: 150, AverageEAPM: 100}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("summary = %+v, want %+v", got, want)

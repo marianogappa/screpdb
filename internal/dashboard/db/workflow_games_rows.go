@@ -1,6 +1,8 @@
 package db
 
-import ()
+import (
+	"github.com/marianogappa/screpdb/internal/models"
+)
 
 type WorkflowGameListRow struct {
 	ReplayID           int64
@@ -24,6 +26,11 @@ type WorkflowGamePlayerRow struct {
 	Race     string
 	Team     int64
 	IsWinner bool
+	// Outcome is this player's own result, which IsWinner cannot express: a
+	// replay often cannot tell a loss from a game it never saw resolve.
+	Outcome models.GameOutcome
+	// Dropped is its own outcome, neither a loss nor an unknown.
+	Dropped bool
 }
 
 type WorkflowPlayerPatternRow struct {

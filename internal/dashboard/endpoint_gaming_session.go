@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/marianogappa/screpdb/internal/models"
 	"net/http"
 	"sort"
 	"strings"
@@ -288,7 +289,6 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 	apmSumByRace := map[string]float64{}
 	apmCountByRace := map[string]int{}
 	for _, game := range games {
-		winnerKnown := gameWinnerKnown(game)
 		if game.MapName != "" {
 			stats.Maps[game.MapName]++
 		}
@@ -303,15 +303,20 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 				stats.RacesPlayed[player.Race]++
 			}
 			own, haveOwn := apm[gamePlayerKey{ReplayID: game.ReplayID, PlayerKey: normalizePlayerKey(player.PlayerKey)}]
+			// The record is about the user, so it reads their own outcome rather
+			// than their team's: they can lose a game their side goes on to win,
+			// and a replay establishes the personal result far more often than the
+			// team one. The per-game glyph in the list beside it reads the same
+			// field, so the two always agree.
 			switch {
 			case own.Dropped:
 				stats.Dropped++
-			case !winnerKnown:
-				stats.Undecided++
-			case player.IsWinner:
+			case player.Outcome == models.OutcomeWon.String():
 				stats.Wins++
-			default:
+			case player.Outcome == models.OutcomeLost.String():
 				stats.Losses++
+			default:
+				stats.Undecided++
 			}
 			if haveOwn && own.APM > 0 {
 				apmSum += float64(own.APM)

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/marianogappa/screpdb/internal/library"
+	"github.com/marianogappa/screpdb/internal/models"
 )
 
 const bnetGameSource = "AssumedBattleNet"
@@ -58,9 +59,10 @@ func (s *LibStore) GetPlayerOverviewSummary(_ context.Context, playerKey string)
 			name = p.Name
 		}
 		out.GamesPlayed++
-		if p.IsWinner() {
+		switch p.Outcome() {
+		case models.OutcomeWon:
 			out.Wins++
-		} else if !replayWinnerKnown(ref.Replay) {
+		case models.OutcomeUnknown:
 			out.Undecided++
 		}
 		if p.APM > 0 {
@@ -137,7 +139,7 @@ func playersLabel(r *library.Replay) string {
 func replayWinnerKnown(r *library.Replay) bool {
 	for i := range r.Players {
 		p := &r.Players[i]
-		if humanNonObserver(p) && p.IsWinner() {
+		if humanNonObserver(p) && p.TeamOutcome() == models.OutcomeWon {
 			return true
 		}
 	}
@@ -148,7 +150,7 @@ func winnersLabel(r *library.Replay) string {
 	names := make([]string, 0, len(r.Players))
 	for i := range r.Players {
 		p := &r.Players[i]
-		if humanNonObserver(p) && p.IsWinner() {
+		if humanNonObserver(p) && p.TeamOutcome() == models.OutcomeWon {
 			names = append(names, p.Name)
 		}
 	}
@@ -181,7 +183,7 @@ func (s *LibStore) ListPlayerMatchups(_ context.Context, playerKey string) ([]Pl
 		}
 		replays[key][ref.Replay.ID] = struct{}{}
 		games[key] = int64(len(replays[key]))
-		if self.IsWinner() {
+		if self.Outcome() == models.OutcomeWon {
 			wins[key]++
 		}
 	}
@@ -215,7 +217,7 @@ func (s *LibStore) ListRaceSections(_ context.Context, playerKey string) ([]Race
 			counts[race] = row
 		}
 		row.GameCount++
-		if p.IsWinner() {
+		if p.Outcome() == models.OutcomeWon {
 			row.Wins++
 		}
 	}

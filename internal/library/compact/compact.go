@@ -221,9 +221,8 @@ func compactPlayers(data *models.ReplayData, ords *ordinals) []library.Player {
 		if p.IsObserver {
 			lp.Flags |= library.PlayerObserver
 		}
-		if p.IsWinner {
-			lp.Flags |= library.PlayerWinner
-		}
+		lp.Flags |= library.OutcomeFlags(p.Outcome, library.PlayerWon, library.PlayerLost)
+		lp.Flags |= library.OutcomeFlags(p.TeamOutcome, library.PlayerTeamWon, library.PlayerTeamLost)
 		// The saver of a connection-lost replay is the one player who really
 		// dropped, and the only one their own file never records leaving.
 		if data.SaverDisconnect != nil && data.SaverDisconnect.SaverPlayerID == p.PlayerID {

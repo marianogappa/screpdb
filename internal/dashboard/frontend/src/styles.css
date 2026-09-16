@@ -2470,11 +2470,18 @@ button.workflow-nav-update-available:disabled {
 
 /* Scoped to --main: the gaming-session panel reuses this table with five
    columns and no Teams cell, so positional widths must not leak into it. */
-.workflow-games-list-table--main th:nth-child(1) { width: 9%; }
-.workflow-games-list-table--main th:nth-child(2) { width: 49%; }
-.workflow-games-list-table--main th:nth-child(3) { width: 11%; }
-.workflow-games-list-table--main th:nth-child(4) { width: 5%; }
-.workflow-games-list-table--main th:nth-child(5) { width: 26%; }
+/* Column widths key off the header's own class, not its position: an optional
+   column used to shift every nth-child rule one to the right and silently hand
+   Players the Map column's width. */
+.workflow-games-list-table--main th.wgl-head-played { width: 9%; }
+.workflow-games-list-table--main th.wgl-head-result { width: 3%; }
+.workflow-games-list-table--main th.wgl-head-players { width: 49%; }
+.workflow-games-list-table--main th.wgl-head-map { width: 11%; }
+.workflow-games-list-table--main th.wgl-head-time { width: 5%; }
+.workflow-games-list-table--main th.wgl-head-featuring { width: 26%; }
+
+/* The result column takes its 3% out of Players, the only column with slack. */
+.workflow-games-list-table--main:has(th.wgl-head-result) th.wgl-head-players { width: 46%; }
 
 /* Featuring is the derived insight — the only thing here that the .rep filename
    does not already give you — so it wraps in full rather than cropping to a
@@ -7353,5 +7360,14 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
+}
+
+/* Your own result in the session game list: one glyph, sized to sit between the
+   date and the players without stealing width from either. */
+.workflow-games-list-table--main th.wgl-head-result,
+.workflow-games-list-table--main td.workflow-games-list-result {
+  padding-right: 0;
+  text-align: center;
   white-space: nowrap;
 }

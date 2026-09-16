@@ -89,7 +89,7 @@ func TestFromReplayDataCorpus(t *testing.T) {
 				if lp.ReplayPlayerID != p.PlayerID || lp.Name != p.Name || lp.Key != strings.ToLower(strings.TrimSpace(p.Name)) {
 					t.Fatalf("ordinal %d: %+v vs %+v", i, lp, p)
 				}
-				if lp.IsObserver() != p.IsObserver || lp.IsWinner() != p.IsWinner || lp.Team != p.Team {
+				if lp.IsObserver() != p.IsObserver || lp.TeamOutcome() != p.TeamOutcome || lp.Team != p.Team {
 					t.Fatalf("ordinal %d flags mismatch", i)
 				}
 				if lp.Race != library.ParseRace(p.Race) || lp.Type != library.ParsePlayerType(p.Type) || lp.Type == library.PlayerTypeUnknown {

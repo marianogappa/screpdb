@@ -111,16 +111,12 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 
 		apm := 0
 		eapm := 0
-		isWinner := false
 
 		if rep.Computed != nil && i < len(rep.Computed.PlayerDescs) {
 			pd := rep.Computed.PlayerDescs[i]
 			apm = int(pd.APM)
 			eapm = int(pd.EAPM)
 
-			if rep.Computed.WinnerTeam != 0 && player.Team == rep.Computed.WinnerTeam {
-				isWinner = true
-			}
 		}
 
 		var startX, startY, startOclock *int
@@ -148,7 +144,6 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 			IsObserver:          player.Observer,
 			APM:                 apm,
 			EAPM:                eapm, // Effective APM (APM excluding actions deemed ineffective)
-			IsWinner:            isWinner,
 			StartLocationX:      startX,
 			StartLocationY:      startY,
 			StartLocationOclock: startOclock,
@@ -267,6 +262,12 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		// teams. Runs even with incomplete team assignment — a clear surviving
 		// coalition is still a clear winner.
 		DeriveWinnersFromFinalTopology(data.Players, data.Commands, ar, repSaverPID)
+	} else {
+		// Same rule over the static teams. screpdb no longer reads screp's
+		// WinnerTeam: "largest remaining team wins" credits a side whenever the
+		// saver's unrecorded exit makes the tally uneven, which is an artefact of
+		// the recording stopping rather than evidence about the game.
+		DeriveWinnersFromLeaves(data.Players, data.Commands, repSaverPID)
 	}
 
 	// A saver disconnect masquerades as "everyone else left", and both winner paths
@@ -276,7 +277,7 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	if md := DetectMassDisconnectEnd(data.Players, data.Commands, repSaverPID, data.Replay.DurationSeconds); md != nil {
 		for _, p := range data.Players {
 			if p != nil {
-				p.IsWinner = false
+				p.TeamOutcome = models.OutcomeUnknown
 			}
 		}
 		patternOrchestrator.SetMassDisconnectEnd(md.SaverPID, md.ClusterSecond)
@@ -320,6 +321,18 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	// Operates over the whole game, not just the early window: Forge rebuilt
 	// mid-Ground-Weapons-1, double-clicked Lurker Aspect, and similar.
 	data.Commands = cmddedup.Dedup(data.Commands)
+
+	// Both winner paths read "no Leave Game command" as "still alive", so a
+	// coalition eliminated just before the recording ends is credited the win it
+	// actually lost. Reads the filtered, deduped stream — a double-issued Train
+	// says no more about surviving production than a single one, and the
+	// thresholds were calibrated here. A mass disconnect has already cleared every
+	// winner by this point, which the correction leaves alone.
+	CorrectEliminatedWinners(data.Players, data.Commands, data.Replay.DurationSeconds, allianceResult, repSaverPID)
+
+	// Each player's own result is a separate question from their team's, and one
+	// the replay can usually answer even when the team result stays unknown.
+	DerivePlayerOutcomes(data.Players, data.Commands, repSaverPID)
 
 	// Rewrite Right Click → Load / LoadBunker when the target is a transport, so
 	// the drop detector can pair Loads against later Unloads. Must precede pattern

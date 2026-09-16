@@ -3949,7 +3949,25 @@ function App() {
   // the main one's columns, widths and row behaviour the way the session view
   // had (it was missing the data-table and --main classes, so it lost the
   // column widths, and it linked player names, which swallowed the row click).
-  const renderGamesListTable = ({ games, tableRef = null, selectedId = null }) => {
+  // Your own result in one glyph, for the session view. The crown is the app's
+  // winning idiom everywhere else, so it is the one used here too; a drop is
+  // neither a loss nor an unknown and keeps its own mark.
+  const renderYourResultCell = (game) => {
+    const you = (game.players || []).find((p) => String(p?.name ?? '').endsWith(YOU_MARKER));
+    if (!you) return null;
+    if (you.dropped) {
+      return <span title={t('player.result.disconnected')} aria-label={t('player.result.disconnected')}>{'\u{1F50C}'}</span>;
+    }
+    if (you.outcome === 'won') {
+      return <span title={t('player.result.win')} aria-label={t('player.result.win')}>{'\u{1F451}'}</span>;
+    }
+    if (you.outcome === 'lost') {
+      return <span title={t('player.result.loss')} aria-label={t('player.result.loss')}>{'\u274c'}</span>;
+    }
+    return <span title={t('player.result.undetermined')} aria-label={t('player.result.undetermined')}>{'\u2753'}</span>;
+  };
+
+  const renderGamesListTable = ({ games, tableRef = null, selectedId = null, showYourResult = false }) => {
     // When every game on screen is 2-player (1v1) the Players column is narrow
     // and the table leaves horizontal slack; bump type/icons up from the
     // compact 8-player defaults to use it.
@@ -3962,11 +3980,12 @@ function App() {
       >
         <thead>
           <tr>
-            <th>{t('games.table.played')}</th>
-            <th>{t('games.table.players')}</th>
-            <th>{t('common.map')}</th>
-            <th>{t('common.time')}</th>
-            <th>{t('common.featuring')}</th>
+            <th className="wgl-head-played">{t('games.table.played')}</th>
+            {showYourResult ? <th className="wgl-head-result" aria-label="" /> : null}
+            <th className="wgl-head-players">{t('games.table.players')}</th>
+            <th className="wgl-head-map">{t('common.map')}</th>
+            <th className="wgl-head-time">{t('common.time')}</th>
+            <th className="wgl-head-featuring">{t('common.featuring')}</th>
           </tr>
         </thead>
         <tbody>
@@ -3980,6 +3999,7 @@ function App() {
               onClick={() => openMainGame(game.replay_id)}
             >
               <td className="workflow-games-list-played">{formatRelativeReplayDate(game.replay_date)}</td>
+              {showYourResult ? <td className="workflow-games-list-result">{renderYourResultCell(game)}</td> : null}
               <td className="workflow-games-list-players">{renderMainGameListPlayers(game, false)}</td>
               <td className="workflow-games-list-map">{renderMapNameWithKind(game.map_name, game.map_kind)}</td>
               <td className="workflow-games-list-duration">{formatDuration(game.duration_seconds)}</td>
@@ -5646,7 +5666,7 @@ function App() {
               </button>
             )}
           >
-            {renderGamesListTable({ games: gamingSession?.games || [] })}
+            {renderGamesListTable({ games: gamingSession?.games || [], showYourResult: true })}
           </GamingSessionPanel>
         )}
 

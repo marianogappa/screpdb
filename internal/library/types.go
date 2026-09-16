@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/marianogappa/screpdb/internal/models"
 )
 
 // ErrNotFound is returned by lookups for ids that are not in the corpus.
@@ -146,15 +148,20 @@ const (
 
 func (f Flags) Has(flag Flags) bool { return f&flag != 0 }
 
-type PlayerFlags uint8
+type PlayerFlags uint16
 
 const (
 	PlayerObserver PlayerFlags = 1 << iota
-	PlayerWinner
 	PlayerDropped
 	PlayerLeft
 	PlayerHasStartLocation
 	PlayerHasViewport
+	// Two results, two pairs of bits, because each is independently unknown far
+	// too often to encode as a bool. See models.GameOutcome.
+	PlayerWon
+	PlayerLost
+	PlayerTeamWon
+	PlayerTeamLost
 )
 
 func (f PlayerFlags) Has(flag PlayerFlags) bool { return f&flag != 0 }
@@ -316,7 +323,38 @@ type Player struct {
 }
 
 func (p *Player) IsObserver() bool { return p.Flags.Has(PlayerObserver) }
-func (p *Player) IsWinner() bool   { return p.Flags.Has(PlayerWinner) }
+
+// Outcome is what happened to this player; TeamOutcome is what happened to
+// their side. They differ whenever someone leaves a game their team then wins
+// or loses without them, so only 1v1 guarantees they agree.
+func (p *Player) Outcome() models.GameOutcome { return outcomeOf(p.Flags, PlayerWon, PlayerLost) }
+
+func (p *Player) TeamOutcome() models.GameOutcome {
+	return outcomeOf(p.Flags, PlayerTeamWon, PlayerTeamLost)
+}
+
+func outcomeOf(flags, won, lost PlayerFlags) models.GameOutcome {
+	switch {
+	case flags.Has(won):
+		return models.OutcomeWon
+	case flags.Has(lost):
+		return models.OutcomeLost
+	default:
+		return models.OutcomeUnknown
+	}
+}
+
+// OutcomeFlags encodes an outcome into the won/lost bit pair it belongs in.
+func OutcomeFlags(o models.GameOutcome, won, lost PlayerFlags) PlayerFlags {
+	switch o {
+	case models.OutcomeWon:
+		return won
+	case models.OutcomeLost:
+		return lost
+	default:
+		return 0
+	}
+}
 func (p *Player) IsHuman() bool    { return p.Type == PlayerTypeHuman }
 func (p *Player) IsComputer() bool { return p.Type.IsComputer() }
 

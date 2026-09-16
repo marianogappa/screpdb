@@ -30,7 +30,7 @@ const formatClock = (iso) => {
 function RecordValue({ stats }) {
   const t = useT();
   const parts = [
-    { key: 'wins', icon: '\u2705', value: stats.wins || 0, title: t('session.record.wins') },
+    { key: 'wins', icon: '\u{1F451}', value: stats.wins || 0, title: t('session.record.wins') },
     { key: 'losses', icon: '\u274c', value: stats.losses || 0, title: t('session.record.losses') },
     // ❓ looks lighter than the two glyphs beside it, because it is a thin
     // stroke in a box they fill. That is left alone deliberately: the fix would

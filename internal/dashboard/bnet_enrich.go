@@ -16,6 +16,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/persist"
+	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/winsandbox"
 )
 
@@ -343,7 +344,7 @@ func enrichEligible(r *library.Replay, youKeys map[string]struct{}, snap *librar
 	youWinner := false
 	for i := range r.Players {
 		p := &r.Players[i]
-		if p.IsWinner() {
+		if p.TeamOutcome() == models.OutcomeWon {
 			winnerDetermined = true
 		}
 		if !p.IsObserver() && p.Type == library.PlayerTypeHuman {
@@ -353,7 +354,7 @@ func enrichEligible(r *library.Replay, youKeys map[string]struct{}, snap *librar
 			if you == nil {
 				you = p
 			}
-			if p.IsWinner() {
+			if p.Outcome() == models.OutcomeWon {
 				youWinner = true
 			}
 		}

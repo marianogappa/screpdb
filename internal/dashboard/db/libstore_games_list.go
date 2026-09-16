@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/marianogappa/screpdb/internal/library"
+	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/markers"
 )
 
@@ -371,7 +372,9 @@ func (s *LibStore) ListReplayPlayers(ctx context.Context, replayIDs []int64) ([]
 				Name:     p.Name,
 				Race:     p.Race.String(),
 				Team:     int64(p.Team),
-				IsWinner: p.IsWinner(),
+				IsWinner: p.Outcome() == models.OutcomeWon,
+				Outcome:  p.Outcome(),
+				Dropped:  p.Flags.Has(library.PlayerDropped),
 			})
 		}
 	}
@@ -471,7 +474,7 @@ func (s *LibStore) ListCurrentPlayersForReplayIDs(ctx context.Context, playerKey
 				PlayerID: rowPlayerID(r, uint8(i)),
 				Name:     p.Name,
 				Race:     p.Race.String(),
-				IsWinner: p.IsWinner(),
+				IsWinner: p.Outcome() == models.OutcomeWon,
 				APM:      int64(p.APM),
 				EAPM:     int64(p.EAPM),
 			})

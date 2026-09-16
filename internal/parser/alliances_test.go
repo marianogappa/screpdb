@@ -593,10 +593,10 @@ func TestDeriveWinnersFromLeaves_LargestRemainingTeamWins(t *testing.T) {
 		leaveCmd(700, b),
 	}
 	DeriveWinnersFromLeaves(players, cmds, nil)
-	if a.IsWinner || b.IsWinner {
+	if a.TeamOutcome == models.OutcomeWon || b.TeamOutcome == models.OutcomeWon {
 		t.Fatalf("team 1 leavers should not be winners")
 	}
-	if !c.IsWinner || !d.IsWinner {
+	if c.TeamOutcome != models.OutcomeWon || d.TeamOutcome != models.OutcomeWon {
 		t.Fatalf("team 2 should win (largest remaining)")
 	}
 }
@@ -605,7 +605,7 @@ func TestDeriveWinnersFromLeaves_NoLeaves_NoWinner(t *testing.T) {
 	a := &models.Player{PlayerID: 1, Type: "Human", Team: 1}
 	b := &models.Player{PlayerID: 2, Type: "Human", Team: 2}
 	DeriveWinnersFromLeaves([]*models.Player{a, b}, nil, nil)
-	if a.IsWinner || b.IsWinner {
+	if a.TeamOutcome == models.OutcomeWon || b.TeamOutcome == models.OutcomeWon {
 		t.Fatalf("no winners should be set when no leave commands recorded")
 	}
 }
@@ -617,10 +617,10 @@ func TestDeriveWinnersFromLeaves_RepSaverVirtualLeave(t *testing.T) {
 	cmds := []*models.Command{leaveCmd(800, a)}
 	saverPID := byte(2)
 	DeriveWinnersFromLeaves(players, cmds, &saverPID)
-	if a.IsWinner {
+	if a.TeamOutcome == models.OutcomeWon {
 		t.Fatalf("team 1 (left) should not win")
 	}
-	if !b.IsWinner {
+	if b.TeamOutcome != models.OutcomeWon {
 		t.Fatalf("team 2 (rep saver) should win via virtual-leave tie-break")
 	}
 }
@@ -634,7 +634,7 @@ func TestDeriveWinnersFromLeaves_TieNoTotalLeave_NoWinner(t *testing.T) {
 	cmds := []*models.Command{leaveCmd(500, a), leaveCmd(600, c)}
 	DeriveWinnersFromLeaves(players, cmds, nil)
 	for _, p := range players {
-		if p.IsWinner {
+		if p.TeamOutcome == models.OutcomeWon {
 			t.Fatalf("no winner expected with sizes tied and not all left")
 		}
 	}
@@ -651,7 +651,7 @@ func TestDeriveWinnersFromLeaves_AllLeftLastLeaverTeamWins(t *testing.T) {
 		leaveCmd(300, c), leaveCmd(400, d),
 	}
 	DeriveWinnersFromLeaves(players, cmds, nil)
-	if !c.IsWinner || !d.IsWinner {
+	if c.TeamOutcome != models.OutcomeWon || d.TeamOutcome != models.OutcomeWon {
 		t.Fatalf("expected team 2 to win via last-leaver tie-break")
 	}
 }
@@ -662,7 +662,7 @@ func TestDeriveWinnersFromLeaves_AllSameTeam_NoWinner(t *testing.T) {
 	players := []*models.Player{a, b}
 	cmds := []*models.Command{leaveCmd(100, a)}
 	DeriveWinnersFromLeaves(players, cmds, nil)
-	if a.IsWinner || b.IsWinner {
+	if a.TeamOutcome == models.OutcomeWon || b.TeamOutcome == models.OutcomeWon {
 		t.Fatalf("no winners with single-team game")
 	}
 }
@@ -673,7 +673,7 @@ func TestDeriveWinnersFromLeaves_AllComputerTeam_NoWinner(t *testing.T) {
 	players := []*models.Player{a, b}
 	cmds := []*models.Command{leaveCmd(100, a)}
 	DeriveWinnersFromLeaves(players, cmds, nil)
-	if a.IsWinner || b.IsWinner {
+	if a.TeamOutcome == models.OutcomeWon || b.TeamOutcome == models.OutcomeWon {
 		t.Fatalf("expected no winner when one team is all computers")
 	}
 }
@@ -697,10 +697,10 @@ func TestDeriveWinnersFromFinalTopology_StableTeamAlliedLate(t *testing.T) {
 	ar := AnalyzeAlliances(players, cmds, 900, emptyActivity())
 	DeriveWinnersFromFinalTopology(players, cmds, ar, nil)
 
-	if !a.IsWinner || !b.IsWinner {
+	if a.TeamOutcome != models.OutcomeWon || b.TeamOutcome != models.OutcomeWon {
 		t.Fatalf("stable allied pair should win")
 	}
-	if c.IsWinner || d.IsWinner {
+	if c.TeamOutcome == models.OutcomeWon || d.TeamOutcome == models.OutcomeWon {
 		t.Fatalf("leavers should not win")
 	}
 }
@@ -734,10 +734,10 @@ func TestDeriveWinnersFromFinalTopology_WinnerSpansOriginalTeams(t *testing.T) {
 	}
 
 	DeriveWinnersFromFinalTopology(players, cmds, ar, nil)
-	if !b.IsWinner || !c.IsWinner {
+	if b.TeamOutcome != models.OutcomeWon || c.TeamOutcome != models.OutcomeWon {
 		t.Fatalf("end-of-game coalition {2,3} should win")
 	}
-	if a.IsWinner || d.IsWinner {
+	if a.TeamOutcome == models.OutcomeWon || d.TeamOutcome == models.OutcomeWon {
 		t.Fatalf("leavers 1 and 4 should not win")
 	}
 }
@@ -753,10 +753,10 @@ func TestDeriveWinnersFromFinalTopology_FFALastManStanding(t *testing.T) {
 		t.Fatalf("no alliances expected in FFA")
 	}
 	DeriveWinnersFromFinalTopology(players, cmds, ar, nil)
-	if a.IsWinner || b.IsWinner {
+	if a.TeamOutcome == models.OutcomeWon || b.TeamOutcome == models.OutcomeWon {
 		t.Fatalf("leavers should not win")
 	}
-	if !c.IsWinner {
+	if c.TeamOutcome != models.OutcomeWon {
 		t.Fatalf("last player standing should win")
 	}
 }
@@ -765,14 +765,14 @@ func TestDeriveWinnersFromFinalTopology_FFALastManStanding(t *testing.T) {
 // determined (no leaves), existing IsWinner flags are left untouched.
 func TestDeriveWinnersFromFinalTopology_NonDestructive(t *testing.T) {
 	a, b, c := p(1, 1), p(2, 2), p(3, 3)
-	a.IsWinner = true // pretend a prior stage credited this player
+	a.TeamOutcome = models.OutcomeWon // pretend a prior stage credited this player
 	players := []*models.Player{a, b, c}
 	ar := AnalyzeAlliances(players, nil, 300, emptyActivity())
 	DeriveWinnersFromFinalTopology(players, nil, ar, nil)
-	if !a.IsWinner {
+	if a.TeamOutcome != models.OutcomeWon {
 		t.Fatalf("existing winner flag should be preserved when undecidable")
 	}
-	if b.IsWinner || c.IsWinner {
+	if b.TeamOutcome == models.OutcomeWon || c.TeamOutcome == models.OutcomeWon {
 		t.Fatalf("no new winners should be set when undecidable")
 	}
 }

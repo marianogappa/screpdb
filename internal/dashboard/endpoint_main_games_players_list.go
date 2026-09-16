@@ -343,6 +343,8 @@ func (d *Dashboard) populateWorkflowGameListPlayers(items []workflowGameListItem
 		player.Race = row.Race
 		player.Team = row.Team
 		player.IsWinner = row.IsWinner
+		player.Outcome = row.Outcome.String()
+		player.Dropped = row.Dropped
 		player.PlayerKey = normalizePlayerKey(row.Name)
 		player.CountryCode = countryCodes[player.PlayerKey]
 		player.PrimaryBadge = d.primaryIdentityBadge(player.PlayerKey)

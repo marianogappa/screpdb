@@ -133,6 +133,8 @@ type workflowGameListPlayer struct {
 	Race         string         `json:"race"`
 	Team         int64          `json:"team"`
 	IsWinner     bool           `json:"is_winner"`
+	Outcome      string         `json:"outcome,omitempty"`
+	Dropped      bool           `json:"dropped,omitempty"`
 	CountryCode  string         `json:"country_code,omitempty"`
 	PrimaryBadge *IdentityBadge `json:"primary_badge,omitempty"`
 }

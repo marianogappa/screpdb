@@ -42,6 +42,32 @@ type Replay struct {
 }
 
 // Player represents a player in the replay
+// GameOutcome is a result a replay frequently cannot establish: StarCraft
+// records who chose to leave, never who was destroyed, and the recording stops
+// when its saver exits. OutcomeUnknown is therefore a normal answer, not a
+// failure — roughly a third of a real corpus for the team question.
+type GameOutcome uint8
+
+const (
+	OutcomeUnknown GameOutcome = iota
+	OutcomeWon
+	OutcomeLost
+)
+
+func (o GameOutcome) String() string {
+	switch o {
+	case OutcomeWon:
+		return "won"
+	case OutcomeLost:
+		return "lost"
+	default:
+		return "unknown"
+	}
+}
+
+// Known reports whether the outcome was established at all.
+func (o GameOutcome) Known() bool { return o != OutcomeUnknown }
+
 type Player struct {
 	ID         int64  `json:"id"`
 	ReplayID   int64  `json:"replay_id"`
@@ -55,9 +81,16 @@ type Player struct {
 	IsObserver bool   `json:"is_observer"`
 
 	// Computed fields
-	APM      int  `json:"apm"`
-	EAPM     int  `json:"eapm"` // Effective APM (APM excluding actions deemed ineffective)
-	IsWinner bool `json:"is_winner"`
+	APM  int `json:"apm"`
+	EAPM int `json:"eapm"` // Effective APM (APM excluding actions deemed ineffective)
+
+	// Two different results, because they are two different questions and a
+	// replay can answer one without the other. Outcome is what happened to this
+	// player; TeamOutcome is what happened to their side. They diverge whenever
+	// someone leaves a game their team goes on to win or lose without them, so
+	// they only coincide by necessity in 1v1.
+	Outcome     GameOutcome `json:"outcome"`
+	TeamOutcome GameOutcome `json:"team_outcome"`
 
 	// Start location (if available)
 	StartLocationX      *int `json:"start_location_x,omitempty"`
