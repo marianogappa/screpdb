@@ -160,6 +160,7 @@ const (
 	// too often to encode as a bool. See models.GameOutcome.
 	PlayerWon
 	PlayerLost
+	PlayerDisconnected
 	PlayerTeamWon
 	PlayerTeamLost
 )
@@ -327,7 +328,12 @@ func (p *Player) IsObserver() bool { return p.Flags.Has(PlayerObserver) }
 // Outcome is what happened to this player; TeamOutcome is what happened to
 // their side. They differ whenever someone leaves a game their team then wins
 // or loses without them, so only 1v1 guarantees they agree.
-func (p *Player) Outcome() models.GameOutcome { return outcomeOf(p.Flags, PlayerWon, PlayerLost) }
+func (p *Player) Outcome() models.GameOutcome {
+	if p.Flags.Has(PlayerDisconnected) {
+		return models.OutcomeDisconnected
+	}
+	return outcomeOf(p.Flags, PlayerWon, PlayerLost)
+}
 
 func (p *Player) TeamOutcome() models.GameOutcome {
 	return outcomeOf(p.Flags, PlayerTeamWon, PlayerTeamLost)
@@ -345,12 +351,19 @@ func outcomeOf(flags, won, lost PlayerFlags) models.GameOutcome {
 }
 
 // OutcomeFlags encodes an outcome into the won/lost bit pair it belongs in.
+// A disconnect only applies to the player's own result, so the team pair maps
+// it to nothing.
 func OutcomeFlags(o models.GameOutcome, won, lost PlayerFlags) PlayerFlags {
 	switch o {
 	case models.OutcomeWon:
 		return won
 	case models.OutcomeLost:
 		return lost
+	case models.OutcomeDisconnected:
+		if won == PlayerWon {
+			return PlayerDisconnected
+		}
+		return 0
 	default:
 		return 0
 	}

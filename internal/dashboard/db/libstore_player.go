@@ -62,7 +62,9 @@ func (s *LibStore) GetPlayerOverviewSummary(_ context.Context, playerKey string)
 		switch p.Outcome() {
 		case models.OutcomeWon:
 			out.Wins++
-		case models.OutcomeUnknown:
+		// A disconnect is not a loss: the game went on and resolved without the
+		// recording. It is kept out of the decided count for the same reason.
+		case models.OutcomeUnknown, models.OutcomeDisconnected:
 			out.Undecided++
 		}
 		if p.APM > 0 {

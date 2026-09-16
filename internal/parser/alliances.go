@@ -649,7 +649,7 @@ func dominantResolvedTeams(snapshots []AllianceSnapshot, durationSec int, active
 //
 // Computers are excluded for the same reason they are elsewhere: they never
 // leave, so their presence would make every coalition holding one look alive.
-func soleSurvivingCoalition(players []*models.Player, commands []*models.Command, teamOf map[byte]byte, repSaverPID *byte) (byte, bool) {
+func soleSurvivingCoalition(players []*models.Player, commands []*models.Command, teamOf map[byte]byte, repSaverPID *byte, allied bool) (byte, bool) {
 	left := map[byte]bool{}
 	for _, cmd := range commands {
 		if cmd == nil || cmd.ActionType != "Leave Game" {
@@ -677,6 +677,15 @@ func soleSurvivingCoalition(players []*models.Player, commands []*models.Command
 		}
 		if !left[p.PlayerID] {
 			surviving[team] = true
+		}
+	}
+	// StarCraft refuses to start a game with one side, so when these groups came
+	// from the end-of-game alliance topology a single one means the survivors
+	// allied into it, and everybody in it won. Static teams carry no such
+	// meaning: one of those is a malformed or single-sided replay.
+	if allied && len(coalitions) == 1 {
+		for team := range coalitions {
+			return team, true
 		}
 	}
 	if len(coalitions) < 2 {
@@ -735,7 +744,7 @@ func DeriveWinnersFromLeaves(players []*models.Player, commands []*models.Comman
 		teamOf[p.PlayerID] = p.Team
 	}
 
-	if team, ok := soleSurvivingCoalition(players, commands, teamOf, repSaverPID); ok {
+	if team, ok := soleSurvivingCoalition(players, commands, teamOf, repSaverPID, false); ok {
 		markWinnersByTeam(players, teamOf, team)
 	}
 }
@@ -757,7 +766,7 @@ func DeriveWinnersFromFinalTopology(players []*models.Player, commands []*models
 	}
 	coalitionOf := assignCoalitions(players, finalTeams)
 
-	team, ok := soleSurvivingCoalition(players, commands, coalitionOf, repSaverPID)
+	team, ok := soleSurvivingCoalition(players, commands, coalitionOf, repSaverPID, true)
 	if !ok {
 		return
 	}

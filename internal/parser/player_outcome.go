@@ -90,3 +90,21 @@ func hasLeft(leftAt map[byte]int, pid byte) bool {
 	_, ok := leftAt[pid]
 	return ok
 }
+
+// ApplySaverDisconnectOutcomes overrides every result in a game the saver
+// dropped out of. Their leave cluster is a phantom — the other players did not
+// quit, the recording merely stopped seeing them — so no winner can be read off
+// it. The saver is the one player whose result is known: they disconnected.
+func ApplySaverDisconnectOutcomes(players []*models.Player, saverPID byte) {
+	for _, p := range players {
+		if p == nil {
+			continue
+		}
+		p.TeamOutcome = models.OutcomeUnknown
+		if p.PlayerID == saverPID && !p.IsObserver {
+			p.Outcome = models.OutcomeDisconnected
+			continue
+		}
+		p.Outcome = models.OutcomeUnknown
+	}
+}

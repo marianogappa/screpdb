@@ -45,6 +45,8 @@ func registerGameResultEvidence() {
 				{"Who won, after the recording ends", "No", "Battle.net, only when some account reports a win"},
 				{"Who won, in a game nobody finished", "No", "Not derivable — no winner is credited"},
 				{"That a player lost, in a game with no winner", "No", "Inferred: they quit, or the recording ended at their exit, while a rival was still in the game"},
+				{"That a player lost the connection", "Partly — their leave carries a Dropped reason", "Read directly, or inferred for the saver from the phantom leave cluster their drop writes"},
+				{"Who won, after the saver dropped", "No", "Not derivable — the game continues off the recording"},
 			}
 		},
 		Verify: func() error {
@@ -79,18 +81,20 @@ func registerGameResultProcedure() {
 			"side whenever that unrecorded exit leaves the tally uneven. Declining to " +
 			"answer is a valid outcome and a common one — about 40% of a 3,364-replay " +
 			"corpus — because a game the recording does not see the end of has no winner " +
-			"to report.",
+			"to report. A disconnect is not a loss and not an unknown: it is its own " +
+			"outcome, and the only one a dropped saver's recording establishes.",
 		Columns: []string{"Step", "Condition", "Outcome"},
 		Rows: func() [][]string {
 			return [][]string{
-				{"1", "The recording ends in a cluster of leaves caused by the saver dropping", "Nobody wins — the game never resolved"},
-				{"2", "Fewer than two coalitions", "Nobody wins — there is nothing to compare"},
+				{"1", "Exactly one coalition remains, because the survivors allied into it", "Everybody in it won: StarCraft will not start a game with one side, so this can only be an alliance"},
+				{"2", "Fewer than two coalitions for any other reason", "Nobody wins — there is nothing to compare"},
 				{"3", "Exactly one coalition still holds a player who never left", "That coalition wins"},
 				{"4", "No coalition does — everyone but the saver quit", "The saver's coalition wins: they were the last player in the game"},
 				{"5", "...and no saver is known either, typically an observer-saved replay", "The last leaver's coalition wins"},
 				{"6", "Two or more coalitions still hold a player, and all but one show the elimination signature below", "The remaining coalition wins — a destroyed player issues no Leave Game"},
 				{"7", "A coalition credited by 3, 4 or 5 itself shows that signature, and does not contain the saver", "Overturned: the last-acting rival's coalition wins instead"},
 				{"8", "None of the above", "Nobody wins"},
+				{"last", "The recording ends in a cluster of leaves caused by the saver losing the connection", "Overrides everything above: the saver's own result is the disconnect, and nobody's is known — the game went on and resolved, just not on this recording"},
 			}
 		},
 		Verify: func() error {

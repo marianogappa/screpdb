@@ -270,18 +270,15 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		DeriveWinnersFromLeaves(data.Players, data.Commands, repSaverPID)
 	}
 
-	// A saver disconnect masquerades as "everyone else left", and both winner paths
-	// would credit the saver's team a phantom win — the game never resolved, so
-	// nobody wins (issue #358). Also threaded into worldstate so the timeline
-	// condenses the phantom leave cluster into one connection-lost event.
-	if md := DetectMassDisconnectEnd(data.Players, data.Commands, repSaverPID, data.Replay.DurationSeconds); md != nil {
-		for _, p := range data.Players {
-			if p != nil {
-				p.TeamOutcome = models.OutcomeUnknown
-			}
-		}
-		patternOrchestrator.SetMassDisconnectEnd(md.SaverPID, md.ClusterSecond)
-		data.SaverDisconnect = &models.SaverDisconnect{SaverPlayerID: md.SaverPID, Second: md.ClusterSecond}
+	// A saver disconnect masquerades as "everyone else left", so it is detected
+	// here and threaded into worldstate, which condenses the phantom leave cluster
+	// into one connection-lost event (issue #358). The outcomes it implies are
+	// applied after every other pass has run, so nothing can credit a winner off
+	// the phantom leaves.
+	saverDisconnect := DetectMassDisconnectEnd(data.Players, data.Commands, repSaverPID, data.Replay.DurationSeconds)
+	if saverDisconnect != nil {
+		patternOrchestrator.SetMassDisconnectEnd(saverDisconnect.SaverPID, saverDisconnect.ClusterSecond)
+		data.SaverDisconnect = &models.SaverDisconnect{SaverPlayerID: saverDisconnect.SaverPID, Second: saverDisconnect.ClusterSecond}
 	}
 
 	// Reconstruct selection state from the raw stream's Select/Hotkey tags, which
@@ -333,6 +330,14 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	// Each player's own result is a separate question from their team's, and one
 	// the replay can usually answer even when the team result stays unknown.
 	DerivePlayerOutcomes(data.Players, data.Commands, repSaverPID)
+
+	// The saver lost the connection: the game went on without them and very
+	// likely resolved, just not on this recording. So the result is unknown for
+	// everyone rather than a loss, and the saver's own outcome is the disconnect
+	// itself, which is neither.
+	if saverDisconnect != nil {
+		ApplySaverDisconnectOutcomes(data.Players, saverDisconnect.SaverPID)
+	}
 
 	// Rewrite Right Click → Load / LoadBunker when the target is a transport, so
 	// the drop detector can pair Loads against later Unloads. Must precede pattern

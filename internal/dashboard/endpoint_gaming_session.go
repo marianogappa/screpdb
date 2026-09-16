@@ -309,7 +309,7 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 			// team one. The per-game glyph in the list beside it reads the same
 			// field, so the two always agree.
 			switch {
-			case own.Dropped:
+			case own.Dropped || player.Outcome == models.OutcomeDisconnected.String():
 				stats.Dropped++
 			case player.Outcome == models.OutcomeWon.String():
 				stats.Wins++

@@ -52,6 +52,10 @@ const (
 	OutcomeUnknown GameOutcome = iota
 	OutcomeWon
 	OutcomeLost
+	// OutcomeDisconnected is a player losing the connection, which is neither a
+	// loss nor an unknown: the game carries on without them and resolves, just
+	// not on their recording.
+	OutcomeDisconnected
 )
 
 func (o GameOutcome) String() string {
@@ -60,6 +64,8 @@ func (o GameOutcome) String() string {
 		return "won"
 	case OutcomeLost:
 		return "lost"
+	case OutcomeDisconnected:
+		return "disconnected"
 	default:
 		return "unknown"
 	}

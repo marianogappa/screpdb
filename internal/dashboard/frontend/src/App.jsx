@@ -3955,7 +3955,7 @@ function App() {
   const renderYourResultCell = (game) => {
     const you = (game.players || []).find((p) => String(p?.name ?? '').endsWith(YOU_MARKER));
     if (!you) return null;
-    if (you.dropped) {
+    if (you.dropped || you.outcome === 'disconnected') {
       return <span title={t('player.result.disconnected')} aria-label={t('player.result.disconnected')}>{'\u{1F50C}'}</span>;
     }
     if (you.outcome === 'won') {
