@@ -679,16 +679,12 @@ func soleSurvivingCoalition(players []*models.Player, commands []*models.Command
 			surviving[team] = true
 		}
 	}
-	// StarCraft refuses to start a game with one side, so when these groups came
-	// from the end-of-game alliance topology a single one means the survivors
-	// allied into it, and everybody in it won. Static teams carry no such
-	// meaning: one of those is a malformed or single-sided replay.
-	if allied && len(coalitions) == 1 {
-		for team := range coalitions {
-			return team, true
-		}
-	}
-	if len(coalitions) < 2 {
+	// Two sides are needed for any of this to mean anything. One is either a game
+	// against the computer (whose slots are excluded above, leaving the humans
+	// alone) or a malformed replay — except when these groups came from the
+	// end-of-game alliance topology, where a single one means the survivors
+	// allied into it. StarCraft will not start a one-sided game.
+	if len(coalitions) == 0 || (len(coalitions) < 2 && !allied) {
 		return 0, false
 	}
 	if len(surviving) == 1 {

@@ -1005,23 +1005,22 @@ Applied in order; the first step that yields an answer wins, and reaching the en
 
 | Step | Condition | Outcome |
 | --- | --- | --- |
-| 1 | Exactly one coalition remains, because the survivors allied into it | Everybody in it won: StarCraft will not start a game with one side, so this can only be an alliance |
-| 2 | Fewer than two coalitions for any other reason | Nobody wins — there is nothing to compare |
-| 3 | Exactly one coalition still holds a player who never left | That coalition wins |
-| 4 | No coalition does — everyone but the saver quit | The saver's coalition wins: they were the last player in the game |
-| 5 | ...and no saver is known either, typically an observer-saved replay | The last leaver's coalition wins |
-| 6 | Two or more coalitions still hold a player, and all but one show the elimination signature below | The remaining coalition wins — a destroyed player issues no Leave Game |
-| 7 | A coalition credited by 3, 4 or 5 itself shows that signature, and does not contain the saver | Overturned: the last-acting rival's coalition wins instead |
-| 8 | None of the above | Nobody wins |
+| 1 | Only one side, because every opponent is a computer, or none at all | Nobody wins — there is nothing to compare. An end-of-game alliance is the exception: StarCraft will not start a one-sided game, so a single coalition there means the survivors allied into it |
+| 2 | Exactly one coalition still holds a player who never left | That coalition wins — including the allied case, where it holds everyone left in the game |
+| 3 | No coalition does — everyone but the saver quit | The saver's coalition wins: they were the last player in the game |
+| 4 | ...and no saver is known either, typically an observer-saved replay | The last leaver's coalition wins |
+| 5 | Two or more coalitions still hold a player, and all but one show the elimination signature below | The remaining coalition wins — a destroyed player issues no Leave Game |
+| 6 | A coalition credited by 2, 3 or 4 itself shows that signature, and does not contain the saver | Overturned: the last-acting rival's coalition wins instead |
+| 7 | None of the above | Nobody wins |
 | last | The recording ends in a cluster of leaves caused by the saver losing the connection | Overrides everything above: the saver's own result is the disconnect, and nobody's is known — the game went on and resolved, just not on this recording |
 
 ## Who won: the elimination signature
 
-Steps 6 and 7 of the procedure. A coalition that was wiped out cannot act after its last unit dies, and cannot Build, Train or Upgrade once its production buildings are gone — while the coalition that beat it keeps doing both until the recording stops. All four gates must hold. Times are seconds, measured back from the end of the recording, and each side is scored by its liveliest member. Chat and Leave Game are excluded from "acting": a player with nothing left on the map can still type, and can still quit. Calibrated on 59 hand-labelled games; it is tuned to miss rather than to misfire, so it never replaces a correct credit with a wrong one.
+Steps 5 and 6 of the procedure. A coalition that was wiped out cannot act after its last unit dies, and cannot Build, Train or Upgrade once its production buildings are gone — while the coalition that beat it keeps doing both until the recording stops. All four gates must hold. Times are seconds, measured back from the end of the recording, and each side is scored by its liveliest member. Chat and Leave Game are excluded from "acting": a player with nothing left on the map can still type, and can still quit. Calibrated on 59 hand-labelled games; it is tuned to miss rather than to misfire, so it never replaces a correct credit with a wrong one.
 
 | Gate | Requirement | Value |
 | --- | --- | --- |
-| Saver provenance | When overturning (step 7) the credited coalition must not contain the replay saver — the recording ends at their exit, so their silence measures their own departure, not their team's. Step 6 needs no such guard: its evidence is the losers being provably dead, never the winner looking alive | — |
+| Saver provenance | When overturning (step 6) the credited coalition must not contain the replay saver — the recording ends at their exit, so their silence measures their own departure, not their team's. Step 5 needs no such guard: its evidence is the losers being provably dead, never the winner looking alive | — |
 | Action lead | The credited coalition stopped acting at least this long before the last surviving rival did | 3 |
 | Production lead | ...and stopped producing at least this long before that rival did | 15 |
 | Production floor | ...and had produced nothing at all for at least this long | 20 |
