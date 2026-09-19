@@ -9,6 +9,7 @@ import (
 
 	"github.com/marianogappa/screpdb/internal/gamerules"
 	"github.com/marianogappa/screpdb/internal/library"
+	"github.com/marianogappa/screpdb/internal/models"
 )
 
 func (s *LibStore) GetReplaySummary(ctx context.Context, replayID int64) (*ReplaySummaryRow, error) {
@@ -86,7 +87,7 @@ func (s *LibStore) ListReplayPlayersForDetail(ctx context.Context, replayID int6
 			Color:    library.Strings.Name(p.Color),
 			Race:     p.Race.String(),
 			Team:     int64(p.Team),
-			IsWinner: p.IsWinner(),
+			TeamWon:  p.TeamOutcome() == models.OutcomeWon,
 			APM:      int64(p.APM),
 			EAPM:     int64(p.EAPM),
 		}

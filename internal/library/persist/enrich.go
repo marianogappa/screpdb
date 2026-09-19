@@ -50,9 +50,13 @@ type EnrichEntry struct {
 	PollErrors    int       `json:"poll_errors,omitempty"`
 	ProfileMisses int       `json:"profile_misses,omitempty"`
 	LastBestSize  int64     `json:"last_best_size,omitempty"`
-	Status        string    `json:"status"`
-	Reason        string    `json:"reason,omitempty"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	// TriedMD5s are the co-player copies already downloaded and found not to
+	// resolve the winner. The point of the download is a decided game, not a
+	// bigger file, so an unhelpful copy is recorded and the next one tried.
+	TriedMD5s []string  `json:"tried_md5s,omitempty"`
+	Status    string    `json:"status"`
+	Reason    string    `json:"reason,omitempty"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // Terminal reports whether the entry reached a durable stop condition.
@@ -114,6 +118,23 @@ func (q *EnrichQueue) Upsert(entry EnrichEntry) error {
 }
 
 // Live returns the non-terminal entries, in no particular order.
+// All returns every entry, terminal ones included. Live() is the right call
+// for normal work; this exists for one-shot repairs of entries an older rule
+// closed wrongly.
+func (q *EnrichQueue) All() ([]EnrichEntry, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	file, err := q.fileLocked()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]EnrichEntry, 0, len(file.Entries))
+	for _, entry := range file.Entries {
+		out = append(out, entry)
+	}
+	return out, nil
+}
+
 func (q *EnrichQueue) Live() ([]EnrichEntry, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()

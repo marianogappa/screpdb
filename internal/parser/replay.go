@@ -111,16 +111,12 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 
 		apm := 0
 		eapm := 0
-		isWinner := false
 
 		if rep.Computed != nil && i < len(rep.Computed.PlayerDescs) {
 			pd := rep.Computed.PlayerDescs[i]
 			apm = int(pd.APM)
 			eapm = int(pd.EAPM)
 
-			if rep.Computed.WinnerTeam != 0 && player.Team == rep.Computed.WinnerTeam {
-				isWinner = true
-			}
 		}
 
 		var startX, startY, startOclock *int
@@ -148,7 +144,6 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 			IsObserver:          player.Observer,
 			APM:                 apm,
 			EAPM:                eapm, // Effective APM (APM excluding actions deemed ineffective)
-			IsWinner:            isWinner,
 			StartLocationX:      startX,
 			StartLocationY:      startY,
 			StartLocationOclock: startOclock,
@@ -266,21 +261,24 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		// window still gets credited, and a winning coalition may span two display
 		// teams. Runs even with incomplete team assignment — a clear surviving
 		// coalition is still a clear winner.
-		DeriveWinnersFromFinalTopology(data.Players, data.Commands, ar, repSaverPID)
+		data.Replay.TeamOutcomeReason = DeriveWinnersFromFinalTopology(data.Players, data.Commands, ar, repSaverPID)
+	} else {
+		// Same rule over the static teams. screpdb no longer reads screp's
+		// WinnerTeam: "largest remaining team wins" credits a side whenever the
+		// saver's unrecorded exit makes the tally uneven, which is an artefact of
+		// the recording stopping rather than evidence about the game.
+		data.Replay.TeamOutcomeReason = DeriveWinnersFromLeaves(data.Players, data.Commands, repSaverPID)
 	}
 
-	// A saver disconnect masquerades as "everyone else left", and both winner paths
-	// would credit the saver's team a phantom win — the game never resolved, so
-	// nobody wins (issue #358). Also threaded into worldstate so the timeline
-	// condenses the phantom leave cluster into one connection-lost event.
-	if md := DetectMassDisconnectEnd(data.Players, data.Commands, repSaverPID, data.Replay.DurationSeconds); md != nil {
-		for _, p := range data.Players {
-			if p != nil {
-				p.IsWinner = false
-			}
-		}
-		patternOrchestrator.SetMassDisconnectEnd(md.SaverPID, md.ClusterSecond)
-		data.SaverDisconnect = &models.SaverDisconnect{SaverPlayerID: md.SaverPID, Second: md.ClusterSecond}
+	// A saver disconnect masquerades as "everyone else left", so it is detected
+	// here and threaded into worldstate, which condenses the phantom leave cluster
+	// into one connection-lost event (issue #358). The outcomes it implies are
+	// applied after every other pass has run, so nothing can credit a winner off
+	// the phantom leaves.
+	saverDisconnect := DetectMassDisconnectEnd(data.Players, data.Commands, repSaverPID, data.Replay.DurationSeconds)
+	if saverDisconnect != nil {
+		patternOrchestrator.SetMassDisconnectEnd(saverDisconnect.SaverPID, saverDisconnect.ClusterSecond)
+		data.SaverDisconnect = &models.SaverDisconnect{SaverPlayerID: saverDisconnect.SaverPID, Second: saverDisconnect.ClusterSecond}
 	}
 
 	// Reconstruct selection state from the raw stream's Select/Hotkey tags, which
@@ -320,6 +318,35 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	// Operates over the whole game, not just the early window: Forge rebuilt
 	// mid-Ground-Weapons-1, double-clicked Lurker Aspect, and similar.
 	data.Commands = cmddedup.Dedup(data.Commands)
+
+	// Both winner paths read "no Leave Game command" as "still alive", so a
+	// coalition eliminated just before the recording ends is credited the win it
+	// actually lost. Reads the filtered, deduped stream — a double-issued Train
+	// says no more about surviving production than a single one, and the
+	// thresholds were calibrated here. A mass disconnect has already cleared every
+	// winner by this point, which the correction leaves alone.
+	if fired, why := CorrectEliminatedWinners(data.Players, data.Commands, data.Replay.DurationSeconds, allianceResult, repSaverPID); fired {
+		data.Replay.TeamOutcomeReason = why
+	}
+
+	// Each player's own result is a separate question from their team's, and one
+	// the replay can usually answer even when the team result stays unknown.
+	if why := DerivePlayerOutcomes(data.Players, data.Commands, data.Replay.DurationSeconds, repSaverPID); why != "" {
+		data.Replay.TeamOutcomeReason = why
+	}
+
+	// The saver lost the connection: the game went on without them and very
+	// likely resolved, just not on this recording. So the result is unknown for
+	// everyone rather than a loss, and the saver's own outcome is the disconnect
+	// itself, which is neither.
+	if saverDisconnect != nil {
+		ApplySaverDisconnectOutcomes(data.Players, saverDisconnect.SaverPID)
+		data.Replay.TeamOutcomeReason = "no winner: the saver lost the connection, and the burst of leaves that writes is not anyone quitting"
+	}
+
+	// Nothing consults Battle.net yet. Saying so explicitly matters: a silent
+	// override is what hides a bug for months.
+	data.Replay.BnetOutcomeSource = "not consulted (no Battle.net tier yet)"
 
 	// Rewrite Right Click → Load / LoadBunker when the target is a transport, so
 	// the drop detector can pair Loads against later Unloads. Must precede pattern

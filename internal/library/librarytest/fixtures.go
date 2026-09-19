@@ -121,8 +121,21 @@ func WithPlayer(name string, opts ...PlayerOption) Option {
 func Race(race library.Race) PlayerOption { return func(p *library.Player) { p.Race = race } }
 func Team(team uint8) PlayerOption        { return func(p *library.Player) { p.Team = team } }
 func Observer() PlayerOption              { return func(p *library.Player) { p.Flags |= library.PlayerObserver } }
-func Winner() PlayerOption                { return func(p *library.Player) { p.Flags |= library.PlayerWinner } }
-func Computer() PlayerOption              { return func(p *library.Player) { p.Type = library.PlayerTypeComputer } }
+func Winner() PlayerOption {
+	return func(p *library.Player) { p.Flags |= library.PlayerResultWon | library.TeamResultWon }
+}
+
+// Loser marks a player whose own result and team result are both a loss.
+func Loser() PlayerOption {
+	return func(p *library.Player) { p.Flags |= library.PlayerResultLost | library.TeamResultLost }
+}
+
+// LostButTeamWon is the case only a team game can produce: someone who left
+// before their side finished winning.
+func LostButTeamWon() PlayerOption {
+	return func(p *library.Player) { p.Flags |= library.PlayerResultLost | library.TeamResultWon }
+}
+func Computer() PlayerOption { return func(p *library.Player) { p.Type = library.PlayerTypeComputer } }
 func Type(t library.PlayerType) PlayerOption {
 	return func(p *library.Player) { p.Type = t }
 }

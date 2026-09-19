@@ -144,23 +144,23 @@ func TestGamingSessionPlayers(t *testing.T) {
 		{
 			ReplayID: 1,
 			Players: []workflowGameListPlayer{
-				{PlayerKey: "me", Name: "Me", Team: 1, IsWinner: true},
-				{PlayerKey: "mate", Name: "Mate", Team: 1, IsWinner: true, Race: "Zerg"},
-				{PlayerKey: "foe", Name: "Foe", Team: 2, IsWinner: false, Race: "Terran"},
+				{PlayerKey: "me", Name: "Me", Team: 1, TeamWon: true, PlayerOutcome: "won"},
+				{PlayerKey: "mate", Name: "Mate", Team: 1, TeamWon: true, PlayerOutcome: "won", Race: "Zerg"},
+				{PlayerKey: "foe", Name: "Foe", Team: 2, TeamWon: false, PlayerOutcome: "lost", Race: "Terran"},
 			},
 		},
 		{
 			ReplayID: 2,
 			Players: []workflowGameListPlayer{
-				{PlayerKey: "me", Name: "Me", Team: 1, IsWinner: false},
-				{PlayerKey: "foe", Name: "Foe", Team: 2, IsWinner: true, Race: "Protoss"},
+				{PlayerKey: "me", Name: "Me", Team: 1, TeamWon: false, PlayerOutcome: "lost"},
+				{PlayerKey: "foe", Name: "Foe", Team: 2, TeamWon: true, PlayerOutcome: "won", Race: "Protoss"},
 			},
 		},
 		{
 			ReplayID: 3,
 			Players: []workflowGameListPlayer{
-				{PlayerKey: "me", Name: "Me", Team: 1, IsWinner: false},
-				{PlayerKey: "foe", Name: "Foe", Team: 2, IsWinner: false, Race: "Protoss"},
+				{PlayerKey: "me", Name: "Me", Team: 1, TeamWon: false},
+				{PlayerKey: "foe", Name: "Foe", Team: 2, TeamWon: false, Race: "Protoss"},
 			},
 		},
 	}
@@ -212,22 +212,22 @@ func TestSummarizeGamingSessionUndecided(t *testing.T) {
 		{
 			ReplayID: 1,
 			Players: []workflowGameListPlayer{
-				{PlayerKey: "me", Team: 1, IsWinner: true},
-				{PlayerKey: "foe", Team: 2, IsWinner: false},
+				{PlayerKey: "me", Team: 1, TeamWon: true, PlayerOutcome: "won"},
+				{PlayerKey: "foe", Team: 2, TeamWon: false, PlayerOutcome: "lost"},
 			},
 		},
 		{
 			ReplayID: 2,
 			Players: []workflowGameListPlayer{
-				{PlayerKey: "me", Team: 1, IsWinner: false},
-				{PlayerKey: "foe", Team: 2, IsWinner: true},
+				{PlayerKey: "me", Team: 1, TeamWon: false, PlayerOutcome: "lost"},
+				{PlayerKey: "foe", Team: 2, TeamWon: true, PlayerOutcome: "won"},
 			},
 		},
 		{
 			ReplayID: 3,
 			Players: []workflowGameListPlayer{
-				{PlayerKey: "me", Team: 1, IsWinner: false},
-				{PlayerKey: "foe", Team: 2, IsWinner: false},
+				{PlayerKey: "me", Team: 1, TeamWon: false},
+				{PlayerKey: "foe", Team: 2, TeamWon: false},
 			},
 		},
 	}
@@ -503,15 +503,15 @@ func TestSummarizeGamingSessionDropped(t *testing.T) {
 		{
 			ReplayID: 1,
 			Players: []workflowGameListPlayer{
-				{PlayerKey: "me", Team: 1, IsWinner: true},
-				{PlayerKey: "foe", Team: 2, IsWinner: false},
+				{PlayerKey: "me", Team: 1, TeamWon: true, PlayerOutcome: "won"},
+				{PlayerKey: "foe", Team: 2, TeamWon: false, PlayerOutcome: "lost"},
 			},
 		},
 		{
 			ReplayID: 2,
 			Players: []workflowGameListPlayer{
-				{PlayerKey: "me", Team: 1, IsWinner: false},
-				{PlayerKey: "foe", Team: 2, IsWinner: true},
+				{PlayerKey: "me", Team: 1, TeamWon: false, PlayerOutcome: "lost"},
+				{PlayerKey: "foe", Team: 2, TeamWon: true, PlayerOutcome: "won"},
 			},
 		},
 		// Resolved against the user, but only because they lost the link: the
@@ -519,8 +519,8 @@ func TestSummarizeGamingSessionDropped(t *testing.T) {
 		{
 			ReplayID: 3,
 			Players: []workflowGameListPlayer{
-				{PlayerKey: "me", Team: 1, IsWinner: false},
-				{PlayerKey: "foe", Team: 2, IsWinner: true},
+				{PlayerKey: "me", Team: 1, TeamWon: false, PlayerOutcome: "lost"},
+				{PlayerKey: "foe", Team: 2, TeamWon: true, PlayerOutcome: "won"},
 			},
 		},
 	}
@@ -547,15 +547,15 @@ func TestGamingSessionPlayersSkipsDroppedGames(t *testing.T) {
 		{
 			ReplayID: 1,
 			Players: []workflowGameListPlayer{
-				{PlayerKey: "me", Team: 1, IsWinner: true},
-				{PlayerKey: "foe", Name: "Foe", Team: 2, IsWinner: false},
+				{PlayerKey: "me", Team: 1, TeamWon: true, PlayerOutcome: "won"},
+				{PlayerKey: "foe", Name: "Foe", Team: 2, TeamWon: false, PlayerOutcome: "lost"},
 			},
 		},
 		{
 			ReplayID: 2,
 			Players: []workflowGameListPlayer{
-				{PlayerKey: "me", Team: 1, IsWinner: false},
-				{PlayerKey: "foe", Name: "Foe", Team: 2, IsWinner: true},
+				{PlayerKey: "me", Team: 1, TeamWon: false, PlayerOutcome: "lost"},
+				{PlayerKey: "foe", Name: "Foe", Team: 2, TeamWon: true, PlayerOutcome: "won"},
 			},
 		},
 	}

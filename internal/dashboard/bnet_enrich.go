@@ -16,6 +16,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/persist"
+	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/winsandbox"
 )
 
@@ -81,6 +82,9 @@ const (
 	// enrichSweepBackoff spaces retries after a full gateway sweep found no
 	// profile that is provably the logged-in account's own.
 	enrichSweepBackoff = 6 * time.Hour
+	// enrichMaxReopenPerRun bounds the one-shot repair of entries an older rule
+	// closed without checking whether their copy named a winner.
+	enrichMaxReopenPerRun = 20
 )
 
 const bnetGameSourceName = "AssumedBattleNet"
@@ -112,12 +116,15 @@ type enrichDeps struct {
 	youKeys           func() map[string]struct{}
 	snapshot          func() *library.Snapshot
 	complete          func() bool
-	profile           func(ctx context.Context, toon string, gateway int64) (enrichProfile, error)
-	gameInfo          func(ctx context.Context, addr, gameID string) (*bnetfacade.GameInfo, error)
-	headSize          func(ctx context.Context, gcsPath string) (int64, error)
-	download          func(ctx context.Context, gcsPath string) ([]byte, error)
-	place             func(destPath string, data []byte) error
-	fileMD5           func(path string) (string, int64, error)
+	// resolvesWinner reports whether a placed copy actually names a winner,
+	// which is the thing the download exists to achieve.
+	resolvesWinner func(path string) bool
+	profile        func(ctx context.Context, toon string, gateway int64) (enrichProfile, error)
+	gameInfo       func(ctx context.Context, addr, gameID string) (*bnetfacade.GameInfo, error)
+	headSize       func(ctx context.Context, gcsPath string) (int64, error)
+	download       func(ctx context.Context, gcsPath string) ([]byte, error)
+	place          func(destPath string, data []byte) error
+	fileMD5        func(path string) (string, int64, error)
 }
 
 type enrichWorker struct {
@@ -196,9 +203,10 @@ func (d *Dashboard) enrichDeps() enrichDeps {
 			}
 			return out
 		},
-		youKeys:  d.loadYouKeys,
-		snapshot: func() *library.Snapshot { return d.library.lib.Snapshot() },
-		complete: func() bool { return d.library.lib.Progress().Complete() },
+		youKeys:        d.loadYouKeys,
+		snapshot:       func() *library.Snapshot { return d.library.lib.Snapshot() },
+		complete:       func() bool { return d.library.lib.Progress().Complete() },
+		resolvesWinner: d.replayNamesAWinner,
 		profile: func(ctx context.Context, toon string, gateway int64) (enrichProfile, error) {
 			res, err := d.getOrFetchBnetProfile(ctx, toon, gateway, bnetfacade.PriorityBackground, enrichProfileMinInterval/2)
 			if err != nil {
@@ -271,6 +279,7 @@ func (w *enrichWorker) tick(ctx context.Context) {
 	if !w.amnestied {
 		w.amnestied = true
 		w.forgiveStaleSchedules(now)
+		w.reopenUnresolved(now)
 	}
 	if w.deps.complete() {
 		w.discover(now)
@@ -343,7 +352,7 @@ func enrichEligible(r *library.Replay, youKeys map[string]struct{}, snap *librar
 	youWinner := false
 	for i := range r.Players {
 		p := &r.Players[i]
-		if p.IsWinner() {
+		if p.TeamOutcome() == models.OutcomeWon {
 			winnerDetermined = true
 		}
 		if !p.IsObserver() && p.Type == library.PlayerTypeHuman {
@@ -353,7 +362,7 @@ func enrichEligible(r *library.Replay, youKeys map[string]struct{}, snap *librar
 			if you == nil {
 				you = p
 			}
-			if p.IsWinner() {
+			if p.PlayerOutcome() == models.OutcomeWon {
 				youWinner = true
 			}
 		}
@@ -558,9 +567,20 @@ func (w *enrichWorker) pollOne(ctx context.Context, now time.Time, addr string, 
 		w.upsert(entry)
 		return
 	}
-	bestSize, bestPath := int64(0), ""
+	tried := map[string]bool{}
+	for _, md5 := range entry.TriedMD5s {
+		tried[md5] = true
+	}
+	bestSize, bestPath, bestMD5 := int64(0), "", ""
+	candidates := 0
 	for _, rep := range info.Replays {
 		if rep.MD5 == entry.MD5 || rep.URL == "" {
+			continue
+		}
+		candidates++
+		// Already downloaded and it did not settle the game; move on rather
+		// than fetching the same bytes forever.
+		if tried[rep.MD5] {
 			continue
 		}
 		gcsPath, err := bnetfacade.GCSReplayPath(rep.URL)
@@ -572,8 +592,18 @@ func (w *enrichWorker) pollOne(ctx context.Context, now time.Time, addr string, 
 			continue
 		}
 		if size > bestSize {
-			bestSize, bestPath = size, gcsPath
+			bestSize, bestPath, bestMD5 = size, gcsPath, rep.MD5
 		}
+	}
+
+	// Every co-player copy has been tried and none of them resolved it. The
+	// game is simply one no recording saw the end of, which is a real outcome
+	// and the loop's floor: the candidate list is finite and fetched up front.
+	if candidates > 0 && bestSize == 0 && len(entry.TriedMD5s) > 0 {
+		entry.Status = persist.EnrichDone
+		entry.Reason = fmt.Sprintf("tried all %d co-player copies; none of them saw the game resolve", len(entry.TriedMD5s))
+		w.upsert(entry)
+		return
 	}
 
 	threshold := int64(float64(entry.SizeBytes) * enrichBetterRatio)
@@ -590,7 +620,7 @@ func (w *enrichWorker) pollOne(ctx context.Context, now time.Time, addr string, 
 			w.scheduleNext(&entry, now)
 		}
 	case bestSize == entry.LastBestSize || settled:
-		w.fetchAndPlace(ctx, &entry, bestPath, bestSize)
+		w.fetchAndPlace(ctx, &entry, bestPath, bestSize, bestMD5)
 	default:
 		// Materially longer but still possibly growing: confirm it is stable
 		// before downloading, so a still-running game is not captured mid-way.
@@ -602,11 +632,23 @@ func (w *enrichWorker) pollOne(ctx context.Context, now time.Time, addr string, 
 	w.upsert(entry)
 }
 
-func (w *enrichWorker) fetchAndPlace(ctx context.Context, entry *persist.EnrichEntry, gcsPath string, size int64) {
+func (w *enrichWorker) fetchAndPlace(ctx context.Context, entry *persist.EnrichEntry, gcsPath string, size int64, md5 string) {
 	dest := library.CompletePathFor(entry.Path)
 	if _, err := iofacade.Stat(dest); err == nil {
-		entry.Status = persist.EnrichDone
-		entry.Reason = "complete copy already on disk"
+		// A copy is already there, but "there" is not "useful": if its own saver
+		// also left early it names no winner, and closing the entry here is what
+		// left such games unresolved forever.
+		if w.deps.resolvesWinner == nil || w.deps.resolvesWinner(dest) {
+			entry.Status = persist.EnrichDone
+			entry.Reason = "complete copy already on disk"
+			return
+		}
+		if sum, _, err := w.deps.fileMD5(dest); err == nil {
+			entry.TriedMD5s = appendUnique(entry.TriedMD5s, sum)
+		}
+		entry.Reason = "the copy on disk names no winner either; trying another"
+		entry.PollErrors = 0
+		w.scheduleNext(entry, w.deps.now())
 		return
 	}
 	data, err := w.deps.download(ctx, gcsPath)
@@ -618,6 +660,16 @@ func (w *enrichWorker) fetchAndPlace(ctx context.Context, entry *persist.EnrichE
 	if err := w.deps.place(dest, data); err != nil {
 		w.deps.logf("[bnet-enrich] placing %s: %v", dest, err)
 		w.scheduleErrorRetry(entry, w.deps.now(), "placing the downloaded file repeatedly failed")
+		return
+	}
+	entry.TriedMD5s = appendUnique(entry.TriedMD5s, md5)
+	// Success is a decided game, not a bigger file. A longer copy whose own
+	// saver also left early answers nothing, so keep going.
+	if w.deps.resolvesWinner != nil && !w.deps.resolvesWinner(dest) {
+		entry.Reason = fmt.Sprintf("downloaded %d bytes but it does not name a winner either; trying the next copy", size)
+		entry.PollErrors = 0
+		w.scheduleNext(entry, w.deps.now())
+		w.deps.logf("[bnet-enrich] %s: copy of %d bytes still does not resolve the winner", filepath.Base(entry.Path), size)
 		return
 	}
 	entry.Status = persist.EnrichDone
@@ -743,4 +795,91 @@ func placeCompleteReplay(dest string, data []byte) error {
 	defer func() { _ = iofacade.Remove(temp) }()
 	_, err = winsandbox.BrokerPlaceReplay(appDir, temp, filepath.Dir(dest), filepath.Base(dest))
 	return err
+}
+
+// replayNamesAWinner reports whether a placed co-player copy actually settles
+// the game. A longer recording is only useful if its own saver stayed to the
+// end; when they left early too, the copy answers nothing and the next
+// candidate is worth a try.
+//
+// Reads the answer the library already computed for that file rather than
+// re-parsing: the watcher ingests a placed copy like any other replay, so the
+// verdict is free and is exactly the one the UI shows. A file not yet ingested
+// reads as "no winner", which costs one extra cycle rather than a wrong close.
+//
+// Every candidate URL comes from one gameinfo response, so the list is finite
+// and known up front: at most one download per co-player, then the entry goes
+// terminal whether or not a winner was found. Games nobody recorded the end of
+// are a real outcome, not a reason to keep fetching.
+func (d *Dashboard) replayNamesAWinner(path string) bool {
+	replay, ok := d.library.lib.Snapshot().ByPath(path)
+	if !ok || replay == nil {
+		return false
+	}
+	for i := range replay.Players {
+		if !replay.Players[i].IsObserver() && replay.Players[i].TeamOutcome() == models.OutcomeWon {
+			return true
+		}
+	}
+	return false
+}
+
+// appendUnique keeps the tried list a set, so a copy already on disk and the
+// same copy fetched again cannot make the list grow without bound.
+func appendUnique(list []string, v string) []string {
+	if v == "" {
+		return list
+	}
+	for _, existing := range list {
+		if existing == v {
+			return list
+		}
+	}
+	return append(list, v)
+}
+
+// reopenUnresolved reopens games an older rule closed as "complete copy already
+// on disk" without ever checking whether that copy names a winner. Those games
+// are exactly the ones the download exists for, and they were left unresolved
+// with no way back. Runs once per process, like the schedule amnesty, and only
+// touches entries closed by that specific reason — an entry that genuinely
+// exhausted its candidates says so and is left alone.
+//
+// Cheap by construction: it stats a file and reads the library's existing
+// verdict, so a long history costs no parsing. It is still bounded per run, so
+// the repair can never become a startup sweep.
+func (w *enrichWorker) reopenUnresolved(now time.Time) {
+	entries, err := w.queue.All()
+	if err != nil {
+		w.deps.logf("[bnet-enrich] reading queue for reopen: %v", err)
+		return
+	}
+	reopened := 0
+	for _, entry := range entries {
+		if reopened >= enrichMaxReopenPerRun {
+			break
+		}
+		if entry.Status != persist.EnrichDone || entry.Reason != "complete copy already on disk" {
+			continue
+		}
+		dest := library.CompletePathFor(entry.Path)
+		if _, err := iofacade.Stat(dest); err != nil {
+			continue
+		}
+		if w.deps.resolvesWinner == nil || w.deps.resolvesWinner(dest) {
+			continue
+		}
+		if sum, _, err := w.deps.fileMD5(dest); err == nil {
+			entry.TriedMD5s = appendUnique(entry.TriedMD5s, sum)
+		}
+		entry.Status = persist.EnrichWaiting
+		entry.Reason = "reopened: the copy on disk names no winner"
+		entry.PollErrors = 0
+		entry.NextPollAt = now
+		w.upsert(entry)
+		reopened++
+	}
+	if reopened > 0 {
+		w.deps.logf("[bnet-enrich] reopened %d game(s) whose downloaded copy still names no winner", reopened)
+	}
 }

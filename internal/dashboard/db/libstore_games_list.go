@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/marianogappa/screpdb/internal/library"
+	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/markers"
 )
 
@@ -366,12 +367,19 @@ func (s *LibStore) ListReplayPlayers(ctx context.Context, replayIDs []int64) ([]
 				continue
 			}
 			result = append(result, WorkflowGamePlayerRow{
-				ReplayID: r.ID,
-				PlayerID: rowPlayerID(r, uint8(i)),
-				Name:     p.Name,
-				Race:     p.Race.String(),
-				Team:     int64(p.Team),
-				IsWinner: p.IsWinner(),
+				ReplayID:      r.ID,
+				PlayerID:      rowPlayerID(r, uint8(i)),
+				Name:          p.Name,
+				Race:          p.Race.String(),
+				Team:          int64(p.Team),
+				TeamWon:       p.TeamOutcome() == models.OutcomeWon,
+				PlayerOutcome: p.PlayerOutcome(),
+				Dropped:       p.Flags.Has(library.PlayerDropped),
+
+				PlayerOutcomeReason: p.PlayerOutcomeReason,
+				TeamOutcomeReason:   r.TeamOutcomeReason,
+				BnetOutcomeSource:   r.BnetOutcomeSource,
+				CompleteCopy:        r.Flags.Has(library.FlagIsCompleteCopy),
 			})
 		}
 	}
@@ -471,7 +479,7 @@ func (s *LibStore) ListCurrentPlayersForReplayIDs(ctx context.Context, playerKey
 				PlayerID: rowPlayerID(r, uint8(i)),
 				Name:     p.Name,
 				Race:     p.Race.String(),
-				IsWinner: p.IsWinner(),
+				TeamWon:  p.TeamOutcome() == models.OutcomeWon,
 				APM:      int64(p.APM),
 				EAPM:     int64(p.EAPM),
 			})

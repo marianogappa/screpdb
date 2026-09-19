@@ -89,6 +89,8 @@ func FromReplayData(data *models.ReplayData, file FileMeta) (*library.Replay, er
 		TeamFormat:    library.Strings.Intern(rep.TeamFormat),
 		Matchup:       library.Strings.Intern(rep.Matchup),
 	}
+	r.TeamOutcomeReason = rep.TeamOutcomeReason
+	r.BnetOutcomeSource = rep.BnetOutcomeSource
 	if rep.TeamStacking {
 		r.Flags |= library.FlagTeamStacking
 	}
@@ -221,9 +223,9 @@ func compactPlayers(data *models.ReplayData, ords *ordinals) []library.Player {
 		if p.IsObserver {
 			lp.Flags |= library.PlayerObserver
 		}
-		if p.IsWinner {
-			lp.Flags |= library.PlayerWinner
-		}
+		lp.PlayerOutcomeReason = p.PlayerOutcomeReason
+		lp.Flags |= library.OutcomeFlags(p.PlayerOutcome, library.PlayerResultWon, library.PlayerResultLost)
+		lp.Flags |= library.OutcomeFlags(p.TeamOutcome, library.TeamResultWon, library.TeamResultLost)
 		// The saver of a connection-lost replay is the one player who really
 		// dropped, and the only one their own file never records leaving.
 		if data.SaverDisconnect != nil && data.SaverDisconnect.SaverPlayerID == p.PlayerID {

@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/marianogappa/screpdb/internal/models"
 )
 
 // ErrNotFound is returned by lookups for ids that are not in the corpus.
@@ -146,15 +148,26 @@ const (
 
 func (f Flags) Has(flag Flags) bool { return f&flag != 0 }
 
-type PlayerFlags uint8
+type PlayerFlags uint16
 
 const (
 	PlayerObserver PlayerFlags = 1 << iota
-	PlayerWinner
 	PlayerDropped
 	PlayerLeft
 	PlayerHasStartLocation
 	PlayerHasViewport
+	// Two results, two pairs of bits, because each is independently unknown far
+	// too often to encode as a bool. See models.Outcome.
+	// Two axes, named so neither can be read as the other: PlayerResult* is how
+	// this player personally fared, TeamResult* is how their side fared. They
+	// differ whenever someone leaves a game their side goes on to win.
+	PlayerResultWon
+	PlayerResultLost
+	PlayerResultDisconnected
+	// PlayerResultNotScored marks a game screpdb keeps no result for at all.
+	PlayerResultNotScored
+	TeamResultWon
+	TeamResultLost
 )
 
 func (f PlayerFlags) Has(flag PlayerFlags) bool { return f&flag != 0 }
@@ -178,7 +191,11 @@ type Replay struct {
 	Duration uint16
 	Frames   uint32
 	Flags    Flags
-	MapKind  MapKind
+	// TeamOutcomeReason and BnetOutcomeSource explain the coalition results and
+	// what Battle.net contributed, for the debug overlay.
+	TeamOutcomeReason string
+	BnetOutcomeSource string
+	MapKind           MapKind
 
 	HomeTeamSize uint8
 	AvailSlots   uint8
@@ -301,22 +318,81 @@ type Player struct {
 	Slot           uint8
 	ReplayPlayerID uint8
 	Flags          PlayerFlags
-	Color          uint16
-	APM            uint16
-	EAPM           uint16
-	StartX         uint16
-	StartY         uint16
-	StartOclock    uint8
-	LeaveSec       uint16
-	LeaveReason    uint16
-	Viewport       float32
-	HotkeyStream   []byte
-	Fingerprint    *Fingerprint
-	Cadence        *Cadence
+	// PlayerOutcomeReason explains this player's result in one sentence, for the
+	// debug overlay. Empty unless the parser filled it.
+	PlayerOutcomeReason string
+	Color               uint16
+	APM                 uint16
+	EAPM                uint16
+	StartX              uint16
+	StartY              uint16
+	StartOclock         uint8
+	LeaveSec            uint16
+	LeaveReason         uint16
+	Viewport            float32
+	HotkeyStream        []byte
+	Fingerprint         *Fingerprint
+	Cadence             *Cadence
 }
 
 func (p *Player) IsObserver() bool { return p.Flags.Has(PlayerObserver) }
-func (p *Player) IsWinner() bool   { return p.Flags.Has(PlayerWinner) }
+
+// Outcome is what happened to this player; TeamOutcome is what happened to
+// their side. They differ whenever someone leaves a game their team then wins
+// or loses without them, so only 1v1 guarantees they agree.
+// PlayerOutcome is how this player personally fared; TeamOutcome is how their
+// side fared. Never read one for the other.
+func (p *Player) PlayerOutcome() models.Outcome {
+	switch {
+	case p.Flags.Has(PlayerResultNotScored):
+		return models.OutcomeNotScored
+	case p.Flags.Has(PlayerResultDisconnected):
+		return models.OutcomeDisconnected
+	}
+	return outcomeOf(p.Flags, PlayerResultWon, PlayerResultLost)
+}
+
+func (p *Player) TeamOutcome() models.Outcome {
+	if p.Flags.Has(PlayerResultNotScored) {
+		return models.OutcomeNotScored
+	}
+	return outcomeOf(p.Flags, TeamResultWon, TeamResultLost)
+}
+
+func outcomeOf(flags, won, lost PlayerFlags) models.Outcome {
+	switch {
+	case flags.Has(won):
+		return models.OutcomeWon
+	case flags.Has(lost):
+		return models.OutcomeLost
+	default:
+		return models.OutcomeUnknown
+	}
+}
+
+// OutcomeFlags encodes an outcome into the won/lost bit pair it belongs in.
+// A disconnect only applies to the player's own result, so the team pair maps
+// it to nothing.
+func OutcomeFlags(o models.Outcome, won, lost PlayerFlags) PlayerFlags {
+	switch o {
+	case models.OutcomeWon:
+		return won
+	case models.OutcomeLost:
+		return lost
+	case models.OutcomeDisconnected:
+		if won == PlayerResultWon {
+			return PlayerResultDisconnected
+		}
+		return 0
+	case models.OutcomeNotScored:
+		if won == PlayerResultWon {
+			return PlayerResultNotScored
+		}
+		return 0
+	default:
+		return 0
+	}
+}
 func (p *Player) IsHuman() bool    { return p.Type == PlayerTypeHuman }
 func (p *Player) IsComputer() bool { return p.Type.IsComputer() }
 

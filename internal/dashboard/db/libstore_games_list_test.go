@@ -468,7 +468,7 @@ func TestLibStoreListReplayPlayersOrderAndShape(t *testing.T) {
 	if len(rows) != 2 {
 		t.Fatalf("rows = %+v, want two non-observer players", rows)
 	}
-	if rows[0].Name != "Flash" || rows[0].Team != 1 || !rows[0].IsWinner {
+	if rows[0].Name != "Flash" || rows[0].Team != 1 || !rows[0].TeamWon {
 		t.Fatalf("first row = %+v, want the team-1 winner", rows[0])
 	}
 	if rows[1].Name != "Jaedong" || rows[1].Race != "Zerg" {
@@ -548,7 +548,7 @@ func TestLibStoreCurrentPlayerReads(t *testing.T) {
 	if len(rows) != 1 {
 		t.Fatalf("rows = %+v, want one Flash slot", rows)
 	}
-	if rows[0].APM != 310 || rows[0].EAPM != 240 || !rows[0].IsWinner || rows[0].Race != "Terran" {
+	if rows[0].APM != 310 || rows[0].EAPM != 240 || !rows[0].TeamWon || rows[0].Race != "Terran" {
 		t.Fatalf("row = %+v", rows[0])
 	}
 	flashID := library.PlayerID(r.ID, 0)
