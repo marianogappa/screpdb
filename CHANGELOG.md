@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.28.0](https://github.com/marianogappa/screpdb/compare/v1.27.0...v1.28.0) (2026-09-19)
+
+
+### Features
+
+* **dashboard:** separate dropped games from losses and push Battle.net observations as they land ([#426](https://github.com/marianogappa/screpdb/issues/426)) ([0389f55](https://github.com/marianogappa/screpdb/commit/0389f55be6a92e7ea72dbd256064e1151b55c148)), closes [#424](https://github.com/marianogappa/screpdb/issues/424)
+* **dashboard:** tell a player's own result apart from their team's ([#428](https://github.com/marianogappa/screpdb/issues/428)) ([c6fe376](https://github.com/marianogappa/screpdb/commit/c6fe3767cb1cc80b4ed22cd38fd80427ac6f1c3f))
+
 ## [1.27.0](https://github.com/marianogappa/screpdb/compare/v1.26.0...v1.27.0) (2026-09-13)
 
 
