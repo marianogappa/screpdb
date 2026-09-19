@@ -479,7 +479,7 @@ func (s *LibStore) ListCurrentPlayersForReplayIDs(ctx context.Context, playerKey
 				PlayerID: rowPlayerID(r, uint8(i)),
 				Name:     p.Name,
 				Race:     p.Race.String(),
-				TeamWon: p.TeamOutcome() == models.OutcomeWon,
+				TeamWon:  p.TeamOutcome() == models.OutcomeWon,
 				APM:      int64(p.APM),
 				EAPM:     int64(p.EAPM),
 			})

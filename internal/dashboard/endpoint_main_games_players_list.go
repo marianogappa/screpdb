@@ -715,7 +715,6 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 	return result, nil
 }
 
-
 // outcomeTrace spells out how a player's two results were reached, for the
 // hover overlay the --debug flag turns on. Deliberately English only: it is a
 // diagnostic, and keeping it out of the locale catalogues is the point.

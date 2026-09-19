@@ -62,7 +62,7 @@ type WorkflowCurrentPlayerRow struct {
 	PlayerID int64
 	Name     string
 	Race     string
-	TeamWon bool
+	TeamWon  bool
 	APM      int64
 	EAPM     int64
 }

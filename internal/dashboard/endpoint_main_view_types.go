@@ -150,7 +150,7 @@ type workflowRecentGamePlayer struct {
 	PlayerKey        string                        `json:"player_key"`
 	Name             string                        `json:"name"`
 	Race             string                        `json:"race"`
-	TeamWon         bool                          `json:"team_won"`
+	TeamWon          bool                          `json:"team_won"`
 	Disconnected     bool                          `json:"disconnected,omitempty"`
 	APM              int64                         `json:"apm"`
 	EAPM             int64                         `json:"eapm"`
@@ -330,7 +330,7 @@ type workflowGamePlayer struct {
 	Color            string                 `json:"color,omitempty"`
 	Race             string                 `json:"race"`
 	Team             int64                  `json:"team"`
-	TeamWon         bool                   `json:"team_won"`
+	TeamWon          bool                   `json:"team_won"`
 	APM              int64                  `json:"apm"`
 	EAPM             int64                  `json:"eapm"`
 	DetectedPatterns []workflowPatternValue `json:"detected_patterns"`
@@ -538,7 +538,7 @@ type workflowGameEventBuildOrder struct {
 	Name          string   `json:"name"`
 	Color         string   `json:"color,omitempty"`
 	Race          string   `json:"race,omitempty"`
-	TeamWon      bool     `json:"team_won,omitempty"`
+	TeamWon       bool     `json:"team_won,omitempty"`
 	Team          int64    `json:"team"`
 	StartLocation string   `json:"start_location,omitempty"`
 	BuildOrder    string   `json:"build_order"`
@@ -660,7 +660,7 @@ type workflowGameUnitCadencePlayer struct {
 	PlayerKey            string   `json:"player_key"`
 	PlayerName           string   `json:"player_name"`
 	Team                 int64    `json:"team"`
-	TeamWon             bool     `json:"team_won"`
+	TeamWon              bool     `json:"team_won"`
 	Eligible             bool     `json:"eligible"`
 	WindowSeconds        int64    `json:"window_seconds"`
 	UnitsProduced        int64    `json:"units_produced"`

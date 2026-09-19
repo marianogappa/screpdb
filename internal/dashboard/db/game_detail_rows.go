@@ -24,7 +24,7 @@ type ReplayPlayerDetailRow struct {
 	Color               string
 	Race                string
 	Team                int64
-	TeamWon            bool
+	TeamWon             bool
 	StartLocationOclock *int64
 	APM                 int64
 	EAPM                int64
