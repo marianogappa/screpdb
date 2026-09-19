@@ -6,6 +6,12 @@ import (
 
 // Replay represents the main replay metadata
 type Replay struct {
+	// TeamOutcomeReason says which rule decided the coalition results and on what
+	// evidence, and BnetOutcomeSource says what Battle.net contributed — including
+	// when it contributed nothing, since a silent override is what hides a bug.
+	TeamOutcomeReason string `json:"team_outcome_reason,omitempty"`
+	BnetOutcomeSource string `json:"bnet_outcome_source,omitempty"`
+
 	ID           int64     `json:"id"`
 	FilePath     string    `json:"file_path"`
 	FileChecksum string    `json:"file_checksum"`
@@ -42,23 +48,27 @@ type Replay struct {
 }
 
 // Player represents a player in the replay
-// GameOutcome is a result a replay frequently cannot establish: StarCraft
+// Outcome is a result a replay frequently cannot establish: StarCraft
 // records who chose to leave, never who was destroyed, and the recording stops
 // when its saver exits. OutcomeUnknown is therefore a normal answer, not a
 // failure — roughly a third of a real corpus for the team question.
-type GameOutcome uint8
+type Outcome uint8
 
 const (
-	OutcomeUnknown GameOutcome = iota
+	OutcomeUnknown Outcome = iota
 	OutcomeWon
 	OutcomeLost
 	// OutcomeDisconnected is a player losing the connection, which is neither a
 	// loss nor an unknown: the game carries on without them and resolves, just
 	// not on their recording.
 	OutcomeDisconnected
+	// OutcomeNotScored is a game that has no result and should not be given
+	// one: a match against the computer. Distinct from OutcomeUnknown, which
+	// means we asked and could not tell.
+	OutcomeNotScored
 )
 
-func (o GameOutcome) String() string {
+func (o Outcome) String() string {
 	switch o {
 	case OutcomeWon:
 		return "won"
@@ -66,13 +76,18 @@ func (o GameOutcome) String() string {
 		return "lost"
 	case OutcomeDisconnected:
 		return "disconnected"
+	case OutcomeNotScored:
+		return "not scored"
 	default:
 		return "unknown"
 	}
 }
 
 // Known reports whether the outcome was established at all.
-func (o GameOutcome) Known() bool { return o != OutcomeUnknown }
+func (o Outcome) Known() bool { return o == OutcomeWon || o == OutcomeLost || o == OutcomeDisconnected }
+
+// Scored reports whether the game is one screpdb keeps a result for at all.
+func (o Outcome) Scored() bool { return o != OutcomeNotScored }
 
 type Player struct {
 	ID         int64  `json:"id"`
@@ -91,12 +106,17 @@ type Player struct {
 	EAPM int `json:"eapm"` // Effective APM (APM excluding actions deemed ineffective)
 
 	// Two different results, because they are two different questions and a
-	// replay can answer one without the other. Outcome is what happened to this
-	// player; TeamOutcome is what happened to their side. They diverge whenever
+	// replay can answer one without the other. PlayerOutcome is what happened to
+	// this player; TeamOutcome is what happened to their side. They diverge whenever
 	// someone leaves a game their team goes on to win or lose without them, so
 	// they only coincide by necessity in 1v1.
-	Outcome     GameOutcome `json:"outcome"`
-	TeamOutcome GameOutcome `json:"team_outcome"`
+	PlayerOutcome Outcome `json:"player_outcome"`
+	TeamOutcome   Outcome `json:"team_outcome"`
+
+	// PlayerOutcomeReason says why PlayerOutcome is what it is, in one sentence.
+	// Every result on this page is an inference from thin evidence, so the
+	// reasoning is carried with it rather than left in the code.
+	PlayerOutcomeReason string `json:"player_outcome_reason,omitempty"`
 
 	// Start location (if available)
 	StartLocationX      *int `json:"start_location_x,omitempty"`

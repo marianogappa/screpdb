@@ -46,6 +46,7 @@ func registerGameResultEvidence() {
 				{"Who won, in a game nobody finished", "No", "Not derivable — no winner is credited"},
 				{"That a player lost, in a game with no winner", "No", "Inferred: they quit, or the recording ended at their exit, while a rival was still in the game"},
 				{"That a player lost the connection", "Partly — their leave carries a Dropped reason", "Read directly, or inferred for the saver from the phantom leave cluster their drop writes"},
+				{"That the saver conceded", "No — their exit is not recorded", "Inferred, unless the last opponent still in the game had produced nothing for " + strconv.Itoa(parser.ConcessionDoubtProductionSec) + "s, in which case that opponent was probably already destroyed and the result stays unknown"},
 				{"Who won, after the saver dropped", "No", "Not derivable — the game continues off the recording"},
 			}
 		},
@@ -86,7 +87,8 @@ func registerGameResultProcedure() {
 		Columns: []string{"Step", "Condition", "Outcome"},
 		Rows: func() [][]string {
 			return [][]string{
-				{"1", "Only one side, because every opponent is a computer, or none at all", "Nobody wins — there is nothing to compare. An end-of-game alliance is the exception: StarCraft will not start a one-sided game, so a single coalition there means the survivors allied into it"},
+				{"0", "Any opponent is a computer", "Not scored. The game has no result of any kind, which is different from an unknown one"},
+				{"1", "Only one side for any other reason", "Nobody wins — there is nothing to compare. An end-of-game alliance is the exception: StarCraft will not start a one-sided game, so a single coalition there means the survivors allied into it"},
 				{"2", "Exactly one coalition still holds a player who never left", "That coalition wins — including the allied case, where it holds everyone left in the game"},
 				{"3", "No coalition does — everyone but the saver quit", "The saver's coalition wins: they were the last player in the game"},
 				{"4", "...and no saver is known either, typically an observer-saved replay", "The last leaver's coalition wins"},
@@ -150,6 +152,10 @@ func registerEliminationGates() {
 				if _, ok := parser.ProductionActionTypes[required]; !ok {
 					return fmt.Errorf("%q is missing from the production action types", required)
 				}
+			}
+			if parser.ConcessionDoubtProductionSec <= parser.EliminatedProductionMinSec {
+				return fmt.Errorf("concession doubt (%d) must sit above the elimination production floor (%d)",
+					parser.ConcessionDoubtProductionSec, parser.EliminatedProductionMinSec)
 			}
 			if n := len(parser.ProductionActionTypes); n != 8 {
 				return fmt.Errorf("production action types has %d entries, spec documents 8", n)

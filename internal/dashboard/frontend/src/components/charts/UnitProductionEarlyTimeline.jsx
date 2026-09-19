@@ -11,7 +11,7 @@ import { subjectName } from './BuildOrderTimelineRows';
 // ("5th SCV") supplied by the backend; non-workers show only the time.
 //
 // Input shapes (match workflowUnitEarlyEventPlayer / workflowUnitEarlyEvent):
-//   players[]: { player_id, player_key, name, race, team, is_winner }
+//   players[]: { player_id, player_key, name, race, team, team_won }
 //   earlyEvents[]: {
 //     player_id, player_key, name,
 //     events: [{ second, unit_type, is_building, label, count }, ...]
@@ -183,7 +183,7 @@ function UnitProductionEarlyTimeline({
                 fill="rgba(255,255,255,0.95)"
                 fontSize="13"
               >
-                {player.is_winner ? '👑 ' : ''}{player.name}
+                {player.team_won ? '👑 ' : ''}{player.name}
               </text>
             </g>
           );

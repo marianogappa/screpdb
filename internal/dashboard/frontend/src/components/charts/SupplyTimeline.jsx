@@ -175,7 +175,7 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
     .map((s) => ({
       id: s.player.player_id,
       name: s.player.name,
-      isWinner: s.player.is_winner,
+      teamWon: s.player.team_won,
       color: s.color,
       endX: xAt(s.endSec),
       endY: yAt(s.total) + yDodge(s),
@@ -288,7 +288,7 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
                 fontSize="11"
                 fontWeight={isHover ? 700 : 500}
               >
-                {l.isWinner ? '👑 ' : ''}{truncateName(l.name)}
+                {l.teamWon ? '👑 ' : ''}{truncateName(l.name)}
               </text>
             </g>
           );

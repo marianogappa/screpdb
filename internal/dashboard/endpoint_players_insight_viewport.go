@@ -40,7 +40,7 @@ type workflowGameViewportMultitaskingPlayer struct {
 	PlayerKey            string   `json:"player_key"`
 	PlayerName           string   `json:"player_name"`
 	Team                 int64    `json:"team"`
-	IsWinner             bool     `json:"is_winner"`
+	TeamWon             bool     `json:"team_won"`
 	Eligible             bool     `json:"eligible"`
 	IneligibleReason     string   `json:"ineligible_reason,omitempty"`
 	IneligibleReasonKey  string   `json:"ineligible_reason_key,omitempty"`
@@ -268,7 +268,7 @@ func (d *Dashboard) populateViewportMultitaskingForGameDetail(detail *workflowGa
 			PlayerKey:           player.PlayerKey,
 			PlayerName:          player.Name,
 			Team:                player.Team,
-			IsWinner:            player.IsWinner,
+			TeamWon:            player.TeamWon,
 			Eligible:            false,
 			IneligibleReason:    "no viewport switch rate found for this player",
 			IneligibleReasonKey: "no_viewport_switch_rate",
@@ -300,7 +300,7 @@ func (d *Dashboard) populateViewportMultitaskingForGameDetail(detail *workflowGa
 			PlayerKey:          player.PlayerKey,
 			PlayerName:         player.Name,
 			Team:               player.Team,
-			IsWinner:           player.IsWinner,
+			TeamWon:           player.TeamWon,
 			Eligible:           true,
 			ViewportSwitchRate: rate,
 		}

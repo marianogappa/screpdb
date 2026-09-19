@@ -762,7 +762,7 @@ func TestDeriveWinnersFromFinalTopology_FFALastManStanding(t *testing.T) {
 }
 
 // TestDeriveWinnersFromFinalTopology_NonDestructive: when no winner can be
-// determined (no leaves), existing IsWinner flags are left untouched.
+// determined (no leaves), existing TeamWon flags are left untouched.
 func TestDeriveWinnersFromFinalTopology_NonDestructive(t *testing.T) {
 	a, b, c := p(1, 1), p(2, 2), p(3, 3)
 	a.TeamOutcome = models.OutcomeWon // pretend a prior stage credited this player

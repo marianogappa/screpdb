@@ -87,7 +87,7 @@ func (s *LibStore) ListReplayPlayersForDetail(ctx context.Context, replayID int6
 			Color:    library.Strings.Name(p.Color),
 			Race:     p.Race.String(),
 			Team:     int64(p.Team),
-			IsWinner: p.Outcome() == models.OutcomeWon,
+			TeamWon: p.TeamOutcome() == models.OutcomeWon,
 			APM:      int64(p.APM),
 			EAPM:     int64(p.EAPM),
 		}

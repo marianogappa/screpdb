@@ -451,5 +451,6 @@
   "chat.stats": "게임 {games}판에서 메시지 {messages}개, 정리 후 고유 단어 {terms}개.",
   "chat.topTerms": "자주 쓴 단어",
   "chat.notEnough": "자주 쓴 단어를 추론할 메시지가 부족합니다.",
-  "chat.lastMessages": "최근 메시지 15개"
+  "chat.lastMessages": "최근 메시지 15개",
+  "player.result.leftSideWon": "먼저 나감; 팀은 승리"
 }

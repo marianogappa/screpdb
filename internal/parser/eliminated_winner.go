@@ -1,6 +1,11 @@
 package parser
 
-import "github.com/marianogappa/screpdb/internal/models"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/marianogappa/screpdb/internal/models"
+)
 
 // The leave-based winner rule ("largest remaining coalition wins") treats a
 // player with no Leave Game command as alive. Elimination emits no command, so
@@ -82,9 +87,9 @@ func (s *sideActivity) observe(sec int, production bool) {
 //
 // ar carries the end-of-game alliance topology and may be nil, in which case the
 // static teams are used — the winner path makes the same choice.
-func CorrectEliminatedWinners(players []*models.Player, commands []*models.Command, durationSec int, ar *AllianceResult, repSaverPID *byte) bool {
+func CorrectEliminatedWinners(players []*models.Player, commands []*models.Command, durationSec int, ar *AllianceResult, repSaverPID *byte) (bool, string) {
 	if durationSec < EliminatedMinDurationSec {
-		return false
+		return false, ""
 	}
 
 	credited := map[byte]bool{}
@@ -106,7 +111,7 @@ func CorrectEliminatedWinners(players []*models.Player, commands []*models.Comma
 	// measures his own death or departure, not his coalition's: teammates can win
 	// the game after he is gone. Never overturn on that evidence.
 	if repSaverPID != nil && credited[*repSaverPID] {
-		return false
+		return false, ""
 	}
 
 	// Computers never leave and never concede, so their activity says nothing
@@ -139,7 +144,7 @@ func CorrectEliminatedWinners(players []*models.Player, commands []*models.Comma
 		}
 	}
 	if !credSide.any || !rivalSide.any {
-		return false
+		return false, ""
 	}
 
 	credSilence, rivalSilence := durationSec-credSide.lastAction, durationSec-rivalSide.lastAction
@@ -148,7 +153,7 @@ func CorrectEliminatedWinners(players []*models.Player, commands []*models.Comma
 	if credSilence-rivalSilence < EliminatedActionLeadSec ||
 		credDrought-rivalDrought < EliminatedProductionLeadSec ||
 		credDrought < EliminatedProductionMinSec {
-		return false
+		return false, ""
 	}
 
 	// The survivors are whoever the last-acting rival was allied with at the end.
@@ -163,11 +168,11 @@ func CorrectEliminatedWinners(players []*models.Player, commands []*models.Comma
 		}
 	}
 	if lastRival == nil {
-		return false
+		return false, ""
 	}
 	winning, ok := coalitionOf[lastRival.PlayerID]
 	if !ok {
-		return false
+		return false, ""
 	}
 
 	for _, p := range players {
@@ -176,7 +181,9 @@ func CorrectEliminatedWinners(players []*models.Player, commands []*models.Comma
 		}
 		p.TeamOutcome = teamOutcome(coalitionOf[p.PlayerID] == winning)
 	}
-	return true
+	return true, fmt.Sprintf(
+		"overturned. %s had been credited by the leave rule, but they stopped producing %ds before the end against the winners' %ds, and went quiet %ds earlier, so they were wiped out rather than victorious",
+		nameList(players, credited), credDrought, rivalDrought, credSilence-rivalSilence)
 }
 
 // winnerCoalitionKeys groups players the same way winner attribution does: by
@@ -204,7 +211,7 @@ func winnerCoalitionKeys(players []*models.Player, ar *AllianceResult) map[byte]
 // from the losers being provably dead, never from the winner looking alive: a
 // coalition holding the replay saver always looks alive, because the recording
 // stops the moment they stop playing.
-func creditSurvivorOverEliminated(players []*models.Player, commands []*models.Command, durationSec int, ar *AllianceResult, repSaverPID *byte) bool {
+func creditSurvivorOverEliminated(players []*models.Player, commands []*models.Command, durationSec int, ar *AllianceResult, repSaverPID *byte) (bool, string) {
 	coalitionOf := winnerCoalitionKeys(players, ar)
 
 	left := map[byte]bool{}
@@ -230,7 +237,7 @@ func creditSurvivorOverEliminated(players []*models.Player, commands []*models.C
 		member[p.PlayerID] = true
 	}
 	if len(candidates) < 2 {
-		return false
+		return false, ""
 	}
 
 	for _, c := range commands {
@@ -249,7 +256,7 @@ func creditSurvivorOverEliminated(players []*models.Player, commands []*models.C
 	best := -1
 	for key, side := range candidates {
 		if !side.any {
-			return false
+			return false, ""
 		}
 		if side.lastAction > best {
 			liveliest, best = key, side.lastAction
@@ -266,7 +273,7 @@ func creditSurvivorOverEliminated(players []*models.Player, commands []*models.C
 		if silence < EliminatedActionLeadSec ||
 			drought < EliminatedProductionLeadSec ||
 			durationSec-side.lastProduction < EliminatedProductionMinSec {
-			return false
+			return false, ""
 		}
 	}
 
@@ -276,5 +283,21 @@ func creditSurvivorOverEliminated(players []*models.Player, commands []*models.C
 		}
 		p.TeamOutcome = teamOutcome(coalitionOf[p.PlayerID] == liveliest)
 	}
-	return true
+	return true, fmt.Sprintf(
+		"the leave rule found no winner, but %d of %d surviving sides had in fact been wiped out (no action and no production for %ds before the end), leaving one still alive",
+		len(candidates)-1, len(candidates), durationSec-winner.lastProduction)
+}
+
+// nameList renders a set of player ids as "a + b", for the debug trace.
+func nameList(players []*models.Player, ids map[byte]bool) string {
+	var names []string
+	for _, p := range players {
+		if p != nil && !p.IsObserver && ids[p.PlayerID] {
+			names = append(names, p.Name)
+		}
+	}
+	if len(names) == 0 {
+		return "the other side"
+	}
+	return strings.Join(names, " + ")
 }

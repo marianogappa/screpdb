@@ -25,12 +25,21 @@ type WorkflowGamePlayerRow struct {
 	Name     string
 	Race     string
 	Team     int64
-	IsWinner bool
-	// Outcome is this player's own result, which IsWinner cannot express: a
-	// replay often cannot tell a loss from a game it never saw resolve.
-	Outcome models.GameOutcome
+	// TeamWon is the match fact: did this player's side take the game. The
+	// roster is styled from this, never from the personal result.
+	TeamWon bool
+	// PlayerOutcome is how this player personally fared, which TeamWon cannot
+	// express: a replay often cannot tell a loss from a game it never resolved.
+	PlayerOutcome models.Outcome
 	// Dropped is its own outcome, neither a loss nor an unknown.
 	Dropped bool
+	// Why the results are what they are, for the debug overlay.
+	PlayerOutcomeReason string
+	TeamOutcomeReason   string
+	BnetOutcomeSource   string
+	// CompleteCopy marks a co-player recording downloaded through Battle.net
+	// because the user's own copy ended before the game did (issue #341).
+	CompleteCopy bool
 }
 
 type WorkflowPlayerPatternRow struct {
@@ -53,7 +62,7 @@ type WorkflowCurrentPlayerRow struct {
 	PlayerID int64
 	Name     string
 	Race     string
-	IsWinner bool
+	TeamWon bool
 	APM      int64
 	EAPM     int64
 }

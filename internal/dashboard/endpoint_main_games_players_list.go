@@ -342,9 +342,12 @@ func (d *Dashboard) populateWorkflowGameListPlayers(items []workflowGameListItem
 		}
 		player.Race = row.Race
 		player.Team = row.Team
-		player.IsWinner = row.IsWinner
-		player.Outcome = row.Outcome.String()
+		player.TeamWon = row.TeamWon
+		player.PlayerOutcome = row.PlayerOutcome.String()
 		player.Dropped = row.Dropped
+		if d.debug {
+			player.OutcomeTrace = outcomeTrace(row)
+		}
 		player.PlayerKey = normalizePlayerKey(row.Name)
 		player.CountryCode = countryCodes[player.PlayerKey]
 		player.PrimaryBadge = d.primaryIdentityBadge(player.PlayerKey)
@@ -510,7 +513,7 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 			currentPlayer.Name = displayName
 		}
 		currentPlayer.Race = row.Race
-		currentPlayer.IsWinner = row.IsWinner
+		currentPlayer.TeamWon = row.TeamWon
 		currentPlayer.APM = row.APM
 		currentPlayer.EAPM = row.EAPM
 		currentPlayer.PlayerKey = normalizePlayerKey(row.Name)
@@ -710,4 +713,31 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 		})
 	}
 	return result, nil
+}
+
+
+// outcomeTrace spells out how a player's two results were reached, for the
+// hover overlay the --debug flag turns on. Deliberately English only: it is a
+// diagnostic, and keeping it out of the locale catalogues is the point.
+func outcomeTrace(row dashboarddb.WorkflowGamePlayerRow) []string {
+	lines := []string{"YOU — " + row.PlayerOutcome.String()}
+	if row.PlayerOutcomeReason != "" {
+		lines = append(lines, "    "+row.PlayerOutcomeReason)
+	}
+	if row.TeamOutcomeReason != "" {
+		lines = append(lines, "", "YOUR SIDE", "    "+row.TeamOutcomeReason)
+	}
+	// Battle.net contributes in two different ways and the trace has to
+	// distinguish them, because a silent contribution is what hides a bug.
+	// Here it did not supply a result — it supplied the recording the result
+	// was read from, which is a stronger form of help and was invisible before.
+	switch {
+	case row.CompleteCopy:
+		lines = append(lines, "", "BATTLE.NET — supplied this recording",
+			"    your own copy ended before the game did, so a co-player's longer",
+			"    recording was downloaded and the result read from that")
+	case row.BnetOutcomeSource != "":
+		lines = append(lines, "", "BATTLE.NET — "+row.BnetOutcomeSource)
+	}
+	return lines
 }

@@ -997,6 +997,7 @@ Every game has two results per player, not one: what happened to the player, and
 | Who won, in a game nobody finished | No | Not derivable — no winner is credited |
 | That a player lost, in a game with no winner | No | Inferred: they quit, or the recording ended at their exit, while a rival was still in the game |
 | That a player lost the connection | Partly — their leave carries a Dropped reason | Read directly, or inferred for the saver from the phantom leave cluster their drop writes |
+| That the saver conceded | No — their exit is not recorded | Inferred, unless the last opponent still in the game had produced nothing for 45s, in which case that opponent was probably already destroyed and the result stays unknown |
 | Who won, after the saver dropped | No | Not derivable — the game continues off the recording |
 
 ## Who won: the decision procedure
@@ -1005,7 +1006,8 @@ Applied in order; the first step that yields an answer wins, and reaching the en
 
 | Step | Condition | Outcome |
 | --- | --- | --- |
-| 1 | Only one side, because every opponent is a computer, or none at all | Nobody wins — there is nothing to compare. An end-of-game alliance is the exception: StarCraft will not start a one-sided game, so a single coalition there means the survivors allied into it |
+| 0 | Any opponent is a computer | Not scored. The game has no result of any kind, which is different from an unknown one |
+| 1 | Only one side for any other reason | Nobody wins — there is nothing to compare. An end-of-game alliance is the exception: StarCraft will not start a one-sided game, so a single coalition there means the survivors allied into it |
 | 2 | Exactly one coalition still holds a player who never left | That coalition wins — including the allied case, where it holds everyone left in the game |
 | 3 | No coalition does — everyone but the saver quit | The saver's coalition wins: they were the last player in the game |
 | 4 | ...and no saver is known either, typically an observer-saved replay | The last leaver's coalition wins |

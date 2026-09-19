@@ -412,7 +412,7 @@ const boOpenerLines = (event) => {
         name: String(entry?.name || '').trim() || t('events.playerFallback'),
         color: entry?.color || '',
         race: entry?.race || '',
-        isWinner: Boolean(entry?.is_winner),
+        teamWon: Boolean(entry?.team_won),
         team: entry?.team,
         startLocation: String(entry?.start_location || '').trim(),
         boNames: [],
@@ -993,7 +993,7 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
           return (
             <span key={`bo-line-${line.playerID}`} className="workflow-bo-openers-line">
               {raceIcon ? <img src={raceIcon} alt={line.race || t('race.alt')} className="unit-icon-inline workflow-bo-openers-race" /> : null}
-              {line.isWinner ? <span className="workflow-crown" title={t('common.winner')}>👑</span> : null}
+              {line.teamWon ? <span className="workflow-crown" title={t('common.winner')}>👑</span> : null}
               {line.startLocation && bo ? fill('events.opener.startsAndOpens', parts)
                 : line.startLocation ? fill('events.opener.starts', parts)
                   : bo ? fill('events.opener.opens', parts)
@@ -3793,7 +3793,7 @@ function App() {
     if (players.length === 0) {
       return renderPlayersMatchup(game?.players_label || '');
     }
-    const winnerKnown = players.some((player) => player.is_winner);
+    const winnerKnown = players.some((player) => player.team_won);
     const teams = playersHaveDistinctTeams(players)
       ? teamGroupsFromPlayers(players)
       : [players];
@@ -3807,7 +3807,7 @@ function App() {
               {team.map((player) => (
                 <span
                   key={player.player_id}
-                  className={`workflow-game-title-player${winnerKnown && player.is_winner ? ' rd-won' : ''}`}
+                  className={`workflow-game-title-player${winnerKnown && player.team_won ? ' rd-won' : ''}`}
                 >
                   {renderWorkerIcon(player.race)}
                   {(() => {
@@ -3858,9 +3858,13 @@ function App() {
     // The winning side reads as weight rather than a crown per name. Only mark
     // sides when the replay actually recorded a winner, otherwise every name
     // would be dimmed as a loser.
-    const winnerKnown = players.some((player) => player.is_winner);
+    // The roster answers "who beat whom", which is a fact about the match, so it
+    // reads team_won for everyone. How an individual player personally fared is
+    // the result glyph's job, in its own column. Mixing the two put a greyed-out
+    // name in the middle of its own winning side.
+    const winnerKnown = players.some((player) => player.team_won);
     const outcomeClass = (player) => (winnerKnown
-      ? (player.is_winner ? ' rd-won' : ' rd-lost')
+      ? (player.team_won ? ' rd-won' : ' rd-lost')
       : '');
 
     // One layout for every player count. A 1v1 is two teams of one, so it goes
@@ -3955,16 +3959,24 @@ function App() {
   const renderYourResultCell = (game) => {
     const you = (game.players || []).find((p) => String(p?.name ?? '').endsWith(YOU_MARKER));
     if (!you) return null;
-    if (you.dropped || you.outcome === 'disconnected') {
-      return <span title={t('player.result.disconnected')} aria-label={t('player.result.disconnected')}>{'\u{1F50C}'}</span>;
+    // --debug appends the reasoning to the tooltip. English only on purpose: it
+    // is a diagnostic, not product copy.
+    const withTrace = (label) => (you.outcome_trace?.length ? `${label}\n\n${you.outcome_trace.join('\n')}` : label);
+    if (you.dropped || you.player_outcome === 'disconnected') {
+      return <span title={withTrace(t('player.result.disconnected'))} aria-label={t('player.result.disconnected')}>{'\u{1F50C}'}</span>;
     }
-    if (you.outcome === 'won') {
-      return <span title={t('player.result.win')} aria-label={t('player.result.win')}>{'\u{1F451}'}</span>;
+    if (you.player_outcome === 'won') {
+      return <span title={withTrace(t('player.result.win'))} aria-label={t('player.result.win')}>{'\u{1F451}'}</span>;
     }
-    if (you.outcome === 'lost') {
-      return <span title={t('player.result.loss')} aria-label={t('player.result.loss')}>{'\u274c'}</span>;
+    if (you.player_outcome === 'lost') {
+      // You left; your side went on to take it. One situation, one glyph — far
+      // clearer than a cross sitting beside your own winning roster.
+      if (you.team_won) {
+        return <span title={withTrace(t('player.result.leftSideWon'))} aria-label={t('player.result.leftSideWon')}>{'\u{1F3F3}\uFE0F'}</span>;
+      }
+      return <span title={withTrace(t('player.result.loss'))} aria-label={t('player.result.loss')}>{'\u274c'}</span>;
     }
-    return <span title={t('player.result.undetermined')} aria-label={t('player.result.undetermined')}>{'\u2753'}</span>;
+    return <span title={withTrace(t('player.result.undetermined'))} aria-label={t('player.result.undetermined')}>{'\u2753'}</span>;
   };
 
   const renderGamesListTable = ({ games, tableRef = null, selectedId = null, showYourResult = false }) => {
@@ -4311,7 +4323,7 @@ function App() {
           color: playerColorToCss(line.color),
           rawColor: line.color,
           race: line.race,
-          isWinner: line.isWinner,
+          teamWon: line.teamWon,
           boNames: line.boNames,
         };
       })
@@ -6302,7 +6314,7 @@ function App() {
                                   <PlayerSwatch color={player.color} title={player.name} />
                                 </span>
                                 <span className="wpt-glyph wpt-glyph-crown">
-                                  {player.is_winner ? <span className="workflow-crown" title={t('common.winner')}>👑</span> : null}
+                                  {player.team_won ? <span className="workflow-crown" title={t('common.winner')}>👑</span> : null}
                                 </span>
                               </span>
                               <span className="wpt-name-col">
@@ -6725,7 +6737,7 @@ function App() {
                                     >
                                       <div className="workflow-event-map-bo-label-name" style={mapLabelStyle(label.color)}>
                                         {raceIcon ? <img src={raceIcon} alt={label.race || t('race.alt')} className="unit-icon-inline workflow-event-map-bo-label-race" /> : null}
-                                        {label.isWinner ? <span className="workflow-crown" title={t('common.winner')}>👑</span> : null}
+                                        {label.teamWon ? <span className="workflow-crown" title={t('common.winner')}>👑</span> : null}
                                         {label.name}
                                       </div>
                                       {label.boNames.length > 0 ? (
@@ -6979,7 +6991,7 @@ function App() {
                                 key={player.player_id}
                                 style={hasTeamInfo ? { backgroundColor: teamColorRgba(player.team, 0.2) } : undefined}
                               >
-                                {player.is_winner ? <span className="workflow-crown" title={t('common.winner')}>👑</span> : null}
+                                {player.team_won ? <span className="workflow-crown" title={t('common.winner')}>👑</span> : null}
                                 {player.name}
                               </th>
                             ))}
@@ -7256,7 +7268,7 @@ function App() {
                       {(mainGame?.unit_production_cadence || []).map((entry) => (
                         <div key={`game-cadence-${entry.player_id}`} className="workflow-pattern-row">
                           <span>
-                            {entry.is_winner ? '👑 ' : ''}{entry.player_name}
+                            {entry.team_won ? '👑 ' : ''}{entry.player_name}
                           </span>
                           <span title={entry.eligible ? `rate=${Number(entry.rate_per_minute || 0).toFixed(2)}, cv=${Number(entry.cv_gap || 0).toFixed(2)}, burstiness=${Number(entry.burstiness || 0).toFixed(2)}, idle20=${(Number(entry.idle20_ratio || 0) * 100).toFixed(1)}%, units=${Number(entry.units_produced || 0)}, gaps=${Number(entry.gap_count || 0)}` : String(entry.ineligible_reason || '')}>
                             {entry.eligible
@@ -7303,7 +7315,7 @@ function App() {
                       {(mainGame?.viewport_multitasking || []).map((entry) => (
                         <div key={`game-viewport-${entry.player_id}`} className="workflow-pattern-row">
                           <span>
-                            {entry.is_winner ? '👑 ' : ''}{entry.player_name}
+                            {entry.team_won ? '👑 ' : ''}{entry.player_name}
                           </span>
                           <span title={entry.eligible ? viewportText.valueFormatter(entry.viewport_switch_rate) : String(entry.ineligible_reason || '')}>
                             {entry.eligible
@@ -7589,9 +7601,9 @@ function App() {
                               const boPatterns = patterns.filter((pt) => isOpenerEventType(pt?.event_type));
                               const restPatterns = patterns.filter((pt) => !isOpenerEventType(pt?.event_type));
                               const phases = Array.isArray(cp?.composition) ? cp.composition : [];
-                              const winnerKnown = (g.players || []).some((player) => player.is_winner);
-                              const resultEmoji = !winnerKnown ? '·' : (cp?.disconnected ? '🔌' : (cp?.is_winner ? '✅' : '❌'));
-                              const resultTitle = !winnerKnown ? t('player.result.undetermined') : (cp?.disconnected ? t('player.result.disconnected') : (cp?.is_winner ? t('player.result.win') : t('player.result.loss')));
+                              const winnerKnown = (g.players || []).some((player) => player.team_won);
+                              const resultEmoji = !winnerKnown ? '·' : (cp?.disconnected ? '🔌' : (cp?.team_won ? '✅' : '❌'));
+                              const resultTitle = !winnerKnown ? t('player.result.undetermined') : (cp?.disconnected ? t('player.result.disconnected') : (cp?.team_won ? t('player.result.win') : t('player.result.loss')));
                               const raceIcon = getWorkerIconForRace(cp?.race);
                               return (
                                 <div

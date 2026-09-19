@@ -261,13 +261,13 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 		// window still gets credited, and a winning coalition may span two display
 		// teams. Runs even with incomplete team assignment — a clear surviving
 		// coalition is still a clear winner.
-		DeriveWinnersFromFinalTopology(data.Players, data.Commands, ar, repSaverPID)
+		data.Replay.TeamOutcomeReason = DeriveWinnersFromFinalTopology(data.Players, data.Commands, ar, repSaverPID)
 	} else {
 		// Same rule over the static teams. screpdb no longer reads screp's
 		// WinnerTeam: "largest remaining team wins" credits a side whenever the
 		// saver's unrecorded exit makes the tally uneven, which is an artefact of
 		// the recording stopping rather than evidence about the game.
-		DeriveWinnersFromLeaves(data.Players, data.Commands, repSaverPID)
+		data.Replay.TeamOutcomeReason = DeriveWinnersFromLeaves(data.Players, data.Commands, repSaverPID)
 	}
 
 	// A saver disconnect masquerades as "everyone else left", so it is detected
@@ -325,11 +325,15 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	// says no more about surviving production than a single one, and the
 	// thresholds were calibrated here. A mass disconnect has already cleared every
 	// winner by this point, which the correction leaves alone.
-	CorrectEliminatedWinners(data.Players, data.Commands, data.Replay.DurationSeconds, allianceResult, repSaverPID)
+	if fired, why := CorrectEliminatedWinners(data.Players, data.Commands, data.Replay.DurationSeconds, allianceResult, repSaverPID); fired {
+		data.Replay.TeamOutcomeReason = why
+	}
 
 	// Each player's own result is a separate question from their team's, and one
 	// the replay can usually answer even when the team result stays unknown.
-	DerivePlayerOutcomes(data.Players, data.Commands, repSaverPID)
+	if why := DerivePlayerOutcomes(data.Players, data.Commands, data.Replay.DurationSeconds, repSaverPID); why != "" {
+		data.Replay.TeamOutcomeReason = why
+	}
 
 	// The saver lost the connection: the game went on without them and very
 	// likely resolved, just not on this recording. So the result is unknown for
@@ -337,7 +341,12 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	// itself, which is neither.
 	if saverDisconnect != nil {
 		ApplySaverDisconnectOutcomes(data.Players, saverDisconnect.SaverPID)
+		data.Replay.TeamOutcomeReason = "no winner: the saver lost the connection, and the burst of leaves that writes is not anyone quitting"
 	}
+
+	// Nothing consults Battle.net yet. Saying so explicitly matters: a silent
+	// override is what hides a bug for months.
+	data.Replay.BnetOutcomeSource = "not consulted (no Battle.net tier yet)"
 
 	// Rewrite Right Click → Load / LoadBunker when the target is a transport, so
 	// the drop detector can pair Loads against later Unloads. Must precede pattern

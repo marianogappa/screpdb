@@ -451,5 +451,6 @@
   "chat.stats": "{messages} messages across {games} games, {terms} distinct terms after cleanup.",
   "chat.topTerms": "Top terms",
   "chat.notEnough": "Not enough messages to infer common terms.",
-  "chat.lastMessages": "Last 15 messages"
+  "chat.lastMessages": "Last 15 messages",
+  "player.result.leftSideWon": "Left early; your side won without you"
 }

@@ -231,12 +231,12 @@ func sortedKeys(set map[string]struct{}) []string {
 	return out
 }
 
-// gameWinnerKnown mirrors the frontend's `players.some(is_winner)` derivation:
+// gameWinnerKnown mirrors the frontend's `players.some(team_won)` derivation:
 // a game where nobody won was never resolved, which is a different fact from a
 // loss.
 func gameWinnerKnown(game workflowGameListItem) bool {
 	for _, player := range game.Players {
-		if player.IsWinner {
+		if player.TeamWon {
 			return true
 		}
 	}
@@ -309,11 +309,11 @@ func summarizeGamingSession(rows []sessionGameRow, games []workflowGameListItem,
 			// team one. The per-game glyph in the list beside it reads the same
 			// field, so the two always agree.
 			switch {
-			case own.Dropped || player.Outcome == models.OutcomeDisconnected.String():
+			case own.Dropped || player.PlayerOutcome == models.OutcomeDisconnected.String():
 				stats.Dropped++
-			case player.Outcome == models.OutcomeWon.String():
+			case player.PlayerOutcome == models.OutcomeWon.String():
 				stats.Wins++
-			case player.Outcome == models.OutcomeLost.String():
+			case player.PlayerOutcome == models.OutcomeLost.String():
 				stats.Losses++
 			default:
 				stats.Undecided++
@@ -380,7 +380,7 @@ func gamingSessionPlayers(games []workflowGameListItem, apm map[gamePlayerKey]se
 			if _, mine := youKeys[key]; !mine {
 				continue
 			}
-			youWon = player.IsWinner
+			youWon = player.PlayerOutcome == models.OutcomeWon.String()
 			youDropped = apm[gamePlayerKey{ReplayID: game.ReplayID, PlayerKey: key}].Dropped
 			youTeam = player.Team
 			break

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/marianogappa/screpdb/internal/models"
@@ -649,7 +650,7 @@ func dominantResolvedTeams(snapshots []AllianceSnapshot, durationSec int, active
 //
 // Computers are excluded for the same reason they are elsewhere: they never
 // leave, so their presence would make every coalition holding one look alive.
-func soleSurvivingCoalition(players []*models.Player, commands []*models.Command, teamOf map[byte]byte, repSaverPID *byte, allied bool) (byte, bool) {
+func soleSurvivingCoalition(players []*models.Player, commands []*models.Command, teamOf map[byte]byte, repSaverPID *byte, allied bool) (byte, bool, string) {
 	left := map[byte]bool{}
 	for _, cmd := range commands {
 		if cmd == nil || cmd.ActionType != "Leave Game" {
@@ -685,22 +686,25 @@ func soleSurvivingCoalition(players []*models.Player, commands []*models.Command
 	// end-of-game alliance topology, where a single one means the survivors
 	// allied into it. StarCraft will not start a one-sided game.
 	if len(coalitions) == 0 || (len(coalitions) < 2 && !allied) {
-		return 0, false
+		return 0, false, "no winner: only one side, so there is nothing to compare"
 	}
 	if len(surviving) == 1 {
 		for team := range surviving {
-			return team, true
+			if allied && len(coalitions) == 1 {
+				return team, true, "one coalition left and everyone still playing is in it, so they allied and all won"
+			}
+			return team, true, fmt.Sprintf("one of %d coalitions still holds a player who never left, and it wins", len(coalitions))
 		}
 	}
 	if len(surviving) != 0 {
-		return 0, false
+		return 0, false, fmt.Sprintf("no winner: %d coalitions still hold a player who never left, so the recording never saw it resolve", len(surviving))
 	}
 	// Everyone except the saver quit, so the saver was the last player in the
 	// game. This is the one thing their unrecorded exit does prove, and it is the
 	// reason screp invents a virtual leave for them at all.
 	if repSaverPID != nil {
 		if team, ok := teamOf[*repSaverPID]; ok {
-			return team, true
+			return team, true, "everyone except the replay saver quit, so the saver was the last player in the game and their coalition wins"
 		}
 	}
 	// No saver is known — typically an observer saved the replay — so the last
@@ -718,13 +722,16 @@ func soleSurvivingCoalition(players []*models.Player, commands []*models.Command
 			lastTeam, lastSec, found = team, cmd.SecondsFromGameStart, true
 		}
 	}
-	return lastTeam, found
+	if !found {
+		return 0, false, "no winner: nobody is left and no leave could be attributed to a coalition"
+	}
+	return lastTeam, true, fmt.Sprintf("everyone quit and no saver is recorded, so the last to leave (at %d:%02d) takes it", lastSec/60, lastSec%60)
 }
 
 // DeriveWinnersFromLeaves applies the rule to the static p.Team assignments,
 // mutating the slice. It assigns no winners when a single winner can't be
 // determined — the same behaviour screp has when WinnerTeam == 0.
-func DeriveWinnersFromLeaves(players []*models.Player, commands []*models.Command, repSaverPID *byte) {
+func DeriveWinnersFromLeaves(players []*models.Player, commands []*models.Command, repSaverPID *byte) string {
 	for _, p := range players {
 		if p == nil {
 			continue
@@ -740,9 +747,11 @@ func DeriveWinnersFromLeaves(players []*models.Player, commands []*models.Comman
 		teamOf[p.PlayerID] = p.Team
 	}
 
-	if team, ok := soleSurvivingCoalition(players, commands, teamOf, repSaverPID, false); ok {
+	team, ok, reason := soleSurvivingCoalition(players, commands, teamOf, repSaverPID, false)
+	if ok {
 		markWinnersByTeam(players, teamOf, team)
 	}
+	return reason
 }
 
 // DeriveWinnersFromFinalTopology credits the winning coalition using the
@@ -755,16 +764,16 @@ func DeriveWinnersFromLeaves(players []*models.Player, commands []*models.Comman
 // Non-destructive: TeamOutcome is only cleared and re-set when a single coalition
 // is determined (allied-victory semantics — a teammate who left still won), so
 // it never erases a winner it cannot reproduce.
-func DeriveWinnersFromFinalTopology(players []*models.Player, commands []*models.Command, ar AllianceResult, repSaverPID *byte) {
+func DeriveWinnersFromFinalTopology(players []*models.Player, commands []*models.Command, ar AllianceResult, repSaverPID *byte) string {
 	var finalTeams [][]byte
 	if n := len(ar.Snapshots); n > 0 {
 		finalTeams = ar.Snapshots[n-1].Teams
 	}
 	coalitionOf := assignCoalitions(players, finalTeams)
 
-	team, ok := soleSurvivingCoalition(players, commands, coalitionOf, repSaverPID, true)
+	team, ok, reason := soleSurvivingCoalition(players, commands, coalitionOf, repSaverPID, true)
 	if !ok {
-		return
+		return reason
 	}
 	for _, p := range players {
 		if p == nil || p.IsObserver {
@@ -772,6 +781,7 @@ func DeriveWinnersFromFinalTopology(players []*models.Player, commands []*models
 		}
 		p.TeamOutcome = teamOutcome(coalitionOf[p.PlayerID] == team)
 	}
+	return reason
 }
 
 // assignCoalitions keys each non-observer player to their LARGEST mutual
@@ -869,7 +879,7 @@ func copyByteIntMap(in map[byte]int) map[byte]int {
 
 // teamOutcome turns "was this player's coalition the winning one" into the
 // tri-state the rest of the pipeline carries.
-func teamOutcome(won bool) models.GameOutcome {
+func teamOutcome(won bool) models.Outcome {
 	if won {
 		return models.OutcomeWon
 	}

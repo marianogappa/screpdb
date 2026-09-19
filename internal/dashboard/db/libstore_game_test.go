@@ -110,7 +110,7 @@ func TestLibStoreListReplayPlayersForDetailExcludesObserversAndOrdersByTeam(t *t
 	if rows[0].Name != "First" || rows[1].Name != "Second" {
 		t.Fatalf("rows must be team-ordered, got %q then %q", rows[0].Name, rows[1].Name)
 	}
-	if rows[0].PlayerID != rowPlayerID(r, 2) || !rows[0].IsWinner || rows[0].APM != 210 || rows[0].EAPM != 180 {
+	if rows[0].PlayerID != rowPlayerID(r, 2) || !rows[0].TeamWon || rows[0].APM != 210 || rows[0].EAPM != 180 {
 		t.Fatalf("first row = %+v", rows[0])
 	}
 	if rows[0].StartLocationOclock == nil || *rows[0].StartLocationOclock != 11 {

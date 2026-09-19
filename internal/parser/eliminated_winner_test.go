@@ -132,7 +132,7 @@ func TestCorrectEliminatedWinners_LabelledShapes(t *testing.T) {
 				rivalSilence: c.rivalSil, rivalDrought: c.rivalDrought, saverIsCred: c.saverIsCred,
 			}
 			players, commands, saver := s.build()
-			if got := CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver); got != c.fires {
+			if got, _ := CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver); got != c.fires {
 				t.Fatalf("fired=%v, want %v", got, c.fires)
 			}
 		})
@@ -185,7 +185,7 @@ func TestCorrectEliminatedWinners_Gates(t *testing.T) {
 			s := fires
 			tc.mut(&s)
 			players, commands, saver := s.build()
-			if got := CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver); got != tc.want {
+			if got, _ := CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver); got != tc.want {
 				t.Fatalf("fired=%v, want %v", got, tc.want)
 			}
 		})
@@ -195,7 +195,7 @@ func TestCorrectEliminatedWinners_Gates(t *testing.T) {
 func TestCorrectEliminatedWinners_ReassignsToSurvivors(t *testing.T) {
 	s := scenario{durationSec: 600, credSilence: 20, credDrought: 90, rivalSilence: 1, rivalDrought: 2}
 	players, commands, saver := s.build()
-	if !CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver) {
+	if fired, _ := CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver); !fired {
 		t.Fatal("expected the correction to fire")
 	}
 	got := creditedNames(players)
@@ -209,10 +209,10 @@ func TestCorrectEliminatedWinners_ReassignsToSurvivors(t *testing.T) {
 func TestCorrectEliminatedWinners_Idempotent(t *testing.T) {
 	s := scenario{durationSec: 600, credSilence: 20, credDrought: 90, rivalSilence: 1, rivalDrought: 2}
 	players, commands, saver := s.build()
-	if !CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver) {
+	if fired, _ := CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver); !fired {
 		t.Fatal("expected the correction to fire")
 	}
-	if CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver) {
+	if fired, _ := CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver); fired {
 		t.Fatal("fired a second time on its own output")
 	}
 }
@@ -227,7 +227,7 @@ func TestCorrectEliminatedWinners_IgnoresChatAndLeave(t *testing.T) {
 		&models.Command{Player: cred, SecondsFromGameStart: s.durationSec, ActionType: "Chat"},
 		&models.Command{Player: cred, SecondsFromGameStart: s.durationSec, ActionType: "Leave Game"},
 	)
-	if !CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver) {
+	if fired, _ := CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver); !fired {
 		t.Fatal("chat or leave was treated as proof the credited side was alive")
 	}
 }
@@ -241,7 +241,7 @@ func TestCorrectEliminatedWinners_NoOpCases(t *testing.T) {
 	t.Run("credits the survivor when the game was left undecided", func(t *testing.T) {
 		players, commands, saver := s.build()
 		players[0].TeamOutcome = models.OutcomeUnknown
-		if !CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver) {
+		if fired, _ := CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver); !fired {
 			t.Fatal("did not resolve an undecided game with a clear elimination")
 		}
 		if got := creditedNames(players); len(got) != 1 || got[0] != "rival" {
@@ -253,7 +253,7 @@ func TestCorrectEliminatedWinners_NoOpCases(t *testing.T) {
 		even := scenario{durationSec: 600, credSilence: 2, credDrought: 5, rivalSilence: 1, rivalDrought: 4}
 		players, commands, saver := even.build()
 		players[0].TeamOutcome = models.OutcomeUnknown
-		if CorrectEliminatedWinners(players, commands, even.durationSec, nil, saver) {
+		if fired, _ := CorrectEliminatedWinners(players, commands, even.durationSec, nil, saver); fired {
 			t.Fatal("credited a winner with no elimination evidence")
 		}
 	})
@@ -266,14 +266,14 @@ func TestCorrectEliminatedWinners_NoOpCases(t *testing.T) {
 				credOnly = append(credOnly, c)
 			}
 		}
-		if CorrectEliminatedWinners(players, credOnly, s.durationSec, nil, saver) {
+		if fired, _ := CorrectEliminatedWinners(players, credOnly, s.durationSec, nil, saver); fired {
 			t.Fatal("fired with no rival to compare against")
 		}
 	})
 
 	t.Run("unknown saver", func(t *testing.T) {
 		players, commands, _ := s.build()
-		if !CorrectEliminatedWinners(players, commands, s.durationSec, nil, nil) {
+		if fired, _ := CorrectEliminatedWinners(players, commands, s.durationSec, nil, nil); !fired {
 			t.Fatal("a nil saver should not block the correction")
 		}
 	})
@@ -286,7 +286,7 @@ func TestCorrectEliminatedWinners_NoOpCases(t *testing.T) {
 			Player: bot, SecondsFromGameStart: s.durationSec, ActionType: "Train",
 		})
 		// The bot out-lives everyone, but only human liveness decides the comparison.
-		if !CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver) {
+		if fired, _ := CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver); !fired {
 			t.Fatal("a computer's activity changed the verdict")
 		}
 	})
@@ -295,7 +295,7 @@ func TestCorrectEliminatedWinners_NoOpCases(t *testing.T) {
 		players, commands, saver := s.build()
 		obs := &models.Player{PlayerID: 4, Name: "obs", Team: 4, Type: models.PlayerTypeHuman, IsObserver: true}
 		players = append(players, obs)
-		if !CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver) {
+		if fired, _ := CorrectEliminatedWinners(players, commands, s.durationSec, nil, saver); !fired {
 			t.Fatal("expected the correction to fire")
 		}
 		if obs.TeamOutcome == models.OutcomeWon {

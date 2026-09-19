@@ -149,7 +149,7 @@ func TestEnrichEligibility(t *testing.T) {
 			for i := range r.Players {
 				r.Players[i].Type = library.PlayerTypeHuman
 			}
-			r.Players[0].Flags |= library.PlayerWon | library.PlayerTeamWon
+			r.Players[0].Flags |= library.PlayerResultWon | library.TeamResultWon
 			return r
 		}(),
 		"user not in game": func() *library.Replay {
@@ -180,7 +180,7 @@ func TestEnrichEligibility(t *testing.T) {
 	// A user who lost while the winner was still determined is eligible: the
 	// recording may have been truncated and named the wrong winner.
 	lost := h.eligibleReplay(t, librarytest.WithPath("/replays/lost.rep", now))
-	lost.Players[1].Flags |= library.PlayerWon | library.PlayerTeamWon
+	lost.Players[1].Flags |= library.PlayerResultWon | library.TeamResultWon
 	if _, ok := enrichEligible(lost, you, snap, now); !ok {
 		t.Error("determined winner without the user should stay eligible")
 	}

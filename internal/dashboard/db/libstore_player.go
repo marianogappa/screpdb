@@ -58,8 +58,11 @@ func (s *LibStore) GetPlayerOverviewSummary(_ context.Context, playerKey string)
 		if name == "" || p.Name < name {
 			name = p.Name
 		}
+		if p.PlayerOutcome() == models.OutcomeNotScored {
+			continue
+		}
 		out.GamesPlayed++
-		switch p.Outcome() {
+		switch p.PlayerOutcome() {
 		case models.OutcomeWon:
 			out.Wins++
 		// A disconnect is not a loss: the game went on and resolved without the
@@ -185,7 +188,7 @@ func (s *LibStore) ListPlayerMatchups(_ context.Context, playerKey string) ([]Pl
 		}
 		replays[key][ref.Replay.ID] = struct{}{}
 		games[key] = int64(len(replays[key]))
-		if self.Outcome() == models.OutcomeWon {
+		if self.PlayerOutcome() == models.OutcomeWon {
 			wins[key]++
 		}
 	}
@@ -219,7 +222,7 @@ func (s *LibStore) ListRaceSections(_ context.Context, playerKey string) ([]Race
 			counts[race] = row
 		}
 		row.GameCount++
-		if p.Outcome() == models.OutcomeWon {
+		if p.PlayerOutcome() == models.OutcomeWon {
 			row.Wins++
 		}
 	}

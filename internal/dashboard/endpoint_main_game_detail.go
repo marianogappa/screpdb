@@ -75,7 +75,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		p.Color = row.Color
 		p.Race = row.Race
 		p.Team = row.Team
-		p.IsWinner = row.IsWinner
+		p.TeamWon = row.TeamWon
 		p.APM = row.APM
 		p.EAPM = row.EAPM
 		p.PlayerKey = normalizePlayerKey(row.Name)
@@ -2367,7 +2367,7 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 					Name:          player.Name,
 					Color:         player.Color,
 					Race:          player.Race,
-					IsWinner:      player.IsWinner,
+					TeamWon:      player.TeamWon,
 					Team:          player.Team,
 					StartLocation: startLocationByPlayer[player.PlayerID],
 					BuildOrder:    boLabel,
@@ -2385,7 +2385,7 @@ func (d *Dashboard) populateMarkersForGameDetail(detail *workflowGameDetail) err
 				Name:          player.Name,
 				Color:         player.Color,
 				Race:          player.Race,
-				IsWinner:      player.IsWinner,
+				TeamWon:      player.TeamWon,
 				Team:          player.Team,
 				StartLocation: startLocationByPlayer[player.PlayerID],
 			})
@@ -2641,7 +2641,7 @@ func (d *Dashboard) populateUnitCadenceForGameDetail(detail *workflowGameDetail)
 			PlayerKey:           player.PlayerKey,
 			PlayerName:          player.Name,
 			Team:                player.Team,
-			IsWinner:            player.IsWinner,
+			TeamWon:            player.TeamWon,
 			Eligible:            false,
 			IneligibleReason:    "not enough attacking-unit production samples in analysis window",
 			IneligibleReasonKey: "not_enough_attacking_unit_samples",
@@ -2687,7 +2687,7 @@ func (d *Dashboard) populateUnitCadenceForGameDetail(detail *workflowGameDetail)
 			PlayerKey:           player.PlayerKey,
 			PlayerName:          player.Name,
 			Team:                player.Team,
-			IsWinner:            player.IsWinner,
+			TeamWon:            player.TeamWon,
 			Eligible:            unitsProduced >= workflowUnitCadenceMinUnitsPerReplay && gapCount >= workflowUnitCadenceMinGapsPerReplay,
 			WindowSeconds:       windowSeconds,
 			UnitsProduced:       unitsProduced,
