@@ -352,15 +352,18 @@ func (c *BnetCache) AuroraIDsByToons(toons []string) []int64 {
 	return out
 }
 
-// ProfilesByToons returns every found profile whose toon matches one of the
-// player keys. Read-only: it never triggers a fetch.
+// ProfilesByToons returns every cached profile whose toon matches one of the
+// given names (case-insensitive), misses included. A miss is an answer:
+// Battle.net was asked about this toon on this gateway and did not have it,
+// which callers must be able to tell apart from never having asked. Callers
+// that only want real accounts filter on Found or on a non-zero AuroraID.
 func (c *BnetCache) ProfilesByToons(toons []string) []BnetProfile {
 	wanted := playerKeySet(toons)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	out := make([]BnetProfile, 0, len(wanted))
 	for _, p := range c.entries {
-		if _, ok := wanted[library.PlayerKey(p.Toon)]; ok && p.Found {
+		if _, ok := wanted[library.PlayerKey(p.Toon)]; ok {
 			out = append(out, p)
 		}
 	}

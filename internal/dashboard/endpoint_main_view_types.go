@@ -721,6 +721,12 @@ type workflowPlayerEarlyTiming struct {
 type workflowFingerprintCoverage struct {
 	GamesWithVectors int64 `json:"games_with_vectors"`
 	FeatureVersion   int   `json:"feature_version"`
+	// MinVectors is how many contributing games identification needs before it
+	// is even attempted, so the page can say how far off a player is.
+	MinVectors int `json:"min_vectors"`
+	// NoMatchReason says why no match is attached, and is empty when one is.
+	// Without it every reason renders as the same blank space.
+	NoMatchReason string `json:"no_match_reason,omitempty"`
 }
 
 type workflowFingerprintMatch struct {

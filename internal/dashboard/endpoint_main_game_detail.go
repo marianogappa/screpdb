@@ -326,12 +326,14 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 	result.FingerprintCoverage = workflowFingerprintCoverage{
 		GamesWithVectors: gamesWithVectors,
 		FeatureVersion:   scfingerprint.FeatureVersion(),
+		MinVectors:       fingerprintMatchMinVectors,
 	}
-	if match, err := d.matchFingerprint(playerKey, scfingerprint.FeatureVersion()); err != nil {
+	outcome, err := d.fingerprintOutcomeFor(playerKey, scfingerprint.FeatureVersion())
+	if err != nil {
 		return result, fmt.Errorf("failed to match progamer: %w", err)
-	} else if match != nil {
-		result.FingerprintMatch = match
 	}
+	result.FingerprintMatch = outcome.match
+	result.FingerprintCoverage.NoMatchReason = outcome.reason
 	result.PrimaryBadge, result.SecondaryBadge = d.resolvePlayerIdentityBadges(playerKey, result.FingerprintMatch)
 
 	if err := d.populateAdvancedPlayerOverview(playerKey, &result); err != nil {
@@ -2743,6 +2745,13 @@ const (
 
 	fingerprintMatchMinVectors = 3
 
+	// Why a player carries no fingerprint match. These are different answers
+	// and read differently: "we could not try" is not "we tried and it is not
+	// you". Empty means a match was found.
+	fingerprintNoMatchNotEnoughGames = "not_enough_games"
+	fingerprintNoMatchNoCandidate    = "no_candidate"
+	fingerprintNoMatchBelowBar       = "below_bar"
+
 	fingerprintOperatingPointStrict   = "fpr_1e4"
 	fingerprintOperatingPointModerate = "fpr_1e3"
 )
@@ -2790,7 +2799,21 @@ func (d *Dashboard) fingerprintRegistry() *scfingerprint.Registry {
 	return d.fpRegistry
 }
 
+// fingerprintOutcome is a match or the reason there is none. The reason is the
+// point: four separate conditions used to collapse into one nil, so a player
+// with two games and a player who was compared against the whole catalogue and
+// matched nobody got the same blank space.
+type fingerprintOutcome struct {
+	match  *workflowFingerprintMatch
+	reason string
+}
+
 func (d *Dashboard) matchFingerprint(playerKey string, featureVersion int) (*workflowFingerprintMatch, error) {
+	outcome, err := d.fingerprintOutcomeFor(playerKey, featureVersion)
+	return outcome.match, err
+}
+
+func (d *Dashboard) fingerprintOutcomeFor(playerKey string, featureVersion int) (fingerprintOutcome, error) {
 	d.fpMatchCacheMu.RLock()
 	if d.fpMatchCache != nil {
 		if entry, ok := d.fpMatchCache[playerKey]; ok {
@@ -2800,28 +2823,29 @@ func (d *Dashboard) matchFingerprint(playerKey string, featureVersion int) (*wor
 	}
 	d.fpMatchCacheMu.RUnlock()
 
-	match, err := d.computeFingerprintMatch(playerKey, featureVersion)
+	outcome, err := d.computeFingerprintMatch(playerKey, featureVersion)
 	if err != nil {
-		return nil, err
+		return fingerprintOutcome{}, err
 	}
 
 	d.fpMatchCacheMu.Lock()
 	if d.fpMatchCache == nil {
-		d.fpMatchCache = make(map[string]*workflowFingerprintMatch)
+		d.fpMatchCache = make(map[string]fingerprintOutcome)
 	}
-	d.fpMatchCache[playerKey] = match
+	d.fpMatchCache[playerKey] = outcome
 	d.fpMatchCacheMu.Unlock()
 
-	return match, nil
+	return outcome, nil
 }
 
-func (d *Dashboard) computeFingerprintMatch(playerKey string, featureVersion int) (*workflowFingerprintMatch, error) {
+func (d *Dashboard) computeFingerprintMatch(playerKey string, featureVersion int) (fingerprintOutcome, error) {
+	notEnough := fingerprintOutcome{reason: fingerprintNoMatchNotEnoughGames}
 	rows, err := d.dbStore.ListPlayerFingerprintVectors(d.ctx, playerKey, int64(featureVersion))
 	if err != nil {
-		return nil, fmt.Errorf("listing fingerprint vectors: %w", err)
+		return fingerprintOutcome{}, fmt.Errorf("listing fingerprint vectors: %w", err)
 	}
 	if len(rows) < fingerprintMatchMinVectors {
-		return nil, nil
+		return notEnough, nil
 	}
 
 	games := make([]scfingerprint.PlayerGame, 0, len(rows))
@@ -2836,12 +2860,12 @@ func (d *Dashboard) computeFingerprintMatch(playerKey string, featureVersion int
 		})
 	}
 	if len(games) < fingerprintMatchMinVectors {
-		return nil, nil
+		return notEnough, nil
 	}
 
 	dataset, err := d.fingerprintDataset()
 	if err != nil {
-		return nil, fmt.Errorf("loading fingerprint dataset: %w", err)
+		return fingerprintOutcome{}, fmt.Errorf("loading fingerprint dataset: %w", err)
 	}
 
 	reg := d.fingerprintRegistry()
@@ -2852,16 +2876,16 @@ func (d *Dashboard) computeFingerprintMatch(playerKey string, featureVersion int
 
 	results, err := scfingerprint.MatchMany(games, dataset, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("matching fingerprint: %w", err)
+		return fingerprintOutcome{}, fmt.Errorf("matching fingerprint: %w", err)
 	}
 	if len(results) == 0 {
-		return nil, nil
+		return fingerprintOutcome{reason: fingerprintNoMatchNoCandidate}, nil
 	}
 
 	top := results[0]
 	tier := fingerprintTier(top)
 	if tier == "" {
-		return nil, nil
+		return fingerprintOutcome{reason: fingerprintNoMatchBelowBar}, nil
 	}
 
 	match := &workflowFingerprintMatch{
@@ -2887,5 +2911,5 @@ func (d *Dashboard) computeFingerprintMatch(playerKey string, featureVersion int
 	if tier == fingerprintTierConfirmed || tier == fingerprintTierHigh {
 		match.Confidence = fingerprintTierHigh
 	}
-	return match, nil
+	return fingerprintOutcome{match: match}, nil
 }

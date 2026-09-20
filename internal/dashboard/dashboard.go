@@ -45,7 +45,7 @@ type Dashboard struct {
 	fpDatasetErr        error
 	fpMatchCacheMu      sync.RWMutex
 	fpMatchCacheVersion uint64
-	fpMatchCache        map[string]*workflowFingerprintMatch
+	fpMatchCache        map[string]fingerprintOutcome
 	bnetState           atomic.Value // stores bnetStatus
 	bnetAddr            atomic.Value // stores string
 	bnetDisabled        atomic.Bool

@@ -424,11 +424,20 @@ func (s *LibStore) ListPlayerFirstExpansionTimings(_ context.Context, playerKey 
 	return out, nil
 }
 
+// GetPlayerFingerprintCoverage counts the games that can actually contribute to
+// identifying this player. It must apply the same eligibility filter as
+// ListPlayerFingerprintVectors: scfingerprint is calibrated on 1v1, so a money
+// map or a team game carries a vector the matcher will not use. Counting those
+// produced the contradiction of telling someone with 217 Big Game Hunters games
+// that identification needs 3 games and they have 217.
 func (s *LibStore) GetPlayerFingerprintCoverage(_ context.Context, playerKey string, featureVersion int64) (int64, error) {
 	replays := map[int64]struct{}{}
 	for _, ref := range s.playerGames(playerKey) {
 		fp := ref.Player().Fingerprint
 		if fp == nil || int64(fp.FeatureVersion) != featureVersion {
+			continue
+		}
+		if !ref.Replay.FingerprintEligible() {
 			continue
 		}
 		replays[ref.Replay.ID] = struct{}{}

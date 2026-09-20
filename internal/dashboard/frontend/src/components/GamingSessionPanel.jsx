@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { getWorkerIconForRace } from '../lib/gameAssets';
 import { slugKey } from '../lib/i18n';
 import { t, useT } from '../lib/i18nContext';
+import NoValue from './NoValue';
 
 const formatDuration = (seconds) => {
   const total = Math.max(0, Math.round(Number(seconds) || 0));
@@ -95,7 +96,7 @@ function StatTile({ label, value, sub }) {
 // cost more width than the whole rest of the row.
 function RaceIcons({ races }) {
   const list = races || [];
-  if (list.length === 0) return <span className="session-cell-empty">-</span>;
+  if (list.length === 0) return <NoValue />;
   return (
     <span className="session-race-icons">
       {list.map((race) => {
@@ -114,7 +115,7 @@ function OtherToons({ profile, currentName, onPlayerClick }) {
   const current = String(currentName || '').trim().toLowerCase();
   const others = (profile?.toons || [])
     .filter((toon) => String(toon?.toon || '').trim().toLowerCase() !== current);
-  if (others.length === 0) return <span className="session-cell-empty">-</span>;
+  if (others.length === 0) return <NoValue />;
 
   const sorted = [...others].sort((a, b) => {
     const aLocal = a.local_player_key ? 0 : 1;
@@ -155,14 +156,19 @@ function OtherToons({ profile, currentName, onPlayerClick }) {
   );
 }
 
+// Three states, not two. No profile at all means we have not been told; a
+// profile saying plays_ladder false means Battle.net told us they hold no
+// matchmaking record, which is an answer and not a gap. Only the first is a
+// NoValue.
 function LadderCell({ profile }) {
   const t = useT();
-  if (!profile?.plays_ladder) return <span className="session-cell-empty">-</span>;
+  if (!profile || profile.plays_ladder == null) return <NoValue />;
+  if (!profile.plays_ladder) return <span>{t('player.bnet.unranked')}</span>;
   const parts = [];
-  if (profile.mmr) parts.push(String(profile.mmr));
-  else if (profile.highest_mmr) parts.push(t('session.ladder.peak', { mmr: profile.highest_mmr }));
-  if (profile.ladder_wins || profile.ladder_losses) {
-    parts.push(`${profile.ladder_wins || 0}-${profile.ladder_losses || 0}`);
+  if (profile.mmr != null) parts.push(String(profile.mmr));
+  else if (profile.highest_mmr != null) parts.push(t('session.ladder.peak', { mmr: profile.highest_mmr }));
+  if (profile.ladder_wins != null || profile.ladder_losses != null) {
+    parts.push(`${profile.ladder_wins ?? 0}-${profile.ladder_losses ?? 0}`);
   }
   return <span>{parts.length > 0 ? parts.join(' · ') : t('session.ladder.yes')}</span>;
 }
@@ -273,7 +279,7 @@ function PlayerTable({ players, renderName, renderBadge, showRecord, onPlayerCli
             {showRecord ? <td className="col-count">{player.wins || 0}</td> : null}
             {showRecord ? <td className="col-count">{player.losses || 0}</td> : null}
             <td className="col-races"><RaceIcons races={player.races} /></td>
-            <td className="col-apm">{player.apm ? player.apm : <span className="session-cell-empty">-</span>}</td>
+            <td className="col-apm">{player.apm == null ? <NoValue /> : player.apm}</td>
             <td className="col-ladder"><LadderCell profile={player.profile} /></td>
             <td className="col-toons"><OtherToons profile={player.profile} currentName={player.player_name} onPlayerClick={onPlayerClick} /></td>
           </tr>

@@ -388,13 +388,15 @@ func TestLibStoreFingerprintCoverageAndVectors(t *testing.T) {
 	noVector := melee("plain")
 	s := newTestLibStore(t, oldest, newest, moneyMap, teamGame, noVector)
 
-	// Coverage ignores the 1v1 and map-kind gates the vector list applies.
+	// Coverage applies the same 1v1 and map-kind gates as the vector list. The
+	// number is shown to explain why identification is or is not available, so
+	// counting games the matcher then discards explains the opposite.
 	coverage, err := s.GetPlayerFingerprintCoverage(context.Background(), "flash", 1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if coverage != 4 {
-		t.Fatalf("coverage = %d, want 4", coverage)
+	if coverage != 2 {
+		t.Fatalf("coverage = %d, want 2 (money map and team game gated out, same as the vector list)", coverage)
 	}
 	if coverage, _ := s.GetPlayerFingerprintCoverage(context.Background(), "flash", 99); coverage != 0 {
 		t.Fatalf("other feature version = %d, want 0", coverage)
