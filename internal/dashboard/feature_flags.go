@@ -8,10 +8,6 @@ import (
 	"strings"
 )
 
-// featureFlagGamingSession gates the Gaming Session view: the summary of the
-// run of games you have just played. It is a preview, so it defaults off.
-const featureFlagGamingSession = "gaming_session"
-
 // featureFlagCompleteReplays gates the #341 enrichment worker, which downloads
 // co-players' fuller recordings of multiplayer games the user left early. It
 // writes files into the replay folder and spends bridge budget, so it stays a
@@ -23,7 +19,6 @@ const featureFlagCompleteReplays = "complete_replays"
 // reads, and a flag that is retired stops being settable the moment it leaves
 // this list.
 var knownFeatureFlags = map[string]struct{}{
-	featureFlagGamingSession:   {},
 	featureFlagCompleteReplays: {},
 }
 

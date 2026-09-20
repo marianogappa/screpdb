@@ -6,10 +6,6 @@ import { useT } from '../lib/i18nContext';
 // explanation for something half-built reads worse than a hint.
 export const LABS_FEATURES = [
   {
-    key: 'gaming_session',
-    labelKey: 'labs.feature.gamingSession',
-  },
-  {
     key: 'complete_replays',
     labelKey: 'labs.feature.completeReplays',
   },
