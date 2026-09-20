@@ -8,18 +8,28 @@ import (
 	"strings"
 )
 
-// featureFlagCompleteReplays gates the #341 enrichment worker, which downloads
-// co-players' fuller recordings of multiplayer games the user left early. It
-// writes files into the replay folder and spends bridge budget, so it stays a
-// default-off preview until the edge cases have soaked.
-const featureFlagCompleteReplays = "complete_replays"
+// featureFlagDisableCompleteReplays turns OFF the #341 enrichment worker, which
+// downloads co-players' fuller recordings of multiplayer games the user left
+// early. The worker is on by default now that the edge cases have soaked, so
+// the switch reads as an opt-out.
+//
+// It is stated negatively on purpose. Flags default to false, and the feature
+// has to default to on, so the stored zero value has to mean "enabled". A
+// positively named flag would have needed every existing install to carry an
+// explicit true, and anyone whose settings predate it would silently lose the
+// feature.
+//
+// The old positive key, complete_replays, is deliberately not migrated: it left
+// this allowlist, so it stops being read or written, and the people who had
+// switched it on in Labs simply keep the behaviour they already had.
+const featureFlagDisableCompleteReplays = "disable_complete_replays"
 
 // knownFeatureFlags is the allowlist. Writes to anything outside it are
 // rejected, so a stale client cannot litter the settings row with keys nothing
 // reads, and a flag that is retired stops being settable the moment it leaves
 // this list.
 var knownFeatureFlags = map[string]struct{}{
-	featureFlagCompleteReplays: {},
+	featureFlagDisableCompleteReplays: {},
 }
 
 func (d *Dashboard) featureFlags(ctx context.Context) (map[string]bool, error) {

@@ -865,16 +865,23 @@ body {
   accent-color: #64a0ff;
 }
 
-.global-filter-dimension {
-  margin-bottom: 22px;
+/* One rhythm for the whole panel instead of a margin per block. The old mix of
+   22px section margins, a 10px heading margin and a button row that is no
+   longer there left gaps that did not line up with anything. */
+.global-filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
 }
 
-.global-filter-dimension:last-of-type {
-  margin-bottom: 8px;
+.global-filter-dimension {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .global-filter-dimension h3 {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -2351,6 +2358,15 @@ button.workflow-nav-update-available:disabled {
 
 .workflow-title-row--solo {
   justify-content: flex-start;
+  /* The gap under the game title was the heading's own 12px margin plus this
+     row's, so it came to 24 against 12 above and the title sat closer to the
+     nav than to the tabs it belongs with. The row owns the spacing now and the
+     heading contributes none, which is why the rule below zeroes it. */
+  margin-bottom: 12px;
+}
+
+.workflow-title-row--solo .workflow-game-players-heading {
+  margin-bottom: 0;
 }
 
 .workflow-summary-filter-row {
@@ -2789,6 +2805,67 @@ button.workflow-nav-update-available:disabled {
   user-select: none;
 }
 
+/* The map's own name, captioning the thumbnail it belongs to. */
+.workflow-map-caption {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--e-base);
+  text-align: center;
+}
+
+/* Beside the map: two labelled facts, the file, and the staging buttons. The
+   labels sit in a fixed first column so the two values line up with each other
+   instead of each starting wherever its own label happens to end. */
+.workflow-game-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  margin: 0;
+  align-items: baseline;
+}
+
+.workflow-game-facts dt {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--e-quiet);
+}
+
+.workflow-game-facts dd {
+  margin: 0;
+  color: var(--e-base);
+}
+
+/* The file name earns no caption: it is visibly a file name, and the button
+   beside it says what it does. */
+.workflow-game-file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workflow-game-file-row .workflow-meta-filepath-text {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.workflow-game-stage-title {
+  margin-bottom: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--e-quiet);
+}
+
+.workflow-game-stage-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .workflow-summary-map-row {
   display: flex;
   flex-wrap: nowrap;
@@ -2846,13 +2923,13 @@ button.workflow-nav-update-available:disabled {
 .workflow-summary-features-col {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  /* Fill remaining row space (after the map thumb on the left) instead
-     of capping at a fixed width. Pills inside still left-align via
-     flex-direction:column + their own inline-flex layout. The old
-     max-width: min(840px, 100%) artificially clipped the row even on
-     wide displays — relevant now that the new "Unit composition" pills
-     run wider than the Featuring chips. */
+  /* Three groups now, not a stack of pill rows: the two dated facts, the file,
+     and the staging buttons. They want air between them, not the tight 8px the
+     pills wanted. */
+  gap: 16px;
+  align-items: flex-start;
+  /* Fill the row space left of nothing in particular rather than capping at a
+     fixed width, so a long file name has somewhere to go. */
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -2943,6 +3020,12 @@ button.workflow-nav-update-available:disabled {
   column-gap: 8px;
   row-gap: 0;
   align-items: stretch;
+}
+
+/* Only the name cell tints, and only while it is the thing being pointed at.
+   Tinting the whole row read as a selection the reader had not made. */
+.wpt-name.is-hovered {
+  background: rgba(255, 255, 255, 0.045);
 }
 
 .wpt-head {
@@ -4272,6 +4355,18 @@ button.workflow-nav-update-available:disabled {
   fill: rgba(100, 150, 255, 0.25);
   stroke: rgba(120, 180, 255, 0.95);
   stroke-width: 0.4;
+  transition: opacity 120ms ease;
+}
+
+/* Hovering a player in the table picks out the corner they started in. The
+   others fade rather than disappear: the point is which one is theirs, and an
+   empty map would lose the shape of the game while the pointer moves. */
+.workflow-event-map-base-polygon.is-dimmed {
+  opacity: 0.25;
+}
+
+.workflow-event-map-base-polygon.is-highlighted {
+  opacity: 1;
 }
 
 /* Consolidated BO openers event: per-start-location label painted on each

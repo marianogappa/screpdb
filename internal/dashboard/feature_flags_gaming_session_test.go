@@ -39,15 +39,15 @@ func TestFeatureFlagsRoundTrip(t *testing.T) {
 	r := d.setupRouter()
 
 	flags := getFeatureFlags(t, r)
-	if _, ok := flags[featureFlagCompleteReplays]; !ok {
+	if _, ok := flags[featureFlagDisableCompleteReplays]; !ok {
 		t.Fatalf("known flag missing from payload: %v", flags)
 	}
 
-	if rec := putFeatureFlag(t, r, featureFlagCompleteReplays, true); rec.Code != http.StatusOK {
+	if rec := putFeatureFlag(t, r, featureFlagDisableCompleteReplays, true); rec.Code != http.StatusOK {
 		t.Fatalf("enable flag: %d %s", rec.Code, rec.Body.String())
 	}
-	t.Cleanup(func() { putFeatureFlag(t, r, featureFlagCompleteReplays, false) })
-	if flags := getFeatureFlags(t, r); !flags[featureFlagCompleteReplays] {
+	t.Cleanup(func() { putFeatureFlag(t, r, featureFlagDisableCompleteReplays, false) })
+	if flags := getFeatureFlags(t, r); !flags[featureFlagDisableCompleteReplays] {
 		t.Fatalf("flag did not persist: %v", flags)
 	}
 

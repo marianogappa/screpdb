@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import LabsSettingsPanel from './LabsSettingsPanel';
+import LabsSettingsPanel, { LABS_FEATURES } from './LabsSettingsPanel';
 import { useT } from '../lib/i18nContext';
 
 const GAME_TYPE_OPTIONS = [
@@ -23,6 +23,19 @@ const DEFAULT_CONFIG = {
   exclude_computers: true,
   map_kinds: [...ALL_MAP_KINDS],
 };
+
+// An empty list on the wire means "impose no constraint", which is the same
+// thing as every value being selected. Showing it as nothing selected was the
+// one genuinely confusing part of this panel: Map Type arrived full and Game
+// Type arrived empty while both let everything through.
+//
+// The empty form is kept on the wire rather than written out, because the four
+// game types here are not the whole vocabulary. A replay of some other type
+// passes an unconstrained filter and would be dropped by one listing all four,
+// so "everything selected" has to keep meaning "no constraint".
+const expandForDisplay = (values, allValues) => (values.length === 0 ? [...allValues] : values);
+const collapseForSave = (values, allValues) =>
+  (values.length === 0 || values.length >= allValues.length ? [] : values);
 
 const normalizeStringList = (values) => {
   if (!Array.isArray(values)) return [];
@@ -96,6 +109,10 @@ function GlobalReplayFilterModal({
   const t = useT();
   const [formState, setFormState] = useState(DEFAULT_CONFIG);
   const [settingsTab, setSettingsTab] = useState('folder');
+  // Labs is hidden while there is nothing in it, rather than removed: an empty
+  // tab invites a click that goes nowhere, and the next preview brings it back
+  // with no further work here.
+  const labsAvailable = LABS_FEATURES.length > 0;
 
   const folderBusy = librarySettingsLoading || librarySettingsSaving || sampleSetLoading;
   const replayDirDirty = String(replayDirInput || '').trim() !== String(savedReplayDir || '').trim();
@@ -105,26 +122,42 @@ function GlobalReplayFilterModal({
   const libraryMessageIsSuccess = libraryMessage === t('library.folderSaved') || libraryMessage === t('library.switchedToExamples');
 
   useEffect(() => {
+    if (settingsTab === 'labs' && !labsAvailable) setSettingsTab('folder');
+  }, [settingsTab, labsAvailable]);
+
+  useEffect(() => {
     setFormState(normalizeConfig(config || DEFAULT_CONFIG));
   }, [config]);
 
-  const toggleArrayValue = (field, value) => {
-    setFormState((prev) => {
-      const current = Array.isArray(prev[field]) ? prev[field] : [];
-      const next = current.includes(value)
-        ? current.filter((entry) => entry !== value)
-        : [...current, value].sort((a, b) => a.localeCompare(b));
-      return {
-        ...prev,
-        [field]: next,
-      };
+  // The panel saves itself. There is nothing to defer: the filter is a
+  // predicate the in-memory library applies at query time, so applying it is an
+  // atomic pointer swap and a refetch, not an ingest. A Save button implied a
+  // cost that no longer exists, and a Cancel button implied edits could be
+  // taken back, which no other panel here offers.
+  const commit = (nextState) => {
+    setFormState(nextState);
+    onSave({
+      ...normalizeConfig(nextState),
+      game_types: collapseForSave(nextState.game_types, ALL_GAME_TYPES),
+      map_kinds: collapseForSave(nextState.map_kinds, ALL_MAP_KINDS),
     });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(normalizeConfig(formState));
+  const toggleArrayValue = (field, value, allValues) => {
+    const current = expandForDisplay(
+      Array.isArray(formState[field]) ? formState[field] : [],
+      allValues,
+    );
+    // Every value off and every value on mean the same thing, so the empty
+    // state is simply unreachable: the last selected pill does not turn off.
+    if (current.includes(value) && current.length === 1) return;
+    const next = current.includes(value)
+      ? current.filter((entry) => entry !== value)
+      : [...current, value].sort((a, b) => a.localeCompare(b));
+    commit({ ...formState, [field]: next });
   };
+
+  const setExclusion = (field, checked) => commit({ ...formState, [field]: checked });
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -153,15 +186,17 @@ function GlobalReplayFilterModal({
             >
               {t('globalFilter.tab.scope')}
             </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={settingsTab === 'labs'}
-              className={`workflow-production-tab${settingsTab === 'labs' ? ' workflow-production-tab-active' : ''}`}
-              onClick={() => setSettingsTab('labs')}
-            >
-              {t('globalFilter.tab.labs')}
-            </button>
+            {labsAvailable ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={settingsTab === 'labs'}
+                className={`workflow-production-tab${settingsTab === 'labs' ? ' workflow-production-tab-active' : ''}`}
+                onClick={() => setSettingsTab('labs')}
+              >
+                {t('globalFilter.tab.labs')}
+              </button>
+            ) : null}
           </div>
         </div>
         {settingsTab === 'folder' ? (
@@ -207,6 +242,23 @@ function GlobalReplayFilterModal({
                   {t('library.folderHelp')}
                 </span>
               </div>
+            </div>
+
+            <div className="ingest-plain-block">
+              <label className="global-filter-toggle">
+                <input
+                  type="checkbox"
+                  checked={Boolean(featureFlags?.disable_complete_replays)}
+                  disabled={featureFlagsSaving}
+                  onChange={(e) => onFeatureFlagToggle('disable_complete_replays', e.target.checked)}
+                />
+                <span>{t('library.completeGamesOptOut')}</span>
+              </label>
+              {featureFlagsMessage ? (
+                <span className={featureFlagsMessageIsError ? 'error-message' : 'ingest-helper-text'}>
+                  {featureFlagsMessage}
+                </span>
+              ) : null}
             </div>
 
             <div className="ingest-section-row">
@@ -263,7 +315,7 @@ function GlobalReplayFilterModal({
             </div>
           </div>
         ) : settingsTab === 'scope' ? (
-          <form onSubmit={handleSubmit} className="edit-form settings-modal-tab-panel">
+          <div className="edit-form settings-modal-tab-panel global-filter-panel">
             {error ? <div className="error-message">{error}</div> : null}
 
             <div className="global-filter-dimension">
@@ -273,7 +325,7 @@ function GlobalReplayFilterModal({
                   <input
                     type="checkbox"
                     checked={formState.exclude_short_games}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, exclude_short_games: e.target.checked }))}
+                    onChange={(e) => setExclusion('exclude_short_games', e.target.checked)}
                   />
                   <span>{t('globalFilter.excludeShort')}</span>
                 </label>
@@ -281,7 +333,7 @@ function GlobalReplayFilterModal({
                   <input
                     type="checkbox"
                     checked={formState.exclude_computers}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, exclude_computers: e.target.checked }))}
+                    onChange={(e) => setExclusion('exclude_computers', e.target.checked)}
                   />
                   <span>{t('globalFilter.excludeComputers')}</span>
                 </label>
@@ -291,26 +343,17 @@ function GlobalReplayFilterModal({
             <PillRow
               heading={t('globalFilter.gameType')}
               options={GAME_TYPE_OPTIONS}
-              selectedValues={formState.game_types}
-              onToggle={(value) => toggleArrayValue('game_types', value)}
+              selectedValues={expandForDisplay(formState.game_types, ALL_GAME_TYPES)}
+              onToggle={(value) => toggleArrayValue('game_types', value, ALL_GAME_TYPES)}
             />
 
             <PillRow
               heading={t('globalFilter.mapType')}
               options={MAP_KIND_OPTIONS}
-              selectedValues={formState.map_kinds}
-              onToggle={(value) => toggleArrayValue('map_kinds', value)}
+              selectedValues={expandForDisplay(formState.map_kinds, ALL_MAP_KINDS)}
+              onToggle={(value) => toggleArrayValue('map_kinds', value, ALL_MAP_KINDS)}
             />
-
-            <div className="form-actions">
-              <button type="button" onClick={onClose} className="btn-cancel">
-                {t('globalFilter.cancel')}
-              </button>
-              <button type="submit" className="btn-save" disabled={saving}>
-                {saving ? t('globalFilter.saving') : t('globalFilter.save')}
-              </button>
-            </div>
-          </form>
+          </div>
         ) : (
           <div className="edit-form ingest-form settings-modal-tab-panel">
             <LabsSettingsPanel

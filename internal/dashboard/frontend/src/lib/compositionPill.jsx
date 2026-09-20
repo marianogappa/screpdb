@@ -206,17 +206,20 @@ const spellIcon = (unit) => {
 };
 
 // Icons only, one per distinct cast, so the same unit repeats for distinct
-// spells. Spell names live in the tooltip.
+// spells. The spell name is only ever in the tooltip, so that tooltip uses
+// data-tip and appears at once: a native title waits about a second, which is
+// long enough to give up on an icon you cannot name. There is no aggregated
+// title on the pill any more, which would have opened a second, slower bubble
+// saying the same things over the top.
 export const SpellcastsPill = ({ spells }) => {
   const t = useT();
   const safe = sortSpells(spells);
   if (safe.length === 0) return null;
-  const tooltip = safe.map((s) => spellTooltip(t, s)).join('\n');
   return (
-    <span className="workflow-pattern-pill workflow-pattern-pill-strong workflow-spellcasts-pill workflow-pill-legended" title={tooltip}>
+    <span className="workflow-pattern-pill workflow-pattern-pill-strong workflow-spellcasts-pill workflow-pill-legended">
       <span className="workflow-pill-legend">{t('composition.castsLegend')}</span>
       {safe.map((s, idx) => (
-        <span key={`${s.unit}-${s.spell}-${idx}`} className="workflow-spellcast-icon-wrap" title={spellTooltip(t, s)}>
+        <span key={`${s.unit}-${s.spell}-${idx}`} className="workflow-spellcast-icon-wrap" data-tip={spellTooltip(t, s)}>
           {spellIcon(s.unit)}
         </span>
       ))}

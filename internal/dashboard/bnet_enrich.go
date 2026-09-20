@@ -170,7 +170,7 @@ func (d *Dashboard) enrichDeps() enrichDeps {
 	return enrichDeps{
 		now:     time.Now,
 		logf:    logf,
-		enabled: func() bool { return d.featureFlagEnabled(d.ctx, featureFlagCompleteReplays) },
+		enabled: func() bool { return !d.featureFlagEnabled(d.ctx, featureFlagDisableCompleteReplays) },
 		bridgeAddr: func() (string, bool) {
 			addr, _ := d.bnetAddr.Load().(string)
 			ok := addr != "" && !d.bnetDisabled.Load() &&
