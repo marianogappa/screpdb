@@ -1757,31 +1757,34 @@ func allMarkers() []Marker {
 			GamesList:     &Pill{Label: "Guardians", IconKey: "guardian"},
 		},
 		{
-			Name:         "Became Terran",
+			// PatternName stays "Became Terran": it is stored in
+			// detected_patterns_replay_player and renaming it would orphan
+			// existing rows. Only the display strings changed (issue #307).
+			Name:         "Terran via Mind Control",
 			PatternName:  "Became Terran",
 			FeatureKey:   "became_terran",
 			Kind:         KindMarker,
 			Custom:       func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "became_terran"} },
 			RuleDeadline: endOfReplaySentinel,
 			SummaryPlayer: &Pill{
-				Label:   "Became Terran",
+				Label:   "Terran via Mind Control",
 				IconKey: "darkarchon",
 				Style:   PillStyleStrong,
-				Title:   "Became Terran",
+				Title:   "Mind Controlled an SCV and built Terran tech",
 			},
 		},
 		{
-			Name:         "Became Zerg",
+			Name:         "Zerg via Mind Control",
 			PatternName:  "Became Zerg",
 			FeatureKey:   "became_zerg",
 			Kind:         KindMarker,
 			Custom:       func() CustomEvaluator { return &worldstateFirstEventEvaluator{eventType: "became_zerg"} },
 			RuleDeadline: endOfReplaySentinel,
 			SummaryPlayer: &Pill{
-				Label:   "Became Zerg",
+				Label:   "Zerg via Mind Control",
 				IconKey: "darkarchon",
 				Style:   PillStyleStrong,
-				Title:   "Became Zerg",
+				Title:   "Mind Controlled a Drone and built Zerg tech",
 			},
 		},
 		{
