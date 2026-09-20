@@ -2358,6 +2358,15 @@ button.workflow-nav-update-available:disabled {
 
 .workflow-title-row--solo {
   justify-content: flex-start;
+  /* The gap under the game title was the heading's own 12px margin plus this
+     row's, so it came to 24 against 12 above and the title sat closer to the
+     nav than to the tabs it belongs with. The row owns the spacing now and the
+     heading contributes none, which is why the rule below zeroes it. */
+  margin-bottom: 12px;
+}
+
+.workflow-title-row--solo .workflow-game-players-heading {
+  margin-bottom: 0;
 }
 
 .workflow-summary-filter-row {
@@ -3011,6 +3020,12 @@ button.workflow-nav-update-available:disabled {
   column-gap: 8px;
   row-gap: 0;
   align-items: stretch;
+}
+
+/* Only the name cell tints, and only while it is the thing being pointed at.
+   Tinting the whole row read as a selection the reader had not made. */
+.wpt-name.is-hovered {
+  background: rgba(255, 255, 255, 0.045);
 }
 
 .wpt-head {
@@ -4340,6 +4355,18 @@ button.workflow-nav-update-available:disabled {
   fill: rgba(100, 150, 255, 0.25);
   stroke: rgba(120, 180, 255, 0.95);
   stroke-width: 0.4;
+  transition: opacity 120ms ease;
+}
+
+/* Hovering a player in the table picks out the corner they started in. The
+   others fade rather than disappear: the point is which one is theirs, and an
+   empty map would lose the shape of the game while the pointer moves. */
+.workflow-event-map-base-polygon.is-dimmed {
+  opacity: 0.25;
+}
+
+.workflow-event-map-base-polygon.is-highlighted {
+  opacity: 1;
 }
 
 /* Consolidated BO openers event: per-start-location label painted on each

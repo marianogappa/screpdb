@@ -1246,6 +1246,9 @@ const PlayerSwatch = ({ color, title }) => {
   );
 };
 
+// highlightPlayerID dims every start location but one, so hovering a player in
+// the table below answers "which corner was theirs" without a legend lookup.
+// Null means no highlight, which is the ordinary state.
 const renderSummaryMapStack = ({
   legendItems,
   showLegend = true,
@@ -1253,6 +1256,7 @@ const renderSummaryMapStack = ({
   mapAlt,
   bounds,
   startPolygons,
+  highlightPlayerID = null,
 }) => (
   <>
     {showLegend && (legendItems || []).length > 0 ? (
@@ -1272,16 +1276,27 @@ const renderSummaryMapStack = ({
       <img src={imageUrl} alt={mapAlt} className="workflow-event-map-image" />
       {bounds && (startPolygons || []).length > 0 ? (
         <svg className="workflow-event-map-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          {(startPolygons || []).map((overlay) => (
-            <polygon
-              key={overlay.key}
-              points={overlay.points}
-              className="workflow-event-map-base-polygon"
-              style={{ fill: `${overlay.ownerColor}66`, stroke: overlay.teamColor || overlay.ownerColor, strokeWidth: overlay.strokeWidth || 0.4 }}
-            >
-              <title>{overlay.ownerName}</title>
-            </polygon>
-          ))}
+          {(startPolygons || []).map((overlay) => {
+            const dimmed = highlightPlayerID != null && overlay.playerID !== highlightPlayerID;
+            const picked = highlightPlayerID != null && overlay.playerID === highlightPlayerID;
+            return (
+              <polygon
+                key={overlay.key}
+                points={overlay.points}
+                className={`workflow-event-map-base-polygon${dimmed ? ' is-dimmed' : ''}${picked ? ' is-highlighted' : ''}`}
+                style={{
+                  // The picked base keeps its owner's colour and simply gets more
+                  // of it; recolouring would break the one association the map
+                  // already teaches.
+                  fill: `${overlay.ownerColor}${picked ? 'cc' : '66'}`,
+                  stroke: overlay.teamColor || overlay.ownerColor,
+                  strokeWidth: picked ? Math.max(overlay.strokeWidth || 0.4, 0.9) : (overlay.strokeWidth || 0.4),
+                }}
+              >
+                <title>{overlay.ownerName}</title>
+              </polygon>
+            );
+          })}
         </svg>
       ) : null}
     </div>
@@ -2288,6 +2303,12 @@ function App() {
   const [selectedPlayerKey, setSelectedPlayerKey] = useState(() => initialMainRoute.playerKey || '');
   const [mainGame, setMainGame] = useState(null);
   const [mainGameTab, setMainGameTab] = useState(() => initialMainRoute.gameTab);
+  // Which player's name the pointer is on, so the map can pick out their start
+  // location. The name column alone carries this: it is the player, so hovering
+  // it is the natural gesture, and lighting the map from anywhere in the row
+  // meant the map flickered while reading across pills that have tooltips of
+  // their own.
+  const [mainGameHoverPlayerID, setMainGameHoverPlayerID] = useState(null);
   const [mainEventsPlayerEnabledById, setMainEventsPlayerEnabledById] = useState({});
   const [mainSelectedGameEventKey, setMainSelectedGameEventKey] = useState('');
   const [mainGameSeeLoading, setMainGameSeeLoading] = useState(false);
@@ -6111,6 +6132,7 @@ function App() {
                                 mapAlt: t('game.summary.mapAlt', { map: mainGame.map_name }),
                                 bounds: mainEventMapBounds,
                                 startPolygons: summaryMapStartPolygons,
+                                highlightPlayerID: mainGameHoverPlayerID,
                               })}
                               <span className="workflow-map-thumb-btn-hover-label" aria-hidden="true">{t('game.tabs.events')}</span>
                             </div>
@@ -6227,9 +6249,15 @@ function App() {
                         const playerPhases = Array.isArray(mainGame?.unit_composition_markers)
                           ? mainGame.unit_composition_markers.filter((m) => m.player_id === player.player_id)
                           : [];
+                        const hoveredRow = mainGameHoverPlayerID === player.player_id;
                         return (
                           <React.Fragment key={player.player_id}>
-                            <div className="wpt-cell wpt-name" style={{ borderLeftColor: getTeamColor(player.team) }}>
+                            <div
+                              className={`wpt-cell wpt-name${hoveredRow ? ' is-hovered' : ''}`}
+                              style={{ borderLeftColor: getTeamColor(player.team) }}
+                              onMouseEnter={() => setMainGameHoverPlayerID(player.player_id)}
+                              onMouseLeave={() => setMainGameHoverPlayerID(null)}
+                            >
                               <span className="wpt-glyphs">
                                 <span className="wpt-glyph wpt-glyph-race">
                                   {raceIcon ? <img src={raceIcon} alt={player.race || t('race.alt')} className="unit-icon-inline workflow-summary-race-icon" /> : null}

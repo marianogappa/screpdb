@@ -440,5 +440,6 @@
   "fingerprint.coverage.noMatch": "카탈로그의 모든 프로게이머와 비교했지만 일치하는 선수가 없습니다.",
   "fingerprint.coverage.belowBar": "가장 근접한 프로게이머도 이름을 밝힐 만큼 확실하지 않았습니다.",
   "game.stage.own": "내 리플레이",
-  "game.stage.complete": "전체 리플레이"
+  "game.stage.complete": "전체 리플레이",
+  "errors.serverDown": "screpdb 서버가 중단된 것 같습니다. screpdb를 다시 열고 시도해 주세요."
 }

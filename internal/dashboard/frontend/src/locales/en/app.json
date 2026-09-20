@@ -440,5 +440,6 @@
   "fingerprint.coverage.noMatch": "Compared against every progamer in the catalogue: no match.",
   "fingerprint.coverage.belowBar": "The closest progamer match was not confident enough to name.",
   "game.stage.own": "Yours",
-  "game.stage.complete": "Complete"
+  "game.stage.complete": "Complete",
+  "errors.serverDown": "The screpdb server seems to be down. Please reopen screpdb and try again."
 }

@@ -1,5 +1,28 @@
+import { t } from './lib/i18nContext';
+
 const API_BASE = '/api';
 const API_CUSTOM = `${API_BASE}/custom`;
+
+// Every request below goes through this instead of the global fetch, which is
+// why it deliberately shadows the name: a call site that forgets would be the
+// one that leaks the raw browser error.
+//
+// When nothing is listening, fetch rejects with a TypeError whose message is
+// the browser's own wording, "Failed to fetch" in Chrome and "Load failed" in
+// Safari. That reached the screen untranslated and told the reader nothing they
+// could act on. The usual cause is the local server having stopped, so say
+// that. A non-2xx response is a different matter and is left alone: the server
+// answered, and each caller already has something specific to say about it.
+const fetch = async (...args) => {
+  try {
+    return await globalThis.fetch(...args);
+  } catch (err) {
+    if (err instanceof TypeError) {
+      throw new Error(t('errors.serverDown'));
+    }
+    throw err;
+  }
+};
 const buildWebSocketURL = (path) => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}${path}`;
