@@ -7587,6 +7587,7 @@ function App() {
                           <div className="workflow-last-games">
                             <div className="workflow-last-game-row wlg-head">
                               <span className="wlg-race" />
+                              <span className="wlg-when">{t('games.table.played')}</span>
                               <span className="wlg-format">{t('player.lastGames.type')}</span>
                               <span className="wlg-len">{t('common.time')}</span>
                               <span className="wlg-map">{t('common.map')}</span>
@@ -7617,14 +7618,13 @@ function App() {
                                   <span className="wlg-race">
                                     {raceIcon ? <img src={raceIcon} alt={raceLabel(cp?.race)} title={raceLabel(cp?.race)} /> : null}
                                   </span>
+                                  <span className="wlg-when" title={g.replay_date}>{formatRelativeReplayDate(g.replay_date)}</span>
                                   <span className="wlg-format">
                                     {(() => {
                                       const format = g.team_format || '';
                                       const matchup = String(g.matchup || '');
                                       if (format && format !== '1v1') return format;
                                       if (!matchup) return format;
-                                      // Orient the matchup from this player's side: kospetrov
-                                      // as Zerg in a PvZ game reads ZvP.
                                       const mine = String(cp?.race || '').slice(0, 1).toUpperCase();
                                       const sides = matchup.split('v');
                                       if (mine && sides.length === 2 && sides[1] === mine && sides[0] !== mine) {
