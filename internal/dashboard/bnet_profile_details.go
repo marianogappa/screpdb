@@ -21,30 +21,48 @@ type bnetProfileToon struct {
 	LocalPlayerKey string `json:"local_player_key,omitempty"`
 }
 
+// Every numeric here is a pointer on purpose. Battle.net reports real zeroes
+// (an account that laddered and lost every game has 0 wins), and a value we
+// never received is a different fact from one we received as zero. A plain int
+// with omitempty collapses the two, so nil means "we do not know" and a pointer
+// to 0 means "Battle.net told us zero".
 type bnetProfileDetail struct {
-	Toon         string            `json:"toon"`
-	AuroraID     int64             `json:"aurora_id,omitempty"`
-	BattleTag    string            `json:"battle_tag,omitempty"`
-	CountryCode  string            `json:"country_code,omitempty"`
-	Toons        []bnetProfileToon `json:"toons,omitempty"`
-	PlaysLadder  bool              `json:"plays_ladder"`
-	MMR          int               `json:"mmr,omitempty"`
-	HighestMMR   int               `json:"highest_mmr,omitempty"`
-	LadderWins   int               `json:"ladder_wins,omitempty"`
-	LadderLosses int               `json:"ladder_losses,omitempty"`
+	Toon        string            `json:"toon"`
+	AuroraID    int64             `json:"aurora_id,omitempty"`
+	BattleTag   string            `json:"battle_tag,omitempty"`
+	CountryCode string            `json:"country_code,omitempty"`
+	Toons       []bnetProfileToon `json:"toons,omitempty"`
+	// Found is false for a toon we looked up and Battle.net did not have. That
+	// is an answer; a profile we never looked up is absent from the payload
+	// entirely.
+	Found bool `json:"found"`
+	// FetchedAt is when this answer was obtained (RFC3339, UTC), so a stale
+	// value can say how old it is instead of passing as current.
+	FetchedAt string `json:"fetched_at,omitempty"`
+	// GatewaysChecked counts the gateways swept for this toon and
+	// GatewaysTotal the gateways worth sweeping. A miss only means "not on
+	// Battle.net" once the two agree; before that the sweep is still running.
+	GatewaysChecked int `json:"gateways_checked,omitempty"`
+	GatewaysTotal   int `json:"gateways_total,omitempty"`
+
+	PlaysLadder  *bool `json:"plays_ladder"`
+	MMR          *int  `json:"mmr"`
+	HighestMMR   *int  `json:"highest_mmr"`
+	LadderWins   *int  `json:"ladder_wins"`
+	LadderLosses *int  `json:"ladder_losses"`
 	// Lifetime account totals summed from the per-race counters Battle.net
 	// reports (wins/losses/draws/disconnects per race, plus per-game APM
 	// sums, from which the average APM is derived).
-	LifetimeGames       int     `json:"lifetime_games,omitempty"`
-	LifetimeWins        int     `json:"lifetime_wins,omitempty"`
-	LifetimeLosses      int     `json:"lifetime_losses,omitempty"`
-	LifetimeDisconnects int     `json:"lifetime_disconnects,omitempty"`
-	AverageAPM          float64 `json:"average_apm,omitempty"`
+	LifetimeGames       *int     `json:"lifetime_games"`
+	LifetimeWins        *int     `json:"lifetime_wins"`
+	LifetimeLosses      *int     `json:"lifetime_losses"`
+	LifetimeDisconnects *int     `json:"lifetime_disconnects"`
+	AverageAPM          *float64 `json:"average_apm"`
 	// PlayTimeSeconds sums the per-race lifetime play_time counters.
-	PlayTimeSeconds int64 `json:"play_time_seconds,omitempty"`
+	PlayTimeSeconds *int64 `json:"play_time_seconds"`
 	// GamesLastWeek sums Battle.net's own games_last_week over the account's
 	// toons; LastPlayedAt is the newest game in the archive (RFC3339, UTC).
-	GamesLastWeek int    `json:"games_last_week"`
+	GamesLastWeek *int   `json:"games_last_week"`
 	LastPlayedAt  string `json:"last_played_at,omitempty"`
 	// RecentGames is the account's slice of the game archive, newest first. It
 	// accumulates across fetches, so it is not capped at the ~20 games one
@@ -83,6 +101,16 @@ func bnetProfileDetailFromRecord(p persist.BnetProfile, games []persist.BnetGame
 		AuroraID:    p.AuroraID,
 		BattleTag:   p.BattleTag,
 		CountryCode: p.CountryCode,
+		Found:       p.Found,
+	}
+	if !p.FetchedAt.IsZero() {
+		detail.FetchedAt = p.FetchedAt.UTC().Format(time.RFC3339)
+	}
+	// A profile Battle.net does not have carries no stats to report. Leaving
+	// every pointer nil is the whole point: the page can say "no account"
+	// rather than inventing an unranked player with zero games.
+	if !p.Found {
+		return detail
 	}
 	// The bridge lists a toon once per gateway it exists on, so the same name
 	// arrives several times. Collapse them onto the normalised key, keeping the
@@ -101,9 +129,15 @@ func bnetProfileDetailFromRecord(p persist.BnetProfile, games []persist.BnetGame
 			GamesLastWeek: t.GamesLastWeek,
 		})
 	}
+	// Found means Battle.net answered about this account, so its totals are
+	// known even when they add up to nothing. Distillation drops all-zero rows
+	// as noise, so an empty slice here is "nothing on record", not "not asked";
+	// the not-asked case returned above with every pointer nil.
+	weekly := 0
 	for _, t := range p.Toons {
-		detail.GamesLastWeek += t.GamesLastWeek
+		weekly += t.GamesLastWeek
 	}
+	detail.GamesLastWeek = &weekly
 	// Most played first, so the account someone actually uses leads.
 	sort.SliceStable(detail.Toons, func(i, j int) bool {
 		if detail.Toons[i].GamesLastWeek != detail.Toons[j].GamesLastWeek {
@@ -115,33 +149,49 @@ func bnetProfileDetailFromRecord(p persist.BnetProfile, games []persist.BnetGame
 	// A player can hold several matchmaking records (per season and mode). The
 	// best current rating is the meaningful headline; wins/losses are summed
 	// across records so "laddered at all" is not hidden by an empty season.
-	for _, stat := range p.Ladder {
-		detail.PlaysLadder = true
-		if stat.Rating > detail.MMR {
-			detail.MMR = stat.Rating
+	// An empty Ladder slice is an answer, not a gap: Battle.net reported this
+	// account holds no matchmaking record, so "does not ladder" is known and
+	// the ratings genuinely do not apply.
+	playsLadder := len(p.Ladder) > 0
+	detail.PlaysLadder = &playsLadder
+	if playsLadder {
+		var mmr, highest, wins, losses int
+		for _, stat := range p.Ladder {
+			if stat.Rating > mmr {
+				mmr = stat.Rating
+			}
+			if stat.HighestRating > highest {
+				highest = stat.HighestRating
+			}
+			wins += stat.Wins
+			losses += stat.Losses
 		}
-		if stat.HighestRating > detail.HighestMMR {
-			detail.HighestMMR = stat.HighestRating
-		}
-		detail.LadderWins += stat.Wins
-		detail.LadderLosses += stat.Losses
+		detail.MMR, detail.HighestMMR = &mmr, &highest
+		detail.LadderWins, detail.LadderLosses = &wins, &losses
 	}
 	// Lifetime totals: Battle.net reports per-race counters; sum them and
 	// derive the average APM from the per-game APM sums.
+	var lifetimeGames, lifetimeWins, lifetimeLosses, lifetimeDisconnects int
+	var playTime int64
 	apmSum := 0.0
 	for _, row := range p.Lifetime {
 		for _, race := range []string{"zerg", "terran", "protoss"} {
 			totals := row.Race[race]
-			detail.LifetimeWins += totals.Wins
-			detail.LifetimeLosses += totals.Losses
-			detail.LifetimeDisconnects += totals.Disconnects
-			detail.LifetimeGames += totals.Wins + totals.Losses + totals.Draws + totals.Disconnects
+			lifetimeWins += totals.Wins
+			lifetimeLosses += totals.Losses
+			lifetimeDisconnects += totals.Disconnects
+			lifetimeGames += totals.Wins + totals.Losses + totals.Draws + totals.Disconnects
 			apmSum += totals.APMSum
-			detail.PlayTimeSeconds += totals.PlayTimeSec
+			playTime += totals.PlayTimeSec
 		}
 	}
-	if detail.LifetimeGames > 0 {
-		detail.AverageAPM = apmSum / float64(detail.LifetimeGames)
+	detail.LifetimeGames, detail.LifetimeWins = &lifetimeGames, &lifetimeWins
+	detail.LifetimeLosses, detail.LifetimeDisconnects = &lifetimeLosses, &lifetimeDisconnects
+	detail.PlayTimeSeconds = &playTime
+	// An average over no games is undefined, which is not the same as zero APM.
+	if lifetimeGames > 0 {
+		avg := apmSum / float64(lifetimeGames)
+		detail.AverageAPM = &avg
 	}
 	detail.RecentGames = bnetRecentGamesFromArchive(p, games)
 	if len(detail.RecentGames) > 0 {
@@ -223,6 +273,10 @@ func (d *Dashboard) bnetProfileDetailsByPlayerKeys(ctx context.Context, playerKe
 		return out
 	}
 	gamesByAccount := map[int64][]persist.BnetGame{}
+	// A toon absent from every gateway produces one miss row per gateway. The
+	// page needs the tally to tell a finished sweep that found nothing from one
+	// still in progress, which look identical from a single row.
+	missesByKey := map[string]int{}
 	for _, p := range profiles {
 		if _, ok := gamesByAccount[p.AuroraID]; !ok {
 			games, gamesErr := d.dbStore.ListBnetGamesByAccount(ctx, p.AuroraID)
@@ -233,11 +287,21 @@ func (d *Dashboard) bnetProfileDetailsByPlayerKeys(ctx context.Context, playerKe
 		}
 		detail := bnetProfileDetailFromRecord(p, gamesByAccount[p.AuroraID])
 		key := normalizePlayerKey(p.Toon)
+		if !p.Found {
+			missesByKey[key]++
+		}
 		// A toon can be cached under several gateways; keep the richest row.
 		if existing, ok := out[key]; ok && bnetProfileDetailScore(existing) >= bnetProfileDetailScore(detail) {
 			continue
 		}
 		out[key] = detail
+	}
+	for key, detail := range out {
+		if detail.Found {
+			continue
+		}
+		detail.GatewaysChecked = missesByKey[key]
+		detail.GatewaysTotal = len(defaultGatewayOrder)
 	}
 	return out
 }
@@ -247,8 +311,12 @@ func (d *Dashboard) bnetProfileDetailsByPlayerKeys(ctx context.Context, playerKe
 // toons, then a battle tag.
 func bnetProfileDetailScore(detail *bnetProfileDetail) int {
 	score := 0
-	if detail.PlaysLadder {
+	if detail.PlaysLadder != nil && *detail.PlaysLadder {
 		score += 100
+	}
+	// A found profile always beats a miss, however little it carries.
+	if detail.Found {
+		score += 1000
 	}
 	score += len(detail.Toons)
 	if detail.BattleTag != "" {

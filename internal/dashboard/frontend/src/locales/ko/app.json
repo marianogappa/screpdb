@@ -452,5 +452,10 @@
   "chat.topTerms": "자주 쓴 단어",
   "chat.notEnough": "자주 쓴 단어를 추론할 메시지가 부족합니다.",
   "chat.lastMessages": "최근 메시지 15개",
-  "player.result.leftSideWon": "먼저 나감; 팀은 승리"
+  "player.result.leftSideWon": "먼저 나감; 팀은 승리",
+  "common.notKnown": "아직 알 수 없음",
+  "player.bnet.noAccount": "어느 게이트웨이에도 이 이름의 배틀넷 계정이 없습니다.",
+  "player.bnet.asOf": "{when} 기준 배틀넷 데이터",
+  "fingerprint.coverage.noMatch": "카탈로그의 모든 프로게이머와 비교했지만 일치하는 선수가 없습니다.",
+  "fingerprint.coverage.belowBar": "가장 근접한 프로게이머도 이름을 밝힐 만큼 확실하지 않았습니다."
 }

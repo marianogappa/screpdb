@@ -268,14 +268,14 @@ func TestBnetProfileDetailFromRecord(t *testing.T) {
 	if len(got.Toons) != 2 || got.Toons[0].Toon != "main" {
 		t.Errorf("toons = %+v, want the most played first", got.Toons)
 	}
-	if !got.PlaysLadder {
+	if got.PlaysLadder == nil || !*got.PlaysLadder {
 		t.Error("matchmaked_stats present means they ladder")
 	}
-	if got.MMR != 1400 || got.HighestMMR != 1471 {
-		t.Errorf("mmr = %d/%d, want the best across records", got.MMR, got.HighestMMR)
+	if got.MMR == nil || got.HighestMMR == nil || *got.MMR != 1400 || *got.HighestMMR != 1471 {
+		t.Errorf("mmr = %v/%v, want the best across records", got.MMR, got.HighestMMR)
 	}
-	if got.LadderWins != 5 || got.LadderLosses != 3 {
-		t.Errorf("ladder record = %d-%d, want summed across records", got.LadderWins, got.LadderLosses)
+	if got.LadderWins == nil || got.LadderLosses == nil || *got.LadderWins != 5 || *got.LadderLosses != 3 {
+		t.Errorf("ladder record = %v-%v, want summed across records", got.LadderWins, got.LadderLosses)
 	}
 }
 
@@ -309,8 +309,8 @@ func TestBnetProfileDetailFromRecord_CollapsesGatewayRepeats(t *testing.T) {
 		t.Errorf("chobo85 games_last_week = %d, want 5 summed across gateways", got.Toons[1].GamesLastWeek)
 	}
 	// The account total still counts every gateway row.
-	if got.GamesLastWeek != 15 {
-		t.Errorf("account games_last_week = %d, want 15", got.GamesLastWeek)
+	if got.GamesLastWeek == nil || *got.GamesLastWeek != 15 {
+		t.Errorf("account games_last_week = %v, want 15", got.GamesLastWeek)
 	}
 }
 
@@ -325,8 +325,13 @@ func TestBnetProfileDetailFromRecord_Unusable(t *testing.T) {
 	}
 	record, _ := persist.DistillBnetProfile("x", 30, time.Now(), []byte(`{"aurora_id": 7}`))
 	got := bnetProfileDetailFromRecord(record, nil)
-	if got == nil || got.PlaysLadder {
+	if got == nil || got.PlaysLadder == nil || *got.PlaysLadder {
 		t.Errorf("a profile with no matchmaked_stats must not read as a ladder player: %+v", got)
+	}
+	// Battle.net answering "no matchmaking record" is knowledge, so the rating
+	// is genuinely inapplicable rather than merely unfetched.
+	if got.MMR != nil || got.LadderWins != nil {
+		t.Errorf("a non-laddering account must carry no ratings at all: %+v", got)
 	}
 }
 

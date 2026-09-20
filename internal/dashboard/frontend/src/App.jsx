@@ -6,6 +6,7 @@ import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
 import GamingSessionPanel from './components/GamingSessionPanel';
+import NoValue from './components/NoValue';
 import LanguageSwitcher from './components/LanguageSwitcher';
 import Histogram from './components/charts/Histogram';
 import TimingScatterRows from './components/charts/TimingScatterRows';
@@ -947,6 +948,25 @@ const FingerprintBadge = ({ match, compact, badge }) => {
         <span className="workflow-fingerprint-tooltip">{t('fingerprint.tooltip')}</span>
       </span>
       <span className="workflow-fingerprint-label">{fillTemplate(t('fingerprint.label'), { confidence: tierLabel, name: nameEl })}</span>
+    </span>
+  );
+};
+
+// "No badge" used to cover four different answers at once. Coverage carries the
+// reason now, so a player the catalogue rejected is told so instead of being
+// left to guess.
+//
+// not_enough_games is deliberately silent. Most players in a typical library
+// never play one-on-one, so it would appear on nearly every profile, and a line
+// about needing three one-on-one games does not read as being about
+// fingerprinting at all. The reason still travels in the payload.
+const FingerprintCoverageNote = ({ coverage }) => {
+  const t = useT();
+  const reason = coverage?.no_match_reason;
+  if (reason !== 'no_candidate' && reason !== 'below_bar') return null;
+  return (
+    <span className="workflow-subtle-note workflow-fingerprint-coverage">
+      {reason === 'below_bar' ? t('fingerprint.coverage.belowBar') : t('fingerprint.coverage.noMatch')}
     </span>
   );
 };
@@ -7003,7 +7023,7 @@ function App() {
                                     style={hasTeamInfo ? { backgroundColor: teamColorRgba(player.team, 0.08) } : undefined}
                                   >
                                     {filtered.length === 0 ? (
-                                      <span className="workflow-empty-inline">-</span>
+                                      <NoValue />
                                     ) : (
                                       <div className="workflow-unit-chips">
                                         {filtered.map((unit) => (
@@ -7350,6 +7370,9 @@ function App() {
                         <span className="workflow-fingerprint-match"><FingerprintBadge match={mainPlayer.fingerprint_match} /></span>
                       ) : null}
                     </h2>
+                    {!isFeaturedPlayer && !mainPlayer?.primary_badge && !mainPlayer?.fingerprint_match ? (
+                      <FingerprintCoverageNote coverage={mainPlayer?.fingerprint_coverage} />
+                    ) : null}
                     {isFeaturedPlayer && featured ? (
                       <div className="workflow-featured-links">
                         {featured.main_race ? <span>{raceLabel(featured.main_race)}</span> : null}
@@ -7404,10 +7427,26 @@ function App() {
                 <div className="workflow-cards">
                   {mainPlayerTab === 'summary' && (() => {
                     const bnet = mainPlayer?.bnet_profile;
+                    // A profile is now also sent for a toon Battle.net does not
+                    // have, so its presence no longer means there are stats to
+                    // show. found is what separates an account from an answer
+                    // of "no such account".
+                    const bnetHasAnswer = !!bnet && !!bnet.found;
                     const showBnet = !!bnet || isFeaturedPlayer || Number(mainPlayer?.bnet_games || 0) > 0;
+                    // One miss only rules out one gateway. Until the sweep has
+                    // covered them all, "not on Battle.net" would be a guess.
+                    const bnetSweepDone = !!bnet && !bnet.found
+                      && Number(bnet.gateways_total || 0) > 0
+                      && Number(bnet.gateways_checked || 0) >= Number(bnet.gateways_total);
+                    const bnetAbsenceMessage = bnetSweepDone
+                      ? t('player.bnet.noAccount')
+                      : (!bnetDisabled && bnetState === 'connected')
+                        ? t('player.bnet.fetchingProfile')
+                        : t('player.bnet.connectPrompt');
                     const bnetRecent = Array.isArray(bnet?.recent_games) ? bnet.recent_games : [];
                     const bnetLastPlayed = bnet?.last_played_at ? formatRelativeReplayDate(bnet.last_played_at) : '';
-                    const bnetHours = Number(bnet?.play_time_seconds || 0) / 3600;
+                    const bnetHours = bnet?.play_time_seconds == null ? null : bnet.play_time_seconds / 3600;
+                    const bnetFetchedAt = bnet?.fetched_at ? formatRelativeReplayDate(bnet.fetched_at) : '';
                     const keyOf = (name) => String(name || '').trim().toLowerCase();
                     // player_name carries the "you" marker, so the subject is
                     // matched on the undecorated key instead.
@@ -7425,66 +7464,72 @@ function App() {
                         {showBnet ? (
                           <div className="wps-section">
                             <div className="workflow-card-title wps-section-title"><span>{t('player.bnet.title')}</span></div>
-                            {!bnet ? (
-                              <div className="chart-empty">
-                                {(!bnetDisabled && bnetState === 'connected')
-                                  ? t('player.bnet.fetchingProfile')
-                                  : t('player.bnet.connectPrompt')}
-                              </div>
+                            {!bnetHasAnswer ? (
+                              <div className="chart-empty">{bnetAbsenceMessage}</div>
                             ) : (<>
                             <div className="wps-stats">
                               <div className="wps-stat">
                                 <span className="wps-stat-label">{t('player.bnet.ladder')}</span>
                                 <span className="wps-stat-value">
                                   {(() => {
+                                    if (bnet.plays_ladder == null) return <NoValue />;
                                     if (!bnet.plays_ladder) return t('player.bnet.unranked');
-                                    const mmr = Number(bnet.mmr || bnet.highest_mmr) || 0;
-                                    return mmr ? t('player.bnet.mmr', { mmr }) : t('player.bnet.playsLadder');
+                                    // A laddering account with a 0 rating is a
+                                    // real 0, so it must print as one.
+                                    const mmr = bnet.mmr ?? bnet.highest_mmr;
+                                    return mmr == null ? t('player.bnet.playsLadder') : t('player.bnet.mmr', { mmr });
                                   })()}
                                 </span>
                                 {(() => {
                                   if (!bnet.plays_ladder) return null;
-                                  const wins = Number(bnet.ladder_wins) || 0;
-                                  const losses = Number(bnet.ladder_losses) || 0;
                                   const parts = [];
-                                  if (wins + losses > 0) parts.push(`${wins}-${losses}`);
-                                  const peak = Number(bnet.highest_mmr) || 0;
-                                  if (peak > (Number(bnet.mmr) || 0)) parts.push(t('player.bnet.peak', { mmr: peak }));
+                                  if (bnet.ladder_wins != null || bnet.ladder_losses != null) {
+                                    parts.push(`${bnet.ladder_wins ?? 0}-${bnet.ladder_losses ?? 0}`);
+                                  }
+                                  if (bnet.highest_mmr != null && bnet.highest_mmr > (bnet.mmr ?? 0)) {
+                                    parts.push(t('player.bnet.peak', { mmr: bnet.highest_mmr }));
+                                  }
                                   return parts.length ? <span className="wps-stat-sub">{parts.join(', ')}</span> : null;
                                 })()}
                               </div>
-                              {bnet.lifetime_games ? (
-                                <div className="wps-stat">
-                                  <span className="wps-stat-label">{t('player.stats.games')}</span>
-                                  <span className="wps-stat-value">{bnet.lifetime_games}</span>
-                                </div>
-                              ) : null}
-                              {bnet.lifetime_games ? (
-                                <div className="wps-stat">
-                                  <span className="wps-stat-label">{t('player.stats.winRate')}</span>
-                                  <span className="wps-stat-value">{((100 * bnet.lifetime_wins) / bnet.lifetime_games).toFixed(1)}%</span>
-                                </div>
-                              ) : null}
-                              {bnet.average_apm ? (
-                                <div className="wps-stat">
-                                  <span className="wps-stat-label">APM</span>
-                                  <span className="wps-stat-value">{bnet.average_apm.toFixed(1)}</span>
-                                </div>
-                              ) : null}
-                              {bnetHours >= 1 ? (
-                                <div className="wps-stat">
-                                  <span className="wps-stat-label">{t('player.bnet.timePlayed')}</span>
-                                  <span className="wps-stat-value">{t('player.bnet.hours', { hours: Math.round(bnetHours).toLocaleString() })}</span>
-                                </div>
-                              ) : null}
-                              {bnetLastPlayed ? (
-                                <div className="wps-stat">
-                                  <span className="wps-stat-label">{t('common.lastPlayed')}</span>
-                                  <span className="wps-stat-value">{bnetLastPlayed}</span>
-                                  <span className="wps-stat-sub">{t('player.bnet.gamesLastWeek', { count: Number(bnet.games_last_week || 0) })}</span>
-                                </div>
-                              ) : null}
+                              <div className="wps-stat">
+                                <span className="wps-stat-label">{t('player.stats.games')}</span>
+                                <span className="wps-stat-value">
+                                  {bnet.lifetime_games == null ? <NoValue /> : bnet.lifetime_games.toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="wps-stat">
+                                <span className="wps-stat-label">{t('player.stats.winRate')}</span>
+                                <span className="wps-stat-value">
+                                  {/* A win rate over zero games is undefined, not 0%. */}
+                                  {bnet.lifetime_games ? `${((100 * (bnet.lifetime_wins ?? 0)) / bnet.lifetime_games).toFixed(1)}%` : <NoValue />}
+                                </span>
+                              </div>
+                              <div className="wps-stat">
+                                <span className="wps-stat-label">APM</span>
+                                <span className="wps-stat-value">
+                                  {bnet.average_apm == null ? <NoValue /> : bnet.average_apm.toFixed(1)}
+                                </span>
+                              </div>
+                              <div className="wps-stat">
+                                <span className="wps-stat-label">{t('player.bnet.timePlayed')}</span>
+                                <span className="wps-stat-value">
+                                  {bnetHours == null ? <NoValue /> : t('player.bnet.hours', { hours: Math.round(bnetHours).toLocaleString() })}
+                                </span>
+                              </div>
+                              <div className="wps-stat">
+                                <span className="wps-stat-label">{t('common.lastPlayed')}</span>
+                                <span className="wps-stat-value">{bnetLastPlayed || <NoValue />}</span>
+                                <span className="wps-stat-sub">
+                                  {bnet.games_last_week == null
+                                    ? <NoValue />
+                                    : t('player.bnet.gamesLastWeek', { count: bnet.games_last_week })}
+                                </span>
+                              </div>
                             </div>
+                            {bnetFetchedAt ? (
+                              <div className="wps-bnet-asof">{t('player.bnet.asOf', { when: bnetFetchedAt })}</div>
+                            ) : null}
                             {bnet.habits?.summary ? (
                               <div className="wps-about" title={t('player.bnet.habitsTip')}>
                                 🕒 {bnet.habits.summary}
@@ -7517,12 +7562,8 @@ function App() {
                         {isFeaturedPlayer ? (
                           <div className="wps-section">
                             <div className="workflow-card-title wps-section-title"><span>{t('player.bnet.recentGames')}</span></div>
-                            {!bnet ? (
-                              <div className="chart-empty">
-                                {(!bnetDisabled && bnetState === 'connected')
-                                  ? t('player.bnet.fetchingProfile')
-                                  : t('player.bnet.connectPrompt')}
-                              </div>
+                            {!bnetHasAnswer ? (
+                              <div className="chart-empty">{bnetAbsenceMessage}</div>
                             ) : bnetRecent.length === 0 ? (
                               <div className="chart-empty">{t('player.bnet.noRecentGames')}</div>
                             ) : (
@@ -7544,7 +7585,7 @@ function App() {
                                     <div key={`${g.match_guid || g.played_at}`} className="workflow-bnet-game-row">
                                       <span className="wbg-race">{raceIcon ? <img src={raceIcon} alt={raceLabel(g.race)} title={raceLabel(g.race)} /> : null}</span>
                                       <span className="wbg-when" title={g.played_at}>{formatRelativeReplayDate(g.played_at)}</span>
-                                      <span className="wbg-map" title={g.map_name}>{g.map_name || '-'}</span>
+                                      <span className="wbg-map" title={g.map_name}>{g.map_name || <NoValue />}</span>
                                       <span className="wbg-result" title={result}>{resultEmoji}</span>
                                       <span className="wbg-apm">{g.apm || ''}</span>
                                       <span className="wbg-opp">{opponents.map((o) => `${o.toon}${o.race ? ` (${o.race.slice(0, 1)})` : ''}`).join(', ')}</span>
@@ -7561,16 +7602,16 @@ function App() {
                           <div className="wps-stats">
                             <div className="wps-stat">
                               <span className="wps-stat-label">{t('player.stats.games')}</span>
-                              <span className="wps-stat-value">{mainPlayer ? mainPlayer.games_played : '-'}</span>
+                              <span className="wps-stat-value">{mainPlayer ? mainPlayer.games_played : <NoValue />}</span>
                             </div>
                             <div className="wps-stat">
                               <span className="wps-stat-label">{t('player.stats.winRate')}</span>
-                              <span className="wps-stat-value">{mainPlayer ? `${(mainPlayer.win_rate * 100).toFixed(1)}%` : '-'}</span>
+                              <span className="wps-stat-value">{mainPlayer ? `${(mainPlayer.win_rate * 100).toFixed(1)}%` : <NoValue />}</span>
                               <span className="wps-stat-sub">{mainPlayer?.undecided > 0 ? t('player.stats.undecided', { value: mainPlayer.undecided }) : ''}</span>
                             </div>
                             <div className="wps-stat">
                               <span className="wps-stat-label">APM</span>
-                              <span className="wps-stat-value">{mainPlayer ? mainPlayer.average_apm?.toFixed(1) : '-'}</span>
+                              <span className="wps-stat-value">{mainPlayer?.average_apm == null ? <NoValue /> : mainPlayer.average_apm.toFixed(1)}</span>
                               <span className="wps-stat-sub">{mainPlayer ? t('player.stats.eapm', { value: mainPlayer.average_eapm?.toFixed(1) }) : ''}</span>
                             </div>
                           </div>

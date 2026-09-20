@@ -301,6 +301,12 @@ func (d *Dashboard) buildFeaturedPlayerOverview(playerKey string) (workflowPlaye
 	}
 	details := d.bnetProfileDetailsByPlayerKeys(d.ctx, toonKeys)
 	for _, detail := range details {
+		// Misses reach the page now so ordinary players can be told their name
+		// is not on Battle.net. A pro page has nothing to say with one: it
+		// decorates a known account, so only a found profile counts.
+		if !detail.Found {
+			continue
+		}
 		if result.BnetProfile == nil || bnetProfileDetailScore(detail) > bnetProfileDetailScore(result.BnetProfile) {
 			result.BnetProfile = detail
 		}

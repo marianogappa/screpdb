@@ -5079,6 +5079,16 @@ button.workflow-nav-update-available:disabled {
   color: rgba(255, 255, 255, 0.6);
 }
 
+/* The one no-data placeholder. It is deliberately dimmer and lighter than any
+   real figure: a zero we measured must never be mistaken for a zero we made up,
+   so the two cannot look alike. Cursor is a help cursor because the reason why
+   sits in the title. */
+.no-value {
+  color: rgba(255, 255, 255, 0.28);
+  font-weight: 400;
+  cursor: help;
+}
+
 @media (max-width: 1100px) {
   .workflow-section-top-row,
   .workflow-production-top-row {
@@ -6431,9 +6441,6 @@ span[data-tip],
   object-fit: contain;
 }
 
-.session-cell-empty {
-  color: rgba(255, 255, 255, 0.28);
-}
 
 .session-toon-pills {
   display: inline-flex;
@@ -7206,6 +7213,12 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 
 .wps-about { font-size: 12.5px; color: var(--e-quiet); line-height: 1.5; max-width: 72ch; }
 .wps-about strong { color: var(--e-base); font-weight: 600; }
+
+/* When the numbers above are cached rather than live, say how old they are.
+   A figure with no date on it reads as current, which is the one thing a
+   24h-old profile is not. */
+.wps-bnet-asof { margin-top: 6px; font-size: 11px; color: var(--e-quiet); }
+.workflow-fingerprint-coverage { display: block; margin-top: 2px; }
 
 .workflow-bnet-games { display: flex; flex-direction: column; margin-top: 6px; }
 .workflow-bnet-game-row {

@@ -57,14 +57,26 @@ func TestBnetCacheRoundTrip(t *testing.T) {
 	if len(codes) != 1 || codes["flash"] != "KR" {
 		t.Fatalf("country codes %+v", codes)
 	}
+	// Misses come back too: "we asked and Battle.net does not have this toon"
+	// is an answer callers must be able to tell from "we never asked".
 	profiles := reloaded.ProfilesByToons([]string{"Flash", "Nobody", "Bisu"})
-	if len(profiles) != 3 {
-		t.Fatalf("profiles %d, want the found entries only", len(profiles))
+	if len(profiles) != 4 {
+		t.Fatalf("profiles %d, want both gateways of Flash plus Bisu and the Nobody miss", len(profiles))
 	}
+	misses := 0
 	for _, p := range profiles {
 		if !p.Found {
-			t.Fatalf("profile entry %+v", p)
+			misses++
+			if p.Toon != "Nobody" {
+				t.Fatalf("unexpected miss %+v", p)
+			}
 		}
+	}
+	if misses != 1 {
+		t.Fatalf("misses = %d, want exactly the Nobody row", misses)
+	}
+	if got := reloaded.ProfilesByToons([]string{"Ghost"}); len(got) != 0 {
+		t.Fatalf("a toon never looked up must yield nothing, got %+v", got)
 	}
 
 	fetchTimes := reloaded.FetchedAtByToons([]string{"flash", "nobody", "bisu", "ghost"})
