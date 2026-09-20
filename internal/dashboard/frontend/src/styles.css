@@ -874,26 +874,10 @@ body {
   gap: 22px;
 }
 
-.global-filter-intro,
-.global-filter-dimension-help {
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--e-quiet);
-}
-
 .global-filter-dimension {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.global-filter-autosave {
-  font-size: 11.5px;
-  color: var(--e-quiet);
-}
-
-.ingest-optout {
-  margin-top: 4px;
 }
 
 .global-filter-dimension h3 {
@@ -2810,6 +2794,24 @@ button.workflow-nav-update-available:disabled {
 .workflow-meta-sep {
   color: rgba(255, 255, 255, 0.35);
   user-select: none;
+}
+
+/* Beside the map the meta is a block, not a strip: it has a narrow column to
+   fill and a tall one, so it wraps onto its own lines and pushes the buttons to
+   the bottom rather than trailing off the right edge. */
+.workflow-meta--beside-map {
+  flex-direction: column;
+  align-items: flex-start;
+  align-self: stretch;
+  gap: 10px;
+}
+
+.workflow-meta--beside-map .workflow-meta-sep {
+  display: none;
+}
+
+.workflow-meta--beside-map .workflow-meta-filepath-text {
+  max-width: 100%;
 }
 
 .workflow-summary-map-row {

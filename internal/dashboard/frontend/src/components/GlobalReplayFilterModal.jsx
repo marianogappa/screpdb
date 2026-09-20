@@ -55,13 +55,12 @@ const normalizeConfig = (config) => ({
   map_kinds: normalizeStringList(config?.map_kinds),
 });
 
-function PillRow({ heading, help, options, selectedValues, onToggle }) {
+function PillRow({ heading, options, selectedValues, onToggle }) {
   const t = useT();
   const selected = Array.isArray(selectedValues) ? selectedValues : [];
   return (
     <div className="global-filter-dimension">
       <h3>{heading}</h3>
-      {help ? <span className="global-filter-dimension-help">{help}</span> : null}
       <div className="global-filter-option-list">
         {options.map((option) => {
           const isSelected = selected.includes(option.value);
@@ -246,9 +245,7 @@ function GlobalReplayFilterModal({
             </div>
 
             <div className="ingest-plain-block">
-              <div className="ingest-title">{t('library.completeGames')}</div>
-              <span className="ingest-helper-text">{t('library.completeGamesHelp')}</span>
-              <label className="global-filter-toggle ingest-optout">
+              <label className="global-filter-toggle">
                 <input
                   type="checkbox"
                   checked={Boolean(featureFlags?.disable_complete_replays)}
@@ -320,7 +317,6 @@ function GlobalReplayFilterModal({
         ) : settingsTab === 'scope' ? (
           <div className="edit-form settings-modal-tab-panel global-filter-panel">
             {error ? <div className="error-message">{error}</div> : null}
-            <span className="global-filter-intro">{t('globalFilter.intro')}</span>
 
             <div className="global-filter-dimension">
               <h3>{t('globalFilter.exclude')}</h3>
@@ -346,7 +342,6 @@ function GlobalReplayFilterModal({
 
             <PillRow
               heading={t('globalFilter.gameType')}
-              help={t('globalFilter.keepHelp')}
               options={GAME_TYPE_OPTIONS}
               selectedValues={expandForDisplay(formState.game_types, ALL_GAME_TYPES)}
               onToggle={(value) => toggleArrayValue('game_types', value, ALL_GAME_TYPES)}
@@ -354,15 +349,10 @@ function GlobalReplayFilterModal({
 
             <PillRow
               heading={t('globalFilter.mapType')}
-              help={t('globalFilter.keepHelp')}
               options={MAP_KIND_OPTIONS}
               selectedValues={expandForDisplay(formState.map_kinds, ALL_MAP_KINDS)}
               onToggle={(value) => toggleArrayValue('map_kinds', value, ALL_MAP_KINDS)}
             />
-
-            <span className="global-filter-autosave" role="status">
-              {saving ? t('globalFilter.saving') : t('globalFilter.autoSaved')}
-            </span>
           </div>
         ) : (
           <div className="edit-form ingest-form settings-modal-tab-panel">

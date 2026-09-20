@@ -112,10 +112,5 @@
   "globalFilter.saving": "Saving...",
   "labs.warning": "Unfinished work. Expect rough edges and things that change or vanish.",
   "labs.feature.gamingSession": "Session summary for the games you just played",
-  "globalFilter.intro": "Which of your replays count towards everything screpdb shows. Changes apply as you make them.",
-  "globalFilter.keepHelp": "Keep the ones you want counted. Everything selected means no restriction.",
-  "globalFilter.autoSaved": "Saved automatically.",
-  "library.completeGames": "Completing your games",
-  "library.completeGamesHelp": "When you leave a multiplayer game early your replay stops there and the winner is never recorded. screpdb asks Battle.net for another player’s recording of the same game and saves it beside your own, so the result and the rest of the game are known.",
-  "library.completeGamesOptOut": "Do not download other players’ replays"
+  "library.completeGamesOptOut": "Do not complete games you left early"
 }

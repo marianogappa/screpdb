@@ -64,8 +64,6 @@ import {
   CompositionZones,
   CompositionZonesHeader,
   SpellcastsPill,
-  SpellcastsChips,
-  computeReplayAggregatePhases,
   collectPlayerSpells,
 } from './lib/compositionPill';
 import {
@@ -1360,37 +1358,6 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
 // game-characterising signatures and events, not the opener, which has its own
 // per-player pill and Build Orders tab. The games-list rows keep their opener
 // chip via the separate server-built `game.featuring` path.
-const buildMainGameFeaturingPills = (mainGame, markerDefs) => {
-  if (!mainGame) return [];
-  const { keys, rowByKey } = collectFeaturingKeysFromMainGame(mainGame);
-  const registry = markerDefs?.markers || {};
-  const order = Array.isArray(markerDefs?.featuring_order) ? markerDefs.featuring_order : [];
-  const gameEventFeaturesByKey = {};
-  (markerDefs?.game_event_features || []).forEach((f) => { gameEventFeaturesByKey[f.key] = f; });
-
-  const pills = order
-    .filter((key) => keys.has(key))
-    // Never show build-order openers on the summary featuring strip.
-    .filter((key) => registry[key]?.kind !== 'initial_build_order')
-    .map((key) => {
-      const def = registry[key];
-      if (def?.games_list) {
-        // Resolve via renderPillText so {minute}/{timestamp}/{subject} tokens
-        // interpolate against the matching detected-pattern row.
-        const rendered = renderPillText(def, PILL_SURFACES.gamesList, rowByKey[key]);
-        if (rendered) {
-          return { key, label: rendered.label || markerName(def), iconKey: rendered.iconKey || '', beta: featureIsBeta(def) };
-        }
-        return { key, label: t.server(`server.marker.${key}.games_list.label`, def.games_list.label) || markerName(def), iconKey: def.games_list.icon_key || '', beta: featureIsBeta(def) };
-      }
-      const ge = gameEventFeaturesByKey[key];
-      if (ge) return { key, label: t.server(`server.game_event.${key}.label`, ge.label), iconKey: ge.icon_key || '', iconKeys: ge.icon_keys || [] };
-      return { key, label: markerName(def) || key, iconKey: '', beta: featureIsBeta(def) };
-    });
-
-  return elideGenericDropPill(pills);
-};
-
 // elideGenericDropPill drops the generic "drop" pill when a more specific
 // variant is present. It operates on { key, ... } entries so the same helper
 // serves the featuring strip, per-player signal pills and the games-list column.
@@ -1444,27 +1411,6 @@ function FeaturingCell({ featuring, featuringKeys }) {
     </div>
   );
 }
-
-const renderFeaturingPill = (pill, keyPrefix) => {
-  const iconKeys = (Array.isArray(pill.iconKeys) && pill.iconKeys.length)
-    ? pill.iconKeys
-    : (pill.iconKey ? [pill.iconKey] : []);
-  const iconUrls = iconKeys.map((k) => getUnitIcon(k)).filter(Boolean);
-  // Build-order pills get the teal opener accent + a "BUILD ORDER" legend on
-  // the top border, so they read as the opening across every surface.
-  const isBO = isBuildOrderEventType(pill.key);
-  const variantClass = isBO ? 'workflow-pattern-pill-bo workflow-pill-legended' : 'workflow-pattern-pill-strong';
-  return (
-    <span key={`${keyPrefix}-${pill.key}`} className={`workflow-pattern-pill ${variantClass} workflow-summary-feature-pill`}>
-      {isBO ? <span className="workflow-pill-legend">{t('pill.buildOrderLegend')}</span> : null}
-      {iconUrls.map((url, i) => (
-        <img key={`${pill.key}-i${i}`} src={url} alt="" className="workflow-pattern-icon" />
-      ))}
-      <span>{pill.label}</span>
-      {pill.beta ? <BetaTag /> : null}
-    </span>
-  );
-};
 
 // Prefer fixed map-dimension bounds when the API provides them. Polygon coords
 // from scmapanalyzer are in pixels on a map sized MapWidth*32 x MapHeight*32
@@ -4343,10 +4289,6 @@ function App() {
       })
       .filter(Boolean);
   }, [selectedMainGameEvent, summaryMapStartPolygons]);
-  const mainGameFeaturingPillsList = useMemo(
-    () => buildMainGameFeaturingPills(mainGame, markerDefinitions),
-    [mainGame, markerDefinitions, t],
-  );
   const selectedMainGameArrow = useMemo(() => {
     if (!selectedMainGameEvent || !isArrowEventType(selectedMainGameEvent.type)) return null;
     // Recall arrow: source (cast click) → target (inferred Arbiter location).
@@ -5071,6 +5013,9 @@ function App() {
     [mainTimingCategory],
   );
   const isResearchTiming = mainTimingCategory === 'research';
+  // Supply is a timing view, but not a scatter one: it renders its own chart
+  // instead of the shared TimingScatterRows the category config drives.
+  const isSupplyTiming = mainTimingCategory === 'supply';
   const isHpTiming = mainTimingCategory === 'hp_upgrades';
   const isExpansionGasTiming = mainTimingCategory === 'expansion_gas';
   const mainTimingSeries = useMemo(() => {
@@ -6015,67 +5960,6 @@ function App() {
                 <div className="workflow-title-row workflow-title-row--solo">
                   <h2 className="workflow-game-players-heading">{renderGameTitlePlayers(mainGame)}</h2>
                 </div>
-                <div className="workflow-meta workflow-meta--game-header">
-                  <span>{formatRelativeReplayDate(mainGame.replay_date)}</span>
-                  <span className="workflow-meta-sep" aria-hidden="true">·</span>
-                  <span>{formatMapNameWithKind(mainGame.map_name, mainGame.map_kind)}</span>
-                  <span className="workflow-meta-sep" aria-hidden="true">·</span>
-                  <span>{formatDuration(mainGame.duration_seconds)}</span>
-                  {mainGame.file_path ? (
-                    <>
-                      <span className="workflow-meta-sep" aria-hidden="true">·</span>
-                      <code className="workflow-meta-filepath-text" title={mainGame.file_path}>
-                        {mainGame.file_path.replace(/\\/g, '/').split('/').pop()}
-                      </code>
-                    </>
-                  ) : null}
-                  {mainGame.file_path ? (
-                    <button
-                      type="button"
-                      className="btn-switch workflow-meta-filepath-copy"
-                      data-tip={t('game.copyPathTip')}
-                      onClick={() => {
-                        if (navigator.clipboard && navigator.clipboard.writeText) {
-                          navigator.clipboard.writeText(mainGame.file_path);
-                        }
-                      }}
-                    >
-                      {t('game.copyPath')}
-                    </button>
-                  ) : null}
-                  {mainGame?.own_copy_file_name ? (
-                    <>
-                      <button
-                        type="button"
-                        className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
-                        disabled={mainGameSeeLoading}
-                        data-tip={t('game.stage.tipOwn')}
-                        onClick={() => copyMainGameToWatchMe('own')}
-                      >
-                        {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.buttonOwn')}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
-                        disabled={mainGameSeeLoading}
-                        data-tip={t('game.stage.tipComplete')}
-                        onClick={() => copyMainGameToWatchMe('complete')}
-                      >
-                        {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.buttonComplete')}
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
-                      disabled={mainGameSeeLoading}
-                      data-tip={t('game.stage.tip')}
-                      onClick={() => copyMainGameToWatchMe()}
-                    >
-                      {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.button')}
-                    </button>
-                  )}
-                </div>
                 <div className="workflow-game-tab-stack">
                   <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label={t('game.sectionsAria')}>
                     <button
@@ -6121,15 +6005,6 @@ function App() {
                     <button
                       type="button"
                       role="tab"
-                      aria-selected={mainGameTab === 'units'}
-                      className={`workflow-production-tab ${mainGameTab === 'units' ? 'workflow-production-tab-active' : ''}`}
-                      onClick={() => setMainGameTab('units')}
-                    >
-                      {t('game.tabs.units')}
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
                       aria-selected={mainGameTab === 'timings'}
                       className={`workflow-production-tab ${mainGameTab === 'timings' ? 'workflow-production-tab-active' : ''}`}
                       onClick={() => setMainGameTab('timings')}
@@ -6155,15 +6030,6 @@ function App() {
                       onClick={() => setMainGameTab('hotkeys')}
                     >
                       {t('tabs.hotkeys')}
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={mainGameTab === 'supply-timeline'}
-                      className={`workflow-production-tab ${mainGameTab === 'supply-timeline' ? 'workflow-production-tab-active' : ''}`}
-                      onClick={() => setMainGameTab('supply-timeline')}
-                    >
-                      {t('game.tabs.supply')}
                     </button>
                     <button
                       type="button"
@@ -6256,42 +6122,83 @@ function App() {
                           </div>
                         )}
                       </div>
+                      {/* Beside the map sits what identifies this game: when it was
+                          played, where, how long, which file, and the buttons that act
+                          on it. It used to be a full-width strip above the tabs, with
+                          this space given to a Featuring row and aggregate composition
+                          and spellcast blocks that all restated the per-player table
+                          below. The identity of the game is the one thing here that is
+                          said nowhere else. */}
                       <div className="workflow-summary-features-col">
-                        {mainGameFeaturingPillsList.length > 0 ? (
-                          <>
-                            <div className="workflow-summary-features-title">{t('common.featuring')}</div>
-                            <div className="workflow-pattern-pills">
-                              {mainGameFeaturingPillsList.map((pill) => renderFeaturingPill(pill, 'summary-game'))}
-                            </div>
-                          </>
-                        ) : (
-                          <div className="workflow-subtle-note">{t('game.summary.noHighlights')}</div>
-                        )}
-                        {/* Replay-aggregate attacker-composition bars (early/mid/late),
-                            computed at display time by summing per-player counts in
-                            mainGame.unit_composition_markers. Spellcasts (distinct
-                            casts, not headcount) sit in their own block below. */}
-                        {Array.isArray(mainGame?.unit_composition_markers) && mainGame.unit_composition_markers.length > 0 ? (
-                          (() => {
-                            const aggregatePhases = computeReplayAggregatePhases(mainGame.unit_composition_markers);
-                            const aggregateSpells = collectPlayerSpells(aggregatePhases);
-                            return (
-                              <div className="workflow-summary-composition">
-                                <div className="workflow-summary-features-title workflow-summary-composition-title">{t('game.summary.unitComposition')}</div>
-                                <CompositionZonesHeader />
-                                <CompositionZones phases={aggregatePhases} />
-                                {aggregateSpells.length > 0 ? (
-                                  <div className="workflow-summary-spellcasts">
-                                    <div className="workflow-summary-features-title workflow-summary-spellcasts-title">{t('game.summary.spellcasts')}</div>
-                                    <div className="workflow-pattern-pills">
-                                      <SpellcastsChips spells={aggregateSpells} />
-                                    </div>
-                                  </div>
-                                ) : null}
-                              </div>
-                            );
-                          })()
-                        ) : null}
+                        <div className="workflow-meta workflow-meta--game-header workflow-meta--beside-map">
+                          <span>{formatRelativeReplayDate(mainGame.replay_date)}</span>
+                          <span className="workflow-meta-sep" aria-hidden="true">·</span>
+                          <span>{formatMapNameWithKind(mainGame.map_name, mainGame.map_kind)}</span>
+                          <span className="workflow-meta-sep" aria-hidden="true">·</span>
+                          <span>{formatDuration(mainGame.duration_seconds)}</span>
+                          {mainGame.file_path ? (
+                            <>
+                              <span className="workflow-meta-sep" aria-hidden="true">·</span>
+                              <code className="workflow-meta-filepath-text" title={mainGame.file_path}>
+                                {mainGame.file_path.replace(/\\/g, '/').split('/').pop()}
+                              </code>
+                            </>
+                          ) : null}
+                          {mainGame.file_path ? (
+                            <button
+                              type="button"
+                              className="btn-switch workflow-meta-filepath-copy"
+                              data-tip={t('game.copyPathTip')}
+                              onClick={() => {
+                                if (navigator.clipboard && navigator.clipboard.writeText) {
+                                  navigator.clipboard.writeText(mainGame.file_path);
+                                }
+                              }}
+                            >
+                              {t('game.copyPath')}
+                            </button>
+                          ) : null}
+                          {mainGame?.own_copy_file_name ? (
+                            <>
+                              <button
+                                type="button"
+                                className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
+                                disabled={mainGameSeeLoading}
+                                data-tip={t('game.stage.tipOwn')}
+                                onClick={() => copyMainGameToWatchMe('own')}
+                              >
+                                {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.buttonOwn')}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
+                                disabled={mainGameSeeLoading}
+                                data-tip={t('game.stage.tipComplete')}
+                                onClick={() => copyMainGameToWatchMe('complete')}
+                              >
+                                {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.buttonComplete')}
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
+                              disabled={mainGameSeeLoading}
+                              data-tip={t('game.stage.tip')}
+                              onClick={() => copyMainGameToWatchMe()}
+                            >
+                              {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.button')}
+                            </button>
+                          )}
+                        </div>
+                        {/* The replay-aggregate composition bars and spellcast chips
+                            used to sit here. Both were sums of the per-player table
+                            directly below, so the same 8-player game spent roughly a
+                            third of its icons saying twice what it already said once,
+                            and the union of everyone's spells answers "was this cast"
+                            without answering "by whom", which the per-player CASTS
+                            column does. Featuring stays: it is the one line that says
+                            what kind of game this was. */}
                       </div>
                     </div>
                     <div className="workflow-player-table" style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
@@ -6913,139 +6820,6 @@ function App() {
                   </div>
                 )}
 
-                {mainGameTab === 'units' && (
-                  <div className="workflow-card workflow-card-chat-summary">
-                    <div className="workflow-production-top-row">
-                      <div className="workflow-radio-group" role="radiogroup" aria-label={t('units.viewAria')}>
-                        {[
-                          { value: 'all', label: t('common.all') },
-                          { value: 'units', label: t('units.units') },
-                          { value: 'buildings', label: t('units.buildings') },
-                        ].map((opt) => (
-                          <label key={opt.value} className="workflow-radio-option">
-                            <input
-                              type="radio"
-                              name="workflow-production-view"
-                              value={opt.value}
-                              checked={productionView === opt.value}
-                              onChange={(e) => {
-                                setProductionView(e.target.value);
-                                setProductionSubFilter('all');
-                              }}
-                            />
-                            <span>{opt.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                      <div className="workflow-section-warning">
-                        {t('units.warning')}
-                      </div>
-                    </div>
-                    <div className="workflow-summary-filter-row">
-                      <div className="workflow-radio-group">
-                        {(productionView === 'units'
-                          ? [
-                              { value: 'all', label: t('units.filter.allUnits') },
-                              { value: 'workers', label: t('units.filter.workers') },
-                              { value: 'non-workers', label: t('units.filter.nonWorkers') },
-                              { value: 'spellcasters', label: t('units.filter.spellcasters') },
-                              { value: 'tier-1', label: t('units.filter.tier1') },
-                              { value: 'tier-2', label: t('units.filter.tier2') },
-                              { value: 'tier-3', label: t('units.filter.tier3') },
-                            ]
-                          : productionView === 'buildings'
-                            ? [
-                                { value: 'all', label: t('units.filter.allBuildings') },
-                                { value: 'defenses', label: t('units.filter.defenses') },
-                                { value: 'tier-1', label: t('units.filter.tier1') },
-                                { value: 'tier-2', label: t('units.filter.tier2') },
-                                { value: 'tier-3', label: t('units.filter.tier3') },
-                              ]
-                            : [
-                                { value: 'all', label: t('common.all') },
-                                { value: 'tier-2', label: t('units.filter.tier2') },
-                                { value: 'tier-3', label: t('units.filter.tier3') },
-                                { value: 'defenses', label: t('units.filter.defenses') },
-                              ]
-                        ).map((opt) => (
-                          <label key={opt.value} className="workflow-radio-option">
-                            <input
-                              type="radio"
-                              name="workflow-production-subfilter"
-                              value={opt.value}
-                              checked={productionSubFilter === opt.value}
-                              onChange={(e) => setProductionSubFilter(e.target.value)}
-                            />
-                            <span>{opt.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                      <input
-                        type="text"
-                        className="workflow-summary-filter-input"
-                        placeholder={productionView === 'buildings' ? t('units.filterBuildingPlaceholder') : t('units.filterUnitPlaceholder')}
-                        value={productionNameFilter}
-                        onChange={(e) => setProductionNameFilter(e.target.value)}
-                      />
-                    </div>
-                    <UnitProductionEarlyTimeline
-                      players={mainGamePlayers}
-                      earlyEvents={mainGame.units_early_events || []}
-                      filterEvents={(events) => filterProductionEntries(events, productionView)}
-                      hasTeamInfo={hasTeamInfo}
-                      teamColorRgba={teamColorRgba}
-                    />
-                    <div className="table-container">
-                      <table className="data-table workflow-table workflow-production-table">
-                        <thead>
-                          <tr>
-                            <th>{t('units.table.slice')}</th>
-                            {mainGamePlayers.map((player) => (
-                              <th
-                                key={player.player_id}
-                                style={hasTeamInfo ? { backgroundColor: teamColorRgba(player.team, 0.2) } : undefined}
-                              >
-                                {player.team_won ? <span className="workflow-crown" title={t('common.winner')}>👑</span> : null}
-                                {player.name}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(mainGame.units_by_slice || []).map((slice) => (
-                            <tr key={slice.slice_start_second}>
-                              <td>{slice.slice_label}</td>
-                              {mainGamePlayers.map((player) => {
-                                const playerSlice = (slice.players || []).find((item) => item.player_id === player.player_id);
-                                const filtered = filterProductionEntries(playerSlice?.units || [], productionView);
-                                return (
-                                  <td
-                                    key={`${slice.slice_start_second}-${player.player_id}`}
-                                    style={hasTeamInfo ? { backgroundColor: teamColorRgba(player.team, 0.08) } : undefined}
-                                  >
-                                    {filtered.length === 0 ? (
-                                      <NoValue />
-                                    ) : (
-                                      <div className="workflow-unit-chips">
-                                        {filtered.map((unit) => (
-                                          <span key={`${player.player_id}-${unit.unit_type}`} className="workflow-unit-chip">
-                                            {getUnitIcon(unit.unit_type) ? <img src={getUnitIcon(unit.unit_type)} alt={t.server(`server.name.${slugKey(unit.unit_type)}`, unit.unit_type)} className="workflow-unit-chip-icon" /> : null}
-                                            <strong className="workflow-unit-chip-count">x{unit.count}</strong>
-                                          </span>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
                 {mainGameTab === 'hotkeys' && (
                   <div className="workflow-card">
                     {mainGameHotkeysLoading ? <div className="chart-empty">{t('hotkeys.loading')}</div> : null}
@@ -7060,15 +6834,6 @@ function App() {
                       </>
                     ) : null}
                   </div>
-                )}
-
-                {mainGameTab === 'supply-timeline' && (
-                  <SupplyTimeline
-                    players={mainGamePlayers}
-                    timeline={mainGame.production_timeline || []}
-                    durationSeconds={mainGame.duration_seconds || 0}
-                    playerColor={playerColorToCss}
-                  />
                 )}
 
                 {mainGameTab === 'timings' && (
@@ -7086,11 +6851,33 @@ function App() {
                             {t(cfg.labelKey)}
                           </button>
                         ))}
+                        {/* Supply sits with the other timings rather than in the top
+                            strip: it is one more thing plotted against the game clock,
+                            and it was competing for attention with tabs that answer
+                            different questions. It is listed here by hand because the
+                            config above drives the scatter charts, which this is not. */}
+                        <button
+                          key="supply"
+                          className={`workflow-production-tab ${isSupplyTiming ? 'workflow-production-tab-active' : ''}`}
+                          onClick={() => setMainTimingCategory('supply')}
+                          role="tab"
+                          aria-selected={isSupplyTiming}
+                        >
+                          {t('game.tabs.supply')}
+                        </button>
                       </div>
-                      {mainTimingNotice ? (
+                      {mainTimingNotice && !isSupplyTiming ? (
                         <div className="workflow-section-warning">{mainTimingNotice}</div>
                       ) : null}
                     </div>
+                    {isSupplyTiming ? (
+                      <SupplyTimeline
+                        players={mainGamePlayers}
+                        timeline={mainGame.production_timeline || []}
+                        durationSeconds={mainGame.duration_seconds || 0}
+                        playerColor={playerColorToCss}
+                      />
+                    ) : (<>
                     {isResearchTiming ? (
                       <div className="workflow-timing-overlay-toggles" role="group" aria-label={t('timings.overlayAria')}>
                         {RESEARCH_SUBCATEGORIES.map((sub) => {
@@ -7164,6 +6951,7 @@ function App() {
                         rowGroupingMode={isResearchTiming ? 'race' : 'none'}
                       />
                     )}
+                    </>)}
                   </div>
                 )}
                 {mainGameTab === 'build-orders' && (
