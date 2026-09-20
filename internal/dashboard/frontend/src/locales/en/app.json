@@ -175,8 +175,6 @@
   "game.stage.tip": "Clones this replay into your replay folder as 000_screpdb_watch_me/watch_me.rep so you can easily find it within Starcraft.",
   "game.stage.copying": "Copying…",
   "game.stage.button": "Stage watch replay",
-  "game.stage.buttonOwn": "Stage watch replay (yours)",
-  "game.stage.buttonComplete": "Stage watch replay (complete)",
   "game.stage.tipOwn": "Clones your own recording of this game into your replay folder as 000_screpdb_watch_me/watch_me.rep. It ends when you left the game.",
   "game.stage.tipComplete": "Clones the complete recording of this game, saved by a co-player who stayed until the end, into your replay folder as 000_screpdb_watch_me/watch_me_complete.rep.",
   "game.stage.copied": "Copied to 000_screpdb_watch_me/watch_me.rep in your replay folder.",
@@ -440,5 +438,7 @@
   "player.bnet.noAccount": "Battle.net has no account under this name on any gateway.",
   "player.bnet.asOf": "Battle.net data as of {when}",
   "fingerprint.coverage.noMatch": "Compared against every progamer in the catalogue: no match.",
-  "fingerprint.coverage.belowBar": "The closest progamer match was not confident enough to name."
+  "fingerprint.coverage.belowBar": "The closest progamer match was not confident enough to name.",
+  "game.stage.own": "Yours",
+  "game.stage.complete": "Complete"
 }

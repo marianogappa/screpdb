@@ -6121,30 +6121,34 @@ function App() {
                             {mainMapVisual?.resolution_note ? ` (${mainMapVisual.resolution_note})` : ''}
                           </div>
                         )}
+                        {/* The map name belongs to the picture of the map, so it
+                            captions it rather than queueing up with the date and the
+                            buttons in the column alongside. */}
+                        <div className="workflow-map-caption">
+                          {formatMapNameWithKind(mainGame.map_name, mainGame.map_kind)}
+                        </div>
                       </div>
                       {/* Beside the map sits what identifies this game: when it was
-                          played, where, how long, which file, and the buttons that act
-                          on it. It used to be a full-width strip above the tabs, with
-                          this space given to a Featuring row and aggregate composition
-                          and spellcast blocks that all restated the per-player table
-                          below. The identity of the game is the one thing here that is
-                          said nowhere else. */}
+                          played, how long it ran, which file it is, and the buttons
+                          that act on it. This space used to hold a Featuring row and
+                          aggregate composition and spellcast blocks, all three of
+                          which were unions of the per-player table below. Captions
+                          reuse labels the app already has (the games list calls this
+                          column Played, the omnibar calls duration Length) so a layout
+                          change does not become a translation change. */}
                       <div className="workflow-summary-features-col">
-                        <div className="workflow-meta workflow-meta--game-header workflow-meta--beside-map">
-                          <span>{formatRelativeReplayDate(mainGame.replay_date)}</span>
-                          <span className="workflow-meta-sep" aria-hidden="true">·</span>
-                          <span>{formatMapNameWithKind(mainGame.map_name, mainGame.map_kind)}</span>
-                          <span className="workflow-meta-sep" aria-hidden="true">·</span>
-                          <span>{formatDuration(mainGame.duration_seconds)}</span>
-                          {mainGame.file_path ? (
-                            <>
-                              <span className="workflow-meta-sep" aria-hidden="true">·</span>
-                              <code className="workflow-meta-filepath-text" title={mainGame.file_path}>
-                                {mainGame.file_path.replace(/\\/g, '/').split('/').pop()}
-                              </code>
-                            </>
-                          ) : null}
-                          {mainGame.file_path ? (
+                        <dl className="workflow-game-facts">
+                          <dt>{t('games.table.played')}</dt>
+                          <dd>{formatRelativeReplayDate(mainGame.replay_date)}</dd>
+                          <dt>{t('omnibar.axis.length')}</dt>
+                          <dd>{formatDuration(mainGame.duration_seconds)}</dd>
+                        </dl>
+
+                        {mainGame.file_path ? (
+                          <div className="workflow-game-file-row">
+                            <code className="workflow-meta-filepath-text" title={mainGame.file_path}>
+                              {mainGame.file_path.replace(/\\/g, '/').split('/').pop()}
+                            </code>
                             <button
                               type="button"
                               className="btn-switch workflow-meta-filepath-copy"
@@ -6157,9 +6161,17 @@ function App() {
                             >
                               {t('game.copyPath')}
                             </button>
-                          ) : null}
-                          {mainGame?.own_copy_file_name ? (
-                            <>
+                          </div>
+                        ) : null}
+
+                        {/* Two buttons share one caption so neither has to repeat
+                            "Stage watch replay" to say which recording it stages. A
+                            lone button keeps its full label: a heading over a single
+                            control is just a longer way of writing the control. */}
+                        {mainGame?.own_copy_file_name ? (
+                          <div className="workflow-game-stage">
+                            <div className="workflow-game-stage-title">{t('game.stage.button')}</div>
+                            <div className="workflow-game-stage-buttons">
                               <button
                                 type="button"
                                 className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
@@ -6167,7 +6179,7 @@ function App() {
                                 data-tip={t('game.stage.tipOwn')}
                                 onClick={() => copyMainGameToWatchMe('own')}
                               >
-                                {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.buttonOwn')}
+                                {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.own')}
                               </button>
                               <button
                                 type="button"
@@ -6176,10 +6188,12 @@ function App() {
                                 data-tip={t('game.stage.tipComplete')}
                                 onClick={() => copyMainGameToWatchMe('complete')}
                               >
-                                {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.buttonComplete')}
+                                {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.complete')}
                               </button>
-                            </>
-                          ) : (
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="workflow-game-stage-buttons">
                             <button
                               type="button"
                               className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
@@ -6189,16 +6203,8 @@ function App() {
                             >
                               {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.button')}
                             </button>
-                          )}
-                        </div>
-                        {/* The replay-aggregate composition bars and spellcast chips
-                            used to sit here. Both were sums of the per-player table
-                            directly below, so the same 8-player game spent roughly a
-                            third of its icons saying twice what it already said once,
-                            and the union of everyone's spells answers "was this cast"
-                            without answering "by whom", which the per-player CASTS
-                            column does. Featuring stays: it is the one line that says
-                            what kind of game this was. */}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="workflow-player-table" style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>

@@ -2796,22 +2796,65 @@ button.workflow-nav-update-available:disabled {
   user-select: none;
 }
 
-/* Beside the map the meta is a block, not a strip: it has a narrow column to
-   fill and a tall one, so it wraps onto its own lines and pushes the buttons to
-   the bottom rather than trailing off the right edge. */
-.workflow-meta--beside-map {
-  flex-direction: column;
-  align-items: flex-start;
-  align-self: stretch;
-  gap: 10px;
+/* The map's own name, captioning the thumbnail it belongs to. */
+.workflow-map-caption {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--e-base);
+  text-align: center;
 }
 
-.workflow-meta--beside-map .workflow-meta-sep {
-  display: none;
+/* Beside the map: two labelled facts, the file, and the staging buttons. The
+   labels sit in a fixed first column so the two values line up with each other
+   instead of each starting wherever its own label happens to end. */
+.workflow-game-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  margin: 0;
+  align-items: baseline;
 }
 
-.workflow-meta--beside-map .workflow-meta-filepath-text {
-  max-width: 100%;
+.workflow-game-facts dt {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--e-quiet);
+}
+
+.workflow-game-facts dd {
+  margin: 0;
+  color: var(--e-base);
+}
+
+/* The file name earns no caption: it is visibly a file name, and the button
+   beside it says what it does. */
+.workflow-game-file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workflow-game-file-row .workflow-meta-filepath-text {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.workflow-game-stage-title {
+  margin-bottom: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--e-quiet);
+}
+
+.workflow-game-stage-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .workflow-summary-map-row {
@@ -2871,13 +2914,13 @@ button.workflow-nav-update-available:disabled {
 .workflow-summary-features-col {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  /* Fill remaining row space (after the map thumb on the left) instead
-     of capping at a fixed width. Pills inside still left-align via
-     flex-direction:column + their own inline-flex layout. The old
-     max-width: min(840px, 100%) artificially clipped the row even on
-     wide displays — relevant now that the new "Unit composition" pills
-     run wider than the Featuring chips. */
+  /* Three groups now, not a stack of pill rows: the two dated facts, the file,
+     and the staging buttons. They want air between them, not the tight 8px the
+     pills wanted. */
+  gap: 16px;
+  align-items: flex-start;
+  /* Fill the row space left of nothing in particular rather than capping at a
+     fixed width, so a long file name has somewhere to go. */
   flex: 1 1 auto;
   min-width: 0;
 }
