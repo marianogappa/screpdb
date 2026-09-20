@@ -129,6 +129,7 @@ func TestDashboardAPI_HealthReportsTheLibraryState(t *testing.T) {
 // folder, or drops a replay into it, cannot disturb the checked-in files.
 func newTestDashboard(t *testing.T) *Dashboard {
 	t.Helper()
+	t.Setenv("SCREPDB_APPDATA_DIR", t.TempDir())
 	t.Cleanup(iofacade.Reset)
 	ctx := context.Background()
 

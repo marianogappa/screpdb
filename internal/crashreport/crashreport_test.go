@@ -1,12 +1,25 @@
 package crashreport
 
 import (
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/marianogappa/screpdb/internal/appdata"
 )
+
+func setTestAppData(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	t.Setenv("SCREPDB_APPDATA_DIR", dir)
+	if _, err := appdata.Dir(); err != nil {
+		t.Fatalf("appdata.Dir: %v", err)
+	}
+	return dir
+}
 
 func TestIssueURLPrefillsTitleAndBody(t *testing.T) {
 	r := Capture("boom", []byte("goroutine 1 [running]:\nmain.main()"))
@@ -56,10 +69,8 @@ func TestFileTextContainsFullStack(t *testing.T) {
 	}
 }
 
-func TestWriteCreatesReportInAppDataDir(t *testing.T) {
-	dir := t.TempDir()
-	// crashreport.write resolves the app-data root via this seam (issue #237).
-	t.Setenv("SCREPDB_APPDATA_DIR", dir)
+func TestWriteCreatesReportInCrashSubdir(t *testing.T) {
+	dir := setTestAppData(t)
 
 	r := Capture("boom", []byte("stack here"))
 	path, err := r.write()
@@ -69,8 +80,9 @@ func TestWriteCreatesReportInAppDataDir(t *testing.T) {
 	if base := filepath.Base(path); !strings.HasPrefix(base, "screpdb-crash-") || !strings.HasSuffix(base, ".log") {
 		t.Errorf("unexpected report filename %q", base)
 	}
-	if want, _ := filepath.Abs(dir); filepath.Dir(path) != want {
-		t.Errorf("report written to %q, want inside app-data dir %q", filepath.Dir(path), want)
+	crashDir := filepath.Join(dir, "crash")
+	if filepath.Dir(path) != crashDir {
+		t.Errorf("report written to %q, want inside crash subdir %q", filepath.Dir(path), crashDir)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -82,8 +94,6 @@ func TestWriteCreatesReportInAppDataDir(t *testing.T) {
 }
 
 func TestGuardWithoutPanicReturns(t *testing.T) {
-	// Guard must be a no-op when no panic is in flight — calling it directly
-	// (recover() == nil) must return normally and never os.Exit.
 	Guard()
 }
 
@@ -102,13 +112,7 @@ func TestSetOpenBrowserUpdatesDefault(t *testing.T) {
 }
 
 func TestGuardNonFatalRecoversAndRunsCleanup(t *testing.T) {
-	// Contain the crash-report file written by the underlying Handle.
-	dir := t.TempDir()
-	prev, _ := os.Getwd()
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(prev) })
+	setTestAppData(t)
 
 	cleaned := false
 	func() {
@@ -116,9 +120,35 @@ func TestGuardNonFatalRecoversAndRunsCleanup(t *testing.T) {
 		panic("boom")
 	}()
 
-	// Reaching here at all proves the panic did not propagate (non-fatal).
 	if !cleaned {
 		t.Error("GuardNonFatal did not run the cleanup callback")
+	}
+}
+
+func TestRetentionKeepsNewest(t *testing.T) {
+	dir := setTestAppData(t)
+
+	crashDir := filepath.Join(dir, "crash")
+	if err := os.MkdirAll(crashDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	total := maxCrashFiles + 5
+	for i := range total {
+		f := filepath.Join(crashDir, fmt.Sprintf("screpdb-crash-20260101-%06d.log", i))
+		if err := os.WriteFile(f, []byte("crash"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	pruneOldReports(crashDir)
+
+	entries, err := os.ReadDir(crashDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != maxCrashFiles {
+		t.Errorf("after pruning: %d files, want %d", len(entries), maxCrashFiles)
 	}
 }
 

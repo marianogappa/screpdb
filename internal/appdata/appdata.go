@@ -16,10 +16,12 @@
 package appdata
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"testing"
 
 	"github.com/marianogappa/screpdb/internal/iofacade"
 )
@@ -52,10 +54,18 @@ func resolveBase(goos string, getenv func(string) string, userConfigDir func() (
 	return userConfigDir()
 }
 
+// errTestWithoutOverride is returned when a test binary calls Dir/Path without
+// setting SCREPDB_APPDATA_DIR, which would silently write into the developer's
+// real app-data directory (issue #410).
+var errTestWithoutOverride = errors.New("appdata: test binary must set " + OverrideEnv + " (e.g. t.Setenv)")
+
 // root computes the absolute app-data root without creating it.
 func root() (string, error) {
 	if override := strings.TrimSpace(os.Getenv(OverrideEnv)); override != "" {
 		return filepath.Abs(override)
+	}
+	if testing.Testing() {
+		return "", errTestWithoutOverride
 	}
 	base, err := resolveBase(runtime.GOOS, os.Getenv, os.UserConfigDir)
 	if err != nil {
