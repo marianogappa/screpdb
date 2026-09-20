@@ -480,10 +480,6 @@ func (d *Dashboard) withBnetProfiles(ctx context.Context, players []gamingSessio
 }
 
 func (d *Dashboard) handlerGamingSession(w http.ResponseWriter, r *http.Request) {
-	if !d.featureFlagEnabled(r.Context(), featureFlagGamingSession) {
-		http.Error(w, "gaming session is not enabled", http.StatusNotFound)
-		return
-	}
 	session, err := d.gamingSession(r.Context())
 	if err != nil {
 		http.Error(w, "failed to build gaming session", http.StatusInternalServerError)

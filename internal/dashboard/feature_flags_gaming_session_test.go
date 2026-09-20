@@ -34,50 +34,44 @@ func putFeatureFlag(t *testing.T, r http.Handler, key string, enabled bool) *htt
 	return rec
 }
 
-func TestFeatureFlagsRoundTripAndGamingSession(t *testing.T) {
+func TestFeatureFlagsRoundTrip(t *testing.T) {
 	d := newTestDashboard(t)
 	r := d.setupRouter()
 
 	flags := getFeatureFlags(t, r)
-	if _, ok := flags[featureFlagGamingSession]; !ok {
+	if _, ok := flags[featureFlagCompleteReplays]; !ok {
 		t.Fatalf("known flag missing from payload: %v", flags)
 	}
 
-	// The gaming-session endpoint is gated on the flag.
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/custom/gaming-session", nil))
-	if flags[featureFlagGamingSession] {
-		t.Fatalf("expected flag to default off, got %v", flags)
-	}
-	if rec.Code != http.StatusNotFound {
-		t.Fatalf("gated gaming session must 404, got %d", rec.Code)
-	}
-
-	if rec := putFeatureFlag(t, r, featureFlagGamingSession, true); rec.Code != http.StatusOK {
+	if rec := putFeatureFlag(t, r, featureFlagCompleteReplays, true); rec.Code != http.StatusOK {
 		t.Fatalf("enable flag: %d %s", rec.Code, rec.Body.String())
 	}
-	t.Cleanup(func() { putFeatureFlag(t, r, featureFlagGamingSession, false) })
-	if flags := getFeatureFlags(t, r); !flags[featureFlagGamingSession] {
+	t.Cleanup(func() { putFeatureFlag(t, r, featureFlagCompleteReplays, false) })
+	if flags := getFeatureFlags(t, r); !flags[featureFlagCompleteReplays] {
 		t.Fatalf("flag did not persist: %v", flags)
 	}
 
-	rec = httptest.NewRecorder()
+	if rec := putFeatureFlag(t, r, "not_a_flag", true); rec.Code != http.StatusBadRequest {
+		t.Fatalf("unknown flag must 400, got %d", rec.Code)
+	}
+	req := httptest.NewRequest(http.MethodPut, "/api/custom/feature-flags", bytes.NewReader([]byte("{")))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("malformed body must 400, got %d", rec.Code)
+	}
+}
+
+func TestGamingSessionEndpointAlwaysAvailable(t *testing.T) {
+	d := newTestDashboard(t)
+	r := d.setupRouter()
+
+	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/custom/gaming-session", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("gaming session: %d %s", rec.Code, rec.Body.String())
 	}
 	if !json.Valid(rec.Body.Bytes()) {
 		t.Fatalf("gaming session returned invalid JSON: %s", rec.Body.String())
-	}
-
-	// Unknown flags and malformed bodies are rejected.
-	if rec := putFeatureFlag(t, r, "not_a_flag", true); rec.Code != http.StatusBadRequest {
-		t.Fatalf("unknown flag must 400, got %d", rec.Code)
-	}
-	req := httptest.NewRequest(http.MethodPut, "/api/custom/feature-flags", bytes.NewReader([]byte("{")))
-	rec = httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("malformed body must 400, got %d", rec.Code)
 	}
 }

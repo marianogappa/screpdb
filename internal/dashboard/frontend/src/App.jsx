@@ -3009,8 +3009,6 @@ function App() {
   const [gamingSessionLoading, setGamingSessionLoading] = useState(false);
   const [gamingSessionError, setGamingSessionError] = useState('');
 
-  const gamingSessionEnabled = Boolean(featureFlags.gaming_session);
-
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -3045,7 +3043,6 @@ function App() {
   // unchanged game rows' identity, flashes the changed ones, and swallows
   // errors — the same treatment as the games list.
   const loadGamingSession = useCallback(async ({ silent = false } = {}) => {
-    if (!gamingSessionEnabled) return;
     try {
       if (!silent) {
         setGamingSessionLoading(true);
@@ -3068,15 +3065,11 @@ function App() {
     } finally {
       if (!silent) setGamingSessionLoading(false);
     }
-  }, [gamingSessionEnabled]);
+  }, []);
 
   useEffect(() => {
-    if (!gamingSessionEnabled) {
-      setGamingSession(null);
-      return;
-    }
     void loadGamingSession();
-  }, [gamingSessionEnabled, loadGamingSession]);
+  }, [loadGamingSession]);
 
   // Every player currently on screen that has no flag yet. The poll below asks
   // only about these, and only while the bridge could still produce an answer.
@@ -5484,7 +5477,7 @@ function App() {
           <div className="workflow-nav-group">
             <button type="button" className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('games')}>{t('nav.games')}</button>
             <button type="button" className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('players')}>{t('nav.players')}</button>
-            {gamingSessionEnabled && gamingSession?.has_session ? (
+            {gamingSession?.has_session ? (
               <button
                 type="button"
                 className={`btn-manage ${activeView === 'session' ? 'workflow-nav-active' : ''}`}
