@@ -3660,8 +3660,9 @@ function App() {
       setGlobalReplayFilterError('');
       const saved = await api.updateGlobalReplayFilter(nextConfig);
       setGlobalReplayFilterConfig(saved);
+      // The panel saves on every change now, so it must stay open. Closing it
+      // here used to be the Save button's "done" signal.
       await refreshDataAfterGlobalReplayFilterSave();
-      setShowGlobalReplayFilter(false);
     } catch (err) {
       setGlobalReplayFilterError(err.message || t('settings.errors.save'));
     } finally {
@@ -7579,14 +7580,20 @@ function App() {
                                 {bnetRecent.map((g) => {
                                   const raceIcon = getWorkerIconForRace(g.race);
                                   const result = String(g.result || '');
-                                  const resultEmoji = result === 'win' ? '✅' : result === 'loss' ? '❌' : '·';
+                                  // ❓ for an unknown result, matching the session record. A middle dot
+                                  // read as a separator or a rendering fault rather than as
+                                  // "nobody knows who won".
+                                  const resultEmoji = result === 'win' ? '✅' : result === 'loss' ? '❌' : '❓';
+                                  const resultTitle = result === 'win' ? t('player.result.win')
+                                    : result === 'loss' ? t('player.result.loss')
+                                    : t('player.result.undetermined');
                                   const opponents = Array.isArray(g.opponents) ? g.opponents : [];
                                   return (
                                     <div key={`${g.match_guid || g.played_at}`} className="workflow-bnet-game-row">
                                       <span className="wbg-race">{raceIcon ? <img src={raceIcon} alt={raceLabel(g.race)} title={raceLabel(g.race)} /> : null}</span>
                                       <span className="wbg-when" title={g.played_at}>{formatRelativeReplayDate(g.played_at)}</span>
                                       <span className="wbg-map" title={g.map_name}>{g.map_name || <NoValue />}</span>
-                                      <span className="wbg-result" title={result}>{resultEmoji}</span>
+                                      <span className="wbg-result" title={resultTitle}>{resultEmoji}</span>
                                       <span className="wbg-apm">{g.apm || ''}</span>
                                       <span className="wbg-opp">{opponents.map((o) => `${o.toon}${o.race ? ` (${o.race.slice(0, 1)})` : ''}`).join(', ')}</span>
                                     </div>
@@ -7637,7 +7644,7 @@ function App() {
                               const restPatterns = patterns.filter((pt) => !isOpenerEventType(pt?.event_type));
                               const phases = Array.isArray(cp?.composition) ? cp.composition : [];
                               const winnerKnown = (g.players || []).some((player) => player.team_won);
-                              const resultEmoji = !winnerKnown ? '·' : (cp?.disconnected ? '🔌' : (cp?.team_won ? '✅' : '❌'));
+                              const resultEmoji = !winnerKnown ? '❓' : (cp?.disconnected ? '🔌' : (cp?.team_won ? '✅' : '❌'));
                               const resultTitle = !winnerKnown ? t('player.result.undetermined') : (cp?.disconnected ? t('player.result.disconnected') : (cp?.team_won ? t('player.result.win') : t('player.result.loss')));
                               const raceIcon = getWorkerIconForRace(cp?.race);
                               return (

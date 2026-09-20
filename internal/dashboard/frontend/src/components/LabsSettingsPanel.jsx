@@ -1,15 +1,15 @@
 import React from 'react';
 import { useT } from '../lib/i18nContext';
 
-// Each entry is one switch. A single short line beats a title plus a paragraph:
-// these are previews, so the honest description is vague anyway, and a wall of
+// Each entry is one switch, described in a single short line: these are
+// previews, so the honest description is vague anyway, and a wall of
 // explanation for something half-built reads worse than a hint.
-export const LABS_FEATURES = [
-  {
-    key: 'complete_replays',
-    labelKey: 'labs.feature.completeReplays',
-  },
-];
+//
+// Empty for now. Completing your replays graduated out of Labs and is on by
+// default, with an opt-out on the Folder tab. The Settings modal hides the tab
+// while this list is empty, so adding the next preview here is all it takes to
+// bring it back.
+export const LABS_FEATURES = [];
 
 function LabsSettingsPanel({ flags, saving, message, messageIsError, onToggle }) {
   const t = useT();

@@ -16,6 +16,7 @@ import (
 
 	"github.com/marianogappa/screpdb/internal/dashboard"
 	"github.com/marianogappa/screpdb/internal/iofacade"
+	"github.com/marianogappa/screpdb/internal/library/persist"
 	"github.com/marianogappa/screpdb/internal/sampledata"
 )
 
@@ -110,20 +111,22 @@ func main() {
 	select {}
 }
 
+// extractBnetProfiles drops the baked Battle.net data straight into the v2
+// store the app reads. It used to write the pre-v2 per-payload tree instead and
+// rely on the upgrade migration to convert it on every page load, which meant
+// shipping ~6.8 MB of raw upstream payloads to every visitor and distilling
+// them again in the browser. The files here are the distilled form:
+// scripts/generate-demo-bnet builds them.
 func extractBnetProfiles() {
-	destRoot := filepath.Join(appRoot, "bnet_profiles")
-	_ = fs.WalkDir(bnetDataFS, "bnetdata", func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil
+	destRoot := filepath.Join(appRoot, persist.BnetDirName)
+	if err := iofacade.MkdirAll(destRoot, 0o755); err != nil {
+		return
+	}
+	for _, name := range []string{"profiles.v2.jsonl", "games.v2.jsonl"} {
+		data, err := fs.ReadFile(bnetDataFS, "bnetdata/"+name)
+		if err != nil {
+			continue
 		}
-		rel, _ := filepath.Rel("bnetdata", path)
-		dest := filepath.Join(destRoot, rel)
-		_ = iofacade.MkdirAll(filepath.Dir(dest), 0o755)
-		data, readErr := fs.ReadFile(bnetDataFS, path)
-		if readErr != nil {
-			return nil
-		}
-		_ = iofacade.WriteFile(dest, data, 0o644)
-		return nil
-	})
+		_ = iofacade.WriteFile(filepath.Join(destRoot, name), data, 0o644)
+	}
 }

@@ -498,8 +498,10 @@ func TestEnrichDepsWiring(t *testing.T) {
 	if deps.now().IsZero() {
 		t.Fatal("now")
 	}
-	if deps.enabled() {
-		t.Fatal("enrichment enabled without the labs flag")
+	// Completing replays is on unless someone opts out, so an install that has
+	// never touched the switch must come back enabled.
+	if !deps.enabled() {
+		t.Fatal("enrichment must be on by default")
 	}
 	deps.logf("must be callable when --debug is off")
 	if _, ok := deps.bridgeAddr(); ok {
