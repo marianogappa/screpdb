@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -19,6 +20,13 @@ import (
 	"github.com/marianogappa/screpdb/internal/buildinfo"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/pkg/browser"
+)
+
+const (
+	crashSubdir   = "crash"
+	crashPrefix   = "screpdb-crash-"
+	crashSuffix   = ".log"
+	maxCrashFiles = 10
 )
 
 // openBrowserDefault records whether crash reports should open the prefilled
@@ -219,23 +227,52 @@ func (r Report) issueBody() string {
 	return b.String()
 }
 
-// write saves the full report under the app-data root (issue #237) and returns
-// its absolute path. If the app-data root cannot be resolved it falls back to a
-// working-directory-relative name so the panic handler never fails hard.
+// write saves the full report under <app-data>/crash/ (issue #410) and returns
+// its absolute path. After writing it prunes old reports beyond maxCrashFiles.
+// If the app-data root cannot be resolved it falls back to a working-directory-
+// relative name so the panic handler never fails hard.
 func (r Report) write() (string, error) {
-	name := "screpdb-crash-" + r.When.Format("20060102-150405") + ".log"
+	name := crashPrefix + r.When.Format("20060102-150405") + crashSuffix
 	target := name
+	var crashDir string
 	if dir, err := appdata.Dir(); err == nil {
-		target = filepath.Join(dir, name)
+		crashDir = filepath.Join(dir, crashSubdir)
+		_ = iofacade.MkdirAll(crashDir, 0o755)
+		target = filepath.Join(crashDir, name)
 	}
 	if err := iofacade.WriteFile(target, []byte(r.FileText()), 0o644); err != nil {
 		return "", err
+	}
+	if crashDir != "" {
+		pruneOldReports(crashDir)
 	}
 	abs, err := filepath.Abs(target)
 	if err != nil {
 		return target, nil
 	}
 	return abs, nil
+}
+
+// pruneOldReports keeps only the newest maxCrashFiles crash reports in dir.
+func pruneOldReports(dir string) {
+	entries, err := iofacade.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	var logs []string
+	for _, e := range entries {
+		n := e.Name()
+		if strings.HasPrefix(n, crashPrefix) && strings.HasSuffix(n, crashSuffix) && !e.IsDir() {
+			logs = append(logs, n)
+		}
+	}
+	if len(logs) <= maxCrashFiles {
+		return
+	}
+	sort.Strings(logs)
+	for _, n := range logs[:len(logs)-maxCrashFiles] {
+		_ = iofacade.Remove(filepath.Join(dir, n))
+	}
 }
 
 func firstLine(s string) string {
