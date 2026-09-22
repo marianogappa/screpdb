@@ -30,7 +30,7 @@ screpdb is an advanced Starcraft replay reporting tool.
 <img width="1520" alt="Per-key hotkey timeline for both players" src="docs/images/game-hotkeys.png" />
 
 ### …and the hotkeyed buildings drawn on the map where they were built
-<img width="731" alt="Map overlay of hotkeyed buildings, labelled with their hotkey" src="docs/images/game-hotkeys-map.png" />
+<img width="293" alt="Map overlay of hotkeyed buildings, labelled with their hotkey" src="docs/images/game-hotkeys-map.png" />
 
 ### Build order detection, de-duped and charted against usual progamer timings
 <img width="1680" alt="Build order detection with charts and progamer timing bands" src="docs/images/build-orders.png" />
