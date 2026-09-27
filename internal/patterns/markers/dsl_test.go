@@ -165,6 +165,36 @@ func TestBuildCountEqualsBefore(t *testing.T) {
 	}
 }
 
+func TestBuildCountAtLeastBeforeFirstBuildOf(t *testing.T) {
+	cc := "Command Center"
+	fac := "Factory"
+	pred := BuildCountAtLeastBeforeFirstBuildOf(fac, cc, 6)
+
+	sixFactNoCC := factsBuilder().
+		B(fac, 100).B(fac, 150).B(fac, 200).B(fac, 250).B(fac, 300).B(fac, 350).list()
+	if pred.Eval(sixFactNoCC) {
+		t.Fatalf("6 factories with no CC must be rejected (no expansion)")
+	}
+
+	sixFactThenCC := factsBuilder().
+		B(fac, 100).B(fac, 150).B(fac, 200).B(fac, 250).B(fac, 300).B(fac, 350).B(cc, 400).list()
+	if !pred.Eval(sixFactThenCC) {
+		t.Fatalf("6 factories then CC should match")
+	}
+
+	fiveFactThenCC := factsBuilder().
+		B(fac, 100).B(fac, 150).B(fac, 200).B(fac, 250).B(fac, 300).B(cc, 350).list()
+	if pred.Eval(fiveFactThenCC) {
+		t.Fatalf("5 factories then CC should not match >=6")
+	}
+
+	sevenFactThenCC := factsBuilder().
+		B(fac, 100).B(fac, 150).B(fac, 200).B(fac, 250).B(fac, 300).B(fac, 350).B(fac, 380).B(cc, 400).list()
+	if !pred.Eval(sevenFactThenCC) {
+		t.Fatalf("7 factories then CC should match >=6")
+	}
+}
+
 func TestProduceCountAtLeastBefore(t *testing.T) {
 	s := factsBuilder().P("Vulture", 200).P("Vulture", 250).P("Vulture", 300).P("Vulture", 350).P("Vulture", 400).list()
 	if !ProduceCountAtLeastBefore("Vulture", 5, 600).Eval(s) {

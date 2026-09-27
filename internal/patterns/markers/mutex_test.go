@@ -175,6 +175,10 @@ func FuzzInitialBOsMutualExclusion(f *testing.F) {
 	// Regression: rax→bunker→rax→CC@276 once both-matched Bunker Rush + 2 Rax CC
 	// (real 6-player Money game). CC second = 20 + 1*256 = 276.
 	f.Add([]byte{2, 1, 55, 0, 2, 80, 0, 8, 130, 0, 2, 180, 0, 0, 20, 1})
+	// Regression (#273): 6 factories no CC double-fired 6+ Fact Expa + 1-Base.
+	// Terran (2), depot@60 (idx1), rax@88 (idx2), refinery@115 (idx3),
+	// 6× factory (idx4) at 140..240, no CC. Seconds encoded as lo+hi*256.
+	f.Add([]byte{2, 1, 60, 0, 2, 88, 0, 3, 115, 0, 4, 140, 0, 4, 160, 0, 4, 180, 0, 4, 200, 0, 4, 220, 0, 4, 240, 0})
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		if len(data) < 1 {
