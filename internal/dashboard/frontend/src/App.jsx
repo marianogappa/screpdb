@@ -7203,9 +7203,6 @@ function App() {
                         {featured.liquipedia ? <a href={featured.liquipedia} target="_blank" rel="noopener noreferrer">Liquipedia</a> : null}
                       </div>
                     ) : null}
-                    {!isFeaturedPlayer && mainPlayer && (Number(mainPlayer.games_played) || 0) < 5 ? (
-                      <span className="workflow-inline-warning">{t('player.fewReplaysWarning')}</span>
-                    ) : null}
                   </div>
                 </div>
                 {mainPlayerLoading ? (
@@ -7395,6 +7392,8 @@ function App() {
                                   <span className="wbg-race" />
                                   <span className="wbg-when">{t('player.bnet.table.when')}</span>
                                   <span className="wbg-map">{t('common.map')}</span>
+                                  <span className="wbg-type">{t('player.lastGames.type')}</span>
+                                  <span className="wbg-length">{t('common.time')}</span>
                                   <span className="wbg-result">{t('common.winLoss')}</span>
                                   <span className="wbg-apm">APM</span>
                                   <span className="wbg-opp">{t('player.bnet.table.opponent')}</span>
@@ -7414,7 +7413,14 @@ function App() {
                                     <div key={`${g.match_guid || g.played_at}`} className="workflow-bnet-game-row">
                                       <span className="wbg-race">{raceIcon ? <img src={raceIcon} alt={raceLabel(g.race)} title={raceLabel(g.race)} /> : null}</span>
                                       <span className="wbg-when" title={g.played_at}>{formatRelativeReplayDate(g.played_at)}</span>
-                                      <span className="wbg-map" title={g.map_name}>{g.map_name || <NoValue />}</span>
+                                      <span className="wbg-map" title={g.map_name}>
+                                        {g.map_name || <NoValue />}
+                                        {g.ladder ? <span className="wbg-ladder">{t('player.bnet.ladder')}</span> : null}
+                                      </span>
+                                      <span className="wbg-type">
+                                        {g.matchup || (g.player_count ? t('player.bnet.playersCount', { count: g.player_count }) : '')}
+                                      </span>
+                                      <span className="wbg-length">{g.duration_seconds ? formatDuration(g.duration_seconds) : ''}</span>
                                       <span className="wbg-result" title={resultTitle}>{resultEmoji}</span>
                                       <span className="wbg-apm">{g.apm || ''}</span>
                                       <span className="wbg-opp">{opponents.map((o) => `${o.toon}${o.race ? ` (${o.race.slice(0, 1)})` : ''}`).join(', ')}</span>

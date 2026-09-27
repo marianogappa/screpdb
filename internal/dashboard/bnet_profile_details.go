@@ -3,6 +3,7 @@ package dashboard
 import (
 	"context"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -75,17 +76,23 @@ type bnetProfileDetail struct {
 // bnetRecentGame is one archived game, seen from this account's side. Nothing
 // here allows downloading the replay.
 type bnetRecentGame struct {
-	PlayedAt        string               `json:"played_at"`
-	GameID          string               `json:"game_id,omitempty"`
-	Gateway         int                  `json:"gateway,omitempty"`
-	GatewayName     string               `json:"gateway_name,omitempty"`
-	MapName         string               `json:"map_name"`
-	Toon            string               `json:"toon,omitempty"`
-	Race            string               `json:"race,omitempty"`
-	Result          string               `json:"result"`
-	APM             int                  `json:"apm,omitempty"`
-	DurationSeconds int                  `json:"duration_seconds,omitempty"`
-	Opponents       []bnetRecentOpponent `json:"opponents,omitempty"`
+	PlayedAt        string `json:"played_at"`
+	GameID          string `json:"game_id,omitempty"`
+	Gateway         int    `json:"gateway,omitempty"`
+	GatewayName     string `json:"gateway_name,omitempty"`
+	MapName         string `json:"map_name"`
+	Toon            string `json:"toon,omitempty"`
+	Race            string `json:"race,omitempty"`
+	Result          string `json:"result"`
+	APM             int    `json:"apm,omitempty"`
+	DurationSeconds int    `json:"duration_seconds,omitempty"`
+	Ladder          bool   `json:"ladder,omitempty"`
+	// Matchup is "TvZ" for a 1v1 and team sizes ("2v2") otherwise, our side
+	// first. When the sides are unknown PlayerCount stands in, if there are
+	// enough slots for the count to mean anything.
+	Matchup     string               `json:"matchup,omitempty"`
+	PlayerCount int                  `json:"player_count,omitempty"`
+	Opponents   []bnetRecentOpponent `json:"opponents,omitempty"`
 }
 
 type bnetRecentOpponent struct {
@@ -201,8 +208,9 @@ func bnetProfileDetailFromRecord(p persist.BnetProfile, games []persist.BnetGame
 }
 
 // bnetRecentGamesFromArchive reads the account's games from its side: the
-// player whose toon is one of the account's toons is "us", every other human
-// is an opponent. Games where no toon of ours appears are kept without a side.
+// player whose toon is one of the account's toons is "us", and humans on
+// another side are opponents. Games where no toon of ours appears are kept
+// without a side.
 func bnetRecentGamesFromArchive(p persist.BnetProfile, games []persist.BnetGame) []bnetRecentGame {
 	ours := map[string]bool{}
 	for _, t := range p.Toons {
@@ -221,30 +229,109 @@ func bnetRecentGamesFromArchive(p persist.BnetProfile, games []persist.BnetGame)
 			Gateway:     g.Gateway,
 			GatewayName: bnetfacade.GatewayNames[g.Gateway],
 			MapName:     g.MapName,
+			Ladder:      g.Ladder,
 			Result:      persist.BnetResultString(persist.BnetResultUnknown),
 		}
-		for _, player := range g.Players {
+		self := -1
+		for i, player := range g.Players {
 			if player.Computer {
 				continue
 			}
 			if player.Seconds > game.DurationSeconds {
 				game.DurationSeconds = player.Seconds
 			}
-			if ours[normalizePlayerKey(player.Toon)] && game.Toon == "" {
+			if ours[normalizePlayerKey(player.Toon)] && self < 0 {
+				self = i
 				game.Toon = player.Toon
 				game.Race = prettyBnetRace(player.Race)
 				if player.Result != persist.BnetResultUnknown {
 					game.Result = persist.BnetResultString(player.Result)
 				}
 				game.APM = player.APM
-				continue
 			}
-			game.Opponents = append(game.Opponents, bnetRecentOpponent{Toon: player.Toon, Race: prettyBnetRace(player.Race)})
+		}
+		sides := bnetGameSides(g.Players)
+		game.Matchup = bnetMatchup(g.Players, sides, self)
+		// A lone slot is a partial record, not a one-player game.
+		if game.Matchup == "" && len(g.Players) > 2 {
+			game.PlayerCount = len(g.Players)
+		}
+		if sides != nil {
+			for i, player := range g.Players {
+				if player.Computer || i == self || (self >= 0 && sides[i] == sides[self]) {
+					continue
+				}
+				game.Opponents = append(game.Opponents, bnetRecentOpponent{Toon: player.Toon, Race: prettyBnetRace(player.Race)})
+			}
 		}
 		out = append(out, game)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].PlayedAt > out[j].PlayedAt })
 	return out
+}
+
+// bnetGameSides assigns each slot a side, or returns nil when the sides are
+// unknown. Teams are only known when every slot carries one and there are at
+// least two; a melee game with more than two players (Big Game Hunters, say)
+// forms its alliances in game, which Battle.net never reports.
+func bnetGameSides(players []persist.BnetGamePlayer) []int {
+	sides := make([]int, len(players))
+	teams := map[int]struct{}{}
+	for i, p := range players {
+		if p.Team == 0 {
+			teams = nil
+			break
+		}
+		sides[i] = p.Team
+		teams[p.Team] = struct{}{}
+	}
+	if len(teams) >= 2 {
+		return sides
+	}
+	if len(players) == 2 {
+		return []int{0, 1}
+	}
+	return nil
+}
+
+func bnetMatchup(players []persist.BnetGamePlayer, sides []int, self int) string {
+	if sides == nil {
+		return ""
+	}
+	sizes := map[int]int{}
+	for _, side := range sides {
+		sizes[side]++
+	}
+	ourSide := sides[0]
+	if self >= 0 {
+		ourSide = sides[self]
+	}
+	if len(players) == 2 && len(sizes) == 2 {
+		first, second := 0, 1
+		if self == 1 {
+			first, second = 1, 0
+		}
+		return bnetRaceLetter(players[first].Race) + "v" + bnetRaceLetter(players[second].Race)
+	}
+	others := []int{}
+	for side, n := range sizes {
+		if side != ourSide {
+			others = append(others, n)
+		}
+	}
+	sort.Sort(sort.Reverse(sort.IntSlice(others)))
+	parts := []string{strconv.Itoa(sizes[ourSide])}
+	for _, n := range others {
+		parts = append(parts, strconv.Itoa(n))
+	}
+	return strings.Join(parts, "v")
+}
+
+func bnetRaceLetter(race string) string {
+	if pretty := prettyBnetRace(race); pretty != "" {
+		return pretty[:1]
+	}
+	return "?"
 }
 
 func prettyBnetRace(race string) string {
