@@ -744,8 +744,9 @@ func (s *buildCountBeforeBuildState) Decision(int) TriState { return s.done }
 func (s *buildCountBeforeBuildState) Finalize() TriState    { return s.finalizeDefaultRejected() }
 
 // BuildCountAtLeastBeforeFirstBuildOf is the "6+" top rung of the N-Fact-Expa
-// ladder. Matches as soon as the n-th subject build lands, since the ref hasn't
-// arrived and they're necessarily earlier.
+// ladder. It only decides when the ref building arrives: Matched if count >=
+// want at that point, Rejected otherwise. If the ref is never built, Finalize
+// returns Rejected — a "before expansion" predicate requires an expansion.
 func BuildCountAtLeastBeforeFirstBuildOf(subject, refSubject string, n int) Predicate {
 	return func() PredicateState {
 		return &buildCountAtLeastBeforeBuildState{subject: subject, ref: refSubject, want: n}
@@ -765,14 +766,11 @@ func (s *buildCountAtLeastBeforeBuildState) Observe(f cmdenrich.EnrichedCommand)
 	switch f.Subject {
 	case s.subject:
 		s.count++
+	case s.ref:
 		if s.count >= s.want {
 			s.done = Matched
-		}
-	case s.ref:
-		if s.count < s.want {
-			s.done = Rejected
 		} else {
-			s.done = Matched
+			s.done = Rejected
 		}
 	}
 }
