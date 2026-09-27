@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.28.0](https://github.com/marianogappa/screpdb/compare/v1.27.0...v1.28.0) (2026-09-20)
+
+
+### Features
+
+* **dashboard:** distinguish unknown from zero in Battle.net and fingerprint stats ([#433](https://github.com/marianogappa/screpdb/issues/433)) ([4cb5bb5](https://github.com/marianogappa/screpdb/commit/4cb5bb5abe19ae61e816557a8578a0b72832a7be)), closes [#333](https://github.com/marianogappa/screpdb/issues/333)
+* **dashboard:** quieter game report, self-saving filters, and a lighter WASM demo ([#434](https://github.com/marianogappa/screpdb/issues/434)) ([f049fd3](https://github.com/marianogappa/screpdb/commit/f049fd32cc2ec2ead8cc7131e2e8b121a33e6d81))
+* **dashboard:** remove gaming session feature flag, enable by default ([#340](https://github.com/marianogappa/screpdb/issues/340)) ([#431](https://github.com/marianogappa/screpdb/issues/431)) ([2b67ea7](https://github.com/marianogappa/screpdb/commit/2b67ea7c51eed9b8f8c90797a0eedaaf281382a3))
+* **dashboard:** separate dropped games from losses and push Battle.net observations as they land ([#426](https://github.com/marianogappa/screpdb/issues/426)) ([0389f55](https://github.com/marianogappa/screpdb/commit/0389f55be6a92e7ea72dbd256064e1151b55c148)), closes [#424](https://github.com/marianogappa/screpdb/issues/424)
+* **dashboard:** show how long ago each game was in the player profile game list ([#430](https://github.com/marianogappa/screpdb/issues/430)) ([28a73a9](https://github.com/marianogappa/screpdb/commit/28a73a93354f7828baae44538e538583de53eeb8))
+* **dashboard:** tell a player's own result apart from their team's ([#428](https://github.com/marianogappa/screpdb/issues/428)) ([c6fe376](https://github.com/marianogappa/screpdb/commit/c6fe3767cb1cc80b4ed22cd38fd80427ac6f1c3f))
+
+
+### Bug Fixes
+
+* **crashreport:** move reports to crash/ subdir, add retention, and stop tests from leaking into real app-data ([#410](https://github.com/marianogappa/screpdb/issues/410)) ([#429](https://github.com/marianogappa/screpdb/issues/429)) ([a1026db](https://github.com/marianogappa/screpdb/commit/a1026dbf2e3194402f731fa213f5ff997fc5dc6b))
+* **dashboard:** rename the confusing Became race filter to New race (Mind Control) ([#307](https://github.com/marianogappa/screpdb/issues/307)) ([#432](https://github.com/marianogappa/screpdb/issues/432)) ([e4f591b](https://github.com/marianogappa/screpdb/commit/e4f591b78ebf240022b59b3634c242bc9cf031dd))
+
 ## [1.27.0](https://github.com/marianogappa/screpdb/compare/v1.26.0...v1.27.0) (2026-09-13)
 
 
