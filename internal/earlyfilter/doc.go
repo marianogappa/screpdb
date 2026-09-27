@@ -7,9 +7,11 @@
 // forward pass over-filtered: a kept Train Zealot proves a Gateway must
 // have existed, which in turn proves a Pylon must have existed; a kept
 // Marine proves a Barracks; a kept Zergling proves a Spawning Pool. The
-// backtrack re-admits those prerequisite Build commands and reconciles the
-// budget by retroactively dropping fake worker trains — the dominant
-// source of early-game spam.
+// backtrack unconditionally re-admits those prerequisite Build commands:
+// the kept consequent is engine evidence that the building existed, so
+// the re-admission needs no compensating worker drop. The next forward
+// pass re-simulates income with the re-admitted building's cost charged
+// and all workers intact, which self-corrects any temporary deficit.
 //
 // The filter is deliberately imperfect:
 //

@@ -89,7 +89,7 @@ func TestPastWindowPassThrough(t *testing.T) {
 
 // TestZealotImpliesGateway — A Zealot kept at second 200 should force a
 // Gateway re-admission via backtrack (and a Pylon re-admission too, since
-// Gateway prereq is Pylon). Workers will be force-dropped to fund them.
+// Gateway prereq is Pylon).
 func TestZealotImpliesGateway(t *testing.T) {
 	p := protossPlayer()
 	// Construct a stream where:
@@ -174,34 +174,6 @@ func TestPhotonCannonImpliesForge(t *testing.T) {
 	}
 	if pylons != 1 {
 		t.Fatalf("Pylon required (transitive prereq of Cannon); kept=%d", pylons)
-	}
-}
-
-// TestBacktrackOverdrawsGatesWorkerDrop locks the deficit-gate that stops
-// backtrack from force-dropping income-producing workers to "pay" for a
-// re-admitted building that was actually affordable. Dropping a worker that
-// the player could afford freezes the simulated worker count and collapses
-// income, which previously wiped out an entire early-game worker line (an
-// SCV-from-frame-0 opening read as "no workers until ~4 minutes").
-func TestBacktrackOverdrawsGatesWorkerDrop(t *testing.T) {
-	p := terranPlayer()
-	commands := []*models.Command{makeCmd("Build", models.GeneralUnitBarracks, 88, p)}
-	econ, ok := cmdenrich.EconOf(models.GeneralUnitBarracks)
-	if !ok {
-		t.Fatal("expected econ for Barracks")
-	}
-
-	dropped := map[int]Verdict{0: VerdictDropped}
-	if backtrackOverdraws(commands, 0, dropped, map[int]int{0: econ.Minerals + 1}) {
-		t.Fatalf("affordable re-admission must not free a worker")
-	}
-	if !backtrackOverdraws(commands, 0, dropped, map[int]int{0: econ.Minerals - 1}) {
-		t.Fatalf("unaffordable re-admission must free a worker")
-	}
-
-	kept := map[int]Verdict{0: VerdictKept}
-	if backtrackOverdraws(commands, 0, kept, map[int]int{0: econ.Minerals - 1}) {
-		t.Fatalf("an already-kept build charges nothing new; no worker drop")
 	}
 }
 
@@ -334,5 +306,40 @@ func TestProducerOfContract(t *testing.T) {
 		if !ok || got != wantProducer {
 			t.Errorf("ProducerOf(%q) = (%q, %v); want (%q, true)", unit, got, ok, wantProducer)
 		}
+	}
+}
+
+// TestGreedyZergOpenerPreservesWorkers — a greedy Zerg opener (many early
+// Drone morphs → Hatchery + Pool) must NOT have its Drone morphs dropped
+// by backtrack. Previously, re-admitting the Pool/Hatch would force-drop
+// Drones to free minerals, which removed income and cascaded into further
+// drops, undercounting supply (e.g. 9 Hatch reading as 7 Hatch).
+func TestGreedyZergOpenerPreservesWorkers(t *testing.T) {
+	p := &models.Player{PlayerID: 1, Race: "Zerg"}
+	// Reproduce the issue scenario: early Drone morphs, then Pool + Hatch.
+	// The forward pass may drop Pool/Hatch for resources; backtrack must
+	// re-admit them WITHOUT dropping Drones.
+	cmds := []*models.Command{
+		makeCmd("Unit Morph", models.GeneralUnitDrone, 20, p),
+		makeCmd("Unit Morph", models.GeneralUnitDrone, 38, p),
+		makeCmd("Unit Morph", models.GeneralUnitDrone, 43, p),
+		makeCmd("Unit Morph", models.GeneralUnitDrone, 55, p),
+		makeCmd("Unit Morph", models.GeneralUnitOverlord, 60, p),
+		makeCmd("Build", models.GeneralUnitSpawningPool, 70, p),
+		makeCmd("Build", models.GeneralUnitHatchery, 81, p),
+		makeCmd("Unit Morph", models.GeneralUnitZergling, 150, p),
+	}
+	res := Apply(&models.Replay{}, []*models.Player{p}, nil, cmds, Options{})
+
+	drones := 0
+	for _, c := range res.Commands {
+		en, _ := cmdenrich.Classify(c)
+		if en.Subject == models.GeneralUnitDrone {
+			drones++
+		}
+	}
+	// All 4 Drone morphs should be kept — none dropped by backtrack.
+	if drones < 4 {
+		t.Fatalf("expected all 4 Drone morphs kept (no backtrack worker drops), got %d", drones)
 	}
 }

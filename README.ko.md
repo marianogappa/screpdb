@@ -26,7 +26,7 @@ screpdb는 스타크래프트 리플레이를 위한 고급 분석 리포팅 도
 <img width="1520" alt="두 플레이어의 키별 단축키 타임라인" src="docs/images/game-hotkeys.ko.png" />
 
 ### 그리고 단축키가 지정된 건물을 지어진 위치 그대로 맵 위에 표시
-<img width="731" alt="단축키가 지정된 건물을 단축키 번호와 함께 맵에 표시" src="docs/images/game-hotkeys-map.ko.png" />
+<img width="293" alt="단축키가 지정된 건물을 단축키 번호와 함께 맵에 표시" src="docs/images/game-hotkeys-map.ko.png" />
 
 ### 빌드 오더 감지: 초반 명령 중복 제거를 거쳐 프로게이머 평균 타이밍과 비교
 <img width="1680" alt="빌드 오더 감지와 프로게이머 타이밍 비교 차트" src="docs/images/build-orders.ko.png" />

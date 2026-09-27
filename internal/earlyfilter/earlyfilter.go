@@ -35,7 +35,6 @@ func Apply(replay *models.Replay, players []*models.Player, mapCtx *models.Repla
 	}
 
 	mustKeep := map[int]bool{}
-	forceDrop := map[int]bool{}
 
 	var verdicts map[int]Verdict
 	var reasons map[int]string
@@ -45,19 +44,19 @@ func Apply(replay *models.Replay, players []*models.Player, mapCtx *models.Repla
 	for it := 0; it < maxBacktrackIterations; it++ {
 		iterations = it + 1
 		sims := initSims(raceByPlayer, geysers)
-		verdicts, reasons, mineralsAfter = runForward(commands, sims, mustKeep, forceDrop, opts)
+		verdicts, reasons, mineralsAfter = runForward(commands, sims, mustKeep, opts)
 
 		violations := findViolations(commands, verdicts)
 		if len(violations) == 0 {
 			break
 		}
-		if !resolveViolations(violations, commands, verdicts, mineralsAfter, mustKeep, forceDrop) {
+		if !resolveViolations(violations, commands, verdicts, mustKeep) {
 			break
 		}
 	}
 
 	filtered := buildFilteredCommands(commands, verdicts)
-	stats := buildStats(commands, verdicts, forceDrop)
+	stats := buildStats(commands, verdicts)
 
 	var trace *Trace
 	if opts.DebugDir != "" {
@@ -83,11 +82,12 @@ func initSims(raceByPlayer map[int64]string, geysers []models.MapResourcePositio
 
 // runForward performs one full pass over commands, dispatching each to its
 // player's sim and recording a Verdict + Reason + minerals snapshot per
-// command index. mustKeep and forceDrop override the sim's normal decision.
+// command index. mustKeep overrides the sim's normal decision for re-admitted
+// buildings.
 func runForward(
 	commands []*models.Command,
 	sims map[int64]*playerSim,
-	mustKeep, forceDrop map[int]bool,
+	mustKeep map[int]bool,
 	opts Options,
 ) (verdicts map[int]Verdict, reasons map[int]string, mineralsAfter map[int]int) {
 	verdicts = make(map[int]Verdict, len(commands))
@@ -162,9 +162,6 @@ func runForward(
 		}
 
 		switch {
-		case forceDrop[i]:
-			verdicts[i] = VerdictDroppedByBacktrack
-			reasons[i] = "freed_minerals_for_backtrack"
 		case mustKeep[i]:
 			verdicts[i] = VerdictReadmitted
 			reasons[i] = "tech_tree_readmit"
@@ -195,8 +192,7 @@ func applyEffects(sim *playerSim, enriched cmdenrich.EnrichedCommand, econ cmden
 }
 
 // buildFilteredCommands materialises the kept-or-readmitted command list in
-// the original time order. Dropped and forcibly-dropped commands are
-// excluded.
+// the original time order. Dropped commands are excluded.
 func buildFilteredCommands(commands []*models.Command, verdicts map[int]Verdict) []*models.Command {
 	out := make([]*models.Command, 0, len(commands))
 	for i, cmd := range commands {
@@ -211,7 +207,7 @@ func buildFilteredCommands(commands []*models.Command, verdicts map[int]Verdict)
 	return out
 }
 
-func buildStats(commands []*models.Command, verdicts map[int]Verdict, forceDrop map[int]bool) Stats {
+func buildStats(commands []*models.Command, verdicts map[int]Verdict) Stats {
 	per := map[int64]PlayerStats{}
 	for i, cmd := range commands {
 		if cmd == nil || cmd.Player == nil {
@@ -228,11 +224,6 @@ func buildStats(commands []*models.Command, verdicts map[int]Verdict, forceDrop 
 			s.Readmitted++
 		case VerdictDropped, VerdictDroppedByTags:
 			s.Dropped++
-		case VerdictDroppedByBacktrack:
-			s.Dropped++
-			if forceDrop[i] {
-				s.WorkerDropsForBacktrack++
-			}
 		}
 		per[pid] = s
 	}

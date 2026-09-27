@@ -23,10 +23,6 @@ const (
 	// Build because a kept consequent (Zealot/Marine/Zergling) proved its
 	// existence.
 	VerdictReadmitted Verdict = "readmitted"
-	// VerdictDroppedByBacktrack: the backtrack pass forcibly dropped a
-	// previously-kept worker train to free minerals for a re-admitted
-	// prerequisite.
-	VerdictDroppedByBacktrack Verdict = "dropped_by_backtrack"
 	// VerdictDroppedByTags: dropped by the selection-tag build dedup
 	// (internal/builddedup) via Options.ShouldDrop, before resource analysis
 	// and regardless of the time window.
@@ -242,9 +238,6 @@ func summaryFor(commands []*models.Command, verdicts map[int]Verdict, pid int64)
 			s.Readmitted++
 		case VerdictDropped, VerdictDroppedByTags:
 			s.Dropped++
-		case VerdictDroppedByBacktrack:
-			s.Dropped++
-			s.WorkerDropsForBacktrack++
 		}
 	}
 	return s

@@ -58,9 +58,6 @@ type PlayerStats struct {
 	// Readmitted dropped Build commands that backtracking restored due to a
 	// tech-tree consequent (Zealot ⇒ Gateway, etc.).
 	Readmitted int
-	// WorkerDropsForBacktrack worker trains the backtrack pass forcibly
-	// dropped to free minerals for re-admitted prerequisites.
-	WorkerDropsForBacktrack int
 }
 
 // defaultMaxSecond is applied when Options.MaxSecond is zero. 4 minutes

@@ -30,7 +30,7 @@ screpdb is an advanced Starcraft replay reporting tool.
 <img width="1520" alt="Per-key hotkey timeline for both players" src="docs/images/game-hotkeys.png" />
 
 ### …and the hotkeyed buildings drawn on the map where they were built
-<img width="731" alt="Map overlay of hotkeyed buildings, labelled with their hotkey" src="docs/images/game-hotkeys-map.png" />
+<img width="293" alt="Map overlay of hotkeyed buildings, labelled with their hotkey" src="docs/images/game-hotkeys-map.png" />
 
 ### Build order detection, de-duped and charted against usual progamer timings
 <img width="1680" alt="Build order detection with charts and progamer timing bands" src="docs/images/build-orders.png" />
@@ -305,7 +305,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-09-20  OK. The WASM demo now writes its baked Battle.net data straight into the v2 store (<root>/bnet/profiles.v2.jsonl and games.v2.jsonl) instead of the pre-v2 per-payload tree it relied on the upgrade migration to convert, which drops 6.7 MB from the binary every visitor downloads. Same in-memory sandbox root, same iofacade calls, fewer of them. The new scripts/generate-demo-bnet is a build-time tool: it reads a local app-data root only when explicitly pointed at one and writes only into the repo checkout. No new roots, hosts, endpoints or facade exemptions, no enforcement-test weakening, and no DetectorVersion bump.
+2026-09-27  OK. Earlyfilter backtrack no longer force-drops workers to free minerals for re-admitted buildings (issue #272). The worker-dropping cascade removed income from the sim, undercounting Zerg supply in greedy openers. Pure algorithmic change inside internal/earlyfilter: removed backtrackOverdraws, findLatestKeptWorkerBefore, VerdictDroppedByBacktrack, WorkerDropsForBacktrack, and the forceDrop plumbing. No new reads, roots, hosts, endpoints or facade exemptions, no enforcement-test weakening, and no DetectorVersion bump.
 ```
 
 <details>
