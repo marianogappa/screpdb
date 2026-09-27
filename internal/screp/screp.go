@@ -7,10 +7,23 @@ import (
 	"github.com/icza/screp/repparser"
 )
 
-// ParseFile parses a StarCraft: Brood War replay file using the real screp library
 func ParseFile(filePath string) (*rep.Replay, error) {
-	// Parse the replay file using the real screp library
 	replay, err := repparser.ParseFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse replay file: %w", err)
+	}
+
+	replay.Compute()
+
+	return replay, nil
+}
+
+func ParseFileWithDebug(filePath string) (*rep.Replay, error) {
+	replay, err := repparser.ParseFileConfig(filePath, repparser.Config{
+		Commands: true,
+		MapData:  true,
+		Debug:    true,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse replay file: %w", err)
 	}

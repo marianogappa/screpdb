@@ -19,6 +19,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/parser/commands"
 	"github.com/marianogappa/screpdb/internal/patterns"
 	"github.com/marianogappa/screpdb/internal/screp"
+	"github.com/marianogappa/screpdb/internal/umsclassify"
 	"github.com/marianogappa/screpdb/internal/unittags"
 	"github.com/marianogappa/screpdb/internal/utils"
 )
@@ -91,7 +92,15 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 
 	switch {
 	case data.Replay.GameType == "Use map settings":
-		data.Replay.MapKind = "UseMapSettings"
+		if classifyUMSAsMelee(filePath, rep) {
+			if isMoneyMap(rep) {
+				data.Replay.MapKind = "Money"
+			} else {
+				data.Replay.MapKind = "Regular"
+			}
+		} else {
+			data.Replay.MapKind = "UseMapSettings"
+		}
 	case isMoneyMap(rep):
 		data.Replay.MapKind = "Money"
 	default:
@@ -498,8 +507,63 @@ func CreateReplayFromFileInfo(filePath, fileName string, fileSize int64, checksu
 	}
 }
 
-// What every mineral field carries on a stock melee map. Anything above it is a
-// deliberately enriched patch, which is what makes a map a "money" map.
+func classifyUMSAsMelee(filePath string, rep *scraprep.Replay) bool {
+	if rep == nil || rep.MapData == nil || rep.MapData.Debug == nil {
+		debugRep, err := screp.ParseFileWithDebug(filePath)
+		if err != nil || debugRep == nil || debugRep.MapData == nil || debugRep.MapData.Debug == nil {
+			return false
+		}
+		rep = debugRep
+	}
+	chk := rep.MapData.Debug.Data
+	rep.MapData.Debug = nil
+	if len(chk) == 0 {
+		return false
+	}
+	if !umsclassify.Classify(chk).MeleeLike {
+		return false
+	}
+	return umsWorkersTrainedEarly(rep)
+}
+
+const umsWorkerDeadlineS = 90
+
+func umsWorkersTrainedEarly(rep *scraprep.Replay) bool {
+	if rep == nil || rep.Header == nil || rep.Commands == nil {
+		return false
+	}
+	need := map[byte]bool{}
+	for _, p := range rep.Header.Players {
+		if p == nil || p.Observer || p.Type == nil || p.Type.Name != "Human" {
+			continue
+		}
+		need[p.ID] = true
+	}
+	if len(need) == 0 {
+		return false
+	}
+	deadline := repcore.Duration2Frame(umsWorkerDeadlineS * time.Second)
+	for _, cmd := range rep.Commands.Cmds {
+		tc, ok := cmd.(*repcmd.TrainCmd)
+		if !ok || tc.Unit == nil {
+			continue
+		}
+		switch tc.Unit.ID {
+		case 0x07, 0x29, 0x40: // SCV, Drone, Probe
+		default:
+			continue
+		}
+		if tc.Base.Frame > deadline {
+			break
+		}
+		delete(need, tc.Base.PlayerID)
+		if len(need) == 0 {
+			return true
+		}
+	}
+	return false
+}
+
 const standardMineralPatch = 1500
 
 // isMoneyMap classifies by the MEDIAN mineral field, not any single one.
