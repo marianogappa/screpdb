@@ -305,7 +305,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-09-27  OK. Earlyfilter backtrack no longer force-drops workers to free minerals for re-admitted buildings (issue #272). The worker-dropping cascade removed income from the sim, undercounting Zerg supply in greedy openers. Pure algorithmic change inside internal/earlyfilter: removed backtrackOverdraws, findLatestKeptWorkerBefore, VerdictDroppedByBacktrack, WorkerDropsForBacktrack, and the forceDrop plumbing. No new reads, roots, hosts, endpoints or facade exemptions, no enforcement-test weakening, and no DetectorVersion bump.
+2026-09-27  OK. UMS replays whose embedded map runs melee rules (observer maps, Phantom) are now ingested as Regular or Money (issue #306). ParseFileWithDebug added to internal/screp reads the CHK section via repparser.ParseFileConfig with Debug:true, only for UMS files; debug data is dropped immediately after classification. New internal/umsclassify parses raw CHK bytes (TRIG actions + UNIT owners) with no I/O of its own. No new roots, hosts, endpoints or facade exemptions, no enforcement-test weakening, and no DetectorVersion bump.
 ```
 
 <details>
