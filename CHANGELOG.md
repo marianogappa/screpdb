@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.29.0](https://github.com/marianogappa/screpdb/compare/v1.28.0...v1.29.0) (2026-09-27)
+
+
+### Features
+
+* **dashboard:** session habits, matchups and team-aware opponents on player pages ([#441](https://github.com/marianogappa/screpdb/issues/441)) ([af4ca77](https://github.com/marianogappa/screpdb/commit/af4ca77b68dc1c08cb3b9f6901a037e6acbaffdd)), closes [#382](https://github.com/marianogappa/screpdb/issues/382)
+* ingest UMS replays whose map runs melee rules ([#440](https://github.com/marianogappa/screpdb/issues/440)) ([f865fc6](https://github.com/marianogappa/screpdb/commit/f865fc67c8b35e6fe4fd155591cddb7193234f0b)), closes [#306](https://github.com/marianogappa/screpdb/issues/306)
+
+
+### Bug Fixes
+
+* **earlyfilter:** stop dropping workers during backtrack re-admission ([#437](https://github.com/marianogappa/screpdb/issues/437)) ([0b034f9](https://github.com/marianogappa/screpdb/commit/0b034f907aed95ebfb5d13575e3723e8e7be2fd2)), closes [#272](https://github.com/marianogappa/screpdb/issues/272)
+* **markers:** reject 6+ Fact Expa when no expansion is built ([#439](https://github.com/marianogappa/screpdb/issues/439)) ([6831d97](https://github.com/marianogappa/screpdb/commit/6831d979cb7afbb3e17aa983beab61d9a64780a4)), closes [#273](https://github.com/marianogappa/screpdb/issues/273)
+
 ## [1.28.0](https://github.com/marianogappa/screpdb/compare/v1.27.0...v1.28.0) (2026-09-20)
 
 
