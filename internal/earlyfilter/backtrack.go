@@ -117,19 +117,23 @@ func anyFrameAtOrBefore(frames []int32, f int32) bool {
 }
 
 // resolveViolations attempts to fix each violation by adding the missing
-// prerequisite chain to mustKeep and the latest kept worker train before the
-// re-admitted prereq's frame to forceDrop. Returns true if any new mustKeep
-// or forceDrop entry was added (i.e. progress was made for the next iteration).
+// prerequisite chain to mustKeep. Returns true if any new mustKeep entry was
+// added (i.e. progress was made for the next iteration).
 //
 // Each Build re-admission also pulls in its own prerequisites recursively
 // (Gateway → Pylon, etc.) via cmdenrich.PrereqsOf.
+//
+// Worker drops are deliberately NOT performed: the violation itself proves the
+// building existed (a kept consequent is engine evidence), so the re-admission
+// is unconditional. Dropping workers to "pay" for it removes income from the
+// sim, which cascades into further drops and undercounts supply — especially
+// for greedy Zerg openers where early Drone morphs fund the very buildings
+// being re-admitted.
 func resolveViolations(
 	violations []violation,
 	commands []*models.Command,
 	verdicts map[int]Verdict,
-	mineralsAfter map[int]int,
 	mustKeep map[int]bool,
-	forceDrop map[int]bool,
 ) bool {
 	progress := false
 	for _, v := range violations {
@@ -143,59 +147,9 @@ func resolveViolations(
 				mustKeep[idx] = true
 				progress = true
 			}
-			// Only free minerals by dropping a worker when re-admitting this
-			// Build actually overdraws the account. A dropped worker leaves the
-			// income sim, so doing it when no deficit exists freezes the worker
-			// count and collapses simulated income — which cascades into
-			// dropping every early worker train (the spiral that made an
-			// SCV-from-frame-0 opening read as "no workers until ~4 min").
-			if !backtrackOverdraws(commands, idx, verdicts, mineralsAfter) {
-				continue
-			}
-			// Drop one worker train before the re-admitted Build to free
-			// minerals. Skip if we already dropped enough — the next
-			// iteration will run forward and check whether the budget
-			// balances; if not, this loop fires again.
-			wIdx := findLatestKeptWorkerBefore(commands, verdicts, v.playerID, commands[idx].Frame, forceDrop)
-			if wIdx >= 0 && !forceDrop[wIdx] {
-				forceDrop[wIdx] = true
-				progress = true
-			}
 		}
 	}
 	return progress
-}
-
-// backtrackOverdraws reports whether re-admitting the Build at idx would drive
-// the player's minerals negative at that frame. It only applies to a Build that
-// was dropped in the latest forward pass (a genuinely new re-admission whose
-// cost is about to be charged); a Build already kept/readmitted was affordable
-// and needs no compensating worker drop. Because the dropped Build's cost was
-// not applied, mineralsAfter[idx] is the spendable balance at its frame: if that
-// covers the Build cost, re-admission is affordable.
-func backtrackOverdraws(commands []*models.Command, idx int, verdicts map[int]Verdict, mineralsAfter map[int]int) bool {
-	if verdicts[idx] != VerdictDropped {
-		return false
-	}
-	cmd := commands[idx]
-	if cmd == nil {
-		return false
-	}
-	en, ok := cmdenrich.Classify(cmd)
-	if !ok {
-		return false
-	}
-	econ, ok := cmdenrich.EconOf(en.Subject)
-	if !ok {
-		return false
-	}
-	avail, ok := mineralsAfter[idx]
-	if !ok {
-		// No recorded balance (e.g. command outside the simulated window):
-		// fall back to the original behaviour and free minerals.
-		return true
-	}
-	return avail < econ.Minerals
 }
 
 // buildPrereqChain returns subj plus its transitive PrereqsOf, deepest-first
@@ -261,44 +215,4 @@ func findLatestBuildBefore(
 		return bestDropped
 	}
 	return bestAny
-}
-
-// findLatestKeptWorkerBefore returns the index of the most recent kept worker
-// Train/Morph for the given player whose frame is strictly before `frame` and
-// has not already been forceDrop'd. Returns -1 if no candidate exists.
-func findLatestKeptWorkerBefore(
-	commands []*models.Command,
-	verdicts map[int]Verdict,
-	playerID int64,
-	frame int32,
-	forceDrop map[int]bool,
-) int {
-	best := -1
-	for i, cmd := range commands {
-		if cmd == nil || cmd.Player == nil {
-			continue
-		}
-		if int64(cmd.Player.PlayerID) != playerID {
-			continue
-		}
-		if cmd.Frame >= frame {
-			continue
-		}
-		if forceDrop[i] {
-			continue
-		}
-		v := verdicts[i]
-		if v != VerdictKept && v != VerdictReadmitted {
-			continue
-		}
-		en, ok := cmdenrich.Classify(cmd)
-		if !ok || en.Kind != cmdenrich.KindMakeUnit {
-			continue
-		}
-		if !cmdenrich.IsWorker(en.Subject) {
-			continue
-		}
-		best = i
-	}
-	return best
 }

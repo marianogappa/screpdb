@@ -204,48 +204,6 @@ func TestIsGasBuildingSubject(t *testing.T) {
 	}
 }
 
-// --- backtrack.go: findLatestKeptWorkerBefore ---
-
-func TestFindLatestKeptWorkerBefore(t *testing.T) {
-	p := terranPlayer()
-	other := protossPlayer()
-	commands := []*models.Command{
-		makeCmd("Train", models.GeneralUnitSCV, 10, p),       // 0 kept
-		makeCmd("Train", models.GeneralUnitSCV, 20, p),       // 1 kept  (latest before 100)
-		makeCmd("Train", models.GeneralUnitSCV, 30, p),       // 2 dropped — not eligible
-		makeCmd("Train", models.GeneralUnitMarine, 25, p),    // 3 kept, not a worker
-		makeCmd("Train", models.GeneralUnitProbe, 15, other), // 4 wrong player
-		makeCmd("Train", models.GeneralUnitSCV, 200, p),      // 5 after frame
-	}
-	verdicts := map[int]Verdict{
-		0: VerdictKept, 1: VerdictKept, 2: VerdictDropped,
-		3: VerdictKept, 4: VerdictKept, 5: VerdictKept,
-	}
-	pid := int64(p.PlayerID)
-	frame := secondFrame(100)
-
-	t.Run("picks latest kept worker of player before frame", func(t *testing.T) {
-		got := findLatestKeptWorkerBefore(commands, verdicts, pid, frame, map[int]bool{})
-		if got != 1 {
-			t.Fatalf("expected index 1, got %d", got)
-		}
-	})
-
-	t.Run("skips already forceDropped", func(t *testing.T) {
-		got := findLatestKeptWorkerBefore(commands, verdicts, pid, frame, map[int]bool{1: true})
-		if got != 0 {
-			t.Fatalf("expected index 0 after skipping forceDropped 1, got %d", got)
-		}
-	})
-
-	t.Run("none eligible returns -1", func(t *testing.T) {
-		got := findLatestKeptWorkerBefore(commands, verdicts, pid, secondFrame(5), map[int]bool{})
-		if got != -1 {
-			t.Fatalf("expected -1 when no worker before frame, got %d", got)
-		}
-	})
-}
-
 // --- backtrack.go: findLatestBuildBefore ---
 
 func TestFindLatestBuildBefore(t *testing.T) {
@@ -298,15 +256,14 @@ func TestFindLatestBuildBefore(t *testing.T) {
 	})
 }
 
-// --- backtrack.go: resolveViolations recursive prereq chain + worker drop ---
+// --- backtrack.go: resolveViolations prereq chain re-admission ---
 
 // A Photon Cannon violation missing Forge must re-admit both Forge and its
-// transitive prereq Pylon (chain), and when the re-admission overdraws it must
-// also force-drop the latest kept worker before the earliest re-admitted build.
-func TestResolveViolationsChainAndWorkerDrop(t *testing.T) {
+// transitive prereq Pylon (chain).
+func TestResolveViolationsChainReadmit(t *testing.T) {
 	p := protossPlayer()
 	commands := []*models.Command{
-		makeCmd("Train", models.GeneralUnitProbe, 10, p),         // 0 kept worker (drop candidate)
+		makeCmd("Train", models.GeneralUnitProbe, 10, p),         // 0 kept worker
 		makeCmd("Build", models.GeneralUnitPylon, 30, p),         // 1 dropped
 		makeCmd("Build", models.GeneralUnitForge, 60, p),         // 2 dropped
 		makeCmd("Build", models.GeneralUnitPhotonCannon, 130, p), // 3 kept (consequent)
@@ -314,8 +271,6 @@ func TestResolveViolationsChainAndWorkerDrop(t *testing.T) {
 	verdicts := map[int]Verdict{
 		0: VerdictKept, 1: VerdictDropped, 2: VerdictDropped, 3: VerdictKept,
 	}
-	// Make both re-admissions unaffordable so a worker drop is triggered.
-	mineralsAfter := map[int]int{1: 0, 2: 0, 3: 500}
 
 	violations := findViolations(commands, verdicts)
 	if len(violations) == 0 {
@@ -323,8 +278,7 @@ func TestResolveViolationsChainAndWorkerDrop(t *testing.T) {
 	}
 
 	mustKeep := map[int]bool{}
-	forceDrop := map[int]bool{}
-	progress := resolveViolations(violations, commands, verdicts, mineralsAfter, mustKeep, forceDrop)
+	progress := resolveViolations(violations, commands, verdicts, mustKeep)
 	if !progress {
 		t.Fatal("expected resolveViolations to report progress")
 	}
@@ -334,14 +288,11 @@ func TestResolveViolationsChainAndWorkerDrop(t *testing.T) {
 	if !mustKeep[2] {
 		t.Error("expected Forge (idx 2) re-admitted")
 	}
-	if !forceDrop[0] {
-		t.Error("expected the kept Probe (idx 0) force-dropped to fund unaffordable re-admission")
-	}
 }
 
 // When the re-admission is affordable, resolveViolations must re-admit the
-// prereq but must NOT force-drop a worker (guards the income-collapse spiral).
-func TestResolveViolationsAffordableNoWorkerDrop(t *testing.T) {
+// prereq without any side effects.
+func TestResolveViolationsAffordableReadmit(t *testing.T) {
 	p := protossPlayer()
 	commands := []*models.Command{
 		makeCmd("Train", models.GeneralUnitProbe, 10, p),   // 0 kept worker
@@ -350,22 +301,16 @@ func TestResolveViolationsAffordableNoWorkerDrop(t *testing.T) {
 		makeCmd("Train", models.GeneralUnitZealot, 130, p), // 3 kept consequent
 	}
 	verdicts := map[int]Verdict{0: VerdictKept, 1: VerdictDropped, 2: VerdictDropped, 3: VerdictKept}
-	// Balances comfortably cover both builds → affordable.
-	mineralsAfter := map[int]int{1: 500, 2: 500, 3: 500}
 
 	violations := findViolations(commands, verdicts)
 	mustKeep := map[int]bool{}
-	forceDrop := map[int]bool{}
-	resolveViolations(violations, commands, verdicts, mineralsAfter, mustKeep, forceDrop)
+	resolveViolations(violations, commands, verdicts, mustKeep)
 
 	if !mustKeep[2] {
 		t.Error("expected Gateway re-admitted")
 	}
 	if !mustKeep[1] {
 		t.Error("expected Pylon (Gateway prereq) re-admitted")
-	}
-	if forceDrop[0] {
-		t.Error("affordable re-admission must not force-drop a worker")
 	}
 }
 
@@ -379,23 +324,21 @@ func TestSummaryFor(t *testing.T) {
 		makeCmd("Build", models.GeneralUnitGateway, 20, p),      // 1 readmitted
 		makeCmd("Train", models.GeneralUnitProbe, 30, p),        // 2 dropped
 		makeCmd("Build", models.GeneralUnitForge, 40, p),        // 3 dropped_by_tags
-		makeCmd("Train", models.GeneralUnitProbe, 50, p),        // 4 dropped_by_backtrack
-		makeCmd("Train", models.GeneralUnitZealot, 60, p),       // 5 unclassified verdict ("")
-		makeCmd("Build", models.GeneralUnitBarracks, 70, other), // 6 other player, ignored
+		makeCmd("Train", models.GeneralUnitZealot, 60, p),       // 4 unclassified verdict ("")
+		makeCmd("Build", models.GeneralUnitBarracks, 70, other), // 5 other player, ignored
 	}
 	verdicts := map[int]Verdict{
 		0: VerdictKept, 1: VerdictReadmitted, 2: VerdictDropped,
-		3: VerdictDroppedByTags, 4: VerdictDroppedByBacktrack, 5: "",
-		6: VerdictKept,
+		3: VerdictDroppedByTags, 4: "",
+		5: VerdictKept,
 	}
 	got := summaryFor(commands, verdicts, int64(p.PlayerID))
 
 	want := PlayerStats{
-		Total:                   6, // excludes the other-player command
-		Kept:                    3, // kept + readmitted + "" default
-		Dropped:                 3, // dropped + dropped_by_tags + dropped_by_backtrack
-		Readmitted:              1,
-		WorkerDropsForBacktrack: 1,
+		Total:      5, // excludes the other-player command
+		Kept:       3, // kept + readmitted + "" default
+		Dropped:    2, // dropped + dropped_by_tags
+		Readmitted: 1,
 	}
 	if got != want {
 		t.Fatalf("summaryFor = %+v, want %+v", got, want)
@@ -444,7 +387,7 @@ func TestWriteTrace(t *testing.T) {
 	})
 
 	t.Run("empty dir is a no-op", func(t *testing.T) {
-		if err := writeTrace("", "abc", tr); err != nil {
+		if err := writeTrace("", "abc", nil); err != nil {
 			t.Fatalf("expected nil for empty dir, got %v", err)
 		}
 	})
@@ -466,21 +409,19 @@ func TestBuildStats(t *testing.T) {
 		makeCmd("Build", models.GeneralUnitGateway, 20, p),      // 1 readmitted
 		makeCmd("Train", models.GeneralUnitProbe, 30, p),        // 2 dropped
 		makeCmd("Build", models.GeneralUnitForge, 40, p),        // 3 dropped_by_tags
-		makeCmd("Train", models.GeneralUnitProbe, 50, p),        // 4 dropped_by_backtrack (forceDrop)
-		makeCmd("Build", models.GeneralUnitBarracks, 60, other), // 5 other player kept
-		nil, // 6 nil command skipped
+		makeCmd("Build", models.GeneralUnitBarracks, 60, other), // 4 other player kept
+		nil, // 5 nil command skipped
 	}
 	verdicts := map[int]Verdict{
 		0: VerdictKept, 1: VerdictReadmitted, 2: VerdictDropped,
-		3: VerdictDroppedByTags, 4: VerdictDroppedByBacktrack, 5: VerdictKept,
+		3: VerdictDroppedByTags, 4: VerdictKept,
 	}
-	forceDrop := map[int]bool{4: true}
 
-	stats := buildStats(commands, verdicts, forceDrop)
+	stats := buildStats(commands, verdicts)
 
 	pStats := stats.PerPlayer[int64(p.PlayerID)]
 	want := PlayerStats{
-		Total: 5, Kept: 2, Dropped: 3, Readmitted: 1, WorkerDropsForBacktrack: 1,
+		Total: 4, Kept: 2, Dropped: 2, Readmitted: 1,
 	}
 	if pStats != want {
 		t.Fatalf("player stats = %+v, want %+v", pStats, want)
@@ -490,48 +431,29 @@ func TestBuildStats(t *testing.T) {
 	}
 }
 
-// dropped_by_backtrack without a forceDrop entry must count as Dropped but NOT
-// as a worker drop (guards the stat from double-counting).
-func TestBuildStatsBacktrackWithoutForceDrop(t *testing.T) {
-	p := protossPlayer()
-	commands := []*models.Command{makeCmd("Train", models.GeneralUnitProbe, 10, p)}
-	verdicts := map[int]Verdict{0: VerdictDroppedByBacktrack}
-
-	stats := buildStats(commands, verdicts, map[int]bool{})
-	s := stats.PerPlayer[int64(p.PlayerID)]
-	if s.Dropped != 1 || s.WorkerDropsForBacktrack != 0 {
-		t.Fatalf("stats = %+v, want Dropped=1 WorkerDropsForBacktrack=0", s)
-	}
-}
-
-// --- earlyfilter.go: runForward force-drop + pass-through branches ---
+// --- earlyfilter.go: runForward branches ---
 
 // A command with a nil Player is kept verbatim; a command past MaxSecond is
-// kept with a minerals snapshot; forceDrop yields dropped_by_backtrack.
+// kept with a minerals snapshot.
 func TestRunForwardBranches(t *testing.T) {
 	p := terranPlayer()
 	commands := []*models.Command{
 		{ActionType: "Train", Frame: 0, Player: nil},         // 0 nil player → kept
-		makeCmd("Train", models.GeneralUnitSCV, 10, p),       // 1 forceDrop target
-		makeCmd("Build", models.GeneralUnitBarracks, 400, p), // 2 past MaxSecond → kept
-		makeCmd("Attack", models.GeneralUnitMarine, 20, p),   // 3 non-filtered kind → kept
+		makeCmd("Build", models.GeneralUnitBarracks, 400, p), // 1 past MaxSecond → kept
+		makeCmd("Attack", models.GeneralUnitMarine, 20, p),   // 2 non-filtered kind → kept
 	}
 	sims := initSims(map[int64]string{int64(p.PlayerID): "Terran"}, nil)
-	forceDrop := map[int]bool{1: true}
 
-	verdicts, reasons, _ := runForward(commands, sims, map[int]bool{}, forceDrop, Options{MaxSecond: 240})
+	verdicts, _, _ := runForward(commands, sims, map[int]bool{}, Options{MaxSecond: 240})
 
 	if verdicts[0] != VerdictKept {
 		t.Errorf("nil-player command: got %q, want kept", verdicts[0])
 	}
-	if verdicts[1] != VerdictDroppedByBacktrack || reasons[1] != "freed_minerals_for_backtrack" {
-		t.Errorf("forceDrop command: got verdict=%q reason=%q", verdicts[1], reasons[1])
+	if verdicts[1] != VerdictKept {
+		t.Errorf("past-window command: got %q, want kept", verdicts[1])
 	}
 	if verdicts[2] != VerdictKept {
-		t.Errorf("past-window command: got %q, want kept", verdicts[2])
-	}
-	if verdicts[3] != VerdictKept {
-		t.Errorf("non-filtered kind: got %q, want kept", verdicts[3])
+		t.Errorf("non-filtered kind: got %q, want kept", verdicts[2])
 	}
 }
 
@@ -540,7 +462,7 @@ func TestRunForwardUnknownPlayerKept(t *testing.T) {
 	p := terranPlayer()
 	commands := []*models.Command{makeCmd("Train", models.GeneralUnitSCV, 10, p)}
 	sims := initSims(map[int64]string{}, nil) // no sim for p
-	verdicts, _, _ := runForward(commands, sims, map[int]bool{}, map[int]bool{}, Options{MaxSecond: 240})
+	verdicts, _, _ := runForward(commands, sims, map[int]bool{}, Options{MaxSecond: 240})
 	if verdicts[0] != VerdictKept {
 		t.Fatalf("unknown-player command: got %q, want kept", verdicts[0])
 	}
@@ -552,7 +474,7 @@ func TestRunForwardMustKeepReadmit(t *testing.T) {
 	p := protossPlayer()
 	commands := []*models.Command{makeCmd("Build", models.GeneralUnitGateway, 30, p)}
 	sims := initSims(map[int64]string{int64(p.PlayerID): "Protoss"}, nil)
-	verdicts, reasons, _ := runForward(commands, sims, map[int]bool{0: true}, map[int]bool{}, Options{MaxSecond: 240})
+	verdicts, reasons, _ := runForward(commands, sims, map[int]bool{0: true}, Options{MaxSecond: 240})
 	if verdicts[0] != VerdictReadmitted || reasons[0] != "tech_tree_readmit" {
 		t.Fatalf("mustKeep command: got verdict=%q reason=%q, want readmitted", verdicts[0], reasons[0])
 	}
