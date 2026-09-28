@@ -40,8 +40,8 @@ const (
 	// KindCast: Subject is the spell name with any "Cast" prefix stripped, or the
 	// raw OrderName when there is none (e.g. "NuclearStrike").
 	KindCast
-	// KindUnloadAll carries no spatial coords; the worldstate drop detector
-	// backfills position from the engagement layer.
+	// KindUnloadAll covers MoveUnload, which carries the drop point, and the
+	// coordless Unload All command, which only Bunkers issue.
 	KindUnloadAll
 	// Zerg burrow toggles (queueable).
 	KindBurrow
@@ -305,8 +305,8 @@ func classifyKind(cmd *models.Command) Kind {
 			return KindCast
 		}
 		// Unload variants on TargetedOrder, needed for spatial drop detection. The
-		// QueueableCmd UnloadAll path also lands on KindUnloadAll but carries no X/Y,
-		// so it is filtered out downstream.
+		// QueueableCmd UnloadAll path also lands on KindUnloadAll but carries no X/Y
+		// and comes from Bunkers, so drop detection ignores it.
 		if strings.Contains(strings.ToLower(on), "unload") {
 			return KindUnloadAll
 		}

@@ -337,6 +337,11 @@ record appearing in any fixture is a regression. Note these fixtures also exerci
 the per-target time-window dedup (`dropDedupWindowSec`), which collapses repeat
 drops onto the same base.
 
+Fixture `drops_bunker_bgh_nodropship_fp.rep` (`AutoSave/20260920/210802`) is a
+negative premise: chobo86 (P0) must have **zero** drops. Their Unload All
+commands at 3:44 and 5:35 are Bunker unloads; they never train a Dropship and
+leave at ~12:00. The other players' drops in this fixture are tier-2.
+
 ### Recall target inference — `recalls_golden.json`
 
 All six `recalls_*.rep` fixtures (introduced with the recall-destination feature,

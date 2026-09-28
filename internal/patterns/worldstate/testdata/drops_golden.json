@@ -1,4 +1,22 @@
 {
+  "drops_bunker_bgh_nodropship_fp.rep": {
+    "records": [
+      {
+        "second": 644,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "12",
+        "target_via": "p"
+      },
+      {
+        "second": 698,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "11's natural",
+        "target_via": "p"
+      }
+    ]
+  },
   "drops_cliff_bgh_bunker_fp.rep": {
     "records": []
   },

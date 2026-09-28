@@ -23,28 +23,20 @@ const (
 )
 
 // loadRecord is one Load event the worldstate drop pass has buffered for
-// later pairing with an Unload. Coords are the transport's last-known
-// position (initialized at the Load's right-click target point, updated by
-// any subsequent command that references the same UnitTag).
+// later pairing with an Unload, at the Load's right-click target point.
 type loadRecord struct {
-	tag    uint16
-	hasTag bool
+	x   int
+	y   int
+	sec int
+}
+
+// unloadRecord is one MoveUnload the drop pass has anchored to its drop point.
+type unloadRecord struct {
 	x      int
 	y      int
 	sec    int
-}
-
-// unloadRecord is one Unload-class command (KindUnloadAll covers Unload /
-// UnloadAll / MoveUnload) the drop pass has anchored to a destination point.
-// hasOwnCoord is true when the command itself carried X,Y (MoveUnload);
-// false when we backfilled from lastCoordByTag or playerLastCoord.
-type unloadRecord struct {
-	x           int
-	y           int
-	sec         int
-	frame       int32
-	polyID      int
-	hasOwnCoord bool
+	frame  int32
+	polyID int
 }
 
 // DropCluster is the output unit of the drop pass — one cluster of unloads
@@ -84,13 +76,8 @@ type DropCluster struct {
 //
 // The stream is in chronological order, so:
 //   - KindLoad commands append to that player's pendingLoads.
-//   - Any spatial command whose TargetUnitTag is a transport we're tracking
-//     refreshes lastCoordByTag (catches subsequent Loads onto the same
-//     dropship, plus the rare TargetedOrder that references the transport).
-//   - KindUnloadAll emits a per-player unload record. Destination X,Y comes
-//     from the command itself when present (MoveUnload), otherwise from
-//     lastCoordByTag for the most-recent pending Load's transport, otherwise
-//     from playerLastCoord (the player's last spatial command).
+//   - KindUnloadAll with its own X,Y (MoveUnload) emits a per-player unload
+//     record at that point.
 //
 // After the walk, per-player unload streams are bucketed into clusters by
 // polygon + time gap. Each cluster pairs with as many pending Loads as it
@@ -112,101 +99,37 @@ func BuildDrops(stream []cmdenrich.EnrichedCommand, polys []PolygonGeom, bases [
 		return owner
 	}
 
-	type point struct{ x, y int }
 	pendingLoads := map[byte][]loadRecord{}
-	lastCoordByTag := map[byte]map[uint16]point{}
-	playerLastCoord := map[byte]point{}
-	hasPlayerLastCoord := map[byte]bool{}
 	unloadsByPlayer := map[byte][]unloadRecord{}
-
-	updateTagCoord := func(pid byte, tag uint16, x, y int) {
-		m := lastCoordByTag[pid]
-		if m == nil {
-			m = map[uint16]point{}
-			lastCoordByTag[pid] = m
-		}
-		m[tag] = point{x, y}
-	}
 
 	for _, ec := range stream {
 		pid := byte(ec.PlayerID)
-
-		// Refresh player's last spatial coord — used as the last-resort
-		// destination fallback for Unload/UnloadAll commands that carry no
-		// X,Y of their own. Skip KindMakeBuilding: a building placement is not
-		// a unit-unload location, so it must not anchor an unload's fallback
-		// position (this previously let a Bunker unload resolve to a stray
-		// building, surfacing a false cliff drop).
-		if ec.X != nil && ec.Y != nil && ec.Kind != cmdenrich.KindMakeBuilding {
-			playerLastCoord[pid] = point{*ec.X, *ec.Y}
-			hasPlayerLastCoord[pid] = true
-		}
-
-		// Refresh transport tag → coord mapping when the command targets a
-		// tag we are currently tracking. Catches: subsequent Loads onto
-		// the same transport, TargetedOrders that reference the transport
-		// directly.
-		if ec.TargetUnitTag != nil && ec.X != nil && ec.Y != nil {
-			if _, tracking := lastCoordByTag[pid][*ec.TargetUnitTag]; tracking {
-				updateTagCoord(pid, *ec.TargetUnitTag, *ec.X, *ec.Y)
-			}
-		}
 
 		switch ec.Kind {
 		case cmdenrich.KindLoad:
 			if ec.X == nil || ec.Y == nil {
 				continue
 			}
-			lr := loadRecord{
-				x:   *ec.X,
-				y:   *ec.Y,
-				sec: ec.Second,
-			}
-			if ec.TargetUnitTag != nil {
-				lr.tag = *ec.TargetUnitTag
-				lr.hasTag = true
-				updateTagCoord(pid, *ec.TargetUnitTag, *ec.X, *ec.Y)
-			}
-			pendingLoads[pid] = append(pendingLoads[pid], lr)
+			pendingLoads[pid] = append(pendingLoads[pid], loadRecord{x: *ec.X, y: *ec.Y, sec: ec.Second})
 		case cmdenrich.KindUnloadAll:
-			// Destination resolution: prefer the unload's own X,Y
-			// (MoveUnload); fall back to the freshest pending load's
-			// transport coord; finally to the player's last spatial coord.
-			var dstX, dstY int
-			hasDst := false
-			if ec.X != nil && ec.Y != nil {
-				dstX, dstY = *ec.X, *ec.Y
-				hasDst = true
-			}
-			if !hasDst && len(pendingLoads[pid]) > 0 {
-				// Latest pending load's tag → its tracked coord.
-				latest := pendingLoads[pid][len(pendingLoads[pid])-1]
-				if latest.hasTag {
-					if p, ok := lastCoordByTag[pid][latest.tag]; ok {
-						dstX, dstY = p.x, p.y
-						hasDst = true
-					}
-				}
-			}
-			if !hasDst && hasPlayerLastCoord[pid] {
-				p := playerLastCoord[pid]
-				dstX, dstY = p.x, p.y
-				hasDst = true
-			}
-			if !hasDst {
+			// Transports unload via MoveUnload, which carries the drop point. The
+			// coordless Unload All command is only ever issued by Bunkers: across
+			// 3,385 replays no Protoss or Zerg player sent one, and every Terran one
+			// came from a single-selected tag that never moved.
+			if ec.X == nil || ec.Y == nil {
 				continue
 			}
+			dstX, dstY := *ec.X, *ec.Y
 			polyID := pointToEventBase(float64(dstX), float64(dstY), bases)
 			if polyID < 0 {
 				continue
 			}
 			unloadsByPlayer[pid] = append(unloadsByPlayer[pid], unloadRecord{
-				x:           dstX,
-				y:           dstY,
-				sec:         ec.Second,
-				frame:       ec.Frame,
-				polyID:      polyID,
-				hasOwnCoord: ec.X != nil && ec.Y != nil,
+				x:      dstX,
+				y:      dstY,
+				sec:    ec.Second,
+				frame:  ec.Frame,
+				polyID: polyID,
 			})
 		}
 	}
