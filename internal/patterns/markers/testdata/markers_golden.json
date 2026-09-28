@@ -460,11 +460,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Made drops",
-        "value": "214"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Never researched",
         "value": "242"
       },
@@ -2543,11 +2538,6 @@
         "replay_player_id": 0,
         "pattern_name": "First Mine",
         "value": "382"
-      },
-      {
-        "replay_player_id": 0,
-        "pattern_name": "Made drops",
-        "value": "315"
       },
       {
         "replay_player_id": 0,
@@ -4929,7 +4919,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Made drops",
-        "value": "236"
+        "value": "942"
       },
       {
         "replay_player_id": 0,
@@ -6337,11 +6327,6 @@
       },
       {
         "replay_player_id": 1,
-        "pattern_name": "Made drops",
-        "value": "246"
-      },
-      {
-        "replay_player_id": 1,
         "pattern_name": "Never upgraded",
         "value": "433"
       }
@@ -6665,7 +6650,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Made drops",
-        "value": "236"
+        "value": "942"
       },
       {
         "replay_player_id": 0,
