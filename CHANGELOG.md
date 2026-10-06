@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.29.1](https://github.com/marianogappa/screpdb/compare/v1.29.0...v1.29.1) (2026-09-28)
+
+
+### Bug Fixes
+
+* **drops:** stop reporting Bunker unloads as drops ([#444](https://github.com/marianogappa/screpdb/issues/444)) ([39e6e9a](https://github.com/marianogappa/screpdb/commit/39e6e9a64c97c86e0a88069e3e5126abdc9b997a)), closes [#443](https://github.com/marianogappa/screpdb/issues/443)
+
 ## [1.29.0](https://github.com/marianogappa/screpdb/compare/v1.28.0...v1.29.0) (2026-09-27)
 
 
