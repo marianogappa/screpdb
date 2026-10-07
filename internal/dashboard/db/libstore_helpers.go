@@ -11,6 +11,8 @@ import (
 // view is the filtered corpus every read but the unfiltered ones works from.
 func (s *LibStore) view() *library.View { return s.lib.View() }
 
+func (s *LibStore) CorpusView() *library.View { return s.view() }
+
 // snapshot is the unfiltered corpus, for the few reads that must ignore the
 // global filter (corpus totals, settings, bnet).
 func (s *LibStore) snapshot() *library.Snapshot { return s.lib.Snapshot() }

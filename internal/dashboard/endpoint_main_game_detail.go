@@ -2814,8 +2814,9 @@ func (d *Dashboard) matchFingerprint(playerKey string, featureVersion int) (*wor
 }
 
 func (d *Dashboard) fingerprintOutcomeFor(playerKey string, featureVersion int) (fingerprintOutcome, error) {
+	view := d.dbStore.CorpusView()
 	d.fpMatchCacheMu.RLock()
-	if d.fpMatchCache != nil {
+	if d.fpMatchCache != nil && d.fpMatchCacheView == view {
 		if entry, ok := d.fpMatchCache[playerKey]; ok {
 			d.fpMatchCacheMu.RUnlock()
 			return entry, nil
@@ -2828,9 +2829,15 @@ func (d *Dashboard) fingerprintOutcomeFor(playerKey string, featureVersion int) 
 		return fingerprintOutcome{}, err
 	}
 
+	// An outcome computed while the corpus moved on describes neither view,
+	// so it is returned but not cached.
+	if d.dbStore.CorpusView() != view {
+		return outcome, nil
+	}
 	d.fpMatchCacheMu.Lock()
-	if d.fpMatchCache == nil {
+	if d.fpMatchCache == nil || d.fpMatchCacheView != view {
 		d.fpMatchCache = make(map[string]fingerprintOutcome)
+		d.fpMatchCacheView = view
 	}
 	d.fpMatchCache[playerKey] = outcome
 	d.fpMatchCacheMu.Unlock()
