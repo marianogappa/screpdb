@@ -379,6 +379,7 @@
   "events.sentence.mechTransition": "{actor}, 메카닉 전환",
   "events.mechTransition": "메카닉 전환",
   "player.youTip": "본인",
+  "game.playsUnlikeHandle": "이 게임은 이 아이디의 다른 게임들과 플레이 방식이 다릅니다",
   "player.analyze": "플레이어 분석",
   "player.portraitAlt": "{name} 사진",
   "player.portraitAltGeneric": "사진",

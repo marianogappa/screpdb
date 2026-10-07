@@ -3047,6 +3047,27 @@ button.workflow-nav-update-available:disabled {
 .wpt-name-col > .workflow-fingerprint-match-row {
   font-weight: 400;
 }
+.wpt-unlike-handle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: normal;
+}
+.wpt-unlike-handle-dismiss {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.wpt-unlike-handle-dismiss:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
 
 .wpt-apm {
   justify-content: flex-start;

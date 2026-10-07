@@ -379,6 +379,7 @@
   "events.sentence.mechTransition": "{actor} transitions to Mech",
   "events.mechTransition": "Mech transition",
   "player.youTip": "You",
+  "game.playsUnlikeHandle": "This game does not play like this handle's other games",
   "player.analyze": "Analyze player",
   "player.portraitAlt": "{name} portrait",
   "player.portraitAltGeneric": "portrait",

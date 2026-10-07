@@ -297,18 +297,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-26  OK. Winners come from the engine whenever it ran, and undecided games are settled from the Battle.net game archive; the only new request is the user's own profile, fetched once at a new outcome priority after an undecided game of theirs ends. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
+2026-10-26  OK. Game detail flags a 1v1 game whose fingerprint does not cohere with the same handle's other same-race games (issue #345), using scfingerprint.Same over vectors the in-memory library already holds; gates and threshold come from a leave-one-out study run outside the repo. Dismissals live in browser localStorage. New test fixture of feature vectors read from testdata only. No new reads, roots, hosts, endpoints, facade exemptions, enforcement-test weakening, or DetectorVersion bump.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-26  OK. Winners come from the engine whenever it ran, and undecided games are settled from the Battle.net game archive; the only new request is the user's own profile, fetched once at a new outcome priority after an undecided game of theirs ends. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-21  OK. Frontend only: a player with a Skill tab no longer shows Skill proxies, and old Skill proxies links open Skill. No I/O changes.
 2026-10-21  OK. Frontend only: the player summary Skill row is taller and leads with a large tier badge in its tier colour. No I/O changes.
 2026-10-21  OK. Frontend only: the player Skill tab leads with the tier and trend, a dated Skill over time chart with tier lines, a smoothed average and a trend line, then the breakdown; How Skill works is a modal again, and the summary row is compact and points at the tab. No I/O changes.
 2026-10-21  OK. Player Skill becomes one clickable summary row and its own tab: Skill over time, the average breakdown and a shorter How Skill works; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
-2026-10-21  OK. Player pages show a Skill average from 5 rated engine games with habit pills, a How Skill works explainer opens from every Skill surface, and the player page drops its engine data count; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 ```
 
 </details>

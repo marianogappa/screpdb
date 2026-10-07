@@ -343,11 +343,12 @@ type workflowGamePlayer struct {
 	LeftSecond *int64 `json:"left_second,omitempty"`
 	// LeaveReason mirrors the LeaveGameCmd reason when LeftSecond comes from a
 	// leave_game event, or "Stopped" when it comes from player_stopped_playing.
-	LeaveReason      string                    `json:"leave_reason,omitempty"`
-	FingerprintMatch *workflowFingerprintMatch `json:"fingerprint_match,omitempty"`
-	CountryCode      string                    `json:"country_code,omitempty"`
-	PrimaryBadge     *IdentityBadge            `json:"primary_badge,omitempty"`
-	SecondaryBadge   *IdentityBadge            `json:"secondary_badge,omitempty"`
+	LeaveReason       string                    `json:"leave_reason,omitempty"`
+	FingerprintMatch  *workflowFingerprintMatch `json:"fingerprint_match,omitempty"`
+	CountryCode       string                    `json:"country_code,omitempty"`
+	PrimaryBadge      *IdentityBadge            `json:"primary_badge,omitempty"`
+	SecondaryBadge    *IdentityBadge            `json:"secondary_badge,omitempty"`
+	PlaysUnlikeHandle bool                      `json:"plays_unlike_handle,omitempty"`
 	// Skill places this player's game on the skill tiers; null when the game or the player cannot be measured.
 	Skill *workflowPlayerSkill `json:"skill"`
 	// SupplyCurve is the real supply used and cap at each second either changes; null in fast mode.

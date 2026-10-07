@@ -72,8 +72,11 @@ import {
   collectPlayerSpells,
 } from './lib/compositionPill';
 import {
+  getStoredDismissedUnlikeHandle,
   getStoredShowFeaturedPros,
+  saveDismissedUnlikeHandle,
   saveShowFeaturedPros,
+  unlikeHandleDismissKey,
 } from './lib/dashboardStorage';
 import { formatLoadingShortWith, isLibraryLoading, stillLoadingCopyWith } from './lib/libraryProgress';
 import {
@@ -2485,6 +2488,15 @@ function App() {
   const [mainPlayersFeatured, setMainPlayersFeatured] = useState([]);
   const [mainPlayersFeaturedExpanded, setMainPlayersFeaturedExpanded] = useState(false);
   const [showFeaturedPros, setShowFeaturedPros] = useState(() => getStoredShowFeaturedPros());
+  const [dismissedUnlikeHandle, setDismissedUnlikeHandle] = useState(() => getStoredDismissedUnlikeHandle());
+  const dismissUnlikeHandle = (key) => {
+    setDismissedUnlikeHandle((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      saveDismissedUnlikeHandle(next);
+      return next;
+    });
+  };
   const [mainPlayersLoading, setMainPlayersLoading] = useState(false);
   const [mainPlayersPage, setMainPlayersPage] = useState(1);
   const [mainPlayersTotal, setMainPlayersTotal] = useState(0);
@@ -6589,6 +6601,20 @@ function App() {
                                   <IdentityBadge badge={player.primary_badge} secondaryBadge={player.secondary_badge} />
                                 ) : player.fingerprint_match ? (
                                   <FingerprintBadge match={player.fingerprint_match} />
+                                ) : null}
+                                {player.plays_unlike_handle && !dismissedUnlikeHandle.has(unlikeHandleDismissKey(mainGame?.replay_id, player.player_key)) ? (
+                                  <span className="wpt-unlike-handle">
+                                    {t('game.playsUnlikeHandle')}
+                                    <button
+                                      type="button"
+                                      className="wpt-unlike-handle-dismiss"
+                                      title={t('common.dismiss')}
+                                      aria-label={t('common.dismiss')}
+                                      onClick={() => dismissUnlikeHandle(unlikeHandleDismissKey(mainGame?.replay_id, player.player_key))}
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
                                 ) : null}
                               </span>
                             </div>

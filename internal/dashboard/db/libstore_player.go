@@ -458,7 +458,7 @@ func (s *LibStore) ListPlayerFingerprintVectors(_ context.Context, playerKey str
 		if !ref.Replay.FingerprintEligible() {
 			continue
 		}
-		out = append(out, PlayerFingerprintVectorRow{Vector: fp.Vector, Race: fp.Race.String(), Name: ref.Player().Name})
+		out = append(out, PlayerFingerprintVectorRow{ReplayID: ref.Replay.ID, Frames: fp.Frames, Vector: fp.Vector, Race: fp.Race.String(), Name: ref.Player().Name})
 	}
 	return out, nil
 }

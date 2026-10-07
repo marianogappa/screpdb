@@ -18,3 +18,26 @@ export const saveShowFeaturedPros = (enabled) => {
     console.error('Failed to save featured pros preference to localStorage:', e);
   }
 };
+
+// Which "plays unlike this handle" notes the viewer has dismissed, keyed by
+// replay and player so a dismissal never hides the note on another game.
+const DISMISSED_UNLIKE_HANDLE_KEY = 'dashboard_dismissed_unlike_handle';
+
+export const unlikeHandleDismissKey = (replayId, playerKey) => `${replayId}:${playerKey}`;
+
+export const getStoredDismissedUnlikeHandle = () => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DISMISSED_UNLIKE_HANDLE_KEY) || '[]');
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch (e) {
+    return new Set();
+  }
+};
+
+export const saveDismissedUnlikeHandle = (dismissed) => {
+  try {
+    localStorage.setItem(DISMISSED_UNLIKE_HANDLE_KEY, JSON.stringify([...dismissed]));
+  } catch (e) {
+    console.error('Failed to save dismissed notes to localStorage:', e);
+  }
+};

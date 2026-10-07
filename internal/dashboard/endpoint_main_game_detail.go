@@ -86,6 +86,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 			p.FingerprintMatch = match
 		}
 		p.PrimaryBadge, p.SecondaryBadge = d.resolvePlayerIdentityBadges(p.PlayerKey, p.FingerprintMatch)
+		p.PlaysUnlikeHandle = d.playsUnlikeHandle(p.PlayerKey, replayID, scfingerprint.FeatureVersion())
 		detail.Players = append(detail.Players, p)
 		if row.StartLocationOclock != nil && *row.StartLocationOclock >= 1 && *row.StartLocationOclock <= 12 {
 			startClockByPlayerID[row.PlayerID] = int(*row.StartLocationOclock)

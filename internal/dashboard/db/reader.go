@@ -49,9 +49,11 @@ type ReplayChatRow struct {
 // PlayerFingerprintVectorRow is one game's hotkey-habit feature vector for a
 // player.
 type PlayerFingerprintVectorRow struct {
-	Vector []float64
-	Race   string
-	Name   string
+	ReplayID int64
+	Frames   int32
+	Vector   []float64
+	Race     string
+	Name     string
 }
 
 // BnetFoundProfile is one Battle.net profile entry where the toon was found on
