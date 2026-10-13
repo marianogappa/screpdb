@@ -1,7 +1,7 @@
 <!-- screpdb-install -->
 ## Install
 
-**Windows:** open PowerShell and paste this. screpdb opens when it's done, and updates itself from inside the app.
+**Windows:** open PowerShell and paste this. screpdb opens when it's done.
 
 ```powershell
 irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | iex

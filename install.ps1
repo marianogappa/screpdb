@@ -92,7 +92,7 @@
 
     Write-Host ''
     Write-Host "Installed screpdb to $exe"
-    Write-Host 'Open it any time from the Start Menu (screpdb). It updates itself from inside the app.'
+    Write-Host 'Open it any time from the Start Menu (screpdb).'
 
     if ($env:SCREPDB_NO_LAUNCH -ne '1') {
         Start-Process -FilePath $exe -WorkingDirectory $dir

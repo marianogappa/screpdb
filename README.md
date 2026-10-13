@@ -63,7 +63,7 @@ macOS, Linux and other options: see [Installation](#installation).
 irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | iex
 ```
 
-Paste into PowerShell. screpdb opens in your browser, gets a Start Menu shortcut, and updates itself from inside the app. No SmartScreen warning. [Read the script](install.ps1).
+Paste into PowerShell. screpdb opens in your browser and gets a Start Menu shortcut. No SmartScreen warning. [Read the script](install.ps1).
 
 <details>
 <summary><strong>Linux</strong></summary>

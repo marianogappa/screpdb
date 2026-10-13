@@ -59,7 +59,7 @@ macOS, Linux 및 다른 방법은 [설치](#설치)를 참고하세요.
 irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | iex
 ```
 
-PowerShell에 붙여 넣으세요. screpdb가 브라우저에서 열리고, 시작 메뉴 바로 가기가 생기며, 업데이트는 앱 안에서 할 수 있습니다. SmartScreen 경고는 없습니다. [스크립트 보기](install.ps1).
+PowerShell에 붙여 넣으세요. screpdb가 브라우저에서 열리고 시작 메뉴 바로 가기가 생깁니다. SmartScreen 경고는 없습니다. [스크립트 보기](install.ps1).
 
 <details>
 <summary><strong>Linux</strong></summary>
