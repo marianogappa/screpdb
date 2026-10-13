@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.30.0](https://github.com/marianogappa/screpdb/compare/v1.29.1...v1.30.0) (2026-10-13)
+
+
+### Features
+
+* **install:** one-line Windows installer, simpler install docs, install steps on release pages ([#448](https://github.com/marianogappa/screpdb/issues/448)) ([a75c03a](https://github.com/marianogappa/screpdb/commit/a75c03abfcd83bf57e41fc03b743c8d22fbd8087))
+
 ## [1.29.1](https://github.com/marianogappa/screpdb/compare/v1.29.0...v1.29.1) (2026-09-28)
 
 
