@@ -6,6 +6,14 @@ screpdb는 스타크래프트 리플레이를 위한 고급 분석 리포팅 도
 
 **▶️ [브라우저에서 바로 사용해 보기](https://marianogappa.github.io/screpdb/)** — 설치 없이 예시 리플레이로 전체 대시보드를 체험할 수 있고, 모든 처리는 브라우저에서 실행됩니다.
 
+**⬇️ Windows에 설치:** PowerShell에 붙여 넣으세요.
+
+```powershell
+irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | iex
+```
+
+macOS, Linux 및 다른 방법은 [설치](#설치)를 참고하세요.
+
 [![Release](https://img.shields.io/github/v/release/marianogappa/screpdb)](https://github.com/marianogappa/screpdb/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/marianogappa/screpdb)](go.mod)
