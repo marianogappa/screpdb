@@ -1,31 +1,19 @@
 <!-- screpdb-install -->
 ## Install
 
-**Windows** (PowerShell, via [Scoop](https://scoop.sh), no SmartScreen warning):
+**Windows:** open PowerShell and paste this. screpdb opens when it's done, and updates itself from inside the app.
 
 ```powershell
-scoop install git
-scoop bucket add screpdb https://github.com/marianogappa/screpdb
-scoop install screpdb
+irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | iex
 ```
-
-Then run `screpdb-gui`.
 
 **macOS / Linux:**
-
-```bash
-brew install marianogappa/screpdb/screpdb
-```
-
-or
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh | sh
 ```
 
-**Upgrading:** `scoop update screpdb`, `brew upgrade screpdb`, or the in-app Update button.
-
-Downloading a binary from the assets below instead? It's unsigned, so read the [installation guide](https://github.com/marianogappa/screpdb#installation) first for how to get past SmartScreen / Gatekeeper.
+Prefer Scoop, Homebrew, or downloading a binary from the assets below? See the [installation guide](https://github.com/marianogappa/screpdb#installation). The binaries are unsigned, so direct downloads trigger SmartScreen / Gatekeeper warnings.
 
 ---
 
