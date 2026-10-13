@@ -116,6 +116,24 @@ jobs:
           files: dist/SHA256SUMS.minisig
           fail_on_unmatched_files: true
 
+      # Many users land on the Releases page and never see the README, so put
+      # the install instructions at the top of every release body. Best-effort:
+      # release notes are cosmetic and must never fail the release.
+      - name: Prepend install instructions to release notes
+        if: github.ref_type == 'tag'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BODY="$(gh release view "$GITHUB_REF_NAME" --json body --jq .body)"
+          if grep -q '<!-- screpdb-install -->' <<<"$BODY"; then
+            echo "Install instructions already present."
+            exit 0
+          fi
+          { cat .github/release-install.md; printf '%s\n' "$BODY"; } > "$RUNNER_TEMP/release-notes.md"
+          gh release edit "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
+
       # Mint a GitHub App installation token for the Scoop bump. A PR opened by
       # the default GITHUB_TOKEN has its checks gated as `action_required` (needs
       # a manual "Approve workflows to run" click), which stalls auto-merge. A PR
