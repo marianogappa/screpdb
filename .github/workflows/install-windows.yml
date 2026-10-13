@@ -1,0 +1,84 @@
+name: install-windows
+
+on:
+  pull_request:
+    paths:
+      - install.ps1
+      - .github/workflows/install-windows.yml
+  push:
+    branches:
+      - main
+    paths:
+      - install.ps1
+      - .github/workflows/install-windows.yml
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  install:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shell: [powershell, pwsh]
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    env:
+      SCREPDB_NO_LAUNCH: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install an older release
+        env:
+          SCREPDB_VERSION: '1.29.0'
+        run: Get-Content ./install.ps1 -Raw | Invoke-Expression
+
+      # Runs the dashboard directly as the worker (no tray, which needs an
+      # interactive desktop) to prove the installed binary starts and that the
+      # in-app updater offers to update this install location. The app reports
+      # self-update as supported only when a newer release exists, hence the
+      # older install.
+      - name: Verify the app runs and offers a self-update
+        env:
+          SCREPDB_WORKER: '1'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs\screpdb\screpdb.exe'
+          $proc = Start-Process -FilePath $exe -ArgumentList '--headless', '--port', '8123' -PassThru
+          try {
+            $status = $null
+            for ($i = 0; $i -lt 60 -and -not $status; $i++) {
+              Start-Sleep -Seconds 2
+              try { $status = Invoke-RestMethod -UseBasicParsing http://localhost:8123/api/custom/update/status } catch {}
+            }
+            if (-not $status) { throw 'dashboard never answered on port 8123' }
+            $status | ConvertTo-Json
+            if ($status.current_version -ne 'v1.29.0') { throw "expected v1.29.0, got $($status.current_version)" }
+            if (-not $status.latest_version) {
+              # The app asks the GitHub API anonymously; shared runners often hit its rate limit.
+              Write-Host '::warning::GitHub API unreachable or rate-limited from this runner; skipping the self-update assertion.'
+            } elseif (-not $status.self_update_supported) {
+              throw "self-update unavailable: $($status.reason)"
+            }
+          } finally {
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Upgrade to the latest release
+        run: Get-Content ./install.ps1 -Raw | Invoke-Expression
+
+      - name: Verify install
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs\screpdb\screpdb.exe'
+          if (-not (Test-Path $exe)) { throw "missing $exe" }
+          $lnk = Join-Path ([Environment]::GetFolderPath('Programs')) 'screpdb.lnk'
+          if (-not (Test-Path $lnk)) { throw "missing $lnk" }
+          $sums = (Invoke-WebRequest -UseBasicParsing https://github.com/marianogappa/screpdb/releases/latest/download/SHA256SUMS).Content
+          if ($sums -is [byte[]]) { $sums = [Text.Encoding]::UTF8.GetString($sums) }
+          $expected = (($sums -split "`n" | Where-Object { $_ -match 'screpdb-gui-windows-amd64\.exe$' }) -split '\s+')[0]
+          $actual = (Get-FileHash -Algorithm SHA256 $exe).Hash
+          if ($actual -ne $expected) { throw "installed binary is not the latest release ($actual vs $expected)" }
