@@ -4,16 +4,6 @@ screpdb is an advanced Starcraft replay reporting tool.
 
 [English](README.md) | [한국어](README.ko.md)
 
-**▶️ [Try it in your browser](https://marianogappa.github.io/screpdb/)** — the full dashboard on sample replays, no install, runs entirely client side.
-
-**⬇️ Install on Windows:** paste into PowerShell.
-
-```powershell
-irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | iex
-```
-
-macOS, Linux and other options: see [Installation](#installation).
-
 [![Release](https://img.shields.io/github/v/release/marianogappa/screpdb)](https://github.com/marianogappa/screpdb/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/marianogappa/screpdb)](go.mod)
@@ -23,6 +13,16 @@ macOS, Linux and other options: see [Installation](#installation).
 <!-- load-bench-start -->
 <sub>28.88 ms/replay · corpus: 166 replays · GitHub-hosted 2-core runner · updated automatically on merge to main</sub>
 <!-- load-bench-end -->
+
+**▶️ [Try it in your browser](https://marianogappa.github.io/screpdb/)** — the full dashboard on sample replays, no install, runs entirely client side.
+
+**⬇️ Install on Windows:** paste into PowerShell.
+
+```powershell
+irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | iex
+```
+
+macOS, Linux and other options: see [Installation](#installation).
 
 ## Features
 ### Filtering and finding replays by high-level semantic features

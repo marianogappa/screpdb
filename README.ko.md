@@ -4,6 +4,12 @@ screpdb는 스타크래프트 리플레이를 위한 고급 분석 리포팅 도
 
 [English](README.md) | [한국어](README.ko.md)
 
+[![Release](https://img.shields.io/github/v/release/marianogappa/screpdb)](https://github.com/marianogappa/screpdb/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/marianogappa/screpdb)](go.mod)
+[![Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen)](scripts/coverage.sh)
+[![Replay load throughput](https://img.shields.io/badge/replay%20load-34.6%20replays%2Fsec-brightgreen)](.github/workflows/bench-load.yml)
+
 **▶️ [브라우저에서 바로 사용해 보기](https://marianogappa.github.io/screpdb/)** — 설치 없이 예시 리플레이로 전체 대시보드를 체험할 수 있고, 모든 처리는 브라우저에서 실행됩니다.
 
 **⬇️ Windows에 설치:** PowerShell에 붙여 넣으세요.
@@ -13,12 +19,6 @@ irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | ie
 ```
 
 macOS, Linux 및 다른 방법은 [설치](#설치)를 참고하세요.
-
-[![Release](https://img.shields.io/github/v/release/marianogappa/screpdb)](https://github.com/marianogappa/screpdb/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/marianogappa/screpdb)](go.mod)
-[![Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen)](scripts/coverage.sh)
-[![Replay load throughput](https://img.shields.io/badge/replay%20load-34.6%20replays%2Fsec-brightgreen)](.github/workflows/bench-load.yml)
 
 ## 주요 기능
 ### 고수준 의미 기반 특징으로 리플레이 필터링 및 검색
