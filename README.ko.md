@@ -45,53 +45,46 @@ screpdb는 스타크래프트 리플레이를 위한 고급 분석 리포팅 도
 
 ## 설치
 
-릴리스 노트는 [CHANGELOG.md](CHANGELOG.md)를 참고하세요.
-
-> ⚠️ **보안:** **Windows**에서는 screpdb가 워커를 **낮은 무결성(Low integrity)** 수준으로 실행합니다. OS가 screpdb의 모든 쓰기를 단일 앱 데이터 폴더로 제한하므로, 리플레이/맵 파서가 침해되더라도 컴퓨터의 다른 위치에는 쓸 수 없습니다([영어 README의 Security / I/O model 참고](README.md#security--io-model)). **macOS와 Linux**에는 아직 OS 샌드박스가 없습니다. screpdb는 자체 I/O를 모두 프로세스 내 파사드를 통해 처리하지만(쓰기는 앱 데이터 디렉터리와 리플레이 폴더로 제한, 사용자가 직접 실행한 자체 업데이트 외에는 외부 네트워크 호출 없음), 이는 OS 경계가 아닌 최선의 보호 장치이므로 실행 전에 신중히 판단해 주세요.
-
-<details open>
-<summary><strong>Windows</strong></summary>
-
-**PowerShell**을 열고(시작 메뉴에서 `PowerShell` 입력) 아래 명령을 붙여 넣으세요:
+**Windows**
 
 ```powershell
 irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | iex
 ```
 
-이제 끝입니다. screpdb가 브라우저에서 열립니다. 다음부터는 시작 메뉴의 **screpdb**로 실행하세요. 업데이트는 앱 안에서 바로 할 수 있습니다.
-
-> 🔍 [`install.ps1`](install.ps1)은 먼저 읽어 볼 수 있을 만큼 짧습니다. 최신 릴리스에서 대시보드를 내려받아 릴리스의 `SHA256SUMS`와 대조하고, `%LOCALAPPDATA%\Programs\screpdb`에 복사한 뒤 시작 메뉴 바로 가기를 만듭니다. PowerShell로 받은 파일은 "인터넷에서 받은 파일"로 표시되지 않으므로 SmartScreen 경고가 **나타나지 않습니다**.
+PowerShell에 붙여 넣으세요. screpdb가 브라우저에서 열리고, 시작 메뉴 바로 가기가 생기며, 업데이트는 앱 안에서 할 수 있습니다. SmartScreen 경고는 없습니다. [스크립트 보기](install.ps1).
 
 <details>
-<summary>Scoop을 선호하시나요? (<code>screpdb</code> CLI도 함께 설치됩니다)</summary>
+<summary><strong>Linux</strong></summary>
 
-```powershell
-scoop install git   # required by 'scoop bucket add' (skip if you already have git)
-scoop bucket add screpdb https://github.com/marianogappa/screpdb
-scoop install screpdb
+```bash
+curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh | sh
 ```
 
-앱은 **`screpdb-gui`**, CLI는 `screpdb`로 실행합니다. 업그레이드는 `scoop update screpdb`입니다. 예전 버전이 보이면 먼저 (패키지 이름 없이) `scoop update`를 실행해 버킷을 갱신하세요.
+또는 Homebrew / Linuxbrew로:
 
-Scoop이 아직 없다면 먼저 설치하세요:
-
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-irm get.scoop.sh | iex
+```bash
+brew install marianogappa/screpdb/screpdb   # upgrade later: brew update && brew upgrade screpdb
 ```
 
-</details>
+그다음 `screpdb`를 실행하세요. 업그레이드는 설치 스크립트를 다시 실행하거나 앱 내 **업데이트** 버튼을 사용하세요.
 
 <details>
-<summary>직접 다운로드를 원하시나요? (SmartScreen 경고가 표시됩니다)</summary>
+<summary>설치 스크립트를 먼저 읽거나 수동으로 설치하기</summary>
 
-[릴리스 페이지](https://github.com/marianogappa/screpdb/releases)에서 **`screpdb-gui-windows-amd64.exe`**(앱. CLI는 `screpdb-windows-amd64.exe`)를 내려받으세요. 바이너리는 **코드 서명이 되어 있지 않아** 첫 실행 시:
+[`install.sh`](install.sh)는 짧고 의존성이 없습니다. 사용 중인 OS/아키텍처용 바이너리를 내려받아 릴리스의 서명된 `SHA256SUMS`와 대조하고 `~/.local/bin`에 복사합니다. 실행 전에 검토하려면:
 
-- **SmartScreen "Windows의 PC 보호"**: **추가 정보 → 실행**을 클릭하세요.
-- **Defender나 다른 백신**이 격리할 수 있습니다(서명되지 않은 Go 바이너리의 알려진 오탐). 보호 기록에서 복원하세요.
-- AppLocker나 WDAC가 적용된 **회사 PC**에서는 완전히 차단될 수 있습니다.
+```bash
+curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh -o screpdb-install.sh
+less screpdb-install.sh
+sh screpdb-install.sh
+```
 
-앱 내 업데이트 버튼이 작동하도록 `.exe`를 `%LOCALAPPDATA%\Programs\screpdb\`처럼 쓰기 가능한 폴더에 두세요. [소스에서 빌드](#소스에서-빌드하기)할 수도 있습니다.
+또는 [릴리스 페이지](https://github.com/marianogappa/screpdb/releases)에서 바이너리를 직접 내려받으세요:
+
+```bash
+chmod +x screpdb-linux-amd64                              # or screpdb-linux-arm64
+mkdir -p ~/.local/bin && mv screpdb-linux-amd64 ~/.local/bin/screpdb
+```
 
 </details>
 
@@ -130,41 +123,46 @@ mkdir -p ~/.local/bin && mv screpdb-darwin-arm64 ~/.local/bin/screpdb
 </details>
 
 <details>
-<summary><strong>Linux</strong></summary>
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh | sh
-```
-
-또는 Homebrew / Linuxbrew로:
-
-```bash
-brew install marianogappa/screpdb/screpdb   # upgrade later: brew update && brew upgrade screpdb
-```
-
-그다음 `screpdb`를 실행하세요. 업그레이드는 설치 스크립트를 다시 실행하거나 앱 내 **업데이트** 버튼을 사용하세요.
+<summary><strong>Windows: Scoop 또는 직접 다운로드</strong></summary>
 
 <details>
-<summary>설치 스크립트를 먼저 읽거나 수동으로 설치하기</summary>
+<summary>Scoop을 선호하시나요? (<code>screpdb</code> CLI도 함께 설치됩니다)</summary>
 
-[`install.sh`](install.sh)는 짧고 의존성이 없습니다. 사용 중인 OS/아키텍처용 바이너리를 내려받아 릴리스의 서명된 `SHA256SUMS`와 대조하고 `~/.local/bin`에 복사합니다. 실행 전에 검토하려면:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh -o screpdb-install.sh
-less screpdb-install.sh
-sh screpdb-install.sh
+```powershell
+scoop install git   # required by 'scoop bucket add' (skip if you already have git)
+scoop bucket add screpdb https://github.com/marianogappa/screpdb
+scoop install screpdb
 ```
 
-또는 [릴리스 페이지](https://github.com/marianogappa/screpdb/releases)에서 바이너리를 직접 내려받으세요:
+앱은 **`screpdb-gui`**, CLI는 `screpdb`로 실행합니다. 업그레이드는 `scoop update screpdb`입니다. 예전 버전이 보이면 먼저 (패키지 이름 없이) `scoop update`를 실행해 버킷을 갱신하세요.
 
-```bash
-chmod +x screpdb-linux-amd64                              # or screpdb-linux-arm64
-mkdir -p ~/.local/bin && mv screpdb-linux-amd64 ~/.local/bin/screpdb
+Scoop이 아직 없다면 먼저 설치하세요:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+irm get.scoop.sh | iex
 ```
 
 </details>
 
+<details>
+<summary>직접 다운로드를 원하시나요? (SmartScreen 경고가 표시됩니다)</summary>
+
+[릴리스 페이지](https://github.com/marianogappa/screpdb/releases)에서 **`screpdb-gui-windows-amd64.exe`**(앱. CLI는 `screpdb-windows-amd64.exe`)를 내려받으세요. 바이너리는 **코드 서명이 되어 있지 않아** 첫 실행 시:
+
+- **SmartScreen "Windows의 PC 보호"**: **추가 정보 → 실행**을 클릭하세요.
+- **Defender나 다른 백신**이 격리할 수 있습니다(서명되지 않은 Go 바이너리의 알려진 오탐). 보호 기록에서 복원하세요.
+- AppLocker나 WDAC가 적용된 **회사 PC**에서는 완전히 차단될 수 있습니다.
+
+앱 내 업데이트 버튼이 작동하도록 `.exe`를 `%LOCALAPPDATA%\Programs\screpdb\`처럼 쓰기 가능한 폴더에 두세요. [소스에서 빌드](#소스에서-빌드하기)할 수도 있습니다.
+
 </details>
+
+</details>
+
+🛡️ **보안:** Windows에서는 screpdb가 낮은 무결성(Low integrity) 샌드박스에서 실행되므로, 리플레이 파서가 침해되더라도 screpdb 자체 데이터 폴더에만 쓸 수 있습니다. macOS와 Linux에는 아직 OS 샌드박스가 없으며, 쓰기는 프로세스 내에서 앱 데이터 폴더와 리플레이 폴더로 제한됩니다. [영어 README의 Security / I/O model](README.md#security--io-model)을 참고하세요.
+
+릴리스 노트는 [CHANGELOG.md](CHANGELOG.md)를 참고하세요.
 
 ### 소스에서 빌드하기
 

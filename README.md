@@ -49,53 +49,46 @@ screpdb is an advanced Starcraft replay reporting tool.
 
 ## Installation
 
-See [CHANGELOG.md](CHANGELOG.md) for release notes.
-
-> ⚠️ **Security:** On **Windows**, screpdb runs its worker at **Low integrity** — the OS confines all of screpdb's writes to a single app-data folder, so even a compromised replay/map parser cannot write elsewhere on your machine (see [Security / I/O model](#security--io-model)). On **macOS and Linux** there is no OS sandbox yet: screpdb routes all its own I/O through in-process facades (writes confined to the app-data dir and the replays folder, no outbound network calls beyond user-initiated self-update), but these are best-effort guardrails rather than an OS boundary, so exercise judgement before running it.
-
-<details open>
-<summary><strong>Windows</strong></summary>
-
-Open **PowerShell** (Start menu → type `PowerShell`) and paste:
+**Windows**
 
 ```powershell
 irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | iex
 ```
 
-That's it: screpdb opens in your browser. Next time, open it from the Start Menu (**screpdb**). It updates itself from inside the app.
-
-> 🔍 [`install.ps1`](install.ps1) is short enough to read first. It downloads the dashboard from the latest release, checks it against the release's `SHA256SUMS`, copies it to `%LOCALAPPDATA%\Programs\screpdb`, and adds a Start Menu shortcut. Because PowerShell downloads aren't flagged as "from the internet", Windows shows **no** SmartScreen warning.
+Paste into PowerShell. screpdb opens in your browser, gets a Start Menu shortcut, and updates itself from inside the app. No SmartScreen warning. [Read the script](install.ps1).
 
 <details>
-<summary>Prefer Scoop? (also installs the <code>screpdb</code> CLI)</summary>
+<summary><strong>Linux</strong></summary>
 
-```powershell
-scoop install git   # required by 'scoop bucket add' (skip if you already have git)
-scoop bucket add screpdb https://github.com/marianogappa/screpdb
-scoop install screpdb
+```bash
+curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh | sh
 ```
 
-Run **`screpdb-gui`** for the app or `screpdb` for the CLI. Upgrade with `scoop update screpdb`. Seeing an old version? Run `scoop update` (no package name) first to refresh the bucket.
+Or with Homebrew / Linuxbrew:
 
-No Scoop yet? Install it first:
-
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-irm get.scoop.sh | iex
+```bash
+brew install marianogappa/screpdb/screpdb   # upgrade later: brew update && brew upgrade screpdb
 ```
 
-</details>
+Then run `screpdb`. Upgrade by re-running the installer or with the in-app **Update** button.
 
 <details>
-<summary>Prefer a direct download? (expect a SmartScreen warning)</summary>
+<summary>Read the installer first, or install manually</summary>
 
-Grab **`screpdb-gui-windows-amd64.exe`** (the app; `screpdb-windows-amd64.exe` is the CLI) from the [Releases page](https://github.com/marianogappa/screpdb/releases). The binaries are **not code-signed**, so on first launch:
+[`install.sh`](install.sh) is short and dependency-free: it downloads the binary for your OS/arch, checks it against the release's signed `SHA256SUMS`, and copies it to `~/.local/bin`. To audit before running:
 
-- **SmartScreen "Windows protected your PC"**: click **More info → Run anyway**.
-- **Defender or other antivirus** may quarantine it (a known false positive for unsigned Go binaries). Restore it from Protection History.
-- **Work PCs** with AppLocker or WDAC may block it outright.
+```bash
+curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh -o screpdb-install.sh
+less screpdb-install.sh
+sh screpdb-install.sh
+```
 
-Put the `.exe` in a folder you can write to, such as `%LOCALAPPDATA%\Programs\screpdb\`, so the in-app Update button works. You can also [build from source](#building-from-source).
+Or download the binary from the [Releases page](https://github.com/marianogappa/screpdb/releases) yourself:
+
+```bash
+chmod +x screpdb-linux-amd64                              # or screpdb-linux-arm64
+mkdir -p ~/.local/bin && mv screpdb-linux-amd64 ~/.local/bin/screpdb
+```
 
 </details>
 
@@ -134,41 +127,46 @@ Keep it in a writable folder (not `~/Downloads` or a Homebrew prefix) so the in-
 </details>
 
 <details>
-<summary><strong>Linux</strong></summary>
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh | sh
-```
-
-Or with Homebrew / Linuxbrew:
-
-```bash
-brew install marianogappa/screpdb/screpdb   # upgrade later: brew update && brew upgrade screpdb
-```
-
-Then run `screpdb`. Upgrade by re-running the installer or with the in-app **Update** button.
+<summary><strong>Windows: Scoop or direct download</strong></summary>
 
 <details>
-<summary>Read the installer first, or install manually</summary>
+<summary>Prefer Scoop? (also installs the <code>screpdb</code> CLI)</summary>
 
-[`install.sh`](install.sh) is short and dependency-free: it downloads the binary for your OS/arch, checks it against the release's signed `SHA256SUMS`, and copies it to `~/.local/bin`. To audit before running:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh -o screpdb-install.sh
-less screpdb-install.sh
-sh screpdb-install.sh
+```powershell
+scoop install git   # required by 'scoop bucket add' (skip if you already have git)
+scoop bucket add screpdb https://github.com/marianogappa/screpdb
+scoop install screpdb
 ```
 
-Or download the binary from the [Releases page](https://github.com/marianogappa/screpdb/releases) yourself:
+Run **`screpdb-gui`** for the app or `screpdb` for the CLI. Upgrade with `scoop update screpdb`. Seeing an old version? Run `scoop update` (no package name) first to refresh the bucket.
 
-```bash
-chmod +x screpdb-linux-amd64                              # or screpdb-linux-arm64
-mkdir -p ~/.local/bin && mv screpdb-linux-amd64 ~/.local/bin/screpdb
+No Scoop yet? Install it first:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+irm get.scoop.sh | iex
 ```
 
 </details>
 
+<details>
+<summary>Prefer a direct download? (expect a SmartScreen warning)</summary>
+
+Grab **`screpdb-gui-windows-amd64.exe`** (the app; `screpdb-windows-amd64.exe` is the CLI) from the [Releases page](https://github.com/marianogappa/screpdb/releases). The binaries are **not code-signed**, so on first launch:
+
+- **SmartScreen "Windows protected your PC"**: click **More info → Run anyway**.
+- **Defender or other antivirus** may quarantine it (a known false positive for unsigned Go binaries). Restore it from Protection History.
+- **Work PCs** with AppLocker or WDAC may block it outright.
+
+Put the `.exe` in a folder you can write to, such as `%LOCALAPPDATA%\Programs\screpdb\`, so the in-app Update button works. You can also [build from source](#building-from-source).
+
 </details>
+
+</details>
+
+🛡️ **Secured:** on Windows, screpdb runs sandboxed at Low integrity, so even a compromised replay parser can only write to screpdb's own data folder. On macOS and Linux there is no OS sandbox yet; writes are confined in-process to the app-data and replays folders. See [Security / I/O model](#security--io-model).
+
+See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ### Building from source
 
