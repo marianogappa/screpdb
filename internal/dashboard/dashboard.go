@@ -38,6 +38,7 @@ type Dashboard struct {
 	libraryHub          *libraryHub
 	enginePass          enginePassRunner
 	enginePassEnabled   bool
+	digests             digestMemo
 	sampleSetAutoLoaded bool
 	headless            bool
 	debug               bool

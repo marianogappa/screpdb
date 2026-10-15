@@ -346,6 +346,16 @@ type workflowGamePlayer struct {
 	CountryCode      string                    `json:"country_code,omitempty"`
 	PrimaryBadge     *IdentityBadge            `json:"primary_badge,omitempty"`
 	SecondaryBadge   *IdentityBadge            `json:"secondary_badge,omitempty"`
+	// Macro is the engine scorecard; null in fast mode.
+	Macro *workflowPlayerMacro `json:"macro"`
+	// SupplyCurve is the real supply used and cap at each second either changes; null in fast mode.
+	SupplyCurve []workflowSupplyPoint `json:"supply_curve"`
+}
+
+type workflowSupplyPoint struct {
+	Second int64   `json:"second"`
+	Used   float64 `json:"used"`
+	Cap    float64 `json:"cap"`
 }
 
 // workflowPatternValue is one detected_patterns[] entry on the game-summary
@@ -612,6 +622,9 @@ type workflowUnitEarlyEvent struct {
 	IsBuilding bool   `json:"is_building"`
 	Label      string `json:"label,omitempty"`
 	Count      int64  `json:"count"`
+	// CompletedSecond and Cancelled come from engine data only; in fast mode they are null and false.
+	CompletedSecond *int64 `json:"completed_second"`
+	Cancelled       bool   `json:"cancelled,omitempty"`
 }
 
 // One player's full-game production stream. Unlike units_by_slice, which

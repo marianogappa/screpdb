@@ -128,6 +128,22 @@ func (r *Runner) Status() Status {
 	return s
 }
 
+// Digest reads a replay's full digest from the cache, for pages that need more than the summary.
+func (r *Runner) Digest(checksum [32]byte) (*engine.Digest, bool) {
+	r.mu.Lock()
+	cache := r.cache
+	r.mu.Unlock()
+	if cache == nil {
+		return nil, false
+	}
+	entry, ok, err := cache.Get(r.key(checksum))
+	if err != nil || !ok || entry.Failed != "" {
+		return nil, false
+	}
+	d, err := engine.Decode(entry.Digest)
+	return d, err == nil
+}
+
 // Focus moves a replay to the front of the queue: the game the user has open upgrades next.
 func (r *Runner) Focus(replayID int64) {
 	rec, ok := r.lib.Snapshot().ByID(replayID)

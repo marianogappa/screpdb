@@ -111,6 +111,8 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	if err := d.populateUnitsBySliceForGameDetail(&detail); err != nil {
 		return detail, err
 	}
+	d.applyEngineToGameDetail(&detail)
+	d.populateEngineMacro(&detail)
 	if err := d.populateTimingsForGameDetail(&detail); err != nil {
 		return detail, err
 	}
@@ -1765,7 +1767,39 @@ func formatWorkflowSliceLabel(start, endExclusive int64) string {
 	return fmt.Sprintf("%s-%s", formatClockFromSeconds(start), formatClockFromSeconds(endExclusive-1))
 }
 
+// unitProductionRow is one unit or building a player started. Command rows guess it from what was
+// clicked; engine rows are what the game made, with completion and cancel.
+type unitProductionRow struct {
+	PlayerID        int64
+	Second          int64
+	UnitType        string
+	Count           int64
+	CompletedSecond *int64
+	Cancelled       bool
+}
+
 func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail) error {
+	rows, err := d.dbStore.ListUnitSliceCommandRows(d.ctx, detail.ReplayID)
+	if err != nil {
+		return fmt.Errorf("failed to load unit slices: %w", err)
+	}
+	productions := make([]unitProductionRow, 0, len(rows))
+	for _, row := range rows {
+		// One Zergling Unit Morph produces a pair from a single larva, and source rows
+		// carry Count=1 per command, so double the increment.
+		inc := int64(1)
+		if row.UnitType == models.GeneralUnitZergling {
+			inc = 2
+		}
+		productions = append(productions, unitProductionRow{PlayerID: row.PlayerID, Second: row.Second, UnitType: row.UnitType, Count: inc})
+	}
+	buildUnitsBySlice(detail, productions)
+	return nil
+}
+
+// buildUnitsBySlice fills the early build order, the full production timeline and the per-slice unit
+// counts. A cancelled production shows in the early build order only, marked, and counts nowhere.
+func buildUnitsBySlice(detail *workflowGameDetail, rows []unitProductionRow) {
 	detail.UnitsBySlice = []workflowUnitSlice{}
 	detail.UnitsEarlyEvents = []workflowUnitEarlyEventPlayer{}
 	detail.ProductionTimeline = []workflowProductionTimelinePlayer{}
@@ -1774,11 +1808,6 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 	for _, player := range detail.Players {
 		playerOrder = append(playerOrder, player.PlayerID)
 		playerByID[player.PlayerID] = player
-	}
-
-	rows, err := d.dbStore.ListUnitSliceCommandRows(d.ctx, detail.ReplayID)
-	if err != nil {
-		return fmt.Errorf("failed to load unit slices: %w", err)
 	}
 
 	buildingSet := make(map[string]struct{}, len(models.Buildings))
@@ -1793,30 +1822,23 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 	workerOrdinalByPlayer := map[int64]map[string]int64{}
 	for _, row := range rows {
 		playerID := row.PlayerID
-		second := row.Second
+		second := max(row.Second, 0)
 		unitType := row.UnitType
-		if second < 0 {
-			second = 0
-		}
-		// One Zergling Unit Morph produces a pair from a single larva, and source rows
-		// carry Count=1 per command, so double the increment.
-		inc := int64(1)
-		if unitType == models.GeneralUnitZergling {
-			inc = 2
-		}
+		inc := row.Count
+		_, isBuilding := buildingSet[unitType]
 
-		_, eventIsBuilding := buildingSet[unitType]
-		timelineByPlayer[playerID] = append(timelineByPlayer[playerID], workflowProductionEvent{
-			Second:     second,
-			UnitType:   unitType,
-			IsBuilding: eventIsBuilding,
-			Count:      inc,
-		})
+		if !row.Cancelled {
+			timelineByPlayer[playerID] = append(timelineByPlayer[playerID], workflowProductionEvent{
+				Second:     second,
+				UnitType:   unitType,
+				IsBuilding: isBuilding,
+				Count:      inc,
+			})
+		}
 
 		if second < 240 {
-			_, isBuilding := buildingSet[unitType]
 			label := ""
-			if unitType == models.GeneralUnitSCV || unitType == models.GeneralUnitDrone || unitType == models.GeneralUnitProbe {
+			if !row.Cancelled && (unitType == models.GeneralUnitSCV || unitType == models.GeneralUnitDrone || unitType == models.GeneralUnitProbe) {
 				if _, ok := workerOrdinalByPlayer[playerID]; !ok {
 					workerOrdinalByPlayer[playerID] = map[string]int64{}
 				}
@@ -1826,12 +1848,17 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 				label = fmt.Sprintf("%d%s %s", n, ordinalSuffix(int(n)), unitType)
 			}
 			earlyEventsByPlayer[playerID] = append(earlyEventsByPlayer[playerID], workflowUnitEarlyEvent{
-				Second:     second,
-				UnitType:   unitType,
-				IsBuilding: isBuilding,
-				Label:      label,
-				Count:      inc,
+				Second:          second,
+				UnitType:        unitType,
+				IsBuilding:      isBuilding,
+				Label:           label,
+				Count:           inc,
+				CompletedSecond: row.CompletedSecond,
+				Cancelled:       row.Cancelled,
 			})
+			continue
+		}
+		if row.Cancelled {
 			continue
 		}
 
@@ -1903,7 +1930,6 @@ func (d *Dashboard) populateUnitsBySliceForGameDetail(detail *workflowGameDetail
 		}
 		detail.UnitsBySlice = append(detail.UnitsBySlice, slice)
 	}
-	return nil
 }
 
 func (d *Dashboard) populateTimingsForGameDetail(detail *workflowGameDetail) error {

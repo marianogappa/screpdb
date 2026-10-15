@@ -7,6 +7,7 @@ import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
 import EngineBadge from './components/EngineBadge';
 import EngineCoverage from './components/EngineCoverage';
+import MacroScorecard from './components/MacroScorecard';
 import GamingSessionPanel from './components/GamingSessionPanel';
 import NoValue from './components/NoValue';
 import LanguageSwitcher from './components/LanguageSwitcher';
@@ -6140,6 +6141,17 @@ function App() {
                         {t('game.tabs.alliances')}{mainGame?.team_stacking ? ' 😈' : ''}
                       </button>
                     ) : null}
+                    {engineCoverage && engineCoverage.state !== 'off' ? (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={mainGameTab === 'macro'}
+                        className={`workflow-production-tab ${mainGameTab === 'macro' ? 'workflow-production-tab-active' : ''}`}
+                        onClick={() => setMainGameTab('macro')}
+                      >
+                        {t('game.tabs.macro')}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       role="tab"
@@ -6949,6 +6961,10 @@ function App() {
                         </div>
                       </div>
                   </div>
+                )}
+
+                {mainGameTab === 'macro' && (
+                  <MacroScorecard game={mainGame} players={mainGamePlayers} playerColor={playerColorToCss} />
                 )}
 
                 {mainGameTab === 'hotkeys' && (

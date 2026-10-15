@@ -7540,3 +7540,17 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   margin: 0 0 8px;
   text-align: right;
 }
+
+.macro-table th[scope='row'] {
+  text-align: left;
+  font-weight: 500;
+  color: rgba(226, 232, 240, 0.85);
+  cursor: help;
+  white-space: nowrap;
+}
+.macro-table td {
+  font-variant-numeric: tabular-nums;
+}
+.macro-sparkline {
+  display: block;
+}

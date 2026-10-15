@@ -89,6 +89,25 @@ const buildSeries = (events, race, endSec) => {
   return { points, total: cum };
 };
 
+// buildEngineSeries reads the engine's real supply: a point wherever the cap changed (a depot finished
+// or died), and the used line beside it, so supply blocks show where the two meet.
+const buildEngineSeries = (curve, endSec) => {
+  const points = [];
+  const used = [];
+  let prevCap = null;
+  for (const c of curve) {
+    const sec = num(c?.second);
+    if (sec > endSec) break;
+    const cap = num(c?.cap);
+    used.push({ sec, cum: num(c?.used) });
+    if (cap !== prevCap) {
+      points.push({ sec, cum: cap, delta: prevCap == null ? cap : cap - prevCap, built: '', count: prevCap == null ? 0 : -1 });
+      prevCap = cap;
+    }
+  }
+  return { points, used, total: prevCap || 0 };
+};
+
 function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
   const t = useT();
   const duration = Math.max(1, Math.floor(Number(durationSeconds) || 0));
@@ -111,7 +130,9 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
         color,
         dodgeIdx: idx,
         endSec,
-        ...buildSeries(eventsByPlayer.get(player.player_id), player.race, endSec),
+        ...(Array.isArray(player.supply_curve) && player.supply_curve.length > 0
+          ? buildEngineSeries(player.supply_curve, endSec)
+          : buildSeries(eventsByPlayer.get(player.player_id), player.race, endSec)),
       };
     })
   ), [players, eventsByPlayer, playerColor, duration]);
@@ -120,6 +141,7 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
 
   const series = allSeries;
   const nSeries = series.length;
+  const fromEngine = series.every((s) => Array.isArray(s.used));
 
   const maxSupply = niceCeil(Math.max(20, ...series.map((s) => s.total)));
 
@@ -194,6 +216,7 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
 
   const supplyAdditionLine = (p) => {
     if (p.count === 0) return t('chart.supply.startingSupply');
+    if (p.count === -1) return t('chart.supply.capChange', { delta: p.delta > 0 ? `+${p.delta}` : String(p.delta) });
     const built = t.server(`server.name.${slugKey(p.built)}`, p.built);
     if (p.count > 1) return t('chart.supply.additionMulti', { built, count: p.count, delta: p.delta });
     return t('chart.supply.addition', { built, delta: p.delta });
@@ -202,7 +225,7 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
   return (
     <div className="workflow-card workflow-card-chat-summary">
       <div className="workflow-section-warning">
-        {t('chart.supply.warning')}
+        {fromEngine ? t('chart.supply.engineNote') : t('chart.supply.warning')}
       </div>
 
       <svg
@@ -239,6 +262,9 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
               {/* invisible wide hit area so the thin line is easy to hover */}
               <path d={stepPath(s.points, s.endSec, dodge)} fill="none" stroke="transparent" strokeWidth="14" />
               <path d={stepPath(s.points, s.endSec, dodge)} fill="none" stroke={s.color} strokeWidth={isHover ? 2.5 : 1.5} strokeLinejoin="round" />
+              {s.used ? (
+                <path d={stepPath(s.used, s.endSec, dodge)} fill="none" stroke={s.color} strokeWidth="1" strokeDasharray="3 3" opacity="0.7" />
+              ) : null}
               {s.points.map((p, i) => (
                 <circle
                   key={`dot-${i}`}

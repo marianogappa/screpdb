@@ -87,3 +87,71 @@ func (d *Dashboard) playerEngineCoverage(playerKey string) engineCoverage {
 	}
 	return c
 }
+
+// workflowPlayerMacro is one player's macro scorecard; null in fast mode, and a ratio is null when the
+// game gives it no basis (a Zerg has no idle worker production, a short game no blocks per 100 supply).
+type workflowPlayerMacro struct {
+	AnalysedSeconds      int64    `json:"analysed_seconds"`
+	SupplyBlockedSeconds int64    `json:"supply_blocked_seconds"`
+	SupplyBlocks         int64    `json:"supply_blocks"`
+	BlocksPer100Supply   *float64 `json:"blocks_per_100_supply"`
+	SpareSupply          *float64 `json:"spare_supply"`
+	SpendingQuotient     *float64 `json:"spending_quotient"`
+	IncomePerMinute      *float64 `json:"income_per_minute"`
+	AverageUnspent       *float64 `json:"average_unspent"`
+	WorkerIdleShare      *float64 `json:"worker_idle_share"`
+	ProductionIdleShare  *float64 `json:"production_idle_share"`
+	IncomeCurve          []int64  `json:"income_curve"`
+}
+
+func finite(v float32) *float64 {
+	f := float64(v)
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return nil
+	}
+	return &f
+}
+
+func macroOf(p library.EnginePlayer) *workflowPlayerMacro {
+	curve := make([]int64, len(p.Income))
+	for i, v := range p.Income {
+		curve[i] = int64(v)
+	}
+	return &workflowPlayerMacro{
+		AnalysedSeconds:      int64(p.Seconds),
+		SupplyBlockedSeconds: int64(p.SupplyBlockedSeconds),
+		SupplyBlocks:         int64(p.SupplyBlocks),
+		BlocksPer100Supply:   finite(p.BlocksPer100Supply),
+		SpareSupply:          finite(p.SpareSupply),
+		SpendingQuotient:     finite(p.SpendingQuotient),
+		IncomePerMinute:      finite(p.IncomePerMinute),
+		AverageUnspent:       finite(p.AverageUnspent),
+		WorkerIdleShare:      finite(p.WorkerIdleShare),
+		ProductionIdleShare:  finite(p.ProductionIdleShare),
+		IncomeCurve:          curve,
+	}
+}
+
+func (d *Dashboard) populateEngineMacro(detail *workflowGameDetail) {
+	if d.library == nil {
+		return
+	}
+	rec, ok := d.library.lib.Snapshot().ByID(detail.ReplayID)
+	if !ok || rec.EngineData == nil {
+		return
+	}
+	bySlot := map[uint8]library.EnginePlayer{}
+	for _, p := range rec.EngineData.Players {
+		bySlot[p.Slot] = p
+	}
+	for i := range detail.Players {
+		for ordinal, p := range rec.Players {
+			if library.PlayerID(rec.ID, uint8(ordinal)) != detail.Players[i].PlayerID {
+				continue
+			}
+			if m, ok := bySlot[p.Slot]; ok {
+				detail.Players[i].Macro = macroOf(m)
+			}
+		}
+	}
+}
