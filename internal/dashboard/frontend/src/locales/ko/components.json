@@ -152,5 +152,14 @@
   "snapshot.unavailable": "이 순간의 지도를 표시할 수 없습니다",
   "snapshot.wholeMap": "전체 지도",
   "snapshot.zoomIn": "이벤트 확대",
-  "snapshot.underConstruction": "{unit} (건설 중)"
+  "snapshot.underConstruction": "{unit} (건설 중)",
+  "macro.metric.workersBy6Min": "6:00까지 생산한 일꾼",
+  "macro.metric.secondsTo40Workers": "일꾼 40기 도달 시간",
+  "macro.metric.floatTime": "자원을 쌓아 둔 시간",
+  "macro.metric.workersCurve": "시간별 일꾼 수",
+  "macro.notReached": "도달하지 못함",
+  "macro.hint.workersBy6Min": "6:00까지 생산을 마친 일꾼 수로, 이후에 죽었어도 셉니다. 일꾼 생산 속도를 보여 줍니다",
+  "macro.hint.secondsTo40Workers": "살아 있는 일꾼이 처음으로 40기가 된 시점",
+  "macro.hint.floatTime": "보급과 생산 건물 또는 라바가 비어 있는데 자원을 800 이상 쌓아 둔 시간",
+  "macro.hint.workersCurve": "분마다 살아 있는 일꾼 수"
 }

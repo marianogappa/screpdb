@@ -6,6 +6,14 @@ const percent = (v) => `${Math.round(v * 100)}%`;
 const whole = (v) => String(Math.round(v));
 const oneDecimal = (v) => (Math.round(v * 10) / 10).toFixed(1);
 
+// best marks the better value of a row so a pace race reads at a glance; ties and lone values mark nothing.
+const best = (values, better) => {
+  const present = values.filter((v) => v != null);
+  if (present.length < 2) return null;
+  const top = better === 'high' ? Math.max(...present) : Math.min(...present);
+  return Number.isFinite(top) && present.filter((v) => v === top).length === 1 ? top : null;
+};
+
 function IncomeSparkline({ curve, color }) {
   if (!Array.isArray(curve) || curve.length < 2) return null;
   const w = 120;
@@ -33,8 +41,28 @@ export default function MacroScorecard({ game, players, playerColor }) {
   const na = t('macro.na');
   const rows = [
     {
+      key: 'workersBy6Min',
+      raw: (m) => m.workers_by_6min,
+      better: 'high',
+      value: (m) => (m.workers_by_6min == null ? na : String(m.workers_by_6min)),
+    },
+    {
+      key: 'secondsTo40Workers',
+      raw: (m) => (m.seconds_to_40_workers == null ? Infinity : m.seconds_to_40_workers),
+      better: 'low',
+      value: (m) => (m.seconds_to_40_workers == null ? t('macro.notReached') : formatDuration(m.seconds_to_40_workers)),
+    },
+    {
       key: 'supplyBlocked',
+      raw: (m) => m.supply_blocked_seconds,
+      better: 'low',
       value: (m) => formatDuration(m.supply_blocked_seconds),
+    },
+    {
+      key: 'floatTime',
+      raw: (m) => m.float_seconds,
+      better: 'low',
+      value: (m) => formatDuration(m.float_seconds || 0),
     },
     {
       key: 'supplyBlocks',
@@ -70,14 +98,31 @@ export default function MacroScorecard({ game, players, playerColor }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.key}>
-              <th scope="row" title={t(`macro.hint.${row.key}`)}>{t(`macro.metric.${row.key}`)}</th>
-              {scored.map((p) => (
-                <td key={p.player_id} title={row.hint ? row.hint(p) : undefined}>{row.value(p.macro, p)}</td>
-              ))}
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const top = row.raw ? best(scored.map((p) => row.raw(p.macro)), row.better) : null;
+            return (
+              <tr key={row.key}>
+                <th scope="row" title={t(`macro.hint.${row.key}`)}>{t(`macro.metric.${row.key}`)}</th>
+                {scored.map((p) => (
+                  <td
+                    key={p.player_id}
+                    title={row.hint ? row.hint(p) : undefined}
+                    className={top != null && row.raw(p.macro) === top ? 'macro-best' : undefined}
+                  >
+                    {row.value(p.macro, p)}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+          <tr>
+            <th scope="row" title={t('macro.hint.workersCurve')}>{t('macro.metric.workersCurve')}</th>
+            {scored.map((p) => (
+              <td key={p.player_id}>
+                <IncomeSparkline curve={p.macro.workers_curve} color={playerColor ? playerColor(p.color) : undefined} />
+              </td>
+            ))}
+          </tr>
           <tr>
             <th scope="row" title={t('macro.hint.incomeCurve')}>{t('macro.metric.incomeCurve')}</th>
             {scored.map((p) => (

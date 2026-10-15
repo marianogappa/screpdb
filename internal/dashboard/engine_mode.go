@@ -104,6 +104,7 @@ type workflowPlayerMacro struct {
 	// WorkersBy6Min is null for a game shorter than 6:00.
 	WorkersBy6Min      *int64   `json:"workers_by_6min"`
 	SecondsTo40Workers *float64 `json:"seconds_to_40_workers"`
+	FloatSeconds       int64    `json:"float_seconds"`
 	IncomeCurve        []int64  `json:"income_curve"`
 	WorkersCurve       []int64  `json:"workers_curve"`
 }
@@ -143,6 +144,7 @@ func macroOf(p library.EnginePlayer) *workflowPlayerMacro {
 		ProductionIdleShare:  finite(p.ProductionIdleShare),
 		WorkersBy6Min:        workersBy6Min,
 		SecondsTo40Workers:   finite(p.SecondsTo40Workers),
+		FloatSeconds:         int64(p.FloatSeconds),
 		IncomeCurve:          int64s(p.Income),
 		WorkersCurve:         int64s(p.Workers),
 	}

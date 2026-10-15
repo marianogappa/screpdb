@@ -7585,3 +7585,7 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   font-size: 0.78rem;
   color: rgba(148, 163, 184, 0.9);
 }
+.macro-table td.macro-best {
+  font-weight: 700;
+  color: rgba(241, 245, 249, 1);
+}

@@ -152,5 +152,14 @@
   "snapshot.unavailable": "The map at this moment is not available",
   "snapshot.wholeMap": "Whole map",
   "snapshot.zoomIn": "Zoom to the event",
-  "snapshot.underConstruction": "{unit} (under construction)"
+  "snapshot.underConstruction": "{unit} (under construction)",
+  "macro.metric.workersBy6Min": "Workers made by 6:00",
+  "macro.metric.secondsTo40Workers": "Time to 40 workers",
+  "macro.metric.floatTime": "Time floating money",
+  "macro.metric.workersCurve": "Workers over time",
+  "macro.notReached": "not reached",
+  "macro.hint.workersBy6Min": "Workers that finished training by 6:00, whatever happened to them after: the pace of worker production",
+  "macro.hint.secondsTo40Workers": "When the player first had 40 workers alive at once",
+  "macro.hint.floatTime": "Time with 800 or more resources banked while both supply and a production building or larva stood free",
+  "macro.hint.workersCurve": "Workers alive at each minute"
 }

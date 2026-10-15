@@ -251,6 +251,7 @@ type EnginePlayer struct {
 	ProductionIdleShare  float32
 	WorkersBy6Min        uint16
 	SecondsTo40Workers   float32
+	FloatSeconds         uint16
 	// Income is minerals plus gas gathered in each full minute; Workers is the workers alive at each minute.
 	Income  []uint16
 	Workers []uint16

@@ -401,6 +401,7 @@ func enginePlayer(p macro.Player) library.EnginePlayer {
 		ProductionIdleShare:  float32(p.ProductionIdleShare),
 		WorkersBy6Min:        uint16(min(p.WorkersBy6Min, math.MaxUint16)),
 		SecondsTo40Workers:   float32(p.SecondsTo40Workers),
+		FloatSeconds:         uint16(min(p.FloatSeconds, math.MaxUint16)),
 		Income:               clampU16s(p.Income),
 		Workers:              clampU16s(p.Workers),
 	}

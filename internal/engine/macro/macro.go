@@ -72,6 +72,7 @@ type Player struct {
 	// while both supply and a production facility stood free.
 	LongSupplyBlocks []Episode
 	Floats           []Episode
+	FloatSeconds     int
 }
 
 func Compute(d *engine.Digest) []Player {
@@ -94,6 +95,9 @@ func Compute(d *engine.Digest) []Player {
 		scoreResources(&p, samples)
 		scoreWorkers(&p, d, samples)
 		p.Floats = floats(samples, timeline)
+		for _, e := range p.Floats {
+			p.FloatSeconds += e.To - e.From
+		}
 		p.WorkerIdleShare, p.ProductionIdleShare = timeline.workerIdle, timeline.productionIdle
 		out = append(out, p)
 	}
