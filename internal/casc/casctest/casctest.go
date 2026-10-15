@@ -8,10 +8,11 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/marianogappa/screpdb/internal/iofacade"
 )
 
 const (
@@ -122,10 +123,10 @@ func EncodingTable(entries map[key]key) []byte {
 
 func (f *fakeStorage) write(name string, b []byte) {
 	path := filepath.Join(f.dir, name)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := iofacade.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		f.t.Fatal(err)
 	}
-	if err := os.WriteFile(path, b, 0o644); err != nil {
+	if err := iofacade.WriteFile(path, b, 0o644); err != nil {
 		f.t.Fatal(err)
 	}
 }
