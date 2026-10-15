@@ -43,8 +43,8 @@ func army(sec int, owner int8, t bwgame.UnitTypes, n int, x, y int32) engine.Arm
 	return s
 }
 
-func lings(complete int) engine.Production {
-	return engine.Production{Owner: 0, Type: ut(bwgame.UnitTypesZergZergling), From: ut(bwgame.UnitTypesZergLarva), Start: f(complete - 20), Complete: f(complete), Cancel: engine.NoFrame}
+func pool(start int) engine.Production {
+	return engine.Production{Owner: 0, Type: ut(bwgame.UnitTypesZergSpawningPool), From: ut(bwgame.UnitTypesZergDrone), X: 400, Y: 400, Start: f(start), Complete: f(start + 50), Cancel: engine.NoFrame}
 }
 
 func types(events []Event) []string {
@@ -55,17 +55,24 @@ func types(events []Event) []string {
 	return out
 }
 
-func TestZerglingRushNeedsAnEarlyPool(t *testing.T) {
+func TestZerglingRushNeedsANinePoolAndCommitment(t *testing.T) {
 	d := digest()
-	d.Productions = []engine.Production{lings(130)}
+	d.Productions = []engine.Production{pool(60)}
 	d.Army = []engine.ArmySnapshot{army(190, 0, bwgame.UnitTypesZergZergling, 4, 3650, 3650)}
+	if got := Detect(d, testBases, zvp); len(got) != 0 {
+		t.Fatalf("four lings poking and leaving are not a rush: %v", types(got))
+	}
+	d.Deaths = []engine.Death{
+		{Frame: f(200), Type: ut(bwgame.UnitTypesProtossProbe), Owner: 1, X: 3640, Y: 3640, Reason: uint8(openbw.ReasonDamage), KillerOwner: 0},
+		{Frame: f(205), Type: ut(bwgame.UnitTypesProtossProbe), Owner: 1, X: 3640, Y: 3640, Reason: uint8(openbw.ReasonDamage), KillerOwner: 0},
+	}
 	got := Detect(d, testBases, zvp)
 	if len(got) != 1 || got[0].Type != "zergling_rush" || got[0].Target != 1 || got[0].Base != 2 || got[0].Second != 190 {
-		t.Fatalf("early pool: %+v", got)
+		t.Fatalf("early lings that killed two Probes: %+v", got)
 	}
-	d.Productions = []engine.Production{lings(170)}
+	d.Productions = []engine.Production{pool(76)}
 	if got := Detect(d, testBases, zvp); len(got) != 0 {
-		t.Fatalf("a 12 Hatch poke is not a rush: %v", types(got))
+		t.Fatalf("overpool lings harassing are not a rush: %v", types(got))
 	}
 }
 

@@ -22,10 +22,17 @@ const (
 
 	// A point belongs to the base whose polygon holds it, else to the nearest base centre within 15 tiles.
 	baseRadius = 15 * tile
-	// Rushes: Zerglings from an early pool (first one done by 2:30, which a 12 Hatch never makes) standing
-	// in an enemy main or natural by 3:30; a Cannon by 4:00 or a Bunker by 5:00 in an enemy base.
-	rushFirstLingBy   = 150
-	rushLingBy        = 210
+	// Rushes: Zerglings from a 9 Pool or earlier (Pool started by 1:10; an overpool starts it near 1:16,
+	// a 12 Pool near 1:30) standing in an enemy main or natural by 3:30; a Cannon by 4:00 or a Bunker
+	// by 5:00 in an enemy base.
+	rushPoolBy = 70
+	rushLingBy = 210
+	// A rush commits: overpool Zerglings poking a natural are standard play. The lings must kill 2 units
+	// or a building within 90 s, or 6 of them must stay in the base for 15 s.
+	rushDamageWindow  = 90
+	rushMinKills      = 2
+	rushStayLings     = 6
+	rushStaySeconds   = 15
 	rushLingsMin      = 3
 	cannonRushBy      = 240
 	bunkerRushBy      = 300
@@ -323,7 +330,7 @@ func (g *game) zerglingRushes() []Event {
 	done := map[int8]bool{}
 	earlyPool := map[int8]bool{}
 	for _, pr := range g.d.Productions {
-		if pr.Type == ut(bwgame.UnitTypesZergZergling) && pr.Complete != engine.NoFrame && second(pr.Complete) <= rushFirstLingBy {
+		if pr.Type == ut(bwgame.UnitTypesZergSpawningPool) && second(pr.Start) <= rushPoolBy {
 			earlyPool[pr.Owner] = true
 		}
 	}
@@ -352,8 +359,11 @@ func (g *game) zerglingRushes() []Event {
 			if n < rushLingsMin || done[actor] {
 				continue
 			}
-			done[actor] = true
 			b, target := int(k[1]>>8), int8(k[1]&0xff)
+			if !g.lingsCommitted(actor, target, b, sec) {
+				continue
+			}
+			done[actor] = true
 			out = append(out, g.event("zergling_rush", sec, actor, target, b, where[k][0], where[k][1], []uint16{ut(bwgame.UnitTypesZergZergling)}))
 		}
 	}
@@ -398,6 +408,48 @@ func (g *game) buildingRushes() []Event {
 		out = append(out, g.event(kind, sec, pr.Owner, target, b, pr.X, pr.Y, units))
 	}
 	return out
+}
+
+func (g *game) lingsCommitted(actor, target int8, base, arrival int) bool {
+	kills := 0
+	for _, x := range g.deaths {
+		sec := second(x.Frame)
+		if sec < arrival || sec > arrival+rushDamageWindow || x.Owner != target || x.KillerOwner != actor || g.baseOf(x.X, x.Y) != base {
+			continue
+		}
+		if _, building := FootprintOf(x.Type); building {
+			return true
+		}
+		kills++
+	}
+	if kills >= rushMinKills {
+		return true
+	}
+	stayFrom := -1
+	for _, snap := range g.d.Army {
+		sec := second(snap.Frame)
+		if sec < arrival {
+			continue
+		}
+		if sec > arrival+rushDamageWindow {
+			break
+		}
+		n := 0
+		for _, u := range snap.Units {
+			if u.Owner == actor && u.Type == ut(bwgame.UnitTypesZergZergling) && g.baseOf(u.X*engine.ArmyCellPixels, u.Y*engine.ArmyCellPixels) == base {
+				n++
+			}
+		}
+		switch {
+		case n < rushStayLings:
+			stayFrom = -1
+		case stayFrom < 0:
+			stayFrom = sec
+		case sec-stayFrom >= rushStaySeconds:
+			return true
+		}
+	}
+	return false
 }
 
 func (g *game) nearEnemyHome(actor int8, x, y int32, sec int) (int, int8) {
@@ -530,8 +582,8 @@ func (g *game) mannerPylons() []Event {
 	return out
 }
 
-// firstTech marks a Protoss player's first Reaver (against Protoss or Terran), first Corsair or Zealot
-// speed (against Zerg) before 10:00, at the moment it was ready.
+// firstTech marks a Protoss player's first Reaver (against Protoss or Terran) or first Corsair (against
+// Zerg) the moment it is out, and the start of Zealot speed research (against Zerg), all before 10:00.
 func (g *game) firstTech() []Event {
 	hs := g.humans()
 	if len(hs) != 2 {
@@ -557,8 +609,8 @@ func (g *game) firstTech() []Event {
 		if enemy.Race == openbw.RaceZerg {
 			first("first_corsair", bwgame.UnitTypesProtossCorsair)
 			for _, r := range g.d.Research {
-				if r.Owner == p.Slot && r.Upgrade && r.ID == uint8(bwgame.UpgradeTypesLegEnhancements) && r.Complete != engine.NoFrame && second(r.Complete) < firstTechBefore {
-					out = append(out, g.event("speedlot", second(r.Complete), p.Slot, NoPlayer, NoBase, 0, 0, []uint16{ut(bwgame.UnitTypesProtossZealot)}))
+				if r.Owner == p.Slot && r.Upgrade && r.ID == uint8(bwgame.UpgradeTypesLegEnhancements) && second(r.Start) < firstTechBefore {
+					out = append(out, g.event("speedlot", second(r.Start), p.Slot, NoPlayer, NoBase, 0, 0, []uint16{ut(bwgame.UnitTypesProtossZealot)}))
 					break
 				}
 			}
