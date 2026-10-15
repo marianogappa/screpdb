@@ -25,6 +25,8 @@ func (d *Dashboard) startEnginePass() {
 		Paused:      d.enginePassPaused,
 		LowPriority: true,
 	})
+	runner := d.enginePass
+	d.libraryHub.setEngineState(func() string { return enginePassState(runner) })
 	d.enginePass.Start()
 }
 
@@ -44,5 +46,21 @@ func (d *Dashboard) focusEnginePass(replayID int64) {
 func (d *Dashboard) closeEnginePass() {
 	if d.enginePass != nil {
 		d.enginePass.Close()
+	}
+}
+
+func enginePassState(r *enginepass.Runner) string {
+	s := r.Status()
+	switch {
+	case s.State == enginepass.StateOff:
+		return engineStateOff
+	case s.State == enginepass.StateFailed:
+		return engineStateFailed
+	case s.State == enginepass.StateStarting:
+		return engineStateStarting
+	case s.Paused:
+		return engineStatePaused
+	default:
+		return engineStateRunning
 	}
 }

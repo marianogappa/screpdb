@@ -114,5 +114,11 @@
   "labs.feature.gamingSession": "Session summary for the games you just played",
   "library.completeGamesOptOut": "Do not complete games you left early",
   "library.enginePassOptOut": "Do not analyze games with the game engine",
-  "library.enginePassOnBattery": "Keep analyzing with the game engine on battery"
+  "library.enginePassOnBattery": "Keep analyzing with the game engine on battery",
+  "engine.badge.label": "engine",
+  "engine.badge.title": "Exact data from the game engine",
+  "engine.badge.lowTitle": "Exact data from the game engine until {time}; after that the replay and the engine disagree",
+  "engine.coverage": "{games} of {total} games with engine data",
+  "engine.updated.one": "1 game updated · refresh",
+  "engine.updated.other": "{count} games updated · refresh"
 }

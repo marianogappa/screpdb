@@ -124,6 +124,7 @@ type workflowGameListItem struct {
 	Featuring          []string                  `json:"featuring"`
 	FeaturingKeys      []string                  `json:"featuring_keys,omitempty"`
 	CurrentPlayer      *workflowRecentGamePlayer `json:"current_player,omitempty"`
+	workflowEngineFields
 }
 
 type workflowGameListPlayer struct {
@@ -409,6 +410,7 @@ type workflowGameDetail struct {
 	// time; Second is the command second shifted forward by the unit's build
 	// duration (Fastest speed). The frontend pre-indexes and binary-searches it.
 	TrainedUnitsTimeline []workflowTrainedUnitSample `json:"trained_units_timeline,omitempty"`
+	workflowEngineFields
 }
 
 type workflowTrainedUnitSample struct {
@@ -760,6 +762,8 @@ type IdentityBadge struct {
 }
 
 type workflowPlayerOverview struct {
+	// Engine is how many of this player's games have engine data; nil for a featured pro, who has no local games.
+	Engine              *engineCoverage               `json:"engine,omitempty"`
 	SummaryVersion      string                        `json:"summary_version"`
 	PlayerKey           string                        `json:"player_key"`
 	PlayerName          string                        `json:"player_name"`

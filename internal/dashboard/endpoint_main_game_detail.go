@@ -30,6 +30,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		return detail, fmt.Errorf("failed to load replay: %w", err)
 	}
 	detail.ReplayID = summary.ReplayID
+	detail.workflowEngineFields = d.engineFields(replayID)
 	detail.ReplayDate = summary.ReplayDate
 	detail.FileName = summary.FileName
 	detail.FilePath = summary.FilePath

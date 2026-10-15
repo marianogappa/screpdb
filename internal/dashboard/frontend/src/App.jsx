@@ -5,6 +5,8 @@ import { slugKey } from './lib/i18n';
 import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
+import EngineBadge from './components/EngineBadge';
+import EngineCoverage from './components/EngineCoverage';
 import GamingSessionPanel from './components/GamingSessionPanel';
 import NoValue from './components/NoValue';
 import LanguageSwitcher from './components/LanguageSwitcher';
@@ -2277,6 +2279,10 @@ function App() {
   // Rows a background refresh just changed; they carry the update flash until
   // the timer clears them.
   const [mainGamesUpdatedIds, setMainGamesUpdatedIds] = useState(() => new Set());
+  // Games of this list that turned to engine data in a way the page cannot show in place (moved or
+  // left the page). The list never re-sorts under the user; the chip offers the refresh instead.
+  const [mainGamesEngineStale, setMainGamesEngineStale] = useState(0);
+  const [engineCoverage, setEngineCoverage] = useState(null);
   const mainGamesUpdatedTimerRef = useRef(null);
   const [mainGamesPage, setMainGamesPage] = useState(1);
   const [mainGamesTotal, setMainGamesTotal] = useState(0);
@@ -2336,6 +2342,8 @@ function App() {
   const mainGamesFiltersRef = useRef(null);
   const mainGamesPageRef = useRef(null);
   const mainGamesRef = useRef([]);
+  const mainGameRef = useRef(null);
+  const applyEngineUpgradesRef = useRef(null);
   const [mainPlayer, setMainPlayer] = useState(null);
   const [mainGameHotkeys, setMainGameHotkeys] = useState(null);
   const [mainGameHotkeysLoading, setMainGameHotkeysLoading] = useState(false);
@@ -2435,7 +2443,10 @@ function App() {
   // one game updated", not as the whole list flickering.
   const loadMainGames = async ({ page = mainGamesPage, filters = mainGamesFilters, silent = false } = {}) => {
     try {
-      if (!silent) setMainGamesLoading(true);
+      if (!silent) {
+        setMainGamesLoading(true);
+        setMainGamesEngineStale(0);
+      }
       const safePage = Math.max(1, Number(page) || 1);
       const offset = (safePage - 1) * MAIN_GAMES_PAGE_SIZE;
       const data = await api.listGames({
@@ -2497,6 +2508,52 @@ function App() {
       setMainGamesUpdatedIds(new Set());
       mainGamesUpdatedTimerRef.current = null;
     }, 4000);
+  };
+
+  // patchEngineUpgrades swaps the upgraded games' rows in place, keeping the page's membership and
+  // order. When the refetched page would differ, the rows stay put and the refresh chip counts them.
+  const patchEngineUpgrades = async (upgraded) => {
+    const current = mainGamesRef.current || [];
+    const visible = current.filter((game) => upgraded.has(game.replay_id));
+    if (visible.length === 0) return;
+    const page = Math.max(1, Number(mainGamesPageRef.current) || 1);
+    const data = await api.listGames({
+      limit: MAIN_GAMES_PAGE_SIZE,
+      offset: (page - 1) * MAIN_GAMES_PAGE_SIZE,
+      filters: mainGamesFiltersRef.current || {},
+    });
+    const items = data?.items || [];
+    const fetchedById = new Map(items.map((game) => [game.replay_id, game]));
+    const latest = mainGamesRef.current || [];
+    const sameOrder = items.length === latest.length
+      && items.every((game, i) => game.replay_id === latest[i].replay_id);
+    if (!sameOrder) {
+      setMainGamesEngineStale((count) => count + visible.length);
+      return;
+    }
+    setMainGames(latest.map((game) => (
+      upgraded.has(game.replay_id) && fetchedById.has(game.replay_id) ? fetchedById.get(game.replay_id) : game
+    )));
+  };
+
+  // The open game turns to engine data where it stands: no loading state, tabs and filters kept.
+  const refreshOpenGameSilently = async (replayId) => {
+    const data = await api.getGame(replayId);
+    if (mainGameRef.current?.replay_id === replayId) setMainGame(data);
+  };
+
+  const applyEngineUpgrades = async (ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return;
+    const upgraded = new Set(ids);
+    try {
+      const openGameId = mainGameRef.current?.replay_id;
+      await Promise.all([
+        activeViewRef.current === 'game' && upgraded.has(openGameId) ? refreshOpenGameSilently(openGameId) : null,
+        patchEngineUpgrades(upgraded),
+      ]);
+    } catch (err) {
+      console.error('Failed to apply engine upgrades:', err);
+    }
   };
 
   // An unchanged page is a no-op.
@@ -3384,6 +3441,7 @@ function App() {
         try {
           const message = JSON.parse(event.data);
           if (message.type === 'snapshot') {
+            if (message.engine) setEngineCoverage(message.engine);
             if (message.progress) setLibraryProgress(message.progress);
             if (message.error) setLibraryMessage(message.error);
             applyStatus(message.status);
@@ -3399,6 +3457,12 @@ function App() {
           if (message.type === 'status') {
             if (message.error) setLibraryMessage(message.error);
             applyStatus(message.status);
+            return;
+          }
+
+          if (message.type === 'engine') {
+            if (message.engine) setEngineCoverage(message.engine);
+            void applyEngineUpgradesRef.current?.(message.engine?.upgraded || []);
             return;
           }
 
@@ -3604,6 +3668,25 @@ function App() {
   mainGamesFiltersRef.current = mainGamesFilters;
   mainGamesPageRef.current = mainGamesPage;
   mainGamesRef.current = mainGames;
+  mainGameRef.current = mainGame;
+  applyEngineUpgradesRef.current = applyEngineUpgrades;
+
+  // Aggregates recompute at every tenth of engine coverage, not on every batch, so a page that
+  // stays open during a cold start redraws ten times rather than once every few seconds.
+  const engineCoverageStep = engineCoverage?.total
+    ? Math.floor((10 * (Number(engineCoverage.games) || 0)) / Number(engineCoverage.total))
+    : 0;
+  const lastEngineCoverageStepRef = useRef(engineCoverageStep);
+  useEffect(() => {
+    if (lastEngineCoverageStepRef.current === engineCoverageStep) return;
+    lastEngineCoverageStepRef.current = engineCoverageStep;
+    if (activeView !== 'player' || !selectedPlayerKey || isFeaturedPlayerKey(selectedPlayerKey)) return;
+    const key = selectedPlayerKey;
+    api.getPlayer(key).then((data) => {
+      if (!data?.engine) return;
+      setMainPlayer((prev) => (prev && prev.player_key === data.player_key ? { ...prev, engine: data.engine } : prev));
+    }).catch(() => {});
+  }, [engineCoverageStep]);
   gamingSessionRef.current = gamingSession;
 
   // Corpus completeness for partial-load states. The `corpus` block on the
@@ -3995,7 +4078,10 @@ function App() {
               {showYourResult ? <td className="workflow-games-list-result">{renderYourResultCell(game)}</td> : null}
               <td className="workflow-games-list-players">{renderMainGameListPlayers(game, false)}</td>
               <td className="workflow-games-list-map">{renderMapNameWithKind(game.map_name, game.map_kind)}</td>
-              <td className="workflow-games-list-duration">{formatDuration(game.duration_seconds)}</td>
+              <td className="workflow-games-list-duration">
+                {formatDuration(game.duration_seconds)}
+                <EngineBadge item={game} />
+              </td>
               <td className="workflow-games-list-featuring">
                 <FeaturingCell featuring={game.featuring} featuringKeys={game.featuring_keys} />
               </td>
@@ -5606,6 +5692,15 @@ function App() {
               <div className="loading">{t('games.loading')}</div>
             ) : (
               <>
+                {mainGamesEngineStale > 0 ? (
+                  <button
+                    type="button"
+                    className="engine-refresh-chip"
+                    onClick={() => { void loadMainGames({ page: mainGamesPage, filters: mainGamesFilters }); }}
+                  >
+                    {t.plural('engine.updated', mainGamesEngineStale)}
+                  </button>
+                ) : null}
                 {renderGamesListTable({
                   games: mainGames,
                   tableRef: mainGamesTableRef,
@@ -5664,6 +5759,7 @@ function App() {
 
         {activeView === 'players' && (
           <div className="workflow-panel">
+            <EngineCoverage coverage={engineCoverage} className="engine-coverage--panel" />
             <div className="workflow-players-tab-stack">
               <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label={t('players.sectionsAria')}>
                 <button
@@ -5980,6 +6076,7 @@ function App() {
               <>
                 <div className="workflow-title-row workflow-title-row--solo">
                   <h2 className="workflow-game-players-heading">{renderGameTitlePlayers(mainGame)}</h2>
+                  <EngineBadge item={mainGame} />
                 </div>
                 <div className="workflow-game-tab-stack">
                   <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label={t('game.sectionsAria')}>
@@ -7195,6 +7292,9 @@ function App() {
                     </h2>
                     {!isFeaturedPlayer && !mainPlayer?.primary_badge && !mainPlayer?.fingerprint_match ? (
                       <FingerprintCoverageNote coverage={mainPlayer?.fingerprint_coverage} />
+                    ) : null}
+                    {!isFeaturedPlayer && mainPlayer?.engine ? (
+                      <EngineCoverage coverage={{ ...mainPlayer.engine, state: engineCoverage?.state }} />
                     ) : null}
                     {isFeaturedPlayer && featured ? (
                       <div className="workflow-featured-links">
