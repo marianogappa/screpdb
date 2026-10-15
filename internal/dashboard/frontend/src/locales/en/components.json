@@ -161,5 +161,7 @@
   "macro.hint.workersBy6Min": "Workers that finished training by 6:00, whatever happened to them after: the pace of worker production",
   "macro.hint.secondsTo40Workers": "When the player first had 40 workers alive at once",
   "macro.hint.floatTime": "Time with 800 or more resources banked while both supply and a production building or larva stood free",
-  "macro.hint.workersCurve": "Workers alive at each minute"
+  "macro.hint.workersCurve": "Workers alive at each minute",
+  "macro.proRange": "Pros playing {race}: middle half {p25} to {p75}, median {p50}, from {games} games",
+  "macro.proRangeLegend": "The bar under each value is the range of pros playing the same race: the box holds the middle half, the whiskers reach the 10th and 90th percentiles, and the dot is this player. A hollow dot is off the scale."
 }

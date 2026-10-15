@@ -161,5 +161,7 @@
   "macro.hint.workersBy6Min": "6:00까지 생산을 마친 일꾼 수로, 이후에 죽었어도 셉니다. 일꾼 생산 속도를 보여 줍니다",
   "macro.hint.secondsTo40Workers": "살아 있는 일꾼이 처음으로 40기가 된 시점",
   "macro.hint.floatTime": "보급과 생산 건물 또는 라바가 비어 있는데 자원을 800 이상 쌓아 둔 시간",
-  "macro.hint.workersCurve": "분마다 살아 있는 일꾼 수"
+  "macro.hint.workersCurve": "분마다 살아 있는 일꾼 수",
+  "macro.proRange": "{race} 프로게이머: 중간 50%는 {p25}부터 {p75}까지, 중앙값 {p50}, 게임 {games}개 기준",
+  "macro.proRangeLegend": "각 값 아래의 막대는 같은 종족 프로게이머의 범위입니다. 상자는 중간 50%, 수염은 하위 10%와 상위 10% 경계, 점은 이 플레이어입니다. 속이 빈 점은 범위를 벗어난 값입니다."
 }

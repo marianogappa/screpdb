@@ -7585,3 +7585,24 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   font-weight: 700;
   color: rgba(241, 245, 249, 1);
 }
+.macro-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.macro-range {
+  display: block;
+}
+.macro-range-whisker,
+.macro-range-median {
+  stroke: rgba(148, 163, 184, 0.7);
+  stroke-width: 1;
+}
+.macro-range-band {
+  fill: rgba(148, 163, 184, 0.28);
+}
+.macro-range-legend {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: rgba(148, 163, 184, 0.85);
+}

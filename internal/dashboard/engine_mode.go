@@ -3,7 +3,9 @@ package dashboard
 import (
 	"math"
 
+	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/library"
+	"github.com/marianogappa/screpdb/internal/propack"
 )
 
 // Every replay has the same shape in both modes: engine-only fields are null until the engine pass
@@ -107,6 +109,8 @@ type workflowPlayerMacro struct {
 	FloatSeconds       int64    `json:"float_seconds"`
 	IncomeCurve        []int64  `json:"income_curve"`
 	WorkersCurve       []int64  `json:"workers_curve"`
+	// ProRanges is the pro spread of each metric for the player's race, keyed by the metric's JSON name.
+	ProRanges map[string]propack.MacroRange `json:"pro_ranges,omitempty"`
 }
 
 func finite(v float32) *float64 {
@@ -158,6 +162,10 @@ func (d *Dashboard) populateEngineMacro(detail *workflowGameDetail) {
 	if !ok || rec.EngineData == nil {
 		return
 	}
+	ranges, err := propack.LoadMacroRanges()
+	if err != nil {
+		crashreport.Handle(err, nil, false)
+	}
 	bySlot := map[uint8]library.EnginePlayer{}
 	for _, p := range rec.EngineData.Players {
 		bySlot[p.Slot] = p
@@ -169,6 +177,7 @@ func (d *Dashboard) populateEngineMacro(detail *workflowGameDetail) {
 			}
 			if m, ok := bySlot[p.Slot]; ok {
 				detail.Players[i].Macro = macroOf(m)
+				detail.Players[i].Macro.ProRanges = ranges.ForRace(detail.Players[i].Race)
 			}
 		}
 	}
