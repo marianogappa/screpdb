@@ -249,8 +249,11 @@ type EnginePlayer struct {
 	AverageUnspent       float32
 	WorkerIdleShare      float32
 	ProductionIdleShare  float32
-	// Income is minerals plus gas gathered in each full minute.
-	Income []uint16
+	WorkersBy6Min        uint16
+	SecondsTo40Workers   float32
+	// Income is minerals plus gas gathered in each full minute; Workers is the workers alive at each minute.
+	Income  []uint16
+	Workers []uint16
 }
 
 // Path is the newest file holding this replay.

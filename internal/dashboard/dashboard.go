@@ -284,6 +284,7 @@ func (d *Dashboard) setupRouter() *mux.Router {
 		},
 	)
 	// websocket endpoint remains a manual route to preserve Upgrade semantics
+	r.HandleFunc("/api/custom/games/{replayID}/engine-snapshot", d.handlerEngineSnapshot).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/library/events", d.handlerLibraryEvents).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/library/rescan", d.handlerLibraryRescan).Methods(http.MethodPost)
 	r.HandleFunc("/api/custom/game-assets/unit", d.handlerGameAssetUnit).Methods(http.MethodGet)

@@ -441,5 +441,14 @@
   "fingerprint.coverage.belowBar": "가장 근접한 프로게이머도 이름을 밝힐 만큼 확실하지 않았습니다.",
   "game.stage.own": "내 리플레이",
   "game.stage.complete": "전체 리플레이",
-  "errors.serverDown": "screpdb 서버가 중단된 것 같습니다. screpdb를 다시 열고 시도해 주세요."
+  "errors.serverDown": "screpdb 서버가 중단된 것 같습니다. screpdb를 다시 열고 시도해 주세요.",
+  "events.fight": "교전",
+  "events.sentence.winsFight": "{actor}, {target} 상대 교전 승리: 자원 {won} 처치, {lost} 손실",
+  "events.sentence.winsFightAt": "{actor}, {location}에서 {target} 상대 교전 승리: 자원 {won} 처치, {lost} 손실",
+  "events.sentence.baseLost": "{actor}, {target}의 기지 파괴",
+  "events.sentence.baseLostAt": "{actor}, {location}에 있는 {target}의 기지 파괴",
+  "events.sentence.supplyBlocked": "{actor}, {duration} 동안 보급 막힘",
+  "events.sentence.floats": "{actor}, 보급과 생산이 비어 있는데 {duration} 동안 자원을 쌓아 둠",
+  "events.sentence.cancelsExpansion": "{actor}, 확장을 시작했다가 취소",
+  "events.sentence.cancelsExpansionTo": "{actor}, {location}에 확장을 시작했다가 취소"
 }

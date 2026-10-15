@@ -25,7 +25,21 @@ const (
 	larvaPerHatch  = 3
 	secondsPerMin  = 60
 	raceZerg       = 0
+
+	workerPaceSecond   = 360
+	workerTargetCount  = 40
+	floatFromSecond    = 240
+	floatBank          = 800
+	floatMinSeconds    = 30
+	floatFreeSupply    = 4
+	nearlyMaxedSupply  = maxSupply - 4
+	reportedBlockAtSec = 15
 )
+
+// Episode is a stretch of whole seconds, To exclusive.
+type Episode struct{ From, To int }
+
+var workerTypes = []uint16{uint16(bwgame.UnitTypesTerranSCV), uint16(bwgame.UnitTypesProtossProbe), uint16(bwgame.UnitTypesZergDrone)}
 
 type Player struct {
 	Slot    int8
@@ -45,8 +59,19 @@ type Player struct {
 	WorkerIdleShare     float64
 	ProductionIdleShare float64
 
-	// Income is minerals plus gas gathered in each full minute.
-	Income []int
+	// WorkersBy6Min counts workers that finished training by 6:00: the pace of worker production,
+	// unaffected by losses. SecondsTo40Workers is when 40 were alive at once, NaN if never.
+	WorkersBy6Min      int
+	SecondsTo40Workers float64
+
+	// Income is minerals plus gas gathered in each full minute; Workers is the workers alive at each minute.
+	Income  []int
+	Workers []int
+
+	// SupplyBlocks lists blocks of 15 s or more; Floats lists 30 s or more with 800 resources banked
+	// while both supply and a production facility stood free.
+	LongSupplyBlocks []Episode
+	Floats           []Episode
 }
 
 func Compute(d *engine.Digest) []Player {
@@ -67,6 +92,8 @@ func Compute(d *engine.Digest) []Player {
 		}
 		scoreSupply(&p, samples, timeline)
 		scoreResources(&p, samples)
+		scoreWorkers(&p, d, samples)
+		p.Floats = floats(samples, timeline)
 		p.WorkerIdleShare, p.ProductionIdleShare = timeline.workerIdle, timeline.productionIdle
 		out = append(out, p)
 	}
@@ -112,14 +139,19 @@ type facilityTimeline struct {
 func scoreSupply(p *Player, samples []engine.EconomySample, t facilityTimeline) {
 	run := 0
 	peak := int32(0)
+	end := 0
 	closeRun := func() {
 		if run >= minBlockLength {
 			p.SupplyBlocks++
+		}
+		if run >= reportedBlockAtSec {
+			p.LongSupplyBlocks = append(p.LongSupplyBlocks, Episode{end - run, end})
 		}
 		run = 0
 	}
 	var spare, spareSeconds float64
 	for i, s := range samples {
+		end = i
 		peak = max(peak, s.SupplyUsed)
 		blocked := s.SupplyMax < maxSupply && s.SupplyMax-s.SupplyUsed < oneSupply && t.productionFree[i]
 		if blocked {
@@ -133,6 +165,7 @@ func scoreSupply(p *Player, samples []engine.EconomySample, t facilityTimeline) 
 			spareSeconds++
 		}
 	}
+	end = len(samples)
 	closeRun()
 	p.BlocksPer100Supply = math.NaN()
 	if peakSupply := float64(peak) / 2; peakSupply >= 20 {
@@ -160,6 +193,50 @@ func scoreResources(p *Player, samples []engine.EconomySample) {
 	p.AverageUnspent = unspent / float64(len(steady))
 	p.IncomePerMinute = float64(gathered(steady[len(steady)-1])-gathered(steady[0])) / minutes
 	p.SpendingQuotient = 35*(0.00137*p.IncomePerMinute-math.Log(max(p.AverageUnspent, 1))) + 240
+}
+
+func scoreWorkers(p *Player, d *engine.Digest, samples []engine.EconomySample) {
+	for _, pr := range d.Productions {
+		if pr.Owner == p.Slot && slices.Contains(workerTypes, pr.Type) && pr.Complete != engine.NoFrame && second(pr.Complete) < workerPaceSecond {
+			p.WorkersBy6Min++
+		}
+	}
+	p.SecondsTo40Workers = math.NaN()
+	for i, s := range samples {
+		if i%secondsPerMin == 0 {
+			p.Workers = append(p.Workers, int(s.Workers))
+		}
+		if math.IsNaN(p.SecondsTo40Workers) && s.Workers >= workerTargetCount {
+			p.SecondsTo40Workers = float64(i)
+		}
+	}
+	if len(samples) < workerPaceSecond {
+		p.WorkersBy6Min = 0
+	}
+}
+
+// floats finds money left unspent while it could have been spent: resources banked, supply free and a
+// building or larva ready. A maxed army has nothing to spend on, so 200 supply does not count.
+func floats(samples []engine.EconomySample, t facilityTimeline) []Episode {
+	var out []Episode
+	start := -1
+	for i := range len(samples) + 1 {
+		floating := i < len(samples) && i >= floatFromSecond &&
+			samples[i].Minerals+samples[i].Gas >= floatBank &&
+			samples[i].SupplyUsed < nearlyMaxedSupply &&
+			samples[i].SupplyMax-samples[i].SupplyUsed >= floatFreeSupply &&
+			t.productionFree[i]
+		switch {
+		case floating && start < 0:
+			start = i
+		case !floating && start >= 0:
+			if i-start >= floatMinSeconds {
+				out = append(out, Episode{start, i})
+			}
+			start = -1
+		}
+	}
+	return out
 }
 
 var (

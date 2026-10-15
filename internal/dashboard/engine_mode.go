@@ -101,7 +101,11 @@ type workflowPlayerMacro struct {
 	AverageUnspent       *float64 `json:"average_unspent"`
 	WorkerIdleShare      *float64 `json:"worker_idle_share"`
 	ProductionIdleShare  *float64 `json:"production_idle_share"`
-	IncomeCurve          []int64  `json:"income_curve"`
+	// WorkersBy6Min is null for a game shorter than 6:00.
+	WorkersBy6Min      *int64   `json:"workers_by_6min"`
+	SecondsTo40Workers *float64 `json:"seconds_to_40_workers"`
+	IncomeCurve        []int64  `json:"income_curve"`
+	WorkersCurve       []int64  `json:"workers_curve"`
 }
 
 func finite(v float32) *float64 {
@@ -112,10 +116,19 @@ func finite(v float32) *float64 {
 	return &f
 }
 
+func int64s(values []uint16) []int64 {
+	out := make([]int64, len(values))
+	for i, v := range values {
+		out[i] = int64(v)
+	}
+	return out
+}
+
 func macroOf(p library.EnginePlayer) *workflowPlayerMacro {
-	curve := make([]int64, len(p.Income))
-	for i, v := range p.Income {
-		curve[i] = int64(v)
+	var workersBy6Min *int64
+	if p.Seconds >= 360 {
+		n := int64(p.WorkersBy6Min)
+		workersBy6Min = &n
 	}
 	return &workflowPlayerMacro{
 		AnalysedSeconds:      int64(p.Seconds),
@@ -128,7 +141,10 @@ func macroOf(p library.EnginePlayer) *workflowPlayerMacro {
 		AverageUnspent:       finite(p.AverageUnspent),
 		WorkerIdleShare:      finite(p.WorkerIdleShare),
 		ProductionIdleShare:  finite(p.ProductionIdleShare),
-		IncomeCurve:          curve,
+		WorkersBy6Min:        workersBy6Min,
+		SecondsTo40Workers:   finite(p.SecondsTo40Workers),
+		IncomeCurve:          int64s(p.Income),
+		WorkersCurve:         int64s(p.Workers),
 	}
 }
 

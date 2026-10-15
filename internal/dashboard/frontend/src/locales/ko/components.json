@@ -146,5 +146,11 @@
   "macro.hint.productionIdle": "생산 건물이 놀고 있던 시간의 비율",
   "macro.hint.incomeCurve": "분마다 채취한 미네랄과 가스",
   "macro.productionIdleHint": "배럭, 팩토리, 스타포트, 게이트웨이, 로보틱스 퍼실리티, 스타게이트가 놀고 있던 시간의 비율",
-  "macro.productionIdleZergHint": "모든 해처리에 라바가 3마리씩 쌓여 라바가 더 생기지 않던 시간의 비율"
+  "macro.productionIdleZergHint": "모든 해처리에 라바가 3마리씩 쌓여 라바가 더 생기지 않던 시간의 비율",
+  "snapshot.caption": "{time} 시점의 건물, {armyTime} 시점의 병력",
+  "snapshot.loading": "이 순간의 지도를 불러오는 중",
+  "snapshot.unavailable": "이 순간의 지도를 표시할 수 없습니다",
+  "snapshot.wholeMap": "전체 지도",
+  "snapshot.zoomIn": "이벤트 확대",
+  "snapshot.underConstruction": "{unit} (건설 중)"
 }

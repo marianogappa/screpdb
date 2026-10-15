@@ -108,6 +108,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	if err := d.populateDetectedPatternsForGameDetail(&detail, mapLayout, startClockByPlayerID, displayByName); err != nil {
 		return detail, err
 	}
+	d.applyEngineEvents(&detail, mapLayout)
 	if err := d.populateUnitsBySliceForGameDetail(&detail); err != nil {
 		return detail, err
 	}

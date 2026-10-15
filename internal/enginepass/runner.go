@@ -378,11 +378,15 @@ func Summarize(d *engine.Digest) *library.EngineData {
 	return data
 }
 
-func enginePlayer(p macro.Player) library.EnginePlayer {
-	income := make([]uint16, len(p.Income))
-	for i, v := range p.Income {
-		income[i] = uint16(min(max(v, 0), math.MaxUint16))
+func clampU16s(values []int) []uint16 {
+	out := make([]uint16, len(values))
+	for i, v := range values {
+		out[i] = uint16(min(max(v, 0), math.MaxUint16))
 	}
+	return out
+}
+
+func enginePlayer(p macro.Player) library.EnginePlayer {
 	return library.EnginePlayer{
 		Slot:                 uint8(p.Slot),
 		Seconds:              uint16(min(p.Seconds, math.MaxUint16)),
@@ -395,6 +399,9 @@ func enginePlayer(p macro.Player) library.EnginePlayer {
 		AverageUnspent:       float32(p.AverageUnspent),
 		WorkerIdleShare:      float32(p.WorkerIdleShare),
 		ProductionIdleShare:  float32(p.ProductionIdleShare),
-		Income:               income,
+		WorkersBy6Min:        uint16(min(p.WorkersBy6Min, math.MaxUint16)),
+		SecondsTo40Workers:   float32(p.SecondsTo40Workers),
+		Income:               clampU16s(p.Income),
+		Workers:              clampU16s(p.Workers),
 	}
 }
