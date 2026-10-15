@@ -243,3 +243,51 @@ func TestCreateRenameRemoveWalkEnforceRoots(t *testing.T) {
 		t.Fatalf("Walk outside: want ErrForbidden, got %v", err)
 	}
 }
+
+func TestReadOnlyRoot(t *testing.T) {
+	t.Cleanup(Reset)
+	writable, readOnlyDir := t.TempDir(), t.TempDir()
+	existing := filepath.Join(readOnlyDir, "data.dat")
+	if err := os.WriteFile(existing, []byte("bw"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := Configure(writable); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ReadFile(existing); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("read before allow: want ErrForbidden, got %v", err)
+	}
+	if err := AllowReadOnlyDir(readOnlyDir); err != nil {
+		t.Fatal(err)
+	}
+	if b, err := ReadFile(existing); err != nil || string(b) != "bw" {
+		t.Fatalf("ReadFile: %q %v", b, err)
+	}
+	if _, err := Stat(existing); err != nil {
+		t.Fatalf("Stat: %v", err)
+	}
+	if _, err := ReadDir(readOnlyDir); err != nil {
+		t.Fatalf("ReadDir: %v", err)
+	}
+	f, err := Open(existing)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	f.Close()
+	if err := WriteFile(existing, []byte("x"), 0o600); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("WriteFile: want ErrForbidden, got %v", err)
+	}
+	if _, err := Create(filepath.Join(readOnlyDir, "new")); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("Create: want ErrForbidden, got %v", err)
+	}
+	if err := Remove(existing); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("Remove: want ErrForbidden, got %v", err)
+	}
+	if err := Rename(existing, filepath.Join(writable, "moved")); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("Rename out: want ErrForbidden, got %v", err)
+	}
+	RevokeReadOnlyDir(readOnlyDir)
+	if _, err := ReadFile(existing); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("read after revoke: want ErrForbidden, got %v", err)
+	}
+}

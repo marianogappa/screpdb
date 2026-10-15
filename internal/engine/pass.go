@@ -5,6 +5,7 @@ import (
 
 	openbw "github.com/marianogappa/openbw-go"
 	"github.com/marianogappa/openbw-go/bwgame"
+	"github.com/marianogappa/screpdb/internal/gamedata"
 	"github.com/marianogappa/screpsim"
 )
 
@@ -13,6 +14,16 @@ const maxPlayerSlot = 7
 type Data = openbw.Data
 
 func LoadData(dir string) (*Data, error) { return openbw.LoadData(dir) }
+
+// OpenGameData extracts the game data from the StarCraft: Remastered install when needed and loads it.
+// gamedata.ErrNoInstall means there is no install: the engine pass stays off and only the fast pass runs.
+func OpenGameData() (*Data, error) {
+	dir, _, err := gamedata.Prepare()
+	if err != nil {
+		return nil, err
+	}
+	return LoadData(dir)
+}
 
 func Pass(replay []byte, data *Data) (*Digest, error) {
 	g, err := screpsim.Open(replay, screpsim.Options{Engine: openbw.Options{

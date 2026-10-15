@@ -1,6 +1,7 @@
 // engine-probe runs the engine pass on a list of replays and prints, per replay, the pass time, the
 // encoded digest size and the drift, then percentiles. It answers the engine pass's measuring questions
-// on any machine with the game data: OPENBW_DATA=<dir> go run ./scripts/engine-probe -list replays.txt
+// on any machine with StarCraft: Remastered installed: go run ./scripts/engine-probe -list replays.txt
+// OPENBW_DATA=<dir> uses already extracted game data instead of the install.
 package main
 
 import (
@@ -34,7 +35,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	data, err := engine.LoadData(os.Getenv("OPENBW_DATA"))
+	data, err := loadData()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -45,6 +46,13 @@ func main() {
 		printResult(r)
 	}
 	summarize(results, time.Since(start), *workers)
+}
+
+func loadData() (*engine.Data, error) {
+	if dir := os.Getenv("OPENBW_DATA"); dir != "" {
+		return engine.LoadData(dir)
+	}
+	return engine.OpenGameData()
 }
 
 func readList(path string) ([]string, error) {
