@@ -221,6 +221,18 @@ type Replay struct {
 	Chat     []ChatLine
 	Alliance *AllianceTimeline
 	Layout   *MapLayout
+
+	// EngineData is nil until the engine pass upgrades the replay ("engine" mode over "fast").
+	EngineData *EngineData
+}
+
+// EngineData is what the library keeps of an engine pass. The full digest stays in the digest cache file
+// and is read on demand; only what lists and aggregates need lives here.
+type EngineData struct {
+	EngineVersion int32
+	LowConfidence bool
+	// TrustedUntil is the first frame whose engine data may disagree with the real game.
+	TrustedUntil uint32
 }
 
 // Path is the newest file holding this replay.

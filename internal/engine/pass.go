@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 
 	openbw "github.com/marianogappa/openbw-go"
@@ -25,7 +26,8 @@ func OpenGameData() (*Data, error) {
 	return LoadData(dir)
 }
 
-func Pass(replay []byte, data *Data) (*Digest, error) {
+// Pass runs the replay through the engine. It stops early with ctx's error, at the next game second.
+func Pass(ctx context.Context, replay []byte, data *Data) (*Digest, error) {
 	g, err := screpsim.Open(replay, screpsim.Options{Engine: openbw.Options{
 		Data:      data,
 		Kinds:     openbw.DefaultKinds | openbw.KindCommandResult | openbw.KindTick,
@@ -37,6 +39,9 @@ func Pass(replay []byte, data *Data) (*Digest, error) {
 	p := newPassState(g)
 	for e := range g.Events() {
 		p.handle(e)
+		if _, tick := e.(*openbw.Tick); tick && ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 	}
 	p.finish(g.Err())
 	return p.d, nil

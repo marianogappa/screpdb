@@ -150,6 +150,7 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 }
 
 func (d *Dashboard) GameDetail(_ context.Context, request apigen.GameDetailRequestObject) (any, error) {
+	d.focusEnginePass(int64(request.ReplayID))
 	detail, err := d.buildWorkflowGameDetail(request.ReplayID)
 	if err != nil {
 		if errors.Is(err, dashboarddb.ErrNotFound) {

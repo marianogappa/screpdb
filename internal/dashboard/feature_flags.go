@@ -24,12 +24,21 @@ import (
 // switched it on in Labs simply keep the behaviour they already had.
 const featureFlagDisableCompleteReplays = "disable_complete_replays"
 
+// featureFlagDisableEnginePass turns off the background engine pass, which replays each game through
+// the game engine for exact data. Negative for the same reason as disable_complete_replays: on by default.
+const featureFlagDisableEnginePass = "disable_engine_pass"
+
+// featureFlagEnginePassOnBattery keeps the engine pass running on battery; by default it pauses there.
+const featureFlagEnginePassOnBattery = "engine_pass_on_battery"
+
 // knownFeatureFlags is the allowlist. Writes to anything outside it are
 // rejected, so a stale client cannot litter the settings row with keys nothing
 // reads, and a flag that is retired stops being settable the moment it leaves
 // this list.
 var knownFeatureFlags = map[string]struct{}{
 	featureFlagDisableCompleteReplays: {},
+	featureFlagDisableEnginePass:      {},
+	featureFlagEnginePassOnBattery:    {},
 }
 
 func (d *Dashboard) featureFlags(ctx context.Context) (map[string]bool, error) {

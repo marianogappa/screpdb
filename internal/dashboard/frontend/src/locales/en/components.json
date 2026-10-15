@@ -112,5 +112,7 @@
   "globalFilter.saving": "Saving...",
   "labs.warning": "Unfinished work. Expect rough edges and things that change or vanish.",
   "labs.feature.gamingSession": "Session summary for the games you just played",
-  "library.completeGamesOptOut": "Do not complete games you left early"
+  "library.completeGamesOptOut": "Do not complete games you left early",
+  "library.enginePassOptOut": "Do not analyze games with the game engine",
+  "library.enginePassOnBattery": "Keep analyzing with the game engine on battery"
 }

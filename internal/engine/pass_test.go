@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -25,7 +26,7 @@ func passReplay(t *testing.T, name string) *Digest {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d, err := Pass(b, data)
+	d, err := Pass(context.Background(), b, data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,6 +123,22 @@ func TestPassTeamGameReportsDrift(t *testing.T) {
 	t.Logf("drift %+v confidence %d trusted until %d", d.Drift, d.Confidence(), d.TrustedUntil())
 }
 
+func TestPassStopsWhenCancelled(t *testing.T) {
+	if os.Getenv("OPENBW_DATA") == "" {
+		t.Skip("OPENBW_DATA is not set")
+	}
+	data, err := testData()
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(filepath.Join("..", "testdata", "replays", "SomaJyJ.rep"))
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := Pass(ctx, b, data); err != context.Canceled {
+		t.Fatalf("got %v, want context.Canceled", err)
+	}
+}
+
 func TestPassRejectsGarbage(t *testing.T) {
 	if os.Getenv("OPENBW_DATA") == "" {
 		t.Skip("OPENBW_DATA is not set")
@@ -130,7 +147,7 @@ func TestPassRejectsGarbage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Pass([]byte("not a replay"), data); err == nil {
+	if _, err := Pass(context.Background(), []byte("not a replay"), data); err == nil {
 		t.Fatal("Pass accepted garbage")
 	}
 }

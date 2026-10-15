@@ -6,6 +6,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -101,7 +102,7 @@ func run(path string, data *engine.Data) result {
 		return r
 	}
 	t := time.Now()
-	r.digest, r.err = engine.Pass(b, data)
+	r.digest, r.err = engine.Pass(context.Background(), b, data)
 	r.pass = time.Since(t)
 	if r.err != nil {
 		return r

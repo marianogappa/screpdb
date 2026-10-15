@@ -36,6 +36,8 @@ type Dashboard struct {
 	dbStore             dashboarddb.Reader
 	library             *libraryRuntime
 	libraryHub          *libraryHub
+	enginePass          enginePassRunner
+	enginePassEnabled   bool
 	sampleSetAutoLoaded bool
 	headless            bool
 	debug               bool
@@ -92,16 +94,19 @@ type Options struct {
 	// caches are carried over once, on the first run after upgrading.
 	LegacyDBPath string
 	Headless     bool
+	// EnginePass upgrades replays to engine data in the background. Off for tests and the browser demo.
+	EnginePass bool
 	// Debug turns on background-work console diagnostics (the --debug flag).
 	Debug bool
 }
 
 func New(ctx context.Context, opts Options) (*Dashboard, error) {
 	dashboard := &Dashboard{
-		ctx:        ctx,
-		libraryHub: newLibraryHub(),
-		headless:   opts.Headless,
-		debug:      opts.Debug,
+		ctx:               ctx,
+		libraryHub:        newLibraryHub(),
+		headless:          opts.Headless,
+		debug:             opts.Debug,
+		enginePassEnabled: opts.EnginePass,
 	}
 
 	runtime, err := newLibraryRuntime(ctx, libraryRuntimeOptions{
@@ -131,7 +136,13 @@ func (d *Dashboard) ReplayDir() string {
 // StartLibrary begins loading the replay folder and watching it for changes.
 // Call it once the HTTP server is accepting, so the first page load already
 // has the newest games while the rest stream in behind it.
-func (d *Dashboard) StartLibrary() error { return d.library.Start(d.ctx) }
+func (d *Dashboard) StartLibrary() error {
+	if err := d.library.Start(d.ctx); err != nil {
+		return err
+	}
+	d.startEnginePass()
+	return nil
+}
 
 // Handler returns the fully-wired HTTP handler without starting a TCP listener.
 // Use this in environments where a real net.Listener is unavailable (e.g. WASM).
@@ -149,6 +160,7 @@ func (d *Dashboard) OnLibraryEvent(fn func([]byte)) func() {
 
 // Close releases the library and stops the loader and watcher.
 func (d *Dashboard) Close() {
+	d.closeEnginePass()
 	if d.library != nil {
 		d.library.Close()
 	}
