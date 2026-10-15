@@ -156,6 +156,10 @@ func isProduction(e *openbw.UnitCreated) bool {
 }
 
 func (p *passState) unitCreated(e *openbw.UnitCreated) {
+	if e.Source == openbw.SourceStart && e.Owner <= maxPlayerSlot && e.Class == openbw.ClassNormal {
+		p.d.Initial = append(p.d.Initial, InitialUnit{Unit: uint32(e.Unit), Type: uint16(e.Type), Owner: e.Owner, X: e.X, Y: e.Y})
+		return
+	}
 	if !isProduction(e) {
 		return
 	}

@@ -11,6 +11,7 @@ func sampleDigest() *Digest {
 		EndFrame:      20000,
 		LastFrame:     19998,
 		Players:       []Player{{Slot: 0, PlayerID: 0, Race: 1}, {Slot: 3, PlayerID: 2, Race: 0}},
+		Initial:       []InitialUnit{{Unit: 1, Type: 106, Owner: 0, X: 100, Y: 200}, {Unit: 2, Type: 7, Owner: 0, X: 110, Y: 210}},
 		Productions: []Production{
 			{Owner: 0, Type: 7, From: 228, Unit: 2049, Producer: 1, X: 1200, Y: 300, Start: 10, Complete: 310, Cancel: NoFrame, Cmd: 4},
 			{Owner: 3, Type: 131, From: 41, Unit: 3, Producer: 3, X: 64, Y: 4000, Start: 900, Complete: NoFrame, Cancel: 1000, Cmd: NoCmd},

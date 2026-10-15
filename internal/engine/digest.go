@@ -2,7 +2,7 @@ package engine
 
 // EngineVersion keys the digest cache: bump it when Pass or the digest format changes what a digest holds.
 // Detector changes do not need a bump; detectors read digests at load time.
-const EngineVersion = 1
+const EngineVersion = 2
 
 const (
 	EconomyEveryFrames = 24
@@ -17,6 +17,7 @@ type Digest struct {
 	EndFrame      int32
 	LastFrame     int32
 	Players       []Player
+	Initial       []InitialUnit
 	Productions   []Production
 	Research      []Research
 	Deaths        []Death
@@ -31,6 +32,14 @@ type Player struct {
 	Slot     int8
 	PlayerID int32
 	Race     uint8
+}
+
+// InitialUnit is a player's unit from the game start: town hall, workers, and Overlord or Larva.
+type InitialUnit struct {
+	Unit  uint32
+	Type  uint16
+	Owner int8
+	X, Y  int32
 }
 
 type Production struct {

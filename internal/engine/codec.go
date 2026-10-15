@@ -9,7 +9,7 @@ import (
 	"io"
 )
 
-const codecMagic = "SDG1"
+const codecMagic = "SDG2"
 
 var errCorrupt = errors.New("engine digest: corrupt")
 
@@ -23,6 +23,14 @@ func Encode(d *Digest) ([]byte, error) {
 		w.int(int64(p.Slot))
 		w.int(int64(p.PlayerID))
 		w.uint(uint64(p.Race))
+	}
+	w.uint(uint64(len(d.Initial)))
+	for _, u := range d.Initial {
+		w.uint(uint64(u.Unit))
+		w.uint(uint64(u.Type))
+		w.int(int64(u.Owner))
+		w.int(int64(u.X))
+		w.int(int64(u.Y))
 	}
 	w.uint(uint64(len(d.Productions)))
 	var prev int32
@@ -165,6 +173,10 @@ func Decode(b []byte) (*Digest, error) {
 	d.Players = makeN[[]Player](r.count())
 	for i := range d.Players {
 		d.Players[i] = Player{Slot: int8(r.int()), PlayerID: int32(r.int()), Race: uint8(r.uint())}
+	}
+	d.Initial = makeN[[]InitialUnit](r.count())
+	for i := range d.Initial {
+		d.Initial[i] = InitialUnit{Unit: uint32(r.uint()), Type: uint16(r.uint()), Owner: int8(r.int()), X: int32(r.int()), Y: int32(r.int())}
 	}
 	d.Productions = makeN[[]Production](r.count())
 	var prev int32

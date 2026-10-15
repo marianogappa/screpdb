@@ -233,6 +233,24 @@ type EngineData struct {
 	LowConfidence bool
 	// TrustedUntil is the first frame whose engine data may disagree with the real game.
 	TrustedUntil uint32
+	Players      []EnginePlayer
+}
+
+// EnginePlayer is one player's macro scorecard; a ratio is NaN when the game gives it no basis.
+type EnginePlayer struct {
+	Slot                 uint8
+	Seconds              uint16
+	SupplyBlockedSeconds uint16
+	SupplyBlocks         uint16
+	BlocksPer100Supply   float32
+	SpareSupply          float32
+	SpendingQuotient     float32
+	IncomePerMinute      float32
+	AverageUnspent       float32
+	WorkerIdleShare      float32
+	ProductionIdleShare  float32
+	// Income is minerals plus gas gathered in each full minute.
+	Income []uint16
 }
 
 // Path is the newest file holding this replay.

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"runtime"
 	"runtime/debug"
 	"sync"
@@ -18,6 +19,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/engine"
 	"github.com/marianogappa/screpdb/internal/engine/digestcache"
+	"github.com/marianogappa/screpdb/internal/engine/macro"
 	"github.com/marianogappa/screpdb/internal/gamedata"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/library"
@@ -346,10 +348,37 @@ func (r *Runner) pass(replay []byte) (d *engine.Digest, err error) {
 	return engine.Pass(r.ctx, replay, r.data)
 }
 
+// Summarize runs the digest detectors; it is what each launch does with a cached digest, so detector
+// changes reach users without new engine passes.
 func Summarize(d *engine.Digest) *library.EngineData {
-	return &library.EngineData{
+	data := &library.EngineData{
 		EngineVersion: d.EngineVersion,
 		LowConfidence: d.Confidence() == engine.ConfidenceLow,
 		TrustedUntil:  uint32(max(d.TrustedUntil(), 0)),
+	}
+	for _, p := range macro.Compute(d) {
+		data.Players = append(data.Players, enginePlayer(p))
+	}
+	return data
+}
+
+func enginePlayer(p macro.Player) library.EnginePlayer {
+	income := make([]uint16, len(p.Income))
+	for i, v := range p.Income {
+		income[i] = uint16(min(max(v, 0), math.MaxUint16))
+	}
+	return library.EnginePlayer{
+		Slot:                 uint8(p.Slot),
+		Seconds:              uint16(min(p.Seconds, math.MaxUint16)),
+		SupplyBlockedSeconds: uint16(min(p.SupplyBlockedSeconds, math.MaxUint16)),
+		SupplyBlocks:         uint16(min(p.SupplyBlocks, math.MaxUint16)),
+		BlocksPer100Supply:   float32(p.BlocksPer100Supply),
+		SpareSupply:          float32(p.SpareSupply),
+		SpendingQuotient:     float32(p.SpendingQuotient),
+		IncomePerMinute:      float32(p.IncomePerMinute),
+		AverageUnspent:       float32(p.AverageUnspent),
+		WorkerIdleShare:      float32(p.WorkerIdleShare),
+		ProductionIdleShare:  float32(p.ProductionIdleShare),
+		Income:               income,
 	}
 }
