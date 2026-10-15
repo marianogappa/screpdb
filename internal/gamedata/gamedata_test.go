@@ -2,11 +2,13 @@ package gamedata
 
 import (
 	"bytes"
+	"encoding/binary"
 	"os"
 	"path/filepath"
 	"slices"
 	"testing"
 
+	"github.com/marianogappa/screpdb/internal/casc/casctest"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 )
 
@@ -112,4 +114,97 @@ func TestEnsureFromInstall(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("%s: %d files, %d compared byte for byte", m.BuildName, m.Files, compared)
+}
+
+func fakeImagesTable(entries ...string) []byte {
+	b := binary.LittleEndian.AppendUint16(nil, uint16(len(entries)))
+	off := 2 + 2*len(entries)
+	var strs []byte
+	for _, e := range entries {
+		b = binary.LittleEndian.AppendUint16(b, uint16(off+len(strs)))
+		strs = append(append(strs, e...), 0)
+	}
+	return append(b, strs...)
+}
+
+func fakeGameFiles() map[string][]byte {
+	files := map[string][]byte{
+		"arr/images.tbl":         fakeImagesTable(`terran\marine.grp`, `Zerg\zavBirth.grp`, `terran\marine.grp`, ""),
+		"scripts/iscript.bin":    []byte("iscript"),
+		"triggers/Melee.trg":     []byte("melee"),
+		"unit/terran/marine.grp": []byte("marine"),
+		"unit/zerg/zavbirth.grp": []byte("birth"),
+	}
+	for _, d := range datFiles {
+		files["arr/"+d+".dat"] = []byte(d)
+	}
+	for _, t := range tilesets {
+		files["TileSet/"+t+".cv5"] = []byte(t + "cv5")
+		files["TileSet/"+t+".vf4"] = []byte(t + "vf4")
+	}
+	return files
+}
+
+func TestEnsureFromFakeInstall(t *testing.T) {
+	iofacade.Reset()
+	t.Cleanup(iofacade.Reset)
+	install := casctest.BuildInstall(t, fakeGameFiles())
+	t.Setenv(InstallDirEnv, install)
+	found, err := FindInstall()
+	if err != nil || found != install {
+		t.Fatalf("FindInstall: %q %v", found, err)
+	}
+	iofacade.Reset()
+
+	out := filepath.Join(t.TempDir(), DirName)
+	m, err := Ensure(install, out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := len(datFiles) + 3 + 2*len(tilesets) + 2
+	if m.Files != want || m.BuildName != "9.9.9-test" {
+		t.Fatalf("manifest %+v, want %d files", m, want)
+	}
+	if b, err := os.ReadFile(filepath.Join(out, "unit", "zerg", "zavbirth.grp")); err != nil || string(b) != "birth" {
+		t.Fatalf("zavbirth.grp: %q %v", b, err)
+	}
+	if b, err := os.ReadFile(filepath.Join(out, "triggers", "melee.trg")); err != nil || string(b) != "melee" {
+		t.Fatalf("melee.trg: %q %v", b, err)
+	}
+	if _, err := os.Stat(out + ".tmp"); !os.IsNotExist(err) {
+		t.Fatalf("temporary folder left behind: %v", err)
+	}
+
+	stale := filepath.Join(out, "stale")
+	os.WriteFile(stale, nil, 0o644)
+	if _, err := Ensure(install, out); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(stale); err != nil {
+		t.Fatal("Ensure re-extracted although the build did not change")
+	}
+	os.WriteFile(filepath.Join(out, manifestName), []byte(`{"build_key":"older","files":3}`), 0o644)
+	if _, err := Ensure(install, out); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Fatal("Ensure kept the data of an older build")
+	}
+}
+
+func TestEnsureFailsCleanlyOnMissingFile(t *testing.T) {
+	iofacade.Reset()
+	t.Cleanup(iofacade.Reset)
+	files := fakeGameFiles()
+	delete(files, "scripts/iscript.bin")
+	install := casctest.BuildInstall(t, files)
+	out := filepath.Join(t.TempDir(), DirName)
+	if _, err := Ensure(install, out); err == nil {
+		t.Fatal("Ensure succeeded without iscript.bin")
+	}
+	for _, dir := range []string{out, out + ".tmp"} {
+		if _, err := os.Stat(dir); !os.IsNotExist(err) {
+			t.Fatalf("%s exists after a failed extract", dir)
+		}
+	}
 }
