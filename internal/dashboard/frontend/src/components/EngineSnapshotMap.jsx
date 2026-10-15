@@ -2,10 +2,31 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useT } from '../lib/i18nContext';
 import { formatDuration } from '../lib/formatters';
 import { api } from '../api';
+import { getUnitIcon, normalizeUnitName } from '../lib/gameAssets';
 
-// Radii are in map pixels: real size when zoomed, enlarged on the whole map so a unit stays visible.
-const UNIT_RADIUS = 10;
-const UNIT_RADIUS_WHOLE_MAP = 24;
+// Sprite boxes are in map pixels. scmapanalyzer's sprites are drawn at twice the map's scale, so a box
+// of half their size puts each unit at its real size: 36 px holds a Marine or a Zergling, 72 px an
+// Ultralisk or a Carrier. The whole map is shown far smaller, so there everything is drawn 2.5 times larger.
+const LARGE_UNITS = new Set([
+  'ultralisk', 'archon', 'darkarchon', 'carrier', 'battlecruiser', 'arbiter', 'guardian', 'devourer', 'reaver',
+  'siegetanktankmode', 'siegetanksiegemode', 'dropship', 'shuttle', 'overlord', 'sciencevessel', 'scout', 'queen', 'defiler', 'lurker',
+]);
+const UNIT_BOX = 36;
+const LARGE_UNIT_BOX = 72;
+const WHOLE_MAP_SCALE = 2.5;
+
+const unitBox = (unitType) => (LARGE_UNITS.has(normalizeUnitName(unitType).replace(/^(terran|zerg|protoss)/, '')) ? LARGE_UNIT_BOX : UNIT_BOX);
+
+function Sprite({ unitType, x, y, w, h, color, faded, title }) {
+  const href = getUnitIcon(unitType);
+  return (
+    <g opacity={faded ? 0.45 : 1}>
+      <ellipse cx={x} cy={y + h * 0.32} rx={w * 0.5} ry={h * 0.2} fill="none" stroke={color} strokeWidth={Math.max(2, w * 0.05)} />
+      {href ? <image href={href} x={x - w / 2} y={y - h / 2} width={w} height={h} preserveAspectRatio="xMidYMid meet" /> : null}
+      <title>{title}</title>
+    </g>
+  );
+}
 
 const clampRegion = (region, width, height) => {
   const x = Math.max(0, Math.min(region.x, width - 1));
@@ -40,7 +61,6 @@ export default function EngineSnapshotMap({ replayId, event, mapUrl, mapWidth, m
   if (!width || !height) return null;
   const showZoomed = zoomed && region;
   const view = showZoomed ? region : { x: 0, y: 0, w: width, h: height };
-  const scale = view.w / width;
   const color = (id) => colorByPlayerId?.get(id) || '#e2e8f0';
 
   return (
@@ -52,38 +72,24 @@ export default function EngineSnapshotMap({ replayId, event, mapUrl, mapWidth, m
             <rect x={region.x} y={region.y} width={region.w} height={region.h} className="engine-snapshot-region" strokeWidth={24} />
           ) : null}
           {(snapshot?.buildings || []).map((b, i) => (
-            <rect
+            <Sprite
               key={`b-${i}`}
-              x={b.x - b.w / 2}
-              y={b.y - b.h / 2}
-              width={b.w}
-              height={b.h}
-              rx={4}
-              fill={color(b.player_id)}
-              fillOpacity={b.complete ? 0.75 : 0.3}
-              stroke={color(b.player_id)}
-              strokeWidth={(b.town_hall ? 10 : 4) * Math.max(scale, 0.35)}
-              strokeDasharray={b.complete ? undefined : '12 8'}
-            >
-              <title>{b.complete ? b.unit_type : t('snapshot.underConstruction', { unit: b.unit_type })}</title>
-            </rect>
+              unitType={b.unit_type}
+              x={b.x}
+              y={b.y}
+              w={b.w * (showZoomed ? 1 : WHOLE_MAP_SCALE / 2)}
+              h={b.h * (showZoomed ? 1 : WHOLE_MAP_SCALE / 2)}
+              color={color(b.player_id)}
+              faded={!b.complete}
+              title={b.complete ? b.unit_type : t('snapshot.underConstruction', { unit: b.unit_type })}
+            />
           ))}
-          {(snapshot?.units || []).map((u, i) => (
-            <circle
-              key={`u-${i}`}
-              cx={u.x}
-              cy={u.y}
-              r={showZoomed ? UNIT_RADIUS : UNIT_RADIUS_WHOLE_MAP}
-              fill={color(u.player_id)}
-              stroke="rgba(0,0,0,0.7)"
-              strokeWidth={2}
-            >
-              <title>{u.unit_type}</title>
-            </circle>
-          ))}
-          {engine?.point ? (
-            <circle cx={engine.point.x} cy={engine.point.y} r={showZoomed ? 70 : 140} className="engine-snapshot-point" strokeWidth={showZoomed ? 8 : 20} />
-          ) : null}
+          {(snapshot?.units || []).map((u, i) => {
+            const size = unitBox(u.unit_type) * (showZoomed ? 1 : WHOLE_MAP_SCALE);
+            return (
+              <Sprite key={`u-${i}`} unitType={u.unit_type} x={u.x} y={u.y} w={size} h={size} color={color(u.player_id)} title={u.unit_type} />
+            );
+          })}
         </svg>
       </div>
       <div className="engine-snapshot-meta">

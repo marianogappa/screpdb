@@ -467,17 +467,6 @@ const fallbackEventName = (event) => {
   return t.server(`server.marker.${normalizeEventType(rawType)}.name`, prettyPatternName(rawType));
 };
 
-// A fight reads as its trade: who came out ahead, by how much, and where.
-const engineFightDescription = (event, actor, target, location) => {
-  const sides = Array.isArray(event?.engine?.sides) ? event.engine.sides : [];
-  const lost = (side) => (Number(side?.lost_minerals) || 0) + (Number(side?.lost_gas) || 0);
-  const winner = sides[0];
-  const loser = sides[1];
-  if (!winner || !loser) return t('events.fight');
-  const params = { actor, target, won: lost(loser), lost: lost(winner), location };
-  return location ? t('events.sentence.winsFightAt', params) : t('events.sentence.winsFight', params);
-};
-
 const gameEventDescription = (event, registry) => {
   const eventType = normalizeEventType(event?.type);
   const actor = String(event?.actor?.name || '').trim();
@@ -523,20 +512,7 @@ const gameEventDescription = (event, registry) => {
   if (eventType === 'first_corsair') return actor ? t('events.sentence.firstCorsair', { actor }) : t('events.firstCorsair');
   if (eventType === 'speedlot') return actor ? t('events.sentence.speedlot', { actor }) : t('events.zealotSpeed');
   if (eventType === 'location_inactive') return location ? t('events.locationInactive', { location }) : t('events.locationInactiveNoLocation');
-  if (eventType === 'fight') return engineFightDescription(event, actor, target, location);
-  if (eventType === 'base_lost') {
-    return location ? t('events.sentence.baseLostAt', { actor, target, location }) : t('events.sentence.baseLost', { actor, target });
-  }
-  if (eventType === 'supply_block') {
-    return t('events.sentence.supplyBlocked', { actor, duration: formatDuration((event?.engine?.end_second ?? event.second) - event.second) });
-  }
-  if (eventType === 'float') {
-    return t('events.sentence.floats', { actor, duration: formatDuration((event?.engine?.end_second ?? event.second) - event.second) });
-  }
   if (eventType === 'expansion') {
-    if (event?.engine?.cancelled) {
-      return location ? t('events.sentence.cancelsExpansionTo', { actor, location }) : t('events.sentence.cancelsExpansion', { actor });
-    }
     if (actor && isActorAtOwnNaturalBase(event)) return t('events.sentence.expandsToNatural', { actor });
     return actor && location ? t('events.sentence.expandsTo', { actor, location }) : t('events.expansion');
   }
@@ -1104,30 +1080,7 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
   if (eventType === 'first_corsair') return actorName ? fill('events.sentence.firstCorsair', { actor: actorSpan }) : t('events.firstCorsair');
   if (eventType === 'speedlot') return actorName ? fill('events.sentence.speedlot', { actor: actorSpan }) : t('events.zealotSpeed');
   if (eventType === 'location_inactive') return location ? t('events.locationInactive', { location }) : t('events.locationInactiveNoLocation');
-  if (eventType === 'fight') {
-    const sides = Array.isArray(event?.engine?.sides) ? event.engine.sides : [];
-    const lost = (side) => (Number(side?.lost_minerals) || 0) + (Number(side?.lost_gas) || 0);
-    if (!actorName || !targetName || sides.length < 2) return t('events.fight');
-    const params = { actor: actorSpan, target: targetSpan, won: lost(sides[1]), lost: lost(sides[0]), location };
-    return location ? fill('events.sentence.winsFightAt', params) : fill('events.sentence.winsFight', params);
-  }
-  if (eventType === 'base_lost') {
-    if (!actorName || !targetName) return t('events.fight');
-    return location
-      ? fill('events.sentence.baseLostAt', { actor: actorSpan, target: targetSpan, location })
-      : fill('events.sentence.baseLost', { actor: actorSpan, target: targetSpan });
-  }
-  if (eventType === 'supply_block' || eventType === 'float') {
-    const duration = formatDuration((event?.engine?.end_second ?? event.second) - event.second);
-    const key = eventType === 'float' ? 'events.sentence.floats' : 'events.sentence.supplyBlocked';
-    return actorName ? fill(key, { actor: actorSpan, duration }) : t(key, { actor: '', duration });
-  }
   if (eventType === 'expansion') {
-    if (event?.engine?.cancelled && actorName) {
-      return location
-        ? fill('events.sentence.cancelsExpansionTo', { actor: actorSpan, location })
-        : fill('events.sentence.cancelsExpansion', { actor: actorSpan });
-    }
     if (actorName && isActorAtOwnNaturalBase(event)) return fill('events.sentence.expandsToNatural', { actor: actorSpan });
     return actorName && location ? fill('events.sentence.expandsTo', { actor: actorSpan, location }) : t('events.expansion');
   }
@@ -2009,7 +1962,7 @@ const DEFAULT_SUMMARY_FILTERS = {
 };
 
 const SUMMARY_TOPIC_PATTERNS = {
-  attack: /\battacks?\b|\bfight\b|\bbase lost\b/i,
+  attack: /\battacks?\b/i,
   expansion: /\bexpands?\b|\bexpansion\b/i,
   leaves: /\bleaves the game\b|\bstops playing\b|\bleave game\b|\bplayer dropped\b|\bmass disconnect\b|\bstopped playing\b/i,
   nuke: /\bnuke|nuclear\b/i,
@@ -4215,7 +4168,7 @@ function App() {
       const nt = normalizeEventType(event?.type);
       if (nt === 'takeover') continue;
       const text = gameEventSearchText(event, markerRegistry);
-      if (nt === 'attack' || nt === 'fight' || nt === 'base_lost') base.attack = true;
+      if (nt === 'attack') base.attack = true;
       if (nt === 'expansion') base.expansion = true;
       if (nt === 'leave_game' || nt === 'player_dropped' || nt === 'mass_disconnect' || nt === 'player_stopped_playing') base.leaves = true;
       if (SUMMARY_TOPIC_PATTERNS.nuke.test(text)) base.nuke = true;

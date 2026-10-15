@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	openbw "github.com/marianogappa/openbw-go"
 	"github.com/marianogappa/openbw-go/bwgame"
@@ -62,6 +63,14 @@ type passState struct {
 	openResearch map[researchKey]int
 	ticks        int
 	selects      []selectResult
+	carriedBy    map[openbw.UnitID]openbw.UnitID
+	lastSeen     map[openbw.UnitID]seenAt
+}
+
+type seenAt struct {
+	x, y  int32
+	owner int8
+	typ   openbw.UnitType
 }
 
 func newPassState(g *screpsim.Game) *passState {
@@ -72,6 +81,8 @@ func newPassState(g *screpsim.Game) *passState {
 		openUnits:    map[openbw.UnitID]int{},
 		lastByUnit:   map[openbw.UnitID]int{},
 		openResearch: map[researchKey]int{},
+		carriedBy:    map[openbw.UnitID]openbw.UnitID{},
+		lastSeen:     map[openbw.UnitID]seenAt{},
 	}
 	for _, s := range e.PlayingSlots() {
 		if s > maxPlayerSlot {
@@ -240,22 +251,33 @@ func (p *passState) tick(frame int32) {
 	snapshot := p.ticks%(ArmyEveryFrames/EconomyEveryFrames) == 0
 	p.ticks++
 	var army []ArmyUnit
+	carried := map[openbw.UnitID]openbw.UnitID{}
+	seen := map[openbw.UnitID]seenAt{}
 	for u := range e.Units() {
 		if u.Owner > maxPlayerSlot || u.Dying {
 			continue
 		}
 		info := e.UnitTypeInfo(u.Type)
-		switch {
-		case u.Type == larvaType:
+		if u.Type == larvaType {
 			larva[u.Owner]++
-		case info.Worker:
-			if u.Completed {
-				workers[u.Owner]++
-			}
-		case snapshot && isArmy(u, info):
+		}
+		if info.Worker && u.Completed {
+			workers[u.Owner]++
+		}
+		if u.Loaded && u.Container != 0 {
+			carried[u.ID] = u.Container
+			continue
+		}
+		if !onMap(u, info) {
+			continue
+		}
+		seen[u.ID] = seenAt{x: u.X, y: u.Y, owner: u.Owner, typ: u.Type}
+		if snapshot {
 			army = append(army, ArmyUnit{Owner: u.Owner, Type: uint16(u.Type), X: u.X / ArmyCellPixels, Y: u.Y / ArmyCellPixels})
 		}
 	}
+	p.trackUnloads(frame, carried)
+	p.trackTeleports(frame, seen)
 	for _, s := range p.slots {
 		pl := e.Player(s)
 		p.d.Economy = append(p.d.Economy, EconomySample{
@@ -270,13 +292,98 @@ func (p *passState) tick(frame int32) {
 	}
 }
 
+// trackUnloads compares who rides in which transport with a second ago: units that left a Dropship,
+// Shuttle or Overlord and are alive on the map were unloaded. A Bunker is not a transport.
+func (p *passState) trackUnloads(frame int32, carried map[openbw.UnitID]openbw.UnitID) {
+	e := p.g.Engine()
+	byTransport := map[openbw.UnitID]*Unload{}
+	var order []openbw.UnitID
+	for unit, transport := range p.carriedBy {
+		if carried[unit] == transport {
+			continue
+		}
+		cargo, alive := e.Unit(unit)
+		t, tok := e.Unit(transport)
+		if !alive || cargo.Loaded || !tok || !isTransport(t.Type) {
+			continue
+		}
+		u, ok := byTransport[transport]
+		if !ok {
+			u = &Unload{Frame: frame, Transport: uint32(transport), TransportType: uint16(t.Type), Owner: t.Owner, X: t.X, Y: t.Y}
+			byTransport[transport] = u
+			order = append(order, transport)
+		}
+		u.Cargo = append(u.Cargo, uint16(cargo.Type))
+	}
+	slices.Sort(order)
+	for _, id := range order {
+		slices.Sort(byTransport[id].Cargo)
+		p.d.Unloads = append(p.d.Unloads, *byTransport[id])
+	}
+	p.carriedBy = carried
+}
+
+const teleportPixels = 16 * 32
+
+// trackTeleports finds units that crossed more than 16 tiles in one second, which no unit can walk or
+// fly: a Recall or a Nydus Canal. Units just unloaded were not on the map a second ago, so they never count.
+func (p *passState) trackTeleports(frame int32, seen map[openbw.UnitID]seenAt) {
+	byOwner := map[int8]*Teleport{}
+	var owners []int8
+	var sums = map[int8]*[4]int64{}
+	for id, now := range seen {
+		before, ok := p.lastSeen[id]
+		if !ok || before.owner != now.owner {
+			continue
+		}
+		dx, dy := int64(now.x-before.x), int64(now.y-before.y)
+		if dx*dx+dy*dy <= teleportPixels*teleportPixels {
+			continue
+		}
+		t, ok := byOwner[now.owner]
+		if !ok {
+			t = &Teleport{Frame: frame, Owner: now.owner}
+			byOwner[now.owner] = t
+			sums[now.owner] = &[4]int64{}
+			owners = append(owners, now.owner)
+		}
+		t.Units = append(t.Units, uint16(now.typ))
+		s := sums[now.owner]
+		s[0] += int64(before.x)
+		s[1] += int64(before.y)
+		s[2] += int64(now.x)
+		s[3] += int64(now.y)
+	}
+	slices.Sort(owners)
+	for _, o := range owners {
+		t, s := byOwner[o], sums[o]
+		n := int64(len(t.Units))
+		t.FromX, t.FromY, t.ToX, t.ToY = int32(s[0]/n), int32(s[1]/n), int32(s[2]/n), int32(s[3]/n)
+		slices.Sort(t.Units)
+		p.d.Teleports = append(p.d.Teleports, *t)
+	}
+	p.lastSeen = seen
+}
+
+func isTransport(t openbw.UnitType) bool {
+	switch bwgame.UnitTypes(t) {
+	case bwgame.UnitTypesTerranDropship, bwgame.UnitTypesProtossShuttle, bwgame.UnitTypesZergOverlord:
+		return true
+	}
+	return false
+}
+
 const (
-	larvaType = openbw.UnitType(bwgame.UnitTypesZergLarva)
-	eggType   = openbw.UnitType(bwgame.UnitTypesZergEgg)
+	larvaType     = openbw.UnitType(bwgame.UnitTypesZergLarva)
+	eggType       = openbw.UnitType(bwgame.UnitTypesZergEgg)
+	cocoonType    = openbw.UnitType(bwgame.UnitTypesZergCocoon)
+	lurkerEggType = openbw.UnitType(bwgame.UnitTypesZergLurkerEgg)
 )
 
-func isArmy(u openbw.Unit, info openbw.UnitTypeInfo) bool {
-	return u.Completed && !u.Loaded && !u.Hallucination && !info.Building && u.Type != eggType && info.Supply > 0
+// onMap is a unit worth drawing on a snapshot: built, on the ground or in the air, and not a building,
+// whose life the productions and deaths already give exactly.
+func onMap(u openbw.Unit, info openbw.UnitTypeInfo) bool {
+	return u.Completed && !u.Loaded && !u.Hallucination && !info.Building && u.Type != eggType && u.Type != larvaType && u.Type != cocoonType && u.Type != lurkerEggType
 }
 
 func (p *passState) finish(err error) {

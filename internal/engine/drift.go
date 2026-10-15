@@ -1,6 +1,10 @@
 package engine
 
-import "github.com/marianogappa/screpsim"
+import (
+	"github.com/icza/screp/rep/repcmd"
+	openbw "github.com/marianogappa/openbw-go"
+	"github.com/marianogappa/screpsim"
+)
 
 const (
 	actionSelect      = 0x09
@@ -18,6 +22,7 @@ type selectResult struct {
 }
 
 func (p *passState) commandResult(e *screpsim.CommandResult) {
+	p.recordCast(e)
 	if e.ActionID != actionSelect && e.ActionID != actionShiftSelect {
 		return
 	}
@@ -58,4 +63,15 @@ func desyncOnset(selects []selectResult) int32 {
 		}
 	}
 	return NoFrame
+}
+
+// castOrders are the spells a game event can be about: Recall, a Nuke, Stasis, Psionic Storm, Dark Swarm.
+var castOrders = map[byte]bool{0x89: true, 0x7e: true, 0x93: true, 0x8e: true, 0x77: true}
+
+func (p *passState) recordCast(e *screpsim.CommandResult) {
+	order, ok := e.Cmd.(*repcmd.TargetedOrderCmd)
+	if !ok || order.Order == nil || !castOrders[order.Order.ID] || e.Outcome != openbw.Accepted {
+		return
+	}
+	p.d.Casts = append(p.d.Casts, Cast{Frame: e.Frame, Owner: e.Owner, Order: order.Order.ID, X: int32(order.Pos.X), Y: int32(order.Pos.Y)})
 }

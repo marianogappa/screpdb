@@ -4,6 +4,7 @@ package dashboard
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
 	"sort"
 	"strconv"
@@ -12,8 +13,8 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/icza/screp/rep/repcmd"
+	openbw "github.com/marianogappa/openbw-go"
 	"github.com/marianogappa/screpdb/internal/engine"
-	"github.com/marianogappa/screpdb/internal/engine/macro"
 	"github.com/marianogappa/screpdb/internal/engine/moments"
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/models"
@@ -126,114 +127,176 @@ func populateSupplyCurves(detail *workflowGameDetail, dg *engine.Digest, playerB
 	}
 }
 
-// Command-inferred event types the engine replaces: it knows who fought, who expanded and who lost a base.
-var engineReplacedEventTypes = map[string]bool{"attack": true, "expansion": true, "takeover": true}
-
-const baseMatchRadius = 15 * 32
+// commandMetaEvents are the command-side events that are not guesses about the game state (who left,
+// who stopped playing, alliances, the openers). An engine game keeps these and takes every other event
+// from the engine; the two detectors are never mixed for one game.
+var commandMetaEvents = map[string]bool{
+	"player_start": true, "bo_openers": true, "leave_game": true, "player_dropped": true, "mass_disconnect": true,
+	"player_stopped_playing": true, "late_alliance": true, "team_stacking_detected": true,
+}
 
 func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models.MapContextLayout) {
 	dg, rec := d.engineDigest(detail.ReplayID)
 	if dg == nil {
 		return
 	}
-	players := map[int8]workflowGameEventPlayer{}
+	playersBySlot := map[int8]workflowGameEventPlayer{}
+	var players []moments.Player
 	for ordinal, p := range rec.Players {
 		id := library.PlayerID(rec.ID, uint8(ordinal))
 		for _, gp := range detail.Players {
 			if gp.PlayerID == id {
-				players[int8(p.Slot)] = workflowGameEventPlayer{PlayerID: id, Name: gp.Name, Color: gp.Color}
+				playersBySlot[int8(p.Slot)] = workflowGameEventPlayer{PlayerID: id, Name: gp.Name, Color: gp.Color}
 			}
 		}
+		players = append(players, moments.Player{Slot: int8(p.Slot), Race: engineRace(p.Race), Human: p.IsHuman() && !p.IsObserver()})
 	}
 	player := func(slot int8) *workflowGameEventPlayer {
-		if p, ok := players[slot]; ok {
+		if p, ok := playersBySlot[slot]; ok {
 			return &p
 		}
 		return nil
 	}
-	bases := overlayBaseMetasFromLayout(layout)
-	nearestBase := func(x, y int32) *workflowGameEventBase {
-		var best *workflowGameEventBase
-		bestDist := float64(baseMatchRadius * baseMatchRadius)
-		for i := range bases {
-			dx, dy := bases[i].Base.Center.X-float64(x), bases[i].Base.Center.Y-float64(y)
-			if dist := dx*dx + dy*dy; dist <= bestDist {
-				best, bestDist = &bases[i].Base, dist
-			}
+	metas := overlayBaseMetasFromLayout(layout)
+	bases := make([]moments.Base, len(metas))
+	for i, m := range metas {
+		kind := moments.BaseExpansion
+		switch {
+		case m.IsStarting:
+			kind = moments.BaseStart
+		case m.Base.NaturalOfClock != nil:
+			kind = moments.BaseNatural
 		}
-		return best
+		poly := make([][2]int32, len(m.Base.Polygon))
+		for j, pt := range m.Base.Polygon {
+			poly[j] = [2]int32{int32(pt.X), int32(pt.Y)}
+		}
+		bases[i] = moments.Base{Kind: kind, X: int32(m.Base.Center.X), Y: int32(m.Base.Center.Y), Polygon: poly}
+	}
+	base := func(i int) *workflowGameEventBase {
+		if i == moments.NoBase || i >= len(metas) {
+			return nil
+		}
+		b := metas[i].Base
+		return &b
 	}
 
 	kept := detail.GameEvents[:0]
 	for _, e := range detail.GameEvents {
-		if !engineReplacedEventTypes[e.Type] {
+		if commandMetaEvents[e.Type] {
+			e.Engine = &workflowEngineEvent{SnapshotSecond: e.Second, EndSecond: e.Second}
+			if e.Base != nil {
+				e.Engine.Region = regionAroundBase(e.Base)
+			}
 			kept = append(kept, e)
 		}
 	}
 	detail.GameEvents = kept
 
-	heldBases := map[int8]map[*workflowGameEventBase]bool{}
-	hold := func(owner int8, b *workflowGameEventBase) {
-		if heldBases[owner] == nil {
-			heldBases[owner] = map[*workflowGameEventBase]bool{}
-		}
-		heldBases[owner][b] = true
-	}
-	for _, u := range dg.Initial {
-		if b := nearestBase(u.X, u.Y); b != nil && moments.IsTownHall(u.Type) {
-			hold(u.Owner, b)
-		}
-	}
-	for _, m := range moments.Find(dg, macro.Compute(dg)) {
-		if _, ok := players[m.Actor]; !ok {
-			continue
-		}
+	for _, m := range moments.Detect(dg, bases, players) {
 		e := workflowGameEvent{
-			Type:   string(m.Kind),
+			Type:   m.Type,
 			Second: int64(m.Second),
 			Actor:  player(m.Actor),
 			Target: player(m.Target),
-			Engine: &workflowEngineEvent{SnapshotSecond: int64(m.SnapshotSecond), EndSecond: int64(m.EndSecond), Cancelled: m.Cancelled},
+			Base:   base(m.Base),
+			Engine: &workflowEngineEvent{
+				SnapshotSecond: int64(m.SnapshotSecond),
+				EndSecond:      int64(m.Second),
+				Region:         &workflowEngineRegion{X: int64(m.Region.X), Y: int64(m.Region.Y), W: int64(m.Region.W), H: int64(m.Region.H)},
+				Point:          &workflowGameEventPoint{X: float64(m.X), Y: float64(m.Y)},
+			},
 		}
-		if m.Region != nil {
-			e.Engine.Region = &workflowEngineRegion{X: int64(m.Region.X), Y: int64(m.Region.Y), W: int64(m.Region.W), H: int64(m.Region.H)}
-		}
-		if m.UnitType != 0 {
-			if u := repcmd.UnitByID(m.UnitType); u != nil {
-				e.Engine.UnitType = u.Name
-			}
-			e.Engine.Point = &workflowGameEventPoint{X: float64(m.X), Y: float64(m.Y)}
-			e.Base = nearestBase(m.X, m.Y)
-		}
-		// A town hall away from every base, or at a base the player holds, is production, not an expansion.
-		if m.Kind == moments.KindExpansion && len(bases) > 0 {
-			if e.Base == nil || heldBases[m.Actor][e.Base] {
-				continue
-			}
-			if !m.Cancelled {
-				hold(m.Actor, e.Base)
+		for _, t := range m.Units {
+			if u := repcmd.UnitByID(t); u != nil {
+				e.AttackUnitTypes = append(e.AttackUnitTypes, u.Name)
 			}
 		}
-		if m.Kind == moments.KindFight && m.Region != nil {
-			e.Base = nearestBase(m.Region.X+m.Region.W/2, m.Region.Y+m.Region.H/2)
+		switch m.Type {
+		case "recall":
+			e.Base, e.TargetBase, e.TargetOwner = base(m.SourceBase), base(m.Base), player(m.Target)
+			e.TargetPoint = e.Engine.Point
+		case "attack":
+			if e.Base == nil {
+				e.Base = openFieldBase(m, bases, rec, playersBySlot)
+			}
 		}
-		for _, s := range m.Sides {
-			p := player(s.Owner)
-			if p == nil {
-				continue
-			}
-			side := workflowEngineSide{Player: *p, LostMinerals: int64(s.Lost.Minerals), LostGas: int64(s.Lost.Gas), Killed: int64(s.Killed.Value()), UnitsLost: []workflowUnitCount{}}
-			for t, n := range s.UnitsLost {
-				if u := repcmd.UnitByID(t); u != nil {
-					side.UnitsLost = append(side.UnitsLost, workflowUnitCount{UnitType: u.Name, Count: int64(n)})
-				}
-			}
-			sort.Slice(side.UnitsLost, func(i, j int) bool { return side.UnitsLost[i].Count > side.UnitsLost[j].Count })
-			e.Engine.Sides = append(e.Engine.Sides, side)
+		if e.Actor == nil {
+			continue
 		}
 		detail.GameEvents = append(detail.GameEvents, e)
 	}
 	sort.SliceStable(detail.GameEvents, func(i, j int) bool { return detail.GameEvents[i].Second < detail.GameEvents[j].Second })
+}
+
+func engineRace(r library.Race) openbw.Race {
+	switch r {
+	case library.RaceZerg:
+		return openbw.RaceZerg
+	case library.RaceTerran:
+		return openbw.RaceTerran
+	case library.RaceProtoss:
+		return openbw.RaceProtoss
+	}
+	return openbw.RaceRandom
+}
+
+func regionAroundBase(b *workflowGameEventBase) *workflowEngineRegion {
+	minX, minY, maxX, maxY := b.Center.X, b.Center.Y, b.Center.X, b.Center.Y
+	for _, p := range b.Polygon {
+		minX, minY, maxX, maxY = math.Min(minX, p.X), math.Min(minY, p.Y), math.Max(maxX, p.X), math.Max(maxY, p.Y)
+	}
+	const margin, minSide = 8 * 32, 24 * 32
+	r := &workflowEngineRegion{X: int64(minX) - margin, Y: int64(minY) - margin, W: int64(maxX-minX) + 2*margin, H: int64(maxY-minY) + 2*margin}
+	if r.W < minSide {
+		r.X -= (minSide - r.W) / 2
+		r.W = minSide
+	}
+	if r.H < minSide {
+		r.Y -= (minSide - r.H) / 2
+		r.H = minSide
+	}
+	return r
+}
+
+// openFieldBase labels a battle away from any base the way the command-inferred 1v1 attacks do: by where
+// it sits on the line between the two mains.
+func openFieldBase(m moments.Event, bases []moments.Base, rec *library.Replay, players map[int8]workflowGameEventPlayer) *workflowGameEventBase {
+	mains := map[int8][2]float64{}
+	for _, u := range rec.Players {
+		if u.IsObserver() {
+			continue
+		}
+		if x, y := float64(u.StartX), float64(u.StartY); x != 0 || y != 0 {
+			mains[int8(u.Slot)] = [2]float64{x, y}
+		}
+	}
+	a, aok := mains[m.Target]
+	b, bok := mains[m.Actor]
+	ta, tb := players[m.Target], players[m.Actor]
+	if !aok || !bok || len(mains) != 2 {
+		return nil
+	}
+	ax, ay := b[0]-a[0], b[1]-a[1]
+	length := ax*ax + ay*ay
+	if length == 0 {
+		return nil
+	}
+	t := ((float64(m.X)-a[0])*ax + (float64(m.Y)-a[1])*ay) / length
+	var where string
+	switch {
+	case t < 0.30:
+		where = "near " + ta.Name + "'s base"
+	case t < 0.45:
+		where = "on " + ta.Name + "'s side of the map"
+	case t <= 0.55:
+		where = "in the middle"
+	case t < 0.70:
+		where = "on " + tb.Name + "'s side of the map"
+	default:
+		where = "near " + tb.Name + "'s base"
+	}
+	return &workflowGameEventBase{Name: where, Kind: "open_field", Center: workflowGameEventPoint{X: float64(m.X), Y: float64(m.Y)}}
 }
 
 type engineSnapshotBuilding struct {

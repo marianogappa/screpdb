@@ -2,11 +2,11 @@ package engine
 
 // EngineVersion keys the digest cache: bump it when Pass or the digest format changes what a digest holds.
 // Detector changes do not need a bump; detectors read digests at load time.
-const EngineVersion = 2
+const EngineVersion = 3
 
 const (
 	EconomyEveryFrames = 24
-	ArmyEveryFrames    = 240
+	ArmyEveryFrames    = 120
 	ArmyCellPixels     = 16
 	NoFrame            = -1
 	NoCmd              = -1
@@ -25,6 +25,9 @@ type Digest struct {
 	Outcomes      []Outcome
 	Economy       []EconomySample
 	Army          []ArmySnapshot
+	Unloads       []Unload
+	Teleports     []Teleport
+	Casts         []Cast
 	Drift         Drift
 }
 
@@ -123,6 +126,33 @@ type ArmySnapshot struct {
 type ArmyUnit struct {
 	Owner int8
 	Type  uint16
+	X, Y  int32
+}
+
+// Unload is a transport emptying some or all of its cargo within one second.
+type Unload struct {
+	Frame         int32
+	Transport     uint32
+	TransportType uint16
+	Owner         int8
+	X, Y          int32
+	Cargo         []uint16
+}
+
+// Teleport is a player's units jumping across the map within one second: a Recall or a Nydus Canal.
+type Teleport struct {
+	Frame        int32
+	Owner        int8
+	FromX, FromY int32
+	ToX, ToY     int32
+	Units        []uint16
+}
+
+// Cast is a spell order the engine accepted, with its target point.
+type Cast struct {
+	Frame int32
+	Owner int8
+	Order uint8
 	X, Y  int32
 }
 

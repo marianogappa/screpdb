@@ -441,14 +441,5 @@
   "fingerprint.coverage.belowBar": "The closest progamer match was not confident enough to name.",
   "game.stage.own": "Yours",
   "game.stage.complete": "Complete",
-  "errors.serverDown": "The screpdb server seems to be down. Please reopen screpdb and try again.",
-  "events.fight": "Fight",
-  "events.sentence.winsFight": "{actor} wins a fight against {target}: {won} resources killed for {lost} lost",
-  "events.sentence.winsFightAt": "{actor} wins a fight against {target} at {location}: {won} resources killed for {lost} lost",
-  "events.sentence.baseLost": "{actor} destroys a base of {target}",
-  "events.sentence.baseLostAt": "{actor} destroys the base of {target} at {location}",
-  "events.sentence.supplyBlocked": "{actor} is supply blocked for {duration}",
-  "events.sentence.floats": "{actor} floats money for {duration} with supply and production free",
-  "events.sentence.cancelsExpansion": "{actor} starts an expansion and cancels it",
-  "events.sentence.cancelsExpansionTo": "{actor} starts an expansion at {location} and cancels it"
+  "errors.serverDown": "The screpdb server seems to be down. Please reopen screpdb and try again."
 }

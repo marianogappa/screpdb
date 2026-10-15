@@ -9,7 +9,7 @@ import (
 	"io"
 )
 
-const codecMagic = "SDG2"
+const codecMagic = "SDG3"
 
 var errCorrupt = errors.New("engine digest: corrupt")
 
@@ -95,6 +95,18 @@ func Encode(d *Digest) ([]byte, error) {
 	}
 	writeEconomy(&w, d.Economy)
 	writeArmy(&w, d.Army)
+	writeUnloads(&w, d.Unloads)
+	writeTeleports(&w, d.Teleports)
+	w.uint(uint64(len(d.Casts)))
+	prev = 0
+	for _, c := range d.Casts {
+		w.int(int64(c.Frame - prev))
+		prev = c.Frame
+		w.int(int64(c.Owner))
+		w.uint(uint64(c.Order))
+		w.int(int64(c.X))
+		w.int(int64(c.Y))
+	}
 	w.str(d.Drift.EngineError)
 	w.int(int64(d.Drift.ErrorFrame))
 	w.int(int64(d.Drift.Selects))
@@ -155,6 +167,85 @@ func writeArmy(w *writer, snaps []ArmySnapshot) {
 			w.int(int64(u.Y))
 		}
 	}
+}
+
+func writeTypes(w *writer, types []uint16) {
+	w.uint(uint64(len(types)))
+	for _, t := range types {
+		w.uint(uint64(t))
+	}
+}
+
+func readTypes(r *reader) []uint16 {
+	types := makeN[[]uint16](r.count())
+	for i := range types {
+		types[i] = uint16(r.uint())
+	}
+	return types
+}
+
+func writeUnloads(w *writer, unloads []Unload) {
+	w.uint(uint64(len(unloads)))
+	var prev int32
+	for _, u := range unloads {
+		w.int(int64(u.Frame - prev))
+		prev = u.Frame
+		w.uint(uint64(u.Transport))
+		w.uint(uint64(u.TransportType))
+		w.int(int64(u.Owner))
+		w.int(int64(u.X))
+		w.int(int64(u.Y))
+		writeTypes(w, u.Cargo)
+	}
+}
+
+func readUnloads(r *reader) []Unload {
+	unloads := makeN[[]Unload](r.count())
+	var prev int32
+	for i := range unloads {
+		u := &unloads[i]
+		u.Frame = prev + int32(r.int())
+		prev = u.Frame
+		u.Transport = uint32(r.uint())
+		u.TransportType = uint16(r.uint())
+		u.Owner = int8(r.int())
+		u.X = int32(r.int())
+		u.Y = int32(r.int())
+		u.Cargo = readTypes(r)
+	}
+	return unloads
+}
+
+func writeTeleports(w *writer, teleports []Teleport) {
+	w.uint(uint64(len(teleports)))
+	var prev int32
+	for _, t := range teleports {
+		w.int(int64(t.Frame - prev))
+		prev = t.Frame
+		w.int(int64(t.Owner))
+		w.int(int64(t.FromX))
+		w.int(int64(t.FromY))
+		w.int(int64(t.ToX))
+		w.int(int64(t.ToY))
+		writeTypes(w, t.Units)
+	}
+}
+
+func readTeleports(r *reader) []Teleport {
+	teleports := makeN[[]Teleport](r.count())
+	var prev int32
+	for i := range teleports {
+		t := &teleports[i]
+		t.Frame = prev + int32(r.int())
+		prev = t.Frame
+		t.Owner = int8(r.int())
+		t.FromX = int32(r.int())
+		t.FromY = int32(r.int())
+		t.ToX = int32(r.int())
+		t.ToY = int32(r.int())
+		t.Units = readTypes(r)
+	}
+	return teleports
 }
 
 func Decode(b []byte) (*Digest, error) {
@@ -243,6 +334,19 @@ func Decode(b []byte) (*Digest, error) {
 	}
 	d.Economy = readEconomy(&r)
 	d.Army = readArmy(&r)
+	d.Unloads = readUnloads(&r)
+	d.Teleports = readTeleports(&r)
+	d.Casts = makeN[[]Cast](r.count())
+	prev = 0
+	for i := range d.Casts {
+		c := &d.Casts[i]
+		c.Frame = prev + int32(r.int())
+		prev = c.Frame
+		c.Owner = int8(r.int())
+		c.Order = uint8(r.uint())
+		c.X = int32(r.int())
+		c.Y = int32(r.int())
+	}
 	d.Drift.EngineError = r.str()
 	d.Drift.ErrorFrame = int32(r.int())
 	d.Drift.Selects = int32(r.int())

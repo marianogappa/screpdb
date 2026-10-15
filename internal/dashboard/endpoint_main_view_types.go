@@ -551,10 +551,7 @@ type workflowEngineEvent struct {
 	SnapshotSecond int64                   `json:"snapshot_second"`
 	EndSecond      int64                   `json:"end_second"`
 	Region         *workflowEngineRegion   `json:"region,omitempty"`
-	Sides          []workflowEngineSide    `json:"sides,omitempty"`
-	UnitType       string                  `json:"unit_type,omitempty"`
 	Point          *workflowGameEventPoint `json:"point,omitempty"`
-	Cancelled      bool                    `json:"cancelled,omitempty"`
 }
 
 // workflowEngineRegion is a rectangle of the map in pixels.
@@ -563,14 +560,6 @@ type workflowEngineRegion struct {
 	Y int64 `json:"y"`
 	W int64 `json:"w"`
 	H int64 `json:"h"`
-}
-
-type workflowEngineSide struct {
-	Player       workflowGameEventPlayer `json:"player"`
-	LostMinerals int64                   `json:"lost_minerals"`
-	LostGas      int64                   `json:"lost_gas"`
-	Killed       int64                   `json:"killed"`
-	UnitsLost    []workflowUnitCount     `json:"units_lost"`
 }
 
 type workflowGameEventBuildOrder struct {

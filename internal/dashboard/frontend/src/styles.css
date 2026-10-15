@@ -7572,10 +7572,6 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   stroke: rgba(251, 191, 36, 0.9);
   stroke-dasharray: 48 32;
 }
-.engine-snapshot-point {
-  fill: none;
-  stroke: rgba(251, 191, 36, 0.9);
-}
 .engine-snapshot-meta {
   display: flex;
   justify-content: space-between;
