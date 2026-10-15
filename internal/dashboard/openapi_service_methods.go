@@ -112,20 +112,21 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 	items := []workflowGameListItem{}
 	for _, row := range listRows {
 		items = append(items, workflowGameListItem{
-			ReplayID:           row.ReplayID,
-			ReplayDate:         row.ReplayDate,
-			FileName:           row.FileName,
-			MapName:            row.MapName,
-			MapKind:            row.MapKind,
-			GameSource:         row.GameSource,
-			LobbyKind:          row.LobbyKind,
-			DurationSeconds:    row.DurationSeconds,
-			GameType:           row.GameType,
-			Matchup:            row.Matchup,
-			TeamStacking:       row.TeamStacking,
-			TeamInfoIncomplete: row.TeamInfoIncomplete,
-			Players:            []workflowGameListPlayer{},
-			Featuring:          []string{},
+			ReplayID:             row.ReplayID,
+			ReplayDate:           row.ReplayDate,
+			FileName:             row.FileName,
+			MapName:              row.MapName,
+			MapKind:              row.MapKind,
+			GameSource:           row.GameSource,
+			LobbyKind:            row.LobbyKind,
+			DurationSeconds:      row.DurationSeconds,
+			GameType:             row.GameType,
+			Matchup:              row.Matchup,
+			TeamStacking:         row.TeamStacking,
+			TeamInfoIncomplete:   row.TeamInfoIncomplete,
+			Players:              []workflowGameListPlayer{},
+			Featuring:            []string{},
+			workflowEngineFields: d.engineFields(row.ReplayID),
 		})
 	}
 	if err := d.populateWorkflowGameListPlayers(items); err != nil {
@@ -150,6 +151,7 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 }
 
 func (d *Dashboard) GameDetail(_ context.Context, request apigen.GameDetailRequestObject) (any, error) {
+	d.focusEnginePass(int64(request.ReplayID))
 	detail, err := d.buildWorkflowGameDetail(request.ReplayID)
 	if err != nil {
 		if errors.Is(err, dashboarddb.ErrNotFound) {
@@ -399,10 +401,15 @@ func (d *Dashboard) PlayerDetail(_ context.Context, request apigen.PlayerDetailR
 	}
 	playerKey := normalizePlayerKey(request.PlayerKey)
 	build := d.buildWorkflowPlayerOverview
-	if _, isPro := propack.IDFromKey(playerKey); isPro {
+	_, isPro := propack.IDFromKey(playerKey)
+	if isPro {
 		build = d.buildFeaturedPlayerOverview
 	}
 	player, err := build(playerKey)
+	if err == nil && !isPro {
+		coverage := d.playerEngineCoverage(playerKey)
+		player.Engine = &coverage
+	}
 	if err != nil {
 		if errors.Is(err, dashboarddb.ErrNotFound) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)

@@ -254,6 +254,24 @@ function GlobalReplayFilterModal({
                 />
                 <span>{t('library.completeGamesOptOut')}</span>
               </label>
+              <label className="global-filter-toggle">
+                <input
+                  type="checkbox"
+                  checked={Boolean(featureFlags?.disable_engine_pass)}
+                  disabled={featureFlagsSaving}
+                  onChange={(e) => onFeatureFlagToggle('disable_engine_pass', e.target.checked)}
+                />
+                <span>{t('library.enginePassOptOut')}</span>
+              </label>
+              <label className="global-filter-toggle">
+                <input
+                  type="checkbox"
+                  checked={Boolean(featureFlags?.engine_pass_on_battery)}
+                  disabled={featureFlagsSaving || Boolean(featureFlags?.disable_engine_pass)}
+                  onChange={(e) => onFeatureFlagToggle('engine_pass_on_battery', e.target.checked)}
+                />
+                <span>{t('library.enginePassOnBattery')}</span>
+              </label>
               {featureFlagsMessage ? (
                 <span className={featureFlagsMessageIsError ? 'error-message' : 'ingest-helper-text'}>
                   {featureFlagsMessage}

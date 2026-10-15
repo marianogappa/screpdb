@@ -257,6 +257,11 @@ export const api = {
     return response.json();
   },
 
+  getEngineSnapshot: async (replayId, second) => {
+    const response = await fetch(`${API_BASE}/custom/games/${encodeURIComponent(replayId)}/engine-snapshot?second=${encodeURIComponent(second)}`);
+    if (!response.ok) throw new Error('Failed to get engine snapshot');
+    return response.json();
+  },
   getPlayer: async (playerKey) => {
     const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}`);
     if (!response.ok) {

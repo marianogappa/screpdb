@@ -93,6 +93,7 @@ func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) err
 		ReplayDir:    opts.ReplayDir,
 		LegacyDBPath: legacyDBPath,
 		Headless:     opts.Headless,
+		EnginePass:   true,
 		Debug:        opts.Debug,
 	})
 	if err != nil {

@@ -7486,3 +7486,123 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   text-align: center;
   white-space: nowrap;
 }
+
+/* Engine mode. The badge is quiet on purpose: it marks a data source, not something to act on. It
+   keeps its width in fast mode so the upgrade to engine data moves nothing on screen. */
+.engine-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: rgba(203, 213, 225, 0.75);
+  vertical-align: middle;
+  white-space: nowrap;
+  cursor: help;
+  transition: opacity 0.6s ease;
+}
+.engine-badge--reserved {
+  visibility: hidden;
+  opacity: 0;
+}
+.engine-badge--low {
+  border-color: rgba(251, 191, 36, 0.4);
+  color: rgba(251, 191, 36, 0.8);
+}
+.workflow-games-list-duration .engine-badge {
+  font-size: 0.62rem;
+}
+.engine-refresh-chip {
+  display: block;
+  margin: 0 auto 8px;
+  padding: 2px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  background: rgba(30, 41, 59, 0.6);
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.engine-refresh-chip:hover {
+  border-color: rgba(148, 163, 184, 0.7);
+}
+.engine-coverage {
+  display: block;
+  font-size: 0.75rem;
+  color: rgba(148, 163, 184, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+.engine-coverage--panel {
+  margin: 0 0 8px;
+  text-align: right;
+}
+
+.macro-table th[scope='row'] {
+  text-align: left;
+  font-weight: 500;
+  color: rgba(226, 232, 240, 0.85);
+  cursor: help;
+  white-space: nowrap;
+}
+.macro-table td {
+  font-variant-numeric: tabular-nums;
+}
+.macro-sparkline {
+  display: block;
+}
+
+.engine-snapshot-frame {
+  width: 100%;
+  max-height: 70vh;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #05070c;
+}
+.engine-snapshot-frame svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.engine-snapshot-region {
+  fill: none;
+  stroke: rgba(251, 191, 36, 0.9);
+  stroke-dasharray: 48 32;
+}
+.engine-snapshot-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: rgba(148, 163, 184, 0.9);
+}
+.macro-table td.macro-best {
+  font-weight: 700;
+  color: rgba(241, 245, 249, 1);
+}
+.macro-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.macro-range {
+  display: block;
+}
+.macro-range-whisker,
+.macro-range-median {
+  stroke: rgba(148, 163, 184, 0.7);
+  stroke-width: 1;
+}
+.macro-range-band {
+  fill: rgba(148, 163, 184, 0.28);
+}
+.macro-range-legend {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: rgba(148, 163, 184, 0.85);
+}

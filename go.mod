@@ -1,6 +1,6 @@
 module github.com/marianogappa/screpdb
 
-go 1.26.4
+go 1.27.1
 
 require (
 	aead.dev/minisign v0.2.0
@@ -9,9 +9,11 @@ require (
 	github.com/getlantern/systray v1.2.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
-	github.com/icza/screp v1.12.17
+	github.com/icza/screp v1.13.8
+	github.com/marianogappa/openbw-go v0.0.0
 	github.com/marianogappa/scfingerprint v0.0.0-20260912102954-40ec8770aef7
 	github.com/marianogappa/scmapanalyzer v0.0.0-20260909190658-5cd3770af9eb
+	github.com/marianogappa/screpsim v0.0.0-20261015141751-8ac8b8e4d3e8
 	github.com/mark3labs/mcp-go v0.55.1
 	github.com/minio/selfupdate v0.6.0
 	github.com/oapi-codegen/runtime v1.7.0
@@ -20,9 +22,9 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/image v0.39.0
-	golang.org/x/sync v0.20.0
+	golang.org/x/sync v0.24.0
 	golang.org/x/sys v0.45.0
-	golang.org/x/text v0.37.0
+	golang.org/x/text v0.43.0
 	modernc.org/sqlite v1.45.0
 )
 
@@ -41,7 +43,7 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/google/jsonschema-go v0.4.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/icza/gox v0.2.0 // indirect
+	github.com/icza/gox v0.2.14 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -66,3 +68,5 @@ require (
 )
 
 replace github.com/icza/screp => github.com/marianogappa/screp v0.0.0-20250930085841-44d5f5ad657c
+
+replace github.com/marianogappa/openbw-go => github.com/marianogappa/openbw-go v0.0.0-20261015152430-94f5fe0ffe92

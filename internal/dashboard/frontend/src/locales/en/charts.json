@@ -111,5 +111,7 @@
   "chart.supply.startingSupply": "Starting supply",
   "chart.supply.addition": "{built}  (+{delta})",
   "chart.supply.additionMulti": "{built} ×{count}  (+{delta})",
-  "chart.supply.total": "Total: {total} supply"
+  "chart.supply.total": "Total: {total} supply",
+  "chart.supply.engineNote": "Supply from the game engine: the solid line is the supply cap, the dashed line is supply used. Where they meet, the player was supply blocked.",
+  "chart.supply.capChange": "Supply cap {delta}"
 }

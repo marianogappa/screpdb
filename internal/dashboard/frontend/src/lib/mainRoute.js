@@ -7,6 +7,7 @@ export const MAIN_GAME_TABS = [
   'events',
   'units',
   'hotkeys',
+  'macro',
   'supply-timeline',
   'timings',
   'build-orders',

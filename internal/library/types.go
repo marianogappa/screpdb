@@ -221,6 +221,40 @@ type Replay struct {
 	Chat     []ChatLine
 	Alliance *AllianceTimeline
 	Layout   *MapLayout
+
+	// EngineData is nil until the engine pass upgrades the replay ("engine" mode over "fast").
+	EngineData *EngineData
+}
+
+// EngineData is what the library keeps of an engine pass. The full digest stays in the digest cache file
+// and is read on demand; only what lists and aggregates need lives here.
+type EngineData struct {
+	EngineVersion int32
+	LowConfidence bool
+	// TrustedUntil is the first frame whose engine data may disagree with the real game.
+	TrustedUntil uint32
+	Players      []EnginePlayer
+}
+
+// EnginePlayer is one player's macro scorecard; a ratio is NaN when the game gives it no basis.
+type EnginePlayer struct {
+	Slot                 uint8
+	Seconds              uint16
+	SupplyBlockedSeconds uint16
+	SupplyBlocks         uint16
+	BlocksPer100Supply   float32
+	SpareSupply          float32
+	SpendingQuotient     float32
+	IncomePerMinute      float32
+	AverageUnspent       float32
+	WorkerIdleShare      float32
+	ProductionIdleShare  float32
+	WorkersBy6Min        uint16
+	SecondsTo40Workers   float32
+	FloatSeconds         uint16
+	// Income is minerals plus gas gathered in each full minute; Workers is the workers alive at each minute.
+	Income  []uint16
+	Workers []uint16
 }
 
 // Path is the newest file holding this replay.

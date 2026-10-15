@@ -10,7 +10,9 @@
 //   - the current working directory — the SQLite database (and its -wal/-shm
 //     siblings) plus opt-in debug artifacts live here;
 //   - the replays folder — read replays and write "watch me" replays;
-//   - the OS user-cache dir — cached game-asset PNGs.
+//   - the OS user-cache dir — cached game-asset PNGs;
+//   - read-only: the StarCraft: Remastered install and Battle.net's product.db,
+//     which the engine pass reads its game data from (AllowReadOnlyDir).
 //
 // Until at least one root is registered the facade is permissive, so unit tests
 // and pre-config bootstrap code keep working. Once any root is registered, every
@@ -37,23 +39,19 @@ import (
 var ErrForbidden = errors.New("iofacade: path outside permitted roots")
 
 var (
-	mu      sync.RWMutex
-	allowed []string // absolute, cleaned permitted roots
+	mu       sync.RWMutex
+	allowed  []string // absolute, cleaned permitted roots
+	readOnly []string // absolute, cleaned roots that only the read operations accept
 )
 
 // AllowDir registers dir and its subtree as a permitted root. Calling it with a
 // path already covered is a no-op, as is an empty dir. Registering the first
 // root flips the facade from permissive to enforcing.
 func AllowDir(dir string) error {
-	dir = strings.TrimSpace(dir)
-	if dir == "" {
-		return nil
-	}
-	abs, err := filepath.Abs(dir)
-	if err != nil {
+	abs, err := cleanRoot(dir)
+	if err != nil || abs == "" {
 		return err
 	}
-	abs = filepath.Clean(abs)
 	mu.Lock()
 	defer mu.Unlock()
 	for _, r := range allowed {
@@ -65,11 +63,58 @@ func AllowDir(dir string) error {
 	return nil
 }
 
+// AllowReadOnlyDir registers dir (a directory or a single file) as a root that
+// Open, ReadFile, Stat, ReadDir and Walk accept and every write refuses.
+func AllowReadOnlyDir(dir string) error {
+	abs, err := cleanRoot(dir)
+	if err != nil || abs == "" {
+		return err
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	for _, r := range readOnly {
+		if r == abs {
+			return nil
+		}
+	}
+	readOnly = append(readOnly, abs)
+	return nil
+}
+
+// RevokeReadOnlyDir removes a root that AllowReadOnlyDir registered, for a
+// candidate that turned out not to be what the caller looked for.
+func RevokeReadOnlyDir(dir string) {
+	abs, err := cleanRoot(dir)
+	if err != nil || abs == "" {
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	for i, r := range readOnly {
+		if r == abs {
+			readOnly = append(readOnly[:i], readOnly[i+1:]...)
+			return
+		}
+	}
+}
+
+func cleanRoot(dir string) (string, error) {
+	dir = strings.TrimSpace(dir)
+	if dir == "" {
+		return "", nil
+	}
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Clean(abs), nil
+}
+
 // Configure replaces the allowlist with the given roots. Empty entries are
 // skipped. Primarily used by command entrypoints and tests.
 func Configure(dirs ...string) error {
 	mu.Lock()
-	allowed = nil
+	allowed, readOnly = nil, nil
 	mu.Unlock()
 	for _, d := range dirs {
 		if err := AllowDir(d); err != nil {
@@ -82,13 +127,18 @@ func Configure(dirs ...string) error {
 // Reset clears the allowlist, returning the facade to permissive mode. For tests.
 func Reset() {
 	mu.Lock()
-	allowed = nil
+	allowed, readOnly = nil, nil
 	mu.Unlock()
 }
 
 // resolve cleans path to an absolute form and verifies it sits within a
-// permitted root (or that the facade is still permissive).
-func resolve(path string) (string, error) {
+// writable root (or that the facade is still permissive).
+func resolve(path string) (string, error) { return check(path, false) }
+
+// resolveRead is resolve that also accepts the read-only roots.
+func resolveRead(path string) (string, error) { return check(path, true) }
+
+func check(path string, read bool) (string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return "", err
@@ -97,20 +147,27 @@ func resolve(path string) (string, error) {
 
 	mu.RLock()
 	defer mu.RUnlock()
-	if len(allowed) == 0 {
+	if len(allowed) == 0 && len(readOnly) == 0 {
 		return abs, nil // permissive until the first root is registered
 	}
-	for _, r := range allowed {
-		if abs == r || strings.HasPrefix(abs, r+string(os.PathSeparator)) {
-			return abs, nil
-		}
+	if within(abs, allowed) || read && within(abs, readOnly) {
+		return abs, nil
 	}
 	return "", fmt.Errorf("%w: %s", ErrForbidden, abs)
 }
 
+func within(abs string, roots []string) bool {
+	for _, r := range roots {
+		if abs == r || strings.HasPrefix(abs, r+string(os.PathSeparator)) {
+			return true
+		}
+	}
+	return false
+}
+
 // Open opens a permitted path for reading.
 func Open(path string) (*os.File, error) {
-	p, err := resolve(path)
+	p, err := resolveRead(path)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +185,7 @@ func Create(path string) (*os.File, error) {
 
 // ReadFile reads the contents of a permitted file.
 func ReadFile(path string) ([]byte, error) {
-	p, err := resolve(path)
+	p, err := resolveRead(path)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +230,7 @@ func MkdirAll(path string, perm os.FileMode) error {
 
 // Stat stats a permitted path.
 func Stat(path string) (os.FileInfo, error) {
-	p, err := resolve(path)
+	p, err := resolveRead(path)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +270,7 @@ func RemoveAll(path string) error {
 
 // ReadDir lists the entries of a permitted directory.
 func ReadDir(path string) ([]os.DirEntry, error) {
-	p, err := resolve(path)
+	p, err := resolveRead(path)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +280,7 @@ func ReadDir(path string) ([]os.DirEntry, error) {
 // Walk walks the file tree rooted at a permitted directory. The whole subtree
 // is implicitly permitted because it lives under root.
 func Walk(root string, fn filepath.WalkFunc) error {
-	r, err := resolve(root)
+	r, err := resolveRead(root)
 	if err != nil {
 		return err
 	}
