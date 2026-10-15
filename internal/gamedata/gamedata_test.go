@@ -14,15 +14,41 @@ import (
 
 func TestCandidates(t *testing.T) {
 	env := map[string]string{"ProgramFiles(x86)": `C:\Program Files (x86)`, "ProgramFiles": `C:\Program Files`}
-	got := candidates("windows", func(k string) string { return env[k] })
+	got := candidates("windows", func(k string) string { return env[k] }, "")
 	want := []string{filepath.Join(`C:\Program Files (x86)`, "StarCraft"), filepath.Join(`C:\Program Files`, "StarCraft")}
 	if !slices.Equal(got, want) {
 		t.Fatalf("windows: got %q, want %q", got, want)
 	}
 	env = map[string]string{InstallDirEnv: "/games/sc"}
-	got = candidates("linux", func(k string) string { return env[k] })
+	got = candidates("linux", func(k string) string { return env[k] }, "")
 	if !slices.Equal(got, []string{"/games/sc"}) {
 		t.Fatalf("override: got %q", got)
+	}
+}
+
+func TestLinuxCandidatesUseWinePrefixes(t *testing.T) {
+	home := t.TempDir()
+	prefix := filepath.Join(home, "Games", "battlenet")
+	var db []byte
+	db = append(db, protoString(2, `C:\Games\StarCraft`)...)
+	db = append(db, protoString(3, `D:\SC`)...)
+	productDB := filepath.Join(prefix, "drive_c", "ProgramData", "Battle.net", "Agent", "product.db")
+	if err := os.MkdirAll(filepath.Dir(productDB), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(productDB, db, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := candidates("linux", func(string) string { return "" }, home)
+	for _, want := range []string{
+		filepath.Join(prefix, "drive_c", "Games", "StarCraft"),
+		filepath.Join(prefix, "dosdevices", "d:", "SC"),
+		filepath.Join(home, ".wine", "drive_c", "Program Files (x86)", "StarCraft"),
+		filepath.Join(home, ".local", "share", "bottles", "bottles", "Battle.net", "drive_c", "Program Files", "StarCraft"),
+	} {
+		if !slices.Contains(got, want) {
+			t.Errorf("missing %s in %q", want, got)
+		}
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/marianogappa/screpdb/internal/casc"
 	"github.com/marianogappa/screpdb/internal/iofacade"
@@ -24,7 +25,8 @@ var ErrNoInstall = errors.New("gamedata: no StarCraft: Remastered install found"
 // FindInstall returns the first candidate that holds a StarCraft: Remastered CASC storage, and leaves
 // only that folder readable through iofacade.
 func FindInstall() (string, error) {
-	for _, dir := range candidates(runtime.GOOS, os.Getenv) {
+	home, _ := os.UserHomeDir()
+	for _, dir := range candidates(runtime.GOOS, os.Getenv, home) {
 		if err := iofacade.AllowReadOnlyDir(dir); err != nil {
 			continue
 		}
@@ -36,7 +38,7 @@ func FindInstall() (string, error) {
 	return "", ErrNoInstall
 }
 
-func candidates(goos string, getenv func(string) string) []string {
+func candidates(goos string, getenv func(string) string, home string) []string {
 	var dirs []string
 	add := func(d string) {
 		if d == "" {
@@ -54,6 +56,17 @@ func candidates(goos string, getenv func(string) string) []string {
 		add(d)
 	}
 	switch goos {
+	case "linux":
+		for _, prefix := range winePrefixes(getenv, home) {
+			if prefix == "" {
+				continue
+			}
+			for _, d := range battleNetInstallPaths(filepath.Join(prefix, "drive_c", "ProgramData", "Battle.net", "Agent", "product.db")) {
+				add(inPrefix(prefix, d))
+			}
+			add(filepath.Join(prefix, "drive_c", "Program Files (x86)", "StarCraft"))
+			add(filepath.Join(prefix, "drive_c", "Program Files", "StarCraft"))
+		}
 	case "darwin":
 		add("/Applications/StarCraft")
 	case "windows":
@@ -64,6 +77,41 @@ func candidates(goos string, getenv func(string) string) []string {
 		}
 	}
 	return dirs
+}
+
+// winePrefixes lists where Linux players usually run Battle.net: plain Wine, Lutris's Battle.net
+// installer and Bottles (native and Flatpak). SCREPDB_STARCRAFT_DIR covers any other place.
+func winePrefixes(getenv func(string) string, home string) []string {
+	prefixes := []string{getenv("WINEPREFIX")}
+	if home == "" {
+		return prefixes
+	}
+	for _, rel := range []string{
+		".wine",
+		"Games/battlenet",
+		"Games/battle-net",
+		"Games/starcraft",
+		"Games/starcraft-remastered",
+		".local/share/bottles/bottles/Battle.net",
+		".var/app/com.usebottles.bottles/data/bottles/bottles/Battle.net",
+	} {
+		prefixes = append(prefixes, filepath.Join(home, filepath.FromSlash(rel)))
+	}
+	return prefixes
+}
+
+// inPrefix maps a Windows path that Battle.net wrote inside a Wine prefix to the Linux path:
+// C: is the prefix's drive_c, other letters live under dosdevices.
+func inPrefix(prefix, winPath string) string {
+	if prefix == "" || len(winPath) < 3 || winPath[1] != ':' {
+		return ""
+	}
+	rest := filepath.FromSlash(strings.ReplaceAll(winPath[3:], "\\", "/"))
+	drive := strings.ToLower(winPath[:1])
+	if drive == "c" {
+		return filepath.Join(prefix, "drive_c", rest)
+	}
+	return filepath.Join(prefix, "dosdevices", drive+":", rest)
 }
 
 func productDBPath(goos string, getenv func(string) string) string {
