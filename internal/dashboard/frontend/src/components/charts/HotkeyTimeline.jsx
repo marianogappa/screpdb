@@ -50,7 +50,8 @@ export const hotkeyCountColor = (count) => {
 
 const mmss = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 
-// Events are [sec, type, group, count, buildingID, tileX, tileY] tuples.
+// Events are [sec, type, group, count, buildingID, tileX, tileY, unitType, unitCount] tuples; the last two
+// come from the engine (unitCount 0 without it; unitType 0 is a Marine): the group's main unit and how many units it held.
 export const EV_SEC = 0;
 export const EV_TYPE = 1;
 export const EV_GROUP = 2;
@@ -58,6 +59,8 @@ export const EV_COUNT = 3;
 export const EV_BUILDING = 4;
 export const EV_TILE_X = 5;
 export const EV_TILE_Y = 6;
+export const EV_UNIT_TYPE = 7;
+export const EV_UNIT_COUNT = 8;
 export const TYPE_ASSIGN_UNITS = 1;
 export const TYPE_ASSIGN_BUILDING = 3;
 
@@ -114,6 +117,7 @@ export default function HotkeyTimeline({ payload }) {
   const t = useT();
   const players = payload?.players || [];
   const buildingNames = payload?.buildings || {};
+  const unitNames = payload?.units || {};
   const durationSeconds = Math.max(60, payload?.duration_seconds || 60);
   const minutesTotal = durationSeconds / 60;
 
@@ -210,9 +214,11 @@ export default function HotkeyTimeline({ payload }) {
     // Wheel/drag panning needs non-passive handlers on a plain container.
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div className="hk-timeline" ref={containerRef} onPointerDown={onPointerDown} onWheelCapture={onWheel}>
-      <div className="workflow-section-warning hk-warning">
-        {t('chart.hotkey.selectionWarning')}
-      </div>
+      {payload?.unit_types_exact ? null : (
+        <div className="workflow-section-warning hk-warning">
+          {t('chart.hotkey.selectionWarning')}
+        </div>
+      )}
       {rowsByPlayer.map(({ player, groups, byGroup }) => (
         <div key={player.player_id} className="hk-player">
           <div className="hk-player-head">
@@ -261,9 +267,10 @@ export default function HotkeyTimeline({ payload }) {
                         );
                       }
                       if (e[EV_TYPE] === TYPE_ASSIGN_UNITS) {
+                        const unitName = e[EV_UNIT_COUNT] > 0 ? unitNames[e[EV_UNIT_TYPE]] : null;
                         // Streams encoded before the 12-unit cap can carry
                         // stale-tag inflated counts; clamp at render too.
-                        const n = Math.min(e[EV_COUNT], 12);
+                        const n = unitName ? e[EV_UNIT_COUNT] : Math.min(e[EV_COUNT], 12);
                         return (
                           <span
                             key={i}
@@ -271,7 +278,9 @@ export default function HotkeyTimeline({ payload }) {
                             style={{ left: `${x}px` }}
                             title={t.plural('chart.hotkey.assignUnitsTitle', n, { time: mmss(e[EV_SEC]), group: g })}
                           >
-                            <img src={getUnitIcon(UNIT_SILHOUETTE[player.race] || 'Marine')} alt="" className="hk-silhouette" />
+                            {unitName
+                              ? <img src={getUnitIcon(unitName)} alt="" />
+                              : <img src={getUnitIcon(UNIT_SILHOUETTE[player.race] || 'Marine')} alt="" className="hk-silhouette" />}
                             <i className="hk-count" style={{ background: hotkeyCountColor(n) }}>{n}</i>
                           </span>
                         );

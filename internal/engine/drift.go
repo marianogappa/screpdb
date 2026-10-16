@@ -23,6 +23,7 @@ type selectResult struct {
 
 func (p *passState) commandResult(e *screpsim.CommandResult) {
 	p.recordCast(e)
+	p.recordHotkey(e)
 	if e.ActionID != actionSelect && e.ActionID != actionShiftSelect {
 		return
 	}

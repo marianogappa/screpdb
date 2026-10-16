@@ -107,6 +107,15 @@ func Encode(d *Digest) ([]byte, error) {
 		w.int(int64(c.X))
 		w.int(int64(c.Y))
 	}
+	w.uint(uint64(len(d.Hotkeys)))
+	prev = 0
+	for _, h := range d.Hotkeys {
+		w.int(int64(h.Frame - prev))
+		prev = h.Frame
+		w.uint(uint64(h.Owner)<<4 | uint64(h.Group))
+		w.uint(uint64(h.MainType))
+		w.uint(uint64(h.Count))
+	}
 	w.str(d.Drift.EngineError)
 	w.int(int64(d.Drift.ErrorFrame))
 	w.int(int64(d.Drift.Selects))
@@ -346,6 +355,17 @@ func Decode(b []byte) (*Digest, error) {
 		c.Order = uint8(r.uint())
 		c.X = int32(r.int())
 		c.Y = int32(r.int())
+	}
+	d.Hotkeys = makeN[[]HotkeyAssign](r.count())
+	prev = 0
+	for i := range d.Hotkeys {
+		h := &d.Hotkeys[i]
+		h.Frame = prev + int32(r.int())
+		prev = h.Frame
+		og := r.uint()
+		h.Owner, h.Group = int8(og>>4), uint8(og&0xF)
+		h.MainType = uint16(r.uint())
+		h.Count = uint8(r.uint())
 	}
 	d.Drift.EngineError = r.str()
 	d.Drift.ErrorFrame = int32(r.int())

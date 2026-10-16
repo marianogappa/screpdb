@@ -17,3 +17,5 @@ func (d *Dashboard) applyEngineEvents(*workflowGameDetail, *models.MapContextLay
 func (d *Dashboard) handlerEngineSnapshot(w http.ResponseWriter, _ *http.Request) {
 	http.Error(w, "no engine data in the browser demo", http.StatusNotFound)
 }
+
+func (d *Dashboard) applyEngineHotkeys(int64, *hotkeyTimelinePayload) {}

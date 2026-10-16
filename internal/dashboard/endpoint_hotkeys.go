@@ -27,10 +27,12 @@ type hotkeyTimelinePlayer struct {
 	Name     string `json:"name"`
 	Race     string `json:"race"`
 	Team     int64  `json:"team"`
-	// Events are [sec, type, group, count, buildingID, tileX, tileY] tuples;
+	// Events are [sec, type, group, count, buildingID, tileX, tileY, unitType, unitCount] tuples;
 	// type is the internal/hotkeystream wire type (0=Select, 1=Assign units,
-	// 2=Add, 3=Assign building).
-	Events [][7]int `json:"events"`
+	// 2=Add, 3=Assign building). unitType and unitCount come from the engine
+	// (0 when the replay has no engine data): the group's main unit and how
+	// many units it held.
+	Events [][9]int `json:"events"`
 	// Legacy marks a pre-v2 stream: times are real, annotations are absent.
 	Legacy bool `json:"legacy,omitempty"`
 }
@@ -40,7 +42,23 @@ type hotkeyTimelinePayload struct {
 	Players         []hotkeyTimelinePlayer `json:"players"`
 	// Buildings maps the building IDs used in events to display names.
 	Buildings map[byte]string `json:"buildings"`
+	// Units maps the unit types used in events to display names.
+	Units map[uint16]string `json:"units"`
+	// UnitTypesExact is true when every unit assign carries its real units.
+	UnitTypesExact bool `json:"unit_types_exact"`
 }
+
+const (
+	evSec = iota
+	evType
+	evGroup
+	evCount
+	evBuilding
+	evTileX
+	evTileY
+	evUnitType
+	evUnitCount
+)
 
 // GameHotkeys returns both players' decoded hotkey streams for the game
 // report's hotkey timeline tab.
@@ -61,6 +79,7 @@ func (d *Dashboard) GameHotkeys(ctx context.Context, request apigen.GameHotkeysR
 		DurationSeconds: summary.DurationSeconds,
 		Players:         []hotkeyTimelinePlayer{},
 		Buildings:       map[byte]string{},
+		Units:           map[uint16]string{},
 	}
 	for _, row := range rows {
 		events, err := hotkeystream.Decode(row.HotkeyStream)
@@ -73,17 +92,18 @@ func (d *Dashboard) GameHotkeys(ctx context.Context, request apigen.GameHotkeysR
 			Name:     row.Name,
 			Race:     row.Race,
 			Team:     row.Team,
-			Events:   make([][7]int, 0, len(events)),
+			Events:   make([][9]int, 0, len(events)),
 			Legacy:   isLegacyStream(row.HotkeyStream),
 		}
 		for _, e := range events {
-			p.Events = append(p.Events, [7]int{int(e.Sec), int(e.Type), int(e.Group), int(e.Count), int(e.Building), int(e.TileX), int(e.TileY)})
+			p.Events = append(p.Events, [9]int{int(e.Sec), int(e.Type), int(e.Group), int(e.Count), int(e.Building), int(e.TileX), int(e.TileY)})
 			if e.Type == hotkeystream.TypeAssignBuilding && e.Building != 0 {
 				payload.Buildings[e.Building] = hotkeystream.BuildingName(e.Building)
 			}
 		}
 		payload.Players = append(payload.Players, p)
 	}
+	d.applyEngineHotkeys(replayID, &payload)
 	return payload, nil
 }
 

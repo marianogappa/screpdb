@@ -2,7 +2,7 @@ package engine
 
 // EngineVersion keys the digest cache: bump it when Pass or the digest format changes what a digest holds.
 // Detector changes do not need a bump; detectors read digests at load time.
-const EngineVersion = 4
+const EngineVersion = 5
 
 const (
 	EconomyEveryFrames = 24
@@ -30,6 +30,7 @@ type Digest struct {
 	Unloads       []Unload
 	Teleports     []Teleport
 	Casts         []Cast
+	Hotkeys       []HotkeyAssign
 	Drift         Drift
 }
 

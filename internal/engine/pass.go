@@ -65,6 +65,7 @@ type passState struct {
 	selects      []selectResult
 	carriedBy    map[openbw.UnitID]openbw.UnitID
 	lastSeen     map[openbw.UnitID]seenAt
+	hotkeyGroups map[hotkeyGroupKey][]openbw.UnitID
 }
 
 type seenAt struct {
@@ -83,6 +84,7 @@ func newPassState(g *screpsim.Game) *passState {
 		openResearch: map[researchKey]int{},
 		carriedBy:    map[openbw.UnitID]openbw.UnitID{},
 		lastSeen:     map[openbw.UnitID]seenAt{},
+		hotkeyGroups: map[hotkeyGroupKey][]openbw.UnitID{},
 	}
 	for _, s := range e.PlayingSlots() {
 		if s > maxPlayerSlot {
