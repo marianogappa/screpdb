@@ -108,7 +108,7 @@ func TestRecallNeedsTheCast(t *testing.T) {
 
 func TestAttacksNeedBloodAndFoldWithinAMinute(t *testing.T) {
 	d := digest()
-	for sec := 500; sec <= 530; sec += 5 {
+	for sec := 500; sec <= 530; sec += 10 {
 		d.Army = append(d.Army, army(sec, 1, bwgame.UnitTypesProtossZealot, 6, 350, 350))
 	}
 	if got := Detect(d, testBases, zvp); len(got) != 0 {

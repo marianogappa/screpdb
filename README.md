@@ -301,18 +301,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-16  OK. The engine moves behind a Labs switch (engine_pass, off by default): off means no game data extraction, no SC:R install reads, no digest cache and no engine UI; the engine also waits for the library's first load to finish. Turning it off drops engine data from memory. No new file or network I/O, roots, hosts or endpoints, enforcement test unchanged; no DetectorVersion bump.
+2026-10-16  OK. Exact snapshots on demand: the digest keeps positions every 10 s without workers (EngineVersion 4), and opening a game's events runs one engine pass to its event seconds, cached in a second append-only file in the app-data dir (engine_snapshots.bin) through the same digestcache code; replay bytes are read through iofacade.ReadFile and checked against the checksum. No new roots, hosts or endpoints, enforcement test unchanged; no DetectorVersion bump.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-16  OK. The engine moves behind a Labs switch (engine_pass, off by default): off means no game data extraction, no SC:R install reads, no digest cache and no engine UI; the engine also waits for the library's first load to finish. Turning it off drops engine data from memory. No new file or network I/O, roots, hosts or endpoints, enforcement test unchanged; no DetectorVersion bump.
 2026-10-16  OK. Macro pro ranges: scripts/pro-pack -engine-macro reads harvest replays and writes internal/propack/data/macro_ranges.json plus a resumable cache under the OS temp dir, offline only; the app reads the embedded file and does no new I/O.
 2026-10-16  OK. Engine event rules tightened: a zergling rush needs a 9 Pool or earlier and real commitment (2 kills or a building, or 6 lings staying 15 s), and speedlot is timed at the research start. Detection only, in memory; no I/O added, no new roots, hosts or endpoints, enforcement test unchanged; no DetectorVersion bump.
 2026-10-16  OK. Engine game events rebuilt: digest v3 (EngineVersion 3) adds unit positions every 5 s with workers, transport unloads with cargo, teleports and accepted spell casts; internal/engine/moments detects the curated event types from them; engine games take every event from the engine plus the command-side meta events, all drawn on one snapshot overlay with the existing scmapanalyzer sprite routes. No new file or network I/O, roots, hosts or endpoints, enforcement test unchanged; no DetectorVersion bump.
 2026-10-15  OK. Macro tab gains worker pace (workers made by 6:00, time to 40 workers, workers over time) and time floating money, with the better value of each pair marked; computed in memory from the digest. No file or network I/O added, no new roots, hosts or endpoints, enforcement test unchanged; no DetectorVersion bump.
-2026-10-15  OK. Engine game events: internal/engine/moments finds fights with their trade, expansions, bases lost, long supply blocks and floats from a digest, and builds a map snapshot (buildings, army) for any second. A new loopback GET route, /api/custom/games/{replayID}/engine-snapshot, serves the snapshot from the existing digest cache; the browser draws it on the map. No new file or network I/O, roots or hosts, enforcement test unchanged; no DetectorVersion bump.
 ```
 
 </details>

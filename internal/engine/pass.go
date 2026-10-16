@@ -272,7 +272,7 @@ func (p *passState) tick(frame int32) {
 			continue
 		}
 		seen[u.ID] = seenAt{x: u.X, y: u.Y, owner: u.Owner, typ: u.Type}
-		if snapshot {
+		if snapshot && !info.Worker {
 			army = append(army, ArmyUnit{Owner: u.Owner, Type: uint16(u.Type), X: u.X / ArmyCellPixels, Y: u.Y / ArmyCellPixels})
 		}
 	}
@@ -380,7 +380,7 @@ const (
 	lurkerEggType = openbw.UnitType(bwgame.UnitTypesZergLurkerEgg)
 )
 
-// onMap is a unit worth drawing on a snapshot: built, on the ground or in the air, and not a building,
+// onMap is a unit the digest tracks for detection: built, on the ground or in the air, and not a building,
 // whose life the productions and deaths already give exactly.
 func onMap(u openbw.Unit, info openbw.UnitTypeInfo) bool {
 	return u.Completed && !u.Loaded && !u.Hallucination && !info.Building && u.Type != eggType && u.Type != larvaType && u.Type != cocoonType && u.Type != lurkerEggType

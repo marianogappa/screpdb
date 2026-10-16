@@ -1,6 +1,6 @@
 {
  "generated_at": "2026-10-15T20:31:10Z",
- "engine_version": 3,
+ "engine_version": 4,
  "detector_version": 69,
  "source": "engine passes over public 1v1 ladder replays of labelled pros (scfingerprint corpus), high confidence only",
  "games": {

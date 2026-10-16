@@ -4182,6 +4182,9 @@ function App() {
     }
     return base;
   }, [mainGame?.game_events, markerRegistry, t]);
+  const mainEngineEventSeconds = useMemo(() => (
+    [...new Set((mainGame?.game_events || []).filter((e) => e?.engine).map((e) => e.engine.snapshot_second))].sort((a, b) => a - b)
+  ), [mainGame?.game_events]);
   const mainMapVisual = mainGame?.map_visual || {};
   const mainMapVisualURL = String(mainMapVisual?.url || '').trim();
   const mainMapVisualThumbURL = String(mainMapVisual?.thumbnail_url || mainMapVisualURL).trim();
@@ -6517,6 +6520,7 @@ function App() {
                             <EngineSnapshotMap
                               replayId={mainGame.replay_id}
                               event={selectedMainGameEvent}
+                              eventSeconds={mainEngineEventSeconds}
                               mapUrl={mainMapVisualURL}
                               mapWidth={mainGame.map_width_pixels}
                               mapHeight={mainGame.map_height_pixels}

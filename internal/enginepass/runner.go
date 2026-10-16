@@ -34,6 +34,8 @@ const (
 type Options struct {
 	Library   *library.Library
 	CachePath string
+	// SnapshotPath holds exact snapshots of the games someone opened; empty disables them.
+	SnapshotPath string
 	// Workers is the number of parallel engine passes; 0 leaves at least one core free.
 	Workers int
 	// OpenData loads the game data; nil means engine.OpenGameData, which finds the SC:R install.
@@ -66,12 +68,14 @@ type Runner struct {
 	opts Options
 	lib  *library.Library
 
-	mu       sync.Mutex
-	queue    *queue
-	status   Status
-	data     *engine.Data
-	dataHash [32]byte
-	cache    *digestcache.Cache
+	mu        sync.Mutex
+	queue     *queue
+	status    Status
+	data      *engine.Data
+	dataHash  [32]byte
+	cache     *digestcache.Cache
+	snapCache *digestcache.Cache
+	snapLocks map[[32]byte]*sync.Mutex
 
 	wake     chan struct{}
 	stop     chan struct{}
@@ -120,6 +124,9 @@ func (r *Runner) Close() {
 	if r.cache != nil {
 		r.cache.Close()
 	}
+	if r.snapCache != nil {
+		r.snapCache.Close()
+	}
 }
 
 func (r *Runner) Status() Status {
@@ -145,6 +152,70 @@ func (r *Runner) Digest(checksum [32]byte) (*engine.Digest, bool) {
 	}
 	d, err := engine.Decode(entry.Digest)
 	return d, err == nil
+}
+
+var ErrNotReady = errors.New("enginepass: the engine is not running")
+
+// Snapshots gives the exact map at each requested second of a replay. Seconds already cached cost
+// nothing; the rest cost one engine pass up to the last of them, run on the caller's goroutine because
+// someone is waiting for it. Concurrent requests for one replay share that pass.
+func (r *Runner) Snapshots(ctx context.Context, checksum [32]byte, path string, seconds []int) (map[int]engine.Snapshot, error) {
+	r.mu.Lock()
+	data, snapCache := r.data, r.snapCache
+	if data == nil || snapCache == nil {
+		r.mu.Unlock()
+		return nil, ErrNotReady
+	}
+	lock, ok := r.snapLocks[checksum]
+	if !ok {
+		lock = &sync.Mutex{}
+		r.snapLocks[checksum] = lock
+	}
+	r.mu.Unlock()
+	lock.Lock()
+	defer lock.Unlock()
+
+	key := r.key(checksum)
+	have := map[int]engine.Snapshot{}
+	if entry, ok, err := snapCache.Get(key); err == nil && ok && entry.Failed == "" {
+		if decoded, err := engine.DecodeSnapshots(entry.Digest); err == nil {
+			have = decoded
+		}
+	}
+	var missing []int
+	for _, s := range seconds {
+		if _, ok := have[s]; !ok {
+			missing = append(missing, s)
+		}
+	}
+	if len(missing) > 0 {
+		b, err := iofacade.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		if sha256.Sum256(b) != checksum {
+			return nil, fmt.Errorf("enginepass: %s changed since it was loaded", path)
+		}
+		fresh, err := engine.Snapshots(ctx, b, data, missing)
+		if err != nil {
+			return nil, err
+		}
+		for s, snap := range fresh {
+			have[s] = snap
+		}
+		if encoded, err := engine.EncodeSnapshots(have); err == nil {
+			if err := snapCache.Put(key, digestcache.Entry{Digest: encoded}); err != nil {
+				r.opts.Logf("Engine snapshots: %v", err)
+			}
+		}
+	}
+	out := make(map[int]engine.Snapshot, len(seconds))
+	for _, s := range seconds {
+		if snap, ok := have[s]; ok {
+			out[s] = snap
+		}
+	}
+	return out, nil
 }
 
 // Focus moves a replay to the front of the queue: the game the user has open upgrades next.
@@ -198,16 +269,24 @@ func (r *Runner) run() {
 		r.setState(StateFailed, "game data hash: "+err.Error())
 		return
 	}
-	cache, err := digestcache.Open(r.opts.CachePath, func(k digestcache.Key) bool {
+	current := func(k digestcache.Key) bool {
 		return k.EngineVersion == engine.EngineVersion && k.DataHash == dataHash
-	})
+	}
+	cache, err := digestcache.Open(r.opts.CachePath, current)
 	if err != nil {
 		r.setState(StateFailed, err.Error())
 		r.opts.Logf("Engine pass off: %v", err)
 		return
 	}
+	var snapCache *digestcache.Cache
+	if r.opts.SnapshotPath != "" {
+		if snapCache, err = digestcache.Open(r.opts.SnapshotPath, current); err != nil {
+			r.opts.Logf("Engine snapshots off: %v", err)
+		}
+	}
 	r.mu.Lock()
-	r.data, r.dataHash, r.cache = data, dataHash, cache
+	r.data, r.dataHash, r.cache, r.snapCache = data, dataHash, cache, snapCache
+	r.snapLocks = map[[32]byte]*sync.Mutex{}
 	r.status.State = StateRunning
 	r.mu.Unlock()
 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/mux"
@@ -317,12 +318,65 @@ type engineSnapshotUnit struct {
 	Y        int64  `json:"y"`
 }
 
-// engineSnapshot is the map at one second, in map pixels: buildings exact, army as of ArmySecond.
+// engineSnapshot is the map at one second, in map pixels. A coarse one (from the digest) has buildings
+// exact and the army as of ArmySecond; an exact one comes from an engine pass to that very second.
 type engineSnapshot struct {
 	Second     int64                    `json:"second"`
 	ArmySecond int64                    `json:"army_second"`
+	Exact      bool                     `json:"exact"`
 	Buildings  []engineSnapshotBuilding `json:"buildings"`
 	Units      []engineSnapshotUnit     `json:"units"`
+}
+
+func unitName(t uint16) string {
+	if u := repcmd.UnitByID(t); u != nil {
+		return u.Name
+	}
+	return ""
+}
+
+func snapshotBuilding(t uint16, playerID int64, x, y int32, complete bool) (engineSnapshotBuilding, bool) {
+	fp, ok := moments.FootprintOf(t)
+	if !ok {
+		return engineSnapshotBuilding{}, false
+	}
+	return engineSnapshotBuilding{
+		UnitType: unitName(t), PlayerID: playerID, X: int64(x), Y: int64(y), W: int64(fp.W) * 32, H: int64(fp.H) * 32,
+		Complete: complete, TownHall: moments.IsTownHall(t),
+	}, true
+}
+
+func coarseSnapshotWire(snap moments.Snapshot, playerBySlot map[int8]int64) engineSnapshot {
+	out := engineSnapshot{Second: int64(snap.Second), ArmySecond: int64(snap.ArmySecond), Buildings: []engineSnapshotBuilding{}, Units: []engineSnapshotUnit{}}
+	for _, b := range snap.Buildings {
+		if id, ok := playerBySlot[b.Owner]; ok {
+			if wire, ok := snapshotBuilding(b.Type, id, b.X, b.Y, b.Complete); ok {
+				out.Buildings = append(out.Buildings, wire)
+			}
+		}
+	}
+	for _, u := range snap.Units {
+		if id, ok := playerBySlot[u.Owner]; ok {
+			out.Units = append(out.Units, engineSnapshotUnit{UnitType: unitName(u.Type), PlayerID: id, X: int64(u.X), Y: int64(u.Y)})
+		}
+	}
+	return out
+}
+
+func exactSnapshotWire(snap engine.Snapshot, playerBySlot map[int8]int64) engineSnapshot {
+	out := engineSnapshot{Second: int64(snap.Second), ArmySecond: int64(snap.Second), Exact: true, Buildings: []engineSnapshotBuilding{}, Units: []engineSnapshotUnit{}}
+	for _, u := range snap.Units {
+		id, ok := playerBySlot[u.Owner]
+		if !ok {
+			continue
+		}
+		if wire, building := snapshotBuilding(u.Type, id, u.X, u.Y, u.Completed); building {
+			out.Buildings = append(out.Buildings, wire)
+			continue
+		}
+		out.Units = append(out.Units, engineSnapshotUnit{UnitType: unitName(u.Type), PlayerID: id, X: int64(u.X), Y: int64(u.Y)})
+	}
+	return out
 }
 
 func (d *Dashboard) handlerEngineSnapshot(w http.ResponseWriter, r *http.Request) {
@@ -345,29 +399,27 @@ func (d *Dashboard) handlerEngineSnapshot(w http.ResponseWriter, r *http.Request
 	for ordinal, p := range rec.Players {
 		playerBySlot[int8(p.Slot)] = library.PlayerID(rec.ID, uint8(ordinal))
 	}
-	snap := moments.SnapshotAt(dg, sec)
-	out := engineSnapshot{Second: int64(snap.Second), ArmySecond: int64(snap.ArmySecond), Buildings: []engineSnapshotBuilding{}, Units: []engineSnapshotUnit{}}
-	name := func(t uint16) string {
-		if u := repcmd.UnitByID(t); u != nil {
-			return u.Name
+	var out engineSnapshot
+	if r.URL.Query().Get("exact") == "1" {
+		seconds := []int{sec}
+		for _, field := range strings.Split(r.URL.Query().Get("seconds"), ",") {
+			if v, err := strconv.Atoi(strings.TrimSpace(field)); err == nil && v >= 0 {
+				seconds = append(seconds, v)
+			}
 		}
-		return ""
-	}
-	for _, b := range snap.Buildings {
-		id, ok := playerBySlot[b.Owner]
-		fp, hasFootprint := moments.FootprintOf(b.Type)
-		if !ok || !hasFootprint {
-			continue
+		runner := d.enginePass.get()
+		if runner == nil {
+			http.Error(w, "the engine is off", http.StatusServiceUnavailable)
+			return
 		}
-		out.Buildings = append(out.Buildings, engineSnapshotBuilding{
-			UnitType: name(b.Type), PlayerID: id, X: int64(b.X), Y: int64(b.Y), W: int64(fp.W) * 32, H: int64(fp.H) * 32,
-			Complete: b.Complete, TownHall: moments.IsTownHall(b.Type),
-		})
-	}
-	for _, u := range snap.Units {
-		if id, ok := playerBySlot[u.Owner]; ok {
-			out.Units = append(out.Units, engineSnapshotUnit{UnitType: name(u.Type), PlayerID: id, X: int64(u.X), Y: int64(u.Y)})
+		snaps, err := runner.Snapshots(r.Context(), rec.Checksum, rec.Path(), seconds)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+			return
 		}
+		out = exactSnapshotWire(snaps[sec], playerBySlot)
+	} else {
+		out = coarseSnapshotWire(moments.SnapshotAt(dg, sec), playerBySlot)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(out)

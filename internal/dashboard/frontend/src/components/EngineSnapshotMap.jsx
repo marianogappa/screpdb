@@ -36,7 +36,9 @@ const clampRegion = (region, width, height) => {
 
 // EngineSnapshotMap draws the game as the engine had it at one moment: every building standing (faded
 // while under construction) and the army from the nearest army sample. It opens zoomed to the event.
-export default function EngineSnapshotMap({ replayId, event, mapUrl, mapWidth, mapHeight, colorByPlayerId, mapAlt }) {
+// eventSeconds are the snapshot seconds of every event of this game: the first exact request computes
+// them all in one engine pass, so moving between events afterwards is instant.
+export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUrl, mapWidth, mapHeight, colorByPlayerId, mapAlt }) {
   const t = useT();
   const engine = event?.engine;
   const second = engine?.snapshot_second ?? event?.second ?? 0;
@@ -46,12 +48,21 @@ export default function EngineSnapshotMap({ replayId, event, mapUrl, mapWidth, m
 
   useEffect(() => {
     let cancelled = false;
+    let exactArrived = false;
     setFailed(false);
     api.getEngineSnapshot(replayId, second)
-      .then((data) => { if (!cancelled) setSnapshot(data); })
-      .catch(() => { if (!cancelled) setFailed(true); });
+      .then((data) => { if (!cancelled && !exactArrived) setSnapshot(data); })
+      .catch(() => { if (!cancelled && !exactArrived) setFailed(true); });
+    api.getEngineSnapshot(replayId, second, { exact: true, seconds: eventSeconds || [] })
+      .then((data) => {
+        if (cancelled) return;
+        exactArrived = true;
+        setSnapshot(data);
+        setFailed(false);
+      })
+      .catch(() => {});
     return () => { cancelled = true; };
-  }, [replayId, second]);
+  }, [replayId, second, eventSeconds]);
 
   useEffect(() => { setZoomed(true); }, [event]);
 
@@ -96,9 +107,11 @@ export default function EngineSnapshotMap({ replayId, event, mapUrl, mapWidth, m
         <span>
           {failed
             ? t('snapshot.unavailable')
-            : snapshot
-              ? t('snapshot.caption', { time: formatDuration(snapshot.second), armyTime: formatDuration(Math.max(0, snapshot.army_second)) })
-              : t('snapshot.loading')}
+            : !snapshot
+              ? t('snapshot.loading')
+              : snapshot.exact
+                ? t('snapshot.exactCaption', { time: formatDuration(snapshot.second) })
+                : t('snapshot.caption', { time: formatDuration(snapshot.second), armyTime: formatDuration(Math.max(0, snapshot.army_second)) })}
         </span>
         {region ? (
           <button type="button" className="btn-switch engine-snapshot-zoom" onClick={() => setZoomed((z) => !z)}>

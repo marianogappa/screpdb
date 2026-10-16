@@ -28,11 +28,11 @@ const (
 	rushPoolBy = 70
 	rushLingBy = 210
 	// A rush commits: overpool Zerglings poking a natural are standard play. The lings must kill 2 units
-	// or a building within 90 s, or 6 of them must stay in the base for 15 s.
+	// or a building within 90 s, or 6 of them must stay in the base for two position samples (10 s apart).
 	rushDamageWindow  = 90
 	rushMinKills      = 2
 	rushStayLings     = 6
-	rushStaySeconds   = 15
+	rushStaySeconds   = 10
 	rushLingsMin      = 3
 	cannonRushBy      = 240
 	bunkerRushBy      = 300

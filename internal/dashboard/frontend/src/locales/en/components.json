@@ -145,7 +145,7 @@
   "macro.hint.incomeCurve": "Minerals and gas gathered in each minute",
   "macro.productionIdleHint": "Share of Barracks, Factory, Starport, Gateway, Robotics Facility and Stargate time spent idle",
   "macro.productionIdleZergHint": "Share of time every Hatchery sat at 3 larva, so no larva was being made",
-  "snapshot.caption": "Buildings at {time}, army at {armyTime}",
+  "snapshot.caption": "Buildings at {time}, army at {armyTime}; loading the exact moment",
   "snapshot.loading": "Loading the map at this moment",
   "snapshot.unavailable": "The map at this moment is not available",
   "snapshot.wholeMap": "Whole map",
@@ -163,5 +163,6 @@
   "macro.proRange": "Pros playing {race}: middle half {p25} to {p75}, median {p50}, from {games} games",
   "macro.proRangeLegend": "The bar under each value is the range of pros playing the same race: the box holds the middle half, the whiskers reach the 10th and 90th percentiles, and the dot is this player. A hollow dot is off the scale.",
   "labs.feature.enginePass": "Analyze games with the game engine (needs StarCraft: Remastered installed)",
-  "labs.feature.enginePassOnBattery": "Keep analyzing with the game engine on battery"
+  "labs.feature.enginePassOnBattery": "Keep analyzing with the game engine on battery",
+  "snapshot.exactCaption": "The map at {time}"
 }

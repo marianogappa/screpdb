@@ -2,14 +2,16 @@ package engine
 
 // EngineVersion keys the digest cache: bump it when Pass or the digest format changes what a digest holds.
 // Detector changes do not need a bump; detectors read digests at load time.
-const EngineVersion = 3
+const EngineVersion = 4
 
 const (
 	EconomyEveryFrames = 24
-	ArmyEveryFrames    = 120
-	ArmyCellPixels     = 16
-	NoFrame            = -1
-	NoCmd              = -1
+	// Positions every 10 s are enough to detect events; the map at an event's exact second comes from
+	// an on-demand engine pass (Snapshots), so the digest stays small for replays nobody opens.
+	ArmyEveryFrames = 240
+	ArmyCellPixels  = 16
+	NoFrame         = -1
+	NoCmd           = -1
 )
 
 type Digest struct {

@@ -10,7 +10,10 @@ import (
 	"github.com/marianogappa/screpdb/internal/power"
 )
 
-const engineDigestCacheFile = "engine_digests.bin"
+const (
+	engineDigestCacheFile   = "engine_digests.bin"
+	engineSnapshotCacheFile = "engine_snapshots.bin"
+)
 
 // enginePassHolder guards the runner: the Labs switch starts and stops it while requests read it.
 type enginePassHolder struct {
@@ -36,10 +39,11 @@ func (d *Dashboard) startEnginePass() {
 		return
 	}
 	runner := enginepass.New(enginepass.Options{
-		Library:     d.library.lib,
-		CachePath:   filepath.Join(d.library.root, engineDigestCacheFile),
-		Paused:      d.enginePassPaused,
-		LowPriority: true,
+		Library:      d.library.lib,
+		CachePath:    filepath.Join(d.library.root, engineDigestCacheFile),
+		SnapshotPath: filepath.Join(d.library.root, engineSnapshotCacheFile),
+		Paused:       d.enginePassPaused,
+		LowPriority:  true,
 	})
 	d.enginePass.runner = runner
 	d.libraryHub.setEngineState(func() string { return enginePassState(runner) })

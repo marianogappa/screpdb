@@ -1,6 +1,7 @@
 package enginepass
 
 import (
+	"context"
 	"crypto/sha256"
 	"os"
 	"path/filepath"
@@ -71,10 +72,11 @@ func runUntilUpgraded(t *testing.T, cachePath string, data *engine.Data, records
 	lib.Add(0, records...)
 	lib.Flush()
 	lib.SetProgress(library.ProgressState{Phase: library.PhaseReady})
-	r := New(Options{Library: lib, CachePath: cachePath, Workers: 2, OpenData: func() (*engine.Data, error) { return data, nil }, Logf: t.Logf})
+	r := New(Options{Library: lib, CachePath: cachePath, SnapshotPath: cachePath + ".snapshots", Workers: 2, OpenData: func() (*engine.Data, error) { return data, nil }, Logf: t.Logf})
 	start := time.Now()
 	r.Start()
-	defer r.Close()
+	t.Cleanup(r.Close)
+	lastRunner = r
 	deadline := time.Now().Add(10 * time.Minute)
 	for time.Now().Before(deadline) {
 		done := 0
@@ -91,6 +93,8 @@ func runUntilUpgraded(t *testing.T, cachePath string, data *engine.Data, records
 	t.Fatalf("not upgraded: %+v", r.Status())
 	return nil, 0
 }
+
+var lastRunner *Runner
 
 func TestUpgradeAndWarmStart(t *testing.T) {
 	dir := os.Getenv("OPENBW_DATA")
@@ -114,6 +118,22 @@ func TestUpgradeAndWarmStart(t *testing.T) {
 		t.Fatalf("warm start took %v after a %v cold start; the cache was not used", warm, cold)
 	}
 	t.Logf("cold %v, warm %v", cold, warm)
+
+	r := lastRunner
+	start := time.Now()
+	snaps, err := r.Snapshots(context.Background(), jyj.Checksum, jyj.Path(), []int{60, 360})
+	if err != nil || len(snaps) != 2 || len(snaps[360].Units) < 20 {
+		t.Fatalf("snapshots: %v, %d seconds", err, len(snaps))
+	}
+	first := time.Since(start)
+	start = time.Now()
+	again, err := r.Snapshots(context.Background(), jyj.Checksum, jyj.Path(), []int{360})
+	if err != nil || len(again[360].Units) != len(snaps[360].Units) {
+		t.Fatalf("cached snapshot: %v", err)
+	}
+	if cached := time.Since(start); cached > first/4 {
+		t.Fatalf("a cached snapshot took %v after a %v pass", cached, first)
+	}
 }
 
 func TestNothingStartsBeforeTheLibraryHasLoaded(t *testing.T) {
