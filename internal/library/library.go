@@ -150,6 +150,11 @@ func (l *Library) SetEngineData(checksum [32]byte, data *EngineData) {
 	l.send(mutation{kind: opEngine, checksum: checksum, engine: data})
 }
 
+// ClearEngineData drops every replay's engine data, for when the engine is switched off.
+func (l *Library) ClearEngineData() {
+	l.send(mutation{kind: opClearEngine})
+}
+
 // Reset immediately replaces the corpus with an empty one for generation.
 func (l *Library) Reset(generation uint64) {
 	l.send(mutation{kind: opReset, gen: generation})
@@ -260,6 +265,7 @@ const (
 	opPromote
 	opFlush
 	opEngine
+	opClearEngine
 )
 
 type mutation struct {
@@ -323,6 +329,13 @@ func (l *Library) run() {
 					live = staging
 					live.dirty = true
 					staging = nil
+					commit()
+				}
+			case opClearEngine:
+				if staging != nil {
+					staging.clearEngine()
+				}
+				if live.clearEngine() {
 					commit()
 				}
 			case opEngine:
@@ -393,6 +406,19 @@ func newWorkingSet(gen uint64) *workingSet {
 		removed:    map[int64]struct{}{},
 		upgraded:   map[int64]struct{}{},
 	}
+}
+
+func (w *workingSet) clearEngine() bool {
+	var upgraded []*Replay
+	for _, r := range w.byChecksum {
+		if r.EngineData != nil {
+			upgraded = append(upgraded, r)
+		}
+	}
+	for _, r := range upgraded {
+		w.setEngine(r.Checksum, nil)
+	}
+	return len(upgraded) > 0
 }
 
 func (w *workingSet) setEngine(checksum [32]byte, data *EngineData) bool {

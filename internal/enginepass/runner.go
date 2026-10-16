@@ -26,7 +26,10 @@ import (
 	"github.com/marianogappa/screpdb/internal/power"
 )
 
-const pausedRecheck = 10 * time.Second
+const (
+	pausedRecheck = 10 * time.Second
+	libraryPoll   = 500 * time.Millisecond
+)
 
 type Options struct {
 	Library   *library.Library
@@ -162,7 +165,23 @@ func (r *Runner) setState(s State, reason string) {
 	r.mu.Unlock()
 }
 
+// Engine work starts only once the library has read the whole folder: the fast pass must load as fast
+// as it does without the engine, and extracting game data or decoding digests would compete with it.
+func (r *Runner) waitForLibrary() bool {
+	for !r.lib.Progress().Complete() {
+		select {
+		case <-r.stop:
+			return false
+		case <-time.After(libraryPoll):
+		}
+	}
+	return true
+}
+
 func (r *Runner) run() {
+	if !r.waitForLibrary() {
+		return
+	}
 	data, err := r.opts.OpenData()
 	if errors.Is(err, gamedata.ErrNoInstall) {
 		r.setState(StateOff, "no StarCraft: Remastered install found")

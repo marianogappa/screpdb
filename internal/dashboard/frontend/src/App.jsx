@@ -2285,6 +2285,7 @@ function App() {
   // left the page). The list never re-sorts under the user; the chip offers the refresh instead.
   const [mainGamesEngineStale, setMainGamesEngineStale] = useState(0);
   const [engineCoverage, setEngineCoverage] = useState(null);
+  const engineEnabled = Boolean(engineCoverage && engineCoverage.state !== 'off');
   const mainGamesUpdatedTimerRef = useRef(null);
   const [mainGamesPage, setMainGamesPage] = useState(1);
   const [mainGamesTotal, setMainGamesTotal] = useState(0);
@@ -4082,7 +4083,7 @@ function App() {
               <td className="workflow-games-list-map">{renderMapNameWithKind(game.map_name, game.map_kind)}</td>
               <td className="workflow-games-list-duration">
                 {formatDuration(game.duration_seconds)}
-                <EngineBadge item={game} />
+                <EngineBadge item={game} enabled={engineEnabled} />
               </td>
               <td className="workflow-games-list-featuring">
                 <FeaturingCell featuring={game.featuring} featuringKeys={game.featuring_keys} />
@@ -6078,7 +6079,7 @@ function App() {
               <>
                 <div className="workflow-title-row workflow-title-row--solo">
                   <h2 className="workflow-game-players-heading">{renderGameTitlePlayers(mainGame)}</h2>
-                  <EngineBadge item={mainGame} />
+                  <EngineBadge item={mainGame} enabled={engineEnabled} />
                 </div>
                 <div className="workflow-game-tab-stack">
                   <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label={t('game.sectionsAria')}>
@@ -6142,7 +6143,7 @@ function App() {
                         {t('game.tabs.alliances')}{mainGame?.team_stacking ? ' 😈' : ''}
                       </button>
                     ) : null}
-                    {engineCoverage && engineCoverage.state !== 'off' ? (
+                    {engineEnabled ? (
                       <button
                         type="button"
                         role="tab"

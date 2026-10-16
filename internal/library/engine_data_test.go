@@ -58,3 +58,25 @@ func TestSetEngineDataReachesStagedCorpus(t *testing.T) {
 		t.Fatal("staged replay lost its engine data on promote")
 	}
 }
+
+func TestClearEngineData(t *testing.T) {
+	lib := newTestLibrary(t, library.Options{})
+	a := librarytest.Replay(librarytest.WithPath("/r/a.rep", time.Now()))
+	b := librarytest.Replay(librarytest.WithPath("/r/b.rep", time.Now()))
+	lib.Add(0, a, b)
+	lib.SetEngineData(a.Checksum, &library.EngineData{EngineVersion: 1})
+	lib.Flush()
+	_, events, cancel := lib.Subscribe()
+	defer cancel()
+	lib.ClearEngineData()
+	lib.Flush()
+	for _, r := range lib.Snapshot().Replays {
+		if r.EngineData != nil {
+			t.Fatalf("%s kept its engine data", r.Path())
+		}
+	}
+	ev := <-events
+	if got, _ := lib.Snapshot().ByChecksum(a.Checksum); !slices.Equal(ev.Upgraded, []int64{got.ID}) {
+		t.Fatalf("event %+v", ev)
+	}
+}

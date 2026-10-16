@@ -4,6 +4,7 @@ package dashboard
 
 import (
 	"path/filepath"
+	"sync"
 
 	"github.com/marianogappa/screpdb/internal/enginepass"
 	"github.com/marianogappa/screpdb/internal/power"
@@ -11,41 +12,80 @@ import (
 
 const engineDigestCacheFile = "engine_digests.bin"
 
-type enginePassRunner = *enginepass.Runner
+// enginePassHolder guards the runner: the Labs switch starts and stops it while requests read it.
+type enginePassHolder struct {
+	mu     sync.Mutex
+	runner *enginepass.Runner
+}
 
-// startEnginePass upgrades the library to engine data in the background. It does nothing more than
-// log when there is no StarCraft: Remastered install: the fast pass alone keeps the dashboard working.
+func (h *enginePassHolder) get() *enginepass.Runner {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.runner
+}
+
+// startEnginePass upgrades the library to engine data in the background, once the Labs switch is on.
+// Without a StarCraft: Remastered install it only logs: the fast pass alone keeps the dashboard working.
 func (d *Dashboard) startEnginePass() {
-	if !d.enginePassEnabled || d.library == nil || d.featureFlagEnabled(d.ctx, featureFlagDisableEnginePass) {
+	if !d.enginePassEnabled || d.library == nil || !d.featureFlagEnabled(d.ctx, featureFlagEnginePass) {
 		return
 	}
-	d.enginePass = enginepass.New(enginepass.Options{
+	d.enginePass.mu.Lock()
+	defer d.enginePass.mu.Unlock()
+	if d.enginePass.runner != nil {
+		return
+	}
+	runner := enginepass.New(enginepass.Options{
 		Library:     d.library.lib,
 		CachePath:   filepath.Join(d.library.root, engineDigestCacheFile),
 		Paused:      d.enginePassPaused,
 		LowPriority: true,
 	})
-	runner := d.enginePass
+	d.enginePass.runner = runner
 	d.libraryHub.setEngineState(func() string { return enginePassState(runner) })
-	d.enginePass.Start()
+	runner.Start()
+}
+
+// stopEnginePass turns the engine off and drops its data from memory, so every page is back to the
+// command-inferred views at once. The digest cache stays on disk for when it is switched on again.
+func (d *Dashboard) stopEnginePass() {
+	d.enginePass.mu.Lock()
+	runner := d.enginePass.runner
+	d.enginePass.runner = nil
+	d.enginePass.mu.Unlock()
+	if runner == nil {
+		return
+	}
+	runner.Close()
+	d.libraryHub.setEngineState(func() string { return engineStateOff })
+	d.library.lib.ClearEngineData()
+}
+
+func (d *Dashboard) enginePassToggled(on bool) {
+	if on {
+		d.startEnginePass()
+	} else {
+		d.stopEnginePass()
+	}
 }
 
 func (d *Dashboard) enginePassPaused() bool {
-	if d.featureFlagEnabled(d.ctx, featureFlagDisableEnginePass) {
-		return true
-	}
 	return !d.featureFlagEnabled(d.ctx, featureFlagEnginePassOnBattery) && power.OnBattery()
 }
 
 func (d *Dashboard) focusEnginePass(replayID int64) {
-	if d.enginePass != nil {
-		d.enginePass.Focus(replayID)
+	if runner := d.enginePass.get(); runner != nil {
+		runner.Focus(replayID)
 	}
 }
 
 func (d *Dashboard) closeEnginePass() {
-	if d.enginePass != nil {
-		d.enginePass.Close()
+	d.enginePass.mu.Lock()
+	runner := d.enginePass.runner
+	d.enginePass.runner = nil
+	d.enginePass.mu.Unlock()
+	if runner != nil {
+		runner.Close()
 	}
 }
 

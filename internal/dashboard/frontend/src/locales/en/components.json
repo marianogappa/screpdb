@@ -113,8 +113,6 @@
   "labs.warning": "Unfinished work. Expect rough edges and things that change or vanish.",
   "labs.feature.gamingSession": "Session summary for the games you just played",
   "library.completeGamesOptOut": "Do not complete games you left early",
-  "library.enginePassOptOut": "Do not analyze games with the game engine",
-  "library.enginePassOnBattery": "Keep analyzing with the game engine on battery",
   "engine.badge.label": "engine",
   "engine.badge.title": "Exact data from the game engine",
   "engine.badge.lowTitle": "Exact data from the game engine until {time}; after that the replay and the engine disagree",
@@ -163,5 +161,7 @@
   "macro.hint.floatTime": "Time with 800 or more resources banked while both supply and a production building or larva stood free",
   "macro.hint.workersCurve": "Workers alive at each minute",
   "macro.proRange": "Pros playing {race}: middle half {p25} to {p75}, median {p50}, from {games} games",
-  "macro.proRangeLegend": "The bar under each value is the range of pros playing the same race: the box holds the middle half, the whiskers reach the 10th and 90th percentiles, and the dot is this player. A hollow dot is off the scale."
+  "macro.proRangeLegend": "The bar under each value is the range of pros playing the same race: the box holds the middle half, the whiskers reach the 10th and 90th percentiles, and the dot is this player. A hollow dot is off the scale.",
+  "labs.feature.enginePass": "Analyze games with the game engine (needs StarCraft: Remastered installed)",
+  "labs.feature.enginePassOnBattery": "Keep analyzing with the game engine on battery"
 }

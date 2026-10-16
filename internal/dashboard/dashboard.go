@@ -36,7 +36,7 @@ type Dashboard struct {
 	dbStore             dashboarddb.Reader
 	library             *libraryRuntime
 	libraryHub          *libraryHub
-	enginePass          enginePassRunner
+	enginePass          enginePassHolder
 	enginePassEnabled   bool
 	digests             digestMemo
 	sampleSetAutoLoaded bool

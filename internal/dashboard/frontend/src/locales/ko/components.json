@@ -113,8 +113,6 @@
   "labs.warning": "미완성 기능입니다. 다듬어지지 않은 부분이 있고, 바뀌거나 사라질 수 있습니다.",
   "labs.feature.gamingSession": "방금 플레이한 게임의 세션 요약",
   "library.completeGamesOptOut": "도중에 나간 게임을 완성하지 않기",
-  "library.enginePassOptOut": "게임 엔진으로 게임을 분석하지 않기",
-  "library.enginePassOnBattery": "배터리 사용 중에도 게임 엔진 분석 계속하기",
   "engine.badge.label": "엔진",
   "engine.badge.title": "게임 엔진에서 얻은 정확한 데이터",
   "engine.badge.lowTitle": "{time}까지 게임 엔진에서 얻은 정확한 데이터입니다. 그 이후로는 리플레이와 엔진이 일치하지 않습니다",
@@ -163,5 +161,7 @@
   "macro.hint.floatTime": "보급과 생산 건물 또는 라바가 비어 있는데 자원을 800 이상 쌓아 둔 시간",
   "macro.hint.workersCurve": "분마다 살아 있는 일꾼 수",
   "macro.proRange": "{race} 프로게이머: 중간 50%는 {p25}부터 {p75}까지, 중앙값 {p50}, 게임 {games}개 기준",
-  "macro.proRangeLegend": "각 값 아래의 막대는 같은 종족 프로게이머의 범위입니다. 상자는 중간 50%, 수염은 하위 10%와 상위 10% 경계, 점은 이 플레이어입니다. 속이 빈 점은 범위를 벗어난 값입니다."
+  "macro.proRangeLegend": "각 값 아래의 막대는 같은 종족 프로게이머의 범위입니다. 상자는 중간 50%, 수염은 하위 10%와 상위 10% 경계, 점은 이 플레이어입니다. 속이 빈 점은 범위를 벗어난 값입니다.",
+  "labs.feature.enginePass": "게임 엔진으로 게임 분석하기 (스타크래프트: 리마스터 설치 필요)",
+  "labs.feature.enginePassOnBattery": "배터리 사용 중에도 게임 엔진 분석 계속하기"
 }

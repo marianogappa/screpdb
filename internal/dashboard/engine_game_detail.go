@@ -57,14 +57,14 @@ func (m *digestMemo) get(checksum [32]byte, load func() (*engine.Digest, bool)) 
 // engineDigest is the full digest of a replay in engine mode with high confidence. A desynced game keeps
 // its command-inferred views: engine data after the desync is wrong, and half of each would mislead.
 func (d *Dashboard) engineDigest(replayID int64) (*engine.Digest, *library.Replay) {
-	if d.enginePass == nil || d.library == nil {
+	runner := d.enginePass.get()
+	if runner == nil || d.library == nil {
 		return nil, nil
 	}
 	rec, ok := d.library.lib.Snapshot().ByID(replayID)
 	if !ok || rec.EngineData == nil || rec.EngineData.LowConfidence {
 		return nil, nil
 	}
-	runner := d.enginePass
 	dg := d.digests.get(rec.Checksum, func() (*engine.Digest, bool) { return runner.Digest(rec.Checksum) })
 	return dg, rec
 }

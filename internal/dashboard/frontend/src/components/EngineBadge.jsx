@@ -4,8 +4,10 @@ import { formatDuration } from '../lib/formatters';
 
 // The badge keeps its width in fast mode (hidden, not absent), so the upgrade to engine data
 // shows up without moving anything around it.
-export default function EngineBadge({ item }) {
+// enabled is false while the engine is switched off in Labs: then there is nothing to reserve room for.
+export default function EngineBadge({ item, enabled }) {
   const t = useT();
+  if (!enabled) return null;
   const engine = item?.mode === 'engine';
   const low = engine && item?.engine_confidence === 'low';
   let title;

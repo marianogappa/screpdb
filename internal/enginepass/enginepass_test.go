@@ -37,6 +37,7 @@ func TestQueueOrder(t *testing.T) {
 func TestNoInstallTurnsTheEnginePassOff(t *testing.T) {
 	lib := library.New(library.Options{})
 	defer lib.Close()
+	lib.SetProgress(library.ProgressState{Phase: library.PhaseReady})
 	r := New(Options{
 		Library:   lib,
 		CachePath: filepath.Join(t.TempDir(), "digests.bin"),
@@ -69,6 +70,7 @@ func runUntilUpgraded(t *testing.T, cachePath string, data *engine.Data, records
 	t.Cleanup(lib.Close)
 	lib.Add(0, records...)
 	lib.Flush()
+	lib.SetProgress(library.ProgressState{Phase: library.PhaseReady})
 	r := New(Options{Library: lib, CachePath: cachePath, Workers: 2, OpenData: func() (*engine.Data, error) { return data, nil }, Logf: t.Logf})
 	start := time.Now()
 	r.Start()
@@ -112,4 +114,33 @@ func TestUpgradeAndWarmStart(t *testing.T) {
 		t.Fatalf("warm start took %v after a %v cold start; the cache was not used", warm, cold)
 	}
 	t.Logf("cold %v, warm %v", cold, warm)
+}
+
+func TestNothingStartsBeforeTheLibraryHasLoaded(t *testing.T) {
+	lib := library.New(library.Options{})
+	defer lib.Close()
+	lib.SetProgress(library.ProgressState{Phase: library.PhaseScanning})
+	opened := make(chan struct{}, 1)
+	r := New(Options{
+		Library:   lib,
+		CachePath: filepath.Join(t.TempDir(), "digests.bin"),
+		OpenData: func() (*engine.Data, error) {
+			opened <- struct{}{}
+			return nil, gamedata.ErrNoInstall
+		},
+		Logf: t.Logf,
+	})
+	r.Start()
+	defer r.Close()
+	select {
+	case <-opened:
+		t.Fatal("the engine opened its game data while the library was still loading")
+	case <-time.After(3 * libraryPoll):
+	}
+	lib.SetProgress(library.ProgressState{Phase: library.PhaseReady})
+	select {
+	case <-opened:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the engine did not start once the library had loaded")
+	}
 }
