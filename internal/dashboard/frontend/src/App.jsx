@@ -4213,6 +4213,19 @@ function App() {
     return topicFilteredGameEvents[0];
   }, [topicFilteredGameEvents, mainSelectedGameEventKey]);
   const mainGamePlayers = mainGame?.players || [];
+  // Engine supply is worth its own tab; the command-inferred estimate stays a Timings sub-tab.
+  const mainSupplyFromEngine = mainGamePlayers.length > 0
+    && mainGamePlayers.every((p) => Array.isArray(p.supply_curve) && p.supply_curve.length > 0);
+  useEffect(() => {
+    if (!mainGame || mainGame.replay_id !== selectedReplayId) return;
+    if (mainGameTab === 'supply-timeline' && !mainSupplyFromEngine) {
+      setMainGameTab('timings');
+      setMainTimingCategory('supply');
+    } else if (mainGameTab === 'timings' && mainTimingCategory === 'supply' && mainSupplyFromEngine) {
+      setMainTimingCategory('expansion_gas');
+      setMainGameTab('supply-timeline');
+    }
+  }, [mainGame, selectedReplayId, mainGameTab, mainTimingCategory, mainSupplyFromEngine]);
   const selectedMainGameEventKeyResolved = useMemo(() => {
     if (!selectedMainGameEvent) return '';
     const idx = topicFilteredGameEvents.indexOf(selectedMainGameEvent);
@@ -5137,7 +5150,7 @@ function App() {
   const isResearchTiming = mainTimingCategory === 'research';
   // Supply is a timing view, but not a scatter one: it renders its own chart
   // instead of the shared TimingScatterRows the category config drives.
-  const isSupplyTiming = mainTimingCategory === 'supply';
+  const isSupplyTiming = mainTimingCategory === 'supply' && !mainSupplyFromEngine;
   const isHpTiming = mainTimingCategory === 'hp_upgrades';
   const isExpansionGasTiming = mainTimingCategory === 'expansion_gas';
   const mainTimingSeries = useMemo(() => {
@@ -6166,6 +6179,17 @@ function App() {
                         {t('game.tabs.macro')}
                       </button>
                     ) : null}
+                    {mainSupplyFromEngine ? (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={mainGameTab === 'supply-timeline'}
+                        className={`workflow-production-tab ${mainGameTab === 'supply-timeline' ? 'workflow-production-tab-active' : ''}`}
+                        onClick={() => setMainGameTab('supply-timeline')}
+                      >
+                        {t('game.tabs.supply')}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       role="tab"
@@ -7016,6 +7040,15 @@ function App() {
                   </div>
                 )}
 
+                {mainGameTab === 'supply-timeline' && mainSupplyFromEngine && (
+                  <SupplyTimeline
+                    players={mainGamePlayers}
+                    timeline={mainGame.production_timeline || []}
+                    durationSeconds={mainGame.duration_seconds || 0}
+                    playerColor={playerColorToCss}
+                  />
+                )}
+
                 {mainGameTab === 'timings' && (
                   <div className="workflow-timing-charts">
                     <div className="workflow-section-top-row">
@@ -7031,20 +7064,20 @@ function App() {
                             {t(cfg.labelKey)}
                           </button>
                         ))}
-                        {/* Supply sits with the other timings rather than in the top
-                            strip: it is one more thing plotted against the game clock,
-                            and it was competing for attention with tabs that answer
-                            different questions. It is listed here by hand because the
-                            config above drives the scatter charts, which this is not. */}
-                        <button
-                          key="supply"
-                          className={`workflow-production-tab ${isSupplyTiming ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setMainTimingCategory('supply')}
-                          role="tab"
-                          aria-selected={isSupplyTiming}
-                        >
-                          {t('game.tabs.supply')}
-                        </button>
+                        {/* Without the engine, supply is a command-inferred estimate plotted
+                            against the game clock, so it sits with the other timings. It is
+                            listed by hand because the config above drives the scatter charts. */}
+                        {mainSupplyFromEngine ? null : (
+                          <button
+                            key="supply"
+                            className={`workflow-production-tab ${isSupplyTiming ? 'workflow-production-tab-active' : ''}`}
+                            onClick={() => setMainTimingCategory('supply')}
+                            role="tab"
+                            aria-selected={isSupplyTiming}
+                          >
+                            {t('game.tabs.supply')}
+                          </button>
+                        )}
                       </div>
                       {mainTimingNotice && !isSupplyTiming ? (
                         <div className="workflow-section-warning">{mainTimingNotice}</div>
