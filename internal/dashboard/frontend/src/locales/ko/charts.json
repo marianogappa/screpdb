@@ -112,6 +112,9 @@
   "chart.supply.addition": "{built}  (+{delta})",
   "chart.supply.additionMulti": "{built} ×{count}  (+{delta})",
   "chart.supply.total": "합계: 인구수 {total}",
-  "chart.supply.engineNote": "게임 엔진의 보급 데이터입니다. 실선은 최대 보급, 점선은 사용 중인 보급이며, 두 선이 만나는 곳에서 보급이 막혔습니다.",
-  "chart.supply.capChange": "최대 보급 {delta}"
+  "chart.supply.capChange": "최대 보급 {delta}",
+  "chart.supply.lineUsed": "사용",
+  "chart.supply.lineCap": "최대",
+  "chart.supply.blockedFor": "보급 막힘 {duration}",
+  "chart.supply.usedOfCap": "보급 {used}/{cap}"
 }

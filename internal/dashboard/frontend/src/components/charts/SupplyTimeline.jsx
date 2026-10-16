@@ -89,23 +89,37 @@ const buildSeries = (events, race, endSec) => {
   return { points, total: cum };
 };
 
-// buildEngineSeries reads the engine's real supply: a point wherever the cap changed (a depot finished
-// or died), and the used line beside it, so supply blocks show where the two meet.
+// buildEngineSeries reads the engine's real supply. The line is supply used; the cap stays in the data
+// for hover, and blocks are the stretches where used reached a cap below 200.
 const buildEngineSeries = (curve, endSec) => {
   const points = [];
   const used = [];
+  const blocks = [];
   let prevCap = null;
+  let block = null;
   for (const c of curve) {
     const sec = num(c?.second);
     if (sec > endSec) break;
     const cap = num(c?.cap);
-    used.push({ sec, cum: num(c?.used) });
+    const u = num(c?.used);
+    // A player who leaves loses every unit and building at once: that drop to 0/0 is not their supply.
+    if (cap === 0 && u === 0 && used.length) break;
+    used.push({ sec, cum: u });
     if (cap !== prevCap) {
       points.push({ sec, cum: cap, delta: prevCap == null ? cap : cap - prevCap, built: '', count: prevCap == null ? 0 : -1 });
       prevCap = cap;
     }
+    const blocked = cap > 0 && cap < 200 && u >= cap;
+    if (blocked && !block) block = { start: sec, end: sec, used: u, cap };
+    if (blocked) block.end = sec;
+    if (!blocked && block) {
+      block.end = sec;
+      blocks.push(block);
+      block = null;
+    }
   }
-  return { points, used, total: prevCap || 0 };
+  if (block) blocks.push(block);
+  return { points, used, blocks, total: prevCap || 0, last: used.length ? used[used.length - 1].cum : 0 };
 };
 
 function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
@@ -200,7 +214,8 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
       teamWon: s.player.team_won,
       color: s.color,
       endX: xAt(s.endSec),
-      endY: yAt(s.total) + yDodge(s),
+      endY: yAt(s.used ? s.last : s.total) + yDodge(s),
+      capY: s.used ? yAt(s.total) + yDodge(s) : null,
     }))
     .sort((a, b) => a.endY - b.endY);
   let lastY = -Infinity;
@@ -222,11 +237,59 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
     return t('chart.supply.addition', { built, delta: p.delta });
   };
 
+  const sliceUsed = (used, start, end) => {
+    const inside = used.filter((p) => p.sec >= start && p.sec <= end);
+    return inside.length ? inside : [];
+  };
+
+  // Engine lines: supply used, thick where the player sat at the cap. Hovering a player adds the cap as a
+  // quieter solid line; the gutter names both lines, so the chart needs no legend.
+  const engineLines = (s, isHover, dodge) => {
+    return (
+      <>
+        <path d={stepPath(s.used, s.endSec, dodge)} fill="none" stroke="transparent" strokeWidth="14" />
+        {isHover ? (
+          <>
+            <path d={stepPath(s.points, s.endSec, dodge)} fill="none" stroke={s.color} strokeWidth="1.25" opacity="0.45" strokeLinejoin="round" />
+          </>
+        ) : null}
+        <path d={stepPath(s.used, s.endSec, dodge)} fill="none" stroke={s.color} strokeWidth={isHover ? 2.25 : 1.5} strokeLinejoin="round" />
+        {s.blocks.map((b, i) => {
+          const pts = sliceUsed(s.used, b.start, b.end);
+          if (!pts.length) return null;
+          const d = stepPath(pts, b.end, dodge);
+          const mid = xAt((b.start + b.end) / 2);
+          return (
+            <g
+              key={`block-${i}`}
+              onMouseEnter={() => setTip({
+                x: mid,
+                y: yAt(b.used) + dodge,
+                color: s.color,
+                lines: [
+                  t('chart.supply.blockedFor', { duration: formatTime(b.end - b.start) }),
+                  t('chart.supply.usedOfCap', { used: b.used, cap: b.cap }),
+                  formatTime(b.start),
+                ],
+              })}
+              onMouseLeave={() => setTip(null)}
+            >
+              <path d={d} fill="none" stroke="transparent" strokeWidth="14" />
+              <path d={d} fill="none" stroke={s.color} strokeWidth={isHover ? 6 : 5} strokeLinecap="round" />
+            </g>
+          );
+        })}
+      </>
+    );
+  };
+
   return (
     <div className="workflow-card workflow-card-chat-summary">
-      <div className="workflow-section-warning">
-        {fromEngine ? t('chart.supply.engineNote') : t('chart.supply.warning')}
-      </div>
+      {fromEngine ? null : (
+        <div className="workflow-section-warning">
+          {t('chart.supply.warning')}
+        </div>
+      )}
 
       <svg
         width="100%"
@@ -259,32 +322,33 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
               onMouseLeave={() => setHoveredId(null)}
               style={{ cursor: 'pointer' }}
             >
-              {/* invisible wide hit area so the thin line is easy to hover */}
-              <path d={stepPath(s.points, s.endSec, dodge)} fill="none" stroke="transparent" strokeWidth="14" />
-              <path d={stepPath(s.points, s.endSec, dodge)} fill="none" stroke={s.color} strokeWidth={isHover ? 2.5 : 1.5} strokeLinejoin="round" />
-              {s.used ? (
-                <path d={stepPath(s.used, s.endSec, dodge)} fill="none" stroke={s.color} strokeWidth="1" strokeDasharray="3 3" opacity="0.7" />
-              ) : null}
-              {s.points.map((p, i) => (
-                <circle
-                  key={`dot-${i}`}
-                  cx={xAt(p.sec)}
-                  cy={yAt(p.cum) + dodge}
-                  r={isHover ? 3 : 2.3}
-                  fill={s.color}
-                  onMouseEnter={() => setTip({
-                    x: xAt(p.sec),
-                    y: yAt(p.cum) + dodge,
-                    color: s.color,
-                    lines: [
-                      supplyAdditionLine(p),
-                      t('chart.supply.total', { total: p.cum }),
-                      formatTime(p.sec),
-                    ],
-                  })}
-                  onMouseLeave={() => setTip(null)}
-                />
-              ))}
+              {s.used ? engineLines(s, isHover, dodge) : (
+                <>
+                  {/* invisible wide hit area so the thin line is easy to hover */}
+                  <path d={stepPath(s.points, s.endSec, dodge)} fill="none" stroke="transparent" strokeWidth="14" />
+                  <path d={stepPath(s.points, s.endSec, dodge)} fill="none" stroke={s.color} strokeWidth={isHover ? 2.5 : 1.5} strokeLinejoin="round" />
+                  {s.points.map((p, i) => (
+                    <circle
+                      key={`dot-${i}`}
+                      cx={xAt(p.sec)}
+                      cy={yAt(p.cum) + dodge}
+                      r={isHover ? 3 : 2.3}
+                      fill={s.color}
+                      onMouseEnter={() => setTip({
+                        x: xAt(p.sec),
+                        y: yAt(p.cum) + dodge,
+                        color: s.color,
+                        lines: [
+                          supplyAdditionLine(p),
+                          t('chart.supply.total', { total: p.cum }),
+                          formatTime(p.sec),
+                        ],
+                      })}
+                      onMouseLeave={() => setTip(null)}
+                    />
+                  ))}
+                </>
+              )}
             </g>
           );
         })}
@@ -316,6 +380,16 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
               >
                 {l.teamWon ? '👑 ' : ''}{truncateName(l.name)}
               </text>
+              {isHover && l.capY != null ? (
+                <>
+                  <text x={PLOT_RIGHT + 8} y={l.labelY + 3 + LABEL_LINE_H} fill={l.color} fontSize="11" opacity="0.8">
+                    {t('chart.supply.lineUsed')}
+                  </text>
+                  <text x={PLOT_RIGHT + 8} y={Math.min(l.capY, l.labelY - LABEL_LINE_H) + 3} fill={l.color} fontSize="11" opacity="0.6">
+                    {t('chart.supply.lineCap')}
+                  </text>
+                </>
+              ) : null}
             </g>
           );
         })}
