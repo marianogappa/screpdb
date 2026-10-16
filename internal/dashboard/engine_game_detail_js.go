@@ -19,5 +19,3 @@ func (d *Dashboard) handlerEngineSnapshot(w http.ResponseWriter, _ *http.Request
 }
 
 func (d *Dashboard) applyEngineHotkeys(int64, *hotkeyTimelinePayload) {}
-
-type engineLayoutMemo struct{}

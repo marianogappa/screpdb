@@ -39,7 +39,6 @@ type Dashboard struct {
 	enginePass          enginePassHolder
 	enginePassEnabled   bool
 	digests             digestMemo
-	engineLayouts       engineLayoutMemo
 	sampleSetAutoLoaded bool
 	headless            bool
 	debug               bool

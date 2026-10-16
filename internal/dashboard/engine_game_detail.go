@@ -247,13 +247,8 @@ func momentBases(metas []overlayBaseMeta) []moments.Base {
 // listedEngineEvents are the engine's game events that the games list shows and filters on.
 var listedEngineEvents = map[string]bool{"drop": true, "reaver_drop": true, "dt_drop": true}
 
-type mapLayoutKey struct {
-	name          uint16
-	width, height uint16
-}
-
 // engineFeatures runs the game-event detectors on a fresh digest for the games list. Bases come from the
-// map, analysed once per map (name and size) since the engine pass covers the whole library.
+// layout the library already holds, so no replay file is read.
 func (d *Dashboard) engineFeatures(checksum [32]byte, dg *engine.Digest) (features []string) {
 	defer func() {
 		if p := recover(); p != nil {
@@ -265,13 +260,12 @@ func (d *Dashboard) engineFeatures(checksum [32]byte, dg *engine.Digest) (featur
 	if !ok {
 		return nil
 	}
-	layout, ok := d.engineLayout(rec)
-	if !ok {
+	if rec.Layout == nil {
 		return nil
 	}
 	features = []string{}
 	seen := map[string]bool{}
-	for _, m := range moments.Detect(dg, momentBases(overlayBaseMetasFromLayout(layout)), momentPlayers(rec)) {
+	for _, m := range moments.Detect(dg, libraryBases(rec.Layout), momentPlayers(rec)) {
 		if listedEngineEvents[m.Type] && !seen[m.Type] {
 			seen[m.Type] = true
 			features = append(features, m.Type)
@@ -280,27 +274,33 @@ func (d *Dashboard) engineFeatures(checksum [32]byte, dg *engine.Digest) (featur
 	return features
 }
 
-func (d *Dashboard) engineLayout(rec *library.Replay) (*models.MapContextLayout, bool) {
-	key := mapLayoutKey{name: rec.Map, width: rec.MapWidth, height: rec.MapHeight}
-	d.engineLayouts.mu.Lock()
-	defer d.engineLayouts.mu.Unlock()
-	if layout, ok := d.engineLayouts.byMap[key]; ok {
-		return layout, layout != nil
+func libraryBases(layout *library.MapLayout) []moments.Base {
+	naturals := map[string]bool{}
+	for _, b := range layout.Bases {
+		if isStartKind(b.Kind) {
+			naturals[b.NaturalExpansion] = true
+		}
 	}
-	if d.engineLayouts.byMap == nil {
-		d.engineLayouts.byMap = map[mapLayoutKey]*models.MapContextLayout{}
+	bases := make([]moments.Base, 0, len(layout.Bases))
+	for _, b := range layout.Bases {
+		kind := moments.BaseExpansion
+		switch {
+		case isStartKind(b.Kind):
+			kind = moments.BaseStart
+		case naturals[b.Name]:
+			kind = moments.BaseNatural
+		}
+		poly := make([][2]int32, len(b.Polygon))
+		for i, pt := range b.Polygon {
+			poly[i] = [2]int32{pt.X, pt.Y}
+		}
+		bases = append(bases, moments.Base{Kind: kind, X: b.CenterX, Y: b.CenterY, Polygon: poly})
 	}
-	layout, err := buildDashboardMapContextLayoutFromReplay(rec.Path())
-	if err != nil {
-		layout = nil
-	}
-	d.engineLayouts.byMap[key] = layout
-	return layout, layout != nil
+	return bases
 }
 
-type engineLayoutMemo struct {
-	mu    sync.Mutex
-	byMap map[mapLayoutKey]*models.MapContextLayout
+func isStartKind(kind string) bool {
+	return strings.EqualFold(kind, "start") || strings.EqualFold(kind, "starting")
 }
 
 func engineRace(r library.Race) openbw.Race {
