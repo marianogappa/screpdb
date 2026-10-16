@@ -47,6 +47,13 @@ const Y_MIN = 4; // y-axis baseline (just below the starting-supply seed)
 const Y_LOW_SUPPLY = 100; // the 4-100 supply band...
 const Y_LOW_FRAC = 0.55; // ...gets 55% of the plot height
 const DODGE_PX = 2; // per-line vertical separation for overlapping lines
+// Engine lines are thin and start on the same supply, so they get pushed further apart, within a total
+// spread that stays small next to the plot.
+const ENGINE_DODGE_PX = 5;
+const ENGINE_DODGE_SPREAD_PX = 14;
+const STRIP_H = 6;
+const STRIP_GAP = 6;
+const STRIP_TOP = 8;
 
 const formatTime = (seconds) => {
   const value = Math.max(0, Math.floor(Number(seconds) || 0));
@@ -127,6 +134,7 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
   const duration = Math.max(1, Math.floor(Number(durationSeconds) || 0));
   const [hoveredId, setHoveredId] = useState(null);
   const [tip, setTip] = useState(null);
+  const [hoveredBlock, setHoveredBlock] = useState(null);
 
   const eventsByPlayer = useMemo(() => {
     const map = new Map();
@@ -186,7 +194,8 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
   const yAt = (supply) => M.top + PLOT_H - yFrac(supply) * PLOT_H;
   // Small deterministic vertical dodge so perfectly-overlapping lines stay
   // distinguishable (tooltip/labels still report true values).
-  const yDodge = (s) => (nSeries > 1 ? (s.dodgeIdx - (nSeries - 1) / 2) * DODGE_PX : 0);
+  const dodgePx = fromEngine ? Math.min(ENGINE_DODGE_PX, ENGINE_DODGE_SPREAD_PX / Math.max(1, nSeries - 1)) : DODGE_PX;
+  const yDodge = (s) => (nSeries > 1 ? (s.dodgeIdx - (nSeries - 1) / 2) * dodgePx : 0);
 
   const xStep = duration <= 600 ? 60 : 120;
   const xTicks = [];
@@ -237,51 +246,64 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
     return t('chart.supply.addition', { built, delta: p.delta });
   };
 
-  const sliceUsed = (used, start, end) => {
-    const inside = used.filter((p) => p.sec >= start && p.sec <= end);
-    return inside.length ? inside : [];
-  };
+  // Engine lines: supply used, one fine line per player. Hovering a player adds the cap as a quieter line;
+  // the gutter names both, so the chart needs no legend. Supply blocks live in the strips under the axis.
+  const engineLines = (s, isHover, dodge) => (
+    <>
+      <path d={stepPath(s.used, s.endSec, dodge)} fill="none" stroke="transparent" strokeWidth="14" />
+      {isHover ? (
+        <path d={stepPath(s.points, s.endSec, dodge)} fill="none" stroke={s.color} strokeWidth="0.8" opacity="0.5" strokeLinejoin="round" />
+      ) : null}
+      <path d={stepPath(s.used, s.endSec, dodge)} fill="none" stroke={s.color} strokeWidth={isHover ? 1.6 : 1} strokeLinejoin="round" />
+    </>
+  );
 
-  // Engine lines: supply used, thick where the player sat at the cap. Hovering a player adds the cap as a
-  // quieter solid line; the gutter names both lines, so the chart needs no legend.
-  const engineLines = (s, isHover, dodge) => {
+  const stripsH = fromEngine ? STRIP_TOP + nSeries * (STRIP_H + STRIP_GAP) : 0;
+  const stripY = (i) => H + STRIP_TOP + i * (STRIP_H + STRIP_GAP) - 4;
+  const blockStrips = () => series.map((s, i) => {
+    const y = stripY(i);
     return (
-      <>
-        <path d={stepPath(s.used, s.endSec, dodge)} fill="none" stroke="transparent" strokeWidth="14" />
-        {isHover ? (
-          <>
-            <path d={stepPath(s.points, s.endSec, dodge)} fill="none" stroke={s.color} strokeWidth="1.25" opacity="0.45" strokeLinejoin="round" />
-          </>
-        ) : null}
-        <path d={stepPath(s.used, s.endSec, dodge)} fill="none" stroke={s.color} strokeWidth={isHover ? 2.25 : 1.5} strokeLinejoin="round" />
-        {s.blocks.map((b, i) => {
-          const pts = sliceUsed(s.used, b.start, b.end);
-          if (!pts.length) return null;
-          const d = stepPath(pts, b.end, dodge);
-          const mid = xAt((b.start + b.end) / 2);
+      <g
+        key={`strip-${s.player.player_id}`}
+        opacity={dim(s.player.player_id) ? 0.12 : 1}
+        onMouseEnter={() => setHoveredId(s.player.player_id)}
+        onMouseLeave={() => { setHoveredId(null); setHoveredBlock(null); }}
+      >
+        <rect x={M.left} y={y - 3} width={PLOT_W} height={STRIP_H + 6} fill="transparent" />
+        <rect x={M.left} y={y} width={xAt(s.endSec) - M.left} height={STRIP_H} rx="2" fill="rgba(255,255,255,0.06)" />
+        {s.blocks.map((b, j) => {
+          const x0 = xAt(b.start);
+          const w = Math.max(2, xAt(b.end) - x0);
           return (
-            <g
-              key={`block-${i}`}
-              onMouseEnter={() => setTip({
-                x: mid,
-                y: yAt(b.used) + dodge,
-                color: s.color,
-                lines: [
-                  t('chart.supply.blockedFor', { duration: formatTime(b.end - b.start) }),
-                  t('chart.supply.usedOfCap', { used: b.used, cap: b.cap }),
-                  formatTime(b.start),
-                ],
-              })}
-              onMouseLeave={() => setTip(null)}
-            >
-              <path d={d} fill="none" stroke="transparent" strokeWidth="14" />
-              <path d={d} fill="none" stroke={s.color} strokeWidth={isHover ? 6 : 5} strokeLinecap="round" />
-            </g>
+            <rect
+              key={`b-${j}`}
+              x={x0}
+              y={y}
+              width={w}
+              height={STRIP_H}
+              rx="1.5"
+              fill={s.color}
+              onMouseEnter={() => {
+                setHoveredBlock({ start: b.start, end: b.end, color: s.color });
+                setTip({
+                  x: x0 + w / 2,
+                  y,
+                  color: s.color,
+                  lines: [
+                    t('chart.supply.blockedFor', { duration: formatTime(b.end - b.start) }),
+                    t('chart.supply.usedOfCap', { used: b.used, cap: b.cap }),
+                    formatTime(b.start),
+                  ],
+                });
+              }}
+              onMouseLeave={() => { setHoveredBlock(null); setTip(null); }}
+            />
           );
         })}
-      </>
+        <text x={PLOT_RIGHT + 8} y={y + STRIP_H} fill={s.color} fontSize="10" opacity="0.8">{truncateName(s.player.name, 14)}</text>
+      </g>
     );
-  };
+  });
 
   return (
     <div className="workflow-card workflow-card-chat-summary">
@@ -293,7 +315,7 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
 
       <svg
         width="100%"
-        viewBox={`0 0 ${W} ${H}`}
+        viewBox={`0 0 ${W} ${H + stripsH}`}
         preserveAspectRatio="xMidYMid meet"
         style={{ display: 'block' }}
       >
@@ -309,6 +331,18 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
             <text x={xAt(t)} y={H - 12} textAnchor="middle" fill="rgba(255,255,255,0.55)" fontSize="11">{formatTime(t)}</text>
           </g>
         ))}
+
+        {hoveredBlock ? (
+          <rect
+            x={xAt(hoveredBlock.start)}
+            y={M.top}
+            width={Math.max(2, xAt(hoveredBlock.end) - xAt(hoveredBlock.start))}
+            height={PLOT_H}
+            fill={hoveredBlock.color}
+            opacity="0.14"
+            pointerEvents="none"
+          />
+        ) : null}
 
         {series.map((s) => {
           const dimmed = dim(s.player.player_id);
@@ -393,6 +427,8 @@ function SupplyTimeline({ players, timeline, durationSeconds, playerColor }) {
             </g>
           );
         })}
+
+        {fromEngine ? blockStrips() : null}
 
         {tip ? (() => {
           const w = Math.max(...tip.lines.map((ln) => ln.length)) * 6.1 + 16;

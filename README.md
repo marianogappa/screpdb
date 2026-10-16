@@ -301,18 +301,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-16  OK. Frontend only: games with engine supply get Supply as a top level tab (the existing supply-timeline route); without the engine it stays a Timings sub-tab and the route falls back there. No I/O changes.
+2026-10-16  OK. Frontend only: engine supply blocks move from thick line stretches to one strip per player under the time axis (hovering a block shades it on the chart); lines are finer and spread a few pixels apart. No I/O changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-16  OK. Frontend only: games with engine supply get Supply as a top level tab (the existing supply-timeline route); without the engine it stays a Timings sub-tab and the route falls back there. No I/O changes.
 2026-10-16  OK. Frontend only: the engine supply chart draws supply used, thick where the player was supply blocked, and shows the cap with gutter labels on hover; the engine note is gone and only the command-inferred chart keeps its warning. No I/O changes.
 2026-10-16  OK. Engine hotkey groups: the engine pass records what each ctrl or shift + number left in the group (main unit by value, exact count) into the digest (EngineVersion 5, about 3 bytes per assign), and /api/games/{id}/hotkeys joins it onto unit assigns from memory. No new files, reads or writes beyond the existing digest cache; js build unchanged.
 2026-10-16  OK. The Hotkeys map moves onto GameMap: /api/custom/hotkeys/map-data returns each hotkeyed building (type, footprint in map pixels, groups) and the crop from the stored hotkey stream with no file reads, and /api/custom/game-assets/map-crop renders native terrain for a tile rectangle from the replay file already in the library through scmapanalyzer, read only, no writes, js build serves 404. The server-painted PNG route and its compositor are gone.
 2026-10-16  OK. Frontend only: a shared GameMap component now frames the Summary map, the Game Events map and the engine snapshot, with map-pixel layers and a whole-map layer for the existing percent-based overlays. No Go, file or network I/O changes; no DetectorVersion bump.
-2026-10-16  OK. Exact snapshots on demand: the digest keeps positions every 10 s without workers (EngineVersion 4), and opening a game's events runs one engine pass to its event seconds, cached in a second append-only file in the app-data dir (engine_snapshots.bin) through the same digestcache code; replay bytes are read through iofacade.ReadFile and checked against the checksum. No new roots, hosts or endpoints, enforcement test unchanged; no DetectorVersion bump.
 ```
 
 </details>
