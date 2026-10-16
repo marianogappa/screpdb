@@ -3,6 +3,7 @@ import { useT } from '../lib/i18nContext';
 import { formatDuration } from '../lib/formatters';
 import { api } from '../api';
 import { getUnitIcon, normalizeUnitName } from '../lib/gameAssets';
+import GameMap from './GameMap';
 
 // Sprite boxes are in map pixels. scmapanalyzer's sprites are drawn at twice the map's scale, so a box
 // of half their size puts each unit at its real size: 36 px holds a Marine or a Zergling, 72 px an
@@ -71,38 +72,45 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
   const region = useMemo(() => (engine?.region && width && height ? clampRegion(engine.region, width, height) : null), [engine, width, height]);
   if (!width || !height) return null;
   const showZoomed = zoomed && region;
-  const view = showZoomed ? region : { x: 0, y: 0, w: width, h: height };
   const color = (id) => colorByPlayerId?.get(id) || '#e2e8f0';
 
   return (
     <div className="engine-snapshot">
-      <div className="engine-snapshot-frame" style={{ aspectRatio: `${view.w} / ${view.h}` }}>
-        <svg viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label={mapAlt}>
-          <image href={mapUrl} x="0" y="0" width={width} height={height} preserveAspectRatio="none" />
-          {!showZoomed && region ? (
-            <rect x={region.x} y={region.y} width={region.w} height={region.h} className="engine-snapshot-region" strokeWidth={24} />
-          ) : null}
-          {(snapshot?.buildings || []).map((b, i) => (
-            <Sprite
-              key={`b-${i}`}
-              unitType={b.unit_type}
-              x={b.x}
-              y={b.y}
-              w={b.w * (showZoomed ? 1 : WHOLE_MAP_SCALE / 2)}
-              h={b.h * (showZoomed ? 1 : WHOLE_MAP_SCALE / 2)}
-              color={color(b.player_id)}
-              faded={!b.complete}
-              title={b.complete ? b.unit_type : t('snapshot.underConstruction', { unit: b.unit_type })}
-            />
-          ))}
-          {(snapshot?.units || []).map((u, i) => {
-            const size = unitBox(u.unit_type) * (showZoomed ? 1 : WHOLE_MAP_SCALE);
-            return (
-              <Sprite key={`u-${i}`} unitType={u.unit_type} x={u.x} y={u.y} w={size} h={size} color={color(u.player_id)} title={u.unit_type} />
-            );
-          })}
-        </svg>
-      </div>
+      <GameMap
+        className="engine-snapshot-frame"
+        mapUrl={mapUrl}
+        mapWidth={width}
+        mapHeight={height}
+        view={showZoomed ? region : null}
+        maxHeight="100vh - 28px"
+        alt={mapAlt}
+        mapLayers={(
+          <>
+            {!showZoomed && region ? (
+              <rect x={region.x} y={region.y} width={region.w} height={region.h} className="engine-snapshot-region" strokeWidth={24} />
+            ) : null}
+            {(snapshot?.buildings || []).map((b, i) => (
+              <Sprite
+                key={`b-${i}`}
+                unitType={b.unit_type}
+                x={b.x}
+                y={b.y}
+                w={b.w * (showZoomed ? 1 : WHOLE_MAP_SCALE / 2)}
+                h={b.h * (showZoomed ? 1 : WHOLE_MAP_SCALE / 2)}
+                color={color(b.player_id)}
+                faded={!b.complete}
+                title={b.complete ? b.unit_type : t('snapshot.underConstruction', { unit: b.unit_type })}
+              />
+            ))}
+            {(snapshot?.units || []).map((u, i) => {
+              const size = unitBox(u.unit_type) * (showZoomed ? 1 : WHOLE_MAP_SCALE);
+              return (
+                <Sprite key={`u-${i}`} unitType={u.unit_type} x={u.x} y={u.y} w={size} h={size} color={color(u.player_id)} title={u.unit_type} />
+              );
+            })}
+          </>
+        )}
+      />
       <div className="engine-snapshot-meta">
         <span>
           {failed

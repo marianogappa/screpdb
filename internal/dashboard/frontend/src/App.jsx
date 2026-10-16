@@ -9,6 +9,7 @@ import EngineBadge from './components/EngineBadge';
 import EngineCoverage from './components/EngineCoverage';
 import MacroScorecard from './components/MacroScorecard';
 import EngineSnapshotMap from './components/EngineSnapshotMap';
+import GameMap from './components/GameMap';
 import GamingSessionPanel from './components/GamingSessionPanel';
 import NoValue from './components/NoValue';
 import LanguageSwitcher from './components/LanguageSwitcher';
@@ -1257,6 +1258,8 @@ const renderSummaryMapStack = ({
   legendItems,
   showLegend = true,
   imageUrl,
+  mapWidth,
+  mapHeight,
   mapAlt,
   bounds,
   startPolygons,
@@ -1276,8 +1279,14 @@ const renderSummaryMapStack = ({
         ))}
       </div>
     ) : null}
-    <div className="workflow-event-map-frame workflow-summary-map-frame">
-      <img src={imageUrl} alt={mapAlt} className="workflow-event-map-image" />
+    <GameMap
+      className="workflow-event-map-frame workflow-summary-map-frame"
+      mapUrl={imageUrl}
+      mapWidth={mapWidth}
+      mapHeight={mapHeight}
+      maxHeight="240px"
+      alt={mapAlt}
+    >
       {bounds && (startPolygons || []).length > 0 ? (
         <svg className="workflow-event-map-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           {(startPolygons || []).map((overlay) => {
@@ -1303,7 +1312,7 @@ const renderSummaryMapStack = ({
           })}
         </svg>
       ) : null}
-    </div>
+    </GameMap>
   </>
 );
 
@@ -6243,6 +6252,8 @@ function App() {
                                 legendItems: selectedMainGameLegend,
                                 showLegend: false,
                                 imageUrl: mainMapVisualThumbURL,
+                                mapWidth: mainGame.map_width_pixels,
+                                mapHeight: mainGame.map_height_pixels,
                                 mapAlt: t('game.summary.mapAlt', { map: mainGame.map_name }),
                                 bounds: mainEventMapBounds,
                                 startPolygons: summaryMapStartPolygons,
@@ -6529,11 +6540,14 @@ function App() {
                             />
                           ) : mainMapVisualAvailable ? (
                             <>
-                              <div
+                              <GameMap
                                 className={`workflow-event-map-frame${selectedEventAnimCategory ? ` workflow-anim-${selectedEventAnimCategory}` : ''}`}
-                                style={{ '--map-aspect': mainEventMapAspect }}
+                                mapUrl={mainMapVisualURL}
+                                mapWidth={mainGame.map_width_pixels}
+                                mapHeight={mainGame.map_height_pixels}
+                                maxHeight="100vh - 28px"
+                                alt={t('events.mapAlt', { map: mainGame.map_name })}
                               >
-                                <img src={mainMapVisualURL} alt={t('events.mapAlt', { map: mainGame.map_name })} className="workflow-event-map-image" />
                                 {selectedMainGameEvent ? (
                                   <svg
                                     className="workflow-event-map-overlay"
@@ -6861,7 +6875,7 @@ function App() {
                                     </span>
                                   </div>
                                 ) : null}
-                              </div>
+                              </GameMap>
                             </>
                           ) : (
                             <div className="workflow-map-summary-fallback">

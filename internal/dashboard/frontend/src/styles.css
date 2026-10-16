@@ -2894,30 +2894,8 @@ button.workflow-nav-update-available:disabled {
 
 /* Stack image + SVG so the frame shrink-wraps the map; overlay matches the image box (avoids stretched polygons in the modal). */
 .workflow-summary-map-frame {
-  display: inline-grid;
-  grid-template: 1fr / 1fr;
-  width: fit-content;
-  max-width: 100%;
-  vertical-align: top;
-  position: relative;
-}
-
-.workflow-summary-map-frame .workflow-event-map-image {
-  grid-area: 1 / 1;
-  width: auto;
-  max-width: 100%;
-  height: auto;
-  max-height: 240px;
-  object-fit: contain;
-  display: block;
-}
-
-.workflow-summary-map-frame .workflow-event-map-overlay {
-  grid-area: 1 / 1;
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .workflow-summary-features-col {
@@ -5006,7 +4984,6 @@ button.workflow-nav-update-available:disabled {
    height fits the viewport (aspect preserved via --map-aspect, set inline);
    centered in the column when the height constraint makes it narrower. */
 .workflow-event-map-panel .workflow-event-map-frame {
-  max-width: min(100%, calc(var(--map-aspect, 1) * (100vh - 28px)));
   margin-left: auto;
   margin-right: auto;
 }
@@ -7555,18 +7532,6 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   display: block;
 }
 
-.engine-snapshot-frame {
-  width: 100%;
-  max-height: 70vh;
-  border-radius: 6px;
-  overflow: hidden;
-  background: #05070c;
-}
-.engine-snapshot-frame svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
 .engine-snapshot-region {
   fill: none;
   stroke: rgba(251, 191, 36, 0.9);
@@ -7605,4 +7570,36 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   margin-top: 8px;
   font-size: 0.75rem;
   color: rgba(148, 163, 184, 0.85);
+}
+
+/* GameMap: one frame for every map view. The svg holds the map and map-pixel layers; .game-map-whole
+   covers the whole map wherever the view is, for overlays placed in percent of the map. */
+.game-map {
+  position: relative;
+  overflow: hidden;
+  margin-left: auto;
+  margin-right: auto;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: #05070c;
+}
+.game-map-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.game-map-whole {
+  position: absolute;
+}
+.game-map--natural {
+  display: inline-block;
+  max-width: 100%;
+}
+.game-map--natural .game-map-img {
+  display: block;
+  max-width: 100%;
+  width: auto;
+  height: auto;
 }
