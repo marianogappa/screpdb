@@ -1,34 +1,14 @@
 package dashboard
 
 import (
-	"bytes"
 	"encoding/json"
-	"image"
-	"image/color"
-	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"testing"
 
-	"github.com/marianogappa/scmapanalyzer/lib/scmapanalyzer"
 	"github.com/marianogappa/screpdb/internal/hotkeystream"
 )
-
-func testTerrainPNG(t *testing.T, widthTiles, heightTiles int) []byte {
-	t.Helper()
-	img := image.NewRGBA(image.Rect(0, 0, widthTiles*32, heightTiles*32))
-	for y := 0; y < img.Bounds().Dy(); y++ {
-		for x := 0; x < img.Bounds().Dx(); x++ {
-			img.SetRGBA(x, y, color.RGBA{40, 44, 48, 255})
-		}
-	}
-	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
-		t.Fatalf("encode terrain: %v", err)
-	}
-	return buf.Bytes()
-}
 
 func TestHotkeyBuildingsAtCutoff(t *testing.T) {
 	events := []hotkeystream.Event{
@@ -63,51 +43,39 @@ func TestHotkeyMapTileRect(t *testing.T) {
 		{group: 2, building: "Comsat Station", tileX: 30, tileY: 12},
 	}
 	rect := hotkeyMapTileRect(buildings, 64, 64)
-	want := scmapanalyzer.TileRect{X: 4, Y: 4, W: 34, H: 16}
+	want := tileRect{X: 4, Y: 4, W: 34, H: 16}
 	if rect != want {
 		t.Fatalf("rect = %+v, want %+v", rect, want)
 	}
 	// Buildings near the edge clamp to the map bounds.
 	edge := []hotkeyMapBuilding{{group: 1, building: "Hatchery", tileX: 1, tileY: 62}}
 	rect = hotkeyMapTileRect(edge, 64, 64)
-	want = scmapanalyzer.TileRect{X: 0, Y: 56, W: 11, H: 8}
+	want = tileRect{X: 0, Y: 56, W: 11, H: 8}
 	if rect != want {
 		t.Fatalf("edge rect = %+v, want %+v", rect, want)
 	}
 }
 
-func TestRenderHotkeyMapComposite(t *testing.T) {
+func TestHotkeyMapData(t *testing.T) {
 	buildings := []hotkeyMapBuilding{
 		{group: 5, building: "Hatchery", tileX: 10, tileY: 10},
 		{group: 2, building: "Comsat Station", tileX: 30, tileY: 12},
-		// Two groups on one tile share a badge; unknown footprint falls back.
-		{group: 8, building: "Hatchery", tileX: 10, tileY: 10},
-		{group: 0, building: "Not A Real Building", tileX: 40, tileY: 40},
+		{group: 0, building: "Hatchery", tileX: 10, tileY: 10},
+		{group: 8, building: "Not A Real Building", tileX: 40, tileY: 40},
 	}
-	rect := hotkeyMapTileRect(buildings, 64, 64)
-	terrain := testTerrainPNG(t, rect.W, rect.H)
-	out, err := renderHotkeyMapComposite(terrain, rect, buildings)
-	if err != nil {
-		t.Fatalf("render: %v", err)
+	got := hotkeyMapData(buildings, 64, 64, 480)
+	if got.Crop != (hotkeyMapRect{X: 4 * 32, Y: 4 * 32, W: 45 * 32, H: 44 * 32}) {
+		t.Fatalf("crop = %+v", got.Crop)
 	}
-	img, err := png.Decode(bytes.NewReader(out))
-	if err != nil {
-		t.Fatalf("decode composite: %v", err)
+	if len(got.Buildings) != 3 {
+		t.Fatalf("two groups on one Hatchery must share it: %+v", got.Buildings)
 	}
-	b := img.Bounds()
-	if b.Dx() != rect.W*32 || b.Dy() != rect.H*32 {
-		t.Fatalf("composite bounds %v, want %dx%d", b, rect.W*32, rect.H*32)
+	hatch := got.Buildings[0]
+	if hatch.Building != "Hatchery" || hatch.Footprint != (hotkeyMapRect{X: 320, Y: 320, W: 128, H: 96}) || len(hatch.Groups) != 2 || hatch.Groups[0] != 5 || hatch.Groups[1] != 0 {
+		t.Fatalf("hatchery = %+v", hatch)
 	}
-	// The footprint outline for tile (10,10) paints over terrain at the
-	// building's rect-relative corner.
-	corner := img.At((10-rect.X)*32, (10-rect.Y)*32)
-	r, g, bl, _ := corner.RGBA()
-	if r == 40<<8 && g == 44<<8 && bl == 48<<8 {
-		t.Fatal("overlay not painted over terrain")
-	}
-
-	if _, err := renderHotkeyMapComposite([]byte("not a png"), rect, buildings); err == nil {
-		t.Fatal("expected error for invalid terrain")
+	if fp := got.Buildings[2].Footprint; fp.W != 96 || fp.H != 64 {
+		t.Fatalf("unknown buildings fall back to a 3x2 footprint: %+v", fp)
 	}
 }
 
@@ -122,20 +90,8 @@ func TestKeyboardOrderSort(t *testing.T) {
 	}
 }
 
-func TestHotkeySpriteName(t *testing.T) {
-	if got := hotkeySpriteName("Hatchery"); got != "Zerg Hatchery" {
-		t.Fatalf("hotkeySpriteName(Hatchery) = %q", got)
-	}
-	if got := hotkeySpriteName("Comsat Station"); got != "Terran Comsat Station" {
-		t.Fatalf("hotkeySpriteName(Comsat Station) = %q", got)
-	}
-	if got := hotkeySpriteName("Unknown"); got != "" {
-		t.Fatalf("hotkeySpriteName(Unknown) = %q", got)
-	}
-}
-
-// TestHotkeyMapEndToEnd drives the PNG endpoint against real ingested replays:
-// find a game and player with located buildings, render, and assert PNG bytes.
+// TestHotkeyMapEndToEnd drives the map data endpoint against real ingested replays, then renders the
+// terrain under the first crop it gets.
 func TestHotkeyMapEndToEnd(t *testing.T) {
 	d := newTestDashboard(t)
 	r := d.setupRouter()
@@ -147,14 +103,22 @@ func TestHotkeyMapEndToEnd(t *testing.T) {
 	rendered := false
 	for _, replayID := range games {
 		for _, playerID := range listTestGamePlayerIDs(t, r, replayID) {
-			path := "/api/custom/hotkeys/map?replay_id=" + itoa64(replayID) + "&player_id=" + itoa64(playerID) + "&minute=8"
+			path := "/api/custom/hotkeys/map-data?replay_id=" + itoa64(replayID) + "&player_id=" + itoa64(playerID) + "&minute=8"
 			rec := httptest.NewRecorder()
 			r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 			switch rec.Code {
 			case http.StatusOK:
-				body := rec.Body.Bytes()
-				if len(body) < 24 || string(body[1:4]) != "PNG" {
-					t.Fatalf("expected PNG, got %q", body[:16])
+				var data hotkeyMapWire
+				if err := json.Unmarshal(rec.Body.Bytes(), &data); err != nil || len(data.Buildings) == 0 || data.Crop.W == 0 {
+					t.Fatalf("map data %s: %v", rec.Body.String(), err)
+				}
+				if !rendered {
+					crop := "/api/custom/game-assets/map-crop?replay_id=" + itoa64(replayID) + "&x=" + strconv.Itoa(data.Crop.X/32) + "&y=" + strconv.Itoa(data.Crop.Y/32) + "&w=" + strconv.Itoa(data.Crop.W/32) + "&h=" + strconv.Itoa(data.Crop.H/32)
+					rec := httptest.NewRecorder()
+					r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, crop, nil))
+					if body := rec.Body.Bytes(); rec.Code != http.StatusOK || len(body) < 24 || string(body[1:4]) != "PNG" {
+						t.Fatalf("%s: status %d", crop, rec.Code)
+					}
 				}
 				rendered = true
 			case http.StatusNotFound:

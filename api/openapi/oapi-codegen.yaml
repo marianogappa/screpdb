@@ -15,7 +15,8 @@ output-options:
     - gameAssetUnit
     - gameAssetBuilding
     - gameAssetMap
-    - hotkeyMap
+    - hotkeyMapData
+    - mapTerrainCrop
     - debugMapLayout
     - markersDefinitions
     - loadSampleSet

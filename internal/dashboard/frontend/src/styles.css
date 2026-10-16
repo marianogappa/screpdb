@@ -7137,10 +7137,10 @@ span[data-tip],
 .hk-map-panel { border: 1px solid var(--e-line); border-radius: 8px; padding: 10px; }
 .hk-map-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 .hk-map-head input[type="range"] { margin-left: auto; width: 45%; }
-.hk-map-img {
-  width: 100%; max-height: 75vh; display: block; border-radius: 6px;
-  object-fit: contain; object-position: left top;
-}
+.hk-map { border-radius: 6px; overflow: hidden; }
+.hk-map-footprint { fill: none; stroke: #e0b84c; stroke-width: 2; }
+.hk-map-chip rect { fill: #181e25; stroke: #6c7884; stroke-width: 1.5; }
+.hk-map-chip text { fill: #e8edf2; font-size: 16px; font-weight: 600; }
 .hk-sigs { display: grid; gap: 14px; }
 .hk-sig-card { border: 1px solid var(--e-line); border-radius: 8px; padding: 12px 14px; }
 .hk-sig-row { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; padding: 4px 0; }

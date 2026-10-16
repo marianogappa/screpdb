@@ -39,13 +39,13 @@ func TestSetupRouter_GameHotkeysUnknownReplayIs404(t *testing.T) {
 	}
 }
 
-func TestSetupRouter_HotkeyMapValidatesParams(t *testing.T) {
+func TestSetupRouter_HotkeyMapDataValidatesParams(t *testing.T) {
 	d := newTestDashboard(t)
 	r := d.setupRouter()
 	for _, path := range []string{
-		"/api/custom/hotkeys/map",
-		"/api/custom/hotkeys/map?replay_id=1",
-		"/api/custom/hotkeys/map?replay_id=1&player_id=1&minute=999",
+		"/api/custom/hotkeys/map-data",
+		"/api/custom/hotkeys/map-data?replay_id=1",
+		"/api/custom/hotkeys/map-data?replay_id=1&player_id=1&minute=999",
 	} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		rec := httptest.NewRecorder()

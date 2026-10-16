@@ -12,6 +12,9 @@ import React, { forwardRef } from 'react';
 // - children: drawn in a box that always covers the whole map, wherever the view is, so the existing
 //   overlays that place things in percent of the map (polygons in a 0..100 viewBox, icons at left/top %)
 //   keep working unchanged and zoom with the view too.
+//
+// detail ({url, x, y, w, h} in map pixels) is a sharper terrain image for part of the map, drawn over the
+// base image: the whole-map image is downsampled, which blurs close views.
 const GameMap = forwardRef(function GameMap({
   mapUrl,
   mapWidth,
@@ -21,6 +24,7 @@ const GameMap = forwardRef(function GameMap({
   className = '',
   alt = '',
   mapLayers = null,
+  detail = null,
   children = null,
   style = undefined,
 }, ref) {
@@ -53,6 +57,7 @@ const GameMap = forwardRef(function GameMap({
     >
       <svg className="game-map-svg" viewBox={`${v.x} ${v.y} ${v.w} ${v.h}`} preserveAspectRatio="none" role="img" aria-label={alt}>
         <image href={mapUrl} x="0" y="0" width={width} height={height} preserveAspectRatio="none" />
+        {detail ? <image href={detail.url} x={detail.x} y={detail.y} width={detail.w} height={detail.h} preserveAspectRatio="none" /> : null}
         {mapLayers}
       </svg>
       {children ? <div className="game-map-whole" style={wholeMapBox}>{children}</div> : null}

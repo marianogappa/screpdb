@@ -7007,6 +7007,9 @@ function App() {
                         <HotkeyMaps
                           replayId={selectedReplayId}
                           players={mainGameHotkeys.players || []}
+                          mapUrl={mainMapVisualAvailable ? mainMapVisualURL : null}
+                          mapWidth={mainGame?.map_width_pixels}
+                          mapHeight={mainGame?.map_height_pixels}
                         />
                       </>
                     ) : null}
