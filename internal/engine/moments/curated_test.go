@@ -80,7 +80,7 @@ func TestDropsNeedDangerOrNumbersOrDamage(t *testing.T) {
 	d := digest()
 	d.Unloads = []engine.Unload{{Frame: f(600), TransportType: ut(bwgame.UnitTypesProtossShuttle), Owner: 1, X: 350, Y: 350, Cargo: []uint16{ut(bwgame.UnitTypesProtossReaver)}}}
 	got := Detect(d, testBases, zvp)
-	if len(got) != 1 || got[0].Type != "drop" || got[0].Units[1] != ut(bwgame.UnitTypesProtossReaver) {
+	if len(got) != 1 || got[0].Type != "drop" || got[0].Units[1] != ut(bwgame.UnitTypesProtossReaver) || got[0].SnapshotSecond != 601 {
 		t.Fatalf("a Reaver drop: %+v", got)
 	}
 	d.Unloads[0].Cargo = []uint16{ut(bwgame.UnitTypesProtossZealot), ut(bwgame.UnitTypesProtossZealot)}
@@ -137,7 +137,7 @@ func TestExpansionsSkipBasesAlreadyHeldAndMacroHatcheries(t *testing.T) {
 		{Owner: 1, Type: ut(bwgame.UnitTypesProtossNexus), From: uint16(openbw.UnitTypeNone), Unit: 12, X: 2000, Y: 400, Start: f(600), Complete: engine.NoFrame, Cancel: f(620)},
 	}
 	got := Detect(d, testBases, zvp)
-	if len(got) != 1 || got[0].Type != "expansion" || got[0].Base != 1 || got[0].Second != 120 {
+	if len(got) != 1 || got[0].Type != "expansion" || got[0].Base != 1 || got[0].Second != 120 || got[0].SnapshotSecond != 122 {
 		t.Fatalf("want only the natural: %+v", got)
 	}
 }

@@ -144,9 +144,11 @@ func Detect(d *engine.Digest, bases []Base, players []Player) []Event {
 	out = append(out, g.teleports()...)
 	out = append(out, g.nukes()...)
 	out = append(out, g.attacks(out)...)
+	lastShown := min(g.trusted-1, second(d.LastFrame))
 	kept := out[:0]
 	for _, e := range out {
 		if e.Second < g.trusted {
+			e.SnapshotSecond = max(e.Second, min(e.SnapshotSecond, lastShown))
 			kept = append(kept, e)
 		}
 	}
@@ -288,6 +290,20 @@ func regionAround(minX, minY, maxX, maxY int32) Region {
 	return r
 }
 
+// The map shows a moment a little after an event starts: a building placed this second is still a worker
+// on the map, an unload is one unit at a time, and a unit that just finished is still in its building.
+const (
+	placedLead  = 2
+	arrivalLead = 1
+	// A transport empties in about three seconds; a drop that goes on longer is shown at the first one.
+	dropUnloadSeconds = 3
+)
+
+func (e Event) shownAt(sec int) Event {
+	e.SnapshotSecond = sec
+	return e
+}
+
 func (g *game) event(kind string, sec int, actor, target int8, base int, x, y int32, units []uint16) Event {
 	return Event{Type: kind, Second: sec, SnapshotSecond: sec, Actor: actor, Target: target, Base: base, SourceBase: NoBase, X: x, Y: y, Units: units, Region: g.regionOfBase(base, x, y)}
 }
@@ -319,7 +335,7 @@ func (g *game) expansions() []Event {
 			held[pr.Owner] = map[int]bool{}
 		}
 		held[pr.Owner][b] = true
-		out = append(out, g.event("expansion", second(pr.Start), pr.Owner, NoPlayer, b, pr.X, pr.Y, []uint16{pr.Type}))
+		out = append(out, g.event("expansion", second(pr.Start), pr.Owner, NoPlayer, b, pr.X, pr.Y, []uint16{pr.Type}).shownAt(second(pr.Start)+placedLead))
 	}
 	return out
 }
@@ -405,7 +421,7 @@ func (g *game) buildingRushes() []Event {
 			units = append(units, ut(bwgame.UnitTypesTerranMarine))
 		}
 		done[[2]int64{int64(pr.Owner), int64(pr.Type)}] = true
-		out = append(out, g.event(kind, sec, pr.Owner, target, b, pr.X, pr.Y, units))
+		out = append(out, g.event(kind, sec, pr.Owner, target, b, pr.X, pr.Y, units).shownAt(sec+placedLead))
 	}
 	return out
 }
@@ -539,7 +555,7 @@ func (g *game) proxies() []Event {
 			continue
 		}
 		done[proxyKey{pr.Owner, k.kind}] = true
-		out = append(out, g.event(k.kind, sec, pr.Owner, NoPlayer, b, pr.X, pr.Y, []uint16{pr.Type}))
+		out = append(out, g.event(k.kind, sec, pr.Owner, NoPlayer, b, pr.X, pr.Y, []uint16{pr.Type}).shownAt(sec+placedLead))
 	}
 	return out
 }
@@ -576,7 +592,7 @@ func (g *game) mannerPylons() []Event {
 				continue
 			}
 			done[pr.Owner] = true
-			out = append(out, g.event("manner_pylon", sec, pr.Owner, enemy.Slot, b, pr.X, pr.Y, []uint16{pr.Type}))
+			out = append(out, g.event("manner_pylon", sec, pr.Owner, enemy.Slot, b, pr.X, pr.Y, []uint16{pr.Type}).shownAt(sec+placedLead))
 		}
 	}
 	return out
@@ -601,7 +617,7 @@ func (g *game) firstTech() []Event {
 		first := func(kind string, t bwgame.UnitTypes) {
 			for _, pr := range g.d.Productions {
 				if pr.Owner == p.Slot && pr.Type == ut(t) && pr.Complete != engine.NoFrame && second(pr.Complete) < firstTechBefore {
-					out = append(out, g.event(kind, second(pr.Complete), p.Slot, NoPlayer, NoBase, pr.X, pr.Y, []uint16{pr.Type}))
+					out = append(out, g.event(kind, second(pr.Complete), p.Slot, NoPlayer, NoBase, pr.X, pr.Y, []uint16{pr.Type}).shownAt(second(pr.Complete)+arrivalLead))
 					return
 				}
 			}
@@ -647,7 +663,7 @@ func (g *game) becameRace() []Event {
 			continue
 		}
 		done[[2]int8{pr.Owner, race}] = true
-		out = append(out, g.event(kind, second(pr.Start), pr.Owner, NoPlayer, g.baseOf(pr.X, pr.Y), pr.X, pr.Y, []uint16{pr.Type}))
+		out = append(out, g.event(kind, second(pr.Start), pr.Owner, NoPlayer, g.baseOf(pr.X, pr.Y), pr.X, pr.Y, []uint16{pr.Type}).shownAt(second(pr.Start)+placedLead))
 	}
 	return out
 }
@@ -705,7 +721,7 @@ func (g *game) drops() []Event {
 		if !dangerous && len(c.cargo) < dropMinCargo && g.killsAt(c.actor, c.target, c.base, c.first, c.last+dropFollowUp) == 0 {
 			continue
 		}
-		e := g.event("drop", c.first, c.actor, c.target, c.base, c.x, c.y, append([]uint16{c.transport}, byCount(c.cargo)...))
+		e := g.event("drop", c.first, c.actor, c.target, c.base, c.x, c.y, append([]uint16{c.transport}, byCount(c.cargo)...)).shownAt(min(c.last, c.first+dropUnloadSeconds) + arrivalLead)
 		out = append(out, e)
 	}
 	return out
@@ -774,7 +790,7 @@ func (g *game) teleports() []Event {
 			if !g.enemies(t.Owner, target) {
 				target = NoPlayer
 			}
-			e := g.event("recall", sec, t.Owner, target, to, t.ToX, t.ToY, append([]uint16{ut(bwgame.UnitTypesProtossArbiter)}, byCount(t.Units)...))
+			e := g.event("recall", sec, t.Owner, target, to, t.ToX, t.ToY, append([]uint16{ut(bwgame.UnitTypesProtossArbiter)}, byCount(t.Units)...)).shownAt(sec + arrivalLead)
 			e.SourceBase = g.baseOf(t.FromX, t.FromY)
 			out = append(out, e)
 		case openbw.RaceZerg:
@@ -786,7 +802,7 @@ func (g *game) teleports() []Event {
 				continue
 			}
 			lastNydus[k] = sec
-			out = append(out, g.event("nydus_attack", sec, t.Owner, target, to, t.ToX, t.ToY, byCount(t.Units)))
+			out = append(out, g.event("nydus_attack", sec, t.Owner, target, to, t.ToX, t.ToY, byCount(t.Units)).shownAt(sec+arrivalLead))
 		}
 	}
 	return out

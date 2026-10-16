@@ -1,8 +1,8 @@
 package engine
 
 import (
-	openbw "github.com/marianogappa/openbw-go"
 	"github.com/icza/screp/rep/repcmd"
+	openbw "github.com/marianogappa/openbw-go"
 	"github.com/marianogappa/screpsim"
 )
 
