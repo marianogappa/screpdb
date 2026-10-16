@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"math"
 	"net/http"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/icza/screp/rep/repcmd"
 	openbw "github.com/marianogappa/openbw-go"
+	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/engine"
 	"github.com/marianogappa/screpdb/internal/engine/moments"
 	"github.com/marianogappa/screpdb/internal/library"
@@ -142,7 +144,6 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 		return
 	}
 	playersBySlot := map[int8]workflowGameEventPlayer{}
-	var players []moments.Player
 	for ordinal, p := range rec.Players {
 		id := library.PlayerID(rec.ID, uint8(ordinal))
 		for _, gp := range detail.Players {
@@ -150,8 +151,8 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 				playersBySlot[int8(p.Slot)] = workflowGameEventPlayer{PlayerID: id, Name: gp.Name, Color: gp.Color}
 			}
 		}
-		players = append(players, moments.Player{Slot: int8(p.Slot), Race: engineRace(p.Race), Human: p.IsHuman() && !p.IsObserver()})
 	}
+	players := momentPlayers(rec)
 	player := func(slot int8) *workflowGameEventPlayer {
 		if p, ok := playersBySlot[slot]; ok {
 			return &p
@@ -159,21 +160,7 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 		return nil
 	}
 	metas := overlayBaseMetasFromLayout(layout)
-	bases := make([]moments.Base, len(metas))
-	for i, m := range metas {
-		kind := moments.BaseExpansion
-		switch {
-		case m.IsStarting:
-			kind = moments.BaseStart
-		case m.Base.NaturalOfClock != nil:
-			kind = moments.BaseNatural
-		}
-		poly := make([][2]int32, len(m.Base.Polygon))
-		for j, pt := range m.Base.Polygon {
-			poly[j] = [2]int32{int32(pt.X), int32(pt.Y)}
-		}
-		bases[i] = moments.Base{Kind: kind, X: int32(m.Base.Center.X), Y: int32(m.Base.Center.Y), Polygon: poly}
-	}
+	bases := momentBases(metas)
 	base := func(i int) *workflowGameEventBase {
 		if i == moments.NoBase || i >= len(metas) {
 			return nil
@@ -228,6 +215,92 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 		detail.GameEvents = append(detail.GameEvents, e)
 	}
 	sort.SliceStable(detail.GameEvents, func(i, j int) bool { return detail.GameEvents[i].Second < detail.GameEvents[j].Second })
+}
+
+func momentPlayers(rec *library.Replay) []moments.Player {
+	var players []moments.Player
+	for _, p := range rec.Players {
+		players = append(players, moments.Player{Slot: int8(p.Slot), Race: engineRace(p.Race), Human: p.IsHuman() && !p.IsObserver()})
+	}
+	return players
+}
+
+func momentBases(metas []overlayBaseMeta) []moments.Base {
+	bases := make([]moments.Base, len(metas))
+	for i, m := range metas {
+		kind := moments.BaseExpansion
+		switch {
+		case m.IsStarting:
+			kind = moments.BaseStart
+		case m.Base.NaturalOfClock != nil:
+			kind = moments.BaseNatural
+		}
+		poly := make([][2]int32, len(m.Base.Polygon))
+		for j, pt := range m.Base.Polygon {
+			poly[j] = [2]int32{int32(pt.X), int32(pt.Y)}
+		}
+		bases[i] = moments.Base{Kind: kind, X: int32(m.Base.Center.X), Y: int32(m.Base.Center.Y), Polygon: poly}
+	}
+	return bases
+}
+
+// listedEngineEvents are the engine's game events that the games list shows and filters on.
+var listedEngineEvents = map[string]bool{"drop": true, "reaver_drop": true, "dt_drop": true}
+
+type mapLayoutKey struct {
+	name          uint16
+	width, height uint16
+}
+
+// engineFeatures runs the game-event detectors on a fresh digest for the games list. Bases come from the
+// map, analysed once per map (name and size) since the engine pass covers the whole library.
+func (d *Dashboard) engineFeatures(checksum [32]byte, dg *engine.Digest) (features []string) {
+	defer func() {
+		if p := recover(); p != nil {
+			crashreport.ReportPanic(p, debug.Stack())
+			features = nil
+		}
+	}()
+	rec, ok := d.library.lib.Snapshot().ByChecksum(checksum)
+	if !ok {
+		return nil
+	}
+	layout, ok := d.engineLayout(rec)
+	if !ok {
+		return nil
+	}
+	features = []string{}
+	seen := map[string]bool{}
+	for _, m := range moments.Detect(dg, momentBases(overlayBaseMetasFromLayout(layout)), momentPlayers(rec)) {
+		if listedEngineEvents[m.Type] && !seen[m.Type] {
+			seen[m.Type] = true
+			features = append(features, m.Type)
+		}
+	}
+	return features
+}
+
+func (d *Dashboard) engineLayout(rec *library.Replay) (*models.MapContextLayout, bool) {
+	key := mapLayoutKey{name: rec.Map, width: rec.MapWidth, height: rec.MapHeight}
+	d.engineLayouts.mu.Lock()
+	defer d.engineLayouts.mu.Unlock()
+	if layout, ok := d.engineLayouts.byMap[key]; ok {
+		return layout, layout != nil
+	}
+	if d.engineLayouts.byMap == nil {
+		d.engineLayouts.byMap = map[mapLayoutKey]*models.MapContextLayout{}
+	}
+	layout, err := buildDashboardMapContextLayoutFromReplay(rec.Path())
+	if err != nil {
+		layout = nil
+	}
+	d.engineLayouts.byMap[key] = layout
+	return layout, layout != nil
+}
+
+type engineLayoutMemo struct {
+	mu    sync.Mutex
+	byMap map[mapLayoutKey]*models.MapContextLayout
 }
 
 func engineRace(r library.Race) openbw.Race {

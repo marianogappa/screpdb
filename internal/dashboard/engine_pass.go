@@ -44,6 +44,7 @@ func (d *Dashboard) startEnginePass() {
 		SnapshotPath: filepath.Join(d.library.root, engineSnapshotCacheFile),
 		Paused:       d.enginePassPaused,
 		LowPriority:  true,
+		Features:     d.engineFeatures,
 	})
 	d.enginePass.runner = runner
 	d.libraryHub.setEngineState(func() string { return enginePassState(runner) })

@@ -301,18 +301,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-16  OK. Engine game events show the map a little after they start (snapshot_second): buildings 2 s after placement, drops after up to 3 s of unloading, recalls, nydus and new tech units 1 s later, clamped to trusted engine data. Detector code only; snapshots still come from the existing on-demand cache. No I/O changes.
+2026-10-16  OK. Engine drops are named by cargo (reaver_drop, dt_drop). The engine runner now stores each trusted game's listed engine event types in the in-memory library record, computed from the digest plus the map's base layout (scmapanalyzer on the replay file already in the library, read only, memoised per map name and size); the games list, its filter and the Summary use them. No new files or writes; js build stubs the memo.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-16  OK. Engine game events show the map a little after they start (snapshot_second): buildings 2 s after placement, drops after up to 3 s of unloading, recalls, nydus and new tech units 1 s later, clamped to trusted engine data. Detector code only; snapshots still come from the existing on-demand cache. No I/O changes.
 2026-10-16  OK. Frontend only: engine supply blocks move from thick line stretches to one strip per player under the time axis (hovering a block shades it on the chart); lines are finer and spread a few pixels apart. No I/O changes.
 2026-10-16  OK. Frontend only: games with engine supply get Supply as a top level tab (the existing supply-timeline route); without the engine it stays a Timings sub-tab and the route falls back there. No I/O changes.
 2026-10-16  OK. Frontend only: the engine supply chart draws supply used, thick where the player was supply blocked, and shows the cap with gutter labels on hover; the engine note is gone and only the command-inferred chart keeps its warning. No I/O changes.
 2026-10-16  OK. Engine hotkey groups: the engine pass records what each ctrl or shift + number left in the group (main unit by value, exact count) into the digest (EngineVersion 5, about 3 bytes per assign), and /api/games/{id}/hotkeys joins it onto unit assigns from memory. No new files, reads or writes beyond the existing digest cache; js build unchanged.
-2026-10-16  OK. The Hotkeys map moves onto GameMap: /api/custom/hotkeys/map-data returns each hotkeyed building (type, footprint in map pixels, groups) and the crop from the stored hotkey stream with no file reads, and /api/custom/game-assets/map-crop renders native terrain for a tile rectangle from the replay file already in the library through scmapanalyzer, read only, no writes, js build serves 404. The server-painted PNG route and its compositor are gone.
 ```
 
 </details>

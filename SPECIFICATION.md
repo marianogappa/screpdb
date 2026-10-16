@@ -895,76 +895,78 @@ The fixed left-to-right order of chips in the games-list "Featuring" strip — a
 | 7 | proxy_starport |
 | 8 | manner_pylon |
 | 9 | drop |
-| 10 | mind_control |
-| 11 | threw_nukes |
-| 12 | made_recalls |
-| 13 | made_maelstrom |
-| 14 | offensive_nydus |
-| 15 | bo_4_pool |
-| 16 | bo_9_pool |
-| 17 | bo_9_overpool |
-| 18 | bo_12_pool |
-| 19 | bo_9_pool_hatch |
-| 20 | bo_9_hatch |
-| 21 | bo_10_hatch |
-| 22 | bo_11_hatch |
-| 23 | bo_12_hatch |
-| 24 | bo_13_hatch |
-| 25 | bo_z_fuzzy |
-| 26 | nhatch_hydra |
-| 27 | nhatch_muta |
-| 28 | nhatch_lurker |
-| 29 | bo_2_gate |
-| 30 | bo_1_gate_core |
-| 31 | bo_nexus_first |
-| 32 | bo_gate_expand |
-| 33 | bo_forge_expa |
-| 34 | bo_p_1gate_reaver |
-| 35 | bo_p_gate_forge_cannon |
-| 36 | bo_p_forge_cannon_gate |
-| 37 | bo_p_forge_gate_cannon |
-| 38 | bo_bbs |
-| 39 | bo_cc_first |
-| 40 | bo_t_bio_1base |
-| 41 | bo_t_bio_2base |
-| 42 | bo_t_111_mech |
-| 43 | bo_t_111_tankless |
-| 44 | bo_t_111 |
-| 45 | bo_t_mech_expa_1fac |
-| 46 | bo_t_mech_expa_2fac |
-| 47 | bo_t_mech_expa_3fac |
-| 48 | bo_t_mech_expa_4fac |
-| 49 | bo_t_mech_expa_5fac |
-| 50 | bo_t_mech_expa_6fac |
-| 51 | bo_t_goliath_expa_1fac |
-| 52 | bo_t_goliath_expa_2fac |
-| 53 | bo_t_goliath_expa_3fac |
-| 54 | bo_t_goliath_expa_4fac |
-| 55 | bo_t_goliath_expa_5fac |
-| 56 | bo_t_goliath_expa_6fac |
-| 57 | bo_t_tankless_expa_1fac |
-| 58 | bo_t_tankless_expa_2fac |
-| 59 | bo_t_tankless_expa_3fac |
-| 60 | bo_t_tankless_expa_4fac |
-| 61 | bo_t_tankless_expa_5fac |
-| 62 | bo_t_tankless_expa_6fac |
-| 63 | bo_t_mech_expand |
-| 64 | bo_t_goliath_expand |
-| 65 | bo_t_tankless_expand |
-| 66 | bo_t_mech_noexpa |
-| 67 | bo_t_goliath_noexpa |
-| 68 | bo_t_tankless_noexpa |
-| 69 | bo_t_2starport_wraith |
-| 70 | bo_t_2starport_valk |
-| 71 | bo_t_3starport_wraith |
-| 72 | bo_t_3starport_valk |
-| 73 | double_stargate |
-| 74 | crazy_zerg |
-| 75 | guardians |
-| 76 | carriers |
-| 77 | battlecruisers |
-| 78 | ten_plus_scouts |
-| 79 | cliff_drop |
+| 10 | reaver_drop |
+| 11 | dt_drop |
+| 12 | mind_control |
+| 13 | threw_nukes |
+| 14 | made_recalls |
+| 15 | made_maelstrom |
+| 16 | offensive_nydus |
+| 17 | bo_4_pool |
+| 18 | bo_9_pool |
+| 19 | bo_9_overpool |
+| 20 | bo_12_pool |
+| 21 | bo_9_pool_hatch |
+| 22 | bo_9_hatch |
+| 23 | bo_10_hatch |
+| 24 | bo_11_hatch |
+| 25 | bo_12_hatch |
+| 26 | bo_13_hatch |
+| 27 | bo_z_fuzzy |
+| 28 | nhatch_hydra |
+| 29 | nhatch_muta |
+| 30 | nhatch_lurker |
+| 31 | bo_2_gate |
+| 32 | bo_1_gate_core |
+| 33 | bo_nexus_first |
+| 34 | bo_gate_expand |
+| 35 | bo_forge_expa |
+| 36 | bo_p_1gate_reaver |
+| 37 | bo_p_gate_forge_cannon |
+| 38 | bo_p_forge_cannon_gate |
+| 39 | bo_p_forge_gate_cannon |
+| 40 | bo_bbs |
+| 41 | bo_cc_first |
+| 42 | bo_t_bio_1base |
+| 43 | bo_t_bio_2base |
+| 44 | bo_t_111_mech |
+| 45 | bo_t_111_tankless |
+| 46 | bo_t_111 |
+| 47 | bo_t_mech_expa_1fac |
+| 48 | bo_t_mech_expa_2fac |
+| 49 | bo_t_mech_expa_3fac |
+| 50 | bo_t_mech_expa_4fac |
+| 51 | bo_t_mech_expa_5fac |
+| 52 | bo_t_mech_expa_6fac |
+| 53 | bo_t_goliath_expa_1fac |
+| 54 | bo_t_goliath_expa_2fac |
+| 55 | bo_t_goliath_expa_3fac |
+| 56 | bo_t_goliath_expa_4fac |
+| 57 | bo_t_goliath_expa_5fac |
+| 58 | bo_t_goliath_expa_6fac |
+| 59 | bo_t_tankless_expa_1fac |
+| 60 | bo_t_tankless_expa_2fac |
+| 61 | bo_t_tankless_expa_3fac |
+| 62 | bo_t_tankless_expa_4fac |
+| 63 | bo_t_tankless_expa_5fac |
+| 64 | bo_t_tankless_expa_6fac |
+| 65 | bo_t_mech_expand |
+| 66 | bo_t_goliath_expand |
+| 67 | bo_t_tankless_expand |
+| 68 | bo_t_mech_noexpa |
+| 69 | bo_t_goliath_noexpa |
+| 70 | bo_t_tankless_noexpa |
+| 71 | bo_t_2starport_wraith |
+| 72 | bo_t_2starport_valk |
+| 73 | bo_t_3starport_wraith |
+| 74 | bo_t_3starport_valk |
+| 75 | double_stargate |
+| 76 | crazy_zerg |
+| 77 | guardians |
+| 78 | carriers |
+| 79 | battlecruisers |
+| 80 | ten_plus_scouts |
+| 81 | cliff_drop |
 
 ## Game-event featuring chips
 
@@ -975,11 +977,13 @@ Featuring chips for narrative game events that aren't markers (cannon rush, drop
 | bunker_rush | Bunker rush | bunker |
 | cannon_rush | Cannon rush | photoncannon |
 | drop | Drop | shuttle |
+| dt_drop | DT drop | darktemplar |
 | mind_control | Mind control | darkarchon |
 | proxy_factory | Proxy factory | factory |
 | proxy_gate | Proxy gateway | gateway |
 | proxy_rax | Proxy barracks | barracks |
 | proxy_starport | Proxy starport | starport |
+| reaver_drop | Reaver drop | reaver |
 | zergling_rush | Zergling rush | zergling |
 
 ## Who won: what the evidence can answer

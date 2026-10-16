@@ -45,6 +45,8 @@ type Options struct {
 	// LowPriority runs workers on low-priority OS threads; off in tests.
 	LowPriority bool
 	Logf        func(format string, args ...any)
+	// Features names the game events of a trusted digest that the games list shows; nil leaves them out.
+	Features func(checksum [32]byte, d *engine.Digest) []string
 }
 
 type State uint8
@@ -370,7 +372,7 @@ func (r *Runner) applyCached(checksum [32]byte) bool {
 	if err != nil {
 		return false
 	}
-	r.lib.SetEngineData(checksum, Summarize(d))
+	r.lib.SetEngineData(checksum, r.summarize(checksum, d))
 	return true
 }
 
@@ -448,7 +450,15 @@ func (r *Runner) process(j *job) {
 	if err := r.cache.Put(r.key(j.checksum), digestcache.Entry{Digest: encoded}); err != nil {
 		r.opts.Logf("Engine pass: %v", err)
 	}
-	r.lib.SetEngineData(j.checksum, Summarize(d))
+	r.lib.SetEngineData(j.checksum, r.summarize(j.checksum, d))
+}
+
+func (r *Runner) summarize(checksum [32]byte, d *engine.Digest) *library.EngineData {
+	data := Summarize(d)
+	if r.opts.Features != nil && !data.LowConfidence {
+		data.Features = r.opts.Features(checksum, d)
+	}
+	return data
 }
 
 // pass turns a panic into a failed pass so one bad replay neither stops the worker nor is retried.

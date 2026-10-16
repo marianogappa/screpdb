@@ -441,5 +441,9 @@
   "fingerprint.coverage.belowBar": "The closest progamer match was not confident enough to name.",
   "game.stage.own": "Yours",
   "game.stage.complete": "Complete",
-  "errors.serverDown": "The screpdb server seems to be down. Please reopen screpdb and try again."
+  "errors.serverDown": "The screpdb server seems to be down. Please reopen screpdb and try again.",
+  "events.reaverDrop": "Reaver drop",
+  "events.dtDrop": "DT drop",
+  "events.sentence.reaverDrops": "{actor} Reaver drops{icon}{count}{from} on {target} at {location}",
+  "events.sentence.dtDrops": "{actor} DT drops{icon}{count}{from} on {target} at {location}"
 }

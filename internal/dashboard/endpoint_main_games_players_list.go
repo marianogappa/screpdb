@@ -435,9 +435,9 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 		case "zergling_rush", "cannon_rush", "bunker_rush",
 			"proxy_gate", "proxy_rax", "proxy_factory", "proxy_starport", "manner_pylon":
 			featureSets[replayID][eventType] = struct{}{}
-		case "drop", "cliff_drop":
+		case "drop", "cliff_drop", "reaver_drop", "dt_drop":
 			// Every drop variant lights up the generic "drop" chip; the
-			// specific subtype (cliff_drop) also lights its own chip.
+			// specific subtypes also light their own chip.
 			featureSets[replayID]["drop"] = struct{}{}
 			featureSets[replayID][eventType] = struct{}{}
 		}

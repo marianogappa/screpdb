@@ -208,7 +208,16 @@ const playerInsightDescriptionOverride = (insightType) => {
   return undefined;
 };
 
-const DROP_ACTOR_EVENT_TYPES = ['drop', 'cliff_drop'];
+const DROP_EVENT_TYPES = ['drop', 'cliff_drop', 'reaver_drop', 'dt_drop'];
+const DROP_ACTOR_EVENT_TYPES = DROP_EVENT_TYPES;
+
+// DROP_TEXT names each drop variant: its short label and its event sentence.
+const DROP_TEXT = {
+  drop: { label: 'events.drop', sentence: 'events.sentence.drops' },
+  cliff_drop: { label: 'events.cliffDrop', sentence: 'events.sentence.cliffDrops' },
+  reaver_drop: { label: 'events.reaverDrop', sentence: 'events.sentence.reaverDrops' },
+  dt_drop: { label: 'events.dtDrop', sentence: 'events.sentence.dtDrops' },
+};
 
 const playerIsActorForGameEventTypes = (events, playerID, wantedTypes) => {
   const pid = Number(playerID);
@@ -260,6 +269,17 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
       label: t('events.cliffDrop'),
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
+  }
+  for (const [key, unit] of [['reaver_drop', 'reaver'], ['dt_drop', 'darktemplar']]) {
+    if (playerIsActorForGameEventTypes(events, pid, [key])) {
+      positive.push({
+        key,
+        domKey: `ge-${key}-${pid}`,
+        icons: [getUnitIcon('shuttle'), getUnitIcon(unit)].filter(Boolean),
+        label: t(DROP_TEXT[key].label),
+        className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+      });
+    }
   }
   if (playerIsActorForGameEventTypes(events, pid, ['cannon_rush'])) {
     positive.push({
@@ -523,8 +543,8 @@ const gameEventDescription = (event, registry) => {
       : t('events.attack');
   }
   if (eventType === 'scout') return actor && target && location ? t('events.sentence.scouts', { actor, target, location }) : t('events.scout');
-  if (eventType === 'cliff_drop' || eventType === 'drop') {
-    const fallback = eventType === 'cliff_drop' ? t('events.cliffDrop') : t('events.drop');
+  if (DROP_TEXT[eventType]) {
+    const fallback = t(DROP_TEXT[eventType].label);
     if (!actor || !target || !location) return fallback;
     // event.base is the destination polygon for drops (toReplayEvent stamps
     // DstPolyID there). Source, when worldstate could resolve it, lives on
@@ -533,7 +553,7 @@ const gameEventDescription = (event, registry) => {
     const count = Number(event?.drop_count || 0) > 1 ? t('events.fragment.count', { count: event.drop_count }) : '';
     const from = sourceLabel ? t('events.fragment.from', { location: sourceLabel }) : '';
     const params = { actor, target, location, icon: '', count, from };
-    return eventType === 'cliff_drop' ? t('events.sentence.cliffDrops', params) : t('events.sentence.drops', params);
+    return t(DROP_TEXT[eventType].sentence, params);
   }
   if (eventType === 'recall') {
     // CastRecall's X/Y is the *source* of the teleport; the destination is
@@ -1104,8 +1124,8 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
     ) : null;
     return fill('events.sentence.nydus', { actor: actorSpan, target: targetSpan, location, icon: nydusIcon });
   }
-  if (eventType === 'cliff_drop' || eventType === 'drop') {
-    const fallback = eventType === 'cliff_drop' ? t('events.cliffDrop') : t('events.drop');
+  if (DROP_TEXT[eventType]) {
+    const fallback = t(DROP_TEXT[eventType].label);
     if (!actorName || !targetName || !location) return fallback;
     const sourceLabel = String(event?.source_base?.name || '').trim();
     const count = Number(event?.drop_count || 0) > 1 ? t('events.fragment.count', { count: event.drop_count }) : '';
@@ -1127,7 +1147,7 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
       <img src={vesselURL} alt={vesselName} title={vesselName} className="workflow-event-row-recall-arbiter" />
     ) : null;
     const parts = { actor: actorSpan, target: targetSpan, location, icon: vesselIcon, count, from };
-    return eventType === 'cliff_drop' ? fill('events.sentence.cliffDrops', parts) : fill('events.sentence.drops', parts);
+    return fill(DROP_TEXT[eventType].sentence, parts);
   }
   if (eventType === 'recall') {
     if (!actorName) return t('events.recall');
@@ -1389,7 +1409,7 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
 // elideGenericDropPill drops the generic "drop" pill when a more specific
 // variant is present. It operates on { key, ... } entries so the same helper
 // serves the featuring strip, per-player signal pills and the games-list column.
-const SPECIFIC_DROP_KEYS = new Set(['cliff_drop']);
+const SPECIFIC_DROP_KEYS = new Set(['cliff_drop', 'reaver_drop', 'dt_drop']);
 const elideGenericDropPill = (pills) => {
   if (!Array.isArray(pills) || pills.length === 0) return pills;
   const hasSpecific = pills.some((p) => SPECIFIC_DROP_KEYS.has(String(p?.key || '')));
@@ -1400,7 +1420,7 @@ const elideGenericDropPill = (pills) => {
 // elideGenericDropLabels mirrors elideGenericDropPill for the games-list, whose
 // Featuring column carries plain strings rather than objects. Matched on the
 // pre-timestamp prefix so suffixes like " 7:59" don't break detection.
-const SPECIFIC_DROP_LABEL_PREFIXES = ['Cliff drop'];
+const SPECIFIC_DROP_LABEL_PREFIXES = ['Cliff drop', 'Reaver drop', 'DT drop'];
 const elideGenericDropLabels = (labels) => {
   if (!Array.isArray(labels) || labels.length === 0) return labels;
   const startsWith = (s, prefix) => typeof s === 'string' && (s === prefix || s.startsWith(`${prefix} `));
@@ -1604,7 +1624,7 @@ const mapPointToPercent = (point, bounds) => {
 // arrow draws from the cast point (source) to the inferred Arbiter location.
 // The recall arrow is suppressed at render time when no destination was
 // inferred (target_base missing) so we don't draw a misleading vector.
-const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'cliff_drop', 'nydus_attack', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory', 'proxy_starport', 'recall'].includes(String(eventType || '').toLowerCase());
+const isArrowEventType = (eventType) => ['attack', 'scout', ...DROP_EVENT_TYPES, 'nydus_attack', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory', 'proxy_starport', 'recall'].includes(String(eventType || '').toLowerCase());
 
 const fallbackOverlayUnitNamesForEvent = (eventType, actorRace) => {
   const normalized = normalizeEventType(eventType);
@@ -1617,6 +1637,8 @@ const fallbackOverlayUnitNamesForEvent = (eventType, actorRace) => {
   if (normalized === 'proxy_starport') return ['starport'];
   // cliff_drop is a Terran-only marker classification, dropship is always correct.
   if (normalized === 'cliff_drop') return ['dropship'];
+  if (normalized === 'reaver_drop') return ['shuttle', 'reaver'];
+  if (normalized === 'dt_drop') return ['shuttle', 'darktemplar'];
   if (normalized === 'drop') {
     const r = String(actorRace || '').toLowerCase();
     if (r === 'protoss') return ['shuttle'];
@@ -1686,7 +1708,7 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
   // Drops render the vessel (Dropship/Shuttle/Overlord) inline next to the
   // verb in the row body. Strip it from the trailing icon strip so the
   // trailing icons are just the dropped units.
-  if (['drop', 'cliff_drop'].includes(normalized)) {
+  if (DROP_EVENT_TYPES.includes(normalized)) {
     const transports = new Set(['dropship', 'shuttle', 'overlord']);
     unitNames = unitNames.filter((name) => !transports.has(String(name || '').toLowerCase()));
   }
@@ -4472,7 +4494,7 @@ function App() {
     // where the unload happened). The dropped-unit overlay is anchored at the
     // source so the user sees "here's what got loaded" at the tail.
     const eventType = normalizeEventType(selectedMainGameEvent.type);
-    if (['drop', 'cliff_drop', 'nydus_attack'].includes(eventType)) {
+    if ([...DROP_EVENT_TYPES, 'nydus_attack'].includes(eventType)) {
       const sourceAnchor = polygonCenter(selectedMainGameEvent?.source_base?.polygon)
         || selectedMainGameEvent?.source_base?.center
         || selectedMainGameEvent?.source_point;
@@ -4538,7 +4560,7 @@ function App() {
     // For drops: strip the transport itself (Dropship/Shuttle/Overlord) from
     // the source-side unit overlay — the transport icon is painted separately
     // at the destination. Workers (SCV/Probe/Drone) and combat units stay.
-    if (['drop', 'cliff_drop'].includes(eventTypeForOverlay)) {
+    if (DROP_EVENT_TYPES.includes(eventTypeForOverlay)) {
       const transports = new Set(['dropship', 'shuttle', 'overlord']);
       unitNames = unitNames.filter((name) => !transports.has(String(name || '').toLowerCase()));
     }
@@ -4570,7 +4592,7 @@ function App() {
   // defined by the vessel and the icon is the most recognizable signal.
   const selectedMainGameDropOverlay = useMemo(() => {
     const evType = normalizeEventType(selectedMainGameEvent?.type);
-    if (!['drop', 'cliff_drop'].includes(evType)) return null;
+    if (!DROP_EVENT_TYPES.includes(evType)) return null;
     const anchor = polygonCenter(selectedMainGameEvent?.base?.polygon)
       || selectedMainGameEvent?.base?.center
       || selectedMainGameEvent?.target_point;
@@ -4673,7 +4695,7 @@ function App() {
   const selectedEventAnimCategory = useMemo(() => {
     const nt = normalizeEventType(selectedMainGameEvent?.type);
     if (!nt) return '';
-    if (['drop', 'cliff_drop'].includes(nt)) return 'drop';
+    if (DROP_EVENT_TYPES.includes(nt)) return 'drop';
     if (nt === 'recall') return 'recall';
     if (nt === 'nuke') return 'nuke';
     if (nt === 'leave_game' || nt === 'player_dropped' || nt === 'mass_disconnect' || nt === 'player_stopped_playing') return 'leaves';
@@ -6540,9 +6562,11 @@ function App() {
                             {t('events.teamWarning', { reason: mainGame?.team_info_incomplete ? t('games.teamInfoIncomplete') : t('games.noTeamInfo') })}
                           </div>
                         ) : null}
-                        <div className="workflow-section-warning workflow-events-warning">
-                          {t('events.narrativeWarning')}
-                        </div>
+                        {mainEngineEventSeconds.length ? null : (
+                          <div className="workflow-section-warning workflow-events-warning">
+                            {t('events.narrativeWarning')}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div

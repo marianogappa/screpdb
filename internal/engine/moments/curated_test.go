@@ -80,7 +80,7 @@ func TestDropsNeedDangerOrNumbersOrDamage(t *testing.T) {
 	d := digest()
 	d.Unloads = []engine.Unload{{Frame: f(600), TransportType: ut(bwgame.UnitTypesProtossShuttle), Owner: 1, X: 350, Y: 350, Cargo: []uint16{ut(bwgame.UnitTypesProtossReaver)}}}
 	got := Detect(d, testBases, zvp)
-	if len(got) != 1 || got[0].Type != "drop" || got[0].Units[1] != ut(bwgame.UnitTypesProtossReaver) || got[0].SnapshotSecond != 601 {
+	if len(got) != 1 || got[0].Type != "reaver_drop" || got[0].Units[0] != ut(bwgame.UnitTypesProtossShuttle) || got[0].Units[1] != ut(bwgame.UnitTypesProtossReaver) || got[0].SnapshotSecond != 601 {
 		t.Fatalf("a Reaver drop: %+v", got)
 	}
 	d.Unloads[0].Cargo = []uint16{ut(bwgame.UnitTypesProtossZealot), ut(bwgame.UnitTypesProtossZealot)}
@@ -90,6 +90,18 @@ func TestDropsNeedDangerOrNumbersOrDamage(t *testing.T) {
 	d.Deaths = []engine.Death{{Frame: f(610), Type: ut(bwgame.UnitTypesZergDrone), Owner: 0, X: 340, Y: 340, Reason: uint8(openbw.ReasonDamage), KillerOwner: 1}}
 	if got := Detect(d, testBases, zvp); len(got) != 1 || got[0].Type != "drop" {
 		t.Fatalf("a drop that killed a Drone: %v", types(got))
+	}
+}
+
+func TestDropsAreNamedByCargo(t *testing.T) {
+	d := digest()
+	d.Unloads = []engine.Unload{{Frame: f(600), TransportType: ut(bwgame.UnitTypesProtossShuttle), Owner: 1, X: 350, Y: 350, Cargo: []uint16{ut(bwgame.UnitTypesProtossDarkTemplar), ut(bwgame.UnitTypesProtossZealot)}}}
+	if got := Detect(d, testBases, zvp); len(got) != 1 || got[0].Type != "dt_drop" {
+		t.Fatalf("a Dark Templar drop: %v", types(got))
+	}
+	d.Unloads[0].Cargo = append(d.Unloads[0].Cargo, ut(bwgame.UnitTypesProtossReaver))
+	if got := Detect(d, testBases, zvp); len(got) != 1 || got[0].Type != "reaver_drop" || got[0].Units[1] != ut(bwgame.UnitTypesProtossReaver) {
+		t.Fatalf("a Reaver with a Dark Templar is a Reaver drop: %v", types(got))
 	}
 }
 

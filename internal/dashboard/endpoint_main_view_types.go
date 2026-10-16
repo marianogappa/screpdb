@@ -230,6 +230,8 @@ var workflowFeaturingFilters = []struct {
 	{Key: "manner_pylon", Label: "Manner Pylon", Group: "marker", IconKey: "pylon", IconLabel: "Manner"},
 	// "drop" matches ANY drop variant; the subtype chips match only their own.
 	{Key: "drop", Label: "Drop", Group: "marker", IconKey: "shuttle"},
+	{Key: "reaver_drop", Label: "Reaver drop", Group: "marker", IconKey: "reaver", IconLabel: "Drop"},
+	{Key: "dt_drop", Label: "DT drop", Group: "marker", IconKey: "darktemplar", IconLabel: "Drop"},
 	{Key: "mind_control", Label: "Mind Control", Group: "marker", IconKey: "darkarchon", IconLabel: "Mind Control"},
 	{Key: "made_maelstrom", Label: "Maelstrom", Group: "marker", IconKey: "darkarchon", IconLabel: "Maelstrom"},
 	{Key: "crazy_zerg", Label: "Crazy Zerg", Group: "marker", IconKey: "ultralisk", IconLabel: "Crazy Zerg"},

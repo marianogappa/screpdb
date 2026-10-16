@@ -234,6 +234,9 @@ type EngineData struct {
 	// TrustedUntil is the first frame whose engine data may disagree with the real game.
 	TrustedUntil uint32
 	Players      []EnginePlayer
+	// Features are the game-event types the engine found that the games list shows and filters on
+	// (drop, reaver_drop, dt_drop). Nil means they were not computed, so the command-inferred ones stand.
+	Features []string
 }
 
 // EnginePlayer is one player's macro scorecard; a ratio is NaN when the game gives it no basis.

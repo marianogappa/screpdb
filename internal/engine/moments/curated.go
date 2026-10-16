@@ -676,6 +676,33 @@ var dangerousCargo = map[bwgame.UnitTypes]bool{
 
 // drops are unloads into a base an enemy holds. A drop is kept when it carried something dangerous (a
 // Reaver, Dark Templar, High Templar, tank, Lurker), 4 or more units, or killed something within 30 s.
+// dropKind names a drop after the cargo that decides it: Reavers, else Dark Templar, else a plain drop.
+func dropKind(cargo []uint16) (string, uint16) {
+	for _, k := range []struct {
+		kind string
+		unit bwgame.UnitTypes
+	}{{"reaver_drop", bwgame.UnitTypesProtossReaver}, {"dt_drop", bwgame.UnitTypesProtossDarkTemplar}} {
+		if slices.Contains(cargo, ut(k.unit)) {
+			return k.kind, ut(k.unit)
+		}
+	}
+	return "drop", 0
+}
+
+// dropUnits lists the transport, then the unit the drop is named after, then the rest by count.
+func dropUnits(transport, named uint16, cargo []uint16) []uint16 {
+	units := []uint16{transport}
+	if named != 0 {
+		units = append(units, named)
+	}
+	for _, t := range byCount(cargo) {
+		if t != named || named == 0 {
+			units = append(units, t)
+		}
+	}
+	return units
+}
+
 func (g *game) drops() []Event {
 	type cluster struct {
 		actor, target int8
@@ -721,7 +748,8 @@ func (g *game) drops() []Event {
 		if !dangerous && len(c.cargo) < dropMinCargo && g.killsAt(c.actor, c.target, c.base, c.first, c.last+dropFollowUp) == 0 {
 			continue
 		}
-		e := g.event("drop", c.first, c.actor, c.target, c.base, c.x, c.y, append([]uint16{c.transport}, byCount(c.cargo)...)).shownAt(min(c.last, c.first+dropUnloadSeconds) + arrivalLead)
+		kind, named := dropKind(c.cargo)
+		e := g.event(kind, c.first, c.actor, c.target, c.base, c.x, c.y, dropUnits(c.transport, named, c.cargo)).shownAt(min(c.last, c.first+dropUnloadSeconds) + arrivalLead)
 		out = append(out, e)
 	}
 	return out

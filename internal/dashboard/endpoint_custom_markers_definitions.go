@@ -61,6 +61,8 @@ var staticGameEventFeatures = []gameEventFeature{
 	{Key: "proxy_factory", Label: "Proxy factory", IconKey: "factory"},
 	{Key: "proxy_starport", Label: "Proxy starport", IconKey: "starport"},
 	{Key: "drop", Label: "Drop", IconKey: "shuttle"},
+	{Key: "reaver_drop", Label: "Reaver drop", IconKey: "reaver"},
+	{Key: "dt_drop", Label: "DT drop", IconKey: "darktemplar"},
 	{Key: "mind_control", Label: "Mind control", IconKey: "darkarchon"},
 }
 
@@ -78,6 +80,8 @@ var staticFeaturingOrder = []string{
 	"proxy_starport",
 	"manner_pylon",
 	"drop",
+	"reaver_drop",
+	"dt_drop",
 	"mind_control",
 	// late-game custom-evaluator markers
 	"threw_nukes",
