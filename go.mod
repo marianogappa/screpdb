@@ -13,7 +13,7 @@ require (
 	github.com/marianogappa/openbw-go v0.0.0
 	github.com/marianogappa/scfingerprint v0.0.0-20260912102954-40ec8770aef7
 	github.com/marianogappa/scmapanalyzer v0.0.0-20261018092311-e925d638044e
-	github.com/marianogappa/screpsim v0.0.0-20261015141751-8ac8b8e4d3e8
+	github.com/marianogappa/screpsim v0.0.0-20261018092744-6d34c91770f5
 	github.com/mark3labs/mcp-go v0.55.1
 	github.com/minio/selfupdate v0.6.0
 	github.com/oapi-codegen/runtime v1.7.0

@@ -2,7 +2,7 @@ package engine
 
 // EngineVersion keys the digest cache: bump it when Pass or the digest format changes what a digest holds.
 // Detector changes do not need a bump; detectors read digests at load time.
-const EngineVersion = 6
+const EngineVersion = 7
 
 const (
 	EconomyEveryFrames = 24

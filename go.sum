@@ -77,8 +77,8 @@ github.com/marianogappa/scmapanalyzer v0.0.0-20261018092311-e925d638044e h1:4LZf
 github.com/marianogappa/scmapanalyzer v0.0.0-20261018092311-e925d638044e/go.mod h1:xJL47mAPS3ZouU6N7gTmxahd1lNzbNvCYQOJX+/3kqE=
 github.com/marianogappa/screp v0.0.0-20250930085841-44d5f5ad657c h1:0JS8YGQLHH0A88qZ8gDX7a2VpJk9l2D+0J6TWV1jyf8=
 github.com/marianogappa/screp v0.0.0-20250930085841-44d5f5ad657c/go.mod h1:p5nCDcfboNnOOqPZPYENWj1v3WQm6mEFbxruAztKIz8=
-github.com/marianogappa/screpsim v0.0.0-20261015141751-8ac8b8e4d3e8 h1:hNAp/yH3fADNL3UvvqOrA9NgQfCbtSumyPrnzrrHgSk=
-github.com/marianogappa/screpsim v0.0.0-20261015141751-8ac8b8e4d3e8/go.mod h1:GEgN/3SDkhu0raSNTMWXU5GVy8P9LznPMJd1E5g3Lhg=
+github.com/marianogappa/screpsim v0.0.0-20261018092744-6d34c91770f5 h1:xnsOje38J1Bek4ZPENArCi0B1dbhGodRkTa6RtTGIms=
+github.com/marianogappa/screpsim v0.0.0-20261018092744-6d34c91770f5/go.mod h1:GEgN/3SDkhu0raSNTMWXU5GVy8P9LznPMJd1E5g3Lhg=
 github.com/mark3labs/mcp-go v0.55.1 h1:GLYqNm9qdMGPhCtK4g1t1y1vhAPfayOBuaibDi4mrSA=
 github.com/mark3labs/mcp-go v0.55.1/go.mod h1:+8WclSK1ZUweCP3hvktSji8n8ABG/95QaEkeVE/Uwas=
 github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
