@@ -229,12 +229,12 @@ const playerIsActorForGameEventTypes = (events, playerID, wantedTypes) => {
   });
 };
 
-const dropTransportIconForRace = (race) => {
+const dropTransportIconForRace = (race, opts) => {
   const r = String(race || '').toLowerCase();
-  if (r === 'terran') return getUnitIcon('dropship');
-  if (r === 'protoss') return getUnitIcon('shuttle');
-  if (r === 'zerg') return getUnitIcon('overlord');
-  return getUnitIcon('dropship');
+  if (r === 'terran') return getUnitIcon('dropship', opts);
+  if (r === 'protoss') return getUnitIcon('shuttle', opts);
+  if (r === 'zerg') return getUnitIcon('overlord', opts);
+  return getUnitIcon('dropship', opts);
 };
 
 const playerGameSummarySignalParts = (player, gameEvents) => {
@@ -1747,11 +1747,11 @@ const getGasMarkerIconForRace = (race) => {
   return getUnitIcon('extractor');
 };
 
-const getExpansionMarkerIconForRace = (race) => {
+const getExpansionMarkerIconForRace = (race, opts) => {
   const value = String(race || '').trim().toLowerCase();
-  if (value === 'terran') return getUnitIcon('commandcenter');
-  if (value === 'zerg') return getUnitIcon('hatchery');
-  if (value === 'protoss') return getUnitIcon('nexus');
+  if (value === 'terran') return getUnitIcon('commandcenter', opts);
+  if (value === 'zerg') return getUnitIcon('hatchery', opts);
+  if (value === 'protoss') return getUnitIcon('nexus', opts);
   return null;
 };
 
@@ -4539,6 +4539,12 @@ function App() {
       color: playerColorToCss(selectedMainGameEvent?.actor?.color),
     };
   }, [selectedMainGameEvent, mainEventMapBounds]);
+  // Map sprites take the acting player's color in their team-color areas, as in the game.
+  const selectedActorIconOpts = useMemo(() => {
+    const actorPid = Number(selectedMainGameEvent?.actor?.player_id || 0);
+    const actorRow = mainGamePlayers.find((player) => Number(player?.player_id || 0) === actorPid);
+    return { color: actorRow ? playerColorToCss(actorRow.color) : undefined };
+  }, [selectedMainGameEvent, mainGamePlayers]);
   const selectedMainGameArrowUnits = useMemo(() => {
     if (!selectedMainGameArrow || !selectedMainGameEvent) return [];
     const actorPid = Number(selectedMainGameEvent?.actor?.player_id || 0);
@@ -4565,10 +4571,10 @@ function App() {
       unitNames = unitNames.filter((name) => !transports.has(String(name || '').toLowerCase()));
     }
     return unitNames
-      .map((name) => ({ name, icon: getUnitIcon(name) }))
+      .map((name) => ({ name, icon: getUnitIcon(name, selectedActorIconOpts) }))
       .filter((item) => item.icon)
       .slice(0, 4);
-  }, [selectedMainGameArrow, selectedMainGameEvent, mainGamePlayers]);
+  }, [selectedMainGameArrow, selectedMainGameEvent, mainGamePlayers, selectedActorIconOpts]);
   const selectedMainGameExpansionOverlay = useMemo(() => {
     if (normalizeEventType(selectedMainGameEvent?.type) !== 'expansion') return null;
     // Prefer the polygon's geometric center over scmapanalyzer's base.center —
@@ -4580,12 +4586,12 @@ function App() {
     if (!anchor) return null;
     const playerID = Number(selectedMainGameEvent?.actor?.player_id || 0);
     const actorRow = mainGamePlayers.find((player) => Number(player?.player_id || 0) === playerID);
-    const icon = getExpansionMarkerIconForRace(actorRow?.race);
+    const icon = getExpansionMarkerIconForRace(actorRow?.race, selectedActorIconOpts);
     if (!icon) return null;
     const point = mapPointToPercent(anchor, mainEventMapBounds);
     if (!point) return null;
     return { icon, point };
-  }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds]);
+  }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds, selectedActorIconOpts]);
   // Drop overlay: anchor the race-correct transport vessel (Dropship/Shuttle/
   // Overlord) at the destination, mirroring the Arbiter overlay used for
   // recalls. Always render when the event is a drop variant — drops are
@@ -4599,12 +4605,12 @@ function App() {
     if (!anchor) return null;
     const actorPid = Number(selectedMainGameEvent?.actor?.player_id || 0);
     const actorRow = mainGamePlayers.find((player) => Number(player?.player_id || 0) === actorPid);
-    const icon = dropTransportIconForRace(actorRow?.race);
+    const icon = dropTransportIconForRace(actorRow?.race, selectedActorIconOpts);
     if (!icon) return null;
     const point = mapPointToPercent(anchor, mainEventMapBounds);
     if (!point) return null;
     return { icon, point };
-  }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds]);
+  }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds, selectedActorIconOpts]);
   // Recall overlay: anchor the Arbiter at the inferred destination when known
   // (target_base populated by the backend's attack-coincidence / post-recall
   // activity proxies); otherwise fall back to the cast point. The arrow
@@ -4619,12 +4625,12 @@ function App() {
       || selectedMainGameEvent?.source_point;
     const anchor = targetAnchor || sourceAnchor;
     if (!anchor) return null;
-    const icon = getUnitIcon('arbiter');
+    const icon = getUnitIcon('arbiter', selectedActorIconOpts);
     if (!icon) return null;
     const point = mapPointToPercent(anchor, mainEventMapBounds);
     if (!point) return null;
     return { icon, point };
-  }, [selectedMainGameEvent, mainEventMapBounds]);
+  }, [selectedMainGameEvent, mainEventMapBounds, selectedActorIconOpts]);
   // Proxy building overlay: paint the proxied building (Gateway / Barracks /
   // Factory / Starport) at its placement coordinates for any proxy_* event —
   // the backend already populates base coordinates for these.
@@ -4640,12 +4646,12 @@ function App() {
     const anchor = polygonCenter(selectedMainGameEvent?.base?.polygon)
       || selectedMainGameEvent?.base?.center;
     if (!anchor) return null;
-    const icon = getUnitIcon(iconKey);
+    const icon = getUnitIcon(iconKey, selectedActorIconOpts);
     if (!icon) return null;
     const point = mapPointToPercent(anchor, mainEventMapBounds);
     if (!point) return null;
     return { icon, point };
-  }, [selectedMainGameEvent, mainEventMapBounds]);
+  }, [selectedMainGameEvent, mainEventMapBounds, selectedActorIconOpts]);
   // Alliance overlay: for late_alliance events, render one 🤝 emoji per pair
   // of allied players at the midpoint between their bases, plus a pair of
   // bidirectional arrows running base↔🤝 in each player's color. The pair is
@@ -4746,10 +4752,10 @@ function App() {
   // the mind-controlled player's last-known base.
   const selectedBecameOverlay = useMemo(() => {
     if (selectedEventAnimCategory !== 'became' || !selectedActorLastBasePoint) return null;
-    const icon = getUnitIcon('darkarchon');
+    const icon = getUnitIcon('darkarchon', selectedActorIconOpts);
     if (!icon) return null;
     return { icon, point: selectedActorLastBasePoint };
-  }, [selectedEventAnimCategory, selectedActorLastBasePoint]);
+  }, [selectedEventAnimCategory, selectedActorLastBasePoint, selectedActorIconOpts]);
   // Focal point of the selected event: where the action happens on the map, so
   // the narration caption can sit right below it (rather than pinned to the map
   // bottom). `travel` events move from source→target — the caption (and the

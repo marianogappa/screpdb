@@ -389,6 +389,7 @@ type engineSnapshotUnit struct {
 	PlayerID int64  `json:"player_id"`
 	X        int64  `json:"x"`
 	Y        int64  `json:"y"`
+	Burrowed bool   `json:"burrowed,omitempty"`
 }
 
 // engineSnapshot is the map at one second, in map pixels. A coarse one (from the digest) has buildings
@@ -447,7 +448,7 @@ func exactSnapshotWire(snap engine.Snapshot, playerBySlot map[int8]int64) engine
 			out.Buildings = append(out.Buildings, wire)
 			continue
 		}
-		out.Units = append(out.Units, engineSnapshotUnit{UnitType: unitName(u.Type), PlayerID: id, X: int64(u.X), Y: int64(u.Y)})
+		out.Units = append(out.Units, engineSnapshotUnit{UnitType: unitName(u.Type), PlayerID: id, X: int64(u.X), Y: int64(u.Y), Burrowed: u.Burrowed})
 	}
 	return out
 }

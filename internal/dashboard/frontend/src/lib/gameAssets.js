@@ -1,13 +1,20 @@
 // Bump together with gameAssetIconRenderVersion in internal/dashboard/game_asset_handlers.go
 // when icon renderer output changes (scmapanalyzer assets, mapping, etc.).
-const GAME_ASSET_ICON_RENDER_VERSION = '3';
+const GAME_ASSET_ICON_RENDER_VERSION = '4';
 
-const iconQuery = (mapKey) =>
-  `name=${encodeURIComponent(mapKey)}&v=${encodeURIComponent(GAME_ASSET_ICON_RENDER_VERSION)}`;
+// iconQuery adds the optional player color (the sprite's team-color areas take it, as in the game) and
+// variant ("burrowed"). Colors other than #rrggbb are ignored, leaving the sprite untinted.
+const iconQuery = (mapKey, { color, variant } = {}) => {
+  let q = `name=${encodeURIComponent(mapKey)}&v=${encodeURIComponent(GAME_ASSET_ICON_RENDER_VERSION)}`;
+  const hex = /^#([0-9a-f]{6})$/i.exec(String(color || '').trim());
+  if (hex) q += `&color=${hex[1].toLowerCase()}`;
+  if (variant) q += `&variant=${encodeURIComponent(variant)}`;
+  return q;
+};
 
-const unitIconURL = (mapKey) => `/api/custom/game-assets/unit?${iconQuery(mapKey)}`;
+const unitIconURL = (mapKey, opts) => `/api/custom/game-assets/unit?${iconQuery(mapKey, opts)}`;
 
-const buildingIconURL = (mapKey) => `/api/custom/game-assets/building?${iconQuery(mapKey)}`;
+const buildingIconURL = (mapKey, opts) => `/api/custom/game-assets/building?${iconQuery(mapKey, opts)}`;
 
 export const normalizeUnitName = (value) =>
   String(value || '')
@@ -206,13 +213,13 @@ const buildingKeys = new Set([
   'ultraliskcavern',
 ]);
 
-export const getUnitIcon = (unitType) => {
+export const getUnitIcon = (unitType, opts) => {
   const key = resolveIconMapKey(unitType);
   if (!key) return null;
   if (buildingKeys.has(key)) {
-    return buildingIconURL(key);
+    return buildingIconURL(key, opts);
   }
-  return unitIconURL(key);
+  return unitIconURL(key, opts);
 };
 
 // getWorkerIconForRace maps a race string ("Protoss"/"Terran"/"Zerg") to its

@@ -18,11 +18,13 @@ const WHOLE_MAP_SCALE = 2.5;
 
 const unitBox = (unitType) => (LARGE_UNITS.has(normalizeUnitName(unitType).replace(/^(terran|zerg|protoss)/, '')) ? LARGE_UNIT_BOX : UNIT_BOX);
 
-function Sprite({ unitType, x, y, w, h, color, faded, title }) {
-  const href = getUnitIcon(unitType);
+// Only the Lurker has a burrowed sprite; other burrowed units are drawn standing.
+const variantOf = (unitType, burrowed) => (burrowed && normalizeUnitName(unitType).endsWith('lurker') ? 'burrowed' : '');
+
+function Sprite({ unitType, x, y, w, h, color, faded, burrowed, title }) {
+  const href = getUnitIcon(unitType, { color, variant: variantOf(unitType, burrowed) });
   return (
     <g opacity={faded ? 0.45 : 1}>
-      <ellipse cx={x} cy={y + h * 0.32} rx={w * 0.5} ry={h * 0.2} fill="none" stroke={color} strokeWidth={Math.max(2, w * 0.05)} />
       {href ? <image href={href} x={x - w / 2} y={y - h / 2} width={w} height={h} preserveAspectRatio="xMidYMid meet" /> : null}
       <title>{title}</title>
     </g>
@@ -105,7 +107,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
             {(snapshot?.units || []).map((u, i) => {
               const size = unitBox(u.unit_type) * (showZoomed ? 1 : WHOLE_MAP_SCALE);
               return (
-                <Sprite key={`u-${i}`} unitType={u.unit_type} x={u.x} y={u.y} w={size} h={size} color={color(u.player_id)} title={u.unit_type} />
+                <Sprite key={`u-${i}`} unitType={u.unit_type} x={u.x} y={u.y} w={size} h={size} color={color(u.player_id)} burrowed={u.burrowed} title={u.unit_type} />
               );
             })}
           </>
