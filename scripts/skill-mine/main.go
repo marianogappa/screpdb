@@ -59,6 +59,10 @@ type sample struct {
 	Engine   string             `json:"engine,omitempty"`
 	Values   map[string]float64 `json:"values,omitempty"`
 	Skip     string             `json:"skip,omitempty"`
+	// MapKind and Humans describe unlabelled games (-dir), where the question is how a kind of game shifts
+	// the metrics rather than how they follow MMR.
+	MapKind string `json:"map_kind,omitempty"`
+	Humans  int    `json:"humans,omitempty"`
 }
 
 type job struct {
@@ -75,7 +79,17 @@ func main() {
 	perBin := flag.Int("per-bin", 160, "games per 100-MMR bin of the lower-MMR side")
 	minDuration := flag.Int("min-duration", 480, "minimum game duration in seconds")
 	workers := flag.Int("workers", max(1, runtime.NumCPU()-1), "parallel games")
+	dir := flag.String("dir", "", "instead of the harvest, measure unlabelled replays under this folder (for map kinds and team games)")
+	perKind := flag.Int("per-kind", 300, "with -dir: games per map kind (regular, money)")
 	flag.Parse()
+	if *dir != "" {
+		data, err := engine.LoadData(*bwdata)
+		if err != nil {
+			log.Fatalf("game data: %v", err)
+		}
+		mineDir(*dir, *out, data, *perKind, *minDuration, *workers)
+		return
+	}
 
 	pros := map[string]string{}
 	if *corpusDir != "" {
@@ -492,4 +506,132 @@ func macroWindowValues(d *engine.Digest, slot int8) map[string]float64 {
 		return map[string]float64{"larva_per_hatch": w.LarvaPerHatchery}
 	}
 	return map[string]float64{"hall_worker_busy": w.HallBusy}
+}
+
+// mineDir measures every human player of unlabelled games under dir, up to perKind games per map kind.
+func mineDir(dir, out string, data *engine.Data, perKind, minDuration, workers int) {
+	var paths []string
+	_ = filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() && strings.EqualFold(filepath.Ext(p), ".rep") {
+			paths = append(paths, p)
+		}
+		return nil
+	})
+	rand.New(rand.NewSource(1)).Shuffle(len(paths), func(i, j int) { paths[i], paths[j] = paths[j], paths[i] })
+	log.Printf("%d replays under %s", len(paths), dir)
+	f, err := os.Create(out)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	var mu sync.Mutex
+	taken := map[string]int{}
+	ch := make(chan string)
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for p := range ch {
+				b, err := os.ReadFile(p)
+				if err != nil {
+					continue
+				}
+				replay := parser.CreateReplayFromFileInfo(p, filepath.Base(p), int64(len(b)), "")
+				parsed, err := parser.ParseReplayWithOptions(p, replay, parser.Options{})
+				if err != nil {
+					continue
+				}
+				rec, err := compact.FromReplayData(parsed, compact.FileMeta{Path: p, Size: int64(len(b))})
+				if err != nil || int(rec.Duration) < minDuration {
+					continue
+				}
+				kind := ""
+				switch rec.MapKind {
+				case library.MapKindRegular:
+					kind = "regular"
+				case library.MapKindMoney:
+					kind = "money"
+				default:
+					continue
+				}
+				var humans []*library.Player
+				for i := range rec.Players {
+					if pl := &rec.Players[i]; pl.IsHuman() && !pl.IsObserver() {
+						humans = append(humans, pl)
+					}
+				}
+				if len(humans) < 2 {
+					continue
+				}
+				mu.Lock()
+				if taken[kind] >= perKind {
+					mu.Unlock()
+					continue
+				}
+				taken[kind]++
+				mu.Unlock()
+				samples := measureUnlabelled(b, rec, humans, data)
+				mu.Lock()
+				for _, s := range samples {
+					s.Match, s.MapKind, s.Humans = filepath.Base(p), kind, len(humans)
+					line, _ := json.Marshal(s)
+					w.Write(append(line, '\n'))
+				}
+				w.Flush()
+				if (taken["money"]+taken["regular"])%50 == 0 {
+					log.Printf("taken %v", taken)
+				}
+				mu.Unlock()
+			}
+		}()
+	}
+	for _, p := range paths {
+		mu.Lock()
+		full := taken["money"] >= perKind && taken["regular"] >= perKind
+		mu.Unlock()
+		if full {
+			break
+		}
+		ch <- p
+	}
+	close(ch)
+	wg.Wait()
+	log.Printf("done: %v", taken)
+}
+
+func measureUnlabelled(b []byte, rec *library.Replay, humans []*library.Player, data *engine.Data) []sample {
+	engineState := ""
+	scorecards := map[uint8]macro.Player{}
+	var d *engine.Digest
+	if dg, err := engine.Pass(context.Background(), b, data); err != nil {
+		engineState = "error"
+	} else if dg.Confidence() != engine.ConfidenceHigh {
+		engineState = "low"
+	} else {
+		engineState, d = "high", dg
+		for _, m := range macro.Compute(dg) {
+			scorecards[uint8(m.Slot)] = m
+		}
+	}
+	actions := actionStats(b)
+	minutes := float64(rec.Duration) / 60
+	var out []sample
+	for _, p := range humans {
+		values := fastValues(p, minutes)
+		for k, v := range actions[p.ReplayPlayerID] {
+			values[k] = v
+		}
+		if m, ok := scorecards[p.Slot]; ok {
+			for k, v := range engineValues(m) {
+				values[k] = v
+			}
+			for k, v := range macroWindowValues(d, int8(p.Slot)) {
+				values[k] = v
+			}
+		}
+		out = append(out, sample{Duration: int(rec.Duration), Side: side{Toon: p.Name, Race: p.Race.String()[:1]}, Engine: engineState, Values: values})
+	}
+	return out
 }

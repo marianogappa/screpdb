@@ -27,7 +27,7 @@ const LABEL_SHARE = 0.16;
 
 const placementOf = (player, key) => {
   const metrics = player?.skill?.metrics || {};
-  if (key === 'combined') return player?.skill?.combined ? { ...player.skill.combined, metric: 'combined' } : null;
+  if (key === 'combined') return player?.skill?.combined ? { ...player.skill.combined, metric: 'combined', source: player.skill.combined } : null;
   if (key === 'worker_production') {
     if (metrics.hall_worker_busy) return { ...metrics.hall_worker_busy, metric: 'hall_worker_busy' };
     if (metrics.larva_per_hatch) return { ...metrics.larva_per_hatch, metric: 'larva_per_hatch' };
@@ -58,11 +58,17 @@ function Help({ text }) {
   );
 }
 
-function Strip({ entries, playerColor, describe, inline, hero }) {
-  const t = useT();
-  const positions = entries.map((e) => e.placement.position);
+// tierRange is the span of whole tiers every chart shows: the same for all of them, so they line up, and
+// only the tiers some player reaches on some chart.
+const tierRange = (positions) => {
   const lo = Math.max(0, Math.floor(Math.min(...positions) - 0.25));
   const hi = Math.min(4, Math.max(lo + 1, Math.ceil(Math.max(...positions) + 0.25)));
+  return [lo, hi];
+};
+
+function Strip({ entries, range, playerColor, describe, inline, hero, labelShare = LABEL_SHARE }) {
+  const t = useT();
+  const [lo, hi] = range;
   const band = (pos) => (pos - lo) / (hi - lo);
   // Markers keep a small margin from the strip's edges so a value at the end of the scale stays visible.
   const share = (pos) => 0.015 + 0.97 * band(pos);
@@ -70,7 +76,7 @@ function Strip({ entries, playerColor, describe, inline, hero }) {
   const placed = [...entries].sort((a, b) => a.placement.position - b.placement.position).map((e) => {
     const x = share(e.placement.position);
     let row = 0;
-    while (rows[row] !== undefined && x - rows[row] < LABEL_SHARE) row += 1;
+    while (rows[row] !== undefined && x - rows[row] < labelShare) row += 1;
     rows[row] = x;
     return { ...e, x, row };
   });
@@ -87,7 +93,7 @@ function Strip({ entries, playerColor, describe, inline, hero }) {
         </div>
       ))}
       {placed.map(({ player, placement, x, row }) => {
-        const right = x > 1 - LABEL_SHARE;
+        const right = x > 1 - labelShare;
         const value = describe ? describe(placement) : '';
         return (
           <div
@@ -126,6 +132,7 @@ export default function SkillTab({ game, players, playerColor }) {
     ? t('skill.value.larvaPerHatch', { value: p.value.toFixed(2) })
     : t('skill.value.hallBusy', { value: percent(p.value) }));
   const combined = entriesFor('combined');
+  const range = tierRange(['combined', ...METRICS.map((m) => m.key)].flatMap((k) => entriesFor(k).map((e) => e.placement.position)));
   return (
     <div className="workflow-card skill-tab">
       {caveats.length ? (
@@ -133,25 +140,24 @@ export default function SkillTab({ game, players, playerColor }) {
           {caveats.map((c) => t(`skill.caveat.${c}`)).join(' ')}
         </div>
       ) : null}
-      {combined.length ? (
-        <section className="skill-hero">
-          <div className="skill-hero-head">
-            <span className="skill-hero-title">{t('skill.metric.combined.title')}</span>
-            <Help text={`${t('skill.metric.combined.hint')} ${t('skill.footnote')}`} />
-          </div>
-          <div className="skill-verdicts">
-            {rated.filter((p) => p.skill?.combined).map((p) => (
-              <span key={p.player_id} className="skill-verdict">
-                <span className="skill-marker-dot" style={{ background: playerColor(p.color) }} />
-                <span className="skill-verdict-name">{p.name}</span>
-                <span className="skill-verdict-tier">{tierLabel(t, p.skill)}</span>
-              </span>
-            ))}
-          </div>
-          <Strip entries={combined} playerColor={playerColor} hero />
-        </section>
-      ) : null}
       <div className="skill-rows">
+        {combined.length ? (
+          <>
+            <div className="skill-row-label skill-row-label--hero">
+              <span>{t('skill.metric.combined.title')}</span>
+              <Help text={`${t('skill.metric.combined.hint')} ${t('skill.footnote')}`} />
+            </div>
+            <Strip
+              entries={combined}
+              range={range}
+              playerColor={playerColor}
+              hero
+              inline
+              labelShare={0.3}
+              describe={(p) => tierLabel(t, rated.find((r) => r.skill?.combined === p.source)?.skill)}
+            />
+          </>
+        ) : null}
         {METRICS.map((m) => {
           const entries = entriesFor(m.key);
           if (!entries.length) return null;
@@ -163,6 +169,7 @@ export default function SkillTab({ game, players, playerColor }) {
               </div>
               <Strip
                 entries={entries}
+                range={range}
                 playerColor={playerColor}
                 inline={m.inline !== false}
                 describe={m.key === 'worker_production' ? describeWorkers : (p) => String(m.format(p.value))}
