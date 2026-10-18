@@ -36,10 +36,20 @@ const placementOf = (player, key) => {
   return metrics[key] ? { ...metrics[key], metric: key } : null;
 };
 
-// The tier the combined score falls in.
+const PRO_TIER = 3;
+
+// The third of a tier the combined score falls in: "-", "" or "+". Pro stays one band.
+export const tierThird = (combined) => {
+  if (!combined || combined.tier >= PRO_TIER) return '';
+  const within = Math.min(1, Math.max(0, combined.position - combined.tier));
+  if (within < 1 / 3) return '-';
+  return within < 2 / 3 ? '' : '+';
+};
+
+// The tier the combined score falls in, with the third of it.
 export const tierLabel = (t, skill) => {
   const combined = skill?.combined;
-  return combined ? t(`skill.tier.${TIER_KEYS[combined.tier]}`) : '';
+  return combined ? `${t(`skill.tier.${TIER_KEYS[combined.tier]}`)}${tierThird(combined)}` : '';
 };
 
 function Help({ text }) {

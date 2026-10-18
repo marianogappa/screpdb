@@ -297,18 +297,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-18  OK. The game page says when a game can't be run through the StarCraft engine (the pass failed or drifted from the real game). It reads the existing engine digest cache entry; no new files, reads or writes.
+2026-10-18  OK. Frontend only: the game summary's Skill column splits Beginner, Intermediate and Advanced into thirds (-, plain, +); Pro stays one band. No I/O changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-18  OK. The game page says when a game can't be run through the StarCraft engine (the pass failed or drifted from the real game). It reads the existing engine digest cache entry; no new files, reads or writes.
 2026-10-20  OK. Tests only (engine detectors, snapshot wire, sprite and creep handlers, codec, oclock, library types, alliances) plus removal of two dead branches in the event detectors. No I/O changes.
 2026-10-20  OK. The terrain crop endpoint takes layer=terrain or layer=resources (scmapanalyzer renders each from the same replay file it already reads), so creep draws under minerals; the event map drops its whole-map toggle and caption. No new files, paths, network or writes.
 2026-10-20  OK. Overlay art from the bumped scmapanalyzer (shadows, sprite anchors, composited units, tileset creep and edge frames) served from embedded data through two new read-only endpoints; the engine snapshot records the map tileset. No new files, paths, network or writes beyond the existing icon cache.
 2026-10-20  OK. Game Events: one curated list per game from either the engine or the command stream (never mixed), outcome-aware sentences, focused regions, and an overlay with true-scale sprites, construction bars and creep. The on-demand snapshot pass now opens the engine with its own copy of the already extracted game data (the same app-data bwdata directory openbw already reads); no new files, paths, network or writes beyond the existing snapshot cache.
-2026-10-20  OK. Failed updates fall back to a browser download: the Windows launcher relaunches the worker with SCREPDB_SELFUPDATE_FAILED=1 when applying an update fails, and the update status carries that flag plus the latest release's download link. The dashboard shows the link instead of retrying. No new files, reads, writes or network calls.
 ```
 
 </details>
