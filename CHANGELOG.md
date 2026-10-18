@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.31.0](https://github.com/marianogappa/screpdb/compare/v1.30.0...v1.31.0) (2026-10-18)
+
+
+### Features
+
+* engine-enhanced reports and the Skill tab behind the Labs engine switch ([#451](https://github.com/marianogappa/screpdb/issues/451)) ([9b7ba7e](https://github.com/marianogappa/screpdb/commit/9b7ba7e33d4e8c6636d15f93716245112ceeb6eb))
+
 ## [1.30.0](https://github.com/marianogappa/screpdb/compare/v1.29.1...v1.30.0) (2026-10-13)
 
 
