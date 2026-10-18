@@ -111,5 +111,10 @@
   "chart.supply.startingSupply": "Starting supply",
   "chart.supply.addition": "{built}  (+{delta})",
   "chart.supply.additionMulti": "{built} ×{count}  (+{delta})",
-  "chart.supply.total": "Total: {total} supply"
+  "chart.supply.total": "Total: {total} supply",
+  "chart.supply.capChange": "Supply cap {delta}",
+  "chart.supply.lineUsed": "used",
+  "chart.supply.lineCap": "cap",
+  "chart.supply.blockedFor": "Supply blocked for {duration}",
+  "chart.supply.usedOfCap": "{used}/{cap} supply"
 }

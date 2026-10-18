@@ -124,6 +124,7 @@ type workflowGameListItem struct {
 	Featuring          []string                  `json:"featuring"`
 	FeaturingKeys      []string                  `json:"featuring_keys,omitempty"`
 	CurrentPlayer      *workflowRecentGamePlayer `json:"current_player,omitempty"`
+	workflowEngineFields
 }
 
 type workflowGameListPlayer struct {
@@ -229,6 +230,8 @@ var workflowFeaturingFilters = []struct {
 	{Key: "manner_pylon", Label: "Manner Pylon", Group: "marker", IconKey: "pylon", IconLabel: "Manner"},
 	// "drop" matches ANY drop variant; the subtype chips match only their own.
 	{Key: "drop", Label: "Drop", Group: "marker", IconKey: "shuttle"},
+	{Key: "reaver_drop", Label: "Reaver drop", Group: "marker", IconKey: "reaver", IconLabel: "Drop"},
+	{Key: "dt_drop", Label: "DT drop", Group: "marker", IconKey: "darktemplar", IconLabel: "Drop"},
 	{Key: "mind_control", Label: "Mind Control", Group: "marker", IconKey: "darkarchon", IconLabel: "Mind Control"},
 	{Key: "made_maelstrom", Label: "Maelstrom", Group: "marker", IconKey: "darkarchon", IconLabel: "Maelstrom"},
 	{Key: "crazy_zerg", Label: "Crazy Zerg", Group: "marker", IconKey: "ultralisk", IconLabel: "Crazy Zerg"},
@@ -345,6 +348,16 @@ type workflowGamePlayer struct {
 	CountryCode      string                    `json:"country_code,omitempty"`
 	PrimaryBadge     *IdentityBadge            `json:"primary_badge,omitempty"`
 	SecondaryBadge   *IdentityBadge            `json:"secondary_badge,omitempty"`
+	// Skill places this player's game on the skill tiers; null when the game or the player cannot be measured.
+	Skill *workflowPlayerSkill `json:"skill"`
+	// SupplyCurve is the real supply used and cap at each second either changes; null in fast mode.
+	SupplyCurve []workflowSupplyPoint `json:"supply_curve"`
+}
+
+type workflowSupplyPoint struct {
+	Second int64   `json:"second"`
+	Used   float64 `json:"used"`
+	Cap    float64 `json:"cap"`
 }
 
 // workflowPatternValue is one detected_patterns[] entry on the game-summary
@@ -357,7 +370,13 @@ type workflowPatternValue struct {
 }
 
 type workflowGameDetail struct {
-	SummaryVersion                   string                                   `json:"summary_version"`
+	SummaryVersion string `json:"summary_version"`
+	// EnginePending is true while the game waits for, or is in, its engine pass.
+	EnginePending bool `json:"engine_pending,omitempty"`
+	// SkillStatus says whether the skill tiers apply: ok, too_short or custom_rules (empty: no humans to rate).
+	SkillStatus string `json:"skill_status"`
+	// SkillCaveats are why the tiers may be off for this game: team_game, money_map.
+	SkillCaveats                     []string                                 `json:"skill_caveats,omitempty"`
 	ReplayID                         int64                                    `json:"replay_id"`
 	ReplayDate                       string                                   `json:"replay_date"`
 	FileName                         string                                   `json:"file_name"`
@@ -409,6 +428,7 @@ type workflowGameDetail struct {
 	// time; Second is the command second shifted forward by the unit's build
 	// duration (Fastest speed). The frontend pre-indexes and binary-searches it.
 	TrainedUnitsTimeline []workflowTrainedUnitSample `json:"trained_units_timeline,omitempty"`
+	workflowEngineFields
 }
 
 type workflowTrainedUnitSample struct {
@@ -531,6 +551,23 @@ type workflowGameEvent struct {
 	// (player × detected opener BO). The FE groups by player to render one line
 	// each and label their starting location. BO timing is deliberately dropped.
 	BuildOrders []workflowGameEventBuildOrder `json:"build_orders,omitempty"`
+	// Engine is set on events the game engine found; the browser snapshots the map at SnapshotSecond.
+	Engine *workflowEngineEvent `json:"engine,omitempty"`
+}
+
+type workflowEngineEvent struct {
+	SnapshotSecond int64                   `json:"snapshot_second"`
+	EndSecond      int64                   `json:"end_second"`
+	Region         *workflowEngineRegion   `json:"region,omitempty"`
+	Point          *workflowGameEventPoint `json:"point,omitempty"`
+}
+
+// workflowEngineRegion is a rectangle of the map in pixels.
+type workflowEngineRegion struct {
+	X int64 `json:"x"`
+	Y int64 `json:"y"`
+	W int64 `json:"w"`
+	H int64 `json:"h"`
 }
 
 type workflowGameEventBuildOrder struct {
@@ -610,6 +647,9 @@ type workflowUnitEarlyEvent struct {
 	IsBuilding bool   `json:"is_building"`
 	Label      string `json:"label,omitempty"`
 	Count      int64  `json:"count"`
+	// CompletedSecond and Cancelled come from engine data only; in fast mode they are null and false.
+	CompletedSecond *int64 `json:"completed_second"`
+	Cancelled       bool   `json:"cancelled,omitempty"`
 }
 
 // One player's full-game production stream. Unlike units_by_slice, which
@@ -760,6 +800,8 @@ type IdentityBadge struct {
 }
 
 type workflowPlayerOverview struct {
+	// Engine is how many of this player's games have engine data; nil for a featured pro, who has no local games.
+	Engine              *engineCoverage               `json:"engine,omitempty"`
 	SummaryVersion      string                        `json:"summary_version"`
 	PlayerKey           string                        `json:"player_key"`
 	PlayerName          string                        `json:"player_name"`

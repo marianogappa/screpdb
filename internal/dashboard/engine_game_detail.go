@@ -1,0 +1,500 @@
+//go:build !js
+
+package dashboard
+
+import (
+	"encoding/json"
+	"math"
+	"net/http"
+	"runtime/debug"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+
+	"github.com/gorilla/mux"
+
+	"github.com/icza/screp/rep/repcmd"
+	openbw "github.com/marianogappa/openbw-go"
+	"github.com/marianogappa/screpdb/internal/crashreport"
+	"github.com/marianogappa/screpdb/internal/engine"
+	"github.com/marianogappa/screpdb/internal/engine/moments"
+	"github.com/marianogappa/screpdb/internal/library"
+	"github.com/marianogappa/screpdb/internal/models"
+)
+
+const recentDigests = 8
+
+// digestMemo keeps the last few full digests: a game page asks for several views of one game.
+type digestMemo struct {
+	mu    sync.Mutex
+	order [][32]byte
+	byKey map[[32]byte]*engine.Digest
+}
+
+func (m *digestMemo) get(checksum [32]byte, load func() (*engine.Digest, bool)) *engine.Digest {
+	m.mu.Lock()
+	if d, ok := m.byKey[checksum]; ok {
+		m.mu.Unlock()
+		return d
+	}
+	m.mu.Unlock()
+	d, ok := load()
+	if !ok {
+		return nil
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.byKey == nil {
+		m.byKey = map[[32]byte]*engine.Digest{}
+	}
+	if len(m.order) >= recentDigests {
+		delete(m.byKey, m.order[0])
+		m.order = m.order[1:]
+	}
+	m.byKey[checksum] = d
+	m.order = append(m.order, checksum)
+	return d
+}
+
+// engineDigest is the full digest of a replay in engine mode with high confidence. A desynced game keeps
+// its command-inferred views: engine data after the desync is wrong, and half of each would mislead.
+func (d *Dashboard) engineDigest(replayID int64) (*engine.Digest, *library.Replay) {
+	runner := d.enginePass.get()
+	if runner == nil || d.library == nil {
+		return nil, nil
+	}
+	rec, ok := d.library.lib.Snapshot().ByID(replayID)
+	if !ok || rec.EngineData == nil || rec.EngineData.LowConfidence {
+		return nil, nil
+	}
+	dg := d.digests.get(rec.Checksum, func() (*engine.Digest, bool) { return runner.Digest(rec.Checksum) })
+	return dg, rec
+}
+
+func frameSecond(frame int32) int64 { return int64(frame) * 42 / 1000 }
+
+// applyEngineToGameDetail swaps the build order, the production timeline and the per-slice unit counts
+// for what the game engine says was made: no phantom builds, real completion times and cancels.
+func (d *Dashboard) applyEngineToGameDetail(detail *workflowGameDetail) {
+	dg, rec := d.engineDigest(detail.ReplayID)
+	if dg == nil {
+		return
+	}
+	playerBySlot := map[int8]int64{}
+	for ordinal, p := range rec.Players {
+		playerBySlot[int8(p.Slot)] = library.PlayerID(rec.ID, uint8(ordinal))
+	}
+	rows := make([]unitProductionRow, 0, len(dg.Productions))
+	for _, pr := range dg.Productions {
+		playerID, ok := playerBySlot[pr.Owner]
+		if !ok {
+			continue
+		}
+		unit := repcmd.UnitByID(pr.Type)
+		if unit == nil || unit.Name == "" {
+			continue
+		}
+		row := unitProductionRow{PlayerID: playerID, Second: frameSecond(pr.Start), UnitType: unit.Name, Count: 1, Cancelled: pr.Cancel != engine.NoFrame}
+		if pr.Complete != engine.NoFrame {
+			completed := frameSecond(pr.Complete)
+			row.CompletedSecond = &completed
+		}
+		rows = append(rows, row)
+	}
+	buildUnitsBySlice(detail, rows)
+	populateSupplyCurves(detail, dg, playerBySlot)
+}
+
+const supplyCapDoubled = 400
+
+func populateSupplyCurves(detail *workflowGameDetail, dg *engine.Digest, playerBySlot map[int8]int64) {
+	curves := map[int64][]workflowSupplyPoint{}
+	last := map[int64][2]int32{}
+	for _, s := range dg.Economy {
+		playerID, ok := playerBySlot[s.Owner]
+		if !ok {
+			continue
+		}
+		state := [2]int32{s.SupplyUsed, min(s.SupplyMax, supplyCapDoubled)}
+		if prev, seen := last[playerID]; seen && prev == state {
+			continue
+		}
+		last[playerID] = state
+		curves[playerID] = append(curves[playerID], workflowSupplyPoint{Second: frameSecond(s.Frame), Used: float64(state[0]) / 2, Cap: float64(state[1]) / 2})
+	}
+	for i := range detail.Players {
+		if c, ok := curves[detail.Players[i].PlayerID]; ok {
+			detail.Players[i].SupplyCurve = c
+		}
+	}
+}
+
+// commandMetaEvents are the command-side events that are not guesses about the game state (who left,
+// who stopped playing, alliances, the openers). An engine game keeps these and takes every other event
+// from the engine; the two detectors are never mixed for one game.
+var commandMetaEvents = map[string]bool{
+	"player_start": true, "bo_openers": true, "leave_game": true, "player_dropped": true, "mass_disconnect": true,
+	"player_stopped_playing": true, "late_alliance": true, "team_stacking_detected": true,
+}
+
+func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models.MapContextLayout) {
+	dg, rec := d.engineDigest(detail.ReplayID)
+	if dg == nil {
+		return
+	}
+	playersBySlot := map[int8]workflowGameEventPlayer{}
+	for ordinal, p := range rec.Players {
+		id := library.PlayerID(rec.ID, uint8(ordinal))
+		for _, gp := range detail.Players {
+			if gp.PlayerID == id {
+				playersBySlot[int8(p.Slot)] = workflowGameEventPlayer{PlayerID: id, Name: gp.Name, Color: gp.Color}
+			}
+		}
+	}
+	players := momentPlayers(rec)
+	player := func(slot int8) *workflowGameEventPlayer {
+		if p, ok := playersBySlot[slot]; ok {
+			return &p
+		}
+		return nil
+	}
+	metas := overlayBaseMetasFromLayout(layout)
+	bases := momentBases(metas)
+	base := func(i int) *workflowGameEventBase {
+		if i == moments.NoBase || i >= len(metas) {
+			return nil
+		}
+		b := metas[i].Base
+		return &b
+	}
+
+	kept := detail.GameEvents[:0]
+	for _, e := range detail.GameEvents {
+		if commandMetaEvents[e.Type] {
+			e.Engine = &workflowEngineEvent{SnapshotSecond: e.Second, EndSecond: e.Second}
+			if e.Base != nil {
+				e.Engine.Region = regionAroundBase(e.Base)
+			}
+			kept = append(kept, e)
+		}
+	}
+	detail.GameEvents = kept
+
+	for _, m := range moments.Detect(dg, bases, players) {
+		e := workflowGameEvent{
+			Type:   m.Type,
+			Second: int64(m.Second),
+			Actor:  player(m.Actor),
+			Target: player(m.Target),
+			Base:   base(m.Base),
+			Engine: &workflowEngineEvent{
+				SnapshotSecond: int64(m.SnapshotSecond),
+				EndSecond:      int64(m.Second),
+				Region:         &workflowEngineRegion{X: int64(m.Region.X), Y: int64(m.Region.Y), W: int64(m.Region.W), H: int64(m.Region.H)},
+				Point:          &workflowGameEventPoint{X: float64(m.X), Y: float64(m.Y)},
+			},
+		}
+		for _, t := range m.Units {
+			if u := repcmd.UnitByID(t); u != nil {
+				e.AttackUnitTypes = append(e.AttackUnitTypes, u.Name)
+			}
+		}
+		switch m.Type {
+		case "recall":
+			e.Base, e.TargetBase, e.TargetOwner = base(m.SourceBase), base(m.Base), player(m.Target)
+			e.TargetPoint = e.Engine.Point
+		case "attack":
+			if e.Base == nil {
+				e.Base = openFieldBase(m, bases, rec, playersBySlot)
+			}
+		}
+		if e.Actor == nil {
+			continue
+		}
+		detail.GameEvents = append(detail.GameEvents, e)
+	}
+	sort.SliceStable(detail.GameEvents, func(i, j int) bool { return detail.GameEvents[i].Second < detail.GameEvents[j].Second })
+}
+
+func momentPlayers(rec *library.Replay) []moments.Player {
+	var players []moments.Player
+	for _, p := range rec.Players {
+		players = append(players, moments.Player{Slot: int8(p.Slot), Race: engineRace(p.Race), Human: p.IsHuman() && !p.IsObserver()})
+	}
+	return players
+}
+
+func momentBases(metas []overlayBaseMeta) []moments.Base {
+	bases := make([]moments.Base, len(metas))
+	for i, m := range metas {
+		kind := moments.BaseExpansion
+		switch {
+		case m.IsStarting:
+			kind = moments.BaseStart
+		case m.Base.NaturalOfClock != nil:
+			kind = moments.BaseNatural
+		}
+		poly := make([][2]int32, len(m.Base.Polygon))
+		for j, pt := range m.Base.Polygon {
+			poly[j] = [2]int32{int32(pt.X), int32(pt.Y)}
+		}
+		bases[i] = moments.Base{Kind: kind, X: int32(m.Base.Center.X), Y: int32(m.Base.Center.Y), Polygon: poly}
+	}
+	return bases
+}
+
+// listedEngineEvents are the engine's game events that the games list shows and filters on.
+var listedEngineEvents = map[string]bool{"drop": true, "reaver_drop": true, "dt_drop": true}
+
+// engineFeatures runs the game-event detectors on a fresh digest for the games list. Bases come from the
+// layout the library already holds, so no replay file is read.
+func (d *Dashboard) engineFeatures(checksum [32]byte, dg *engine.Digest) (features []string) {
+	defer func() {
+		if p := recover(); p != nil {
+			crashreport.ReportPanic(p, debug.Stack())
+			features = nil
+		}
+	}()
+	rec, ok := d.library.lib.Snapshot().ByChecksum(checksum)
+	if !ok {
+		return nil
+	}
+	if rec.Layout == nil {
+		return nil
+	}
+	features = []string{}
+	seen := map[string]bool{}
+	for _, m := range moments.Detect(dg, libraryBases(rec.Layout), momentPlayers(rec)) {
+		if listedEngineEvents[m.Type] && !seen[m.Type] {
+			seen[m.Type] = true
+			features = append(features, m.Type)
+		}
+	}
+	return features
+}
+
+func libraryBases(layout *library.MapLayout) []moments.Base {
+	naturals := map[string]bool{}
+	for _, b := range layout.Bases {
+		if isStartKind(b.Kind) {
+			naturals[b.NaturalExpansion] = true
+		}
+	}
+	bases := make([]moments.Base, 0, len(layout.Bases))
+	for _, b := range layout.Bases {
+		kind := moments.BaseExpansion
+		switch {
+		case isStartKind(b.Kind):
+			kind = moments.BaseStart
+		case naturals[b.Name]:
+			kind = moments.BaseNatural
+		}
+		poly := make([][2]int32, len(b.Polygon))
+		for i, pt := range b.Polygon {
+			poly[i] = [2]int32{pt.X, pt.Y}
+		}
+		bases = append(bases, moments.Base{Kind: kind, X: b.CenterX, Y: b.CenterY, Polygon: poly})
+	}
+	return bases
+}
+
+func isStartKind(kind string) bool {
+	return strings.EqualFold(kind, "start") || strings.EqualFold(kind, "starting")
+}
+
+func engineRace(r library.Race) openbw.Race {
+	switch r {
+	case library.RaceZerg:
+		return openbw.RaceZerg
+	case library.RaceTerran:
+		return openbw.RaceTerran
+	case library.RaceProtoss:
+		return openbw.RaceProtoss
+	}
+	return openbw.RaceRandom
+}
+
+func regionAroundBase(b *workflowGameEventBase) *workflowEngineRegion {
+	minX, minY, maxX, maxY := b.Center.X, b.Center.Y, b.Center.X, b.Center.Y
+	for _, p := range b.Polygon {
+		minX, minY, maxX, maxY = math.Min(minX, p.X), math.Min(minY, p.Y), math.Max(maxX, p.X), math.Max(maxY, p.Y)
+	}
+	const margin, minSide = 8 * 32, 24 * 32
+	r := &workflowEngineRegion{X: int64(minX) - margin, Y: int64(minY) - margin, W: int64(maxX-minX) + 2*margin, H: int64(maxY-minY) + 2*margin}
+	if r.W < minSide {
+		r.X -= (minSide - r.W) / 2
+		r.W = minSide
+	}
+	if r.H < minSide {
+		r.Y -= (minSide - r.H) / 2
+		r.H = minSide
+	}
+	return r
+}
+
+// openFieldBase labels a battle away from any base the way the command-inferred 1v1 attacks do: by where
+// it sits on the line between the two mains.
+func openFieldBase(m moments.Event, bases []moments.Base, rec *library.Replay, players map[int8]workflowGameEventPlayer) *workflowGameEventBase {
+	mains := map[int8][2]float64{}
+	for _, u := range rec.Players {
+		if u.IsObserver() {
+			continue
+		}
+		if x, y := float64(u.StartX), float64(u.StartY); x != 0 || y != 0 {
+			mains[int8(u.Slot)] = [2]float64{x, y}
+		}
+	}
+	a, aok := mains[m.Target]
+	b, bok := mains[m.Actor]
+	ta, tb := players[m.Target], players[m.Actor]
+	if !aok || !bok || len(mains) != 2 {
+		return nil
+	}
+	ax, ay := b[0]-a[0], b[1]-a[1]
+	length := ax*ax + ay*ay
+	if length == 0 {
+		return nil
+	}
+	t := ((float64(m.X)-a[0])*ax + (float64(m.Y)-a[1])*ay) / length
+	var where string
+	switch {
+	case t < 0.30:
+		where = "near " + ta.Name + "'s base"
+	case t < 0.45:
+		where = "on " + ta.Name + "'s side of the map"
+	case t <= 0.55:
+		where = "in the middle"
+	case t < 0.70:
+		where = "on " + tb.Name + "'s side of the map"
+	default:
+		where = "near " + tb.Name + "'s base"
+	}
+	return &workflowGameEventBase{Name: where, Kind: "open_field", Center: workflowGameEventPoint{X: float64(m.X), Y: float64(m.Y)}}
+}
+
+type engineSnapshotBuilding struct {
+	UnitType string `json:"unit_type"`
+	PlayerID int64  `json:"player_id"`
+	X        int64  `json:"x"`
+	Y        int64  `json:"y"`
+	W        int64  `json:"w"`
+	H        int64  `json:"h"`
+	Complete bool   `json:"complete"`
+	TownHall bool   `json:"town_hall,omitempty"`
+}
+
+type engineSnapshotUnit struct {
+	UnitType string `json:"unit_type"`
+	PlayerID int64  `json:"player_id"`
+	X        int64  `json:"x"`
+	Y        int64  `json:"y"`
+	Burrowed bool   `json:"burrowed,omitempty"`
+}
+
+// engineSnapshot is the map at one second, in map pixels. A coarse one (from the digest) has buildings
+// exact and the army as of ArmySecond; an exact one comes from an engine pass to that very second.
+type engineSnapshot struct {
+	Second     int64                    `json:"second"`
+	ArmySecond int64                    `json:"army_second"`
+	Exact      bool                     `json:"exact"`
+	Buildings  []engineSnapshotBuilding `json:"buildings"`
+	Units      []engineSnapshotUnit     `json:"units"`
+}
+
+func unitName(t uint16) string {
+	if u := repcmd.UnitByID(t); u != nil {
+		return u.Name
+	}
+	return ""
+}
+
+func snapshotBuilding(t uint16, playerID int64, x, y int32, complete bool) (engineSnapshotBuilding, bool) {
+	fp, ok := moments.FootprintOf(t)
+	if !ok {
+		return engineSnapshotBuilding{}, false
+	}
+	return engineSnapshotBuilding{
+		UnitType: unitName(t), PlayerID: playerID, X: int64(x), Y: int64(y), W: int64(fp.W) * 32, H: int64(fp.H) * 32,
+		Complete: complete, TownHall: moments.IsTownHall(t),
+	}, true
+}
+
+func coarseSnapshotWire(snap moments.Snapshot, playerBySlot map[int8]int64) engineSnapshot {
+	out := engineSnapshot{Second: int64(snap.Second), ArmySecond: int64(snap.ArmySecond), Buildings: []engineSnapshotBuilding{}, Units: []engineSnapshotUnit{}}
+	for _, b := range snap.Buildings {
+		if id, ok := playerBySlot[b.Owner]; ok {
+			if wire, ok := snapshotBuilding(b.Type, id, b.X, b.Y, b.Complete); ok {
+				out.Buildings = append(out.Buildings, wire)
+			}
+		}
+	}
+	for _, u := range snap.Units {
+		if id, ok := playerBySlot[u.Owner]; ok {
+			out.Units = append(out.Units, engineSnapshotUnit{UnitType: unitName(u.Type), PlayerID: id, X: int64(u.X), Y: int64(u.Y)})
+		}
+	}
+	return out
+}
+
+func exactSnapshotWire(snap engine.Snapshot, playerBySlot map[int8]int64) engineSnapshot {
+	out := engineSnapshot{Second: int64(snap.Second), ArmySecond: int64(snap.Second), Exact: true, Buildings: []engineSnapshotBuilding{}, Units: []engineSnapshotUnit{}}
+	for _, u := range snap.Units {
+		id, ok := playerBySlot[u.Owner]
+		if !ok {
+			continue
+		}
+		if wire, building := snapshotBuilding(u.Type, id, u.X, u.Y, u.Completed); building {
+			out.Buildings = append(out.Buildings, wire)
+			continue
+		}
+		out.Units = append(out.Units, engineSnapshotUnit{UnitType: unitName(u.Type), PlayerID: id, X: int64(u.X), Y: int64(u.Y), Burrowed: u.Burrowed})
+	}
+	return out
+}
+
+func (d *Dashboard) handlerEngineSnapshot(w http.ResponseWriter, r *http.Request) {
+	replayID, err := strconv.ParseInt(mux.Vars(r)["replayID"], 10, 64)
+	if err != nil {
+		http.Error(w, "bad replay id", http.StatusBadRequest)
+		return
+	}
+	sec, err := strconv.Atoi(r.URL.Query().Get("second"))
+	if err != nil || sec < 0 {
+		http.Error(w, "bad second", http.StatusBadRequest)
+		return
+	}
+	dg, rec := d.engineDigest(replayID)
+	if dg == nil {
+		http.Error(w, "no engine data for this game", http.StatusNotFound)
+		return
+	}
+	playerBySlot := map[int8]int64{}
+	for ordinal, p := range rec.Players {
+		playerBySlot[int8(p.Slot)] = library.PlayerID(rec.ID, uint8(ordinal))
+	}
+	var out engineSnapshot
+	if r.URL.Query().Get("exact") == "1" {
+		seconds := []int{sec}
+		for _, field := range strings.Split(r.URL.Query().Get("seconds"), ",") {
+			if v, err := strconv.Atoi(strings.TrimSpace(field)); err == nil && v >= 0 {
+				seconds = append(seconds, v)
+			}
+		}
+		runner := d.enginePass.get()
+		if runner == nil {
+			http.Error(w, "the engine is off", http.StatusServiceUnavailable)
+			return
+		}
+		snaps, err := runner.Snapshots(r.Context(), rec.Checksum, rec.Path(), seconds)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+			return
+		}
+		out = exactSnapshotWire(snaps[sec], playerBySlot)
+	} else {
+		out = coarseSnapshotWire(moments.SnapshotAt(dg, sec), playerBySlot)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(out)
+}

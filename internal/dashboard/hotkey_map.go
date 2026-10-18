@@ -1,31 +1,22 @@
-//go:build !js
-
 package dashboard
 
 import (
-	"bytes"
+	"encoding/json"
 	"errors"
-	"fmt"
-	"image"
-	"image/color"
-	"image/draw"
-	"image/png"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/marianogappa/scmapanalyzer/lib/scmapanalyzer"
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/hotkeystream"
-	xdraw "golang.org/x/image/draw"
 )
 
-// The hotkey map composite paints the crop of the map that holds a player's
-// hotkeyed buildings at a chosen minute: terrain from scmapanalyzer, building
-// sprites at true footprint scale, the hotkey number badged on top. Group
-// contents come entirely from the stored hotkey_stream blob — building assigns
-// carry the building type and its build tile.
+// The hotkey map shows the part of the map holding a player's hotkeyed buildings at a chosen moment.
+// The server only says what to draw (the crop and each building with its groups, in map pixels); the
+// browser draws it with the shared map component. Group contents come entirely from the stored
+// hotkey_stream blob: building assigns carry the building type and its build tile.
 
 // hotkeyMapDefaultMinute is the snapshot minute when the request omits one.
 const hotkeyMapDefaultMinute = 8
@@ -46,30 +37,9 @@ var hotkeyBuildingFootprints = map[string][2]int{
 	"Comsat Station": {2, 2}, "Nuclear Silo": {2, 2}, "Machine Shop": {2, 2}, "Control Tower": {2, 2},
 }
 
-// hotkeySpriteRace prefixes building names for scmapanalyzer's HD sprite
-// registry ("Zerg Hatchery", "Terran Comsat Station", ...).
-var hotkeySpriteRace = map[string]string{
-	"Hatchery": "Zerg", "Lair": "Zerg", "Hive": "Zerg", "Spawning Pool": "Zerg",
-	"Evolution Chamber": "Zerg", "Hydralisk Den": "Zerg", "Spire": "Zerg",
-	"Greater Spire": "Zerg", "Queen's Nest": "Zerg", "Defiler Mound": "Zerg",
-	"Ultralisk Cavern": "Zerg", "Extractor": "Zerg",
-	"Command Center": "Terran", "Barracks": "Terran", "Factory": "Terran",
-	"Starport": "Terran", "Science Facility": "Terran", "Engineering Bay": "Terran",
-	"Academy": "Terran", "Armory": "Terran", "Comsat Station": "Terran",
-	"Machine Shop": "Terran", "Control Tower": "Terran", "Nuclear Silo": "Terran",
-	"Nexus": "Protoss", "Gateway": "Protoss", "Forge": "Protoss",
-	"Cybernetics Core": "Protoss", "Citadel of Adun": "Protoss",
-	"Robotics Facility": "Protoss", "Stargate": "Protoss",
-	"Templar Archives": "Protoss", "Observatory": "Protoss",
-	"Arbiter Tribunal": "Protoss", "Fleet Beacon": "Protoss",
-	"Robotics Support Bay": "Protoss",
-}
-
-// Overlay chrome matches the dashboard's accent and keycap styling.
-var (
-	hotkeyOutlineColor    = color.RGBA{0xe0, 0xb8, 0x4c, 0xff}
-	hotkeyChipFillColor   = color.RGBA{0x18, 0x1e, 0x25, 0xff}
-	hotkeyChipBorderColor = color.RGBA{0x6c, 0x78, 0x84, 0xff}
+const (
+	tilePixels              = 32
+	hotkeyMapTileRectMargin = 6
 )
 
 type hotkeyMapBuilding struct {
@@ -79,7 +49,137 @@ type hotkeyMapBuilding struct {
 	tileY    int
 }
 
-func (d *Dashboard) handlerHotkeyMap(w http.ResponseWriter, r *http.Request) {
+type tileRect struct{ X, Y, W, H int }
+
+func footprintOf(building string) [2]int {
+	if fp, ok := hotkeyBuildingFootprints[building]; ok {
+		return fp
+	}
+	return [2]int{3, 2}
+}
+
+func hotkeyBuildingsAtCutoff(events []hotkeystream.Event, cutoff int32) []hotkeyMapBuilding {
+	last := map[byte]*hotkeystream.Event{}
+	for i := range events {
+		e := &events[i]
+		if e.Sec > cutoff || e.Group > 9 {
+			continue
+		}
+		if e.Type == hotkeystream.TypeAssignBuilding || e.Type == hotkeystream.TypeAssignUnits {
+			last[e.Group] = e
+		}
+	}
+	var out []hotkeyMapBuilding
+	for group, e := range last {
+		if e.Type != hotkeystream.TypeAssignBuilding || e.TileX == hotkeystream.TileUnknown {
+			continue
+		}
+		name := hotkeystream.BuildingName(e.Building)
+		if name == "" {
+			continue
+		}
+		out = append(out, hotkeyMapBuilding{group: int(group), building: name, tileX: int(e.TileX), tileY: int(e.TileY)})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].group < out[j].group })
+	return out
+}
+
+func hotkeyMapTileRect(buildings []hotkeyMapBuilding, mapTilesW, mapTilesH int) tileRect {
+	minTX, minTY, maxTX, maxTY := 1<<30, 1<<30, 0, 0
+	for _, b := range buildings {
+		fp := footprintOf(b.building)
+		minTX, minTY = min(minTX, b.tileX), min(minTY, b.tileY)
+		maxTX, maxTY = max(maxTX, b.tileX+fp[0]), max(maxTY, b.tileY+fp[1])
+	}
+	x0 := clampInt(minTX-hotkeyMapTileRectMargin, 0, mapTilesW)
+	y0 := clampInt(minTY-hotkeyMapTileRectMargin, 0, mapTilesH)
+	x1 := clampInt(maxTX+hotkeyMapTileRectMargin, 0, mapTilesW)
+	y1 := clampInt(maxTY+hotkeyMapTileRectMargin, 0, mapTilesH)
+	return tileRect{X: x0, Y: y0, W: x1 - x0, H: y1 - y0}
+}
+
+// keyboardOrder sorts hotkey groups as they sit on the keyboard: 1 to 9, then 0.
+func keyboardOrder(groups []int) {
+	order := func(g int) int {
+		if g == 0 {
+			return 10
+		}
+		return g
+	}
+	sort.Slice(groups, func(i, j int) bool { return order(groups[i]) < order(groups[j]) })
+}
+
+type hotkeyMapRect struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+	W int `json:"w"`
+	H int `json:"h"`
+}
+
+// hotkeyMapWireBuilding is one hotkeyed building: its footprint in map pixels and its groups in
+// keyboard order (one building can sit on several hotkeys).
+type hotkeyMapWireBuilding struct {
+	Building  string        `json:"building"`
+	Footprint hotkeyMapRect `json:"footprint"`
+	Groups    []int         `json:"groups"`
+}
+
+type hotkeyMapWire struct {
+	Second    int64                   `json:"second"`
+	Crop      hotkeyMapRect           `json:"crop"`
+	Buildings []hotkeyMapWireBuilding `json:"buildings"`
+}
+
+func hotkeyMapData(buildings []hotkeyMapBuilding, mapTilesW, mapTilesH int, second int64) hotkeyMapWire {
+	rect := hotkeyMapTileRect(buildings, mapTilesW, mapTilesH)
+	out := hotkeyMapWire{
+		Second:    second,
+		Crop:      hotkeyMapRect{X: rect.X * tilePixels, Y: rect.Y * tilePixels, W: rect.W * tilePixels, H: rect.H * tilePixels},
+		Buildings: []hotkeyMapWireBuilding{},
+	}
+	byTile := map[[2]int]int{}
+	for _, b := range buildings {
+		key := [2]int{b.tileX, b.tileY}
+		if i, ok := byTile[key]; ok {
+			out.Buildings[i].Groups = append(out.Buildings[i].Groups, b.group)
+			continue
+		}
+		fp := footprintOf(b.building)
+		byTile[key] = len(out.Buildings)
+		out.Buildings = append(out.Buildings, hotkeyMapWireBuilding{
+			Building:  b.building,
+			Footprint: hotkeyMapRect{X: b.tileX * tilePixels, Y: b.tileY * tilePixels, W: fp[0] * tilePixels, H: fp[1] * tilePixels},
+			Groups:    []int{b.group},
+		})
+	}
+	for i := range out.Buildings {
+		keyboardOrder(out.Buildings[i].Groups)
+	}
+	return out
+}
+
+func hotkeyMapCutoff(r *http.Request) (int64, bool) {
+	cutoffSec := int64(hotkeyMapDefaultMinute * 60)
+	if raw := strings.TrimSpace(r.URL.Query().Get("minute")); raw != "" {
+		minute, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || minute < 0 || minute > 180 {
+			return 0, false
+		}
+		cutoffSec = minute * 60
+	}
+	// An exact-second cutoff overrides the minute: the frontend notches the slider at building-assign
+	// moments, not at whole minutes.
+	if raw := strings.TrimSpace(r.URL.Query().Get("second")); raw != "" {
+		second, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || second < 0 || second > 180*60 {
+			return 0, false
+		}
+		cutoffSec = second
+	}
+	return cutoffSec, true
+}
+
+func (d *Dashboard) handlerHotkeyMapData(w http.ResponseWriter, r *http.Request) {
 	replayID, err := strconv.ParseInt(strings.TrimSpace(r.URL.Query().Get("replay_id")), 10, 64)
 	if err != nil || replayID <= 0 {
 		http.Error(w, "replay_id is required", http.StatusBadRequest)
@@ -90,26 +190,11 @@ func (d *Dashboard) handlerHotkeyMap(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "player_id is required", http.StatusBadRequest)
 		return
 	}
-	cutoffSec := int64(hotkeyMapDefaultMinute * 60)
-	if raw := strings.TrimSpace(r.URL.Query().Get("minute")); raw != "" {
-		minute, err := strconv.ParseInt(raw, 10, 64)
-		if err != nil || minute < 0 || minute > 180 {
-			http.Error(w, "minute out of range", http.StatusBadRequest)
-			return
-		}
-		cutoffSec = minute * 60
+	cutoffSec, ok := hotkeyMapCutoff(r)
+	if !ok {
+		http.Error(w, "minute or second out of range", http.StatusBadRequest)
+		return
 	}
-	// An exact-second cutoff overrides the minute: the frontend notches the
-	// slider at building-assign moments, not at whole minutes.
-	if raw := strings.TrimSpace(r.URL.Query().Get("second")); raw != "" {
-		second, err := strconv.ParseInt(raw, 10, 64)
-		if err != nil || second < 0 || second > 180*60 {
-			http.Error(w, "second out of range", http.StatusBadRequest)
-			return
-		}
-		cutoffSec = second
-	}
-
 	summary, err := d.dbStore.GetReplaySummary(r.Context(), replayID)
 	if err != nil {
 		if errors.Is(err, dashboarddb.ErrNotFound) {
@@ -140,264 +225,10 @@ func (d *Dashboard) handlerHotkeyMap(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no located hotkeyed buildings at that moment", http.StatusNotFound)
 		return
 	}
-
-	replayPath := strings.TrimSpace(summary.FilePath)
-	if replayPath == "" {
-		log.Printf("hotkey map terrain replay=%d: replay file path unknown", replayID)
-		http.Error(w, "map render failed", http.StatusInternalServerError)
-		return
-	}
-	rect := hotkeyMapTileRect(buildings, summary.MapTileWidth, summary.MapTileHeight)
-	terrain, err := scmapanalyzer.MapImagePNGCropFromReplayFile(replayPath, rect)
-	if err != nil {
-		log.Printf("hotkey map terrain replay=%d: %v", replayID, err)
-		http.Error(w, "map render failed", http.StatusInternalServerError)
-		return
-	}
-	composite, err := renderHotkeyMapComposite(terrain, rect, buildings)
-	if err != nil {
-		log.Printf("hotkey map composite replay=%d player=%d: %v", replayID, playerID, err)
-		http.Error(w, "map render failed", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "image/png")
-	w.Header().Set("Cache-Control", "no-store, no-cache, max-age=0, must-revalidate")
-	_, _ = w.Write(composite)
-}
-
-// hotkeyBuildingsAtCutoff reduces a decoded stream to the located buildings
-// each group held at the cutoff second: the last assign at or before it wins.
-func hotkeyBuildingsAtCutoff(events []hotkeystream.Event, cutoff int32) []hotkeyMapBuilding {
-	last := map[byte]*hotkeystream.Event{}
-	for i := range events {
-		e := &events[i]
-		if e.Sec > cutoff || e.Group > 9 {
-			continue
-		}
-		if e.Type == hotkeystream.TypeAssignBuilding || e.Type == hotkeystream.TypeAssignUnits {
-			last[e.Group] = e
-		}
-	}
-	var out []hotkeyMapBuilding
-	for group, e := range last {
-		if e.Type != hotkeystream.TypeAssignBuilding || e.TileX == hotkeystream.TileUnknown {
-			continue
-		}
-		name := hotkeystream.BuildingName(e.Building)
-		if name == "" {
-			continue
-		}
-		out = append(out, hotkeyMapBuilding{group: int(group), building: name, tileX: int(e.TileX), tileY: int(e.TileY)})
-	}
-	return out
-}
-
-// hotkeyMapTileRectMargin pads the buildings' bounding box so sprites, badges
-// and surrounding terrain context fit inside the crop.
-const hotkeyMapTileRectMargin = 6
-
-// hotkeyMapTileRect returns the tile rect enclosing the buildings' footprints
-// plus a margin, clamped to the map bounds.
-func hotkeyMapTileRect(buildings []hotkeyMapBuilding, mapTilesW, mapTilesH int) scmapanalyzer.TileRect {
-	minTX, minTY, maxTX, maxTY := 1<<30, 1<<30, 0, 0
-	for _, b := range buildings {
-		fp, ok := hotkeyBuildingFootprints[b.building]
-		if !ok {
-			fp = [2]int{3, 2}
-		}
-		minTX, minTY = min(minTX, b.tileX), min(minTY, b.tileY)
-		maxTX, maxTY = max(maxTX, b.tileX+fp[0]), max(maxTY, b.tileY+fp[1])
-	}
-	x0 := clampInt(minTX-hotkeyMapTileRectMargin, 0, mapTilesW)
-	y0 := clampInt(minTY-hotkeyMapTileRectMargin, 0, mapTilesH)
-	x1 := clampInt(maxTX+hotkeyMapTileRectMargin, 0, mapTilesW)
-	y1 := clampInt(maxTY+hotkeyMapTileRectMargin, 0, mapTilesH)
-	return scmapanalyzer.TileRect{X: x0, Y: y0, W: x1 - x0, H: y1 - y0}
-}
-
-// renderHotkeyMapComposite overlays building sprites, footprint outlines and
-// group badges on the terrain crop, which covers rect at 32 px per tile.
-func renderHotkeyMapComposite(terrainPNG []byte, rect scmapanalyzer.TileRect, buildings []hotkeyMapBuilding) ([]byte, error) {
-	terrain, err := png.Decode(bytes.NewReader(terrainPNG))
-	if err != nil {
-		return nil, fmt.Errorf("decode terrain: %w", err)
-	}
-	canvas := image.NewRGBA(image.Rect(0, 0, terrain.Bounds().Dx(), terrain.Bounds().Dy()))
-	draw.Draw(canvas, canvas.Bounds(), terrain, terrain.Bounds().Min, draw.Src)
-
-	spriteTop := map[[2]int]int{}
-	for _, b := range buildings {
-		fp, ok := hotkeyBuildingFootprints[b.building]
-		if !ok {
-			fp = [2]int{3, 2}
-		}
-		px, py := (b.tileX-rect.X)*32, (b.tileY-rect.Y)*32
-		w, h := fp[0]*32, fp[1]*32
-		top := py
-		if spriteName := hotkeySpriteName(b.building); spriteName != "" {
-			if spritePNG, err := scmapanalyzer.UnitOrBuildingImagePNG(spriteName); err == nil {
-				if sprite, err := png.Decode(bytes.NewReader(spritePNG)); err == nil {
-					// Preserve the sprite's aspect ratio: fit its width to the
-					// footprint and let it stand up to twice the footprint's
-					// height, anchored bottom center (stretching to the
-					// footprint box made near-square sprites look fat).
-					sb := sprite.Bounds()
-					scale := float64(w) / float64(sb.Dx())
-					if maxH := float64(2 * h); float64(sb.Dy())*scale > maxH {
-						scale = maxH / float64(sb.Dy())
-					}
-					drawnW, drawnH := int(float64(sb.Dx())*scale), int(float64(sb.Dy())*scale)
-					x0, y0 := px+(w-drawnW)/2, py+h-drawnH
-					xdraw.CatmullRom.Scale(canvas, image.Rect(x0, y0, x0+drawnW, y0+drawnH), sprite, sb, xdraw.Over, nil)
-					top = min(top, y0)
-				}
-			}
-		}
-		key := [2]int{b.tileX, b.tileY}
-		if cur, ok := spriteTop[key]; !ok || top < cur {
-			spriteTop[key] = top
-		}
-		drawFootprintOutline(canvas, px, py, w, h, hotkeyOutlineColor)
-	}
-	// Keycap chips last so they sit on top: one small uniform chip per group,
-	// in a row above the sprite so they never cover it.
-	byTile := map[[2]int][]int{}
-	for _, b := range buildings {
-		k := [2]int{b.tileX, b.tileY}
-		byTile[k] = append(byTile[k], b.group)
-	}
-	for tile, groups := range byTile {
-		keyboardOrder(groups)
-		fpw := 3 * 32
-		for _, b := range buildings {
-			if b.tileX == tile[0] && b.tileY == tile[1] {
-				if fp, ok := hotkeyBuildingFootprints[b.building]; ok {
-					fpw = fp[0] * 32
-				}
-				break
-			}
-		}
-		drawGroupChips(canvas, (tile[0]-rect.X)*32+fpw/2, spriteTop[tile]-6, groups)
-	}
-
-	var buf bytes.Buffer
-	enc := png.Encoder{CompressionLevel: png.BestSpeed}
-	if err := enc.Encode(&buf, canvas); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-func hotkeySpriteName(building string) string {
-	race, ok := hotkeySpriteRace[building]
-	if !ok {
-		return ""
-	}
-	return race + " " + building
-}
-
-// keyboardOrder sorts hotkey numbers with 0 after 9, matching the keyboard row.
-func keyboardOrder(groups []int) {
-	order := func(g int) int {
-		if g == 0 {
-			return 10
-		}
-		return g
-	}
-	for i := 1; i < len(groups); i++ {
-		for j := i; j > 0 && order(groups[j]) < order(groups[j-1]); j-- {
-			groups[j], groups[j-1] = groups[j-1], groups[j]
-		}
-	}
-}
-
-func drawFootprintOutline(img *image.RGBA, x, y, w, h int, col color.RGBA) {
-	for t := 0; t < 3; t++ {
-		for i := x - t; i <= x+w+t; i++ {
-			setPixel(img, i, y-t, col)
-			setPixel(img, i, y+h+t, col)
-		}
-		for j := y - t; j <= y+h+t; j++ {
-			setPixel(img, x-t, j, col)
-			setPixel(img, x+w+t, j, col)
-		}
-	}
-}
-
-func setPixel(img *image.RGBA, x, y int, col color.RGBA) {
-	if image.Pt(x, y).In(img.Bounds()) {
-		img.SetRGBA(x, y, col)
-	}
-}
-
-// hotkeyDigitFont is a 3x5 bitmap font for the group chips.
-var hotkeyDigitFont = map[rune][5][3]byte{
-	'0': {{1, 1, 1}, {1, 0, 1}, {1, 0, 1}, {1, 0, 1}, {1, 1, 1}},
-	'1': {{0, 1, 0}, {1, 1, 0}, {0, 1, 0}, {0, 1, 0}, {1, 1, 1}},
-	'2': {{1, 1, 1}, {0, 0, 1}, {1, 1, 1}, {1, 0, 0}, {1, 1, 1}},
-	'3': {{1, 1, 1}, {0, 0, 1}, {0, 1, 1}, {0, 0, 1}, {1, 1, 1}},
-	'4': {{1, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 0, 1}, {0, 0, 1}},
-	'5': {{1, 1, 1}, {1, 0, 0}, {1, 1, 1}, {0, 0, 1}, {1, 1, 1}},
-	'6': {{1, 1, 1}, {1, 0, 0}, {1, 1, 1}, {1, 0, 1}, {1, 1, 1}},
-	'7': {{1, 1, 1}, {0, 0, 1}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}},
-	'8': {{1, 1, 1}, {1, 0, 1}, {1, 1, 1}, {1, 0, 1}, {1, 1, 1}},
-	'9': {{1, 1, 1}, {1, 0, 1}, {1, 1, 1}, {0, 0, 1}, {1, 1, 1}},
-}
-
-// drawGroupChips paints one small keycap-style chip per hotkey group,
-// centered on (cx, bottomY): a dark rounded square with a white digit.
-func drawGroupChips(img *image.RGBA, cx, bottomY int, groups []int) {
-	const (
-		chipSize = 26
-		chipGap  = 4
-		scale    = 4
-	)
-	rowW := len(groups)*chipSize + (len(groups)-1)*chipGap
-	x0 := cx - rowW/2
-	y0 := max(bottomY-chipSize, 2)
-	white := color.RGBA{255, 255, 255, 255}
-	for i, g := range groups {
-		x := x0 + i*(chipSize+chipGap)
-		for dy := 0; dy < chipSize; dy++ {
-			for dx := 0; dx < chipSize; dx++ {
-				corner := (dx == 0 || dx == chipSize-1) && (dy == 0 || dy == chipSize-1)
-				if corner {
-					continue
-				}
-				c := hotkeyChipFillColor
-				if dx == 0 || dy == 0 || dx == chipSize-1 || dy == chipSize-1 {
-					c = hotkeyChipBorderColor
-				}
-				setPixel(img, x+dx, y0+dy, c)
-			}
-		}
-		glyph, ok := hotkeyDigitFont[rune('0'+g)]
-		if !ok {
-			continue
-		}
-		gx := x + (chipSize-3*scale)/2
-		gy := y0 + (chipSize-5*scale)/2
-		for row := 0; row < 5; row++ {
-			for colIdx := 0; colIdx < 3; colIdx++ {
-				if glyph[row][colIdx] == 0 {
-					continue
-				}
-				for dy := 0; dy < scale; dy++ {
-					for dx := 0; dx < scale; dx++ {
-						setPixel(img, gx+colIdx*scale+dx, gy+row*scale+dy, white)
-					}
-				}
-			}
-		}
-	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(hotkeyMapData(buildings, summary.MapTileWidth, summary.MapTileHeight, cutoffSec))
 }
 
 func clampInt(v, lo, hi int) int {
-	if v < lo {
-		return lo
-	}
-	if v > hi {
-		return hi
-	}
-	return v
+	return max(lo, min(v, hi))
 }

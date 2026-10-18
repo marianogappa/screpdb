@@ -5,11 +5,11 @@ import { useT } from '../lib/i18nContext';
 // previews, so the honest description is vague anyway, and a wall of
 // explanation for something half-built reads worse than a hint.
 //
-// Empty for now. Completing your replays graduated out of Labs and is on by
-// default, with an opt-out on the Folder tab. The Settings modal hides the tab
-// while this list is empty, so adding the next preview here is all it takes to
-// bring it back.
-export const LABS_FEATURES = [];
+// The Settings modal hides the tab while this list is empty.
+export const LABS_FEATURES = [
+  { key: 'engine_pass', labelKey: 'labs.feature.enginePass' },
+  { key: 'engine_pass_on_battery', labelKey: 'labs.feature.enginePassOnBattery', requires: 'engine_pass' },
+];
 
 function LabsSettingsPanel({ flags, saving, message, messageIsError, onToggle }) {
   const t = useT();
@@ -28,7 +28,7 @@ function LabsSettingsPanel({ flags, saving, message, messageIsError, onToggle })
             <input
               type="checkbox"
               checked={Boolean(flags?.[feature.key])}
-              disabled={saving}
+              disabled={saving || (feature.requires && !flags?.[feature.requires])}
               onChange={(e) => onToggle(feature.key, e.target.checked)}
             />
             <span>{t(feature.labelKey)}</span>

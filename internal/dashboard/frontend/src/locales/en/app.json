@@ -154,10 +154,6 @@
   "skillProxies.viewport.axisLabel": "Average switches per minute",
   "skillProxies.viewport.overlayValueLabel": "switches/min",
   "skillProxies.viewport.value": "{value} switches/min",
-  "skillProxies.viewsAria": "Skill proxy views",
-  "skillProxies.tabs.firstUnit": "First unit efficiency",
-  "skillProxies.tabs.cadence": "Unit production cadence",
-  "skillProxies.tabs.viewport": "Viewport multitasking",
   "skillProxies.populationComparison": "Population comparison",
   "skillProxies.featuredNote": "Where {name} would sit among the players in your database. The progamer is not part of the population.",
   "skillProxies.thisProgamer": "this progamer",
@@ -225,8 +221,6 @@
   "buildOrders.none": "No recognized build orders for this game.",
   "mutaTiming.none": "Mutalisk-Turret timing not detected for this game.",
   "alliances.stackingWarning": "😈 Team stacking detected: uneven non-solo team sizes were sustained (over {minutes} minutes, or until game end).",
-  "firstUnit.warning": "⚠️ Worker travel starting build inflates these numbers.",
-  "firstUnit.none": "No first unit efficiency rows found for this game.",
   "events.filterByTypeAria": "Filter events by type",
   "events.filterByPlayerAria": "Filter events by player",
   "events.filter.leaves": "Leaves",
@@ -441,5 +435,11 @@
   "fingerprint.coverage.belowBar": "The closest progamer match was not confident enough to name.",
   "game.stage.own": "Yours",
   "game.stage.complete": "Complete",
-  "errors.serverDown": "The screpdb server seems to be down. Please reopen screpdb and try again."
+  "errors.serverDown": "The screpdb server seems to be down. Please reopen screpdb and try again.",
+  "events.reaverDrop": "Reaver drop",
+  "events.dtDrop": "DT drop",
+  "events.sentence.reaverDrops": "{actor} Reaver drops{icon}{count}{from} on {target} at {location}",
+  "events.sentence.dtDrops": "{actor} DT drops{icon}{count}{from} on {target} at {location}",
+  "game.engineNotice.running": "Running this game through the StarCraft engine for an enhanced report",
+  "game.engineNotice.ready": "Enhanced report ready"
 }

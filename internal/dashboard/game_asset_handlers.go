@@ -4,6 +4,7 @@ package dashboard
 
 import (
 	"errors"
+	"image/color"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -22,7 +23,7 @@ var gameAssetFlight singleflight.Group
 // gameAssetIconRenderVersion segments on-disk icon cache and must match the `v` query param
 // the dashboard frontend appends to unit/building icon URLs. Bump when scmapanalyzer (or our
 // icon mapping) changes so browsers and disk cache pick up new PNGs.
-const gameAssetIconRenderVersion = "3"
+const gameAssetIconRenderVersion = "4"
 
 // gameAssetMapRenderVersion segments the on-disk map cache under
 // game-assets/maps/v<N>/. Bump when the map render changes (scmapanalyzer or
@@ -75,6 +76,12 @@ func (d *Dashboard) serveGameAssetIcon(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "cache unavailable", http.StatusInternalServerError)
 		return
 	}
+	opts, suffix, ok := gameAssetIconOptions(r)
+	if !ok {
+		http.Error(w, "bad color or variant", http.StatusBadRequest)
+		return
+	}
+	cacheKey += suffix
 	cachePath := filepath.Join(cacheRoot, "icons", gameAssetIconRenderVersion, cacheKey+".png")
 
 	if data, readErr := iofacade.ReadFile(cachePath); readErr == nil && len(data) > 0 {
@@ -88,7 +95,7 @@ func (d *Dashboard) serveGameAssetIcon(w http.ResponseWriter, r *http.Request) {
 		if data, readErr := iofacade.ReadFile(cachePath); readErr == nil && len(data) > 0 {
 			return data, nil
 		}
-		pngBytes, genErr := scmapanalyzer.UnitOrBuildingImagePNG(scmapQuery)
+		pngBytes, genErr := scmapanalyzer.UnitOrBuildingImagePNGWithOptions(scmapQuery, opts)
 		if genErr != nil {
 			return nil, genErr
 		}
@@ -106,6 +113,30 @@ func (d *Dashboard) serveGameAssetIcon(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	_, _ = w.Write(pngBytes)
+}
+
+// gameAssetIconOptions reads the optional player color (six hex digits: the team-color areas of the
+// sprite take it, as in the game) and variant (burrowed). The suffix keeps each tint in its own cache file.
+func gameAssetIconOptions(r *http.Request) (scmapanalyzer.UnitImageOptions, string, bool) {
+	var opts scmapanalyzer.UnitImageOptions
+	suffix := ""
+	if raw := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("color"))); raw != "" {
+		rgb, err := strconv.ParseUint(raw, 16, 32)
+		if err != nil || len(raw) != 6 {
+			return opts, "", false
+		}
+		opts.TeamColor = color.NRGBA{R: uint8(rgb >> 16), G: uint8(rgb >> 8), B: uint8(rgb), A: 255}
+		suffix += "_" + raw
+	}
+	switch v := strings.TrimSpace(r.URL.Query().Get("variant")); v {
+	case "":
+	case string(scmapanalyzer.UnitVariantBurrowed):
+		opts.Variant = scmapanalyzer.UnitVariantBurrowed
+		suffix += "_" + v
+	default:
+		return opts, "", false
+	}
+	return opts, suffix, true
 }
 
 func (d *Dashboard) handlerGameAssetMap(w http.ResponseWriter, r *http.Request) {

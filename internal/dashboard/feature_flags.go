@@ -24,12 +24,22 @@ import (
 // switched it on in Labs simply keep the behaviour they already had.
 const featureFlagDisableCompleteReplays = "disable_complete_replays"
 
+// featureFlagEnginePass is the Labs switch for everything built on the game engine: extracting game data,
+// the background engine pass, and every engine view in the dashboard. It is a preview, so it is named
+// positively and defaults to off; with it off, screpdb behaves as if the engine did not exist.
+const featureFlagEnginePass = "engine_pass"
+
+// featureFlagEnginePassOnBattery keeps the engine pass running on battery; by default it pauses there.
+const featureFlagEnginePassOnBattery = "engine_pass_on_battery"
+
 // knownFeatureFlags is the allowlist. Writes to anything outside it are
 // rejected, so a stale client cannot litter the settings row with keys nothing
 // reads, and a flag that is retired stops being settable the moment it leaves
 // this list.
 var knownFeatureFlags = map[string]struct{}{
 	featureFlagDisableCompleteReplays: {},
+	featureFlagEnginePass:             {},
+	featureFlagEnginePassOnBattery:    {},
 }
 
 func (d *Dashboard) featureFlags(ctx context.Context) (map[string]bool, error) {
@@ -73,6 +83,9 @@ func (d *Dashboard) setFeatureFlag(ctx context.Context, key string, enabled bool
 	}
 	if err := d.dbStore.SetFeatureFlagsJSON(ctx, globalReplayFilterConfigKey, string(encoded)); err != nil {
 		return nil, fmt.Errorf("saving feature flags: %w", err)
+	}
+	if key == featureFlagEnginePass {
+		d.enginePassToggled(enabled)
 	}
 	return flags, nil
 }

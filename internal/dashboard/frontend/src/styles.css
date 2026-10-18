@@ -2894,30 +2894,8 @@ button.workflow-nav-update-available:disabled {
 
 /* Stack image + SVG so the frame shrink-wraps the map; overlay matches the image box (avoids stretched polygons in the modal). */
 .workflow-summary-map-frame {
-  display: inline-grid;
-  grid-template: 1fr / 1fr;
-  width: fit-content;
-  max-width: 100%;
-  vertical-align: top;
-  position: relative;
-}
-
-.workflow-summary-map-frame .workflow-event-map-image {
-  grid-area: 1 / 1;
-  width: auto;
-  max-width: 100%;
-  height: auto;
-  max-height: 240px;
-  object-fit: contain;
-  display: block;
-}
-
-.workflow-summary-map-frame .workflow-event-map-overlay {
-  grid-area: 1 / 1;
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .workflow-summary-features-col {
@@ -5006,7 +4984,6 @@ button.workflow-nav-update-available:disabled {
    height fits the viewport (aspect preserved via --map-aspect, set inline);
    centered in the column when the height constraint makes it narrower. */
 .workflow-event-map-panel .workflow-event-map-frame {
-  max-width: min(100%, calc(var(--map-aspect, 1) * (100vh - 28px)));
   margin-left: auto;
   margin-right: auto;
 }
@@ -7160,10 +7137,10 @@ span[data-tip],
 .hk-map-panel { border: 1px solid var(--e-line); border-radius: 8px; padding: 10px; }
 .hk-map-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 .hk-map-head input[type="range"] { margin-left: auto; width: 45%; }
-.hk-map-img {
-  width: 100%; max-height: 75vh; display: block; border-radius: 6px;
-  object-fit: contain; object-position: left top;
-}
+.hk-map { border-radius: 6px; overflow: hidden; }
+.hk-map-footprint { fill: none; stroke: #e0b84c; stroke-width: 2; }
+.hk-map-chip rect { fill: #181e25; stroke: #6c7884; stroke-width: 1.5; }
+.hk-map-chip text { fill: #e8edf2; font-size: 16px; font-weight: 600; }
 .hk-sigs { display: grid; gap: 14px; }
 .hk-sig-card { border: 1px solid var(--e-line); border-radius: 8px; padding: 12px 14px; }
 .hk-sig-row { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; padding: 4px 0; }
@@ -7486,3 +7463,196 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   text-align: center;
   white-space: nowrap;
 }
+
+/* Engine mode. The badge is quiet on purpose: it marks a data source, not something to act on. It
+   keeps its width in fast mode so the upgrade to engine data moves nothing on screen. */
+.engine-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: rgba(203, 213, 225, 0.75);
+  vertical-align: middle;
+  white-space: nowrap;
+  cursor: help;
+  transition: opacity 0.6s ease;
+}
+.engine-badge--reserved {
+  visibility: hidden;
+  opacity: 0;
+}
+.engine-badge--low {
+  border-color: rgba(251, 191, 36, 0.4);
+  color: rgba(251, 191, 36, 0.8);
+}
+.workflow-games-list-duration .engine-badge {
+  font-size: 0.62rem;
+}
+.engine-refresh-chip {
+  display: block;
+  margin: 0 auto 8px;
+  padding: 2px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  background: rgba(30, 41, 59, 0.6);
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.engine-refresh-chip:hover {
+  border-color: rgba(148, 163, 184, 0.7);
+}
+.engine-coverage {
+  display: block;
+  font-size: 0.75rem;
+  color: rgba(148, 163, 184, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+.engine-coverage--panel {
+  margin: 0 0 8px;
+  text-align: right;
+}
+
+.macro-table th[scope='row'] {
+  text-align: left;
+  font-weight: 500;
+  color: rgba(226, 232, 240, 0.85);
+  cursor: help;
+  white-space: nowrap;
+}
+.macro-table td {
+  font-variant-numeric: tabular-nums;
+}
+.macro-sparkline {
+  display: block;
+}
+
+.engine-snapshot-region {
+  fill: none;
+  stroke: rgba(251, 191, 36, 0.9);
+  stroke-dasharray: 48 32;
+}
+.engine-snapshot-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: rgba(148, 163, 184, 0.9);
+}
+.macro-table td.macro-best {
+  font-weight: 700;
+  color: rgba(241, 245, 249, 1);
+}
+.macro-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.macro-range {
+  display: block;
+}
+.macro-range-whisker,
+.macro-range-median {
+  stroke: rgba(148, 163, 184, 0.7);
+  stroke-width: 1;
+}
+.macro-range-band {
+  fill: rgba(148, 163, 184, 0.28);
+}
+.macro-range-legend {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+/* GameMap: one frame for every map view. The svg holds the map and map-pixel layers; .game-map-whole
+   covers the whole map wherever the view is, for overlays placed in percent of the map. */
+.game-map {
+  position: relative;
+  overflow: hidden;
+  margin-left: auto;
+  margin-right: auto;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: #05070c;
+}
+.game-map-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.game-map-whole {
+  position: absolute;
+}
+.game-map--natural {
+  display: inline-block;
+  max-width: 100%;
+}
+.game-map--natural .game-map-img {
+  display: block;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+}
+
+.workflow-player-table.workflow-player-table--skill {
+  grid-template-columns: max-content max-content max-content minmax(0, 1.3fr) minmax(0, 1fr);
+}
+.wpt-skill { justify-content: flex-start; }
+.wpt-skill-tier {
+  background: none; border: 1px solid var(--e-line, rgba(255,255,255,0.15)); border-radius: 999px;
+  color: rgba(255,255,255,0.9); font-size: 0.8rem; padding: 2px 9px; cursor: pointer; white-space: nowrap;
+}
+.wpt-skill-tier:hover { filter: brightness(1.25); }
+.wpt-skill-tier--beginner { background: rgba(148,163,184,0.12); border-color: rgba(148,163,184,0.3); color: #cbd5e1; }
+.wpt-skill-tier--intermediate { background: rgba(96,165,250,0.12); border-color: rgba(96,165,250,0.32); color: #bfdbfe; }
+.wpt-skill-tier--advanced { background: rgba(167,139,250,0.13); border-color: rgba(167,139,250,0.34); color: #ddd6fe; }
+.wpt-skill-tier--pro { background: rgba(240,198,116,0.14); border-color: rgba(240,198,116,0.4); color: #fde7b0; }
+
+.skill-tab { display: flex; flex-direction: column; gap: 18px; padding: 18px 20px; }
+.skill-caveat { margin: 0; max-width: none; flex: none; }
+.skill-rows { display: grid; grid-template-columns: minmax(150px, 210px) minmax(0, 1fr); column-gap: 16px; row-gap: 0; align-items: stretch; }
+.skill-rows > .skill-row-label { border-bottom: 1px solid rgba(255,255,255,0.05); }
+.skill-rows > .skill-strip:not(.skill-strip--hero) { border-radius: 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.skill-rows > .skill-row-label--hero { border-bottom: none; margin-bottom: 10px; }
+.skill-row-label { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: rgba(255,255,255,0.68); }
+.skill-help .workflow-help-bubble { max-width: 320px; white-space: normal; font-weight: 400; }
+.skill-strip { position: relative; border-radius: 6px; overflow: hidden; background: rgba(255,255,255,0.015); }
+.skill-row-label--hero { font-size: 0.95rem; font-weight: 600; color: rgba(255,255,255,0.95); }
+.skill-strip--hero { background: rgba(255,255,255,0.04); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08); margin-bottom: 10px; }
+.skill-strip--hero .skill-player-label { font-size: 13px; font-weight: 600; }
+.skill-band { position: absolute; top: 0; bottom: 0; border-left: 1px solid rgba(255,255,255,0.07); text-align: center; }
+.skill-band:first-child { border-left: none; }
+.skill-band-beginner { background: rgba(255,255,255,0.0); }
+.skill-band-intermediate { background: rgba(255,255,255,0.025); }
+.skill-band-advanced { background: rgba(255,255,255,0.05); }
+.skill-band-pro { background: rgba(240,198,116,0.08); }
+.skill-band-label { font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255,255,255,0.32); line-height: 16px; }
+.skill-marker { position: absolute; display: flex; align-items: center; gap: 6px; height: 22px; transform: translateX(-5px); white-space: nowrap; }
+.skill-marker--right { flex-direction: row-reverse; transform: translateX(calc(-100% + 5px)); }
+.skill-marker-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px rgba(0,0,0,0.5); }
+.skill-player-label { font-size: 12px; color: rgba(255,255,255,0.85); }
+.skill-player-value { color: rgba(255,255,255,0.45); }
+@media (max-width: 700px) { .skill-rows { grid-template-columns: 1fr; } }
+
+.engine-notice {
+  margin-left: auto; align-self: center; display: inline-flex; align-items: center; gap: 8px;
+  font-size: 0.78rem; padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+}
+.engine-notice::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.engine-notice--running { color: rgba(191,219,254,0.95); background: rgba(96,165,250,0.12); border: 1px solid rgba(96,165,250,0.3); }
+.engine-notice--running::before { background: #60a5fa; animation: engine-notice-pulse 1.2s ease-in-out infinite; }
+.engine-notice--ready { color: rgba(187,247,208,0.95); background: rgba(74,222,128,0.12); border: 1px solid rgba(74,222,128,0.3); animation: engine-notice-fade 6s ease-in forwards; }
+.engine-notice--ready::before { background: #4ade80; }
+@keyframes engine-notice-pulse { 0%, 100% { opacity: 0.35; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.15); } }
+@keyframes engine-notice-fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .engine-notice--running::before, .engine-notice--ready { animation: none; } }

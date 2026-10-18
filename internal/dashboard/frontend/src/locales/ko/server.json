@@ -748,5 +748,9 @@
   "server.payload.fuzzy.pool": "~{n}풀",
   "server.payload.nhatch.hydra": "{n}해처리 히드라",
   "server.payload.nhatch.lurker": "{n}해처리 러커",
-  "server.payload.nhatch.muta": "{n}해처리 뮤탈"
+  "server.payload.nhatch.muta": "{n}해처리 뮤탈",
+  "server.chip.featuring.reaver_drop.label": "리버 드랍",
+  "server.chip.featuring.dt_drop.label": "다크 드랍",
+  "server.game_event.reaver_drop.label": "리버 드랍",
+  "server.game_event.dt_drop.label": "다크 드랍"
 }

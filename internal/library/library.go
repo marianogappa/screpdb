@@ -50,6 +50,8 @@ type Event struct {
 	Version    uint64
 	Added      []int64
 	Removed    []int64
+	// Upgraded lists replays whose EngineData changed, in place, without being added or removed.
+	Upgraded []int64
 }
 
 type filterState struct {
@@ -140,6 +142,17 @@ func (l *Library) Remove(generation uint64, path string) {
 // re-parsing. A checksum that is not in the corpus is ignored.
 func (l *Library) Alias(generation uint64, file FileRef, checksum [32]byte) {
 	l.send(mutation{kind: opAlias, gen: generation, file: file, checksum: checksum})
+}
+
+// SetEngineData attaches an engine pass result to the replay holding checksum, in the live and the
+// staged corpus. A checksum in neither is ignored.
+func (l *Library) SetEngineData(checksum [32]byte, data *EngineData) {
+	l.send(mutation{kind: opEngine, checksum: checksum, engine: data})
+}
+
+// ClearEngineData drops every replay's engine data, for when the engine is switched off.
+func (l *Library) ClearEngineData() {
+	l.send(mutation{kind: opClearEngine})
 }
 
 // Reset immediately replaces the corpus with an empty one for generation.
@@ -251,6 +264,8 @@ const (
 	opStage
 	opPromote
 	opFlush
+	opEngine
+	opClearEngine
 )
 
 type mutation struct {
@@ -260,6 +275,7 @@ type mutation struct {
 	path     string
 	file     FileRef
 	checksum [32]byte
+	engine   *EngineData
 	done     chan struct{}
 }
 
@@ -290,7 +306,7 @@ func (l *Library) run() {
 		snap := live.build(version, l.Progress())
 		l.snap.Store(snap)
 		ev := Event{Kind: EventCorpus, Generation: snap.Generation, Version: version}
-		ev.Added, ev.Removed = live.drainChanges()
+		ev.Added, ev.Removed, ev.Upgraded = live.drainChanges()
 		l.publish(ev)
 	}
 
@@ -314,6 +330,27 @@ func (l *Library) run() {
 					live.dirty = true
 					staging = nil
 					commit()
+				}
+			case opClearEngine:
+				if staging != nil {
+					staging.clearEngine()
+				}
+				if live.clearEngine() {
+					commit()
+				}
+			case opEngine:
+				if staging != nil {
+					staging.setEngine(m.checksum, m.engine)
+				}
+				if !live.setEngine(m.checksum, m.engine) {
+					continue
+				}
+				pending++
+				if pending >= l.opts.CoalesceRecords {
+					commit()
+				} else if timer == nil {
+					timer = time.NewTimer(l.opts.CoalesceDelay)
+					timerC = timer.C
 				}
 			default:
 				target := live
@@ -355,6 +392,7 @@ type workingSet struct {
 	byPath     map[string]*Replay
 	added      map[int64]struct{}
 	removed    map[int64]struct{}
+	upgraded   map[int64]struct{}
 	dirty      bool
 }
 
@@ -366,7 +404,33 @@ func newWorkingSet(gen uint64) *workingSet {
 		byPath:     map[string]*Replay{},
 		added:      map[int64]struct{}{},
 		removed:    map[int64]struct{}{},
+		upgraded:   map[int64]struct{}{},
 	}
+}
+
+func (w *workingSet) clearEngine() bool {
+	var upgraded []*Replay
+	for _, r := range w.byChecksum {
+		if r.EngineData != nil {
+			upgraded = append(upgraded, r)
+		}
+	}
+	for _, r := range upgraded {
+		w.setEngine(r.Checksum, nil)
+	}
+	return len(upgraded) > 0
+}
+
+func (w *workingSet) setEngine(checksum [32]byte, data *EngineData) bool {
+	r, ok := w.byChecksum[checksum]
+	if !ok || r.EngineData == data {
+		return false
+	}
+	w.mutate(r, func(r *Replay) { r.EngineData = data })
+	if _, addedNow := w.added[r.ID]; !addedNow {
+		w.upgraded[r.ID] = struct{}{}
+	}
+	return true
 }
 
 func (w *workingSet) apply(m mutation) {
@@ -510,16 +574,22 @@ func (w *workingSet) build(version uint64, progress ProgressState) *Snapshot {
 	return newSnapshot(w.gen, version, records, progress)
 }
 
-func (w *workingSet) drainChanges() (added, removed []int64) {
+func (w *workingSet) drainChanges() (added, removed, upgraded []int64) {
 	for id := range w.added {
 		added = append(added, id)
 	}
 	for id := range w.removed {
 		removed = append(removed, id)
 	}
+	for id := range w.upgraded {
+		if _, gone := w.removed[id]; !gone {
+			upgraded = append(upgraded, id)
+		}
+	}
 	w.added = map[int64]struct{}{}
 	w.removed = map[int64]struct{}{}
-	return added, removed
+	w.upgraded = map[int64]struct{}{}
+	return added, removed, upgraded
 }
 
 func setAutosaveFlag(r *Replay) {

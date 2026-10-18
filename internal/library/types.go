@@ -221,6 +221,49 @@ type Replay struct {
 	Chat     []ChatLine
 	Alliance *AllianceTimeline
 	Layout   *MapLayout
+
+	// EngineData is nil until the engine pass upgrades the replay ("engine" mode over "fast").
+	EngineData *EngineData
+}
+
+// EngineData is what the library keeps of an engine pass. The full digest stays in the digest cache file
+// and is read on demand; only what lists and aggregates need lives here.
+type EngineData struct {
+	EngineVersion int32
+	LowConfidence bool
+	// TrustedUntil is the first frame whose engine data may disagree with the real game.
+	TrustedUntil uint32
+	Players      []EnginePlayer
+	// Features are the game-event types the engine found that the games list shows and filters on
+	// (drop, reaver_drop, dt_drop). Nil means they were not computed, so the command-inferred ones stand.
+	Features []string
+}
+
+// EnginePlayer is one player's macro scorecard; a ratio is NaN when the game gives it no basis.
+type EnginePlayer struct {
+	Slot                 uint8
+	Seconds              uint16
+	SupplyBlockedSeconds uint16
+	SupplyBlocks         uint16
+	BlocksPer100Supply   float32
+	SpareSupply          float32
+	SpendingQuotient     float32
+	IncomePerMinute      float32
+	AverageUnspent       float32
+	WorkerIdleShare      float32
+	ProductionIdleShare  float32
+	WorkersBy6Min        uint16
+	SecondsTo40Workers   float32
+	FloatSeconds         uint16
+	// HallBusy (Terran, Protoss) and LarvaPerHatch (Zerg) measure worker production from 2:00 to 10:00;
+	// NaN when they do not apply or the window is not covered.
+	HallBusy      float32
+	LarvaPerHatch float32
+	// BankedShare is the share of the game spent floating resources (the first 20 minutes on money maps).
+	BankedShare float32
+	// Income is minerals plus gas gathered in each full minute; Workers is the workers alive at each minute.
+	Income  []uint16
+	Workers []uint16
 }
 
 // Path is the newest file holding this replay.

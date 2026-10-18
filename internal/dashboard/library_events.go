@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -45,6 +46,14 @@ type libraryCorpus struct {
 	Removed    []int64 `json:"removed,omitempty"`
 }
 
+// libraryEngine reports engine pass upgrades: which replays changed mode since the last batch, and how
+// many games of the filtered corpus have engine data now.
+type libraryEngine struct {
+	Upgraded []int64 `json:"upgraded,omitempty"`
+	State    string  `json:"state"`
+	engineCoverage
+}
+
 type libraryEventMessage struct {
 	Type      string           `json:"type"`
 	Status    string           `json:"status,omitempty"`
@@ -52,6 +61,7 @@ type libraryEventMessage struct {
 	Error     string           `json:"error,omitempty"`
 	Progress  *libraryProgress `json:"progress,omitempty"`
 	Corpus    *libraryCorpus   `json:"corpus,omitempty"`
+	Engine    *libraryEngine   `json:"engine,omitempty"`
 }
 
 func progressToWire(p library.ProgressState) libraryProgress {
@@ -99,6 +109,21 @@ const observationEventType = "observation"
 // arrives.
 const observationThrottle = 2 * time.Second
 
+const engineEventType = "engine"
+
+// engineThrottle bounds engine upgrade pushes to one batch every few seconds: a warm cache upgrades a
+// whole library within a second, and a page that redrew per replay would flicker for that second.
+const engineThrottle = 3 * time.Second
+
+// Engine pass states as the browser sees them.
+const (
+	engineStateOff      = "off"
+	engineStateStarting = "starting"
+	engineStateRunning  = "running"
+	engineStatePaused   = "paused"
+	engineStateFailed   = "failed"
+)
+
 // libraryHub turns the library's progress and corpus events into the browser's
 // event stream.
 type libraryHub struct {
@@ -113,13 +138,81 @@ type libraryHub struct {
 	observationWindow  time.Duration
 	observationTimer   *time.Timer
 	observationPending bool
+
+	lib           *library.Library
+	engineState   func() string
+	engineWindow  time.Duration
+	engineTimer   *time.Timer
+	enginePending map[int64]struct{}
 }
 
 func newLibraryHub() *libraryHub {
 	return &libraryHub{
 		subscribers:       map[chan libraryEventMessage]struct{}{},
 		observationWindow: observationThrottle,
+		engineWindow:      engineThrottle,
+		enginePending:     map[int64]struct{}{},
+		engineState:       func() string { return engineStateOff },
 	}
+}
+
+func (h *libraryHub) setEngineState(state func() string) {
+	h.mu.Lock()
+	h.engineState = state
+	h.mu.Unlock()
+}
+
+// publishEngine sends the first upgrade at once, so an open game page turns to engine data the moment
+// its pass lands, and carries every later one of the window in one trailing batch.
+func (h *libraryHub) publishEngine(ids []int64) {
+	h.mu.Lock()
+	for _, id := range ids {
+		h.enginePending[id] = struct{}{}
+	}
+	if h.engineTimer != nil {
+		h.mu.Unlock()
+		return
+	}
+	h.engineTimer = time.AfterFunc(h.engineWindow, h.flushEngine)
+	batch := h.takeEnginePendingLocked()
+	h.mu.Unlock()
+	h.broadcast(libraryEventMessage{Type: engineEventType, Engine: h.engineMessage(batch)})
+}
+
+func (h *libraryHub) flushEngine() {
+	defer crashreport.GuardNonFatal(nil)
+	h.mu.Lock()
+	batch := h.takeEnginePendingLocked()
+	if len(batch) > 0 {
+		h.engineTimer = time.AfterFunc(h.engineWindow, h.flushEngine)
+	} else {
+		h.engineTimer = nil
+	}
+	h.mu.Unlock()
+	if len(batch) > 0 {
+		h.broadcast(libraryEventMessage{Type: engineEventType, Engine: h.engineMessage(batch)})
+	}
+}
+
+func (h *libraryHub) takeEnginePendingLocked() []int64 {
+	batch := make([]int64, 0, len(h.enginePending))
+	for id := range h.enginePending {
+		batch = append(batch, id)
+	}
+	slices.Sort(batch)
+	clear(h.enginePending)
+	return batch
+}
+
+func (h *libraryHub) engineMessage(upgraded []int64) *libraryEngine {
+	h.mu.Lock()
+	lib, state := h.lib, h.engineState
+	h.mu.Unlock()
+	msg := &libraryEngine{Upgraded: upgraded, State: state()}
+	if lib != nil {
+		msg.engineCoverage = coverageOf(lib.View().Replays())
+	}
+	return msg
 }
 
 // publishObservation announces that a fresh answer landed. The first one goes
@@ -159,6 +252,7 @@ func (h *libraryHub) Watch(lib *library.Library) {
 	progress, events, cancel := lib.Subscribe()
 	h.mu.Lock()
 	h.progress = progress
+	h.lib = lib
 	h.mu.Unlock()
 	go func() {
 		defer crashreport.GuardNonFatal(nil)
@@ -169,6 +263,9 @@ func (h *libraryHub) Watch(lib *library.Library) {
 				h.publishProgress(event.Progress)
 			case library.EventCorpus:
 				h.publishCorpus(event)
+				if len(event.Upgraded) > 0 {
+					h.publishEngine(event.Upgraded)
+				}
 			}
 		}
 	}()
@@ -221,6 +318,11 @@ func (h *libraryHub) publishCorpus(event library.Event) {
 	if statusForPhase(h.Progress().Phase) == libraryStatusLoading {
 		return
 	}
+	// A commit that only upgraded replays to engine data changes no list membership; the engine
+	// message carries it, and a corpus message here would make every list refetch.
+	if len(event.Added) == 0 && len(event.Removed) == 0 && len(event.Upgraded) > 0 {
+		return
+	}
 	h.broadcast(libraryEventMessage{Type: "corpus", Corpus: &libraryCorpus{
 		Generation: event.Generation,
 		Version:    event.Version,
@@ -242,6 +344,7 @@ func (h *libraryHub) Error() string {
 }
 
 func (h *libraryHub) snapshotMessage() libraryEventMessage {
+	engine := h.engineMessage(nil)
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	wire := progressToWire(h.progress)
@@ -251,6 +354,7 @@ func (h *libraryHub) snapshotMessage() libraryEventMessage {
 		ReplayDir: h.progress.Folder,
 		Error:     h.lastError,
 		Progress:  &wire,
+		Engine:    engine,
 	}
 }
 

@@ -5,6 +5,10 @@ import { slugKey } from './lib/i18n';
 import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
+import EngineCoverage from './components/EngineCoverage';
+import SkillTab, { TIER_KEYS, tierLabel } from './components/SkillTab';
+import EngineSnapshotMap from './components/EngineSnapshotMap';
+import GameMap from './components/GameMap';
 import GamingSessionPanel from './components/GamingSessionPanel';
 import NoValue from './components/NoValue';
 import LanguageSwitcher from './components/LanguageSwitcher';
@@ -173,7 +177,6 @@ const normalizeEventType = (eventType) => String(eventType || '').trim().toLower
 /** Aligns with NeverUsedHotkeysPlayerDetector (7+ minute replays). */
 const GAME_SUMMARY_NEGATION_MIN_SECONDS = 7 * 60;
 
-const MAIN_GAME_SKILL_PROXY_TABS = ['first-unit-efficiency', 'unit-production-cadence', 'viewport-multitasking'];
 
 // The players-list FilterOmnibar axes. The games-played bands replaced an
 // older boolean "5+ games" axis: two axes asking the same question, one of them
@@ -193,7 +196,6 @@ const buildPlayersOmnibarStateLabels = (t) => ({
 });
 const PLAYERS_OMNIBAR_STATE_ORDER = ['races', 'apm', 'games', 'lastPlayed'];
 
-const isMainGameSkillProxyTab = (tab) => MAIN_GAME_SKILL_PROXY_TABS.includes(tab);
 
 // APM is omitted intentionally: the number is self-explanatory in that view.
 const playerInsightDescriptionOverride = (insightType) => {
@@ -203,7 +205,16 @@ const playerInsightDescriptionOverride = (insightType) => {
   return undefined;
 };
 
-const DROP_ACTOR_EVENT_TYPES = ['drop', 'cliff_drop'];
+const DROP_EVENT_TYPES = ['drop', 'cliff_drop', 'reaver_drop', 'dt_drop'];
+const DROP_ACTOR_EVENT_TYPES = DROP_EVENT_TYPES;
+
+// DROP_TEXT names each drop variant: its short label and its event sentence.
+const DROP_TEXT = {
+  drop: { label: 'events.drop', sentence: 'events.sentence.drops' },
+  cliff_drop: { label: 'events.cliffDrop', sentence: 'events.sentence.cliffDrops' },
+  reaver_drop: { label: 'events.reaverDrop', sentence: 'events.sentence.reaverDrops' },
+  dt_drop: { label: 'events.dtDrop', sentence: 'events.sentence.dtDrops' },
+};
 
 const playerIsActorForGameEventTypes = (events, playerID, wantedTypes) => {
   const pid = Number(playerID);
@@ -215,12 +226,12 @@ const playerIsActorForGameEventTypes = (events, playerID, wantedTypes) => {
   });
 };
 
-const dropTransportIconForRace = (race) => {
+const dropTransportIconForRace = (race, opts) => {
   const r = String(race || '').toLowerCase();
-  if (r === 'terran') return getUnitIcon('dropship');
-  if (r === 'protoss') return getUnitIcon('shuttle');
-  if (r === 'zerg') return getUnitIcon('overlord');
-  return getUnitIcon('dropship');
+  if (r === 'terran') return getUnitIcon('dropship', opts);
+  if (r === 'protoss') return getUnitIcon('shuttle', opts);
+  if (r === 'zerg') return getUnitIcon('overlord', opts);
+  return getUnitIcon('dropship', opts);
 };
 
 const playerGameSummarySignalParts = (player, gameEvents) => {
@@ -255,6 +266,17 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
       label: t('events.cliffDrop'),
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
+  }
+  for (const [key, unit] of [['reaver_drop', 'reaver'], ['dt_drop', 'darktemplar']]) {
+    if (playerIsActorForGameEventTypes(events, pid, [key])) {
+      positive.push({
+        key,
+        domKey: `ge-${key}-${pid}`,
+        icons: [getUnitIcon('shuttle'), getUnitIcon(unit)].filter(Boolean),
+        label: t(DROP_TEXT[key].label),
+        className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+      });
+    }
   }
   if (playerIsActorForGameEventTypes(events, pid, ['cannon_rush'])) {
     positive.push({
@@ -518,8 +540,8 @@ const gameEventDescription = (event, registry) => {
       : t('events.attack');
   }
   if (eventType === 'scout') return actor && target && location ? t('events.sentence.scouts', { actor, target, location }) : t('events.scout');
-  if (eventType === 'cliff_drop' || eventType === 'drop') {
-    const fallback = eventType === 'cliff_drop' ? t('events.cliffDrop') : t('events.drop');
+  if (DROP_TEXT[eventType]) {
+    const fallback = t(DROP_TEXT[eventType].label);
     if (!actor || !target || !location) return fallback;
     // event.base is the destination polygon for drops (toReplayEvent stamps
     // DstPolyID there). Source, when worldstate could resolve it, lives on
@@ -528,7 +550,7 @@ const gameEventDescription = (event, registry) => {
     const count = Number(event?.drop_count || 0) > 1 ? t('events.fragment.count', { count: event.drop_count }) : '';
     const from = sourceLabel ? t('events.fragment.from', { location: sourceLabel }) : '';
     const params = { actor, target, location, icon: '', count, from };
-    return eventType === 'cliff_drop' ? t('events.sentence.cliffDrops', params) : t('events.sentence.drops', params);
+    return t(DROP_TEXT[eventType].sentence, params);
   }
   if (eventType === 'recall') {
     // CastRecall's X/Y is the *source* of the teleport; the destination is
@@ -1099,8 +1121,8 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
     ) : null;
     return fill('events.sentence.nydus', { actor: actorSpan, target: targetSpan, location, icon: nydusIcon });
   }
-  if (eventType === 'cliff_drop' || eventType === 'drop') {
-    const fallback = eventType === 'cliff_drop' ? t('events.cliffDrop') : t('events.drop');
+  if (DROP_TEXT[eventType]) {
+    const fallback = t(DROP_TEXT[eventType].label);
     if (!actorName || !targetName || !location) return fallback;
     const sourceLabel = String(event?.source_base?.name || '').trim();
     const count = Number(event?.drop_count || 0) > 1 ? t('events.fragment.count', { count: event.drop_count }) : '';
@@ -1122,7 +1144,7 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
       <img src={vesselURL} alt={vesselName} title={vesselName} className="workflow-event-row-recall-arbiter" />
     ) : null;
     const parts = { actor: actorSpan, target: targetSpan, location, icon: vesselIcon, count, from };
-    return eventType === 'cliff_drop' ? fill('events.sentence.cliffDrops', parts) : fill('events.sentence.drops', parts);
+    return fill(DROP_TEXT[eventType].sentence, parts);
   }
   if (eventType === 'recall') {
     if (!actorName) return t('events.recall');
@@ -1253,6 +1275,8 @@ const renderSummaryMapStack = ({
   legendItems,
   showLegend = true,
   imageUrl,
+  mapWidth,
+  mapHeight,
   mapAlt,
   bounds,
   startPolygons,
@@ -1272,8 +1296,14 @@ const renderSummaryMapStack = ({
         ))}
       </div>
     ) : null}
-    <div className="workflow-event-map-frame workflow-summary-map-frame">
-      <img src={imageUrl} alt={mapAlt} className="workflow-event-map-image" />
+    <GameMap
+      className="workflow-event-map-frame workflow-summary-map-frame"
+      mapUrl={imageUrl}
+      mapWidth={mapWidth}
+      mapHeight={mapHeight}
+      maxHeight="240px"
+      alt={mapAlt}
+    >
       {bounds && (startPolygons || []).length > 0 ? (
         <svg className="workflow-event-map-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           {(startPolygons || []).map((overlay) => {
@@ -1299,7 +1329,7 @@ const renderSummaryMapStack = ({
           })}
         </svg>
       ) : null}
-    </div>
+    </GameMap>
   </>
 );
 
@@ -1376,7 +1406,7 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
 // elideGenericDropPill drops the generic "drop" pill when a more specific
 // variant is present. It operates on { key, ... } entries so the same helper
 // serves the featuring strip, per-player signal pills and the games-list column.
-const SPECIFIC_DROP_KEYS = new Set(['cliff_drop']);
+const SPECIFIC_DROP_KEYS = new Set(['cliff_drop', 'reaver_drop', 'dt_drop']);
 const elideGenericDropPill = (pills) => {
   if (!Array.isArray(pills) || pills.length === 0) return pills;
   const hasSpecific = pills.some((p) => SPECIFIC_DROP_KEYS.has(String(p?.key || '')));
@@ -1387,7 +1417,7 @@ const elideGenericDropPill = (pills) => {
 // elideGenericDropLabels mirrors elideGenericDropPill for the games-list, whose
 // Featuring column carries plain strings rather than objects. Matched on the
 // pre-timestamp prefix so suffixes like " 7:59" don't break detection.
-const SPECIFIC_DROP_LABEL_PREFIXES = ['Cliff drop'];
+const SPECIFIC_DROP_LABEL_PREFIXES = ['Cliff drop', 'Reaver drop', 'DT drop'];
 const elideGenericDropLabels = (labels) => {
   if (!Array.isArray(labels) || labels.length === 0) return labels;
   const startsWith = (s, prefix) => typeof s === 'string' && (s === prefix || s.startsWith(`${prefix} `));
@@ -1591,7 +1621,7 @@ const mapPointToPercent = (point, bounds) => {
 // arrow draws from the cast point (source) to the inferred Arbiter location.
 // The recall arrow is suppressed at render time when no destination was
 // inferred (target_base missing) so we don't draw a misleading vector.
-const isArrowEventType = (eventType) => ['attack', 'scout', 'drop', 'cliff_drop', 'nydus_attack', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory', 'proxy_starport', 'recall'].includes(String(eventType || '').toLowerCase());
+const isArrowEventType = (eventType) => ['attack', 'scout', ...DROP_EVENT_TYPES, 'nydus_attack', 'nuke', 'cannon_rush', 'bunker_rush', 'zergling_rush', 'proxy_gate', 'proxy_rax', 'proxy_factory', 'proxy_starport', 'recall'].includes(String(eventType || '').toLowerCase());
 
 const fallbackOverlayUnitNamesForEvent = (eventType, actorRace) => {
   const normalized = normalizeEventType(eventType);
@@ -1604,6 +1634,8 @@ const fallbackOverlayUnitNamesForEvent = (eventType, actorRace) => {
   if (normalized === 'proxy_starport') return ['starport'];
   // cliff_drop is a Terran-only marker classification, dropship is always correct.
   if (normalized === 'cliff_drop') return ['dropship'];
+  if (normalized === 'reaver_drop') return ['shuttle', 'reaver'];
+  if (normalized === 'dt_drop') return ['shuttle', 'darktemplar'];
   if (normalized === 'drop') {
     const r = String(actorRace || '').toLowerCase();
     if (r === 'protoss') return ['shuttle'];
@@ -1673,7 +1705,7 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
   // Drops render the vessel (Dropship/Shuttle/Overlord) inline next to the
   // verb in the row body. Strip it from the trailing icon strip so the
   // trailing icons are just the dropped units.
-  if (['drop', 'cliff_drop'].includes(normalized)) {
+  if (DROP_EVENT_TYPES.includes(normalized)) {
     const transports = new Set(['dropship', 'shuttle', 'overlord']);
     unitNames = unitNames.filter((name) => !transports.has(String(name || '').toLowerCase()));
   }
@@ -1712,11 +1744,11 @@ const getGasMarkerIconForRace = (race) => {
   return getUnitIcon('extractor');
 };
 
-const getExpansionMarkerIconForRace = (race) => {
+const getExpansionMarkerIconForRace = (race, opts) => {
   const value = String(race || '').trim().toLowerCase();
-  if (value === 'terran') return getUnitIcon('commandcenter');
-  if (value === 'zerg') return getUnitIcon('hatchery');
-  if (value === 'protoss') return getUnitIcon('nexus');
+  if (value === 'terran') return getUnitIcon('commandcenter', opts);
+  if (value === 'zerg') return getUnitIcon('hatchery', opts);
+  if (value === 'protoss') return getUnitIcon('nexus', opts);
   return null;
 };
 
@@ -2277,6 +2309,11 @@ function App() {
   // Rows a background refresh just changed; they carry the update flash until
   // the timer clears them.
   const [mainGamesUpdatedIds, setMainGamesUpdatedIds] = useState(() => new Set());
+  // Games of this list that turned to engine data in a way the page cannot show in place (moved or
+  // left the page). The list never re-sorts under the user; the chip offers the refresh instead.
+  const [mainGamesEngineStale, setMainGamesEngineStale] = useState(0);
+  const [engineCoverage, setEngineCoverage] = useState(null);
+  const engineEnabled = Boolean(engineCoverage && engineCoverage.state !== 'off');
   const mainGamesUpdatedTimerRef = useRef(null);
   const [mainGamesPage, setMainGamesPage] = useState(1);
   const [mainGamesTotal, setMainGamesTotal] = useState(0);
@@ -2336,6 +2373,10 @@ function App() {
   const mainGamesFiltersRef = useRef(null);
   const mainGamesPageRef = useRef(null);
   const mainGamesRef = useRef([]);
+  const mainGameRef = useRef(null);
+  const applyEngineUpgradesRef = useRef(null);
+  // The game whose engine pass just finished while it was open: the tab row says so for a few seconds.
+  const [mainEngineReadyFor, setMainEngineReadyFor] = useState(null);
   const [mainPlayer, setMainPlayer] = useState(null);
   const [mainGameHotkeys, setMainGameHotkeys] = useState(null);
   const [mainGameHotkeysLoading, setMainGameHotkeysLoading] = useState(false);
@@ -2435,7 +2476,10 @@ function App() {
   // one game updated", not as the whole list flickering.
   const loadMainGames = async ({ page = mainGamesPage, filters = mainGamesFilters, silent = false } = {}) => {
     try {
-      if (!silent) setMainGamesLoading(true);
+      if (!silent) {
+        setMainGamesLoading(true);
+        setMainGamesEngineStale(0);
+      }
       const safePage = Math.max(1, Number(page) || 1);
       const offset = (safePage - 1) * MAIN_GAMES_PAGE_SIZE;
       const data = await api.listGames({
@@ -2497,6 +2541,56 @@ function App() {
       setMainGamesUpdatedIds(new Set());
       mainGamesUpdatedTimerRef.current = null;
     }, 4000);
+  };
+
+  // patchEngineUpgrades swaps the upgraded games' rows in place, keeping the page's membership and
+  // order. When the refetched page would differ, the rows stay put and the refresh chip counts them.
+  const patchEngineUpgrades = async (upgraded) => {
+    const current = mainGamesRef.current || [];
+    const visible = current.filter((game) => upgraded.has(game.replay_id));
+    if (visible.length === 0) return;
+    const page = Math.max(1, Number(mainGamesPageRef.current) || 1);
+    const data = await api.listGames({
+      limit: MAIN_GAMES_PAGE_SIZE,
+      offset: (page - 1) * MAIN_GAMES_PAGE_SIZE,
+      filters: mainGamesFiltersRef.current || {},
+    });
+    const items = data?.items || [];
+    const fetchedById = new Map(items.map((game) => [game.replay_id, game]));
+    const latest = mainGamesRef.current || [];
+    const sameOrder = items.length === latest.length
+      && items.every((game, i) => game.replay_id === latest[i].replay_id);
+    if (!sameOrder) {
+      setMainGamesEngineStale((count) => count + visible.length);
+      return;
+    }
+    setMainGames(latest.map((game) => (
+      upgraded.has(game.replay_id) && fetchedById.has(game.replay_id) ? fetchedById.get(game.replay_id) : game
+    )));
+  };
+
+  // The open game turns to engine data where it stands: no loading state, tabs and filters kept.
+  const refreshOpenGameSilently = async (replayId) => {
+    const data = await api.getGame(replayId);
+    if (mainGameRef.current?.replay_id === replayId) setMainGame(data);
+  };
+
+  const applyEngineUpgrades = async (ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return;
+    const upgraded = new Set(ids);
+    try {
+      const openGameId = mainGameRef.current?.replay_id;
+      if (activeViewRef.current === 'game' && upgraded.has(openGameId) && mainGameRef.current?.engine_pending) {
+        setMainEngineReadyFor(openGameId);
+        setTimeout(() => setMainEngineReadyFor((id) => (id === openGameId ? null : id)), 6000);
+      }
+      await Promise.all([
+        activeViewRef.current === 'game' && upgraded.has(openGameId) ? refreshOpenGameSilently(openGameId) : null,
+        patchEngineUpgrades(upgraded),
+      ]);
+    } catch (err) {
+      console.error('Failed to apply engine upgrades:', err);
+    }
   };
 
   // An unchanged page is a no-op.
@@ -3384,6 +3478,7 @@ function App() {
         try {
           const message = JSON.parse(event.data);
           if (message.type === 'snapshot') {
+            if (message.engine) setEngineCoverage(message.engine);
             if (message.progress) setLibraryProgress(message.progress);
             if (message.error) setLibraryMessage(message.error);
             applyStatus(message.status);
@@ -3399,6 +3494,12 @@ function App() {
           if (message.type === 'status') {
             if (message.error) setLibraryMessage(message.error);
             applyStatus(message.status);
+            return;
+          }
+
+          if (message.type === 'engine') {
+            if (message.engine) setEngineCoverage(message.engine);
+            void applyEngineUpgradesRef.current?.(message.engine?.upgraded || []);
             return;
           }
 
@@ -3604,6 +3705,25 @@ function App() {
   mainGamesFiltersRef.current = mainGamesFilters;
   mainGamesPageRef.current = mainGamesPage;
   mainGamesRef.current = mainGames;
+  mainGameRef.current = mainGame;
+  applyEngineUpgradesRef.current = applyEngineUpgrades;
+
+  // Aggregates recompute at every tenth of engine coverage, not on every batch, so a page that
+  // stays open during a cold start redraws ten times rather than once every few seconds.
+  const engineCoverageStep = engineCoverage?.total
+    ? Math.floor((10 * (Number(engineCoverage.games) || 0)) / Number(engineCoverage.total))
+    : 0;
+  const lastEngineCoverageStepRef = useRef(engineCoverageStep);
+  useEffect(() => {
+    if (lastEngineCoverageStepRef.current === engineCoverageStep) return;
+    lastEngineCoverageStepRef.current = engineCoverageStep;
+    if (activeView !== 'player' || !selectedPlayerKey || isFeaturedPlayerKey(selectedPlayerKey)) return;
+    const key = selectedPlayerKey;
+    api.getPlayer(key).then((data) => {
+      if (!data?.engine) return;
+      setMainPlayer((prev) => (prev && prev.player_key === data.player_key ? { ...prev, engine: data.engine } : prev));
+    }).catch(() => {});
+  }, [engineCoverageStep]);
   gamingSessionRef.current = gamingSession;
 
   // Corpus completeness for partial-load states. The `corpus` block on the
@@ -3995,7 +4115,9 @@ function App() {
               {showYourResult ? <td className="workflow-games-list-result">{renderYourResultCell(game)}</td> : null}
               <td className="workflow-games-list-players">{renderMainGameListPlayers(game, false)}</td>
               <td className="workflow-games-list-map">{renderMapNameWithKind(game.map_name, game.map_kind)}</td>
-              <td className="workflow-games-list-duration">{formatDuration(game.duration_seconds)}</td>
+              <td className="workflow-games-list-duration">
+                {formatDuration(game.duration_seconds)}
+              </td>
               <td className="workflow-games-list-featuring">
                 <FeaturingCell featuring={game.featuring} featuringKeys={game.featuring_keys} />
               </td>
@@ -4093,6 +4215,9 @@ function App() {
     }
     return base;
   }, [mainGame?.game_events, markerRegistry, t]);
+  const mainEngineEventSeconds = useMemo(() => (
+    [...new Set((mainGame?.game_events || []).filter((e) => e?.engine).map((e) => e.engine.snapshot_second))].sort((a, b) => a - b)
+  ), [mainGame?.game_events]);
   const mainMapVisual = mainGame?.map_visual || {};
   const mainMapVisualURL = String(mainMapVisual?.url || '').trim();
   const mainMapVisualThumbURL = String(mainMapVisual?.thumbnail_url || mainMapVisualURL).trim();
@@ -4112,6 +4237,22 @@ function App() {
     return topicFilteredGameEvents[0];
   }, [topicFilteredGameEvents, mainSelectedGameEventKey]);
   const mainGamePlayers = mainGame?.players || [];
+  const mainGameIsEngine = mainGame?.mode === 'engine';
+  const mainGameHasSkill = mainGame?.skill_status === 'ok';
+  const mainGameShowsSkill = mainGame?.skill_status === 'ok' && mainGamePlayers.some((p) => p.skill?.combined);
+  // Engine supply is worth its own tab; the command-inferred estimate stays a Timings sub-tab.
+  const mainSupplyFromEngine = mainGamePlayers.length > 0
+    && mainGamePlayers.every((p) => Array.isArray(p.supply_curve) && p.supply_curve.length > 0);
+  useEffect(() => {
+    if (!mainGame || mainGame.replay_id !== selectedReplayId) return;
+    if (mainGameTab === 'supply-timeline' && !mainSupplyFromEngine) {
+      setMainGameTab('timings');
+      setMainTimingCategory('supply');
+    } else if (mainGameTab === 'timings' && mainTimingCategory === 'supply' && mainSupplyFromEngine) {
+      setMainTimingCategory('expansion_gas');
+      setMainGameTab('supply-timeline');
+    }
+  }, [mainGame, selectedReplayId, mainGameTab, mainTimingCategory, mainSupplyFromEngine]);
   const selectedMainGameEventKeyResolved = useMemo(() => {
     if (!selectedMainGameEvent) return '';
     const idx = topicFilteredGameEvents.indexOf(selectedMainGameEvent);
@@ -4358,7 +4499,7 @@ function App() {
     // where the unload happened). The dropped-unit overlay is anchored at the
     // source so the user sees "here's what got loaded" at the tail.
     const eventType = normalizeEventType(selectedMainGameEvent.type);
-    if (['drop', 'cliff_drop', 'nydus_attack'].includes(eventType)) {
+    if ([...DROP_EVENT_TYPES, 'nydus_attack'].includes(eventType)) {
       const sourceAnchor = polygonCenter(selectedMainGameEvent?.source_base?.polygon)
         || selectedMainGameEvent?.source_base?.center
         || selectedMainGameEvent?.source_point;
@@ -4403,6 +4544,12 @@ function App() {
       color: playerColorToCss(selectedMainGameEvent?.actor?.color),
     };
   }, [selectedMainGameEvent, mainEventMapBounds]);
+  // Map sprites take the acting player's color in their team-color areas, as in the game.
+  const selectedActorIconOpts = useMemo(() => {
+    const actorPid = Number(selectedMainGameEvent?.actor?.player_id || 0);
+    const actorRow = mainGamePlayers.find((player) => Number(player?.player_id || 0) === actorPid);
+    return { color: actorRow ? playerColorToCss(actorRow.color) : undefined };
+  }, [selectedMainGameEvent, mainGamePlayers]);
   const selectedMainGameArrowUnits = useMemo(() => {
     if (!selectedMainGameArrow || !selectedMainGameEvent) return [];
     const actorPid = Number(selectedMainGameEvent?.actor?.player_id || 0);
@@ -4424,15 +4571,15 @@ function App() {
     // For drops: strip the transport itself (Dropship/Shuttle/Overlord) from
     // the source-side unit overlay — the transport icon is painted separately
     // at the destination. Workers (SCV/Probe/Drone) and combat units stay.
-    if (['drop', 'cliff_drop'].includes(eventTypeForOverlay)) {
+    if (DROP_EVENT_TYPES.includes(eventTypeForOverlay)) {
       const transports = new Set(['dropship', 'shuttle', 'overlord']);
       unitNames = unitNames.filter((name) => !transports.has(String(name || '').toLowerCase()));
     }
     return unitNames
-      .map((name) => ({ name, icon: getUnitIcon(name) }))
+      .map((name) => ({ name, icon: getUnitIcon(name, selectedActorIconOpts) }))
       .filter((item) => item.icon)
       .slice(0, 4);
-  }, [selectedMainGameArrow, selectedMainGameEvent, mainGamePlayers]);
+  }, [selectedMainGameArrow, selectedMainGameEvent, mainGamePlayers, selectedActorIconOpts]);
   const selectedMainGameExpansionOverlay = useMemo(() => {
     if (normalizeEventType(selectedMainGameEvent?.type) !== 'expansion') return null;
     // Prefer the polygon's geometric center over scmapanalyzer's base.center —
@@ -4444,31 +4591,31 @@ function App() {
     if (!anchor) return null;
     const playerID = Number(selectedMainGameEvent?.actor?.player_id || 0);
     const actorRow = mainGamePlayers.find((player) => Number(player?.player_id || 0) === playerID);
-    const icon = getExpansionMarkerIconForRace(actorRow?.race);
+    const icon = getExpansionMarkerIconForRace(actorRow?.race, selectedActorIconOpts);
     if (!icon) return null;
     const point = mapPointToPercent(anchor, mainEventMapBounds);
     if (!point) return null;
     return { icon, point };
-  }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds]);
+  }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds, selectedActorIconOpts]);
   // Drop overlay: anchor the race-correct transport vessel (Dropship/Shuttle/
   // Overlord) at the destination, mirroring the Arbiter overlay used for
   // recalls. Always render when the event is a drop variant — drops are
   // defined by the vessel and the icon is the most recognizable signal.
   const selectedMainGameDropOverlay = useMemo(() => {
     const evType = normalizeEventType(selectedMainGameEvent?.type);
-    if (!['drop', 'cliff_drop'].includes(evType)) return null;
+    if (!DROP_EVENT_TYPES.includes(evType)) return null;
     const anchor = polygonCenter(selectedMainGameEvent?.base?.polygon)
       || selectedMainGameEvent?.base?.center
       || selectedMainGameEvent?.target_point;
     if (!anchor) return null;
     const actorPid = Number(selectedMainGameEvent?.actor?.player_id || 0);
     const actorRow = mainGamePlayers.find((player) => Number(player?.player_id || 0) === actorPid);
-    const icon = dropTransportIconForRace(actorRow?.race);
+    const icon = dropTransportIconForRace(actorRow?.race, selectedActorIconOpts);
     if (!icon) return null;
     const point = mapPointToPercent(anchor, mainEventMapBounds);
     if (!point) return null;
     return { icon, point };
-  }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds]);
+  }, [selectedMainGameEvent, mainGamePlayers, mainEventMapBounds, selectedActorIconOpts]);
   // Recall overlay: anchor the Arbiter at the inferred destination when known
   // (target_base populated by the backend's attack-coincidence / post-recall
   // activity proxies); otherwise fall back to the cast point. The arrow
@@ -4483,12 +4630,12 @@ function App() {
       || selectedMainGameEvent?.source_point;
     const anchor = targetAnchor || sourceAnchor;
     if (!anchor) return null;
-    const icon = getUnitIcon('arbiter');
+    const icon = getUnitIcon('arbiter', selectedActorIconOpts);
     if (!icon) return null;
     const point = mapPointToPercent(anchor, mainEventMapBounds);
     if (!point) return null;
     return { icon, point };
-  }, [selectedMainGameEvent, mainEventMapBounds]);
+  }, [selectedMainGameEvent, mainEventMapBounds, selectedActorIconOpts]);
   // Proxy building overlay: paint the proxied building (Gateway / Barracks /
   // Factory / Starport) at its placement coordinates for any proxy_* event —
   // the backend already populates base coordinates for these.
@@ -4504,12 +4651,12 @@ function App() {
     const anchor = polygonCenter(selectedMainGameEvent?.base?.polygon)
       || selectedMainGameEvent?.base?.center;
     if (!anchor) return null;
-    const icon = getUnitIcon(iconKey);
+    const icon = getUnitIcon(iconKey, selectedActorIconOpts);
     if (!icon) return null;
     const point = mapPointToPercent(anchor, mainEventMapBounds);
     if (!point) return null;
     return { icon, point };
-  }, [selectedMainGameEvent, mainEventMapBounds]);
+  }, [selectedMainGameEvent, mainEventMapBounds, selectedActorIconOpts]);
   // Alliance overlay: for late_alliance events, render one 🤝 emoji per pair
   // of allied players at the midpoint between their bases, plus a pair of
   // bidirectional arrows running base↔🤝 in each player's color. The pair is
@@ -4559,7 +4706,7 @@ function App() {
   const selectedEventAnimCategory = useMemo(() => {
     const nt = normalizeEventType(selectedMainGameEvent?.type);
     if (!nt) return '';
-    if (['drop', 'cliff_drop'].includes(nt)) return 'drop';
+    if (DROP_EVENT_TYPES.includes(nt)) return 'drop';
     if (nt === 'recall') return 'recall';
     if (nt === 'nuke') return 'nuke';
     if (nt === 'leave_game' || nt === 'player_dropped' || nt === 'mass_disconnect' || nt === 'player_stopped_playing') return 'leaves';
@@ -4610,10 +4757,10 @@ function App() {
   // the mind-controlled player's last-known base.
   const selectedBecameOverlay = useMemo(() => {
     if (selectedEventAnimCategory !== 'became' || !selectedActorLastBasePoint) return null;
-    const icon = getUnitIcon('darkarchon');
+    const icon = getUnitIcon('darkarchon', selectedActorIconOpts);
     if (!icon) return null;
     return { icon, point: selectedActorLastBasePoint };
-  }, [selectedEventAnimCategory, selectedActorLastBasePoint]);
+  }, [selectedEventAnimCategory, selectedActorLastBasePoint, selectedActorIconOpts]);
   // Focal point of the selected event: where the action happens on the map, so
   // the narration caption can sit right below it (rather than pinned to the map
   // bottom). `travel` events move from source→target — the caption (and the
@@ -5036,7 +5183,7 @@ function App() {
   const isResearchTiming = mainTimingCategory === 'research';
   // Supply is a timing view, but not a scatter one: it renders its own chart
   // instead of the shared TimingScatterRows the category config drives.
-  const isSupplyTiming = mainTimingCategory === 'supply';
+  const isSupplyTiming = mainTimingCategory === 'supply' && !mainSupplyFromEngine;
   const isHpTiming = mainTimingCategory === 'hp_upgrades';
   const isExpansionGasTiming = mainTimingCategory === 'expansion_gas';
   const mainTimingSeries = useMemo(() => {
@@ -5606,6 +5753,15 @@ function App() {
               <div className="loading">{t('games.loading')}</div>
             ) : (
               <>
+                {mainGamesEngineStale > 0 ? (
+                  <button
+                    type="button"
+                    className="engine-refresh-chip"
+                    onClick={() => { void loadMainGames({ page: mainGamesPage, filters: mainGamesFilters }); }}
+                  >
+                    {t.plural('engine.updated', mainGamesEngineStale)}
+                  </button>
+                ) : null}
                 {renderGamesListTable({
                   games: mainGames,
                   tableRef: mainGamesTableRef,
@@ -5664,6 +5820,7 @@ function App() {
 
         {activeView === 'players' && (
           <div className="workflow-panel">
+            <EngineCoverage coverage={engineCoverage} className="engine-coverage--panel" />
             <div className="workflow-players-tab-stack">
               <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label={t('players.sectionsAria')}>
                 <button
@@ -6001,6 +6158,17 @@ function App() {
                     >
                       {t('game.tabs.events')}
                     </button>
+                    {mainGameHasSkill ? (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={mainGameTab === 'skill'}
+                        className={`workflow-production-tab ${mainGameTab === 'skill' ? 'workflow-production-tab-active' : ''}`}
+                        onClick={() => setMainGameTab('skill')}
+                      >
+                        {t('game.tabs.skill')}
+                      </button>
+                    ) : null}
                     {Array.isArray(mainGame?.build_orders) && mainGame.build_orders.length > 0 ? (
                       <button
                         type="button"
@@ -6043,6 +6211,17 @@ function App() {
                         {t('game.tabs.alliances')}{mainGame?.team_stacking ? ' 😈' : ''}
                       </button>
                     ) : null}
+                    {mainSupplyFromEngine ? (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={mainGameTab === 'supply-timeline'}
+                        className={`workflow-production-tab ${mainGameTab === 'supply-timeline' ? 'workflow-production-tab-active' : ''}`}
+                        onClick={() => setMainGameTab('supply-timeline')}
+                      >
+                        {t('game.tabs.supply')}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       role="tab"
@@ -6052,62 +6231,12 @@ function App() {
                     >
                       {t('tabs.hotkeys')}
                     </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={isMainGameSkillProxyTab(mainGameTab)}
-                      className={`workflow-production-tab ${isMainGameSkillProxyTab(mainGameTab) ? 'workflow-production-tab-active' : ''}`}
-                      onClick={() => {
-                        if (isMainGameSkillProxyTab(mainGameTab)) return;
-                        setMainGameTab('first-unit-efficiency');
-                      }}
-                    >
-                      {t('tabs.skillProxies')}
-                    </button>
+                    {mainGame?.engine_pending || mainEngineReadyFor === mainGame?.replay_id ? (
+                      <span className={`engine-notice${mainGame?.engine_pending ? ' engine-notice--running' : ' engine-notice--ready'}`} role="status">
+                        {mainGame?.engine_pending ? t('game.engineNotice.running') : t('game.engineNotice.ready')}
+                      </span>
+                    ) : null}
                   </div>
-                  {isMainGameSkillProxyTab(mainGameTab) ? (
-                    <div className="workflow-skill-proxy-subnav">
-                      <div className="workflow-production-tabs workflow-skill-proxy-tabs" role="tablist" aria-label={t('skillProxies.viewsAria')}>
-                        <button
-                          type="button"
-                          role="tab"
-                          aria-selected={mainGameTab === 'first-unit-efficiency'}
-                          className={`workflow-production-tab ${mainGameTab === 'first-unit-efficiency' ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setMainGameTab('first-unit-efficiency')}
-                        >
-                          {t('skillProxies.tabs.firstUnit')}
-                        </button>
-                        <button
-                          type="button"
-                          role="tab"
-                          aria-selected={mainGameTab === 'unit-production-cadence'}
-                          className={`workflow-production-tab ${mainGameTab === 'unit-production-cadence' ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setMainGameTab('unit-production-cadence')}
-                        >
-                          {t('skillProxies.tabs.cadence')}
-                        </button>
-                        <button
-                          type="button"
-                          role="tab"
-                          aria-selected={mainGameTab === 'viewport-multitasking'}
-                          className={`workflow-production-tab ${mainGameTab === 'viewport-multitasking' ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setMainGameTab('viewport-multitasking')}
-                        >
-                          {t('skillProxies.tabs.viewport')}
-                        </button>
-                      </div>
-                      {mainGameTab === 'unit-production-cadence' ? (
-                        <div className="workflow-section-info workflow-skill-proxy-tab-info" role="note">
-                          {t('skillProxies.cadence.info')}
-                        </div>
-                      ) : null}
-                      {mainGameTab === 'viewport-multitasking' ? (
-                        <div className="workflow-section-info workflow-skill-proxy-tab-info" role="note">
-                          {t('skillProxies.viewport.info')}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
                 </div>
                 {mainGameSeeNotice ? (
                   <div className={`workflow-see-notice ${mainGameSeeNoticeError ? 'workflow-see-notice-error' : ''}`}>{mainGameSeeNotice}</div>
@@ -6129,6 +6258,8 @@ function App() {
                                 legendItems: selectedMainGameLegend,
                                 showLegend: false,
                                 imageUrl: mainMapVisualThumbURL,
+                                mapWidth: mainGame.map_width_pixels,
+                                mapHeight: mainGame.map_height_pixels,
                                 mapAlt: t('game.summary.mapAlt', { map: mainGame.map_name }),
                                 bounds: mainEventMapBounds,
                                 startPolygons: summaryMapStartPolygons,
@@ -6229,9 +6360,10 @@ function App() {
                         )}
                       </div>
                     </div>
-                    <div className="workflow-player-table" style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
+                    <div className={`workflow-player-table${mainGameShowsSkill ? ' workflow-player-table--skill' : ''}`} style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
                       <div className="wpt-head">{t('common.name')}</div>
                       <div className="wpt-head">APM</div>
+                      {mainGameShowsSkill ? <div className="wpt-head">{t('game.tabs.skill')}</div> : null}
                       <div className="wpt-head">{t('common.featuring')}</div>
                       <div className="wpt-head wpt-head-comp">
                         <span>{t('game.summary.unitComposition')}</span>
@@ -6289,6 +6421,15 @@ function App() {
                               </span>
                             </div>
                             <div className="wpt-cell wpt-apm">{player.apm}</div>
+                            {mainGameShowsSkill ? (
+                              <div className="wpt-cell wpt-skill">
+                                {player.skill?.combined ? (
+                                  <button type="button" className={`wpt-skill-tier wpt-skill-tier--${TIER_KEYS[player.skill.combined.tier]}`} onClick={() => setMainGameTab('skill')}>
+                                    {tierLabel(t, player.skill)}
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : null}
                             <div className="wpt-cell wpt-featuring">
                               <div className="workflow-pattern-pills">
                                 {boPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-bo-${idx}`, undefined, markerRegistry))}
@@ -6391,9 +6532,11 @@ function App() {
                             {t('events.teamWarning', { reason: mainGame?.team_info_incomplete ? t('games.teamInfoIncomplete') : t('games.noTeamInfo') })}
                           </div>
                         ) : null}
-                        <div className="workflow-section-warning workflow-events-warning">
-                          {t('events.narrativeWarning')}
-                        </div>
+                        {mainEngineEventSeconds.length ? null : (
+                          <div className="workflow-section-warning workflow-events-warning">
+                            {t('events.narrativeWarning')}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div
@@ -6402,13 +6545,27 @@ function App() {
                       style={mainEventsMapColPx ? { gridTemplateColumns: `${mainEventsMapColPx}px minmax(0, 1fr)` } : undefined}
                     >
                         <div className="workflow-event-map-panel" ref={setMainEventMapPanelEl}>
-                          {mainMapVisualAvailable ? (
+                          {mainMapVisualAvailable && selectedMainGameEvent?.engine && mainGame?.map_width_pixels ? (
+                            <EngineSnapshotMap
+                              replayId={mainGame.replay_id}
+                              event={selectedMainGameEvent}
+                              eventSeconds={mainEngineEventSeconds}
+                              mapUrl={mainMapVisualURL}
+                              mapWidth={mainGame.map_width_pixels}
+                              mapHeight={mainGame.map_height_pixels}
+                              colorByPlayerId={new Map(mainGamePlayers.map((p) => [p.player_id, playerColorToCss(p.color)]))}
+                              mapAlt={t('events.mapAlt', { map: mainGame.map_name })}
+                            />
+                          ) : mainMapVisualAvailable ? (
                             <>
-                              <div
+                              <GameMap
                                 className={`workflow-event-map-frame${selectedEventAnimCategory ? ` workflow-anim-${selectedEventAnimCategory}` : ''}`}
-                                style={{ '--map-aspect': mainEventMapAspect }}
+                                mapUrl={mainMapVisualURL}
+                                mapWidth={mainGame.map_width_pixels}
+                                mapHeight={mainGame.map_height_pixels}
+                                maxHeight="100vh - 28px"
+                                alt={t('events.mapAlt', { map: mainGame.map_name })}
                               >
-                                <img src={mainMapVisualURL} alt={t('events.mapAlt', { map: mainGame.map_name })} className="workflow-event-map-image" />
                                 {selectedMainGameEvent ? (
                                   <svg
                                     className="workflow-event-map-overlay"
@@ -6736,7 +6893,7 @@ function App() {
                                     </span>
                                   </div>
                                 ) : null}
-                              </div>
+                              </GameMap>
                             </>
                           ) : (
                             <div className="workflow-map-summary-fallback">
@@ -6854,6 +7011,7 @@ function App() {
                   </div>
                 )}
 
+
                 {mainGameTab === 'hotkeys' && (
                   <div className="workflow-card">
                     {mainGameHotkeysLoading ? <div className="chart-empty">{t('hotkeys.loading')}</div> : null}
@@ -6864,10 +7022,26 @@ function App() {
                         <HotkeyMaps
                           replayId={selectedReplayId}
                           players={mainGameHotkeys.players || []}
+                          mapUrl={mainMapVisualAvailable ? mainMapVisualURL : null}
+                          mapWidth={mainGame?.map_width_pixels}
+                          mapHeight={mainGame?.map_height_pixels}
                         />
                       </>
                     ) : null}
                   </div>
+                )}
+
+                {mainGameTab === 'supply-timeline' && mainSupplyFromEngine && (
+                  <SupplyTimeline
+                    players={mainGamePlayers}
+                    timeline={mainGame.production_timeline || []}
+                    durationSeconds={mainGame.duration_seconds || 0}
+                    playerColor={playerColorToCss}
+                  />
+                )}
+
+                {mainGameTab === 'skill' && (
+                  <SkillTab game={mainGame} players={mainGamePlayers} playerColor={playerColorToCss} />
                 )}
 
                 {mainGameTab === 'timings' && (
@@ -6885,20 +7059,20 @@ function App() {
                             {t(cfg.labelKey)}
                           </button>
                         ))}
-                        {/* Supply sits with the other timings rather than in the top
-                            strip: it is one more thing plotted against the game clock,
-                            and it was competing for attention with tabs that answer
-                            different questions. It is listed here by hand because the
-                            config above drives the scatter charts, which this is not. */}
-                        <button
-                          key="supply"
-                          className={`workflow-production-tab ${isSupplyTiming ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setMainTimingCategory('supply')}
-                          role="tab"
-                          aria-selected={isSupplyTiming}
-                        >
-                          {t('game.tabs.supply')}
-                        </button>
+                        {/* Without the engine, supply is a command-inferred estimate plotted
+                            against the game clock, so it sits with the other timings. It is
+                            listed by hand because the config above drives the scatter charts. */}
+                        {mainSupplyFromEngine ? null : (
+                          <button
+                            key="supply"
+                            className={`workflow-production-tab ${isSupplyTiming ? 'workflow-production-tab-active' : ''}`}
+                            onClick={() => setMainTimingCategory('supply')}
+                            role="tab"
+                            aria-selected={isSupplyTiming}
+                          >
+                            {t('game.tabs.supply')}
+                          </button>
+                        )}
                       </div>
                       {mainTimingNotice && !isSupplyTiming ? (
                         <div className="workflow-section-warning">{mainTimingNotice}</div>
@@ -7041,128 +7215,6 @@ function App() {
                     />
                   </div>
                 )}
-                {mainGameTab === 'first-unit-efficiency' && (
-                  <div className="workflow-timing-charts">
-                    <div className="workflow-section-top-row">
-                      <span className="workflow-section-top-spacer" aria-hidden="true" />
-                      <div className="workflow-section-warning">
-                        {t('firstUnit.warning')}
-                      </div>
-                    </div>
-                    {mainFirstUnitEfficiencyGroups.length > 0 ? (
-                      mainFirstUnitEfficiencyGroups.map((groupEntry) => (
-                        <FirstUnitEfficiencyTimelineRows
-                          key={`first-unit-eff-${groupEntry.id}`}
-                          group={groupEntry}
-                        />
-                      ))
-                    ) : (
-                      <div className="workflow-card">
-                        <div className="chart-empty">{t('firstUnit.none')}</div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {mainGameTab === 'unit-production-cadence' && (
-                  <div className="workflow-timing-charts">
-                    <div className="workflow-card workflow-card-fingerprints">
-                      {mainGameCadenceProcessed.points.length > 0 ? (
-                        <Histogram
-                          data={[]}
-                          config={{
-                            style: 'monobell_relax',
-                            precomputed_bins: mainGameCadenceProcessed.bins,
-                            x_axis_label: t('appChart.cadenceScore'),
-                            y_axis_label: t('appChart.density'),
-                            overlay_value_label: t('appChart.overlay.cadence'),
-                            overlay_count_label: t('appChart.overlay.units'),
-                            mean: mainGameCadenceProcessed.mean,
-                            stddev: mainGameCadenceProcessed.stddev,
-                            chart_height: 560,
-                            overlay_points: mainGameCadenceProcessed.points.map((player) => ({
-                              value: Number(player.average_apm || 0),
-                              label: String(player.player_name || ''),
-                              player_key: String(player.player_key || ''),
-                              games_played: Number(player.games_played || 0),
-                              tooltip_lines: [
-                                `${String(player.player_name || '')}`,
-                                t('appChart.tooltip.cadenceScore', { value: Number(player.average_apm || 0).toFixed(3) }),
-                                t('appChart.tooltip.ratePerMinute', { value: Number(player.average_rate_per_min || 0).toFixed(2) }),
-                                t('appChart.tooltip.gapCv', { value: Number(player.average_cv_gap || 0).toFixed(2) }),
-                                t('appChart.tooltip.burstiness', { value: Number(player.average_burstiness || 0).toFixed(2) }),
-                                t('appChart.tooltip.idleGapRatio', { value: (Number(player.average_idle20_ratio || 0) * 100).toFixed(1) }),
-                                t('appChart.tooltip.unitsInWindow', { count: Number(player.games_played || 0) }),
-                                t('appChart.tooltip.windowLength', { value: formatDuration(Number(player.window_seconds || 0)) }),
-                              ],
-                            })),
-                          }}
-                        />
-                      ) : (
-                        <div className="chart-empty">{t('game.cadence.noEligible')}</div>
-                      )}
-                      <div className="workflow-card-subtitle"><span>{t('game.perPlayerBreakdown')}</span></div>
-                      {(mainGame?.unit_production_cadence || []).map((entry) => (
-                        <div key={`game-cadence-${entry.player_id}`} className="workflow-pattern-row">
-                          <span>
-                            {entry.team_won ? '👑 ' : ''}{entry.player_name}
-                          </span>
-                          <span title={entry.eligible ? `rate=${Number(entry.rate_per_minute || 0).toFixed(2)}, cv=${Number(entry.cv_gap || 0).toFixed(2)}, burstiness=${Number(entry.burstiness || 0).toFixed(2)}, idle20=${(Number(entry.idle20_ratio || 0) * 100).toFixed(1)}%, units=${Number(entry.units_produced || 0)}, gaps=${Number(entry.gap_count || 0)}` : String(entry.ineligible_reason || '')}>
-                            {entry.eligible
-                              ? t('game.cadence.value', { score: Number(entry.cadence_score || 0).toFixed(3), units: Number(entry.units_produced || 0), window: formatDuration(Number(entry.window_seconds || 0)) })
-                              : t('game.notAvailable', { reason: entry.ineligible_reason || t('game.insufficientData') })}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {mainGameTab === 'viewport-multitasking' && (
-                  <div className="workflow-timing-charts">
-                    <div className="workflow-card workflow-card-fingerprints">
-                      {mainGameViewportProcessed.points.length > 0 ? (
-                        <Histogram
-                          data={[]}
-                          config={{
-                            style: 'monobell_relax',
-                            precomputed_bins: mainGameViewportProcessed.bins,
-                            x_axis_label: viewportText.axisLabel,
-                            y_axis_label: t('appChart.density'),
-                            overlay_value_label: viewportText.overlayValueLabel,
-                            overlay_count_label: t('appChart.overlay.player'),
-                            mean: mainGameViewportProcessed.mean,
-                            stddev: mainGameViewportProcessed.stddev,
-                            chart_height: 560,
-                            overlay_points: mainGameViewportProcessed.points.map((player) => ({
-                              value: Number(player.average_apm || 0),
-                              label: String(player.player_name || ''),
-                              player_key: String(player.player_key || ''),
-                              games_played: Number(player.games_played || 0),
-                              tooltip_lines: [
-                                `${String(player.player_name || '')}`,
-                                t('appChart.tooltip.labelValue', { label: viewportText.title, value: viewportText.valueFormatter(player.average_apm) }),
-                              ],
-                            })),
-                          }}
-                        />
-                      ) : (
-                        <div className="chart-empty">{t('game.viewport.noEligible')}</div>
-                      )}
-                      <div className="workflow-card-subtitle"><span>{t('game.perPlayerBreakdown')}</span></div>
-                      {(mainGame?.viewport_multitasking || []).map((entry) => (
-                        <div key={`game-viewport-${entry.player_id}`} className="workflow-pattern-row">
-                          <span>
-                            {entry.team_won ? '👑 ' : ''}{entry.player_name}
-                          </span>
-                          <span title={entry.eligible ? viewportText.valueFormatter(entry.viewport_switch_rate) : String(entry.ineligible_reason || '')}>
-                            {entry.eligible
-                              ? viewportText.valueFormatter(entry.viewport_switch_rate)
-                              : t('game.notAvailable', { reason: entry.ineligible_reason || t('game.insufficientData') })}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </>
             ) : (
               <div className="chart-empty">{t('game.selectPrompt')}</div>
@@ -7195,6 +7247,9 @@ function App() {
                     </h2>
                     {!isFeaturedPlayer && !mainPlayer?.primary_badge && !mainPlayer?.fingerprint_match ? (
                       <FingerprintCoverageNote coverage={mainPlayer?.fingerprint_coverage} />
+                    ) : null}
+                    {!isFeaturedPlayer && mainPlayer?.engine ? (
+                      <EngineCoverage coverage={{ ...mainPlayer.engine, state: engineCoverage?.state }} />
                     ) : null}
                     {isFeaturedPlayer && featured ? (
                       <div className="workflow-featured-links">

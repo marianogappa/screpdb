@@ -748,5 +748,9 @@
   "server.payload.fuzzy.pool": "~{n} Pool",
   "server.payload.nhatch.hydra": "{n} Hatch Hydra",
   "server.payload.nhatch.lurker": "{n} Hatch Lurker",
-  "server.payload.nhatch.muta": "{n} Hatch Muta"
+  "server.payload.nhatch.muta": "{n} Hatch Muta",
+  "server.chip.featuring.reaver_drop.label": "Reaver drop",
+  "server.chip.featuring.dt_drop.label": "DT drop",
+  "server.game_event.reaver_drop.label": "Reaver drop",
+  "server.game_event.dt_drop.label": "DT drop"
 }

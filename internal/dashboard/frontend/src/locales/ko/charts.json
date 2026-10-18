@@ -111,5 +111,10 @@
   "chart.supply.startingSupply": "시작 인구수",
   "chart.supply.addition": "{built}  (+{delta})",
   "chart.supply.additionMulti": "{built} ×{count}  (+{delta})",
-  "chart.supply.total": "합계: 인구수 {total}"
+  "chart.supply.total": "합계: 인구수 {total}",
+  "chart.supply.capChange": "최대 보급 {delta}",
+  "chart.supply.lineUsed": "사용",
+  "chart.supply.lineCap": "최대",
+  "chart.supply.blockedFor": "보급 막힘 {duration}",
+  "chart.supply.usedOfCap": "보급 {used}/{cap}"
 }

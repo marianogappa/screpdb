@@ -86,9 +86,11 @@ paths:
               schema:
                 type: string
                 format: binary
-  /api/custom/hotkeys/map:
+  /api/custom/hotkeys/map-data:
     get:
-      operationId: hotkeyMap
+      operationId: hotkeyMapData
+      tags: [operational]
+      summary: A player's hotkeyed buildings at a moment, with the map crop that holds them, in map pixels. Served by a hand-written handler (not generated).
       parameters:
         - name: replay_id
           in: query
@@ -108,6 +110,35 @@ paths:
           schema:
             type: integer
             format: int64
+        - name: second
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Crop and buildings
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/custom/game-assets/map-crop:
+    get:
+      operationId: mapTerrainCrop
+      tags: [operational]
+      summary: Native-resolution terrain PNG for a rectangle of a replay's map, in tiles. Served by a hand-written handler (not generated).
+      parameters:
+        - name: replay_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - { name: x, in: query, required: true, schema: { type: integer } }
+        - { name: y, in: query, required: true, schema: { type: integer } }
+        - { name: w, in: query, required: true, schema: { type: integer } }
+        - { name: h, in: query, required: true, schema: { type: integer } }
       responses:
         "200":
           description: PNG image
