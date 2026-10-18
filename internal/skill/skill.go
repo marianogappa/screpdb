@@ -49,6 +49,48 @@ type Model struct {
 	ConfidentMargin float64               `json:"confident_margin"`
 	Metrics         map[string]MetricCuts `json:"metrics"`
 	Combined        Combined              `json:"combined"`
+	// ContextAdjust maps macro values from team games and money maps onto their 1v1 regular-map
+	// equivalents, keyed by context and metric (see Adjust).
+	ContextAdjust map[string]map[string]QuantileMap `json:"context_adjust,omitempty"`
+}
+
+// Game contexts whose macro values are adjusted: team games on regular maps, and money maps (mostly team
+// games; their few 1v1s share the table).
+const (
+	ContextOneVsOne    = ""
+	ContextTeamRegular = "team_regular"
+	ContextMoney       = "money"
+)
+
+// QuantileMap holds the same quantiles of one metric in a context (From) and in 1v1 regular-map games (To),
+// both among players of the same mechanics level, so a value converts at equal percentile.
+type QuantileMap struct {
+	From []float64 `json:"from"`
+	To   []float64 `json:"to"`
+}
+
+func (q QuantileMap) apply(v float64) float64 {
+	n := len(q.From)
+	if n < 2 || len(q.To) != n {
+		return v
+	}
+	if v <= q.From[0] {
+		return q.To[0]
+	}
+	if v >= q.From[n-1] {
+		return q.To[n-1]
+	}
+	for i := 1; i < n; i++ {
+		if v <= q.From[i] {
+			span := q.From[i] - q.From[i-1]
+			f := 0.0
+			if span > 0 {
+				f = (v - q.From[i-1]) / span
+			}
+			return q.To[i-1] + f*(q.To[i]-q.To[i-1])
+		}
+	}
+	return v
 }
 
 // MetricCuts are, per race ("T", "P", "Z"), the values between Beginner|Intermediate, Intermediate|Advanced
@@ -143,15 +185,24 @@ type Result struct {
 	Confident bool `json:"confident"`
 }
 
-// Evaluate places a player's measured values; race is "T", "P" or "Z".
-func (m *Model) Evaluate(race string, values map[string]float64) Result {
+// Evaluate places a player's measured values; race is "T", "P" or "Z", and context says what kind of game
+// it was. Macro values of team games and money maps are placed as their 1v1 regular-map equivalents;
+// Placement.Value stays the measured value.
+func (m *Model) Evaluate(race, context string, values map[string]float64) Result {
 	res := Result{Metrics: map[string]Placement{}}
 	for key, mc := range m.Metrics {
 		cuts, ok := mc.Cuts[race]
 		v, has := values[key]
-		if ok && has {
-			res.Metrics[key] = place(v, cuts, mc.HigherIsBetter)
+		if !ok || !has {
+			continue
 		}
+		adjusted := v
+		if q, ok := m.ContextAdjust[context][key]; ok {
+			adjusted = q.apply(v)
+		}
+		p := place(adjusted, cuts, mc.HigherIsBetter)
+		p.Value = v
+		res.Metrics[key] = p
 	}
 	cr, ok := m.Combined.Races[race]
 	if !ok {

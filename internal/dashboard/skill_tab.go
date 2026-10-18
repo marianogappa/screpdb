@@ -89,7 +89,7 @@ func (d *Dashboard) populateSkill(detail *workflowGameDetail) {
 				values[skill.BankedShare] = float64(e.FloatSeconds) / float64(e.Seconds)
 			}
 		}
-		res := model.Evaluate(race, values)
+		res := model.Evaluate(race, skillContext(rec, len(humans)), values)
 		id := library.PlayerID(rec.ID, uint8(ordinal))
 		for i := range detail.Players {
 			if detail.Players[i].PlayerID == id {
@@ -133,4 +133,14 @@ func skillRace(r library.Race) string {
 		return "Z"
 	}
 	return ""
+}
+
+func skillContext(rec *library.Replay, humans int) string {
+	switch {
+	case rec.MapKind == library.MapKindMoney:
+		return skill.ContextMoney
+	case humans != 2:
+		return skill.ContextTeamRegular
+	}
+	return skill.ContextOneVsOne
 }

@@ -151,8 +151,8 @@
   "skill.status.tooShort": "8분보다 짧은 게임은 평가하지 않습니다.",
   "skill.status.unavailable": "이 게임은 실력 평가를 할 수 없습니다.",
   "skill.footnote": "MMR이 알려진 래더 게임 3,000여 개로 등급을 나눴습니다. 초보 1,400 미만, 중수 1,400에서 1,799, 고수 1,800 이상, 프로게이머는 프로 선수입니다. 각 지표는 같은 종족끼리 비교합니다.",
-  "skill.caveat.team_game": "등급은 1대1 게임으로 보정되었습니다. 팀 게임은 역할을 나누므로 다소 왜곡될 수 있습니다.",
-  "skill.caveat.money_map": "등급은 일반 맵으로 보정되었습니다. 돈맵의 추가 자원은 운영 지표를 왜곡합니다.",
+  "skill.caveat.team_game": "등급은 1대1 게임으로 보정되었습니다. 팀 게임은 역할을 나누므로 운영 지표를 1대1 기준으로 환산합니다.",
+  "skill.caveat.money_map": "돈맵은 자원이 많으므로 운영 지표를 일반 맵 기준으로 환산합니다.",
   "skill.status.customRules": "유즈맵 게임은 평가하지 않습니다.",
   "skill.value.hallBusy": "일꾼 생산 중인 본진 비율 {value}",
   "skill.value.larvaPerHatch": "해처리당 놀고 있는 라바 {value}"

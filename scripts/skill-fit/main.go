@@ -26,7 +26,10 @@ type sample struct {
 		MMR  int    `json:"mmr"`
 		Pro  string `json:"pro"`
 	} `json:"side"`
-	Values map[string]float64 `json:"values"`
+	Values  map[string]float64 `json:"values"`
+	Engine  string             `json:"engine"`
+	MapKind string             `json:"map_kind"`
+	Humans  int                `json:"humans"`
 }
 
 func (s sample) tier() int {
@@ -49,6 +52,7 @@ func main() {
 	in := flag.String("in", "", "skill-mine JSONL")
 	out := flag.String("out", "internal/skill/model.json", "model file")
 	margin := flag.Float64("confident-margin", 0.3, "distance from every cut, in tiers, for a confident combined tier")
+	contextPath := flag.String("context", "", "skill-mine -dir output (unlabelled games of every kind), to adjust team games and money maps")
 	flag.Parse()
 
 	samples := read(*in)
@@ -118,6 +122,10 @@ func main() {
 		log.Printf("%s: %d players, weights %v", race, len(rows), cr.Weights)
 	}
 
+	if *contextPath != "" {
+		model.ContextAdjust = contextAdjust(&model, readContext(*contextPath))
+	}
+
 	b, err := json.MarshalIndent(model, "", "  ")
 	if err != nil {
 		log.Fatal(err)
@@ -126,6 +134,88 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Printf("wrote %s: %d players from %d games", *out, model.Players, model.Games)
+}
+
+var adjustedMetrics = []string{skill.SpendingQuotient, skill.BankedShare, skill.HallBusy, skill.LarvaPerHatch}
+
+// adjustedTiers are the mechanics tiers the context tables are built from: money-map and team players are
+// almost all below Advanced, so only there do the contexts have enough players to compare.
+var adjustedTiers = map[int]bool{skill.TierBeginner: true, skill.TierIntermediate: true}
+
+const contextQuantiles = 21
+
+func readContext(path string) []sample {
+	f, err := os.Open(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	var out []sample
+	s := bufio.NewScanner(f)
+	s.Buffer(make([]byte, 1<<20), 1<<20)
+	for s.Scan() {
+		var x sample
+		if json.Unmarshal(s.Bytes(), &x) == nil && x.Engine == "high" && x.Values["apm"] >= skill.MinAPM && x.MapKind != "" {
+			out = append(out, x)
+		}
+	}
+	return out
+}
+
+// contextAdjust builds, per context, quantile tables that convert each macro metric to its 1v1 regular-map
+// value at the same percentile, among players of the same mechanics level (the combined score, which
+// money and team play do not change).
+func contextAdjust(model *skill.Model, rows []sample) map[string]map[string]skill.QuantileMap {
+	byContext := map[string][]sample{}
+	for _, r := range rows {
+		res := model.Evaluate(r.Side.Race, skill.ContextOneVsOne, r.Values)
+		if res.Combined == nil || !adjustedTiers[res.Combined.Tier] {
+			continue
+		}
+		ctx := skill.ContextOneVsOne
+		switch {
+		case r.MapKind == "money":
+			ctx = skill.ContextMoney
+		case r.Humans != 2:
+			ctx = skill.ContextTeamRegular
+		}
+		byContext[ctx] = append(byContext[ctx], r)
+	}
+	out := map[string]map[string]skill.QuantileMap{}
+	for _, ctx := range []string{skill.ContextTeamRegular, skill.ContextMoney} {
+		for _, metric := range adjustedMetrics {
+			from := quantiles(byContext[ctx], metric)
+			to := quantiles(byContext[skill.ContextOneVsOne], metric)
+			if from == nil || to == nil {
+				log.Printf("%s %s: too few players to adjust", ctx, metric)
+				continue
+			}
+			if out[ctx] == nil {
+				out[ctx] = map[string]skill.QuantileMap{}
+			}
+			out[ctx][metric] = skill.QuantileMap{From: from, To: to}
+			log.Printf("%s %s: median %.3f -> %.3f", ctx, metric, from[contextQuantiles/2], to[contextQuantiles/2])
+		}
+	}
+	return out
+}
+
+func quantiles(rows []sample, metric string) []float64 {
+	var xs []float64
+	for _, r := range rows {
+		if v, ok := r.Values[metric]; ok {
+			xs = append(xs, v)
+		}
+	}
+	if len(xs) < 30 {
+		return nil
+	}
+	sort.Float64s(xs)
+	out := make([]float64, contextQuantiles)
+	for i := range out {
+		out[i] = round(xs[i*(len(xs)-1)/(contextQuantiles-1)], 4)
+	}
+	return out
 }
 
 func read(path string) []sample {

@@ -1,6 +1,9 @@
 package skill
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 func TestModelLoadsWithEveryRace(t *testing.T) {
 	m, err := Load()
@@ -41,12 +44,21 @@ func TestPlaceIsLinearBetweenCuts(t *testing.T) {
 
 func TestEvaluateOrdersPlayers(t *testing.T) {
 	m, _ := Load()
-	slow := m.Evaluate("T", map[string]float64{EAPM: 90, HotkeyRecalls: 10, ScreenSwitches: 8})
-	fast := m.Evaluate("T", map[string]float64{EAPM: 260, HotkeyRecalls: 160, ScreenSwitches: 26})
+	slow := m.Evaluate("T", ContextOneVsOne, map[string]float64{EAPM: 90, HotkeyRecalls: 10, ScreenSwitches: 8})
+	fast := m.Evaluate("T", ContextOneVsOne, map[string]float64{EAPM: 260, HotkeyRecalls: 160, ScreenSwitches: 26})
 	if slow.Combined == nil || fast.Combined == nil || slow.Combined.Tier != TierBeginner || fast.Combined.Tier != TierPro {
 		t.Fatalf("slow %+v fast %+v", slow.Combined, fast.Combined)
 	}
-	if missing := m.Evaluate("T", map[string]float64{EAPM: 150}); missing.Combined != nil {
+	if missing := m.Evaluate("T", ContextOneVsOne, map[string]float64{EAPM: 150}); missing.Combined != nil {
 		t.Fatal("a combined score needs every combined feature")
+	}
+}
+
+func TestQuantileMapConvertsAtEqualPercentile(t *testing.T) {
+	q := QuantileMap{From: []float64{0, 0.2, 0.4}, To: []float64{0, 0.1, 0.2}}
+	for _, tc := range []struct{ in, want float64 }{{-1, 0}, {0.1, 0.05}, {0.3, 0.15}, {9, 0.2}} {
+		if got := q.apply(tc.in); math.Abs(got-tc.want) > 1e-9 {
+			t.Errorf("apply(%v) = %v, want %v", tc.in, got, tc.want)
+		}
 	}
 }

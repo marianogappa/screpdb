@@ -151,8 +151,8 @@
   "skill.status.tooShort": "Games shorter than 8 minutes are not rated.",
   "skill.status.unavailable": "Skill is not available for this game.",
   "skill.footnote": "Tiers come from over 3,000 ladder games with known MMR: Beginner under 1,400, Intermediate 1,400 to 1,799, Advanced 1,800 and up, Pro for progamers. Each metric is placed against players of the same race.",
-  "skill.caveat.team_game": "Tiers are calibrated on 1v1 games; in team games players share the work, so expect some distortion.",
-  "skill.caveat.money_map": "Tiers are calibrated on regular maps; the extra resources of money maps skew the macro rows.",
+  "skill.caveat.team_game": "Tiers are calibrated on 1v1 games. In team games players share the work, so the macro rows are converted to their 1v1 equivalents.",
+  "skill.caveat.money_map": "Money maps give extra resources, so the macro rows are converted to their regular map equivalents.",
   "skill.status.customRules": "Custom rules games are not rated.",
   "skill.value.hallBusy": "town halls busy making workers {value}",
   "skill.value.larvaPerHatch": "larva waiting per hatchery {value}"
