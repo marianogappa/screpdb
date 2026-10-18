@@ -4234,8 +4234,7 @@ function App() {
   }, [topicFilteredGameEvents, mainSelectedGameEventKey]);
   const mainGamePlayers = mainGame?.players || [];
   const mainGameIsEngine = mainGame?.mode === 'engine';
-  // A tier is only shown where the model trusts it: the score sits well away from every cut.
-  const mainGameShowsSkill = mainGamePlayers.some((p) => p.skill?.confident);
+  const mainGameShowsSkill = mainGame?.skill_status === 'ok' && mainGamePlayers.some((p) => p.skill?.combined);
   // Engine supply is worth its own tab; the command-inferred estimate stays a Timings sub-tab.
   const mainSupplyFromEngine = mainGamePlayers.length > 0
     && mainGamePlayers.every((p) => Array.isArray(p.supply_curve) && p.supply_curve.length > 0);
@@ -6426,7 +6425,7 @@ function App() {
                             <div className="wpt-cell wpt-apm">{player.apm}</div>
                             {mainGameShowsSkill ? (
                               <div className="wpt-cell wpt-skill">
-                                {player.skill?.confident ? (
+                                {player.skill?.combined ? (
                                   <button type="button" className="wpt-skill-tier" onClick={() => setMainGameTab('skill')}>
                                     {tierLabel(t, player.skill)}
                                   </button>

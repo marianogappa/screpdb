@@ -134,8 +134,6 @@
   "skill.tier.advanced": "Advanced",
   "skill.tier.pro": "Pro",
   "skill.between": "{a} or {b}",
-  "skill.section.mechanics": "Mechanics",
-  "skill.section.macro": "Macro",
   "skill.metric.combined.title": "Skill estimate",
   "skill.metric.combined.hint": "EAPM, hotkey recalls and screen switches, weighted for each race.",
   "skill.metric.eapm.title": "Effective actions per minute",
@@ -150,8 +148,12 @@
   "skill.metric.worker_production.hint": "From 2:00 to 10:00: how busy town halls were making workers, or for Zerg the larva left waiting per hatchery.",
   "skill.metric.float_share.title": "Banked resources",
   "skill.metric.float_share.hint": "Share of the game spent sitting on 800 or more resources while supply and production were free.",
-  "skill.status.not1v1": "Skill tiers are calibrated on 1v1 ladder games, so this game is not rated.",
   "skill.status.tooShort": "Games shorter than 8 minutes are not rated.",
   "skill.status.unavailable": "Skill is not available for this game.",
-  "skill.footnote": "Tiers come from over 3,000 ladder games with known MMR: Beginner under 1,400, Intermediate 1,400 to 1,799, Advanced 1,800 and up, Pro for progamers. Each metric is placed against players of the same race."
+  "skill.footnote": "Tiers come from over 3,000 ladder games with known MMR: Beginner under 1,400, Intermediate 1,400 to 1,799, Advanced 1,800 and up, Pro for progamers. Each metric is placed against players of the same race.",
+  "skill.caveat.team_game": "Tiers are calibrated on 1v1 games; in team games players share the work, so expect some distortion.",
+  "skill.caveat.money_map": "Tiers are calibrated on regular maps; the extra resources of money maps skew the macro rows.",
+  "skill.status.customRules": "Custom rules games are not rated.",
+  "skill.value.hallBusy": "town halls busy making workers {value}",
+  "skill.value.larvaPerHatch": "larva waiting per hatchery {value}"
 }

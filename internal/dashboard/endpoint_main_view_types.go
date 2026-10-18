@@ -371,8 +371,10 @@ type workflowPatternValue struct {
 
 type workflowGameDetail struct {
 	SummaryVersion string `json:"summary_version"`
-	// SkillStatus says whether the skill tiers apply: ok, not_1v1 or too_short.
-	SkillStatus                      string                                   `json:"skill_status"`
+	// SkillStatus says whether the skill tiers apply: ok, too_short or custom_rules (empty: no humans to rate).
+	SkillStatus string `json:"skill_status"`
+	// SkillCaveats are why the tiers may be off for this game: team_game, money_map.
+	SkillCaveats                     []string                                 `json:"skill_caveats,omitempty"`
 	ReplayID                         int64                                    `json:"replay_id"`
 	ReplayDate                       string                                   `json:"replay_date"`
 	FileName                         string                                   `json:"file_name"`

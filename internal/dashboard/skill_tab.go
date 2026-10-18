@@ -9,11 +9,15 @@ import (
 	"github.com/marianogappa/screpdb/internal/skill"
 )
 
-// Skill status of a game: the model was fitted on 1v1 ladder games of 8:00 or more, so other games get none.
+// Skill status of a game. The model was fitted on 1v1 ladder games of 8:00 or more on regular maps; team
+// games and money maps are still rated, with caveats the tab shows, but short and custom-rules games are not.
 const (
 	skillStatusOK       = "ok"
-	skillStatusNot1v1   = "not_1v1"
 	skillStatusTooShort = "too_short"
+	skillStatusCustom   = "custom_rules"
+
+	skillCaveatTeamGame = "team_game"
+	skillCaveatMoneyMap = "money_map"
 )
 
 // workflowPlayerSkill places one player's game on the four skill tiers. Metrics hold every measured metric;
@@ -44,14 +48,23 @@ func (d *Dashboard) populateSkill(detail *workflowGameDetail) {
 		}
 	}
 	switch {
-	case len(humans) != 2:
-		detail.SkillStatus = skillStatusNot1v1
+	case len(humans) < 2:
+		return
+	case rec.MapKind == library.MapKindUseMapSettings:
+		detail.SkillStatus = skillStatusCustom
 		return
 	case int(rec.Duration) < skill.MinGameSeconds:
 		detail.SkillStatus = skillStatusTooShort
 		return
 	}
 	detail.SkillStatus = skillStatusOK
+	detail.SkillCaveats = []string{}
+	if len(humans) != 2 {
+		detail.SkillCaveats = append(detail.SkillCaveats, skillCaveatTeamGame)
+	}
+	if rec.MapKind == library.MapKindMoney {
+		detail.SkillCaveats = append(detail.SkillCaveats, skillCaveatMoneyMap)
+	}
 	engine := map[uint8]library.EnginePlayer{}
 	if rec.EngineData != nil && !rec.EngineData.LowConfidence {
 		for _, p := range rec.EngineData.Players {
