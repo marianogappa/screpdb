@@ -255,6 +255,10 @@ type EnginePlayer struct {
 	WorkersBy6Min        uint16
 	SecondsTo40Workers   float32
 	FloatSeconds         uint16
+	// HallBusy (Terran, Protoss) and LarvaPerHatch (Zerg) measure worker production from 2:00 to 10:00;
+	// NaN when they do not apply or the window is not covered.
+	HallBusy      float32
+	LarvaPerHatch float32
 	// Income is minerals plus gas gathered in each full minute; Workers is the workers alive at each minute.
 	Income  []uint16
 	Workers []uint16

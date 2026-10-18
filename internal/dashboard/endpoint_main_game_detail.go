@@ -113,7 +113,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		return detail, err
 	}
 	d.applyEngineToGameDetail(&detail)
-	d.populateEngineMacro(&detail)
+	d.populateSkill(&detail)
 	if err := d.populateTimingsForGameDetail(&detail); err != nil {
 		return detail, err
 	}

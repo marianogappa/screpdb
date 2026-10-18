@@ -31,14 +31,6 @@
 //	  -corpus  ~/Code/go/src/github.com/marianogappa/scfingerprint/corpus \
 //	  -dataset $(go list -m -f '{{.Dir}}' github.com/marianogappa/scfingerprint)/internal/dataset
 //
-// With -engine-macro it writes only macro_ranges.json: the per-race pro spread
-// of the engine macro scorecard, from engine passes over the labelled sides
-// (game data from OPENBW_DATA or the StarCraft: Remastered install):
-//
-//	go run ./scripts/pro-pack -engine-macro \
-//	  -harvest ~/Code/go/src/github.com/marianogappa/screpharvest/harvest \
-//	  -corpus  ~/Code/go/src/github.com/marianogappa/scfingerprint/corpus
-//
 // Nothing is written outside -out and -staged, and no database is involved.
 package main
 
@@ -93,26 +85,7 @@ func main() {
 	photos := flag.Bool("photos", true, "fetch country + portrait from Liquipedia")
 	minGames := flag.Int("min-games", 10, "drop pros with fewer sampled games")
 	minDuration := flag.Int("min-duration", 240, "minimum game duration in seconds")
-	engineMacro := flag.Bool("engine-macro", false, "only write macro_ranges.json: run the engine pass over the labelled pro sides (needs -harvest and -corpus)")
-	macroPerPro := flag.Int("macro-per-pro", 40, "most recent games per pro the engine pass runs")
-	macroWorkers := flag.Int("macro-workers", defaultMacroWorkers(), "engine pass workers")
-	macroLimit := flag.Int("macro-limit", 0, "run at most this many replays, longest first (0 = all), to validate the pipeline")
-	macroCache := flag.String("macro-cache", filepath.Join(os.TempDir(), "pro-pack", "macro-samples.jsonl"), "per-side scorecards, so an interrupted run resumes")
 	flag.Parse()
-	if *engineMacro {
-		if *harvestDir == "" || *corpusDir == "" {
-			flag.Usage()
-			os.Exit(2)
-		}
-		if err := os.MkdirAll(filepath.Dir(*macroCache), 0o755); err != nil {
-			log.Fatalf("cache dir: %v", err)
-		}
-		runMacroRanges(macroOptions{
-			harvestDir: *harvestDir, corpusDir: *corpusDir, outDir: *outDir, cachePath: *macroCache,
-			perPro: *macroPerPro, workers: *macroWorkers, minDuration: *minDuration, limit: *macroLimit,
-		})
-		return
-	}
 	if *harvestDir == "" || *corpusDir == "" || *datasetDir == "" {
 		flag.Usage()
 		os.Exit(2)

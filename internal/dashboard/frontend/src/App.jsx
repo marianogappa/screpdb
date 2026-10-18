@@ -7,7 +7,7 @@ import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
 import EngineBadge from './components/EngineBadge';
 import EngineCoverage from './components/EngineCoverage';
-import MacroScorecard from './components/MacroScorecard';
+import SkillTab, { tierLabel } from './components/SkillTab';
 import EngineSnapshotMap from './components/EngineSnapshotMap';
 import GameMap from './components/GameMap';
 import GamingSessionPanel from './components/GamingSessionPanel';
@@ -178,7 +178,6 @@ const normalizeEventType = (eventType) => String(eventType || '').trim().toLower
 /** Aligns with NeverUsedHotkeysPlayerDetector (7+ minute replays). */
 const GAME_SUMMARY_NEGATION_MIN_SECONDS = 7 * 60;
 
-const MAIN_GAME_SKILL_PROXY_TABS = ['first-unit-efficiency', 'unit-production-cadence', 'viewport-multitasking'];
 
 // The players-list FilterOmnibar axes. The games-played bands replaced an
 // older boolean "5+ games" axis: two axes asking the same question, one of them
@@ -198,7 +197,6 @@ const buildPlayersOmnibarStateLabels = (t) => ({
 });
 const PLAYERS_OMNIBAR_STATE_ORDER = ['races', 'apm', 'games', 'lastPlayed'];
 
-const isMainGameSkillProxyTab = (tab) => MAIN_GAME_SKILL_PROXY_TABS.includes(tab);
 
 // APM is omitted intentionally: the number is self-explanatory in that view.
 const playerInsightDescriptionOverride = (insightType) => {
@@ -4235,6 +4233,9 @@ function App() {
     return topicFilteredGameEvents[0];
   }, [topicFilteredGameEvents, mainSelectedGameEventKey]);
   const mainGamePlayers = mainGame?.players || [];
+  const mainGameIsEngine = mainGame?.mode === 'engine';
+  // A tier is only shown where the model trusts it: the score sits well away from every cut.
+  const mainGameShowsSkill = mainGamePlayers.some((p) => p.skill?.confident);
   // Engine supply is worth its own tab; the command-inferred estimate stays a Timings sub-tab.
   const mainSupplyFromEngine = mainGamePlayers.length > 0
     && mainGamePlayers.every((p) => Array.isArray(p.supply_curve) && p.supply_curve.length > 0);
@@ -6154,6 +6155,17 @@ function App() {
                     >
                       {t('game.tabs.events')}
                     </button>
+                    {mainGameIsEngine ? (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={mainGameTab === 'skill'}
+                        className={`workflow-production-tab ${mainGameTab === 'skill' ? 'workflow-production-tab-active' : ''}`}
+                        onClick={() => setMainGameTab('skill')}
+                      >
+                        {t('game.tabs.skill')}
+                      </button>
+                    ) : null}
                     {Array.isArray(mainGame?.build_orders) && mainGame.build_orders.length > 0 ? (
                       <button
                         type="button"
@@ -6196,17 +6208,6 @@ function App() {
                         {t('game.tabs.alliances')}{mainGame?.team_stacking ? ' 😈' : ''}
                       </button>
                     ) : null}
-                    {engineEnabled ? (
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={mainGameTab === 'macro'}
-                        className={`workflow-production-tab ${mainGameTab === 'macro' ? 'workflow-production-tab-active' : ''}`}
-                        onClick={() => setMainGameTab('macro')}
-                      >
-                        {t('game.tabs.macro')}
-                      </button>
-                    ) : null}
                     {mainSupplyFromEngine ? (
                       <button
                         type="button"
@@ -6227,62 +6228,18 @@ function App() {
                     >
                       {t('tabs.hotkeys')}
                     </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={isMainGameSkillProxyTab(mainGameTab)}
-                      className={`workflow-production-tab ${isMainGameSkillProxyTab(mainGameTab) ? 'workflow-production-tab-active' : ''}`}
-                      onClick={() => {
-                        if (isMainGameSkillProxyTab(mainGameTab)) return;
-                        setMainGameTab('first-unit-efficiency');
-                      }}
-                    >
-                      {t('tabs.skillProxies')}
-                    </button>
+                    {mainGameIsEngine ? null : (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={mainGameTab === 'skill'}
+                        className={`workflow-production-tab ${mainGameTab === 'skill' ? 'workflow-production-tab-active' : ''}`}
+                        onClick={() => setMainGameTab('skill')}
+                      >
+                        {t('game.tabs.skill')}
+                      </button>
+                    )}
                   </div>
-                  {isMainGameSkillProxyTab(mainGameTab) ? (
-                    <div className="workflow-skill-proxy-subnav">
-                      <div className="workflow-production-tabs workflow-skill-proxy-tabs" role="tablist" aria-label={t('skillProxies.viewsAria')}>
-                        <button
-                          type="button"
-                          role="tab"
-                          aria-selected={mainGameTab === 'first-unit-efficiency'}
-                          className={`workflow-production-tab ${mainGameTab === 'first-unit-efficiency' ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setMainGameTab('first-unit-efficiency')}
-                        >
-                          {t('skillProxies.tabs.firstUnit')}
-                        </button>
-                        <button
-                          type="button"
-                          role="tab"
-                          aria-selected={mainGameTab === 'unit-production-cadence'}
-                          className={`workflow-production-tab ${mainGameTab === 'unit-production-cadence' ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setMainGameTab('unit-production-cadence')}
-                        >
-                          {t('skillProxies.tabs.cadence')}
-                        </button>
-                        <button
-                          type="button"
-                          role="tab"
-                          aria-selected={mainGameTab === 'viewport-multitasking'}
-                          className={`workflow-production-tab ${mainGameTab === 'viewport-multitasking' ? 'workflow-production-tab-active' : ''}`}
-                          onClick={() => setMainGameTab('viewport-multitasking')}
-                        >
-                          {t('skillProxies.tabs.viewport')}
-                        </button>
-                      </div>
-                      {mainGameTab === 'unit-production-cadence' ? (
-                        <div className="workflow-section-info workflow-skill-proxy-tab-info" role="note">
-                          {t('skillProxies.cadence.info')}
-                        </div>
-                      ) : null}
-                      {mainGameTab === 'viewport-multitasking' ? (
-                        <div className="workflow-section-info workflow-skill-proxy-tab-info" role="note">
-                          {t('skillProxies.viewport.info')}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
                 </div>
                 {mainGameSeeNotice ? (
                   <div className={`workflow-see-notice ${mainGameSeeNoticeError ? 'workflow-see-notice-error' : ''}`}>{mainGameSeeNotice}</div>
@@ -6406,9 +6363,10 @@ function App() {
                         )}
                       </div>
                     </div>
-                    <div className="workflow-player-table" style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
+                    <div className={`workflow-player-table${mainGameShowsSkill ? ' workflow-player-table--skill' : ''}`} style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
                       <div className="wpt-head">{t('common.name')}</div>
                       <div className="wpt-head">APM</div>
+                      {mainGameShowsSkill ? <div className="wpt-head">{t('game.tabs.skill')}</div> : null}
                       <div className="wpt-head">{t('common.featuring')}</div>
                       <div className="wpt-head wpt-head-comp">
                         <span>{t('game.summary.unitComposition')}</span>
@@ -6466,6 +6424,15 @@ function App() {
                               </span>
                             </div>
                             <div className="wpt-cell wpt-apm">{player.apm}</div>
+                            {mainGameShowsSkill ? (
+                              <div className="wpt-cell wpt-skill">
+                                {player.skill?.confident ? (
+                                  <button type="button" className="wpt-skill-tier" onClick={() => setMainGameTab('skill')}>
+                                    {tierLabel(t, player.skill)}
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : null}
                             <div className="wpt-cell wpt-featuring">
                               <div className="workflow-pattern-pills">
                                 {boPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-bo-${idx}`, undefined, markerRegistry))}
@@ -7047,9 +7014,6 @@ function App() {
                   </div>
                 )}
 
-                {mainGameTab === 'macro' && (
-                  <MacroScorecard game={mainGame} players={mainGamePlayers} playerColor={playerColorToCss} />
-                )}
 
                 {mainGameTab === 'hotkeys' && (
                   <div className="workflow-card">
@@ -7077,6 +7041,10 @@ function App() {
                     durationSeconds={mainGame.duration_seconds || 0}
                     playerColor={playerColorToCss}
                   />
+                )}
+
+                {mainGameTab === 'skill' && (
+                  <SkillTab game={mainGame} players={mainGamePlayers} playerColor={playerColorToCss} />
                 )}
 
                 {mainGameTab === 'timings' && (
@@ -7248,128 +7216,6 @@ function App() {
                       getRaceIcon={getWorkerIconForRace}
                       getPlayerColor={(p) => playerColorToCss(p?.color)}
                     />
-                  </div>
-                )}
-                {mainGameTab === 'first-unit-efficiency' && (
-                  <div className="workflow-timing-charts">
-                    <div className="workflow-section-top-row">
-                      <span className="workflow-section-top-spacer" aria-hidden="true" />
-                      <div className="workflow-section-warning">
-                        {t('firstUnit.warning')}
-                      </div>
-                    </div>
-                    {mainFirstUnitEfficiencyGroups.length > 0 ? (
-                      mainFirstUnitEfficiencyGroups.map((groupEntry) => (
-                        <FirstUnitEfficiencyTimelineRows
-                          key={`first-unit-eff-${groupEntry.id}`}
-                          group={groupEntry}
-                        />
-                      ))
-                    ) : (
-                      <div className="workflow-card">
-                        <div className="chart-empty">{t('firstUnit.none')}</div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {mainGameTab === 'unit-production-cadence' && (
-                  <div className="workflow-timing-charts">
-                    <div className="workflow-card workflow-card-fingerprints">
-                      {mainGameCadenceProcessed.points.length > 0 ? (
-                        <Histogram
-                          data={[]}
-                          config={{
-                            style: 'monobell_relax',
-                            precomputed_bins: mainGameCadenceProcessed.bins,
-                            x_axis_label: t('appChart.cadenceScore'),
-                            y_axis_label: t('appChart.density'),
-                            overlay_value_label: t('appChart.overlay.cadence'),
-                            overlay_count_label: t('appChart.overlay.units'),
-                            mean: mainGameCadenceProcessed.mean,
-                            stddev: mainGameCadenceProcessed.stddev,
-                            chart_height: 560,
-                            overlay_points: mainGameCadenceProcessed.points.map((player) => ({
-                              value: Number(player.average_apm || 0),
-                              label: String(player.player_name || ''),
-                              player_key: String(player.player_key || ''),
-                              games_played: Number(player.games_played || 0),
-                              tooltip_lines: [
-                                `${String(player.player_name || '')}`,
-                                t('appChart.tooltip.cadenceScore', { value: Number(player.average_apm || 0).toFixed(3) }),
-                                t('appChart.tooltip.ratePerMinute', { value: Number(player.average_rate_per_min || 0).toFixed(2) }),
-                                t('appChart.tooltip.gapCv', { value: Number(player.average_cv_gap || 0).toFixed(2) }),
-                                t('appChart.tooltip.burstiness', { value: Number(player.average_burstiness || 0).toFixed(2) }),
-                                t('appChart.tooltip.idleGapRatio', { value: (Number(player.average_idle20_ratio || 0) * 100).toFixed(1) }),
-                                t('appChart.tooltip.unitsInWindow', { count: Number(player.games_played || 0) }),
-                                t('appChart.tooltip.windowLength', { value: formatDuration(Number(player.window_seconds || 0)) }),
-                              ],
-                            })),
-                          }}
-                        />
-                      ) : (
-                        <div className="chart-empty">{t('game.cadence.noEligible')}</div>
-                      )}
-                      <div className="workflow-card-subtitle"><span>{t('game.perPlayerBreakdown')}</span></div>
-                      {(mainGame?.unit_production_cadence || []).map((entry) => (
-                        <div key={`game-cadence-${entry.player_id}`} className="workflow-pattern-row">
-                          <span>
-                            {entry.team_won ? '👑 ' : ''}{entry.player_name}
-                          </span>
-                          <span title={entry.eligible ? `rate=${Number(entry.rate_per_minute || 0).toFixed(2)}, cv=${Number(entry.cv_gap || 0).toFixed(2)}, burstiness=${Number(entry.burstiness || 0).toFixed(2)}, idle20=${(Number(entry.idle20_ratio || 0) * 100).toFixed(1)}%, units=${Number(entry.units_produced || 0)}, gaps=${Number(entry.gap_count || 0)}` : String(entry.ineligible_reason || '')}>
-                            {entry.eligible
-                              ? t('game.cadence.value', { score: Number(entry.cadence_score || 0).toFixed(3), units: Number(entry.units_produced || 0), window: formatDuration(Number(entry.window_seconds || 0)) })
-                              : t('game.notAvailable', { reason: entry.ineligible_reason || t('game.insufficientData') })}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {mainGameTab === 'viewport-multitasking' && (
-                  <div className="workflow-timing-charts">
-                    <div className="workflow-card workflow-card-fingerprints">
-                      {mainGameViewportProcessed.points.length > 0 ? (
-                        <Histogram
-                          data={[]}
-                          config={{
-                            style: 'monobell_relax',
-                            precomputed_bins: mainGameViewportProcessed.bins,
-                            x_axis_label: viewportText.axisLabel,
-                            y_axis_label: t('appChart.density'),
-                            overlay_value_label: viewportText.overlayValueLabel,
-                            overlay_count_label: t('appChart.overlay.player'),
-                            mean: mainGameViewportProcessed.mean,
-                            stddev: mainGameViewportProcessed.stddev,
-                            chart_height: 560,
-                            overlay_points: mainGameViewportProcessed.points.map((player) => ({
-                              value: Number(player.average_apm || 0),
-                              label: String(player.player_name || ''),
-                              player_key: String(player.player_key || ''),
-                              games_played: Number(player.games_played || 0),
-                              tooltip_lines: [
-                                `${String(player.player_name || '')}`,
-                                t('appChart.tooltip.labelValue', { label: viewportText.title, value: viewportText.valueFormatter(player.average_apm) }),
-                              ],
-                            })),
-                          }}
-                        />
-                      ) : (
-                        <div className="chart-empty">{t('game.viewport.noEligible')}</div>
-                      )}
-                      <div className="workflow-card-subtitle"><span>{t('game.perPlayerBreakdown')}</span></div>
-                      {(mainGame?.viewport_multitasking || []).map((entry) => (
-                        <div key={`game-viewport-${entry.player_id}`} className="workflow-pattern-row">
-                          <span>
-                            {entry.team_won ? '👑 ' : ''}{entry.player_name}
-                          </span>
-                          <span title={entry.eligible ? viewportText.valueFormatter(entry.viewport_switch_rate) : String(entry.ineligible_reason || '')}>
-                            {entry.eligible
-                              ? viewportText.valueFormatter(entry.viewport_switch_rate)
-                              : t('game.notAvailable', { reason: entry.ineligible_reason || t('game.insufficientData') })}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 )}
               </>

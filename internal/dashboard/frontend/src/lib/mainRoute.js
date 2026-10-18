@@ -7,15 +7,12 @@ export const MAIN_GAME_TABS = [
   'events',
   'units',
   'hotkeys',
-  'macro',
+  'skill',
   'supply-timeline',
   'timings',
   'build-orders',
   'mutalisk-timing',
   'alliances',
-  'first-unit-efficiency',
-  'unit-production-cadence',
-  'viewport-multitasking',
 ];
 
 export const MAIN_PLAYERS_TABS = [
@@ -96,7 +93,9 @@ export function parseMainRouteSearch(search) {
 
   let replayId = view === 'game' ? parseReplayIdParam(replayRaw) : null;
   let playerKey = view === 'player' ? normalizePlayerKeyParam(playerRaw) : '';
-  let gameTab = pickEnum(gameTabRaw, MAIN_GAME_TABS, 'summary');
+  // The Skill tab replaced Macro and the Skill proxies views; their old links open it.
+  const legacyGameTab = { macro: 'skill', 'first-unit-efficiency': 'skill', 'unit-production-cadence': 'skill', 'viewport-multitasking': 'skill' };
+  let gameTab = pickEnum(legacyGameTab[gameTabRaw] || gameTabRaw, MAIN_GAME_TABS, 'summary');
   let playersTab = pickEnum(playersTabRaw, MAIN_PLAYERS_TABS, 'summary');
   let playerTab = pickEnum(playerTabRaw, MAIN_PLAYER_TABS, 'summary');
   // playerSubtab is contextual: only validated for skill-proxies; race subtabs are dynamic.

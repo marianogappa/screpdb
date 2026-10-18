@@ -7603,3 +7603,38 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   width: auto;
   height: auto;
 }
+
+.workflow-player-table.workflow-player-table--skill {
+  grid-template-columns: max-content max-content max-content minmax(0, 1.3fr) minmax(0, 1fr);
+}
+.wpt-skill { justify-content: flex-start; }
+.wpt-skill-tier {
+  background: none; border: 1px solid var(--e-line, rgba(255,255,255,0.15)); border-radius: 999px;
+  color: rgba(255,255,255,0.9); font-size: 0.8rem; padding: 2px 9px; cursor: pointer; white-space: nowrap;
+}
+.wpt-skill-tier:hover { border-color: rgba(255,255,255,0.4); }
+
+.skill-tab { display: flex; flex-direction: column; gap: 14px; }
+.skill-summary { display: flex; flex-wrap: wrap; gap: 10px 22px; }
+.skill-summary-player { display: flex; align-items: center; gap: 8px; }
+.skill-summary-dot { width: 10px; height: 10px; border-radius: 50%; }
+.skill-summary-name { font-weight: 600; }
+.skill-summary-tier { color: rgba(255,255,255,0.75); }
+.skill-section { margin: 6px 0 0; font-size: 0.95rem; font-weight: 600; color: rgba(255,255,255,0.85); }
+.skill-metric { display: flex; flex-direction: column; gap: 4px; }
+.skill-metric-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.skill-metric-title { font-size: 0.85rem; font-weight: 600; }
+.skill-metric-hint { font-size: 0.78rem; color: rgba(255,255,255,0.5); }
+.skill-strip { position: relative; border-radius: 6px; overflow: hidden; }
+.skill-band { position: absolute; top: 0; bottom: 0; border-left: 1px solid rgba(255,255,255,0.08); text-align: center; }
+.skill-band-beginner { background: rgba(255,255,255,0.015); }
+.skill-band-intermediate { background: rgba(255,255,255,0.035); }
+.skill-band-advanced { background: rgba(255,255,255,0.055); }
+.skill-band-pro { background: rgba(240,198,116,0.08); }
+.skill-band-label { font-size: 11px; color: rgba(255,255,255,0.4); line-height: 16px; }
+.skill-marker { position: absolute; display: flex; align-items: center; gap: 6px; height: 22px; transform: translateX(-5px); white-space: nowrap; }
+.skill-marker--right { flex-direction: row-reverse; transform: translateX(calc(-100% + 5px)); }
+.skill-marker-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px rgba(0,0,0,0.5); }
+.skill-player-label { font-size: 12px; color: rgba(255,255,255,0.88); }
+.skill-player-value { color: rgba(255,255,255,0.5); }
+.skill-footnote { margin: 4px 0 0; font-size: 0.75rem; color: rgba(255,255,255,0.45); }

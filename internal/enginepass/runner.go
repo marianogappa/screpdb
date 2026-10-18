@@ -481,7 +481,16 @@ func Summarize(d *engine.Digest) *library.EngineData {
 		TrustedUntil:  uint32(max(d.TrustedUntil(), 0)),
 	}
 	for _, p := range macro.Compute(d) {
-		data.Players = append(data.Players, enginePlayer(p))
+		ep := enginePlayer(p)
+		ep.HallBusy, ep.LarvaPerHatch = float32(math.NaN()), float32(math.NaN())
+		if w, ok := macro.WorkerProductionOf(d, p.Slot); ok {
+			if w.Zerg {
+				ep.LarvaPerHatch = float32(w.LarvaPerHatchery)
+			} else {
+				ep.HallBusy = float32(w.HallBusy)
+			}
+		}
+		data.Players = append(data.Players, ep)
 	}
 	return data
 }

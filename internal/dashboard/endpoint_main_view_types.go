@@ -348,8 +348,8 @@ type workflowGamePlayer struct {
 	CountryCode      string                    `json:"country_code,omitempty"`
 	PrimaryBadge     *IdentityBadge            `json:"primary_badge,omitempty"`
 	SecondaryBadge   *IdentityBadge            `json:"secondary_badge,omitempty"`
-	// Macro is the engine scorecard; null in fast mode.
-	Macro *workflowPlayerMacro `json:"macro"`
+	// Skill places this player's game on the skill tiers; null when the game or the player cannot be measured.
+	Skill *workflowPlayerSkill `json:"skill"`
 	// SupplyCurve is the real supply used and cap at each second either changes; null in fast mode.
 	SupplyCurve []workflowSupplyPoint `json:"supply_curve"`
 }
@@ -370,7 +370,9 @@ type workflowPatternValue struct {
 }
 
 type workflowGameDetail struct {
-	SummaryVersion                   string                                   `json:"summary_version"`
+	SummaryVersion string `json:"summary_version"`
+	// SkillStatus says whether the skill tiers apply: ok, not_1v1 or too_short.
+	SkillStatus                      string                                   `json:"skill_status"`
 	ReplayID                         int64                                    `json:"replay_id"`
 	ReplayDate                       string                                   `json:"replay_date"`
 	FileName                         string                                   `json:"file_name"`

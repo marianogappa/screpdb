@@ -3,7 +3,6 @@ package propack
 import (
 	"testing"
 
-	"github.com/marianogappa/screpdb/internal/engine"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 )
 
@@ -49,22 +48,5 @@ func TestKeyRoundTrip(t *testing.T) {
 	}
 	if _, ok := IDFromKey("pro:"); ok {
 		t.Fatal("empty id must not be a pro key")
-	}
-}
-
-func TestLoadMacroRanges(t *testing.T) {
-	ranges, err := LoadMacroRanges()
-	if err != nil {
-		t.Fatalf("LoadMacroRanges: %v", err)
-	}
-	if ranges.EngineVersion < engine.EngineVersion {
-		t.Fatalf("macro ranges were generated at EngineVersion %d but the code is at %d: regenerate them with scripts/pro-pack -engine-macro so the pro ranges match what the engine pass now scores", ranges.EngineVersion, engine.EngineVersion)
-	}
-	for _, race := range []string{"zerg", "terran", "protoss"} {
-		for metric, r := range ranges.ForRace(race) {
-			if r.Games <= 0 || r.P10 > r.P25 || r.P25 > r.P50 || r.P50 > r.P75 || r.P75 > r.P90 {
-				t.Errorf("%s %s: malformed range %+v", race, metric, r)
-			}
-		}
 	}
 }

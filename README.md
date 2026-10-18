@@ -301,18 +301,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-18  OK. scmapanalyzer bumped to e925d63 (team-color masks, burrowed Lurker). Sprite endpoints take optional color and variant; each tint is cached as its own PNG in the existing game-assets/icons cache (render version 4, old version pruned as before). No new paths.
+2026-10-18  OK. Skill tab: internal/skill embeds model.json (written offline by scripts/skill-fit from skill-mine output) and scores 1v1 games from the in-memory library record; worker production is stored in the engine record at engine-pass time. The Macro tab and its embedded macro_ranges.json are removed. No new files, reads or writes at runtime.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-18  OK. scmapanalyzer bumped to e925d63 (team-color masks, burrowed Lurker). Sprite endpoints take optional color and variant; each tint is cached as its own PNG in the existing game-assets/icons cache (render version 4, old version pruned as before). No new paths.
 2026-10-16  OK. scripts/skill-mine (offline research tool, not shipped): reads screpharvest replays and the scfingerprint registry, runs the fast and engine passes, appends one JSON line per player to a file the operator names. The app is unchanged.
 2026-10-16  OK. Engine drop features take the map bases from the layout the library already holds instead of re-analysing the replay file with scmapanalyzer: one fewer read per game, no new I/O.
 2026-10-16  OK. Engine drops are named by cargo (reaver_drop, dt_drop). The engine runner now stores each trusted game's listed engine event types in the in-memory library record, computed from the digest plus the map's base layout (scmapanalyzer on the replay file already in the library, read only, memoised per map name and size); the games list, its filter and the Summary use them. No new files or writes; js build stubs the memo.
 2026-10-16  OK. Engine game events show the map a little after they start (snapshot_second): buildings 2 s after placement, drops after up to 3 s of unloading, recalls, nydus and new tech units 1 s later, clamped to trusted engine data. Detector code only; snapshots still come from the existing on-demand cache. No I/O changes.
-2026-10-16  OK. Frontend only: engine supply blocks move from thick line stretches to one strip per player under the time axis (hovering a block shades it on the chart); lines are finer and spread a few pixels apart. No I/O changes.
 ```
 
 </details>

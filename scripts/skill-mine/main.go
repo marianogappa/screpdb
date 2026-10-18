@@ -432,7 +432,6 @@ func economyAt(d *engine.Digest, seconds int) map[int8]engine.EconomySample {
 	return at
 }
 
-
 // actionStats measures each player's actions from the command stream: the opening minutes, before a game's
 // outcome changes what a player is doing, and the mix of what the actions are.
 func actionStats(b []byte) map[uint8]map[string]float64 {
@@ -481,80 +480,16 @@ func actionStats(b []byte) map[uint8]map[string]float64 {
 	return out
 }
 
-var (
-	townHalls = map[uint16]bool{106: true, 154: true, 131: true, 132: true, 133: true}
-	workers   = map[uint16]bool{7: true, 64: true, 41: true}
-)
-
 // macroWindowValues measures worker production between 2:00 and 10:00, when every player is building
 // an economy: how busy Terran and Protoss town halls were making workers, and how much larva Zerg left
 // unused per hatchery.
 func macroWindowValues(d *engine.Digest, slot int8) map[string]float64 {
-	const from, to = 120 * 24, 600 * 24
-	end := min(int32(to), d.TrustedUntil())
-	if end <= from {
+	w, ok := macro.WorkerProductionOf(d, slot)
+	if !ok {
 		return nil
 	}
-	halls := map[uint32]int32{}
-	for _, u := range d.Initial {
-		if u.Owner == slot && townHalls[u.Type] {
-			halls[u.Unit] = 0
-		}
+	if w.Zerg {
+		return map[string]float64{"larva_per_hatch": w.LarvaPerHatchery}
 	}
-	for _, pr := range d.Productions {
-		if pr.Owner == slot && townHalls[pr.Type] && pr.Complete != engine.NoFrame {
-			if _, ok := halls[pr.Unit]; !ok {
-				halls[pr.Unit] = pr.Complete
-			}
-		}
-	}
-	values := map[string]float64{}
-	overlap := func(a, b int32) float64 { return float64(max(0, min(b, end)-max(a, from))) }
-	var alive, busy float64
-	zerg := false
-	for id, ready := range halls {
-		alive += overlap(ready, end)
-		for _, pr := range d.Productions {
-			if pr.Producer == id && workers[pr.Type] {
-				stop := pr.Complete
-				if stop == engine.NoFrame {
-					stop = pr.Cancel
-				}
-				if stop == engine.NoFrame {
-					stop = end
-				}
-				busy += overlap(pr.Start, stop)
-			}
-		}
-	}
-	for _, p := range d.Players {
-		if p.Slot == slot && p.Race == 0 {
-			zerg = true
-		}
-	}
-	if !zerg && alive > 0 {
-		values["hall_worker_busy"] = busy / alive
-	}
-	if zerg {
-		var larva, n float64
-		for _, e := range d.Economy {
-			if e.Owner != slot || e.Frame < from || e.Frame >= end {
-				continue
-			}
-			count := 0
-			for _, ready := range halls {
-				if ready <= e.Frame {
-					count++
-				}
-			}
-			if count > 0 {
-				larva += float64(e.Larva) / float64(count)
-				n++
-			}
-		}
-		if n > 0 {
-			values["larva_per_hatch"] = larva / n
-		}
-	}
-	return values
+	return map[string]float64{"hall_worker_busy": w.HallBusy}
 }
