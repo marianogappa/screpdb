@@ -33,11 +33,11 @@ func TestPlaceIsLinearBetweenCuts(t *testing.T) {
 		pos  float64
 		tier int
 	}{{-50, 0, TierBeginner}, {50, 0.5, TierBeginner}, {150, 1.5, TierIntermediate}, {300, 3, TierPro}, {350, 3.5, TierPro}, {999, 4, TierPro}} {
-		if p := place(tc.v, cuts, true); p.Position != tc.pos || p.Tier != tc.tier {
+		if p := place(tc.v, cuts, [2]float64{}, true); p.Position != tc.pos || p.Tier != tc.tier {
 			t.Errorf("place(%v) = %+v, want position %v tier %d", tc.v, p, tc.pos, tc.tier)
 		}
 	}
-	if p := place(0.05, [3]float64{0.2, 0.1, 0.05}, false); p.Tier != TierPro {
+	if p := place(0.05, [3]float64{0.2, 0.1, 0.05}, [2]float64{1, 0}, false); p.Tier != TierPro {
 		t.Errorf("lower is better: %+v", p)
 	}
 }
@@ -60,5 +60,13 @@ func TestQuantileMapConvertsAtEqualPercentile(t *testing.T) {
 		if got := q.apply(tc.in); math.Abs(got-tc.want) > 1e-9 {
 			t.Errorf("apply(%v) = %v, want %v", tc.in, got, tc.want)
 		}
+	}
+}
+
+func TestEndsSpreadPlayersBelowTheCuts(t *testing.T) {
+	cuts, ends := [3]float64{160, 194, 218}, [2]float64{40, 300}
+	a, b := place(60, cuts, ends, true), place(115, cuts, ends, true)
+	if !(a.Position > 0 && a.Position < b.Position && b.Position < 1) {
+		t.Fatalf("60 at %v and 115 at %v should both sit inside Beginner, apart", a.Position, b.Position)
 	}
 }

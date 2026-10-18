@@ -99,6 +99,9 @@ type MetricCuts struct {
 	HigherIsBetter bool                  `json:"higher_is_better"`
 	Rho            float64               `json:"rho"`
 	Cuts           map[string][3]float64 `json:"cuts"`
+	// Ends are, per race, the worst and best values the axis reaches (the 2nd and 98th percentile of the
+	// fitted players), so players far below or above the cuts still spread out instead of piling up.
+	Ends map[string][2]float64 `json:"ends,omitempty"`
 }
 
 type Combined struct {
@@ -112,6 +115,7 @@ type CombinedForRace struct {
 	Weights   []float64  `json:"weights"`
 	Intercept float64    `json:"intercept"`
 	Cuts      [3]float64 `json:"cuts"`
+	Ends      [2]float64 `json:"ends"`
 }
 
 var (
@@ -141,12 +145,13 @@ type Placement struct {
 	Tier     int     `json:"tier"`
 }
 
-func place(value float64, cuts [3]float64, higherIsBetter bool) Placement {
-	v, c := value, cuts
+func place(value float64, cuts [3]float64, ends [2]float64, higherIsBetter bool) Placement {
+	v, c, e := value, cuts, ends
 	if !higherIsBetter {
-		v, c = -value, [3]float64{-cuts[0], -cuts[1], -cuts[2]}
+		v, c, e = -value, [3]float64{-cuts[0], -cuts[1], -cuts[2]}, [2]float64{-ends[0], -ends[1]}
 	}
-	edges := [5]float64{c[0] - (c[1] - c[0]), c[0], c[1], c[2], c[2] + (c[2] - c[1])}
+	// The outer tiers reach the data's ends, or as wide as their neighbour when that is further.
+	edges := [5]float64{min(e[0], c[0]-(c[1]-c[0])), c[0], c[1], c[2], max(e[1], c[2]+(c[2]-c[1]))}
 	pos := 0.0
 	switch {
 	case v <= edges[0]:
@@ -200,7 +205,7 @@ func (m *Model) Evaluate(race, context string, values map[string]float64) Result
 		if q, ok := m.ContextAdjust[context][key]; ok {
 			adjusted = q.apply(v)
 		}
-		p := place(adjusted, cuts, mc.HigherIsBetter)
+		p := place(adjusted, cuts, mc.Ends[race], mc.HigherIsBetter)
 		p.Value = v
 		res.Metrics[key] = p
 	}
@@ -217,7 +222,7 @@ func (m *Model) Evaluate(race, context string, values map[string]float64) Result
 		z := (v - cr.Mean[i]) / cr.SD[i]
 		score += cr.Weights[i] * max(-3, min(3, z))
 	}
-	p := place(score, cr.Cuts, true)
+	p := place(score, cr.Cuts, cr.Ends, true)
 	res.Combined = &p
 	res.Confident = true
 	for _, c := range cr.Cuts {

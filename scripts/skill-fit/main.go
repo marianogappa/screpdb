@@ -71,7 +71,7 @@ func main() {
 			}
 		}
 		rho := spearman(all, key)
-		mc := skill.MetricCuts{HigherIsBetter: rho >= 0, Rho: round(rho, 2), Cuts: map[string][3]float64{}}
+		mc := skill.MetricCuts{HigherIsBetter: rho >= 0, Rho: round(rho, 2), Cuts: map[string][3]float64{}, Ends: map[string][2]float64{}}
 		sign := 1.0
 		if rho < 0 {
 			sign = -1
@@ -88,6 +88,8 @@ func main() {
 			}
 			c := equalErrorCuts(scored)
 			mc.Cuts[race] = [3]float64{round(sign*c[0], 3), round(sign*c[1], 3), round(sign*c[2], 3)}
+			lo, hi := ends(scored)
+			mc.Ends[race] = [2]float64{round(sign*lo, 3), round(sign*hi, 3)}
 		}
 		model.Metrics[key] = mc
 	}
@@ -115,6 +117,8 @@ func main() {
 			scored = append(scored, scoredTier{predict(cr, s), s.tier()})
 		}
 		cr.Cuts = equalErrorCuts(scored)
+		lo, hi := ends(scored)
+		cr.Ends = [2]float64{round(lo, 4), round(hi, 4)}
 		for i := range cr.Cuts {
 			cr.Cuts[i] = round(cr.Cuts[i], 4)
 		}
@@ -235,6 +239,16 @@ func read(path string) []sample {
 		out = append(out, x)
 	}
 	return out
+}
+
+// ends are the 2nd and 98th percentile scores: where the axis stops, past the outer cuts.
+func ends(scored []scoredTier) (float64, float64) {
+	xs := make([]float64, len(scored))
+	for i, s := range scored {
+		xs[i] = s.score
+	}
+	sort.Float64s(xs)
+	return xs[len(xs)*2/100], xs[len(xs)*98/100]
 }
 
 type scoredTier struct {

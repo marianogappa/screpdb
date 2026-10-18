@@ -301,18 +301,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-18  OK. Skill macro rows of team games and money maps are converted to 1v1 regular-map equivalents with quantile tables embedded in internal/skill/model.json (fitted offline by scripts/skill-fit from skill-mine -dir output). In-memory scoring only, no I/O changes.
+2026-10-18  OK. Skill axis ends come from the fitted data (2nd and 98th percentile per race, in model.json), one tier per player, a single warning, flush rows and tinted summary pills. In-memory scoring and frontend only, no I/O changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-18  OK. Skill macro rows of team games and money maps are converted to 1v1 regular-map equivalents with quantile tables embedded in internal/skill/model.json (fitted offline by scripts/skill-fit from skill-mine -dir output). In-memory scoring only, no I/O changes.
 2026-10-18  OK. Frontend only: Skill charts share one tier range and line up, and the estimate is a single chart carrying each verdict. scripts/skill-mine gains -dir to measure unlabelled replays under a folder the operator names (read only, one output file). No app I/O changes.
 2026-10-18  OK. Skill tab layout pass and wider rating: team games and money maps are rated with caveats (custom-rules and sub-8-minute games still are not); the verdict always shows after APM. Frontend and in-memory scoring only, no I/O changes.
 2026-10-18  OK. Skill tab: internal/skill embeds model.json (written offline by scripts/skill-fit from skill-mine output) and scores 1v1 games from the in-memory library record; worker production is stored in the engine record at engine-pass time. The Macro tab and its embedded macro_ranges.json are removed. No new files, reads or writes at runtime.
 2026-10-18  OK. scmapanalyzer bumped to e925d63 (team-color masks, burrowed Lurker). Sprite endpoints take optional color and variant; each tint is cached as its own PNG in the existing game-assets/icons cache (render version 4, old version pruned as before). No new paths.
-2026-10-16  OK. scripts/skill-mine (offline research tool, not shipped): reads screpharvest replays and the scfingerprint registry, runs the fast and engine passes, appends one JSON line per player to a file the operator names. The app is unchanged.
 ```
 
 </details>

@@ -7,7 +7,7 @@ import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
 import EngineBadge from './components/EngineBadge';
 import EngineCoverage from './components/EngineCoverage';
-import SkillTab, { tierLabel } from './components/SkillTab';
+import SkillTab, { TIER_KEYS, tierLabel } from './components/SkillTab';
 import EngineSnapshotMap from './components/EngineSnapshotMap';
 import GameMap from './components/GameMap';
 import GamingSessionPanel from './components/GamingSessionPanel';
@@ -6426,7 +6426,7 @@ function App() {
                             {mainGameShowsSkill ? (
                               <div className="wpt-cell wpt-skill">
                                 {player.skill?.combined ? (
-                                  <button type="button" className="wpt-skill-tier" onClick={() => setMainGameTab('skill')}>
+                                  <button type="button" className={`wpt-skill-tier wpt-skill-tier--${TIER_KEYS[player.skill.combined.tier]}`} onClick={() => setMainGameTab('skill')}>
                                     {tierLabel(t, player.skill)}
                                   </button>
                                 ) : null}

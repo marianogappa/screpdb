@@ -27,7 +27,7 @@ const LABEL_SHARE = 0.16;
 
 const placementOf = (player, key) => {
   const metrics = player?.skill?.metrics || {};
-  if (key === 'combined') return player?.skill?.combined ? { ...player.skill.combined, metric: 'combined', source: player.skill.combined } : null;
+  if (key === 'combined') return player?.skill?.combined ? { ...player.skill.combined, metric: 'combined' } : null;
   if (key === 'worker_production') {
     if (metrics.hall_worker_busy) return { ...metrics.hall_worker_busy, metric: 'hall_worker_busy' };
     if (metrics.larva_per_hatch) return { ...metrics.larva_per_hatch, metric: 'larva_per_hatch' };
@@ -36,17 +36,10 @@ const placementOf = (player, key) => {
   return metrics[key] ? { ...metrics[key], metric: key } : null;
 };
 
-// The tier a combined score names, or two when it sits near a cut: the model is only trusted away from cuts.
+// The tier the combined score falls in.
 export const tierLabel = (t, skill) => {
   const combined = skill?.combined;
-  if (!combined) return '';
-  const tier = t(`skill.tier.${TIER_KEYS[combined.tier]}`);
-  if (skill.confident) return tier;
-  const frac = combined.position - Math.floor(combined.position);
-  const other = Math.max(0, Math.min(3, frac < 0.5 ? combined.tier - 1 : combined.tier + 1));
-  if (other === combined.tier) return tier;
-  const [a, b] = other < combined.tier ? [other, combined.tier] : [combined.tier, other];
-  return t('skill.between', { a: t(`skill.tier.${TIER_KEYS[a]}`), b: t(`skill.tier.${TIER_KEYS[b]}`) });
+  return combined ? t(`skill.tier.${TIER_KEYS[combined.tier]}`) : '';
 };
 
 function Help({ text }) {
@@ -136,9 +129,7 @@ export default function SkillTab({ game, players, playerColor }) {
   return (
     <div className="workflow-card skill-tab">
       {caveats.length ? (
-        <div className="workflow-section-warning skill-caveat">
-          {caveats.map((c) => t(`skill.caveat.${c}`)).join(' ')}
-        </div>
+        <div className="workflow-section-warning skill-caveat">{t('skill.caveat')}</div>
       ) : null}
       <div className="skill-rows">
         {combined.length ? (
@@ -152,9 +143,6 @@ export default function SkillTab({ game, players, playerColor }) {
               range={range}
               playerColor={playerColor}
               hero
-              inline
-              labelShare={0.3}
-              describe={(p) => tierLabel(t, rated.find((r) => r.skill?.combined === p.source)?.skill)}
             />
           </>
         ) : null}
