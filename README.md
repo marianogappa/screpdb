@@ -297,18 +297,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-18  OK. Frontend only: engine games keep an "Enhanced report using the StarCraft engine" notice, and too-short or custom-rules games show a dimmed Skill tab with the reason on hover. No I/O changes.
+2026-10-18  OK. Frontend only: a player shown under another name in the game title (such as a progamer's) is shown that way on every game tab, and build order sections get bo= permalinks that the summary pills open. No I/O changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-18  OK. Frontend only: engine games keep an "Enhanced report using the StarCraft engine" notice, and too-short or custom-rules games show a dimmed Skill tab with the reason on hover. No I/O changes.
 2026-10-18  OK. Frontend only: the game summary's Skill column splits Beginner, Intermediate and Advanced into thirds (-, plain, +); Pro stays one band. No I/O changes.
 2026-10-18  OK. The game page says when a game can't be run through the StarCraft engine (the pass failed or drifted from the real game). It reads the existing engine digest cache entry; no new files, reads or writes.
 2026-10-20  OK. Tests only (engine detectors, snapshot wire, sprite and creep handlers, codec, oclock, library types, alliances) plus removal of two dead branches in the event detectors. No I/O changes.
 2026-10-20  OK. The terrain crop endpoint takes layer=terrain or layer=resources (scmapanalyzer renders each from the same replay file it already reads), so creep draws under minerals; the event map drops its whole-map toggle and caption. No new files, paths, network or writes.
-2026-10-20  OK. Overlay art from the bumped scmapanalyzer (shadows, sprite anchors, composited units, tileset creep and edge frames) served from embedded data through two new read-only endpoints; the engine snapshot records the map tileset. No new files, paths, network or writes beyond the existing icon cache.
 ```
 
 </details>
