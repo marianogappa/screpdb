@@ -5100,6 +5100,32 @@ button.workflow-nav-update-available:disabled {
   border-color: rgba(100, 150, 255, 0.55);
 }
 
+.workflow-production-tab-disabled {
+  position: relative;
+  color: rgba(255, 255, 255, 0.32);
+  border-style: dashed;
+  border-bottom: none;
+  border-color: rgba(255, 255, 255, 0.12);
+  cursor: help;
+}
+
+.workflow-production-tab-disabled[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(9, 10, 16, 0.97);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.74rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 20;
+}
+
 .workflow-radio-group {
   display: flex;
   flex-wrap: wrap;
@@ -7653,6 +7679,8 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .engine-notice--ready::before { background: #4ade80; }
 .engine-notice--unavailable { color: rgba(226,232,240,0.8); background: rgba(148,163,184,0.1); border: 1px solid rgba(148,163,184,0.28); }
 .engine-notice--unavailable::before { background: #94a3b8; }
+.engine-notice--active { color: rgba(187,247,208,0.75); background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.18); }
+.engine-notice--active::before { background: rgba(74,222,128,0.7); }
 @keyframes engine-notice-pulse { 0%, 100% { opacity: 0.35; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.15); } }
 @keyframes engine-notice-fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .engine-notice--running::before, .engine-notice--ready { animation: none; } }

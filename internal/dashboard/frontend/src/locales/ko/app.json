@@ -460,5 +460,6 @@
   "events.sentence.dtDrops": "{actor}, {location}에 {target} 다크 드랍{icon}{count}{from}",
   "game.engineNotice.running": "스타크래프트 엔진으로 이 게임을 분석해 더 자세한 리포트를 만들고 있습니다",
   "game.engineNotice.ready": "자세한 리포트가 준비되었습니다",
+  "game.engineNotice.active": "스타크래프트 엔진을 사용한 자세한 리포트",
   "game.engineNotice.unavailable": "이 게임은 스타크래프트 엔진으로 분석할 수 없습니다"
 }

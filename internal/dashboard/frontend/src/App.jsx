@@ -4299,6 +4299,7 @@ function App() {
   const mainGamePlayers = mainGame?.players || [];
   const mainGameIsEngine = mainGame?.mode === 'engine';
   const mainGameHasSkill = mainGame?.skill_status === 'ok';
+  const mainGameSkillUnratedReason = { too_short: 'skill.status.tooShort', custom_rules: 'skill.status.customRules' }[mainGame?.skill_status];
   const mainGameShowsSkill = mainGame?.skill_status === 'ok' && mainGamePlayers.some((p) => p.skill?.combined);
   // Engine supply is worth its own tab; the command-inferred estimate stays a Timings sub-tab.
   const mainSupplyFromEngine = mainGamePlayers.length > 0
@@ -6238,6 +6239,18 @@ function App() {
                       >
                         {t('game.tabs.skill')}
                       </button>
+                    ) : mainGameSkillUnratedReason ? (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={false}
+                        aria-disabled="true"
+                        className="workflow-production-tab workflow-production-tab-disabled"
+                        data-tooltip={t(mainGameSkillUnratedReason)}
+                        aria-label={`${t('game.tabs.skill')}: ${t(mainGameSkillUnratedReason)}`}
+                      >
+                        {t('game.tabs.skill')}
+                      </button>
                     ) : null}
                     {Array.isArray(mainGame?.build_orders) && mainGame.build_orders.length > 0 ? (
                       <button
@@ -6309,6 +6322,8 @@ function App() {
                       <span className={`engine-notice${mainGame?.engine_pending ? ' engine-notice--running' : ' engine-notice--ready'}`} role="status">
                         {mainGame?.engine_pending ? t('game.engineNotice.running') : t('game.engineNotice.ready')}
                       </span>
+                    ) : mainGame?.mode === 'engine' && mainGame?.engine_confidence === 'high' ? (
+                      <span className="engine-notice engine-notice--active">{t('game.engineNotice.active')}</span>
                     ) : null}
                   </div>
                 </div>
