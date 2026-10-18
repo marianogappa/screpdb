@@ -90,6 +90,11 @@ func (d *Dashboard) enginePending(replayID int64) bool {
 	return runner != nil && runner.Pending(replayID)
 }
 
+func (d *Dashboard) engineUnavailable(replayID int64) bool {
+	runner := d.enginePass.get()
+	return runner != nil && runner.Unavailable(replayID)
+}
+
 func (d *Dashboard) closeEnginePass() {
 	d.enginePass.mu.Lock()
 	runner := d.enginePass.runner

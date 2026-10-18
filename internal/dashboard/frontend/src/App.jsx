@@ -6301,7 +6301,11 @@ function App() {
                     >
                       {t('tabs.hotkeys')}
                     </button>
-                    {mainGame?.engine_pending || mainEngineReadyFor === mainGame?.replay_id ? (
+                    {mainGame?.engine_unavailable ? (
+                      <span className="engine-notice engine-notice--unavailable" role="status">
+                        {t('game.engineNotice.unavailable')}
+                      </span>
+                    ) : mainGame?.engine_pending || mainEngineReadyFor === mainGame?.replay_id ? (
                       <span className={`engine-notice${mainGame?.engine_pending ? ' engine-notice--running' : ' engine-notice--ready'}`} role="status">
                         {mainGame?.engine_pending ? t('game.engineNotice.running') : t('game.engineNotice.ready')}
                       </span>

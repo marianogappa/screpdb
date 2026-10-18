@@ -373,6 +373,8 @@ type workflowGameDetail struct {
 	SummaryVersion string `json:"summary_version"`
 	// EnginePending is true while the game waits for, or is in, its engine pass.
 	EnginePending bool `json:"engine_pending,omitempty"`
+	// EngineUnavailable is true once the engine pass gave up on the game: it failed, or drifted from the real game.
+	EngineUnavailable bool `json:"engine_unavailable,omitempty"`
 	// SkillStatus says whether the skill tiers apply: ok, too_short or custom_rules (empty: no humans to rate).
 	SkillStatus string `json:"skill_status"`
 	// SkillCaveats are why the tiers may be off for this game: team_game, money_map.

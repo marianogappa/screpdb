@@ -11,6 +11,8 @@ func (d *Dashboard) focusEnginePass(int64) {}
 
 func (d *Dashboard) enginePending(int64) bool { return false }
 
+func (d *Dashboard) engineUnavailable(int64) bool { return false }
+
 func (d *Dashboard) closeEnginePass() {}
 
 func (d *Dashboard) enginePassToggled(bool) {}

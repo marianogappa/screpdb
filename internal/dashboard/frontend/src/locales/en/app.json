@@ -459,5 +459,6 @@
   "events.sentence.reaverDrops": "{actor} Reaver drops{icon}{count}{from} on {target} at {location}",
   "events.sentence.dtDrops": "{actor} DT drops{icon}{count}{from} on {target} at {location}",
   "game.engineNotice.running": "Running this game through the StarCraft engine for an enhanced report",
-  "game.engineNotice.ready": "Enhanced report ready"
+  "game.engineNotice.ready": "Enhanced report ready",
+  "game.engineNotice.unavailable": "This game can’t be run through the StarCraft engine"
 }
