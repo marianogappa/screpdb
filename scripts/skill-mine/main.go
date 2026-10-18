@@ -28,6 +28,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/icza/screp/rep/repcmd"
+	"github.com/icza/screp/rep/repcore"
+	"github.com/icza/screp/repparser"
 	"github.com/marianogappa/screpdb/internal/engine"
 	"github.com/marianogappa/screpdb/internal/engine/macro"
 	"github.com/marianogappa/screpdb/internal/hotkeystream"
@@ -65,7 +68,7 @@ type job struct {
 }
 
 func main() {
-	harvestDir := flag.String("harvest", "", "screpharvest harvest dir")
+	harvestDirs := flag.String("harvest", "", "screpharvest harvest dirs, comma separated (e.g. the pro harvest and the tiers harvest)")
 	corpusDir := flag.String("corpus", "", "scfingerprint corpus dir, to label pro sides")
 	bwdata := flag.String("bwdata", "", "extracted StarCraft data dir for the engine pass")
 	out := flag.String("out", filepath.Join(os.TempDir(), "skill-mine.jsonl"), "output JSONL (resumes)")
@@ -80,15 +83,17 @@ func main() {
 		if err != nil {
 			log.Fatalf("registry: %v", err)
 		}
-		sides, err := procorpus.LabelCorpus(*harvestDir, reg, *minDuration)
-		if err != nil {
-			log.Fatalf("label: %v", err)
-		}
-		for _, s := range sides {
-			pros[fmt.Sprintf("%s:%d", s.MatchID, s.AuroraID)] = s.ProName
+		for _, dir := range strings.Split(*harvestDirs, ",") {
+			sides, err := procorpus.LabelCorpus(dir, reg, *minDuration)
+			if err != nil {
+				log.Fatalf("label: %v", err)
+			}
+			for _, s := range sides {
+				pros[fmt.Sprintf("%s:%d", s.MatchID, s.AuroraID)] = s.ProName
+			}
 		}
 	}
-	jobs := pick(*harvestDir, pros, *perBin, *minDuration, done(*out))
+	jobs := pick(strings.Split(*harvestDirs, ","), pros, *perBin, *minDuration, done(*out))
 	log.Printf("%d games to run (%d pro sides labelled)", len(jobs), len(pros))
 
 	data, err := engine.LoadData(*bwdata)
@@ -152,18 +157,27 @@ func done(path string) map[string]bool {
 
 // pick samples 1v1 ladder games with both MMRs known, evenly across MMR: each game is binned by its
 // lower MMR so a bin's games really are played at that level.
-func pick(harvestDir string, pros map[string]string, perBin, minDuration int, skip map[string]bool) []job {
+func pick(harvestDirs []string, pros map[string]string, perBin, minDuration int, skip map[string]bool) []job {
+	var all []candidate
+	seen := map[string]bool{}
+	for _, harvestDir := range harvestDirs {
+		all = append(all, readHarvest(harvestDir, minDuration, seen)...)
+	}
+	return pickEvenly(all, pros, perBin, skip)
+}
+
+type candidate struct {
+	row  procorpus.HarvestRow
+	file string
+}
+
+func readHarvest(harvestDir string, minDuration int, seen map[string]bool) []candidate {
 	f, err := os.Open(filepath.Join(harvestDir, "replays.jsonl"))
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer f.Close()
-	type candidate struct {
-		row  procorpus.HarvestRow
-		file string
-	}
 	var all []candidate
-	seen := map[string]bool{}
 	s := bufio.NewScanner(f)
 	s.Buffer(make([]byte, 1<<20), 1<<20)
 	for s.Scan() {
@@ -180,6 +194,10 @@ func pick(harvestDir string, pros map[string]string, perBin, minDuration int, sk
 		}
 		all = append(all, candidate{row.HarvestRow, filepath.Join(harvestDir, row.File)})
 	}
+	return all
+}
+
+func pickEvenly(all []candidate, pros map[string]string, perBin int, skip map[string]bool) []job {
 	rand.New(rand.NewSource(1)).Shuffle(len(all), func(i, j int) { all[i], all[j] = all[j], all[i] })
 	bins := map[int]int{}
 	var jobs []job
@@ -262,10 +280,19 @@ func run(j job, data *engine.Data) []sample {
 		}
 		at8 = economyAt(d, earlySeconds)
 	}
+	actions := actionStats(b)
 	minutes := float64(j.row.Duration) / 60
 	var out []sample
 	for i, p := range players {
 		values := fastValues(p, minutes)
+		for k, v := range actions[p.ReplayPlayerID] {
+			values[k] = v
+		}
+		if d != nil && engineState == "high" {
+			for k, v := range macroWindowValues(d, int8(p.Slot)) {
+				values[k] = v
+			}
+		}
 		if m, ok := scorecards[p.Slot]; ok {
 			for k, v := range engineValues(m) {
 				values[k] = v
@@ -403,4 +430,131 @@ func economyAt(d *engine.Digest, seconds int) map[int8]engine.EconomySample {
 		}
 	}
 	return at
+}
+
+
+// actionStats measures each player's actions from the command stream: the opening minutes, before a game's
+// outcome changes what a player is doing, and the mix of what the actions are.
+func actionStats(b []byte) map[uint8]map[string]float64 {
+	r, err := repparser.ParseConfig(b, repparser.Config{Commands: true})
+	if err != nil || r.Commands == nil {
+		return nil
+	}
+	r.Compute()
+	type counts struct{ all, effective, all6, effective6, hotkeys float64 }
+	by := map[uint8]*counts{}
+	window := repcore.Frame(6 * 60 * 1000 / 42)
+	for _, c := range r.Commands.Cmds {
+		base := c.BaseCmd()
+		n := by[base.PlayerID]
+		if n == nil {
+			n = &counts{}
+			by[base.PlayerID] = n
+		}
+		effective := base.IneffKind.Effective()
+		n.all++
+		if effective {
+			n.effective++
+		}
+		if base.Frame < window {
+			n.all6++
+			if effective {
+				n.effective6++
+			}
+		}
+		if base.Type.ID == repcmd.TypeIDHotkey {
+			n.hotkeys++
+		}
+	}
+	out := map[uint8]map[string]float64{}
+	for id, n := range by {
+		if n.all == 0 {
+			continue
+		}
+		out[id] = map[string]float64{
+			"apm_first6":   n.all6 / 6,
+			"eapm_first6":  n.effective6 / 6,
+			"spam_share":   1 - n.effective/n.all,
+			"hotkey_share": n.hotkeys / n.all,
+		}
+	}
+	return out
+}
+
+var (
+	townHalls = map[uint16]bool{106: true, 154: true, 131: true, 132: true, 133: true}
+	workers   = map[uint16]bool{7: true, 64: true, 41: true}
+)
+
+// macroWindowValues measures worker production between 2:00 and 10:00, when every player is building
+// an economy: how busy Terran and Protoss town halls were making workers, and how much larva Zerg left
+// unused per hatchery.
+func macroWindowValues(d *engine.Digest, slot int8) map[string]float64 {
+	const from, to = 120 * 24, 600 * 24
+	end := min(int32(to), d.TrustedUntil())
+	if end <= from {
+		return nil
+	}
+	halls := map[uint32]int32{}
+	for _, u := range d.Initial {
+		if u.Owner == slot && townHalls[u.Type] {
+			halls[u.Unit] = 0
+		}
+	}
+	for _, pr := range d.Productions {
+		if pr.Owner == slot && townHalls[pr.Type] && pr.Complete != engine.NoFrame {
+			if _, ok := halls[pr.Unit]; !ok {
+				halls[pr.Unit] = pr.Complete
+			}
+		}
+	}
+	values := map[string]float64{}
+	overlap := func(a, b int32) float64 { return float64(max(0, min(b, end)-max(a, from))) }
+	var alive, busy float64
+	zerg := false
+	for id, ready := range halls {
+		alive += overlap(ready, end)
+		for _, pr := range d.Productions {
+			if pr.Producer == id && workers[pr.Type] {
+				stop := pr.Complete
+				if stop == engine.NoFrame {
+					stop = pr.Cancel
+				}
+				if stop == engine.NoFrame {
+					stop = end
+				}
+				busy += overlap(pr.Start, stop)
+			}
+		}
+	}
+	for _, p := range d.Players {
+		if p.Slot == slot && p.Race == 0 {
+			zerg = true
+		}
+	}
+	if !zerg && alive > 0 {
+		values["hall_worker_busy"] = busy / alive
+	}
+	if zerg {
+		var larva, n float64
+		for _, e := range d.Economy {
+			if e.Owner != slot || e.Frame < from || e.Frame >= end {
+				continue
+			}
+			count := 0
+			for _, ready := range halls {
+				if ready <= e.Frame {
+					count++
+				}
+			}
+			if count > 0 {
+				larva += float64(e.Larva) / float64(count)
+				n++
+			}
+		}
+		if n > 0 {
+			values["larva_per_hatch"] = larva / n
+		}
+	}
+	return values
 }
