@@ -7643,3 +7643,16 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .skill-player-label { font-size: 12px; color: rgba(255,255,255,0.85); }
 .skill-player-value { color: rgba(255,255,255,0.45); }
 @media (max-width: 700px) { .skill-rows { grid-template-columns: 1fr; } }
+
+.engine-notice {
+  margin-left: auto; align-self: center; display: inline-flex; align-items: center; gap: 8px;
+  font-size: 0.78rem; padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+}
+.engine-notice::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.engine-notice--running { color: rgba(191,219,254,0.95); background: rgba(96,165,250,0.12); border: 1px solid rgba(96,165,250,0.3); }
+.engine-notice--running::before { background: #60a5fa; animation: engine-notice-pulse 1.2s ease-in-out infinite; }
+.engine-notice--ready { color: rgba(187,247,208,0.95); background: rgba(74,222,128,0.12); border: 1px solid rgba(74,222,128,0.3); animation: engine-notice-fade 6s ease-in forwards; }
+.engine-notice--ready::before { background: #4ade80; }
+@keyframes engine-notice-pulse { 0%, 100% { opacity: 0.35; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.15); } }
+@keyframes engine-notice-fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .engine-notice--running::before, .engine-notice--ready { animation: none; } }

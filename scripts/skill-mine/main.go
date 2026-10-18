@@ -38,6 +38,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/library/compact"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser"
+	"github.com/marianogappa/screpdb/internal/skill"
 	"github.com/marianogappa/screpdb/scripts/procorpus"
 )
 
@@ -303,7 +304,7 @@ func run(j job, data *engine.Data) []sample {
 			values[k] = v
 		}
 		if d != nil && engineState == "high" {
-			for k, v := range macroWindowValues(d, int8(p.Slot)) {
+			for k, v := range macroWindowValues(d, int8(p.Slot), macro.WorkerWindowEnd) {
 				values[k] = v
 			}
 		}
@@ -372,9 +373,7 @@ func fastValues(p *library.Player, minutes float64) map[string]float64 {
 		"apm":  float64(p.APM),
 		"eapm": float64(p.EAPM),
 	}
-	if p.Viewport > 0 {
-		v["viewport_switches_per_min"] = float64(p.Viewport)
-	}
+	v["viewport_switches_per_min"] = float64(p.Viewport)
 	if c := p.Cadence; c != nil {
 		v["cadence_rate_per_min"] = c.RatePerMinute
 		v["cadence_cv_gap"] = c.CVGap
@@ -382,19 +381,22 @@ func fastValues(p *library.Player, minutes float64) map[string]float64 {
 		v["cadence_idle20"] = c.Idle20Ratio
 		v["cadence_score"] = c.Score
 	}
-	if events, err := hotkeystream.Decode(p.HotkeyStream); err == nil && len(events) > 0 && minutes > 0 {
+	if events, err := hotkeystream.Decode(p.HotkeyStream); err == nil && minutes > 0 {
 		groups := map[byte]bool{}
-		recalls, assigns := 0, 0
+		recalls, recallsLate, assigns := 0, 0, 0
 		for _, e := range events {
 			switch e.Type {
 			case hotkeystream.TypeSelect:
 				recalls++
+				if e.Sec >= skill.RecallsFromSecond {
+					recallsLate++
+				}
 			case hotkeystream.TypeAssignUnits, hotkeystream.TypeAssignBuilding, hotkeystream.TypeAdd:
 				assigns++
 				groups[e.Group] = true
 			}
 		}
-		v["hotkey_recalls_per_min"] = float64(recalls) / minutes
+		v["hotkey_recalls_per_min"] = float64(recallsLate) / (minutes - skill.RecallsFromSecond/60)
 		v["hotkey_assigns_per_min"] = float64(assigns) / minutes
 		v["hotkey_groups"] = float64(len(groups))
 	}
@@ -497,8 +499,8 @@ func actionStats(b []byte) map[uint8]map[string]float64 {
 // macroWindowValues measures worker production between 2:00 and 10:00, when every player is building
 // an economy: how busy Terran and Protoss town halls were making workers, and how much larva Zerg left
 // unused per hatchery.
-func macroWindowValues(d *engine.Digest, slot int8) map[string]float64 {
-	w, ok := macro.WorkerProductionOf(d, slot)
+func macroWindowValues(d *engine.Digest, slot int8, until int) map[string]float64 {
+	w, ok := macro.WorkerProductionOf(d, slot, until)
 	if !ok {
 		return nil
 	}
@@ -602,6 +604,8 @@ func mineDir(dir, out string, data *engine.Data, perKind, minDuration, workers i
 }
 
 func measureUnlabelled(b []byte, rec *library.Replay, humans []*library.Player, data *engine.Data) []sample {
+	money := rec.MapKind == library.MapKindMoney
+	banked := map[uint8]float64{}
 	engineState := ""
 	scorecards := map[uint8]macro.Player{}
 	var d *engine.Digest
@@ -613,6 +617,11 @@ func measureUnlabelled(b []byte, rec *library.Replay, humans []*library.Player, 
 		engineState, d = "high", dg
 		for _, m := range macro.Compute(dg) {
 			scorecards[uint8(m.Slot)] = m
+		}
+		if money {
+			for _, m := range macro.Compute(macro.FirstSeconds(dg, macro.MoneyMapBankedWindowEnd)) {
+				banked[uint8(m.Slot)] = float64(m.FloatSeconds) / math.Max(1, float64(m.Seconds))
+			}
 		}
 	}
 	actions := actionStats(b)
@@ -627,7 +636,14 @@ func measureUnlabelled(b []byte, rec *library.Replay, humans []*library.Player, 
 			for k, v := range engineValues(m) {
 				values[k] = v
 			}
-			for k, v := range macroWindowValues(d, int8(p.Slot)) {
+			until := macro.WorkerWindowEnd
+			if money {
+				until = macro.MoneyMapWorkerWindowEnd
+				if b, ok := banked[p.Slot]; ok {
+					values["float_share"] = b
+				}
+			}
+			for k, v := range macroWindowValues(d, int8(p.Slot), until) {
 				values[k] = v
 			}
 		}

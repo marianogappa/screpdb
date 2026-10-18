@@ -7,11 +7,14 @@ import (
 	"github.com/marianogappa/screpdb/internal/engine"
 )
 
-// Worker production is measured from 2:00 to 10:00, when every player is building an economy and before
-// a game's outcome decides who can still make workers.
+// Worker production is measured from 2:00, once making workers stops being automatic (the first two
+// minutes every player trains from one town hall, and Zerg larva is the limit), until a game's outcome
+// starts deciding who can still make workers: 10:00, or 8:00 on money maps, where economies saturate early.
 const (
-	workerWindowFrom = 120 * framesPerSecond
-	workerWindowTo   = 600 * framesPerSecond
+	workerWindowFrom        = 120 * framesPerSecond
+	WorkerWindowEnd         = 600
+	MoneyMapWorkerWindowEnd = 480
+	MoneyMapBankedWindowEnd = 1200
 )
 
 var townHallTypes = map[uint16]bool{
@@ -28,8 +31,9 @@ type WorkerProduction struct {
 	Zerg             bool
 }
 
-func WorkerProductionOf(d *engine.Digest, slot int8) (WorkerProduction, bool) {
-	end := min(int32(workerWindowTo), d.TrustedUntil())
+// WorkerProductionOf measures worker production from 2:00 to untilSecond.
+func WorkerProductionOf(d *engine.Digest, slot int8, untilSecond int) (WorkerProduction, bool) {
+	end := min(int32(untilSecond*framesPerSecond), d.TrustedUntil())
 	if end <= workerWindowFrom {
 		return WorkerProduction{}, false
 	}
@@ -98,4 +102,11 @@ func WorkerProductionOf(d *engine.Digest, slot int8) (WorkerProduction, bool) {
 	}
 	out.LarvaPerHatchery = larva / n
 	return out, true
+}
+
+// FirstSeconds is the digest cut at a game second, so the scorecard measures that opening window only.
+func FirstSeconds(d *engine.Digest, seconds int) *engine.Digest {
+	cut := *d
+	cut.LastFrame = min(d.LastFrame, int32(seconds*framesPerSecond-1))
+	return &cut
 }

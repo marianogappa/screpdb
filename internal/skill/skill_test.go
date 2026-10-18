@@ -70,3 +70,20 @@ func TestEndsSpreadPlayersBelowTheCuts(t *testing.T) {
 		t.Fatalf("60 at %v and 115 at %v should both sit inside Beginner, apart", a.Position, b.Position)
 	}
 }
+
+func TestStripsShareOneScaleAcrossRaces(t *testing.T) {
+	m, _ := Load()
+	z := m.Evaluate("Z", ContextOneVsOne, map[string]float64{EAPM: 81})
+	p := m.Evaluate("P", ContextOneVsOne, map[string]float64{EAPM: 83})
+	if z.Metrics[EAPM].Position >= p.Metrics[EAPM].Position {
+		t.Fatalf("EAPM 81 (Zerg) at %v must sit left of 83 (Protoss) at %v", z.Metrics[EAPM].Position, p.Metrics[EAPM].Position)
+	}
+	low := m.Evaluate("T", ContextOneVsOne, map[string]float64{EAPM: 49})
+	if low.Metrics[EAPM].Position <= 0 {
+		t.Fatalf("EAPM 49 should sit inside Beginner, not on its edge: %v", low.Metrics[EAPM].Position)
+	}
+	none := m.Evaluate("T", ContextOneVsOne, map[string]float64{HotkeyRecalls: 0})
+	if none.Metrics[HotkeyRecalls].Position != 0 {
+		t.Fatalf("no recalls at all is the very start of the axis, got %v", none.Metrics[HotkeyRecalls].Position)
+	}
+}

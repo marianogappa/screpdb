@@ -47,6 +47,10 @@ func (d *Dashboard) populateSkill(detail *workflowGameDetail) {
 			humans = append(humans, i)
 		}
 	}
+	// Skill is an engine feature: without trusted engine data the game simply has no Skill tab.
+	if rec.EngineData == nil || rec.EngineData.LowConfidence {
+		return
+	}
 	switch {
 	case len(humans) < 2:
 		return
@@ -86,7 +90,7 @@ func (d *Dashboard) populateSkill(detail *workflowGameDetail) {
 			addFinite(values, skill.HallBusy, e.HallBusy)
 			addFinite(values, skill.LarvaPerHatch, e.LarvaPerHatch)
 			if e.Seconds > 0 {
-				values[skill.BankedShare] = float64(e.FloatSeconds) / float64(e.Seconds)
+				values[skill.BankedShare] = float64(e.BankedShare)
 			}
 		}
 		res := model.Evaluate(race, skillContext(rec, len(humans)), values)
@@ -101,18 +105,17 @@ func (d *Dashboard) populateSkill(detail *workflowGameDetail) {
 
 // skillValues are the fast-pass metrics, measured as scripts/skill-mine measured them.
 func skillValues(p *library.Player, minutes float64) map[string]float64 {
-	values := map[string]float64{skill.EAPM: float64(p.EAPM)}
-	if p.Viewport > 0 {
-		values[skill.ScreenSwitches] = float64(p.Viewport)
-	}
-	if events, err := hotkeystream.Decode(p.HotkeyStream); err == nil && len(events) > 0 && minutes > 0 {
+	// A player who never switched screens or recalled a hotkey scores 0 there: that is the lowest skill
+	// the metric measures, not a missing value.
+	values := map[string]float64{skill.EAPM: float64(p.EAPM), skill.ScreenSwitches: float64(p.Viewport)}
+	if events, err := hotkeystream.Decode(p.HotkeyStream); err == nil && minutes > skill.RecallsFromSecond/60 {
 		recalls := 0
 		for _, e := range events {
-			if e.Type == hotkeystream.TypeSelect {
+			if e.Type == hotkeystream.TypeSelect && e.Sec >= skill.RecallsFromSecond {
 				recalls++
 			}
 		}
-		values[skill.HotkeyRecalls] = float64(recalls) / minutes
+		values[skill.HotkeyRecalls] = float64(recalls) / (minutes - skill.RecallsFromSecond/60)
 	}
 	return values
 }

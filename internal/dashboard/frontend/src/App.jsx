@@ -5,7 +5,6 @@ import { slugKey } from './lib/i18n';
 import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
-import EngineBadge from './components/EngineBadge';
 import EngineCoverage from './components/EngineCoverage';
 import SkillTab, { TIER_KEYS, tierLabel } from './components/SkillTab';
 import EngineSnapshotMap from './components/EngineSnapshotMap';
@@ -2376,6 +2375,8 @@ function App() {
   const mainGamesRef = useRef([]);
   const mainGameRef = useRef(null);
   const applyEngineUpgradesRef = useRef(null);
+  // The game whose engine pass just finished while it was open: the tab row says so for a few seconds.
+  const [mainEngineReadyFor, setMainEngineReadyFor] = useState(null);
   const [mainPlayer, setMainPlayer] = useState(null);
   const [mainGameHotkeys, setMainGameHotkeys] = useState(null);
   const [mainGameHotkeysLoading, setMainGameHotkeysLoading] = useState(false);
@@ -2579,6 +2580,10 @@ function App() {
     const upgraded = new Set(ids);
     try {
       const openGameId = mainGameRef.current?.replay_id;
+      if (activeViewRef.current === 'game' && upgraded.has(openGameId) && mainGameRef.current?.engine_pending) {
+        setMainEngineReadyFor(openGameId);
+        setTimeout(() => setMainEngineReadyFor((id) => (id === openGameId ? null : id)), 6000);
+      }
       await Promise.all([
         activeViewRef.current === 'game' && upgraded.has(openGameId) ? refreshOpenGameSilently(openGameId) : null,
         patchEngineUpgrades(upgraded),
@@ -4112,7 +4117,6 @@ function App() {
               <td className="workflow-games-list-map">{renderMapNameWithKind(game.map_name, game.map_kind)}</td>
               <td className="workflow-games-list-duration">
                 {formatDuration(game.duration_seconds)}
-                <EngineBadge item={game} enabled={engineEnabled} />
               </td>
               <td className="workflow-games-list-featuring">
                 <FeaturingCell featuring={game.featuring} featuringKeys={game.featuring_keys} />
@@ -4234,6 +4238,7 @@ function App() {
   }, [topicFilteredGameEvents, mainSelectedGameEventKey]);
   const mainGamePlayers = mainGame?.players || [];
   const mainGameIsEngine = mainGame?.mode === 'engine';
+  const mainGameHasSkill = mainGame?.skill_status === 'ok';
   const mainGameShowsSkill = mainGame?.skill_status === 'ok' && mainGamePlayers.some((p) => p.skill?.combined);
   // Engine supply is worth its own tab; the command-inferred estimate stays a Timings sub-tab.
   const mainSupplyFromEngine = mainGamePlayers.length > 0
@@ -6132,7 +6137,6 @@ function App() {
               <>
                 <div className="workflow-title-row workflow-title-row--solo">
                   <h2 className="workflow-game-players-heading">{renderGameTitlePlayers(mainGame)}</h2>
-                  <EngineBadge item={mainGame} enabled={engineEnabled} />
                 </div>
                 <div className="workflow-game-tab-stack">
                   <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label={t('game.sectionsAria')}>
@@ -6154,7 +6158,7 @@ function App() {
                     >
                       {t('game.tabs.events')}
                     </button>
-                    {mainGameIsEngine ? (
+                    {mainGameHasSkill ? (
                       <button
                         type="button"
                         role="tab"
@@ -6227,17 +6231,11 @@ function App() {
                     >
                       {t('tabs.hotkeys')}
                     </button>
-                    {mainGameIsEngine ? null : (
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={mainGameTab === 'skill'}
-                        className={`workflow-production-tab ${mainGameTab === 'skill' ? 'workflow-production-tab-active' : ''}`}
-                        onClick={() => setMainGameTab('skill')}
-                      >
-                        {t('game.tabs.skill')}
-                      </button>
-                    )}
+                    {mainGame?.engine_pending || mainEngineReadyFor === mainGame?.replay_id ? (
+                      <span className={`engine-notice${mainGame?.engine_pending ? ' engine-notice--running' : ' engine-notice--ready'}`} role="status">
+                        {mainGame?.engine_pending ? t('game.engineNotice.running') : t('game.engineNotice.ready')}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 {mainGameSeeNotice ? (

@@ -59,7 +59,7 @@ const tierRange = (positions) => {
   return [lo, hi];
 };
 
-function Strip({ entries, range, playerColor, describe, inline, hero, labelShare = LABEL_SHARE }) {
+function Strip({ entries, range, playerColor, describe, inline, hero, tierLabels, labelShare = LABEL_SHARE }) {
   const t = useT();
   const [lo, hi] = range;
   const band = (pos) => (pos - lo) / (hi - lo);
@@ -78,11 +78,11 @@ function Strip({ entries, range, playerColor, describe, inline, hero, labelShare
   return (
     <div
       className={`skill-strip${hero ? ' skill-strip--hero' : ''}`}
-      style={{ height: `${BAND_LABEL_PX + Math.max(1, rows.length) * ROW_PX + 4}px` }}
+      style={{ height: `${(tierLabels ? BAND_LABEL_PX : 4) + Math.max(1, rows.length) * ROW_PX + 4}px` }}
     >
       {tiers.map((i) => (
         <div key={i} className={`skill-band skill-band-${TIER_KEYS[i]}`} style={{ left: `${band(i) * 100}%`, width: `${(band(i + 1) - band(i)) * 100}%` }}>
-          <span className="skill-band-label">{t(`skill.tier.${TIER_KEYS[i]}`)}</span>
+          {tierLabels ? <span className="skill-band-label">{t(`skill.tier.${TIER_KEYS[i]}`)}</span> : null}
         </div>
       ))}
       {placed.map(({ player, placement, x, row }) => {
@@ -92,7 +92,7 @@ function Strip({ entries, range, playerColor, describe, inline, hero, labelShare
           <div
             key={player.player_id}
             className={`skill-marker${right ? ' skill-marker--right' : ''}`}
-            style={{ left: `${x * 100}%`, top: `${BAND_LABEL_PX + row * ROW_PX}px` }}
+            style={{ left: `${x * 100}%`, top: `${(tierLabels ? BAND_LABEL_PX : 4) + row * ROW_PX}px` }}
             title={value ? `${player.name}: ${value}` : player.name}
           >
             <span className="skill-marker-dot" style={{ background: playerColor(player.color) }} />
@@ -143,10 +143,11 @@ export default function SkillTab({ game, players, playerColor }) {
               range={range}
               playerColor={playerColor}
               hero
+              tierLabels
             />
           </>
         ) : null}
-        {METRICS.map((m) => {
+        {METRICS.filter((m) => entriesFor(m.key).length).map((m, index) => {
           const entries = entriesFor(m.key);
           if (!entries.length) return null;
           return (
@@ -160,6 +161,7 @@ export default function SkillTab({ game, players, playerColor }) {
                 range={range}
                 playerColor={playerColor}
                 inline={m.inline !== false}
+                tierLabels={index === 0}
                 describe={m.key === 'worker_production' ? describeWorkers : (p) => String(m.format(p.value))}
               />
             </React.Fragment>

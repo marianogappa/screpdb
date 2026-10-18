@@ -25,6 +25,10 @@ const (
 	tierCount
 )
 
+// AllRaces keys the cuts every race shares. Metric strips place players on them, so on one strip a higher
+// value always sits further right; the combined estimate stays per race.
+const AllRaces = "all"
+
 // Metric keys, as the miner names them.
 const (
 	EAPM             = "eapm"
@@ -41,6 +45,9 @@ const (
 const (
 	MinGameSeconds = 480
 	MinAPM         = 20
+	// RecallsFromSecond skips the opening, when players cycle hotkeys to warm up their hands: counted from
+	// 2:00, recalls follow MMR a little better (0.70 against 0.68 for the whole game).
+	RecallsFromSecond = 120
 )
 
 type Model struct {
@@ -150,8 +157,15 @@ func place(value float64, cuts [3]float64, ends [2]float64, higherIsBetter bool)
 	if !higherIsBetter {
 		v, c, e = -value, [3]float64{-cuts[0], -cuts[1], -cuts[2]}, [2]float64{-ends[0], -ends[1]}
 	}
-	// The outer tiers reach the data's ends, or as wide as their neighbour when that is further.
-	edges := [5]float64{min(e[0], c[0]-(c[1]-c[0])), c[0], c[1], c[2], max(e[1], c[2]+(c[2]-c[1]))}
+	// The outer tiers reach the data's ends; without ends past the cuts, they are as wide as their neighbour.
+	lo, hi := c[0]-(c[1]-c[0]), c[2]+(c[2]-c[1])
+	if e[0] < c[0] {
+		lo = e[0]
+	}
+	if e[1] > c[2] {
+		hi = e[1]
+	}
+	edges := [5]float64{lo, c[0], c[1], c[2], hi}
 	pos := 0.0
 	switch {
 	case v <= edges[0]:
@@ -196,7 +210,11 @@ type Result struct {
 func (m *Model) Evaluate(race, context string, values map[string]float64) Result {
 	res := Result{Metrics: map[string]Placement{}}
 	for key, mc := range m.Metrics {
-		cuts, ok := mc.Cuts[race]
+		scale := AllRaces
+		if _, ok := mc.Cuts[scale]; !ok {
+			scale = race
+		}
+		cuts, ok := mc.Cuts[scale]
 		v, has := values[key]
 		if !ok || !has {
 			continue
@@ -205,7 +223,7 @@ func (m *Model) Evaluate(race, context string, values map[string]float64) Result
 		if q, ok := m.ContextAdjust[context][key]; ok {
 			adjusted = q.apply(v)
 		}
-		p := place(adjusted, cuts, mc.Ends[race], mc.HigherIsBetter)
+		p := place(adjusted, cuts, mc.Ends[scale], mc.HigherIsBetter)
 		p.Value = v
 		res.Metrics[key] = p
 	}

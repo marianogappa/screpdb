@@ -159,6 +159,7 @@ func (d *Dashboard) GameDetail(_ context.Context, request apigen.GameDetailReque
 		}
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
+	detail.EnginePending = d.enginePending(int64(request.ReplayID))
 	return detail, nil
 }
 

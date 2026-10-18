@@ -84,6 +84,12 @@ func (d *Dashboard) focusEnginePass(replayID int64) {
 	}
 }
 
+// enginePending reports whether the game is waiting for, or in, its engine pass.
+func (d *Dashboard) enginePending(replayID int64) bool {
+	runner := d.enginePass.get()
+	return runner != nil && runner.Pending(replayID)
+}
+
 func (d *Dashboard) closeEnginePass() {
 	d.enginePass.mu.Lock()
 	runner := d.enginePass.runner

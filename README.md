@@ -301,18 +301,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-18  OK. Skill axis ends come from the fitted data (2nd and 98th percentile per race, in model.json), one tier per player, a single warning, flush rows and tinted summary pills. In-memory scoring and frontend only, no I/O changes.
+2026-10-18  OK. Skill: one scale per metric, recalls from 2:00, missing values count as 0, money maps measure worker production to 8:00 and banked resources over 20 minutes (stored in the engine record). Opening a game runs its engine pass at once, even on battery, and the game page says so; the engine pill is gone. Skill only exists for games with trusted engine data. No new files, reads or writes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-18  OK. Skill axis ends come from the fitted data (2nd and 98th percentile per race, in model.json), one tier per player, a single warning, flush rows and tinted summary pills. In-memory scoring and frontend only, no I/O changes.
 2026-10-18  OK. Skill macro rows of team games and money maps are converted to 1v1 regular-map equivalents with quantile tables embedded in internal/skill/model.json (fitted offline by scripts/skill-fit from skill-mine -dir output). In-memory scoring only, no I/O changes.
 2026-10-18  OK. Frontend only: Skill charts share one tier range and line up, and the estimate is a single chart carrying each verdict. scripts/skill-mine gains -dir to measure unlabelled replays under a folder the operator names (read only, one output file). No app I/O changes.
 2026-10-18  OK. Skill tab layout pass and wider rating: team games and money maps are rated with caveats (custom-rules and sub-8-minute games still are not); the verdict always shows after APM. Frontend and in-memory scoring only, no I/O changes.
 2026-10-18  OK. Skill tab: internal/skill embeds model.json (written offline by scripts/skill-fit from skill-mine output) and scores 1v1 games from the in-memory library record; worker production is stored in the engine record at engine-pass time. The Macro tab and its embedded macro_ranges.json are removed. No new files, reads or writes at runtime.
-2026-10-18  OK. scmapanalyzer bumped to e925d63 (team-color masks, burrowed Lurker). Sprite endpoints take optional color and variant; each tint is cached as its own PNG in the existing game-assets/icons cache (render version 4, old version pruned as before). No new paths.
 ```
 
 </details>

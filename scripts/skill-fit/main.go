@@ -76,10 +76,10 @@ func main() {
 		if rho < 0 {
 			sign = -1
 		}
-		for _, race := range []string{"T", "P", "Z"} {
+		for _, race := range []string{"T", "P", "Z", skill.AllRaces} {
 			var scored []scoredTier
 			for _, s := range all {
-				if s.Side.Race == race {
+				if s.Side.Race == race || race == skill.AllRaces {
 					scored = append(scored, scoredTier{sign * s.Values[key], s.tier()})
 				}
 			}
@@ -89,6 +89,10 @@ func main() {
 			c := equalErrorCuts(scored)
 			mc.Cuts[race] = [3]float64{round(sign*c[0], 3), round(sign*c[1], 3), round(sign*c[2], 3)}
 			lo, hi := ends(scored)
+			if sign > 0 && lo > 0 {
+				// A metric that counts something reaches down to zero, its natural floor.
+				lo = 0
+			}
 			mc.Ends[race] = [2]float64{round(sign*lo, 3), round(sign*hi, 3)}
 		}
 		model.Metrics[key] = mc
@@ -241,14 +245,14 @@ func read(path string) []sample {
 	return out
 }
 
-// ends are the 2nd and 98th percentile scores: where the axis stops, past the outer cuts.
+// ends are the 0.5th and 99.5th percentile scores: where the axis stops, past the outer cuts.
 func ends(scored []scoredTier) (float64, float64) {
 	xs := make([]float64, len(scored))
 	for i, s := range scored {
 		xs[i] = s.score
 	}
 	sort.Float64s(xs)
-	return xs[len(xs)*2/100], xs[len(xs)*98/100]
+	return xs[len(xs)*5/1000], xs[len(xs)*995/1000]
 }
 
 type scoredTier struct {

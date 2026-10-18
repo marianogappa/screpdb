@@ -72,6 +72,7 @@ type Runner struct {
 
 	mu        sync.Mutex
 	queue     *queue
+	running   map[[32]byte]bool
 	status    Status
 	data      *engine.Data
 	dataHash  [32]byte
@@ -221,15 +222,37 @@ func (r *Runner) Snapshots(ctx context.Context, checksum [32]byte, path string, 
 }
 
 // Focus moves a replay to the front of the queue: the game the user has open upgrades next.
+// Focus runs the replay the user has open now, on a worker of its own, instead of after the passes already
+// running: a long team game on every worker would otherwise keep the open game waiting for minutes. It runs
+// on battery too: pausing on battery is for the background queue, not for the game someone just opened.
 func (r *Runner) Focus(replayID int64) {
 	rec, ok := r.lib.Snapshot().ByID(replayID)
 	if !ok {
 		return
 	}
 	r.mu.Lock()
+	j, queued := r.queue.byChecksum[rec.Checksum]
+	if queued && r.status.State == StateRunning {
+		r.queue.remove(rec.Checksum)
+		r.mu.Unlock()
+		r.wg.Go(func() { r.process(j) })
+		return
+	}
 	r.queue.setFocus(rec.Checksum)
 	r.mu.Unlock()
 	r.signal()
+}
+
+// Pending reports whether the replay is waiting for, or in, an engine pass.
+func (r *Runner) Pending(replayID int64) bool {
+	rec, ok := r.lib.Snapshot().ByID(replayID)
+	if !ok {
+		return false
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	_, queued := r.queue.byChecksum[rec.Checksum]
+	return queued || r.running[rec.Checksum]
 }
 
 func (r *Runner) setState(s State, reason string) {
@@ -426,6 +449,21 @@ func (r *Runner) next() *job {
 }
 
 func (r *Runner) process(j *job) {
+	r.mu.Lock()
+	if r.running == nil {
+		r.running = map[[32]byte]bool{}
+	}
+	if r.running[j.checksum] {
+		r.mu.Unlock()
+		return
+	}
+	r.running[j.checksum] = true
+	r.mu.Unlock()
+	defer func() {
+		r.mu.Lock()
+		delete(r.running, j.checksum)
+		r.mu.Unlock()
+	}()
 	if r.applyCached(j.checksum) {
 		return
 	}
@@ -454,7 +492,11 @@ func (r *Runner) process(j *job) {
 }
 
 func (r *Runner) summarize(checksum [32]byte, d *engine.Digest) *library.EngineData {
-	data := Summarize(d)
+	money := false
+	if rec, ok := r.lib.Snapshot().ByChecksum(checksum); ok {
+		money = rec.MapKind == library.MapKindMoney
+	}
+	data := Summarize(d, money)
 	if r.opts.Features != nil && !data.LowConfidence {
 		data.Features = r.opts.Features(checksum, d)
 	}
@@ -473,17 +515,29 @@ func (r *Runner) pass(replay []byte) (d *engine.Digest, err error) {
 }
 
 // Summarize runs the digest detectors; it is what each launch does with a cached digest, so detector
-// changes reach users without new engine passes.
-func Summarize(d *engine.Digest) *library.EngineData {
+// changes reach users without new engine passes. Money maps measure worker production to 8:00 and banked
+// resources over the first 20 minutes: economies saturate early, and banking piles up late.
+func Summarize(d *engine.Digest, moneyMap bool) *library.EngineData {
 	data := &library.EngineData{
 		EngineVersion: d.EngineVersion,
 		LowConfidence: d.Confidence() == engine.ConfidenceLow,
 		TrustedUntil:  uint32(max(d.TrustedUntil(), 0)),
 	}
+	workersUntil, banked := macro.WorkerWindowEnd, map[int8]float32{}
+	if moneyMap {
+		workersUntil = macro.MoneyMapWorkerWindowEnd
+		for _, p := range macro.Compute(macro.FirstSeconds(d, macro.MoneyMapBankedWindowEnd)) {
+			banked[p.Slot] = float32(p.FloatSeconds) / float32(max(1, p.Seconds))
+		}
+	}
 	for _, p := range macro.Compute(d) {
 		ep := enginePlayer(p)
+		ep.BankedShare = float32(p.FloatSeconds) / float32(max(1, p.Seconds))
+		if b, ok := banked[p.Slot]; ok {
+			ep.BankedShare = b
+		}
 		ep.HallBusy, ep.LarvaPerHatch = float32(math.NaN()), float32(math.NaN())
-		if w, ok := macro.WorkerProductionOf(d, p.Slot); ok {
+		if w, ok := macro.WorkerProductionOf(d, p.Slot, workersUntil); ok {
 			if w.Zerg {
 				ep.LarvaPerHatch = float32(w.LarvaPerHatchery)
 			} else {

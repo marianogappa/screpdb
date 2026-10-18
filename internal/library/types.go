@@ -259,6 +259,8 @@ type EnginePlayer struct {
 	// NaN when they do not apply or the window is not covered.
 	HallBusy      float32
 	LarvaPerHatch float32
+	// BankedShare is the share of the game spent floating resources (the first 20 minutes on money maps).
+	BankedShare float32
 	// Income is minerals plus gas gathered in each full minute; Workers is the workers alive at each minute.
 	Income  []uint16
 	Workers []uint16
