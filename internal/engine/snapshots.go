@@ -83,7 +83,7 @@ func Snapshots(ctx context.Context, replay []byte, data *Data, seconds []int) (m
 			snap.Units = append(snap.Units, SnapshotUnit{
 				Type: uint16(u.Type), Owner: u.Owner, X: u.X, Y: u.Y,
 				Completed: u.Completed, Burrowed: u.Burrowed, Cloaked: u.Cloaked,
-				Lifted: raw.UnitType.Flags&bwgame.UnitTypeTFlagBuilding != 0 && raw.StatusFlags&bwgame.UnitStatusFlagFlying != 0,
+				Lifted:   raw.UnitType.Flags&bwgame.UnitTypeTFlagBuilding != 0 && raw.StatusFlags&bwgame.UnitStatusFlagFlying != 0,
 				Progress: progress(raw),
 			})
 		}
