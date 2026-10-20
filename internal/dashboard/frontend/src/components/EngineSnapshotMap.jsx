@@ -2,19 +2,16 @@ import React, { useEffect, useId, useMemo, useState } from 'react';
 import { useT } from '../lib/i18nContext';
 import { formatDuration } from '../lib/formatters';
 import { api } from '../api';
-import { getUnitIcon, normalizeUnitName } from '../lib/gameAssets';
+import { getUnitIcon, normalizeUnitName, spriteKeyOf } from '../lib/gameAssets';
 import GameMap from './GameMap';
 
 const TILE = 32;
-// scmapanalyzer's sprites are Remastered HD2 art: two sprite pixels per map pixel. Drawing each at half
-// its own size puts every unit and building at its real size, whatever it is.
+// scmapanalyzer's sprites are Remastered HD2 art: two sprite pixels per map pixel.
 const SPRITE_SCALE = 0.5;
-// These four came from other art at other scales; until scmapanalyzer redraws them, each is drawn at the
-// height (map pixels) the game gives it.
-const SPRITE_HEIGHT_OVERRIDE = { goliath: 46, darktemplar: 34, archon: 64, darkarchon: 60 };
 // The whole map is shown far smaller, so there units are drawn 2.5 times larger to stay visible.
 const WHOLE_MAP_UNIT_SCALE = 2.5;
 const LIFT_HEIGHT = 24;
+const FALLBACK_METRIC = { w: 56, h: 56, ax: 28, ay: 28 };
 
 // A Protoss building warping in glows blue-white in the game; the others show their bar alone.
 const PROTOSS_BUILDINGS = new Set([
@@ -22,40 +19,51 @@ const PROTOSS_BUILDINGS = new Set([
   'stargate', 'citadelofadun', 'roboticssupportbay', 'fleetbeacon', 'templararchives', 'observatory', 'arbitertribunal',
 ]);
 
-const spriteKey = (unitType) => normalizeUnitName(unitType).replace(/^(terran|zerg|protoss)/, '');
-
 // Only the Lurker has a burrowed sprite; other burrowed units are drawn see-through.
 const variantOf = (unitType, burrowed) => (burrowed && normalizeUnitName(unitType).endsWith('lurker') ? 'burrowed' : '');
 
-const spriteSizes = new Map();
+const metricKey = (unitType, burrowed) => {
+  const key = spriteKeyOf(unitType);
+  const variant = variantOf(unitType, burrowed);
+  return key && variant ? `${key}@${variant}` : key;
+};
 
-// useSpriteSizes learns each sprite's own size the first time it is drawn; sizes do not depend on color.
-function useSpriteSizes(hrefsByKey) {
+const spriteMetrics = new Map();
+
+// useSpriteMetrics fetches each sprite's size and anchor once per page: the anchor is the pixel the
+// unit's position falls on, so drawing at position minus anchor places it as the game does.
+function useSpriteMetrics(keys) {
   const [, setLoaded] = useState(0);
   useEffect(() => {
-    let live = true;
-    for (const [key, href] of hrefsByKey) {
-      if (spriteSizes.has(key)) continue;
-      spriteSizes.set(key, null);
-      const img = new Image();
-      img.onload = () => {
-        spriteSizes.set(key, { w: img.naturalWidth, h: img.naturalHeight });
-        if (live) setLoaded((n) => n + 1);
-      };
-      img.onerror = () => spriteSizes.delete(key);
-      img.src = href;
-    }
-    return () => { live = false; };
-  }, [hrefsByKey]);
-  return (key) => spriteSizes.get(key) || null;
+    const missing = keys.filter((k) => k && !spriteMetrics.has(k));
+    if (missing.length === 0) return;
+    for (const k of missing) spriteMetrics.set(k, null);
+    api.getSpriteMetrics(missing)
+      .then((metrics) => {
+        for (const [k, m] of Object.entries(metrics || {})) spriteMetrics.set(k, m);
+        setLoaded((n) => n + 1);
+      })
+      .catch(() => { for (const k of missing) spriteMetrics.delete(k); });
+  }, [keys]);
+  return (key) => spriteMetrics.get(key) || null;
 }
 
-const drawSize = (key, natural) => {
-  if (!natural) return null;
-  const override = SPRITE_HEIGHT_OVERRIDE[key];
-  if (override) return { w: (natural.w * override) / natural.h, h: override };
-  return { w: natural.w * SPRITE_SCALE, h: natural.h * SPRITE_SCALE };
-};
+const naturalWidths = new Map();
+
+function useNaturalWidth(href) {
+  const [, setLoaded] = useState(0);
+  useEffect(() => {
+    if (!href || naturalWidths.has(href)) return;
+    naturalWidths.set(href, 0);
+    const img = new Image();
+    img.onload = () => {
+      naturalWidths.set(href, img.naturalWidth);
+      setLoaded((n) => n + 1);
+    };
+    img.src = href;
+  }, [href]);
+  return href ? naturalWidths.get(href) || 0 : 0;
+}
 
 // The wrench of the game's "under construction" status, on a 24-unit grid.
 const WRENCH_PATH = 'M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z';
@@ -115,6 +123,35 @@ const creepPath = (creep) => {
   return parts.join('');
 };
 
+// CreepTiles fills creep with the tileset's own creep tiles and draws the game's edge frame on every
+// tile that borders it.
+function CreepTiles({ id, creep, path, edgesWidth }) {
+  const base = `/api/custom/game-assets/creep?tileset=${encodeURIComponent(creep.tileset)}`;
+  const edges = creep.edges || [];
+  const cells = [];
+  if (edgesWidth > 0) {
+    for (let i = 0; i + 2 < edges.length; i += 3) {
+      const [tx, ty, frame] = [edges[i], edges[i + 1], edges[i + 2]];
+      cells.push(
+        <svg key={i} x={tx * TILE} y={ty * TILE} width={TILE} height={TILE} viewBox={`${(frame - 1) * TILE} 0 ${TILE} ${TILE}`}>
+          <image href={`${base}&kind=edges`} width={edgesWidth} height={TILE} />
+        </svg>,
+      );
+    }
+  }
+  return (
+    <>
+      <defs>
+        <pattern id={id} width={128} height={128} patternUnits="userSpaceOnUse">
+          <image href={`${base}&kind=texture`} width={128} height={128} />
+        </pattern>
+      </defs>
+      <path d={path} fill={`url(#${id})`} />
+      {cells}
+    </>
+  );
+}
+
 // CreepDefs paints creep the way the game reads: a dark violet organic mat with ragged edges. The
 // ragged edge comes from displacing the tile outline with noise; the texture from a second noise.
 function CreepDefs({ id, width, height }) {
@@ -160,8 +197,8 @@ const clampRegion = (region, width, height) => {
   return { x, y, w: Math.min(region.w, width - x), h: Math.min(region.h, height - y) };
 };
 
-// EngineSnapshotMap draws the game as the engine had it at one moment: creep, every building (a bar with a
-// wrench while it is being built), every unit at its real size. It opens zoomed to the event.
+// EngineSnapshotMap draws the game as the engine had it at one moment: creep, shadows, every building (a
+// bar with a wrench while it is being built), every unit at its real size and place. It opens zoomed to the event.
 // eventSeconds are the snapshot seconds of every event of this game: the first exact request computes
 // them all in one engine pass, so moving between events afterwards is instant.
 export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUrl, mapWidth, mapHeight, colorByPlayerId, mapAlt }) {
@@ -197,18 +234,13 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
   const height = Number(mapHeight) || 0;
   const region = useMemo(() => (engine?.region && width && height ? clampRegion(engine.region, width, height) : null), [engine, width, height]);
   const creep = useMemo(() => creepPath(snapshot?.creep), [snapshot?.creep]);
-  const hrefsByKey = useMemo(() => {
-    const out = new Map();
-    for (const item of [...(snapshot?.buildings || []), ...(snapshot?.units || [])]) {
-      const key = spriteKey(item.unit_type);
-      if (!out.has(key)) {
-        const href = getUnitIcon(item.unit_type);
-        if (href) out.set(key, href);
-      }
-    }
-    return out;
-  }, [snapshot]);
-  const naturalSize = useSpriteSizes(hrefsByKey);
+  const tileset = snapshot?.creep?.tileset || '';
+  const edgesWidth = useNaturalWidth(tileset ? `/api/custom/game-assets/creep?tileset=${encodeURIComponent(tileset)}&kind=edges` : '');
+  const metricKeys = useMemo(() => [...new Set([
+    ...(snapshot?.buildings || []).map((b) => metricKey(b.unit_type, false)),
+    ...(snapshot?.units || []).map((u) => metricKey(u.unit_type, u.burrowed)),
+  ])].filter(Boolean).sort(), [snapshot]);
+  const metricOf = useSpriteMetrics(metricKeys);
   if (!width || !height) return null;
   const showZoomed = zoomed && region;
   const color = (id) => colorByPlayerId?.get(id) || '#e2e8f0';
@@ -218,50 +250,63 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
   const creepId = `${ids}-creep`;
   const warpId = `${ids}-warp`;
 
+  // place puts an image so its anchor lands on (x, y), at the given map-pixel scale.
+  const place = (m, x, y, scale) => ({
+    x: x - m.ax * SPRITE_SCALE * scale,
+    y: y - m.ay * SPRITE_SCALE * scale,
+    w: m.w * SPRITE_SCALE * scale,
+    h: m.h * SPRITE_SCALE * scale,
+  });
+
+  const shadows = [];
   const buildings = (snapshot?.buildings || []).map((b, i) => {
-    const key = spriteKey(b.unit_type);
-    const size = drawSize(key, naturalSize(key)) || { w: b.w, h: b.h };
+    const key = spriteKeyOf(b.unit_type);
+    const m = metricOf(metricKey(b.unit_type, false)) || FALLBACK_METRIC;
     const scale = showZoomed ? 1 : 1.25;
-    const w = size.w * scale;
-    const h = size.h * scale;
-    const footBottom = b.y + (b.h * scale) / 2;
     const lift = b.lifted ? LIFT_HEIGHT : 0;
+    const box = place(m, b.x, b.y - lift, scale);
+    if (m.shadow && showZoomed) {
+      const sb = place(m.shadow, b.x, b.y, scale);
+      shadows.push(<image key={`bs-${i}`} href={getUnitIcon(b.unit_type, { shadow: true })} x={sb.x} y={sb.y} width={sb.w} height={sb.h} preserveAspectRatio="none" />);
+    }
     const building = b.progress != null;
     const title = building ? t('snapshot.underConstruction', { unit: b.unit_type }) : b.unit_type;
     return (
       <g key={`b-${i}`}>
-        {b.lifted ? <ellipse cx={b.x} cy={footBottom - (b.h * scale) / 4} rx={w / 3} ry={h / 8} fill="#000" opacity={0.35} /> : null}
         <Sprite
           href={getUnitIcon(b.unit_type, { color: color(b.player_id) })}
-          x={b.x - w / 2}
-          y={footBottom - h - lift}
-          w={w}
-          h={h}
+          x={box.x}
+          y={box.y}
+          w={box.w}
+          h={box.h}
           filter={building && PROTOSS_BUILDINGS.has(key) ? `url(#${warpId})` : undefined}
           title={title}
         />
         {building ? (
-          <ProgressBar cx={b.x} top={footBottom + 2 * uiScale} width={Math.min(b.w * scale * 0.8, 110 * uiScale)} progress={b.progress} scale={uiScale} segmentsId={segmentsId} />
+          <ProgressBar cx={b.x} top={b.y + (b.h * scale) / 2 + 2 * uiScale} width={Math.min(b.w * scale * 0.8, 110 * uiScale)} progress={b.progress} scale={uiScale} segmentsId={segmentsId} />
         ) : null}
       </g>
     );
   });
 
   const units = (snapshot?.units || []).map((u, i) => {
-    const key = spriteKey(u.unit_type);
-    const natural = drawSize(key, naturalSize(key)) || { w: 28, h: 28 };
+    const m = metricOf(metricKey(u.unit_type, u.burrowed)) || FALLBACK_METRIC;
     const scale = showZoomed ? 1 : WHOLE_MAP_UNIT_SCALE;
-    const w = natural.w * scale;
-    const h = natural.h * scale;
-    const burrowedLook = u.burrowed && !variantOf(u.unit_type, true);
+    const box = place(m, u.x, u.y, scale);
+    const variant = variantOf(u.unit_type, u.burrowed);
+    const burrowedLook = u.burrowed && !variant;
+    if (m.shadow && showZoomed && !burrowedLook) {
+      const sb = place(m.shadow, u.x, u.y, scale);
+      shadows.push(<image key={`us-${i}`} href={getUnitIcon(u.unit_type, { shadow: true, variant })} x={sb.x} y={sb.y} width={sb.w} height={sb.h} preserveAspectRatio="none" />);
+    }
     return (
       <Sprite
         key={`u-${i}`}
-        href={getUnitIcon(u.unit_type, { color: color(u.player_id), variant: variantOf(u.unit_type, u.burrowed) })}
-        x={u.x - w / 2}
-        y={u.y - h / 2}
-        w={w}
-        h={h}
+        href={getUnitIcon(u.unit_type, { color: color(u.player_id), variant })}
+        x={box.x}
+        y={box.y}
+        w={box.w}
+        h={box.h}
         opacity={burrowedLook ? 0.45 : 1}
         title={u.unit_type}
       />
@@ -286,15 +331,17 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
                 <rect width={3 * uiScale} height={8} fill="#38d13c" />
                 <rect width={3 * uiScale} height={2 * uiScale} fill="#9cf59a" />
               </pattern>
-              {creep ? <CreepDefs id={creepId} width={width} height={height} /> : null}
+              {creep && !tileset ? <CreepDefs id={creepId} width={width} height={height} /> : null}
               <filter id={warpId} colorInterpolationFilters="sRGB">
                 <feColorMatrix type="matrix" values="0.25 0.25 0.1 0 0.12  0.3 0.35 0.15 0 0.25  0.35 0.4 0.25 0 0.45  0 0 0 0.85 0" />
               </filter>
             </defs>
-            {creep ? <path d={creep} fill="#000" filter={`url(#${creepId})`} opacity={0.92} /> : null}
+            {creep && tileset ? <CreepTiles id={creepId} creep={snapshot.creep} path={creep} edgesWidth={showZoomed ? edgesWidth : 0} /> : null}
+            {creep && !tileset ? <path d={creep} fill="#000" filter={`url(#${creepId})`} opacity={0.92} /> : null}
             {!showZoomed && region ? (
               <rect x={region.x} y={region.y} width={region.w} height={region.h} className="engine-snapshot-region" strokeWidth={24} />
             ) : null}
+            {shadows}
             {buildings}
             {units}
           </>

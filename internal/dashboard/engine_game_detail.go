@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/icza/screp/rep/repcmd"
+	"github.com/marianogappa/scmapanalyzer/lib/scmapanalyzer"
 	"github.com/marianogappa/screpdb/internal/engine"
 	"github.com/marianogappa/screpdb/internal/engine/moments"
 	"github.com/marianogappa/screpdb/internal/library"
@@ -159,9 +160,40 @@ type engineSnapshot struct {
 }
 
 // engineSnapshotCreep is the map's creep, one bit per tile, row by row, least significant bit first.
+// Edges are the creep edge frames the game draws over tiles next to creep, as tx, ty, frame triples;
+// frame k is the 32 px cell at x = 32*(k-1) of the tileset's edge art.
 type engineSnapshotCreep struct {
-	W    int    `json:"w"`
-	Bits string `json:"bits"`
+	W       int    `json:"w"`
+	Bits    string `json:"bits"`
+	Tileset string `json:"tileset,omitempty"`
+	Edges   []int  `json:"edges"`
+}
+
+// creepEdges finds every tile without creep that borders creep and the edge frame the game draws on it.
+func creepEdges(snap engine.Snapshot) []int {
+	if snap.CreepW == 0 {
+		return nil
+	}
+	h := len(snap.Creep) * 8 / snap.CreepW
+	neighbors := [8][2]int{{1, 1}, {0, 1}, {-1, 1}, {1, 0}, {-1, 0}, {1, -1}, {0, -1}, {-1, -1}}
+	var out []int
+	for ty := range h {
+		for tx := range snap.CreepW {
+			if snap.HasCreep(tx, ty) {
+				continue
+			}
+			var mask scmapanalyzer.CreepNeighbors
+			for bit, d := range neighbors {
+				if snap.HasCreep(tx+d[0], ty+d[1]) {
+					mask |= 1 << bit
+				}
+			}
+			if frame := scmapanalyzer.CreepEdgeFrame(mask); mask != 0 && frame > 0 {
+				out = append(out, tx, ty, frame)
+			}
+		}
+	}
+	return out
 }
 
 func unitName(t uint16) string {
@@ -222,7 +254,7 @@ func exactSnapshotWire(snap engine.Snapshot, playerBySlot map[int8]int64) engine
 		out.Units = append(out.Units, engineSnapshotUnit{UnitType: unitName(u.Type), PlayerID: id, X: int64(u.X), Y: int64(u.Y), Burrowed: u.Burrowed})
 	}
 	if len(snap.Creep) > 0 {
-		out.Creep = &engineSnapshotCreep{W: snap.CreepW, Bits: base64.StdEncoding.EncodeToString(snap.Creep)}
+		out.Creep = &engineSnapshotCreep{W: snap.CreepW, Bits: base64.StdEncoding.EncodeToString(snap.Creep), Tileset: tilesetFolder(snap.Tileset), Edges: creepEdges(snap)}
 	}
 	return out
 }

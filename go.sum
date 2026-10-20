@@ -73,8 +73,8 @@ github.com/marianogappa/openbw-go v0.0.0-20261018092732-6886509d1c67 h1:Lm4yOEIj
 github.com/marianogappa/openbw-go v0.0.0-20261018092732-6886509d1c67/go.mod h1:WvY5zPadXucvHj7nWLUWHBXnyIJ5fwH4tL4DORkOTRA=
 github.com/marianogappa/scfingerprint v0.0.0-20260912102954-40ec8770aef7 h1:eIuvQwX+wAxCEagAcZTIvYBE7Kz/uye0So9JR/cq2vQ=
 github.com/marianogappa/scfingerprint v0.0.0-20260912102954-40ec8770aef7/go.mod h1:uUQmrde5X68Cced105VwuUAvGrgE+8VLQHKTH3CGlRE=
-github.com/marianogappa/scmapanalyzer v0.0.0-20261018092311-e925d638044e h1:4LZf4KLM69Ct8Jpl2zm4IrcWNofnDH/JmDywYHbMCj0=
-github.com/marianogappa/scmapanalyzer v0.0.0-20261018092311-e925d638044e/go.mod h1:xJL47mAPS3ZouU6N7gTmxahd1lNzbNvCYQOJX+/3kqE=
+github.com/marianogappa/scmapanalyzer v0.0.0-20261020172257-f7df14b8d58a h1:IBN5Fa9osNir4YY042oxlEXo0Ll2L7jLTylhT40UmmI=
+github.com/marianogappa/scmapanalyzer v0.0.0-20261020172257-f7df14b8d58a/go.mod h1:xJL47mAPS3ZouU6N7gTmxahd1lNzbNvCYQOJX+/3kqE=
 github.com/marianogappa/screp v0.0.0-20250930085841-44d5f5ad657c h1:0JS8YGQLHH0A88qZ8gDX7a2VpJk9l2D+0J6TWV1jyf8=
 github.com/marianogappa/screp v0.0.0-20250930085841-44d5f5ad657c/go.mod h1:p5nCDcfboNnOOqPZPYENWj1v3WQm6mEFbxruAztKIz8=
 github.com/marianogappa/screpsim v0.0.0-20261018092744-6d34c91770f5 h1:xnsOje38J1Bek4ZPENArCi0B1dbhGodRkTa6RtTGIms=

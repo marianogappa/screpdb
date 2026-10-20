@@ -12,7 +12,7 @@ require (
 	github.com/icza/screp v1.13.8
 	github.com/marianogappa/openbw-go v0.0.0
 	github.com/marianogappa/scfingerprint v0.0.0-20260912102954-40ec8770aef7
-	github.com/marianogappa/scmapanalyzer v0.0.0-20261018092311-e925d638044e
+	github.com/marianogappa/scmapanalyzer v0.0.0-20261020172257-f7df14b8d58a
 	github.com/marianogappa/screpsim v0.0.0-20261018092744-6d34c91770f5
 	github.com/mark3labs/mcp-go v0.55.1
 	github.com/minio/selfupdate v0.6.0

@@ -13,7 +13,7 @@ import (
 	"github.com/marianogappa/screpsim"
 )
 
-const snapshotMagic = "SNP2"
+const snapshotMagic = "SNP3"
 
 // ProgressDone is the Progress of a unit that is not being built or morphed.
 const ProgressDone = 255
@@ -38,6 +38,8 @@ type Snapshot struct {
 	Units  []SnapshotUnit
 	CreepW int
 	Creep  []byte
+	// Tileset is the map's tileset index, 0 (Badlands) to 7 (Twilight).
+	Tileset int
 }
 
 func (s Snapshot) HasCreep(tx, ty int) bool {
@@ -86,6 +88,7 @@ func Snapshots(ctx context.Context, replay []byte, data *Data, seconds []int) (m
 			})
 		}
 		snap.CreepW, snap.Creep = creepBits(st)
+		snap.Tileset = int(st.Game.TilesetIndex)
 		out[sec] = snap
 	}
 	return out, nil
@@ -176,6 +179,7 @@ func EncodeSnapshots(snaps map[int]Snapshot) ([]byte, error) {
 		}
 		w.uint(uint64(snaps[s].CreepW))
 		w.str(string(snaps[s].Creep))
+		w.uint(uint64(snaps[s].Tileset))
 	}
 	var out bytes.Buffer
 	out.WriteString(snapshotMagic)
@@ -219,6 +223,7 @@ func DecodeSnapshots(b []byte) (map[int]Snapshot, error) {
 		if creep := r.str(); creep != "" {
 			snap.Creep = []byte(creep)
 		}
+		snap.Tileset = int(r.uint())
 		out[sec] = snap
 	}
 	if r.err != nil || len(r.buf) != 0 {

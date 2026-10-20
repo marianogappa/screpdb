@@ -1,14 +1,15 @@
 // Bump together with gameAssetIconRenderVersion in internal/dashboard/game_asset_handlers.go
 // when icon renderer output changes (scmapanalyzer assets, mapping, etc.).
-const GAME_ASSET_ICON_RENDER_VERSION = '4';
+const GAME_ASSET_ICON_RENDER_VERSION = '5';
 
 // iconQuery adds the optional player color (the sprite's team-color areas take it, as in the game) and
 // variant ("burrowed"). Colors other than #rrggbb are ignored, leaving the sprite untinted.
-const iconQuery = (mapKey, { color, variant } = {}) => {
+const iconQuery = (mapKey, { color, variant, shadow } = {}) => {
   let q = `name=${encodeURIComponent(mapKey)}&v=${encodeURIComponent(GAME_ASSET_ICON_RENDER_VERSION)}`;
   const hex = /^#([0-9a-f]{6})$/i.exec(String(color || '').trim());
   if (hex) q += `&color=${hex[1].toLowerCase()}`;
   if (variant) q += `&variant=${encodeURIComponent(variant)}`;
+  if (shadow) q += '&shadow=1';
   return q;
 };
 
@@ -212,6 +213,9 @@ const buildingKeys = new Set([
   'templararchives',
   'ultraliskcavern',
 ]);
+
+// spriteKeyOf is the asset name a unit type resolves to, or '' when there is no sprite.
+export const spriteKeyOf = (unitType) => resolveIconMapKey(unitType);
 
 export const getUnitIcon = (unitType, opts) => {
   const key = resolveIconMapKey(unitType);
