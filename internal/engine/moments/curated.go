@@ -1066,16 +1066,6 @@ func (g *game) deathsAt(a, b int8, base int, from, to int) int {
 	return n
 }
 
-func (g *game) townHallKilled(actor, target int8, base, from, to int) bool {
-	for _, x := range g.deaths {
-		sec := second(x.Frame)
-		if sec >= from && sec <= to && IsTownHall(x.Type) && x.Owner == target && x.KillerOwner == actor && g.baseOf(x.X, x.Y) == base {
-			return true
-		}
-	}
-	return false
-}
-
 func (g *game) leftWithin(player int8, after, within int) bool {
 	for _, o := range g.d.Outcomes {
 		if o.Owner == player && o.Kind != engine.OutcomeWon && second(o.Frame) >= after && second(o.Frame) <= after+within {
@@ -1143,9 +1133,6 @@ func (g *game) fieldBattles() []Event {
 				loser = x.Owner
 				break
 			}
-		}
-		if loser == NoPlayer || winner == NoPlayer {
-			continue
 		}
 		n := int64(len(b.deaths))
 		x, y := int32(b.sumX/n), int32(b.sumY/n)
