@@ -16,6 +16,12 @@ const SPRITE_HEIGHT_OVERRIDE = { goliath: 46, darktemplar: 34, archon: 64, darka
 const WHOLE_MAP_UNIT_SCALE = 2.5;
 const LIFT_HEIGHT = 24;
 
+// A Protoss building warping in glows blue-white in the game; the others show their bar alone.
+const PROTOSS_BUILDINGS = new Set([
+  'nexus', 'pylon', 'gateway', 'assimilator', 'forge', 'photoncannon', 'cyberneticscore', 'shieldbattery', 'roboticsfacility',
+  'stargate', 'citadelofadun', 'roboticssupportbay', 'fleetbeacon', 'templararchives', 'observatory', 'arbitertribunal',
+]);
+
 const spriteKey = (unitType) => normalizeUnitName(unitType).replace(/^(terran|zerg|protoss)/, '');
 
 // Only the Lurker has a burrowed sprite; other burrowed units are drawn see-through.
@@ -73,11 +79,11 @@ function ProgressBar({ cx, top, width, progress, scale, segmentsId }) {
   );
 }
 
-function Sprite({ href, x, y, w, h, opacity = 1, title }) {
+function Sprite({ href, x, y, w, h, opacity = 1, filter, title }) {
   if (!href) return null;
   return (
     <g opacity={opacity}>
-      <image href={href} x={x} y={y} width={w} height={h} preserveAspectRatio="none" />
+      <image href={href} x={x} y={y} width={w} height={h} preserveAspectRatio="none" filter={filter} />
       <title>{title}</title>
     </g>
   );
@@ -210,6 +216,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
   const uiScale = showZoomed ? Math.max(1, region.w / 1100) : Math.max(2.5, width / 1100);
   const segmentsId = `${ids}-seg`;
   const creepId = `${ids}-creep`;
+  const warpId = `${ids}-warp`;
 
   const buildings = (snapshot?.buildings || []).map((b, i) => {
     const key = spriteKey(b.unit_type);
@@ -224,7 +231,15 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
     return (
       <g key={`b-${i}`}>
         {b.lifted ? <ellipse cx={b.x} cy={footBottom - (b.h * scale) / 4} rx={w / 3} ry={h / 8} fill="#000" opacity={0.35} /> : null}
-        <Sprite href={getUnitIcon(b.unit_type, { color: color(b.player_id) })} x={b.x - w / 2} y={footBottom - h - lift} w={w} h={h} title={title} />
+        <Sprite
+          href={getUnitIcon(b.unit_type, { color: color(b.player_id) })}
+          x={b.x - w / 2}
+          y={footBottom - h - lift}
+          w={w}
+          h={h}
+          filter={building && PROTOSS_BUILDINGS.has(key) ? `url(#${warpId})` : undefined}
+          title={title}
+        />
         {building ? (
           <ProgressBar cx={b.x} top={footBottom + 2 * uiScale} width={Math.min(b.w * scale * 0.8, 110 * uiScale)} progress={b.progress} scale={uiScale} segmentsId={segmentsId} />
         ) : null}
@@ -272,6 +287,9 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
                 <rect width={3 * uiScale} height={2 * uiScale} fill="#9cf59a" />
               </pattern>
               {creep ? <CreepDefs id={creepId} width={width} height={height} /> : null}
+              <filter id={warpId} colorInterpolationFilters="sRGB">
+                <feColorMatrix type="matrix" values="0.25 0.25 0.1 0 0.12  0.3 0.35 0.15 0 0.25  0.35 0.4 0.25 0 0.45  0 0 0 0.85 0" />
+              </filter>
             </defs>
             {creep ? <path d={creep} fill="#000" filter={`url(#${creepId})`} opacity={0.92} /> : null}
             {!showZoomed && region ? (

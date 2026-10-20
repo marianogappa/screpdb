@@ -405,7 +405,12 @@ func (g *game) zerglingRushes() []Event {
 				continue
 			}
 			done[actor] = true
-			out = append(out, g.event("zergling_rush", sec, actor, target, b, where[k][0], where[k][1], []uint16{ut(bwgame.UnitTypesZergZergling)}))
+			e := g.event("zergling_rush", sec, actor, target, b, where[k][0], where[k][1], []uint16{ut(bwgame.UnitTypesZergZergling)})
+			deaths := g.fight(actor, target, b, sec, sec+rushDamageWindow)
+			e.Outcome = g.outcome(actor, deaths)
+			e.SnapshotSecond = min(peakSecond(deaths, sec), sec+peakLate)
+			e.Region = fightRegion(deaths, e.Region, e.X, e.Y)
+			out = append(out, e)
 		}
 	}
 	return out
