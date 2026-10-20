@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.32.0](https://github.com/marianogappa/screpdb/compare/v1.31.0...v1.32.0) (2026-10-20)
+
+
+### Features
+
+* **windows:** install the downloaded app and fall back to a browser download when updates fail ([#456](https://github.com/marianogappa/screpdb/issues/456)) ([d37e34a](https://github.com/marianogappa/screpdb/commit/d37e34a90bb72d13d38524699d38d1c30ca61b52))
+
 ## [1.31.0](https://github.com/marianogappa/screpdb/compare/v1.30.0...v1.31.0) (2026-10-18)
 
 
