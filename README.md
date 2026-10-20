@@ -16,11 +16,7 @@ screpdb is an advanced Starcraft replay reporting tool.
 
 **▶️ [Try it in your browser](https://marianogappa.github.io/screpdb/)** — the full dashboard on sample replays, no install, runs entirely client side.
 
-**⬇️ Install on Windows:** paste into PowerShell.
-
-```powershell
-irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | iex
-```
+**⬇️ Install on Windows:** [download screpdb](https://github.com/marianogappa/screpdb/releases/latest/download/screpdb-gui-windows-amd64.exe) and open it. If Windows says it protected your PC, click **More info → Run anyway**.
 
 macOS, Linux and other options: see [Installation](#installation).
 
@@ -59,11 +55,17 @@ macOS, Linux and other options: see [Installation](#installation).
 
 **Windows**
 
-```powershell
-irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | iex
-```
+[Download screpdb](https://github.com/marianogappa/screpdb/releases/latest/download/screpdb-gui-windows-amd64.exe) and open it. If Windows says it protected your PC, click **More info → Run anyway**. screpdb opens in your browser.
 
-Paste into PowerShell. screpdb opens in your browser and gets a Start Menu shortcut. [Read the script](install.ps1).
+<details>
+<summary>Trouble opening it?</summary>
+
+The app is not code-signed, so:
+
+- **Defender or other antivirus** may quarantine it (a known false positive for unsigned Go binaries). Restore it from Protection History.
+- **Work PCs** with AppLocker or WDAC may block it outright.
+
+</details>
 
 <details>
 <summary><strong>Linux</strong></summary>
@@ -135,7 +137,7 @@ Keep it in a writable folder (not `~/Downloads` or a Homebrew prefix) so the in-
 </details>
 
 <details>
-<summary><strong>Windows: Scoop or direct download</strong></summary>
+<summary><strong>Windows: Scoop or the CLI</strong></summary>
 
 <details>
 <summary>Prefer Scoop? (also installs the <code>screpdb</code> CLI)</summary>
@@ -158,15 +160,9 @@ irm get.scoop.sh | iex
 </details>
 
 <details>
-<summary>Prefer a direct download? (expect a SmartScreen warning)</summary>
+<summary>Want the CLI without Scoop?</summary>
 
-Grab **`screpdb-gui-windows-amd64.exe`** (the app; `screpdb-windows-amd64.exe` is the CLI) from the [Releases page](https://github.com/marianogappa/screpdb/releases). The binaries are **not code-signed**, so on first launch:
-
-- **SmartScreen "Windows protected your PC"**: click **More info → Run anyway**.
-- **Defender or other antivirus** may quarantine it (a known false positive for unsigned Go binaries). Restore it from Protection History.
-- **Work PCs** with AppLocker or WDAC may block it outright.
-
-Put the `.exe` in a folder you can write to, such as `%LOCALAPPDATA%\Programs\screpdb\`, so the in-app Update button works. You can also [build from source](#building-from-source).
+Grab **`screpdb-windows-amd64.exe`** from the [Releases page](https://github.com/marianogappa/screpdb/releases). The same SmartScreen and antivirus notes apply. You can also [build from source](#building-from-source).
 
 </details>
 
@@ -192,7 +188,8 @@ make build
 
 | Installed with | Command |
 | --- | --- |
-| Windows installer (`install.ps1`) | `Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\screpdb", "$([Environment]::GetFolderPath('Programs'))\screpdb.lnk"` |
+| Windows download | Delete the `.exe` you downloaded |
+| Windows PowerShell installer (`install.ps1`) | `Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\screpdb", "$([Environment]::GetFolderPath('Programs'))\screpdb.lnk"` |
 | Scoop (Windows) | `scoop uninstall screpdb` |
 | Homebrew (macOS/Linux) | `brew uninstall screpdb` |
 | One-line installer / manual | Delete the binary you placed (e.g. `~/.local/bin/screpdb`) |
@@ -301,18 +298,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-18  OK. Skill: one scale per metric, recalls from 2:00, missing values count as 0, money maps measure worker production to 8:00 and banked resources over 20 minutes (stored in the engine record). Opening a game runs its engine pass at once, even on battery, and the game page says so; the engine pill is gone. Skill only exists for games with trusted engine data. No new files, reads or writes.
+2026-10-20  OK. Docs only: Windows install is now a browser download of the app instead of the PowerShell one-liner, which antivirus software can block. No code changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-18  OK. Skill: one scale per metric, recalls from 2:00, missing values count as 0, money maps measure worker production to 8:00 and banked resources over 20 minutes (stored in the engine record). Opening a game runs its engine pass at once, even on battery, and the game page says so; the engine pill is gone. Skill only exists for games with trusted engine data. No new files, reads or writes.
 2026-10-18  OK. Skill axis ends come from the fitted data (2nd and 98th percentile per race, in model.json), one tier per player, a single warning, flush rows and tinted summary pills. In-memory scoring and frontend only, no I/O changes.
 2026-10-18  OK. Skill macro rows of team games and money maps are converted to 1v1 regular-map equivalents with quantile tables embedded in internal/skill/model.json (fitted offline by scripts/skill-fit from skill-mine -dir output). In-memory scoring only, no I/O changes.
 2026-10-18  OK. Frontend only: Skill charts share one tier range and line up, and the estimate is a single chart carrying each verdict. scripts/skill-mine gains -dir to measure unlabelled replays under a folder the operator names (read only, one output file). No app I/O changes.
 2026-10-18  OK. Skill tab layout pass and wider rating: team games and money maps are rated with caveats (custom-rules and sub-8-minute games still are not); the verdict always shows after APM. Frontend and in-memory scoring only, no I/O changes.
-2026-10-18  OK. Skill tab: internal/skill embeds model.json (written offline by scripts/skill-fit from skill-mine output) and scores 1v1 games from the in-memory library record; worker production is stored in the engine record at engine-pass time. The Macro tab and its embedded macro_ranges.json are removed. No new files, reads or writes at runtime.
 ```
 
 </details>
