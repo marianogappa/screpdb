@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.33.0](https://github.com/marianogappa/screpdb/compare/v1.32.0...v1.33.0) (2026-10-20)
+
+
+### Features
+
+* **events:** curated, outcome-aware game events with a game-like engine overlay ([#460](https://github.com/marianogappa/screpdb/issues/460)) ([25197ba](https://github.com/marianogappa/screpdb/commit/25197bae9a753a674a2c46894799d5884431e385))
+
 ## [1.32.0](https://github.com/marianogappa/screpdb/compare/v1.31.0...v1.32.0) (2026-10-20)
 
 
