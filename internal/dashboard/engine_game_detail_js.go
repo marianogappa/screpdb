@@ -12,7 +12,7 @@ type digestMemo struct{}
 
 func (d *Dashboard) applyEngineToGameDetail(*workflowGameDetail) {}
 
-func (d *Dashboard) applyEngineEvents(*workflowGameDetail, *models.MapContextLayout) {}
+func (d *Dashboard) applyEngineEvents(*workflowGameDetail, *models.MapContextLayout, map[int64]int) {}
 
 func (d *Dashboard) handlerEngineSnapshot(w http.ResponseWriter, _ *http.Request) {
 	http.Error(w, "no engine data in the browser demo", http.StatusNotFound)

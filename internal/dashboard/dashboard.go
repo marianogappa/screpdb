@@ -290,6 +290,8 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/custom/game-assets/unit", d.handlerGameAssetUnit).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/game-assets/building", d.handlerGameAssetBuilding).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/game-assets/map", d.handlerGameAssetMap).Methods(http.MethodGet)
+	r.HandleFunc("/api/custom/game-assets/sprite-metrics", d.handlerSpriteMetrics).Methods(http.MethodGet)
+	r.HandleFunc("/api/custom/game-assets/creep", d.handlerCreepArt).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/hotkeys/map-data", d.handlerHotkeyMapData).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/game-assets/map-crop", d.handlerMapTerrainCrop).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/debug/map-layout/{replayID}", d.handlerDebugMapLayout).Methods(http.MethodGet)

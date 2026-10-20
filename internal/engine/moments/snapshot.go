@@ -11,6 +11,8 @@ type Building struct {
 	Owner    int8
 	X, Y     int32
 	Complete bool
+	// Progress is how far an incomplete building is, 0..1.
+	Progress float64
 }
 
 type Unit struct {
@@ -77,7 +79,11 @@ func SnapshotAt(d *engine.Digest, sec int) Snapshot {
 			track(pr.Unit, &Building{Type: pr.Type, Owner: pr.Owner, X: x, Y: y, Complete: true})
 		case morph:
 		default:
-			track(pr.Unit, &Building{Type: pr.Type, Owner: pr.Owner, X: pr.X, Y: pr.Y})
+			b := &Building{Type: pr.Type, Owner: pr.Owner, X: pr.X, Y: pr.Y}
+			if pr.Complete != engine.NoFrame && pr.Complete > pr.Start {
+				b.Progress = float64(int32(sec*framesPerSecond)-pr.Start) / float64(pr.Complete-pr.Start)
+			}
+			track(pr.Unit, b)
 		}
 	}
 	for _, unit := range order {

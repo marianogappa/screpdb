@@ -61,8 +61,8 @@ const (
 	leaveAfterAttack  = 60
 	// One attack per attacker per minute: the same push seen at two bases is one moment.
 	attackDedupSeconds = 60
-	regionMargin       = 8 * tile
-	minRegionSide      = 24 * tile
+	regionMargin       = 6 * tile
+	minRegionSide      = 20 * tile
 	// A special event at a base inside an attack window speaks for that moment; the attack is dropped.
 	attackOverlapSeconds = 10
 )
@@ -89,6 +89,7 @@ type Player struct {
 }
 
 // Event is one curated moment. Base is an index into the bases given to Detect, or NoBase.
+// Region is what the map should show: the fight, the new base, the drop, not the whole base area.
 type Event struct {
 	Type           string
 	Second         int
@@ -99,6 +100,20 @@ type Event struct {
 	X, Y           int32
 	Units          []uint16
 	Region         Region
+	Outcome        Outcome
+	// Seconds is how long the event lasted, for those that are a span (a supply block).
+	Seconds int
+}
+
+// Outcome is what an attack, drop or harass did, from the actor's side.
+type Outcome struct {
+	// Killed and Lost are resources: the target's units the actor killed there, and the actor's own.
+	Killed, Lost int32
+	Workers      int
+	Buildings    int
+	TownHall     bool
+	// First is the actor's first attack on that target.
+	First bool
 }
 
 // Region is a rectangle of the map in pixels.
@@ -144,6 +159,8 @@ func Detect(d *engine.Digest, bases []Base, players []Player) []Event {
 	out = append(out, g.teleports()...)
 	out = append(out, g.nukes()...)
 	out = append(out, g.attacks(out)...)
+	out = append(out, g.workerKills(out)...)
+	out = append(out, g.supplyBlocks()...)
 	lastShown := min(g.trusted-1, second(d.LastFrame))
 	kept := out[:0]
 	for _, e := range out {
@@ -295,6 +312,10 @@ func regionAround(minX, minY, maxX, maxY int32) Region {
 const (
 	placedLead  = 2
 	arrivalLead = 1
+	// A new town hall is shown well under way, so the map shows the base going up, not a worker.
+	expansionLead = 12
+	// buildingFocus frames a single building with what stands around it, in pixels from its centre.
+	buildingFocus = 5 * tile
 	// A transport empties in about three seconds; a drop that goes on longer is shown at the first one.
 	dropUnloadSeconds = 3
 )
@@ -303,6 +324,8 @@ func (e Event) shownAt(sec int) Event {
 	e.SnapshotSecond = sec
 	return e
 }
+
+func around(x, y, r int32) Region { return regionAround(x-r, y-r, x+r, y+r) }
 
 func (g *game) event(kind string, sec int, actor, target int8, base int, x, y int32, units []uint16) Event {
 	return Event{Type: kind, Second: sec, SnapshotSecond: sec, Actor: actor, Target: target, Base: base, SourceBase: NoBase, X: x, Y: y, Units: units, Region: g.regionOfBase(base, x, y)}
@@ -335,7 +358,9 @@ func (g *game) expansions() []Event {
 			held[pr.Owner] = map[int]bool{}
 		}
 		held[pr.Owner][b] = true
-		out = append(out, g.event("expansion", second(pr.Start), pr.Owner, NoPlayer, b, pr.X, pr.Y, []uint16{pr.Type}).shownAt(second(pr.Start)+placedLead))
+		e := g.event("expansion", second(pr.Start), pr.Owner, NoPlayer, b, pr.X, pr.Y, []uint16{pr.Type}).shownAt(second(pr.Start) + expansionLead)
+		e.Region = around(pr.X, pr.Y, buildingFocus)
+		out = append(out, e)
 	}
 	return out
 }
@@ -380,7 +405,12 @@ func (g *game) zerglingRushes() []Event {
 				continue
 			}
 			done[actor] = true
-			out = append(out, g.event("zergling_rush", sec, actor, target, b, where[k][0], where[k][1], []uint16{ut(bwgame.UnitTypesZergZergling)}))
+			e := g.event("zergling_rush", sec, actor, target, b, where[k][0], where[k][1], []uint16{ut(bwgame.UnitTypesZergZergling)})
+			deaths := g.fight(actor, target, b, sec, sec+rushDamageWindow)
+			e.Outcome = g.outcome(actor, deaths)
+			e.SnapshotSecond = min(peakSecond(deaths, sec), sec+peakLate)
+			e.Region = fightRegion(deaths, e.Region, e.X, e.Y)
+			out = append(out, e)
 		}
 	}
 	return out
@@ -421,7 +451,9 @@ func (g *game) buildingRushes() []Event {
 			units = append(units, ut(bwgame.UnitTypesTerranMarine))
 		}
 		done[[2]int64{int64(pr.Owner), int64(pr.Type)}] = true
-		out = append(out, g.event(kind, sec, pr.Owner, target, b, pr.X, pr.Y, units).shownAt(sec+placedLead))
+		e := g.event(kind, sec, pr.Owner, target, b, pr.X, pr.Y, units).shownAt(sec + placedLead)
+		e.Region = around(pr.X, pr.Y, buildingFocus+4*tile)
+		out = append(out, e)
 	}
 	return out
 }
@@ -555,7 +587,9 @@ func (g *game) proxies() []Event {
 			continue
 		}
 		done[proxyKey{pr.Owner, k.kind}] = true
-		out = append(out, g.event(k.kind, sec, pr.Owner, NoPlayer, b, pr.X, pr.Y, []uint16{pr.Type}).shownAt(sec+placedLead))
+		e := g.event(k.kind, sec, pr.Owner, NoPlayer, b, pr.X, pr.Y, []uint16{pr.Type}).shownAt(sec + placedLead + 4)
+		e.Region = around(pr.X, pr.Y, buildingFocus)
+		out = append(out, e)
 	}
 	return out
 }
@@ -592,7 +626,9 @@ func (g *game) mannerPylons() []Event {
 				continue
 			}
 			done[pr.Owner] = true
-			out = append(out, g.event("manner_pylon", sec, pr.Owner, enemy.Slot, b, pr.X, pr.Y, []uint16{pr.Type}).shownAt(sec+placedLead))
+			e := g.event("manner_pylon", sec, pr.Owner, enemy.Slot, b, pr.X, pr.Y, []uint16{pr.Type}).shownAt(sec + placedLead + 4)
+			e.Region = around(pr.X, pr.Y, buildingFocus)
+			out = append(out, e)
 		}
 	}
 	return out
@@ -750,6 +786,9 @@ func (g *game) drops() []Event {
 		}
 		kind, named := dropKind(c.cargo)
 		e := g.event(kind, c.first, c.actor, c.target, c.base, c.x, c.y, dropUnits(c.transport, named, c.cargo)).shownAt(min(c.last, c.first+dropUnloadSeconds) + arrivalLead)
+		deaths := g.fight(c.actor, c.target, c.base, c.first, c.last+dropFollowUp)
+		e.Outcome = g.outcome(c.actor, deaths)
+		e.Region = fightRegion(deaths, around(c.x, c.y, buildingFocus+2*tile), c.x, c.y)
 		out = append(out, e)
 	}
 	return out
@@ -961,8 +1000,11 @@ func (g *game) attacks(special []Event) []Event {
 				newType = true
 			}
 		}
-		relevant := !attacked[[2]int8{w.actor, w.target}] || newType || killed >= decisiveKilled ||
-			g.townHallKilled(w.actor, w.target, w.base, w.first, w.last+attackGapSeconds) || g.leftWithin(w.target, w.last, leaveAfterAttack)
+		deathList := g.fight(w.actor, w.target, w.base, w.first, w.last+attackGapSeconds)
+		outcome := g.outcome(w.actor, deathList)
+		outcome.First = !attacked[[2]int8{w.actor, w.target}]
+		relevant := outcome.First || newType || killed >= decisiveKilled || outcome.TownHall || outcome.Workers >= workerKillsMin ||
+			g.leftWithin(w.target, w.last, leaveAfterAttack)
 		if !relevant {
 			continue
 		}
@@ -975,6 +1017,13 @@ func (g *game) attacks(special []Event) []Event {
 			seenTypes[w.actor][t] = true
 		}
 		e := g.event("attack", w.first, w.actor, w.target, w.base, w.x, w.y, types)
+		e.Outcome = outcome
+		e.SnapshotSecond = peakSecond(deathList, w.first)
+		e.Region = fightRegion(deathList, e.Region, w.x, w.y)
+		// A long stay with the fighting late is told when the fighting happens, so the time read matches the map shown.
+		if e.SnapshotSecond-e.Second > peakLate {
+			e.Second = e.SnapshotSecond - peakLead
+		}
 		out = append(out, e)
 	}
 	for _, e := range g.fieldBattles() {
@@ -1017,16 +1066,6 @@ func (g *game) deathsAt(a, b int8, base int, from, to int) int {
 	return n
 }
 
-func (g *game) townHallKilled(actor, target int8, base, from, to int) bool {
-	for _, x := range g.deaths {
-		sec := second(x.Frame)
-		if sec >= from && sec <= to && IsTownHall(x.Type) && x.Owner == target && x.KillerOwner == actor && g.baseOf(x.X, x.Y) == base {
-			return true
-		}
-	}
-	return false
-}
-
 func (g *game) leftWithin(player int8, after, within int) bool {
 	for _, o := range g.d.Outcomes {
 		if o.Owner == player && o.Kind != engine.OutcomeWon && second(o.Frame) >= after && second(o.Frame) <= after+within {
@@ -1046,7 +1085,8 @@ func (g *game) fieldBattles() []Event {
 	}
 	var battles []*battle
 	for _, x := range g.deaths {
-		if !g.enemies(x.Owner, x.KillerOwner) || g.holder(g.baseOf(x.X, x.Y), second(x.Frame)) != NoPlayer {
+		// A town hall's death ends its owner's hold that very second, so the hold is read a second before.
+		if b := g.baseOf(x.X, x.Y); !g.enemies(x.Owner, x.KillerOwner) || g.holder(b, second(x.Frame)) != NoPlayer || g.holder(b, second(x.Frame)-1) != NoPlayer {
 			continue
 		}
 		sec := second(x.Frame)
@@ -1073,7 +1113,7 @@ func (g *game) fieldBattles() []Event {
 		var traded int32
 		for _, x := range b.deaths {
 			if x.KillerType != uint16(openbw.UnitTypeNone) {
-				killers[x.KillerOwner] = append(killers[x.KillerOwner], x.KillerType)
+				killers[x.KillerOwner] = append(killers[x.KillerOwner], fighter(x.KillerType))
 			}
 			v := CostOf(x.Type).Value()
 			killedBy[x.KillerOwner] += v
@@ -1098,8 +1138,206 @@ func (g *game) fieldBattles() []Event {
 		x, y := int32(b.sumX/n), int32(b.sumY/n)
 		sec := second(b.deaths[0].Frame)
 		e := g.event("attack", sec, winner, loser, NoBase, x, y, byCount(killers[winner]))
-		e.Region = regionAround(x-fieldBattleRadius/2, y-fieldBattleRadius/2, x+fieldBattleRadius/2, y+fieldBattleRadius/2)
+		e.Outcome = g.outcome(winner, b.deaths)
+		e.SnapshotSecond = peakSecond(b.deaths, sec)
+		e.Region = fightRegion(b.deaths, around(x, y, fieldBattleRadius/2), x, y)
 		out = append(out, e)
 	}
 	return out
+}
+
+// fight is every death between two players at a base (or, for NoBase, anywhere) in a window.
+func (g *game) fight(a, b int8, base int, from, to int) []engine.Death {
+	var out []engine.Death
+	for _, x := range g.deaths {
+		sec := second(x.Frame)
+		if sec < from || sec > to || base != NoBase && g.baseOf(x.X, x.Y) != base {
+			continue
+		}
+		if x.Owner == a && x.KillerOwner == b || x.Owner == b && x.KillerOwner == a {
+			out = append(out, x)
+		}
+	}
+	return out
+}
+
+func (g *game) outcome(actor int8, deaths []engine.Death) Outcome {
+	var o Outcome
+	for _, x := range deaths {
+		v := max(CostOf(x.Type).Value(), 1)
+		if x.Owner == actor {
+			o.Lost += v
+			continue
+		}
+		o.Killed += v
+		_, building := FootprintOf(x.Type)
+		switch {
+		case isWorker(x.Type):
+			o.Workers++
+		case IsTownHall(x.Type):
+			o.TownHall = true
+			o.Buildings++
+		case building:
+			o.Buildings++
+		}
+	}
+	return o
+}
+
+const (
+	// peakWindow is the stretch of a fight peakSecond looks for the most deaths in.
+	peakWindow = 8
+	peakLate   = 30
+	peakLead   = 5
+)
+
+// peakSecond is the moment to show a fight: early in its fiercest 8 s, while both armies still stand.
+func peakSecond(deaths []engine.Death, fallback int) int {
+	if len(deaths) == 0 {
+		return fallback
+	}
+	secs := make([]int, len(deaths))
+	for i, x := range deaths {
+		secs[i] = second(x.Frame)
+	}
+	sort.Ints(secs)
+	best, bestN := secs[0], 0
+	for i, from := range secs {
+		n := sort.SearchInts(secs[i:], from+peakWindow+1)
+		if n > bestN {
+			best, bestN = from, n
+		}
+	}
+	return max(fallback, best-1)
+}
+
+// fightRegion frames where units died, falling back to the given region when too few did to tell.
+func fightRegion(deaths []engine.Death, fallback Region, x, y int32) Region {
+	if len(deaths) < 2 {
+		return fallback
+	}
+	minX, minY, maxX, maxY := x, y, x, y
+	for _, d := range deaths {
+		minX, minY, maxX, maxY = min(minX, d.X), min(minY, d.Y), max(maxX, d.X), max(maxY, d.Y)
+	}
+	return regionAround(minX, minY, maxX, maxY)
+}
+
+const (
+	workerKillsMin = 5
+	workerKillsGap = 20
+)
+
+// workerKills finds a player killing 5 or more of an enemy's workers at one base with no attack or
+// drop already telling it: the Mutalisks, Vultures, Reavers or Storms that cost a player their economy.
+func (g *game) workerKills(told []Event) []Event {
+	type cluster struct {
+		actor, target int8
+		base          int
+		first, last   int
+		deaths        []engine.Death
+	}
+	var clusters []*cluster
+	for _, x := range g.deaths {
+		if !isWorker(x.Type) || !g.enemies(x.KillerOwner, x.Owner) {
+			continue
+		}
+		sec := second(x.Frame)
+		b := g.baseOf(x.X, x.Y)
+		var c *cluster
+		for _, open := range clusters {
+			if open.actor == x.KillerOwner && open.target == x.Owner && open.base == b && sec-open.last <= workerKillsGap {
+				c = open
+			}
+		}
+		if c == nil {
+			c = &cluster{actor: x.KillerOwner, target: x.Owner, base: b, first: sec}
+			clusters = append(clusters, c)
+		}
+		c.last = sec
+		c.deaths = append(c.deaths, x)
+	}
+	var out []Event
+	for _, c := range clusters {
+		if len(c.deaths) < workerKillsMin || c.base == NoBase {
+			continue
+		}
+		if slices.ContainsFunc(told, func(e Event) bool {
+			return e.Actor == c.actor && e.Base == c.base && e.Second <= c.last && e.Second >= c.first-attackGapSeconds
+		}) {
+			continue
+		}
+		var killers []uint16
+		for _, x := range c.deaths {
+			if x.KillerType != uint16(openbw.UnitTypeNone) {
+				killers = append(killers, fighter(x.KillerType))
+			}
+		}
+		x, y := c.deaths[0].X, c.deaths[0].Y
+		e := g.event("worker_kills", c.first, c.actor, c.target, c.base, x, y, byCount(killers))
+		e.Outcome = g.outcome(c.actor, g.fight(c.actor, c.target, c.base, c.first, c.last))
+		e.SnapshotSecond = peakSecond(c.deaths, c.first)
+		e.Region = fightRegion(c.deaths, e.Region, x, y)
+		out = append(out, e)
+	}
+	return out
+}
+
+const (
+	longSupplyBlock = 45
+	supplyBlockCash = 100
+	supplyCap       = 400
+)
+
+// supplyBlocks finds a player at their supply cap with money to spend for 45 s or more: long enough
+// to cost the game, not the ordinary seconds before a depot finishes.
+func (g *game) supplyBlocks() []Event {
+	var out []Event
+	from := map[int8]int{}
+	flush := func(owner int8, until int) {
+		start, open := from[owner]
+		delete(from, owner)
+		if !open || until-start < longSupplyBlock {
+			return
+		}
+		main, ok := g.mains[owner]
+		if !ok {
+			return
+		}
+		b := g.bases[main]
+		e := g.event("long_supply_block", start, owner, NoPlayer, main, b.X, b.Y, nil).shownAt((start + until) / 2)
+		e.Seconds = until - start
+		e.Region = around(b.X, b.Y, buildingFocus+3*tile)
+		out = append(out, e)
+	}
+	for _, s := range g.d.Economy {
+		if !g.players[s.Owner].Human {
+			continue
+		}
+		sec := second(s.Frame)
+		blocked := s.SupplyMax > 0 && s.SupplyMax < supplyCap && s.SupplyUsed >= s.SupplyMax && s.Minerals >= supplyBlockCash
+		_, open := from[s.Owner]
+		switch {
+		case blocked && !open:
+			from[s.Owner] = sec
+		case !blocked && open:
+			flush(s.Owner, sec)
+		}
+	}
+	for owner := range from {
+		flush(owner, second(g.d.LastFrame))
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Second < out[j].Second })
+	return out
+}
+
+// fighter is the unit a kill is credited to: an Interceptor's kill is its Carrier's, a Scarab's its Reaver's.
+func fighter(t uint16) uint16 {
+	switch bwgame.UnitTypes(t) {
+	case bwgame.UnitTypesProtossInterceptor:
+		return ut(bwgame.UnitTypesProtossCarrier)
+	case bwgame.UnitTypesProtossScarab:
+		return ut(bwgame.UnitTypesProtossReaver)
+	}
+	return t
 }

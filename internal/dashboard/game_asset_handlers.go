@@ -23,7 +23,7 @@ var gameAssetFlight singleflight.Group
 // gameAssetIconRenderVersion segments on-disk icon cache and must match the `v` query param
 // the dashboard frontend appends to unit/building icon URLs. Bump when scmapanalyzer (or our
 // icon mapping) changes so browsers and disk cache pick up new PNGs.
-const gameAssetIconRenderVersion = "4"
+const gameAssetIconRenderVersion = "5"
 
 // gameAssetMapRenderVersion segments the on-disk map cache under
 // game-assets/maps/v<N>/. Bump when the map render changes (scmapanalyzer or
@@ -116,7 +116,7 @@ func (d *Dashboard) serveGameAssetIcon(w http.ResponseWriter, r *http.Request) {
 }
 
 // gameAssetIconOptions reads the optional player color (six hex digits: the team-color areas of the
-// sprite take it, as in the game) and variant (burrowed). The suffix keeps each tint in its own cache file.
+// sprite take it, as in the game), variant (burrowed) and shadow=1 for the unit's shadow instead. The suffix keeps each tint in its own cache file.
 func gameAssetIconOptions(r *http.Request) (scmapanalyzer.UnitImageOptions, string, bool) {
 	var opts scmapanalyzer.UnitImageOptions
 	suffix := ""
@@ -127,6 +127,10 @@ func gameAssetIconOptions(r *http.Request) (scmapanalyzer.UnitImageOptions, stri
 		}
 		opts.TeamColor = color.NRGBA{R: uint8(rgb >> 16), G: uint8(rgb >> 8), B: uint8(rgb), A: 255}
 		suffix += "_" + raw
+	}
+	if r.URL.Query().Get("shadow") == "1" {
+		opts.Shadow = true
+		suffix += "_shadow"
 	}
 	switch v := strings.TrimSpace(r.URL.Query().Get("variant")); v {
 	case "":

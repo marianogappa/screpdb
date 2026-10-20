@@ -10,8 +10,8 @@ import (
 
 func TestSnapshotsRoundTrip(t *testing.T) {
 	want := map[int]Snapshot{
-		60:  {Second: 60, Units: []SnapshotUnit{{Type: 7, Owner: 0, X: 100, Y: 200, Completed: true}, {Type: 106, Owner: 0, X: 300, Y: 300, Completed: true}}},
-		300: {Second: 300, Units: []SnapshotUnit{{Type: 103, Owner: 1, X: 900, Y: 950, Completed: true, Burrowed: true}, {Type: 61, Owner: 1, X: 10, Y: 10, Completed: true, Cloaked: true}}},
+		60:  {Second: 60, Units: []SnapshotUnit{{Type: 7, Owner: 0, X: 100, Y: 200, Completed: true, Progress: ProgressDone}, {Type: 106, Owner: 0, X: 300, Y: 300, Progress: 127}}, CreepW: 4, Creep: []byte{0b1010_0110, 1}, Tileset: 4},
+		300: {Second: 300, Units: []SnapshotUnit{{Type: 103, Owner: 1, X: 900, Y: 950, Completed: true, Burrowed: true}, {Type: 61, Owner: 1, X: 10, Y: 10, Completed: true, Cloaked: true}, {Type: 111, Owner: 1, X: 50, Y: 50, Completed: true, Lifted: true}}},
 	}
 	b, err := EncodeSnapshots(want)
 	if err != nil {
@@ -52,5 +52,16 @@ func TestSnapshotsOfARealGame(t *testing.T) {
 	}
 	if counts[41] < 10 || counts[7] < 10 || counts[131] == 0 && counts[132] == 0 {
 		t.Fatalf("at 6:00 want Drones, SCVs and a Hatchery or Lair: %v", counts)
+	}
+	snap := snaps[360]
+	for _, u := range snap.Units {
+		if u.Type == 131 || u.Type == 132 {
+			if !snap.HasCreep(int(u.X/32), int(u.Y/32)) {
+				t.Fatalf("no creep under the Hatchery at %d,%d", u.X, u.Y)
+			}
+		}
+		if (u.Type == 7 || u.Type == 41) && !u.Completed {
+			t.Fatalf("a worker still in training is drawn: %+v", u)
+		}
 	}
 }

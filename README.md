@@ -297,18 +297,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-20  OK. Failed updates fall back to a browser download: the Windows launcher relaunches the worker with SCREPDB_SELFUPDATE_FAILED=1 when applying an update fails, and the update status carries that flag plus the latest release's download link. The dashboard shows the link instead of retrying. No new files, reads, writes or network calls.
+2026-10-20  OK. Tests only (engine detectors, snapshot wire, sprite and creep handlers, codec, oclock, library types, alliances) plus removal of two dead branches in the event detectors. No I/O changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-20  OK. The terrain crop endpoint takes layer=terrain or layer=resources (scmapanalyzer renders each from the same replay file it already reads), so creep draws under minerals; the event map drops its whole-map toggle and caption. No new files, paths, network or writes.
+2026-10-20  OK. Overlay art from the bumped scmapanalyzer (shadows, sprite anchors, composited units, tileset creep and edge frames) served from embedded data through two new read-only endpoints; the engine snapshot records the map tileset. No new files, paths, network or writes beyond the existing icon cache.
+2026-10-20  OK. Game Events: one curated list per game from either the engine or the command stream (never mixed), outcome-aware sentences, focused regions, and an overlay with true-scale sprites, construction bars and creep. The on-demand snapshot pass now opens the engine with its own copy of the already extracted game data (the same app-data bwdata directory openbw already reads); no new files, paths, network or writes beyond the existing snapshot cache.
+2026-10-20  OK. Failed updates fall back to a browser download: the Windows launcher relaunches the worker with SCREPDB_SELFUPDATE_FAILED=1 when applying an update fails, and the update status carries that flag plus the latest release's download link. The dashboard shows the link instead of retrying. No new files, reads, writes or network calls.
 2026-10-20  OK. Windows self-install: the launcher, when opened from the Downloads folder, copies its own binary to %LOCALAPPDATA%\Programs\screpdb, writes Start Menu and Desktop .lnk files through the Windows Shell, relaunches the copy and deletes the download. All of it lives in internal/selfupdate (the sanctioned binary-swap exception), runs before the Low worker exists, makes no network calls, and dev builds, Scoop installs and binaries outside Downloads are left alone.
-2026-10-20  OK. Docs only: Windows install is now a browser download of the app instead of the PowerShell one-liner, which antivirus software can block. No code changes.
-2026-10-18  OK. Skill: one scale per metric, recalls from 2:00, missing values count as 0, money maps measure worker production to 8:00 and banked resources over 20 minutes (stored in the engine record). Opening a game runs its engine pass at once, even on battery, and the game page says so; the engine pill is gone. Skill only exists for games with trusted engine data. No new files, reads or writes.
-2026-10-18  OK. Skill axis ends come from the fitted data (2nd and 98th percentile per race, in model.json), one tier per player, a single warning, flush rows and tinted summary pills. In-memory scoring and frontend only, no I/O changes.
-2026-10-18  OK. Skill macro rows of team games and money maps are converted to 1v1 regular-map equivalents with quantile tables embedded in internal/skill/model.json (fitted offline by scripts/skill-fit from skill-mine -dir output). In-memory scoring only, no I/O changes.
 ```
 
 </details>
