@@ -66,3 +66,10 @@ func TestRemoveMovedDownload(t *testing.T) {
 	}
 	RemoveMovedDownload(f)
 }
+
+func TestLatestDownloadURL(t *testing.T) {
+	want := "https://github.com/marianogappa/screpdb/releases/latest/download/screpdb-gui-windows-amd64.exe"
+	if got := latestDownloadURL("screpdb-gui-windows-amd64.exe"); got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}

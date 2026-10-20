@@ -13,4 +13,8 @@ type Status struct {
 	Reason              string `json:"reason"`
 	PackageManager      string `json:"package_manager"`
 	OS                  string `json:"os"`
+	// UpdateFailed is set when the Windows launcher tried to update and could
+	// not, so the dashboard offers DownloadURL instead of another attempt.
+	UpdateFailed bool   `json:"update_failed"`
+	DownloadURL  string `json:"download_url"`
 }

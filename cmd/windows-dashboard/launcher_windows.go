@@ -128,6 +128,7 @@ func superviseWorker(ctx context.Context, self, dir string) int {
 		newVersion, applyErr := selfupdate.Apply(ctx)
 		if applyErr != nil {
 			log.Printf("launcher: self-update failed (%v); relaunching current version", applyErr)
+			extraEnv = append(extraEnv, selfupdate.RestartEnvKV(), selfupdate.UpdateFailedEnvKV())
 			continue
 		}
 		log.Printf("launcher: self-update applied (%s); relaunching worker", newVersion)

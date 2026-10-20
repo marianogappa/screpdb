@@ -3198,6 +3198,13 @@ function App() {
   const selfUpdateSupported = Boolean(updateStatus?.self_update_supported);
   const updateLatest = String(updateStatus?.latest_version || latestVersion || '');
   const updateReleaseUrl = String(updateStatus?.latest_release_url || latestVersionUrl || 'https://github.com/marianogappa/screpdb/releases/latest');
+  // A failed update (often antivirus or a firewall blocking the app's download)
+  // falls back to a browser download. On Windows, opening that download
+  // replaces the installed copy; elsewhere the release page explains each asset.
+  const updateFailed = Boolean(updateError) || Boolean(updateStatus?.update_failed);
+  const updateDownloadUrl = updateStatus?.os === 'windows' && updateStatus?.download_url
+    ? String(updateStatus.download_url)
+    : updateReleaseUrl;
   // When the app can't swap its own binary, surface the exact upgrade command to
   // run: the package manager for scoop/brew installs, or a re-run of the install
   // script when the install dir is read-only on macOS/Linux (empty otherwise).
@@ -5622,7 +5629,7 @@ function App() {
             ) : null}
           </div>
           <div className="workflow-nav-group">
-            {updateAvailable && updateTier === 'loud' && !loudUpdateDismissed ? (
+            {((updateAvailable && updateTier === 'loud') || updateStatus?.update_failed) && !loudUpdateDismissed ? (
               <span className="workflow-nav-update-nudge">
                 {updateApplied ? (
                   <button
@@ -5633,6 +5640,16 @@ function App() {
                   >
                     {t('update.updatedRefresh', { version: updateLatest })}
                   </button>
+                ) : updateFailed ? (
+                  <a
+                    href={updateDownloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="workflow-nav-update-available tip-below"
+                    data-tip={t('update.failedDownloadTip')}
+                  >
+                    {t('update.failedDownload')}
+                  </a>
                 ) : selfUpdateSupported ? (
                   <button
                     type="button"
@@ -7787,6 +7804,10 @@ function App() {
                       <button type="button" className="footer-update-link" onClick={() => window.location.reload()}>
                         {t('update.updatedRefreshFooter', { version: updateLatest })}
                       </button>
+                    ) : updateFailed ? (
+                      <a href={updateDownloadUrl} target="_blank" rel="noopener noreferrer" className="footer-update-link" data-tip={t('update.failedDownloadTip')}>
+                        {t('update.failedDownload')}
+                      </a>
                     ) : selfUpdateSupported ? (
                       <button
                         type="button"

@@ -49,6 +49,8 @@
   "update.unsupportedPlatform": "No self-update build for this platform. Download the new version",
   "update.download": "Download the new version",
   "update.failed": "Update failed",
+  "update.failedDownload": "⚠️ Update failed · Download the new version",
+  "update.failedDownloadTip": "The update couldn't download inside the app, often because antivirus or a firewall blocked it. Download it in your browser instead",
   "update.installedTip": "The new version is installed. Refresh to load it",
   "update.updatedRefresh": "✅ Updated to {version} · Refresh",
   "update.updatedRefreshFooter": "✅ Updated to {version} · refresh",
